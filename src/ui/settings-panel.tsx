@@ -1,5 +1,6 @@
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
+import { ask } from "@tauri-apps/plugin-dialog";
 import {
   resetSettings,
   settings,
@@ -46,6 +47,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   // Guards the native OS permission prompt: true while a request from THIS
   // click is in flight, so a second click can't fire a second prompt.
   const requesting = useSignal(false);
+  // Same guard for the Restore-defaults confirm — one prompt per click.
+  const resetting = useSignal(false);
 
   // Move focus into the panel on open, so Escape reaches the handler below
   // instead of being swallowed by the terminal that had focus. preventScroll:
@@ -147,6 +150,38 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       reportPersistError("Couldn't request notification permission.");
     } finally {
       requesting.value = false;
+    }
+  };
+
+  /**
+   * Restore defaults drops theme, font family and size, every color override,
+   * the editor, tab bar position, pane bar and scrollback in one click, with
+   * no undo. Red styling is a signifier, not a guard — so this goes through
+   * the same native prompt every other destructive path uses (close tab,
+   * quit). Dialog failure is fail-safe: reset nothing, say so.
+   */
+  const handleReset = async (): Promise<void> => {
+    if (resetting.value) {
+      return;
+    }
+    resetting.value = true;
+    try {
+      const confirmed = await ask(
+        "Theme, font, colors and behavior all go back to their defaults. This can't be undone.",
+        {
+          title: "Restore Defaults",
+          kind: "warning",
+          okLabel: "Restore",
+          cancelLabel: "Cancel",
+        },
+      );
+      if (confirmed) {
+        resetSettings();
+      }
+    } catch {
+      reportPersistError("Couldn't confirm the reset — nothing was changed.");
+    } finally {
+      resetting.value = false;
     }
   };
 
@@ -287,7 +322,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           <button
             type="button"
             class="cfg-btn cfg-btn--danger"
-            onClick={resetSettings}
+            title="Restore defaults — asks for confirmation"
+            disabled={resetting.value}
+            onClick={() => void handleReset()}
           >
             ↺ reset
           </button>

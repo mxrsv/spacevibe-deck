@@ -14,7 +14,10 @@ vi.mock("@tauri-apps/plugin-store", () => ({
     })),
   },
 }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(async () => null) }));
+vi.mock("@tauri-apps/plugin-dialog", () => ({
+  open: vi.fn(async () => null),
+  ask: vi.fn(async () => true),
+}));
 vi.mock("../lib/native-notification", () => ({
   requestAgentNotificationPermission: vi.fn(),
 }));
@@ -26,6 +29,7 @@ vi.mock("../chrome/events", async (importOriginal) => {
   };
 });
 
+import { ask } from "@tauri-apps/plugin-dialog";
 import { SettingsPanel } from "./settings-panel";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
@@ -34,6 +38,7 @@ import { reportPersistError } from "../chrome/events";
 
 const mockedRequestPermission = vi.mocked(requestAgentNotificationPermission);
 const mockedReportPersistError = vi.mocked(reportPersistError);
+const mockedAsk = vi.mocked(ask);
 
 /** Flushes the whole microtask queue — a single `await Promise.resolve()`
  * only advances one hop, which isn't enough for an `await`-chained handler
@@ -230,5 +235,96 @@ describe("SettingsPanel — agent notifications toggle (Task 22)", () => {
 
     expect(mockedRequestPermission).toHaveBeenCalledTimes(1);
     expect(settings.value.agentNotifications).toBe(true);
+  });
+});
+
+describe("SettingsPanel — Restore defaults confirm", () => {
+  let host: HTMLDivElement;
+  const CUSTOM = { ...DEFAULT_SETTINGS, fontSize: 20, themeId: "dracula" };
+
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    settings.value = CUSTOM;
+    mockedAsk.mockReset();
+    mockedReportPersistError.mockReset();
+  });
+
+  afterEach(() => {
+    act(() => {
+      render(null, host);
+    });
+  });
+
+  const mount = (): void => {
+    act(() => {
+      render(<SettingsPanel open onClose={vi.fn()} />, host);
+    });
+  };
+
+  const getReset = (): HTMLButtonElement =>
+    host.querySelector(".cfg-btn--danger") as HTMLButtonElement;
+
+  const click = async (button: HTMLButtonElement): Promise<void> => {
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await flushMicrotasks();
+    });
+  };
+
+  it("does NOT reset on render, and asks before resetting", async () => {
+    mockedAsk.mockResolvedValueOnce(true);
+    mount();
+    expect(mockedAsk).not.toHaveBeenCalled();
+
+    await click(getReset());
+
+    expect(mockedAsk).toHaveBeenCalledTimes(1);
+    expect(settings.value.fontSize).toBe(DEFAULT_SETTINGS.fontSize);
+    expect(settings.value.themeId).toBe(DEFAULT_SETTINGS.themeId);
+  });
+
+  it("cancelling the prompt leaves every setting untouched", async () => {
+    mockedAsk.mockResolvedValueOnce(false);
+    mount();
+
+    await click(getReset());
+
+    expect(mockedAsk).toHaveBeenCalledTimes(1);
+    expect(settings.value.fontSize).toBe(20);
+    expect(settings.value.themeId).toBe("dracula");
+    expect(mockedReportPersistError).not.toHaveBeenCalled();
+  });
+
+  it("a failed prompt is fail-safe: nothing reset, error surfaced", async () => {
+    mockedAsk.mockRejectedValueOnce(new Error("no dialog"));
+    mount();
+
+    await click(getReset());
+
+    expect(settings.value.fontSize).toBe(20);
+    expect(mockedReportPersistError).toHaveBeenCalledTimes(1);
+  });
+
+  it("two clicks in one tick raise a single prompt", async () => {
+    let resolveAsk: (value: boolean) => void = () => {};
+    mockedAsk.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveAsk = resolve;
+        }),
+    );
+    mount();
+    const button = getReset();
+
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      resolveAsk(true);
+      await flushMicrotasks();
+    });
+
+    expect(mockedAsk).toHaveBeenCalledTimes(1);
   });
 });
