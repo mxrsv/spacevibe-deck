@@ -67,7 +67,6 @@ export function WorkspaceLogo({
         // row's own onClick (select tab / toggle popover).
         <span
           class="wsitem__logo-attn"
-          style={{ position: "absolute", right: "-4px", bottom: "-4px" }}
           onClick={(event) => event.stopPropagation()}
         >
           <AgentAttentionMark

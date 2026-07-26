@@ -190,6 +190,30 @@ body,
   background: var(--status-unread);
 }
 
+/* The attention mark takes the same corner slot. Offsets are -4px, not the
+   badge's -2px, because the rule below bumps the dot to 10px inside the
+   mark's 14px hit box — 2px of slack per side, so -4 + 2 lands the dot on
+   exactly the same pixels as the legacy badge. Shrink that 10px back to the
+   default 8px and the dot drifts 1px off; the two rules are a pair. */
+.wsitem__logo-attn {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  line-height: 0;
+}
+
+/* Same 2px ring as the legacy badge, cutting the dot out of the logo. */
+.wsitem__logo-attn .attn-mark__dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--chrome-1);
+  box-sizing: border-box;
+}
+
+.wsitem.is-active .wsitem__logo-attn .attn-mark__dot {
+  border-color: var(--tab-active-bg);
+}
+
 /* Agent-pending: SVG ring of ticks (workspace-spinner.tsx). CSS mask +
    conic-gradient was dropped — dual-layer mask-composite is unreliable in
    WKWebView. Position + spin only; ticks/color live in the SVG. */
@@ -310,10 +334,12 @@ body,
 }
 
 /* ── Agent attention mark (AgentAttentionMark) ──────────────
-   Shared status mark for a tab/workspace's attention state.
-   Actionable kinds render an interactive pill button; working/unread
-   render non-interactive status decoration. Colors are semantic vars
-   only — never hardcoded hex. ── */
+   Shared status mark for a tab/workspace's attention state. Actionable
+   kinds and unread share one dot shape — 8px here, 10px in the sidebar's
+   ringed slot; `working` renders the spinner instead. Actionable is an
+   interactive button, working and unread are decoration. The count is
+   never painted: it lives in the accessible name and the tooltip. Colors
+   are semantic vars only — never hardcoded hex. ── */
 .attn-mark {
   display: inline-flex;
   align-items: center;
@@ -322,51 +348,58 @@ body,
 }
 
 button.attn-mark {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 6px;
+  position: relative;
+  width: 14px;
+  height: 14px;
+  padding: 0;
   border: none;
-  border-radius: 999px;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 600;
+  background: none;
   cursor: pointer;
-  transition:
-    background 0.15s ease,
-    filter 0.15s ease;
+  transition: filter 0.15s ease;
+}
+
+/* Widen the 14px button to a 20px circle so a mark whose visible core is
+   only 8px stays easy to click — the same widen-past-the-paint trick the
+   1px split divider uses. */
+button.attn-mark::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  transition: background 0.15s ease;
+}
+
+/* That hit circle is invisible at rest, so a click landing 6px off the dot
+   reads as a click on the row — and it is not: it acks the pane and the
+   mark disappears. Tint the circle on hover so the real target shows up
+   before the click. currentColor already carries the kind's hue. */
+button.attn-mark:hover::after {
+  background: color-mix(in srgb, currentColor 18%, transparent);
 }
 
 button.attn-mark:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+  border-radius: 50%;
 }
 
 button.attn-mark:hover {
-  filter: brightness(1.12);
-}
-
-.attn-mark__badge {
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
+  filter: brightness(1.25);
 }
 
 .attn-mark--error {
-  background: color-mix(in srgb, var(--red) 20%, transparent);
   color: var(--red);
 }
 
 .attn-mark--warning {
-  background: color-mix(in srgb, var(--yellow) 20%, transparent);
   color: var(--yellow);
 }
 
 .attn-mark--requested {
-  background: color-mix(in srgb, var(--magenta) 20%, transparent);
   color: var(--magenta);
 }
 
 .attn-mark--completed {
-  background: color-mix(in srgb, var(--green) 20%, transparent);
   color: var(--green);
 }
 
@@ -384,13 +417,16 @@ button.attn-mark:hover {
 .attn-mark--unread {
   width: 14px;
   height: 14px;
+  color: var(--status-unread);
 }
 
+/* One dot shape for every kind; the mark's own `color` picks the semantic
+   hue, so a kind only ever sets `color`. */
 .attn-mark__dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--status-unread);
+  background: currentColor;
 }
 
 /* ── Tab bar ─────────────────────────────────────────────── */
@@ -455,6 +491,14 @@ button.attn-mark:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 140px;
+}
+
+/* The mark's stopPropagation wrapper. Without a flex context of its own the
+   span blockifies and inherits the tab's text strut, which drops the dot
+   half a pixel below .tab__dot — two dots in one tab that don't line up. */
+.tab__attn {
+  display: flex;
+  align-items: center;
 }
 
 .tab__close {

@@ -224,7 +224,7 @@ describe("TabBar", () => {
     expect(host.querySelector(".tab__attn")).toBeNull();
   });
 
-  it("renders a two-digit actionable count with both the close and status buttons present and clickable", () => {
+  it("keeps a two-digit count off the mark while both the close and status buttons stay clickable", () => {
     tabViews.value = [
       tab({
         key: 1,
@@ -241,7 +241,8 @@ describe("TabBar", () => {
     const closeButton = host.querySelector(".tab__close") as HTMLButtonElement;
     expect(statusButton).not.toBeNull();
     expect(closeButton).not.toBeNull();
-    expect(statusButton.textContent).toContain("12");
+    expect(statusButton.textContent).toBe("");
+    expect(statusButton.getAttribute("title")).toContain("12");
 
     act(() => {
       statusButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));

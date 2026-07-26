@@ -47,13 +47,15 @@ describe("AgentAttentionMark", () => {
     expect(host.innerHTML).toBe("");
   });
 
-  it("renders an interactive button for each actionable kind", () => {
+  it("renders an interactive dot button for each actionable kind", () => {
     const kinds = ["error", "warning", "requested", "completed"] as const;
     for (const kind of kinds) {
       mount({ kind, actionableCount: 1 });
       const button = host.querySelector("button");
       expect(button).not.toBeNull();
       expect(button?.className).toContain(`attn-mark--${kind}`);
+      expect(button?.querySelector(".attn-mark__dot")).not.toBeNull();
+      expect(button?.textContent).toBe("");
     }
   });
 
@@ -73,16 +75,38 @@ describe("AgentAttentionMark", () => {
     expect(status?.querySelector(".attn-mark__dot")).not.toBeNull();
   });
 
-  it("shows the actionable count, including two-digit counts", () => {
+  it("renders an actionable kind as a dot, never a printed count", () => {
+    mount({ kind: "error", actionableCount: 12 });
+    const button = host.querySelector("button") as HTMLButtonElement;
+
+    expect(button.querySelector(".attn-mark__dot")).not.toBeNull();
+    expect(button.textContent).toBe("");
+  });
+
+  it("carries the count in the accessible name and the tooltip", () => {
     mount({ kind: "error", actionableCount: 2 });
     let button = host.querySelector("button") as HTMLButtonElement;
-    expect(button.textContent).toContain("2");
     expect(button.getAttribute("aria-label")).toContain("2");
+    expect(button.getAttribute("title")).toContain("2");
 
     mount({ kind: "error", actionableCount: 12 });
     button = host.querySelector("button") as HTMLButtonElement;
-    expect(button.textContent).toContain("12");
     expect(button.getAttribute("aria-label")).toContain("12");
+    expect(button.getAttribute("title")).toContain("12");
+  });
+
+  // `title` demotes to the accessible description once aria-label is present,
+  // so an identical string would be announced twice. The label belongs to the
+  // name only.
+  it("keeps the workspace label out of the tooltip so AT doesn't repeat it", () => {
+    mount({ kind: "warning", actionableCount: 3 }, undefined, "backend-api");
+    const button = host.querySelector("button") as HTMLButtonElement;
+
+    expect(button.getAttribute("aria-label")).toContain("backend-api");
+    expect(button.getAttribute("title")).not.toContain("backend-api");
+    expect(button.getAttribute("title")).not.toBe(
+      button.getAttribute("aria-label"),
+    );
   });
 
   it("calls onActivate exactly once when an actionable mark is clicked", () => {
