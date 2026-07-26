@@ -93,6 +93,17 @@ export function OpenBoard({
   const renameValue = useSignal("");
   const confirmDeleteId = useSignal<string | null>(null);
   const opening = useSignal(false);
+  // A failed Open, tagged with the exact combo that failed. Tagging (rather
+  // than clearing from every selection handler) makes the notice self-expire:
+  // change the folder, layout or agent and it stops matching, so the footer
+  // goes back to the preview instead of showing an error about a combo the
+  // user has already moved on from.
+  const failure = useSignal<{
+    path: string;
+    presetId: string;
+    agent: AgentChoice;
+    message: string;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -147,6 +158,30 @@ export function OpenBoard({
       ? [{ path: pickedPath, lastOpenedAt: Date.now() }, ...recents]
       : recents;
 
+  /**
+   * What the footer says instead of the "Open X as Y with Z" preview, and
+   * whether it is a warning. Only two of the three states are: a first run
+   * with nothing picked yet is a neutral prompt — nothing has gone wrong, the
+   * user simply has not chosen — so it must not wear the same warning color
+   * as a missing folder or a failed spawn, or the color stops meaning
+   * anything (DL-3.2).
+   */
+  const failed = failure.value;
+  const notice: { readonly text: string; readonly warn: boolean } | null =
+    failed !== null &&
+    failed.path === pickedPath &&
+    failed.presetId === selectedPreset.id &&
+    failed.agent === effectiveAgent
+      ? { text: failed.message, warn: true }
+      : pickedPath === null
+        ? { text: "Select a workspace folder", warn: false }
+        : !workspaceValid
+          ? {
+              text: `${folderName(pickedPath)} is missing — pick another folder`,
+              warn: true,
+            }
+          : null;
+
   /** Apply a recent's remembered combo when it is picked (still overridable). */
   function selectWorkspace(path: string): void {
     selectedPath.value = path;
@@ -179,10 +214,20 @@ export function OpenBoard({
     if (!workspaceValid || selectedPath.value === null || opening.value) {
       return;
     }
+    const path = selectedPath.value;
     opening.value = true;
-    const ok = await onOpen(selectedPath.value, selectedPreset, effectiveAgent);
+    const ok = await onOpen(path, selectedPreset, effectiveAgent);
     if (!ok) {
       opening.value = false;
+      // Without this the board just re-enables the button and says nothing:
+      // the manager writes its error into a terminal that is behind this
+      // overlay, and on a first run there is no terminal to write to at all.
+      failure.value = {
+        path,
+        presetId: selectedPreset.id,
+        agent: effectiveAgent,
+        message: "Couldn't start a shell here — check the folder and try again",
+      };
     }
   }
 
@@ -527,11 +572,14 @@ export function OpenBoard({
 
         <footer class="board-footer">
           <span
-            class={`board-footer__summary ${workspaceValid ? "" : "is-warning"}`}
+            class={`board-footer__summary ${notice?.warn ? "is-warning" : ""}`}
+            // A failed Open has to reach a screen reader too — the summary is
+            // the only place it is ever said.
+            role={notice?.warn ? "status" : undefined}
           >
-            {workspaceValid && selectedPath.value !== null ? (
+            {notice === null && pickedPath !== null ? (
               <>
-                Open <strong>{folderName(selectedPath.value)}</strong> as{" "}
+                Open <strong>{folderName(pickedPath)}</strong> as{" "}
                 <strong>{selectedPreset.name}</strong> with{" "}
                 <strong>
                   {effectiveAgent === null
@@ -540,7 +588,7 @@ export function OpenBoard({
                 </strong>
               </>
             ) : (
-              "Select a workspace folder"
+              notice?.text
             )}
           </span>
           <div class="board-footer__actions">
