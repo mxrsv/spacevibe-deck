@@ -4,6 +4,8 @@ import type { PaneProcessInfo } from "../lib/process-info";
 import type { Pane, PaneEvents, PaneAttentionSignal } from "./pane";
 import type { CreatePaneFn } from "./pane-lifecycle";
 import { createMemoryPtyClient, type PtyClient } from "./pty-client";
+import type { ShortcutAction } from "./keymap";
+import { boardOpen } from "../chrome/events";
 import {
   createTabManager,
   type TabManager,
@@ -1769,6 +1771,81 @@ describe("createTabManager notifier — dedupe on attention latch identity, not 
 
     expect(maybeNotify).toHaveBeenCalledTimes(1); // no re-notify on phase-only change
 
+    tm.dispose();
+  });
+});
+
+describe("runAction — the macOS menu bridge", () => {
+  // `new-tab` is the probe: it raises the Open board rather than spawning a
+  // tab (the board owns workspace ∥ preset ∥ agent), so `boardOpen` is the
+  // observable, not `tabViews.length`.
+  async function ready(): Promise<TabManager> {
+    boardOpen.value = false;
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+    boardOpen.value = false;
+    return tm;
+  }
+
+  afterEach(() => {
+    boardOpen.value = false;
+  });
+
+  it("runs the same action the keymap would", async () => {
+    const tm = await ready();
+
+    tm.runAction("new-tab");
+    await flush();
+
+    expect(boardOpen.value).toBe(true);
+    tm.dispose();
+  });
+
+  it("is a no-op while a chrome text field holds the caret", async () => {
+    // The whole point of the guard: a menu accelerator is consumed by the OS
+    // before the webview sees the key, so it never passes handleShortcut's
+    // text-field check. Without this, ⌘T/⌘W fire mid-rename.
+    const tm = await ready();
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+
+    tm.runAction("new-tab");
+    await flush();
+
+    expect(boardOpen.value).toBe(false);
+    input.remove();
+    tm.dispose();
+  });
+
+  it("still runs when the caret is in a terminal's helper textarea", async () => {
+    // xterm parks a textarea inside .pane__term to capture input — that one
+    // must NOT suppress shortcuts, or the menu is dead whenever a pane has
+    // focus, which is almost always.
+    const tm = await ready();
+    const term = document.createElement("div");
+    term.className = "pane__term";
+    const textarea = document.createElement("textarea");
+    term.appendChild(textarea);
+    document.body.appendChild(term);
+    textarea.focus();
+
+    tm.runAction("new-tab");
+    await flush();
+
+    expect(boardOpen.value).toBe(true);
+    term.remove();
+    tm.dispose();
+  });
+
+  it("ignores an action name the dispatch table does not know", async () => {
+    const tm = await ready();
+
+    tm.runAction("split-diagonal" as ShortcutAction);
+    await flush();
+
+    expect(boardOpen.value).toBe(false);
     tm.dispose();
   });
 });

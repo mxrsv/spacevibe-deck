@@ -11,6 +11,7 @@ import { resolveCwds, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
 import { settings, updateSettings } from "../settings/settings-store";
 import { resolveTheme } from "../settings/themes";
+import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
 import { tabViews } from "../terminal/tabs-store";
 import {
@@ -128,6 +129,16 @@ export function App() {
     }).then((fn) => unsubs.push(fn));
     void listen("menu:new-preset", () => {
       editorRequest.value = { source: "live" };
+    }).then((fn) => unsubs.push(fn));
+    // Every File/View/Edit item whose accelerator the macOS menu now owns.
+    // The OS consumes the chord before the webview sees it, so the item has
+    // to run the very action the keymap would have — same dispatch table, via
+    // `runAction`. The payload crosses an IPC boundary as a plain string, so
+    // it is validated rather than cast.
+    void listen<string>("menu:action", (event) => {
+      if (isShortcutAction(event.payload)) {
+        tabsRef.current?.runAction(event.payload);
+      }
     }).then((fn) => unsubs.push(fn));
     return () => unsubs.forEach((fn) => fn());
   }, []);

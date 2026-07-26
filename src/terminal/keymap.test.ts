@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { matchBinding, selectTabIndex } from "./keymap";
+import {
+  DEFAULT_KEYMAP,
+  isShortcutAction,
+  matchBinding,
+  selectTabIndex,
+} from "./keymap";
 
 function keyEvent(
   key: string,
@@ -153,5 +158,24 @@ describe("selectTabIndex", () => {
   it("returns null for every other action", () => {
     expect(selectTabIndex("new-tab")).toBeNull();
     expect(selectTabIndex("split-row")).toBeNull();
+  });
+});
+
+describe("isShortcutAction", () => {
+  it("accepts every action the default keymap binds", () => {
+    for (const binding of DEFAULT_KEYMAP) {
+      expect(isShortcutAction(binding.action)).toBe(true);
+    }
+  });
+
+  it("rejects an unbound name, a near miss and a non-string", () => {
+    // The macOS menu sends its item id over IPC as a plain string; a typo in
+    // menu.rs must be a no-op, never a cast into an action that half-matches.
+    expect(isShortcutAction("split-diagonal")).toBe(false);
+    expect(isShortcutAction("Split-Row")).toBe(false);
+    expect(isShortcutAction("select-tab-99")).toBe(false);
+    expect(isShortcutAction("")).toBe(false);
+    expect(isShortcutAction(undefined)).toBe(false);
+    expect(isShortcutAction(42)).toBe(false);
   });
 });

@@ -81,6 +81,21 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   ...TAB_SELECT_BINDINGS,
 ];
 
+const BOUND_ACTIONS: ReadonlySet<string> = new Set(
+  DEFAULT_KEYMAP.map((binding) => binding.action),
+);
+
+/**
+ * Whether `value` names an action the default keymap actually binds.
+ *
+ * Guards the one place an action arrives as untrusted data rather than as a
+ * matched key event: the macOS menu sends its item id across the Tauri IPC
+ * boundary as a plain string.
+ */
+export function isShortcutAction(value: unknown): value is ShortcutAction {
+  return typeof value === "string" && BOUND_ACTIONS.has(value);
+}
+
 /** Exact match on the key and all four modifiers; null when nothing matches. */
 export function matchBinding(
   event: KeyboardEvent,

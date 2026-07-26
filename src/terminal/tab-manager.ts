@@ -154,6 +154,13 @@ export interface TabManager {
   /** Set or clear (null) a custom tab dot color token. */
   setTabDotColor(index: number, color: TabDotColor | null): void;
   cycleTab(step: 1 | -1): void;
+  /**
+   * Run a keymap action that did NOT arrive as a key event — today only the
+   * macOS menu, whose accelerators the OS consumes before the webview ever
+   * sees them. Shares the one dispatch table with `handleShortcut` so a menu
+   * item and its shortcut can never drift apart.
+   */
+  runAction(action: ShortcutAction): void;
   splitActive(dir: Direction): Promise<void>;
   /** Every pane id across every tab (quit-path busy guard). */
   allPaneIds(): number[];
@@ -815,6 +822,40 @@ export function createTabManager(
     },
   };
 
+  /**
+   * A text field belonging to the chrome rather than to a terminal — the tab
+   * rename input, the search bar, a settings field. Shortcuts must not fire
+   * while one of these holds the caret.
+   */
+  function isChromeTextField(node: unknown): boolean {
+    return (
+      (node instanceof HTMLInputElement ||
+        node instanceof HTMLTextAreaElement) &&
+      !node.closest(".pane__term")
+    );
+  }
+
+  /** The dispatch half, shared by the keymap and the menu. */
+  function dispatchAction(action: ShortcutAction): void {
+    const tabIndex = selectTabIndex(action);
+    if (tabIndex !== null) {
+      selectTab(tabIndex); // out-of-range indexes are a no-op
+      return;
+    }
+    commands[action]?.();
+  }
+
+  function runAction(action: ShortcutAction): void {
+    // A menu accelerator is delivered by the OS *before* the webview sees the
+    // key, so it never passes through `handleShortcut` and none of its guards
+    // apply. Re-apply the text-field one here, or ⌘W while renaming a tab
+    // closes the pane instead of being ignored.
+    if (isChromeTextField(document.activeElement)) {
+      return;
+    }
+    dispatchAction(action);
+  }
+
   function handleShortcut(event: KeyboardEvent): void {
     // Never intercept keys the IME is still composing — keyCode 229 catches
     // WebKit events that arrive without isComposing (Vietnamese/CJK input).
@@ -823,11 +864,7 @@ export function createTabManager(
     }
     // Never fire shortcuts while typing in a text field (same approach as
     // the IME guard above) — e.g. the tab rename input in the popover.
-    if (
-      (event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement) &&
-      !(event.target as HTMLElement).closest(".pane__term")
-    ) {
+    if (isChromeTextField(event.target)) {
       return;
     }
     const action = matchBinding(event);
@@ -836,12 +873,7 @@ export function createTabManager(
     }
     event.preventDefault();
     event.stopPropagation();
-    const tabIndex = selectTabIndex(action);
-    if (tabIndex !== null) {
-      selectTab(tabIndex); // out-of-range indexes are a no-op
-      return;
-    }
-    commands[action]?.();
+    dispatchAction(action);
   }
 
   function splitActive(dir: Direction): Promise<void> {
@@ -1058,6 +1090,7 @@ export function createTabManager(
       setOverride(index, { dotColor: color ?? undefined });
     },
     cycleTab,
+    runAction,
     splitActive,
     allPaneIds,
     closePane: () => close.closePane(),
