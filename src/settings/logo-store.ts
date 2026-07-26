@@ -10,7 +10,7 @@ const STORE_KEY = "dataUrl";
 const SUPPORTED_EXTENSIONS = ["png", "jpg", "jpeg", "svg", "webp"] as const;
 
 /**
- * The app logo as a data URL; empty string = not set → the default Stackgrid
+ * The app logo as a data URL; empty string = not set → the default Deck
  * mark is shown. A data URL (not a path) so the logo survives its source file
  * being deleted or moved.
  */

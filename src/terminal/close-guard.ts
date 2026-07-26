@@ -52,7 +52,7 @@ const CLOSE_COPY: ConfirmCopy = {
 };
 
 export const QUIT_COPY: ConfirmCopy = {
-  title: "Quit Stackgrid",
+  title: "Quit Deck",
   okLabel: "Quit",
   action: "Quit",
 };

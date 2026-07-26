@@ -193,7 +193,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     >
       <header class="panel__head">
         <h2 class="panel__path">
-          <b>~</b>/stackgrid/settings
+          <b>~</b>/deck/settings
         </h2>
         <button
           ref={escRef}

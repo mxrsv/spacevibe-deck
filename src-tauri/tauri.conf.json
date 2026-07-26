@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Stackgrid",
-  "version": "0.7.1",
-  "identifier": "com.kyantran.stackgrid",
+  "productName": "SpaceVibe Deck",
+  "version": "0.8.0",
+  "identifier": "dev.spacevibe.deck",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Stackgrid",
+        "title": "SpaceVibe Deck",
         "width": 1100,
         "height": 720,
         "minWidth": 480,
@@ -35,8 +35,8 @@
     "copyright": "© 2026 mxrsv",
     "category": "DeveloperTool",
     "shortDescription": "A minimal macOS terminal for AI agent CLIs",
-    "longDescription": "Stackgrid is a lightweight desktop terminal built with Tauri 2, xterm.js and Preact — designed for running AI agent CLIs like Claude Code, Codex and Gemini with split panes, themes and persistent settings.",
-    "homepage": "https://github.com/mxrsv/stackgrid",
+    "longDescription": "SpaceVibe Deck is a lightweight desktop terminal built with Tauri 2, xterm.js and Preact — designed for running AI agent CLIs like Claude Code, Codex and Gemini with split panes, themes and persistent settings.",
+    "homepage": "https://github.com/mxrsv/spacevibe-deck",
     "macOS": {
       "minimumSystemVersion": "10.15",
       "signingIdentity": "-"

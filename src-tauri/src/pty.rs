@@ -170,12 +170,15 @@ pub fn spawn_shell(
     }
     cmd.env("TERM", "xterm-256color");
     cmd.env("COLORTERM", "truecolor");
-    // Own identity — tools can detect Stackgrid without ConEmu spoofing.
+    // Own identity — tools can detect Deck without ConEmu spoofing. No space
+    // in the value: every terminal in the wild ships a single token here
+    // (`iTerm.app`, `Apple_Terminal`, `ghostty`), and naive parsers split on
+    // whitespace, so the product name loses its space rather than its meaning.
     // Keep ConEmuANSI below until OSC 9;4 emitters recognize TERM_PROGRAM.
-    cmd.env("TERM_PROGRAM", "Stackgrid");
+    cmd.env("TERM_PROGRAM", "SpaceVibeDeck");
     cmd.env("TERM_PROGRAM_VERSION", env!("CARGO_PKG_VERSION"));
     if !cfg!(windows) {
-        // Stackgrid consumes OSC 9;4 progress reports (the sidebar spinner),
+        // Deck consumes OSC 9;4 progress reports (the sidebar spinner),
         // but Claude Code only emits them when it recognizes the terminal:
         // its gate checks ConEmu* env vars or TERM_PROGRAM ghostty/iTerm.app
         // with a minimum TERM_PROGRAM_VERSION. ConEmuANSI=ON is the smallest
@@ -183,7 +186,7 @@ pub fn spawn_shell(
         // changes behavior on it (and on a real Windows build we must NOT
         // fake it: tools pick ConEmu-specific paths on a plain ConPTY).
         // Own TERM_PROGRAM is set above so we can drop this spoof once
-        // Claude Code (and peers) recognize Stackgrid by name.
+        // Claude Code (and peers) recognize Deck by name.
         // Verified empirically (PTY harness): without this claude emits zero
         // OSC 9;4; with it, state 0 at startup, 3 while working, 0 when done.
         cmd.env("ConEmuANSI", "ON");

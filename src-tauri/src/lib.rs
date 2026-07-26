@@ -4,6 +4,7 @@ mod images;
 mod info;
 mod links;
 mod menu;
+mod migrate;
 mod pty;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -31,6 +32,10 @@ pub fn run() {
         .manage(coordinator::WindowCoordinator::default())
         .manage(QuitState::default())
         .setup(|app| {
+            // Before anything reads the store: the frontend loads settings
+            // lazily, so this is the last point at which the old identifier's
+            // directory can still be carried over unseen.
+            migrate::legacy_app_data(app.handle());
             menu::install(app)?;
             Ok(())
         })

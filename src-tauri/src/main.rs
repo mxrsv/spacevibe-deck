@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    stackgrid_lib::run()
+    spacevibe_deck_lib::run()
 }

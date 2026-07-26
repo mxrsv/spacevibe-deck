@@ -113,7 +113,7 @@ describe("confirmClose dialog copy", () => {
     await confirmClose([1], pty, QUIT_COPY);
     expect(askMock).toHaveBeenCalledWith(
       "claude is still running. Quit anyway?",
-      expect.objectContaining({ title: "Quit Stackgrid", okLabel: "Quit" }),
+      expect.objectContaining({ title: "Quit Deck", okLabel: "Quit" }),
     );
   });
 });

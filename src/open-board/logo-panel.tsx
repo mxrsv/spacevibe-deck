@@ -8,14 +8,14 @@ import {
   setLogoFromPath,
 } from "../settings/logo-store";
 
-/** The default Stackgrid mark, shown until the user sets their own logo. */
+/** The default Deck mark, shown until the user sets their own logo. */
 function DefaultMark() {
   return (
     <svg
       class="board-logo__mark"
       viewBox="0 0 48 48"
       role="img"
-      aria-label="Stackgrid"
+      aria-label="Deck"
     >
       <rect x="6" y="6" width="16" height="16" rx="2" />
       <rect x="26" y="6" width="16" height="16" rx="2" />
