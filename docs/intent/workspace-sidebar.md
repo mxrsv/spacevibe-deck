@@ -38,14 +38,14 @@
 ## Hình dung (ASCII, đã được user chọn)
 
 ```
-┌─ WORKSPACES ────────┐
-│ ● stackgrid         │  ← có agent chạy
-│   ~/glow-workspace  │
-│                     │
-│ ○ glow-api          │  ← idle
-│   ~/glow-workspace  │
-│                     │
-│ ○ landing           │
-│   ~/marketing       │
-└─────────────────────┘
+┌─ WORKSPACES ───────────┐
+│ ● spacevibe-deck       │  ← có agent chạy
+│   ~/spacevibe-workspace│
+│                        │
+│ ○ spacevibe-api        │  ← idle
+│   ~/spacevibe-workspace│
+│                        │
+│ ○ landing              │
+│   ~/marketing          │
+└────────────────────────┘
 ```

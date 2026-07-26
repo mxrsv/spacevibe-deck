@@ -70,7 +70,7 @@
 
 - [product-stage.js](../../marketing/landing-prototype/src/product-stage.js)
 
-**Decision**: Xoá `agentPanes` + `sequenceSteps`; thêm 3 export frozen: `stageSidebar` (4 item: stackgrid active/close, glowarena, glow-workspace, glow-api — path dạng tilde rút gọn kiểu app `…rkspace/stackgrid`), `stageStatus` (branch `main`, cwd `~/Documents/Development/glow-workspace/stackgrid`, `3 panes`, `Tokyo Night`, hint `split ⌘D` / `new tab ⌘T`), `stagePanes` (3 pane `claude`/`codex`/`opencode`).
+**Decision**: Xoá `agentPanes` + `sequenceSteps`; thêm 3 export frozen: `stageSidebar` (4 item: stackgrid active/close, spacevibe-arena, spacevibe-workspace, spacevibe-api — path dạng tilde rút gọn kiểu app `…rkspace/stackgrid`), `stageStatus` (branch `main`, cwd `~/Documents/Development/spacevibe-workspace/stackgrid`, `3 panes`, `Tokyo Night`, hint `split ⌘D` / `new tab ⌘T`), `stagePanes` (3 pane `claude`/`codex`/`opencode`).
 
 **Build**:
 

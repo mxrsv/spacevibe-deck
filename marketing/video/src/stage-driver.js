@@ -96,7 +96,7 @@ function renderMarkup() {
   const sidebarStatus = Object.fromEntries(
     stageSidebar.map((item) => [
       item.id,
-      item.active ? "none" : item.id === "glowarena" ? "unread" : "idle",
+      item.active ? "none" : item.id === "spacevibe-arena" ? "unread" : "idle",
     ]),
   );
 

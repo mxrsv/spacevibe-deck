@@ -4,7 +4,7 @@ import { TAB_DOT_COLORS } from "./tab-colors";
 
 describe("letterAvatar", () => {
   it("uses the first alphanumeric letter, uppercased", () => {
-    expect(letterAvatar("glow-workspace", "/x").letter).toBe("G");
+    expect(letterAvatar("spacevibe-workspace", "/x").letter).toBe("S");
     expect(letterAvatar("  stackgrid", "/x").letter).toBe("S");
     expect(letterAvatar("42-crunch", "/x").letter).toBe("4");
   });

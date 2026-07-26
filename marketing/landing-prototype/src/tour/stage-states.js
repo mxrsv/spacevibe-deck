@@ -25,17 +25,17 @@ export const boardRecents = deepFreeze([
     agents: ["claude", "codex", "opencode"],
   },
   {
-    id: "glowarena",
-    label: "glowarena",
-    path: "…rkspace/glowarena",
+    id: "spacevibe-arena",
+    label: "spacevibe-arena",
+    path: "…rkspace/spacevibe-arena",
     highlighted: false,
     preset: "duo",
     agents: ["claude"],
   },
   {
-    id: "glow-api",
-    label: "glow-api",
-    path: "…rkspace/glow-api",
+    id: "spacevibe-api",
+    label: "spacevibe-api",
+    path: "…rkspace/spacevibe-api",
     highlighted: false,
     preset: "quad",
     agents: ["codex"],
@@ -51,8 +51,8 @@ export const PRESET_CELLS = deepFreeze({ duo: 2, trio: 3, quad: 4 });
  */
 export const SIDEBAR_STATUS = deepFreeze({
   [BRAND.slug]: "busy",
-  glowarena: "unread",
-  "glow-api": "busy",
+  "spacevibe-arena": "unread",
+  "spacevibe-api": "busy",
 });
 
 /**

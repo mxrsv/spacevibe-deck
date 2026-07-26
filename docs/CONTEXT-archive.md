@@ -6,7 +6,7 @@ Crystallized kickoff brief (2026-07-09). Living working memory lives in `docs/CO
 
 Stackgrid is a minimal macOS terminal aimed at people who run AI agent CLIs (Claude Code, Codex, Gemini CLI, and similar). Hierarchy is Window → Tab → Pane. Real PTY, login shell, split panes, themes, session layout restore.
 
-It lives under the Glow workspace as an independent project (own git remote: `mxrsv/stackgrid`). Glow is a parent folder for multiple AI-workflow tools; Stackgrid is not the workspace itself.
+It lives under the SpaceVibe workspace as an independent project (own git remote: `mxrsv/stackgrid`). SpaceVibe is a parent folder for multiple AI-workflow tools; Stackgrid is not the workspace itself.
 
 ## Product stance (confirmed in kickoff)
 

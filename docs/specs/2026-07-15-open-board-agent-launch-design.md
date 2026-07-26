@@ -23,9 +23,9 @@ Mật độ cột phải (ép gọn so với board hiện tại):
 
 ```
 │ WORKSPACE                              recent │
-│ ▸ glow-workspace  ~/Dev/glow-workspace        │
+│ ▸ spacevibe-workspace  …/spacevibe-workspace  │
 │   layout-test · Claude Code              6m   │   ← 2 dòng, ~44px/row
-│   stackgrid       ~/Dev/glow/stackgrid        │
+│   stackgrid            …/spacevibe/stackgrid  │
 │   Single pane · Shell                    1h   │
 │   + Open Folder…                              │
 │ ───────────────────────────────────────────── │
@@ -39,7 +39,7 @@ Mật độ cột phải (ép gọn so với board hiện tại):
 - **Workspace row**: tên + path đã `tildify` cắt giữa trên một dòng; dòng phụ hiện combo đã nhớ (`layout · agent`) + thời gian. Path không wrap nữa.
 - **Layout preset**: card lớn → chip ngang cuộn được (mini-thumb 44×28 + tên); số pane chuyển thành tooltip. `＋ New preset` là chip cuối.
 - **Agent**: một hàng chip, phím tắt `1/2/3/0` giữ nguyên convention của overlay cũ (giờ thuộc về board).
-- Footer (summary + Cancel/Open) giữ nguyên, summary thêm agent: `Open glow-workspace as layout-test with Claude Code`.
+- Footer (summary + Cancel/Open) giữ nguyên, summary thêm agent: `Open spacevibe-workspace as layout-test with Claude Code`.
 
 ## 3. Quyết định kỹ thuật
 
