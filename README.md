@@ -51,7 +51,7 @@ Every pane is backed by a real PTY running your **login shell** (`$SHELL -l`) vi
 
 ### 🔔 Agent attention rail
 
-A per-pane layer on top of the status above: every pane tracks whether its agent is **working**, **finished**, **needs attention**, hit a **warning**, or hit an **error**, surfaced as a small status mark on the same workspace sidebar avatar and on the top tab bar (whichever chrome mode you're using) — red for error, yellow for warning, magenta for needs attention, green for finished, with a count badge when more than one pane needs you.
+A per-pane layer on top of the status above: every pane tracks whether its agent is **working**, **finished**, **needs attention**, hit a **warning**, or hit an **error**, surfaced as a small colored dot on the same workspace sidebar avatar and on the top tab bar (whichever chrome mode you're using) — red for error, yellow for warning, magenta for needs attention, green for finished. Hover the dot for how many panes are waiting; the count stays in the tooltip rather than on the avatar, which is only 20px across.
 
 - **Jump to what needs you** — click a status mark, or press **⌘⇧A**, to focus the highest-priority pane across every tab and window; press it again to move to the next one. Focusing a pane only acknowledges that pane's own attention — a still-working agent keeps showing as working right after.
 - **Native notifications, opt-in** — turn on **agent notifications** in Settings to get a background macOS notification (workspace + agent label + a one-word status, never terminal content) when an agent finishes or needs you, sent only while Stackgrid's window isn't focused.
