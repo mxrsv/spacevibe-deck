@@ -104,6 +104,21 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   const tabActiveBg = mixHex(bg, tone, 0.15);
   // Kept soft on light themes — readability comes from the textPrimary floor
   const inputBg = mixHex(bg, tone, dark ? 0.12 : 0.06);
+  // Every chrome surface text can sit on, not just the darkest one. The
+  // settings panel body is `chrome2` and the active tab / workspace row is
+  // `tabActiveBg`, both lighter than `chrome1` — measuring the floors on
+  // `chrome1` alone left the two surfaces users read most sitting below the
+  // ratio the floor promised (2.1:1 for `textFaint` on `tabActiveBg`).
+  const surfaces = [chrome1, chrome2, tabActiveBg];
+  // The three text tones are one ladder, built DOWNWARD from `textPrimary` by
+  // mixing back toward the background. Deriving each independently from `bg`
+  // and raising it to its own floor can inverse the ladder: on a theme whose
+  // foreground is itself dim (One Dark, fg #abb2bf), the muted step gets
+  // raised past a primary that never needed raising, and the quiet tone ends
+  // up louder than the loud one. Mixing toward `bg` can only ever lower
+  // contrast, so ordering holds by construction; the `ensureContrast` pass
+  // after each mix only pulls a step back up if it undershot its floor.
+  const textPrimary = ensureContrast(fg, [inputBg, ...surfaces], 7, tone);
   return {
     tone,
     chrome1,
@@ -112,8 +127,21 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     inputBg,
     hair: alpha(fg, 0.12),
     hairStrong: alpha(fg, 0.2),
-    textPrimary: ensureContrast(fg, [inputBg, chrome2], 4.5, tone),
-    textMuted: ensureContrast(mixHex(bg, fg, 0.52), [chrome1], 4.5, tone),
-    textFaint: ensureContrast(mixHex(bg, fg, 0.34), [chrome1], 3, tone),
+    textPrimary,
+    textMuted: ensureContrast(
+      mixHex(textPrimary, bg, 0.28),
+      surfaces,
+      5.5,
+      tone,
+    ),
+    // 4.5, not 3: this token styles 10.5–11px text — config row descriptions,
+    // workspace paths, the "off" value of every toggle — which WCAG AA rates
+    // as normal text, where 3:1 is the non-text floor, not the text one.
+    textFaint: ensureContrast(
+      mixHex(textPrimary, bg, 0.5),
+      surfaces,
+      4.5,
+      tone,
+    ),
   };
 }

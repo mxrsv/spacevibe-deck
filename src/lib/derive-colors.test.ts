@@ -72,16 +72,47 @@ describe("deriveChromeColors", () => {
   for (const { label, bg, fg } of cases) {
     it(`meets all contrast floors for ${label}`, () => {
       const c = deriveChromeColors(bg, fg);
-      expect(contrastRatio(c.textPrimary, c.inputBg)).toBeGreaterThanOrEqual(
-        4.5,
-      );
-      expect(contrastRatio(c.textPrimary, c.chrome2)).toBeGreaterThanOrEqual(
-        4.5,
-      );
-      expect(contrastRatio(c.textMuted, c.chrome1)).toBeGreaterThanOrEqual(4.5);
-      expect(contrastRatio(c.textFaint, c.chrome1)).toBeGreaterThanOrEqual(3);
+      // Checked against EVERY surface, not just chrome1: the panel body is
+      // chrome2 and the active row is tabActiveBg, and both are lighter.
+      const surfaces = [c.chrome1, c.chrome2, c.tabActiveBg];
+      for (const surface of [c.inputBg, ...surfaces]) {
+        expect(contrastRatio(c.textPrimary, surface)).toBeGreaterThanOrEqual(
+          4.5,
+        );
+      }
+      for (const surface of surfaces) {
+        expect(contrastRatio(c.textMuted, surface)).toBeGreaterThanOrEqual(5.5);
+        // 4.5, not 3 — this token styles 10.5px text (WCAG AA "normal").
+        expect(contrastRatio(c.textFaint, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    it(`keeps the text ladder ordered for ${label}`, () => {
+      // Regression guard: deriving each tone from `bg` independently used to
+      // inverse the ladder on a dim-foreground theme — textMuted came out
+      // LOUDER than textPrimary. primary >= muted >= faint, on every surface.
+      const c = deriveChromeColors(bg, fg);
+      for (const surface of [c.chrome1, c.chrome2, c.tabActiveBg]) {
+        const primary = contrastRatio(c.textPrimary, surface);
+        const muted = contrastRatio(c.textMuted, surface);
+        const faint = contrastRatio(c.textFaint, surface);
+        expect(primary).toBeGreaterThanOrEqual(muted);
+        expect(muted).toBeGreaterThanOrEqual(faint);
+      }
     });
   }
+
+  it("keeps the three tones visually distinct on every preset", () => {
+    // The floors are stacked (7 / 5.5 / 4.5) so the label/description
+    // hierarchy in a config row survives; guard they never converge.
+    for (const preset of THEME_PRESETS) {
+      const c = deriveChromeColors(
+        preset.theme.background,
+        preset.theme.foreground,
+      );
+      expect(new Set([c.textPrimary, c.textMuted, c.textFaint]).size).toBe(3);
+    }
+  });
 
   it("keeps a high-contrast fg unchanged as textPrimary", () => {
     // Tokyo Night fg is already >> 4.5:1 on its surfaces — no raise needed
