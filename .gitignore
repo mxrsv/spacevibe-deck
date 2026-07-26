@@ -34,3 +34,8 @@ docs/archive/
 # Local tool state
 .playwright-mcp/
 .planning/
+
+# Marketing film: intermediate frames are disposable, renders are published
+# by hand once a cut is approved.
+marketing/video/.frames/
+marketing/video/out/

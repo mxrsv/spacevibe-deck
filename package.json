@@ -8,6 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "prototype:landing": "vite marketing --host 127.0.0.1 --port 5173 --strictPort --open /landing-prototype/",
+    "video:preview": "vite marketing --host 127.0.0.1 --port 5174 --strictPort --open /video/",
+    "video:render": "node marketing/video/render/render.mjs",
     "test": "vitest run",
     "tauri": "tauri"
   },
@@ -29,6 +31,7 @@
     "@preact/preset-vite": "^2.10.5",
     "@tauri-apps/cli": "^2",
     "jsdom": "^29.1.1",
+    "playwright-core": "^1.62.0",
     "typescript": "~5.6.2",
     "vite": "^6.0.3",
     "vitest": "^3.2.6"

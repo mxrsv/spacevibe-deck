@@ -1,61 +1,69 @@
-# Stackgrid — marketing assets
+# Deck — marketing assets
 
-Animated explainer for **Cmd+E (`focusExpand`)**: the focused pane grows to
-**65%** of its splits (`EXPAND_RATIO`) while the other agents stay in view, and
-the spotlight follows focus as you switch panes.
-
-Rendered with [Manim](https://www.manim.community/) — source: [`cmd_e.py`](./cmd_e.py).
-Landscape 16:9. All clips end on a short fade so they loop cleanly.
-
-## Files
-
-| File                          | Use it for                     | Notes                                                        |
-| ----------------------------- | ------------------------------ | ------------------------------------------------------------ |
-| `stackgrid-cmd-e.gif`         | **GitHub README** embed        | Autoplays & loops inline. 960px wide, 15fps.                 |
-| `stackgrid-cmd-e.mp4`         | **Landing page** `<video>`     | H.264, `yuv420p`, `+faststart`. Widest browser support.      |
-| `stackgrid-cmd-e.webm`        | **Landing page** `<video>`     | VP9 — comparable size; list first so modern browsers use it. |
-| `stackgrid-cmd-e-poster.png`  | `<video poster>` / social card | First-paint frame before the video loads.                    |
-| `stackgrid-cmd-e-1080p60.mp4` | Master (re-edits, uploads)     | Full-quality 1920×1080 @ 60fps, no fade.                     |
-| `cmd_e.py`                    | Re-render / edit the animation | Manim scene.                                                 |
-
-## Embed in the GitHub README
-
-```markdown
-![Stackgrid — Cmd+E focus expand](marketing/stackgrid-cmd-e.gif)
+```
+marketing/
+├── stage/               shared app-window mock (chrome + data + brand)
+├── video/               the marketing film — see video/README.md
+├── landing-prototype/   the landing page prototype
+└── cmd_e.py, stackgrid-cmd-e.*   legacy Manim explainer (superseded)
 ```
 
-Prefer sharper playback? Drag `stackgrid-cmd-e-1080p60.mp4` into a GitHub
-comment/README on github.com — GitHub hosts it and renders a video player
-(MP4 files referenced by path do **not** autoplay inline, which is why the GIF
-exists).
+## `stage/` — one app window, three surfaces
 
-## Embed on a landing page
+The landing hero, the landing's scroll tour and the film all build their app
+window from `stage/appwin.js` + `stage/stage-data.js`. There is no second
+drawing of the UI to keep in sync: change the chrome once and every surface
+follows.
+
+`stage/brand.js` holds the product name and mark. The Stackgrid → Deck rename
+is one edit there, not a grep.
+
+## `video/` — the film
+
+An end-to-end tour: Open board → three agents in parallel → one needs you →
+⌘⇧A → ⌘E. Rendered from the DOM through a virtual clock, so a headless
+capture reproduces exactly what the browser preview shows.
+
+```bash
+npm run video:preview                   # watch it live
+npm run video:render                    # every preset into video/out/
+npm run video:render -- --still 13.4    # one frame, for eyeballing a beat
+```
+
+Full details, preset matrix and how to change the beats:
+[`video/README.md`](./video/README.md).
+
+## Publishing a cut
+
+`video/out/` is git-ignored. Once a cut is approved, copy what each surface
+needs:
+
+| Surface       | Render                      | Publish as                |
+| ------------- | --------------------------- | ------------------------- |
+| GitHub README | `deck-tour-gif.gif`         | `marketing/deck-tour.gif` |
+| Landing       | `deck-tour-hero.webm`       | `deck-tour.webm`          |
+| Landing       | `deck-tour-hero.mp4`        | `deck-tour.mp4`           |
+| Landing       | `deck-tour-hero-poster.png` | `deck-tour-poster.png`    |
+| YouTube / X   | `deck-tour-master.mp4`      | upload as-is              |
+| Product Hunt  | `deck-tour-vertical.mp4`    | upload as-is              |
+
+The landing's demo dialog already points at the published names, so a cut goes
+live by copying those three files into the served root:
 
 ```html
-<video
-  autoplay
-  muted
-  loop
-  playsinline
-  poster="/assets/stackgrid-cmd-e-poster.png"
-  style="width:100%;max-width:960px;border-radius:12px"
->
-  <source src="/assets/stackgrid-cmd-e.webm" type="video/webm" />
-  <source src="/assets/stackgrid-cmd-e.mp4" type="video/mp4" />
+<video autoplay muted loop playsinline poster="/deck-tour-poster.png">
+  <source src="/deck-tour.webm" type="video/webm" />
+  <source src="/deck-tour.mp4" type="video/mp4" />
 </video>
 ```
 
-`muted` is required for `autoplay` to work in modern browsers. `playsinline`
-stops iOS Safari from going fullscreen.
+## Legacy — the Manim explainer
 
-## Re-render
+`cmd_e.py` and the `stackgrid-cmd-e.*` files are the previous ⌘E-only
+explainer: a hand-drawn approximation of the window that has to be redrawn by
+hand whenever the app changes. Kept for reference; the film supersedes it.
 
 ```bash
-# one-time: pip install manim   (needs ffmpeg + cairo/pango on PATH)
-manim -qh --disable_caching cmd_e.py CmdE   # 1080p60 master
-manim -ql --disable_caching cmd_e.py CmdE   # fast draft
+# needs: pip install manim (ffmpeg + cairo/pango on PATH)
+manim -qh --disable_caching cmd_e.py CmdE
 ```
-
-Palette, agent dot colors, and the 65% ratio are pulled straight from the app
-source (`src/styles.css`, `src/lib/process-info.ts`, `src/terminal/terminal-manager.ts`)
-so the explainer stays truthful to real behavior.

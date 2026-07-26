@@ -1,0 +1,575 @@
+/* Deck marketing film — scene styling.
+   The app window itself is styled by direction-a.css (the landing's own
+   stage); everything here is either the space around it, the Open board, or
+   an override that hands motion control to the timeline. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #08080d;
+}
+
+/* The timeline is the only thing allowed to move anything. Free-running CSS
+   animation would make a headless capture non-reproducible. */
+.vid-body *,
+.vid-body *::before,
+.vid-body *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+.vid-frame {
+  position: relative;
+  display: grid;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  place-items: center;
+  background: radial-gradient(120% 90% at 50% 18%, #10121c 0%, #07070c 68%);
+  font-family: var(--font-display);
+
+  /* .a-appwin reads these from the landing's `.direction-a` scope, which the
+     video has no reason to mount — re-declare just the two it needs, with the
+     same values, so terminal content stays monospaced. */
+  --a-font-display: var(--font-display);
+  --a-font-mono: var(--font-mono);
+}
+
+/* ---- backdrop ---------------------------------------------------------- */
+
+.vid-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.vid-aurora {
+  position: absolute;
+  inset: 0;
+}
+
+.vid-aurora i {
+  position: absolute;
+  top: var(--y);
+  left: var(--x);
+  width: var(--size);
+  height: var(--size);
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in srgb, var(--tint) 85%, transparent) 0%,
+    color-mix(in srgb, var(--tint) 30%, transparent) 42%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  filter: blur(52px);
+  opacity: var(--alpha);
+  transform: translate(-50%, -50%);
+}
+
+/* A wide, low wash that keeps the frame from reading as flat black between
+   the blobs. */
+.vid-aurora::after {
+  position: absolute;
+  inset: -10%;
+  background: radial-gradient(
+    70% 55% at 50% 42%,
+    color-mix(in srgb, var(--wash, #3d59a1) 26%, transparent) 0%,
+    transparent 72%
+  );
+  content: "";
+}
+
+.vid-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    115% 85% at 50% 45%,
+    transparent 44%,
+    rgb(4 4 8 / 46%) 100%
+  );
+}
+
+.vid-grain {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: 0.09;
+}
+
+/* ---- camera rig -------------------------------------------------------- */
+
+.vid-rig {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 100%;
+  place-items: center;
+  perspective: 2400px;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.vid-stage {
+  display: contents;
+}
+
+.vid-appwin {
+  width: min(76vw, 126vh);
+  margin: 0;
+  border-radius: 12px;
+  box-shadow:
+    0 2px 0 rgb(192 202 245 / 6%) inset,
+    0 44px 120px -28px rgb(0 0 0 / 78%),
+    0 12px 44px -18px rgb(0 0 0 / 60%);
+}
+
+@media (max-aspect-ratio: 1/1) {
+  /* Leaves headroom for the camera's push-in and pan: at 88vw the window
+     still clears the frame edge when scaled to 1.05 and panned. */
+  .vid-appwin {
+    width: 88vw;
+  }
+}
+
+/* ---- scene: Open board over the pane grid ------------------------------ */
+
+.vid-scene {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.vid-board,
+.vid-grid {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 46%;
+  will-change: opacity, transform;
+}
+
+.vid-board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.6cqw;
+  padding: 3cqw 4cqw;
+}
+
+.vid-boardlogo {
+  display: flex;
+  align-items: center;
+  gap: 1cqw;
+  color: var(--sg-fg);
+  font-size: 2.1cqw;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.vid-boardlogo img {
+  width: 3.4cqw;
+  height: 3.4cqw;
+  border-radius: 0.8cqw;
+}
+
+.vid-recents {
+  display: flex;
+  width: min(100%, 46cqw);
+  flex-direction: column;
+  gap: 0.7cqw;
+}
+
+.vid-recent {
+  display: flex;
+  align-items: center;
+  gap: 1.1cqw;
+  padding: 1cqw 1.2cqw;
+  border: 1px solid var(--sg-hairline-soft);
+  border-radius: 0.7cqw;
+  color: var(--sg-fg-dim);
+}
+
+.vid-recent.is-hot {
+  border-color: color-mix(
+    in srgb,
+    var(--sg-accent) calc(var(--hot, 0) * 70%),
+    var(--sg-hairline-soft)
+  );
+  background: color-mix(
+    in srgb,
+    var(--sg-accent) calc(var(--hot, 0) * 12%),
+    transparent
+  );
+  box-shadow: 0 0 calc(var(--hot, 0) * 2.4cqw)
+    color-mix(in srgb, var(--sg-accent) calc(var(--hot, 0) * 26%), transparent);
+}
+
+.vid-thumb {
+  display: grid;
+  width: 2.6cqw;
+  height: 2cqw;
+  flex: 0 0 auto;
+  padding: 0.22cqw;
+  gap: 0.16cqw;
+  border: 1px solid var(--sg-hairline);
+  border-radius: 0.3cqw;
+}
+
+.vid-thumb[data-preset="duo"] {
+  grid-template-columns: 1fr 1fr;
+}
+
+.vid-thumb[data-preset="trio"] {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.vid-thumb[data-preset="trio"] i:first-child {
+  grid-row: span 2;
+}
+
+.vid-thumb[data-preset="quad"] {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.vid-thumb i {
+  background: color-mix(in srgb, #c0caf5 24%, transparent);
+  border-radius: 0.1cqw;
+}
+
+.vid-rectext {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15cqw;
+}
+
+.vid-rectext strong {
+  color: var(--sg-fg);
+  font-size: 1.4cqw;
+  font-weight: 600;
+}
+
+.vid-rectext span {
+  color: var(--sg-fg-faint);
+  font-size: 1.1cqw;
+}
+
+.vid-recagents {
+  display: flex;
+  margin-left: auto;
+  gap: 0.4cqw;
+}
+
+.vid-chip {
+  display: inline-flex;
+  width: 1.9cqw;
+  height: 1.9cqw;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--chip-tint) 20%, transparent);
+  border-radius: 50%;
+  color: var(--chip-tint);
+  font-size: 1cqw;
+  font-weight: 700;
+}
+
+.vid-openkbd {
+  padding: 0.3cqw 0.7cqw;
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--sg-accent) calc(40% + var(--press, 0) * 60%),
+      transparent
+    );
+  border-radius: 0.35cqw;
+  background: color-mix(
+    in srgb,
+    var(--sg-accent) calc(8% + var(--press, 0) * 34%),
+    transparent
+  );
+  color: var(--sg-fg);
+  font-family: var(--font-mono);
+  font-size: 1.05cqw;
+  transform: scale(calc(1 - var(--press, 0) * 0.06));
+}
+
+/* ---- pane grid --------------------------------------------------------- */
+
+.vid-grid {
+  gap: 0.8cqw;
+}
+
+.vid-appwin .a-appwin__pane {
+  position: relative;
+  background: color-mix(in srgb, #1a1b26 92%, #16161e);
+  border-color: color-mix(
+    in srgb,
+    var(--sg-accent) calc(var(--ring, 0) * 100%),
+    var(--sg-hairline-soft)
+  );
+  box-shadow:
+    0 0 calc(var(--ring, 0) * 2.2cqw)
+      color-mix(
+        in srgb,
+        var(--sg-accent) calc(var(--ring, 0) * 30%),
+        transparent
+      ),
+    0 0 calc(var(--att-on, 0) * 4.5cqw)
+      color-mix(
+        in srgb,
+        var(--att, transparent) calc(var(--att-on, 0) * 44%),
+        transparent
+      );
+}
+
+/* Scrollback that runs off the top of a pane fades instead of being sliced
+   mid-glyph — the same read as a real terminal scrolling under its bezel. */
+.vid-appwin .a-appwin__transcript {
+  mask-image: linear-gradient(to bottom, transparent 0, #000 2.6cqw);
+}
+
+/* The blinking caret is timeline-free: hold it lit so no frame catches it
+   mid-blink. */
+.vid-appwin .a-appwin__cursor {
+  opacity: 0.85;
+}
+
+/* ---- sidebar status marks (ported from tour.css) ----------------------- */
+
+.vid-appwin .a-appwin__wsavatar {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.vid-appwin .a-appwin__wsavatar::after {
+  position: absolute;
+  right: -0.3cqw;
+  bottom: -0.3cqw;
+  width: 1.15cqw;
+  height: 1.15cqw;
+  border: 0.22cqw solid var(--sg-bg);
+  border-radius: 50%;
+  content: "";
+  opacity: 0;
+}
+
+.vid-appwin .a-appwin__wsavatar[data-ws-status="unread"]::after,
+.vid-appwin .a-appwin__wsavatar[data-ws-status="busy"]::after,
+.vid-appwin .a-appwin__wsavatar[data-ws-status="completed"]::after,
+.vid-appwin .a-appwin__wsavatar[data-ws-status="requested"]::after,
+.vid-appwin .a-appwin__wsavatar[data-ws-status="warning"]::after,
+.vid-appwin .a-appwin__wsavatar[data-ws-status="error"]::after {
+  opacity: 1;
+}
+
+.vid-appwin .a-appwin__wsavatar[data-ws-status="unread"]::after,
+.vid-appwin .a-appwin__wsavatar[data-ws-status="warning"]::after {
+  background: var(--sg-yellow);
+}
+
+.vid-appwin .a-appwin__wsavatar[data-ws-status="busy"]::after {
+  background: var(--sg-accent);
+}
+
+.vid-appwin .a-appwin__wsavatar[data-ws-status="completed"]::after {
+  background: var(--sg-green);
+  box-shadow: 0 0 0.8cqw color-mix(in srgb, var(--sg-green) 50%, transparent);
+}
+
+.vid-appwin .a-appwin__wsavatar[data-ws-status="requested"]::after {
+  background: var(--sg-purple);
+  box-shadow: 0 0 0.9cqw color-mix(in srgb, var(--sg-purple) 55%, transparent);
+}
+
+.vid-appwin .a-appwin__wsavatar[data-ws-status="error"]::after {
+  background: #f7768e;
+}
+
+/* ---- overlay ----------------------------------------------------------- */
+
+.vid-overlay {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  inset: 0;
+  place-items: center;
+  pointer-events: none;
+}
+
+.vid-scrim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    90% 70% at 50% 50%,
+    rgb(6 6 11 / 94%) 0%,
+    rgb(6 6 11 / 78%) 100%
+  );
+}
+
+.vid-huds {
+  position: absolute;
+  bottom: 4%;
+  display: grid;
+  place-items: center;
+}
+
+.vid-hud {
+  display: flex;
+  align-items: center;
+  gap: 0.85em;
+  padding: 0.7em 1.15em;
+  border: 1px solid rgb(192 202 245 / 14%);
+  border-radius: 999px;
+  background: rgb(13 14 22 / 78%);
+  color: rgb(192 202 245 / 82%);
+  font-size: clamp(12px, 1.35vw, 24px);
+  grid-area: 1 / 1;
+}
+
+.vid-hud kbd {
+  padding: 0.2em 0.5em;
+  border: 1px solid rgb(122 162 247 / 45%);
+  border-radius: 0.4em;
+  background: rgb(122 162 247 / 14%);
+  color: #c0caf5;
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* ---- vertical-only furniture ------------------------------------------- */
+
+.vid-vbrand,
+.vid-vcaption {
+  display: none;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  /* In portrait the pane text is too small to read, so the type carries the
+     story and the window stands as evidence behind it. */
+  .vid-huds {
+    display: none;
+  }
+
+  .vid-vbrand {
+    position: absolute;
+    top: 9%;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    color: rgb(192 202 245 / 92%);
+    font-size: clamp(20px, 3.4vw, 40px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .vid-vbrand img {
+    width: 1.5em;
+    height: 1.5em;
+    border-radius: 26%;
+  }
+
+  .vid-vcaption {
+    position: absolute;
+    bottom: 12%;
+    display: flex;
+    width: 82%;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.7em;
+    text-align: center;
+  }
+
+  .vid-vcaption kbd {
+    padding: 0.25em 0.6em;
+    border: 1px solid rgb(122 162 247 / 45%);
+    border-radius: 0.45em;
+    background: rgb(122 162 247 / 16%);
+    color: #c0caf5;
+    font-family: var(--font-mono);
+    font-size: clamp(16px, 2.6vw, 32px);
+  }
+
+  .vid-vcaption kbd[hidden] {
+    display: none;
+  }
+
+  .vid-vcaption p {
+    margin: 0;
+    color: #e6ebff;
+    font-size: clamp(22px, 4.2vw, 52px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.22;
+    text-wrap: balance;
+  }
+}
+
+.vid-endcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55em;
+  color: #c0caf5;
+  text-align: center;
+}
+
+.vid-endlogo {
+  width: clamp(48px, 5.2vw, 96px);
+  height: clamp(48px, 5.2vw, 96px);
+  border-radius: 22%;
+}
+
+.vid-endname {
+  margin: 0.25em 0 0;
+  font-size: clamp(30px, 4.4vw, 84px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.vid-endtag {
+  margin: 0;
+  font-size: clamp(15px, 1.75vw, 32px);
+  color: rgb(192 202 245 / 88%);
+}
+
+.vid-endsub {
+  margin: 0;
+  color: rgb(192 202 245 / 52%);
+  font-size: clamp(12px, 1.25vw, 22px);
+}
+
+.vid-endsc {
+  display: flex;
+  margin-top: 1.5em;
+  gap: 1.1em;
+  color: rgb(192 202 245 / 55%);
+  font-size: clamp(11px, 1.1vw, 20px);
+}
+
+.vid-sc {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+}
+
+.vid-sc kbd {
+  padding: 0.2em 0.5em;
+  border: 1px solid rgb(192 202 245 / 18%);
+  border-radius: 0.4em;
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+}

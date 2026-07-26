@@ -4,6 +4,7 @@
  * hero (product-stage.js); this module holds only tour-specific state.
  */
 
+import { BRAND } from "../../../stage/brand.js";
 import { deepFreeze } from "../product-stage.js";
 
 /** Agent identity chips on the Open board rows. */
@@ -16,9 +17,9 @@ export const AGENTS = deepFreeze({
 /** Open board recent rows — the top one carries the remembered combo. */
 export const boardRecents = deepFreeze([
   {
-    id: "stackgrid",
-    label: "stackgrid",
-    path: "…rkspace/stackgrid",
+    id: BRAND.slug,
+    label: BRAND.slug,
+    path: `…evibe-workspace/${BRAND.slug}`,
     highlighted: true,
     preset: "trio",
     agents: ["claude", "codex", "opencode"],
@@ -49,7 +50,7 @@ export const PRESET_CELLS = deepFreeze({ duo: 2, trio: 3, quad: 4 });
  * (agent working on a prompt), "unread" = yellow dot (new output not seen).
  */
 export const SIDEBAR_STATUS = deepFreeze({
-  stackgrid: "busy",
+  [BRAND.slug]: "busy",
   glowarena: "unread",
   "glow-api": "busy",
 });
@@ -84,13 +85,13 @@ export const PROOF_TERM_STEPS = deepFreeze([
     chip: "Pty",
   },
   {
-    cmd: "grep -ri telemetry /Applications/Stackgrid.app",
+    cmd: `grep -ri telemetry ${BRAND.bundlePath}`,
     out: ["(no matches)"],
     chip: "Local",
   },
   {
-    cmd: "du -sh /Applications/Stackgrid.app",
-    out: [" 18M\t/Applications/Stackgrid.app"],
+    cmd: `du -sh ${BRAND.bundlePath}`,
+    out: [` 18M\t${BRAND.bundlePath}`],
     chip: "Native",
   },
 ]);

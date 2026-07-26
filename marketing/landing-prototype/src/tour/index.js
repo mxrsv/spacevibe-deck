@@ -12,6 +12,7 @@ import {
   renderStageStatus,
   renderStageTitlebar,
 } from "../appwin.js";
+import { BRAND, STAGE_ARIA_LABEL } from "../../../stage/brand.js";
 import { mountAurora } from "../aurora.js";
 import { mountStageStream, stagePanes } from "../product-stage.js";
 import {
@@ -277,7 +278,7 @@ function renderBoard() {
     <div class="tour__board">
       <div class="tour__boardlogo">
         <img src="${STACKGRID_ICON_SRC}" alt="" />
-        <span>Stackgrid</span>
+        <span>${BRAND.name}</span>
       </div>
       <div class="tour__recents">${boardRecents.map(renderBoardRecent).join("")}</div>
     </div>
@@ -288,7 +289,7 @@ function renderStage() {
   const [claudePane, codexPane, opencodePane] = stagePanes;
 
   return `
-    <figure class="a-appwin tour__appwin" data-enter role="img" aria-label="Stackgrid app window tour preview">
+    <figure class="a-appwin tour__appwin" data-enter role="img" aria-label="${STAGE_ARIA_LABEL}">
       ${renderStageTitlebar()}
       <div class="a-appwin__body" aria-hidden="true">
         ${renderStageSidebar(SIDEBAR_STATUS)}
@@ -350,7 +351,7 @@ function renderFinale(copy) {
           aria-label="Terminal session proving the shell is untouched"
         >
           <div class="tour__proofterm-head" aria-hidden="true">
-            <i></i>zsh — stackgrid
+            <i></i>zsh — ${BRAND.slug}
           </div>
           <div class="tour__proofterm-body" data-proof-term aria-hidden="true"></div>
         </figure>
