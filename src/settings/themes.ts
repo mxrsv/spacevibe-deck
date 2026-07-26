@@ -132,5 +132,10 @@ export function resolveTheme(settings: Settings): ITheme {
     ...preset.theme,
     ...settings.colorOverrides,
     cursorAccent: background,
+    // The decoration overview ruler (pane sets overviewRuler.width) paints a
+    // separator line down its left edge. xterm defaults that color to #ffffff
+    // — a hard white hairline next to the scrollbar on every dark theme.
+    // Match the background so the ruler stays invisible until it has ticks.
+    overviewRulerBorder: background,
   };
 }

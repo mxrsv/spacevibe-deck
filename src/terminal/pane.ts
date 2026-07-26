@@ -118,6 +118,9 @@ export function createPane(
     // WKWebView blocks — route through Tauri like the custom link provider.
     linkHandler: createOscLinkHandler(),
     // Search decorations paint match ticks here; width 0 skips the ruler.
+    // No showTopBorder/showBottomBorder: `resolveTheme` pins
+    // overviewRulerBorder to the background to kill xterm's white separator
+    // hairline, so any border enabled here would be invisible too.
     overviewRuler: { width: 14 },
     // Smooth wheel scroll (~125ms) feels less jumpy than the default snap.
     smoothScrollDuration: 125,
