@@ -39,7 +39,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: "Stackgrid v__VERSION__"
+          releaseName: "SpaceVibe Deck v__VERSION__"
+          releaseBody: |
+            Stackgrid is now **SpaceVibe Deck** — same app, new name, joining Arena, Studio and Hub under spacevibe.dev.
+
+            **Your settings carry over.** Theme, layout presets, workspace recents and logos are copied to the new location the first time you launch. The originals are left untouched, so going back to 0.7.x still finds them.
+
+            **It installs alongside the old app.** The bundle is now `SpaceVibe Deck.app`, so `Stackgrid.app` stays in /Applications until you drag it to the Trash yourself.
+
+            See the assets below to download and install this version.
           releaseDraft: false
           prerelease: false
           args: --target universal-apple-darwin
