@@ -437,12 +437,46 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   // No menu item for either action, so the webview binding is the only path
   // — the RULE above requires CharKeyBinding only when a menu accelerator
   // must stay in sync, which does not apply here.
+  //
+  // Known, accepted trade-off (F-C2, 2026-07-27 code review — analyzed, not
+  // fixed): binding by `code` means the Cmd+ physical-position combo belongs
+  // to THIS action on every layout; the cost is that on a layout where that
+  // position produces a different character, Cmd+ that character fires the
+  // position-based action instead of whatever character-based action the
+  // user expects there. Concretely: on a German QWERTZ keyboard, the key at
+  // the BracketRight position produces "+" unshifted. Cmd+(that key) now
+  // matches `focus-next` here — not `zoom-in`, even though the user sees
+  // "+" on their keycap. This was NOT a working zoom shortcut that got
+  // stolen: zoom-in's own bindings are `{key:"=", shift:false}` and
+  // `{key:"+", shift:true}` (below), and neither matches `{key:"+",
+  // shift:false}` — that combination was already a no-op on this layout
+  // before `code` bindings existed. The regression is real but narrower
+  // than it sounds: a no-op became a wrong action firing (worse than a
+  // no-op, since focus-next also acknowledges the target pane's attention
+  // badge), not a working shortcut becoming broken. Only the Cmd+ chord is
+  // claimed, never the bare key — typing a literal "+" into a pane is
+  // unaffected on any layout.
+  //
+  // Not fixable by rebinding: zoom-in cannot move to `code` (it has a menu
+  // item; the key-vs-code RULE above requires CharKeyBinding whenever a
+  // menu accelerator must stay in sync). Moving focus-next/next-tab back to
+  // `key` reintroduces the exact bug a6ac532 fixed (dead on AZERTY/QWERTZ).
+  // No static test can detect this class of collision in general: a
+  // CharKeyBinding matches whatever character the ACTIVE OS layout reports,
+  // with no code of its own to compare against — answering "does this
+  // collide" requires a code-to-character table for a SPECIFIC keyboard
+  // layout, data that lives in the OS's keyboard driver, not this repo (see
+  // action-registry.test.ts's existing same-kind-only disclaimer for the
+  // identical reasoning). The real fix is a user-facing rebind UI
+  // (docs/plans/2026-07-27-keyboard-parity.md, not yet built) — until then
+  // this is a documented limitation, not a bug queued for a code fix.
   { code: "BracketRight", meta: true, action: "focus-next" },
   { code: "BracketLeft", meta: true, action: "focus-prev" },
   { key: "e", meta: true, action: "toggle-expand" },
   { key: "t", meta: true, action: "new-tab" },
   // Same physical-key reasoning as focus-next/prev above: Shift+BracketRight
-  // only produces "}" (and Shift+BracketLeft only "{") on a US layout.
+  // only produces "}" (and Shift+BracketLeft only "{") on a US layout. Same
+  // F-C2 trade-off too — see the comment above focus-next/focus-prev.
   { code: "BracketRight", meta: true, shift: true, action: "next-tab" },
   { code: "BracketLeft", meta: true, shift: true, action: "prev-tab" },
   // Font zoom, matching the standard macOS terminal shortcuts. Cmd+= counts

@@ -123,6 +123,31 @@ describe("matchBinding", () => {
     ).toBe("prev-tab");
   });
 
+  // F-C2 (2026-07-27 code review): NOT a general cross-kind collision
+  // detector — a CharKeyBinding matches whatever character the active OS
+  // layout reports, with no code of its own to compare against, so "does
+  // this collide" needs a code-to-character table for a SPECIFIC keyboard
+  // layout (OS keyboard-driver data, not something this repo has for every
+  // layout in existence). This locks in the ONE known, analyzed instance:
+  // on German QWERTZ, the BracketRight position produces "+" unshifted,
+  // which collides with zoom-in's key-based bindings. Accepted, documented
+  // trade-off (see the comment above focus-next/focus-prev in
+  // action-registry.ts) — not fixable without either breaking the
+  // key-vs-code RULE for zoom-in or reintroducing a6ac532's AZERTY/QWERTZ
+  // bug for focus-next/next-tab. Locked here so a future edit that changes
+  // this resolution (e.g. reordering DEFAULT_KEYMAP) fails loudly instead
+  // of silently.
+  it("known trade-off: Cmd+(QWERTZ's unshifted '+', physical BracketRight) matches focus-next, not zoom-in", () => {
+    expect(
+      matchBinding(codeEvent("BracketRight", "+", { metaKey: true })),
+    ).toBe("focus-next");
+    // Confirms this was already a no-op before the code binding existed —
+    // zoom-in's own bindings require either no shift with "=" or shift with
+    // "+", never shift:false with "+". The `code` binding turned that no-op
+    // into a wrong action firing, not a working zoom into a broken one.
+    expect(matchBinding(keyEvent("+", { metaKey: true }))).toBeNull();
+  });
+
   it("matches Cmd+1..8 to select-tab actions, and Cmd+9 to select-last-tab (macOS 'last tab' convention, not tab index 9)", () => {
     // Digit1..Digit9 bind by physical key position (event.code), not the
     // produced character (F-C1, 2026-07-27 code review) — on a US layout
