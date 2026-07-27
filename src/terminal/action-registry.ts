@@ -162,6 +162,12 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "View", group: "attention" },
   },
   {
+    id: "new-preset",
+    label: "New Layout Preset…",
+    scope: "terminal",
+    menu: { submenu: "Window" },
+  },
+  {
     id: "save-preset",
     label: "Save Layout as Preset…",
     scope: "terminal",
@@ -320,6 +326,9 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { key: "g", meta: true, shift: true, action: "find-previous" },
   { key: "k", meta: true, action: "clear-buffer" },
   { key: "t", meta: true, shift: true, action: "reopen-tab" },
+  // Sketch a new layout preset from scratch (Task 4, unified with the menu's
+  // "New Layout Preset…" accelerator, already Cmd+Shift+N since 09f5c4d).
+  { key: "n", meta: true, shift: true, action: "new-preset" },
   // Capture the live layout as a preset (UX §3) — also in the Window menu
   { key: "s", meta: true, shift: true, action: "save-preset" },
   // Jump to the highest-severity actionable Attention Rail candidate; routed

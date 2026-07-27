@@ -26,11 +26,14 @@ describe("ACTION_REGISTRY", () => {
     }
   });
 
-  // Proves the lift from keymap.ts's ShortcutAction union didn't drop or add
-  // an action. 27, not the 25 docs/plans/2026-07-27-action-registry.md's
-  // Task 1 body lists — that list predates `3e68378` landing `find-next`/
-  // `find-previous`; see the NOTE above ACTION_REGISTRY in action-registry.ts.
-  it("has exactly the 27 action ids keymap.ts's ShortcutAction union declares today", () => {
+  // Proves the lift/growth of the action set is exactly what's intended, not
+  // an accidental drop or add. 28 = the 27 that keymap.ts's ShortcutAction
+  // union declared as of Task 3, plus "new-preset" (Task 4 — unifies the
+  // menu's "New Layout Preset…" into the same action:/runAction path as
+  // every other item; see docs/plans/2026-07-27-action-registry.md Task 4
+  // and the NOTE above ACTION_REGISTRY in action-registry.ts for the earlier
+  // 25→27 correction).
+  it("has exactly the 28 action ids the registry declares as of Task 4", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -51,6 +54,7 @@ describe("ACTION_REGISTRY", () => {
         "zoom-out",
         "zoom-reset",
         "focus-next-attention",
+        "new-preset",
         "save-preset",
         "focus-next",
         "focus-prev",

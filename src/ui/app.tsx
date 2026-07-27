@@ -155,17 +155,11 @@ export function App() {
 
   useEffect(() => {
     const unsubs: UnlistenFn[] = [];
-    void listen("menu:save-preset", () => {
-      if (!boardOpen.value) {
-        saveDialogOpen.value = true;
-      }
-    }).then((fn) => unsubs.push(fn));
-    void listen("menu:new-preset", () => {
-      editorRequest.value = { source: "live" };
-    }).then((fn) => unsubs.push(fn));
-    // Every File/View/Edit item whose accelerator the macOS menu now owns.
-    // The OS consumes the chord before the webview sees it, so the item has
-    // to run the very action the keymap would have — same dispatch table, via
+    // Every File/Edit/View/Window item whose accelerator the macOS menu now
+    // owns, including New/Save Preset (unified onto this path — no more
+    // menu:new-preset/menu:save-preset special cases, Task 4). The OS
+    // consumes the chord before the webview sees it, so the item has to run
+    // the very action the keymap would have — same dispatch table, via
     // `runAction`. The payload crosses an IPC boundary as a plain string, so
     // it is validated rather than cast.
     void listen<string>("menu:action", (event) => {

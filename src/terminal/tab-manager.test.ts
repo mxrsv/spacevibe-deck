@@ -2075,6 +2075,111 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
   });
 });
 
+// Task 4 (docs/plans/2026-07-27-action-registry.md): new-preset and
+// save-preset used to reach the app through two dedicated Tauri events
+// (`menu:new-preset`/`menu:save-preset`) instead of the shared `action:`/
+// `runAction` dispatch every other item uses. `menu:new-preset` had NO
+// overlay guard at all; `menu:save-preset` only ever checked
+// `!boardOpen.value`, missing Settings/PresetEditor/SavePresetDialog. Both
+// bugs die by construction once both actions go through
+// `dispatchAction`/`overlayBlocksAction` like everything else — these tests
+// prove that for both the keydown path and the runAction (menu bridge)
+// path, which is the one that matters in production (macOS eats the
+// accelerator before the webview sees it).
+describe("createTabManager new-preset / save-preset — unified into the action: dispatch path (Task 4)", () => {
+  afterEach(() => {
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    saveDialogOpen.value = false;
+    editorRequest.value = null;
+  });
+
+  function metaShiftKeydown(key: string): KeyboardEvent {
+    return new KeyboardEvent("keydown", {
+      key,
+      metaKey: true,
+      shiftKey: true,
+      bubbles: true,
+    });
+  }
+
+  it("new-preset opens the PresetEditor via runAction when no overlay is blocking", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    tm.runAction("new-preset");
+
+    expect(editorRequest.value).toEqual({ source: "live" });
+
+    tm.dispose();
+  });
+
+  it("new-preset via runAction is blocked while Settings is open — before Task 4 this opened unconditionally via the unguarded menu:new-preset event", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    settingsOpen.value = true;
+    tm.runAction("new-preset");
+
+    expect(editorRequest.value).toBeNull();
+
+    tm.dispose();
+  });
+
+  it("Cmd+Shift+N (new-preset) via the keydown path opens the PresetEditor, and is blocked while Settings is open", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    window.dispatchEvent(metaShiftKeydown("n"));
+    expect(editorRequest.value).toEqual({ source: "live" });
+    editorRequest.value = null;
+
+    settingsOpen.value = true;
+    window.dispatchEvent(metaShiftKeydown("n"));
+    expect(editorRequest.value).toBeNull();
+
+    tm.dispose();
+  });
+
+  // save-preset's webview keyboard path has been routed through the general
+  // overlay guard since Task 3 (it never had its own if-chain entry to
+  // begin with) — these two lock that in against the specific overlay
+  // (PresetEditor draft) the OLD menu-only path used to miss, on both entry
+  // points, so the production bug (menu click / the OS-eaten Cmd+Shift+S
+  // accelerator) cannot resurface once the parallel menu:save-preset event
+  // is removed in this same task.
+  it("save-preset via runAction is blocked while a PresetEditor draft is open", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+
+    editorRequest.value = { source: "live" };
+    tm.runAction("save-preset");
+
+    expect(saveDialogOpen.value).toBe(false);
+
+    tm.dispose();
+  });
+
+  it("Cmd+Shift+S (save-preset) via the keydown path is blocked while a PresetEditor draft is open", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+
+    editorRequest.value = { source: "live" };
+    window.dispatchEvent(metaShiftKeydown("s"));
+
+    expect(saveDialogOpen.value).toBe(false);
+
+    tm.dispose();
+  });
+});
+
 describe("createTabManager toggle-settings routing (⌘, / Settings… menu item)", () => {
   afterEach(() => {
     boardOpen.value = false;

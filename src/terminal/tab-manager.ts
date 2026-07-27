@@ -859,6 +859,13 @@ export function createTabManager(
         saveDialogOpen.value = true;
       }
     },
+    // Unified onto the same action:/runAction path as every other item
+    // (Task 4) — used to reach the app through a dedicated, unguarded
+    // `menu:new-preset` Tauri event instead. Sets the same request the live
+    // window's "New Layout Preset…" board flow already used.
+    "new-preset": () => {
+      editorRequest.value = { source: "live" };
+    },
   };
 
   /**

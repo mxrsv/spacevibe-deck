@@ -208,6 +208,17 @@ describe("matchBinding", () => {
     expect(matchBinding(keyEvent("g", { shiftKey: true }))).toBeNull();
   });
 
+  // menu.rs's "New Layout Preset…" item has had this accelerator since
+  // 09f5c4d, before the webview keymap knew about it — Task 4
+  // (docs/plans/2026-07-27-action-registry.md) unifies new-preset into the
+  // same action:/runAction path as every other action, which means it now
+  // needs a real DEFAULT_KEYMAP binding too.
+  it("matches Cmd+Shift+N as new-preset", () => {
+    expect(matchBinding(keyEvent("n", { metaKey: true, shiftKey: true }))).toBe(
+      "new-preset",
+    );
+  });
+
   it("matches Cmd+, as toggle-settings", () => {
     expect(matchBinding(keyEvent(",", { metaKey: true }))).toBe(
       "toggle-settings",
