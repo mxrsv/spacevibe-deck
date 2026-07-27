@@ -176,7 +176,7 @@ export function App() {
   useEffect(() => {
     let unlisten: UnlistenFn | undefined;
     installQuitGuard({
-      // Quit is busy-guarded like every close path (FR-042 AC-3): silent
+      // Quit is busy-guarded like every close path: silent
       // when all panes are idle, one confirm when anything is running.
       confirmQuit: () => {
         const manager = tabsRef.current;
@@ -271,7 +271,7 @@ export function App() {
     return ok ?? false;
   }
 
-  /** Editor confirm (FR-015): save the preset, then materialize a new tab. */
+  /** Editor confirm: save the preset, then materialize a new tab. */
   async function handleEditorCreate(
     name: string,
     artifact: PresetArtifact,
@@ -307,7 +307,7 @@ export function App() {
       );
       return;
     }
-    // Live window: inherit panes resolve to the focused pane's CWD (BF-Rule 8);
+    // Live window: inherit panes resolve to the focused pane's CWD;
     // the new tab stays in the active tab's workspace, not a nameless one.
     // Agent is null — the board is the only place an agent is chosen.
     const inherit = (await tabsRef.current?.activePaneCwd()) ?? null;
@@ -322,7 +322,7 @@ export function App() {
     );
   }
 
-  /** ⌘⇧S / menu: capture live layout into a new or existing preset (FR-012). */
+  /** ⌘⇧S / menu: capture live layout into a new or existing preset. */
   async function handleSavePreset(
     target: SaveTarget,
     includeCwds: boolean,

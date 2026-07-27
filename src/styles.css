@@ -1491,7 +1491,7 @@ button.attn-mark:hover {
   outline-offset: -2px;
 }
 
-/* ---------- Open board (UX §2) — logo panel + right controls ---------- */
+/* ---------- Open board — logo panel + right controls ---------- */
 .open-board {
   position: absolute;
   inset: 0;
@@ -1905,7 +1905,7 @@ button.attn-mark:hover {
   color: var(--bg);
 }
 
-/* ---------- Preset editor (UX §3) ---------- */
+/* ---------- Preset editor ---------- */
 .modal-scrim {
   position: absolute;
   inset: 0;
@@ -2075,7 +2075,7 @@ button.attn-mark:hover {
   color: var(--bg);
 }
 
-/* ---------- Save preset dialog (UX §3) ---------- */
+/* ---------- Save preset dialog ---------- */
 .save-preset {
   display: flex;
   flex-direction: column;

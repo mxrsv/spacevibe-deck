@@ -610,7 +610,7 @@ export function createTabManager(
     return true;
   }
 
-  /** FR-005: one tab per Open; CWDs already resolved by the caller. */
+  /** One tab per Open; CWDs already resolved by the caller. */
   function openFromPreset(
     layout: SerializedNode,
     cwds: readonly (string | null)[],
@@ -626,7 +626,7 @@ export function createTabManager(
     });
   }
 
-  /** FR-012: fresh CWDs via TabMaterialize so a just-cd'd pane saves correctly. */
+  /** Fresh CWDs via TabMaterialize so a just-cd'd pane saves correctly. */
   async function captureActiveLayout(): Promise<{
     layout: SerializedNode;
     cwds: readonly (string | null)[];
@@ -743,7 +743,7 @@ export function createTabManager(
     pruneNotifiedKinds(live);
     poller.prune(live);
     if (tabs.length === 0) {
-      // Closing the last tab quits the app (ADR 0002). CloseCoordinator
+      // Closing the last tab quits the app. CloseCoordinator
       // already ran the busy guard, so exit directly — no second dialog.
       active = -1;
       try {

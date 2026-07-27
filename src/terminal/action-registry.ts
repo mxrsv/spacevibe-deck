@@ -332,7 +332,7 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   // Sketch a new layout preset from scratch (Task 4, unified with the menu's
   // "New Layout Preset…" accelerator, already Cmd+Shift+N since 09f5c4d).
   { key: "n", meta: true, shift: true, action: "new-preset" },
-  // Capture the live layout as a preset (UX §3) — also in the Window menu
+  // Capture the live layout as a preset — also in the Window menu
   { key: "s", meta: true, shift: true, action: "save-preset" },
   // Jump to the highest-severity actionable Attention Rail candidate; routed
   // through an app-level seam so it can share the overlay preflight with a

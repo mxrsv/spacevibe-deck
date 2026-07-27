@@ -107,7 +107,7 @@ export function pushRecent(
  * Shell is opt-in: only an explicit `null` (the user clicked Shell only this
  * session) yields Shell. No pick (`undefined`), a remembered choice, or a
  * stale memory all fall back to the first detected agent — an empty detect
- * result still degrades to Shell only (FR-025).
+ * result still degrades to Shell only.
  */
 export function resolveAgentChoice(
   choice: AgentChoice | undefined,

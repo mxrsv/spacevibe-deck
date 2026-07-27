@@ -104,7 +104,7 @@ describe("confirmClose with injected PtyClient", () => {
 });
 
 describe("confirmClose dialog copy", () => {
-  it("uses the quit copy on the quit path (FR-042 AC-3)", async () => {
+  it("uses the quit copy on the quit path", async () => {
     askMock.mockClear();
     askMock.mockResolvedValue(true);
     const pty = createMemoryPtyClient({

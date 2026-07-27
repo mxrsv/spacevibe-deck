@@ -19,7 +19,7 @@ export function SavePresetDialog({
 }: SavePresetDialogProps) {
   const name = useSignal("");
   const overwriteId = useSignal<string | null>(null);
-  const includeCwds = useSignal(true); // default on (UX §3)
+  const includeCwds = useSignal(true); // default on
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

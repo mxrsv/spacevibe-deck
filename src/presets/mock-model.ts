@@ -49,7 +49,7 @@ export function canRemove(model: MockModel): boolean {
 export function removeSelected(model: MockModel): MockModel {
   const rest = removeLeaf(model.tree, model.selectedId);
   if (rest === null) {
-    return model; // last pane — Remove is disabled (UX §3)
+    return model; // last pane — Remove is disabled
   }
   const cwds = new Map(model.cwds);
   cwds.delete(model.selectedId);

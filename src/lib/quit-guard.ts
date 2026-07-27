@@ -3,7 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 /** Seams the quit flow composes over — injected so `lib/` stays import-light. */
 export interface QuitFlowDeps {
-  /** Busy-guard gate (FR-042 AC-3): resolves true when quitting may proceed. */
+  /** Busy-guard gate: resolves true when quitting may proceed. */
   confirmQuit(): Promise<boolean>;
   /** Persist pending debounced state — the process exits right after. */
   flush(): Promise<void>;

@@ -66,7 +66,7 @@ export async function resolvePaneCwds(
 
 /**
  * Layout preset editor (live window): each leaf uses its preset CWD when set,
- * otherwise inherits the focused pane's CWD (BF-Rule 8).
+ * otherwise inherits the focused pane's CWD.
  */
 export function resolveInheritedCwds(
   layout: SerializedNode,
@@ -96,7 +96,7 @@ export function buildClosedTabSnapshot(input: {
   };
 }
 
-/** Live Layout + fresh CWDs for save-as-preset (FR-012). */
+/** Live Layout + fresh CWDs for save-as-preset. */
 export async function capturePresetLayout(
   paneIds: readonly number[],
   layout: SerializedNode,

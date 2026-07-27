@@ -77,7 +77,7 @@ export function markLastUsed(id: string): void {
   persist({ ...presetsData.value, lastUsedId: id });
 }
 
-/** Cards for the Open board: built-in always present and first (FR-011). */
+/** Cards for the Open board: built-in always present and first. */
 export function boardPresets(): readonly Preset[] {
   return [BUILT_IN_PRESET, ...presetsData.value.presets];
 }

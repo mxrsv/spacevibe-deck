@@ -115,7 +115,7 @@ export function OpenBoard({
       })
       .catch((err: unknown) => {
         console.warn("detect_agents failed:", err);
-        agents.value = []; // board degrades to Shell only (FR-025)
+        agents.value = []; // board degrades to Shell only
       });
     homeDir()
       .then((dir) => {

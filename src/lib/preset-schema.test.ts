@@ -85,7 +85,7 @@ describe("pure CRUD ops", () => {
   });
 });
 
-describe("resolveCwds (FR-005 AC-2)", () => {
+describe("resolveCwds", () => {
   it("uses the preset cwd when set, else the workspace folder", () => {
     expect(resolveCwds(QUAD, "/ws")).toEqual(["/work", "/ws"]);
   });
@@ -95,7 +95,7 @@ describe("resolveCwds (FR-005 AC-2)", () => {
   });
 });
 
-describe("built-in preset (FR-011)", () => {
+describe("built-in preset", () => {
   it("is a single leaf with no cwds and is recognizable", () => {
     expect(BUILT_IN_PRESET.layout).toEqual({ type: "leaf" });
     expect(BUILT_IN_PRESET.cwds).toBeUndefined();

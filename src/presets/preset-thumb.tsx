@@ -24,7 +24,7 @@ function ThumbNode({ node }: { node: SerializedNode }) {
   );
 }
 
-/** Miniature of a preset's split tree for board cards (UX §2). */
+/** Miniature of a preset's split tree for board cards. */
 export function PresetThumb({ layout }: PresetThumbProps) {
   return (
     <div class="preset-thumb" aria-hidden="true">

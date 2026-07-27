@@ -20,11 +20,11 @@ export interface Preset {
 export interface PresetsData {
   readonly version: number;
   readonly presets: readonly Preset[];
-  /** Open-board preselect (UX §8 decision 1); undefined = built-in. */
+  /** Open-board preselect; undefined = built-in. */
   readonly lastUsedId?: string;
 }
 
-/** Code-defined default so Open can never soft-lock (BF-Rule 4, FR-011). */
+/** Code-defined default so Open can never soft-lock. */
 export const BUILT_IN_PRESET: Preset = {
   id: BUILT_IN_PRESET_ID,
   name: "Single pane",
@@ -135,7 +135,7 @@ export function removePreset(
   return list.filter((entry) => entry.id !== id);
 }
 
-/** Pane CWD = preset cwd when set, else the workspace folder (BF-Rule 6). */
+/** Pane CWD = preset cwd when set, else the workspace folder. */
 export function resolveCwds(
   preset: Preset,
   workspace: string,
