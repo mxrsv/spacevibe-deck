@@ -1,4 +1,6 @@
 #[cfg(target_os = "macos")]
+use crate::menu_registry;
+#[cfg(target_os = "macos")]
 use tauri::{
     menu::{AboutMetadata, MenuBuilder, MenuItem, SubmenuBuilder},
     App, Emitter, Runtime,
@@ -56,6 +58,10 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         Some("CmdOrCtrl+Q"),
     )?;
     // HIG placement: right after About, above Services, its own separator.
+    // Hand-written (mixes in Cocoa builtins — About/Services/Hide, no full
+    // codegen, see menu_registry.rs). If you change an item here, update
+    // HAND_WRITTEN_APP in `mod tests` below AND action-registry.ts —
+    // `cargo test` goes red if you forget either.
     let settings = action_item(handle, "toggle-settings", "Settings…", Some("CmdOrCtrl+,"))?;
     let app_menu = SubmenuBuilder::new(handle, app_name)
         .about(Some(AboutMetadata::default()))
@@ -71,6 +77,10 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         .build()?;
     // Find lives under Edit because that is where macOS users look for it —
     // ⌘F reaching only the webview meant the app had no discoverable find.
+    // Hand-written (mixes in Cocoa builtins — Undo/Redo/Cut/Copy/Paste/Select
+    // All). If you change an item here, update HAND_WRITTEN_EDIT in
+    // `mod tests` below AND action-registry.ts — `cargo test` goes red if
+    // you forget either.
     let find = action_item(handle, "find", "Find…", Some("CmdOrCtrl+F"))?;
     // Repeat the last search, with or without the bar open (search-bar.ts's
     // `advanceSearch`) — standard macOS Find Next/Previous placement.
@@ -97,89 +107,18 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         .item(&clear_buffer)
         .build()?;
 
-    let new_tab = action_item(handle, "new-tab", "New Tab", Some("CmdOrCtrl+T"))?;
-    let close_pane = action_item(handle, "close-pane", "Close Pane", Some("CmdOrCtrl+W"))?;
-    let close_tab = action_item(handle, "close-tab", "Close Tab", Some("CmdOrCtrl+Shift+W"))?;
-    let reopen_tab = action_item(
-        handle,
-        "reopen-tab",
-        "Reopen Closed Tab",
-        Some("CmdOrCtrl+Shift+T"),
-    )?;
-    // Moved here from the Window menu (HIG: File owns create/save
-    // operations) — unified onto the same action:/runAction path as every
-    // other item (no more menu:new-preset/menu:save-preset dedicated
-    // events). See src/terminal/tab-manager.ts's commands table for the
-    // "new-preset"/"save-preset" closures this now reaches, both behind the
-    // shared overlay scope guard.
-    let new_preset = action_item(
-        handle,
-        "new-preset",
-        "New Layout Preset…",
-        Some("CmdOrCtrl+Shift+N"),
-    )?;
-    let save_preset = action_item(
-        handle,
-        "save-preset",
-        "Save Layout as Preset…",
-        Some("CmdOrCtrl+Shift+S"),
-    )?;
-    let file_menu = SubmenuBuilder::new(handle, "File")
-        .item(&new_tab)
-        .item(&reopen_tab)
-        .separator()
-        .item(&new_preset)
-        .item(&save_preset)
-        .separator()
-        .item(&close_pane)
-        .item(&close_tab)
-        .build()?;
-
-    // Labels match the chrome-action tooltips: ⌘D splits vertically (a new
-    // pane to the RIGHT, i.e. a row split), ⌘⇧D horizontally.
-    let split_row = action_item(handle, "split-row", "Split Vertically", Some("CmdOrCtrl+D"))?;
-    let split_column = action_item(
-        handle,
-        "split-column",
-        "Split Horizontally",
-        Some("CmdOrCtrl+Shift+D"),
-    )?;
-    let zoom_pane = action_item(
-        handle,
-        "toggle-zoom-pane",
-        "Zoom Pane",
-        Some("CmdOrCtrl+Shift+Enter"),
-    )?;
-    let focus_expand = action_item(handle, "toggle-expand", "Focus Expand", Some("CmdOrCtrl+E"))?;
-    let font_bigger = action_item(handle, "zoom-in", "Increase Font Size", Some("CmdOrCtrl+="))?;
-    let font_smaller = action_item(
-        handle,
-        "zoom-out",
-        "Decrease Font Size",
-        Some("CmdOrCtrl+-"),
-    )?;
-    let font_reset = action_item(handle, "zoom-reset", "Actual Size", Some("CmdOrCtrl+0"))?;
-    let next_attention = action_item(
-        handle,
-        "focus-next-attention",
-        "Next Agent Needing Attention",
-        Some("CmdOrCtrl+Shift+A"),
-    )?;
-    let view_menu = SubmenuBuilder::new(handle, "View")
-        .item(&split_row)
-        .item(&split_column)
-        .separator()
-        .item(&zoom_pane)
-        .item(&focus_expand)
-        .separator()
-        .item(&font_bigger)
-        .item(&font_smaller)
-        .item(&font_reset)
-        .separator()
-        .item(&next_attention)
-        .build()?;
+    // File and View are 100% ACTION_REGISTRY items (no Cocoa builtins mixed
+    // in), so they're generated in full from menu_registry.rs — see
+    // scripts/generate-menu.ts. Editing an item's label/accelerator/menu
+    // position happens in action-registry.ts, then `npm run generate:menu`
+    // (predev/prebuild already runs this), never here.
+    let file_menu = menu_registry::build_file_menu(handle)?;
+    let view_menu = menu_registry::build_view_menu(handle)?;
     // New/Save Layout Preset moved to the File menu above — Window is now
-    // just native window management.
+    // just native window management. Hand-written (100% Cocoa builtins,
+    // zero action items — HAND_WRITTEN_WINDOW below is deliberately empty).
+    // If you add an action item here, update HAND_WRITTEN_WINDOW in
+    // `mod tests` below AND action-registry.ts.
     let window_menu = SubmenuBuilder::new(handle, "Window")
         .minimize()
         .maximize()
@@ -204,4 +143,44 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
 #[cfg(not(target_os = "macos"))]
 pub fn install<R: Runtime>(_app: &App<R>) -> tauri::Result<()> {
     Ok(())
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::menu_registry::{APP_MENU_ITEMS, EDIT_MENU_ITEMS, WINDOW_MENU_ITEMS};
+
+    // The (action id, label, accelerator) triples hand-written in install()
+    // for App/Edit/Window — must match the generated registry EXACTLY. This
+    // is the safety net for the three submenus that mix in native Cocoa
+    // builtins and so can't be generated in full — see
+    // docs/plans/2026-07-27-action-registry.md §2.2. This is the mechanism
+    // that would have caught 09f5c4d's staleness (an accelerator added to
+    // menu.rs that keymap.ts didn't know about) had it existed already.
+    const HAND_WRITTEN_APP: &[(&str, &str, Option<&str>)] =
+        &[("toggle-settings", "Settings…", Some("CmdOrCtrl+,"))];
+    const HAND_WRITTEN_EDIT: &[(&str, &str, Option<&str>)] = &[
+        ("find", "Find…", Some("CmdOrCtrl+F")),
+        ("find-next", "Find Next", Some("CmdOrCtrl+G")),
+        ("find-previous", "Find Previous", Some("CmdOrCtrl+Shift+G")),
+        ("clear-buffer", "Clear Buffer", Some("CmdOrCtrl+K")),
+    ];
+    // Empty on purpose: New/Save Layout Preset moved to File
+    // (7583463) — Window is 100% Cocoa builtins now (minimize/maximize/
+    // fullscreen), zero action items left to cross-check.
+    const HAND_WRITTEN_WINDOW: &[(&str, &str, Option<&str>)] = &[];
+
+    #[test]
+    fn app_menu_matches_registry() {
+        assert_eq!(HAND_WRITTEN_APP, APP_MENU_ITEMS);
+    }
+
+    #[test]
+    fn edit_menu_matches_registry() {
+        assert_eq!(HAND_WRITTEN_EDIT, EDIT_MENU_ITEMS);
+    }
+
+    #[test]
+    fn window_menu_matches_registry() {
+        assert_eq!(HAND_WRITTEN_WINDOW, WINDOW_MENU_ITEMS);
+    }
 }
