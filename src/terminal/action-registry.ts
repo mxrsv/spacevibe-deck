@@ -149,7 +149,19 @@ export const ACTION_REGISTRY = [
   {
     id: "save-preset",
     label: "Save Layout as Preset…",
-    scope: "pane",
+    // Tiered "board" (decision 2 of the 2026-07-27 code review's design
+    // proposal) — NOT "pane" (its old, blanket "terminal" gating) and NOT
+    // "modal" like its sibling `new-preset` above. Not blocked by Settings
+    // for the same reason as new-preset: no draft, and SavePresetDialog
+    // (z-40) renders fully visible above it (z-20). STILL blocked by the
+    // board, unlike new-preset: this action CAPTURES THE ACTIVE TAB'S LIVE
+    // LAYOUT, and while the board covers the screen "the active tab" is
+    // invisible — capturing it blind and silently overwriting a preset is
+    // exactly the class of bug this whole guard exists to prevent. The
+    // `tabs.length > 0` check in this action's `commands` closure below is
+    // separate business logic ("is there anything to save"), not overlay
+    // gating.
+    scope: "board",
     menu: { submenu: "File", group: "preset" },
   },
   {

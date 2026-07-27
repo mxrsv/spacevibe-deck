@@ -2082,7 +2082,15 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it("save-preset is blocked while Settings is open — the old ad hoc guard only ever checked boardOpen", async () => {
+  // Decision 2 of the design proposal (2026-07-27 code review): save-preset
+  // was scope "terminal"/"pane", blocked by literally any open overlay
+  // including Settings — an accident of the blanket scope, same as
+  // new-preset's Settings block above. Settings holds no draft (every
+  // change writes straight through updateSettings) and SavePresetDialog
+  // (z-40) renders fully visible above it (z-20), so there is nothing to
+  // protect. Retiered "board" (NOT "modal" like new-preset — see the
+  // board-still-blocks test right below for why they differ).
+  it("save-preset via runAction is NOT blocked while Settings is open", async () => {
     const { tm } = setup({});
     await tm.materialize({ layout: null, cwds: ["/a"] });
     await tm.init();
@@ -2090,6 +2098,26 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     boardOpen.value = false;
 
     settingsOpen.value = true;
+    tm.runAction("save-preset");
+    await flush();
+
+    expect(saveDialogOpen.value).toBe(true);
+
+    tm.dispose();
+  });
+
+  // Unlike new-preset (tiered "modal", sketches a preset from scratch,
+  // independent of any tab), save-preset CAPTURES THE ACTIVE TAB'S LIVE
+  // LAYOUT — while the board covers the screen, "the active tab" is exactly
+  // the invisible state this whole overlay guard exists to protect. Tiering
+  // it "board" (rather than "modal") keeps it blocked here.
+  it("save-preset via runAction is STILL blocked while the Open board is up — it captures the active tab's live layout, which the board hides", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+
+    boardOpen.value = true;
     tm.runAction("save-preset");
     await flush();
 
