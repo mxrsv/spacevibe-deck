@@ -1,8 +1,10 @@
 // AUTO-GENERATED output goes to src-tauri/src/menu_registry.rs — this script
 // itself is hand-written. Run via `npm run generate:menu` (tsx, dev/build-time
 // only — never bundled into the production app).
-import { writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   ACTION_REGISTRY,
   DEFAULT_KEYMAP,
@@ -131,19 +133,53 @@ const output = [
   buildConstTable("WINDOW_MENU_ITEMS", "Window"),
 ].join("\n");
 
-const outPath = new URL("../src-tauri/src/menu_registry.rs", import.meta.url);
-writeFileSync(outPath, output);
+/**
+ * Normalize to the same line-wrapping `cargo fmt` would apply, so the
+ * committed file never drifts from a fresh `npm run generate:menu` just
+ * because of formatting — a real content change is the only thing that
+ * should show up in `git diff`/the `--check` staleness guard below.
+ */
+function formatInPlace(path: string): void {
+  try {
+    execFileSync("rustfmt", [path], { stdio: "inherit" });
+  } catch (err) {
+    console.warn(
+      "generate-menu: rustfmt not found or failed — the file was written " +
+        "unformatted. Run `cargo fmt` manually before committing.",
+      err,
+    );
+  }
+}
 
-// Normalize to the same line-wrapping `cargo fmt` would apply, so the
-// committed file never drifts from a fresh `npm run generate:menu` just
-// because of formatting — a real content change is the only thing that
-// should show up in `git diff`/the Task 7 staleness check.
-try {
-  execFileSync("rustfmt", [outPath.pathname], { stdio: "inherit" });
-} catch (err) {
-  console.warn(
-    "generate-menu: rustfmt not found or failed — menu_registry.rs was " +
-      "written unformatted. Run `cargo fmt` manually before committing.",
-    err,
-  );
+const outPath = new URL("../src-tauri/src/menu_registry.rs", import.meta.url);
+
+if (process.argv.includes("--check")) {
+  // Staleness guard (Task 7): regenerate into a scratch file — NEVER touch
+  // the committed one — format it the same way, then compare bytes. This is
+  // an npm-only, opt-in check (predev/prebuild below always overwrite and
+  // fix drift automatically; this is for CI/manual verification catching
+  // "action-registry.ts changed but menu_registry.rs wasn't regenerated
+  // before commit"). It doesn't run from `cargo check`/`cargo test` — those
+  // build straight from the already-committed file, exactly as before.
+  const scratchDir = mkdtempSync(join(tmpdir(), "generate-menu-check-"));
+  const scratchPath = join(scratchDir, "menu_registry.rs");
+  try {
+    writeFileSync(scratchPath, output);
+    formatInPlace(scratchPath);
+    const fresh = readFileSync(scratchPath, "utf8");
+    const committed = readFileSync(outPath, "utf8");
+    if (fresh !== committed) {
+      console.error(
+        "generate-menu --check: src-tauri/src/menu_registry.rs is stale — " +
+          "it doesn't match what src/terminal/action-registry.ts generates " +
+          "right now. Run `npm run generate:menu` and commit the result.",
+      );
+      process.exit(1);
+    }
+  } finally {
+    rmSync(scratchDir, { recursive: true, force: true });
+  }
+} else {
+  writeFileSync(outPath, output);
+  formatInPlace(outPath.pathname);
 }
