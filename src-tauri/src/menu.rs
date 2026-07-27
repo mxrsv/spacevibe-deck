@@ -150,7 +150,7 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         NEW_PRESET_MENU_ID,
         "New Layout Preset…",
         true,
-        None::<&str>,
+        Some("CmdOrCtrl+Shift+N"),
     )?;
     let save_preset = MenuItem::with_id(
         handle,
