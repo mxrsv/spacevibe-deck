@@ -112,6 +112,9 @@ A pane is **busy** when its foreground process is something other than an idle s
 
 ## Keyboard shortcuts
 
+Every shortcut below, and its macOS menu counterpart, comes from one source:
+`src/terminal/action-registry.ts`.
+
 **Panes**
 
 | Shortcut  | Action                                                       |
