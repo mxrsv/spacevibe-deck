@@ -117,27 +117,29 @@ Every shortcut below, and its macOS menu counterpart, comes from one source:
 
 **Panes**
 
-| Shortcut  | Action                                                       |
-| --------- | ------------------------------------------------------------ |
-| ⌘D        | Split pane vertically                                        |
-| ⌘⇧D       | Split pane horizontally                                      |
-| ⌘] / ⌘[   | Focus next / previous pane                                   |
-| ⌘⌥ + ←→↑↓ | Focus pane by direction                                      |
-| ⌘⇧A       | Jump to the pane that needs attention (agent attention rail) |
-| ⌘⇧⏎       | Zoom / restore active pane                                   |
-| ⌘E        | Toggle Focus Expand                                          |
-| ⌘W        | Close pane                                                   |
+| Shortcut   | Action                                                       |
+| ---------- | ------------------------------------------------------------ |
+| ⌘D         | Split pane vertically                                        |
+| ⌘⇧D        | Split pane horizontally                                      |
+| ⌘] / ⌘[    | Focus next / previous pane                                   |
+| ⌘⌥ + ←→↑↓  | Focus pane by direction                                      |
+| ⌘⌥⇧ + ←→↑↓ | Swap pane with neighbor in that direction                    |
+| ⌘⇧A        | Jump to the pane that needs attention (agent attention rail) |
+| ⌘⇧⏎        | Zoom / restore active pane                                   |
+| ⌘E         | Toggle Focus Expand                                          |
+| ⌘W         | Close pane                                                   |
 
 **Tabs**
 
-| Shortcut  | Action               |
-| --------- | -------------------- |
-| ⌘T        | New tab (Open board) |
-| ⌘⇧W       | Close tab            |
-| ⌘⇧T       | Reopen closed tab    |
-| ⌘⇧] / ⌘⇧[ | Next / previous tab  |
-| ⌘1 … ⌘8   | Select tab _N_       |
-| ⌘9        | Select last tab      |
+| Shortcut  | Action                        |
+| --------- | ----------------------------- |
+| ⌘T        | New tab (Open board)          |
+| ⌘⇧W       | Close tab                     |
+| ⌘⇧T       | Reopen closed tab             |
+| ⌘⇧R       | Rename tab / change dot color |
+| ⌘⇧] / ⌘⇧[ | Next / previous tab           |
+| ⌘1 … ⌘8   | Select tab _N_                |
+| ⌘9        | Select last tab               |
 
 **Presets**
 
@@ -148,14 +150,15 @@ Every shortcut below, and its macOS menu counterpart, comes from one source:
 
 **Terminal & view**
 
-| Shortcut     | Action                     |
-| ------------ | -------------------------- |
-| ⌘F           | Find in scrollback         |
-| ⌘G / ⌘⇧G     | Find next / previous match |
-| ⌘K           | Clear buffer               |
-| ⌘+ / ⌘- / ⌘0 | Font zoom in / out / reset |
-| ⌘,           | Toggle Settings            |
-| ⌘Q           | Quit                       |
+| Shortcut     | Action                        |
+| ------------ | ----------------------------- |
+| ⌘F           | Find in scrollback            |
+| ⌘G / ⌘⇧G     | Find next / previous match    |
+| ⌘K           | Clear buffer                  |
+| ⌘⇧C          | Copy pane's working directory |
+| ⌘+ / ⌘- / ⌘0 | Font zoom in / out / reset    |
+| ⌘,           | Toggle Settings               |
+| ⌘Q           | Quit                          |
 
 Shift+Enter is not distinguishable from Enter in xterm today (a known limit). In Claude Code, use **Option+Enter** or type `\` then Enter to insert a newline without submitting.
 
