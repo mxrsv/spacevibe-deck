@@ -1,4 +1,4 @@
-# Keyboard Parity — đóng khoảng cách chuột/bàn phím theo ADR 0006
+# Keyboard Parity — đóng khoảng cách chuột/bàn phím theo nguyên tắc chuột và bàn phím đều first-class
 
 > **For agentic workers:** REQUIRED SUB-SKILL: dùng `superpowers:subagent-driven-development`
 > (khuyến nghị, Task 1/2/4 độc lập nhau và chỉ cần action-registry.md Task 1–3; Task 3 (`copy-cwd`)
@@ -7,16 +7,25 @@
 > từng task. Mỗi task có checklist Build/Verify riêng, chạy xong task nào verify ngay task đó
 > trước khi sang task sau.
 
-**Nguồn**: brief team lead (audit phím tắt toàn repo, xem lịch sử hội thoại) ·
-[ADR 0006](../decisions/0006-mouse-and-keyboard-first-class.md) ·
-[ADR 0016](../decisions/0016-pane-swap-cross-window-move-busy-guard.md) ·
-`docs/REQUIREMENTS.md` FR-030…FR-036 · `docs/UX-DESIGN.md` §"Pane swap" / §"Move a pane to another
-window" · [action-registry.md](2026-07-27-action-registry.md) (plan song song, xem §0 — plan này
-XÂY TRÊN nó) · [findings-doc-reality-drift-2026-07-26.md](../review/findings-doc-reality-drift-2026-07-26.md).
+> **Cập nhật sau khi viết plan này**: `eef3f4a` đã gỡ toàn bộ pipeline ADR-first của repo
+> (`PIPELINE.lock`, `docs/decisions/` — gồm cả ADR 0006 và 0016 dưới đây — và 6 doc phái sinh, gồm
+> `REQUIREMENTS.md`/`UX-DESIGN.md`). Các trích dẫn bên dưới và trong toàn bộ plan đã được viết lại:
+> giữ nguyên lập luận/nội dung quyết định (chúng vẫn đúng), bỏ liên kết tới file không còn tồn tại.
 
-**Goal**: Đóng những khoảng trống "chỉ tới được bằng chuột" mà audit phát hiện, đúng tinh thần ADR
-0006 (chuột và bàn phím đều first-class). Chỉ implement action nào có thiết kế đã đủ rõ (có ADR/FR
-sẵn, hoặc chỉ có đúng một cách làm hợp lý) — action nào còn mở về UX hoặc phụ thuộc hạ tầng chưa tồn
+**Nguồn**: brief team lead (audit phím tắt toàn repo, xem lịch sử hội thoại) · nguyên tắc "chuột và
+bàn phím đều first-class" (trước đây ADR 0006, file đã gỡ) · nguyên tắc pane-swap dùng lại đúng
+neighbor-resolution của focus-direction, kèm busy-guard cho cross-window move (trước đây ADR 0016,
+cũng đã gỡ — nội dung cụ thể liên quan được viết thẳng vào §1b/§3/Task 1 dưới đây, không cần file
+gốc nữa) · FR-030…FR-036 và mục "Pane swap"/"Move a pane to another window" (trước đây
+`docs/REQUIREMENTS.md`/`docs/UX-DESIGN.md`, cùng bị gỡ) ·
+[action-registry.md](2026-07-27-action-registry.md) (plan song song, xem §0 — plan này XÂY TRÊN nó) ·
+[findings-doc-reality-drift-2026-07-26.md](../review/findings-doc-reality-drift-2026-07-26.md)
+(vẫn còn trong `docs/review/`).
+
+**Goal**: Đóng những khoảng trống "chỉ tới được bằng chuột" mà audit phát hiện, đúng tinh thần
+nguyên tắc chuột và bàn phím đều first-class. Chỉ implement action nào có thiết kế đã đủ rõ (có
+quyết định/spec sẵn — trước đây ghi ở ADR/FR, nay chỉ còn sống trong plan này, xem §1b/§3 — hoặc
+chỉ có đúng một cách làm hợp lý) — action nào còn mở về UX hoặc phụ thuộc hạ tầng chưa tồn
 tại thì nêu rõ và tách khỏi phạm vi thực thi, không tự thiết kế cho có.
 
 **Architecture**: Mọi action mới đăng ký một lần trong `src/terminal/action-registry.ts`
@@ -141,7 +150,8 @@ thuộc Shift/layout (đúng luật ở §0), nên không cần `PhysicalKeyBind
 | `copy-cwd` (Task 3)                                    | `key: "c"` + `⌘⇧`                        | Khác `.copy()` role (`⌘C`, không Shift) — không trùng.                             |
 | `scroll-page-up/down`, `scroll-to-top/bottom` (Task 4) | `key: "pageup/pagedown/home/end"` + `⇧`  | Các key này chưa xuất hiện ở đâu trong bảng 1a hay role builtin — hoàn toàn trống. |
 
-`⌘⌥⇧`+Arrow đã đúng chord ADR 0016/FR-032 chỉ định sẵn (không phải chord tôi tự chọn — xem §5).
+`⌘⌥⇧`+Arrow đã đúng chord mà quyết định Pane Swap trước đó (trước đây ghi ở ADR 0016/FR-032, cả hai
+file đã bị gỡ ở `eef3f4a`, xem ghi chú đầu plan) chỉ định sẵn — không phải chord tôi tự chọn, xem §5.
 `⌘⇧M` (FR-033, "Move pane to…") **không xuất hiện trong bảng trên vì plan này không implement nó**
 — xem §3.
 
@@ -181,7 +191,8 @@ hoàn toàn bằng phím. Không phải gap thật — không làm gì thêm.
 
 ### 2d. Resize split bằng phím — KHÔNG tự thiết kế trong plan này (đề xuất brainstorm riêng)
 
-Không có ADR/FR nào định nghĩa sẵn (khác Swap — có FR-032). Đã đọc `layout-engine.ts`: ratio sống
+Không có quyết định/spec nào định nghĩa sẵn (khác Swap — có một quyết định cụ thể, trước đây ghi ở
+FR-032, file đã gỡ). Đã đọc `layout-engine.ts`: ratio sống
 trên **path trong split-tree** (`onRatioCommit(path, ratio)`), còn `focusDirection`/swap dùng
 `nearestInDirection` — **hình học rects**, không phải path cây. Hai mô hình khác nhau: xác định
 "resize theo hướng nào" đòi hỏi tìm split-node tổ tiên chung giữa pane đang focus và neighbor hình
@@ -190,15 +201,16 @@ học của nó, một bài toán tra cứu cây **chưa có utility nào giải
 câu trả lời duy nhất hiển nhiên: bước nhảy mỗi lần bấm bao nhiêu, có "resize mode" với chỉ báo trực
 quan hay discrete-press, giữ nguyên `RATIO_MIN`/`RATIO_MAX` (0.15/0.85) hay khác. Theo W1 (việc
 creative mới → brainstorm trước khi code), plan này **không tự quyết** — đề xuất một phiên
-brainstorm riêng (có thể ra ADR mới kiểu ADR 0016 đã làm cho Swap) trước khi viết plan implementation.
+brainstorm riêng (có thể ra một quyết định ghi lại rõ ràng, kiểu cách Swap từng được quyết định
+trước đây) trước khi viết plan implementation.
 
 ### 2e. Reorder tab bằng kéo-thả + phím — KHÔNG làm trong plan này (net-new, không phải parity)
 
 Xác nhận lại bằng chứng: `grep -rn "draggable|dragstart|reorder" src/ui/tab-bar.tsx
 src/ui/workspace-sidebar.tsx` → rỗng. Đây là trường hợp DUY NHẤT thiếu **cả hai** trục (không có
 đường chuột nào để "cho phím parity" theo). Phạm vi của plan này là đóng khoảng cách bàn phím cho
-hành vi ĐÃ có bằng chuột (ADR 0006 đọc đúng nghĩa "cả hai đều first-class", không phải "phát minh
-tính năng mới"). Xây cả kéo-thả (mouse) lẫn phím cho reorder là một tính năng trọn vẹn mới, ngoài
+hành vi ĐÃ có bằng chuột (nguyên tắc chuột và bàn phím đều first-class đọc đúng nghĩa "cả hai đều
+first-class", không phải "phát minh tính năng mới"). Xây cả kéo-thả (mouse) lẫn phím cho reorder là một tính năng trọn vẹn mới, ngoài
 "vá khoảng trống parity" — đề xuất brainstorm/plan riêng, không nhét vào đây (W3).
 
 ### 2f. Copy CWD / copy path — LÀM (xem Task 3), không cần brainstorm
@@ -212,8 +224,8 @@ người quyết. Xử lý như một task implementation bình thường, khôn
 ## §3. Multi-window / "Move to window" — mức độ hoàn thiện (điều tra theo yêu cầu)
 
 **Kết luận: hạ tầng gần như 0% ở phía dùng được, và có audit rất mới (2026-07-26, hôm qua) đã đề
-xuất chính thức hoãn nó khỏi v1 — plan này KHÔNG implement `⌘⇧M`/"Move pane to…" dù FR-033 đã có sẵn
-chord.**
+xuất chính thức hoãn nó khỏi v1 — plan này KHÔNG implement `⌘⇧M`/"Move pane to…" dù trước đây FR-033
+đã định sẵn chord này.**
 
 Bằng chứng đã tự xác minh:
 
@@ -228,22 +240,28 @@ Bằng chứng đã tự xác minh:
 - **Config**: `src-tauri/tauri.conf.json`'s `"windows"` khai đúng MỘT window (`title: "SpaceVibe
 Deck"`). Không "New Window" trong `menu.rs` hiện tại (chỉ `quit`/`action:*`/`new-preset`/
   `save-preset`).
-- **Docs**: ADR 0012 ("Multi-window workspace model") vẫn nằm trong tập active, tuyên bố "v1 is
-  multi-window" — nhưng `docs/review/findings-doc-reality-drift-2026-07-26.md` §3.3 đã viết sẵn một
-  ADR DRAFT 0030 "Single-window v1; multi-window and cross-window move deferred" (supersede 0012),
-  với decision text: _"v1 là single-window... Cross-window move và 'Move pane to…' popover chuyển
-  sang 'Later'"_ — **nhưng file này CHƯA tồn tại trong `docs/decisions/`** (`ls docs/decisions/ | grep
-0030` → rỗng). Đây là đề xuất đang chờ người quyết (§5 của audit đó), chưa phải quyết định chính
-  thức.
+- **Docs**: Trước khi bị gỡ, ADR 0012 ("Multi-window workspace model") tuyên bố "v1 is
+  multi-window" — mâu thuẫn thẳng với bằng chứng code ở trên. `docs/review/findings-doc-reality-
+drift-2026-07-26.md` §3.3 (file này vẫn còn tồn tại trong `docs/review/`, không bị gỡ) đã viết
+  sẵn một ADR DRAFT 0030 "Single-window v1; multi-window and cross-window move deferred" (supersede
+  0012), với decision text: _"v1 là single-window... Cross-window move và 'Move pane to…' popover
+  chuyển sang 'Later'"_ — bản thân file 0030 đó **chưa bao giờ tồn tại** (chỉ là đề xuất trong audit,
+  đang chờ người quyết ở §5 của audit đó). **Cập nhật sau khi viết plan này**: `eef3f4a` đã gỡ toàn
+  bộ `docs/decisions/` — kể cả ADR 0012 gốc — nên câu hỏi "0012 có superseded hay không" không còn
+  đối tượng nào để trả lời nữa. Kết luận thực chất không đổi: bằng chứng code (coordinator.rs/
+  tauri.conf.json/menu.rs ở trên) vẫn xác nhận multi-window chưa build gì cả, và khuyến nghị "hoãn
+  khỏi v1" của audit đó (file vẫn còn, đọc được) vẫn là đánh giá hợp lý nhất hiện có — chỉ là không
+  còn đi qua con đường ADR nào để chính thức hoá.
 
-Kết luận cho plan này: `⌘⇧M`/FR-033 không phải "thiếu keyboard access cho tính năng có sẵn" (khác
-Swap) — nó là "keyboard access cho một tính năng CHƯA TỒN TẠI". Bind một chord cho một no-op sẽ tự
-mâu thuẫn với chính mục tiêu của plan (không đề xuất phím cho có). **Đề xuất cụ thể**: một khi ADR
-0030 (hoặc quyết định tương đương) được chốt — hoặc nếu người quyết chọn giữ ADR 0012 và thật sự
-build multi-window — tách "Move pane to…" (FR-033, `⌘⇧M`, popover, Rust coordinator wiring) thành
-một plan riêng, độc lập với plan keyboard-parity này (khối lượng việc lớn hơn nhiều một task phím
-tắt: cần dựng `WebviewWindow` creation, popover UI liệt kê destination theo BF-Rule 21/22, wiring
-`move_pane_ownership` từ frontend, và toàn bộ FR-034/035/036).
+Kết luận cho plan này: `⌘⇧M`/FR-033 (spec cũ, đã gỡ) không phải "thiếu keyboard access cho tính năng
+có sẵn" (khác Swap) — nó là "keyboard access cho một tính năng CHƯA TỒN TẠI". Bind một chord cho một
+no-op sẽ tự mâu thuẫn với chính mục tiêu của plan (không đề xuất phím cho có). **Đề xuất cụ thể**:
+một khi người dùng chốt giữ single-window cho v1 (hướng phác thảo 0030 ở trên, giờ không còn ADR
+nào để nộp) — hoặc ngược lại chọn thật sự build multi-window (đảo hướng ADR 0012 cũ) — tách "Move
+pane to…" (`⌘⇧M`, popover, Rust coordinator wiring) thành một plan riêng, độc lập với plan
+keyboard-parity này (khối lượng việc lớn hơn nhiều một task phím tắt: cần dựng `WebviewWindow`
+creation, popover UI liệt kê destination, wiring `move_pane_ownership` từ frontend, và toàn bộ luồng
+di chuyển pane giữa cửa sổ).
 
 ---
 
@@ -251,7 +269,7 @@ tắt: cần dựng `WebviewWindow` creation, popover UI liệt kê destination 
 
 **Làm trong plan này** (Task 1-6 dưới):
 
-- `swap-left/right/up/down` — FR-032, ADR 0016, `⌘⌥⇧`+arrows.
+- `swap-left/right/up/down` — quyết định trước đó ghi ở FR-032/ADR 0016 (file đã gỡ), `⌘⌥⇧`+arrows.
 - `open-tab-options` — mở popover đổi tên/màu dot của tab đang active bằng phím, `⌘⇧R`.
 - `copy-cwd` — copy CWD của pane active vào clipboard, qua `⌘⇧C` hoặc menu Edit ▸ "Copy Working
   Directory" — action duy nhất trong 4 cái được người dùng chốt cho có menu item, xem §5. Dependency
@@ -263,14 +281,14 @@ tắt: cần dựng `WebviewWindow` creation, popover UI liệt kê destination 
 
 - Resize split bằng phím (§2d) — cần brainstorm/ADR riêng trước.
 - Reorder tab kéo-thả + phím (§2e) — net-new feature, không phải parity gap.
-- `⌘⇧M` "Move pane to…" (§3) — hạ tầng multi-window chưa tồn tại, chờ ADR 0030/quyết định tương
-  đương.
+- `⌘⇧M` "Move pane to…" (§3) — hạ tầng multi-window chưa tồn tại, chờ người dùng chốt hướng
+  single-window-v1 (draft 0030) hay build multi-window thật — xem §3.
 - `⌘O` global, chord riêng cho tabBarPosition/theme/pane-bar/notifications toggle (§2a, §2b) — đã
   keyboard-reachable, thêm chord là dư thừa.
-- Sửa `docs/REQUIREMENTS.md`'s trạng thái FR-032/033 hay tạo ADR mới — đây là câu hỏi quy trình tài
-  liệu đang chờ quyết định ở chính audit `findings-doc-reality-drift-2026-07-26.md` §4/§5 (đại diện
-  bởi "status field"/"reality gap section"/v.v. chưa chốt phương án); plan này không tự chọn thay.
-  Chỉ cập nhật `README.md` (liệt kê factual, không qua pipeline ADR).
+- Sửa trạng thái FR-032/033 hay tạo ADR mới — các file đó (`REQUIREMENTS.md`, `docs/decisions/`)
+  đã bị gỡ hoàn toàn ở `eef3f4a` cùng với toàn bộ pipeline ADR-first, nên câu hỏi này tự nó không
+  còn đối tượng; nơi ghi nhận tài liệu tương lai (nếu có) là quyết định của người dùng, không phải
+  của plan này. Chỉ cập nhật `README.md` (liệt kê factual, không qua pipeline nào).
 - Bất kỳ đổi gì trong `src-tauri/` hay `action-registry.md`.
 
 ---
@@ -279,9 +297,10 @@ tắt: cần dựng `WebviewWindow` creation, popover UI liệt kê destination 
 
 ### Quyết định đã chốt
 
-- Chord của `swap-*` (`⌘⌥⇧`+arrows) không phải tự chọn — lấy nguyên từ FR-032 AC-1/UX-DESIGN
-  §"Pane swap" (đã ADR 0016 phê duyệt từ 2026-07-09). Task 1 chỉ là implement, không phải quyết định
-  sản phẩm mới.
+- Chord của `swap-*` (`⌘⌥⇧`+arrows) không phải tự chọn — lấy nguyên từ quyết định "Pane swap" đã có
+  từ trước (trước đây ghi ở FR-032 AC-1/UX-DESIGN §"Pane swap", phê duyệt qua ADR 0016 từ
+  2026-07-09 — cả ba file đã bị gỡ ở `eef3f4a`, nội dung quyết định giữ nguyên trong Task 1). Task 1
+  chỉ là implement, không phải quyết định sản phẩm mới.
 - 4 action mới đều KHÔNG có menu item — đúng nhóm với `focus-*`, không cần đường chuột mới vì hành
   vi đích đã discoverable bằng chuột từ trước (§Global Constraints).
 - `open-tab-options` dùng lại nguyên `openPopover`/`TabPopover` đã có — không thiết kế UI mới, chỉ
@@ -289,8 +308,8 @@ tắt: cần dựng `WebviewWindow` creation, popover UI liệt kê destination 
 
 ### Discoverability của 4 action mới — đánh đổi có ý thức, không phải hệ quả phụ
 
-"Không có menu item" ở trên KHÔNG có nghĩa là 4 action này đóng trọn ADR 0006. ADR 0006 đọc đúng
-nghĩa là parity về CẢ khả năng lẫn khả năng tìm thấy. Với 3 trong 4 action (`swap-*`,
+"Không có menu item" ở trên KHÔNG có nghĩa là 4 action này đóng trọn nguyên tắc chuột và bàn phím
+đều first-class. Nguyên tắc đó đọc đúng nghĩa là parity về CẢ khả năng lẫn khả năng tìm thấy. Với 3 trong 4 action (`swap-*`,
 `open-tab-options`, `scroll-*`), điều đó ổn: mỗi action đều đã có sẵn một đường chuột riêng
 (drag-dock, click-tab mở popover, trackpad/scrollbar) — phím chỉ là đường THỨ HAI cho hành vi đã
 discoverable, đúng khung "parity" của plan, không menu item cũng không mất gì. `copy-cwd` KHÔNG nằm
@@ -430,7 +449,7 @@ không có `menu`):
 Thêm vào `DEFAULT_KEYMAP` (cạnh nhóm focus-left/right/up/down):
 
 ```ts
-// Swap the focused pane with its neighbor (FR-032, ADR 0016) — same
+// Swap the focused pane with its neighbor — same
 // direction keys as focus (⌘⌥), plus Shift for the "stronger" operation
 // (same pattern as split-row ⌘D vs split-column ⌘⇧D). CharKeyBinding, same
 // as focus-left/right/up/down above — no menu item and event.key for
@@ -947,8 +966,10 @@ Thêm cả hai vào object trả về ở cuối factory.
 
 **Phụ thuộc**: Task 1–4 (cần biết chord cuối cùng, gồm cả kết quả Bước 0 của Task 4).
 
-**Decision**: Chỉ thêm dòng vào 3 bảng đã có (Panes/Tabs/Terminal & view) — không tạo bảng mới,
-không đổi cấu trúc. Không đổi `docs/REQUIREMENTS.md`/tạo ADR (lý do ở §4).
+**Decision**: Chỉ thêm dòng vào các bảng đã có (Panes/Tabs/Terminal & view — hoặc bảng tương đương
+tại thời điểm implement, nếu README đã đổi cấu trúc giữa lúc viết và lúc chạy plan này) — không tạo
+bảng mới, không đổi cấu trúc. Không tạo ADR/sửa file requirement nào — pipeline đó đã bị gỡ, lý do
+ở §4.
 
 **Build**:
 

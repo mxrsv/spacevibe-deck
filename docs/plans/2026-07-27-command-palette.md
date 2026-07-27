@@ -429,8 +429,11 @@ settings` (không thì tự nhốt), nhưng CÒN kiểm tra riêng `editorReques
   thật, KHÁC quyết định của plan Registry về việc không đụng CONTEXT.md — họ đúng vì Action Registry
   là chi tiết triển khai nội bộ; ở đây user thực sự nhìn thấy và tương tác trực tiếp với hai khái
   niệm này, nên chúng thuộc glossary).
-- `docs/ARCHITECTURE.md` — thêm `command-palette/` vào module map §3 + một quyết định mới (D11-style,
-  mirror D10 của plan Registry) + đề xuất ADR (không tự tạo file).
+- ~~`docs/ARCHITECTURE.md` — thêm `command-palette/` vào module map §3 + một quyết định mới
+  (D11-style, mirror D10 của plan Registry) + đề xuất ADR~~ — **không còn áp dụng**:
+  `ARCHITECTURE.md` cùng toàn bộ `docs/decisions/` đã bị gỡ ở `eef3f4a`. Nội dung dự kiến (module
+  map + quyết định D11) không mất — nó sống nguyên trong §2.2/§5 của chính plan này; xem Task 10 đã
+  viết lại.
 
 **KHÔNG làm** (ranh giới với `docs/plans/2026-07-27-keyboard-parity.md` — chưa tồn tại trên đĩa,
 nêu bằng lời):
@@ -446,10 +449,10 @@ nêu bằng lời):
   Window submenu, cạnh New/Save Preset), nhưng đụng vào `menu.rs`'s Window submenu **viết tay** +
   Rust cross-check test hand-written (`window_menu_matches_registry`, plan Registry Task 7) — một
   phụ thuộc chéo sâu vào chi tiết triển khai Rust của một plan khác chưa chạy. Chrome button (mouse)
-  - chord (keyboard) + tự-liệt-kê-trong-palette đã thoả "mouse and keyboard both first-class" (ADR
-  6.  đúng mức `focus-next-attention`/`toggle-expand` đã có (hai action đó cũng không có mặt
-      trong App menu, chỉ tình cờ có trong View menu). Để dành cho một task/plan riêng sau khi plan
-      Registry ổn định.
+  - chord (keyboard) + tự-liệt-kê-trong-palette đã thoả nguyên tắc chuột và bàn phím đều first-class
+    (trước đây ADR 0006, đã gỡ), đúng mức `focus-next-attention`/`toggle-expand` đã có (hai action đó
+    cũng không có mặt trong App menu, chỉ tình cờ có trong View menu). Để dành cho một task/plan riêng
+    sau khi plan Registry ổn định.
 - **Rebind trong Settings** (đổi chord tuỳ ý) — team lead's brief gốc liệt kê nhưng loại nó ra khỏi
   "hai thứ cần plan" của message giao việc này; palette/cheat sheet chỉ CHẠY/HIỂN THỊ binding hiện
   có, không sửa được.
@@ -458,8 +461,9 @@ nêu bằng lời):
 - **Field `enabled`** — giữ nguyên quyết định của plan Registry (business logic riêng từng action,
   không phải điều kiện chung); palette hiển thị mọi action vô điều kiện giống hệt menu hôm nay
   không xám action nào, đã được plan Registry ghi nhận là giới hạn chấp nhận được.
-- **Multi-window** — không có action multi-window nào tồn tại để liệt kê (REQUIREMENTS.md AC-1
-  "Move Pane To…" chưa implement), không thuộc phạm vi.
+- **Multi-window** — không có action multi-window nào tồn tại để liệt kê ("Move Pane To…", trước
+  đây ghi ở REQUIREMENTS.md AC-1 — file đã gỡ — vẫn chưa có implementation nào, xem
+  `docs/plans/2026-07-27-keyboard-parity.md` §3 cho điều tra chi tiết), không thuộc phạm vi.
 
 ---
 
@@ -494,9 +498,13 @@ nêu bằng lời):
   — chấp nhận được cho v1 (chỉ một meta-overlay tồn tại); nếu có overlay thứ hai kiểu này sau này,
   cần một hệ thống z-index có thứ bậc rõ ràng hơn — không thuộc phạm vi plan này.
 
-### Đề xuất ADR
+### Quyết định kiến trúc cần được ghi nhận
 
-Không tự tạo file, đề xuất chạy `/adk:adr` sau khi Task 10 xong:
+Pipeline ADR-first của repo (`PIPELINE.lock`, `docs/decisions/`, cùng 6 doc phái sinh gồm
+`ARCHITECTURE.md`) đã bị gỡ bỏ hoàn toàn ở commit `eef3f4a` — không tự tạo file ADR nào, không còn
+tool `/adk:adr` để chạy. Nội dung quyết định dưới đây được giữ nguyên làm hồ sơ; nơi ghi nhận chính
+thức (nếu có) do người dùng chốt sau — xem cùng ghi chú ở `docs/plans/2026-07-27-action-registry.md`
+§5:
 
 > **Command palette là đường bàn phím tổng quát cho mọi action, cheat sheet trong app render trực
 > tiếp từ `ACTION_REGISTRY`/`DEFAULT_KEYMAP` runtime.** Palette không cấp quyền vượt quá bấm chord
@@ -2184,14 +2192,20 @@ distinguishable...").
 
 ---
 
-### Task 10: `CONTEXT.md`, `docs/ARCHITECTURE.md`, xác minh toàn bộ
+### Task 10: `CONTEXT.md`, xác minh toàn bộ
 
 **File(s)**:
 
 - [CONTEXT.md](../../CONTEXT.md)
-- [ARCHITECTURE.md](../ARCHITECTURE.md)
 
 **Phụ thuộc**: Task 1 – Task 9.
+
+**Ghi chú phạm vi — đã thu hẹp so với bản gốc**: bản đầu của task này còn nhắm cả `ARCHITECTURE.md`
+(module map + một mục quyết định D11). `ARCHITECTURE.md` cùng toàn bộ `docs/decisions/` đã bị gỡ ở
+commit `eef3f4a` — không còn file đó để sửa. Nội dung D11 (dưới đây) được giữ nguyên làm hồ sơ ngay
+trong plan này thay vì bị xoá — không có tài liệu kiến trúc nào khác để chuyển nó tới cho tới khi
+người dùng chốt một nơi lưu trữ mới (xem ghi chú tương ứng ở
+`docs/plans/2026-07-27-action-registry.md` §5). `CONTEXT.md` vẫn còn tồn tại, phần việc đó không đổi.
 
 **Decision**: Thêm 2 mục glossary mới vào `CONTEXT.md` (khác quyết định "không đụng CONTEXT.md" của
 plan Registry — action-registry là chi tiết triển khai nội bộ, còn hai khái niệm này là UI/khái
@@ -2218,7 +2232,8 @@ cannot drift from the real keymap the way a hand-written doc can.
 _Avoid_: Help, shortcuts list, keyboard reference
 ```
 
-`ARCHITECTURE.md` §3 (module map), thêm dòng cạnh `terminal/`:
+**Không còn mục tiêu `ARCHITECTURE.md`** (module map + D11) — file đó không tồn tại. Nội dung dự
+kiến được giữ nguyên dưới đây làm hồ sơ (không ghi vào đâu cả trong task này):
 
 ```
   command-palette/ command palette + cheat sheet chrome: palette-filter (pure
@@ -2226,8 +2241,6 @@ _Avoid_: Help, shortcuts list, keyboard reference
                    consumed by two Preact overlays reading action-registry
                    directly (no snapshot layer — cannot drift from the live keymap)
 ```
-
-`ARCHITECTURE.md` §5, thêm sau D10 (của plan Registry, giả định đã tồn tại):
 
 ```markdown
 ### D11 — Command palette grants no access beyond its target action's own chord
@@ -2249,14 +2262,11 @@ _Avoid_: Help, shortcuts list, keyboard reference
   `isChromeTextField` guard for the leak-prevention case, and would require extra plumbing to avoid
   blocking the palette's OWN confirm path (which must be allowed to dispatch anything the same
   action's direct chord could).
-
-**ADR:** proposed, not yet recorded — see `docs/plans/2026-07-27-command-palette.md` §5.
 ```
 
 **Verify**:
 
 - `rg -n "Command palette|Cheat sheet" CONTEXT.md` → 2 mục mới xuất hiện.
-- `rg -n "command-palette" docs/ARCHITECTURE.md` → ít nhất 2 dòng.
 - Chạy TOÀN BỘ verify của mọi task trước, liền một lượt, không chỉ từng task riêng lẻ:
   - `npm test` (toàn bộ suite).
   - `npx tsc --noEmit`.
@@ -2274,4 +2284,5 @@ _Avoid_: Help, shortcuts list, keyboard reference
     (registry-driven, KHÔNG phải dòng tĩnh — xác nhận nó không bị lặp hai lần).
   - Nút "Command Palette" mới trong `ChromeActions` mở đúng palette bằng chuột.
 
-Sau khi task này xanh, đề xuất chạy `/adk:adr` với nội dung D11 ở trên.
+Sau khi task này xanh, nội dung D11 ở trên vẫn chờ một nơi lưu trữ chính thức — không tự tạo
+ADR/file nào, pipeline đó đã bị gỡ (xem ghi chú đầu Task 10).

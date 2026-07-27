@@ -233,11 +233,11 @@ cho `id`, nên `ActionId` là union thật, `Partial<Record<ActionId, () => void
 
 Team lead nêu 3 hướng, đây là quyết định và lý do:
 
-| Phương án                                  | Mô tả                                                                                                                                                                                        | Trade-off                                                                                                                                                                                                                                                                                                                                                                 |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A — push runtime                           | Frontend gọi Tauri command sau khi webview sẵn sàng, Rust dựng menu từ payload                                                                                                               | Đúng nguồn-sự-thật-duy-nhất nhất, nhưng menu xuất hiện **sau** frame đầu (flash menu mặc định/rỗng rồi mới đổi) — vi phạm cảm giác app native mà `menu.rs` hiện tại cố giữ. Thêm một IPC command + capability mới cho thứ vốn là dữ liệu tĩnh — đi ngược tinh thần capability tối thiểu đã thấy ở ADR 0027 (`notification:allow-*` cụ thể, không `notification:default`). |
-| B — **codegen lúc build** ✅ (chọn)        | Script Node/TS đọc registry, sinh `.rs` (data + hai hàm dựng submenu thuần-registry), commit file sinh, tự chạy qua npm `predev`/`prebuild` (Tauri đã gọi `npm run dev`/`npm run build` sẵn) | Đồng bộ, không flicker, không capability mới, khớp "Backend: Rust, thin" (ARCHITECTURE.md §1). Cái giá: cần một bước build mới (nhẹ — 1 script, 1 devDependency `tsx`), và `cargo test`/`cargo check` chạy ĐƠN LẺ (không qua npm) cần file sinh đã có sẵn trên đĩa → phải commit file sinh vào git + có bước kiểm tra "không lỗi thời" (Task 6).                          |
-| C — test đối chiếu, `menu.rs` vẫn viết tay | Giữ nguyên `menu.rs`, thêm test so registry với string literal trong đó                                                                                                                      | Rủi ro thấp nhất, không cần tooling mới — nhưng KHÔNG xoá được việc sửa 2 chỗ cho một action mới (chính bug `09f5c4d` vừa minh hoạ), chỉ thêm lưới an toàn phát hiện lệch sau khi đã lệch. Không thoả đúng yêu cầu "sinh ra menu macOS" của team lead.                                                                                                                    |
+| Phương án                                  | Mô tả                                                                                                                                                                                        | Trade-off                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A — push runtime                           | Frontend gọi Tauri command sau khi webview sẵn sàng, Rust dựng menu từ payload                                                                                                               | Đúng nguồn-sự-thật-duy-nhất nhất, nhưng menu xuất hiện **sau** frame đầu (flash menu mặc định/rỗng rồi mới đổi) — vi phạm cảm giác app native mà `menu.rs` hiện tại cố giữ. Thêm một IPC command + capability mới cho thứ vốn là dữ liệu tĩnh — đi ngược tinh thần capability tối thiểu đang áp dụng trong repo (`src-tauri/capabilities/default.json:13-15` khai cụ thể `notification:allow-is-permission-granted`/`allow-request-permission`/`allow-notify`, không một `notification:default` chung chung). |
+| B — **codegen lúc build** ✅ (chọn)        | Script Node/TS đọc registry, sinh `.rs` (data + hai hàm dựng submenu thuần-registry), commit file sinh, tự chạy qua npm `predev`/`prebuild` (Tauri đã gọi `npm run dev`/`npm run build` sẵn) | Đồng bộ, không flicker, không capability mới, khớp nguyên tắc "Backend: Rust, thin" (Rust chỉ dựng UI từ dữ liệu đã sinh sẵn, không tự quyết định gì thêm). Cái giá: cần một bước build mới (nhẹ — 1 script, 1 devDependency `tsx`), và `cargo test`/`cargo check` chạy ĐƠN LẺ (không qua npm) cần file sinh đã có sẵn trên đĩa → phải commit file sinh vào git + có bước kiểm tra "không lỗi thời" (Task 6).                                                                                                 |
+| C — test đối chiếu, `menu.rs` vẫn viết tay | Giữ nguyên `menu.rs`, thêm test so registry với string literal trong đó                                                                                                                      | Rủi ro thấp nhất, không cần tooling mới — nhưng KHÔNG xoá được việc sửa 2 chỗ cho một action mới (chính bug `09f5c4d` vừa minh hoạ), chỉ thêm lưới an toàn phát hiện lệch sau khi đã lệch. Không thoả đúng yêu cầu "sinh ra menu macOS" của team lead.                                                                                                                                                                                                                                                        |
 
 **Chọn B cho File/View** (hai submenu hôm nay **hoàn toàn** là action-registry item, không Cocoa
 builtin nào chen vào) → sinh toàn bộ hàm dựng submenu, `menu.rs` chỉ gọi.
@@ -305,7 +305,9 @@ item viết tay với đúng bộ ba này — lệch là test đỏ ngay (đây 
   có ở `menu.rs` từ `09f5c4d`).
 - Test không-trùng-binding (same-kind).
 - Codegen `menu_registry.rs` cho File/View; test đối chiếu cho App/Edit/Window.
-- Cập nhật `ARCHITECTURE.md`, `README.md`; đề xuất ADR (không tự tạo file ADR).
+- Cập nhật `README.md`; ghi lại quyết định kiến trúc cross-cutting này ở §5 (nơi lưu trữ chính thức
+  sẽ do người dùng chốt sau — pipeline ADR-first của repo đã bị gỡ ở `eef3f4a`, `ARCHITECTURE.md`
+  không còn tồn tại để cập nhật).
 
 **KHÔNG làm** (chừa cho plan sau, hoặc đã xong trước khi plan này bắt đầu):
 
@@ -333,8 +335,9 @@ item viết tay với đúng bộ ba này — lệch là test đỏ ngay (đây 
   "enabled": true bất kể state; giữ nguyên giới hạn này, chỉ đảm bảo _hành vi khi click_ đúng
   (không mở dialog sai lúc), không đảm bảo _hình thức_ item xám đi.
 - Cargo dependency mới, đổi capability Tauri, đổi UI/CSS.
-- Multi-window action nào chưa tồn tại (`⌘⇧M` Move Pane To… trong REQUIREMENTS.md AC-1 chưa có
-  implementation — không thuộc phạm vi refactor này).
+- Multi-window action nào chưa tồn tại (`⌘⇧M` Move Pane To… — xem điều tra chi tiết ở
+  `docs/plans/2026-07-27-keyboard-parity.md` §3: hạ tầng gần như 0%, chưa có implementation nào —
+  không thuộc phạm vi refactor này).
 
 ## 5. Quyết định đã chốt, rủi ro, đề xuất ADR
 
@@ -369,10 +372,14 @@ item viết tay với đúng bộ ba này — lệch là test đỏ ngay (đây 
   cú pháp không có khái niệm physical-code), việc đó ngoài phạm vi plan này — ghi nhận là giới hạn
   đã biết, không phải bug bỏ sót.
 
-### Đề xuất ADR
+### Quyết định kiến trúc cần được ghi nhận
 
-Plan này KHÔNG tự tạo file ADR, nhưng đề xuất một ADR mới sau khi implement xong, vì đây là quyết
-định kiến trúc cross-cutting thuộc diện `affects: [ARCHITECTURE]` theo pipeline ADR-first của repo:
+Pipeline ADR-first của repo (`PIPELINE.lock`, `docs/decisions/`, cùng 6 doc phái sinh gồm
+`ARCHITECTURE.md`) đã bị gỡ bỏ hoàn toàn ở commit `eef3f4a` — plan này không còn nơi nào để nộp
+một ADR mới hay cập nhật `ARCHITECTURE.md`. Đây vẫn là một quyết định kiến trúc cross-cutting đáng
+được ghi nhận ở đâu đó; nội dung dưới đây được giữ nguyên làm hồ sơ, còn nơi ghi nhận chính thức
+(ADR mới nếu một pipeline khác được dựng lại, một mục trong doc kiến trúc tương lai, hay đơn giản
+là chính plan này đứng làm hồ sơ duy nhất) do người dùng chốt sau:
 
 > **Action Registry là nguồn sự thật duy nhất cho keyboard shortcut + macOS menu.**
 > Mọi action khai báo một lần trong `src/terminal/action-registry.ts` (id/label/scope/vị trí
@@ -390,8 +397,8 @@ Plan này KHÔNG tự tạo file ADR, nhưng đề xuất một ADR mới sau kh
 > `PhysicalKeyBinding` chỉ dành cho action không có menu item, nơi webview là đường duy nhất và ký
 > tự sinh ra phụ thuộc Shift + layout.
 
-Chạy `/adk:adr` với nội dung trên sau khi Task 9 xong, để `git log` của implementation khớp với
-ADR record.
+Không tự tạo file ADR/chạy tool ADR pipeline nào — pipeline đó không còn tồn tại (xem ghi chú đầu
+mục này). Giữ nội dung trên sẵn sàng để dán vào bất kỳ nơi ghi nhận nào người dùng chọn sau này.
 
 ---
 
@@ -1360,57 +1367,28 @@ bằng `readFileSync` + so chuỗi, `process.exit(1)` kèm thông báo nếu kh�
 
 ---
 
-### Task 8: Cập nhật `ARCHITECTURE.md`, `README.md`
+### Task 8: Cập nhật `README.md`
 
 **File(s)**:
 
-- [ARCHITECTURE.md](../ARCHITECTURE.md)
 - [README.md](../../README.md)
 
 **Phụ thuộc**: Task 1 – Task 7
 
-**Decision**: `ARCHITECTURE.md` — thêm `action-registry.ts` vào module map §3 (`terminal/`), thêm
-một quyết định mới trong §5 (D10-style) ghi lại phương án codegen + trade-off đã chọn, note trong
-§9 (IPC catalog) rằng menu macOS không thêm IPC command mới. `README.md` — bảng shortcut cập nhật
-đúng entry `⌘⇧N` (New Layout Preset — đã có từ `09f5c4d`, giữ nguyên), thêm một câu ở đầu mục
-"Keyboard shortcuts" ghi rằng bảng này khớp `src/terminal/action-registry.ts`. **Không đụng
-CONTEXT.md** — Action Registry là chi tiết triển khai nội bộ, không phải khái niệm domain sản phẩm.
-**Không đụng UX-DESIGN.md** — không có bảng shortcut tổng hợp để đồng bộ.
+**Ghi chú phạm vi — đã thu hẹp so với bản gốc**: bản đầu của task này còn nhắm cả `ARCHITECTURE.md`
+(thêm `action-registry.ts` vào module map, thêm một mục D10 ghi trade-off codegen). `ARCHITECTURE.md`
+cùng toàn bộ 6 doc phái sinh và `docs/decisions/` đã bị gỡ bỏ ở commit `eef3f4a` — không còn file
+đó để sửa. Lập luận/nội dung D10 dự kiến không mất: nó đã sống đầy đủ ở §2.2 (bảng trade-off A/B/C)
+và §5 ("Quyết định đã chốt") của chính plan này — không cần chép lại vào đâu nữa cho tới khi có một
+nơi ghi nhận kiến trúc mới (xem §5's "Quyết định kiến trúc cần được ghi nhận"). Task này giờ chỉ còn
+phần `README.md`, vẫn còn nguyên giá trị.
+
+**Decision**: `README.md` — bảng shortcut cập nhật đúng entry `⌘⇧N` (New Layout Preset — đã có từ
+`09f5c4d`, giữ nguyên), thêm một câu ở đầu mục "Keyboard shortcuts" ghi rằng bảng này khớp
+`src/terminal/action-registry.ts`. **Không đụng CONTEXT.md** — Action Registry là chi tiết triển
+khai nội bộ, không phải khái niệm domain sản phẩm.
 
 **Build**:
-
-ARCHITECTURE.md §3, thêm vào khối `src/` liệt kê module:
-
-```
-  terminal/       imperative domain: TabManager, TerminalManager, Pane, layout,
-                   action-registry (keyboard + menu SSOT), keymap (event matching,
-                   derived from action-registry), AgentAttentionTracker, agent-notifier
-```
-
-ARCHITECTURE.md §5, thêm sau D9:
-
-```markdown
-### D10 — Action registry: keyboard shortcut + macOS menu single source of truth
-
-**Chosen: TS registry (`src/terminal/action-registry.ts`) + build-time codegen for
-Cocoa-builtin-free submenus, hand-written + Rust test cross-check for the rest.**
-
-- `ACTION_REGISTRY` holds id/label/scope/menu-position once; `keymap.ts` derives event
-  matching, `tab-manager.ts`'s `overlayBlocksAction` reads `scope`.
-- `scripts/generate-menu.ts` → `src-tauri/src/menu_registry.rs` (committed, npm
-  `predev`/`prebuild`-triggered): File/View submenus (100% registry items) generated in
-  full; App/Edit/Window (interleave native Cocoa items) stay hand-written in `menu.rs`,
-  checked against generated const tables by a `cargo test`.
-
-**Rejected:**
-
-- _Frontend pushes the registry to Rust at runtime after the webview is ready_ — menu
-  would flash/reflow after first frame; adds an IPC command + capability for static data.
-- _Keep `menu.rs` fully hand-written, test-only cross-check for every submenu_ — doesn't
-  eliminate the "edit two places" tax for File/View, only detects drift after the fact.
-
-**ADR:** proposed, not yet recorded — see `docs/plans/2026-07-27-action-registry.md` §5.
-```
 
 README.md, đầu mục "## Keyboard shortcuts":
 
@@ -1423,8 +1401,8 @@ Every shortcut below, and its macOS menu counterpart, comes from one source:
 
 **Verify**:
 
-- `rg -n "action-registry" docs/ARCHITECTURE.md README.md` trả về ít nhất 2 dòng.
-- Đọc lại toàn bộ `ARCHITECTURE.md` §3, §5, §9 — không có câu nào nói sai.
+- `rg -n "action-registry" README.md` trả về ít nhất 1 dòng.
+- Đọc lại toàn bộ mục "## Keyboard shortcuts" — không có câu nào nói sai.
 
 ---
 
@@ -1461,4 +1439,5 @@ này kể từ khi task 1 bắt đầu, đối chiếu lại trước khi báo h
     `Cmd+Shift+[` vẫn đúng focus-next/prev và next-tab/prev-tab (fix từ `a6ac532`, xác nhận vẫn
     đúng sau khi registry hoá).
 
-Sau khi task này xanh, đề xuất chạy `/adk:adr` với nội dung ở §5 để ghi lại quyết định.
+Sau khi task này xanh, quyết định kiến trúc ở §5 ("Quyết định kiến trúc cần được ghi nhận") vẫn
+chờ một nơi lưu trữ chính thức — không tự tạo ADR/file nào, pipeline đó đã bị gỡ (xem §5).
