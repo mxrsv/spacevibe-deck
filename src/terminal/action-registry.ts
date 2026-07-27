@@ -353,6 +353,26 @@ export const ACTION_REGISTRY = [
   { id: "swap-right", label: "Swap Pane Right", scope: "pane" },
   { id: "swap-up", label: "Swap Pane Up", scope: "pane" },
   { id: "swap-down", label: "Swap Pane Down", scope: "pane" },
+  // Scrollback navigation (docs/plans/2026-07-27-keyboard-parity.md Task 4) —
+  // same "already has a mouse path" reasoning as swap-*/focus-* above
+  // (trackpad/scrollbar), so no menu item. Tier "pane": acts on the active
+  // pane's viewport, same as clear-buffer/find above.
+  {
+    id: "scroll-page-up",
+    label: "Scroll Up a Page",
+    scope: "pane",
+  },
+  {
+    id: "scroll-page-down",
+    label: "Scroll Down a Page",
+    scope: "pane",
+  },
+  { id: "scroll-to-top", label: "Scroll to Top", scope: "pane" },
+  {
+    id: "scroll-to-bottom",
+    label: "Scroll to Bottom (Latest Output)",
+    scope: "pane",
+  },
   {
     id: "next-tab",
     label: "Next Tab",
@@ -603,6 +623,17 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
     shift: true,
     action: "swap-down",
   },
+  // Scrollback navigation — idiomatic terminal-app convention (iTerm2, VS
+  // Code integrated terminal both use Shift+Page*/Home/End for this). Plain
+  // PageUp/PageDown/Home/End are left untouched — they still reach the PTY
+  // for the shell/readline's own cursor handling. CharKeyBinding: no menu
+  // item, and event.key for these named keys ("PageUp" etc.) is stable
+  // across layout/Shift — the same reasoning as "enter"/arrows above, not a
+  // Shift-dependent punctuation char like the bracket keys (RULE above).
+  { key: "pageup", shift: true, action: "scroll-page-up" },
+  { key: "pagedown", shift: true, action: "scroll-page-down" },
+  { key: "home", shift: true, action: "scroll-to-top" },
+  { key: "end", shift: true, action: "scroll-to-bottom" },
   ...TAB_SELECT_BINDINGS,
   SELECT_LAST_TAB_BINDING,
 ];

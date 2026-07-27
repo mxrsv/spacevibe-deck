@@ -114,6 +114,8 @@ function fakePane(
     writeln() {},
     fit() {},
     clear() {},
+    scrollPage() {},
+    scrollToEdge() {},
     focus() {
       element.focus();
       events.onFocus(id);
@@ -2961,6 +2963,77 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
     await flush();
 
     expect(writeText).not.toHaveBeenCalled();
+
+    tm.dispose();
+  });
+});
+
+// Scrollback navigation (⇧PageUp/⇧PageDown/⇧Home/⇧End,
+// docs/plans/2026-07-27-keyboard-parity.md Task 4): routing + overlay-guard
+// gating only — TerminalManager.scrollActivePage/scrollActiveToEdge's own
+// delegation is covered directly in terminal-manager.test.ts.
+describe("createTabManager scroll-page-up/down, scroll-to-top/bottom (Task 4)", () => {
+  afterEach(() => {
+    settingsOpen.value = false;
+  });
+
+  async function onePaneSetup(): Promise<{
+    tm: TabManager;
+    panes: Map<number, Pane>;
+  }> {
+    const panes = new Map<number, Pane>();
+    const createPane: CreatePaneFn = (id, _settings, events) => {
+      const pane = fakePane(id, events);
+      panes.set(id, pane);
+      return pane;
+    };
+    const { tm } = setup({ deps: { createPane } });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+    return { tm, panes };
+  }
+
+  it("scroll-page-up/down route to scrollPage(-1)/scrollPage(1) on the active pane", async () => {
+    const { tm, panes } = await onePaneSetup();
+    const scrollPageSpy = vi.spyOn(panes.get(1)!, "scrollPage");
+
+    tm.runAction("scroll-page-up");
+    tm.runAction("scroll-page-down");
+    await flush();
+
+    expect(scrollPageSpy).toHaveBeenNthCalledWith(1, -1);
+    expect(scrollPageSpy).toHaveBeenNthCalledWith(2, 1);
+
+    tm.dispose();
+  });
+
+  it("scroll-to-top/scroll-to-bottom route to scrollToEdge('top')/('bottom') on the active pane", async () => {
+    const { tm, panes } = await onePaneSetup();
+    const scrollToEdgeSpy = vi.spyOn(panes.get(1)!, "scrollToEdge");
+
+    tm.runAction("scroll-to-top");
+    tm.runAction("scroll-to-bottom");
+    await flush();
+
+    expect(scrollToEdgeSpy).toHaveBeenNthCalledWith(1, "top");
+    expect(scrollToEdgeSpy).toHaveBeenNthCalledWith(2, "bottom");
+
+    tm.dispose();
+  });
+
+  it("all four are blocked while Settings is open, like every other pane-tier action", async () => {
+    const { tm, panes } = await onePaneSetup();
+    const scrollPageSpy = vi.spyOn(panes.get(1)!, "scrollPage");
+    const scrollToEdgeSpy = vi.spyOn(panes.get(1)!, "scrollToEdge");
+
+    settingsOpen.value = true;
+    tm.runAction("scroll-page-up");
+    tm.runAction("scroll-to-top");
+    await flush();
+
+    expect(scrollPageSpy).not.toHaveBeenCalled();
+    expect(scrollToEdgeSpy).not.toHaveBeenCalled();
 
     tm.dispose();
   });

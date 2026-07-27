@@ -100,6 +100,10 @@ export interface TerminalManager {
   focusPane(id: number): boolean;
   /** Clear the active pane's buffer, keeping the prompt line (Cmd+K). */
   clearActive(): void;
+  /** Scroll the active pane's viewport by one page (⇧PageUp/⇧PageDown). */
+  scrollActivePage(dir: 1 | -1): void;
+  /** Jump the active pane's viewport to the top or bottom of scrollback. */
+  scrollActiveToEdge(edge: "top" | "bottom"): void;
   /** Open the search bar on the active pane (Cmd+F). */
   openSearch(): void;
   /**
@@ -560,6 +564,16 @@ export function createTerminalManager(
     clearActive() {
       if (activeId !== null) {
         life.panes.get(activeId)?.clear();
+      }
+    },
+    scrollActivePage(dir) {
+      if (activeId !== null) {
+        life.panes.get(activeId)?.scrollPage(dir);
+      }
+    },
+    scrollActiveToEdge(edge) {
+      if (activeId !== null) {
+        life.panes.get(activeId)?.scrollToEdge(edge);
       }
     },
     openSearch() {

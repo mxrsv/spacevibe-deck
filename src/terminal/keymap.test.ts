@@ -239,6 +239,40 @@ describe("matchBinding", () => {
     expect(matchBinding(keyEvent("ArrowLeft"))).toBeNull();
   });
 
+  // Gap found while adding Task 4's own matchBinding tests: swap-* (Task 1,
+  // FR-032) never got one — routing/behavior were covered in
+  // tab-manager.test.ts/terminal-manager.test.ts, but not the actual chord
+  // match itself. Closing it here.
+  it("matches Cmd+Option+Shift+Arrows to swap-pane (FR-032)", () => {
+    const mods = { metaKey: true, altKey: true, shiftKey: true };
+    expect(matchBinding(keyEvent("ArrowLeft", mods))).toBe("swap-left");
+    expect(matchBinding(keyEvent("ArrowRight", mods))).toBe("swap-right");
+    expect(matchBinding(keyEvent("ArrowUp", mods))).toBe("swap-up");
+    expect(matchBinding(keyEvent("ArrowDown", mods))).toBe("swap-down");
+  });
+
+  it("matches Shift+PageUp/PageDown/Home/End to scrollback navigation (Task 4)", () => {
+    expect(matchBinding(keyEvent("PageUp", { shiftKey: true }))).toBe(
+      "scroll-page-up",
+    );
+    expect(matchBinding(keyEvent("PageDown", { shiftKey: true }))).toBe(
+      "scroll-page-down",
+    );
+    expect(matchBinding(keyEvent("Home", { shiftKey: true }))).toBe(
+      "scroll-to-top",
+    );
+    expect(matchBinding(keyEvent("End", { shiftKey: true }))).toBe(
+      "scroll-to-bottom",
+    );
+  });
+
+  it("does not scroll on bare PageUp/PageDown/Home/End — those still reach the PTY", () => {
+    expect(matchBinding(keyEvent("PageUp"))).toBeNull();
+    expect(matchBinding(keyEvent("PageDown"))).toBeNull();
+    expect(matchBinding(keyEvent("Home"))).toBeNull();
+    expect(matchBinding(keyEvent("End"))).toBeNull();
+  });
+
   it("matches Cmd+Shift+S as save-preset", () => {
     expect(matchBinding(keyEvent("s", { metaKey: true, shiftKey: true }))).toBe(
       "save-preset",

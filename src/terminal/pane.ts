@@ -46,6 +46,10 @@ export interface Pane {
   fit(): void;
   /** Drop scrollback and keep only the current prompt line (Cmd+K). */
   clear(): void;
+  /** Scroll the viewport by one page; positive = down, negative = up. */
+  scrollPage(dir: 1 | -1): void;
+  /** Jump to the very top (oldest) or bottom (latest output) of scrollback. */
+  scrollToEdge(edge: "top" | "bottom"): void;
   focus(): void;
   applySettings(next: Settings): void;
   /** Update the header bar (dot color, cwd, process badge). */
@@ -312,6 +316,9 @@ export function createPane(
     writeln: (line) => term.writeln(line),
     fit,
     clear: () => term.clear(),
+    scrollPage: (dir) => term.scrollPages(dir),
+    scrollToEdge: (edge) =>
+      edge === "top" ? term.scrollToTop() : term.scrollToBottom(),
     focus: () => term.focus(),
     applySettings,
     setHeaderInfo,

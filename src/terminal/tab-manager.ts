@@ -879,6 +879,10 @@ export function createTabManager(
     "swap-right": () => activeManager()?.swapDirection("right"),
     "swap-up": () => activeManager()?.swapDirection("up"),
     "swap-down": () => activeManager()?.swapDirection("down"),
+    "scroll-page-up": () => activeManager()?.scrollActivePage(-1),
+    "scroll-page-down": () => activeManager()?.scrollActivePage(1),
+    "scroll-to-top": () => activeManager()?.scrollActiveToEdge("top"),
+    "scroll-to-bottom": () => activeManager()?.scrollActiveToEdge("bottom"),
     // Opens the same rename/dot-color popover the tab click already opens —
     // TabPopover itself is unchanged, this only adds the keyboard trigger.
     // Unknown active tab (no tabs yet) → no-op, nothing to request.

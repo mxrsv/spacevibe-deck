@@ -37,6 +37,8 @@ function fakePane(
       fitCounts?.set(id, (fitCounts.get(id) ?? 0) + 1);
     },
     clear() {},
+    scrollPage() {},
+    scrollToEdge() {},
     focus() {
       if (emitFocusEvent) {
         events.onFocus(id);
@@ -66,15 +68,19 @@ function setup(emitFocusEvent = true): {
   onPaneFocus: ReturnType<typeof vi.fn>;
   eventsById: Map<number, PaneEvents>;
   fitCounts: Map<number, number>;
+  panesById: Map<number, Pane>;
 } {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const pty = createMemoryPtyClient({ nextId: 1 });
   const eventsById = new Map<number, PaneEvents>();
   const fitCounts = new Map<number, number>();
+  const panesById = new Map<number, Pane>();
   const createPane: CreatePaneFn = (id, _settings, events) => {
     eventsById.set(id, events);
-    return fakePane(id, events, emitFocusEvent, fitCounts);
+    const pane = fakePane(id, events, emitFocusEvent, fitCounts);
+    panesById.set(id, pane);
+    return pane;
   };
   const onAttentionSignal = vi.fn();
   const onPaneFocus = vi.fn();
@@ -91,6 +97,7 @@ function setup(emitFocusEvent = true): {
     onPaneFocus,
     eventsById,
     fitCounts,
+    panesById,
   };
 }
 
@@ -345,5 +352,50 @@ describe("createTerminalManager show", () => {
     }
     expect(onPaneFocus).not.toHaveBeenCalled();
     expect(tm.activePaneId()).toBe(activeBefore);
+  });
+});
+
+// Scrollback navigation (docs/plans/2026-07-27-keyboard-parity.md Task 4):
+// thin delegation to the active pane's own scrollPage/scrollToEdge (Pane
+// wraps xterm's own scrollPages/scrollToTop/scrollToBottom — untested here,
+// same convention as clear()/pane.clear(): no test in this codebase
+// exercises createPane's real xterm wiring directly, every layer verifies
+// delegation against a fake Pane instead).
+describe("createTerminalManager scrollActivePage / scrollActiveToEdge", () => {
+  it("scrollActivePage delegates to the active pane's scrollPage with the given direction", async () => {
+    const { tm, panesById } = setup();
+    await tm.initFresh();
+    const id = tm.activePaneId();
+    expect(id).not.toBeNull();
+    const scrollPageSpy = vi.spyOn(panesById.get(id!)!, "scrollPage");
+
+    tm.scrollActivePage(-1);
+    tm.scrollActivePage(1);
+
+    expect(scrollPageSpy).toHaveBeenNthCalledWith(1, -1);
+    expect(scrollPageSpy).toHaveBeenNthCalledWith(2, 1);
+  });
+
+  it("scrollActiveToEdge delegates to the active pane's scrollToEdge with the given edge", async () => {
+    const { tm, panesById } = setup();
+    await tm.initFresh();
+    const id = tm.activePaneId();
+    expect(id).not.toBeNull();
+    const scrollToEdgeSpy = vi.spyOn(panesById.get(id!)!, "scrollToEdge");
+
+    tm.scrollActiveToEdge("top");
+    tm.scrollActiveToEdge("bottom");
+
+    expect(scrollToEdgeSpy).toHaveBeenNthCalledWith(1, "top");
+    expect(scrollToEdgeSpy).toHaveBeenNthCalledWith(2, "bottom");
+  });
+
+  it("both are a safe no-op with no active pane", () => {
+    const { tm } = setup();
+
+    expect(() => {
+      tm.scrollActivePage(1);
+      tm.scrollActiveToEdge("top");
+    }).not.toThrow();
   });
 });
