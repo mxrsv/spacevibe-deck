@@ -111,6 +111,14 @@ export function createPane(
     // required for the UnicodeGraphemesAddon below.
     allowProposedApi: true,
     cursorBlink: true,
+    // A thin beam rather than xterm's default block. Only the starting style:
+    // a program that emits DECSCUSR (`ESC [ n q` — vi mode, some TUIs) still
+    // owns the cursor from then on, which is the correct precedence.
+    cursorStyle: "bar",
+    // Thinnest xterm allows: the option is floored to an integer and anything
+    // below 1 throws. On a Retina panel 1 CSS px still paints as 2 device
+    // pixels, so this is the hairline floor without patching the renderer.
+    cursorWidth: 1,
     fontSize: initial.fontSize,
     fontFamily: toFontStack(initial.fontFamily),
     lineHeight: 1.25,
