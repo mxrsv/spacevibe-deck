@@ -8,6 +8,7 @@ import { isBuiltIn, type Preset } from "../lib/preset-schema";
 import {
   folderName,
   formatRelativeTime,
+  partitionRecents,
   resolveAgentChoice,
 } from "../lib/workspace-recents";
 import type { AgentChoice, RecentWorkspace } from "../lib/workspace-recents";
@@ -19,8 +20,8 @@ import {
   presetsData,
   renamePreset,
 } from "../presets/presets-store";
-import { workspacesData } from "./workspaces-store";
-import { LogoPanel } from "./logo-panel";
+import { removeWorkspaceRecents, workspacesData } from "./workspaces-store";
+import { logoDataUrl } from "../settings/logo-store";
 import { PresetThumb } from "../presets/preset-thumb";
 import claudeLogo from "../assets/agent-claude.svg";
 import codexLogo from "../assets/agent-codex.svg";
@@ -60,6 +61,18 @@ const AGENT_LOGOS: Readonly<Record<string, string>> = {
 
 function agentLogo(name: string): string | undefined {
   return AGENT_LOGOS[name];
+}
+
+/** The default Deck mark, shown until the user sets a logo in Settings. */
+function DefaultMark() {
+  return (
+    <svg viewBox="0 0 48 48" role="img" aria-label="Deck">
+      <rect x="6" y="6" width="16" height="16" rx="2" />
+      <rect x="26" y="6" width="16" height="16" rx="2" />
+      <rect x="6" y="26" width="16" height="16" rx="2" />
+      <rect x="26" y="26" width="16" height="16" rx="2" />
+    </svg>
+  );
 }
 
 export function OpenBoard({
@@ -127,6 +140,10 @@ export function OpenBoard({
   useEffect(() => {
     const paths = recents.map((recent) => recent.path);
     if (paths.length === 0) {
+      // Removing the last rows must also clear the stale flags — a path left
+      // in `missing` would keep blocking Open for a folder picked again after
+      // being recreated on disk.
+      missing.value = new Set();
       return;
     }
     let cancelled = false;
@@ -149,6 +166,19 @@ export function OpenBoard({
   const workspaceValid =
     selectedPath.value !== null && !missing.value.has(selectedPath.value);
 
+  // The pending agent choice (usually a row's remembered one) may point at a
+  // CLI no longer on $PATH — resolveAgentChoice silently falls back, so the
+  // footer must warn before the user opens with something they did not pick
+  // (parity with the old per-row is-stale marker). Quiet when detect found
+  // nothing at all: the whole board already degrades to Shell only (FR-025).
+  const pendingAgent = selectedAgent.value;
+  const staleAgent =
+    typeof pendingAgent === "string" &&
+    agents.value.length > 0 &&
+    !agents.value.some((agent) => agent.name === pendingAgent)
+      ? pendingAgent
+      : null;
+
   // A just-picked folder that is not in Recents yet shows as a live entry at
   // the top of the list (selected), rather than a separate line — it only
   // lands in `workspaces.json` once the user actually opens it.
@@ -157,6 +187,7 @@ export function OpenBoard({
     pickedPath !== null && !recents.some((r) => r.path === pickedPath)
       ? [{ path: pickedPath, lastOpenedAt: Date.now() }, ...recents]
       : recents;
+  const groups = partitionRecents(displayRecents, missing.value);
 
   /**
    * What the footer says instead of the "Open X as Y with Z" preview, and
@@ -180,7 +211,14 @@ export function OpenBoard({
               text: `${folderName(pickedPath)} is missing — pick another folder`,
               warn: true,
             }
-          : null;
+          : staleAgent !== null
+            ? {
+                text: `${agentLabel(staleAgent)} isn't installed — opens with ${
+                  effectiveAgent === null ? "Shell" : agentLabel(effectiveAgent)
+                }`,
+                warn: true,
+              }
+            : null;
 
   /** Apply a recent's remembered combo when it is picked (still overridable). */
   function selectWorkspace(path: string): void {
@@ -195,6 +233,46 @@ export function OpenBoard({
     }
     selectedAgent.value =
       typeof entry?.lastAgent === "string" ? entry.lastAgent : undefined;
+  }
+
+  /**
+   * Remove rows from Recents, moving the selection off them FIRST — if the
+   * selected path left the list while still selected, `displayRecents` would
+   * fabricate a live entry for it and the row would come straight back.
+   *
+   * Reads the store, not this render's closure: a second removal landing
+   * before the re-render must not see already-deleted rows, or it could move
+   * the selection onto one of them and resurrect it. Paths that are not
+   * actually stored (the fabricated just-picked row) are left untouched, so
+   * ⌫ can never discard a fresh ⌘O pick.
+   */
+  function removeRecentRows(paths: readonly string[]): void {
+    const stored = workspacesData.value.recents;
+    const removable = paths.filter((path) =>
+      stored.some((entry) => entry.path === path),
+    );
+    if (removable.length === 0) {
+      return;
+    }
+    const removed = new Set(removable);
+    const current = selectedPath.value;
+    if (current !== null && removed.has(current)) {
+      const parts = partitionRecents(stored, missing.value);
+      const ordered = [...parts.alive, ...parts.missing];
+      const index = ordered.findIndex((r) => r.path === current);
+      const after = ordered.slice(index + 1).find((r) => !removed.has(r.path));
+      const before = ordered
+        .slice(0, Math.max(index, 0))
+        .reverse()
+        .find((r) => !removed.has(r.path));
+      const next = (after ?? before)?.path ?? null;
+      if (next !== null) {
+        selectWorkspace(next); // applies the next row's remembered combo too
+      } else {
+        selectedPath.value = null;
+      }
+    }
+    removeWorkspaceRecents(removable);
   }
 
   async function pickFolder(): Promise<void> {
@@ -232,13 +310,14 @@ export function OpenBoard({
   }
 
   function moveWorkspace(step: 1 | -1): void {
-    const selectable = displayRecents.filter((r) => !missing.value.has(r.path));
-    if (selectable.length === 0) {
+    // Visual order (alive, then Missing) — arrows walk every row, including
+    // missing ones, so ⌫ can reach and remove them; Enter stays guarded.
+    const ordered = [...groups.alive, ...groups.missing];
+    if (ordered.length === 0) {
       return;
     }
-    const index = selectable.findIndex((r) => r.path === selectedPath.value);
-    const next =
-      selectable[(index + step + selectable.length) % selectable.length];
+    const index = ordered.findIndex((r) => r.path === selectedPath.value);
+    const next = ordered[(index + step + ordered.length) % ordered.length];
     selectWorkspace(next.path);
   }
 
@@ -290,6 +369,15 @@ export function OpenBoard({
     renamingId.value = preset.id;
     renameValue.value = preset.name;
     confirmDeleteId.value = null;
+  }
+
+  /** Rename and delete are mutually exclusive — opening one closes the other. */
+  function openConfirmDelete(preset: Preset): void {
+    if (isBuiltIn(preset)) {
+      return;
+    }
+    confirmDeleteId.value = preset.id;
+    renamingId.value = null;
   }
 
   function commitRename(): void {
@@ -347,8 +435,13 @@ export function OpenBoard({
         }
         break;
       case "Backspace":
-        if (section.value === "layout" && !isBuiltIn(selectedPreset)) {
-          confirmDeleteId.value = selectedPreset.id;
+        // Recents remove immediately (same semantics as the row ×; undo is
+        // just reopening the folder). Presets keep their confirm — a deleted
+        // layout takes real work to rebuild.
+        if (section.value === "workspace" && selectedPath.value !== null) {
+          removeRecentRows([selectedPath.value]);
+        } else if (section.value === "layout" && !isBuiltIn(selectedPreset)) {
+          openConfirmDelete(selectedPreset);
         } else {
           return;
         }
@@ -370,6 +463,65 @@ export function OpenBoard({
     }
   }
 
+  /** One recents row — an li (not a button) so the × inside stays clickable. */
+  function recentRow(recent: RecentWorkspace) {
+    const gone = missing.value.has(recent.path);
+    const selected = recent.path === selectedPath.value;
+    // The fabricated just-picked row is not a stored recent: nothing to remove.
+    const stored = recents.some((entry) => entry.path === recent.path);
+    const preset = presets.find((p) => p.id === recent.lastPresetId);
+    const combo = [
+      preset?.name ?? null,
+      typeof recent.lastAgent === "string"
+        ? agentLabel(recent.lastAgent)
+        : null,
+    ]
+      .filter((part): part is string => part !== null)
+      .join(" · ");
+    return (
+      <li
+        key={recent.path}
+        class={`row ${selected ? "is-selected" : ""} ${gone ? "is-missing" : ""}`}
+        aria-current={selected ? "true" : undefined}
+        title={combo === "" ? undefined : `Opens as ${combo}`}
+        onClick={() => selectWorkspace(recent.path)}
+        onDblClick={() => void confirmOpen()}
+      >
+        <svg class="row__ico" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M1.6 12.4v-8.8a1 1 0 0 1 1-1h3.1l1.4 1.8h6.3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-10.8a1 1 0 0 1-1-1Z" />
+        </svg>
+        <span class="row__body">
+          <span class="row__name">{folderName(recent.path)}</span>
+          <span class="row__meta">
+            <span class="row__path">
+              {home.value === ""
+                ? recent.path
+                : tildify(recent.path, home.value)}
+            </span>
+            <span class="row__time">
+              {formatRelativeTime(recent.lastOpenedAt, Date.now())}
+            </span>
+          </span>
+        </span>
+        {stored ? (
+          <button
+            class="row__x"
+            aria-label={`Remove ${folderName(recent.path)} from recents`}
+            onClick={(event) => {
+              event.stopPropagation();
+              removeRecentRows([recent.path]);
+            }}
+            // A second rapid click fires dblclick — without this it bubbles
+            // to the row's onDblClick and opens the workspace.
+            onDblClick={(event) => event.stopPropagation()}
+          >
+            ×
+          </button>
+        ) : null}
+      </li>
+    );
+  }
+
   return (
     <div
       class="open-board"
@@ -377,88 +529,73 @@ export function OpenBoard({
       onKeyDown={handleKeyDown}
       ref={containerRef}
     >
-      <LogoPanel />
-      <div class="board-side">
-        <div class="board-side__scroll">
-          <section
-            class={`board-group ${section.value === "workspace" ? "is-focused" : ""}`}
-          >
-            <h2 class="board-group__title">
-              Workspace <span>recent</span>
-            </h2>
-            <ul class="workspace-list">
-              {displayRecents.map((recent) => {
-                const gone = missing.value.has(recent.path);
-                const preset = presets.find(
-                  (p) => p.id === recent.lastPresetId,
-                );
-                const agentGone =
-                  typeof recent.lastAgent === "string" &&
-                  !agents.value.some((a) => a.name === recent.lastAgent);
-                return (
-                  <li key={recent.path}>
-                    <button
-                      class={`workspace-row ${recent.path === selectedPath.value ? "is-selected" : ""} ${gone ? "is-missing" : ""}`}
-                      disabled={gone}
-                      onClick={() => selectWorkspace(recent.path)}
-                      onDblClick={() => void confirmOpen()}
-                    >
-                      <span class="workspace-row__head">
-                        <span class="workspace-row__name">
-                          {folderName(recent.path)}
-                          {gone ? <em> — missing</em> : null}
-                        </span>
-                        <span class="workspace-row__time">
-                          {formatRelativeTime(recent.lastOpenedAt, Date.now())}
-                        </span>
-                      </span>
-                      <span class="workspace-row__sub">
-                        <span class="workspace-row__path">
-                          {home.value === ""
-                            ? recent.path
-                            : tildify(recent.path, home.value)}
-                        </span>
-                        {/* A remembered Shell (`null`) is not shown: it no
-                            longer preselects anything, so labeling the row
-                            "Shell" would contradict the first-agent default. */}
-                        {preset || typeof recent.lastAgent === "string" ? (
-                          <span
-                            class={`workspace-row__combo ${agentGone ? "is-stale" : ""}`}
-                          >
-                            {preset ? preset.name : "—"}
-                            {typeof recent.lastAgent === "string" ? (
-                              <>
-                                {" · "}
-                                {agentLabel(recent.lastAgent)}
-                              </>
-                            ) : null}
-                          </span>
-                        ) : null}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            <button
-              class="workspace-open-folder"
-              onClick={() => void pickFolder()}
-            >
-              ＋ Open folder…
-            </button>
-          </section>
+      <div class="rail">
+        <div class="rail__head">
+          <span class="applogo">
+            {logoDataUrl.value === "" ? (
+              <DefaultMark />
+            ) : (
+              <img src={logoDataUrl.value} alt="App logo" />
+            )}
+          </span>
+          <span class="rail__title">Workspace</span>
+          <span class="rail__count">{displayRecents.length}</span>
+        </div>
+        <div class="rail__act">
+          <button class="openfolder" onClick={() => void pickFolder()}>
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M1.6 12.4v-8.8a1 1 0 0 1 1-1h3.1l1.4 1.8h6.3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-10.8a1 1 0 0 1-1-1Z" />
+              <path d="M8 6.7v4M6 8.7h4" />
+            </svg>
+            Open Folder…<kbd>⌘O</kbd>
+          </button>
+        </div>
+        <ul class="rail__scroll" aria-label="Recent workspaces">
+          {groups.alive.map(recentRow)}
+          {groups.missing.length > 0 ? (
+            <li class="gsep">
+              <span>Missing</span>
+              <button
+                onClick={() =>
+                  removeRecentRows(groups.missing.map((r) => r.path))
+                }
+              >
+                Remove {groups.missing.length}
+              </button>
+            </li>
+          ) : null}
+          {groups.missing.map(recentRow)}
+        </ul>
+      </div>
+      <div class="detail">
+        <div class="detail__scroll">
+          <div class="wshead">
+            <h1 class="wshead__title">
+              {pickedPath !== null
+                ? folderName(pickedPath)
+                : "No folder selected"}
+            </h1>
+            <div class="wshead__path">
+              {pickedPath !== null
+                ? home.value === ""
+                  ? pickedPath
+                  : tildify(pickedPath, home.value)
+                : "Pick a recent folder or open a new one"}
+            </div>
+          </div>
 
           <section
-            class={`board-group ${section.value === "layout" ? "is-focused" : ""}`}
+            class={`sect ${section.value === "layout" ? "is-focused" : ""}`}
           >
-            <h2 class="board-group__title">
-              Layout <span>split + cwd</span>
-            </h2>
-            <div class="preset-chips">
+            <div class="sect__head">
+              <h2 class="sect__title">Layout</h2>
+              <span class="sect__hint">Hover a card to rename or delete</span>
+            </div>
+            <div class="lgrid">
               {presets.map((preset) => (
                 <div
                   key={preset.id}
-                  class={`preset-chip ${preset.id === selectedPresetId.value ? "is-selected" : ""}`}
+                  class={`lcard ${preset.id === selectedPresetId.value ? "is-selected" : ""}`}
                   title={`${countLeaves(preset.layout)} ${countLeaves(preset.layout) === 1 ? "pane" : "panes"}${preset.cwds ? " · cwds" : ""}`}
                   onClick={() => {
                     selectedPresetId.value = preset.id;
@@ -470,33 +607,72 @@ export function OpenBoard({
                     startRename(preset);
                   }}
                 >
+                  {isBuiltIn(preset) ? (
+                    <span class="builtin" title="Built-in preset">
+                      •
+                    </span>
+                  ) : null}
                   <PresetThumb layout={preset.layout} />
-                  {renamingId.value === preset.id ? (
-                    <input
-                      class="preset-chip__rename"
-                      value={renameValue.value}
-                      ref={(el) => el?.focus()}
-                      onInput={(event) => {
-                        renameValue.value = (
-                          event.target as HTMLInputElement
-                        ).value;
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          commitRename();
-                        }
-                        if (event.key === "Escape") {
-                          renamingId.value = null;
-                        }
-                        event.stopPropagation();
-                      }}
-                      onBlur={commitRename}
-                    />
-                  ) : (
-                    <span class="preset-chip__name">{preset.name}</span>
-                  )}
+                  <span class="lcard__foot">
+                    {renamingId.value === preset.id ? (
+                      <input
+                        class="lcard__rename"
+                        value={renameValue.value}
+                        ref={(el) => el?.focus()}
+                        onInput={(event) => {
+                          renameValue.value = (
+                            event.target as HTMLInputElement
+                          ).value;
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            commitRename();
+                          }
+                          if (event.key === "Escape") {
+                            renamingId.value = null;
+                          }
+                          event.stopPropagation();
+                        }}
+                        onBlur={commitRename}
+                      />
+                    ) : (
+                      <span class="lcard__name">{preset.name}</span>
+                    )}
+                    <span class="lcard__n">{countLeaves(preset.layout)}</span>
+                  </span>
+                  {!isBuiltIn(preset) ? (
+                    // Tools stop dblclick too — two rapid clicks would
+                    // otherwise bubble to the card's onDblClick and open.
+                    <span
+                      class="lcard__tools"
+                      onDblClick={(event) => event.stopPropagation()}
+                    >
+                      <button
+                        aria-label={`Rename ${preset.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          startRename(preset);
+                        }}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        class="x"
+                        aria-label={`Delete ${preset.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openConfirmDelete(preset);
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ) : null}
                   {confirmDeleteId.value === preset.id ? (
-                    <span class="preset-chip__confirm">
+                    <span
+                      class="lcard__confirm"
+                      onDblClick={(event) => event.stopPropagation()}
+                    >
                       <button
                         onClick={(event) => {
                           event.stopPropagation();
@@ -522,27 +698,29 @@ export function OpenBoard({
                 </div>
               ))}
               <button
-                class="preset-chip preset-chip--new"
+                class="lcard lcard--new"
                 onClick={() => onNewPreset(selectedPath.value)}
               >
-                ＋ new
+                <span>＋ New Layout</span>
+                <small>From current window</small>
               </button>
             </div>
           </section>
 
           <section
-            class={`board-group ${section.value === "agent" ? "is-focused" : ""}`}
+            class={`sect ${section.value === "agent" ? "is-focused" : ""}`}
           >
-            <h2 class="board-group__title">
-              Agent <span>on all panes</span>
-            </h2>
-            <div class="agent-chips">
+            <div class="sect__head">
+              <h2 class="sect__title">Agent</h2>
+              <span class="sect__hint">Runs in every pane</span>
+            </div>
+            <div class="agents">
               {agents.value.map((agent, index) => {
                 const logo = agentLogo(agent.name);
                 return (
                   <button
                     key={agent.name}
-                    class={`agent-chip ${effectiveAgent === agent.name ? "is-selected" : ""}`}
+                    class={`achip ${effectiveAgent === agent.name ? "is-selected" : ""}`}
                     title={agent.path}
                     onClick={() => {
                       selectedAgent.value = agent.name;
@@ -551,56 +729,79 @@ export function OpenBoard({
                     onDblClick={() => void confirmOpen()}
                   >
                     <kbd>{index + 1}</kbd>
-                    {logo && <img class="agent-chip__logo" src={logo} alt="" />}
+                    {logo && <img class="achip__logo" src={logo} alt="" />}
                     {agentLabel(agent.name)}
                   </button>
                 );
               })}
               <button
-                class={`agent-chip is-shell ${effectiveAgent === null ? "is-selected" : ""}`}
+                class={`achip is-shell ${effectiveAgent === null ? "is-selected" : ""}`}
                 onClick={() => {
                   selectedAgent.value = null;
                   section.value = "agent";
                 }}
                 onDblClick={() => void confirmOpen()}
               >
-                <kbd>0</kbd>Shell only
+                <kbd>0</kbd>
+                <span class="shellmark">$</span>Shell only
               </button>
             </div>
           </section>
         </div>
 
-        <footer class="board-footer">
-          <span
-            class={`board-footer__summary ${notice?.warn ? "is-warning" : ""}`}
-            // A failed Open has to reach a screen reader too — the summary is
-            // the only place it is ever said.
-            role={notice?.warn ? "status" : undefined}
-          >
-            {notice === null && pickedPath !== null ? (
-              <>
-                Open <strong>{folderName(pickedPath)}</strong> as{" "}
-                <strong>{selectedPreset.name}</strong> with{" "}
-                <strong>
-                  {effectiveAgent === null
-                    ? "Shell"
-                    : agentLabel(effectiveAgent)}
-                </strong>
-              </>
-            ) : (
-              notice?.text
-            )}
-          </span>
-          <div class="board-footer__actions">
-            <button onClick={onCancel} disabled={!canCancel}>
+        <footer class="foot">
+          <div class="foot__lead">
+            <span
+              class={`foot__sum ${notice?.warn ? "is-warning" : ""}`}
+              // A failed Open has to reach a screen reader too — the summary
+              // is the only place it is ever said.
+              role={notice?.warn ? "status" : undefined}
+            >
+              {notice === null && pickedPath !== null ? (
+                <>
+                  Open <strong>{folderName(pickedPath)}</strong> as{" "}
+                  <strong>{selectedPreset.name}</strong> with{" "}
+                  <strong>
+                    {effectiveAgent === null
+                      ? "Shell"
+                      : agentLabel(effectiveAgent)}
+                  </strong>
+                </>
+              ) : (
+                notice?.text
+              )}
+            </span>
+            <div class="foot__keys">
+              <span>
+                <b>↑↓</b> select
+              </span>
+              <span>
+                <b>⇥</b> section
+              </span>
+              <span>
+                <b>1–9</b> agent
+              </span>
+              <span>
+                <b>⌫</b> remove
+              </span>
+              {canCancel ? (
+                <span>
+                  <b>⎋</b> close
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div class="foot__act">
+            <button class="btn" onClick={onCancel} disabled={!canCancel}>
               Cancel
             </button>
             <button
-              class="is-primary"
+              class="btn btn--primary"
               onClick={() => void confirmOpen()}
               disabled={!workspaceValid || opening.value}
             >
               {opening.value ? "Opening…" : "Open"}
+              <kbd>⏎</kbd>
             </button>
           </div>
         </footer>

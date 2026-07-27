@@ -102,6 +102,32 @@ export function pushRecent(
   return [head, ...rest].slice(0, MAX_RECENTS);
 }
 
+/** Split rows into live and missing folders, keeping each side's order. */
+export function partitionRecents(
+  recents: readonly RecentWorkspace[],
+  missing: ReadonlySet<string>,
+): {
+  readonly alive: readonly RecentWorkspace[];
+  readonly missing: readonly RecentWorkspace[];
+} {
+  return {
+    alive: recents.filter((entry) => !missing.has(entry.path)),
+    missing: recents.filter((entry) => missing.has(entry.path)),
+  };
+}
+
+/**
+ * Drop every entry whose path is in `paths` — exact string match, the same
+ * comparison rule `pushRecent` dedupes by (no normalization).
+ */
+export function removeRecents(
+  recents: readonly RecentWorkspace[],
+  paths: readonly string[],
+): readonly RecentWorkspace[] {
+  const drop = new Set(paths);
+  return recents.filter((entry) => !drop.has(entry.path));
+}
+
 /**
  * Resolve a remembered/selected agent against what is actually on `$PATH`.
  * Shell is opt-in: only an explicit `null` (the user clicked Shell only this
@@ -132,6 +158,8 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 const WEEK = 7 * DAY;
+const MONTH = 30 * DAY;
+const YEAR = 365 * DAY;
 
 export function formatRelativeTime(then: number, now: number): string {
   const age = Math.max(0, now - then);
@@ -139,13 +167,26 @@ export function formatRelativeTime(then: number, now: number): string {
     return "just now";
   }
   if (age < HOUR) {
-    return `${Math.floor(age / MINUTE)}m ago`;
+    return ago(Math.floor(age / MINUTE), "minute");
   }
   if (age < DAY) {
-    return `${Math.floor(age / HOUR)}h ago`;
+    return ago(Math.floor(age / HOUR), "hour");
+  }
+  if (age < 2 * DAY) {
+    return "Yesterday";
   }
   if (age < WEEK) {
-    return `${Math.floor(age / DAY)}d ago`;
+    return ago(Math.floor(age / DAY), "day");
   }
-  return `${Math.floor(age / WEEK)}w ago`;
+  if (age < MONTH) {
+    return ago(Math.floor(age / WEEK), "week");
+  }
+  if (age < YEAR) {
+    return ago(Math.floor(age / MONTH), "month");
+  }
+  return ago(Math.floor(age / YEAR), "year");
+}
+
+function ago(count: number, unit: string): string {
+  return `${count} ${unit}${count === 1 ? "" : "s"} ago`;
 }

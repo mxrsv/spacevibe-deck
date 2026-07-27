@@ -3,7 +3,9 @@ import {
   folderName,
   formatRelativeTime,
   MAX_RECENTS,
+  partitionRecents,
   pushRecent,
+  removeRecents,
   resolveAgentChoice,
   validateWorkspaces,
   WORKSPACES_VERSION,
@@ -80,6 +82,51 @@ describe("pushRecent", () => {
   });
 });
 
+describe("removeRecents", () => {
+  const list = pushRecent(
+    pushRecent(pushRecent([], "/a", NOW), "/b", NOW + 1),
+    "/c",
+    NOW + 2,
+  );
+
+  it("removes a single path from the middle of the list", () => {
+    expect(removeRecents(list, ["/b"]).map((r) => r.path)).toEqual([
+      "/c",
+      "/a",
+    ]);
+  });
+
+  it("removes several paths at once", () => {
+    expect(removeRecents(list, ["/a", "/c"]).map((r) => r.path)).toEqual([
+      "/b",
+    ]);
+  });
+
+  it("leaves the list unchanged for a path that is not there", () => {
+    expect(removeRecents(list, ["/nope"])).toEqual(list);
+  });
+});
+
+describe("partitionRecents", () => {
+  const list = pushRecent(
+    pushRecent(pushRecent([], "/a", NOW), "/b", NOW + 1),
+    "/c",
+    NOW + 2,
+  );
+
+  it("splits live and missing rows, keeping each side's order", () => {
+    const { alive, missing } = partitionRecents(list, new Set(["/c", "/a"]));
+    expect(alive.map((r) => r.path)).toEqual(["/b"]);
+    expect(missing.map((r) => r.path)).toEqual(["/c", "/a"]);
+  });
+
+  it("puts everything in alive when nothing is missing", () => {
+    const { alive, missing } = partitionRecents(list, new Set());
+    expect(alive).toEqual(list);
+    expect(missing).toEqual([]);
+  });
+});
+
 describe("validateWorkspaces", () => {
   it("returns empty data for corrupt input", () => {
     expect(validateWorkspaces(undefined)).toEqual({
@@ -143,10 +190,18 @@ describe("display helpers", () => {
 
   it("formatRelativeTime buckets by age", () => {
     const MIN = 60_000;
+    const DAY = 24 * 60 * MIN;
     expect(formatRelativeTime(NOW - 30_000, NOW)).toBe("just now");
-    expect(formatRelativeTime(NOW - 5 * MIN, NOW)).toBe("5m ago");
-    expect(formatRelativeTime(NOW - 2 * 60 * MIN, NOW)).toBe("2h ago");
-    expect(formatRelativeTime(NOW - 3 * 24 * 60 * MIN, NOW)).toBe("3d ago");
-    expect(formatRelativeTime(NOW - 14 * 24 * 60 * MIN, NOW)).toBe("2w ago");
+    expect(formatRelativeTime(NOW - MIN, NOW)).toBe("1 minute ago");
+    expect(formatRelativeTime(NOW - 5 * MIN, NOW)).toBe("5 minutes ago");
+    expect(formatRelativeTime(NOW - 2 * 60 * MIN, NOW)).toBe("2 hours ago");
+    expect(formatRelativeTime(NOW - DAY - 60 * MIN, NOW)).toBe("Yesterday");
+    expect(formatRelativeTime(NOW - 3 * DAY, NOW)).toBe("3 days ago");
+    expect(formatRelativeTime(NOW - 7 * DAY, NOW)).toBe("1 week ago");
+    expect(formatRelativeTime(NOW - 14 * DAY, NOW)).toBe("2 weeks ago");
+    expect(formatRelativeTime(NOW - 45 * DAY, NOW)).toBe("1 month ago");
+    expect(formatRelativeTime(NOW - 200 * DAY, NOW)).toBe("6 months ago");
+    expect(formatRelativeTime(NOW - 365 * DAY, NOW)).toBe("1 year ago");
+    expect(formatRelativeTime(NOW - 800 * DAY, NOW)).toBe("2 years ago");
   });
 });

@@ -6,7 +6,7 @@ import { reportPersistError } from "../chrome/events";
 const STORE_FILE = "logo.json";
 const STORE_KEY = "dataUrl";
 
-/** Extensions the logo panel + Rust reader accept (must match `images.rs`). */
+/** Extensions the Settings logo picker + Rust reader accept (must match `images.rs`). */
 const SUPPORTED_EXTENSIONS = ["png", "jpg", "jpeg", "svg", "webp"] as const;
 
 /**
