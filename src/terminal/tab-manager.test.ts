@@ -334,7 +334,7 @@ describe("createTabManager agent launch", () => {
 });
 
 describe("createTabManager workspace identity", () => {
-  it("finds a tab by its workspace and reports -1 for an unopened one", async () => {
+  it("tags each tab with its own workspace and reports the active one", async () => {
     const { tm } = setup({});
     await tm.openFromPreset({ type: "leaf" }, ["/repo/a"], {
       workspacePath: "/repo/a",
@@ -343,24 +343,25 @@ describe("createTabManager workspace identity", () => {
       workspacePath: "/repo/b",
     });
 
-    expect(tm.findTabByWorkspace("/repo/a")).toBe(0);
-    expect(tm.findTabByWorkspace("/repo/b")).toBe(1);
-    expect(tm.findTabByWorkspace("/repo/c")).toBe(-1);
+    expect(tabViews.value.map((view) => view.workspacePath)).toEqual([
+      "/repo/a",
+      "/repo/b",
+    ]);
     expect(tm.activeWorkspacePath()).toBe("/repo/b");
   });
 
-  it("dedupes across a trailing slash — the same folder is one tab", async () => {
+  // Normalization still matters for everything keyed by workspace (sidebar
+  // label, per-workspace logo) even though it no longer dedupes anything.
+  it("stores the workspace normalized — a trailing slash is stripped", async () => {
     const { tm } = setup({});
     await tm.openFromPreset({ type: "leaf" }, ["/repo/a"], {
       workspacePath: "/repo/a/",
     });
 
     expect(tabViews.value[0].workspacePath).toBe("/repo/a");
-    expect(tm.findTabByWorkspace("/repo/a")).toBe(0);
-    expect(tm.findTabByWorkspace("/repo/a/")).toBe(0);
   });
 
-  it("never opens a second tab for a workspace that already has one", async () => {
+  it("opens a second tab for a workspace that already has one", async () => {
     const { tm } = setup({});
     await tm.openFromPreset({ type: "leaf" }, ["/repo/a"], {
       workspacePath: "/repo/a",
@@ -368,14 +369,15 @@ describe("createTabManager workspace identity", () => {
     await tm.openFromPreset({ type: "leaf" }, ["/repo/b"], {
       workspacePath: "/repo/b",
     });
-    // Re-open the same workspace through the deep path (bypassing app dedup) —
-    // even a trailing-slash variant must focus the existing tab, not clone it.
+    // Same folder as tab 0, spelled with a trailing slash: a new tab either
+    // way, and the normalized spelling is what lands on it.
     await tm.openFromPreset({ type: "leaf" }, ["/repo/a"], {
       workspacePath: "/repo/a/",
     });
 
-    expect(tabViews.value).toHaveLength(2);
-    expect(activeTabIndex.value).toBe(0); // focused the existing /repo/a tab
+    expect(tabViews.value).toHaveLength(3);
+    expect(tabViews.value[2].workspacePath).toBe("/repo/a");
+    expect(activeTabIndex.value).toBe(2); // the new tab, not the existing one
   });
 
   it("exposes the workspace on the tab view; a tab without one stays null", async () => {
@@ -2216,6 +2218,36 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
 
     tm.dispose();
   });
+
+  // The dismiss above is unconditional ONLY once a tab exists. With zero tabs
+  // the F1 fix used to blank the window: `boardOpen` went false, every
+  // select/cycle then no-opped on an empty `tabs`, and the stage was left with
+  // no board and no terminal — on the app's own default landing screen, since
+  // it always opens on the board with no session restore. `canCancel={
+  // tabViews.value.length > 0}` (app.tsx) already refuses the same thing on
+  // the mouse path; these lock the keyboard half of that invariant.
+  for (const action of [
+    "select-tab-1",
+    "select-last-tab",
+    "next-tab",
+    "prev-tab",
+  ] as const) {
+    it(`${action} leaves the Open board up when there is no tab to switch to`, async () => {
+      const { tm } = setup({});
+      await tm.init();
+      await flush();
+      expect(activeTabIndex.value).toBe(-1);
+
+      boardOpen.value = true;
+      tm.runAction(action);
+      await flush();
+
+      expect(boardOpen.value).toBe(true);
+      expect(activeTabIndex.value).toBe(-1);
+
+      tm.dispose();
+    });
+  }
 
   // Decision 2 of the design proposal (2026-07-27 code review): save-preset
   // was scope "terminal"/"pane", blocked by literally any open overlay

@@ -6,7 +6,12 @@ import {
   saveDialogOpen,
   settingsOpen,
 } from "../chrome/events";
-import { closeSettingsPanel, toggleSettingsPanel } from "./app";
+import {
+  closeSettingsPanel,
+  livePresetOpensATab,
+  toggleSettingsPanel,
+} from "./app";
+import { ACTION_REGISTRY, TIER_RANK } from "../terminal/action-registry";
 
 // Escape-stacking investigation (team lead thread): Settings' own mount-focus
 // effect (settings-panel.tsx) steals DOM focus onto its close button the
@@ -98,6 +103,36 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
 
     expect(settingsOpen.value).toBe(false);
     expect(focusActive).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ⌘⇧N is deliberately reachable from the Open board (F4 retiered it "modal",
+// above the board's "board" rank) so a layout can be sketched from scratch on
+// the app's landing screen. The live-window tail of handleEditorCreate then
+// materialized a tab anyway — behind the board (z-30 covers the stage), whose
+// pane silently took DOM focus, and with no tab open yet there was no active
+// pane to inherit a CWD from, so it spawned in $HOME instead of the folder
+// selected on the board. Saving the preset and leaving the board up matches
+// what the `source: "board"` branch already does with no workspace picked.
+describe("livePresetOpensATab — ⌘⇧N over the Open board saves the preset without opening a tab", () => {
+  it("opens a tab in a live window, where the stage is actually visible", () => {
+    expect(livePresetOpensATab(false)).toBe(true);
+  });
+
+  it("does NOT open a tab while the Open board covers the stage", () => {
+    expect(livePresetOpensATab(true)).toBe(false);
+  });
+
+  // The guard above only matters because new-preset outranks the board. If
+  // anyone retiers it back to "board" (or lower), the overlay guard blocks
+  // ⌘⇧N on the board outright and this whole branch becomes dead code — fail
+  // here so that is a deliberate decision, not a silent one.
+  it("is only reachable because new-preset outranks the board tier", () => {
+    const newPreset = ACTION_REGISTRY.find(
+      (action) => action.id === "new-preset",
+    );
+    expect(newPreset?.scope).toBe("modal");
+    expect(TIER_RANK.modal).toBeGreaterThan(TIER_RANK.board);
   });
 });
 

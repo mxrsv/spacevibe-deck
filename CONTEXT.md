@@ -9,7 +9,7 @@ A single Stackgrid OS window owning its own tabs and panes. Multi-window is in v
 _Avoid_: Tab, app, workspace (folder)
 
 **Workspace**:
-A local folder the user picks as the working root on the Open board (recent folders + Open Folder, Cursor-style). Supplies the default CWD when a layout preset pane has no CWD set. 1:1 with a Tab — it is the tab's identity, fixed for the tab's life, and held in memory for the tab's life (not persisted; the folder is remembered in `workspaces.json` recents and reopened by hand from the board). Reopening a workspace that already has a tab focuses that tab instead of creating a second one. A pane's live CWD is not the workspace: `cd` inside a terminal never changes it. Not an OS window.
+A local folder the user picks as the working root on the Open board (recent folders + Open Folder, Cursor-style). Supplies the default CWD when a layout preset pane has no CWD set. A tab carries exactly one workspace, fixed for the tab's life and held in memory for it (not persisted; the folder is remembered in `workspaces.json` recents and reopened by hand from the board) — but a workspace may own any number of tabs: opening one that already has a tab spawns another, so a repo can run several agent sessions side by side. A pane's live CWD is not the workspace: `cd` inside a terminal never changes it. Not an OS window.
 _Avoid_: Window, session, folder-of-the-moment
 
 **Pane**:
@@ -73,7 +73,7 @@ A named, persisted template: split-tree layout plus optional per-pane CWDs. Edit
 _Avoid_: Session, workspace, theme preset
 
 **Open board**:
-The sole entry point of the app (also shown for New Tab): three columns — the workspace sidebar (app chrome), a center logo panel (drag-drop an image to change it), and a right column stacking recent workspaces → layout preset → agent CLI. A recent row remembers its last layout + agent combo and preselects them. Confirm Open materializes the layout and launches the chosen agent on every pane.
+The sole entry point of the app (also shown for New Tab): two columns in the stage — a 300px rail (app logo + recent workspaces, each row removable by its × or Backspace, missing folders grouped last with a remove-all, Open Folder pinned at the bottom) and a detail column (workspace name + path, layout preset grid with hover rename/delete, agent CLI chips, footer). A recent row remembers its last layout + agent combo and preselects them; removing a recent rewrites `workspaces.json`. The app logo is set from Settings only — the drag-drop logo panel is gone. Confirm Open materializes the layout and launches the chosen agent on every pane.
 _Avoid_: Settings, session restore
 
 **Agent**:

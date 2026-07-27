@@ -15,7 +15,7 @@
   <em>A minimal macOS terminal for running many AI agent CLIs side by side.</em>
 </p>
 
-![SpaceVibe Deck — split panes running agent CLIs](.github/assets/screenshot.png)
+![SpaceVibe Deck — split panes running agent CLIs](.github/assets/screenshot.png) `current`
 
 > Formerly **Stackgrid**. Same app, new name — it now lives at [deck.spacevibe.dev](https://deck.spacevibe.dev) alongside the rest of SpaceVibe. Your settings carry over automatically on first launch.
 
@@ -44,8 +44,8 @@ Every pane is backed by a real PTY running your **login shell** (`$SHELL -l`) vi
 
 ### 🗂️ Workspaces & the Open board
 
-- A **workspace** is a folder you pick as the working root — and it maps 1:1 to a tab. Reopening a workspace focuses its existing tab instead of creating a duplicate.
-- The **Open board** is the app's single entry point (also shown on New Tab, ⌘T): a three-column screen — the workspace sidebar, a logo panel, and a stack of **recent workspaces → layout preset → agent**.
+- A **workspace** is a folder you pick as the working root. Each tab belongs to one workspace, and you can open the same workspace as many times as you like — every Open gets its own tab, so one repo can run several agent sessions side by side.
+- The **Open board** is the app's single entry point (also shown on New Tab, ⌘T): a two-column screen — a rail of **recent workspaces** (each row removable with its × or ⌫, missing folders grouped under a one-click Remove all, Open Folder pinned at the bottom) and a detail column of **layout presets → agent** for the selected folder.
 - Each recent row **remembers your last layout + agent combo** and preselects them, so reopening a project is a keystroke away — or **double-click** any workspace, layout, or agent chip to open immediately.
 - Switch between a vertical **workspace sidebar** and a horizontal **tab bar** in Settings.
 - **Workspace logos** — each workspace auto-detects a favicon from the repo as its icon, or drag-drop your own image onto it.
@@ -196,4 +196,13 @@ npm run tauri build   # release build → src-tauri/target/release/bundle/
 
 ## License
 
-[MIT](LICENSE) © 2026 mxrsv
+[MIT](LICENSE) `current` © 2026 mxrsv
+
+## Chưa khớp thực tế
+
+_(reality-drift ledger — heading text mandated by the global docs convention)_
+
+| Claim | Intent | Status | Evidence |
+| ----- | ------ | ------ | -------- |
+
+Empty — verified 2026-07-27. Do not remove this section (D7).

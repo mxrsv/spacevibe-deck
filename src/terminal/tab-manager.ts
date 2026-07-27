@@ -97,8 +97,9 @@ interface TabEntry {
   readonly key: number;
   readonly manager: TerminalManager;
   /**
-   * Workspace ≡ Tab: the directory picked on Open, fixed for the tab's life.
-   * Never re-derived from a pane's live CWD (a `cd` must not rename the tab).
+   * The directory picked on Open, fixed for the tab's life — one per tab, but
+   * several tabs may share one workspace. Never re-derived from a pane's live
+   * CWD (a `cd` must not rename the tab).
    */
   readonly workspacePath: string | null;
 }
@@ -151,8 +152,6 @@ export interface TabManager {
     cwds: readonly (string | null)[],
     options?: OpenFromPresetOptions,
   ): Promise<boolean>;
-  /** Index of the tab owning `path`, or -1 — Open dedupes against this. */
-  findTabByWorkspace(path: string): number;
   /** Workspace of the active tab; null when it has none (or no tab). */
   activeWorkspacePath(): string | null;
   /** Live layout + fresh per-pane CWDs for save-as-preset; null when no tab. */
@@ -286,15 +285,6 @@ export function createTabManager(
 
   function activeManager(): TerminalManager | null {
     return active >= 0 && active < tabs.length ? tabs[active].manager : null;
-  }
-
-  /** Index of the tab owning `path` (normalized both sides), or -1. */
-  function findWorkspaceIndex(path: string): number {
-    const target = normalizeWorkspacePath(path);
-    if (target === null) {
-      return -1;
-    }
-    return tabs.findIndex((tab) => tab.workspacePath === target);
   }
 
   function syncViews(): void {
@@ -592,17 +582,10 @@ export function createTabManager(
    * Open board / Layout preset / Closed tab all go here.
    */
   async function materialize(intent: MaterializeIntent): Promise<boolean> {
-    // Workspace ≡ Tab (1:1): a workspace that already has a tab is never opened
-    // a second time — focus the existing tab instead. This enforces the
-    // invariant at the one choke point every entry uses (Open board, New preset
-    // from a live window, Cmd+Shift+T reopen), not just in the Open handler.
-    if (intent.workspacePath !== undefined) {
-      const existing = findWorkspaceIndex(intent.workspacePath);
-      if (existing !== -1) {
-        selectTab(existing);
-        return true;
-      }
-    }
+    // A workspace may own any number of tabs: opening one that already has a
+    // tab spawns another rather than focusing the first, so the same repo can
+    // run several agent sessions side by side. `workspacePath` is a label the
+    // tab carries (sidebar, logo, reopen), never an identity that dedupes.
     if (
       !(await addTab(intent.layout, intent.cwds, intent.workspacePath ?? null))
     ) {
@@ -1016,7 +999,16 @@ export function createTabManager(
     if (overlayBlocksAction(action)) {
       return;
     }
-    if (isTabSwitchAction(action)) {
+    // `tabs.length > 0` is load-bearing, not defensive noise: with no tab at
+    // all there is nothing behind the board to switch TO, so dismissing it
+    // would leave an empty `.stage` — no board, no terminal, nothing on
+    // screen. That is the app's own default landing state (it always opens on
+    // the board, there is no session restore), so a habitual ⌘1 there used to
+    // blank the window outright. The board itself already encodes this
+    // invariant on the mouse path: `canCancel={tabViews.value.length > 0}`
+    // (app.tsx) refuses to let Cancel/Escape close it with zero tabs — this
+    // guard is the keyboard half of the same rule.
+    if (isTabSwitchAction(action) && tabs.length > 0) {
       // F1 (2026-07-27 code review): mirrors App.selectTab's click path
       // (app.tsx), which has always cleared boardOpen before switching.
       // Without this, selectTab()'s manager.show() focuses the newly active
@@ -1281,7 +1273,6 @@ export function createTabManager(
     init,
     materialize,
     openFromPreset,
-    findTabByWorkspace: findWorkspaceIndex,
     activeWorkspacePath() {
       return active >= 0 && active < tabs.length
         ? tabs[active].workspacePath

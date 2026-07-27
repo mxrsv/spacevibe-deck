@@ -96,6 +96,31 @@ export function toggleSettingsPanel(focusActive: () => void): void {
   settingsOpen.value = true;
 }
 
+/**
+ * Whether a preset created through the LIVE-WINDOW flow (⌘⇧N, or File ▸ "New
+ * Layout Preset…") should also materialize a tab, or stop once the preset is
+ * saved.
+ *
+ * `new-preset` is tiered `"modal"` in action-registry.ts, so it deliberately
+ * opens the editor OVER the Open board (rank 30 < 40) — sketching a layout
+ * from scratch needs no tab and no workspace, which is the whole point of F4.
+ * What must NOT follow is the live-window tail that materializes a tab: the
+ * board is still up at z-30 covering the stage, so that tab would be
+ * invisible while its pane quietly takes DOM focus behind the board, and on
+ * the app's default landing screen (no tabs yet) there is no active pane to
+ * inherit a CWD from either — it would spawn in `$HOME` instead of the folder
+ * selected on the board.
+ *
+ * Stopping at the save is exactly what the `source: "board"` branch already
+ * does for a preset created with no workspace picked: the board stays up, now
+ * showing the new card, and the user opens a folder with it. Extracted to
+ * module scope (like `toggleSettingsPanel` above) purely so it is unit
+ * testable — this repo has no `<App>`-level render harness.
+ */
+export function livePresetOpensATab(boardIsOpen: boolean): boolean {
+  return !boardIsOpen;
+}
+
 export function App() {
   const stagesRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<TabManager | null>(null);
@@ -255,16 +280,8 @@ export function App() {
     preset: Preset,
     agent: AgentChoice,
   ): Promise<boolean> {
-    // Workspace ≡ Tab: reopening one that already has a tab focuses that tab
-    // instead of cloning it — the chosen preset/agent are deliberately ignored
-    // (passing neither to recordWorkspaceOpen keeps the folder's saved combo).
-    const existing = tabsRef.current?.findTabByWorkspace(workspace) ?? -1;
-    if (existing !== -1) {
-      tabsRef.current?.selectTab(existing);
-      recordWorkspaceOpen(workspace);
-      boardOpen.value = false;
-      return true;
-    }
+    // Every Open materializes its own tab, including for a workspace that
+    // already has one — the same repo can run several sessions side by side.
     const ok = await tabsRef.current?.openFromPreset(
       preset.layout,
       resolveCwds(preset, workspace),
@@ -313,6 +330,9 @@ export function App() {
         resolveAgentChoice(undefined, agents),
       );
       return;
+    }
+    if (!livePresetOpensATab(boardOpen.value)) {
+      return; // preset saved; the board stays up showing the new card
     }
     // Live window: inherit panes resolve to the focused pane's CWD;
     // the new tab stays in the active tab's workspace, not a nameless one.
