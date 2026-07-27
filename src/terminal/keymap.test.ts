@@ -124,9 +124,39 @@ describe("matchBinding", () => {
   });
 
   it("matches Cmd+1..8 to select-tab actions, and Cmd+9 to select-last-tab (macOS 'last tab' convention, not tab index 9)", () => {
-    expect(matchBinding(keyEvent("1", { metaKey: true }))).toBe("select-tab-1");
-    expect(matchBinding(keyEvent("8", { metaKey: true }))).toBe("select-tab-8");
-    expect(matchBinding(keyEvent("9", { metaKey: true }))).toBe(
+    // Digit1..Digit9 bind by physical key position (event.code), not the
+    // produced character (F-C1, 2026-07-27 code review) — on a US layout
+    // that position happens to produce "1".."9" unshifted, but the binding
+    // itself does not depend on that. See the dedicated AZERTY regression
+    // test below.
+    expect(matchBinding(codeEvent("Digit1", "1", { metaKey: true }))).toBe(
+      "select-tab-1",
+    );
+    expect(matchBinding(codeEvent("Digit8", "8", { metaKey: true }))).toBe(
+      "select-tab-8",
+    );
+    expect(matchBinding(codeEvent("Digit9", "9", { metaKey: true }))).toBe(
+      "select-last-tab",
+    );
+  });
+
+  // F-C1 (2026-07-27 code review): select-tab-N/select-last-tab have no menu
+  // item, so per the repo's key-vs-code rule they should bind by physical
+  // position — but they were still key-based, so on AZERTY (Digit1..Digit9
+  // unshifted produce "&", "é", '"', "'", "(", "-", "è", "_", "ç" — never
+  // "1".."9", which need Shift on that layout) Cmd+1..Cmd+9 matched nothing
+  // at all: switching tabs by number was completely dead.
+  it("matches Cmd+1..9 by physical digit-key position on AZERTY, where Digit1..Digit9 unshifted never produce '1'..'9' (F-C1 regression)", () => {
+    expect(matchBinding(codeEvent("Digit1", "&", { metaKey: true }))).toBe(
+      "select-tab-1",
+    );
+    expect(matchBinding(codeEvent("Digit2", "é", { metaKey: true }))).toBe(
+      "select-tab-2",
+    );
+    expect(matchBinding(codeEvent("Digit8", "_", { metaKey: true }))).toBe(
+      "select-tab-8",
+    );
+    expect(matchBinding(codeEvent("Digit9", "ç", { metaKey: true }))).toBe(
       "select-last-tab",
     );
   });

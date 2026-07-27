@@ -391,10 +391,20 @@ export interface PhysicalKeyBinding extends KeyBindingBase {
 
 export type KeyBinding = CharKeyBinding | PhysicalKeyBinding;
 
+/**
+ * Physical key position (event.code), not the layout-produced character
+ * (F-C1, 2026-07-27 code review) — select-tab-N has no menu item, so per
+ * the RULE above this is exactly the case PhysicalKeyBinding exists for.
+ * Was `key: String(index + 1)` until this fix: on AZERTY, Digit1..Digit9
+ * unshifted produce "&", "é", '"', "'", "(", "-", "è", "_", "ç" (never
+ * "1".."9", which need Shift on that layout), so Cmd+1..Cmd+9 matched
+ * nothing at all — switching tabs by number was completely dead on that
+ * layout, the exact class of bug a6ac532 fixed for the bracket keys.
+ */
 const TAB_SELECT_BINDINGS: readonly KeyBinding[] = Array.from(
   { length: 8 },
   (_, index): KeyBinding => ({
-    key: String(index + 1),
+    code: `Digit${index + 1}`,
     meta: true,
     action: `select-tab-${index + 1}`,
   }),
@@ -405,10 +415,11 @@ const TAB_SELECT_BINDINGS: readonly KeyBinding[] = Array.from(
  * to the LAST tab, whatever the tab count, never "tab index 9". Deliberately
  * separate from `TAB_SELECT_BINDINGS` above, which only ever covers a FIXED
  * index (⌘1–⌘8); the concrete index for this action is resolved against the
- * live tab count in tab-manager.ts, not here.
+ * live tab count in tab-manager.ts, not here. Physical key position, same
+ * F-C1 reasoning as TAB_SELECT_BINDINGS above.
  */
 const SELECT_LAST_TAB_BINDING: KeyBinding = {
-  key: "9",
+  code: "Digit9",
   meta: true,
   action: "select-last-tab",
 };

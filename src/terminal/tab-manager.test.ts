@@ -1947,6 +1947,18 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     return new KeyboardEvent("keydown", { key, metaKey: true, bubbles: true });
   }
 
+  // select-tab-N/select-last-tab bind by physical digit-key position
+  // (F-C1, 2026-07-27 code review) — `code` must be set explicitly, since
+  // the native KeyboardEvent constructor does not derive it from `key`.
+  function digitKeydown(digit: string): KeyboardEvent {
+    return new KeyboardEvent("keydown", {
+      key: digit,
+      code: `Digit${digit}`,
+      metaKey: true,
+      bubbles: true,
+    });
+  }
+
   it("⌘W (close-pane) via the keydown path leaves the hidden pane untouched while the Open board is up", async () => {
     const { tm } = setup({});
     await tm.materialize({ layout: null, cwds: ["/a"] });
@@ -2117,7 +2129,7 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     expect(activeTabIndex.value).toBe(1);
 
     boardOpen.value = true;
-    window.dispatchEvent(metaKeydown("1"));
+    window.dispatchEvent(digitKeydown("1"));
     await flush();
 
     expect(activeTabIndex.value).toBe(0);
@@ -2144,7 +2156,7 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     expect(activeTabIndex.value).toBe(0);
 
     boardOpen.value = true;
-    window.dispatchEvent(metaKeydown("9"));
+    window.dispatchEvent(digitKeydown("9"));
     await flush();
 
     expect(activeTabIndex.value).toBe(2); // the last tab, same exemption as select-tab-N
