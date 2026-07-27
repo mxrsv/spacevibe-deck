@@ -952,6 +952,19 @@ export function createTabManager(
     if (overlayBlocksAction(action)) {
       return;
     }
+    if (isTabSelectionAction(action)) {
+      // F1 (2026-07-27 code review): mirrors App.selectTab's click path
+      // (app.tsx), which has always cleared boardOpen before switching.
+      // Without this, selectTab()'s manager.show() focuses the newly active
+      // pane's textarea BEHIND the still-open board (z-30) — every
+      // following keystroke, Enter included, silently reaches a hidden
+      // shell instead of the terminal the user can see. Unconditional (a
+      // no-op when the board is already closed) and does NOT gate on
+      // settings/presetEditor/saveDialogOpen either, matching the click
+      // path exactly: TabBar sits outside `.stage`, so it is never covered
+      // by `.modal-scrim`, and clicking a tab already works over a draft.
+      boardOpen.value = false;
+    }
     if (action === "select-last-tab") {
       // -1 when there are no tabs yet — selectTab's own range check no-ops
       // it, same as an out-of-range select-tab-N below.

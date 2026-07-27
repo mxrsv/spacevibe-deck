@@ -2058,6 +2058,13 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     await flush();
 
     expect(activeTabIndex.value).toBe(0);
+    // F1 (2026-07-27 code review): switching tabs used to leave the board up
+    // — the newly active pane's textarea got focused BEHIND it (z-30), so
+    // every following keystroke, Enter included, silently reached a hidden
+    // shell instead of the terminal the user could see. Dismissing the
+    // board here mirrors App.selectTab's click path (app.tsx), which has
+    // always cleared boardOpen before switching.
+    expect(boardOpen.value).toBe(false);
 
     tm.dispose();
   });
@@ -2078,6 +2085,7 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     await flush();
 
     expect(activeTabIndex.value).toBe(2); // the last tab, same exemption as select-tab-N
+    expect(boardOpen.value).toBe(false); // F1 — same board-dismiss fix as select-tab-N above
 
     tm.dispose();
   });
