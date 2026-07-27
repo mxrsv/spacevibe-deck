@@ -130,7 +130,20 @@ export const ACTION_REGISTRY = [
     // Moved from the Window menu to File (HIG: File owns create/save
     // operations; Window is left holding only native window-management
     // items — minimize/maximize/fullscreen).
-    scope: "pane",
+    //
+    // Tiered "modal" (2026-07-27 code review, F4): it used to inherit the
+    // default "terminal"/"pane" gating, which blocked Cmd+Shift+N on the
+    // Open board — the app's own default landing screen, since there is no
+    // session restore. Sketching a preset from scratch is independent of
+    // any tab/workspace, so there is nothing for the board to protect.
+    // Not blocked by Settings either, for the same reason as "board": no
+    // draft, and PresetEditor (z-40) renders fully visible above it (z-20).
+    // Still blocked while ANOTHER modal-family overlay (SavePresetDialog)
+    // is already open — TIER_RANK's `>=` comparison gives that for free,
+    // no extra "sibling" concept needed. Contrast with `save-preset` below,
+    // deliberately tiered "board" instead: it captures the ACTIVE tab's
+    // LIVE layout, which the board hides.
+    scope: "modal",
     menu: { submenu: "File", group: "preset" },
   },
   {

@@ -2158,7 +2158,15 @@ describe("createTabManager new-preset / save-preset — unified into the action:
     tm.dispose();
   });
 
-  it("new-preset via runAction is blocked while Settings is open — before Task 4 this opened unconditionally via the unguarded menu:new-preset event", async () => {
+  // F4 (2026-07-27 code review): new-preset was scope "terminal"/"pane", so
+  // it was blocked by Settings too — an accident of the blanket scope, not a
+  // deliberate product decision. PresetEditor (z-40) renders ON TOP OF
+  // Settings (z-20) and is fully visible; Settings holds no draft (every
+  // change writes straight through updateSettings), so there is nothing to
+  // protect by blocking. Retiered "modal": no longer blocked by Settings or
+  // by the board (below), only by another modal-family overlay already open
+  // (see the sibling-exclusion test further down).
+  it("new-preset via runAction is NOT blocked while Settings is open (F4 — Settings holds no draft, and PresetEditor renders above it)", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
@@ -2166,12 +2174,38 @@ describe("createTabManager new-preset / save-preset — unified into the action:
     settingsOpen.value = true;
     tm.runAction("new-preset");
 
+    expect(editorRequest.value).toEqual({ source: "live" });
+
+    tm.dispose();
+  });
+
+  it("new-preset via runAction is NOT blocked while the Open board is up (F4 — the bug this finding reported: Cmd+Shift+N was dead on the app's own default landing screen)", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    boardOpen.value = true;
+    tm.runAction("new-preset");
+
+    expect(editorRequest.value).toEqual({ source: "live" });
+
+    tm.dispose();
+  });
+
+  it("new-preset is blocked while the SavePresetDialog is already open — modal-family sibling exclusion via rank >=, not >", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    saveDialogOpen.value = true;
+    tm.runAction("new-preset");
+
     expect(editorRequest.value).toBeNull();
 
     tm.dispose();
   });
 
-  it("Cmd+Shift+N (new-preset) via the keydown path opens the PresetEditor, and is blocked while Settings is open", async () => {
+  it("Cmd+Shift+N (new-preset) via the keydown path opens the PresetEditor, and stays open while Settings is up too", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
@@ -2182,7 +2216,7 @@ describe("createTabManager new-preset / save-preset — unified into the action:
 
     settingsOpen.value = true;
     window.dispatchEvent(metaShiftKeydown("n"));
-    expect(editorRequest.value).toBeNull();
+    expect(editorRequest.value).toEqual({ source: "live" });
 
     tm.dispose();
   });
