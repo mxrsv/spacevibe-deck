@@ -143,6 +143,7 @@ A pane is **busy** when its foreground process is something other than an idle s
 | ⌘F           | Find in scrollback         |
 | ⌘K           | Clear buffer               |
 | ⌘+ / ⌘- / ⌘0 | Font zoom in / out / reset |
+| ⌘,           | Toggle Settings            |
 | ⌘Q           | Quit                       |
 
 Shift+Enter is not distinguishable from Enter in xterm today (a known limit). In Claude Code, use **Option+Enter** or type `\` then Enter to insert a newline without submitting.

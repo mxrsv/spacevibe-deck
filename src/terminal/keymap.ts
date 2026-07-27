@@ -22,6 +22,7 @@ export type ShortcutAction =
   | "reopen-tab"
   | "save-preset"
   | "focus-next-attention"
+  | "toggle-settings"
   | `select-tab-${number}`;
 
 export interface KeyBinding {
@@ -73,6 +74,8 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   // through an app-level seam so it can share the overlay preflight with a
   // status-dot click (Task 15) instead of focusing directly.
   { key: "a", meta: true, shift: true, action: "focus-next-attention" },
+  // Standard macOS Settings/Preferences chord (HIG); matches the gear button.
+  { key: ",", meta: true, action: "toggle-settings" },
   // event.key for arrows is "ArrowLeft" etc. — lowercased by matchBinding
   { key: "arrowleft", meta: true, alt: true, action: "focus-left" },
   { key: "arrowright", meta: true, alt: true, action: "focus-right" },

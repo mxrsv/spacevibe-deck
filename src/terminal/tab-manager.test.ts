@@ -2031,3 +2031,83 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 });
+
+describe("createTabManager toggle-settings routing (⌘, / Settings… menu item)", () => {
+  afterEach(() => {
+    boardOpen.value = false;
+    settingsOpen.value = false;
+  });
+
+  function commaKeydown(): KeyboardEvent {
+    return new KeyboardEvent("keydown", {
+      key: ",",
+      metaKey: true,
+      bubbles: true,
+    });
+  }
+
+  it("⌘, routes through onToggleSettings exactly once, the same pattern Cmd+Shift+A uses for onRequestAttentionFocus", async () => {
+    const onToggleSettings = vi.fn();
+    const { tm } = setup({ deps: { onToggleSettings } });
+    await tm.init();
+    await flush();
+
+    window.dispatchEvent(commaKeydown());
+
+    expect(onToggleSettings).toHaveBeenCalledTimes(1);
+    expect(onToggleSettings).toHaveBeenCalledWith();
+
+    tm.dispose();
+  });
+
+  it("without the dep: ⌘, is a safe no-op — no throw, nothing to toggle", async () => {
+    const { tm } = setup({}); // no onToggleSettings
+    await tm.init();
+    await flush();
+
+    expect(() => window.dispatchEvent(commaKeydown())).not.toThrow();
+
+    tm.dispose();
+  });
+
+  it("the macOS menu bridge (runAction) routes toggle-settings through onToggleSettings too — the item's accelerator never reaches the webview", async () => {
+    const onToggleSettings = vi.fn();
+    const { tm } = setup({ deps: { onToggleSettings } });
+    await tm.init();
+    await flush();
+
+    tm.runAction("toggle-settings");
+
+    expect(onToggleSettings).toHaveBeenCalledTimes(1);
+
+    tm.dispose();
+  });
+
+  it("is NOT blocked by the overlay scope guard while Settings is already open — the case that would otherwise strand the panel open forever", async () => {
+    const onToggleSettings = vi.fn();
+    const { tm } = setup({ deps: { onToggleSettings } });
+    await tm.init();
+    await flush();
+
+    settingsOpen.value = true;
+    tm.runAction("toggle-settings");
+
+    expect(onToggleSettings).toHaveBeenCalledTimes(1);
+
+    tm.dispose();
+  });
+
+  it("is NOT blocked while the Open board is up either — matches clicking the always-reachable gear button", async () => {
+    const onToggleSettings = vi.fn();
+    const { tm } = setup({ deps: { onToggleSettings } });
+    await tm.init();
+    await flush();
+
+    boardOpen.value = true;
+    tm.runAction("toggle-settings");
+
+    expect(onToggleSettings).toHaveBeenCalledTimes(1);
+
+    tm.dispose();
+  });
+});

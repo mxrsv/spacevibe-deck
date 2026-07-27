@@ -132,6 +132,17 @@ describe("matchBinding", () => {
     );
   });
 
+  it("matches Cmd+, as toggle-settings", () => {
+    expect(matchBinding(keyEvent(",", { metaKey: true }))).toBe(
+      "toggle-settings",
+    );
+  });
+
+  it("does not match comma without the meta modifier", () => {
+    expect(matchBinding(keyEvent(","))).toBeNull();
+    expect(matchBinding(keyEvent(",", { shiftKey: true }))).toBeNull();
+  });
+
   it("does not collide with other Cmd/Cmd+Shift bindings on the A key", () => {
     expect(matchBinding(keyEvent("a"))).toBeNull();
     expect(matchBinding(keyEvent("a", { metaKey: true }))).toBeNull();

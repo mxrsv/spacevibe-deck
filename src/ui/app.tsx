@@ -81,6 +81,34 @@ export function App() {
     });
   };
 
+  /**
+   * Settings close: also returns focus to the active pane, matching Escape
+   * and the gear button. Defined before the mount effect (like
+   * `requestAttentionFocus` above) so `toggleSettings` below — passed into
+   * `createTabManager` as the `onToggleSettings` seam for ⌘, and the menu's
+   * "Settings…" item — captures this, not a stale reference.
+   */
+  const closePanel = (): void => {
+    settingsOpen.value = false;
+    tabsRef.current?.focusActive();
+  };
+
+  /**
+   * Toggle Settings open/closed — shared by the gear button (direct call
+   * below), ⌘, (keymap.ts `toggle-settings`), and the menu's "Settings…"
+   * item, both of the latter through the `onToggleSettings` seam. Kept here
+   * rather than letting TabManager write `settingsOpen` itself so the
+   * close+focus-return flow stays owned by App, the same as every other
+   * overlay (board, PresetEditor, SavePresetDialog all close from app.tsx).
+   */
+  const toggleSettings = (): void => {
+    if (settingsOpen.value) {
+      closePanel();
+    } else {
+      settingsOpen.value = true;
+    }
+  };
+
   useEffect(() => {
     const host = stagesRef.current;
     if (!host) {
@@ -88,6 +116,7 @@ export function App() {
     }
     const manager = createTabManager(host, undefined, {
       onRequestAttentionFocus: (tabIndex) => requestAttentionFocus(tabIndex),
+      onToggleSettings: () => toggleSettings(),
     });
     tabsRef.current = manager;
     // Session restore is gone: the app always opens on the board (Intent §Constraint).
@@ -175,11 +204,6 @@ export function App() {
     rootStyle.setProperty("--text-muted", chrome.textMuted);
     rootStyle.setProperty("--text-faint", chrome.textFaint);
   });
-
-  const closePanel = (): void => {
-    settingsOpen.value = false;
-    tabsRef.current?.focusActive();
-  };
 
   /** Open board confirm: materialize + record recents + preselect memory. */
   async function handleOpen(
@@ -301,13 +325,6 @@ export function App() {
   const selectTab = (index: number): void => {
     boardOpen.value = false;
     tabsRef.current?.selectTab(index);
-  };
-  const toggleSettings = (): void => {
-    if (settingsOpen.value) {
-      closePanel();
-    } else {
-      settingsOpen.value = true;
-    }
   };
   const chromeActions = (
     <ChromeActions

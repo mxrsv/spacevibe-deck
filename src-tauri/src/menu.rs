@@ -59,8 +59,11 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         true,
         Some("CmdOrCtrl+Q"),
     )?;
+    // HIG placement: right after About, above Services, its own separator.
+    let settings = action_item(handle, "toggle-settings", "Settings…", "CmdOrCtrl+,")?;
     let app_menu = SubmenuBuilder::new(handle, app_name)
         .about(Some(AboutMetadata::default()))
+        .item(&settings)
         .separator()
         .services()
         .separator()

@@ -94,6 +94,16 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    */
   onRequestAttentionFocus?: (tabIndex?: number) => void;
   /**
+   * ⌘, (`toggle-settings`) and the menu's "Settings…" item route here instead
+   * of writing `settingsOpen` directly — same shape as
+   * `onRequestAttentionFocus` above. App owns the open/close+focus-return
+   * flow (it already does for every other overlay: board, PresetEditor,
+   * SavePresetDialog all close from app.tsx, never from TabManager), so this
+   * seam keeps that single owner instead of splitting the toggle logic
+   * between here and there. Missing = no-op, same as the attention seam.
+   */
+  onToggleSettings?: () => void;
+  /**
    * Test seam — defaults to a real `createAgentNotifier` wired to the live
    * settings store, live window focus, and the Task 20 Tauri adapter.
    * Injected notifier wins, so tests never hit the real native API.
@@ -819,6 +829,11 @@ export function createTabManager(
     // 15) first. Missing `onRequestAttentionFocus` = safe no-op, never a
     // direct focus/ack.
     "focus-next-attention": () => deps.onRequestAttentionFocus?.(),
+    // Never touches `settingsOpen` directly — routes through the optional
+    // app seam (mirrors `focus-next-attention` above) so App keeps owning
+    // the close+focus-return flow it already owns for every other overlay.
+    // Missing `onToggleSettings` = safe no-op, never a direct write.
+    "toggle-settings": () => deps.onToggleSettings?.(),
     find: () => activeManager()?.openSearch(),
     // The overlay scope guard in `dispatchAction` already blocks this while
     // any overlay (including the board) is up — this check is pure business
@@ -852,6 +867,13 @@ export function createTabManager(
    *  - `new-tab` only sets `boardOpen.value = true`, which is a no-op if the
    *    board is already open and otherwise exactly its normal behavior —
    *    nothing to guard.
+   *  - `toggle-settings` (⌘, / the menu's "Settings…" item) only reaches the
+   *    `onToggleSettings` app seam above, which mirrors what clicking the
+   *    always-reachable gear button already does regardless of any overlay
+   *    state (mouse/keyboard parity, ADR 0006). Gating it here would also
+   *    strand the panel open: once `settingsOpen` flips true, EVERY other
+   *    action becomes blocked by the check below, `toggle-settings` included
+   *    — so a second ⌘, could open Settings but never close it again.
    *
    * This is prep for a future action registry (each entry will carry its own
    * scope), so it stays a flat function here rather than growing its own
@@ -861,6 +883,7 @@ export function createTabManager(
     if (
       action === "focus-next-attention" ||
       action === "new-tab" ||
+      action === "toggle-settings" ||
       selectTabIndex(action) !== null
     ) {
       return false;
