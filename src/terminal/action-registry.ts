@@ -5,7 +5,38 @@
  * reads `scope`. See docs/plans/2026-07-27-action-registry.md.
  */
 
-export type ActionScope = "terminal" | "always";
+export type OverlayTier = "pane" | "settings" | "board" | "modal";
+
+/**
+ * Logical stacking rank behind `overlayBlocksAction` (tab-manager.ts): an
+ * action is blocked while ANY currently open overlay's rank is >= its own
+ * target tier's rank (see `ActionDefinition.scope` below). Mirrors the real
+ * z-index in src/styles.css — `.panel` (Settings) 20, `.open-board` 30,
+ * `.modal-scrim` (PresetEditor + SavePresetDialog, deliberately the SAME
+ * rank — see below) 40; `"pane"` has no z-index of its own, it is the base
+ * layer the terminal grid sits on (rank 0).
+ *
+ * `>=`, not `>`, is deliberate: two actions tiered `"modal"` automatically
+ * block each other while either is open (PresetEditor vs SavePresetDialog)
+ * with no separate "family"/"sibling" concept needed — see the regression
+ * test in tab-manager.test.ts that locks this property in.
+ *
+ * `"settings"` has no action tiered at it today (see `toggle-settings`'s own
+ * `scope` comment for why it stays `"always"` instead). It still needs to
+ * exist in the ranking: it is what lets `"board"`/`"modal"`-tiered actions
+ * stay UNBLOCKED while only Settings is open — Settings holds no draft, and
+ * being z-20 it never visually hides a z-30+ surface, so nothing is lost by
+ * letting board/modal-tier actions run over it. Remove this rank and that
+ * relationship silently breaks for any future settings-tiered action.
+ */
+export const TIER_RANK: Record<OverlayTier, number> = {
+  pane: 0,
+  settings: 20,
+  board: 30,
+  modal: 40,
+};
+
+export type ActionScope = OverlayTier | "always";
 
 export type MenuSubmenu = "App" | "File" | "Edit" | "View" | "Window";
 
@@ -15,13 +46,22 @@ export interface ActionDefinition {
   /** Display name — today's macOS menu label; reserved for a future cheat sheet/command palette. */
   readonly label: string;
   /**
-   * "terminal": blocked by `overlayBlocksAction` while the Open board/
-   * Settings/PresetEditor/SavePresetDialog is covering the terminal grid
-   * (the default, most actions).
-   * "always": skips the overlay guard — only for an action with its own
-   * overlay preflight (`focus-next-attention`), an action harmless even if
-   * the overlay is already open (`new-tab`), or an action that opens/closes
-   * the very overlay that would otherwise block it (`toggle-settings`).
+   * Decides whether `overlayBlocksAction` (tab-manager.ts) lets this action
+   * run while an overlay (Open board / Settings / PresetEditor /
+   * SavePresetDialog) is up.
+   *
+   * An `OverlayTier` (`"pane" | "settings" | "board" | "modal"`, see
+   * `TIER_RANK` above) blocks the action while any currently open overlay's
+   * rank is >= this tier's rank — most actions are `"pane"` (rank 0, the
+   * default: blocked by literally any open overlay, since every open
+   * overlay's rank is >= 0).
+   *
+   * `"always"` skips the tier comparison entirely — only for an action with
+   * its own overlay preflight (`focus-next-attention`), an action harmless
+   * even if the overlay is already open (`new-tab`), or an action that
+   * opens/closes the very overlay that would otherwise block it
+   * (`toggle-settings`).
+   *
    * Tab-jump actions (`select-tab-N`, `select-last-tab`) are exempted through
    * a SEPARATE mechanism (`isTabSelectionAction` in `tab-manager.ts`) — not
    * modeled here, so this field only ever reflects a genuine product
@@ -75,7 +115,7 @@ export const ACTION_REGISTRY = [
   {
     id: "reopen-tab",
     label: "Reopen Closed Tab",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "File", group: "primary" },
   },
   {
@@ -84,86 +124,86 @@ export const ACTION_REGISTRY = [
     // Moved from the Window menu to File (HIG: File owns create/save
     // operations; Window is left holding only native window-management
     // items — minimize/maximize/fullscreen).
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "File", group: "preset" },
   },
   {
     id: "save-preset",
     label: "Save Layout as Preset…",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "File", group: "preset" },
   },
   {
     id: "close-pane",
     label: "Close Pane",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "File", group: "close" },
   },
   {
     id: "close-tab",
     label: "Close Tab",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "File", group: "close" },
   },
-  { id: "find", label: "Find…", scope: "terminal", menu: { submenu: "Edit" } },
+  { id: "find", label: "Find…", scope: "pane", menu: { submenu: "Edit" } },
   {
     id: "find-next",
     label: "Find Next",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "Edit" },
   },
   {
     id: "find-previous",
     label: "Find Previous",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "Edit" },
   },
   {
     id: "clear-buffer",
     label: "Clear Buffer",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "Edit" },
   },
   {
     id: "split-row",
     label: "Split Vertically",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "View", group: "split" },
   },
   {
     id: "split-column",
     label: "Split Horizontally",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "View", group: "split" },
   },
   {
     id: "toggle-zoom-pane",
     label: "Zoom Pane",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "View", group: "zoom-pane" },
   },
   {
     id: "toggle-expand",
     label: "Focus Expand",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "View", group: "zoom-pane" },
   },
   {
     id: "zoom-in",
     label: "Increase Font Size",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "View", group: "font" },
   },
   {
     id: "zoom-out",
     label: "Decrease Font Size",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "View", group: "font" },
   },
   {
     id: "zoom-reset",
     label: "Actual Size",
-    scope: "terminal",
+    scope: "pane",
     menu: { submenu: "View", group: "font" },
   },
   {
@@ -176,21 +216,21 @@ export const ACTION_REGISTRY = [
     scope: "always",
     menu: { submenu: "View", group: "attention" },
   },
-  { id: "focus-next", label: "Focus Next Pane", scope: "terminal" },
-  { id: "focus-prev", label: "Focus Previous Pane", scope: "terminal" },
-  { id: "focus-left", label: "Focus Pane Left", scope: "terminal" },
-  { id: "focus-right", label: "Focus Pane Right", scope: "terminal" },
-  { id: "focus-up", label: "Focus Pane Up", scope: "terminal" },
-  { id: "focus-down", label: "Focus Pane Down", scope: "terminal" },
-  { id: "next-tab", label: "Next Tab", scope: "terminal" },
-  { id: "prev-tab", label: "Previous Tab", scope: "terminal" },
+  { id: "focus-next", label: "Focus Next Pane", scope: "pane" },
+  { id: "focus-prev", label: "Focus Previous Pane", scope: "pane" },
+  { id: "focus-left", label: "Focus Pane Left", scope: "pane" },
+  { id: "focus-right", label: "Focus Pane Right", scope: "pane" },
+  { id: "focus-up", label: "Focus Pane Up", scope: "pane" },
+  { id: "focus-down", label: "Focus Pane Down", scope: "pane" },
+  { id: "next-tab", label: "Next Tab", scope: "pane" },
+  { id: "prev-tab", label: "Previous Tab", scope: "pane" },
   {
     id: "select-last-tab",
     label: "Select Last Tab",
     // Exempt from the overlay guard through isTabSelectionAction
     // (tab-manager.ts) — the same mechanism as select-tab-N, NOT through
     // scope "always".
-    scope: "terminal",
+    scope: "pane",
   },
 ] as const satisfies readonly ActionDefinition[];
 

@@ -17,7 +17,11 @@ import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { sendAgentNotification } from "../lib/native-notification";
 import type { AgentChoice } from "../lib/workspace-recents";
 import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
-import { ACTION_REGISTRY } from "./action-registry";
+import {
+  ACTION_REGISTRY,
+  TIER_RANK,
+  type OverlayTier,
+} from "./action-registry";
 import { installFileDrop } from "./file-drop";
 import {
   createTerminalManager,
@@ -72,7 +76,7 @@ import {
  * `overlayBlocksAction` below. Module-level: the registry is static, so this
  * is computed once per module load, not once per `createTabManager` call.
  */
-const ACTION_SCOPE: ReadonlyMap<string, "terminal" | "always"> = new Map(
+const ACTION_SCOPE: ReadonlyMap<string, OverlayTier | "always"> = new Map(
   ACTION_REGISTRY.map((action) => [action.id, action.scope] as const),
 );
 
@@ -869,31 +873,56 @@ export function createTabManager(
   };
 
   /**
+   * Ranks of every overlay that is currently open (Open board, Settings,
+   * PresetEditor/SavePresetDialog share the "modal" rank — see
+   * `TIER_RANK`'s doc comment in action-registry.ts for why). Empty when
+   * nothing covers the terminal grid.
+   */
+  function openOverlayRanks(): readonly number[] {
+    const ranks: number[] = [];
+    if (settingsOpen.value) {
+      ranks.push(TIER_RANK.settings);
+    }
+    if (boardOpen.value) {
+      ranks.push(TIER_RANK.board);
+    }
+    if (editorRequest.value !== null || saveDialogOpen.value) {
+      ranks.push(TIER_RANK.modal);
+    }
+    return ranks;
+  }
+
+  /**
    * Single choke point deciding whether `action` may run while an overlay
    * (Open board, Settings, PresetEditor, SavePresetDialog) is covering the
-   * terminal grid. Default is BLOCKED — every action that reaches into the
-   * terminal/tab/pane state is invisible and dangerous while its target is
-   * hidden (⌘W closing a pane nobody can see, ⌘K wiping scrollback, etc).
+   * terminal grid. Default tier is `"pane"` (rank 0) — blocked whenever ANY
+   * overlay is open, since every open overlay's rank is >= 0. Every action
+   * that reaches into the terminal/tab/pane state needs this: it is
+   * invisible and dangerous while its target is hidden (⌘W closing a pane
+   * nobody can see, ⌘K wiping scrollback, etc). A non-`"pane"` tier
+   * (`"board"`/`"modal"`) only blocks the action while an overlay ranked at
+   * or above it is open.
    *
    * `scope: "always"` (`focus-next-attention`, `new-tab`, `toggle-settings`)
-   * skips the guard — see each entry's comment in action-registry.ts for why
-   * (a dedicated overlay preflight, a harmless no-op, or an action that
-   * opens/closes the very overlay that would otherwise strand it). Tab-jump
-   * actions (`select-tab-N`, `select-last-tab`) are exempt through the
-   * SEPARATE `isTabSelectionAction` mechanism below, not through `scope` —
-   * see its own doc comment for why that's a distinct action family, not a
-   * product-level "always" decision.
+   * skips the comparison entirely — see each entry's comment in
+   * action-registry.ts for why (a dedicated overlay preflight, a harmless
+   * no-op, or an action that opens/closes the very overlay that would
+   * otherwise strand it). Tab-jump actions (`select-tab-N`,
+   * `select-last-tab`) are exempt through the SEPARATE `isTabSelectionAction`
+   * mechanism below, not through `scope` — see its own doc comment for why
+   * that's a distinct action family, not a product-level "always" decision.
    */
   function overlayBlocksAction(action: ShortcutAction): boolean {
-    if (ACTION_SCOPE.get(action) === "always" || isTabSelectionAction(action)) {
+    const scope = ACTION_SCOPE.get(action);
+    if (
+      scope === undefined ||
+      scope === "always" ||
+      isTabSelectionAction(action)
+    ) {
       return false;
     }
-    return (
-      boardOpen.value ||
-      settingsOpen.value ||
-      editorRequest.value !== null ||
-      saveDialogOpen.value
-    );
+    const targetRank = TIER_RANK[scope];
+    return openOverlayRanks().some((rank) => rank >= targetRank);
   }
 
   /**
@@ -1123,8 +1152,8 @@ export function createTabManager(
     await registerUnlisten(
       installFileDrop({
         onOver(x, y) {
-          // A drop while the board is up belongs to the logo panel, not the
-          // terminal hiding behind it.
+          // The board has no drop target — a drop while it is up must not
+          // reach the terminal hiding behind it.
           if (boardOpen.value) {
             return;
           }
