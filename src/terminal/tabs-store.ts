@@ -72,6 +72,14 @@ export interface StatusInfo {
 
 export const tabViews = signal<readonly TabView[]>([]);
 export const activeTabIndex = signal(0);
+/**
+ * Tab whose rename/dot-color popover a keyboard action (⌘⇧R,
+ * `open-tab-options`) wants opened next. Set by TabManager, consumed and
+ * reset to `null` by whichever chrome component (TabBar or WorkspaceSidebar)
+ * is currently mounted — only one renders at a time (Settings'
+ * `tabBarPosition`), so there is exactly one consumer per request.
+ */
+export const requestTabOptionsKey = signal<number | null>(null);
 export const statusInfo = signal<StatusInfo>({
   branch: null,
   cwd: null,

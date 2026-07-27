@@ -32,15 +32,16 @@ describe("ACTION_REGISTRY", () => {
   // menu's "New Layout Preset…" into the same action:/runAction path as
   // every other item; see docs/plans/2026-07-27-action-registry.md Task 4
   // and the NOTE above ACTION_REGISTRY in action-registry.ts for the earlier
-  // 25→27 correction). 32 = 28 + swap-left/right/up/down (FR-032,
-  // docs/plans/2026-07-27-keyboard-parity.md Task 1).
-  it("has exactly the 32 action ids the registry declares as of keyboard-parity Task 1", () => {
+  // 25→27 correction). 33 = 28 + swap-left/right/up/down (FR-032, Task 1) +
+  // open-tab-options (Task 2) — docs/plans/2026-07-27-keyboard-parity.md.
+  it("has exactly the 33 action ids the registry declares as of keyboard-parity Task 2", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
         "toggle-settings",
         "new-tab",
         "reopen-tab",
+        "open-tab-options",
         "close-pane",
         "close-tab",
         "find",

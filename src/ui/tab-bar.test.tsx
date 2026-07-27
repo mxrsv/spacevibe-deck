@@ -4,7 +4,11 @@ import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dotColor as processDotColor } from "../lib/process-info";
 import { tabDotCssColor } from "../lib/tab-colors";
-import { activeTabIndex, tabViews } from "../terminal/tabs-store";
+import {
+  activeTabIndex,
+  requestTabOptionsKey,
+  tabViews,
+} from "../terminal/tabs-store";
 import type { AgentAttentionSummary, TabView } from "../terminal/tabs-store";
 import { TabBar } from "./tab-bar";
 
@@ -42,12 +46,14 @@ describe("TabBar", () => {
     document.body.appendChild(host);
     tabViews.value = [];
     activeTabIndex.value = 0;
+    requestTabOptionsKey.value = null;
   });
 
   afterEach(() => {
     act(() => {
       render(null, host);
     });
+    requestTabOptionsKey.value = null;
   });
 
   const baseProps = () => ({
@@ -167,6 +173,41 @@ describe("TabBar", () => {
       row.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(host.querySelector(".tab-popover")).toBeNull();
+  });
+
+  // open-tab-options (⌘⇧R, docs/plans/2026-07-27-keyboard-parity.md Task 2):
+  // the keyboard trigger doesn't know which chrome component is mounted, so
+  // it goes through a shared signal instead of an imperative handle — each
+  // side (TabBar/WorkspaceSidebar) listens and consumes it independently.
+  it("requestTabOptionsKey opens the popover for that tab, anchored to its DOM element, then resets to null", () => {
+    tabViews.value = [
+      tab({ key: 1, name: "Alpha" }),
+      tab({ key: 2, name: "Beta" }),
+    ];
+    activeTabIndex.value = 1; // active tab need not be the one requested
+    mount(baseProps());
+
+    act(() => {
+      requestTabOptionsKey.value = 1; // Alpha, not the active tab
+    });
+
+    const popover = host.querySelector(".tab-popover");
+    expect(popover).not.toBeNull();
+    expect(requestTabOptionsKey.value).toBeNull(); // consumed — won't re-fire
+  });
+
+  it("requestTabOptionsKey for a tab not in the DOM is a safe no-op — still resets to null, no throw", () => {
+    tabViews.value = [tab({ key: 1, name: "Alpha" })];
+    mount(baseProps());
+
+    expect(() => {
+      act(() => {
+        requestTabOptionsKey.value = 999;
+      });
+    }).not.toThrow();
+
+    expect(host.querySelector(".tab-popover")).toBeNull();
+    expect(requestTabOptionsKey.value).toBeNull();
   });
 
   it("clicking close calls onCloseTab only", () => {

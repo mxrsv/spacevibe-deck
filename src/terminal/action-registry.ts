@@ -159,6 +159,41 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "File", group: "primary" },
   },
   {
+    id: "open-tab-options",
+    label: "Rename Tab / Dot Color…",
+    // Opens the same TabPopover a tab click already opens — no menu item
+    // (same "already has a mouse path" reasoning as focus-*/swap-* above).
+    //
+    // Tiered "always" (Task 2, docs/plans/2026-07-27-keyboard-parity.md),
+    // deliberately NOT a new OverlayTier: TabPopover renders at z-index 100
+    // (src/styles.css) — above `.modal-scrim` (40), `.open-board` (30), and
+    // `.panel` (20), i.e. above every overlay this registry models — and
+    // TabBar/WorkspaceSidebar sit outside `.stage`, so they stay visible and
+    // clickable no matter which overlay is open (the same reason
+    // select-tab-N/next-tab/prev-tab are click-parity-exempt via
+    // isTabSwitchAction, not this field). There is no "action runs on a
+    // hidden surface" risk here for the tier model to guard against — this
+    // is a UI-layer fact (where TabPopover paints, where TabBar lives in the
+    // DOM), not an overlay this registry needs to know about.
+    //
+    // Verified before shipping (would otherwise reproduce F3's "steal focus
+    // from a draft" bug in a new spot): TabPopover mount-focuses its rename
+    // input (tab-popover.tsx), and its own Escape handler does not
+    // stopPropagation. But PresetEditor/SavePresetDialog's Escape handling
+    // is an element-scoped `onKeyDown` on their own `.preset-editor`/
+    // `.save-preset` div (not a `window` listener), and TabPopover lives in
+    // TabBar/WorkspaceSidebar — a completely separate DOM subtree from
+    // `<main class="stage">` where those modals render — so an Escape
+    // bubbling from TabPopover's input can never reach their handler; the
+    // draft cannot be discarded this way. Settings' Escape listener IS
+    // global (`window`, settings-panel.tsx) and would also fire if Settings
+    // happened to be open at the same time, but `toggleSettingsPanel`
+    // already guarantees Settings can only be open when both the board AND
+    // a modal draft are closed — so that cascade can only ever call
+    // focusActive() on a pane that is not hidden behind anything.
+    scope: "always",
+  },
+  {
     id: "new-preset",
     label: "New Layout Preset…",
     // Moved from the Window menu to File (HIG: File owns create/save
@@ -510,6 +545,10 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { key: "g", meta: true, shift: true, action: "find-previous" },
   { key: "k", meta: true, action: "clear-buffer" },
   { key: "t", meta: true, shift: true, action: "reopen-tab" },
+  // Opens the rename/dot-color popover for the active tab (Task 2,
+  // docs/plans/2026-07-27-keyboard-parity.md) — no menu item, "r" is a
+  // letter mnemonic (RULE above: CharKeyBinding, not code).
+  { key: "r", meta: true, shift: true, action: "open-tab-options" },
   // Sketch a new layout preset from scratch (Task 4, unified with the menu's
   // "New Layout Preset…" accelerator, already Cmd+Shift+N since 09f5c4d).
   { key: "n", meta: true, shift: true, action: "new-preset" },

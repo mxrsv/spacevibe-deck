@@ -59,6 +59,7 @@ import {
 import {
   activeTabIndex,
   applyTabOverride,
+  requestTabOptionsKey,
   statusInfo,
   tabViews,
   type TabOverride,
@@ -855,6 +856,15 @@ export function createTabManager(
     "swap-right": () => activeManager()?.swapDirection("right"),
     "swap-up": () => activeManager()?.swapDirection("up"),
     "swap-down": () => activeManager()?.swapDirection("down"),
+    // Opens the same rename/dot-color popover the tab click already opens —
+    // TabPopover itself is unchanged, this only adds the keyboard trigger.
+    // Unknown active tab (no tabs yet) → no-op, nothing to request.
+    "open-tab-options": () => {
+      const tab = tabs[active];
+      if (tab) {
+        requestTabOptionsKey.value = tab.key;
+      }
+    },
     "reopen-tab": () => void reopenTab(),
     // Never calls `focusNextAttention` directly — routes the request through
     // the optional app seam so the app can run the overlay preflight (Task

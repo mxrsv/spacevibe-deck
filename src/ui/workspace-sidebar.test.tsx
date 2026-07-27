@@ -26,6 +26,7 @@ vi.mock("../terminal/file-drop", () => ({
 import {
   activeTabIndex,
   IDLE_ATTENTION_SUMMARY,
+  requestTabOptionsKey,
   tabViews,
 } from "../terminal/tabs-store";
 import type { AgentAttentionSummary, TabView } from "../terminal/tabs-store";
@@ -65,12 +66,14 @@ describe("WorkspaceSidebar", () => {
     document.body.appendChild(host);
     tabViews.value = [];
     activeTabIndex.value = 0;
+    requestTabOptionsKey.value = null;
   });
 
   afterEach(() => {
     act(() => {
       render(null, host);
     });
+    requestTabOptionsKey.value = null;
   });
 
   const baseProps = () => ({
@@ -207,6 +210,38 @@ describe("WorkspaceSidebar", () => {
       row.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(host.querySelector(".tab-popover")).toBeNull();
+  });
+
+  // open-tab-options (⌘⇧R, docs/plans/2026-07-27-keyboard-parity.md Task 2) —
+  // same shared-signal mechanism as TabBar (tabs-store.ts's doc comment).
+  it("requestTabOptionsKey opens the popover for that row, anchored to its DOM element, then resets to null", () => {
+    tabViews.value = [
+      tab({ key: 1, name: "Alpha" }),
+      tab({ key: 2, name: "Beta" }),
+    ];
+    activeTabIndex.value = 1; // active row need not be the one requested
+    mount(baseProps());
+
+    act(() => {
+      requestTabOptionsKey.value = 1; // Alpha, not the active row
+    });
+
+    expect(host.querySelector(".tab-popover")).not.toBeNull();
+    expect(requestTabOptionsKey.value).toBeNull(); // consumed — won't re-fire
+  });
+
+  it("requestTabOptionsKey for a row not in the DOM is a safe no-op — still resets to null, no throw", () => {
+    tabViews.value = [tab({ key: 1, name: "Alpha" })];
+    mount(baseProps());
+
+    expect(() => {
+      act(() => {
+        requestTabOptionsKey.value = 999;
+      });
+    }).not.toThrow();
+
+    expect(host.querySelector(".tab-popover")).toBeNull();
+    expect(requestTabOptionsKey.value).toBeNull();
   });
 
   it("clicking close calls onCloseTab only", () => {

@@ -1,10 +1,11 @@
-import { useSignal } from "@preact/signals";
-import { useEffect } from "preact/hooks";
+import { useSignal, useSignalEffect } from "@preact/signals";
+import { useEffect, useRef } from "preact/hooks";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import {
   activeTabIndex,
   IDLE_ATTENTION_SUMMARY,
+  requestTabOptionsKey,
   statusInfo,
   tabViews,
 } from "../terminal/tabs-store";
@@ -38,6 +39,7 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
   const tabs = tabViews.value;
   const active = activeTabIndex.value;
   const home = statusInfo.value.home;
+  const navRef = useRef<HTMLElement>(null);
   const dragOverKey = useSignal<number | null>(null);
   // Anchored by tab key, not index — same reason as the horizontal tab bar:
   // tabs can close (and indexes shift) while the popover is open.
@@ -131,6 +133,24 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
     popover.value = { key, left: rect.right + 6, top: rect.top, anchorEl };
   }
 
+  // ⌘⇧R (open-tab-options) doesn't know whether TabBar or WorkspaceSidebar is
+  // mounted, so it goes through this shared signal instead — see its doc
+  // comment in tabs-store.ts. Unknown/not-yet-rendered key → no anchor found,
+  // safe no-op; the signal still resets so a later request isn't swallowed.
+  useSignalEffect(() => {
+    const key = requestTabOptionsKey.value;
+    if (key === null) {
+      return;
+    }
+    const anchorEl = navRef.current?.querySelector<HTMLElement>(
+      `[data-key="${key}"]`,
+    );
+    if (anchorEl) {
+      openPopover(key, anchorEl);
+    }
+    requestTabOptionsKey.value = null;
+  });
+
   async function pickLogoFor(workspacePath: string): Promise<void> {
     try {
       const picked = await open({
@@ -151,7 +171,7 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
   }
 
   return (
-    <nav class="wsbar" aria-label="Workspaces">
+    <nav class="wsbar" aria-label="Workspaces" ref={navRef}>
       <div class="wsbar__list" role="tablist" aria-label="Workspace tabs">
         {tabs.map((tab, index) => {
           const label =

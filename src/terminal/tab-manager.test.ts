@@ -17,7 +17,12 @@ import {
   type TabManager,
   type TabManagerDeps,
 } from "./tab-manager";
-import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
+import {
+  activeTabIndex,
+  requestTabOptionsKey,
+  tabViews,
+  statusInfo,
+} from "./tabs-store";
 import type { AgentNotifier, AttentionNotification } from "./agent-notifier";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
@@ -2268,8 +2273,12 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     const alwaysActions = ACTION_REGISTRY.filter(
       (a) => a.scope === "always",
     ).map((a) => a.id);
+    // open-tab-options joined this set in Task 2 of keyboard-parity —
+    // TabPopover (z-100) outranks every overlay tier this registry models,
+    // and TabBar/WorkspaceSidebar sit outside `.stage`, so there is nothing
+    // for a tier to protect (see the row's own comment).
     expect(new Set(alwaysActions)).toEqual(
-      new Set(["focus-next-attention", "toggle-settings"]),
+      new Set(["focus-next-attention", "toggle-settings", "open-tab-options"]),
     );
   });
 });
@@ -2746,6 +2755,89 @@ describe("createTabManager swap-* actions (FR-032)", () => {
     await flush();
 
     expect(focusSpy).not.toHaveBeenCalled();
+
+    tm.dispose();
+  });
+});
+
+// open-tab-options (⌘⇧R, docs/plans/2026-07-27-keyboard-parity.md Task 2):
+// scope "always" (a deliberate, documented choice — see the row's own
+// comment in action-registry.ts) rather than a new OverlayTier, so this
+// suite proves the request reaches requestTabOptionsKey regardless of which
+// overlay is open — TabBar/WorkspaceSidebar consuming it is covered
+// separately in tab-bar.test.tsx/workspace-sidebar.test.tsx.
+describe("createTabManager open-tab-options (⌘⇧R)", () => {
+  afterEach(() => {
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    editorRequest.value = null;
+    saveDialogOpen.value = false;
+    requestTabOptionsKey.value = null;
+  });
+
+  it("runAction sets requestTabOptionsKey to the active tab's key", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.init();
+    await flush();
+    expect(activeTabIndex.value).toBe(1);
+
+    tm.runAction("open-tab-options");
+    await flush();
+
+    expect(requestTabOptionsKey.value).toBe(tabViews.value[1]!.key);
+
+    tm.dispose();
+  });
+
+  it("is a safe no-op with no tabs — nothing to request", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    tm.runAction("open-tab-options");
+    await flush();
+
+    expect(requestTabOptionsKey.value).toBeNull();
+
+    tm.dispose();
+  });
+
+  // scope "always" — TabBar sits outside `.stage`, unaffected by any of the
+  // four overlays, so there is nothing for the guard to protect here.
+  it("is NOT blocked while the Open board, Settings, or a modal draft is up", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+
+    for (const openOverlay of [
+      () => {
+        boardOpen.value = true;
+      },
+      () => {
+        settingsOpen.value = true;
+      },
+      () => {
+        editorRequest.value = { source: "live" };
+      },
+      () => {
+        saveDialogOpen.value = true;
+      },
+    ]) {
+      requestTabOptionsKey.value = null;
+      boardOpen.value = false;
+      settingsOpen.value = false;
+      editorRequest.value = null;
+      saveDialogOpen.value = false;
+      openOverlay();
+
+      tm.runAction("open-tab-options");
+      await flush();
+
+      expect(requestTabOptionsKey.value).not.toBeNull();
+    }
 
     tm.dispose();
   });

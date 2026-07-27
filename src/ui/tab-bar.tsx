@@ -1,7 +1,9 @@
-import { useSignal } from "@preact/signals";
+import { useRef } from "preact/hooks";
+import { useSignal, useSignalEffect } from "@preact/signals";
 import {
   activeTabIndex,
   IDLE_ATTENTION_SUMMARY,
+  requestTabOptionsKey,
   tabViews,
 } from "../terminal/tabs-store";
 import { dotColor } from "../lib/process-info";
@@ -30,6 +32,7 @@ interface TabBarProps {
 export function TabBar(props: TabBarProps) {
   const tabs = tabViews.value;
   const active = activeTabIndex.value;
+  const rootRef = useRef<HTMLElement>(null);
   // Anchored by tab key, not index — tabs can close (and indexes shift)
   // while the popover is open; actions resolve the index at call time.
   const popover = useSignal<{
@@ -46,8 +49,33 @@ export function TabBar(props: TabBarProps) {
     popover.value === null
       ? -1
       : tabs.findIndex((tab) => tab.key === popover.value?.key);
+
+  function openPopover(key: number, anchorEl: HTMLElement): void {
+    const rect = anchorEl.getBoundingClientRect();
+    popover.value = { key, left: rect.left, top: rect.bottom + 6, anchorEl };
+  }
+
+  // ⌘⇧R (open-tab-options) doesn't know whether TabBar or WorkspaceSidebar is
+  // mounted, so it goes through this shared signal instead — see its doc
+  // comment in tabs-store.ts. Unknown/not-yet-rendered key (tab closed
+  // between the request and this effect, or a stale key) → no anchor found,
+  // safe no-op; the signal still resets so a later request isn't swallowed.
+  useSignalEffect(() => {
+    const key = requestTabOptionsKey.value;
+    if (key === null) {
+      return;
+    }
+    const anchorEl = rootRef.current?.querySelector<HTMLElement>(
+      `[data-key="${key}"]`,
+    );
+    if (anchorEl) {
+      openPopover(key, anchorEl);
+    }
+    requestTabOptionsKey.value = null;
+  });
+
   return (
-    <header class="tabbar" data-tauri-drag-region>
+    <header class="tabbar" data-tauri-drag-region ref={rootRef}>
       <div class="tabbar__tabs" role="tablist" aria-label="Terminal tabs">
         {tabs.map((tab, index) => (
           <div
@@ -55,6 +83,7 @@ export function TabBar(props: TabBarProps) {
             role="tab"
             aria-selected={index === active}
             tabIndex={0}
+            data-key={tab.key}
             class={`tab ${index === active ? "is-active" : ""}`}
             onClick={(event) => {
               if (index !== active) {
@@ -65,14 +94,7 @@ export function TabBar(props: TabBarProps) {
                 popover.value = null; // second click on the active tab toggles it off
                 return;
               }
-              const anchorEl = event.currentTarget as HTMLElement;
-              const rect = anchorEl.getBoundingClientRect();
-              popover.value = {
-                key: tab.key,
-                left: rect.left,
-                top: rect.bottom + 6,
-                anchorEl,
-              };
+              openPopover(tab.key, event.currentTarget as HTMLElement);
             }}
           >
             <span
