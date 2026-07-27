@@ -1,72 +1,72 @@
-# OpenBoard hai cột native — rail recents + detail Layout/Agent
+# Native two-column OpenBoard — recents rail + Layout/Agent detail
 
-**Spec**: mock đã duyệt bằng mắt trong session (scratchpad `open-board-mock.html`, ảnh chốt 2026-07-27); các ràng buộc rút từ 3 báo cáo agent (state/keyboard/design) cùng ngày.
-**Goal**: thay bố cục OpenBoard hiện tại (logo panel + cột phải 520px) bằng hai cột trong stage — rail 300px (recents xoá được, Open Folder ghim đáy) và detail (header workspace, lưới Layout thumbnail terminal-mini, hàng Agent, footer) — giữ nguyên toàn bộ đường bàn phím cũ.
-**Architecture**: thuần Preact + CSS trong các file hiện có; một API xoá recent mới trong store; không đổi schema `workspaces.json` (version giữ 2); không đụng cơ chế preset/split-tree/PTY. LogoPanel bị xoá, `logoDataUrl` được re-home vào đầu rail nên tính năng App logo trong Settings vẫn sống.
+**Spec**: mock eye-approved in session (scratchpad `open-board-mock.html`, final screenshot 2026-07-27); constraints distilled from 3 same-day agent reports (state/keyboard/design).
+**Goal**: replace the current OpenBoard layout (logo panel + 520px right column) with two columns in the stage — a 300px rail (removable recents, Open Folder pinned at the bottom) and a detail column (workspace header, Layout grid with terminal-mini thumbnails, Agent row, footer) — keeping every existing keyboard path intact.
+**Architecture**: pure Preact + CSS in the existing files; one new remove-recent API in the store; no `workspaces.json` schema change (version stays 2); the preset/split-tree/PTY machinery is untouched. LogoPanel is deleted, `logoDataUrl` is re-homed to the top of the rail, so the App logo feature in Settings stays alive.
 
-## 1. Kết quả mong đợi
+## 1. Expected outcomes
 
-- Board hiển thị hai cột đúng mock trong stage 900×658 (cửa sổ mặc định 1100×720) — verify bằng screenshot `npm run dev` so với ảnh chốt.
-- Mỗi hàng recent có icon thư mục, tên, path tildify, thời gian đọc được, nút × xoá khỏi recents; hàng missing icon vàng, path gạch ngang, vẫn xoá được — verify bằng test `removeRecent` trong `workspace-recents.test.ts` và thao tác chuột thật.
-- Nhóm Missing đứng cuối rail kèm nút "Remove N" xoá một lần — verify bằng test `partitionRecents` và click thật.
-- Hover thẻ preset (không built-in) hiện nút ✎/×; built-in chỉ hiện chấm; rename/delete hoạt động bằng chuột — verify thao tác thật + test hiện có của presets-store vẫn pass.
-- Toàn bộ phím cũ giữ nguyên hành vi: ↑↓, Tab/←→, 0–9, ⌘O, Enter, Esc, R, ⌫ — verify bằng `npm test` (test board mới) + thao tác thật.
-- Xoá recent đang chọn không làm nó "sống lại"; selection nhảy sang hàng kế — verify bằng test `open-board.removal.test.tsx`.
-- `npm run build` và `npm test` xanh toàn bộ.
+- The board renders two columns matching the mock in the 900×658 stage (default 1100×720 window) — verify with an `npm run dev` screenshot against the final mock image.
+- Every recent row has a folder icon, name, tildified path, readable time, and an × button removing it from recents; missing rows get a yellow icon and struck-through path, and remain removable — verify with the `removeRecent` test in `workspace-recents.test.ts` plus real mouse interaction.
+- The Missing group sits at the bottom of the rail with a one-click "Remove N" button — verify with the `partitionRecents` test and a real click.
+- Hovering a (non-built-in) preset card shows ✎/× buttons; built-ins only show the dot; rename/delete work by mouse — verify by real interaction + the existing presets-store tests still passing.
+- Every existing key keeps its behavior: ↑↓, Tab/←→, 0–9, ⌘O, Enter, Esc, R, ⌫ — verify with `npm test` (new board tests) + real interaction.
+- Removing the currently selected recent does not "resurrect" it; selection jumps to the next row — verify with the `open-board.removal.test.tsx` test.
+- `npm run build` and `npm test` fully green.
 
-## 2. Nguồn dữ liệu chuẩn
+## 2. Canonical data sources
 
-**Canonical data**: `workspacesData` ([workspaces-store.ts](../../src/open-board/workspaces-store.ts)) cho recents; `presetsData`/`boardPresets()` ([presets-store.ts](../../src/presets/presets-store.ts)) cho thẻ Layout; `detectAgents()` ([pty-client.ts](../../src/terminal/pty-client.ts)) cho chip Agent; `logoDataUrl` ([logo-store.ts](../../src/settings/logo-store.ts)) cho logo đầu rail.
+**Canonical data**: `workspacesData` ([workspaces-store.ts](../../src/open-board/workspaces-store.ts)) for recents; `presetsData`/`boardPresets()` ([presets-store.ts](../../src/presets/presets-store.ts)) for Layout cards; `detectAgents()` ([pty-client.ts](../../src/terminal/pty-client.ts)) for Agent chips; `logoDataUrl` ([logo-store.ts](../../src/settings/logo-store.ts)) for the rail-top logo.
 
-**Lấy từ**: các signal/store trên + `dirs_exist` IPC (đã dùng sẵn trong board).
+**Read from**: the signals/stores above + the `dirs_exist` IPC (already used by the board).
 
-**KHÔNG lấy từ**: `$SHELL` (không có nguồn phía UI), bộ đếm số lần mở (schema không có — không hiển thị "Opened N times"), `git_branch` (spawn process theo mỗi phím mũi tên — loại khỏi scope).
+**Do NOT read from**: `$SHELL` (no UI-side source), an open counter (not in the schema — no "Opened N times" display), `git_branch` (would spawn a process per arrow key — out of scope).
 
 ## 3. Business rules & invariants
 
-- **Xoá recent là hành vi mới trong store, không phải filter UI**: `removeRecent(path)` ghi lại `workspaces.json`; hàng bị xoá không quay lại sau restart — verify bằng test store + mở lại app.
-- **Hàng ma không hồi sinh**: khi xoá đúng `selectedPath`, selection phải được gán lại TRƯỚC khi entry rời danh sách, vì `displayRecents` bịa entry sống cho `selectedPath` không nằm trong recents ([open-board.tsx](../../src/open-board/open-board.tsx) dòng 155-159) — verify bằng test `open-board.removal.test.tsx`.
-- **Không button lồng button**: hàng recent đổi từ `<button>` sang `<div role="option">` + nút × là `<button>` riêng; hàng missing không dùng `disabled` nữa (để × còn bấm được) — verify bằng đọc DOM trong test render.
-- **Phím và chuột ngang hàng (di sản ADR 0006)**: mọi hành vi chuột mới (× recent, Remove N, ✎/× preset) đều có đường phím tương đương đã tồn tại (⌫ xoá recent đang chọn; R/⌫ cho preset) — verify bằng test keyboard.
-- **Accent đặc chỉ cho selection recents + nút primary**: thẻ Layout/Agent giữ ring `inset 0 0 0 1px var(--accent)`; chữ trên nền accent dùng `var(--bg)`, chữ phụ 82% — không hardcode màu — verify bằng grep `#0f1219\|#0b0b11` ra 0 kết quả trong diff.
-- **Thumbnail theo token**: nền rãnh `var(--bg)`, pane `color-mix(bg 80%, tone)` — theme sáng tự lật — verify bằng đổi `colorOverrides.background` sáng trong Settings và nhìn.
-- **FR-025 di sản**: `detectAgents` fail → chỉ còn Shell only, board vẫn mở được — hành vi hiện có, không phá — verify test hiện có của `workspace-recents` pass nguyên.
+- **Removing a recent is new store behavior, not a UI filter**: `removeRecent(path)` rewrites `workspaces.json`; a removed row does not come back after restart — verify with a store test + relaunching the app.
+- **No ghost-row resurrection**: when removing exactly `selectedPath`, selection must be reassigned BEFORE the entry leaves the list, because `displayRecents` fabricates a live entry for a `selectedPath` not present in recents ([open-board.tsx](../../src/open-board/open-board.tsx) lines 155-159) — verify with the `open-board.removal.test.tsx` test.
+- **No button nested in button**: a recent row changes from `<button>` to `<div role="option">` + a separate `<button>` for ×; missing rows no longer use `disabled` (so × stays clickable) — verify by reading the DOM in a render test.
+- **Keyboard and mouse are peers (ADR 0006 legacy)**: every new mouse behavior (recent ×, Remove N, preset ✎/×) has a pre-existing keyboard equivalent (⌫ removes the selected recent; R/⌫ for presets) — verify with keyboard tests.
+- **Solid accent only for recents selection + primary button**: Layout/Agent cards keep the `inset 0 0 0 1px var(--accent)` ring; text on an accent background uses `var(--bg)`, secondary text at 82% — no hardcoded colors — verify by grepping `#0f1219\|#0b0b11` for 0 hits in the diff.
+- **Thumbnails from tokens**: gutter background `var(--bg)`, panes `color-mix(bg 80%, tone)` — a light theme flips automatically — verify by switching `colorOverrides.background` to a light value in Settings and looking.
+- **FR-025 legacy**: `detectAgents` failing → Shell only remains, the board still opens — existing behavior, do not break — verify by the existing `workspace-recents` tests passing untouched.
 
-## 4. Phạm vi / Ngoài phạm vi
+## 4. In scope / out of scope
 
-**Làm**:
+**Do**:
 
-- API `removeRecent` + `removeRecents` (batch cho Missing) trong store, kèm test.
-- Viết lại JSX + CSS của OpenBoard theo mock: rail (logo + title + count, list, Missing group, Open Folder ghim đáy) và detail (header tên/path, Layout grid, Agent chips, footer giữ nguyên).
-- Thumbnail terminal-mini vẽ bằng CSS background layers trong `PresetThumb` (giữ đệ quy split hiện có).
-- Nút ✎/× hover trên thẻ preset không built-in, nối vào `startRename`/`confirmDeleteId` sẵn có.
-- Cho ⌫ xoá recent khi section = workspace (kèm chuyển selection an toàn); giữ ⌫ xoá preset khi section = layout.
-- Cho `moveWorkspace` đi tới được hàng missing (bỏ filter), vì hàng missing giờ xoá được bằng phím.
-- Xoá `logo-panel.tsx`; logo (`logoDataUrl` hoặc DefaultMark) render ở đầu rail; sửa desc của LogoRow trong Settings nếu lệch.
-- Test mới cho removal-flow và partition Missing.
+- `removeRecent` + `removeRecents` API (batch for Missing) in the store, with tests.
+- Rewrite the OpenBoard JSX + CSS to the mock: rail (logo + title + count, list, Missing group, Open Folder pinned at the bottom) and detail (name/path header, Layout grid, Agent chips, footer unchanged).
+- Terminal-mini thumbnails drawn with CSS background layers in `PresetThumb` (keep the existing split recursion).
+- Hover ✎/× buttons on non-built-in preset cards, wired to the existing `startRename`/`confirmDeleteId`.
+- Let ⌫ remove a recent when section = workspace (with safe selection handoff); keep ⌫ deleting a preset when section = layout.
+- Let `moveWorkspace` reach missing rows (drop the filter), since missing rows are now keyboard-removable.
+- Delete `logo-panel.tsx`; render the logo (`logoDataUrl` or DefaultMark) at the top of the rail; fix the LogoRow desc in Settings if it drifts.
+- New tests for the removal flow and the Missing partition.
 
-**KHÔNG làm**:
+**Do NOT**:
 
-- Ô search/filter recents (giết mô hình bàn phím, 8 mục không đáng — quyết định trong session).
-- Nhóm thời gian Today/This Week (list vốn đã sắp theo thời gian).
-- "Opened N times", git-branch chip, label shell (`zsh`) — không có nguồn dữ liệu rẻ.
-- Đổi schema/`WORKSPACES_VERSION`, migration, nâng `MAX_RECENTS`.
-- Sửa hành vi detect-agent muộn (S7) và focus-visible toàn cục (B4) — nợ sẵn có, tách việc riêng.
-- Kéo-thả ảnh đặt logo (drop-zone chết theo LogoPanel; đường Settings vẫn còn).
+- A search/filter box for recents (kills the keyboard model, not worth it for 8 items — decided in session).
+- Today/This Week time groups (the list is already time-sorted).
+- "Opened N times", a git-branch chip, a shell label (`zsh`) — no cheap data source.
+- Schema/`WORKSPACES_VERSION` changes, migrations, raising `MAX_RECENTS`.
+- Fixing the late agent-detect behavior (S7) and global focus-visible (B4) — pre-existing debt, separate tasks.
+- Drag-and-drop image to set the logo (the drop-zone dies with LogoPanel; the Settings path remains).
 
-## 5. Rủi ro & Quyết định còn mở
+## 5. Risks & open decisions
 
-**Đã chốt có rủi ro**:
+**Decided, with risk**:
 
-- Bỏ drop-zone logo — rủi ro: ai quen kéo-thả sẽ không tìm thấy; giảm nhẹ bằng desc rõ trong Settings.
-- `moveWorkspace` đi vào hàng missing — rủi ro: Enter trên hàng missing phải bị chặn (footer đã cảnh báo, `workspaceValid` đã chặn Open — giữ nguyên guard đó).
-- Hàng recent là `div role="option"` — rủi ro: mất focus mặc định của button; board vốn điều khiển bằng roving selection trên container nên không đổi hành vi thực.
+- Dropping the logo drop-zone — risk: anyone used to drag-and-drop won't find it; mitigated by a clear desc in Settings.
+- `moveWorkspace` entering missing rows — risk: Enter on a missing row must be blocked (the footer already warns, `workspaceValid` already blocks Open — keep that guard).
+- Recent rows as `div role="option"` — risk: losing a button's default focus; the board already drives roving selection on the container, so real behavior is unchanged.
 
-**Chưa chốt cần resolve**: (không còn — mọi quyết định UI đã chốt trên mock)
+**Undecided, needs resolution**: (none left — every UI decision was locked on the mock)
 
-## 6. Các task
+## 6. Tasks
 
-### Task 1: API xoá recent trong lib + store
+### Task 1: Remove-recent API in lib + store
 
 **File(s)**:
 
@@ -74,19 +74,19 @@
 - [workspace-recents.test.ts](../../src/lib/workspace-recents.test.ts)
 - [workspaces-store.ts](../../src/open-board/workspaces-store.ts)
 
-**Decision**: xoá theo `path` chính xác (không normalize — cùng quy tắc so sánh với `pushRecent` hiện tại); batch nhận mảng path.
+**Decision**: remove by exact `path` (no normalization — same comparison rule as the current `pushRecent`); the batch form takes an array of paths.
 
 **Build**:
 
-- Thêm pure function `removeRecents(recents, paths: readonly string[]): readonly RecentWorkspace[]` vào lib (filter theo Set path).
-- Thêm `removeWorkspaceRecents(paths: readonly string[]): void` vào store: gọi lib, ghi signal, persist theo đúng pattern `recordWorkspaceOpen` (kể cả `reportPersistError`).
-- Test lib: xoá 1 path giữa danh sách; xoá nhiều path; path không tồn tại → mảng giữ nguyên (same reference không bắt buộc, nội dung bằng).
+- Add a pure function `removeRecents(recents, paths: readonly string[]): readonly RecentWorkspace[]` to the lib (filter by a path Set).
+- Add `removeWorkspaceRecents(paths: readonly string[]): void` to the store: call the lib, write the signal, persist following the exact `recordWorkspaceOpen` pattern (including `reportPersistError`).
+- Lib tests: remove 1 path from the middle of the list; remove several paths; a path that does not exist → the array stays intact (same reference not required, equal contents).
 
 **Verify**:
 
-- `npm test -- workspace-recents` → các test mới pass, test cũ nguyên.
+- `npm test -- workspace-recents` → new tests pass, old tests untouched.
 
-### Task 2: Tách hàng recent khỏi `<button>` + partition Missing
+### Task 2: Split recent rows out of `<button>` + partition Missing
 
 **File(s)**:
 
@@ -94,89 +94,89 @@
 - [workspace-recents.ts](../../src/lib/workspace-recents.ts)
 - [workspace-recents.test.ts](../../src/lib/workspace-recents.test.ts)
 
-**Phụ thuộc**: Task 1
+**Depends on**: Task 1
 
-**Decision**: hàng là `<div role="option" aria-selected>` bấm được cả hàng; × là `<button>` con; danh sách chia hai mảng `alive`/`missing` render nối tiếp, Missing có heading + nút "Remove N" (N = số thật, ẩn khi 0).
+**Decision**: a row is a `<div role="option" aria-selected>` clickable across its whole area; × is a child `<button>`; the list splits into `alive`/`missing` arrays rendered back to back, Missing gets a heading + a "Remove N" button (N = real count, hidden at 0).
 
 **Build**:
 
-- Thêm helper trong file: `partitionRecents(displayRecents, missingSet)` trả `{ alive, missing }`.
-- Viết lại markup list: icon SVG folder inline (theo mock), `row__body` (tên + hàng meta path/time), nút ×.
-- Nút × gọi `removeSelectedSafely(path)`: nếu `path === selectedPath.value` → gán `selectedPath` sang hàng kế trong `alive` (hoặc `null` nếu hết) TRƯỚC khi gọi `removeWorkspaceRecents([path])`.
-- Nút "Remove N" gọi cùng helper với mảng path missing.
-- Bỏ `disabled={gone}` — hàng missing vẫn click chọn được, chỉ `confirmOpen` bị guard bởi `workspaceValid` như cũ.
-- Đổi copy của `formatRelativeTime` trong [workspace-recents.ts](../../src/lib/workspace-recents.ts) sang dạng đầy đủ theo mock: `just now` / `N minutes ago` / `N hours ago` / `Yesterday` / `N days ago` / `N weeks ago`; cập nhật các assertion tương ứng trong [workspace-recents.test.ts](../../src/lib/workspace-recents.test.ts). KHÔNG fork hàm mới.
+- Add an in-file helper: `partitionRecents(displayRecents, missingSet)` returning `{ alive, missing }`.
+- Rewrite the list markup: inline SVG folder icon (per the mock), `row__body` (name + path/time meta row), the × button.
+- The × button calls `removeSelectedSafely(path)`: if `path === selectedPath.value` → reassign `selectedPath` to the next row in `alive` (or `null` if none) BEFORE calling `removeWorkspaceRecents([path])`.
+- The "Remove N" button calls the same helper with the missing path array.
+- Drop `disabled={gone}` — missing rows stay click-selectable, only `confirmOpen` stays guarded by `workspaceValid` as before.
+- Change the `formatRelativeTime` copy in [workspace-recents.ts](../../src/lib/workspace-recents.ts) to the full form from the mock: `just now` / `N minutes ago` / `N hours ago` / `Yesterday` / `N days ago` / `N weeks ago`; update the matching assertions in [workspace-recents.test.ts](../../src/lib/workspace-recents.test.ts). Do NOT fork a new function.
 
 **Verify**:
 
-- `npm run build` xanh.
-- DOM không còn `button` lồng `button`: grep JSX vùng list chỉ có một `<button>` là `row__x`.
+- `npm run build` green.
+- No `button` nested in `button` in the DOM: grepping the list JSX region finds a single `<button>`, `row__x`.
 
-### Task 3: Test removal-flow
+### Task 3: Removal-flow tests
 
 **File(s)**:
 
-- [open-board.removal.test.tsx](../../src/open-board/open-board.removal.test.tsx) (file mới)
+- [open-board.removal.test.tsx](../../src/open-board/open-board.removal.test.tsx) (new file)
 
-**Phụ thuộc**: Task 2
+**Depends on**: Task 2
 
-**Decision**: test render bằng harness Preact sẵn có của repo (theo mẫu `app.test.tsx`).
+**Decision**: render tests use the repo's existing Preact harness (after the `app.test.tsx` pattern).
 
 **Build**:
 
-- Test 1 `removing the selected recent moves selection to the next row`: seed 3 recents, chọn hàng 1, click × → `selectedPath` = hàng 2, list còn 2, KHÔNG có hàng nào mang path vừa xoá (bắt bug hồi sinh).
-- Test 2 `remove-all missing clears the group`: seed 2 missing (mock `dirs_exist` trả false) → click "Remove 2" → group biến mất.
-- Test 3 `Backspace on workspace section removes the selected recent`: phím ⌫ khi section=workspace → hàng bay, selection sang hàng kế.
+- Test 1 `removing the selected recent moves selection to the next row`: seed 3 recents, select row 1, click × → `selectedPath` = row 2, list holds 2, NO row carries the removed path (catches the resurrection bug).
+- Test 2 `remove-all missing clears the group`: seed 2 missing (mock `dirs_exist` returning false) → click "Remove 2" → the group disappears.
+- Test 3 `Backspace on workspace section removes the selected recent`: pressing ⌫ with section=workspace → the row goes away, selection moves to the next row.
 
 **Verify**:
 
-- `npm test -- open-board.removal` → 3 test pass.
+- `npm test -- open-board.removal` → 3 tests pass.
 
-### Task 4: Bàn phím — ⌫ cho recents, mũi tên tới được Missing
+### Task 4: Keyboard — ⌫ for recents, arrows reaching Missing
 
 **File(s)**:
 
 - [open-board.tsx](../../src/open-board/open-board.tsx)
 
-**Phụ thuộc**: Task 2
+**Depends on**: Task 2
 
-**Decision**: ⌫ xoá recent NGAY (không confirm inline — × và ⌫ cùng ngữ nghĩa, undo = mở lại folder); preset giữ confirm như cũ vì xoá preset mất công dựng lại.
+**Decision**: ⌫ removes a recent IMMEDIATELY (no inline confirm — × and ⌫ share semantics, undo = reopen the folder); presets keep their confirm since a deleted preset is costly to rebuild.
 
 **Build**:
 
-- `handleKeyDown` case "Backspace": nếu `section === "workspace"` và có `selectedPath` → `removeSelectedSafely(selectedPath)`; nếu `section === "layout"` giữ nhánh cũ.
-- `moveWorkspace`: bỏ filter `!missing.value.has(...)` — duyệt toàn bộ `displayRecents`.
-- Footer keys hint: đổi chuỗi thành đúng tập phím thật (`↑↓ select · ⇥ section · 1–9 agent · ⌫ remove · ⎋ close` — chỉ hiện `⎋` khi `canCancel`).
+- `handleKeyDown` case "Backspace": if `section === "workspace"` with a `selectedPath` → `removeSelectedSafely(selectedPath)`; keep the old branch for `section === "layout"`.
+- `moveWorkspace`: drop the `!missing.value.has(...)` filter — walk all of `displayRecents`.
+- Footer keys hint: change the string to the real key set (`↑↓ select · ⇥ section · 1–9 agent · ⌫ remove · ⎋ close` — `⎋` only shown when `canCancel`).
 
 **Verify**:
 
-- Test Task 3 case 3 pass.
-- Thao tác thật: ↓ đi xuyên vào hàng missing, footer cảnh báo missing, Enter không mở.
+- Task 3 case 3 passes.
+- Real interaction: ↓ walks into missing rows, the footer warns about missing, Enter does not open.
 
-### Task 5: Layout hai cột — rail
+### Task 5: Two-column layout — rail
 
 **File(s)**:
 
 - [open-board.tsx](../../src/open-board/open-board.tsx)
 - [styles.css](../../src/styles.css)
 
-**Phụ thuộc**: Task 2
+**Depends on**: Task 2
 
-**Decision**: grid `300px 1fr`; Open Folder là nút accent đặc ghim đáy rail; logo app 24px đầu rail (re-home từ LogoPanel).
+**Decision**: grid `300px 1fr`; Open Folder is a solid-accent button pinned to the rail bottom; the 24px app logo sits at the rail top (re-homed from LogoPanel).
 
 **Build**:
 
-- `.open-board` đổi `grid-template-columns: 1fr 520px` → `300px 1fr`; xoá `<LogoPanel />` khỏi JSX; xoá [logo-panel.tsx](../../src/open-board/logo-panel.tsx); import `logoDataUrl` render `<img>` 24px (fallback DefaultMark SVG chuyển vào open-board.tsx) cạnh title "Workspace" + count.
-- CSS rail theo mock: `.rail`, `.rail__head`, `.rail__scroll`, `.rail__foot`, `.row*`, `.gsep` — selection accent đặc: nền `var(--accent)`, tên `var(--bg)`, phụ `color-mix(in srgb, var(--bg) 82%, transparent)`, icon missing `var(--yellow)`.
-- Nút `.workspace-open-folder` cũ đổi thành `.openfolder` accent đặc (chữ `var(--bg)`, viền `color-mix(accent 72%, #000)`), thêm `<kbd>⌘O</kbd>`.
-- Kiểm tra file settings có desc "shown on the open board" ([logo-row.tsx](../../src/ui/controls/logo-row.tsx)) — vẫn đúng vì logo vẫn trên board; không sửa.
+- `.open-board` changes `grid-template-columns: 1fr 520px` → `300px 1fr`; drop `<LogoPanel />` from the JSX; delete [logo-panel.tsx](../../src/open-board/logo-panel.tsx); import `logoDataUrl`, render a 24px `<img>` (DefaultMark SVG fallback moved into open-board.tsx) next to the "Workspace" title + count.
+- Rail CSS per the mock: `.rail`, `.rail__head`, `.rail__scroll`, `.rail__foot`, `.row*`, `.gsep` — solid-accent selection: background `var(--accent)`, name `var(--bg)`, secondary `color-mix(in srgb, var(--bg) 82%, transparent)`, missing icon `var(--yellow)`.
+- The old `.workspace-open-folder` button becomes the solid-accent `.openfolder` (text `var(--bg)`, border `color-mix(accent 72%, #000)`), gains `<kbd>⌘O</kbd>`.
+- Check the settings file's "shown on the open board" desc ([logo-row.tsx](../../src/ui/controls/logo-row.tsx)) — still accurate since the logo stays on the board; no change.
 
 **Verify**:
 
-- `npm run build` xanh; screenshot dev so mock: rail 300px, Open Folder ghim đáy, logo hiện.
-- `grep -n "logo-panel" src -r` → 0 kết quả.
+- `npm run build` green; dev screenshot against the mock: 300px rail, Open Folder pinned at the bottom, logo visible.
+- `grep -n "logo-panel" src -r` → 0 hits.
 
-### Task 6: Layout hai cột — detail + thumbnail terminal-mini
+### Task 6: Two-column layout — detail + terminal-mini thumbnails
 
 **File(s)**:
 
@@ -184,59 +184,59 @@
 - [styles.css](../../src/styles.css)
 - [preset-thumb.tsx](../../src/presets/preset-thumb.tsx)
 
-**Phụ thuộc**: Task 5
+**Depends on**: Task 5
 
-**Decision**: header detail = tên 19px + path mono ellipsis (không meta count, không git chip); lưới `repeat(auto-fill, minmax(148px, 1fr))`; thumbnail cao 70px nền `var(--bg)` rãnh 3px, pane vẽ 2 bar + cursor xanh bằng `background-image` layers.
+**Decision**: detail header = 19px name + mono ellipsized path (no meta count, no git chip); grid `repeat(auto-fill, minmax(148px, 1fr))`; 70px-tall thumbnails on `var(--bg)` with 3px gutters, panes drawing 2 bars + a green cursor via `background-image` layers.
 
 **Build**:
 
-- JSX detail: `.wshead` (h1 tên, path), `.sect` Layout (hint "Hover a card to rename or delete"), `.sect` Agent (hint "Runs in every pane"), footer giữ logic notice/summary/actions hiện có nguyên vẹn.
-- `PresetThumb`: leaf render thêm class để CSS vẽ bar layers; giữ đệ quy `ThumbNode` nguyên (chỉ đổi CSS + 1 class).
-- CSS: `.lcard*`, `.thumb`, `.pane` (background-image 3 lớp theo mock), `.builtin` chấm, `.achip*` (kbd số, logo agent, Shell `$`), states `.is-selected` ring accent.
-- Chip agent: giữ nguyên data (`agents.value`, `effectiveAgent`, digit pick) — chỉ đổi skin.
+- Detail JSX: `.wshead` (h1 name, path), Layout `.sect` (hint "Hover a card to rename or delete"), Agent `.sect` (hint "Runs in every pane"), footer keeping the existing notice/summary/actions logic intact.
+- `PresetThumb`: leaf renders an extra class so CSS can draw the bar layers; keep the `ThumbNode` recursion intact (CSS + 1 class only).
+- CSS: `.lcard*`, `.thumb`, `.pane` (3 `background-image` layers per the mock), `.builtin` dot, `.achip*` (digit kbd, agent logo, Shell `$`), `.is-selected` accent-ring states.
+- Agent chips: keep the data intact (`agents.value`, `effectiveAgent`, digit pick) — reskin only.
 
 **Verify**:
 
-- `npm run build` xanh; screenshot so mock: 3 cột thẻ, thumbnail phân biệt được `layout-test-1` vs `layout-test`, thẻ built-in không có nút hover.
+- `npm run build` green; screenshot against the mock: 3 card columns, thumbnails distinguishing `layout-test-1` vs `layout-test`, built-in cards with no hover buttons.
 
-### Task 7: Nút ✎/× hover trên thẻ preset
+### Task 7: Hover ✎/× buttons on preset cards
 
 **File(s)**:
 
 - [open-board.tsx](../../src/open-board/open-board.tsx)
 - [styles.css](../../src/styles.css)
 
-**Phụ thuộc**: Task 6
+**Depends on**: Task 6
 
-**Decision**: ✎ gọi `startRename(preset)`, × set `confirmDeleteId` (mở confirm delete/keep sẵn có); cả hai `stopPropagation` để không select/mở thẻ; built-in không render tools (đã guard bằng `isBuiltIn`).
+**Decision**: ✎ calls `startRename(preset)`, × sets `confirmDeleteId` (opens the existing delete/keep confirm); both `stopPropagation` so the card is not selected/opened; built-ins render no tools (already guarded by `isBuiltIn`).
 
 **Build**:
 
-- Thêm `.lcard__tools` (2 `<button>`, hiện khi `:hover`) vào thẻ không built-in; giữ `onContextMenu` rename như cũ (hai đường vào một hàm).
-- Confirm delete/keep giữ markup cũ, chỉ re-skin theo thẻ mới.
-- `startRename` đã clear `confirmDeleteId`; thêm chiều ngược: mở confirm delete → `renamingId.value = null`.
+- Add `.lcard__tools` (2 `<button>`s, shown on `:hover`) to non-built-in cards; keep the `onContextMenu` rename as-is (two entry points into one function).
+- The delete/keep confirm keeps its old markup, reskinned for the new card only.
+- `startRename` already clears `confirmDeleteId`; add the reverse: opening the delete confirm → `renamingId.value = null`.
 
 **Verify**:
 
-- `npm test` toàn bộ xanh.
-- Thao tác thật: hover thẻ thường thấy ✎/×; click × → confirm; click ✎ → input rename focus; built-in không có gì.
+- `npm test` fully green.
+- Real interaction: hovering a regular card shows ✎/×; clicking × → confirm; clicking ✎ → rename input focused; built-ins show nothing.
 
-### Task 8: Dọn + verify tổng
+### Task 8: Cleanup + full verify
 
 **File(s)**:
 
 - [styles.css](../../src/styles.css)
 - [open-board.tsx](../../src/open-board/open-board.tsx)
 
-**Phụ thuộc**: Task 7
+**Depends on**: Task 7
 
 **Build**:
 
-- Xoá CSS mồ côi của bố cục cũ: `.board-logo*`, `.workspace-row*`, `.preset-chip*` (phần không còn dùng), `.board-side*` nếu đã thay tên.
-- Grep `#0f1219\|#0b0b11` trong `src/styles.css` → phải 0 (không hardcode màu mock).
-- Chạy screenshot ở cửa sổ 1100×720 và cửa sổ hẹp ~700px — rail vẫn 300px, detail cuộn được, footer không mất.
+- Delete the old layout's orphaned CSS: `.board-logo*`, `.workspace-row*`, `.preset-chip*` (the unused parts), `.board-side*` if renamed.
+- Grep `#0f1219\|#0b0b11` in `src/styles.css` → must be 0 (no hardcoded mock colors).
+- Screenshot at the 1100×720 window and a narrow ~700px window — the rail stays 300px, the detail scrolls, the footer does not disappear.
 
 **Verify**:
 
-- `npm run build` + `npm test` xanh toàn bộ; dán output.
-- `grep -n "board-logo\|workspace-row\|preset-chip" src/styles.css` → 0 kết quả (hoặc chỉ còn tên đã tái dùng có chủ đích).
+- `npm run build` + `npm test` fully green; paste the output.
+- `grep -n "board-logo\|workspace-row\|preset-chip" src/styles.css` → 0 hits (or only deliberately reused names remain).
