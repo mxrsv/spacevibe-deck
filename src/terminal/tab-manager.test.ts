@@ -5,6 +5,7 @@ import type { Pane, PaneEvents, PaneAttentionSignal } from "./pane";
 import type { CreatePaneFn } from "./pane-lifecycle";
 import { createMemoryPtyClient, type PtyClient } from "./pty-client";
 import type { ShortcutAction } from "./keymap";
+import { ACTION_REGISTRY } from "./action-registry";
 import {
   boardOpen,
   editorRequest,
@@ -2057,6 +2058,20 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     expect(saveDialogOpen.value).toBe(false);
 
     tm.dispose();
+  });
+
+  // Task 3 (docs/plans/2026-07-27-action-registry.md): overlayBlocksAction
+  // now reads action-registry.ts's ACTION_REGISTRY instead of a hardcoded
+  // if-chain. Every other test above already proves the observable behavior
+  // held; this one proves the SOURCE actually changed — flip a scope in the
+  // registry and the guard must follow, not silently keep its own copy.
+  it("reads scope from ACTION_REGISTRY, not a hardcoded list", () => {
+    const alwaysActions = ACTION_REGISTRY.filter(
+      (a) => a.scope === "always",
+    ).map((a) => a.id);
+    expect(new Set(alwaysActions)).toEqual(
+      new Set(["focus-next-attention", "new-tab", "toggle-settings"]),
+    );
   });
 });
 

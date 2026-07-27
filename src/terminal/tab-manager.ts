@@ -17,6 +17,7 @@ import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { sendAgentNotification } from "../lib/native-notification";
 import type { AgentChoice } from "../lib/workspace-recents";
 import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
+import { ACTION_REGISTRY } from "./action-registry";
 import { installFileDrop } from "./file-drop";
 import {
   createTerminalManager,
@@ -64,6 +65,16 @@ import {
   saveDialogOpen,
   settingsOpen,
 } from "../chrome/events";
+
+/**
+ * `action.scope` per id, from the single source of truth
+ * (`src/terminal/action-registry.ts`) instead of a hardcoded list — read by
+ * `overlayBlocksAction` below. Module-level: the registry is static, so this
+ * is computed once per module load, not once per `createTabManager` call.
+ */
+const ACTION_SCOPE: ReadonlyMap<string, "terminal" | "always"> = new Map(
+  ACTION_REGISTRY.map((action) => [action.id, action.scope] as const),
+);
 
 interface TabEntry {
   readonly key: number;
@@ -856,42 +867,18 @@ export function createTabManager(
    * terminal grid. Default is BLOCKED — every action that reaches into the
    * terminal/tab/pane state is invisible and dangerous while its target is
    * hidden (⌘W closing a pane nobody can see, ⌘K wiping scrollback, etc).
-   * Every exception below is a deliberate scope decision, not an oversight:
    *
-   *  - `focus-next-attention` shares a dedicated overlay preflight
-   *    (`runAttentionFocus`, called through `deps.onRequestAttentionFocus`)
-   *    with the status-dot click. That preflight already knows how to
-   *    dismiss board/settings and blocks itself while a PresetEditor/
-   *    SavePresetDialog draft is in flight — gating it here too would
-   *    double-guard it and could block it in cases the preflight allows.
-   *  - `select-tab-N` and `select-last-tab` (⌘9): `App.selectTab` (the
-   *    tab-bar click) intentionally dismisses the board before selecting, so
-   *    choosing a tab while an overlay covers the grid is a supported flow,
-   *    not a bug — this path doesn't dismiss the overlay itself (that's
-   *    `App`'s job), it just isn't blocked from switching the underlying
-   *    active tab.
-   *  - `new-tab` only sets `boardOpen.value = true`, which is a no-op if the
-   *    board is already open and otherwise exactly its normal behavior —
-   *    nothing to guard.
-   *  - `toggle-settings` (⌘, / the menu's "Settings…" item) only reaches the
-   *    `onToggleSettings` app seam above, which mirrors what clicking the
-   *    always-reachable gear button already does regardless of any overlay
-   *    state (mouse/keyboard parity, ADR 0006). Gating it here would also
-   *    strand the panel open: once `settingsOpen` flips true, EVERY other
-   *    action becomes blocked by the check below, `toggle-settings` included
-   *    — so a second ⌘, could open Settings but never close it again.
-   *
-   * This is prep for a future action registry (each entry will carry its own
-   * scope), so it stays a flat function here rather than growing its own
-   * data structure.
+   * `scope: "always"` (`focus-next-attention`, `new-tab`, `toggle-settings`)
+   * skips the guard — see each entry's comment in action-registry.ts for why
+   * (a dedicated overlay preflight, a harmless no-op, or an action that
+   * opens/closes the very overlay that would otherwise strand it). Tab-jump
+   * actions (`select-tab-N`, `select-last-tab`) are exempt through the
+   * SEPARATE `isTabSelectionAction` mechanism below, not through `scope` —
+   * see its own doc comment for why that's a distinct action family, not a
+   * product-level "always" decision.
    */
   function overlayBlocksAction(action: ShortcutAction): boolean {
-    if (
-      action === "focus-next-attention" ||
-      action === "new-tab" ||
-      action === "toggle-settings" ||
-      isTabSelectionAction(action)
-    ) {
+    if (ACTION_SCOPE.get(action) === "always" || isTabSelectionAction(action)) {
       return false;
     }
     return (
