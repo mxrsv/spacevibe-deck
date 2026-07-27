@@ -799,7 +799,8 @@ export function createTabManager(
   }
 
   // Keymap *matching* lives in keymap.ts; this table is the dispatch half —
-  // one action, one closure. `select-tab-N` is handled via selectTabIndex.
+  // one action, one closure. `select-tab-N` and `select-last-tab` (⌘9) are
+  // both handled directly in `dispatchAction`, not through this table.
   const commands: Partial<Record<ShortcutAction, () => void>> = {
     "split-row": () => void splitActive("row"),
     "split-column": () => void splitActive("column"),
@@ -859,11 +860,12 @@ export function createTabManager(
    *    dismiss board/settings and blocks itself while a PresetEditor/
    *    SavePresetDialog draft is in flight — gating it here too would
    *    double-guard it and could block it in cases the preflight allows.
-   *  - `select-tab-N`: `App.selectTab` (the tab-bar click) intentionally
-   *    dismisses the board before selecting, so choosing a tab while an
-   *    overlay covers the grid is a supported flow, not a bug — this path
-   *    doesn't dismiss the overlay itself (that's `App`'s job), it just
-   *    isn't blocked from switching the underlying active tab.
+   *  - `select-tab-N` and `select-last-tab` (⌘9): `App.selectTab` (the
+   *    tab-bar click) intentionally dismisses the board before selecting, so
+   *    choosing a tab while an overlay covers the grid is a supported flow,
+   *    not a bug — this path doesn't dismiss the overlay itself (that's
+   *    `App`'s job), it just isn't blocked from switching the underlying
+   *    active tab.
    *  - `new-tab` only sets `boardOpen.value = true`, which is a no-op if the
    *    board is already open and otherwise exactly its normal behavior —
    *    nothing to guard.
@@ -884,7 +886,7 @@ export function createTabManager(
       action === "focus-next-attention" ||
       action === "new-tab" ||
       action === "toggle-settings" ||
-      selectTabIndex(action) !== null
+      isTabSelectionAction(action)
     ) {
       return false;
     }
@@ -894,6 +896,16 @@ export function createTabManager(
       editorRequest.value !== null ||
       saveDialogOpen.value
     );
+  }
+
+  /**
+   * True for both flavors of "jump to a tab" action: `select-tab-N` (a fixed
+   * index) and `select-last-tab` (⌘9, always the last tab). Shared by the
+   * overlay scope guard above and `dispatchAction` below so the two stay in
+   * sync as exactly the same action group.
+   */
+  function isTabSelectionAction(action: ShortcutAction): boolean {
+    return action === "select-last-tab" || selectTabIndex(action) !== null;
   }
 
   /**
@@ -912,6 +924,12 @@ export function createTabManager(
   /** The dispatch half, shared by the keymap and the menu. */
   function dispatchAction(action: ShortcutAction): void {
     if (overlayBlocksAction(action)) {
+      return;
+    }
+    if (action === "select-last-tab") {
+      // -1 when there are no tabs yet — selectTab's own range check no-ops
+      // it, same as an out-of-range select-tab-N below.
+      selectTab(tabs.length - 1);
       return;
     }
     const tabIndex = selectTabIndex(action);

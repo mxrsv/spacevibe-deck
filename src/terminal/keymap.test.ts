@@ -14,6 +14,31 @@ function keyEvent(
 ): KeyboardEvent {
   return {
     key,
+    code: "",
+    metaKey: false,
+    shiftKey: false,
+    altKey: false,
+    ctrlKey: false,
+    ...mods,
+  } as KeyboardEvent;
+}
+
+/**
+ * A keydown whose `code` (physical key position) is decoupled from `key`
+ * (the character the active layout actually produces) — simulates a non-US
+ * layout or an IME rewriting `key`, e.g. AZERTY's BracketRight position
+ * producing "$" instead of "]".
+ */
+function codeEvent(
+  code: string,
+  key: string,
+  mods: Partial<
+    Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">
+  > = {},
+): KeyboardEvent {
+  return {
+    key,
+    code,
     metaKey: false,
     shiftKey: false,
     altKey: false,
@@ -30,8 +55,14 @@ describe("matchBinding", () => {
     );
     // Swapped to iTerm2 convention: Cmd+W closes the pane
     expect(matchBinding(keyEvent("w", { metaKey: true }))).toBe("close-pane");
-    expect(matchBinding(keyEvent("]", { metaKey: true }))).toBe("focus-next");
-    expect(matchBinding(keyEvent("[", { metaKey: true }))).toBe("focus-prev");
+    // focus-next/prev bind by physical key position (event.code), not the
+    // produced character — see the dedicated non-US-layout test below.
+    expect(
+      matchBinding(codeEvent("BracketRight", "]", { metaKey: true })),
+    ).toBe("focus-next");
+    expect(matchBinding(codeEvent("BracketLeft", "[", { metaKey: true }))).toBe(
+      "focus-prev",
+    );
   });
 
   it("matches Cmd+E to toggle-expand", () => {
@@ -53,18 +84,51 @@ describe("matchBinding", () => {
     expect(matchBinding(keyEvent("w", { metaKey: true, shiftKey: true }))).toBe(
       "close-tab",
     );
-    // On a US layout Shift+] produces "}" and Shift+[ produces "{"
-    expect(matchBinding(keyEvent("}", { metaKey: true, shiftKey: true }))).toBe(
-      "next-tab",
-    );
-    expect(matchBinding(keyEvent("{", { metaKey: true, shiftKey: true }))).toBe(
-      "prev-tab",
-    );
+    // next-tab/prev-tab bind by physical key position (event.code): on a US
+    // layout Shift+BracketRight/BracketLeft happen to produce "}"/"{", but
+    // the binding itself does not depend on that — see the dedicated
+    // non-US-layout test below.
+    expect(
+      matchBinding(
+        codeEvent("BracketRight", "}", { metaKey: true, shiftKey: true }),
+      ),
+    ).toBe("next-tab");
+    expect(
+      matchBinding(
+        codeEvent("BracketLeft", "{", { metaKey: true, shiftKey: true }),
+      ),
+    ).toBe("prev-tab");
   });
 
-  it("matches Cmd+1..9 to select-tab actions", () => {
+  it("matches focus-next/prev and next/prev-tab by physical key position, not the layout-produced character (Lỗi 1 regression)", () => {
+    // AZERTY: the key in the BracketRight position produces "$" unshifted
+    // and "£" shifted; the key in the BracketLeft position produces "*"
+    // unshifted and "¨" shifted — never "]"/"}" or "["/"{". A key-based
+    // binding would silently lose these shortcuts on this layout.
+    expect(
+      matchBinding(codeEvent("BracketRight", "$", { metaKey: true })),
+    ).toBe("focus-next");
+    expect(matchBinding(codeEvent("BracketLeft", "*", { metaKey: true }))).toBe(
+      "focus-prev",
+    );
+    expect(
+      matchBinding(
+        codeEvent("BracketRight", "£", { metaKey: true, shiftKey: true }),
+      ),
+    ).toBe("next-tab");
+    expect(
+      matchBinding(
+        codeEvent("BracketLeft", "¨", { metaKey: true, shiftKey: true }),
+      ),
+    ).toBe("prev-tab");
+  });
+
+  it("matches Cmd+1..8 to select-tab actions, and Cmd+9 to select-last-tab (macOS 'last tab' convention, not tab index 9)", () => {
     expect(matchBinding(keyEvent("1", { metaKey: true }))).toBe("select-tab-1");
-    expect(matchBinding(keyEvent("9", { metaKey: true }))).toBe("select-tab-9");
+    expect(matchBinding(keyEvent("8", { metaKey: true }))).toBe("select-tab-8");
+    expect(matchBinding(keyEvent("9", { metaKey: true }))).toBe(
+      "select-last-tab",
+    );
   });
 
   it("matches the zoom bindings", () => {
@@ -163,12 +227,15 @@ describe("matchBinding", () => {
 describe("selectTabIndex", () => {
   it("parses select-tab actions into a 0-based index", () => {
     expect(selectTabIndex("select-tab-1")).toBe(0);
-    expect(selectTabIndex("select-tab-9")).toBe(8);
+    expect(selectTabIndex("select-tab-8")).toBe(7);
   });
 
-  it("returns null for every other action", () => {
+  it("returns null for every other action, including select-last-tab", () => {
     expect(selectTabIndex("new-tab")).toBeNull();
     expect(selectTabIndex("split-row")).toBeNull();
+    // select-last-tab (⌘9) has no fixed index — its concrete index is
+    // resolved against the live tab count in tab-manager.ts, not here.
+    expect(selectTabIndex("select-last-tab")).toBeNull();
   });
 });
 
@@ -185,6 +252,10 @@ describe("isShortcutAction", () => {
     expect(isShortcutAction("split-diagonal")).toBe(false);
     expect(isShortcutAction("Split-Row")).toBe(false);
     expect(isShortcutAction("select-tab-99")).toBe(false);
+    // ⌘9 is select-last-tab now, not tab index 9 — select-tab-9 is no
+    // longer bound (TAB_SELECT_BINDINGS only covers 1..8).
+    expect(isShortcutAction("select-tab-9")).toBe(false);
+    expect(isShortcutAction("select-last-tab")).toBe(true);
     expect(isShortcutAction("")).toBe(false);
     expect(isShortcutAction(undefined)).toBe(false);
     expect(isShortcutAction(42)).toBe(false);

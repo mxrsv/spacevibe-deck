@@ -133,7 +133,8 @@ A pane is **busy** when its foreground process is something other than an idle s
 | ⌘⇧W       | Close tab             |
 | ⌘⇧T       | Reopen closed tab     |
 | ⌘⇧] / ⌘⇧[ | Next / previous tab   |
-| ⌘1 … ⌘9   | Select tab _N_        |
+| ⌘1 … ⌘8   | Select tab _N_        |
+| ⌘9        | Select last tab       |
 | ⌘⇧N       | New layout preset     |
 | ⌘⇧S       | Save layout as preset |
 

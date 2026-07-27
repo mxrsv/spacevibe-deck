@@ -2015,6 +2015,26 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
+  it("select-last-tab (⌘9) still switches to the last tab while the Open board is up", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.materialize({ layout: null, cwds: ["/c"] });
+    await tm.init();
+    await flush();
+    tm.selectTab(0);
+    await flush();
+    expect(activeTabIndex.value).toBe(0);
+
+    boardOpen.value = true;
+    window.dispatchEvent(metaKeydown("9"));
+    await flush();
+
+    expect(activeTabIndex.value).toBe(2); // the last tab, same exemption as select-tab-N
+
+    tm.dispose();
+  });
+
   it("save-preset is blocked while Settings is open — the old ad hoc guard only ever checked boardOpen", async () => {
     const { tm } = setup({});
     await tm.materialize({ layout: null, cwds: ["/a"] });
@@ -2107,6 +2127,66 @@ describe("createTabManager toggle-settings routing (⌘, / Settings… menu item
     tm.runAction("toggle-settings");
 
     expect(onToggleSettings).toHaveBeenCalledTimes(1);
+
+    tm.dispose();
+  });
+});
+
+// Lỗi 2 fix: ⌘9 used to parse as select-tab-9 (fixed index 8), a no-op with
+// fewer than 9 tabs and just plain wrong with more — macOS convention
+// (Safari, Chrome, iTerm2, Terminal.app) is that ⌘9 always jumps to the
+// LAST tab, whatever the current count.
+describe("select-last-tab (⌘9) — always the last tab, never a fixed index 8", () => {
+  async function nTabs(tm: TabManager, count: number): Promise<void> {
+    for (let i = 0; i < count; i += 1) {
+      await tm.materialize({ layout: null, cwds: [] });
+    }
+  }
+
+  it("with 3 tabs, ⌘9 selects index 2 — the last tab, not index 8", async () => {
+    const { tm } = setup({});
+    await nTabs(tm, 3);
+    await tm.init();
+    await flush();
+    tm.selectTab(0);
+    await flush();
+    expect(activeTabIndex.value).toBe(0);
+
+    tm.runAction("select-last-tab");
+    await flush();
+
+    expect(activeTabIndex.value).toBe(2);
+
+    tm.dispose();
+  });
+
+  it("with 12 tabs, ⌘9 selects index 11 — always the last tab, whatever the count", async () => {
+    const { tm } = setup({});
+    await nTabs(tm, 12);
+    await tm.init();
+    await flush();
+    tm.selectTab(0);
+    await flush();
+    expect(activeTabIndex.value).toBe(0);
+
+    tm.runAction("select-last-tab");
+    await flush();
+
+    expect(activeTabIndex.value).toBe(11);
+
+    tm.dispose();
+  });
+
+  it("with no tabs, ⌘9 is a safe no-op", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+    expect(activeTabIndex.value).toBe(-1);
+
+    expect(() => tm.runAction("select-last-tab")).not.toThrow();
+    await flush();
+
+    expect(activeTabIndex.value).toBe(-1);
 
     tm.dispose();
   });
