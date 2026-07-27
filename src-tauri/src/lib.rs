@@ -4,6 +4,7 @@ mod images;
 mod info;
 mod links;
 mod menu;
+mod menu_registry;
 mod migrate;
 mod pty;
 

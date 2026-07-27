@@ -23,7 +23,7 @@ const ACTION_PREFIX: &str = "action:";
 /// That is why every one of these routes back into the same dispatch table
 /// (`TabManager.runAction`) rather than doing anything of its own.
 #[cfg(target_os = "macos")]
-fn action_item<R: Runtime>(
+pub(crate) fn action_item<R: Runtime>(
     handle: &tauri::AppHandle<R>,
     action: &str,
     label: &str,
