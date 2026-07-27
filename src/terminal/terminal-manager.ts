@@ -27,7 +27,11 @@ import { clearPaneCwd, setPaneCwd } from "./pane-cwd";
 import { freshCwd } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { createPaneDragController, type PaneDragController } from "./pane-drag";
-import { closeSearchBarForPane, openSearchBar } from "./search-bar";
+import {
+  advanceSearch,
+  closeSearchBarForPane,
+  openSearchBar,
+} from "./search-bar";
 
 export interface ManagerCallbacks {
   /** Fired after any structural change (split, close, ratio commit). */
@@ -90,6 +94,13 @@ export interface TerminalManager {
   clearActive(): void;
   /** Open the search bar on the active pane (Cmd+F). */
   openSearch(): void;
+  /**
+   * Advance to the next/previous match on the active pane (Cmd+G / Cmd+Shift+G).
+   * Works whether the search bar is open on it or already closed — see
+   * `advanceSearch` in search-bar.ts.
+   */
+  findNext(): void;
+  findPrevious(): void;
   applySettings(next: Settings): void;
   serializeLayout(): SerializedNode | null;
   paneIds(): number[];
@@ -525,6 +536,22 @@ export function createTerminalManager(
         const pane = life.panes.get(activeId);
         if (pane) {
           openSearchBar(pane);
+        }
+      }
+    },
+    findNext() {
+      if (activeId !== null) {
+        const pane = life.panes.get(activeId);
+        if (pane) {
+          advanceSearch(pane, "next");
+        }
+      }
+    },
+    findPrevious() {
+      if (activeId !== null) {
+        const pane = life.panes.get(activeId);
+        if (pane) {
+          advanceSearch(pane, "previous");
         }
       }
     },

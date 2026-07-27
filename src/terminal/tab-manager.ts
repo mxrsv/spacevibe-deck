@@ -836,6 +836,10 @@ export function createTabManager(
     // Missing `onToggleSettings` = safe no-op, never a direct write.
     "toggle-settings": () => deps.onToggleSettings?.(),
     find: () => activeManager()?.openSearch(),
+    // Not exempted in overlayBlocksAction below: both act on the terminal
+    // (highlight/jump inside a pane's buffer), same scope as clear-buffer.
+    "find-next": () => activeManager()?.findNext(),
+    "find-previous": () => activeManager()?.findPrevious(),
     // The overlay scope guard in `dispatchAction` already blocks this while
     // any overlay (including the board) is up — this check is pure business
     // logic (nothing to save with zero tabs), not scope.

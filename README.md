@@ -143,6 +143,7 @@ A pane is **busy** when its foreground process is something other than an idle s
 | Shortcut     | Action                     |
 | ------------ | -------------------------- |
 | ⌘F           | Find in scrollback         |
+| ⌘G / ⌘⇧G     | Find next / previous match |
 | ⌘K           | Clear buffer               |
 | ⌘+ / ⌘- / ⌘0 | Font zoom in / out / reset |
 | ⌘,           | Toggle Settings            |

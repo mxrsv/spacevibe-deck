@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  advanceSearch,
   formatMatchCount,
   openSearchBar,
   closeSearchBar,
+  closeSearchBarForPane,
   pickNormalizationWinner,
 } from "./search-bar";
 import type { Pane, SelectionSnapshot } from "./pane";
@@ -211,5 +213,202 @@ describe("search term normalization", () => {
     expect(terms).toContain(NFD);
     // Winner re-applied: last call is NFD (earlier row).
     expect(terms[terms.length - 1]).toBe(NFD);
+  });
+});
+
+/** A pane whose `search` is a full spy set — real enough to drive advanceSearch. */
+function fakeSearchPane(id: number): Pane {
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  return {
+    id,
+    element: host,
+    search: {
+      findNext: vi.fn(() => true),
+      findPrevious: vi.fn(() => true),
+      clearDecorations: vi.fn(),
+      onDidChangeResults: vi.fn(() => ({ dispose: vi.fn() })),
+    },
+    captureSelection: vi.fn(() => null),
+    restoreSelection: vi.fn(),
+    focus: vi.fn(),
+  } as unknown as Pane;
+}
+
+function typeQuery(pane: Pane, value: string): void {
+  const input = pane.element.querySelector(
+    ".search-bar__input",
+  ) as HTMLInputElement;
+  input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+describe("advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or without an open bar)", () => {
+  afterEach(() => {
+    closeSearchBar();
+  });
+
+  it("nothing has ever been searched: silent no-op", async () => {
+    // `lastQuery` is module-level state and earlier describe blocks above
+    // (real `openSearchBar` + typing) already set it — reset the module so
+    // this test genuinely observes a pane that has never been searched,
+    // rather than depending on file-wide test order.
+    vi.resetModules();
+    const fresh = await import("./search-bar");
+    const pane = fakeSearchPane(1);
+
+    fresh.advanceSearch(pane, "next");
+
+    expect(pane.search.findNext).not.toHaveBeenCalled();
+  });
+
+  it("bar open on this pane with a query typed: behaves exactly like pressing Enter", () => {
+    const pane = fakeSearchPane(1);
+    openSearchBar(pane);
+    typeQuery(pane, "needle");
+    (pane.search.findNext as ReturnType<typeof vi.fn>).mockClear(); // drop the incremental-typing call
+
+    advanceSearch(pane, "next");
+
+    expect(pane.search.findNext).toHaveBeenCalledWith(
+      "needle",
+      expect.anything(),
+    );
+  });
+
+  it("bar open on this pane but the input is empty: no-op, matching the bar's own Enter handling", () => {
+    const pane = fakeSearchPane(1);
+    openSearchBar(pane);
+
+    advanceSearch(pane, "next");
+
+    expect(pane.search.findNext).not.toHaveBeenCalled();
+  });
+
+  it("bar closed after a search (Escape): repeats the last query silently — no bar reopens", () => {
+    const pane = fakeSearchPane(1);
+    openSearchBar(pane);
+    typeQuery(pane, "needle");
+    closeSearchBar();
+    (pane.search.findNext as ReturnType<typeof vi.fn>).mockClear();
+
+    advanceSearch(pane, "next");
+
+    expect(pane.search.findNext).toHaveBeenCalledWith(
+      "needle",
+      expect.anything(),
+    );
+    expect(pane.element.querySelector(".search-bar__input")).toBeNull();
+  });
+
+  it("⌘⇧G direction calls findPrevious instead", () => {
+    const pane = fakeSearchPane(1);
+    openSearchBar(pane);
+    typeQuery(pane, "needle");
+    closeSearchBar();
+
+    advanceSearch(pane, "previous");
+
+    expect(pane.search.findPrevious).toHaveBeenCalledWith(
+      "needle",
+      expect.anything(),
+    );
+  });
+
+  it("the remembered query is app-wide, not tied to the pane it was typed on: a different (never-searched) active pane still gets it", () => {
+    const paneA = fakeSearchPane(1);
+    openSearchBar(paneA);
+    typeQuery(paneA, "needle");
+    closeSearchBar();
+
+    const paneB = fakeSearchPane(2);
+    advanceSearch(paneB, "next");
+
+    expect(paneB.search.findNext).toHaveBeenCalledWith(
+      "needle",
+      expect.anything(),
+    );
+  });
+
+  it("bar still open on a DIFFERENT pane: the active pane's advanceSearch uses the remembered query, not the other pane's live (possibly unsaved) input", () => {
+    const paneA = fakeSearchPane(1);
+    openSearchBar(paneA);
+    typeQuery(paneA, "needle");
+    (paneA.search.findNext as ReturnType<typeof vi.fn>).mockClear();
+
+    const paneB = fakeSearchPane(2);
+    advanceSearch(paneB, "next");
+
+    expect(paneB.search.findNext).toHaveBeenCalledWith(
+      "needle",
+      expect.anything(),
+    );
+    expect(paneA.search.findNext).not.toHaveBeenCalled(); // pane A's own bar/search untouched
+  });
+
+  it("closeSearchBarForPane on the searching pane (e.g. its tab closed) does not erase the remembered query for whatever pane is active next", () => {
+    const paneA = fakeSearchPane(1);
+    openSearchBar(paneA);
+    typeQuery(paneA, "needle");
+    closeSearchBarForPane(1); // pane died mid-search — no Escape, no closeSearchBar()
+
+    const paneB = fakeSearchPane(2);
+    advanceSearch(paneB, "next");
+
+    expect(paneB.search.findNext).toHaveBeenCalledWith(
+      "needle",
+      expect.anything(),
+    );
+  });
+});
+
+describe("⌘G / ⌘⇧G while the bar's own input has focus", () => {
+  afterEach(() => {
+    closeSearchBar();
+  });
+
+  // The global shortcut handler skips chrome text fields (search-bar.ts:216-234
+  // already does this for Escape/Enter/⌘F), so the bar must handle ⌘G itself —
+  // same reasoning as the existing ⌘F-refocuses-the-input branch.
+  it("⌘G in the input calls findNext, same as Enter", () => {
+    const pane = fakeSearchPane(1);
+    openSearchBar(pane);
+    typeQuery(pane, "needle");
+    const input = pane.element.querySelector(
+      ".search-bar__input",
+    ) as HTMLInputElement;
+    (pane.search.findNext as ReturnType<typeof vi.fn>).mockClear();
+
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "g", metaKey: true, bubbles: true }),
+    );
+
+    expect(pane.search.findNext).toHaveBeenCalledWith(
+      "needle",
+      expect.anything(),
+    );
+  });
+
+  it("⌘⇧G in the input calls findPrevious", () => {
+    const pane = fakeSearchPane(1);
+    openSearchBar(pane);
+    typeQuery(pane, "needle");
+    const input = pane.element.querySelector(
+      ".search-bar__input",
+    ) as HTMLInputElement;
+
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "g",
+        metaKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(pane.search.findPrevious).toHaveBeenCalledWith(
+      "needle",
+      expect.anything(),
+    );
   });
 });

@@ -28,6 +28,18 @@ interface OpenBar {
 // One search bar at a time across all panes and tabs.
 let current: OpenBar | null = null;
 
+/**
+ * Last non-empty term actually searched — survives `closeSearchBar()` so
+ * ⌘G/⌘⇧G (`advanceSearch` below) can repeat it once the bar itself is gone.
+ * Deliberately ONE app-wide string, not keyed by pane id: the bar is already
+ * a single global instance (`current` above), and CONTEXT.md's "Search…
+ * scoped to one pane at a time" describes which pane a term is applied
+ * against, not which pane it was typed on. Because it is a plain string with
+ * no pane reference, `closeSearchBarForPane` (a pane dying mid-search) never
+ * needs to touch it — there is nothing pane-specific here to leak.
+ */
+let lastQuery: string | null = null;
+
 function searchOptions(incremental: boolean): ISearchOptions {
   const theme = resolveTheme(settings.value);
   const match = theme.selectionBackground ?? "#33467c";
@@ -133,12 +145,7 @@ function findNormalized(
     return true;
   }
 
-  const winner = pickNormalizationWinner(
-    direction,
-    origin,
-    nfcSel!,
-    nfdSel!,
-  );
+  const winner = pickNormalizationWinner(direction, origin, nfcSel!, nfdSel!);
   pane.restoreSelection(origin);
   return find(winner === "nfc" ? nfc : nfd, options);
 }
@@ -209,12 +216,17 @@ export function openSearchBar(pane: Pane): void {
       counter.textContent = "";
       return;
     }
+    // Remembered for ⌘G/⌘⇧G (`advanceSearch`) to repeat after the bar closes.
+    lastQuery = input.value;
     // Incremental: the current selection expands instead of jumping ahead
     findNormalized(pane, "next", input.value, searchOptions(true));
   });
 
   // The global shortcut handler skips inputs outside .pane__term, so the
-  // bar handles its own keys — including Cmd+F to refocus/select-all.
+  // bar handles its own keys — including Cmd+F to refocus/select-all, and
+  // Cmd+G/Cmd+Shift+G (same action `advanceSearch` runs when the bar is
+  // closed, kept in sync via `input.value` instead of `lastQuery` here since
+  // the visible input is authoritative while the bar is open).
   element.addEventListener("keydown", (event) => {
     event.stopPropagation();
     if (event.key === "Escape") {
@@ -226,6 +238,13 @@ export function openSearchBar(pane: Pane): void {
     } else if (event.key === "Enter") {
       event.preventDefault();
       findNext();
+    } else if (event.metaKey && event.key.toLowerCase() === "g") {
+      event.preventDefault();
+      if (event.shiftKey) {
+        findPrevious();
+      } else {
+        findNext();
+      }
     } else if (event.metaKey && event.key.toLowerCase() === "f") {
       event.preventDefault();
       input.focus();
@@ -260,4 +279,31 @@ export function closeSearchBarForPane(paneId: number): void {
   current = null;
   disposeResults();
   element.remove();
+}
+
+/**
+ * ⌘G / ⌘⇧G: advance the match on `pane` (the app's currently active pane,
+ * which may or may not be the one a bar is open on).
+ *
+ *  - Bar open ON `pane`: behaves exactly like pressing Enter/⇧Enter in it —
+ *    uses the bar's own live `input.value`, so an empty input is a no-op,
+ *    same as the bar's own Enter handling.
+ *  - Bar closed, or open on a DIFFERENT pane: falls back to `lastQuery` and
+ *    searches `pane` directly. This is deliberately silent (decorations
+ *    highlight the match in the terminal; no bar/counter appears) — the
+ *    iTerm2/vim `n`/`N` model, not "reopen the bar with the old query": the
+ *    whole reason to press ⌘G after Escape is that the bar is already out of
+ *    the way and should stay that way. No query has ever been run → safe
+ *    no-op (nothing to repeat).
+ */
+export function advanceSearch(
+  pane: Pane,
+  direction: "next" | "previous",
+): void {
+  const openOnThisPane = current !== null && current.pane.id === pane.id;
+  const query = openOnThisPane ? current!.input.value : (lastQuery ?? "");
+  if (query === "") {
+    return;
+  }
+  findNormalized(pane, direction, query, searchOptions(false));
 }

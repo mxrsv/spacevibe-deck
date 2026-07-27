@@ -21,6 +21,7 @@ import type { AgentNotifier, AttentionNotification } from "./agent-notifier";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
+import { closeSearchBar } from "./search-bar";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test — including every pre-Task-23 test
@@ -84,7 +85,14 @@ vi.mock("@tauri-apps/api/webview", () => ({
   getCurrentWebview: () => ({ onDragDropEvent: async () => () => {} }),
 }));
 
-function fakePane(id: number, events: PaneEvents): Pane {
+function fakePane(
+  id: number,
+  events: PaneEvents,
+  // `search` defaults to an unusable stub — no existing test drives it. The
+  // find-next/find-previous tests below pass a real spy set so `advanceSearch`
+  // (search-bar.ts) has something to call.
+  overrides: { search?: Pane["search"] } = {},
+): Pane {
   const element = document.createElement("div");
   // Focusable + real DOM focus movement (like xterm's textarea would): the
   // Task 11 visibility predicate checks `element.contains(document.activeElement)`,
@@ -94,7 +102,7 @@ function fakePane(id: number, events: PaneEvents): Pane {
   return {
     id,
     element,
-    search: {} as Pane["search"],
+    search: overrides.search ?? ({} as Pane["search"]),
     mount() {},
     write() {},
     writeln() {},
@@ -2187,6 +2195,103 @@ describe("select-last-tab (⌘9) — always the last tab, never a fixed index 8"
     await flush();
 
     expect(activeTabIndex.value).toBe(-1);
+
+    tm.dispose();
+  });
+});
+
+describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the last search)", () => {
+  afterEach(() => {
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    closeSearchBar();
+  });
+
+  function searchSpies(): Pane["search"] {
+    return {
+      findNext: vi.fn(() => true),
+      findPrevious: vi.fn(() => true),
+      clearDecorations: vi.fn(),
+      onDidChangeResults: vi.fn(() => ({ dispose: vi.fn() })),
+    } as unknown as Pane["search"];
+  }
+
+  function gKeydown(shift = false): KeyboardEvent {
+    return new KeyboardEvent("keydown", {
+      key: "g",
+      metaKey: true,
+      shiftKey: shift,
+      bubbles: true,
+    });
+  }
+
+  /** ⌘F, type, Escape — the exact flow the shortcut exists to continue. */
+  function searchThenClose(pane: Pane, tm: TabManager, query: string): void {
+    tm.runAction("find");
+    const input = pane.element.querySelector(
+      ".search-bar__input",
+    ) as HTMLInputElement;
+    input.value = query;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    closeSearchBar();
+  }
+
+  it("find-next: blocked by the overlay guard while Settings is open, reaches the pane once it closes — via the real ⌘G keydown path", async () => {
+    const panes = new Map<number, Pane>();
+    const createPane: CreatePaneFn = (id, _settings, events) => {
+      const pane = fakePane(id, events, { search: searchSpies() });
+      panes.set(id, pane);
+      return pane;
+    };
+    const { tm } = setup({ deps: { createPane } });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+
+    searchThenClose(panes.get(1)!, tm, "needle");
+    const findNextSpy = panes.get(1)!.search.findNext as ReturnType<
+      typeof vi.fn
+    >;
+    findNextSpy.mockClear(); // drop the incremental-typing call above
+
+    settingsOpen.value = true;
+    window.dispatchEvent(gKeydown());
+    await flush();
+    expect(findNextSpy).not.toHaveBeenCalled();
+
+    settingsOpen.value = false;
+    window.dispatchEvent(gKeydown());
+    await flush();
+    expect(findNextSpy).toHaveBeenCalledWith("needle", expect.anything());
+
+    tm.dispose();
+  });
+
+  it("find-previous: blocked by the overlay guard while the Open board is up, reaches the pane once it closes — via the menu bridge (runAction)", async () => {
+    const panes = new Map<number, Pane>();
+    const createPane: CreatePaneFn = (id, _settings, events) => {
+      const pane = fakePane(id, events, { search: searchSpies() });
+      panes.set(id, pane);
+      return pane;
+    };
+    const { tm } = setup({ deps: { createPane } });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+
+    searchThenClose(panes.get(1)!, tm, "needle");
+    const findPrevSpy = panes.get(1)!.search.findPrevious as ReturnType<
+      typeof vi.fn
+    >;
+    findPrevSpy.mockClear();
+
+    boardOpen.value = true;
+    tm.runAction("find-previous");
+    expect(findPrevSpy).not.toHaveBeenCalled();
+
+    boardOpen.value = false;
+    tm.runAction("find-previous");
+    expect(findPrevSpy).toHaveBeenCalledWith("needle", expect.anything());
 
     tm.dispose();
   });

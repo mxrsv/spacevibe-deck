@@ -76,6 +76,15 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
     // Find lives under Edit because that is where macOS users look for it —
     // ⌘F reaching only the webview meant the app had no discoverable find.
     let find = action_item(handle, "find", "Find…", "CmdOrCtrl+F")?;
+    // Repeat the last search, with or without the bar open (search-bar.ts's
+    // `advanceSearch`) — standard macOS Find Next/Previous placement.
+    let find_next = action_item(handle, "find-next", "Find Next", "CmdOrCtrl+G")?;
+    let find_previous = action_item(
+        handle,
+        "find-previous",
+        "Find Previous",
+        "CmdOrCtrl+Shift+G",
+    )?;
     let clear_buffer = action_item(handle, "clear-buffer", "Clear Buffer", "CmdOrCtrl+K")?;
     let edit_menu = SubmenuBuilder::new(handle, "Edit")
         .undo()
@@ -87,6 +96,8 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         .select_all()
         .separator()
         .item(&find)
+        .item(&find_next)
+        .item(&find_previous)
         .item(&clear_buffer)
         .build()?;
 

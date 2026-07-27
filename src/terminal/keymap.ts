@@ -14,6 +14,8 @@ export type ShortcutAction =
   | "zoom-reset"
   | "toggle-zoom-pane"
   | "find"
+  | "find-next"
+  | "find-previous"
   | "clear-buffer"
   | "focus-left"
   | "focus-right"
@@ -115,6 +117,11 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   // Maximize the active pane over the whole tab (tmux zoom), toggle to restore
   { key: "enter", meta: true, shift: true, action: "toggle-zoom-pane" },
   { key: "f", meta: true, action: "find" },
+  // Standard macOS find-next/find-previous chord (Safari, Xcode, TextEdit…).
+  // Works whether the search bar is open or already closed — see
+  // `advanceSearch` in search-bar.ts for the closed-bar behavior.
+  { key: "g", meta: true, action: "find-next" },
+  { key: "g", meta: true, shift: true, action: "find-previous" },
   { key: "k", meta: true, action: "clear-buffer" },
   { key: "t", meta: true, shift: true, action: "reopen-tab" },
   // Capture the live layout as a preset (UX §3) — also in the Window menu

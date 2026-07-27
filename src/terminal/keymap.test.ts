@@ -196,6 +196,18 @@ describe("matchBinding", () => {
     );
   });
 
+  it("matches Cmd+G as find-next and Cmd+Shift+G as find-previous", () => {
+    expect(matchBinding(keyEvent("g", { metaKey: true }))).toBe("find-next");
+    expect(matchBinding(keyEvent("g", { metaKey: true, shiftKey: true }))).toBe(
+      "find-previous",
+    );
+  });
+
+  it("does not match G without the meta modifier", () => {
+    expect(matchBinding(keyEvent("g"))).toBeNull();
+    expect(matchBinding(keyEvent("g", { shiftKey: true }))).toBeNull();
+  });
+
   it("matches Cmd+, as toggle-settings", () => {
     expect(matchBinding(keyEvent(",", { metaKey: true }))).toBe(
       "toggle-settings",
