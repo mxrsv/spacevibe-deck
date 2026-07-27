@@ -906,17 +906,18 @@ export function createTabManager(
    * `scope: "always"` (`focus-next-attention`, `toggle-settings`) skips the
    * comparison entirely — see each entry's comment in action-registry.ts for
    * why (a dedicated overlay preflight, or an action that opens/closes the
-   * very overlay that would otherwise strand it). Tab-jump actions (`select-tab-N`,
-   * `select-last-tab`) are exempt through the SEPARATE `isTabSelectionAction`
-   * mechanism below, not through `scope` — see its own doc comment for why
-   * that's a distinct action family, not a product-level "always" decision.
+   * very overlay that would otherwise strand it). Every "switch tabs" action
+   * (`select-tab-N`, `select-last-tab`, `next-tab`, `prev-tab`) is exempt
+   * through the SEPARATE `isTabSwitchAction` mechanism below, not through
+   * `scope` — see its own doc comment for why that's a distinct action
+   * family, not a product-level "always" decision.
    */
   function overlayBlocksAction(action: ShortcutAction): boolean {
     const scope = ACTION_SCOPE.get(action);
     if (
       scope === undefined ||
       scope === "always" ||
-      isTabSelectionAction(action)
+      isTabSwitchAction(action)
     ) {
       return false;
     }
@@ -925,13 +926,23 @@ export function createTabManager(
   }
 
   /**
-   * True for both flavors of "jump to a tab" action: `select-tab-N` (a fixed
-   * index) and `select-last-tab` (⌘9, always the last tab). Shared by the
-   * overlay scope guard above and `dispatchAction` below so the two stay in
-   * sync as exactly the same action group.
+   * True for every "switch which tab is active" action: `select-tab-N` (a
+   * fixed index), `select-last-tab` (⌘9, always the last tab), and
+   * `next-tab`/`prev-tab` (⌘⇧]/⌘⇧[, cycle by one). Renamed from
+   * isTabSelectionAction (decision 3, 2026-07-27 code review): next-tab/
+   * prev-tab joined this group when the F1 fix below made select-tab-N/
+   * select-last-tab dismiss-then-act while leaving the other two "switch
+   * tabs" actions fully blocked — an inconsistency created by that same fix,
+   * not a pre-existing one. Shared by the overlay scope guard above and
+   * `dispatchAction` below so all four stay in sync as exactly one group.
    */
-  function isTabSelectionAction(action: ShortcutAction): boolean {
-    return action === "select-last-tab" || selectTabIndex(action) !== null;
+  function isTabSwitchAction(action: ShortcutAction): boolean {
+    return (
+      action === "select-last-tab" ||
+      action === "next-tab" ||
+      action === "prev-tab" ||
+      selectTabIndex(action) !== null
+    );
   }
 
   /**
@@ -952,7 +963,7 @@ export function createTabManager(
     if (overlayBlocksAction(action)) {
       return;
     }
-    if (isTabSelectionAction(action)) {
+    if (isTabSwitchAction(action)) {
       // F1 (2026-07-27 code review): mirrors App.selectTab's click path
       // (app.tsx), which has always cleared boardOpen before switching.
       // Without this, selectTab()'s manager.show() focuses the newly active
@@ -963,6 +974,9 @@ export function createTabManager(
       // settings/presetEditor/saveDialogOpen either, matching the click
       // path exactly: TabBar sits outside `.stage`, so it is never covered
       // by `.modal-scrim`, and clicking a tab already works over a draft.
+      // Decision 3: next-tab/prev-tab dismiss the board the same way — they
+      // fall through to `commands[action]?.()` below unchanged, cycleTab
+      // itself needs no board-awareness of its own.
       boardOpen.value = false;
     }
     if (action === "select-last-tab") {

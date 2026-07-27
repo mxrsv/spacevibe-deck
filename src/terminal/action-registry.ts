@@ -61,10 +61,10 @@ export interface ActionDefinition {
    * opens/closes the very overlay that would otherwise block it
    * (`toggle-settings`).
    *
-   * Tab-jump actions (`select-tab-N`, `select-last-tab`) are exempted through
-   * a SEPARATE mechanism (`isTabSelectionAction` in `tab-manager.ts`) — not
-   * modeled here, so this field only ever reflects a genuine product
-   * decision, never the tab-family mechanism.
+   * "Switch tabs" actions (`select-tab-N`, `select-last-tab`, `next-tab`,
+   * `prev-tab`) are exempted through a SEPARATE mechanism (`isTabSwitchAction`
+   * in `tab-manager.ts`) — not modeled here, so this field only ever
+   * reflects a genuine product decision, never the tab-family mechanism.
    */
   readonly scope: ActionScope;
   /**
@@ -253,14 +253,26 @@ export const ACTION_REGISTRY = [
   { id: "focus-right", label: "Focus Pane Right", scope: "pane" },
   { id: "focus-up", label: "Focus Pane Up", scope: "pane" },
   { id: "focus-down", label: "Focus Pane Down", scope: "pane" },
-  { id: "next-tab", label: "Next Tab", scope: "pane" },
-  { id: "prev-tab", label: "Previous Tab", scope: "pane" },
+  {
+    id: "next-tab",
+    label: "Next Tab",
+    // "pane" is a placeholder, pre-empted by isTabSwitchAction
+    // (tab-manager.ts, decision 3, 2026-07-27 code review) — same mechanism
+    // as select-tab-N/select-last-tab below, NOT through scope "always".
+    scope: "pane",
+  },
+  {
+    id: "prev-tab",
+    label: "Previous Tab",
+    // See next-tab above — same isTabSwitchAction exemption.
+    scope: "pane",
+  },
   {
     id: "select-last-tab",
     label: "Select Last Tab",
-    // Exempt from the overlay guard through isTabSelectionAction
-    // (tab-manager.ts) — the same mechanism as select-tab-N, NOT through
-    // scope "always".
+    // Exempt from the overlay guard through isTabSwitchAction
+    // (tab-manager.ts) — the same mechanism as select-tab-N/next-tab/
+    // prev-tab, NOT through scope "always".
     scope: "pane",
   },
 ] as const satisfies readonly ActionDefinition[];

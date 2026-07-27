@@ -2090,6 +2090,51 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
+  // Decision 3 of the design proposal (2026-07-27 code review): before the
+  // F1 fix above, Cmd+1-9/Cmd+9 and Cmd+Shift+]/Cmd+Shift+[ were both fully
+  // blocked while the board was up — consistent. F1 made the first family
+  // dismiss-then-act, leaving next-tab/prev-tab as the only "switch tabs"
+  // actions still dead on the board — an inconsistency F1 itself created,
+  // not a pre-existing one, so it belongs in this same round of fixes.
+  // next-tab/prev-tab now join isTabSwitchAction (renamed from
+  // isTabSelectionAction to reflect the wider membership) and get the exact
+  // same unconditional board-dismiss treatment.
+  it("next-tab (⌘⇧]) cycles the active tab while the Open board is up, dismissing it first (decision 3)", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.init();
+    await flush();
+    expect(activeTabIndex.value).toBe(1);
+
+    boardOpen.value = true;
+    tm.runAction("next-tab");
+    await flush();
+
+    expect(activeTabIndex.value).toBe(0); // wraps from the last tab to the first
+    expect(boardOpen.value).toBe(false);
+
+    tm.dispose();
+  });
+
+  it("prev-tab (⌘⇧[) cycles the active tab while the Open board is up too (decision 3)", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.init();
+    await flush();
+    expect(activeTabIndex.value).toBe(1);
+
+    boardOpen.value = true;
+    tm.runAction("prev-tab");
+    await flush();
+
+    expect(activeTabIndex.value).toBe(0);
+    expect(boardOpen.value).toBe(false);
+
+    tm.dispose();
+  });
+
   // Decision 2 of the design proposal (2026-07-27 code review): save-preset
   // was scope "terminal"/"pane", blocked by literally any open overlay
   // including Settings — an accident of the blanket scope, same as
