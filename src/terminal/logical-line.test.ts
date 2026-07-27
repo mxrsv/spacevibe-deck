@@ -92,4 +92,14 @@ describe("readLogicalLine", () => {
   it("returns null past the end of the buffer", () => {
     expect(readLogicalLine(fakeBuffer(["ab"], 2), 2, 5)).toBeNull();
   });
+
+  it("still covers the hovered row on a logical line longer than the cap", () => {
+    // 60 wrapped rows: the backward walk clamps well above the hovered row, so
+    // a window of exactly MAX_ROWS starting there would stop short of it.
+    const rows = ["a", ...Array.from({ length: 59 }, (_, i) => `>${i % 10}`)];
+    const hovered = 55;
+    const line = readLogicalLine(fakeBuffer(rows, 1), 1, hovered);
+    expect(line).not.toBeNull();
+    expect(line!.spans.some((span) => span.y === hovered)).toBe(true);
+  });
 });

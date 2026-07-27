@@ -61,7 +61,14 @@ export function readLogicalLine(
 
   let text = "";
   const spans: CellSpan[] = [];
-  for (let y = start; y < start + MAX_ROWS; y += 1) {
+  // The backward walk clamps after MAX_ROWS, so on a logical line longer than
+  // that `start` can still sit MAX_ROWS above `row`. Reading only
+  // `[start, start + MAX_ROWS)` would then stop just short of the hovered row
+  // and every span would land above it — the caller's ranges would all miss the
+  // pointer and nothing on that row could be clicked. Always read far enough to
+  // include `row` itself.
+  const end = Math.max(start + MAX_ROWS, row + 1);
+  for (let y = start; y < end; y += 1) {
     const line = buffer.getLine(y);
     if (!line || (y > start && !line.isWrapped)) {
       break;
