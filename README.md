@@ -150,15 +150,17 @@ Every shortcut below, and its macOS menu counterpart, comes from one source:
 
 **Terminal & view**
 
-| Shortcut     | Action                        |
-| ------------ | ----------------------------- |
-| ⌘F           | Find in scrollback            |
-| ⌘G / ⌘⇧G     | Find next / previous match    |
-| ⌘K           | Clear buffer                  |
-| ⌘⇧C          | Copy pane's working directory |
-| ⌘+ / ⌘- / ⌘0 | Font zoom in / out / reset    |
-| ⌘,           | Toggle Settings               |
-| ⌘Q           | Quit                          |
+| Shortcut      | Action                        |
+| ------------- | ----------------------------- |
+| ⌘F            | Find in scrollback            |
+| ⌘G / ⌘⇧G      | Find next / previous match    |
+| ⌘K            | Clear buffer                  |
+| ⌘⇧C           | Copy pane's working directory |
+| ⇧PgUp / ⇧PgDn | Scroll scrollback by page     |
+| ⇧Home / ⇧End  | Scroll to top / latest output |
+| ⌘+ / ⌘- / ⌘0  | Font zoom in / out / reset    |
+| ⌘,            | Toggle Settings               |
+| ⌘Q            | Quit                          |
 
 Shift+Enter is not distinguishable from Enter in xterm today (a known limit). In Claude Code, use **Option+Enter** or type `\` then Enter to insert a newline without submitting.
 
