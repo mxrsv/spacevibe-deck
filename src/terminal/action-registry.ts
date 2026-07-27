@@ -297,6 +297,15 @@ export const ACTION_REGISTRY = [
   { id: "focus-right", label: "Focus Pane Right", scope: "pane" },
   { id: "focus-up", label: "Focus Pane Up", scope: "pane" },
   { id: "focus-down", label: "Focus Pane Down", scope: "pane" },
+  // FR-032 (docs/plans/2026-07-27-keyboard-parity.md Task 1) — swap the
+  // active pane with its neighbor. Same "no menu item" reasoning as
+  // focus-left/right/up/down above: swap already has a mouse path
+  // (drag-dock), so a menu item is unnecessary for capability, only for a
+  // second discoverability route this sibling group already forgoes.
+  { id: "swap-left", label: "Swap Pane Left", scope: "pane" },
+  { id: "swap-right", label: "Swap Pane Right", scope: "pane" },
+  { id: "swap-up", label: "Swap Pane Up", scope: "pane" },
+  { id: "swap-down", label: "Swap Pane Down", scope: "pane" },
   {
     id: "next-tab",
     label: "Next Tab",
@@ -517,6 +526,27 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { key: "arrowright", meta: true, alt: true, action: "focus-right" },
   { key: "arrowup", meta: true, alt: true, action: "focus-up" },
   { key: "arrowdown", meta: true, alt: true, action: "focus-down" },
+  // Swap the focused pane with its neighbor — same direction keys as focus
+  // (⌘⌥), plus Shift for the "stronger" operation (same pattern as split-row
+  // ⌘D vs split-column ⌘⇧D). CharKeyBinding, same as focus-left/right/up/down
+  // above: no menu item, and event.key for arrows ("ArrowLeft" etc.) is
+  // stable across layout/Shift, so `code` buys nothing here (RULE above).
+  { key: "arrowleft", meta: true, alt: true, shift: true, action: "swap-left" },
+  {
+    key: "arrowright",
+    meta: true,
+    alt: true,
+    shift: true,
+    action: "swap-right",
+  },
+  { key: "arrowup", meta: true, alt: true, shift: true, action: "swap-up" },
+  {
+    key: "arrowdown",
+    meta: true,
+    alt: true,
+    shift: true,
+    action: "swap-down",
+  },
   ...TAB_SELECT_BINDINGS,
   SELECT_LAST_TAB_BINDING,
 ];

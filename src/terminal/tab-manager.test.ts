@@ -2689,3 +2689,64 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
     tm.dispose();
   });
 });
+
+// FR-032 (docs/plans/2026-07-27-keyboard-parity.md Task 1): swap-left/right/
+// up/down route to TerminalManager.swapDirection — its own geometry/DOM
+// behavior (slot order, focus-follows-pane, zoom drop) is covered directly
+// in terminal-manager.test.ts, which can construct a real two-pane split and
+// inspect .pane-slot order; here the only thing worth proving is routing —
+// that runAction reaches swapDirection at all, and is gated like every other
+// pane-tier action. Proven via a focus-call spy: swapDirection always calls
+// pane.focus() on success (never on a no-op), so a spy is a reliable proxy
+// for "the whole chain ran" without needing DOM slot inspection at this layer.
+describe("createTabManager swap-* actions (FR-032)", () => {
+  afterEach(() => {
+    settingsOpen.value = false;
+  });
+
+  async function twoPaneSetup(): Promise<{
+    tm: TabManager;
+    panes: Map<number, Pane>;
+  }> {
+    const panes = new Map<number, Pane>();
+    const createPane: CreatePaneFn = (id, _settings, events) => {
+      const pane = fakePane(id, events);
+      panes.set(id, pane);
+      return pane;
+    };
+    const { tm } = setup({ deps: { createPane } });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.splitActive("row"); // active pane is now the freshly split one
+    await tm.init();
+    await flush();
+    return { tm, panes };
+  }
+
+  it("swap-left via runAction reaches TerminalManager.swapDirection", async () => {
+    const { tm, panes } = await twoPaneSetup();
+    // splitActive leaves the newer pane (id 2) active.
+    const focusSpy = vi.spyOn(panes.get(2)!, "focus");
+    focusSpy.mockClear(); // drop splitActive's own focus call
+
+    tm.runAction("swap-left");
+    await flush();
+
+    expect(focusSpy).toHaveBeenCalled(); // swapDirection only focuses on success
+
+    tm.dispose();
+  });
+
+  it("swap-left via runAction is blocked while Settings is open", async () => {
+    const { tm, panes } = await twoPaneSetup();
+    const focusSpy = vi.spyOn(panes.get(2)!, "focus");
+    focusSpy.mockClear();
+
+    settingsOpen.value = true;
+    tm.runAction("swap-left");
+    await flush();
+
+    expect(focusSpy).not.toHaveBeenCalled();
+
+    tm.dispose();
+  });
+});

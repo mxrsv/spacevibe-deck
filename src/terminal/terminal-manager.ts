@@ -82,6 +82,14 @@ export interface TerminalManager {
   cycleFocus(step: 1 | -1): void;
   /** Move focus to the nearest pane in a direction; no pane there → no-op. */
   focusDirection(dir: FocusDirection): void;
+  /**
+   * Swap the active pane with its neighbor in a direction (FR-032); no
+   * neighbor there → no-op. Unlike `focusDirection`, this rebuilds the DOM
+   * (each pane's element must reparent into its new slot) and so — like
+   * `splitActive`/`closePane` — unconditionally drops zoom as a side effect
+   * of that rebuild, even when the zoomed pane is not the one swapped.
+   */
+  swapDirection(dir: FocusDirection): void;
   /** Maximize the active pane over the whole tab; call again to restore. */
   toggleZoom(): void;
   focusActive(): void;
@@ -359,6 +367,28 @@ export function createTerminalManager(
     life.panes.get(target)?.focus();
   }
 
+  function swapDirection(dir: FocusDirection): void {
+    if (!tree || activeId === null) {
+      return;
+    }
+    const target = nearestInDirection(layout.slotRects(), activeId, dir);
+    if (target === null) {
+      return; // no neighbor in that direction — FR-032 AC-3
+    }
+    const next = swapLeaves(tree, activeId, target);
+    if (next === tree) {
+      return;
+    }
+    tree = next;
+    render();
+    // activeId is unchanged (only its slot moved) — focus follows it
+    // (FR-032 AC-2). Not routed through setActive: activeId === activeId is
+    // always a no-op there, so this calls pane.focus() directly, same as
+    // pane-drag.ts's onSwap below does after its own swapLeaves.
+    life.panes.get(activeId)?.focus();
+    callbacks.onLayoutChange();
+  }
+
   async function initFresh(cwd: string | null = null): Promise<void> {
     const pane = await life.spawnPane(cwd);
     tree = leaf(pane.id);
@@ -499,6 +529,7 @@ export function createTerminalManager(
     },
     cycleFocus,
     focusDirection,
+    swapDirection,
     toggleZoom() {
       layout.toggleZoom(activeId, life.panes.size);
     },

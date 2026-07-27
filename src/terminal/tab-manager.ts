@@ -851,6 +851,10 @@ export function createTabManager(
     "focus-right": () => activeManager()?.focusDirection("right"),
     "focus-up": () => activeManager()?.focusDirection("up"),
     "focus-down": () => activeManager()?.focusDirection("down"),
+    "swap-left": () => activeManager()?.swapDirection("left"),
+    "swap-right": () => activeManager()?.swapDirection("right"),
+    "swap-up": () => activeManager()?.swapDirection("up"),
+    "swap-down": () => activeManager()?.swapDirection("down"),
     "reopen-tab": () => void reopenTab(),
     // Never calls `focusNextAttention` directly — routes the request through
     // the optional app seam so the app can run the overlay preflight (Task

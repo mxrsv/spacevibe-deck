@@ -235,6 +235,76 @@ describe("createTerminalManager focusPane", () => {
   });
 });
 
+// FR-032 (docs/plans/2026-07-27-keyboard-parity.md Task 1): swap the active
+// pane with its neighbor, reusing focusDirection's own nearestInDirection
+// resolution + the already-shipped swapLeaves (pane-drag.ts's onSwap uses the
+// same primitive). jsdom never lays out real geometry — every slot's
+// getBoundingClientRect() is {0,0,0,0} — so, like focusDirection, this suite
+// cannot assert WHICH direction resolves to WHICH neighbor (that is
+// pane-geometry.test.ts's job, with controlled fake rects). What it CAN prove
+// without real layout: a lone pane has no neighbor in any direction (no-op);
+// a two-pane split has exactly one "other" pane, so any direction call
+// swaps with it, letting behavior (DOM slot order, focus, zoom) be verified.
+describe("createTerminalManager swapDirection (FR-032)", () => {
+  it("no neighbor (single pane) — no-op, no extra focus", async () => {
+    const { tm, container, onPaneFocus } = setup();
+    await tm.initFresh();
+    const before = [...container.querySelectorAll(".pane-slot")].map((s) =>
+      s.getAttribute("data-pane-id"),
+    );
+    onPaneFocus.mockClear();
+
+    tm.swapDirection("left");
+
+    const after = [...container.querySelectorAll(".pane-slot")].map((s) =>
+      s.getAttribute("data-pane-id"),
+    );
+    expect(after).toEqual(before);
+    expect(onPaneFocus).not.toHaveBeenCalled();
+  });
+
+  it("swaps the active pane with its neighbor — active id stays the same, only its slot moves (FR-032 AC-1/AC-2)", async () => {
+    const { tm, container, onPaneFocus } = setup();
+    await tm.initFresh();
+    await tm.splitActive("row");
+    const activeBefore = tm.activePaneId();
+    expect(activeBefore).not.toBeNull();
+    const before = [...container.querySelectorAll(".pane-slot")].map((s) =>
+      s.getAttribute("data-pane-id"),
+    );
+    onPaneFocus.mockClear();
+
+    tm.swapDirection("left");
+
+    const after = [...container.querySelectorAll(".pane-slot")].map((s) =>
+      s.getAttribute("data-pane-id"),
+    );
+    // Only two slots exist here — a real swap is exactly the reverse order.
+    expect(after).toEqual([...before].reverse());
+    expect(tm.activePaneId()).toBe(activeBefore); // id unchanged, only the slot moved
+    expect(onPaneFocus).toHaveBeenCalledWith(activeBefore); // focus follows the pane
+  });
+
+  it("drops zoom on swap unconditionally — a structural rebuild (render/sync), unlike focusDirection's conditional unzoom via setActive", async () => {
+    // Documented difference, not a bug: swapDirection reparents each pane's
+    // DOM element into its new slot, which needs the full render()/sync()
+    // path — and sync() itself always unzooms first (same as splitActive/
+    // closePane), regardless of whether the zoomed pane is the one being
+    // swapped. focusDirection never rebuilds the DOM (no structural change),
+    // so its setActive-driven unzoom stays conditional: only when focus
+    // moves AWAY from the zoomed pane.
+    const { tm, container } = setup();
+    await tm.initFresh();
+    await tm.splitActive("row");
+    tm.toggleZoom();
+    expect(container.classList.contains("is-zoomed")).toBe(true);
+
+    tm.swapDirection("left");
+
+    expect(container.classList.contains("is-zoomed")).toBe(false);
+  });
+});
+
 describe("createTerminalManager show", () => {
   it("show() with no args displays the container, fits every pane, and focuses the active pane exactly once", async () => {
     const { tm, container, onPaneFocus, fitCounts } = setup();
