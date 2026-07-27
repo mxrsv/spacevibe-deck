@@ -79,6 +79,21 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "File", group: "primary" },
   },
   {
+    id: "new-preset",
+    label: "New Layout Preset…",
+    // Moved from the Window menu to File (HIG: File owns create/save
+    // operations; Window is left holding only native window-management
+    // items — minimize/maximize/fullscreen).
+    scope: "terminal",
+    menu: { submenu: "File", group: "preset" },
+  },
+  {
+    id: "save-preset",
+    label: "Save Layout as Preset…",
+    scope: "terminal",
+    menu: { submenu: "File", group: "preset" },
+  },
+  {
     id: "close-pane",
     label: "Close Pane",
     scope: "terminal",
@@ -160,18 +175,6 @@ export const ACTION_REGISTRY = [
     // draft. Gating it here too would double-guard it.
     scope: "always",
     menu: { submenu: "View", group: "attention" },
-  },
-  {
-    id: "new-preset",
-    label: "New Layout Preset…",
-    scope: "terminal",
-    menu: { submenu: "Window" },
-  },
-  {
-    id: "save-preset",
-    label: "Save Layout as Preset…",
-    scope: "terminal",
-    menu: { submenu: "Window" },
   },
   { id: "focus-next", label: "Focus Next Pane", scope: "terminal" },
   { id: "focus-prev", label: "Focus Previous Pane", scope: "terminal" },

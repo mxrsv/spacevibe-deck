@@ -106,9 +106,30 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         "Reopen Closed Tab",
         Some("CmdOrCtrl+Shift+T"),
     )?;
+    // Moved here from the Window menu (HIG: File owns create/save
+    // operations) — unified onto the same action:/runAction path as every
+    // other item (no more menu:new-preset/menu:save-preset dedicated
+    // events). See src/terminal/tab-manager.ts's commands table for the
+    // "new-preset"/"save-preset" closures this now reaches, both behind the
+    // shared overlay scope guard.
+    let new_preset = action_item(
+        handle,
+        "new-preset",
+        "New Layout Preset…",
+        Some("CmdOrCtrl+Shift+N"),
+    )?;
+    let save_preset = action_item(
+        handle,
+        "save-preset",
+        "Save Layout as Preset…",
+        Some("CmdOrCtrl+Shift+S"),
+    )?;
     let file_menu = SubmenuBuilder::new(handle, "File")
         .item(&new_tab)
         .item(&reopen_tab)
+        .separator()
+        .item(&new_preset)
+        .item(&save_preset)
         .separator()
         .item(&close_pane)
         .item(&close_tab)
@@ -157,31 +178,13 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         .separator()
         .item(&next_attention)
         .build()?;
-    // Unified onto the same action:/runAction path as every other item (no
-    // more menu:new-preset/menu:save-preset dedicated events) — see
-    // src/terminal/tab-manager.ts's commands table for the "new-preset"/
-    // "save-preset" closures this now reaches, both behind the shared
-    // overlay scope guard.
-    let new_preset = action_item(
-        handle,
-        "new-preset",
-        "New Layout Preset…",
-        Some("CmdOrCtrl+Shift+N"),
-    )?;
-    let save_preset = action_item(
-        handle,
-        "save-preset",
-        "Save Layout as Preset…",
-        Some("CmdOrCtrl+Shift+S"),
-    )?;
+    // New/Save Layout Preset moved to the File menu above — Window is now
+    // just native window management.
     let window_menu = SubmenuBuilder::new(handle, "Window")
         .minimize()
         .maximize()
         .separator()
         .fullscreen()
-        .separator()
-        .item(&new_preset)
-        .item(&save_preset)
         .build()?;
     let menu = MenuBuilder::new(handle)
         .items(&[&app_menu, &file_menu, &edit_menu, &view_menu, &window_menu])
