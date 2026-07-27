@@ -1020,3 +1020,36 @@ thủ công OS-level không giữ chord nào (rủi ro đã nêu ở §5, không
   - Gõ tiếng Việt (Telex) trong một pane — không phím mới nào ở trên vô tình chặn hay làm sai composition
     (đặc biệt `⇧Home`/`⇧End`/`⇧PageUp`/`⇧PageDown` không phải phím ký tự nên rủi ro thấp, vẫn xác
     nhận bằng mắt).
+
+---
+
+## §7. Đề xuất ngoài phạm vi — chưa được duyệt
+
+Mục này ghi lại một ý tưởng nảy sinh trong lúc viết plan, **không phải một phần đã duyệt của Task
+3** — từng bị đưa nhầm vào Task 3 rồi tách ra theo yêu cầu team lead. Không tự triển khai; chỉ nêu
+đủ chi tiết để người dùng quyết độc lập, tách khỏi quyết định "menu Edit" đã chốt ở Task 3.
+
+### Click-to-copy CWD trên pane header
+
+**Ý tưởng**: pane header đã hiển thị CWD làm text tĩnh (`cwdEl` khi `showPaneBar: true`,
+`anchorCwd` khi `false` — cả hai đã tồn tại trong `pane.ts:78-98`, không phải UI mới). Biến text đó
+thành click-to-copy: click vào CWD ở header của BẤT KỲ pane nào (không chỉ pane đang focus) copy
+đúng CWD của pane đó vào clipboard.
+
+**Ưu điểm thật, không có ở `⌘⇧C`/menu Edit**: cả phím lẫn menu chỉ copy được CWD của pane **đang
+active** — muốn copy CWD của một pane khác phải focus nó trước. Click-to-copy trên pane header xoá
+bước đó: nhắm đúng pane muốn copy, không cần chuyển focus trước. Chi phí implementation thấp — 2
+click listener + 1 CSS class trên element có sẵn, không đụng `menu.rs`/Rust, không plugin mới
+(`navigator.clipboard.writeText`, cùng cơ chế Task 3 đã dùng).
+
+**Rủi ro đã phát hiện, cần cân nhắc trước khi duyệt**: click listener gắn thẳng lên `cwdEl`/
+`anchorCwd` sẽ KHÔNG đi qua `dispatchAction`/`overlayBlocksAction` — khác mọi action bàn phím/menu
+trong plan này. Về lý thuyết vẫn an toàn vì lý do vật lý (overlay che phủ terminal grid nên phần tử
+CWD không nằm trong luồng pointer event khi overlay mở), nhưng đây là giả định cần verify thủ công
+trước khi coi là an toàn, không chỉ tin logic suông — xem bullet rủi ro tương ứng ở §5.
+
+**Nếu được duyệt**: implement như một task riêng (không gộp vào Task 3), thêm `onCopyCwd?(id)` vào
+`PaneEvents` (`pane.ts`), forward qua `PaneLifecycleDeps` (`pane-lifecycle.ts`) và
+`ManagerCallbacks` (`terminal-manager.ts`) đúng pattern `onAttentionSignal` đã có, wire ở
+`tab-manager.ts` gọi lại đúng helper `copyPaneCwd(id)` mà Task 3 đã tạo cho `⌘⇧C`/menu — không viết
+logic copy CWD lần thứ hai.
