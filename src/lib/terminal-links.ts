@@ -56,7 +56,15 @@ export function isBrowsableUrl(uri: string): boolean {
 // (VS Code does the same).
 // The `-` stays escaped: it is interpolated into character classes that append
 // more characters after it, where a bare trailing `-` would become a range.
-const SEG_CHAR = String.raw`A-Za-z0-9_.+@%~$\-`;
+// Letters/marks/numbers come from Unicode properties, not `A-Za-z0-9`: a
+// filename may hold any script (`docs/ghi-chú.md`, `docs/日本語.md`), and an
+// ASCII-only class stops matching at the first such character, silently
+// truncating the candidate into a path that can never resolve. `\p{M}` covers
+// the combining marks a decomposed (NFD) filename is made of — macOS hands
+// those out from the filesystem. Symbols stay OUT on purpose: the box-drawing
+// and bullet characters an agent TUI paints (`│`, `⏺`, emoji) are `\p{S}`, and
+// pulling them in would fuse the decoration into the path.
+const SEG_CHAR = String.raw`\p{L}\p{M}\p{N}_.+@%~$\-`;
 const SEG = `[${SEG_CHAR}]+`;
 // Either a slashed path (`/a/b`, `~/a`, `./a`, `src/a`) or a bare filename
 // with an extension (`pane.ts`). A bare word with no dot is never a candidate.
@@ -75,7 +83,11 @@ const SUFFIX = String.raw`(?::(\d+))?(?::(\d+))?`;
 // position past the first fails on the boundary immediately, instead of
 // backtracking through the run.
 const BOUNDARY = `(?:^|[^${SEG_CHAR}/])`;
-const PATH_RE = new RegExp(`(${BOUNDARY})(${SLASHED}|${BARE})${SUFFIX}`, "g");
+// The `u` flag is what gives `\p{…}` its meaning; without it the escapes are
+// read as a literal `p` and the class silently matches the wrong thing.
+// JavaScriptCore has understood Unicode property escapes since Safari 11.1,
+// well below the macOS floor tauri.conf declares.
+const PATH_RE = new RegExp(`(${BOUNDARY})(${SLASHED}|${BARE})${SUFFIX}`, "gu");
 
 /** A sentence-final dot is punctuation, never part of the path. */
 function trimTrailingDots(path: string): string {

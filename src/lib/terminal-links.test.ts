@@ -36,6 +36,30 @@ describe("extractLinkCandidates", () => {
     expect(file.target).toBe("pane.ts");
   });
 
+  it("keeps a non-ascii path whole instead of truncating it", () => {
+    const found = extractLinkCandidates("docs/ghi-chú.md:12 docs/日本語.md");
+    expect(found.map((c) => c.target)).toEqual([
+      "docs/ghi-chú.md",
+      "docs/日本語.md",
+    ]);
+    expect(found[0].line).toBe(12);
+  });
+
+  it("keeps a decomposed (NFD) filename whole", () => {
+    const nfd = "docs/ghi-chú.md".normalize("NFD");
+    const [file] = extractLinkCandidates(nfd);
+    expect(file.target).toBe(nfd);
+  });
+
+  it("does not swallow the box and bullet characters an agent TUI paints", () => {
+    expect(extractLinkCandidates("│ src/foo.ts │")[0].target).toBe(
+      "src/foo.ts",
+    );
+    expect(extractLinkCandidates("⏺ Read(src/foo.ts)")[0].target).toBe(
+      "src/foo.ts",
+    );
+  });
+
   it("parses a line suffix", () => {
     const [file] = extractLinkCandidates("src/foo.ts:12");
     expect(file).toMatchObject({ target: "src/foo.ts", line: 12, col: null });
