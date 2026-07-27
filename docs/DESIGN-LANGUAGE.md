@@ -180,3 +180,12 @@ is reworked — **do not "fix" them opportunistically inside an unrelated change
 | `.tab-popover__label`                                                              | DL-4.3 (uppercase)  | rework with the tab popover           |
 | `.search-bar`                                                                      | DL-1.3 (box-shadow) | real blurred shadow — drop            |
 | `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —                   | inset hairlines, allowed under DL-1.3 |
+
+## Chưa khớp thực tế
+
+_(reality-drift ledger — heading text mandated by the global docs convention)_
+
+| Claim | Intent | Status | Evidence |
+| ----- | ------ | ------ | -------- |
+
+Empty — verified 2026-07-27; the violations table above is the DL-specific ledger. Do not remove this section (D7).

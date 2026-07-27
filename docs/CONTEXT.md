@@ -46,3 +46,13 @@ Tauri 2 + Rust + Preact + xterm.js. Signals for state; module stores are
 window-scoped. The Rust PTY/window coordinator, tab materialize, layout engine
 and close-coordinator paths are the load-bearing seams — treat `src-tauri`
 module boundaries as in-flight when planning.
+
+## Chưa khớp thực tế
+
+_(reality-drift ledger — heading text mandated by the global docs convention)_
+
+| Claim                                                             | Intent    | Status         | Evidence                                                                                                                                                                                                       |
+| ----------------------------------------------------------------- | --------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Code comments no longer cite `FR-…` … or `ADR …`" (History note) | `current` | `contradicted` | 4 comments remain: [agents.rs](../src-tauri/src/agents.rs#FR-025) `current`, [open-board.tsx](../src/open-board/open-board.tsx#FR-025) `current`, [migrate.rs](../src-tauri/src/migrate.rs#ADR 0028) `current` |
+
+Found by `/docs-drift` scan on 2026-07-27. Either strip the 4 comments or soften the claim; human call.
