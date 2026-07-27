@@ -56,9 +56,34 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
     expect(settingsOpen.value).toBe(false);
   });
 
+  // F3 (2026-07-27 code review): the open branch only ever checked
+  // editorRequest/saveDialogOpen, missing boardOpen — Cmd+, (or the menu's
+  // "Settings…" item) mounted Settings underneath the Open board (z-30 >
+  // Settings' z-20). SettingsPanel's own mount-focus effect then stole DOM
+  // focus away from the board, so arrow keys / type-to-filter / Enter all
+  // stopped reaching it while the invisible Settings panel silently ate
+  // them instead.
+  it("does NOT open Settings while the Open board is up (F3)", () => {
+    boardOpen.value = true;
+
+    toggleSettingsPanel(focusActive);
+
+    expect(settingsOpen.value).toBe(false);
+  });
+
   it("still CLOSES Settings when it is already open, even with a PresetEditor draft also up (the trap b7e6021 already had to avoid)", () => {
     settingsOpen.value = true;
     editorRequest.value = { source: "live" }; // both open at once — an edge case, not the common path
+
+    toggleSettingsPanel(focusActive);
+
+    expect(settingsOpen.value).toBe(false);
+    expect(focusActive).toHaveBeenCalledTimes(1);
+  });
+
+  it("still CLOSES Settings when it is already open, even with the Open board also up — same invariant, now covering F3's new boardOpen check", () => {
+    settingsOpen.value = true;
+    boardOpen.value = true;
 
     toggleSettingsPanel(focusActive);
 

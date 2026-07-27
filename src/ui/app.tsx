@@ -67,23 +67,30 @@ export function closeSettingsPanel(focusActive: () => void): void {
  * trap `b7e6021` already had to design around for the overlay scope guard.
  *
  * OPENING (the `else` branch) is blocked while a PresetEditor/
- * SavePresetDialog draft is up. Escape-stacking investigation: that draft's
- * modal-scrim sits at z-index 40, Settings' own panel at z-index 20
- * (styles.css) — opening Settings underneath it would be invisible and
- * unreachable, and `SettingsPanel`'s own mount-focus effect
- * (settings-panel.tsx) would steal DOM focus away from the draft, so a
- * later Escape only closes the (invisible) Settings panel and orphans focus
- * behind a modal that never moved. Same check `runAttentionFocus` makes for
- * Cmd+Shift+A (attention-focus-coordinator.ts:80-82) — reused here as its
- * own condition rather than a shared abstraction with that module, which is
- * out of this task's scope.
+ * SavePresetDialog draft, OR the Open board, is up. Escape-stacking
+ * investigation: a draft's modal-scrim sits at z-index 40, the board at
+ * z-index 30, Settings' own panel at z-index 20 (styles.css) — opening
+ * Settings underneath either would be invisible and unreachable, and
+ * `SettingsPanel`'s own mount-focus effect (settings-panel.tsx) would steal
+ * DOM focus away from whatever was on top, so a later Escape only closes
+ * the (invisible) Settings panel and orphans focus behind a surface that
+ * never moved. Same check `runAttentionFocus` makes for Cmd+Shift+A
+ * (attention-focus-coordinator.ts:80-82) — reused here as its own condition
+ * rather than a shared abstraction with that module, which is out of this
+ * task's scope.
+ *
+ * The board check (F3, 2026-07-27 code review) was missing until now: only
+ * the draft signals were checked, so Cmd+, (or the menu's "Settings…" item)
+ * mounted Settings underneath the board, silently eating the board's
+ * keyboard input (type-to-filter, arrows, Enter) once the mount-focus
+ * effect stole DOM focus.
  */
 export function toggleSettingsPanel(focusActive: () => void): void {
   if (settingsOpen.value) {
     closeSettingsPanel(focusActive);
     return;
   }
-  if (editorRequest.value !== null || saveDialogOpen.value) {
+  if (editorRequest.value !== null || saveDialogOpen.value || boardOpen.value) {
     return;
   }
   settingsOpen.value = true;
