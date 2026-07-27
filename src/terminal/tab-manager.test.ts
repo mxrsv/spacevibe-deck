@@ -1816,10 +1816,70 @@ describe("runAction — the macOS menu bridge", () => {
     tm.dispose();
   });
 
-  it("is a no-op while a chrome text field holds the caret", async () => {
-    // The whole point of the guard: a menu accelerator is consumed by the OS
-    // before the webview sees the key, so it never passes handleShortcut's
-    // text-field check. Without this, ⌘T/⌘W fire mid-rename.
+  // F-B1/F-B2 (2026-07-27 code review) retired the blanket "block every
+  // action while a chrome text field is focused" this guard used to be —
+  // Tauri's MenuEvent (confirmed against the 2.9.3 docs) can't tell a menu
+  // accelerator from a deliberate click on the same item, so the guard now
+  // keys off the ACTION (`destructive` in ACTION_REGISTRY), not the trigger.
+  // `new-tab` is no longer a valid probe for "the guard still blocks
+  // something" — it isn't destructive, so it now runs unconditionally (see
+  // the dedicated test for that below). `clear-buffer` (destructive: true)
+  // takes over as the probe for these two tests.
+  it("a destructive action (clear-buffer) is a no-op while a chrome text field holds the caret", async () => {
+    const panes = new Map<number, Pane>();
+    const createPane: CreatePaneFn = (id, _settings, events) => {
+      const pane = fakePane(id, events);
+      panes.set(id, pane);
+      return pane;
+    };
+    const { tm } = setup({ deps: { createPane } });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+    const clearSpy = vi.spyOn(panes.get(1)!, "clear");
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+
+    tm.runAction("clear-buffer");
+    await flush();
+
+    expect(clearSpy).not.toHaveBeenCalled();
+    input.remove();
+    tm.dispose();
+  });
+
+  it("a destructive action (clear-buffer) still runs when the caret is in a terminal's helper textarea", async () => {
+    // xterm parks a textarea inside .pane__term to capture input — that one
+    // must NOT suppress shortcuts, or the menu is dead whenever a pane has
+    // focus, which is almost always.
+    const panes = new Map<number, Pane>();
+    const createPane: CreatePaneFn = (id, _settings, events) => {
+      const pane = fakePane(id, events);
+      panes.set(id, pane);
+      return pane;
+    };
+    const { tm } = setup({ deps: { createPane } });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+    const clearSpy = vi.spyOn(panes.get(1)!, "clear");
+    const term = document.createElement("div");
+    term.className = "pane__term";
+    const textarea = document.createElement("textarea");
+    term.appendChild(textarea);
+    document.body.appendChild(term);
+    textarea.focus();
+
+    tm.runAction("clear-buffer");
+    await flush();
+
+    expect(clearSpy).toHaveBeenCalledTimes(1);
+    term.remove();
+    tm.dispose();
+  });
+
+  it("a NON-destructive action (new-tab) now runs via runAction even while a chrome text field holds the caret", async () => {
     const tm = await ready();
     const input = document.createElement("input");
     document.body.appendChild(input);
@@ -1828,28 +1888,31 @@ describe("runAction — the macOS menu bridge", () => {
     tm.runAction("new-tab");
     await flush();
 
-    expect(boardOpen.value).toBe(false);
+    expect(boardOpen.value).toBe(true);
     input.remove();
     tm.dispose();
   });
 
-  it("still runs when the caret is in a terminal's helper textarea", async () => {
-    // xterm parks a textarea inside .pane__term to capture input — that one
-    // must NOT suppress shortcuts, or the menu is dead whenever a pane has
-    // focus, which is almost always.
-    const tm = await ready();
-    const term = document.createElement("div");
-    term.className = "pane__term";
-    const textarea = document.createElement("textarea");
-    term.appendChild(textarea);
-    document.body.appendChild(term);
-    textarea.focus();
+  // F-B2's exact reported scenario: click "Save Layout as Preset…" while the
+  // search bar's input (or any other chrome text field) still holds focus —
+  // before this fix, the blanket guard silently swallowed it: no dialog, no
+  // error, nothing.
+  it("save-preset (F-B2) now runs via runAction even while a chrome text field holds the caret", async () => {
+    boardOpen.value = false;
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
 
-    tm.runAction("new-tab");
+    tm.runAction("save-preset");
     await flush();
 
-    expect(boardOpen.value).toBe(true);
-    term.remove();
+    expect(saveDialogOpen.value).toBe(true);
+    input.remove();
+    saveDialogOpen.value = false;
     tm.dispose();
   });
 
@@ -2570,6 +2633,46 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
     boardOpen.value = false;
     tm.runAction("find-previous");
     expect(findPrevSpy).toHaveBeenCalledWith("needle", expect.anything());
+
+    tm.dispose();
+  });
+
+  // F-B1 (2026-07-27 code review): on macOS the Edit menu's Cmd+G accelerator
+  // (3e68378) is consumed by the OS before the webview ever sees a keydown —
+  // production ALWAYS reaches find-next through runAction (the menu bridge),
+  // never through the search bar's own keydown listener. The exact failure
+  // this locks in: the bar stays OPEN with the caret still in its own input
+  // (the whole point of Cmd+G — repeat the query without leaving the bar),
+  // and find-next used to die there because it arrived as a "chrome text
+  // field is focused" case indistinguishable from any other.
+  it("find-next via runAction still reaches the active pane while the search bar's own input holds the caret (F-B1)", async () => {
+    const panes = new Map<number, Pane>();
+    const createPane: CreatePaneFn = (id, _settings, events) => {
+      const pane = fakePane(id, events, { search: searchSpies() });
+      panes.set(id, pane);
+      return pane;
+    };
+    const { tm } = setup({ deps: { createPane } });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+
+    tm.runAction("find"); // opens the bar
+    const input = panes
+      .get(1)!
+      .element.querySelector(".search-bar__input") as HTMLInputElement;
+    input.value = "needle";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    const findNextSpy = panes.get(1)!.search.findNext as ReturnType<
+      typeof vi.fn
+    >;
+    findNextSpy.mockClear(); // drop the incremental-typing call above
+    input.focus(); // bar stays OPEN — caret sits in its own input, not closed
+
+    tm.runAction("find-next"); // the real production path: menu bridge
+    await flush();
+
+    expect(findNextSpy).toHaveBeenCalledWith("needle", expect.anything());
 
     tm.dispose();
   });

@@ -79,6 +79,40 @@ export interface ActionDefinition {
     readonly submenu: MenuSubmenu;
     readonly group?: string;
   };
+  /**
+   * Set (only ever `true`) when this action destroys live state with no
+   * confirmation step of its own — killing a pane/tab's running process, or
+   * wiping scrollback with no undo (`clear-buffer`, per CONTEXT.md's own
+   * "Buffer" entry). Absent (the default) for everything else.
+   *
+   * Read by `runAction` (tab-manager.ts, F-B1/F-B2, 2026-07-27 code review)
+   * to decide whether a chrome text field (tab rename input, search bar,
+   * a settings field) holding the caret should suppress this specific
+   * action. The guard cannot key off HOW the action arrived instead: a
+   * macOS menu accelerator is consumed by the OS before the webview ever
+   * sees the keydown, and Tauri's `MenuEvent` (confirmed against the 2.9.3
+   * docs — the struct is just `{ id: MenuId }`) carries nothing that would
+   * distinguish that from a deliberate mouse click on the very same item.
+   * So a blanket "block every action while a chrome text field is focused"
+   * silently ate genuine clicks on non-destructive items (F-B2 — e.g.
+   * "Save Layout as Preset…" while the search bar's input still held focus)
+   * and, symmetrically, blocked `find-next`/`find-previous` from ever
+   * reaching the pane while typed into the very search-bar input they are
+   * meant to act on (F-B1) — neither of those two is destructive, so
+   * neither carries this field.
+   *
+   * Known, accepted trade-off, not an oversight: a genuine mouse click on
+   * `close-pane`/`close-tab`/`clear-buffer` while some OTHER, unrelated
+   * text field still holds focus is also wrongly suppressed (the same
+   * "can't tell click from accelerator" limitation cuts both ways). That
+   * false positive is rare and costs nothing but a second click; the
+   * alternative — an accelerator the OS ate mid-rename silently killing a
+   * pane that might be running an agent, or wiping scrollback nobody meant
+   * to lose — is not an acceptable trade the other way. Do not remove this
+   * field from these three actions to "fix" the false positive without
+   * re-reading this comment.
+   */
+  readonly destructive?: true;
 }
 
 // Declaration order = menu item order for a submenu generated entirely from
@@ -168,12 +202,19 @@ export const ACTION_REGISTRY = [
     id: "close-pane",
     label: "Close Pane",
     scope: "pane",
+    // Kills the pane's running process; confirmClose (close-guard.ts) only
+    // prompts when a NON-shell process is detected — an idle shell closes
+    // instantly with no dialog at all. See ActionDefinition.destructive.
+    destructive: true,
     menu: { submenu: "File", group: "close" },
   },
   {
     id: "close-tab",
     label: "Close Tab",
     scope: "pane",
+    // Same reasoning as close-pane, worse blast radius (every pane in the
+    // tab). See ActionDefinition.destructive.
+    destructive: true,
     menu: { submenu: "File", group: "close" },
   },
   { id: "find", label: "Find…", scope: "pane", menu: { submenu: "Edit" } },
@@ -193,6 +234,9 @@ export const ACTION_REGISTRY = [
     id: "clear-buffer",
     label: "Clear Buffer",
     scope: "pane",
+    // Drops scrollback with no undo (CONTEXT.md "Buffer") — always, no
+    // confirmation step of its own. See ActionDefinition.destructive.
+    destructive: true,
     menu: { submenu: "Edit" },
   },
   {

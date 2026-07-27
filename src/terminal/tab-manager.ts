@@ -20,6 +20,7 @@ import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
 import {
   ACTION_REGISTRY,
   TIER_RANK,
+  type ActionDefinition,
   type OverlayTier,
 } from "./action-registry";
 import { installFileDrop } from "./file-drop";
@@ -78,6 +79,17 @@ import {
  */
 const ACTION_SCOPE: ReadonlyMap<string, OverlayTier | "always"> = new Map(
   ACTION_REGISTRY.map((action) => [action.id, action.scope] as const),
+);
+
+/**
+ * Ids with `destructive: true` in the registry — read by `runAction` below.
+ * See `ActionDefinition.destructive`'s doc comment (action-registry.ts) for
+ * the full reasoning (F-B1/F-B2, 2026-07-27 code review).
+ */
+const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
+  ACTION_REGISTRY.filter(
+    (action: ActionDefinition) => action.destructive === true,
+  ).map((action) => action.id),
 );
 
 interface TabEntry {
@@ -995,10 +1007,23 @@ export function createTabManager(
 
   function runAction(action: ShortcutAction): void {
     // A menu accelerator is delivered by the OS *before* the webview sees the
-    // key, so it never passes through `handleShortcut` and none of its guards
-    // apply. Re-apply the text-field one here, or ⌘W while renaming a tab
-    // closes the pane instead of being ignored.
-    if (isChromeTextField(document.activeElement)) {
+    // key, so it never passes through `handleShortcut` and none of its
+    // guards apply. This can't gate on HOW the action arrived (accelerator
+    // vs. a deliberate mouse click on the same item) — Tauri's `MenuEvent`
+    // carries only an id, nothing to tell them apart — so it gates on the
+    // ACTION instead: only `destructive` actions (close-pane, close-tab,
+    // clear-buffer — see ActionDefinition.destructive) are suppressed while
+    // a chrome text field holds the caret. Without this, ⌘W eaten by the OS
+    // while renaming a tab would silently close the pane instead of being
+    // ignored. Every other action (dialog-openers, view toggles,
+    // find-next/find-previous, navigation…) runs regardless — blocking them
+    // was never protecting anything and used to silently swallow a genuine
+    // menu click (F-B2) or find-next/find-previous typed straight into the
+    // search bar's own input (F-B1).
+    if (
+      DESTRUCTIVE_ACTIONS.has(action) &&
+      isChromeTextField(document.activeElement)
+    ) {
       return;
     }
     dispatchAction(action);
