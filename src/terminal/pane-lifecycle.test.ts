@@ -21,6 +21,8 @@ function fakePane(
     writeln() {},
     fit() {},
     clear() {},
+    scrollPage() {},
+    scrollToEdge() {},
     focus() {
       focusCalls.n += 1;
       pane.focusCalls = focusCalls.n;
