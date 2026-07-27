@@ -8,15 +8,16 @@ import { persistError } from "../chrome/events";
 
 const CWD = "/repo";
 
-/** Minimal Terminal stand-in: one unwrapped row of text. */
-function fakeTerminal(text: string): Terminal {
-  const cols = text.length;
+/** Minimal Terminal stand-in: unwrapped rows of text. */
+function fakeTerminalRows(rows: readonly string[]): Terminal {
+  const cols = Math.max(...rows.map((row) => row.length));
   return {
     cols,
     buffer: {
       active: {
         getLine(y: number) {
-          if (y !== 0) {
+          const text = rows[y];
+          if (text === undefined) {
             return undefined;
           }
           return {
@@ -25,7 +26,7 @@ function fakeTerminal(text: string): Terminal {
               if (x >= cols) {
                 return undefined;
               }
-              const char = text[x];
+              const char = text[x] ?? " ";
               return {
                 getChars: () => (char === " " ? "" : char),
                 getWidth: () => 1,
@@ -36,6 +37,11 @@ function fakeTerminal(text: string): Terminal {
       },
     },
   } as unknown as Terminal;
+}
+
+/** One unwrapped row — the shape most of these tests need. */
+function fakeTerminal(text: string): Terminal {
+  return fakeTerminalRows([text]);
 }
 
 function provide(
@@ -156,11 +162,69 @@ describe("createLinkProvider", () => {
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it("yields no links when resolution fails", async () => {
+  it("yields no links when resolution fails, and says why", async () => {
     const client = createMemoryLinkClient();
     vi.spyOn(client, "resolvePaths").mockRejectedValue(new Error("ipc down"));
     const links = await provide(fakeTerminal("src/foo.ts"), client);
 
     expect(links).toBeUndefined();
+    // Without this the backend going down looks exactly like a detection bug:
+    // every path stops being clickable while URLs keep working.
+    expect(persistError.value).toMatch(/ipc down/);
+  });
+
+  it("retries a line whose paths did not resolve the first time", async () => {
+    vi.useFakeTimers();
+    try {
+      const client = createMemoryLinkClient();
+      const spy = vi
+        .spyOn(client, "resolvePaths")
+        .mockResolvedValue([null] as (string | null)[]);
+      const term = fakeTerminal("xx a.ts");
+      const provider = createLinkProvider(term, { getCwd: () => CWD, client });
+      const hover = (): Promise<ILink[] | undefined> =>
+        new Promise((resolve) => provider.provideLinks(1, resolve));
+
+      expect(await hover()).toBeUndefined();
+
+      // The file lands a moment later — a build, a `git add`. The line's text
+      // never changes, so a miss cached for good would leave it dead forever.
+      spy.mockResolvedValue([`${CWD}/a.ts`]);
+      vi.advanceTimersByTime(6_000);
+
+      expect((await hover())?.map((link) => link.text)).toEqual(["a.ts"]);
+      expect(spy).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("drops a reply the pointer has already moved past", async () => {
+    const pending: ((value: (string | null)[]) => void)[] = [];
+    const client = createMemoryLinkClient();
+    vi.spyOn(client, "resolvePaths").mockImplementation(
+      () =>
+        new Promise<(string | null)[]>((resolve) => {
+          pending.push(resolve);
+        }),
+    );
+    const provider = createLinkProvider(fakeTerminalRows(["a.ts", "b.ts"]), {
+      getCwd: () => CWD,
+      client,
+    });
+
+    const stale = vi.fn();
+    provider.provideLinks(1, stale);
+    const current = vi.fn();
+    provider.provideLinks(2, current);
+
+    // Row 2 answers first, then row 1's slower reply lands. xterm files every
+    // reply under the provider's index, so handing it the late one would wipe
+    // the links of the row actually under the pointer.
+    pending[1]([`${CWD}/b.ts`]);
+    pending[0]([`${CWD}/a.ts`]);
+    await vi.waitFor(() => expect(current).toHaveBeenCalledTimes(1));
+
+    expect(stale).not.toHaveBeenCalled();
   });
 });
