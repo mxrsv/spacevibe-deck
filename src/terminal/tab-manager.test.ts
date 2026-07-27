@@ -2007,6 +2007,44 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
+  // F2 (2026-07-27 code review): new-tab used to be scope "always", which
+  // bypassed the guard UNCONDITIONALLY — including while a PresetEditor/
+  // SavePresetDialog draft was up. That let Cmd+T (or the menu's "New Tab")
+  // mount the board underneath the modal scrim (z-40 > board's z-30): the
+  // board's own mount-focus effect then stole DOM focus away from the live
+  // draft, so a later Enter could silently open a workspace tab behind it.
+  it("new-tab is now blocked while a PresetEditor draft is open (F2 — 'always' used to bypass every overlay, not just the board)", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+    boardOpen.value = false;
+
+    editorRequest.value = { source: "live" };
+    tm.runAction("new-tab");
+    await flush();
+
+    expect(boardOpen.value).toBe(false);
+
+    editorRequest.value = null;
+    tm.dispose();
+  });
+
+  it("new-tab is blocked while the SavePresetDialog is open too (F2)", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+    boardOpen.value = false;
+
+    saveDialogOpen.value = true;
+    tm.runAction("new-tab");
+    await flush();
+
+    expect(boardOpen.value).toBe(false);
+
+    saveDialogOpen.value = false;
+    tm.dispose();
+  });
+
   it("select-tab-N still switches the active tab while the Open board is up", async () => {
     const { tm } = setup({});
     await tm.materialize({ layout: null, cwds: ["/a"] });
@@ -2065,12 +2103,17 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
   // if-chain. Every other test above already proves the observable behavior
   // held; this one proves the SOURCE actually changed — flip a scope in the
   // registry and the guard must follow, not silently keep its own copy.
+  //
+  // "new-tab" dropped out of this set in the F2 fix above: it moved from
+  // scope "always" (bypassed every overlay unconditionally) to tier "board"
+  // (blocked only by an overlay ranked at or above the board — the modal
+  // family). See its ACTION_REGISTRY row for the full rationale.
   it("reads scope from ACTION_REGISTRY, not a hardcoded list", () => {
     const alwaysActions = ACTION_REGISTRY.filter(
       (a) => a.scope === "always",
     ).map((a) => a.id);
     expect(new Set(alwaysActions)).toEqual(
-      new Set(["focus-next-attention", "new-tab", "toggle-settings"]),
+      new Set(["focus-next-attention", "toggle-settings"]),
     );
   });
 });

@@ -903,11 +903,10 @@ export function createTabManager(
    * (`"board"`/`"modal"`) only blocks the action while an overlay ranked at
    * or above it is open.
    *
-   * `scope: "always"` (`focus-next-attention`, `new-tab`, `toggle-settings`)
-   * skips the comparison entirely — see each entry's comment in
-   * action-registry.ts for why (a dedicated overlay preflight, a harmless
-   * no-op, or an action that opens/closes the very overlay that would
-   * otherwise strand it). Tab-jump actions (`select-tab-N`,
+   * `scope: "always"` (`focus-next-attention`, `toggle-settings`) skips the
+   * comparison entirely — see each entry's comment in action-registry.ts for
+   * why (a dedicated overlay preflight, or an action that opens/closes the
+   * very overlay that would otherwise strand it). Tab-jump actions (`select-tab-N`,
    * `select-last-tab`) are exempt through the SEPARATE `isTabSelectionAction`
    * mechanism below, not through `scope` — see its own doc comment for why
    * that's a distinct action family, not a product-level "always" decision.

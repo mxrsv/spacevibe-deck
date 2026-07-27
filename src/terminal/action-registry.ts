@@ -57,8 +57,7 @@ export interface ActionDefinition {
    * overlay's rank is >= 0).
    *
    * `"always"` skips the tier comparison entirely — only for an action with
-   * its own overlay preflight (`focus-next-attention`), an action harmless
-   * even if the overlay is already open (`new-tab`), or an action that
+   * its own overlay preflight (`focus-next-attention`), or an action that
    * opens/closes the very overlay that would otherwise block it
    * (`toggle-settings`).
    *
@@ -107,9 +106,16 @@ export const ACTION_REGISTRY = [
   {
     id: "new-tab",
     label: "New Tab",
-    // Only sets boardOpen.value = true — harmless if the board is already
-    // open, nothing to gate.
-    scope: "always",
+    // Tiered "board", not "always" (2026-07-27 code review, F2): only sets
+    // boardOpen.value = true, so it is harmless while the board is ALREADY
+    // open — but "always" used to bypass the guard unconditionally,
+    // including while a PresetEditor/SavePresetDialog draft (rank "modal",
+    // above the board) was up. That mounted the board underneath the modal
+    // scrim, where its own mount-focus effect could steal focus away from
+    // the live draft. "board" blocks it exactly there while still letting
+    // it run over Settings (rank below "board" — see TIER_RANK's doc
+    // comment above).
+    scope: "board",
     menu: { submenu: "File", group: "primary" },
   },
   {
