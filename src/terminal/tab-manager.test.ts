@@ -5,7 +5,12 @@ import type { Pane, PaneEvents, PaneAttentionSignal } from "./pane";
 import type { CreatePaneFn } from "./pane-lifecycle";
 import { createMemoryPtyClient, type PtyClient } from "./pty-client";
 import type { ShortcutAction } from "./keymap";
-import { boardOpen } from "../chrome/events";
+import {
+  boardOpen,
+  editorRequest,
+  saveDialogOpen,
+  settingsOpen,
+} from "../chrome/events";
 import {
   createTabManager,
   type TabManager,
@@ -1846,6 +1851,183 @@ describe("runAction — the macOS menu bridge", () => {
     await flush();
 
     expect(boardOpen.value).toBe(false);
+    tm.dispose();
+  });
+});
+
+// Whole-branch review bugfix: `handleShortcut` (capture-phase keydown) and
+// `runAction` (the macOS menu bridge) both used to dispatch straight to the
+// command table with no idea an overlay was covering the terminal grid — an
+// overlay-hidden ⌘W closed the pane behind it, ⌘⇧W closed the whole tab, ⌘K
+// wiped its scrollback, all invisibly. `runAction` is the more dangerous of
+// the two paths: the OS consumes a menu accelerator before the webview ever
+// sees the key, so ⌘W in production always goes through `runAction`, never
+// `handleShortcut`.
+describe("overlay scope guard — blocks terminal/tab/pane actions while an overlay covers the grid", () => {
+  afterEach(() => {
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    saveDialogOpen.value = false;
+    editorRequest.value = null;
+  });
+
+  function metaKeydown(key: string): KeyboardEvent {
+    return new KeyboardEvent("keydown", { key, metaKey: true, bubbles: true });
+  }
+
+  it("⌘W (close-pane) via the keydown path leaves the hidden pane untouched while the Open board is up", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.splitActive("row");
+    await tm.init();
+    await flush();
+    expect(statusInfo.value.paneCount).toBe(2);
+
+    boardOpen.value = true;
+    window.dispatchEvent(metaKeydown("w"));
+    await flush();
+
+    expect(statusInfo.value.paneCount).toBe(2); // pane hidden behind the board survives
+
+    tm.dispose();
+  });
+
+  it("⌘W (close-pane) via runAction — the macOS menu bridge, the dangerous path — is blocked the same way", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.splitActive("row");
+    await tm.init();
+    await flush();
+
+    boardOpen.value = true;
+    tm.runAction("close-pane");
+    await flush();
+
+    expect(statusInfo.value.paneCount).toBe(2);
+
+    tm.dispose();
+  });
+
+  it("close-pane via runAction is blocked while a PresetEditor draft is open", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.splitActive("row");
+    await tm.init();
+    await flush();
+
+    editorRequest.value = { source: "live" };
+    tm.runAction("close-pane");
+    await flush();
+
+    expect(statusInfo.value.paneCount).toBe(2); // the draft must never be silently discarded
+
+    tm.dispose();
+  });
+
+  it("⌘D (split-row) via runAction is a no-op while Settings is open", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+    expect(statusInfo.value.paneCount).toBe(1);
+
+    settingsOpen.value = true;
+    tm.runAction("split-row");
+    await flush();
+
+    expect(statusInfo.value.paneCount).toBe(1); // no split happened behind Settings
+
+    tm.dispose();
+  });
+
+  it("close-tab via runAction is blocked while the SavePresetDialog is open", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.init();
+    await flush();
+    expect(tabViews.value).toHaveLength(2);
+
+    saveDialogOpen.value = true;
+    tm.runAction("close-tab");
+    await flush();
+
+    expect(tabViews.value).toHaveLength(2); // both tabs survive
+
+    tm.dispose();
+  });
+
+  it("⌘K (clear-buffer) via runAction is blocked while Settings is open, and works again once it closes", async () => {
+    const panes = new Map<number, Pane>();
+    const createPane: CreatePaneFn = (id, _settings, events) => {
+      const pane = fakePane(id, events);
+      panes.set(id, pane);
+      return pane;
+    };
+    const { tm } = setup({ deps: { createPane } });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+    const clearSpy = vi.spyOn(panes.get(1)!, "clear");
+
+    settingsOpen.value = true;
+    tm.runAction("clear-buffer");
+    await flush();
+    expect(clearSpy).not.toHaveBeenCalled();
+
+    settingsOpen.value = false;
+    tm.runAction("clear-buffer");
+    await flush();
+    expect(clearSpy).toHaveBeenCalledTimes(1); // scoped to the overlay, not permanently broken
+
+    tm.dispose();
+  });
+
+  it("new-tab still raises the Open board while Settings is open — harmless, so it is not gated", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+    boardOpen.value = false;
+    settingsOpen.value = true;
+
+    tm.runAction("new-tab");
+    await flush();
+
+    expect(boardOpen.value).toBe(true);
+
+    tm.dispose();
+  });
+
+  it("select-tab-N still switches the active tab while the Open board is up", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.init();
+    await flush();
+    expect(activeTabIndex.value).toBe(1);
+
+    boardOpen.value = true;
+    window.dispatchEvent(metaKeydown("1"));
+    await flush();
+
+    expect(activeTabIndex.value).toBe(0);
+
+    tm.dispose();
+  });
+
+  it("save-preset is blocked while Settings is open — the old ad hoc guard only ever checked boardOpen", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+    boardOpen.value = false;
+
+    settingsOpen.value = true;
+    tm.runAction("save-preset");
+    await flush();
+
+    expect(saveDialogOpen.value).toBe(false);
+
     tm.dispose();
   });
 });

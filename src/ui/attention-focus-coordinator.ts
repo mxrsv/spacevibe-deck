@@ -38,7 +38,7 @@ export interface AttentionFocusRequest {
    */
   dismissBoard: () => void;
   /**
-   * NON-focusing set-state (e.g. `panelOpen.value = false`) — NOT
+   * NON-focusing set-state (e.g. `settingsOpen.value = false`) — NOT
    * `closePanel()`.
    */
   dismissSettings: () => void;

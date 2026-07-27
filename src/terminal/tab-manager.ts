@@ -58,7 +58,12 @@ import {
   type TabOverride,
 } from "./tabs-store";
 import type { TabDotColor } from "../lib/tab-colors";
-import { boardOpen, saveDialogOpen } from "../chrome/events";
+import {
+  boardOpen,
+  editorRequest,
+  saveDialogOpen,
+  settingsOpen,
+} from "../chrome/events";
 
 interface TabEntry {
   readonly key: number;
@@ -815,12 +820,58 @@ export function createTabManager(
     // direct focus/ack.
     "focus-next-attention": () => deps.onRequestAttentionFocus?.(),
     find: () => activeManager()?.openSearch(),
+    // The overlay scope guard in `dispatchAction` already blocks this while
+    // any overlay (including the board) is up — this check is pure business
+    // logic (nothing to save with zero tabs), not scope.
     "save-preset": () => {
-      if (tabs.length > 0 && !boardOpen.value) {
+      if (tabs.length > 0) {
         saveDialogOpen.value = true;
       }
     },
   };
+
+  /**
+   * Single choke point deciding whether `action` may run while an overlay
+   * (Open board, Settings, PresetEditor, SavePresetDialog) is covering the
+   * terminal grid. Default is BLOCKED — every action that reaches into the
+   * terminal/tab/pane state is invisible and dangerous while its target is
+   * hidden (⌘W closing a pane nobody can see, ⌘K wiping scrollback, etc).
+   * Every exception below is a deliberate scope decision, not an oversight:
+   *
+   *  - `focus-next-attention` shares a dedicated overlay preflight
+   *    (`runAttentionFocus`, called through `deps.onRequestAttentionFocus`)
+   *    with the status-dot click. That preflight already knows how to
+   *    dismiss board/settings and blocks itself while a PresetEditor/
+   *    SavePresetDialog draft is in flight — gating it here too would
+   *    double-guard it and could block it in cases the preflight allows.
+   *  - `select-tab-N`: `App.selectTab` (the tab-bar click) intentionally
+   *    dismisses the board before selecting, so choosing a tab while an
+   *    overlay covers the grid is a supported flow, not a bug — this path
+   *    doesn't dismiss the overlay itself (that's `App`'s job), it just
+   *    isn't blocked from switching the underlying active tab.
+   *  - `new-tab` only sets `boardOpen.value = true`, which is a no-op if the
+   *    board is already open and otherwise exactly its normal behavior —
+   *    nothing to guard.
+   *
+   * This is prep for a future action registry (each entry will carry its own
+   * scope), so it stays a flat function here rather than growing its own
+   * data structure.
+   */
+  function overlayBlocksAction(action: ShortcutAction): boolean {
+    if (
+      action === "focus-next-attention" ||
+      action === "new-tab" ||
+      selectTabIndex(action) !== null
+    ) {
+      return false;
+    }
+    return (
+      boardOpen.value ||
+      settingsOpen.value ||
+      editorRequest.value !== null ||
+      saveDialogOpen.value
+    );
+  }
 
   /**
    * A text field belonging to the chrome rather than to a terminal — the tab
@@ -837,6 +888,9 @@ export function createTabManager(
 
   /** The dispatch half, shared by the keymap and the menu. */
   function dispatchAction(action: ShortcutAction): void {
+    if (overlayBlocksAction(action)) {
+      return;
+    }
     const tabIndex = selectTabIndex(action);
     if (tabIndex !== null) {
       selectTab(tabIndex); // out-of-range indexes are a no-op

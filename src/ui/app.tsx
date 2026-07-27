@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
-import { useSignal, useSignalEffect } from "@preact/signals";
+import { useSignalEffect } from "@preact/signals";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { installQuitGuard } from "../lib/quit-guard";
@@ -22,7 +22,12 @@ import {
 import { recordWorkspaceOpen } from "../open-board/workspaces-store";
 import { resolveAgentChoice } from "../lib/workspace-recents";
 import type { AgentChoice } from "../lib/workspace-recents";
-import { boardOpen, editorRequest, saveDialogOpen } from "../chrome/events";
+import {
+  boardOpen,
+  editorRequest,
+  saveDialogOpen,
+  settingsOpen,
+} from "../chrome/events";
 import { OpenBoard } from "../open-board/open-board";
 import { PresetEditor } from "../presets/preset-editor";
 import {
@@ -39,7 +44,6 @@ import { SettingsPanel } from "./settings-panel";
 import { runAttentionFocus } from "./attention-focus-coordinator";
 
 export function App() {
-  const panelOpen = useSignal(false);
   const stagesRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<TabManager | null>(null);
 
@@ -59,7 +63,7 @@ export function App() {
       hasCandidate: tabsRef.current?.hasActionableAttention(index) ?? false,
       overlays: {
         board: boardOpen.value,
-        settings: panelOpen.value,
+        settings: settingsOpen.value,
         presetEditor: editorRequest.value !== null,
         savePresetDialog: saveDialogOpen.value,
       },
@@ -69,7 +73,7 @@ export function App() {
         boardOpen.value = false;
       },
       dismissSettings: () => {
-        panelOpen.value = false;
+        settingsOpen.value = false;
       },
       focusAttention: (i) => {
         tabsRef.current?.focusNextAttention(i);
@@ -173,7 +177,7 @@ export function App() {
   });
 
   const closePanel = (): void => {
-    panelOpen.value = false;
+    settingsOpen.value = false;
     tabsRef.current?.focusActive();
   };
 
@@ -299,15 +303,15 @@ export function App() {
     tabsRef.current?.selectTab(index);
   };
   const toggleSettings = (): void => {
-    if (panelOpen.value) {
+    if (settingsOpen.value) {
       closePanel();
     } else {
-      panelOpen.value = true;
+      settingsOpen.value = true;
     }
   };
   const chromeActions = (
     <ChromeActions
-      settingsOpen={panelOpen.value}
+      settingsOpen={settingsOpen.value}
       expandActive={settings.value.focusExpand}
       onSplitRow={() => void tabsRef.current?.splitActive("row")}
       onSplitColumn={() => void tabsRef.current?.splitActive("column")}
@@ -349,7 +353,7 @@ export function App() {
         />
       ) : (
         <TabBar
-          settingsOpen={panelOpen.value}
+          settingsOpen={settingsOpen.value}
           onSelectTab={selectTab}
           onCloseTab={(index) => void tabsRef.current?.closeTab(index)}
           onNewTab={() => void tabsRef.current?.newTab()}
@@ -407,7 +411,7 @@ export function App() {
           />
         ) : null}
         <PersistErrorBar />
-        <SettingsPanel open={panelOpen.value} onClose={closePanel} />
+        <SettingsPanel open={settingsOpen.value} onClose={closePanel} />
       </main>
       <StatusBar />
     </div>
