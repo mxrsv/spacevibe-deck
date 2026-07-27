@@ -98,6 +98,11 @@ pub const EDIT_MENU_ITEMS: &[(&str, &str, Option<&str>)] = &[
     ("find-next", "Find Next", Some("CmdOrCtrl+G")),
     ("find-previous", "Find Previous", Some("CmdOrCtrl+Shift+G")),
     ("clear-buffer", "Clear Buffer", Some("CmdOrCtrl+K")),
+    (
+        "copy-cwd",
+        "Copy Working Directory",
+        Some("CmdOrCtrl+Shift+C"),
+    ),
 ];
 
 pub const WINDOW_MENU_ITEMS: &[(&str, &str, Option<&str>)] = &[];

@@ -188,7 +188,14 @@ mod tests {
     #[test]
     fn edit_menu_items_matches_expected_ids_in_order() {
         let ids: Vec<&str> = EDIT_MENU_ITEMS.iter().map(|(id, _, _)| *id).collect();
-        assert_eq!(ids, ["find", "find-next", "find-previous", "clear-buffer"]);
+        // copy-cwd added in docs/plans/2026-07-27-keyboard-parity.md Task 3 —
+        // this list is a deliberate tripwire (see the module comment above):
+        // it must be updated by hand whenever action-registry.ts adds an Edit
+        // action, so nobody grows the menu without noticing.
+        assert_eq!(
+            ids,
+            ["find", "find-next", "find-previous", "clear-buffer", "copy-cwd"]
+        );
     }
 
     #[test]

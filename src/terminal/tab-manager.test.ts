@@ -2842,3 +2842,126 @@ describe("createTabManager open-tab-options (⌘⇧R)", () => {
     tm.dispose();
   });
 });
+
+// copy-cwd (⌘⇧C + menu Edit ▸ "Copy Working Directory",
+// docs/plans/2026-07-27-keyboard-parity.md Task 3): both surfaces share the
+// exact same commands["copy-cwd"] closure via dispatchAction, so one set of
+// tests through runAction covers both — no separate Tauri event to test.
+describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
+  const originalClipboard = navigator.clipboard;
+
+  afterEach(() => {
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    Object.defineProperty(navigator, "clipboard", {
+      value: originalClipboard,
+      configurable: true,
+    });
+  });
+
+  function stubClipboard(writeText: ReturnType<typeof vi.fn>): void {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+  }
+
+  it("copies the active pane's polled CWD to the clipboard", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, { id: 1, cwd: "/repo/spacevibe-deck", process: "zsh" }],
+    ]);
+    const writeText = vi.fn(() => Promise.resolve());
+    stubClipboard(writeText);
+    const { tm } = setup({ infos });
+    await tm.materialize({ layout: null, cwds: ["/repo/spacevibe-deck"] });
+    await tm.init();
+    await flush();
+
+    tm.runAction("copy-cwd");
+    await flush();
+
+    expect(writeText).toHaveBeenCalledWith("/repo/spacevibe-deck");
+
+    tm.dispose();
+  });
+
+  it("no active pane (no tabs yet) — no-op, clipboard untouched", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    stubClipboard(writeText);
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    tm.runAction("copy-cwd");
+    await flush();
+
+    expect(writeText).not.toHaveBeenCalled();
+
+    tm.dispose();
+  });
+
+  it("CWD not polled yet — no-op, clipboard untouched, no throw", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    stubClipboard(writeText);
+    const { tm } = setup({}); // no `infos` — poller never learns a cwd for pane 1
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+
+    expect(() => tm.runAction("copy-cwd")).not.toThrow();
+    await flush();
+
+    expect(writeText).not.toHaveBeenCalled();
+
+    tm.dispose();
+  });
+
+  it("clipboard write failure reports through notifyError, not a swallowed error", async () => {
+    const panes = new Map<number, Pane>();
+    const createPane: CreatePaneFn = (id, _settings, events) => {
+      const pane = fakePane(id, events);
+      panes.set(id, pane);
+      return pane;
+    };
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, { id: 1, cwd: "/repo", process: "zsh" }],
+    ]);
+    const writeText = vi.fn(() => Promise.reject(new Error("denied")));
+    stubClipboard(writeText);
+    const { tm } = setup({ infos, deps: { createPane } });
+    await tm.materialize({ layout: null, cwds: ["/repo"] });
+    await tm.init();
+    await flush();
+    const writelnSpy = vi.spyOn(panes.get(1)!, "writeln");
+
+    tm.runAction("copy-cwd");
+    await flush();
+
+    expect(writelnSpy).toHaveBeenCalledTimes(1);
+    expect(writelnSpy.mock.calls[0]![0]).toContain(
+      "Couldn't copy the working directory",
+    );
+
+    tm.dispose();
+  });
+
+  it("is blocked while Settings is open, like every other pane-tier action", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, { id: 1, cwd: "/repo", process: "zsh" }],
+    ]);
+    const writeText = vi.fn(() => Promise.resolve());
+    stubClipboard(writeText);
+    const { tm } = setup({ infos });
+    await tm.materialize({ layout: null, cwds: ["/repo"] });
+    await tm.init();
+    await flush();
+
+    settingsOpen.value = true;
+    tm.runAction("copy-cwd");
+    await flush();
+
+    expect(writeText).not.toHaveBeenCalled();
+
+    tm.dispose();
+  });
+});

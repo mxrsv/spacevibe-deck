@@ -826,6 +826,23 @@ export function createTabManager(
     selectTab((active + step + tabs.length) % tabs.length);
   }
 
+  /**
+   * Copy `id`'s polled CWD to the clipboard (⌘⇧C / menu Edit ▸ "Copy Working
+   * Directory", Task 3 of docs/plans/2026-07-27-keyboard-parity.md).
+   * No-op if the pane is unknown or its CWD has not been polled yet — never
+   * copies a stale/empty value. A write failure reports through the active
+   * pane's `notifyError` (C5/C6: never swallowed silently).
+   */
+  function copyPaneCwd(id: number): void {
+    const cwd = poller.infoFor(id)?.cwd ?? null;
+    if (cwd === null) {
+      return;
+    }
+    navigator.clipboard.writeText(cwd).catch(() => {
+      activeManager()?.notifyError("Couldn't copy the working directory");
+    });
+  }
+
   // Keymap *matching* lives in keymap.ts; this table is the dispatch half —
   // one action, one closure. `select-tab-N` and `select-last-tab` (⌘9) are
   // both handled directly in `dispatchAction`, not through this table.
@@ -848,6 +865,12 @@ export function createTabManager(
     "zoom-reset": () => updateSettings({ fontSize: DEFAULT_SETTINGS.fontSize }),
     "toggle-zoom-pane": () => activeManager()?.toggleZoom(),
     "clear-buffer": () => activeManager()?.clearActive(),
+    "copy-cwd": () => {
+      const paneId = activeManager()?.activePaneId() ?? null;
+      if (paneId !== null) {
+        copyPaneCwd(paneId);
+      }
+    },
     "focus-left": () => activeManager()?.focusDirection("left"),
     "focus-right": () => activeManager()?.focusDirection("right"),
     "focus-up": () => activeManager()?.focusDirection("up"),

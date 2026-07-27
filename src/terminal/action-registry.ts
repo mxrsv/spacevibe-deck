@@ -275,6 +275,18 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "Edit" },
   },
   {
+    id: "copy-cwd",
+    label: "Copy Working Directory",
+    scope: "pane",
+    // The one action in this task with a menu item (Task 3,
+    // docs/plans/2026-07-27-keyboard-parity.md) — before this it was the
+    // only new action with NO mouse path at all (unlike swap-*/
+    // open-tab-options, which already have drag-dock/click-tab). Per the
+    // RULE above, having a menu item means the webview binding MUST be
+    // CharKeyBinding (key: "c"), not code.
+    menu: { submenu: "Edit" },
+  },
+  {
     id: "split-row",
     label: "Split Vertically",
     scope: "pane",
@@ -544,6 +556,11 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { key: "g", meta: true, action: "find-next" },
   { key: "g", meta: true, shift: true, action: "find-previous" },
   { key: "k", meta: true, action: "clear-buffer" },
+  // "Copy" family cousin of ⌘C (bare Cmd+C stays the macOS Copy role) — same
+  // pattern as ⌘D split-row vs ⌘⇧D split-column: Shift makes it the
+  // pane-scoped variant instead of the text-selection one. Has a menu item,
+  // so CharKeyBinding is mandatory here, not a style choice (RULE above).
+  { key: "c", meta: true, shift: true, action: "copy-cwd" },
   { key: "t", meta: true, shift: true, action: "reopen-tab" },
   // Opens the rename/dot-color popover for the active tab (Task 2,
   // docs/plans/2026-07-27-keyboard-parity.md) — no menu item, "r" is a
