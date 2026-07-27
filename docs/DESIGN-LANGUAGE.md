@@ -2,9 +2,8 @@
 
 Canonical rulebook for all **chrome UI** (settings panel, and — as they are
 reworked — tab bar, status bar, pane bar, search bar, overlays). The settings
-panel is the reference implementation. Extends `UX-DESIGN.md` §1; **where the
-two conflict, this document wins** (known supersede: no uppercase anywhere —
-UX-DESIGN's "tracked caps" section titles are retired).
+panel is the reference implementation. This is the single source of truth for
+the app's visual language — tokens, color roles, typography, motion, copy.
 
 Rules are numbered so they can be cited (`DL-3.2`). An agent editing chrome UI
 must run the checklist in §9 before calling the work done.
