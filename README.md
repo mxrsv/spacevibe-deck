@@ -127,16 +127,21 @@ A pane is **busy** when its foreground process is something other than an idle s
 
 **Tabs**
 
-| Shortcut  | Action                |
-| --------- | --------------------- |
-| ⌘T        | New tab (Open board)  |
-| ⌘⇧W       | Close tab             |
-| ⌘⇧T       | Reopen closed tab     |
-| ⌘⇧] / ⌘⇧[ | Next / previous tab   |
-| ⌘1 … ⌘8   | Select tab _N_        |
-| ⌘9        | Select last tab       |
-| ⌘⇧N       | New layout preset     |
-| ⌘⇧S       | Save layout as preset |
+| Shortcut  | Action               |
+| --------- | -------------------- |
+| ⌘T        | New tab (Open board) |
+| ⌘⇧W       | Close tab            |
+| ⌘⇧T       | Reopen closed tab    |
+| ⌘⇧] / ⌘⇧[ | Next / previous tab  |
+| ⌘1 … ⌘8   | Select tab _N_       |
+| ⌘9        | Select last tab      |
+
+**Presets**
+
+| Shortcut | Action                |
+| -------- | --------------------- |
+| ⌘⇧N      | New layout preset     |
+| ⌘⇧S      | Save layout as preset |
 
 **Terminal & view**
 
@@ -153,7 +158,7 @@ Shift+Enter is not distinguishable from Enter in xterm today (a known limit). In
 
 ## Settings
 
-Open **Settings** from the toolbar to configure:
+Open **Settings** from the toolbar (or **⌘,**) to configure:
 
 - **Font** family and size (default SF Mono, 13px), plus live font zoom (⌘+ / ⌘- / ⌘0).
 - **Theme** and per-color overrides.
