@@ -4,6 +4,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
 import { FONT_FALLBACK, type Settings } from "../settings/settings-schema";
 import { applyWebkitImeFix, isWebKitWebView } from "./webkit-ime-fix";
+import { installShiftEnterNewline } from "./shift-enter";
 import { installImeTrace } from "./ime-trace";
 import { resolveTheme } from "../settings/themes";
 import type { PaneHeaderInfo } from "../lib/process-info";
@@ -176,6 +177,11 @@ export function createPane(
 
   term.onData((data) => events.onData(id, data));
   term.onResize(({ cols, rows }) => events.onResize(id, cols, rows));
+  // Shift+Enter carries no protocol encoding of its own — bind it to ESC CR so
+  // agent CLIs wrap the line instead of submitting. See shift-enter.ts.
+  const disposeShiftEnter = installShiftEnterNewline(termEl, (data) =>
+    events.onData(id, data),
+  );
   element.addEventListener("focusin", () => events.onFocus(id));
   element.addEventListener("mousedown", () => events.onFocus(id));
 
@@ -288,6 +294,7 @@ export function createPane(
       clearTimeout(resizeTimer);
     }
     observer.disconnect();
+    disposeShiftEnter();
     linkProvider.dispose();
     osc9Handler.dispose();
     osc777Handler.dispose();
