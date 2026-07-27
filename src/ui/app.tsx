@@ -43,6 +43,52 @@ import { StatusBar } from "./status-bar";
 import { SettingsPanel } from "./settings-panel";
 import { runAttentionFocus } from "./attention-focus-coordinator";
 
+/**
+ * Pure Settings-close: sets `settingsOpen` false and hands focus back.
+ * Extracted to module scope (out of `App()`'s closure) so it and
+ * `toggleSettingsPanel` below can be unit-tested directly — this repo has no
+ * `<App>`-level render harness, and building one just for this guard would
+ * be disproportionate. `App()`'s `closePanel` supplies the real
+ * `tabsRef.current?.focusActive()` as `focusActive`.
+ */
+export function closeSettingsPanel(focusActive: () => void): void {
+  settingsOpen.value = false;
+  focusActive();
+}
+
+/**
+ * Settings toggle — shared by the gear button and `⌘,`/the menu's
+ * "Settings…" item (both call `App()`'s `toggleSettings` closure below,
+ * the literal same function reference, so this guard covers both entry
+ * points at once).
+ *
+ * CLOSING (the `if` branch) stays unconditional — Settings must always be
+ * reachable to close, or it could strand itself open forever, the exact
+ * trap `b7e6021` already had to design around for the overlay scope guard.
+ *
+ * OPENING (the `else` branch) is blocked while a PresetEditor/
+ * SavePresetDialog draft is up. Escape-stacking investigation: that draft's
+ * modal-scrim sits at z-index 40, Settings' own panel at z-index 20
+ * (styles.css) — opening Settings underneath it would be invisible and
+ * unreachable, and `SettingsPanel`'s own mount-focus effect
+ * (settings-panel.tsx) would steal DOM focus away from the draft, so a
+ * later Escape only closes the (invisible) Settings panel and orphans focus
+ * behind a modal that never moved. Same check `runAttentionFocus` makes for
+ * Cmd+Shift+A (attention-focus-coordinator.ts:80-82) — reused here as its
+ * own condition rather than a shared abstraction with that module, which is
+ * out of this task's scope.
+ */
+export function toggleSettingsPanel(focusActive: () => void): void {
+  if (settingsOpen.value) {
+    closeSettingsPanel(focusActive);
+    return;
+  }
+  if (editorRequest.value !== null || saveDialogOpen.value) {
+    return;
+  }
+  settingsOpen.value = true;
+}
+
 export function App() {
   const stagesRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<TabManager | null>(null);
@@ -86,27 +132,24 @@ export function App() {
    * and the gear button. Defined before the mount effect (like
    * `requestAttentionFocus` above) so `toggleSettings` below — passed into
    * `createTabManager` as the `onToggleSettings` seam for ⌘, and the menu's
-   * "Settings…" item — captures this, not a stale reference.
+   * "Settings…" item — captures this, not a stale reference. Delegates to
+   * the module-scope `closeSettingsPanel` (see above) so App keeps owning
+   * the close+focus-return flow, the same as every other overlay, while the
+   * open/close decision itself stays unit-testable.
    */
   const closePanel = (): void => {
-    settingsOpen.value = false;
-    tabsRef.current?.focusActive();
+    closeSettingsPanel(() => tabsRef.current?.focusActive());
   };
 
   /**
    * Toggle Settings open/closed — shared by the gear button (direct call
    * below), ⌘, (keymap.ts `toggle-settings`), and the menu's "Settings…"
-   * item, both of the latter through the `onToggleSettings` seam. Kept here
-   * rather than letting TabManager write `settingsOpen` itself so the
-   * close+focus-return flow stays owned by App, the same as every other
-   * overlay (board, PresetEditor, SavePresetDialog all close from app.tsx).
+   * item, both of the latter through the `onToggleSettings` seam. Delegates
+   * to the module-scope `toggleSettingsPanel` (see above) for the actual
+   * open/close decision.
    */
   const toggleSettings = (): void => {
-    if (settingsOpen.value) {
-      closePanel();
-    } else {
-      settingsOpen.value = true;
-    }
+    toggleSettingsPanel(() => tabsRef.current?.focusActive());
   };
 
   useEffect(() => {
