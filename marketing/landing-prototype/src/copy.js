@@ -1,11 +1,11 @@
 export const messages = {
   en: {
-    navProduct: "Stackgrid",
+    navProduct: "Deck",
     navGithub: "GitHub",
     headlineLead: "Run the grid.",
     headlineTail: "Keep every agent in sight.",
     subhead:
-      "Stackgrid is a native macOS terminal built to launch, watch, and steer AI coding agents in parallel.",
+      "SpaceVibe Deck is a native macOS terminal built to launch, watch, and steer AI coding agents in parallel.",
     primaryCta: "Watch the 45-sec demo",
     secondaryCta: "View on GitHub",
     localeLabel: "Language",
@@ -15,7 +15,7 @@ export const messages = {
       "The Open board remembers each project's layout preset and agent. Reopening your whole team is one keystroke.",
     tourCh2Title: "Give every pane an agent.",
     tourCh2Body:
-      "Pick an agent once — Stackgrid launches it into every pane, chrome tinted per agent so you can read the room at a glance.",
+      "Pick an agent once — Deck launches it into every pane, chrome tinted per agent so you can read the room at a glance.",
     tourCh3Title: "See the system. Work the detail.",
     tourCh3Body:
       "Focus Expand (⌘E) grows the active pane to 65% while every other agent stays in sight.",
@@ -45,12 +45,12 @@ export const messages = {
     footerBuilt: "Built with Tauri 2 · xterm.js · Preact",
   },
   vi: {
-    navProduct: "Stackgrid",
+    navProduct: "Deck",
     navGithub: "GitHub",
     headlineLead: "Vận hành cả đội hình.",
     headlineTail: "Không agent nào rời khỏi tầm mắt.",
     subhead:
-      "Stackgrid là terminal macOS native để khởi chạy, quan sát và điều phối nhiều AI coding agent song song.",
+      "SpaceVibe Deck là terminal macOS native để khởi chạy, quan sát và điều phối nhiều AI coding agent song song.",
     primaryCta: "Xem demo 45 giây",
     secondaryCta: "Xem trên GitHub",
     localeLabel: "Ngôn ngữ",
@@ -60,7 +60,7 @@ export const messages = {
       "Open board nhớ sẵn layout preset và agent của từng dự án — mở lại cả đội chỉ mất một phím.",
     tourCh2Title: "Giao mỗi pane một agent.",
     tourCh2Body:
-      "Chọn agent một lần — Stackgrid khởi chạy vào mọi pane, viền màu theo từng agent để nhìn một cái là biết ai đang làm gì.",
+      "Chọn agent một lần — Deck khởi chạy vào mọi pane, viền màu theo từng agent để nhìn một cái là biết ai đang làm gì.",
     tourCh3Title: "Nhìn toàn cảnh. Làm chi tiết.",
     tourCh3Body:
       "Focus Expand (⌘E) nới pane đang focus lên 65%, các agent còn lại vẫn trong tầm mắt.",

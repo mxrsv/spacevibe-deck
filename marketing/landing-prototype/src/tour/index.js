@@ -6,7 +6,7 @@
  */
 
 import {
-  STACKGRID_ICON_SRC,
+  BRAND_ICON_SRC,
   renderStagePane,
   renderStageSidebar,
   renderStageStatus,
@@ -277,7 +277,7 @@ function renderBoard() {
   return `
     <div class="tour__board">
       <div class="tour__boardlogo">
-        <img src="${STACKGRID_ICON_SRC}" alt="" />
+        <img src="${BRAND_ICON_SRC}" alt="" />
         <span>${BRAND.name}</span>
       </div>
       <div class="tour__recents">${boardRecents.map(renderBoardRecent).join("")}</div>
@@ -360,7 +360,7 @@ function renderFinale(copy) {
       <div class="tour__ctas" data-reveal style="--reveal-delay: 220ms">
         <a
           class="tour__cta tour__cta--primary"
-          href="https://github.com/mxrsv/stackgrid/releases/latest"
+          href="https://github.com/mxrsv/spacevibe-deck/releases/latest"
           target="_blank"
           rel="noreferrer"
         >
@@ -372,7 +372,7 @@ function renderFinale(copy) {
         </button>
         <a
           class="tour__cta"
-          href="https://github.com/mxrsv/stackgrid"
+          href="https://github.com/mxrsv/spacevibe-deck"
           target="_blank"
           rel="noreferrer"
         >
@@ -384,7 +384,7 @@ function renderFinale(copy) {
   `;
 }
 
-const REPO = "https://github.com/mxrsv/stackgrid";
+const REPO = "https://github.com/mxrsv/spacevibe-deck";
 
 function renderFooter(copy) {
   return `
@@ -393,7 +393,7 @@ function renderFooter(copy) {
       <div class="site-footer__inner">
         <div class="site-footer__brand">
           <span class="site-footer__mark">
-            <img src="${STACKGRID_ICON_SRC}" alt="" width="30" height="30" />
+            <img src="${BRAND_ICON_SRC}" alt="" width="30" height="30" />
             <strong data-copy="navProduct">${copy.navProduct}</strong>
           </span>
           <p class="site-footer__tagline" data-copy="footerTagline">${copy.footerTagline}</p>

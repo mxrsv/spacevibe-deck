@@ -90,7 +90,7 @@
   background: var(--a-line-strong);
 }
 
-.a-stackgrid-icon {
+.a-brand-icon {
   display: block;
   width: 1.85rem;
   height: 1.85rem;
@@ -127,7 +127,7 @@
   letter-spacing: normal;
 }
 
-.a-topbar__brand .a-stackgrid-icon {
+.a-topbar__brand .a-brand-icon {
   width: 1.65rem;
   height: 1.65rem;
 }
@@ -353,7 +353,7 @@
   letter-spacing: -0.009em;
 }
 
-/* ---- Hero stage: mock of the real Stackgrid window (Tokyo Night). ----
+/* ---- Hero stage: mock of the real Deck window (Tokyo Night). ----
    Tokens ported from the app's src/styles.css fallbacks; sizes designed at
    a 1000px-wide window and expressed in cqw so the whole mock scales
    proportionally. Flat by design: hairlines only, no drop shadows. */
@@ -918,7 +918,7 @@ html[data-direction-treatment="a"] .demo-dialog video {
       );
   }
 
-  .a-stackgrid-icon {
+  .a-brand-icon {
     width: 1.65rem;
     height: 1.65rem;
   }

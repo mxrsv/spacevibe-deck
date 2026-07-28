@@ -1,5 +1,5 @@
 import {
-  STACKGRID_ICON_SRC,
+  BRAND_ICON_SRC,
   renderStagePane,
   renderStageSidebar,
   renderStageStatus,
@@ -33,7 +33,7 @@ function renderBrandMark(copy) {
     <span class="a-brand-mark" aria-hidden="true">
       <img class="a-partner-mark" src="${PARTNER_MARK_SRC}" alt="" width="22" height="22" />
       <span class="a-brand-divider"></span>
-      <img class="a-stackgrid-icon" src="${STACKGRID_ICON_SRC}" alt="" width="28" height="28" />
+      <img class="a-brand-icon" src="${BRAND_ICON_SRC}" alt="" width="28" height="28" />
     </span>
     <strong data-copy="navProduct">${copy.navProduct}</strong>
   `;
@@ -60,7 +60,7 @@ export function renderDirectionA(copy, locale) {
             </div>
             <a
               class="a-topbar__github"
-              href="https://github.com/mxrsv/stackgrid"
+              href="https://github.com/mxrsv/spacevibe-deck"
               target="_blank"
               rel="noreferrer"
             >
@@ -85,7 +85,7 @@ export function renderDirectionA(copy, locale) {
             </button>
             <a
               class="a-secondary-cta"
-              href="https://github.com/mxrsv/stackgrid"
+              href="https://github.com/mxrsv/spacevibe-deck"
               target="_blank"
               rel="noreferrer"
             >

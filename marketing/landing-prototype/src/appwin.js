@@ -7,7 +7,6 @@
 
 export {
   BRAND_ICON_SRC,
-  BRAND_ICON_SRC as STACKGRID_ICON_SRC,
   STAGE_ICONS,
   renderChromeIcon,
   renderStagePane,
