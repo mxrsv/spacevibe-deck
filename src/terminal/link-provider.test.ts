@@ -87,6 +87,7 @@ describe("createLinkProvider", () => {
     expect(links?.[0].text).toBe("https://example.com");
     click(links![0], true);
     expect(client.openedUrls).toEqual(["https://example.com"]);
+    expect(client.openedEditor).toEqual([]);
   });
 
   it("ignores a plain click so the terminal keeps it", async () => {
@@ -136,7 +137,15 @@ describe("createLinkProvider", () => {
     );
 
     click(links![0], true);
-    expect(client.openedEditor).toEqual(["code -g /repo/src/foo.ts:12:5"]);
+    expect(client.openedEditor).toEqual([
+      {
+        editor: "vscode",
+        template: "",
+        file: "/repo/src/foo.ts",
+        line: 12,
+        column: 5,
+      },
+    ]);
   });
 
   it("uses the configured custom editor command", async () => {
@@ -149,7 +158,15 @@ describe("createLinkProvider", () => {
     const links = await provide(fakeTerminal("src/foo.ts:9"), client);
 
     click(links![0], true);
-    expect(client.openedEditor).toEqual(["vim +9 /repo/src/foo.ts"]);
+    expect(client.openedEditor).toEqual([
+      {
+        editor: "custom",
+        template: "vim +{line} {file}",
+        file: "/repo/src/foo.ts",
+        line: 9,
+        column: 1,
+      },
+    ]);
   });
 
   it("surfaces an error when the custom editor command is blank", async () => {
@@ -164,6 +181,18 @@ describe("createLinkProvider", () => {
     click(links![0], true);
     expect(client.openedEditor).toEqual([]);
     expect(persistError.value).toMatch(/No editor command/);
+  });
+
+  it("surfaces an editor IPC failure", async () => {
+    const client = createMemoryLinkClient({ files: [`${CWD}/src/foo.ts`] });
+    client.openEditor = () => Promise.reject(new Error("ipc down"));
+    const links = await provide(fakeTerminal("src/foo.ts"), client);
+
+    click(links![0], true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(persistError.value).toMatch(/Couldn't open the editor: Error: ipc down/);
   });
 
   it("maps the link back onto its cells", async () => {

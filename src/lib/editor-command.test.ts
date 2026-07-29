@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildEditorCommand,
+  buildOpenEditorRequest,
   editorTemplate,
   isEditorId,
 } from "./editor-command";
@@ -23,32 +23,71 @@ describe("isEditorId", () => {
   });
 });
 
-describe("buildEditorCommand", () => {
-  it("substitutes file, line and column", () => {
-    expect(
-      buildEditorCommand("code -g {file}:{line}:{col}", "/a/b.ts", 12, 3),
-    ).toBe("code -g /a/b.ts:12:3");
+describe("buildOpenEditorRequest", () => {
+  it("builds an immutable request without constructing a shell command", () => {
+    const request = buildOpenEditorRequest(
+      "vscode",
+      "",
+      "/a b/日本語.ts",
+      12,
+      3,
+    );
+
+    expect(request).toEqual({
+      editor: "vscode",
+      template: "",
+      file: "/a b/日本語.ts",
+      line: 12,
+      column: 3,
+    });
+    expect(Object.isFrozen(request)).toBe(true);
   });
 
   it("defaults a missing line and column to 1", () => {
     expect(
-      buildEditorCommand("code -g {file}:{line}:{col}", "/a/b.ts", null, null),
-    ).toBe("code -g /a/b.ts:1:1");
+      buildOpenEditorRequest("zed", "", "/a/b.ts", null, null),
+    ).toEqual({
+      editor: "zed",
+      template: "",
+      file: "/a/b.ts",
+      line: 1,
+      column: 1,
+    });
   });
 
-  it("escapes a path with spaces", () => {
-    expect(buildEditorCommand("zed {file}", "/a b/c.ts", null, null)).toBe(
-      "zed /a\\ b/c.ts",
-    );
+  it("sends the trimmed custom template without substituting placeholders", () => {
+    expect(
+      buildOpenEditorRequest(
+        "custom",
+        "  vim +{line} {file}  ",
+        String.raw`\\server\share\a b.ts`,
+        9,
+        null,
+      ),
+    ).toEqual({
+      editor: "custom",
+      template: "vim +{line} {file}",
+      file: String.raw`\\server\share\a b.ts`,
+      line: 9,
+      column: 1,
+    });
   });
 
-  it("appends the path when the template has no placeholder", () => {
-    expect(buildEditorCommand("mate", "/a/b.ts", null, null)).toBe(
-      "mate /a/b.ts",
-    );
+  it("does not leak the custom setting into a built-in editor request", () => {
+    expect(
+      buildOpenEditorRequest(
+        "cursor",
+        "malicious {file}",
+        "/a/b.ts",
+        1,
+        1,
+      )?.template,
+    ).toBe("");
   });
 
-  it("returns null for an empty template", () => {
-    expect(buildEditorCommand("   ", "/a/b.ts", 1, 1)).toBeNull();
+  it("returns null for an empty custom template", () => {
+    expect(
+      buildOpenEditorRequest("custom", "   ", "/a/b.ts", 1, 1),
+    ).toBeNull();
   });
 });

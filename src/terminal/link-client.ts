@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl as openUrlWithDefaultApp } from "@tauri-apps/plugin-opener";
+import type { OpenEditorRequest } from "../lib/editor-command";
 
 /** Backend seam for terminal links — Tauri IPC in production, fakes in tests. */
 export interface LinkClient {
@@ -11,8 +12,8 @@ export interface LinkClient {
     cwd: string,
     paths: readonly string[],
   ): Promise<(string | null)[]>;
-  /** Run the editor command through the login shell; rejects with a message. */
-  openEditor(command: string): Promise<void>;
+  /** Send validated editor intent to the native launch boundary. */
+  openEditor(request: OpenEditorRequest): Promise<void>;
   /** Hand an http/https URL to the default browser. */
   openUrl(url: string): Promise<void>;
 }
@@ -28,8 +29,8 @@ export function createTauriLinkClient(): LinkClient {
         paths: [...paths],
       });
     },
-    openEditor(command) {
-      return invoke("open_editor", { command });
+    openEditor(request) {
+      return invoke("open_editor", { request });
     },
     openUrl(url) {
       return openUrlWithDefaultApp(url);
@@ -41,11 +42,11 @@ export function createTauriLinkClient(): LinkClient {
 export function createMemoryLinkClient(
   options: { readonly files?: readonly string[] } = {},
 ): LinkClient & {
-  readonly openedEditor: string[];
+  readonly openedEditor: OpenEditorRequest[];
   readonly openedUrls: string[];
 } {
   const files = new Set(options.files ?? []);
-  const openedEditor: string[] = [];
+  const openedEditor: OpenEditorRequest[] = [];
   const openedUrls: string[] = [];
   return {
     openedEditor,
@@ -56,8 +57,8 @@ export function createMemoryLinkClient(
         return files.has(full) ? full : null;
       });
     },
-    async openEditor(command) {
-      openedEditor.push(command);
+    async openEditor(request) {
+      openedEditor.push(request);
     },
     async openUrl(url) {
       openedUrls.push(url);
