@@ -1,3 +1,4 @@
+pub(crate) mod agent_discovery;
 pub(crate) mod shell;
 
 use super::{ProcessInspection, SessionIdentity, ShellLaunch};
@@ -30,7 +31,7 @@ pub fn shell_launch() -> Result<ShellLaunch, String> {
 }
 
 pub async fn discover_agents() -> Vec<AgentInfo> {
-    Vec::new()
+    agent_discovery::discover_agents().await
 }
 
 pub fn inspect_process(_pid: i32) -> ProcessInspection {
