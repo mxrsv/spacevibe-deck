@@ -12,6 +12,8 @@ import { createLinkProvider } from "./link-provider";
 import { createOscLinkHandler } from "./osc-link-handler";
 import { paneCwd } from "./pane-cwd";
 import { classifyOscNotification } from "../lib/osc-notification";
+import { getDesktopEnvironment } from "../lib/platform";
+import { createTerminalClipboardHandler } from "./terminal-clipboard";
 
 /** Structured attention signal a pane can emit — never a native notification. */
 export interface PaneAttentionSignal {
@@ -149,9 +151,9 @@ export function createPane(
   const searchAddon = new SearchAddon();
   term.loadAddon(searchAddon);
 
-  // ⌘+click opens URLs in the browser and file paths in the editor. This
-  // replaces WebLinksAddon: that one underlines and activates on a plain
-  // click, which an agent TUI needs for its own mouse handling.
+  // Primary-modifier+click opens URLs in the browser and file paths in the
+  // editor. This replaces WebLinksAddon: that one underlines and activates on
+  // a plain click, which an agent TUI needs for its own mouse handling.
   const linkProvider = term.registerLinkProvider(
     createLinkProvider(term, { getCwd: () => paneCwd(id) }),
   );
@@ -189,6 +191,11 @@ export function createPane(
 
   term.onData((data) => events.onData(id, data));
   term.onResize(({ cols, rows }) => events.onResize(id, cols, rows));
+  if (getDesktopEnvironment().platform === "windows") {
+    term.attachCustomKeyEventHandler(
+      createTerminalClipboardHandler(term, (data) => events.onData(id, data)),
+    );
+  }
   // Shift+Enter carries no protocol encoding of its own — bind it to ESC CR so
   // agent CLIs wrap the line instead of submitting. See shift-enter.ts.
   const disposeShiftEnter = installShiftEnterNewline(termEl, (data) =>
