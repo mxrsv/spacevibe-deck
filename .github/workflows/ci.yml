@@ -97,3 +97,6 @@ jobs:
 
       - name: Rust tests
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+
+      - name: Build Windows desktop
+        run: npm run tauri build -- --no-bundle --ci
