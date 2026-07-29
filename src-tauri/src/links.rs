@@ -1,3 +1,4 @@
+use crate::platform;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -6,6 +7,7 @@ use std::time::{Duration, Instant};
 /// Upper bound on one hover's resolve batch — the frontend already caps its
 /// candidates per line, this just keeps a hostile/garbled line cheap.
 const MAX_PATHS: usize = 64;
+const MAX_PATH_BYTES: usize = 32_768;
 
 /// A GUI editor returns immediately; anything still running past this has
 /// launched (or the login shell is hanging) — either way, stop waiting.
@@ -15,18 +17,51 @@ const EDITOR_TIMEOUT: Duration = Duration::from_secs(10);
 /// that a "command not found" surfaces immediately, long enough to be free.
 const EDITOR_POLL: Duration = Duration::from_millis(25);
 
-fn home_dir() -> String {
-    std::env::var("HOME").unwrap_or_default()
+fn is_windows_absolute(raw: &str) -> bool {
+    let bytes = raw.as_bytes();
+    (bytes.len() >= 3
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && matches!(bytes[2], b'\\' | b'/'))
+        || raw.starts_with(r"\\")
 }
 
-fn expand_tilde(raw: &str, home: &str) -> PathBuf {
+fn expand_tilde(raw: &str, home: Option<&Path>) -> Option<PathBuf> {
     if raw == "~" {
-        return PathBuf::from(home);
+        return home.map(Path::to_path_buf);
     }
-    match raw.strip_prefix("~/") {
-        Some(rest) => Path::new(home).join(rest),
-        None => PathBuf::from(raw),
+    let rest = raw.strip_prefix("~/").or_else(|| raw.strip_prefix(r"~\"));
+    let Some(rest) = rest else {
+        return Some(PathBuf::from(raw));
+    };
+    let home = home?;
+    let home_text = home.to_string_lossy();
+    let separator = if home_text.contains('\\') && !home_text.contains('/') {
+        '\\'
+    } else {
+        '/'
+    };
+    let home_root = home_text.trim_end_matches(['/', '\\']);
+    Some(PathBuf::from(format!("{home_root}{separator}{rest}")))
+}
+
+fn strip_prefix_ascii_case<'a>(value: &'a str, prefix: &str) -> Option<&'a str> {
+    let candidate = value.get(..prefix.len())?;
+    candidate
+        .eq_ignore_ascii_case(prefix)
+        .then(|| &value[prefix.len()..])
+}
+
+fn normalize_canonical_path(path: &str) -> String {
+    const VERBATIM_UNC: &str = "\\\\?\\UNC\\";
+    const VERBATIM: &str = "\\\\?\\";
+
+    if let Some(rest) = strip_prefix_ascii_case(path, VERBATIM_UNC) {
+        return format!(r"\\{rest}");
     }
+    strip_prefix_ascii_case(path, VERBATIM)
+        .unwrap_or(path)
+        .to_string()
 }
 
 /// Absolute path of `raw` when it is an existing FILE, else `None`.
@@ -40,9 +75,10 @@ fn expand_tilde(raw: &str, home: &str) -> PathBuf {
 ///
 /// Directories are deliberately not linkified: there is no line to jump to and
 /// `code -g <dir>:1:1` is meaningless.
-fn resolve_one(base: Option<&Path>, home: &str, raw: &str) -> Option<String> {
-    let expanded = expand_tilde(raw, home);
-    let full = if expanded.is_absolute() {
+fn resolve_one(base: Option<&Path>, home: Option<&Path>, raw: &str) -> Option<String> {
+    let expanded = expand_tilde(raw, home)?;
+    let expanded_text = expanded.to_string_lossy();
+    let full = if expanded.is_absolute() || is_windows_absolute(&expanded_text) {
         expanded
     } else {
         base?.join(expanded)
@@ -50,7 +86,7 @@ fn resolve_one(base: Option<&Path>, home: &str, raw: &str) -> Option<String> {
     let canonical = std::fs::canonicalize(full).ok()?;
     canonical
         .is_file()
-        .then(|| canonical.to_string_lossy().into_owned())
+        .then(|| normalize_canonical_path(&canonical.to_string_lossy()))
 }
 
 /// Resolve terminal-link path candidates against a pane's cwd. The result is
@@ -61,14 +97,18 @@ fn resolve_one(base: Option<&Path>, home: &str, raw: &str) -> Option<String> {
 /// see `resolve_one` for why relative ones are dropped rather than guessed at.
 #[tauri::command]
 pub async fn resolve_paths(cwd: String, paths: Vec<String>) -> Vec<Option<String>> {
-    let home = home_dir();
-    let base = (!cwd.is_empty()).then(|| PathBuf::from(&cwd));
+    let home = platform::user_home().ok();
+    let candidate_base = PathBuf::from(&cwd);
+    let base = (!cwd.is_empty()
+        && (candidate_base.is_absolute() || is_windows_absolute(&cwd))
+        && candidate_base.is_dir())
+    .then_some(candidate_base);
     paths
         .iter()
         .enumerate()
         .map(|(i, raw)| {
-            if i < MAX_PATHS {
-                resolve_one(base.as_deref(), &home, raw)
+            if i < MAX_PATHS && raw.len() <= MAX_PATH_BYTES {
+                resolve_one(base.as_deref(), home.as_deref(), raw)
             } else {
                 None
             }
@@ -162,9 +202,76 @@ mod tests {
     }
 
     #[test]
+    fn recognizes_windows_drive_and_unc_absolute_paths_portably() {
+        assert!(is_windows_absolute(r"C:\Users\dev\file.ts"));
+        assert!(is_windows_absolute("c:/Users/dev/file.ts"));
+        assert!(is_windows_absolute(r"\\server\share\file.ts"));
+        assert!(!is_windows_absolute(r"C:src\file.ts"));
+        assert!(!is_windows_absolute(r"src\file.ts"));
+    }
+
+    #[test]
+    fn tilde_expansion_preserves_the_home_separator_style() {
+        let windows_home = Path::new(r"C:\Users\Dev");
+        assert_eq!(
+            expand_tilde(r"~\src\file.ts", Some(windows_home)),
+            Some(PathBuf::from(r"C:\Users\Dev\src\file.ts"))
+        );
+        assert_eq!(
+            expand_tilde("~/src/file.ts", Some(windows_home)),
+            Some(PathBuf::from(r"C:\Users\Dev\src/file.ts"))
+        );
+    }
+
+    #[test]
+    fn tilde_expansion_requires_the_platform_home_provider() {
+        assert_eq!(expand_tilde("~/src/file.ts", None), None);
+        assert_eq!(
+            expand_tilde("src/file.ts", None),
+            Some(PathBuf::from("src/file.ts"))
+        );
+    }
+
+    #[test]
+    fn removes_windows_verbatim_prefixes_at_the_display_boundary() {
+        assert_eq!(
+            normalize_canonical_path(r"\\?\C:\Users\Dev\file.ts"),
+            r"C:\Users\Dev\file.ts"
+        );
+        assert_eq!(
+            normalize_canonical_path(r"\\?\UNC\Server\Share\file.ts"),
+            r"\\Server\Share\file.ts"
+        );
+    }
+
+    #[test]
+    fn verbatim_prefix_comparison_is_ascii_case_insensitive() {
+        assert_eq!(
+            normalize_canonical_path(r"\\?\unc\Server\Share\file.ts"),
+            r"\\Server\Share\file.ts"
+        );
+    }
+
+    #[test]
+    fn canonical_normalization_preserves_non_verbatim_text_and_separators() {
+        assert_eq!(
+            normalize_canonical_path("C:/Users/Dev/file.ts"),
+            "C:/Users/Dev/file.ts"
+        );
+        assert_eq!(
+            normalize_canonical_path(r"\\Server\Share\file.ts"),
+            r"\\Server\Share\file.ts"
+        );
+        assert_eq!(
+            normalize_canonical_path("/Users/Dev/file.ts"),
+            "/Users/Dev/file.ts"
+        );
+    }
+
+    #[test]
     fn resolves_a_relative_path_against_the_cwd() {
         let dir = fixture_dir();
-        let resolved = resolve_one(Some(&dir), "", "src/foo.ts").unwrap();
+        let resolved = resolve_one(Some(&dir), None, "src/foo.ts").unwrap();
         assert!(PathBuf::from(resolved).ends_with(Path::new("src").join("foo.ts")));
     }
 
@@ -172,26 +279,25 @@ mod tests {
     fn resolves_an_absolute_path_ignoring_the_cwd() {
         let dir = fixture_dir();
         let abs = dir.join("src/foo.ts").to_string_lossy().into_owned();
-        assert!(resolve_one(Some(Path::new("/nowhere")), "", &abs).is_some());
+        assert!(resolve_one(Some(Path::new("/nowhere")), None, &abs).is_some());
     }
 
     #[test]
     fn expands_a_tilde_path() {
         let dir = fixture_dir();
-        let home = dir.to_string_lossy().into_owned();
-        assert!(resolve_one(Some(Path::new("/nowhere")), &home, "~/src/foo.ts").is_some());
+        assert!(resolve_one(Some(Path::new("/nowhere")), Some(&dir), "~/src/foo.ts").is_some());
     }
 
     #[test]
     fn rejects_a_missing_file() {
         let dir = fixture_dir();
-        assert_eq!(resolve_one(Some(&dir), "", "src/nope.ts"), None);
+        assert_eq!(resolve_one(Some(&dir), None, "src/nope.ts"), None);
     }
 
     #[test]
     fn rejects_a_directory() {
         let dir = fixture_dir();
-        assert_eq!(resolve_one(Some(&dir), "", "src"), None);
+        assert_eq!(resolve_one(Some(&dir), None, "src"), None);
     }
 
     /// An unknown cwd must not silently borrow one: a relative candidate that
@@ -199,17 +305,15 @@ mod tests {
     #[test]
     fn drops_a_relative_path_when_the_cwd_is_unknown() {
         let dir = fixture_dir();
-        let home = dir.to_string_lossy().into_owned();
-        assert_eq!(resolve_one(None, &home, "src/foo.ts"), None);
+        assert_eq!(resolve_one(None, Some(&dir), "src/foo.ts"), None);
     }
 
     #[test]
     fn still_resolves_absolute_and_tilde_paths_when_the_cwd_is_unknown() {
         let dir = fixture_dir();
-        let home = dir.to_string_lossy().into_owned();
         let abs = dir.join("src/foo.ts").to_string_lossy().into_owned();
-        assert!(resolve_one(None, &home, &abs).is_some());
-        assert!(resolve_one(None, &home, "~/src/foo.ts").is_some());
+        assert!(resolve_one(None, Some(&dir), &abs).is_some());
+        assert!(resolve_one(None, Some(&dir), "~/src/foo.ts").is_some());
     }
 
     #[test]
@@ -235,6 +339,45 @@ mod tests {
         assert_eq!(results.len(), 2);
         assert!(results[0].is_none());
         assert!(results[1].is_some());
+    }
+
+    #[test]
+    fn resolve_paths_keeps_alignment_across_count_and_length_bounds() {
+        let dir = fixture_dir();
+        let cwd = dir.to_string_lossy().into_owned();
+        let mut paths = vec!["src/foo.ts".to_string(); MAX_PATHS];
+        paths.push("x".repeat(MAX_PATH_BYTES + 1));
+        paths.push("src/foo.ts".to_string());
+
+        let results = tauri::async_runtime::block_on(resolve_paths(cwd, paths));
+
+        assert_eq!(results.len(), MAX_PATHS + 2);
+        assert!(results[..MAX_PATHS].iter().all(Option::is_some));
+        assert_eq!(results[MAX_PATHS], None);
+        assert_eq!(results[MAX_PATHS + 1], None);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn resolves_real_windows_drive_unc_and_relative_paths() {
+        let dir = fixture_dir();
+        let file = dir.join("src").join("foo.ts");
+        let drive_path = file.to_string_lossy().into_owned();
+        let drive = drive_path
+            .chars()
+            .next()
+            .expect("the Windows temp directory must have a drive");
+        let drive_rest = drive_path
+            .get(3..)
+            .expect("the Windows temp path must start with a drive root");
+        let unc_path = format!(r"\\localhost\{}$\{drive_rest}", drive.to_ascii_uppercase());
+
+        assert!(resolve_one(None, None, &drive_path).is_some());
+        assert!(resolve_one(None, None, &unc_path).is_some());
+        assert!(resolve_one(Some(&dir), None, r"src\foo.ts").is_some());
+        assert_eq!(resolve_one(Some(&dir), None, r"src\missing.ts"), None);
+        assert_eq!(resolve_one(Some(&dir), None, "src"), None);
+        assert_eq!(resolve_one(None, None, r"src\foo.ts"), None);
     }
 
     #[test]
