@@ -28,6 +28,7 @@ import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
 import { closeSearchBar } from "./search-bar";
+import { WINDOWS_AGENT_LAUNCH_TIMEOUT_MS } from "./agent-launch";
 import {
   initializeDesktopEnvironment,
   resetDesktopEnvironmentForTests,
@@ -352,6 +353,52 @@ describe("createTabManager agent launch", () => {
     await vi.advanceTimersByTimeAsync(3000);
 
     expect(pty.writes).toEqual([]);
+    tm.dispose();
+  });
+
+  it("launches a Windows agent once from structured readiness", async () => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const { tm, pty } = setup({});
+    await tm.openFromPreset({ type: "leaf" }, [String.raw`C:\work`], {
+      workspacePath: String.raw`C:\work`,
+      agent: "claude",
+    });
+    await tm.init();
+
+    pty.emitOutput(1, "PowerShell banner");
+    expect(pty.writes).toEqual([]);
+    pty.emitPromptReady(1);
+    pty.emitPromptReady(1);
+
+    expect(pty.writes).toEqual([{ id: 1, data: "claude\r" }]);
+    tm.dispose();
+  });
+
+  it("shows manual-launch guidance on Windows timeout without writing", async () => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const onAgentLaunchTimeout = vi.fn();
+    const { tm, pty } = setup({
+      deps: { onAgentLaunchTimeout },
+    });
+    await tm.openFromPreset({ type: "leaf" }, [String.raw`C:\work`], {
+      workspacePath: String.raw`C:\work`,
+      agent: "codex",
+    });
+
+    await vi.advanceTimersByTimeAsync(WINDOWS_AGENT_LAUNCH_TIMEOUT_MS);
+
+    expect(pty.writes).toEqual([]);
+    expect(onAgentLaunchTimeout).toHaveBeenCalledWith(
+      "PowerShell was not ready in time. Launch the agent manually.",
+    );
     tm.dispose();
   });
 });

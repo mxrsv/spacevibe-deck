@@ -30,6 +30,11 @@ export const settingsOpen = signal(false);
  */
 export const persistError = signal<string | null>(null);
 
-export function reportPersistError(message: string): void {
+/** Show a non-blocking, auto-dismissing message in the shared chrome bar. */
+export function reportChromeMessage(message: string): void {
   persistError.value = message;
+}
+
+export function reportPersistError(message: string): void {
+  reportChromeMessage(message);
 }

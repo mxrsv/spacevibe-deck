@@ -68,6 +68,7 @@ import type { TabDotColor } from "../lib/tab-colors";
 import {
   boardOpen,
   editorRequest,
+  reportChromeMessage,
   saveDialogOpen,
   settingsOpen,
 } from "../chrome/events";
@@ -92,6 +93,9 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
     (action: ActionDefinition) => action.destructive === true,
   ).map((action) => action.id),
 );
+
+const WINDOWS_AGENT_TIMEOUT_MESSAGE =
+  "PowerShell was not ready in time. Launch the agent manually.";
 
 interface TabEntry {
   readonly key: number;
@@ -138,6 +142,8 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    * Injected notifier wins, so tests never hit the real native API.
    */
   notifier?: AgentNotifier;
+  /** Test seam for the shared non-blocking chrome message surface. */
+  onAgentLaunchTimeout?: (message: string) => void;
 }
 
 /** Owns all tabs: routing, keyboard, agent launch; info polling lives in PaneInfoPoller. */
@@ -269,7 +275,8 @@ export function createTabManager(
   let closedTabs: readonly ClosedTabSnapshot[] = [];
   let nextKey = 1;
   let active = -1;
-  const home = getDesktopEnvironment().homeDir;
+  const environment = getDesktopEnvironment();
+  const home = environment.homeDir;
   // Fail-safe = focused: an unanswerable/unregisterable window-focus check
   // must never suppress the in-app rail — only native notifications (Task
   // 23) key off this beyond `onPaneFocus`'s ack gate.
@@ -281,7 +288,14 @@ export function createTabManager(
   // Types the chosen agent into each new pane's shell once its prompt is up.
   // Through paneIo so its synthetic keystrokes ("claude\r") count as input —
   // the echo suppression then keeps the launch echo out of the spinner.
-  const launcher = createAgentLauncher(paneIo);
+  const reportAgentLaunchTimeout =
+    deps.onAgentLaunchTimeout ?? reportChromeMessage;
+  const launcher = createAgentLauncher(paneIo, {
+    platform: environment.platform,
+    onTimeout: () => {
+      reportAgentLaunchTimeout(WINDOWS_AGENT_TIMEOUT_MESSAGE);
+    },
+  });
 
   function activeManager(): TerminalManager | null {
     return active >= 0 && active < tabs.length ? tabs[active].manager : null;
@@ -1126,8 +1140,8 @@ export function createTabManager(
     }
     await registerUnlisten(
       pty.listenOutput((id, data) => {
-        // The launcher waits for a pane's first byte before typing its agent;
-        // route every chunk to it before fanning out to the tabs.
+        // macOS keeps first-output readiness. Windows only records this as
+        // output; its launcher waits for the structured listener below.
         launcher.noteOutput(id);
         // Legacy agentBusy semantics ride on the working()-flip. Read it around
         // the additive event feed rather than double-parsing the chunk: both
@@ -1209,6 +1223,11 @@ export function createTabManager(
             syncViews();
           }, 3200),
         );
+      }),
+    );
+    await registerUnlisten(
+      pty.listenPromptReady((id) => {
+        launcher.notePromptReady(id);
       }),
     );
     await registerUnlisten(
