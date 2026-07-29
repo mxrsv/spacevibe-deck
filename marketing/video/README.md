@@ -51,16 +51,22 @@ npm run video:render -- --still 13.4    # a single frame, for eyeballing
 Output lands in `marketing/video/out/` (git-ignored — publish a cut by hand
 once it's approved).
 
-| Preset     | Size      | fps | Range   | Files     | Use                   |
-| ---------- | --------- | --- | ------- | --------- | --------------------- |
-| `master`   | 1920×1080 | 60  | 0–20s   | mp4, webm | YouTube / X, re-edits |
-| `hero`     | 1600×900  | 30  | 0–16.2s | mp4, webm | landing hero (loops)  |
-| `gif`      | 720×405   | 12  | 1–14.2s | gif       | GitHub README         |
-| `vertical` | 1080×1920 | 30  | 0–20s   | mp4       | Product Hunt / social |
+| Preset     | Delivered | fps | Range   | Files     | Use                       |
+| ---------- | --------- | --- | ------- | --------- | ------------------------- |
+| `master`   | 1920×1080 | 60  | 0–20s   | mp4, webm | YouTube / X, re-edits     |
+| `hero`     | 2560×1440 | 30  | 0–16.2s | mp4, webm | landing demo band (loops) |
+| `gif`      | 720×405   | 12  | 1–14.2s | gif       | GitHub README             |
+| `vertical` | 1080×1920 | 30  | 0–20s   | mp4       | Product Hunt / social     |
 
 `hero` and `gif` stop before the end card and fade in and out to black, so
 they loop without a hard cut. The GIF is sized down hard on purpose — weight
 is what decides whether a README embed is usable.
+
+`hero` is the one preset that captures above what it delivers: viewport
+1600×900 at `scale: 2`, resampled from 3200×1800 down to 2560×1440 (`output`
+in `render/presets.js`). Its type is 12px inside a window that occupies ~71% of
+the frame, so a 1:1 capture leaves a Retina display nothing to resolve — that
+was the "why is the demo blurry" bug, not the bitrate.
 
 **The 9:16 cut is not just a crop.** Pane transcripts are unreadable on a
 phone, so below a 1:1 aspect ratio the frame grows a brand strip above the

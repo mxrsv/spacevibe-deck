@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 
 import { captureFrames, captureStill } from "./capture.mjs";
-import { ENCODERS } from "./encode.mjs";
+import { ENCODERS, resizeImage } from "./encode.mjs";
 import { PRESET_NAMES, resolvePreset } from "./presets.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -78,7 +78,15 @@ async function renderPreset(name, url) {
   const framesDir = join(workDir, name);
   let lastPercent = -1;
 
-  log(`\n▶ ${name} — ${preset.width}×${preset.height} @ ${preset.fps}fps`);
+  const delivered = preset.output ?? {
+    width: preset.width,
+    height: preset.height,
+  };
+
+  log(
+    `\n▶ ${name} — captured ${preset.width * preset.scale}×${preset.height * preset.scale}` +
+      `, delivered ${delivered.width}×${delivered.height} @ ${preset.fps}fps`,
+  );
 
   const { frameCount } = await captureFrames({
     url,
@@ -112,6 +120,7 @@ async function renderPreset(name, url) {
       fade: preset.fade ?? null,
       frameCount,
       colors: preset.gifColors,
+      output: preset.output ?? null,
     });
     log(
       `  ✓ ${outPath.replace(`${marketingDir}/`, "")} (${await sizeOf(outPath)})`,
@@ -120,13 +129,29 @@ async function renderPreset(name, url) {
 
   if (preset.poster !== null) {
     const posterPath = join(outDir, `deck-tour-${name}-poster.png`);
+    const posterOutput = preset.posterOutput ?? null;
+    // The still comes off the page at capture scale; when the poster ships
+    // smaller, grab it beside the final path and resample into place.
+    const stillPath = posterOutput
+      ? join(outDir, `deck-tour-${name}-poster.capture.png`)
+      : posterPath;
 
     await captureStill({
       url,
       preset,
       time: preset.poster,
-      outPath: posterPath,
+      outPath: stillPath,
     });
+
+    if (posterOutput) {
+      await resizeImage({
+        inPath: stillPath,
+        outPath: posterPath,
+        output: posterOutput,
+      });
+      await rm(stillPath, { force: true });
+    }
+
     log(`  ✓ ${posterPath.replace(`${marketingDir}/`, "")}`);
   }
 
