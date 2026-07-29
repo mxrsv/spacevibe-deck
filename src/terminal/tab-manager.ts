@@ -11,7 +11,7 @@ import {
   updateSettings,
 } from "../settings/settings-store";
 import { type Direction, type SerializedNode } from "../lib/split-tree";
-import { isAgent } from "../lib/process-info";
+import type { PaneAgent, PaneProcessInfo } from "../lib/process-info";
 import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { sendAgentNotification } from "../lib/native-notification";
 import { getDesktopEnvironment } from "../lib/platform";
@@ -96,6 +96,20 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 
 const WINDOWS_AGENT_TIMEOUT_MESSAGE =
   "PowerShell was not ready in time. Launch the agent manually.";
+
+function explicitAgent(info: PaneProcessInfo | undefined): PaneAgent | null {
+  if (info?.kind !== "agent") {
+    return null;
+  }
+  const agent = info.agent;
+  return agent === "claude" || agent === "codex" || agent === "gemini"
+    ? agent
+    : null;
+}
+
+function processLabel(info: PaneProcessInfo | undefined): string | null {
+  return explicitAgent(info) ?? info?.process ?? null;
+}
 
 interface TabEntry {
   readonly key: number;
@@ -314,16 +328,16 @@ export function createTabManager(
       for (const id of paneIds) {
         // A process change (agent exited to the shell, new agent started)
         // invalidates whatever the old program reported.
-        activity.noteProcess(id, poller.infoFor(id)?.process ?? null);
+        activity.noteProcess(id, processLabel(poller.infoFor(id)));
       }
       const agentBusy = paneIds.some(
         (id) =>
-          isAgent(poller.infoFor(id)?.process ?? null) && activity.working(id),
+          explicitAgent(poller.infoFor(id)) !== null && activity.working(id),
       );
       return applyTabOverride(
         {
           key: tab.key,
-          process: info?.process ?? null,
+          process: processLabel(info),
           name: null,
           dotColor: null,
           workspacePath: tab.workspacePath,
@@ -340,11 +354,10 @@ export function createTabManager(
     const manager = activeManager();
     const paneId = manager?.activePaneId() ?? null;
     const info = paneId === null ? undefined : poller.infoFor(paneId);
-    const process = info?.process ?? null;
     statusInfo.value = {
       branch: poller.branch(),
       cwd: info?.cwd ?? null,
-      agent: isAgent(process) ? process : null,
+      agent: explicitAgent(info),
       paneCount: manager?.paneCount() ?? 0,
       home,
     };
@@ -799,14 +812,15 @@ export function createTabManager(
     activePaneId: () => activeManager()?.activePaneId() ?? null,
     onUpdate(infos) {
       activeManager()?.updatePaneInfo(infos, home);
-      // Reconcile the tracker's process gate before this cycle's state is
-      // aggregated: opening/closing the gate and the agent→shell inferred
-      // completion both key off the last polled process.
+      // Reconcile the tracker's explicit process gate before this cycle's
+      // state is aggregated. Display labels never decide whether the gate
+      // opens: only a classified, named agent can do that.
       for (const info of infos) {
+        const agent = explicitAgent(info);
         const snap = tracker.noteProcess(
           info.id,
-          info.process,
-          isAgent(info.process),
+          agent ?? info.process,
+          agent !== null,
         );
         if (snap !== null) {
           maybeNotify(info.id, snap);

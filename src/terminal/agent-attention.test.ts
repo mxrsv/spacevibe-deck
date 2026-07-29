@@ -257,6 +257,19 @@ describe("AgentAttentionTracker — exit & prune", () => {
 });
 
 describe("AgentAttentionTracker — process gate", () => {
+  it.each(["claude", "node"])(
+    "does not trust an agent-looking %s label without an explicit agent classification",
+    (process) => {
+      const { tracker, clock } = setup();
+      tracker.noteProcess(1, process, false);
+
+      expect(tracker.noteActivity(1, oscWorking(clock.t))).toBeNull();
+      expect(tracker.noteSignal(1, requested(clock.t))).toBeNull();
+      expect(tracker.snapshot(1)?.attention).toBe("none");
+      expect(tracker.snapshot(1)?.phase).toBe("unknown");
+    },
+  );
+
   it("shell OSC 9;4 warning/error is ignored", () => {
     const { tracker, clock } = setup();
     tracker.noteProcess(1, "zsh", false);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dotColor, isAgent, paneHeaderInfo, tildify } from "./process-info";
+import { dotColor, paneHeaderInfo, tildify } from "./process-info";
 
 describe("dotColor", () => {
   it("maps known agents to their theme color vars", () => {
@@ -12,14 +12,6 @@ describe("dotColor", () => {
     expect(dotColor("zsh")).toBe("var(--text-faint)");
     expect(dotColor(null)).toBe("var(--text-faint)");
     expect(dotColor("toString")).toBe("var(--text-faint)");
-  });
-});
-
-describe("isAgent", () => {
-  it("only recognizes the known agent names", () => {
-    expect(isAgent("claude")).toBe(true);
-    expect(isAgent("zsh")).toBe(false);
-    expect(isAgent(null)).toBe(false);
   });
 });
 

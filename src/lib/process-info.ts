@@ -34,14 +34,9 @@ function agentColor(agent: string | null): string | undefined {
   return AGENT_DOT_VARS[agent];
 }
 
-/** Legacy process-name predicate retained until the process gates migrate. */
-export function isAgent(process: string | null): boolean {
-  return agentColor(process) !== undefined;
-}
-
-/** Legacy tab-dot helper retained until tab summaries migrate. */
-export function dotColor(process: string | null): string {
-  return agentColor(process) ?? "var(--text-faint)";
+/** Map an explicit agent display label to the tab-dot theme color. */
+export function dotColor(label: string | null): string {
+  return agentColor(label) ?? "var(--text-faint)";
 }
 
 function isWindowsAbsolute(path: string): boolean {

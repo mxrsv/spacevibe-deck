@@ -211,13 +211,13 @@ function setup(options: {
 }
 
 /**
- * Like `setup`, but the foreground process of each pane is read live from
- * `processByPane` on every poll (missing id = the poll returns nothing for
- * it, i.e. never recognized). Mutating the map then advancing the poll
- * interval drives the tracker's process gate open/closed deterministically.
+ * Like `setup`, but the process snapshot of each pane is read live from
+ * `infoByPane` on every poll (missing id = the poll returns nothing for it,
+ * i.e. never recognized). Mutating the map then advancing the poll interval
+ * drives the tracker's process gate open/closed deterministically.
  */
 function setupControllable(
-  processByPane: Map<number, string | null>,
+  infoByPane: Map<number, PaneProcessInfo>,
   deps: Partial<TabManagerDeps> = {},
 ): {
   tm: TabManager;
@@ -229,23 +229,8 @@ function setupControllable(
     ...base,
     async ptyInfo(ids: readonly number[]): Promise<PaneProcessInfo[]> {
       return ids.flatMap((id) => {
-        const process = processByPane.get(id);
-        if (process === undefined) {
-          return [];
-        }
-        const agent =
-          process === "claude" || process === "codex" || process === "gemini"
-            ? process
-            : null;
-        return [
-          processInfo(
-            id,
-            null,
-            process,
-            agent !== null ? "agent" : process === null ? "unknown" : "idle-shell",
-            agent,
-          ),
-        ];
+        const info = infoByPane.get(id);
+        return info === undefined ? [] : [info];
       });
     },
   };
@@ -348,6 +333,24 @@ describe("createTabManager agent launch", () => {
     await vi.advanceTimersByTimeAsync(3000);
 
     expect(pty.writes).toEqual([{ id: 1, data: "claude\r" }]);
+    tm.dispose();
+  });
+
+  it("does not open attention from selected agent intent before process confirmation", async () => {
+    const { tm, pty, emitSignal } = setup({});
+    await tm.openFromPreset({ type: "leaf" }, ["/work"], {
+      workspacePath: "/work",
+      agent: "claude",
+    });
+    await tm.init();
+    await vi.advanceTimersByTimeAsync(0);
+
+    emitSignal(1, { kind: "requested", source: "bell" });
+    pty.emitOutput(1, "\x1b]9;4;2\x07");
+
+    expect(tabViews.value[0].attention?.actionableCount).toBe(0);
+    expect(tabViews.value[0].agentBusy).toBe(false);
+    expect(statusInfo.value.agent).toBeNull();
     tm.dispose();
   });
 
@@ -880,6 +883,74 @@ describe("createTabManager attention tracker", () => {
       tm.dispose();
     });
 
+    it("rejects an agent-looking process label when the explicit kind is busy", async () => {
+      const infos = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/repo", "claude", "busy", null)],
+      ]);
+      const { tm, pty, emitSignal } = setup({ infos });
+      await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+        workspacePath: "/repo",
+      });
+      await tm.init();
+      await flush();
+
+      emitSignal(1, { kind: "requested", source: "bell" });
+      pty.emitOutput(1, "\x1b]9;4;2\x07");
+
+      expect(tabViews.value[0].attention?.actionableCount).toBe(0);
+      expect(tabViews.value[0].agentBusy).toBe(false);
+      expect(statusInfo.value.agent).toBeNull();
+      tm.dispose();
+    });
+
+    it.each([
+      processInfo(1, "/repo", "claude", "agent", "claude"),
+      processInfo(1, "/repo", "node", "agent", "codex"),
+    ])(
+      "accepts a recognized $agent agent with foreground process $process",
+      async (info) => {
+        const infos = new Map<number, PaneProcessInfo>([[1, info]]);
+        const { tm, pty, emitSignal } = setup({ infos });
+        await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+          workspacePath: "/repo",
+        });
+        await tm.init();
+        await flush();
+
+        emitSignal(1, { kind: "requested", source: "bell" });
+        pty.emitOutput(1, "\x1b]9;4;1\x07");
+
+        expect(tabViews.value[0].attention?.actionableCount).toBe(1);
+        expect(tabViews.value[0].agentBusy).toBe(true);
+        expect(tabViews.value[0].process).toBe(info.agent);
+        expect(statusInfo.value.agent).toBe(info.agent);
+        tm.dispose();
+      },
+    );
+
+    it.each([
+      processInfo(1, "/repo", "node", "busy", null),
+      processInfo(1, "/repo", null, "unknown", null),
+    ])(
+      "keeps the attention gate closed for $kind snapshots",
+      async (info) => {
+        const infos = new Map<number, PaneProcessInfo>([[1, info]]);
+        const { tm, pty, emitSignal } = setup({ infos });
+        await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+          workspacePath: "/repo",
+        });
+        await tm.init();
+        await flush();
+
+        emitSignal(1, { kind: "requested", source: "bell" });
+        pty.emitOutput(1, "\x1b]9;4;2\x07");
+
+        expect(tabViews.value[0].attention?.actionableCount).toBe(0);
+        expect(tabViews.value[0].agentBusy).toBe(false);
+        tm.dispose();
+      },
+    );
+
     it("ignores activity from a pane never recognized as an agent", async () => {
       // No infos → the poll returns nothing for pane 1, so its gate never opens.
       const { tm, pty } = setup({});
@@ -900,8 +971,10 @@ describe("createTabManager attention tracker", () => {
     it("infers one completion on agent→shell then ignores shell activity", async () => {
       vi.useFakeTimers();
       try {
-        const processByPane = new Map<number, string | null>([[1, "claude"]]);
-        const { tm, pty } = setupControllable(processByPane);
+        const infoByPane = new Map<number, PaneProcessInfo>([
+          [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+        ]);
+        const { tm, pty } = setupControllable(infoByPane);
         await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
           workspacePath: "/repo",
         });
@@ -913,7 +986,10 @@ describe("createTabManager attention tracker", () => {
 
         // The foreground process becomes the shell; the next poll closes the
         // gate and infers exactly one completion.
-        processByPane.set(1, "zsh");
+        infoByPane.set(
+          1,
+          processInfo(1, "/repo", "zsh", "idle-shell", null),
+        );
         await vi.advanceTimersByTimeAsync(2000);
         expect(tabViews.value[0].attention?.kind).toBe("completed");
         expect(tabViews.value[0].attention?.actionableCount).toBe(1);
@@ -1623,9 +1699,11 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
   it("routes a background agent→shell completion transition through maybeNotify once, with the right paneId/kind/labels", async () => {
     vi.useFakeTimers();
     try {
-      const processByPane = new Map<number, string | null>([[1, "claude"]]);
+      const infoByPane = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+      ]);
       const { notifier, maybeNotify } = fakeNotifierSpy();
-      const { tm, pty } = setupControllable(processByPane, { notifier });
+      const { tm, pty } = setupControllable(infoByPane, { notifier });
       await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
         workspacePath: "/repo",
       });
@@ -1635,7 +1713,10 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
       pty.emitOutput(1, "\x1b]9;4;1\x07"); // working
       maybeNotify.mockClear(); // discard the gate-open + working calls (kind "none")
 
-      processByPane.set(1, "zsh"); // foreground process becomes the shell
+      infoByPane.set(
+        1,
+        processInfo(1, "/repo", "zsh", "idle-shell", null),
+      ); // foreground process becomes the shell
       await vi.advanceTimersByTimeAsync(2000); // poll closes the gate → inferred completion
 
       expect(maybeNotify).toHaveBeenCalledTimes(1);
@@ -1655,9 +1736,11 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
     vi.useFakeTimers();
     try {
       // windowFocus stays at its default (focused) — the "foreground" case.
-      const processByPane = new Map<number, string | null>([[1, "claude"]]);
+      const infoByPane = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+      ]);
       const { notifier, maybeNotify } = fakeNotifierSpy();
-      const { tm, pty } = setupControllable(processByPane, { notifier });
+      const { tm, pty } = setupControllable(infoByPane, { notifier });
       await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
         workspacePath: "/repo",
       });
@@ -1667,7 +1750,10 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
       pty.emitOutput(1, "\x1b]9;4;1\x07");
       maybeNotify.mockClear();
 
-      processByPane.set(1, "zsh");
+      infoByPane.set(
+        1,
+        processInfo(1, "/repo", "zsh", "idle-shell", null),
+      );
       await vi.advanceTimersByTimeAsync(2000);
 
       // Routed regardless of window focus — a real notifier would gate this
@@ -1775,11 +1861,13 @@ describe("createTabManager notifier — dedupe on attention latch identity, not 
   it("does not re-notify when a latched error re-emits on a phase-only agent→shell poll, then again on pty:exit", async () => {
     vi.useFakeTimers();
     try {
-      const processByPane = new Map<number, string | null>([[1, "claude"]]);
+      const infoByPane = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+      ]);
       windowFocus.initialFocused = false; // background
       settings.value = { ...settings.value, agentNotifications: true };
       const { notifier, maybeNotify } = fakeNotifierSpy();
-      const { tm, pty } = setupControllable(processByPane, { notifier });
+      const { tm, pty } = setupControllable(infoByPane, { notifier });
       await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
         workspacePath: "/repo",
       });
@@ -1793,7 +1881,10 @@ describe("createTabManager notifier — dedupe on attention latch identity, not 
 
       // agent→shell poll: phase working→idle, error stays latched — a
       // phase-only re-emit of the SAME latched kind, not a new event.
-      processByPane.set(1, "zsh");
+      infoByPane.set(
+        1,
+        processInfo(1, "/repo", "zsh", "idle-shell", null),
+      );
       await vi.advanceTimersByTimeAsync(2000);
 
       // pty:exit: phase→exited, attention unchanged — another phase-only
