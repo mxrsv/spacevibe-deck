@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   check:
@@ -100,3 +104,53 @@ jobs:
 
       - name: Build Windows desktop
         run: npm run tauri build -- --no-bundle --ci
+
+  windows-engineering-bundle:
+    if: github.event_name == 'workflow_dispatch'
+    needs: windows-check
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Require a private repository
+        shell: pwsh
+        env:
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if ($env:REPOSITORY_PRIVATE -ne "true") {
+            throw "Unsigned Windows artifacts may only be built in a private repository."
+          }
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Build unsigned Windows setup
+        run: npm run tauri build -- --ci
+
+      - name: Validate Windows bundle
+        run: npm run verify:windows-bundle -- src-tauri/target/release/bundle
+
+      - name: Upload private engineering preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: spacevibe-deck-windows-engineering-preview
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 7
