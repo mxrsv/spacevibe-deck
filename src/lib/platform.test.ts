@@ -91,4 +91,16 @@ describe("desktop environment", () => {
     expect(getDesktopEnvironment()).toBe(environment);
     expect(warn).toHaveBeenCalledOnce();
   });
+
+  it("reuses the initialized backend environment without loading twice", async () => {
+    const load = vi.fn().mockResolvedValue({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const first = await initializeDesktopEnvironmentFromBackend(load);
+    const second = await initializeDesktopEnvironmentFromBackend(load);
+
+    expect(second).toBe(first);
+    expect(load).toHaveBeenCalledOnce();
+  });
 });
