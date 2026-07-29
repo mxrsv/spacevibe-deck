@@ -713,7 +713,7 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   ...WINDOWS_TAB_SELECT_BINDINGS,
   WINDOWS_SELECT_LAST_TAB_BINDING,
   { key: "=", ctrl: true, action: "zoom-in" },
-  { key: "=", ctrl: true, shift: true, action: "zoom-in" },
+  { key: "+", ctrl: true, shift: true, action: "zoom-in" },
   { key: "-", ctrl: true, action: "zoom-out" },
   { key: "0", ctrl: true, action: "zoom-reset" },
   { key: "f", ctrl: true, shift: true, action: "find" },

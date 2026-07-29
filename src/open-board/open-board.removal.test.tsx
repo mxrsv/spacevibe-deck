@@ -229,7 +229,7 @@ describe("OpenBoard removal flow", () => {
     await keydown({ key: "o", ctrlKey: true });
     expect(rowNames()).toEqual([]);
 
-    await keydown({ key: "o", ctrlKey: true, shiftKey: true });
+    await keydown({ key: "O", ctrlKey: true, shiftKey: true });
     expect(rowNames()).toHaveLength(1);
   });
 

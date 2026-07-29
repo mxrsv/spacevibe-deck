@@ -354,7 +354,7 @@ describe("WINDOWS_KEYMAP", () => {
     ["tab", { ctrlKey: true }, "next-tab"],
     ["tab", { ctrlKey: true, shiftKey: true }, "prev-tab"],
     ["=", { ctrlKey: true }, "zoom-in"],
-    ["=", { ctrlKey: true, shiftKey: true }, "zoom-in"],
+    ["+", { ctrlKey: true, shiftKey: true }, "zoom-in"],
     ["-", { ctrlKey: true }, "zoom-out"],
     ["0", { ctrlKey: true }, "zoom-reset"],
     ["f", { ctrlKey: true, shiftKey: true }, "find"],
