@@ -922,53 +922,6 @@
   transform-origin: left;
 }
 
-html[data-direction-treatment="a"] .demo-dialog {
-  width: min(62rem, calc(100vw - 2rem));
-  padding: 0;
-  color: var(--a-ink, #ffffff);
-  background: #101310;
-  border: 1px solid rgb(255 255 255 / 18%);
-  border-radius: 4px;
-  box-shadow: 0 2rem 7rem rgb(0 0 0 / 72%);
-}
-
-html[data-direction-treatment="a"] .demo-dialog::backdrop {
-  background: rgb(4 6 5 / 82%);
-  backdrop-filter: blur(7px);
-}
-
-html[data-direction-treatment="a"] .demo-dialog__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.8rem 1rem;
-  border-bottom: 1px solid rgb(255 255 255 / 12%);
-}
-
-html[data-direction-treatment="a"] .demo-dialog__header h2 {
-  margin: 0;
-  font: 600 0.7rem/1.2 var(--a-font-display, sans-serif);
-  letter-spacing: 0.08em;
-}
-
-html[data-direction-treatment="a"] .demo-dialog__header button {
-  padding: 0.45rem 0.65rem;
-  color: var(--a-accent);
-  background: transparent;
-  border: 1px solid rgb(var(--a-accent-rgb) / 30%);
-  border-radius: 2px;
-  cursor: pointer;
-  font: 600 0.62rem/1 var(--a-font-display, sans-serif);
-}
-
-html[data-direction-treatment="a"] .demo-dialog video {
-  display: block;
-  width: 100%;
-  max-height: 74vh;
-  background: #050706;
-}
-
 @keyframes a-appwin-blink {
   50% {
     opacity: 0;
@@ -1147,10 +1100,6 @@ html[data-direction-treatment="a"] .demo-dialog video {
 
   .a-secondary-cta::after {
     display: none;
-  }
-
-  html[data-direction-treatment="a"] .demo-dialog {
-    width: calc(100vw - 1rem);
   }
 }
 

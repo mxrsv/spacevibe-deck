@@ -4,18 +4,18 @@ import "../styles/direction-a.css";
 import "../styles/aurora.css";
 import "../styles/beams.css";
 import "../styles/tour.css";
+import "../styles/demo-reel.css";
 
 import { messages } from "./copy.js";
+import { renderDemoReel, updateDemoReelLocale } from "./demo-reel.js";
 import { renderDirectionA, updateDirectionALocale } from "./directions/a.js";
 import { LOCALES, readLocale, writeLocale } from "./locale-state.js";
-import { mountDemoDialog } from "./product-stage.js";
 import { renderTour, updateTourLocale } from "./tour/index.js";
 
 const specimenRoot = document.querySelector("#specimen-root");
-const demoRoot = document.querySelector("#demo-root");
 
-if (!specimenRoot || !demoRoot) {
-  throw new Error("Landing page roots are missing.");
+if (!specimenRoot) {
+  throw new Error("Landing page root is missing.");
 }
 
 let locale = readLocale(window.location);
@@ -25,14 +25,15 @@ function render() {
   disposePage();
 
   const page = renderDirectionA(messages[locale], locale);
+  const reel = renderDemoReel(messages[locale]);
   const tour = renderTour(messages[locale]);
-  specimenRoot.innerHTML = page.markup + tour.markup;
+  specimenRoot.innerHTML = page.markup + reel.markup + tour.markup;
   const disposeRenderer = page.mount(specimenRoot);
+  const disposeReel = reel.mount(specimenRoot);
   const disposeTour = tour.mount(specimenRoot);
-  const disposeDialog = mountDemoDialog(demoRoot, specimenRoot);
   disposePage = () => {
-    disposeDialog();
     disposeTour();
+    disposeReel();
     disposeRenderer();
   };
 
@@ -59,6 +60,7 @@ function handleLocaleClick(event) {
   // the whole DOM plus both WebGL canvases (hero beams, tour aurora), which
   // flashes blank for a frame.
   updateDirectionALocale(specimenRoot, messages[locale], locale);
+  updateDemoReelLocale(specimenRoot, messages[locale]);
   updateTourLocale(specimenRoot, messages[locale]);
   document.documentElement.lang = locale;
 }
