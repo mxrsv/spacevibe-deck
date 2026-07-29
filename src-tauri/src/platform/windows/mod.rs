@@ -1,5 +1,7 @@
 pub(crate) mod agent_discovery;
+pub(crate) mod command_line;
 pub(crate) mod job_object;
+pub(crate) mod process_snapshot;
 pub(crate) mod shell;
 
 use super::{ProcessInspection, SessionIdentity, ShellLaunch};

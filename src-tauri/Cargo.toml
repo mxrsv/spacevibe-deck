@@ -34,6 +34,7 @@ tauri-plugin-clipboard-manager = "2"
 libc = "0.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
+wmi = "0.18"
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_Security",
