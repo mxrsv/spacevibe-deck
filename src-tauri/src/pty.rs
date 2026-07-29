@@ -344,7 +344,7 @@ pub fn kill_pty(
     if let Some(mut session) = sessions.remove(&id) {
         platform::terminate_session(
             &session.platform,
-            session.master.process_group_leader(),
+            platform::foreground_process_group(session.master.as_ref()),
             session.killer.as_mut(),
         )?;
     }
@@ -614,9 +614,7 @@ impl PtyState {
         ids.iter()
             .map(|&id| {
                 let pid = sessions.get(&id).and_then(|session| {
-                    session
-                        .master
-                        .process_group_leader()
+                    platform::foreground_process_group(session.master.as_ref())
                         .filter(|pid| *pid > 0)
                         .or_else(|| session.platform.identity().root_pid().map(|pid| pid as i32))
                 });

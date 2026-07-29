@@ -8,13 +8,13 @@ use std::path::{Path, PathBuf};
 
 #[cfg(target_os = "macos")]
 pub use macos::{
-    create_session, discover_agents, inspect_process, shell_launch, terminate_session, user_home,
-    PlatformSession,
+    create_session, discover_agents, foreground_process_group, inspect_process, shell_launch,
+    terminate_session, user_home, PlatformSession,
 };
 #[cfg(not(target_os = "macos"))]
 pub use unsupported::{
-    create_session, discover_agents, inspect_process, shell_launch, terminate_session, user_home,
-    PlatformSession,
+    create_session, discover_agents, foreground_process_group, inspect_process, shell_launch,
+    terminate_session, user_home, PlatformSession,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -112,6 +112,7 @@ mod tests {
     use super::{
         current_platform, validate_user_home, DesktopEnvironment, PlatformName, SessionIdentity,
     };
+    use portable_pty::MasterPty;
 
     #[test]
     fn reports_the_compile_target_platform() {
@@ -146,6 +147,13 @@ mod tests {
         let identity = SessionIdentity::new(Some(42));
 
         assert_eq!(identity.root_pid(), Some(42));
+    }
+
+    #[test]
+    fn exposes_foreground_process_group_through_the_platform_adapter() {
+        let adapter: fn(&dyn MasterPty) -> Option<i32> = super::foreground_process_group;
+
+        let _ = adapter;
     }
 
     #[test]

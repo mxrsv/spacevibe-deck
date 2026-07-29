@@ -1,6 +1,6 @@
 use super::{path_to_string, validate_user_home, ProcessInspection, SessionIdentity, ShellLaunch};
 use crate::agents::{parse_command_v_output, AgentInfo, AGENT_ALLOWLIST, DETECT_TIMEOUT};
-use portable_pty::ChildKiller;
+use portable_pty::{ChildKiller, MasterPty};
 use std::path::PathBuf;
 use std::thread;
 
@@ -62,6 +62,10 @@ pub fn inspect_process(pid: i32) -> ProcessInspection {
         process: process_name(pid),
         complete: true,
     }
+}
+
+pub fn foreground_process_group(master: &dyn MasterPty) -> Option<i32> {
+    master.process_group_leader()
 }
 
 pub fn terminate_session(
