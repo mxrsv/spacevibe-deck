@@ -18,6 +18,11 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
       - name: Install dependencies
         run: npm ci
 
@@ -29,11 +34,6 @@ jobs:
 
       - name: Build frontend
         run: npm run build
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -70,6 +70,11 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
       - name: Install dependencies
         run: npm ci
 
@@ -81,11 +86,6 @@ jobs:
 
       - name: Build frontend
         run: npm run build
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2

@@ -11,6 +11,6 @@ export function generatedTextMatches(
   return normalizeLineEndings(fresh) === normalizeLineEndings(committed);
 }
 
-export function rustfmtArguments(path: string): string[] {
-  return ["--edition", RUST_EDITION, path];
+export function rustfmtArguments(...paths: string[]): string[] {
+  return ["--edition", RUST_EDITION, ...paths];
 }

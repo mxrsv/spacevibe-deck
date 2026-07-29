@@ -18,10 +18,13 @@ describe("generatedTextMatches", () => {
   });
 
   it("formats generated Rust with the crate edition", () => {
-    expect(rustfmtArguments("menu_registry.rs")).toEqual([
+    expect(
+      rustfmtArguments("fresh-menu_registry.rs", "committed-menu_registry.rs"),
+    ).toEqual([
       "--edition",
       "2021",
-      "menu_registry.rs",
+      "fresh-menu_registry.rs",
+      "committed-menu_registry.rs",
     ]);
   });
 });

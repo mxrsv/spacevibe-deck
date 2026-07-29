@@ -143,9 +143,9 @@ const output = [
  * because of formatting — a real content change is the only thing that
  * should show up in `git diff`/the `--check` staleness guard below.
  */
-function formatInPlace(path: string): void {
+function formatInPlace(...paths: string[]): void {
   try {
-    execFileSync("rustfmt", rustfmtArguments(path), { stdio: "inherit" });
+    execFileSync("rustfmt", rustfmtArguments(...paths), { stdio: "inherit" });
   } catch (err) {
     console.warn(
       "generate-menu: rustfmt not found or failed — the file was written " +
@@ -167,11 +167,16 @@ if (process.argv.includes("--check")) {
   // build straight from the already-committed file, exactly as before.
   const scratchDir = mkdtempSync(join(tmpdir(), "generate-menu-check-"));
   const scratchPath = join(scratchDir, "menu_registry.rs");
+  const committedScratchPath = join(
+    scratchDir,
+    "committed_menu_registry.rs",
+  );
   try {
     writeFileSync(scratchPath, output);
-    formatInPlace(scratchPath);
+    writeFileSync(committedScratchPath, readFileSync(outPath, "utf8"));
+    formatInPlace(scratchPath, committedScratchPath);
     const fresh = readFileSync(scratchPath, "utf8");
-    const committed = readFileSync(outPath, "utf8");
+    const committed = readFileSync(committedScratchPath, "utf8");
     if (!generatedTextMatches(fresh, committed)) {
       console.error(
         "generate-menu --check: src-tauri/src/menu_registry.rs is stale — " +
