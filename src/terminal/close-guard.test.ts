@@ -17,7 +17,19 @@ function info(
   process: string | null,
   cwd: string | null = null,
 ): PaneProcessInfo {
-  return { id, cwd, process };
+  const agent =
+    process === "claude" || process === "codex" || process === "gemini"
+      ? process
+      : null;
+  const kind =
+    agent !== null
+      ? "agent"
+      : process === null
+        ? "unknown"
+        : ["zsh", "bash", "fish", "sh", "dash", "nu", "pwsh"].includes(process)
+          ? "idle-shell"
+          : "busy";
+  return { id, cwd, process, kind, agent };
 }
 
 describe("isBusy", () => {

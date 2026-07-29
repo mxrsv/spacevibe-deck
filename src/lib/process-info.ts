@@ -1,8 +1,13 @@
+export type PaneProcessKind = "idle-shell" | "agent" | "busy" | "unknown";
+export type PaneAgent = "claude" | "codex" | "gemini";
+
 /** Mirror of the `PtyInfo` payload returned by the Rust `pty_info` command. */
 export interface PaneProcessInfo {
   readonly id: number;
   readonly cwd: string | null;
   readonly process: string | null;
+  readonly kind: PaneProcessKind;
+  readonly agent: PaneAgent | null;
 }
 
 /** Display-ready strings for a pane header bar. */
@@ -19,22 +24,40 @@ const AGENT_DOT_VARS: Readonly<Record<string, string>> = {
   gemini: "var(--cyan)",
 };
 
-function agentColor(process: string | null): string | undefined {
+function agentColor(agent: string | null): string | undefined {
   if (
-    process === null ||
-    !Object.prototype.hasOwnProperty.call(AGENT_DOT_VARS, process)
+    agent === null ||
+    !Object.prototype.hasOwnProperty.call(AGENT_DOT_VARS, agent)
   ) {
     return undefined;
   }
-  return AGENT_DOT_VARS[process];
+  return AGENT_DOT_VARS[agent];
 }
 
+/** Legacy process-name predicate retained until the process gates migrate. */
 export function isAgent(process: string | null): boolean {
   return agentColor(process) !== undefined;
 }
 
+/** Legacy tab-dot helper retained until tab summaries migrate. */
 export function dotColor(process: string | null): string {
   return agentColor(process) ?? "var(--text-faint)";
+}
+
+function isWindowsAbsolute(path: string): boolean {
+  return /^[a-z]:[\\/]/i.test(path) || path.startsWith("\\\\");
+}
+
+function trimHomeSeparator(home: string, windows: boolean): string {
+  if (home === "/" || (windows && /^[a-z]:[\\/]$/i.test(home))) {
+    return home;
+  }
+  const separator = windows ? /[\\/]$/ : /\/$/;
+  let end = home.length;
+  while (end > 1 && separator.test(home.slice(0, end))) {
+    end -= 1;
+  }
+  return home.slice(0, end);
 }
 
 /** Replace the home prefix with `~` for display. */
@@ -42,21 +65,51 @@ export function tildify(path: string, home: string): string {
   if (home === "") {
     return path;
   }
-  const root = home.endsWith("/") ? home.slice(0, -1) : home;
-  if (path === root) {
+  const windows = isWindowsAbsolute(path) && isWindowsAbsolute(home);
+  const root = trimHomeSeparator(home, windows);
+  const comparablePath = windows
+    ? path.replace(/\\/g, "/").toLowerCase()
+    : path;
+  const comparableRoot = windows
+    ? root.replace(/\\/g, "/").toLowerCase()
+    : root;
+  if (comparablePath === comparableRoot) {
     return "~";
   }
-  return path.startsWith(`${root}/`) ? `~${path.slice(root.length)}` : path;
+  const prefix = comparableRoot.endsWith("/")
+    ? comparableRoot
+    : `${comparableRoot}/`;
+  if (!comparablePath.startsWith(prefix)) {
+    return path;
+  }
+  const suffixStart = comparableRoot.endsWith("/")
+    ? root.length - 1
+    : root.length;
+  return `~${path.slice(suffixStart)}`;
+}
+
+function headerBadge(info: PaneProcessInfo): string {
+  switch (info.kind) {
+    case "agent":
+      return info.agent ?? "unknown";
+    case "idle-shell":
+      return "shell";
+    case "busy":
+      return info.process ?? "busy";
+    case "unknown":
+      return "unknown";
+  }
 }
 
 export function paneHeaderInfo(
   info: PaneProcessInfo,
   home: string,
 ): PaneHeaderInfo {
+  const agent = info.kind === "agent" ? info.agent : null;
   return {
-    dotColor: dotColor(info.process),
+    dotColor: agentColor(agent) ?? "var(--text-faint)",
     cwd: info.cwd === null ? "" : tildify(info.cwd, home),
-    badge: info.process ?? "shell",
-    agent: isAgent(info.process),
+    badge: headerBadge(info),
+    agent: agent !== null,
   };
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PaneProcessInfo } from "../lib/process-info";
 import { createMemoryPtyClient } from "./pty-client";
 
 describe("createMemoryPtyClient", () => {
@@ -36,5 +37,18 @@ describe("createMemoryPtyClient", () => {
     pty.emitPromptReady(1);
     expect(outputs).toHaveLength(1);
     expect(prompts).toHaveLength(1);
+  });
+
+  it("preserves explicit pane process truth", async () => {
+    const info: PaneProcessInfo = {
+      id: 4,
+      cwd: "C:\\work",
+      process: "node",
+      kind: "agent",
+      agent: "codex",
+    };
+    const pty = createMemoryPtyClient({ infos: new Map([[4, info]]) });
+
+    await expect(pty.ptyInfo([4])).resolves.toEqual([info]);
   });
 });
