@@ -14,6 +14,7 @@ import {
 } from "../appwin.js";
 import { BRAND, STAGE_ARIA_LABEL } from "../../../stage/brand.js";
 import { mountAurora } from "../aurora.js";
+import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
 import { mountStageStream, stagePanes } from "../product-stage.js";
 import {
   AGENTS,
@@ -367,9 +368,19 @@ function renderFinale(copy) {
           target="_blank"
           rel="noreferrer"
         >
-          <span data-copy="finaleDownload">${copy.finaleDownload}</span>
+          <span class="a-cta-lead">
+            ${renderAppleIcon()}
+            <span data-copy="downloadMac">${copy.downloadMac}</span>
+          </span>
           <span aria-hidden="true">↓</span>
         </a>
+        <button class="tour__cta" type="button" disabled>
+          <span class="a-cta-lead">
+            ${renderWindowsIcon()}
+            <span data-copy="downloadWin">${copy.downloadWin}</span>
+          </span>
+          <span class="a-cta-tag" data-copy="comingSoon">${copy.comingSoon}</span>
+        </button>
         <button class="tour__cta" type="button" data-open-demo>
           <span data-copy="primaryCta">${copy.primaryCta}</span>
         </button>
@@ -403,7 +414,7 @@ function renderFooter(copy) {
         </div>
         <nav class="site-footer__col" aria-label="${copy.footerColProduct}">
           <span class="site-footer__coltitle" data-copy="footerColProduct">${copy.footerColProduct}</span>
-          <a href="${REPO}/releases/latest" target="_blank" rel="noreferrer" data-copy="finaleDownload">${copy.finaleDownload}</a>
+          <a href="${REPO}/releases/latest" target="_blank" rel="noreferrer" data-copy="downloadMac">${copy.downloadMac}</a>
           <button type="button" class="site-footer__link" data-open-demo data-copy="primaryCta">${copy.primaryCta}</button>
         </nav>
         <nav class="site-footer__col" aria-label="${copy.footerColProject}">

@@ -55,6 +55,20 @@
   text-decoration: none;
 }
 
+/* The download CTA is an <a>, and the `color: inherit` above is (0,1,1) —
+   more specific than `.a-primary-cta`, so without this the label inherits
+   white ink and vanishes into the white button face. Declared here rather than
+   by raising `.a-primary-cta`'s own specificity: that rule also carries the
+   padding and font size, which the breakpoints below need to override. */
+.direction-a a.a-primary-cta {
+  color: var(--a-surface-0);
+}
+
+.direction-a a.a-primary-cta:hover,
+.direction-a a.a-primary-cta:focus-visible {
+  color: var(--a-ink);
+}
+
 .a-brand-mark {
   display: inline-flex;
   flex: 0 0 auto;
@@ -704,21 +718,113 @@
 /* Stacked, not side by side: the column they live in is a quarter of the frame
    wide, so a row would either wrap raggedly or force the frame open. */
 /* Stacked, not side by side: the column they live in is a quarter of the frame
-   wide, so a row would either wrap raggedly or force the frame open. The
-   primary stretches to the column — a content-width button in a rail this
-   narrow wraps its own label before the rail ever runs out. */
+   wide, so a row would either wrap raggedly or force the frame open. Everything
+   stretches to the column — a content-width button in a rail this narrow wraps
+   its own label before the rail ever runs out.
+
+   Exactly one white face in the stack, and it is the macOS download. The
+   Windows twin and the demo are the same box unfilled, so the column reads
+   top-down as: get it, it is coming, or look first. */
 .a-actions {
   position: relative;
   z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.9rem;
+  gap: 0.7rem;
   margin: clamp(1.5rem, 3vh, 2.1rem) 0 0;
 }
 
 .a-secondary-cta {
   align-self: flex-start;
+  margin-top: 0.35rem;
+}
+
+/* Icon + label, kept together so the trailing slot — the arrow, or the
+   coming-soon tag — stays pinned to the button's right edge. */
+.a-cta-lead {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+/* currentColor: the same mark has to sit on the white face and on the muted
+   twin without a second rule. */
+.a-os-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+}
+
+/* The unfilled twin of .a-primary-cta — identical box, no fill. */
+.a-quiet-cta {
+  position: relative;
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.82rem 1rem;
+  border: 1px solid var(--a-line-strong);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--a-ink);
+  cursor: pointer;
+  font: 720 0.7rem/1 var(--a-font-display);
+  letter-spacing: 0.02em;
+  text-align: left;
+  transition:
+    background 240ms var(--a-ease-lock),
+    border-color 240ms var(--a-ease-lock);
+}
+
+.a-quiet-cta:hover:not(:disabled),
+.a-quiet-cta:focus-visible:not(:disabled) {
+  background: rgb(255 255 255 / 6%);
+  border-color: rgb(255 255 255 / 42%);
+}
+
+.a-quiet-cta i {
+  font-size: 1rem;
+  font-style: normal;
+  transition: transform 280ms var(--a-ease-lock);
+}
+
+.a-quiet-cta:hover:not(:disabled) i {
+  transform: translate(0.2rem, -0.2rem);
+}
+
+.a-quiet-cta:focus-visible {
+  outline: 2px solid var(--a-accent);
+  outline-offset: 4px;
+}
+
+/* Windows is announced, not offered. Left visible and legible — hiding it says
+   nothing, and greying it to unreadable says the wrong thing — but not
+   pressable, so nobody clicks expecting a file. */
+.a-quiet-cta:disabled {
+  /* Wrapping is what protects the label. When the column is too narrow for
+     "Download for Windows" AND the tag on one line, flex moves the whole tag
+     to a second line and gives the label the full width back — without this
+     the label is the thing that shrinks, to two and then three lines. No-op
+     at widths where both fit. */
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
+  border-color: var(--a-line);
+  color: var(--a-ink-faint);
+  cursor: default;
+}
+
+.a-cta-tag {
+  flex-shrink: 0;
+  padding: 0.22rem 0.42rem;
+  border: 1px solid var(--a-line);
+  border-radius: 2px;
+  color: var(--a-ink-faint);
+  font: 500 0.53rem/1 var(--a-font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .a-primary-cta {
@@ -778,9 +884,11 @@
   transform: translateX(0) skewX(0);
 }
 
+/* Down, not up-right: this button is a download now, and the arrow it carries
+   is ↓. The quiet twins keep the up-right nudge for their ↗. */
 .a-primary-cta:hover i,
 .a-primary-cta:focus-visible i {
-  transform: translate(0.2rem, -0.2rem);
+  transform: translateY(0.2rem);
 }
 
 .a-primary-cta:focus-visible {
@@ -875,9 +983,17 @@ html[data-direction-treatment="a"] .demo-dialog video {
 
 @media (max-width: 70rem) {
   /* A quarter of the frame stops being a usable text column here, so the deck
-     drops to a fixed lede rail with the stage taking whatever is left. */
+     drops to a fixed lede rail with the stage taking whatever is left. 17rem,
+     not less: below that "Download for Windows" cannot hold one line. */
   .a-deck {
-    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+  }
+
+  .a-primary-cta,
+  .a-quiet-cta {
+    gap: 0.6rem;
+    padding-inline: 0.85rem;
+    font-size: 0.64rem;
   }
 
   .a-band h1 {
@@ -1003,18 +1119,17 @@ html[data-direction-treatment="a"] .demo-dialog video {
     font-size: 7px;
   }
 
+  /* Still one per row — four full-width buttons beat a 2×2 grid where the two
+     download labels would each wrap onto a second line. */
   .a-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
     align-self: stretch;
-    gap: 0.75rem;
-    justify-items: stretch;
+    gap: 0.6rem;
     min-width: 0;
     margin-top: 1.75rem;
   }
 
-  .a-primary-cta {
+  .a-primary-cta,
+  .a-quiet-cta {
     width: 100%;
     min-height: 2.85rem;
     gap: 0.75rem;
@@ -1022,8 +1137,11 @@ html[data-direction-treatment="a"] .demo-dialog video {
     font-size: 0.61rem;
   }
 
+  .a-cta-tag {
+    font-size: 0.48rem;
+  }
+
   .a-secondary-cta {
-    align-self: center;
     font-size: 0.58rem;
   }
 
@@ -1045,6 +1163,8 @@ html[data-direction-treatment="a"] .demo-dialog video {
   .a-primary-cta,
   .a-primary-cta::before,
   .a-primary-cta i,
+  .a-quiet-cta,
+  .a-quiet-cta i,
   .a-secondary-cta::after,
   .a-topbar__github::after {
     transition: none;

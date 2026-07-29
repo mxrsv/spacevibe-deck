@@ -17,9 +17,13 @@
   --t-surface-2: #151915;
   --t-morph: 620ms cubic-bezier(0.22, 0.78, 0.18, 1);
   /* The shared .a-appwin chrome reads these; alias them to the shared
-     tokens (tokens.css :root) so hero + tour render identically. */
+     tokens (tokens.css :root) so hero + tour render identically. The two ink
+     vars are read by `.a-cta-tag`, the coming-soon chip the closing band
+     borrows from the hero's action column. */
   --a-font-display: var(--font-display);
   --a-font-mono: var(--font-mono);
+  --a-line: var(--t-line);
+  --a-ink-faint: var(--t-ink-faint);
   position: relative;
   /* The ::after bloom band scales past the section edges (tour-enddrift);
      clip it here or it widens/lengthens the document's scrollable overflow.
@@ -739,6 +743,19 @@
 
 .tour__cta:hover {
   border-color: rgb(255 255 255 / 60%);
+}
+
+/* Windows is announced here, not offered — same pill as the others, unfilled,
+   with the hover sweep switched off so nothing invites a press. Mirrors
+   `.a-quiet-cta:disabled` in the hero's action column. */
+.tour__cta:disabled {
+  border-color: var(--t-line);
+  color: var(--t-ink-faint);
+  cursor: default;
+}
+
+.tour__cta:disabled::before {
+  display: none;
 }
 
 .tour__cta--primary {

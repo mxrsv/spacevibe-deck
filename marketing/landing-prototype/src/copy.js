@@ -21,6 +21,9 @@ export const messages = {
     tourCh3Body:
       "Focus Expand (⌘E) grows the active pane to 65% while every other agent stays in sight.",
     finaleLabel: "// what you keep",
+    downloadMac: "Download for macOS",
+    downloadWin: "Download for Windows",
+    comingSoon: "coming soon",
     finaleTitle: "Your shell, intact.",
     proofPtyTitle: "Real PTY, real shell",
     proofPtyBody:
@@ -36,7 +39,6 @@ export const messages = {
     scExpand: "focus expand",
     scFind: "find",
     scClear: "clear",
-    finaleDownload: "Download for macOS",
     footerTagline:
       "A native macOS terminal for running AI agent CLIs side by side.",
     footerColProduct: "Product",
@@ -68,6 +70,9 @@ export const messages = {
     tourCh3Body:
       "Focus Expand (⌘E) nới pane đang focus lên 65%, các agent còn lại vẫn trong tầm mắt.",
     finaleLabel: "// những thứ bạn giữ nguyên",
+    downloadMac: "Tải cho macOS",
+    downloadWin: "Tải cho Windows",
+    comingSoon: "sắp có",
     finaleTitle: "Shell của bạn, nguyên vẹn.",
     proofPtyTitle: "PTY thật, shell thật",
     proofPtyBody:
@@ -83,7 +88,6 @@ export const messages = {
     scExpand: "focus expand",
     scFind: "tìm kiếm",
     scClear: "xoá buffer",
-    finaleDownload: "Tải cho macOS",
     footerTagline:
       "Terminal macOS native để chạy song song nhiều AI agent CLI.",
     footerColProduct: "Sản phẩm",

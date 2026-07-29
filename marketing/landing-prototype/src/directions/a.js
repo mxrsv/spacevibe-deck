@@ -5,6 +5,7 @@ import {
   renderStageStatus,
   renderStageTitlebar,
 } from "../appwin.js";
+import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
 import {
   STAGE_ARIA_LABEL,
   mountStageStream,
@@ -12,10 +13,12 @@ import {
 } from "../product-stage.js";
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
+const REPO_URL = "https://github.com/mxrsv/spacevibe-deck";
+const RELEASES_URL = `${REPO_URL}/releases/latest`;
 
 // Hero beams field. White key light on purpose: the hero runs a neutral
-// grey-white light language, and the violet accent is spent on exactly one
-// thing — the primary CTA. See beams.js for what each knob does.
+// grey-white light language, and the one white face in the column is the
+// macOS download. See beams.js for what each knob does.
 //
 // rotation 14 is not arbitrary — it is the same 14° off-vertical the hub
 // landing tilts its light sweep to. Straight columns read as blinds behind
@@ -82,7 +85,7 @@ export function renderDirectionA(copy, locale) {
             </div>
             <a
               class="a-topbar__github"
-              href="https://github.com/mxrsv/spacevibe-deck"
+              href="${REPO_URL}"
               target="_blank"
               rel="noreferrer"
             >
@@ -105,13 +108,37 @@ export function renderDirectionA(copy, locale) {
               <p class="a-subhead" data-copy="subhead">${copy.subhead}</p>
 
               <div class="a-actions">
-                <button class="a-primary-cta" type="button" data-open-demo>
-                  <span data-copy="primaryCta">${copy.primaryCta}</span>
+                <a
+                  class="a-primary-cta"
+                  href="${RELEASES_URL}"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span class="a-cta-lead">
+                    ${renderAppleIcon()}
+                    <span data-copy="downloadMac">${copy.downloadMac}</span>
+                  </span>
+                  <i aria-hidden="true">↓</i>
+                </a>
+
+                <button class="a-quiet-cta" type="button" disabled>
+                  <span class="a-cta-lead">
+                    ${renderWindowsIcon()}
+                    <span data-copy="downloadWin">${copy.downloadWin}</span>
+                  </span>
+                  <span class="a-cta-tag" data-copy="comingSoon">${copy.comingSoon}</span>
+                </button>
+
+                <button class="a-quiet-cta" type="button" data-open-demo>
+                  <span class="a-cta-lead">
+                    <span data-copy="primaryCta">${copy.primaryCta}</span>
+                  </span>
                   <i aria-hidden="true">↗</i>
                 </button>
+
                 <a
                   class="a-secondary-cta"
-                  href="https://github.com/mxrsv/spacevibe-deck"
+                  href="${REPO_URL}"
                   target="_blank"
                   rel="noreferrer"
                 >
