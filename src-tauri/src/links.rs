@@ -76,10 +76,28 @@ pub async fn resolve_paths(cwd: String, paths: Vec<String>) -> Vec<Option<String
         .collect()
 }
 
-/// Run the user's editor command through their LOGIN shell. A macOS GUI process
-/// inherits a stripped `PATH`, so `code` / `cursor` / `zed` are only reachable
-/// via `$SHELL -lc` (the same trick as `detect_agents`). The command is built
-/// frontend-side from the configured template with the path already escaped.
+fn editor_shell(command: &str) -> (String, Vec<String>) {
+    #[cfg(target_os = "windows")]
+    {
+        let shell = std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string());
+        return (
+            shell,
+            vec!["/D".into(), "/S".into(), "/C".into(), command.into()],
+        );
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+        (shell, vec!["-lc".into(), command.into()])
+    }
+}
+
+/// Run the user's editor command through the platform shell. A macOS GUI
+/// process inherits a stripped `PATH`, so `code` / `cursor` / `zed` are only
+/// reachable via `$SHELL -lc` (the same trick as `detect_agents`). Windows uses
+/// `cmd.exe` only for this legacy command-string contract; structured editor
+/// argv replaces it in the Windows editor slice.
 ///
 /// The child is polled rather than waited on: `Command::output()` blocks its
 /// thread until the process exits, so an editor that does not fork (`vim`, a
@@ -92,9 +110,9 @@ pub async fn open_editor(command: String) -> Result<(), String> {
     if command.trim().is_empty() {
         return Err("No editor command is configured.".to_string());
     }
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+    let (shell, args) = editor_shell(&command);
     let mut child = std::process::Command::new(&shell)
-        .args(["-lc", &command])
+        .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         // Kept so a failing command ("command not found") can be reported.
@@ -147,7 +165,7 @@ mod tests {
     fn resolves_a_relative_path_against_the_cwd() {
         let dir = fixture_dir();
         let resolved = resolve_one(Some(&dir), "", "src/foo.ts").unwrap();
-        assert!(resolved.ends_with("/src/foo.ts"));
+        assert!(PathBuf::from(resolved).ends_with(Path::new("src").join("foo.ts")));
     }
 
     #[test]
@@ -226,8 +244,12 @@ mod tests {
 
     #[test]
     fn open_editor_reports_a_failing_command_with_its_stderr() {
-        let result =
-            tauri::async_runtime::block_on(open_editor("echo 'no such editor' >&2; exit 3".into()));
+        #[cfg(target_os = "windows")]
+        let command = "echo no such editor 1>&2 & exit 3";
+        #[cfg(not(target_os = "windows"))]
+        let command = "echo 'no such editor' >&2; exit 3";
+
+        let result = tauri::async_runtime::block_on(open_editor(command.into()));
         let message = result.expect_err("a non-zero exit must surface as an error");
         assert!(
             message.contains("no such editor"),
@@ -237,6 +259,11 @@ mod tests {
 
     #[test]
     fn open_editor_succeeds_for_a_command_that_exits_cleanly() {
-        assert!(tauri::async_runtime::block_on(open_editor("true".into())).is_ok());
+        #[cfg(target_os = "windows")]
+        let command = "exit 0";
+        #[cfg(not(target_os = "windows"))]
+        let command = "true";
+
+        assert!(tauri::async_runtime::block_on(open_editor(command.into())).is_ok());
     }
 }
