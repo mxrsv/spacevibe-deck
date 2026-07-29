@@ -1,4 +1,4 @@
-pub(super) fn split_windows_command_line(command_line: &str) -> Vec<String> {
+pub(crate) fn parse_windows_command_line(command_line: &str) -> Result<Vec<String>, String> {
     let chars: Vec<char> = command_line.chars().collect();
     let mut args = Vec::new();
     let mut cursor = 0;
@@ -49,15 +49,22 @@ pub(super) fn split_windows_command_line(command_line: &str) -> Vec<String> {
                 }
             }
         }
+        if quoted {
+            return Err("The custom editor command has an unterminated quote.".into());
+        }
         args.push(arg);
     }
 
-    args
+    Ok(args)
+}
+
+pub(super) fn split_windows_command_line(command_line: &str) -> Vec<String> {
+    parse_windows_command_line(command_line).unwrap_or_default()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::split_windows_command_line;
+    use super::{parse_windows_command_line, split_windows_command_line};
 
     #[test]
     fn parses_quoted_windows_arguments() {
@@ -87,5 +94,10 @@ mod tests {
             split_windows_command_line(r#"pwsh.exe -Command "" tail"#),
             vec!["pwsh.exe", "-Command", "", "tail"]
         );
+    }
+
+    #[test]
+    fn checked_parser_rejects_an_unterminated_quote() {
+        assert!(parse_windows_command_line(r#""C:\Program Files\editor.exe"#).is_err());
     }
 }

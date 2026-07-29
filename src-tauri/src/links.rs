@@ -1,4 +1,7 @@
 use crate::platform;
+#[cfg(any(target_os = "windows", test))]
+use crate::platform::windows::command_line::parse_windows_command_line;
+use serde::Deserialize;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -8,6 +11,7 @@ use std::time::{Duration, Instant};
 /// candidates per line, this just keeps a hostile/garbled line cheap.
 const MAX_PATHS: usize = 64;
 const MAX_PATH_BYTES: usize = 32_768;
+const MAX_EDITOR_TEMPLATE_BYTES: usize = 4_096;
 
 /// A GUI editor returns immediately; anything still running past this has
 /// launched (or the login shell is hanging) — either way, stop waiting.
@@ -116,46 +120,258 @@ pub async fn resolve_paths(cwd: String, paths: Vec<String>) -> Vec<Option<String
         .collect()
 }
 
-fn editor_shell(command: &str) -> (String, Vec<String>) {
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenEditorRequest {
+    editor: String,
+    template: String,
+    file: String,
+    line: i64,
+    column: i64,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum EditorId {
+    Vscode,
+    Cursor,
+    Zed,
+    Custom,
+}
+
+impl EditorId {
+    fn parse(raw: &str) -> Result<Self, String> {
+        match raw {
+            "vscode" => Ok(Self::Vscode),
+            "cursor" => Ok(Self::Cursor),
+            "zed" => Ok(Self::Zed),
+            "custom" => Ok(Self::Custom),
+            _ => Err("The selected editor is not supported.".into()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ValidatedOpenEditorRequest {
+    editor: EditorId,
+    template: String,
+    file: String,
+    line: u32,
+    column: u32,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct EditorProgram {
+    executable: String,
+    args: Vec<String>,
+}
+
+fn paths_match(requested: &str, canonical: &str) -> bool {
     #[cfg(target_os = "windows")]
     {
-        let shell = std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string());
-        return (
-            shell,
-            vec!["/D".into(), "/S".into(), "/C".into(), command.into()],
-        );
+        return requested.replace('/', "\\").eq_ignore_ascii_case(canonical);
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
-        (shell, vec!["-lc".into(), command.into()])
+        requested == canonical
     }
 }
 
-/// Run the user's editor command through the platform shell. A macOS GUI
-/// process inherits a stripped `PATH`, so `code` / `cursor` / `zed` are only
-/// reachable via `$SHELL -lc` (the same trick as `detect_agents`). Windows uses
-/// `cmd.exe` only for this legacy command-string contract; structured editor
-/// argv replaces it in the Windows editor slice.
-///
-/// The child is polled rather than waited on: `Command::output()` blocks its
-/// thread until the process exits, so an editor that does not fork (`vim`, a
-/// wrapper script that waits) would park a blocking thread for the life of the
-/// app — one more on every ⌘+click — and the surrounding timeout could not
-/// reclaim it. Polling lets the timeout return while the child keeps running on
-/// its own.
-#[tauri::command]
-pub async fn open_editor(command: String) -> Result<(), String> {
-    if command.trim().is_empty() {
-        return Err("No editor command is configured.".to_string());
+fn positive_editor_position(value: i64, label: &str) -> Result<u32, String> {
+    u32::try_from(value)
+        .ok()
+        .filter(|position| *position > 0)
+        .ok_or_else(|| format!("The editor {label} must be a positive number."))
+}
+
+fn validate_open_editor_request(
+    request: OpenEditorRequest,
+) -> Result<ValidatedOpenEditorRequest, String> {
+    let editor = EditorId::parse(&request.editor)?;
+    if request.template.len() > MAX_EDITOR_TEMPLATE_BYTES || request.template.contains('\0') {
+        return Err("The custom editor command is invalid or too long.".into());
     }
-    let (shell, args) = editor_shell(&command);
-    let mut child = std::process::Command::new(&shell)
-        .args(args)
+    if request.file.len() > MAX_PATH_BYTES || request.file.contains('\0') {
+        return Err("The editor file path is invalid or too long.".into());
+    }
+    let template = request.template.trim();
+    if editor == EditorId::Custom && template.is_empty() {
+        return Err("No custom editor command is configured.".into());
+    }
+    let executable_token = template.split_whitespace().next().unwrap_or_default();
+    if editor == EditorId::Custom
+        && ["{file}", "{line}", "{col}"]
+            .iter()
+            .any(|placeholder| executable_token.contains(placeholder))
+    {
+        return Err("The custom editor executable must be a fixed command.".into());
+    }
+    let line = positive_editor_position(request.line, "line")?;
+    let column = positive_editor_position(request.column, "column")?;
+    if strip_prefix_ascii_case(&request.file, "\\\\?\\").is_some() {
+        return Err("The editor file path must not use a verbatim prefix.".into());
+    }
+    let file = PathBuf::from(&request.file);
+    if !(file.is_absolute() || is_windows_absolute(&request.file)) {
+        return Err("The editor file path must be absolute.".into());
+    }
+    let canonical = std::fs::canonicalize(&file)
+        .map_err(|_| "The editor file does not exist or cannot be read.".to_string())?;
+    if !canonical.is_file() {
+        return Err("The editor target must be a file.".into());
+    }
+    let canonical = normalize_canonical_path(&canonical.to_string_lossy());
+    if !paths_match(&request.file, &canonical) {
+        return Err("The editor file path is not canonical.".into());
+    }
+    Ok(ValidatedOpenEditorRequest {
+        editor,
+        template: template.to_string(),
+        file: canonical,
+        line,
+        column,
+    })
+}
+
+fn fixed_editor_program(request: &ValidatedOpenEditorRequest) -> Result<EditorProgram, String> {
+    let location = format!("{}:{}:{}", request.file, request.line, request.column);
+    match request.editor {
+        EditorId::Vscode => Ok(EditorProgram {
+            executable: "code".into(),
+            args: vec!["-g".into(), location],
+        }),
+        EditorId::Cursor => Ok(EditorProgram {
+            executable: "cursor".into(),
+            args: vec!["-g".into(), location],
+        }),
+        EditorId::Zed => Ok(EditorProgram {
+            executable: "zed".into(),
+            args: vec![location],
+        }),
+        EditorId::Custom => Err("A custom editor needs a command template.".into()),
+    }
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn substitute_editor_placeholders(argument: &str, request: &ValidatedOpenEditorRequest) -> String {
+    argument
+        .replace("{line}", &request.line.to_string())
+        .replace("{col}", &request.column.to_string())
+        .replace("{file}", &request.file)
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn rejects_shell_syntax(template: &str) -> bool {
+    template.chars().any(|character| {
+        matches!(
+            character,
+            '|' | '&' | ';' | '<' | '>' | '%' | '$' | '!' | '`' | '^' | '\r' | '\n'
+        )
+    })
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn windows_editor_program(request: &ValidatedOpenEditorRequest) -> Result<EditorProgram, String> {
+    if request.editor != EditorId::Custom {
+        return fixed_editor_program(request);
+    }
+    if request.template.is_empty() {
+        return Err("No custom editor command is configured.".into());
+    }
+    if rejects_shell_syntax(&request.template) {
+        return Err(
+            "Custom editor commands cannot use shell operators or variables on Windows.".into(),
+        );
+    }
+    let parsed = parse_windows_command_line(&request.template)?;
+    let (executable, arguments) = parsed
+        .split_first()
+        .ok_or_else(|| "No custom editor executable is configured.".to_string())?;
+    if executable.trim().is_empty()
+        || ["{file}", "{line}", "{col}"]
+            .iter()
+            .any(|placeholder| executable.contains(placeholder))
+    {
+        return Err("The custom editor executable must be a fixed command.".into());
+    }
+    let has_file = arguments.iter().any(|argument| argument.contains("{file}"));
+    let argument_templates: Vec<&str> = if has_file {
+        arguments.iter().map(String::as_str).collect()
+    } else {
+        arguments
+            .iter()
+            .map(String::as_str)
+            .chain(std::iter::once("{file}"))
+            .collect()
+    };
+    Ok(EditorProgram {
+        executable: executable.clone(),
+        args: argument_templates
+            .into_iter()
+            .map(|argument| substitute_editor_placeholders(argument, request))
+            .collect(),
+    })
+}
+
+fn posix_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', r"'\''"))
+}
+
+fn posix_editor_command(request: &ValidatedOpenEditorRequest) -> Result<String, String> {
+    if request.editor != EditorId::Custom {
+        let program = fixed_editor_program(request)?;
+        return Ok(std::iter::once(program.executable)
+            .chain(program.args)
+            .map(|argument| posix_quote(&argument))
+            .collect::<Vec<_>>()
+            .join(" "));
+    }
+    if request.template.is_empty() {
+        return Err("No custom editor command is configured.".into());
+    }
+    let template = if request.template.contains("{file}") {
+        request.template.clone()
+    } else {
+        format!("{} {{file}}", request.template)
+    };
+    Ok(template
+        .replace("{line}", &request.line.to_string())
+        .replace("{col}", &request.column.to_string())
+        .replace("{file}", &posix_quote(&request.file)))
+}
+
+fn prepare_editor_program(request: &ValidatedOpenEditorRequest) -> Result<EditorProgram, String> {
+    #[cfg(target_os = "windows")]
+    {
+        return windows_editor_program(request);
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let command = posix_editor_command(request)?;
+        let launch = platform::shell_launch()?;
+        return Ok(EditorProgram {
+            executable: launch.executable,
+            args: launch
+                .args
+                .into_iter()
+                .chain(["-c".into(), command])
+                .collect(),
+        });
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = request;
+        Err("Opening an editor is unavailable on this platform.".into())
+    }
+}
+
+async fn run_editor_program(program: EditorProgram) -> Result<(), String> {
+    let mut child = std::process::Command::new(&program.executable)
+        .args(program.args)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        // Kept so a failing command ("command not found") can be reported.
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|err| format!("Couldn't start the editor: {err}"))?;
@@ -166,8 +382,6 @@ pub async fn open_editor(command: String) -> Result<(), String> {
             Ok(Some(status)) => break status,
             Ok(None) => {
                 if Instant::now() >= deadline {
-                    // A GUI editor returns at once; anything still alive here
-                    // has launched and owns its own lifetime from now on.
                     return Ok(());
                 }
                 tokio::time::sleep(EDITOR_POLL).await;
@@ -188,6 +402,16 @@ pub async fn open_editor(command: String) -> Result<(), String> {
     } else {
         stderr
     })
+}
+
+/// Validate structured editor intent, then launch through the platform adapter.
+/// Windows executes fixed argv directly; macOS keeps its login-shell PATH
+/// discovery without letting terminal text choose the executable.
+#[tauri::command]
+pub async fn open_editor(request: OpenEditorRequest) -> Result<(), String> {
+    let validated = validate_open_editor_request(request)?;
+    let program = prepare_editor_program(&validated)?;
+    run_editor_program(program).await
 }
 
 #[cfg(test)]
@@ -380,33 +604,194 @@ mod tests {
         assert_eq!(resolve_one(None, None, r"src\foo.ts"), None);
     }
 
-    #[test]
-    fn open_editor_rejects_an_empty_command() {
-        assert!(tauri::async_runtime::block_on(open_editor("  ".into())).is_err());
+    fn validated_request(
+        editor: EditorId,
+        template: &str,
+        file: &str,
+    ) -> ValidatedOpenEditorRequest {
+        ValidatedOpenEditorRequest {
+            editor,
+            template: template.into(),
+            file: file.into(),
+            line: 12,
+            column: 4,
+        }
     }
 
     #[test]
-    fn open_editor_reports_a_failing_command_with_its_stderr() {
-        #[cfg(target_os = "windows")]
-        let command = "echo no such editor 1>&2 & exit 3";
-        #[cfg(not(target_os = "windows"))]
-        let command = "echo 'no such editor' >&2; exit 3";
+    fn fixed_editors_have_non_shell_argv() {
+        let vscode =
+            fixed_editor_program(&validated_request(EditorId::Vscode, "", r"C:\work\a b.ts"))
+                .unwrap();
+        assert_eq!(
+            vscode,
+            EditorProgram {
+                executable: "code".into(),
+                args: vec!["-g".into(), r"C:\work\a b.ts:12:4".into()],
+            }
+        );
 
-        let result = tauri::async_runtime::block_on(open_editor(command.into()));
-        let message = result.expect_err("a non-zero exit must surface as an error");
-        assert!(
-            message.contains("no such editor"),
-            "stderr should reach the user, got: {message}"
+        let cursor = fixed_editor_program(&validated_request(
+            EditorId::Cursor,
+            "",
+            r"\\server\share\日本語.ts",
+        ))
+        .unwrap();
+        assert_eq!(cursor.executable, "cursor");
+        assert_eq!(cursor.args, vec!["-g", r"\\server\share\日本語.ts:12:4"]);
+
+        let zed =
+            fixed_editor_program(&validated_request(EditorId::Zed, "", "/work/a b.ts")).unwrap();
+        assert_eq!(zed.executable, "zed");
+        assert_eq!(zed.args, vec!["/work/a b.ts:12:4"]);
+    }
+
+    #[test]
+    fn custom_windows_template_substitutes_after_argv_parsing() {
+        let request = validated_request(
+            EditorId::Custom,
+            r#""C:\Program Files\Editor\editor.exe" --goto "{file}:{line}:{col}""#,
+            r"\\server\share\a b-日本語.ts",
+        );
+
+        assert_eq!(
+            windows_editor_program(&request).unwrap(),
+            EditorProgram {
+                executable: r"C:\Program Files\Editor\editor.exe".into(),
+                args: vec!["--goto".into(), r"\\server\share\a b-日本語.ts:12:4".into()],
+            }
         );
     }
 
     #[test]
-    fn open_editor_succeeds_for_a_command_that_exits_cleanly() {
-        #[cfg(target_os = "windows")]
-        let command = "exit 0";
-        #[cfg(not(target_os = "windows"))]
-        let command = "true";
+    fn custom_template_without_a_file_placeholder_appends_the_file() {
+        let request = validated_request(EditorId::Custom, "editor.exe --wait", r"C:\work\a b.ts");
 
-        assert!(tauri::async_runtime::block_on(open_editor(command.into())).is_ok());
+        assert_eq!(
+            windows_editor_program(&request).unwrap(),
+            EditorProgram {
+                executable: "editor.exe".into(),
+                args: vec!["--wait".into(), r"C:\work\a b.ts".into()],
+            }
+        );
+    }
+
+    #[test]
+    fn file_text_is_never_reparsed_as_a_placeholder() {
+        let request = validated_request(
+            EditorId::Custom,
+            "editor.exe {file}:{line}:{col}",
+            r"C:\work\literal-{line}-{col}.ts",
+        );
+
+        assert_eq!(
+            windows_editor_program(&request).unwrap().args,
+            vec![r"C:\work\literal-{line}-{col}.ts:12:4"]
+        );
+    }
+
+    #[test]
+    fn custom_template_rejects_shell_operators_and_variable_expansion() {
+        for template in [
+            "editor.exe {file} | more",
+            "editor.exe {file} > out.txt",
+            "editor.exe {file} && calc.exe",
+            "editor.exe {file}; calc.exe",
+            "editor.exe %TEMP%\\{file}",
+            "editor.exe $env:TEMP\\{file}",
+            "editor.exe !TEMP!\\{file}",
+            "editor.exe `whoami` {file}",
+        ] {
+            let request = validated_request(EditorId::Custom, template, r"C:\work\a.ts");
+            assert!(
+                windows_editor_program(&request).is_err(),
+                "template should be rejected: {template}"
+            );
+        }
+    }
+
+    #[test]
+    fn custom_template_rejects_empty_unbalanced_or_file_derived_executables() {
+        for template in ["", r#"""#, "{file} --wait"] {
+            let request = validated_request(EditorId::Custom, template, r"C:\work\a.ts");
+            assert!(
+                windows_editor_program(&request).is_err(),
+                "template should be rejected: {template}"
+            );
+        }
+    }
+
+    #[test]
+    fn validates_editor_id_template_location_and_canonical_file_independently() {
+        let file = fixture_dir().join("src").join("foo.ts");
+        let canonical = std::fs::canonicalize(file).unwrap();
+        let valid = OpenEditorRequest {
+            editor: "vscode".into(),
+            template: String::new(),
+            file: normalize_canonical_path(&canonical.to_string_lossy()),
+            line: 3,
+            column: 2,
+        };
+        assert!(validate_open_editor_request(valid.clone()).is_ok());
+
+        let invalid_editor = OpenEditorRequest {
+            editor: "terminal-output".into(),
+            ..valid.clone()
+        };
+        assert!(validate_open_editor_request(invalid_editor).is_err());
+
+        let invalid_template = OpenEditorRequest {
+            template: "x".repeat(MAX_EDITOR_TEMPLATE_BYTES + 1),
+            ..valid.clone()
+        };
+        assert!(validate_open_editor_request(invalid_template).is_err());
+
+        let empty_custom = OpenEditorRequest {
+            editor: "custom".into(),
+            template: "  ".into(),
+            ..valid.clone()
+        };
+        assert!(validate_open_editor_request(empty_custom).is_err());
+
+        let invalid_location = OpenEditorRequest {
+            line: 0,
+            ..valid.clone()
+        };
+        assert!(validate_open_editor_request(invalid_location).is_err());
+
+        let invalid_path = OpenEditorRequest {
+            file: "relative/file.ts".into(),
+            ..valid
+        };
+        assert!(validate_open_editor_request(invalid_path).is_err());
+    }
+
+    #[test]
+    fn posix_adapter_quotes_terminal_paths_before_login_shell_launch() {
+        let request = validated_request(
+            EditorId::Custom,
+            "editor --goto {file}:{line}:{col}",
+            "/work/it's a file.ts",
+        );
+        assert_eq!(
+            posix_editor_command(&request).unwrap(),
+            r#"editor --goto '/work/it'\''s a file.ts':12:4"#
+        );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_direct_launch_reports_success_and_failure() {
+        let success = EditorProgram {
+            executable: "where.exe".into(),
+            args: vec!["cmd.exe".into()],
+        };
+        assert!(tauri::async_runtime::block_on(run_editor_program(success)).is_ok());
+
+        let missing = EditorProgram {
+            executable: "deck-editor-that-does-not-exist.exe".into(),
+            args: Vec::new(),
+        };
+        assert!(tauri::async_runtime::block_on(run_editor_program(missing)).is_err());
     }
 }
