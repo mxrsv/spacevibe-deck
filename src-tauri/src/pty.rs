@@ -43,6 +43,14 @@ struct Session {
     cwd: Option<PathBuf>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PtySessionSnapshot {
+    pub id: u32,
+    pub identity: Option<platform::SessionIdentity>,
+    pub cwd: Option<String>,
+    pub foreground_pid: Option<i32>,
+}
+
 #[derive(Default)]
 pub struct PtyState {
     sessions: Mutex<HashMap<u32, Session>>,
@@ -657,21 +665,45 @@ mod tests {
 }
 
 impl PtyState {
-    /// Foreground process id per session: the PTY's foreground process
-    /// group leader, falling back to the spawned child pid.
-    pub fn foreground_pids(&self, ids: &[u32]) -> Vec<(u32, Option<i32>)> {
+    /// Immutable process facts for polling. Platform handles and mutable PTY
+    /// state remain owned by the session map.
+    pub fn session_snapshots(&self, ids: &[u32]) -> Vec<PtySessionSnapshot> {
         let sessions = match self.sessions.lock() {
             Ok(sessions) => sessions,
-            Err(_) => return ids.iter().map(|&id| (id, None)).collect(),
+            Err(_) => {
+                return ids
+                    .iter()
+                    .map(|&id| PtySessionSnapshot {
+                        id,
+                        identity: None,
+                        cwd: None,
+                        foreground_pid: None,
+                    })
+                    .collect()
+            }
         };
         ids.iter()
             .map(|&id| {
-                let pid = sessions.get(&id).and_then(|session| {
-                    platform::foreground_process_group(session.master.as_ref())
+                let Some(session) = sessions.get(&id) else {
+                    return PtySessionSnapshot {
+                        id,
+                        identity: None,
+                        cwd: None,
+                        foreground_pid: None,
+                    };
+                };
+                let identity = session.platform.identity();
+                PtySessionSnapshot {
+                    id,
+                    identity: Some(identity),
+                    cwd: session
+                        .cwd
+                        .as_ref()
+                        .map(|cwd| cwd.to_string_lossy().into_owned()),
+                    foreground_pid: platform::foreground_process_group(session.master.as_ref())
                         .filter(|pid| *pid > 0)
-                        .or_else(|| session.platform.identity().root_pid().map(|pid| pid as i32))
-                });
-                (id, pid)
+                        .or_else(|| identity.root_pid().map(|pid| pid as i32)),
+                }
             })
             .collect()
     }

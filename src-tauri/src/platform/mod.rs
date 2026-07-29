@@ -58,15 +58,32 @@ impl ShellLaunch {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SessionIdentity {
     root_pid: Option<u32>,
+    creation_date: Option<i64>,
 }
 
 impl SessionIdentity {
     pub fn new(root_pid: Option<u32>) -> Self {
-        Self { root_pid }
+        Self {
+            root_pid,
+            creation_date: None,
+        }
+    }
+
+    #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+    pub fn with_creation_date(root_pid: Option<u32>, creation_date: Option<i64>) -> Self {
+        Self {
+            root_pid,
+            creation_date,
+        }
     }
 
     pub fn root_pid(self) -> Option<u32> {
         self.root_pid
+    }
+
+    #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+    pub fn creation_date(self) -> Option<i64> {
+        self.creation_date
     }
 }
 
@@ -152,9 +169,10 @@ mod tests {
 
     #[test]
     fn session_identity_keeps_the_root_process() {
-        let identity = SessionIdentity::new(Some(42));
+        let identity = SessionIdentity::with_creation_date(Some(42), Some(1_234));
 
         assert_eq!(identity.root_pid(), Some(42));
+        assert_eq!(identity.creation_date(), Some(1_234));
     }
 
     #[test]

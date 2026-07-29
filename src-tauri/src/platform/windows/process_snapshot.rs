@@ -102,6 +102,18 @@ impl ProcessSnapshotProvider for WmiProcessSnapshotProvider {
     }
 }
 
+#[cfg(target_os = "windows")]
+pub(crate) fn process_creation_date(process_id: u32) -> Result<i64, SnapshotError> {
+    WmiProcessSnapshotProvider
+        .snapshot()?
+        .into_iter()
+        .find(|record| record.process_id == Some(process_id))
+        .and_then(|record| record.creation_date)
+        .ok_or_else(|| {
+            SnapshotError::Incomplete(format!("Process {process_id} has no creation identity"))
+        })
+}
+
 #[derive(Clone, Debug)]
 struct Descendant<'a> {
     record: &'a ProcessRecord,
@@ -606,7 +618,7 @@ mod tests {
     #[cfg(target_os = "windows")]
     #[test]
     fn connects_and_deserializes_win32_process_snapshot() {
-        use super::WmiProcessSnapshotProvider;
+        use super::{process_creation_date, WmiProcessSnapshotProvider};
 
         let rows = WmiProcessSnapshotProvider
             .snapshot()
@@ -618,5 +630,11 @@ mod tests {
 
         assert!(current.creation_date.is_some());
         assert!(current.name.is_some());
+        assert_eq!(
+            process_creation_date(std::process::id()).expect("query current process identity"),
+            current
+                .creation_date
+                .expect("current process creation date")
+        );
     }
 }

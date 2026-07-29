@@ -7,6 +7,8 @@ pub(crate) mod shell;
 use super::{ProcessInspection, SessionIdentity, ShellLaunch};
 use crate::agents::AgentInfo;
 use portable_pty::{ChildKiller, MasterPty};
+#[cfg(target_os = "windows")]
+use process_snapshot::{ProcessClassification, SessionProcessRoot, SnapshotError};
 use std::path::PathBuf;
 
 pub struct PlatformSession {
@@ -22,13 +24,18 @@ impl PlatformSession {
 }
 
 pub fn create_session(root_pid: Option<u32>) -> Result<PlatformSession, String> {
+    let root_pid =
+        root_pid.ok_or_else(|| "The Windows shell process id is unavailable".to_string())?;
+
     #[cfg(target_os = "windows")]
-    let job = job_object::PlatformJobObject::create(
-        root_pid.ok_or_else(|| "The Windows shell process id is unavailable".to_string())?,
-    )?;
+    let job = job_object::PlatformJobObject::create(root_pid)?;
+    #[cfg(target_os = "windows")]
+    let creation_date = process_snapshot::process_creation_date(root_pid).ok();
+    #[cfg(not(target_os = "windows"))]
+    let creation_date = None;
 
     Ok(PlatformSession {
-        identity: SessionIdentity::new(root_pid),
+        identity: SessionIdentity::with_creation_date(Some(root_pid), creation_date),
         #[cfg(target_os = "windows")]
         job,
     })
@@ -52,6 +59,13 @@ pub fn inspect_process(_pid: i32) -> ProcessInspection {
         process: None,
         complete: false,
     }
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn inspect_processes(
+    roots: &[SessionProcessRoot],
+) -> Vec<(u32, Result<ProcessClassification, SnapshotError>)> {
+    process_snapshot::classify_many(&process_snapshot::WmiProcessSnapshotProvider, roots)
 }
 
 pub fn foreground_process_group(_master: &dyn MasterPty) -> Option<i32> {
