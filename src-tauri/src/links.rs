@@ -226,9 +226,8 @@ mod tests {
 
     #[test]
     fn open_editor_reports_a_failing_command_with_its_stderr() {
-        let result = tauri::async_runtime::block_on(open_editor(
-            "echo 'no such editor' >&2; exit 3".into(),
-        ));
+        let result =
+            tauri::async_runtime::block_on(open_editor("echo 'no such editor' >&2; exit 3".into()));
         let message = result.expect_err("a non-zero exit must surface as an error");
         assert!(
             message.contains("no such editor"),

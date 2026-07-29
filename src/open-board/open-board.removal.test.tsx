@@ -21,7 +21,9 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: vi.fn(async () => pickedFolder),
 }));
 vi.mock("@tauri-apps/api/path", () => ({
-  homeDir: vi.fn(async () => "/Users/dev/"),
+  homeDir: vi.fn(async () => {
+    throw new Error("OpenBoard must use the initialized desktop environment");
+  }),
 }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(async (cmd: string, args?: { paths?: string[] }) => {
@@ -41,6 +43,10 @@ import { PRESETS_VERSION } from "../lib/preset-schema";
 import { presetsData } from "../presets/presets-store";
 import { workspacesData } from "./workspaces-store";
 import { OpenBoard } from "./open-board";
+import {
+  initializeDesktopEnvironment,
+  resetDesktopEnvironmentForTests,
+} from "../lib/platform";
 
 const NOW = 1_800_000_000_000;
 
@@ -56,6 +62,11 @@ describe("OpenBoard removal flow", () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "macos",
+      homeDir: "/Users/dev",
+    });
     document.body.innerHTML = "";
     host = document.createElement("div");
     document.body.appendChild(host);
@@ -69,6 +80,7 @@ describe("OpenBoard removal flow", () => {
     });
     workspacesData.value = { version: WORKSPACES_VERSION, recents: [] };
     presetsData.value = { version: PRESETS_VERSION, presets: [] };
+    resetDesktopEnvironmentForTests();
   });
 
   const mount = async (
@@ -117,6 +129,19 @@ describe("OpenBoard removal flow", () => {
     expect(host.querySelector(".row.is-selected .row__name")?.textContent).toBe(
       "beta",
     );
+  });
+
+  it("uses the initialized Windows home directory for display", async () => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: "C:/Users/dev",
+    });
+    seed(["C:/Users/dev/repo"]);
+
+    await mount();
+
+    expect(host.querySelector(".row__path")?.textContent).toBe("~/repo");
   });
 
   it("remove-all missing clears the group", async () => {
@@ -187,6 +212,25 @@ describe("OpenBoard removal flow", () => {
     expect(workspacesData.value.recents.map((r) => r.path)).toEqual([
       "/w/alpha",
     ]);
+  });
+
+  it("opens the folder picker with Ctrl+Shift+O on Windows", async () => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    pickedFolder = String.raw`C:\work`;
+    await mount();
+
+    expect(host.querySelector(".openfolder kbd")?.textContent).toBe(
+      "Ctrl+Shift+O",
+    );
+    await keydown({ key: "o", ctrlKey: true });
+    expect(rowNames()).toEqual([]);
+
+    await keydown({ key: "o", ctrlKey: true, shiftKey: true });
+    expect(rowNames()).toHaveLength(1);
   });
 
   it("removal applies the next row's remembered preset/agent combo", async () => {

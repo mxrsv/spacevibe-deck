@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { render } from "preact";
+import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   boardOpen,
@@ -8,10 +10,82 @@ import {
 } from "../chrome/events";
 import {
   closeSettingsPanel,
+  DesktopChrome,
   livePresetOpensATab,
   toggleSettingsPanel,
 } from "./app";
 import { ACTION_REGISTRY, TIER_RANK } from "../terminal/action-registry";
+import {
+  initializeDesktopEnvironment,
+  resetDesktopEnvironmentForTests,
+  type DesktopPlatform,
+} from "../lib/platform";
+
+describe("DesktopChrome platform structure", () => {
+  let host: HTMLDivElement;
+
+  beforeEach(() => {
+    resetDesktopEnvironmentForTests();
+    host = document.createElement("div");
+    document.body.appendChild(host);
+  });
+
+  afterEach(() => {
+    act(() => render(null, host));
+    resetDesktopEnvironmentForTests();
+    document.body.innerHTML = "";
+  });
+
+  function mount(platform: DesktopPlatform, sidebar: boolean): HTMLElement {
+    initializeDesktopEnvironment({
+      platform,
+      homeDir: platform === "windows" ? "C:\\Users\\Deck" : "/Users/deck",
+    });
+    act(() => {
+      render(
+        <DesktopChrome
+          sidebar={sidebar}
+          toolbar={<span data-testid="toolbar">toolbar</span>}
+          sidebarNavigation={<nav data-testid="sidebar">sidebar</nav>}
+          topTabs={<header data-testid="tabs">tabs</header>}
+          stage={<main data-testid="stage">stage</main>}
+          status={<footer data-testid="status">status</footer>}
+          onMacTitlebarDoubleClick={vi.fn()}
+        />,
+        host,
+      );
+    });
+    return host.firstElementChild as HTMLElement;
+  }
+
+  it.each([
+    ["macos", false, true, false],
+    ["macos", true, true, false],
+    ["windows", false, false, false],
+    ["windows", true, false, true],
+  ] as const)(
+    "%s %s mode renders only the platform-owned in-app chrome",
+    (platform, sidebar, hasTitlebar, hasWindowsToolbar) => {
+      const root = mount(platform, sidebar);
+
+      expect(root.classList.contains(`window--${platform}`)).toBe(true);
+      expect(root.classList.contains("window--sidebar")).toBe(sidebar);
+      expect(root.querySelector(".titlebar") !== null).toBe(hasTitlebar);
+      expect(root.querySelector(".deck-toolbar") !== null).toBe(
+        hasWindowsToolbar,
+      );
+      expect(root.querySelector('[data-testid="sidebar"]') !== null).toBe(
+        sidebar,
+      );
+      expect(root.querySelector('[data-testid="tabs"]') !== null).toBe(
+        !sidebar,
+      );
+      expect(root.querySelector('[data-testid="toolbar"]') !== null).toBe(
+        sidebar,
+      );
+    },
+  );
+});
 
 // Escape-stacking investigation (team lead thread): Settings' own mount-focus
 // effect (settings-panel.tsx) steals DOM focus onto its close button the

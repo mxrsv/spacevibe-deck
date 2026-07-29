@@ -1,27 +1,39 @@
 import {
-  DEFAULT_KEYMAP,
+  MACOS_KEYMAP,
+  WINDOWS_KEYMAP,
   isActionId,
   type ActionId,
   type CharKeyBinding,
   type PhysicalKeyBinding,
   type KeyBinding,
 } from "./action-registry";
+import {
+  getDesktopEnvironment,
+  type DesktopPlatform,
+} from "../lib/platform";
 
 // Data lives in action-registry.ts (the SSOT for shortcuts + macOS menu);
 // this module is just "match a KeyboardEvent to an action" + the type/name
 // aliases every existing caller (tab-manager.ts, app.tsx) already imports
 // from here, so nothing outside this file needs to change import paths.
 export {
-  DEFAULT_KEYMAP,
+  MACOS_KEYMAP,
+  WINDOWS_KEYMAP,
   type CharKeyBinding,
   type PhysicalKeyBinding,
   type KeyBinding,
 };
 export type ShortcutAction = ActionId;
 
+export function keymapForPlatform(
+  platform: DesktopPlatform,
+): readonly KeyBinding[] {
+  return platform === "windows" ? WINDOWS_KEYMAP : MACOS_KEYMAP;
+}
+
 /**
  * Whether `value` names an action the registry declares — having a
- * `DEFAULT_KEYMAP` binding or not is irrelevant.
+ * platform-keymap binding or not is irrelevant.
  *
  * Guards the one place an action arrives as untrusted data rather than as a
  * matched key event: the macOS menu sends its item id across the Tauri IPC
@@ -40,7 +52,9 @@ export function isShortcutAction(value: unknown): value is ShortcutAction {
  */
 export function matchBinding(
   event: KeyboardEvent,
-  keymap: readonly KeyBinding[] = DEFAULT_KEYMAP,
+  keymap: readonly KeyBinding[] = keymapForPlatform(
+    getDesktopEnvironment().platform,
+  ),
 ): ShortcutAction | null {
   const key = event.key.toLowerCase();
   for (const binding of keymap) {

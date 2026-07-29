@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ACTION_REGISTRY,
-  DEFAULT_KEYMAP,
+  MACOS_KEYMAP,
   type KeyBinding,
   type MenuSubmenu,
 } from "../src/terminal/action-registry";
@@ -57,7 +57,7 @@ function tokenFor(binding: KeyBinding): string {
 
 /** Accelerator string for the macOS menu, or "None" if the action has no binding. */
 function acceleratorFor(actionId: string): string {
-  const binding = DEFAULT_KEYMAP.find((b) => b.action === actionId);
+  const binding = MACOS_KEYMAP.find((b) => b.action === actionId);
   if (!binding) {
     return "None";
   }

@@ -28,6 +28,10 @@ import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
 import { closeSearchBar } from "./search-bar";
+import {
+  initializeDesktopEnvironment,
+  resetDesktopEnvironmentForTests,
+} from "../lib/platform";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test — including every pre-Task-23 test
@@ -244,6 +248,11 @@ function fakeNotifierSpy(): {
 }
 
 beforeEach(() => {
+  resetDesktopEnvironmentForTests();
+  initializeDesktopEnvironment({
+    platform: "macos",
+    homeDir: "/Users/dev",
+  });
   document.body.innerHTML = "";
   tabViews.value = [];
   activeTabIndex.value = 0;
@@ -255,6 +264,20 @@ beforeEach(() => {
 });
 
 describe("createTabManager materialize (through the createPane seam)", () => {
+  it("publishes the initialized home directory", async () => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const { tm } = setup({});
+
+    await tm.init();
+
+    expect(statusInfo.value.home).toBe(String.raw`C:\Users\dev`);
+    tm.dispose();
+  });
+
   it("spawns a tab at the given CWD", async () => {
     const { tm, pty } = setup({});
 

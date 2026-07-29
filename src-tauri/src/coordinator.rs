@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::Mutex,
-};
+use std::{collections::HashMap, sync::Mutex};
 use tauri::{AppHandle, Emitter, State};
 
 /// App-level pane → window ownership (ADR docs/decisions/0001).

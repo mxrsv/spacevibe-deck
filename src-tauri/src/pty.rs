@@ -1,12 +1,12 @@
 use crate::coordinator::{emit_to_owner, WindowCoordinator};
+use crate::platform::{self, PlatformName, PlatformSession};
 use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
 use std::{
     collections::HashMap,
     io::{Read, Write},
     sync::{
         atomic::{AtomicU32, Ordering},
-        mpsc,
-        Mutex,
+        mpsc, Mutex,
     },
     thread,
 };
@@ -30,23 +30,13 @@ struct Session {
     master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
     killer: Box<dyn ChildKiller + Send + Sync>,
-    child_pid: Option<u32>,
+    platform: PlatformSession,
 }
 
 #[derive(Default)]
 pub struct PtyState {
     sessions: Mutex<HashMap<u32, Session>>,
     next_id: AtomicU32,
-}
-
-fn default_shell() -> String {
-    std::env::var("SHELL").unwrap_or_else(|_| {
-        if cfg!(windows) {
-            "powershell.exe".into()
-        } else {
-            "/bin/zsh".into()
-        }
-    })
 }
 
 /// Drains the longest decodable prefix of `pending` into a String, leaving an
@@ -135,11 +125,16 @@ fn remove_session(app: &AppHandle, id: u32) {
     };
 }
 
-/// Working directory for a new shell: an existing directory passes through,
-/// anything else (missing, deleted, not a dir, None) falls back to `$HOME`.
-fn resolve_spawn_cwd(cwd: Option<String>) -> Option<String> {
-    cwd.filter(|dir| std::path::Path::new(dir).is_dir())
-        .or_else(|| std::env::var("HOME").ok())
+/// Working directory for a new shell: an existing directory passes through;
+/// anything else falls back to the platform's validated user profile.
+fn resolve_spawn_cwd(
+    cwd: Option<String>,
+    home: Result<std::path::PathBuf, String>,
+) -> Result<String, String> {
+    if let Some(directory) = cwd.filter(|directory| std::path::Path::new(directory).is_dir()) {
+        return Ok(directory);
+    }
+    home.map(|directory| directory.to_string_lossy().into_owned())
 }
 
 #[tauri::command]
@@ -162,11 +157,10 @@ pub fn spawn_shell(
         })
         .map_err(|e| e.to_string())?;
 
-    let shell = default_shell();
-    let mut cmd = CommandBuilder::new(&shell);
-    if !cfg!(windows) {
-        // Login shell so PATH/rc files are loaded — CLIs like claude/codex stay visible
-        cmd.arg("-l");
+    let launch = platform::shell_launch()?;
+    let mut cmd = CommandBuilder::new(&launch.executable);
+    for arg in launch.args {
+        cmd.arg(arg);
     }
     cmd.env("TERM", "xterm-256color");
     cmd.env("COLORTERM", "truecolor");
@@ -177,7 +171,7 @@ pub fn spawn_shell(
     // Keep ConEmuANSI below until OSC 9;4 emitters recognize TERM_PROGRAM.
     cmd.env("TERM_PROGRAM", "SpaceVibeDeck");
     cmd.env("TERM_PROGRAM_VERSION", env!("CARGO_PKG_VERSION"));
-    if !cfg!(windows) {
+    if platform::current_platform() == PlatformName::Macos {
         // Deck consumes OSC 9;4 progress reports (the sidebar spinner),
         // but Claude Code only emits them when it recognizes the terminal:
         // its gate checks ConEmu* env vars or TERM_PROGRAM ghostty/iTerm.app
@@ -191,13 +185,19 @@ pub fn spawn_shell(
         // OSC 9;4; with it, state 0 at startup, 3 while working, 0 when done.
         cmd.env("ConEmuANSI", "ON");
     }
-    if let Some(dir) = resolve_spawn_cwd(cwd) {
-        cmd.cwd(dir);
-    }
+    cmd.cwd(resolve_spawn_cwd(cwd, platform::user_home())?);
 
     let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
     drop(pair.slave);
     let child_pid = child.process_id();
+    let platform_session = match platform::create_session(child_pid) {
+        Ok(session) => session,
+        Err(error) => {
+            let mut killer = child.clone_killer();
+            let _ = killer.kill();
+            return Err(error);
+        }
+    };
 
     let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
     let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
@@ -211,7 +211,7 @@ pub fn spawn_shell(
                 master: pair.master,
                 writer,
                 killer: child.clone_killer(),
-                child_pid,
+                platform: platform_session,
             },
         );
     }
@@ -334,38 +334,6 @@ pub fn resize_pty(state: State<PtyState>, id: u32, cols: u16, rows: u16) -> Resu
         .map_err(|e| e.to_string())
 }
 
-/// How long a foreground job gets to react to SIGHUP (save swap, flush state)
-/// before the group is SIGKILLed.
-#[cfg(target_os = "macos")]
-const KILL_GRACE: std::time::Duration = std::time::Duration::from_millis(500);
-
-/// Tears down everything living on a pane's PTY, not just the login shell:
-/// SIGKILL on the shell's own pid leaves grandchildren (agent CLIs, editors)
-/// running, holding the slave fd open and leaking the reader thread. The
-/// foreground job gets SIGHUP first so it can shut down cleanly, then is
-/// SIGKILLed after `grace` in case it ignores hangups; the shell's group has
-/// nothing to save and dies immediately.
-#[cfg(target_os = "macos")]
-fn terminate_process_groups(
-    fg_pgid: Option<i32>,
-    shell_pgid: Option<i32>,
-    grace: std::time::Duration,
-) {
-    let fg = fg_pgid.filter(|pgid| *pgid > 1);
-    let shell = shell_pgid.filter(|pgid| *pgid > 1);
-    if let Some(pgid) = fg {
-        unsafe { libc::killpg(pgid, libc::SIGHUP) };
-        thread::spawn(move || {
-            thread::sleep(grace);
-            // ESRCH on an already-gone group is the normal case here.
-            unsafe { libc::killpg(pgid, libc::SIGKILL) };
-        });
-    }
-    if let Some(pgid) = shell {
-        unsafe { libc::killpg(pgid, libc::SIGKILL) };
-    }
-}
-
 #[tauri::command]
 pub fn kill_pty(
     state: State<'_, PtyState>,
@@ -374,14 +342,11 @@ pub fn kill_pty(
 ) -> Result<(), String> {
     let mut sessions = state.sessions.lock().map_err(|e| e.to_string())?;
     if let Some(mut session) = sessions.remove(&id) {
-        #[cfg(target_os = "macos")]
-        terminate_process_groups(
+        platform::terminate_session(
+            &session.platform,
             session.master.process_group_leader(),
-            session.child_pid.map(|pid| pid as i32),
-            KILL_GRACE,
-        );
-        // Portable fallback; ESRCH once the group kill has already landed.
-        let _ = session.killer.kill();
+            session.killer.as_mut(),
+        )?;
     }
     coordinator.unregister(id);
     Ok(())
@@ -490,12 +455,15 @@ mod tests {
     #[test]
     fn resolve_spawn_cwd_accepts_an_existing_dir() {
         let dir = std::env::temp_dir().to_string_lossy().into_owned();
-        assert_eq!(super::resolve_spawn_cwd(Some(dir.clone())), Some(dir));
+        assert_eq!(
+            super::resolve_spawn_cwd(Some(dir.clone()), Err("unused".into())).unwrap(),
+            dir
+        );
     }
 
     #[cfg(target_os = "macos")]
     mod terminate_process_groups {
-        use super::super::terminate_process_groups;
+        use crate::platform::macos::terminate_process_groups;
         use std::os::unix::process::CommandExt;
         use std::process::{Child, Command};
         use std::time::{Duration, Instant};
@@ -611,12 +579,27 @@ mod tests {
 
     #[test]
     fn resolve_spawn_cwd_falls_back_to_home() {
-        let home = std::env::var("HOME").ok();
+        let home = std::env::temp_dir().to_string_lossy().into_owned();
         assert_eq!(
-            super::resolve_spawn_cwd(Some("/definitely/not/a/dir".into())),
+            super::resolve_spawn_cwd(
+                Some("/definitely/not/a/dir".into()),
+                Ok(std::env::temp_dir())
+            )
+            .unwrap(),
             home
         );
-        assert_eq!(super::resolve_spawn_cwd(None), home);
+        assert_eq!(
+            super::resolve_spawn_cwd(None, Ok(std::env::temp_dir())).unwrap(),
+            home
+        );
+    }
+
+    #[test]
+    fn resolve_spawn_cwd_reports_a_missing_home() {
+        assert_eq!(
+            super::resolve_spawn_cwd(None, Err("home unavailable".into())),
+            Err("home unavailable".into())
+        );
     }
 }
 
@@ -635,7 +618,7 @@ impl PtyState {
                         .master
                         .process_group_leader()
                         .filter(|pid| *pid > 0)
-                        .or_else(|| session.child_pid.map(|pid| pid as i32))
+                        .or_else(|| session.platform.identity().root_pid().map(|pid| pid as i32))
                 });
                 (id, pid)
             })

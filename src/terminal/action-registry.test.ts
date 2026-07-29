@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ACTION_REGISTRY,
-  DEFAULT_KEYMAP,
+  MACOS_KEYMAP,
+  WINDOWS_KEYMAP,
   isActionId,
   type KeyBinding,
 } from "./action-registry";
@@ -12,9 +13,11 @@ describe("ACTION_REGISTRY", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("every DEFAULT_KEYMAP binding's action is a real action id", () => {
-    for (const binding of DEFAULT_KEYMAP) {
-      expect(isActionId(binding.action)).toBe(true);
+  it("every platform binding's action is a real action id", () => {
+    for (const keymap of [MACOS_KEYMAP, WINDOWS_KEYMAP]) {
+      for (const binding of keymap) {
+        expect(isActionId(binding.action)).toBe(true);
+      }
     }
   });
 
@@ -35,7 +38,7 @@ describe("ACTION_REGISTRY", () => {
   // 25→27 correction). 38 = 28 + swap-left/right/up/down (FR-032, Task 1) +
   // open-tab-options (Task 2) + copy-cwd (Task 3) + scroll-page-up/down,
   // scroll-to-top/bottom (Task 4) — docs/plans/2026-07-27-keyboard-parity.md.
-  it("has exactly the 38 action ids the registry declares as of keyboard-parity Task 4", () => {
+  it("has exactly the 40 action ids including pane-local clipboard actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -50,6 +53,8 @@ describe("ACTION_REGISTRY", () => {
         "find-previous",
         "clear-buffer",
         "copy-cwd",
+        "copy-selection",
+        "paste",
         "split-row",
         "split-column",
         "toggle-zoom-pane",
@@ -93,9 +98,12 @@ describe("ACTION_REGISTRY", () => {
   // cannot happen (no letter/digit key shares a `code` with `BracketLeft`/
   // `BracketRight`), so that broader claim would overstate this test's
   // coverage.
-  it("has no two same-kind bindings matching the same chord", () => {
+  it.each([
+    ["macOS", MACOS_KEYMAP],
+    ["Windows", WINDOWS_KEYMAP],
+  ] as const)("has no two same-kind bindings matching the same %s chord", (_, keymap) => {
     const seen = new Set<string>();
-    for (const binding of DEFAULT_KEYMAP) {
+    for (const binding of keymap) {
       const k = chordKey(binding);
       expect(seen.has(k)).toBe(false);
       seen.add(k);

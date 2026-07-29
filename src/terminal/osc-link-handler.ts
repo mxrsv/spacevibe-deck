@@ -1,8 +1,13 @@
 import type { ILinkDecorations, ILinkHandler } from "@xterm/xterm";
 import { reportPersistError } from "../chrome/events";
+import { hasPrimaryModifier } from "../lib/platform";
 import { isBrowsableUrl } from "../lib/terminal-links";
 import { defaultLinkClient, type LinkClient } from "./link-client";
-import { isMetaHeld, onMetaChange, syncMetaHeld } from "./meta-key";
+import {
+  isPrimaryModifierHeld,
+  onPrimaryModifierChange,
+  syncPrimaryModifierHeld,
+} from "./primary-modifier";
 
 /**
  * OSC 8 hyperlink handler — routes through Tauri instead of the xterm
@@ -21,7 +26,7 @@ export function createOscLinkHandler(client?: LinkClient): ILinkHandler {
 
   return {
     activate(event, text) {
-      if (!event.metaKey) {
+      if (!hasPrimaryModifier(event)) {
         return;
       }
       if (!isBrowsableUrl(text)) {
@@ -33,7 +38,7 @@ export function createOscLinkHandler(client?: LinkClient): ILinkHandler {
       });
     },
     hover(event) {
-      syncMetaHeld(event.metaKey);
+      syncPrimaryModifierHeld(event);
       // OscLinkProvider omits `decorations`, so Linkifier defaults underline +
       // pointer to on, then replaces `link.decorations` with accessors *after*
       // this hover returns. Capture that object the same way xterm installs it
@@ -64,9 +69,9 @@ export function createOscLinkHandler(client?: LinkClient): ILinkHandler {
           decorations!.pointerCursor = held;
           decorations!.underline = held;
         };
-        apply(isMetaHeld());
+        apply(isPrimaryModifierHeld());
         unsubscribe?.();
-        unsubscribe = onMetaChange(apply);
+        unsubscribe = onPrimaryModifierChange(apply);
       });
     },
     leave() {

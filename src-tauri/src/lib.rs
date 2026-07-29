@@ -6,6 +6,7 @@ mod links;
 mod menu;
 mod menu_registry;
 mod migrate;
+mod platform;
 mod pty;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -29,6 +30,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(pty::PtyState::default())
         .manage(coordinator::WindowCoordinator::default())
         .manage(QuitState::default())
@@ -45,6 +47,7 @@ pub fn run() {
             pty::write_pty,
             pty::resize_pty,
             pty::kill_pty,
+            platform::desktop_environment,
             coordinator::move_pane_ownership,
             info::pty_info,
             info::git_branch,

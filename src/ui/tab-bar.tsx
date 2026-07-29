@@ -11,6 +11,7 @@ import { tabDotCssColor, type TabDotColor } from "../lib/tab-colors";
 import { AgentAttentionMark } from "./agent-attention-mark";
 import { ChromeActions } from "./chrome-actions";
 import { TabPopover } from "./tab-popover";
+import { shortcutLabel } from "../lib/shortcut-label";
 
 interface TabBarProps {
   settingsOpen: boolean;
@@ -55,7 +56,7 @@ export function TabBar(props: TabBarProps) {
     popover.value = { key, left: rect.left, top: rect.bottom + 6, anchorEl };
   }
 
-  // ⌘⇧R (open-tab-options) doesn't know whether TabBar or WorkspaceSidebar is
+  // The open-tab-options shortcut doesn't know whether TabBar or WorkspaceSidebar is
   // mounted, so it goes through this shared signal instead — see its doc
   // comment in tabs-store.ts. Unknown/not-yet-rendered key (tab closed
   // between the request and this effect, or a stale key) → no anchor found,
@@ -144,7 +145,7 @@ export function TabBar(props: TabBarProps) {
       <button
         type="button"
         class="tab-add"
-        title="New tab (⌘T)"
+        title={`New tab (${shortcutLabel("new-tab")})`}
         aria-label="New tab"
         onClick={props.onNewTab}
       >

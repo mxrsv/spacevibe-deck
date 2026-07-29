@@ -1,3 +1,5 @@
+import { shortcutLabel } from "../lib/shortcut-label";
+
 interface ChromeActionsProps {
   settingsOpen: boolean;
   expandActive: boolean;
@@ -104,12 +106,17 @@ function GearIcon() {
 
 /** Pane + settings actions — lives in the tab bar (top) or the titlebar (left). */
 export function ChromeActions(props: ChromeActionsProps) {
+  const splitRow = shortcutLabel("split-row");
+  const splitColumn = shortcutLabel("split-column");
+  const closePane = shortcutLabel("close-pane");
+  const toggleExpand = shortcutLabel("toggle-expand");
+  const settings = shortcutLabel("toggle-settings");
   return (
     <div class="tabbar__actions">
       <button
         type="button"
         class="iconbtn"
-        title="Split vertically (⌘D)"
+        title={`Split vertically (${splitRow})`}
         aria-label="Split pane vertically"
         onClick={props.onSplitRow}
       >
@@ -118,7 +125,7 @@ export function ChromeActions(props: ChromeActionsProps) {
       <button
         type="button"
         class="iconbtn"
-        title="Split horizontally (⌘⇧D)"
+        title={`Split horizontally (${splitColumn})`}
         aria-label="Split pane horizontally"
         onClick={props.onSplitColumn}
       >
@@ -127,7 +134,7 @@ export function ChromeActions(props: ChromeActionsProps) {
       <button
         type="button"
         class="iconbtn"
-        title="Close pane (⌘W)"
+        title={`Close pane (${closePane})`}
         aria-label="Close current pane"
         onClick={props.onClosePane}
       >
@@ -136,7 +143,7 @@ export function ChromeActions(props: ChromeActionsProps) {
       <button
         type="button"
         class={`iconbtn ${props.expandActive ? "is-active" : ""}`}
-        title="Focus expand (⌘E)"
+        title={`Focus expand (${toggleExpand})`}
         aria-label="Toggle focus expand"
         aria-pressed={props.expandActive}
         onClick={props.onToggleExpand}
@@ -147,7 +154,7 @@ export function ChromeActions(props: ChromeActionsProps) {
       <button
         type="button"
         class={`iconbtn iconbtn--gear ${props.settingsOpen ? "is-active" : ""}`}
-        title="Settings"
+        title={`Settings (${settings})`}
         aria-label="Open settings"
         aria-pressed={props.settingsOpen}
         onClick={props.onToggleSettings}

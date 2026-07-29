@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { PaneRect } from "../lib/pane-geometry";
-import { dropTargetAt, edgeFor } from "./pane-drag";
+import {
+  initializeDesktopEnvironment,
+  resetDesktopEnvironmentForTests,
+} from "../lib/platform";
+import { dragModeForEvent, dropTargetAt, edgeFor } from "./pane-drag";
 
 // Two panes side by side: |  1  |  2  |
 const LEFT: PaneRect = { id: 1, left: 0, top: 0, right: 100, bottom: 100 };
@@ -38,5 +42,25 @@ describe("dropTargetAt", () => {
 
   it("returns null outside every pane", () => {
     expect(dropTargetAt(RECTS, 300, 50, 1)).toBeNull();
+  });
+});
+
+describe("dragModeForEvent", () => {
+  it("uses Cmd on macOS and Ctrl on Windows", () => {
+    initializeDesktopEnvironment({
+      platform: "macos",
+      homeDir: "/Users/dev",
+    });
+    expect(dragModeForEvent({ metaKey: true, ctrlKey: false })).toBe("swap");
+    expect(dragModeForEvent({ metaKey: false, ctrlKey: true })).toBe("dock");
+
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    expect(dragModeForEvent({ metaKey: true, ctrlKey: false })).toBe("dock");
+    expect(dragModeForEvent({ metaKey: false, ctrlKey: true })).toBe("swap");
+    resetDesktopEnvironmentForTests();
   });
 });

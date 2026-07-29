@@ -19,7 +19,7 @@ export interface Settings {
   showPaneBar: boolean;
   agentNotifications: boolean;
   tabBarPosition: TabBarPosition;
-  /** Editor launched by Cmd+click on a file path in a terminal. */
+  /** Editor launched through the platform link-activation gesture. */
   editorId: EditorId;
   /** Command template used when `editorId` is `custom` (empty until set). */
   editorCommand: string;

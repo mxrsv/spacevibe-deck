@@ -9,6 +9,10 @@ import {
   pickNormalizationWinner,
 } from "./search-bar";
 import type { Pane, SelectionSnapshot } from "./pane";
+import {
+  initializeDesktopEnvironment,
+  resetDesktopEnvironmentForTests,
+} from "../lib/platform";
 
 vi.mock("../settings/settings-store", () => ({
   settings: {
@@ -406,6 +410,57 @@ describe("⌘G / ⌘⇧G while the bar's own input has focus", () => {
       }),
     );
 
+    expect(pane.search.findPrevious).toHaveBeenCalledWith(
+      "needle",
+      expect.anything(),
+    );
+  });
+});
+
+describe("Windows search shortcuts while the bar input has focus", () => {
+  afterEach(() => {
+    closeSearchBar();
+    resetDesktopEnvironmentForTests();
+  });
+
+  it("routes Ctrl+Shift+F, F3, and Shift+F3 through the Windows keymap", () => {
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: "C:\\Users\\Deck",
+    });
+    const pane = fakeSearchPane(1);
+    openSearchBar(pane);
+    typeQuery(pane, "needle");
+    const input = pane.element.querySelector(
+      ".search-bar__input",
+    ) as HTMLInputElement;
+    const select = vi.spyOn(input, "select");
+    (pane.search.findNext as ReturnType<typeof vi.fn>).mockClear();
+
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "f",
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "F3", bubbles: true }),
+    );
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "F3",
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(select).toHaveBeenCalledOnce();
+    expect(pane.search.findNext).toHaveBeenCalledWith(
+      "needle",
+      expect.anything(),
+    );
     expect(pane.search.findPrevious).toHaveBeenCalledWith(
       "needle",
       expect.anything(),

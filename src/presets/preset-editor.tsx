@@ -2,6 +2,7 @@ import { useSignal, type Signal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { open } from "@tauri-apps/plugin-dialog";
 import { leafIds, type Path, type TreeNode } from "../lib/split-tree";
+import { hasPrimaryModifier } from "../lib/platform";
 import {
   canRemove,
   createMockModel,
@@ -129,14 +130,14 @@ export function PresetEditor({ onCancel, onCreate }: PresetEditorProps) {
     }
     switch (event.key) {
       case "ArrowRight":
-        if (event.metaKey) {
+        if (hasPrimaryModifier(event)) {
           model.value = splitSelected(model.value, "row");
         } else {
           model.value = moveSelection(model.value, 1);
         }
         break;
       case "ArrowDown":
-        if (event.metaKey) {
+        if (hasPrimaryModifier(event)) {
           model.value = splitSelected(model.value, "column");
         } else {
           model.value = moveSelection(model.value, 1);

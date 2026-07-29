@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import { homeDir } from "@tauri-apps/api/path";
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -13,6 +12,10 @@ import {
 } from "../lib/workspace-recents";
 import type { AgentChoice, RecentWorkspace } from "../lib/workspace-recents";
 import { tildify } from "../lib/process-info";
+import {
+  getDesktopEnvironment,
+  hasPrimaryModifier,
+} from "../lib/platform";
 import { defaultPtyClient, type DetectedAgent } from "../terminal/pty-client";
 import {
   boardPresets,
@@ -26,6 +29,7 @@ import { PresetThumb } from "../presets/preset-thumb";
 import claudeLogo from "../assets/agent-claude.svg";
 import codexLogo from "../assets/agent-codex.svg";
 import geminiLogo from "../assets/agent-gemini.svg";
+import { formatShortcutBinding } from "../lib/shortcut-label";
 
 export interface OpenBoardProps {
   canCancel: boolean;
@@ -81,9 +85,16 @@ export function OpenBoard({
   onOpen,
   onNewPreset,
 }: OpenBoardProps) {
+  const platform = getDesktopEnvironment().platform;
+  const openFolderShortcut = formatShortcutBinding(
+    platform === "windows"
+      ? { key: "o", ctrl: true, shift: true, action: "new-tab" }
+      : { key: "o", meta: true, action: "new-tab" },
+    platform,
+  );
   const recents = workspacesData.value.recents;
   const presets = boardPresets();
-  const home = useSignal("");
+  const home = getDesktopEnvironment().homeDir;
   const first = recents[0];
   const selectedPath = useSignal<string | null>(first?.path ?? null);
   const selectedPresetId = useSignal<string>(
@@ -130,11 +141,6 @@ export function OpenBoard({
         console.warn("detect_agents failed:", err);
         agents.value = []; // board degrades to Shell only
       });
-    homeDir()
-      .then((dir) => {
-        home.value = dir;
-      })
-      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -244,7 +250,7 @@ export function OpenBoard({
    * before the re-render must not see already-deleted rows, or it could move
    * the selection onto one of them and resurrect it. Paths that are not
    * actually stored (the fabricated just-picked row) are left untouched, so
-   * ⌫ can never discard a fresh ⌘O pick.
+   * Backspace can never discard a fresh folder-picker result.
    */
   function removeRecentRows(paths: readonly string[]): void {
     const stored = workspacesData.value.recents;
@@ -421,7 +427,10 @@ export function OpenBoard({
         }
         break;
       case "o":
-        if (event.metaKey) {
+        if (
+          hasPrimaryModifier(event) &&
+          (getDesktopEnvironment().platform !== "windows" || event.shiftKey)
+        ) {
           void pickFolder();
         } else {
           return;
@@ -494,9 +503,7 @@ export function OpenBoard({
           <span class="row__name">{folderName(recent.path)}</span>
           <span class="row__meta">
             <span class="row__path">
-              {home.value === ""
-                ? recent.path
-                : tildify(recent.path, home.value)}
+              {home === "" ? recent.path : tildify(recent.path, home)}
             </span>
             <span class="row__time">
               {formatRelativeTime(recent.lastOpenedAt, Date.now())}
@@ -547,7 +554,7 @@ export function OpenBoard({
               <path d="M1.6 12.4v-8.8a1 1 0 0 1 1-1h3.1l1.4 1.8h6.3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-10.8a1 1 0 0 1-1-1Z" />
               <path d="M8 6.7v4M6 8.7h4" />
             </svg>
-            Open Folder…<kbd>⌘O</kbd>
+            Open Folder…<kbd>{openFolderShortcut}</kbd>
           </button>
         </div>
         <ul class="rail__scroll" aria-label="Recent workspaces">
@@ -577,9 +584,9 @@ export function OpenBoard({
             </h1>
             <div class="wshead__path">
               {pickedPath !== null
-                ? home.value === ""
+                ? home === ""
                   ? pickedPath
-                  : tildify(pickedPath, home.value)
+                  : tildify(pickedPath, home)
                 : "Pick a recent folder or open a new one"}
             </div>
           </div>
