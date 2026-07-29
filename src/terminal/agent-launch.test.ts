@@ -1,10 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { DesktopPlatform } from "../lib/platform";
 import { createMemoryPtyClient } from "./pty-client";
-import { AGENT_LAUNCH_TIMEOUT_MS, createAgentLauncher } from "./agent-launch";
+import {
+  AGENT_LAUNCH_TIMEOUT_MS,
+  createAgentLauncher,
+  WINDOWS_AGENT_LAUNCH_TIMEOUT_MS,
+} from "./agent-launch";
 
-function setup() {
+function setup(
+  platform: DesktopPlatform = "macos",
+  onTimeout: (id: number) => void = () => {},
+) {
   const pty = createMemoryPtyClient();
-  const launcher = createAgentLauncher(pty);
+  const launcher = createAgentLauncher(pty, { platform, onTimeout });
   return { pty, launcher };
 }
 
@@ -102,5 +110,62 @@ describe("createAgentLauncher", () => {
     vi.advanceTimersByTime(AGENT_LAUNCH_TIMEOUT_MS);
 
     expect(pty.writes).toEqual([]);
+  });
+
+  it("does not launch Windows agents from banner or prompt-start output", () => {
+    const { pty, launcher } = setup("windows");
+    launcher.arm([1], "claude");
+
+    launcher.noteOutput(1);
+    launcher.noteOutput(1);
+
+    expect(pty.writes).toEqual([]);
+  });
+
+  it("launches a Windows agent only from structured prompt readiness", () => {
+    const { pty, launcher } = setup("windows");
+    launcher.arm([1], "codex");
+
+    launcher.notePromptReady(1);
+
+    expect(pty.writes).toEqual([{ id: 1, data: "codex\r" }]);
+  });
+
+  it("launches a Windows agent once after duplicate readiness", () => {
+    const { pty, launcher } = setup("windows");
+    launcher.arm([1], "gemini");
+
+    launcher.notePromptReady(1);
+    launcher.notePromptReady(1);
+    vi.advanceTimersByTime(WINDOWS_AGENT_LAUNCH_TIMEOUT_MS);
+
+    expect(pty.writes).toEqual([{ id: 1, data: "gemini\r" }]);
+  });
+
+  it("cancels a Windows launch on timeout without writing", () => {
+    const onTimeout = vi.fn();
+    const { pty, launcher } = setup("windows", onTimeout);
+    launcher.arm([1], "claude");
+
+    vi.advanceTimersByTime(WINDOWS_AGENT_LAUNCH_TIMEOUT_MS);
+    launcher.notePromptReady(1);
+    launcher.arm([1], "claude");
+    launcher.notePromptReady(1);
+
+    expect(pty.writes).toEqual([]);
+    expect(onTimeout).toHaveBeenCalledOnce();
+    expect(onTimeout).toHaveBeenCalledWith(1);
+  });
+
+  it("prune cancels a Windows timeout message", () => {
+    const onTimeout = vi.fn();
+    const { pty, launcher } = setup("windows", onTimeout);
+    launcher.arm([1], "claude");
+
+    launcher.prune([]);
+    vi.advanceTimersByTime(WINDOWS_AGENT_LAUNCH_TIMEOUT_MS);
+
+    expect(pty.writes).toEqual([]);
+    expect(onTimeout).not.toHaveBeenCalled();
   });
 });

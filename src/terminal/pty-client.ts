@@ -34,6 +34,7 @@ export interface PtyClient {
   listenOutput(
     handler: (id: number, data: string) => void,
   ): Promise<UnlistenFn>;
+  listenPromptReady(handler: (id: number) => void): Promise<UnlistenFn>;
   listenExit(handler: (id: number) => void): Promise<UnlistenFn>;
 }
 
@@ -43,6 +44,10 @@ interface OutputPayload {
 }
 
 interface ExitPayload {
+  id: number;
+}
+
+interface PromptReadyPayload {
   id: number;
 }
 
@@ -87,6 +92,11 @@ export function createTauriPtyClient(): PtyClient {
         handler(event.payload.id, event.payload.data);
       });
     },
+    listenPromptReady(handler) {
+      return listen<PromptReadyPayload>("pty:prompt-ready", (event) => {
+        handler(event.payload.id);
+      });
+    },
     listenExit(handler) {
       return listen<ExitPayload>("pty:exit", (event) => {
         handler(event.payload.id);
@@ -109,6 +119,7 @@ export function createMemoryPtyClient(
   /** Every `writePty` call in order — agent-launch tests assert against it. */
   readonly writes: { id: number; data: string }[];
   emitOutput(id: number, data: string): void;
+  emitPromptReady(id: number): void;
   emitExit(id: number): void;
 } {
   let nextId = options.nextId ?? 1;
@@ -116,6 +127,7 @@ export function createMemoryPtyClient(
   const writes: { id: number; data: string }[] = [];
   const infos = new Map(options.infos ?? []);
   const outputHandlers = new Set<(id: number, data: string) => void>();
+  const promptReadyHandlers = new Set<(id: number) => void>();
   const exitHandlers = new Set<(id: number) => void>();
 
   return {
@@ -157,6 +169,12 @@ export function createMemoryPtyClient(
         outputHandlers.delete(handler);
       };
     },
+    async listenPromptReady(handler) {
+      promptReadyHandlers.add(handler);
+      return () => {
+        promptReadyHandlers.delete(handler);
+      };
+    },
     async listenExit(handler) {
       exitHandlers.add(handler);
       return () => {
@@ -166,6 +184,11 @@ export function createMemoryPtyClient(
     emitOutput(id, data) {
       for (const handler of outputHandlers) {
         handler(id, data);
+      }
+    },
+    emitPromptReady(id) {
+      for (const handler of promptReadyHandlers) {
+        handler(id);
       }
     },
     emitExit(id) {

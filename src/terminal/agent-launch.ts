@@ -1,26 +1,24 @@
 import type { AgentChoice } from "../lib/workspace-recents";
+import type { DesktopPlatform } from "../lib/platform";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 
-/**
- * How long to wait for a pane's first byte before typing the agent anyway.
- * A shell that prints nothing on startup (rare, but possible) must not wedge
- * the launch forever — after this we type regardless.
- */
+/** macOS first-output fallback retained for compatibility. */
 export const AGENT_LAUNCH_TIMEOUT_MS = 3000;
+/** Windows cancels automatic launch if structured readiness never arrives. */
+export const WINDOWS_AGENT_LAUNCH_TIMEOUT_MS = 15_000;
 
 /**
- * Types the chosen agent command into each new pane's interactive shell once
- * the shell is ready. Agents are launched by writing `claude\r` to stdin (not
- * spawned from Rust) so they inherit the login shell's `$PATH` — see spec A1.
- *
- * Readiness is "the pane has printed its first byte" (the prompt is up), or a
- * timeout as a fallback. Each pane is typed into exactly once.
+ * Types the chosen agent into each new pane's interactive shell. macOS keeps
+ * first-output plus timeout readiness; Windows accepts only the structured
+ * prompt-ready event and permanently cancels that pane on timeout.
  */
 export interface AgentLauncher {
   /** Queue `agent` for each pane; `null` (Shell only) queues nothing. */
   arm(paneIds: readonly number[], agent: AgentChoice): void;
-  /** A pane printed output — fire it now if it is armed and not yet launched. */
+  /** A pane printed output; this is readiness only on macOS. */
   noteOutput(id: number): void;
+  /** A pane emitted structured prompt readiness. */
+  notePromptReady(id: number): void;
   /** Drop panes that no longer exist, cancelling their pending timers. */
   prune(alive: readonly number[]): void;
   /** Cancel every pending timer (teardown). */
@@ -32,26 +30,91 @@ interface Armed {
   readonly timer: ReturnType<typeof setTimeout>;
 }
 
+interface LauncherState {
+  readonly armed: ReadonlyMap<number, Armed>;
+  readonly sawOutput: ReadonlySet<number>;
+  readonly promptReady: ReadonlySet<number>;
+  readonly launched: ReadonlySet<number>;
+  readonly cancelled: ReadonlySet<number>;
+}
+
+export interface AgentLauncherOptions {
+  readonly platform?: DesktopPlatform;
+  readonly timeoutMs?: number;
+  readonly onTimeout?: (id: number) => void;
+}
+
+function emptyState(): LauncherState {
+  return {
+    armed: new Map(),
+    sawOutput: new Set(),
+    promptReady: new Set(),
+    launched: new Set(),
+    cancelled: new Set(),
+  };
+}
+
+function addId(values: ReadonlySet<number>, id: number): ReadonlySet<number> {
+  return values.has(id) ? values : new Set([...values, id]);
+}
+
+function removeArmed(
+  armed: ReadonlyMap<number, Armed>,
+  id: number,
+): ReadonlyMap<number, Armed> {
+  const next = new Map(armed);
+  next.delete(id);
+  return next;
+}
+
 export function createAgentLauncher(
   pty: PtyClient = defaultPtyClient,
-  timeoutMs: number = AGENT_LAUNCH_TIMEOUT_MS,
+  options: AgentLauncherOptions = {},
 ): AgentLauncher {
-  const armed = new Map<number, Armed>();
-  const sawOutput = new Set<number>();
-  const launched = new Set<number>();
+  const platform = options.platform ?? "macos";
+  const timeoutMs =
+    options.timeoutMs ??
+    (platform === "windows"
+      ? WINDOWS_AGENT_LAUNCH_TIMEOUT_MS
+      : AGENT_LAUNCH_TIMEOUT_MS);
+  const onTimeout = options.onTimeout ?? (() => {});
+  let state = emptyState();
 
   function fire(id: number): void {
-    const entry = armed.get(id);
-    if (entry === undefined || launched.has(id)) {
+    const entry = state.armed.get(id);
+    if (entry === undefined || state.launched.has(id)) {
       return;
     }
-    launched.add(id);
     clearTimeout(entry.timer);
-    armed.delete(id);
+    state = {
+      ...state,
+      armed: removeArmed(state.armed, id),
+      launched: addId(state.launched, id),
+    };
     pty.writePty(id, `${entry.agent}\r`).catch((err: unknown) => {
       // A failed write leaves the pane as an empty shell — never sink the tab.
       console.error("agent launch write_pty failed:", err);
     });
+  }
+
+  function expire(id: number): void {
+    if (!state.armed.has(id) || state.launched.has(id)) {
+      return;
+    }
+    if (platform !== "windows") {
+      fire(id);
+      return;
+    }
+    state = {
+      ...state,
+      armed: removeArmed(state.armed, id),
+      cancelled: addId(state.cancelled, id),
+    };
+    try {
+      onTimeout(id);
+    } catch (error) {
+      console.error("agent launch timeout callback failed:", error);
+    }
   }
 
   return {
@@ -60,48 +123,69 @@ export function createAgentLauncher(
         return;
       }
       for (const id of paneIds) {
-        if (launched.has(id) || armed.has(id)) {
+        if (
+          state.launched.has(id) ||
+          state.cancelled.has(id) ||
+          state.armed.has(id)
+        ) {
           continue;
         }
-        const timer = setTimeout(() => fire(id), timeoutMs);
-        armed.set(id, { agent, timer });
-        if (sawOutput.has(id)) {
+        const timer = setTimeout(() => expire(id), timeoutMs);
+        state = {
+          ...state,
+          armed: new Map(state.armed).set(id, { agent, timer }),
+        };
+        const ready =
+          platform === "windows"
+            ? state.promptReady.has(id)
+            : state.sawOutput.has(id);
+        if (ready) {
           fire(id);
         }
       }
     },
     noteOutput(id) {
-      sawOutput.add(id);
-      if (armed.has(id)) {
+      state = { ...state, sawOutput: addId(state.sawOutput, id) };
+      if (platform !== "windows" && state.armed.has(id)) {
+        fire(id);
+      }
+    },
+    notePromptReady(id) {
+      state = { ...state, promptReady: addId(state.promptReady, id) };
+      if (platform === "windows" && state.armed.has(id)) {
         fire(id);
       }
     },
     prune(alive) {
       const aliveSet = new Set(alive);
-      for (const [id, entry] of armed) {
+      for (const [id, entry] of state.armed) {
         if (!aliveSet.has(id)) {
           clearTimeout(entry.timer);
-          armed.delete(id);
         }
       }
-      for (const id of sawOutput) {
-        if (!aliveSet.has(id)) {
-          sawOutput.delete(id);
-        }
-      }
-      for (const id of launched) {
-        if (!aliveSet.has(id)) {
-          launched.delete(id);
-        }
-      }
+      state = {
+        armed: new Map(
+          [...state.armed].filter(([id]) => aliveSet.has(id)),
+        ),
+        sawOutput: new Set(
+          [...state.sawOutput].filter((id) => aliveSet.has(id)),
+        ),
+        promptReady: new Set(
+          [...state.promptReady].filter((id) => aliveSet.has(id)),
+        ),
+        launched: new Set(
+          [...state.launched].filter((id) => aliveSet.has(id)),
+        ),
+        cancelled: new Set(
+          [...state.cancelled].filter((id) => aliveSet.has(id)),
+        ),
+      };
     },
     dispose() {
-      for (const entry of armed.values()) {
+      for (const entry of state.armed.values()) {
         clearTimeout(entry.timer);
       }
-      armed.clear();
-      sawOutput.clear();
-      launched.clear();
+      state = emptyState();
     },
   };
 }
