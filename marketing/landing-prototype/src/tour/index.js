@@ -14,6 +14,7 @@ import {
 } from "../appwin.js";
 import { BRAND, STAGE_ARIA_LABEL } from "../../../stage/brand.js";
 import { mountAurora } from "../aurora.js";
+import { REEL_ID } from "../demo-reel.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
 import { mountStageStream, stagePanes } from "../product-stage.js";
 import {
@@ -381,9 +382,10 @@ function renderFinale(copy) {
           </span>
           <span class="a-cta-tag" data-copy="comingSoon">${copy.comingSoon}</span>
         </button>
-        <button class="tour__cta" type="button" data-open-demo>
+        <a class="tour__cta" href="#${REEL_ID}">
           <span data-copy="primaryCta">${copy.primaryCta}</span>
-        </button>
+          <span aria-hidden="true">↑</span>
+        </a>
         <a
           class="tour__cta"
           href="https://github.com/mxrsv/spacevibe-deck"
@@ -415,7 +417,7 @@ function renderFooter(copy) {
         <nav class="site-footer__col" aria-label="${copy.footerColProduct}">
           <span class="site-footer__coltitle" data-copy="footerColProduct">${copy.footerColProduct}</span>
           <a href="${REPO}/releases/latest" target="_blank" rel="noreferrer" data-copy="downloadMac">${copy.downloadMac}</a>
-          <button type="button" class="site-footer__link" data-open-demo data-copy="primaryCta">${copy.primaryCta}</button>
+          <a class="site-footer__link" href="#${REEL_ID}" data-copy="primaryCta">${copy.primaryCta}</a>
         </nav>
         <nav class="site-footer__col" aria-label="${copy.footerColProject}">
           <span class="site-footer__coltitle" data-copy="footerColProject">${copy.footerColProject}</span>

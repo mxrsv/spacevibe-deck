@@ -64,15 +64,58 @@ function videoFilterArgs(filters) {
   return filters.length > 0 ? ["-vf", filters.join(",")] : [];
 }
 
+/**
+ * Resample to the delivered size. Runs before the fades so the (cheap) fade
+ * work happens at output resolution rather than at capture resolution.
+ *
+ * @param {{ width: number, height: number } | null | undefined} output
+ * @returns {string[]}
+ */
+function scaleFilters(output) {
+  if (!output) {
+    return [];
+  }
+
+  return [`scale=${output.width}:${output.height}:flags=lanczos`];
+}
+
+/**
+ * Resample a captured still to its delivered size — posters are grabbed at the
+ * capture scale, which is larger than anything the page needs.
+ *
+ * @param {{ inPath: string, outPath: string,
+ *   output: { width: number, height: number } }} options
+ */
+export async function resizeImage({ inPath, outPath, output }) {
+  await run([
+    "-y",
+    "-i",
+    inPath,
+    "-vf",
+    `scale=${output.width}:${output.height}:flags=lanczos`,
+    outPath,
+  ]);
+}
+
 /** H.264 — the widest-support landing/social file. */
-export async function encodeMp4({ framesDir, fps, outPath, fade, frameCount }) {
+export async function encodeMp4({
+  framesDir,
+  fps,
+  outPath,
+  fade,
+  frameCount,
+  output,
+}) {
   await run([
     "-y",
     "-framerate",
     String(fps),
     "-i",
     pattern(framesDir),
-    ...videoFilterArgs(fadeFilters(fade, frameCount, fps)),
+    ...videoFilterArgs([
+      ...scaleFilters(output),
+      ...fadeFilters(fade, frameCount, fps),
+    ]),
     "-c:v",
     "libx264",
     "-preset",
@@ -94,6 +137,7 @@ export async function encodeWebm({
   outPath,
   fade,
   frameCount,
+  output,
 }) {
   await run([
     "-y",
@@ -101,7 +145,10 @@ export async function encodeWebm({
     String(fps),
     "-i",
     pattern(framesDir),
-    ...videoFilterArgs(fadeFilters(fade, frameCount, fps)),
+    ...videoFilterArgs([
+      ...scaleFilters(output),
+      ...fadeFilters(fade, frameCount, fps),
+    ]),
     "-c:v",
     "libvpx-vp9",
     "-crf",
@@ -127,9 +174,11 @@ export async function encodeGif({
   fade,
   frameCount,
   colors = 128,
+  output,
 }) {
   const filters = [
     `fps=${fps}`,
+    ...scaleFilters(output),
     ...fadeFilters(fade, frameCount, fps),
     "split[a][b]",
     `[a]palettegen=max_colors=${colors}:stats_mode=diff[p]`,

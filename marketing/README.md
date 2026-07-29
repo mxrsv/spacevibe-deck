@@ -47,8 +47,9 @@ needs:
 | YouTube / X   | `deck-tour-master.mp4`      | upload as-is              |
 | Product Hunt  | `deck-tour-vertical.mp4`    | upload as-is              |
 
-The landing's demo dialog already points at the published names, so a cut goes
-live by copying those three files into the served root:
+The landing's demo band (`landing-prototype/src/demo-reel.js`) already points at
+the published names, so a cut goes live by copying those three files into the
+served root:
 
 ```html
 <video autoplay muted loop playsinline poster="/deck-tour-poster.png">
@@ -56,6 +57,10 @@ live by copying those three files into the served root:
   <source src="/deck-tour.mp4" type="video/mp4" />
 </video>
 ```
+
+The band sizes the frame from the viewport height, up to the page column
+(~1400 CSS px), which is why `hero` now delivers 2560×1440 — see
+[`video/README.md`](./video/README.md).
 
 ## Legacy — the Manim explainer
 

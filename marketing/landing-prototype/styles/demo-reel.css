@@ -1,0 +1,409 @@
+/* Demo band — the film, in the page.
+
+   Sits between the hero and the tour and reuses the document's one column
+   (`--frame-width`), so the fixed verticals drawn by frame.css run down either
+   side of it and its rules line up with the hero's and the tour's. Tokens come
+   from tokens.css; the local --r- names are aliases, same pattern as tour.css. */
+
+/* Every "watch the demo" control on the page is an in-page link to this
+   section — from the hero above and from the closing band and footer below —
+   so the jump gets eased, and stops with the band's label clear of the top
+   edge instead of flush against it. */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+.reel {
+  --r-ink: #ffffff;
+  --r-ink-soft: rgb(255 255 255 / 64%);
+  --r-ink-faint: rgb(255 255 255 / 45%);
+  --r-line: var(--frame-line);
+  --r-line-strong: rgb(255 255 255 / 21%);
+  --r-ease: cubic-bezier(0.22, 0.78, 0.18, 1);
+  /* The film is 16:9, and a band you have to scroll through is a band you
+     watch in halves. Height, not width, is the binding constraint: take the
+     viewport, subtract what the heading and the beat markers need, and let
+     that decide how wide the frame is allowed to get. Capped at the column
+     width, so on a tall display it simply fills the frame. */
+  --r-frame-width: min(
+    100% - var(--frame-pad) * 2,
+    calc((100svh - 21rem) * 16 / 9)
+  );
+  position: relative;
+  color: var(--r-ink);
+  scroll-margin-top: 2.5rem;
+  font-family: var(--font-display);
+  /* Bridges the hero's plate (#090b0a at its foot) into the tour's (#090b0a at
+     its head) — the band is a passage between two sections, not a third one. */
+  background: linear-gradient(180deg, #090b0a 0%, #0b0d0c 46%, #090b0a 100%);
+}
+
+.reel__inner {
+  width: var(--frame-width);
+  margin-inline: auto;
+  padding-bottom: clamp(3rem, 5.5vw, 4.5rem);
+  border-bottom: 1px solid var(--frame-line);
+}
+
+/* Same shape as the hero band and the closing band — `//` label over one
+   display line — but laid out in two columns so the copy costs the frame as
+   little vertical room as possible. */
+.reel__band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 30rem);
+  gap: clamp(1.5rem, 3vw, 3rem);
+  align-items: end;
+  padding: clamp(2.75rem, 5vw, 4rem) var(--frame-pad)
+    clamp(1.5rem, 2.6vw, 2.25rem);
+}
+
+.reel__label {
+  margin: 0 0 1.15rem;
+  color: var(--r-ink-faint);
+  font: 500 0.68rem/1 var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+/* A step under the closing band's h2 — the film is the argument here, and the
+   type should hand off to it rather than compete. */
+.reel__band h2 {
+  margin: 0;
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.reel__lede {
+  margin: 0;
+  padding-bottom: 0.35rem;
+  color: var(--r-ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+/* ---- the frame ---------------------------------------------------------- */
+
+.reel__frame {
+  position: relative;
+  width: var(--r-frame-width);
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid var(--r-line-strong);
+  border-radius: 8px;
+  background: #050706;
+  box-shadow:
+    0 2px 0 rgb(255 255 255 / 5%) inset,
+    0 3rem 7rem -2.5rem rgb(0 0 0 / 90%);
+  isolation: isolate;
+}
+
+.reel__screen {
+  position: relative;
+  isolation: isolate;
+}
+
+.reel__video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: #050706;
+}
+
+/* The whole picture is the play/pause target; the dot is only its visible
+   handle, so it fades out while the film runs and comes back on hover. */
+.reel__tap {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  inset: 0;
+  place-items: center;
+}
+
+.reel__tapdot {
+  display: grid;
+  width: 4.75rem;
+  height: 4.75rem;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 50%;
+  background: rgb(9 11 10 / 62%);
+  backdrop-filter: blur(6px);
+  color: var(--r-ink);
+  place-items: center;
+  transition:
+    opacity 240ms var(--r-ease),
+    transform 240ms var(--r-ease),
+    border-color 240ms var(--r-ease);
+}
+
+.reel__glyph {
+  width: 1.7rem;
+  height: 1.7rem;
+  grid-area: 1 / 1;
+}
+
+.reel__frame[data-state="playing"] .reel__tapdot {
+  opacity: 0;
+  transform: scale(0.86);
+}
+
+.reel__frame[data-state="playing"] .reel__tap:hover .reel__tapdot,
+.reel__frame[data-state="playing"] .reel__tap:focus-visible .reel__tapdot {
+  opacity: 1;
+  transform: none;
+}
+
+.reel__frame[data-state="playing"] .reel__glyph--play,
+.reel__frame[data-state="paused"] .reel__glyph--pause {
+  opacity: 0;
+}
+
+.reel__tap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+
+/* ---- HUD ---------------------------------------------------------------- */
+
+/* A rail under the picture, not an overlay on it. Deliberately always on: the
+   point of moving the film out of a modal was that nobody had to discover it,
+   and auto-hiding controls put the timeline back behind a discovery step. The
+   film has its own keyboard callouts along its bottom edge — an overlaid HUD
+   landed straight on top of them. */
+.reel__hud {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.6rem 0.75rem 0.55rem;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  background: #0b0d0c;
+}
+
+.reel__time {
+  flex: 0 0 auto;
+  color: var(--r-ink-soft);
+  font: 500 0.68rem/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.reel__track {
+  position: relative;
+  height: 2px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 16%);
+}
+
+.reel__track i {
+  position: absolute;
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  inset: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.reel__iconbtn {
+  display: grid;
+  width: 1.9rem;
+  height: 1.9rem;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 3px;
+  background: rgb(9 11 10 / 55%);
+  color: var(--r-ink-soft);
+  cursor: pointer;
+  place-items: center;
+  transition:
+    color 200ms var(--r-ease),
+    border-color 200ms var(--r-ease);
+}
+
+.reel__iconbtn:hover,
+.reel__iconbtn:focus-visible {
+  border-color: rgb(255 255 255 / 45%);
+  color: var(--r-ink);
+}
+
+/* ---- beat markers ------------------------------------------------------- */
+
+/* Inside the frame, under the HUD: the markers are part of the player, and
+   keeping them there is what lets the whole thing — picture, timeline, beats —
+   land in one viewport. */
+.reel__chapters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0 0.75rem 0.7rem;
+  background: #0b0d0c;
+}
+
+.reel__chapter {
+  display: inline-flex;
+  gap: 0.55rem;
+  align-items: baseline;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--r-line);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--r-ink-faint);
+  cursor: pointer;
+  font: 600 0.72rem/1.2 var(--font-display);
+  text-align: left;
+  transition:
+    color 200ms var(--r-ease),
+    border-color 200ms var(--r-ease),
+    background 200ms var(--r-ease);
+}
+
+.reel__chapter:hover {
+  border-color: var(--r-line-strong);
+  color: var(--r-ink);
+}
+
+/* The beat the film is currently on. */
+.reel__chapter[aria-pressed="true"] {
+  border-color: rgb(255 255 255 / 38%);
+  background: rgb(255 255 255 / 7%);
+  color: var(--r-ink);
+}
+
+.reel__chaptime {
+  color: var(--r-ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.reel__chapter[aria-pressed="true"] .reel__chaptime {
+  color: var(--accent);
+}
+
+.reel__chapter:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Fullscreen puts the whole player on the screen, HUD and markers included —
+   the frame is sized by a viewport formula that means nothing here, so the
+   picture takes the space that is left and stays centred. */
+.reel__frame:fullscreen {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  border: 0;
+  border-radius: 0;
+  background: #050706;
+  box-shadow: none;
+}
+
+.reel__frame:fullscreen .reel__screen {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
+  place-items: center;
+}
+
+.reel__frame:fullscreen .reel__video {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
+}
+
+/* ---- failure ------------------------------------------------------------ */
+
+/* The band is the page's only real product footage; when it cannot load, say
+   so rather than leaving a black rectangle. */
+.reel__failed {
+  position: absolute;
+  z-index: 4;
+  display: none;
+  margin: 0;
+  padding: 0 1.5rem;
+  color: var(--r-ink-soft);
+  font-size: 0.9rem;
+  inset: 0;
+  place-content: center;
+  text-align: center;
+}
+
+.reel__frame[data-state="error"] .reel__failed {
+  display: grid;
+}
+
+.reel__frame[data-state="error"] .reel__tap,
+.reel__frame[data-state="error"] .reel__hud {
+  display: none;
+}
+
+@media (max-width: 62rem) {
+  /* Below this the right column cannot hold the lede without shredding it
+     into four-word lines — stack, and let the frame take the full width. */
+  .reel__band {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.1rem;
+  }
+
+  .reel__lede {
+    max-width: 42rem;
+    padding-bottom: 0;
+  }
+
+  .reel {
+    --r-frame-width: calc(100% - var(--frame-pad) * 2);
+  }
+}
+
+@media (max-width: 47.5rem) {
+  .reel__lede {
+    font-size: 0.92rem;
+  }
+
+  .reel__tapdot {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .reel__glyph {
+    width: 1.3rem;
+    height: 1.3rem;
+  }
+
+  /* Four chips do not fit two abreast at this width without breaking the
+     labels; one row that scrolls keeps them readable and reachable. */
+  .reel__chapters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .reel__chapter {
+    flex: 0 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reel__tapdot,
+  .reel__iconbtn,
+  .reel__chapter {
+    transition: none;
+  }
+}

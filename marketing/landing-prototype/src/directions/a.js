@@ -5,6 +5,7 @@ import {
   renderStageStatus,
   renderStageTitlebar,
 } from "../appwin.js";
+import { REEL_ID } from "../demo-reel.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
 import {
   STAGE_ARIA_LABEL,
@@ -129,12 +130,12 @@ export function renderDirectionA(copy, locale) {
                   <span class="a-cta-tag" data-copy="comingSoon">${copy.comingSoon}</span>
                 </button>
 
-                <button class="a-quiet-cta" type="button" data-open-demo>
+                <a class="a-quiet-cta" href="#${REEL_ID}">
                   <span class="a-cta-lead">
                     <span data-copy="primaryCta">${copy.primaryCta}</span>
                   </span>
-                  <i aria-hidden="true">↗</i>
-                </button>
+                  <i aria-hidden="true">↓</i>
+                </a>
 
                 <a
                   class="a-secondary-cta"

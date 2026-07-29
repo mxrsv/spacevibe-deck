@@ -4,6 +4,11 @@
  * `range` trims the film for surfaces that shouldn't carry the end card (the
  * looping hero, the README GIF); `scale` is the device pixel ratio used while
  * capturing, so a small output can still be sampled from a crisp raster.
+ *
+ * `output` resamples the captured frames down to the shipped size. Capturing
+ * above the delivered resolution and downscaling is what keeps 12px terminal
+ * type legible: the film's own type is tiny relative to the frame, so a 1:1
+ * capture leaves nothing for a Retina display to resolve.
  */
 
 export const PRESETS = Object.freeze({
@@ -17,12 +22,19 @@ export const PRESETS = Object.freeze({
     formats: ["mp4", "webm"],
     poster: 6.4,
   },
-  /** Landing hero: loops, so it stops before the end card. */
+  /**
+   * Landing demo band: loops, so it stops before the end card.
+   *
+   * Captured at 2× and delivered at 2560×1440 — the band renders up to
+   * ~1400 CSS px wide, which is 2800 device px on a Retina panel.
+   */
   hero: {
     width: 1600,
     height: 900,
     fps: 30,
-    scale: 1,
+    scale: 2,
+    output: { width: 2560, height: 1440 },
+    posterOutput: { width: 1600, height: 900 },
     range: [0, 16.2],
     formats: ["mp4", "webm"],
     poster: 6.4,

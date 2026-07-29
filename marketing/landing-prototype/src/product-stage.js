@@ -7,7 +7,7 @@
  * drives it from a virtual clock instead.
  */
 
-import { BRAND, STAGE_ARIA_LABEL } from "../../stage/brand.js";
+import { STAGE_ARIA_LABEL } from "../../stage/brand.js";
 import {
   deepFreeze,
   stagePanes,
@@ -151,94 +151,5 @@ export function mountStageStream(gridRoot) {
 
   return () => {
     disposers.forEach((dispose) => dispose());
-  };
-}
-
-/**
- * Mount the shared, user-triggered product demo dialog.
- *
- * @param {HTMLElement} host
- * @param {HTMLElement} triggerRoot
- * @returns {() => void}
- */
-export function mountDemoDialog(host, triggerRoot) {
-  const title = `${BRAND.name} — agents in parallel`;
-  const dialog = document.createElement("dialog");
-  dialog.className = "demo-dialog";
-  dialog.setAttribute("aria-labelledby", "demo-dialog-title");
-  dialog.innerHTML = `
-    <div class="demo-dialog__header">
-      <h2 id="demo-dialog-title">${title}</h2>
-      <button type="button" data-close-demo aria-label="Close demo">Close</button>
-    </div>
-    <video controls muted loop playsinline poster="/deck-tour-poster.png"
-      aria-label="${title}">
-      <source src="/deck-tour.webm" type="video/webm" />
-      <source src="/deck-tour.mp4" type="video/mp4" />
-      Your browser does not support HTML video.
-    </video>
-  `;
-
-  const video = dialog.querySelector("video");
-  const closeButton = dialog.querySelector("[data-close-demo]");
-  const triggers = [...triggerRoot.querySelectorAll("[data-open-demo]")];
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  let opener = null;
-
-  if (!video || !closeButton) {
-    throw new Error("Demo dialog controls are missing.");
-  }
-
-  function resetVideo() {
-    video.pause();
-    video.currentTime = 0;
-  }
-
-  function handleTriggerClick(event) {
-    opener = event.currentTarget;
-    dialog.showModal();
-
-    if (!reduceMotion.matches) {
-      const playAttempt = video.play();
-      playAttempt?.catch(() => {});
-    }
-  }
-
-  function handleCloseButtonClick() {
-    dialog.close();
-  }
-
-  function handleCancel(event) {
-    event.preventDefault();
-    dialog.close();
-  }
-
-  function handleClose() {
-    resetVideo();
-
-    if (opener?.isConnected) {
-      opener.focus();
-    }
-
-    opener = null;
-  }
-
-  host.append(dialog);
-  triggers.forEach((trigger) =>
-    trigger.addEventListener("click", handleTriggerClick),
-  );
-  closeButton.addEventListener("click", handleCloseButtonClick);
-  dialog.addEventListener("cancel", handleCancel);
-  dialog.addEventListener("close", handleClose);
-
-  return () => {
-    triggers.forEach((trigger) =>
-      trigger.removeEventListener("click", handleTriggerClick),
-    );
-    closeButton.removeEventListener("click", handleCloseButtonClick);
-    dialog.removeEventListener("cancel", handleCancel);
-    dialog.removeEventListener("close", handleClose);
-    resetVideo();
-    dialog.remove();
   };
 }
