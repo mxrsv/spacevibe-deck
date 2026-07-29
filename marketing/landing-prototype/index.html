@@ -13,6 +13,23 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'/%3E"
     />
     <link rel="stylesheet" href="/landing-prototype/styles/base.css" />
+    <script>
+      // Google Analytics (gtag.js), gated to the production host so local
+      // dev sessions and preview deploys never pollute the property.
+      if (location.hostname === "deck.spacevibe.dev") {
+        const gaScript = document.createElement("script");
+        gaScript.async = true;
+        gaScript.src =
+          "https://www.googletagmanager.com/gtag/js?id=G-YX72NC5X2R";
+        document.head.appendChild(gaScript);
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () {
+          window.dataLayer.push(arguments);
+        };
+        window.gtag("js", new Date());
+        window.gtag("config", "G-YX72NC5X2R");
+      }
+    </script>
   </head>
   <body>
     <main id="specimen-root"></main>
