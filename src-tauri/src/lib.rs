@@ -8,6 +8,7 @@ mod menu_registry;
 mod migrate;
 mod platform;
 mod pty;
+mod shell_integration;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager};

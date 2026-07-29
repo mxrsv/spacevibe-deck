@@ -1,9 +1,11 @@
 use crate::coordinator::{emit_to_owner, WindowCoordinator};
 use crate::platform::{self, PlatformName, PlatformSession};
+use crate::shell_integration::{retain_valid_cwd, ShellIntegrationEvent, ShellIntegrationParser};
 use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
 use std::{
     collections::HashMap,
     io::{Read, Write},
+    path::PathBuf,
     sync::{
         atomic::{AtomicU32, Ordering},
         mpsc, Mutex,
@@ -14,6 +16,7 @@ use tauri::{AppHandle, Manager, State, WebviewWindow};
 
 pub const EVENT_OUTPUT: &str = "pty:output";
 pub const EVENT_EXIT: &str = "pty:exit";
+pub const EVENT_PROMPT_READY: &str = "pty:prompt-ready";
 
 #[derive(Clone, serde::Serialize)]
 struct OutputPayload {
@@ -26,11 +29,18 @@ struct ExitPayload {
     id: u32,
 }
 
+#[derive(Clone, serde::Serialize)]
+struct PromptReadyPayload {
+    id: u32,
+}
+
 struct Session {
     master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
     killer: Box<dyn ChildKiller + Send + Sync>,
     platform: PlatformSession,
+    shell_integration: ShellIntegrationParser,
+    cwd: Option<PathBuf>,
 }
 
 #[derive(Default)]
@@ -125,6 +135,44 @@ fn remove_session(app: &AppHandle, id: u32) {
     };
 }
 
+fn consume_shell_integration(app: &AppHandle, id: u32, data: &str) {
+    let events = {
+        let state = app.state::<PtyState>();
+        let Ok(mut sessions) = state.sessions.lock() else {
+            return;
+        };
+        let Some(session) = sessions.get_mut(&id) else {
+            return;
+        };
+        let parser = std::mem::take(&mut session.shell_integration);
+        let (next_parser, events) = parser.parse(data);
+        let next_cwd = events
+            .iter()
+            .fold(session.cwd.clone(), |current, event| match event {
+                ShellIntegrationEvent::CurrentDirectory(candidate) => {
+                    retain_valid_cwd(current, candidate)
+                }
+                ShellIntegrationEvent::PromptReady => current,
+            });
+        session.shell_integration = next_parser;
+        session.cwd = next_cwd;
+        events
+    };
+
+    let coordinator = app.state::<WindowCoordinator>();
+    for event in events {
+        if event == ShellIntegrationEvent::PromptReady {
+            emit_to_owner(
+                app,
+                &coordinator,
+                id,
+                EVENT_PROMPT_READY,
+                PromptReadyPayload { id },
+            );
+        }
+    }
+}
+
 /// Working directory for a new shell: an existing directory passes through;
 /// anything else falls back to the platform's validated user profile.
 fn resolve_spawn_cwd(
@@ -212,6 +260,8 @@ pub fn spawn_shell(
                 writer,
                 killer: child.clone_killer(),
                 platform: platform_session,
+                shell_integration: ShellIntegrationParser::default(),
+                cwd: None,
             },
         );
     }
@@ -258,6 +308,7 @@ pub fn spawn_shell(
             if data.is_empty() {
                 continue;
             }
+            consume_shell_integration(&output_app, id, &data);
             let coordinator = output_app.state::<WindowCoordinator>();
             emit_to_owner(
                 &output_app,
@@ -272,6 +323,7 @@ pub fn spawn_shell(
         // breaks) on an iteration that found nothing parked.
         if !pending.is_empty() {
             let data = String::from_utf8_lossy(&pending).to_string();
+            consume_shell_integration(&output_app, id, &data);
             let coordinator = output_app.state::<WindowCoordinator>();
             emit_to_owner(
                 &output_app,
