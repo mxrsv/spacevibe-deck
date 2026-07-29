@@ -21,6 +21,11 @@
   --a-font-display: var(--font-display);
   --a-font-mono: var(--font-mono);
   position: relative;
+  /* The ::after bloom band scales past the section edges (tour-enddrift);
+     clip it here or it widens/lengthens the document's scrollable overflow.
+     Must be `clip`, not `hidden` — `hidden` creates a scroll container and
+     breaks the .tour__sticky pin. Mirrors .direction-a. */
+  overflow: clip;
   color: var(--t-ink);
   font-family: var(--a-font-display);
   background:

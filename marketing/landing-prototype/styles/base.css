@@ -7,7 +7,9 @@
     "Segoe UI",
     sans-serif;
   color: #171717;
-  background: #f4f4f4;
+  /* Match the page's dark floor so macOS rubber-band overscroll (and any
+     sub-pixel gap below the footer) never flashes a light strip. */
+  background: #0a0c0b;
 }
 
 * {
