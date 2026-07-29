@@ -70,6 +70,10 @@ const SEG = `[${SEG_CHAR}]+`;
 // with an extension (`pane.ts`). A bare word with no dot is never a candidate.
 const SLASHED = String.raw`(?:${SEG})?(?:/${SEG})+/?`;
 const BARE = String.raw`${SEG}\.[A-Za-z][A-Za-z0-9]{0,9}`;
+const WINDOWS_SEPARATOR = String.raw`[\\/]`;
+const WINDOWS_DRIVE = String.raw`[A-Za-z]:${WINDOWS_SEPARATOR}${SEG}(?:${WINDOWS_SEPARATOR}${SEG})*${WINDOWS_SEPARATOR}?`;
+const WINDOWS_UNC = String.raw`\\\\${SEG}\\${SEG}(?:\\${SEG})*\\?`;
+const WINDOWS_RELATIVE = String.raw`(?:\.{1,2}\\)?${SEG}(?:\\${SEG})+\\?`;
 const SUFFIX = String.raw`(?::(\d+))?(?::(\d+))?`;
 // A candidate may only start at a token boundary, so a match never begins in
 // the middle of a longer token. This is a *consumed* group rather than a
@@ -82,12 +86,16 @@ const SUFFIX = String.raw`(?::(\d+))?(?::(\d+))?`;
 // It also keeps matching linear: on a run of SEG characters every start
 // position past the first fails on the boundary immediately, instead of
 // backtracking through the run.
-const BOUNDARY = `(?:^|[^${SEG_CHAR}/])`;
+const BOUNDARY = `(?:^|[^${SEG_CHAR}/\\\\:])`;
 // The `u` flag is what gives `\p{…}` its meaning; without it the escapes are
 // read as a literal `p` and the class silently matches the wrong thing.
 // JavaScriptCore has understood Unicode property escapes since Safari 11.1,
 // well below the macOS floor tauri.conf declares.
 const PATH_RE = new RegExp(`(${BOUNDARY})(${SLASHED}|${BARE})${SUFFIX}`, "gu");
+const WINDOWS_PATH_RE = new RegExp(
+  `(${BOUNDARY})(${WINDOWS_DRIVE}|${WINDOWS_UNC}|${WINDOWS_RELATIVE})${SUFFIX}`,
+  "gu",
+);
 
 /** A sentence-final dot is punctuation, never part of the path. */
 function trimTrailingDots(path: string): string {
@@ -123,10 +131,46 @@ function matchUrls(source: string): LinkCandidate[] {
   return out;
 }
 
-function matchPaths(source: string): LinkCandidate[] {
+function followsSpacedAbsoluteWindowsPath(
+  source: string,
+  start: number,
+): boolean {
+  if (start === 0 || !/\s/u.test(source[start - 1] ?? "")) {
+    return false;
+  }
+  const prefix = source.slice(0, start).trimEnd();
+  const previousToken = prefix.slice(
+    Math.max(prefix.lastIndexOf(" "), prefix.lastIndexOf("\t")) + 1,
+  );
+  const isAbsoluteWindows = /^(?:[A-Za-z]:[\\/]|\\\\)/u.test(previousToken);
+  const looksComplete = /\.[\p{L}\p{N}]+(?::\d+){0,2}$/u.test(previousToken);
+  return isAbsoluteWindows && !looksComplete;
+}
+
+function startsSpacedAbsoluteWindowsPath(
+  source: string,
+  start: number,
+  end: number,
+): boolean {
+  const candidate = source.slice(start, end);
+  if (!/^(?:[A-Za-z]:[\\/]|\\\\)/u.test(candidate)) {
+    return false;
+  }
+  if (/\.[\p{L}\p{N}]+(?::\d+){0,2}$/u.test(candidate)) {
+    return false;
+  }
+  const remainder = source.slice(end);
+  const continuation = /^\s+([^\s]+)/u.exec(remainder)?.[1] ?? "";
+  return continuation.includes("\\") || continuation.includes("/");
+}
+
+function matchPathPattern(
+  source: string,
+  pattern: RegExp,
+): LinkCandidate[] {
   const out: LinkCandidate[] = [];
-  PATH_RE.lastIndex = 0;
-  for (let m = PATH_RE.exec(source); m !== null; m = PATH_RE.exec(source)) {
+  pattern.lastIndex = 0;
+  for (let m = pattern.exec(source); m !== null; m = pattern.exec(source)) {
     // m[1] is the consumed boundary character — it belongs to neither the
     // candidate's text nor its range.
     const boundary = m[1] ?? "";
@@ -145,6 +189,13 @@ function matchPaths(source: string): LinkCandidate[] {
       matched.length - (rawPath.length - path.length),
     );
     const start = m.index + boundary.length;
+    const end = start + text.length;
+    if (
+      followsSpacedAbsoluteWindowsPath(source, start) ||
+      startsSpacedAbsoluteWindowsPath(source, start, end)
+    ) {
+      continue;
+    }
     out.push({
       kind: "path",
       text,
@@ -152,10 +203,18 @@ function matchPaths(source: string): LinkCandidate[] {
       line,
       col,
       start,
-      end: start + text.length,
+      end,
     });
   }
   return out;
+}
+
+function matchPaths(source: string): LinkCandidate[] {
+  const windows = matchPathPattern(source, WINDOWS_PATH_RE);
+  const portable = matchPathPattern(source, PATH_RE).filter(
+    (candidate) => !windows.some((windowsPath) => overlaps(candidate, windowsPath)),
+  );
+  return [...windows, ...portable].sort((a, b) => a.start - b.start);
 }
 
 function overlaps(a: LinkCandidate, b: LinkCandidate): boolean {

@@ -1,4 +1,5 @@
 import { shellEscapePath } from "./shell-escape";
+import { getDesktopEnvironment } from "./platform";
 
 /** Editors offered in Settings; `custom` runs the user's own command. */
 export type EditorId = "vscode" | "cursor" | "zed" | "custom";
@@ -52,7 +53,10 @@ export function buildEditorCommand(
   }
   const withFile = trimmed.includes("{file}") ? trimmed : `${trimmed} {file}`;
   return withFile
-    .replace(/\{file\}/g, shellEscapePath(file))
+    .replace(
+      /\{file\}/g,
+      shellEscapePath(file, getDesktopEnvironment().platform),
+    )
     .replace(/\{line\}/g, String(line ?? 1))
     .replace(/\{col\}/g, String(col ?? 1));
 }

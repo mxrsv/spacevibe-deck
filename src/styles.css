@@ -69,6 +69,11 @@ body,
   background: var(--bg);
 }
 
+/* Native Windows chrome owns the system title row; top tabs start at row 1. */
+.window--windows {
+  grid-template-rows: var(--tabbar-h) 1fr var(--status-h);
+}
+
 /* ── Sidebar shell: titlebar / [sidebar | stage] / status ── */
 
 .window--sidebar {
@@ -78,13 +83,19 @@ body,
   grid-template-columns: var(--sidebar-w) 1fr;
 }
 
-.window--sidebar > .titlebar {
+.window--sidebar > .titlebar,
+.window--sidebar > .deck-toolbar {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding-right: 8px;
+  /* DL-3.3: structural separation uses the shared hairline token. */
   border-bottom: 1px solid var(--hair);
+}
+
+.deck-toolbar {
+  background: var(--bg);
 }
 
 .window--sidebar > .stage {

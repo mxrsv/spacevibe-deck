@@ -23,6 +23,7 @@ import { pickImagePath } from "../settings/logo-store";
 import { reportPersistError } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
 import { WorkspaceLogo } from "./workspace-logo";
+import { shortcutLabel } from "../lib/shortcut-label";
 
 interface WorkspaceSidebarProps {
   onSelectTab(index: number): void;
@@ -133,7 +134,7 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
     popover.value = { key, left: rect.right + 6, top: rect.top, anchorEl };
   }
 
-  // ⌘⇧R (open-tab-options) doesn't know whether TabBar or WorkspaceSidebar is
+  // The open-tab-options shortcut doesn't know whether TabBar or WorkspaceSidebar is
   // mounted, so it goes through this shared signal instead — see its doc
   // comment in tabs-store.ts. Unknown/not-yet-rendered key → no anchor found,
   // safe no-op; the signal still resets so a later request isn't swallowed.
@@ -243,7 +244,7 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
         <button
           type="button"
           class="wsbar__add"
-          title="New tab (⌘T)"
+          title={`New tab (${shortcutLabel("new-tab")})`}
           aria-label="New tab"
           onClick={props.onNewTab}
         >

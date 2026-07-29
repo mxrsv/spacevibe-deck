@@ -2,6 +2,7 @@ import type { ISearchOptions } from "@xterm/addon-search";
 import { settings } from "../settings/settings-store";
 import { resolveTheme } from "../settings/themes";
 import type { Pane, SelectionSnapshot } from "./pane";
+import { matchBinding } from "./keymap";
 
 /** "resultIndex/resultCount" for the bar counter; "0/0" when empty. */
 export function formatMatchCount(
@@ -30,7 +31,8 @@ let current: OpenBar | null = null;
 
 /**
  * Last non-empty term actually searched — survives `closeSearchBar()` so
- * ⌘G/⌘⇧G (`advanceSearch` below) can repeat it once the bar itself is gone.
+ * the platform find-next/find-previous chords (`advanceSearch` below) can
+ * repeat it once the bar itself is gone.
  * Deliberately ONE app-wide string, not keyed by pane id: the bar is already
  * a single global instance (`current` above), and CONTEXT.md's "Search…
  * scoped to one pane at a time" describes which pane a term is applied
@@ -216,17 +218,15 @@ export function openSearchBar(pane: Pane): void {
       counter.textContent = "";
       return;
     }
-    // Remembered for ⌘G/⌘⇧G (`advanceSearch`) to repeat after the bar closes.
+    // Remembered for platform repeat-search chords after the bar closes.
     lastQuery = input.value;
     // Incremental: the current selection expands instead of jumping ahead
     findNormalized(pane, "next", input.value, searchOptions(true));
   });
 
   // The global shortcut handler skips inputs outside .pane__term, so the
-  // bar handles its own keys — including Cmd+F to refocus/select-all, and
-  // Cmd+G/Cmd+Shift+G (same action `advanceSearch` runs when the bar is
-  // closed, kept in sync via `input.value` instead of `lastQuery` here since
-  // the visible input is authoritative while the bar is open).
+  // bar handles its own keys. Platform bindings still resolve through the
+  // shared matcher so local and global search behavior cannot drift.
   element.addEventListener("keydown", (event) => {
     event.stopPropagation();
     if (event.key === "Escape") {
@@ -238,17 +238,19 @@ export function openSearchBar(pane: Pane): void {
     } else if (event.key === "Enter") {
       event.preventDefault();
       findNext();
-    } else if (event.metaKey && event.key.toLowerCase() === "g") {
-      event.preventDefault();
-      if (event.shiftKey) {
-        findPrevious();
-      } else {
+    } else {
+      const action = matchBinding(event);
+      if (action === "find-next") {
+        event.preventDefault();
         findNext();
+      } else if (action === "find-previous") {
+        event.preventDefault();
+        findPrevious();
+      } else if (action === "find") {
+        event.preventDefault();
+        input.focus();
+        input.select();
       }
-    } else if (event.metaKey && event.key.toLowerCase() === "f") {
-      event.preventDefault();
-      input.focus();
-      input.select();
     }
   });
 
@@ -282,7 +284,7 @@ export function closeSearchBarForPane(paneId: number): void {
 }
 
 /**
- * ⌘G / ⌘⇧G: advance the match on `pane` (the app's currently active pane,
+ * Advance the match on `pane` (the app's currently active pane,
  * which may or may not be the one a bar is open on).
  *
  *  - Bar open ON `pane`: behaves exactly like pressing Enter/⇧Enter in it —
@@ -292,7 +294,7 @@ export function closeSearchBarForPane(paneId: number): void {
  *    searches `pane` directly. This is deliberately silent (decorations
  *    highlight the match in the terminal; no bar/counter appears) — the
  *    iTerm2/vim `n`/`N` model, not "reopen the bar with the old query": the
- *    whole reason to press ⌘G after Escape is that the bar is already out of
+ *    whole reason to repeat a search after Escape is that the bar is already out of
  *    the way and should stay that way. No query has ever been run → safe
  *    no-op (nothing to repeat).
  */

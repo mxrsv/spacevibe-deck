@@ -194,7 +194,13 @@ mod tests {
         // action, so nobody grows the menu without noticing.
         assert_eq!(
             ids,
-            ["find", "find-next", "find-previous", "clear-buffer", "copy-cwd"]
+            [
+                "find",
+                "find-next",
+                "find-previous",
+                "clear-buffer",
+                "copy-cwd"
+            ]
         );
     }
 

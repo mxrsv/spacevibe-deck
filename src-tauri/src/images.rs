@@ -22,8 +22,7 @@ fn mime_for(path: &Path) -> Option<&'static str> {
 /// Read + base64-encode an image file into a `data:<mime>;base64,…` URL, with
 /// the extension allowlist and 1 MB size cap. Errors are human-readable.
 fn encode_image_data_url(path: &Path) -> Result<String, String> {
-    let mime =
-        mime_for(path).ok_or("Unsupported image type — use .png, .jpg, .svg or .webp")?;
+    let mime = mime_for(path).ok_or("Unsupported image type — use .png, .jpg, .svg or .webp")?;
     let metadata = std::fs::metadata(path).map_err(|_| "Couldn't read the image file")?;
     if metadata.len() > MAX_LOGO_BYTES {
         return Err("Image is too large (max 1 MB)".to_string());

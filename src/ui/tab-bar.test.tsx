@@ -11,6 +11,10 @@ import {
 } from "../terminal/tabs-store";
 import type { AgentAttentionSummary, TabView } from "../terminal/tabs-store";
 import { TabBar } from "./tab-bar";
+import {
+  initializeDesktopEnvironment,
+  resetDesktopEnvironmentForTests,
+} from "../lib/platform";
 
 function actionable(
   overrides: Partial<AgentAttentionSummary> = {},
@@ -41,6 +45,7 @@ describe("TabBar", () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
+    resetDesktopEnvironmentForTests();
     document.body.innerHTML = "";
     host = document.createElement("div");
     document.body.appendChild(host);
@@ -54,6 +59,7 @@ describe("TabBar", () => {
       render(null, host);
     });
     requestTabOptionsKey.value = null;
+    resetDesktopEnvironmentForTests();
   });
 
   const baseProps = () => ({
@@ -77,6 +83,18 @@ describe("TabBar", () => {
       render(<TabBar {...props} />, host);
     });
   };
+
+  it("shows the Windows New Tab shortcut without changing its accessible label", () => {
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: "C:\\Users\\Deck",
+    });
+    mount(baseProps());
+
+    const add = host.querySelector(".tab-add") as HTMLButtonElement;
+    expect(add.title).toBe("New tab (Ctrl+Shift+T)");
+    expect(add.getAttribute("aria-label")).toBe("New tab");
+  });
 
   it("clicking the status mark calls onFocusAttention(index) and does not select or toggle the popover", () => {
     tabViews.value = [

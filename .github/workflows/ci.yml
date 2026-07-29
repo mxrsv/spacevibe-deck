@@ -21,11 +21,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
-        run: npx tsc --noEmit
+      - name: Check menu_registry.rs is up to date
+        run: npm run generate:menu:check
 
       - name: Test
-        run: npx vitest run
+        run: npm test
+
+      - name: Build frontend
+        run: npm run build
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -37,8 +40,8 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
-      - name: Check menu_registry.rs is up to date
-        run: npm run generate:menu:check
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 
       - name: Install Tauri Linux build dependencies
         run: |
@@ -51,6 +54,46 @@ jobs:
             libssl-dev \
             libsoup-3.0-dev \
             libjavascriptcoregtk-4.1-dev
+
+      - name: Rust tests
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+
+  windows-check:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check menu_registry.rs is up to date
+        run: npm run generate:menu:check
+
+      - name: Test
+        run: npm test
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 
       - name: Rust tests
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml

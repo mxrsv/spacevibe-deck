@@ -6,8 +6,13 @@ import {
 import { buildEditorCommand, editorTemplate } from "../lib/editor-command";
 import { settings } from "../settings/settings-store";
 import { reportPersistError } from "../chrome/events";
+import { hasPrimaryModifier } from "../lib/platform";
 import { defaultLinkClient, type LinkClient } from "./link-client";
-import { isMetaHeld, onMetaChange, syncMetaHeld } from "./meta-key";
+import {
+  isPrimaryModifierHeld,
+  onPrimaryModifierChange,
+  syncPrimaryModifierHeld,
+} from "./primary-modifier";
 import { readLogicalLine, type LogicalLine } from "./logical-line";
 
 /** Resolved lines cached per (cwd, text) — hovering must not re-hit the IPC. */
@@ -125,15 +130,18 @@ export function createLinkProvider(
         start: { x: first.x + 1, y: first.y + 1 },
         end: { x: last.x + last.width, y: last.y + 1 },
       },
-      decorations: { pointerCursor: isMetaHeld(), underline: isMetaHeld() },
+      decorations: {
+        pointerCursor: isPrimaryModifierHeld(),
+        underline: isPrimaryModifierHeld(),
+      },
       activate(event) {
-        if (!event.metaKey) {
+        if (!hasPrimaryModifier(event)) {
           return; // plain click belongs to the terminal (selection, TUI mouse)
         }
         openCandidate(resolved, client);
       },
       hover(event) {
-        syncMetaHeld(event.metaKey);
+        syncPrimaryModifierHeld(event);
         // xterm replaces `decorations` with an accessor object right *after*
         // hover() returns, and only writes through those accessors repaint —
         // so defer, and always assign the properties, never the object.
@@ -145,9 +153,9 @@ export function createLinkProvider(
               decorations.underline = held;
             }
           };
-          apply(isMetaHeld());
+          apply(isPrimaryModifierHeld());
           unsubscribe?.();
-          unsubscribe = onMetaChange(apply);
+          unsubscribe = onPrimaryModifierChange(apply);
         });
       },
       leave() {

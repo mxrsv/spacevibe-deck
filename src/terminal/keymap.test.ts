@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_KEYMAP,
+  MACOS_KEYMAP,
+  WINDOWS_KEYMAP,
   isShortcutAction,
   matchBinding,
   selectTabIndex,
@@ -135,7 +136,7 @@ describe("matchBinding", () => {
   // action-registry.ts) — not fixable without either breaking the
   // key-vs-code RULE for zoom-in or reintroducing a6ac532's AZERTY/QWERTZ
   // bug for focus-next/next-tab. Locked here so a future edit that changes
-  // this resolution (e.g. reordering DEFAULT_KEYMAP) fails loudly instead
+  // this resolution (e.g. reordering MACOS_KEYMAP) fails loudly instead
   // of silently.
   it("known trade-off: Cmd+(QWERTZ's unshifted '+', physical BracketRight) matches focus-next, not zoom-in", () => {
     expect(
@@ -301,7 +302,7 @@ describe("matchBinding", () => {
   // 09f5c4d, before the webview keymap knew about it — Task 4
   // (docs/plans/2026-07-27-action-registry.md) unifies new-preset into the
   // same action:/runAction path as every other action, which means it now
-  // needs a real DEFAULT_KEYMAP binding too.
+  // needs a real MACOS_KEYMAP binding too.
   it("matches Cmd+Shift+N as new-preset", () => {
     expect(matchBinding(keyEvent("n", { metaKey: true, shiftKey: true }))).toBe(
       "new-preset",
@@ -336,6 +337,87 @@ describe("matchBinding", () => {
   });
 });
 
+describe("WINDOWS_KEYMAP", () => {
+  it.each([
+    ["c", { ctrlKey: true, shiftKey: true }, "copy-selection"],
+    ["v", { ctrlKey: true, shiftKey: true }, "paste"],
+    ["c", { ctrlKey: true, altKey: true, shiftKey: true }, "copy-cwd"],
+    ["d", { ctrlKey: true, shiftKey: true }, "split-row"],
+    ["d", { ctrlKey: true, altKey: true, shiftKey: true }, "split-column"],
+    ["w", { ctrlKey: true, shiftKey: true }, "close-pane"],
+    ["w", { ctrlKey: true, altKey: true, shiftKey: true }, "close-tab"],
+    ["e", { ctrlKey: true, shiftKey: true }, "toggle-expand"],
+    ["enter", { ctrlKey: true, shiftKey: true }, "toggle-zoom-pane"],
+    ["t", { ctrlKey: true, shiftKey: true }, "new-tab"],
+    ["t", { ctrlKey: true, altKey: true, shiftKey: true }, "reopen-tab"],
+    ["r", { ctrlKey: true, altKey: true, shiftKey: true }, "open-tab-options"],
+    ["tab", { ctrlKey: true }, "next-tab"],
+    ["tab", { ctrlKey: true, shiftKey: true }, "prev-tab"],
+    ["=", { ctrlKey: true }, "zoom-in"],
+    ["=", { ctrlKey: true, shiftKey: true }, "zoom-in"],
+    ["-", { ctrlKey: true }, "zoom-out"],
+    ["0", { ctrlKey: true }, "zoom-reset"],
+    ["f", { ctrlKey: true, shiftKey: true }, "find"],
+    ["f3", {}, "find-next"],
+    ["f3", { shiftKey: true }, "find-previous"],
+    ["k", { ctrlKey: true, shiftKey: true }, "clear-buffer"],
+    ["n", { ctrlKey: true, altKey: true, shiftKey: true }, "new-preset"],
+    ["s", { ctrlKey: true, altKey: true, shiftKey: true }, "save-preset"],
+    ["a", { ctrlKey: true, shiftKey: true }, "focus-next-attention"],
+    [",", { ctrlKey: true }, "toggle-settings"],
+    ["pageup", { shiftKey: true }, "scroll-page-up"],
+    ["pagedown", { shiftKey: true }, "scroll-page-down"],
+    ["home", { shiftKey: true }, "scroll-to-top"],
+    ["end", { shiftKey: true }, "scroll-to-bottom"],
+  ] as const)("maps %s with the fixed Windows modifiers", (key, mods, action) => {
+    expect(matchBinding(keyEvent(key, mods), WINDOWS_KEYMAP)).toBe(action);
+  });
+
+  it.each([
+    ["BracketRight", "]", { ctrlKey: true, altKey: true }, "focus-next"],
+    ["BracketLeft", "[", { ctrlKey: true, altKey: true }, "focus-prev"],
+    ["Digit1", "1", { ctrlKey: true }, "select-tab-1"],
+    ["Digit8", "8", { ctrlKey: true }, "select-tab-8"],
+    ["Digit9", "9", { ctrlKey: true }, "select-last-tab"],
+  ] as const)("uses physical position for %s", (code, key, mods, action) => {
+    expect(matchBinding(codeEvent(code, key, mods), WINDOWS_KEYMAP)).toBe(action);
+  });
+
+  it.each([
+    ["arrowleft", "focus-left"],
+    ["arrowright", "focus-right"],
+    ["arrowup", "focus-up"],
+    ["arrowdown", "focus-down"],
+  ] as const)("maps Ctrl+Alt+%s to %s", (key, action) => {
+    expect(
+      matchBinding(keyEvent(key, { ctrlKey: true, altKey: true }), WINDOWS_KEYMAP),
+    ).toBe(action);
+  });
+
+  it.each([
+    ["arrowleft", "swap-left"],
+    ["arrowright", "swap-right"],
+    ["arrowup", "swap-up"],
+    ["arrowdown", "swap-down"],
+  ] as const)("maps Ctrl+Alt+Shift+%s to %s", (key, action) => {
+    expect(
+      matchBinding(
+        keyEvent(key, { ctrlKey: true, altKey: true, shiftKey: true }),
+        WINDOWS_KEYMAP,
+      ),
+    ).toBe(action);
+  });
+
+  it.each(["c", "d", "w", "k", "f", "o"])(
+    "leaves protected bare Ctrl+%s unbound",
+    (key) => {
+      expect(
+        matchBinding(keyEvent(key, { ctrlKey: true }), WINDOWS_KEYMAP),
+      ).toBeNull();
+    },
+  );
+});
+
 describe("selectTabIndex", () => {
   it("parses select-tab actions into a 0-based index", () => {
     expect(selectTabIndex("select-tab-1")).toBe(0);
@@ -353,8 +435,10 @@ describe("selectTabIndex", () => {
 
 describe("isShortcutAction", () => {
   it("accepts every action the default keymap binds", () => {
-    for (const binding of DEFAULT_KEYMAP) {
-      expect(isShortcutAction(binding.action)).toBe(true);
+    for (const keymap of [MACOS_KEYMAP, WINDOWS_KEYMAP]) {
+      for (const binding of keymap) {
+        expect(isShortcutAction(binding.action)).toBe(true);
+      }
     }
   });
 

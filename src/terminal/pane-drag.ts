@@ -1,5 +1,6 @@
 import type { Edge } from "../lib/split-tree";
 import type { PaneRect } from "../lib/pane-geometry";
+import { hasPrimaryModifier } from "../lib/platform";
 
 export interface PaneDragController {
   dispose(): void;
@@ -20,8 +21,15 @@ interface PaneDragOptions {
 
 /** Dock lands on an edge; swap covers the whole target pane. */
 type DropEdge = Edge | "full";
+type DragMode = "dock" | "swap";
 
 const DRAG_THRESHOLD = 5;
+
+export function dragModeForEvent(
+  event: Readonly<Pick<KeyboardEvent, "metaKey" | "ctrlKey">>,
+): DragMode {
+  return hasPrimaryModifier(event) ? "swap" : "dock";
+}
 
 /** Nearest edge by normalized distance to all four edges (diagonal split). Pure. */
 export function edgeFor(rect: PaneRect, x: number, y: number): Edge {
@@ -89,9 +97,9 @@ export function createPaneDragController(
   let ghost: HTMLElement | null = null;
   let overlay: HTMLElement | null = null;
   let target: { id: number; edge: DropEdge } | null = null;
-  // "swap" while Cmd is held; toggles live on keydown/keyup mid-drag.
-  let mode: "dock" | "swap" = "dock";
-  // Last cursor position — lets a Cmd change re-run the hit test in place.
+  // "swap" while the platform modifier is held; toggles live mid-drag.
+  let mode: DragMode = "dock";
+  // Last cursor position lets a modifier change re-run the hit test in place.
   let lastX = 0;
   let lastY = 0;
 
@@ -216,7 +224,7 @@ export function createPaneDragController(
       }
       beginDrag();
     }
-    mode = event.metaKey ? "swap" : "dock";
+    mode = dragModeForEvent(event);
     lastX = event.clientX;
     lastY = event.clientY;
     moveGhost(event.clientX, event.clientY);
@@ -261,12 +269,12 @@ export function createPaneDragController(
     syncMode(event);
   }
 
-  /** Follow the live Cmd state; re-hit-test in place so the overlay flips. */
+  /** Follow the live primary modifier; re-hit-test so the overlay flips. */
   function syncMode(event: KeyboardEvent): void {
     if (!dragging) {
       return;
     }
-    const next: "dock" | "swap" = event.metaKey ? "swap" : "dock";
+    const next = dragModeForEvent(event);
     if (next === mode) {
       return;
     }

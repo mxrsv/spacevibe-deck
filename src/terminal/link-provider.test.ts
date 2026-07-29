@@ -5,6 +5,10 @@ import { createMemoryLinkClient } from "./link-client";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { persistError } from "../chrome/events";
+import {
+  initializeDesktopEnvironment,
+  resetDesktopEnvironmentForTests,
+} from "../lib/platform";
 
 const CWD = "/repo";
 
@@ -57,12 +61,17 @@ function provide(
   });
 }
 
-function click(link: ILink, metaKey: boolean): void {
-  link.activate({ metaKey } as MouseEvent, link.text);
+function click(link: ILink, metaKey: boolean, ctrlKey = false): void {
+  link.activate({ metaKey, ctrlKey } as MouseEvent, link.text);
 }
 
 describe("createLinkProvider", () => {
   beforeEach(() => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "macos",
+      homeDir: "/Users/dev",
+    });
     settings.value = DEFAULT_SETTINGS;
     persistError.value = null;
   });
@@ -89,6 +98,24 @@ describe("createLinkProvider", () => {
 
     click(links![0], false);
     expect(client.openedUrls).toEqual([]);
+  });
+
+  it("opens with Ctrl on Windows and ignores Cmd", async () => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const client = createMemoryLinkClient();
+    const links = await provide(
+      fakeTerminal("see https://example.com now"),
+      client,
+    );
+
+    click(links![0], true);
+    click(links![0], false, true);
+
+    expect(client.openedUrls).toEqual(["https://example.com"]);
   });
 
   it("links only the paths that resolve to a real file", async () => {

@@ -31,6 +31,10 @@ import {
 } from "../terminal/tabs-store";
 import type { AgentAttentionSummary, TabView } from "../terminal/tabs-store";
 import { WorkspaceSidebar } from "./workspace-sidebar";
+import {
+  initializeDesktopEnvironment,
+  resetDesktopEnvironmentForTests,
+} from "../lib/platform";
 
 function actionable(
   overrides: Partial<AgentAttentionSummary> = {},
@@ -61,6 +65,7 @@ describe("WorkspaceSidebar", () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
+    resetDesktopEnvironmentForTests();
     document.body.innerHTML = "";
     host = document.createElement("div");
     document.body.appendChild(host);
@@ -74,6 +79,7 @@ describe("WorkspaceSidebar", () => {
       render(null, host);
     });
     requestTabOptionsKey.value = null;
+    resetDesktopEnvironmentForTests();
   });
 
   const baseProps = () => ({
@@ -90,6 +96,18 @@ describe("WorkspaceSidebar", () => {
       render(<WorkspaceSidebar {...props} />, host);
     });
   };
+
+  it("shows the Windows New Tab shortcut without changing its accessible label", () => {
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: "C:\\Users\\Deck",
+    });
+    mount(baseProps());
+
+    const add = host.querySelector(".wsbar__add") as HTMLButtonElement;
+    expect(add.title).toBe("New tab (Ctrl+Shift+T)");
+    expect(add.getAttribute("aria-label")).toBe("New tab");
+  });
 
   it("renders the label, path, and logo for each row", () => {
     tabViews.value = [

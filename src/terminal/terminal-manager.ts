@@ -19,6 +19,7 @@ import {
 import { nearestInDirection, type FocusDirection } from "../lib/pane-geometry";
 import { paneHeaderInfo, type PaneProcessInfo } from "../lib/process-info";
 import { shellEscapePaths } from "../lib/shell-escape";
+import { getDesktopEnvironment } from "../lib/platform";
 import { reportPersistError } from "../chrome/events";
 import { createLayoutEngine } from "./layout-engine";
 import { createPaneLifecycle, type CreatePaneFn } from "./pane-lifecycle";
@@ -449,7 +450,10 @@ export function createTerminalManager(
     if (!life.panes.has(id) || life.exited.has(id)) {
       return; // pane already exited — never write into a dead PTY
     }
-    const data = shellEscapePaths(paths);
+    const data = shellEscapePaths(
+      paths,
+      getDesktopEnvironment().platform,
+    );
     if (data === "") {
       return;
     }

@@ -5,6 +5,7 @@ import {
 } from "../../lib/editor-command";
 import { CommitInput } from "./commit-input";
 import { ConfigRow } from "./config-row";
+import { primaryModifierName } from "../../lib/shortcut-label";
 
 interface EditorRowProps {
   value: EditorId;
@@ -25,7 +26,10 @@ export function EditorRow({
 
   return (
     <>
-      <ConfigRow label="Editor" desc="⌘+click a file path">
+      <ConfigRow
+        label="Editor"
+        desc={`${primaryModifierName()}+click a file path`}
+      >
         <span class="cfg-btn cfg-btn--overlay">
           <span class="cfg-btn__text">{label}</span>
           <span class="cfg-btn__hint">▾</span>

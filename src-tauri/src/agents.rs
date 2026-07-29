@@ -3,7 +3,7 @@ use std::time::Duration;
 
 /// Login shells that hang (e.g. a `.zprofile` waiting on network) must not
 /// wedge the picker forever — degrade to empty after this.
-const DETECT_TIMEOUT: Duration = Duration::from_secs(3);
+pub(crate) const DETECT_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct AgentInfo {
@@ -12,7 +12,7 @@ pub struct AgentInfo {
 }
 
 /// Allowlist aligned with the chrome recognition names (ARCH D6).
-pub const AGENT_ALLOWLIST: [&str; 3] = ["claude", "codex", "gemini"];
+pub(crate) const AGENT_ALLOWLIST: [&str; 3] = ["claude", "codex", "gemini"];
 
 /// Strip terminal control sequences from one line. An interactive login shell
 /// (`-ilc`) runs rc-file hooks that print terminal noise with no trailing
@@ -67,7 +67,7 @@ fn strip_ansi(line: &str) -> String {
 /// Keep only absolute paths whose basename is allowlisted, first hit per
 /// name wins, result ordered by first appearance (script emits allowlist
 /// order, so numbering in the picker is stable).
-fn parse_command_v_output(output: &str) -> Vec<AgentInfo> {
+pub(crate) fn parse_command_v_output(output: &str) -> Vec<AgentInfo> {
     let mut found: Vec<AgentInfo> = Vec::new();
     for line in output.lines() {
         let stripped = strip_ansi(line);
@@ -104,20 +104,7 @@ fn parse_command_v_output(output: &str) -> Vec<AgentInfo> {
 /// Shell only — FR-025) instead of blocking a Tokio worker thread forever.
 #[tauri::command]
 pub async fn detect_agents() -> Vec<AgentInfo> {
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
-    let script = AGENT_ALLOWLIST
-        .iter()
-        .map(|name| format!("command -v {name}"))
-        .collect::<Vec<_>>()
-        .join("; ");
-    let task = tauri::async_runtime::spawn_blocking(move || {
-        std::process::Command::new(&shell).args(["-ilc", &script]).output()
-    });
-    let output = match tokio::time::timeout(DETECT_TIMEOUT, task).await {
-        Ok(Ok(Ok(output))) => output,
-        _ => return Vec::new(), // timed out, task panicked, or the shell failed to spawn
-    };
-    parse_command_v_output(&String::from_utf8_lossy(&output.stdout))
+    crate::platform::discover_agents().await
 }
 
 /// Existence check for workspace recents (FR-003 AC-2); order mirrors input.

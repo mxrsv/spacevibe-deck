@@ -2,6 +2,7 @@ import { settings } from "../settings/settings-store";
 import { getPreset } from "../settings/themes";
 import { statusInfo } from "../terminal/tabs-store";
 import { tildify } from "../lib/process-info";
+import { shortcutLabel } from "../lib/shortcut-label";
 
 export function StatusBar() {
   const info = statusInfo.value;
@@ -34,9 +35,9 @@ export function StatusBar() {
         <span class="status__vsep" aria-hidden="true" />
         <span class="status__seg">
           <span class="status__hint">split</span>
-          <kbd class="status__kbd">⌘D</kbd>
+          <kbd class="status__kbd">{shortcutLabel("split-row")}</kbd>
           <span class="status__hint">new tab</span>
-          <kbd class="status__kbd">⌘T</kbd>
+          <kbd class="status__kbd">{shortcutLabel("new-tab")}</kbd>
         </span>
       </div>
     </footer>

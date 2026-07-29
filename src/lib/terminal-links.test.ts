@@ -31,6 +31,40 @@ describe("extractLinkCandidates", () => {
     ]);
   });
 
+  it("matches Windows drive paths with either separator", () => {
+    const found = extractLinkCandidates(
+      String.raw`C:\Users\dev\src\pane.ts:12:4 C:/Users/dev/docs/readme.md`,
+    );
+
+    expect(found.map((candidate) => candidate.target)).toEqual([
+      String.raw`C:\Users\dev\src\pane.ts`,
+      "C:/Users/dev/docs/readme.md",
+    ]);
+    expect(found[0]).toMatchObject({ line: 12, col: 4 });
+  });
+
+  it("matches UNC and Windows relative paths without rewriting them", () => {
+    const found = extractLinkCandidates(
+      String.raw`\\server\share\src\pane.ts .\docs\readme.md src\main.ts`,
+    );
+
+    expect(found.map((candidate) => candidate.target)).toEqual([
+      String.raw`\\server\share\src\pane.ts`,
+      String.raw`.\docs\readme.md`,
+      String.raw`src\main.ts`,
+    ]);
+  });
+
+  it("keeps unquoted Windows paths with spaces ambiguous", () => {
+    const found = extractLinkCandidates(String.raw`C:\My Files\pane.ts`);
+
+    expect(found).toEqual([]);
+  });
+
+  it("does not carve a relative path out of a malformed drive path", () => {
+    expect(extractLinkCandidates(String.raw`C:src\pane.ts`)).toEqual([]);
+  });
+
   it("matches a bare filename with an extension", () => {
     const [file] = extractLinkCandidates("edited pane.ts today");
     expect(file.target).toBe("pane.ts");

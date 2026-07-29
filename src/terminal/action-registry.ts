@@ -1,7 +1,7 @@
 /**
  * Single source of truth for every keyboard shortcut / macOS menu action.
  * Pure data — no Preact, no Tauri, no DOM. `keymap.ts` derives event matching
- * from `DEFAULT_KEYMAP`/`ActionId`; `tab-manager.ts`'s `overlayBlocksAction`
+ * from the platform keymaps/`ActionId`; `tab-manager.ts`'s `overlayBlocksAction`
  * reads `scope`. See docs/plans/2026-07-27-action-registry.md.
  */
 
@@ -126,7 +126,7 @@ export interface ActionDefinition {
 // its Task 1 body was actually updated for it. Verified against the real
 // `src-tauri/src/menu.rs` (Edit submenu: find, find-next, find-previous,
 // clear-buffer, no separators between them) and `src/terminal/keymap.ts`'s
-// current `DEFAULT_KEYMAP` — this lift includes both, for 27 rows total.
+// current macOS keymap — this lift includes both, for 27 rows total.
 export const ACTION_REGISTRY = [
   {
     id: "toggle-settings",
@@ -287,6 +287,16 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "Edit" },
   },
   {
+    id: "copy-selection",
+    label: "Copy Selection",
+    scope: "pane",
+  },
+  {
+    id: "paste",
+    label: "Paste",
+    scope: "pane",
+  },
+  {
     id: "split-row",
     label: "Split Vertically",
     scope: "pane",
@@ -414,7 +424,7 @@ const ACTION_IDS: ReadonlySet<string> = new Set(
 /**
  * Whether `value` names a real action — having a binding or not is
  * irrelevant (fixes the old limitation: a menu-only action, with no
- * `DEFAULT_KEYMAP` entry, is still a valid id).
+ * platform-keymap entry, is still a valid id).
  */
 export function isActionId(
   value: unknown,
@@ -477,7 +487,7 @@ export type KeyBinding = CharKeyBinding | PhysicalKeyBinding;
  * nothing at all — switching tabs by number was completely dead on that
  * layout, the exact class of bug a6ac532 fixed for the bracket keys.
  */
-const TAB_SELECT_BINDINGS: readonly KeyBinding[] = Array.from(
+const MACOS_TAB_SELECT_BINDINGS: readonly KeyBinding[] = Array.from(
   { length: 8 },
   (_, index): KeyBinding => ({
     code: `Digit${index + 1}`,
@@ -494,13 +504,13 @@ const TAB_SELECT_BINDINGS: readonly KeyBinding[] = Array.from(
  * live tab count in tab-manager.ts, not here. Physical key position, same
  * F-C1 reasoning as TAB_SELECT_BINDINGS above.
  */
-const SELECT_LAST_TAB_BINDING: KeyBinding = {
+const MACOS_SELECT_LAST_TAB_BINDING: KeyBinding = {
   code: "Digit9",
   meta: true,
   action: "select-last-tab",
 };
 
-export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
+export const MACOS_KEYMAP: readonly KeyBinding[] = [
   { key: "d", meta: true, action: "split-row" },
   { key: "d", meta: true, shift: true, action: "split-column" },
   // iTerm2 convention: Cmd+W closes the pane, Cmd+Shift+W the whole tab
@@ -634,6 +644,93 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { key: "pagedown", shift: true, action: "scroll-page-down" },
   { key: "home", shift: true, action: "scroll-to-top" },
   { key: "end", shift: true, action: "scroll-to-bottom" },
-  ...TAB_SELECT_BINDINGS,
-  SELECT_LAST_TAB_BINDING,
+  ...MACOS_TAB_SELECT_BINDINGS,
+  MACOS_SELECT_LAST_TAB_BINDING,
+];
+
+const WINDOWS_TAB_SELECT_BINDINGS: readonly KeyBinding[] = Array.from(
+  { length: 8 },
+  (_, index): KeyBinding => ({
+    code: `Digit${index + 1}`,
+    ctrl: true,
+    action: `select-tab-${index + 1}`,
+  }),
+);
+
+const WINDOWS_SELECT_LAST_TAB_BINDING: KeyBinding = {
+  code: "Digit9",
+  ctrl: true,
+  action: "select-last-tab",
+};
+
+/**
+ * Windows Terminal-style chords keep conventional bare Ctrl sequences
+ * available to the PTY. Clipboard actions are intercepted pane-locally.
+ */
+export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
+  { key: "c", ctrl: true, shift: true, action: "copy-selection" },
+  { key: "v", ctrl: true, shift: true, action: "paste" },
+  { key: "c", ctrl: true, alt: true, shift: true, action: "copy-cwd" },
+  { key: "d", ctrl: true, shift: true, action: "split-row" },
+  { key: "d", ctrl: true, alt: true, shift: true, action: "split-column" },
+  { key: "w", ctrl: true, shift: true, action: "close-pane" },
+  { key: "w", ctrl: true, alt: true, shift: true, action: "close-tab" },
+  { code: "BracketRight", ctrl: true, alt: true, action: "focus-next" },
+  { code: "BracketLeft", ctrl: true, alt: true, action: "focus-prev" },
+  { key: "arrowleft", ctrl: true, alt: true, action: "focus-left" },
+  { key: "arrowright", ctrl: true, alt: true, action: "focus-right" },
+  { key: "arrowup", ctrl: true, alt: true, action: "focus-up" },
+  { key: "arrowdown", ctrl: true, alt: true, action: "focus-down" },
+  { key: "arrowleft", ctrl: true, alt: true, shift: true, action: "swap-left" },
+  {
+    key: "arrowright",
+    ctrl: true,
+    alt: true,
+    shift: true,
+    action: "swap-right",
+  },
+  { key: "arrowup", ctrl: true, alt: true, shift: true, action: "swap-up" },
+  {
+    key: "arrowdown",
+    ctrl: true,
+    alt: true,
+    shift: true,
+    action: "swap-down",
+  },
+  { key: "e", ctrl: true, shift: true, action: "toggle-expand" },
+  { key: "enter", ctrl: true, shift: true, action: "toggle-zoom-pane" },
+  { key: "t", ctrl: true, shift: true, action: "new-tab" },
+  { key: "t", ctrl: true, alt: true, shift: true, action: "reopen-tab" },
+  {
+    key: "r",
+    ctrl: true,
+    alt: true,
+    shift: true,
+    action: "open-tab-options",
+  },
+  { key: "tab", ctrl: true, action: "next-tab" },
+  { key: "tab", ctrl: true, shift: true, action: "prev-tab" },
+  ...WINDOWS_TAB_SELECT_BINDINGS,
+  WINDOWS_SELECT_LAST_TAB_BINDING,
+  { key: "=", ctrl: true, action: "zoom-in" },
+  { key: "=", ctrl: true, shift: true, action: "zoom-in" },
+  { key: "-", ctrl: true, action: "zoom-out" },
+  { key: "0", ctrl: true, action: "zoom-reset" },
+  { key: "f", ctrl: true, shift: true, action: "find" },
+  { key: "f3", action: "find-next" },
+  { key: "f3", shift: true, action: "find-previous" },
+  { key: "k", ctrl: true, shift: true, action: "clear-buffer" },
+  { key: "n", ctrl: true, alt: true, shift: true, action: "new-preset" },
+  { key: "s", ctrl: true, alt: true, shift: true, action: "save-preset" },
+  {
+    key: "a",
+    ctrl: true,
+    shift: true,
+    action: "focus-next-attention",
+  },
+  { key: ",", ctrl: true, action: "toggle-settings" },
+  { key: "pageup", shift: true, action: "scroll-page-up" },
+  { key: "pagedown", shift: true, action: "scroll-page-down" },
+  { key: "home", shift: true, action: "scroll-to-top" },
+  { key: "end", shift: true, action: "scroll-to-bottom" },
 ];

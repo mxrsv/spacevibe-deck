@@ -1,21 +1,28 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryLinkClient } from "./link-client";
 import { createOscLinkHandler } from "./osc-link-handler";
+import {
+  initializeDesktopEnvironment,
+  resetDesktopEnvironmentForTests,
+} from "../lib/platform";
 
 vi.mock("../chrome/events", () => ({
   reportPersistError: vi.fn(),
 }));
 
-vi.mock("./meta-key", () => {
+vi.mock("./primary-modifier", () => {
   let held = false;
   const listeners = new Set<(held: boolean) => void>();
   return {
-    isMetaHeld: () => held,
-    syncMetaHeld: (next: boolean) => {
-      held = next;
+    isPrimaryModifierHeld: () => held,
+    syncPrimaryModifierHeld: (event: {
+      metaKey: boolean;
+      ctrlKey: boolean;
+    }) => {
+      held = event.metaKey || event.ctrlKey;
     },
-    onMetaChange: (listener: (held: boolean) => void) => {
+    onPrimaryModifierChange: (listener: (held: boolean) => void) => {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
@@ -31,8 +38,8 @@ vi.mock("./meta-key", () => {
   };
 });
 
-function mouseEvent(metaKey: boolean): MouseEvent {
-  return new MouseEvent("click", { metaKey });
+function mouseEvent(metaKey: boolean, ctrlKey = false): MouseEvent {
+  return new MouseEvent("click", { metaKey, ctrlKey });
 }
 
 /** Mimic Linkifier: install decorations accessors after hover returns. */
@@ -72,9 +79,18 @@ function installDecorationsAfterHover(
 }
 
 describe("createOscLinkHandler", () => {
+  beforeEach(() => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "macos",
+      homeDir: "/Users/dev",
+    });
+  });
+
   afterEach(async () => {
     // Flush microtasks from hover decoration sync.
     await Promise.resolve();
+    resetDesktopEnvironmentForTests();
     await Promise.resolve();
   });
 
@@ -95,6 +111,27 @@ describe("createOscLinkHandler", () => {
       start: { x: 1, y: 1 },
       end: { x: 1, y: 1 },
     });
+    expect(client.openedUrls).toEqual(["https://example.com"]);
+  });
+
+  it("Ctrl+click opens on Windows while Cmd stays inert", () => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const client = createMemoryLinkClient();
+    const handler = createOscLinkHandler(client);
+
+    handler.activate(mouseEvent(true), "https://example.com", {
+      start: { x: 1, y: 1 },
+      end: { x: 1, y: 1 },
+    });
+    handler.activate(mouseEvent(false, true), "https://example.com", {
+      start: { x: 1, y: 1 },
+      end: { x: 1, y: 1 },
+    });
+
     expect(client.openedUrls).toEqual(["https://example.com"]);
   });
 
@@ -142,4 +179,3 @@ describe("createOscLinkHandler", () => {
     expect(state.pointerCursor).toBe(true);
   });
 });
-

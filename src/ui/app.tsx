@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { useSignalEffect } from "@preact/signals";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -42,6 +43,51 @@ import { WorkspaceSidebar } from "./workspace-sidebar";
 import { StatusBar } from "./status-bar";
 import { SettingsPanel } from "./settings-panel";
 import { runAttentionFocus } from "./attention-focus-coordinator";
+import { getDesktopEnvironment } from "../lib/platform";
+
+interface DesktopChromeProps {
+  readonly sidebar: boolean;
+  readonly toolbar: ComponentChildren;
+  readonly sidebarNavigation: ComponentChildren;
+  readonly topTabs: ComponentChildren;
+  readonly stage: ComponentChildren;
+  readonly status: ComponentChildren;
+  readonly onMacTitlebarDoubleClick: () => void;
+}
+
+/** Platform shell only; native Windows system controls stay outside Preact. */
+export function DesktopChrome(props: DesktopChromeProps) {
+  const platform = getDesktopEnvironment().platform;
+  const windows = platform === "windows";
+  const classes = [
+    "window",
+    `window--${platform}`,
+    props.sidebar ? "window--sidebar" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <div class={classes}>
+      {!windows ? (
+        <div
+          class="titlebar"
+          data-tauri-drag-region
+          onDblClick={props.onMacTitlebarDoubleClick}
+        >
+          {props.sidebar ? props.toolbar : null}
+        </div>
+      ) : props.sidebar ? (
+        <div class="deck-toolbar" aria-label="Deck actions">
+          {props.toolbar}
+        </div>
+      ) : null}
+      {props.sidebar ? props.sidebarNavigation : props.topTabs}
+      {props.stage}
+      {props.status}
+    </div>
+  );
+}
 
 /**
  * Pure Settings-close: sets `settingsOpen` false and hands focus back.
@@ -404,24 +450,19 @@ export function App() {
     />
   );
 
+  const maximizeMacWindow = (): void => {
+    getCurrentWindow()
+      .toggleMaximize()
+      .catch((err: unknown) => {
+        console.warn("toggleMaximize failed:", err);
+      });
+  };
+
   return (
-    <div class={`window ${sidebar ? "window--sidebar" : ""}`}>
-      <div
-        class="titlebar"
-        data-tauri-drag-region
-        onDblClick={() => {
-          getCurrentWindow()
-            .toggleMaximize()
-            .catch((err: unknown) => {
-              console.warn("toggleMaximize failed:", err);
-            });
-        }}
-      >
-        {/* Sidebar mode has no horizontal bar to host the actions — they ride
-            the titlebar, right-aligned, clear of the macOS traffic lights. */}
-        {sidebar ? chromeActions : null}
-      </div>
-      {sidebar ? (
+    <DesktopChrome
+      sidebar={sidebar}
+      toolbar={chromeActions}
+      sidebarNavigation={
         <WorkspaceSidebar
           onSelectTab={selectTab}
           onCloseTab={(index) => void tabsRef.current?.closeTab(index)}
@@ -432,7 +473,8 @@ export function App() {
           }
           onFocusAttention={requestAttentionFocus}
         />
-      ) : (
+      }
+      topTabs={
         <TabBar
           settingsOpen={settingsOpen.value}
           onSelectTab={selectTab}
@@ -452,49 +494,52 @@ export function App() {
           onToggleSettings={toggleSettings}
           onFocusAttention={requestAttentionFocus}
         />
-      )}
-      <main class="stage">
-        <div class="stage__tabs" ref={stagesRef} />
-        {boardOpen.value ? (
-          <OpenBoard
-            canCancel={tabViews.value.length > 0}
-            onCancel={() => {
-              boardOpen.value = false;
-              tabsRef.current?.focusActive();
-            }}
-            onOpen={(workspace, preset, agent) =>
-              handleOpen(workspace, preset, agent)
-            }
-            onNewPreset={(workspace) => {
-              editorRequest.value = { source: "board", workspace };
-            }}
-          />
-        ) : null}
-        {editorRequest.value !== null ? (
-          <PresetEditor
-            onCancel={() => {
-              editorRequest.value = null;
-            }}
-            onCreate={(name, artifact) =>
-              void handleEditorCreate(name, artifact)
-            }
-          />
-        ) : null}
-        {saveDialogOpen.value ? (
-          <SavePresetDialog
-            existing={presetsData.value.presets}
-            onCancel={() => {
-              saveDialogOpen.value = false;
-            }}
-            onSave={(target, includeCwds) =>
-              void handleSavePreset(target, includeCwds)
-            }
-          />
-        ) : null}
-        <PersistErrorBar />
-        <SettingsPanel open={settingsOpen.value} onClose={closePanel} />
-      </main>
-      <StatusBar />
-    </div>
+      }
+      stage={
+        <main class="stage">
+          <div class="stage__tabs" ref={stagesRef} />
+          {boardOpen.value ? (
+            <OpenBoard
+              canCancel={tabViews.value.length > 0}
+              onCancel={() => {
+                boardOpen.value = false;
+                tabsRef.current?.focusActive();
+              }}
+              onOpen={(workspace, preset, agent) =>
+                handleOpen(workspace, preset, agent)
+              }
+              onNewPreset={(workspace) => {
+                editorRequest.value = { source: "board", workspace };
+              }}
+            />
+          ) : null}
+          {editorRequest.value !== null ? (
+            <PresetEditor
+              onCancel={() => {
+                editorRequest.value = null;
+              }}
+              onCreate={(name, artifact) =>
+                void handleEditorCreate(name, artifact)
+              }
+            />
+          ) : null}
+          {saveDialogOpen.value ? (
+            <SavePresetDialog
+              existing={presetsData.value.presets}
+              onCancel={() => {
+                saveDialogOpen.value = false;
+              }}
+              onSave={(target, includeCwds) =>
+                void handleSavePreset(target, includeCwds)
+              }
+            />
+          ) : null}
+          <PersistErrorBar />
+          <SettingsPanel open={settingsOpen.value} onClose={closePanel} />
+        </main>
+      }
+      status={<StatusBar />}
+      onMacTitlebarDoubleClick={maximizeMacWindow}
+    />
   );
 }

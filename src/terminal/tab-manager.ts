@@ -1,4 +1,3 @@
-import { homeDir } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import {
@@ -15,6 +14,7 @@ import { type Direction, type SerializedNode } from "../lib/split-tree";
 import { isAgent } from "../lib/process-info";
 import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { sendAgentNotification } from "../lib/native-notification";
+import { getDesktopEnvironment } from "../lib/platform";
 import type { AgentChoice } from "../lib/workspace-recents";
 import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
 import {
@@ -269,7 +269,7 @@ export function createTabManager(
   let closedTabs: readonly ClosedTabSnapshot[] = [];
   let nextKey = 1;
   let active = -1;
-  let home = "";
+  const home = getDesktopEnvironment().homeDir;
   // Fail-safe = focused: an unanswerable/unregisterable window-focus check
   // must never suppress the in-app rail — only native notifications (Task
   // 23) key off this beyond `onPaneFocus`'s ack gate.
@@ -1258,11 +1258,6 @@ export function createTabManager(
       }),
     );
     window.addEventListener("keydown", handleShortcut, true);
-    try {
-      home = await homeDir();
-    } catch {
-      home = "";
-    }
     // Session restore is gone: the app always opens on the Open board, and the
     // user reopens folders from Recents by hand.
     poller.start();

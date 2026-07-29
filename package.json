@@ -6,6 +6,7 @@
   "scripts": {
     "generate:menu": "tsx scripts/generate-menu.ts",
     "generate:menu:check": "tsx scripts/generate-menu.ts --check",
+    "verify:windows-bundle": "node scripts/verify-windows-bundle.mjs",
     "predev": "npm run generate:menu",
     "prebuild": "npm run generate:menu",
     "dev": "vite",
@@ -14,12 +15,13 @@
     "prototype:landing": "vite marketing --host 127.0.0.1 --port 5173 --strictPort --open /landing-prototype/",
     "video:preview": "vite marketing --host 127.0.0.1 --port 5174 --strictPort --open /video/",
     "video:render": "node marketing/video/render/render.mjs",
-    "test": "vitest run",
+    "test": "vitest run --exclude scripts/verify-windows-bundle.test.mjs",
     "tauri": "tauri"
   },
   "dependencies": {
     "@preact/signals": "^2.9.2",
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-opener": "^2",
