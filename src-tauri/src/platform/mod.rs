@@ -1,7 +1,10 @@
 #[cfg(target_os = "macos")]
 pub(crate) mod macos;
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 mod unsupported;
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+#[cfg(any(target_os = "windows", test))]
+pub(crate) mod windows;
 
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -11,8 +14,13 @@ pub use macos::{
     create_session, discover_agents, foreground_process_group, inspect_process, shell_launch,
     terminate_session, user_home, PlatformSession,
 };
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub use unsupported::{
+    create_session, discover_agents, foreground_process_group, inspect_process, shell_launch,
+    terminate_session, user_home, PlatformSession,
+};
+#[cfg(target_os = "windows")]
+pub use windows::{
     create_session, discover_agents, foreground_process_group, inspect_process, shell_launch,
     terminate_session, user_home, PlatformSession,
 };
