@@ -88,6 +88,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Test Windows bundle validator
+        run: node --test scripts/verify-windows-bundle.test.mjs
+
       - name: Build frontend
         run: npm run build
 
