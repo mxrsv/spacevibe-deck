@@ -12,6 +12,7 @@ import {
   type MenuSubmenu,
 } from "../src/terminal/action-registry";
 import {
+  generatedFilePath,
   generatedTextMatches,
   rustfmtArguments,
 } from "./generated-text";
@@ -190,5 +191,5 @@ if (process.argv.includes("--check")) {
   }
 } else {
   writeFileSync(outPath, output);
-  formatInPlace(outPath.pathname);
+  formatInPlace(generatedFilePath(outPath));
 }

@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 function normalizeLineEndings(text: string): string {
   return text.replaceAll("\r\n", "\n");
 }
@@ -13,4 +15,11 @@ export function generatedTextMatches(
 
 export function rustfmtArguments(...paths: string[]): string[] {
   return ["--edition", RUST_EDITION, ...paths];
+}
+
+export function generatedFilePath(
+  url: URL,
+  windows = process.platform === "win32",
+): string {
+  return fileURLToPath(url, { windows });
 }

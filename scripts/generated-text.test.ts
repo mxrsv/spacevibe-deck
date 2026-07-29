@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  generatedFilePath,
   generatedTextMatches,
   rustfmtArguments,
 } from "./generated-text";
@@ -26,5 +27,14 @@ describe("generatedTextMatches", () => {
       "fresh-menu_registry.rs",
       "committed-menu_registry.rs",
     ]);
+  });
+
+  it("converts a Windows file URL to a native drive path", () => {
+    expect(
+      generatedFilePath(
+        new URL("file:///D:/repo/src-tauri/src/menu_registry.rs"),
+        true,
+      ),
+    ).toBe("D:\\repo\\src-tauri\\src\\menu_registry.rs");
   });
 });
