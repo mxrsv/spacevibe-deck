@@ -8,6 +8,7 @@ import {
 } from "./close-guard";
 import type { PaneProcessInfo } from "../lib/process-info";
 import { createMemoryPtyClient } from "./pty-client";
+import { freshPaneInfo } from "./pane-info";
 
 const askMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/plugin-dialog", () => ({ ask: askMock }));
@@ -45,7 +46,7 @@ describe("isBusy", () => {
     expect(isBusy(info(1, "npm"))).toBe(true);
   });
 
-  it("treats a pane without a process (session-ended limbo) as not busy", () => {
+  it("does not treat unknown inspection as named busy state", () => {
     expect(isBusy(info(1, null))).toBe(false);
   });
 });
@@ -62,7 +63,7 @@ describe("busyProcesses", () => {
     expect(busyProcesses(infos)).toEqual(["claude", "vim"]);
   });
 
-  it("is empty when every pane is idle", () => {
+  it("omits idle and unknown panes from the named process list", () => {
     expect(busyProcesses([info(1, "zsh"), info(2, null)])).toEqual([]);
   });
 });
@@ -85,6 +86,72 @@ describe("confirmClose with injected PtyClient", () => {
     });
     await expect(confirmClose([1], pty)).resolves.toBe(true);
     expect(askMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("prompts with the process name for a non-agent busy pane", async () => {
+    askMock.mockClear();
+    askMock.mockResolvedValue(false);
+    const pty = createMemoryPtyClient({
+      infos: new Map([[1, info(1, "vim")]]),
+    });
+
+    await expect(confirmClose([1], pty)).resolves.toBe(false);
+    expect(askMock).toHaveBeenCalledWith(
+      "vim is still running. Close anyway?",
+      expect.objectContaining({ title: "Close Terminal" }),
+    );
+  });
+
+  it("uses generic fail-safe copy when process inspection is unknown", async () => {
+    askMock.mockClear();
+    askMock.mockResolvedValue(false);
+    const pty = createMemoryPtyClient({
+      infos: new Map([[1, info(1, null)]]),
+    });
+
+    await expect(confirmClose([1], pty)).resolves.toBe(false);
+    expect(askMock).toHaveBeenCalledWith(
+      "Deck could not verify whether terminal processes are still running. Close anyway?",
+      expect.objectContaining({ title: "Close Terminal" }),
+    );
+  });
+
+  it("uses generic fail-safe copy when the IPC omits a requested pane", async () => {
+    askMock.mockClear();
+    askMock.mockResolvedValue(false);
+    const pty = createMemoryPtyClient();
+
+    await expect(confirmClose([7], pty)).resolves.toBe(false);
+    expect(askMock).toHaveBeenCalledWith(
+      "Deck could not verify whether terminal processes are still running. Close anyway?",
+      expect.objectContaining({ title: "Close Terminal" }),
+    );
+  });
+
+  it("uses generic fail-safe copy when fresh IPC fails", async () => {
+    askMock.mockClear();
+    askMock.mockResolvedValue(false);
+    const base = createMemoryPtyClient();
+    const pty = {
+      ...base,
+      ptyInfo: vi.fn().mockRejectedValue(new Error("WMI unavailable")),
+    };
+
+    await expect(confirmClose([3], pty)).resolves.toBe(false);
+    expect(askMock).toHaveBeenCalledWith(
+      "Deck could not verify whether terminal processes are still running. Close anyway?",
+      expect.objectContaining({ title: "Close Terminal" }),
+    );
+  });
+
+  it("fails closed when the native dialog rejects", async () => {
+    askMock.mockClear();
+    askMock.mockRejectedValue(new Error("dialog unavailable"));
+    const pty = createMemoryPtyClient({
+      infos: new Map([[1, info(1, "claude")]]),
+    });
+
+    await expect(confirmClose([1], pty)).resolves.toBe(false);
   });
 
   it("rejects a second call while a prompt is open, then resets", async () => {
@@ -127,6 +194,32 @@ describe("confirmClose dialog copy", () => {
       "claude is still running. Quit anyway?",
       expect.objectContaining({ title: "Quit Deck", okLabel: "Quit" }),
     );
+  });
+});
+
+describe("freshPaneInfo", () => {
+  it("synthesizes unknown snapshots for omitted requested panes", async () => {
+    const pty = createMemoryPtyClient({
+      infos: new Map([[1, info(1, "zsh")]]),
+    });
+
+    await expect(freshPaneInfo([1, 2], pty)).resolves.toEqual([
+      info(1, "zsh"),
+      { id: 2, cwd: null, process: null, kind: "unknown", agent: null },
+    ]);
+  });
+
+  it("synthesizes unknown snapshots for every requested pane on IPC failure", async () => {
+    const base = createMemoryPtyClient();
+    const pty = {
+      ...base,
+      ptyInfo: vi.fn().mockRejectedValue(new Error("WMI unavailable")),
+    };
+
+    await expect(freshPaneInfo([4, 9], pty)).resolves.toEqual([
+      { id: 4, cwd: null, process: null, kind: "unknown", agent: null },
+      { id: 9, cwd: null, process: null, kind: "unknown", agent: null },
+    ]);
   });
 });
 

@@ -368,7 +368,10 @@ describe("createTabManager agent launch", () => {
   });
 
   it("does not re-run the agent when reopening a closed tab", async () => {
-    const { tm, pty } = setup({ dirs: ["/work"] });
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/work", "zsh", "idle-shell", null)],
+    ]);
+    const { tm, pty } = setup({ dirs: ["/work"], infos });
     await tm.openFromPreset({ type: "leaf" }, ["/work"], {
       workspacePath: "/work",
       agent: "claude",
@@ -563,7 +566,11 @@ describe("createTabManager workspace identity", () => {
 
 describe("createTabManager reopen (Cmd+Shift+T)", () => {
   it("reopens a closed tab whose workspace still exists", async () => {
-    const { tm } = setup({ dirs: ["/repo/alive"] });
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo/alive", "zsh", "idle-shell", null)],
+      [2, processInfo(2, null, "zsh", "idle-shell", null)],
+    ]);
+    const { tm } = setup({ dirs: ["/repo/alive"], infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo/alive"], {
       workspacePath: "/repo/alive",
     });
@@ -584,7 +591,11 @@ describe("createTabManager reopen (Cmd+Shift+T)", () => {
   it("refuses to resurrect a tab whose workspace was deleted meanwhile", async () => {
     // The folder is gone by reopen time: spawn_shell would silently land in
     // $HOME while the tab kept claiming /repo/gone.
-    const { tm } = setup({ dirs: [] });
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo/gone", "zsh", "idle-shell", null)],
+      [2, processInfo(2, null, "zsh", "idle-shell", null)],
+    ]);
+    const { tm } = setup({ dirs: [], infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo/gone"], {
       workspacePath: "/repo/gone",
     });
@@ -632,7 +643,13 @@ describe("createTabManager close routing", () => {
     tm: TabManager;
     pty: ReturnType<typeof createMemoryPtyClient>;
   }> {
-    const { tm, pty } = setup({});
+    const infos = new Map<number, PaneProcessInfo>(
+      [1, 2, 3].map((id) => [
+        id,
+        processInfo(id, null, "zsh", "idle-shell", null),
+      ]),
+    );
+    const { tm, pty } = setup({ infos });
     for (let i = 0; i < 3; i += 1) {
       await tm.materialize({ layout: null, cwds: [] });
     }
@@ -652,8 +669,8 @@ describe("createTabManager close routing", () => {
   it("guards concurrent closes: the second Cmd+W during the first is a no-op", async () => {
     const { tm } = await threeTabs();
 
-    // Fire both without awaiting — the second hits the busy-prompt guard
-    // while the first's fresh pty_info await is still in flight.
+    // Fire both without awaiting — the second hits the close coordinator's
+    // in-flight guard while the first fresh pty_info await is still pending.
     await Promise.all([tm.closeTab(0), tm.closeTab(1)]);
 
     expect(tabViews.value).toHaveLength(2);
@@ -663,7 +680,10 @@ describe("createTabManager close routing", () => {
   });
 
   it("closing the last tab requests app quit instead of leaving zero tabs", async () => {
-    const { tm, pty } = setup({});
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, null, "zsh", "idle-shell", null)],
+    ]);
+    const { tm, pty } = setup({ infos });
     await tm.materialize({ layout: null, cwds: [] });
     const quitSpy = vi.spyOn(pty, "confirmQuit");
 
@@ -1841,7 +1861,10 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
 
   it("prunes the notifier alongside the tracker when a tab closes", async () => {
     const { notifier, prune } = fakeNotifierSpy();
-    const { tm } = setup({ deps: { notifier } });
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/a", "zsh", "idle-shell", null)],
+    ]);
+    const { tm } = setup({ infos, deps: { notifier } });
     await tm.materialize({ layout: null, cwds: ["/a"] });
 
     await tm.closeTab(0);
