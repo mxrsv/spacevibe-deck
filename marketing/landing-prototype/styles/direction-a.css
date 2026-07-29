@@ -6,15 +6,14 @@
   --a-ink: #ffffff;
   --a-ink-soft: rgb(255 255 255 / 64%);
   --a-ink-faint: rgb(255 255 255 / 52%);
-  --a-line: rgb(255 255 255 / 12%);
+  --a-line: var(--frame-line);
   --a-line-strong: rgb(255 255 255 / 21%);
-  /* Single violet colour language. --a-accent = signal/action (CTA, live
-     status, focus, badges); --a-ambient = the deeper atmosphere hue
-     (background washes, panel bloom) that ties into the aurora curtain.
-     No lime anywhere — one family, light violet on top of deep violet. */
-  --a-accent: #b98cff;
-  --a-accent-rgb: 185 140 255;
-  --a-ambient: 141 39 230;
+  /* Signal, aliased to the page-wide token — white, not violet. The hero's
+     light comes from the beams field, which is achromatic; a coloured CTA in
+     that field was the only hue left above the fold and read as a leftover
+     from a different design. */
+  --a-accent: var(--accent);
+  --a-accent-rgb: var(--accent-rgb);
   --a-ease-lock: cubic-bezier(0.22, 0.78, 0.18, 1);
   /* Match the app's font language (src/styles.css): one system sans for all
      text + chrome, mono reserved for real terminal content only. */
@@ -22,20 +21,21 @@
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
   --a-font-mono:
     "SF Mono", "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
-  --a-gutter: clamp(2rem, 3.4vw, 3.25rem);
+  /* Aliases only — the real values, and their breakpoint overrides, live on
+     :root in tokens.css so the tour and the footer resolve the same frame. */
+  --a-cell-pad: var(--frame-pad);
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   min-height: 100svh;
   overflow: clip;
   color: var(--a-ink);
+  /* Neutral grey-white field: the beams carry every bit of colour temperature
+     in the hero now, so the plate underneath them stays achromatic. The only
+     violet left above the fold is the primary CTA. */
   background:
-    radial-gradient(
-      circle at 76% 43%,
-      rgb(var(--a-ambient) / 14%),
-      transparent 31rem
-    ),
-    linear-gradient(118deg, #0a0c0b 0%, #0d100d 54%, #090b0a 100%);
+    radial-gradient(120% 74% at 50% 0%, rgb(255 255 255 / 5%), transparent 62%),
+    linear-gradient(180deg, #0b0d0c 0%, #090b0a 100%);
   isolation: isolate;
 }
 
@@ -43,24 +43,10 @@
   position: absolute;
   z-index: -1;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cpath d='M0 4h8M4 0v8' fill='none' stroke='%23b98cff' stroke-opacity='.16' stroke-width='.65'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cpath d='M0 4h8M4 0v8' fill='none' stroke='%23ffffff' stroke-opacity='.1' stroke-width='.65'/%3E%3C/svg%3E");
   background-position: 0 0;
   content: "";
   mask-image: radial-gradient(circle at 72% 44%, #000 0%, transparent 74%);
-  pointer-events: none;
-}
-
-.direction-a::after {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    transparent 9.5rem,
-    rgb(255 255 255 / 4%) 9.5rem 9.5625rem,
-    transparent 9.5625rem
-  );
-  content: "";
   pointer-events: none;
 }
 
@@ -97,14 +83,20 @@
   border-radius: 22%;
 }
 
+/* The hero's slice of the page-wide frame. The two verticals are drawn once,
+   for the whole document, by `.page-frame` (frame.css) — this column only has
+   to match its width so the horizontal rules below land between them. */
 .a-main {
   position: relative;
   display: flex;
+  width: var(--frame-width);
   flex-direction: column;
-  align-items: center;
   min-width: 0;
   min-height: 100svh;
-  padding: 1.6rem var(--a-gutter) 6.75rem;
+  margin-inline: auto;
+  padding: 0;
+  /* Closes the hero and opens the tour — the frame runs on either side of it. */
+  border-bottom: 1px solid var(--frame-line);
 }
 
 .a-topbar {
@@ -114,6 +106,8 @@
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: clamp(1.25rem, 2.4vw, 2.5rem);
+  padding: 1.15rem var(--a-cell-pad);
+  border-bottom: 1px solid var(--a-line);
   color: var(--a-ink);
   font: 600 0.62rem/1 var(--a-font-display);
   letter-spacing: normal;
@@ -252,104 +246,91 @@
   outline-offset: 5px;
 }
 
-.a-copy {
+/* ---- Hero band: the title cell, borrowed wholesale from the hub landing.
+   Left-aligned, one label + two display lines, closed off by a horizontal rule
+   instead of a box. The beams run behind it, which is the whole reason the
+   type is set this large: the ripple has to be readable ACROSS the letterforms,
+   and at a small size there is no letterform to read it across. */
+
+.a-band {
   position: relative;
   z-index: 3;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  max-width: 46rem;
-  min-width: 0;
-  padding-top: clamp(4.25rem, 9vh, 6.5rem);
-  text-align: center;
+  padding: clamp(3.25rem, 7.4vh, 5.5rem) var(--a-cell-pad)
+    clamp(2.75rem, 5vh, 4rem);
+  border-bottom: 1px solid var(--a-line);
 }
 
-.a-copy::before {
-  position: absolute;
-  z-index: -1;
-  inset: 1.25rem -6rem -2rem -2rem;
-  background: linear-gradient(
-    90deg,
-    var(--a-surface-0) 0 58%,
-    rgb(10 12 11 / 84%) 72%,
-    transparent
-  );
-  content: "";
-  filter: blur(1px);
-}
-
-.a-eyebrow {
-  display: flex;
-  max-width: 34rem;
-  align-items: center;
-  gap: 0.65rem;
-  margin: 0 0 1.4rem;
-  color: var(--a-ink-soft);
-  font: 600 0.66rem/1.35 var(--a-font-display);
-  letter-spacing: 0.105em;
-}
-
-.a-eyebrow span {
-  width: 1.85rem;
-  height: 1px;
-  flex: 0 0 auto;
-  background: var(--a-accent);
-  box-shadow: 0 0 12px rgb(var(--a-accent-rgb) / 34%);
-}
-
-.a-copy h1 {
-  max-width: 8.4em;
-  margin: 0;
-  color: rgb(255 255 255 / 97%);
-  font: 760 clamp(3.7rem, 5.55vw, 5.2rem) / 1 var(--a-font-display);
-  letter-spacing: -0.057em;
-}
-
-.a-copy h1 span {
-  display: block;
-}
-
-.a-copy h1 span:last-child {
-  position: relative;
-  margin-top: 0.1em;
-  color: transparent;
-  background: linear-gradient(
-    136deg,
-    rgb(255 255 255 / 97%) 0%,
-    rgb(255 255 255 / 92%) 48%,
-    rgb(214 190 255 / 97%) 100%
-  );
-  background-clip: text;
-  font-weight: 540;
-  letter-spacing: -0.048em;
-  line-height: 1.06;
-  -webkit-background-clip: text;
-}
-
-/* Opaque legibility backing, stacked exactly behind the gradient-clipped
-   glyphs via the identical text pulled from data-text. The gradient fill
-   above is never fully opaque (and thin strokes like the descender link on
-   "g" already lose coverage to antialiasing), so whatever sits behind the
-   hero — the aurora curtain, the ambient glow — was bleeding straight
-   through those low-alpha pixels and reading as a "broken" letter. This
-   plate removes that dependency entirely: every glyph is guaranteed fully
-   legible before the gradient is even considered, no matter what the
-   background is doing underneath. */
-.a-copy h1 span:last-child::before {
+/* Legibility plate under the copy only. The beams are pure white columns and
+   the title runs at 55% white, so without this the ripple reads straight
+   through the lighter glyphs. Weighted to the LEFT so the right two thirds of
+   the band — where there is no text — keeps the field at full strength. */
+.a-band::before {
   position: absolute;
   z-index: -1;
   inset: 0;
-  color: rgb(255 255 255 / 96%);
-  content: attr(data-text);
+  background: linear-gradient(
+    92deg,
+    rgb(9 11 10 / 74%) 0 24%,
+    rgb(9 11 10 / 44%) 54%,
+    rgb(9 11 10 / 8%) 84%,
+    transparent 100%
+  );
+  content: "";
   pointer-events: none;
 }
 
+.a-band h1 {
+  margin: 0;
+  font: 600 clamp(3.1rem, 7.6vw, 6.5rem) / 0.95 var(--a-font-display);
+  letter-spacing: -0.048em;
+}
+
+/* Two tones rather than one, echoing the hub band at the instant its light
+   sweep has cleared the first line: the lead sits back, the payoff sits
+   forward. Static here — the beams behind supply the motion, so a second
+   moving highlight on the type would be one rhythm too many. */
+/* No max-width holding the break: at this size a character-count cap lands
+   differently in each locale and orphans the last word ("…agent in / sight.").
+   `balance` lets the browser pick even lines instead — EN fits both spans on
+   one line each at desktop width, VI wraps its longer tail into two even ones. */
+.a-band h1 span {
+  display: block;
+  color: rgb(255 255 255 / 62%);
+  text-wrap: balance;
+}
+
+.a-band h1 span:last-child {
+  color: rgb(255 255 255 / 96%);
+}
+
+/* ---- Hero deck: lede + actions in the first column, the app-window mock
+   filling the remaining three. Same split as the hub stage. */
+
+.a-deck {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+}
+
+.a-deck__intro {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: clamp(1.75rem, 3.4vh, 2.5rem) var(--a-cell-pad);
+}
+
+.a-deck__stage {
+  min-width: 0;
+  grid-column: 2 / -1;
+  padding: clamp(1.75rem, 3.4vh, 2.5rem) var(--a-cell-pad);
+}
+
 .a-subhead {
-  max-width: 35rem;
-  margin: 1.65rem 0 0;
+  margin: 0;
   color: var(--a-ink-soft);
-  font: 400 clamp(0.92rem, 1.16vw, 1.07rem) / 1.62 var(--a-font-display);
+  font: 400 clamp(0.88rem, 1.02vw, 0.98rem) / 1.6 var(--a-font-display);
   letter-spacing: -0.009em;
 }
 
@@ -363,10 +344,10 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
-  width: min(100%, 68rem);
+  width: 100%;
   min-width: 0;
   aspect-ratio: 1000 / 620;
-  margin: 3.5rem 0 0;
+  margin: 0;
   overflow: hidden;
   color: var(--sg-fg);
   background: var(--sg-bg);
@@ -720,17 +701,24 @@
   }
 }
 
+/* Stacked, not side by side: the column they live in is a quarter of the frame
+   wide, so a row would either wrap raggedly or force the frame open. */
+/* Stacked, not side by side: the column they live in is a quarter of the frame
+   wide, so a row would either wrap raggedly or force the frame open. The
+   primary stretches to the column — a content-width button in a rail this
+   narrow wraps its own label before the rail ever runs out. */
 .a-actions {
   position: relative;
   z-index: 4;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 46rem;
-  gap: 0.75rem 1.5rem;
-  margin: 2.35rem 0 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.9rem;
+  margin: clamp(1.5rem, 3vh, 2.1rem) 0 0;
+}
+
+.a-secondary-cta {
+  align-self: flex-start;
 }
 
 .a-primary-cta {
@@ -739,7 +727,7 @@
   min-height: 3rem;
   align-items: center;
   justify-content: space-between;
-  gap: 1.8rem;
+  gap: 1rem;
   padding: 0.82rem 1rem;
   overflow: hidden;
   color: var(--a-surface-0);
@@ -754,14 +742,18 @@
   text-align: left;
   transition:
     box-shadow 280ms var(--a-ease-lock),
+    color 380ms var(--a-ease-lock),
     transform 280ms var(--a-ease-lock);
 }
 
+/* The hover sweep runs INVERTED now that the button face is white: a dark
+   plate slides in under the label and the label flips to white with it. Same
+   mechanic as before, when the face was violet and the plate was white. */
 .a-primary-cta::before {
   position: absolute;
   z-index: -1;
   inset: -2px;
-  background: var(--a-ink);
+  background: var(--a-surface-0);
   content: "";
   transform: translateX(-112%) skewX(-14deg);
   transform-origin: left;
@@ -776,6 +768,7 @@
 
 .a-primary-cta:hover,
 .a-primary-cta:focus-visible {
+  color: var(--a-ink);
   box-shadow: 0 1rem 2.8rem rgb(var(--a-accent-rgb) / 18%);
   transform: translateY(-2px);
 }
@@ -853,7 +846,7 @@ html[data-direction-treatment="a"] .demo-dialog__header h2 {
 
 html[data-direction-treatment="a"] .demo-dialog__header button {
   padding: 0.45rem 0.65rem;
-  color: #b98cff;
+  color: var(--a-accent);
   background: transparent;
   border: 1px solid rgb(var(--a-accent-rgb) / 30%);
   border-radius: 2px;
@@ -881,12 +874,28 @@ html[data-direction-treatment="a"] .demo-dialog video {
 }
 
 @media (max-width: 70rem) {
-  .direction-a {
-    --a-gutter: 1.75rem;
+  /* A quarter of the frame stops being a usable text column here, so the deck
+     drops to a fixed lede rail with the stage taking whatever is left. */
+  .a-deck {
+    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
   }
 
-  .a-copy h1 {
-    font-size: clamp(3.4rem, 5.8vw, 4.45rem);
+  .a-band h1 {
+    font-size: clamp(2.9rem, 7.4vw, 4.45rem);
+  }
+}
+
+/* Below this the stage cell would drop under ~600px and the mock's terminal
+   type — sized in cqw — stops being readable. Stack before that happens,
+   rather than at the mobile breakpoint, so the window keeps the full frame. */
+@media (max-width: 60rem) {
+  .a-deck {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .a-deck__stage {
+    grid-column: 1 / -1;
+    padding-top: 0;
   }
 }
 
@@ -900,22 +909,6 @@ html[data-direction-treatment="a"] .demo-dialog video {
     background-position: 0 0;
     background-size: 48px 48px;
     mask-image: linear-gradient(180deg, #000, transparent 72%);
-  }
-
-  .direction-a::after {
-    background:
-      linear-gradient(
-        180deg,
-        transparent 3.65rem,
-        var(--a-line) 3.65rem 3.7125rem,
-        transparent 3.7125rem
-      ),
-      linear-gradient(
-        90deg,
-        transparent 1rem,
-        rgb(255 255 255 / 5%) 1rem 1.0625rem,
-        transparent 1.0625rem
-      );
   }
 
   .a-brand-icon {
@@ -934,7 +927,7 @@ html[data-direction-treatment="a"] .demo-dialog video {
 
   .a-main {
     min-height: auto;
-    padding: 0 1rem 12rem;
+    padding: 0;
   }
 
   /* Rail removed — the topbar now carries the brand on the left with the
@@ -944,7 +937,7 @@ html[data-direction-treatment="a"] .demo-dialog video {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    padding-top: 1.1rem;
+    padding-block: 0.95rem;
   }
 
   .a-topbar__descriptor,
@@ -952,47 +945,43 @@ html[data-direction-treatment="a"] .demo-dialog video {
     display: none;
   }
 
-  .a-copy {
-    padding-top: 2.15rem;
+  .a-band {
+    padding-block: 2.15rem 1.9rem;
   }
 
-  .a-copy::before {
-    display: none;
+  /* The band scrim goes flat at this width — the copy fills the frame edge to
+     edge, so there is no open right side left to protect. */
+  .a-band::before {
+    background: rgb(9 11 10 / 82%);
   }
 
-  .a-eyebrow {
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    font-size: 0.56rem;
-    letter-spacing: 0.09em;
-  }
-
-  .a-eyebrow span {
-    width: 1.25rem;
-  }
-
-  .a-copy h1 {
-    max-width: 8.6em;
+  .a-band h1 {
     font-size: clamp(2.55rem, 11.6vw, 3.05rem);
     line-height: 0.98;
-    letter-spacing: -0.052em;
+    letter-spacing: -0.045em;
   }
 
-  html[lang="vi"] .a-copy h1 {
-    max-width: 9.2em;
+  html[lang="vi"] .a-band h1 {
     font-size: clamp(2.22rem, 10.2vw, 2.7rem);
   }
 
+  /* Single column: the lede sits above the mock, not beside it. */
+  .a-deck {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .a-deck__stage {
+    grid-column: 1 / -1;
+    padding-top: 0;
+  }
+
   .a-subhead {
-    max-width: 34rem;
-    margin-top: 1.15rem;
     font-size: 0.86rem;
     line-height: 1.52;
   }
 
   .a-appwin {
     width: 100%;
-    margin: 1.8rem 0 0;
     aspect-ratio: 1000 / 780;
     border-radius: 5px;
   }

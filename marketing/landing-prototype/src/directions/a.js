@@ -5,7 +5,6 @@ import {
   renderStageStatus,
   renderStageTitlebar,
 } from "../appwin.js";
-import { mountAurora } from "../aurora.js";
 import {
   STAGE_ARIA_LABEL,
   mountStageStream,
@@ -13,6 +12,29 @@ import {
 } from "../product-stage.js";
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
+
+// Hero beams field. White key light on purpose: the hero runs a neutral
+// grey-white light language, and the violet accent is spent on exactly one
+// thing — the primary CTA. See beams.js for what each knob does.
+//
+// rotation 14 is not arbitrary — it is the same 14° off-vertical the hub
+// landing tilts its light sweep to. Straight columns read as blinds behind
+// left-aligned type; tilted, they read as shafts.
+//
+// beamHeight/beamNumber are sized so the slab still covers the frustum AFTER
+// that tilt: a 14° rotation costs roughly `viewportHeight * sin(14°)` of extra
+// width and the same again in height, and running short leaves bare corners.
+const HERO_BEAMS = {
+  beamWidth: 2,
+  beamHeight: 20,
+  beamNumber: 14,
+  lightColor: "#ffffff",
+  lightIntensity: 2.6,
+  speed: 2,
+  noiseIntensity: 1.4,
+  scale: 0.2,
+  rotation: 14,
+};
 
 function renderGithubIcon() {
   return `
@@ -44,8 +66,8 @@ export function renderDirectionA(copy, locale) {
 
   return {
     markup: `
-      <section class="direction-a" data-hero-motion="aurora">
-        <div class="a-motion" data-motion="aurora" aria-hidden="true"></div>
+      <section class="direction-a" data-hero-motion="beams">
+        <div class="a-motion" data-motion="beams" aria-hidden="true"></div>
 
         <div class="a-main">
           <header class="a-topbar">
@@ -70,45 +92,53 @@ export function renderDirectionA(copy, locale) {
             </a>
           </header>
 
-          <div class="a-copy">
+          <div class="a-band">
+            <p class="band-label" data-copy="heroLabel">${copy.heroLabel}</p>
             <h1>
               <span data-copy="headlineLead">${copy.headlineLead}</span>
-              <span data-copy="headlineTail" data-text="${copy.headlineTail}">${copy.headlineTail}</span>
+              <span data-copy="headlineTail">${copy.headlineTail}</span>
             </h1>
-            <p class="a-subhead" data-copy="subhead">${copy.subhead}</p>
           </div>
 
-          <div class="a-actions">
-            <button class="a-primary-cta" type="button" data-open-demo>
-              <span data-copy="primaryCta">${copy.primaryCta}</span>
-              <i aria-hidden="true">↗</i>
-            </button>
-            <a
-              class="a-secondary-cta"
-              href="https://github.com/mxrsv/spacevibe-deck"
-              target="_blank"
-              rel="noreferrer"
-            >
-              ${renderGithubIcon()}
-              <span data-copy="secondaryCta">${copy.secondaryCta}</span>
-              <span aria-hidden="true">→</span>
-            </a>
-          </div>
+          <div class="a-deck">
+            <div class="a-deck__intro">
+              <p class="a-subhead" data-copy="subhead">${copy.subhead}</p>
 
-          <figure class="a-appwin" role="img" aria-label="${STAGE_ARIA_LABEL}">
-            ${renderStageTitlebar()}
-            <div class="a-appwin__body" aria-hidden="true">
-              ${renderStageSidebar()}
-              <div class="a-appwin__grid">
-                <div class="a-appwin__col">
-                  ${renderStagePane(claudePane)}
-                  ${renderStagePane(codexPane)}
-                </div>
-                ${renderStagePane(opencodePane)}
+              <div class="a-actions">
+                <button class="a-primary-cta" type="button" data-open-demo>
+                  <span data-copy="primaryCta">${copy.primaryCta}</span>
+                  <i aria-hidden="true">↗</i>
+                </button>
+                <a
+                  class="a-secondary-cta"
+                  href="https://github.com/mxrsv/spacevibe-deck"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  ${renderGithubIcon()}
+                  <span data-copy="secondaryCta">${copy.secondaryCta}</span>
+                  <span aria-hidden="true">→</span>
+                </a>
               </div>
             </div>
-            ${renderStageStatus()}
-          </figure>
+
+            <div class="a-deck__stage">
+              <figure class="a-appwin" role="img" aria-label="${STAGE_ARIA_LABEL}">
+                ${renderStageTitlebar()}
+                <div class="a-appwin__body" aria-hidden="true">
+                  ${renderStageSidebar()}
+                  <div class="a-appwin__grid">
+                    <div class="a-appwin__col">
+                      ${renderStagePane(claudePane)}
+                      ${renderStagePane(codexPane)}
+                    </div>
+                    ${renderStagePane(opencodePane)}
+                  </div>
+                </div>
+                ${renderStageStatus()}
+              </figure>
+            </div>
+          </div>
         </div>
       </section>
     `,
@@ -121,14 +151,38 @@ export function renderDirectionA(copy, locale) {
 
       document.documentElement.dataset.directionTreatment = "a";
 
-      const aurora = mountAurora(section.querySelector(".a-motion"));
+      // three costs ~130 kB gzipped — six times the rest of this page put
+      // together — so it is fetched as its own chunk AFTER first paint. Nothing
+      // above the fold waits on it: the band, the copy, the actions and the
+      // window mock are all plain DOM. Only the light field itself arrives
+      // late, and it fades in when it does (see beams.css).
+      let beams = null;
+      let beamsAbandoned = false;
+
+      import("../beams.js")
+        .then(({ mountBeams }) => {
+          if (beamsAbandoned) {
+            return;
+          }
+
+          beams = mountBeams(section.querySelector(".a-motion"), HERO_BEAMS);
+        })
+        .catch((error) => {
+          // Nothing to retry — the field is decoration and the hero is fully
+          // readable without it. Fall back to the static plus-grid this
+          // treatment normally suppresses, then let the failure surface.
+          section.dataset.heroMotion = "none";
+          throw error;
+        });
+
       const disposeStream = mountStageStream(
         section.querySelector(".a-appwin__grid"),
       );
 
       return () => {
         disposeStream();
-        aurora.dispose();
+        beamsAbandoned = true;
+        beams?.dispose();
 
         if (document.documentElement.dataset.directionTreatment === "a") {
           delete document.documentElement.dataset.directionTreatment;
@@ -140,7 +194,7 @@ export function renderDirectionA(copy, locale) {
 
 /**
  * Swap the localized copy on an already-mounted page without rebuilding the
- * DOM, so the aurora canvas and stage stream keep running across a locale
+ * DOM, so the beams canvas and stage stream keep running across a locale
  * toggle.
  *
  * @param {Element} root

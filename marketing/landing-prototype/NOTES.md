@@ -96,3 +96,57 @@ legibility/composition issues that made it risky. Promotion cleanup applied:
   toggle on mobile, where the rail already carries the brand).
 - PRNG seed swapped from the fixed review seed to a random seed per visit —
   the field layout is still deterministic within a single render.
+
+## Round 8 (2026-07-29) — `beams` replaces the aurora curtain
+
+`stream` was later swapped for a violet WebGL aurora curtain (React Bits
+`<Aurora />`, ported to vanilla `ogl` in `src/aurora.js`). That round predates
+this log; the curtain now runs the **tour** section only.
+
+The hero runs `beams` instead — React Bits `<Beams />` ported to vanilla
+three.js in `src/beams.js`, dropping `@react-three/fiber` and `drei` (this page
+has no React; R3F was only wrapping the scene graph). Applied with it:
+
+- **Grey-white, not violet.** The hero background lost its violet wash so the
+  beams carry the whole light language. The only accent above the fold is the
+  primary CTA.
+- **Hub band layout.** Copy went centred → left-aligned, matching the
+  `spacevibe-hub` hero: a `// …` label, a two-tone display title, and the lede
+  plus actions dropped into the first of four columns with the window mock
+  filling the rest.
+- **Two rules, not a grid.** Only the frame's left and right edges are drawn
+  vertically; everything else is horizontal rules between them. Interior column
+  rules fought the beams.
+- **Tilt 14°.** The same angle the hub tilts its light sweep. Straight columns
+  read as blinds behind left-aligned type.
+- **Loaded late.** three is ~130 kB gzipped against ~27 kB for the rest of the
+  page, so `beams.js` is a dynamic import and the field fades in after first
+  paint. Entry chunk stays at 27.7 kB gzip.
+
+## Round 9 (2026-07-29) — the rest of the page follows
+
+Round 8 left the hero achromatic and everything under it violet, which read as
+two documents stapled together. The seam turned out to be structural as much as
+chromatic: the hero had a frame and the tour, closing band and footer had none.
+
+- **One frame, whole document.** `--frame-width` in `tokens.css` is the single
+  measure; `frame.css` draws its two edges as ONE fixed overlay rather than
+  borders re-derived per section. Every horizontal rule on the page is a
+  border on something that wide, so they all meet the verticals — verified at
+  49 → 1391 for hero, tour, closing band and both footer rows at 1440.
+- **Closing band matches the hero band.** `// what you keep` + a display line
+  at `clamp(2.35rem, 5vw, 4rem)`, one step down the hero's curve. Two bands of
+  the same shape at the two ends is what closes the document.
+- **Chapters read on temperature, not hue.** `AURORA_SCENES` went from Tokyo
+  Night blue / agent-brand / hot magenta to cool steel → neutral → warm ivory
+  at 3–10% saturation. The stops had to be lifted well above the violet ones'
+  lightness: the shader multiplies the ramp by a fractional intensity, and with
+  no chroma to carry it the curtain is read on value alone.
+- **Tokyo Night held at 60% saturation.** Same hues, same lightness, so the
+  mock still reads as the real product but stops being the only saturated
+  thing on the page. The macOS traffic lights are left alone — they are OS
+  chrome, not theme.
+- **No violet anywhere.** `--accent` is white. The primary CTA is a white face
+  with dark text and an inverted hover sweep (dark plate slides in, label goes
+  white). The plus-grid, the end-of-page bloom and the footer pools are all
+  plain white at low alpha.

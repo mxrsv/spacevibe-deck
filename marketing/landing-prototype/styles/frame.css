@@ -1,0 +1,50 @@
+/* The editorial scaffold shared by every section — lifted from the hub
+   landing, where the page reads as one system because of the grid, not
+   because of the palette.
+
+   Two vertical hairlines run the whole document; horizontal rules cross
+   between them wherever a section changes. Nothing else is drawn vertically:
+   interior column rules fought the beams field behind the hero. */
+
+/* The verticals are ONE fixed overlay rather than borders on each section.
+   Borders would have to be re-derived in the hero, the sticky tour track, the
+   closing band and the footer, and any of those getting its width wrong shows
+   up as a kinked line. A single element cannot disagree with itself.
+   `fixed` also means the lines never scroll — they read as the page's frame,
+   not as a very tall box. */
+.page-frame {
+  position: fixed;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+}
+
+.page-frame::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--frame-width);
+  border-inline: 1px solid var(--frame-line);
+  content: "";
+  transform: translateX(-50%);
+}
+
+/* The `//` section label. One class for the hero band, the tour rail and the
+   closing band — three sections that must not each invent their own. The `//`
+   itself lives in the copy string, not in a pseudo-element, because the locale
+   swap only rewrites textContent. */
+.band-label {
+  margin: 0 0 clamp(1.1rem, 2vh, 1.6rem);
+  color: rgb(255 255 255 / 52%);
+  font: 500 0.7rem/1.35 var(--font-mono);
+  letter-spacing: 0.055em;
+}
+
+@media (max-width: 47.5rem) {
+  .band-label {
+    margin-bottom: 1rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+  }
+}

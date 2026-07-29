@@ -1,11 +1,26 @@
-/* Shared design tokens for the landing prototype. Values lifted verbatim
-   from direction-a.css so the hero renders identically; tour.css consumes
-   the same set to stay in lockstep. */
+/* Shared design tokens for the landing prototype. direction-a.css (hero) and
+   tour.css (chapters + closing band + footer) both consume this set, which is
+   what keeps them in lockstep. */
 
 :root {
-  /* Violet signal colour (CTA, focus, live status). */
-  --accent: #b98cff;
-  --accent-rgb: 185 140 255;
+  /* ---- the editorial frame ----
+     One column runs the whole document: the hero, the tour, the closing band
+     and the footer all sit inside the same width, and frame.css draws its two
+     edges as a fixed overlay. Every horizontal rule on the page is a
+     `border-top`/`border-bottom` on something this wide, so they all land
+     exactly between those two verticals. */
+  --frame-gutter: clamp(2rem, 3.4vw, 3.25rem);
+  --frame-max: 88rem;
+  --frame-width: min(100% - var(--frame-gutter) * 2, var(--frame-max));
+  --frame-line: rgb(255 255 255 / 12%);
+  /* Padding inside a framed cell — content has to hold itself off the rules. */
+  --frame-pad: clamp(1.1rem, 1.5vw, 1.5rem);
+
+  /* Signal colour: white. The page runs a single achromatic light language —
+     the beams field, the tour curtain and the type are all grey-white — so the
+     one thing allowed to shout does it with brightness, not hue. */
+  --accent: #ffffff;
+  --accent-rgb: 255 255 255;
 
   /* Font language — one system sans for text + chrome, mono for terminal. */
   --font-display:
@@ -13,15 +28,32 @@
   --font-mono:
     "SF Mono", "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
 
-  /* Tokyo Night app-window chrome (shared by .a-appwin in hero + tour). */
-  --sg-bg: #16161e;
-  --sg-fg: #c0caf5;
-  --sg-fg-dim: color-mix(in srgb, #c0caf5 62%, transparent);
-  --sg-fg-faint: color-mix(in srgb, #c0caf5 40%, transparent);
-  --sg-accent: #7aa2f7;
-  --sg-green: #9ece6a;
-  --sg-yellow: #e0af68;
-  --sg-purple: #bb9af7;
-  --sg-hairline: color-mix(in srgb, #c0caf5 14%, transparent);
-  --sg-hairline-soft: color-mix(in srgb, #c0caf5 8%, transparent);
+  /* Tokyo Night app-window chrome (shared by .a-appwin in hero + tour), held
+     at 60% of its original saturation. The hues are the product's real theme
+     and stay recognisable, but at full chroma they were the only saturated
+     thing left on an achromatic page and read as a different design. Same
+     lightness, so every contrast ratio in the mock is unchanged. */
+  --sg-bg: #18181c;
+  --sg-fg: #cbd1ea;
+  --sg-fg-dim: color-mix(in srgb, #cbd1ea 62%, transparent);
+  --sg-fg-faint: color-mix(in srgb, #cbd1ea 40%, transparent);
+  --sg-accent: #93abde;
+  --sg-green: #9dba7e;
+  --sg-yellow: #c8ab80;
+  --sg-purple: #c0ade4;
+  --sg-hairline: color-mix(in srgb, #cbd1ea 14%, transparent);
+  --sg-hairline-soft: color-mix(in srgb, #cbd1ea 8%, transparent);
+}
+
+@media (max-width: 70rem) {
+  :root {
+    --frame-gutter: 1.75rem;
+  }
+}
+
+@media (max-width: 47.5rem) {
+  :root {
+    --frame-gutter: 1rem;
+    --frame-pad: 0.95rem;
+  }
 }

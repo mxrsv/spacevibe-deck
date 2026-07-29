@@ -1,6 +1,8 @@
 import "../styles/tokens.css";
+import "../styles/frame.css";
 import "../styles/direction-a.css";
 import "../styles/aurora.css";
+import "../styles/beams.css";
 import "../styles/tour.css";
 
 import { messages } from "./copy.js";
@@ -54,7 +56,8 @@ function handleLocaleClick(event) {
   locale = readLocale(window.location);
 
   // Swap text in place instead of re-rendering: a full render tears down
-  // the whole DOM plus the aurora canvas, which flashes blank for a frame.
+  // the whole DOM plus both WebGL canvases (hero beams, tour aurora), which
+  // flashes blank for a frame.
   updateDirectionALocale(specimenRoot, messages[locale], locale);
   updateTourLocale(specimenRoot, messages[locale]);
   document.documentElement.lang = locale;

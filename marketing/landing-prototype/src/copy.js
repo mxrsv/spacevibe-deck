@@ -2,6 +2,7 @@ export const messages = {
   en: {
     navProduct: "Deck",
     navGithub: "GitHub",
+    heroLabel: "// native macOS terminal for agent CLIs",
     headlineLead: "Run the grid.",
     headlineTail: "Keep every agent in sight.",
     subhead:
@@ -9,7 +10,7 @@ export const messages = {
     primaryCta: "Watch the 45-sec demo",
     secondaryCta: "View on GitHub",
     localeLabel: "Language",
-    tourKicker: "From folder to full formation",
+    tourKicker: "// from folder to full formation",
     tourCh1Title: "Start from a known formation.",
     tourCh1Body:
       "The Open board remembers each project's layout preset and agent. Reopening your whole team is one keystroke.",
@@ -19,6 +20,7 @@ export const messages = {
     tourCh3Title: "See the system. Work the detail.",
     tourCh3Body:
       "Focus Expand (⌘E) grows the active pane to 65% while every other agent stays in sight.",
+    finaleLabel: "// what you keep",
     finaleTitle: "Your shell, intact.",
     proofPtyTitle: "Real PTY, real shell",
     proofPtyBody:
@@ -47,6 +49,7 @@ export const messages = {
   vi: {
     navProduct: "Deck",
     navGithub: "GitHub",
+    heroLabel: "// terminal macOS native cho agent CLI",
     headlineLead: "Vận hành cả đội hình.",
     headlineTail: "Không agent nào rời khỏi tầm mắt.",
     subhead:
@@ -54,7 +57,7 @@ export const messages = {
     primaryCta: "Xem demo 45 giây",
     secondaryCta: "Xem trên GitHub",
     localeLabel: "Ngôn ngữ",
-    tourKicker: "Từ thư mục đến cả đội hình",
+    tourKicker: "// từ thư mục đến cả đội hình",
     tourCh1Title: "Bắt đầu từ đội hình quen thuộc.",
     tourCh1Body:
       "Open board nhớ sẵn layout preset và agent của từng dự án — mở lại cả đội chỉ mất một phím.",
@@ -64,6 +67,7 @@ export const messages = {
     tourCh3Title: "Nhìn toàn cảnh. Làm chi tiết.",
     tourCh3Body:
       "Focus Expand (⌘E) nới pane đang focus lên 65%, các agent còn lại vẫn trong tầm mắt.",
+    finaleLabel: "// những thứ bạn giữ nguyên",
     finaleTitle: "Shell của bạn, nguyên vẹn.",
     proofPtyTitle: "PTY thật, shell thật",
     proofPtyBody:

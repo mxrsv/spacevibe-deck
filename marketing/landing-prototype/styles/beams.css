@@ -1,0 +1,64 @@
+/* Hero background — the "beams" treatment: a wall of vertical light columns
+   rippling through a key light (ported from React Bits <Beams />, see
+   beams.js). Replaces the violet aurora curtain in the hero; the curtain still
+   runs the tour section below. */
+
+.a-motion {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* The beams already carry plenty of movement, so drop the static crosshair
+   plus-grid while they are active — two competing patterns read as noise.
+   Gated on the section via data-hero-motion. */
+.direction-a[data-hero-motion="beams"]::before {
+  content: none;
+}
+
+.a-motion[data-motion="beams"] {
+  /* The field has to stay at full strength all the way through the title band
+     — that is the only place a viewer reads the ripple against something. It
+     only starts fading where the app-window mock takes over, so the canvas
+     never ends on a hard line above it. The short fade at the top clears the
+     topbar: 0.62rem chrome type on a lit shaft is not readable. */
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    #000 9%,
+    #000 62%,
+    transparent 94%
+  );
+  opacity: 0.92;
+}
+
+/* The field arrives one chunk late (see directions/a.js), so it must not snap
+   in. The fade is longer than the fetch usually takes, which turns "the
+   background popped" into "the lights came up". */
+.beams-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: beams-lights-up 900ms ease both;
+}
+
+@keyframes beams-lights-up {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beams-canvas {
+    animation: none;
+  }
+}
+
+@media (max-width: 47.5rem) {
+  .a-motion[data-motion="beams"] {
+    mask-image: linear-gradient(180deg, #000 0%, #000 38%, transparent 76%);
+    opacity: 0.78;
+  }
+}

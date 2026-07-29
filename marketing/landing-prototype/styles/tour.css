@@ -13,8 +13,8 @@
   --t-line-strong: rgb(255 255 255 / 21%);
   --t-accent: var(--accent);
   --t-accent-rgb: var(--accent-rgb);
+  --t-surface-0: #090b0a;
   --t-surface-2: #151915;
-  --t-gutter: clamp(2rem, 3.4vw, 3.25rem);
   --t-morph: 620ms cubic-bezier(0.22, 0.78, 0.18, 1);
   /* The shared .a-appwin chrome reads these; alias them to the shared
      tokens (tokens.css :root) so hero + tour render identically. */
@@ -29,14 +29,21 @@
   color: var(--t-ink);
   font-family: var(--a-font-display);
   background:
-    radial-gradient(circle at 24% 30%, rgb(141 39 230 / 9%), transparent 30rem),
+    radial-gradient(
+      circle at 24% 30%,
+      rgb(255 255 255 / 3.5%),
+      transparent 30rem
+    ),
     linear-gradient(180deg, #090b0a 0%, #0c0e0c 55%, #0a0c0b 100%);
 }
 
-/* Drifting colour blooms rising behind the closing band + footer so the page
-   does not end on flat black. CSS-only (no third WebGL canvas); Tokyo Night
-   blue/violet/cyan. Anchored to the bottom, faded out at the top so it never
-   reaches the sticky tour above. */
+/* Drifting light pools rising behind the closing band + footer so the page
+   does not end on flat black. CSS-only (no third WebGL canvas). These were
+   Tokyo Night blue/violet/cyan; they are plain white at low alpha now, because
+   the page's whole light language is achromatic and they were the last thing
+   still tinting it. Three overlapping pools at different sizes still read as
+   depth without reading as a colour. Anchored to the bottom, faded out at the
+   top so they never reach the sticky tour above. */
 .tour::after {
   position: absolute;
   z-index: 0;
@@ -47,17 +54,17 @@
   background:
     radial-gradient(
       42rem 30rem at 16% 86%,
-      rgb(122 162 247 / 15%),
+      rgb(255 255 255 / 6%),
       transparent 68%
     ),
     radial-gradient(
       40rem 30rem at 82% 96%,
-      rgb(187 154 247 / 17%),
+      rgb(255 255 255 / 7%),
       transparent 70%
     ),
     radial-gradient(
       30rem 24rem at 52% 76%,
-      rgb(125 207 255 / 10%),
+      rgb(255 255 255 / 4%),
       transparent 70%
     );
   content: "";
@@ -89,7 +96,7 @@
 .tour__sticky::before {
   position: absolute;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cpath d='M0 4h8M4 0v8' fill='none' stroke='%23b98cff' stroke-opacity='.16' stroke-width='.65'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cpath d='M0 4h8M4 0v8' fill='none' stroke='%23ffffff' stroke-opacity='.1' stroke-width='.65'/%3E%3C/svg%3E");
   content: "";
   mask-image: radial-gradient(circle at 64% 50%, #000 0%, transparent 72%);
   opacity: 0.35;
@@ -122,6 +129,8 @@
   pointer-events: none;
 }
 
+/* Sits on the page-wide frame, not on its own narrower measure — that is what
+   lines the chapter rail up with the hero's lede column above it. */
 .tour__layout {
   position: relative;
   z-index: 1;
@@ -129,21 +138,12 @@
   grid-template-columns: minmax(17rem, 24rem) minmax(0, 1fr);
   gap: clamp(2rem, 4vw, 4.25rem);
   align-items: center;
-  width: min(78rem, 100% - var(--t-gutter) * 2);
+  width: var(--frame-width);
   margin-inline: auto;
+  padding-inline: var(--frame-pad);
 }
 
 /* ---------- chapter rail ---------- */
-
-.tour__kicker {
-  display: block;
-  margin-bottom: 1.6rem;
-  color: var(--t-accent);
-  font-family: var(--a-font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
 
 .tour__chapter {
   display: grid;
@@ -165,8 +165,10 @@
   opacity: 1;
 }
 
+/* Faint, not signal-bright: the number is an index, and white at full strength
+   competed with the chapter title right beside it. */
 .tour__chapnum {
-  color: var(--t-accent);
+  color: var(--t-ink-faint);
   font-family: var(--a-font-mono);
   font-size: 0.78rem;
   line-height: 1.9;
@@ -193,7 +195,7 @@
   margin: 0;
   box-shadow:
     0 32px 70px rgb(0 0 0 / 45%),
-    0 0 90px rgb(var(--t-accent-rgb) / 8%);
+    0 0 90px rgb(255 255 255 / 5%);
 }
 
 /* Window entrance — scale/opacity-in on first view (Task 3). */
@@ -467,12 +469,31 @@
 
 /* ---------- closing band ---------- */
 
+/* No padding-inline here on purpose: the horizontal rules below are borders on
+   its CHILDREN, and they have to run the full frame width to meet the two
+   verticals. The cell padding lives on each child instead. */
 .tour__finale {
   position: relative;
   z-index: 1;
-  width: min(78rem, 100% - var(--t-gutter) * 2);
+  width: var(--frame-width);
   margin-inline: auto;
-  padding-block: clamp(4rem, 8vw, 7rem) clamp(5rem, 9vw, 8rem);
+  padding-block: 0 clamp(5rem, 9vw, 8rem);
+  border-top: 1px solid var(--frame-line);
+}
+
+/* The closing band, built like the hero band: a `//` label, one display line,
+   a rule underneath. Two bands with the same shape at the two ends of the page
+   are what make the middle read as one document rather than two. */
+.tour__band {
+  padding: clamp(3.25rem, 7vw, 5rem) var(--frame-pad)
+    clamp(2.5rem, 5vw, 3.75rem);
+  border-bottom: 1px solid var(--frame-line);
+}
+
+.tour__finale-grid,
+.tour__shortcuts,
+.tour__ctas {
+  padding-inline: var(--frame-pad);
 }
 
 /* Crosshair plus-grid echo behind the proof terminal. */
@@ -480,18 +501,22 @@
   position: absolute;
   z-index: -1;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cpath d='M0 4h8M4 0v8' fill='none' stroke='%23b98cff' stroke-opacity='.16' stroke-width='.65'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cpath d='M0 4h8M4 0v8' fill='none' stroke='%23ffffff' stroke-opacity='.1' stroke-width='.65'/%3E%3C/svg%3E");
   content: "";
   mask-image: radial-gradient(circle at 78% 32%, #000 0%, transparent 62%);
   opacity: 0.4;
   pointer-events: none;
 }
 
+/* One step down from the hero's H1 (clamp(3.1rem, 7.6vw, 6.5rem)) but built on
+   the same curve: this is the page's second display line, not a subhead. */
 .tour__finale h2 {
-  margin: 0 0 2.2rem;
-  font-size: clamp(1.8rem, 3.2vw, 2.6rem);
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  margin: 0;
+  font-size: clamp(2.35rem, 5vw, 4rem);
+  font-weight: 600;
+  letter-spacing: -0.042em;
+  line-height: 0.98;
+  text-wrap: balance;
 }
 
 /* Staggered reveal-on-scroll for the closing band's blocks. */
@@ -516,6 +541,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 34rem);
   gap: clamp(2rem, 4vw, 4rem);
   align-items: center;
+  padding-block: clamp(2.5rem, 5vw, 3.75rem) 0;
 }
 
 .tour__proofs {
@@ -526,7 +552,7 @@
 
 .tour__proof {
   padding-left: 1.1rem;
-  border-left: 2px solid rgb(var(--t-accent-rgb) / 22%);
+  border-left: 2px solid rgb(255 255 255 / 18%);
   transition: border-color 450ms ease;
 }
 
@@ -540,7 +566,7 @@
 
 .tour__proof strong::after {
   margin-left: 0.45rem;
-  color: #9ece6a;
+  color: var(--sg-green);
   content: "✓";
   opacity: 0;
   transition: opacity 450ms ease;
@@ -577,7 +603,7 @@
   background: #16161e;
   box-shadow:
     0 24px 60px rgb(0 0 0 / 45%),
-    0 0 60px rgb(var(--t-accent-rgb) / 10%);
+    0 0 60px rgb(255 255 255 / 6%);
   font-family: var(--a-font-mono);
 }
 
@@ -712,33 +738,35 @@
 }
 
 .tour__cta:hover {
-  border-color: rgb(var(--t-accent-rgb) / 60%);
+  border-color: rgb(255 255 255 / 60%);
 }
 
 .tour__cta--primary {
   border-color: var(--t-accent);
   background: var(--t-accent);
-  color: #14091f;
+  color: var(--t-surface-0);
   font-weight: 600;
   animation: tour-ctabreathe 3.4s ease-in-out infinite;
 }
 
 .tour__cta--primary:hover {
-  background: color-mix(in srgb, var(--t-accent) 88%, #ffffff);
+  background: color-mix(in srgb, var(--t-accent) 88%, #d6d9de);
 }
 
 /* ---------- site footer ---------- */
 
+/* The rule above the footer moved onto `.site-footer__inner`, which is frame
+   width — a full-bleed border here ran past the two verticals and broke the
+   frame at the one place a viewer is looking straight at it. */
 .site-footer {
   position: relative;
   z-index: 1;
   overflow: hidden;
-  border-top: 1px solid var(--t-line);
   background: rgb(9 11 10 / 55%);
   backdrop-filter: blur(2px);
 }
 
-/* A soft violet pool anchored to the footer's own corner, gently pulsing. */
+/* A soft pool anchored to the footer's own corner, gently pulsing. */
 .site-footer__glow {
   position: absolute;
   z-index: -1;
@@ -746,12 +774,12 @@
   background:
     radial-gradient(
       36rem 22rem at 88% 120%,
-      rgb(187 154 247 / 16%),
+      rgb(255 255 255 / 7%),
       transparent 70%
     ),
     radial-gradient(
       30rem 20rem at 8% -10%,
-      rgb(122 162 247 / 12%),
+      rgb(255 255 255 / 5%),
       transparent 72%
     );
   pointer-events: none;
@@ -762,9 +790,11 @@
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: clamp(2rem, 5vw, 5rem);
-  width: min(78rem, 100% - var(--t-gutter) * 2);
+  width: var(--frame-width);
   margin-inline: auto;
+  padding-inline: var(--frame-pad);
   padding-block: clamp(3rem, 6vw, 5rem) 2.5rem;
+  border-top: 1px solid var(--frame-line);
 }
 
 .site-footer__mark {
@@ -825,10 +855,11 @@
   gap: 0.6rem 1.5rem;
   align-items: center;
   justify-content: space-between;
-  width: min(78rem, 100% - var(--t-gutter) * 2);
+  width: var(--frame-width);
   margin-inline: auto;
+  padding-inline: var(--frame-pad);
   padding-block: 1.4rem 2.2rem;
-  border-top: 1px solid var(--t-line);
+  border-top: 1px solid var(--frame-line);
   color: var(--t-ink-faint);
   font-size: 0.82rem;
 }
@@ -853,7 +884,9 @@
     overflow-x: auto;
   }
 
-  .tour__kicker {
+  /* The rail turns into a horizontal scroller here; a section label sitting
+     inside it would scroll away with the chapters. */
+  .tour__rail .band-label {
     display: none;
   }
 
@@ -991,11 +1024,11 @@
 @keyframes tour-ctabreathe {
   0%,
   100% {
-    box-shadow: 0 0 22px rgb(var(--t-accent-rgb) / 18%);
+    box-shadow: 0 0 22px rgb(255 255 255 / 10%);
   }
 
   50% {
-    box-shadow: 0 0 42px rgb(var(--t-accent-rgb) / 34%);
+    box-shadow: 0 0 42px rgb(255 255 255 / 20%);
   }
 }
 

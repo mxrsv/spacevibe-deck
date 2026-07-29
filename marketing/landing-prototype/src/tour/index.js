@@ -240,7 +240,7 @@ function renderChapterRail(copy) {
 
   return `
     <aside class="tour__rail">
-      <span class="tour__kicker" data-copy="tourKicker">${copy.tourKicker}</span>
+      <p class="band-label" data-copy="tourKicker">${copy.tourKicker}</p>
       ${chapters}
     </aside>
   `;
@@ -341,7 +341,10 @@ function renderFinale(copy) {
 
   return `
     <footer class="tour__finale">
-      <h2 data-reveal data-copy="finaleTitle">${copy.finaleTitle}</h2>
+      <div class="tour__band" data-reveal>
+        <p class="band-label" data-copy="finaleLabel">${copy.finaleLabel}</p>
+        <h2 data-copy="finaleTitle">${copy.finaleTitle}</h2>
+      </div>
       <div class="tour__finale-grid">
         <div class="tour__proofs">${proofs}</div>
         <figure
