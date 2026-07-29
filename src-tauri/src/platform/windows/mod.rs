@@ -1,4 +1,5 @@
 pub(crate) mod agent_discovery;
+pub(crate) mod job_object;
 pub(crate) mod shell;
 
 use super::{ProcessInspection, SessionIdentity, ShellLaunch};
@@ -8,6 +9,8 @@ use std::path::PathBuf;
 
 pub struct PlatformSession {
     identity: SessionIdentity,
+    #[cfg(target_os = "windows")]
+    job: job_object::PlatformJobObject,
 }
 
 impl PlatformSession {
@@ -17,8 +20,15 @@ impl PlatformSession {
 }
 
 pub fn create_session(root_pid: Option<u32>) -> Result<PlatformSession, String> {
+    #[cfg(target_os = "windows")]
+    let job = job_object::PlatformJobObject::create(
+        root_pid.ok_or_else(|| "The Windows shell process id is unavailable".to_string())?,
+    )?;
+
     Ok(PlatformSession {
         identity: SessionIdentity::new(root_pid),
+        #[cfg(target_os = "windows")]
+        job,
     })
 }
 
@@ -47,9 +57,19 @@ pub fn foreground_process_group(_master: &dyn MasterPty) -> Option<i32> {
 }
 
 pub fn terminate_session(
-    _session: &PlatformSession,
+    session: &PlatformSession,
     _foreground_process_group: Option<i32>,
     killer: &mut (dyn ChildKiller + Send + Sync),
 ) -> Result<(), String> {
-    killer.kill().map_err(|error| error.to_string())
+    #[cfg(target_os = "windows")]
+    {
+        let _ = killer;
+        session.job.terminate()
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = session;
+        killer.kill().map_err(|error| error.to_string())
+    }
 }

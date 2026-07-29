@@ -393,12 +393,13 @@ pub fn kill_pty(
     id: u32,
 ) -> Result<(), String> {
     let mut sessions = state.sessions.lock().map_err(|e| e.to_string())?;
-    if let Some(mut session) = sessions.remove(&id) {
+    if let Some(session) = sessions.get_mut(&id) {
         platform::terminate_session(
             &session.platform,
             platform::foreground_process_group(session.master.as_ref()),
             session.killer.as_mut(),
         )?;
+        sessions.remove(&id);
     }
     coordinator.unregister(id);
     Ok(())
