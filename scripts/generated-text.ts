@@ -2,9 +2,15 @@ function normalizeLineEndings(text: string): string {
   return text.replaceAll("\r\n", "\n");
 }
 
+const RUST_EDITION = "2021";
+
 export function generatedTextMatches(
   fresh: string,
   committed: string,
 ): boolean {
   return normalizeLineEndings(fresh) === normalizeLineEndings(committed);
+}
+
+export function rustfmtArguments(path: string): string[] {
+  return ["--edition", RUST_EDITION, path];
 }
