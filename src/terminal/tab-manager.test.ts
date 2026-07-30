@@ -4,7 +4,7 @@ import type { PaneProcessInfo } from "../lib/process-info";
 import type { Pane, PaneEvents, PaneAttentionSignal } from "./pane";
 import type { CreatePaneFn } from "./pane-lifecycle";
 import { createMemoryPtyClient, type PtyClient } from "./pty-client";
-import type { ShortcutAction } from "./keymap";
+import { MACOS_KEYMAP, type ShortcutAction } from "./keymap";
 import { ACTION_REGISTRY } from "./action-registry";
 import {
   boardOpen,
@@ -360,6 +360,53 @@ describe("createTabManager materialize (through the createPane seam)", () => {
 
     expect(copySelection).toHaveBeenCalledTimes(1);
     expect(paste).toHaveBeenCalledTimes(1);
+    tm.dispose();
+  });
+
+  it("dispatches a select-tab-N chord to actually switch tabs — direct check, not mirrored from the keymap under test (H1/A4)", async () => {
+    // dispatch-coverage.test.ts's DISPATCHABLE_ACTIONS mirrors select-tab-N
+    // membership straight off MACOS_KEYMAP/WINDOWS_KEYMAP (see its own doc
+    // comment in tab-manager.ts, above DISPATCHABLE_ACTIONS), so that test is
+    // tautological for this one family: it can never catch a broken/removed
+    // `selectTabIndex(action) !== null` early-return in `dispatchAction`,
+    // because it derives "is this dispatchable" from the same two arrays it
+    // iterates over. If that early-return ever breaks, every select-tab-N
+    // chord silently stops switching tabs — H1/A4's exact failure mode —
+    // while dispatch-coverage.test.ts stays green throughout. This test
+    // drives the real chord through `handleShortcut` and asserts the tab
+    // genuinely changed, so THAT regression has somewhere to fail.
+    const binding = MACOS_KEYMAP.find((b) => b.action === "select-tab-2");
+    if (binding === undefined) {
+      throw new Error(
+        "MACOS_KEYMAP has no select-tab-2 binding — test setup is stale",
+      );
+    }
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.materialize({ layout: null, cwds: ["/c"] });
+    await tm.init();
+    await flush();
+    expect(activeTabIndex.value).toBe(2); // the last-materialized tab starts active
+
+    // Built from the live binding's own modifiers/code, not guessed.
+    const keyboardInit: KeyboardEventInit = {
+      metaKey: !!binding.meta,
+      ctrlKey: !!binding.ctrl,
+      altKey: !!binding.alt,
+      shiftKey: !!binding.shift,
+    };
+    if ("code" in binding) {
+      keyboardInit.code = binding.code;
+      keyboardInit.key = binding.code.replace("Digit", "");
+    } else {
+      keyboardInit.key = binding.key;
+    }
+    window.dispatchEvent(new KeyboardEvent("keydown", keyboardInit));
+    await flush();
+
+    expect(activeTabIndex.value).toBe(1); // select-tab-2 → 0-based index 1
+
     tm.dispose();
   });
 });

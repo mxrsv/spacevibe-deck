@@ -162,10 +162,24 @@ const COMMAND_ACTIONS = [
  * `ActionId`), so mapping its ids can never produce one — confirmed by
  * `npx tsc --noEmit` rejecting that exact approach (the mapped id union never
  * includes the `select-tab-${number}` literal `ShortcutAction` allows) and by
- * the filter matching zero entries at runtime. `selectTabIndex` (keymap.ts)
- * accepts any N unconditionally, so every concrete id the keymaps actually
- * bind is a real dispatch target; reading them off the keymaps stays exact
- * and in sync automatically if the addressable tab count ever changes.
+ * the filter matching zero entries at runtime.
+ *
+ * IMPORTANT, read before trusting this set for that family: mirroring
+ * `select-tab-N` off the SAME two keymaps `dispatch-coverage.test.ts` iterates
+ * makes that test TAUTOLOGICAL for this family — "is this keymap action
+ * dispatchable" is true by construction, regardless of what `dispatchAction`
+ * actually does with it. If a future change removes or breaks the
+ * `selectTabIndex(action) !== null` early-return in `dispatchAction` below,
+ * every `select-tab-N` chord would silently stop switching tabs (H1/A4's
+ * exact failure mode) and `dispatch-coverage.test.ts` would stay green
+ * throughout, because its target set was copied from the same data under
+ * test, not from `dispatchAction`'s real behavior. The direct test
+ * "dispatches a select-tab-N chord to actually switch tabs" in
+ * `tab-manager.test.ts` (not `dispatch-coverage.test.ts`) is what actually
+ * covers this family — it drives a real chord through `handleShortcut` and
+ * asserts the tab genuinely changed, so it fails if that early-return ever
+ * breaks. `COMMAND_ACTIONS` above has no such gap: every one of its ids is
+ * matched against the real `commands` table, an independent data source.
  *
  * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
  * keymap binding points at an action nothing dispatches — the defect behind
