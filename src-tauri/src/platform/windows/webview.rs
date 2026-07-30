@@ -30,15 +30,20 @@ pub fn harden_webview(window: &WebviewWindow) -> Result<(), String> {
             // are returned as HRESULTs, not unwinds.
             unsafe {
                 let Ok(core) = controller.CoreWebView2() else {
+                    eprintln!("Deck: WebView2 core unavailable; browser accelerator keys stay enabled (F5 will discard the session)");
                     return;
                 };
                 let Ok(settings) = core.Settings() else {
+                    eprintln!("Deck: WebView2 settings unavailable; browser accelerator keys stay enabled (F5 will discard the session)");
                     return;
                 };
                 let Ok(settings3) = settings.cast::<ICoreWebView2Settings3>() else {
+                    eprintln!("Deck: WebView2 runtime lacks ICoreWebView2Settings3; browser accelerator keys stay enabled (F5 will discard the session)");
                     return;
                 };
-                let _ = settings3.SetAreBrowserAcceleratorKeysEnabled(false);
+                if let Err(error) = settings3.SetAreBrowserAcceleratorKeysEnabled(false) {
+                    eprintln!("Deck: could not disable WebView2 browser accelerator keys: {error}");
+                }
             }
         })
         .map_err(|error| error.to_string())
