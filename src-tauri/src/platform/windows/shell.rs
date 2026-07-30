@@ -14,16 +14,16 @@ const POWERSHELL_CANDIDATES: [&str; 2] = ["pwsh.exe", "powershell.exe"];
 const PROMPT_INTEGRATION: &str = r#"$Global:__DeckOriginalPrompt = $function:Prompt;
 function Global:prompt {
   $loc = $executionContext.SessionState.Path.CurrentLocation;
-  $out = "`e]133;A$([char]7)";
+  $out = "$([char]27)]133;A$([char]7)";
   if ($loc.Provider.Name -eq "FileSystem") {
-    $out += "`e]9;9;`"$($loc.ProviderPath)`"$([char]7)";
+    $out += "$([char]27)]9;9;`"$($loc.ProviderPath)`"$([char]7)";
   }
   if ($null -ne $Global:__DeckOriginalPrompt) {
     $out += $Global:__DeckOriginalPrompt.Invoke();
   } else {
     $out += "PS $loc$('>' * ($nestedPromptLevel + 1)) ";
   }
-  $out += "`e]133;B$([char]7)";
+  $out += "$([char]27)]133;B$([char]7)";
   return $out;
 }"#;
 
@@ -224,9 +224,14 @@ mod tests {
             .any(|arg| arg == concat!("-No", "Profile")));
         assert!(launch.args.iter().any(|arg| arg == "-NoExit"));
         assert!(script.contains("$function:Prompt"));
-        assert!(script.contains("OSC 133;A") || script.contains("]133;A"));
-        assert!(script.contains("OSC 133;B") || script.contains("]133;B"));
-        assert!(script.contains("]9;9;"));
+        // `e is PowerShell 6.0+. Windows PowerShell 5.1 drops the backtick and
+        // keeps a literal "e", so every prompt line would render the escape as
+        // text and no OSC sequence would ever reach the parser. $([char]27) is
+        // valid in both hosts — exactly as $([char]7) already is on these lines.
+        assert!(!script.contains("`e"), "PowerShell 5.1 cannot parse `e");
+        assert!(script.contains("$([char]27)]133;A"));
+        assert!(script.contains("$([char]27)]133;B"));
+        assert!(script.contains("$([char]27)]9;9;"));
         assert!(!script.contains(concat!("Set-", "Content")));
         assert!(!script.contains(concat!("Add-", "Content")));
     }
