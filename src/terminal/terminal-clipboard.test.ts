@@ -44,7 +44,21 @@ describe("copyTerminalSelection / pasteIntoTerminal", () => {
     expect(h.terminal.paste).toHaveBeenCalledWith("line one\r\nline two");
   });
 
-  it("copies a non-empty selection and reports a clipboard failure", async () => {
+  it("copies a non-empty selection to the clipboard", async () => {
+    const h = createPasteHarness("selected");
+
+    copyTerminalSelection(h.terminal, {
+      readText: h.readText,
+      writeText: h.writeText,
+      reportError: h.reportError,
+    });
+
+    await vi.waitFor(() =>
+      expect(h.writeText).toHaveBeenCalledWith("selected"),
+    );
+  });
+
+  it("reports a clipboard failure instead of swallowing it", async () => {
     const h = createPasteHarness("selected");
     h.writeText.mockRejectedValueOnce(new Error("denied"));
 

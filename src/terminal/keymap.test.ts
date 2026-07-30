@@ -356,6 +356,19 @@ describe("matchBinding", () => {
       "close-tab",
     );
   });
+
+  // The Windows clipboard chords must not exist on macOS — Cmd+C/Cmd+V are
+  // the native bindings there, and xterm handles them. This guarantee used to
+  // live in a handler-level test that platform-gated at runtime; the fix moved
+  // to the keymap layer, so it has to be asserted here instead.
+  it("leaves Ctrl+Shift+C/V unbound on macOS", () => {
+    expect(
+      matchBinding(keyEvent("c", { ctrlKey: true, shiftKey: true })),
+    ).toBeNull();
+    expect(
+      matchBinding(keyEvent("v", { ctrlKey: true, shiftKey: true })),
+    ).toBeNull();
+  });
 });
 
 describe("WINDOWS_KEYMAP", () => {
