@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const OSC_PREFIX: &[u8] = b"\x1b]";
 const MAX_PENDING_BYTES: usize = 128 * 1024;
@@ -82,9 +82,47 @@ fn parse_payload(payload: &str) -> Option<ShellIntegrationEvent> {
     (!cwd.is_empty()).then(|| ShellIntegrationEvent::CurrentDirectory(cwd.to_string()))
 }
 
+/// A candidate root that must never reach the filesystem.
+///
+/// On Windows `\\host\share` is `is_absolute()`, and `is_dir()` on it is a real
+/// `CreateFileW` into the MUP/SMB redirector: ~21 s per unreachable host, and
+/// Windows offers the interactive user's NTLMv2 credentials to whatever host the
+/// candidate names. The candidate comes verbatim off the PTY (`parse_payload`
+/// accepts any `9;9;<anything>` with no nonce and no origin check), so terminal
+/// output alone must not be able to choose a network destination. Verbatim
+/// prefixes are rejected on the same pass — the spec already requires they never
+/// flow onward into UI or editor argv.
+fn has_rejected_root(candidate: &str, path: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        use std::path::{Component, Prefix};
+
+        let _ = candidate;
+        if let Some(Component::Prefix(prefix)) = path.components().next() {
+            return matches!(
+                prefix.kind(),
+                Prefix::UNC(..) | Prefix::VerbatimUNC(..) | Prefix::Verbatim(..)
+            );
+        }
+        false
+    }
+    #[cfg(not(windows))]
+    {
+        // Windows path parsing is what classifies a prefix, and it is absent
+        // here — so keep the guarantee testable on the macOS dev host with the
+        // textual form instead. No legitimate POSIX working directory starts
+        // with a backslash pair.
+        let _ = path;
+        candidate.starts_with(r"\\")
+    }
+}
+
 pub fn retain_valid_cwd(current: Option<PathBuf>, candidate: &str) -> Option<PathBuf> {
     let candidate = candidate.trim();
     let path = PathBuf::from(candidate);
+    if has_rejected_root(candidate, &path) {
+        return current;
+    }
     if path.is_absolute() && path.is_dir() {
         Some(path)
     } else {
@@ -95,6 +133,7 @@ pub fn retain_valid_cwd(current: Option<PathBuf>, candidate: &str) -> Option<Pat
 #[cfg(test)]
 mod tests {
     use super::{retain_valid_cwd, ShellIntegrationEvent, ShellIntegrationParser};
+    use std::path::PathBuf;
 
     #[test]
     fn parses_split_prompt_ready() {
@@ -160,6 +199,55 @@ mod tests {
         let retained = retain_valid_cwd(accepted, "not/absolute");
 
         assert_eq!(retained, Some(valid));
+    }
+
+    #[test]
+    fn rejects_network_and_verbatim_roots() {
+        use super::has_rejected_root;
+
+        // Asserted on the predicate, not through retain_valid_cwd: on this
+        // dev host a UNC string is not `is_absolute()`, so the outer function
+        // already returns `current` and would pass without the guard. The
+        // guard is what must stop `is_dir()` from reaching the SMB redirector
+        // — and from offering the interactive user's NTLM credentials to
+        // whatever host terminal output happened to name.
+        for candidate in [
+            r"\\10.255.255.1\share",
+            r"\\corp\projects\deck",
+            r"\\?\C:\Users\dev",
+            r"\\?\UNC\corp\projects",
+        ] {
+            assert!(
+                has_rejected_root(candidate, &PathBuf::from(candidate)),
+                "{candidate} must be rejected before any filesystem call"
+            );
+        }
+    }
+
+    #[test]
+    fn accepts_ordinary_local_roots() {
+        use super::has_rejected_root;
+
+        // The guard must not swallow legitimate candidates — a drive-letter
+        // path on Windows, and this host's own temp dir everywhere.
+        let temp = std::env::temp_dir();
+        assert!(!has_rejected_root(&temp.to_string_lossy(), &temp));
+        assert!(!has_rejected_root(
+            r"C:\Users\dev",
+            &PathBuf::from(r"C:\Users\dev")
+        ));
+    }
+
+    #[test]
+    fn retains_current_cwd_for_a_rejected_root() {
+        // The end-to-end shape, kept alongside the predicate tests so the
+        // wiring is pinned even though this one cannot fail on POSIX.
+        let current = Some(std::env::temp_dir());
+
+        assert_eq!(
+            retain_valid_cwd(current.clone(), r"\\10.255.255.1\share"),
+            current
+        );
     }
 
     #[test]
