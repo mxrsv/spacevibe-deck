@@ -21,9 +21,15 @@ pub use unsupported::{
 };
 #[cfg(target_os = "windows")]
 pub use windows::{
-    create_session, discover_agents, foreground_process_group, inspect_process, shell_launch,
-    terminate_session, user_home, PlatformSession,
+    create_session, discover_agents, foreground_process_group, harden_webview, inspect_process,
+    shell_launch, terminate_session, user_home, PlatformSession,
 };
+
+/// Post-creation webview hardening. Only Windows has anything to do here.
+#[cfg(not(target_os = "windows"))]
+pub fn harden_webview(_window: &tauri::WebviewWindow) -> Result<(), String> {
+    Ok(())
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]

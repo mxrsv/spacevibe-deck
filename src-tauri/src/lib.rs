@@ -41,6 +41,13 @@ pub fn run() {
             // directory can still be carried over unseen.
             migrate::legacy_app_data(app.handle());
             menu::install(app)?;
+            // Browser accelerator keys are on by wry's default and Tauri has no
+            // builder flag for them: one F5 in the chrome discards every tab and
+            // orphans every PTY. Applied per window, so a future second window
+            // needs the same call.
+            for window in app.webview_windows().values() {
+                platform::harden_webview(window)?;
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

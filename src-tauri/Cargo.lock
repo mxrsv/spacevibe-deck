@@ -3485,6 +3485,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-store",
  "tokio",
+ "webview2-com",
  "windows-core",
  "windows-sys 0.61.2",
  "wmi",

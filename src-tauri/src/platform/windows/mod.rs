@@ -3,6 +3,12 @@ pub(crate) mod command_line;
 pub(crate) mod job_object;
 pub(crate) mod process_snapshot;
 pub(crate) mod shell;
+// Unlike the sibling modules above, this one has no cross-platform-testable
+// logic to abstract behind a trait — it is a direct COM call-through — so it
+// is gated to the real Windows target rather than also compiling under
+// `cfg(test)` on other hosts the way `mod windows` itself does.
+#[cfg(target_os = "windows")]
+pub(crate) mod webview;
 
 use super::{ProcessInspection, SessionIdentity, ShellLaunch};
 use crate::agents::AgentInfo;
@@ -70,6 +76,11 @@ pub(crate) fn inspect_processes(
 
 pub fn foreground_process_group(_master: &dyn MasterPty) -> Option<i32> {
     None
+}
+
+#[cfg(target_os = "windows")]
+pub fn harden_webview(window: &tauri::WebviewWindow) -> Result<(), String> {
+    webview::harden_webview(window)
 }
 
 pub fn terminate_session(

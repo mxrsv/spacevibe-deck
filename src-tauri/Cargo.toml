@@ -44,3 +44,8 @@ windows-sys = { version = "0.61", features = [
     "Win32_System_JobObjects",
     "Win32_System_Threading",
 ] }
+# Already in the lock transitively via tauri; declared directly so the
+# ICoreWebView2Settings3 call has a supported path. Must stay on the same
+# windows-core 0.61 bindings as the pin above — mixed 0.61/0.62 COM traits do
+# not interoperate.
+webview2-com = "0.38"
