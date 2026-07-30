@@ -99,10 +99,13 @@ fn has_rejected_root(candidate: &str, path: &Path) -> bool {
 
         let _ = candidate;
         if let Some(Component::Prefix(prefix)) = path.components().next() {
-            return matches!(
-                prefix.kind(),
-                Prefix::UNC(..) | Prefix::VerbatimUNC(..) | Prefix::Verbatim(..)
-            );
+            // `is_verbatim()` is std's own predicate for the whole verbatim
+            // family — Verbatim, VerbatimDisk and VerbatimUNC. Hand-listing the
+            // variants is what made the first draft of this plan wrong:
+            // `\\?\C:\...` parses to VerbatimDisk, NOT Verbatim, so a
+            // three-variant `matches!` silently let it through on Windows while
+            // the macOS textual fallback masked the gap.
+            return prefix.kind().is_verbatim() || matches!(prefix.kind(), Prefix::UNC(..));
         }
         false
     }
