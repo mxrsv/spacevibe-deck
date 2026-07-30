@@ -1130,7 +1130,7 @@ Ctrl+P and Ctrl+F are covered by the same setting. Right-click behaviour (audit 
 
 - Create: `src-tauri/src/platform/windows/process_identity.rs`
 - Modify: `src-tauri/src/platform/windows/mod.rs:26-42` (`create_session`), module list
-- Keep: `process_snapshot::process_creation_date` — still used by the polling path, which already runs under `spawn_blocking` (`info.rs:185`)
+- Keep: `process_snapshot::process_creation_date` — but NOT for the reason the first draft gave. **Correction (2026-07-30):** the draft claimed the polling path still calls it. It does not — `info.rs:118-120` builds `SessionProcessRoot.creation_date` from the cached `SessionIdentity::creation_date()`, never re-querying. After this task the function has ZERO production callers and the Windows cross-check reports it as dead. It is retained anyway because its only remaining caller, `connects_and_deserializes_win32_process_snapshot` (`process_snapshot.rs:618-639`), is this repo's WMI smoke test — the one check that queries `Win32_Process` for real and cross-checks a targeted lookup against the full snapshot, i.e. what lets `windows-check` detect a WMI-broken machine. Deleting it to clear the warning would silently remove that coverage, so it carries a doc comment saying so.
 
 **Interfaces:**
 
@@ -1258,7 +1258,7 @@ In `src-tauri/src/platform/windows/mod.rs`, add `pub(crate) mod process_identity
     };
 ```
 
-The `.ok()` that discarded the error is removed. `process_snapshot::process_creation_date` stays for the polling path.
+The `.ok()` that discarded the error is removed. `process_snapshot::process_creation_date` stays, but as the WMI smoke test's entry point — not for the polling path, which never called it. See the corrected note in this task's Files section.
 
 - [ ] **Step 5: Verify**
 
