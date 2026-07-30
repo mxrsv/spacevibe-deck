@@ -16,7 +16,13 @@ import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { sendAgentNotification } from "../lib/native-notification";
 import { getDesktopEnvironment } from "../lib/platform";
 import type { AgentChoice } from "../lib/workspace-recents";
-import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
+import {
+  MACOS_KEYMAP,
+  matchBinding,
+  selectTabIndex,
+  WINDOWS_KEYMAP,
+  type ShortcutAction,
+} from "./keymap";
 import {
   ACTION_REGISTRY,
   TIER_RANK,
@@ -93,6 +99,86 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
     (action: ActionDefinition) => action.destructive === true,
   ).map((action) => action.id),
 );
+
+/**
+ * The ids `commands` implements — 39 entries, verified against the live
+ * `commands` table (`tab-manager.ts:946-1024`), Task 4's `copy-selection`/
+ * `paste` included.
+ *
+ * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
+ * keymap binding points at an action nothing dispatches — the defect behind
+ * prior review H1 and pre-ship audit A4, which a keymap-only test cannot see.
+ */
+const COMMAND_ACTIONS = [
+  "clear-buffer",
+  "close-pane",
+  "close-tab",
+  "copy-cwd",
+  "copy-selection",
+  "find",
+  "find-next",
+  "find-previous",
+  "focus-down",
+  "focus-left",
+  "focus-next",
+  "focus-next-attention",
+  "focus-prev",
+  "focus-right",
+  "focus-up",
+  "new-preset",
+  "new-tab",
+  "next-tab",
+  "open-tab-options",
+  "paste",
+  "prev-tab",
+  "reopen-tab",
+  "save-preset",
+  "scroll-page-down",
+  "scroll-page-up",
+  "scroll-to-bottom",
+  "scroll-to-top",
+  "split-column",
+  "split-row",
+  "swap-down",
+  "swap-left",
+  "swap-right",
+  "swap-up",
+  "toggle-expand",
+  "toggle-settings",
+  "toggle-zoom-pane",
+  "zoom-in",
+  "zoom-out",
+  "zoom-reset",
+] as const satisfies readonly ShortcutAction[];
+
+/**
+ * Every action `dispatchAction` can actually run: `COMMAND_ACTIONS` plus the
+ * ids it resolves inline, before consulting the table — `select-last-tab` and
+ * the `select-tab-N` family, both handled by the `selectTabIndex` branch.
+ *
+ * `select-tab-N` membership is read straight off `MACOS_KEYMAP`/
+ * `WINDOWS_KEYMAP`, not hand-listed 1..8: `ACTION_REGISTRY` deliberately
+ * carries no `select-tab-N` rows at all (see its own doc comment, just above
+ * `ActionId`), so mapping its ids can never produce one — confirmed by
+ * `npx tsc --noEmit` rejecting that exact approach (the mapped id union never
+ * includes the `select-tab-${number}` literal `ShortcutAction` allows) and by
+ * the filter matching zero entries at runtime. `selectTabIndex` (keymap.ts)
+ * accepts any N unconditionally, so every concrete id the keymaps actually
+ * bind is a real dispatch target; reading them off the keymaps stays exact
+ * and in sync automatically if the addressable tab count ever changes.
+ *
+ * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
+ * keymap binding points at an action nothing dispatches — the defect behind
+ * prior review H1 and pre-ship audit A4, which a keymap-only test cannot see.
+ */
+export const DISPATCHABLE_ACTIONS: ReadonlySet<ShortcutAction> =
+  new Set<ShortcutAction>([
+    ...COMMAND_ACTIONS,
+    "select-last-tab",
+    ...[...MACOS_KEYMAP, ...WINDOWS_KEYMAP]
+      .map((binding) => binding.action)
+      .filter((action) => /^select-tab-\d+$/.test(action)),
+  ]);
 
 const WINDOWS_AGENT_TIMEOUT_MESSAGE =
   "PowerShell was not ready in time. Launch the agent manually.";
@@ -857,7 +943,7 @@ export function createTabManager(
   // Keymap *matching* lives in keymap.ts; this table is the dispatch half —
   // one action, one closure. `select-tab-N` and `select-last-tab` (⌘9) are
   // both handled directly in `dispatchAction`, not through this table.
-  const commands: Partial<Record<ShortcutAction, () => void>> = {
+  const commands = {
     "split-row": () => void splitActive("row"),
     "split-column": () => void splitActive("column"),
     "close-pane": () => void close.closePane(),
@@ -936,7 +1022,7 @@ export function createTabManager(
     "new-preset": () => {
       editorRequest.value = { source: "live" };
     },
-  };
+  } satisfies Record<(typeof COMMAND_ACTIONS)[number], () => void>;
 
   /**
    * Ranks of every overlay that is currently open (Open board, Settings,
@@ -1065,7 +1151,14 @@ export function createTabManager(
       selectTab(tabIndex); // out-of-range indexes are a no-op
       return;
     }
-    commands[action]?.();
+    // `action` is a `COMMAND_ACTIONS` member here at runtime — both
+    // `select-last-tab` and every `select-tab-N` already returned above.
+    // `selectTabIndex` returns a plain `number | null`, not a type predicate,
+    // so TypeScript can't narrow the `select-tab-${number}` template out of
+    // `action`'s type on its own; this cast documents that invariant instead
+    // of widening `commands` back to `Record<ShortcutAction, ...>`, which
+    // would silently defeat the `satisfies` completeness check above.
+    commands[action as (typeof COMMAND_ACTIONS)[number]]?.();
   }
 
   function runAction(action: ShortcutAction): void {
