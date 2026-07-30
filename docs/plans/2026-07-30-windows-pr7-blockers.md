@@ -905,15 +905,29 @@ export const DISPATCHABLE_ACTIONS: ReadonlySet<ShortcutAction> =
   new Set<ShortcutAction>([
     ...COMMAND_ACTIONS,
     "select-last-tab",
-    // Derived, not hand-listed: the registry owns how many tabs are addressable,
-    // and a hard-coded 1..8 would silently rot if that changed.
-    ...ACTION_REGISTRY.map((action) => action.id).filter(
-      (id): id is ShortcutAction => /^select-tab-\d+$/.test(id),
-    ),
+    // CORRECTED 2026-07-30 — the first draft derived these from ACTION_REGISTRY,
+    // which is factually wrong: action-registry.ts's own doc comment states
+    // select-tab-1..8 are deliberately NOT rows in that registry. The filter
+    // matches zero entries at runtime and the type predicate does not compile
+    // (TS2677). Derive from the keymaps instead:
+    ...[...MACOS_KEYMAP, ...WINDOWS_KEYMAP]
+      .map((binding) => binding.action)
+      .filter((action) => /^select-tab-\d+$/.test(action)),
   ]);
 ```
 
-`ACTION_REGISTRY` is already imported by `tab-manager.test.ts:8`; add the same import to `tab-manager.ts` if it is not there yet.
+**KNOWN LIMITATION — do not gloss this.** Reading the `select-tab-N` ids off the
+same two arrays the coverage test iterates makes that check TAUTOLOGICAL for that
+family: those ids are in the set by construction, so they can never be reported
+as orphans. If `dispatchAction`'s `selectTabIndex` early-return is ever removed
+or broken, every `select-tab` chord silently no-ops — H1 and A4's exact failure
+mode — and `dispatch-coverage.test.ts` stays green throughout. That family needs
+a DIRECT dispatch test asserting the tab actually changes; the coverage test
+cannot cover it. The guard is real for the other 39 actions and absent for this
+one family.
+
+`MACOS_KEYMAP` and `WINDOWS_KEYMAP` are already exported from `keymap.ts`; add
+them to the existing import in `tab-manager.ts`.
 
 Then type the table against that tuple, so a missing entry is a compile error rather than a convention:
 
