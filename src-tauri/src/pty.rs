@@ -578,7 +578,18 @@ mod tests {
         );
         // A trailing invalid candidate does not erase an earlier valid one.
         assert_eq!(
-            validate_cwd_candidates(&[valid_text, "relative/two".into()]),
+            validate_cwd_candidates(&[valid_text.clone(), "relative/two".into()]),
+            Some(valid.clone())
+        );
+        // Two valid candidates, so this actually pins last-valid-wins. Every
+        // other case here has at most one valid entry and would pass equally
+        // under a first-valid-wins or a `.rev().fold(..)` implementation.
+        let parent = valid
+            .parent()
+            .expect("the temp dir must have a parent")
+            .to_path_buf();
+        assert_eq!(
+            validate_cwd_candidates(&[parent.to_string_lossy().into_owned(), valid_text]),
             Some(valid)
         );
     }
