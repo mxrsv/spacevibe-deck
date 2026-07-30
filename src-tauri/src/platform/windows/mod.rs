@@ -1,6 +1,7 @@
 pub(crate) mod agent_discovery;
 pub(crate) mod command_line;
 pub(crate) mod job_object;
+pub(crate) mod process_identity;
 pub(crate) mod process_snapshot;
 pub(crate) mod shell;
 // Unlike the sibling modules above, this one has no cross-platform-testable
@@ -36,7 +37,16 @@ pub fn create_session(root_pid: Option<u32>) -> Result<PlatformSession, String> 
     #[cfg(target_os = "windows")]
     let job = job_object::PlatformJobObject::create(root_pid)?;
     #[cfg(target_os = "windows")]
-    let creation_date = process_snapshot::process_creation_date(root_pid).ok();
+    let creation_date = match process_identity::creation_time_micros(root_pid) {
+        Ok(creation_date) => Some(creation_date),
+        Err(error) => {
+            // SessionIdentity is Copy and written once, never backfilled, so a
+            // silent miss pins this pane to `unknown` for its whole life — no
+            // Attention Rail gate, generic close dialog. Do not swallow it.
+            eprintln!("Deck: pane identity unavailable for pid {root_pid}: {error}");
+            None
+        }
+    };
     #[cfg(not(target_os = "windows"))]
     let creation_date = None;
 
