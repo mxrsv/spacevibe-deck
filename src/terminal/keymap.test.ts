@@ -48,6 +48,27 @@ function codeEvent(
   } as KeyboardEvent;
 }
 
+/**
+ * A keydown that also answers `getModifierState`, the only way to tell a
+ * Windows AltGr press (delivered as left-Ctrl + right-Alt) apart from a
+ * deliberate Ctrl+Alt chord — the plain-object events above deliberately omit
+ * the method, so they double as the feature-detection case.
+ */
+function altGraphEvent(
+  code: string,
+  key: string,
+  mods: Partial<
+    Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">
+  > = {},
+  altGraph = true,
+): KeyboardEvent {
+  return {
+    ...codeEvent(code, key, mods),
+    getModifierState: (modifier: string) =>
+      modifier === "AltGraph" ? altGraph : false,
+  } as KeyboardEvent;
+}
+
 describe("matchBinding", () => {
   it("keeps the existing pane bindings", () => {
     expect(matchBinding(keyEvent("d", { metaKey: true }))).toBe("split-row");
@@ -381,6 +402,36 @@ describe("WINDOWS_KEYMAP", () => {
     ["Digit9", "9", { ctrlKey: true }, "select-last-tab"],
   ] as const)("uses physical position for %s", (code, key, mods, action) => {
     expect(matchBinding(codeEvent(code, key, mods), WINDOWS_KEYMAP)).toBe(action);
+  });
+
+  // Windows delivers AltGr as left-Ctrl + right-Alt, so every Ctrl+Alt binding
+  // would otherwise eat a third-level character: "[" / "]" on Spanish and
+  // Italian, "~" on German and Nordic. These arrive with the same modifier
+  // flags as a deliberate chord — only getModifierState("AltGraph") separates
+  // them. Nothing may match, or matchBinding's caller preventDefault()s the
+  // character out of the pane.
+  it.each([
+    ["BracketRight", "]", "Spanish/Italian"],
+    ["BracketLeft", "[", "Spanish/Italian"],
+    ["BracketRight", "~", "German/Nordic"],
+  ] as const)(
+    "leaves %s unbound while AltGr is down (types %s on %s)",
+    (code, key, _layouts) => {
+      const event = altGraphEvent(code, key, { ctrlKey: true, altKey: true });
+
+      expect(matchBinding(event, WINDOWS_KEYMAP)).toBeNull();
+    },
+  );
+
+  it("still matches a deliberate Ctrl+Alt chord when AltGr is not down", () => {
+    const event = altGraphEvent(
+      "BracketRight",
+      "]",
+      { ctrlKey: true, altKey: true },
+      false,
+    );
+
+    expect(matchBinding(event, WINDOWS_KEYMAP)).toBe("focus-next");
   });
 
   it.each([
