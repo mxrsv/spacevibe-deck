@@ -400,15 +400,28 @@ pub fn kill_pty(
     coordinator: State<'_, WindowCoordinator>,
     id: u32,
 ) -> Result<(), String> {
-    let mut sessions = state.sessions.lock().map_err(|e| e.to_string())?;
-    if let Some(session) = sessions.get_mut(&id) {
-        platform::terminate_session(
-            &session.platform,
-            platform::foreground_process_group(session.master.as_ref()),
-            session.killer.as_mut(),
-        )?;
-        sessions.remove(&id);
-    }
+    // `terminate_session` stays under the lock so a failure leaves the session
+    // in the map, retryable. The removed `Session` must not be *dropped* here,
+    // though: it owns the last handle to the PTY master, so dropping it closes
+    // the pseudoconsole — and on Windows that blocks until conhost flushes its
+    // output pipe, while the only thread draining that pipe takes this very
+    // lock in `consume_shell_integration`. Hand the value out of the scope and
+    // let it drop once the guard is gone.
+    let removed = {
+        let mut sessions = state.sessions.lock().map_err(|e| e.to_string())?;
+        match sessions.get_mut(&id) {
+            Some(session) => {
+                platform::terminate_session(
+                    &session.platform,
+                    platform::foreground_process_group(session.master.as_ref()),
+                    session.killer.as_mut(),
+                )?;
+                sessions.remove(&id)
+            }
+            None => None,
+        }
+    };
+    drop(removed);
     coordinator.unregister(id);
     Ok(())
 }
