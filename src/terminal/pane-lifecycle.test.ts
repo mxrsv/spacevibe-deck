@@ -21,6 +21,8 @@ function fakePane(
     writeln() {},
     fit() {},
     clear() {},
+    copySelection() {},
+    paste() {},
     scrollPage() {},
     scrollToEdge() {},
     focus() {

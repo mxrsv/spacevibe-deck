@@ -1,13 +1,15 @@
-import {
-  readText,
-  writeText,
-} from "@tauri-apps/plugin-clipboard-manager";
+import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { reportChromeMessage } from "../chrome/events";
-import { getDesktopEnvironment } from "../lib/platform";
 
-interface TerminalSelection {
+interface TerminalClipboardTarget {
   getSelection(): string;
   hasSelection(): boolean;
+  /**
+   * xterm's own paste entry point — applies prepareTextForTerminal (\r?\n ->
+   * \r) and bracketTextForPaste (DECSET 2004). Writing clipboard bytes to the
+   * PTY directly skips both.
+   */
+  paste(text: string): void;
 }
 
 interface ClipboardDependencies {
@@ -22,9 +24,9 @@ const DEFAULT_DEPENDENCIES: ClipboardDependencies = Object.freeze({
   reportError: reportChromeMessage,
 });
 
-function copySelection(
-  terminal: TerminalSelection,
-  dependencies: ClipboardDependencies,
+export function copyTerminalSelection(
+  terminal: TerminalClipboardTarget,
+  dependencies: ClipboardDependencies = DEFAULT_DEPENDENCIES,
 ): void {
   if (!terminal.hasSelection()) {
     return;
@@ -40,48 +42,14 @@ function copySelection(
     });
 }
 
-function pasteClipboard(
-  send: (text: string) => void,
-  dependencies: ClipboardDependencies,
+export function pasteIntoTerminal(
+  terminal: TerminalClipboardTarget,
+  dependencies: ClipboardDependencies = DEFAULT_DEPENDENCIES,
 ): void {
   void Promise.resolve()
     .then(() => dependencies.readText())
-    .then(send)
+    .then((text) => terminal.paste(text))
     .catch(() => {
       dependencies.reportError("Couldn't paste from the clipboard");
     });
-}
-
-/**
- * Own Windows Terminal-style clipboard chords while leaving macOS native
- * behavior and bare Ctrl control sequences to xterm/the PTY.
- */
-export function createTerminalClipboardHandler(
-  terminal: TerminalSelection,
-  send: (text: string) => void,
-  dependencies: ClipboardDependencies = DEFAULT_DEPENDENCIES,
-): (event: KeyboardEvent) => boolean {
-  return (event) => {
-    if (
-      getDesktopEnvironment().platform !== "windows" ||
-      event.type !== "keydown" ||
-      !event.ctrlKey ||
-      !event.shiftKey ||
-      event.altKey ||
-      event.metaKey
-    ) {
-      return true;
-    }
-
-    const key = event.key.toLowerCase();
-    if (key === "c") {
-      copySelection(terminal, dependencies);
-      return false;
-    }
-    if (key === "v") {
-      pasteClipboard(send, dependencies);
-      return false;
-    }
-    return true;
-  };
 }

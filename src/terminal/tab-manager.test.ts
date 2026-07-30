@@ -111,8 +111,14 @@ function fakePane(
   events: PaneEvents,
   // `search` defaults to an unusable stub — no existing test drives it. The
   // find-next/find-previous tests below pass a real spy set so `advanceSearch`
-  // (search-bar.ts) has something to call.
-  overrides: { search?: Pane["search"] } = {},
+  // (search-bar.ts) has something to call. `copySelection`/`paste` default to
+  // no-ops — the Windows clipboard-chord test below passes spies so it can
+  // assert the real capture-phase dispatch path reaches the pane.
+  overrides: {
+    search?: Pane["search"];
+    copySelection?: Pane["copySelection"];
+    paste?: Pane["paste"];
+  } = {},
 ): Pane {
   const element = document.createElement("div");
   // Focusable + real DOM focus movement (like xterm's textarea would): the
@@ -129,6 +135,8 @@ function fakePane(
     writeln() {},
     fit() {},
     clear() {},
+    copySelection: overrides.copySelection ?? (() => {}),
+    paste: overrides.paste ?? (() => {}),
     scrollPage() {},
     scrollToEdge() {},
     focus() {
@@ -164,6 +172,7 @@ function wire(
   // seam) on top of the fake `createPane` below — merged flat, matching
   // TabManagerDeps extending TerminalManagerDeps.
   extraDeps: Partial<TabManagerDeps> = {},
+  paneOverrides: Parameters<typeof fakePane>[2] = {},
 ): {
   tm: TabManager;
   emitSignal: EmitSignal;
@@ -175,7 +184,7 @@ function wire(
   const panesById = new Map<number, Pane>();
   const createPane: CreatePaneFn = (id, _settings, events) => {
     eventsById.set(id, events);
-    const pane = fakePane(id, events);
+    const pane = fakePane(id, events, paneOverrides);
     panesById.set(id, pane);
     return pane;
   };
@@ -195,6 +204,8 @@ function setup(options: {
   dirs?: readonly string[];
   /** Extra TabManagerDeps (e.g. `onRequestAttentionFocus`) on top of the fake pane. */
   deps?: Partial<TabManagerDeps>;
+  /** Pane-level spies, e.g. the clipboard methods the Ctrl+Shift chords hit. */
+  paneOverrides?: Parameters<typeof fakePane>[2];
 }): {
   tm: TabManager;
   pty: ReturnType<typeof createMemoryPtyClient>;
@@ -206,7 +217,11 @@ function setup(options: {
     infos: options.infos,
     ...(options.dirs !== undefined ? { dirs: options.dirs } : {}),
   });
-  const { tm, emitSignal, focusPaneDirectly } = wire(pty, options.deps);
+  const { tm, emitSignal, focusPaneDirectly } = wire(
+    pty,
+    options.deps,
+    options.paneOverrides,
+  );
   return { tm, pty, emitSignal, focusPaneDirectly };
 }
 
@@ -312,6 +327,40 @@ describe("createTabManager materialize (through the createPane seam)", () => {
     expect(pty.sessions.size).toBe(2);
     expect(pty.sessions.get(2)?.cwd).toBe("/repo");
     expect(statusInfo.value.paneCount).toBe(2);
+  });
+
+  it("dispatches the Windows clipboard chords to the active pane (prior H1, audit A4)", async () => {
+    // Both chords resolved in WINDOWS_KEYMAP but had no entry in the commands
+    // table, so dispatchAction's `commands[action]?.()` was a silent no-op —
+    // and the pane-local handler on the xterm textarea could never be reached,
+    // because handleShortcut is a capture-phase window listener that
+    // stopPropagation()s first. Driving `window` is that real path.
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const copySelection = vi.fn();
+    const paste = vi.fn();
+    const { tm } = setup({ paneOverrides: { copySelection, paste } });
+    await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+    // handleShortcut is only attached as a window listener once init() runs
+    // (tab-manager.ts:1295) — without it, the dispatchEvent calls below would
+    // hit no listener at all and the assertions would pass vacuously
+    // regardless of the commands-table wiring under test.
+    await tm.init();
+
+    // Upper-case `key` on purpose: Shift is held, and matchBinding lowercases.
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "C", ctrlKey: true, shiftKey: true }),
+    );
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "V", ctrlKey: true, shiftKey: true }),
+    );
+
+    expect(copySelection).toHaveBeenCalledTimes(1);
+    expect(paste).toHaveBeenCalledTimes(1);
+    tm.dispose();
   });
 });
 

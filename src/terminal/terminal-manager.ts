@@ -101,6 +101,8 @@ export interface TerminalManager {
   focusPane(id: number): boolean;
   /** Clear the active pane's buffer, keeping the prompt line (Cmd+K). */
   clearActive(): void;
+  copyActiveSelection(): void;
+  pasteIntoActive(): void;
   /** Scroll the active pane's viewport by one page (⇧PageUp/⇧PageDown). */
   scrollActivePage(dir: 1 | -1): void;
   /** Jump the active pane's viewport to the top or bottom of scrollback. */
@@ -568,6 +570,16 @@ export function createTerminalManager(
     clearActive() {
       if (activeId !== null) {
         life.panes.get(activeId)?.clear();
+      }
+    },
+    copyActiveSelection() {
+      if (activeId !== null) {
+        life.panes.get(activeId)?.copySelection();
+      }
+    },
+    pasteIntoActive() {
+      if (activeId !== null) {
+        life.panes.get(activeId)?.paste();
       }
     },
     scrollActivePage(dir) {

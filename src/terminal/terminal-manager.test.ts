@@ -37,6 +37,8 @@ function fakePane(
       fitCounts?.set(id, (fitCounts.get(id) ?? 0) + 1);
     },
     clear() {},
+    copySelection() {},
+    paste() {},
     scrollPage() {},
     scrollToEdge() {},
     focus() {

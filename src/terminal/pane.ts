@@ -12,8 +12,7 @@ import { createLinkProvider } from "./link-provider";
 import { createOscLinkHandler } from "./osc-link-handler";
 import { paneCwd } from "./pane-cwd";
 import { classifyOscNotification } from "../lib/osc-notification";
-import { getDesktopEnvironment } from "../lib/platform";
-import { createTerminalClipboardHandler } from "./terminal-clipboard";
+import { copyTerminalSelection, pasteIntoTerminal } from "./terminal-clipboard";
 
 /** Structured attention signal a pane can emit — never a native notification. */
 export interface PaneAttentionSignal {
@@ -48,6 +47,10 @@ export interface Pane {
   fit(): void;
   /** Drop scrollback and keep only the current prompt line (Cmd+K). */
   clear(): void;
+  /** Copy the current selection to the system clipboard (Ctrl+Shift+C). */
+  copySelection(): void;
+  /** Paste the clipboard through xterm's bracketed-paste path (Ctrl+Shift+V). */
+  paste(): void;
   /** Scroll the viewport by one page; positive = down, negative = up. */
   scrollPage(dir: 1 | -1): void;
   /** Jump to the very top (oldest) or bottom (latest output) of scrollback. */
@@ -191,11 +194,6 @@ export function createPane(
 
   term.onData((data) => events.onData(id, data));
   term.onResize(({ cols, rows }) => events.onResize(id, cols, rows));
-  if (getDesktopEnvironment().platform === "windows") {
-    term.attachCustomKeyEventHandler(
-      createTerminalClipboardHandler(term, (data) => events.onData(id, data)),
-    );
-  }
   // Shift+Enter carries no protocol encoding of its own — bind it to ESC CR so
   // agent CLIs wrap the line instead of submitting. See shift-enter.ts.
   const disposeShiftEnter = installShiftEnterNewline(termEl, (data) =>
@@ -331,6 +329,12 @@ export function createPane(
     writeln: (line) => term.writeln(line),
     fit,
     clear: () => term.clear(),
+    copySelection() {
+      copyTerminalSelection(term);
+    },
+    paste() {
+      pasteIntoTerminal(term);
+    },
     scrollPage: (dir) => term.scrollPages(dir),
     scrollToEdge: (edge) =>
       edge === "top" ? term.scrollToTop() : term.scrollToBottom(),

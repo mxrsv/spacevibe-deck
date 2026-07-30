@@ -876,6 +876,8 @@ export function createTabManager(
     "zoom-reset": () => updateSettings({ fontSize: DEFAULT_SETTINGS.fontSize }),
     "toggle-zoom-pane": () => activeManager()?.toggleZoom(),
     "clear-buffer": () => activeManager()?.clearActive(),
+    "copy-selection": () => activeManager()?.copyActiveSelection(),
+    paste: () => activeManager()?.pasteIntoActive(),
     "copy-cwd": () => {
       const paneId = activeManager()?.activePaneId() ?? null;
       if (paneId !== null) {
