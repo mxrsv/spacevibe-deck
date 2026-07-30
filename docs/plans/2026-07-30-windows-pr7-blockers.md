@@ -20,7 +20,8 @@
 - `windows-core` stays pinned at `=0.61.2` — mixed 0.61/0.62 COM traits do not interoperate (`src-tauri/Cargo.toml:36-38`).
 - Do **not** add a recursive-kill fallback for the Job Object race — the implementation plan forbids it (`2026-07-29-windows-desktop.md:104`). Run Gate W3 instead.
 - Menu code is generated; edit the registry, never the output (R3).
-- Verification available on the macOS dev host: `npm test`, `npx tsc --noEmit`, `cargo test --locked`, `cargo fmt --check`. Windows-only behavior is **not** verifiable here — no `x86_64-pc-windows-msvc` target is installed. Every task states what it defers to CI (`windows-check`) and what it defers to manual QA.
+- Verification available on the macOS dev host: `npm test`, `npx tsc --noEmit`, `cargo test --locked`, `cargo fmt --check`, and — after the setup below — `cargo check --target x86_64-pc-windows-msvc --all-targets`.
+- **Windows cross-check prerequisite (established 2026-07-30).** `cargo check --target x86_64-pc-windows-msvc` fails out of the box on macOS with `tauri-winres ... NotAttempted("llvm-rc")` — the build script needs a Windows resource compiler. Fix: `rustup target add x86_64-pc-windows-msvc` plus `brew install llvm`, then put `/opt/homebrew/opt/llvm/bin` on `PATH` for the cargo invocation. With that in place the whole Windows tree, including `#[cfg(target_os = "windows")]` test code, type-checks locally. This does NOT run Windows tests — it only compiles them. Runtime behaviour still belongs to `windows-check` and manual QA.
 - `cargo clippy` currently reports 6 pre-existing errors on this branch (confirmed identical with the task diffs stashed). CI does not run clippy (`ci.yml` runs `cargo fmt --check` + `cargo test` only). Do not fix them inside these tasks (W3).
 
 ---
