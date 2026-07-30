@@ -143,8 +143,21 @@ fn remove_session(app: &AppHandle, id: u32) {
     };
 }
 
+/// Last candidate that names an existing directory, or `None` when the batch
+/// held nothing acceptable — in which case the caller leaves the session's
+/// current value alone. Hits the filesystem, so it must run unlocked.
+fn validate_cwd_candidates(candidates: &[String]) -> Option<PathBuf> {
+    candidates.iter().fold(None, |current, candidate| {
+        retain_valid_cwd(current, candidate)
+    })
+}
+
 fn consume_shell_integration(app: &AppHandle, id: u32, data: &str) {
-    let events = {
+    // One emitter thread per session owns every call for a given id (both call
+    // sites are inside the single `thread::spawn` in `spawn_shell`), so the
+    // parse → validate → apply sequence below cannot interleave with itself and
+    // the two lock windows are safe to split.
+    let (events, candidates) = {
         let state = app.state::<PtyState>();
         let Ok(mut sessions) = state.sessions.lock() else {
             return;
@@ -154,18 +167,31 @@ fn consume_shell_integration(app: &AppHandle, id: u32, data: &str) {
         };
         let parser = std::mem::take(&mut session.shell_integration);
         let (next_parser, events) = parser.parse(data);
-        let next_cwd = events
-            .iter()
-            .fold(session.cwd.clone(), |current, event| match event {
-                ShellIntegrationEvent::CurrentDirectory(candidate) => {
-                    retain_valid_cwd(current, candidate)
-                }
-                ShellIntegrationEvent::PromptReady => current,
-            });
         session.shell_integration = next_parser;
-        session.cwd = next_cwd;
-        events
+        let candidates = events
+            .iter()
+            .filter_map(|event| match event {
+                ShellIntegrationEvent::CurrentDirectory(candidate) => Some(candidate.clone()),
+                ShellIntegrationEvent::PromptReady => None,
+            })
+            .collect::<Vec<_>>();
+        (events, candidates)
     };
+
+    // Deliberately outside the lock: validation is a filesystem call on a path
+    // the terminal chose, and a batch can carry hundreds of candidates (up to
+    // BATCH_MAX_BYTES of output). `write_pty`, `resize_pty` and `kill_pty` are
+    // sync commands taking this same lock on the UI thread, so a slow probe
+    // held under it freezes the window.
+    if let Some(cwd) = validate_cwd_candidates(&candidates) {
+        let state = app.state::<PtyState>();
+        let lock_result = state.sessions.lock();
+        if let Ok(mut sessions) = lock_result {
+            if let Some(session) = sessions.get_mut(&id) {
+                session.cwd = Some(cwd);
+            }
+        }
+    }
 
     let coordinator = app.state::<WindowCoordinator>();
     for event in events {
@@ -428,7 +454,7 @@ pub fn kill_pty(
 
 #[cfg(test)]
 mod tests {
-    use super::{collect_batch, take_valid_utf8, QUEUE_CHUNKS};
+    use super::{collect_batch, take_valid_utf8, validate_cwd_candidates, QUEUE_CHUNKS};
     use std::sync::mpsc;
 
     #[test]
@@ -532,6 +558,28 @@ mod tests {
         assert_eq!(
             super::resolve_spawn_cwd(Some(dir.clone()), Err("unused".into())).unwrap(),
             dir
+        );
+    }
+
+    #[test]
+    fn folds_only_directory_candidates_and_keeps_the_last_valid_one() {
+        let valid = std::env::temp_dir();
+        let valid_text = valid.to_string_lossy().into_owned();
+
+        // All invalid -> None, so the caller leaves session.cwd untouched.
+        assert_eq!(
+            validate_cwd_candidates(&["relative/one".into(), r"\\corp\share".into()]),
+            None
+        );
+        // Last valid wins, matching the previous in-lock fold.
+        assert_eq!(
+            validate_cwd_candidates(&["relative/one".into(), valid_text.clone()]),
+            Some(valid.clone())
+        );
+        // A trailing invalid candidate does not erase an earlier valid one.
+        assert_eq!(
+            validate_cwd_candidates(&[valid_text, "relative/two".into()]),
+            Some(valid)
         );
     }
 
