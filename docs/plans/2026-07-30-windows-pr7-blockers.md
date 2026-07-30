@@ -208,7 +208,7 @@ Expected: PASS — all `shell_integration::tests` including the four pre-existin
 - [ ] **Step 5: Run the full Rust suite and format check**
 
 Run: `cargo test --locked --manifest-path src-tauri/Cargo.toml && cargo fmt --manifest-path src-tauri/Cargo.toml -- --check`
-Expected: `test result: ok. 115 passed` (113 today plus the two new), and no formatting output.
+Expected: `test result: ok. 116 passed` (113 today plus the three new), and no formatting output.
 
 - [ ] **Step 6: Commit**
 
@@ -357,7 +357,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the full Rust suite, format check, and confirm no lock spans a probe**
 
 Run: `cargo test --locked --manifest-path src-tauri/Cargo.toml && cargo fmt --manifest-path src-tauri/Cargo.toml -- --check`
-Expected: `test result: ok. 116 passed`.
+Expected: `test result: ok. 117 passed`.
 
 Then read `consume_shell_integration` once more and confirm by eye: `retain_valid_cwd` (via `validate_cwd_candidates`) appears between the two `sessions.lock()` blocks and inside neither, and no `Session` value is dropped inside a lock window.
 
@@ -445,7 +445,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the full Rust suite and format check**
 
 Run: `cargo test --locked --manifest-path src-tauri/Cargo.toml && cargo fmt --manifest-path src-tauri/Cargo.toml -- --check`
-Expected: `test result: ok. 116 passed`.
+Expected: `test result: ok. 117 passed`.
 
 - [ ] **Step 6: Commit**
 
