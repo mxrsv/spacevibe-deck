@@ -102,7 +102,18 @@ impl ProcessSnapshotProvider for WmiProcessSnapshotProvider {
     }
 }
 
+/// Targeted creation-date lookup for one PID via WMI.
+///
+/// No production caller: the spawn path now uses `process_identity::creation_time_micros`
+/// (a `GetProcessTimes` handle read), and the polling path reads the cached
+/// `SessionIdentity::creation_date()` rather than re-querying. This is retained
+/// deliberately as the entry point for `connects_and_deserializes_win32_process_snapshot`,
+/// which is the only test that exercises a real `Win32_Process` query end to end and
+/// cross-checks a targeted lookup against the full snapshot — i.e. the check that tells
+/// `windows-check` whether WMI works on the machine at all. Deleting this to clear the
+/// dead-code warning would silently remove that coverage.
 #[cfg(target_os = "windows")]
+#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn process_creation_date(process_id: u32) -> Result<i64, SnapshotError> {
     WmiProcessSnapshotProvider
         .snapshot()?
