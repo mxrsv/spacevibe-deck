@@ -107,11 +107,16 @@ impl ProcessSnapshotProvider for WmiProcessSnapshotProvider {
 /// No production caller: the spawn path now uses `process_identity::creation_time_micros`
 /// (a `GetProcessTimes` handle read), and the polling path reads the cached
 /// `SessionIdentity::creation_date()` rather than re-querying. This is retained
-/// deliberately as the entry point for `connects_and_deserializes_win32_process_snapshot`,
-/// which is the only test that exercises a real `Win32_Process` query end to end and
-/// cross-checks a targeted lookup against the full snapshot — i.e. the check that tells
-/// `windows-check` whether WMI works on the machine at all. Deleting this to clear the
-/// dead-code warning would silently remove that coverage.
+/// deliberately for `connects_and_deserializes_win32_process_snapshot`, whose trailing
+/// `assert_eq!` cross-checks this targeted lookup against the full snapshot.
+///
+/// Be precise about what that is worth: the WMI-connectivity coverage lives in that
+/// test's FIRST three assertions, which do not need this function. The cross-check is
+/// close to tautological — same predicate over the same rows the test already pulled.
+/// So deleting this and dropping that one assertion would lose a near-redundant
+/// self-check, not the "does WMI work on this machine" signal. It is kept because it is
+/// harmless and the assertion is a real (if small) consistency check, NOT because
+/// removing it would blind `windows-check`.
 #[cfg(target_os = "windows")]
 #[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn process_creation_date(process_id: u32) -> Result<i64, SnapshotError> {
