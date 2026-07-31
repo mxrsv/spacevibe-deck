@@ -37,6 +37,9 @@ export const messages = {
     downloadMac: "Download for macOS",
     downloadWin: "Download for Windows",
     comingSoon: "coming soon",
+    winPreviewTag: "preview",
+    winUnsignedNote:
+      "Unsigned build \u2014 Windows will show a SmartScreen warning. Choose More info \u2192 Run anyway.",
     finaleTitle: "Your shell, intact.",
     proofPtyTitle: "Real PTY, real shell",
     proofPtyBody:
@@ -99,6 +102,9 @@ export const messages = {
     downloadMac: "Tải cho macOS",
     downloadWin: "Tải cho Windows",
     comingSoon: "sắp có",
+    winPreviewTag: "thử nghiệm",
+    winUnsignedNote:
+      "Bản chưa ký \u2014 Windows sẽ hiện cảnh báo SmartScreen. Chọn More info \u2192 Run anyway.",
     finaleTitle: "Shell của bạn, nguyên vẹn.",
     proofPtyTitle: "PTY thật, shell thật",
     proofPtyBody:

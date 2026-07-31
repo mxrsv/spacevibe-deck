@@ -111,6 +111,26 @@ existing public GitHub Release. A public Windows download is blocked until the
 artifact is signed with a trusted Windows publisher identity and the real-device
 acceptance gates pass.
 
+**Amended 2026-08-01 — a labelled public preview is now permitted, on
+conditions.** The paragraph above assumed the only public surface was the
+tagged release, and that an unsigned build therefore had to stay private. That
+proved too strict to get any Windows feedback at all: the maintainer has no
+Windows device, so private distribution to named testers had no path. An
+unsigned Windows build MAY now be published, provided every one of these holds:
+
+- it is a GitHub **prerelease under its own tag**, never attached to the tagged
+  release and never the `Latest` release — `releases/latest` stays macOS, so no
+  visitor is handed an unverified Windows binary as the shipped product;
+- the release notes state plainly that it is unsigned, that SmartScreen will
+  block it, and which behaviours nobody has verified yet;
+- any download surface that links to it says the same BEFORE the click — the
+  landing page carries the SmartScreen warning next to the button, not behind
+  it.
+
+What has NOT changed: attaching a Windows artifact to the tagged release, or
+presenting it as a supported download, still requires a signed binary and
+passing real-device acceptance gates.
+
 The private-artifact workflow must fail closed if the repository is not private.
 
 No Apple Developer account is involved in the Windows pipeline.
