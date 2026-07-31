@@ -191,8 +191,18 @@ fn consume_shell_integration(app: &AppHandle, id: u32, data: &str) {
     // the two lock windows are safe to split.
     let (events, candidates) = {
         let state = app.state::<PtyState>();
-        let Ok(mut sessions) = state.sessions.lock() else {
-            return;
+        let mut sessions = match state.sessions.lock() {
+            Ok(sessions) => sessions,
+            Err(error) => {
+                // Silent here would be the worst kind: a poisoned lock stops
+                // cwd tracking and prompt-ready for EVERY pane, permanently,
+                // and nothing else reports it — no command errors, no UI
+                // change, the panes simply stop learning where they are.
+                eprintln!(
+                    "Deck: shell integration halted for pane {id}, session lock poisoned: {error}"
+                );
+                return;
+            }
         };
         let Some(session) = sessions.get_mut(&id) else {
             return;
@@ -218,9 +228,14 @@ fn consume_shell_integration(app: &AppHandle, id: u32, data: &str) {
     if let Some(cwd) = validate_cwd_candidates(&candidates) {
         let state = app.state::<PtyState>();
         let lock_result = state.sessions.lock();
-        if let Ok(mut sessions) = lock_result {
-            if let Some(session) = sessions.get_mut(&id) {
-                session.cwd = Some(cwd);
+        match lock_result {
+            Ok(mut sessions) => {
+                if let Some(session) = sessions.get_mut(&id) {
+                    session.cwd = Some(cwd);
+                }
+            }
+            Err(error) => {
+                eprintln!("Deck: cwd update dropped for pane {id}, session lock poisoned: {error}");
             }
         }
     }
