@@ -84,15 +84,16 @@ fn parse_payload(payload: &str) -> Option<ShellIntegrationEvent> {
 
 /// A candidate root that must never reach the filesystem.
 ///
-/// On Windows `\\host\share` is `is_absolute()`, and `is_dir()` on it is a real
-/// `CreateFileW` into the MUP/SMB redirector: ~21 s per unreachable host, and
-/// Windows offers the interactive user's NTLMv2 credentials to whatever host the
-/// candidate names. The candidate comes verbatim off the PTY (`parse_payload`
-/// accepts any `9;9;<anything>` with no nonce and no origin check), so terminal
-/// output alone must not be able to choose a network destination. Verbatim
-/// prefixes are rejected on the same pass — the spec already requires they never
-/// flow onward into UI or editor argv.
-fn has_rejected_root(candidate: &str, path: &Path) -> bool {
+/// On Windows `\\host\share` is `is_absolute()`, and `is_dir()` (or
+/// `canonicalize()`) on it is a real `CreateFileW` into the MUP/SMB redirector:
+/// ~21 s per unreachable host, and Windows offers the interactive user's
+/// NTLMv2 credentials to whatever host the candidate names. `retain_valid_cwd`
+/// gates PTY-sourced cwd text with it; `links.rs` reuses the same predicate to
+/// gate terminal-link hover/open targets before `std::fs::canonicalize` for the
+/// identical reason — one definition of "root we refuse to touch" for every
+/// caller. Verbatim prefixes are rejected on the same pass — the spec already
+/// requires they never flow onward into UI or editor argv.
+pub(crate) fn has_rejected_root(candidate: &str, path: &Path) -> bool {
     #[cfg(windows)]
     {
         use std::path::{Component, Prefix};

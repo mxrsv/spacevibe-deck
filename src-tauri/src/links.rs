@@ -1,6 +1,7 @@
 use crate::platform;
 #[cfg(any(target_os = "windows", test))]
 use crate::platform::windows::command_line::parse_windows_command_line;
+use crate::shell_integration::has_rejected_root;
 use serde::Deserialize;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -87,6 +88,15 @@ fn resolve_one(base: Option<&Path>, home: Option<&Path>, raw: &str) -> Option<St
     } else {
         base?.join(expanded)
     };
+    // Reject a network/verbatim root before the filesystem call below: on
+    // Windows `canonicalize()` on a `\\host\share` candidate is a blocking
+    // `CreateFileW` into the SMB redirector (~21 s per unreachable host) that
+    // also offers the interactive user's NTLMv2 credentials to whatever host
+    // hover text names. `raw` is untrusted terminal output — see
+    // `has_rejected_root` in `shell_integration.rs` for the shared guarantee.
+    if has_rejected_root(&full.to_string_lossy(), &full) {
+        return None;
+    }
     let canonical = std::fs::canonicalize(full).ok()?;
     canonical
         .is_file()
@@ -214,6 +224,12 @@ fn validate_open_editor_request(
     let file = PathBuf::from(&request.file);
     if !(file.is_absolute() || is_windows_absolute(&request.file)) {
         return Err("The editor file path must be absolute.".into());
+    }
+    // Same guard as `resolve_one`: a Ctrl+click reaches this path too, and
+    // `canonicalize()` below must never be handed a `\\host\share` root — see
+    // `has_rejected_root` in `shell_integration.rs`.
+    if has_rejected_root(&request.file, &file) {
+        return Err("The editor file path must not be a network location.".into());
     }
     let canonical = std::fs::canonicalize(&file)
         .map_err(|_| "The editor file does not exist or cannot be read.".to_string())?;
@@ -540,6 +556,49 @@ mod tests {
         assert!(resolve_one(None, Some(&dir), "~/src/foo.ts").is_some());
     }
 
+    /// `resolve_one`'s guard calls `has_rejected_root` from
+    /// `shell_integration.rs` — asserted here directly rather than through
+    /// `resolve_one`: on this macOS host `std::fs::canonicalize` already
+    /// fails for a nonexistent `\\host\share\...` candidate (POSIX has no
+    /// `\` separator, so the whole string is one literal, nonexistent
+    /// filename), so a black-box `resolve_one(...) == None` check passes for
+    /// the wrong reason with or without the guard — see
+    /// `rejects_a_unc_candidate_end_to_end` below, which is kept only as a
+    /// contract pin, not as proof.
+    #[test]
+    fn resolve_one_guard_predicate_rejects_unc_roots() {
+        for candidate in [
+            r"\\10.255.255.1\share\file.ts",
+            r"\\corp\projects\deck\src\main.ts",
+        ] {
+            assert!(
+                has_rejected_root(candidate, &PathBuf::from(candidate)),
+                "{candidate} must be rejected before canonicalize"
+            );
+        }
+    }
+
+    /// Black-box contract test kept alongside the predicate test above even
+    /// though it cannot fail on this dev host without the guard (see that
+    /// test's doc comment) — it still pins the observable behaviour and would
+    /// catch a guard wired to the wrong branch.
+    #[test]
+    fn rejects_a_unc_candidate_end_to_end() {
+        let dir = fixture_dir();
+        assert_eq!(
+            resolve_one(Some(&dir), None, r"\\10.255.255.1\share\file.ts"),
+            None
+        );
+    }
+
+    #[test]
+    fn resolve_one_still_resolves_an_ordinary_absolute_path() {
+        let dir = fixture_dir();
+        let abs = dir.join("src/foo.ts").to_string_lossy().into_owned();
+        assert!(!has_rejected_root(&abs, &PathBuf::from(&abs)));
+        assert!(resolve_one(Some(Path::new("/nowhere")), None, &abs).is_some());
+    }
+
     #[test]
     fn resolve_paths_with_an_empty_cwd_keeps_only_the_absolute_candidates() {
         let dir = fixture_dir();
@@ -764,6 +823,42 @@ mod tests {
             ..valid
         };
         assert!(validate_open_editor_request(invalid_path).is_err());
+    }
+
+    #[test]
+    fn validate_open_editor_request_rejects_a_unc_file_before_canonicalize() {
+        let request = OpenEditorRequest {
+            editor: "vscode".into(),
+            template: String::new(),
+            file: r"\\10.255.255.1\share\file.ts".into(),
+            line: 3,
+            column: 2,
+        };
+        let error = validate_open_editor_request(request).unwrap_err();
+        // Asserted on the specific message, not just `is_err()`: without the
+        // guard this same candidate still ends up an `Err`, just later and
+        // for a different reason — `canonicalize` fails on a nonexistent
+        // literal filename on this dev host (see `has_rejected_root` in
+        // `shell_integration.rs`). The distinct message is what proves the
+        // guard, not `canonicalize`, is what stopped it.
+        assert_eq!(
+            error,
+            "The editor file path must not be a network location."
+        );
+    }
+
+    #[test]
+    fn validate_open_editor_request_still_resolves_an_ordinary_file() {
+        let file = fixture_dir().join("src").join("foo.ts");
+        let canonical = std::fs::canonicalize(file).unwrap();
+        let request = OpenEditorRequest {
+            editor: "vscode".into(),
+            template: String::new(),
+            file: normalize_canonical_path(&canonical.to_string_lossy()),
+            line: 3,
+            column: 2,
+        };
+        assert!(validate_open_editor_request(request).is_ok());
     }
 
     #[test]
