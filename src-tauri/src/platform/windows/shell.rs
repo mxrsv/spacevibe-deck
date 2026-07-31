@@ -266,4 +266,107 @@ mod tests {
         assert!(Path::new(&launch.executable).is_absolute());
         assert!(Path::new(&launch.executable).is_file());
     }
+
+    // `builds_profile_loading_prompt_integration` above only substring-matches
+    // the Rust literal, which mutation testing showed cannot distinguish a
+    // working prompt from one whose `function Global:prompt` was renamed (the
+    // exact shape of audit finding A1: no OSC sequence ever reaches the
+    // parser). These tests instead run PROMPT_INTEGRATION under a real
+    // PowerShell host and inspect the bytes it actually emits.
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_powershell_prompt_emits_a_real_escape_byte() {
+        // Windows PowerShell 5.1 is the host that could not parse `e — it
+        // must be present on any Windows box, so a missing executable here
+        // is itself a real failure, not something to skip.
+        let output = spawn_prompt_probe("powershell.exe")
+            .expect("Windows PowerShell 5.1 must exist on a Windows host");
+        assert_prompt_emits_escape_sequence(output, "powershell.exe");
+
+        // PowerShell 7 is optional on a given box. When it is installed,
+        // assert the same result so the test proves both supported hosts;
+        // when it is not, skip that half rather than failing on its absence.
+        match spawn_prompt_probe("pwsh.exe") {
+            Ok(output) => assert_prompt_emits_escape_sequence(output, "pwsh.exe"),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => panic!("failed to launch pwsh.exe: {error}"),
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    fn spawn_prompt_probe(shell_exe: &str) -> std::io::Result<std::process::Output> {
+        // `prompt` is the well-known function name PowerShell's host calls to
+        // render each prompt line; calling it directly after the script
+        // defines `Global:prompt` invokes exactly that function, the same as
+        // an interactive host would. Casting the returned string through
+        // `char[]` to `int[]` gives Unicode code points, so a leading escape
+        // byte is unambiguous in the captured stdout instead of being eaten
+        // by terminal interpretation.
+        let probe = format!(
+            "{}\n[int[]][char[]](prompt) -join ','",
+            super::PROMPT_INTEGRATION
+        );
+        // Production passes PROMPT_INTEGRATION the same way — a multi-line
+        // string as a single `-Command` argument (see `build_shell_launch`).
+        // `std::process::Command` quotes it into one Windows command-line
+        // argument, and PowerShell's own parser treats embedded newlines as
+        // statement separators just like `;`, so this is reliable.
+        //
+        // `-NoProfile` here (production omits it) is safe: the engine
+        // predefines a default `prompt` function before any profile ever
+        // runs, so `$function:Prompt` is never null and the script still
+        // exercises the same "existing prompt" branch production hits in
+        // practice. Using it makes the probe hermetic — without it, a stray
+        // `Write-Host`/`Write-Output` in a CI runner's profile script would
+        // land on the same stdout we parse as comma-separated integers and
+        // could break the test for reasons unrelated to PROMPT_INTEGRATION.
+        std::process::Command::new(shell_exe)
+            .args([
+                "-NoLogo",
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                &probe,
+            ])
+            .output()
+    }
+
+    #[cfg(target_os = "windows")]
+    fn assert_prompt_emits_escape_sequence(output: std::process::Output, shell_exe: &str) {
+        assert!(
+            output.status.success(),
+            "prompt script failed to parse under {shell_exe}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let codes: Vec<i64> = stdout
+            .trim()
+            .split(',')
+            .filter_map(|value| value.trim().parse().ok())
+            .collect();
+
+        assert!(
+            !codes.is_empty(),
+            "{shell_exe}: prompt returned nothing; stdout was {stdout:?}"
+        );
+        assert_eq!(
+            codes.first().copied(),
+            Some(27),
+            "{shell_exe}: first byte must be ESC (27). 101 would mean the `e \
+             escape regressed and the prompt renders as literal text \
+             instead — audit finding A1."
+        );
+
+        // A lone leading ESC does not prove the OSC 133;A marker survived
+        // intact — check the full opening sequence as code points:
+        // ESC ] 1 3 3 ; A BEL.
+        let opening: Vec<i64> = codes.iter().take(8).copied().collect();
+        assert_eq!(
+            opening,
+            vec![27, 93, 49, 51, 51, 59, 65, 7],
+            "{shell_exe}: OSC 133;A opening marker is missing or malformed: {codes:?}"
+        );
+    }
 }
