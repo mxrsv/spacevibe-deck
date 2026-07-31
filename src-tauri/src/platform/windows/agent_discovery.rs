@@ -1,6 +1,6 @@
 use crate::agents::{AgentInfo, AGENT_ALLOWLIST, DETECT_TIMEOUT};
 use std::collections::HashSet;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::time::Duration;
 
 trait AgentSearchProvider: Send {
@@ -8,6 +8,25 @@ trait AgentSearchProvider: Send {
 }
 
 const COMMAND_SUFFIXES: [&str; 5] = ["", ".exe", ".cmd", ".bat", ".ps1"];
+
+/// Resolve `name` against `path` the way a Windows command actually needs to
+/// be found: probing PATHEXT-style suffixes, not just `.exe`. `Command::new`
+/// and Rust's std `resolve_exe` only append `.exe`, so a tool that ships only
+/// as a shim (`.cmd`/`.bat`/`.ps1`, no bare `.exe` on PATH at all) is
+/// otherwise unfindable. `pub(crate)` because `links.rs` hits the identical
+/// gap for the built-in `code`/`cursor` editor commands and reuses this
+/// directly rather than re-implementing the probe.
+pub(crate) fn resolve_on_path(name: &str, path: &OsStr) -> Option<String> {
+    for directory in std::env::split_paths(path).filter(|directory| directory.is_absolute()) {
+        for suffix in COMMAND_SUFFIXES {
+            let candidate = directory.join(format!("{name}{suffix}"));
+            if candidate.is_file() {
+                return Some(candidate.to_string_lossy().into_owned());
+            }
+        }
+    }
+    None
+}
 
 struct EnvironmentAgentSearchProvider {
     path: Option<OsString>,
@@ -26,15 +45,7 @@ impl AgentSearchProvider for EnvironmentAgentSearchProvider {
         let Some(path) = self.path.as_ref() else {
             return Ok(None);
         };
-        for directory in std::env::split_paths(path).filter(|directory| directory.is_absolute()) {
-            for suffix in COMMAND_SUFFIXES {
-                let candidate = directory.join(format!("{name}{suffix}"));
-                if candidate.is_file() {
-                    return Ok(Some(candidate.to_string_lossy().into_owned()));
-                }
-            }
-        }
-        Ok(None)
+        Ok(resolve_on_path(name, path))
     }
 }
 

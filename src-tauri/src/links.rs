@@ -1,8 +1,11 @@
 use crate::platform;
 #[cfg(any(target_os = "windows", test))]
+use crate::platform::windows::agent_discovery::resolve_on_path;
+#[cfg(any(target_os = "windows", test))]
 use crate::platform::windows::command_line::parse_windows_command_line;
 use crate::shell_integration::has_rejected_root;
 use serde::Deserialize;
+use std::ffi::OsStr;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -383,8 +386,33 @@ fn prepare_editor_program(request: &ValidatedOpenEditorRequest) -> Result<Editor
     }
 }
 
+/// Resolve a bare Windows command name (`code`, `cursor`, …) against `PATH`
+/// with PATHEXT-style suffixes before it reaches `Command::new`. Neither
+/// `Command::new`'s resolver nor Rust's std `resolve_exe` appends anything
+/// but `.exe` on Windows, and VS Code / Cursor both ship only as `.cmd`
+/// shims with no bare `.exe` on PATH at all — so `fixed_editor_program`'s
+/// bare `"code"`/`"cursor"` (the default editor setting is VS Code) fails to
+/// launch without this. An already-absolute executable (a resolved custom
+/// editor command) passes through unchanged. Shares the identical probe
+/// already used for agent discovery — see `resolve_on_path` in
+/// `platform::windows::agent_discovery`.
+#[cfg(any(target_os = "windows", test))]
+fn resolve_windows_executable(executable: &str, path: Option<&OsStr>) -> String {
+    if is_windows_absolute(executable) {
+        return executable.to_string();
+    }
+    path.and_then(|path| resolve_on_path(executable, path))
+        .unwrap_or_else(|| executable.to_string())
+}
+
 async fn run_editor_program(program: EditorProgram) -> Result<(), String> {
-    let mut child = std::process::Command::new(&program.executable)
+    #[cfg(target_os = "windows")]
+    let executable =
+        resolve_windows_executable(&program.executable, std::env::var_os("PATH").as_deref());
+    #[cfg(not(target_os = "windows"))]
+    let executable = program.executable.clone();
+
+    let mut child = std::process::Command::new(&executable)
         .args(program.args)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -873,6 +901,55 @@ mod tests {
             column: 2,
         };
         assert!(validate_open_editor_request(request).is_ok());
+    }
+
+    /// Proves `resolve_windows_executable` actually walks PATHEXT-style
+    /// suffixes rather than only accepting a bare `.exe`: `code.cmd` is the
+    /// real shape VS Code ships as on Windows, with no `code`/`code.exe` on
+    /// PATH at all. This is pure suffix-probing over real files on disk, no
+    /// Windows API involved, so it genuinely runs (and can genuinely fail)
+    /// on this macOS host — unlike the spawn-based tests below it, which are
+    /// windows-gated and cannot.
+    #[test]
+    fn resolves_a_bare_windows_command_via_pathext_suffixes() {
+        let dir = std::env::temp_dir().join(format!(
+            "deck-links-editor-resolve-{}-{}",
+            std::process::id(),
+            line!()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("code.cmd"), "@echo off").unwrap();
+        let path = std::env::join_paths([&dir]).unwrap();
+
+        let resolved = resolve_windows_executable("code", Some(&path));
+
+        assert_eq!(
+            resolved,
+            dir.join("code.cmd").to_string_lossy().into_owned()
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn leaves_an_already_absolute_windows_executable_untouched() {
+        assert_eq!(
+            resolve_windows_executable(r"C:\Program Files\Editor\editor.exe", None),
+            r"C:\Program Files\Editor\editor.exe"
+        );
+    }
+
+    #[test]
+    fn falls_back_to_the_bare_command_when_pathext_resolution_finds_nothing() {
+        let dir = std::env::temp_dir().join(format!(
+            "deck-links-editor-resolve-empty-{}-{}",
+            std::process::id(),
+            line!()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = std::env::join_paths([&dir]).unwrap();
+
+        assert_eq!(resolve_windows_executable("code", Some(&path)), "code");
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
