@@ -564,7 +564,8 @@ mod tests {
     /// filename), so a black-box `resolve_one(...) == None` check passes for
     /// the wrong reason with or without the guard — see
     /// `rejects_a_unc_candidate_end_to_end` below, which is kept only as a
-    /// contract pin, not as proof.
+    /// contract pin, not as proof. The proof runs on Windows, in
+    /// `resolves_real_windows_drive_and_relative_paths_but_rejects_unc`.
     #[test]
     fn resolve_one_guard_predicate_rejects_unc_roots() {
         for candidate in [
@@ -640,9 +641,22 @@ mod tests {
         assert_eq!(results[MAX_PATHS + 1], None);
     }
 
+    /// The UNC assertion is the suite's only non-vacuous proof of
+    /// `resolve_one`'s guard. `\\localhost\<drive>$\...` names the very file
+    /// the drive assertion above resolves, over a share this host can reach —
+    /// the same assertion read `is_some()` and passed on CI until the guard
+    /// landed. So `None` here can only come from the guard, whereas the macOS
+    /// tests above cannot tell a guarded UNC from one `canonicalize` rejects
+    /// on its own.
+    ///
+    /// Linkifying UNC paths is deliberately given up for that guard: hover is
+    /// passive, and a probe into a host named by terminal output stalls the
+    /// resolve on an unreachable share and offers the interactive user's
+    /// NTLMv2 credentials to whoever chose the name. A UNC path is still
+    /// copy-pasteable, just not Ctrl+clickable.
     #[cfg(target_os = "windows")]
     #[test]
-    fn resolves_real_windows_drive_unc_and_relative_paths() {
+    fn resolves_real_windows_drive_and_relative_paths_but_rejects_unc() {
         let dir = fixture_dir();
         let file = dir.join("src").join("foo.ts");
         let drive_path = file.to_string_lossy().into_owned();
@@ -656,7 +670,7 @@ mod tests {
         let unc_path = format!(r"\\localhost\{}$\{drive_rest}", drive.to_ascii_uppercase());
 
         assert!(resolve_one(None, None, &drive_path).is_some());
-        assert!(resolve_one(None, None, &unc_path).is_some());
+        assert_eq!(resolve_one(None, None, &unc_path), None);
         assert!(resolve_one(Some(&dir), None, r"src\foo.ts").is_some());
         assert_eq!(resolve_one(Some(&dir), None, r"src\missing.ts"), None);
         assert_eq!(resolve_one(Some(&dir), None, "src"), None);

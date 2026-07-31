@@ -54,11 +54,15 @@ Implemented source boundaries:
   CWD/process/kind/agent truth and fail closed to `unknown`
   ([platform session](../src-tauri/src/platform/windows/mod.rs#L14-L84) `current`,
   [pty_info](../src-tauri/src/info.rs#L10-L34) `current`).
-- Windows paths support drive, UNC, relative, Unicode, and location suffixes.
+- Windows paths support drive, relative, Unicode, and location suffixes. UNC
+  candidates are recognized by the frontend pattern but never resolved: hover
+  and open-in-editor reject a `\\`-root before any filesystem call, so a UNC
+  path is copy-pasteable and not clickable
+  ([terminal-links.ts](../src/lib/terminal-links.ts) `current`,
+  [has_rejected_root](../src-tauri/src/shell_integration.rs#L96-L122) `current`).
   Editor requests are structured and Windows custom templates are argv, not
   shell commands
-  ([terminal-links.ts](../src/lib/terminal-links.ts) `current`,
-  [links.rs](../src-tauri/src/links.rs#L187-L314) `current`).
+  ([links.rs](../src-tauri/src/links.rs#L187-L314) `current`).
 - The Windows keymap, primary modifier, visible labels, clipboard chords, and
   native decorated chrome are platform-owned
   ([WINDOWS_KEYMAP](../src/terminal/action-registry.ts#L670-L736) `current`,
@@ -118,11 +122,26 @@ and B3 (gates never run) are unchanged and remain in the Delivery state bullets.
 Known residuals from that remediation, recorded here so they outlive the working
 notes — none contradicts a `current` claim above, so none is a drift row:
 
-- Nothing in the remediation has ever RUN on Windows. Every fix is compile-verified
-  (`cargo check --target x86_64-pc-windows-msvc`) and unit-tested on macOS only.
+- The remediation now RUNS on Windows in CI, not only on macOS: run 30613282200
+  (2026-07-31, `windows-check`) executed 125 Rust tests on `windows-latest` —
+  124 passed, and the one failure was the UNC assertion replaced below. That run
+  carries the first real-host proofs of the branch: Windows PowerShell 5.1 parses
+  the prompt integration and emits a real ESC byte, and a Job Object tracks and
+  releases a grandchild process (Gate W3). Nothing has run on a real Windows
+  DEVICE yet — no installer, no manual QA.
 - `has_rejected_root` rejects UNC and verbatim roots, not mapped drive letters. A
   stale `Z:\` still reaches the filesystem — the audit's own "non-adversarial"
   example, missed by both the audit's code analysis and the remediation plan.
 - `builds_profile_loading_prompt_integration` is a substring check on the Rust
   literal, so it cannot tell a working prompt from a broken one: renaming
   `Global:prompt` reproduces the original A1 failure with the suite green.
+- Clickable UNC links were GIVEN UP for the A3 guard, deliberately and with a
+  cost. `\\localhost\C$\...` resolved on Windows and CI proved it green until
+  2026-07-31; `resolve_one` now shares `has_rejected_root` with
+  `retain_valid_cwd`, so any `\\` root returns `None` before the filesystem is
+  touched. The trade: hovering is passive and unintentional, while a probe into
+  a host that terminal output named stalls the resolve on an unreachable share
+  and offers the interactive user's NTLMv2 credentials to whoever chose that
+  name. A UNC path stays copy-pasteable; mapped drive letters are unaffected
+  (and still unguarded, per the residual above)
+  ([resolve_one](../src-tauri/src/links.rs#L83-L104) `current`).
