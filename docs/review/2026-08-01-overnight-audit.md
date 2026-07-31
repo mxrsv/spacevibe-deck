@@ -5,11 +5,20 @@ chất lượng (tuân thủ luật đã khai trong `AGENTS.md` / `docs/`), và 
 Mọi finding dưới đây đều được đọc trực tiếp trên mã nguồn tại commit `2ac1371`;
 không có finding suy đoán. Không sửa mã sản phẩm trong lần rà soát này.
 
+Mỗi finding được gán một trong hai nhãn:
+
+- **[Lỗi]** — hành vi sai quan sát được trên mã hiện tại, có kịch bản kích hoạt
+  bằng thao tác người dùng hoặc trạng thái hệ thống thật.
+- **[Rủi ro tiềm ẩn]** — mã hiện tại chưa sai, nhưng hình dạng API hoặc tài liệu
+  đang mời gọi lỗi ở lần sửa tiếp theo. Không tính là defect đang hoạt động.
+
+Trừ khi ghi rõ, finding thuộc nhãn **[Lỗi]**.
+
 > **Lưu ý về ngôn ngữ.** `AGENTS.md` R1 quy định "English only for every string,
 > comment and doc". Báo cáo này được yêu cầu viết bằng tiếng Việt nên nó vi phạm
 > R1 theo đúng nghĩa đen. Cần một quyết định của con người: hoặc dịch báo cáo
 > sang tiếng Anh, hoặc bổ sung ngoại lệ cho `docs/review/` vào R1.
-
+>
 > **Không chạy được `npm test` / `npm run build`** trong môi trường rà soát:
 > `node_modules` chưa cài (`vitest: not found`). Báo cáo này thuần đọc mã.
 
@@ -79,9 +88,16 @@ process group khác trong 500 ms. Deck khi đó `SIGKILL` một tiến trình n�
 sở hữu. Bộ test hiện có (`pty.rs:673-757`) chỉ khẳng định "process bị giết", chưa
 có case nào khẳng định "process không thuộc về ta thì không bị giết".
 
-**Hướng sửa.** Trước khi leo thang, poll group bằng `killpg(pgid, 0)` /
-`waitpid` và bỏ qua SIGKILL khi group đã biến mất; hoặc giữ handle `Child` và
-hủy thread escalation khi `try_wait()` báo đã thoát.
+**Hướng sửa.** Giữ handle `Child` mà process đó sở hữu và chỉ hủy escalation sau
+khi `try_wait()` xác nhận chính tiến trình đó đã thoát — chừng nào cha chưa reap,
+PID/PGID không thể bị cấp lại, nên đây là bảo đảm thật sự. Hạ tầng đã có sẵn:
+`spawn_shell` giữ `child.clone_killer()` (`pty.rs:342`) và một thread `child.wait()`
+riêng (`pty.rs:432-435`).
+
+Lưu ý: **`killpg(pgid, 0)` đơn thuần không đóng được race này.** Nó chỉ thu hẹp
+cửa sổ — group vẫn có thể thoát ngay sau lần kiểm tra và PGID bị tái sử dụng
+trước khi `killpg(…, SIGKILL)` chạy, tức vẫn là TOCTOU. Nếu vì lý do nào đó phải
+dùng cách poll, rủi ro tái sử dụng còn lại cần được ghi rõ tại chỗ trong code.
 
 ---
 
@@ -294,9 +310,13 @@ PTY (kèm agent CLI đang chạy trong đó).
 
 ## Low
 
-### L1 — `killPane` / `killAll` chỉ giết PTY, không dọn đối tượng pane
+### L1 — [Rủi ro tiềm ẩn] `killPane` / `killAll` chỉ giết PTY, không dọn đối tượng pane
 
 `src/terminal/pane-lifecycle.ts:113-117` và `:119-125`.
+
+**Phân loại.** Đây là finding duy nhất trong báo cáo mang nhãn **[Rủi ro tiềm
+ẩn]**: trên mã hiện tại **không có rò rỉ nào**. Nó được ghi lại vì hình dạng API
+đang mời gọi lỗi, không phải vì có hành vi sai quan sát được.
 
 **Kịch bản fail.** Khác với `discardPane` (`:104-111`) vốn dọn đủ ba việc
 (`panes.delete`, `clearPaneCwd`, `pane.dispose`), `killPane` chỉ gọi `killPty`.
@@ -421,6 +441,10 @@ chốt vấn đề một lần.
 | Low      | 7        |
 | **Tổng** | **21**   |
 
+Trong 21 finding: **20 mang nhãn [Lỗi]** (hành vi sai quan sát được trên mã hiện
+tại) và **1 mang nhãn [Rủi ro tiềm ẩn]** — L1, nơi mã hôm nay chưa rò rỉ và chỉ
+hình dạng API là vấn đề.
+
 **Ba việc nên làm trước.**
 
 1. **H1** — bật CSP và tắt `withGlobalTauri`: đây là thay đổi cấu hình rẻ nhất,
@@ -429,8 +453,9 @@ chốt vấn đề một lần.
 2. **H2** — đưa `git_branch` vào `spawn_blocking` kèm timeout, và ghi nhớ CWD
    ngay cả khi lỗi ở phía poller: hiện tại một CWD hỏng duy nhất đủ làm đói toàn
    bộ IPC async mỗi 2 giây.
-3. **H3** — thêm kiểm tra sống/chết trước khi leo thang SIGKILL: đây là finding
-   duy nhất có thể gây thiệt hại ra ngoài phạm vi ứng dụng.
+3. **H3** — neo escalation vào handle `Child` đang sở hữu (`try_wait()`) thay vì
+   vào PGID trần: đây là finding duy nhất có thể gây thiệt hại ra ngoài phạm vi
+   ứng dụng. Lưu ý một lần kiểm tra `killpg(pgid, 0)` là chưa đủ — xem H3.
 
 **Ghi chú về các mục thuộc `src-tauri` load-bearing seams (R4).** H3, M1, M2, M3,
 M6, M7 và M11 đều nằm trong PTY / window coordinator / close coordinator — theo
