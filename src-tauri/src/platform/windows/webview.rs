@@ -16,6 +16,19 @@
 
 use tauri::WebviewWindow;
 
+/// # Must be called on the main thread
+///
+/// `with_webview` returns `Ok(())` in two different senses. Called on the main
+/// thread it runs the closure inline and `Ok(())` means "ran"; called from any
+/// other thread it posts to tao's event-loop channel and `Ok(())` means only
+/// "enqueued" — the closure, and every `eprintln!` below, may never execute
+/// (window destroyed first, loop already stopping). See
+/// `tauri-runtime-wry`'s `send_user_message`, which branches on thread identity.
+///
+/// The single call site is `lib.rs`'s `setup()`, which Tauri dispatches on the
+/// thread that owns the event loop, so today the inline branch is the one that
+/// runs. A second call site off the main thread would silently reopen exactly
+/// the bug this function exists to close.
 pub fn harden_webview(window: &WebviewWindow) -> Result<(), String> {
     window
         .with_webview(|webview| {
