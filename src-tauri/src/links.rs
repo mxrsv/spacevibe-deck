@@ -5,8 +5,11 @@ use crate::platform::windows::agent_discovery::resolve_on_path;
 use crate::platform::windows::command_line::parse_windows_command_line;
 use crate::shell_integration::has_rejected_root;
 use serde::Deserialize;
+#[cfg(any(target_os = "windows", test))]
 use std::ffi::OsStr;
 use std::io::Read;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::{Duration, Instant};
@@ -412,11 +415,18 @@ async fn run_editor_program(program: EditorProgram) -> Result<(), String> {
     #[cfg(not(target_os = "windows"))]
     let executable = program.executable.clone();
 
-    let mut child = std::process::Command::new(&executable)
+    let mut command = std::process::Command::new(&executable);
+    command
         .args(program.args)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    // Suppress the console window flash: the other spawn site the audit
+    // found alongside `git_branch` in `info.rs` — see
+    // `platform::windows::NO_CONSOLE_WINDOW`.
+    #[cfg(target_os = "windows")]
+    command.creation_flags(platform::windows::NO_CONSOLE_WINDOW);
+    let mut child = command
         .spawn()
         .map_err(|err| format!("Couldn't start the editor: {err}"))?;
 

@@ -18,6 +18,28 @@ use portable_pty::{ChildKiller, MasterPty};
 use process_snapshot::{ProcessClassification, SessionProcessRoot, SnapshotError};
 use std::path::PathBuf;
 
+/// Win32 process-creation flag that suppresses the console window a
+/// console-subsystem child (`git`, a `.cmd`/`.bat` shim) would otherwise
+/// flash open: `main.rs` builds release as a GUI-subsystem process with no
+/// console of its own to inherit, so any child spawned without this pops a
+/// new one into view for an instant. Shared by `git_branch` in `info.rs` and
+/// the editor spawn in `links.rs` — the two spawn sites this gap was found
+/// on — via `std::os::windows::process::CommandExt::creation_flags`.
+#[cfg(target_os = "windows")]
+pub(crate) const NO_CONSOLE_WINDOW: u32 = windows_sys::Win32::System::Threading::CREATE_NO_WINDOW;
+
+// Pin the binding's value: `Command` has no public getter for creation
+// flags, so this — evaluated by the compiler itself, not by running a test
+// binary — is the only way to verify from a non-Windows host that the right
+// flag is wired in. `cargo check --target x86_64-pc-windows-msvc` fails to
+// compile if `windows-sys` ever changes this value or the wrong constant
+// gets swapped in here.
+#[cfg(target_os = "windows")]
+const _: () = assert!(
+    NO_CONSOLE_WINDOW == 0x0800_0000,
+    "CREATE_NO_WINDOW's value moved upstream in windows-sys; re-verify before trusting this flag"
+);
+
 pub struct PlatformSession {
     identity: SessionIdentity,
     #[cfg(target_os = "windows")]
@@ -108,5 +130,25 @@ pub fn terminate_session(
     {
         let _ = session;
         killer.kill().map_err(|error| error.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Runtime counterpart to the `const _: () = assert!(...)` pin above.
+    /// `Command` exposes no getter for creation flags, so a flags-value
+    /// assertion is the narrowest thing that can stand in for "the console
+    /// window is suppressed" without spawning anything. This needs
+    /// `windows_sys` — a Windows-only dependency — so it cannot compile, let
+    /// alone run, on this (macOS) host; it runs for real on Windows CI. See
+    /// the PR report for how the equivalent const assertion was verified to
+    /// genuinely fail (and then pass again) from this host via `cargo check
+    /// --target x86_64-pc-windows-msvc`.
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn no_console_window_is_the_win32_create_no_window_value() {
+        assert_eq!(NO_CONSOLE_WINDOW, 0x0800_0000);
     }
 }

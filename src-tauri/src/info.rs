@@ -5,6 +5,8 @@ use crate::platform::windows::process_snapshot::{
     ProcessSnapshotProvider, SessionProcessRoot, SnapshotError,
 };
 use crate::pty::{PtySessionSnapshot, PtyState};
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use tauri::State;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize)]
@@ -198,10 +200,14 @@ pub async fn pty_info(state: State<'_, PtyState>, ids: Vec<u32>) -> Result<Vec<P
 /// (or git is missing / the lookup fails).
 #[tauri::command]
 pub async fn git_branch(cwd: String) -> Option<String> {
-    let output = std::process::Command::new("git")
-        .args(["-C", &cwd, "rev-parse", "--abbrev-ref", "HEAD"])
-        .output()
-        .ok()?;
+    let mut command = std::process::Command::new("git");
+    command.args(["-C", &cwd, "rev-parse", "--abbrev-ref", "HEAD"]);
+    // Suppress the console window flash: this runs once per distinct pane
+    // cwd, and release is a GUI-subsystem process with no console to
+    // inherit — see `platform::windows::NO_CONSOLE_WINDOW`.
+    #[cfg(target_os = "windows")]
+    command.creation_flags(platform::windows::NO_CONSOLE_WINDOW);
+    let output = command.output().ok()?;
     if !output.status.success() {
         return None;
     }
