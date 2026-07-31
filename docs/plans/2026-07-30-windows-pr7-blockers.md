@@ -6,7 +6,15 @@
 **Spec:** [2026-07-29-windows-desktop-design.md](../specs/2026-07-29-windows-desktop-design.md)
 **Branch:** `feat/windows-desktop`
 
-**Goal:** Close the code-side ship blockers A1, A3, A4, A5, A6 and A8 from the pre-ship audit, so a Windows engineering-preview installer can be produced once the delivery gates (B1–B3) and manual QA are separately satisfied.
+**Goal:** Close the code-side ship blockers A1, A4, A5, A6 and A8 from the pre-ship audit, and **partially** close A3, so a Windows engineering-preview installer can be produced once the delivery gates (B1–B3) and manual QA are separately satisfied.
+
+> **CORRECTION 2026-07-31 — A3 IS NOT FULLY CLOSED BY THIS PLAN.** The audit's fix item 3 names THREE call sites that must reject `\\`-rooted candidates before any filesystem call: `retain_valid_cwd`, `resolve_one`, and `validate_open_editor_request`. This plan only ever addressed the first. `src-tauri/src/links.rs` is untouched by every commit here.
+>
+> Still open, same threat class, **reachable without the OSC channel this plan closed**:
+> - `resolve_one` (`links.rs:82-94`) calls `std::fs::canonicalize` with no root check at all. `is_windows_absolute` (`links.rs:24-31`) explicitly accepts `\\`-prefixed input. The `WINDOWS_UNC` pattern (`src/lib/terminal-links.ts:75,96`) extracts UNC-shaped text from ARBITRARY terminal output, and `provideLinks` (`src/terminal/link-provider.ts:191,245`) calls `resolvePaths` on hover — so merely moving the mouse over a line containing `\\10.255.255.1\share` reaches the unguarded probe.
+> - `validate_open_editor_request` (`links.rs:187-234`) rejects only verbatim `\\?\` at line 211; plain UNC still reaches `canonicalize` at line 218. Requires a deliberate Ctrl+click, so lower likelihood, identical consequence.
+>
+> Consequence knock-on: the audit's D-tier item "wrap `resolve_paths`/`open_editor` in `spawn_blocking`" was justified as *"mostly subsumed by the A3 UNC rejection"*. That justification no longer holds, because the rejection did not land in those functions.
 
 **Architecture:** Every fix stays inside the platform seams the branch already established. The PowerShell prompt-integration script keeps its OSC contract and only changes how the ESC byte is spelled. Shell-integration CWD validation moves out from under the global session mutex without changing its observable "last valid wins" semantics. Clipboard actions gain real dispatch targets on the existing action-registry → keymap → `commands` path instead of a second pane-local key handler. WebView2 accelerator keys are disabled through the one API surface Tauri 2.11.5 actually exposes (`with_webview` + COM), because the wry builder flag is not passed through. Process identity leaves the synchronous spawn path.
 
