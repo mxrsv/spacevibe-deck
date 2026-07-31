@@ -139,6 +139,15 @@ mod win32 {
         pub fn terminate(&self) -> Result<(), String> {
             terminate_owned_job(&Win32JobObjectProvider, &self.job)
         }
+
+        // Exposes the job's raw handle so tests can inspect the job directly
+        // (e.g. via `QueryInformationJobObject`) instead of only observing
+        // spawned child processes. `cfg(test)`-gated: compiled out of every
+        // non-test build, so it is not part of the production API surface.
+        #[cfg(test)]
+        pub(crate) fn raw_handle(&self) -> HANDLE {
+            self.job.handle.raw()
+        }
     }
 }
 
@@ -299,5 +308,121 @@ mod tests {
             &mut child,
             std::time::Duration::from_secs(5)
         ));
+    }
+
+    // `real_job_close_terminates_the_child` and `real_job_termination_stops_the_child`
+    // above only poll `child.try_wait()` on `cmd.exe`, the direct child.
+    // `spawn_long_running_child` runs `cmd.exe /C ping ...`, so `ping.exe` is
+    // a grandchild the OS folds into the same job automatically — a
+    // root-only kill that left `ping.exe` orphaned would still leave those
+    // two tests green (audit gate W3). This test inspects the job's actual
+    // process list via `QueryInformationJobObject` instead of only watching
+    // the root process exit.
+
+    #[cfg(target_os = "windows")]
+    #[repr(C)]
+    struct ProcessIdListBuffer {
+        header: windows_sys::Win32::System::JobObjects::JOBOBJECT_BASIC_PROCESS_ID_LIST,
+        // `JOBOBJECT_BASIC_PROCESS_ID_LIST::ProcessIdList` is declared as a
+        // single-element array — it is really the head of a variable-length
+        // list the kernel fills in based on the buffer size we pass. This
+        // reserves 63 more trailing `usize` slots (64 PIDs total), far more
+        // than the cmd.exe + ping.exe pair this test expects.
+        extra_pids: [usize; 63],
+    }
+
+    #[cfg(target_os = "windows")]
+    fn job_process_ids(handle: windows_sys::Win32::Foundation::HANDLE) -> Vec<usize> {
+        use windows_sys::Win32::System::JobObjects::{
+            JobObjectBasicProcessIdList, QueryInformationJobObject,
+        };
+
+        let mut buffer = ProcessIdListBuffer {
+            header: Default::default(),
+            extra_pids: [0; 63],
+        };
+        let mut returned_length: u32 = 0;
+
+        // SAFETY: `buffer` is a repr(C) struct laid out as a
+        // JOBOBJECT_BASIC_PROCESS_ID_LIST immediately followed by 63 more
+        // `usize` slots with no padding between them, so its address is a
+        // valid destination for up to 64 process IDs and
+        // `size_of::<ProcessIdListBuffer>()` accurately describes its byte
+        // length. `handle` is a job object handle the caller still owns for
+        // the duration of this synchronous call.
+        let succeeded = unsafe {
+            QueryInformationJobObject(
+                handle,
+                JobObjectBasicProcessIdList,
+                &mut buffer as *mut ProcessIdListBuffer as *mut core::ffi::c_void,
+                std::mem::size_of::<ProcessIdListBuffer>() as u32,
+                &mut returned_length,
+            )
+        };
+        assert_ne!(
+            succeeded,
+            0,
+            "QueryInformationJobObject failed: {}",
+            std::io::Error::last_os_error()
+        );
+
+        let count = buffer.header.NumberOfProcessIdsInList as usize;
+        assert!(
+            count <= 64,
+            "job holds more processes than the fixture buffer reserves for: {count}"
+        );
+
+        let mut pids = Vec::with_capacity(count);
+        if count > 0 {
+            pids.push(buffer.header.ProcessIdList[0]);
+            pids.extend(buffer.extra_pids.iter().take(count - 1).copied());
+        }
+        pids
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn real_job_tracks_and_releases_the_grandchild_process() {
+        let mut child = spawn_long_running_child();
+        let job = super::PlatformJobObject::create(child.id()).unwrap_or_else(|error| {
+            let _ = child.kill();
+            panic!("{error}");
+        });
+        let handle = job.raw_handle();
+
+        // The grandchild may not have spawned the instant `Command::spawn`
+        // returned cmd.exe, so poll with a deadline rather than a fixed
+        // sleep, matching `child_exits_within`'s style.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        let mut pids = job_process_ids(handle);
+        while pids.len() < 2 && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            pids = job_process_ids(handle);
+        }
+        assert!(
+            pids.len() >= 2,
+            "expected the job to contain cmd.exe and its ping.exe grandchild, found {pids:?}"
+        );
+
+        job.terminate().unwrap();
+
+        assert!(child_exits_within(
+            &mut child,
+            std::time::Duration::from_secs(5)
+        ));
+
+        // TerminateJobObject asks every member process to exit; give the
+        // kernel a moment to finish tearing down ping.exe too instead of
+        // asserting on a single snapshot taken right after the call returns.
+        let empty_deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        let mut remaining = job_process_ids(handle);
+        while !remaining.is_empty() && std::time::Instant::now() < empty_deadline {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            remaining = job_process_ids(handle);
+        }
+        assert!(
+            remaining.is_empty(),
+            "job object still lists processes after termination: {remaining:?}"
+        );
     }
 }
