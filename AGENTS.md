@@ -1,6 +1,45 @@
 # AGENTS.md — SpaceVibe Deck
 
+> **Boundary:** standalone desktop app — unrelated to the SpaceVibe web/backend repos, no shared DB or API.
+> Never edit sibling repos from this session. Workspace map: [`../AGENTS.md`](../AGENTS.md) `current`.
+
 A minimal macOS terminal for running many AI agent CLIs side by side. Formerly Stackgrid. Stack: Tauri 2 + Rust backend, Preact + xterm.js frontend, Vite 6, Vitest. All strings, comments and docs in this repo are **English only**.
+
+## Direction & forks
+
+**Where this is going.** A minimal macOS terminal for running many agent CLIs side by
+side. Standalone desktop app — no shared DB, no API, no dependency on the web repos.
+
+**In flight — already decided, do not reopen:**
+
+- v0.8.0 release is waiting on a pushed `v0.8.0` tag; CI builds from there.
+- The `deck.spacevibe.dev` landing has no host chosen yet (domain parked).
+- Four code comments still cite `FR-`/`ADR` against the claim in `docs/CONTEXT.md`
+  (`agents.rs`, `open-board.tsx`, `migrate.rs`) — logged in that file's drift ledger,
+  awaiting a human call: strip the comments or soften the claim.
+- The marketing video renders from the DOM stage shared with the app — breaking app
+  components silently breaks the video.
+
+**Forks → STOP and ask before writing code.** Collect them into ONE round at the start
+of the task; if there are none, say "no forks" and just go.
+
+- The load-bearing `src-tauri` seams: PTY, window coordinator, tab materialize, layout
+  engine, close coordinator (R4).
+- Bundle, signing, release or version config.
+- Changes to the design language rules in `docs/DESIGN-LANGUAGE.md` (R2).
+- Adding a dependency, or anything that changes what ships in the app bundle.
+
+Not a fork: renaming internals, adding tests, styling within the existing DL rules,
+editing the menu registry (never the generated output — R3).
+
+**Write the answer down.** When the user resolves a fork, it MUST be recorded in the
+"In flight" list within the same task, with a one-line reason; until it is written, the
+work is not done. This list is a QUEUE, not an archive: once a thread closes, move the
+decision down into `docs/ARCHITECTURE.md`.
+
+**Prove it with commands** (L5/W4 — no output, no "done"): `npm test` ·
+`npm run build` (this is `tsc && vite build`, so it covers typecheck). No separate
+`lint` script in this repo. Note this repo uses **npm**, not pnpm like the web repos.
 
 ## Common commands
 
