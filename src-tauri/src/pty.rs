@@ -136,11 +136,43 @@ fn collect_batch(
     }
 }
 
+/// Drop a finished session's state, releasing the lock BEFORE the `Session`
+/// itself drops.
+///
+/// `sessions.remove(&id);` as a bare statement looks harmless but drops the
+/// returned `Option<Session>` at the semicolon — inside the guard's scope.
+/// `Session` declares `master` first, so that drop reaches `ClosePseudoConsole`,
+/// which on Windows blocks until conhost flushes its output pipe. Every other
+/// pane's `write_pty`/`resize_pty`/`kill_pty` and every emitter thread's
+/// `consume_shell_integration` take this same global lock, so one wedged exit
+/// would freeze every terminal in the app, not just its own.
+///
+/// Worse on this path than on `kill_pty`'s: field order puts `platform` — the
+/// Job Object whose KILL_ON_JOB_CLOSE would rescue exactly this — AFTER
+/// `master`, so the rescue never runs. And this is the NORMAL shell-exit path,
+/// taken on every pane that ends on its own, not just on a deliberate close.
+///
+/// `kill_pty` was fixed for the same hazard; this sibling was missed.
 fn remove_session(app: &AppHandle, id: u32) {
+    // `state` is hoisted out of the match rather than bound inside a block:
+    // the scrutinee's guard borrows it, and a block-local `state` would drop
+    // before that borrow ends (E0597) — the same tail-expression temporary
+    // rule that shaped `consume_shell_integration` below.
     let state = app.state::<PtyState>();
-    if let Ok(mut sessions) = state.sessions.lock() {
-        sessions.remove(&id);
+    let removed = {
+        match state.sessions.lock() {
+            Ok(mut sessions) => sessions.remove(&id),
+            Err(error) => {
+                // Poisoned means a panic happened while this lock was held.
+                // Every later removal fails the same way and the sessions map
+                // leaks for the rest of the process, so say so rather than
+                // returning as if nothing went wrong.
+                eprintln!("Deck: cannot retire pane {id}, session lock poisoned: {error}");
+                None
+            }
+        }
     };
+    drop(removed);
 }
 
 /// Last candidate that names an existing directory, or `None` when the batch
