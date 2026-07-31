@@ -665,7 +665,15 @@ const WINDOWS_SELECT_LAST_TAB_BINDING: KeyBinding = {
 
 /**
  * Windows Terminal-style chords keep conventional bare Ctrl sequences
- * available to the PTY. Clipboard actions are intercepted pane-locally.
+ * available to the PTY.
+ *
+ * Clipboard actions dispatch through the shared path every other chord uses —
+ * this keymap, then the `commands` table in tab-manager.ts, then
+ * `TerminalManager.copyActiveSelection()`/`pasteIntoActive()`, then
+ * `Pane.copySelection()`/`paste()`. They were once handled pane-locally by a
+ * handler on the xterm textarea, which could never fire: `handleShortcut` is a
+ * capture-phase window listener that stopPropagation()s first. That is why the
+ * chords silently did nothing for two releases.
  */
 export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   { key: "c", ctrl: true, shift: true, action: "copy-selection" },
@@ -713,7 +721,7 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   ...WINDOWS_TAB_SELECT_BINDINGS,
   WINDOWS_SELECT_LAST_TAB_BINDING,
   { key: "=", ctrl: true, action: "zoom-in" },
-  { key: "=", ctrl: true, shift: true, action: "zoom-in" },
+  { key: "+", ctrl: true, shift: true, action: "zoom-in" },
   { key: "-", ctrl: true, action: "zoom-out" },
   { key: "0", ctrl: true, action: "zoom-reset" },
   { key: "f", ctrl: true, shift: true, action: "find" },

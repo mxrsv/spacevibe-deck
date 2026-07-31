@@ -16,6 +16,7 @@ import { BRAND, STAGE_ARIA_LABEL } from "../../../stage/brand.js";
 import { mountAurora } from "../aurora.js";
 import { REEL_ID } from "../demo-reel.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
+import { REPO_URL, RELEASES_URL, WINDOWS_URL } from "../download-urls.js";
 import { mountStageStream, stagePanes } from "../product-stage.js";
 import {
   AGENTS,
@@ -365,7 +366,7 @@ function renderFinale(copy) {
       <div class="tour__ctas" data-reveal style="--reveal-delay: 220ms">
         <a
           class="tour__cta tour__cta--primary"
-          href="https://github.com/mxrsv/spacevibe-deck/releases/latest"
+          href="${RELEASES_URL}"
           target="_blank"
           rel="noreferrer"
         >
@@ -375,20 +376,31 @@ function renderFinale(copy) {
           </span>
           <span aria-hidden="true">↓</span>
         </a>
-        <button class="tour__cta" type="button" disabled>
+        <a
+          class="tour__cta"
+          href="${WINDOWS_URL}"
+          target="_blank"
+          rel="noreferrer"
+        >
           <span class="a-cta-lead">
             ${renderWindowsIcon()}
             <span data-copy="downloadWin">${copy.downloadWin}</span>
           </span>
-          <span class="a-cta-tag" data-copy="comingSoon">${copy.comingSoon}</span>
-        </button>
+          <span class="a-cta-tag" data-copy="winPreviewTag"
+            >${copy.winPreviewTag}</span
+          >
+        </a>
+
+        <p class="a-cta-note" data-copy="winUnsignedNote">
+          ${copy.winUnsignedNote}
+        </p>
         <a class="tour__cta" href="#${REEL_ID}">
           <span data-copy="primaryCta">${copy.primaryCta}</span>
           <span aria-hidden="true">↑</span>
         </a>
         <a
           class="tour__cta"
-          href="https://github.com/mxrsv/spacevibe-deck"
+          href="${REPO_URL}"
           target="_blank"
           rel="noreferrer"
         >
@@ -400,7 +412,7 @@ function renderFinale(copy) {
   `;
 }
 
-const REPO = "https://github.com/mxrsv/spacevibe-deck";
+
 
 function renderFooter(copy) {
   return `
@@ -416,15 +428,15 @@ function renderFooter(copy) {
         </div>
         <nav class="site-footer__col" aria-label="${copy.footerColProduct}">
           <span class="site-footer__coltitle" data-copy="footerColProduct">${copy.footerColProduct}</span>
-          <a href="${REPO}/releases/latest" target="_blank" rel="noreferrer" data-copy="downloadMac">${copy.downloadMac}</a>
+          <a href="${RELEASES_URL}" target="_blank" rel="noreferrer" data-copy="downloadMac">${copy.downloadMac}</a>
           <a class="site-footer__link" href="#${REEL_ID}" data-copy="primaryCta">${copy.primaryCta}</a>
         </nav>
         <nav class="site-footer__col" aria-label="${copy.footerColProject}">
           <span class="site-footer__coltitle" data-copy="footerColProject">${copy.footerColProject}</span>
-          <a href="${REPO}" target="_blank" rel="noreferrer" data-copy="navGithub">${copy.navGithub}</a>
-          <a href="${REPO}/releases" target="_blank" rel="noreferrer" data-copy="footerReleases">${copy.footerReleases}</a>
-          <a href="${REPO}/issues" target="_blank" rel="noreferrer" data-copy="footerIssues">${copy.footerIssues}</a>
-          <a href="${REPO}/blob/main/LICENSE" target="_blank" rel="noreferrer" data-copy="footerLicense">${copy.footerLicense}</a>
+          <a href="${REPO_URL}" target="_blank" rel="noreferrer" data-copy="navGithub">${copy.navGithub}</a>
+          <a href="${REPO_URL}/releases" target="_blank" rel="noreferrer" data-copy="footerReleases">${copy.footerReleases}</a>
+          <a href="${REPO_URL}/issues" target="_blank" rel="noreferrer" data-copy="footerIssues">${copy.footerIssues}</a>
+          <a href="${REPO_URL}/blob/main/LICENSE" target="_blank" rel="noreferrer" data-copy="footerLicense">${copy.footerLicense}</a>
         </nav>
       </div>
       <div class="site-footer__base">

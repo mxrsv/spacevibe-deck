@@ -1,9 +1,11 @@
 use crate::coordinator::{emit_to_owner, WindowCoordinator};
 use crate::platform::{self, PlatformName, PlatformSession};
+use crate::shell_integration::{retain_valid_cwd, ShellIntegrationEvent, ShellIntegrationParser};
 use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
 use std::{
     collections::HashMap,
     io::{Read, Write},
+    path::PathBuf,
     sync::{
         atomic::{AtomicU32, Ordering},
         mpsc, Mutex,
@@ -14,6 +16,7 @@ use tauri::{AppHandle, Manager, State, WebviewWindow};
 
 pub const EVENT_OUTPUT: &str = "pty:output";
 pub const EVENT_EXIT: &str = "pty:exit";
+pub const EVENT_PROMPT_READY: &str = "pty:prompt-ready";
 
 #[derive(Clone, serde::Serialize)]
 struct OutputPayload {
@@ -26,11 +29,26 @@ struct ExitPayload {
     id: u32,
 }
 
+#[derive(Clone, serde::Serialize)]
+struct PromptReadyPayload {
+    id: u32,
+}
+
 struct Session {
     master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
     killer: Box<dyn ChildKiller + Send + Sync>,
     platform: PlatformSession,
+    shell_integration: ShellIntegrationParser,
+    cwd: Option<PathBuf>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PtySessionSnapshot {
+    pub id: u32,
+    pub identity: Option<platform::SessionIdentity>,
+    pub cwd: Option<String>,
+    pub foreground_pid: Option<i32>,
 }
 
 #[derive(Default)]
@@ -118,11 +136,122 @@ fn collect_batch(
     }
 }
 
+/// Drop a finished session's state, releasing the lock BEFORE the `Session`
+/// itself drops.
+///
+/// `sessions.remove(&id);` as a bare statement looks harmless but drops the
+/// returned `Option<Session>` at the semicolon — inside the guard's scope.
+/// `Session` declares `master` first, so that drop reaches `ClosePseudoConsole`,
+/// which on Windows blocks until conhost flushes its output pipe. Every other
+/// pane's `write_pty`/`resize_pty`/`kill_pty` and every emitter thread's
+/// `consume_shell_integration` take this same global lock, so one wedged exit
+/// would freeze every terminal in the app, not just its own.
+///
+/// Worse on this path than on `kill_pty`'s: field order puts `platform` — the
+/// Job Object whose KILL_ON_JOB_CLOSE would rescue exactly this — AFTER
+/// `master`, so the rescue never runs. And this is the NORMAL shell-exit path,
+/// taken on every pane that ends on its own, not just on a deliberate close.
+///
+/// `kill_pty` was fixed for the same hazard; this sibling was missed.
 fn remove_session(app: &AppHandle, id: u32) {
+    // `state` is hoisted out of the match rather than bound inside a block:
+    // the scrutinee's guard borrows it, and a block-local `state` would drop
+    // before that borrow ends (E0597) — the same tail-expression temporary
+    // rule that shaped `consume_shell_integration` below.
     let state = app.state::<PtyState>();
-    if let Ok(mut sessions) = state.sessions.lock() {
-        sessions.remove(&id);
+    let removed = {
+        match state.sessions.lock() {
+            Ok(mut sessions) => sessions.remove(&id),
+            Err(error) => {
+                // Poisoned means a panic happened while this lock was held.
+                // Every later removal fails the same way and the sessions map
+                // leaks for the rest of the process, so say so rather than
+                // returning as if nothing went wrong.
+                eprintln!("Deck: cannot retire pane {id}, session lock poisoned: {error}");
+                None
+            }
+        }
     };
+    drop(removed);
+}
+
+/// Last candidate that names an existing directory, or `None` when the batch
+/// held nothing acceptable — in which case the caller leaves the session's
+/// current value alone. Hits the filesystem, so it must run unlocked.
+fn validate_cwd_candidates(candidates: &[String]) -> Option<PathBuf> {
+    candidates.iter().fold(None, |current, candidate| {
+        retain_valid_cwd(current, candidate)
+    })
+}
+
+fn consume_shell_integration(app: &AppHandle, id: u32, data: &str) {
+    // One emitter thread per session owns every call for a given id (both call
+    // sites are inside the single `thread::spawn` in `spawn_shell`), so the
+    // parse → validate → apply sequence below cannot interleave with itself and
+    // the two lock windows are safe to split.
+    let (events, candidates) = {
+        let state = app.state::<PtyState>();
+        let mut sessions = match state.sessions.lock() {
+            Ok(sessions) => sessions,
+            Err(error) => {
+                // Silent here would be the worst kind: a poisoned lock stops
+                // cwd tracking and prompt-ready for EVERY pane, permanently,
+                // and nothing else reports it — no command errors, no UI
+                // change, the panes simply stop learning where they are.
+                eprintln!(
+                    "Deck: shell integration halted for pane {id}, session lock poisoned: {error}"
+                );
+                return;
+            }
+        };
+        let Some(session) = sessions.get_mut(&id) else {
+            return;
+        };
+        let parser = std::mem::take(&mut session.shell_integration);
+        let (next_parser, events) = parser.parse(data);
+        session.shell_integration = next_parser;
+        let candidates = events
+            .iter()
+            .filter_map(|event| match event {
+                ShellIntegrationEvent::CurrentDirectory(candidate) => Some(candidate.clone()),
+                ShellIntegrationEvent::PromptReady => None,
+            })
+            .collect::<Vec<_>>();
+        (events, candidates)
+    };
+
+    // Deliberately outside the lock: validation is a filesystem call on a path
+    // the terminal chose, and a batch can carry hundreds of candidates (up to
+    // BATCH_MAX_BYTES of output). `write_pty`, `resize_pty` and `kill_pty` are
+    // sync commands taking this same lock on the UI thread, so a slow probe
+    // held under it freezes the window.
+    if let Some(cwd) = validate_cwd_candidates(&candidates) {
+        let state = app.state::<PtyState>();
+        let lock_result = state.sessions.lock();
+        match lock_result {
+            Ok(mut sessions) => {
+                if let Some(session) = sessions.get_mut(&id) {
+                    session.cwd = Some(cwd);
+                }
+            }
+            Err(error) => {
+                eprintln!("Deck: cwd update dropped for pane {id}, session lock poisoned: {error}");
+            }
+        }
+    }
+
+    let coordinator = app.state::<WindowCoordinator>();
+    for event in events {
+        if event == ShellIntegrationEvent::PromptReady {
+            emit_to_owner(
+                app,
+                &coordinator,
+                id,
+                EVENT_PROMPT_READY,
+                PromptReadyPayload { id },
+            );
+        }
+    }
 }
 
 /// Working directory for a new shell: an existing directory passes through;
@@ -212,6 +341,8 @@ pub fn spawn_shell(
                 writer,
                 killer: child.clone_killer(),
                 platform: platform_session,
+                shell_integration: ShellIntegrationParser::default(),
+                cwd: None,
             },
         );
     }
@@ -258,6 +389,7 @@ pub fn spawn_shell(
             if data.is_empty() {
                 continue;
             }
+            consume_shell_integration(&output_app, id, &data);
             let coordinator = output_app.state::<WindowCoordinator>();
             emit_to_owner(
                 &output_app,
@@ -272,6 +404,7 @@ pub fn spawn_shell(
         // breaks) on an iteration that found nothing parked.
         if !pending.is_empty() {
             let data = String::from_utf8_lossy(&pending).to_string();
+            consume_shell_integration(&output_app, id, &data);
             let coordinator = output_app.state::<WindowCoordinator>();
             emit_to_owner(
                 &output_app,
@@ -340,21 +473,35 @@ pub fn kill_pty(
     coordinator: State<'_, WindowCoordinator>,
     id: u32,
 ) -> Result<(), String> {
-    let mut sessions = state.sessions.lock().map_err(|e| e.to_string())?;
-    if let Some(mut session) = sessions.remove(&id) {
-        platform::terminate_session(
-            &session.platform,
-            session.master.process_group_leader(),
-            session.killer.as_mut(),
-        )?;
-    }
+    // `terminate_session` stays under the lock so a failure leaves the session
+    // in the map, retryable. The removed `Session` must not be *dropped* here,
+    // though: it owns the last handle to the PTY master, so dropping it closes
+    // the pseudoconsole — and on Windows that blocks until conhost flushes its
+    // output pipe, while the only thread draining that pipe takes this very
+    // lock in `consume_shell_integration`. Hand the value out of the scope and
+    // let it drop once the guard is gone.
+    let removed = {
+        let mut sessions = state.sessions.lock().map_err(|e| e.to_string())?;
+        match sessions.get_mut(&id) {
+            Some(session) => {
+                platform::terminate_session(
+                    &session.platform,
+                    platform::foreground_process_group(session.master.as_ref()),
+                    session.killer.as_mut(),
+                )?;
+                sessions.remove(&id)
+            }
+            None => None,
+        }
+    };
+    drop(removed);
     coordinator.unregister(id);
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{collect_batch, take_valid_utf8, QUEUE_CHUNKS};
+    use super::{collect_batch, take_valid_utf8, validate_cwd_candidates, QUEUE_CHUNKS};
     use std::sync::mpsc;
 
     #[test]
@@ -458,6 +605,39 @@ mod tests {
         assert_eq!(
             super::resolve_spawn_cwd(Some(dir.clone()), Err("unused".into())).unwrap(),
             dir
+        );
+    }
+
+    #[test]
+    fn folds_only_directory_candidates_and_keeps_the_last_valid_one() {
+        let valid = std::env::temp_dir();
+        let valid_text = valid.to_string_lossy().into_owned();
+
+        // All invalid -> None, so the caller leaves session.cwd untouched.
+        assert_eq!(
+            validate_cwd_candidates(&["relative/one".into(), r"\\corp\share".into()]),
+            None
+        );
+        // Last valid wins, matching the previous in-lock fold.
+        assert_eq!(
+            validate_cwd_candidates(&["relative/one".into(), valid_text.clone()]),
+            Some(valid.clone())
+        );
+        // A trailing invalid candidate does not erase an earlier valid one.
+        assert_eq!(
+            validate_cwd_candidates(&[valid_text.clone(), "relative/two".into()]),
+            Some(valid.clone())
+        );
+        // Two valid candidates, so this actually pins last-valid-wins. Every
+        // other case here has at most one valid entry and would pass equally
+        // under a first-valid-wins or a `.rev().fold(..)` implementation.
+        let parent = valid
+            .parent()
+            .expect("the temp dir must have a parent")
+            .to_path_buf();
+        assert_eq!(
+            validate_cwd_candidates(&[parent.to_string_lossy().into_owned(), valid_text]),
+            Some(valid)
         );
     }
 
@@ -604,23 +784,45 @@ mod tests {
 }
 
 impl PtyState {
-    /// Foreground process id per session: the PTY's foreground process
-    /// group leader, falling back to the spawned child pid.
-    pub fn foreground_pids(&self, ids: &[u32]) -> Vec<(u32, Option<i32>)> {
+    /// Immutable process facts for polling. Platform handles and mutable PTY
+    /// state remain owned by the session map.
+    pub fn session_snapshots(&self, ids: &[u32]) -> Vec<PtySessionSnapshot> {
         let sessions = match self.sessions.lock() {
             Ok(sessions) => sessions,
-            Err(_) => return ids.iter().map(|&id| (id, None)).collect(),
+            Err(_) => {
+                return ids
+                    .iter()
+                    .map(|&id| PtySessionSnapshot {
+                        id,
+                        identity: None,
+                        cwd: None,
+                        foreground_pid: None,
+                    })
+                    .collect()
+            }
         };
         ids.iter()
             .map(|&id| {
-                let pid = sessions.get(&id).and_then(|session| {
-                    session
-                        .master
-                        .process_group_leader()
+                let Some(session) = sessions.get(&id) else {
+                    return PtySessionSnapshot {
+                        id,
+                        identity: None,
+                        cwd: None,
+                        foreground_pid: None,
+                    };
+                };
+                let identity = session.platform.identity();
+                PtySessionSnapshot {
+                    id,
+                    identity: Some(identity),
+                    cwd: session
+                        .cwd
+                        .as_ref()
+                        .map(|cwd| cwd.to_string_lossy().into_owned()),
+                    foreground_pid: platform::foreground_process_group(session.master.as_ref())
                         .filter(|pid| *pid > 0)
-                        .or_else(|| session.platform.identity().root_pid().map(|pid| pid as i32))
-                });
-                (id, pid)
+                        .or_else(|| identity.root_pid().map(|pid| pid as i32)),
+                }
             })
             .collect()
     }

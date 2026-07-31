@@ -82,6 +82,9 @@ export async function initializeDesktopEnvironmentFromBackend(
   writeDiagnostic: DiagnosticWriter = (message, error) =>
     console.warn(message, error),
 ): Promise<DesktopEnvironment> {
+  if (initializedEnvironment !== null) {
+    return initializedEnvironment;
+  }
   try {
     return initializeDesktopEnvironment(await load());
   } catch (error) {

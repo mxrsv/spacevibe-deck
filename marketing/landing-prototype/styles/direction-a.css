@@ -816,6 +816,19 @@
   cursor: default;
 }
 
+/* Sits under the Windows CTA. The SmartScreen block is full-screen and its
+   default button is "Don't run", so a visitor who is not warned here reads it
+   as the app being unsafe and leaves. Muted, but not hidden — this has to be
+   legible before the click, not after. */
+.a-cta-note {
+  max-width: 34ch;
+  margin: -0.35rem 0 0;
+  color: var(--a-ink-faint);
+  font: 400 0.72rem/1.45 var(--a-font-mono);
+  letter-spacing: 0.01em;
+  text-wrap: pretty;
+}
+
 .a-cta-tag {
   flex-shrink: 0;
   padding: 0.22rem 0.42rem;

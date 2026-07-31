@@ -7,6 +7,7 @@ import {
 } from "../appwin.js";
 import { REEL_ID } from "../demo-reel.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
+import { REPO_URL, RELEASES_URL, WINDOWS_URL } from "../download-urls.js";
 import {
   STAGE_ARIA_LABEL,
   mountStageStream,
@@ -14,8 +15,7 @@ import {
 } from "../product-stage.js";
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
-const REPO_URL = "https://github.com/mxrsv/spacevibe-deck";
-const RELEASES_URL = `${REPO_URL}/releases/latest`;
+
 
 // Hero beams field. White key light on purpose: the hero runs a neutral
 // grey-white light language, and the one white face in the column is the
@@ -122,13 +122,24 @@ export function renderDirectionA(copy, locale) {
                   <i aria-hidden="true">↓</i>
                 </a>
 
-                <button class="a-quiet-cta" type="button" disabled>
+                <a
+                  class="a-quiet-cta"
+                  href="${WINDOWS_URL}"
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   <span class="a-cta-lead">
                     ${renderWindowsIcon()}
                     <span data-copy="downloadWin">${copy.downloadWin}</span>
                   </span>
-                  <span class="a-cta-tag" data-copy="comingSoon">${copy.comingSoon}</span>
-                </button>
+                  <span class="a-cta-tag" data-copy="winPreviewTag"
+                    >${copy.winPreviewTag}</span
+                  >
+                </a>
+
+                <p class="a-cta-note" data-copy="winUnsignedNote">
+                  ${copy.winUnsignedNote}
+                </p>
 
                 <a class="a-quiet-cta" href="#${REEL_ID}">
                   <span class="a-cta-lead">

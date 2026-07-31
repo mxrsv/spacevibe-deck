@@ -4,7 +4,7 @@ import type { PaneProcessInfo } from "../lib/process-info";
 import type { Pane, PaneEvents, PaneAttentionSignal } from "./pane";
 import type { CreatePaneFn } from "./pane-lifecycle";
 import { createMemoryPtyClient, type PtyClient } from "./pty-client";
-import type { ShortcutAction } from "./keymap";
+import { MACOS_KEYMAP, type ShortcutAction } from "./keymap";
 import { ACTION_REGISTRY } from "./action-registry";
 import {
   boardOpen,
@@ -28,10 +28,21 @@ import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
 import { closeSearchBar } from "./search-bar";
+import { WINDOWS_AGENT_LAUNCH_TIMEOUT_MS } from "./agent-launch";
 import {
   initializeDesktopEnvironment,
   resetDesktopEnvironmentForTests,
 } from "../lib/platform";
+
+function processInfo(
+  id: number,
+  cwd: string | null,
+  process: string | null,
+  kind: PaneProcessInfo["kind"],
+  agent: PaneProcessInfo["agent"],
+): PaneProcessInfo {
+  return { id, cwd, process, kind, agent };
+}
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test — including every pre-Task-23 test
@@ -100,8 +111,14 @@ function fakePane(
   events: PaneEvents,
   // `search` defaults to an unusable stub — no existing test drives it. The
   // find-next/find-previous tests below pass a real spy set so `advanceSearch`
-  // (search-bar.ts) has something to call.
-  overrides: { search?: Pane["search"] } = {},
+  // (search-bar.ts) has something to call. `copySelection`/`paste` default to
+  // no-ops — the Windows clipboard-chord test below passes spies so it can
+  // assert the real capture-phase dispatch path reaches the pane.
+  overrides: {
+    search?: Pane["search"];
+    copySelection?: Pane["copySelection"];
+    paste?: Pane["paste"];
+  } = {},
 ): Pane {
   const element = document.createElement("div");
   // Focusable + real DOM focus movement (like xterm's textarea would): the
@@ -118,6 +135,8 @@ function fakePane(
     writeln() {},
     fit() {},
     clear() {},
+    copySelection: overrides.copySelection ?? (() => {}),
+    paste: overrides.paste ?? (() => {}),
     scrollPage() {},
     scrollToEdge() {},
     focus() {
@@ -153,6 +172,7 @@ function wire(
   // seam) on top of the fake `createPane` below — merged flat, matching
   // TabManagerDeps extending TerminalManagerDeps.
   extraDeps: Partial<TabManagerDeps> = {},
+  paneOverrides: Parameters<typeof fakePane>[2] = {},
 ): {
   tm: TabManager;
   emitSignal: EmitSignal;
@@ -164,7 +184,7 @@ function wire(
   const panesById = new Map<number, Pane>();
   const createPane: CreatePaneFn = (id, _settings, events) => {
     eventsById.set(id, events);
-    const pane = fakePane(id, events);
+    const pane = fakePane(id, events, paneOverrides);
     panesById.set(id, pane);
     return pane;
   };
@@ -184,6 +204,8 @@ function setup(options: {
   dirs?: readonly string[];
   /** Extra TabManagerDeps (e.g. `onRequestAttentionFocus`) on top of the fake pane. */
   deps?: Partial<TabManagerDeps>;
+  /** Pane-level spies, e.g. the clipboard methods the Ctrl+Shift chords hit. */
+  paneOverrides?: Parameters<typeof fakePane>[2];
 }): {
   tm: TabManager;
   pty: ReturnType<typeof createMemoryPtyClient>;
@@ -195,18 +217,22 @@ function setup(options: {
     infos: options.infos,
     ...(options.dirs !== undefined ? { dirs: options.dirs } : {}),
   });
-  const { tm, emitSignal, focusPaneDirectly } = wire(pty, options.deps);
+  const { tm, emitSignal, focusPaneDirectly } = wire(
+    pty,
+    options.deps,
+    options.paneOverrides,
+  );
   return { tm, pty, emitSignal, focusPaneDirectly };
 }
 
 /**
- * Like `setup`, but the foreground process of each pane is read live from
- * `processByPane` on every poll (missing id = the poll returns nothing for
- * it, i.e. never recognized). Mutating the map then advancing the poll
- * interval drives the tracker's process gate open/closed deterministically.
+ * Like `setup`, but the process snapshot of each pane is read live from
+ * `infoByPane` on every poll (missing id = the poll returns nothing for it,
+ * i.e. never recognized). Mutating the map then advancing the poll interval
+ * drives the tracker's process gate open/closed deterministically.
  */
 function setupControllable(
-  processByPane: Map<number, string | null>,
+  infoByPane: Map<number, PaneProcessInfo>,
   deps: Partial<TabManagerDeps> = {},
 ): {
   tm: TabManager;
@@ -218,8 +244,8 @@ function setupControllable(
     ...base,
     async ptyInfo(ids: readonly number[]): Promise<PaneProcessInfo[]> {
       return ids.flatMap((id) => {
-        const process = processByPane.get(id);
-        return process === undefined ? [] : [{ id, cwd: null, process }];
+        const info = infoByPane.get(id);
+        return info === undefined ? [] : [info];
       });
     },
   };
@@ -291,7 +317,7 @@ describe("createTabManager materialize (through the createPane seam)", () => {
 
   it("splitActive spawns the new pane at the focused pane's fresh CWD", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "zsh" }],
+      [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
     ]);
     const { tm, pty } = setup({ infos });
     await tm.materialize({ layout: null, cwds: [] });
@@ -301,6 +327,87 @@ describe("createTabManager materialize (through the createPane seam)", () => {
     expect(pty.sessions.size).toBe(2);
     expect(pty.sessions.get(2)?.cwd).toBe("/repo");
     expect(statusInfo.value.paneCount).toBe(2);
+  });
+
+  it("dispatches the Windows clipboard chords to the active pane (prior H1, audit A4)", async () => {
+    // Both chords resolved in WINDOWS_KEYMAP but had no entry in the commands
+    // table, so dispatchAction's `commands[action]?.()` was a silent no-op —
+    // and the pane-local handler on the xterm textarea could never be reached,
+    // because handleShortcut is a capture-phase window listener that
+    // stopPropagation()s first. Driving `window` is that real path.
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const copySelection = vi.fn();
+    const paste = vi.fn();
+    const { tm } = setup({ paneOverrides: { copySelection, paste } });
+    await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+    // handleShortcut is only attached as a window listener once init() runs
+    // (tab-manager.ts:1295) — without it, the dispatchEvent calls below would
+    // hit no listener at all and the assertions would pass vacuously
+    // regardless of the commands-table wiring under test.
+    await tm.init();
+
+    // Upper-case `key` on purpose: Shift is held, and matchBinding lowercases.
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "C", ctrlKey: true, shiftKey: true }),
+    );
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "V", ctrlKey: true, shiftKey: true }),
+    );
+
+    expect(copySelection).toHaveBeenCalledTimes(1);
+    expect(paste).toHaveBeenCalledTimes(1);
+    tm.dispose();
+  });
+
+  it("dispatches a select-tab-N chord to actually switch tabs — direct check, not mirrored from the keymap under test (H1/A4)", async () => {
+    // dispatch-coverage.test.ts's DISPATCHABLE_ACTIONS mirrors select-tab-N
+    // membership straight off MACOS_KEYMAP/WINDOWS_KEYMAP (see its own doc
+    // comment in tab-manager.ts, above DISPATCHABLE_ACTIONS), so that test is
+    // tautological for this one family: it can never catch a broken/removed
+    // `selectTabIndex(action) !== null` early-return in `dispatchAction`,
+    // because it derives "is this dispatchable" from the same two arrays it
+    // iterates over. If that early-return ever breaks, every select-tab-N
+    // chord silently stops switching tabs — H1/A4's exact failure mode —
+    // while dispatch-coverage.test.ts stays green throughout. This test
+    // drives the real chord through `handleShortcut` and asserts the tab
+    // genuinely changed, so THAT regression has somewhere to fail.
+    const binding = MACOS_KEYMAP.find((b) => b.action === "select-tab-2");
+    if (binding === undefined) {
+      throw new Error(
+        "MACOS_KEYMAP has no select-tab-2 binding — test setup is stale",
+      );
+    }
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.materialize({ layout: null, cwds: ["/c"] });
+    await tm.init();
+    await flush();
+    expect(activeTabIndex.value).toBe(2); // the last-materialized tab starts active
+
+    // Built from the live binding's own modifiers/code, not guessed.
+    const keyboardInit: KeyboardEventInit = {
+      metaKey: !!binding.meta,
+      ctrlKey: !!binding.ctrl,
+      altKey: !!binding.alt,
+      shiftKey: !!binding.shift,
+    };
+    if ("code" in binding) {
+      keyboardInit.code = binding.code;
+      keyboardInit.key = binding.code.replace("Digit", "");
+    } else {
+      keyboardInit.key = binding.key;
+    }
+    window.dispatchEvent(new KeyboardEvent("keydown", keyboardInit));
+    await flush();
+
+    expect(activeTabIndex.value).toBe(1); // select-tab-2 → 0-based index 1
+
+    tm.dispose();
   });
 });
 
@@ -325,6 +432,24 @@ describe("createTabManager agent launch", () => {
     tm.dispose();
   });
 
+  it("does not open attention from selected agent intent before process confirmation", async () => {
+    const { tm, pty, emitSignal } = setup({});
+    await tm.openFromPreset({ type: "leaf" }, ["/work"], {
+      workspacePath: "/work",
+      agent: "claude",
+    });
+    await tm.init();
+    await vi.advanceTimersByTimeAsync(0);
+
+    emitSignal(1, { kind: "requested", source: "bell" });
+    pty.emitOutput(1, "\x1b]9;4;2\x07");
+
+    expect(tabViews.value[0].attention?.actionableCount).toBe(0);
+    expect(tabViews.value[0].agentBusy).toBe(false);
+    expect(statusInfo.value.agent).toBeNull();
+    tm.dispose();
+  });
+
   it("leaves panes as plain shells for a Shell-only choice", async () => {
     const { tm, pty } = setup({});
     await tm.openFromPreset({ type: "leaf" }, ["/work"], {
@@ -339,7 +464,10 @@ describe("createTabManager agent launch", () => {
   });
 
   it("does not re-run the agent when reopening a closed tab", async () => {
-    const { tm, pty } = setup({ dirs: ["/work"] });
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/work", "zsh", "idle-shell", null)],
+    ]);
+    const { tm, pty } = setup({ dirs: ["/work"], infos });
     await tm.openFromPreset({ type: "leaf" }, ["/work"], {
       workspacePath: "/work",
       agent: "claude",
@@ -352,6 +480,52 @@ describe("createTabManager agent launch", () => {
     await vi.advanceTimersByTimeAsync(3000);
 
     expect(pty.writes).toEqual([]);
+    tm.dispose();
+  });
+
+  it("launches a Windows agent once from structured readiness", async () => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const { tm, pty } = setup({});
+    await tm.openFromPreset({ type: "leaf" }, [String.raw`C:\work`], {
+      workspacePath: String.raw`C:\work`,
+      agent: "claude",
+    });
+    await tm.init();
+
+    pty.emitOutput(1, "PowerShell banner");
+    expect(pty.writes).toEqual([]);
+    pty.emitPromptReady(1);
+    pty.emitPromptReady(1);
+
+    expect(pty.writes).toEqual([{ id: 1, data: "claude\r" }]);
+    tm.dispose();
+  });
+
+  it("shows manual-launch guidance on Windows timeout without writing", async () => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const onAgentLaunchTimeout = vi.fn();
+    const { tm, pty } = setup({
+      deps: { onAgentLaunchTimeout },
+    });
+    await tm.openFromPreset({ type: "leaf" }, [String.raw`C:\work`], {
+      workspacePath: String.raw`C:\work`,
+      agent: "codex",
+    });
+
+    await vi.advanceTimersByTimeAsync(WINDOWS_AGENT_LAUNCH_TIMEOUT_MS);
+
+    expect(pty.writes).toEqual([]);
+    expect(onAgentLaunchTimeout).toHaveBeenCalledWith(
+      "PowerShell was not ready in time. Launch the agent manually.",
+    );
     tm.dispose();
   });
 });
@@ -416,9 +590,9 @@ describe("createTabManager workspace identity", () => {
 
   it("lights agentBusy only while the agent reports it is working", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "vim" }],
-      [2, { id: 2, cwd: "/repo", process: "claude" }],
-      [3, { id: 3, cwd: "/other", process: "npm" }],
+      [1, processInfo(1, "/repo", "vim", "busy", null)],
+      [2, processInfo(2, "/repo", "claude", "agent", "claude")],
+      [3, processInfo(3, "/other", "npm", "busy", null)],
     ]);
     const { tm, pty } = setup({ infos });
     // Tab 0: two panes — the focused one runs vim, the background one claude.
@@ -457,7 +631,7 @@ describe("createTabManager workspace identity", () => {
     vi.useFakeTimers();
     try {
       const infos = new Map<number, PaneProcessInfo>([
-        [1, { id: 1, cwd: "/repo", process: "claude" }],
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
       ]);
       const { tm, pty } = setup({ infos });
       await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -488,7 +662,11 @@ describe("createTabManager workspace identity", () => {
 
 describe("createTabManager reopen (Cmd+Shift+T)", () => {
   it("reopens a closed tab whose workspace still exists", async () => {
-    const { tm } = setup({ dirs: ["/repo/alive"] });
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo/alive", "zsh", "idle-shell", null)],
+      [2, processInfo(2, null, "zsh", "idle-shell", null)],
+    ]);
+    const { tm } = setup({ dirs: ["/repo/alive"], infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo/alive"], {
       workspacePath: "/repo/alive",
     });
@@ -509,7 +687,11 @@ describe("createTabManager reopen (Cmd+Shift+T)", () => {
   it("refuses to resurrect a tab whose workspace was deleted meanwhile", async () => {
     // The folder is gone by reopen time: spawn_shell would silently land in
     // $HOME while the tab kept claiming /repo/gone.
-    const { tm } = setup({ dirs: [] });
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo/gone", "zsh", "idle-shell", null)],
+      [2, processInfo(2, null, "zsh", "idle-shell", null)],
+    ]);
+    const { tm } = setup({ dirs: [], infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo/gone"], {
       workspacePath: "/repo/gone",
     });
@@ -557,7 +739,13 @@ describe("createTabManager close routing", () => {
     tm: TabManager;
     pty: ReturnType<typeof createMemoryPtyClient>;
   }> {
-    const { tm, pty } = setup({});
+    const infos = new Map<number, PaneProcessInfo>(
+      [1, 2, 3].map((id) => [
+        id,
+        processInfo(id, null, "zsh", "idle-shell", null),
+      ]),
+    );
+    const { tm, pty } = setup({ infos });
     for (let i = 0; i < 3; i += 1) {
       await tm.materialize({ layout: null, cwds: [] });
     }
@@ -577,8 +765,8 @@ describe("createTabManager close routing", () => {
   it("guards concurrent closes: the second Cmd+W during the first is a no-op", async () => {
     const { tm } = await threeTabs();
 
-    // Fire both without awaiting — the second hits the busy-prompt guard
-    // while the first's fresh pty_info await is still in flight.
+    // Fire both without awaiting — the second hits the close coordinator's
+    // in-flight guard while the first fresh pty_info await is still pending.
     await Promise.all([tm.closeTab(0), tm.closeTab(1)]);
 
     expect(tabViews.value).toHaveLength(2);
@@ -588,7 +776,10 @@ describe("createTabManager close routing", () => {
   });
 
   it("closing the last tab requests app quit instead of leaving zero tabs", async () => {
-    const { tm, pty } = setup({});
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, null, "zsh", "idle-shell", null)],
+    ]);
+    const { tm, pty } = setup({ infos });
     await tm.materialize({ layout: null, cwds: [] });
     const quitSpy = vi.spyOn(pty, "confirmQuit");
 
@@ -601,8 +792,8 @@ describe("createTabManager close routing", () => {
 describe("createTabManager attention tracker", () => {
   it("keeps per-pane tracker unread independent within one tab", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "zsh" }],
-      [2, { id: 2, cwd: "/repo", process: "zsh" }],
+      [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
+      [2, processInfo(2, "/repo", "zsh", "idle-shell", null)],
     ]);
     const { tm, pty } = setup({ infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -633,8 +824,8 @@ describe("createTabManager attention tracker", () => {
     // Task 11A/11B later add a non-focusing `show()` path for attention
     // navigation specifically; plain `selectTab` keeps this behavior.
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/a", process: "claude" }],
-      [2, { id: 2, cwd: "/b", process: "zsh" }],
+      [1, processInfo(1, "/a", "claude", "agent", "claude")],
+      [2, processInfo(2, "/b", "zsh", "idle-shell", null)],
     ]);
     const { tm, pty } = setup({ infos });
     await tm.materialize({ layout: null, cwds: ["/a"] }); // tab 0 → pane 1 (claude)
@@ -658,7 +849,7 @@ describe("createTabManager attention tracker", () => {
 
   it("aggregates a working→error→clear batch to error with a cleared phase", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { tm, pty } = setup({ infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -679,7 +870,7 @@ describe("createTabManager attention tracker", () => {
 
   it("latches requested when a recognized agent pane signals", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { tm, emitSignal } = setup({ infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -698,7 +889,7 @@ describe("createTabManager attention tracker", () => {
 
   it("clears the working badge when an agent pane exits", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { tm, pty } = setup({ infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -720,8 +911,8 @@ describe("createTabManager attention tracker", () => {
 
   it("prunes tracker state on pane close so no ghost badge remains", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
-      [2, { id: 2, cwd: "/repo", process: "zsh" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+      [2, processInfo(2, "/repo", "zsh", "idle-shell", null)],
     ]);
     const { tm, pty } = setup({ infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -745,7 +936,7 @@ describe("createTabManager attention tracker", () => {
   describe("process gate", () => {
     it("ignores OSC 9;4 error from a shell pane", async () => {
       const infos = new Map<number, PaneProcessInfo>([
-        [1, { id: 1, cwd: "/repo", process: "zsh" }],
+        [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
       ]);
       const { tm, pty } = setup({ infos });
       await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -767,7 +958,7 @@ describe("createTabManager attention tracker", () => {
       vi.useFakeTimers();
       try {
         const infos = new Map<number, PaneProcessInfo>([
-          [1, { id: 1, cwd: "/repo", process: "zsh" }],
+          [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
         ]);
         const { tm, pty } = setup({ infos });
         await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -791,7 +982,7 @@ describe("createTabManager attention tracker", () => {
 
     it("ignores an attention signal from a shell pane", async () => {
       const infos = new Map<number, PaneProcessInfo>([
-        [1, { id: 1, cwd: "/repo", process: "zsh" }],
+        [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
       ]);
       const { tm, emitSignal } = setup({ infos });
       await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -807,6 +998,74 @@ describe("createTabManager attention tracker", () => {
 
       tm.dispose();
     });
+
+    it("rejects an agent-looking process label when the explicit kind is busy", async () => {
+      const infos = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/repo", "claude", "busy", null)],
+      ]);
+      const { tm, pty, emitSignal } = setup({ infos });
+      await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+        workspacePath: "/repo",
+      });
+      await tm.init();
+      await flush();
+
+      emitSignal(1, { kind: "requested", source: "bell" });
+      pty.emitOutput(1, "\x1b]9;4;2\x07");
+
+      expect(tabViews.value[0].attention?.actionableCount).toBe(0);
+      expect(tabViews.value[0].agentBusy).toBe(false);
+      expect(statusInfo.value.agent).toBeNull();
+      tm.dispose();
+    });
+
+    it.each([
+      processInfo(1, "/repo", "claude", "agent", "claude"),
+      processInfo(1, "/repo", "node", "agent", "codex"),
+    ])(
+      "accepts a recognized $agent agent with foreground process $process",
+      async (info) => {
+        const infos = new Map<number, PaneProcessInfo>([[1, info]]);
+        const { tm, pty, emitSignal } = setup({ infos });
+        await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+          workspacePath: "/repo",
+        });
+        await tm.init();
+        await flush();
+
+        emitSignal(1, { kind: "requested", source: "bell" });
+        pty.emitOutput(1, "\x1b]9;4;1\x07");
+
+        expect(tabViews.value[0].attention?.actionableCount).toBe(1);
+        expect(tabViews.value[0].agentBusy).toBe(true);
+        expect(tabViews.value[0].process).toBe(info.agent);
+        expect(statusInfo.value.agent).toBe(info.agent);
+        tm.dispose();
+      },
+    );
+
+    it.each([
+      processInfo(1, "/repo", "node", "busy", null),
+      processInfo(1, "/repo", null, "unknown", null),
+    ])(
+      "keeps the attention gate closed for $kind snapshots",
+      async (info) => {
+        const infos = new Map<number, PaneProcessInfo>([[1, info]]);
+        const { tm, pty, emitSignal } = setup({ infos });
+        await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+          workspacePath: "/repo",
+        });
+        await tm.init();
+        await flush();
+
+        emitSignal(1, { kind: "requested", source: "bell" });
+        pty.emitOutput(1, "\x1b]9;4;2\x07");
+
+        expect(tabViews.value[0].attention?.actionableCount).toBe(0);
+        expect(tabViews.value[0].agentBusy).toBe(false);
+        tm.dispose();
+      },
+    );
 
     it("ignores activity from a pane never recognized as an agent", async () => {
       // No infos → the poll returns nothing for pane 1, so its gate never opens.
@@ -828,8 +1087,10 @@ describe("createTabManager attention tracker", () => {
     it("infers one completion on agent→shell then ignores shell activity", async () => {
       vi.useFakeTimers();
       try {
-        const processByPane = new Map<number, string | null>([[1, "claude"]]);
-        const { tm, pty } = setupControllable(processByPane);
+        const infoByPane = new Map<number, PaneProcessInfo>([
+          [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+        ]);
+        const { tm, pty } = setupControllable(infoByPane);
         await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
           workspacePath: "/repo",
         });
@@ -841,7 +1102,10 @@ describe("createTabManager attention tracker", () => {
 
         // The foreground process becomes the shell; the next poll closes the
         // gate and infers exactly one completion.
-        processByPane.set(1, "zsh");
+        infoByPane.set(
+          1,
+          processInfo(1, "/repo", "zsh", "idle-shell", null),
+        );
         await vi.advanceTimersByTimeAsync(2000);
         expect(tabViews.value[0].attention?.kind).toBe("completed");
         expect(tabViews.value[0].attention?.actionableCount).toBe(1);
@@ -868,7 +1132,7 @@ describe("createTabManager attention tracker", () => {
       vi.useFakeTimers();
       try {
         const infos = new Map<number, PaneProcessInfo>([
-          [1, { id: 1, cwd: "/repo", process: "codex" }],
+          [1, processInfo(1, "/repo", "codex", "agent", "codex")],
         ]);
         const { tm, pty } = setup({ infos });
         await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -906,7 +1170,7 @@ describe("createTabManager attention tracker", () => {
 describe("createTabManager window focus (Task 11)", () => {
   it("acknowledges a pane's latched attention when the window starts focused", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { tm, pty, focusPaneDirectly } = setup({ infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -928,7 +1192,7 @@ describe("createTabManager window focus (Task 11)", () => {
   it("does not acknowledge a pane focus while the window starts unfocused", async () => {
     windowFocus.initialFocused = false;
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { tm, pty, focusPaneDirectly } = setup({ infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -953,7 +1217,7 @@ describe("createTabManager window focus (Task 11)", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const infos = new Map<number, PaneProcessInfo>([
-        [1, { id: 1, cwd: "/repo", process: "claude" }],
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
       ]);
       const { tm, pty, focusPaneDirectly } = setup({ infos });
       await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -983,7 +1247,7 @@ describe("createTabManager window focus (Task 11)", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const infos = new Map<number, PaneProcessInfo>([
-        [1, { id: 1, cwd: "/repo", process: "claude" }],
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
       ]);
       const { tm, pty, focusPaneDirectly } = setup({ infos });
       await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -1011,7 +1275,7 @@ describe("createTabManager window focus (Task 11)", () => {
 
   it("marks output unread while backgrounded and only acknowledges pane focus once the window returns", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { tm, pty, focusPaneDirectly } = setup({ infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -1039,7 +1303,7 @@ describe("createTabManager window focus (Task 11)", () => {
 
   it("does not mark output seen when a Settings-like element holds DOM focus", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { tm, pty, focusPaneDirectly } = setup({ infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -1066,8 +1330,8 @@ describe("createTabManager window focus (Task 11)", () => {
     vi.useFakeTimers();
     try {
       const infos = new Map<number, PaneProcessInfo>([
-        [1, { id: 1, cwd: "/repo", process: "claude" }],
-        [2, { id: 2, cwd: "/repo", process: "claude" }],
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+        [2, processInfo(2, "/repo", "claude", "agent", "claude")],
       ]);
       const { tm, pty, focusPaneDirectly } = setup({ infos });
       await tm.init();
@@ -1112,8 +1376,8 @@ describe("createTabManager activateForAttention (Task 11B)", () => {
     vi.useFakeTimers();
     try {
       const infos = new Map<number, PaneProcessInfo>([
-        [1, { id: 1, cwd: "/repo", process: "claude" }],
-        [2, { id: 2, cwd: "/repo", process: "claude" }],
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+        [2, processInfo(2, "/repo", "claude", "agent", "claude")],
       ]);
       const { tm, pty } = setup({ infos });
       await tm.init();
@@ -1149,9 +1413,9 @@ describe("createTabManager activateForAttention (Task 11B)", () => {
     vi.useFakeTimers();
     try {
       const infos = new Map<number, PaneProcessInfo>([
-        [1, { id: 1, cwd: "/a", process: "zsh" }],
-        [2, { id: 2, cwd: "/b", process: "claude" }],
-        [3, { id: 3, cwd: "/b", process: "claude" }],
+        [1, processInfo(1, "/a", "zsh", "idle-shell", null)],
+        [2, processInfo(2, "/b", "claude", "agent", "claude")],
+        [3, processInfo(3, "/b", "claude", "agent", "claude")],
       ]);
       const { tm, pty } = setup({ infos });
       await tm.init();
@@ -1184,7 +1448,7 @@ describe("createTabManager activateForAttention (Task 11B)", () => {
 
   it("same-tab: an id that never belonged to any pane is a complete no-op", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { tm, pty } = setup({ infos });
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
@@ -1210,8 +1474,8 @@ describe("createTabManager activateForAttention (Task 11B)", () => {
     // against. Validate-first checks `paneIds()` before any hide/active
     // change, so this must be indistinguishable from a truly dead id.
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/a", process: "claude" }],
-      [2, { id: 2, cwd: "/b", process: "claude" }],
+      [1, processInfo(1, "/a", "claude", "agent", "claude")],
+      [2, processInfo(2, "/b", "claude", "agent", "claude")],
     ]);
     const { tm, pty } = setup({ infos });
     await tm.materialize({ layout: null, cwds: ["/a"] }); // tab 0 → pane 1
@@ -1245,10 +1509,10 @@ describe("createTabManager focusNextAttention / hasActionableAttention (Task 12)
     vi.useFakeTimers();
     try {
       const infos = new Map<number, PaneProcessInfo>([
-        [1, { id: 1, cwd: "/a", process: "claude" }], // → requested
-        [2, { id: 2, cwd: "/b", process: "claude" }], // → error (older)
-        [3, { id: 3, cwd: "/b", process: "claude" }], // → error (newer, same tab)
-        [4, { id: 4, cwd: "/c", process: "claude" }], // → warning
+        [1, processInfo(1, "/a", "claude", "agent", "claude")], // → requested
+        [2, processInfo(2, "/b", "claude", "agent", "claude")], // → error (older)
+        [3, processInfo(3, "/b", "claude", "agent", "claude")], // → error (newer, same tab)
+        [4, processInfo(4, "/c", "claude", "agent", "claude")], // → warning
       ]);
       const { tm, pty, emitSignal } = setup({ infos });
       await tm.init();
@@ -1305,9 +1569,9 @@ describe("createTabManager focusNextAttention / hasActionableAttention (Task 12)
     vi.useFakeTimers();
     try {
       const infos = new Map<number, PaneProcessInfo>([
-        [1, { id: 1, cwd: "/a", process: "claude" }],
-        [2, { id: 2, cwd: "/b", process: "claude" }],
-        [3, { id: 3, cwd: "/b", process: "claude" }],
+        [1, processInfo(1, "/a", "claude", "agent", "claude")],
+        [2, processInfo(2, "/b", "claude", "agent", "claude")],
+        [3, processInfo(3, "/b", "claude", "agent", "claude")],
       ]);
       const { tm, pty } = setup({ infos });
       await tm.init();
@@ -1336,8 +1600,8 @@ describe("createTabManager focusNextAttention / hasActionableAttention (Task 12)
 
   it("scoped: a tabIndex restricts the scan to that tab even when a higher-severity candidate exists elsewhere", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/a", process: "claude" }],
-      [2, { id: 2, cwd: "/b", process: "claude" }],
+      [1, processInfo(1, "/a", "claude", "agent", "claude")],
+      [2, processInfo(2, "/b", "claude", "agent", "claude")],
     ]);
     const { tm, pty } = setup({ infos });
     await tm.materialize({ layout: null, cwds: ["/a"] }); // tab 0 → pane 1
@@ -1360,7 +1624,7 @@ describe("createTabManager focusNextAttention / hasActionableAttention (Task 12)
 
   it("unknown tabIndex: an out-of-range scope finds nothing and is a complete no-op", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/a", process: "claude" }],
+      [1, processInfo(1, "/a", "claude", "agent", "claude")],
     ]);
     const { tm, pty } = setup({ infos });
     await tm.materialize({ layout: null, cwds: ["/a"] });
@@ -1394,7 +1658,7 @@ describe("createTabManager focusNextAttention / hasActionableAttention (Task 12)
 
   it("does not hijack an unread-only pane — only tracker.actionable() candidates ever count", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/a", process: "claude" }],
+      [1, processInfo(1, "/a", "claude", "agent", "claude")],
     ]);
     const { tm, pty } = setup({ infos });
     await tm.materialize({ layout: null, cwds: ["/a"] }); // tab 0 → pane 1 (background)
@@ -1430,7 +1694,7 @@ describe("createTabManager Cmd+Shift+A shortcut routing (Task 12)", () => {
 
   it("with an onRequestAttentionFocus dep: routes the request exactly once and does not focus/ack directly", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const onRequestAttentionFocus = vi.fn();
     const { tm, pty } = setup({ infos, deps: { onRequestAttentionFocus } });
@@ -1455,7 +1719,7 @@ describe("createTabManager Cmd+Shift+A shortcut routing (Task 12)", () => {
 
   it("without the dep: Cmd+Shift+A is a safe no-op — no throw, no direct focus/ack", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { tm, pty } = setup({ infos }); // no onRequestAttentionFocus
     await tm.materialize({ layout: null, cwds: ["/repo"] });
@@ -1512,7 +1776,7 @@ describe("createTabManager notifier deps (Task 23)", () => {
 describe("createTabManager notifier — production default reads the setting LIVE (Task 23)", () => {
   it("does not send while agentNotifications is off, then sends once flipped on — without reconstructing the manager", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     // Window starts backgrounded so only the `agentNotifications` setting
     // gates the send below — isolates the "read live" behavior under test.
@@ -1551,9 +1815,11 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
   it("routes a background agent→shell completion transition through maybeNotify once, with the right paneId/kind/labels", async () => {
     vi.useFakeTimers();
     try {
-      const processByPane = new Map<number, string | null>([[1, "claude"]]);
+      const infoByPane = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+      ]);
       const { notifier, maybeNotify } = fakeNotifierSpy();
-      const { tm, pty } = setupControllable(processByPane, { notifier });
+      const { tm, pty } = setupControllable(infoByPane, { notifier });
       await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
         workspacePath: "/repo",
       });
@@ -1563,7 +1829,10 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
       pty.emitOutput(1, "\x1b]9;4;1\x07"); // working
       maybeNotify.mockClear(); // discard the gate-open + working calls (kind "none")
 
-      processByPane.set(1, "zsh"); // foreground process becomes the shell
+      infoByPane.set(
+        1,
+        processInfo(1, "/repo", "zsh", "idle-shell", null),
+      ); // foreground process becomes the shell
       await vi.advanceTimersByTimeAsync(2000); // poll closes the gate → inferred completion
 
       expect(maybeNotify).toHaveBeenCalledTimes(1);
@@ -1583,9 +1852,11 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
     vi.useFakeTimers();
     try {
       // windowFocus stays at its default (focused) — the "foreground" case.
-      const processByPane = new Map<number, string | null>([[1, "claude"]]);
+      const infoByPane = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+      ]);
       const { notifier, maybeNotify } = fakeNotifierSpy();
-      const { tm, pty } = setupControllable(processByPane, { notifier });
+      const { tm, pty } = setupControllable(infoByPane, { notifier });
       await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
         workspacePath: "/repo",
       });
@@ -1595,7 +1866,10 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
       pty.emitOutput(1, "\x1b]9;4;1\x07");
       maybeNotify.mockClear();
 
-      processByPane.set(1, "zsh");
+      infoByPane.set(
+        1,
+        processInfo(1, "/repo", "zsh", "idle-shell", null),
+      );
       await vi.advanceTimersByTimeAsync(2000);
 
       // Routed regardless of window focus — a real notifier would gate this
@@ -1612,7 +1886,7 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
 
   it('routes a warning transition through maybeNotify with kind "warning"', async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { notifier, maybeNotify } = fakeNotifierSpy();
     const { tm, pty } = setup({ infos, deps: { notifier } });
@@ -1636,7 +1910,7 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
 
   it("does not call maybeNotify for ordinary output with no attention transition", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { notifier, maybeNotify } = fakeNotifierSpy();
     const { tm, pty } = setup({ infos, deps: { notifier } });
@@ -1661,7 +1935,7 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
 
   it("uses the tab rename override as the workspace label when one is set", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { notifier, maybeNotify } = fakeNotifierSpy();
     const { tm, pty } = setup({ infos, deps: { notifier } });
@@ -1683,7 +1957,10 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
 
   it("prunes the notifier alongside the tracker when a tab closes", async () => {
     const { notifier, prune } = fakeNotifierSpy();
-    const { tm } = setup({ deps: { notifier } });
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/a", "zsh", "idle-shell", null)],
+    ]);
+    const { tm } = setup({ infos, deps: { notifier } });
     await tm.materialize({ layout: null, cwds: ["/a"] });
 
     await tm.closeTab(0);
@@ -1703,11 +1980,13 @@ describe("createTabManager notifier — dedupe on attention latch identity, not 
   it("does not re-notify when a latched error re-emits on a phase-only agent→shell poll, then again on pty:exit", async () => {
     vi.useFakeTimers();
     try {
-      const processByPane = new Map<number, string | null>([[1, "claude"]]);
+      const infoByPane = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+      ]);
       windowFocus.initialFocused = false; // background
       settings.value = { ...settings.value, agentNotifications: true };
       const { notifier, maybeNotify } = fakeNotifierSpy();
-      const { tm, pty } = setupControllable(processByPane, { notifier });
+      const { tm, pty } = setupControllable(infoByPane, { notifier });
       await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
         workspacePath: "/repo",
       });
@@ -1721,7 +2000,10 @@ describe("createTabManager notifier — dedupe on attention latch identity, not 
 
       // agent→shell poll: phase working→idle, error stays latched — a
       // phase-only re-emit of the SAME latched kind, not a new event.
-      processByPane.set(1, "zsh");
+      infoByPane.set(
+        1,
+        processInfo(1, "/repo", "zsh", "idle-shell", null),
+      );
       await vi.advanceTimersByTimeAsync(2000);
 
       // pty:exit: phase→exited, attention unchanged — another phase-only
@@ -1739,7 +2021,7 @@ describe("createTabManager notifier — dedupe on attention latch identity, not 
 
   it("notifies again for a genuinely new error raised after the previous one was acknowledged", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     windowFocus.initialFocused = false; // background
     settings.value = { ...settings.value, agentNotifications: true };
@@ -1774,7 +2056,7 @@ describe("createTabManager notifier — dedupe on attention latch identity, not 
   it("notifies twice for an escalation from warning to error on the same pane", async () => {
     windowFocus.initialFocused = false; // background
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { notifier, maybeNotify } = fakeNotifierSpy();
     const { tm, pty } = setup({ infos, deps: { notifier } });
@@ -1798,7 +2080,7 @@ describe("createTabManager notifier — dedupe on attention latch identity, not 
   it("does not re-notify when a latched warning's phase flips working→idle with no attention change", async () => {
     windowFocus.initialFocused = false; // background
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "claude" }],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const { notifier, maybeNotify } = fakeNotifierSpy();
     const { tm, pty } = setup({ infos, deps: { notifier } });
@@ -2925,7 +3207,10 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
 
   it("copies the active pane's polled CWD to the clipboard", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo/spacevibe-deck", process: "zsh" }],
+      [
+        1,
+        processInfo(1, "/repo/spacevibe-deck", "zsh", "idle-shell", null),
+      ],
     ]);
     const writeText = vi.fn(() => Promise.resolve());
     stubClipboard(writeText);
@@ -2981,7 +3266,7 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
       return pane;
     };
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "zsh" }],
+      [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
     ]);
     const writeText = vi.fn(() => Promise.reject(new Error("denied")));
     stubClipboard(writeText);
@@ -3004,7 +3289,7 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
 
   it("is blocked while Settings is open, like every other pane-tier action", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/repo", process: "zsh" }],
+      [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
     ]);
     const writeText = vi.fn(() => Promise.resolve());
     stubClipboard(writeText);

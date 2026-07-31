@@ -3,7 +3,7 @@ import {
   extractLinkCandidates,
   type LinkCandidate,
 } from "../lib/terminal-links";
-import { buildEditorCommand, editorTemplate } from "../lib/editor-command";
+import { buildOpenEditorRequest } from "../lib/editor-command";
 import { settings } from "../settings/settings-store";
 import { reportPersistError } from "../chrome/events";
 import { hasPrimaryModifier } from "../lib/platform";
@@ -56,19 +56,20 @@ function openCandidate(link: ResolvedLink, client: LinkClient): void {
     return;
   }
   const { editorId, editorCommand } = settings.value;
-  const command = buildEditorCommand(
-    editorTemplate(editorId, editorCommand),
+  const request = buildOpenEditorRequest(
+    editorId,
+    editorCommand,
     link.target,
     link.candidate.line,
     link.candidate.col,
   );
-  if (command === null) {
+  if (request === null) {
     reportPersistError(
       "No editor command is configured — set one under Settings › Editor.",
     );
     return;
   }
-  client.openEditor(command).catch((err: unknown) => {
+  client.openEditor(request).catch((err: unknown) => {
     reportPersistError(`Couldn't open the editor: ${String(err)}`);
   });
 }

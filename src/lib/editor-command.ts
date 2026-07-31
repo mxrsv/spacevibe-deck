@@ -1,8 +1,14 @@
-import { shellEscapePath } from "./shell-escape";
-import { getDesktopEnvironment } from "./platform";
-
 /** Editors offered in Settings; `custom` runs the user's own command. */
 export type EditorId = "vscode" | "cursor" | "zed" | "custom";
+
+/** Structured, non-executable intent sent to the Rust editor boundary. */
+export interface OpenEditorRequest {
+  readonly editor: EditorId;
+  readonly template: string;
+  readonly file: string;
+  readonly line: number;
+  readonly column: number;
+}
 
 export interface EditorPreset {
   readonly id: EditorId;
@@ -35,28 +41,23 @@ export function editorTemplate(id: EditorId, custom: string): string {
   return id === "custom" ? custom.trim() : editorPreset(id).template;
 }
 
-/**
- * The shell command that opens `file` at `line`:`col`. `file` is escaped for a
- * shell command line; a template with no `{file}` gets the path appended, so a
- * bare `vim` still works. Returns null when the template is empty (custom
- * editor selected but never filled in).
- */
-export function buildEditorCommand(
-  template: string,
+/** Build immutable editor intent without constructing executable text. */
+export function buildOpenEditorRequest(
+  editor: EditorId,
+  customTemplate: string,
   file: string,
   line: number | null,
-  col: number | null,
-): string | null {
-  const trimmed = template.trim();
-  if (trimmed === "") {
+  column: number | null,
+): OpenEditorRequest | null {
+  const template = editor === "custom" ? customTemplate.trim() : "";
+  if (editor === "custom" && template === "") {
     return null;
   }
-  const withFile = trimmed.includes("{file}") ? trimmed : `${trimmed} {file}`;
-  return withFile
-    .replace(
-      /\{file\}/g,
-      shellEscapePath(file, getDesktopEnvironment().platform),
-    )
-    .replace(/\{line\}/g, String(line ?? 1))
-    .replace(/\{col\}/g, String(col ?? 1));
+  return Object.freeze({
+    editor,
+    template,
+    file,
+    line: line ?? 1,
+    column: column ?? 1,
+  });
 }

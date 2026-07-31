@@ -7,7 +7,7 @@ function info(
   cwd: string | null,
   process: string | null = "zsh",
 ): PaneProcessInfo {
-  return { id, cwd, process };
+  return { id, cwd, process, kind: "idle-shell", agent: null };
 }
 
 describe("createPaneInfoPoller", () => {

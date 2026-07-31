@@ -11,12 +11,18 @@ import {
   updateSettings,
 } from "../settings/settings-store";
 import { type Direction, type SerializedNode } from "../lib/split-tree";
-import { isAgent } from "../lib/process-info";
+import type { PaneAgent, PaneProcessInfo } from "../lib/process-info";
 import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { sendAgentNotification } from "../lib/native-notification";
 import { getDesktopEnvironment } from "../lib/platform";
 import type { AgentChoice } from "../lib/workspace-recents";
-import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
+import {
+  MACOS_KEYMAP,
+  matchBinding,
+  selectTabIndex,
+  WINDOWS_KEYMAP,
+  type ShortcutAction,
+} from "./keymap";
 import {
   ACTION_REGISTRY,
   TIER_RANK,
@@ -68,6 +74,7 @@ import type { TabDotColor } from "../lib/tab-colors";
 import {
   boardOpen,
   editorRequest,
+  reportChromeMessage,
   saveDialogOpen,
   settingsOpen,
 } from "../chrome/events";
@@ -92,6 +99,117 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
     (action: ActionDefinition) => action.destructive === true,
   ).map((action) => action.id),
 );
+
+/**
+ * The ids `commands` implements — 39 entries, verified against the live
+ * `commands` table (`tab-manager.ts:946-1024`), Task 4's `copy-selection`/
+ * `paste` included.
+ *
+ * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
+ * keymap binding points at an action nothing dispatches — the defect behind
+ * prior review H1 and pre-ship audit A4, which a keymap-only test cannot see.
+ */
+const COMMAND_ACTIONS = [
+  "clear-buffer",
+  "close-pane",
+  "close-tab",
+  "copy-cwd",
+  "copy-selection",
+  "find",
+  "find-next",
+  "find-previous",
+  "focus-down",
+  "focus-left",
+  "focus-next",
+  "focus-next-attention",
+  "focus-prev",
+  "focus-right",
+  "focus-up",
+  "new-preset",
+  "new-tab",
+  "next-tab",
+  "open-tab-options",
+  "paste",
+  "prev-tab",
+  "reopen-tab",
+  "save-preset",
+  "scroll-page-down",
+  "scroll-page-up",
+  "scroll-to-bottom",
+  "scroll-to-top",
+  "split-column",
+  "split-row",
+  "swap-down",
+  "swap-left",
+  "swap-right",
+  "swap-up",
+  "toggle-expand",
+  "toggle-settings",
+  "toggle-zoom-pane",
+  "zoom-in",
+  "zoom-out",
+  "zoom-reset",
+] as const satisfies readonly ShortcutAction[];
+
+/**
+ * Every action `dispatchAction` can actually run: `COMMAND_ACTIONS` plus the
+ * ids it resolves inline, before consulting the table — `select-last-tab` and
+ * the `select-tab-N` family, both handled by the `selectTabIndex` branch.
+ *
+ * `select-tab-N` membership is read straight off `MACOS_KEYMAP`/
+ * `WINDOWS_KEYMAP`, not hand-listed 1..8: `ACTION_REGISTRY` deliberately
+ * carries no `select-tab-N` rows at all (see its own doc comment, just above
+ * `ActionId`), so mapping its ids can never produce one — confirmed by
+ * `npx tsc --noEmit` rejecting that exact approach (the mapped id union never
+ * includes the `select-tab-${number}` literal `ShortcutAction` allows) and by
+ * the filter matching zero entries at runtime.
+ *
+ * IMPORTANT, read before trusting this set for that family: mirroring
+ * `select-tab-N` off the SAME two keymaps `dispatch-coverage.test.ts` iterates
+ * makes that test TAUTOLOGICAL for this family — "is this keymap action
+ * dispatchable" is true by construction, regardless of what `dispatchAction`
+ * actually does with it. If a future change removes or breaks the
+ * `selectTabIndex(action) !== null` early-return in `dispatchAction` below,
+ * every `select-tab-N` chord would silently stop switching tabs (H1/A4's
+ * exact failure mode) and `dispatch-coverage.test.ts` would stay green
+ * throughout, because its target set was copied from the same data under
+ * test, not from `dispatchAction`'s real behavior. The direct test
+ * "dispatches a select-tab-N chord to actually switch tabs" in
+ * `tab-manager.test.ts` (not `dispatch-coverage.test.ts`) is what actually
+ * covers this family — it drives a real chord through `handleShortcut` and
+ * asserts the tab genuinely changed, so it fails if that early-return ever
+ * breaks. `COMMAND_ACTIONS` above has no such gap: every one of its ids is
+ * matched against the real `commands` table, an independent data source.
+ *
+ * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
+ * keymap binding points at an action nothing dispatches — the defect behind
+ * prior review H1 and pre-ship audit A4, which a keymap-only test cannot see.
+ */
+export const DISPATCHABLE_ACTIONS: ReadonlySet<ShortcutAction> =
+  new Set<ShortcutAction>([
+    ...COMMAND_ACTIONS,
+    "select-last-tab",
+    ...[...MACOS_KEYMAP, ...WINDOWS_KEYMAP]
+      .map((binding) => binding.action)
+      .filter((action) => /^select-tab-\d+$/.test(action)),
+  ]);
+
+const WINDOWS_AGENT_TIMEOUT_MESSAGE =
+  "PowerShell was not ready in time. Launch the agent manually.";
+
+function explicitAgent(info: PaneProcessInfo | undefined): PaneAgent | null {
+  if (info?.kind !== "agent") {
+    return null;
+  }
+  const agent = info.agent;
+  return agent === "claude" || agent === "codex" || agent === "gemini"
+    ? agent
+    : null;
+}
+
+function processLabel(info: PaneProcessInfo | undefined): string | null {
+  return explicitAgent(info) ?? info?.process ?? null;
+}
 
 interface TabEntry {
   readonly key: number;
@@ -138,6 +256,8 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    * Injected notifier wins, so tests never hit the real native API.
    */
   notifier?: AgentNotifier;
+  /** Test seam for the shared non-blocking chrome message surface. */
+  onAgentLaunchTimeout?: (message: string) => void;
 }
 
 /** Owns all tabs: routing, keyboard, agent launch; info polling lives in PaneInfoPoller. */
@@ -269,7 +389,8 @@ export function createTabManager(
   let closedTabs: readonly ClosedTabSnapshot[] = [];
   let nextKey = 1;
   let active = -1;
-  const home = getDesktopEnvironment().homeDir;
+  const environment = getDesktopEnvironment();
+  const home = environment.homeDir;
   // Fail-safe = focused: an unanswerable/unregisterable window-focus check
   // must never suppress the in-app rail — only native notifications (Task
   // 23) key off this beyond `onPaneFocus`'s ack gate.
@@ -281,7 +402,14 @@ export function createTabManager(
   // Types the chosen agent into each new pane's shell once its prompt is up.
   // Through paneIo so its synthetic keystrokes ("claude\r") count as input —
   // the echo suppression then keeps the launch echo out of the spinner.
-  const launcher = createAgentLauncher(paneIo);
+  const reportAgentLaunchTimeout =
+    deps.onAgentLaunchTimeout ?? reportChromeMessage;
+  const launcher = createAgentLauncher(paneIo, {
+    platform: environment.platform,
+    onTimeout: () => {
+      reportAgentLaunchTimeout(WINDOWS_AGENT_TIMEOUT_MESSAGE);
+    },
+  });
 
   function activeManager(): TerminalManager | null {
     return active >= 0 && active < tabs.length ? tabs[active].manager : null;
@@ -300,16 +428,16 @@ export function createTabManager(
       for (const id of paneIds) {
         // A process change (agent exited to the shell, new agent started)
         // invalidates whatever the old program reported.
-        activity.noteProcess(id, poller.infoFor(id)?.process ?? null);
+        activity.noteProcess(id, processLabel(poller.infoFor(id)));
       }
       const agentBusy = paneIds.some(
         (id) =>
-          isAgent(poller.infoFor(id)?.process ?? null) && activity.working(id),
+          explicitAgent(poller.infoFor(id)) !== null && activity.working(id),
       );
       return applyTabOverride(
         {
           key: tab.key,
-          process: info?.process ?? null,
+          process: processLabel(info),
           name: null,
           dotColor: null,
           workspacePath: tab.workspacePath,
@@ -326,11 +454,10 @@ export function createTabManager(
     const manager = activeManager();
     const paneId = manager?.activePaneId() ?? null;
     const info = paneId === null ? undefined : poller.infoFor(paneId);
-    const process = info?.process ?? null;
     statusInfo.value = {
       branch: poller.branch(),
       cwd: info?.cwd ?? null,
-      agent: isAgent(process) ? process : null,
+      agent: explicitAgent(info),
       paneCount: manager?.paneCount() ?? 0,
       home,
     };
@@ -785,14 +912,15 @@ export function createTabManager(
     activePaneId: () => activeManager()?.activePaneId() ?? null,
     onUpdate(infos) {
       activeManager()?.updatePaneInfo(infos, home);
-      // Reconcile the tracker's process gate before this cycle's state is
-      // aggregated: opening/closing the gate and the agent→shell inferred
-      // completion both key off the last polled process.
+      // Reconcile the tracker's explicit process gate before this cycle's
+      // state is aggregated. Display labels never decide whether the gate
+      // opens: only a classified, named agent can do that.
       for (const info of infos) {
+        const agent = explicitAgent(info);
         const snap = tracker.noteProcess(
           info.id,
-          info.process,
-          isAgent(info.process),
+          agent ?? info.process,
+          agent !== null,
         );
         if (snap !== null) {
           maybeNotify(info.id, snap);
@@ -829,7 +957,7 @@ export function createTabManager(
   // Keymap *matching* lives in keymap.ts; this table is the dispatch half —
   // one action, one closure. `select-tab-N` and `select-last-tab` (⌘9) are
   // both handled directly in `dispatchAction`, not through this table.
-  const commands: Partial<Record<ShortcutAction, () => void>> = {
+  const commands = {
     "split-row": () => void splitActive("row"),
     "split-column": () => void splitActive("column"),
     "close-pane": () => void close.closePane(),
@@ -848,6 +976,8 @@ export function createTabManager(
     "zoom-reset": () => updateSettings({ fontSize: DEFAULT_SETTINGS.fontSize }),
     "toggle-zoom-pane": () => activeManager()?.toggleZoom(),
     "clear-buffer": () => activeManager()?.clearActive(),
+    "copy-selection": () => activeManager()?.copyActiveSelection(),
+    paste: () => activeManager()?.pasteIntoActive(),
     "copy-cwd": () => {
       const paneId = activeManager()?.activePaneId() ?? null;
       if (paneId !== null) {
@@ -906,7 +1036,7 @@ export function createTabManager(
     "new-preset": () => {
       editorRequest.value = { source: "live" };
     },
-  };
+  } satisfies Record<(typeof COMMAND_ACTIONS)[number], () => void>;
 
   /**
    * Ranks of every overlay that is currently open (Open board, Settings,
@@ -1035,7 +1165,14 @@ export function createTabManager(
       selectTab(tabIndex); // out-of-range indexes are a no-op
       return;
     }
-    commands[action]?.();
+    // `action` is a `COMMAND_ACTIONS` member here at runtime — both
+    // `select-last-tab` and every `select-tab-N` already returned above.
+    // `selectTabIndex` returns a plain `number | null`, not a type predicate,
+    // so TypeScript can't narrow the `select-tab-${number}` template out of
+    // `action`'s type on its own; this cast documents that invariant instead
+    // of widening `commands` back to `Record<ShortcutAction, ...>`, which
+    // would silently defeat the `satisfies` completeness check above.
+    commands[action as (typeof COMMAND_ACTIONS)[number]]?.();
   }
 
   function runAction(action: ShortcutAction): void {
@@ -1126,8 +1263,8 @@ export function createTabManager(
     }
     await registerUnlisten(
       pty.listenOutput((id, data) => {
-        // The launcher waits for a pane's first byte before typing its agent;
-        // route every chunk to it before fanning out to the tabs.
+        // macOS keeps first-output readiness. Windows only records this as
+        // output; its launcher waits for the structured listener below.
         launcher.noteOutput(id);
         // Legacy agentBusy semantics ride on the working()-flip. Read it around
         // the additive event feed rather than double-parsing the chunk: both
@@ -1209,6 +1346,11 @@ export function createTabManager(
             syncViews();
           }, 3200),
         );
+      }),
+    );
+    await registerUnlisten(
+      pty.listenPromptReady((id) => {
+        launcher.notePromptReady(id);
       }),
     );
     await registerUnlisten(

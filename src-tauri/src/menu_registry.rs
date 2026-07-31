@@ -2,6 +2,7 @@
 // from src/terminal/action-registry.ts — do not hand-edit.
 // Regenerate: npm run generate:menu
 
+#[cfg(target_os = "macos")]
 use tauri::Runtime;
 
 #[cfg(target_os = "macos")]

@@ -1,11 +1,22 @@
 import type { PaneProcessInfo } from "../lib/process-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 
+function unknownPaneInfo(id: number): PaneProcessInfo {
+  return {
+    id,
+    cwd: null,
+    process: null,
+    kind: "unknown",
+    agent: null,
+  };
+}
+
 /**
  * Fresh (non-polled) pty_info for the given panes. The 2s poll cache can be
  * stale at decision points (spawn cwd, close guard) — this is the cheap
- * single-shot alternative. Failure degrades to [] (matches the poll loop's
- * degrade-to-None contract).
+ * single-shot alternative. Every requested pane gets a result; omitted panes
+ * and IPC failures become explicit unknown snapshots so destructive callers
+ * cannot mistake missing metadata for an idle shell.
  */
 export async function freshPaneInfo(
   ids: readonly number[],
@@ -15,10 +26,14 @@ export async function freshPaneInfo(
     return [];
   }
   try {
-    return await pty.ptyInfo(ids);
+    const infos = await pty.ptyInfo(ids);
+    return ids.map(
+      (id) =>
+        infos.find((info) => info.id === id) ?? unknownPaneInfo(id),
+    );
   } catch (err) {
     console.warn("pty_info failed:", err);
-    return [];
+    return ids.map(unknownPaneInfo);
   }
 }
 

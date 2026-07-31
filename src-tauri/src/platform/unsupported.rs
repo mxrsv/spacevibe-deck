@@ -1,6 +1,6 @@
 use super::{ProcessInspection, SessionIdentity, ShellLaunch};
 use crate::agents::AgentInfo;
-use portable_pty::ChildKiller;
+use portable_pty::{ChildKiller, MasterPty};
 use std::path::PathBuf;
 
 pub struct PlatformSession {
@@ -37,6 +37,10 @@ pub fn inspect_process(_pid: i32) -> ProcessInspection {
         process: None,
         complete: false,
     }
+}
+
+pub fn foreground_process_group(_master: &dyn MasterPty) -> Option<i32> {
+    None
 }
 
 pub fn terminate_session(

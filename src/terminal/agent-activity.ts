@@ -20,8 +20,8 @@ import {
  *    ignored (it's the TUI echoing input, not work), and a single isolated
  *    repaint (idle status refresh) never counts because its span is ~0ms.
  *
- * The caller gates this by "an agent runs in the pane" — a chatty shell job
- * doesn't reach the spinner because isAgent() is false for it.
+ * The caller gates this with the explicit process classification — a chatty
+ * shell job never reaches the spinner without `kind: "agent"`.
  */
 export interface AgentActivity {
   /** Feed one PTY output chunk. True when the pane's working state flipped. */

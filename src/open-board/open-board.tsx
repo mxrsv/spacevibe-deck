@@ -404,7 +404,8 @@ export function OpenBoard({
       event.stopPropagation();
       return;
     }
-    switch (event.key) {
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    switch (key) {
       case "ArrowUp":
         step(-1);
         break;

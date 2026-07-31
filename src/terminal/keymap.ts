@@ -44,11 +44,34 @@ export function isShortcutAction(value: unknown): value is ShortcutAction {
 }
 
 /**
+ * Whether this keydown carries the third-level shift (AltGr).
+ *
+ * Windows delivers AltGr as left-Ctrl + right-Alt, which Chromium surfaces as
+ * `ctrlKey && altKey` — indistinguishable from a deliberate Ctrl+Alt chord by
+ * the modifier flags alone. `getModifierState("AltGraph")` is the only signal
+ * that separates them; xterm carries its own workaround for the same collision
+ * (`_isThirdLevelShift`).
+ *
+ * Feature-detected because synthetic events (tests, some IME paths) carry the
+ * modifier flags without the method.
+ */
+function hasAltGraph(event: KeyboardEvent): boolean {
+  return (
+    typeof event.getModifierState === "function" &&
+    event.getModifierState("AltGraph")
+  );
+}
+
+/**
  * Exact match on the key/code and all four modifiers; null when nothing
  * matches. A `PhysicalKeyBinding` (has `code`) matches on `event.code`; a
  * `CharKeyBinding` (has `key`) matches on `event.key`, lowercased — so a
  * non-US layout or an IME rewriting `event.key` still resolves the physical
  * bindings correctly regardless of what character `event.key` carries.
+ *
+ * Ctrl+Alt bindings are skipped entirely while AltGr is down: on German,
+ * Spanish, Italian and Nordic layouts AltGr is how `[`, `]` and `~` are typed,
+ * and matching there would `preventDefault()` the character out of the pane.
  */
 export function matchBinding(
   event: KeyboardEvent,
@@ -57,7 +80,11 @@ export function matchBinding(
   ),
 ): ShortcutAction | null {
   const key = event.key.toLowerCase();
+  const altGraph = hasAltGraph(event);
   for (const binding of keymap) {
+    if (altGraph && binding.ctrl && binding.alt) {
+      continue;
+    }
     const keyMatches =
       "code" in binding ? binding.code === event.code : binding.key === key;
     if (

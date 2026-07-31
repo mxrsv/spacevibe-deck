@@ -12,6 +12,7 @@ import { createLinkProvider } from "./link-provider";
 import { createOscLinkHandler } from "./osc-link-handler";
 import { paneCwd } from "./pane-cwd";
 import { classifyOscNotification } from "../lib/osc-notification";
+import { copyTerminalSelection, pasteIntoTerminal } from "./terminal-clipboard";
 
 /** Structured attention signal a pane can emit — never a native notification. */
 export interface PaneAttentionSignal {
@@ -46,6 +47,10 @@ export interface Pane {
   fit(): void;
   /** Drop scrollback and keep only the current prompt line (Cmd+K). */
   clear(): void;
+  /** Copy the current selection to the system clipboard (Ctrl+Shift+C). */
+  copySelection(): void;
+  /** Paste the clipboard through xterm's bracketed-paste path (Ctrl+Shift+V). */
+  paste(): void;
   /** Scroll the viewport by one page; positive = down, negative = up. */
   scrollPage(dir: 1 | -1): void;
   /** Jump to the very top (oldest) or bottom (latest output) of scrollback. */
@@ -149,9 +154,9 @@ export function createPane(
   const searchAddon = new SearchAddon();
   term.loadAddon(searchAddon);
 
-  // ⌘+click opens URLs in the browser and file paths in the editor. This
-  // replaces WebLinksAddon: that one underlines and activates on a plain
-  // click, which an agent TUI needs for its own mouse handling.
+  // Primary-modifier+click opens URLs in the browser and file paths in the
+  // editor. This replaces WebLinksAddon: that one underlines and activates on
+  // a plain click, which an agent TUI needs for its own mouse handling.
   const linkProvider = term.registerLinkProvider(
     createLinkProvider(term, { getCwd: () => paneCwd(id) }),
   );
@@ -324,6 +329,12 @@ export function createPane(
     writeln: (line) => term.writeln(line),
     fit,
     clear: () => term.clear(),
+    copySelection() {
+      copyTerminalSelection(term);
+    },
+    paste() {
+      pasteIntoTerminal(term);
+    },
     scrollPage: (dir) => term.scrollPages(dir),
     scrollToEdge: (edge) =>
       edge === "top" ? term.scrollToTop() : term.scrollToBottom(),

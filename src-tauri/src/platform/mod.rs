@@ -1,21 +1,35 @@
 #[cfg(target_os = "macos")]
 pub(crate) mod macos;
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 mod unsupported;
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+#[cfg(any(target_os = "windows", test))]
+pub(crate) mod windows;
 
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 #[cfg(target_os = "macos")]
 pub use macos::{
-    create_session, discover_agents, inspect_process, shell_launch, terminate_session, user_home,
-    PlatformSession,
+    create_session, discover_agents, foreground_process_group, inspect_process, shell_launch,
+    terminate_session, user_home, PlatformSession,
 };
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub use unsupported::{
-    create_session, discover_agents, inspect_process, shell_launch, terminate_session, user_home,
-    PlatformSession,
+    create_session, discover_agents, foreground_process_group, inspect_process, shell_launch,
+    terminate_session, user_home, PlatformSession,
 };
+#[cfg(target_os = "windows")]
+pub use windows::{
+    create_session, discover_agents, foreground_process_group, harden_webview, inspect_process,
+    shell_launch, terminate_session, user_home, PlatformSession,
+};
+
+/// Post-creation webview hardening. Only Windows has anything to do here.
+#[cfg(not(target_os = "windows"))]
+pub fn harden_webview(_window: &tauri::WebviewWindow) -> Result<(), String> {
+    Ok(())
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -50,15 +64,32 @@ impl ShellLaunch {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SessionIdentity {
     root_pid: Option<u32>,
+    creation_date: Option<i64>,
 }
 
 impl SessionIdentity {
     pub fn new(root_pid: Option<u32>) -> Self {
-        Self { root_pid }
+        Self {
+            root_pid,
+            creation_date: None,
+        }
+    }
+
+    #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+    pub fn with_creation_date(root_pid: Option<u32>, creation_date: Option<i64>) -> Self {
+        Self {
+            root_pid,
+            creation_date,
+        }
     }
 
     pub fn root_pid(self) -> Option<u32> {
         self.root_pid
+    }
+
+    #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+    pub fn creation_date(self) -> Option<i64> {
+        self.creation_date
     }
 }
 
@@ -112,6 +143,7 @@ mod tests {
     use super::{
         current_platform, validate_user_home, DesktopEnvironment, PlatformName, SessionIdentity,
     };
+    use portable_pty::MasterPty;
 
     #[test]
     fn reports_the_compile_target_platform() {
@@ -143,9 +175,17 @@ mod tests {
 
     #[test]
     fn session_identity_keeps_the_root_process() {
-        let identity = SessionIdentity::new(Some(42));
+        let identity = SessionIdentity::with_creation_date(Some(42), Some(1_234));
 
         assert_eq!(identity.root_pid(), Some(42));
+        assert_eq!(identity.creation_date(), Some(1_234));
+    }
+
+    #[test]
+    fn exposes_foreground_process_group_through_the_platform_adapter() {
+        let adapter: fn(&dyn MasterPty) -> Option<i32> = super::foreground_process_group;
+
+        let _ = adapter;
     }
 
     #[test]

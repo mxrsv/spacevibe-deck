@@ -14,16 +14,46 @@ import { createMemoryPtyClient } from "./pty-client";
 describe("zipPolledCwds / zipFreshCwds", () => {
   it("zips polled map with null for unknown ids", () => {
     const infoByPane = new Map<number, PaneProcessInfo>([
-      [7, { id: 7, cwd: "/tmp", process: "zsh" }],
-      [9, { id: 9, cwd: null, process: null }],
+      [
+        7,
+        {
+          id: 7,
+          cwd: "/tmp",
+          process: "zsh",
+          kind: "idle-shell",
+          agent: null,
+        },
+      ],
+      [
+        9,
+        {
+          id: 9,
+          cwd: null,
+          process: null,
+          kind: "unknown",
+          agent: null,
+        },
+      ],
     ]);
     expect(zipPolledCwds([7, 8, 9], infoByPane)).toEqual(["/tmp", null, null]);
   });
 
   it("zips fresh infos in pane-id order", () => {
     const infos: PaneProcessInfo[] = [
-      { id: 2, cwd: "/b", process: "zsh" },
-      { id: 1, cwd: "/a", process: "zsh" },
+      {
+        id: 2,
+        cwd: "/b",
+        process: "zsh",
+        kind: "idle-shell",
+        agent: null,
+      },
+      {
+        id: 1,
+        cwd: "/a",
+        process: "zsh",
+        kind: "idle-shell",
+        agent: null,
+      },
     ];
     expect(zipFreshCwds([1, 2, 3], infos)).toEqual(["/a", "/b", null]);
   });
@@ -42,7 +72,16 @@ describe("resolvePaneCwds", () => {
 
   it("polled → zip against cache", async () => {
     const polled = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/polled", process: "zsh" }],
+      [
+        1,
+        {
+          id: 1,
+          cwd: "/polled",
+          process: "zsh",
+          kind: "idle-shell",
+          agent: null,
+        },
+      ],
     ]);
     expect(await resolvePaneCwds([1, 2], "polled", { polled })).toEqual([
       "/polled",
@@ -52,8 +91,26 @@ describe("resolvePaneCwds", () => {
 
   it("fresh → uses injected PtyClient (no module mock)", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [4, { id: 4, cwd: "/fresh/4", process: "zsh" }],
-      [5, { id: 5, cwd: "/fresh/5", process: "zsh" }],
+      [
+        4,
+        {
+          id: 4,
+          cwd: "/fresh/4",
+          process: "zsh",
+          kind: "idle-shell",
+          agent: null,
+        },
+      ],
+      [
+        5,
+        {
+          id: 5,
+          cwd: "/fresh/5",
+          process: "zsh",
+          kind: "idle-shell",
+          agent: null,
+        },
+      ],
     ]);
     const pty = createMemoryPtyClient({ infos });
     expect(await resolvePaneCwds([4, 5], "fresh", { pty })).toEqual([
@@ -66,7 +123,16 @@ describe("resolvePaneCwds", () => {
 describe("capturePresetLayout", () => {
   it("threads PtyClient for fresh CWDs", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, { id: 1, cwd: "/a", process: "zsh" }],
+      [
+        1,
+        {
+          id: 1,
+          cwd: "/a",
+          process: "zsh",
+          kind: "idle-shell",
+          agent: null,
+        },
+      ],
     ]);
     const pty = createMemoryPtyClient({ infos });
     await expect(
