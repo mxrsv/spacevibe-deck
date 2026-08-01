@@ -24,10 +24,12 @@
 
 Deck is a minimal desktop terminal built for people who run **AI agent CLIs** — Claude Code, Codex, Gemini CLI, and the like. The problem with general-purpose terminals isn't that they need to be prettier; it's that they have no affordances for **watching and steering many agents at once**.
 
-> **Windows status:** Windows 11 x64 is an engineering preview, not a beta or
-> public release. Source and Windows desktop builds pass
-> [CI](.github/workflows/ci.yml#L65-L109) `current`; installer, runtime,
-> screenshot, signing, and publication gates remain pending under the
+> **Windows status:** Windows 11 x64 is an engineering preview, not a beta.
+> An unsigned preview installer is published as the
+> [v0.9.0-windows-preview](https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0-windows-preview)
+> prerelease — SmartScreen will warn on install. Source and Windows desktop
+> builds pass [CI](.github/workflows/ci.yml#L65-L109) `current`; runtime QA,
+> screenshot and signing gates remain pending under the
 > [approved Windows spec](docs/specs/2026-07-29-windows-desktop-design.md#10-verification-and-acceptance) `decided`.
 
 Deck's whole job: open a working folder and a layout, launch an agent into every pane, read each pane's busy/idle state at a glance, rearrange panes as your attention shifts, and jump from a file path in the output straight to your editor — without turning into an IDE.
@@ -275,8 +277,10 @@ npm run tauri build   # release build → src-tauri/target/release/bundle/
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
 
-| Claim                                                                                            | Intent    | Status    | Evidence                                                                                                                                                                                                                                   |
-| ------------------------------------------------------------------------------------------------ | --------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| "installer, runtime, screenshot, signing, and publication gates remain pending" (Windows status) | `current` | `partial` | Installer and publication happened de facto — public prerelease [v0.9.0-windows-preview](https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0-windows-preview) since 2026-07-31; runtime QA, screenshots and signing remain pending |
+| Claim | Intent | Status | Evidence |
+| ----- | ------ | ------ | -------- |
 
-Drift recorded by the [2026-08-01 audit](docs/review/2026-08-01-doc-drift.md) `current`. Do not remove this section (D7).
+Empty — verified 2026-08-01. The Windows-status drift found by the
+[2026-08-01 audit](docs/review/2026-08-01-doc-drift.md) `current` was resolved
+the same day by rewriting the status block above. Do not remove this section
+(D7).

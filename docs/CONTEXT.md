@@ -77,19 +77,27 @@ Implemented source boundaries:
 
 Delivery state:
 
-- No Windows installer has been staged. The manual engineering job validates
-  one NSIS setup, rejects MSI output, retains the artifact for seven days, and
-  refuses to build unless the repository is private
-  ([artifact job](../.github/workflows/ci.yml#L111-L159) `current`). GitHub
-  reported this repository as public on 2026-07-29, so dispatch would fail at
-  the privacy guard; no manual dispatch was performed.
+- An unsigned NSIS setup is published publicly as the
+  [v0.9.0-windows-preview](https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0-windows-preview)
+  prerelease (2026-07-31), and the landing resolves its download link at load
+  time
+  ([download-links.js](../marketing/landing-prototype/src/download-links.js#upgradeDownloadLinks) `current`).
+  The manual engineering job in CI still validates one NSIS setup, rejects MSI
+  output, and refuses to build unless the repository is private
+  ([artifact job](../.github/workflows/ci.yml#L111-L159) `current`); the repo
+  was public on 2026-08-01, and how the published exe was produced is not
+  recorded in reachable history.
 - Gates W1–W4 and the full real-device checklist remain pending
   ([acceptance criteria](specs/2026-07-29-windows-desktop-design.md#10-verification-and-acceptance) `decided`).
+  First field report, 2026-08-01: the installer fails with an NSIS
+  "Extract: error writing" when targeting a secondary drive; the default
+  per-user install to `%LOCALAPPDATA%` on the system drive succeeds.
 - Real Windows screenshots at `1100x720` and `480x320` in top-tab and sidebar
   modes remain pending user eye approval
   ([demo surface](specs/2026-07-29-windows-desktop-design.md#77-window-chrome-and-demo-surface) `decided`).
-- Signing and any public Windows distribution require a separate decision and
-  authorization. The existing tagged macOS release remains unchanged
+- Signing remains pending — the preview ships unsigned, so SmartScreen warns
+  on install, and the landing says so next to the Windows CTA. The existing
+  tagged macOS release remains unchanged
   ([release.yml](../.github/workflows/release.yml) `current`).
 
 ## Stack
@@ -103,14 +111,13 @@ module boundaries as in-flight when planning.
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
 
-| Claim                                                                                                        | Intent    | Status         | Evidence                                                                                                                                                                                                       |
-| ------------------------------------------------------------------------------------------------------------ | --------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Code comments no longer cite `FR-…` … or `ADR …`" (History note)                                            | `current` | `contradicted` | 4 comments remain: [agents.rs](../src-tauri/src/agents.rs#FR-025) `current`, [open-board.tsx](../src/open-board/open-board.tsx#FR-025) `current`, [migrate.rs](../src-tauri/src/migrate.rs#ADR 0028) `current` |
-| "No Windows installer has been staged … no manual dispatch was performed" (Delivery state)                   | `current` | `contradicted` | Prerelease [v0.9.0-windows-preview](https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0-windows-preview) published 2026-07-31 with `SpaceVibe.Deck_0.9.0_x64-setup.exe`                                |
-| "Signing and any public Windows distribution require a separate decision and authorization" (Delivery state) | `current` | `contradicted` | The same prerelease is public and the landing links it at load time ([download-links.js](../marketing/landing-prototype/src/download-links.js#upgradeDownloadLinks) `current`)                                 |
+| Claim                                                             | Intent    | Status         | Evidence                                                                                                                                                                                                       |
+| ----------------------------------------------------------------- | --------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Code comments no longer cite `FR-…` … or `ADR …`" (History note) | `current` | `contradicted` | 4 comments remain: [agents.rs](../src-tauri/src/agents.rs#FR-025) `current`, [open-board.tsx](../src/open-board/open-board.tsx#FR-025) `current`, [migrate.rs](../src-tauri/src/migrate.rs#ADR 0028) `current` |
 
 The historical comment drift was found on 2026-07-27. The delivery-state drift
-was found by the [2026-08-01 audit](review/2026-08-01-doc-drift.md) `current`.
+found by the [2026-08-01 audit](review/2026-08-01-doc-drift.md) `current` was
+resolved the same day by rewriting the Delivery state bullets above.
 
 Gates W1-W4, the real-device checklist, screenshots, and signed distribution are
 NOT listed above: per the docs convention, `decided`/`building` claims are
@@ -119,8 +126,9 @@ and no pending gate is inferred as passed.
 
 The 2026-07-30 pre-ship audit's code blockers (A1-A8) were remediated on
 2026-07-31; the `current` claims above were re-checked against that code. The
-audit's delivery blockers B1 (no installer can be produced from a public repo)
-and B3 (gates never run) are unchanged and remain in the Delivery state bullets.
+audit's delivery blocker B1 (no installer can be produced from a public repo)
+was overtaken on 2026-07-31 by the published prerelease; B3 (gates never run)
+still stands and remains in the Delivery state bullets.
 
 Known residuals from that remediation, recorded here so they outlive the working
 notes — none contradicts a `current` claim above, so none is a drift row:
@@ -130,8 +138,9 @@ notes — none contradicts a `current` claim above, so none is a drift row:
   124 passed, and the one failure was the UNC assertion replaced below. That run
   carries the first real-host proofs of the branch: Windows PowerShell 5.1 parses
   the prompt integration and emits a real ESC byte, and a Job Object tracks and
-  releases a grandchild process (Gate W3). Nothing has run on a real Windows
-  DEVICE yet — no installer, no manual QA.
+  releases a grandchild process (Gate W3). Overtaken 2026-08-01: the preview
+  installer is published and was field-installed by an end user; structured
+  manual QA has still not run.
 - `has_rejected_root` rejects UNC and verbatim roots, not mapped drive letters. A
   stale `Z:\` still reaches the filesystem — the audit's own "non-adversarial"
   example, missed by both the audit's code analysis and the remediation plan.
