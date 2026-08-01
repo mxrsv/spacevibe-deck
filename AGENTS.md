@@ -13,6 +13,9 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
 **In flight — already decided, do not reopen:**
 
 - v0.8.0 release is waiting on a pushed `v0.8.0` tag; CI builds from there.
+- Landing download links resolve from the releases API at load (2026-08-01): the
+  hand-bumped Windows prerelease pin is gone — publishing a release is the act
+  that points the landing at it, so links never rot between releases.
 - The `deck.spacevibe.dev` landing has no host chosen yet (domain parked).
 - Four code comments still cite `FR-`/`ADR` against the claim in `docs/CONTEXT.md`
   (`agents.rs`, `open-board.tsx`, `migrate.rs`) — logged in that file's drift ledger,

@@ -7,7 +7,11 @@ import {
 } from "../appwin.js";
 import { REEL_ID } from "../demo-reel.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
-import { REPO_URL, RELEASES_URL, WINDOWS_URL } from "../download-urls.js";
+import {
+  REPO_URL,
+  RELEASES_URL,
+  WINDOWS_FALLBACK_URL,
+} from "../download-links.js";
 import {
   STAGE_ARIA_LABEL,
   mountStageStream,
@@ -15,7 +19,6 @@ import {
 } from "../product-stage.js";
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
-
 
 // Hero beams field. White key light on purpose: the hero runs a neutral
 // grey-white light language, and the one white face in the column is the
@@ -124,7 +127,7 @@ export function renderDirectionA(copy, locale) {
 
                 <a
                   class="a-quiet-cta"
-                  href="${WINDOWS_URL}"
+                  href="${WINDOWS_FALLBACK_URL}"
                   target="_blank"
                   rel="noreferrer"
                 >

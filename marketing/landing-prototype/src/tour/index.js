@@ -16,7 +16,11 @@ import { BRAND, STAGE_ARIA_LABEL } from "../../../stage/brand.js";
 import { mountAurora } from "../aurora.js";
 import { REEL_ID } from "../demo-reel.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
-import { REPO_URL, RELEASES_URL, WINDOWS_URL } from "../download-urls.js";
+import {
+  REPO_URL,
+  RELEASES_URL,
+  WINDOWS_FALLBACK_URL,
+} from "../download-links.js";
 import { mountStageStream, stagePanes } from "../product-stage.js";
 import {
   AGENTS,
@@ -378,7 +382,7 @@ function renderFinale(copy) {
         </a>
         <a
           class="tour__cta"
-          href="${WINDOWS_URL}"
+          href="${WINDOWS_FALLBACK_URL}"
           target="_blank"
           rel="noreferrer"
         >
@@ -411,8 +415,6 @@ function renderFinale(copy) {
     </footer>
   `;
 }
-
-
 
 function renderFooter(copy) {
   return `
