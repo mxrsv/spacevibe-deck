@@ -91,7 +91,8 @@ docs/                # DESIGN-LANGUAGE.md (DL rulebook), CONTEXT.md, specs/, pla
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
 
-| Claim | Intent | Status | Evidence |
-| ----- | ------ | ------ | -------- |
+| Claim                                                            | Intent    | Status         | Evidence                                                                          |
+| ---------------------------------------------------------------- | --------- | -------------- | --------------------------------------------------------------------------------- |
+| "v0.8.0 release is waiting on a pushed `v0.8.0` tag" (In flight) | `current` | `contradicted` | No `v0.8.0` was ever tagged; releases jumped v0.7.0 → v0.9.0 (Latest, 2026-07-27) |
 
-Empty — verified 2026-07-27. Do not remove this section (D7).
+Drift recorded by the [2026-08-01 audit](docs/review/2026-08-01-doc-drift.md) `current`. Do not remove this section (D7).

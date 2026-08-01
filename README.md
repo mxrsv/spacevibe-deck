@@ -153,33 +153,33 @@ xterm's `Terminal.paste()` for bracketed paste and CRLF normalization
 
 ### Windows engineering preview
 
-| Shortcut                 | Action                                      |
-| ------------------------ | ------------------------------------------- |
-| Ctrl+Shift+C / V         | Copy selection / paste                      |
-| Ctrl+Alt+Shift+C         | Copy pane working directory                 |
-| Ctrl+Shift+D             | Split pane vertically                       |
-| Ctrl+Alt+Shift+D         | Split pane horizontally                     |
-| Ctrl+Shift+W             | Close pane                                  |
-| Ctrl+Alt+Shift+W         | Close tab                                   |
-| Ctrl+Alt+] / [           | Focus next / previous pane                  |
-| Ctrl+Alt+Arrow           | Focus pane by direction                     |
-| Ctrl+Alt+Shift+Arrow     | Swap pane by direction                      |
-| Ctrl+Shift+E             | Toggle Focus Expand                         |
-| Ctrl+Shift+Enter         | Zoom / restore active pane                  |
-| Ctrl+Shift+T             | New tab (Open board)                        |
-| Ctrl+Alt+Shift+T         | Reopen closed tab                           |
-| Ctrl+Alt+Shift+R         | Rename tab / change dot color               |
-| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous tab                        |
-| Ctrl+1 … Ctrl+8 / Ctrl+9 | Select tab _N_ / last tab                   |
-| Ctrl+Shift+F             | Find in scrollback                          |
-| F3 / Shift+F3            | Find next / previous match                  |
-| Ctrl+Shift+K             | Clear buffer                                |
-| Ctrl+Alt+Shift+N / S     | New / save layout preset                    |
-| Ctrl+Shift+A             | Jump to the pane that needs attention       |
-| Ctrl+= / Ctrl+- / Ctrl+0 | Font zoom in / out / reset                  |
-| Ctrl+,                   | Toggle Settings                             |
-| Shift+PgUp / PgDn        | Scroll scrollback by page                   |
-| Shift+Home / End         | Scroll to top / latest output               |
+| Shortcut                  | Action                                |
+| ------------------------- | ------------------------------------- |
+| Ctrl+Shift+C / V          | Copy selection / paste                |
+| Ctrl+Alt+Shift+C          | Copy pane working directory           |
+| Ctrl+Shift+D              | Split pane vertically                 |
+| Ctrl+Alt+Shift+D          | Split pane horizontally               |
+| Ctrl+Shift+W              | Close pane                            |
+| Ctrl+Alt+Shift+W          | Close tab                             |
+| Ctrl+Alt+] / [            | Focus next / previous pane            |
+| Ctrl+Alt+Arrow            | Focus pane by direction               |
+| Ctrl+Alt+Shift+Arrow      | Swap pane by direction                |
+| Ctrl+Shift+E              | Toggle Focus Expand                   |
+| Ctrl+Shift+Enter          | Zoom / restore active pane            |
+| Ctrl+Shift+T              | New tab (Open board)                  |
+| Ctrl+Alt+Shift+T          | Reopen closed tab                     |
+| Ctrl+Alt+Shift+R          | Rename tab / change dot color         |
+| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous tab                   |
+| Ctrl+1 … Ctrl+8 / Ctrl+9  | Select tab _N_ / last tab             |
+| Ctrl+Shift+F              | Find in scrollback                    |
+| F3 / Shift+F3             | Find next / previous match            |
+| Ctrl+Shift+K              | Clear buffer                          |
+| Ctrl+Alt+Shift+N / S      | New / save layout preset              |
+| Ctrl+Shift+A              | Jump to the pane that needs attention |
+| Ctrl+= / Ctrl+- / Ctrl+0  | Font zoom in / out / reset            |
+| Ctrl+,                    | Toggle Settings                       |
+| Shift+PgUp / PgDn         | Scroll scrollback by page             |
+| Shift+Home / End          | Scroll to top / latest output         |
 
 Open Folder uses `Ctrl+Shift+O`; preset-editor splits and pane swapping use
 Ctrl as the Windows primary pointer modifier.
@@ -275,8 +275,8 @@ npm run tauri build   # release build → src-tauri/target/release/bundle/
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
 
-| Claim | Intent | Status | Evidence |
-| ----- | ------ | ------ | -------- |
+| Claim                                                                                            | Intent    | Status    | Evidence                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------ | --------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| "installer, runtime, screenshot, signing, and publication gates remain pending" (Windows status) | `current` | `partial` | Installer and publication happened de facto — public prerelease [v0.9.0-windows-preview](https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0-windows-preview) since 2026-07-31; runtime QA, screenshots and signing remain pending |
 
-Empty — verified 2026-07-29. Windows preview limitations are stated above,
-not presented as current release support. Do not remove this section (D7).
+Drift recorded by the [2026-08-01 audit](docs/review/2026-08-01-doc-drift.md) `current`. Do not remove this section (D7).

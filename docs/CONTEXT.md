@@ -103,11 +103,14 @@ module boundaries as in-flight when planning.
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
 
-| Claim                                                             | Intent    | Status         | Evidence                                                                                                                                                                                                       |
-| ----------------------------------------------------------------- | --------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Code comments no longer cite `FR-…` … or `ADR …`" (History note) | `current` | `contradicted` | 4 comments remain: [agents.rs](../src-tauri/src/agents.rs#FR-025) `current`, [open-board.tsx](../src/open-board/open-board.tsx#FR-025) `current`, [migrate.rs](../src-tauri/src/migrate.rs#ADR 0028) `current` |
+| Claim                                                                                                        | Intent    | Status         | Evidence                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------ | --------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Code comments no longer cite `FR-…` … or `ADR …`" (History note)                                            | `current` | `contradicted` | 4 comments remain: [agents.rs](../src-tauri/src/agents.rs#FR-025) `current`, [open-board.tsx](../src/open-board/open-board.tsx#FR-025) `current`, [migrate.rs](../src-tauri/src/migrate.rs#ADR 0028) `current` |
+| "No Windows installer has been staged … no manual dispatch was performed" (Delivery state)                   | `current` | `contradicted` | Prerelease [v0.9.0-windows-preview](https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0-windows-preview) published 2026-07-31 with `SpaceVibe.Deck_0.9.0_x64-setup.exe`                                |
+| "Signing and any public Windows distribution require a separate decision and authorization" (Delivery state) | `current` | `contradicted` | The same prerelease is public and the landing links it at load time ([download-links.js](../marketing/landing-prototype/src/download-links.js#upgradeDownloadLinks) `current`)                                 |
 
-The historical comment drift was found on 2026-07-27.
+The historical comment drift was found on 2026-07-27. The delivery-state drift
+was found by the [2026-08-01 audit](review/2026-08-01-doc-drift.md) `current`.
 
 Gates W1-W4, the real-device checklist, screenshots, and signed distribution are
 NOT listed above: per the docs convention, `decided`/`building` claims are
