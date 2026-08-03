@@ -24,6 +24,7 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 | [src/chrome/](../src/chrome) `current`                                                                                        | window chrome, tabs                                          | main         | terminal    |
 | [src/open-board/](../src/open-board) `current`                                                                                | workspace board: open, recents, workspaces store             | chrome       | lib         |
 | [src/settings/](../src/settings) `current` + [src/presets/](../src/presets) `current`                                         | settings UI/stores, layout presets                           | chrome       | lib         |
+| [src/updater/](../src/updater) `current`                                                                                     | single-flight update state, Tauri adapter and chrome action  | app          | Tauri       |
 | [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                     | multi-page landing and live GitHub release changelog         | Releases API | dist        |
 | [marketing/video/](../marketing/video) `current`                                                                             | marketing video stage — shares app components, virtual clock | app stage    | video       |
 
@@ -52,11 +53,19 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
    [commands table](../src/terminal/tab-manager.ts#L946-L1024) `current`,
    [Pane clipboard](../src/terminal/pane.ts#L332-L337) `current`,
    [terminal-clipboard.ts](../src/terminal/terminal-clipboard.ts#L27-L55) `current`).
-9. The landing fetches one validated GitHub Releases list, derives stable
-   macOS and preview Windows downloads from it, shows the latest stable tag,
-   and feeds the same normalized records into the changelog page
-   ([release-data.js](../marketing/landing-prototype/src/release-data.js#fetchPublishedReleases) `current`,
-   [changelog-view.js](../marketing/landing-prototype/src/changelog-view.js#renderReleaseList) `current`).
+9. After the tab manager exists, Deck checks the configured updater channel
+   once. The macOS App menu may trigger a later manual check or open the trusted
+   web changelog; download and install remain separate user actions.
+   Immediately before install, `App` reuses the fresh pane close guard, flushes
+   settings, then installs and relaunches
+   ([App updater wiring](../src/ui/app.tsx#L182-L210) `current`,
+   [update state machine](../src/updater/update-controller.ts#L82-L208) `current`,
+   [update menu actions](../src/updater/update-menu-actions.ts#L62-L90) `current`).
+10. The landing fetches one validated GitHub Releases list, derives stable
+    macOS and preview Windows downloads from it, shows the latest stable tag,
+    and feeds the same normalized records into the changelog page
+    ([release-data.js](../marketing/landing-prototype/src/release-data.js#fetchPublishedReleases) `current`,
+    [changelog-view.js](../marketing/landing-prototype/src/changelog-view.js#renderReleaseList) `current`).
 
 ## Standing architecture decisions
 
@@ -81,8 +90,18 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   manual run may build one unsigned NSIS setup and upload it for seven days,
   but the job fails before bundling unless the repository is private
   ([ci.yml](../.github/workflows/ci.yml#L65-L159) `current`). The tagged macOS
-  release workflow is separate and unchanged
-  ([release.yml](../.github/workflows/release.yml) `current`).
+  release workflow is separate
+  ([ci.yml](../.github/workflows/ci.yml#L65-L159) `current`).
+- Tagged releases build updater-signed macOS stable and unsigned Windows
+  preview drafts separately. Windows publication and fixed-channel promotion
+  depend on exact-SHA provenance, release API asset membership, NSIS-only
+  validation, and non-empty Tauri signatures
+  ([release DAG](../.github/workflows/release.yml#L137-L314) `current`,
+  [manifest validator](../scripts/verify-updater-manifest.mjs) `current`).
+- Runtime updater registration is compile-time gated by the operator-owned
+  public key; local builds without `DECK_UPDATER_PUBLIC_KEY` keep the updater
+  plugin disabled while the process plugin remains available
+  ([Tauri plugin registration](../src-tauri/src/lib.rs#L28-L43) `current`).
 
 ## Chưa khớp thực tế
 
@@ -91,7 +110,8 @@ _(reality-drift ledger — heading text mandated by the global docs convention)_
 | Claim | Intent | Status | Evidence |
 | ----- | ------ | ------ | -------- |
 
-Empty — every `current` source/config claim above was checked on 2026-07-29.
+Empty — updater claims above were checked on 2026-08-03; the remaining
+`current` source/config claims were last checked on 2026-07-29.
 Unpassed Windows delivery gates are tracked in
 [CONTEXT.md](CONTEXT.md#windows-engineering-preview--2026-07-29) `current`.
 Do not remove this section (D7).

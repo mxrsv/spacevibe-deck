@@ -22,6 +22,11 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   awaiting a human call: strip the comments or soften the claim.
 - The marketing video renders from the DOM stage shared with the app — breaking app
   components silently breaks the video.
+- Cross-platform auto-update for macOS and Windows is approved (2026-08-02), with
+  the no-fee B2 Windows preview channel chosen on 2026-08-03: use free Tauri updater
+  signing and GitHub Releases; auto-check only, then expose an explicit chrome
+  `Update` → `Install & Relaunch` action beside Settings. Windows remains an unsigned,
+  separately labelled prerelease until paid Authenticode signing is chosen later.
 
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.

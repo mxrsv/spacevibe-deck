@@ -129,17 +129,29 @@ persist.
 
 ### Windows engineering preview
 
-There is no public Windows download yet. The non-publishing
-[engineering workflow](.github/workflows/ci.yml#L111-L159) `current` can build
-one unsigned `*-setup.exe` only after an authorized manual dispatch in a
-private repository. Maintainers then download
-`spacevibe-deck-windows-engineering-preview` from that Actions run within its
-seven-day retention window. This repository is currently public, so the
-private-repository guard blocks that build and no installer has been staged.
+Download the unsigned Windows 11 x64 installer from the
+[latest Windows preview prerelease](https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0-windows-preview).
+Windows may show Microsoft Defender SmartScreen or `Unknown publisher`; this
+preview is engineering test material, not a signed beta or stable Windows
+release.
 
-When an authorized unsigned setup becomes available, Windows may show a
-Microsoft Defender SmartScreen warning. Treat the artifact as engineering
-test material; do not redistribute it or present it as a signed beta.
+### Updates
+
+Updater-enabled builds check once after launch and reveal a small `Update`
+button beside Settings only when a newer release exists. Download and
+installation remain separate choices: click `Update`, then click
+`Install & Relaunch`. Deck refreshes every pane's process state and asks before
+restarting if an agent or other process is still running
+([update controller](src/updater/update-controller.ts#L82-L208) `current`). On
+macOS, the application menu also exposes `Check for Updates…` for a manual
+recheck and `Release Notes…` for the web changelog
+([update menu actions](src/updater/update-menu-actions.ts#L62-L90) `current`).
+
+macOS follows the latest stable release. Windows follows the separate unsigned
+preview channel. Both payloads require Deck's Tauri updater signature, but the
+free updater signature does not remove Gatekeeper, SmartScreen, or
+`Unknown publisher` warnings. Existing v0.9.0 installations must manually
+install the first updater-enabled release once.
 
 ## Keyboard shortcuts
 

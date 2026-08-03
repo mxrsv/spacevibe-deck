@@ -107,7 +107,8 @@ Delivery state:
   ([demo surface](specs/2026-07-29-windows-desktop-design.md#77-window-chrome-and-demo-surface) `decided`).
 - Signing remains pending — the preview ships unsigned, so SmartScreen warns
   on install, and the landing says so next to the Windows CTA. The existing
-  tagged macOS release remains unchanged
+  public macOS release remains unchanged; the tagged workflow now stages the
+  next macOS stable and Windows preview as separate updater-enabled releases
   ([release.yml](../.github/workflows/release.yml) `current`).
 
 ## Stack
@@ -116,6 +117,54 @@ Tauri 2 + Rust + Preact + xterm.js. Signals for state; module stores are
 window-scoped. The Rust PTY/window coordinator, tab materialize, layout engine
 and close-coordinator paths are the load-bearing seams — treat `src-tauri`
 module boundaries as in-flight when planning.
+
+## Cross-platform auto-update — 2026-08-03
+
+Implemented source boundaries:
+
+- Deck checks once after launch and exposes `Update` → `Downloading…` →
+  `Install & Relaunch`; download and installation require separate clicks
+  ([controller](../src/updater/update-controller.ts#L82-L208) `current`,
+  [chrome action](../src/updater/update-action.tsx) `current`).
+- On 2026-08-04, the macOS App menu added `Check for Updates…` for explicit
+  rechecks and `Release Notes…` for the existing web changelog; current/error
+  checks receive native feedback and never start a download
+  ([menu registry](../src/terminal/action-registry.ts#L138-L159) `current`,
+  [menu behavior](../src/updater/update-menu-actions.ts#L62-L90) `current`).
+- Installation reuses fresh pane inspection with update-specific copy, flushes
+  pending settings, and retains retry state on download, flush, install, or
+  relaunch failure
+  ([App integration](../src/ui/app.tsx#L182-L210) `current`,
+  [close guard](../src/terminal/close-guard.ts) `current`).
+- Tauri grants only updater check/download/install and process restart. macOS
+  points at stable `latest.json`; Windows points at the fixed unsigned preview
+  channel; updater artifacts are enabled only by the release config
+  ([capability](../src-tauri/capabilities/default.json) `current`,
+  [macOS channel](../src-tauri/tauri.macos.conf.json) `current`,
+  [Windows channel](../src-tauri/tauri.windows.conf.json) `current`,
+  [release config](../src-tauri/tauri.release.conf.json) `current`).
+- The tag workflow isolates macOS stable from Windows preview, keeps both as
+  drafts until their validation gates pass, and promotes Windows `latest.json`
+  only from an exact-SHA artifact with checked digests and GitHub release asset
+  membership
+  ([release workflow](../.github/workflows/release.yml#L1-L314) `current`,
+  [validator](../scripts/verify-updater-manifest.mjs) `current`).
+
+Remaining delivery gates:
+
+- Deploy the current landing artifact and verify
+  `https://deck.spacevibe.dev/landing-prototype/changelog/` returns `200`
+  before shipping the desktop menu link; it returned `404` on 2026-08-04,
+  while `npm run build:landing` produced the expected changelog artifact.
+- Generate and securely back up the production Tauri updater keypair, commit
+  only its public key through `DECK_UPDATER_PUBLIC_KEY`, and configure the
+  private key/password as protected GitHub Secrets. No production key was
+  generated during implementation.
+- Manually install the first updater-enabled release from v0.9.0, then run the
+  signed disposable-manifest update flow on macOS and real Windows 11 x64.
+- Obtain user eye approval for the `1100x720` and `480x320` screenshots in both
+  top-tab and sidebar layouts. Windows remains an unsigned B2 preview, so
+  Authenticode/SmartScreen publisher identity is intentionally unresolved.
 
 ## Chưa khớp thực tế
 
