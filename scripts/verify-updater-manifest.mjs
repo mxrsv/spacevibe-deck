@@ -85,8 +85,8 @@ export function validateUpdaterRelease(input) {
     const asset = release.assets.find((candidate) => candidate.url === platform.url);
     invariant(asset !== undefined, `Updater URL is not a release asset for ${target}`);
     invariant(
-      typeof asset.name === "string" && asset.name.endsWith(".nsis.zip"),
-      `Updater asset must be an NSIS zip for ${target}`,
+      typeof asset.name === "string" && asset.name.endsWith("-setup.exe"),
+      `Updater asset must be the NSIS installer for ${target}`,
     );
   }
 
@@ -95,16 +95,12 @@ export function validateUpdaterRelease(input) {
   invariant(carriedFiles.includes("latest.json"), "Provenance lacks latest.json");
   invariant(carriedFiles.includes("release.json"), "Provenance lacks release.json");
   invariant(
-    carriedFiles.filter((name) => name.endsWith(".nsis.zip")).length === 1,
-    "Provenance must carry exactly one NSIS updater bundle",
-  );
-  invariant(
-    carriedFiles.filter((name) => name.endsWith(".nsis.zip.sig")).length === 1,
-    "Provenance must carry exactly one updater signature",
-  );
-  invariant(
-    carriedFiles.filter((name) => name.endsWith(".exe")).length === 1,
+    carriedFiles.filter((name) => name.endsWith("-setup.exe")).length === 1,
     "Provenance must carry exactly one NSIS installer",
+  );
+  invariant(
+    carriedFiles.filter((name) => name.endsWith("-setup.exe.sig")).length === 1,
+    "Provenance must carry exactly one updater signature",
   );
   invariant(
     carriedFiles.every((name) => !name.toLowerCase().endsWith(".msi")),

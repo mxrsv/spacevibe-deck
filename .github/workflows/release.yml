@@ -234,15 +234,17 @@ jobs:
         run: |
           $stage = "updater-artifacts"
           New-Item -ItemType Directory -Path $stage | Out-Null
-          $bundles = @(Get-ChildItem "src-tauri/target/release/bundle/nsis" -Filter "*.nsis.zip")
-          $signatures = @(Get-ChildItem "src-tauri/target/release/bundle/nsis" -Filter "*.nsis.zip.sig")
-          $installers = @(Get-ChildItem "src-tauri/target/release/bundle/nsis" -Filter "*.exe")
+          # Tauri v2 signs the NSIS installer itself: the updater payload is
+          # `*-setup.exe` plus `*-setup.exe.sig`. There is no `.nsis.zip` — that
+          # was the v1 layout, and expecting it failed this job after a clean
+          # 6-minute build.
+          $installers = @(Get-ChildItem "src-tauri/target/release/bundle/nsis" -Filter "*-setup.exe")
+          $signatures = @(Get-ChildItem "src-tauri/target/release/bundle/nsis" -Filter "*-setup.exe.sig")
           $msi = @(Get-ChildItem "src-tauri/target/release/bundle" -Recurse -Filter "*.msi")
-          if ($bundles.Count -ne 1 -or $signatures.Count -ne 1 -or $installers.Count -ne 1 -or $msi.Count -ne 0) {
-            throw "Expected exactly one NSIS bundle, signature, installer, and zero MSI files."
+          if ($installers.Count -ne 1 -or $signatures.Count -ne 1 -or $msi.Count -ne 0) {
+            throw "Expected exactly one NSIS installer, one signature, and zero MSI files."
           }
           Copy-Item "latest.json" $stage
-          Copy-Item $bundles[0].FullName $stage
           Copy-Item $signatures[0].FullName $stage
           Copy-Item $installers[0].FullName $stage
           gh api "repos/$env:GITHUB_REPOSITORY/releases/$env:RELEASE_ID" | Set-Content -Encoding utf8 "$stage/release.json"

@@ -28,14 +28,15 @@ function fixture() {
     target_commitish: SHA,
     draft: true,
     prerelease: true,
-    assets: [{ id: 42, name: "Deck_0.10.0_x64-setup.nsis.zip", url: ASSET_URL }],
+    assets: [{ id: 42, name: "Deck_0.10.0_x64-setup.exe", url: ASSET_URL }],
   };
   const fileContents = {
     "latest.json": JSON.stringify(manifest),
     "release.json": JSON.stringify(release),
-    "Deck_0.10.0_x64-setup.nsis.zip": "bundle",
-    "Deck_0.10.0_x64-setup.nsis.zip.sig": "signature",
+    // Under Tauri v2 the installer IS the updater payload — one file, not a
+    // separate .nsis.zip alongside it.
     "Deck_0.10.0_x64-setup.exe": "installer",
+    "Deck_0.10.0_x64-setup.exe.sig": "signature",
   };
   const provenance = {
     source_sha: SHA,
@@ -107,6 +108,6 @@ test("rejects MSI or unexpected updater targets", () => {
 
 test("rejects a modified artifact digest", () => {
   const value = fixture();
-  value.fileContents["Deck_0.10.0_x64-setup.nsis.zip"] = "tampered";
+  value.fileContents["Deck_0.10.0_x64-setup.exe"] = "tampered";
   assert.throws(() => validateUpdaterRelease(value), /digest/i);
 });
