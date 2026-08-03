@@ -42,6 +42,14 @@ Consequences worth knowing:
   ([`SettingsScreen`](../src/ui/settings/settings-screen.tsx) `current`,
   [category registry](../src/ui/settings/settings-categories.ts) `current`) —
   a new category is one registry entry plus one file under `sections/`.
+- Agents are user-extensible: beyond the built-in four, an agent is a label plus
+  a full command line declared in Settings → agents
+  ([catalog](../src/lib/agent-catalog.ts) `current`,
+  [section](../src/ui/settings/sections/agents-section.tsx) `current`). A
+  built-in id equals its binary name, so a workspace's remembered `lastAgent`
+  resolves without migration. Discovery probes only names that pass
+  [`is_probe_safe`](../src-tauri/src/agents.rs) `current` — the macOS probe
+  interpolates them into a shell.
 - Session persists chrome only, never CWD; presets carry optional per-pane CWDs
   separately.
 - Out of scope: embedding agent UI, SSH, chasing iTerm parity, editing from the

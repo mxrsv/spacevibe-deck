@@ -12,7 +12,9 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
 
 **In flight — already decided, do not reopen:**
 
-- v0.8.0 release is waiting on a pushed `v0.8.0` tag; CI builds from there.
+- v0.10.0 is the release being cut (2026-08-04): the tag is what CI builds from,
+  and `validate-source` rejects a tag whose `package.json`, `Cargo.toml` and
+  `tauri.conf.json` versions disagree.
 - Landing download links resolve from the releases API at load (2026-08-01): the
   hand-bumped Windows prerelease pin is gone — publishing a release is the act
   that points the landing at it, so links never rot between releases.
@@ -108,6 +110,6 @@ _(reality-drift ledger — heading text mandated by the global docs convention)_
 
 | Claim                                                            | Intent    | Status         | Evidence                                                                          |
 | ---------------------------------------------------------------- | --------- | -------------- | --------------------------------------------------------------------------------- |
-| "v0.8.0 release is waiting on a pushed `v0.8.0` tag" (In flight) | `current` | `contradicted` | No `v0.8.0` was ever tagged; releases jumped v0.7.0 → v0.9.0 (Latest, 2026-07-27) |
 
-Drift recorded by the [2026-08-01 audit](docs/review/2026-08-01-doc-drift.md) `current`. Do not remove this section (D7).
+Empty as of 2026-08-04: the v0.8.0 row was cleared when v0.10.0 became the
+release in flight. Do not remove this section (D7).
