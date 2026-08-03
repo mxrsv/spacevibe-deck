@@ -27,6 +27,16 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   signing and GitHub Releases; auto-check only, then expose an explicit chrome
   `Update` → `Install & Relaunch` action beside Settings. Windows remains an unsigned,
   separately labelled prerelease until paid Authenticode signing is chosen later.
+- Production builds minify with Terser, not esbuild (PR #9, merged 2026-08-04): esbuild
+  0.25 drops xterm 6's function-local enum in `InputHandler.requestMode` but keeps a
+  renamed reference, so the DECRQM query OpenCode sends at startup throws and stops
+  xterm's write queue for good — a blank pane. `scripts/vite-config.test.ts` locks it.
+- User-declared agents (`M2`) are approved (2026-08-04): an agent is a label plus a full
+  command line, declared in a new Settings category, and `AgentChoice` stays a string id
+  whose built-in ids equal their binary names — so every `lastAgent` already on disk
+  keeps resolving and no migration exists to get wrong. The editable list needs a new
+  design-language rule (§12), approved with it. See
+  [spec](docs/specs/2026-08-04-user-declared-agents-design.md) `decided`.
 
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
