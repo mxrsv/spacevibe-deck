@@ -46,7 +46,10 @@ export default defineConfig({
     outDir,
     emptyOutDir: true,
     rollupOptions: {
-      input: resolve(import.meta.dirname, "index.html"),
+      input: {
+        landing: resolve(import.meta.dirname, "index.html"),
+        changelog: resolve(import.meta.dirname, "changelog/index.html"),
+      },
     },
   },
 });

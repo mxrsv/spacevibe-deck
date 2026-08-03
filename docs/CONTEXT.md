@@ -85,7 +85,13 @@ Delivery state:
   [v0.9.0-windows-preview](https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0-windows-preview)
   prerelease (2026-07-31), and the landing resolves its download link at load
   time
-  ([download-links.js](../marketing/landing-prototype/src/download-links.js#upgradeDownloadLinks) `current`).
+  ([shared release source](../marketing/landing-prototype/src/release-data.js#fetchPublishedReleases) `current`,
+  [link upgrade](../marketing/landing-prototype/src/download-links.js#upgradeReleaseLinks) `current`).
+  The landing header exposes a Changelog item; the GitHub CTA also shows the
+  latest stable tag and links that tag to the dedicated bilingual changelog,
+  which lists stable releases and previews from the same validated response
+  ([landing CTA](../marketing/landing-prototype/src/directions/a.js#renderDirectionA) `current`,
+  [changelog view](../marketing/landing-prototype/src/changelog-view.js#renderReleaseList) `current`).
   The manual engineering job in CI still validates one NSIS setup, rejects MSI
   output, and refuses to build unless the repository is private
   ([artifact job](../.github/workflows/ci.yml#L111-L159) `current`); the repo

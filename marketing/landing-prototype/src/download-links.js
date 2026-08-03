@@ -17,48 +17,16 @@
  * dead file URL.
  */
 
-export const REPO_URL = "https://github.com/mxrsv/spacevibe-deck";
-export const RELEASES_URL = `${REPO_URL}/releases/latest`;
-// The list page: the Windows preview is a prerelease, invisible on /latest.
-export const WINDOWS_FALLBACK_URL = `${REPO_URL}/releases`;
+import {
+  fetchPublishedReleases,
+  latestStableTag,
+  RELEASES_URL,
+  REPO_URL,
+  selectDownloadUrls,
+  WINDOWS_FALLBACK_URL,
+} from "./release-data.js";
 
-const RELEASES_API =
-  "https://api.github.com/repos/mxrsv/spacevibe-deck/releases?per_page=10";
-
-function assetUrl(release, suffix) {
-  const assets = Array.isArray(release?.assets) ? release.assets : [];
-  const hit = assets.find((asset) => asset?.name?.endsWith(suffix));
-
-  return hit?.browser_download_url ?? null;
-}
-
-async function resolveAssetUrls() {
-  const response = await fetch(RELEASES_API, {
-    headers: { Accept: "application/vnd.github+json" },
-  });
-
-  if (!response.ok) {
-    return { mac: null, win: null };
-  }
-
-  const releases = await response.json();
-
-  if (!Array.isArray(releases)) {
-    return { mac: null, win: null };
-  }
-
-  // The list arrives newest-first. macOS only trusts stable releases; the
-  // Windows preview is published as a prerelease, so any release qualifies.
-  const mac =
-    releases
-      .filter((release) => !release?.prerelease)
-      .map((release) => assetUrl(release, ".dmg"))
-      .find(Boolean) ?? null;
-  const win =
-    releases.map((release) => assetUrl(release, ".exe")).find(Boolean) ?? null;
-
-  return { mac, win };
-}
+export { RELEASES_URL, REPO_URL, WINDOWS_FALLBACK_URL };
 
 // The hero and finale CTAs carry `data-copy` on an inner span; the footer
 // link carries it on the anchor itself. closest() covers both shapes.
@@ -81,15 +49,25 @@ function retargetAnchors(root, copyKey, url) {
   }
 }
 
-export async function upgradeDownloadLinks(root) {
-  let urls;
+export async function upgradeReleaseLinks(root) {
+  let releases;
 
   try {
-    urls = await resolveAssetUrls();
+    releases = await fetchPublishedReleases();
   } catch {
     return;
   }
 
+  const urls = selectDownloadUrls(releases);
+
   retargetAnchors(root, "downloadMac", urls.mac);
   retargetAnchors(root, "downloadWin", urls.win);
+
+  const stableTag = latestStableTag(releases);
+
+  if (stableTag) {
+    for (const label of root.querySelectorAll("[data-release-version]")) {
+      label.textContent = stableTag;
+    }
+  }
 }

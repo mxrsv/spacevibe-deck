@@ -12,6 +12,8 @@ import {
   RELEASES_URL,
   WINDOWS_FALLBACK_URL,
 } from "../download-links.js";
+import { CHANGELOG_URL } from "../release-data.js";
+import packageData from "../../../../package.json";
 import {
   STAGE_ARIA_LABEL,
   mountStageStream,
@@ -82,6 +84,9 @@ export function renderDirectionA(copy, locale) {
               ${renderBrandMark(copy)}
             </a>
             <span class="a-topbar__descriptor">Native macOS / PTY field</span>
+            <a class="a-topbar__changelog" href="${CHANGELOG_URL}">
+              <span data-copy="navChangelog">${copy.navChangelog}</span>
+            </a>
             <div class="a-topbar__lang" role="group" aria-label="${copy.localeLabel}" data-active="${locale}">
               <span class="a-topbar__lang-thumb" aria-hidden="true"></span>
               <button type="button" class="a-topbar__lang-btn" data-locale="en" aria-pressed="${locale === "en"}">EN</button>
@@ -151,16 +156,23 @@ export function renderDirectionA(copy, locale) {
                   <i aria-hidden="true">↓</i>
                 </a>
 
-                <a
-                  class="a-secondary-cta"
-                  href="${REPO_URL}"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  ${renderGithubIcon()}
-                  <span data-copy="secondaryCta">${copy.secondaryCta}</span>
-                  <span aria-hidden="true">→</span>
-                </a>
+                <div class="a-project-cta">
+                  <a
+                    class="a-secondary-cta"
+                    href="${REPO_URL}"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    ${renderGithubIcon()}
+                    <span data-copy="secondaryCta">${copy.secondaryCta}</span>
+                    <span aria-hidden="true">→</span>
+                  </a>
+                  <a
+                    class="a-release-version"
+                    href="${CHANGELOG_URL}"
+                    data-release-version
+                  >v${packageData.version}</a>
+                </div>
               </div>
             </div>
 

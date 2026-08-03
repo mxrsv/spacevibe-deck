@@ -9,7 +9,7 @@ import "../styles/demo-reel.css";
 import { messages } from "./copy.js";
 import { renderDemoReel, updateDemoReelLocale } from "./demo-reel.js";
 import { renderDirectionA, updateDirectionALocale } from "./directions/a.js";
-import { upgradeDownloadLinks } from "./download-links.js";
+import { upgradeReleaseLinks } from "./download-links.js";
 import { LOCALES, readLocale, writeLocale } from "./locale-state.js";
 import { renderTour, updateTourLocale } from "./tour/index.js";
 
@@ -69,4 +69,4 @@ function handleLocaleClick(event) {
 specimenRoot.addEventListener("click", handleLocaleClick);
 render();
 // One-shot: the page renders once, locale switches swap text in place.
-void upgradeDownloadLinks(specimenRoot);
+void upgradeReleaseLinks(specimenRoot);

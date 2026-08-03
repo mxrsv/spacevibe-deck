@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   RELEASES_URL,
   WINDOWS_FALLBACK_URL,
-  upgradeDownloadLinks,
+  upgradeReleaseLinks,
 } from "./download-links.js";
 
 const DMG_URL =
@@ -15,6 +15,12 @@ const EXE_URL =
 // stable macOS release.
 const RELEASES = [
   {
+    tag_name: "v0.9.0-windows-preview",
+    name: "Windows preview",
+    body: "Windows preview notes",
+    html_url:
+      "https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0-windows-preview",
+    published_at: "2026-07-31T08:00:00Z",
     prerelease: true,
     assets: [
       {
@@ -24,6 +30,12 @@ const RELEASES = [
     ],
   },
   {
+    tag_name: "v0.9.0",
+    name: "Deck 0.9.0",
+    body: "Stable notes",
+    html_url:
+      "https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0",
+    published_at: "2026-07-27T08:00:00Z",
     prerelease: false,
     assets: [
       {
@@ -54,6 +66,8 @@ function renderFixture() {
       data-copy="downloadMac">Download for macOS</a>
     <a class="releases" href="${WINDOWS_FALLBACK_URL}" target="_blank"
       data-copy="footerReleases">Releases</a>
+    <a class="release-version" href="/landing-prototype/changelog/"
+      data-release-version>v0.8.0</a>
   `;
   return root;
 }
@@ -69,12 +83,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("upgradeDownloadLinks", () => {
+describe("upgradeReleaseLinks", () => {
   it("points macOS anchors at the .dmg and Windows at the setup .exe", async () => {
     stubFetch(RELEASES);
     const root = renderFixture();
 
-    await upgradeDownloadLinks(root);
+    await upgradeReleaseLinks(root);
 
     for (const cls of ["hero-mac", "footer-mac"]) {
       const anchor = root.querySelector(`a.${cls}`);
@@ -84,13 +98,16 @@ describe("upgradeDownloadLinks", () => {
     const win = root.querySelector("a.hero-win");
     expect(win.href).toBe(EXE_URL);
     expect(win.hasAttribute("target")).toBe(false);
+    expect(root.querySelector("[data-release-version]").textContent).toBe(
+      "v0.9.0",
+    );
   });
 
   it("leaves non-download anchors alone", async () => {
     stubFetch(RELEASES);
     const root = renderFixture();
 
-    await upgradeDownloadLinks(root);
+    await upgradeReleaseLinks(root);
 
     expect(root.querySelector("a.releases").href).toBe(WINDOWS_FALLBACK_URL);
   });
@@ -110,7 +127,7 @@ describe("upgradeDownloadLinks", () => {
     ]);
     const root = renderFixture();
 
-    await upgradeDownloadLinks(root);
+    await upgradeReleaseLinks(root);
 
     expect(root.querySelector("a.hero-mac").href).toBe(DMG_URL);
   });
@@ -119,12 +136,15 @@ describe("upgradeDownloadLinks", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     const root = renderFixture();
 
-    await upgradeDownloadLinks(root);
+    await upgradeReleaseLinks(root);
 
     expect(root.querySelector("a.hero-mac").href).toBe(RELEASES_URL);
     expect(root.querySelector("a.hero-win").href).toBe(WINDOWS_FALLBACK_URL);
     expect(root.querySelector("a.hero-mac").getAttribute("target")).toBe(
       "_blank",
+    );
+    expect(root.querySelector("[data-release-version]").textContent).toBe(
+      "v0.8.0",
     );
   });
 
@@ -135,7 +155,7 @@ describe("upgradeDownloadLinks", () => {
     );
     const root = renderFixture();
 
-    await upgradeDownloadLinks(root);
+    await upgradeReleaseLinks(root);
 
     expect(root.querySelector("a.hero-mac").href).toBe(RELEASES_URL);
     expect(root.querySelector("a.hero-win").href).toBe(WINDOWS_FALLBACK_URL);
@@ -145,7 +165,7 @@ describe("upgradeDownloadLinks", () => {
     stubFetch([RELEASES[1]]);
     const root = renderFixture();
 
-    await upgradeDownloadLinks(root);
+    await upgradeReleaseLinks(root);
 
     expect(root.querySelector("a.hero-mac").href).toBe(DMG_URL);
     expect(root.querySelector("a.hero-win").href).toBe(WINDOWS_FALLBACK_URL);

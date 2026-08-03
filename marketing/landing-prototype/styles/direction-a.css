@@ -117,7 +117,7 @@
   z-index: 4;
   display: grid;
   width: 100%;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: clamp(1.25rem, 2.4vw, 2.5rem);
   padding: 1.15rem var(--a-cell-pad);
@@ -230,6 +230,36 @@
   align-items: center;
   gap: 0.55rem;
   color: var(--a-ink);
+}
+
+.a-topbar__changelog {
+  position: relative;
+  padding-block: 0.35rem;
+  color: var(--a-ink-soft);
+  transition: color 220ms var(--a-ease-lock);
+}
+
+.a-topbar__changelog::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: currentcolor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 260ms var(--a-ease-lock);
+}
+
+.a-topbar__changelog:hover,
+.a-topbar__changelog:focus-visible {
+  color: var(--a-ink);
+}
+
+.a-topbar__changelog:hover::after,
+.a-topbar__changelog:focus-visible::after {
+  transform: scaleX(1);
 }
 
 .a-github-icon {
@@ -735,9 +765,29 @@
   margin: clamp(1.5rem, 3vh, 2.1rem) 0 0;
 }
 
-.a-secondary-cta {
+.a-project-cta {
   align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
   margin-top: 0.35rem;
+}
+
+.a-project-cta::after {
+  width: 2.15rem;
+  height: 1px;
+  background: var(--a-line-strong);
+  content: "";
+  transition:
+    background-color 240ms var(--a-ease-lock),
+    transform 240ms var(--a-ease-lock);
+}
+
+.a-project-cta:has(a:hover)::after,
+.a-project-cta:has(a:focus-visible)::after {
+  background: var(--a-accent);
+  transform: scaleX(1.24);
+  transform-origin: left;
 }
 
 /* Icon + label, kept together so the trailing slot — the arrow, or the
@@ -918,21 +968,42 @@
   letter-spacing: 0.02em;
 }
 
-.a-secondary-cta::after {
-  width: 2.15rem;
-  height: 1px;
-  background: var(--a-line-strong);
-  content: "";
-  transition:
-    background-color 240ms var(--a-ease-lock),
-    transform 240ms var(--a-ease-lock);
+.a-release-version {
+  position: relative;
+  color: var(--a-ink-faint);
+  font: 500 0.6rem/1.2 var(--a-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.035em;
+  transition: color 240ms var(--a-ease-lock);
 }
 
-.a-secondary-cta:hover::after,
-.a-secondary-cta:focus-visible::after {
-  background: var(--a-accent);
-  transform: scaleX(1.24);
+.a-release-version::after {
+  position: absolute;
+  right: 0;
+  bottom: -0.28rem;
+  left: 0;
+  height: 1px;
+  background: currentcolor;
+  content: "";
+  transform: scaleX(0);
   transform-origin: left;
+  transition: transform 240ms var(--a-ease-lock);
+}
+
+.a-release-version:hover,
+.a-release-version:focus-visible {
+  color: var(--a-ink);
+}
+
+.a-release-version:hover::after,
+.a-release-version:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.a-secondary-cta:focus-visible,
+.a-release-version:focus-visible {
+  outline: 2px solid var(--a-accent);
+  outline-offset: 4px;
 }
 
 @keyframes a-appwin-blink {
@@ -1012,8 +1083,8 @@
     padding: 0;
   }
 
-  /* Rail removed — the topbar now carries the brand on the left with the
-     language toggle on the right. */
+  /* Rail removed — the topbar keeps the brand, changelog link and language
+     toggle in one compact row. */
   .a-topbar {
     display: flex;
     align-items: center;
@@ -1111,7 +1182,7 @@
     font-size: 0.58rem;
   }
 
-  .a-secondary-cta::after {
+  .a-project-cta::after {
     display: none;
   }
 }
@@ -1127,7 +1198,11 @@
   .a-primary-cta i,
   .a-quiet-cta,
   .a-quiet-cta i,
-  .a-secondary-cta::after,
+  .a-project-cta::after,
+  .a-release-version,
+  .a-release-version::after,
+  .a-topbar__changelog,
+  .a-topbar__changelog::after,
   .a-topbar__github::after {
     transition: none;
   }

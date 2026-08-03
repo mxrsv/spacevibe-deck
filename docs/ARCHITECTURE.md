@@ -24,7 +24,8 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 | [src/chrome/](../src/chrome) `current`                                                                                        | window chrome, tabs                                          | main         | terminal    |
 | [src/open-board/](../src/open-board) `current`                                                                                | workspace board: open, recents, workspaces store             | chrome       | lib         |
 | [src/settings/](../src/settings) `current` + [src/presets/](../src/presets) `current`                                         | settings UI/stores, layout presets                           | chrome       | lib         |
-| [marketing/](../marketing) `current`                                                                                          | marketing video stage — shares app components, virtual clock | video:render | dist        |
+| [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                     | multi-page landing and live GitHub release changelog         | Releases API | dist        |
+| [marketing/video/](../marketing/video) `current`                                                                             | marketing video stage — shares app components, virtual clock | app stage    | video       |
 
 ## Main flows
 
@@ -51,6 +52,11 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
    [commands table](../src/terminal/tab-manager.ts#L946-L1024) `current`,
    [Pane clipboard](../src/terminal/pane.ts#L332-L337) `current`,
    [terminal-clipboard.ts](../src/terminal/terminal-clipboard.ts#L27-L55) `current`).
+9. The landing fetches one validated GitHub Releases list, derives stable
+   macOS and preview Windows downloads from it, shows the latest stable tag,
+   and feeds the same normalized records into the changelog page
+   ([release-data.js](../marketing/landing-prototype/src/release-data.js#fetchPublishedReleases) `current`,
+   [changelog-view.js](../marketing/landing-prototype/src/changelog-view.js#renderReleaseList) `current`).
 
 ## Standing architecture decisions
 
