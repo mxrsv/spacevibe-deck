@@ -41,7 +41,7 @@ import { TabBar } from "./tab-bar";
 import { ChromeActions } from "./chrome-actions";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 import { StatusBar } from "./status-bar";
-import { SettingsPanel } from "./settings-panel";
+import { SettingsScreen } from "./settings/settings-screen";
 import { runAttentionFocus } from "./attention-focus-coordinator";
 import { getDesktopEnvironment } from "../lib/platform";
 
@@ -112,31 +112,29 @@ export function closeSettingsPanel(focusActive: () => void): void {
  * reachable to close, or it could strand itself open forever, the exact
  * trap `b7e6021` already had to design around for the overlay scope guard.
  *
- * OPENING (the `else` branch) is blocked while a PresetEditor/
- * SavePresetDialog draft, OR the Open board, is up. Escape-stacking
- * investigation: a draft's modal-scrim sits at z-index 40, the board at
- * z-index 30, Settings' own panel at z-index 20 (styles.css) — opening
- * Settings underneath either would be invisible and unreachable, and
- * `SettingsPanel`'s own mount-focus effect (settings-panel.tsx) would steal
- * DOM focus away from whatever was on top, so a later Escape only closes
- * the (invisible) Settings panel and orphans focus behind a surface that
- * never moved. Same check `runAttentionFocus` makes for Cmd+Shift+A
- * (attention-focus-coordinator.ts:80-82) — reused here as its own condition
- * rather than a shared abstraction with that module, which is out of this
- * task's scope.
+ * OPENING (the `else` branch) is blocked only while a PresetEditor/
+ * SavePresetDialog draft is up. A draft's modal-scrim sits at z-index 40,
+ * above Settings' 35 (styles.css) — opening Settings underneath one would be
+ * invisible and unreachable, while `SettingsScreen`'s mount-focus effect
+ * (settings/settings-screen.tsx) still stole DOM focus from the draft, so a
+ * later Escape closed the invisible Settings and orphaned focus behind a
+ * surface that never moved. Same check `runAttentionFocus` makes for
+ * Cmd+Shift+A (attention-focus-coordinator.ts:80-82).
  *
- * The board check (F3, 2026-07-27 code review) was missing until now: only
- * the draft signals were checked, so Cmd+, (or the menu's "Settings…" item)
- * mounted Settings underneath the board, silently eating the board's
- * keyboard input (type-to-filter, arrows, Enter) once the mount-focus
- * effect stole DOM focus.
+ * The Open board is deliberately NOT in that list any more. F3 (2026-07-27
+ * code review) added it because Settings was then a 300px drawer at z-20,
+ * genuinely hidden beneath the z-30 board. Settings is now a full-window
+ * surface at z-35: it covers the board rather than hiding under it, so it
+ * opens from the board like from anywhere else, and closing returns to the
+ * board with its selection intact. Blocking it there left the gear button
+ * silently inert, which reads as a broken app rather than a deliberate rule.
  */
 export function toggleSettingsPanel(focusActive: () => void): void {
   if (settingsOpen.value) {
     closeSettingsPanel(focusActive);
     return;
   }
-  if (editorRequest.value !== null || saveDialogOpen.value || boardOpen.value) {
+  if (editorRequest.value !== null || saveDialogOpen.value) {
     return;
   }
   settingsOpen.value = true;
@@ -215,8 +213,25 @@ export function App() {
    * the close+focus-return flow, the same as every other overlay, while the
    * open/close decision itself stays unit-testable.
    */
+  /**
+   * Where focus belongs once Settings closes. Normally the active pane — but
+   * Settings now opens over the Open board (z-35 over z-30), and the board
+   * only focuses itself on mount, so returning focus to a pane hidden behind
+   * it would leave the visible board keyboard-dead: arrows, type-to-filter
+   * and Enter would all go nowhere. Queried from the DOM rather than threaded
+   * through a ref because the board owns its own container ref and exposing
+   * it upward would widen that component's API for one focus call.
+   */
+  const restoreFocusAfterSettings = (): void => {
+    if (boardOpen.value) {
+      document.querySelector<HTMLElement>(".open-board")?.focus();
+      return;
+    }
+    tabsRef.current?.focusActive();
+  };
+
   const closePanel = (): void => {
-    closeSettingsPanel(() => tabsRef.current?.focusActive());
+    closeSettingsPanel(restoreFocusAfterSettings);
   };
 
   /**
@@ -227,7 +242,7 @@ export function App() {
    * open/close decision.
    */
   const toggleSettings = (): void => {
-    toggleSettingsPanel(() => tabsRef.current?.focusActive());
+    toggleSettingsPanel(restoreFocusAfterSettings);
   };
 
   useEffect(() => {
@@ -535,7 +550,7 @@ export function App() {
             />
           ) : null}
           <PersistErrorBar />
-          <SettingsPanel open={settingsOpen.value} onClose={closePanel} />
+          <SettingsScreen open={settingsOpen.value} onClose={closePanel} />
         </main>
       }
       status={<StatusBar />}

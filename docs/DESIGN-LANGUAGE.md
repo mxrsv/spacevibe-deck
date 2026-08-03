@@ -47,7 +47,7 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 | `--input-bg`                                       | recessed input surfaces            |
 | `--hair` / `--hair-strong`                         | 1px structural hairlines           |
 | `--text-primary` / `--text-muted` / `--text-faint` | text hierarchy                     |
-| `--ui-font` / `--mono`                             | prose / data typefaces             |
+| `--ui-font`                                        | the one chrome typeface (DL-4.1)   |
 
 - **DL-2.1** Components never hardcode colors. Every color routes through a
   token, or comes from the live theme object (e.g. swatches previewing a
@@ -70,12 +70,20 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 
 ## 4. Typography
 
-- **DL-4.1** `--ui-font` for prose: keys, descriptions.
-- **DL-4.2** `--mono` for **data**: every configurable value, group labels,
-  paths, keyboard hints. Values always get `font-variant-numeric:
-tabular-nums`.
-- **DL-4.3** **No uppercase anywhere.** No `text-transform`. Letter-spacing on
-  mono labels stays ≤ 0.06em.
+- **DL-4.1** **The monospace face belongs to the terminal, and nowhere else.**
+  Every pixel of chrome — labels, descriptions, values, paths, hex colours,
+  theme ids, keyboard-shortcut chips, headings — uses `--ui-font`. Chrome is
+  native UI and should read as native UI; mono there reads as terminal output
+  that leaked out of its pane. The terminal's own font is not a chrome token at
+  all: it comes from the user's `fontFamily` setting through
+  [`toFontStack`](../src/terminal/pane.ts) `current`, so changing chrome
+  typography can never change the terminal, and vice versa.
+- **DL-4.2** Values still need `font-variant-numeric: tabular-nums`. Under mono
+  this was nearly inert; under a proportional face it is what stops `13px` and
+  `10k lines` from jittering as they change.
+- **DL-4.3** **No uppercase anywhere.** No `text-transform`. Letter-spacing
+  stays ≤ 0.06em, and tracking tuned against a monospace advance width has to
+  be re-measured when a rule moves to `--ui-font`.
 - **DL-4.4** Sizes (px): group label 10.5 · key 12.5 · description 10.5 ·
   value 11.5 · panel title 12. Keys sentence-case, descriptions and values
   lowercase.
@@ -87,7 +95,7 @@ exactly **one interactive value** on the right. No other widget genres — no
 segmented controls, checkbox lists, chip grids, sliders, or boxed steppers.
 
 ```
-cfg-group                     ← group label (mono, faint, lowercase)
+cfg-group                     ← group label (faint, lowercase)
 cfg-row
 ├─ cfg-row__key
 │  ├─ cfg-row__label          ← ui-font 12.5px primary
@@ -97,7 +105,7 @@ cfg-row
 ```
 
 - **DL-5.1** Row hover: 2px left accent bar + 4% `--fg` wash. Nothing else.
-- **DL-5.2** The pill (`.cfg-btn`): mono value inside a 1px `--hair` border,
+- **DL-5.2** The pill (`.cfg-btn`): the value inside a 1px `--hair` border,
   radius 6px. Hover → `--hair-strong` border. Focus-visible → 2px `--accent`
   outline (app-wide convention). Disabled → `--text-faint`.
 - **DL-5.3** Affordance glyphs (`↹` cycle, `▾` menu, `…` picker, `↺` reset)
@@ -147,7 +155,7 @@ custom pick shows the `↺` clear button (DL-6.1); any failure shows inline via
 ## 8. Copy
 
 - English UI. Keys sentence-case (`Show pane bar`); descriptions terse and
-  lowercase (`reopen tabs on launch`); values lowercase mono (`on`, `off`,
+  lowercase (`reopen tabs on launch`); values lowercase (`on`, `off`,
   theme ids as written in code).
 - A control says what happens; no vague labels.
 
@@ -161,9 +169,10 @@ Before shipping any chrome UI change:
    position" and had to be rewritten as a `cycle`.)
 2. Every color maps to a role in §3; no hardcoded hex (DL-2.1).
 3. Any animation fits the budget in §7 and the constraints in §1. Reduced-motion
-   is handled **by scope** (`.panel *`), never by an allowlist of class names —
-   an allowlist silently misses the next class.
-4. No uppercase, values in `--mono` (§4).
+   is handled **by scope** (`.settings-screen *`), never by an allowlist of
+   class names — an allowlist silently misses the next class.
+4. No uppercase (§4). No monospace anywhere in chrome — if a rule reaches for
+   it, the answer is `--ui-font` (DL-4.1).
 5. Text fields go through `CommitInput` (DL-6.3). Never bind a store value
    straight into `<input value=…>` inside the panel.
 6. Eye-review on a rendered screenshot before calling it done — a green build
@@ -180,6 +189,28 @@ is reworked — **do not "fix" them opportunistically inside an unrelated change
 | `.tab-popover__label`                                                              | DL-4.3 (uppercase)  | rework with the tab popover           |
 | `.search-bar`                                                                      | DL-1.3 (box-shadow) | real blurred shadow — drop            |
 | `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —                   | inset hairlines, allowed under DL-1.3 |
+
+## 11. Settings shell
+
+The settings surface is a full-window screen, not a drawer: a fixed category
+rail beside a section area. §5's config row is still the only control inside a
+section — these rules govern the frame around it.
+
+- **DL-11.1** The settings shell is a two-column surface: a fixed nav rail, and
+  a section area that owns **all** scrolling. The rail never scrolls with the
+  content beside it.
+- **DL-11.2** The active category is marked by a 2px left accent bar plus a 4%
+  `--fg` wash — the same signifier as config row hover (DL-5.1), so "active"
+  reads the same everywhere in the app. No shadow, no fill (DL-1.3).
+- **DL-11.3** Category icons are hand-drawn inline SVG: 16px, single stroke,
+  `currentColor`. **No icon library** — DL-1.1 forbids new runtime dependencies
+  for chrome UI, and this rule exists so that constraint is not re-litigated
+  once per icon.
+- **DL-11.4** Category labels are lowercase `--ui-font` (DL-4.1, like all
+  chrome). The rail item _is_ the group label it replaced, so a section does
+  not repeat its own name as a heading inside itself.
+- **DL-11.5** Destructive actions never sit among navigable categories. They
+  are pinned to the rail's foot, below a hairline, marked `--red` (DL-3.2).
 
 ## Chưa khớp thực tế
 

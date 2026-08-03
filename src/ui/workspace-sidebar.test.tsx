@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // WorkspaceSidebar pulls in Tauri-backed stores (workspace logo persistence,
 // favicon scanning, the native file dialog) through its imports; stub them so
-// the tree mounts under jsdom, mirroring settings-panel.test.tsx.
+// the tree mounts under jsdom, mirroring the settings section tests.
 vi.mock("@tauri-apps/plugin-store", () => ({
   Store: {
     load: vi.fn(async () => ({

@@ -10,8 +10,8 @@ export type OverlayTier = "pane" | "settings" | "board" | "modal";
 /**
  * Logical stacking rank behind `overlayBlocksAction` (tab-manager.ts): an
  * action is blocked while ANY currently open overlay's rank is >= its own
- * target tier's rank (see `ActionDefinition.scope` below). Mirrors the real
- * z-index in src/styles.css — `.panel` (Settings) 20, `.open-board` 30,
+ * target tier's rank (see `ActionDefinition.scope` below). Broadly mirrors the
+ * real z-index in src/styles.css — `.open-board` 30,
  * `.modal-scrim` (PresetEditor + SavePresetDialog, deliberately the SAME
  * rank — see below) 40; `"pane"` has no z-index of its own, it is the base
  * layer the terminal grid sits on (rank 0).
@@ -24,10 +24,18 @@ export type OverlayTier = "pane" | "settings" | "board" | "modal";
  * `"settings"` has no action tiered at it today (see `toggle-settings`'s own
  * `scope` comment for why it stays `"always"` instead). It still needs to
  * exist in the ranking: it is what lets `"board"`/`"modal"`-tiered actions
- * stay UNBLOCKED while only Settings is open — Settings holds no draft, and
- * being z-20 it never visually hides a z-30+ surface, so nothing is lost by
- * letting board/modal-tier actions run over it. Remove this rank and that
- * relationship silently breaks for any future settings-tiered action.
+ * stay UNBLOCKED while only Settings is open — `new-tab` and `save-preset`
+ * both depend on it, and both have tests locking that in. Remove this rank
+ * and that relationship silently breaks for any future settings-tiered action.
+ *
+ * NOTE — this rank (20) deliberately no longer matches Settings' CSS z-index
+ * (35, raised when Settings became a full-window surface so it covers the
+ * board instead of hiding under it). The two numbers answer different
+ * questions: z-index decides what is drawn on top, this rank decides what may
+ * still be invoked. Raising the rank to match would block `new-tab` and
+ * `save-preset` while Settings is open — `save-preset`'s dialog is z-40 and
+ * would render ABOVE Settings perfectly well, so blocking it buys nothing and
+ * costs a silently dead shortcut.
  */
 export const TIER_RANK: Record<OverlayTier, number> = {
   pane: 0,
@@ -167,7 +175,7 @@ export const ACTION_REGISTRY = [
     // Tiered "always" (Task 2, docs/plans/2026-07-27-keyboard-parity.md),
     // deliberately NOT a new OverlayTier: TabPopover renders at z-index 100
     // (src/styles.css) — above `.modal-scrim` (40), `.open-board` (30), and
-    // `.panel` (20), i.e. above every overlay this registry models — and
+    // `.settings-screen` (35), i.e. above every overlay this registry models — and
     // TabBar/WorkspaceSidebar sit outside `.stage`, so they stay visible and
     // clickable no matter which overlay is open (the same reason
     // select-tab-N/next-tab/prev-tab are click-parity-exempt via
@@ -186,7 +194,7 @@ export const ACTION_REGISTRY = [
     // `<main class="stage">` where those modals render — so an Escape
     // bubbling from TabPopover's input can never reach their handler; the
     // draft cannot be discarded this way. Settings' Escape listener IS
-    // global (`window`, settings-panel.tsx) and would also fire if Settings
+    // global (`window`, settings/settings-screen.tsx) and would also fire if Settings
     // happened to be open at the same time, but `toggleSettingsPanel`
     // already guarantees Settings can only be open when both the board AND
     // a modal draft are closed — so that cascade can only ever call

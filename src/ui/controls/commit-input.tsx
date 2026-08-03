@@ -48,7 +48,7 @@ export function CommitInput({
   return (
     <input
       type="text"
-      class="text-input text-input--mono"
+      class="text-input text-input--small"
       placeholder={placeholder}
       aria-label={ariaLabel}
       value={draft}

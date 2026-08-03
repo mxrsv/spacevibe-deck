@@ -37,7 +37,11 @@ Consequences worth knowing:
   [Windows config](../src-tauri/tauri.windows.conf.json) `current`).
 - Surfaces: layout presets and the preset editor, pane swap, multi-window
   move/join, the Open board (workspace ∥ preset), the post-materialize agent
-  picker, the file sidebar with preview and diff.
+  picker, the file sidebar with preview and diff, and a full-window Settings
+  screen with a category rail
+  ([`SettingsScreen`](../src/ui/settings/settings-screen.tsx) `current`,
+  [category registry](../src/ui/settings/settings-categories.ts) `current`) —
+  a new category is one registry entry plus one file under `sections/`.
 - Session persists chrome only, never CWD; presets carry optional per-pane CWDs
   separately.
 - Out of scope: embedding agent UI, SSH, chasing iTerm parity, editing from the

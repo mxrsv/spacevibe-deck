@@ -88,10 +88,10 @@ describe("DesktopChrome platform structure", () => {
 });
 
 // Escape-stacking investigation (team lead thread): Settings' own mount-focus
-// effect (settings-panel.tsx) steals DOM focus onto its close button the
+// effect (settings/settings-screen.tsx) steals DOM focus onto its close button the
 // moment it opens, even over an already-open PresetEditor/SavePresetDialog —
 // so a later Escape closes only Settings and orphans focus behind a modal
-// that is still fully visible (.modal-scrim z-index 40 > .panel z-index 20,
+// that is still fully visible (.modal-scrim z-index 40 > .settings-screen z-index 20,
 // styles.css). Fix: block toggle-settings' OPEN branch while a draft is up;
 // CLOSE stays unconditional so Settings can never strand itself open (the
 // exact trap b7e6021 already had to avoid for the overlay scope guard).
@@ -135,19 +135,20 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
     expect(settingsOpen.value).toBe(false);
   });
 
-  // F3 (2026-07-27 code review): the open branch only ever checked
-  // editorRequest/saveDialogOpen, missing boardOpen — Cmd+, (or the menu's
-  // "Settings…" item) mounted Settings underneath the Open board (z-30 >
-  // Settings' z-20). SettingsPanel's own mount-focus effect then stole DOM
-  // focus away from the board, so arrow keys / type-to-filter / Enter all
-  // stopped reaching it while the invisible Settings panel silently ate
-  // them instead.
-  it("does NOT open Settings while the Open board is up (F3)", () => {
+  // F3 (2026-07-27 code review) originally blocked this: Settings was a 300px
+  // drawer at z-20, so opening it under the z-30 board made it invisible while
+  // its mount-focus effect still stole DOM focus — arrows / type-to-filter /
+  // Enter stopped reaching the board. Settings is now a full-window surface at
+  // z-35 that COVERS the board, so the premise is gone and the block with it:
+  // a global surface that silently refuses to open reads as a broken app.
+  // Drafts (modal-scrim, z-40) still outrank Settings and still block it —
+  // covered by the two cases above.
+  it("DOES open Settings over the Open board — it now covers the board (z-35 > z-30) instead of hiding under it", () => {
     boardOpen.value = true;
 
     toggleSettingsPanel(focusActive);
 
-    expect(settingsOpen.value).toBe(false);
+    expect(settingsOpen.value).toBe(true);
   });
 
   it("still CLOSES Settings when it is already open, even with a PresetEditor draft also up (the trap b7e6021 already had to avoid)", () => {
@@ -160,7 +161,7 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
     expect(focusActive).toHaveBeenCalledTimes(1);
   });
 
-  it("still CLOSES Settings when it is already open, even with the Open board also up — same invariant, now covering F3's new boardOpen check", () => {
+  it("still CLOSES Settings when it is already open, even with the Open board also up", () => {
     settingsOpen.value = true;
     boardOpen.value = true;
 

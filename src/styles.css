@@ -25,10 +25,13 @@
   --text-muted: color-mix(in srgb, var(--fg) 52%, var(--bg));
   --text-faint: color-mix(in srgb, var(--fg) 34%, var(--bg));
 
+  /* The only font token in chrome. There is deliberately no --mono companion:
+     the monospace face belongs to the terminal (DL-4.1), and the terminal
+     takes its font from the user's setting via toFontStack() in
+     terminal/pane.ts, never from a CSS token. A --mono token here would only
+     be an invitation to leak terminal typography back into native UI. */
   --ui-font:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-  --mono:
-    "SF Mono", "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
 
   --titlebar-h: 26px;
   --tabbar-h: 33px;
@@ -175,7 +178,7 @@ body,
 .wsitem__logo-letter {
   display: grid;
   place-items: center;
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
@@ -271,7 +274,7 @@ body,
    prefixes a LEFT-TO-RIGHT MARK so the leading "~" (a neutral character)
    does not get flipped to the far end of the line. */
 .wsitem__path {
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 10.5px;
   color: var(--text-faint);
   white-space: nowrap;
@@ -800,7 +803,7 @@ button.attn-mark:hover {
   border: 1px solid var(--hair-strong);
   border-radius: 999px;
   background: var(--chrome-2);
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 11px;
   color: var(--text-muted);
   cursor: grab;
@@ -822,7 +825,9 @@ button.attn-mark:hover {
 
 .pane__anchor-grip {
   color: var(--text-faint);
-  letter-spacing: -2px;
+  /* Tightens the two "⋮⋮" glyphs. Retuned when this subtree left mono: the
+     old -2px was measured against a monospace advance width. */
+  letter-spacing: -1px;
   flex-shrink: 0;
 }
 
@@ -898,7 +903,7 @@ button.attn-mark:hover {
 
 .pane__cwd {
   color: var(--text-muted);
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -906,7 +911,7 @@ button.attn-mark:hover {
 
 .pane__badge {
   margin-left: auto;
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 10px;
   padding: 2px 7px;
   border-radius: 5px;
@@ -979,7 +984,7 @@ button.attn-mark:hover {
   align-items: center;
   gap: 10px;
   padding: 0 12px;
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 11px;
   color: var(--text-muted);
   background: var(--chrome-1);
@@ -1019,7 +1024,6 @@ button.attn-mark:hover {
 }
 
 .status__kbd {
-  font-family: var(--mono);
   font-size: 10px;
   padding: 1px 5px;
   border-radius: 4px;
@@ -1037,110 +1041,14 @@ button.attn-mark:hover {
 
 /* ── Settings panel: slide-over anchored to the stage's right edge ── */
 
-.panel {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  bottom: 8px;
-  width: 300px;
-  background: var(--chrome-2);
-  border: 1px solid var(--hair-strong);
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  z-index: 20;
-  transform: translateX(calc(100% + 20px));
-  opacity: 0;
-  pointer-events: none;
-  /* visibility (not just opacity) — it takes the closed panel's buttons and
-     native inputs out of the tab order, matching aria-hidden. Delayed so the
-     slide-out still plays. */
-  visibility: hidden;
-  transition:
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.28s ease,
-    visibility 0s linear 0.28s;
-}
-
-.panel.is-open {
-  transform: translateX(0);
-  opacity: 1;
-  pointer-events: auto;
-  visibility: visible;
-  transition:
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.28s ease,
-    visibility 0s;
-}
-
-.panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--hair);
-}
-
-.panel__path {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--text-primary);
-}
-
-.panel__path b {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.panel__esc {
-  border: 1px solid var(--hair);
-  background: transparent;
-  color: var(--text-faint);
-  font-family: var(--mono);
-  font-size: 10.5px;
-  padding: 2px 7px;
-  border-radius: 5px;
-  cursor: pointer;
-  transition:
-    color 0.13s ease,
-    border-color 0.13s ease;
-}
-
-.panel__esc:hover {
-  color: var(--text-primary);
-  border-color: var(--hair-strong);
-}
-
-.panel__body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-bottom: 12px;
-}
-
-/* Settings panel scrollbar: thin, transparent, follows the theme */
-.panel__body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.panel__body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.panel__body::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--fg) 25%, transparent);
-  border-radius: 3px;
-}
-
 /* ── Config rows: the one control (docs/DESIGN-LANGUAGE.md §5–6) ── */
 
 .cfg-group {
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 10.5px;
-  letter-spacing: 0.05em;
+  /* Was 0.05em to open up lowercase mono; a proportional face is already
+     open at this size, so the tracking drops rather than reads loose. */
+  letter-spacing: 0.02em;
   color: var(--text-faint);
   padding: 16px 16px 6px;
 }
@@ -1196,7 +1104,7 @@ button.attn-mark:hover {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
@@ -1288,7 +1196,6 @@ button.attn-mark:hover {
 .cfg-step__btn {
   border: none;
   background: transparent;
-  font-family: var(--mono);
   font-size: 12px;
   color: var(--accent);
   padding: 3px 8px;
@@ -1352,16 +1259,15 @@ button.attn-mark:hover {
   border-color: var(--accent);
 }
 
-.text-input--mono {
-  font-family: var(--mono);
+.text-input--small {
   font-size: 11.5px;
 }
 
 /* Reduced motion: kill every chrome transition by scope, not by an allowlist —
    an allowlist silently misses each new class (DL-1.5). */
 @media (prefers-reduced-motion: reduce) {
-  .panel,
-  .panel *,
+  .settings-screen,
+  .settings-screen *,
   .tabbar *,
   .wsbar *,
   .status * {
@@ -1460,7 +1366,7 @@ button.attn-mark:hover {
   pointer-events: none;
   max-width: 240px;
   padding: 6px 11px;
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 11px;
   color: var(--text-muted);
   background: var(--chrome-2);
@@ -1651,7 +1557,7 @@ button.attn-mark:hover {
 }
 .row__path {
   min-width: 0;
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 10px;
   color: var(--text-faint);
   white-space: nowrap;
@@ -1840,7 +1746,7 @@ button.attn-mark:hover {
 }
 .wshead__path {
   margin-top: 4px;
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 10.5px;
   color: var(--text-muted);
   white-space: nowrap;
@@ -2076,7 +1982,7 @@ button.attn-mark:hover {
   height: 15px;
   display: grid;
   place-items: center;
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 11px;
   color: var(--text-faint);
 }
@@ -2331,7 +2237,7 @@ button.attn-mark:hover {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 .mock-pane__cwd {
-  font-family: var(--mono);
+  font-family: var(--ui-font);
   font-size: 10px;
   color: var(--text-muted);
   white-space: nowrap;
@@ -2487,4 +2393,199 @@ button.attn-mark:hover {
 }
 .persist-error-bar button:hover {
   border-color: var(--accent);
+}
+
+/* ── Settings rail: category tabs + pinned reset foot (settings-nav.tsx) ── */
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--hair);
+}
+
+.settings-nav__list {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  overflow-y: auto;
+}
+
+.settings-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border: none;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--text-faint);
+  /* Navigation, not data — prose font (DL-4.1 / DL-11.4). Mono here reads as
+     a terminal value and fights the native chrome around it. */
+  font-family: var(--ui-font);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.13s ease,
+    border-left-color 0.13s ease,
+    color 0.13s ease;
+}
+
+/* Hover/active share the same 2px accent bar + 4% --fg wash `.cfg-row:hover`
+   uses (DL-11.2) — no shadow, no fill (DL-1.3). */
+.settings-nav__item:hover,
+.settings-nav__item.is-active {
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  border-left-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.settings-nav__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.settings-nav__foot {
+  flex-shrink: 0;
+  border-top: 1px solid var(--hair);
+  padding-top: 6px;
+}
+
+/* The rail is far narrower than the section area, so the foot's config row
+   stacks instead of splitting left/right — side by side at this width the
+   label wraps to three ragged lines and collides with its own button. */
+.settings-nav__foot .cfg-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+}
+
+.settings-nav__foot .cfg-row__value {
+  justify-content: flex-start;
+}
+
+/* ── Settings screen: full-window shell (settings-screen.tsx, DL-11.1) ── */
+
+.settings-screen {
+  position: absolute;
+  inset: 8px;
+  background: var(--chrome-2);
+  border: 1px solid var(--hair-strong);
+  border-radius: 12px;
+  /* Clip children to the rounded corners. Without this the rail's square
+     top-left corner and its border-right run straight past the radius and
+     read as a second, broken border tucked inside the real one. */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* Above the Open board (30), below a modal draft (40). A full-window
+     Settings surface has to be reachable from anywhere — when it was a 300px
+     drawer at 20 it hid under the board, which is why opening it there used
+     to be blocked outright (app.tsx). */
+  z-index: 35;
+  /* A full-window surface fades and settles; it does not slide in from an
+     edge it no longer has (DL-1.2 — transform/opacity only, under 300ms). */
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  /* visibility (not just opacity) — it takes the closed screen's buttons and
+     native inputs out of the tab order, matching aria-hidden. Delayed so the
+     fade-out still plays. */
+  visibility: hidden;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+
+.settings-screen.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  visibility: visible;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    visibility 0s;
+}
+
+.settings-screen__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--hair);
+}
+
+.settings-screen__path {
+  margin: 0;
+  font-family: var(--ui-font);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.settings-screen__path b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.settings-screen__esc {
+  border: 1px solid var(--hair);
+  background: transparent;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition:
+    color 0.13s ease,
+    border-color 0.13s ease;
+}
+
+.settings-screen__esc:hover {
+  color: var(--text-primary);
+  border-color: var(--hair-strong);
+}
+
+/* Two columns: the rail is fixed, the section area owns all scrolling
+   (DL-11.1). min-height:0 on both so the grid can actually shrink. */
+.settings-screen__grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.settings-screen__section {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 0 12px;
+}
+
+/* A config row is a key on the left and its value on the right (DL-5). At
+   drawer width that reads as one object; stretched across a full window the
+   value drifts a screen away from the key it belongs to, so the rows keep a
+   readable measure instead of filling the pane. */
+.settings-screen__section .cfg-row,
+.settings-screen__section .cfg-group {
+  max-width: 620px;
+}
+
+/* Section scrollbar: thin, transparent, follows the theme — same treatment
+   the drawer's body used. */
+.settings-screen__section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-screen__section::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-screen__section::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--fg) 25%, transparent);
+  border-radius: 3px;
 }
