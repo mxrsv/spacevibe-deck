@@ -38,7 +38,10 @@ pub(crate) fn is_probe_safe(name: &str) -> bool {
 /// already present. Built-ins are unconditional so a frontend bug can never
 /// collapse the picker to Shell only.
 pub(crate) fn probe_names(requested: Vec<String>) -> Vec<String> {
-    let mut names: Vec<String> = BUILTIN_AGENTS.iter().map(|name| (*name).to_string()).collect();
+    let mut names: Vec<String> = BUILTIN_AGENTS
+        .iter()
+        .map(|name| (*name).to_string())
+        .collect();
     for name in requested {
         if is_probe_safe(&name) && !names.iter().any(|existing| *existing == name) {
             names.push(name);
@@ -164,7 +167,10 @@ mod tests {
     use super::*;
 
     fn builtins() -> Vec<String> {
-        BUILTIN_AGENTS.iter().map(|name| (*name).to_string()).collect()
+        BUILTIN_AGENTS
+            .iter()
+            .map(|name| (*name).to_string())
+            .collect()
     }
 
     #[test]
@@ -206,7 +212,13 @@ mod tests {
 
     #[test]
     fn probe_safety_accepts_real_binary_names_and_paths() {
-        for name in ["aider", "my-agent_1", "~/bin/agent.sh", "/opt/bin/claude", "g++"] {
+        for name in [
+            "aider",
+            "my-agent_1",
+            "~/bin/agent.sh",
+            "/opt/bin/claude",
+            "g++",
+        ] {
             assert!(is_probe_safe(name), "{name} is a legitimate binary name");
         }
         assert!(is_probe_safe(&"a".repeat(PROBE_NAME_MAX)));
