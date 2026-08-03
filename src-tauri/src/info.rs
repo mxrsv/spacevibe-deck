@@ -24,6 +24,7 @@ pub enum PaneAgent {
     Claude,
     Codex,
     Gemini,
+    OpenCode,
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -46,6 +47,7 @@ fn classify_process(process: Option<&str>, complete: bool) -> (PaneProcessKind, 
         "claude" => Some(PaneAgent::Claude),
         "codex" => Some(PaneAgent::Codex),
         "gemini" => Some(PaneAgent::Gemini),
+        "opencode" => Some(PaneAgent::OpenCode),
         _ => None,
     };
     if agent.is_some() {
@@ -148,6 +150,7 @@ fn map_windows_results(
                 WindowsAgent::Claude => PaneAgent::Claude,
                 WindowsAgent::Codex => PaneAgent::Codex,
                 WindowsAgent::Gemini => PaneAgent::Gemini,
+                WindowsAgent::OpenCode => PaneAgent::OpenCode,
             });
             PtyInfo {
                 id: snapshot.id,
@@ -224,6 +227,14 @@ mod tests {
         assert_eq!(
             classify_process(Some("claude"), true),
             (PaneProcessKind::Agent, Some(PaneAgent::Claude))
+        );
+    }
+
+    #[test]
+    fn classifies_opencode_from_a_macos_style_process_path() {
+        assert_eq!(
+            classify_process(Some("/opt/homebrew/bin/opencode"), true),
+            (PaneProcessKind::Agent, Some(PaneAgent::OpenCode))
         );
     }
 
