@@ -173,6 +173,23 @@ export function renderDirectionA(copy, locale) {
                     data-release-version
                   >v${packageData.version}</a>
                 </div>
+
+                <aside
+                  class="a-download-proof"
+                  data-download-proof
+                  data-download-state="loading"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  <strong data-download-count>—</strong>
+                  <span class="a-download-proof__unit" data-copy="downloadCountUnit">${copy.downloadCountUnit}</span>
+                  <span class="a-download-proof__separator" aria-hidden="true">·</span>
+                  <span class="a-download-proof__status">
+                    <span data-download-loading data-copy="downloadCountLoading">${copy.downloadCountLoading}</span>
+                    <span data-download-ready data-copy="downloadCountReady" hidden>${copy.downloadCountReady}</span>
+                    <span data-download-unavailable data-copy="downloadCountUnavailable" hidden>${copy.downloadCountUnavailable}</span>
+                  </span>
+                </aside>
               </div>
             </div>
 

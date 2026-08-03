@@ -790,6 +790,57 @@
   transform-origin: left;
 }
 
+/* One quiet proof line below the project row. The app window remains the hero;
+   this is supporting evidence, not a second focal object. */
+.a-download-proof {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--a-line);
+  color: var(--a-ink-faint);
+  font-family: var(--a-font-mono);
+  white-space: nowrap;
+}
+
+.a-download-proof strong {
+  color: var(--a-ink-soft);
+  font: 560 clamp(1.85rem, 2.6vw, 2.35rem) / 0.85 var(--a-font-display);
+  font-feature-settings: "tnum" 1, "zero" 1;
+  letter-spacing: -0.055em;
+}
+
+.a-download-proof__unit {
+  color: var(--a-ink-soft);
+  font-size: 0.52rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.a-download-proof__separator,
+.a-download-proof__status {
+  font-size: 0.45rem;
+  font-weight: 500;
+  letter-spacing: 0.045em;
+}
+
+.a-download-proof__status {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.a-download-proof__status [hidden] {
+  display: none;
+}
+
+.a-download-proof[data-download-state="unavailable"] {
+  opacity: 0.48;
+}
+
 /* Icon + label, kept together so the trailing slot — the arrow, or the
    coming-soon tag — stays pinned to the button's right edge. */
 .a-cta-lead {
@@ -1185,6 +1236,7 @@
   .a-project-cta::after {
     display: none;
   }
+
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1206,4 +1258,5 @@
   .a-topbar__github::after {
     transition: none;
   }
+
 }

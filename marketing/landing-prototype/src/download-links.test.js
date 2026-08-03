@@ -25,6 +25,7 @@ const RELEASES = [
     assets: [
       {
         name: "SpaceVibe.Deck_0.9.0_x64-setup.exe",
+        download_count: 12,
         browser_download_url: EXE_URL,
       },
     ],
@@ -40,10 +41,12 @@ const RELEASES = [
     assets: [
       {
         name: "SpaceVibe.Deck_universal.app.tar.gz",
+        download_count: 500,
         browser_download_url: "x",
       },
       {
         name: "SpaceVibe.Deck_0.9.0_universal.dmg",
+        download_count: 5,
         browser_download_url: DMG_URL,
       },
     ],
@@ -68,6 +71,12 @@ function renderFixture() {
       data-copy="footerReleases">Releases</a>
     <a class="release-version" href="/landing-prototype/changelog/"
       data-release-version>v0.8.0</a>
+    <aside data-download-proof data-download-state="loading">
+      <strong data-download-count>—</strong>
+      <span data-download-loading>Checking GitHub Releases</span>
+      <span data-download-ready hidden>GitHub Releases</span>
+      <span data-download-unavailable hidden>Count unavailable</span>
+    </aside>
   `;
   return root;
 }
@@ -101,6 +110,12 @@ describe("upgradeReleaseLinks", () => {
     expect(root.querySelector("[data-release-version]").textContent).toBe(
       "v0.9.0",
     );
+    expect(root.querySelector("[data-download-proof]").dataset.downloadState).toBe(
+      "ready",
+    );
+    expect(root.querySelector("[data-download-count]").textContent).toBe("17");
+    expect(root.querySelector("[data-download-loading]").hidden).toBe(true);
+    expect(root.querySelector("[data-download-ready]").hidden).toBe(false);
   });
 
   it("leaves non-download anchors alone", async () => {
@@ -146,6 +161,12 @@ describe("upgradeReleaseLinks", () => {
     expect(root.querySelector("[data-release-version]").textContent).toBe(
       "v0.8.0",
     );
+    expect(root.querySelector("[data-download-proof]").dataset.downloadState).toBe(
+      "unavailable",
+    );
+    expect(root.querySelector("[data-download-count]").textContent).toBe("—");
+    expect(root.querySelector("[data-download-loading]").hidden).toBe(true);
+    expect(root.querySelector("[data-download-unavailable]").hidden).toBe(false);
   });
 
   it("keeps the page hrefs on a non-OK response", async () => {

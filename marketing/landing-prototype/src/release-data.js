@@ -4,8 +4,9 @@ export const WINDOWS_FALLBACK_URL = `${REPO_URL}/releases`;
 export const CHANGELOG_URL = "/landing-prototype/changelog/";
 
 const RELEASES_API =
-  "https://api.github.com/repos/mxrsv/spacevibe-deck/releases?per_page=10";
+  "https://api.github.com/repos/mxrsv/spacevibe-deck/releases?per_page=100";
 const RELEASE_PATH = "/mxrsv/spacevibe-deck/releases/";
+const INSTALLER_SUFFIXES = [".dmg", ".exe"];
 
 function trustedGithubUrl(value, pathPrefix) {
   if (typeof value !== "string") {
@@ -34,7 +35,20 @@ function normalizeAsset(asset) {
     `${RELEASE_PATH}download/`,
   );
 
-  return url ? { name: asset.name, browser_download_url: url } : null;
+  if (!url) {
+    return null;
+  }
+
+  const downloadCount = Number.isSafeInteger(asset.download_count) &&
+    asset.download_count >= 0
+    ? asset.download_count
+    : 0;
+
+  return {
+    name: asset.name,
+    browser_download_url: url,
+    downloadCount,
+  };
 }
 
 function normalizeDate(value) {
@@ -123,4 +137,14 @@ export function selectDownloadUrls(releases) {
     releases.map((release) => assetUrl(release, ".exe")).find(Boolean) ?? null;
 
   return { mac, win };
+}
+
+export function totalInstallerDownloads(releases) {
+  return releases
+    .flatMap((release) => release.assets)
+    .filter((asset) => {
+      const name = asset.name.toLowerCase();
+      return INSTALLER_SUFFIXES.some((suffix) => name.endsWith(suffix));
+    })
+    .reduce((total, asset) => total + asset.downloadCount, 0);
 }

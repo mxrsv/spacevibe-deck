@@ -4,6 +4,7 @@ import {
   latestStableTag,
   normalizeReleases,
   selectDownloadUrls,
+  totalInstallerDownloads,
 } from "./release-data.js";
 
 const RELEASES = [
@@ -18,6 +19,7 @@ const RELEASES = [
     assets: [
       {
         name: "SpaceVibe.Deck_0.10.0_x64-setup.exe",
+        download_count: 12,
         browser_download_url:
           "https://github.com/mxrsv/spacevibe-deck/releases/download/v0.10.0-windows-preview/SpaceVibe.Deck_0.10.0_x64-setup.exe",
       },
@@ -34,6 +36,7 @@ const RELEASES = [
     assets: [
       {
         name: "SpaceVibe.Deck_0.9.0_universal.dmg",
+        download_count: 5,
         browser_download_url:
           "https://github.com/mxrsv/spacevibe-deck/releases/download/v0.9.0/SpaceVibe.Deck_0.9.0_universal.dmg",
       },
@@ -76,7 +79,13 @@ describe("normalizeReleases", () => {
     ]);
 
     expect(normalized).toHaveLength(1);
-    expect(normalized[0].assets).toEqual(RELEASES[1].assets);
+    expect(normalized[0].assets).toEqual([
+      {
+        name: RELEASES[1].assets[0].name,
+        browser_download_url: RELEASES[1].assets[0].browser_download_url,
+        downloadCount: 5,
+      },
+    ]);
   });
 });
 
@@ -89,6 +98,32 @@ describe("release selection", () => {
       mac: RELEASES[1].assets[0].browser_download_url,
       win: RELEASES[0].assets[0].browser_download_url,
     });
+    expect(totalInstallerDownloads(releases)).toBe(17);
+  });
+
+  it("counts only validated macOS and Windows installer downloads", () => {
+    const releases = normalizeReleases([
+      {
+        ...RELEASES[1],
+        assets: [
+          ...RELEASES[1].assets,
+          {
+            name: "SpaceVibe.Deck.app.tar.gz",
+            download_count: 500,
+            browser_download_url:
+              "https://github.com/mxrsv/spacevibe-deck/releases/download/v0.9.0/SpaceVibe.Deck.app.tar.gz",
+          },
+          {
+            name: "invalid.exe",
+            download_count: -50,
+            browser_download_url:
+              "https://github.com/mxrsv/spacevibe-deck/releases/download/v0.9.0/invalid.exe",
+          },
+        ],
+      },
+    ]);
+
+    expect(totalInstallerDownloads(releases)).toBe(5);
   });
 });
 

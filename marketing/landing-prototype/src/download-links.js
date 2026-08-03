@@ -23,6 +23,7 @@ import {
   RELEASES_URL,
   REPO_URL,
   selectDownloadUrls,
+  totalInstallerDownloads,
   WINDOWS_FALLBACK_URL,
 } from "./release-data.js";
 
@@ -49,12 +50,37 @@ function retargetAnchors(root, copyKey, url) {
   }
 }
 
+function setDownloadProofState(root, state, count = null) {
+  for (const proof of root.querySelectorAll("[data-download-proof]")) {
+    const countLabel = proof.querySelector("[data-download-count]");
+
+    proof.dataset.downloadState = state;
+
+    if (countLabel && count !== null) {
+      countLabel.textContent = new Intl.NumberFormat("en-US").format(count);
+    }
+
+    for (const label of proof.querySelectorAll("[data-download-loading]")) {
+      label.hidden = state !== "loading";
+    }
+
+    for (const label of proof.querySelectorAll("[data-download-ready]")) {
+      label.hidden = state !== "ready";
+    }
+
+    for (const label of proof.querySelectorAll("[data-download-unavailable]")) {
+      label.hidden = state !== "unavailable";
+    }
+  }
+}
+
 export async function upgradeReleaseLinks(root) {
   let releases;
 
   try {
     releases = await fetchPublishedReleases();
   } catch {
+    setDownloadProofState(root, "unavailable");
     return;
   }
 
@@ -62,6 +88,11 @@ export async function upgradeReleaseLinks(root) {
 
   retargetAnchors(root, "downloadMac", urls.mac);
   retargetAnchors(root, "downloadWin", urls.win);
+  setDownloadProofState(
+    root,
+    "ready",
+    totalInstallerDownloads(releases),
+  );
 
   const stableTag = latestStableTag(releases);
 

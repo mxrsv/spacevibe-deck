@@ -63,8 +63,10 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
    [update menu actions](../src/updater/update-menu-actions.ts#L62-L90) `current`).
 10. The landing fetches one validated GitHub Releases list, derives stable
     macOS and preview Windows downloads from it, shows the latest stable tag,
-    and feeds the same normalized records into the changelog page
+    sums verified `.dmg` and `.exe` asset downloads into the hero proof, and
+    feeds the same normalized records into the changelog page
     ([release-data.js](../marketing/landing-prototype/src/release-data.js#fetchPublishedReleases) `current`,
+    [installer download total](../marketing/landing-prototype/src/release-data.js#totalInstallerDownloads) `current`,
     [changelog-view.js](../marketing/landing-prototype/src/changelog-view.js#renderReleaseList) `current`).
 
 ## Standing architecture decisions

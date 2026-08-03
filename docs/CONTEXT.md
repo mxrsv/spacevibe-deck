@@ -97,8 +97,11 @@ Delivery state:
   [link upgrade](../marketing/landing-prototype/src/download-links.js#upgradeReleaseLinks) `current`).
   The landing header exposes a Changelog item; the GitHub CTA also shows the
   latest stable tag and links that tag to the dedicated bilingual changelog,
-  which lists stable releases and previews from the same validated response
+  while the hero shows the current combined `.dmg` and `.exe` asset download
+  count. The changelog lists stable releases and previews from the same
+  validated response
   ([landing CTA](../marketing/landing-prototype/src/directions/a.js#renderDirectionA) `current`,
+  [download total](../marketing/landing-prototype/src/release-data.js#totalInstallerDownloads) `current`,
   [changelog view](../marketing/landing-prototype/src/changelog-view.js#renderReleaseList) `current`).
   The manual engineering job in CI still validates one NSIS setup, rejects MSI
   output, and refuses to build unless the repository is private
