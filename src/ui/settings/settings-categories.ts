@@ -1,6 +1,7 @@
 import type { ComponentType } from "preact";
 import type { CategoryId } from "./active-category-store";
 import {
+  AgentsIcon,
   AppearanceIcon,
   ColorsIcon,
   LinksEditorIcon,
@@ -10,6 +11,7 @@ import {
 import { AppearanceSection } from "./sections/appearance-section";
 import { ColorsSection } from "./sections/colors-section";
 import { TerminalSection } from "./sections/terminal-section";
+import { AgentsSection } from "./sections/agents-section";
 import { LinksEditorSection } from "./sections/links-editor-section";
 import { NotificationsSection } from "./sections/notifications-section";
 
@@ -35,7 +37,7 @@ export interface SettingsCategory {
 }
 
 /**
- * The five navigable rail categories, in display order — the extension point
+ * The six navigable rail categories, in display order — the extension point
  * for a future category (agent config, keybindings) is one entry here plus
  * one file under `sections/`, no edit to `settings-screen.tsx`.
  *
@@ -56,6 +58,7 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
     Icon: TerminalIcon,
     Section: TerminalSection,
   },
+  { id: "agents", label: "agents", Icon: AgentsIcon, Section: AgentsSection },
   {
     id: "links-editor",
     label: "links & editor",

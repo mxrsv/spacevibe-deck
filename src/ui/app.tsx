@@ -16,6 +16,7 @@ import { deriveChromeColors } from "../lib/derive-colors";
 import { resolveCwds, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
 import { settings, updateSettings } from "../settings/settings-store";
+import { agentOptions, probeNames } from "../lib/agent-catalog";
 import { resolveTheme } from "../settings/themes";
 import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
@@ -440,8 +441,9 @@ export function App() {
       }
       // A preset created from the board opens like Open does: first detected
       // agent by default (Shell is opt-in, and only the board offers the opt).
-      const agents = await defaultPtyClient
-        .detectAgents()
+      const customAgents = settings.value.customAgents;
+      const detected = await defaultPtyClient
+        .detectAgents(probeNames(customAgents))
         .catch((err: unknown) => {
           console.warn("detect_agents failed:", err);
           return [];
@@ -449,7 +451,7 @@ export function App() {
       await handleOpen(
         request.workspace,
         preset,
-        resolveAgentChoice(undefined, agents),
+        resolveAgentChoice(undefined, agentOptions(detected, customAgents)),
       );
       return;
     }

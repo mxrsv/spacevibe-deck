@@ -10,6 +10,7 @@ export type CategoryId =
   | "appearance"
   | "colors"
   | "terminal"
+  | "agents"
   | "links-editor"
   | "notifications";
 

@@ -12,11 +12,17 @@ import {
 } from "../lib/workspace-recents";
 import type { AgentChoice, RecentWorkspace } from "../lib/workspace-recents";
 import { tildify } from "../lib/process-info";
-import {
-  getDesktopEnvironment,
-  hasPrimaryModifier,
-} from "../lib/platform";
+import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
 import { defaultPtyClient, type DetectedAgent } from "../terminal/pty-client";
+import {
+  agentOptions,
+  BUILTIN_AGENTS,
+  probeNames,
+  type AgentOption,
+  type CustomAgent,
+} from "../lib/agent-catalog";
+import { letterAvatar } from "../lib/letter-avatar";
+import { settings } from "../settings/settings-store";
 import {
   boardPresets,
   deletePreset,
@@ -45,27 +51,30 @@ export interface OpenBoardProps {
 
 type BoardSection = "workspace" | "layout" | "agent";
 
-/** Human names for allowlisted agent binaries (chip label). */
-const AGENT_LABELS: Readonly<Record<string, string>> = {
-  claude: "Claude Code",
-  codex: "Codex",
-  gemini: "Gemini CLI",
-  opencode: "OpenCode",
-};
-
-function agentLabel(name: string): string {
-  return AGENT_LABELS[name] ?? name;
-}
-
-/** Brand logo (chip icon) per allowlisted agent binary; url resolved by Vite. */
+/** Brand logo (chip icon) per built-in agent; url resolved by Vite. */
 const AGENT_LOGOS: Readonly<Record<string, string>> = {
   claude: claudeLogo,
   codex: codexLogo,
   gemini: geminiLogo,
 };
 
-function agentLogo(name: string): string | undefined {
-  return AGENT_LOGOS[name];
+function agentLabel(id: string, customAgents: readonly CustomAgent[]): string {
+  const builtin = BUILTIN_AGENTS.find((agent) => agent.id === id);
+  if (builtin !== undefined) {
+    return builtin.label;
+  }
+  return customAgents.find((agent) => agent.id === id)?.label ?? id;
+}
+
+/** `agentOptions` decides membership and order; the board only adds the logo. */
+function buildAgentChips(
+  detected: readonly DetectedAgent[],
+  customAgents: readonly CustomAgent[],
+): readonly (AgentOption & { readonly logo?: string })[] {
+  return agentOptions(detected, customAgents).map((option) => ({
+    ...option,
+    logo: AGENT_LOGOS[option.id],
+  }));
 }
 
 /** The default Deck mark, shown until the user sets a logo in Settings. */
@@ -112,6 +121,7 @@ export function OpenBoard({
     typeof first?.lastAgent === "string" ? first.lastAgent : undefined,
   );
   const agents = useSignal<readonly DetectedAgent[]>([]);
+  const customAgents = settings.value.customAgents;
   const section = useSignal<BoardSection>("workspace");
   const missing = useSignal<ReadonlySet<string>>(new Set());
   const renamingId = useSignal<string | null>(null);
@@ -133,16 +143,29 @@ export function OpenBoard({
 
   useEffect(() => {
     containerRef.current?.focus();
+  }, []);
+
+  // Re-probes whenever the declared set changes: adding an agent in Settings
+  // and coming straight back to the board has to show it without a relaunch.
+  useEffect(() => {
+    let cancelled = false;
     defaultPtyClient
-      .detectAgents()
+      .detectAgents(probeNames(customAgents))
       .then((found) => {
-        agents.value = found;
+        if (!cancelled) {
+          agents.value = found;
+        }
       })
       .catch((err: unknown) => {
         console.warn("detect_agents failed:", err);
-        agents.value = []; // board degrades to Shell only
+        if (!cancelled) {
+          agents.value = []; // board degrades to Shell only
+        }
       });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [customAgents]);
 
   useEffect(() => {
     const paths = recents.map((recent) => recent.path);
@@ -169,7 +192,8 @@ export function OpenBoard({
   const selectedPreset =
     presets.find((preset) => preset.id === selectedPresetId.value) ??
     presets[0];
-  const effectiveAgent = resolveAgentChoice(selectedAgent.value, agents.value);
+  const chips = buildAgentChips(agents.value, customAgents);
+  const effectiveAgent = resolveAgentChoice(selectedAgent.value, chips);
   const workspaceValid =
     selectedPath.value !== null && !missing.value.has(selectedPath.value);
 
@@ -181,9 +205,16 @@ export function OpenBoard({
   const pendingAgent = selectedAgent.value;
   const staleAgent =
     typeof pendingAgent === "string" &&
-    agents.value.length > 0 &&
-    !agents.value.some((agent) => agent.name === pendingAgent)
+    chips.length > 0 &&
+    !chips.some((chip) => chip.id === pendingAgent)
       ? pendingAgent
+      : null;
+  // A declared agent whose binary is gone stays selectable, so the warning
+  // moves to the footer rather than the chip disappearing from the row.
+  const missingAgent =
+    typeof effectiveAgent === "string" &&
+    chips.some((chip) => chip.id === effectiveAgent && chip.missing)
+      ? effectiveAgent
       : null;
 
   // A just-picked folder that is not in Recents yet shows as a live entry at
@@ -220,12 +251,19 @@ export function OpenBoard({
             }
           : staleAgent !== null
             ? {
-                text: `${agentLabel(staleAgent)} isn't installed — opens with ${
-                  effectiveAgent === null ? "Shell" : agentLabel(effectiveAgent)
+                text: `${agentLabel(staleAgent, customAgents)} isn't installed — opens with ${
+                  effectiveAgent === null
+                    ? "Shell"
+                    : agentLabel(effectiveAgent, customAgents)
                 }`,
                 warn: true,
               }
-            : null;
+            : missingAgent !== null
+              ? {
+                  text: `${agentLabel(missingAgent, customAgents)} isn't on $PATH — the pane will open, the command won't run`,
+                  warn: true,
+                }
+              : null;
 
   /** Apply a recent's remembered combo when it is picked (still overridable). */
   function selectWorkspace(path: string): void {
@@ -336,10 +374,7 @@ export function OpenBoard({
 
   function moveAgent(step: 1 | -1): void {
     // Options are [agent0 … agentN, Shell only]; index N === Shell only.
-    const options: AgentChoice[] = [
-      ...agents.value.map((agent) => agent.name),
-      null,
-    ];
+    const options: AgentChoice[] = [...chips.map((chip) => chip.id), null];
     const current =
       effectiveAgent === null
         ? options.length - 1
@@ -361,8 +396,8 @@ export function OpenBoard({
       return true;
     }
     const index = Number(key) - 1;
-    if (index >= 0 && index < agents.value.length) {
-      selectedAgent.value = agents.value[index].name;
+    if (index >= 0 && index < chips.length) {
+      selectedAgent.value = chips[index].id;
       section.value = "agent";
       return true;
     }
@@ -484,7 +519,7 @@ export function OpenBoard({
     const combo = [
       preset?.name ?? null,
       typeof recent.lastAgent === "string"
-        ? agentLabel(recent.lastAgent)
+        ? agentLabel(recent.lastAgent, customAgents)
         : null,
     ]
       .filter((part): part is string => part !== null)
@@ -724,22 +759,38 @@ export function OpenBoard({
               <span class="sect__hint">Runs in every pane</span>
             </div>
             <div class="agents">
-              {agents.value.map((agent, index) => {
-                const logo = agentLogo(agent.name);
+              {chips.map((chip, index) => {
+                const avatar =
+                  chip.logo === undefined
+                    ? letterAvatar(chip.label, chip.id)
+                    : null;
                 return (
                   <button
-                    key={agent.name}
-                    class={`achip ${effectiveAgent === agent.name ? "is-selected" : ""}`}
-                    title={agent.path}
+                    key={chip.id}
+                    class={`achip ${effectiveAgent === chip.id ? "is-selected" : ""} ${chip.missing ? "is-missing" : ""}`}
+                    title={
+                      chip.missing
+                        ? `${chip.detail} — not on $PATH`
+                        : chip.detail
+                    }
                     onClick={() => {
-                      selectedAgent.value = agent.name;
+                      selectedAgent.value = chip.id;
                       section.value = "agent";
                     }}
                     onDblClick={() => void confirmOpen()}
                   >
                     <kbd>{index + 1}</kbd>
-                    {logo && <img class="achip__logo" src={logo} alt="" />}
-                    {agentLabel(agent.name)}
+                    {chip.logo !== undefined ? (
+                      <img class="achip__logo" src={chip.logo} alt="" />
+                    ) : (
+                      <span
+                        class="achip__letter"
+                        style={{ color: `var(--${avatar?.color})` }}
+                      >
+                        {avatar?.letter}
+                      </span>
+                    )}
+                    {chip.label}
                   </button>
                 );
               })}
@@ -773,7 +824,7 @@ export function OpenBoard({
                   <strong>
                     {effectiveAgent === null
                       ? "Shell"
-                      : agentLabel(effectiveAgent)}
+                      : agentLabel(effectiveAgent, customAgents)}
                   </strong>
                 </>
               ) : (

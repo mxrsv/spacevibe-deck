@@ -114,3 +114,58 @@ describe("scrollback", () => {
     expect(validateSettings({ scrollback: 5000 }).scrollback).toBe(5000);
   });
 });
+
+describe("customAgents", () => {
+  const valid = {
+    id: "custom:aider",
+    label: "Aider",
+    command: "aider --model sonnet",
+  };
+
+  it("defaults to none declared", () => {
+    expect(DEFAULT_SETTINGS.customAgents).toEqual([]);
+    expect(validateSettings({}).customAgents).toEqual([]);
+  });
+
+  it("falls back to none when the stored value is not an array", () => {
+    expect(validateSettings({ customAgents: "aider" }).customAgents).toEqual(
+      [],
+    );
+  });
+
+  it("keeps a well-formed entry verbatim", () => {
+    expect(validateSettings({ customAgents: [valid] }).customAgents).toEqual([
+      valid,
+    ]);
+  });
+
+  it("drops an entry whose binary a shell would act on", () => {
+    // The stored file is user-writable, so this is a real input path — not
+    // only what the settings form produced.
+    const evil = { ...valid, id: "custom:evil", command: "x; rm -rf ~" };
+    expect(
+      validateSettings({ customAgents: [valid, evil] }).customAgents,
+    ).toEqual([valid]);
+  });
+
+  it("drops entries with a missing id prefix, blank label or blank command", () => {
+    const broken = [
+      { ...valid, id: "aider" },
+      { ...valid, id: "custom:" },
+      { ...valid, id: "custom:blank", label: "   " },
+      { ...valid, id: "custom:long", label: "l".repeat(33) },
+      { ...valid, id: "custom:nocmd", command: "  " },
+      { id: "custom:partial", label: "Partial" },
+      null,
+      "aider",
+    ];
+    expect(validateSettings({ customAgents: broken }).customAgents).toEqual([]);
+  });
+
+  it("keeps the first of two entries sharing an id", () => {
+    const clash = { ...valid, label: "Aider clone" };
+    expect(
+      validateSettings({ customAgents: [valid, clash] }).customAgents,
+    ).toEqual([valid]);
+  });
+});

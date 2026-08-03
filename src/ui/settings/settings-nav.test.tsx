@@ -51,10 +51,10 @@ describe("SettingsNav", () => {
   const getTabs = (): HTMLButtonElement[] =>
     Array.from(host.querySelectorAll('[role="tab"]'));
 
-  it("renders exactly the five categories as tabs, in registry order", () => {
+  it("renders every registered category as a tab, in registry order", () => {
     mount();
     const tabs = getTabs();
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(SETTINGS_CATEGORIES.length);
     expect(tabs.map((tab) => tab.textContent)).toEqual(
       SETTINGS_CATEGORIES.map((category) => category.label),
     );
@@ -88,10 +88,10 @@ describe("SettingsNav", () => {
     activeCategory.value = "notifications"; // last category
     mount();
     const tabs = getTabs();
-    tabs[4].focus();
+    tabs[tabs.length - 1].focus();
 
     act(() => {
-      tabs[4].dispatchEvent(
+      tabs[tabs.length - 1].dispatchEvent(
         new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
       );
     });
@@ -113,17 +113,17 @@ describe("SettingsNav", () => {
     });
 
     expect(activeCategory.value).toBe("notifications");
-    expect(document.activeElement).toBe(tabs[4]);
+    expect(document.activeElement).toBe(tabs[tabs.length - 1]);
   });
 
-  it("renders the reset action once, outside the five tabs, and clicking it does not change activeCategory", () => {
+  it("renders the reset action once, outside the tabs, and clicking it does not change activeCategory", () => {
     mount();
     const resetButtons = host.querySelectorAll(".cfg-btn--danger");
     expect(resetButtons).toHaveLength(1);
 
     const resetButton = resetButtons[0] as HTMLButtonElement;
     expect(resetButton.getAttribute("role")).not.toBe("tab");
-    expect(getTabs()).toHaveLength(5);
+    expect(getTabs()).toHaveLength(SETTINGS_CATEGORIES.length);
 
     act(() => {
       resetButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));

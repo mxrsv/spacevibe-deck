@@ -14,7 +14,9 @@ import {
 const NOW = 1_800_000_000_000;
 
 describe("resolveAgentChoice", () => {
-  const agents = [{ name: "claude" }, { name: "codex" }];
+  // Ids, not binary names: a built-in's id IS its binary name, and a declared
+  // agent's is `custom:<slug>` (see lib/agent-catalog.ts).
+  const agents = [{ id: "claude" }, { id: "codex" }];
 
   it("defaults to the first detected agent when nothing was picked", () => {
     expect(resolveAgentChoice(undefined, agents)).toBe("claude");
@@ -203,5 +205,17 @@ describe("display helpers", () => {
     expect(formatRelativeTime(NOW - 200 * DAY, NOW)).toBe("6 months ago");
     expect(formatRelativeTime(NOW - 365 * DAY, NOW)).toBe("1 year ago");
     expect(formatRelativeTime(NOW - 800 * DAY, NOW)).toBe("2 years ago");
+  });
+});
+
+describe("resolveAgentChoice — declared agents", () => {
+  const agents = [{ id: "claude" }, { id: "custom:aider" }];
+
+  it("keeps a declared agent id", () => {
+    expect(resolveAgentChoice("custom:aider", agents)).toBe("custom:aider");
+  });
+
+  it("falls back when the declared agent was deleted", () => {
+    expect(resolveAgentChoice("custom:gone", agents)).toBe("claude");
   });
 });

@@ -1,5 +1,5 @@
 use super::{path_to_string, validate_user_home, ProcessInspection, SessionIdentity, ShellLaunch};
-use crate::agents::{parse_command_v_output, AgentInfo, AGENT_ALLOWLIST, DETECT_TIMEOUT};
+use crate::agents::{parse_command_v_output, AgentInfo, DETECT_TIMEOUT};
 use portable_pty::{ChildKiller, MasterPty};
 use std::path::PathBuf;
 use std::thread;
@@ -34,12 +34,14 @@ pub fn shell_launch() -> Result<ShellLaunch, String> {
     Ok(ShellLaunch::new(shell, vec!["-l".into()]))
 }
 
-pub async fn discover_agents() -> Vec<AgentInfo> {
+/// `names` has already passed `is_probe_safe` in `probe_names` — that is what
+/// makes interpolating them into this script safe.
+pub async fn discover_agents(names: Vec<String>) -> Vec<AgentInfo> {
     let launch = match shell_launch() {
         Ok(launch) => launch,
         Err(_) => return Vec::new(),
     };
-    let script = AGENT_ALLOWLIST
+    let script = names
         .iter()
         .map(|name| format!("command -v {name}"))
         .collect::<Vec<_>>()
@@ -53,7 +55,7 @@ pub async fn discover_agents() -> Vec<AgentInfo> {
         Ok(Ok(Ok(output))) => output,
         _ => return Vec::new(),
     };
-    parse_command_v_output(&String::from_utf8_lossy(&output.stdout))
+    parse_command_v_output(&String::from_utf8_lossy(&output.stdout), &names)
 }
 
 pub fn inspect_process(pid: i32) -> ProcessInspection {

@@ -130,6 +130,12 @@ const EXPECTED_ROWS = [
   "Selection",
   // terminal
   "Scrollback",
+  // agents (built-ins are locked rows; declared ones are added by the user)
+  "Claude Code",
+  "Codex",
+  "Gemini CLI",
+  "OpenCode",
+  "Add agent",
   // links & editor
   "Editor",
   // notifications
@@ -154,7 +160,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 14 rows by walking the rail", () => {
+  it("reaches all 19 rows by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });

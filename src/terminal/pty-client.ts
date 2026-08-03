@@ -28,8 +28,12 @@ export interface PtyClient {
    * tab that claims a folder its shells are not actually in.
    */
   dirsExist(paths: readonly string[]): Promise<boolean[]>;
-  /** Agent CLIs found on the login shell's `$PATH` (allowlist order). */
-  detectAgents(): Promise<DetectedAgent[]>;
+  /**
+   * Which of `names` are on the login shell's `$PATH`, in probe order.
+   * Rust always probes the built-ins on top of whatever is passed, and
+   * re-filters every name — see `probe_names` in agents.rs.
+   */
+  detectAgents(names: readonly string[]): Promise<DetectedAgent[]>;
   confirmQuit(): Promise<void>;
   listenOutput(
     handler: (id: number, data: string) => void,
@@ -81,8 +85,8 @@ export function createTauriPtyClient(): PtyClient {
       }
       return invoke<boolean[]>("dirs_exist", { paths: [...paths] });
     },
-    detectAgents() {
-      return invoke<DetectedAgent[]>("detect_agents");
+    detectAgents(names) {
+      return invoke<DetectedAgent[]>("detect_agents", { names: [...names] });
     },
     confirmQuit() {
       return invoke("confirm_quit");
@@ -159,8 +163,13 @@ export function createMemoryPtyClient(
       const dirs = options.dirs;
       return paths.map((path) => dirs === undefined || dirs.includes(path));
     },
-    async detectAgents() {
-      return [...(options.agents ?? [])];
+    async detectAgents(names) {
+      // Mirrors the real backend: it answers only about what was probed, so a
+      // test that declares an agent has to pass its binary to see it back.
+      const probed = new Set(names);
+      return [...(options.agents ?? [])].filter((agent) =>
+        probed.has(agent.name),
+      );
     },
     async confirmQuit() {},
     async listenOutput(handler) {

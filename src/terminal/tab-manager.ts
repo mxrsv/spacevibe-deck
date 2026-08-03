@@ -16,6 +16,7 @@ import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { sendAgentNotification } from "../lib/native-notification";
 import { getDesktopEnvironment } from "../lib/platform";
 import type { AgentChoice } from "../lib/workspace-recents";
+import { resolveAgentCommand } from "../lib/agent-catalog";
 import {
   MACOS_KEYMAP,
   matchBinding,
@@ -735,8 +736,19 @@ export function createTabManager(
     selectTab(tabs.length - 1);
     void poller.poll();
     // Each pane types its agent once its shell prints the first byte; `null`
-    // (Shell only / reopen) arms nothing.
-    launcher.arm(entry.manager.paneIds(), intent.agent ?? null);
+    // (Shell only / reopen) arms nothing. The id becomes a command line HERE
+    // rather than inside the launcher: `arm` still takes a plain string and
+    // writes it verbatim, so its readiness/timeout state machine stays out of
+    // the catalog's business. A declared agent deleted since the workspace
+    // remembered it resolves to null and arms nothing — an empty shell, not a
+    // pane that types a stale command.
+    const agentId = intent.agent ?? null;
+    launcher.arm(
+      entry.manager.paneIds(),
+      agentId === null
+        ? null
+        : resolveAgentCommand(agentId, settings.value.customAgents),
+    );
     return true;
   }
 

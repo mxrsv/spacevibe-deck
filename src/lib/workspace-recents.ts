@@ -137,15 +137,15 @@ export function removeRecents(
  */
 export function resolveAgentChoice(
   choice: AgentChoice | undefined,
-  agents: readonly { readonly name: string }[],
+  agents: readonly { readonly id: string }[],
 ): AgentChoice {
   if (choice === null) {
     return null;
   }
-  if (choice !== undefined && agents.some((agent) => agent.name === choice)) {
+  if (choice !== undefined && agents.some((agent) => agent.id === choice)) {
     return choice;
   }
-  return agents[0]?.name ?? null;
+  return agents[0]?.id ?? null;
 }
 
 export function folderName(path: string): string {

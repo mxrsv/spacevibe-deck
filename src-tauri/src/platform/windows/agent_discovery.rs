@@ -1,4 +1,4 @@
-use crate::agents::{AgentInfo, AGENT_ALLOWLIST, DETECT_TIMEOUT};
+use crate::agents::{probe_key, AgentInfo, DETECT_TIMEOUT};
 use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
 use std::time::Duration;
@@ -64,29 +64,36 @@ fn is_absolute_windows_path(value: &str) -> bool {
     drive_absolute || unc_absolute
 }
 
+/// The comparable form of a name: last path segment, lowercased, with the
+/// Windows command suffixes removed. Applied to BOTH sides so that what the
+/// caller asked for and what the search provider found are compared like for
+/// like — `claude` against `C:\…\CLAUDE.EXE`.
 fn normalize_agent_name(path: &str) -> Option<String> {
     let basename = path.rsplit(['\\', '/']).next()?.to_ascii_lowercase();
     let normalized = [".exe", ".cmd", ".bat", ".ps1"]
         .iter()
         .find_map(|suffix| basename.strip_suffix(suffix))
         .unwrap_or(&basename);
-    AGENT_ALLOWLIST
-        .iter()
-        .find(|allowed| **allowed == normalized)
-        .map(|allowed| (*allowed).to_string())
+    (!normalized.is_empty()).then(|| normalized.to_string())
 }
 
-fn discover_sync(provider: &impl AgentSearchProvider) -> Result<Vec<AgentInfo>, String> {
+fn discover_sync(
+    provider: &impl AgentSearchProvider,
+    names: &[String],
+) -> Result<Vec<AgentInfo>, String> {
     let mut seen = HashSet::new();
     let mut agents = Vec::new();
-    for requested_name in AGENT_ALLOWLIST {
+    for requested_name in names {
         let Some(path) = provider.find(requested_name)? else {
             continue;
         };
         let Some(name) = normalize_agent_name(&path) else {
             continue;
         };
-        if name != requested_name || !is_absolute_windows_path(&path) || !seen.insert(name.clone())
+        let expected = normalize_agent_name(probe_key(requested_name));
+        if Some(&name) != expected.as_ref()
+            || !is_absolute_windows_path(&path)
+            || !seen.insert(name.clone())
         {
             continue;
         }
@@ -98,8 +105,9 @@ fn discover_sync(provider: &impl AgentSearchProvider) -> Result<Vec<AgentInfo>, 
 async fn discover_with_provider(
     provider: impl AgentSearchProvider + 'static,
     timeout: Duration,
+    names: Vec<String>,
 ) -> Vec<AgentInfo> {
-    let task = tauri::async_runtime::spawn_blocking(move || discover_sync(&provider));
+    let task = tauri::async_runtime::spawn_blocking(move || discover_sync(&provider, &names));
     match tokio::time::timeout(timeout, task).await {
         Ok(Ok(Ok(agents))) => agents,
         Ok(Ok(Err(error))) => {
@@ -117,10 +125,11 @@ async fn discover_with_provider(
     }
 }
 
-pub(super) async fn discover_agents() -> Vec<AgentInfo> {
+pub(super) async fn discover_agents(names: Vec<String>) -> Vec<AgentInfo> {
     discover_with_provider(
         EnvironmentAgentSearchProvider::from_environment(),
         DETECT_TIMEOUT,
+        names,
     )
     .await
 }
@@ -128,9 +137,16 @@ pub(super) async fn discover_agents() -> Vec<AgentInfo> {
 #[cfg(test)]
 mod tests {
     use super::{discover_sync, discover_with_provider, AgentSearchProvider};
-    use crate::agents::AgentInfo;
+    use crate::agents::{AgentInfo, BUILTIN_AGENTS};
     use std::collections::HashMap;
     use std::time::Duration;
+
+    fn builtins() -> Vec<String> {
+        BUILTIN_AGENTS
+            .iter()
+            .map(|name| (*name).to_string())
+            .collect()
+    }
 
     struct FixtureProvider {
         paths: HashMap<String, String>,
@@ -162,7 +178,7 @@ mod tests {
         ]);
 
         assert_eq!(
-            discover_sync(&provider).unwrap(),
+            discover_sync(&provider, &builtins()).unwrap(),
             vec![
                 AgentInfo {
                     name: "claude".into(),
@@ -188,7 +204,7 @@ mod tests {
             ("gemini", r"C:\Tools\gemini.zip"),
         ]);
 
-        assert!(discover_sync(&provider).unwrap().is_empty());
+        assert!(discover_sync(&provider, &builtins()).unwrap().is_empty());
     }
 
     #[test]
@@ -199,12 +215,25 @@ mod tests {
             ("gemini", r"C:\Tools\GEMINI.PS1"),
         ]);
 
-        let names = discover_sync(&provider)
+        let names = discover_sync(&provider, &builtins())
             .unwrap()
             .into_iter()
             .map(|agent| agent.name)
             .collect::<Vec<_>>();
         assert_eq!(names, ["claude", "codex", "gemini"]);
+    }
+
+    #[test]
+    fn finds_a_declared_agent_that_is_not_a_builtin() {
+        let provider = FixtureProvider::new(&[("aider", r"C:\Tools\aider.cmd")]);
+
+        assert_eq!(
+            discover_sync(&provider, &["aider".to_string()]).unwrap(),
+            vec![AgentInfo {
+                name: "aider".into(),
+                path: r"C:\Tools\aider.cmd".into(),
+            }]
+        );
     }
 
     struct SlowProvider;
@@ -221,6 +250,7 @@ mod tests {
         let agents = tauri::async_runtime::block_on(discover_with_provider(
             SlowProvider,
             Duration::from_millis(1),
+            builtins(),
         ));
 
         assert!(agents.is_empty());

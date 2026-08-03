@@ -87,8 +87,8 @@ pub fn shell_launch() -> Result<ShellLaunch, String> {
     shell::shell_launch()
 }
 
-pub async fn discover_agents() -> Vec<AgentInfo> {
-    agent_discovery::discover_agents().await
+pub async fn discover_agents(names: Vec<String>) -> Vec<AgentInfo> {
+    agent_discovery::discover_agents(names).await
 }
 
 pub fn inspect_process(_pid: i32) -> ProcessInspection {

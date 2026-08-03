@@ -212,6 +212,31 @@ section — these rules govern the frame around it.
 - **DL-11.5** Destructive actions never sit among navigable categories. They
   are pinned to the rail's foot, below a hairline, marked `--red` (DL-3.2).
 
+## 12. Editable lists
+
+Approved as a fork on 2026-08-04, for user-declared agents. §5 allows exactly
+one interactive value per row and forbids list widgets outright, which a list
+the user adds to and deletes from cannot satisfy. These rules say how a list is
+still made of rows rather than becoming a new widget genre.
+
+- **DL-12.1** A list section renders **one `cfg-row` per item** (`.cfg-row--item`).
+  The item's name is the row key, its value fills the right side. There is no
+  table, no card, no drag handle, no reorder affordance.
+- **DL-12.2** An item row may carry **one** destructive affordance: a `×` after
+  the value, `--text-faint`, turning `--red` on hover (DL-3.2). It is the only
+  place in the app where a row holds a second interactive element, and it is
+  allowed **only** for removing that row's own item.
+- **DL-12.3** The list ends with the add affordance: an ordinary `cfg-row` whose
+  pill is the `action` kind (`+`). Adding is a row, not a floating button.
+- **DL-12.4** Items the user cannot edit stay in the same list under their own
+  group label, with the pill in its disabled treatment (DL-5.2) and no `×`. A
+  separate surface for them would imply two kinds of thing; they are one set
+  with different permissions.
+- **DL-12.5** Editing happens **in place**, never in a modal or a drawer. Both
+  the row key and its value may become a `CommitInput` (DL-6.3) — the single
+  documented exception to §5's non-interactive key, and it exists because
+  renaming an item is editing that item, not configuring a setting.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

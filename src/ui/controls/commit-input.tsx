@@ -7,6 +7,12 @@ interface CommitInputProps {
   ariaLabel: string;
   /** Called with the trimmed draft on blur or Enter — never per keystroke. */
   onCommit: (value: string) => void;
+  /**
+   * Focus on mount. For a field that only exists while editing (DL-12.5): the
+   * click that revealed it landed on the pill, not on the input, so without
+   * this the user has to click twice.
+   */
+  autoFocus?: boolean;
 }
 
 /**
@@ -23,6 +29,7 @@ export function CommitInput({
   placeholder,
   ariaLabel,
   onCommit,
+  autoFocus = false,
 }: CommitInputProps) {
   const [draft, setDraft] = useState(value);
   const committed = useRef(value);
@@ -51,6 +58,7 @@ export function CommitInput({
       class="text-input text-input--small"
       placeholder={placeholder}
       aria-label={ariaLabel}
+      autofocus={autoFocus}
       value={draft}
       onInput={(event) => setDraft(event.currentTarget.value)}
       onBlur={commit}

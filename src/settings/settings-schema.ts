@@ -1,4 +1,11 @@
 import { isEditorId, type EditorId } from "../lib/editor-command";
+import {
+  agentBinary,
+  AGENT_LABEL_MAX,
+  CUSTOM_ID_PREFIX,
+  isProbeSafeName,
+  type CustomAgent,
+} from "../lib/agent-catalog";
 
 export interface TerminalColors {
   background: string;
@@ -25,6 +32,8 @@ export interface Settings {
   editorCommand: string;
   /** Lines of scrollback kept per pane. */
   scrollback: number;
+  /** Agent CLIs the user declared, beyond the built-in set. */
+  customAgents: readonly CustomAgent[];
 }
 
 export const FONT_SIZE_MIN = 10;
@@ -57,6 +66,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editorId: "vscode",
   editorCommand: "",
   scrollback: 10_000,
+  customAgents: [],
 };
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -90,6 +100,62 @@ function validateColorOverrides(raw: unknown): Partial<TerminalColors> {
     if (isHexColor(value)) {
       result[key] = value;
     }
+  }
+  return result;
+}
+
+/**
+ * Whether one declared agent is well-formed. Shared with the settings UI so
+ * that what the form accepts and what survives a reload cannot drift apart.
+ * The binary check is the security-relevant one: it is what the discovery
+ * probe interpolates into a shell.
+ */
+export function isValidCustomAgent(value: unknown): value is CustomAgent {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const agent = value as Record<string, unknown>;
+  if (
+    typeof agent.id !== "string" ||
+    !agent.id.startsWith(CUSTOM_ID_PREFIX) ||
+    agent.id.length <= CUSTOM_ID_PREFIX.length
+  ) {
+    return false;
+  }
+  if (
+    typeof agent.label !== "string" ||
+    agent.label.trim() === "" ||
+    agent.label.length > AGENT_LABEL_MAX
+  ) {
+    return false;
+  }
+  return (
+    typeof agent.command === "string" &&
+    isProbeSafeName(agentBinary(agent.command))
+  );
+}
+
+/**
+ * A malformed entry is dropped rather than repaired — a half-understood
+ * command is exactly the thing not to guess at, since it ends up typed into a
+ * shell. A malformed array falls back to none declared.
+ */
+function validateCustomAgents(raw: unknown): readonly CustomAgent[] {
+  if (!Array.isArray(raw)) {
+    return DEFAULT_SETTINGS.customAgents;
+  }
+  const seen = new Set<string>();
+  const result: CustomAgent[] = [];
+  for (const entry of raw) {
+    if (!isValidCustomAgent(entry) || seen.has(entry.id)) {
+      continue;
+    }
+    seen.add(entry.id);
+    result.push({
+      id: entry.id,
+      label: entry.label,
+      command: entry.command,
+    });
   }
   return result;
 }
@@ -141,5 +207,6 @@ export function validateSettings(raw: unknown): Settings {
       Number.isFinite(source.scrollback)
         ? clampScrollback(source.scrollback)
         : DEFAULT_SETTINGS.scrollback,
+    customAgents: validateCustomAgents(source.customAgents),
   };
 }

@@ -27,7 +27,7 @@ pub fn shell_launch() -> Result<ShellLaunch, String> {
     Err("Terminal sessions are unavailable on this platform".into())
 }
 
-pub async fn discover_agents() -> Vec<AgentInfo> {
+pub async fn discover_agents(_names: Vec<String>) -> Vec<AgentInfo> {
     Vec::new()
 }
 
