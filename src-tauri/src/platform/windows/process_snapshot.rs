@@ -6,6 +6,7 @@ pub(crate) enum AgentIdentity {
     Claude,
     Codex,
     Gemini,
+    OpenCode,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -320,6 +321,7 @@ fn direct_agent(executable: &str) -> Option<AgentIdentity> {
         "claude" => Some(AgentIdentity::Claude),
         "codex" => Some(AgentIdentity::Codex),
         "gemini" => Some(AgentIdentity::Gemini),
+        "opencode" => Some(AgentIdentity::OpenCode),
         _ => None,
     }
 }
@@ -329,10 +331,11 @@ fn is_wrapper(executable: &str) -> bool {
 }
 
 fn wrapper_agent(command_line: &str) -> Option<AgentIdentity> {
-    const SIGNATURES: [(&str, AgentIdentity); 3] = [
+    const SIGNATURES: [(&str, AgentIdentity); 4] = [
         ("@anthropic-ai/claude-code", AgentIdentity::Claude),
         ("@openai/codex", AgentIdentity::Codex),
         ("@google/gemini-cli", AgentIdentity::Gemini),
+        ("opencode-ai", AgentIdentity::OpenCode),
     ];
 
     split_windows_command_line(command_line)

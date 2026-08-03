@@ -19,7 +19,10 @@ function info(
   cwd: string | null = null,
 ): PaneProcessInfo {
   const agent =
-    process === "claude" || process === "codex" || process === "gemini"
+    process === "claude" ||
+    process === "codex" ||
+    process === "gemini" ||
+    process === "opencode"
       ? process
       : null;
   const kind =

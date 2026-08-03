@@ -1,5 +1,5 @@
 export type PaneProcessKind = "idle-shell" | "agent" | "busy" | "unknown";
-export type PaneAgent = "claude" | "codex" | "gemini";
+export type PaneAgent = "claude" | "codex" | "gemini" | "opencode";
 
 /** Mirror of the `PtyInfo` payload returned by the Rust `pty_info` command. */
 export interface PaneProcessInfo {
@@ -22,6 +22,7 @@ const AGENT_DOT_VARS: Readonly<Record<string, string>> = {
   claude: "var(--magenta)",
   codex: "var(--green)",
   gemini: "var(--cyan)",
+  opencode: "var(--yellow)",
 };
 
 function agentColor(agent: string | null): string | undefined {

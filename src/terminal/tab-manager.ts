@@ -202,7 +202,10 @@ function explicitAgent(info: PaneProcessInfo | undefined): PaneAgent | null {
     return null;
   }
   const agent = info.agent;
-  return agent === "claude" || agent === "codex" || agent === "gemini"
+  return agent === "claude" ||
+    agent === "codex" ||
+    agent === "gemini" ||
+    agent === "opencode"
     ? agent
     : null;
 }

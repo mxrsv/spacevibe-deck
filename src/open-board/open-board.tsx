@@ -50,6 +50,7 @@ const AGENT_LABELS: Readonly<Record<string, string>> = {
   claude: "Claude Code",
   codex: "Codex",
   gemini: "Gemini CLI",
+  opencode: "OpenCode",
 };
 
 function agentLabel(name: string): string {

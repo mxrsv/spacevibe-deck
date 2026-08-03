@@ -25,6 +25,21 @@ afterEach(() => {
 });
 
 describe("createAgentLauncher", () => {
+  it.each(["windows", "macos"] as const)(
+    "types the OpenCode command unchanged on %s",
+    (platform) => {
+      const pty = createMemoryPtyClient();
+      const launcher = createAgentLauncher(pty, { platform, timeoutMs: 1000 });
+      launcher.arm([1], "opencode");
+      if (platform === "windows") {
+        launcher.notePromptReady(1);
+      } else {
+        launcher.noteOutput(1);
+      }
+      expect(pty.writes).toEqual([{ id: 1, data: "opencode\r" }]);
+      launcher.dispose();
+    },
+  );
   it("types the agent once the pane emits its first output", () => {
     const { pty, launcher } = setup();
     launcher.arm([1], "claude");

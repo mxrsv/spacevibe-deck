@@ -6,6 +6,7 @@ describe("dotColor", () => {
     expect(dotColor("claude")).toBe("var(--magenta)");
     expect(dotColor("codex")).toBe("var(--green)");
     expect(dotColor("gemini")).toBe("var(--cyan)");
+    expect(dotColor("opencode")).toBe("var(--yellow)");
   });
 
   it("falls back to the faint tone for anything else", () => {
