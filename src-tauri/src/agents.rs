@@ -12,7 +12,7 @@ pub struct AgentInfo {
 }
 
 /// Allowlist aligned with the chrome recognition names (ARCH D6).
-pub(crate) const AGENT_ALLOWLIST: [&str; 3] = ["claude", "codex", "gemini"];
+pub(crate) const AGENT_ALLOWLIST: [&str; 4] = ["claude", "codex", "gemini", "opencode"];
 
 /// Strip terminal control sequences from one line. An interactive login shell
 /// (`-ilc`) runs rc-file hooks that print terminal noise with no trailing
@@ -122,7 +122,8 @@ mod tests {
 
     #[test]
     fn parses_absolute_paths_in_allowlist_order() {
-        let out = "/usr/local/bin/claude\n/Users/dev/.local/bin/gemini\n";
+        let out =
+            "/usr/local/bin/claude\n/Users/dev/.local/bin/gemini\n/opt/homebrew/bin/opencode\n";
         assert_eq!(
             parse_command_v_output(out),
             vec![
@@ -133,6 +134,10 @@ mod tests {
                 AgentInfo {
                     name: "gemini".into(),
                     path: "/Users/dev/.local/bin/gemini".into()
+                },
+                AgentInfo {
+                    name: "opencode".into(),
+                    path: "/opt/homebrew/bin/opencode".into()
                 },
             ]
         );
