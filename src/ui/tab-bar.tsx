@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 import { useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import {
@@ -25,6 +26,7 @@ interface TabBarProps {
   onSetTabColor(index: number, color: TabDotColor | null): void;
   onToggleSettings(): void;
   expandActive: boolean;
+  updateAction?: ComponentChildren;
   onToggleExpand(): void;
   /** Invoked when a tab's actionable attention mark is clicked. */
   onFocusAttention?(index: number): void;
@@ -160,6 +162,7 @@ export function TabBar(props: TabBarProps) {
         onClosePane={props.onClosePane}
         onToggleExpand={props.onToggleExpand}
         onToggleSettings={props.onToggleSettings}
+        updateAction={props.updateAction}
       />
       {popover.value !== null && popoverTab !== undefined && (
         <TabPopover

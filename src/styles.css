@@ -626,6 +626,82 @@ button.attn-mark:hover {
   transform: rotate(35deg);
 }
 
+.update-action-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.update-action {
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  font: 500 11.5px/1 var(--ui-font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.13s ease,
+    color 0.13s ease,
+    border-color 0.13s ease;
+}
+
+.update-action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 23%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 58%, transparent);
+}
+
+.update-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.update-action:disabled {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.update-action--failed {
+  border-color: color-mix(in srgb, var(--red) 42%, transparent);
+  background: color-mix(in srgb, var(--red) 13%, transparent);
+  color: var(--red);
+}
+
+.update-action__compact {
+  display: none;
+}
+
+.update-action__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 520px) {
+  .update-action__full:has(+ .update-action__compact) {
+    display: none;
+  }
+
+  .update-action__compact {
+    display: inline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .update-action {
+    transition: none;
+  }
+}
+
 /* ── Stage (terminal area) ───────────────────────────────── */
 
 .stage {

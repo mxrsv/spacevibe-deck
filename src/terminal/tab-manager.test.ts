@@ -2612,12 +2612,21 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     const alwaysActions = ACTION_REGISTRY.filter(
       (a) => a.scope === "always",
     ).map((a) => a.id);
+    // The updater rows are app-level menu actions intercepted by App before
+    // TabManager.runAction; "always" records that overlays must not disable
+    // either manual update checks or the web Release Notes link.
     // open-tab-options joined this set in Task 2 of keyboard-parity —
     // TabPopover (z-100) outranks every overlay tier this registry models,
     // and TabBar/WorkspaceSidebar sit outside `.stage`, so there is nothing
     // for a tier to protect (see the row's own comment).
     expect(new Set(alwaysActions)).toEqual(
-      new Set(["focus-next-attention", "toggle-settings", "open-tab-options"]),
+      new Set([
+        "check-for-updates",
+        "focus-next-attention",
+        "open-release-notes",
+        "toggle-settings",
+        "open-tab-options",
+      ]),
     );
   });
 });

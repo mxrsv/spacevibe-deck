@@ -5,6 +5,7 @@ import {
   confirmMessage,
   isBusy,
   QUIT_COPY,
+  UPDATE_COPY,
 } from "./close-guard";
 import type { PaneProcessInfo } from "../lib/process-info";
 import { createMemoryPtyClient } from "./pty-client";
@@ -51,6 +52,16 @@ describe("isBusy", () => {
 
   it("does not treat unknown inspection as named busy state", () => {
     expect(isBusy(info(1, null))).toBe(false);
+  });
+});
+
+describe("update confirmation copy", () => {
+  it("names the install-and-restart action", () => {
+    expect(UPDATE_COPY).toEqual({
+      title: "Install Deck Update",
+      okLabel: "Install & Restart",
+      action: "Install update and restart",
+    });
   });
 });
 

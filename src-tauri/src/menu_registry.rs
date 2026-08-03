@@ -91,8 +91,11 @@ pub fn build_view_menu<R: Runtime>(
         .build()
 }
 
-pub const APP_MENU_ITEMS: &[(&str, &str, Option<&str>)] =
-    &[("toggle-settings", "Settings…", Some("CmdOrCtrl+,"))];
+pub const APP_MENU_ITEMS: &[(&str, &str, Option<&str>)] = &[
+    ("check-for-updates", "Check for Updates…", None),
+    ("open-release-notes", "Release Notes…", None),
+    ("toggle-settings", "Settings…", Some("CmdOrCtrl+,")),
+];
 
 pub const EDIT_MENU_ITEMS: &[(&str, &str, Option<&str>)] = &[
     ("find", "Find…", Some("CmdOrCtrl+F")),

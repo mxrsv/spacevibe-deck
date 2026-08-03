@@ -137,6 +137,18 @@ export interface ActionDefinition {
 // current macOS keymap — this lift includes both, for 27 rows total.
 export const ACTION_REGISTRY = [
   {
+    id: "check-for-updates",
+    label: "Check for Updates…",
+    scope: "always",
+    menu: { submenu: "App" },
+  },
+  {
+    id: "open-release-notes",
+    label: "Release Notes…",
+    scope: "always",
+    menu: { submenu: "App" },
+  },
+  {
     id: "toggle-settings",
     label: "Settings…",
     // Bypasses the overlay guard: gating it would strand Settings open with

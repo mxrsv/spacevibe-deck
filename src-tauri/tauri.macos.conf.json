@@ -20,5 +20,13 @@
       "minimumSystemVersion": "10.15",
       "signingIdentity": "-"
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": [
+        "https://github.com/mxrsv/spacevibe-deck/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

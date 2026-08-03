@@ -26,12 +26,23 @@ fn confirm_quit(app: tauri::AppHandle, state: tauri::State<'_, QuitState>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_process::init());
+
+    if let Some(public_key) = option_env!("DECK_UPDATER_PUBLIC_KEY") {
+        builder = builder.plugin(
+            tauri_plugin_updater::Builder::new()
+                .pubkey(public_key)
+                .build(),
+        );
+    }
+
+    builder
         .manage(pty::PtyState::default())
         .manage(coordinator::WindowCoordinator::default())
         .manage(QuitState::default())

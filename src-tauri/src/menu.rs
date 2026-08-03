@@ -180,9 +180,16 @@ mod tests {
     use crate::menu_registry::{APP_MENU_ITEMS, EDIT_MENU_ITEMS, WINDOW_MENU_ITEMS};
 
     #[test]
-    fn app_menu_items_is_exactly_toggle_settings() {
+    fn app_menu_items_match_expected_ids_in_order() {
         let ids: Vec<&str> = APP_MENU_ITEMS.iter().map(|(id, _, _)| *id).collect();
-        assert_eq!(ids, ["toggle-settings"]);
+        assert_eq!(
+            ids,
+            [
+                "check-for-updates",
+                "open-release-notes",
+                "toggle-settings"
+            ]
+        );
     }
 
     #[test]

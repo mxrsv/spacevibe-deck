@@ -1,8 +1,10 @@
+import type { ComponentChildren } from "preact";
 import { shortcutLabel } from "../lib/shortcut-label";
 
 interface ChromeActionsProps {
   settingsOpen: boolean;
   expandActive: boolean;
+  updateAction?: ComponentChildren;
   onSplitRow(): void;
   onSplitColumn(): void;
   onClosePane(): void;
@@ -151,6 +153,7 @@ export function ChromeActions(props: ChromeActionsProps) {
         <ExpandIcon />
       </button>
       <span class="tabbar__sep" aria-hidden="true" />
+      {props.updateAction}
       <button
         type="button"
         class={`iconbtn iconbtn--gear ${props.settingsOpen ? "is-active" : ""}`}

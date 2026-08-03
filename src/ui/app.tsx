@@ -3,8 +3,13 @@ import { useEffect, useRef } from "preact/hooks";
 import { useSignalEffect } from "@preact/signals";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { message } from "@tauri-apps/plugin-dialog";
 import { installQuitGuard } from "../lib/quit-guard";
-import { confirmClose, QUIT_COPY } from "../terminal/close-guard";
+import {
+  confirmClose,
+  QUIT_COPY,
+  UPDATE_COPY,
+} from "../terminal/close-guard";
 import { flushSettingsSave } from "../settings/settings-store";
 import { defaultPtyClient } from "../terminal/pty-client";
 import { deriveChromeColors } from "../lib/derive-colors";
@@ -44,6 +49,21 @@ import { StatusBar } from "./status-bar";
 import { SettingsScreen } from "./settings/settings-screen";
 import { runAttentionFocus } from "./attention-focus-coordinator";
 import { getDesktopEnvironment } from "../lib/platform";
+import {
+  createUpdateController,
+  type UpdateController,
+} from "../updater/update-controller";
+import { UpdateAction } from "../updater/update-action";
+import {
+  checkForUpdate,
+  relaunchDeck,
+} from "../updater/tauri-updater-adapter";
+import { resolveUpdatePreview } from "../updater/update-preview";
+import {
+  isUpdateMenuAction,
+  runUpdateMenuAction,
+} from "../updater/update-menu-actions";
+import { defaultLinkClient } from "../terminal/link-client";
 
 interface DesktopChromeProps {
   readonly sidebar: boolean;
@@ -168,6 +188,32 @@ export function livePresetOpensATab(boardIsOpen: boolean): boolean {
 export function App() {
   const stagesRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<TabManager | null>(null);
+  const updaterRef = useRef<UpdateController | null>(null);
+  const updatePreview = resolveUpdatePreview(
+    window.location.search,
+    import.meta.env.DEV,
+  );
+
+  if (updaterRef.current === null) {
+    updaterRef.current = createUpdateController({
+      platform: getDesktopEnvironment().platform,
+      check: checkForUpdate,
+      confirmInstall: () => {
+        const manager = tabsRef.current;
+        return manager === null
+          ? Promise.resolve(false)
+          : confirmClose(
+              manager.allPaneIds(),
+              defaultPtyClient,
+              UPDATE_COPY,
+            );
+      },
+      flush: flushSettingsSave,
+      relaunch: relaunchDeck,
+      report: (message, error) => console.error(`${message}:`, error),
+    });
+  }
+  const updater = updaterRef.current;
 
   /**
    * Single coordinator-backed entry point for every attention-focus trigger
@@ -255,6 +301,9 @@ export function App() {
       onToggleSettings: () => toggleSettings(),
     });
     tabsRef.current = manager;
+    if (updatePreview === null) {
+      void updater.start();
+    }
     // Session restore is gone: the app always opens on the board (Intent §Constraint).
     boardOpen.value = true;
     manager.init().catch((err: unknown) => {
@@ -299,6 +348,18 @@ export function App() {
     // `runAction`. The payload crosses an IPC boundary as a plain string, so
     // it is validated rather than cast.
     void listen<string>("menu:action", (event) => {
+      if (isUpdateMenuAction(event.payload)) {
+        void runUpdateMenuAction(event.payload, {
+          controller: updater,
+          openUrl: (url) => defaultLinkClient.openUrl(url),
+          notify: async (body, kind) => {
+            await message(body, { title: "SpaceVibe Deck", kind });
+          },
+          report: (diagnostic, error) =>
+            console.error(`${diagnostic}:`, error),
+        });
+        return;
+      }
       if (isShortcutAction(event.payload)) {
         tabsRef.current?.runAction(event.payload);
       }
@@ -446,11 +507,26 @@ export function App() {
     }
   }
 
-  const sidebar = settings.value.tabBarPosition === "left";
+  const sidebar =
+    updatePreview?.sidebar ?? settings.value.tabBarPosition === "left";
   const selectTab = (index: number): void => {
     boardOpen.value = false;
     tabsRef.current?.selectTab(index);
   };
+  const updateAction = (
+    <UpdateAction
+      view={updatePreview ?? updater.view.value}
+      onDownload={() => {
+        if (updatePreview === null) void updater.download();
+      }}
+      onInstall={() => {
+        if (updatePreview === null) void updater.installAndRelaunch();
+      }}
+      onRelaunch={() => {
+        if (updatePreview === null) void updater.relaunch();
+      }}
+    />
+  );
   const chromeActions = (
     <ChromeActions
       settingsOpen={settingsOpen.value}
@@ -462,6 +538,7 @@ export function App() {
         updateSettings({ focusExpand: !settings.value.focusExpand })
       }
       onToggleSettings={toggleSettings}
+      updateAction={updateAction}
     />
   );
 
@@ -507,6 +584,7 @@ export function App() {
             updateSettings({ focusExpand: !settings.value.focusExpand })
           }
           onToggleSettings={toggleSettings}
+          updateAction={updateAction}
           onFocusAttention={requestAttentionFocus}
         />
       }

@@ -43,6 +43,12 @@ export const QUIT_COPY: ConfirmCopy = {
   action: "Quit",
 };
 
+export const UPDATE_COPY: ConfirmCopy = {
+  title: "Install Deck Update",
+  okLabel: "Install & Restart",
+  action: "Install update and restart",
+};
+
 export function confirmMessage(
   names: readonly string[],
   action: string = "Close",

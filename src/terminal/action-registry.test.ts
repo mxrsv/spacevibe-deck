@@ -38,10 +38,12 @@ describe("ACTION_REGISTRY", () => {
   // 25→27 correction). 38 = 28 + swap-left/right/up/down (FR-032, Task 1) +
   // open-tab-options (Task 2) + copy-cwd (Task 3) + scroll-page-up/down,
   // scroll-to-top/bottom (Task 4) — docs/plans/2026-07-27-keyboard-parity.md.
-  it("has exactly the 40 action ids including pane-local clipboard actions", () => {
+  it("has exactly the 42 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
+        "check-for-updates",
+        "open-release-notes",
         "toggle-settings",
         "new-tab",
         "reopen-tab",
