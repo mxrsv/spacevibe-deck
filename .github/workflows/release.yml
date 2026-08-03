@@ -100,6 +100,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Inject the updater public key into the platform configs
+        env:
+          DECK_UPDATER_PUBLIC_KEY: ${{ vars.DECK_UPDATER_PUBLIC_KEY }}
+        shell: bash
+        run: |
+          # The platform configs ship an empty `plugins.updater.pubkey` on
+          # purpose — the key belongs to the repo variable, not the tree. It has
+          # to be written in before bundling: DECK_UPDATER_PUBLIC_KEY reaches
+          # Rust through option_env!, which the bundler never sees, so an empty
+          # pubkey here fails the build with "Missing comment in public key"
+          # AFTER the installer is already built.
+          for config in src-tauri/tauri.macos.conf.json src-tauri/tauri.windows.conf.json; do
+            jq --arg key "$DECK_UPDATER_PUBLIC_KEY" \
+              '.plugins.updater.pubkey = $key' "$config" > "$config.tmp"
+            mv "$config.tmp" "$config"
+          done
+
       - name: Build stable macOS updater draft
         id: tauri
         uses: tauri-apps/tauri-action@v1
@@ -169,6 +186,23 @@ jobs:
           npm run test:updater-manifest
           cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
           cargo test --locked --manifest-path src-tauri/Cargo.toml
+
+      - name: Inject the updater public key into the platform configs
+        env:
+          DECK_UPDATER_PUBLIC_KEY: ${{ vars.DECK_UPDATER_PUBLIC_KEY }}
+        shell: bash
+        run: |
+          # The platform configs ship an empty `plugins.updater.pubkey` on
+          # purpose — the key belongs to the repo variable, not the tree. It has
+          # to be written in before bundling: DECK_UPDATER_PUBLIC_KEY reaches
+          # Rust through option_env!, which the bundler never sees, so an empty
+          # pubkey here fails the build with "Missing comment in public key"
+          # AFTER the installer is already built.
+          for config in src-tauri/tauri.macos.conf.json src-tauri/tauri.windows.conf.json; do
+            jq --arg key "$DECK_UPDATER_PUBLIC_KEY" \
+              '.plugins.updater.pubkey = $key' "$config" > "$config.tmp"
+            mv "$config.tmp" "$config"
+          done
 
       - name: Build unsigned Windows preview draft
         id: tauri
