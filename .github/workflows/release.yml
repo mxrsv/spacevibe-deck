@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"
   # Re-run the Windows preview alone against a tag that already shipped. The
   # Windows channel is an unsigned preview and will break again; without this,
   # retrying it means moving the tag, which rebuilds and republishes a macOS
@@ -24,6 +25,7 @@ jobs:
     outputs:
       tag: ${{ steps.pick.outputs.tag }}
       sha: ${{ steps.pick.outputs.sha }}
+      rc: ${{ steps.pick.outputs.rc }}
     steps:
       - name: Checkout tags
         uses: actions/checkout@v4
@@ -38,15 +40,25 @@ jobs:
           # On a tag push these equal github.ref_name/github.sha; on a manual
           # run they come from the input, so every downstream job builds the
           # exact commit that tag points at rather than whatever main is now.
-          case "$TAG" in
-            v[0-9]*.[0-9]*.[0-9]*) ;;
-            *) echo "Refusing a non-release tag: $TAG"; exit 1 ;;
-          esac
+          #
+          # Only an exact source tag is a release. This run creates
+          # `-windows-preview` tags and channel releases of its own, and a
+          # looser pattern would let one of those start another release.
+          SOURCE_TAG='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-rc\.[1-9][0-9]*)?$'
+          if [[ ! "$TAG" =~ $SOURCE_TAG ]]; then
+            echo "Refusing a tag that is not an exact source tag: $TAG"
+            exit 1
+          fi
           git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1 || {
             echo "Tag does not exist: $TAG"; exit 1;
           }
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-list -n1 "refs/tags/$TAG")" >> "$GITHUB_OUTPUT"
+          if [[ "$TAG" == *-rc.* ]]; then
+            echo "rc=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "rc=false" >> "$GITHUB_OUTPUT"
+          fi
 
   validate-source:
     needs: resolve-target
@@ -77,14 +89,16 @@ jobs:
           test -n "$DECK_UPDATER_PUBLIC_KEY" || { echo "DECK_UPDATER_PUBLIC_KEY is required"; exit 1; }
 
       - name: Validate tag and source versions
+        env:
+          TARGET_TAG: ${{ needs.resolve-target.outputs.tag }}
         run: |
           node -e '
             const fs = require("node:fs");
             const version = require("./package.json").version;
             const cargo = fs.readFileSync("src-tauri/Cargo.toml", "utf8").match(/^version = "([^"]+)"/m)?.[1];
             const tauri = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8")).version;
-            const tag = process.env.GITHUB_REF_NAME;
-            if (!/^v\d+\.\d+\.\d+$/.test(tag) || tag !== `v${version}` || cargo !== version || tauri !== version) {
+            const tag = process.env.TARGET_TAG;
+            if (!/^v\d+\.\d+\.\d+(-rc\.\d+)?$/.test(tag) || tag !== `v${version}` || cargo !== version || tauri !== version) {
               throw new Error(`Version mismatch: tag=${tag} package=${version} cargo=${cargo} tauri=${tauri}`);
             }
           '
@@ -159,6 +173,22 @@ jobs:
             mv "$config.tmp" "$config"
           done
 
+      - name: Point release candidates at the isolated RC channels
+        if: needs.resolve-target.outputs.rc == 'true'
+        shell: bash
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          # A release candidate must never move a production channel: rc.1
+          # discovers rc.2 through these endpoints, while `releases/latest` and
+          # the Windows preview channel keep serving the shipped build.
+          jq --arg url "https://github.com/$REPOSITORY/releases/download/macos-rc-channel/latest.json" \
+            '.plugins.updater.endpoints = [$url]' src-tauri/tauri.macos.conf.json > macos-rc.tmp
+          mv macos-rc.tmp src-tauri/tauri.macos.conf.json
+          jq --arg url "https://github.com/$REPOSITORY/releases/download/windows-rc-channel/latest.json" \
+            '.plugins.updater.endpoints = [$url]' src-tauri/tauri.windows.conf.json > windows-rc.tmp
+          mv windows-rc.tmp src-tauri/tauri.windows.conf.json
+
       - name: Build stable macOS updater draft
         id: tauri
         uses: tauri-apps/tauri-action@v1
@@ -169,29 +199,116 @@ jobs:
           DECK_UPDATER_PUBLIC_KEY: ${{ vars.DECK_UPDATER_PUBLIC_KEY }}
         with:
           tagName: ${{ needs.resolve-target.outputs.tag }}
-          releaseName: "SpaceVibe Deck v__VERSION__"
-          releaseBody: |
-            Stable macOS release. Existing v0.9.0 users must install this first updater-enabled build manually once.
+          releaseName: ${{ needs.resolve-target.outputs.rc == 'true' && 'SpaceVibe Deck v__VERSION__ — Release Candidate' || 'SpaceVibe Deck v__VERSION__' }}
+          releaseBody: ${{ needs.resolve-target.outputs.rc == 'true' && 'Release candidate. It updates only through the isolated macOS RC channel and never moves the stable channel.' || 'Stable macOS release. Users on 0.10.0 or earlier install this build manually once; every later update arrives through the hardened updater.' }}
           releaseCommitish: ${{ needs.resolve-target.outputs.sha }}
           releaseDraft: true
-          prerelease: false
+          prerelease: ${{ needs.resolve-target.outputs.rc == 'true' }}
           args: --config src-tauri/tauri.release.conf.json --target universal-apple-darwin
 
-      - name: Validate macOS updater manifest
+      - name: Collect exact macOS updater artifacts
+        shell: bash
         env:
-          EXPECTED_VERSION: ${{ steps.tauri.outputs.appVersion }}
+          RELEASE_ID: ${{ steps.tauri.outputs.releaseId }}
+          SOURCE_SHA: ${{ needs.resolve-target.outputs.sha }}
+          SOURCE_TAG: ${{ needs.resolve-target.outputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          node -e '
-            const fs = require("node:fs");
-            const manifest = JSON.parse(fs.readFileSync("latest.json", "utf8"));
-            if (manifest.version !== process.env.EXPECTED_VERSION) throw new Error("macOS updater version mismatch");
-            for (const target of ["darwin-aarch64", "darwin-x86_64"]) {
-              const item = manifest.platforms?.[target];
-              if (!item?.signature?.trim() || !item.url?.startsWith("https://api.github.com/repos/mxrsv/spacevibe-deck/releases/assets/")) {
-                throw new Error(`Invalid macOS updater target: ${target}`);
-              }
-            }
-          '
+          set -euo pipefail
+          shopt -s nullglob
+          stage=updater-artifacts
+          mkdir "$stage"
+          bundle=src-tauri/target/universal-apple-darwin/release/bundle
+          # One universal `.app.tar.gz` serves both Darwin targets; the DMG is
+          # the manual-install download that ships beside it.
+          payloads=("$bundle"/macos/*.app.tar.gz)
+          signatures=("$bundle"/macos/*.app.tar.gz.sig)
+          images=("$bundle"/dmg/*.dmg)
+          if [ ${#payloads[@]} -ne 1 ] || [ ${#signatures[@]} -ne 1 ] || [ ${#images[@]} -ne 1 ]; then
+            echo "Expected exactly one updater bundle, one signature and one DMG"
+            exit 1
+          fi
+          cp latest.json "$stage/"
+          cp "${payloads[0]}" "${signatures[0]}" "${images[0]}" "$stage/"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" > "$stage/release.json"
+          node scripts/create-updater-provenance.mjs \
+            --artifact-dir "$stage" --sha "$SOURCE_SHA" --tag "$SOURCE_TAG"
+
+      - name: Upload exact-SHA macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-updater-${{ needs.resolve-target.outputs.sha }}
+          path: updater-artifacts
+          if-no-files-found: error
+          retention-days: 7
+
+  validate-macos-stable:
+    needs: [resolve-target, build-macos-stable-draft]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-target.outputs.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download staged macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-updater-${{ needs.resolve-target.outputs.sha }}
+          path: updater-artifacts
+
+      - name: Re-download the macOS draft and its assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.build-macos-stable-draft.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          # The staged copy only proves what the runner produced. What the
+          # updater will actually download is whatever this draft serves now,
+          # so cryptographic verification reads these bytes and nothing else.
+          mkdir release-assets
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" > release-response.json
+          jq -r '.assets[] | [.id, .name] | @tsv' release-response.json > assets.tsv
+          test -s assets.tsv || { echo "Draft carries no assets"; exit 1; }
+          while IFS=$'\t' read -r id name; do
+            gh api -H "Accept: application/octet-stream" \
+              "repos/$GITHUB_REPOSITORY/releases/assets/$id" > "release-assets/$name"
+          done < assets.tsv
+
+      - name: Validate the macOS updater trust chain
+        env:
+          DECK_UPDATER_PUBLIC_KEY: ${{ vars.DECK_UPDATER_PUBLIC_KEY }}
+          SOURCE_SHA: ${{ needs.resolve-target.outputs.sha }}
+          SOURCE_TAG: ${{ needs.resolve-target.outputs.tag }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          node scripts/verify-updater-manifest.mjs \
+            --manifest updater-artifacts/latest.json \
+            --release release-response.json \
+            --provenance updater-artifacts/provenance.json \
+            --staged-dir updater-artifacts \
+            --release-dir release-assets \
+            --version "$VERSION" \
+            --sha "$SOURCE_SHA" \
+            --tag "$SOURCE_TAG" \
+            --repository "$GITHUB_REPOSITORY" \
+            --platform macos \
+            --prerelease "${{ needs.resolve-target.outputs.rc }}" \
+            --public-key "$DECK_UPDATER_PUBLIC_KEY"
+
+      - name: Preserve validated macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: validated-macos-updater-${{ needs.resolve-target.outputs.sha }}
+          path: updater-artifacts
+          if-no-files-found: error
+          retention-days: 7
 
   build-windows-preview-draft:
     needs: [resolve-target, validate-source]
@@ -246,6 +363,22 @@ jobs:
             mv "$config.tmp" "$config"
           done
 
+      - name: Point release candidates at the isolated RC channels
+        if: needs.resolve-target.outputs.rc == 'true'
+        shell: bash
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          # A release candidate must never move a production channel: rc.1
+          # discovers rc.2 through these endpoints, while `releases/latest` and
+          # the Windows preview channel keep serving the shipped build.
+          jq --arg url "https://github.com/$REPOSITORY/releases/download/macos-rc-channel/latest.json" \
+            '.plugins.updater.endpoints = [$url]' src-tauri/tauri.macos.conf.json > macos-rc.tmp
+          mv macos-rc.tmp src-tauri/tauri.macos.conf.json
+          jq --arg url "https://github.com/$REPOSITORY/releases/download/windows-rc-channel/latest.json" \
+            '.plugins.updater.endpoints = [$url]' src-tauri/tauri.windows.conf.json > windows-rc.tmp
+          mv windows-rc.tmp src-tauri/tauri.windows.conf.json
+
       - name: Build unsigned Windows preview draft
         id: tauri
         uses: tauri-apps/tauri-action@v1
@@ -271,6 +404,7 @@ jobs:
         shell: pwsh
         env:
           RELEASE_ID: ${{ steps.tauri.outputs.releaseId }}
+          SOURCE_SHA: ${{ needs.resolve-target.outputs.sha }}
           PREVIEW_TAG: ${{ needs.resolve-target.outputs.tag }}-windows-preview
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -290,7 +424,7 @@ jobs:
           Copy-Item $signatures[0].FullName $stage
           Copy-Item $installers[0].FullName $stage
           gh api "repos/$env:GITHUB_REPOSITORY/releases/$env:RELEASE_ID" | Set-Content -Encoding utf8 "$stage/release.json"
-          node scripts/create-updater-provenance.mjs --artifact-dir $stage --sha $env:GITHUB_SHA --tag $env:PREVIEW_TAG
+          node scripts/create-updater-provenance.mjs --artifact-dir $stage --sha $env:SOURCE_SHA --tag $env:PREVIEW_TAG
 
       - name: Upload exact-SHA Windows artifact
         uses: actions/upload-artifact@v4
@@ -314,25 +448,51 @@ jobs:
         with:
           node-version: 22
 
-      - name: Download exact-SHA Windows artifact
+      - name: Download staged Windows artifact
         uses: actions/download-artifact@v4
         with:
           name: windows-updater-${{ needs.resolve-target.outputs.sha }}
           path: updater-artifacts
 
-      - name: Validate Windows updater manifest and provenance
+      - name: Re-download the Windows draft and its assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.build-windows-preview-draft.outputs.release_id }}
         run: |
+          set -euo pipefail
+          # The staged copy only proves what the runner produced. What the
+          # updater will actually download is whatever this draft serves now,
+          # so cryptographic verification reads these bytes and nothing else.
+          mkdir release-assets
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" > release-response.json
+          jq -r '.assets[] | [.id, .name] | @tsv' release-response.json > assets.tsv
+          test -s assets.tsv || { echo "Draft carries no assets"; exit 1; }
+          while IFS=$'\t' read -r id name; do
+            gh api -H "Accept: application/octet-stream" \
+              "repos/$GITHUB_REPOSITORY/releases/assets/$id" > "release-assets/$name"
+          done < assets.tsv
+
+      - name: Validate the Windows updater trust chain
+        env:
+          DECK_UPDATER_PUBLIC_KEY: ${{ vars.DECK_UPDATER_PUBLIC_KEY }}
+          SOURCE_SHA: ${{ needs.resolve-target.outputs.sha }}
+          PREVIEW_TAG: ${{ needs.resolve-target.outputs.tag }}-windows-preview
+        run: |
+          set -euo pipefail
           VERSION=$(node -p "require('./package.json').version")
           node scripts/verify-updater-manifest.mjs \
             --manifest updater-artifacts/latest.json \
-            --release updater-artifacts/release.json \
+            --release release-response.json \
             --provenance updater-artifacts/provenance.json \
-            --artifact-dir updater-artifacts \
+            --staged-dir updater-artifacts \
+            --release-dir release-assets \
             --version "$VERSION" \
-            --sha "$GITHUB_SHA" \
-            --tag "${GITHUB_REF_NAME}-windows-preview" \
+            --sha "$SOURCE_SHA" \
+            --tag "$PREVIEW_TAG" \
             --repository "$GITHUB_REPOSITORY" \
-            --target windows-x86_64
+            --platform windows \
+            --prerelease true \
+            --public-key "$DECK_UPDATER_PUBLIC_KEY"
 
       - name: Preserve validated artifact
         uses: actions/upload-artifact@v4
@@ -343,7 +503,7 @@ jobs:
           retention-days: 7
 
   publish-macos-stable:
-    needs: [resolve-target, build-macos-stable-draft]
+    needs: [resolve-target, build-macos-stable-draft, validate-macos-stable]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -355,7 +515,8 @@ jobs:
         run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false
 
   publish-windows-preview:
-    needs: [resolve-target, build-windows-preview-draft, validate-windows-preview]
+    needs:
+      [resolve-target, build-windows-preview-draft, validate-windows-preview]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -366,7 +527,66 @@ jobs:
           RELEASE_ID: ${{ needs.build-windows-preview-draft.outputs.release_id }}
         run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false
 
+  promote-macos-rc-channel:
+    if: needs.resolve-target.outputs.rc == 'true'
+    needs: [resolve-target, publish-macos-stable, validate-macos-stable]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download validated exact-SHA macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: validated-macos-updater-${{ needs.resolve-target.outputs.sha }}
+          path: updater-artifacts
+
+      - name: Create or update the macOS release-candidate channel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # Release candidates upgrade through this channel alone. The stable
+          # channel is `releases/latest`, which a prerelease never moves.
+          if ! gh release view macos-rc-channel >/dev/null 2>&1; then
+            gh release create macos-rc-channel \
+              --target "${{ needs.resolve-target.outputs.sha }}" \
+              --title "SpaceVibe Deck — macOS Release Candidate Channel" \
+              --notes "Release-candidate channel used to verify the updater end to end. Not a stable release." \
+              --prerelease
+          fi
+          gh release upload macos-rc-channel updater-artifacts/latest.json --clobber
+
+  promote-windows-rc-channel:
+    if: needs.resolve-target.outputs.rc == 'true'
+    needs: [resolve-target, publish-windows-preview, validate-windows-preview]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download validated exact-SHA Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: validated-windows-updater-${{ needs.resolve-target.outputs.sha }}
+          path: updater-artifacts
+
+      - name: Create or update the Windows release-candidate channel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view windows-rc-channel >/dev/null 2>&1; then
+            gh release create windows-rc-channel \
+              --target "${{ needs.resolve-target.outputs.sha }}" \
+              --title "SpaceVibe Deck — Windows Release Candidate Channel" \
+              --notes "Unsigned release-candidate channel used to verify the updater end to end. Not the Windows preview channel." \
+              --prerelease
+          fi
+          gh release upload windows-rc-channel updater-artifacts/latest.json --clobber
+
   promote-windows-channel:
+    # Final releases only. A release candidate that moved this channel would
+    # hand every preview user an unverified build.
+    if: needs.resolve-target.outputs.rc != 'true'
     needs: [resolve-target, publish-windows-preview, validate-windows-preview]
     runs-on: ubuntu-latest
     permissions:
