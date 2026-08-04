@@ -28,7 +28,7 @@ const MACOS = {
   platform: "macos",
   tag: SOURCE_TAG,
   prerelease: true,
-  targets: ["darwin-aarch64", "darwin-x86_64"],
+  targets: ["darwin-universal"],
   payload: "SpaceVibe Deck.app.tar.gz",
   extras: [`SpaceVibe Deck_${VERSION}_universal.dmg`],
 };
@@ -291,7 +291,7 @@ test("rejects MSI or unexpected updater targets", () => {
 
 test("rejects a manifest that omits a platform target", () => {
   const value = fixture(MACOS);
-  delete value.manifest.platforms["darwin-x86_64"];
+  delete value.manifest.platforms["darwin-universal"];
   assert.throws(() => validateUpdaterRelease(sync(value)), /target/i);
 });
 

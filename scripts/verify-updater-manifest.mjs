@@ -22,8 +22,8 @@ const PLATFORMS = {
     extraSuffixes: [],
   },
   macos: {
-    targets: ["darwin-aarch64", "darwin-x86_64"],
-    // One universal bundle serves both Darwin targets.
+    targets: ["darwin-universal"],
+    // The universal build emits one target and one payload for both arches.
     payloadSuffix: ".app.tar.gz",
     extraSuffixes: [".dmg"],
   },
