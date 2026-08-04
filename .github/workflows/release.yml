@@ -381,10 +381,15 @@ jobs:
       - name: Create or update fixed preview channel
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # This job never checks the repo out, so `gh` has no git remote to
+          # infer the repository from and dies with "not a git repository".
+          # GH_REPO is what tells it, without pulling in a checkout for two
+          # API calls.
+          GH_REPO: ${{ github.repository }}
         run: |
           if ! gh release view windows-preview-channel >/dev/null 2>&1; then
             gh release create windows-preview-channel \
-              --target "$GITHUB_SHA" \
+              --target "${{ needs.resolve-target.outputs.sha }}" \
               --title "SpaceVibe Deck — Unsigned Windows Preview Channel" \
               --notes "Unsigned Windows preview channel. SmartScreen or Unknown publisher warnings are expected; this is not a stable Windows release." \
               --prerelease
