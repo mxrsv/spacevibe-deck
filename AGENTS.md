@@ -22,7 +22,19 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   the two breadcrumb findings, a pinned updater revision carrying the upstream
   Windows `ShellExecuteW` fix, a macOS rollback when the bundle swap fails,
   and the cryptographic-verification and release-channel fixes. No feature work
-  alongside it.
+  alongside it. Execution is tracked in the
+  [hardened-updater release plan](docs/plans/2026-08-04-hardened-updater-release.md)
+  `building`.
+- The updater fork is [`mxrsv/plugins-workspace`](https://github.com/mxrsv/plugins-workspace),
+  branch `fix/updater-macos-transactional-swap`, based on upstream `v2` commit
+  `622f02bf` (the `ShellExecuteW` fix, PR #3516). Deck pins the exact revision
+  `71df1a095d007fb94f0eb07940b0a78e57ac984e` in
+  [`src-tauri/Cargo.toml`](src-tauri/Cargo.toml) `current` — an exact commit and
+  not the branch, because a moving ref would change what ships without changing
+  the tree. Base is `622f02bf` rather than `v2` HEAD so the pin carries only the
+  three needed fixes: `v2` HEAD adds the `system-proxy` feature, which drags new
+  dependencies into the bundle. Unpin once upstream releases a version
+  containing #3505, #3506 and #3516.
 - The updater that runs during an upgrade is the one inside the OLD build. So
   the hardening in 0.11.0 cannot protect the 0.10.0 → 0.11.0 hop itself: users on
   0.10.0 either bootstrap manually one last time or accept the unhardened

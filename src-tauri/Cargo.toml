@@ -32,6 +32,17 @@ tauri-plugin-clipboard-manager = "2"
 tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
 
+# The updater that runs during an upgrade is the one inside the OLD build, so
+# these fixes have to ship before they can protect anything. The published crate
+# still deletes the installed macOS app before the replacement lands and drops
+# the only backup when the final move fails (tauri-apps/plugins-workspace#3505),
+# and gives the installed bundle the extraction temp directory's 0700 mode
+# (#3506). Pinned to an exact commit, never a branch: a moving ref would change
+# what ships without changing this file. Unpin once upstream releases a version
+# containing #3505, #3506 and #3516.
+[patch.crates-io]
+tauri-plugin-updater = { git = "https://github.com/mxrsv/plugins-workspace", rev = "71df1a095d007fb94f0eb07940b0a78e57ac984e" }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
 
