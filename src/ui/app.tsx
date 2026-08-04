@@ -5,11 +5,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { message } from "@tauri-apps/plugin-dialog";
 import { installQuitGuard } from "../lib/quit-guard";
-import {
-  confirmClose,
-  QUIT_COPY,
-  UPDATE_COPY,
-} from "../terminal/close-guard";
+import { confirmClose, QUIT_COPY, UPDATE_COPY } from "../terminal/close-guard";
 import { flushSettingsSave } from "../settings/settings-store";
 import { defaultPtyClient } from "../terminal/pty-client";
 import { deriveChromeColors } from "../lib/derive-colors";
@@ -32,6 +28,7 @@ import type { AgentChoice } from "../lib/workspace-recents";
 import {
   boardOpen,
   editorRequest,
+  reportPersistError,
   saveDialogOpen,
   settingsOpen,
 } from "../chrome/events";
@@ -55,11 +52,13 @@ import {
   type UpdateController,
 } from "../updater/update-controller";
 import { UpdateAction } from "../updater/update-action";
-import {
-  checkForUpdate,
-  relaunchDeck,
-} from "../updater/tauri-updater-adapter";
+import { checkForUpdate, relaunchDeck } from "../updater/tauri-updater-adapter";
 import { resolveUpdatePreview } from "../updater/update-preview";
+import {
+  recordUpdateAttempt,
+  takeUpdateOutcome,
+} from "../updater/update-attempt-store";
+import { failedAttemptMessage } from "../updater/update-attempt";
 import {
   isUpdateMenuAction,
   runUpdateMenuAction,
@@ -203,15 +202,13 @@ export function App() {
         const manager = tabsRef.current;
         return manager === null
           ? Promise.resolve(false)
-          : confirmClose(
-              manager.allPaneIds(),
-              defaultPtyClient,
-              UPDATE_COPY,
-            );
+          : confirmClose(manager.allPaneIds(), defaultPtyClient, UPDATE_COPY);
       },
       flush: flushSettingsSave,
       relaunch: relaunchDeck,
       report: (message, error) => console.error(`${message}:`, error),
+      recordAttempt: (targetVersion) =>
+        recordUpdateAttempt(targetVersion, Date.now()),
     });
   }
   const updater = updaterRef.current;
@@ -303,6 +300,15 @@ export function App() {
     });
     tabsRef.current = manager;
     if (updatePreview === null) {
+      // Read the previous run's breadcrumb before starting a new check: if the
+      // last install never landed, the user hears it here rather than
+      // wondering why the version never changes. Reporting is fire-and-forget
+      // — a diagnostic must never delay the terminal coming up.
+      void takeUpdateOutcome().then((outcome) => {
+        if (outcome.kind === "failed") {
+          reportPersistError(failedAttemptMessage(outcome.attempt));
+        }
+      });
       void updater.start();
     }
     // Session restore is gone: the app always opens on the board (Intent §Constraint).
@@ -356,8 +362,7 @@ export function App() {
           notify: async (body, kind) => {
             await message(body, { title: "SpaceVibe Deck", kind });
           },
-          report: (diagnostic, error) =>
-            console.error(`${diagnostic}:`, error),
+          report: (diagnostic, error) => console.error(`${diagnostic}:`, error),
         });
         return;
       }

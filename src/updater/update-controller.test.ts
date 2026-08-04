@@ -27,6 +27,7 @@ function setup(
     flush: vi.fn().mockResolvedValue(undefined),
     relaunch: vi.fn().mockResolvedValue(undefined),
     report: vi.fn(),
+    recordAttempt: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
   return { controller: createUpdateController(deps), deps, update };
@@ -199,5 +200,32 @@ describe("createUpdateController", () => {
 
     expect(controller.view.value.notes.length).toBeLessThanOrEqual(400);
     expect(controller.view.value.notes.endsWith("…")).toBe(true);
+  });
+});
+
+describe("install breadcrumb", () => {
+  it("records the target version before handing over to the installer", async () => {
+    const { controller, deps, update } = setup();
+    await controller.checkNow();
+    await controller.download();
+    await controller.installAndRelaunch();
+
+    expect(deps.recordAttempt).toHaveBeenCalledWith(update!.version);
+    // Ordering is the whole point: on Windows the installer exits this
+    // process, so anything after install() may never run.
+    const recordOrder = vi.mocked(deps.recordAttempt).mock.invocationCallOrder[0];
+    const installOrder = vi.mocked(update!.install).mock.invocationCallOrder[0];
+    expect(recordOrder).toBeLessThan(installOrder);
+  });
+
+  it("does not record anything when the user cancels the confirmation", async () => {
+    const { controller, deps } = setup(pending(), {
+      confirmInstall: vi.fn().mockResolvedValue(false),
+    });
+    await controller.checkNow();
+    await controller.download();
+    await controller.installAndRelaunch();
+
+    expect(deps.recordAttempt).not.toHaveBeenCalled();
   });
 });

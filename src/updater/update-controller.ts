@@ -35,6 +35,13 @@ export interface UpdateControllerDependencies {
   flush(): Promise<void>;
   relaunch(): Promise<void>;
   report(message: string, error: unknown): void;
+  /**
+   * Write down what is being installed, before control leaves the app. The
+   * installer runs outside Deck and on Windows exits this process outright, so
+   * this record is the only way the next launch can tell a finished install
+   * from one that never happened.
+   */
+  recordAttempt(targetVersion: string): Promise<void>;
 }
 
 export interface UpdateController {
@@ -185,6 +192,9 @@ export function createUpdateController(
       view.value = updateView(update, "installing");
       try {
         await deps.flush();
+        // Ordered before install on purpose: once install() is called on
+        // Windows the process can be gone before the next line runs.
+        await deps.recordAttempt(update.version);
         await update.install();
       } catch (error: unknown) {
         deps.report("Update install failed", error);
