@@ -39,11 +39,33 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   the hardening in 0.11.0 cannot protect the 0.10.0 → 0.11.0 hop itself: users on
   0.10.0 either bootstrap manually one last time or accept the unhardened
   updater for exactly that one transition. From 0.11.0 onward the guarantee holds.
-- Verification before release: two hardened release candidates (`0.11.0-rc.1` →
-  `0.11.0-rc.2`) upgraded for real on macOS AND Windows — discover, verify
-  signature, download, install, relaunch — plus a tampered-signature case and
-  failure injection. The public 0.11.0 and the update channel are enabled only
-  after that passes.
+- Verification before release required two hardened release candidates
+  (`0.11.0-rc.1` → `0.11.0-rc.2`) upgraded for real on macOS AND Windows, plus a
+  tampered-signature case and failure injection. **What actually ran (2026-08-05):**
+  macOS upgraded for real end to end — discover, verify signature, download,
+  install, relaunch — and the installed bundle kept mode `0755` instead of the
+  extraction directory's `0700`, which is issue #3506 proven fixed at runtime and
+  not only in tests. The tampered-signature case passed: a manifest advertising a
+  non-existent `0.11.0-rc.3` with one flipped signature byte was downloaded and
+  refused, with no install and no bundle touched. **Windows E2E was deliberately
+  skipped** (decided 2026-08-05) — accepted because `windows-preview-channel` did
+  not exist before 0.11.0, so no Windows user could receive an update through it
+  and none can lose an app. The cost is the same trap this release exists to
+  escape: the updater that runs an upgrade lives in the OLD build, so if the
+  Windows updater is broken in 0.11.0 it cannot be patched retroactively and
+  Windows users bootstrap by hand once more at 0.12.0. `ShellExecuteW` (#3516) is
+  therefore in the shipped binary but never observed running. Failure injection
+  was skipped too: the swap takes seconds, so killing it at the right instant is
+  not reproducible; the breadcrumb logic carries 11 unit tests and the
+  lose-the-app failure is covered by the fork's rollback tests.
+- A refused signature reads as a network problem. The tampered-signature run
+  surfaced it: verification happens inside Tauri's download step, so the UI lands
+  on `download-failed` and
+  [tells the user the download failed](src/updater/update-action.tsx#L24) `current`
+  when the download in fact succeeded and the signature did not verify. Those are
+  a flaky connection and a tampered update — the second deserves to stop the user,
+  not invite another Retry. Left out of 0.11.0 because that release admits no UI
+  work; it needs its own task.
 - No `windows-preview-channel` release pointing at `c2b3a14` (decided 2026-08-04):
   publishing an endpoint for a build whose updater is known-broken would hand
   Windows users the very path under repair.
@@ -140,8 +162,8 @@ docs/                # DESIGN-LANGUAGE.md (DL rulebook), CONTEXT.md, specs/, pla
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
 
-| Claim                                                            | Intent    | Status         | Evidence                                                                          |
-| ---------------------------------------------------------------- | --------- | -------------- | --------------------------------------------------------------------------------- |
+| Claim | Intent | Status | Evidence |
+| ----- | ------ | ------ | -------- |
 
 Empty as of 2026-08-04: the v0.8.0 row was cleared when v0.10.0 became the
 release in flight. Do not remove this section (D7).
