@@ -85,7 +85,9 @@ function acceptsTag(tag: string): boolean {
 
 describe("release tag resolution", () => {
   it("parses workflow jobs after a Windows CRLF checkout", () => {
-    const windowsWorkflow = workflow.replaceAll("\n", "\r\n");
+    const windowsWorkflow = workflow
+      .replaceAll("\r\n", "\n")
+      .replaceAll("\n", "\r\n");
 
     expect(job("build-macos-stable-draft", windowsWorkflow)).toContain(
       "releaseDraft: true",
