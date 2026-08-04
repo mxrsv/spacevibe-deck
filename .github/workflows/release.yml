@@ -447,10 +447,42 @@ jobs:
           if ($installers.Count -ne 1 -or $signatures.Count -ne 1 -or $msi.Count -ne 0) {
             throw "Expected exactly one NSIS installer, one signature, and zero MSI files."
           }
-          Copy-Item "latest.json" $stage
-          Copy-Item $signatures[0].FullName $stage
-          Copy-Item $installers[0].FullName $stage
-          gh api "repos/$env:GITHUB_REPOSITORY/releases/$env:RELEASE_ID" | Set-Content -Encoding utf8 "$stage/release.json"
+          $releasePath = Join-Path $stage "release.json"
+          gh api "repos/$env:GITHUB_REPOSITORY/releases/$env:RELEASE_ID" | Set-Content -Encoding utf8 $releasePath
+          $release = Get-Content -Raw $releasePath | ConvertFrom-Json
+          if (@($release.assets).Count -ne 3) {
+            throw "Expected exactly three Windows draft assets."
+          }
+          foreach ($asset in $release.assets) {
+            $name = [string]$asset.name
+            if ([string]::IsNullOrWhiteSpace($name) -or [IO.Path]::GetFileName($name) -ne $name) {
+              throw "Unsafe Windows draft asset name: $name"
+            }
+            $destination = Join-Path $stage $name
+            gh api -H "Accept: application/octet-stream" "repos/$env:GITHUB_REPOSITORY/releases/assets/$($asset.id)" > $destination
+            if ($LASTEXITCODE -ne 0) {
+              throw "Could not download Windows draft asset: $name"
+            }
+          }
+
+          # tauri-action may sanitize uploaded filenames. Hash the public
+          # assets against the local NSIS outputs before provenance records the
+          # exact names that the updater will download.
+          $stagedInstallers = @(Get-ChildItem $stage -Filter "*-setup.exe")
+          $stagedSignatures = @(Get-ChildItem $stage -Filter "*-setup.exe.sig")
+          if ($stagedInstallers.Count -ne 1 -or $stagedSignatures.Count -ne 1) {
+            throw "Draft does not carry the exact Windows updater asset set."
+          }
+          function Assert-SameFile([string]$localPath, [string]$draftPath) {
+            $localHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $localPath).Hash
+            $draftHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $draftPath).Hash
+            if ($localHash -ne $draftHash) {
+              throw "Windows draft asset differs from the local build: $draftPath"
+            }
+          }
+          Assert-SameFile "latest.json" (Join-Path $stage "latest.json")
+          Assert-SameFile $installers[0].FullName $stagedInstallers[0].FullName
+          Assert-SameFile $signatures[0].FullName $stagedSignatures[0].FullName
           node scripts/create-updater-provenance.mjs --artifact-dir $stage --sha $env:SOURCE_SHA --tag $env:PREVIEW_TAG
 
       - name: Upload exact-SHA Windows artifact

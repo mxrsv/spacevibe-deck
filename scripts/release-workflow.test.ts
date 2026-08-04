@@ -204,6 +204,16 @@ describe("publication gates", () => {
     );
   });
 
+  it("proves renamed Windows draft assets match the local build", () => {
+    const collection = steps("build-windows-preview-draft").find((step) =>
+      step.includes("Collect exact Windows updater artifact"),
+    );
+
+    expect(collection).toContain("releases/assets/$($asset.id)");
+    expect(collection).toContain("Get-FileHash");
+    expect(collection).not.toContain("Copy-Item $installers[0].FullName");
+  });
+
   it("lets validation jobs read draft releases", () => {
     for (const name of [
       "validate-macos-stable",
