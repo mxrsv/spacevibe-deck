@@ -129,6 +129,29 @@ export function removeRecents(
 }
 
 /**
+ * Forget every memory of `agentId`, keeping the folders themselves.
+ *
+ * Called when a declared agent is deleted. Ids are derived from the label and
+ * checked only against agents that currently exist, so re-adding the same
+ * label regenerates the same id — and a workspace still remembering the old
+ * one would then launch the NEW agent's command without any stale-choice
+ * warning. Dropping the memory at deletion is what keeps that from happening:
+ * the folder falls back to the first available agent, visibly.
+ */
+export function forgetAgent(
+  recents: readonly RecentWorkspace[],
+  agentId: string,
+): readonly RecentWorkspace[] {
+  return recents.map((entry) => {
+    if (entry.lastAgent !== agentId) {
+      return entry;
+    }
+    const { lastAgent: _dropped, ...rest } = entry;
+    return rest;
+  });
+}
+
+/**
  * Resolve a remembered/selected agent against what is actually on `$PATH`.
  * Shell is opt-in: only an explicit `null` (the user clicked Shell only this
  * session) yields Shell. No pick (`undefined`), a remembered choice, or a

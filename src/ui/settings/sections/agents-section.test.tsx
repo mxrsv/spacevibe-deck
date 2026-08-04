@@ -15,7 +15,12 @@ vi.mock("@tauri-apps/plugin-store", () => ({
   },
 }));
 
+vi.mock("../../../open-board/workspaces-store", () => ({
+  forgetWorkspaceAgent: vi.fn(),
+}));
+
 import { AgentsSection } from "./agents-section";
+import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
 import { settings, updateSettings } from "../../../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../../../settings/settings-schema";
 import { BUILTIN_AGENTS } from "../../../lib/agent-catalog";
@@ -175,5 +180,89 @@ describe("AgentsSection", () => {
     });
 
     expect(settings.value.customAgents[0].command).toBe("aider");
+  });
+});
+
+describe("AgentsSection — refusals and cleanup", () => {
+  let host: HTMLDivElement;
+
+  beforeEach(() => {
+    settings.value = DEFAULT_SETTINGS;
+    vi.mocked(forgetWorkspaceAgent).mockClear();
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    updateSettings({
+      customAgents: [{ id: "custom:aider", label: "Aider", command: "aider" }],
+    });
+    act(() => {
+      render(<AgentsSection />, host);
+    });
+  });
+
+  afterEach(() => {
+    act(() => {
+      render(null, host);
+    });
+    host.remove();
+    settings.value = DEFAULT_SETTINGS;
+  });
+
+  const openAndCommit = (trigger: string, aria: string, value: string): void => {
+    const button = Array.from(
+      host.querySelectorAll<HTMLButtonElement>(
+        ".cfg-row--item .cfg-row__label--edit, .cfg-row--item .cfg-btn",
+      ),
+    ).find((candidate) => candidate.textContent?.trim() === trigger)!;
+    act(() => {
+      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const input = host.querySelector<HTMLInputElement>(`[aria-label="${aria}"]`)!;
+    act(() => {
+      input.value = value;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    act(() => {
+      // A real browser fires both: `blur` is what CommitInput commits on, and
+      // `focusout` (the bubbling one) is what closes the editor.
+      input.dispatchEvent(new FocusEvent("blur"));
+      input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    });
+  };
+
+  it("says why an in-place command edit was refused", () => {
+    openAndCommit("aider", "Command for Aider", "$(id)");
+
+    expect(settings.value.customAgents[0].command).toBe("aider");
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
+      "letters, digits",
+    );
+  });
+
+  it("says why an in-place rename was refused", () => {
+    openAndCommit("Aider", "Name for Aider", "Claude Code");
+
+    expect(settings.value.customAgents[0].label).toBe("Aider");
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
+      "already used",
+    );
+  });
+
+  it("clears the refusal once a valid value is committed", () => {
+    openAndCommit("aider", "Command for Aider", "$(id)");
+    openAndCommit("aider", "Command for Aider", "aider --resume");
+
+    expect(settings.value.customAgents[0].command).toBe("aider --resume");
+    expect(host.querySelector(".cfg-custom--error")).toBeNull();
+  });
+
+  it("makes workspaces forget an agent it just deleted", () => {
+    act(() => {
+      host
+        .querySelector(".cfg-row__remove")!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(settings.value.customAgents).toEqual([]);
+    expect(forgetWorkspaceAgent).toHaveBeenCalledWith("custom:aider");
   });
 });

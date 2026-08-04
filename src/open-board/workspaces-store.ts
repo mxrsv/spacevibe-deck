@@ -1,6 +1,7 @@
 import { signal } from "@preact/signals";
 import { Store } from "@tauri-apps/plugin-store";
 import {
+  forgetAgent,
   pushRecent,
   removeRecents,
   validateWorkspaces,
@@ -87,4 +88,24 @@ function persist(next: WorkspacesData, failure: string): void {
       console.warn("Failed to save workspace recents:", err);
       reportPersistError(`${failure} to disk`);
     });
+}
+
+/**
+ * Drop every folder's memory of a declared agent that no longer exists.
+ *
+ * Deleting an agent frees its id, and re-adding the same label regenerates
+ * it — so a folder still pointing at the old id would quietly open with the
+ * new agent's command. Forgetting here is cheaper than a tombstone list that
+ * would grow forever, and it degrades the way the board already handles an
+ * agent it cannot resolve.
+ */
+export function forgetWorkspaceAgent(agentId: string): void {
+  const current = workspacesData.value.recents;
+  const recents = forgetAgent(current, agentId);
+  if (recents.every((entry, index) => entry === current[index])) {
+    return; // nothing remembered it — no signal churn, no disk write
+  }
+  const next: WorkspacesData = { version: WORKSPACES_VERSION, recents };
+  workspacesData.value = next;
+  persist(next, "Agent removal wasn't saved");
 }

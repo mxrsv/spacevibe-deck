@@ -32,12 +32,35 @@ export async function initSettings(): Promise<void> {
   }
 }
 
+/**
+ * Write settings through, and say so when the write fails.
+ *
+ * `set` only updates the plugin's in-memory cache; the disk write happens
+ * later on the autosave timer, and the plugin discards that error. So a full
+ * disk or a permission problem used to be completely silent: the UI showed the
+ * new value, `PersistErrorBar` never appeared, and the loss only surfaced at
+ * the next launch as settings that had "reset themselves". Awaiting an
+ * explicit `save` moves that failure back into view.
+ *
+ * What this still does NOT fix: the plugin writes with truncate-then-write
+ * rather than write-temp-then-rename, so a crash mid-write can leave the file
+ * partial. Recovering from that needs an atomic writer on the Rust side.
+ */
 function persist(next: Settings): void {
-  store?.set(STORE_KEY, next).catch(() => {
-    reportPersistError(
-      "Couldn't save settings — changes may not survive a relaunch.",
-    );
-  });
+  const current = store;
+  if (current === null) {
+    return;
+  }
+  void (async () => {
+    try {
+      await current.set(STORE_KEY, next);
+      await current.save();
+    } catch {
+      reportPersistError(
+        "Couldn't save settings — changes may not survive a relaunch.",
+      );
+    }
+  })();
 }
 
 export function updateSettings(patch: Partial<Settings>): void {

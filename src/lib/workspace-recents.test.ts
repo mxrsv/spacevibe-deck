@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   folderName,
+  forgetAgent,
   formatRelativeTime,
   MAX_RECENTS,
   partitionRecents,
@@ -217,5 +218,47 @@ describe("resolveAgentChoice — declared agents", () => {
 
   it("falls back when the declared agent was deleted", () => {
     expect(resolveAgentChoice("custom:gone", agents)).toBe("claude");
+  });
+});
+
+describe("forgetAgent", () => {
+  const withAgent = (path: string, agent: string) =>
+    pushRecent([], path, NOW, "preset-1", agent);
+
+  it("drops the memory of one agent, keeping the folder", () => {
+    const [entry] = forgetAgent(withAgent("/a", "custom:aider"), "custom:aider");
+    expect(entry.path).toBe("/a");
+    expect(entry.lastPresetId).toBe("preset-1");
+    expect("lastAgent" in entry).toBe(false);
+  });
+
+  it("leaves folders that remembered a different agent untouched", () => {
+    const list = pushRecent(
+      withAgent("/a", "custom:aider"),
+      "/b",
+      NOW + 1,
+      "preset-1",
+      "claude",
+    );
+    const after = forgetAgent(list, "custom:aider");
+    expect(after.find((entry) => entry.path === "/b")?.lastAgent).toBe("claude");
+  });
+
+  it("returns the same entry objects when nothing remembered it", () => {
+    const list = withAgent("/a", "claude");
+    const after = forgetAgent(list, "custom:gone");
+    // Identity matters: the store skips its disk write when nothing changed.
+    expect(after[0]).toBe(list[0]);
+  });
+
+  it("never resurrects a deleted agent's id for an old folder", () => {
+    // The bug this closes: ids come from the label, so re-adding "Aider"
+    // regenerates custom:aider and the folder would launch the new command.
+    const list = withAgent("/a", "custom:aider");
+    const after = forgetAgent(list, "custom:aider");
+    expect(resolveAgentChoice(after[0].lastAgent, [{ id: "custom:aider" }])).toBe(
+      "custom:aider",
+    );
+    expect(after[0].lastAgent).toBeUndefined();
   });
 });

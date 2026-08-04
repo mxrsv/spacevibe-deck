@@ -1,3 +1,4 @@
+import { Fragment } from "preact";
 import { useSignal } from "@preact/signals";
 import {
   agentBinary,
@@ -8,6 +9,7 @@ import {
   type CustomAgent,
 } from "../../../lib/agent-catalog";
 import { settings, updateSettings } from "../../../settings/settings-store";
+import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
 import { ConfigGroup, ConfigRow } from "../../controls/config-row";
 import { CommitInput } from "../../controls/commit-input";
 
@@ -56,6 +58,8 @@ const commandKey = (id: string): string => `${id}:command`;
 export function AgentsSection() {
   const customAgents = settings.value.customAgents;
   const editing = useSignal<string | null>(null);
+  /** Why the last in-place edit was refused, and which row refused it. */
+  const editError = useSignal<{ id: string; message: string } | null>(null);
   const draftOpen = useSignal(false);
   const draftLabel = useSignal("");
   const draftCommand = useSignal("");
@@ -67,9 +71,14 @@ export function AgentsSection() {
 
   const renameAgent = (id: string, label: string): void => {
     const others = customAgents.filter((agent) => agent.id !== id);
-    if (labelProblem(label, others) !== null) {
-      return; // CommitInput keeps the draft; the row simply does not change
+    const problem = labelProblem(label, others);
+    if (problem !== null) {
+      // Rejecting in silence was the old behaviour: the row snapped back with
+      // no reason given, and closing the editor took the draft with it.
+      editError.value = { id, message: problem };
+      return;
     }
+    editError.value = null;
     replace(
       customAgents.map((agent) =>
         agent.id === id ? { ...agent, label: label.trim() } : agent,
@@ -78,9 +87,12 @@ export function AgentsSection() {
   };
 
   const retargetAgent = (id: string, command: string): void => {
-    if (commandProblem(command) !== null) {
+    const problem = commandProblem(command);
+    if (problem !== null) {
+      editError.value = { id, message: problem };
       return;
     }
+    editError.value = null;
     replace(
       customAgents.map((agent) =>
         agent.id === id ? { ...agent, command: command.trim() } : agent,
@@ -90,6 +102,10 @@ export function AgentsSection() {
 
   const removeAgent = (id: string): void => {
     replace(customAgents.filter((agent) => agent.id !== id));
+    // The id is now free again, and re-adding the same label would mint it a
+    // second time — so any workspace still remembering it has to let go now,
+    // or it would silently open with whatever the next agent of that name is.
+    forgetWorkspaceAgent(id);
   };
 
   const commitDraft = (): void => {
@@ -133,70 +149,76 @@ export function AgentsSection() {
 
       <ConfigGroup label="declared" />
       {customAgents.map((agent) => (
-        <div
-          class="cfg-row cfg-row--item"
-          key={agent.id}
-          // Leaving the row commits and closes whichever field was open. A
-          // click elsewhere is how people leave a field; without this the row
-          // would stay a form until something else took focus.
-          onFocusOut={() => {
-            editing.value = null;
-          }}
-        >
-          <div class="cfg-row__key">
-            {editing.value === labelKey(agent.id) ? (
-              <CommitInput
-                value={agent.label}
-                placeholder="name"
-                ariaLabel={`Name for ${agent.label}`}
-                autoFocus
-                onCommit={(label) => renameAgent(agent.id, label)}
-              />
-            ) : (
-              <button
-                type="button"
-                class="cfg-row__label cfg-row__label--edit"
-                title="Rename"
-                onClick={() => {
-                  editing.value = labelKey(agent.id);
-                }}
-              >
-                {agent.label}
-              </button>
-            )}
-          </div>
-          <div class="cfg-row__value">
-            {editing.value === commandKey(agent.id) ? (
-              <CommitInput
-                value={agent.command}
-                placeholder="command"
-                ariaLabel={`Command for ${agent.label}`}
-                autoFocus
-                onCommit={(command) => retargetAgent(agent.id, command)}
-              />
-            ) : (
-              <button
-                type="button"
-                class="cfg-btn"
-                title={`${agent.command} — click to edit`}
-                onClick={() => {
-                  editing.value = commandKey(agent.id);
-                }}
-              >
-                {agent.command}
-              </button>
-            )}
-          </div>
-          <button
-            type="button"
-            class="cfg-row__remove"
-            aria-label={`Remove ${agent.label}`}
-            title={`Remove ${agent.label}`}
-            onClick={() => removeAgent(agent.id)}
+        <Fragment key={agent.id}>
+          <div
+            class="cfg-row cfg-row--item"
+            // Leaving the row commits and closes whichever field was open. A
+            // click elsewhere is how people leave a field; without this the row
+            // would stay a form until something else took focus.
+            onFocusOut={() => {
+              editing.value = null;
+            }}
           >
-            ×
-          </button>
-        </div>
+            <div class="cfg-row__key">
+              {editing.value === labelKey(agent.id) ? (
+                <CommitInput
+                  value={agent.label}
+                  placeholder="name"
+                  ariaLabel={`Name for ${agent.label}`}
+                  autoFocus
+                  onCommit={(label) => renameAgent(agent.id, label)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  class="cfg-row__label cfg-row__label--edit"
+                  title="Rename"
+                  onClick={() => {
+                    editing.value = labelKey(agent.id);
+                  }}
+                >
+                  {agent.label}
+                </button>
+              )}
+            </div>
+            <div class="cfg-row__value">
+              {editing.value === commandKey(agent.id) ? (
+                <CommitInput
+                  value={agent.command}
+                  placeholder="command"
+                  ariaLabel={`Command for ${agent.label}`}
+                  autoFocus
+                  onCommit={(command) => retargetAgent(agent.id, command)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  class="cfg-btn"
+                  title={`${agent.command} — click to edit`}
+                  onClick={() => {
+                    editing.value = commandKey(agent.id);
+                  }}
+                >
+                  {agent.command}
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              class="cfg-row__remove"
+              aria-label={`Remove ${agent.label}`}
+              title={`Remove ${agent.label}`}
+              onClick={() => removeAgent(agent.id)}
+            >
+              ×
+            </button>
+          </div>
+          {editError.value?.id === agent.id && (
+            <div class="cfg-custom--error" role="status">
+              {editError.value.message}
+            </div>
+          )}
+        </Fragment>
       ))}
 
       {draftOpen.value ? (
