@@ -4,18 +4,58 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
+  # Re-run the Windows preview alone against a tag that already shipped. The
+  # Windows channel is an unsigned preview and will break again; without this,
+  # retrying it means moving the tag, which rebuilds and republishes a macOS
+  # release that was already fine.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing vX.Y.Z tag to rebuild the Windows preview from"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
+  resolve-target:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.pick.outputs.tag }}
+      sha: ${{ steps.pick.outputs.sha }}
+    steps:
+      - name: Checkout tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve the target tag and commit
+        id: pick
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          # On a tag push these equal github.ref_name/github.sha; on a manual
+          # run they come from the input, so every downstream job builds the
+          # exact commit that tag points at rather than whatever main is now.
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Refusing a non-release tag: $TAG"; exit 1 ;;
+          esac
+          git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1 || {
+            echo "Tag does not exist: $TAG"; exit 1;
+          }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-list -n1 "refs/tags/$TAG")" >> "$GITHUB_OUTPUT"
+
   validate-source:
+    needs: resolve-target
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.resolve-target.outputs.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -74,7 +114,9 @@ jobs:
           cargo test --locked --manifest-path src-tauri/Cargo.toml
 
   build-macos-stable-draft:
-    needs: validate-source
+    # Skipped on a manual run — that path exists to retry Windows alone.
+    if: github.event_name == 'push'
+    needs: [resolve-target, validate-source]
     runs-on: macos-latest
     permissions:
       contents: write
@@ -84,7 +126,7 @@ jobs:
       - name: Checkout exact source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.resolve-target.outputs.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -126,11 +168,11 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           DECK_UPDATER_PUBLIC_KEY: ${{ vars.DECK_UPDATER_PUBLIC_KEY }}
         with:
-          tagName: ${{ github.ref_name }}
+          tagName: ${{ needs.resolve-target.outputs.tag }}
           releaseName: "SpaceVibe Deck v__VERSION__"
           releaseBody: |
             Stable macOS release. Existing v0.9.0 users must install this first updater-enabled build manually once.
-          releaseCommitish: ${{ github.sha }}
+          releaseCommitish: ${{ needs.resolve-target.outputs.sha }}
           releaseDraft: true
           prerelease: false
           args: --config src-tauri/tauri.release.conf.json --target universal-apple-darwin
@@ -152,7 +194,7 @@ jobs:
           '
 
   build-windows-preview-draft:
-    needs: validate-source
+    needs: [resolve-target, validate-source]
     runs-on: windows-latest
     permissions:
       contents: write
@@ -162,7 +204,7 @@ jobs:
       - name: Checkout exact source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.resolve-target.outputs.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -213,13 +255,13 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           DECK_UPDATER_PUBLIC_KEY: ${{ vars.DECK_UPDATER_PUBLIC_KEY }}
         with:
-          tagName: ${{ github.ref_name }}-windows-preview
+          tagName: ${{ needs.resolve-target.outputs.tag }}-windows-preview
           releaseName: "SpaceVibe Deck v__VERSION__ — Unsigned Windows Preview"
           releaseBody: |
             **Unsigned Windows Preview** — this is not the stable Windows channel.
 
             Windows may show SmartScreen or `Unknown publisher` because this preview has no paid Authenticode certificate. The updater payload still requires Deck's Tauri signature before installation.
-          releaseCommitish: ${{ github.sha }}
+          releaseCommitish: ${{ needs.resolve-target.outputs.sha }}
           releaseDraft: true
           prerelease: true
           updaterJsonPreferNsis: true
@@ -229,7 +271,7 @@ jobs:
         shell: pwsh
         env:
           RELEASE_ID: ${{ steps.tauri.outputs.releaseId }}
-          PREVIEW_TAG: ${{ github.ref_name }}-windows-preview
+          PREVIEW_TAG: ${{ needs.resolve-target.outputs.tag }}-windows-preview
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $stage = "updater-artifacts"
@@ -253,19 +295,19 @@ jobs:
       - name: Upload exact-SHA Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-updater-${{ github.sha }}
+          name: windows-updater-${{ needs.resolve-target.outputs.sha }}
           path: updater-artifacts
           if-no-files-found: error
           retention-days: 7
 
   validate-windows-preview:
-    needs: build-windows-preview-draft
+    needs: [resolve-target, build-windows-preview-draft]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.resolve-target.outputs.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -275,7 +317,7 @@ jobs:
       - name: Download exact-SHA Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: windows-updater-${{ github.sha }}
+          name: windows-updater-${{ needs.resolve-target.outputs.sha }}
           path: updater-artifacts
 
       - name: Validate Windows updater manifest and provenance
@@ -295,13 +337,13 @@ jobs:
       - name: Preserve validated artifact
         uses: actions/upload-artifact@v4
         with:
-          name: validated-windows-updater-${{ github.sha }}
+          name: validated-windows-updater-${{ needs.resolve-target.outputs.sha }}
           path: updater-artifacts
           if-no-files-found: error
           retention-days: 7
 
   publish-macos-stable:
-    needs: build-macos-stable-draft
+    needs: [resolve-target, build-macos-stable-draft]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -313,7 +355,7 @@ jobs:
         run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false
 
   publish-windows-preview:
-    needs: [build-windows-preview-draft, validate-windows-preview]
+    needs: [resolve-target, build-windows-preview-draft, validate-windows-preview]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -325,7 +367,7 @@ jobs:
         run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false
 
   promote-windows-channel:
-    needs: [publish-windows-preview, validate-windows-preview]
+    needs: [resolve-target, publish-windows-preview, validate-windows-preview]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -333,7 +375,7 @@ jobs:
       - name: Download validated exact-SHA artifact
         uses: actions/download-artifact@v4
         with:
-          name: validated-windows-updater-${{ github.sha }}
+          name: validated-windows-updater-${{ needs.resolve-target.outputs.sha }}
           path: updater-artifacts
 
       - name: Create or update fixed preview channel
