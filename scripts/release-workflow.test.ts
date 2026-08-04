@@ -192,6 +192,18 @@ describe("release channel isolation", () => {
 });
 
 describe("publication gates", () => {
+  it("proves renamed macOS draft assets match the local build", () => {
+    const collection = steps("build-macos-stable-draft").find((step) =>
+      step.includes("Collect exact macOS updater artifacts"),
+    );
+
+    expect(collection).toContain("releases/assets/$id");
+    expect(collection).toContain("cmp -s");
+    expect(collection).not.toContain(
+      'cp "${payloads[0]}" "${signatures[0]}" "${images[0]}"',
+    );
+  });
+
   it("lets validation jobs read draft releases", () => {
     for (const name of [
       "validate-macos-stable",

@@ -228,9 +228,34 @@ jobs:
             echo "Expected exactly one updater bundle, one signature and one DMG"
             exit 1
           fi
-          cp latest.json "$stage/"
-          cp "${payloads[0]}" "${signatures[0]}" "${images[0]}" "$stage/"
           gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" > "$stage/release.json"
+          if [ "$(jq '.assets | length' "$stage/release.json")" -ne 4 ]; then
+            echo "Expected exactly four macOS draft assets"
+            exit 1
+          fi
+          while IFS=$'\t' read -r id name; do
+            if [ -z "$name" ] || [[ "$name" == */* ]]; then
+              echo "Unsafe macOS draft asset name: $name"
+              exit 1
+            fi
+            gh api -H "Accept: application/octet-stream" \
+              "repos/$GITHUB_REPOSITORY/releases/assets/$id" > "$stage/$name"
+          done < <(jq -r '.assets[] | [.id, .name] | @tsv' "$stage/release.json")
+
+          # tauri-action sanitizes and versions uploaded filenames. Preserve
+          # those public names in provenance, but first prove their bytes are
+          # exactly the local bundle outputs from this runner.
+          staged_payloads=("$stage"/*.app.tar.gz)
+          staged_signatures=("$stage"/*.app.tar.gz.sig)
+          staged_images=("$stage"/*.dmg)
+          if [ ${#staged_payloads[@]} -ne 1 ] || [ ${#staged_signatures[@]} -ne 1 ] || [ ${#staged_images[@]} -ne 1 ]; then
+            echo "Draft does not carry the exact macOS updater asset set"
+            exit 1
+          fi
+          cmp -s latest.json "$stage/latest.json"
+          cmp -s "${payloads[0]}" "${staged_payloads[0]}"
+          cmp -s "${signatures[0]}" "${staged_signatures[0]}"
+          cmp -s "${images[0]}" "${staged_images[0]}"
           node scripts/create-updater-provenance.mjs \
             --artifact-dir "$stage" --sha "$SOURCE_SHA" --tag "$SOURCE_TAG"
 
