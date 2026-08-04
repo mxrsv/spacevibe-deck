@@ -57,11 +57,42 @@ describe("isBusy", () => {
 
 describe("update confirmation copy", () => {
   it("names the install-and-restart action", () => {
-    expect(UPDATE_COPY).toEqual({
-      title: "Install Deck Update",
-      okLabel: "Install & Restart",
-      action: "Install update and restart",
-    });
+    expect(UPDATE_COPY.title).toBe("Install Deck Update");
+    expect(UPDATE_COPY.okLabel).toBe("Install & Restart");
+    expect(UPDATE_COPY.action).toBe("Install update and restart");
+  });
+
+  it("warns that the install is not a normal restart", () => {
+    // Deck hands the install to the platform and cannot watch it finish, so
+    // the dialog is the only place the user learns the stakes.
+    expect(UPDATE_COPY.detail).toMatch(/quit while it installs/);
+    expect(UPDATE_COPY.detail).toMatch(/terminated/);
+    expect(UPDATE_COPY.detail).toMatch(/downloaded again/);
+  });
+
+  it("leaves the close and quit dialogs without extra consequences copy", () => {
+    expect(QUIT_COPY.detail).toBeUndefined();
+  });
+});
+
+describe("confirmMessage — pane count", () => {
+  it("counts panes, not deduplicated names", () => {
+    // Three panes running claude used to read "claude is still running".
+    expect(confirmMessage(["claude"], "Install update and restart", 3)).toBe(
+      "3 panes are still running (claude). Install update and restart anyway?",
+    );
+  });
+
+  it("keeps the singular wording when one pane is busy", () => {
+    expect(confirmMessage(["claude"], "Close", 1)).toBe(
+      "claude is still running. Close anyway?",
+    );
+  });
+
+  it("defaults the count to the number of names", () => {
+    expect(confirmMessage(["claude", "cargo"], "Quit")).toBe(
+      "These processes are still running: claude, cargo. Quit anyway?",
+    );
   });
 });
 

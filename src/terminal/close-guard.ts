@@ -29,6 +29,12 @@ export interface ConfirmCopy {
   readonly okLabel: string;
   /** Verb in the question — "Close anyway?" / "Quit anyway?". */
   readonly action: string;
+  /**
+   * Consequences the verb does not convey, appended as its own paragraph.
+   * Closing a tab is reversible enough to need none; replacing the running
+   * application is not.
+   */
+  readonly detail?: string;
 }
 
 const CLOSE_COPY: ConfirmCopy = {
@@ -47,15 +53,31 @@ export const UPDATE_COPY: ConfirmCopy = {
   title: "Install Deck Update",
   okLabel: "Install & Restart",
   action: "Install update and restart",
+  // The installer runs outside Deck and Deck cannot watch it finish: on
+  // Windows the updater exits the process the moment it hands over, and on
+  // macOS a failure late in the swap can leave neither version in place. So
+  // the dialog has to say plainly that this is not a normal restart.
+  detail:
+    "Deck will quit while it installs. Running processes are terminated and terminal sessions are not restored. If the install fails, Deck may need to be downloaded again.",
 };
 
+/**
+ * `busyPanes` is the count of panes, not of names: three panes all running
+ * `claude` deduplicate to one name, and "claude is still running" badly
+ * understates what is about to be killed.
+ */
 export function confirmMessage(
   names: readonly string[],
   action: string = "Close",
+  busyPanes: number = names.length,
 ): string {
-  return names.length === 1
-    ? `${names[0]} is still running. ${action} anyway?`
-    : `These processes are still running: ${names.join(", ")}. ${action} anyway?`;
+  const subject =
+    busyPanes > names.length
+      ? `${busyPanes} panes are still running (${names.join(", ")})`
+      : names.length === 1
+        ? `${names[0]} is still running`
+        : `These processes are still running: ${names.join(", ")}`;
+  return `${subject}. ${action} anyway?`;
 }
 
 function unknownMessage(action: string): string {
@@ -92,9 +114,11 @@ export async function confirmClose(
         ((info.kind === "agent" || info.kind === "busy") &&
           info.process !== null),
     );
-    const message = fullyNamed
-      ? confirmMessage(names, copy.action)
-      : unknownMessage(copy.action);
+    const message =
+      (fullyNamed
+        ? confirmMessage(names, copy.action, infos.filter(isBusy).length)
+        : unknownMessage(copy.action)) +
+      (copy.detail === undefined ? "" : `\n\n${copy.detail}`);
     try {
       return await ask(message, {
         title: copy.title,
