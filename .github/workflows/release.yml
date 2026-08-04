@@ -245,6 +245,8 @@ jobs:
   validate-macos-stable:
     needs: [resolve-target, build-macos-stable-draft]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout exact source
         uses: actions/checkout@v4
@@ -437,6 +439,8 @@ jobs:
   validate-windows-preview:
     needs: [resolve-target, build-windows-preview-draft]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout exact source
         uses: actions/checkout@v4

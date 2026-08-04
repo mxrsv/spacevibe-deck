@@ -192,6 +192,15 @@ describe("release channel isolation", () => {
 });
 
 describe("publication gates", () => {
+  it("lets validation jobs read draft releases", () => {
+    for (const name of [
+      "validate-macos-stable",
+      "validate-windows-preview",
+    ]) {
+      expect(job(name), name).toContain("permissions:\n      contents: write");
+    }
+  });
+
   it("publishes nothing that cryptographic validation has not passed", () => {
     expect(job("publish-macos-stable")).toContain("validate-macos-stable");
     expect(job("publish-windows-preview")).toContain(
