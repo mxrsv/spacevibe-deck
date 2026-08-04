@@ -23,6 +23,7 @@ const WINDOWS = {
   targets: ["windows-x86_64", "windows-x86_64-nsis"],
   payload: `Deck_${VERSION}_x64-setup.exe`,
   extras: [],
+  stagedNames: {},
 };
 const MACOS = {
   platform: "macos",
@@ -36,8 +37,18 @@ const MACOS = {
     "darwin-x86_64-app",
     "darwin-universal-app",
   ],
-  payload: "SpaceVibe Deck.app.tar.gz",
-  extras: [`SpaceVibe Deck_${VERSION}_universal.dmg`],
+  payload: `SpaceVibe.Deck_${VERSION}_universal.app.tar.gz`,
+  extras: [`SpaceVibe.Deck_${VERSION}_universal.dmg`],
+  // Two renames stack between the runner and the draft: tauri-action adds
+  // `_<version>_universal` to the bundle on upload, and GitHub replaces spaces
+  // with dots. The staged names therefore never equal the asset names.
+  stagedNames: {
+    [`SpaceVibe.Deck_${VERSION}_universal.app.tar.gz`]:
+      "SpaceVibe Deck.app.tar.gz",
+    [`SpaceVibe.Deck_${VERSION}_universal.app.tar.gz.sig`]:
+      "SpaceVibe Deck.app.tar.gz.sig",
+    [`SpaceVibe.Deck_${VERSION}_universal.dmg`]: `SpaceVibe Deck_${VERSION}_universal.dmg`,
+  },
 };
 
 function digest(value) {
@@ -112,7 +123,12 @@ function sync(value) {
     JSON.stringify(value.manifest),
   );
   value.stagedContents = {
-    ...value.releaseContents,
+    ...Object.fromEntries(
+      Object.entries(value.releaseContents).map(([name, content]) => [
+        value.stagedNames[name] ?? name,
+        content,
+      ]),
+    ),
     "release.json": Buffer.from(JSON.stringify(value.release)),
   };
   return reprovenance(value);
@@ -171,6 +187,7 @@ function fixture(descriptor = WINDOWS, options = {}) {
     manifest,
     release,
     provenance: { source_sha: SHA, tag: descriptor.tag, files: {} },
+    stagedNames: descriptor.stagedNames,
     // Under Tauri v2 the installer IS the updater payload — one file, not a
     // separate .nsis.zip alongside it.
     releaseContents: {
@@ -340,6 +357,18 @@ test("rejects a staged release response that no longer describes the draft", () 
   assert.throws(
     () => validateUpdaterRelease(reprovenance(value)),
     /release\.json content/i,
+  );
+});
+
+test("rejects a staged file that never reached the draft", () => {
+  // Binding by content must stay symmetric: an artifact the runner built and
+  // nobody uploaded is as much a broken release as an asset nobody built.
+  const value = fixture(MACOS);
+  value.stagedContents["SpaceVibe Deck_0.11.0-rc.1_aarch64.dmg"] =
+    Buffer.from("second image");
+  assert.throws(
+    () => validateUpdaterRelease(reprovenance(value)),
+    /never reached the draft/i,
   );
 });
 

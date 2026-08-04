@@ -320,18 +320,17 @@ function requireDownloadedAssets(releaseContents, expectedAssets) {
   return releaseContents;
 }
 
-function validateStagedProvenance(stagedContents, provenance, expectedAssets) {
+function validateStagedProvenance(stagedContents, provenance) {
   assertPlainObject(provenance.files, "provenance files");
   const staged = Object.keys(stagedContents).sort();
   const carried = Object.keys(provenance.files).sort();
-  const expectedStaged = [...expectedAssets, RELEASE_METADATA].sort();
-  invariant(
-    JSON.stringify(staged) === JSON.stringify(expectedStaged),
-    "Staged files must be exactly the draft assets plus the release response",
-  );
   invariant(
     JSON.stringify(carried) === JSON.stringify(staged),
     "Provenance and staged file sets differ",
+  );
+  invariant(
+    RELEASE_METADATA in stagedContents,
+    `Staged files lack ${RELEASE_METADATA}`,
   );
   for (const name of staged) {
     invariant(basename(name) === name, `Unsafe provenance filename: ${name}`);
@@ -340,6 +339,38 @@ function validateStagedProvenance(stagedContents, provenance, expectedAssets) {
       `Staged artifact digest mismatch: ${name}`,
     );
   }
+}
+
+/**
+ * Binds the draft assets to the files the runner built, by content.
+ *
+ * Names cannot carry this: `tauri-action` renames the updater bundle as it
+ * uploads (`Deck.app.tar.gz` → `Deck_0.11.0_universal.app.tar.gz`) and GitHub
+ * replaces spaces with dots, so the two sides almost never agree on a name.
+ * Digests do agree, and they are what the claim is actually about — every asset
+ * the draft serves is a file this build produced, and nothing was left behind.
+ */
+function bindDraftToStagedBytes(downloaded, stagedContents, expectedAssets) {
+  const unclaimed = new Map();
+  for (const [name, content] of Object.entries(stagedContents)) {
+    if (name === RELEASE_METADATA) {
+      continue;
+    }
+    const key = sha256(content);
+    unclaimed.set(key, [...(unclaimed.get(key) ?? []), name]);
+  }
+
+  for (const asset of expectedAssets) {
+    const candidates = unclaimed.get(sha256(downloaded[asset])) ?? [];
+    invariant(candidates.length > 0, `Draft asset digest mismatch: ${asset}`);
+    candidates.shift();
+  }
+
+  const leftover = [...unclaimed.values()].flat().sort();
+  invariant(
+    leftover.length === 0,
+    `Staged files never reached the draft: ${leftover.join(", ")}`,
+  );
 }
 
 /**
@@ -445,13 +476,8 @@ export function validateUpdaterRelease(input) {
     );
   }
 
-  validateStagedProvenance(stagedContents, provenance, expectedAssets);
-  for (const name of expectedAssets) {
-    invariant(
-      sha256(downloaded[name]) === provenance.files[name],
-      `Draft asset digest mismatch: ${name}`,
-    );
-  }
+  validateStagedProvenance(stagedContents, provenance);
+  bindDraftToStagedBytes(downloaded, stagedContents, expectedAssets);
 
   invariant(
     JSON.stringify(JSON.parse(downloaded[MANIFEST_ASSET])) ===
