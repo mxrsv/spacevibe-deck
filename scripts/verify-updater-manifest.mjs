@@ -22,8 +22,15 @@ const PLATFORMS = {
     extraSuffixes: [],
   },
   macos: {
-    targets: ["darwin-universal"],
-    // The universal build emits one target and one payload for both arches.
+    targets: [
+      "darwin-aarch64",
+      "darwin-x86_64",
+      "darwin-universal",
+      "darwin-aarch64-app",
+      "darwin-x86_64-app",
+      "darwin-universal-app",
+    ],
+    // Tauri aliases one universal payload across both arches and app targets.
     payloadSuffix: ".app.tar.gz",
     extraSuffixes: [".dmg"],
   },
