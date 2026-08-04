@@ -25,8 +25,9 @@ const IS_RELEASE_CANDIDATE = "needs.resolve-target.outputs.rc == 'true'";
  * `if:`/`needs:` expressions, and a whole-file substring match cannot tell a
  * guard on the RC promotion apart from one on the production promotion.
  */
-function jobs(): Map<string, string> {
-  const body = workflow.slice(workflow.indexOf("\njobs:\n"));
+function jobs(source = workflow): Map<string, string> {
+  const normalized = source.replaceAll("\r\n", "\n");
+  const body = normalized.slice(normalized.indexOf("\njobs:\n"));
   const headers = [...body.matchAll(/^ {2}([a-z][a-z0-9-]*):$/gm)];
   return new Map(
     headers.map((header, index) => [
@@ -39,8 +40,8 @@ function jobs(): Map<string, string> {
   );
 }
 
-function job(name: string): string {
-  const found = jobs().get(name);
+function job(name: string, source = workflow): string {
+  const found = jobs(source).get(name);
   if (found === undefined) {
     throw new Error(`Workflow has no job named ${name}`);
   }
@@ -83,6 +84,14 @@ function acceptsTag(tag: string): boolean {
 }
 
 describe("release tag resolution", () => {
+  it("parses workflow jobs after a Windows CRLF checkout", () => {
+    const windowsWorkflow = workflow.replaceAll("\n", "\r\n");
+
+    expect(job("build-macos-stable-draft", windowsWorkflow)).toContain(
+      "releaseDraft: true",
+    );
+  });
+
   it("accepts exact stable and release-candidate source tags", () => {
     for (const tag of ["v0.11.0", "v0.11.0-rc.1", "v1.0.0-rc.12"]) {
       expect(acceptsTag(tag), tag).toBe(true);
