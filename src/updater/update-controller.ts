@@ -194,7 +194,18 @@ export function createUpdateController(
         await deps.flush();
         // Ordered before install on purpose: once install() is called on
         // Windows the process can be gone before the next line runs.
+        //
+        // A failure here ABORTS the install. Installing without the record
+        // means a failed install can never be noticed — the exact silence this
+        // mechanism exists to end — so proceeding blind is worse than not
+        // installing at all. The user keeps a working app and can retry.
         await deps.recordAttempt(update.version);
+      } catch (error: unknown) {
+        deps.report("Could not record the update attempt", error);
+        view.value = updateView(update, "install-failed");
+        return;
+      }
+      try {
         await update.install();
       } catch (error: unknown) {
         deps.report("Update install failed", error);

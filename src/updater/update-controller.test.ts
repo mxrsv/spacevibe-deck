@@ -229,3 +229,38 @@ describe("install breadcrumb", () => {
     expect(deps.recordAttempt).not.toHaveBeenCalled();
   });
 });
+
+describe("breadcrumb failure aborts the install", () => {
+  it("never calls install() when the attempt could not be recorded", async () => {
+    const { controller, deps, update } = setup(pending(), {
+      recordAttempt: vi.fn().mockRejectedValue(new Error("disk full")),
+    });
+    await controller.checkNow();
+    await controller.download();
+    await controller.installAndRelaunch();
+
+    // Installing blind is worse than not installing: a failure would then be
+    // undetectable forever, which is the silence this mechanism exists to end.
+    expect(update!.install).not.toHaveBeenCalled();
+    expect(deps.relaunch).not.toHaveBeenCalled();
+    expect(controller.view.value.phase).toBe("install-failed");
+    expect(deps.report).toHaveBeenCalledWith(
+      "Could not record the update attempt",
+      expect.any(Error),
+    );
+  });
+
+  it("leaves the app usable and retryable after that abort", async () => {
+    const recordAttempt = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("disk full"))
+      .mockResolvedValue(undefined);
+    const { controller, update } = setup(pending(), { recordAttempt });
+    await controller.checkNow();
+    await controller.download();
+    await controller.installAndRelaunch();
+    await controller.installAndRelaunch();
+
+    expect(update!.install).toHaveBeenCalledTimes(1);
+  });
+});

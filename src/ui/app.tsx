@@ -58,7 +58,7 @@ import {
   recordUpdateAttempt,
   takeUpdateOutcome,
 } from "../updater/update-attempt-store";
-import { failedAttemptMessage } from "../updater/update-attempt";
+import { attemptMessage } from "../updater/update-attempt";
 import {
   isUpdateMenuAction,
   runUpdateMenuAction,
@@ -305,8 +305,9 @@ export function App() {
       // wondering why the version never changes. Reporting is fire-and-forget
       // — a diagnostic must never delay the terminal coming up.
       void takeUpdateOutcome().then((outcome) => {
-        if (outcome.kind === "failed") {
-          reportPersistError(failedAttemptMessage(outcome.attempt));
+        const message = attemptMessage(outcome);
+        if (message !== null) {
+          reportPersistError(message);
         }
       });
       void updater.start();

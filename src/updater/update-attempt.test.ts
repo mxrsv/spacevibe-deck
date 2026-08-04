@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  failedAttemptMessage,
+  attemptMessage,
   isUpdateAttempt,
   resolveAttemptOutcome,
   type UpdateAttempt,
@@ -20,17 +20,30 @@ describe("resolveAttemptOutcome", () => {
     });
   });
 
-  it("reports failure when the version did not move", () => {
+  it("reports incomplete when still on the version we started from", () => {
     // This is the Windows case: the installer exited the process without ever
     // telling Deck whether it ran, so the only evidence is the version.
     expect(resolveAttemptOutcome(attempt, "0.10.0")).toEqual({
-      kind: "failed",
+      kind: "incomplete",
       attempt,
     });
   });
 
-  it("reports failure when some other version came back", () => {
-    expect(resolveAttemptOutcome(attempt, "0.9.0").kind).toBe("failed");
+  it("reports superseded when a third version is running", () => {
+    // Someone downloaded a build by hand, or rolled back. The record describes
+    // a world that no longer exists.
+    expect(resolveAttemptOutcome(attempt, "0.12.0")).toEqual({
+      kind: "superseded",
+      attempt,
+      version: "0.12.0",
+    });
+  });
+
+  it("never claims the origin version is running when it is not", () => {
+    const outcome = resolveAttemptOutcome(attempt, "0.9.0");
+    expect(outcome.kind).toBe("superseded");
+    expect(attemptMessage(outcome)).toContain("0.9.0");
+    expect(attemptMessage(outcome)).not.toContain("still running 0.10.0");
   });
 
   it("treats a missing record as an ordinary launch", () => {
@@ -66,13 +79,28 @@ describe("isUpdateAttempt", () => {
   });
 });
 
-describe("failedAttemptMessage", () => {
-  it("names both versions and stops short of guessing why", () => {
-    const message = failedAttemptMessage(attempt);
+describe("attemptMessage", () => {
+  it("names both versions on an incomplete install, without guessing why", () => {
+    const message = attemptMessage({ kind: "incomplete", attempt })!;
     expect(message).toContain("0.11.0");
     expect(message).toContain("0.10.0");
     expect(message).toContain("Download it manually");
     // Deck never saw the installer, so it must not claim a cause.
     expect(message).not.toMatch(/because|failed to|error/i);
+  });
+
+  it("reports the version actually running when the record was superseded", () => {
+    const message = attemptMessage({
+      kind: "superseded",
+      attempt,
+      version: "0.12.0",
+    })!;
+    expect(message).toContain("0.12.0");
+    expect(message).not.toContain("still running");
+  });
+
+  it("says nothing on success or on an ordinary launch", () => {
+    expect(attemptMessage({ kind: "succeeded", version: "0.11.0" })).toBeNull();
+    expect(attemptMessage({ kind: "none" })).toBeNull();
   });
 });

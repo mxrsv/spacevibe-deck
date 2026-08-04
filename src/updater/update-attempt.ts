@@ -9,8 +9,7 @@
  *
  * Since the attempt cannot be observed while it happens, it is inferred
  * afterwards: write down which version we were trying to reach, then compare
- * against the version that actually came back. Same trick as a journal — the
- * record survives the process that wrote it.
+ * against the version that actually came back.
  */
 
 /** What Deck was attempting, written before control leaves the app. */
@@ -28,8 +27,19 @@ export type AttemptOutcome =
   | { readonly kind: "none" }
   /** The running version is the one we were installing. */
   | { readonly kind: "succeeded"; readonly version: string }
-  /** An attempt was recorded but the version did not move. */
-  | { readonly kind: "failed"; readonly attempt: UpdateAttempt };
+  /** Still on the version we started from: the install never happened. */
+  | { readonly kind: "incomplete"; readonly attempt: UpdateAttempt }
+  /**
+   * Neither the target nor the origin is running. Something else moved the
+   * install — a manual download, a second attempt, a rollback — so the record
+   * describes a world that no longer exists and must not be reported as if it
+   * did.
+   */
+  | {
+      readonly kind: "superseded";
+      readonly attempt: UpdateAttempt;
+      readonly version: string;
+    };
 
 export function isUpdateAttempt(value: unknown): value is UpdateAttempt {
   if (typeof value !== "object" || value === null) {
@@ -49,6 +59,11 @@ export function isUpdateAttempt(value: unknown): value is UpdateAttempt {
 /**
  * What the recorded attempt means now that `currentVersion` is running.
  *
+ * Three outcomes, not two. Treating "not the target" as "install failed" was
+ * wrong: a user who downloads 0.12.0 by hand after a failed 0.11.0 attempt is
+ * running neither version in the record, and telling them they are "still
+ * running 0.10.0" is simply false.
+ *
  * A malformed record is treated as no attempt: the breadcrumb exists to warn
  * about a failure, and warning on garbage would train users to ignore it.
  */
@@ -62,14 +77,28 @@ export function resolveAttemptOutcome(
   if (attempt.targetVersion === currentVersion) {
     return { kind: "succeeded", version: currentVersion };
   }
-  return { kind: "failed", attempt };
+  if (attempt.fromVersion === currentVersion) {
+    return { kind: "incomplete", attempt };
+  }
+  return { kind: "superseded", attempt, version: currentVersion };
 }
 
 /**
- * What to tell the user about a failed attempt. Deliberately does not claim to
- * know why: the app never saw the installer. It says what did not happen and
- * what to do, which is all Deck can honestly assert.
+ * What to tell the user, or `null` when there is nothing worth saying.
+ *
+ * Deliberately never claims to know WHY: the app never saw the installer. It
+ * states what did not happen and what to do, which is all Deck can honestly
+ * assert. A superseded record says the version actually running rather than
+ * the stale one it was written with.
  */
-export function failedAttemptMessage(attempt: UpdateAttempt): string {
-  return `Deck ${attempt.targetVersion} didn't finish installing — still running ${attempt.fromVersion}. Download it manually if this keeps happening.`;
+export function attemptMessage(outcome: AttemptOutcome): string | null {
+  switch (outcome.kind) {
+    case "incomplete":
+      return `Deck ${outcome.attempt.targetVersion} didn't finish installing — still running ${outcome.attempt.fromVersion}. Download it manually if this keeps happening.`;
+    case "superseded":
+      return `An earlier update to Deck ${outcome.attempt.targetVersion} never completed. Now running ${outcome.version}.`;
+    case "succeeded":
+    case "none":
+      return null;
+  }
 }

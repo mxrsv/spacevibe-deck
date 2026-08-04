@@ -12,9 +12,29 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
 
 **In flight — already decided, do not reopen:**
 
-- v0.10.0 is the release being cut (2026-08-04): the tag is what CI builds from,
-  and `validate-source` rejects a tag whose `package.json`, `Cargo.toml` and
-  `tauri.conf.json` versions disagree.
+- v0.10.0 shipped 2026-08-04 (macOS stable + unsigned Windows preview). The tag is
+  what CI builds from, and `validate-source` rejects a tag whose `package.json`,
+  `Cargo.toml` and `tauri.conf.json` versions disagree.
+- **0.10.1 is the hardened-updater release, and nothing else ships before its
+  end-to-end update test passes** (decided 2026-08-04). Auto-update is a core
+  requirement, not a convenience: after this bootstrap every later patch reaches
+  users on its own, so the bootstrap has to be right. Scope is closed to:
+  the two breadcrumb findings, a pinned updater revision carrying the upstream
+  Windows `ShellExecuteW` fix, a macOS rollback when the bundle swap fails,
+  and the cryptographic-verification and release-channel fixes. No feature work
+  alongside it.
+- The updater that runs during an upgrade is the one inside the OLD build. So
+  the hardening in 0.10.1 cannot protect the 0.10.0 → 0.10.1 hop itself: users on
+  0.10.0 either bootstrap manually one last time or accept the unhardened
+  updater for exactly that one transition. From 0.10.1 onward the guarantee holds.
+- Verification before release: two hardened release candidates (`0.10.1-rc.1` →
+  `0.10.1-rc.2`) upgraded for real on macOS AND Windows — discover, verify
+  signature, download, install, relaunch — plus a tampered-signature case and
+  failure injection. The public 0.10.1 and the update channel are enabled only
+  after that passes.
+- No `windows-preview-channel` release pointing at `c2b3a14` (decided 2026-08-04):
+  publishing an endpoint for a build whose updater is known-broken would hand
+  Windows users the very path under repair.
 - Landing download links resolve from the releases API at load (2026-08-01): the
   hand-bumped Windows prerelease pin is gone — publishing a release is the act
   that points the landing at it, so links never rot between releases.
