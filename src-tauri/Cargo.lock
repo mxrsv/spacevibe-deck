@@ -3723,7 +3723,7 @@ dependencies = [
 
 [[package]]
 name = "spacevibe-deck"
-version = "0.11.0-rc.1"
+version = "0.11.0-rc.2"
 dependencies = [
  "base64 0.22.1",
  "libc",

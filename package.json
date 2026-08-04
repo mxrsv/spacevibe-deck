@@ -1,7 +1,7 @@
 {
   "name": "spacevibe-deck",
   "private": true,
-  "version": "0.11.0-rc.1",
+  "version": "0.11.0-rc.2",
   "type": "module",
   "scripts": {
     "generate:menu": "tsx scripts/generate-menu.ts",
