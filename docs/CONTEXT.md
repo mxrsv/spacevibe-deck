@@ -167,15 +167,60 @@ Remaining delivery gates:
   `https://deck.spacevibe.dev/landing-prototype/changelog/` returns `200`
   before shipping the desktop menu link; it returned `404` on 2026-08-04,
   while `npm run build:landing` produced the expected changelog artifact.
-- Generate and securely back up the production Tauri updater keypair, commit
-  only its public key through `DECK_UPDATER_PUBLIC_KEY`, and configure the
-  private key/password as protected GitHub Secrets. No production key was
-  generated during implementation.
-- Manually install the first updater-enabled release from v0.9.0, then run the
-  signed disposable-manifest update flow on macOS and real Windows 11 x64.
+- ~~Generate the production updater keypair~~ — done; `0.10.0` and `0.11.0`
+  shipped signed against it. The key is the one thing that must never change:
+  its public half is compiled into every build already in the field, so a new
+  keypair makes old builds refuse new ones and every user reinstalls by hand.
+- Run the update flow on real Windows 11 x64. macOS closed on 2026-08-05
+  (see below); Windows was deliberately skipped.
 - Obtain user eye approval for the `1100x720` and `480x320` screenshots in both
   top-tab and sidebar layouts. Windows remains an unsigned B2 preview, so
   Authenticode/SmartScreen publisher identity is intentionally unresolved.
+
+## Hardened updater — 0.11.0, shipped 2026-08-05
+
+`0.11.0` is the bootstrap the rest of the update story rests on: from here every
+later patch reaches users on its own, so this one had to be right.
+
+What the release actually changed:
+
+- The release validator reproduces Tauri's Minisign check in Node — packet
+  parsing, key-id equality, BLAKE2b-512 prehashing for `ED`, the payload
+  signature and the trusted-comment global signature — over bytes re-downloaded
+  from the exact draft, not over the staging directory
+  ([verifier](../scripts/verify-updater-manifest.mjs) `current`).
+- macOS gained the same collect → re-download → verify → publish gate Windows
+  already had; before this, macOS only checked that a signature string was
+  non-empty ([release workflow](../.github/workflows/release.yml) `current`).
+- The updater plugin is pinned to a fork revision with upstream PR #3516 and a
+  macOS transactional swap ([pin](../src-tauri/Cargo.toml) `current`).
+
+What was verified on real hardware, 2026-08-05:
+
+- macOS `0.11.0-rc.1` → `0.11.0-rc.2` upgraded end to end through an isolated RC
+  channel. The installed bundle kept mode `0755` rather than the extraction
+  directory's `0700` — upstream issue #3506 proven fixed at runtime.
+- A manifest advertising a non-existent `0.11.0-rc.3` with one flipped signature
+  byte was downloaded and refused; nothing installed, no bundle touched.
+- Both published channels were re-verified against the live bytes after release:
+  `releases/latest` and `windows-preview-channel` both serve `0.11.0` with valid
+  signatures.
+- Windows end-to-end was **skipped by decision**, and failure injection with it.
+  Recorded with its cost in [AGENTS.md](../AGENTS.md) `current`.
+
+Before buying signing certificates, check three things — none are about the
+certificates themselves, all three are about what gets edited in the same sitting:
+
+1. **Never rotate the updater keypair.** See the delivery gate above.
+2. **macOS: changing the signing identity resets TCC.** Permissions the user
+   granted are bound to the code signature, so moving from the ad-hoc identity
+   to a Developer ID makes macOS treat it as a different app. Updates still
+   install; the app just forgets it was ever allowed
+   ([current identity](../src-tauri/tauri.macos.conf.json) `current`).
+3. **Windows: keep `bundle.publisher` byte-identical.** NSIS derives its product
+   identity from it, so changing it to match a certificate's legal name makes
+   the installer place a second copy beside the first instead of upgrading
+   ([publisher](../src-tauri/tauri.conf.json) `current`).
 
 ## Chưa khớp thực tế
 

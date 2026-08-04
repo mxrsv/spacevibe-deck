@@ -15,16 +15,13 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
 - v0.10.0 shipped 2026-08-04 (macOS stable + unsigned Windows preview). The tag is
   what CI builds from, and `validate-source` rejects a tag whose `package.json`,
   `Cargo.toml` and `tauri.conf.json` versions disagree.
-- **0.11.0 is the hardened-updater release, and nothing else ships before its
-  end-to-end update test passes** (decided 2026-08-04). Auto-update is a core
-  requirement, not a convenience: after this bootstrap every later patch reaches
-  users on its own, so the bootstrap has to be right. Scope is closed to:
-  the two breadcrumb findings, a pinned updater revision carrying the upstream
-  Windows `ShellExecuteW` fix, a macOS rollback when the bundle swap fails,
-  and the cryptographic-verification and release-channel fixes. No feature work
-  alongside it. Execution is tracked in the
-  [hardened-updater release plan](docs/plans/2026-08-04-hardened-updater-release.md)
-  `building`.
+- v0.11.0 shipped 2026-08-05 — the hardened-updater release, and the gate that
+  blocked everything else is closed. `releases/latest` and the first-ever
+  `windows-preview-channel` both serve it. What it changed and what was verified
+  now lives in [`docs/CONTEXT.md`](docs/CONTEXT.md) `current` and
+  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) `current`; the plan it came from
+  is frozen at
+  [hardened-updater release plan](docs/plans/2026-08-04-hardened-updater-release.md) `current`.
 - The updater fork is [`mxrsv/plugins-workspace`](https://github.com/mxrsv/plugins-workspace),
   branch `fix/updater-macos-transactional-swap`, based on upstream `v2` commit
   `622f02bf` (the `ShellExecuteW` fix, PR #3516). Deck pins the exact revision
@@ -66,9 +63,15 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   a flaky connection and a tampered update — the second deserves to stop the user,
   not invite another Retry. Left out of 0.11.0 because that release admits no UI
   work; it needs its own task.
-- No `windows-preview-channel` release pointing at `c2b3a14` (decided 2026-08-04):
-  publishing an endpoint for a build whose updater is known-broken would hand
-  Windows users the very path under repair.
+- The GitHub release list has no convention, and 0.11.0 made that visible
+  (raised 2026-08-05). Channel releases are **pointers, not versions** — each
+  holds one `latest.json` — yet they sit in the list looking exactly like
+  something to download, and every version costs two rows because the Windows
+  preview is a separate release. Decided: finish 0.11.0 first, then collapse to
+  one release per version with the Windows installer as an asset inside it, and
+  write the rule down here. Not started. The prerelease flag itself stays — it is
+  what keeps `releases/latest` from serving a test build to real users, not
+  decoration.
 - Landing download links resolve from the releases API at load (2026-08-01): the
   hand-bumped Windows prerelease pin is gone — publishing a release is the act
   that points the landing at it, so links never rot between releases.

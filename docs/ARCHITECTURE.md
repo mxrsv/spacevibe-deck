@@ -17,16 +17,16 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 | [src-tauri/src/coordinator.rs](../src-tauri/src/coordinator.rs) `current`                                                     | window/pane coordination (load-bearing seam)                 | frontend     | windows     |
 | [src-tauri/src/menu.rs](../src-tauri/src/menu.rs) `current` + [menu_registry.rs](../src-tauri/src/menu_registry.rs) `current` | native menu — generated, edit the registry                   | build script | macOS menu  |
 | [src-tauri/src/migrate.rs](../src-tauri/src/migrate.rs) `current`                                                             | settings carry-over from the Stackgrid bundle id             | first launch | app dirs    |
-| [src-tauri/src/platform/](../src-tauri/src/platform) `current`                                                               | platform shell, home, discovery and process lifecycle        | PTY state    | OS APIs     |
-| [src-tauri/src/info.rs](../src-tauri/src/info.rs#L10-L34) `current`                                                          | explicit pane CWD/process kind/agent truth                    | PTY sessions | frontend    |
-| [src-tauri/tauri.windows.conf.json](../src-tauri/tauri.windows.conf.json) `current`                                          | native Windows chrome, WebView2 and NSIS-only bundle config   | Tauri build  | Windows app |
+| [src-tauri/src/platform/](../src-tauri/src/platform) `current`                                                                | platform shell, home, discovery and process lifecycle        | PTY state    | OS APIs     |
+| [src-tauri/src/info.rs](../src-tauri/src/info.rs#L10-L34) `current`                                                           | explicit pane CWD/process kind/agent truth                   | PTY sessions | frontend    |
+| [src-tauri/tauri.windows.conf.json](../src-tauri/tauri.windows.conf.json) `current`                                           | native Windows chrome, WebView2 and NSIS-only bundle config  | Tauri build  | Windows app |
 | [src/terminal/](../src/terminal) `current`                                                                                    | xterm.js panes                                               | chrome       | Tauri IPC   |
 | [src/chrome/](../src/chrome) `current`                                                                                        | window chrome, tabs                                          | main         | terminal    |
 | [src/open-board/](../src/open-board) `current`                                                                                | workspace board: open, recents, workspaces store             | chrome       | lib         |
 | [src/settings/](../src/settings) `current` + [src/presets/](../src/presets) `current`                                         | settings UI/stores, layout presets                           | chrome       | lib         |
-| [src/updater/](../src/updater) `current`                                                                                     | single-flight update state, Tauri adapter and chrome action  | app          | Tauri       |
-| [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                     | multi-page landing and live GitHub release changelog         | Releases API | dist        |
-| [marketing/video/](../marketing/video) `current`                                                                             | marketing video stage — shares app components, virtual clock | app stage    | video       |
+| [src/updater/](../src/updater) `current`                                                                                      | single-flight update state, Tauri adapter and chrome action  | app          | Tauri       |
+| [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                      | multi-page landing and live GitHub release changelog         | Releases API | dist        |
+| [marketing/video/](../marketing/video) `current`                                                                              | marketing video stage — shares app components, virtual clock | app stage    | video       |
 
 ## Main flows
 
@@ -95,11 +95,32 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   release workflow is separate
   ([ci.yml](../.github/workflows/ci.yml#L65-L159) `current`).
 - Tagged releases build updater-signed macOS stable and unsigned Windows
-  preview drafts separately. Windows publication and fixed-channel promotion
-  depend on exact-SHA provenance, release API asset membership, NSIS-only
-  validation, and non-empty Tauri signatures
-  ([release DAG](../.github/workflows/release.yml#L137-L314) `current`,
-  [manifest validator](../scripts/verify-updater-manifest.mjs) `current`).
+  preview drafts separately. Neither can publish until a validation job
+  re-downloads every asset from that exact draft by API asset id and verifies
+  it: the manifest signature must equal the downloaded sidecar, the digests
+  must equal the build provenance, the asset set must be exactly what the
+  platform descriptor names, and the payload must pass Minisign verification
+  against `DECK_UPDATER_PUBLIC_KEY` — reproduced in Node rather than trusted
+  from the bundler
+  ([release DAG](../.github/workflows/release.yml) `current`,
+  [manifest validator](../scripts/verify-updater-manifest.mjs) `current`,
+  [Minisign verification](../scripts/verify-updater-manifest.mjs#verifyUpdaterSignature) `current`).
+- Draft assets bind to build outputs **by digest, never by name**: tauri-action
+  renames the bundle as it uploads and GitHub replaces spaces with dots, so the
+  two sets never share a filename
+  ([digest binding](../scripts/verify-updater-manifest.mjs#bindDraftToStagedBytes) `current`).
+- The workflow accepts only exact `vX.Y.Z` or `vX.Y.Z-rc.N` source tags, so the
+  `-windows-preview` and channel tags it creates cannot start another release.
+  Release candidates are prereleases routed to dedicated RC channels; only a
+  final release moves `windows-preview-channel`, and `releases/latest` ignores
+  prereleases by construction
+  ([tag and channel routing](../scripts/release-workflow.test.ts) `current`).
+- The updater plugin is pinned to a reviewed fork revision carrying upstream
+  PR #3516 plus a macOS transactional bundle swap: the previous `.app` is moved
+  aside and restored if the replacement or the permission fix fails, and the
+  installed bundle keeps the previous root mode instead of the extraction
+  directory's `0700`
+  ([pin](../src-tauri/Cargo.toml) `current`).
 - Runtime updater registration is compile-time gated by the operator-owned
   public key; local builds without `DECK_UPDATER_PUBLIC_KEY` keep the updater
   plugin disabled while the process plugin remains available
@@ -112,8 +133,10 @@ _(reality-drift ledger — heading text mandated by the global docs convention)_
 | Claim | Intent | Status | Evidence |
 | ----- | ------ | ------ | -------- |
 
-Empty — updater claims above were checked on 2026-08-03; the remaining
-`current` source/config claims were last checked on 2026-07-29.
-Unpassed Windows delivery gates are tracked in
+| "the hardened updater installs correctly on Windows" | `building` | (backlog) | 0.11.0 shipped the `ShellExecuteW` fix without ever observing it run: the Windows end-to-end upgrade was deliberately skipped on 2026-08-05. The claim holds on macOS, where rc.1 → rc.2 upgraded for real and the installed bundle kept mode `0755`. See [AGENTS.md](../AGENTS.md) `current` for the accepted cost |
+
+Updater claims above were re-checked on 2026-08-05 against the published
+`0.11.0` bytes; the remaining `current` source/config claims were last checked
+on 2026-07-29. Unpassed Windows delivery gates are tracked in
 [CONTEXT.md](CONTEXT.md#windows-engineering-preview--2026-07-29) `current`.
 Do not remove this section (D7).
