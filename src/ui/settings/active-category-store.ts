@@ -12,6 +12,7 @@ export type CategoryId =
   | "terminal"
   | "agents"
   | "links-editor"
-  | "notifications";
+  | "notifications"
+  | "about";
 
 export const activeCategory = signal<CategoryId>("appearance");

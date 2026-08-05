@@ -1,6 +1,7 @@
 import type { ComponentType } from "preact";
 import type { CategoryId } from "./active-category-store";
 import {
+  AboutIcon,
   AgentsIcon,
   AppearanceIcon,
   ColorsIcon,
@@ -14,6 +15,7 @@ import { TerminalSection } from "./sections/terminal-section";
 import { AgentsSection } from "./sections/agents-section";
 import { LinksEditorSection } from "./sections/links-editor-section";
 import { NotificationsSection } from "./sections/notifications-section";
+import { AboutSection } from "./sections/about-section";
 
 /**
  * The one section panel the rail swaps content into. A single stable id (not
@@ -71,4 +73,5 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
     Icon: NotificationsIcon,
     Section: NotificationsSection,
   },
+  { id: "about", label: "about", Icon: AboutIcon, Section: AboutSection },
 ];

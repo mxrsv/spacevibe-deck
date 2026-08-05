@@ -51,6 +51,8 @@ import {
   createUpdateController,
   type UpdateController,
 } from "../updater/update-controller";
+import { activeUpdateController } from "../updater/active-update-controller";
+import { loadAppVersion } from "../updater/app-version";
 import { UpdateAction } from "../updater/update-action";
 import { checkForUpdate, relaunchDeck } from "../updater/tauri-updater-adapter";
 import { resolveUpdatePreview } from "../updater/update-preview";
@@ -210,6 +212,8 @@ export function App() {
       recordAttempt: (targetVersion) =>
         recordUpdateAttempt(targetVersion, Date.now()),
     });
+    activeUpdateController.value = updaterRef.current;
+    void loadAppVersion();
   }
   const updater = updaterRef.current;
 

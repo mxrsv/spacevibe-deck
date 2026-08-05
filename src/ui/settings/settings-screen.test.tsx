@@ -140,6 +140,9 @@ const EXPECTED_ROWS = [
   "Editor",
   // notifications
   "agent notifications",
+  // about
+  "Check for updates",
+  "Release notes",
   // rail foot, reachable from every category
   "Restore defaults",
 ] as const;
@@ -160,7 +163,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 19 rows by walking the rail", () => {
+  it("reaches all 21 rows by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });

@@ -85,7 +85,7 @@ describe("SettingsNav", () => {
   });
 
   it("ArrowDown from the last item wraps to the first, moving focus with it", () => {
-    activeCategory.value = "notifications"; // last category
+    activeCategory.value = "about"; // last category
     mount();
     const tabs = getTabs();
     tabs[tabs.length - 1].focus();
@@ -112,7 +112,7 @@ describe("SettingsNav", () => {
       );
     });
 
-    expect(activeCategory.value).toBe("notifications");
+    expect(activeCategory.value).toBe("about");
     expect(document.activeElement).toBe(tabs[tabs.length - 1]);
   });
 
