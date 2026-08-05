@@ -35,6 +35,7 @@ import { PresetThumb } from "../presets/preset-thumb";
 import claudeLogo from "../assets/agent-claude.svg";
 import codexLogo from "../assets/agent-codex.svg";
 import geminiLogo from "../assets/agent-gemini.svg";
+import opencodeLogo from "../assets/agent-opencode.svg";
 import { formatShortcutBinding } from "../lib/shortcut-label";
 
 export interface OpenBoardProps {
@@ -56,6 +57,7 @@ const AGENT_LOGOS: Readonly<Record<string, string>> = {
   claude: claudeLogo,
   codex: codexLogo,
   gemini: geminiLogo,
+  opencode: opencodeLogo,
 };
 
 function agentLabel(id: string, customAgents: readonly CustomAgent[]): string {
