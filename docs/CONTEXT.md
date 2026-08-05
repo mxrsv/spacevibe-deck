@@ -222,6 +222,31 @@ certificates themselves, all three are about what gets edited in the same sittin
    the installer place a second copy beside the first instead of upgrading
    ([publisher](../src-tauri/tauri.conf.json) `current`).
 
+## Reaching updates without a menu bar — 0.12.0
+
+`src-tauri/src/menu.rs` is gated `#[cfg(target_os = "macos")]` end to end, so
+Windows has no menu and therefore had no `Check for Updates…` and no
+`Release Notes…`. The chrome button only appears once an update has been
+found, which left a Windows user with no pending update unable to ask for one
+without restarting Deck.
+
+- Settings gains an `about` category — two config rows on the existing
+  `action` kind, so §6's closed set needed no new entry
+  ([section](../src/ui/settings/sections/about-section.tsx) `current`,
+  [registry](../src/ui/settings/settings-categories.ts) `current`).
+- The pill drives the controller already in use; the description answers the
+  press rather than leaving it silent.
+- The running version comes from the bundle, not the updater — the updater's
+  view reports an empty string until a check finds something
+  ([store](../src/updater/app-version.ts) `current`).
+- Sections take no props, so `App` publishes its controller through a
+  window-scoped signal
+  ([store](../src/updater/active-update-controller.ts) `current`).
+- OpenCode was the only built-in agent absent from `AGENT_LOGOS` and wore a
+  letter avatar beside three brand marks
+  ([logo map](../src/open-board/open-board.tsx) `current`). Agents the user
+  declares still fall through to the letter avatar.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
