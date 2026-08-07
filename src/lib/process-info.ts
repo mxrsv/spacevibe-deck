@@ -1,5 +1,5 @@
 export type PaneProcessKind = "idle-shell" | "agent" | "busy" | "unknown";
-export type PaneAgent = "claude" | "codex" | "gemini" | "opencode";
+export type PaneAgent = "claude" | "codex" | "gemini" | "opencode" | "agy";
 
 /** Mirror of the `PtyInfo` payload returned by the Rust `pty_info` command. */
 export interface PaneProcessInfo {
@@ -23,6 +23,12 @@ const AGENT_DOT_VARS: Readonly<Record<string, string>> = {
   codex: "var(--green)",
   gemini: "var(--cyan)",
   opencode: "var(--yellow)",
+  // Shares Gemini's cyan on purpose. The theme hands chrome eight colors;
+  // four are taken, `--red` is error-only (DL-3.2) and `--accent` is the
+  // theme's blue, reserved for interactive (DL-3.1) — so a fifth distinct
+  // agent color does not exist without changing the token set. Google's two
+  // CLIs sharing a hue is the honest reading, and the header names which one.
+  agy: "var(--cyan)",
 };
 
 function agentColor(agent: string | null): string | undefined {

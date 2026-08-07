@@ -206,7 +206,8 @@ function explicitAgent(info: PaneProcessInfo | undefined): PaneAgent | null {
   return agent === "claude" ||
     agent === "codex" ||
     agent === "gemini" ||
-    agent === "opencode"
+    agent === "opencode" ||
+    agent === "agy"
     ? agent
     : null;
 }

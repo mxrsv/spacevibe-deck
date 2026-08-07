@@ -25,7 +25,7 @@ export interface TabView {
   readonly dotColor: TabDotColor | null;
   /** Workspace this tab belongs to — null for pre-0.2.2 restored tabs. */
   readonly workspacePath: string | null;
-  /** An agent (claude/codex/gemini) runs in at least one pane of this tab. */
+  /** A recognized agent runs in at least one pane of this tab. */
   readonly agentBusy: boolean;
   /** New output arrived in this tab while it was not active; cleared on open. */
   readonly unread: boolean;

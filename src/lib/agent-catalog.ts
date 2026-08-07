@@ -28,8 +28,14 @@ export interface BuiltinAgent {
 export const BUILTIN_AGENTS: readonly BuiltinAgent[] = [
   { id: "claude", label: "Claude Code" },
   { id: "codex", label: "Codex" },
-  { id: "gemini", label: "Gemini CLI" },
   { id: "opencode", label: "OpenCode" },
+  // Google's successor to Gemini CLI. Gemini CLI keeps its place below it
+  // rather than being dropped: paid Code Assist licences still reach the
+  // service, and every `lastAgent` on disk holding "gemini" must keep
+  // resolving. Order here is reach, not history — it decides both the chip
+  // order and the digit key that opens each one.
+  { id: "agy", label: "Antigravity" },
+  { id: "gemini", label: "Gemini CLI" },
 ];
 
 export const CUSTOM_ID_PREFIX = "custom:";

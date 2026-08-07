@@ -135,6 +135,7 @@ const EXPECTED_ROWS = [
   "Codex",
   "Gemini CLI",
   "OpenCode",
+  "Antigravity",
   "Add agent",
   // links & editor
   "Editor",
@@ -163,7 +164,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 21 rows by walking the rail", () => {
+  it("reaches all 22 rows by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });

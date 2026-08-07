@@ -25,6 +25,9 @@ pub enum PaneAgent {
     Codex,
     Gemini,
     OpenCode,
+    /// Antigravity CLI — the binary is `agy`, so the lowercase serialization
+    /// this enum derives already matches the frontend's `PaneAgent` id.
+    Agy,
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -48,6 +51,7 @@ fn classify_process(process: Option<&str>, complete: bool) -> (PaneProcessKind, 
         "codex" => Some(PaneAgent::Codex),
         "gemini" => Some(PaneAgent::Gemini),
         "opencode" => Some(PaneAgent::OpenCode),
+        "agy" => Some(PaneAgent::Agy),
         _ => None,
     };
     if agent.is_some() {
@@ -151,6 +155,7 @@ fn map_windows_results(
                 WindowsAgent::Codex => PaneAgent::Codex,
                 WindowsAgent::Gemini => PaneAgent::Gemini,
                 WindowsAgent::OpenCode => PaneAgent::OpenCode,
+                WindowsAgent::Agy => PaneAgent::Agy,
             });
             PtyInfo {
                 id: snapshot.id,
@@ -235,6 +240,14 @@ mod tests {
         assert_eq!(
             classify_process(Some("/opt/homebrew/bin/opencode"), true),
             (PaneProcessKind::Agent, Some(PaneAgent::OpenCode))
+        );
+    }
+
+    #[test]
+    fn classifies_agy_as_an_agent_not_a_busy_process() {
+        assert_eq!(
+            classify_process(Some("/Users/dev/.local/bin/agy"), true),
+            (PaneProcessKind::Agent, Some(PaneAgent::Agy))
         );
     }
 

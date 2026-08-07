@@ -14,7 +14,9 @@ import {
  *    parsed from EVERY chunk, even echo (Enter is input, and the busy report
  *    lands right behind it).
  * 2. A heuristic fallback for programs that never report progress
- *    (codex/gemini): working = a SUSTAINED stream of output — at least
+ *    (codex/gemini, and agy until observed otherwise — it is a closed-source
+ *    binary, so nothing can be asserted about its OSC output from reading it):
+ *    working = a SUSTAINED stream of output — at least
  *    `minStreakMs` of continuous activity, still fresh within `recentMs` —
  *    where output arriving within `echoMs` of the user's own keystrokes is
  *    ignored (it's the TUI echoing input, not work), and a single isolated

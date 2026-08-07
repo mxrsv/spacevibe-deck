@@ -36,6 +36,10 @@ import claudeLogo from "../assets/agent-claude.svg";
 import codexLogo from "../assets/agent-codex.svg";
 import geminiLogo from "../assets/agent-gemini.svg";
 import opencodeLogo from "../assets/agent-opencode.svg";
+// The only raster mark here: Google ships the Antigravity icon as PNG. Stored
+// at 96px — the chip renders it at 15px (styles.css `.achip__logo`), so this
+// still has headroom at 3x while staying a fraction of the source file.
+import agyLogo from "../assets/agent-agy.png";
 import { formatShortcutBinding } from "../lib/shortcut-label";
 
 export interface OpenBoardProps {
@@ -58,6 +62,7 @@ const AGENT_LOGOS: Readonly<Record<string, string>> = {
   codex: codexLogo,
   gemini: geminiLogo,
   opencode: opencodeLogo,
+  agy: agyLogo,
 };
 
 function agentLabel(id: string, customAgents: readonly CustomAgent[]): string {

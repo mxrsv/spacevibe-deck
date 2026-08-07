@@ -7,6 +7,7 @@ pub(crate) enum AgentIdentity {
     Codex,
     Gemini,
     OpenCode,
+    Agy,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -322,6 +323,9 @@ fn direct_agent(executable: &str) -> Option<AgentIdentity> {
         "codex" => Some(AgentIdentity::Codex),
         "gemini" => Some(AgentIdentity::Gemini),
         "opencode" => Some(AgentIdentity::OpenCode),
+        // Antigravity CLI ships as a single Go binary, so it only ever appears
+        // here — there is no wrapper signature for it below.
+        "agy" => Some(AgentIdentity::Agy),
         _ => None,
     }
 }
@@ -455,6 +459,25 @@ mod tests {
                 kind: ProcessKind::Agent,
                 agent: Some(AgentIdentity::Claude),
                 process: Some("claude".into()),
+            })
+        );
+    }
+
+    #[test]
+    fn classifies_agy_from_its_own_executable() {
+        // A single Go binary: no node wrapper, so the direct match is the only
+        // path that can ever identify it.
+        let rows = vec![
+            record(10, None, ROOT_CREATED, "pwsh.exe", None),
+            record(11, Some(10), ROOT_CREATED + 1, "agy.exe", None),
+        ];
+
+        assert_eq!(
+            classify(rows, root(1, 10)),
+            Ok(ProcessClassification {
+                kind: ProcessKind::Agent,
+                agent: Some(AgentIdentity::Agy),
+                process: Some("agy".into()),
             })
         );
     }

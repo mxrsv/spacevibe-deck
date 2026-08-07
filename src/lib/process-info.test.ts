@@ -9,6 +9,10 @@ describe("dotColor", () => {
     expect(dotColor("opencode")).toBe("var(--yellow)");
   });
 
+  it("gives agy the same cyan as Gemini — the palette holds no fifth color", () => {
+    expect(dotColor("agy")).toBe(dotColor("gemini"));
+  });
+
   it("falls back to the faint tone for anything else", () => {
     expect(dotColor("zsh")).toBe("var(--text-faint)");
     expect(dotColor(null)).toBe("var(--text-faint)");
@@ -33,9 +37,7 @@ describe("tildify", () => {
   });
 
   it("shortens Windows drive and UNC homes case-insensitively", () => {
-    expect(tildify("c:\\USERS\\Kai\\Repo", "C:\\Users\\kai")).toBe(
-      "~\\Repo",
-    );
+    expect(tildify("c:\\USERS\\Kai\\Repo", "C:\\Users\\kai")).toBe("~\\Repo");
     expect(
       tildify("\\\\SERVER\\Share\\Kai\\Repo", "\\\\server\\share\\kai"),
     ).toBe("~\\Repo");

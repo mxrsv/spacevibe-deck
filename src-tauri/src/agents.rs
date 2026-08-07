@@ -13,7 +13,7 @@ pub struct AgentInfo {
 
 /// Recognised out of the box; always probed, whatever the caller asks for.
 /// Mirrors `BUILTIN_AGENTS` in src/lib/agent-catalog.ts.
-pub(crate) const BUILTIN_AGENTS: [&str; 4] = ["claude", "codex", "gemini", "opencode"];
+pub(crate) const BUILTIN_AGENTS: [&str; 5] = ["claude", "codex", "opencode", "agy", "gemini"];
 
 /// Upper bound on a probed name; mirrors `PROBE_NAME_MAX` in agent-catalog.ts.
 const PROBE_NAME_MAX: usize = 128;
