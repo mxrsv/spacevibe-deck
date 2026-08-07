@@ -96,8 +96,10 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   keeps resolving and no migration exists to get wrong. The editable list needs a new
   design-language rule (§12), approved with it. See
   [spec](docs/specs/2026-08-04-user-declared-agents-design.md) `decided`.
-- Antigravity CLI (`agy`) is the fifth built-in agent, decided and shipped
-  2026-08-07. Google cut Gemini CLI off from free, AI Pro and Ultra users on
+- Antigravity CLI (`agy`) is the fifth built-in agent, decided and shipped in
+  **v0.12.2 on 2026-08-07** — `releases/latest` and `windows-preview-channel`
+  both serve it, and every release job passed except the two RC-channel ones,
+  which are skipped for a non-RC tag. Google cut Gemini CLI off from free, AI Pro and Ultra users on
   2026-06-18 in favour of `agy`, so a Deck user on the new CLI got a pane with
   no dot color, no agent label and no chip. Four calls, each with its reason:
   **Gemini CLI stays** alongside it — paid Code Assist licences still reach the
