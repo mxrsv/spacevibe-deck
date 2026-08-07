@@ -13,6 +13,8 @@ import { createOscLinkHandler } from "./osc-link-handler";
 import { paneCwd } from "./pane-cwd";
 import { classifyOscNotification } from "../lib/osc-notification";
 import { copyTerminalSelection, pasteIntoTerminal } from "./terminal-clipboard";
+import { getDesktopEnvironment } from "../lib/platform";
+import { createCodexWheelHandler } from "./codex-wheel";
 
 /** Structured attention signal a pane can emit — never a native notification. */
 export interface PaneAttentionSignal {
@@ -154,6 +156,15 @@ export function createPane(
   const searchAddon = new SearchAddon();
   term.loadAddon(searchAddon);
 
+  let activeAgent: string | null = null;
+  term.attachCustomWheelEventHandler(
+    createCodexWheelHandler({
+      platform: getDesktopEnvironment().platform,
+      isCodex: () => activeAgent === "codex",
+      send: (data) => events.onData(id, data),
+    }),
+  );
+
   // Primary-modifier+click opens URLs in the browser and file paths in the
   // editor. This replaces WebLinksAddon: that one underlines and activates on
   // a plain click, which an agent TUI needs for its own mouse handling.
@@ -268,6 +279,7 @@ export function createPane(
   }
 
   function setHeaderInfo(info: PaneHeaderInfo): void {
+    activeAgent = info.agent ? info.badge : null;
     dot.style.background = info.dotColor;
     cwdEl.textContent = info.cwd;
     anchorCwd.textContent = info.cwd;
