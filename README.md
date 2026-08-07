@@ -22,7 +22,7 @@
 
 ## Why Deck?
 
-Deck is a minimal desktop terminal built for people who run **AI agent CLIs** — Claude Code, Codex, Gemini CLI, and the like. The problem with general-purpose terminals isn't that they need to be prettier; it's that they have no affordances for **watching and steering many agents at once**.
+Deck is a minimal desktop terminal built for people who run **AI agent CLIs** — Claude Code, Codex, Antigravity, and the like. The problem with general-purpose terminals isn't that they need to be prettier; it's that they have no affordances for **watching and steering many agents at once**.
 
 > **Windows status:** Windows 11 x64 is an engineering preview, not a beta.
 > An unsigned preview installer is published as the
@@ -72,8 +72,8 @@ v1 uses one generic "needs attention" label — it doesn't yet distinguish a pro
 ### 🤖 Launch agents into every pane
 
 - Pick an agent once on the Open board and Deck launches it in **every pane** of the new tab — four panes, four agents running in parallel.
-- Agents are auto-discovered from the active platform environment (Claude Code, Codex, Gemini CLI). macOS uses the interactive login shell; Windows resolves allowlisted executables from `PATH` and known command suffixes ([Windows discovery](src-tauri/src/platform/windows/agent_discovery.rs#L41-L109) `current`). The **first detected agent is preselected by default** — Shell is opt-in via the **Shell only** chip (or `0`), never the silent default.
-- Running agents get **chrome**: the pane header, status bar, and busy dot are colored by process — Claude magenta, Codex green, Gemini cyan — so you can read the state of every pane in one glance.
+- Agents are auto-discovered from the active platform environment (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity — and anything else you declare in Settings). macOS uses the interactive login shell; Windows resolves allowlisted executables from `PATH` and known command suffixes ([Windows discovery](src-tauri/src/platform/windows/agent_discovery.rs#L41-L109) `current`). The **first detected agent is preselected by default** — Shell is opt-in via the **Shell only** chip (or `0`), never the silent default.
+- Running agents get **chrome**: the pane header, status bar, and busy dot are colored by process — Claude magenta, Codex green, OpenCode yellow, and cyan for both of Google's CLIs (Gemini and Antigravity share a hue; the header names which one) — so you can read the state of every pane in one glance.
 
 ### 💾 Layout presets
 

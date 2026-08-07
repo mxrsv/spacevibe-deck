@@ -42,7 +42,7 @@ Consequences worth knowing:
   ([`SettingsScreen`](../src/ui/settings/settings-screen.tsx) `current`,
   [category registry](../src/ui/settings/settings-categories.ts) `current`) —
   a new category is one registry entry plus one file under `sections/`.
-- Agents are user-extensible: beyond the built-in four, an agent is a label plus
+- Agents are user-extensible: beyond the built-in five, an agent is a label plus
   a full command line declared in Settings → agents
   ([catalog](../src/lib/agent-catalog.ts) `current`,
   [section](../src/ui/settings/sections/agents-section.tsx) `current`). A
@@ -246,6 +246,44 @@ without restarting Deck.
   letter avatar beside three brand marks
   ([logo map](../src/open-board/open-board.tsx) `current`). Agents the user
   declares still fall through to the letter avatar.
+
+## Antigravity CLI becomes the fifth built-in — 2026-08-07
+
+Google announced on 2026-05-19 that Gemini CLI would stop serving free, AI Pro
+and Ultra users on 2026-06-18, replaced by Antigravity CLI — command `agy`, a
+closed-source Go binary installed by a shell script rather than npm. Nothing in
+Deck knew the name, so an `agy` pane classified as `busy`: no dot color, no
+agent label, and the board offered no chip for it.
+
+- `agy` joins `BUILTIN_AGENTS`, and the row is reordered by reach rather than
+  by history: Claude, Codex, OpenCode, Antigravity, Gemini. That list is also
+  the digit-key order, so `4` now opens Antigravity and `5` Gemini — a
+  deliberate break with the keys people already have in their fingers, taken
+  because the row should lead with what is actually reached for
+  ([catalog](../src/lib/agent-catalog.ts) `current`,
+  [Rust mirror](../src-tauri/src/agents.rs) `current`).
+- Gemini CLI stays. Paid Code Assist licences still reach the service, and a
+  built-in id equals its binary name, so dropping `gemini` would strand every
+  `lastAgent` on disk holding that string with no migration to catch it.
+- `agy` shares Gemini's `--cyan`. The theme injects eight colors; four are
+  taken, `--red` is error-only (DL-3.2) and `--accent` _is_ the theme's blue,
+  reserved for interactive (DL-3.1). A new token sourced from `brightBlue` was
+  the first choice and was dropped on evidence: `brightBlue` equals `blue` in
+  three of the four presets ([presets](../src/settings/themes.ts) `current`),
+  so the dot would have read as the accent color
+  ([dot map](../src/lib/process-info.ts) `current`).
+- Windows identifies it by executable name only — a single Go binary has no
+  node wrapper, so there is no npm signature to match
+  ([snapshot](../src-tauri/src/platform/windows/process_snapshot.rs) `current`).
+- Its brand mark is the first raster one in `AGENT_LOGOS` — Google publishes
+  the Antigravity icon as PNG. Stored at 96px against a 15px chip, which keeps
+  3x headroom at 5.5 kB, and checked on the dark chrome background to confirm
+  the alpha channel is real and not a white plate
+  ([logo map](../src/open-board/open-board.tsx) `current`).
+- Known-open: its OSC 9;4 behaviour is unobserved — a closed-source binary
+  cannot be read for it, so the activity tracker falls back to the
+  sustained-output heuristic until someone runs it
+  ([activity](../src/terminal/agent-activity.ts) `current`).
 
 ## Chưa khớp thực tế
 

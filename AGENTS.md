@@ -96,6 +96,25 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   keeps resolving and no migration exists to get wrong. The editable list needs a new
   design-language rule (§12), approved with it. See
   [spec](docs/specs/2026-08-04-user-declared-agents-design.md) `decided`.
+- Antigravity CLI (`agy`) is the fifth built-in agent, decided and shipped
+  2026-08-07. Google cut Gemini CLI off from free, AI Pro and Ultra users on
+  2026-06-18 in favour of `agy`, so a Deck user on the new CLI got a pane with
+  no dot color, no agent label and no chip. Four calls, each with its reason:
+  **Gemini CLI stays** alongside it — paid Code Assist licences still reach the
+  service, and a built-in id equals its binary name, so removing `gemini`
+  would strand every `lastAgent` already on disk. **Label is "Antigravity"**,
+  not "Antigravity CLI" — it fits the chip. **The dot shares Gemini's
+  `--cyan`** rather than taking a new token: a fifth agent color does not
+  exist in the eight the theme injects, and the `brightBlue` token first
+  chosen was dropped on evidence — it equals `blue` in three of the four
+  presets, and `--accent` _is_ the theme's blue, so the dot would have read as
+  the accent color. **The row is ordered by reach, not history** — Claude,
+  Codex, OpenCode, Antigravity, Gemini — which moves the digit keys people
+  already know; accepted knowingly so the row leads with what gets used. The
+  brand mark is the first raster one in `AGENT_LOGOS`, since Google publishes
+  the icon as PNG. Deliberately left open: `agy`'s OSC 9;4 behaviour is
+  unobserved because nobody here has it installed. Detail in
+  [`docs/CONTEXT.md`](docs/CONTEXT.md) `current`.
 
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
