@@ -9,14 +9,22 @@ const PIXEL_PAGE_THRESHOLD = 40;
 interface CodexWheelDeps {
   readonly platform: DesktopPlatform;
   readonly isCodex: () => boolean;
+  /** Whether the pane currently shows the alternate screen buffer. */
+  readonly isAlternateBuffer: () => boolean;
   readonly send: (data: string) => void;
 }
 
 /**
- * Codex's Windows TUI uses the alternate screen but does not consistently
- * consume xterm/WebView2 mouse-wheel reports. Keyboard PageUp/PageDown still
- * drive its internal transcript pager, so translate an unmodified wheel only
- * while the pane is explicitly classified as Codex.
+ * Windows-only compatibility path for panes running Codex, whose wheel
+ * gestures were reported as not scrolling anything there.
+ *
+ * PageUp/PageDown are bound in exactly one Codex surface: the `pager` context
+ * behind the Ctrl+T transcript overlay. Its chat screen binds no scrolling
+ * action at all, and Codex enters the alternate screen only while that overlay
+ * is open. So gate on the buffer the pane is actually showing, not on the
+ * process label alone — on the normal buffer the gesture has to stay with
+ * xterm, which scrolls the pane's own scrollback, and popup pickers must not
+ * receive a stray page key either.
  *
  * Returning false stops xterm from also translating the same gesture to arrow
  * keys or an SGR mouse report. Pixel-mode touchpad events are accumulated to
@@ -33,6 +41,7 @@ export function createCodexWheelHandler(
     if (
       deps.platform !== "windows" ||
       !deps.isCodex() ||
+      !deps.isAlternateBuffer() ||
       modified ||
       event.deltaY === 0
     ) {

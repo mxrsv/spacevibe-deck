@@ -161,6 +161,7 @@ export function createPane(
     createCodexWheelHandler({
       platform: getDesktopEnvironment().platform,
       isCodex: () => activeAgent === "codex",
+      isAlternateBuffer: () => term.buffer.active.type === "alternate",
       send: (data) => events.onData(id, data),
     }),
   );

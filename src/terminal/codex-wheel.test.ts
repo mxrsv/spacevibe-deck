@@ -41,10 +41,12 @@ function wheel(
 
 function setup(platform: "windows" | "macos" = "windows") {
   let agent: string | null = "codex";
+  let alternate = true;
   const send = vi.fn();
   const handler = createCodexWheelHandler({
     platform,
     isCodex: () => agent === "codex",
+    isAlternateBuffer: () => alternate,
     send,
   });
   return {
@@ -52,6 +54,9 @@ function setup(platform: "windows" | "macos" = "windows") {
     send,
     setAgent(next: string | null) {
       agent = next;
+    },
+    setAlternateBuffer(next: boolean) {
+      alternate = next;
     },
   };
 }
@@ -113,5 +118,31 @@ describe("createCodexWheelHandler", () => {
     expect(windows.handler(wheel(-3, { altKey: true }).event)).toBe(true);
     expect(windows.handler(wheel(-3, { metaKey: true }).event)).toBe(true);
     expect(windows.send).not.toHaveBeenCalled();
+  });
+
+  // Codex only shows the alternate screen while its Ctrl+T transcript overlay
+  // is open, and that pager is the only surface binding PageUp/PageDown. On the
+  // chat screen the wheel has to keep scrolling the pane's scrollback.
+  it("leaves the normal buffer to xterm, untouched", () => {
+    const { handler, send, setAlternateBuffer } = setup();
+    setAlternateBuffer(false);
+    const gesture = wheel(-3);
+
+    expect(handler(gesture.event)).toBe(true);
+    expect(send).not.toHaveBeenCalled();
+    expect(gesture.preventDefault).not.toHaveBeenCalled();
+    expect(gesture.stopImmediatePropagation).not.toHaveBeenCalled();
+  });
+
+  it("drops a partial touchpad gesture when the overlay closes mid-scroll", () => {
+    const { handler, send, setAlternateBuffer } = setup();
+
+    handler(wheel(24, { deltaMode: 0 }).event);
+    setAlternateBuffer(false);
+    handler(wheel(24, { deltaMode: 0 }).event);
+    setAlternateBuffer(true);
+    handler(wheel(24, { deltaMode: 0 }).event);
+
+    expect(send).not.toHaveBeenCalled();
   });
 });
