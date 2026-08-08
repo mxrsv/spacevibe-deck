@@ -368,6 +368,16 @@ export const ACTION_REGISTRY = [
     scope: "always",
     menu: { submenu: "View", group: "attention" },
   },
+  {
+    id: "toggle-prompts",
+    label: "Prompts…",
+    // Tier "pane": the popover targets the FOCUSED pane, which every overlay
+    // hides — the same reason `save-preset` refuses to capture a layout it
+    // cannot show. The chrome button carries its own disabled state, because
+    // a direct onClick never passes through `overlayBlocksAction`.
+    scope: "pane",
+    menu: { submenu: "View", group: "prompts" },
+  },
   { id: "focus-next", label: "Focus Next Pane", scope: "pane" },
   { id: "focus-prev", label: "Focus Previous Pane", scope: "pane" },
   { id: "focus-left", label: "Focus Pane Left", scope: "pane" },
@@ -627,6 +637,11 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   { key: "a", meta: true, shift: true, action: "focus-next-attention" },
   // Standard macOS Settings/Preferences chord (HIG); matches the gear button.
   { key: ",", meta: true, action: "toggle-settings" },
+  // Prompt Board. ⌘⇧P is free on both keymaps (no `p` binding existed) and
+  // matches the "palette" chord people already reach for. CharKeyBinding is
+  // mandatory, not a style choice: this action has a macOS menu item, and a
+  // Cocoa accelerator is declared by character (see the RULE above).
+  { key: "p", meta: true, shift: true, action: "toggle-prompts" },
   // event.key for arrows is "ArrowLeft" etc. — lowercased by matchBinding
   { key: "arrowleft", meta: true, alt: true, action: "focus-left" },
   { key: "arrowright", meta: true, alt: true, action: "focus-right" },
@@ -757,6 +772,7 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
     action: "focus-next-attention",
   },
   { key: ",", ctrl: true, action: "toggle-settings" },
+  { key: "p", ctrl: true, shift: true, action: "toggle-prompts" },
   { key: "pageup", shift: true, action: "scroll-page-up" },
   { key: "pagedown", shift: true, action: "scroll-page-down" },
   { key: "home", shift: true, action: "scroll-to-top" },

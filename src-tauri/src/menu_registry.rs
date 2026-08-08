@@ -76,6 +76,12 @@ pub fn build_view_menu<R: Runtime>(
         "Next Agent Needing Attention",
         Some("CmdOrCtrl+Shift+A"),
     )?;
+    let toggle_prompts = action_item(
+        handle,
+        "toggle-prompts",
+        "Prompts…",
+        Some("CmdOrCtrl+Shift+P"),
+    )?;
     tauri::menu::SubmenuBuilder::new(handle, "View")
         .item(&split_row)
         .item(&split_column)
@@ -88,6 +94,8 @@ pub fn build_view_menu<R: Runtime>(
         .item(&zoom_reset)
         .separator()
         .item(&focus_next_attention)
+        .separator()
+        .item(&toggle_prompts)
         .build()
 }
 

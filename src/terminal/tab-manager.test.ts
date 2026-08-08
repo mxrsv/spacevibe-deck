@@ -9,6 +9,8 @@ import { ACTION_REGISTRY } from "./action-registry";
 import {
   boardOpen,
   editorRequest,
+  persistError,
+  promptsOpen,
   saveDialogOpen,
   settingsOpen,
 } from "../chrome/events";
@@ -3459,6 +3461,44 @@ describe("injectIntoPane", () => {
         expectedAgent: null,
       }),
     ).resolves.toBe("no-target");
+    manager.dispose();
+  });
+});
+
+describe("toggle-prompts", () => {
+  beforeEach(() => {
+    promptsOpen.value = false;
+    persistError.value = null;
+    // `scope: "pane"` blocks this action while ANY overlay is open, so all
+    // four overlay signals have to be cleared — not just the board. This is
+    // load-bearing, not defensive: the file's scroll-action describe above
+    // sets `settingsOpen.value = true` in its last test and never resets it,
+    // and the file-level beforeEach does not either — so a describe appended
+    // at the end of the file inherits an open Settings and both tests below
+    // fail.
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    editorRequest.value = null;
+    saveDialogOpen.value = false;
+  });
+
+  it("opens the popover signal when a pane is focused", async () => {
+    const { manager } = await mountManagerWithAgentPane("claude");
+    manager.runAction("toggle-prompts");
+    expect(promptsOpen.value).toBe(true);
+    manager.runAction("toggle-prompts");
+    expect(promptsOpen.value).toBe(false);
+    manager.dispose();
+  });
+
+  it("says so instead of opening with no pane to paste into", () => {
+    const manager = createTabManager(
+      document.createElement("div"),
+      createMemoryPtyClient(),
+    );
+    manager.runAction("toggle-prompts");
+    expect(promptsOpen.value).toBe(false);
+    expect(persistError.value).toBe("No pane to paste into.");
     manager.dispose();
   });
 });

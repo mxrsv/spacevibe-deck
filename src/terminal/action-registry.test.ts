@@ -38,13 +38,31 @@ describe("ACTION_REGISTRY", () => {
   // 25→27 correction). 38 = 28 + swap-left/right/up/down (FR-032, Task 1) +
   // open-tab-options (Task 2) + copy-cwd (Task 3) + scroll-page-up/down,
   // scroll-to-top/bottom (Task 4) — docs/plans/2026-07-27-keyboard-parity.md.
-  it("has exactly the 42 action ids including updater menu actions", () => {
+  it("binds toggle-prompts on both platforms without colliding", () => {
+    const mac = MACOS_KEYMAP.filter(
+      (binding) => binding.action === "toggle-prompts",
+    );
+    const win = WINDOWS_KEYMAP.filter(
+      (binding) => binding.action === "toggle-prompts",
+    );
+    expect(mac).toEqual([
+      { key: "p", meta: true, shift: true, action: "toggle-prompts" },
+    ]);
+    expect(win).toEqual([
+      { key: "p", ctrl: true, shift: true, action: "toggle-prompts" },
+    ]);
+    // It has a menu item, so the RULE above CharKeyBinding requires `key`.
+    expect(mac[0]).not.toHaveProperty("code");
+  });
+
+  it("has exactly the 43 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
         "check-for-updates",
         "open-release-notes",
         "toggle-settings",
+        "toggle-prompts",
         "new-tab",
         "reopen-tab",
         "open-tab-options",
@@ -103,14 +121,17 @@ describe("ACTION_REGISTRY", () => {
   it.each([
     ["macOS", MACOS_KEYMAP],
     ["Windows", WINDOWS_KEYMAP],
-  ] as const)("has no two same-kind bindings matching the same %s chord", (_, keymap) => {
-    const seen = new Set<string>();
-    for (const binding of keymap) {
-      const k = chordKey(binding);
-      expect(seen.has(k)).toBe(false);
-      seen.add(k);
-    }
-  });
+  ] as const)(
+    "has no two same-kind bindings matching the same %s chord",
+    (_, keymap) => {
+      const seen = new Set<string>();
+      for (const binding of keymap) {
+        const k = chordKey(binding);
+        expect(seen.has(k)).toBe(false);
+        seen.add(k);
+      }
+    },
+  );
 });
 
 describe("isActionId", () => {

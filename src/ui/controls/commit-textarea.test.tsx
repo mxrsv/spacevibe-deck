@@ -53,7 +53,9 @@ describe("CommitTextarea", () => {
     const onCommit = vi.fn();
     const field = mount("old", onCommit);
     type(field, "new body");
-    act(() => field.dispatchEvent(new FocusEvent("blur", { bubbles: true })));
+    act(() => {
+      field.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+    });
     expect(onCommit).toHaveBeenCalledWith("new body");
   });
 
@@ -61,21 +63,21 @@ describe("CommitTextarea", () => {
     const onCommit = vi.fn();
     const field = mount("old", onCommit);
     type(field, "line one");
-    act(() =>
+    act(() => {
       field.dispatchEvent(
         new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      ),
-    );
+      );
+    });
     expect(onCommit).not.toHaveBeenCalled();
-    act(() =>
+    act(() => {
       field.dispatchEvent(
         new KeyboardEvent("keydown", {
           key: "Enter",
           metaKey: true,
           bubbles: true,
         }),
-      ),
-    );
+      );
+    });
     expect(onCommit).toHaveBeenCalledWith("line one");
   });
 
@@ -83,11 +85,11 @@ describe("CommitTextarea", () => {
     const onCommit = vi.fn();
     const field = mount("old", onCommit);
     type(field, "discarded");
-    act(() =>
+    act(() => {
       field.dispatchEvent(
         new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      ),
-    );
+      );
+    });
     expect(field.value).toBe("old");
     expect(onCommit).not.toHaveBeenCalled();
   });

@@ -23,6 +23,18 @@ export const editorRequest = signal<EditorRequest | null>(null);
 export const settingsOpen = signal(false);
 
 /**
+ * Prompt Board popover open state.
+ *
+ * Deliberately NOT part of `openOverlayRanks()` (tab-manager.ts): this is a
+ * pane-level popover anchored to a chrome button, not a surface that covers
+ * the terminal grid, so it neither blocks other actions nor needs a tier. The
+ * relationship runs the other way — the trigger is disabled and an open
+ * popover closes while a real overlay is up, because the pane it targets is
+ * then hidden.
+ */
+export const promptsOpen = signal(false);
+
+/**
  * Most recent local-storage write failure, shown by PersistErrorBar.
  * Stores keep the in-memory signal as the source of truth even when the
  * disk write fails — this only tells the user a change may not survive

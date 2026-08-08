@@ -76,6 +76,7 @@ import type { TabDotColor } from "../lib/tab-colors";
 import {
   boardOpen,
   editorRequest,
+  promptsOpen,
   reportChromeMessage,
   saveDialogOpen,
   settingsOpen,
@@ -103,9 +104,9 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The ids `commands` implements — 39 entries, verified against the live
- * `commands` table (`tab-manager.ts:946-1024`), Task 4's `copy-selection`/
- * `paste` included.
+ * The ids `commands` implements — 40 entries, verified against the live
+ * `commands` table (`tab-manager.ts:1041-1142`), Task 4's `copy-selection`/
+ * `paste` included and the Prompt Board's `toggle-prompts` alongside them.
  *
  * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
  * keymap binding points at an action nothing dispatches — the defect behind
@@ -146,6 +147,7 @@ const COMMAND_ACTIONS = [
   "swap-right",
   "swap-up",
   "toggle-expand",
+  "toggle-prompts",
   "toggle-settings",
   "toggle-zoom-pane",
   "zoom-in",
@@ -1095,6 +1097,28 @@ export function createTabManager(
     // the close+focus-return flow it already owns for every other overlay.
     // Missing `onToggleSettings` = safe no-op, never a direct write.
     "toggle-settings": () => deps.onToggleSettings?.(),
+    // Writes the signal directly rather than routing through an App seam
+    // (unlike toggle-settings): the popover has no draft to protect and no
+    // overlay stack to keep consistent — the same reason `open-tab-options`
+    // sets `requestTabOptionsKey` itself.
+    //
+    // The close branch returns focus HERE, not in the popover: this path
+    // unmounts the surface without ever calling its `onClose`, so DL-13.2's
+    // "focus returns to the pane that had it" would otherwise be skipped and
+    // the caret would land on <body> — the shortcut fires while focus sits on
+    // the popover root, a div, so nothing else would take it back.
+    "toggle-prompts": () => {
+      if (promptsOpen.value) {
+        promptsOpen.value = false;
+        activeManager()?.focusActive();
+        return;
+      }
+      if ((activeManager()?.activePaneId() ?? null) === null) {
+        reportChromeMessage("No pane to paste into.");
+        return;
+      }
+      promptsOpen.value = true;
+    },
     find: () => activeManager()?.openSearch(),
     // Not exempted in overlayBlocksAction below: both act on the terminal
     // (highlight/jump inside a pane's buffer), same scope as clear-buffer.
