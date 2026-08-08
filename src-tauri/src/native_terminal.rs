@@ -696,7 +696,11 @@ mod imp {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+#[path = "native_terminal_macos.rs"]
+mod imp;
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 mod imp {
     use super::{NativePaneBounds, NativeTerminalAppearance};
     use tauri::WebviewWindow;
@@ -715,7 +719,7 @@ mod imp {
         _cwd: Option<String>,
         _appearance: NativeTerminalAppearance,
     ) -> Result<u32, String> {
-        Err("Native Alacritty panes are only supported on Windows".to_string())
+        Err("Native Alacritty panes are only supported on Windows and macOS".to_string())
     }
 
     pub fn apply_appearance(
@@ -723,7 +727,7 @@ mod imp {
         _id: u32,
         _appearance: NativeTerminalAppearance,
     ) -> Result<(), String> {
-        Err("Native Alacritty panes are only supported on Windows".to_string())
+        Err("Native Alacritty panes are only supported on Windows and macOS".to_string())
     }
 
     pub fn perform_action(
@@ -731,7 +735,7 @@ mod imp {
         _id: u32,
         _action: String,
     ) -> Result<(), String> {
-        Err("Native Alacritty panes are only supported on Windows".to_string())
+        Err("Native Alacritty panes are only supported on Windows and macOS".to_string())
     }
 
     pub fn update(
@@ -741,11 +745,11 @@ mod imp {
         _bounds: NativePaneBounds,
         _visible: bool,
     ) -> Result<(), String> {
-        Err("Native Alacritty panes are only supported on Windows".to_string())
+        Err("Native Alacritty panes are only supported on Windows and macOS".to_string())
     }
 
     pub fn focus(_state: tauri::State<'_, NativeTerminalState>, _id: u32) -> Result<(), String> {
-        Err("Native Alacritty panes are only supported on Windows".to_string())
+        Err("Native Alacritty panes are only supported on Windows and macOS".to_string())
     }
 
     pub fn kill(_state: tauri::State<'_, NativeTerminalState>, _id: u32) -> Result<(), String> {

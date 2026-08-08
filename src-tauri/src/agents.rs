@@ -13,10 +13,10 @@ pub struct AgentInfo {
 
 /// Recognised out of the box; always probed, whatever the caller asks for.
 /// Mirrors `BUILTIN_AGENTS` in src/lib/agent-catalog.ts.
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 pub(crate) const BUILTIN_AGENTS: [&str; 6] =
     ["claude", "codex", "opencode", "agy", "gemini", "alacritty"];
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub(crate) const BUILTIN_AGENTS: [&str; 5] = ["claude", "codex", "opencode", "agy", "gemini"];
 
 /// Upper bound on a probed name; mirrors `PROBE_NAME_MAX` in agent-catalog.ts.
@@ -48,9 +48,9 @@ pub(crate) fn probe_names(requested: Vec<String>) -> Vec<String> {
         .collect();
     for name in requested {
         // Alacritty is a native pane renderer, not an agent command. Keep it
-        // out of non-Windows pickers, where the native embedding backend is a
-        // deliberate unsupported stub.
-        if cfg!(not(target_os = "windows")) && name == "alacritty" {
+        // out of platforms where the native embedding backend is a deliberate
+        // unsupported stub.
+        if cfg!(not(any(target_os = "windows", target_os = "macos"))) && name == "alacritty" {
             continue;
         }
         if is_probe_safe(&name) && !names.iter().any(|existing| *existing == name) {
