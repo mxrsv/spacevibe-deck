@@ -168,10 +168,18 @@ mod tests {
     use std::time::Duration;
 
     fn builtins() -> Vec<String> {
-        BUILTIN_AGENTS
+        let mut names: Vec<String> = BUILTIN_AGENTS
             .iter()
             .map(|name| (*name).to_string())
-            .collect()
+            .collect();
+        // This module's tests run on Linux CI too (`platform::windows` is
+        // compiled under cfg(test)), while the production built-in catalog is
+        // correctly platform-gated there. Explicitly include the Windows-only
+        // renderer so these fixtures continue to exercise its discovery path.
+        if !names.iter().any(|name| name == "alacritty") {
+            names.push("alacritty".to_string());
+        }
+        names
     }
 
     struct FixtureProvider {
