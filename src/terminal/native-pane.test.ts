@@ -19,7 +19,7 @@ beforeAll(() => {
 afterAll(() => vi.unstubAllGlobals());
 
 describe("createNativePane accessibility", () => {
-  it("announces asynchronous failures and names the retry action", () => {
+  it("announces asynchronous failures and names the retry action", async () => {
     const pane = createNativePane(
       0x8000_0000,
       DEFAULT_SETTINGS,
@@ -38,6 +38,7 @@ describe("createNativePane accessibility", () => {
         'button[aria-label="Retry embedded Alacritty pane"]',
       ),
     ).not.toBeNull();
+    await expect(pane.pasteText("do not submit")).resolves.toBe(false);
 
     pane.dispose();
   });

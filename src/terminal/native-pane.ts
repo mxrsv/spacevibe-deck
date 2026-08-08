@@ -181,6 +181,12 @@ export function createNativePane(
     paste() {
       void client.performAlacrittyAction(id, "paste");
     },
+    pasteText() {
+      // Native Alacritty has no PTY write channel or bracketed-paste API.
+      // Fail closed so Prompt Board never auto-submits text that was not
+      // delivered; ordinary clipboard paste remains available above.
+      return Promise.resolve(false);
+    },
     scrollPage(dir) {
       void client.performAlacrittyAction(id, dir < 0 ? "page-up" : "page-down");
     },
