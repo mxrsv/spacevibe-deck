@@ -26,6 +26,11 @@ interface TabBarProps {
   onSetTabColor(index: number, color: TabDotColor | null): void;
   onToggleSettings(): void;
   expandActive: boolean;
+  /** Whether the Prompt Board popover is up — forwarded to ChromeActions. */
+  promptsOpen: boolean;
+  promptsDisabled: boolean;
+  promptPopover?: ComponentChildren;
+  onTogglePrompts(): void;
   updateAction?: ComponentChildren;
   onToggleExpand(): void;
   /** Invoked when a tab's actionable attention mark is clicked. */
@@ -161,6 +166,10 @@ export function TabBar(props: TabBarProps) {
         onSplitColumn={props.onSplitColumn}
         onClosePane={props.onClosePane}
         onToggleExpand={props.onToggleExpand}
+        promptsOpen={props.promptsOpen}
+        promptsDisabled={props.promptsDisabled}
+        promptPopover={props.promptPopover}
+        onTogglePrompts={props.onTogglePrompts}
         onToggleSettings={props.onToggleSettings}
         updateAction={props.updateAction}
       />

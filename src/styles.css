@@ -1418,6 +1418,7 @@ button.attn-mark:hover {
   .settings-screen *,
   .tabbar *,
   .wsbar *,
+  .prompt-popover *,
   .status * {
     transition: none;
   }
@@ -1489,6 +1490,71 @@ button.attn-mark:hover {
 }
 .tab-popover__logo-btn:hover {
   border-color: var(--accent);
+}
+
+/* ── Prompt Board popover (DL §13) ───────────────────────── */
+
+/* The anchor holds both the trigger and the surface, so "outside click" is
+   one containment test and no rect math is needed (DL-13.1). */
+.prompts-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.prompt-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100;
+  width: 320px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 6px 0 8px;
+  background: var(--chrome-2);
+  /* A hairline, not a shadow — depth comes from the background step (DL-1.3). */
+  box-shadow: inset 0 0 0 1px var(--hair-strong);
+  border-radius: 8px;
+}
+
+.prompt-popover:focus-visible {
+  outline: none;
+}
+
+.prompt-popover__empty,
+.prompt-picker__unavailable {
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+/* Non-interactive marker that a row's template presses Enter after pasting.
+   Faint, so the pill stays the only thing that reads as clickable. */
+.prompt-row__auto {
+  margin-right: 8px;
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+/* The one inline editor a row may expand beneath it (DL-13.4). */
+.prompt-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prompt-editor__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Pickers sit under a hairline: they compose the prompt, they are not a
+   template (DL-3.3 — structure from hairlines, not color). */
+.prompt-picker {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--hair);
 }
 
 /* ── Pane drag-dock ──────────────────────────────────────── */

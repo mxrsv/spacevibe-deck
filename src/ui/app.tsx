@@ -28,6 +28,7 @@ import type { AgentChoice } from "../lib/workspace-recents";
 import {
   boardOpen,
   editorRequest,
+  promptsOpen,
   reportPersistError,
   saveDialogOpen,
   settingsOpen,
@@ -40,6 +41,9 @@ import {
 } from "../presets/save-preset-dialog";
 import type { PresetArtifact } from "../presets/mock-model";
 import { PersistErrorBar } from "../presets/persist-error-bar";
+import { PromptPopover } from "../prompts/prompt-popover";
+import { capturePromptTarget } from "../prompts/inject";
+import { defaultPromptAssetsClient } from "../prompts/prompt-assets-client";
 import { TabBar } from "./tab-bar";
 import { ChromeActions } from "./chrome-actions";
 import { WorkspaceSidebar } from "./workspace-sidebar";
@@ -539,6 +543,69 @@ export function App() {
       }}
     />
   );
+  /**
+   * Every overlay that covers the terminal grid. The Prompt Board targets the
+   * FOCUSED pane, so it must not open — or stay open — while one of these
+   * hides it. The keyboard path is already gated by `scope: "pane"`; a button
+   * onClick is a direct call and needs this guard of its own.
+   *
+   * One function, read in two places: the render body (for `promptsDisabled`)
+   * and INSIDE the effect below. It has to be a function, not a captured
+   * boolean — see the effect's own comment.
+   */
+  const overlayCoversPane = (): boolean =>
+    boardOpen.value ||
+    settingsOpen.value ||
+    editorRequest.value !== null ||
+    saveDialogOpen.value;
+
+  /**
+   * Close an ALREADY OPEN popover the moment an overlay opens over it —
+   * otherwise it keeps painting at z-100, above the Settings screen (z-35) it
+   * is now covering nothing behind.
+   *
+   * The overlay signals are read INSIDE this callback on purpose.
+   * `useSignalEffect` subscribes to exactly the signals its callback touches,
+   * and it is created once; a boolean captured from the render body would make
+   * this effect depend on `promptsOpen` alone, so opening Settings with ⌘,
+   * would re-render App and never re-run this.
+   */
+  useSignalEffect(() => {
+    if (promptsOpen.value && overlayCoversPane()) {
+      promptsOpen.value = false;
+    }
+  });
+
+  const closePrompts = (): void => {
+    promptsOpen.value = false;
+    tabsRef.current?.focusActive();
+  };
+
+  const togglePrompts = (): void => {
+    if (promptsOpen.value) {
+      closePrompts();
+      return;
+    }
+    promptsOpen.value = true;
+  };
+
+  const promptPopover = promptsOpen.value ? (
+    <PromptPopover
+      capture={() => capturePromptTarget(tabsRef.current?.activePaneId() ?? null)}
+      loadAssets={(target) =>
+        defaultPromptAssetsClient.list(target.agent ?? "", target.cwd)
+      }
+      inject={(target, text, autoSend) =>
+        tabsRef.current?.injectIntoPane(target.paneId, text, {
+          autoSend,
+          expectedAgent: target.agent,
+        }) ?? Promise.resolve("no-target" as const)
+      }
+      isAlive={(paneId) => tabsRef.current?.allPaneIds().includes(paneId) ?? false}
+      onClose={closePrompts}
+    />
+  ) : null;
+
   const chromeActions = (
     <ChromeActions
       settingsOpen={settingsOpen.value}
@@ -549,6 +616,10 @@ export function App() {
       onToggleExpand={() =>
         updateSettings({ focusExpand: !settings.value.focusExpand })
       }
+      promptsOpen={promptsOpen.value}
+      promptsDisabled={overlayCoversPane() || tabViews.value.length === 0}
+      promptPopover={promptPopover}
+      onTogglePrompts={togglePrompts}
       onToggleSettings={toggleSettings}
       updateAction={updateAction}
     />
@@ -595,6 +666,10 @@ export function App() {
           onToggleExpand={() =>
             updateSettings({ focusExpand: !settings.value.focusExpand })
           }
+          promptsOpen={promptsOpen.value}
+          promptsDisabled={overlayCoversPane() || tabViews.value.length === 0}
+          promptPopover={promptPopover}
+          onTogglePrompts={togglePrompts}
           onToggleSettings={toggleSettings}
           updateAction={updateAction}
           onFocusAttention={requestAttentionFocus}

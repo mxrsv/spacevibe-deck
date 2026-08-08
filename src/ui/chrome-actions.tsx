@@ -4,11 +4,18 @@ import { shortcutLabel } from "../lib/shortcut-label";
 interface ChromeActionsProps {
   settingsOpen: boolean;
   expandActive: boolean;
+  /** Whether the Prompt Board popover is up (drives `aria-expanded`). */
+  promptsOpen: boolean;
+  /** No pane to paste into, or an overlay is covering the one there is. */
+  promptsDisabled: boolean;
+  /** Rendered inside the trigger's anchor while open — see `.prompts-anchor`. */
+  promptPopover?: ComponentChildren;
   updateAction?: ComponentChildren;
   onSplitRow(): void;
   onSplitColumn(): void;
   onClosePane(): void;
   onToggleExpand(): void;
+  onTogglePrompts(): void;
   onToggleSettings(): void;
 }
 
@@ -87,6 +94,25 @@ function ExpandIcon() {
   );
 }
 
+function PromptsIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3.5 20.5 12 12 20.5 3.5 12z" />
+      <path d="M9 12h6" />
+    </svg>
+  );
+}
+
 function GearIcon() {
   return (
     <svg
@@ -112,6 +138,7 @@ export function ChromeActions(props: ChromeActionsProps) {
   const splitColumn = shortcutLabel("split-column");
   const closePane = shortcutLabel("close-pane");
   const toggleExpand = shortcutLabel("toggle-expand");
+  const prompts = shortcutLabel("toggle-prompts");
   const settings = shortcutLabel("toggle-settings");
   return (
     <div class="tabbar__actions">
@@ -152,6 +179,21 @@ export function ChromeActions(props: ChromeActionsProps) {
       >
         <ExpandIcon />
       </button>
+      <span class="prompts-anchor">
+        <button
+          type="button"
+          class={`iconbtn ${props.promptsOpen ? "is-active" : ""}`}
+          title={`Prompts (${prompts})`}
+          aria-label="Open the prompt board"
+          aria-haspopup="dialog"
+          aria-expanded={props.promptsOpen}
+          disabled={props.promptsDisabled}
+          onClick={props.onTogglePrompts}
+        >
+          <PromptsIcon />
+        </button>
+        {props.promptsOpen ? props.promptPopover : null}
+      </span>
       <span class="tabbar__sep" aria-hidden="true" />
       {props.updateAction}
       <button
