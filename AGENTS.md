@@ -118,6 +118,33 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   unobserved because nobody here has it installed. Detail in
   [`docs/CONTEXT.md`](docs/CONTEXT.md) `current`.
 
+- The Prompt Board landed 2026-08-08 —
+  [spec](docs/specs/2026-08-08-prompt-board-design.md) `decided`,
+  [plan](docs/plans/2026-08-08-prompt-board.md) `current`, implemented against
+  that plan task by task. A chrome popover of reusable prompt templates pastes
+  one into the agent session in the focused pane; ⌘⇧P / Ctrl+Shift+P and a
+  View-menu item open it. What shipped and what was NOT verified is in
+  [`docs/CONTEXT.md`](docs/CONTEXT.md) `current`. Five forks resolved with the
+  user, then revised after an
+  external Codex review (2 blockers, 6 majors, all accepted): (1) detection
+  covers Claude Code AND Codex from v1, but Codex custom prompts are deferred —
+  they are standalone slash commands, not embeddable references; (2) each
+  template carries its own `autoSend` flag, and submit is triple-gated (fresh
+  `pty_info` agent match, idle + unlatched attention snapshot, pane alive)
+  because Enter into a permission dialog or a bare shell is the failure mode
+  that matters — a failed gate degrades to paste-only; (3) templates live in
+  the settings store beside `customAgents`; (4) the surface is a
+  chrome-anchored popover, and DESIGN-LANGUAGE gains §13 (anchored popovers +
+  `CommitTextarea`) — an approved R2 fork; (5) injection rides xterm's
+  bracketed-paste path through a new per-pane FIFO write queue in
+  `pane-lifecycle`, so paste-then-Enter ordering is structural, not timed. No
+  new dependencies; the R4 seams stay untouched. The plan closed the spec's two
+  open questions: the binding is **⌘⇧P / Ctrl+Shift+P** (`p` was free on both
+  keymaps, and `CharKeyBinding` is mandatory because the action carries a macOS
+  menu item), and a Codex agent `.toml` **does** carry a usable top-level
+  `description`, though the scanner still names the agent by file stem because
+  that is what the CLI loads by path.
+
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
 

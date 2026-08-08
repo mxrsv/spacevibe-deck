@@ -285,6 +285,69 @@ agent label, and the board offered no chip for it.
   sustained-output heuristic until someone runs it
   ([activity](../src/terminal/agent-activity.ts) `current`).
 
+## Prompt Board — 2026-08-08
+
+A chrome popover of reusable prompt templates. One click pastes a template body
+(plus optional skill / subagent reference lines) into the agent session running
+in the pane that was focused when the popover opened. Opened by ⌘⇧P /
+Ctrl+Shift+P or View → Prompts…; the trigger sits beside Settings in the tab
+bar. Zero new dependencies, npm or cargo.
+
+- Templates are `{id, label, body, autoSend}` in the settings store beside
+  `customAgents`, validated with the same drop-not-repair discipline — a
+  malformed entry is dropped, never guessed at, because its body is pasted
+  verbatim into a live PTY
+  ([catalog](../src/prompts/prompt-templates.ts) `current`,
+  [validation](../src/settings/settings-schema.ts) `current`).
+- Injection rides xterm's bracketed-paste path
+  ([`Pane.pasteText`](../src/terminal/pane.ts) `current`), which is the only
+  route that lands a multi-line body in an agent TUI's composer as one block.
+  Ordering of "paste frame, then `\r`" is structural, not timed: every write
+  for a pane now chains behind the previous one's settled promise in a per-pane
+  FIFO queue ([`enqueueWrite`](../src/terminal/pane-lifecycle.ts) `current`),
+  so `onData` keystrokes and a programmatic submit share one order.
+- `autoSend` is never an unconditional Enter. Immediately before `\r` is
+  enqueued a triple gate is re-read: the pane still runs the SAME agent it ran
+  at capture (fresh `pty_info`, not the 2s poll cache), its attention snapshot
+  is `idle` with nothing latched beyond `completed`, and it is still in some
+  tab's layout ([`submitAllowed`](../src/prompts/inject.ts) `current`,
+  [orchestration](../src/terminal/tab-manager.ts) `current`). A failed gate
+  degrades to paste-only and says "Pasted — not sent".
+- Detection is a read-only Rust scan — no shell, no PTY. It walks
+  `~/.claude/skills`, `~/.claude/agents`, the project's own `.claude/…` found
+  by walking up from the pane's cwd, and every active plugin's `installPath`
+  read from `installed_plugins.json`; Codex gets `~/.codex/skills` and
+  `~/.codex/agents/*.toml`. Symlinks are refused rather than followed, reads
+  are head-bounded at 16 KiB, results capped at 200 per kind, and a missing
+  directory or unreadable file is an empty list rather than an error
+  ([scanner](../src-tauri/src/prompt_assets.rs) `current`).
+- Frontmatter and TOML are parsed by hand, not by a crate: the zero-dependency
+  rule holds, and every descriptor verified on disk carries `name` /
+  `description` as a plain, quoted or folded scalar. A Codex agent is named by
+  its **file stem**, not its `name =` field — the stem is what the CLI loads by
+  path, so a disagreeing field would send the wrong reference into the prompt.
+- The surface is DL §12 rows inside a new DL §13 anchored popover, plus
+  `CommitTextarea` — the multi-line sibling of `CommitInput`, with the same
+  local-draft discipline because the popover's parent never unmounts
+  ([popover](../src/prompts/prompt-popover.tsx) `current`,
+  [control](../src/ui/controls/commit-textarea.tsx) `current`,
+  [rules](DESIGN-LANGUAGE.md) `current`).
+- Restore Defaults wipes templates along with declared agents — it always did
+  for agents; the confirm sentence now says so
+  ([copy](../src/ui/settings/sections/reset-section.tsx) `current`).
+
+Verified 2026-08-08: `npm test` 1093 passing across 96 files, `npm run build`
+(tsc + vite) green, `npm run generate:menu:check` green, `cargo test` 151
+passing. The popover surface was eye-reviewed against §12/§13 on a screenshot of
+its real rendered DOM over the real stylesheet.
+
+Known-open, deliberately: the acceptance table in the plan's Task 12 Step 4 has
+NOT been run. Nothing has driven ⌘⇧P inside a running desktop build, so a real
+paste into a live Claude composer, a real auto-send through the gate, and the
+popover closing when its target pane's tab closes are all unobserved outside
+unit tests. `agy`, `gemini` and `opencode` have no verified asset layout, so a
+pane running one of them hides the pickers and pastes the body alone.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
