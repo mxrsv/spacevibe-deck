@@ -1049,25 +1049,22 @@ describe("createTabManager attention tracker", () => {
     it.each([
       processInfo(1, "/repo", "node", "busy", null),
       processInfo(1, "/repo", null, "unknown", null),
-    ])(
-      "keeps the attention gate closed for $kind snapshots",
-      async (info) => {
-        const infos = new Map<number, PaneProcessInfo>([[1, info]]);
-        const { tm, pty, emitSignal } = setup({ infos });
-        await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
-          workspacePath: "/repo",
-        });
-        await tm.init();
-        await flush();
+    ])("keeps the attention gate closed for $kind snapshots", async (info) => {
+      const infos = new Map<number, PaneProcessInfo>([[1, info]]);
+      const { tm, pty, emitSignal } = setup({ infos });
+      await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+        workspacePath: "/repo",
+      });
+      await tm.init();
+      await flush();
 
-        emitSignal(1, { kind: "requested", source: "bell" });
-        pty.emitOutput(1, "\x1b]9;4;2\x07");
+      emitSignal(1, { kind: "requested", source: "bell" });
+      pty.emitOutput(1, "\x1b]9;4;2\x07");
 
-        expect(tabViews.value[0].attention?.actionableCount).toBe(0);
-        expect(tabViews.value[0].agentBusy).toBe(false);
-        tm.dispose();
-      },
-    );
+      expect(tabViews.value[0].attention?.actionableCount).toBe(0);
+      expect(tabViews.value[0].agentBusy).toBe(false);
+      tm.dispose();
+    });
 
     it("ignores activity from a pane never recognized as an agent", async () => {
       // No infos → the poll returns nothing for pane 1, so its gate never opens.
@@ -1104,10 +1101,7 @@ describe("createTabManager attention tracker", () => {
 
         // The foreground process becomes the shell; the next poll closes the
         // gate and infers exactly one completion.
-        infoByPane.set(
-          1,
-          processInfo(1, "/repo", "zsh", "idle-shell", null),
-        );
+        infoByPane.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null));
         await vi.advanceTimersByTimeAsync(2000);
         expect(tabViews.value[0].attention?.kind).toBe("completed");
         expect(tabViews.value[0].attention?.actionableCount).toBe(1);
@@ -1831,10 +1825,7 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
       pty.emitOutput(1, "\x1b]9;4;1\x07"); // working
       maybeNotify.mockClear(); // discard the gate-open + working calls (kind "none")
 
-      infoByPane.set(
-        1,
-        processInfo(1, "/repo", "zsh", "idle-shell", null),
-      ); // foreground process becomes the shell
+      infoByPane.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null)); // foreground process becomes the shell
       await vi.advanceTimersByTimeAsync(2000); // poll closes the gate → inferred completion
 
       expect(maybeNotify).toHaveBeenCalledTimes(1);
@@ -1868,10 +1859,7 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
       pty.emitOutput(1, "\x1b]9;4;1\x07");
       maybeNotify.mockClear();
 
-      infoByPane.set(
-        1,
-        processInfo(1, "/repo", "zsh", "idle-shell", null),
-      );
+      infoByPane.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null));
       await vi.advanceTimersByTimeAsync(2000);
 
       // Routed regardless of window focus — a real notifier would gate this
@@ -2002,10 +1990,7 @@ describe("createTabManager notifier — dedupe on attention latch identity, not 
 
       // agent→shell poll: phase working→idle, error stays latched — a
       // phase-only re-emit of the SAME latched kind, not a new event.
-      infoByPane.set(
-        1,
-        processInfo(1, "/repo", "zsh", "idle-shell", null),
-      );
+      infoByPane.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null));
       await vi.advanceTimersByTimeAsync(2000);
 
       // pty:exit: phase→exited, attention unchanged — another phase-only
@@ -3218,10 +3203,7 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
 
   it("copies the active pane's polled CWD to the clipboard", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [
-        1,
-        processInfo(1, "/repo/spacevibe-deck", "zsh", "idle-shell", null),
-      ],
+      [1, processInfo(1, "/repo/spacevibe-deck", "zsh", "idle-shell", null)],
     ]);
     const writeText = vi.fn(() => Promise.resolve());
     stubClipboard(writeText);
@@ -3387,5 +3369,96 @@ describe("createTabManager scroll-page-up/down, scroll-to-top/bottom (Task 4)", 
     expect(scrollToEdgeSpy).not.toHaveBeenCalled();
 
     tm.dispose();
+  });
+});
+
+/**
+ * One tab holding one pane the poll reports as `agent`, with the attention
+ * tracker driven all the way to `phase: "idle"`.
+ *
+ * The OSC emit is not decoration. `freshState()` starts a pane at
+ * `phase: "unknown"` and `noteProcess`'s pre-poll→agent branch leaves the
+ * phase alone, so a poll opens the process gate while gate 2
+ * (`phase === "idle"`) still refuses — every submit would degrade to
+ * `"pasted"` and read like a gate bug. `init()` is equally load-bearing:
+ * the memory client's `emitOutput` only reaches listeners registered inside
+ * `init()`, so without it the emit is a silent no-op.
+ */
+async function mountManagerWithAgentPane(
+  agent: NonNullable<PaneProcessInfo["agent"]>,
+): Promise<{
+  manager: TabManager;
+  pty: ReturnType<typeof createMemoryPtyClient>;
+}> {
+  const infos = new Map<number, PaneProcessInfo>([
+    [1, processInfo(1, "/repo", agent, "agent", agent)],
+  ]);
+  const { tm, pty } = setup({ infos });
+  await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+    workspacePath: "/repo",
+  });
+  await tm.init();
+  await flush();
+  pty.emitOutput(1, "\x1b]9;4;0\x07"); // OSC 9;4 state 0 → idle
+  return { manager: tm, pty };
+}
+
+describe("injectIntoPane", () => {
+  it("pastes and sends when the gate holds", async () => {
+    const { manager, pty } = await mountManagerWithAgentPane("claude");
+    const paneId = manager.activePaneId();
+    expect(paneId).not.toBeNull();
+    await expect(
+      manager.injectIntoPane(paneId as number, "review this", {
+        autoSend: true,
+        expectedAgent: "claude",
+      }),
+    ).resolves.toBe("sent");
+    await flush();
+    // Indexed, not `.at(-1)`: the repo's tsconfig `lib` predates ES2022.
+    expect(pty.writes[pty.writes.length - 1]).toEqual({
+      id: paneId,
+      data: "\r",
+    });
+    manager.dispose();
+  });
+
+  it("pastes without sending when autoSend is off", async () => {
+    const { manager, pty } = await mountManagerWithAgentPane("claude");
+    const paneId = manager.activePaneId() as number;
+    await expect(
+      manager.injectIntoPane(paneId, "review this", {
+        autoSend: false,
+        expectedAgent: "claude",
+      }),
+    ).resolves.toBe("pasted");
+    await flush();
+    expect(pty.writes.some((write) => write.data === "\r")).toBe(false);
+    manager.dispose();
+  });
+
+  it("withholds the submit when the pane changed agent since capture", async () => {
+    const { manager, pty } = await mountManagerWithAgentPane("codex");
+    const paneId = manager.activePaneId() as number;
+    await expect(
+      manager.injectIntoPane(paneId, "review this", {
+        autoSend: true,
+        expectedAgent: "claude",
+      }),
+    ).resolves.toBe("pasted");
+    await flush();
+    expect(pty.writes.some((write) => write.data === "\r")).toBe(false);
+    manager.dispose();
+  });
+
+  it("reports no target for an unknown pane", async () => {
+    const { manager } = await mountManagerWithAgentPane("claude");
+    await expect(
+      manager.injectIntoPane(9999, "x", {
+        autoSend: false,
+        expectedAgent: null,
+      }),
+    ).resolves.toBe("no-target");
+    manager.dispose();
   });
 });

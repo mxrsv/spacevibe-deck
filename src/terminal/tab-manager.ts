@@ -53,8 +53,9 @@ import {
 import { confirmClose } from "./close-guard";
 import { createCloseCoordinator } from "./close-coordinator";
 import { activeAfterClose } from "./tab-close";
-import { freshCwd } from "./pane-info";
+import { freshCwd, freshPaneInfo } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
+import { submitAllowed, type InjectOutcome } from "../prompts/inject";
 import { createAgentLauncher } from "./agent-launch";
 import {
   buildClosedTabSnapshot,
@@ -286,6 +287,20 @@ export interface TabManager {
   } | null>;
   /** Fresh CWD of the focused pane (editor "↑ inherit" from a live window). */
   activePaneCwd(): Promise<string | null>;
+  /** The focused pane of the active tab; null when there is no tab. */
+  activePaneId(): number | null;
+  /** Attention snapshot for one pane — the tracker's read side (gate 2). */
+  paneAttention(paneId: number): PaneAttentionSnapshot | null;
+  /**
+   * Paste `text` into `paneId`, then submit only when the triple gate still
+   * holds (spec §7). Never throws: a failed gate degrades to `"pasted"`, an
+   * unknown pane to `"no-target"`.
+   */
+  injectIntoPane(
+    paneId: number,
+    text: string,
+    opts: { readonly autoSend: boolean; readonly expectedAgent: string | null },
+  ): Promise<InjectOutcome>;
   newTab(): Promise<void>;
   /** Reopen the most recently closed tab (⌘⇧T); skips dead workspaces. */
   reopenTab(): Promise<void>;
@@ -784,6 +799,54 @@ export function createTabManager(
 
   function activePaneCwd(): Promise<string | null> {
     return freshCwd(activeManager()?.activePaneId() ?? null, pty);
+  }
+
+  function ownerOf(paneId: number): TabEntry | undefined {
+    return tabs.find((tab) => tab.manager.paneIds().includes(paneId));
+  }
+
+  /**
+   * The tracker's read side (gate 2). One function, used by `injectIntoPane`
+   * below AND returned on the interface, so the gate and any future reader can
+   * never disagree about where a pane's attention comes from.
+   */
+  function paneAttention(paneId: number): PaneAttentionSnapshot | null {
+    return tracker.snapshot(paneId);
+  }
+
+  /**
+   * Paste-then-maybe-submit for the Prompt Board. The paste is unconditional
+   * (it is exactly a ⌘V, and bracketed paste means even a bare shell inserts
+   * without executing); the `\r` is not. Ordering is guaranteed by the
+   * per-pane write queue, not by waiting: the paste frame is already queued
+   * before this function awaits anything, so a `\r` enqueued after the await
+   * can only ever land behind it.
+   */
+  async function injectIntoPane(
+    paneId: number,
+    text: string,
+    opts: { readonly autoSend: boolean; readonly expectedAgent: string | null },
+  ): Promise<InjectOutcome> {
+    const owner = ownerOf(paneId);
+    if (!owner || !owner.manager.pasteIntoPane(paneId, text)) {
+      return "no-target";
+    }
+    if (!opts.autoSend) {
+      return "pasted";
+    }
+    const [info] = await freshPaneInfo([paneId], pty);
+    // Re-resolved after the await: the tab could have closed across it.
+    const stillOwned = ownerOf(paneId);
+    const allowed = submitAllowed({
+      expectedAgent: opts.expectedAgent,
+      info,
+      attention: paneAttention(paneId),
+      alive: stillOwned !== undefined,
+    });
+    if (!allowed || stillOwned === undefined) {
+      return "pasted";
+    }
+    return stillOwned.manager.submitPane(paneId) ? "sent" : "pasted";
   }
 
   /** A tab with no workspace is always live; an unanswerable check fails open. */
@@ -1433,6 +1496,11 @@ export function createTabManager(
     },
     captureActiveLayout,
     activePaneCwd,
+    activePaneId() {
+      return activeManager()?.activePaneId() ?? null;
+    },
+    paneAttention,
+    injectIntoPane,
     newTab,
     reopenTab,
     closeTab: (index) => close.closeTab(index),
