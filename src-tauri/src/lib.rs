@@ -7,6 +7,7 @@ mod menu;
 mod menu_registry;
 mod migrate;
 mod platform;
+mod prompt_assets;
 mod pty;
 mod shell_integration;
 
