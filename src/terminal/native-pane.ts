@@ -9,13 +9,13 @@ import { nativeTerminalAppearance } from "./native-appearance";
 
 export function createNativePane(
   id: number,
-  _initial: Settings,
+  initial: Settings,
   events: PaneEvents,
   client: NativePaneClient,
 ): Pane {
   const element = document.createElement("div");
   element.className = "pane pane--native";
-  applyPaneBackground(element, _initial, "alacritty");
+  applyPaneBackground(element, initial, "alacritty");
 
   const bar = document.createElement("div");
   bar.className = "pane__bar";
@@ -43,11 +43,13 @@ export function createNativePane(
   host.setAttribute("aria-label", "Embedded Alacritty terminal");
   const errorBanner = document.createElement("div");
   errorBanner.className = "pane__native-error";
+  errorBanner.setAttribute("role", "alert");
   errorBanner.hidden = true;
   const errorText = document.createElement("span");
   const retry = document.createElement("button");
   retry.type = "button";
   retry.textContent = "retry";
+  retry.setAttribute("aria-label", "Retry embedded Alacritty pane");
   errorBanner.append(errorText, retry);
   element.append(bar, anchor, host, errorBanner);
 
@@ -58,7 +60,7 @@ export function createNativePane(
   let active = false;
   let animationFrame: number | null = null;
   let lastUpdate = "";
-  let lastSettings = _initial;
+  let lastSettings = initial;
 
   function showError(error: unknown): void {
     errorText.textContent =

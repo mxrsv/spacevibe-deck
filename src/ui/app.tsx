@@ -348,7 +348,7 @@ export function App() {
       confirmQuit: () => {
         const manager = tabsRef.current;
         return manager
-          ? confirmClose(manager.allPtyPaneIds(), defaultPtyClient, QUIT_COPY)
+          ? confirmClose(manager.allPaneIds(), defaultPtyClient, QUIT_COPY)
           : Promise.resolve(true);
       },
       flush: flushSettingsSave,

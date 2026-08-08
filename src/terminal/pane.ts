@@ -17,6 +17,15 @@ import { getDesktopEnvironment } from "../lib/platform";
 import { createCodexWheelHandler } from "./codex-wheel";
 import { applyPaneBackground, paneUsesBackgroundImage } from "./pane-background";
 
+function paneTheme(settings: Settings) {
+  return {
+    ...resolveTheme(settings),
+    ...(paneUsesBackgroundImage(settings, "xterm")
+      ? { background: "#00000000" }
+      : {}),
+  };
+}
+
 /** Structured attention signal a pane can emit — never a native notification. */
 export interface PaneAttentionSignal {
   kind: "requested";
@@ -152,12 +161,7 @@ export function createPane(
     // Option must stay a character key on macOS so IMEs (Vietnamese Telex,
     // dead-key accents) can compose — `true` swallows it as Meta.
     macOptionIsMeta: false,
-    theme: {
-      ...resolveTheme(initial),
-      ...(paneUsesBackgroundImage(initial, "xterm")
-        ? { background: "#00000000" }
-        : {}),
-    },
+    theme: paneTheme(initial),
     // OSC 8 hyperlinks otherwise fall back to window.confirm/open, which
     // WKWebView blocks — route through Tauri like the custom link provider.
     linkHandler: createOscLinkHandler(),
@@ -308,12 +312,7 @@ export function createPane(
     term.options.fontFamily = toFontStack(next.fontFamily);
     term.options.fontSize = next.fontSize;
     applyPaneBackground(element, next, "xterm");
-    term.options.theme = {
-      ...resolveTheme(next),
-      ...(paneUsesBackgroundImage(next, "xterm")
-        ? { background: "#00000000" }
-        : {}),
-    };
+    term.options.theme = paneTheme(next);
     term.options.scrollback = next.scrollback;
     fit();
   }

@@ -37,24 +37,24 @@ mod imp {
     use std::collections::HashMap;
     use std::path::{Path, PathBuf};
     use std::process::{Child, Command};
-    use std::sync::atomic::{AtomicU32, Ordering};
-    use std::sync::Mutex;
+    use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+    use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
-    use tauri::{AppHandle, Emitter, WebviewWindow};
+    use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
     use windows_sys::core::BOOL;
     use windows_sys::Win32::Foundation::{HWND, LPARAM, POINT};
     use windows_sys::Win32::Graphics::Gdi::ClientToScreen;
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-        keybd_event, SetFocus, KEYEVENTF_KEYUP, VK_CONTROL, VK_END, VK_HOME, VK_NEXT, VK_PRIOR,
-        VK_RETURN, VK_SHIFT,
+        SendInput, SetFocus, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP,
+        VK_CONTROL, VK_END, VK_HOME, VK_NEXT, VK_PRIOR, VK_RETURN, VK_SHIFT,
     };
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        EnumWindows, GetClassNameW, GetGUIThreadInfo, GetParent, GetWindow, GetWindowLongPtrW,
-        GetWindowThreadProcessId, IsChild, IsWindow, IsWindowVisible, SetForegroundWindow,
-        SetWindowLongPtrW, SetWindowPos, ShowWindow, GUITHREADINFO, GWLP_HWNDPARENT, GWL_EXSTYLE,
-        GWL_STYLE, GW_OWNER, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOZORDER, SW_HIDE, SW_SHOW,
-        WS_CAPTION, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP,
-        WS_SYSMENU, WS_THICKFRAME,
+        EnumWindows, GetClassNameW, GetForegroundWindow, GetGUIThreadInfo, GetParent, GetWindow,
+        GetWindowLongPtrW, GetWindowThreadProcessId, IsChild, IsWindow, IsWindowVisible,
+        SetForegroundWindow, SetWindowLongPtrW, SetWindowPos, ShowWindow, GUITHREADINFO,
+        GWLP_HWNDPARENT, GWL_EXSTYLE, GWL_STYLE, GW_OWNER, SWP_FRAMECHANGED, SWP_NOACTIVATE,
+        SWP_NOZORDER, SW_HIDE, SW_SHOW, WS_CAPTION, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
+        WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU, WS_THICKFRAME,
     };
 
     const FIRST_NATIVE_PANE_ID: u32 = 0x8000_0000;
@@ -66,6 +66,7 @@ mod imp {
         hwnd: isize,
         config_path: PathBuf,
         config_contents: String,
+        focus_monitor_alive: Arc<AtomicBool>,
     }
 
     pub struct NativeTerminalState {
@@ -207,6 +208,7 @@ mod imp {
     }
 
     fn terminate(mut pane: NativePane) {
+        pane.focus_monitor_alive.store(false, Ordering::Release);
         unsafe {
             if IsWindow(pane.hwnd as HWND) != 0 {
                 ShowWindow(pane.hwnd as HWND, SW_HIDE);
@@ -278,12 +280,12 @@ mod imp {
         ))
     }
 
-    fn runtime_config_path(id: u32) -> Result<PathBuf, String> {
-        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
-        let root = executable
-            .parent()
-            .ok_or("Couldn't locate the SpaceVibe installation directory")?
-            .join(".spacevibe-runtime")
+    fn runtime_config_path(app: &AppHandle, id: u32) -> Result<PathBuf, String> {
+        let root = app
+            .path()
+            .app_local_data_dir()
+            .map_err(|error| format!("Couldn't locate SpaceVibe's local data directory: {error}"))?
+            .join("runtime")
             .join("alacritty");
         std::fs::create_dir_all(&root)
             .map_err(|error| format!("Couldn't create Alacritty runtime directory: {error}"))?;
@@ -311,13 +313,13 @@ mod imp {
         Ok(())
     }
 
-    fn monitor_focus(app: AppHandle, id: u32, hwnd: HWND) {
+    fn monitor_focus(app: AppHandle, id: u32, hwnd: HWND, alive: Arc<AtomicBool>) {
         let hwnd = hwnd as isize;
         std::thread::spawn(move || {
             let hwnd = hwnd as HWND;
             let thread_id = unsafe { GetWindowThreadProcessId(hwnd, std::ptr::null_mut()) };
             let mut had_focus = false;
-            while unsafe { IsWindow(hwnd) } != 0 {
+            while alive.load(Ordering::Acquire) && unsafe { IsWindow(hwnd) } != 0 {
                 let mut info = GUITHREADINFO {
                     cbSize: std::mem::size_of::<GUITHREADINFO>() as u32,
                     flags: 0,
@@ -369,9 +371,11 @@ mod imp {
             .map(std::path::PathBuf::from)
             .filter(|path| path.is_dir())
             .unwrap_or(platform::user_home()?);
-        let config_path = runtime_config_path(id)?;
+        let config_path = runtime_config_path(&app, id)?;
         let config = config_contents(&appearance)?;
         write_config(&config_path, &config)?;
+        let focus_monitor_alive = Arc::new(AtomicBool::new(true));
+        let pane_monitor_alive = Arc::clone(&focus_monitor_alive);
 
         let pane = tauri::async_runtime::spawn_blocking(move || {
             let mut child = match Command::new(executable)
@@ -408,6 +412,7 @@ mod imp {
                 hwnd: hwnd as isize,
                 config_path,
                 config_contents: config,
+                focus_monitor_alive: pane_monitor_alive,
             })
         })
         .await
@@ -423,7 +428,7 @@ mod imp {
                 return Err("Native terminal state is unavailable".to_string());
             }
         }
-        monitor_focus(app, id, hwnd as HWND);
+        monitor_focus(app, id, hwnd as HWND, focus_monitor_alive);
         Ok(id)
     }
 
@@ -448,19 +453,51 @@ mod imp {
         Ok(())
     }
 
-    fn send_chord(hwnd: HWND, modifiers: &[u16], key: u16) {
+    fn keyboard_input(key: u16, flags: u32) -> INPUT {
+        INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: key,
+                    wScan: 0,
+                    dwFlags: flags,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        }
+    }
+
+    fn send_chord(hwnd: HWND, modifiers: &[u16], key: u16) -> Result<(), String> {
         unsafe {
-            SetForegroundWindow(hwnd);
-            SetFocus(hwnd);
-            for modifier in modifiers {
-                keybd_event(*modifier as u8, 0, 0, 0);
+            if SetForegroundWindow(hwnd) == 0 || GetForegroundWindow() != hwnd {
+                return Err("Alacritty could not be focused safely".to_string());
             }
-            keybd_event(key as u8, 0, 0, 0);
-            keybd_event(key as u8, 0, KEYEVENTF_KEYUP, 0);
-            for modifier in modifiers.iter().rev() {
-                keybd_event(*modifier as u8, 0, KEYEVENTF_KEYUP, 0);
+            SetFocus(hwnd);
+            let mut inputs = Vec::with_capacity(modifiers.len() * 2 + 2);
+            inputs.extend(
+                modifiers
+                    .iter()
+                    .map(|modifier| keyboard_input(*modifier, 0)),
+            );
+            inputs.push(keyboard_input(key, 0));
+            inputs.push(keyboard_input(key, KEYEVENTF_KEYUP));
+            inputs.extend(
+                modifiers
+                    .iter()
+                    .rev()
+                    .map(|modifier| keyboard_input(*modifier, KEYEVENTF_KEYUP)),
+            );
+            let sent = SendInput(
+                inputs.len() as u32,
+                inputs.as_ptr(),
+                std::mem::size_of::<INPUT>() as i32,
+            );
+            if sent != inputs.len() as u32 {
+                return Err("Windows could not deliver the Alacritty shortcut safely".to_string());
             }
         }
+        Ok(())
     }
 
     pub fn perform_action(
@@ -477,16 +514,16 @@ mod imp {
             .ok_or_else(|| format!("Unknown native pane {id}"))?;
         let hwnd = pane.hwnd as HWND;
         match action.as_str() {
-            "copy" => send_chord(hwnd, &[VK_CONTROL, VK_SHIFT], b'C' as u16),
-            "paste" => send_chord(hwnd, &[VK_CONTROL, VK_SHIFT], b'V' as u16),
-            "search" => send_chord(hwnd, &[VK_CONTROL, VK_SHIFT], b'F' as u16),
-            "search-next" => send_chord(hwnd, &[], VK_RETURN),
-            "search-previous" => send_chord(hwnd, &[VK_SHIFT], VK_RETURN),
-            "clear" => send_chord(hwnd, &[VK_CONTROL], b'L' as u16),
-            "page-up" => send_chord(hwnd, &[VK_SHIFT], VK_PRIOR),
-            "page-down" => send_chord(hwnd, &[VK_SHIFT], VK_NEXT),
-            "scroll-top" => send_chord(hwnd, &[VK_CONTROL, VK_SHIFT], VK_HOME),
-            "scroll-bottom" => send_chord(hwnd, &[VK_CONTROL, VK_SHIFT], VK_END),
+            "copy" => send_chord(hwnd, &[VK_CONTROL, VK_SHIFT], b'C' as u16)?,
+            "paste" => send_chord(hwnd, &[VK_CONTROL, VK_SHIFT], b'V' as u16)?,
+            "search" => send_chord(hwnd, &[VK_CONTROL, VK_SHIFT], b'F' as u16)?,
+            "search-next" => send_chord(hwnd, &[], VK_RETURN)?,
+            "search-previous" => send_chord(hwnd, &[VK_SHIFT], VK_RETURN)?,
+            "clear" => send_chord(hwnd, &[VK_CONTROL], b'L' as u16)?,
+            "page-up" => send_chord(hwnd, &[VK_SHIFT], VK_PRIOR)?,
+            "page-down" => send_chord(hwnd, &[VK_SHIFT], VK_NEXT)?,
+            "scroll-top" => send_chord(hwnd, &[VK_CONTROL, VK_SHIFT], VK_HOME)?,
+            "scroll-bottom" => send_chord(hwnd, &[VK_CONTROL, VK_SHIFT], VK_END)?,
             _ => return Err(format!("Unknown Alacritty action {action}")),
         }
         Ok(())
@@ -517,13 +554,17 @@ mod imp {
             let pane = panes.remove(&id);
             drop(panes);
             if let Some(pane) = pane {
-                let _ = std::fs::remove_file(pane.config_path);
+                terminate(pane);
             }
             return Err("Alacritty exited".to_string());
         }
         let hwnd = pane.hwnd as HWND;
         if unsafe { IsWindow(hwnd) } == 0 {
-            panes.remove(&id);
+            let pane = panes.remove(&id);
+            drop(panes);
+            if let Some(pane) = pane {
+                terminate(pane);
+            }
             return Err("The embedded Alacritty window is no longer available".to_string());
         }
         if !visible || bounds.width < 1.0 || bounds.height < 1.0 {
