@@ -15,6 +15,7 @@ import { classifyOscNotification } from "../lib/osc-notification";
 import { copyTerminalSelection, pasteIntoTerminal } from "./terminal-clipboard";
 import { getDesktopEnvironment } from "../lib/platform";
 import { createCodexWheelHandler } from "./codex-wheel";
+import { applyPaneBackground, paneUsesBackgroundImage } from "./pane-background";
 
 /** Structured attention signal a pane can emit — never a native notification. */
 export interface PaneAttentionSignal {
@@ -40,6 +41,8 @@ export interface SelectionSnapshot {
 /** A terminal cell (xterm instance) bound to one PTY session by id. */
 export interface Pane {
   readonly id: number;
+  /** Omitted by legacy test fakes; production xterm panes set this explicitly. */
+  readonly kind?: "xterm" | "alacritty";
   readonly element: HTMLElement;
   /** Per-pane search addon (Cmd+F); disposed with the terminal. */
   readonly search: SearchAddon;
@@ -65,7 +68,14 @@ export interface Pane {
   scrollPage(dir: 1 | -1): void;
   /** Jump to the very top (oldest) or bottom (latest output) of scrollback. */
   scrollToEdge(edge: "top" | "bottom"): void;
+  openSearch?(): void;
+  findNext?(): void;
+  findPrevious?(): void;
   focus(): void;
+  /** Native panes use this to hide their HWND when covered or backgrounded. */
+  setVisible?(visible: boolean): void;
+  /** Keep native geometry and SpaceVibe's focus treatment in sync. */
+  setActive?(active: boolean): void;
   applySettings(next: Settings): void;
   /** Update the header bar (dot color, cwd, process badge). */
   setHeaderInfo(info: PaneHeaderInfo): void;
@@ -93,6 +103,7 @@ export function createPane(
 ): Pane {
   const element = document.createElement("div");
   element.className = "pane";
+  applyPaneBackground(element, initial, "xterm");
 
   const bar = document.createElement("div");
   bar.className = "pane__bar";
@@ -141,7 +152,12 @@ export function createPane(
     // Option must stay a character key on macOS so IMEs (Vietnamese Telex,
     // dead-key accents) can compose — `true` swallows it as Meta.
     macOptionIsMeta: false,
-    theme: resolveTheme(initial),
+    theme: {
+      ...resolveTheme(initial),
+      ...(paneUsesBackgroundImage(initial, "xterm")
+        ? { background: "#00000000" }
+        : {}),
+    },
     // OSC 8 hyperlinks otherwise fall back to window.confirm/open, which
     // WKWebView blocks — route through Tauri like the custom link provider.
     linkHandler: createOscLinkHandler(),
@@ -291,7 +307,13 @@ export function createPane(
   function applySettings(next: Settings): void {
     term.options.fontFamily = toFontStack(next.fontFamily);
     term.options.fontSize = next.fontSize;
-    term.options.theme = resolveTheme(next);
+    applyPaneBackground(element, next, "xterm");
+    term.options.theme = {
+      ...resolveTheme(next),
+      ...(paneUsesBackgroundImage(next, "xterm")
+        ? { background: "#00000000" }
+        : {}),
+    };
     term.options.scrollback = next.scrollback;
     fit();
   }
@@ -352,6 +374,7 @@ export function createPane(
 
   return {
     id,
+    kind: "xterm",
     element,
     search: searchAddon,
     mount,

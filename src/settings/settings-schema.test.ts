@@ -213,3 +213,44 @@ describe("promptTemplates validation", () => {
     expect(validateSettings(raw).promptTemplates).toEqual([good]);
   });
 });
+
+describe("terminalBackground", () => {
+  it("supplies backward-compatible defaults", () => {
+    expect(validateSettings({}).terminalBackground).toEqual(
+      DEFAULT_SETTINGS.terminalBackground,
+    );
+  });
+
+  it("keeps supported image options and clamps numeric controls", () => {
+    expect(
+      validateSettings({
+        terminalBackground: {
+          imageDataUrl: "data:image/png;base64,AA==",
+          target: "alacritty",
+          fit: "contain",
+          dim: 5,
+          nativeOpacity: 0.1,
+        },
+      }).terminalBackground,
+    ).toEqual({
+      imageDataUrl: "data:image/png;base64,AA==",
+      target: "alacritty",
+      fit: "contain",
+      dim: 0.9,
+      nativeOpacity: 0.4,
+    });
+  });
+
+  it("rejects unsafe image values and unknown selectors", () => {
+    const value = validateSettings({
+      terminalBackground: {
+        imageDataUrl: "https://example.test/image.png",
+        target: "other",
+        fit: "tile",
+      },
+    }).terminalBackground;
+    expect(value.imageDataUrl).toBe("");
+    expect(value.target).toBe("all");
+    expect(value.fit).toBe("cover");
+  });
+});

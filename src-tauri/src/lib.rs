@@ -6,6 +6,7 @@ mod links;
 mod menu;
 mod menu_registry;
 mod migrate;
+mod native_terminal;
 mod platform;
 mod prompt_assets;
 mod pty;
@@ -20,8 +21,13 @@ struct QuitState {
 }
 
 #[tauri::command]
-fn confirm_quit(app: tauri::AppHandle, state: tauri::State<'_, QuitState>) {
+fn confirm_quit(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, QuitState>,
+    native: tauri::State<'_, native_terminal::NativeTerminalState>,
+) {
     state.confirmed.store(true, Ordering::SeqCst);
+    native.terminate_all();
     app.exit(0);
 }
 
@@ -46,6 +52,7 @@ pub fn run() {
     builder
         .manage(pty::PtyState::default())
         .manage(coordinator::WindowCoordinator::default())
+        .manage(native_terminal::NativeTerminalState::default())
         .manage(QuitState::default())
         .setup(|app| {
             // Before anything reads the store: the frontend loads settings
@@ -78,6 +85,12 @@ pub fn run() {
             images::scan_workspace_favicon,
             links::resolve_paths,
             links::open_editor,
+            native_terminal::spawn_alacritty,
+            native_terminal::apply_alacritty_appearance,
+            native_terminal::perform_alacritty_action,
+            native_terminal::update_alacritty,
+            native_terminal::focus_alacritty,
+            native_terminal::kill_alacritty,
             confirm_quit
         ])
         .build(tauri::generate_context!())
