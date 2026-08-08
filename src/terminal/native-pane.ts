@@ -1,4 +1,5 @@
 import { SearchAddon } from "@xterm/addon-search";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Settings } from "../settings/settings-schema";
 import type { PaneHeaderInfo } from "../lib/process-info";
 import type { Pane, PaneEvents } from "./pane";
@@ -111,6 +112,31 @@ export function createNativePane(
     animationFrame = requestAnimationFrame(syncNow);
   }
 
+  function forceSync(): void {
+    lastUpdate = "";
+    sync();
+  }
+
+  const windowUnlisteners: Array<() => void> = [];
+  if ("__TAURI_INTERNALS__" in globalThis) {
+    const appWindow = getCurrentWindow();
+    void Promise.all([
+      appWindow.onMoved(forceSync),
+      appWindow.onResized(forceSync),
+      appWindow.onScaleChanged(forceSync),
+    ])
+      .then((unlisteners) => {
+        if (disposed) {
+          unlisteners.forEach((unlisten) => unlisten());
+        } else {
+          windowUnlisteners.push(...unlisteners);
+        }
+      })
+      .catch((error: unknown) => {
+        console.warn("Native terminal window tracking is unavailable:", error);
+      });
+  }
+
   const observer = new ResizeObserver(sync);
   element.addEventListener("focusin", () => events.onFocus(id));
   element.addEventListener("mousedown", () => events.onFocus(id));
@@ -211,6 +237,7 @@ export function createNativePane(
     dispose() {
       disposed = true;
       if (animationFrame !== null) cancelAnimationFrame(animationFrame);
+      windowUnlisteners.forEach((unlisten) => unlisten());
       observer.disconnect();
       element.remove();
     },
