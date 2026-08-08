@@ -173,8 +173,10 @@ Before shipping any chrome UI change:
    class names — an allowlist silently misses the next class.
 4. No uppercase (§4). No monospace anywhere in chrome — if a rule reaches for
    it, the answer is `--ui-font` (DL-4.1).
-5. Text fields go through `CommitInput` (DL-6.3). Never bind a store value
-   straight into `<input value=…>` inside the panel.
+5. Text fields go through `CommitInput`, multi-line ones through
+   `CommitTextarea` (DL-6.3, DL-13.5). Never bind a store value straight into
+   an `<input value=…>` / `<textarea value=…>` inside a surface that does not
+   unmount.
 6. Eye-review on a rendered screenshot before calling it done — a green build
    proves nothing about design.
 
@@ -236,6 +238,32 @@ still made of rows rather than becoming a new widget genre.
   the row key and its value may become a `CommitInput` (DL-6.3) — the single
   documented exception to §5's non-interactive key, and it exists because
   renaming an item is editing that item, not configuring a setting.
+
+## 13. Anchored popovers
+
+Approved as a fork on 2026-08-08, for the Prompt Board. §5 governs rows inside
+a settings section; a popover is a small screen anchored to a chrome button,
+and these rules say how it stays made of rows instead of becoming a new widget
+genre.
+
+- **DL-13.1** A popover is a `--chrome-2` surface with a 1px `--hair-strong`
+  inset hairline, radius 8px, anchored to its trigger. No blurred shadow
+  (DL-1.3); depth comes from the background step.
+- **DL-13.2** Dismissal: Esc, outside click, or completing the popover's
+  action. On dismiss, focus returns to the pane (or control) that had it. The
+  trigger carries `aria-expanded`; the surface is `role="dialog"` with a label.
+- **DL-13.3** Content inside a popover is made of §5 rows and §12 list rows —
+  a popover is a small screen, not a new widget genre.
+- **DL-13.4** A §12 item row may expand exactly one inline editor region
+  beneath it (`aria-expanded` on the row); expanding a row collapses any other.
+  This is the documented extension of DL-12.5 for items whose value is
+  multi-line.
+- **DL-13.5** Multi-line text uses `CommitTextarea`
+  (`src/ui/controls/commit-textarea.tsx`): DL-6.3 semantics (local draft,
+  commit on blur / Cmd+Enter, Esc reverts), auto-grown by content up to a max
+  height, then scrolls.
+- **DL-13.6** Transient controls in a popover (pickers, search) reset when it
+  opens; a popover never remembers half-finished state across opens.
 
 ## Chưa khớp thực tế
 
