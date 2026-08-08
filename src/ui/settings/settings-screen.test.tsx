@@ -130,12 +130,18 @@ const EXPECTED_ROWS = [
   "Selection",
   // terminal
   "Scrollback",
+  "Terminal background",
+  "Background target",
+  "Image fit",
+  "Image dim",
+  "Alacritty opacity",
   // agents (built-ins are locked rows; declared ones are added by the user)
   "Claude Code",
   "Codex",
   "Gemini CLI",
   "OpenCode",
   "Antigravity",
+  "Alacritty",
   "Add agent",
   // links & editor
   "Editor",
@@ -164,7 +170,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 22 rows by walking the rail", () => {
+  it("reaches all 28 rows by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });

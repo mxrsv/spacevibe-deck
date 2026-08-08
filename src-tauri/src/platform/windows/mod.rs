@@ -91,6 +91,10 @@ pub async fn discover_agents(names: Vec<String>) -> Vec<AgentInfo> {
     agent_discovery::discover_agents(names).await
 }
 
+pub(crate) fn find_alacritty_executable() -> Result<String, String> {
+    agent_discovery::find_alacritty_executable()
+}
+
 pub fn inspect_process(_pid: i32) -> ProcessInspection {
     ProcessInspection {
         cwd: None,

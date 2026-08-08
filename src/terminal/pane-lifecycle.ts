@@ -9,6 +9,12 @@ import {
 } from "./pane";
 import { clearPaneCwd, setPaneCwd } from "./pane-cwd";
 import type { PtyClient } from "./pty-client";
+import { createNativePane } from "./native-pane";
+import {
+  defaultNativePaneClient,
+  type NativePaneClient,
+} from "./native-pane-client";
+import { nativeTerminalAppearance } from "./native-appearance";
 
 // Placeholder size at spawn — fit() after mount resizes to the real dimensions
 const INITIAL_COLS = 80;
@@ -21,10 +27,18 @@ export type CreatePaneFn = (
   events: PaneEvents,
 ) => Pane;
 
+export type PaneKind = "xterm" | "alacritty";
+export type CreateNativePaneFn = (
+  id: number,
+  initial: Settings,
+  events: PaneEvents,
+  client: NativePaneClient,
+) => Pane;
+
 export interface PaneLifecycle {
   readonly panes: Map<number, Pane>;
   readonly exited: Set<number>;
-  spawnPane(cwd?: string | null): Promise<Pane>;
+  spawnPane(cwd?: string | null, kind?: PaneKind): Promise<Pane>;
   discardPane(pane: Pane): void;
   killPane(id: number): void;
   killAll(): void;
@@ -46,6 +60,8 @@ export interface PaneLifecycle {
    * this exact write reaches the PTY.
    */
   enqueueWrite(id: number, data: string): Promise<boolean>;
+  paneKind(id: number): PaneKind | null;
+  ptyPaneIds(): number[];
 }
 
 /**
@@ -60,11 +76,15 @@ export function createPaneLifecycle(deps: {
   onAttentionSignal?: (id: number, signal: PaneAttentionSignal) => void;
   /** Test seam — defaults to real createPane (xterm). */
   createPane?: CreatePaneFn;
+  createNativePane?: CreateNativePaneFn;
+  nativeClient?: NativePaneClient;
 }): PaneLifecycle {
   const panes = new Map<number, Pane>();
   const exited = new Set<number>();
   const respawning = new Set<number>();
   const makePane = deps.createPane ?? createPane;
+  const makeNativePane = deps.createNativePane ?? createNativePane;
+  const nativeClient = deps.nativeClient ?? defaultNativePaneClient;
 
   /**
    * Per-pane write chain. `pty.writePty` is fire-and-forget over IPC, so two
@@ -132,7 +152,41 @@ export function createPaneLifecycle(deps: {
     },
   };
 
-  async function spawnPane(cwd: string | null = null): Promise<Pane> {
+  async function spawnPane(
+    cwd: string | null = null,
+    kind: PaneKind = "xterm",
+  ): Promise<Pane> {
+    if (kind === "alacritty") {
+      const current = deps.getSettings();
+      let nativeId: number | null = null;
+      try {
+        nativeId = await nativeClient.spawnAlacritty(
+          cwd,
+          nativeTerminalAppearance(current),
+        );
+        const pane = makeNativePane(
+          nativeId,
+          current,
+          paneEvents,
+          nativeClient,
+        );
+        panes.set(nativeId, pane);
+        setPaneCwd(nativeId, cwd);
+        return pane;
+      } catch (error) {
+        // Shift-split is an enhancement, never a dead end. Alacritty can be
+        // removed after discovery or fail before its window appears; clean up
+        // any partially-created native session and preserve the requested
+        // split as an ordinary shell pane.
+        if (nativeId !== null) {
+          await nativeClient.killAlacritty(nativeId).catch(() => undefined);
+        }
+        console.warn(
+          "Alacritty is unavailable; opening a normal terminal pane instead:",
+          error,
+        );
+      }
+    }
     const id = await deps.pty.spawnShell({
       cols: INITIAL_COLS,
       rows: INITIAL_ROWS,
@@ -147,7 +201,11 @@ export function createPaneLifecycle(deps: {
   }
 
   function discardPane(pane: Pane): void {
-    deps.pty.killPty(pane.id).catch(() => {
+    const kill =
+      pane.kind === "alacritty"
+        ? nativeClient.killAlacritty(pane.id)
+        : deps.pty.killPty(pane.id);
+    kill.catch(() => {
       // Session already gone — ignore
     });
     panes.delete(pane.id);
@@ -156,14 +214,23 @@ export function createPaneLifecycle(deps: {
   }
 
   function killPane(id: number): void {
-    deps.pty.killPty(id).catch(() => {
+    const pane = panes.get(id);
+    const kill =
+      pane?.kind === "alacritty"
+        ? nativeClient.killAlacritty(id)
+        : deps.pty.killPty(id);
+    kill.catch(() => {
       // Session already ended on its own — ignore
     });
   }
 
   function killAll(): void {
     for (const pane of panes.values()) {
-      deps.pty.killPty(pane.id).catch(() => {
+      const kill =
+        pane.kind === "alacritty"
+          ? nativeClient.killAlacritty(pane.id)
+          : deps.pty.killPty(pane.id);
+      kill.catch(() => {
         // Session already gone — ignore
       });
     }
@@ -187,7 +254,10 @@ export function createPaneLifecycle(deps: {
     }
     respawning.add(oldId);
     try {
-      const fresh = await spawnPane();
+      const fresh = await spawnPane(
+        null,
+        old.kind === "alacritty" ? "alacritty" : "xterm",
+      );
       if (!isInTree(tree, oldId)) {
         discardPane(fresh);
         return null;
@@ -237,5 +307,18 @@ export function createPaneLifecycle(deps: {
     openInitial,
     paneEvents,
     enqueueWrite,
+    paneKind(id) {
+      const kind = panes.get(id)?.kind;
+      return kind === "alacritty"
+        ? "alacritty"
+        : kind === undefined && !panes.has(id)
+          ? null
+          : "xterm";
+    },
+    ptyPaneIds() {
+      return [...panes.values()]
+        .filter((pane) => pane.kind !== "alacritty")
+        .map((pane) => pane.id);
+    },
   };
 }

@@ -13,6 +13,9 @@ export function validateLayout(
   }
   const node = raw as Record<string, unknown>;
   if (node.type === "leaf") {
+    if (node.paneType === "xterm" || node.paneType === "alacritty") {
+      return { type: "leaf", paneType: node.paneType };
+    }
     return { type: "leaf" };
   }
   if (node.type !== "split") {
