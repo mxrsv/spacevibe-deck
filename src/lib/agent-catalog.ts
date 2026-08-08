@@ -36,6 +36,9 @@ export const BUILTIN_AGENTS: readonly BuiltinAgent[] = [
   // order and the digit key that opens each one.
   { id: "agy", label: "Antigravity" },
   { id: "gemini", label: "Gemini CLI" },
+  // On Windows this is handled as a native pane renderer rather than typed
+  // into an xterm shell. The backend excludes it from discovery elsewhere.
+  { id: "alacritty", label: "Alacritty" },
 ];
 
 export const CUSTOM_ID_PREFIX = "custom:";

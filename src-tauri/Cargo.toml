@@ -53,9 +53,12 @@ wmi = "0.18"
 windows-core = "=0.61.2"
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
+    "Win32_Graphics_Gdi",
     "Win32_Security",
     "Win32_System_JobObjects",
     "Win32_System_Threading",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
 ] }
 # Already in the lock transitively via tauri; declared directly so the
 # ICoreWebView2Settings3 call has a supported path. Must stay on the same

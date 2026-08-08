@@ -4,6 +4,7 @@ import {
 } from "../../../settings/settings-schema";
 import { settings, updateSettings } from "../../../settings/settings-store";
 import { ConfigRow } from "../../controls/config-row";
+import { TerminalBackgroundRows } from "../../controls/terminal-background-row";
 
 function scrollbackLabel(n: number): string {
   if (n >= 1000) {
@@ -29,17 +30,20 @@ export function TerminalSection() {
   };
 
   return (
-    <ConfigRow label="Scrollback" desc="lines kept per pane">
-      <button
-        type="button"
-        class="cfg-btn"
-        title="Next scrollback size"
-        aria-label={`Scrollback: ${scrollbackLabel(current.scrollback)}. Switch to next size`}
-        onClick={cycleScrollback}
-      >
-        {scrollbackLabel(current.scrollback)}
-        <span class="cfg-btn__hint">↹</span>
-      </button>
-    </ConfigRow>
+    <>
+      <ConfigRow label="Scrollback" desc="lines kept per pane">
+        <button
+          type="button"
+          class="cfg-btn"
+          title="Next scrollback size"
+          aria-label={`Scrollback: ${scrollbackLabel(current.scrollback)}. Switch to next size`}
+          onClick={cycleScrollback}
+        >
+          {scrollbackLabel(current.scrollback)}
+          <span class="cfg-btn__hint">↹</span>
+        </button>
+      </ConfigRow>
+      <TerminalBackgroundRows />
+    </>
   );
 }

@@ -30,22 +30,48 @@ pub(crate) fn resolve_on_path(name: &str, path: &OsStr) -> Option<String> {
 
 struct EnvironmentAgentSearchProvider {
     path: Option<OsString>,
+    program_files: Option<OsString>,
+    program_files_x86: Option<OsString>,
+    local_app_data: Option<OsString>,
 }
 
 impl EnvironmentAgentSearchProvider {
     fn from_environment() -> Self {
         Self {
             path: std::env::var_os("PATH"),
+            program_files: std::env::var_os("ProgramFiles"),
+            program_files_x86: std::env::var_os("ProgramFiles(x86)"),
+            local_app_data: std::env::var_os("LOCALAPPDATA"),
         }
     }
 }
 
 impl AgentSearchProvider for EnvironmentAgentSearchProvider {
     fn find(&self, name: &str) -> Result<Option<String>, String> {
-        let Some(path) = self.path.as_ref() else {
-            return Ok(None);
-        };
-        Ok(resolve_on_path(name, path))
+        if let Some(path) = self.path.as_ref() {
+            if let Some(found) = resolve_on_path(name, path) {
+                return Ok(Some(found));
+            }
+        }
+        if name == "alacritty" {
+            let mut roots = Vec::new();
+            if let Some(root) = self.program_files.as_ref() {
+                roots.push(std::path::PathBuf::from(root));
+            }
+            if let Some(root) = self.program_files_x86.as_ref() {
+                roots.push(std::path::PathBuf::from(root));
+            }
+            if let Some(root) = self.local_app_data.as_ref() {
+                roots.push(std::path::Path::new(root).join("Programs"));
+            }
+            for root in roots {
+                let candidate = root.join("Alacritty").join("alacritty.exe");
+                if candidate.is_file() {
+                    return Ok(Some(candidate.to_string_lossy().into_owned()));
+                }
+            }
+        }
+        Ok(None)
     }
 }
 
@@ -175,6 +201,7 @@ mod tests {
             ("claude", r"C:\Users\dev\bin\claude.cmd"),
             ("codex", r"\\tools\agents\codex.exe"),
             ("gemini", "D:/Agents/gemini.ps1"),
+            ("alacritty", r"C:\Program Files\Alacritty\alacritty.exe"),
         ]);
 
         assert_eq!(
@@ -191,6 +218,10 @@ mod tests {
                 AgentInfo {
                     name: "gemini".into(),
                     path: "D:/Agents/gemini.ps1".into(),
+                },
+                AgentInfo {
+                    name: "alacritty".into(),
+                    path: r"C:\Program Files\Alacritty\alacritty.exe".into(),
                 },
             ]
         );
@@ -264,7 +295,12 @@ mod tests {
         let executable = directory.join("claude.cmd");
         std::fs::write(&executable, "@echo off").unwrap();
         let path = std::env::join_paths([&directory]).unwrap();
-        let provider = super::EnvironmentAgentSearchProvider { path: Some(path) };
+        let provider = super::EnvironmentAgentSearchProvider {
+            path: Some(path),
+            program_files: None,
+            program_files_x86: None,
+            local_app_data: None,
+        };
 
         assert_eq!(
             provider.find("claude").unwrap().as_deref(),
@@ -273,4 +309,38 @@ mod tests {
 
         std::fs::remove_dir_all(directory).unwrap();
     }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn finds_alacritty_under_program_files_when_it_is_not_on_path() {
+        let root = std::env::current_dir()
+            .unwrap()
+            .join("target")
+            .join(format!("alacritty-discovery-{}", std::process::id()));
+        let directory = root.join("Alacritty");
+        std::fs::create_dir_all(&directory).unwrap();
+        let executable = directory.join("alacritty.exe");
+        std::fs::write(&executable, []).unwrap();
+        let provider = super::EnvironmentAgentSearchProvider {
+            path: Some(std::ffi::OsString::new()),
+            program_files: Some(root.as_os_str().to_os_string()),
+            program_files_x86: None,
+            local_app_data: None,
+        };
+
+        assert_eq!(
+            provider.find("alacritty").unwrap().as_deref(),
+            Some(executable.to_string_lossy().as_ref())
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+pub(crate) fn find_alacritty_executable() -> Result<String, String> {
+    EnvironmentAgentSearchProvider::from_environment()
+        .find("alacritty")?
+        .ok_or_else(|| {
+            "Alacritty was not found on PATH or under Program Files\\Alacritty".to_string()
+        })
 }

@@ -7,6 +7,7 @@ import {
   movePane,
   ratioEntries,
   serializeTree,
+  serializedPaneTypes,
   setRatio,
   splitLeaf,
   swapLeaves,
@@ -31,6 +32,18 @@ describe("serializeTree", () => {
         second: { type: "leaf" },
       },
     });
+  });
+
+  it("optionally preserves pane renderer types", () => {
+    const tree = splitLeaf(leaf(10), 10, 20, "row");
+    const serialized = serializeTree(tree, (id) =>
+      id === 20 ? "alacritty" : "xterm",
+    );
+    expect(serialized).toMatchObject({
+      first: { type: "leaf", paneType: "xterm" },
+      second: { type: "leaf", paneType: "alacritty" },
+    });
+    expect(serializedPaneTypes(serialized)).toEqual(["xterm", "alacritty"]);
   });
 });
 
