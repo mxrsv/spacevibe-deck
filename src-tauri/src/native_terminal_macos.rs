@@ -5,8 +5,8 @@ use std::ffi::{c_char, c_void, CString};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::ptr;
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, WebviewWindow};
 
@@ -130,6 +130,7 @@ struct NativePane {
     ax_window: usize,
     config_path: PathBuf,
     config_contents: String,
+    focus_monitor_alive: Arc<AtomicBool>,
 }
 
 pub struct NativeTerminalState {
@@ -322,11 +323,24 @@ fn focused(window: usize) -> bool {
     result
 }
 
-fn monitor_focus(app: AppHandle, id: u32, pid: u32, window: usize) {
+fn wait_until_focused(window: usize) -> bool {
+    let deadline = Instant::now() + Duration::from_millis(150);
+    loop {
+        if focused(window) {
+            return true;
+        }
+        if Instant::now() >= deadline {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+fn monitor_focus(app: AppHandle, id: u32, pid: u32, window: usize, alive: Arc<AtomicBool>) {
     unsafe { CFRetain(window as CFTypeRef) };
     std::thread::spawn(move || {
         let mut had_focus = false;
-        while process_alive(pid) {
+        while alive.load(Ordering::Acquire) && process_alive(pid) {
             let has_focus = focused(window);
             if has_focus && !had_focus {
                 let _ = app.emit("native-terminal:focus", NativePaneFocusPayload { id });
@@ -468,6 +482,7 @@ fn write_config(path: &Path, contents: &str) -> Result<(), String> {
 }
 
 fn terminate(mut pane: NativePane) {
+    pane.focus_monitor_alive.store(false, Ordering::Release);
     hide_window(pane.ax_window);
     let _ = pane.child.kill();
     let _ = pane.child.wait();
@@ -504,6 +519,8 @@ pub async fn spawn(
     let config_path = runtime_config_path(id)?;
     let config = config_contents(&appearance)?;
     write_config(&config_path, &config)?;
+    let focus_monitor_alive = Arc::new(AtomicBool::new(true));
+    let pane_monitor_alive = Arc::clone(&focus_monitor_alive);
 
     let pane = tauri::async_runtime::spawn_blocking(move || {
         let mut child = match Command::new(executable)
@@ -535,6 +552,7 @@ pub async fn spawn(
             ax_window,
             config_path,
             config_contents: config,
+            focus_monitor_alive: pane_monitor_alive,
         })
     })
     .await
@@ -551,7 +569,7 @@ pub async fn spawn(
             return Err("Native terminal state is unavailable".to_string());
         }
     }
-    monitor_focus(app, id, pid, ax_window);
+    monitor_focus(app, id, pid, ax_window, focus_monitor_alive);
     Ok(id)
 }
 
@@ -589,6 +607,9 @@ pub fn perform_action(
         .get(&id)
         .ok_or_else(|| format!("Unknown native pane {id}"))?;
     focus_window(pane)?;
+    if !wait_until_focused(pane.ax_window) {
+        return Err("Alacritty could not be focused safely".to_string());
+    }
     match action.as_str() {
         "copy" => send_key(KEY_C, FLAG_COMMAND),
         "paste" => send_key(KEY_V, FLAG_COMMAND),
@@ -628,8 +649,7 @@ pub fn update(
         let pane = panes.remove(&id);
         drop(panes);
         if let Some(pane) = pane {
-            unsafe { CFRelease(pane.ax_window as CFTypeRef) };
-            let _ = std::fs::remove_file(pane.config_path);
+            terminate(pane);
         }
         return Err("Alacritty exited".to_string());
     }
