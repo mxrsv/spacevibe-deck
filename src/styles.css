@@ -1339,6 +1339,16 @@ button.attn-mark:hover {
   font-size: 11.5px;
 }
 
+/* Multi-line field (DL-13.5): inherits .text-input, grows by content up to a
+   ceiling set in JS, then scrolls. No resize grip — the height is derived. */
+.prompt-textarea {
+  min-height: 60px;
+  max-height: 220px;
+  resize: none;
+  line-height: 1.45;
+  font-size: 11.5px;
+}
+
 /* ── Editable list rows (DL-12) ──────────────────────────── */
 
 /* An item row differs from a config row in one way: its key is editable too,
