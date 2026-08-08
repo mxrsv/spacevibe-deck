@@ -23,7 +23,9 @@ function fakePane(
     clear() {},
     copySelection() {},
     paste() {},
-    pasteText() {},
+    pasteText(text) {
+      return events.onData(id, text);
+    },
     scrollPage() {},
     scrollToEdge() {},
     focus() {
@@ -105,10 +107,31 @@ describe("createPaneLifecycle write failures", () => {
       },
     });
     const pane = await life.spawnPane();
-    life.paneEvents.onData(pane.id, "x");
+    await expect(life.paneEvents.onData(pane.id, "x")).resolves.toBe(false);
     await vi.waitFor(() => {
       expect(persistError.value).toContain("input");
     });
+  });
+
+  it("keeps later independent input usable after one failed write", async () => {
+    const writePty = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("transient"))
+      .mockResolvedValueOnce(undefined);
+    const life = createPaneLifecycle({
+      pty: { ...createMemoryPtyClient({ nextId: 1 }), writePty },
+      getSettings: () => DEFAULT_SETTINGS as Settings,
+      onWriteWhileExited() {},
+      onFocus() {},
+      createPane(id, _settings, events) {
+        return fakePane(id, events);
+      },
+    });
+    const pane = await life.spawnPane();
+
+    await expect(life.enqueueWrite(pane.id, "first")).resolves.toBe(false);
+    await expect(life.enqueueWrite(pane.id, "second")).resolves.toBe(true);
+    expect(writePty).toHaveBeenNthCalledWith(2, pane.id, "second");
   });
 });
 

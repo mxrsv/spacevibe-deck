@@ -15,8 +15,13 @@ export interface PromptTarget {
   readonly cwd: string | null;
 }
 
-/** `sent` = pasted and submitted, `pasted` = pasted with `\r` withheld. */
-export type InjectOutcome = "sent" | "pasted" | "no-target";
+/** Result of one atomic, per-pane Prompt Board injection attempt. */
+export type InjectOutcome =
+  | "sent"
+  | "pasted"
+  | "failed"
+  | "busy"
+  | "no-target";
 
 export interface SubmitGateInput {
   /** The agent captured when the popover opened. */

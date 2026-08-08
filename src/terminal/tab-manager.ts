@@ -295,7 +295,8 @@ export interface TabManager {
   paneAttention(paneId: number): PaneAttentionSnapshot | null;
   /**
    * Paste `text` into `paneId`, then submit only when the triple gate still
-   * holds (spec §7). Never throws: a failed gate degrades to `"pasted"`, an
+   * holds (spec §7). Never throws: a failed gate degrades to `"pasted"`, a
+   * failed paste to `"failed"`, an overlapping attempt to `"busy"`, and an
    * unknown pane to `"no-target"`.
    */
   injectIntoPane(
@@ -369,6 +370,10 @@ export function createTabManager(
   // In-memory only (like busy) — a background pane's output lights the badge,
   // opening the tab clears it.
   const unread = new Set<number>();
+  // UI instances can disappear and reopen while an async injection is still
+  // running. This manager-level lock keeps the invariant alive across those
+  // remounts and rejects overlap before a second paste reaches the write queue.
+  const injectingPanes = new Set<number>();
   // One shared clock behind both the activity tracker and the attention
   // tracker: activity-transition `observedAt` and the attention gate's
   // `gateOpenedAt` are compared directly, so they must read the same time
@@ -829,26 +834,48 @@ export function createTabManager(
     text: string,
     opts: { readonly autoSend: boolean; readonly expectedAgent: string | null },
   ): Promise<InjectOutcome> {
-    const owner = ownerOf(paneId);
-    if (!owner || !owner.manager.pasteIntoPane(paneId, text)) {
-      return "no-target";
+    if (injectingPanes.has(paneId)) {
+      return "busy";
     }
-    if (!opts.autoSend) {
-      return "pasted";
+    injectingPanes.add(paneId);
+    try {
+      const owner = ownerOf(paneId);
+      const attentionBeforePaste = paneAttention(paneId);
+      const paste = owner?.manager.pasteIntoPane(paneId, text) ?? null;
+      if (paste === null) {
+        return "no-target";
+      }
+      if (!(await paste)) {
+        return "failed";
+      }
+      if (!opts.autoSend) {
+        return "pasted";
+      }
+      const [info] = await freshPaneInfo([paneId], pty);
+      // Re-resolved after the await: the tab could have closed across it.
+      const stillOwned = ownerOf(paneId);
+      const attentionBeforeSubmit = paneAttention(paneId);
+      // Focus acknowledges and clears attention. Requiring the same revision at
+      // both ends prevents any focus path from erasing a warning/permission latch
+      // while paste or fresh pty_info is in flight. Any state change fails closed.
+      const attentionStayedStable =
+        attentionBeforePaste !== null &&
+        attentionBeforeSubmit !== null &&
+        attentionBeforePaste.revision === attentionBeforeSubmit.revision;
+      const allowed = attentionStayedStable && submitAllowed({
+        expectedAgent: opts.expectedAgent,
+        info,
+        attention: attentionBeforeSubmit,
+        alive: stillOwned !== undefined,
+      });
+      if (!allowed || stillOwned === undefined) {
+        return "pasted";
+      }
+      const submit = stillOwned.manager.submitPane(paneId);
+      return submit !== null && (await submit) ? "sent" : "pasted";
+    } finally {
+      injectingPanes.delete(paneId);
     }
-    const [info] = await freshPaneInfo([paneId], pty);
-    // Re-resolved after the await: the tab could have closed across it.
-    const stillOwned = ownerOf(paneId);
-    const allowed = submitAllowed({
-      expectedAgent: opts.expectedAgent,
-      info,
-      attention: paneAttention(paneId),
-      alive: stillOwned !== undefined,
-    });
-    if (!allowed || stillOwned === undefined) {
-      return "pasted";
-    }
-    return stillOwned.manager.submitPane(paneId) ? "sent" : "pasted";
   }
 
   /** A tab with no workspace is always live; an unanswerable check fails open. */

@@ -23,7 +23,8 @@ export interface PaneAttentionSignal {
 }
 
 export interface PaneEvents {
-  onData(id: number, data: string): void;
+  /** Resolves true only when this exact input write reaches the PTY. */
+  onData(id: number, data: string): Promise<boolean>;
   onResize(id: number, cols: number, rows: number): void;
   onFocus(id: number): void;
   onAttentionSignal?(id: number, signal: PaneAttentionSignal): void;
@@ -59,7 +60,7 @@ export interface Pane {
    * multi-line body in an agent TUI's composer as one block instead of
    * line by line. Writing the bytes to the PTY directly skips both.
    */
-  pasteText(text: string): void;
+  pasteText(text: string): Promise<boolean>;
   /** Scroll the viewport by one page; positive = down, negative = up. */
   scrollPage(dir: 1 | -1): void;
   /** Jump to the very top (oldest) or bottom (latest output) of scrollback. */
@@ -164,12 +165,21 @@ export function createPane(
   term.loadAddon(searchAddon);
 
   let activeAgent: string | null = null;
+  let capturePasteWrite: ((write: Promise<boolean>) => void) | null = null;
+
+  function forwardData(data: string): Promise<boolean> {
+    const write = events.onData(id, data);
+    capturePasteWrite?.(write);
+    capturePasteWrite = null;
+    return write;
+  }
+
   term.attachCustomWheelEventHandler(
     createCodexWheelHandler({
       platform: getDesktopEnvironment().platform,
       isCodex: () => activeAgent === "codex",
       isAlternateBuffer: () => term.buffer.active.type === "alternate",
-      send: (data) => events.onData(id, data),
+      send: (data) => void forwardData(data),
     }),
   );
 
@@ -211,13 +221,13 @@ export function createPane(
   // The addon's activate() already sets this; kept explicit as documentation.
   term.unicode.activeVersion = "15-graphemes";
 
-  term.onData((data) => events.onData(id, data));
+  term.onData((data) => void forwardData(data));
   term.onResize(({ cols, rows }) => events.onResize(id, cols, rows));
   // Shift+Enter carries no protocol encoding of its own — bind it to ESC CR so
   // agent CLIs wrap the line instead of submitting. See shift-enter.ts.
-  const disposeShiftEnter = installShiftEnterNewline(termEl, (data) =>
-    events.onData(id, data),
-  );
+  const disposeShiftEnter = installShiftEnterNewline(termEl, (data) => {
+    void forwardData(data);
+  });
   element.addEventListener("focusin", () => events.onFocus(id));
   element.addEventListener("mousedown", () => events.onFocus(id));
 
@@ -356,7 +366,18 @@ export function createPane(
       pasteIntoTerminal(term);
     },
     pasteText(text) {
-      term.paste(text);
+      let capturedWrite: Promise<boolean> | null = null;
+      capturePasteWrite = (write) => {
+        capturedWrite = write;
+      };
+      try {
+        // xterm's public paste path synchronously emits one prepared/bracketed
+        // onData frame. If it emits nothing, fail closed and never auto-submit.
+        term.paste(text);
+      } finally {
+        capturePasteWrite = null;
+      }
+      return capturedWrite ?? Promise.resolve(false);
     },
     scrollPage: (dir) => term.scrollPages(dir),
     scrollToEdge: (edge) =>

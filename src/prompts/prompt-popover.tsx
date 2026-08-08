@@ -120,8 +120,17 @@ export function PromptPopover(props: PromptPopoverProps) {
   const draftLabel = useSignal("");
   const draftBody = useSignal("");
   const draftError = useSignal<string | null>(null);
+  const injecting = useSignal(false);
+  const mounted = useRef(true);
 
   const templates = settings.value.promptTemplates;
+
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    [],
+  );
 
   // Capture first, then scan with what was captured (spec §7). Both are
   // one-shot: transient state never survives an open (DL-13.6).
@@ -258,20 +267,44 @@ export function PromptPopover(props: PromptPopoverProps) {
     return chosen;
   };
 
-  const injectTemplate = (template: PromptTemplate): void => {
+  const injectTemplate = async (template: PromptTemplate): Promise<void> => {
+    if (injecting.value) {
+      return;
+    }
     const captured = target.value;
     if (captured === null) {
       return;
     }
-    const text = composePromptText(template.body, captured.agent, picks());
-    void props.inject(captured, text, template.autoSend).then((outcome) => {
+    injecting.value = true;
+    try {
+      const text = composePromptText(template.body, captured.agent, picks());
+      const outcome = await props.inject(captured, text, template.autoSend);
+      if (!mounted.current) {
+        return;
+      }
+      if (outcome === "failed") {
+        reportChromeMessage("Couldn't paste into the terminal.");
+        return;
+      }
+      if (outcome === "busy") {
+        reportChromeMessage("A prompt is already being pasted into this pane.");
+        return;
+      }
       if (outcome === "no-target") {
         reportChromeMessage("The pane is gone — nothing was pasted.");
       } else if (template.autoSend && outcome === "pasted") {
         reportChromeMessage("Pasted — not sent");
       }
-    });
-    props.onClose();
+      props.onClose();
+    } catch {
+      if (mounted.current) {
+        reportChromeMessage("Couldn't paste into the terminal.");
+      }
+    } finally {
+      if (mounted.current) {
+        injecting.value = false;
+      }
+    }
   };
 
   const showPickers =
@@ -324,7 +357,8 @@ export function PromptPopover(props: PromptPopoverProps) {
                 class="cfg-btn"
                 aria-label={`Inject ${template.label}`}
                 title="Paste into the focused pane"
-                onClick={() => injectTemplate(template)}
+                disabled={injecting.value}
+                onClick={() => void injectTemplate(template)}
               >
                 ↩
               </button>

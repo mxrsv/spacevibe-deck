@@ -140,7 +140,8 @@ function fakePane(
     clear() {},
     copySelection: overrides.copySelection ?? (() => {}),
     paste: overrides.paste ?? (() => {}),
-    pasteText: overrides.pasteText ?? (() => {}),
+    pasteText:
+      overrides.pasteText ?? ((text: string) => events.onData(id, text)),
     scrollPage() {},
     scrollToEdge() {},
     focus() {
@@ -3391,18 +3392,20 @@ async function mountManagerWithAgentPane(
 ): Promise<{
   manager: TabManager;
   pty: ReturnType<typeof createMemoryPtyClient>;
+  emitSignal: EmitSignal;
+  focusPaneDirectly: FocusPaneDirectly;
 }> {
   const infos = new Map<number, PaneProcessInfo>([
     [1, processInfo(1, "/repo", agent, "agent", agent)],
   ]);
-  const { tm, pty } = setup({ infos });
+  const { tm, pty, emitSignal, focusPaneDirectly } = setup({ infos });
   await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
     workspacePath: "/repo",
   });
   await tm.init();
   await flush();
   pty.emitOutput(1, "\x1b]9;4;0\x07"); // OSC 9;4 state 0 → idle
-  return { manager: tm, pty };
+  return { manager: tm, pty, emitSignal, focusPaneDirectly };
 }
 
 describe("injectIntoPane", () => {
@@ -3461,6 +3464,131 @@ describe("injectIntoPane", () => {
         expectedAgent: null,
       }),
     ).resolves.toBe("no-target");
+    manager.dispose();
+  });
+
+  it("withholds submit when focus acknowledges attention during injection", async () => {
+    const { manager, pty, emitSignal, focusPaneDirectly } =
+      await mountManagerWithAgentPane("claude");
+    const paneId = manager.activePaneId() as number;
+    const infoGate: {
+      release?: (infos: PaneProcessInfo[]) => void;
+    } = {};
+    pty.ptyInfo = () =>
+      new Promise<PaneProcessInfo[]>((resolve) => {
+        infoGate.release = resolve;
+      });
+    emitSignal(paneId, {
+      kind: "requested",
+      source: "osc-notification",
+    });
+
+    const injection = manager.injectIntoPane(paneId, "review this", {
+      autoSend: true,
+      expectedAgent: "claude",
+    });
+    await flush();
+    focusPaneDirectly(paneId);
+    if (infoGate.release === undefined) {
+      throw new Error("fresh pty_info did not start");
+    }
+    infoGate.release([
+      processInfo(paneId, "/repo", "claude", "agent", "claude"),
+    ]);
+
+    await expect(injection).resolves.toBe("pasted");
+    await flush();
+    expect(pty.writes.some((write) => write.data === "\r")).toBe(false);
+    manager.dispose();
+  });
+
+  it("never submits when the paste write fails", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+    ]);
+    const memory = createMemoryPtyClient({ nextId: 1, infos });
+    const writes: string[] = [];
+    const pty = {
+      ...memory,
+      async writePty(_id: number, data: string): Promise<void> {
+        writes.push(data);
+        if (data === "review this") {
+          throw new Error("paste failed");
+        }
+      },
+    };
+    const { tm: manager } = wire(pty);
+    await manager.openFromPreset({ type: "leaf" }, ["/repo"], {
+      workspacePath: "/repo",
+    });
+    await manager.init();
+    await flush();
+    memory.emitOutput(1, "\x1b]9;4;0\x07");
+
+    await expect(
+      manager.injectIntoPane(1, "review this", {
+        autoSend: true,
+        expectedAgent: "claude",
+      }),
+    ).resolves.toBe("failed");
+    await flush();
+    expect(writes).toEqual(["review this"]);
+    manager.dispose();
+  });
+
+  it("rejects an overlapping injection into the same pane before writing", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+    ]);
+    const memory = createMemoryPtyClient({ nextId: 1, infos });
+    const writeControl: { release?: () => void } = {};
+    const writeGate = new Promise<void>((resolve) => {
+      writeControl.release = resolve;
+    });
+    const writeStarted = vi.fn();
+    const writes: string[] = [];
+    const pty = {
+      ...memory,
+      async writePty(_id: number, data: string): Promise<void> {
+        writes.push(data);
+        writeStarted();
+        await writeGate;
+      },
+    };
+    const { tm: manager } = wire(pty);
+    await manager.openFromPreset({ type: "leaf" }, ["/repo"], {
+      workspacePath: "/repo",
+    });
+
+    const first = manager.injectIntoPane(1, "first", {
+      autoSend: false,
+      expectedAgent: "claude",
+    });
+    await vi.waitFor(() => expect(writeStarted).toHaveBeenCalledTimes(1));
+
+    let overlappingOutcome: string | undefined;
+    const overlapping = manager
+      .injectIntoPane(1, "second", {
+        autoSend: false,
+        expectedAgent: "claude",
+      })
+      .then((outcome) => {
+        overlappingOutcome = outcome;
+        return outcome;
+      });
+    await flush();
+    const outcomeBeforeFirstCompletes = overlappingOutcome;
+    expect(writes).toEqual(["first"]);
+
+    if (writeControl.release === undefined) {
+      throw new Error("write gate was not initialized");
+    }
+    writeControl.release();
+    await expect(Promise.all([first, overlapping])).resolves.toEqual([
+      "pasted",
+      "busy",
+    ]);
+    expect(outcomeBeforeFirstCompletes).toBe("busy");
     manager.dispose();
   });
 });

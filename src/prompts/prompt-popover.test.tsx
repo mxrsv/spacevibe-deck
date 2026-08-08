@@ -19,6 +19,7 @@ import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { EMPTY_PROMPT_ASSETS } from "./prompt-assets-client";
 import type { PromptTarget } from "./inject";
 import { tabViews } from "../terminal/tabs-store";
+import { persistError } from "../chrome/events";
 
 const target: PromptTarget = { paneId: 1, agent: "claude", cwd: "/repo" };
 
@@ -34,6 +35,7 @@ describe("PromptPopover", () => {
 
   beforeEach(() => {
     settings.value = { ...DEFAULT_SETTINGS, promptTemplates: templates };
+    persistError.value = null;
     inject = vi.fn(async () => "sent" as const);
     onClose = vi.fn();
     host = document.createElement("div");
@@ -44,6 +46,7 @@ describe("PromptPopover", () => {
     act(() => render(null, host));
     host.remove();
     settings.value = DEFAULT_SETTINGS;
+    persistError.value = null;
   });
 
   /**
@@ -102,6 +105,106 @@ describe("PromptPopover", () => {
     });
     expect(inject).toHaveBeenCalledWith(target, "Fix it.", false);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("waits for injection to finish before closing and restoring pane focus", async () => {
+    let finishInject: ((outcome: "sent") => void) | null = null;
+    const pendingInject = new Promise<"sent">((resolve) => {
+      finishInject = resolve;
+    });
+    await mount({ inject: vi.fn(() => pendingInject) });
+
+    click(host.querySelector('[aria-label="Inject review PR"]') as Element);
+
+    expect(onClose).not.toHaveBeenCalled();
+
+    await act(async () => {
+      finishInject?.("sent");
+      await pendingInject;
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows only one injection while a previous one is in flight", async () => {
+    let finishInject: ((outcome: "sent") => void) | null = null;
+    const pendingInject = new Promise<"sent">((resolve) => {
+      finishInject = resolve;
+    });
+    const pendingInjectFn = vi.fn(() => pendingInject);
+    await mount({ inject: pendingInjectFn });
+    const button = host.querySelector(
+      '[aria-label="Inject review PR"]',
+    ) as Element;
+
+    click(button);
+    click(button);
+
+    expect(pendingInjectFn).toHaveBeenCalledTimes(1);
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => {
+      finishInject?.("sent");
+      await pendingInject;
+    });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("does not restore pane focus from a stale continuation after unmount", async () => {
+    let finishInject: ((outcome: "sent") => void) | null = null;
+    const pendingInject = new Promise<"sent">((resolve) => {
+      finishInject = resolve;
+    });
+    await mount({ inject: vi.fn(() => pendingInject) });
+    click(host.querySelector('[aria-label="Inject review PR"]') as Element);
+
+    act(() => render(null, host));
+    await act(async () => {
+      finishInject?.("sent");
+      await pendingInject;
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("reports an injection rejection and stays open for retry", async () => {
+    await mount({
+      inject: vi.fn(async () => {
+        throw new Error("ipc failed");
+      }),
+    });
+
+    click(host.querySelector('[aria-label="Inject review PR"]') as Element);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(persistError.value).toBe("Couldn't paste into the terminal.");
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed paste and stays open for retry", async () => {
+    await mount({ inject: vi.fn(async () => "failed" as const) });
+
+    click(host.querySelector('[aria-label="Inject review PR"]') as Element);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(persistError.value).toBe("Couldn't paste into the terminal.");
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("reports an overlapping pane injection and stays open for retry", async () => {
+    await mount({ inject: vi.fn(async () => "busy" as const) });
+
+    click(host.querySelector('[aria-label="Inject review PR"]') as Element);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(persistError.value).toBe(
+      "A prompt is already being pasted into this pane.",
+    );
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("expands exactly one editor at a time (DL-13.4)", async () => {

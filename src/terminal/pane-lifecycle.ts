@@ -42,9 +42,10 @@ export interface PaneLifecycle {
   /**
    * Queue one write for a pane, behind everything already queued for it.
    * `onData` uses this too, which is what makes "paste frame, then `\r`"
-   * ordered by construction rather than by a timeout.
+   * ordered by construction rather than by a timeout. Resolves true only when
+   * this exact write reaches the PTY.
    */
-  enqueueWrite(id: number, data: string): void;
+  enqueueWrite(id: number, data: string): Promise<boolean>;
 }
 
 /**
@@ -74,37 +75,46 @@ export function createPaneLifecycle(deps: {
    */
   const writeChains = new Map<number, Promise<void>>();
 
-  function enqueueWrite(id: number, data: string): void {
+  function enqueueWrite(id: number, data: string): Promise<boolean> {
     if (exited.has(id)) {
       deps.onWriteWhileExited(id, data);
-      return;
+      return Promise.resolve(false);
     }
     const tail = writeChains.get(id) ?? Promise.resolve();
-    const next = tail.then(async () => {
+    const result = tail.then(async () => {
       // Re-checked at drain time, not only at enqueue time: the pane may have
       // exited or closed while this write waited its turn.
       if (exited.has(id) || !panes.has(id)) {
-        return;
+        return false;
       }
       try {
         await deps.pty.writePty(id, data);
+        return true;
       } catch {
         reportPersistError(
           "Couldn't send input to the terminal — the session may have ended.",
         );
+        return false;
       }
     });
-    writeChains.set(id, next);
-    void next.finally(() => {
-      if (writeChains.get(id) === next) {
+    // Sequencing stays usable after one failed write; callers that need a
+    // dependent write (Prompt Board paste -> Enter) inspect `result` instead.
+    const settled = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    writeChains.set(id, settled);
+    void settled.finally(() => {
+      if (writeChains.get(id) === settled) {
         writeChains.delete(id);
       }
     });
+    return result;
   }
 
   const paneEvents: PaneEvents = {
     onData(id, data) {
-      enqueueWrite(id, data);
+      return enqueueWrite(id, data);
     },
     onResize(id, cols, rows) {
       if (exited.has(id)) {

@@ -106,15 +106,17 @@ export interface TerminalManager {
   /**
    * Paste text into ONE pane by id (the Prompt Board targets the pane the
    * popover captured, not whatever is active by the time the user clicks).
-   * False when the pane is unknown or already exited.
+   * Null when the pane is unknown or already exited; otherwise resolves with
+   * whether the paste frame reached the PTY.
    */
-  pasteIntoPane(id: number, text: string): boolean;
+  pasteIntoPane(id: number, text: string): Promise<boolean> | null;
   /**
    * Queue a bare `\r` for one pane, behind whatever it already has queued —
    * which is what makes it land after a paste frame issued moments earlier.
-   * False when the pane is unknown or already exited.
+   * Null when the pane is unknown or already exited; otherwise resolves with
+   * whether Enter reached the PTY.
    */
-  submitPane(id: number): boolean;
+  submitPane(id: number): Promise<boolean> | null;
   /** Scroll the active pane's viewport by one page (⇧PageUp/⇧PageDown). */
   scrollActivePage(dir: 1 | -1): void;
   /** Jump the active pane's viewport to the top or bottom of scrollback. */
@@ -594,17 +596,15 @@ export function createTerminalManager(
     pasteIntoPane(id, text) {
       const pane = life.panes.get(id);
       if (!pane || life.exited.has(id)) {
-        return false;
+        return null;
       }
-      pane.pasteText(text);
-      return true;
+      return pane.pasteText(text);
     },
     submitPane(id) {
       if (!life.panes.has(id) || life.exited.has(id)) {
-        return false;
+        return null;
       }
-      life.enqueueWrite(id, "\r");
-      return true;
+      return life.enqueueWrite(id, "\r");
     },
     scrollActivePage(dir) {
       if (activeId !== null) {
