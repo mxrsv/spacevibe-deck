@@ -38,8 +38,8 @@ mod imp {
     use std::path::{Path, PathBuf};
     use std::process::{Child, Command};
     use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-    use std::sync::{Arc, Mutex};
-    use std::time::{Duration, Instant};
+    use std::sync::{Arc, Mutex, OnceLock};
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
     use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
     use windows_sys::core::BOOL;
     use windows_sys::Win32::Foundation::{HWND, LPARAM, POINT};
@@ -216,7 +216,7 @@ mod imp {
         }
         let _ = pane.child.kill();
         let _ = pane.child.wait();
-        let _ = std::fs::remove_file(pane.config_path);
+        cleanup_runtime_config(&pane.config_path);
     }
 
     fn valid_color(value: &str) -> bool {
@@ -286,10 +286,31 @@ mod imp {
             .app_local_data_dir()
             .map_err(|error| format!("Couldn't locate SpaceVibe's local data directory: {error}"))?
             .join("runtime")
+            .join(runtime_run_id())
             .join("alacritty");
         std::fs::create_dir_all(&root)
             .map_err(|error| format!("Couldn't create Alacritty runtime directory: {error}"))?;
         Ok(root.join(format!("pane-{id}.toml")))
+    }
+
+    fn runtime_run_id() -> &'static str {
+        static RUN_ID: OnceLock<String> = OnceLock::new();
+        RUN_ID.get_or_init(|| {
+            let started = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos();
+            format!("run-{}-{started:x}", std::process::id())
+        })
+    }
+
+    fn cleanup_runtime_config(path: &Path) {
+        let _ = std::fs::remove_file(path);
+        if let Some(directory) = path.parent() {
+            // Succeeds only after the last pane in this process-specific run
+            // directory closes; a non-empty directory is intentionally kept.
+            let _ = std::fs::remove_dir(directory);
+        }
     }
 
     fn write_config(path: &Path, contents: &str) -> Result<(), String> {
@@ -388,7 +409,7 @@ mod imp {
             {
                 Ok(child) => child,
                 Err(error) => {
-                    let _ = std::fs::remove_file(&config_path);
+                    cleanup_runtime_config(&config_path);
                     return Err(format!("Failed to launch Alacritty: {error}"));
                 }
             };
@@ -397,14 +418,14 @@ mod imp {
                 Err(error) => {
                     let _ = child.kill();
                     let _ = child.wait();
-                    let _ = std::fs::remove_file(&config_path);
+                    cleanup_runtime_config(&config_path);
                     return Err(error);
                 }
             };
             if let Err(error) = attach_overlay(hwnd, parent as HWND) {
                 let _ = child.kill();
                 let _ = child.wait();
-                let _ = std::fs::remove_file(&config_path);
+                cleanup_runtime_config(&config_path);
                 return Err(error);
             }
             Ok(NativePane {
