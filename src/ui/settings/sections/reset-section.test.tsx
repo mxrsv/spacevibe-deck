@@ -86,6 +86,12 @@ describe("ResetSection — Restore defaults confirm", () => {
     await click(getReset());
 
     expect(mockedAsk).toHaveBeenCalledTimes(1);
+    // The sentence names everything the reset wipes — declared agents and
+    // prompt templates included, since both live in the same settings object.
+    expect(mockedAsk).toHaveBeenCalledWith(
+      "Theme, font, colors, behavior, declared agents and prompt templates all go back to their defaults. This can't be undone.",
+      expect.objectContaining({ title: "Restore Defaults" }),
+    );
     expect(settings.value.fontSize).toBe(DEFAULT_SETTINGS.fontSize);
     expect(settings.value.themeId).toBe(DEFAULT_SETTINGS.themeId);
   });

@@ -169,3 +169,47 @@ describe("customAgents", () => {
     ).toEqual([valid]);
   });
 });
+
+describe("promptTemplates validation", () => {
+  const good = {
+    id: "tpl:fix-bug",
+    label: "fix bug",
+    body: "Fix the failing test.",
+    autoSend: false,
+  };
+
+  it("defaults to none", () => {
+    expect(validateSettings({}).promptTemplates).toEqual([]);
+  });
+
+  it("keeps well-formed entries", () => {
+    expect(
+      validateSettings({ promptTemplates: [good] }).promptTemplates,
+    ).toEqual([good]);
+  });
+
+  it("drops a malformed entry rather than repairing it", () => {
+    const raw = {
+      promptTemplates: [good, { id: "tpl:x" }, { label: "no id" }],
+    };
+    expect(validateSettings(raw).promptTemplates).toEqual([good]);
+  });
+
+  it("falls back to none for a malformed array", () => {
+    expect(
+      validateSettings({ promptTemplates: "nope" }).promptTemplates,
+    ).toEqual([]);
+  });
+
+  it("dedupes repeated ids, first wins", () => {
+    const second = { ...good, label: "other" };
+    expect(
+      validateSettings({ promptTemplates: [good, second] }).promptTemplates,
+    ).toEqual([good]);
+  });
+
+  it("keeps only the four known fields", () => {
+    const raw = { promptTemplates: [{ ...good, extra: "dropped" }] };
+    expect(validateSettings(raw).promptTemplates).toEqual([good]);
+  });
+});

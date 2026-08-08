@@ -6,6 +6,10 @@ import {
   isProbeSafeName,
   type CustomAgent,
 } from "../lib/agent-catalog";
+import {
+  isValidPromptTemplate,
+  type PromptTemplate,
+} from "../prompts/prompt-templates";
 
 export interface TerminalColors {
   background: string;
@@ -34,6 +38,8 @@ export interface Settings {
   scrollback: number;
   /** Agent CLIs the user declared, beyond the built-in set. */
   customAgents: readonly CustomAgent[];
+  /** Reusable prompt bodies the user declared for the Prompt Board. */
+  promptTemplates: readonly PromptTemplate[];
 }
 
 export const FONT_SIZE_MIN = 10;
@@ -67,6 +73,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editorCommand: "",
   scrollback: 10_000,
   customAgents: [],
+  promptTemplates: [],
 };
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -160,6 +167,34 @@ function validateCustomAgents(raw: unknown): readonly CustomAgent[] {
   return result;
 }
 
+/**
+ * Same drop-not-repair discipline as `validateCustomAgents` above, for the
+ * same reason: a half-understood template is not guessed at, because its body
+ * gets pasted verbatim into a live agent session. A malformed array falls back
+ * to none declared, and a duplicate id is dropped (the first wins) so the
+ * popover's row keys stay unique.
+ */
+function validatePromptTemplates(raw: unknown): readonly PromptTemplate[] {
+  if (!Array.isArray(raw)) {
+    return DEFAULT_SETTINGS.promptTemplates;
+  }
+  const seen = new Set<string>();
+  const result: PromptTemplate[] = [];
+  for (const entry of raw) {
+    if (!isValidPromptTemplate(entry) || seen.has(entry.id)) {
+      continue;
+    }
+    seen.add(entry.id);
+    result.push({
+      id: entry.id,
+      label: entry.label,
+      body: entry.body,
+      autoSend: entry.autoSend,
+    });
+  }
+  return result;
+}
+
 /** Validate data read from the store — invalid fields fall back to defaults. */
 export function validateSettings(raw: unknown): Settings {
   if (typeof raw !== "object" || raw === null) {
@@ -208,5 +243,6 @@ export function validateSettings(raw: unknown): Settings {
         ? clampScrollback(source.scrollback)
         : DEFAULT_SETTINGS.scrollback,
     customAgents: validateCustomAgents(source.customAgents),
+    promptTemplates: validatePromptTemplates(source.promptTemplates),
   };
 }
