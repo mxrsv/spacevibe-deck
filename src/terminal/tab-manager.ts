@@ -54,7 +54,7 @@ import {
 import { confirmClose } from "./close-guard";
 import { createCloseCoordinator } from "./close-coordinator";
 import { activeAfterClose } from "./tab-close";
-import { freshCwd, freshPaneInfo } from "./pane-info";
+import { freshPaneInfo } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { submitAllowed, type InjectOutcome } from "../prompts/inject";
 import { createAgentLauncher } from "./agent-launch";
@@ -66,7 +66,6 @@ import {
   buildClosedTabSnapshot,
   capturePresetLayout,
   materializeChromeFrom,
-  resolvePaneCwds,
   type MaterializeIntent,
 } from "./tab-materialize";
 import {
@@ -824,11 +823,17 @@ export function createTabManager(
     if (!manager || layout === null) {
       return null;
     }
-    return capturePresetLayout(manager.paneIds(), layout, pty);
+    return capturePresetLayout(
+      manager.paneIds(),
+      layout,
+      pty,
+      manager.freshPaneCwd,
+    );
   }
 
   function activePaneCwd(): Promise<string | null> {
-    return freshCwd(activeManager()?.activePaneId() ?? null, pty);
+    const manager = activeManager();
+    return manager?.freshPaneCwd(manager.activePaneId()) ?? Promise.resolve(null);
   }
 
   function ownerOf(paneId: number): TabEntry | undefined {
@@ -967,9 +972,9 @@ export function createTabManager(
     const layout = entry.manager.serializeLayout();
     if (layout !== null) {
       const override = overrides.get(entry.key);
-      const cwds = await resolvePaneCwds(entry.manager.paneIds(), "fresh", {
-        pty,
-      });
+      const cwds = await Promise.all(
+        entry.manager.paneIds().map((id) => entry.manager.freshPaneCwd(id)),
+      );
       closedTabs = pushClosedTab(
         closedTabs,
         buildClosedTabSnapshot({

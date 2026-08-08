@@ -91,6 +91,7 @@ export function TerminalBackgroundRows() {
         <button
           type="button"
           class="cfg-btn"
+          aria-label="Cycle terminal background target"
           onClick={() => patchBackground({ target: nextValue(TARGETS, current.target) })}
         >
           {current.target}
@@ -101,6 +102,7 @@ export function TerminalBackgroundRows() {
         <button
           type="button"
           class="cfg-btn"
+          aria-label="Cycle terminal background image fit"
           onClick={() => patchBackground({ fit: nextValue(FITS, current.fit) })}
         >
           {current.fit}

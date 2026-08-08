@@ -321,10 +321,7 @@ mod tests {
     #[cfg(target_os = "windows")]
     #[test]
     fn finds_alacritty_under_program_files_when_it_is_not_on_path() {
-        let root = std::env::current_dir()
-            .unwrap()
-            .join("target")
-            .join(format!("alacritty-discovery-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("alacritty-discovery-{}", std::process::id()));
         let directory = root.join("Alacritty");
         std::fs::create_dir_all(&directory).unwrap();
         let executable = directory.join("alacritty.exe");
@@ -349,6 +346,8 @@ pub(crate) fn find_alacritty_executable() -> Result<String, String> {
     EnvironmentAgentSearchProvider::from_environment()
         .find("alacritty")?
         .ok_or_else(|| {
-            "Alacritty was not found on PATH or under Program Files\\Alacritty".to_string()
+            "Alacritty was not found on PATH, under Program Files\\Alacritty, under \
+             ProgramFiles(x86)\\Alacritty, or under LOCALAPPDATA\\Programs\\Alacritty"
+                .to_string()
         })
 }

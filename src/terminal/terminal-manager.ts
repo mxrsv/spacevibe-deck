@@ -153,6 +153,8 @@ export interface TerminalManager {
   paneIds(): number[];
   /** Real PTY ids only; native pane ids must never cross PTY IPC boundaries. */
   ptyPaneIds(): number[];
+  /** Fresh PTY CWD, or the last safe launch CWD for a native pane. */
+  freshPaneCwd(id: number | null): Promise<string | null>;
   activePaneId(): number | null;
   paneCount(): number;
   /** Root element of a pane (overlay anchor for the agent picker). */
@@ -379,10 +381,7 @@ export function createTerminalManager(
     const targetId = activeId;
     try {
       // Fresh lookup, not the 2s poll cache — the user may have just cd'd
-      const cwd =
-        life.paneKind(targetId) === "alacritty"
-          ? paneCwd(targetId)
-          : ((await freshCwd(targetId, pty)) ?? paneCwd(targetId));
+      const cwd = await freshPaneCwd(targetId);
       const pane = await life.spawnPane(cwd, options.kind ?? "xterm");
       if (!life.isInTree(tree, targetId)) {
         // Target pane closed while spawning — drop the new session
@@ -401,6 +400,15 @@ export function createTerminalManager(
         .get(targetId)
         ?.writeln(`\r\n\x1b[31mFailed to open new pane: ${err}\x1b[0m`);
     }
+  }
+
+  async function freshPaneCwd(id: number | null): Promise<string | null> {
+    if (id === null) {
+      return null;
+    }
+    return life.paneKind(id) === "alacritty"
+      ? paneCwd(id)
+      : ((await freshCwd(id, pty)) ?? paneCwd(id));
   }
 
   function cycleFocus(step: 1 | -1): void {
@@ -742,6 +750,7 @@ export function createTerminalManager(
       const live = new Set(leafIds(tree));
       return life.ptyPaneIds().filter((id) => live.has(id));
     },
+    freshPaneCwd,
     activePaneId() {
       return activeId;
     },

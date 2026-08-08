@@ -65,7 +65,33 @@ describe("createCloseCoordinator", () => {
     expect(closePaneById).toHaveBeenCalledWith(7);
   });
 
-  it("closes a native pane without sending its id through the PTY busy guard", async () => {
+  it("guards native and PTY panes together when closing a tab", async () => {
+    const confirmClose = vi.fn(async () => true);
+    const disposeTab = vi.fn(async () => undefined);
+    const manager = mockManager({
+      paneCount: () => 2,
+      activePaneId: () => 1,
+      paneIds: () => [1, 0x8000_0000],
+      ptyPaneIds: () => [1],
+      closePaneById: vi.fn(),
+    });
+    const entry = { manager };
+    const coord = createCloseCoordinator({
+      confirmClose,
+      activeManager: () => manager,
+      activeIndex: () => 0,
+      tabAt: () => entry,
+      indexOf: () => 0,
+      disposeTab,
+    });
+
+    await coord.closeTab(0);
+
+    expect(confirmClose).toHaveBeenCalledWith([1, 0x8000_0000]);
+    expect(disposeTab).toHaveBeenCalledWith(0);
+  });
+
+  it("requires confirmation before closing a native pane", async () => {
     const closePaneById = vi.fn(async () => undefined);
     const confirmClose = vi.fn(async () => true);
     const manager = mockManager({
@@ -86,8 +112,31 @@ describe("createCloseCoordinator", () => {
 
     await coord.closePane();
 
-    expect(confirmClose).not.toHaveBeenCalled();
+    expect(confirmClose).toHaveBeenCalledWith([0x8000_0000]);
     expect(closePaneById).toHaveBeenCalledWith(0x8000_0000);
+  });
+
+  it("does not close a native pane when confirmation is declined", async () => {
+    const closePaneById = vi.fn(async () => undefined);
+    const manager = mockManager({
+      paneCount: () => 2,
+      activePaneId: () => 0x8000_0000,
+      paneIds: () => [1, 0x8000_0000],
+      ptyPaneIds: () => [1],
+      closePaneById,
+    });
+    const coord = createCloseCoordinator({
+      confirmClose: vi.fn(async () => false),
+      activeManager: () => manager,
+      activeIndex: () => 0,
+      tabAt: () => ({ manager }),
+      indexOf: () => 0,
+      disposeTab: vi.fn(),
+    });
+
+    await coord.closePane();
+
+    expect(closePaneById).not.toHaveBeenCalled();
   });
 
   it("aborts when Busy dialog declines", async () => {

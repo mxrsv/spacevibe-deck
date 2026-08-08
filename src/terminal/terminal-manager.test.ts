@@ -214,6 +214,10 @@ describe("createTerminalManager native Alacritty panes", () => {
     expect(tm.paneIds()).toEqual([1, 0x8000_0000]);
     expect(tm.ptyPaneIds()).toEqual([1]);
 
+    const ptyInfo = vi.spyOn(pty, "ptyInfo");
+    await expect(tm.freshPaneCwd(0x8000_0000)).resolves.toBe("C:\\repo");
+    expect(ptyInfo).not.toHaveBeenCalled();
+
     tm.hide();
     tm.show({ focus: false });
     expect(visibility).toContain(false);

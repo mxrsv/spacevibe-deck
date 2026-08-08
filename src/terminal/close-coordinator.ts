@@ -38,7 +38,10 @@ export function createCloseCoordinator(
     if (!entry) {
       return;
     }
-    if (!(await deps.confirmClose(entry.manager.ptyPaneIds()))) {
+    // Native panes cannot be inspected through PTY IPC. Passing every pane id
+    // makes them explicit "unknown" processes in the close guard, which asks
+    // before terminating them instead of treating them as idle.
+    if (!(await deps.confirmClose(entry.manager.paneIds()))) {
       return;
     }
     const currentIndex = deps.indexOf(entry);
@@ -61,10 +64,7 @@ export function createCloseCoordinator(
     if (paneId === null) {
       return;
     }
-    if (
-      manager.ptyPaneIds().includes(paneId) &&
-      !(await deps.confirmClose([paneId]))
-    ) {
+    if (!(await deps.confirmClose([paneId]))) {
       return;
     }
     // Close the pane the user confirmed, not whichever is active now —

@@ -101,8 +101,11 @@ export async function capturePresetLayout(
   paneIds: readonly number[],
   layout: SerializedNode,
   pty: PtyClient = defaultPtyClient,
+  cwdForPane?: (id: number) => Promise<string | null>,
 ): Promise<{ layout: SerializedNode; cwds: readonly (string | null)[] }> {
-  const cwds = await resolvePaneCwds(paneIds, "fresh", { pty });
+  const cwds = cwdForPane
+    ? await Promise.all(paneIds.map((id) => cwdForPane(id)))
+    : await resolvePaneCwds(paneIds, "fresh", { pty });
   return { layout, cwds };
 }
 
