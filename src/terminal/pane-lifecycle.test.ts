@@ -23,6 +23,7 @@ function fakePane(
     clear() {},
     copySelection() {},
     paste() {},
+    pasteText() {},
     scrollPage() {},
     scrollToEdge() {},
     focus() {
@@ -159,6 +160,101 @@ describe("createPaneLifecycle attention signals", () => {
         source: "bell",
       }),
     ).not.toThrow();
+  });
+});
+
+describe("write queue", () => {
+  /** Let every pending microtask chain settle before asserting. */
+  const flush = async (): Promise<void> => {
+    for (let tick = 0; tick < 8; tick += 1) {
+      await Promise.resolve();
+    }
+  };
+
+  /** A pty whose writes settle only when the test releases them. */
+  const gatedPty = () => {
+    const writes: { id: number; data: string }[] = [];
+    const releases: (() => void)[] = [];
+    return {
+      writes,
+      releases,
+      client: {
+        ...createMemoryPtyClient(),
+        writePty(id: number, data: string) {
+          writes.push({ id, data });
+          return new Promise<void>((resolve) => releases.push(resolve));
+        },
+      },
+    };
+  };
+
+  const mount = (
+    gate: ReturnType<typeof gatedPty>,
+    // Annotated, not inferred from the default: `= () => {}` would infer
+    // `() => void`, and test 3 passes `(id: number) => …`. A function taking
+    // MORE parameters than its target type declares is never assignable
+    // (TS2345), and `tsconfig.json` includes `src`, so that lands as a red
+    // `npm run build` — while vitest stays green, because esbuild does not
+    // typecheck.
+    onWriteWhileExited: (id: number, data: string) => void = () => {},
+  ) =>
+    createPaneLifecycle({
+      pty: gate.client,
+      getSettings: () => DEFAULT_SETTINGS,
+      createPane: (id, _settings: Settings, events: PaneEvents) =>
+        fakePane(id, events),
+      onWriteWhileExited,
+      onFocus: () => {},
+    });
+
+  const sent = (gate: ReturnType<typeof gatedPty>): string[] =>
+    gate.writes.map((write) => write.data);
+
+  it("starts a write only after the previous one settles", async () => {
+    const gate = gatedPty();
+    const life = mount(gate);
+    const pane = await life.spawnPane();
+
+    life.enqueueWrite(pane.id, "frame");
+    life.enqueueWrite(pane.id, "\r");
+    await flush();
+    // The second write must not have started while the first is unsettled.
+    expect(sent(gate)).toEqual(["frame"]);
+
+    gate.releases[0]();
+    await flush();
+    expect(sent(gate)).toEqual(["frame", "\r"]);
+  });
+
+  it("drops a queued write for a pane that exited meanwhile", async () => {
+    const gate = gatedPty();
+    const life = mount(gate);
+    const pane = await life.spawnPane();
+
+    life.enqueueWrite(pane.id, "frame");
+    await flush();
+    expect(sent(gate)).toEqual(["frame"]);
+
+    // Queued while the pane is still alive, so it passes the enqueue-time
+    // guard; the pane then exits before its turn comes up.
+    life.enqueueWrite(pane.id, "\r");
+    life.exited.add(pane.id);
+    gate.releases[0]();
+    await flush();
+    expect(sent(gate)).toEqual(["frame"]);
+  });
+
+  it("still routes a bare Enter on an exited pane to the respawn path", async () => {
+    const gate = gatedPty();
+    const respawns: number[] = [];
+    const life = mount(gate, (id: number) => respawns.push(id));
+    const pane = await life.spawnPane();
+    life.exited.add(pane.id);
+    life.paneEvents.onData(pane.id, "\r");
+    // Synchronous: the enqueue-time guard fires before any microtask.
+    expect(respawns).toEqual([pane.id]);
+    await flush();
+    expect(gate.writes).toEqual([]);
   });
 });
 

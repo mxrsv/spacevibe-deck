@@ -118,6 +118,7 @@ function fakePane(
     search?: Pane["search"];
     copySelection?: Pane["copySelection"];
     paste?: Pane["paste"];
+    pasteText?: Pane["pasteText"];
   } = {},
 ): Pane {
   const element = document.createElement("div");
@@ -137,6 +138,7 @@ function fakePane(
     clear() {},
     copySelection: overrides.copySelection ?? (() => {}),
     paste: overrides.paste ?? (() => {}),
+    pasteText: overrides.pasteText ?? (() => {}),
     scrollPage() {},
     scrollToEdge() {},
     focus() {

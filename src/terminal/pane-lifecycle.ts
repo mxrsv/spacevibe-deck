@@ -39,6 +39,12 @@ export interface PaneLifecycle {
     onError: (err: unknown) => void,
   ): Promise<void>;
   paneEvents: PaneEvents;
+  /**
+   * Queue one write for a pane, behind everything already queued for it.
+   * `onData` uses this too, which is what makes "paste frame, then `\r`"
+   * ordered by construction rather than by a timeout.
+   */
+  enqueueWrite(id: number, data: string): void;
 }
 
 /**
@@ -59,17 +65,46 @@ export function createPaneLifecycle(deps: {
   const respawning = new Set<number>();
   const makePane = deps.createPane ?? createPane;
 
-  const paneEvents: PaneEvents = {
-    onData(id, data) {
-      if (exited.has(id)) {
-        deps.onWriteWhileExited(id, data);
+  /**
+   * Per-pane write chain. `pty.writePty` is fire-and-forget over IPC, so two
+   * writes issued back to back have no ordering guarantee — a `\r` could
+   * reach the PTY before the paste frame it is meant to submit. Chaining each
+   * write behind the previous one's settled promise makes the order
+   * structural; no timers, no arbitrary delays.
+   */
+  const writeChains = new Map<number, Promise<void>>();
+
+  function enqueueWrite(id: number, data: string): void {
+    if (exited.has(id)) {
+      deps.onWriteWhileExited(id, data);
+      return;
+    }
+    const tail = writeChains.get(id) ?? Promise.resolve();
+    const next = tail.then(async () => {
+      // Re-checked at drain time, not only at enqueue time: the pane may have
+      // exited or closed while this write waited its turn.
+      if (exited.has(id) || !panes.has(id)) {
         return;
       }
-      deps.pty.writePty(id, data).catch(() => {
+      try {
+        await deps.pty.writePty(id, data);
+      } catch {
         reportPersistError(
           "Couldn't send input to the terminal — the session may have ended.",
         );
-      });
+      }
+    });
+    writeChains.set(id, next);
+    void next.finally(() => {
+      if (writeChains.get(id) === next) {
+        writeChains.delete(id);
+      }
+    });
+  }
+
+  const paneEvents: PaneEvents = {
+    onData(id, data) {
+      enqueueWrite(id, data);
     },
     onResize(id, cols, rows) {
       if (exited.has(id)) {
@@ -191,5 +226,6 @@ export function createPaneLifecycle(deps: {
     respawn,
     openInitial,
     paneEvents,
+    enqueueWrite,
   };
 }

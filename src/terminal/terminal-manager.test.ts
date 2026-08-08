@@ -39,6 +39,7 @@ function fakePane(
     clear() {},
     copySelection() {},
     paste() {},
+    pasteText() {},
     scrollPage() {},
     scrollToEdge() {},
     focus() {

@@ -53,6 +53,13 @@ export interface Pane {
   copySelection(): void;
   /** Paste the clipboard through xterm's bracketed-paste path (Ctrl+Shift+V). */
   paste(): void;
+  /**
+   * Paste arbitrary text through the same bracketed-paste path as the
+   * clipboard (`\n → \r`, DECSET 2004) — the only route that lands a
+   * multi-line body in an agent TUI's composer as one block instead of
+   * line by line. Writing the bytes to the PTY directly skips both.
+   */
+  pasteText(text: string): void;
   /** Scroll the viewport by one page; positive = down, negative = up. */
   scrollPage(dir: 1 | -1): void;
   /** Jump to the very top (oldest) or bottom (latest output) of scrollback. */
@@ -347,6 +354,9 @@ export function createPane(
     },
     paste() {
       pasteIntoTerminal(term);
+    },
+    pasteText(text) {
+      term.paste(text);
     },
     scrollPage: (dir) => term.scrollPages(dir),
     scrollToEdge: (edge) =>
