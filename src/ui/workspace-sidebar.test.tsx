@@ -85,6 +85,7 @@ describe("WorkspaceSidebar", () => {
   const baseProps = () => ({
     onSelectTab: vi.fn(),
     onCloseTab: vi.fn(),
+    onMoveTab: vi.fn(),
     onNewTab: vi.fn(),
     onRenameTab: vi.fn(),
     onSetTabColor: vi.fn(),
@@ -94,6 +95,50 @@ describe("WorkspaceSidebar", () => {
   const mount = (props: ReturnType<typeof baseProps>): void => {
     act(() => {
       render(<WorkspaceSidebar {...props} />, host);
+    });
+  };
+
+  /**
+   * jsdom has no PointerEvent and lays nothing out, so the drag is driven by
+   * MouseEvents under the pointer names (Preact dispatches by name) with each
+   * row given a 40px box — which half of a row the pointer is in is the whole
+   * reorder decision.
+   */
+  const ROW_HEIGHT = 40;
+
+  const layOutRows = (): void => {
+    host.querySelectorAll<HTMLElement>(".wsitem").forEach((row, index) => {
+      row.getBoundingClientRect = () =>
+        ({
+          top: index * ROW_HEIGHT,
+          bottom: (index + 1) * ROW_HEIGHT,
+          height: ROW_HEIGHT,
+          left: 0,
+          right: 200,
+          width: 200,
+          x: 0,
+          y: index * ROW_HEIGHT,
+          toJSON: () => ({}),
+        }) as DOMRect;
+    });
+  };
+
+  const pointer = (
+    row: Element,
+    type: "pointerdown" | "pointermove" | "pointerup",
+    clientY: number,
+  ): void => {
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientY,
+      button: 0,
+    });
+    Object.defineProperty(event, "pointerId", { value: 1 });
+    // Pointer capture is a real API the component calls; jsdom lacks it.
+    (row as HTMLElement).setPointerCapture ??= () => {};
+    act(() => {
+      row.dispatchEvent(event);
     });
   };
 
@@ -119,7 +164,6 @@ describe("WorkspaceSidebar", () => {
     expect(add.querySelector(".lucide-plus")).not.toBeNull();
     // The word stays: this control is wide and reads as a labelled action.
     expect(add.textContent).toContain("Open workspace");
-
   });
 
   it("renders the label, path, and logo for each row", () => {
@@ -309,5 +353,120 @@ describe("WorkspaceSidebar", () => {
 
     expect(IDLE_ATTENTION_SUMMARY.kind).toBe("idle");
     expect(host.querySelector(".wsitem__logo-attn")).toBeNull();
+  });
+
+  describe("reorder by drag", () => {
+    const threeTabs = (): void => {
+      tabViews.value = [
+        tab({ key: 1, name: "Alpha" }),
+        tab({ key: 2, name: "Beta" }),
+        tab({ key: 3, name: "Gamma" }),
+      ];
+      activeTabIndex.value = 0;
+    };
+
+    it("dragging a row past another row's midpoint moves it there", () => {
+      threeTabs();
+      const props = baseProps();
+      mount(props);
+      layOutRows();
+
+      const rows = host.querySelectorAll(".wsitem");
+      pointer(rows[0], "pointerdown", 20);
+      pointer(rows[0], "pointermove", 110); // past Gamma's centre (100)
+      pointer(rows[0], "pointerup", 110);
+
+      expect(props.onMoveTab).toHaveBeenCalledTimes(1);
+      expect(props.onMoveTab).toHaveBeenCalledWith(0, 2);
+    });
+
+    it("marks the carried row and draws the line at the gap it would land in", () => {
+      threeTabs();
+      mount(baseProps());
+      layOutRows();
+
+      const rows = host.querySelectorAll(".wsitem");
+      pointer(rows[0], "pointerdown", 20);
+      pointer(rows[0], "pointermove", 110);
+
+      expect(host.querySelectorAll(".wsitem.is-reordering")).toHaveLength(1);
+      expect(rows[0].classList.contains("is-reordering")).toBe(true);
+      // Gap 3 of 3 rows is below the last one.
+      expect(rows[2].classList.contains("is-drop-after")).toBe(true);
+      expect(host.querySelectorAll(".wsitem.is-drop-before")).toHaveLength(0);
+    });
+
+    it("releasing inside its own slot moves nothing", () => {
+      threeTabs();
+      const props = baseProps();
+      mount(props);
+      layOutRows();
+
+      const rows = host.querySelectorAll(".wsitem");
+      pointer(rows[1], "pointerdown", 60);
+      pointer(rows[1], "pointermove", 75); // still between the gaps around Beta
+      pointer(rows[1], "pointerup", 75);
+
+      expect(props.onMoveTab).not.toHaveBeenCalled();
+    });
+
+    it("a press that never travels stays a click", () => {
+      threeTabs();
+      const props = baseProps();
+      mount(props);
+      layOutRows();
+
+      const rows = host.querySelectorAll(".wsitem");
+      pointer(rows[1], "pointerdown", 60);
+      pointer(rows[1], "pointermove", 62); // under the 4px threshold
+      pointer(rows[1], "pointerup", 62);
+      act(() => {
+        rows[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      expect(props.onMoveTab).not.toHaveBeenCalled();
+      expect(props.onSelectTab).toHaveBeenCalledWith(1);
+    });
+
+    it("the click that ends a drag does not also select the row", () => {
+      threeTabs();
+      const props = baseProps();
+      mount(props);
+      layOutRows();
+
+      const rows = host.querySelectorAll(".wsitem");
+      pointer(rows[2], "pointerdown", 100);
+      pointer(rows[2], "pointermove", 10); // above Alpha's centre
+      pointer(rows[2], "pointerup", 10);
+      act(() => {
+        rows[2].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      expect(props.onMoveTab).toHaveBeenCalledWith(2, 0);
+      expect(props.onSelectTab).not.toHaveBeenCalled();
+      expect(host.querySelector(".tab-popover")).toBeNull();
+    });
+
+    it("a right-click never starts a drag", () => {
+      threeTabs();
+      const props = baseProps();
+      mount(props);
+      layOutRows();
+
+      const rows = host.querySelectorAll(".wsitem");
+      const down = new MouseEvent("pointerdown", {
+        bubbles: true,
+        clientY: 20,
+        button: 2,
+      });
+      act(() => {
+        rows[0].dispatchEvent(down);
+      });
+      pointer(rows[0], "pointermove", 110);
+      pointer(rows[0], "pointerup", 110);
+
+      expect(props.onMoveTab).not.toHaveBeenCalled();
+      expect(host.querySelector(".wsitem.is-reordering")).toBeNull();
+    });
   });
 });

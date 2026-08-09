@@ -591,7 +591,9 @@ export function App() {
 
   const promptPopover = promptsOpen.value ? (
     <PromptPopover
-      capture={() => capturePromptTarget(tabsRef.current?.activePaneId() ?? null)}
+      capture={() =>
+        capturePromptTarget(tabsRef.current?.activePaneId() ?? null)
+      }
       loadAssets={(target) =>
         defaultPromptAssetsClient.list(target.agent ?? "", target.cwd)
       }
@@ -601,7 +603,9 @@ export function App() {
           expectedAgent: target.agent,
         }) ?? Promise.resolve("no-target" as const)
       }
-      isAlive={(paneId) => tabsRef.current?.allPaneIds().includes(paneId) ?? false}
+      isAlive={(paneId) =>
+        tabsRef.current?.allPaneIds().includes(paneId) ?? false
+      }
       onClose={closePrompts}
     />
   ) : null;
@@ -641,6 +645,7 @@ export function App() {
         <WorkspaceSidebar
           onSelectTab={selectTab}
           onCloseTab={(index) => void tabsRef.current?.closeTab(index)}
+          onMoveTab={(from, to) => tabsRef.current?.moveTab(from, to)}
           onNewTab={() => void tabsRef.current?.newTab()}
           onRenameTab={(index, name) => tabsRef.current?.renameTab(index, name)}
           onSetTabColor={(index, color) =>

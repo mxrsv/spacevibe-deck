@@ -310,6 +310,8 @@ export interface TabManager {
   /** Close a tab after the busy guard; every pane's process is checked. */
   closeTab(index: number): Promise<void>;
   selectTab(index: number): void;
+  /** Move a tab to another position; the focused tab stays focused. */
+  moveTab(from: number, to: number): void;
   /**
    * Internal attention-navigation primitive (Task 12/15) — NOT the
    * user-facing tab switch (`selectTab` stays that). Activates exactly the
@@ -635,6 +637,33 @@ export function createTabManager(
     return true;
   }
 
+  /**
+   * Move a tab to another position, keeping the same tab focused.
+   *
+   * This array IS the tab order — everything that addresses a tab by position
+   * (⌘1–9, `cycleTab`, `closeTab`, the sidebar rows) reads it — so moving the
+   * entry inside it is the whole change. `active` is re-derived from the tab
+   * it was pointing at rather than adjusted by arithmetic, which keeps the
+   * focused workspace focused no matter which side of it the move crossed.
+   *
+   * In memory only: session restore is gone (the app always opens on the Open
+   * board), so tabs and their order live for one run of the app. There is
+   * nothing on disk for this to write to.
+   */
+  function moveTab(from: number, to: number): void {
+    const last = tabs.length - 1;
+    if (from === to || from < 0 || from > last || to < 0 || to > last) {
+      return;
+    }
+    const focused = active >= 0 && active <= last ? tabs[active] : null;
+    const [entry] = tabs.splice(from, 1);
+    tabs.splice(to, 0, entry);
+    if (focused !== null) {
+      active = tabs.indexOf(focused);
+    }
+    syncViews();
+  }
+
   function selectTab(index: number): void {
     if (index < 0 || index >= tabs.length || index === active) {
       return;
@@ -862,12 +891,14 @@ export function createTabManager(
         attentionBeforePaste !== null &&
         attentionBeforeSubmit !== null &&
         attentionBeforePaste.revision === attentionBeforeSubmit.revision;
-      const allowed = attentionStayedStable && submitAllowed({
-        expectedAgent: opts.expectedAgent,
-        info,
-        attention: attentionBeforeSubmit,
-        alive: stillOwned !== undefined,
-      });
+      const allowed =
+        attentionStayedStable &&
+        submitAllowed({
+          expectedAgent: opts.expectedAgent,
+          info,
+          attention: attentionBeforeSubmit,
+          alive: stillOwned !== undefined,
+        });
       if (!allowed || stillOwned === undefined) {
         return "pasted";
       }
@@ -1556,6 +1587,7 @@ export function createTabManager(
     reopenTab,
     closeTab: (index) => close.closeTab(index),
     selectTab,
+    moveTab,
     activateForAttention,
     focusNextAttention,
     hasActionableAttention,

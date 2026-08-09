@@ -128,6 +128,8 @@ body,
 }
 
 .wsitem {
+  /* Anchors the reorder insertion line below. */
+  position: relative;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -151,6 +153,29 @@ body,
 .wsitem.is-active {
   color: var(--text-primary);
   background: var(--tab-active-bg);
+}
+
+/* Reordering: the row being carried fades, and a hairline marks the gap it
+   will drop into. Nothing is inserted into the list, so no other row shifts
+   while the pointer moves (DL-1.2 — opacity only). */
+.wsitem.is-reordering {
+  opacity: 0.45;
+}
+.wsitem.is-drop-before::before,
+.wsitem.is-drop-after::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.wsitem.is-drop-before::before {
+  top: -1px;
+}
+.wsitem.is-drop-after::after {
+  bottom: -1px;
 }
 
 /* Dropping an image onto a row sets that workspace's logo. */

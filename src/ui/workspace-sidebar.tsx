@@ -26,10 +26,20 @@ import { reportPersistError } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
 import { WorkspaceLogo } from "./workspace-logo";
 import { shortcutLabel } from "../lib/shortcut-label";
+import { reorderDropAt } from "../lib/reorder-drop-index";
+
+/**
+ * How far the pointer must travel before a press counts as a drag. Below it
+ * the gesture is still a click — a row opens its popover on click, so a shaky
+ * hand must not silently reorder the list instead.
+ */
+const DRAG_THRESHOLD_PX = 4;
 
 interface WorkspaceSidebarProps {
   onSelectTab(index: number): void;
   onCloseTab(index: number): void;
+  /** Reorder: move the tab at `from` to `to`, both current positions. */
+  onMoveTab(from: number, to: number): void;
   onNewTab(): void;
   onRenameTab(index: number, name: string | null): void;
   onSetTabColor(index: number, color: TabDotColor | null): void;
@@ -44,6 +54,26 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
   const home = statusInfo.value.home;
   const navRef = useRef<HTMLElement>(null);
   const dragOverKey = useSignal<number | null>(null);
+  /**
+   * Reorder drag, run on pointer events rather than HTML5 drag-and-drop.
+   * These rows are already an OS drag-drop target (an image dropped on one
+   * sets that workspace's logo, above), and Tauri owns that path at the
+   * webview level — a second, in-page drag protocol layered on the same rows
+   * is one interaction too many to keep straight. Pointer events also behave
+   * the same on macOS and Windows.
+   */
+  const reorder = useSignal<{
+    readonly key: number;
+    readonly from: number;
+    readonly gap: number;
+    readonly to: number;
+  } | null>(null);
+  const pressed = useRef<{ y: number; index: number; key: number } | null>(
+    null,
+  );
+  // A drag ends with a click event on the row it started from; without this
+  // the release would also select that tab or open its popover.
+  const swallowClick = useRef(false);
   // Anchored by tab key, not index — same reason as the horizontal tab bar:
   // tabs can close (and indexes shift) while the popover is open.
   const popover = useSignal<{
@@ -131,6 +161,28 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
     };
   }, []);
 
+  /** Row centres in client px, in drawn order — the drag's only geometry. */
+  function rowMidpoints(): number[] {
+    const rows = navRef.current?.querySelectorAll<HTMLElement>(".wsitem") ?? [];
+    return [...rows].map((row) => {
+      const box = row.getBoundingClientRect();
+      return box.top + box.height / 2;
+    });
+  }
+
+  function endReorder(): void {
+    const drag = reorder.value;
+    pressed.current = null;
+    reorder.value = null;
+    if (drag === null) {
+      return;
+    }
+    swallowClick.current = true;
+    if (drag.to !== drag.from) {
+      props.onMoveTab(drag.from, drag.to);
+    }
+  }
+
   function openPopover(key: number, anchorEl: HTMLElement): void {
     const rect = anchorEl.getBoundingClientRect();
     popover.value = { key, left: rect.right + 6, top: rect.top, anchorEl };
@@ -182,6 +234,17 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
             (tab.workspacePath === null
               ? "Unknown"
               : workspaceLabel(tab.workspacePath));
+          // The insertion line marks a gap, and there are one more gaps than
+          // rows — the last one is drawn under the final row.
+          const drag = reorder.value;
+          const dropEdge =
+            drag === null
+              ? null
+              : drag.gap === index
+                ? "before"
+                : drag.gap === tabs.length && index === tabs.length - 1
+                  ? "after"
+                  : null;
           return (
             <div
               key={tab.key}
@@ -190,8 +253,53 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
               tabIndex={0}
               data-key={tab.key}
               data-workspace={tab.workspacePath ?? ""}
-              class={`wsitem ${index === active ? "is-active" : ""} ${dragOverKey.value === tab.key ? "is-drag-over" : ""}`}
+              class={`wsitem ${index === active ? "is-active" : ""} ${dragOverKey.value === tab.key ? "is-drag-over" : ""} ${
+                reorder.value?.key === tab.key ? "is-reordering" : ""
+              } ${dropEdge === null ? "" : `is-drop-${dropEdge}`}`}
+              onPointerDown={(event) => {
+                if (event.button !== 0) {
+                  return; // right-click opens the popover, never a drag
+                }
+                pressed.current = { y: event.clientY, index, key: tab.key };
+              }}
+              onPointerMove={(event) => {
+                const start = pressed.current;
+                if (start === null) {
+                  return;
+                }
+                if (
+                  reorder.value === null &&
+                  Math.abs(event.clientY - start.y) < DRAG_THRESHOLD_PX
+                ) {
+                  return; // still a click
+                }
+                if (reorder.value === null) {
+                  // Capture so the drag survives the pointer leaving the row —
+                  // which it does immediately, since the row is what moves.
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                }
+                const drop = reorderDropAt(
+                  rowMidpoints(),
+                  event.clientY,
+                  start.index,
+                );
+                reorder.value = {
+                  key: start.key,
+                  from: start.index,
+                  gap: drop.gap,
+                  to: drop.to,
+                };
+              }}
+              onPointerUp={endReorder}
+              // Capture loss (window blur, a system gesture) never produces a
+              // pointerup, so without this the row would stay stuck mid-drag.
+              onPointerCancel={endReorder}
+              onLostPointerCapture={endReorder}
               onClick={(event) => {
+                if (swallowClick.current) {
+                  swallowClick.current = false;
+                  return;
+                }
                 if (index !== active) {
                   props.onSelectTab(index);
                   return;
