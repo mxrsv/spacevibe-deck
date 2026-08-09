@@ -260,6 +260,16 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
                 if (event.button !== 0) {
                   return; // right-click opens the popover, never a drag
                 }
+                // pointerdown bubbles up from the row's own buttons (close,
+                // attention mark). A press aimed at one of those must stay a
+                // press: dragging from the close button would move the row
+                // and then still close it on release.
+                if (
+                  event.target instanceof Element &&
+                  event.target.closest("button") !== null
+                ) {
+                  return;
+                }
                 pressed.current = { y: event.clientY, index, key: tab.key };
               }}
               onPointerMove={(event) => {

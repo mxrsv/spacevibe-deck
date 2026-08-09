@@ -447,6 +447,35 @@ describe("WorkspaceSidebar", () => {
       expect(host.querySelector(".tab-popover")).toBeNull();
     });
 
+    it("pressing the close button never starts a drag", () => {
+      threeTabs();
+      const props = baseProps();
+      mount(props);
+      layOutRows();
+
+      const rows = host.querySelectorAll(".wsitem");
+      const close = rows[0].querySelector(
+        ".wsitem__close",
+      ) as HTMLButtonElement;
+      // pointerdown on the button bubbles to the row; without the guard the
+      // wiggle below would reorder the list and the release would still close
+      // the tab that just moved.
+      const down = new MouseEvent("pointerdown", {
+        bubbles: true,
+        clientY: 20,
+        button: 0,
+      });
+      Object.defineProperty(down, "pointerId", { value: 1 });
+      act(() => {
+        close.dispatchEvent(down);
+      });
+      pointer(rows[0], "pointermove", 110);
+      pointer(rows[0], "pointerup", 110);
+
+      expect(props.onMoveTab).not.toHaveBeenCalled();
+      expect(host.querySelector(".wsitem.is-reordering")).toBeNull();
+    });
+
     it("a right-click never starts a drag", () => {
       threeTabs();
       const props = baseProps();
