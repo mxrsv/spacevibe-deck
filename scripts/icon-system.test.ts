@@ -18,6 +18,9 @@ const pathFromFileUrl = (
   windows = process.platform === "win32",
 ): string => fileURLToPath(url, { windows });
 
+const normalizeRelativePath = (path: string): string =>
+  path.replaceAll("\\", "/");
+
 const SOURCE_ROOT = pathFromFileUrl(new URL("../src/", import.meta.url));
 
 /**
@@ -79,7 +82,7 @@ function sourceFiles(dir = SOURCE_ROOT): string[] {
 }
 
 const files = sourceFiles().map((full) => ({
-  path: relative(SOURCE_ROOT, full),
+  path: normalizeRelativePath(relative(SOURCE_ROOT, full)),
   text: readFileSync(full, "utf8"),
 }));
 
@@ -88,6 +91,12 @@ describe("icon system", () => {
     expect(
       pathFromFileUrl(new URL("file:///D:/a/spacevibe-deck/src/"), true),
     ).toBe("D:\\a\\spacevibe-deck\\src\\");
+  });
+
+  it("normalizes Windows separators for platform-neutral allowlists", () => {
+    expect(normalizeRelativePath("open-board\\open-board.tsx")).toBe(
+      "open-board/open-board.tsx",
+    );
   });
 
   it("finds source files at all — a silent empty scan would pass everything", () => {
