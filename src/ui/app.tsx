@@ -294,14 +294,35 @@ export function App() {
    * open/close decision.
    */
   const toggleSettings = (): void => {
-    toggleSettingsPanel(restoreFocusAfterSettings);
+    if (settingsOpen.value) {
+      toggleSettingsPanel(restoreFocusAfterSettings);
+      return;
+    }
+    if (editorRequest.value !== null || saveDialogOpen.value) {
+      return;
+    }
+    const hidden =
+      tabsRef.current?.setNativePanesVisible(false) ?? Promise.resolve();
+    void hidden.then(() => {
+      toggleSettingsPanel(restoreFocusAfterSettings);
+    }).catch((error: unknown) => {
+      reportPersistError(`Couldn't safely hide native terminals: ${error}`);
+    });
   };
+
+  const nativePanesObstructed = (): boolean =>
+    boardOpen.value ||
+    settingsOpen.value ||
+    editorRequest.value !== null ||
+    saveDialogOpen.value;
 
   useEffect(() => {
     const host = stagesRef.current;
     if (!host) {
       return;
     }
+    // Session restore is gone: the app always opens on the board (Intent §Constraint).
+    boardOpen.value = true;
     const manager = createTabManager(host, undefined, {
       onRequestAttentionFocus: (tabIndex) => requestAttentionFocus(tabIndex),
       onToggleSettings: () => toggleSettings(),
@@ -322,6 +343,7 @@ export function App() {
     }
     // Session restore is gone: the app always opens on the board (Intent §Constraint).
     boardOpen.value = true;
+    manager.setNativePanesVisible(!nativePanesObstructed());
     manager.init().catch((err: unknown) => {
       console.error("Failed to initialize terminals:", err);
       boardOpen.value = true;
@@ -409,6 +431,12 @@ export function App() {
     rootStyle.setProperty("--text-primary", chrome.textPrimary);
     rootStyle.setProperty("--text-muted", chrome.textMuted);
     rootStyle.setProperty("--text-faint", chrome.textFaint);
+  });
+
+  // A native child HWND always paints above WebView content. Hide it while a
+  // board/panel/modal covers the terminal stage, then restore it afterwards.
+  useSignalEffect(() => {
+    tabsRef.current?.setNativePanesVisible(!nativePanesObstructed());
   });
 
   /** Open board confirm: materialize + record recents + preselect memory. */
@@ -610,8 +638,16 @@ export function App() {
     <ChromeActions
       settingsOpen={settingsOpen.value}
       expandActive={settings.value.focusExpand}
-      onSplitRow={() => void tabsRef.current?.splitActive("row")}
-      onSplitColumn={() => void tabsRef.current?.splitActive("column")}
+      onSplitRow={(alacritty) =>
+        void tabsRef.current?.splitActive("row", {
+          kind: alacritty ? "alacritty" : "xterm",
+        })
+      }
+      onSplitColumn={(alacritty) =>
+        void tabsRef.current?.splitActive("column", {
+          kind: alacritty ? "alacritty" : "xterm",
+        })
+      }
       onClosePane={() => void tabsRef.current?.closePane()}
       onToggleExpand={() =>
         updateSettings({ focusExpand: !settings.value.focusExpand })
@@ -655,8 +691,16 @@ export function App() {
           onSelectTab={selectTab}
           onCloseTab={(index) => void tabsRef.current?.closeTab(index)}
           onNewTab={() => void tabsRef.current?.newTab()}
-          onSplitRow={() => void tabsRef.current?.splitActive("row")}
-          onSplitColumn={() => void tabsRef.current?.splitActive("column")}
+          onSplitRow={(alacritty) =>
+            void tabsRef.current?.splitActive("row", {
+              kind: alacritty ? "alacritty" : "xterm",
+            })
+          }
+          onSplitColumn={(alacritty) =>
+            void tabsRef.current?.splitActive("column", {
+              kind: alacritty ? "alacritty" : "xterm",
+            })
+          }
           onClosePane={() => void tabsRef.current?.closePane()}
           onRenameTab={(index, name) => tabsRef.current?.renameTab(index, name)}
           onSetTabColor={(index, color) =>
@@ -677,7 +721,11 @@ export function App() {
       }
       stage={
         <main class="stage">
-          <div class="stage__tabs" ref={stagesRef} />
+          <div
+            class={`stage__tabs ${overlayCoversPane() ? "is-covered" : ""}`}
+            aria-hidden={overlayCoversPane()}
+            ref={stagesRef}
+          />
           {boardOpen.value ? (
             <OpenBoard
               canCancel={tabViews.value.length > 0}

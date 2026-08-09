@@ -717,6 +717,15 @@ button.attn-mark:hover {
   display: flex;
 }
 
+/* Native terminal windows and xterm canvases must never paint through a
+   board/settings/modal transition. Keep layout geometry stable for the next
+   reveal while suppressing the covered terminal surface completely. */
+.stage__tabs.is-covered {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .tab-stage {
   flex: 1;
   min-width: 0;
@@ -838,6 +847,33 @@ button.attn-mark:hover {
   overflow: hidden;
   background: var(--bg);
   transition: box-shadow 0.18s ease;
+}
+
+.pane::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(
+      rgb(0 0 0 / var(--pane-background-dim, 0)),
+      rgb(0 0 0 / var(--pane-background-dim, 0))
+    ),
+    var(--pane-background-image, none);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: var(--pane-background-size, cover);
+  opacity: 0;
+}
+
+.pane.pane--has-background::before {
+  opacity: 1;
+}
+
+.pane > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Active pane (only when >1 pane): an inset accent hairline, no border box
@@ -1011,6 +1047,65 @@ button.attn-mark:hover {
   padding: 0;
 }
 
+.pane--has-background .pane__term,
+.pane--has-background .xterm,
+.pane--has-background .xterm-screen {
+  background: transparent !important;
+}
+
+.pane__native-error {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--red) 55%, var(--hair));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--chrome-2) 92%, transparent);
+  color: var(--red);
+  font: 11px var(--ui-font);
+}
+
+.pane__native-error[hidden] {
+  display: none;
+}
+
+.pane__native-error button {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.cfg-background-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cfg-background-preview {
+  width: 28px;
+  height: 20px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 4px;
+  background-position: center;
+  background-size: cover;
+}
+
+.cfg-btn--compact {
+  padding-inline: 7px;
+}
+
+.cfg-range {
+  width: 116px;
+  accent-color: var(--accent);
+}
+
 .pane__term .xterm {
   height: 100%;
 }
@@ -1114,8 +1209,6 @@ button.attn-mark:hover {
   border-radius: 50%;
   background: var(--green);
 }
-
-/* ── Settings panel: slide-over anchored to the stage's right edge ── */
 
 /* ── Config rows: the one control (docs/DESIGN-LANGUAGE.md §5–6) ── */
 

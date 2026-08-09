@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildClosedTabSnapshot,
   capturePresetLayout,
@@ -138,6 +138,28 @@ describe("capturePresetLayout", () => {
     await expect(
       capturePresetLayout([1], { type: "leaf" }, pty),
     ).resolves.toEqual({ layout: { type: "leaf" }, cwds: ["/a"] });
+  });
+
+  it("uses a pane-aware CWD resolver for mixed native layouts", async () => {
+    const pty = createMemoryPtyClient();
+    const ptyInfo = vi.spyOn(pty, "ptyInfo");
+    const layout = {
+      type: "split" as const,
+      direction: "row" as const,
+      ratio: 0.5,
+      first: { type: "leaf" as const, paneType: "xterm" as const },
+      second: { type: "leaf" as const, paneType: "alacritty" as const },
+    };
+
+    await expect(
+      capturePresetLayout([1, 0x8000_0000], layout, pty, async (id) =>
+        id === 1 ? "C:\\shell" : "C:\\native",
+      ),
+    ).resolves.toEqual({
+      layout,
+      cwds: ["C:\\shell", "C:\\native"],
+    });
+    expect(ptyInfo).not.toHaveBeenCalled();
   });
 });
 

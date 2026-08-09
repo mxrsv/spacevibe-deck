@@ -459,7 +459,8 @@ mod tests {
 
     #[test]
     fn reads_a_top_level_toml_description() {
-        let head = "name = \"plan-reviewer\"\ndescription = \"Reviews plans.\"\nmodel = \"inherit\"\n";
+        let head =
+            "name = \"plan-reviewer\"\ndescription = \"Reviews plans.\"\nmodel = \"inherit\"\n";
         assert_eq!(
             parse_toml_description(head),
             Some("Reviews plans.".to_string())
@@ -602,12 +603,14 @@ mod tests {
         write_skill(&plugin, "brainstorming", "plugin one");
         let plugins_dir = home.join(".claude/plugins");
         std::fs::create_dir_all(&plugins_dir).unwrap();
+        let registry = serde_json::json!({
+            "plugins": {
+                "superpowers@official": [{ "installPath": plugin }]
+            }
+        });
         std::fs::write(
             plugins_dir.join("installed_plugins.json"),
-            format!(
-                "{{\"plugins\":{{\"superpowers@official\":[{{\"installPath\":\"{}\"}}]}}}}",
-                plugin.to_string_lossy()
-            ),
+            registry.to_string(),
         )
         .unwrap();
 

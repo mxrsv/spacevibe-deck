@@ -2,6 +2,20 @@ import { describe, expect, it } from "vitest";
 import { validateLayout } from "./layout-validation";
 
 describe("validateLayout", () => {
+  it("preserves supported pane renderer types and defaults unknown values", () => {
+    expect(validateLayout({ type: "leaf", paneType: "alacritty" })).toEqual({
+      type: "leaf",
+      paneType: "alacritty",
+    });
+    expect(validateLayout({ type: "leaf", paneType: "xterm" })).toEqual({
+      type: "leaf",
+      paneType: "xterm",
+    });
+    expect(validateLayout({ type: "leaf", paneType: "future" })).toEqual({
+      type: "leaf",
+    });
+  });
+
   it("accepts a leaf", () => {
     expect(validateLayout({ type: "leaf" })).toEqual({ type: "leaf" });
   });

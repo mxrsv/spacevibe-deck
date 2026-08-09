@@ -11,8 +11,8 @@ interface ChromeActionsProps {
   /** Rendered inside the trigger's anchor while open — see `.prompts-anchor`. */
   promptPopover?: ComponentChildren;
   updateAction?: ComponentChildren;
-  onSplitRow(): void;
-  onSplitColumn(): void;
+  onSplitRow(alacritty: boolean): void;
+  onSplitColumn(alacritty: boolean): void;
   onClosePane(): void;
   onToggleExpand(): void;
   onTogglePrompts(): void;
@@ -145,18 +145,18 @@ export function ChromeActions(props: ChromeActionsProps) {
       <button
         type="button"
         class="iconbtn"
-        title={`Split vertically (${splitRow})`}
+        title={`Split vertically (${splitRow}); hold Shift for Alacritty`}
         aria-label="Split pane vertically"
-        onClick={props.onSplitRow}
+        onClick={(event) => props.onSplitRow(event.shiftKey)}
       >
         <SplitRowIcon />
       </button>
       <button
         type="button"
         class="iconbtn"
-        title={`Split horizontally (${splitColumn})`}
+        title={`Split horizontally (${splitColumn}); hold Shift for Alacritty`}
         aria-label="Split pane horizontally"
-        onClick={props.onSplitColumn}
+        onClick={(event) => props.onSplitColumn(event.shiftKey)}
       >
         <SplitColumnIcon />
       </button>

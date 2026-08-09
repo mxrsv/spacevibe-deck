@@ -18,6 +18,20 @@ export interface TerminalColors {
   selectionBackground: string;
 }
 
+export type TerminalBackgroundTarget = "all" | "xterm" | "alacritty";
+export type TerminalBackgroundFit = "cover" | "contain" | "stretch";
+
+export interface TerminalBackgroundSettings {
+  /** Persisted data URL; empty means no image. */
+  imageDataUrl: string;
+  target: TerminalBackgroundTarget;
+  fit: TerminalBackgroundFit;
+  /** Darkness painted above the image, from 0 (none) to 0.9. */
+  dim: number;
+  /** Native Alacritty background opacity, from 0.4 to 1. */
+  nativeOpacity: number;
+}
+
 /** `left` = workspace sidebar (default), `top` = the classic horizontal bar. */
 export type TabBarPosition = "top" | "left";
 
@@ -40,6 +54,7 @@ export interface Settings {
   customAgents: readonly CustomAgent[];
   /** Reusable prompt bodies the user declared for the Prompt Board. */
   promptTemplates: readonly PromptTemplate[];
+  terminalBackground: TerminalBackgroundSettings;
 }
 
 export const FONT_SIZE_MIN = 10;
@@ -74,6 +89,13 @@ export const DEFAULT_SETTINGS: Settings = {
   scrollback: 10_000,
   customAgents: [],
   promptTemplates: [],
+  terminalBackground: {
+    imageDataUrl: "",
+    target: "all",
+    fit: "cover",
+    dim: 0.35,
+    nativeOpacity: 0.9,
+  },
 };
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -195,6 +217,45 @@ function validatePromptTemplates(raw: unknown): readonly PromptTemplate[] {
   return result;
 }
 
+function validateTerminalBackground(raw: unknown): TerminalBackgroundSettings {
+  if (typeof raw !== "object" || raw === null) {
+    return DEFAULT_SETTINGS.terminalBackground;
+  }
+  const source = raw as Record<string, unknown>;
+  const targets: readonly TerminalBackgroundTarget[] = [
+    "all",
+    "xterm",
+    "alacritty",
+  ];
+  const fits: readonly TerminalBackgroundFit[] = [
+    "cover",
+    "contain",
+    "stretch",
+  ];
+  return {
+    imageDataUrl:
+      typeof source.imageDataUrl === "string" &&
+      (source.imageDataUrl === "" || source.imageDataUrl.startsWith("data:image/"))
+        ? source.imageDataUrl
+        : "",
+    target: targets.includes(source.target as TerminalBackgroundTarget)
+      ? (source.target as TerminalBackgroundTarget)
+      : DEFAULT_SETTINGS.terminalBackground.target,
+    fit: fits.includes(source.fit as TerminalBackgroundFit)
+      ? (source.fit as TerminalBackgroundFit)
+      : DEFAULT_SETTINGS.terminalBackground.fit,
+    dim:
+      typeof source.dim === "number" && Number.isFinite(source.dim)
+        ? Math.min(0.9, Math.max(0, source.dim))
+        : DEFAULT_SETTINGS.terminalBackground.dim,
+    nativeOpacity:
+      typeof source.nativeOpacity === "number" &&
+      Number.isFinite(source.nativeOpacity)
+        ? Math.min(1, Math.max(0.4, source.nativeOpacity))
+        : DEFAULT_SETTINGS.terminalBackground.nativeOpacity,
+  };
+}
+
 /** Validate data read from the store — invalid fields fall back to defaults. */
 export function validateSettings(raw: unknown): Settings {
   if (typeof raw !== "object" || raw === null) {
@@ -244,5 +305,6 @@ export function validateSettings(raw: unknown): Settings {
         : DEFAULT_SETTINGS.scrollback,
     customAgents: validateCustomAgents(source.customAgents),
     promptTemplates: validatePromptTemplates(source.promptTemplates),
+    terminalBackground: validateTerminalBackground(source.terminalBackground),
   };
 }
