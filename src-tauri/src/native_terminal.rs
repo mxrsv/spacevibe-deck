@@ -52,9 +52,10 @@ mod imp {
         EnumWindows, GetClassNameW, GetForegroundWindow, GetGUIThreadInfo, GetParent, GetWindow,
         GetWindowLongPtrW, GetWindowThreadProcessId, IsChild, IsWindow, IsWindowVisible,
         SetForegroundWindow, SetWindowLongPtrW, SetWindowPos, ShowWindow, GUITHREADINFO,
-        GWLP_HWNDPARENT, GWL_EXSTYLE, GWL_STYLE, GW_OWNER, SWP_FRAMECHANGED, SWP_NOACTIVATE,
-        SWP_NOZORDER, SW_HIDE, SW_SHOW, WS_CAPTION, WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
-        WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU, WS_THICKFRAME,
+        GWLP_HWNDPARENT, GWL_EXSTYLE, GWL_STYLE, GW_OWNER, SWP_FRAMECHANGED, SWP_HIDEWINDOW,
+        SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SW_HIDE, SW_SHOW, WS_CAPTION,
+        WS_EX_APPWINDOW, WS_EX_TOOLWINDOW, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU,
+        WS_THICKFRAME,
     };
 
     const FIRST_NATIVE_PANE_ID: u32 = 0x8000_0000;
@@ -67,11 +68,20 @@ mod imp {
         config_path: PathBuf,
         config_contents: String,
         focus_monitor_alive: Arc<AtomicBool>,
+        visible: bool,
+        presentation_epoch: u64,
+    }
+
+    #[derive(Clone, Copy)]
+    struct PresentationState {
+        epoch: u64,
+        occluded: bool,
     }
 
     pub struct NativeTerminalState {
         next_id: AtomicU32,
         panes: Mutex<HashMap<u32, NativePane>>,
+        presentation: Mutex<PresentationState>,
     }
 
     impl Default for NativeTerminalState {
@@ -79,6 +89,10 @@ mod imp {
             Self {
                 next_id: AtomicU32::new(FIRST_NATIVE_PANE_ID),
                 panes: Mutex::new(HashMap::new()),
+                presentation: Mutex::new(PresentationState {
+                    epoch: 0,
+                    occluded: true,
+                }),
             }
         }
     }
@@ -211,7 +225,7 @@ mod imp {
         pane.focus_monitor_alive.store(false, Ordering::Release);
         unsafe {
             if IsWindow(pane.hwnd as HWND) != 0 {
-                ShowWindow(pane.hwnd as HWND, SW_HIDE);
+                hide_overlay(pane.hwnd as HWND);
             }
         }
         let _ = pane.child.kill();
@@ -281,15 +295,21 @@ mod imp {
     }
 
     fn runtime_config_path(app: &AppHandle, id: u32) -> Result<PathBuf, String> {
-        let root = app
+        let portable_root = std::env::current_exe()
+            .ok()
+            .and_then(|path| path.parent().map(Path::to_path_buf))
+            .map(|directory| directory.join(".spacevibe-runtime"));
+        let fallback_root = app
             .path()
             .app_local_data_dir()
             .map_err(|error| format!("Couldn't locate SpaceVibe's local data directory: {error}"))?
-            .join("runtime")
-            .join(runtime_run_id())
-            .join("alacritty");
-        std::fs::create_dir_all(&root)
-            .map_err(|error| format!("Couldn't create Alacritty runtime directory: {error}"))?;
+            .join("runtime");
+        let root = portable_root
+            .into_iter()
+            .chain(std::iter::once(fallback_root))
+            .map(|root| root.join(runtime_run_id()).join("alacritty"))
+            .find(|root| std::fs::create_dir_all(root).is_ok())
+            .ok_or_else(|| "Couldn't create Alacritty runtime directory".to_string())?;
         Ok(root.join(format!("pane-{id}.toml")))
     }
 
@@ -398,7 +418,7 @@ mod imp {
         let focus_monitor_alive = Arc::new(AtomicBool::new(true));
         let pane_monitor_alive = Arc::clone(&focus_monitor_alive);
 
-        let pane = tauri::async_runtime::spawn_blocking(move || {
+        let mut pane = tauri::async_runtime::spawn_blocking(move || {
             let mut child = match Command::new(executable)
                 .arg("--config-file")
                 .arg(&config_path)
@@ -434,11 +454,18 @@ mod imp {
                 config_path,
                 config_contents: config,
                 focus_monitor_alive: pane_monitor_alive,
+                visible: false,
+                presentation_epoch: 0,
             })
         })
         .await
         .map_err(|error| format!("Alacritty launch task failed: {error}"))??;
 
+        let presentation = *state
+            .presentation
+            .lock()
+            .map_err(|_| "Native terminal presentation state is unavailable".to_string())?;
+        pane.presentation_epoch = presentation.epoch;
         let hwnd = pane.hwnd;
         match state.panes.lock() {
             Ok(mut panes) => {
@@ -556,8 +583,16 @@ mod imp {
         id: u32,
         bounds: NativePaneBounds,
         visible: bool,
+        epoch: u64,
     ) -> Result<(), String> {
         validate_bounds(bounds)?;
+        let presentation = *state
+            .presentation
+            .lock()
+            .map_err(|_| "Native terminal presentation state is unavailable".to_string())?;
+        if epoch != presentation.epoch {
+            return Ok(());
+        }
         let scale = window.scale_factor().map_err(|error| error.to_string())?;
         let mut panes = state
             .panes
@@ -566,6 +601,10 @@ mod imp {
         let pane = panes
             .get_mut(&id)
             .ok_or_else(|| format!("Unknown native pane {id}"))?;
+        if epoch < pane.presentation_epoch {
+            return Ok(());
+        }
+        pane.presentation_epoch = epoch;
         if pane
             .child
             .try_wait()
@@ -588,8 +627,9 @@ mod imp {
             }
             return Err("The embedded Alacritty window is no longer available".to_string());
         }
-        if !visible || bounds.width < 1.0 || bounds.height < 1.0 {
-            unsafe { ShowWindow(hwnd, SW_HIDE) };
+        if presentation.occluded || !visible || bounds.width < 1.0 || bounds.height < 1.0 {
+            pane.visible = false;
+            hide_overlay(hwnd);
             return Ok(());
         }
         let x = (bounds.left * scale).round() as i32;
@@ -616,10 +656,22 @@ mod imp {
             }
             ShowWindow(hwnd, SW_SHOW);
         }
+        pane.visible = true;
         Ok(())
     }
 
-    pub fn focus(state: tauri::State<'_, NativeTerminalState>, id: u32) -> Result<(), String> {
+    pub fn focus(
+        state: tauri::State<'_, NativeTerminalState>,
+        id: u32,
+        epoch: u64,
+    ) -> Result<(), String> {
+        let presentation = *state
+            .presentation
+            .lock()
+            .map_err(|_| "Native terminal presentation state is unavailable".to_string())?;
+        if presentation.occluded || epoch != presentation.epoch {
+            return Ok(());
+        }
         let panes = state
             .panes
             .lock()
@@ -627,11 +679,59 @@ mod imp {
         let pane = panes
             .get(&id)
             .ok_or_else(|| format!("Unknown native pane {id}"))?;
+        if !pane.visible || pane.presentation_epoch != epoch {
+            return Ok(());
+        }
         let hwnd = pane.hwnd as HWND;
         unsafe {
-            ShowWindow(hwnd, SW_SHOW);
             SetForegroundWindow(hwnd);
             SetFocus(hwnd);
+        }
+        Ok(())
+    }
+
+    fn hide_overlay(hwnd: HWND) {
+        unsafe {
+            ShowWindow(hwnd, SW_HIDE);
+            SetWindowPos(
+                hwnd,
+                std::ptr::null_mut(),
+                0,
+                0,
+                0,
+                0,
+                SWP_HIDEWINDOW | SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOZORDER,
+            );
+        }
+    }
+
+    pub fn set_occluded(
+        state: tauri::State<'_, NativeTerminalState>,
+        epoch: u64,
+        occluded: bool,
+    ) -> Result<(), String> {
+        {
+            let mut presentation = state
+                .presentation
+                .lock()
+                .map_err(|_| "Native terminal presentation state is unavailable".to_string())?;
+            if epoch < presentation.epoch {
+                return Ok(());
+            }
+            presentation.epoch = epoch;
+            presentation.occluded = occluded;
+        }
+        if !occluded {
+            return Ok(());
+        }
+        let mut panes = state
+            .panes
+            .lock()
+            .map_err(|_| "Native terminal state is unavailable".to_string())?;
+        for pane in panes.values_mut() {
+            pane.presentation_epoch = epoch;
+            pane.visible = false;
+            hide_overlay(pane.hwnd as HWND);
         }
         Ok(())
     }
@@ -740,12 +840,25 @@ mod imp {
         _id: u32,
         _bounds: NativePaneBounds,
         _visible: bool,
+        _epoch: u64,
     ) -> Result<(), String> {
         Err("Native Alacritty panes are only supported on Windows".to_string())
     }
 
-    pub fn focus(_state: tauri::State<'_, NativeTerminalState>, _id: u32) -> Result<(), String> {
+    pub fn focus(
+        _state: tauri::State<'_, NativeTerminalState>,
+        _id: u32,
+        _epoch: u64,
+    ) -> Result<(), String> {
         Err("Native Alacritty panes are only supported on Windows".to_string())
+    }
+
+    pub fn set_occluded(
+        _state: tauri::State<'_, NativeTerminalState>,
+        _epoch: u64,
+        _occluded: bool,
+    ) -> Result<(), String> {
+        Ok(())
     }
 
     pub fn kill(_state: tauri::State<'_, NativeTerminalState>, _id: u32) -> Result<(), String> {
@@ -791,16 +904,27 @@ pub fn update_alacritty(
     id: u32,
     bounds: NativePaneBounds,
     visible: bool,
+    epoch: u64,
 ) -> Result<(), String> {
-    imp::update(window, state, id, bounds, visible)
+    imp::update(window, state, id, bounds, visible, epoch)
 }
 
 #[tauri::command]
 pub fn focus_alacritty(
     state: tauri::State<'_, NativeTerminalState>,
     id: u32,
+    epoch: u64,
 ) -> Result<(), String> {
-    imp::focus(state, id)
+    imp::focus(state, id, epoch)
+}
+
+#[tauri::command]
+pub fn set_alacritty_occluded(
+    state: tauri::State<'_, NativeTerminalState>,
+    epoch: u64,
+    occluded: bool,
+) -> Result<(), String> {
+    imp::set_occluded(state, epoch, occluded)
 }
 
 #[tauri::command]

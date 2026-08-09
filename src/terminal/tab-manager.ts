@@ -359,7 +359,7 @@ export interface TabManager {
   closePane(): Promise<void>;
   applySettings(next: Settings): void;
   focusActive(): void;
-  setNativePanesVisible(visible: boolean): void;
+  setNativePanesVisible(visible: boolean): Promise<void>;
   dispose(): void;
 }
 
@@ -434,8 +434,26 @@ export function createTabManager(
   // `unlisteners` array that's already been drained, which would leak it.
   let disposed = false;
   let nativePanesVisible = true;
+  let nativeVisibilityRequest = 0;
   const nativeClient: NativePaneClient =
     deps.nativeClient ?? defaultNativePaneClient;
+
+  async function setNativeVisibility(visible: boolean): Promise<void> {
+    const request = ++nativeVisibilityRequest;
+    // Fail closed immediately. Tabs created while the hide acknowledgement is
+    // in flight must inherit the covered state.
+    if (!visible) {
+      nativePanesVisible = false;
+    }
+    await nativeClient.setOccluded(!visible);
+    if (request !== nativeVisibilityRequest || disposed) {
+      return;
+    }
+    nativePanesVisible = visible;
+    for (const tab of tabs) {
+      tab.manager.setNativePanesVisible(visible);
+    }
+  }
   // Types the chosen agent into each new pane's shell once its prompt is up.
   // Through paneIo so its synthetic keystrokes ("claude\r") count as input —
   // the echo suppression then keeps the launch echo out of the spinner.
@@ -743,7 +761,12 @@ export function createTabManager(
 
   async function newTab(): Promise<void> {
     // New tab goes through the Open board (workspace ∥ preset ∥ agent).
-    boardOpen.value = true;
+    try {
+      await setNativeVisibility(false);
+      boardOpen.value = true;
+    } catch (error) {
+      console.error("Couldn't safely open the workspace board:", error);
+    }
   }
 
   /**
@@ -1184,7 +1207,13 @@ export function createTabManager(
     // logic (nothing to save with zero tabs), not scope.
     "save-preset": () => {
       if (tabs.length > 0) {
-        saveDialogOpen.value = true;
+        void setNativeVisibility(false)
+          .then(() => {
+            saveDialogOpen.value = true;
+          })
+          .catch((error: unknown) => {
+            console.error("Couldn't safely open the preset dialog:", error);
+          });
       }
     },
     // Unified onto the same action:/runAction path as every other item
@@ -1192,7 +1221,13 @@ export function createTabManager(
     // `menu:new-preset` Tauri event instead. Sets the same request the live
     // window's "New Layout Preset…" board flow already used.
     "new-preset": () => {
-      editorRequest.value = { source: "live" };
+      void setNativeVisibility(false)
+        .then(() => {
+          editorRequest.value = { source: "live" };
+        })
+        .catch((error: unknown) => {
+          console.error("Couldn't safely open the preset editor:", error);
+        });
     },
   } satisfies Record<(typeof COMMAND_ACTIONS)[number], () => void>;
 
@@ -1628,12 +1663,7 @@ export function createTabManager(
     focusActive() {
       activeManager()?.focusActive();
     },
-    setNativePanesVisible(visible) {
-      nativePanesVisible = visible;
-      for (const tab of tabs) {
-        tab.manager.setNativePanesVisible(visible);
-      }
-    },
+    setNativePanesVisible: setNativeVisibility,
     dispose() {
       disposed = true;
       launcher.dispose();
