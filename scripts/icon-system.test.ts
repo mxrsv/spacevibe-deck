@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -12,7 +13,12 @@ import { describe, expect, it } from "vitest";
  * imperative DOM, so "icons live in components" is a habit, not a guarantee.
  */
 
-const SOURCE_ROOT = new URL("../src/", import.meta.url).pathname;
+const pathFromFileUrl = (
+  url: URL,
+  windows = process.platform === "win32",
+): string => fileURLToPath(url, { windows });
+
+const SOURCE_ROOT = pathFromFileUrl(new URL("../src/", import.meta.url));
 
 /**
  * The two SVGs that are not functional icons, with the count each file is
@@ -78,6 +84,12 @@ const files = sourceFiles().map((full) => ({
 }));
 
 describe("icon system", () => {
+  it("converts Windows file URLs without duplicating the drive root", () => {
+    expect(
+      pathFromFileUrl(new URL("file:///D:/a/spacevibe-deck/src/"), true),
+    ).toBe("D:\\a\\spacevibe-deck\\src\\");
+  });
+
   it("finds source files at all — a silent empty scan would pass everything", () => {
     expect(files.length).toBeGreaterThan(50);
   });
