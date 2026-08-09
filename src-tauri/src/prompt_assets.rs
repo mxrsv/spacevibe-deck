@@ -459,7 +459,8 @@ mod tests {
 
     #[test]
     fn reads_a_top_level_toml_description() {
-        let head = "name = \"plan-reviewer\"\ndescription = \"Reviews plans.\"\nmodel = \"inherit\"\n";
+        let head =
+            "name = \"plan-reviewer\"\ndescription = \"Reviews plans.\"\nmodel = \"inherit\"\n";
         assert_eq!(
             parse_toml_description(head),
             Some("Reviews plans.".to_string())
