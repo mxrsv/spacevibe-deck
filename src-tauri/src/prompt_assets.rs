@@ -603,12 +603,14 @@ mod tests {
         write_skill(&plugin, "brainstorming", "plugin one");
         let plugins_dir = home.join(".claude/plugins");
         std::fs::create_dir_all(&plugins_dir).unwrap();
+        let manifest = serde_json::json!({
+            "plugins": {
+                "superpowers@official": [{ "installPath": plugin }]
+            }
+        });
         std::fs::write(
             plugins_dir.join("installed_plugins.json"),
-            format!(
-                "{{\"plugins\":{{\"superpowers@official\":[{{\"installPath\":\"{}\"}}]}}}}",
-                plugin.to_string_lossy()
-            ),
+            serde_json::to_vec(&manifest).unwrap(),
         )
         .unwrap();
 
