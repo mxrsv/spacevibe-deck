@@ -43,7 +43,9 @@ mod imp {
     use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
     use windows_sys::core::BOOL;
     use windows_sys::Win32::Foundation::{HWND, LPARAM, POINT};
-    use windows_sys::Win32::Graphics::Gdi::ClientToScreen;
+    use windows_sys::Win32::Graphics::Gdi::{
+        ClientToScreen, CreateRectRgn, DeleteObject, SetWindowRgn,
+    };
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
         SendInput, SetFocus, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP,
         VK_CONTROL, VK_END, VK_HOME, VK_NEXT, VK_PRIOR, VK_RETURN, VK_SHIFT,
@@ -217,14 +219,14 @@ mod imp {
                 return Err("Failed to initialize the embedded Alacritty window".to_string());
             }
         }
-        Ok(())
+        hide_overlay(hwnd)
     }
 
     fn terminate(mut pane: NativePane) {
         pane.focus_monitor_alive.store(false, Ordering::Release);
         unsafe {
             if IsWindow(pane.hwnd as HWND) != 0 {
-                hide_overlay(pane.hwnd as HWND);
+                let _ = hide_overlay(pane.hwnd as HWND);
             }
         }
         let _ = pane.child.kill();
@@ -642,8 +644,7 @@ mod imp {
         }
         if presentation.occluded || !visible || bounds.width < 1.0 || bounds.height < 1.0 {
             pane.visible = false;
-            hide_overlay(hwnd);
-            return Ok(());
+            return hide_overlay(hwnd);
         }
         let x = (bounds.left * scale).round() as i32;
         let y = (bounds.top * scale).round() as i32;
@@ -667,6 +668,7 @@ mod imp {
             {
                 return Err("Failed to resize the embedded Alacritty window".to_string());
             }
+            clear_window_clip(hwnd)?;
             ShowWindow(hwnd, SW_SHOW);
         }
         pane.visible = true;
@@ -703,8 +705,16 @@ mod imp {
         Ok(())
     }
 
-    fn hide_overlay(hwnd: HWND) {
+    fn hide_overlay(hwnd: HWND) -> Result<(), String> {
         unsafe {
+            let region = CreateRectRgn(0, 0, 0, 0);
+            if region.is_null() {
+                return Err("Windows could not create the Alacritty visibility mask".to_string());
+            }
+            if SetWindowRgn(hwnd, region, 1) == 0 {
+                DeleteObject(region);
+                return Err("Windows could not hide the Alacritty rendering surface".to_string());
+            }
             ShowWindow(hwnd, SW_HIDE);
             SetWindowPos(
                 hwnd,
@@ -716,6 +726,14 @@ mod imp {
                 SWP_HIDEWINDOW | SWP_NOACTIVATE | SWP_NOZORDER,
             );
         }
+        Ok(())
+    }
+
+    fn clear_window_clip(hwnd: HWND) -> Result<(), String> {
+        if unsafe { SetWindowRgn(hwnd, std::ptr::null_mut(), 1) } == 0 {
+            return Err("Windows could not restore the Alacritty rendering surface".to_string());
+        }
+        Ok(())
     }
 
     pub fn set_occluded(
@@ -744,7 +762,7 @@ mod imp {
         for pane in panes.values_mut() {
             pane.presentation_epoch = epoch;
             pane.visible = false;
-            hide_overlay(pane.hwnd as HWND);
+            hide_overlay(pane.hwnd as HWND)?;
         }
         Ok(())
     }
