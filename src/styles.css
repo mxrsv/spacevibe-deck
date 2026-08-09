@@ -340,10 +340,8 @@ body,
 }
 
 .wsbar__add-glyph {
-  width: 7px;
   display: grid;
   place-items: center;
-  font-size: 14px;
   line-height: 1;
 }
 
@@ -586,6 +584,20 @@ button.attn-mark:hover {
   height: 16px;
   background: var(--hair);
   margin: 0 5px;
+}
+
+/* ── Functional icons (DeckIcon → lucide-preact) ──────────────
+   One rule for every icon in the app instead of alignment declarations at
+   each call site: an inline <svg> sits on the text baseline and leaves a
+   descender-sized gap inside whatever button it lands in.
+
+   Size and stroke deliberately do NOT appear here. CSS beats SVG presentation
+   attributes, so a `width` or `stroke-width` in this file would silently
+   override `DeckIcon` and put icon geometry in two places (DL-14.3). Colour
+   is set with `color`, never `stroke`, so `currentColor` keeps resolving. ── */
+.lucide {
+  display: block;
+  flex: none;
 }
 
 .iconbtn {
@@ -1214,6 +1226,7 @@ button.attn-mark:hover {
 }
 
 .cfg-btn__hint {
+  display: flex;
   color: var(--text-faint);
   transition: color 0.13s ease;
 }
@@ -1389,6 +1402,8 @@ button.attn-mark:hover {
 
 .cfg-row__remove {
   flex: none;
+  display: inline-flex;
+  align-items: center;
   margin-left: 8px;
   padding: 0 4px;
   border: none;
@@ -1739,13 +1754,10 @@ button.attn-mark:hover {
   background: color-mix(in srgb, var(--fg) 7%, transparent);
 }
 .row__ico {
-  flex: none;
-  width: 15px;
-  height: 15px;
-  stroke: var(--accent);
-  fill: none;
-  stroke-width: 1.5;
-  stroke-linejoin: round;
+  /* Geometry and stroke belong to DeckIcon — a width or stroke-width here
+     would win over its attributes and split icon sizing in two (DL-14.3).
+     Colour is `color`, so the icon's `currentColor` keeps resolving. */
+  color: var(--accent);
   opacity: 0.85;
 }
 .row__body {
@@ -1826,7 +1838,7 @@ button.attn-mark:hover {
   color: color-mix(in srgb, var(--bg) 82%, transparent);
 }
 .row.is-selected .row__ico {
-  stroke: var(--bg);
+  color: var(--bg);
   opacity: 1;
 }
 .row.is-selected .row__x {
@@ -1841,7 +1853,7 @@ button.attn-mark:hover {
   color: var(--text-faint);
 }
 .row.is-missing .row__ico {
-  stroke: var(--yellow);
+  color: var(--yellow);
 }
 .row.is-missing .row__path {
   text-decoration: line-through;
@@ -1901,16 +1913,6 @@ button.attn-mark:hover {
 .openfolder:hover {
   border-color: var(--accent);
   color: var(--text-primary);
-}
-.openfolder svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.6;
-  stroke-linejoin: round;
-  stroke-linecap: round;
 }
 .openfolder kbd {
   font: inherit;
@@ -2071,6 +2073,13 @@ button.attn-mark:hover {
   border-color: var(--accent);
   color: var(--text-primary);
   background: none;
+}
+/* The label is an icon plus a word; the grid above centres the pair, this
+   keeps them on one line with a gap instead of stacking. */
+.lcard--new > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 .lcard--new small {
   font-size: 10.5px;

@@ -11,22 +11,23 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 
 ## Modules and boundaries
 
-| Module                                                                                                                        | Responsibility                                               | In           | Out         |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------ | ----------- |
-| [src-tauri/src/pty.rs](../src-tauri/src/pty.rs) `current`                                                                     | PTY spawn/IO for agent CLIs                                  | commands     | shell procs |
-| [src-tauri/src/coordinator.rs](../src-tauri/src/coordinator.rs) `current`                                                     | window/pane coordination (load-bearing seam)                 | frontend     | windows     |
-| [src-tauri/src/menu.rs](../src-tauri/src/menu.rs) `current` + [menu_registry.rs](../src-tauri/src/menu_registry.rs) `current` | native menu — generated, edit the registry                   | build script | macOS menu  |
-| [src-tauri/src/migrate.rs](../src-tauri/src/migrate.rs) `current`                                                             | settings carry-over from the Stackgrid bundle id             | first launch | app dirs    |
-| [src-tauri/src/platform/](../src-tauri/src/platform) `current`                                                                | platform shell, home, discovery and process lifecycle        | PTY state    | OS APIs     |
-| [src-tauri/src/info.rs](../src-tauri/src/info.rs#L10-L34) `current`                                                           | explicit pane CWD/process kind/agent truth                   | PTY sessions | frontend    |
-| [src-tauri/tauri.windows.conf.json](../src-tauri/tauri.windows.conf.json) `current`                                           | native Windows chrome, WebView2 and NSIS-only bundle config  | Tauri build  | Windows app |
-| [src/terminal/](../src/terminal) `current`                                                                                    | xterm.js panes                                               | chrome       | Tauri IPC   |
-| [src/chrome/](../src/chrome) `current`                                                                                        | window chrome, tabs                                          | main         | terminal    |
-| [src/open-board/](../src/open-board) `current`                                                                                | workspace board: open, recents, workspaces store             | chrome       | lib         |
-| [src/settings/](../src/settings) `current` + [src/presets/](../src/presets) `current`                                         | settings UI/stores, layout presets                           | chrome       | lib         |
-| [src/updater/](../src/updater) `current`                                                                                      | single-flight update state, Tauri adapter and chrome action  | app          | Tauri       |
-| [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                      | multi-page landing and live GitHub release changelog         | Releases API | dist        |
-| [marketing/video/](../marketing/video) `current`                                                                              | marketing video stage — shares app components, virtual clock | app stage    | video       |
+| Module                                                                                                                        | Responsibility                                                           | In            | Out           |
+| ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------- | ------------- |
+| [src-tauri/src/pty.rs](../src-tauri/src/pty.rs) `current`                                                                     | PTY spawn/IO for agent CLIs                                              | commands      | shell procs   |
+| [src-tauri/src/coordinator.rs](../src-tauri/src/coordinator.rs) `current`                                                     | window/pane coordination (load-bearing seam)                             | frontend      | windows       |
+| [src-tauri/src/menu.rs](../src-tauri/src/menu.rs) `current` + [menu_registry.rs](../src-tauri/src/menu_registry.rs) `current` | native menu — generated, edit the registry                               | build script  | macOS menu    |
+| [src-tauri/src/migrate.rs](../src-tauri/src/migrate.rs) `current`                                                             | settings carry-over from the Stackgrid bundle id                         | first launch  | app dirs      |
+| [src-tauri/src/platform/](../src-tauri/src/platform) `current`                                                                | platform shell, home, discovery and process lifecycle                    | PTY state     | OS APIs       |
+| [src-tauri/src/info.rs](../src-tauri/src/info.rs#L10-L34) `current`                                                           | explicit pane CWD/process kind/agent truth                               | PTY sessions  | frontend      |
+| [src-tauri/tauri.windows.conf.json](../src-tauri/tauri.windows.conf.json) `current`                                           | native Windows chrome, WebView2 and NSIS-only bundle config              | Tauri build   | Windows app   |
+| [src/terminal/](../src/terminal) `current`                                                                                    | xterm.js panes                                                           | chrome        | Tauri IPC     |
+| [src/chrome/](../src/chrome) `current`                                                                                        | window chrome, tabs                                                      | main          | terminal      |
+| [src/open-board/](../src/open-board) `current`                                                                                | workspace board: open, recents, workspaces store                         | chrome        | lib           |
+| [src/settings/](../src/settings) `current` + [src/presets/](../src/presets) `current`                                         | settings UI/stores, layout presets                                       | chrome        | lib           |
+| [src/ui/controls/deck-icon.tsx](../src/ui/controls/deck-icon.tsx) `current`                                                   | the one icon primitive — Lucide presentation defaults and the four sizes | every surface | lucide-preact |
+| [src/updater/](../src/updater) `current`                                                                                      | single-flight update state, Tauri adapter and chrome action              | app           | Tauri         |
+| [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                      | multi-page landing and live GitHub release changelog                     | Releases API  | dist          |
+| [marketing/video/](../marketing/video) `current`                                                                              | marketing video stage — shares app components, virtual clock             | app stage     | video         |
 
 ## Main flows
 
@@ -72,6 +73,16 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 ## Standing architecture decisions
 
 - English only across strings/comments/docs — [AGENTS.md](../AGENTS.md) `current`.
+- Functional icons come from `lucide-preact` through a single `DeckIcon`
+  primitive, and nothing else authors an `<svg>` or presses a glyph character
+  into an action's place. This is chrome's one approved runtime dependency
+  (DL-1.1), bounded by a build-time gzip ceiling and a filesystem drift guard
+  rather than by review attention. CSS must never set an icon's `width`,
+  `height`, `stroke` or `stroke-width`: those declarations beat SVG attributes
+  and would move geometry back out of the primitive
+  ([DeckIcon](../src/ui/controls/deck-icon.tsx) `current`,
+  [rules §14](DESIGN-LANGUAGE.md) `current`,
+  [guard](../scripts/icon-system.test.ts) `current`).
 - ADR pipeline removed 2026-07-27; decisions now live in dated specs/plans — [CONTEXT.md](CONTEXT.md) `current`.
 - Menu is generated from a registry, never hand-edited — CI runs `generate:menu:check` — [menu_registry.rs](../src-tauri/src/menu_registry.rs) `current`.
 - Overlay guard ranks overlays by z-order — `pane`(0) < `settings`(20) < `board`(30) < `modal`(40) — and blocks an action while any open overlay's rank is `>=` its own tier; `>=` (not `>`) is deliberate so two `modal`-tier overlays exclude each other with no extra concept needed — [OverlayTier/TIER_RANK](../src/terminal/action-registry.ts#L8-L37) `current`, [overlayBlocksAction](../src/terminal/tab-manager.ts#L931-L962) `current`.

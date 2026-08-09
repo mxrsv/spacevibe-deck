@@ -1,5 +1,7 @@
 import { Fragment } from "preact";
 import { useSignal } from "@preact/signals";
+import { Plus, Trash2, X } from "lucide-preact";
+import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
 import {
   agentBinary,
   AGENT_LABEL_MAX,
@@ -210,7 +212,7 @@ export function AgentsSection() {
               title={`Remove ${agent.label}`}
               onClick={() => removeAgent(agent.id)}
             >
-              ×
+              <DeckIcon icon={Trash2} size={ROW_ICON} />
             </button>
           </div>
           {editError.value?.id === agent.id && (
@@ -264,7 +266,7 @@ export function AgentsSection() {
                 draftError.value = null;
               }}
             >
-              ×
+              <DeckIcon icon={X} size={ROW_ICON} />
             </button>
           </div>
           {draftError.value !== null && (
@@ -290,7 +292,7 @@ export function AgentsSection() {
             draftOpen.value = true;
           }}
         >
-          {draftOpen.value ? "add" : "+"}
+          {draftOpen.value ? "add" : <DeckIcon icon={Plus} size={ROW_ICON} />}
         </button>
       </ConfigRow>
     </>

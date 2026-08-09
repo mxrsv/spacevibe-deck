@@ -1,3 +1,4 @@
+import { Plus, X } from "lucide-preact";
 import type { ComponentChildren } from "preact";
 import { useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
@@ -10,6 +11,7 @@ import {
 import { dotColor } from "../lib/process-info";
 import { tabDotCssColor, type TabDotColor } from "../lib/tab-colors";
 import { AgentAttentionMark } from "./agent-attention-mark";
+import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { ChromeActions } from "./chrome-actions";
 import { TabPopover } from "./tab-popover";
 import { shortcutLabel } from "../lib/shortcut-label";
@@ -144,7 +146,7 @@ export function TabBar(props: TabBarProps) {
                 props.onCloseTab(index);
               }}
             >
-              ×
+              <DeckIcon icon={X} size={CHROME_ICON} />
             </button>
           </div>
         ))}
@@ -156,7 +158,7 @@ export function TabBar(props: TabBarProps) {
         aria-label="New tab"
         onClick={props.onNewTab}
       >
-        +
+        <DeckIcon icon={Plus} size={CHROME_ICON} />
       </button>
       <div class="tabbar__spacer" data-tauri-drag-region />
       <ChromeActions

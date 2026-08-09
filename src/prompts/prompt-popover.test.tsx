@@ -99,7 +99,7 @@ describe("PromptPopover", () => {
 
   it("injects the body and closes when the pill is clicked", async () => {
     await mount();
-    click(host.querySelector('[aria-label="Inject fix bug"]') as Element);
+    click(host.querySelector('[aria-label="Paste fix bug"]') as Element);
     await act(async () => {
       await Promise.resolve();
     });
@@ -114,7 +114,7 @@ describe("PromptPopover", () => {
     });
     await mount({ inject: vi.fn(() => pendingInject) });
 
-    click(host.querySelector('[aria-label="Inject review PR"]') as Element);
+    click(host.querySelector('[aria-label="Send review PR"]') as Element);
 
     expect(onClose).not.toHaveBeenCalled();
 
@@ -133,7 +133,7 @@ describe("PromptPopover", () => {
     const pendingInjectFn = vi.fn(() => pendingInject);
     await mount({ inject: pendingInjectFn });
     const button = host.querySelector(
-      '[aria-label="Inject review PR"]',
+      '[aria-label="Send review PR"]',
     ) as Element;
 
     click(button);
@@ -154,7 +154,7 @@ describe("PromptPopover", () => {
       finishInject = resolve;
     });
     await mount({ inject: vi.fn(() => pendingInject) });
-    click(host.querySelector('[aria-label="Inject review PR"]') as Element);
+    click(host.querySelector('[aria-label="Send review PR"]') as Element);
 
     act(() => render(null, host));
     await act(async () => {
@@ -165,6 +165,74 @@ describe("PromptPopover", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("names and draws paste and send as two different actions", async () => {
+    await mount();
+
+    const paste = host.querySelector(
+      '[aria-label="Paste fix bug"]',
+    ) as HTMLButtonElement;
+    const send = host.querySelector(
+      '[aria-label="Send review PR"]',
+    ) as HTMLButtonElement;
+
+    expect(paste.title).toBe("Paste into the focused pane");
+    expect(send.title).toBe("Send to the focused pane");
+    expect(
+      paste.querySelector("svg")?.classList.contains("lucide-clipboard-paste"),
+    ).toBe(true);
+    expect(send.querySelector("svg")?.classList.contains("lucide-send")).toBe(
+      true,
+    );
+    // Neither is named by its glyph: the icon is decoration, the label is the
+    // action, and a Send that fails its gate still only pasted.
+    expect(paste.textContent).toBe("");
+    expect(send.textContent).toBe("");
+  });
+
+  it("still reports a gated send as pasted, not sent", async () => {
+    const gated = vi.fn(async () => "pasted" as const);
+    await mount({ inject: gated });
+
+    click(host.querySelector('[aria-label="Send review PR"]') as Element);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // The Send icon promises Enter; the safety gate is what decides. When it
+    // refuses, the copy must keep saying so.
+    expect(gated).toHaveBeenCalledWith(target, "Review it.", true);
+    expect(persistError.value).toBe("Pasted — not sent");
+  });
+
+  it("passes each template's own autoSend flag to inject", async () => {
+    await mount();
+
+    click(host.querySelector('[aria-label="Paste fix bug"]') as Element);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(inject).toHaveBeenCalledWith(target, "Fix it.", false);
+  });
+
+  it("draws the row remove, draft add and picker as icons", async () => {
+    await mount();
+
+    click(host.querySelector(".cfg-row__label--edit") as Element);
+
+    expect(
+      host.querySelector('[aria-label="Remove fix bug"] svg'),
+    ).not.toBeNull();
+    expect(
+      host
+        .querySelector('[aria-label="Remove fix bug"] svg')
+        ?.classList.contains("lucide-trash-2"),
+    ).toBe(true);
+    expect(
+      host.querySelector(".prompt-picker .lucide-chevron-down"),
+    ).not.toBeNull();
+  });
+
   it("reports an injection rejection and stays open for retry", async () => {
     await mount({
       inject: vi.fn(async () => {
@@ -172,7 +240,7 @@ describe("PromptPopover", () => {
       }),
     });
 
-    click(host.querySelector('[aria-label="Inject review PR"]') as Element);
+    click(host.querySelector('[aria-label="Send review PR"]') as Element);
     await act(async () => {
       await Promise.resolve();
     });
@@ -184,7 +252,7 @@ describe("PromptPopover", () => {
   it("reports a failed paste and stays open for retry", async () => {
     await mount({ inject: vi.fn(async () => "failed" as const) });
 
-    click(host.querySelector('[aria-label="Inject review PR"]') as Element);
+    click(host.querySelector('[aria-label="Send review PR"]') as Element);
     await act(async () => {
       await Promise.resolve();
     });
@@ -196,7 +264,7 @@ describe("PromptPopover", () => {
   it("reports an overlapping pane injection and stays open for retry", async () => {
     await mount({ inject: vi.fn(async () => "busy" as const) });
 
-    click(host.querySelector('[aria-label="Inject review PR"]') as Element);
+    click(host.querySelector('[aria-label="Send review PR"]') as Element);
     await act(async () => {
       await Promise.resolve();
     });

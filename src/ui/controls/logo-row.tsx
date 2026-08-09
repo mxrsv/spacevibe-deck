@@ -6,6 +6,8 @@ import {
   setLogoFromPath,
 } from "../../settings/logo-store";
 import { ConfigRow } from "./config-row";
+import { Ellipsis, RotateCcw } from "lucide-preact";
+import { DeckIcon, ROW_ICON } from "./deck-icon";
 
 /**
  * App logo control: a menu-style pill that opens a native image picker, plus a
@@ -45,7 +47,9 @@ export function LogoRow() {
           onClick={() => void choose()}
         >
           {hasLogo ? "custom" : "default"}
-          <span class="cfg-btn__hint">…</span>
+          <span class="cfg-btn__hint">
+            <DeckIcon icon={Ellipsis} size={ROW_ICON} />
+          </span>
         </button>
         {hasLogo ? (
           <button
@@ -58,7 +62,7 @@ export function LogoRow() {
               clearLogo();
             }}
           >
-            ↺
+            <DeckIcon icon={RotateCcw} size={ROW_ICON} />
           </button>
         ) : null}
       </ConfigRow>

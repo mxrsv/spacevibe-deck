@@ -1,3 +1,6 @@
+import { h, render } from "preact";
+import { ChevronLeft, ChevronRight, X, type LucideIcon } from "lucide-preact";
+import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import type { ISearchOptions } from "@xterm/addon-search";
 import { settings } from "../settings/settings-store";
 import { resolveTheme } from "../settings/themes";
@@ -152,15 +155,24 @@ function findNormalized(
   return find(winner === "nfc" ? nfc : nfd, options);
 }
 
+/**
+ * The bar is imperative DOM, but its icons come from the same `DeckIcon` as
+ * every other surface — rendered into the button with Preact rather than by
+ * copying path data into a second icon path (DL-14.1). The name is set
+ * explicitly: an aria-hidden icon leaves nothing for the accessible name to
+ * fall back to except the tooltip.
+ */
 function barButton(
-  label: string,
+  icon: LucideIcon,
+  name: string,
   title: string,
   onClick: () => void,
 ): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "search-bar__btn";
-  button.textContent = label;
+  button.setAttribute("aria-label", name);
+  render(h(DeckIcon, { icon, size: ROW_ICON }), button);
   button.title = title;
   // Keep the input focused while clicking the bar's buttons
   button.addEventListener("mousedown", (event) => event.preventDefault());
@@ -201,9 +213,14 @@ export function openSearchBar(pane: Pane): void {
   element.append(
     input,
     counter,
-    barButton("‹", "Previous match (⇧↩)", findPrevious),
-    barButton("›", "Next match (↩)", findNext),
-    barButton("×", "Close (Esc)", closeSearchBar),
+    barButton(
+      ChevronLeft,
+      "Previous match",
+      "Previous match (⇧↩)",
+      findPrevious,
+    ),
+    barButton(ChevronRight, "Next match", "Next match (↩)", findNext),
+    barButton(X, "Close", "Close (Esc)", closeSearchBar),
   );
 
   const results = pane.search.onDidChangeResults(
@@ -255,7 +272,20 @@ export function openSearchBar(pane: Pane): void {
   });
 
   pane.element.appendChild(element);
-  current = { pane, element, input, disposeResults: () => results.dispose() };
+  const buttons = Array.from(element.querySelectorAll("button"));
+  current = {
+    pane,
+    element,
+    input,
+    disposeResults: () => {
+      results.dispose();
+      // Preact keeps a root per container; dropping the bar's DOM without
+      // unmounting would leave those roots pointing at detached nodes.
+      for (const button of buttons) {
+        render(null, button);
+      }
+    },
+  };
   input.focus();
 }
 

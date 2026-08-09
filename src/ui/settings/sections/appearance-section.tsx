@@ -1,3 +1,4 @@
+import { Minus, Plus, Repeat2 } from "lucide-preact";
 import {
   clampFontSize,
   FONT_SIZE_MAX,
@@ -6,6 +7,7 @@ import {
 } from "../../../settings/settings-schema";
 import { settings, updateSettings } from "../../../settings/settings-store";
 import { getPreset, THEME_PRESETS } from "../../../settings/themes";
+import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
 import { ConfigRow, ToggleRow } from "../../controls/config-row";
 import { FontRow } from "../../controls/font-row";
 import { LogoRow } from "../../controls/logo-row";
@@ -53,7 +55,9 @@ export function AppearanceSection() {
             }}
           />
           {preset.id}
-          <span class="cfg-btn__hint">↹</span>
+          <span class="cfg-btn__hint">
+            <DeckIcon icon={Repeat2} size={ROW_ICON} />
+          </span>
         </button>
       </ConfigRow>
       <FontRow
@@ -69,7 +73,7 @@ export function AppearanceSection() {
             disabled={current.fontSize <= FONT_SIZE_MIN}
             onClick={() => stepFontSize(-1)}
           >
-            −
+            <DeckIcon icon={Minus} size={ROW_ICON} />
           </button>
           <span class="cfg-step__val">{current.fontSize}px</span>
           <button
@@ -79,7 +83,7 @@ export function AppearanceSection() {
             disabled={current.fontSize >= FONT_SIZE_MAX}
             onClick={() => stepFontSize(1)}
           >
-            +
+            <DeckIcon icon={Plus} size={ROW_ICON} />
           </button>
         </span>
       </ConfigRow>
@@ -93,7 +97,9 @@ export function AppearanceSection() {
           onClick={cycleTabBar}
         >
           {current.tabBarPosition}
-          <span class="cfg-btn__hint">↹</span>
+          <span class="cfg-btn__hint">
+            <DeckIcon icon={Repeat2} size={ROW_ICON} />
+          </span>
         </button>
       </ConfigRow>
       <ToggleRow

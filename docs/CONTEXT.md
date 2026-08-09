@@ -348,6 +348,74 @@ popover closing when its target pane's tab closes are all unobserved outside
 unit tests. `agy`, `gemini` and `opencode` have no verified asset layout, so a
 pane running one of them hides the pickers and pastes the body alone.
 
+## Unified icon system — 2026-08-09
+
+The app's functional icons now come from one place. Before this, chrome and the
+settings rail carried hand-drawn SVG while rows, tabs and the search bar used
+typographic characters — `×`, `▾`, `↹`, `↺`, `‹`, `›`, `↩` — so the same action
+was a picture in one surface and a character in the next, at whatever weight
+the surrounding font happened to give it.
+
+- The source is `lucide-preact` (the first new runtime dependency chrome has
+  taken), imported by name and drawn through one component that owns every
+  presentation default — `aria-hidden`, `focusable`, `fill`, stroke and the
+  four sizes the chrome uses
+  ([`DeckIcon`](../src/ui/controls/deck-icon.tsx) `current`,
+  [rules §14](DESIGN-LANGUAGE.md) `current`). `strokeWidth` is 1.8
+  because the icons it replaced already drew at 1.8 in the same 24-unit box —
+  true for chrome and the settings rail, but NOT for the Open Board, whose two
+  folder drawings used a 16-unit box and came out heavier (≈1.4px against
+  ≈1.1px now).
+- CSS is where this kind of contract usually dies: a `stroke-width` or `width`
+  rule beats an SVG attribute, and `.row__ico` / `.openfolder svg` had both.
+  Those declarations are gone, their themed colours restated as `color` so
+  `currentColor` resolves the same way it painted before
+  ([styles](../src/styles.css) `current`).
+- Prompt Board's one action became two: `ClipboardPaste` when a template only
+  pastes, `Send` when it presses Enter, with the accessible name and tooltip
+  saying the same thing. The safety gate is untouched and still authoritative —
+  a Send that fails it pastes and reports "Pasted — not sent"
+  ([popover](../src/prompts/prompt-popover.tsx) `current`,
+  [gate](../src/prompts/inject.ts) `current`).
+- The search bar stays imperative DOM but does not get a second icon path: it
+  renders `DeckIcon` into its existing buttons with Preact and unmounts those
+  roots on both disposal paths. Its buttons also gained explicit
+  `aria-label`s — with the text replaced by an aria-hidden icon, the only name
+  left would have been the tooltip
+  ([bar](../src/terminal/search-bar.ts) `current`).
+- Outside the library on purpose: the Deck brand mark, agent and OS logos,
+  keyboard/terminal notation, status dots and `WorkspaceSpinner`. A filesystem
+  test scans `src/**/*.{ts,tsx}` for authored `<svg>` and for retired glyphs,
+  with counts as well as paths, so neither can come back quietly
+  ([guard](../scripts/icon-system.test.ts) `current`). It earned itself
+  immediately: it found a layout-preset delete button the plan had missed.
+
+Verified 2026-08-09: `npm test` 1136 passing across 99 files (from 1103/96),
+`npm run build` green, `npm run generate:menu:check` green, and
+`npm run video:render` exit 0 across all four presets. Main JS gzip went
+170.37 KiB → 172.67 KiB, **+2.30 KiB** against a 15 KiB ceiling, which is the
+evidence that Rollup tree-shakes the barrel rather than shipping the catalog;
+CSS shrank 9.02 → 8.97 KiB.
+
+The marketing stage did NOT change and could not have: `marketing/stage/appwin.js`
+draws its own chrome icons as inline SVG strings and imports nothing from `src/`,
+so the app and the film now carry two different icon sets that happen to agree
+because the marketing copies were traced from the same drawings. Nothing broke —
+but `video:render` is a weaker gate than it looks for this migration, and the
+film's chrome will drift from the app's the moment either side changes an icon
+([stage icons](../marketing/stage/appwin.js) `current`). Reconciling them is out
+of this migration's scope, which explicitly excluded marketing.
+
+Visual review closed 2026-08-10. `npm run tauri dev` built and opened the native
+app at 1100×720; macOS denied direct window capture because this session lacks
+Screen Recording permission, so the same DOM was then captured at 1100×720 and
+device scale 2 through the Vite surface in Tokyo Night, Dracula, One Dark and
+Catppuccin Mocha. The Open Board folder icons, sidebar add slot, `Maximize2`,
+settings rail and reset control were all legible and geometrically consistent;
+no implementation adjustment followed the review. This proves the rendered
+frontend across all four themes, not Windows WebView2 parity. The unified icon
+system is therefore `current`, while real Windows visual E2E remains separate.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

@@ -1,3 +1,4 @@
+import { Plus, X } from "lucide-preact";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -9,6 +10,7 @@ import {
   statusInfo,
   tabViews,
 } from "../terminal/tabs-store";
+import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { tildify } from "../lib/process-info";
 import { workspaceLabel } from "../lib/workspace-label";
 import { type TabDotColor } from "../lib/tab-colors";
@@ -236,7 +238,7 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
                   props.onCloseTab(index);
                 }}
               >
-                ×
+                <DeckIcon icon={X} size={CHROME_ICON} />
               </button>
             </div>
           );
@@ -248,7 +250,9 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
           aria-label="New tab"
           onClick={props.onNewTab}
         >
-          <span class="wsbar__add-glyph">+</span>
+          <span class="wsbar__add-glyph">
+            <DeckIcon icon={Plus} size={CHROME_ICON} />
+          </span>
           <span>Open workspace</span>
         </button>
       </div>

@@ -97,6 +97,15 @@ describe("WorkspaceSidebar", () => {
     });
   };
 
+  it("draws the workspace close action as an icon", () => {
+    tabViews.value = [tab({ key: 1, name: "Alpha" })];
+    mount(baseProps());
+
+    const close = host.querySelector(".wsitem__close") as HTMLButtonElement;
+    expect(close.querySelector(".lucide-x")).not.toBeNull();
+    expect(close.getAttribute("aria-label")).toBe("Close workspace");
+  });
+
   it("shows the Windows New Tab shortcut without changing its accessible label", () => {
     initializeDesktopEnvironment({
       platform: "windows",
@@ -107,6 +116,10 @@ describe("WorkspaceSidebar", () => {
     const add = host.querySelector(".wsbar__add") as HTMLButtonElement;
     expect(add.title).toBe("New tab (Ctrl+Shift+T)");
     expect(add.getAttribute("aria-label")).toBe("New tab");
+    expect(add.querySelector(".lucide-plus")).not.toBeNull();
+    // The word stays: this control is wide and reads as a labelled action.
+    expect(add.textContent).toContain("Open workspace");
+
   });
 
   it("renders the label, path, and logo for each row", () => {

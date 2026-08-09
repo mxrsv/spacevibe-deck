@@ -99,6 +99,19 @@ describe("TabBar", () => {
     expect(add.getAttribute("aria-label")).toBe("New tab");
   });
 
+  it("draws add and close as icons, named only by their labels", () => {
+    tabViews.value = [tab({ key: 1, name: "Alpha" })];
+    mount(baseProps());
+
+    const add = host.querySelector(".tab-add") as HTMLButtonElement;
+    const close = host.querySelector(".tab__close") as HTMLButtonElement;
+
+    expect(add.querySelector(".lucide-plus")).not.toBeNull();
+    expect(add.textContent).toBe("");
+    expect(close.querySelector(".lucide-x")).not.toBeNull();
+    expect(close.getAttribute("aria-label")).toBe("Close tab");
+  });
+
   it("clicking the status mark calls onFocusAttention(index) and does not select or toggle the popover", () => {
     tabViews.value = [
       tab({

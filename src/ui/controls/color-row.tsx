@@ -1,4 +1,6 @@
 import { ConfigRow } from "./config-row";
+import { RotateCcw } from "lucide-preact";
+import { DeckIcon, ROW_ICON } from "./deck-icon";
 
 interface ColorRowProps {
   label: string;
@@ -9,6 +11,7 @@ interface ColorRowProps {
 }
 
 /** color value kind: swatch + hex pill over an invisible native color input (DL-6). */
+
 export function ColorRow({
   label,
   value,
@@ -26,7 +29,7 @@ export function ColorRow({
           aria-label={`Reset ${label} to theme color`}
           onClick={onClear}
         >
-          ↺
+          <DeckIcon icon={RotateCcw} size={ROW_ICON} />
         </button>
       )}
       <span class="cfg-btn cfg-btn--overlay">

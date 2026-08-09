@@ -78,6 +78,18 @@ describe("ResetSection — Restore defaults confirm", () => {
     });
   };
 
+  it("keeps the word next to the icon on a consequential action", () => {
+    mount();
+    const reset = getReset();
+
+    // DL-14.4: icon-only is for familiar actions. Restoring defaults is not
+    // one, so the icon supplements the label rather than replacing it.
+    expect(reset.textContent?.trim()).toBe("reset");
+    expect(
+      reset.querySelector("svg")?.classList.contains("lucide-rotate-ccw"),
+    ).toBe(true);
+  });
+
   it("does NOT reset on render, and asks before resetting", async () => {
     mockedAsk.mockResolvedValueOnce(true);
     mount();
