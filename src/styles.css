@@ -138,6 +138,9 @@ body,
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
+  /* The prefixed form is what WKWebView honours; without it a reorder drag
+     paints the label and path selected while the row moves. */
+  -webkit-user-select: none;
   user-select: none;
   min-width: 0;
   transition:
@@ -1769,6 +1772,10 @@ button.attn-mark:hover {
   text-align: left;
   color: inherit;
   cursor: pointer;
+  /* A reorder drag must not paint the folder name selected on the way past.
+     Prefixed first — that is the form WKWebView honours. */
+  -webkit-user-select: none;
+  user-select: none;
   padding: 6px 26px 6px 8px;
   border-radius: 7px;
 }

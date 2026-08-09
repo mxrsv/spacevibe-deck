@@ -270,6 +270,12 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
                 ) {
                   return;
                 }
+                // Selection starts on the press, before this is known to be a
+                // drag, and WebKit will happily paint the label and path
+                // highlighted while the row moves. Cancelling the default here
+                // is what stops it; the row is not text anyone copies, and
+                // click still fires so selecting the tab is unaffected.
+                event.preventDefault();
                 pressed.current = { y: event.clientY, index, key: tab.key };
               }}
               onPointerMove={(event) => {

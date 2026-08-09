@@ -447,6 +447,26 @@ describe("WorkspaceSidebar", () => {
       expect(host.querySelector(".tab-popover")).toBeNull();
     });
 
+    it("cancels the press so the row's text is not selected while it moves", () => {
+      threeTabs();
+      mount(baseProps());
+      layOutRows();
+
+      const rows = host.querySelectorAll(".wsitem");
+      const down = new MouseEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        clientY: 20,
+        button: 0,
+      });
+      Object.defineProperty(down, "pointerId", { value: 1 });
+      act(() => {
+        rows[0].dispatchEvent(down);
+      });
+
+      expect(down.defaultPrevented).toBe(true);
+    });
+
     it("pressing the close button never starts a drag", () => {
       threeTabs();
       const props = baseProps();
