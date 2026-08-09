@@ -294,7 +294,20 @@ export function App() {
    * open/close decision.
    */
   const toggleSettings = (): void => {
-    toggleSettingsPanel(restoreFocusAfterSettings);
+    if (settingsOpen.value) {
+      toggleSettingsPanel(restoreFocusAfterSettings);
+      return;
+    }
+    if (editorRequest.value !== null || saveDialogOpen.value) {
+      return;
+    }
+    const hidden =
+      tabsRef.current?.setNativePanesVisible(false) ?? Promise.resolve();
+    void hidden.then(() => {
+      toggleSettingsPanel(restoreFocusAfterSettings);
+    }).catch((error: unknown) => {
+      reportPersistError(`Couldn't safely hide native terminals: ${error}`);
+    });
   };
 
   const nativePanesObstructed = (): boolean =>
@@ -708,7 +721,11 @@ export function App() {
       }
       stage={
         <main class="stage">
-          <div class="stage__tabs" ref={stagesRef} />
+          <div
+            class={`stage__tabs ${overlayCoversPane() ? "is-covered" : ""}`}
+            aria-hidden={overlayCoversPane()}
+            ref={stagesRef}
+          />
           {boardOpen.value ? (
             <OpenBoard
               canCancel={tabViews.value.length > 0}

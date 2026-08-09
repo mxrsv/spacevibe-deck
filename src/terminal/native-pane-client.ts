@@ -9,6 +9,11 @@ export interface NativePaneBounds {
   readonly height: number;
 }
 export interface NativePaneClient {
+  /**
+   * Native windows paint above the WebView. This is the single global gate
+   * that prevents them from being revealed while a board/modal covers panes.
+   */
+  setOccluded(occluded: boolean): Promise<void>;
   spawnAlacritty(
     cwd: string | null,
     appearance: NativeTerminalAppearance,
@@ -41,15 +46,30 @@ export type NativeTerminalAction =
   | "scroll-bottom";
 
 export function createTauriNativePaneClient(): NativePaneClient {
+  let epoch = 0;
+  let desiredOccluded = true;
+  let occlusionRequest: Promise<void> = Promise.resolve();
   return {
+    setOccluded(occluded) {
+      if (occluded === desiredOccluded) {
+        return occlusionRequest;
+      }
+      desiredOccluded = occluded;
+      epoch += 1;
+      occlusionRequest = invoke("set_alacritty_occluded", {
+        epoch,
+        occluded,
+      });
+      return occlusionRequest;
+    },
     spawnAlacritty(cwd, appearance) {
       return invoke<number>("spawn_alacritty", { cwd, appearance });
     },
     updateAlacritty(id, bounds, visible) {
-      return invoke("update_alacritty", { id, bounds, visible });
+      return invoke("update_alacritty", { id, bounds, visible, epoch });
     },
     focusAlacritty(id) {
-      return invoke("focus_alacritty", { id });
+      return invoke("focus_alacritty", { id, epoch });
     },
     killAlacritty(id) {
       return invoke("kill_alacritty", { id });
@@ -83,6 +103,8 @@ export function createMemoryNativePaneClient(
     bounds: NativePaneBounds;
     visible: boolean;
   }>;
+  readonly occlusionUpdates: boolean[];
+  readonly occluded: boolean;
   emitFocus(id: number): void;
 } {
   const sessions = new Set<number>();
@@ -93,10 +115,22 @@ export function createMemoryNativePaneClient(
     visible: boolean;
   }> = [];
   const focusHandlers = new Set<(id: number) => void>();
+  const occlusionUpdates: boolean[] = [];
+  let occluded = true;
   return {
     sessions,
     spawnedCwds,
     updates,
+    occlusionUpdates,
+    get occluded() {
+      return occluded;
+    },
+    async setOccluded(next) {
+      if (next !== occluded) {
+        occluded = next;
+        occlusionUpdates.push(next);
+      }
+    },
     async spawnAlacritty(cwd) {
       const id = nextId;
       nextId += 1;

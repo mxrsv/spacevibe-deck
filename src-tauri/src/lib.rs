@@ -90,6 +90,7 @@ pub fn run() {
             native_terminal::perform_alacritty_action,
             native_terminal::update_alacritty,
             native_terminal::focus_alacritty,
+            native_terminal::set_alacritty_occluded,
             native_terminal::kill_alacritty,
             confirm_quit
         ])

@@ -29,7 +29,7 @@ import {
   type CreatePaneFn,
   type PaneKind,
 } from "./pane-lifecycle";
-import type { PaneAttentionSignal } from "./pane";
+import type { Pane, PaneAttentionSignal } from "./pane";
 import { clearPaneCwd, paneCwd, setPaneCwd } from "./pane-cwd";
 import { freshCwd } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
@@ -193,6 +193,12 @@ export function createTerminalManager(
   let inProgrammaticFocus = false;
   let tabVisible = container.style.display !== "none";
   let nativePanesVisible = true;
+
+  function focusPaneWhenVisible(pane: Pane | undefined): void {
+    if (pane && tabVisible && nativePanesVisible) {
+      pane.focus();
+    }
+  }
 
   // Pane bar visibility is CSS-only: pane.ts always builds and populates the
   // bar (the drag ghost and anchor still read its cwd) — this class hides it.
@@ -393,7 +399,7 @@ export function createTerminalManager(
       // DOM, which does not match the just-split tree until render() runs.
       activeId = pane.id;
       render();
-      pane.focus();
+      focusPaneWhenVisible(pane);
       callbacks.onLayoutChange();
     } catch (err) {
       life.panes
@@ -466,7 +472,7 @@ export function createTerminalManager(
     tree = leaf(pane.id);
     activeId = pane.id;
     render();
-    pane.focus();
+    focusPaneWhenVisible(pane);
   }
 
   async function initFromLayout(
@@ -498,7 +504,7 @@ export function createTerminalManager(
     );
     activeId = spawned[0]?.id ?? null;
     render();
-    spawned[0]?.focus();
+    focusPaneWhenVisible(spawned[0]);
   }
 
   function fileDragOver(x: number, y: number): void {
@@ -599,7 +605,7 @@ export function createTerminalManager(
         pane.fit();
       }
       if ((options?.focus ?? true) && activeId !== null) {
-        life.panes.get(activeId)?.focus();
+        focusPaneWhenVisible(life.panes.get(activeId));
       }
     },
     hide() {

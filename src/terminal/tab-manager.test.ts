@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaneProcessInfo } from "../lib/process-info";
 import type { Pane, PaneEvents, PaneAttentionSignal } from "./pane";
-import type { CreatePaneFn } from "./pane-lifecycle";
+import type { CreateNativePaneFn, CreatePaneFn } from "./pane-lifecycle";
+import { createMemoryNativePaneClient } from "./native-pane-client";
 import { createMemoryPtyClient, type PtyClient } from "./pty-client";
 import { MACOS_KEYMAP, type ShortcutAction } from "./keymap";
 import { ACTION_REGISTRY } from "./action-registry";
@@ -261,6 +262,76 @@ function setupControllable(
 function flush(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
+
+describe("createTabManager native presentation ordering", () => {
+  it("waits for native occlusion before opening the workspace board", async () => {
+    let resolveHide!: () => void;
+    const base = createMemoryNativePaneClient();
+    const nativeClient = {
+      ...base,
+      setOccluded: vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveHide = resolve;
+          }),
+      ),
+    };
+    const { tm } = setup({ deps: { nativeClient } });
+    boardOpen.value = false;
+
+    const opening = tm.newTab();
+    expect(boardOpen.value).toBe(false);
+    expect(nativeClient.setOccluded).toHaveBeenCalledWith(true);
+
+    resolveHide();
+    await opening;
+    expect(boardOpen.value).toBe(true);
+    boardOpen.value = false;
+    tm.dispose();
+  });
+
+  it("ignores a stale hide acknowledgement after a newer reveal", async () => {
+    const base = createMemoryNativePaneClient();
+    const pending: Array<{
+      occluded: boolean;
+      resolve(): void;
+    }> = [];
+    const nativeClient = {
+      ...base,
+      setOccluded(occluded: boolean) {
+        return new Promise<void>((resolve) => {
+          pending.push({ occluded, resolve });
+        });
+      },
+    };
+    const visibility: boolean[] = [];
+    const createNativePane: CreateNativePaneFn = (id, _settings, events) => ({
+      ...fakePane(id, events),
+      kind: "alacritty",
+      setVisible(visible) {
+        visibility.push(visible);
+      },
+    });
+    const { tm } = setup({ deps: { nativeClient, createNativePane } });
+    await tm.openFromPreset({ type: "leaf" }, ["C:\\repo"], {
+      workspacePath: "C:\\repo",
+      agent: "alacritty",
+    });
+    visibility.length = 0;
+
+    const hide = tm.setNativePanesVisible(false);
+    const reveal = tm.setNativePanesVisible(true);
+    expect(pending.map((request) => request.occluded)).toEqual([true, false]);
+
+    pending[1].resolve();
+    await reveal;
+    pending[0].resolve();
+    await hide;
+
+    expect(visibility).toEqual([true]);
+    tm.dispose();
+  });
+});
 
 /**
  * Fake `AgentNotifier` — records every `maybeNotify` call verbatim instead
@@ -2655,6 +2726,7 @@ describe("createTabManager new-preset / save-preset — unified into the action:
     await flush();
 
     tm.runAction("new-preset");
+    await flush();
 
     expect(editorRequest.value).toEqual({ source: "live" });
 
@@ -2676,6 +2748,7 @@ describe("createTabManager new-preset / save-preset — unified into the action:
 
     settingsOpen.value = true;
     tm.runAction("new-preset");
+    await flush();
 
     expect(editorRequest.value).toEqual({ source: "live" });
 
@@ -2689,6 +2762,7 @@ describe("createTabManager new-preset / save-preset — unified into the action:
 
     boardOpen.value = true;
     tm.runAction("new-preset");
+    await flush();
 
     expect(editorRequest.value).toEqual({ source: "live" });
 
@@ -2714,11 +2788,13 @@ describe("createTabManager new-preset / save-preset — unified into the action:
     await flush();
 
     window.dispatchEvent(metaShiftKeydown("n"));
+    await flush();
     expect(editorRequest.value).toEqual({ source: "live" });
     editorRequest.value = null;
 
     settingsOpen.value = true;
     window.dispatchEvent(metaShiftKeydown("n"));
+    await flush();
     expect(editorRequest.value).toEqual({ source: "live" });
 
     tm.dispose();
