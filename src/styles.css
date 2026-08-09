@@ -1823,6 +1823,31 @@ button.attn-mark:hover {
   color: var(--red);
 }
 
+/* Drag-to-reorder. The row being carried fades rather than moving, and the
+   destination is a hairline drawn on the row under the pointer — no
+   placeholder is inserted, so nothing else in the list shifts while dragging
+   (DL-1.2: opacity only, and no transition on a pointer-driven position). */
+.row.is-dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+.row.is-drop-before::before,
+.row.is-drop-after::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.row.is-drop-before::before {
+  top: -1px;
+}
+.row.is-drop-after::after {
+  bottom: -1px;
+}
+
 /* Selection like a Finder sidebar: solid accent, text flips to var(--bg) so
    it follows the theme. Secondary text sits at 82% — over the contrast floor
    yet behind the folder name. */

@@ -76,7 +76,14 @@ function validateCombo(
 }
 
 /**
- * Newest first; same path moves to the front (no duplicate rows).
+ * Record an open without disturbing the list's order.
+ *
+ * Order belongs to the user (rows are draggable — see `reorderRecents`), so a
+ * folder already in the list is updated **in place**: only its timestamp and
+ * remembered combo change, and a row hand-placed at the bottom stays there
+ * however often it is opened. A folder not in the list yet has no place of its
+ * own, so it enters at the front and the cap drops the last row — which is now
+ * the row the user put last, not the least recently used one.
  *
  * A `presetId`/`agent` argument of `undefined` **inherits** the existing
  * entry's combo (a plain "focus this folder again" must not wipe the memory),
@@ -89,17 +96,52 @@ export function pushRecent(
   presetId?: string,
   agent?: AgentChoice,
 ): readonly RecentWorkspace[] {
-  const previous = recents.find((entry) => entry.path === path);
-  const rest = recents.filter((entry) => entry.path !== path);
+  const index = recents.findIndex((entry) => entry.path === path);
+  const previous = index === -1 ? undefined : recents[index];
   const nextPresetId = presetId ?? previous?.lastPresetId;
   const nextAgent = agent !== undefined ? agent : previous?.lastAgent;
-  const head: RecentWorkspace = {
+  const entry: RecentWorkspace = {
     path,
     lastOpenedAt: now,
     ...(nextPresetId !== undefined ? { lastPresetId: nextPresetId } : {}),
     ...(nextAgent !== undefined ? { lastAgent: nextAgent } : {}),
   };
-  return [head, ...rest].slice(0, MAX_RECENTS);
+  if (index === -1) {
+    return [entry, ...recents].slice(0, MAX_RECENTS);
+  }
+  return recents.map((current, at) => (at === index ? entry : current));
+}
+
+/**
+ * Move `movedPath` to sit before or after `targetPath`.
+ *
+ * Addressed by path, never by index: the rail renders `[...alive, ...missing]`
+ * and may prepend a fabricated just-picked row, so a visual index does not
+ * address the stored array. Remove-then-insert-beside-the-target sidesteps the
+ * whole mapping.
+ *
+ * Returns the input array **by reference** when the move changes nothing or
+ * either path is unknown, so a caller can skip the disk write on identity.
+ */
+export function reorderRecents(
+  recents: readonly RecentWorkspace[],
+  movedPath: string,
+  targetPath: string,
+  placeAfter: boolean,
+): readonly RecentWorkspace[] {
+  const moved = recents.find((entry) => entry.path === movedPath);
+  const rest = recents.filter((entry) => entry.path !== movedPath);
+  const target = rest.findIndex((entry) => entry.path === targetPath);
+  if (moved === undefined || target === -1) {
+    return recents;
+  }
+  const at = placeAfter ? target + 1 : target;
+  const next = [...rest.slice(0, at), moved, ...rest.slice(at)];
+  // Dropping a row back into the gap it already occupies is a no-op, not a
+  // write — the rows either side of it are the same ones as before.
+  return next.every((entry, index) => entry === recents[index])
+    ? recents
+    : next;
 }
 
 /** Split rows into live and missing folders, keeping each side's order. */

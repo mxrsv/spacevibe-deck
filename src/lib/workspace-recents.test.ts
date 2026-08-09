@@ -7,10 +7,12 @@ import {
   partitionRecents,
   pushRecent,
   removeRecents,
+  reorderRecents,
   resolveAgentChoice,
   validateWorkspaces,
   WORKSPACES_VERSION,
 } from "./workspace-recents";
+import type { RecentWorkspace } from "./workspace-recents";
 
 const NOW = 1_800_000_000_000;
 
@@ -42,26 +44,42 @@ describe("resolveAgentChoice", () => {
 });
 
 describe("pushRecent", () => {
-  it("puts the newest entry first", () => {
+  it("puts a folder it has never seen first", () => {
     const one = pushRecent([], "/a", NOW);
     const two = pushRecent(one, "/b", NOW + 1);
     expect(two.map((r) => r.path)).toEqual(["/b", "/a"]);
   });
 
-  it("dedupes by path, moving it to the front with a fresh timestamp", () => {
+  it("dedupes by path, keeping its place with a fresh timestamp", () => {
     const list = pushRecent(pushRecent([], "/a", NOW), "/b", NOW + 1);
     const again = pushRecent(list, "/a", NOW + 2);
-    expect(again.map((r) => r.path)).toEqual(["/a", "/b"]);
-    expect(again[0].lastOpenedAt).toBe(NOW + 2);
+    // Hand-placed order outranks recency: re-opening /a must not lift it.
+    expect(again.map((r) => r.path)).toEqual(["/b", "/a"]);
+    expect(again[1].lastOpenedAt).toBe(NOW + 2);
   });
 
-  it("caps the list at MAX_RECENTS, dropping the oldest", () => {
+  it("caps the list at MAX_RECENTS, dropping the last row", () => {
     let list = pushRecent([], "/0", NOW);
     for (let i = 1; i <= MAX_RECENTS; i += 1) {
       list = pushRecent(list, `/${i}`, NOW + i);
     }
     expect(list).toHaveLength(MAX_RECENTS);
     expect(list.some((r) => r.path === "/0")).toBe(false);
+  });
+
+  it("evicts the bottom row even when it is the most recently opened", () => {
+    // The price of manual order: the row the user parked last is the one the
+    // cap drops, however fresh its timestamp is.
+    let list = pushRecent([], "/keep", NOW);
+    for (let i = 1; i < MAX_RECENTS; i += 1) {
+      list = pushRecent(list, `/${i}`, NOW + i);
+    }
+    list = pushRecent(list, "/keep", NOW + 1000); // newest, still at the bottom
+    expect(list[list.length - 1].path).toBe("/keep");
+
+    const full = pushRecent(list, "/fresh", NOW + 2000);
+    expect(full.some((r) => r.path === "/keep")).toBe(false);
+    expect(full[0].path).toBe("/fresh");
   });
 
   it("records the layout + agent combo on the entry", () => {
@@ -82,6 +100,73 @@ describe("pushRecent", () => {
     const first = pushRecent([], "/a", NOW, "preset-1", "claude");
     const again = pushRecent(first, "/a", NOW + 5, "preset-1", null);
     expect(again[0].lastAgent).toBeNull();
+  });
+});
+
+describe("reorderRecents", () => {
+  const list: readonly RecentWorkspace[] = ["/a", "/b", "/c", "/d"].map(
+    (path, index) => ({ path, lastOpenedAt: NOW - index }),
+  );
+  const paths = (entries: readonly RecentWorkspace[]): string[] =>
+    entries.map((entry) => entry.path);
+
+  it("drops a row into the gap before the target", () => {
+    expect(paths(reorderRecents(list, "/d", "/b", false))).toEqual([
+      "/a",
+      "/d",
+      "/b",
+      "/c",
+    ]);
+  });
+
+  it("drops a row into the gap after the target", () => {
+    expect(paths(reorderRecents(list, "/a", "/c", true))).toEqual([
+      "/b",
+      "/c",
+      "/a",
+      "/d",
+    ]);
+  });
+
+  it("carries the moved entry whole, not just its path", () => {
+    const withCombo: readonly RecentWorkspace[] = [
+      { path: "/a", lastOpenedAt: NOW, lastPresetId: "p-grid" },
+      { path: "/b", lastOpenedAt: NOW - 1 },
+    ];
+    const moved = reorderRecents(withCombo, "/a", "/b", true);
+    expect(moved[1].lastPresetId).toBe("p-grid");
+    expect(moved[1].lastOpenedAt).toBe(NOW);
+  });
+
+  // The three no-ops below share one contract: same array back, so the store
+  // can skip the disk write on an identity check alone.
+  it("returns the same array when the row lands where it already is", () => {
+    expect(reorderRecents(list, "/b", "/a", true)).toBe(list);
+    expect(reorderRecents(list, "/b", "/c", false)).toBe(list);
+  });
+
+  it("returns the same array when a row is dropped onto itself", () => {
+    expect(reorderRecents(list, "/b", "/b", false)).toBe(list);
+  });
+
+  it("returns the same array when either path is unknown", () => {
+    expect(reorderRecents(list, "/ghost", "/b", false)).toBe(list);
+    expect(reorderRecents(list, "/a", "/ghost", false)).toBe(list);
+  });
+
+  it("moves a row across a gap that a missing folder sits in", () => {
+    // Missing rows render in their own group but stay interleaved in the
+    // file, so a move addressed by path must step over them untouched.
+    const mixed: readonly RecentWorkspace[] = [
+      { path: "/a", lastOpenedAt: NOW },
+      { path: "/ghost", lastOpenedAt: NOW - 1 },
+      { path: "/b", lastOpenedAt: NOW - 2 },
+    ];
+    expect(paths(reorderRecents(mixed, "/b", "/a", false))).toEqual([
+      "/b",
+      "/a",
+      "/ghost",
+    ]);
   });
 });
 
@@ -226,7 +311,10 @@ describe("forgetAgent", () => {
     pushRecent([], path, NOW, "preset-1", agent);
 
   it("drops the memory of one agent, keeping the folder", () => {
-    const [entry] = forgetAgent(withAgent("/a", "custom:aider"), "custom:aider");
+    const [entry] = forgetAgent(
+      withAgent("/a", "custom:aider"),
+      "custom:aider",
+    );
     expect(entry.path).toBe("/a");
     expect(entry.lastPresetId).toBe("preset-1");
     expect("lastAgent" in entry).toBe(false);
@@ -241,7 +329,9 @@ describe("forgetAgent", () => {
       "claude",
     );
     const after = forgetAgent(list, "custom:aider");
-    expect(after.find((entry) => entry.path === "/b")?.lastAgent).toBe("claude");
+    expect(after.find((entry) => entry.path === "/b")?.lastAgent).toBe(
+      "claude",
+    );
   });
 
   it("returns the same entry objects when nothing remembered it", () => {
@@ -256,9 +346,9 @@ describe("forgetAgent", () => {
     // regenerates custom:aider and the folder would launch the new command.
     const list = withAgent("/a", "custom:aider");
     const after = forgetAgent(list, "custom:aider");
-    expect(resolveAgentChoice(after[0].lastAgent, [{ id: "custom:aider" }])).toBe(
-      "custom:aider",
-    );
+    expect(
+      resolveAgentChoice(after[0].lastAgent, [{ id: "custom:aider" }]),
+    ).toBe("custom:aider");
     expect(after[0].lastAgent).toBeUndefined();
   });
 });

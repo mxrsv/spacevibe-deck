@@ -4,6 +4,7 @@ import {
   forgetAgent,
   pushRecent,
   removeRecents,
+  reorderRecents,
   validateWorkspaces,
   WORKSPACES_VERSION,
   type AgentChoice,
@@ -72,6 +73,31 @@ export function removeWorkspaceRecents(paths: readonly string[]): void {
   const next: WorkspacesData = { version: WORKSPACES_VERSION, recents };
   workspacesData.value = next;
   persist(next, "Recents change wasn't saved");
+}
+
+/**
+ * Move a folder to sit before or after another one, and persist — hand-placed
+ * order is the list's order of record (`pushRecent` no longer reshuffles it),
+ * so losing this write would silently undo what the user just dragged.
+ *
+ * A move that changes nothing — dropping a row back where it started, or
+ * naming a path the store does not hold — returns the same array and is
+ * dropped here: no signal churn, no disk write, no "wasn't saved" report for a
+ * change that never happened.
+ */
+export function reorderWorkspaceRecents(
+  movedPath: string,
+  targetPath: string,
+  placeAfter: boolean,
+): void {
+  const current = workspacesData.value.recents;
+  const recents = reorderRecents(current, movedPath, targetPath, placeAfter);
+  if (recents === current) {
+    return;
+  }
+  const next: WorkspacesData = { version: WORKSPACES_VERSION, recents };
+  workspacesData.value = next;
+  persist(next, "New workspace order wasn't saved");
 }
 
 /** Write-behind only — callers update the signal first, and it stays the

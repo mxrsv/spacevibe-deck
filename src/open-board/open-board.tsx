@@ -3,11 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { open } from "@tauri-apps/plugin-dialog";
-import {
-  BOARD_ICON,
-  DeckIcon,
-  ROW_ICON,
-} from "../ui/controls/deck-icon";
+import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { countLeaves } from "../lib/split-tree";
 import { isBuiltIn, type Preset } from "../lib/preset-schema";
 import {
@@ -35,7 +31,11 @@ import {
   presetsData,
   renamePreset,
 } from "../presets/presets-store";
-import { removeWorkspaceRecents, workspacesData } from "./workspaces-store";
+import {
+  removeWorkspaceRecents,
+  reorderWorkspaceRecents,
+  workspacesData,
+} from "./workspaces-store";
 import { logoDataUrl } from "../settings/logo-store";
 import { PresetThumb } from "../presets/preset-thumb";
 import claudeLogo from "../assets/agent-claude.svg";
@@ -141,6 +141,13 @@ export function OpenBoard({
   const renameValue = useSignal("");
   const confirmDeleteId = useSignal<string | null>(null);
   const opening = useSignal(false);
+  // Drag-to-reorder, held here rather than in the store: an unfinished drag
+  // must leave `workspaces.json` alone, so only the drop writes.
+  const draggingPath = useSignal<string | null>(null);
+  const dropTarget = useSignal<{
+    readonly path: string;
+    readonly after: boolean;
+  } | null>(null);
   // A failed Open, tagged with the exact combo that failed. Tagging (rather
   // than clearing from every selection handler) makes the notice self-expire:
   // change the folder, layout or agent and it stops matching, so the footer
@@ -456,10 +463,18 @@ export function OpenBoard({
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
     switch (key) {
       case "ArrowUp":
-        step(-1);
+        if (event.altKey) {
+          reorderSelected(-1);
+        } else {
+          step(-1);
+        }
         break;
       case "ArrowDown":
-        step(1);
+        if (event.altKey) {
+          reorderSelected(1);
+        } else {
+          step(1);
+        }
         break;
       case "ArrowLeft":
       case "ArrowRight":
@@ -513,6 +528,30 @@ export function OpenBoard({
     event.stopPropagation();
   }
 
+  /**
+   * ⌥↑ / ⌥↓ — the keyboard half of drag-to-reorder, so the order is not set by
+   * pointer alone. It swaps with the neighbouring **live, stored** row: the
+   * Missing group keeps its own order and the just-picked row is not in the
+   * file yet, so neither can be a destination. Selection follows the folder,
+   * not the position, so holding the key walks a row down the list.
+   */
+  function reorderSelected(dir: 1 | -1): void {
+    const path = selectedPath.value;
+    if (section.value !== "workspace" || path === null) {
+      return;
+    }
+    const stored = workspacesData.value.recents;
+    const ordered = groups.alive.filter((row) =>
+      stored.some((entry) => entry.path === row.path),
+    );
+    const index = ordered.findIndex((row) => row.path === path);
+    const neighbour = index === -1 ? undefined : ordered[index + dir];
+    if (neighbour === undefined) {
+      return; // already at the end of the group
+    }
+    reorderWorkspaceRecents(path, neighbour.path, dir === 1);
+  }
+
   function step(dir: 1 | -1): void {
     if (section.value === "workspace") {
       moveWorkspace(dir);
@@ -538,14 +577,65 @@ export function OpenBoard({
     ]
       .filter((part): part is string => part !== null)
       .join(" · ");
+    // Only a stored, live row can be dragged or dropped onto: the fabricated
+    // just-picked row has no place in the file yet, and the Missing group is
+    // there to be emptied, so an order inside it would mean nothing.
+    const movable = stored && !gone;
+    const drop = dropTarget.value;
+    const edge =
+      drop?.path === recent.path ? (drop.after ? "after" : "before") : null;
     return (
       <li
         key={recent.path}
-        class={`row ${selected ? "is-selected" : ""} ${gone ? "is-missing" : ""}`}
+        class={`row ${selected ? "is-selected" : ""} ${gone ? "is-missing" : ""} ${
+          draggingPath.value === recent.path ? "is-dragging" : ""
+        } ${edge === null ? "" : `is-drop-${edge}`}`}
         aria-current={selected ? "true" : undefined}
         title={combo === "" ? undefined : `Opens as ${combo}`}
         onClick={() => selectWorkspace(recent.path)}
         onDblClick={() => void confirmOpen()}
+        draggable={movable}
+        onDragStart={(event) => {
+          draggingPath.value = recent.path;
+          // Some payload is required or the drag never starts in WebKit.
+          event.dataTransfer?.setData("text/plain", recent.path);
+          if (event.dataTransfer !== null) {
+            event.dataTransfer.effectAllowed = "move";
+          }
+        }}
+        onDragOver={(event) => {
+          const moved = draggingPath.value;
+          if (moved === null || !movable || moved === recent.path) {
+            return; // no preventDefault → this row refuses the drop
+          }
+          event.preventDefault();
+          if (event.dataTransfer !== null) {
+            event.dataTransfer.dropEffect = "move";
+          }
+          // Which half the pointer is in decides the gap, so a row can be
+          // dropped past the last one without a separate drop zone.
+          const box = event.currentTarget.getBoundingClientRect();
+          dropTarget.value = {
+            path: recent.path,
+            after: event.clientY > box.top + box.height / 2,
+          };
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          const moved = draggingPath.value;
+          const target = dropTarget.value;
+          if (moved !== null && target !== null) {
+            reorderWorkspaceRecents(moved, target.path, target.after);
+          }
+          draggingPath.value = null;
+          dropTarget.value = null;
+        }}
+        // Fires whether the drop landed or was abandoned outside the rail —
+        // without it a cancelled drag would leave the row dimmed for good.
+        onDragEnd={() => {
+          draggingPath.value = null;
+          dropTarget.value = null;
+        }}
       >
         <DeckIcon icon={FolderOpen} size={BOARD_ICON} class="row__ico" />
         <span class="row__body">
@@ -563,6 +653,9 @@ export function OpenBoard({
           <button
             class="row__x"
             aria-label={`Remove ${folderName(recent.path)} from recents`}
+            // Grabbing the remove button must not drag the row out from under
+            // the pointer — that press is aimed at this button, not the list.
+            draggable={false}
             onClick={(event) => {
               event.stopPropagation();
               removeRecentRows([recent.path]);
@@ -846,6 +939,9 @@ export function OpenBoard({
             <div class="foot__keys">
               <span>
                 <b>↑↓</b> select
+              </span>
+              <span>
+                <b>{platform === "windows" ? "Alt+↑↓" : "⌥↑↓"}</b> reorder
               </span>
               <span>
                 <b>⇥</b> section
