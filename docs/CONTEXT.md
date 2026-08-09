@@ -77,10 +77,22 @@ Implemented source boundaries:
   ([links.rs](../src-tauri/src/links.rs#L187-L314) `current`).
 - The Windows keymap, primary modifier, visible labels, clipboard chords, and
   native decorated chrome are platform-owned
-  ([WINDOWS_KEYMAP](../src/terminal/action-registry.ts#L670-L736) `current`,
+  ([WINDOWS_KEYMAP](../src/terminal/action-registry.ts#L701-L784) `current`,
   [commands table](../src/terminal/tab-manager.ts#L946-L1024) `current`,
   [terminal-clipboard.ts](../src/terminal/terminal-clipboard.ts#L27-L55) `current`,
   [DesktopChrome](../src/ui/app.tsx#L48-L89) `current`).
+- Resolved 2026-08-10: the capture-phase shortcut listener left `Ctrl+V`
+  unbound, so it reached the active agent; Codex then treated a text paste as
+  image paste. Deck now owns `Ctrl+V`, `Ctrl+Shift+V`, and physical
+  `Shift+Insert` for text only, through the existing clipboard-to-xterm path.
+  Deck leaves `Alt+V` unbound; whether the active agent CLI handles it for
+  image paste is unverified. Plain Explorer Copy of a folder (`CF_HDROP`
+  file-list data) and smart clipboard routing are unsupported
+  ([WINDOWS_KEYMAP](../src/terminal/action-registry.ts#L701-L784) `current`,
+  [clipboard text boundary](../src/terminal/terminal-clipboard.ts#L45-L55) `current`).
+- This exact paste contract has unit coverage, but real Windows desktop E2E is
+  still unverified; it remains part of the pending real-device checklist
+  ([acceptance criteria](specs/2026-07-29-windows-desktop-design.md#10-verification-and-acceptance) `decided`).
 - Pull-request CI compiles the Windows desktop without producing or publishing
   an installer
   ([windows-check](../.github/workflows/ci.yml#L65-L109) `current`). CI run

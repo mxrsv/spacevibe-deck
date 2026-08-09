@@ -361,12 +361,16 @@ describe("matchBinding", () => {
   // the native bindings there, and xterm handles them. This guarantee used to
   // live in a handler-level test that platform-gated at runtime; the fix moved
   // to the keymap layer, so it has to be asserted here instead.
-  it("leaves Ctrl+Shift+C/V unbound on macOS", () => {
+  it("leaves Windows clipboard chords unbound on macOS", () => {
     expect(
       matchBinding(keyEvent("c", { ctrlKey: true, shiftKey: true })),
     ).toBeNull();
     expect(
       matchBinding(keyEvent("v", { ctrlKey: true, shiftKey: true })),
+    ).toBeNull();
+    expect(matchBinding(keyEvent("v", { ctrlKey: true }))).toBeNull();
+    expect(
+      matchBinding(codeEvent("Insert", "Unidentified", { shiftKey: true })),
     ).toBeNull();
   });
 });
@@ -374,6 +378,7 @@ describe("matchBinding", () => {
 describe("WINDOWS_KEYMAP", () => {
   it.each([
     ["c", { ctrlKey: true, shiftKey: true }, "copy-selection"],
+    ["v", { ctrlKey: true }, "paste"],
     ["v", { ctrlKey: true, shiftKey: true }, "paste"],
     ["c", { ctrlKey: true, altKey: true, shiftKey: true }, "copy-cwd"],
     ["d", { ctrlKey: true, shiftKey: true }, "split-row"],
@@ -408,6 +413,7 @@ describe("WINDOWS_KEYMAP", () => {
   });
 
   it.each([
+    ["Insert", "Unidentified", { shiftKey: true }, "paste"],
     ["BracketRight", "]", { ctrlKey: true, altKey: true }, "focus-next"],
     ["BracketLeft", "[", { ctrlKey: true, altKey: true }, "focus-prev"],
     ["Digit1", "1", { ctrlKey: true }, "select-tab-1"],
@@ -415,6 +421,12 @@ describe("WINDOWS_KEYMAP", () => {
     ["Digit9", "9", { ctrlKey: true }, "select-last-tab"],
   ] as const)("uses physical position for %s", (code, key, mods, action) => {
     expect(matchBinding(codeEvent(code, key, mods), WINDOWS_KEYMAP)).toBe(action);
+  });
+
+  it("leaves Alt+V to the active agent", () => {
+    expect(
+      matchBinding(keyEvent("v", { altKey: true }), WINDOWS_KEYMAP),
+    ).toBeNull();
   });
 
   // Windows delivers AltGr as left-Ctrl + right-Alt, so every Ctrl+Alt binding

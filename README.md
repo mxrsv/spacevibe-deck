@@ -44,7 +44,7 @@ Every pane is backed by a real PTY via Rust's `portable-pty`. macOS runs your lo
 
 ### 🔲 Split panes & layouts
 
-- Split any pane **vertically** or **horizontally** into a nested layout tree; visible shortcut labels follow the active platform ([platform keymaps](src/terminal/action-registry.ts#L513-L736) `current`).
+- Split any pane **vertically** or **horizontally** into a nested layout tree; visible shortcut labels follow the active platform ([platform keymaps](src/terminal/action-registry.ts#L520-L784) `current`).
 - **Drag the dividers** to resize; each split remembers its ratio.
 - **Focus** by cycling or by direction using the platform keymap.
 - **Zoom** a single pane to fill the tab (tmux-style), or use **Focus Expand** to gently enlarge whichever pane is active.
@@ -156,20 +156,24 @@ install the first updater-enabled release once.
 ## Keyboard shortcuts
 
 Both platform maps come from
-[`action-registry.ts`](src/terminal/action-registry.ts#L513-L736) `current`.
+[`action-registry.ts`](src/terminal/action-registry.ts#L520-L784) `current`.
 Bare Windows `Ctrl+C`, `Ctrl+D`, `Ctrl+W`, `Ctrl+K`, and `Ctrl+F` remain PTY
-input. `Ctrl+Shift+C`/`Ctrl+Shift+V` dispatch through the shared action path —
-keymap, then the `commands` table, then the pane — with paste routed through
-xterm's `Terminal.paste()` for bracketed paste and CRLF normalization
-([commands table](src/terminal/tab-manager.ts#L946-L1024) `current`,
-[Pane clipboard](src/terminal/pane.ts#L332-L337) `current`,
+input. `Ctrl+V`, `Ctrl+Shift+V`, and physical `Shift+Insert` paste clipboard
+text through the shared action path — keymap, then the `commands` table, then
+the pane — with paste routed through xterm's `Terminal.paste()` for bracketed
+paste and CRLF normalization. Deck leaves `Alt+V` unbound, but image-paste
+support depends on the active agent CLI and is not yet verified on Windows. A
+plain Explorer Copy of a folder (`CF_HDROP` file list) is unsupported
+([commands table](src/terminal/tab-manager.ts#L1068-L1088) `current`,
+[Pane clipboard](src/terminal/pane.ts#L362-L367) `current`,
 [terminal-clipboard.ts](src/terminal/terminal-clipboard.ts#L27-L55) `current`).
 
 ### Windows engineering preview
 
 | Shortcut                  | Action                                |
 | ------------------------- | ------------------------------------- |
-| Ctrl+Shift+C / V          | Copy selection / paste                |
+| Ctrl+Shift+C              | Copy selection                        |
+| Ctrl+V / Ctrl+Shift+V / Shift+Insert | Paste clipboard text       |
 | Ctrl+Alt+Shift+C          | Copy pane working directory           |
 | Ctrl+Shift+D              | Split pane vertically                 |
 | Ctrl+Alt+Shift+D          | Split pane horizontally               |

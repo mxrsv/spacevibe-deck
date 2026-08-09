@@ -700,7 +700,9 @@ const WINDOWS_SELECT_LAST_TAB_BINDING: KeyBinding = {
 
 /**
  * Windows Terminal-style chords keep conventional bare Ctrl sequences
- * available to the PTY.
+ * available to the PTY, except Ctrl+V: Deck owns standard text paste through
+ * Ctrl+V, Ctrl+Shift+V, and physical Shift+Insert. Alt+V remains unbound so
+ * the active agent can handle it if that CLI supports the chord.
  *
  * Clipboard actions dispatch through the shared path every other chord uses —
  * this keymap, then the `commands` table in tab-manager.ts, then
@@ -712,7 +714,9 @@ const WINDOWS_SELECT_LAST_TAB_BINDING: KeyBinding = {
  */
 export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   { key: "c", ctrl: true, shift: true, action: "copy-selection" },
+  { key: "v", ctrl: true, action: "paste" },
   { key: "v", ctrl: true, shift: true, action: "paste" },
+  { code: "Insert", shift: true, action: "paste" },
   { key: "c", ctrl: true, alt: true, shift: true, action: "copy-cwd" },
   { key: "d", ctrl: true, shift: true, action: "split-row" },
   { key: "d", ctrl: true, alt: true, shift: true, action: "split-column" },

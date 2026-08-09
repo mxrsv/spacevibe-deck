@@ -50,9 +50,9 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
    labels, pointer modifier, and Windows clipboard chords. The chords dispatch
    through the shared action path, not a pane-local handler
    ([platform.ts](../src/lib/platform.ts#L76-L107) `current`,
-   [WINDOWS_KEYMAP](../src/terminal/action-registry.ts#L670-L736) `current`,
-   [commands table](../src/terminal/tab-manager.ts#L946-L1024) `current`,
-   [Pane clipboard](../src/terminal/pane.ts#L332-L337) `current`,
+   [WINDOWS_KEYMAP](../src/terminal/action-registry.ts#L701-L784) `current`,
+   [commands table](../src/terminal/tab-manager.ts#L1068-L1088) `current`,
+   [Pane clipboard](../src/terminal/pane.ts#L362-L367) `current`,
    [terminal-clipboard.ts](../src/terminal/terminal-clipboard.ts#L27-L55) `current`).
 9. After the tab manager exists, Deck checks the configured updater channel
    once. The macOS App menu may trigger a later manual check or open the trusted
@@ -88,11 +88,17 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 - Overlay guard ranks overlays by z-order — `pane`(0) < `settings`(20) < `board`(30) < `modal`(40) — and blocks an action while any open overlay's rank is `>=` its own tier; `>=` (not `>`) is deliberate so two `modal`-tier overlays exclude each other with no extra concept needed — [OverlayTier/TIER_RANK](../src/terminal/action-registry.ts#L8-L37) `current`, [overlayBlocksAction](../src/terminal/tab-manager.ts#L931-L962) `current`.
 - Action identity and scope are shared, but macOS and Windows keymaps are
   separate. Cocoa menu generation reads only the macOS map; the Windows map
-  preserves bare Ctrl terminal controls, and its copy/paste chords resolve to
-  real dispatch targets in the shared `commands` table — paste goes through
-  xterm's `Terminal.paste()` so bracketed paste and CRLF normalization apply
-  ([platform keymaps](../src/terminal/action-registry.ts#L513-L736) `current`,
-  [commands table](../src/terminal/tab-manager.ts#L946-L1024) `current`,
+  preserves bare Ctrl terminal controls except standard text paste:
+  `Ctrl+V`, `Ctrl+Shift+V`, and physical `Shift+Insert` resolve to real
+  `paste` targets in the shared `commands` table. Deck leaves `Alt+V` unbound;
+  whether an active agent CLI handles it for image paste is unverified. The
+  path reads clipboard text, then uses xterm's
+  `Terminal.paste()` so bracketed paste and CRLF normalization apply; it does
+  not support Explorer `CF_HDROP` file-list clipboard data or smart routing
+  ([platform keymaps](../src/terminal/action-registry.ts#L520-L784) `current`,
+  [commands table](../src/terminal/tab-manager.ts#L1068-L1088) `current`,
+  [Pane clipboard](../src/terminal/pane.ts#L362-L367) `current`,
+  [clipboard text boundary](../src/terminal/terminal-clipboard.ts#L45-L55) `current`,
   [menu generator](../scripts/generate-menu.ts) `current`).
 - The macOS menu path can't tell an accelerator from a mouse click (Tauri's `MenuEvent` carries only an id), so only `destructive: true` actions (`close-pane`/`close-tab`/`clear-buffer`) are suppressed while a chrome text field holds the caret — every other action still runs there — [ActionDefinition.destructive](../src/terminal/action-registry.ts#L82-L115) `current`, [runAction](../src/terminal/tab-manager.ts#L1032-L1054) `current`.
 - Windows uses native decorated system chrome; Preact renders only Deck's

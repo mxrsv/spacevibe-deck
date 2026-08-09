@@ -124,6 +124,12 @@ function fakePane(
   } = {},
 ): Pane {
   const element = document.createElement("div");
+  // Mirrors xterm's textarea: shortcut events originate below the pane root,
+  // then the window capture listener decides whether Deck owns the chord.
+  const terminalInput = document.createElement("textarea");
+  terminalInput.dataset.testid = "fake-terminal-input";
+  element.className = "pane__term";
+  element.appendChild(terminalInput);
   // Focusable + real DOM focus movement (like xterm's textarea would): the
   // Task 11 visibility predicate checks `element.contains(document.activeElement)`,
   // so the fake must actually move `document.activeElement`, not just fire
@@ -334,8 +340,8 @@ describe("createTabManager materialize (through the createPane seam)", () => {
     expect(statusInfo.value.paneCount).toBe(2);
   });
 
-  it("dispatches the Windows clipboard chords to the active pane (prior H1, audit A4)", async () => {
-    // Both chords resolved in WINDOWS_KEYMAP but had no entry in the commands
+  it("dispatches the Windows clipboard chords to the active pane and leaves Alt+V to the active agent (prior H1, audit A4)", async () => {
+    // Clipboard chords resolved in WINDOWS_KEYMAP but had no entry in the commands
     // table, so dispatchAction's `commands[action]?.()` was a silent no-op —
     // and the pane-local handler on the xterm textarea could never be reached,
     // because handleShortcut is a capture-phase window listener that
@@ -355,16 +361,49 @@ describe("createTabManager materialize (through the createPane seam)", () => {
     // regardless of the commands-table wiring under test.
     await tm.init();
 
+    const terminalInput = document.querySelector<HTMLTextAreaElement>(
+      '[data-testid="fake-terminal-input"]',
+    );
+    if (terminalInput === null) {
+      throw new Error("Expected the fake terminal input to be mounted");
+    }
+    const downstream = vi.fn();
+    terminalInput.addEventListener("keydown", downstream);
+    const dispatch = (init: KeyboardEventInit): KeyboardEvent => {
+      const event = new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        ...init,
+      });
+      terminalInput.dispatchEvent(event);
+      return event;
+    };
+
+    const ctrlV = dispatch({ key: "v", ctrlKey: true });
     // Upper-case `key` on purpose: Shift is held, and matchBinding lowercases.
-    window.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "C", ctrlKey: true, shiftKey: true }),
-    );
-    window.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "V", ctrlKey: true, shiftKey: true }),
-    );
+    const copy = dispatch({ key: "C", ctrlKey: true, shiftKey: true });
+    const ctrlShiftV = dispatch({
+      key: "V",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    const shiftInsert = dispatch({
+      key: "Unidentified",
+      code: "Insert",
+      shiftKey: true,
+    });
+    const altV = dispatch({ key: "v", altKey: true });
 
     expect(copySelection).toHaveBeenCalledTimes(1);
-    expect(paste).toHaveBeenCalledTimes(1);
+    expect(paste).toHaveBeenCalledTimes(3);
+    expect(copy.defaultPrevented).toBe(true);
+    expect(ctrlV.defaultPrevented).toBe(true);
+    expect(ctrlShiftV.defaultPrevented).toBe(true);
+    expect(shiftInsert.defaultPrevented).toBe(true);
+    expect(downstream).toHaveBeenCalledTimes(1);
+    expect(downstream).toHaveBeenLastCalledWith(altV);
+    expect(altV.defaultPrevented).toBe(false);
+    expect(paste).toHaveBeenCalledTimes(3);
     tm.dispose();
   });
 
