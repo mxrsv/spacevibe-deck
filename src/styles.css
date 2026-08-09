@@ -717,6 +717,14 @@ button.attn-mark:hover {
   display: flex;
 }
 
+/* Native terminal windows and xterm canvases must never paint through a
+   board/settings/modal transition. Keep layout geometry stable for the next
+   reveal while suppressing the covered terminal surface completely. */
+.stage__tabs.is-covered {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .tab-stage {
   flex: 1;
   min-width: 0;

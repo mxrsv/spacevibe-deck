@@ -224,6 +224,41 @@ describe("createTerminalManager native Alacritty panes", () => {
     expect(visibility[visibility.length - 1]).toBe(true);
   });
 
+  it("does not focus a native pane materialized behind the workspace board", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const native = createMemoryNativePaneClient();
+    const focus = vi.fn();
+    const visibility: boolean[] = [];
+    const tm = createTerminalManager(
+      container,
+      { onLayoutChange() {} },
+      createMemoryPtyClient(),
+      {
+        nativeClient: native,
+        createNativePane: (id, _settings, events) => ({
+          ...fakePane(id, events),
+          kind: "alacritty",
+          focus,
+          setVisible(value) {
+            visibility.push(value);
+          },
+        }),
+      },
+    );
+
+    tm.setNativePanesVisible(false);
+    await tm.initFromLayout(
+      { type: "leaf", paneType: "alacritty" },
+      ["C:\\repo"],
+      "alacritty",
+    );
+    tm.show();
+
+    expect(visibility[visibility.length - 1]).toBe(false);
+    expect(focus).not.toHaveBeenCalled();
+  });
+
   it("materializes every leaf as Alacritty when requested", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
