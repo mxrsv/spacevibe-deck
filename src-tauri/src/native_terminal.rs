@@ -83,6 +83,7 @@ mod imp {
         next_id: AtomicU32,
         panes: Mutex<HashMap<u32, NativePane>>,
         presentation: Mutex<PresentationState>,
+        occluded: Arc<AtomicBool>,
     }
 
     impl Default for NativeTerminalState {
@@ -94,6 +95,7 @@ mod imp {
                     epoch: 0,
                     occluded: true,
                 }),
+                occluded: Arc::new(AtomicBool::new(true)),
             }
         }
     }
@@ -355,13 +357,29 @@ mod imp {
         Ok(())
     }
 
-    fn monitor_focus(app: AppHandle, id: u32, hwnd: HWND, alive: Arc<AtomicBool>) {
+    fn monitor_focus(
+        app: AppHandle,
+        id: u32,
+        hwnd: HWND,
+        alive: Arc<AtomicBool>,
+        occluded: Arc<AtomicBool>,
+    ) {
         let hwnd = hwnd as isize;
         std::thread::spawn(move || {
             let hwnd = hwnd as HWND;
             let thread_id = unsafe { GetWindowThreadProcessId(hwnd, std::ptr::null_mut()) };
             let mut had_focus = false;
             while alive.load(Ordering::Acquire) && unsafe { IsWindow(hwnd) } != 0 {
+                if occluded.load(Ordering::Acquire) {
+                    // Alacritty/winit can recreate its surface region or show
+                    // the popup after SpaceVibe hides it. Reassert the mask
+                    // from this existing monitor so covered panes cannot
+                    // bleed through long-lived boards or modal surfaces.
+                    let _ = hide_overlay(hwnd);
+                    had_focus = false;
+                    std::thread::sleep(Duration::from_millis(25));
+                    continue;
+                }
                 let mut info = GUITHREADINFO {
                     cbSize: std::mem::size_of::<GUITHREADINFO>() as u32,
                     flags: 0,
@@ -480,7 +498,13 @@ mod imp {
                 return Err("Native terminal state is unavailable".to_string());
             }
         }
-        monitor_focus(app, id, hwnd as HWND, focus_monitor_alive);
+        monitor_focus(
+            app,
+            id,
+            hwnd as HWND,
+            focus_monitor_alive,
+            Arc::clone(&state.occluded),
+        );
         Ok(id)
     }
 
@@ -752,6 +776,7 @@ mod imp {
             presentation.epoch = epoch;
             presentation.occluded = occluded;
         }
+        state.occluded.store(occluded, Ordering::Release);
         if !occluded {
             return Ok(());
         }

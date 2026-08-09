@@ -721,8 +721,9 @@ button.attn-mark:hover {
    board/settings/modal transition. Keep layout geometry stable for the next
    reveal while suppressing the covered terminal surface completely. */
 .stage__tabs.is-covered {
-  visibility: hidden;
-  pointer-events: none;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .tab-stage {
