@@ -53,9 +53,8 @@ mod imp {
         GetWindowLongPtrW, GetWindowThreadProcessId, IsChild, IsWindow, IsWindowVisible,
         SetForegroundWindow, SetWindowLongPtrW, SetWindowPos, ShowWindow, GUITHREADINFO,
         GWLP_HWNDPARENT, GWL_EXSTYLE, GWL_STYLE, GW_OWNER, SWP_FRAMECHANGED, SWP_HIDEWINDOW,
-        SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SW_HIDE, SW_SHOW, WS_CAPTION,
-        WS_EX_APPWINDOW, WS_EX_TOOLWINDOW, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU,
-        WS_THICKFRAME,
+        SWP_NOACTIVATE, SWP_NOZORDER, SW_HIDE, SW_SHOW, WS_CAPTION, WS_EX_APPWINDOW,
+        WS_EX_TOOLWINDOW, WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_POPUP, WS_SYSMENU, WS_THICKFRAME,
     };
 
     const FIRST_NATIVE_PANE_ID: u32 = 0x8000_0000;
@@ -279,7 +278,7 @@ mod imp {
                 .join("\n")
         };
         Ok(format!(
-            "live_config_reload = true\n\n[window]\nopacity = {:.3}\ndecorations = \"None\"\n\n[scrolling]\nhistory = {}\n\n[font]\nsize = {:.2}\n\n[font.normal]\nfamily = {}\nstyle = \"Regular\"\n\n[colors.primary]\nbackground = \"{}\"\nforeground = \"{}\"\n\n[colors.cursor]\ntext = \"{}\"\ncursor = \"{}\"\n\n[colors.selection]\ntext = \"CellForeground\"\nbackground = \"{}\"\n\n[colors.normal]\n{}\n\n[colors.bright]\n{}\n",
+            "[general]\nlive_config_reload = true\n\n[window]\nopacity = {:.3}\ndecorations = \"None\"\n\n[scrolling]\nhistory = {}\n\n[font]\nsize = {:.2}\n\n[font.normal]\nfamily = {}\nstyle = \"Regular\"\n\n[colors.primary]\nbackground = \"{}\"\nforeground = \"{}\"\n\n[colors.cursor]\ntext = \"{}\"\ncursor = \"{}\"\n\n[colors.selection]\ntext = \"CellForeground\"\nbackground = \"{}\"\n\n[colors.normal]\n{}\n\n[colors.bright]\n{}\n",
             value.opacity,
             value.scrollback,
             value.font_size,
@@ -552,7 +551,15 @@ mod imp {
         state: tauri::State<'_, NativeTerminalState>,
         id: u32,
         action: String,
+        epoch: u64,
     ) -> Result<(), String> {
+        let presentation = *state
+            .presentation
+            .lock()
+            .map_err(|_| "Native terminal presentation state is unavailable".to_string())?;
+        if presentation.occluded || epoch != presentation.epoch {
+            return Ok(());
+        }
         let panes = state
             .panes
             .lock()
@@ -560,6 +567,9 @@ mod imp {
         let pane = panes
             .get(&id)
             .ok_or_else(|| format!("Unknown native pane {id}"))?;
+        if !pane.visible || pane.presentation_epoch != epoch {
+            return Ok(());
+        }
         let hwnd = pane.hwnd as HWND;
         match action.as_str() {
             "copy" => send_chord(hwnd, &[VK_CONTROL, VK_SHIFT], b'C' as u16)?,
@@ -834,6 +844,7 @@ mod imp {
         _state: tauri::State<'_, NativeTerminalState>,
         _id: u32,
         _action: String,
+        _epoch: u64,
     ) -> Result<(), String> {
         Err("Native Alacritty panes are only supported on Windows and macOS".to_string())
     }
@@ -897,8 +908,9 @@ pub fn perform_alacritty_action(
     state: tauri::State<'_, NativeTerminalState>,
     id: u32,
     action: String,
+    epoch: u64,
 ) -> Result<(), String> {
-    imp::perform_action(state, id, action)
+    imp::perform_action(state, id, action, epoch)
 }
 
 #[tauri::command]

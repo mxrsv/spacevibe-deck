@@ -78,7 +78,7 @@ export function createTauriNativePaneClient(): NativePaneClient {
       return invoke("apply_alacritty_appearance", { id, appearance });
     },
     performAlacrittyAction(id, action) {
-      return invoke("perform_alacritty_action", { id, action });
+      return invoke("perform_alacritty_action", { id, action, epoch });
     },
     listenFocus(handler) {
       if (!("__TAURI_INTERNALS__" in globalThis)) {

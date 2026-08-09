@@ -30,7 +30,6 @@ const FIRST_NATIVE_PANE_ID: u32 = 0x8000_0000;
 const WINDOW_WAIT_TIMEOUT: Duration = Duration::from_secs(8);
 const WINDOW_POLL_INTERVAL: Duration = Duration::from_millis(40);
 const HIDDEN_ORIGIN: f64 = -32_000.0;
-
 const FLAG_SHIFT: u64 = 0x0002_0000;
 const FLAG_COMMAND: u64 = 0x0010_0000;
 
@@ -59,6 +58,7 @@ struct CGSize {
 #[link(name = "CoreFoundation", kind = "framework")]
 extern "C" {
     static kCFBooleanTrue: CFBooleanRef;
+    static kCFBooleanFalse: CFBooleanRef;
     fn CFStringCreateWithCString(
         allocator: *const c_void,
         bytes: *const c_char,
@@ -131,11 +131,20 @@ struct NativePane {
     config_path: PathBuf,
     config_contents: String,
     focus_monitor_alive: Arc<AtomicBool>,
+    visible: bool,
+    presentation_epoch: u64,
+}
+
+#[derive(Clone, Copy)]
+struct PresentationState {
+    epoch: u64,
+    occluded: bool,
 }
 
 pub struct NativeTerminalState {
     next_id: AtomicU32,
     panes: Mutex<HashMap<u32, NativePane>>,
+    presentation: Mutex<PresentationState>,
 }
 
 impl Default for NativeTerminalState {
@@ -143,6 +152,10 @@ impl Default for NativeTerminalState {
         Self {
             next_id: AtomicU32::new(FIRST_NATIVE_PANE_ID),
             panes: Mutex::new(HashMap::new()),
+            presentation: Mutex::new(PresentationState {
+                epoch: 0,
+                occluded: true,
+            }),
         }
     }
 }
@@ -306,8 +319,34 @@ fn set_frame(window: usize, x: f64, y: f64, width: f64, height: f64) -> Result<(
     size_result
 }
 
-fn hide_window(window: usize) {
-    let _ = set_frame(window, HIDDEN_ORIGIN, HIDDEN_ORIGIN, 1.0, 1.0);
+fn set_hidden(pane: &NativePane, hidden: bool) -> Result<(), String> {
+    if hidden {
+        let _ = set_frame(pane.ax_window, HIDDEN_ORIGIN, HIDDEN_ORIGIN, 1.0, 1.0);
+    }
+    let value = unsafe {
+        if hidden {
+            kCFBooleanTrue
+        } else {
+            kCFBooleanFalse
+        }
+    };
+    let app = unsafe { AXUIElementCreateApplication(pane.child.id() as libc::pid_t) };
+    if app.is_null() {
+        return Err("Couldn't update Alacritty application visibility".to_string());
+    }
+    let app_result = ax_set(app, "AXHidden", value);
+    unsafe { CFRelease(app) };
+    if hidden && app_result.is_ok() {
+        return Ok(());
+    }
+    // AXHidden is preferred because it avoids a Dock minimize animation. Some
+    // Alacritty/macOS combinations do not expose it as settable; AXMinimized is
+    // the supported per-window fallback and is also cleared on every reveal.
+    let window_result = ax_set(pane.ax_window as AXUIElementRef, "AXMinimized", value);
+    if app_result.is_err() && window_result.is_err() {
+        return Err("Couldn't update Alacritty window visibility".to_string());
+    }
+    Ok(())
 }
 
 fn process_alive(pid: u32) -> bool {
@@ -502,7 +541,7 @@ fn write_config(path: &Path, contents: &str) -> Result<(), String> {
 
 fn terminate(mut pane: NativePane) {
     pane.focus_monitor_alive.store(false, Ordering::Release);
-    hide_window(pane.ax_window);
+    let _ = set_hidden(&pane, true);
     let _ = pane.child.kill();
     let _ = pane.child.wait();
     unsafe { CFRelease(pane.ax_window as CFTypeRef) };
@@ -541,7 +580,7 @@ pub async fn spawn(
     let focus_monitor_alive = Arc::new(AtomicBool::new(true));
     let pane_monitor_alive = Arc::clone(&focus_monitor_alive);
 
-    let pane = tauri::async_runtime::spawn_blocking(move || {
+    let mut pane = tauri::async_runtime::spawn_blocking(move || {
         let mut child = match Command::new(executable)
             .arg("--config-file")
             .arg(&config_path)
@@ -565,18 +604,32 @@ pub async fn spawn(
                 return Err(error);
             }
         };
-        hide_window(ax_window);
-        Ok(NativePane {
+        let pane = NativePane {
             child,
             ax_window,
             config_path,
             config_contents: config,
             focus_monitor_alive: pane_monitor_alive,
-        })
+            visible: false,
+            presentation_epoch: 0,
+        };
+        if let Err(error) = set_hidden(&pane, true) {
+            terminate(pane);
+            return Err(error);
+        }
+        Ok(pane)
     })
     .await
     .map_err(|error| format!("Alacritty launch task failed: {error}"))??;
 
+    let presentation = match state.presentation.lock() {
+        Ok(presentation) => *presentation,
+        Err(_) => {
+            terminate(pane);
+            return Err("Native terminal presentation state is unavailable".to_string());
+        }
+    };
+    pane.presentation_epoch = presentation.epoch;
     let pid = pane.child.id();
     let ax_window = pane.ax_window;
     match state.panes.lock() {
@@ -617,7 +670,15 @@ pub fn perform_action(
     state: tauri::State<'_, NativeTerminalState>,
     id: u32,
     action: String,
+    epoch: u64,
 ) -> Result<(), String> {
+    let presentation = *state
+        .presentation
+        .lock()
+        .map_err(|_| "Native terminal presentation state is unavailable".to_string())?;
+    if presentation.occluded || epoch != presentation.epoch {
+        return Ok(());
+    }
     let panes = state
         .panes
         .lock()
@@ -625,6 +686,9 @@ pub fn perform_action(
     let pane = panes
         .get(&id)
         .ok_or_else(|| format!("Unknown native pane {id}"))?;
+    if !pane.visible || pane.presentation_epoch != epoch {
+        return Ok(());
+    }
     focus_window(pane)?;
     if !wait_until_focused(pane.ax_window) {
         return Err("Alacritty could not be focused safely".to_string());
@@ -650,8 +714,16 @@ pub fn update(
     id: u32,
     bounds: NativePaneBounds,
     visible: bool,
+    epoch: u64,
 ) -> Result<(), String> {
     validate_bounds(bounds)?;
+    let presentation = *state
+        .presentation
+        .lock()
+        .map_err(|_| "Native terminal presentation state is unavailable".to_string())?;
+    if epoch != presentation.epoch {
+        return Ok(());
+    }
     let mut panes = state
         .panes
         .lock()
@@ -659,6 +731,10 @@ pub fn update(
     let pane = panes
         .get_mut(&id)
         .ok_or_else(|| format!("Unknown native pane {id}"))?;
+    if epoch < pane.presentation_epoch {
+        return Ok(());
+    }
+    pane.presentation_epoch = epoch;
     if pane
         .child
         .try_wait()
@@ -672,14 +748,15 @@ pub fn update(
         }
         return Err("Alacritty exited".to_string());
     }
-    let covered = !visible
+    let covered = presentation.occluded
+        || !visible
         || bounds.width < 1.0
         || bounds.height < 1.0
         || window.is_minimized().unwrap_or(false)
         || !window.is_visible().unwrap_or(true);
     if covered {
-        hide_window(pane.ax_window);
-        return Ok(());
+        pane.visible = false;
+        return set_hidden(pane, true);
     }
     let scale = window.scale_factor().map_err(|error| error.to_string())?;
     let origin = window
@@ -693,10 +770,23 @@ pub fn update(
         bounds.width.max(1.0),
         bounds.height.max(1.0),
     )?;
+    set_hidden(pane, false)?;
+    pane.visible = true;
     ax_action(pane.ax_window as AXUIElementRef, "AXRaise")
 }
 
-pub fn focus(state: tauri::State<'_, NativeTerminalState>, id: u32) -> Result<(), String> {
+pub fn focus(
+    state: tauri::State<'_, NativeTerminalState>,
+    id: u32,
+    epoch: u64,
+) -> Result<(), String> {
+    let presentation = *state
+        .presentation
+        .lock()
+        .map_err(|_| "Native terminal presentation state is unavailable".to_string())?;
+    if presentation.occluded || epoch != presentation.epoch {
+        return Ok(());
+    }
     let panes = state
         .panes
         .lock()
@@ -704,7 +794,41 @@ pub fn focus(state: tauri::State<'_, NativeTerminalState>, id: u32) -> Result<()
     let pane = panes
         .get(&id)
         .ok_or_else(|| format!("Unknown native pane {id}"))?;
+    if !pane.visible || pane.presentation_epoch != epoch {
+        return Ok(());
+    }
     focus_window(pane)
+}
+
+pub fn set_occluded(
+    state: tauri::State<'_, NativeTerminalState>,
+    epoch: u64,
+    occluded: bool,
+) -> Result<(), String> {
+    {
+        let mut presentation = state
+            .presentation
+            .lock()
+            .map_err(|_| "Native terminal presentation state is unavailable".to_string())?;
+        if epoch < presentation.epoch {
+            return Ok(());
+        }
+        presentation.epoch = epoch;
+        presentation.occluded = occluded;
+    }
+    if !occluded {
+        return Ok(());
+    }
+    let mut panes = state
+        .panes
+        .lock()
+        .map_err(|_| "Native terminal state is unavailable".to_string())?;
+    for pane in panes.values_mut() {
+        pane.presentation_epoch = epoch;
+        pane.visible = false;
+        set_hidden(pane, true)?;
+    }
+    Ok(())
 }
 
 pub fn kill(state: tauri::State<'_, NativeTerminalState>, id: u32) -> Result<(), String> {
