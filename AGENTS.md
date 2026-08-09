@@ -171,6 +171,57 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   was amended before execution — four defects found in review, including a
   test file it referenced that did not exist.
 
+- Recent workspaces are **hand-orderable** (2026-08-09). The one fork, resolved
+  by the user: **manual order outranks recency**. `pushRecent` used to lift
+  every re-opened folder to the front, so a row placed at the bottom could not
+  survive its own workspace being opened — it now updates the entry **in
+  place**, and only a folder new to the list enters at the top. The accepted
+  cost is stated once here because it is the kind of thing that later reads as
+  a bug: the `MAX_RECENTS` cap now evicts the **bottom row**, which is the one
+  the user parked there, not the least recently used one. Rows carry native
+  HTML5 drag (no dependency — DL-1.1 stands) with ⌥↑/⌥↓ as the keyboard half,
+  so the order is not settable by pointer alone. Moves are addressed **by
+  path**, never by visual index, because the rail renders
+  `[...alive, ...missing]` and may prepend a fabricated just-picked row. Only
+  stored, live rows take part: the Missing group exists to be emptied, so an
+  order inside it would mean nothing. No design-language fork — the open board
+  is not one of the surfaces §5/§12 govern, and the drop hairline uses existing
+  tokens inside the §7 motion budget. **The board's HTML5 drag has NOT been
+  exercised natively** — unit tests and Vite web preview only, while the
+  sidebar below was. It is the one thing left to check here, and it matters:
+  Tauri's webview drag-drop handler is enabled app-wide, which is exactly what
+  the sidebar avoided HTML5 drag for. If a real drag under `npm run tauri dev`
+  does nothing, this rail moves to the sidebar's pointer path — the geometry is
+  already shared-ready in `lib/reorder-drop-index.ts`.
+
+- Sidebar workspace rows are **hand-orderable** too (2026-08-09), asked for
+  right after the board landed. Different list, different store: the sidebar
+  draws `tabViews`, so ordering it means moving entries in `tab-manager`'s
+  `tabs` array. That array IS the order everything positional addresses —
+  ⌘1–9, `cycleTab`, `closeTab` — so `moveTab(from, to)` moves the entry and
+  re-derives `active` from the tab it pointed at, rather than doing arithmetic
+  on the index. Order is **in memory only**, and this is not an oversight:
+  session restore was removed, so tabs themselves do not survive a relaunch and
+  there is nothing on disk for an order to be written to. The mechanism differs
+  from the board on purpose — **pointer events, not HTML5 drag**: these rows
+  are already an OS drag-drop target (an image dropped on one sets that
+  workspace's logo, via Tauri's webview drag-drop handler), and stacking a
+  second in-page drag protocol on the same rows invites the two to interfere.
+  Pointer events also behave identically on macOS and Windows, which HTML5 drag
+  under a Tauri webview is not trusted to. A press becomes a drag only past
+  4px; the click ending a drag is swallowed so releasing does not also open the
+  row's popover; a press landing on the row's own close button or attention
+  mark is not a drag at all, because pointerdown bubbles and the release would
+  still fire the button. **Verified in the running app on macOS** (user,
+  2026-08-09), which also surfaced the one real defect: WKWebView painted the
+  label and path selected while the row moved, because selection starts on the
+  press, before the gesture is known to be a drag. Fixed by cancelling
+  pointerdown, plus the `-webkit-`prefixed `user-select` both row styles were
+  missing — that is the form WKWebView honours, and the Open Board rail had no
+  `user-select` at all. Windows is unverified. **Left open:** the horizontal tab
+  bar (the other `tabBarPosition`) has no reorder, so the two chrome surfaces
+  disagree until someone closes that gap.
+
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
 
