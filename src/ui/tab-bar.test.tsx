@@ -99,6 +99,26 @@ describe("TabBar", () => {
     expect(add.getAttribute("aria-label")).toBe("New tab");
   });
 
+  it("passes Shift state through both split buttons", () => {
+    const props = baseProps();
+    mount(props);
+    const buttons = host.querySelectorAll<HTMLButtonElement>(
+      '.tabbar__actions button[aria-label^="Split pane"]',
+    );
+
+    act(() => {
+      buttons[0].dispatchEvent(
+        new MouseEvent("click", { bubbles: true, shiftKey: false }),
+      );
+      buttons[1].dispatchEvent(
+        new MouseEvent("click", { bubbles: true, shiftKey: true }),
+      );
+    });
+
+    expect(props.onSplitRow).toHaveBeenCalledWith(false);
+    expect(props.onSplitColumn).toHaveBeenCalledWith(true);
+  });
+
   it("clicking the status mark calls onFocusAttention(index) and does not select or toggle the popover", () => {
     tabViews.value = [
       tab({

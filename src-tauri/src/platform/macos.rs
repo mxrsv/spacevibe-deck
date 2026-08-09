@@ -51,11 +51,64 @@ pub async fn discover_agents(names: Vec<String>) -> Vec<AgentInfo> {
             .args(["-ilc", &script])
             .output()
     });
-    let output = match tokio::time::timeout(DETECT_TIMEOUT, task).await {
-        Ok(Ok(Ok(output))) => output,
-        _ => return Vec::new(),
+    let mut agents = match tokio::time::timeout(DETECT_TIMEOUT, task).await {
+        Ok(Ok(Ok(output))) => {
+            parse_command_v_output(&String::from_utf8_lossy(&output.stdout), &names)
+        }
+        // A slow/broken login shell must not hide a standard app-bundle
+        // install; the direct candidates below do not depend on shell startup.
+        _ => Vec::new(),
     };
-    parse_command_v_output(&String::from_utf8_lossy(&output.stdout), &names)
+    if names.iter().any(|name| name == "alacritty")
+        && !agents.iter().any(|agent| agent.name == "alacritty")
+    {
+        if let Ok(path) = find_alacritty_executable() {
+            agents.push(AgentInfo {
+                name: "alacritty".to_string(),
+                path,
+            });
+        }
+    }
+    agents
+}
+
+/// Locate both CLI installs and the standard macOS application bundle. A
+/// direct executable path lets SpaceVibe launch one independent process per
+/// pane instead of asking LaunchServices to reuse an existing app instance.
+pub(crate) fn find_alacritty_executable() -> Result<String, String> {
+    let mut candidates = Vec::new();
+    if let Ok(launch) = shell_launch() {
+        if let Ok(output) = std::process::Command::new(launch.executable)
+            .args(["-ilc", "command -v alacritty"])
+            .output()
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() {
+                    candidates.push(PathBuf::from(path));
+                }
+            }
+        }
+    }
+    candidates.push(PathBuf::from(
+        "/Applications/Alacritty.app/Contents/MacOS/alacritty",
+    ));
+    if let Ok(home) = user_home() {
+        candidates.push(
+            home.join("Applications")
+                .join("Alacritty.app")
+                .join("Contents")
+                .join("MacOS")
+                .join("alacritty"),
+        );
+    }
+    candidates.push(PathBuf::from("/opt/homebrew/bin/alacritty"));
+    candidates.push(PathBuf::from("/usr/local/bin/alacritty"));
+    candidates
+        .into_iter()
+        .find(|path| path.is_file())
+        .map(|path| path.to_string_lossy().into_owned())
+        .ok_or_else(|| "Alacritty is not installed".to_string())
 }
 
 pub fn inspect_process(pid: i32) -> ProcessInspection {

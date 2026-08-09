@@ -19,8 +19,8 @@ interface TabBarProps {
   onSelectTab(index: number): void;
   onCloseTab(index: number): void;
   onNewTab(): void;
-  onSplitRow(): void;
-  onSplitColumn(): void;
+  onSplitRow(alacritty: boolean): void;
+  onSplitColumn(alacritty: boolean): void;
   onClosePane(): void;
   onRenameTab(index: number, name: string | null): void;
   onSetTabColor(index: number, color: TabDotColor | null): void;

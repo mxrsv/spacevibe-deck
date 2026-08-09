@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pane, PaneAttentionSignal, PaneEvents } from "./pane";
-import type { CreatePaneFn } from "./pane-lifecycle";
+import type { CreateNativePaneFn, CreatePaneFn } from "./pane-lifecycle";
+import { createMemoryNativePaneClient } from "./native-pane-client";
 import { createMemoryPtyClient } from "./pty-client";
 import {
   createTerminalManager,
@@ -154,6 +155,169 @@ describe("createTerminalManager attention signal routing", () => {
 
     expect(a.onAttentionSignal).toHaveBeenCalledTimes(1);
     expect(b.onAttentionSignal).not.toHaveBeenCalled();
+  });
+});
+
+describe("createTerminalManager native Alacritty panes", () => {
+  it("falls back to a normal shell when Alacritty cannot launch", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const memoryNative = createMemoryNativePaneClient();
+    const native = {
+      ...memoryNative,
+      spawnAlacritty: vi.fn(async () => {
+        throw new Error("Alacritty is not installed");
+      }),
+    };
+    const tm = createTerminalManager(container, { onLayoutChange() {} }, pty, {
+      createPane: (id, _settings, events) => fakePane(id, events),
+      nativeClient: native,
+    });
+
+    await tm.initFresh("C:\\repo");
+    await tm.splitActive("column", { kind: "alacritty" });
+
+    expect(native.spawnAlacritty).toHaveBeenCalledOnce();
+    expect(pty.sessions.size).toBe(2);
+    expect(tm.paneIds()).toEqual([1, 2]);
+    expect(tm.ptyPaneIds()).toEqual([1, 2]);
+  });
+
+  it("creates only the new split as Alacritty and keeps PTY ids separate", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const native = createMemoryNativePaneClient();
+    const visibility: boolean[] = [];
+    const createPane: CreatePaneFn = (id, _settings, events) =>
+      fakePane(id, events);
+    const createNativePane: CreateNativePaneFn = (id, _settings, events) => ({
+      ...fakePane(id, events),
+      kind: "alacritty",
+      setVisible(value) {
+        visibility.push(value);
+      },
+    });
+    const tm = createTerminalManager(container, { onLayoutChange() {} }, pty, {
+      createPane,
+      createNativePane,
+      nativeClient: native,
+    });
+
+    await tm.initFresh("C:\\repo");
+    await tm.splitActive("row", { kind: "alacritty" });
+
+    expect(pty.sessions.size).toBe(1);
+    expect(native.sessions.size).toBe(1);
+    expect(native.spawnedCwds).toEqual(["C:\\repo"]);
+    expect(tm.paneIds()).toEqual([1, 0x8000_0000]);
+    expect(tm.ptyPaneIds()).toEqual([1]);
+
+    const ptyInfo = vi.spyOn(pty, "ptyInfo");
+    await expect(tm.freshPaneCwd(0x8000_0000)).resolves.toBe("C:\\repo");
+    expect(ptyInfo).not.toHaveBeenCalled();
+
+    tm.hide();
+    tm.show({ focus: false });
+    expect(visibility).toContain(false);
+    expect(visibility[visibility.length - 1]).toBe(true);
+  });
+
+  it("does not focus a native pane materialized behind the workspace board", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const native = createMemoryNativePaneClient();
+    const focus = vi.fn();
+    const visibility: boolean[] = [];
+    const tm = createTerminalManager(
+      container,
+      { onLayoutChange() {} },
+      createMemoryPtyClient(),
+      {
+        nativeClient: native,
+        createNativePane: (id, _settings, events) => ({
+          ...fakePane(id, events),
+          kind: "alacritty",
+          focus,
+          setVisible(value) {
+            visibility.push(value);
+          },
+        }),
+      },
+    );
+
+    tm.setNativePanesVisible(false);
+    await tm.initFromLayout(
+      { type: "leaf", paneType: "alacritty" },
+      ["C:\\repo"],
+      "alacritty",
+    );
+    tm.show();
+
+    expect(visibility[visibility.length - 1]).toBe(false);
+    expect(focus).not.toHaveBeenCalled();
+  });
+
+  it("materializes every leaf as Alacritty when requested", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const pty = createMemoryPtyClient();
+    const native = createMemoryNativePaneClient();
+    const createNativePane: CreateNativePaneFn = (id, _settings, events) => ({
+      ...fakePane(id, events),
+      kind: "alacritty",
+    });
+    const tm = createTerminalManager(container, { onLayoutChange() {} }, pty, {
+      createNativePane,
+      nativeClient: native,
+    });
+
+    await tm.initFromLayout(
+      {
+        type: "split",
+        direction: "row",
+        ratio: 0.5,
+        first: { type: "leaf" },
+        second: { type: "leaf" },
+      },
+      ["C:\\one", "C:\\two"],
+      "alacritty",
+    );
+
+    expect(pty.sessions.size).toBe(0);
+    expect(native.sessions.size).toBe(2);
+    expect(tm.ptyPaneIds()).toEqual([]);
+  });
+
+  it("restores mixed pane renderer types from serialized leaves", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const native = createMemoryNativePaneClient();
+    const tm = createTerminalManager(container, { onLayoutChange() {} }, pty, {
+      createPane: (id, _settings, events) => fakePane(id, events),
+      createNativePane: (id, _settings, events) => ({
+        ...fakePane(id, events),
+        kind: "alacritty",
+      }),
+      nativeClient: native,
+    });
+
+    await tm.initFromLayout({
+      type: "split",
+      direction: "row",
+      ratio: 0.5,
+      first: { type: "leaf", paneType: "xterm" },
+      second: { type: "leaf", paneType: "alacritty" },
+    });
+
+    expect(pty.sessions.size).toBe(1);
+    expect(native.sessions.size).toBe(1);
+    expect(tm.serializeLayout()).toMatchObject({
+      first: { paneType: "xterm" },
+      second: { paneType: "alacritty" },
+    });
   });
 });
 

@@ -7,6 +7,7 @@ import {
   movePane,
   removeLeaf,
   serializeTree,
+  serializedPaneTypes,
   setRatio,
   splitLeaf,
   swapLeaves,
@@ -22,12 +23,18 @@ import { shellEscapePaths } from "../lib/shell-escape";
 import { getDesktopEnvironment } from "../lib/platform";
 import { reportPersistError } from "../chrome/events";
 import { createLayoutEngine } from "./layout-engine";
-import { createPaneLifecycle, type CreatePaneFn } from "./pane-lifecycle";
-import type { PaneAttentionSignal } from "./pane";
-import { clearPaneCwd, setPaneCwd } from "./pane-cwd";
+import {
+  createPaneLifecycle,
+  type CreateNativePaneFn,
+  type CreatePaneFn,
+  type PaneKind,
+} from "./pane-lifecycle";
+import type { Pane, PaneAttentionSignal } from "./pane";
+import { clearPaneCwd, paneCwd, setPaneCwd } from "./pane-cwd";
 import { freshCwd } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { createPaneDragController, type PaneDragController } from "./pane-drag";
+import type { NativePaneClient } from "./native-pane-client";
 import {
   advanceSearch,
   closeSearchBarForPane,
@@ -53,12 +60,20 @@ export interface ManagerCallbacks {
 export interface TerminalManagerDeps {
   /** Test seam — defaults to real createPane (xterm). */
   createPane?: CreatePaneFn;
+  /** Test seam for the DOM wrapper around a native Alacritty child window. */
+  createNativePane?: CreateNativePaneFn;
+  /** Test seam for Tauri's native Alacritty commands. */
+  nativeClient?: NativePaneClient;
+}
+
+export interface SplitPaneOptions {
+  readonly kind?: PaneKind;
 }
 
 /** One tab's worth of terminals: a split tree of panes sharing a container. */
 export interface TerminalManager {
   /** Spawn a single fresh shell (at `cwd` when given). Throws when the spawn fails. */
-  initFresh(cwd?: string | null): Promise<void>;
+  initFresh(cwd?: string | null, kind?: PaneKind): Promise<void>;
   /**
    * Spawn one shell per leaf and rebuild the split structure. `cwds` maps to
    * leaves in left-to-right order (missing/null entries → $HOME). Throws when
@@ -67,6 +82,7 @@ export interface TerminalManager {
   initFromLayout(
     layout: SerializedNode,
     cwds?: readonly (string | null)[],
+    kind?: PaneKind,
   ): Promise<void>;
   /**
    * Displays the container and fits every pane. `focus` defaults to `true`
@@ -76,7 +92,7 @@ export interface TerminalManager {
    */
   show(options?: { focus?: boolean }): void;
   hide(): void;
-  splitActive(dir: Direction): Promise<void>;
+  splitActive(dir: Direction, options?: SplitPaneOptions): Promise<void>;
   closeActive(): Promise<void>;
   /** Close a specific pane; unknown id → no-op (it may have exited meanwhile). */
   closePaneById(id: number): Promise<void>;
@@ -99,6 +115,8 @@ export interface TerminalManager {
    * classes via `setActive`). Unknown/dead id → no-op, returns `false`.
    */
   focusPane(id: number): boolean;
+  /** Native focus event from Rust; updates active state without refocusing. */
+  noteNativeFocus(id: number): boolean;
   /** Clear the active pane's buffer, keeping the prompt line (Cmd+K). */
   clearActive(): void;
   copyActiveSelection(): void;
@@ -133,6 +151,10 @@ export interface TerminalManager {
   applySettings(next: Settings): void;
   serializeLayout(): SerializedNode | null;
   paneIds(): number[];
+  /** Real PTY ids only; native pane ids must never cross PTY IPC boundaries. */
+  ptyPaneIds(): number[];
+  /** Fresh PTY CWD, or the last safe launch CWD for a native pane. */
+  freshPaneCwd(id: number | null): Promise<string | null>;
   activePaneId(): number | null;
   paneCount(): number;
   /** Root element of a pane (overlay anchor for the agent picker). */
@@ -150,6 +172,8 @@ export interface TerminalManager {
   fileDragLeave(): void;
   /** Write the (shell-escaped) paths into the PTY of the pane under the cursor. */
   fileDrop(x: number, y: number, paths: string[]): void;
+  /** Hide native child HWNDs while WebView overlays cover the terminal stage. */
+  setNativePanesVisible(visible: boolean): void;
   /** Kills all PTYs, disposes xterm instances and removes the container. */
   dispose(): void;
 }
@@ -167,6 +191,14 @@ export function createTerminalManager(
   // an element that already holds DOM focus never fires one), so the
   // lifecycle handler must not double- or zero-emit around it.
   let inProgrammaticFocus = false;
+  let tabVisible = container.style.display !== "none";
+  let nativePanesVisible = true;
+
+  function focusPaneWhenVisible(pane: Pane | undefined): void {
+    if (pane && tabVisible && nativePanesVisible) {
+      pane.focus();
+    }
+  }
 
   // Pane bar visibility is CSS-only: pane.ts always builds and populates the
   // bar (the drag ghost and anchor still read its cwd) — this class hides it.
@@ -176,6 +208,8 @@ export function createTerminalManager(
     pty,
     getSettings: () => settings.value,
     createPane: deps.createPane,
+    createNativePane: deps.createNativePane,
+    nativeClient: deps.nativeClient,
     onWriteWhileExited(id, data) {
       if (data === "\r") {
         void respawn(id);
@@ -197,7 +231,9 @@ export function createTerminalManager(
   const layout = createLayoutEngine(container, {
     getPaneElement: (id) => life.panes.get(id)?.element,
     mountPane: (id) => {
-      life.panes.get(id)?.mount();
+      const pane = life.panes.get(id);
+      pane?.mount();
+      pane?.setVisible?.(tabVisible && nativePanesVisible);
     },
     fitPane: (id) => {
       life.panes.get(id)?.fit();
@@ -240,6 +276,9 @@ export function createTerminalManager(
         callbacks.onLayoutChange();
       },
     });
+    for (const pane of life.panes.values()) {
+      pane.setActive?.(life.panes.size > 1 && pane.id === activeId);
+    }
   }
 
   function setActive(id: number): void {
@@ -251,6 +290,9 @@ export function createTerminalManager(
       layout.unzoom();
     }
     activeId = id;
+    for (const pane of life.panes.values()) {
+      pane.setActive?.(life.panes.size > 1 && pane.id === activeId);
+    }
     const overlay = overlayInput();
     if (overlay) {
       layout.refreshOverlay(overlay);
@@ -335,15 +377,18 @@ export function createTerminalManager(
     );
   }
 
-  async function splitActive(dir: Direction): Promise<void> {
+  async function splitActive(
+    dir: Direction,
+    options: SplitPaneOptions = {},
+  ): Promise<void> {
     if (!tree || activeId === null) {
       return;
     }
     const targetId = activeId;
     try {
       // Fresh lookup, not the 2s poll cache — the user may have just cd'd
-      const cwd = await freshCwd(targetId, pty);
-      const pane = await life.spawnPane(cwd);
+      const cwd = await freshPaneCwd(targetId);
+      const pane = await life.spawnPane(cwd, options.kind ?? "xterm");
       if (!life.isInTree(tree, targetId)) {
         // Target pane closed while spawning — drop the new session
         life.discardPane(pane);
@@ -354,13 +399,22 @@ export function createTerminalManager(
       // DOM, which does not match the just-split tree until render() runs.
       activeId = pane.id;
       render();
-      pane.focus();
+      focusPaneWhenVisible(pane);
       callbacks.onLayoutChange();
     } catch (err) {
       life.panes
         .get(targetId)
         ?.writeln(`\r\n\x1b[31mFailed to open new pane: ${err}\x1b[0m`);
     }
+  }
+
+  async function freshPaneCwd(id: number | null): Promise<string | null> {
+    if (id === null) {
+      return null;
+    }
+    return life.paneKind(id) === "alacritty"
+      ? paneCwd(id)
+      : ((await freshCwd(id, pty)) ?? paneCwd(id));
   }
 
   function cycleFocus(step: 1 | -1): void {
@@ -410,23 +464,33 @@ export function createTerminalManager(
     callbacks.onLayoutChange();
   }
 
-  async function initFresh(cwd: string | null = null): Promise<void> {
-    const pane = await life.spawnPane(cwd);
+  async function initFresh(
+    cwd: string | null = null,
+    kind: PaneKind = "xterm",
+  ): Promise<void> {
+    const pane = await life.spawnPane(cwd, kind);
     tree = leaf(pane.id);
     activeId = pane.id;
     render();
-    pane.focus();
+    focusPaneWhenVisible(pane);
   }
 
   async function initFromLayout(
     layoutNode: SerializedNode,
     cwds: readonly (string | null)[] = [],
+    kind: PaneKind = "xterm",
   ): Promise<void> {
     const total = countLeaves(layoutNode);
+    const storedKinds = serializedPaneTypes(layoutNode);
     const spawned: Awaited<ReturnType<typeof life.spawnPane>>[] = [];
     try {
       for (let i = 0; i < total; i += 1) {
-        spawned.push(await life.spawnPane(cwds[i] ?? null));
+        spawned.push(
+          await life.spawnPane(
+            cwds[i] ?? null,
+            kind === "alacritty" ? "alacritty" : storedKinds[i] ?? "xterm",
+          ),
+        );
       }
     } catch (err) {
       for (const pane of spawned) {
@@ -440,7 +504,7 @@ export function createTerminalManager(
     );
     activeId = spawned[0]?.id ?? null;
     render();
-    spawned[0]?.focus();
+    focusPaneWhenVisible(spawned[0]);
   }
 
   function fileDragOver(x: number, y: number): void {
@@ -463,7 +527,11 @@ export function createTerminalManager(
     if (id === null) {
       return; // dropped outside every pane (tab bar / status bar) — ignore
     }
-    if (!life.panes.has(id) || life.exited.has(id)) {
+    if (
+      !life.panes.has(id) ||
+      life.exited.has(id) ||
+      life.paneKind(id) === "alacritty"
+    ) {
       return; // pane already exited — never write into a dead PTY
     }
     const data = shellEscapePaths(paths, getDesktopEnvironment().platform);
@@ -530,15 +598,21 @@ export function createTerminalManager(
     initFresh,
     initFromLayout,
     show(options) {
+      tabVisible = true;
       container.style.display = "";
       for (const pane of life.panes.values()) {
+        pane.setVisible?.(nativePanesVisible);
         pane.fit();
       }
       if ((options?.focus ?? true) && activeId !== null) {
-        life.panes.get(activeId)?.focus();
+        focusPaneWhenVisible(life.panes.get(activeId));
       }
     },
     hide() {
+      tabVisible = false;
+      for (const pane of life.panes.values()) {
+        pane.setVisible?.(false);
+      }
       container.style.display = "none";
     },
     splitActive,
@@ -575,6 +649,15 @@ export function createTerminalManager(
       } finally {
         inProgrammaticFocus = false;
       }
+      callbacks.onPaneFocus?.(id);
+      return true;
+    },
+    noteNativeFocus(id) {
+      const pane = life.panes.get(id);
+      if (pane?.kind !== "alacritty") {
+        return false;
+      }
+      setActive(id);
       callbacks.onPaneFocus?.(id);
       return true;
     },
@@ -619,7 +702,9 @@ export function createTerminalManager(
     openSearch() {
       if (activeId !== null) {
         const pane = life.panes.get(activeId);
-        if (pane) {
+        if (pane?.kind === "alacritty") {
+          pane.openSearch?.();
+        } else if (pane) {
           openSearchBar(pane);
         }
       }
@@ -627,7 +712,9 @@ export function createTerminalManager(
     findNext() {
       if (activeId !== null) {
         const pane = life.panes.get(activeId);
-        if (pane) {
+        if (pane?.kind === "alacritty") {
+          pane.findNext?.();
+        } else if (pane) {
           advanceSearch(pane, "next");
         }
       }
@@ -635,7 +722,9 @@ export function createTerminalManager(
     findPrevious() {
       if (activeId !== null) {
         const pane = life.panes.get(activeId);
-        if (pane) {
+        if (pane?.kind === "alacritty") {
+          pane.findPrevious?.();
+        } else if (pane) {
           advanceSearch(pane, "previous");
         }
       }
@@ -653,11 +742,21 @@ export function createTerminalManager(
       }
     },
     serializeLayout() {
-      return tree === null ? null : serializeTree(tree);
+      return tree === null
+        ? null
+        : serializeTree(tree, (id) => life.paneKind(id) ?? "xterm");
     },
     paneIds() {
       return tree === null ? [] : leafIds(tree);
     },
+    ptyPaneIds() {
+      if (tree === null) {
+        return [];
+      }
+      const live = new Set(leafIds(tree));
+      return life.ptyPaneIds().filter((id) => live.has(id));
+    },
+    freshPaneCwd,
     activePaneId() {
       return activeId;
     },
@@ -693,6 +792,12 @@ export function createTerminalManager(
     fileDragOver,
     fileDragLeave,
     fileDrop,
+    setNativePanesVisible(visible) {
+      nativePanesVisible = visible;
+      for (const pane of life.panes.values()) {
+        pane.setVisible?.(tabVisible && nativePanesVisible);
+      }
+    },
     dispose() {
       paneDrag.dispose();
       layout.unzoom();

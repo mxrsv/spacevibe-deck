@@ -33,6 +33,7 @@ import {
 import { installFileDrop } from "./file-drop";
 import {
   createTerminalManager,
+  type SplitPaneOptions,
   type TerminalManager,
   type TerminalManagerDeps,
 } from "./terminal-manager";
@@ -53,15 +54,18 @@ import {
 import { confirmClose } from "./close-guard";
 import { createCloseCoordinator } from "./close-coordinator";
 import { activeAfterClose } from "./tab-close";
-import { freshCwd, freshPaneInfo } from "./pane-info";
+import { freshPaneInfo } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { submitAllowed, type InjectOutcome } from "../prompts/inject";
 import { createAgentLauncher } from "./agent-launch";
 import {
+  defaultNativePaneClient,
+  type NativePaneClient,
+} from "./native-pane-client";
+import {
   buildClosedTabSnapshot,
   capturePresetLayout,
   materializeChromeFrom,
-  resolvePaneCwds,
   type MaterializeIntent,
 } from "./tab-materialize";
 import {
@@ -346,13 +350,16 @@ export interface TabManager {
    * item and its shortcut can never drift apart.
    */
   runAction(action: ShortcutAction): void;
-  splitActive(dir: Direction): Promise<void>;
+  splitActive(dir: Direction, options?: SplitPaneOptions): Promise<void>;
   /** Every pane id across every tab (quit-path busy guard). */
   allPaneIds(): number[];
+  /** Real PTYs only, for quit/Busy checks. */
+  allPtyPaneIds(): number[];
   /** Close the focused pane (busy-guarded); last pane in tab closes the tab. */
   closePane(): Promise<void>;
   applySettings(next: Settings): void;
   focusActive(): void;
+  setNativePanesVisible(visible: boolean): Promise<void>;
   dispose(): void;
 }
 
@@ -426,6 +433,27 @@ export function createTabManager(
   // (e.g. a remount mid-init) — guards against pushing a listener into an
   // `unlisteners` array that's already been drained, which would leak it.
   let disposed = false;
+  let nativePanesVisible = true;
+  let nativeVisibilityRequest = 0;
+  const nativeClient: NativePaneClient =
+    deps.nativeClient ?? defaultNativePaneClient;
+
+  async function setNativeVisibility(visible: boolean): Promise<void> {
+    const request = ++nativeVisibilityRequest;
+    // Fail closed immediately. Tabs created while the hide acknowledgement is
+    // in flight must inherit the covered state.
+    if (!visible) {
+      nativePanesVisible = false;
+    }
+    await nativeClient.setOccluded(!visible);
+    if (request !== nativeVisibilityRequest || disposed) {
+      return;
+    }
+    nativePanesVisible = visible;
+    for (const tab of tabs) {
+      tab.manager.setNativePanesVisible(visible);
+    }
+  }
   // Types the chosen agent into each new pane's shell once its prompt is up.
   // Through paneIo so its synthetic keystrokes ("claude\r") count as input —
   // the echo suppression then keeps the launch echo out of the spinner.
@@ -605,17 +633,22 @@ export function createTabManager(
     layout: SerializedNode | null,
     cwds: readonly (string | null)[] = [],
     workspacePath: string | null = null,
+    paneKind: "xterm" | "alacritty" = "xterm",
   ): Promise<boolean> {
     const container = document.createElement("div");
     container.className = "tab-stage";
     container.style.display = "none";
     host.appendChild(container);
-    const manager = createTerminalManager(container, callbacks, paneIo, deps);
+    const manager = createTerminalManager(container, callbacks, paneIo, {
+      ...deps,
+      nativeClient,
+    });
+    manager.setNativePanesVisible(nativePanesVisible);
     try {
       if (layout === null) {
-        await manager.initFresh(cwds[0] ?? null);
+        await manager.initFresh(cwds[0] ?? null, paneKind);
       } else {
-        await manager.initFromLayout(layout, cwds);
+        await manager.initFromLayout(layout, cwds, paneKind);
       }
     } catch (err) {
       console.error("Failed to open tab:", err);
@@ -728,7 +761,12 @@ export function createTabManager(
 
   async function newTab(): Promise<void> {
     // New tab goes through the Open board (workspace ∥ preset ∥ agent).
-    boardOpen.value = true;
+    try {
+      await setNativeVisibility(false);
+      boardOpen.value = true;
+    } catch (error) {
+      console.error("Couldn't safely open the workspace board:", error);
+    }
   }
 
   /**
@@ -741,7 +779,12 @@ export function createTabManager(
     // run several agent sessions side by side. `workspacePath` is a label the
     // tab carries (sidebar, logo, reopen), never an identity that dedupes.
     if (
-      !(await addTab(intent.layout, intent.cwds, intent.workspacePath ?? null))
+      !(await addTab(
+        intent.layout,
+        intent.cwds,
+        intent.workspacePath ?? null,
+        intent.agent === "alacritty" ? "alacritty" : "xterm",
+      ))
     ) {
       return false;
     }
@@ -767,10 +810,12 @@ export function createTabManager(
     // pane that types a stale command.
     const agentId = intent.agent ?? null;
     launcher.arm(
-      entry.manager.paneIds(),
+      entry.manager.ptyPaneIds(),
       agentId === null
         ? null
-        : resolveAgentCommand(agentId, settings.value.customAgents),
+        : agentId === "alacritty"
+          ? null
+          : resolveAgentCommand(agentId, settings.value.customAgents),
     );
     return true;
   }
@@ -801,11 +846,17 @@ export function createTabManager(
     if (!manager || layout === null) {
       return null;
     }
-    return capturePresetLayout(manager.paneIds(), layout, pty);
+    return capturePresetLayout(
+      manager.paneIds(),
+      layout,
+      pty,
+      manager.freshPaneCwd,
+    );
   }
 
   function activePaneCwd(): Promise<string | null> {
-    return freshCwd(activeManager()?.activePaneId() ?? null, pty);
+    const manager = activeManager();
+    return manager?.freshPaneCwd(manager.activePaneId()) ?? Promise.resolve(null);
   }
 
   function ownerOf(paneId: number): TabEntry | undefined {
@@ -944,9 +995,9 @@ export function createTabManager(
     const layout = entry.manager.serializeLayout();
     if (layout !== null) {
       const override = overrides.get(entry.key);
-      const cwds = await resolvePaneCwds(entry.manager.paneIds(), "fresh", {
-        pty,
-      });
+      const cwds = await Promise.all(
+        entry.manager.paneIds().map((id) => entry.manager.freshPaneCwd(id)),
+      );
       closedTabs = pushClosedTab(
         closedTabs,
         buildClosedTabSnapshot({
@@ -1011,7 +1062,7 @@ export function createTabManager(
    * no longer enough. One `pty_info` IPC takes the whole id list.
    */
   function pollTargets(): number[] {
-    return allPaneIds();
+    return tabs.flatMap((tab) => tab.manager.ptyPaneIds());
   }
 
   const poller = createPaneInfoPoller({
@@ -1156,7 +1207,13 @@ export function createTabManager(
     // logic (nothing to save with zero tabs), not scope.
     "save-preset": () => {
       if (tabs.length > 0) {
-        saveDialogOpen.value = true;
+        void setNativeVisibility(false)
+          .then(() => {
+            saveDialogOpen.value = true;
+          })
+          .catch((error: unknown) => {
+            console.error("Couldn't safely open the preset dialog:", error);
+          });
       }
     },
     // Unified onto the same action:/runAction path as every other item
@@ -1164,7 +1221,13 @@ export function createTabManager(
     // `menu:new-preset` Tauri event instead. Sets the same request the live
     // window's "New Layout Preset…" board flow already used.
     "new-preset": () => {
-      editorRequest.value = { source: "live" };
+      void setNativeVisibility(false)
+        .then(() => {
+          editorRequest.value = { source: "live" };
+        })
+        .catch((error: unknown) => {
+          console.error("Couldn't safely open the preset editor:", error);
+        });
     },
   } satisfies Record<(typeof COMMAND_ACTIONS)[number], () => void>;
 
@@ -1349,8 +1412,11 @@ export function createTabManager(
     dispatchAction(action);
   }
 
-  function splitActive(dir: Direction): Promise<void> {
-    return activeManager()?.splitActive(dir) ?? Promise.resolve();
+  function splitActive(
+    dir: Direction,
+    options: SplitPaneOptions = {},
+  ): Promise<void> {
+    return activeManager()?.splitActive(dir, options) ?? Promise.resolve();
   }
 
   // `dispose()` can run while this await is still in flight (a remount mid-
@@ -1369,6 +1435,21 @@ export function createTabManager(
   }
 
   async function init(): Promise<void> {
+    try {
+      await registerUnlisten(
+        nativeClient.listenFocus((id) => {
+          for (const tab of tabs) {
+            if (tab.manager.noteNativeFocus(id)) {
+              syncViews();
+              return;
+            }
+          }
+        }),
+      );
+    } catch (error) {
+      // A failed optional native listener must not stop PTY/event setup.
+      console.warn("native-terminal focus listener unavailable:", error);
+    }
     try {
       windowFocused = await getCurrentWindow().isFocused();
     } catch (err) {
@@ -1570,6 +1651,9 @@ export function createTabManager(
     runAction,
     splitActive,
     allPaneIds,
+    allPtyPaneIds() {
+      return tabs.flatMap((tab) => tab.manager.ptyPaneIds());
+    },
     closePane: () => close.closePane(),
     applySettings(next) {
       for (const tab of tabs) {
@@ -1579,6 +1663,7 @@ export function createTabManager(
     focusActive() {
       activeManager()?.focusActive();
     },
+    setNativePanesVisible: setNativeVisibility,
     dispose() {
       disposed = true;
       launcher.dispose();

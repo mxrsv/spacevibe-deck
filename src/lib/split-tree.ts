@@ -246,6 +246,8 @@ export function ratioEntries(node: TreeNode): RatioEntry[] {
 
 export interface SerializedLeaf {
   readonly type: "leaf";
+  /** Missing in legacy layouts; callers must treat it as xterm. */
+  readonly paneType?: "xterm" | "alacritty";
 }
 
 export interface SerializedSplit {
@@ -259,17 +261,34 @@ export interface SerializedSplit {
 export type SerializedNode = SerializedLeaf | SerializedSplit;
 
 /** Structure-only snapshot for session persistence — pane ids are dropped. */
-export function serializeTree(node: TreeNode): SerializedNode {
+export function serializeTree(
+  node: TreeNode,
+  paneTypeFor?: (paneId: number) => "xterm" | "alacritty",
+): SerializedNode {
   if (node.kind === "leaf") {
-    return { type: "leaf" };
+    const paneType = paneTypeFor?.(node.paneId);
+    return paneType === undefined ? { type: "leaf" } : { type: "leaf", paneType };
   }
   return {
     type: "split",
     direction: node.dir,
     ratio: node.ratio,
-    first: serializeTree(node.a),
-    second: serializeTree(node.b),
+    first: serializeTree(node.a, paneTypeFor),
+    second: serializeTree(node.b, paneTypeFor),
   };
+}
+
+/** Serialized pane types in the same left-to-right order used by treeFromLayout. */
+export function serializedPaneTypes(
+  layout: SerializedNode,
+): Array<"xterm" | "alacritty"> {
+  if (layout.type === "leaf") {
+    return [layout.paneType === "alacritty" ? "alacritty" : "xterm"];
+  }
+  return [
+    ...serializedPaneTypes(layout.first),
+    ...serializedPaneTypes(layout.second),
+  ];
 }
 
 export function countLeaves(layout: SerializedNode): number {
