@@ -24,6 +24,7 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 | [src/chrome/](../src/chrome) `current`                                                                                        | window chrome, tabs                                          | main         | terminal    |
 | [src/open-board/](../src/open-board) `current`                                                                                | workspace board: open, recents, workspaces store             | chrome       | lib         |
 | [src/settings/](../src/settings) `current` + [src/presets/](../src/presets) `current`                                         | settings UI/stores, layout presets                           | chrome       | lib         |
+| [src/ui/controls/deck-icon.tsx](../src/ui/controls/deck-icon.tsx) `current`                                                    | the one icon primitive — Lucide presentation defaults and the four sizes | every surface | lucide-preact |
 | [src/updater/](../src/updater) `current`                                                                                      | single-flight update state, Tauri adapter and chrome action  | app          | Tauri       |
 | [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                      | multi-page landing and live GitHub release changelog         | Releases API | dist        |
 | [marketing/video/](../marketing/video) `current`                                                                              | marketing video stage — shares app components, virtual clock | app stage    | video       |
@@ -72,6 +73,16 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 ## Standing architecture decisions
 
 - English only across strings/comments/docs — [AGENTS.md](../AGENTS.md) `current`.
+- Functional icons come from `lucide-preact` through a single `DeckIcon`
+  primitive, and nothing else authors an `<svg>` or presses a glyph character
+  into an action's place. This is chrome's one approved runtime dependency
+  (DL-1.1), bounded by a build-time gzip ceiling and a filesystem drift guard
+  rather than by review attention. CSS must never set an icon's `width`,
+  `height`, `stroke` or `stroke-width`: those declarations beat SVG attributes
+  and would move geometry back out of the primitive
+  ([DeckIcon](../src/ui/controls/deck-icon.tsx) `current`,
+  [rules §14](DESIGN-LANGUAGE.md) `current`,
+  [guard](../scripts/icon-system.test.ts) `current`).
 - ADR pipeline removed 2026-07-27; decisions now live in dated specs/plans — [CONTEXT.md](CONTEXT.md) `current`.
 - Menu is generated from a registry, never hand-edited — CI runs `generate:menu:check` — [menu_registry.rs](../src-tauri/src/menu_registry.rs) `current`.
 - Overlay guard ranks overlays by z-order — `pane`(0) < `settings`(20) < `board`(30) < `modal`(40) — and blocks an action while any open overlay's rank is `>=` its own tier; `>=` (not `>`) is deliberate so two `modal`-tier overlays exclude each other with no extra concept needed — [OverlayTier/TIER_RANK](../src/terminal/action-registry.ts#L8-L37) `current`, [overlayBlocksAction](../src/terminal/tab-manager.ts#L931-L962) `current`.
@@ -133,6 +144,7 @@ _(reality-drift ledger — heading text mandated by the global docs convention)_
 | Claim | Intent | Status | Evidence |
 | ----- | ------ | ------ | -------- |
 
+| "the icon system is unified across the app" | `building` | (backlog) | Code, tests and the drift guard are green, but no production-fidelity visual review has run: the icons are unseen at native scale in the four theme presets. Until then this is verified structurally, not visually. See [CONTEXT.md](CONTEXT.md) `current` |
 | "the hardened updater installs correctly on Windows" | `building` | (backlog) | 0.11.0 shipped the `ShellExecuteW` fix without ever observing it run: the Windows end-to-end upgrade was deliberately skipped on 2026-08-05. The claim holds on macOS, where rc.1 → rc.2 upgraded for real and the installed bundle kept mode `0755`. See [AGENTS.md](../AGENTS.md) `current` for the accepted cost |
 
 Updater claims above were re-checked on 2026-08-05 against the published

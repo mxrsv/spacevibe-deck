@@ -1,6 +1,8 @@
+import { RotateCcw } from "lucide-preact";
 import { useSignal } from "@preact/signals";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { resetSettings } from "../../../settings/settings-store";
+import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
 import { ConfigRow } from "../../controls/config-row";
 import { reportPersistError } from "../../../chrome/events";
 
@@ -61,7 +63,8 @@ export function ResetSection() {
         disabled={resetting.value}
         onClick={() => void handleReset()}
       >
-        ↺ reset
+        <DeckIcon icon={RotateCcw} size={ROW_ICON} />
+        reset
       </button>
     </ConfigRow>
   );

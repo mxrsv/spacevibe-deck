@@ -1,24 +1,16 @@
 import {
-  BRAND_ICON_SRC,
-  renderStagePane,
-  renderStageSidebar,
-  renderStageStatus,
-  renderStageTitlebar,
+    BRAND_ICON_SRC,
+    renderStagePane,
+    renderStageSidebar,
+    renderStageStatus,
+    renderStageTitlebar,
 } from "../appwin.js";
 import { REEL_ID } from "../demo-reel.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
-import {
-  REPO_URL,
-  RELEASES_URL,
-  WINDOWS_FALLBACK_URL,
-} from "../download-links.js";
+import { REPO_URL, RELEASES_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
 import { CHANGELOG_URL } from "../release-data.js";
 import packageData from "../../../../package.json";
-import {
-  STAGE_ARIA_LABEL,
-  mountStageStream,
-  stagePanes,
-} from "../product-stage.js";
+import { STAGE_ARIA_LABEL, mountStageStream, stagePanes } from "../product-stage.js";
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
 
@@ -34,19 +26,19 @@ const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
 // that tilt: a 14° rotation costs roughly `viewportHeight * sin(14°)` of extra
 // width and the same again in height, and running short leaves bare corners.
 const HERO_BEAMS = {
-  beamWidth: 2,
-  beamHeight: 20,
-  beamNumber: 14,
-  lightColor: "#ffffff",
-  lightIntensity: 2.6,
-  speed: 2,
-  noiseIntensity: 1.4,
-  scale: 0.2,
-  rotation: 14,
+    beamWidth: 2,
+    beamHeight: 20,
+    beamNumber: 14,
+    lightColor: "#ffffff",
+    lightIntensity: 2.6,
+    speed: 2,
+    noiseIntensity: 1.4,
+    scale: 0.2,
+    rotation: 14,
 };
 
 function renderGithubIcon() {
-  return `
+    return `
     <svg class="a-github-icon" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
       <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.1-.55-.17-.55-.38
         0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95
@@ -60,7 +52,7 @@ function renderGithubIcon() {
 }
 
 function renderBrandMark(copy) {
-  return `
+    return `
     <span class="a-brand-mark" aria-hidden="true">
       <img class="a-partner-mark" src="${PARTNER_MARK_SRC}" alt="" width="22" height="22" />
       <span class="a-brand-divider"></span>
@@ -71,10 +63,10 @@ function renderBrandMark(copy) {
 }
 
 export function renderDirectionA(copy, locale) {
-  const [claudePane, codexPane, opencodePane] = stagePanes;
+    const [claudePane, codexPane, opencodePane] = stagePanes;
 
-  return {
-    markup: `
+    return {
+        markup: `
       <section class="direction-a" data-hero-motion="beams">
         <div class="a-motion" data-motion="beams" aria-hidden="true"></div>
 
@@ -213,54 +205,52 @@ export function renderDirectionA(copy, locale) {
         </div>
       </section>
     `,
-    mount(root) {
-      const section = root.querySelector(".direction-a");
+        mount(root) {
+            const section = root.querySelector(".direction-a");
 
-      if (!section) {
-        throw new Error("Direction A root is missing.");
-      }
+            if (!section) {
+                throw new Error("Direction A root is missing.");
+            }
 
-      document.documentElement.dataset.directionTreatment = "a";
+            document.documentElement.dataset.directionTreatment = "a";
 
-      // three costs ~130 kB gzipped — six times the rest of this page put
-      // together — so it is fetched as its own chunk AFTER first paint. Nothing
-      // above the fold waits on it: the band, the copy, the actions and the
-      // window mock are all plain DOM. Only the light field itself arrives
-      // late, and it fades in when it does (see beams.css).
-      let beams = null;
-      let beamsAbandoned = false;
+            // three costs ~130 kB gzipped — six times the rest of this page put
+            // together — so it is fetched as its own chunk AFTER first paint. Nothing
+            // above the fold waits on it: the band, the copy, the actions and the
+            // window mock are all plain DOM. Only the light field itself arrives
+            // late, and it fades in when it does (see beams.css).
+            let beams = null;
+            let beamsAbandoned = false;
 
-      import("../beams.js")
-        .then(({ mountBeams }) => {
-          if (beamsAbandoned) {
-            return;
-          }
+            import("../beams.js")
+                .then(({ mountBeams }) => {
+                    if (beamsAbandoned) {
+                        return;
+                    }
 
-          beams = mountBeams(section.querySelector(".a-motion"), HERO_BEAMS);
-        })
-        .catch((error) => {
-          // Nothing to retry — the field is decoration and the hero is fully
-          // readable without it. Fall back to the static plus-grid this
-          // treatment normally suppresses, then let the failure surface.
-          section.dataset.heroMotion = "none";
-          throw error;
-        });
+                    beams = mountBeams(section.querySelector(".a-motion"), HERO_BEAMS);
+                })
+                .catch((error) => {
+                    // Nothing to retry — the field is decoration and the hero is fully
+                    // readable without it. Fall back to the static plus-grid this
+                    // treatment normally suppresses, then let the failure surface.
+                    section.dataset.heroMotion = "none";
+                    throw error;
+                });
 
-      const disposeStream = mountStageStream(
-        section.querySelector(".a-appwin__grid"),
-      );
+            const disposeStream = mountStageStream(section.querySelector(".a-appwin__grid"));
 
-      return () => {
-        disposeStream();
-        beamsAbandoned = true;
-        beams?.dispose();
+            return () => {
+                disposeStream();
+                beamsAbandoned = true;
+                beams?.dispose();
 
-        if (document.documentElement.dataset.directionTreatment === "a") {
-          delete document.documentElement.dataset.directionTreatment;
-        }
-      };
-    },
-  };
+                if (document.documentElement.dataset.directionTreatment === "a") {
+                    delete document.documentElement.dataset.directionTreatment;
+                }
+            };
+        },
+    };
 }
 
 /**
@@ -273,41 +263,36 @@ export function renderDirectionA(copy, locale) {
  * @param {string} locale
  */
 export function updateDirectionALocale(root, copy, locale) {
-  const section = root.querySelector(".direction-a");
+    const section = root.querySelector(".direction-a");
 
-  if (!section) {
-    throw new Error("Direction A root is missing.");
-  }
-
-  for (const node of section.querySelectorAll("[data-copy]")) {
-    const text = copy[node.dataset.copy];
-
-    if (typeof text !== "string") {
-      continue;
+    if (!section) {
+        throw new Error("Direction A root is missing.");
     }
 
-    node.textContent = text;
+    for (const node of section.querySelectorAll("[data-copy]")) {
+        const text = copy[node.dataset.copy];
 
-    if (node.hasAttribute("data-text")) {
-      node.setAttribute("data-text", text);
+        if (typeof text !== "string") {
+            continue;
+        }
+
+        node.textContent = text;
+
+        if (node.hasAttribute("data-text")) {
+            node.setAttribute("data-text", text);
+        }
     }
-  }
 
-  section
-    .querySelector(".a-topbar__brand")
-    ?.setAttribute("aria-label", copy.navProduct);
+    section.querySelector(".a-topbar__brand")?.setAttribute("aria-label", copy.navProduct);
 
-  const langGroup = section.querySelector(".a-topbar__lang");
+    const langGroup = section.querySelector(".a-topbar__lang");
 
-  if (langGroup) {
-    langGroup.setAttribute("aria-label", copy.localeLabel);
-    langGroup.dataset.active = locale;
+    if (langGroup) {
+        langGroup.setAttribute("aria-label", copy.localeLabel);
+        langGroup.dataset.active = locale;
 
-    for (const button of langGroup.querySelectorAll("button[data-locale]")) {
-      button.setAttribute(
-        "aria-pressed",
-        String(button.dataset.locale === locale),
-      );
+        for (const button of langGroup.querySelectorAll("button[data-locale]")) {
+            button.setAttribute("aria-pressed", String(button.dataset.locale === locale));
+        }
     }
-  }
 }

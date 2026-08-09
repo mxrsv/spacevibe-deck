@@ -113,6 +113,21 @@ describe("OpenBoard removal flow", () => {
       (el) => el.textContent ?? "",
     );
 
+  it("draws the folder, remove and new-layout actions as icons", async () => {
+    seed(["/w/alpha"]);
+    await mount();
+
+    expect(host.querySelector(".row__ico.lucide-folder-open")).not.toBeNull();
+    expect(host.querySelector(".openfolder .lucide-folder-plus")).not.toBeNull();
+
+    const x = host.querySelector<HTMLButtonElement>(".row.is-selected .row__x");
+    // Removing a recent forgets a pointer; it deletes nothing on disk, so it
+    // is a dismissal (X), not a trash can.
+    expect(x?.querySelector(".lucide-x")).not.toBeNull();
+    expect(x?.textContent).toBe("");
+    expect(host.querySelector(".lcard--new .lucide-plus")).not.toBeNull();
+  });
+
   it("removing the selected recent moves selection to the next row", async () => {
     seed(["/w/alpha", "/w/beta", "/w/gamma"]);
     await mount();

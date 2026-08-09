@@ -1,10 +1,18 @@
 import { Fragment } from "preact";
+import {
+  ChevronDown,
+  ClipboardPaste,
+  Plus,
+  Send,
+  Trash2,
+} from "lucide-preact";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { settings, updateSettings } from "../settings/settings-store";
 import { tabViews } from "../terminal/tabs-store";
 import { reportChromeMessage } from "../chrome/events";
 import { ConfigRow } from "../ui/controls/config-row";
+import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { CommitInput } from "../ui/controls/commit-input";
 import { CommitTextarea } from "../ui/controls/commit-textarea";
 import {
@@ -42,6 +50,7 @@ interface PromptPopoverProps {
   onClose(): void;
 }
 
+
 function labelProblem(label: string): string | null {
   const trimmed = label.trim();
   if (trimmed === "") {
@@ -77,7 +86,9 @@ function AssetPicker({
     <ConfigRow label={label}>
       <span class="cfg-btn cfg-btn--overlay">
         <span class="cfg-btn__text">{chosen === "" ? "none" : chosen}</span>
-        <span class="cfg-btn__hint">▾</span>
+        <span class="cfg-btn__hint">
+          <DeckIcon icon={ChevronDown} size={ROW_ICON} />
+        </span>
         <select
           value={chosen}
           aria-label={label}
@@ -355,12 +366,19 @@ export function PromptPopover(props: PromptPopoverProps) {
               <button
                 type="button"
                 class="cfg-btn"
-                aria-label={`Inject ${template.label}`}
-                title="Paste into the focused pane"
+                aria-label={`${template.autoSend ? "Send" : "Paste"} ${template.label}`}
+                title={
+                  template.autoSend
+                    ? "Send to the focused pane"
+                    : "Paste into the focused pane"
+                }
                 disabled={injecting.value}
                 onClick={() => void injectTemplate(template)}
               >
-                ↩
+                <DeckIcon
+                  icon={template.autoSend ? Send : ClipboardPaste}
+                  size={ROW_ICON}
+                />
               </button>
             </div>
           </div>
@@ -400,7 +418,7 @@ export function PromptPopover(props: PromptPopoverProps) {
                   title={`Remove ${template.label}`}
                   onClick={() => removeTemplate(template.id)}
                 >
-                  ×
+                  <DeckIcon icon={Trash2} size={ROW_ICON} />
                 </button>
               </div>
             </div>
@@ -459,7 +477,7 @@ export function PromptPopover(props: PromptPopoverProps) {
             draftOpen.value = true;
           }}
         >
-          {draftOpen.value ? "add" : "+"}
+          {draftOpen.value ? "add" : <DeckIcon icon={Plus} size={ROW_ICON} />}
         </button>
       </ConfigRow>
 

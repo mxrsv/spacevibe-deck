@@ -6,6 +6,8 @@ import {
 import { CommitInput } from "./commit-input";
 import { ConfigRow } from "./config-row";
 import { primaryModifierName } from "../../lib/shortcut-label";
+import { ChevronDown } from "lucide-preact";
+import { DeckIcon, ROW_ICON } from "./deck-icon";
 
 interface EditorRowProps {
   value: EditorId;
@@ -32,7 +34,9 @@ export function EditorRow({
       >
         <span class="cfg-btn cfg-btn--overlay">
           <span class="cfg-btn__text">{label}</span>
-          <span class="cfg-btn__hint">▾</span>
+          <span class="cfg-btn__hint">
+            <DeckIcon icon={ChevronDown} size={ROW_ICON} />
+          </span>
           <select
             value={value}
             aria-label="Editor"

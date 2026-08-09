@@ -145,6 +145,32 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   `description`, though the scanner still names the agent by file stem because
   that is what the CLI loads by path.
 
+- A unified functional icon system is approved (2026-08-09): the desktop app's
+  action and navigation icons come from `lucide-preact` through one `DeckIcon`
+  primitive, including distinct Paste and Send actions in Prompt Board, because
+  the old mix of hand-drawn SVG and text glyphs had no consistent visual
+  grammar. Brand marks, platform logos, keyboard/terminal notation and bespoke
+  status visuals remain explicit exceptions. This is an approved dependency,
+  bundle and R2 design-language fork; the rulebook gained
+  [§14](docs/DESIGN-LANGUAGE.md) `current` and DL-1.1 its one exception.
+  **Code is complete and structurally verified** — 1136 tests across 99 files,
+  build green, main JS gzip +2.30 KiB against a 15 KiB ceiling — **but the
+  visual review is NOT done**: nothing has run `npm run tauri dev`, so no icon
+  has been seen at native scale in any theme preset. Until that happens this
+  stays here rather than moving into `docs/ARCHITECTURE.md`, and the ledger
+  there carries the claim as `building`. Three calls made during
+  implementation, each reversible on sight: **`Trash2` deletes, `X` dismisses**
+  — a declared agent or a saved preset gets the trash can, a draft or a recents
+  pointer gets the X; **the `auto` chip stays** beside a Send row even though
+  the icon now says the same thing, because a 14px pictogram is not legible
+  while scanning a list; **`.openfolder svg` and `.row__ico` lost their CSS
+  geometry**, because a `stroke-width` in CSS beats the SVG attribute and would
+  have silently voided the primitive. What shipped, what was measured and what
+  is still unseen: [`docs/CONTEXT.md`](docs/CONTEXT.md) `current`; the
+  [implementation plan](docs/plans/2026-08-09-unified-icon-system.md) `current`
+  was amended before execution — four defects found in review, including a
+  test file it referenced that did not exist.
+
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
 

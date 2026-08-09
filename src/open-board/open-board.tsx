@@ -1,7 +1,13 @@
+import { FolderOpen, FolderPlus, Plus, Trash2, X } from "lucide-preact";
 import { invoke } from "@tauri-apps/api/core";
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { open } from "@tauri-apps/plugin-dialog";
+import {
+  BOARD_ICON,
+  DeckIcon,
+  ROW_ICON,
+} from "../ui/controls/deck-icon";
 import { countLeaves } from "../lib/split-tree";
 import { isBuiltIn, type Preset } from "../lib/preset-schema";
 import {
@@ -488,7 +494,8 @@ export function OpenBoard({
         }
         break;
       case "Backspace":
-        // Recents remove immediately (same semantics as the row ×; undo is
+        // Recents remove immediately (same semantics as the row's remove
+        // action; undo is
         // just reopening the folder). Presets keep their confirm — a deleted
         // layout takes real work to rebuild.
         if (section.value === "workspace" && selectedPath.value !== null) {
@@ -516,7 +523,7 @@ export function OpenBoard({
     }
   }
 
-  /** One recents row — an li (not a button) so the × inside stays clickable. */
+  /** One recents row — an li (not a button) so the remove action stays clickable. */
   function recentRow(recent: RecentWorkspace) {
     const gone = missing.value.has(recent.path);
     const selected = recent.path === selectedPath.value;
@@ -540,9 +547,7 @@ export function OpenBoard({
         onClick={() => selectWorkspace(recent.path)}
         onDblClick={() => void confirmOpen()}
       >
-        <svg class="row__ico" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M1.6 12.4v-8.8a1 1 0 0 1 1-1h3.1l1.4 1.8h6.3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-10.8a1 1 0 0 1-1-1Z" />
-        </svg>
+        <DeckIcon icon={FolderOpen} size={BOARD_ICON} class="row__ico" />
         <span class="row__body">
           <span class="row__name">{folderName(recent.path)}</span>
           <span class="row__meta">
@@ -566,7 +571,7 @@ export function OpenBoard({
             // to the row's onDblClick and opens the workspace.
             onDblClick={(event) => event.stopPropagation()}
           >
-            ×
+            <DeckIcon icon={X} size={ROW_ICON} />
           </button>
         ) : null}
       </li>
@@ -594,10 +599,7 @@ export function OpenBoard({
         </div>
         <div class="rail__act">
           <button class="openfolder" onClick={() => void pickFolder()}>
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M1.6 12.4v-8.8a1 1 0 0 1 1-1h3.1l1.4 1.8h6.3a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-10.8a1 1 0 0 1-1-1Z" />
-              <path d="M8 6.7v4M6 8.7h4" />
-            </svg>
+            <DeckIcon icon={FolderPlus} size={ROW_ICON} />
             Open Folder…<kbd>{openFolderShortcut}</kbd>
           </button>
         </div>
@@ -715,7 +717,7 @@ export function OpenBoard({
                           openConfirmDelete(preset);
                         }}
                       >
-                        ×
+                        <DeckIcon icon={Trash2} size={ROW_ICON} />
                       </button>
                     </span>
                   ) : null}
@@ -752,7 +754,10 @@ export function OpenBoard({
                 class="lcard lcard--new"
                 onClick={() => onNewPreset(selectedPath.value)}
               >
-                <span>＋ New Layout</span>
+                <span>
+                  <DeckIcon icon={Plus} size={ROW_ICON} />
+                  New Layout
+                </span>
                 <small>From current window</small>
               </button>
             </div>

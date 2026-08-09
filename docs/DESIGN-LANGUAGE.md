@@ -19,7 +19,12 @@ constraint: **consume as few machine resources as possible.**
 
 ## 1. Hard constraints (resource frugality)
 
-- **DL-1.1** No new runtime dependencies for chrome UI. CSS + Preact only.
+- **DL-1.1** No new runtime dependencies for chrome UI. CSS + Preact only. One
+  exception, approved 2026-08-09: `lucide-preact` supplies every functional
+  icon (§14). It earns the exception by replacing hand-drawn SVG rather than
+  adding a layer over it, and by tree-shaking to only the icons imported by
+  name — a bounded cost, re-measured at each build against a gzip ceiling.
+  A second icon dependency is not covered by this exception.
 - **DL-1.2** Animate only `transform`, `opacity`, `color`, `border-color`,
   `background-color`. Max duration 300ms. No infinite / looping animations.
   Nothing animates while the user is idle.
@@ -204,10 +209,11 @@ section — these rules govern the frame around it.
 - **DL-11.2** The active category is marked by a 2px left accent bar plus a 4%
   `--fg` wash — the same signifier as config row hover (DL-5.1), so "active"
   reads the same everywhere in the app. No shadow, no fill (DL-1.3).
-- **DL-11.3** Category icons are hand-drawn inline SVG: 16px, single stroke,
-  `currentColor`. **No icon library** — DL-1.1 forbids new runtime dependencies
-  for chrome UI, and this rule exists so that constraint is not re-litigated
-  once per icon.
+- **DL-11.3** Category icons are Lucide icons rendered through `DeckIcon` (§14)
+  at 16px, one per category, chosen for what the category _is_ rather than for
+  variety. They were hand-drawn inline SVG until 2026-08-09; the rule now
+  points at §14 so icon questions are settled in one place instead of once per
+  category.
 - **DL-11.4** Category labels are lowercase `--ui-font` (DL-4.1, like all
   chrome). The rail item _is_ the group label it replaced, so a section does
   not repeat its own name as a heading inside itself.
@@ -264,6 +270,41 @@ genre.
   height, then scrolls.
 - **DL-13.6** Transient controls in a popover (pickers, search) reset when it
   opens; a popover never remembers half-finished state across opens.
+
+## 14. Icons
+
+Approved as a fork on 2026-08-09. Before it, icons came from two places at
+once — hand-drawn SVG in some files, typographic characters (`×`, `▾`, `↹`,
+`↺`, `‹`) in others — so the same action could look like a picture in one
+surface and like text in the next. These rules exist so an icon question is
+answered here rather than re-argued per button.
+
+- **DL-14.1** `lucide-preact` is the only source of functional icons, and
+  `DeckIcon` (`src/ui/controls/deck-icon.tsx`) is the only place its
+  presentation is set: `fill="none"`, `stroke="currentColor"`,
+  `strokeWidth={1.8}`, `aria-hidden`, `focusable="false"`. Icons are imported
+  by name. Nothing else authors an `<svg>`, and no glyph character stands in
+  for an action — `scripts/icon-system.test.ts` enforces both.
+- **DL-14.2** Four sizes, exported from `deck-icon.tsx` and used by name:
+  `CHROME_ICON` 13 (tab bar, titlebar), `ROW_ICON` 14 (config-row and popover
+  actions), `BOARD_ICON` 15 (Open Board rows), `RAIL_ICON` 16 (settings rail).
+  An icon never sets a control's padding or geometry; the control does.
+- **DL-14.3** CSS never sets `width`, `height`, `stroke` or `stroke-width` on
+  an icon. Those declarations beat SVG attributes, so one of them silently
+  disables DL-14.1 wherever it lands. Colour is expressed as `color` and
+  reaches the icon through `currentColor`.
+- **DL-14.4** Icon-only controls are for familiar, repeated actions that
+  already carry a hover tooltip (close, add, split, next). Consequential or
+  rare actions keep their word beside the icon — Restore Defaults reads
+  `reset`, the Open Board's button reads `Open Folder…`.
+- **DL-14.5** Meaning, not decoration: `Trash2` deletes something the user
+  declared and stored, `X` dismisses something transient. Two actions that
+  differ in consequence never share an icon — which is why Prompt Board
+  distinguishes `ClipboardPaste` from `Send`.
+- **DL-14.6** Outside the library by intent, and not exceptions to be widened:
+  the Deck brand mark, agent and OS logos, keyboard and terminal notation
+  (`⌘`, `⏎`, `⎋`), selection and status dots, and `WorkspaceSpinner`. A logo is
+  identity and a key legend is notation; neither is an icon in a system.
 
 ## Chưa khớp thực tế
 

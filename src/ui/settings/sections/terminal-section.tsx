@@ -1,8 +1,10 @@
+import { Repeat2 } from "lucide-preact";
 import {
   clampScrollback,
   SCROLLBACK_CHOICES,
 } from "../../../settings/settings-schema";
 import { settings, updateSettings } from "../../../settings/settings-store";
+import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
 import { ConfigRow } from "../../controls/config-row";
 
 function scrollbackLabel(n: number): string {
@@ -38,7 +40,9 @@ export function TerminalSection() {
         onClick={cycleScrollback}
       >
         {scrollbackLabel(current.scrollback)}
-        <span class="cfg-btn__hint">↹</span>
+        <span class="cfg-btn__hint">
+          <DeckIcon icon={Repeat2} size={ROW_ICON} />
+        </span>
       </button>
     </ConfigRow>
   );

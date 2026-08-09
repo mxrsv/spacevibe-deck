@@ -94,6 +94,28 @@ describe("AgentsSection", () => {
     click(addButton());
   };
 
+  it("tells deleting a declared agent apart from discarding a draft", () => {
+    mount();
+    declare("codex nightly", "codex --nightly");
+
+    const remove = host.querySelector(
+      '[aria-label="Remove codex nightly"] svg',
+    );
+    // Trash removes something the user declared and persisted; the draft's
+    // X only dismisses a row that never existed.
+    expect(remove?.classList.contains("lucide-trash-2")).toBe(true);
+
+    // Closed, the add row is the icon; open, it commits and says so in words.
+    expect(addButton().querySelector(".lucide-plus")).not.toBeNull();
+
+    click(addButton());
+    const discard = host.querySelector(
+      '[aria-label="Discard the new agent"] svg',
+    );
+    expect(discard?.classList.contains("lucide-x")).toBe(true);
+    expect(addButton().textContent?.trim()).toBe("add");
+  });
+
   it("lists every built-in as a locked row (DL-12.4)", () => {
     mount();
     const locked = Array.from(
@@ -207,7 +229,11 @@ describe("AgentsSection — refusals and cleanup", () => {
     settings.value = DEFAULT_SETTINGS;
   });
 
-  const openAndCommit = (trigger: string, aria: string, value: string): void => {
+  const openAndCommit = (
+    trigger: string,
+    aria: string,
+    value: string,
+  ): void => {
     const button = Array.from(
       host.querySelectorAll<HTMLButtonElement>(
         ".cfg-row--item .cfg-row__label--edit, .cfg-row--item .cfg-btn",
@@ -216,7 +242,9 @@ describe("AgentsSection — refusals and cleanup", () => {
     act(() => {
       button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    const input = host.querySelector<HTMLInputElement>(`[aria-label="${aria}"]`)!;
+    const input = host.querySelector<HTMLInputElement>(
+      `[aria-label="${aria}"]`,
+    )!;
     act(() => {
       input.value = value;
       input.dispatchEvent(new Event("input", { bubbles: true }));

@@ -348,6 +348,60 @@ popover closing when its target pane's tab closes are all unobserved outside
 unit tests. `agy`, `gemini` and `opencode` have no verified asset layout, so a
 pane running one of them hides the pickers and pastes the body alone.
 
+## Unified icon system — 2026-08-09
+
+The app's functional icons now come from one place. Before this, chrome and the
+settings rail carried hand-drawn SVG while rows, tabs and the search bar used
+typographic characters — `×`, `▾`, `↹`, `↺`, `‹`, `›`, `↩` — so the same action
+was a picture in one surface and a character in the next, at whatever weight
+the surrounding font happened to give it.
+
+- The source is `lucide-preact` (the first new runtime dependency chrome has
+  taken), imported by name and drawn through one component that owns every
+  presentation default — `aria-hidden`, `focusable`, `fill`, stroke and the
+  four sizes the chrome uses ([`DeckIcon`](../src/ui/controls/deck-icon.tsx)
+  `current`, [rules §14](DESIGN-LANGUAGE.md) `current`). `strokeWidth` is 1.8
+  because the icons it replaced already drew at 1.8 in the same 24-unit box,
+  so nothing changed weight.
+- CSS is where this kind of contract usually dies: a `stroke-width` or `width`
+  rule beats an SVG attribute, and `.row__ico` / `.openfolder svg` had both.
+  Those declarations are gone, their themed colours restated as `color` so
+  `currentColor` resolves the same way it painted before
+  ([styles](../src/styles.css) `current`).
+- Prompt Board's one action became two: `ClipboardPaste` when a template only
+  pastes, `Send` when it presses Enter, with the accessible name and tooltip
+  saying the same thing. The safety gate is untouched and still authoritative —
+  a Send that fails it pastes and reports "Pasted — not sent"
+  ([popover](../src/prompts/prompt-popover.tsx) `current`,
+  [gate](../src/prompts/inject.ts) `current`).
+- The search bar stays imperative DOM but does not get a second icon path: it
+  renders `DeckIcon` into its existing buttons with Preact and unmounts those
+  roots on both disposal paths. Its buttons also gained explicit
+  `aria-label`s — with the text replaced by an aria-hidden icon, the only name
+  left would have been the tooltip
+  ([bar](../src/terminal/search-bar.ts) `current`).
+- Outside the library on purpose: the Deck brand mark, agent and OS logos,
+  keyboard/terminal notation, status dots and `WorkspaceSpinner`. A filesystem
+  test scans `src/**/*.{ts,tsx}` for authored `<svg>` and for retired glyphs,
+  with counts as well as paths, so neither can come back quietly
+  ([guard](../scripts/icon-system.test.ts) `current`). It earned itself
+  immediately: it found a layout-preset delete button the plan had missed.
+
+Verified 2026-08-09: `npm test` 1136 passing across 99 files (from 1103/96),
+`npm run build` green, `npm run generate:menu:check` green. Main JS gzip went
+170.37 KiB → 172.67 KiB, **+2.30 KiB** against a 15 KiB ceiling, which is the
+evidence that Rollup tree-shakes the barrel rather than shipping the catalog;
+CSS shrank 9.02 → 8.97 KiB.
+
+Known-open, deliberately: **no production-fidelity visual review has been done**
+— nothing has run `npm run tauri dev`, so the icons are unseen at native scale
+in the four theme presets, and the migration is not complete until they are.
+Two spots to look at first: the sidebar's add-glyph slot lost the 7px width
+that sized a text `+`, and `Maximize2` (diagonal arrows) replaced a
+corner-bracket drawing for focus expand — `Maximize` is the closer shape if the
+arrows read wrong. The `auto` chip beside a Send row is now partly redundant and
+was kept on purpose, to be judged on screen rather than in advance.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

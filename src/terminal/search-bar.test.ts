@@ -247,6 +247,47 @@ function typeQuery(pane: Pane, value: string): void {
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+describe("the search bar's own controls", () => {
+  it("names its buttons and draws them as icons", () => {
+    const pane = fakeSearchPane(1);
+    openSearchBar(pane);
+
+    const named = (name: string): HTMLButtonElement => {
+      const found = Array.from(
+        pane.element.querySelectorAll<HTMLButtonElement>("button"),
+      ).find((button) => button.getAttribute("aria-label") === name);
+      if (found === undefined) {
+        throw new Error(`no button named ${name}`);
+      }
+      return found;
+    };
+
+    // Named explicitly, not by their text: once the glyph is an aria-hidden
+    // icon, the only name left would be the tooltip.
+    expect(named("Previous match").querySelector(".lucide-chevron-left")).not.toBeNull();
+    expect(named("Next match").querySelector(".lucide-chevron-right")).not.toBeNull();
+    expect(named("Close").querySelector(".lucide-x")).not.toBeNull();
+    expect(named("Close").textContent).toBe("");
+  });
+
+  it("leaves no icon roots behind on either disposal path", () => {
+    // A bar left open on pane 1 by the test above would short-circuit
+    // `openSearchBar` and hand this test a pane with no bar in it.
+    closeSearchBar();
+    const pane = fakeSearchPane(1);
+    openSearchBar(pane);
+    const bar = pane.element.querySelector(".search-bar") as HTMLElement;
+    closeSearchBar();
+    expect(bar.querySelectorAll("svg")).toHaveLength(0);
+
+    openSearchBar(pane);
+    const second = pane.element.querySelector(".search-bar") as HTMLElement;
+    closeSearchBarForPane(pane.id);
+    expect(second.querySelectorAll("svg")).toHaveLength(0);
+  });
+
+});
+
 describe("advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or without an open bar)", () => {
   afterEach(() => {
     closeSearchBar();
