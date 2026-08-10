@@ -86,12 +86,14 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 - **DL-4.2** Values still need `font-variant-numeric: tabular-nums`. Under mono
   this was nearly inert; under a proportional face it is what stops `13px` and
   `10k lines` from jittering as they change.
-- **DL-4.3** **No uppercase anywhere.** No `text-transform`. Letter-spacing
-  stays ≤ 0.06em, and tracking tuned against a monospace advance width has to
-  be re-measured when a rule moves to `--ui-font`.
+- **DL-4.3** **No uppercase anywhere**, with exactly one sanctioned exception —
+  the §16 eyebrow label, which also carries the only tracking above the cap
+  below. No `text-transform`. Letter-spacing stays ≤ 0.06em, and tracking tuned
+  against a monospace advance width has to be re-measured when a rule moves to
+  `--ui-font`.
 - **DL-4.4** Sizes (px): group label 10.5 · key 12.5 · description 10.5 ·
-  value 11.5 · panel title 12. Keys sentence-case, descriptions and values
-  lowercase.
+  value 11.5 · panel title 12 · display figure 40 (§16, at most one per
+  screen). Keys sentence-case, descriptions and values lowercase.
 
 ## 5. The one control: config row
 
@@ -374,6 +376,60 @@ part of this design language instead of becoming a new widget genre: it is a
   when empty leaves the reader unable to tell "nothing has happened yet" from
   "something is broken" — a distinction the screen around it is required to
   make, and which it cannot make if the evidence disappears.
+
+## 16. The display figure
+
+Approved as a fork on 2026-08-10, for the token usage overview. §15 governs a
+table of facts and §5 a row whose key carries one value; neither covers a
+screen whose entire job is to state **one number** and then account for it. The
+overview is not a denser table — it is a single figure with its own breakdown
+underneath, and these rules say how that stays part of this design language
+instead of becoming a dashboard genre with its own vocabulary. It is still a
+key beside a value and a fact on a surface; only the scale of the headline and
+the shape of the proportion are new.
+
+- **DL-16.1** A screen may carry **at most one display figure**: the number the
+  screen exists to state. It is set at the DL-4.4 display size (40px), weight
+  600–700, `--text-primary`, `font-variant-numeric: tabular-nums` (DL-4.2).
+  A screen with two display figures has none — the second one demotes the
+  first to a heading and the reader no longer knows what the screen is about.
+  If a second number matters, it goes in the accounting below at ordinary
+  sizes, never at this one.
+- **DL-16.2** The display figure is introduced by an **eyebrow label**: the one
+  sanctioned uppercase in this app (`RAW TOKEN COST`), at group-label size
+  (10.5px) in `--text-muted`, with letter-spacing 0.08em. It is written as
+  literal uppercase characters, **never** with `text-transform` — so the
+  exception is greppable in the markup rather than hidden in a stylesheet, and
+  the DL-4.3 ban on the property itself stands unqualified. Both halves of this
+  are a deliberate exception to DL-4.3: the uppercase **and** the 0.08em, which
+  exceeds DL-4.3's 0.06em cap and is what stops small caps from reading as a
+  cramped word rather than a label. It is allowed here for one reason: this
+  labels a **display figure**, naming what the number is. It is not a control
+  label, not a column header, not a section heading, and it licenses uppercase
+  **nowhere else in this app** — DL-15.5 in particular keeps its lowercase
+  column headers, and a table header that reaches for this rule is a bug.
+- **DL-16.3** A **share bar** may sit under any row that names a part of a
+  stated total: a full-width track 4px tall, radius 2px, track
+  `color-mix(in srgb, var(--fg) 8%, transparent)`, filled left to right by that
+  row's share. It carries no gradient, no shadow and no animation (DL-1.3,
+  DL-1.2) — it is a printed proportion, not a thing that moves.
+- **DL-16.4** The fill takes **the subject's own established colour** — for an
+  agent, the terminal-theme colour it already wears on its pane dot and tab
+  (`dotColor`, `src/lib/process-info.ts`). It never introduces a colour role of
+  its own and never uses a brand colour sampled from a logo: §3's roles stay
+  closed, and an agent that is magenta everywhere else in the app must be
+  magenta here too.
+- **DL-16.5** A share bar is a **proportion of a stated total**, and it is drawn
+  only when that total is on screen. It is not a gauge, not a progress
+  indicator, and not a meter against a budget or a quota — nothing in it may
+  imply a limit the app does not know. When the total is unavailable, every
+  bar renders as an empty track and no percentage is printed anywhere; a bar
+  that fills against an unknown denominator is an invented number.
+- **DL-16.6** A share bar is **not interactive**: no hover treatment, no click
+  target, no tooltip carrying the only copy of a value. The DL-15.2 reasoning
+  applies unchanged — an affordance that reacts and then does nothing is a
+  broken promise. The percentage is always written in text beside the bar, so
+  the bar itself is `aria-hidden` and removing it would lose no information.
 
 ## Chưa khớp thực tế
 
