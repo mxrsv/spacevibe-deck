@@ -149,19 +149,6 @@ pub fn relabel_window_config(source: &WindowConfig, label: &str) -> WindowConfig
     config
 }
 
-/// `open_pane_window`'s frozen argument shape.
-///
-/// `screen_x`/`screen_y` are **CSS pixels** — the units the browser's
-/// `screenX`/`screenY` report and the units the drag section relays. They are
-/// absent on the menu-command path, which takes the OS's default placement.
-#[derive(Clone, Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OpenPaneWindowArgs {
-    pub token: String,
-    pub screen_x: Option<f64>,
-    pub screen_y: Option<f64>,
-}
-
 /// One screen axis, CSS pixels → physical pixels.
 ///
 /// Derived from the §6 spike, where `clientX = screenX − innerPosition.x /
@@ -176,17 +163,32 @@ pub fn physical_from_css(css: f64, scale_factor: f64) -> f64 {
 /// "the loop is gone", not "the loop is busy".
 const HARDEN_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Create a Deck window that boots straight into adopting `args.token`'s pane.
+/// Create a Deck window that boots straight into adopting `token`'s pane.
 ///
 /// Async on purpose: `WebviewWindowBuilder` deadlocks on Windows when a
 /// synchronous command creates a window.
+///
+/// **These three parameter names ARE the wire keys, and must stay flat.** Tauri
+/// resolves each parameter by looking its camelCased name up in the invoke
+/// payload (`tauri/src/ipc/command.rs`), so folding them back into one
+/// `args: OpenPaneWindowArgs` struct would make Tauri demand a key literally
+/// named `args` — which the frontend never sends, per the frozen contract
+/// `{ token, screenX?, screenY? }`. That mismatch compiles, type-checks and
+/// passes every unit test; it fails only in the running app. `scripts/
+/// ipc-contract.test.ts` is what holds the two sides together now.
+///
+/// `screen_x`/`screen_y` are **CSS pixels** — the units the browser's
+/// `screenX`/`screenY` report and the units the drag section relays. They are
+/// absent on the menu-command path, which takes the OS's default placement.
 #[tauri::command]
 pub async fn open_pane_window(
     app: tauri::AppHandle,
     labels: State<'_, WindowLabels>,
     pending: State<'_, PendingAdoptions>,
     coordinator: State<'_, WindowCoordinator>,
-    args: OpenPaneWindowArgs,
+    token: String,
+    screen_x: Option<f64>,
+    screen_y: Option<f64>,
 ) -> Result<String, String> {
     let label = labels.allocate();
     let source = app
@@ -202,12 +204,12 @@ pub async fn open_pane_window(
     // reservation the coordinator cannot tell that a window destroyed before
     // it claims was THIS transfer's destination, so §7.6 row 1 degrades from
     // an immediate abort into the §7.5 ten-second timeout.
-    coordinator.reserve_destination(&args.token, &label)?;
+    coordinator.reserve_destination(&token, &label)?;
 
     // Registered before `build()` too: the webview can call `window_boot_mode`
     // as soon as it loads, and losing that race would boot the Open Board
     // into a window that exists only to receive a pane.
-    pending.register(label.clone(), args.token);
+    pending.register(label.clone(), token);
 
     let window = match WebviewWindowBuilder::from_config(&app, &config)
         .and_then(|builder| builder.build())
@@ -224,7 +226,7 @@ pub async fn open_pane_window(
     // ambiguous once two monitors have different scale factors. A failure here
     // is not fatal — a window in the wrong place still holds the pane — so it
     // is reported and the move continues.
-    if let (Some(screen_x), Some(screen_y)) = (args.screen_x, args.screen_y) {
+    if let (Some(screen_x), Some(screen_y)) = (screen_x, screen_y) {
         let scale = app
             .monitor_from_point(screen_x, screen_y)
             .ok()
@@ -535,24 +537,6 @@ mod tests {
         assert_eq!(super::physical_from_css(113.0, 2.0), 226.0);
         assert_eq!(super::physical_from_css(410.0, 1.0), 410.0);
         assert_eq!(super::physical_from_css(-227.0, 2.0), -454.0);
-    }
-
-    #[test]
-    fn open_pane_window_args_deserialize_camel_case_with_optional_coordinates() {
-        let with_point: super::OpenPaneWindowArgs = serde_json::from_value(serde_json::json!({
-            "token": "token-abc",
-            "screenX": 410.0,
-            "screenY": 113.0
-        }))
-        .unwrap();
-        assert_eq!(with_point.token, "token-abc");
-        assert_eq!(with_point.screen_x, Some(410.0));
-        assert_eq!(with_point.screen_y, Some(113.0));
-
-        // The menu-command path sends no point and must still parse.
-        let without_point: super::OpenPaneWindowArgs =
-            serde_json::from_value(serde_json::json!({ "token": "token-abc" })).unwrap();
-        assert_eq!(without_point.screen_x, None);
     }
 
     #[test]
