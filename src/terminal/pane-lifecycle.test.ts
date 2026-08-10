@@ -5,6 +5,7 @@ import { createPaneLifecycle } from "./pane-lifecycle";
 import type { Pane, PaneAttentionSignal, PaneEvents } from "./pane";
 import { createMemoryPtyClient } from "./pty-client";
 import { persistError } from "../chrome/events";
+import { paneCwd } from "./pane-cwd";
 
 function fakePane(
   id: number,
@@ -306,5 +307,119 @@ describe("createPaneLifecycle discardPane", () => {
     life.discardPane(pane);
     expect(killSpy).toHaveBeenCalledWith(1);
     expect(life.panes.has(1)).toBe(false);
+  });
+});
+
+describe("createPaneLifecycle write gate", () => {
+  function lifecycleWithFakePane() {
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const life = createPaneLifecycle({
+      pty,
+      getSettings: () => DEFAULT_SETTINGS as Settings,
+      onWriteWhileExited() {},
+      onFocus() {},
+      createPane: (id, _settings, events) => fakePane(id, events),
+    });
+    return { pty, life };
+  }
+
+  it("drainWrites resolves only after every queued write has reached the PTY", async () => {
+    const { pty, life } = lifecycleWithFakePane();
+    const pane = await life.spawnPane();
+    void life.enqueueWrite(pane.id, "a");
+    void life.enqueueWrite(pane.id, "b");
+
+    await life.drainWrites(pane.id);
+
+    expect(pty.writes.map((w) => w.data)).toEqual(["a", "b"]);
+  });
+
+  it("holdWrites parks a write instead of sending it, and the release lets it through in order", async () => {
+    const { pty, life } = lifecycleWithFakePane();
+    const pane = await life.spawnPane();
+    const release = life.holdWrites(pane.id);
+
+    void life.enqueueWrite(pane.id, "held");
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(pty.writes).toEqual([]);
+
+    release();
+    await life.drainWrites(pane.id);
+    expect(pty.writes.map((w) => w.data)).toEqual(["held"]);
+  });
+
+  it("a write parked behind a hold is dropped when the pane is released meanwhile", async () => {
+    const { pty, life } = lifecycleWithFakePane();
+    const pane = await life.spawnPane();
+    const release = life.holdWrites(pane.id);
+    const parked = life.enqueueWrite(pane.id, "gone");
+
+    life.panes.delete(pane.id);
+    release();
+
+    await expect(parked).resolves.toBe(false);
+    expect(pty.writes).toEqual([]);
+  });
+});
+
+describe("createPaneLifecycle adopt and release", () => {
+  const payload = {
+    paneId: 42,
+    cwd: "/repo",
+    agentId: "claude",
+    scrollback: "restored",
+    cols: 120,
+    rows: 40,
+    tabName: null,
+    dotColor: null,
+    workspacePath: "/repo",
+  } as const;
+
+  it("adoptPane registers the pane under the payload's pty id without spawning", async () => {
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const geometries: Array<{ cols: number; rows: number } | undefined> = [];
+    const life = createPaneLifecycle({
+      pty,
+      getSettings: () => DEFAULT_SETTINGS as Settings,
+      onWriteWhileExited() {},
+      onFocus() {},
+      createPane: (id, _settings, events, geometry) => {
+        geometries.push(geometry);
+        return fakePane(id, events);
+      },
+    });
+
+    const pane = life.adoptPane(payload);
+
+    expect(pane.id).toBe(42);
+    expect(life.panes.get(42)).toBe(pane);
+    expect(pty.sessions.size).toBe(0);
+    expect(geometries).toEqual([{ cols: 120, rows: 40 }]);
+    expect(paneCwd(42)).toBe("/repo");
+  });
+
+  it("releasePane forgets and disposes the pane but never kills the PTY", async () => {
+    const pty = createMemoryPtyClient({ nextId: 5 });
+    const killed: number[] = [];
+    const disposed: number[] = [];
+    const life = createPaneLifecycle({
+      pty: { ...pty, killPty: async (id) => void killed.push(id) },
+      getSettings: () => DEFAULT_SETTINGS as Settings,
+      onWriteWhileExited() {},
+      onFocus() {},
+      createPane: (id, _settings, events) => {
+        const pane = fakePane(id, events);
+        return { ...pane, dispose: () => void disposed.push(id) };
+      },
+    });
+    const pane = await life.spawnPane();
+
+    life.releasePane(pane.id);
+
+    expect(killed).toEqual([]);
+    expect(disposed).toEqual([pane.id]);
+    expect(life.panes.has(pane.id)).toBe(false);
+    expect(paneCwd(pane.id)).toBeNull();
   });
 });
