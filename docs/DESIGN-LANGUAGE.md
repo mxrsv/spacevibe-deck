@@ -174,8 +174,10 @@ Before shipping any chrome UI change:
    position" and had to be rewritten as a `cycle`.)
 2. Every color maps to a role in §3; no hardcoded hex (DL-2.1).
 3. Any animation fits the budget in §7 and the constraints in §1. Reduced-motion
-   is handled **by scope** (`.settings-screen *`), never by an allowlist of
-   class names — an allowlist silently misses the next class.
+   is handled **by scope** (`.settings-screen *`, `.usage-screen *`), never by
+   an allowlist of class names — an allowlist silently misses the next class.
+   A new full-window screen adds its own scope to that list; it does not add
+   the individual classes inside it.
 4. No uppercase (§4). No monospace anywhere in chrome — if a rule reaches for
    it, the answer is `--ui-font` (DL-4.1).
 5. Text fields go through `CommitInput`, multi-line ones through
@@ -197,28 +199,34 @@ is reworked — **do not "fix" them opportunistically inside an unrelated change
 | `.search-bar`                                                                      | DL-1.3 (box-shadow) | real blurred shadow — drop            |
 | `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —                   | inset hairlines, allowed under DL-1.3 |
 
-## 11. Settings shell
+## 11. Full-window screens
 
-The settings surface is a full-window screen, not a drawer: a fixed category
-rail beside a section area. §5's config row is still the only control inside a
-section — these rules govern the frame around it.
+A full-window screen covers the stage instead of sitting beside it: a fixed
+nav rail beside a section area. Settings was the first and is still the
+reference implementation; the token usage screen (2026-08-10) is the second,
+which is why these rules now say "a full-window screen" where they used to say
+"the settings shell". §5's config row is still the only control inside a
+settings section — these rules govern the frame around it, whatever a given
+screen puts in its sections.
 
-- **DL-11.1** The settings shell is a two-column surface: a fixed nav rail, and
-  a section area that owns **all** scrolling. The rail never scrolls with the
-  content beside it.
-- **DL-11.2** The active category is marked by a 2px left accent bar plus a 4%
+- **DL-11.1** A full-window screen shell is a two-column surface: a fixed nav
+  rail, and a section area that owns **all** scrolling. The rail never scrolls
+  with the content beside it.
+- **DL-11.2** The active rail item is marked by a 2px left accent bar plus a 4%
   `--fg` wash — the same signifier as config row hover (DL-5.1), so "active"
   reads the same everywhere in the app. No shadow, no fill (DL-1.3).
-- **DL-11.3** Category icons are Lucide icons rendered through `DeckIcon` (§14)
-  at 16px, one per category, chosen for what the category _is_ rather than for
+- **DL-11.3** Rail icons are Lucide icons rendered through `DeckIcon` (§14)
+  at 16px, one per rail item, chosen for what the item _is_ rather than for
   variety. They were hand-drawn inline SVG until 2026-08-09; the rule now
   points at §14 so icon questions are settled in one place instead of once per
-  category.
-- **DL-11.4** Category labels are lowercase `--ui-font` (DL-4.1, like all
+  item.
+- **DL-11.4** Rail labels are lowercase `--ui-font` (DL-4.1, like all
   chrome). The rail item _is_ the group label it replaced, so a section does
   not repeat its own name as a heading inside itself.
-- **DL-11.5** Destructive actions never sit among navigable categories. They
-  are pinned to the rail's foot, below a hairline, marked `--red` (DL-3.2).
+- **DL-11.5** Destructive actions never sit among navigable rail items. They
+  are pinned to the rail's foot, below a hairline, marked `--red` (DL-3.2). A
+  screen with no destructive action has no foot at all; the slot is not filled
+  with something else to keep the shape symmetrical.
 
 ## 12. Editable lists
 
@@ -305,6 +313,67 @@ answered here rather than re-argued per button.
   the Deck brand mark, agent and OS logos, keyboard and terminal notation
   (`⌘`, `⏎`, `⎋`), selection and status dots, and `WorkspaceSpinner`. A logo is
   identity and a key legend is notation; neither is an icon in a system.
+
+## 15. Read-only data tables
+
+Approved as a fork on 2026-08-10, for the token usage dashboard. §5 governs a
+row whose key carries exactly one interactive value, and §12 governs a list the
+user adds to and deletes from; a page of measured numbers is neither. A daily
+usage grid has no key to name, no value to set, and nothing to add or remove —
+every cell is a fact that was counted. These rules say how such a grid stays
+part of this design language instead of becoming a new widget genre: it is a
+**table of facts**, and the one thing it must never grow is an interaction.
+
+- **DL-15.1** A metric table sits on the screen's own `--chrome-2` surface
+  inside a 1px `--hair` container, radius 8px — the same box §13 gives a
+  popover, minus the hairline emphasis, because a table is content on a
+  surface rather than a surface of its own. Rows are separated by `--hair`
+  hairlines and nothing else: no zebra striping, no fills, no shadow (DL-1.3,
+  DL-3.3). Depth in this app is a background step, and a table is not a card.
+- **DL-15.2** A metric table is **read-only and non-interactive**: no sort
+  control, no column reordering, no row click target, and — the part that gets
+  broken first — **no row hover treatment**. The accent bar of DL-5.1 means
+  "this row does something"; a row that lights up under the pointer and then
+  does nothing is a broken promise, and it is the one affordance a reader will
+  try. Adding sorting or filtering is a design decision, not an implementation
+  detail: propose an edit to this document first (§9.1).
+- **DL-15.3** Horizontal overflow scrolls **inside the table's own container**,
+  never on the page body and never by shrinking the type. The container carries
+  `overflow-x: auto`; the shell around it keeps `min-height: 0` and a
+  `minmax(0, 1fr)` track so the grid can actually shrink (DL-11.1). A wide
+  table is then one element's problem instead of a horizontal scrollbar under
+  the whole app.
+- **DL-15.4** Numerals are **right-aligned** and set with
+  `font-variant-numeric: tabular-nums` (DL-4.2); text columns stay
+  left-aligned. This repo has **no `--mono` token** and will not gain one — the
+  monospace face belongs to the terminal (DL-4.1), and a mono column here would
+  read as terminal output that leaked into native UI. Tabular figures in
+  `--ui-font` are what hold a column of digits in line, and right alignment is
+  what makes magnitudes comparable down the column; between them they do
+  everything a monospace column was wanted for.
+- **DL-15.5** A column header is lowercase `--ui-font` at 10.5px in
+  `--text-faint` at normal weight (DL-4.1, DL-4.3, DL-4.4) — the same treatment
+  as a `cfg-group` label, because that is what it is: the name of the thing
+  below it, not a heading competing with the data. No uppercase, no bold, no
+  sort caret.
+- **DL-15.6** A value that is unknown, unavailable or not applicable renders as
+  a single em dash `—` in `--text-faint`. Never `0`, never `n/a`, never an
+  empty cell. Zero is a measurement and the dash is the absence of one: a table
+  that prints `0` where it means "we hold no price for this model" is stating a
+  fact it does not have.
+- **DL-15.7** The markup is a real `<table>` with `<thead>`, `<tbody>`,
+  `<th scope="col">` on every column header and `<th scope="row">` on the cell
+  that identifies the row. A grid of `<div>`s is unreadable to assistive tech,
+  and this is data whose only meaning is which row and which column a number
+  sits in. The table's accessible name comes from a visible heading above it
+  via `aria-labelledby`, and any disclaimer under it via `aria-describedby` —
+  not from `<caption>`, because a caption lives inside the DL-15.3 scroll
+  container and would slide out of view with the columns.
+- **DL-15.8** A table with no rows still renders its header row plus one
+  spanning cell saying what is absent, in `--text-faint`. A table that vanishes
+  when empty leaves the reader unable to tell "nothing has happened yet" from
+  "something is broken" — a distinction the screen around it is required to
+  make, and which it cannot make if the evidence disappears.
 
 ## Chưa khớp thực tế
 
