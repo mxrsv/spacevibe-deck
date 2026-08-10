@@ -45,7 +45,15 @@ use tauri::Manager;
 /// Parser/schema version of the on-disk cache. A mismatch discards the cache
 /// and forces a full rescan (spec, major M1) — bump it whenever a field's
 /// meaning changes, not merely when one is added.
-const USAGE_CACHE_VERSION: u32 = 1;
+///
+/// **2 (2026-08-10)** — version 1 attributed a Codex file's `token_count`
+/// events that precede its first `turn_context` to `UNKNOWN_MODEL` and left
+/// them there. On the dev machine two rollouts put 6 179 898 tokens on
+/// `unknown`, which is unpriced, which blanked the Codex dollar column and the
+/// headline total (§0.3 decision 8, "null wins"). `codex::backfill_unknown_model`
+/// fixes new scans; nothing fixes a cache already on disk, so the bump throws
+/// those buckets away.
+const USAGE_CACHE_VERSION: u32 = 2;
 
 /// Cache file name, inside `app.path().app_data_dir()` beside the plugin
 /// stores. Written temp-file-plus-rename, never truncate-in-place.
@@ -458,7 +466,11 @@ mod tests {
 
     #[test]
     fn the_frozen_constants_hold_their_frozen_values() {
-        assert_eq!(USAGE_CACHE_VERSION, 1);
+        // 2, not the 1 §0.2.4 froze: every version-1 cache on disk was written
+        // by a parser that left a Codex file's pre-`turn_context` window on
+        // `unknown`, and the bump is what discards those buckets instead of
+        // letting them survive every future warm poll.
+        assert_eq!(USAGE_CACHE_VERSION, 2);
         assert_eq!(USAGE_CACHE_FILE, "usage-cache.json");
         assert_eq!(COMPACT_AFTER_MS, 48 * 60 * 60 * 1000);
     }
@@ -584,7 +596,7 @@ mod tests {
 
         let encoded = serde_json::to_vec(&cache).unwrap();
         let text = String::from_utf8(encoded.clone()).unwrap();
-        assert!(text.contains("\"cacheVersion\":1"));
+        assert!(text.contains("\"cacheVersion\":2"));
         assert!(text.contains("\"bucketStartMs\""));
         assert_eq!(
             serde_json::from_slice::<UsageCache>(&encoded).unwrap(),

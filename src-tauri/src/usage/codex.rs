@@ -1,12 +1,42 @@
 //! Codex rollout ingestion, and the dispatcher that routes one line to its
 //! agent's parser.
 
-use super::claude::{add_total, ingest_claude_line, u64_field, LineOutcome};
+use super::claude::{add_total, ingest_claude_line, sort_totals, u64_field, LineOutcome};
 use super::reader::parse_rfc3339_ms;
 use super::{
-    bucket_start, CodexTotals, FileRecord, UsageAgent, UsageCounters, CODEX_EVENT_TYPE,
-    CODEX_TOKEN_COUNT_TYPE, CODEX_TURN_CONTEXT_TYPE, UNKNOWN_MODEL,
+    bucket_start, CodexTotals, Contribution, FileRecord, UsageAgent, UsageCounters,
+    CODEX_EVENT_TYPE, CODEX_TOKEN_COUNT_TYPE, CODEX_TURN_CONTEXT_TYPE, UNKNOWN_MODEL,
 };
+
+/// Re-attribute a file's unattributed roll-ups to the first model it declares.
+///
+/// A rollout's `token_count` events do not have to wait for its first
+/// `turn_context`: two real files on the dev machine emit them at lines 4, 5, 7
+/// and 8 and only name a model further down. "The most recent preceding
+/// `turn_context`" has nothing to look back at there, so those deltas landed on
+/// `UNKNOWN_MODEL` — 6 179 898 tokens, unpriced, which blanked the Codex dollar
+/// column entirely.
+///
+/// `turn_context` is written per turn, so the first one names the model the
+/// session started with, which is the right answer for everything ahead of it.
+/// Only the attribution moves: each delta keeps its value and its bucket.
+fn backfill_unknown_model(totals: &mut Vec<Contribution>, model: &str) {
+    if !totals.iter().any(|entry| entry.model == UNKNOWN_MODEL) {
+        return;
+    }
+    // A fresh vector rather than an in-place rewrite (C1), and through
+    // `add_total` so a back-filled bucket merges with an existing one for the
+    // same model instead of becoming a second entry.
+    for entry in std::mem::take(totals) {
+        let target = if entry.model == UNKNOWN_MODEL {
+            model
+        } else {
+            entry.model.as_str()
+        };
+        add_total(totals, entry.bucket_start_ms, target, entry.counters);
+    }
+    sort_totals(totals);
+}
 
 /// One line of a Codex rollout.
 ///
@@ -29,6 +59,13 @@ fn ingest_codex_line(bytes: &[u8], record: &mut FileRecord) -> LineOutcome {
     };
     if kind == CODEX_TURN_CONTEXT_TYPE {
         if let Some(model) = payload.get("model").and_then(serde_json::Value::as_str) {
+            // Only the FIRST declaration back-fills. On a resumed scan
+            // `last_model` is already restored from the cache, so the window an
+            // earlier scan resolved is never revisited and a mid-file model
+            // switch cannot drag it along.
+            if record.last_model.is_none() {
+                backfill_unknown_model(&mut record.totals, model);
+            }
             record.last_model = Some(model.to_string());
         }
         return LineOutcome::Ignored;
@@ -338,6 +375,78 @@ pub(crate) mod tests {
         assert_eq!(record.totals[0].counters.output, 10);
     }
 
+    /// Two real rollouts on the dev machine
+    /// (`rollout-2026-08-04T12-12-{08,17}-019fcb2f-…`) open with `token_count`
+    /// events at lines 4, 5, 7, 8 and only declare a model further down. Before
+    /// back-fill those two files alone put 6 179 898 tokens on `unknown`, which
+    /// blanked the whole Codex dollar column (§0.3 decision 8, "null wins").
+    #[test]
+    fn codex_backfills_a_token_count_that_precedes_the_first_turn_context() {
+        let mut record = codex_record();
+        ingest_codex_line(
+            &token_count("2026-08-10T04:45:59.358Z", 1_000, 0, 0, 100),
+            &mut record,
+        );
+        ingest_codex_line(
+            &token_count("2026-08-10T04:46:13.066Z", 1_500, 0, 0, 160),
+            &mut record,
+        );
+        assert_eq!(
+            record.totals[0].model, UNKNOWN_MODEL,
+            "unattributed while the file has declared no model"
+        );
+
+        ingest_codex_line(
+            &turn_context("2026-08-10T04:46:20.000Z", "gpt-5.6-sol"),
+            &mut record,
+        );
+        assert_eq!(record.totals.len(), 1);
+        assert_eq!(record.totals[0].model, "gpt-5.6-sol");
+        // Back-fill moves the attribution and nothing else: the deltas and the
+        // bucket they landed in are untouched.
+        assert_eq!(record.totals[0].bucket_start_ms, 1_786_337_100_000);
+        assert_eq!(record.totals[0].counters.input_uncached, 1_500);
+        assert_eq!(record.totals[0].counters.output, 160);
+    }
+
+    #[test]
+    fn codex_backfills_only_to_the_first_turn_context_model() {
+        let mut record = codex_record();
+        ingest_codex_line(
+            &token_count("2026-08-10T04:45:59.358Z", 1_000, 0, 0, 100),
+            &mut record,
+        );
+        ingest_codex_line(
+            &turn_context("2026-08-10T04:46:00.000Z", "gpt-5.6-sol"),
+            &mut record,
+        );
+        ingest_codex_line(
+            &token_count("2026-08-10T04:46:13.066Z", 1_500, 0, 0, 160),
+            &mut record,
+        );
+        // A later switch must not drag the back-filled window along with it.
+        ingest_codex_line(
+            &turn_context("2026-08-10T04:46:20.000Z", "gpt-5.6-mini"),
+            &mut record,
+        );
+        ingest_codex_line(
+            &token_count("2026-08-10T04:46:25.314Z", 1_800, 0, 0, 200),
+            &mut record,
+        );
+        sort_totals(&mut record.totals);
+        assert_eq!(record.totals.len(), 2);
+        assert_eq!(record.totals[0].model, "gpt-5.6-mini");
+        assert_eq!(record.totals[0].counters.input_uncached, 300);
+        assert_eq!(record.totals[0].counters.output, 40);
+        assert_eq!(record.totals[1].model, "gpt-5.6-sol");
+        assert_eq!(record.totals[1].counters.input_uncached, 1_500);
+        assert_eq!(record.totals[1].counters.output, 160);
+        assert!(record
+            .totals
+            .iter()
+            .all(|entry| entry.model != UNKNOWN_MODEL));
+    }
+
     #[test]
     fn codex_attributes_to_the_unknown_model_before_any_turn_context() {
         let mut record = codex_record();
@@ -345,6 +454,8 @@ pub(crate) mod tests {
             &token_count("2026-08-10T04:45:59.358Z", 100, 0, 0, 10),
             &mut record,
         );
+        // Still the last resort: this file declares no model at all, so there
+        // is nothing for the back-fill above to resolve it to.
         assert_eq!(record.totals[0].model, UNKNOWN_MODEL);
     }
 

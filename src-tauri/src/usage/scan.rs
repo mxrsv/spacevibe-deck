@@ -927,6 +927,101 @@ pub(crate) mod tests {
         let _ = std::fs::remove_dir_all(&home);
     }
 
+    /// The pre-context window can straddle a scan boundary: the first scan
+    /// commits `token_count` deltas it cannot attribute yet, and the
+    /// `turn_context` that names them only arrives in a later append.
+    #[test]
+    fn back_fills_a_codex_pre_context_window_discovered_by_a_later_scan() {
+        let home = fixture("scan-backfill-resume");
+        let codex = codex_transcript(&home, "2026-08-10T11-45-40-019fcb2f");
+        write_file(&codex, &codex_first_line("019fcb2f"));
+        append(
+            &codex,
+            &line(token_count("2026-08-10T04:45:59.358Z", 1_000, 0, 0, 100)),
+        );
+
+        let now = scan_now();
+        let first = scan_all(&UsageCache::default(), &home, now);
+        let unattributed = build_snapshot(&first, now);
+        assert_eq!(unattributed.buckets.len(), 1);
+        assert_eq!(unattributed.buckets[0].model, "unknown");
+
+        append(
+            &codex,
+            &line(turn_context("2026-08-10T04:46:10.000Z", "gpt-5.6-sol")),
+        );
+        append(
+            &codex,
+            &line(token_count("2026-08-10T04:46:13.066Z", 2_000, 0, 0, 200)),
+        );
+
+        let second = scan_all(&first.cache, &home, now);
+        let snapshot = build_snapshot(&second, now);
+        assert_eq!(snapshot.buckets.len(), 1, "no `unknown` bucket survives");
+        assert_eq!(snapshot.buckets[0].model, "gpt-5.6-sol");
+        assert_eq!(snapshot.buckets[0].counters.input_uncached, 2_000);
+        assert_eq!(snapshot.buckets[0].counters.output, 200);
+
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    /// A warm scan resumes after the first `turn_context`, so it must attribute
+    /// from the cached `lastModel` and must not re-attribute the window an
+    /// earlier scan already resolved.
+    #[test]
+    fn resumes_a_codex_file_without_reattributing_committed_deltas() {
+        let home = fixture("scan-backfill-frozen");
+        let codex = codex_transcript(&home, "2026-08-10T11-45-40-019fcb2f");
+        write_file(&codex, &codex_first_line("019fcb2f"));
+        append(
+            &codex,
+            &line(token_count("2026-08-10T04:45:59.358Z", 1_000, 0, 0, 100)),
+        );
+        append(
+            &codex,
+            &line(turn_context("2026-08-10T04:46:00.000Z", "gpt-5.6-sol")),
+        );
+        append(
+            &codex,
+            &line(token_count("2026-08-10T04:46:13.066Z", 2_000, 0, 0, 200)),
+        );
+
+        let now = scan_now();
+        let first = scan_all(&UsageCache::default(), &home, now);
+        let key = codex.to_string_lossy().into_owned();
+        assert_eq!(
+            first.cache.files.get(&key).unwrap().last_model.as_deref(),
+            Some("gpt-5.6-sol")
+        );
+
+        // The resumed region carries a model switch. The earlier window keeps
+        // the model it was back-filled to.
+        append(
+            &codex,
+            &line(token_count("2026-08-10T04:46:20.000Z", 2_500, 0, 0, 250)),
+        );
+        append(
+            &codex,
+            &line(turn_context("2026-08-10T04:46:24.000Z", "gpt-5.6-mini")),
+        );
+        append(
+            &codex,
+            &line(token_count("2026-08-10T04:46:25.314Z", 3_000, 0, 0, 300)),
+        );
+
+        let second = scan_all(&first.cache, &home, now);
+        let snapshot = build_snapshot(&second, now);
+        assert_eq!(snapshot.buckets.len(), 2);
+        assert_eq!(snapshot.buckets[0].model, "gpt-5.6-mini");
+        assert_eq!(snapshot.buckets[0].counters.input_uncached, 500);
+        assert_eq!(snapshot.buckets[0].counters.output, 50);
+        assert_eq!(snapshot.buckets[1].model, "gpt-5.6-sol");
+        assert_eq!(snapshot.buckets[1].counters.input_uncached, 2_500);
+        assert_eq!(snapshot.buckets[1].counters.output, 250);
+
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
     #[test]
     fn counts_a_malformed_and_an_oversized_line_and_keeps_reading() {
         let home = fixture("scan-skipped");
