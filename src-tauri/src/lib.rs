@@ -14,6 +14,7 @@ mod quit_flow;
 mod settings_merge;
 mod shell_integration;
 mod update_flight;
+mod usage;
 mod window_close;
 mod window_lifecycle;
 
@@ -84,6 +85,7 @@ pub fn run() {
             agents::detect_agents,
             agents::dirs_exist,
             prompt_assets::list_prompt_assets,
+            usage::usage_snapshot,
             images::read_image_as_data_url,
             images::scan_workspace_favicon,
             links::resolve_paths,
