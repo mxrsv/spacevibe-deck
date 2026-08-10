@@ -1,4 +1,4 @@
-use crate::coordinator::{emit_to_owner, WindowCoordinator};
+use crate::coordinator::{emit_to_owner, sweep_and_reap, PaneAccessError, WindowCoordinator};
 use crate::platform::{self, PlatformName, PlatformSession};
 use crate::shell_integration::{retain_valid_cwd, ShellIntegrationEvent, ShellIntegrationParser};
 use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
@@ -438,7 +438,17 @@ pub fn spawn_shell(
 }
 
 #[tauri::command]
-pub fn write_pty(state: State<PtyState>, id: u32, data: String) -> Result<(), String> {
+pub fn write_pty(
+    window: WebviewWindow,
+    coordinator: State<'_, WindowCoordinator>,
+    state: State<'_, PtyState>,
+    id: u32,
+    data: String,
+) -> Result<(), String> {
+    sweep_and_reap(window.app_handle(), &coordinator);
+    coordinator
+        .access(id, window.label())
+        .map_err(|error| error.to_string())?;
     let mut sessions = state.sessions.lock().map_err(|e| e.to_string())?;
     let session = sessions
         .get_mut(&id)
@@ -451,7 +461,18 @@ pub fn write_pty(state: State<PtyState>, id: u32, data: String) -> Result<(), St
 }
 
 #[tauri::command]
-pub fn resize_pty(state: State<PtyState>, id: u32, cols: u16, rows: u16) -> Result<(), String> {
+pub fn resize_pty(
+    window: WebviewWindow,
+    coordinator: State<'_, WindowCoordinator>,
+    state: State<'_, PtyState>,
+    id: u32,
+    cols: u16,
+    rows: u16,
+) -> Result<(), String> {
+    sweep_and_reap(window.app_handle(), &coordinator);
+    coordinator
+        .access(id, window.label())
+        .map_err(|error| error.to_string())?;
     let sessions = state.sessions.lock().map_err(|e| e.to_string())?;
     let session = sessions
         .get(&id)
@@ -467,19 +488,18 @@ pub fn resize_pty(state: State<PtyState>, id: u32, cols: u16, rows: u16) -> Resu
         .map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn kill_pty(
-    state: State<'_, PtyState>,
-    coordinator: State<'_, WindowCoordinator>,
-    id: u32,
-) -> Result<(), String> {
-    // `terminate_session` stays under the lock so a failure leaves the session
-    // in the map, retryable. The removed `Session` must not be *dropped* here,
-    // though: it owns the last handle to the PTY master, so dropping it closes
-    // the pseudoconsole — and on Windows that blocks until conhost flushes its
-    // output pipe, while the only thread draining that pipe takes this very
-    // lock in `consume_shell_integration`. Hand the value out of the scope and
-    // let it drop once the guard is gone.
+/// Kill a session without consulting the coordinator. `kill_pty` validates the
+/// calling window first; `coordinator::on_window_destroyed` cannot, because the
+/// window it would validate against is the one that just died.
+///
+/// `terminate_session` stays under the lock so a failure leaves the session in
+/// the map, retryable. The removed `Session` must not be *dropped* here,
+/// though: it owns the last handle to the PTY master, so dropping it closes the
+/// pseudoconsole — and on Windows that blocks until conhost flushes its output
+/// pipe, while the only thread draining that pipe takes this very lock in
+/// `consume_shell_integration`. Hand the value out of the scope and let it drop
+/// once the guard is gone.
+pub fn terminate_pane(state: &PtyState, id: u32) -> Result<(), String> {
     let removed = {
         let mut sessions = state.sessions.lock().map_err(|e| e.to_string())?;
         match sessions.get_mut(&id) {
@@ -495,6 +515,27 @@ pub fn kill_pty(
         }
     };
     drop(removed);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn kill_pty(
+    window: WebviewWindow,
+    coordinator: State<'_, WindowCoordinator>,
+    state: State<'_, PtyState>,
+    id: u32,
+) -> Result<(), String> {
+    sweep_and_reap(window.app_handle(), &coordinator);
+    match coordinator.access(id, window.label()) {
+        Ok(()) => {}
+        // A pane whose PTY already exited has no route, and today's kill_pty
+        // returns Ok for a session that is no longer in the map.
+        // TerminalManager.dispose() -> killAll() hits exactly that case on
+        // every window close, so keep it a no-op rather than a surfaced error.
+        Err(PaneAccessError::NotRouted(_)) => return Ok(()),
+        Err(error) => return Err(error.to_string()),
+    }
+    terminate_pane(&state, id)?;
     coordinator.unregister(id);
     Ok(())
 }

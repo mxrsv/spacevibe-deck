@@ -152,6 +152,36 @@ struct CoordinatorState {
     pending_orphans: Vec<u32>,
 }
 
+/// Why a window may not act on a pane (§8).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum PaneAccessError {
+    /// No route at all — the PTY already exited, or never registered.
+    NotRouted(u32),
+    /// Frozen for the duration of a handoff, for every caller.
+    Transferring(u32),
+    OwnedByOther {
+        pane_id: u32,
+        owner: String,
+    },
+}
+
+impl std::fmt::Display for PaneAccessError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotRouted(pane_id) => write!(formatter, "Pane #{pane_id} is not registered"),
+            Self::Transferring(pane_id) => {
+                write!(
+                    formatter,
+                    "Pane #{pane_id} is being moved to another window"
+                )
+            }
+            Self::OwnedByOther { pane_id, owner } => {
+                write!(formatter, "Pane #{pane_id} belongs to window {owner}")
+            }
+        }
+    }
+}
+
 /// The open transfer carrying `token`, with the pane it belongs to.
 fn transfer_mut<'a>(
     routes: &'a mut HashMap<u32, PaneRoute>,
@@ -571,7 +601,6 @@ impl WindowCoordinator {
     /// on `CloseRequested`, before the busy guard: a transfer left open across
     /// a close would hold the pane frozen until the timeout, and the guard
     /// would then run against a route nobody owns.
-    #[allow(dead_code)] // gains its caller in A7
     pub fn abort_involving(&self, sink: &dyn EventSink, label: &str, now: Instant) {
         let Ok(mut state) = self.state.lock() else {
             return;
@@ -602,6 +631,23 @@ impl WindowCoordinator {
         }
     }
 
+    /// May `caller` act on this pane? Mid-transfer the answer is no for
+    /// everyone, including the source (§8).
+    pub fn access(&self, pane_id: u32, caller: &str) -> Result<(), PaneAccessError> {
+        let Ok(state) = self.state.lock() else {
+            return Err(PaneAccessError::NotRouted(pane_id));
+        };
+        match state.routes.get(&pane_id) {
+            Some(PaneRoute::Owned(label)) if label == caller => Ok(()),
+            Some(PaneRoute::Owned(label)) => Err(PaneAccessError::OwnedByOther {
+                pane_id,
+                owner: label.clone(),
+            }),
+            Some(PaneRoute::Transferring(_)) => Err(PaneAccessError::Transferring(pane_id)),
+            None => Err(PaneAccessError::NotRouted(pane_id)),
+        }
+    }
+
     /// Take the panes that settled onto a dead window. The caller kills them —
     /// `sweep` and `abort` can strand a pane this way, and unlike
     /// `handle_window_destroyed` they have no orphan pass of their own.
@@ -616,7 +662,6 @@ impl WindowCoordinator {
     /// panes nothing will otherwise kill. Order matters and the rules are not
     /// symmetric: a dead DESTINATION aborts the transfer, a dead SOURCE does
     /// not — the destination can still claim and commit.
-    #[allow(dead_code)] // WindowEvent::Destroyed wiring (A7)
     pub fn handle_window_destroyed(
         &self,
         sink: &dyn EventSink,
@@ -674,6 +719,55 @@ impl WindowCoordinator {
         // so the pass over `routes` cannot see them.
         orphans.append(&mut state.pending_orphans);
         orphans
+    }
+}
+
+/// Enforce the transfer timeout and kill whatever it stranded. Every PTY
+/// command calls this: mid-transfer they are all rejected, so nothing else
+/// would notice a transfer whose destination died, and a pane settled back onto
+/// a window that is already gone has no owner left to kill it.
+pub fn sweep_and_reap(app: &AppHandle, coordinator: &WindowCoordinator) {
+    coordinator.sweep(&AppSink(app), Instant::now());
+    let orphans = coordinator.take_pending_orphans();
+    if orphans.is_empty() {
+        return;
+    }
+    let pty_state = app.state::<crate::pty::PtyState>();
+    for pane_id in orphans {
+        if let Err(error) = crate::pty::terminate_pane(&pty_state, pane_id) {
+            eprintln!("Deck: stranded pane {pane_id} was not killed: {error}");
+        }
+    }
+}
+
+/// Entry point for `WindowEvent::Destroyed`. Applies the §7.6 rules, then kills
+/// the panes no live window owns. Killing goes through `pty::terminate_pane`
+/// rather than the `kill_pty` command: there is no live window left to validate
+/// the caller against.
+#[allow(dead_code)] // wired by the window lifecycle section
+pub fn on_window_destroyed(app: &AppHandle, label: &str) {
+    let coordinator = app.state::<WindowCoordinator>();
+    let orphans = coordinator.handle_window_destroyed(&AppSink(app), label, Instant::now());
+    let pty_state = app.state::<crate::pty::PtyState>();
+    for pane_id in orphans {
+        if let Err(error) = crate::pty::terminate_pane(&pty_state, pane_id) {
+            eprintln!("Deck: orphaned pane {pane_id} of window {label} was not killed: {error}");
+        }
+    }
+}
+
+/// Entry point for `WindowEvent::CloseRequested`, to run BEFORE the busy guard.
+/// Aborts every transfer this window takes part in, then kills whatever those
+/// aborts stranded on a window that is already gone.
+#[allow(dead_code)] // wired by the window lifecycle section
+pub fn abort_transfers_involving(app: &AppHandle, label: &str) {
+    let coordinator = app.state::<WindowCoordinator>();
+    coordinator.abort_involving(&AppSink(app), label, Instant::now());
+    let pty_state = app.state::<crate::pty::PtyState>();
+    for pane_id in coordinator.take_pending_orphans() {
+        if let Err(error) = crate::pty::terminate_pane(&pty_state, pane_id) {
+            eprintln!("Deck: stranded pane {pane_id} was not killed: {error}");
+        }
     }
 }
 
@@ -1653,6 +1747,83 @@ mod tests {
         assert_eq!(
             super::parse_pane_id(""),
             Err("Pane id  is not a number".into())
+        );
+    }
+
+    use super::PaneAccessError;
+
+    #[test]
+    fn only_the_owning_window_may_reach_a_pane() {
+        let coordinator = WindowCoordinator::default();
+        coordinator.register(1, "main".into());
+
+        assert_eq!(coordinator.access(1, "main"), Ok(()));
+        assert_eq!(
+            coordinator.access(1, "deck-1"),
+            Err(PaneAccessError::OwnedByOther {
+                pane_id: 1,
+                owner: "main".into()
+            })
+        );
+        assert_eq!(
+            coordinator.access(9, "main"),
+            Err(PaneAccessError::NotRouted(9))
+        );
+    }
+
+    #[test]
+    fn a_transferring_pane_is_frozen_for_every_caller() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+        let token = coordinator.begin_transfer(&sink, "main", 1, now).unwrap();
+
+        // Not just for the destination — the SOURCE is refused too, which is
+        // what stops TerminalManager.dispose() -> killAll() from killing a PTY
+        // that has already been handed over.
+        assert_eq!(
+            coordinator.access(1, "main"),
+            Err(PaneAccessError::Transferring(1))
+        );
+        assert_eq!(
+            coordinator.access(1, "deck-1"),
+            Err(PaneAccessError::Transferring(1))
+        );
+
+        coordinator
+            .stage_payload(&sink, &token, "main", payload(1), now)
+            .unwrap();
+        coordinator.claim(&sink, &token, "deck-1", now).unwrap();
+        coordinator.commit(&sink, &token, "deck-1", now).unwrap();
+
+        assert_eq!(coordinator.access(1, "deck-1"), Ok(()));
+        assert_eq!(
+            coordinator.access(1, "main"),
+            Err(PaneAccessError::OwnedByOther {
+                pane_id: 1,
+                owner: "deck-1".into()
+            })
+        );
+    }
+
+    #[test]
+    fn access_errors_read_as_sentences() {
+        assert_eq!(
+            PaneAccessError::NotRouted(3).to_string(),
+            "Pane #3 is not registered"
+        );
+        assert_eq!(
+            PaneAccessError::Transferring(3).to_string(),
+            "Pane #3 is being moved to another window"
+        );
+        assert_eq!(
+            PaneAccessError::OwnedByOther {
+                pane_id: 3,
+                owner: "deck-1".into()
+            }
+            .to_string(),
+            "Pane #3 belongs to window deck-1"
         );
     }
 }
