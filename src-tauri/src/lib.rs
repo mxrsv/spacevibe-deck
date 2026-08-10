@@ -16,19 +16,7 @@ mod update_flight;
 mod window_close;
 mod window_lifecycle;
 
-use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::{Emitter, Manager};
-
-#[derive(Default)]
-struct QuitState {
-    confirmed: AtomicBool,
-}
-
-#[tauri::command]
-fn confirm_quit(app: tauri::AppHandle, state: tauri::State<'_, QuitState>) {
-    state.confirmed.store(true, Ordering::SeqCst);
-    app.exit(0);
-}
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -51,7 +39,7 @@ pub fn run() {
     builder
         .manage(pty::PtyState::default())
         .manage(coordinator::WindowCoordinator::default())
-        .manage(QuitState::default())
+        .manage(quit_flow::QuitFlight::default())
         .setup(|app| {
             // Before anything reads the store: the frontend loads settings
             // lazily, so this is the last point at which the old identifier's
@@ -87,16 +75,23 @@ pub fn run() {
             images::scan_workspace_favicon,
             links::resolve_paths,
             links::open_editor,
-            confirm_quit
+            quit_flow::confirm_quit,
+            quit_flow::cancel_quit
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                let state = app_handle.state::<QuitState>();
-                if !state.confirmed.load(Ordering::SeqCst) {
+            if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
+                // `code` is `Some` only for a programmatic exit, which has
+                // already passed its own guard. With peer windows the last
+                // window really can go away, so preventing exit with no window
+                // left would leave a process nothing can quit.
+                let open_windows = app_handle.webview_windows().len();
+                if quit_flow::exit_policy(code, open_windows)
+                    == quit_flow::ExitPolicy::PromptAndPrevent
+                {
                     api.prevent_exit();
-                    let _ = app_handle.emit("quit-requested", ());
+                    quit_flow::request_quit(app_handle);
                 }
             }
         });

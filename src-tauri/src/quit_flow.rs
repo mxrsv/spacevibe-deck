@@ -5,8 +5,12 @@
 //! behind a global in-flight lock, and the census that dialog shows is computed
 //! from `PtyState` rather than from whichever webview happens to answer.
 
+use crate::coordinator::WindowCoordinator;
+use crate::pane_census::census_for;
+use crate::pty::PtyState;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
+use tauri::{Emitter, Manager, Runtime, State};
 
 struct InFlight {
     request_id: u64,
@@ -51,7 +55,6 @@ impl QuitFlight {
         }
     }
 
-    #[allow(dead_code)] // gains its caller in B10
     pub fn holder(&self) -> Option<String> {
         self.current
             .lock()
@@ -93,6 +96,61 @@ pub fn exit_policy(code: Option<i32>, open_windows: usize) -> ExitPolicy {
         return ExitPolicy::Allow;
     }
     ExitPolicy::PromptAndPrevent
+}
+
+/// Ask one window — the focused one, else the most recently focused — to show
+/// the quit dialog.
+///
+/// The census is gathered off the event loop: on Windows classification is a
+/// WMI query, and blocking the loop here would freeze every window while the
+/// user waits to be asked a question.
+pub fn request_quit<R: Runtime>(app: &tauri::AppHandle<R>) {
+    let Some(target) = crate::window_lifecycle::menu_target(app) else {
+        // No window can answer. Exit rather than prevent: see `exit_policy`.
+        app.exit(0);
+        return;
+    };
+    let flight = app.state::<QuitFlight>();
+    let Some(request_id) = flight.try_begin(&target) else {
+        // A dialog is already open somewhere. A second Cmd+Q is a no-op.
+        return;
+    };
+
+    let pane_ids = app.state::<WindowCoordinator>().all_panes();
+    let snapshots = app.state::<PtyState>().session_snapshots(&pane_ids);
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let infos = crate::info::inspect_snapshots(snapshots).await;
+        let census = census_for(request_id, &infos);
+        if handle.emit_to(target, "quit-requested", census).is_err() {
+            // The chosen window went away between the census and the emit;
+            // release the lock so the next Cmd+Q is not swallowed.
+            handle.state::<QuitFlight>().finish(request_id);
+        }
+    });
+}
+
+/// The user said yes. Exiting with a code is what makes `exit_policy` allow it.
+#[tauri::command]
+pub fn confirm_quit(
+    app: tauri::AppHandle,
+    flight: State<'_, QuitFlight>,
+    request_id: u64,
+) -> Result<(), String> {
+    if !flight.finish(request_id) {
+        return Err(format!("Quit request #{request_id} is no longer current"));
+    }
+    app.exit(0);
+    Ok(())
+}
+
+/// The user said no, or the dialog failed to open.
+#[tauri::command]
+pub fn cancel_quit(flight: State<'_, QuitFlight>, request_id: u64) -> Result<(), String> {
+    if !flight.finish(request_id) {
+        return Err(format!("Quit request #{request_id} is no longer current"));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -168,5 +226,67 @@ mod tests {
         // Otherwise the last window closing leaves a process with nothing to
         // show a dialog in and no way to quit.
         assert_eq!(exit_policy(None, 0), ExitPolicy::Allow);
+    }
+
+    use crate::info::{PaneProcessKind, PtyInfo};
+    use crate::pane_census::{all_idle, census_for};
+
+    fn idle(id: u32) -> PtyInfo {
+        PtyInfo {
+            id,
+            cwd: None,
+            process: Some("zsh".into()),
+            kind: PaneProcessKind::IdleShell,
+            agent: None,
+        }
+    }
+
+    #[test]
+    fn an_all_idle_app_still_carries_the_request_id_so_the_window_can_flush() {
+        // Nothing to warn about, but the frontend must still flush settings and
+        // call confirm_quit — so the request is issued either way, with an
+        // empty census.
+        let infos = [idle(1), idle(2)];
+        let census = census_for(11, &infos);
+
+        assert!(all_idle(&infos));
+        assert_eq!(census.request_id, 11);
+        assert_eq!(census.busy_panes, 0);
+    }
+
+    #[test]
+    fn the_census_counts_a_pane_that_is_mid_transfer() {
+        // `all_panes` (Owned + Transferring) and `panes_for_window` (Owned
+        // only) disagree exactly here, and quit must read the wider one: an
+        // agent that happens to be moving between windows is still running.
+        //
+        // `begin_transfer` is the inherent method behind the `prepare_transfer`
+        // command; the command takes a `tauri::Window`, which no unit test can
+        // construct. The recording sink and the injected `now` are what make it
+        // callable here at all — see §0.2.
+        use crate::coordinator::{test_support::RecordingSink, WindowCoordinator};
+        use std::time::Instant;
+
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        coordinator.register(1, "main".into());
+        coordinator.register(2, "main".into());
+        coordinator
+            .begin_transfer(&sink, "main", 2, Instant::now())
+            .expect("pane 2 enters the Transferring state");
+
+        assert_eq!(coordinator.panes_for_window("main"), vec![1]);
+        let mut all = coordinator.all_panes();
+        all.sort();
+        assert_eq!(all, vec![1, 2]);
+    }
+
+    #[test]
+    fn confirming_an_unknown_request_is_an_error_not_an_exit() {
+        let flight = QuitFlight::default();
+        let request_id = flight.try_begin("main").unwrap();
+
+        assert!(!flight.finish(request_id + 1));
+        assert_eq!(flight.holder().as_deref(), Some("main"));
     }
 }
