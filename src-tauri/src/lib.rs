@@ -40,7 +40,13 @@ pub fn run() {
     builder
         .manage(pty::PtyState::default())
         .manage(coordinator::WindowCoordinator::default())
+        .manage(window_lifecycle::WindowLabels::default())
+        .manage(window_lifecycle::FocusRegistry::default())
+        .manage(window_lifecycle::PendingAdoptions::default())
         .manage(quit_flow::QuitFlight::default())
+        .manage(window_close::CloseFlight::default())
+        .manage(update_flight::UpdateFlight::default())
+        .manage(settings_merge::SettingsWriteLock::default())
         .setup(|app| {
             // Before anything reads the store: the frontend loads settings
             // lazily, so this is the last point at which the old identifier's
@@ -51,8 +57,14 @@ pub fn run() {
             // builder flag for them: one F5 in the chrome discards every tab and
             // orphans every PTY. Applied per window, so a future second window
             // needs the same call.
-            for window in app.webview_windows().values() {
-                platform::harden_webview(window)?;
+            for (label, window) in app.webview_windows() {
+                platform::harden_webview(&window)?;
+                // The configured window is created before `on_window_event` can
+                // see any focus change, so its first focus is seeded here.
+                if window.is_focused().unwrap_or(false) {
+                    app.state::<window_lifecycle::FocusRegistry>()
+                        .record(&label);
+                }
             }
             Ok(())
         })
@@ -77,7 +89,16 @@ pub fn run() {
             links::resolve_paths,
             links::open_editor,
             quit_flow::confirm_quit,
-            quit_flow::cancel_quit
+            quit_flow::cancel_quit,
+            window_lifecycle::window_boot_mode,
+            window_lifecycle::open_pane_window,
+            window_lifecycle::offer_transfer,
+            window_lifecycle::focus_order,
+            window_close::confirm_close_window,
+            window_close::cancel_close_window,
+            update_flight::begin_update_check,
+            update_flight::end_update_check,
+            settings_merge::apply_settings_patch
         ])
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::Focused(true) => {
