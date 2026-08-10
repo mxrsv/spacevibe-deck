@@ -183,25 +183,34 @@ fn inspect_windows_with_provider(
     map_windows_results(snapshots, results)
 }
 
+/// Explicit process truth and cwd for each snapshot. Inspection failures become
+/// per-pane `unknown` entries so callers stay usable.
+///
+/// Split out of `pty_info` so the quit and close censuses (spec §9.4, §9.5) get
+/// the same classification without a second copy of the platform branch — and
+/// so the slow Windows WMI path stays off the caller's thread there too.
+pub(crate) async fn inspect_snapshots(snapshots: Vec<PtySessionSnapshot>) -> Vec<PtyInfo> {
+    #[cfg(target_os = "windows")]
+    {
+        let fallback = snapshots.clone();
+        let task = tauri::async_runtime::spawn_blocking(move || inspect_windows(&snapshots));
+        return task
+            .await
+            .unwrap_or_else(|_| fallback.iter().map(unknown_info).collect());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        inspect_current_platform(&snapshots)
+    }
+}
+
 /// Explicit process truth and cwd for each requested PTY. Inspection failures
 /// become per-pane `unknown` entries so the polling command remains usable.
 #[tauri::command]
 pub async fn pty_info(state: State<'_, PtyState>, ids: Vec<u32>) -> Result<Vec<PtyInfo>, String> {
     let snapshots = state.session_snapshots(&ids);
-
-    #[cfg(target_os = "windows")]
-    {
-        let fallback = snapshots.clone();
-        let task = tauri::async_runtime::spawn_blocking(move || inspect_windows(&snapshots));
-        return Ok(task
-            .await
-            .unwrap_or_else(|_| fallback.iter().map(unknown_info).collect()));
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        Ok(inspect_current_platform(&snapshots))
-    }
+    Ok(inspect_snapshots(snapshots).await)
 }
 
 /// Current branch of the repo containing `cwd`; `None` when not a repo

@@ -6,6 +6,7 @@ mod links;
 mod menu;
 mod menu_registry;
 mod migrate;
+mod pane_census;
 mod platform;
 mod prompt_assets;
 mod pty;
