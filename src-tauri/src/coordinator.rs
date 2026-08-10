@@ -342,7 +342,6 @@ impl WindowCoordinator {
     }
 
     /// Pane ids still owned by this window (for close-window dispose).
-    #[allow(dead_code)] // used when multi-window close lands
     pub fn panes_for_window(&self, window_label: &str) -> Vec<u32> {
         let Ok(state) = self.state.lock() else {
             return Vec::new();
@@ -518,7 +517,6 @@ impl WindowCoordinator {
     /// Name the window a pending adoption was opened for, before it claims.
     /// The window-lifecycle section calls this from `open_pane_window` so that
     /// a destination dying before `claim` still aborts the transfer (§7.6).
-    #[allow(dead_code)] // wired by the window lifecycle section
     pub fn reserve_destination(&self, token: &str, label: &str) -> Result<(), String> {
         let mut state = self.state.lock().map_err(|error| error.to_string())?;
         let Some((_, transfer)) = transfer_mut(&mut state.routes, token) else {
@@ -589,7 +587,6 @@ impl WindowCoordinator {
     /// answers "what do I kill when this window closes", where a mid-transfer
     /// pane must be left alone; this one answers "is anything busy", where
     /// missing a mid-transfer pane kills a running agent without a prompt.
-    #[allow(dead_code)] // wired by the window lifecycle section
     pub fn all_panes(&self) -> Vec<u32> {
         let Ok(state) = self.state.lock() else {
             return Vec::new();
@@ -744,7 +741,6 @@ pub fn sweep_and_reap(app: &AppHandle, coordinator: &WindowCoordinator) {
 /// the panes no live window owns. Killing goes through `pty::terminate_pane`
 /// rather than the `kill_pty` command: there is no live window left to validate
 /// the caller against.
-#[allow(dead_code)] // wired by the window lifecycle section
 pub fn on_window_destroyed(app: &AppHandle, label: &str) {
     let coordinator = app.state::<WindowCoordinator>();
     let orphans = coordinator.handle_window_destroyed(&AppSink(app), label, Instant::now());
@@ -759,7 +755,6 @@ pub fn on_window_destroyed(app: &AppHandle, label: &str) {
 /// Entry point for `WindowEvent::CloseRequested`, to run BEFORE the busy guard.
 /// Aborts every transfer this window takes part in, then kills whatever those
 /// aborts stranded on a window that is already gone.
-#[allow(dead_code)] // wired by the window lifecycle section
 pub fn abort_transfers_involving(app: &AppHandle, label: &str) {
     let coordinator = app.state::<WindowCoordinator>();
     coordinator.abort_involving(&AppSink(app), label, Instant::now());

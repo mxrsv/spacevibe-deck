@@ -4,6 +4,9 @@
 
 use crate::coordinator::WindowCoordinator;
 use crate::platform;
+use crate::quit_flow::QuitFlight;
+use crate::update_flight::UpdateFlight;
+use crate::window_close::CloseFlight;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc;
@@ -272,6 +275,38 @@ pub async fn open_pane_window(
     Ok(label)
 }
 
+/// Release every slot keyed by `label`.
+///
+/// Split from `forget_window` so it is testable without an app handle: this is
+/// the crash-safety rule, and "peers" means any window can be the one that dies
+/// while holding the quit dialog or the updater flight.
+pub fn release_window_slots(
+    focus: &FocusRegistry,
+    pending: &PendingAdoptions,
+    quit: &QuitFlight,
+    close: &CloseFlight,
+    update: &UpdateFlight,
+    label: &str,
+) {
+    focus.forget(label);
+    pending.forget(label);
+    quit.forget_window(label);
+    close.forget(label);
+    update.forget(label);
+}
+
+/// The app-handle adapter over `release_window_slots`.
+pub fn forget_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>, label: &str) {
+    release_window_slots(
+        &app.state::<FocusRegistry>(),
+        &app.state::<PendingAdoptions>(),
+        &app.state::<QuitFlight>(),
+        &app.state::<CloseFlight>(),
+        &app.state::<UpdateFlight>(),
+        label,
+    );
+}
+
 /// Payload of `transfer:offer`. A struct rather than a bare string so the event
 /// can grow a field without breaking the frontend's parse.
 #[derive(Clone, Debug, serde::Serialize)]
@@ -306,7 +341,6 @@ pub fn offer_transfer(
 /// The window a menu event or a quit prompt belongs to: the focused one, else
 /// the most recently focused one that still exists (spec §9.3). `None` means
 /// every Deck window is gone or none has ever been focused.
-#[allow(dead_code)] // gains its callers in B6 and B10
 pub fn menu_target<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<String> {
     let windows = app.webview_windows();
     if let Some(label) = windows
@@ -558,6 +592,39 @@ mod tests {
         assert_eq!(
             super::validate_offer_target(&[], "main"),
             Err("Window main is not open".to_string())
+        );
+    }
+
+    use crate::quit_flow::QuitFlight;
+    use crate::update_flight::UpdateFlight;
+    use crate::window_close::CloseFlight;
+
+    #[test]
+    fn destroying_a_window_releases_every_slot_it_held() {
+        let focus = FocusRegistry::default();
+        let pending = PendingAdoptions::default();
+        let quit = QuitFlight::default();
+        let close = CloseFlight::default();
+        let update = UpdateFlight::default();
+
+        focus.record("deck-1");
+        pending.register("deck-1".into(), "token-abc".into());
+        quit.try_begin("deck-1").unwrap();
+        close.try_begin("deck-1").unwrap();
+        assert!(update.try_begin("deck-1"));
+
+        super::release_window_slots(&focus, &pending, &quit, &close, &update, "deck-1");
+
+        assert_eq!(focus.most_recent_among(&labels(&["deck-1"])), None);
+        assert_eq!(pending.take("deck-1"), None);
+        assert!(
+            quit.try_begin("main").is_some(),
+            "a dead window must not brick quit"
+        );
+        assert!(close.try_begin("deck-1").is_some());
+        assert!(
+            update.try_begin("main"),
+            "a dead window must not brick update checks"
         );
     }
 }

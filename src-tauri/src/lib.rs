@@ -78,6 +78,34 @@ pub fn run() {
             quit_flow::confirm_quit,
             quit_flow::cancel_quit
         ])
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::Focused(true) => {
+                window
+                    .state::<window_lifecycle::FocusRegistry>()
+                    .record(window.label());
+                // The submenu is ordered most-recently-focused first, so focus
+                // changing changes its contents.
+                let _ = menu::rebuild_move_pane_submenu(window.app_handle());
+            }
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                if window_close::on_close_requested(window) {
+                    api.prevent_close();
+                }
+            }
+            tauri::WindowEvent::Destroyed => {
+                let app = window.app_handle();
+                let label = window.label().to_string();
+                // Crash path: no CloseRequested fired and no busy guard ran, so
+                // the panes this window still owned would otherwise outlive it
+                // with nobody reading their output (spec §7.6).
+                coordinator::on_window_destroyed(app, &label);
+                window_lifecycle::forget_window(app, &label);
+                // After forget_window, so the dead label is already out of the
+                // focus registry and cannot be listed as a drop target.
+                let _ = menu::rebuild_move_pane_submenu(app);
+            }
+            _ => {}
+        })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
