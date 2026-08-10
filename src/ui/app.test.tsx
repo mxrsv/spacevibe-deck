@@ -7,13 +7,16 @@ import {
   editorRequest,
   saveDialogOpen,
   settingsOpen,
+  usageOpen,
 } from "../chrome/events";
 import {
   bootOpensTheBoard,
   closeSettingsPanel,
+  closeUsagePanel,
   DesktopChrome,
   livePresetOpensATab,
   toggleSettingsPanel,
+  toggleUsagePanel,
 } from "./app";
 import { ACTION_REGISTRY, TIER_RANK } from "../terminal/action-registry";
 import {
@@ -102,6 +105,7 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
   beforeEach(() => {
     boardOpen.value = false;
     settingsOpen.value = false;
+    usageOpen.value = false;
     editorRequest.value = null;
     saveDialogOpen.value = false;
     focusActive.mockClear();
@@ -110,6 +114,7 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
   afterEach(() => {
     boardOpen.value = false;
     settingsOpen.value = false;
+    usageOpen.value = false;
     editorRequest.value = null;
     saveDialogOpen.value = false;
   });
@@ -238,5 +243,146 @@ describe("bootOpensTheBoard", () => {
 
   it("skips the board when the window boots to adopt a pane", () => {
     expect(bootOpensTheBoard({ kind: "adopt", token: "t-1" })).toBe(false);
+  });
+});
+
+// Usage and Settings are mutually exclusive (spec §Surface, major M4): both
+// are full-window surfaces at the same z-layer, so two open at once is two
+// screens fighting over one rectangle. The guard mirrors
+// `toggleSettingsPanel` exactly — CLOSING is unconditional (or the screen
+// strands itself open, the b7e6021 trap), OPENING is blocked only by a
+// PresetEditor/SavePresetDialog draft at z-40.
+describe("toggleUsagePanel — mirrors the Settings guard, and the two surfaces displace each other", () => {
+  const focusActive = vi.fn();
+
+  beforeEach(() => {
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    usageOpen.value = false;
+    editorRequest.value = null;
+    saveDialogOpen.value = false;
+    focusActive.mockClear();
+  });
+
+  afterEach(() => {
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    usageOpen.value = false;
+    editorRequest.value = null;
+    saveDialogOpen.value = false;
+  });
+
+  it("opens Usage normally when no overlay holds a draft", () => {
+    toggleUsagePanel(focusActive);
+
+    expect(usageOpen.value).toBe(true);
+  });
+
+  it("does NOT open Usage while a PresetEditor draft is up", () => {
+    editorRequest.value = { source: "live" };
+
+    toggleUsagePanel(focusActive);
+
+    expect(usageOpen.value).toBe(false);
+  });
+
+  it("does NOT open Usage while a SavePresetDialog draft is up", () => {
+    saveDialogOpen.value = true;
+
+    toggleUsagePanel(focusActive);
+
+    expect(usageOpen.value).toBe(false);
+  });
+
+  it("DOES open Usage over the Open board — it covers the board, same as Settings", () => {
+    boardOpen.value = true;
+
+    toggleUsagePanel(focusActive);
+
+    expect(usageOpen.value).toBe(true);
+  });
+
+  it("still CLOSES Usage when it is already open, even with a PresetEditor draft also up", () => {
+    usageOpen.value = true;
+    editorRequest.value = { source: "live" };
+
+    toggleUsagePanel(focusActive);
+
+    expect(usageOpen.value).toBe(false);
+    expect(focusActive).toHaveBeenCalledTimes(1);
+  });
+
+  it("still CLOSES Usage when it is already open, even with the Open board also up", () => {
+    usageOpen.value = true;
+    boardOpen.value = true;
+
+    toggleUsagePanel(focusActive);
+
+    expect(usageOpen.value).toBe(false);
+    expect(focusActive).toHaveBeenCalledTimes(1);
+  });
+
+  it("still closes Usage normally with no draft open at all", () => {
+    usageOpen.value = true;
+
+    toggleUsagePanel(focusActive);
+
+    expect(usageOpen.value).toBe(false);
+    expect(focusActive).toHaveBeenCalledTimes(1);
+  });
+
+  it("opening Usage closes Settings", () => {
+    settingsOpen.value = true;
+
+    toggleUsagePanel(focusActive);
+
+    expect(usageOpen.value).toBe(true);
+    expect(settingsOpen.value).toBe(false);
+    // Displacing Settings is a set-state, not a close+focus-return: focus is
+    // about to land inside the screen that is opening.
+    expect(focusActive).not.toHaveBeenCalled();
+  });
+
+  it("opening Settings closes Usage", () => {
+    usageOpen.value = true;
+
+    toggleSettingsPanel(focusActive);
+
+    expect(settingsOpen.value).toBe(true);
+    expect(usageOpen.value).toBe(false);
+    expect(focusActive).not.toHaveBeenCalled();
+  });
+
+  // §0.3 decision 4: the spec says "Escape closes and focus returns to the
+  // terminal exactly as Settings does". Reopening the surface Usage displaced
+  // would be a second, unspecified behavior.
+  it("closing Usage does NOT reopen the Settings screen it displaced", () => {
+    settingsOpen.value = true;
+    toggleUsagePanel(focusActive); // displaces Settings
+    expect(settingsOpen.value).toBe(false);
+
+    toggleUsagePanel(focusActive); // Escape / the button / ⌘⇧U again
+
+    expect(usageOpen.value).toBe(false);
+    expect(settingsOpen.value).toBe(false);
+    expect(focusActive).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("closeUsagePanel", () => {
+  afterEach(() => {
+    usageOpen.value = false;
+    editorRequest.value = null;
+  });
+
+  it("always closes and hands off focus, unconditionally", () => {
+    usageOpen.value = true;
+    editorRequest.value = { source: "live" };
+    const focusActive = vi.fn();
+
+    closeUsagePanel(focusActive);
+
+    expect(usageOpen.value).toBe(false);
+    expect(focusActive).toHaveBeenCalledTimes(1);
   });
 });

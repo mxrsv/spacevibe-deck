@@ -11,6 +11,7 @@ function overlays(
   return {
     board: false,
     settings: false,
+    usage: false,
     presetEditor: false,
     savePresetDialog: false,
     ...partial,
@@ -20,6 +21,7 @@ function overlays(
 interface Spies {
   dismissBoard: ReturnType<typeof vi.fn>;
   dismissSettings: ReturnType<typeof vi.fn>;
+  dismissUsage: ReturnType<typeof vi.fn>;
   focusAttention: ReturnType<typeof vi.fn>;
   order: string[];
 }
@@ -29,6 +31,7 @@ function makeSpies(): Spies {
   return {
     dismissBoard: vi.fn(() => order.push("dismissBoard")),
     dismissSettings: vi.fn(() => order.push("dismissSettings")),
+    dismissUsage: vi.fn(() => order.push("dismissUsage")),
     focusAttention: vi.fn(() => order.push("focusAttention")),
     order,
   };
@@ -43,6 +46,7 @@ function request(
     overlays: overlays(),
     dismissBoard: spies.dismissBoard,
     dismissSettings: spies.dismissSettings,
+    dismissUsage: spies.dismissUsage,
     focusAttention: spies.focusAttention,
     ...overrides,
   };
@@ -63,6 +67,7 @@ describe.each([
       overlays({ presetEditor: true }),
       overlays({ savePresetDialog: true }),
       overlays({ presetEditor: true, board: true, settings: true }),
+      overlays({ usage: true }),
     ];
     for (const snapshot of combos) {
       const spies = makeSpies();
@@ -71,6 +76,7 @@ describe.each([
       );
       expect(spies.dismissBoard).not.toHaveBeenCalled();
       expect(spies.dismissSettings).not.toHaveBeenCalled();
+      expect(spies.dismissUsage).not.toHaveBeenCalled();
       expect(spies.focusAttention).not.toHaveBeenCalled();
     }
   });
@@ -140,12 +146,65 @@ describe.each([
     );
   });
 
+  it("usage only: dismissUsage once, nothing else dismissed, then focusAttention once", () => {
+    const spies = makeSpies();
+    runAttentionFocus(
+      request(spies, {
+        tabIndex,
+        hasCandidate: true,
+        overlays: overlays({ usage: true }),
+      }),
+    );
+    expect(spies.dismissUsage).toHaveBeenCalledTimes(1);
+    expect(spies.dismissBoard).not.toHaveBeenCalled();
+    expect(spies.dismissSettings).not.toHaveBeenCalled();
+    expect(spies.focusAttention).toHaveBeenCalledTimes(1);
+    expect(spies.focusAttention).toHaveBeenCalledWith(tabIndex);
+    expect(spies.order).toEqual(["dismissUsage", "focusAttention"]);
+  });
+
+  // Usage and Settings are mutually exclusive in the app, so this pair cannot
+  // occur in production — asserted anyway because the coordinator is a pure
+  // function over a caller-supplied snapshot and must not depend on an
+  // invariant enforced somewhere else.
+  it("board + settings + usage: all three dismissed, then focusAttention once", () => {
+    const spies = makeSpies();
+    runAttentionFocus(
+      request(spies, {
+        tabIndex,
+        hasCandidate: true,
+        overlays: overlays({ board: true, settings: true, usage: true }),
+      }),
+    );
+    expect(spies.dismissBoard).toHaveBeenCalledTimes(1);
+    expect(spies.dismissSettings).toHaveBeenCalledTimes(1);
+    expect(spies.dismissUsage).toHaveBeenCalledTimes(1);
+    expect(spies.focusAttention).toHaveBeenCalledTimes(1);
+    expect(spies.order.indexOf("dismissUsage")).toBeLessThan(
+      spies.order.indexOf("focusAttention"),
+    );
+  });
+
+  it("a draft outranks usage: nothing called, the usage screen stays up", () => {
+    const spies = makeSpies();
+    runAttentionFocus(
+      request(spies, {
+        tabIndex,
+        hasCandidate: true,
+        overlays: overlays({ usage: true, savePresetDialog: true }),
+      }),
+    );
+    expect(spies.dismissUsage).not.toHaveBeenCalled();
+    expect(spies.focusAttention).not.toHaveBeenCalled();
+  });
+
   it("presetEditor open (alone, and combined with board/settings): nothing called — draft preserved", () => {
     const combos: AttentionOverlaySnapshot[] = [
       overlays({ presetEditor: true }),
       overlays({ presetEditor: true, board: true }),
       overlays({ presetEditor: true, settings: true }),
       overlays({ presetEditor: true, board: true, settings: true }),
+      overlays({ presetEditor: true, usage: true }),
     ];
     for (const snapshot of combos) {
       const spies = makeSpies();
@@ -154,6 +213,7 @@ describe.each([
       );
       expect(spies.dismissBoard).not.toHaveBeenCalled();
       expect(spies.dismissSettings).not.toHaveBeenCalled();
+      expect(spies.dismissUsage).not.toHaveBeenCalled();
       expect(spies.focusAttention).not.toHaveBeenCalled();
     }
   });
@@ -164,6 +224,7 @@ describe.each([
       overlays({ savePresetDialog: true, board: true }),
       overlays({ savePresetDialog: true, settings: true }),
       overlays({ savePresetDialog: true, board: true, settings: true }),
+      overlays({ savePresetDialog: true, usage: true }),
     ];
     for (const snapshot of combos) {
       const spies = makeSpies();
@@ -172,6 +233,7 @@ describe.each([
       );
       expect(spies.dismissBoard).not.toHaveBeenCalled();
       expect(spies.dismissSettings).not.toHaveBeenCalled();
+      expect(spies.dismissUsage).not.toHaveBeenCalled();
       expect(spies.focusAttention).not.toHaveBeenCalled();
     }
   });
@@ -195,7 +257,7 @@ describe.each([
     expect(spies.focusAttention).not.toHaveBeenCalled();
   });
 
-  it("only calls the 3 injected spies — never anything resembling a focusing cancel/close", () => {
+  it("only calls the 4 injected spies — never anything resembling a focusing cancel/close", () => {
     const spies = makeSpies();
     const onCancel = vi.fn();
     const closePanel = vi.fn();
@@ -206,17 +268,18 @@ describe.each([
       ...request(spies, {
         tabIndex,
         hasCandidate: true,
-        overlays: overlays({ board: true, settings: true }),
+        overlays: overlays({ board: true, settings: true, usage: true }),
       }),
     };
     runAttentionFocus(req);
     expect(onCancel).not.toHaveBeenCalled();
     expect(closePanel).not.toHaveBeenCalled();
-    // The coordinator's request shape only exposes these 3 closures — assert
-    // exactly those are the ones invoked.
+    // The coordinator's request shape only exposes these 4 closures — assert
+    // exactly those are the ones invoked, in this order.
     expect(spies.order).toEqual([
       "dismissBoard",
       "dismissSettings",
+      "dismissUsage",
       "focusAttention",
     ]);
   });
