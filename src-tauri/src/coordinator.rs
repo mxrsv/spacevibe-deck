@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::Mutex,
     time::{Duration, Instant},
 };
@@ -145,6 +145,13 @@ struct CoordinatorState {
     routes: HashMap<u32, PaneRoute>,
     settled: HashMap<String, Settled>,
     settled_order: VecDeque<String>,
+    /// Labels of windows already destroyed. Never reused within a process run
+    /// (§9.1), so this cannot grow beyond the number of windows opened, and it
+    /// is what catches a pane aborted back to a source that is already gone.
+    dead: HashSet<String>,
+    /// Panes a settle handed back to a window that no longer exists. Drained
+    /// and killed by whoever holds an `AppHandle`.
+    pending_orphans: Vec<u32>,
 }
 
 /// The open transfer carrying `token`, with the pane it belongs to.
@@ -178,7 +185,16 @@ fn settle(
     // A PTY that exited mid-transfer deferred its unregister so the buffered
     // exit above could still be delivered. Now honour it, rather than writing
     // an owned route for a pane that no longer exists.
-    if !transfer.exited {
+    //
+    // A pane may only be handed to a window that still exists. Aborting to a
+    // source destroyed after `prepare` (§7.6 row 3) is exactly that case: the
+    // route would name a dead label and every later chunk would be dropped and
+    // logged for the rest of the process run. Queue it for the kill instead.
+    if transfer.exited {
+        // The PTY already exited; the deferred unregister lands here.
+    } else if state.dead.contains(label) {
+        state.pending_orphans.push(pane_id);
+    } else {
         state
             .routes
             .insert(pane_id, PaneRoute::Owned(label.to_string()));
@@ -538,6 +554,128 @@ impl WindowCoordinator {
             Settled::Aborted(AbortReason::Requested),
         );
         Ok(())
+    }
+
+    /// Every live pane, transferring ones included. This is the §9.4 quit
+    /// census, and it deliberately disagrees with `panes_for_window`: that one
+    /// answers "what do I kill when this window closes", where a mid-transfer
+    /// pane must be left alone; this one answers "is anything busy", where
+    /// missing a mid-transfer pane kills a running agent without a prompt.
+    #[allow(dead_code)] // wired by the window lifecycle section
+    pub fn all_panes(&self) -> Vec<u32> {
+        let Ok(state) = self.state.lock() else {
+            return Vec::new();
+        };
+        state.routes.keys().copied().collect()
+    }
+
+    /// Abort every transfer this window takes part in, in either role. Called
+    /// on `CloseRequested`, before the busy guard: a transfer left open across
+    /// a close would hold the pane frozen until the timeout, and the guard
+    /// would then run against a route nobody owns.
+    #[allow(dead_code)] // gains its caller in A7
+    pub fn abort_involving(&self, sink: &dyn EventSink, label: &str, now: Instant) {
+        let Ok(mut state) = self.state.lock() else {
+            return;
+        };
+        sweep_locked(&mut state, sink, now);
+        let involved: Vec<(u32, String)> = state
+            .routes
+            .iter()
+            .filter_map(|(id, route)| match route {
+                PaneRoute::Transferring(transfer)
+                    if transfer.from == label
+                        || transfer.to.as_deref() == Some(label)
+                        || transfer.reserved_to.as_deref() == Some(label) =>
+                {
+                    Some((*id, transfer.from.clone()))
+                }
+                _ => None,
+            })
+            .collect();
+        for (pane_id, source) in involved {
+            settle(
+                &mut state,
+                sink,
+                pane_id,
+                &source,
+                Settled::Aborted(AbortReason::WindowGone),
+            );
+        }
+    }
+
+    /// Take the panes that settled onto a dead window. The caller kills them —
+    /// `sweep` and `abort` can strand a pane this way, and unlike
+    /// `handle_window_destroyed` they have no orphan pass of their own.
+    pub fn take_pending_orphans(&self) -> Vec<u32> {
+        let Ok(mut state) = self.state.lock() else {
+            return Vec::new();
+        };
+        std::mem::take(&mut state.pending_orphans)
+    }
+
+    /// Apply the §7.6 transition table for a destroyed window and return the
+    /// panes nothing will otherwise kill. Order matters and the rules are not
+    /// symmetric: a dead DESTINATION aborts the transfer, a dead SOURCE does
+    /// not — the destination can still claim and commit.
+    #[allow(dead_code)] // WindowEvent::Destroyed wiring (A7)
+    pub fn handle_window_destroyed(
+        &self,
+        sink: &dyn EventSink,
+        label: &str,
+        now: Instant,
+    ) -> Vec<u32> {
+        let Ok(mut state) = self.state.lock() else {
+            return Vec::new();
+        };
+        sweep_locked(&mut state, sink, now);
+        state.dead.insert(label.to_string());
+
+        // Transfers this window was going to receive — claimed, or merely
+        // reserved by a window that died before it could claim.
+        let aborting: Vec<(u32, String)> = state
+            .routes
+            .iter()
+            .filter_map(|(id, route)| match route {
+                PaneRoute::Transferring(transfer)
+                    if transfer.to.as_deref() == Some(label)
+                        || transfer.reserved_to.as_deref() == Some(label) =>
+                {
+                    Some((*id, transfer.from.clone()))
+                }
+                _ => None,
+            })
+            .collect();
+        for (pane_id, source) in aborting {
+            settle(
+                &mut state,
+                sink,
+                pane_id,
+                &source,
+                Settled::Aborted(AbortReason::WindowGone),
+            );
+        }
+
+        // Orphans: panes owned by a window that no longer exists. This is the
+        // crash path — no CloseRequested fired and no busy guard ran, so
+        // nothing else will ever kill them. A pane just aborted back to a
+        // source that died earlier is caught here by the same rule.
+        let mut orphans: Vec<u32> = state
+            .routes
+            .iter()
+            .filter_map(|(id, route)| match route {
+                PaneRoute::Owned(owner) if state.dead.contains(owner) => Some(*id),
+                _ => None,
+            })
+            .collect();
+        for pane_id in &orphans {
+            state.routes.remove(pane_id);
+        }
+        // Anything an earlier sweep or abort stranded on a dead window, plus
+        // whatever the aborts above just stranded — they never entered `routes`,
+        // so the pass over `routes` cannot see them.
+        orphans.append(&mut state.pending_orphans);
+        orphans
     }
 }
 
@@ -1209,6 +1347,232 @@ mod tests {
         assert_eq!(
             coordinator.commit(&sink, &token, "deck-1", now),
             Err(format!("Transfer {token} was aborted"))
+        );
+    }
+
+    #[test]
+    fn a_destination_dying_before_claim_aborts_to_the_source() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+        let token = coordinator.begin_transfer(&sink, "main", 1, now).unwrap();
+        coordinator
+            .reserve_destination(&token, "deck-1")
+            .expect("the new window registers its pending adoption");
+        coordinator.deliver(&sink, 1, "pty:output", output("held"), now);
+
+        let orphans = coordinator.handle_window_destroyed(&sink, "deck-1", now);
+
+        assert!(orphans.is_empty(), "the pane never left main");
+        assert_eq!(
+            sink.delivered(),
+            vec![("main".to_string(), "held".to_string())]
+        );
+        assert_eq!(coordinator.owner(1).as_deref(), Some("main"));
+    }
+
+    #[test]
+    fn a_destination_dying_after_claim_aborts_to_the_source() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+        let token = coordinator.begin_transfer(&sink, "main", 1, now).unwrap();
+        coordinator
+            .stage_payload(&sink, &token, "main", payload(1), now)
+            .unwrap();
+        coordinator.claim(&sink, &token, "deck-1", now).unwrap();
+        coordinator.deliver(&sink, 1, "pty:output", output("held"), now);
+
+        let orphans = coordinator.handle_window_destroyed(&sink, "deck-1", now);
+
+        assert!(orphans.is_empty());
+        assert_eq!(
+            sink.delivered(),
+            vec![("main".to_string(), "held".to_string())]
+        );
+        assert_eq!(coordinator.owner(1).as_deref(), Some("main"));
+    }
+
+    #[test]
+    fn a_source_dying_after_prepare_leaves_the_transfer_open() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+        let token = coordinator.begin_transfer(&sink, "main", 1, now).unwrap();
+        coordinator
+            .stage_payload(&sink, &token, "main", payload(1), now)
+            .unwrap();
+        coordinator.deliver(&sink, 1, "pty:output", output("held"), now);
+
+        let orphans = coordinator.handle_window_destroyed(&sink, "main", now);
+
+        // The pane outlives the window it came from, so it must NOT be killed
+        // and the buffer must NOT be flushed to a dead window.
+        assert!(orphans.is_empty());
+        assert!(sink.delivered().is_empty());
+        assert_eq!(
+            coordinator.claim(&sink, &token, "deck-1", now),
+            Ok(payload(1))
+        );
+        coordinator.commit(&sink, &token, "deck-1", now).unwrap();
+        assert_eq!(
+            sink.delivered(),
+            vec![("deck-1".to_string(), "held".to_string())]
+        );
+    }
+
+    #[test]
+    fn a_destroyed_window_orphans_the_panes_it_still_owns() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "deck-1".into());
+        coordinator.register(2, "deck-1".into());
+        coordinator.register(3, "main".into());
+
+        let mut orphans = coordinator.handle_window_destroyed(&sink, "deck-1", now);
+        orphans.sort();
+
+        assert_eq!(orphans, vec![1, 2]);
+        assert_eq!(coordinator.owner(1), None);
+        assert_eq!(coordinator.owner(3).as_deref(), Some("main"));
+        // Killed once, not once per event.
+        assert!(coordinator
+            .handle_window_destroyed(&sink, "deck-1", now)
+            .is_empty());
+    }
+
+    #[test]
+    fn a_transfer_whose_source_already_died_orphans_the_pane_when_it_aborts() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+        let token = coordinator.begin_transfer(&sink, "main", 1, now).unwrap();
+        coordinator
+            .stage_payload(&sink, &token, "main", payload(1), now)
+            .unwrap();
+        coordinator.claim(&sink, &token, "deck-1", now).unwrap();
+        coordinator.handle_window_destroyed(&sink, "main", now);
+
+        // Aborting now would hand the pane back to a window that is gone. It
+        // has to be killed instead, or it leaks for the rest of the run.
+        let orphans = coordinator.handle_window_destroyed(&sink, "deck-1", now);
+
+        assert_eq!(orphans, vec![1]);
+        assert_eq!(coordinator.owner(1), None);
+    }
+
+    #[test]
+    fn the_quit_census_counts_a_pane_mid_move_and_the_kill_list_does_not() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+        coordinator.register(2, "main".into());
+        coordinator.begin_transfer(&sink, "main", 2, now).unwrap();
+
+        // Killing a pane that is mid-transfer would destroy a session another
+        // window is about to adopt, so it stays out of the kill list...
+        assert_eq!(coordinator.panes_for_window("main"), vec![1]);
+        // ...but ⌘Q must still see it, or a busy agent dies without a prompt.
+        let mut census = coordinator.all_panes();
+        census.sort();
+        assert_eq!(census, vec![1, 2]);
+    }
+
+    #[test]
+    fn closing_a_window_aborts_every_transfer_it_takes_part_in() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+        coordinator.register(2, "deck-1".into());
+        coordinator.register(3, "deck-2".into());
+
+        // main is the source of one transfer and the destination of another.
+        let outgoing = coordinator.begin_transfer(&sink, "main", 1, now).unwrap();
+        let incoming = coordinator.begin_transfer(&sink, "deck-1", 2, now).unwrap();
+        coordinator
+            .stage_payload(&sink, &incoming, "deck-1", payload(2), now)
+            .unwrap();
+        coordinator.claim(&sink, &incoming, "main", now).unwrap();
+        // A third transfer main has nothing to do with must survive untouched.
+        let unrelated = coordinator.begin_transfer(&sink, "deck-2", 3, now).unwrap();
+
+        coordinator.abort_involving(&sink, "main", now);
+
+        assert_eq!(coordinator.owner(1).as_deref(), Some("main"));
+        assert_eq!(coordinator.owner(2).as_deref(), Some("deck-1"));
+        assert_eq!(coordinator.owner(3), None, "the unrelated transfer is open");
+        let settled = sink.settled();
+        let reasons: Vec<&str> = settled
+            .iter()
+            .map(|(_, payload)| payload["reason"].as_str().unwrap_or_default())
+            .collect();
+        assert!(reasons.iter().all(|reason| *reason == "windowGone"));
+        assert_eq!(
+            coordinator.abort(&sink, &outgoing, now),
+            Ok(()),
+            "already aborted, so the retry is idempotent"
+        );
+        assert_eq!(coordinator.abort(&sink, &incoming, now), Ok(()));
+        assert_eq!(
+            coordinator.commit(&sink, &unrelated, "deck-2", now),
+            Err(format!(
+                "Transfer {unrelated} can only be committed by the window that claimed it"
+            )),
+            "untouched, not settled"
+        );
+    }
+
+    #[test]
+    fn a_transfer_expiring_back_to_a_dead_source_orphans_the_pane() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let start = Instant::now();
+        coordinator.register(1, "main".into());
+        coordinator.begin_transfer(&sink, "main", 1, start).unwrap();
+        // §7.6 row 3: the source dying does NOT abort. Nothing was staged, so
+        // no destination can ever claim, and the timeout is what closes this.
+        coordinator.handle_window_destroyed(&sink, "main", start);
+
+        coordinator.sweep(&sink, start + TRANSFER_TIMEOUT);
+
+        // Aborting to a window that no longer exists must not leave the pane
+        // owned by a dead label, emitting into nothing for the rest of the run.
+        assert_eq!(coordinator.owner(1), None);
+        assert_eq!(coordinator.take_pending_orphans(), vec![1]);
+        assert!(
+            coordinator.take_pending_orphans().is_empty(),
+            "drained once"
+        );
+    }
+
+    #[test]
+    fn a_window_destroyed_after_commit_no_longer_affects_the_transfer() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+        let token = coordinator.begin_transfer(&sink, "main", 1, now).unwrap();
+        coordinator
+            .stage_payload(&sink, &token, "main", payload(1), now)
+            .unwrap();
+        coordinator.claim(&sink, &token, "deck-1", now).unwrap();
+        coordinator.commit(&sink, &token, "deck-1", now).unwrap();
+
+        assert!(coordinator
+            .handle_window_destroyed(&sink, "main", now)
+            .is_empty());
+        assert_eq!(coordinator.owner(1).as_deref(), Some("deck-1"));
+
+        assert_eq!(
+            coordinator.handle_window_destroyed(&sink, "deck-1", now),
+            vec![1]
         );
     }
 }
