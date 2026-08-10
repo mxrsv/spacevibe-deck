@@ -2,9 +2,10 @@
 //! webview: label allocation, most-recently-focused order, and the pending
 //! adoption a freshly created window reads at boot (spec §9.1, §9.2).
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Mutex;
-use tauri::Manager;
+use tauri::{Manager, State};
 
 /// Every window this app creates after the configured `main` window carries
 /// this prefix, so a generated label can never shadow the configured one.
@@ -87,6 +88,50 @@ impl FocusRegistry {
     }
 }
 
+/// Adoption tokens keyed by the label of the window that has not booted yet.
+///
+/// Registered before `build()` so the entry is in place no matter how fast the
+/// webview loads, and consumed by the first `window_boot_mode` call.
+#[derive(Default)]
+pub struct PendingAdoptions {
+    tokens: Mutex<HashMap<String, String>>,
+}
+
+impl PendingAdoptions {
+    pub fn register(&self, label: String, token: String) {
+        if let Ok(mut tokens) = self.tokens.lock() {
+            tokens.insert(label, token);
+        }
+    }
+
+    pub fn take(&self, label: &str) -> Option<String> {
+        self.tokens.lock().ok()?.remove(label)
+    }
+
+    pub fn forget(&self, label: &str) {
+        if let Ok(mut tokens) = self.tokens.lock() {
+            tokens.remove(label);
+        }
+    }
+}
+
+/// What a window should build at startup (spec §9.2). `adopt` skips the Open
+/// Board and builds one tab around the transferred pane.
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum BootMode {
+    Normal,
+    Adopt { token: String },
+}
+
+#[tauri::command]
+pub fn window_boot_mode(window: tauri::Window, pending: State<'_, PendingAdoptions>) -> BootMode {
+    match pending.take(window.label()) {
+        Some(token) => BootMode::Adopt { token },
+        None => BootMode::Normal,
+    }
+}
+
 /// The window a menu event or a quit prompt belongs to: the focused one, else
 /// the most recently focused one that still exists (spec §9.3). `None` means
 /// every Deck window is gone or none has ever been focused.
@@ -117,7 +162,7 @@ pub fn focus_order(app: tauri::AppHandle) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{FocusRegistry, WindowLabels, DECK_LABEL_PREFIX};
+    use super::{BootMode, FocusRegistry, PendingAdoptions, WindowLabels, DECK_LABEL_PREFIX};
     use std::collections::HashSet;
 
     fn labels(values: &[&str]) -> Vec<String> {
@@ -216,5 +261,44 @@ mod tests {
         registry.record("deck-1");
 
         assert_eq!(registry.rank(&labels(&["main"])), labels(&["main"]));
+    }
+
+    #[test]
+    fn boot_mode_is_normal_without_a_pending_adoption() {
+        let pending = PendingAdoptions::default();
+        assert_eq!(pending.take("deck-1"), None);
+    }
+
+    #[test]
+    fn a_registered_adoption_is_handed_out_exactly_once() {
+        let pending = PendingAdoptions::default();
+        pending.register("deck-1".into(), "token-abc".into());
+
+        assert_eq!(pending.take("deck-1"), Some("token-abc".to_string()));
+        assert_eq!(pending.take("deck-1"), None);
+    }
+
+    #[test]
+    fn forget_drops_an_adoption_whose_window_never_loaded() {
+        let pending = PendingAdoptions::default();
+        pending.register("deck-1".into(), "token-abc".into());
+        pending.forget("deck-1");
+
+        assert_eq!(pending.take("deck-1"), None);
+    }
+
+    #[test]
+    fn boot_mode_serializes_the_shape_the_frontend_reads() {
+        assert_eq!(
+            serde_json::to_value(BootMode::Normal).unwrap(),
+            serde_json::json!({ "kind": "normal" })
+        );
+        assert_eq!(
+            serde_json::to_value(BootMode::Adopt {
+                token: "token-abc".into()
+            })
+            .unwrap(),
+            serde_json::json!({ "kind": "adopt", "token": "token-abc" })
+        );
     }
 }
