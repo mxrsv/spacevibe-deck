@@ -9,13 +9,39 @@ use tauri::{
 #[cfg(not(target_os = "macos"))]
 use tauri::{App, Runtime};
 
-#[cfg(target_os = "macos")]
 const QUIT_MENU_ID: &str = "quit-confirm";
 /// Prefix marking a menu item whose id IS a frontend keymap action. The
 /// handler strips it and forwards the rest as one `menu:action` payload, so
 /// adding an item below needs no new branch here and no new listener there.
-#[cfg(target_os = "macos")]
 const ACTION_PREFIX: &str = "action:";
+
+/// Where a menu event goes now that menu events are no longer broadcast
+/// (spec §9.3).
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum MenuRoute {
+    /// Quit never needs a focused window: the census owns it (spec §9.4).
+    Quit,
+    Action {
+        window: String,
+        action: String,
+    },
+    Dropped,
+}
+
+/// Pure routing decision. `target` is the focused window, or the most recently
+/// focused one that still exists, or `None` when neither exists.
+pub fn route_menu_event(id: &str, target: Option<&str>) -> MenuRoute {
+    if id == QUIT_MENU_ID {
+        return MenuRoute::Quit;
+    }
+    match (id.strip_prefix(ACTION_PREFIX), target) {
+        (Some(action), Some(window)) => MenuRoute::Action {
+            window: window.to_string(),
+            action: action.to_string(),
+        },
+        _ => MenuRoute::Dropped,
+    }
+}
 
 /// A menu item bound 1:1 to a keymap action in `src/terminal/keymap.ts`.
 ///
@@ -141,11 +167,15 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         .build()?;
     app.set_menu(menu)?;
     app.on_menu_event(|handle, event| {
-        let id = event.id().0.as_str();
-        if id == QUIT_MENU_ID {
-            let _ = handle.emit("quit-requested", ());
-        } else if let Some(action) = id.strip_prefix(ACTION_PREFIX) {
-            let _ = handle.emit("menu:action", action);
+        // Broadcast is gone: with peer windows it delivered every accelerator
+        // to every window, so one Cmd+T opened a tab in each (spec §9.3).
+        let target = crate::window_lifecycle::menu_target(handle);
+        match route_menu_event(event.id().0.as_str(), target.as_deref()) {
+            MenuRoute::Quit => crate::quit_flow::request_quit(handle),
+            MenuRoute::Action { window, action } => {
+                let _ = handle.emit_to(window, "menu:action", action);
+            }
+            MenuRoute::Dropped => {}
         }
     });
     Ok(())
@@ -212,5 +242,42 @@ mod tests {
         // New/Save Layout Preset moved to File (7583463) — Window is 100%
         // Cocoa builtins now (minimize/maximize/fullscreen).
         assert!(WINDOW_MENU_ITEMS.is_empty());
+    }
+
+    use crate::menu::{route_menu_event, MenuRoute};
+
+    #[test]
+    fn an_action_goes_to_the_target_window_only() {
+        assert_eq!(
+            route_menu_event("action:new-tab", Some("deck-2")),
+            MenuRoute::Action {
+                window: "deck-2".into(),
+                action: "new-tab".into()
+            }
+        );
+    }
+
+    #[test]
+    fn a_pane_scoped_action_is_dropped_when_no_window_can_receive_it() {
+        // macOS fires menu events with no window focused; a pane action with
+        // nowhere to land must be dropped, never broadcast.
+        assert_eq!(
+            route_menu_event("action:close-pane", None),
+            MenuRoute::Dropped
+        );
+    }
+
+    #[test]
+    fn quit_is_routed_through_the_census_regardless_of_focus() {
+        assert_eq!(route_menu_event("quit-confirm", None), MenuRoute::Quit);
+        assert_eq!(
+            route_menu_event("quit-confirm", Some("main")),
+            MenuRoute::Quit
+        );
+    }
+
+    #[test]
+    fn an_unknown_menu_id_is_dropped() {
+        assert_eq!(route_menu_event("about", Some("main")), MenuRoute::Dropped);
     }
 }
