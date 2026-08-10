@@ -2,6 +2,7 @@ import type { Settings } from "../settings/settings-schema";
 import { settings } from "../settings/settings-store";
 import {
   countLeaves,
+  dockNewPane,
   leaf,
   leafIds,
   movePane,
@@ -23,8 +24,19 @@ import { getDesktopEnvironment } from "../lib/platform";
 import { reportPersistError } from "../chrome/events";
 import { createLayoutEngine } from "./layout-engine";
 import { createPaneLifecycle, type CreatePaneFn } from "./pane-lifecycle";
-import type { PaneAttentionSignal } from "./pane";
-import { clearPaneCwd, setPaneCwd } from "./pane-cwd";
+import type { Pane, PaneAttentionSignal } from "./pane";
+import {
+  detachPane,
+  type DetachTarget,
+  type PaneIdentity,
+} from "./pane-detach";
+import { adoptTransfer, type AdoptResult } from "./pane-adopt";
+import {
+  defaultTransferClient,
+  type AdoptionPayload,
+  type TransferClient,
+} from "./transfer-client";
+import { clearPaneCwd, paneCwd, setPaneCwd } from "./pane-cwd";
 import { freshCwd } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { createPaneDragController, type PaneDragController } from "./pane-drag";
@@ -53,7 +65,45 @@ export interface ManagerCallbacks {
 export interface TerminalManagerDeps {
   /** Test seam — defaults to real createPane (xterm). */
   createPane?: CreatePaneFn;
+  /** Test seam — defaults to the real Tauri transfer client. */
+  transfer?: TransferClient;
+  /**
+   * Tab-level identity for a pane (name override, dot color, workspace).
+   * TabManager owns those, so it supplies this; the default carries only
+   * what a manager knows on its own.
+   */
+  identity?: (id: number) => Partial<PaneIdentity>;
 }
+
+/**
+ * What a detach did to THIS window. `tabEmpty` is what tells TabManager the
+ * tab has no panes left, so it can remove it WITHOUT the reopen snapshot
+ * `disposeTab` takes — nothing was closed, the session is alive elsewhere.
+ */
+export type DetachOutcome =
+  | { readonly kind: "moved"; readonly tabEmpty: boolean }
+  | { readonly kind: "kept"; readonly reason: string };
+
+/**
+ * Live-adopt (spec §10.1): insert into the running tab's layout tree at a
+ * NAMED position. The single-object signature is frozen at merge
+ * reconciliation 2026-08-10 — the drag section calls it with the pane the
+ * cursor was over and the edge it was dropped on, which is why the target is
+ * explicit rather than "wherever the active pane happens to be".
+ */
+export interface AdoptIntoActiveTabRequest {
+  readonly token: string;
+  /** Pane to split; falls back to the active pane, then to an empty tree. */
+  readonly targetPaneId?: number;
+  readonly edge?: Edge;
+}
+
+/**
+ * Spawn placeholder geometry, mirroring `pane-lifecycle.ts` — used only when
+ * a moving pane vanished mid-call.
+ */
+const TRANSFER_FALLBACK_COLS = 80;
+const TRANSFER_FALLBACK_ROWS = 24;
 
 /** One tab's worth of terminals: a split tree of panes sharing a container. */
 export interface TerminalManager {
@@ -80,6 +130,16 @@ export interface TerminalManager {
   closeActive(): Promise<void>;
   /** Close a specific pane; unknown id → no-op (it may have exited meanwhile). */
   closePaneById(id: number): Promise<void>;
+  /**
+   * Move a pane out of this window (spec §10.3). Never kills the PTY, and
+   * never respawns a replacement when the tab empties — a moved pane is not a
+   * closed one.
+   */
+  detachPaneById(id: number, target: DetachTarget): Promise<DetachOutcome>;
+  /** Boot-adopt: this manager's first tab IS the moved pane (spec §10.1). */
+  initFromAdoption(token: string): Promise<AdoptResult>;
+  /** Live-adopt: dock the moved pane into the running tab at a named edge. */
+  adoptIntoActiveTab(request: AdoptIntoActiveTabRequest): Promise<AdoptResult>;
   cycleFocus(step: 1 | -1): void;
   /** Move focus to the nearest pane in a direction; no pane there → no-op. */
   focusDirection(dir: FocusDirection): void;
@@ -322,6 +382,127 @@ export function createTerminalManager(
     callbacks.onLayoutChange();
   }
 
+  const transfer = deps.transfer ?? defaultTransferClient;
+
+  /**
+   * Remove a pane from this window because it MOVED, not because it closed.
+   * Deliberately not `closePane`: that one kills the PTY and respawns a
+   * shell when the tab's last pane goes away (spec §10.3). The pruning
+   * `closePane`/`disposeTab` normally do has to be spelled out here for the
+   * same reason.
+   */
+  function releaseMovedPane(id: number): void {
+    closeSearchBarForPane(id);
+    life.releasePane(id);
+    if (!tree) {
+      return;
+    }
+    const rest = removeLeaf(tree, id);
+    if (rest === null) {
+      tree = null;
+      activeId = null;
+      return;
+    }
+    tree = rest;
+    if (activeId === id) {
+      activeId = leafIds(tree)[0] ?? null;
+    }
+    render();
+    if (activeId !== null) {
+      life.panes.get(activeId)?.focus();
+    }
+  }
+
+  /**
+   * Capture-time geometry for a moving pane (spec §10.2). Falls back to the
+   * spawn placeholder for a pane that vanished mid-call; the destination
+   * re-fits after commit anyway, so this is a starting point, not a
+   * constraint.
+   */
+  function paneGeometry(id: number): { cols: number; rows: number } {
+    const pane = life.panes.get(id);
+    return {
+      cols: pane?.cols ?? TRANSFER_FALLBACK_COLS,
+      rows: pane?.rows ?? TRANSFER_FALLBACK_ROWS,
+    };
+  }
+
+  async function detachPaneById(
+    id: number,
+    target: DetachTarget,
+  ): Promise<DetachOutcome> {
+    const result = await detachPane(id, target, {
+      transfer,
+      drainWrites: (paneId) => life.drainWrites(paneId),
+      holdWrites: (paneId) => life.holdWrites(paneId),
+      pane: (paneId) => life.panes.get(paneId),
+      geometry: paneGeometry,
+      identity: (paneId) => ({
+        cwd: paneCwd(paneId),
+        agentId: null,
+        tabName: null,
+        dotColor: null,
+        workspacePath: null,
+        ...deps.identity?.(paneId),
+      }),
+      release: releaseMovedPane,
+      report: reportPersistError,
+    });
+    if (result.kind === "kept") {
+      return result;
+    }
+    const tabEmpty = tree === null;
+    callbacks.onLayoutChange();
+    return { kind: "moved", tabEmpty };
+  }
+
+  function adoptDeps(place: (pane: Pane, payload: AdoptionPayload) => void) {
+    return {
+      transfer,
+      holdWrites: (paneId: number) => life.holdWrites(paneId),
+      adopt: (payload: AdoptionPayload) => life.adoptPane(payload),
+      place,
+      discard: (paneId: number) => life.releasePane(paneId),
+      report: reportPersistError,
+    };
+  }
+
+  /** Boot-adopt (spec §10.1): this manager's FIRST tab is the moved pane. */
+  function initFromAdoption(token: string): Promise<AdoptResult> {
+    return adoptTransfer(
+      token,
+      adoptDeps((pane) => {
+        tree = leaf(pane.id);
+        activeId = pane.id;
+        render();
+        pane.focus();
+      }),
+    );
+  }
+
+  function adoptIntoActiveTab(
+    request: AdoptIntoActiveTabRequest,
+  ): Promise<AdoptResult> {
+    const edge = request.edge ?? "right";
+    return adoptTransfer(
+      request.token,
+      adoptDeps((pane) => {
+        const anchor = request.targetPaneId ?? activeId;
+        // `dockNewPane`, NOT `splitLeaf`: `splitLeaf` always appends to slot
+        // `b`, so a "left" or "top" dock would land on the wrong side, and
+        // `movePane` is a no-op for a pane not already in this tree.
+        tree =
+          tree === null || anchor === null
+            ? leaf(pane.id)
+            : dockNewPane(tree, anchor, pane.id, edge);
+        activeId = pane.id;
+        render();
+        pane.focus();
+        callbacks.onLayoutChange();
+      }),
+    );
+  }
+
   async function openInitialPane(): Promise<void> {
     await life.openInitial(
       (nextTree, nextActive) => {
@@ -548,6 +729,9 @@ export function createTerminalManager(
     closePaneById(id) {
       return closePane(id);
     },
+    detachPaneById,
+    initFromAdoption,
+    adoptIntoActiveTab,
     cycleFocus,
     focusDirection,
     swapDirection,

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pane, PaneAttentionSignal, PaneEvents } from "./pane";
 import type { CreatePaneFn } from "./pane-lifecycle";
 import { createMemoryPtyClient } from "./pty-client";
+import { createMemoryTransferClient } from "./transfer-client";
 import {
   createTerminalManager,
   type ManagerCallbacks,
@@ -410,5 +411,194 @@ describe("createTerminalManager scrollActivePage / scrollActiveToEdge", () => {
       tm.scrollActivePage(1);
       tm.scrollActiveToEdge("top");
     }).not.toThrow();
+  });
+});
+
+describe("TerminalManager pane detach", () => {
+  it("removes the pane from the tree, disposes it and never kills the PTY", async () => {
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const killed: number[] = [];
+    const transfer = createMemoryTransferClient();
+    const manager = createTerminalManager(
+      document.createElement("div"),
+      { onLayoutChange() {} },
+      { ...pty, killPty: async (id) => void killed.push(id) },
+      { createPane: (id, _s, events) => fakePane(id, events), transfer },
+    );
+    await manager.initFresh();
+    await manager.splitActive("row");
+    const [first, second] = manager.paneIds();
+
+    const promise = manager.detachPaneById(first, { kind: "new-window" });
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "committed" });
+
+    await expect(promise).resolves.toEqual({ kind: "moved", tabEmpty: false });
+    expect(manager.paneIds()).toEqual([second]);
+    expect(killed).toEqual([]);
+  });
+
+  it("reports the tab as empty instead of respawning a shell for the last pane", async () => {
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const transfer = createMemoryTransferClient();
+    const manager = createTerminalManager(
+      document.createElement("div"),
+      { onLayoutChange() {} },
+      pty,
+      { createPane: (id, _s, events) => fakePane(id, events), transfer },
+    );
+    await manager.initFresh();
+    const [only] = manager.paneIds();
+
+    const promise = manager.detachPaneById(only, { kind: "new-window" });
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "committed" });
+
+    await expect(promise).resolves.toEqual({ kind: "moved", tabEmpty: true });
+    expect(manager.paneIds()).toEqual([]);
+    // closePane would have spawned a replacement here (terminal-manager.ts:305-312).
+    expect(pty.sessions.size).toBe(1);
+  });
+
+  it("leaves the tree untouched when the transfer aborts", async () => {
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const transfer = createMemoryTransferClient();
+    const manager = createTerminalManager(
+      document.createElement("div"),
+      { onLayoutChange() {} },
+      pty,
+      { createPane: (id, _s, events) => fakePane(id, events), transfer },
+    );
+    await manager.initFresh();
+    const before = manager.paneIds();
+
+    const promise = manager.detachPaneById(before[0], { kind: "new-window" });
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "aborted", reason: "claim-failed" });
+
+    await expect(promise).resolves.toEqual({
+      kind: "kept",
+      reason: "claim-failed",
+    });
+    expect(manager.paneIds()).toEqual(before);
+  });
+
+  it("initFromAdoption builds a single-pane tree around the adopted pty", async () => {
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const transfer = createMemoryTransferClient();
+    const token = await transfer.prepareTransfer(77);
+    await transfer.stageTransfer(token, {
+      paneId: 77,
+      cwd: "/repo",
+      agentId: null,
+      scrollback: "",
+      cols: 100,
+      rows: 30,
+      tabName: null,
+      dotColor: null,
+      workspacePath: "/repo",
+    });
+    const manager = createTerminalManager(
+      document.createElement("div"),
+      { onLayoutChange() {} },
+      pty,
+      { createPane: (id, _s, events) => fakePane(id, events), transfer },
+    );
+
+    await expect(manager.initFromAdoption(token)).resolves.toMatchObject({
+      kind: "adopted",
+      paneId: 77,
+    });
+    expect(manager.paneIds()).toEqual([77]);
+    expect(pty.sessions.size).toBe(0);
+  });
+
+  // WHOLE TREE SHAPE, not membership. `leafIds(next).includes(99)` would pass
+  // under the wrong-side bug — the pane DID arrive, just docked on the wrong
+  // side of the wrong axis. The discriminator is that a left dock must not
+  // equal what `splitLeaf` produces, because `splitLeaf` always puts the new
+  // pane in slot `b` (split-tree.ts:38).
+  it("docks a left-adopted pane into slot a on the row axis, unlike splitLeaf", async () => {
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const transfer = createMemoryTransferClient();
+    const manager = createTerminalManager(
+      document.createElement("div"),
+      { onLayoutChange() {} },
+      pty,
+      { createPane: (id, _s, events) => fakePane(id, events), transfer },
+    );
+    await manager.initFresh();
+    const [anchor] = manager.paneIds();
+    const token = await transfer.prepareTransfer(99);
+    await transfer.stageTransfer(token, {
+      paneId: 99,
+      cwd: null,
+      agentId: null,
+      scrollback: "",
+      cols: 100,
+      rows: 30,
+      tabName: null,
+      dotColor: null,
+      workspacePath: null,
+    });
+
+    await manager.adoptIntoActiveTab({
+      token,
+      targetPaneId: anchor,
+      edge: "left",
+    });
+
+    const shape = manager.serializeLayout();
+    // `serializeLayout` drops pane ids, so it pins the STRUCTURE: a row split
+    // with two leaves. The id-level side assertion follows it.
+    expect(shape).toEqual({
+      type: "split",
+      direction: "row",
+      ratio: 0.5,
+      first: { type: "leaf" },
+      second: { type: "leaf" },
+    });
+    // Left edge => adopted pane FIRST. paneIds() walks the tree left to right
+    // (leafIds), so order is the side.
+    expect(manager.paneIds()).toEqual([99, anchor]);
+  });
+
+  it("docks a right-adopted pane second, so the two edges are not the same tree", async () => {
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const transfer = createMemoryTransferClient();
+    const manager = createTerminalManager(
+      document.createElement("div"),
+      { onLayoutChange() {} },
+      pty,
+      { createPane: (id, _s, events) => fakePane(id, events), transfer },
+    );
+    await manager.initFresh();
+    const [anchor] = manager.paneIds();
+    const token = await transfer.prepareTransfer(99);
+    await transfer.stageTransfer(token, {
+      paneId: 99,
+      cwd: null,
+      agentId: null,
+      scrollback: "",
+      cols: 100,
+      rows: 30,
+      tabName: null,
+      dotColor: null,
+      workspacePath: null,
+    });
+
+    await manager.adoptIntoActiveTab({
+      token,
+      targetPaneId: anchor,
+      edge: "top",
+    });
+
+    // "top" is the column axis AND source-first — a different tree from the
+    // "left" case above in both respects.
+    expect(manager.serializeLayout()).toMatchObject({
+      type: "split",
+      direction: "column",
+    });
+    expect(manager.paneIds()).toEqual([99, anchor]);
   });
 });
