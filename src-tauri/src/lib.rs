@@ -12,6 +12,7 @@ mod prompt_assets;
 mod pty;
 mod quit_flow;
 mod shell_integration;
+mod update_flight;
 mod window_close;
 mod window_lifecycle;
 
