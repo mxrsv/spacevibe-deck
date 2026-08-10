@@ -76,6 +76,30 @@ export function movePane(
   return dockIntoLeaf(withoutSource, targetId, sourceId, dir, sourceFirst);
 }
 
+/**
+ * Dock a pane that is NOT YET in this tree onto an `edge` of leaf `targetId`.
+ * Returns a new tree; returns the old tree BY REFERENCE when `targetId` is not
+ * present.
+ *
+ * `movePane` cannot serve this case: it requires the source leaf to already be
+ * in the tree and returns the tree unchanged otherwise. `splitLeaf` cannot
+ * either: it takes a direction rather than an edge and always appends the new
+ * pane to branch `b`, so `left` and `top` would land on the wrong side.
+ */
+export function dockNewPane(
+  node: TreeNode,
+  targetId: number,
+  newId: number,
+  edge: Edge,
+): TreeNode {
+  if (!leafIds(node).includes(targetId)) {
+    return node;
+  }
+  const dir: Direction = edge === "left" || edge === "right" ? "row" : "column";
+  const newFirst = edge === "left" || edge === "top";
+  return dockIntoLeaf(node, targetId, newId, dir, newFirst);
+}
+
 /** Replace leaf `targetId` with a new split holding it and pane `sourceId` (source in branch a when `sourceFirst`). */
 function dockIntoLeaf(
   node: TreeNode,
@@ -235,12 +259,14 @@ export function ratioEntries(node: TreeNode): RatioEntry[] {
   }
   return [
     { path: [], ratio: node.ratio },
-    ...ratioEntries(node.a).map(
-      (entry): RatioEntry => ({ ...entry, path: ["a", ...entry.path] }),
-    ),
-    ...ratioEntries(node.b).map(
-      (entry): RatioEntry => ({ ...entry, path: ["b", ...entry.path] }),
-    ),
+    ...ratioEntries(node.a).map((entry): RatioEntry => ({
+      ...entry,
+      path: ["a", ...entry.path],
+    })),
+    ...ratioEntries(node.b).map((entry): RatioEntry => ({
+      ...entry,
+      path: ["b", ...entry.path],
+    })),
   ];
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   countLeaves,
+  dockNewPane,
   expandForPane,
   leaf,
   leafIds,
@@ -299,5 +300,95 @@ describe("ratioEntries", () => {
       { path: ["a"], ratio: 0.5 },
       { path: ["b"], ratio: 0.5 },
     ]);
+  });
+});
+
+describe("dockNewPane", () => {
+  it("puts the new pane in branch a for a left dock", () => {
+    expect(dockNewPane(leaf(1), 1, 9, "left")).toEqual({
+      kind: "split",
+      dir: "row",
+      ratio: 0.5,
+      a: leaf(9),
+      b: leaf(1),
+    });
+  });
+
+  it("puts the new pane in branch b for a right dock", () => {
+    expect(dockNewPane(leaf(1), 1, 9, "right")).toEqual({
+      kind: "split",
+      dir: "row",
+      ratio: 0.5,
+      a: leaf(1),
+      b: leaf(9),
+    });
+  });
+
+  it("puts the new pane in branch a for a top dock", () => {
+    expect(dockNewPane(leaf(1), 1, 9, "top")).toEqual({
+      kind: "split",
+      dir: "column",
+      ratio: 0.5,
+      a: leaf(9),
+      b: leaf(1),
+    });
+  });
+
+  it("puts the new pane in branch b for a bottom dock", () => {
+    expect(dockNewPane(leaf(1), 1, 9, "bottom")).toEqual({
+      kind: "split",
+      dir: "column",
+      ratio: 0.5,
+      a: leaf(1),
+      b: leaf(9),
+    });
+  });
+
+  it("differs from splitLeaf on the two edges that invert", () => {
+    // The discriminator. splitLeaf always appends to branch b, so it agrees
+    // on right/bottom and is WRONG on left/top — which is why a drop path
+    // that reaches for it produces an overlay that lies.
+    const viaSplit = splitLeaf(leaf(1), 1, 9, "row");
+    expect(dockNewPane(leaf(1), 1, 9, "right")).toEqual(viaSplit);
+    expect(dockNewPane(leaf(1), 1, 9, "left")).not.toEqual(viaSplit);
+  });
+
+  it("docks onto the correct leaf inside a nested tree", () => {
+    let tree = splitLeaf(leaf(1), 1, 2, "row");
+    tree = splitLeaf(tree, 2, 3, "column");
+    // tree: row(a: 1, b: column(a: 2, b: 3))
+    expect(dockNewPane(tree, 3, 9, "top")).toEqual({
+      kind: "split",
+      dir: "row",
+      ratio: 0.5,
+      a: leaf(1),
+      b: {
+        kind: "split",
+        dir: "column",
+        ratio: 0.5,
+        a: leaf(2),
+        b: {
+          kind: "split",
+          dir: "column",
+          ratio: 0.5,
+          a: leaf(9),
+          b: leaf(3),
+        },
+      },
+    });
+  });
+
+  it("returns the tree BY REFERENCE when the target is not in it", () => {
+    const tree = splitLeaf(leaf(1), 1, 2, "row");
+    // Same convention as movePane: identity means "nothing happened", and the
+    // caller must treat it as a failed adopt rather than a completed one.
+    expect(dockNewPane(tree, 99, 9, "left")).toBe(tree);
+  });
+
+  it("does not mutate the input tree", () => {
+    const tree = splitLeaf(leaf(1), 1, 2, "row");
+    const before = JSON.stringify(tree);
+    dockNewPane(tree, 2, 9, "left");
+    expect(JSON.stringify(tree)).toBe(before);
   });
 });
