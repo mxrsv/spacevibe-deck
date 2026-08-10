@@ -24,6 +24,7 @@ import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
 import { settings, updateSettings } from "../../../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../../../settings/settings-schema";
 import { BUILTIN_AGENTS } from "../../../lib/agent-catalog";
+import { settingsOpen, usageOpen } from "../../../chrome/events";
 
 describe("AgentsSection", () => {
   let host: HTMLDivElement;
@@ -68,12 +69,17 @@ describe("AgentsSection", () => {
       ),
     );
 
-  // The add pill is the LAST enabled one: every declared row also carries an
-  // enabled pill for its command.
-  const addButton = (): HTMLButtonElement =>
-    Array.from(host.querySelectorAll<HTMLButtonElement>(".cfg-btn"))
-      .filter((button) => !button.disabled)
-      .pop()!;
+  // "Add agent"'s pill, found by its row label. It used to be found as the
+  // LAST enabled `.cfg-btn` — every declared row also carries an enabled pill
+  // for its command — but that heuristic broke the moment the Token usage
+  // link row landed after it. Scoping by label is positional-drift-proof.
+  const addButton = (): HTMLButtonElement => {
+    const row = Array.from(host.querySelectorAll(".cfg-row")).find(
+      (candidate) =>
+        candidate.querySelector(".cfg-row__label")?.textContent === "Add agent",
+    )!;
+    return row.querySelector<HTMLButtonElement>(".cfg-btn")!;
+  };
 
   /** Open a declared row's key or value for editing (DL-12.5) and return it. */
   const openField = (trigger: string, ariaLabel: string): HTMLInputElement => {
@@ -202,6 +208,44 @@ describe("AgentsSection", () => {
     });
 
     expect(settings.value.customAgents[0].command).toBe("aider");
+  });
+
+  describe("the token usage link row", () => {
+    afterEach(() => {
+      settingsOpen.value = false;
+      usageOpen.value = false;
+    });
+
+    const usageButton = (): HTMLButtonElement => {
+      const found = Array.from(
+        host.querySelectorAll<HTMLButtonElement>(".cfg-btn"),
+      ).find((candidate) => candidate.textContent?.trim() === "open …");
+      if (found === undefined) {
+        throw new Error("no token usage link row");
+      }
+      return found;
+    };
+
+    it("swaps Settings for the usage screen in one click", () => {
+      settingsOpen.value = true;
+      usageOpen.value = false;
+      mount();
+
+      click(usageButton());
+
+      expect(settingsOpen.value).toBe(false);
+      expect(usageOpen.value).toBe(true);
+    });
+
+    it("reads as a link row, not a value pill — the about-section pattern", () => {
+      mount();
+
+      const button = usageButton();
+      expect(button.classList.contains("cfg-btn")).toBe(true);
+      // No new DL value kind: same class, same copy as "Release notes".
+      expect(button.classList.contains("cfg-btn--disabled")).toBe(false);
+      expect(button.disabled).toBe(false);
+    });
   });
 });
 
