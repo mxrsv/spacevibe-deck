@@ -5,9 +5,7 @@ use std::{
     sync::Mutex,
     time::{Duration, Instant},
 };
-// `State` and `WebviewWindow` come back in A6 with the commands; importing
-// them now would be an unused_imports warning across A1-A5.
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
 
 /// One PTY event held back while its pane is mid-transfer.
 #[derive(Clone, Debug, PartialEq)]
@@ -695,6 +693,75 @@ pub fn emit_to_owner<S: serde::Serialize + Clone>(
         }
     };
     coordinator.deliver(&AppSink(app), pane_id, event, value, Instant::now());
+}
+
+/// The frontend addresses panes as strings; the coordinator keys them on the
+/// `u32` `spawn_shell` returned.
+fn parse_pane_id(pane_id: &str) -> Result<u32, String> {
+    pane_id
+        .parse::<u32>()
+        .map_err(|_| format!("Pane id {pane_id} is not a number"))
+}
+
+/// Open a transfer and start buffering the pane's output (§7.3).
+#[tauri::command]
+pub fn prepare_transfer(
+    window: WebviewWindow,
+    coordinator: State<'_, WindowCoordinator>,
+    pane_id: String,
+) -> Result<String, String> {
+    let sink = AppSink(window.app_handle());
+    coordinator.begin_transfer(
+        &sink,
+        window.label(),
+        parse_pane_id(&pane_id)?,
+        Instant::now(),
+    )
+}
+
+/// The source puts up the payload it serialized once the stream quiesced (§7.4).
+#[tauri::command]
+pub fn stage_transfer(
+    window: WebviewWindow,
+    coordinator: State<'_, WindowCoordinator>,
+    token: String,
+    payload: AdoptionPayload,
+) -> Result<(), String> {
+    let sink = AppSink(window.app_handle());
+    coordinator.stage_payload(&sink, &token, window.label(), payload, Instant::now())
+}
+
+/// The destination takes the payload and becomes the pane's receiver.
+#[tauri::command]
+pub fn claim_transfer(
+    window: WebviewWindow,
+    coordinator: State<'_, WindowCoordinator>,
+    token: String,
+) -> Result<AdoptionPayload, String> {
+    let sink = AppSink(window.app_handle());
+    coordinator.claim(&sink, &token, window.label(), Instant::now())
+}
+
+/// Hand the pane over and flush what buffered, in read order.
+#[tauri::command]
+pub fn commit_transfer(
+    window: WebviewWindow,
+    coordinator: State<'_, WindowCoordinator>,
+    token: String,
+) -> Result<(), String> {
+    let sink = AppSink(window.app_handle());
+    coordinator.commit(&sink, &token, window.label(), Instant::now())
+}
+
+/// Give the pane back to its source and flush what buffered.
+#[tauri::command]
+pub fn abort_transfer(
+    window: WebviewWindow,
+    coordinator: State<'_, WindowCoordinator>,
+    token: String,
+) -> Result<(), String> {
+    let sink = AppSink(window.app_handle());
+    coordinator.abort(&sink, &token, Instant::now())
 }
 
 /// Test double shared across the crate.
@@ -1573,6 +1640,19 @@ mod tests {
         assert_eq!(
             coordinator.handle_window_destroyed(&sink, "deck-1", now),
             vec![1]
+        );
+    }
+
+    #[test]
+    fn pane_id_crosses_as_a_string_and_must_parse() {
+        assert_eq!(super::parse_pane_id("12"), Ok(12));
+        assert_eq!(
+            super::parse_pane_id("pane-12"),
+            Err("Pane id pane-12 is not a number".into())
+        );
+        assert_eq!(
+            super::parse_pane_id(""),
+            Err("Pane id  is not a number".into())
         );
     }
 }
