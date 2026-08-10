@@ -430,6 +430,37 @@ the shape of the proportion are new.
   applies unchanged — an affordance that reacts and then does nothing is a
   broken promise. The percentage is always written in text beside the bar, so
   the bar itself is `aria-hidden` and removing it would lose no information.
+- **DL-16.7** A display figure may carry a **range selector**, and it is the
+  only control permitted on a metric screen. It is not a setting and it is not
+  a filter over a list: it says **what period the figure covers**, so it
+  belongs to the figure exactly the way the `*` disclaimer does, and it sits
+  with the figure rather than in a toolbar. DL-15.2 is unchanged and still
+  governs the tables themselves — the selector sits outside them, and nothing
+  inside a metric table becomes interactive because this rule exists.
+  - **Segmented, not a §6 `cycle` pill.** §6 says to extend its table before
+    inventing a value kind, so the reason is recorded here: every period must
+    be **visible at once**, because the set of available comparisons is itself
+    information — a reader who cannot see that "7 days" exists will not think
+    to ask for it. A `cycle` shows one option and hides the rest, and it turns
+    "go back one period" into three clicks through states the reader did not
+    want. That is a real cost paid for visual tidiness, and this is the one
+    place the app declines to pay it.
+  - **Appearance.** Options are lowercase `--ui-font` (DL-4.1) on one row. The
+    selected option is marked with the signifier this app already means by
+    "active" — the 4% `--fg` wash of DL-5.1 and DL-11.2 — never a filled pill,
+    a coloured chip, an underline or a border invented for this control. No
+    shadow (DL-1.3). A reader who has learned what "active" looks like in
+    Settings must not have to learn it twice.
+  - **Restate the range wherever it is implied.** Selecting a period changes
+    every number on the screen, so no figure, share or count may be left
+    ambiguous about what it covers: the selected option stays visible beside
+    them, and an empty period says which period is empty rather than only that
+    something is missing. A number whose period the reader has to remember is
+    a number they will misread.
+  - **Transient.** The selection is view state, not a preference: it resets
+    when the screen closes, for the reason DL-13.6 gives — a surface never
+    remembers half-finished state across opens, and a figure silently scoped
+    to a period chosen last week is worse than one that always starts whole.
 
 ## Chưa khớp thực tế
 
