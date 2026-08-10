@@ -264,3 +264,54 @@ describe("breadcrumb failure aborts the install", () => {
     expect(update!.install).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("update check single-flight", () => {
+  it("does not auto-check when another window already claimed the check", async () => {
+    const { controller, deps } = setup(null, { claim: async () => false });
+
+    await controller.start();
+
+    expect(deps.check).not.toHaveBeenCalled();
+  });
+
+  it("auto-checks when this window wins the claim", async () => {
+    const { controller, deps } = setup(null, { claim: async () => true });
+
+    await controller.start();
+
+    expect(deps.check).toHaveBeenCalledOnce();
+  });
+
+  it("auto-checks when the claim command fails — a broken single-flight must not disable updates", async () => {
+    const { controller, deps } = setup(null, {
+      claim: async () => {
+        throw new Error("command not found");
+      },
+    });
+
+    await controller.start();
+
+    expect(deps.check).toHaveBeenCalledOnce();
+  });
+
+  it("never gates an explicit Check for Updates…", async () => {
+    const { controller, deps } = setup(null, { claim: async () => false });
+
+    await controller.checkNow();
+
+    expect(deps.check).toHaveBeenCalledOnce();
+  });
+
+  it("releases the single-flight claim even when the check throws", async () => {
+    const releaseClaim = vi.fn().mockResolvedValue(undefined);
+    const { controller } = setup(null, {
+      check: vi.fn().mockRejectedValue(new Error("network down")),
+      claim: async () => true,
+      releaseClaim,
+    });
+
+    await controller.start();
+
+    expect(releaseClaim).toHaveBeenCalledOnce();
+  });
+});

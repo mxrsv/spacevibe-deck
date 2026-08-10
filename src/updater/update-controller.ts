@@ -1,4 +1,5 @@
 import { signal, type ReadonlySignal } from "@preact/signals";
+import { invoke } from "@tauri-apps/api/core";
 import type { DesktopPlatform } from "../lib/platform";
 
 const MAX_RELEASE_NOTES_LENGTH = 400;
@@ -42,6 +43,19 @@ export interface UpdateControllerDependencies {
    * from one that never happened.
    */
   recordAttempt(targetVersion: string): Promise<void>;
+  /**
+   * Claim the right to run the automatic startup check. Rust holds a
+   * process-wide single-flight (spec §9.5) so peer windows do not each
+   * download the same update — "the first window is primary" fails when the
+   * first window dies first. Defaults to the real command.
+   *
+   * Fail-OPEN on error: a broken single-flight must degrade to "every window
+   * checks", never to "nobody checks". A duplicated download is an
+   * annoyance; a silently disabled updater is a security problem.
+   */
+  claim?: () => Promise<boolean>;
+  /** Release the single-flight claim. Defaults to `end_update_check`. */
+  releaseClaim?: () => Promise<void>;
 }
 
 export interface UpdateController {
@@ -54,10 +68,7 @@ export interface UpdateController {
 }
 
 export type UpdateCheckResult =
-  | "available"
-  | "current"
-  | "unsupported"
-  | "failed";
+  "available" | "current" | "unsupported" | "failed";
 
 const HIDDEN_VIEW = Object.freeze<UpdateView>({
   phase: "hidden",
@@ -135,7 +146,32 @@ export function createUpdateController(
       return;
     }
     started = true;
-    await checkForAvailableUpdate();
+    const claim = deps.claim ?? (() => invoke<boolean>("begin_update_check"));
+    const release =
+      deps.releaseClaim ?? (() => invoke<void>("end_update_check"));
+    let mine = true;
+    try {
+      mine = await claim();
+    } catch (err: unknown) {
+      console.warn("begin_update_check failed; checking anyway:", err);
+    }
+    if (!mine) {
+      return;
+    }
+    try {
+      await checkForAvailableUpdate();
+    } finally {
+      // ALWAYS released, including when the check throws. The single-flight is
+      // process-wide: a claim leaked by a failed check means no window ever
+      // auto-checks again for the life of the process. try/catch rather than
+      // `.catch()`: outside Tauri `invoke` throws synchronously, which a
+      // promise handler would never see.
+      try {
+        await release();
+      } catch (err: unknown) {
+        console.warn("end_update_check failed:", err);
+      }
+    }
   };
 
   const checkNow = (): Promise<UpdateCheckResult> =>
