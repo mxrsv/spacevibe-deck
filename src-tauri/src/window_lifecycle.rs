@@ -265,6 +265,10 @@ pub async fn open_pane_window(
         return Err(format!("Could not harden the new window: {error}"));
     }
 
+    // So the new window appears in the other windows' Move Pane submenus
+    // without waiting for a focus change.
+    let _ = crate::menu::rebuild_move_pane_submenu(&app);
+
     Ok(label)
 }
 

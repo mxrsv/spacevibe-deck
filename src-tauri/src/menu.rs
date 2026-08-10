@@ -2,8 +2,8 @@
 use crate::menu_registry;
 #[cfg(target_os = "macos")]
 use tauri::{
-    menu::{AboutMetadata, MenuBuilder, MenuItem, SubmenuBuilder},
-    App, Emitter, Runtime,
+    menu::{AboutMetadata, Menu, MenuBuilder, MenuItem, Submenu, SubmenuBuilder},
+    App, Emitter, Manager, Runtime,
 };
 
 #[cfg(not(target_os = "macos"))]
@@ -14,6 +14,10 @@ const QUIT_MENU_ID: &str = "quit-confirm";
 /// handler strips it and forwards the rest as one `menu:action` payload, so
 /// adding an item below needs no new branch here and no new listener there.
 const ACTION_PREFIX: &str = "action:";
+/// Prefix marking a menu item built at runtime from the live window list. It is
+/// deliberately NOT `action:`: these ids never reach the frontend keymap, so
+/// they must never look like one to `isActionId`.
+pub const WINDOW_TARGET_PREFIX: &str = "window-target:";
 
 /// Where a menu event goes now that menu events are no longer broadcast
 /// (spec §9.3).
@@ -25,6 +29,13 @@ pub enum MenuRoute {
         window: String,
         action: String,
     },
+    /// A click in the dynamic Move Pane to Window submenu. `window` is the
+    /// source (the focused window that owns the pane); `target_label` is where
+    /// the pane should land.
+    MovePaneToWindow {
+        window: String,
+        target_label: String,
+    },
     Dropped,
 }
 
@@ -34,6 +45,15 @@ pub fn route_menu_event(id: &str, target: Option<&str>) -> MenuRoute {
     if id == QUIT_MENU_ID {
         return MenuRoute::Quit;
     }
+    if let Some(target_label) = id.strip_prefix(WINDOW_TARGET_PREFIX) {
+        return match target {
+            Some(window) => MenuRoute::MovePaneToWindow {
+                window: window.to_string(),
+                target_label: target_label.to_string(),
+            },
+            None => MenuRoute::Dropped,
+        };
+    }
     match (id.strip_prefix(ACTION_PREFIX), target) {
         (Some(action), Some(window)) => MenuRoute::Action {
             window: window.to_string(),
@@ -41,6 +61,17 @@ pub fn route_menu_event(id: &str, target: Option<&str>) -> MenuRoute {
         },
         _ => MenuRoute::Dropped,
     }
+}
+
+/// Windows a pane can move to: every live window except the one it is in,
+/// in the order handed in (the caller passes `FocusRegistry::rank`'s output, so
+/// the most recently used destination is first).
+pub fn move_pane_targets(ranked: &[String], source: &str) -> Vec<String> {
+    ranked
+        .iter()
+        .filter(|label| label.as_str() != source)
+        .cloned()
+        .collect()
 }
 
 /// A menu item bound 1:1 to a keymap action in `src/terminal/keymap.ts`.
@@ -74,7 +105,100 @@ pub(crate) fn action_item<R: Runtime>(
 ///   webview instead (close-tab shortcut).
 #[cfg(target_os = "macos")]
 pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
-    let handle = app.handle();
+    rebuild_move_pane_submenu(app.handle())?;
+    app.on_menu_event(|handle, event| {
+        // Broadcast is gone: with peer windows it delivered every accelerator
+        // to every window, so one Cmd+T opened a tab in each (spec §9.3).
+        let target = crate::window_lifecycle::menu_target(handle);
+        match route_menu_event(event.id().0.as_str(), target.as_deref()) {
+            MenuRoute::Quit => crate::quit_flow::request_quit(handle),
+            MenuRoute::Action { window, action } => {
+                let _ = handle.emit_to(window, "menu:action", action);
+            }
+            MenuRoute::MovePaneToWindow {
+                window,
+                target_label,
+            } => {
+                // The source window runs prepare -> stage -> offer_transfer:
+                // only it knows which pane has focus, and §7.4 makes it
+                // serialize the xterm buffer before the destination may claim.
+                let _ = handle.emit_to(
+                    window,
+                    "menu:move-pane-to-window",
+                    serde_json::json!({ "targetLabel": target_label }),
+                );
+            }
+            MenuRoute::Dropped => {}
+        }
+    });
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+const MOVE_PANE_SUBMENU_TITLE: &str = "Move Pane to Window";
+
+/// Rebuild the dynamic submenu from the live window list.
+///
+/// Called whenever the window set or the focus order changes — window created,
+/// `Focused`, `Destroyed` — because a submenu built once at startup would list
+/// windows that no longer exist and omit every window opened since.
+#[cfg(target_os = "macos")]
+pub fn rebuild_move_pane_submenu<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<()> {
+    let live = crate::window_lifecycle::live_window_labels(app);
+    let ranked = app
+        .state::<crate::window_lifecycle::FocusRegistry>()
+        .rank(&live);
+    let source = crate::window_lifecycle::menu_target(app).unwrap_or_default();
+
+    let mut builder = SubmenuBuilder::new(app, MOVE_PANE_SUBMENU_TITLE);
+    let targets = move_pane_targets(&ranked, &source);
+    if targets.is_empty() {
+        // One window open: an empty submenu reads as broken, a disabled item
+        // reads as "nowhere to send it yet".
+        let placeholder = MenuItem::with_id(
+            app,
+            "window-target-none",
+            "No Other Window",
+            false,
+            None::<&str>,
+        )?;
+        builder = builder.item(&placeholder);
+    } else {
+        for label in &targets {
+            let item = MenuItem::with_id(
+                app,
+                format!("{WINDOW_TARGET_PREFIX}{label}"),
+                label,
+                true,
+                None::<&str>,
+            )?;
+            builder = builder.item(&item);
+        }
+    }
+    let submenu = builder.build()?;
+    install_menu_with_move_pane(app, submenu)
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn rebuild_move_pane_submenu<R: Runtime>(_app: &tauri::AppHandle<R>) -> tauri::Result<()> {
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn install_menu_with_move_pane<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    move_pane: Submenu<R>,
+) -> tauri::Result<()> {
+    let menu = build_menu(app, &move_pane)?;
+    app.set_menu(menu)?;
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn build_menu<R: Runtime>(
+    handle: &tauri::AppHandle<R>,
+    move_pane: &Submenu<R>,
+) -> tauri::Result<Menu<R>> {
     let app_name = handle.package_info().name.clone();
     let quit = MenuItem::with_id(
         handle,
@@ -162,23 +286,14 @@ pub fn install<R: Runtime>(app: &App<R>) -> tauri::Result<()> {
         window_menu_builder = window_menu_builder.item(item);
     }
     let window_menu = window_menu_builder.build()?;
-    let menu = MenuBuilder::new(handle)
+    // Appended to a submenu that is built but NOT yet installed. The
+    // half-updated-menu objection applies to mutating a LIVE menu; here nothing
+    // is on screen yet and the only visible transition is the single
+    // `set_menu` the caller performs.
+    file_menu.append(move_pane)?;
+    MenuBuilder::new(handle)
         .items(&[&app_menu, &file_menu, &edit_menu, &view_menu, &window_menu])
-        .build()?;
-    app.set_menu(menu)?;
-    app.on_menu_event(|handle, event| {
-        // Broadcast is gone: with peer windows it delivered every accelerator
-        // to every window, so one Cmd+T opened a tab in each (spec §9.3).
-        let target = crate::window_lifecycle::menu_target(handle);
-        match route_menu_event(event.id().0.as_str(), target.as_deref()) {
-            MenuRoute::Quit => crate::quit_flow::request_quit(handle),
-            MenuRoute::Action { window, action } => {
-                let _ = handle.emit_to(window, "menu:action", action);
-            }
-            MenuRoute::Dropped => {}
-        }
-    });
-    Ok(())
+        .build()
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -279,5 +394,44 @@ mod tests {
     #[test]
     fn an_unknown_menu_id_is_dropped() {
         assert_eq!(route_menu_event("about", Some("main")), MenuRoute::Dropped);
+    }
+
+    #[test]
+    fn a_window_target_click_routes_to_the_focused_window_with_its_target() {
+        assert_eq!(
+            route_menu_event("window-target:deck-2", Some("main")),
+            MenuRoute::MovePaneToWindow {
+                window: "main".into(),
+                target_label: "deck-2".into()
+            }
+        );
+    }
+
+    #[test]
+    fn a_window_target_click_with_no_focused_window_is_dropped() {
+        assert_eq!(
+            route_menu_event("window-target:deck-2", None),
+            MenuRoute::Dropped
+        );
+    }
+
+    #[test]
+    fn a_window_target_id_never_looks_like_a_keymap_action() {
+        // `action:` is what the frontend validates with isActionId. A dynamic
+        // id must not travel that path — action-registry.ts would reject it.
+        assert!(!"window-target:deck-2".starts_with(super::ACTION_PREFIX));
+    }
+
+    #[test]
+    fn the_submenu_lists_every_other_window_most_recent_first() {
+        assert_eq!(
+            super::move_pane_targets(&["deck-1".into(), "main".into(), "deck-2".into()], "deck-1"),
+            vec!["main".to_string(), "deck-2".to_string()]
+        );
+    }
+
+    #[test]
+    fn the_submenu_is_empty_when_there_is_nowhere_to_move_a_pane() {
+        assert!(super::move_pane_targets(&["main".into()], "main").is_empty());
     }
 }
