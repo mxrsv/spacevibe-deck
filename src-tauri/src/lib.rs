@@ -10,7 +10,9 @@ mod pane_census;
 mod platform;
 mod prompt_assets;
 mod pty;
+mod quit_flow;
 mod shell_integration;
+mod window_close;
 mod window_lifecycle;
 
 use std::sync::atomic::{AtomicBool, Ordering};
