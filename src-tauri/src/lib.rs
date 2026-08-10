@@ -10,6 +10,7 @@ mod platform;
 mod prompt_assets;
 mod pty;
 mod shell_integration;
+mod window_lifecycle;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager};
