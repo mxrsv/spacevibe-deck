@@ -55,6 +55,23 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
+  it("binds toggle-usage on both platforms without colliding", () => {
+    const mac = MACOS_KEYMAP.filter(
+      (binding) => binding.action === "toggle-usage",
+    );
+    const win = WINDOWS_KEYMAP.filter(
+      (binding) => binding.action === "toggle-usage",
+    );
+    expect(mac).toEqual([
+      { key: "u", meta: true, shift: true, action: "toggle-usage" },
+    ]);
+    expect(win).toEqual([
+      { key: "u", ctrl: true, shift: true, action: "toggle-usage" },
+    ]);
+    // It has a menu item, so the RULE above CharKeyBinding requires `key`.
+    expect(mac[0]).not.toHaveProperty("code");
+  });
+
   it("binds move-pane-to-new-window on both platforms without colliding", () => {
     const mac = MACOS_KEYMAP.filter(
       (binding) => binding.action === "move-pane-to-new-window",
@@ -72,7 +89,7 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
-  it("has exactly the 44 action ids including updater menu actions", () => {
+  it("has exactly the 45 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -80,6 +97,7 @@ describe("ACTION_REGISTRY", () => {
         "open-release-notes",
         "toggle-settings",
         "toggle-prompts",
+        "toggle-usage",
         "move-pane-to-new-window",
         "new-tab",
         "reopen-tab",

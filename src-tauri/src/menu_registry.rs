@@ -82,6 +82,12 @@ pub fn build_view_menu<R: Runtime>(
         "Prompts…",
         Some("CmdOrCtrl+Shift+P"),
     )?;
+    let toggle_usage = action_item(
+        handle,
+        "toggle-usage",
+        "Token Usage…",
+        Some("CmdOrCtrl+Shift+U"),
+    )?;
     tauri::menu::SubmenuBuilder::new(handle, "View")
         .item(&split_row)
         .item(&split_column)
@@ -96,6 +102,8 @@ pub fn build_view_menu<R: Runtime>(
         .item(&focus_next_attention)
         .separator()
         .item(&toggle_prompts)
+        .separator()
+        .item(&toggle_usage)
         .build()
 }
 

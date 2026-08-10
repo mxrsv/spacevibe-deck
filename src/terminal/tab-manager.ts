@@ -82,6 +82,7 @@ import {
   reportChromeMessage,
   saveDialogOpen,
   settingsOpen,
+  usageOpen,
 } from "../chrome/events";
 
 /**
@@ -106,9 +107,10 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The ids `commands` implements — 41 entries, verified against the live
- * `commands` table (`tab-manager.ts:1041-1142`), Task 4's `copy-selection`/
- * `paste` included and the Prompt Board's `toggle-prompts` alongside them.
+ * The ids `commands` implements — 42 entries, verified against the live
+ * `commands` table, Task 4's `copy-selection`/`paste` included, the Prompt
+ * Board's `toggle-prompts` and the token usage screen's `toggle-usage`
+ * alongside them.
  *
  * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
  * keymap binding points at an action nothing dispatches — the defect behind
@@ -152,6 +154,7 @@ const COMMAND_ACTIONS = [
   "toggle-expand",
   "toggle-prompts",
   "toggle-settings",
+  "toggle-usage",
   "toggle-zoom-pane",
   "zoom-in",
   "zoom-out",
@@ -261,6 +264,15 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    * between here and there. Missing = no-op, same as the attention seam.
    */
   onToggleSettings?: () => void;
+  /**
+   * ⌘⇧U (`toggle-usage`) and the menu's "Token Usage…" item route here rather
+   * than writing `usageOpen` directly — the same reason `onToggleSettings`
+   * above exists. App owns the open/close+focus-return flow AND the
+   * Settings/Usage mutual exclusion (spec §Surface, major M4); writing the
+   * signal from here would put half of that rule in a second place. Missing
+   * = no-op, same as the other two seams.
+   */
+  onToggleUsage?: () => void;
   /**
    * Test seam — defaults to a real `createAgentNotifier` wired to the live
    * settings store, live window focus, and the Task 20 Tauri adapter.
@@ -1283,6 +1295,12 @@ export function createTabManager(
     // the close+focus-return flow it already owns for every other overlay.
     // Missing `onToggleSettings` = safe no-op, never a direct write.
     "toggle-settings": () => deps.onToggleSettings?.(),
+    // Seam style, like `toggle-settings` above and unlike `toggle-prompts`
+    // below: this one opens a full-window surface that must close Settings,
+    // return focus on Escape, and refuse to open under a modal draft. All
+    // three live in App; splitting them would put the mutual-exclusion rule
+    // in two files. Missing `onToggleUsage` = safe no-op, never a direct write.
+    "toggle-usage": () => deps.onToggleUsage?.(),
     // Writes the signal directly rather than routing through an App seam
     // (unlike toggle-settings): the popover has no draft to protect and no
     // overlay stack to keep consistent — the same reason `open-tab-options`
@@ -1329,14 +1347,23 @@ export function createTabManager(
   } satisfies Record<(typeof COMMAND_ACTIONS)[number], () => void>;
 
   /**
-   * Ranks of every overlay that is currently open (Open board, Settings,
-   * PresetEditor/SavePresetDialog share the "modal" rank — see
-   * `TIER_RANK`'s doc comment in action-registry.ts for why). Empty when
-   * nothing covers the terminal grid.
+   * Ranks of every overlay that is currently open (Open board, Settings, the
+   * token usage screen, PresetEditor/SavePresetDialog share the "modal" rank
+   * — see `TIER_RANK`'s doc comment in action-registry.ts for why). Empty
+   * when nothing covers the terminal grid.
+   *
+   * Usage reuses `TIER_RANK.settings` rather than getting a member of its own
+   * in the `OverlayTier` union. The rank is what an action is compared
+   * AGAINST, and Usage covers the grid exactly the way Settings does (both
+   * full-window, both above the board, both below a modal draft) — so the
+   * comparison it wants already exists. Adding a fifth tier would introduce a
+   * rank nothing is tiered at, next to `"settings"`, which is already a rank
+   * nothing is tiered at. One such rank is a documented deliberate gap; two
+   * is a pattern nobody can explain.
    */
   function openOverlayRanks(): readonly number[] {
     const ranks: number[] = [];
-    if (settingsOpen.value) {
+    if (settingsOpen.value || usageOpen.value) {
       ranks.push(TIER_RANK.settings);
     }
     if (boardOpen.value) {
