@@ -7,6 +7,10 @@ import {
   type TerminalColors,
 } from "./settings-schema";
 import { reportPersistError } from "../chrome/events";
+import {
+  createTauriSettingsSync,
+  type SettingsSyncClient,
+} from "./settings-sync";
 
 const STORE_FILE = "settings.json";
 const STORE_KEY = "settings";
@@ -15,6 +19,12 @@ const AUTOSAVE_DEBOUNCE_MS = 300;
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
 
 let store: Store | null = null;
+let sync: SettingsSyncClient | null = null;
+
+/** Test seam; production installs the Tauri client from `initSettings`. */
+export function configureSettingsSync(client: SettingsSyncClient): void {
+  sync = client;
+}
 
 /** Load settings from disk at startup — on failure fall back to defaults, app keeps running. */
 export async function initSettings(): Promise<void> {
@@ -27,6 +37,26 @@ export async function initSettings(): Promise<void> {
     if (raw !== undefined && raw !== null) {
       settings.value = validateSettings(raw);
     }
+    if (sync === null) {
+      sync = createTauriSettingsSync();
+    }
+    await sync.listenMerged((merged) => {
+      // Shape guard at the boundary, NOT a try/catch: `validateSettings` never
+      // throws — it coerces, and for a non-object it returns DEFAULT_SETTINGS
+      // wholesale (settings-schema.ts:199-201). So handing it a structurally
+      // malformed broadcast would silently reset this window's live settings to
+      // defaults, which is the worst possible response to "I cannot understand
+      // this message". Ignore it instead and keep what we have.
+      //
+      // Per-field junk is deliberately NOT treated the same way: that already
+      // has defined coercion semantics used everywhere else in this repo, and
+      // changing them is out of scope.
+      if (typeof merged !== "object" || merged === null) {
+        console.warn("Ignoring a structurally invalid settings broadcast");
+        return;
+      }
+      settings.value = validateSettings(merged);
+    });
   } catch (err) {
     console.warn("Failed to load settings, using defaults:", err);
   }
@@ -64,9 +94,30 @@ function persist(next: Settings): void {
 }
 
 export function updateSettings(patch: Partial<Settings>): void {
+  // Optimistic and synchronous on purpose: every caller reads
+  // `settings.value` on the next line (tab-manager.ts:1074-1075, :1080-1084), and
+  // a round trip would make the UI wait on IPC for a font-size bump. The
+  // Rust merge is what stops two windows clobbering each other; the merged
+  // broadcast reconciles this window a moment later.
   const next = { ...settings.value, ...patch };
   settings.value = next;
   persist(next);
+  // `apply_settings_patch` ALSO returns the merged object, and this
+  // deliberately ignores it. There must be exactly one authoritative path to
+  // state, and it is the `settings:merged` BROADCAST — one ordered stream
+  // Rust emits to every window, so all windows converge on the same
+  // sequence. The per-caller reply is not equivalent: when two windows patch
+  // concurrently, this window's reply can be older than a broadcast it has
+  // already applied, and adopting it afterwards would regress the value the
+  // user is looking at. Applying both is what produces a flicker.
+  //
+  // So the reply is used for ONE thing: knowing the write failed.
+  void sync?.sendPatch(patch).catch((err: unknown) => {
+    console.warn("Settings patch merge failed:", err);
+    reportPersistError(
+      "Couldn't sync settings across windows — other windows may be stale.",
+    );
+  });
 }
 
 /** Set or remove (value = undefined) a single color override. */
