@@ -125,7 +125,7 @@ describe("agentTotals", () => {
     expect(agentTotals([], null)).toEqual([]);
   });
 
-  it("refuses a partial total when a contributing model is unpriced", () => {
+  it("reports the priced part and discloses the gap when a model is unpriced", () => {
     const totals = agentTotals(
       [
         ...buckets,
@@ -136,10 +136,48 @@ describe("agentTotals", () => {
       null,
     );
 
-    expect(totals[0].costUsd).toBeNull();
+    // The refinement of §0.3 decision 8: one unrecognised model id used to
+    // null the whole agent, which deleted a correct $11k figure on the real
+    // corpus. The priced models still add up; the gap is disclosed beside it.
+    expect(totals[0].costUsd).toBeCloseTo(0.06, 10);
     expect(totals[0].unpricedModels).toEqual(["claude-from-the-future"]);
-    // Codex is untouched — null does not spread across agents.
+    expect(totals[0].unpricedTokens).toBe(5);
+    // Codex is untouched — nothing spreads across agents.
     expect(totals[1].costUsd).toBeCloseTo(0.005, 10);
+    expect(totals[1].unpricedTokens).toBe(0);
+  });
+
+  it("still refuses a figure when NOTHING the agent ran is priced", () => {
+    const totals = agentTotals(
+      [
+        bucket("2026-08-10T12:00:00Z", "claude", "claude-from-the-future", {
+          output: 5,
+        }),
+        bucket("2026-08-10T12:15:00Z", "claude", "another-unknown", {
+          output: 7,
+        }),
+      ],
+      null,
+    );
+
+    // No priced part to report, so there is no partial sum to stand behind.
+    expect(totals[0].costUsd).toBeNull();
+    expect(totals[0].unpricedTokens).toBe(12);
+  });
+
+  it("counts unpriced tokens across every counter class, not just output", () => {
+    const totals = agentTotals(
+      [
+        bucket("2026-08-10T12:00:00Z", "claude", "mystery-model", {
+          inputUncached: 100,
+          cacheRead: 20,
+          output: 3,
+        }),
+      ],
+      null,
+    );
+
+    expect(totals[0].unpricedTokens).toBe(123);
   });
 
   it("lists unpriced models deduped and sorted", () => {
@@ -285,7 +323,7 @@ describe("dailyRows", () => {
     expect(dailyRows(one, 3, Number.NaN)).toEqual([]);
   });
 
-  it("carries the same null-cost rule as the totals", () => {
+  it("carries the same priced-part rule as the totals", () => {
     const rows = dailyRows(
       [
         bucket("2026-08-10T12:00:00Z", "claude", "claude-opus-5", {
@@ -299,8 +337,25 @@ describe("dailyRows", () => {
       nowMs,
     );
 
-    expect(rows[0].costUsd).toBeNull();
+    // A day with one unrecognised model still reports what it can price.
+    expect(rows[0].costUsd).toBeCloseTo(0.025, 10);
     expect(rows[0].unpricedModels).toEqual(["claude-from-the-future"]);
+    expect(rows[0].unpricedTokens).toBe(1);
+  });
+
+  it("dashes a day whose every model is unpriced", () => {
+    const rows = dailyRows(
+      [
+        bucket("2026-08-10T12:00:00Z", "claude", "claude-from-the-future", {
+          output: 4,
+        }),
+      ],
+      3,
+      nowMs,
+    );
+
+    expect(rows[0].costUsd).toBeNull();
+    expect(rows[0].unpricedTokens).toBe(4);
   });
 });
 

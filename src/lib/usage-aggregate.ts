@@ -14,17 +14,35 @@ import { estimateCostUsd } from "./usage-pricing";
 import {
   addCounters,
   EMPTY_COUNTERS,
+  totalTokens,
   type UsageAgent,
   type UsageBucket,
   type UsageCounters,
 } from "./usage-snapshot";
 
+/**
+ * §0.3 decision 8 ("null wins") refined on 2026-08-10, after it deleted a
+ * correct figure on the real corpus. One model id — `unknown`, holding 0.2% of
+ * Codex's tokens — nulled that agent, which nulled the grand total, which
+ * blanked the whole screen: a rule meant to stop a MISLEADING number was
+ * removing an ACCURATE one.
+ *
+ * The rule is now: report the priced part, disclose the gap, and never present
+ * a partial sum as though it were complete. `costUsd` is the sum over the
+ * models that HAVE a price and is null only when not one of them does;
+ * `unpricedTokens` beside it is what makes the omission visible instead of
+ * silent. Presenting the partial sum alone would be the failure this rule
+ * originally guarded against — the disclosure is not decoration, it is the
+ * other half of the rule.
+ */
 export interface AgentTotal {
   readonly agent: UsageAgent;
   readonly counters: UsageCounters;
-  /** null when ANY contributing model is unpriced (plan §0.3 decision 8). */
+  /** Sum over priced models; null only when NO model here has a price. */
   readonly costUsd: number | null;
   readonly unpricedModels: readonly string[];
+  /** Tokens belonging to `unpricedModels` — the part `costUsd` excludes. */
+  readonly unpricedTokens: number;
 }
 
 export interface DailyRow {
@@ -32,8 +50,11 @@ export interface DailyRow {
   readonly day: string;
   readonly agent: UsageAgent;
   readonly counters: UsageCounters;
+  /** Sum over priced models; null only when NO model here has a price. */
   readonly costUsd: number | null;
   readonly unpricedModels: readonly string[];
+  /** Tokens belonging to `unpricedModels` — the part `costUsd` excludes. */
+  readonly unpricedTokens: number;
 }
 
 export interface BreakdownRow {
@@ -131,30 +152,42 @@ function sumCounters(
 interface CostRollup {
   readonly costUsd: number | null;
   readonly unpricedModels: readonly string[];
+  readonly unpricedTokens: number;
 }
 
 /**
- * Sum the per-model costs of one group. A single unpriced model makes the
- * whole figure `null`: a partial sum presented as a total is worse than no
- * number at all (plan §0.3 decision 8). A model contributing zero tokens is
- * never "unpriced" — `estimateCostUsd` answers 0 for it, which is arithmetic
- * and not a price lookup.
+ * Sum the per-model costs of one group, keeping the priced and unpriced halves
+ * apart (see the `AgentTotal` comment for why this changed on 2026-08-10).
+ *
+ * `costUsd` covers every model that has a price and goes null only when not
+ * one of them does — one unrecognised id can no longer erase a figure the
+ * other models fully support. `unpricedTokens` carries what was left out so
+ * the caller can say so; a caller that renders the money and drops the
+ * disclosure has reintroduced the original bug from the other side.
+ *
+ * A model contributing zero tokens is never "unpriced" — `estimateCostUsd`
+ * answers 0 for it, which is arithmetic and not a price lookup, and it is what
+ * keeps Claude's `<synthetic>` marker out of this list.
  */
 function rollupCost(byModel: ReadonlyMap<string, UsageCounters>): CostRollup {
   const unpriced: string[] = [];
-  let total = 0;
+  let priced = 0;
+  let pricedModels = 0;
+  let unpricedTokens = 0;
   for (const [model, counters] of byModel) {
     const cost = estimateCostUsd(model, counters);
     if (cost === null) {
       unpriced.push(model);
+      unpricedTokens += totalTokens(counters);
       continue;
     }
-    total += cost;
+    priced += cost;
+    pricedModels += 1;
   }
-  const unpricedModels = [...new Set(unpriced)].sort(compareStrings);
   return {
-    costUsd: unpricedModels.length > 0 ? null : total,
-    unpricedModels,
+    costUsd: pricedModels === 0 ? null : priced,
+    unpricedModels: [...new Set(unpriced)].sort(compareStrings),
+    unpricedTokens,
   };
 }
 

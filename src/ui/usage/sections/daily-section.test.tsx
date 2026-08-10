@@ -88,4 +88,54 @@ describe("DailySection", () => {
     expect(host.textContent).toContain("Claude Code");
     expect(host.textContent).toContain("Codex");
   });
+
+  it("prices what it can when one model on the day is unrecognised", () => {
+    // The same real-corpus flaw the overview had: one unpriced sliver used to
+    // dash the whole day's money cell.
+    usageSnapshot.value = snapshot([
+      {
+        bucketStartMs: NOW,
+        agent: "claude",
+        model: "claude-opus-4-5-20251101",
+        counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
+      },
+      {
+        bucketStartMs: NOW,
+        agent: "claude",
+        model: "gpt-6-preview-2026-08",
+        counters: { ...EMPTY_COUNTERS, inputUncached: 1_000 },
+      },
+    ]);
+    mount();
+
+    const cells = [
+      ...(
+        host.querySelector("tbody tr") as HTMLTableRowElement
+      ).querySelectorAll("th, td"),
+    ].map((cell) => cell.textContent);
+    expect(cells[3]).toBe("$5.00");
+    // And the omission is disclosed under the table, by name.
+    expect(host.querySelector(".metric-table__note")?.textContent).toContain(
+      "no price for gpt-6-preview-2026-08",
+    );
+  });
+
+  it("still dashes a day where nothing at all could be priced", () => {
+    usageSnapshot.value = snapshot([
+      {
+        bucketStartMs: NOW,
+        agent: "claude",
+        model: "gpt-6-preview-2026-08",
+        counters: { ...EMPTY_COUNTERS, inputUncached: 1_000 },
+      },
+    ]);
+    mount();
+
+    const cells = [
+      ...(
+        host.querySelector("tbody tr") as HTMLTableRowElement
+      ).querySelectorAll("th, td"),
+    ].map((cell) => cell.textContent);
+    expect(cells[3]).toBe("—");
+  });
 });

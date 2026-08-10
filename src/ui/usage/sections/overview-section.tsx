@@ -52,26 +52,38 @@ interface AgentBlock {
   readonly label: string;
   readonly logo: string | undefined;
   readonly color: string;
+  /** The priced part; null only when nothing this agent ran has a price. */
   readonly costUsd: number | null;
   readonly tokens: number;
+  /** Tokens the amount excludes, so the row can say what is missing. */
+  readonly unpricedTokens: number;
   /** null when there is no stated total to be a share OF (DL-16.5). */
   readonly sharePercent: number | null;
 }
 
 /**
- * Whole-corpus cost, or `null` if any agent's is unknown. One unpriced model
- * makes the sum unknowable rather than smaller (§0.3 decision 8): a partial
- * total presented as the total is the one number this screen must never show.
+ * The priced part of the whole corpus, or `null` when not one model anywhere
+ * has a price.
+ *
+ * This is the 2026-08-10 refinement of §0.3 decision 8. The old rule answered
+ * `null` if ANY agent's cost was unknown, and on the real corpus a single
+ * unrecognised model id holding 0.2% of Codex's tokens blanked a correct
+ * $13,372.98 — it deleted an accurate number in the name of avoiding a
+ * misleading one. The figure now covers everything that can be priced and the
+ * footnote states the boundary. Neither half is optional: the sum without the
+ * disclosure would be exactly the misleading total the old rule feared.
  */
-function totalCost(totals: readonly AgentTotal[]): number | null {
+function pricedTotal(totals: readonly AgentTotal[]): number | null {
   let sum = 0;
+  let priced = 0;
   for (const total of totals) {
     if (total.costUsd === null) {
-      return null;
+      continue;
     }
     sum += total.costUsd;
+    priced += 1;
   }
-  return sum;
+  return priced === 0 ? null : sum;
 }
 
 /**
@@ -145,6 +157,7 @@ function buildBlocks(
     color: dotColor(entry.agent),
     costUsd: entry.costUsd,
     tokens: totalTokens(entry.counters),
+    unpricedTokens: entry.unpricedTokens,
     sharePercent: shares === null ? null : shares[index],
   }));
 }
@@ -158,27 +171,32 @@ function todayLine(totals: readonly AgentTotal[]): string {
     (running, entry) => running + totalTokens(entry.counters),
     0,
   );
-  const cost = totalCost(totals);
+  const cost = pricedTotal(totals);
   const money = cost === null ? EM_DASH : formatUsd(cost);
   return `today · ${money} · ${formatTokensCompact(tokens)} tokens`;
 }
 
 /**
- * Three cases, and conflating the last two is a lie the screen can tell about
- * itself. `unpriced` belongs to an agent whose OWN cost is unknown. An agent
- * that is priced but has no share — because some OTHER agent is unpriced, so
- * there is no stated total (DL-16.5) — must not be labelled unpriced while its
- * dollar amount sits on the line directly above; it simply states its tokens.
+ * Four cases, and conflating them is how the screen ends up lying about
+ * itself. `unpriced` belongs only to an agent whose OWN cost is entirely
+ * unknown — never to one whose dollar amount is sitting on the line directly
+ * above. An agent that is priced but has no share (no stated total exists,
+ * DL-16.5) simply states its tokens. And an agent that is mostly priced names
+ * the slice its amount leaves out, so the number is never quietly partial.
  */
 function subLine(block: AgentBlock): string {
   const tokens = `${formatTokensCompact(block.tokens)} tokens`;
   if (block.costUsd === null) {
     return `unpriced · ${tokens}`;
   }
+  const omitted =
+    block.unpricedTokens > 0
+      ? ` · ${formatTokensCompact(block.unpricedTokens)} unpriced`
+      : "";
   if (block.sharePercent === null) {
-    return tokens;
+    return `${tokens}${omitted}`;
   }
-  return `${block.sharePercent}% of cost · ${tokens}`;
+  return `${block.sharePercent}% of cost · ${tokens}${omitted}`;
 }
 
 function AgentRow({ block }: { readonly block: AgentBlock }) {
@@ -219,18 +237,23 @@ export function OverviewSection() {
     return <p class="usage-hero__empty">no data yet</p>;
   }
 
-  const total = totalCost(recorded);
+  const total = pricedTotal(recorded);
   const blocks = buildBlocks(recorded, total);
   const unpriced = [
     ...new Set(recorded.flatMap((entry) => entry.unpricedModels)),
   ].sort();
 
-  // An unpriced model is exactly the thing that makes the total null, so these
-  // two branches are the same branch seen from either end.
-  const footnote =
-    total === null
-      ? `no price for ${unpriced.join(", ")}`
-      : "* if billed at full API rate";
+  // Three footnotes for three honest situations. With nothing priced there is
+  // no figure to qualify, so the models are named outright. With a figure and
+  // a gap, the asterisk's "this is an estimate" is extended to say where the
+  // estimate stops — a partial sum is only acceptable while it admits it.
+  let footnote = "* if billed at full API rate";
+  if (total === null) {
+    footnote = `no price for ${unpriced.join(", ")}`;
+  } else if (unpriced.length > 0) {
+    const plural = unpriced.length === 1 ? "model" : "models";
+    footnote += ` · excludes ${unpriced.length} ${plural} with no published price`;
+  }
 
   return (
     <div class="usage-hero">

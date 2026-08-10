@@ -236,8 +236,95 @@ describe("OverviewSection", () => {
     expect(host.textContent).not.toContain("all-time");
   });
 
-  describe("when a model has no published price", () => {
-    const withUnpriced = (): UsageSnapshot =>
+  describe("when only some of an agent's models are priced", () => {
+    // The real-corpus bug: Codex ran one unrecognised id holding 0.2% of its
+    // tokens, which nulled the agent, nulled the grand total and blanked a
+    // correct $13,372.98. The priced part must survive the sliver.
+    const partly = (): UsageSnapshot =>
+      snapshot([
+        bucket({
+          agent: "claude",
+          model: "claude-opus-4-5-20251101",
+          counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
+        }),
+        bucket({
+          agent: "codex",
+          model: "gpt-5-codex",
+          counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
+        }),
+        bucket({
+          agent: "codex",
+          model: "gpt-6-preview-2026-08",
+          counters: { ...EMPTY_COUNTERS, inputUncached: 500_000 },
+        }),
+      ]);
+
+    it("reports the priced total instead of blanking the screen", () => {
+      usageSnapshot.value = partly();
+      mount();
+      // $5.00 of Claude + $1.25 of priced Codex.
+      expect(text(".usage-hero__figure")).toBe("$6.25*");
+    });
+
+    it("discloses the gap in the footnote", () => {
+      usageSnapshot.value = partly();
+      mount();
+      expect(text(".usage-hero__footnote")).toBe(
+        "* if billed at full API rate · excludes 1 model with no published price",
+      );
+    });
+
+    it("pluralises the footnote clause honestly", () => {
+      usageSnapshot.value = snapshot([
+        bucket({
+          agent: "claude",
+          model: "claude-opus-4-5-20251101",
+          counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
+        }),
+        bucket({
+          agent: "claude",
+          model: "mystery-one",
+          counters: { ...EMPTY_COUNTERS, inputUncached: 10 },
+        }),
+        bucket({
+          agent: "codex",
+          model: "mystery-two",
+          counters: { ...EMPTY_COUNTERS, inputUncached: 10 },
+        }),
+      ]);
+      mount();
+      expect(text(".usage-hero__footnote")).toBe(
+        "* if billed at full API rate · excludes 2 models with no published price",
+      );
+    });
+
+    it("shows the agent's priced amount and names the omitted tokens", () => {
+      usageSnapshot.value = partly();
+      mount();
+      const codex = blocks().find(
+        (block) => blockText(block, ".usage-agent__label") === "Codex",
+      ) as HTMLElement;
+      expect(blockText(codex, ".usage-agent__amount")).toBe("$1.25");
+      expect(blockText(codex, ".usage-agent__sub")).toBe(
+        "20% of cost · 1.5M tokens · 500K unpriced",
+      );
+    });
+
+    it("keeps shares as proportions of the priced total, still summing to 100", () => {
+      usageSnapshot.value = partly();
+      mount();
+      const shares = blocks().map((block) => {
+        const match = blockText(block, ".usage-agent__sub").match(
+          /^([\d.]+)% of cost/,
+        );
+        return match === null ? 0 : Number(match[1]);
+      });
+      expect(shares).toEqual([80, 20]);
+    });
+  });
+
+  describe("when an agent has no priced model at all", () => {
+    const noneForCodex = (): UsageSnapshot =>
       snapshot([
         bucket({
           agent: "claude",
@@ -251,38 +338,8 @@ describe("OverviewSection", () => {
         }),
       ]);
 
-    it("dashes the headline and names the models in the footnote", () => {
-      usageSnapshot.value = withUnpriced();
-      mount();
-      // One unpriced model makes the whole total unknowable (decision 8).
-      expect(text(".usage-hero__figure")).toBe(EM_DASH);
-      expect(text(".usage-hero__footnote")).toBe(
-        "no price for gpt-6-preview-2026-08",
-      );
-    });
-
-    it("marks the absent figure faint so it does not read as a rule (DL-15.6)", () => {
-      usageSnapshot.value = withUnpriced();
-      mount();
-      expect(
-        host
-          .querySelector(".usage-hero__figure")
-          ?.classList.contains("usage-hero__figure--absent"),
-      ).toBe(true);
-    });
-
-    it("leaves a real figure at full strength", () => {
-      usageSnapshot.value = priced();
-      mount();
-      expect(
-        host
-          .querySelector(".usage-hero__figure")
-          ?.classList.contains("usage-hero__figure--absent"),
-      ).toBe(false);
-    });
-
-    it("dashes the unpriced agent's own amount and says why", () => {
-      usageSnapshot.value = withUnpriced();
+    it("dashes that agent's amount and says why", () => {
+      usageSnapshot.value = noneForCodex();
       mount();
       const codex = blocks().find(
         (block) => blockText(block, ".usage-agent__label") === "Codex",
@@ -293,47 +350,80 @@ describe("OverviewSection", () => {
       );
     });
 
-    it("prints no percentage anywhere and leaves every track empty (DL-16.5)", () => {
-      usageSnapshot.value = withUnpriced();
+    it("still reports the rest of the machine's cost", () => {
+      usageSnapshot.value = noneForCodex();
       mount();
-      // A share is a proportion of a STATED total. There is no stated total
-      // here, so even the priced agent gets no bar and no percentage.
-      expect(host.textContent).not.toContain("% of cost");
-      for (const block of blocks()) {
-        const fill = block.querySelector(".usage-agent__fill") as HTMLElement;
-        expect(fill.style.width).toBe("0%");
-      }
-    });
-
-    it("still shows the priced agent's own amount", () => {
-      usageSnapshot.value = withUnpriced();
-      mount();
+      expect(text(".usage-hero__figure")).toBe("$5.00*");
       const claude = blocks().find(
         (block) => blockText(block, ".usage-agent__label") === "Claude Code",
       ) as HTMLElement;
       expect(blockText(claude, ".usage-agent__amount")).toBe("$5.00");
     });
 
-    it("never calls a priced agent 'unpriced' just because the total is unknown", () => {
-      // Claude has a price; it is Codex that does not. Labelling Claude
-      // "unpriced" directly under its own "$5.00" is the screen contradicting
-      // itself on one line — it states its tokens and no share instead.
-      usageSnapshot.value = withUnpriced();
-      mount();
-      const claude = blocks().find(
-        (block) => blockText(block, ".usage-agent__label") === "Claude Code",
-      ) as HTMLElement;
-      expect(blockText(claude, ".usage-agent__sub")).toBe("1M tokens");
-    });
-
     it("sorts unpriced agents last, behind every priced one", () => {
-      usageSnapshot.value = withUnpriced();
+      usageSnapshot.value = noneForCodex();
       mount();
       expect(blocks().map((b) => blockText(b, ".usage-agent__label"))).toEqual([
         "Claude Code",
         "Codex",
       ]);
     });
+  });
+
+  describe("when nothing at all is priced", () => {
+    const nothing = (): UsageSnapshot =>
+      snapshot([
+        bucket({
+          agent: "claude",
+          model: "mystery-one",
+          counters: { ...EMPTY_COUNTERS, inputUncached: 1_000 },
+        }),
+        bucket({
+          agent: "codex",
+          model: "mystery-two",
+          counters: { ...EMPTY_COUNTERS, inputUncached: 1_000 },
+        }),
+      ]);
+
+    it("dashes the headline and names the models in the footnote", () => {
+      usageSnapshot.value = nothing();
+      mount();
+      // There is no priced part to stand behind, so there is no figure.
+      expect(text(".usage-hero__figure")).toBe(EM_DASH);
+      expect(text(".usage-hero__footnote")).toBe(
+        "no price for mystery-one, mystery-two",
+      );
+    });
+
+    it("marks the absent figure faint so it does not read as a rule (DL-15.6)", () => {
+      usageSnapshot.value = nothing();
+      mount();
+      expect(
+        host
+          .querySelector(".usage-hero__figure")
+          ?.classList.contains("usage-hero__figure--absent"),
+      ).toBe(true);
+    });
+
+    it("prints no percentage anywhere and leaves every track empty (DL-16.5)", () => {
+      usageSnapshot.value = nothing();
+      mount();
+      expect(host.textContent).not.toContain("% of cost");
+      for (const block of blocks()) {
+        const fill = block.querySelector(".usage-agent__fill") as HTMLElement;
+        expect(fill.style.width).toBe("0%");
+      }
+    });
+  });
+
+  it("leaves a real figure at full strength", () => {
+    usageSnapshot.value = priced();
+    mount();
+    expect(
+      host
+        .querySelector(".usage-hero__figure")
+        ?.classList.contains("usage-hero__figure--absent"),
+    ).toBe(false);
   });
 
   it("shows the no-data treatment rather than a $0.00 hero", () => {
