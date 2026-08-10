@@ -1,6 +1,7 @@
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
+import { SerializeAddon } from "@xterm/addon-serialize";
 import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
 import { FONT_FALLBACK, type Settings } from "../settings/settings-schema";
 import { applyWebkitImeFix, isWebKitWebView } from "./webkit-ime-fix";
@@ -46,6 +47,27 @@ export interface Pane {
   /** Call after the element is in the DOM — opens xterm and observes resize. */
   mount(): void;
   write(data: string): void;
+  /**
+   * Resolves once xterm's parser has consumed everything written so far.
+   * Built on xterm's own `write(data, callback)` drain callback — a pane
+   * transfer serializes the buffer only after this settles, otherwise the
+   * snapshot can miss bytes that were received but not yet parsed
+   * (spec §7.4).
+   */
+  flush(): Promise<void>;
+  /**
+   * The buffer as a re-writable escape-sequence string, newest `lines` rows
+   * of scrollback plus the viewport. Empty string when serialization fails —
+   * losing history is never worth losing the session (spec §13).
+   */
+  serializeScrollback(lines: number): string;
+  /**
+   * Current terminal geometry in cells — travels with the pane across a move
+   * (spec §10.2) and is what the destination constructs its terminal at, so
+   * nothing has to resize while the route is `Transferring`.
+   */
+  readonly cols: number;
+  readonly rows: number;
   writeln(line: string): void;
   fit(): void;
   /** Drop scrollback and keep only the current prompt line (Cmd+K). */
@@ -90,6 +112,7 @@ export function createPane(
   id: number,
   initial: Settings,
   events: PaneEvents,
+  geometry?: { readonly cols: number; readonly rows: number },
 ): Pane {
   const element = document.createElement("div");
   element.className = "pane";
@@ -157,12 +180,18 @@ export function createPane(
     // information hierarchy flattens (SGR 2 `dim` stops reading as dim), on
     // top of a per-cell contrast computation in the render path. A theme
     // whose ANSI colors are too dark is fixed in `resolveTheme`, not here.
+    //
+    // A pane built for an adoption starts at the source's capture geometry, so
+    // nothing has to resize while the route is still `Transferring`.
+    ...(geometry ? { cols: geometry.cols, rows: geometry.rows } : {}),
   });
 
   const fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
   const searchAddon = new SearchAddon();
   term.loadAddon(searchAddon);
+  const serializeAddon = new SerializeAddon();
+  term.loadAddon(serializeAddon);
 
   let activeAgent: string | null = null;
   let capturePasteWrite: ((write: Promise<boolean>) => void) | null = null;
@@ -288,6 +317,26 @@ export function createPane(
     term.write(data);
   }
 
+  function flush(): Promise<void> {
+    // The empty write is deliberate: xterm queues the callback behind
+    // everything already in the parser queue, so this resolves on the next
+    // drain even when nothing is pending. Verified empirically on 2026-08-10
+    // against @xterm/xterm@6.0.0 under jsdom — `write("", cb)` fires on an
+    // idle terminal, and after a pending `write("abc", cb)` it fires SECOND.
+    return new Promise((resolve) => {
+      term.write("", () => resolve());
+    });
+  }
+
+  function serializeScrollback(lines: number): string {
+    try {
+      return serializeAddon.serialize({ scrollback: lines });
+    } catch (err) {
+      console.warn("Failed to serialize pane scrollback:", err);
+      return "";
+    }
+  }
+
   function applySettings(next: Settings): void {
     term.options.fontFamily = toFontStack(next.fontFamily);
     term.options.fontSize = next.fontSize;
@@ -346,6 +395,7 @@ export function createPane(
     osc9Handler.dispose();
     osc777Handler.dispose();
     bellHandler.dispose();
+    serializeAddon.dispose();
     term.dispose();
     element.remove();
   }
@@ -356,6 +406,16 @@ export function createPane(
     search: searchAddon,
     mount,
     write,
+    flush,
+    serializeScrollback,
+    // Getters, never captured values: a pane that resized after construction
+    // must report what the user last saw, not what it was born with.
+    get cols() {
+      return term.cols;
+    },
+    get rows() {
+      return term.rows;
+    },
     writeln: (line) => term.writeln(line),
     fit,
     clear: () => term.clear(),

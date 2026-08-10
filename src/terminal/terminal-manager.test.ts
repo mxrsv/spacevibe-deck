@@ -32,6 +32,14 @@ function fakePane(
     search: {} as Pane["search"],
     mount() {},
     write() {},
+    cols: 80,
+    rows: 24,
+    flush() {
+      return Promise.resolve();
+    },
+    serializeScrollback() {
+      return "";
+    },
     writeln() {},
     fit() {
       fitCounts?.set(id, (fitCounts.get(id) ?? 0) + 1);

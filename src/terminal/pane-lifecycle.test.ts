@@ -18,6 +18,14 @@ function fakePane(
     focusCalls: 0,
     mount() {},
     write() {},
+    cols: 80,
+    rows: 24,
+    flush() {
+      return Promise.resolve();
+    },
+    serializeScrollback() {
+      return "";
+    },
     writeln() {},
     fit() {},
     clear() {},

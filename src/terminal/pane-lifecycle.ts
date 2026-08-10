@@ -19,6 +19,7 @@ export type CreatePaneFn = (
   id: number,
   initial: Settings,
   events: PaneEvents,
+  geometry?: { readonly cols: number; readonly rows: number },
 ) => Pane;
 
 export interface PaneLifecycle {
