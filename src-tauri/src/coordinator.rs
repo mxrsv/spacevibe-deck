@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::{collections::HashMap, sync::Mutex, time::Instant};
 // `State` and `WebviewWindow` come back in A6 with the commands; importing
 // them now would be an unused_imports warning across A1-A5.
@@ -8,6 +9,23 @@ use tauri::{AppHandle, Emitter};
 pub struct BufferedEvent {
     pub event: String,
     pub payload: serde_json::Value,
+}
+
+/// What moves with a pane (§10.2). Serialized to the destination window;
+/// deserialized from the source when it stages. camelCase over the wire, as in
+/// `links.rs` and `prompt_assets.rs`.
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdoptionPayload {
+    pub pane_id: u32,
+    pub cwd: Option<String>,
+    pub agent_id: Option<String>,
+    pub scrollback: String,
+    pub cols: u16,
+    pub rows: u16,
+    pub tab_name: Option<String>,
+    pub dot_color: Option<String>,
+    pub workspace_path: Option<String>,
 }
 
 /// Where a pane's output goes right now.
@@ -30,6 +48,8 @@ struct Transfer {
     /// destination that dies before `claim` still abort the transfer (§7.6).
     reserved_to: Option<String>,
     token: String,
+    /// Adoption payload put up by the source between `prepare` and `claim`.
+    staged: Option<AdoptionPayload>,
     buffered: Vec<BufferedEvent>,
     buffered_bytes: usize,
     /// The PTY exited mid-transfer. The route entry must outlive that so the
@@ -61,11 +81,25 @@ struct CoordinatorState {
     routes: HashMap<u32, PaneRoute>,
 }
 
+/// The open transfer carrying `token`, with the pane it belongs to.
+fn transfer_mut<'a>(
+    routes: &'a mut HashMap<u32, PaneRoute>,
+    token: &str,
+) -> Option<(u32, &'a mut Transfer)> {
+    routes.iter_mut().find_map(|(id, route)| match route {
+        PaneRoute::Transferring(transfer) if transfer.token == token => Some((*id, transfer)),
+        _ => None,
+    })
+}
+
 /// App-level pane → window routing. Routes PTY output/exit to the owning
 /// webview only, and holds output still across a pane transfer (§7).
 #[derive(Default)]
 pub struct WindowCoordinator {
     state: Mutex<CoordinatorState>,
+    /// Monotonic within a process run; a token is never reused, which is what
+    /// makes `commit`/`abort` idempotent (§7.6).
+    next_token: AtomicU64,
 }
 
 impl WindowCoordinator {
@@ -135,6 +169,110 @@ impl WindowCoordinator {
             // every window is a data leak, not a safety net (§7.2).
             None => eprintln!("Deck: no route for pane {pane_id}, dropping {event}"),
         }
+    }
+
+    /// Open a transfer for a pane this window owns (§7.3 `prepare_transfer`).
+    /// Output starts buffering the moment this returns.
+    pub fn begin_transfer(
+        &self,
+        _sink: &dyn EventSink,
+        from: &str,
+        pane_id: u32,
+        now: Instant,
+    ) -> Result<String, String> {
+        let mut state = self.state.lock().map_err(|error| error.to_string())?;
+        match state.routes.get(&pane_id) {
+            Some(PaneRoute::Owned(label)) if label == from => {}
+            Some(PaneRoute::Owned(label)) => {
+                return Err(format!("Pane #{pane_id} is owned by window {label}"))
+            }
+            Some(PaneRoute::Transferring(_)) => {
+                return Err(format!("Pane #{pane_id} is already being transferred"))
+            }
+            None => return Err(format!("Pane #{pane_id} is not registered")),
+        }
+        let token = format!(
+            "xfer-{}",
+            self.next_token.fetch_add(1, Ordering::Relaxed) + 1
+        );
+        state.routes.insert(
+            pane_id,
+            PaneRoute::Transferring(Transfer {
+                from: from.to_string(),
+                to: None,
+                reserved_to: None,
+                token: token.clone(),
+                staged: None,
+                buffered: Vec::new(),
+                buffered_bytes: 0,
+                exited: false,
+                started: now,
+            }),
+        );
+        Ok(token)
+    }
+
+    /// The source puts up the adoption payload it serialized after `prepare`
+    /// quiesced the stream (§7.4). Separate from `prepare` because the payload
+    /// does not exist yet when `prepare` returns.
+    pub fn stage_payload(
+        &self,
+        _sink: &dyn EventSink,
+        token: &str,
+        caller: &str,
+        payload: AdoptionPayload,
+        _now: Instant,
+    ) -> Result<(), String> {
+        let mut state = self.state.lock().map_err(|error| error.to_string())?;
+        let Some((_, transfer)) = transfer_mut(&mut state.routes, token) else {
+            return Err(format!("Transfer {token} is not open"));
+        };
+        if transfer.from != caller {
+            return Err(format!(
+                "Transfer {token} can only be staged by window {}",
+                transfer.from
+            ));
+        }
+        if transfer.staged.is_some() {
+            return Err(format!("Transfer {token} already carries a payload"));
+        }
+        transfer.staged = Some(payload);
+        Ok(())
+    }
+
+    /// The destination takes the payload and records itself as the receiver.
+    pub fn claim(
+        &self,
+        _sink: &dyn EventSink,
+        token: &str,
+        caller: &str,
+        _now: Instant,
+    ) -> Result<AdoptionPayload, String> {
+        let mut state = self.state.lock().map_err(|error| error.to_string())?;
+        let Some((_, transfer)) = transfer_mut(&mut state.routes, token) else {
+            return Err(format!("Transfer {token} is not open"));
+        };
+        if transfer.to.is_some() {
+            return Err(format!("Transfer {token} was already claimed"));
+        }
+        let Some(payload) = transfer.staged.clone() else {
+            return Err(format!("Transfer {token} has no staged payload"));
+        };
+        transfer.to = Some(caller.to_string());
+        Ok(payload)
+    }
+
+    /// Name the window a pending adoption was opened for, before it claims.
+    /// The window-lifecycle section calls this from `open_pane_window` so that
+    /// a destination dying before `claim` still aborts the transfer (§7.6).
+    #[allow(dead_code)] // wired by the window lifecycle section
+    pub fn reserve_destination(&self, token: &str, label: &str) -> Result<(), String> {
+        let mut state = self.state.lock().map_err(|error| error.to_string())?;
+        let Some((_, transfer)) = transfer_mut(&mut state.routes, token) else {
+            return Err(format!("Transfer {token} is not open"));
+        };
+        transfer.reserved_to = Some(label.to_string());
+        Ok(())
     }
 }
 
@@ -276,5 +414,131 @@ mod tests {
         let mut panes = coordinator.panes_for_window("a");
         panes.sort();
         assert_eq!(panes, vec![1, 3]);
+    }
+
+    use super::AdoptionPayload;
+
+    fn payload(pane_id: u32) -> AdoptionPayload {
+        AdoptionPayload {
+            pane_id,
+            cwd: Some("/tmp".into()),
+            agent_id: Some("claude".into()),
+            scrollback: "scrollback".into(),
+            cols: 80,
+            rows: 24,
+            tab_name: Some("agent".into()),
+            dot_color: Some("--cyan".into()),
+            workspace_path: Some("/tmp/work".into()),
+        }
+    }
+
+    #[test]
+    fn prepare_buffers_output_and_only_the_owner_may_start_it() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+
+        assert_eq!(
+            coordinator.begin_transfer(&sink, "deck-1", 1, now),
+            Err("Pane #1 is owned by window main".into())
+        );
+        assert_eq!(
+            coordinator.begin_transfer(&sink, "main", 9, now),
+            Err("Pane #9 is not registered".into())
+        );
+
+        let token = coordinator
+            .begin_transfer(&sink, "main", 1, now)
+            .expect("owner may start a transfer");
+        coordinator.deliver(&sink, 1, "pty:output", output("held"), now);
+
+        assert!(
+            sink.delivered().is_empty(),
+            "output must buffer once a transfer is open"
+        );
+        assert_eq!(coordinator.owner(1), None);
+        assert!(token.starts_with("xfer-"));
+    }
+
+    #[test]
+    fn a_second_prepare_for_the_same_pane_is_rejected() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+        coordinator.begin_transfer(&sink, "main", 1, now).unwrap();
+
+        assert_eq!(
+            coordinator.begin_transfer(&sink, "main", 1, now),
+            Err("Pane #1 is already being transferred".into())
+        );
+    }
+
+    #[test]
+    fn staging_requires_the_source_window_and_happens_once() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+        let token = coordinator.begin_transfer(&sink, "main", 1, now).unwrap();
+
+        assert_eq!(
+            coordinator.stage_payload(&sink, &token, "deck-1", payload(1), now),
+            Err(format!(
+                "Transfer {token} can only be staged by window main"
+            ))
+        );
+        assert_eq!(
+            coordinator.stage_payload(&sink, "xfer-999", "main", payload(1), now),
+            Err("Transfer xfer-999 is not open".into())
+        );
+        assert_eq!(
+            coordinator.stage_payload(&sink, &token, "main", payload(1), now),
+            Ok(())
+        );
+        assert_eq!(
+            coordinator.stage_payload(&sink, &token, "main", payload(1), now),
+            Err(format!("Transfer {token} already carries a payload"))
+        );
+    }
+
+    #[test]
+    fn claim_needs_a_staged_payload_and_succeeds_only_once() {
+        let coordinator = WindowCoordinator::default();
+        let sink = RecordingSink::default();
+        let now = Instant::now();
+        coordinator.register(1, "main".into());
+        let token = coordinator.begin_transfer(&sink, "main", 1, now).unwrap();
+
+        assert_eq!(
+            coordinator.claim(&sink, &token, "deck-1", now),
+            Err(format!("Transfer {token} has no staged payload"))
+        );
+        coordinator
+            .stage_payload(&sink, &token, "main", payload(1), now)
+            .unwrap();
+        assert_eq!(
+            coordinator.claim(&sink, &token, "deck-1", now),
+            Ok(payload(1))
+        );
+        assert_eq!(
+            coordinator.claim(&sink, &token, "deck-2", now),
+            Err(format!("Transfer {token} was already claimed"))
+        );
+        assert_eq!(
+            coordinator.claim(&sink, "xfer-999", "deck-1", now),
+            Err("Transfer xfer-999 is not open".into())
+        );
+    }
+
+    #[test]
+    fn adoption_payload_serializes_camel_case() {
+        let json = serde_json::to_value(payload(4)).expect("serialize");
+        assert_eq!(json["paneId"], 4);
+        assert_eq!(json["agentId"], "claude");
+        assert_eq!(json["tabName"], "agent");
+        assert_eq!(json["dotColor"], "--cyan");
+        assert_eq!(json["workspacePath"], "/tmp/work");
     }
 }
