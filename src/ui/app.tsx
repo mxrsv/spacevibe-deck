@@ -3,11 +3,18 @@ import { useEffect, useRef } from "preact/hooks";
 import { useSignalEffect } from "@preact/signals";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { message } from "@tauri-apps/plugin-dialog";
+import { ask, message } from "@tauri-apps/plugin-dialog";
 import { installQuitGuard } from "../lib/quit-guard";
-import { confirmClose, QUIT_COPY, UPDATE_COPY } from "../terminal/close-guard";
+import {
+  confirmClose,
+  QUIT_COPY,
+  UPDATE_COPY,
+  WINDOW_CLOSE_COPY,
+  type ConfirmCopy,
+} from "../terminal/close-guard";
 import { flushSettingsSave } from "../settings/settings-store";
 import { defaultPtyClient } from "../terminal/pty-client";
+import type { BootMode } from "../terminal/transfer-client";
 import { deriveChromeColors } from "../lib/derive-colors";
 import { resolveCwds, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
@@ -191,7 +198,17 @@ export function livePresetOpensATab(boardIsOpen: boolean): boolean {
   return !boardIsOpen;
 }
 
-export function App() {
+/**
+ * A window that booted to adopt a pane already has its content: showing the
+ * Open board would cover a live terminal with a "pick a folder" screen
+ * (spec §9.2). Extracted to module scope for the same reason as
+ * `livePresetOpensATab` above — this repo has no `<App>` render harness.
+ */
+export function bootOpensTheBoard(boot: BootMode): boolean {
+  return boot.kind === "normal";
+}
+
+export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const stagesRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<TabManager | null>(null);
   const updaterRef = useRef<UpdateController | null>(null);
@@ -320,12 +337,40 @@ export function App() {
       });
       void updater.start();
     }
-    // Session restore is gone: the app always opens on the board (Intent §Constraint).
-    boardOpen.value = true;
-    manager.init().catch((err: unknown) => {
-      console.error("Failed to initialize terminals:", err);
-      boardOpen.value = true;
-    });
+    // Session restore is gone: a normal window always opens on the board
+    // (Intent §Constraint). An adopt window opens on the pane it was created
+    // for and never shows the board at all (spec §9.2).
+    //
+    // `init()` runs FIRST in both modes — it installs the PTY output and
+    // exit listeners, and an adopted pane is dead without them.
+    void manager
+      .init()
+      .then(() => {
+        if (bootOpensTheBoard(boot)) {
+          boardOpen.value = true;
+          return undefined;
+        }
+        return manager
+          .adoptIntoNewTab(boot.kind === "adopt" ? boot.token : "")
+          .then((ok) => {
+            if (!ok) {
+              // Spec §13: a failed claim in a freshly booted window closes
+              // that window — there is nothing else for it to show.
+              void getCurrentWindow().close();
+            }
+          });
+      })
+      .catch((err: unknown) => {
+        // Without this an init failure is an unhandled rejection AND the
+        // board never opens, so the window is simply blank with no way
+        // forward.
+        console.error("Failed to initialize terminals:", err);
+        if (bootOpensTheBoard(boot)) {
+          boardOpen.value = true;
+          return;
+        }
+        void getCurrentWindow().close();
+      });
     return () => {
       manager.dispose();
     };
@@ -333,17 +378,33 @@ export function App() {
 
   useEffect(() => {
     let unlisten: UnlistenFn | undefined;
-    installQuitGuard({
-      // Quit is busy-guarded like every close path: silent
-      // when all panes are idle, one confirm when anything is running.
-      confirmQuit: () => {
-        const manager = tabsRef.current;
-        return manager
-          ? confirmClose(manager.allPaneIds(), defaultPtyClient, QUIT_COPY)
-          : Promise.resolve(true);
-      },
+    // One builder per flow: the dialog title and OK label differ, so a
+    // single shared `ask` closure would title a window-close dialog
+    // "Quit Deck".
+    const answering = (copy: ConfirmCopy) => ({
+      ask: (text: string) =>
+        ask(text, {
+          title: copy.title,
+          kind: "warning" as const,
+          okLabel: copy.okLabel,
+          cancelLabel: "Cancel",
+        }),
       flush: flushSettingsSave,
-      quit: () => defaultPtyClient.confirmQuit(),
+    });
+    installQuitGuard({
+      quit: {
+        ...answering(QUIT_COPY),
+        confirm: (requestId: number) =>
+          defaultPtyClient.confirmQuit(requestId),
+        cancel: (requestId: number) => defaultPtyClient.cancelQuit(requestId),
+      },
+      close: {
+        ...answering(WINDOW_CLOSE_COPY),
+        confirm: (requestId: number) =>
+          defaultPtyClient.confirmCloseWindow(requestId),
+        cancel: (requestId: number) =>
+          defaultPtyClient.cancelCloseWindow(requestId),
+      },
     })
       .then((fn) => {
         unlisten = fn;

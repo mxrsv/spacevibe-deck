@@ -12,6 +12,8 @@ import {
 } from "../settings/settings-store";
 import { type Direction, type SerializedNode } from "../lib/split-tree";
 import type { PaneAgent, PaneProcessInfo } from "../lib/process-info";
+import type { DetachTarget } from "./pane-detach";
+import { defaultTransferClient, type TransferClient } from "./transfer-client";
 import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { sendAgentNotification } from "../lib/native-notification";
 import { getDesktopEnvironment } from "../lib/platform";
@@ -104,7 +106,7 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The ids `commands` implements — 40 entries, verified against the live
+ * The ids `commands` implements — 41 entries, verified against the live
  * `commands` table (`tab-manager.ts:1041-1142`), Task 4's `copy-selection`/
  * `paste` included and the Prompt Board's `toggle-prompts` alongside them.
  *
@@ -128,6 +130,7 @@ const COMMAND_ACTIONS = [
   "focus-prev",
   "focus-right",
   "focus-up",
+  "move-pane-to-new-window",
   "new-preset",
   "new-tab",
   "next-tab",
@@ -266,6 +269,13 @@ export interface TabManagerDeps extends TerminalManagerDeps {
   notifier?: AgentNotifier;
   /** Test seam for the shared non-blocking chrome message surface. */
   onAgentLaunchTimeout?: (message: string) => void;
+  /**
+   * Close THIS window. Defaults to `getCurrentWindow().close()`; Rust owns
+   * "was that the last window" (spec §9.5). Test seam.
+   */
+  closeWindow?: () => Promise<void>;
+  /** Test seam — defaults to the real Tauri transfer client. */
+  transfer?: TransferClient;
 }
 
 /** Owns all tabs: routing, keyboard, agent launch; info polling lives in PaneInfoPoller. */
@@ -305,6 +315,10 @@ export interface TabManager {
     opts: { readonly autoSend: boolean; readonly expectedAgent: string | null },
   ): Promise<InjectOutcome>;
   newTab(): Promise<void>;
+  /** Move the focused pane into a brand-new window (spec §10.3). */
+  movePaneToNewWindow(): Promise<void>;
+  /** Live-adopt an offered pane into a NEW tab of this window (spec §10.1). */
+  adoptIntoNewTab(token: string): Promise<boolean>;
   /** Reopen the most recently closed tab (⌘⇧T); skips dead workspaces. */
   reopenTab(): Promise<void>;
   /** Close a tab after the busy guard; every pane's process is checked. */
@@ -363,6 +377,8 @@ export function createTabManager(
 ): TabManager {
   const tabs: TabEntry[] = [];
   const unlisteners: UnlistenFn[] = [];
+  const transfer = deps.transfer ?? defaultTransferClient;
+  const closeWindow = deps.closeWindow ?? (() => getCurrentWindow().close());
   // Per-tab user overrides (rename, dot color), keyed by tab key —
   // merged over process-derived values on every syncViews.
   const overrides = new Map<number, TabOverride>();
@@ -610,7 +626,15 @@ export function createTabManager(
     container.className = "tab-stage";
     container.style.display = "none";
     host.appendChild(container);
-    const manager = createTerminalManager(container, callbacks, paneIo, deps);
+    const manager = createTerminalManager(
+      container,
+      callbacks,
+      paneIo,
+      managerDeps(
+        nextKey,
+        workspacePath === null ? null : normalizeWorkspacePath(workspacePath),
+      ),
+    );
     try {
       if (layout === null) {
         await manager.initFresh(cwds[0] ?? null);
@@ -724,6 +748,136 @@ export function createTabManager(
       overrides.set(entry.key, next);
     }
     syncViews();
+  }
+
+  /**
+   * The identity a pane carries out of this window (spec §10.2). Lives here
+   * rather than in TerminalManager because the name override, dot color and
+   * workspace are TAB-level state, which only this closure holds.
+   */
+  function managerDeps(tabKey: number, workspacePath: string | null) {
+    return {
+      ...deps,
+      transfer,
+      identity: (paneId: number) => {
+        const override = overrides.get(tabKey);
+        return {
+          agentId: explicitAgent(poller.infoFor(paneId)),
+          tabName: override?.name ?? null,
+          dotColor: override?.dotColor ?? null,
+          workspacePath,
+        };
+      },
+    };
+  }
+
+  /**
+   * Move the focused pane into a brand-new window (spec §10.3). The emptied
+   * tab is removed WITHOUT the reopen snapshot `disposeTab` takes: nothing
+   * was closed, so there is nothing to reopen — the session is alive in
+   * another window.
+   */
+  async function movePaneToNewWindow(): Promise<void> {
+    await movePane({ kind: "new-window" });
+  }
+
+  async function movePane(target: DetachTarget): Promise<void> {
+    const index = active;
+    const entry = tabs[index];
+    const paneId = entry?.manager.activePaneId() ?? null;
+    if (!entry || paneId === null) {
+      deps.onAgentLaunchTimeout?.("No pane to move.");
+      return;
+    }
+    const outcome = await entry.manager.detachPaneById(paneId, target);
+    if (outcome.kind === "kept") {
+      return;
+    }
+    pruneMovedPane(paneId);
+    if (outcome.tabEmpty) {
+      removeEmptyTab(entry);
+    }
+    syncViews();
+  }
+
+  /**
+   * The per-pane trackers `disposeTab` normally prunes. A moved pane skips
+   * that path entirely, so this is not redundant.
+   */
+  function pruneMovedPane(paneId: number): void {
+    const live = allPaneIds().filter((id) => id !== paneId);
+    launcher.prune(live);
+    activity.prune(live);
+    tracker.prune(live);
+    notifier.prune(live);
+    pruneNotifiedKinds(live);
+    poller.prune(live);
+  }
+
+  /** Remove a tab whose last pane MOVED — no busy guard, no reopen snapshot. */
+  function removeEmptyTab(entry: TabEntry): void {
+    const removeAt = tabs.indexOf(entry);
+    if (removeAt === -1) {
+      return;
+    }
+    const closingActive = removeAt === active;
+    const countBefore = tabs.length;
+    entry.manager.dispose();
+    tabs.splice(removeAt, 1);
+    overrides.delete(entry.key);
+    unread.delete(entry.key);
+    if (tabs.length === 0) {
+      active = -1;
+      void closeWindow();
+      return;
+    }
+    active = activeAfterClose(removeAt, active, countBefore);
+    if (closingActive) {
+      tabs[active].manager.show();
+    }
+  }
+
+  /** Live-adopt into a NEW tab of this already-running window (spec §10.1). */
+  async function adoptIntoNewTab(token: string): Promise<boolean> {
+    const container = document.createElement("div");
+    container.className = "tab-stage";
+    container.style.display = "none";
+    host.appendChild(container);
+    const workspacePath = null;
+    const manager = createTerminalManager(
+      container,
+      callbacks,
+      paneIo,
+      managerDeps(nextKey, workspacePath),
+    );
+    const result = await manager.initFromAdoption(token);
+    if (result.kind === "failed") {
+      manager.dispose();
+      return false;
+    }
+    tabs.push({
+      key: nextKey,
+      manager,
+      workspacePath:
+        result.payload.workspacePath === null
+          ? null
+          : normalizeWorkspacePath(result.payload.workspacePath),
+    });
+    if (result.payload.tabName !== null || result.payload.dotColor !== null) {
+      overrides.set(nextKey, {
+        ...(result.payload.tabName !== null
+          ? { name: result.payload.tabName }
+          : {}),
+        ...(result.payload.dotColor !== null
+          ? { dotColor: result.payload.dotColor }
+          : {}),
+      });
+    }
+    nextKey += 1;
+    selectTab(tabs.length - 1);
+    void poller.poll();
+    syncViews();
+    return true;
   }
 
   async function newTab(): Promise<void> {
@@ -862,12 +1016,14 @@ export function createTabManager(
         attentionBeforePaste !== null &&
         attentionBeforeSubmit !== null &&
         attentionBeforePaste.revision === attentionBeforeSubmit.revision;
-      const allowed = attentionStayedStable && submitAllowed({
-        expectedAgent: opts.expectedAgent,
-        info,
-        attention: attentionBeforeSubmit,
-        alive: stillOwned !== undefined,
-      });
+      const allowed =
+        attentionStayedStable &&
+        submitAllowed({
+          expectedAgent: opts.expectedAgent,
+          info,
+          attention: attentionBeforeSubmit,
+          alive: stillOwned !== undefined,
+        });
       if (!allowed || stillOwned === undefined) {
         return "pasted";
       }
@@ -978,15 +1134,17 @@ export function createTabManager(
     pruneNotifiedKinds(live);
     poller.prune(live);
     if (tabs.length === 0) {
-      // Closing the last tab quits the app. CloseCoordinator
-      // already ran the busy guard, so exit directly — no second dialog.
+      // Every window is a peer (spec §2, §9.5): the last tab closes THIS
+      // window, and Rust decides whether that was also the last window and
+      // the process should exit. CloseCoordinator already ran the busy guard
+      // here, so nothing prompts twice.
       active = -1;
       try {
         await flushSettingsSave();
       } catch (err: unknown) {
-        console.warn("Flush before quit failed:", err);
+        console.warn("Flush before window close failed:", err);
       }
-      await pty.confirmQuit();
+      await closeWindow();
       return;
     }
     active = activeAfterClose(removeAt, active, countBefore);
@@ -1134,6 +1292,7 @@ export function createTabManager(
     // "focus returns to the pane that had it" would otherwise be skipped and
     // the caret would land on <body> — the shortcut fires while focus sits on
     // the popover root, a div, so nothing else would take it back.
+    "move-pane-to-new-window": () => void movePaneToNewWindow(),
     "toggle-prompts": () => {
       if (promptsOpen.value) {
         promptsOpen.value = false;
@@ -1391,6 +1550,33 @@ export function createTabManager(
         err,
       );
     }
+    // Cross-window transfer is a Tauri-only surface: outside a webview the
+    // event bridge is absent and registration throws synchronously. Guarded
+    // like `onFocusChanged` above — the rest of the manager still works.
+    try {
+      // Destination side: another window prepared a pane for us.
+      await registerUnlisten(
+        transfer.listenTransferOffer((token) => {
+          void adoptIntoNewTab(token);
+        }),
+      );
+      // SOURCE side: the "Move Pane to Window" submenu. Rust cannot start
+      // this transfer itself — `prepare_transfer` takes the owning window,
+      // Rust cannot see which pane inside a window has focus, and §7.4
+      // requires the SOURCE to serialize its buffer between prepare and
+      // claim. So the menu click comes back here and this window runs it.
+      //
+      // This arrives on a DIFFERENT channel from `menu:action`, so
+      // `isActionId` never sees it and the payload is validated in
+      // `moveToWindowTarget`.
+      await registerUnlisten(
+        transfer.listenMoveToWindow((targetLabel) => {
+          void movePane({ kind: "window", label: targetLabel });
+        }),
+      );
+    } catch (err) {
+      console.warn("Cross-window transfer listeners not installed:", err);
+    }
     await registerUnlisten(
       pty.listenOutput((id, data) => {
         // macOS keeps first-output readiness. Windows only records this as
@@ -1553,6 +1739,8 @@ export function createTabManager(
     paneAttention,
     injectIntoPane,
     newTab,
+    movePaneToNewWindow,
+    adoptIntoNewTab,
     reopenTab,
     closeTab: (index) => close.closeTab(index),
     selectTab,

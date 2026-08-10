@@ -36,6 +36,7 @@ export type BootMode =
 
 const SETTLED_EVENT = "transfer:settled";
 const OFFER_EVENT = "transfer:offer";
+const MOVE_TO_WINDOW_EVENT = "menu:move-pane-to-window";
 
 interface SettledPayload {
   token: string;
@@ -71,6 +72,14 @@ export interface TransferClient {
   /** Live-adopt: hand the token to an ALREADY RUNNING window. */
   offerTransfer(token: string, targetLabel: string): Promise<void>;
   listenTransferOffer(handler: (token: string) => void): Promise<UnlistenFn>;
+  /**
+   * "Move Pane to Window ▸" clicked. Rust emits `menu:move-pane-to-window`
+   * to the FOCUSED window with the chosen destination label; this window is
+   * then the source of the transfer.
+   */
+  listenMoveToWindow(
+    handler: (targetLabel: string) => void,
+  ): Promise<UnlistenFn>;
   windowBootMode(): Promise<BootMode>;
 }
 
@@ -89,6 +98,24 @@ export function bootModeOrNormal(raw: unknown): BootMode {
     return { kind: "adopt", token: value.token };
   }
   return { kind: "normal" };
+}
+
+/**
+ * The destination label from a `menu:move-pane-to-window` payload, or null
+ * when there isn't a usable one.
+ *
+ * This event arrives on a DIFFERENT channel from `menu:action`, so
+ * `isActionId` (action-registry.ts:459-471) never sees it — the submenu ids
+ * carry a `window-target:` prefix in hand-written `menu.rs` precisely to
+ * keep them away from that guard. So this is the whole boundary check for a
+ * value that decides where a running agent's pane ends up (C7/C8).
+ */
+export function moveToWindowTarget(raw: unknown): string | null {
+  if (typeof raw !== "object" || raw === null) {
+    return null;
+  }
+  const label = (raw as { targetLabel?: unknown }).targetLabel;
+  return typeof label === "string" && label !== "" ? label : null;
 }
 
 /** Production adapter — Tauri IPC. */
@@ -163,6 +190,16 @@ export function createTauriTransferClient(): TransferClient {
         handler(event.payload.token);
       });
     },
+    listenMoveToWindow(handler) {
+      return listen<unknown>(MOVE_TO_WINDOW_EVENT, (event) => {
+        const label = moveToWindowTarget(event.payload);
+        if (label === null) {
+          console.warn("Ignoring malformed menu:move-pane-to-window payload");
+          return;
+        }
+        handler(label);
+      });
+    },
     async windowBootMode() {
       try {
         return bootModeOrNormal(await invoke<unknown>("window_boot_mode"));
@@ -183,6 +220,8 @@ export function createMemoryTransferClient(
   settle(token: string, outcome: TransferOutcome): void;
   /** Deliver a live-adopt offer to the registered handler. */
   offer(token: string): void;
+  /** Deliver a "Move Pane to Window" menu click to the registered handler. */
+  moveToWindow(label: string): void;
   failNext(command: keyof TransferClient, message: string): void;
 } {
   const calls: string[] = [];
@@ -191,6 +230,7 @@ export function createMemoryTransferClient(
   const waiting = new Map<string, (outcome: TransferOutcome) => void>();
   const failures = new Map<string, string>();
   const offerHandlers = new Set<(token: string) => void>();
+  const moveHandlers = new Set<(label: string) => void>();
   let nextToken = 1;
 
   function guard(command: string): void {
@@ -214,6 +254,17 @@ export function createMemoryTransferClient(
     offer(token) {
       for (const handler of offerHandlers) {
         handler(token);
+      }
+    },
+    moveToWindow(label) {
+      // Runs the SAME guard the Tauri adapter does: a fake that is more
+      // permissive than production proves nothing about the boundary.
+      const valid = moveToWindowTarget({ targetLabel: label });
+      if (valid === null) {
+        return;
+      }
+      for (const handler of moveHandlers) {
+        handler(valid);
       }
     },
     async prepareTransfer(paneId) {
@@ -271,6 +322,12 @@ export function createMemoryTransferClient(
       offerHandlers.add(handler);
       return () => {
         offerHandlers.delete(handler);
+      };
+    },
+    async listenMoveToWindow(handler) {
+      moveHandlers.add(handler);
+      return () => {
+        moveHandlers.delete(handler);
       };
     },
     async windowBootMode() {

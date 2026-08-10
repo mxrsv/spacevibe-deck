@@ -55,7 +55,24 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
-  it("has exactly the 43 action ids including updater menu actions", () => {
+  it("binds move-pane-to-new-window on both platforms without colliding", () => {
+    const mac = MACOS_KEYMAP.filter(
+      (binding) => binding.action === "move-pane-to-new-window",
+    );
+    const win = WINDOWS_KEYMAP.filter(
+      (binding) => binding.action === "move-pane-to-new-window",
+    );
+    expect(mac).toEqual([
+      { key: "m", meta: true, shift: true, action: "move-pane-to-new-window" },
+    ]);
+    expect(win).toEqual([
+      { key: "m", ctrl: true, shift: true, action: "move-pane-to-new-window" },
+    ]);
+    // It has a menu item, so the RULE above CharKeyBinding requires `key`.
+    expect(mac[0]).not.toHaveProperty("code");
+  });
+
+  it("has exactly the 44 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -63,6 +80,7 @@ describe("ACTION_REGISTRY", () => {
         "open-release-notes",
         "toggle-settings",
         "toggle-prompts",
+        "move-pane-to-new-window",
         "new-tab",
         "reopen-tab",
         "open-tab-options",

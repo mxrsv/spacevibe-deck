@@ -353,10 +353,14 @@ mod tests {
     }
 
     #[test]
-    fn window_menu_items_is_empty() {
-        // New/Save Layout Preset moved to File (7583463) — Window is 100%
-        // Cocoa builtins now (minimize/maximize/fullscreen).
-        assert!(WINDOW_MENU_ITEMS.is_empty());
+    fn window_menu_items_holds_only_move_pane_to_new_window() {
+        // Was `is_empty()` until the pane-detach work: Window is no longer
+        // 100% Cocoa builtins. Moving a pane into its own window IS window
+        // management, so it belongs here (spec §15.1 / the Cmd+Shift+M
+        // binding). Still a deliberate tripwire — update it by hand, with a
+        // reason, whenever action-registry.ts adds another Window action.
+        let ids: Vec<&str> = WINDOW_MENU_ITEMS.iter().map(|(id, _, _)| *id).collect();
+        assert_eq!(ids, ["move-pane-to-new-window"]);
     }
 
     use crate::menu::{route_menu_event, MenuRoute};

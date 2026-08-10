@@ -117,4 +117,8 @@ pub const EDIT_MENU_ITEMS: &[(&str, &str, Option<&str>)] = &[
     ),
 ];
 
-pub const WINDOW_MENU_ITEMS: &[(&str, &str, Option<&str>)] = &[];
+pub const WINDOW_MENU_ITEMS: &[(&str, &str, Option<&str>)] = &[(
+    "move-pane-to-new-window",
+    "Move Pane to New Window",
+    Some("CmdOrCtrl+Shift+M"),
+)];

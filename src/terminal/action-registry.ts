@@ -378,6 +378,18 @@ export const ACTION_REGISTRY = [
     scope: "pane",
     menu: { submenu: "View", group: "prompts" },
   },
+  {
+    id: "move-pane-to-new-window",
+    label: "Move Pane to New Window",
+    // Tier "pane": it acts on the FOCUSED pane, which every overlay hides —
+    // same reasoning as toggle-prompts above.
+    scope: "pane",
+    // The Window submenu is native window management, and moving a pane into
+    // its own window is exactly that. `menu.rs` already loops over
+    // `WINDOW_MENU_ITEMS` for this case and says so in its own comment, so
+    // this needs no hand-written menu code.
+    menu: { submenu: "Window", group: "move-pane" },
+  },
   { id: "focus-next", label: "Focus Next Pane", scope: "pane" },
   { id: "focus-prev", label: "Focus Previous Pane", scope: "pane" },
   { id: "focus-left", label: "Focus Pane Left", scope: "pane" },
@@ -642,6 +654,13 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // mandatory, not a style choice: this action has a macOS menu item, and a
   // Cocoa accelerator is declared by character (see the RULE above).
   { key: "p", meta: true, shift: true, action: "toggle-prompts" },
+  // Move the focused pane into its own window. Cmd+Shift+M is free on both
+  // keymaps (no `m`/`KeyM` binding existed on either) and `m` is the "move"
+  // mnemonic; macOS's Cmd+M Minimize is a Cocoa builtin and does not claim
+  // the Shift variant. CharKeyBinding is mandatory, not a style choice: this
+  // action has a macOS menu item, and a Cocoa accelerator is declared by
+  // character (see the RULE above).
+  { key: "m", meta: true, shift: true, action: "move-pane-to-new-window" },
   // event.key for arrows is "ArrowLeft" etc. — lowercased by matchBinding
   { key: "arrowleft", meta: true, alt: true, action: "focus-left" },
   { key: "arrowright", meta: true, alt: true, action: "focus-right" },
@@ -777,6 +796,7 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   },
   { key: ",", ctrl: true, action: "toggle-settings" },
   { key: "p", ctrl: true, shift: true, action: "toggle-prompts" },
+  { key: "m", ctrl: true, shift: true, action: "move-pane-to-new-window" },
   { key: "pageup", shift: true, action: "scroll-page-up" },
   { key: "pagedown", shift: true, action: "scroll-page-down" },
   { key: "home", shift: true, action: "scroll-to-top" },

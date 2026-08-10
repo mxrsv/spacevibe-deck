@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   bootModeOrNormal,
   createMemoryTransferClient,
+  moveToWindowTarget,
   type AdoptionPayload,
 } from "./transfer-client";
 
@@ -61,5 +62,30 @@ describe("createMemoryTransferClient", () => {
       kind: "aborted",
       reason: "destination-gone",
     });
+  });
+});
+
+describe("moveToWindowTarget", () => {
+  it("accepts a well-formed target label", () => {
+    expect(moveToWindowTarget({ targetLabel: "deck-2" })).toBe("deck-2");
+  });
+
+  it("rejects every malformed shape without producing a label", () => {
+    expect(moveToWindowTarget({})).toBeNull();
+    expect(moveToWindowTarget({ targetLabel: "" })).toBeNull();
+    expect(moveToWindowTarget({ targetLabel: 42 })).toBeNull();
+    expect(moveToWindowTarget({ targetLabel: null })).toBeNull();
+    expect(moveToWindowTarget({ label: "deck-2" })).toBeNull();
+    expect(moveToWindowTarget(null)).toBeNull();
+    expect(moveToWindowTarget("deck-2")).toBeNull();
+    expect(moveToWindowTarget(undefined)).toBeNull();
+  });
+
+  it("delivers a well-formed move-to-window offer to the handler", async () => {
+    const client = createMemoryTransferClient();
+    const seen: string[] = [];
+    await client.listenMoveToWindow((label) => void seen.push(label));
+    client.moveToWindow("deck-2");
+    expect(seen).toEqual(["deck-2"]);
   });
 });

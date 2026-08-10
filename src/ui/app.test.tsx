@@ -9,6 +9,7 @@ import {
   settingsOpen,
 } from "../chrome/events";
 import {
+  bootOpensTheBoard,
   closeSettingsPanel,
   DesktopChrome,
   livePresetOpensATab,
@@ -227,5 +228,15 @@ describe("closeSettingsPanel", () => {
     expect(focusActive).toHaveBeenCalledTimes(1);
 
     editorRequest.value = null;
+  });
+});
+
+describe("bootOpensTheBoard", () => {
+  it("opens the board on a normal boot", () => {
+    expect(bootOpensTheBoard({ kind: "normal" })).toBe(true);
+  });
+
+  it("skips the board when the window boots to adopt a pane", () => {
+    expect(bootOpensTheBoard({ kind: "adopt", token: "t-1" })).toBe(false);
   });
 });

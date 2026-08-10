@@ -4,6 +4,7 @@ import type { PaneProcessInfo } from "../lib/process-info";
 import type { Pane, PaneEvents, PaneAttentionSignal } from "./pane";
 import type { CreatePaneFn } from "./pane-lifecycle";
 import { createMemoryPtyClient, type PtyClient } from "./pty-client";
+import { createMemoryTransferClient } from "./transfer-client";
 import { MACOS_KEYMAP, type ShortcutAction } from "./keymap";
 import { ACTION_REGISTRY } from "./action-registry";
 import {
@@ -85,10 +86,16 @@ function freshWindowFocusController(): WindowFocusController {
 }
 
 let windowFocus = freshWindowFocusController();
+const windowCloseCalls: number[] = [];
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
     scaleFactor: async () => 1,
+    // The last tab now closes THIS window rather than quitting the app
+    // (spec §9.5). Recorded so the close-routing test can assert it.
+    close: async () => {
+      windowCloseCalls.push(Date.now());
+    },
     isFocused: async () => {
       if (windowFocus.isFocusedError) {
         throw windowFocus.isFocusedError;
@@ -827,17 +834,22 @@ describe("createTabManager close routing", () => {
     expect(tabViews.value).toHaveLength(1);
   });
 
-  it("closing the last tab requests app quit instead of leaving zero tabs", async () => {
+  it("closing the last tab closes this window instead of quitting the app", async () => {
+    // Behaviour change (spec §9.5): every window is a peer, so the last tab
+    // closes THIS window and Rust decides whether that was also the last
+    // window and the process should exit.
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, null, "zsh", "idle-shell", null)],
     ]);
-    const { tm, pty } = setup({ infos });
+    const closeWindow = vi.fn(async () => {});
+    const { tm, pty } = setup({ infos, deps: { closeWindow } });
     await tm.materialize({ layout: null, cwds: [] });
     const quitSpy = vi.spyOn(pty, "confirmQuit");
 
     await tm.closeTab(0);
 
-    expect(quitSpy).toHaveBeenCalledTimes(1);
+    expect(closeWindow).toHaveBeenCalledTimes(1);
+    expect(quitSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -3675,5 +3687,96 @@ describe("toggle-prompts", () => {
     expect(promptsOpen.value).toBe(false);
     expect(persistError.value).toBe("No pane to paste into.");
     manager.dispose();
+  });
+});
+
+describe("TabManager window lifecycle", () => {
+  function windowSetup(deps: Partial<TabManagerDeps> = {}) {
+    const transfer = createMemoryTransferClient();
+    const { tm, pty } = setup({
+      infos: new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, null, "zsh", "idle-shell", null)],
+      ]),
+      deps: { transfer, closeWindow: async () => {}, ...deps },
+    });
+    return { tm, pty, transfer };
+  }
+
+  it("removes the emptied tab after a pane moves out, without pushing it onto the reopen stack", async () => {
+    const { tm, transfer } = windowSetup();
+    await tm.materialize({ layout: null, cwds: [] });
+
+    const promise = tm.movePaneToNewWindow();
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "committed" });
+    await promise;
+
+    expect(tabViews.value).toHaveLength(0);
+    await tm.reopenTab();
+    expect(tabViews.value).toHaveLength(0);
+  });
+
+  it("stages the tab identity the pane carried, not nulls", async () => {
+    const { tm, transfer } = windowSetup();
+    await tm.materialize({ layout: null, cwds: [], workspacePath: "/work" });
+    tm.renameTab(0, "billing");
+    tm.setTabDotColor(0, "cyan");
+
+    const promise = tm.movePaneToNewWindow();
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "committed" });
+    await promise;
+
+    // Spec §10.2: name override, dot color and workspace move WITH the pane.
+    // Without the `identity` wiring these are all null and every other test
+    // in this file still passes — which is why this one exists.
+    await expect(transfer.claimTransfer("xfer-1")).resolves.toMatchObject({
+      tabName: "billing",
+      dotColor: "cyan",
+      workspacePath: "/work",
+    });
+  });
+
+  it("keeps the tab when the move aborts", async () => {
+    const { tm, transfer } = windowSetup();
+    await tm.materialize({ layout: null, cwds: [] });
+
+    const promise = tm.movePaneToNewWindow();
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "aborted", reason: "claim-failed" });
+    await promise;
+
+    expect(tabViews.value).toHaveLength(1);
+  });
+
+  it("adopts an offered pane into a new tab of a running window", async () => {
+    const { tm, transfer } = windowSetup();
+    const token = await transfer.prepareTransfer(99);
+    await transfer.stageTransfer(token, {
+      paneId: 99,
+      cwd: "/repo",
+      agentId: null,
+      scrollback: "",
+      cols: 100,
+      rows: 30,
+      tabName: "moved",
+      dotColor: null,
+      workspacePath: "/repo",
+    });
+
+    await expect(tm.adoptIntoNewTab(token)).resolves.toBe(true);
+    expect(tabViews.value).toHaveLength(1);
+    expect(tm.allPaneIds()).toContain(99);
+  });
+
+  it("starts no transfer when the move-to-window payload has no usable label", async () => {
+    const { tm, transfer } = windowSetup();
+    await tm.materialize({ layout: null, cwds: [] });
+
+    // What the listener would receive for a malformed emit: no label at all.
+    transfer.moveToWindow("");
+
+    expect(transfer.calls).toEqual([]);
+    expect(tabViews.value).toHaveLength(1);
   });
 });

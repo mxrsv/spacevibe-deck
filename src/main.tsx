@@ -8,9 +8,14 @@ import { initPresets } from "./presets/presets-store";
 import { initWorkspaces } from "./open-board/workspaces-store";
 import { initializeDesktopEnvironmentFromBackend } from "./lib/platform";
 import { App } from "./ui/app";
+import { defaultTransferClient } from "./terminal/transfer-client";
 
 async function main(): Promise<void> {
   await initializeDesktopEnvironmentFromBackend();
+  // Read before anything renders (spec §9.2): deciding inside App's mount
+  // effect would paint the Open board for one frame in a window whose whole
+  // job is to show an adopted pane.
+  const boot = await defaultTransferClient.windowBootMode();
   await initSettings();
   await Promise.all([
     initPresets(),
@@ -22,7 +27,7 @@ async function main(): Promise<void> {
   if (!root) {
     throw new Error("#root element not found");
   }
-  render(<App />, root);
+  render(<App boot={boot} />, root);
 }
 
 void main();

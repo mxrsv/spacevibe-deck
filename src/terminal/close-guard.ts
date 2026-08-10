@@ -49,6 +49,14 @@ export const QUIT_COPY: ConfirmCopy = {
   action: "Quit",
 };
 
+export const WINDOW_CLOSE_COPY: ConfirmCopy = {
+  title: "Close Window",
+  okLabel: "Close Window",
+  // Not "Quit": with peer windows this kills only THIS window's panes, and
+  // the app keeps running unless it was the last one.
+  action: "Close this window",
+};
+
 export const UPDATE_COPY: ConfirmCopy = {
   title: "Install Deck Update",
   okLabel: "Install & Restart",

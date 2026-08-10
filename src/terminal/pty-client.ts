@@ -34,7 +34,12 @@ export interface PtyClient {
    * re-filters every name — see `probe_names` in agents.rs.
    */
   detectAgents(names: readonly string[]): Promise<DetectedAgent[]>;
-  confirmQuit(): Promise<void>;
+  /** Answer a `quit-requested` — `requestId` echoes the one Rust sent. */
+  confirmQuit(requestId: number): Promise<void>;
+  cancelQuit(requestId: number): Promise<void>;
+  /** Answer a `window:close-requested` for THIS window only. */
+  confirmCloseWindow(requestId: number): Promise<void>;
+  cancelCloseWindow(requestId: number): Promise<void>;
   listenOutput(
     handler: (id: number, data: string) => void,
   ): Promise<UnlistenFn>;
@@ -88,8 +93,17 @@ export function createTauriPtyClient(): PtyClient {
     detectAgents(names) {
       return invoke<DetectedAgent[]>("detect_agents", { names: [...names] });
     },
-    confirmQuit() {
-      return invoke("confirm_quit");
+    confirmQuit(requestId) {
+      return invoke("confirm_quit", { requestId });
+    },
+    cancelQuit(requestId) {
+      return invoke("cancel_quit", { requestId });
+    },
+    confirmCloseWindow(requestId) {
+      return invoke("confirm_close_window", { requestId });
+    },
+    cancelCloseWindow(requestId) {
+      return invoke("cancel_close_window", { requestId });
     },
     listenOutput(handler) {
       return listen<OutputPayload>("pty:output", (event) => {
@@ -172,6 +186,9 @@ export function createMemoryPtyClient(
       );
     },
     async confirmQuit() {},
+    async cancelQuit() {},
+    async confirmCloseWindow() {},
+    async cancelCloseWindow() {},
     async listenOutput(handler) {
       outputHandlers.add(handler);
       return () => {
