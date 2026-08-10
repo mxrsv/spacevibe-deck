@@ -68,7 +68,6 @@ pub fn run() {
             pty::resize_pty,
             pty::kill_pty,
             platform::desktop_environment,
-            coordinator::move_pane_ownership,
             info::pty_info,
             info::git_branch,
             agents::detect_agents,
