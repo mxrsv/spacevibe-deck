@@ -1,5 +1,6 @@
 import type { ComponentChildren } from "preact";
 import {
+  ChartColumn,
   Columns2,
   Maximize2,
   MessageSquareText,
@@ -19,12 +20,15 @@ interface ChromeActionsProps {
   promptsDisabled: boolean;
   /** Rendered inside the trigger's anchor while open — see `.prompts-anchor`. */
   promptPopover?: ComponentChildren;
+  /** Whether the token usage screen is up (drives `aria-pressed`). */
+  usageOpen: boolean;
   updateAction?: ComponentChildren;
   onSplitRow(): void;
   onSplitColumn(): void;
   onClosePane(): void;
   onToggleExpand(): void;
   onTogglePrompts(): void;
+  onToggleUsage(): void;
   onToggleSettings(): void;
 }
 
@@ -35,6 +39,7 @@ export function ChromeActions(props: ChromeActionsProps) {
   const closePane = shortcutLabel("close-pane");
   const toggleExpand = shortcutLabel("toggle-expand");
   const prompts = shortcutLabel("toggle-prompts");
+  const usage = shortcutLabel("toggle-usage");
   const settings = shortcutLabel("toggle-settings");
   return (
     <div class="tabbar__actions">
@@ -92,6 +97,21 @@ export function ChromeActions(props: ChromeActionsProps) {
       </span>
       <span class="tabbar__sep" aria-hidden="true" />
       {props.updateAction}
+      {/* App-level, like the gear beside it — that is why it sits AFTER the
+          separator rather than next to Prompts, which is pane-scoped. It is
+          still "between Prompts and Settings" as the spec requires.
+          `aria-pressed`, not `aria-expanded`: this opens a screen, not a
+          popover, so it matches the gear's contract, not the Prompt Board's. */}
+      <button
+        type="button"
+        class={`iconbtn ${props.usageOpen ? "is-active" : ""}`}
+        title={`Token usage (${usage})`}
+        aria-label="Open token usage"
+        aria-pressed={props.usageOpen}
+        onClick={props.onToggleUsage}
+      >
+        <DeckIcon icon={ChartColumn} size={CHROME_ICON} />
+      </button>
       <button
         type="button"
         class={`iconbtn iconbtn--gear ${props.settingsOpen ? "is-active" : ""}`}

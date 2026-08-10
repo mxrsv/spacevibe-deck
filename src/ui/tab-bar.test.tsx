@@ -78,6 +78,8 @@ describe("TabBar", () => {
     promptsOpen: false,
     promptsDisabled: false,
     onTogglePrompts: vi.fn(),
+    usageOpen: false,
+    onToggleUsage: vi.fn(),
     onFocusAttention: vi.fn(),
   });
 

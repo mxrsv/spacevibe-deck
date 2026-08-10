@@ -33,6 +33,9 @@ interface TabBarProps {
   promptsDisabled: boolean;
   promptPopover?: ComponentChildren;
   onTogglePrompts(): void;
+  /** Whether the token usage screen is up — forwarded to ChromeActions. */
+  usageOpen: boolean;
+  onToggleUsage(): void;
   updateAction?: ComponentChildren;
   onToggleExpand(): void;
   /** Invoked when a tab's actionable attention mark is clicked. */
@@ -172,6 +175,8 @@ export function TabBar(props: TabBarProps) {
         promptsDisabled={props.promptsDisabled}
         promptPopover={props.promptPopover}
         onTogglePrompts={props.onTogglePrompts}
+        usageOpen={props.usageOpen}
+        onToggleUsage={props.onToggleUsage}
         onToggleSettings={props.onToggleSettings}
         updateAction={props.updateAction}
       />

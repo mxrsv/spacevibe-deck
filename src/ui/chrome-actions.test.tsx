@@ -23,6 +23,7 @@ describe("ChromeActions", () => {
     onClosePane: vi.fn(),
     onToggleExpand: vi.fn(),
     onTogglePrompts: vi.fn(),
+    onToggleUsage: vi.fn(),
     onToggleSettings: vi.fn(),
   });
 
@@ -35,6 +36,7 @@ describe("ChromeActions", () => {
           expandActive={false}
           promptsOpen={false}
           promptsDisabled={false}
+          usageOpen={false}
           {...on}
           {...overrides}
         />,
@@ -85,6 +87,11 @@ describe("ChromeActions", () => {
       fires: "onTogglePrompts",
     },
     {
+      name: "Open token usage",
+      icon: "lucide-chart-column",
+      fires: "onToggleUsage",
+    },
+    {
       name: "Open settings",
       icon: "lucide-settings",
       fires: "onToggleSettings",
@@ -114,8 +121,13 @@ describe("ChromeActions", () => {
     }
   });
 
-  it("carries the toggle state of expand, prompts and settings", () => {
-    mount({ expandActive: true, promptsOpen: true, settingsOpen: true });
+  it("carries the toggle state of expand, prompts, usage and settings", () => {
+    mount({
+      expandActive: true,
+      promptsOpen: true,
+      usageOpen: true,
+      settingsOpen: true,
+    });
 
     expect(button("Toggle focus expand").getAttribute("aria-pressed")).toBe(
       "true",
@@ -123,6 +135,11 @@ describe("ChromeActions", () => {
     expect(button("Open the prompt board").getAttribute("aria-expanded")).toBe(
       "true",
     );
+    // A screen, not a popover: pressed, never expanded — same as the gear.
+    expect(button("Open token usage").getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(button("Open token usage").getAttribute("aria-expanded")).toBeNull();
     expect(button("Open settings").getAttribute("aria-pressed")).toBe("true");
   });
 
