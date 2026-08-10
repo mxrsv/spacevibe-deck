@@ -3691,7 +3691,7 @@ describe("toggle-prompts", () => {
 });
 
 describe("TabManager window lifecycle", () => {
-  function windowSetup(deps: Partial<TabManagerDeps> = {}) {
+  async function windowSetup(deps: Partial<TabManagerDeps> = {}) {
     const transfer = createMemoryTransferClient();
     const { tm, pty } = setup({
       infos: new Map<number, PaneProcessInfo>([
@@ -3699,11 +3699,17 @@ describe("TabManager window lifecycle", () => {
       ]),
       deps: { transfer, closeWindow: async () => {}, ...deps },
     });
+    // Without init() the cross-window listeners are never registered and any
+    // assertion about `transfer.moveToWindow` is vacuously true.
+    await tm.init();
     return { tm, pty, transfer };
   }
 
   it("removes the emptied tab after a pane moves out, without pushing it onto the reopen stack", async () => {
-    const { tm, transfer } = windowSetup();
+    const { tm, transfer } = await windowSetup();
+    // Two tabs: the window survives the move, so the guard does not fire and
+    // the emptied tab is what this test is about.
+    await tm.materialize({ layout: null, cwds: [] });
     await tm.materialize({ layout: null, cwds: [] });
 
     const promise = tm.movePaneToNewWindow();
@@ -3711,16 +3717,17 @@ describe("TabManager window lifecycle", () => {
     transfer.settle("xfer-1", { kind: "committed" });
     await promise;
 
-    expect(tabViews.value).toHaveLength(0);
+    expect(tabViews.value).toHaveLength(1);
     await tm.reopenTab();
-    expect(tabViews.value).toHaveLength(0);
+    expect(tabViews.value).toHaveLength(1);
   });
 
   it("stages the tab identity the pane carried, not nulls", async () => {
-    const { tm, transfer } = windowSetup();
+    const { tm, transfer } = await windowSetup();
+    await tm.materialize({ layout: null, cwds: [] });
     await tm.materialize({ layout: null, cwds: [], workspacePath: "/work" });
-    tm.renameTab(0, "billing");
-    tm.setTabDotColor(0, "cyan");
+    tm.renameTab(1, "billing");
+    tm.setTabDotColor(1, "cyan");
 
     const promise = tm.movePaneToNewWindow();
     await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
@@ -3738,7 +3745,8 @@ describe("TabManager window lifecycle", () => {
   });
 
   it("keeps the tab when the move aborts", async () => {
-    const { tm, transfer } = windowSetup();
+    const { tm, transfer } = await windowSetup();
+    await tm.materialize({ layout: null, cwds: [] });
     await tm.materialize({ layout: null, cwds: [] });
 
     const promise = tm.movePaneToNewWindow();
@@ -3746,11 +3754,11 @@ describe("TabManager window lifecycle", () => {
     transfer.settle("xfer-1", { kind: "aborted", reason: "claim-failed" });
     await promise;
 
-    expect(tabViews.value).toHaveLength(1);
+    expect(tabViews.value).toHaveLength(2);
   });
 
   it("adopts an offered pane into a new tab of a running window", async () => {
-    const { tm, transfer } = windowSetup();
+    const { tm, transfer } = await windowSetup();
     const token = await transfer.prepareTransfer(99);
     await transfer.stageTransfer(token, {
       paneId: 99,
@@ -3770,7 +3778,7 @@ describe("TabManager window lifecycle", () => {
   });
 
   it("starts no transfer when the move-to-window payload has no usable label", async () => {
-    const { tm, transfer } = windowSetup();
+    const { tm, transfer } = await windowSetup();
     await tm.materialize({ layout: null, cwds: [] });
 
     // What the listener would receive for a malformed emit: no label at all.
@@ -3778,5 +3786,63 @@ describe("TabManager window lifecycle", () => {
 
     expect(transfer.calls).toEqual([]);
     expect(tabViews.value).toHaveLength(1);
+  });
+});
+
+describe("TabManager move-to-new-window guard", () => {
+  async function guardSetup() {
+    const transfer = createMemoryTransferClient();
+    const { tm } = setup({
+      infos: new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, null, "zsh", "idle-shell", null)],
+        [2, processInfo(2, null, "zsh", "idle-shell", null)],
+      ]),
+      deps: { transfer, closeWindow: async () => {} },
+    });
+    await tm.init();
+    return { tm, transfer };
+  }
+
+  it("refuses to move the window's only pane into a new window", async () => {
+    // Moving it would close this window and open another holding the same
+    // pane: the window is swapped, its geometry lost, and the pane risked
+    // through a whole transaction for no observable change.
+    const { tm, transfer } = await guardSetup();
+    await tm.materialize({ layout: null, cwds: [] });
+
+    await tm.movePaneToNewWindow();
+
+    expect(transfer.calls).toEqual([]);
+    expect(tabViews.value).toHaveLength(1);
+  });
+
+  it("allows it when another tab keeps the window alive", async () => {
+    // The condition is WINDOW-level, not tab-level: a second tab means the
+    // window survives, so splitting this tab out is a real move.
+    const { tm, transfer } = await guardSetup();
+    await tm.materialize({ layout: null, cwds: [] });
+    await tm.materialize({ layout: null, cwds: [] });
+
+    const promise = tm.movePaneToNewWindow();
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "committed" });
+    await promise;
+
+    expect(tabViews.value).toHaveLength(1);
+  });
+
+  it("still offers the only pane to an EXISTING window", async () => {
+    // Merging into another window is meaningful even from a one-pane window:
+    // the pane lands there and this window closes. Only the new-window path
+    // is guarded.
+    const { tm, transfer } = await guardSetup();
+    await tm.materialize({ layout: null, cwds: [] });
+
+    transfer.moveToWindow("deck-2");
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "committed" });
+    await vi.waitFor(() =>
+      expect(transfer.calls).toContain("offer:xfer-1:deck-2"),
+    );
   });
 });

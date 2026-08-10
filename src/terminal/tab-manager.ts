@@ -791,6 +791,20 @@ export function createTabManager(
       reportChromeMessage("No pane to move.");
       return;
     }
+    // A one-pane window has nothing to gain from a NEW window: the move would
+    // close this window and open another holding the same pane — geometry
+    // lost, and the pane risked through a whole transaction for no observable
+    // change. Window-level, not tab-level: a second tab keeps the window
+    // alive, so splitting this tab out is a real move. Offering the pane to an
+    // EXISTING window stays allowed — that one merges and is meaningful.
+    if (
+      target.kind === "new-window" &&
+      tabs.length === 1 &&
+      entry.manager.paneIds().length === 1
+    ) {
+      reportChromeMessage("Nothing to move — this is the window's only pane.");
+      return;
+    }
     const outcome = await entry.manager.detachPaneById(paneId, target);
     if (outcome.kind === "kept") {
       return;
