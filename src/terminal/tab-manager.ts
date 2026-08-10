@@ -630,10 +630,7 @@ export function createTabManager(
       container,
       callbacks,
       paneIo,
-      managerDeps(
-        nextKey,
-        workspacePath === null ? null : normalizeWorkspacePath(workspacePath),
-      ),
+      managerDeps(nextKey),
     );
     try {
       if (layout === null) {
@@ -755,17 +752,22 @@ export function createTabManager(
    * rather than in TerminalManager because the name override, dot color and
    * workspace are TAB-level state, which only this closure holds.
    */
-  function managerDeps(tabKey: number, workspacePath: string | null) {
+  function managerDeps(tabKey: number) {
     return {
       ...deps,
       transfer,
       identity: (paneId: number) => {
         const override = overrides.get(tabKey);
+        // Read from the live entry, never from a value captured here: a tab
+        // is pushed AFTER `createTerminalManager` runs, and an adopted tab
+        // takes its workspace from the payload. Capturing would silently
+        // drop the workspace on a second hop (A -> B -> C).
+        const entry = tabs.find((candidate) => candidate.key === tabKey);
         return {
           agentId: explicitAgent(poller.infoFor(paneId)),
           tabName: override?.name ?? null,
           dotColor: override?.dotColor ?? null,
-          workspacePath,
+          workspacePath: entry?.workspacePath ?? null,
         };
       },
     };
@@ -786,7 +788,7 @@ export function createTabManager(
     const entry = tabs[index];
     const paneId = entry?.manager.activePaneId() ?? null;
     if (!entry || paneId === null) {
-      deps.onAgentLaunchTimeout?.("No pane to move.");
+      reportChromeMessage("No pane to move.");
       return;
     }
     const outcome = await entry.manager.detachPaneById(paneId, target);
@@ -843,12 +845,11 @@ export function createTabManager(
     container.className = "tab-stage";
     container.style.display = "none";
     host.appendChild(container);
-    const workspacePath = null;
     const manager = createTerminalManager(
       container,
       callbacks,
       paneIo,
-      managerDeps(nextKey, workspacePath),
+      managerDeps(nextKey),
     );
     const result = await manager.initFromAdoption(token);
     if (result.kind === "failed") {
