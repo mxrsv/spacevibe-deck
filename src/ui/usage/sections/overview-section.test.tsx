@@ -10,16 +10,18 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
 import { EMPTY_COUNTERS } from "../../../lib/usage-snapshot";
 import type { UsageBucket, UsageSnapshot } from "../../../lib/usage-snapshot";
 import { PRICING_SNAPSHOT_DATE } from "../../../lib/usage-pricing-snapshot";
+import { dotColor } from "../../../lib/process-info";
 import { usageSnapshot } from "../../../usage/usage-store";
 import { OverviewSection, startOfLocalDay } from "./overview-section";
 import { EM_DASH } from "../usage-format";
 
 const NOW = new Date("2026-08-10T15:00:00Z").getTime();
+const HOUR = 60 * 60 * 1000;
 
 const bucket = (patch: Partial<UsageBucket>): UsageBucket => ({
   bucketStartMs: NOW,
   agent: "claude",
-  model: "claude-opus-4-20250514",
+  model: "claude-opus-4-5-20251101",
   counters: { ...EMPTY_COUNTERS, inputUncached: 100, output: 50 },
   ...patch,
 });
@@ -76,61 +78,268 @@ describe("OverviewSection", () => {
     });
   };
 
-  const rowFor = (label: string): HTMLTableRowElement =>
-    [...host.querySelectorAll("tbody tr")].find(
-      (row) => row.querySelector("th")?.textContent === label,
-    ) as HTMLTableRowElement;
+  const text = (selector: string): string =>
+    host.querySelector(selector)?.textContent ?? "";
 
-  it("lists both agents even with no data, dashed rather than zeroed", () => {
-    mount();
-    expect(rowFor("Claude Code")).toBeDefined();
-    expect(rowFor("Codex")).toBeDefined();
-    // A dash is "we counted nothing"; a 0 would claim a measurement.
-    const cells = rowFor("Codex").querySelectorAll("td");
-    expect([...cells].map((cell) => cell.textContent)).toEqual([
-      EM_DASH,
-      EM_DASH,
-      EM_DASH,
-      EM_DASH,
+  const blocks = (): HTMLElement[] => [
+    ...host.querySelectorAll<HTMLElement>(".usage-agent"),
+  ];
+
+  const blockText = (block: HTMLElement, selector: string): string =>
+    block.querySelector(selector)?.textContent ?? "";
+
+  /** Two priced agents, Claude an order of magnitude ahead of Codex. */
+  const priced = (): UsageSnapshot =>
+    snapshot([
+      bucket({
+        agent: "claude",
+        bucketStartMs: NOW,
+        counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000, output: 0 },
+      }),
+      bucket({
+        agent: "codex",
+        model: "gpt-5-codex",
+        bucketStartMs: NOW,
+        counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000, output: 0 },
+      }),
     ]);
+
+  it("states the figure it exists to state, with the eyebrow above it", () => {
+    usageSnapshot.value = priced();
+    mount();
+
+    // Literal uppercase in the markup, never `text-transform` (DL-16.2) — so
+    // the one sanctioned uppercase is greppable in the source.
+    expect(text(".usage-hero__eyebrow")).toBe("RAW TOKEN COST");
+    // claude 1M input @ $5/M = $5.00, codex 1M @ $1.25/M = $1.25 → $6.25.
+    expect(text(".usage-hero__figure")).toBe("$6.25*");
+    expect(text(".usage-hero__footnote")).toBe("* if billed at full API rate");
   });
 
-  it("separates today from recorded history", () => {
-    const yesterday = startOfLocalDay(NOW) - 60 * 60 * 1000;
+  it("carries exactly one display figure (DL-16.1)", () => {
+    usageSnapshot.value = priced();
+    mount();
+    expect(host.querySelectorAll(".usage-hero__figure")).toHaveLength(1);
+  });
+
+  it("keeps 'today' without building a second hero for it", () => {
     usageSnapshot.value = snapshot([
-      bucket({ bucketStartMs: NOW }),
-      bucket({ bucketStartMs: yesterday }),
+      bucket({
+        bucketStartMs: NOW,
+        counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
+      }),
+      bucket({
+        bucketStartMs: startOfLocalDay(NOW) - HOUR,
+        counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
+      }),
     ]);
     mount();
 
-    const cells = [...rowFor("Claude Code").querySelectorAll("td")].map(
-      (cell) => cell.textContent,
-    );
-    // today = one bucket of 150 tokens; recorded = both, 300.
-    expect(cells[0]).toBe("150");
-    expect(cells[2]).toBe("300");
+    // Today is one of the two buckets: $5.00 of the $10.00 recorded.
+    expect(text(".usage-hero__today")).toBe("today · $5.00 · 1M tokens");
+    expect(text(".usage-hero__figure")).toBe("$10.00*");
   });
 
-  it("names its columns for the words the spec uses, never 'all-time'", () => {
-    mount();
-    const headers = [...host.querySelectorAll("thead th")].map(
-      (cell) => cell.textContent,
-    );
-    expect(headers).toEqual([
-      "agent",
-      "tokens today",
-      "est. usd today",
-      "tokens recorded",
-      "est. usd recorded",
+  it("says so plainly when nothing has been used today", () => {
+    usageSnapshot.value = snapshot([
+      bucket({ bucketStartMs: startOfLocalDay(NOW) - HOUR }),
     ]);
-    expect(host.textContent).not.toContain("all-time");
-    expect(host.textContent).not.toContain("machine-wide");
+    mount();
+    expect(text(".usage-hero__today")).toBe("today · no usage yet");
   });
 
   it("carries the estimate disclaimer and the pricing snapshot date", () => {
+    usageSnapshot.value = priced();
     mount();
-    const note = host.querySelector(".metric-table__note")?.textContent ?? "";
+    const note = text(".usage-hero__estimate");
     expect(note).toContain("estimated at API prices");
     expect(note).toContain(PRICING_SNAPSHOT_DATE);
+  });
+
+  it("orders agent blocks by cost, largest first", () => {
+    usageSnapshot.value = priced();
+    mount();
+    expect(blocks().map((b) => blockText(b, ".usage-agent__label"))).toEqual([
+      "Claude Code",
+      "Codex",
+    ]);
+  });
+
+  it("fills each bar with that agent's own established colour (DL-16.4)", () => {
+    usageSnapshot.value = priced();
+    mount();
+    const [claude, codex] = blocks();
+    const fill = (block: HTMLElement): string =>
+      (block.querySelector(".usage-agent__fill") as HTMLElement).style
+        .background;
+
+    // The theme colour the agent already wears on its pane dot — not a brand
+    // colour sampled from the logo.
+    expect(fill(claude)).toContain(dotColor("claude"));
+    expect(fill(codex)).toContain(dotColor("codex"));
+  });
+
+  it("writes the share in text and hides the bar from assistive tech (DL-16.6)", () => {
+    usageSnapshot.value = priced();
+    mount();
+    const [claude] = blocks();
+    expect(
+      claude.querySelector(".usage-agent__bar")?.getAttribute("aria-hidden"),
+    ).toBe("true");
+    // $5.00 of $6.25 is 80%.
+    expect(blockText(claude, ".usage-agent__sub")).toBe(
+      "80% of cost · 1M tokens",
+    );
+  });
+
+  it("keeps the printed shares summing to exactly 100%", () => {
+    // Three-way split of a total that does not divide evenly: independent
+    // rounding would print 33.3 + 33.3 + 33.3 = 99.9.
+    usageSnapshot.value = snapshot([
+      bucket({
+        agent: "claude",
+        model: "claude-opus-4-5-20251101",
+        counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
+      }),
+      bucket({
+        agent: "codex",
+        model: "gpt-5-codex",
+        counters: { ...EMPTY_COUNTERS, inputUncached: 4_000_000 },
+      }),
+    ]);
+    mount();
+
+    const shares = blocks().map((block) => {
+      const match = blockText(block, ".usage-agent__sub").match(
+        /^([\d.]+)% of cost/,
+      );
+      return Number(match?.[1]);
+    });
+    expect(shares.every((share) => Number.isFinite(share))).toBe(true);
+    expect(shares.reduce((sum, share) => sum + share, 0)).toBeCloseTo(100, 10);
+  });
+
+  it("contains nothing interactive (DL-16.6)", () => {
+    usageSnapshot.value = priced();
+    mount();
+    expect(
+      host.querySelectorAll(
+        'button, a, input, select, [role="button"], [tabindex]',
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("never overclaims what the numbers cover", () => {
+    usageSnapshot.value = priced();
+    mount();
+    expect(host.textContent).not.toContain("machine-wide");
+    expect(host.textContent).not.toContain("all-time");
+  });
+
+  describe("when a model has no published price", () => {
+    const withUnpriced = (): UsageSnapshot =>
+      snapshot([
+        bucket({
+          agent: "claude",
+          model: "claude-opus-4-5-20251101",
+          counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
+        }),
+        bucket({
+          agent: "codex",
+          model: "gpt-6-preview-2026-08",
+          counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
+        }),
+      ]);
+
+    it("dashes the headline and names the models in the footnote", () => {
+      usageSnapshot.value = withUnpriced();
+      mount();
+      // One unpriced model makes the whole total unknowable (decision 8).
+      expect(text(".usage-hero__figure")).toBe(EM_DASH);
+      expect(text(".usage-hero__footnote")).toBe(
+        "no price for gpt-6-preview-2026-08",
+      );
+    });
+
+    it("marks the absent figure faint so it does not read as a rule (DL-15.6)", () => {
+      usageSnapshot.value = withUnpriced();
+      mount();
+      expect(
+        host
+          .querySelector(".usage-hero__figure")
+          ?.classList.contains("usage-hero__figure--absent"),
+      ).toBe(true);
+    });
+
+    it("leaves a real figure at full strength", () => {
+      usageSnapshot.value = priced();
+      mount();
+      expect(
+        host
+          .querySelector(".usage-hero__figure")
+          ?.classList.contains("usage-hero__figure--absent"),
+      ).toBe(false);
+    });
+
+    it("dashes the unpriced agent's own amount and says why", () => {
+      usageSnapshot.value = withUnpriced();
+      mount();
+      const codex = blocks().find(
+        (block) => blockText(block, ".usage-agent__label") === "Codex",
+      ) as HTMLElement;
+      expect(blockText(codex, ".usage-agent__amount")).toBe(EM_DASH);
+      expect(blockText(codex, ".usage-agent__sub")).toBe(
+        "unpriced · 1M tokens",
+      );
+    });
+
+    it("prints no percentage anywhere and leaves every track empty (DL-16.5)", () => {
+      usageSnapshot.value = withUnpriced();
+      mount();
+      // A share is a proportion of a STATED total. There is no stated total
+      // here, so even the priced agent gets no bar and no percentage.
+      expect(host.textContent).not.toContain("% of cost");
+      for (const block of blocks()) {
+        const fill = block.querySelector(".usage-agent__fill") as HTMLElement;
+        expect(fill.style.width).toBe("0%");
+      }
+    });
+
+    it("still shows the priced agent's own amount", () => {
+      usageSnapshot.value = withUnpriced();
+      mount();
+      const claude = blocks().find(
+        (block) => blockText(block, ".usage-agent__label") === "Claude Code",
+      ) as HTMLElement;
+      expect(blockText(claude, ".usage-agent__amount")).toBe("$5.00");
+    });
+
+    it("never calls a priced agent 'unpriced' just because the total is unknown", () => {
+      // Claude has a price; it is Codex that does not. Labelling Claude
+      // "unpriced" directly under its own "$5.00" is the screen contradicting
+      // itself on one line — it states its tokens and no share instead.
+      usageSnapshot.value = withUnpriced();
+      mount();
+      const claude = blocks().find(
+        (block) => blockText(block, ".usage-agent__label") === "Claude Code",
+      ) as HTMLElement;
+      expect(blockText(claude, ".usage-agent__sub")).toBe("1M tokens");
+    });
+
+    it("sorts unpriced agents last, behind every priced one", () => {
+      usageSnapshot.value = withUnpriced();
+      mount();
+      expect(blocks().map((b) => blockText(b, ".usage-agent__label"))).toEqual([
+        "Claude Code",
+        "Codex",
+      ]);
+    });
+  });
+
+  it("shows the no-data treatment rather than a $0.00 hero", () => {
+    mount();
+    expect(text(".usage-hero__empty")).toBe("no data yet");
+    expect(host.querySelector(".usage-hero__figure")).toBeNull();
+    expect(host.textContent).not.toContain("$0.00");
   });
 });

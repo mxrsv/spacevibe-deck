@@ -58,6 +58,62 @@ export function formatTokens(value: number): string {
 }
 
 /**
+ * Tiers for the compact form, largest first. It stops at trillions because the
+ * next SI step has no widely-read one-letter form; a value above that keeps a
+ * four-digit mantissa in `T` rather than inventing a suffix.
+ */
+const COMPACT_TIERS: readonly {
+  readonly at: number;
+  readonly suffix: string;
+}[] = [
+  { at: 1e12, suffix: "T" },
+  { at: 1e9, suffix: "B" },
+  { at: 1e6, suffix: "M" },
+  { at: 1e3, suffix: "K" },
+];
+
+/** One decimal — enough to rank magnitudes, not enough to imply precision. */
+const COMPACT_DECIMALS = 1;
+
+/** The mantissa may not reach this; at 1000 the tier moves instead. */
+const COMPACT_MANTISSA_CEILING = 1000;
+
+/**
+ * A token count shortened for the display figure's accounting lines —
+ * `48.1B`, `16.8M`, `912K`, `999`. Grouped digits (`formatTokens`) stay the
+ * right answer inside a table cell, where a column of numerals is compared
+ * down its length; here the count sits inline in a sentence and thirteen
+ * digits would swamp the words around it.
+ *
+ * Two rules earn their keep. A trailing `.0` is dropped, because `912.0K`
+ * claims a precision the rounding just discarded. And a mantissa that rounds
+ * up to four digits promotes to the next tier — 999,950 tokens is `1M`, never
+ * `1000.0K` — which is the case a naive divide-and-fix always gets wrong.
+ */
+export function formatTokensCompact(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0";
+  }
+  for (const [index, tier] of COMPACT_TIERS.entries()) {
+    if (value < tier.at) {
+      continue;
+    }
+    const rounded = Number((value / tier.at).toFixed(COMPACT_DECIMALS));
+    // Rounded clean out of its own tier. The mantissa is the wrong thing to
+    // grow, so step UP a tier — which is the PREVIOUS entry, this list being
+    // largest-first. The top tier has nowhere to go and keeps its four digits.
+    // `Number(...)` has already dropped any trailing `.0`.
+    if (rounded >= COMPACT_MANTISSA_CEILING && index > 0) {
+      const above = COMPACT_TIERS[index - 1];
+      const promoted = Number((value / above.at).toFixed(COMPACT_DECIMALS));
+      return `${promoted}${above.suffix}`;
+    }
+    return `${rounded}${tier.suffix}`;
+  }
+  return `${Math.round(value)}`;
+}
+
+/**
  * A money cell's content, or `null` when the row has no price. Returning
  * `null` rather than a dash keeps DL-15.6 in exactly one place — the table —
  * so a future caller cannot invent a second placeholder.

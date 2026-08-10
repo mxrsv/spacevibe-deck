@@ -166,6 +166,32 @@ describe("UsageScreen", () => {
   });
 
   it("swaps the section when the rail changes, reaching all three views", () => {
+    // Seeded so every view renders its real content: the overview is a
+    // display figure (DL §16) rather than a table, and with no data it would
+    // render its empty state and identify nothing.
+    usageSnapshot.value = {
+      scannedAtMs: 1_754_800_000_000,
+      buckets: [
+        {
+          bucketStartMs: 1_754_800_000_000,
+          agent: "claude",
+          model: "claude-opus-4-5-20251101",
+          counters: {
+            inputUncached: 1_000_000,
+            cacheRead: 0,
+            cacheCreate5m: 0,
+            cacheCreate1h: 0,
+            cacheWrite: 0,
+            output: 0,
+          },
+        },
+      ],
+      sources: [
+        { agent: "claude", state: "ok", filesScanned: 1 },
+        { agent: "codex", state: "ok", filesScanned: 0 },
+      ],
+      skippedLines: 0,
+    };
     mount(true);
     const titles: string[] = [];
     for (const tab of host.querySelectorAll<HTMLButtonElement>(
@@ -174,12 +200,14 @@ describe("UsageScreen", () => {
       act(() => {
         tab.click();
       });
+      // Whatever names the view: the hero's eyebrow, or a table's title.
       titles.push(
-        host.querySelector(".metric-table__title")?.textContent ?? "",
+        host.querySelector(".usage-hero__eyebrow, .metric-table__title")
+          ?.textContent ?? "",
       );
     }
     expect(titles).toEqual([
-      "per-agent totals",
+      "RAW TOKEN COST",
       "last 30 local days",
       // Not the plan's "agent × model": `×` is a retired glyph and
       // `scripts/icon-system.test.ts` fails any source file carrying one.

@@ -3172,6 +3172,151 @@ button.attn-mark:hover {
    behind it (DL-15.2). This comment exists so the next person does not
    "improve" the table by adding one. */
 
+/* ── Usage overview: the display figure (overview-section.tsx, DL §16) ─── */
+
+/* A reading column, not a table. The section deliberately drops its measure
+   clamp so a nine-column table can be wide (DL-15.3); the hero wants the
+   opposite, because a share bar stretched across 1400px stops reading as a
+   proportion and starts reading as a rule across the page. */
+.usage-hero {
+  max-width: 520px;
+  padding-top: 10px;
+}
+
+/* DL-16.2: the one sanctioned uppercase in this app. The capitals are literal
+   characters in the markup — there is deliberately NO `text-transform` here,
+   so DL-4.3's ban on the property stands and the exception is greppable in
+   the source. The 0.08em is the second half of the same exception: it exceeds
+   DL-4.3's 0.06em cap, and without it small capitals read as a cramped word
+   instead of a label. */
+.usage-hero__eyebrow {
+  margin: 0;
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+/* DL-16.1: the display figure. Exactly one per screen — the number this
+   screen exists to state. Tabular so it does not jitter as a poll lands
+   (DL-4.2), and line-height pulled in because at 40px the default leading
+   opens a gap the eyebrow has to jump. */
+.usage-hero__figure {
+  margin: 2px 0 0;
+  font-family: var(--ui-font);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* DL-15.6: an absent value is an em dash in --text-faint. At display size the
+   colour is doing real work — a 40px dash in --text-primary reads as a rule
+   drawn across the page, not as "we do not know this number". */
+.usage-hero__figure--absent {
+  color: var(--text-faint);
+}
+
+/* The asterisk's other half, and the two standing qualifiers. All three are
+   the same faint step: they qualify the figure, they do not compete with it
+   (DL-3.4). */
+.usage-hero__footnote,
+.usage-hero__today,
+.usage-hero__estimate {
+  margin: 3px 0 0;
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-hero__today {
+  margin-top: 10px;
+}
+
+/* No data at all is a sentence, not a $0.00 hero — the same reasoning as
+   DL-15.8: "nothing yet" must stay distinguishable from "something broke". */
+.usage-hero__empty {
+  margin: 14px 0 0;
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+/* The accounting under the figure. A plain list: the bullets carry no meaning
+   and the row already names itself. */
+.usage-hero__agents {
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 0;
+}
+
+.usage-agent + .usage-agent {
+  margin-top: 18px;
+}
+
+.usage-agent__line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.usage-agent__logo {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: block;
+}
+
+.usage-agent__label {
+  font-family: var(--ui-font);
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+
+/* Pushed to the far right so the amounts form a column the eye can compare
+   down, the same job right-alignment does in a table (DL-15.4). */
+.usage-agent__amount {
+  margin-left: auto;
+  font-family: var(--ui-font);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* DL-16.3: a printed proportion. No gradient, no shadow, no animation — and
+   deliberately no `transition` on the fill, so a poll landing does not make
+   the bars crawl to their new lengths (DL-1.2, DL-1.3). */
+.usage-agent__bar {
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  margin: 7px 0 5px;
+  overflow: hidden;
+}
+
+/* Width and colour are set inline: the width IS the datum, and the colour is
+   the agent's own theme colour resolved in TS (DL-16.4). Neither can be a
+   static rule without hardcoding a value the theme owns. */
+.usage-agent__fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.usage-agent__sub {
+  margin: 0;
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* There is deliberately NO `.usage-agent:hover` rule and no pointer cursor.
+   The block is a printed fact, and an affordance that reacts and then does
+   nothing is a broken promise (DL-16.6, the DL-15.2 reasoning). */
+
 /* ── Usage screen: reduced motion, applied where it can win ────────────── */
 
 /* The scope list near the top of this file already names `.usage-screen` and
