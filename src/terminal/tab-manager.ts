@@ -865,19 +865,35 @@ export function createTabManager(
       paneIo,
       managerDeps(nextKey),
     );
+    // Pushed BEFORE the adoption runs, not after. Rust flushes everything it
+    // buffered during the transfer as part of `commit_transfer`, which happens
+    // INSIDE `initFromAdoption`. Output is routed by scanning `tabs` for the
+    // manager owning that pane id, so a manager still outside `tabs` at commit
+    // time drops every buffered chunk and any `pty:exit` among them — silently
+    // and permanently. `paneIds()` stays empty until the adopt places the pane,
+    // so an entry parked here matches nothing until it genuinely owns it.
+    const placeholder: TabEntry = { key: nextKey, manager, workspacePath: null };
+    tabs.push(placeholder);
     const result = await manager.initFromAdoption(token);
+    const parked = tabs.indexOf(placeholder);
     if (result.kind === "failed") {
+      if (parked !== -1) {
+        tabs.splice(parked, 1);
+      }
       manager.dispose();
       return false;
     }
-    tabs.push({
-      key: nextKey,
-      manager,
-      workspacePath:
-        result.payload.workspacePath === null
-          ? null
-          : normalizeWorkspacePath(result.payload.workspacePath),
-    });
+    // Replaced, not mutated: `TabEntry.workspacePath` is readonly, and the
+    // payload only tells us the workspace once the adoption has landed.
+    if (parked !== -1) {
+      tabs[parked] = {
+        ...placeholder,
+        workspacePath:
+          result.payload.workspacePath === null
+            ? null
+            : normalizeWorkspacePath(result.payload.workspacePath),
+      };
+    }
     if (result.payload.tabName !== null || result.payload.dotColor !== null) {
       overrides.set(nextKey, {
         ...(result.payload.tabName !== null

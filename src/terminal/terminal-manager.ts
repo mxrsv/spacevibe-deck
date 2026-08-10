@@ -355,6 +355,15 @@ export function createTerminalManager(
     if (!pane || !tree) {
       return;
     }
+    // Rust rejects `kill_pty` for a pane whose route is `Transferring` (spec
+    // §8), and `killPane` swallows that rejection. Without this guard the
+    // pane and its subtree are removed anyway: if the transfer then aborts,
+    // the agent comes back to this window owning a PTY with no UI attached —
+    // a process running where nobody can see or stop it.
+    if (transferring.has(id)) {
+      reportPersistError("This pane is being moved — it can't be closed yet.");
+      return;
+    }
     life.killPane(id);
     life.panes.delete(id);
     life.exited.delete(id);
@@ -383,6 +392,12 @@ export function createTerminalManager(
   }
 
   const transfer = deps.transfer ?? defaultTransferClient;
+  /**
+   * Panes with an open transfer. Local knowledge on purpose: Rust owns the
+   * route, but only this manager knows it started the move, and `closePane`
+   * needs the answer synchronously.
+   */
+  const transferring = new Set<number>();
 
   /**
    * Remove a pane from this window because it MOVED, not because it closed.
@@ -428,6 +443,18 @@ export function createTerminalManager(
   }
 
   async function detachPaneById(
+    id: number,
+    target: DetachTarget,
+  ): Promise<DetachOutcome> {
+    transferring.add(id);
+    try {
+      return await runDetach(id, target);
+    } finally {
+      transferring.delete(id);
+    }
+  }
+
+  async function runDetach(
     id: number,
     target: DetachTarget,
   ): Promise<DetachOutcome> {

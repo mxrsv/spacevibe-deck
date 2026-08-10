@@ -91,6 +91,19 @@ export async function detachPane(
     return { kind: "kept", reason: "prepare-failed" };
   }
 
+  // Flushed AGAIN, after `prepare` quiesced the stream. The first flush only
+  // drained what was queued before it; output that arrived between that flush
+  // resolving and `prepare` taking effect went to THIS window's xterm (the
+  // route was still `Owned`) and may still be sitting unparsed in the parser
+  // queue. Rust never buffered it, so without this drain it is in neither the
+  // snapshot nor the flush — silently lost. Nothing new can arrive now: the
+  // route is `Transferring` and every later chunk is buffered by Rust.
+  try {
+    await pane.flush();
+  } catch (err) {
+    console.warn("Pane flush after prepare failed; continuing:", err);
+  }
+
   let scrollback = "";
   try {
     scrollback = withinByteBound(
@@ -134,6 +147,14 @@ export async function detachPane(
     return failed("stage-failed", err);
   }
 
+  // Subscribed BEFORE the token is handed over, and deliberately not awaited
+  // yet. `transfer:settled` is a fire-and-forget event: the destination can
+  // claim, replay and commit while `openPaneWindow`/`offerTransfer` is still
+  // resolving, and a listener registered after that lands too late to ever
+  // hear it. The source would then hold a pane Rust has already given away,
+  // with its write gate shut, forever.
+  const settled = deps.transfer.awaitOutcome(token);
+
   try {
     if (target.kind === "new-window") {
       await deps.transfer.openPaneWindow(token);
@@ -150,7 +171,7 @@ export async function detachPane(
   // The DESTINATION commits (spec §7.3: `caller == to`), so the source waits
   // for the outcome instead of committing. It has to wait rather than release
   // optimistically: spec §13 requires a failed commit to leave the pane here.
-  const outcome = await deps.transfer.awaitOutcome(token);
+  const outcome = await settled;
   if (outcome.kind === "aborted") {
     releaseHold();
     deps.report("The pane couldn't be moved — it stayed here.");

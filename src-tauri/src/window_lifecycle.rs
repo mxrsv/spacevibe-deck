@@ -329,13 +329,22 @@ pub fn validate_offer_target(live: &[String], target_label: &str) -> Result<(), 
 
 /// Hand a prepared transfer to a window that is already running (spec §10.1
 /// live-adopt). The new-window path goes through `open_pane_window` instead.
+///
+/// Reserves the destination BEFORE emitting, exactly as `open_pane_window`
+/// does. Without it the transfer carries neither `to` nor `reserved_to` until
+/// the target claims, so a target that closes between this emit and its
+/// `claim_transfer` is invisible to the §7.6 death rules: `Destroyed` finds
+/// nothing to abort and the pane waits on the §7.5 timeout instead of coming
+/// straight back.
 #[tauri::command]
 pub fn offer_transfer(
     app: tauri::AppHandle,
+    coordinator: State<'_, WindowCoordinator>,
     token: String,
     target_label: String,
 ) -> Result<(), String> {
     validate_offer_target(&live_window_labels(&app), &target_label)?;
+    coordinator.reserve_destination(&token, &target_label)?;
     app.emit_to(target_label, "transfer:offer", TransferOffer { token })
         .map_err(|error| error.to_string())
 }

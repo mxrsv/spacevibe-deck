@@ -76,6 +76,9 @@ describe("detachPane happy path", () => {
       "drain",
       "hold",
       "flush",
+      // Flushed again after prepare: anything that landed between the first
+      // flush and the route change is unparsed, unbuffered and would be lost.
+      "flush",
       "serialize",
       "release",
       "release-hold",
@@ -83,8 +86,10 @@ describe("detachPane happy path", () => {
     expect(h.transfer.calls).toEqual([
       "prepare:7",
       "stage:xfer-1",
-      "open-window:xfer-1",
+      // Subscribed BEFORE the handover, or a fast destination commits before
+      // the source is listening and the source waits forever.
       "await:xfer-1",
+      "open-window:xfer-1",
     ]);
     expect(h.heldNow()).toBe(0);
   });
