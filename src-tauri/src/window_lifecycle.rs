@@ -10,7 +10,7 @@ use std::sync::mpsc;
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::utils::config::WindowConfig;
-use tauri::{Manager, PhysicalPosition, State, WebviewWindowBuilder};
+use tauri::{Emitter, Manager, PhysicalPosition, State, WebviewWindowBuilder};
 
 /// Every window this app creates after the configured `main` window carries
 /// this prefix, so a generated label can never shadow the configured one.
@@ -268,6 +268,37 @@ pub async fn open_pane_window(
     Ok(label)
 }
 
+/// Payload of `transfer:offer`. A struct rather than a bare string so the event
+/// can grow a field without breaking the frontend's parse.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct TransferOffer {
+    pub token: String,
+}
+
+pub fn live_window_labels<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Vec<String> {
+    app.webview_windows().keys().cloned().collect()
+}
+
+pub fn validate_offer_target(live: &[String], target_label: &str) -> Result<(), String> {
+    if live.iter().any(|label| label == target_label) {
+        return Ok(());
+    }
+    Err(format!("Window {target_label} is not open"))
+}
+
+/// Hand a prepared transfer to a window that is already running (spec §10.1
+/// live-adopt). The new-window path goes through `open_pane_window` instead.
+#[tauri::command]
+pub fn offer_transfer(
+    app: tauri::AppHandle,
+    token: String,
+    target_label: String,
+) -> Result<(), String> {
+    validate_offer_target(&live_window_labels(&app), &target_label)?;
+    app.emit_to(target_label, "transfer:offer", TransferOffer { token })
+        .map_err(|error| error.to_string())
+}
+
 /// The window a menu event or a quit prompt belongs to: the focused one, else
 /// the most recently focused one that still exists (spec §9.3). `None` means
 /// every Deck window is gone or none has ever been focused.
@@ -502,5 +533,27 @@ mod tests {
             "detached windows would boot with no IPC access at all"
         );
         assert_eq!(format!("{DECK_LABEL_PREFIX}1"), "deck-1");
+    }
+
+    #[test]
+    fn an_offer_to_a_live_window_is_accepted() {
+        assert_eq!(
+            super::validate_offer_target(&labels(&["main", "deck-1"]), "deck-1"),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn an_offer_to_an_unknown_window_is_rejected_not_dropped() {
+        // emit_to succeeds for a label nobody listens on, so without this the
+        // pane would hang in Transferring until the 10 s bound in §7.5.
+        assert_eq!(
+            super::validate_offer_target(&labels(&["main"]), "deck-9"),
+            Err("Window deck-9 is not open".to_string())
+        );
+        assert_eq!(
+            super::validate_offer_target(&[], "main"),
+            Err("Window main is not open".to_string())
+        );
     }
 }
