@@ -12,7 +12,13 @@ import type { UsageBucket, UsageSnapshot } from "../../../lib/usage-snapshot";
 import { PRICING_SNAPSHOT_DATE } from "../../../lib/usage-pricing-snapshot";
 import { dotColor } from "../../../lib/process-info";
 import { usageSnapshot } from "../../../usage/usage-store";
-import { OverviewSection, startOfLocalDay } from "./overview-section";
+import { OverviewSection } from "./overview-section";
+import { activeUsageRange } from "../active-usage-view-store";
+import {
+  DEFAULT_USAGE_RANGE,
+  startOfLocalDay,
+  USAGE_RANGES,
+} from "../usage-ranges";
 import { EM_DASH } from "../usage-format";
 
 const NOW = new Date("2026-08-10T15:00:00Z").getTime();
@@ -36,22 +42,6 @@ const snapshot = (buckets: readonly UsageBucket[]): UsageSnapshot => ({
   skippedLines: 0,
 });
 
-describe("startOfLocalDay", () => {
-  it("returns local midnight, not UTC midnight", () => {
-    const midnight = startOfLocalDay(NOW);
-    const asDate = new Date(midnight);
-    expect(asDate.getHours()).toBe(0);
-    expect(asDate.getMinutes()).toBe(0);
-    expect(asDate.getSeconds()).toBe(0);
-    expect(asDate.getDate()).toBe(new Date(NOW).getDate());
-  });
-
-  it("lands on a 15-minute boundary for every offset, so the filter is exact", () => {
-    // BUCKET_MS is 15 minutes precisely so this holds (§0.2.4).
-    expect(startOfLocalDay(NOW) % (15 * 60 * 1000)).toBe(0);
-  });
-});
-
 describe("OverviewSection", () => {
   let host: HTMLDivElement;
 
@@ -62,6 +52,7 @@ describe("OverviewSection", () => {
     host = document.createElement("div");
     document.body.appendChild(host);
     usageSnapshot.value = null;
+    activeUsageRange.value = DEFAULT_USAGE_RANGE;
   });
 
   afterEach(() => {
@@ -69,6 +60,7 @@ describe("OverviewSection", () => {
       render(null, host);
     });
     usageSnapshot.value = null;
+    activeUsageRange.value = DEFAULT_USAGE_RANGE;
     vi.useRealTimers();
   });
 
@@ -122,30 +114,13 @@ describe("OverviewSection", () => {
     expect(host.querySelectorAll(".usage-hero__figure")).toHaveLength(1);
   });
 
-  it("keeps 'today' without building a second hero for it", () => {
-    usageSnapshot.value = snapshot([
-      bucket({
-        bucketStartMs: NOW,
-        counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
-      }),
-      bucket({
-        bucketStartMs: startOfLocalDay(NOW) - HOUR,
-        counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
-      }),
-    ]);
+  it("drops the standalone today line — the range selector states it now", () => {
+    usageSnapshot.value = priced();
     mount();
-
-    // Today is one of the two buckets: $5.00 of the $10.00 recorded.
-    expect(text(".usage-hero__today")).toBe("today · $5.00 · 1M tokens");
-    expect(text(".usage-hero__figure")).toBe("$10.00*");
-  });
-
-  it("says so plainly when nothing has been used today", () => {
-    usageSnapshot.value = snapshot([
-      bucket({ bucketStartMs: startOfLocalDay(NOW) - HOUR }),
-    ]);
-    mount();
-    expect(text(".usage-hero__today")).toBe("today · no usage yet");
+    // Two totals on one screen contradict each other the moment they differ.
+    // "today" is one click away instead (DL-16.7).
+    expect(host.querySelector(".usage-hero__today")).toBeNull();
+    expect(host.querySelector(".usage-range")).not.toBeNull();
   });
 
   it("carries the estimate disclaimer and the pricing snapshot date", () => {
@@ -219,14 +194,33 @@ describe("OverviewSection", () => {
     expect(shares.reduce((sum, share) => sum + share, 0)).toBeCloseTo(100, 10);
   });
 
-  it("contains nothing interactive (DL-16.6)", () => {
+  it("keeps the accounting itself non-interactive (DL-16.6)", () => {
     usageSnapshot.value = priced();
     mount();
+    // DL-16.7 permits exactly one control on a metric screen; DL-15.2 and
+    // DL-16.6 still govern everything else, so the agent blocks and their
+    // bars stay inert.
     expect(
       host.querySelectorAll(
-        'button, a, input, select, [role="button"], [tabindex]',
+        '.usage-hero__agents button, .usage-hero__agents a, .usage-hero__agents [role="button"], .usage-hero__agents [tabindex]',
       ),
     ).toHaveLength(0);
+  });
+
+  it("permits the range selector and nothing else to be interactive (DL-16.7)", () => {
+    usageSnapshot.value = priced();
+    mount();
+    const interactive = [
+      ...host.querySelectorAll(
+        'button, a, input, select, [role="button"], [tabindex]',
+      ),
+    ];
+    // Every focusable thing here is a range option — one control, with no
+    // second one smuggled in beside it.
+    expect(interactive.length).toBeGreaterThan(0);
+    for (const node of interactive) {
+      expect(node.classList.contains("usage-range__option")).toBe(true);
+    }
   });
 
   it("never overclaims what the numbers cover", () => {
@@ -424,6 +418,181 @@ describe("OverviewSection", () => {
         .querySelector(".usage-hero__figure")
         ?.classList.contains("usage-hero__figure--absent"),
     ).toBe(false);
+  });
+
+  describe("the range selector", () => {
+    const DAY = 24 * HOUR;
+    /** Midday on the local day `n` days before today. */
+    const daysAgo = (n: number): number =>
+      startOfLocalDay(NOW) - n * DAY + 12 * HOUR;
+
+    const claudeAt = (atMs: number): UsageBucket =>
+      bucket({
+        agent: "claude",
+        model: "claude-opus-4-5-20251101",
+        bucketStartMs: atMs,
+        counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
+      });
+
+    /** $5 today, $5 three days back, $5 ten days back, $1.25 forty days back. */
+    const spread = (): UsageSnapshot =>
+      snapshot([
+        claudeAt(NOW),
+        claudeAt(daysAgo(3)),
+        claudeAt(daysAgo(10)),
+        bucket({
+          agent: "codex",
+          model: "gpt-5-codex",
+          bucketStartMs: daysAgo(40),
+          counters: { ...EMPTY_COUNTERS, inputUncached: 1_000_000 },
+        }),
+      ]);
+
+    const pick = (label: string): void => {
+      const option = [
+        ...host.querySelectorAll<HTMLButtonElement>(".usage-range__option"),
+      ].find((node) => node.textContent === label) as HTMLButtonElement;
+      act(() => {
+        option.click();
+      });
+    };
+
+    it("offers every period and defaults to the whole history", () => {
+      usageSnapshot.value = spread();
+      mount();
+      expect(
+        [...host.querySelectorAll(".usage-range__option")].map(
+          (node) => node.textContent,
+        ),
+      ).toEqual(USAGE_RANGES.map((range) => range.label));
+      expect(text(".usage-hero__figure")).toBe("$16.25*");
+    });
+
+    it("recomputes the figure on local calendar-day boundaries", () => {
+      usageSnapshot.value = spread();
+      mount();
+
+      pick("today");
+      expect(text(".usage-hero__figure")).toBe("$5.00*");
+
+      pick("7 days");
+      expect(text(".usage-hero__figure")).toBe("$10.00*");
+
+      pick("30 days");
+      expect(text(".usage-hero__figure")).toBe("$15.00*");
+
+      pick("all");
+      expect(text(".usage-hero__figure")).toBe("$16.25*");
+    });
+
+    it("recomputes each agent's amount, share and token count", () => {
+      usageSnapshot.value = spread();
+      mount();
+
+      // Over everything, Codex is present and holds 1.25 of 16.25.
+      expect(blocks().map((b) => blockText(b, ".usage-agent__label"))).toEqual([
+        "Claude Code",
+        "Codex",
+      ]);
+
+      pick("7 days");
+      // Codex's only usage is 40 days old, so it leaves the accounting.
+      expect(blocks().map((b) => blockText(b, ".usage-agent__label"))).toEqual([
+        "Claude Code",
+      ]);
+      expect(blockText(blocks()[0], ".usage-agent__amount")).toBe("$10.00");
+      expect(blockText(blocks()[0], ".usage-agent__sub")).toBe(
+        "100% of cost · 2M tokens",
+      );
+    });
+
+    it("keeps shares summing to 100 inside the chosen range", () => {
+      usageSnapshot.value = spread();
+      mount();
+      pick("all");
+      const shares = blocks().map((block) => {
+        const match = blockText(block, ".usage-agent__sub").match(
+          /^([\d.]+)% of cost/,
+        );
+        return match === null ? 0 : Number(match[1]);
+      });
+      expect(shares.reduce((sum, share) => sum + share, 0)).toBeCloseTo(
+        100,
+        10,
+      );
+    });
+
+    it("names only the models left unpriced INSIDE the range", () => {
+      usageSnapshot.value = snapshot([
+        claudeAt(NOW),
+        bucket({
+          agent: "codex",
+          model: "gpt-6-preview-2026-08",
+          bucketStartMs: daysAgo(40),
+          counters: { ...EMPTY_COUNTERS, inputUncached: 1_000 },
+        }),
+      ]);
+      mount();
+      // Over all history the old unpriced model is disclosed...
+      expect(text(".usage-hero__footnote")).toContain("excludes 1 model");
+
+      pick("7 days");
+      // ...but inside 7 days it did not happen, so naming it would be a lie.
+      expect(text(".usage-hero__footnote")).toBe(
+        "* if billed at full API rate",
+      );
+    });
+
+    describe("when the chosen range holds nothing", () => {
+      const onlyOld = (): UsageSnapshot => snapshot([claudeAt(daysAgo(40))]);
+
+      it("dashes the figure instead of claiming $0.00", () => {
+        usageSnapshot.value = onlyOld();
+        mount();
+        pick("today");
+        expect(text(".usage-hero__figure")).toBe(EM_DASH);
+        expect(host.textContent).not.toContain("$0.00");
+        expect(
+          host
+            .querySelector(".usage-hero__figure")
+            ?.classList.contains("usage-hero__figure--absent"),
+        ).toBe(true);
+      });
+
+      it("drops the agent blocks and says WHICH period is empty", () => {
+        usageSnapshot.value = onlyOld();
+        mount();
+        pick("today");
+        expect(blocks()).toHaveLength(0);
+        expect(text(".usage-hero__empty")).toBe("no usage today");
+
+        pick("7 days");
+        expect(text(".usage-hero__empty")).toBe(
+          "no usage in the last 7 local days",
+        );
+      });
+
+      it("prints no dangling footnote — there are no models to name", () => {
+        usageSnapshot.value = onlyOld();
+        mount();
+        pick("today");
+        // `no price for ` with nothing after it was a real bug: an empty
+        // range has no models at all, priced or otherwise.
+        expect(host.querySelector(".usage-hero__footnote")).toBeNull();
+        expect(host.textContent).not.toContain("no price for");
+      });
+
+      it("keeps the selector reachable so the reader is not stranded", () => {
+        usageSnapshot.value = onlyOld();
+        mount();
+        pick("today");
+        expect(host.querySelectorAll(".usage-range__option")).toHaveLength(
+          USAGE_RANGES.length,
+        );
+        pick("all");
+        expect(text(".usage-hero__figure")).toBe("$5.00*");
+      });
+    });
   });
 
   it("shows the no-data treatment rather than a $0.00 hero", () => {

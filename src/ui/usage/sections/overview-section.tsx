@@ -5,6 +5,9 @@ import { dotColor } from "../../../lib/process-info";
 import { formatUsd } from "../../../lib/usage-pricing";
 import { totalTokens } from "../../../lib/usage-snapshot";
 import { usageSnapshot } from "../../../usage/usage-store";
+import { activeUsageRange } from "../active-usage-view-store";
+import { UsageRangeSelector } from "../usage-range-selector";
+import { rangeSinceMs, USAGE_RANGES } from "../usage-ranges";
 import {
   EM_DASH,
   ESTIMATE_NOTE,
@@ -25,24 +28,6 @@ import {
  * CLIs prune their own transcripts, so the figure is a floor, not a total, and
  * the copy must not promise otherwise (spec §Goal).
  */
-
-/**
- * Local midnight for `nowMs`. `new Date(y, m, d)` is DST-correct by
- * construction — on a spring-forward day it still resolves to the first
- * instant of the local day rather than to a clock time that never happened.
- *
- * The comparison it feeds (`bucketStartMs >= startOfLocalDay(now)`) is exact
- * rather than approximate: every real-world UTC offset is a whole number of
- * 15-minute steps, including the :30 and :45 offsets, so local midnight always
- * lands on a bucket boundary. That is the reason `BUCKET_MS` is 15 minutes.
- *
- * It lives here rather than in `src/lib/` because this section owns no path
- * under `src/lib/`; it is exported so its own test can exercise it directly.
- */
-export function startOfLocalDay(nowMs: number): number {
-  const now = new Date(nowMs);
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-}
 
 /** Shares are printed to one decimal, so the arithmetic runs in tenths. */
 const PERCENT_TENTHS = 1000;
@@ -162,20 +147,6 @@ function buildBlocks(
   }));
 }
 
-/** `today · $5.00 · 1M tokens`, or an honest sentence when there was none. */
-function todayLine(totals: readonly AgentTotal[]): string {
-  if (totals.length === 0) {
-    return "today · no usage yet";
-  }
-  const tokens = totals.reduce(
-    (running, entry) => running + totalTokens(entry.counters),
-    0,
-  );
-  const cost = pricedTotal(totals);
-  const money = cost === null ? EM_DASH : formatUsd(cost);
-  return `today · ${money} · ${formatTokensCompact(tokens)} tokens`;
-}
-
 /**
  * Four cases, and conflating them is how the screen ends up lying about
  * itself. `unpriced` belongs only to an agent whose OWN cost is entirely
@@ -229,26 +200,42 @@ function AgentRow({ block }: { readonly block: AgentBlock }) {
 
 export function OverviewSection() {
   const buckets = usageSnapshot.value?.buckets ?? [];
-  const recorded = agentTotals(buckets, null);
 
-  // Nothing measured at all is its own state, not a $0.00 hero: a confident
-  // zero claims a measurement that was never made (DL-15.6's reasoning).
-  if (recorded.length === 0) {
+  // Nothing anywhere is its own state, not a $0.00 hero: a confident zero
+  // claims a measurement that was never made (DL-15.6's reasoning). No range
+  // selector either — there is nothing to scope, so the control would be a
+  // set of four buttons that all say the same thing.
+  if (agentTotals(buckets, null).length === 0) {
     return <p class="usage-hero__empty">no data yet</p>;
   }
 
+  // Unknown id can only come from a stale signal; fall back to the whole
+  // history rather than rendering a figure scoped to nothing in particular.
+  const range =
+    USAGE_RANGES.find((entry) => entry.id === activeUsageRange.value) ??
+    USAGE_RANGES[USAGE_RANGES.length - 1];
+  const recorded = agentTotals(buckets, rangeSinceMs(range, Date.now()));
+
   const total = pricedTotal(recorded);
   const blocks = buildBlocks(recorded, total);
+  // Scoped to the range on purpose: a model that went unpriced last month has
+  // nothing to do with a figure covering this week, and naming it there would
+  // be a disclosure about data the reader is not being shown.
   const unpriced = [
     ...new Set(recorded.flatMap((entry) => entry.unpricedModels)),
   ].sort();
 
-  // Three footnotes for three honest situations. With nothing priced there is
-  // no figure to qualify, so the models are named outright. With a figure and
-  // a gap, the asterisk's "this is an estimate" is extended to say where the
-  // estimate stops — a partial sum is only acceptable while it admits it.
-  let footnote = "* if billed at full API rate";
-  if (total === null) {
+  // Four footnotes for four honest situations. An EMPTY range has no models
+  // at all, so it gets none: `no price for ` with nothing after it was a real
+  // bug, and an asterisk explaining a dash is noise the empty line below
+  // already covers. With nothing priced the models are named outright. With a
+  // figure and a gap, the asterisk's "this is an estimate" is extended to say
+  // where the estimate stops — a partial sum is only acceptable while it
+  // admits it.
+  let footnote: string | null = "* if billed at full API rate";
+  if (blocks.length === 0) {
+    footnote = null;
+  } else if (total === null) {
     footnote = `no price for ${unpriced.join(", ")}`;
   } else if (unpriced.length > 0) {
     const plural = unpriced.length === 1 ? "model" : "models";
@@ -273,20 +260,29 @@ export function OverviewSection() {
       >
         {total === null ? EM_DASH : `${formatUsd(total)}*`}
       </p>
-      <p class="usage-hero__footnote">{footnote}</p>
-      {/* Today still has to be on the screen (spec §Surface) — as one line
-          under the figure, not a second display figure competing with it
-          (DL-16.1). */}
-      <p class="usage-hero__today">
-        {todayLine(agentTotals(buckets, startOfLocalDay(Date.now())))}
-      </p>
+      {footnote === null ? null : (
+        <p class="usage-hero__footnote">{footnote}</p>
+      )}
+      {/* The period the figure covers (DL-16.7). This REPLACED a standalone
+          `today · $X · N tokens` line on 2026-08-10 — do not restore it as a
+          "fix". The spec's "today and recorded history" is still satisfied,
+          one click apart, and two totals printed at once contradict each
+          other the moment they differ. */}
+      <UsageRangeSelector />
       <p class="usage-hero__estimate">{ESTIMATE_NOTE}</p>
 
-      <ul class="usage-hero__agents">
-        {blocks.map((block) => (
-          <AgentRow key={block.agent} block={block} />
-        ))}
-      </ul>
+      {blocks.length === 0 ? (
+        // The range is empty, but the corpus is not. Say WHICH period is
+        // empty (DL-16.7) and keep the selector above reachable, or the
+        // reader is stranded on a screen that looks broken.
+        <p class="usage-hero__empty">{range.emptyLabel}</p>
+      ) : (
+        <ul class="usage-hero__agents">
+          {blocks.map((block) => (
+            <AgentRow key={block.agent} block={block} />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

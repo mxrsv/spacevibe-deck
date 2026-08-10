@@ -194,8 +194,10 @@ describe("UsageScreen", () => {
     };
     mount(true);
     const titles: string[] = [];
+    // Scoped to the rail: the overview's range selector (DL-16.7) is also a
+    // tablist, and an unscoped query would click its options too.
     for (const tab of host.querySelectorAll<HTMLButtonElement>(
-      '[role="tab"]',
+      '.usage-nav [role="tab"]',
     )) {
       act(() => {
         tab.click();

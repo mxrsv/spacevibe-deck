@@ -3219,11 +3219,10 @@ button.attn-mark:hover {
   color: var(--text-faint);
 }
 
-/* The asterisk's other half, and the two standing qualifiers. All three are
+/* The asterisk's other half, and the standing estimate disclaimer. Both are
    the same faint step: they qualify the figure, they do not compete with it
    (DL-3.4). */
 .usage-hero__footnote,
-.usage-hero__today,
 .usage-hero__estimate {
   margin: 3px 0 0;
   font-family: var(--ui-font);
@@ -3232,8 +3231,59 @@ button.attn-mark:hover {
   font-variant-numeric: tabular-nums;
 }
 
-.usage-hero__today {
+/* Separated from the selector above it, which is a control rather than more
+   prose about the figure. */
+.usage-hero__estimate {
   margin-top: 10px;
+}
+
+/* DL-16.7: the period the figure covers — the one control a metric screen is
+   allowed. Segmented rather than a §6 `cycle` pill so every period is visible
+   at once; §6 asks to be extended before a new kind is invented, and DL-16.7
+   is where that argument is recorded.
+   `flex-wrap` is a safety net, not the layout: all four options fit on one row
+   down to the narrowest shell the app can be dragged to (measured at a 640px
+   window, where the section is 188px wide), and wrapping is what happens if
+   someone adds a fifth rather than the row silently overflowing. The padding
+   below is tuned to that measurement — it was 9px and wrapped to two rows. */
+.usage-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  margin: 12px 0 0;
+}
+
+.usage-range__option {
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  /* Lowercase prose, like every other label in chrome (DL-4.1, DL-4.3). */
+  font-family: var(--ui-font);
+  font-size: 11.5px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition:
+    background 0.13s ease,
+    color 0.13s ease;
+}
+
+.usage-range__option:hover {
+  color: var(--text-primary);
+}
+
+/* The signifier this app already means by "active": the 4% --fg wash of
+   DL-5.1 and DL-11.2. Not a filled pill, not a coloured chip, not an
+   underline invented here — a reader who learned "active" in Settings must
+   not have to learn it twice. No shadow (DL-1.3). */
+.usage-range__option.is-active {
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  color: var(--text-primary);
+}
+
+.usage-range__option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* No data at all is a sentence, not a $0.00 hero — the same reasoning as
