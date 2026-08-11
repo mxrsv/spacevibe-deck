@@ -380,16 +380,11 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
     `typeof __deckGrab,__REACT_GRAB__,__REACT_GRAB_MODULE__ = ${armed}`,
   );
 
-  // The chain a grab actually travels: main world CustomEvent → preload
-  // (isolated world) → ipc → host → renderer event. Every hop is real here,
-  // including the structured clone of the event detail across worlds, which is
-  // the step no unit test can reach.
-  //
-  // The listener parks its result on a global instead of being awaited:
-  // `executeJavaScript` resolves the promise an expression returns, so
-  // awaiting the listener here would block until it timed out and the grab
-  // would be dispatched after the run had given up — which is exactly what the
-  // first version of this check did.
+  // A forged grab: dispatched by page script with no user gesture behind it,
+  // which is exactly what a hostile page in the panel can do. The preload's
+  // `isTrusted` gate is the only thing standing between that and a paste into
+  // a live agent session, and it cannot be tested anywhere but here — the
+  // trusted flag is set by the browser and cannot be faked in a unit test.
   await inPage(
     window,
     `(window.__deckSmokeGrab = null,
@@ -399,11 +394,69 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
   );
   await contents.executeJavaScript(
     `window.dispatchEvent(new CustomEvent("deck:browser-grab", {
-       detail: JSON.stringify({ text: "[<button> in Save]", url: location.href, title: document.title, count: 1 }),
+       detail: JSON.stringify({ text: "forged", url: location.href, count: 1 }),
      })), true`,
   );
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  const forged = await inPage<string | null>(window, `window.__deckSmokeGrab`);
+  record(
+    "a grab with no user gesture behind it is dropped",
+    forged === null || forged === undefined,
+    forged === null || forged === undefined ? "blocked" : `delivered: ${forged}`,
+  );
+
+  // The real chain: react-grab's own copy path → the plugin's copy hooks →
+  // main world CustomEvent → preload (isolated world) → ipc → host → renderer.
+  // `copyElement` is what ⌘C calls, so this exercises the hooks that decide a
+  // grab happened, the structured clone across worlds, and the gesture gate —
+  // none of which any unit test can reach.
+  await inPage(window, `(window.__deckSmokeGrab = null, true)`);
+
+  // A REAL input event, not a synthesised one. `dispatchEvent` produces
+  // `isTrusted: false`, which the preload's gate rejects by design — and
+  // `executeJavaScript(..., true)` marks user ACTIVATION, a different thing
+  // that does not make an event trusted. Only `sendInputEvent` does, and only
+  // into a focused view.
+  await contents.executeJavaScript(
+    `(window.__deckTrusted = 0,
+      window.addEventListener("pointerdown", (e) => { if (e.isTrusted) window.__deckTrusted++; }, true),
+      window.addEventListener("keydown", (e) => { if (e.isTrusted) window.__deckTrusted++; }, true),
+      true)`,
+  );
+  contents.focus();
+  const bounds = { x: 40, y: 30 };
+  contents.sendInputEvent({
+    type: "mouseDown",
+    x: bounds.x,
+    y: bounds.y,
+    button: "left",
+    clickCount: 1,
+  });
+  contents.sendInputEvent({
+    type: "mouseUp",
+    x: bounds.x,
+    y: bounds.y,
+    button: "left",
+    clickCount: 1,
+  });
+  contents.sendInputEvent({ type: "keyDown", keyCode: "c", modifiers: ["cmd"] });
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const trusted = await contents.executeJavaScript(`window.__deckTrusted`);
+  record(
+    "the page receives real, trusted input",
+    typeof trusted === "number" && trusted > 0,
+    // Diagnostic for the check below: with no trusted gesture the preload is
+    // CORRECT to drop the grab, so this separates "the gate works" from "the
+    // harness never pressed anything".
+    `${String(trusted)} trusted event(s)`,
+  );
+
+  await contents.executeJavaScript(
+    `(window.__REACT_GRAB__.copyElement(document.getElementById("target")), true)`,
+    true,
+  );
   let delivered = "timeout";
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 100));
     const seen = await inPage<string | null>(window, `window.__deckSmokeGrab`);
     if (seen !== null && seen !== undefined) {
@@ -412,9 +465,9 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
     }
   }
   record(
-    "a grab crosses page → preload → host → renderer",
-    delivered.includes("[<button> in Save]"),
-    delivered.slice(0, 120),
+    "a real copy reaches the renderer as a grab",
+    delivered.includes("button") || delivered.includes("target"),
+    delivered.slice(0, 140),
   );
 
   const inspect = await inPage<boolean>(

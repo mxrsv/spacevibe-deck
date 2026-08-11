@@ -35,6 +35,18 @@ export const settingsOpen = signal(false);
 export const promptsOpen = signal(false);
 
 /**
+ * Whether a tab's rename/color popover is up, in EITHER chrome layout.
+ *
+ * It exists for one consumer: the browser panel's native view paints above
+ * every DOM layer, so a popover that overlaps the panel's column is invisible
+ * unless the host is told to hide the view. The popover's own open state is
+ * component-local in `TabBar` and `WorkspaceSidebar` (only they need to know
+ * WHICH tab it belongs to); this mirrors the one bit anything outside them has
+ * a reason to read.
+ */
+export const tabPopoverOpen = signal(false);
+
+/**
  * True while a Shortcuts row is listening for a replacement chord.
  *
  * `handleShortcut` (tab-manager.ts) is a CAPTURE-phase window listener that

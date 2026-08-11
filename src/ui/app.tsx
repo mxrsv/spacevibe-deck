@@ -35,10 +35,12 @@ import type { AgentChoice } from "../lib/workspace-recents";
 import {
   boardOpen,
   editorRequest,
+  persistError,
   promptsOpen,
   reportPersistError,
   saveDialogOpen,
   settingsOpen,
+  tabPopoverOpen,
 } from "../chrome/events";
 import { OpenBoard } from "../open-board/open-board";
 import { PresetEditor } from "../presets/preset-editor";
@@ -675,6 +677,20 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   });
 
+  /**
+   * Everything that must hide the browser panel's native view.
+   *
+   * Wider than `overlayCoversPane()` on purpose: that one answers "is the
+   * FOCUSED PANE covered", which is about whether a pane-scoped action still
+   * makes sense. This one answers "is any DOM pixel trying to paint over the
+   * stage", because a native view wins that contest no matter the z-index.
+   */
+  const panelObscured = (): boolean =>
+    overlayCoversPane() ||
+    promptsOpen.value ||
+    tabPopoverOpen.value ||
+    persistError.value !== null;
+
   /** Live drag width while resizing, the persisted setting otherwise. */
   const browserWidth = (): number =>
     browserWidthLive.value ?? settings.value.browserWidth;
@@ -793,10 +809,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               width={browserWidth()}
               onWidthChange={(width) => updateSettings({ browserWidth: width })}
               onClose={() => void closeBrowser(defaultBrowserClient)}
-              // The native view paints above every DOM layer, so "an overlay
-              // is up" has to reach the host as a hide — CSS cannot put the
-              // Open board or Settings in front of it.
-              hidden={overlayCoversPane()}
+              // The native view paints above every DOM layer, so "something
+              // floats over the stage" has to reach the host as a hide — CSS
+              // cannot put anything in front of it.
+              //
+              // `overlayCoversPane()` alone was not enough, and the gap was
+              // not cosmetic: the Prompt Board popover is `right: 0` and 320px
+              // wide, so at any panel width it opens INSIDE the column and the
+              // user types into something they cannot see.
+              hidden={panelObscured()}
             />
           ) : null}
           {boardOpen.value ? (

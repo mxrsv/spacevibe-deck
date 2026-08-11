@@ -462,7 +462,47 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   server.** Component names and `file:line` come from react-grab reading React's
   fiber, and no React app was available here — the transport is proven, the
   richness of what it carries is upstream's behaviour. Also unverified on
-  Windows, like everything else on this branch (Gate C).
+  Windows, like everything else on this branch (Gate C). One knock-on worth
+  knowing: the menu is generated from `ACTION_REGISTRY`, which both hosts
+  share, so R3's regenerated
+  [`menu_registry.rs`](src-tauri/src/menu_registry.rs) `current` now carries a
+  View ▸ Browser item the Tauri build cannot serve. It is inert there rather
+  than broken, and it only ever matters if Gate C aborts the migration — in
+  which case this feature comes out whole.
+
+  **A code review of that commit returned 15 findings; 14 were real
+  (2026-08-12) and all are fixed.** The three that mattered: (1) any page in
+  the panel could **forge the grab event** — no gesture check, no rate limit —
+  and paste into the focused pane at will; the gate now lives in the preload's
+  isolated world and keys off `isTrusted`, which page script cannot set, with a
+  rate limit at both ends. (2) `sanitizeGrabText` stripped C0 but not **C1**,
+  and `U+009B 201~` is the 8-bit CSI form of the same bracketed-paste escape it
+  exists to block. (3) The panel hid its native view only for
+  `overlayCoversPane()`, so the **Prompt Board popover** (`right: 0`, 320px)
+  opened INSIDE the panel's column and was invisible behind it; the hide rule
+  now covers every floating surface, and `tabPopoverOpen` was added to
+  `chrome/events.ts` for the one bit the popovers' component-local state has to
+  expose. Also fixed: the toggle **destroyed the page** instead of hiding it,
+  so "reopening keeps the page" never actually happened (it rides `setVisible`
+  now); `browserHomeUrl` had no UI at all, so Settings gains a **browser
+  category**; and grabs were sent from `getContent`, which the bundle races
+  against its own abort signal, so a cancelled copy still pasted — sending
+  moved to the `onCopySuccess` / `onAfterCopy` plugin hooks. The one finding
+  that did NOT survive verification: closing a window was said to throw out of
+  the cleanup path and strand PTYs; a probe on Electron 43 showed
+  `webContents.close()` there is a no-op, so it was downgraded to a guard.
+
+  Two things the fixes themselves taught, both now locked by tests. An escape
+  written `\n` inside `inject.ts`'s template literal is consumed by TypeScript
+  and emits a REAL newline into the generated script: the whole injection was a
+  SyntaxError and Inspect was dead on every page, while every `toContain`
+  assertion still passed — the test now parses the script with `new Function`.
+  And `dispatchEvent` cannot exercise the new gate, because a synthesised event
+  is never trusted and `executeJavaScript(..., true)` marks user ACTIVATION,
+  which is a different thing; only `sendInputEvent` into a focused view
+  produces trust. The smoke harness now covers both sides — a forged grab is
+  dropped, a REAL `copyElement` reaches the renderer — at 24/26, with the same
+  two pre-existing Linux failures.
 
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.

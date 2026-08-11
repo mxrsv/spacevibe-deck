@@ -37,10 +37,17 @@ export function sanitizeGrabText(text: string): string {
   return (
     text
       .replace(/\r\n?/g, "\n")
-      // Every C0 control except tab (\u0009) and newline (\u000A), plus DEL.
-      // Written as code points, never as literal characters: an invisible ESC
-      // inside a character class is precisely the thing a reviewer cannot see.
-      .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "")
+      // Every C0 control except tab (\u0009) and newline (\u000A), then DEL and
+      // the whole C1 block. Written as code points, never as literal
+      // characters: an invisible ESC inside a character class is precisely the
+      // thing a reviewer cannot see.
+      //
+      // C1 is not decoration. \u009B is the 8-bit form of CSI, so \u009B201~ is
+      // the bracketed-paste terminator written without an ESC — it survives a
+      // C0-only filter, reaches the PTY as the bytes C2 9B, and any terminal
+      // honouring 8-bit controls reads it as the end of the paste. That is the
+      // same escape this function exists to prevent, spelled differently.
+      .replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, "")
       .replace(/\n{3,}/g, "\n\n")
       .trimEnd()
   );

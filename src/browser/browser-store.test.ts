@@ -165,18 +165,40 @@ describe("openBrowser", () => {
 });
 
 describe("closeBrowser", () => {
-  it("clears the panel's state even if the host call fails", async () => {
+  it("hides the panel and keeps the page", async () => {
+    // The toggle is a view, not a session. Destroying the page here made every
+    // reopen reload the home address, losing the route and the scroll position
+    // — while `openBrowser`'s keep-the-page branch became unreachable.
     browserOpen.value = true;
-    browserState.value = state({ url: "http://localhost:3000/" });
+    browserState.value = state({ url: "http://localhost:3000/deep/route" });
+    const client = fakeClient();
+    await closeBrowser(client);
+    expect(client.setVisible).toHaveBeenCalledWith(false);
+    expect(client.close).not.toHaveBeenCalled();
+    expect(browserOpen.value).toBe(false);
+    expect(browserState.value.url).toBe("http://localhost:3000/deep/route");
+  });
+
+  it("reopening after a hide asks for no URL", async () => {
+    const client = fakeClient({
+      open: vi.fn(async () => state({ url: "http://localhost:3000/deep/route" })),
+    });
+    browserState.value = state({ url: "http://localhost:3000/deep/route" });
+    await closeBrowser(client);
+    await openBrowser(client, "http://localhost:5173");
+    expect(client.open).toHaveBeenCalledWith(null);
+  });
+
+  it("closes the panel even if the host refuses to hide it", async () => {
+    browserOpen.value = true;
     browserNotice.value = "something";
     const client = fakeClient({
-      close: vi.fn(async () => {
+      setVisible: vi.fn(async () => {
         throw new Error("gone");
       }),
     });
     await closeBrowser(client);
     expect(browserOpen.value).toBe(false);
-    expect(browserState.value).toEqual(EMPTY_STATE);
     expect(browserNotice.value).toBeNull();
   });
 });

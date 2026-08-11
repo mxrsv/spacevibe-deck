@@ -26,6 +26,7 @@ class FakeContents {
   readonly executed: string[] = [];
   readonly loaded: string[] = [];
   closed = false;
+  destroyed = false;
   focused = false;
   url = "";
   title = "";
@@ -92,6 +93,9 @@ class FakeContents {
     return this.loading;
   }
   reload = vi.fn();
+  isDestroyed(): boolean {
+    return this.destroyed;
+  }
   close(): void {
     this.closed = true;
   }
@@ -120,8 +124,10 @@ function setup() {
   const added: unknown[] = [];
   const removed: unknown[] = [];
   const view = new FakeView();
+  let windowFocused = false;
   const window = {
     isDestroyed: () => false,
+    webContents: { focus: () => { windowFocused = true; } },
     contentView: {
       addChildView: (child: unknown) => added.push(child),
       removeChildView: (child: unknown) => removed.push(child),
@@ -139,7 +145,7 @@ function setup() {
     events: EVENTS,
     createView: () => view as never,
   });
-  return { panels, view, emitted, added, removed };
+  return { panels, view, emitted, added, removed, focusedWindow: () => windowFocused };
 }
 
 beforeEach(() => {
@@ -240,6 +246,70 @@ describe("BrowserPanels", () => {
       event: EVENTS.grab,
       payload: { text: "grabbed", url: "http://localhost:3000/", title: "", count: 1 },
     });
+  });
+
+  it("rate-limits grabs, so a page cannot flood the pane", () => {
+    // The preload gates on a real user gesture, which a page cannot forge.
+    // This is the second gate: a page that finds a way past the first one
+    // still cannot paste faster than a human could ask for it.
+    const { panels, view, emitted } = setup();
+    panels.open(LABEL, "http://localhost:3000/");
+    const handler = view.webContents.ipcHandlers.get("deck:browser-grab");
+    for (let i = 0; i < 50; i += 1) {
+      handler?.({}, JSON.stringify({ text: `flood ${i}` }));
+    }
+    expect(emitted.filter((e) => e.event === EVENTS.grab)).toHaveLength(1);
+  });
+
+  it("builds the injection once, not per navigation", () => {
+    // ~386 kB spliced per load; `dom-ready` and `did-finish-load` both inject.
+    const { panels, view } = setup();
+    panels.open(LABEL, "http://localhost:3000/");
+    view.webContents.emit("dom-ready");
+    view.webContents.emit("did-finish-load");
+    const scripts = view.webContents.executed;
+    expect(scripts.length).toBeGreaterThan(1);
+    expect(scripts[0]).toBe(scripts[1]);
+  });
+
+  it("clears the pending address when a load is aborted", () => {
+    // ERR_ABORTED is not an error worth showing, but the attempt is over —
+    // leaving it pending made the address bar name a page never loaded.
+    const { panels, view } = setup();
+    panels.open(LABEL, "http://localhost:3000/");
+    view.webContents.url = "http://localhost:3000/";
+    view.webContents.emit("did-fail-load", {}, -3, "Aborted", "http://other/", true);
+    expect(panels.state(LABEL)?.url).toBe("http://localhost:3000/");
+  });
+
+  it("hands keyboard focus back to the window when it hides", () => {
+    // `setInspect(true)` put focus in the page; hiding without taking it back
+    // sends the user's typing to a view they cannot see.
+    const { panels, view, focusedWindow } = setup();
+    panels.open(LABEL, "http://localhost:3000/");
+    panels.setInspect(LABEL, true);
+    expect(view.webContents.focused).toBe(true);
+    panels.setVisible(LABEL, false);
+    expect(focusedWindow()).toBe(true);
+  });
+
+  it("shows a panel again when it is reopened after the toggle hid it", () => {
+    const { panels, view } = setup();
+    panels.open(LABEL, "http://localhost:3000/");
+    panels.setVisible(LABEL, false);
+    expect(view.visible).toBe(false);
+    panels.open(LABEL, null);
+    expect(view.visible).toBe(true);
+  });
+
+  it("does not close a web contents that is already destroyed", () => {
+    // This runs first in the window's `closed` handler, ahead of every step
+    // that reclaims the window's panes.
+    const { panels, view } = setup();
+    panels.open(LABEL, "http://localhost:3000/");
+    view.webContents.destroyed = true;
+    panels.close(LABEL);
+    expect(view.webContents.closed).toBe(false);
   });
 
   it("sends a navigation it will not load to the OS browser", () => {

@@ -38,8 +38,12 @@ separate stylesheet is only needed by the ESM entry.
 1. `npm pack react-grab@<version>` (or download the tarball from the registry).
 2. Copy `package/dist/index.global.js` over the file here.
 3. Update the version, byte count and SHA-256 in the table above.
-4. Update `EXPECTED_SHA256` in `electron/browser/vendor.test.ts` — that test is
+4. Update `EXPECTED_SHA256` in `electron/browser/inject.test.ts` — that test is
    what fails if the file and this record ever disagree.
 5. Re-check the bootstrap in `electron/browser/inject.ts` against the new
-   build: it depends on three published names — the `__REACT_GRAB_MODULE__`
-   global, `init(options)` and the `getContent` option.
+   build. It depends on published names that a major bump could move: the
+   `__REACT_GRAB_MODULE__` global, `init(options)`, `setGlobalApi`,
+   `registerPlugin`, `generateSnippet`, the `getContent` and `telemetry`
+   options, and the `onCopySuccess` / `onAfterCopy` / `onCopyError` plugin
+   hooks. `inject.test.ts` checks the first few against the file; the hooks are
+   covered by the smoke run, which performs a real copy.

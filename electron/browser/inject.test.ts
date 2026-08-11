@@ -41,6 +41,15 @@ describe("buildInjection", () => {
   const vendor = "/*vendor*/ globalThis.__REACT_GRAB_MODULE__ = {};";
   const script = buildInjection(vendor);
 
+  it("is syntactically valid JavaScript", () => {
+    // The one assertion that would have caught the real bug: an escape written
+    // as `\n` inside this module's template literal is consumed by TypeScript
+    // and emits a REAL newline into the generated script, landing inside a
+    // string literal. Every `toContain` below still passed while the whole
+    // injection was a SyntaxError and Inspect was dead on every page.
+    expect(() => new Function(script)).not.toThrow();
+  });
+
   it("disables the bundle's self-init before the bundle runs", () => {
     // Order is the whole point: self-init takes telemetry-on defaults and no
     // content hook, and it happens the moment the bundle is evaluated.
@@ -60,13 +69,25 @@ describe("buildInjection", () => {
     expect(script).toContain(`if (!window.${PAGE_API})`);
   });
 
-  it("hands the grab to the host and returns the same text for the clipboard", () => {
+  it("returns the content react-grab copies, so ⌘C is unchanged", () => {
     expect(script).toContain(GRAB_EVENT);
-    // Sending and returning the SAME string is what leaves ⌘C behaving exactly
-    // as upstream while Deck also gets the text — the two destinations the
-    // "paste into the pane, keep the clipboard" decision requires.
-    expect(script).toContain("send(body, list.length);");
     expect(script).toContain("return body;");
+  });
+
+  it("sends only after the copy is decided, never from getContent", () => {
+    // The bundle races `getContent` against its own abort signal and discards
+    // the result when the user cancels — while calling the hook with a single
+    // argument, so the hook cannot tell. Sending from there pasted text the
+    // user had abandoned. The copy hooks run after that decision.
+    const contentAt = script.indexOf("function getContent");
+    const hooksAt = script.indexOf("onCopySuccess");
+    expect(hooksAt).toBeGreaterThan(-1);
+    expect(script).toContain("onAfterCopy");
+    expect(script).toContain("onCopyError");
+    // `getContent` stashes; it does not dispatch.
+    const body = script.slice(contentAt, script.indexOf("registerPlugin"));
+    expect(body).toContain("inFlight = {");
+    expect(body).not.toContain("send(");
   });
 
   it("adopts an instance the page already installed", () => {

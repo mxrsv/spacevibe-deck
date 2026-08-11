@@ -735,6 +735,40 @@ Two defects that run found and the mocked suite could not:
   no clipboard with nothing on screen; it now races a 2 s deadline and falls
   back to the element's markup.
 
+### What the code review changed (2026-08-12)
+
+15 findings, 14 real, all fixed in the follow-up commit. The ones that changed
+behaviour rather than wording:
+
+| Was | Is |
+| --- | --- |
+| Any page could dispatch the grab event; no gesture check, no rate limit | The preload gates on `isTrusted` — a bit page script cannot set — within 3 s, and both preload and host rate-limit |
+| `sanitizeGrabText` stripped C0 and DEL | It strips C1 too; `U+009B 201~` is the same bracketed-paste escape without an ESC |
+| The view hid only for `overlayCoversPane()` | It hides for every floating surface; the Prompt Board popover opened inside the panel's own column and was invisible |
+| The toggle destroyed the page | It hides it, which is what "reopening keeps the page" always claimed |
+| Grabs were sent from `getContent` | They are sent from `onCopySuccess` / `onAfterCopy`, after the bundle's abort race has decided — a cancelled copy no longer pastes |
+| `browserHomeUrl` had no UI | Settings has a **browser** category |
+| The `.js → .cjs` walk swept the vendored bundle | `vendor/` is skipped, and the output dir is cleared before the copy |
+
+One finding did not survive verification: closing a window was said to throw
+out of the cleanup path and strand PTYs. A probe on Electron 43 showed
+`webContents.close()` on an already-destroyed contents is a no-op, so it became
+a guard rather than a fix.
+
+Two traps found while fixing, both now locked by tests:
+
+- An escape written `\n` inside `inject.ts`'s template literal is consumed by
+  TypeScript and emits a real newline into the generated script. The injection
+  was a SyntaxError and Inspect was dead on every page while every `toContain`
+  assertion passed. The test now runs `new Function(script)`.
+- A synthesised DOM event can never exercise the new gate — `isTrusted` is
+  false, and `executeJavaScript(..., true)` marks user activation, not trust.
+  Only `sendInputEvent` into a focused view produces a trusted event, which is
+  how the smoke run now drives a real copy.
+
+Smoke is 24/26: a forged grab is dropped, a real `copyElement` reaches the
+renderer, and the two failures are the same pre-existing Linux ones.
+
 ### Not verified
 
 - **A real React dev server.** Component names and `file:line` come from

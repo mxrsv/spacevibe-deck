@@ -117,6 +117,30 @@ ${vendorSource}
         .join("\\n");
     }
 
+    // The content of the grab in flight, held between \`getContent\` and the
+    // copy hooks below, and consumed exactly once.
+    //
+    // Sending from inside \`getContent\` was wrong: the bundle races that hook
+    // against its own abort signal (\`e.signal\`) and DISCARDS the result when
+    // the user cancels — changes selection, leaves inspect mode — but the hook
+    // itself is called with one argument and never learns about it. So a copy
+    // the user abandoned still reached the terminal. The copy hooks fire after
+    // that decision, which is the only place that knows it happened.
+    var inFlight = null;
+
+    function flush(elements, ok) {
+      if (inFlight === null) {
+        return;
+      }
+      var grab = inFlight;
+      inFlight = null;
+      // \`ok === false\` means the CLIPBOARD write failed, not that the user
+      // cancelled — a cancel never reaches these hooks at all. Delivering to
+      // the pane is the point of the feature, so it still goes.
+      void ok;
+      send(grab.text, (elements && elements.length) || grab.count);
+    }
+
     // Replaces what react-grab copies. Returning the same string it would have
     // produced is what keeps the clipboard behaving exactly as upstream.
     //
@@ -149,7 +173,7 @@ ${vendorSource}
             clearTimeout(timer);
           }
           var body = text || plainMarkup(list);
-          send(body, list.length);
+          inFlight = { text: body, count: list.length };
           return body;
         });
     }
@@ -180,6 +204,30 @@ ${vendorSource}
       if (typeof mod.setGlobalApi === "function") {
         mod.setGlobalApi(api);
       }
+    }
+
+    // The hooks that decide a grab actually happened. Registered as a plugin
+    // because \`init\` takes options, not hooks.
+    if (api && typeof mod.registerPlugin === "function") {
+      mod.registerPlugin({
+        name: "deck-bridge",
+        hooks: {
+          onCopySuccess: function (elements, content) {
+            if (content && inFlight !== null) {
+              inFlight.text = content;
+            }
+            flush(elements, true);
+          },
+          onAfterCopy: function (elements, success) {
+            // Fires for both outcomes; \`flush\` is a no-op once onCopySuccess
+            // has consumed the grab, so a successful copy sends exactly once.
+            flush(elements, success);
+          },
+          onCopyError: function () {
+            inFlight = null;
+          },
+        },
+      });
     }
 
     window[config.api] = {

@@ -147,13 +147,25 @@ export async function openBrowser(
   }
 }
 
+/**
+ * Hide the panel, keeping the page.
+ *
+ * It calls `setVisible`, NOT `close`: closing destroys the render process, and
+ * the toggle is something a user hits to get the column out of the way for a
+ * moment. Destroying meant every reopen reloaded the home address, losing the
+ * route, the scroll position and any dev-server session — while `open`'s
+ * "keep whatever it was showing" branch and the host's own comment about the
+ * toggle claimed the opposite. The page is destroyed with its window.
+ *
+ * `browserState` is deliberately kept: it is what makes the reopen show the
+ * same address instead of asking the host for a page it never left.
+ */
 export async function closeBrowser(client: BrowserClient): Promise<void> {
   browserOpen.value = false;
   browserNotice.value = null;
-  browserState.value = EMPTY_STATE;
   try {
-    await client.close();
+    await client.setVisible(false);
   } catch (error) {
-    console.warn("Deck: the browser panel could not close:", error);
+    console.warn("Deck: the browser panel could not be hidden:", error);
   }
 }

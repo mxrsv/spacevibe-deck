@@ -22,7 +22,7 @@ import {
   setWorkspaceLogoFromPath,
 } from "../settings/workspace-logo-store";
 import { pickImagePath } from "../settings/logo-store";
-import { reportPersistError } from "../chrome/events";
+import { reportPersistError, tabPopoverOpen } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
 import { WorkspaceLogo } from "./workspace-logo";
 import { shortcutLabel } from "../lib/shortcut-label";
@@ -52,6 +52,14 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
     top: number;
     anchorEl: HTMLElement;
   } | null>(null);
+
+  // Mirror the popover's open state into the shared signal — the browser
+  // panel's native view has to be hidden while anything floats over the stage,
+  // and it cannot see a component-local signal.
+  useSignalEffect(() => {
+    tabPopoverOpen.value = popover.value !== null;
+  });
+
   const popoverTab =
     popover.value === null
       ? undefined

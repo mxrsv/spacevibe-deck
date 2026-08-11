@@ -128,6 +128,8 @@ const EXPECTED_ROWS = [
   "Foreground",
   "Cursor",
   "Selection",
+  // browser
+  "home address",
   // terminal
   "Scrollback",
   // agents (built-ins are locked rows; declared ones are added by the user)
@@ -178,7 +180,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 22 rows by walking the rail", () => {
+  it("reaches all 23 rows by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });

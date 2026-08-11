@@ -109,9 +109,11 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The ids `commands` implements — 41 entries, verified against the live
- * `commands` table (`tab-manager.ts:1041-1142`), Task 4's `copy-selection`/
- * `paste` included and the Prompt Board's `toggle-prompts` alongside them.
+ * The ids `commands` implements — 42 entries, verified against the live
+ * `commands` table, Task 4's `copy-selection`/`paste` included, the Prompt
+ * Board's `toggle-prompts` and the browser panel's `toggle-browser` alongside
+ * them. (Line numbers are deliberately not cited: they rotted within one
+ * feature of being written.)
  *
  * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
  * keymap binding points at an action nothing dispatches — the defect behind

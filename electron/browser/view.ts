@@ -25,10 +25,38 @@ import {
   type Rectangle,
 } from "electron";
 import { isLoadableUrl } from "./url";
-import { buildInjection, inspectCall, parseGrabPayload } from "./inject";
+import {
+  buildInjection,
+  GRAB_EVENT,
+  inspectCall,
+  parseGrabPayload,
+} from "./inject";
 
 /** Every window's browser panel shares one persistent session. */
 const PARTITION = "persist:deck-browser";
+
+/**
+ * Second gate behind the preload's, and the one a compromised preload cannot
+ * talk its way past. A human produces one grab per gesture; anything faster is
+ * a page trying.
+ */
+const MIN_GRAB_INTERVAL_MS = 200;
+
+/**
+ * The injection, built once.
+ *
+ * It is ~386 kB of vendored bundle plus a fixed bootstrap, it is spliced into
+ * every page load and every reload, and none of its inputs change while the
+ * app runs. Rebuilding the string per navigation put that concatenation, and
+ * the IPC transfer of the result, on the navigation path twice over.
+ */
+let injectionCache: string | null = null;
+function injectionFor(vendorSource: string): string {
+  if (injectionCache === null) {
+    injectionCache = buildInjection(vendorSource);
+  }
+  return injectionCache;
+}
 
 /** What the renderer needs to paint the panel's chrome. */
 export interface BrowserState {
@@ -71,6 +99,8 @@ interface Panel {
   error: string | null;
   /** Set while `loadURL` is in flight, so a failure can be attributed. */
   pending: string | null;
+  /** When the last accepted grab was forwarded, for the rate limit. */
+  lastGrabAt: number;
 }
 
 export class BrowserPanels {
@@ -91,6 +121,9 @@ export class BrowserPanels {
    */
   open(label: string, url: string | null): BrowserState {
     const panel = this.panels.get(label) ?? this.create(label);
+    // Reopening after the toggle hid it: the page is still alive, it just is
+    // not on screen.
+    this.setVisible(label, true);
     if (url !== null && url !== "") {
       this.navigate(label, url);
     }
@@ -180,11 +213,21 @@ export class BrowserPanels {
     panel.view.setVisible(visible);
     if (visible) {
       panel.view.setBounds(panel.bounds);
-    } else if (panel.inspect) {
+      return;
+    }
+    if (panel.inspect) {
       // A hidden view keeps its DOM state, and an inspect overlay left armed
       // would still be armed when the panel comes back — with the pointer
       // somewhere else entirely.
       this.setInspect(label, false);
+    }
+    // Hiding does not move keyboard focus, and `setInspect(true)` deliberately
+    // put it inside the page. Without this, opening Settings over an armed
+    // panel leaves every keystroke going to a view nobody can see, and the
+    // surface the user just opened looks dead until they click it.
+    const window = this.deps.windowFor(label);
+    if (window !== undefined && !window.isDestroyed()) {
+      window.webContents.focus();
     }
   }
 
@@ -220,7 +263,16 @@ export class BrowserPanels {
     }
     // Destroys the render process behind the view. Without it the page keeps
     // running — timers, sockets and all — for the life of the app.
-    panel.view.webContents.close();
+    //
+    // Guarded because this also runs from the window's `closed` handler, where
+    // Electron has already torn the view down with its window. Measured on
+    // Electron 43: `close()` there is a no-op rather than a throw — but this
+    // call is the FIRST statement of that handler in `main.ts`, and everything
+    // that reclaims the window's panes runs after it, so a future version that
+    // does throw would strand PTYs and leave quit unanswerable.
+    if (!panel.view.webContents.isDestroyed()) {
+      panel.view.webContents.close();
+    }
   }
 
   state(label: string): BrowserState | null {
@@ -251,6 +303,7 @@ export class BrowserPanels {
       inspect: false,
       error: null,
       pending: null,
+      lastGrabAt: 0,
     };
     this.panels.set(label, panel);
 
@@ -279,7 +332,7 @@ export class BrowserPanels {
     // covers a document that swapped in without a `dom-ready` of its own.
     const inject = (): void => {
       contents
-        .executeJavaScript(buildInjection(this.deps.vendorSource()))
+        .executeJavaScript(injectionFor(this.deps.vendorSource()))
         .catch((err: unknown) => {
           console.warn("[deck] react-grab injection failed:", err);
         });
@@ -301,8 +354,13 @@ export class BrowserPanels {
       }
       // -3 is ERR_ABORTED, which a redirect or a fast second navigation
       // produces routinely. Showing it would put an error bar on a page that
-      // loaded fine.
+      // loaded fine — but the attempt is over either way, so the address the
+      // user typed stops being what the panel reports. Leaving it set made the
+      // address bar name a page that was never loaded, for the rest of the
+      // session.
       if (code === -3) {
+        panel.pending = null;
+        this.publish(label);
         return;
       }
       panel.error = `${description || "Load failed"} (${url})`;
@@ -339,11 +397,16 @@ export class BrowserPanels {
       callback(false);
     });
 
-    contents.ipc.on("deck:browser-grab", (_event, raw: unknown) => {
+    contents.ipc.on(GRAB_EVENT, (_event, raw: unknown) => {
       const payload = parseGrabPayload(raw);
       if (payload === null) {
         return;
       }
+      const at = Date.now();
+      if (at - panel.lastGrabAt < MIN_GRAB_INTERVAL_MS) {
+        return;
+      }
+      panel.lastGrabAt = at;
       const grab: BrowserGrab = payload;
       this.deps.emit(label, this.deps.events.grab, grab);
     });

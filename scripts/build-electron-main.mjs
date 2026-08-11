@@ -14,6 +14,7 @@ import {
   statSync,
   cpSync,
   existsSync,
+  rmSync,
 } from "node:fs";
 import { join } from "node:path";
 
@@ -22,6 +23,15 @@ const ROOT = "dist-electron";
 function walk(dir) {
   const out = [];
   for (const entry of readdirSync(dir)) {
+    // `vendor/` holds copied assets, not compiled output. Renaming them is
+    // wrong twice over: the copy is re-made on the next build anyway, and the
+    // rewrite pass mangles `require()` specifiers inside 386 kB of minified
+    // third-party source. An incremental build did exactly that — the second
+    // run reported 31 files instead of 30 and left an `index.global.cjs`
+    // beside the real one for packaging to ship.
+    if (entry === "vendor") {
+      continue;
+    }
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) {
       out.push(...walk(path));
@@ -56,6 +66,9 @@ console.log(`renamed ${files.length} files to .cjs`);
 const VENDOR_SRC = join("electron", "vendor");
 const VENDOR_OUT = join(ROOT, "electron", "vendor");
 if (existsSync(VENDOR_SRC)) {
+  // Removed first so a mangled `.cjs` left by an older build cannot survive
+  // into the packaged app.
+  rmSync(VENDOR_OUT, { recursive: true, force: true });
   cpSync(VENDOR_SRC, VENDOR_OUT, { recursive: true });
   console.log(`copied ${VENDOR_SRC} -> ${VENDOR_OUT}`);
 }
