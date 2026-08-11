@@ -37,14 +37,20 @@ interface Tally {
 }
 
 /**
- * Every readable stylesheet the document loaded from `src/styles.css`.
+ * The top-level rules of every readable `src/styles.css` the document loaded.
  *
- * Exported because the forced-state builder needs the same sheet and finding
+ * Exported because the forced-state builder needs the same sheet, and finding
  * it is the fiddly part — a second copy of this lookup is a second thing to
  * get wrong when Vite changes how it injects styles.
+ *
+ * It hands back the rule lists rather than the sheets on purpose: reading
+ * `cssRules` is the access that throws on a cross-origin sheet, so the guard
+ * has to wrap that read and keep what it returns. A probe that reads and
+ * discards guards nothing — the real read would still be outside the handler,
+ * and a minifier is free to drop a discarded property access altogether.
  */
-export function appStyleSheets(): readonly CSSStyleSheet[] {
-  const sheets: CSSStyleSheet[] = [];
+export function appRuleLists(): readonly CSSRuleList[] {
+  const lists: CSSRuleList[] = [];
   for (const sheet of document.styleSheets) {
     const node = sheet.ownerNode;
     const devId =
@@ -54,16 +60,14 @@ export function appStyleSheets(): readonly CSSStyleSheet[] {
       continue;
     }
     try {
-      // Touching `cssRules` is the access that throws on a cross-origin
-      // sheet. The app sheet is same-origin in dev, so this only skips
-      // something neither reader was ever going to see.
-      void sheet.cssRules;
+      lists.push(sheet.cssRules);
     } catch {
+      // The app sheet is same-origin in dev, so this only skips something
+      // neither reader was ever going to see.
       continue;
     }
-    sheets.push(sheet);
   }
-  return sheets;
+  return lists;
 }
 
 function styleRules(): readonly CSSStyleRule[] {
@@ -80,8 +84,8 @@ function styleRules(): readonly CSSStyleRule[] {
       }
     }
   };
-  for (const sheet of appStyleSheets()) {
-    collect(sheet.cssRules);
+  for (const list of appRuleLists()) {
+    collect(list);
   }
   return rules;
 }

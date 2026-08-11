@@ -1,18 +1,21 @@
-import { useLayoutEffect, useRef } from "preact/hooks";
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { applyThemeVars } from "../../lib/theme-vars";
 import { settings } from "../../settings/settings-store";
 import { resolveTheme, THEME_PRESETS } from "../../settings/themes";
-import { ChromeActions } from "../../ui/chrome-actions";
 import { DesktopChrome } from "../../ui/app";
 import { StatusBar } from "../../ui/status-bar";
-import { TabBar } from "../../ui/tab-bar";
-import { WorkspaceSidebar } from "../../ui/workspace-sidebar";
 import {
   ConfigGroup,
   ConfigRow,
   ToggleRow,
 } from "../../ui/controls/config-row";
+import {
+  chromeActionsSpecimen,
+  NOOP,
+  tabBarSpecimen,
+  workspaceSidebarSpecimen,
+} from "../chrome-fixtures";
 import {
   FORCE_CLASS,
   installForcedStates,
@@ -40,8 +43,6 @@ import { SectionHead } from "../specimen";
  * The one size is fixed rather than responsive: a matrix whose cells differ in
  * width would compare two things at once.
  */
-
-const NOOP = (): void => {};
 
 /**
  * Every cell is this wide, in every block.
@@ -79,7 +80,7 @@ const STATE_ROWS: readonly StateRow[] = [
     id: "active",
     force: "active",
     disabled: false,
-    note: "pointer-down; compare it with the row below — almost nothing separates them today",
+    note: "pointer-down, the moment between hover and the click landing",
   },
   {
     id: "selected",
@@ -97,9 +98,22 @@ const STATE_ROWS: readonly StateRow[] = [
     id: "disabled",
     force: null,
     disabled: true,
-    note: "real disabled props, so the browser applies :disabled itself",
+    note: "real disabled props on the real components, so the browser applies :disabled itself",
   },
 ];
+
+/**
+ * Said on the `disabled` row because the row cannot say it by rendering.
+ *
+ * `ToggleRow` puts `cfg-btn--disabled` on the element and `styles.css`
+ * declares no rule for it, nor for `.cfg-btn:disabled`. Measured rather than
+ * read: the pill's colour, background, border and opacity are identical in
+ * the disabled row and the selected row. DL-5.2 says a disabled pill is
+ * `--text-faint`, so this is a gap in the app that the matrix surfaced — and
+ * DL §10 says it gets fixed when the config row is reworked, not here.
+ */
+const DISABLED_FINDING =
+  "identical to selected: no .cfg-btn:disabled or .cfg-btn--disabled rule exists, against DL-5.2";
 
 /**
  * A theme scope. `applyThemeVars` takes a `CSSStyleDeclaration`, so pointing it
@@ -140,23 +154,6 @@ function ThemeCell({
   );
 }
 
-function chromeActions(disabled: boolean) {
-  return (
-    <ChromeActions
-      settingsOpen={false}
-      expandActive={false}
-      promptsOpen={false}
-      promptsDisabled={disabled}
-      onSplitRow={NOOP}
-      onSplitColumn={NOOP}
-      onClosePane={NOOP}
-      onToggleExpand={NOOP}
-      onTogglePrompts={NOOP}
-      onToggleSettings={NOOP}
-    />
-  );
-}
-
 function WindowCell({
   sidebar,
   disabled,
@@ -170,41 +167,11 @@ function WindowCell({
       // In sidebar mode the actions live in the titlebar; in top mode `TabBar`
       // renders them itself. Passing the real component either way is what
       // gives the disabled row something to show in both positions.
-      toolbar={sidebar ? chromeActions(disabled) : null}
-      sidebarNavigation={
-        sidebar ? (
-          <WorkspaceSidebar
-            onSelectTab={NOOP}
-            onCloseTab={NOOP}
-            onNewTab={NOOP}
-            onRenameTab={NOOP}
-            onSetTabColor={NOOP}
-            onFocusAttention={NOOP}
-          />
-        ) : null
+      toolbar={
+        sidebar ? chromeActionsSpecimen({ promptsDisabled: disabled }) : null
       }
-      topTabs={
-        sidebar ? null : (
-          <TabBar
-            settingsOpen={false}
-            expandActive={false}
-            promptsOpen={false}
-            promptsDisabled={disabled}
-            onSelectTab={NOOP}
-            onCloseTab={NOOP}
-            onNewTab={NOOP}
-            onSplitRow={NOOP}
-            onSplitColumn={NOOP}
-            onClosePane={NOOP}
-            onRenameTab={NOOP}
-            onSetTabColor={NOOP}
-            onToggleSettings={NOOP}
-            onTogglePrompts={NOOP}
-            onToggleExpand={NOOP}
-            onFocusAttention={NOOP}
-          />
-        )
-      }
+      sidebarNavigation={sidebar ? workspaceSidebarSpecimen() : null}
+      topTabs={sidebar ? null : tabBarSpecimen({ promptsDisabled: disabled })}
       stage={<div class="stage" />}
       status={<StatusBar />}
       onMacTitlebarDoubleClick={NOOP}
@@ -213,8 +180,9 @@ function WindowCell({
 }
 
 /**
- * The config-row vocabulary, which is where focus and disabled are legible and
- * where the window shell has almost nothing to show.
+ * The config-row vocabulary, which is where focus is legible and where the
+ * window shell has almost nothing to show. It is also what proved that
+ * disabled is NOT legible — see `DISABLED_FINDING`.
  *
  * `ToggleRow` is the real component. The two pills below it are hand-assembled
  * because no exported component produces a bare `cfg-btn` — the same
@@ -250,15 +218,33 @@ function ControlCell({ disabled }: { disabled: boolean }) {
   );
 }
 
+/**
+ * What a row cannot show by rendering: that the state it names has no rule
+ * behind it, so its cells are identical to the resting row. Read from the
+ * built sheet rather than written here, because a hand-kept list would go on
+ * claiming `:active` is missing the day somebody adds one.
+ */
+function rowFinding(
+  row: StateRow,
+  absent: readonly ForcedState[],
+): string | null {
+  if (row.force !== null && absent.includes(row.force)) {
+    return `identical to selected: styles.css declares no ${row.force === "focus" ? ":focus" : `:${row.force}`} rule`;
+  }
+  return row.disabled ? DISABLED_FINDING : null;
+}
+
 function MatrixBlock({
   title,
   note,
   tall,
+  absent,
   render,
 }: {
   title: string;
   note: string;
   tall: boolean;
+  absent: readonly ForcedState[];
   render: (disabled: boolean) => ComponentChildren;
 }) {
   return (
@@ -285,6 +271,11 @@ function MatrixBlock({
             <span class="gx-matrix__rowhead">
               <span class="gx-matrix__statename">{row.id}</span>
               <span class="gx-matrix__statenote">{row.note}</span>
+              {rowFinding(row, absent) !== null && (
+                <span class="gx-matrix__finding">
+                  {rowFinding(row, absent)}
+                </span>
+              )}
             </span>
             {THEME_PRESETS.map((preset) => (
               <ThemeCell key={preset.id} themeId={preset.id} force={row.force}>
@@ -303,9 +294,15 @@ function MatrixBlock({
 }
 
 export function MatrixSection() {
+  const [absent, setAbsent] = useState<readonly ForcedState[]>([]);
+
   // Rebuilt on mount so an HMR edit to styles.css reaches the forced copies:
   // leave the section and come back.
-  useLayoutEffect(() => installForcedStates(), []);
+  useLayoutEffect(() => {
+    const installed = installForcedStates();
+    setAbsent(installed.absent);
+    return installed.dispose;
+  }, []);
 
   return (
     <>
@@ -318,6 +315,7 @@ export function MatrixSection() {
         title="window chrome — tabBarPosition: top"
         note="real DesktopChrome; hover, active and focus are the app's own rules re-scoped, not copies"
         tall
+        absent={absent}
         render={(disabled) => (
           <WindowCell sidebar={false} disabled={disabled} />
         )}
@@ -327,13 +325,15 @@ export function MatrixSection() {
         title="window chrome — tabBarPosition: left"
         note="the same shell in sidebar mode; the chrome actions move into the titlebar"
         tall
+        absent={absent}
         render={(disabled) => <WindowCell sidebar disabled={disabled} />}
       />
 
       <MatrixBlock
         title="config rows"
-        note="where focus and disabled are legible; independent of tab-bar position"
+        note="where focus is legible and disabled measurably is not; independent of tab-bar position"
         tall={false}
+        absent={absent}
         render={(disabled) => <ControlCell disabled={disabled} />}
       />
     </>
