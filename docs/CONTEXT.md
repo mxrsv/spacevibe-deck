@@ -680,6 +680,61 @@ reaches its owner instead of being dropped as "no route for pane".
 packaging, and the full manual pass. Nothing here ships, and the Tauri build
 remains what users run.
 
+## File explorer built — 2026-08-12
+
+Electron branch only; nothing here ships on Tauri. Built against the
+[plan](plans/2026-08-12-file-explorer.md) `built` task by task, from the
+[spec](specs/2026-08-12-file-explorer-design.md) `decided`. 34 of 36 tasks
+done; the two that are not are the two that need a machine.
+
+**What landed.** A docked column on the right of the `.window` grid showing the
+active workspace's file tree, and file tabs beside the terminal tabs, editable
+and saveable in Monaco. In three layers, deliberately:
+
+- **Pure model** (`src/files/`) — the tree, the preview-slot promotion rules,
+  the §5 external-change table, the dirty model, encoding/EOL, and the path
+  bound. None of it knows what renders the text, so it survives an
+  editor-engine change intact.
+- **Host** (`electron/fs/`) — `list_dir`, `read_file`, `write_file`,
+  `stat_files`, `watch_paths` and `set_dirty_files`, every one bounded to the
+  workspace root by `path-guard.ts`. `writeAtomically` moved out of
+  `JsonStore` into `fs/write.ts` and the store now calls it — one atomic
+  writer, not two, with the store's existing 205 lines of tests as the
+  regression gate on the extraction.
+- **Surface** — the panel (DESIGN LANGUAGE §16), a virtualized 22px-row tree,
+  the file tabs in BOTH chrome layouts, and the editor.
+
+**The three exits all changed together**, because any five of the six parts is
+a hole. `app.on("before-quit")` returned early on an empty pane list, so a
+window holding only file tabs quit with unsaved edits and no prompt; the
+census now carries `dirtyFiles`, `closeRequestOrNull` was widened to keep the
+field, and the renderer's `busyPanes === 0` auto-confirm became "empty in both
+dimensions". `confirmMessage` names a busy agent and unsaved files in ONE
+dialog. Window death clears that window's dirty entries beside the pane
+routes.
+
+**Measured Monaco cost.** Entry chunk 178.34 → 189.26 kB gzip (+10.92 kB, the
+explorer's own UI). `editor.api` is a separate lazily-imported 674.50 kB gzip
+chunk, plus 27 per-language tokenizer chunks and two worker chunks. No Monaco
+byte is in the entry chunk — the binding requirement holds. No language
+services are imported (the TypeScript one alone is 12 MB of the package).
+
+**Two defects the new tests caught.** Saving through an existing symlink that
+pointed OUT of the workspace was allowed, because the link's parent was inside
+the root and the guard fell through to its "new file" branch — a real escape,
+now refused by an `lstat` check. And the first file tab got an editor with no
+model, because Monaco's dynamic import resolves after the model effect has
+already run and nothing re-ran it.
+
+**NOT verified — everything needing a real window.** Gate M has not been run
+and cannot be until MVP T19 produces a packaged build; the thirteen-item
+manual pass has not been run at all; every `manual (owner)` line in the plan is
+outstanding. `npm test` (1740 passing), `npm run build`,
+`npm run electron:build`, `generate:menu:check` and the Electron IPC contract
+test are green, and none of them opens a window. Details, including the two
+approved dependencies that were deliberately not added and why, are in the
+plan's §6.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

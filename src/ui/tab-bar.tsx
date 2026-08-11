@@ -15,6 +15,7 @@ import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { ChromeActions } from "./chrome-actions";
 import { TabPopover } from "./tab-popover";
 import { shortcutLabel } from "../lib/shortcut-label";
+import { fileTabViews } from "../files/ui/file-tab-views";
 
 interface TabBarProps {
   settingsOpen: boolean;
@@ -27,6 +28,10 @@ interface TabBarProps {
   onRenameTab(index: number, name: string | null): void;
   onSetTabColor(index: number, color: TabDotColor | null): void;
   onToggleSettings(): void;
+  /** Bring a file tab to the stage. */
+  onSelectFile(path: string): void;
+  /** Close a file tab — guarded on unsaved edits, not on busy processes. */
+  onCloseFile(path: string): void;
   expandActive: boolean;
   /** Whether the Prompt Board popover is up — forwarded to ChromeActions. */
   promptsOpen: boolean;
@@ -42,6 +47,12 @@ interface TabBarProps {
 export function TabBar(props: TabBarProps) {
   const tabs = tabViews.value;
   const active = activeTabIndex.value;
+  // The strip is the union: all terminal tabs, then the file tabs of the active
+  // surface's workspace (spec §4.2). Built by the SAME function the sidebar
+  // uses, so the two layouts cannot drift.
+  const files = fileTabViews();
+  // A terminal tab is only "the active surface" while no file tab is.
+  const terminalActive = files.every((file) => !file.active);
   const rootRef = useRef<HTMLElement>(null);
   // Anchored by tab key, not index — tabs can close (and indexes shift)
   // while the popover is open; actions resolve the index at call time.
@@ -94,7 +105,7 @@ export function TabBar(props: TabBarProps) {
             aria-selected={index === active}
             tabIndex={0}
             data-key={tab.key}
-            class={`tab ${index === active ? "is-active" : ""}`}
+            class={`tab ${index === active && terminalActive ? "is-active" : ""}`}
             onClick={(event) => {
               if (index !== active) {
                 props.onSelectTab(index); // inactive tab: just select
@@ -144,6 +155,32 @@ export function TabBar(props: TabBarProps) {
               onClick={(event) => {
                 event.stopPropagation();
                 props.onCloseTab(index);
+              }}
+            >
+              <DeckIcon icon={X} size={CHROME_ICON} />
+            </button>
+          </div>
+        ))}
+        {files.map((file) => (
+          <div
+            key={file.path}
+            role="tab"
+            aria-selected={file.active}
+            tabIndex={0}
+            data-file={file.path}
+            title={file.path}
+            class={`tab tab--file ${file.active ? "is-active" : ""} ${file.preview ? "is-preview" : ""}`}
+            onClick={() => props.onSelectFile(file.path)}
+          >
+            <span class="tab__label">{file.name}</span>
+            {file.dirty && <span class="tab__dirty" aria-label="Unsaved changes" />}
+            <button
+              type="button"
+              class="tab__close"
+              aria-label={`Close ${file.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                props.onCloseFile(file.path);
               }}
             >
               <DeckIcon icon={X} size={CHROME_ICON} />

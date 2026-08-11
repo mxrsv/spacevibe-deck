@@ -41,6 +41,15 @@ export const CHANNELS = {
   endUpdateCheck: "end_update_check",
   applySettingsPatch: "apply_settings_patch",
   suspendMenuAccelerators: "suspend_menu_accelerators",
+  // File explorer. Every one of these is bounded to a workspace root by
+  // `electron/fs/path-guard.ts` — the renderer names the path, and the
+  // renderer is not the trust boundary.
+  listDir: "list_dir",
+  readFile: "read_file",
+  writeFile: "write_file",
+  statFiles: "stat_files",
+  watchPaths: "watch_paths",
+  setDirtyFiles: "set_dirty_files",
 } as const;
 
 /** Events: main → renderer, fire and forget. */
@@ -55,6 +64,7 @@ export const EVENTS = {
   quitRequested: "quit-requested",
   windowCloseRequested: "window:close-requested",
   settingsMerged: "settings:merged",
+  fileChanged: "fs:changed",
 } as const;
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS];

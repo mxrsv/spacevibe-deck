@@ -37,6 +37,10 @@ import { resolvePaths, openEditor } from "./links";
 import { listPromptAssets } from "./prompt-assets";
 import { readImageAsDataUrl, scanWorkspaceFavicon } from "./images";
 import { applySettingsPatch } from "./settings-merge";
+import { listDir, readFile, statFiles } from "./fs/read";
+import { writeTextFile } from "./fs/write";
+import { createWatchRegistry } from "./fs/watch";
+import { MainDirtyRegistry } from "./dirty-registry";
 import { buildMenu } from "./menu";
 import {
   MACOS_KEYMAP,
@@ -76,6 +80,20 @@ function emitTo(label: string, event: string, payload: unknown): boolean {
 }
 
 const coordinator = new WindowCoordinator(emitTo);
+
+/**
+ * Unsaved editor buffers, per window (spec §6).
+ *
+ * Dirty state lives in Monaco, in the renderer; the census lives here so a
+ * wedged webview cannot make ⌘Q unanswerable. This registry is what keeps that
+ * invariant true once files are editable — main still answers the census alone.
+ */
+const dirtyFiles = new MainDirtyRegistry();
+
+/** `fs.watch` scopes, per window. Replaced wholesale on every renderer call. */
+const watchers = createWatchRegistry((label, event) => {
+  emitTo(label, EVENTS.fileChanged, event);
+});
 
 const pty = new PtyManager({
   emitToOwner: (paneId, event, payload) =>
@@ -163,7 +181,15 @@ function createWindow(label: string): BrowserWindow {
         closeFlight.take(label, requestId);
         return;
       }
-      if (!emitTo(label, EVENTS.windowCloseRequested, censusFor(requestId, infos))) {
+      if (
+        !emitTo(
+          label,
+          EVENTS.windowCloseRequested,
+          // This window's unsaved files only. Closing one window must not name
+          // another's, and the pane census is already scoped the same way.
+          censusFor(requestId, infos, dirtyFiles.forWindow(label)),
+        )
+      ) {
         // Nobody can answer the prompt — a wedged or gone webview. Release
         // the flight so the next attempt is not swallowed silently.
         closeFlight.take(label, requestId);
@@ -176,6 +202,11 @@ function createWindow(label: string): BrowserWindow {
     registry.forgetWindow(label);
     quitFlight.forgetWindow(label);
     closeFlight.forget(label);
+    // Same reason the pane routes are cleared right here: a renderer that dies
+    // mid-edit would otherwise leave main permanently believing a file is
+    // unsaved, and ⌘Q would ask about a window that no longer exists.
+    dirtyFiles.forgetWindow(label);
+    watchers.forgetWindow(label);
     // Crash path: no close event fired and no busy guard ran, so the panes this
     // window still owned would otherwise outlive it with nobody reading them.
     for (const paneId of coordinator.handleWindowDestroyed(label)) {
@@ -313,6 +344,35 @@ ipcMain.handle(CHANNELS.suspendMenuAccelerators, (_event, { suspended }) => {
   acceleratorsSuspended = next;
   rebuildMenu();
 });
+
+// ---------------------------------------------------------- File explorer
+// Every path is bounded to the workspace root by `fs/path-guard.ts`. `root`
+// travels with each call rather than being remembered per window: a tab fixes
+// its workspace at Open and a second window may hold a different one, so a
+// cached root would authorize the wrong tree.
+ipcMain.handle(CHANNELS.listDir, (_event, { root, directory }) =>
+  listDir(root, directory),
+);
+ipcMain.handle(CHANNELS.readFile, (_event, { root, path: target }) =>
+  readFile(root, target),
+);
+ipcMain.handle(
+  CHANNELS.writeFile,
+  (_event, { root, path: target, text, eol }) =>
+    writeTextFile(root, target, text, eol),
+);
+ipcMain.handle(CHANNELS.statFiles, (_event, { root, paths }) =>
+  statFiles(root, paths),
+);
+ipcMain.handle(CHANNELS.watchPaths, (event, { root, directories, files }) => {
+  // A REPLACE. Adding would let a collapsed directory leak a watcher for the
+  // rest of the window's life.
+  watchers.replace(labelOf(event), { root, directories, files });
+});
+ipcMain.handle(CHANNELS.setDirtyFiles, (event, { paths }) => {
+  dirtyFiles.replace(labelOf(event), Array.isArray(paths) ? paths : []);
+});
+
 ipcMain.handle(CHANNELS.applySettingsPatch, async (_event, { patch }) => {
   const merged = await applySettingsPatch(stores, patch);
   // A rebind has to reach the native menu in the same turn it reaches the
@@ -659,7 +719,13 @@ app.whenReady().then(() => {
 
 app.on("before-quit", (event) => {
   const paneIds = coordinator.allPanes();
-  if (paneIds.length === 0) {
+  // The dirty registry is part of this question, not an afterthought: a window
+  // holding only file tabs owns NO panes, so `allPanes()` is empty and this
+  // early return used to let ⌘Q exit with unsaved edits in the editor, silently
+  // (plan §1 finding 4). Window close never had this hole — it prevents the
+  // default unconditionally — so the two paths are fixed differently on
+  // purpose.
+  if (paneIds.length === 0 && !dirtyFiles.anyDirty()) {
     return;
   }
   // No window can answer, so there is nobody to prompt. Rust's `exit_policy`
@@ -685,9 +751,16 @@ app.on("before-quit", (event) => {
       quitFlight.finish(requestId);
       return;
     }
-    // Sent even when nothing is busy: the renderer auto-confirms an empty
-    // census, but only after flushing debounced state to disk.
-    if (!emitTo(label, EVENTS.quitRequested, censusFor(requestId, infos))) {
+    // Sent even when nothing is busy: the renderer auto-confirms a census that
+    // is empty in BOTH dimensions, but only after flushing debounced state to
+    // disk. Every window's unsaved files, deduplicated — quit ends them all.
+    if (
+      !emitTo(
+        label,
+        EVENTS.quitRequested,
+        censusFor(requestId, infos, dirtyFiles.all()),
+      )
+    ) {
       quitFlight.finish(requestId);
     }
   })();

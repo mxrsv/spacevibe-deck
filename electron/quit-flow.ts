@@ -34,11 +34,20 @@ export interface BusyCensus {
   /** False when any pane could not be classified — the dialog then uses the
    * generic "could not verify" copy. */
   readonly fullyNamed: boolean;
+  /**
+   * Absolute paths of unsaved editor buffers in scope (spec §6).
+   *
+   * Folded in HERE, beside the pane census, rather than asked of the renderer
+   * at prompt time: the census stays answerable from main alone, which is the
+   * invariant that put it in main in the first place.
+   */
+  readonly dirtyFiles: string[];
 }
 
 export function censusFor(
   requestId: number,
   infos: readonly PtyInfo[],
+  dirtyFiles: readonly string[] = [],
 ): BusyCensus {
   const busy = infos.filter(isBusy);
   const busyProcesses: string[] = [];
@@ -61,6 +70,7 @@ export function censusFor(
     busyProcesses,
     busyPanes: busy.length,
     fullyNamed,
+    dirtyFiles: [...dirtyFiles],
   };
 }
 

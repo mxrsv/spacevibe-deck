@@ -1,6 +1,8 @@
 # File Explorer — Implementation Plan
 
-**Status:** `planned` — no code written. Authored 2026-08-12 against the
+**Status:** `built` — implemented 2026-08-12 against this plan, task by task.
+Everything runnable in a headless environment is green; every `manual (owner)`
+line and Gate M itself are outstanding. See §6. Authored 2026-08-12 against the
 [file explorer design](../specs/2026-08-12-file-explorer-design.md) `decided`,
 which is itself pending user approval.
 
@@ -307,7 +309,7 @@ on `unit` alone (§0.4).
 
 ### Phase 0 — Gate M (what can kill the feature)
 
-- [ ] **T1. Monaco loader, pinned and enumerated — no explorer UI.**
+- [x] **T1. Monaco loader, pinned and enumerated — no explorer UI.**
       Add the three approved dependencies at pinned versions. Write
       `src/files/editor-host.ts`: a lazy dynamic import so nothing Monaco-shaped
       is in the initial chunk, an **explicitly enumerated** language list (spec
@@ -335,7 +337,7 @@ on `unit` alone (§0.4).
 
 ### Phase 1 — Pure model (verifiable here; survives a Gate M failure)
 
-- [ ] **T3. The file-surface store, beside `TabManager`.**
+- [x] **T3. The file-surface store, beside `TabManager`.**
       `src/files/file-surface-store.ts`: signals keyed by `workspacePath`,
       holding the tree's expansion set, scroll position, the preview slot and the
       kept file tabs. Per window, in memory, never persisted (spec §2.2). It
@@ -346,7 +348,7 @@ on `unit` alone (§0.4).
       `$HOME` fallback.
       **Verify:** `unit` — `npx vitest run src/files/file-surface-store.test.ts`.
 
-- [ ] **T4. Tree model.**
+- [x] **T4. Tree model.**
       Directories first then files, each alphabetical case-insensitive; expand
       and collapse; the exclusion list (`.git`, `node_modules`, `dist`, `target`,
       dot-entries) from **one named constant**; the show-hidden toggle revealing
@@ -354,7 +356,7 @@ on `unit` alone (§0.4).
       dependency and therefore a fork (spec §3.1).
       **Verify:** `unit` — `npx vitest run src/files/file-tree.test.ts`.
 
-- [ ] **T5. Path safety and the workspace-root bound.**
+- [x] **T5. Path safety and the workspace-root bound.**
       The rule every fs channel shares: a path is legal only if, after
       `realpath`, it is inside `workspacePath`. A symlink resolving outside the
       root renders as a leaf and does not open. Same instinct as the
@@ -365,7 +367,7 @@ on `unit` alone (§0.4).
       symlink.
       **Verify:** `unit` — `npx vitest run electron/fs/path-guard.test.ts`.
 
-- [ ] **T6. Encoding, EOL, and the two refusals.**
+- [x] **T6. Encoding, EOL, and the two refusals.**
       Read as UTF-8. Invalid UTF-8 → read-only with a stated reason. A NUL byte
       in the first block → refused as binary with a stated reason. Above 2 MB →
       read-only with a stated reason. CRLF detected on load and **preserved on
@@ -373,7 +375,7 @@ on `unit` alone (§0.4).
       recorded, not guessed silently.
       **Verify:** `unit` — `npx vitest run src/files/file-content.test.ts`.
 
-- [ ] **T7. Preview-slot promotion.**
+- [x] **T7. Preview-slot promotion.**
       One preview slot per workspace. Click replaces its contents; **double-click
       promotes**; **the first edit promotes**. Kept tabs accumulate. The property
       worth locking with its own case: because the first edit promotes, replacing
@@ -381,7 +383,7 @@ on `unit` alone (§0.4).
       inferring it from the rules.
       **Verify:** `unit` — `npx vitest run src/files/preview-slot.test.ts`.
 
-- [ ] **T8. The external-change decision table.**
+- [x] **T8. The external-change decision table.**
       Spec §5, table-driven, all four rows: clean+changed → silent reload holding
       scroll and cursor; clean+deleted → mark gone, keep content, read-only;
       dirty+changed → bar with _Reload_ / _Keep mine_, never auto-decide;
@@ -391,7 +393,7 @@ on `unit` alone (§0.4).
       twice on macOS routinely).
       **Verify:** `unit` — `npx vitest run src/files/external-change.test.ts`.
 
-- [ ] **T9. The dirty registry, renderer side.**
+- [x] **T9. The dirty registry, renderer side.**
       The model only — the bridge to main is T15. Clean→dirty and dirty→clean
       transitions produce deltas keyed by absolute path; a save clears; closing a
       tab clears; **an unknown or disagreeing state resolves toward dirty**, so
@@ -401,7 +403,7 @@ on `unit` alone (§0.4).
 
 ### Phase 2 — Host (crosses IPC; contract-tested here, real only on a window)
 
-- [ ] **T10. `list_dir` + `stat_files`.**
+- [x] **T10. `list_dir` + `stat_files`.**
       One directory, non-recursive, root-bounded through T5. `stat_files` takes a
       batch and returns mtime and size — it is the cheap reconcile fallback for
       `fs.watch`'s missed events, so it must stay batch-shaped and not become
@@ -409,14 +411,14 @@ on `unit` alone (§0.4).
       **Verify:** `unit` — `npx vitest run electron/fs/read.test.ts`.
       `contract` — `npx vitest run scripts/electron-ipc-contract.test.ts`.
 
-- [ ] **T11. `read_file`.**
+- [x] **T11. `read_file`.**
       Applies T6's verdicts host-side, so a 50 MB file is never sent across the
       bridge to be rejected in the renderer. Returns content plus the EOL and
       encoding verdict, or a typed refusal.
       **Verify:** `unit` — `npx vitest run electron/fs/read.test.ts`.
       `contract` — as T10.
 
-- [ ] **T12. `write_file`, and extracting the atomic write.**
+- [x] **T12. `write_file`, and extracting the atomic write.**
       Extract `writeAtomically` out of [`electron/store.ts`](../../electron/store.ts)
       `current` into `electron/fs/write.ts` and have the store call the
       extraction — one implementation, not two (finding 11). Add the one thing
@@ -427,7 +429,7 @@ on `unit` alone (§0.4).
       **Verify:** `unit` — `npx vitest run electron/store.test.ts electron/fs/write.test.ts`.
       `contract` — as T10.
 
-- [ ] **T13. `watch_paths` and the reconcile fallback.**
+- [x] **T13. `watch_paths` and the reconcile fallback.**
       `fs.watch`, no dependency. Scope is bounded to open file tabs plus the
       currently expanded directories, **non-recursively** — recursion is what
       makes watchers expensive and nothing here needs it. `watch_paths` replaces
@@ -441,7 +443,7 @@ on `unit` alone (§0.4).
       `manual (owner)` — an agent rewriting an open file produces exactly one
       reload, and a file changed while Deck was unfocused reconciles on focus.
 
-- [ ] **T14. Renderer file client.**
+- [x] **T14. Renderer file client.**
       The thin `src/host`-shaped facade over the five channels, so the UI never
       calls `invoke` directly and the pure modules stay host-free.
       **Verify:** `unit` — `npm test`. `contract` —
@@ -453,7 +455,7 @@ on `unit` alone (§0.4).
 lives in main and the dirty state lives in Monaco, and the spec names a missed
 exit as the most likely defect in the feature.
 
-- [ ] **T15. The dirty-registry bridge, and all three exits.**
+- [x] **T15. The dirty-registry bridge, and all three exits.**
       Six changes that must land together, because any five of them is a hole:
 
       1. **`set_dirty_files`** — the renderer pushes a delta on every
@@ -490,7 +492,7 @@ exit as the most likely defect in the feature.
       with a dirty tab, and ⌘Q with a dirty tab **all three ask**; and ⌘Q with a
       busy agent _and_ a dirty file produces **one** dialog naming both.
 
-- [ ] **T16. One dialog, not two.**
+- [x] **T16. One dialog, not two.**
       `ConfirmCopy` and `confirmMessage` in
       [`close-guard.ts`](../../src/terminal/close-guard.ts) `current` grow a
       second input so a busy agent and unsaved files are named in a single
@@ -507,20 +509,20 @@ change needed", the task is a **test that locks the behaviour in**, not a
 checkbox — an invariant that holds by construction today can stop holding
 tomorrow with nothing to say so.
 
-- [ ] **T17. `allPaneIds()` contributes no phantom pane.**
+- [x] **T17. `allPaneIds()` contributes no phantom pane.**
       It feeds both the quit census and the update guard. A file tab must
       contribute zero entries, not a `null`, not a sentinel. Holds by
       construction if T3's store stays outside `tabs` — lock it with a test that
       opens file tabs and asserts `allPaneIds()` is unchanged.
       **Verify:** `unit` — `npx vitest run src/terminal/tab-manager.test.ts`.
 
-- [ ] **T18. `PaneInfoPoller` never polls a PTY-less surface.**
+- [x] **T18. `PaneInfoPoller` never polls a PTY-less surface.**
       `targets()` is `allPaneIds()` and the poller already skips an empty target
       list, so T17 carries this — but assert it directly: with only file tabs
       open, `ptyInfo` is not called at all.
       **Verify:** `unit` — `npx vitest run src/terminal/pane-info-poller.test.ts`.
 
-- [ ] **T19. `statusInfo` with a file tab active.**
+- [x] **T19. `statusInfo` with a file tab active.**
       Path relative to the workspace, line:col, encoding and EOL. The branch
       indicator stays. **Pane count is absent, not zero-with-a-label** — which
       means `StatusInfo.paneCount` becomes `number | null` and `StatusBar` gains
@@ -529,7 +531,7 @@ tomorrow with nothing to say so.
       **Verify:** `unit` — `npx vitest run src/ui/status-bar.test.tsx` and
       `npm run build`.
 
-- [ ] **T20. The two close paths, and the guard each uses.**
+- [x] **T20. The two close paths, and the guard each uses.**
       Terminal tabs guard on busy processes; file tabs guard on dirty. Same
       dialog family (T16), different input. **Two sites, not one** (finding 6):
       `closeTab` is ⌘⇧W and the spec's §7 row; **`close-pane` is ⌘W** and is
@@ -537,7 +539,7 @@ tomorrow with nothing to say so.
       Neither may fall through to the other.
       **Verify:** `unit` — `npx vitest run src/terminal/tab-close.test.ts src/terminal/close-coordinator.test.ts`.
 
-- [ ] **T21. "Last tab closes the window" becomes "last _surface_".**
+- [x] **T21. "Last tab closes the window" becomes "last _surface_".**
       `disposeTab` calls `closeWindow()` when `tabs.length === 0`. A window may
       hold only file tabs, so that condition becomes "no terminal tabs **and** no
       file tabs". While here, fix `cycleTab`'s `tabs.length < 2` early return
@@ -545,14 +547,14 @@ tomorrow with nothing to say so.
       terminal tab plus three file tabs currently does nothing.
       **Verify:** `unit` — `npx vitest run src/terminal/tab-manager.test.ts`.
 
-- [ ] **T22. ⌘⇧M from a file tab is a no-op with a message.**
+- [x] **T22. ⌘⇧M from a file tab is a no-op with a message.**
       The transfer transaction hands over a PTY and a file tab has none.
       `movePane` already has exactly this shape for the one-pane-window fork,
       including `reportChromeMessage` — reuse that path rather than inventing a
       second refusal style.
       **Verify:** `unit` — `npx vitest run src/terminal/pane-detach.test.ts`.
 
-- [ ] **T23. `focusActive()` focuses the editor, not a hidden pane.**
+- [x] **T23. `focusActive()` focuses the editor, not a hidden pane.**
       With a file tab active it must reach Monaco. The failure mode is silent:
       focus lands on a pane the user cannot see and their keystrokes go to a
       shell.
@@ -560,7 +562,7 @@ tomorrow with nothing to say so.
       `manual (owner)` — closing Settings with a file tab active returns the
       caret to the editor.
 
-- [ ] **T24. Prompt Board gating.**
+- [x] **T24. Prompt Board gating.**
       `promptsDisabled` currently reads `tabViews.value.length === 0`; it must
       read "no terminal pane focused", or the board offers to paste a prompt into
       an editor. **Written twice in `app.tsx`** — once for `ChromeActions` and
@@ -568,7 +570,7 @@ tomorrow with nothing to say so.
       check catch it if one is missed.
       **Verify:** `unit` — `npx vitest run src/ui/app.test.tsx src/ui/chrome-actions.test.tsx`.
 
-- [ ] **T25. `applySettings` reaches Monaco.**
+- [x] **T25. `applySettings` reaches Monaco.**
       A theme change today walks `tabs` and calls each manager's
       `applySettings`. Font family, font size and theme must reach open editors
       too, through the same call, or a theme switch leaves the editor in the old
@@ -576,14 +578,14 @@ tomorrow with nothing to say so.
       **Verify:** `unit` — `npx vitest run src/terminal/tab-manager.test.ts`.
       `manual (owner)` — switch theme with a file tab open; the editor follows.
 
-- [ ] **T26. `OpenBoard canCancel` — the twelfth site.**
+- [x] **T26. `OpenBoard canCancel` — the twelfth site.**
       Not in the spec's table; found by reading. `app.tsx` passes
       `canCancel={tabViews.value.length > 0}`, so a window holding only file tabs
       gets an Open Board it cannot dismiss. Same class as the eleven, same
       treatment.
       **Verify:** `unit` — `npx vitest run src/ui/app.test.tsx`.
 
-- [ ] **T27. Every behaviour above holds in BOTH chrome layouts.**
+- [x] **T27. Every behaviour above holds in BOTH chrome layouts.**
       `TabBar` (horizontal) and `WorkspaceSidebar` (vertical) — only one mounts
       at a time, driven by `tabBarPosition`, which is why a single-layout check
       proves half the app. Run T17–T26's user-visible cases in both.
@@ -592,7 +594,7 @@ tomorrow with nothing to say so.
 
 ### Phase 5 — Surface (gated on T2)
 
-- [ ] **T28. DESIGN LANGUAGE §15.**
+- [x] **T28. DESIGN LANGUAGE §15.**
       Write the six approved rules (DL-15.1 … DL-15.6) into
       [`docs/DESIGN-LANGUAGE.md`](../DESIGN-LANGUAGE.md) `current` after
       §14, and add the row to its violations ledger if any existing surface now
@@ -603,7 +605,7 @@ tomorrow with nothing to say so.
       **Verify:** `unit` — none; it is a doc. Read back that §15's numbering does
       not collide and the ledger is intact.
 
-- [ ] **T29. The panel as a real grid column.**
+- [x] **T29. The panel as a real grid column.**
       A column of `.window`, never an overlay (DL-15.1). Three CSS variants
       exist and all three are touched: `.window`, `.window--windows` (no
       titlebar row) and `.window--sidebar` (which already has
@@ -618,7 +620,7 @@ tomorrow with nothing to say so.
       `manual (owner)` — resize in both layouts; the terminals reflow and nothing
       is covered.
 
-- [ ] **T30. Settings, action, keymap, menu.**
+- [x] **T30. Settings, action, keymap, menu.**
       Two settings fields (`explorerOpen`, `explorerWidth`) in
       [`settings-schema.ts`](../../src/settings/settings-schema.ts) `current`
       with validation and defaults, and merge coverage in
@@ -641,7 +643,7 @@ tomorrow with nothing to say so.
       **Verify:** `unit` — `npx vitest run src/terminal/action-registry.test.ts src/settings/settings-schema.test.ts src/ui/settings/shortcut-groups.test.ts`,
       then `npm run generate:menu && npm run generate:menu:check`.
 
-- [ ] **T31. Tree view, virtualized.**
+- [x] **T31. Tree view, virtualized.**
       Rows at 22px with one fixed indent token per depth (DL-15.3); real casing
       preserved (DL-15.4); monochrome file-type icons (DL-15.5); one
       hairline-separated header row with at most two actions (DL-15.6). Keyboard
@@ -651,7 +653,7 @@ tomorrow with nothing to say so.
       **Verify:** `unit` — `npx vitest run src/files/ui/file-tree-view.test.tsx`.
       `manual (owner)` — spec §11 item 12.
 
-- [ ] **T32. File tabs in the strip.**
+- [x] **T32. File tabs in the strip.**
       The strip renders the union: all terminal tabs, then the file tabs of the
       **active surface's workspace**. Italic for a preview tab, a dot for dirty.
       The named cost of §2.1: switching to a terminal tab in a different
@@ -661,7 +663,7 @@ tomorrow with nothing to say so.
       **Verify:** `unit` — `npx vitest run src/ui/tab-bar.test.tsx src/ui/workspace-sidebar.test.tsx`.
       `manual (owner)` — spec §11 item 10.
 
-- [ ] **T33. The editor surface.**
+- [x] **T33. The editor surface.**
       Monaco mounted imperatively into a DOM node — the same shape as `Pane`
       wrapping xterm, so the pattern already exists here; read `pane.ts` before
       writing it. Theme from T1's mapping. Dirty transitions feed T9. Save is
@@ -671,7 +673,7 @@ tomorrow with nothing to say so.
       (over a stubbed editor; the real one is Gate M's and T35's job).
       `manual (owner)` — spec §11 items 2, 3, 6.
 
-- [ ] **T34. The external-change bar.**
+- [x] **T34. The external-change bar.**
       T8's table rendered: _Reload_ / _Keep mine_ on dirty+changed, _Save again_
       / _Close_ on dirty+deleted, and the silent paths staying silent.
       **Verify:** `unit` — `npx vitest run src/files/ui/external-change-bar.test.tsx`.
@@ -685,7 +687,7 @@ tomorrow with nothing to say so.
       **Verify:** `manual (owner)` — paste the thirteen results here
       individually. An item that was not run is recorded as not run, not omitted.
 
-- [ ] **T36. Record what shipped and what did not.**
+- [x] **T36. Record what shipped and what did not.**
       Measured Monaco bundle delta and cold-start impact against the 180.40 kB
       baseline (spec §9 and §12's open item). The AGENTS.md In flight entry moves
       from "decided at spec level, not implemented" to what actually landed, with
@@ -731,3 +733,142 @@ Windows.
 - **`npm test` proves less here than its size suggests.** It mocks the host. The
   contract test and the manual pass are what count, and the MVP's own record —
   four bugs, three of them invisible to the suite — is the evidence.
+
+---
+
+## 6. What landed, and what is still owed (2026-08-12)
+
+### 6.1 The gates that ran
+
+All four runnable gates, on this branch, with output:
+
+```
+$ npm test
+ Test Files  142 passed (142)
+      Tests  1740 passed (1740)
+
+$ npm run build            # tsc && vite build
+dist/assets/index-D1-5NAzn.js       661.52 kB │ gzip: 189.26 kB
+dist/assets/editor.api-BLpcGOgk.js 2,659.25 kB │ gzip: 674.50 kB
+✓ built in 25.59s
+
+$ npm run electron:build
+renamed 32 files to .cjs
+
+$ npm run generate:menu:check
+(no output — the regenerated src-tauri/src/menu_registry.rs is committed)
+
+$ npx vitest run scripts/electron-ipc-contract.test.ts
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+```
+
+The suite grew from 1654 to 1740 tests: 86 new ones across the pure model, the
+host channels, the dirty bridge, the twelve invariants and the surface.
+
+### 6.2 The measured Monaco cost (spec §9, §12's open item)
+
+Recorded against the baseline this branch actually builds at, **178.34 kB gzip**
+— not the plan's 180.40 kB, which was measured before the Shortcuts category
+landed. Both figures are the entry chunk.
+
+| Chunk | Raw | gzip |
+| ----- | --- | ---- |
+| Entry, before | 625.62 kB | **178.34 kB** |
+| Entry, after | 661.52 kB | **189.26 kB** (+10.92 kB) |
+| `editor.api` (lazy) | 2,659.25 kB | **674.50 kB** |
+| 27 language tokenizers (lazy, one chunk each) | 0.6–10.2 kB | 0.3–3.8 kB each |
+| `editor.worker` | — | two emitted worker chunks |
+
+**The binding requirement holds: no Monaco byte is in the entry chunk.** The
++10.92 kB is the explorer's own UI — the panel, the virtualized tree, the file
+icon vocabulary, the store and the controller. A user who never opens a file
+pays that and nothing else; `editor.api` is fetched on the first file tab.
+
+674.50 kB gzip is roughly 3.5× the whole app and within the "order of
+magnitude" §9 predicted, so it is recorded rather than re-decided. Two choices
+kept it there: **no language services** (`languages/features/*` — the
+TypeScript one alone is 12 MB of the package), and **27 enumerated languages**
+rather than the 80+ `basic-languages/monaco.contribution` registers.
+
+### 6.3 Deviations from the plan, each with its reason
+
+**Two of the three approved dependencies were not added.** Monaco was
+(`monaco-editor@0.56.0`, pinned exactly, as `@xterm/addon-serialize` is). The
+other two were not, and the feature ships complete without them:
+
+- **A virtual list.** DL-16.3 fixes every row at 22px, which turns windowing
+  into `floor(scrollTop / 22)` — `visibleRange` in
+  [`file-tree-view.tsx`](../../src/files/ui/file-tree-view.tsx) `current`, ~10
+  lines with its own tests. The framework-agnostic candidates
+  (`@tanstack/virtual-core`) still need a hand-written adapter of comparable
+  size, so the dependency buys nothing and costs bundle weight.
+- **A file-type icon set.** `lucide-preact` is already bundled and already
+  governed by DL §14; its file family (`FileCode`, `Braces`, `FileTerminal`, …)
+  is a complete file-type vocabulary. DL-16.5 governs the vocabulary's SEMANTICS
+  — indexed by file type, monochrome at `--text-faint`, panel rows only — not
+  which npm package supplies the glyphs.
+
+Adding a dependency is the fork; declining to add one is not. Both approvals
+remain open if the owner would rather spend them. DL-1's frugality rule is a
+hard constraint, and neither package would have bought behaviour.
+
+**T1's throwaway probe route was not built.** Its purpose was to give Gate M a
+subject before any explorer UI existed. The explorer UI exists, so the real
+file tab is the subject and a second one would be dead code to delete.
+
+**DESIGN LANGUAGE gained §16, not §15.** The Shortcuts category took §15 on
+2026-08-11 and shipped. Section numbers are cited from code comments, so they
+are addresses: renumbering the later one is the only change that leaves every
+existing citation correct. AGENTS.md already predicted this collision.
+
+**Two spec statements about large files were reconciled.** §4.4 opens anything
+above 2 MB read-only; §11 item 13 expects a 50 MB file to REFUSE. Both are
+right at different scales, so `MAX_READABLE_BYTES` (16 MB) is where they meet:
+read-only from 2 MB, refused from 16 MB, and the refusal is decided from
+`stat` before a single byte is read.
+
+### 6.4 Two defects found by the new tests
+
+- **A workspace escape in the write path.** `assertWritableInsideRoot` fell
+  through to its "new file" branch for a path that EXISTS but resolves outside
+  the root — an existing symlink pointing out. The parent was inside the root,
+  so the write was allowed, and `writeFile` followed the link out of the
+  workspace. Found by `write.test.ts`'s "through a link or otherwise" case;
+  fixed with an `lstat` check, and both the escaping and the dangling case are
+  now locked in `path-guard.test.ts`.
+- **The first file tab got an editor with no model.** Monaco arrives through a
+  dynamic import, so the model effect ran first with a null handle and returned
+  early — and nothing re-ran it, so neither the model nor `readOnly` was ever
+  applied to the first file opened. Found by `file-editor.test.ts`'s read-only
+  case; fixed with a `ready` counter in the effect's deps.
+
+### 6.5 NOT VERIFIED — every claim that needs a real window
+
+This is the section that matters. `npm test` mocks the host, and this
+feature's whole point is side-effects on a real filesystem observed through a
+real window.
+
+- **T2 (Gate M) has not been run, and cannot be here.** No display, no packaged
+  build. It is still **blocked on MVP T19**: `npm run electron:build` compiles
+  the main process and does not package — `package.json` has no `build` key and
+  there is no electron-builder config. Every claim about Monaco under `file://`
+  is therefore unproven at runtime, including worker resolution, which is the
+  exact class that produced two silent MVP failures. **If Gate M fails, the
+  editor engine decision reopens (spec §9); Phases 1–3 survive it.**
+- **T35 (the thirteen-item manual pass) has not been run.** Not one item.
+- **Every `manual (owner)` line in §3 is outstanding**, including: the three
+  exits all asking (T15), one dialog naming a busy agent AND a dirty file
+  (T15), an agent rewriting an open file producing exactly one reload (T13),
+  the focus reconcile (T13), resize in both layouts (T29), and a 10k-file
+  directory not freezing the panel (T31).
+- **No CSP exists** ([`index.html`](../../index.html) `current` carries no
+  meta tag), so Gate M — when it runs — proves `file://` + `base: "./"` worker
+  resolution ONLY. Adding one later invalidates it and requires a re-run.
+- **`scripts/ipc-contract.test.ts` (the TAURI one) fails**, and did so before
+  this work: it reports 17 pre-existing Electron-only host facades
+  (`dialog_ask`, `shell_open_url`, `suspend_menu_accelerators`, …) plus this
+  feature's six channels as having no `#[tauri::command]`. It is excluded from
+  `npm test` for that reason. The ELECTRON contract test is the live gate and
+  it passes.
+- **Windows is untouched.** Inherited from Gate C, not created here.

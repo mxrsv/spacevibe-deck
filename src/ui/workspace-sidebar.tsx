@@ -26,6 +26,7 @@ import { reportPersistError } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
 import { WorkspaceLogo } from "./workspace-logo";
 import { shortcutLabel } from "../lib/shortcut-label";
+import { fileTabViews } from "../files/ui/file-tab-views";
 
 interface WorkspaceSidebarProps {
   onSelectTab(index: number): void;
@@ -33,6 +34,10 @@ interface WorkspaceSidebarProps {
   onNewTab(): void;
   onRenameTab(index: number, name: string | null): void;
   onSetTabColor(index: number, color: TabDotColor | null): void;
+  /** Bring a file tab to the stage. */
+  onSelectFile(path: string): void;
+  /** Close a file tab — guarded on unsaved edits, not on busy processes. */
+  onCloseFile(path: string): void;
   /** Invoked when a row's actionable attention mark is clicked. */
   onFocusAttention?(index: number): void;
 }
@@ -42,6 +47,9 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
   const tabs = tabViews.value;
   const active = activeTabIndex.value;
   const home = statusInfo.value.home;
+  // Same union, same source as `TabBar` (spec §4.2 and §7's both-layouts row).
+  const files = fileTabViews();
+  const terminalActive = files.every((file) => !file.active);
   const navRef = useRef<HTMLElement>(null);
   const dragOverKey = useSignal<number | null>(null);
   // Anchored by tab key, not index — same reason as the horizontal tab bar:
@@ -190,7 +198,7 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
               tabIndex={0}
               data-key={tab.key}
               data-workspace={tab.workspacePath ?? ""}
-              class={`wsitem ${index === active ? "is-active" : ""} ${dragOverKey.value === tab.key ? "is-drag-over" : ""}`}
+              class={`wsitem ${index === active && terminalActive ? "is-active" : ""} ${dragOverKey.value === tab.key ? "is-drag-over" : ""}`}
               onClick={(event) => {
                 if (index !== active) {
                   props.onSelectTab(index);
@@ -243,6 +251,36 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
             </div>
           );
         })}
+        {files.map((file) => (
+          <div
+            key={file.path}
+            role="tab"
+            aria-selected={file.active}
+            tabIndex={0}
+            data-file={file.path}
+            title={file.path}
+            class={`wsitem wsitem--file ${file.active ? "is-active" : ""} ${file.preview ? "is-preview" : ""}`}
+            onClick={() => props.onSelectFile(file.path)}
+          >
+            <span class="wsitem__text">
+              <span class="wsitem__label">{file.name}</span>
+            </span>
+            {file.dirty && (
+              <span class="wsitem__dirty" aria-label="Unsaved changes" />
+            )}
+            <button
+              type="button"
+              class="wsitem__close"
+              aria-label={`Close ${file.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                props.onCloseFile(file.path);
+              }}
+            >
+              <DeckIcon icon={X} size={CHROME_ICON} />
+            </button>
+          </div>
+        ))}
         <button
           type="button"
           class="wsbar__add"

@@ -325,21 +325,37 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   integration as it does today; `lsof` is only the fallback and stays off the
   hot path.
 
-- **A file explorer panel is decided at spec level (2026-08-12)**,
+- **A file explorer panel is implemented (2026-08-12)** on the Electron branch,
   [spec](docs/specs/2026-08-12-file-explorer-design.md) `decided`,
-  [plan](docs/plans/2026-08-12-file-explorer.md) `planned` (written 2026-08-12).
-  **Not implemented — no code written, spec pending user review.** The plan
-  reopens none of the seven calls below; it did surface four facts by reading
-  the Electron branch. **Gate M is blocked on MVP T19**, because
-  `npm run electron:build` compiles the main process and does not package —
-  there is no `build` key and no electron-builder config, so a packaged build
-  does not exist to test Monaco in. **`npm run test:main` does not exist** —
-  host tests are `electron/**/*.test.ts` and `npm test` already runs them.
-  **There is no CSP today**, so Gate M proves `file://` worker resolution only
-  and must be re-run if one is ever added. And **⌘Q with only file tabs open
-  would not ask**: `before-quit` returns early when `coordinator.allPanes()` is
-  empty, which is exactly §6's predicted defect already sitting in the code.
-  A docked column on the right of the `.window` grid holding a file tree of the
+  [plan](docs/plans/2026-08-12-file-explorer.md) `built` — written against that
+  plan task by task, 34 of its 36 tasks done. The suite went 1654 → 1740 tests;
+  `npm test`, `npm run build`, `npm run electron:build`,
+  `generate:menu:check` and the Electron IPC contract test are all green.
+  **Not verified: everything that needs a real window.** **Gate M (T2) has not
+  been run and cannot be until MVP T19 exists** — `npm run electron:build`
+  compiles the main process and does not package, so there is no packaged build
+  to boot Monaco in; if it fails, the editor engine decision reopens (spec §9)
+  and Phases 1–3 survive it. **T35, the thirteen-item manual pass, has not been
+  run at all**, nor has any `manual (owner)` line in the plan. **There is still
+  no CSP**, so Gate M will prove `file://` worker resolution only and must be
+  re-run if one is ever added.
+  Three things the work changed beyond the plan, each recorded in the plan's
+  §6.3: **only ONE of the three approved dependencies was added** — Monaco,
+  pinned at `0.56.0`; the virtual list and the file-type icon set were NOT,
+  because DL-16.3's fixed 22px row makes windowing ten lines and `lucide-preact`
+  is already bundled and already governs icons (adding a dependency is the fork,
+  declining is not — both approvals stay open). **DESIGN LANGUAGE gained §16,
+  not §15**, since the Shortcuts category took that number first and section
+  numbers are cited from code as addresses. And **two spec statements about
+  large files were reconciled**: §4.4's 2 MB read-only and §11 item 13's 50 MB
+  refusal now meet at a 16 MB hard ceiling, decided from `stat` before any bytes
+  are read. Two real defects surfaced from the new tests: a **workspace escape**
+  where saving through an existing symlink pointing out of the root was allowed
+  because its parent was inside (fixed with an `lstat` check), and **the first
+  file tab getting an editor with no model**, because Monaco's dynamic import
+  resolves after the model effect has already run (fixed with a `ready` dep).
+  The seven product calls below were reopened by neither the plan nor the
+  implementation. A docked column on the right of the `.window` grid holding a file tree of the
   active workspace; clicking a file opens it as a **tab beside the terminal
   tabs**, editable and saveable in Monaco. Electron only — nothing here ships on
   Tauri. Seven calls, each with its reason: **it lands after the MVP closes**
@@ -374,9 +390,10 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   saves in a _packaged_ build — required before any explorer UI is written,
   because the MVP was already bitten twice by silent packaging failures
   (absolute Vite asset paths under `file://`, CommonJS/ESM mismatch). DESIGN
-  LANGUAGE gains **§15 (docked side panels)** — an approved R2 fork; a
-  permanently docked column is a surface class §11 (full-window) and §13
-  (popover) do not cover. Deliberately left open: `.gitignore` is not parsed in
+  LANGUAGE gains **§16 (docked side panels)** — an approved R2 fork, written on
+  2026-08-12; a permanently docked column is a surface class §11 (full-window)
+  and §13 (popover) do not cover. It is §16 and not the §15 the spec named,
+  because the Shortcuts category took that number first and shipped. Deliberately left open: `.gitignore` is not parsed in
   v1 (a matcher is a fork), git decoration in the tree, and whether file-type
   icons may be colored — DL-15.5 recommends monochrome because §3's color roles
   are strict and each hue already means something. The load-bearing detail for
@@ -395,9 +412,9 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   forward with the branch; **(3) DESIGN LANGUAGE gains a real §15 (shortcut
   rows)**, not an extension of §6 — a row shows the same setting on two
   platforms with only one editable, which §5's one-interactive-value rule
-  cannot express. **This takes the §15 number: the unimplemented file-explorer
-  spec's "§15 (docked side panels)" must renumber when it is written**, as must
-  the token-dashboard spec's data-table §; **(4) both keymaps are shown at
+  cannot express. **This takes the §15 number: the file-explorer
+  spec's "§15 (docked side panels)" renumbered to §16 when it was written
+  (2026-08-12)**, as must the token-dashboard spec's data-table §; **(4) both keymaps are shown at
   once**, the running platform's chord as the editable pill and the other as a
   read-only readout — a chord can only be RECORDED on the keyboard that
   produces it, so offering to capture a Windows chord on a Mac would be a lie.

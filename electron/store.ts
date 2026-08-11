@@ -14,6 +14,7 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
+import { writeFileAtomically } from "./fs/write";
 
 export interface StoreOptions {
   /** Milliseconds to coalesce writes; 0 disables autosave. */
@@ -138,15 +139,13 @@ export class JsonStore {
   /**
    * Write to a sibling temp file and rename over the target.
    *
-   * `rename` within a directory is atomic on both APFS and NTFS, so a reader
-   * sees either the old file or the new one — never a half-written store.
+   * The implementation moved to `fs/write.ts` when the file explorer needed the
+   * same guarantee for source files (plan T12). It is CALLED from here rather
+   * than duplicated there: two atomic writers would drift, and this one's
+   * existing tests are the regression gate on the extraction.
    */
   private async writeAtomic(contents: string): Promise<void> {
-    const directory = path.dirname(this.filePath);
-    const temp = path.join(directory, `.${path.basename(this.filePath)}.tmp`);
-    await fs.mkdir(directory, { recursive: true });
-    await fs.writeFile(temp, contents, "utf8");
-    await fs.rename(temp, this.filePath);
+    await writeFileAtomically(this.filePath, contents);
   }
 }
 

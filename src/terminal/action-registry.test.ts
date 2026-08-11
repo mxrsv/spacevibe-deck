@@ -72,7 +72,7 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
-  it("has exactly the 44 action ids including updater menu actions", () => {
+  it("has exactly the 46 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -96,12 +96,14 @@ describe("ACTION_REGISTRY", () => {
         "split-row",
         "split-column",
         "toggle-zoom-pane",
+        "toggle-explorer",
         "toggle-expand",
         "zoom-in",
         "zoom-out",
         "zoom-reset",
         "focus-next-attention",
         "new-preset",
+        "save-file",
         "save-preset",
         "focus-next",
         "focus-prev",

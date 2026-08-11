@@ -139,6 +139,7 @@ const COMMAND_ACTIONS = [
   "paste",
   "prev-tab",
   "reopen-tab",
+  "save-file",
   "save-preset",
   "scroll-page-down",
   "scroll-page-up",
@@ -151,6 +152,7 @@ const COMMAND_ACTIONS = [
   "swap-right",
   "swap-up",
   "toggle-expand",
+  "toggle-explorer",
   "toggle-prompts",
   "toggle-settings",
   "toggle-zoom-pane",
@@ -242,10 +244,60 @@ export interface OpenFromPresetOptions {
 }
 
 /**
+ * Non-terminal surfaces sharing the tab strip.
+ *
+ * TabManager knows only that they EXIST and can be activated — never that they
+ * are files. That is spec §2.3's seam stated as a type: `TabManager` gains no
+ * knowledge of files and the file store gains no knowledge of PTYs, and this
+ * interface is the entire vocabulary between them.
+ *
+ * Every method has a no-op default (`INERT_SURFACES`), so a caller that passes
+ * nothing gets exactly the pre-explorer behaviour.
+ */
+export interface SurfaceStrip {
+  /** Surfaces in the strip right now — the segment after the terminal tabs. */
+  count(): number;
+  /** Surfaces anywhere in this window, including ones not in the strip. The
+   * "last surface, not last tab" rule asks this one. */
+  total(): number;
+  /** Index within the strip's segment, or -1 when a terminal tab is active. */
+  activeIndex(): number;
+  /** Activate the surface at `index` within the segment. */
+  activate(index: number): void;
+  /** A terminal tab is taking the stage. */
+  deactivate(): void;
+  /** Give the active surface keyboard focus. */
+  focus(): void;
+  /** Close the active surface, running its own guard first. */
+  close(): Promise<void>;
+  /** Save the active surface; a no-op when it has nothing to save. */
+  save(): Promise<void>;
+  applySettings(next: Settings): void;
+}
+
+/** The pre-explorer world: no surfaces, nothing to activate. */
+const INERT_SURFACES: SurfaceStrip = {
+  count: () => 0,
+  total: () => 0,
+  activeIndex: () => -1,
+  activate: () => {},
+  deactivate: () => {},
+  focus: () => {},
+  close: () => Promise.resolve(),
+  save: () => Promise.resolve(),
+  applySettings: () => {},
+};
+
+/**
  * Optional seams for TabManager, layered flat over TerminalManagerDeps so
  * every existing `{ createPane }` (or omitted) caller keeps compiling.
  */
 export interface TabManagerDeps extends TerminalManagerDeps {
+  /**
+   * Surfaces in the strip that are not terminal tabs — the file explorer's
+   * file tabs today. Absent = none, and every behaviour below is unchanged.
+   */
+  surfaces?: SurfaceStrip;
   /**
    * Cmd+Shift+A routes here instead of calling `focusNextAttention`
    * directly, so the app can run the same overlay preflight as a status-dot
@@ -368,6 +420,14 @@ export interface TabManager {
   closePane(): Promise<void>;
   applySettings(next: Settings): void;
   focusActive(): void;
+  /**
+   * Re-derive the tab views and status after a non-terminal surface changed.
+   *
+   * `syncViews` runs on the 2 s process poll and on pane events, neither of
+   * which a file tab produces — without this, activating one would leave the
+   * status bar reading the terminal's pane count until the next poll tick.
+   */
+  notifySurfacesChanged(): void;
   dispose(): void;
 }
 
@@ -378,6 +438,7 @@ export function createTabManager(
 ): TabManager {
   const tabs: TabEntry[] = [];
   const unlisteners: UnlistenFn[] = [];
+  const surfaces = deps.surfaces ?? INERT_SURFACES;
   const transfer = deps.transfer ?? defaultTransferClient;
   const closeWindow = deps.closeWindow ?? (() => getCurrentWindow().close());
   // Per-tab user overrides (rename, dot color), keyed by tab key —
@@ -502,7 +563,9 @@ export function createTabManager(
       branch: poller.branch(),
       cwd: info?.cwd ?? null,
       agent: explicitAgent(info),
-      paneCount: manager?.paneCount() ?? 0,
+      // Null, not zero: a non-terminal surface owns no panes, and spec §7 asks
+      // for the count to be ABSENT rather than reading "0 panes".
+      paneCount: surfaces.activeIndex() >= 0 ? null : (manager?.paneCount() ?? 0),
       home,
     };
   }
@@ -658,7 +721,19 @@ export function createTabManager(
   }
 
   function selectTab(index: number): void {
-    if (index < 0 || index >= tabs.length || index === active) {
+    if (index < 0 || index >= tabs.length) {
+      return;
+    }
+    // `index === active` is no longer enough to skip: a non-terminal surface
+    // may be on top of that same tab, and selecting the tab has to take the
+    // stage back. Checked BEFORE the early return for exactly that reason.
+    const surfaceWasActive = surfaces.activeIndex() >= 0;
+    surfaces.deactivate();
+    if (index === active) {
+      if (surfaceWasActive) {
+        tabs[index].manager.show();
+        syncViews();
+      }
       return;
     }
     activeManager()?.hide();
@@ -785,6 +860,14 @@ export function createTabManager(
   }
 
   async function movePane(target: DetachTarget): Promise<void> {
+    // The transfer transaction is built around handing over a PTY, and a
+    // non-terminal surface has none. A no-op with a message, reusing the same
+    // refusal shape as the one-pane-window fork rather than inventing a second
+    // one (spec §7).
+    if (surfaces.activeIndex() >= 0) {
+      reportChromeMessage("Only a terminal pane can move to another window.");
+      return;
+    }
     const index = active;
     const entry = tabs[index];
     const paneId = entry?.manager.activePaneId() ?? null;
@@ -845,6 +928,13 @@ export function createTabManager(
     unread.delete(entry.key);
     if (tabs.length === 0) {
       active = -1;
+      // Last TAB is not last SURFACE (spec §7): a window may hold only file
+      // tabs, and closing the window would take them with it.
+      if (surfaces.total() > 0) {
+        surfaces.activate(0);
+        syncViews();
+        return;
+      }
       void closeWindow();
       return;
     }
@@ -1166,11 +1256,20 @@ export function createTabManager(
     pruneNotifiedKinds(live);
     poller.prune(live);
     if (tabs.length === 0) {
-      // Every window is a peer (spec §2, §9.5): the last tab closes THIS
-      // window, and Rust decides whether that was also the last window and
+      // Every window is a peer (spec §2, §9.5): the last SURFACE closes THIS
+      // window, and the host decides whether that was also the last window and
       // the process should exit. CloseCoordinator already ran the busy guard
       // here, so nothing prompts twice.
+      //
+      // "Surface", not "tab": a window holding file tabs still has something to
+      // show, and closing it would discard them — including unsaved ones, with
+      // no prompt, since the busy guard that just ran only knew about panes.
       active = -1;
+      if (surfaces.total() > 0) {
+        surfaces.activate(0);
+        syncViews();
+        return;
+      }
       try {
         await flushSettingsSave();
       } catch (err: unknown) {
@@ -1228,11 +1327,29 @@ export function createTabManager(
     },
   });
 
+  /**
+   * ⌘⇧] / ⌘⇧[ — cycle every SURFACE in the strip, not just the terminal tabs.
+   *
+   * The strip is the terminal tabs followed by the non-terminal segment, so the
+   * cycle runs over one combined index space. The old `tabs.length < 2` early
+   * return is why one terminal tab plus three file tabs used to do nothing at
+   * all: file tabs are the keyboard path to a file (spec §4.3), and that guard
+   * silently removed it.
+   */
   function cycleTab(step: 1 | -1): void {
-    if (tabs.length < 2) {
+    const surfaceCount = surfaces.count();
+    const total = tabs.length + surfaceCount;
+    if (total < 2) {
       return;
     }
-    selectTab((active + step + tabs.length) % tabs.length);
+    const surfaceIndex = surfaces.activeIndex();
+    const current = surfaceIndex >= 0 ? tabs.length + surfaceIndex : active;
+    const next = (current + step + total) % total;
+    if (next < tabs.length) {
+      selectTab(next);
+      return;
+    }
+    surfaces.activate(next - tabs.length);
   }
 
   /**
@@ -1258,7 +1375,13 @@ export function createTabManager(
   const commands = {
     "split-row": () => void splitActive("row"),
     "split-column": () => void splitActive("column"),
-    "close-pane": () => void close.closePane(),
+    // ⌘W. Two sites, not one: this is `close-pane`, and `close-tab` (⌘⇧W) is
+    // the other. Spec §4.3's "⌘W on a file tab closes the file tab" means THIS
+    // one, and neither may fall through to the other — a file tab has no pane
+    // to close, and closing the terminal tab behind it would be a silent
+    // catastrophe.
+    "close-pane": () =>
+      surfaces.activeIndex() >= 0 ? void surfaces.close() : void close.closePane(),
     "focus-next": () => activeManager()?.cycleFocus(1),
     "focus-prev": () => activeManager()?.cycleFocus(-1),
     "toggle-expand": () =>
@@ -1357,6 +1480,13 @@ export function createTabManager(
     "new-preset": () => {
       editorRequest.value = { source: "live" };
     },
+    // The panel is a COLUMN of the window grid, not an overlay, so this is an
+    // ordinary settings write — the same shape as `toggle-expand` above.
+    "toggle-explorer": () =>
+      updateSettings({ explorerOpen: !settings.value.explorerOpen }),
+    // Scoped so it does nothing when no file surface is active (spec §4.3),
+    // rather than guessing at a target.
+    "save-file": () => void surfaces.save(),
   } satisfies Record<(typeof COMMAND_ACTIONS)[number], () => void>;
 
   /**
@@ -1802,9 +1932,23 @@ export function createTabManager(
       for (const tab of tabs) {
         tab.manager.applySettings(next);
       }
+      // A theme change has to reach the editor too, through the SAME call —
+      // otherwise switching theme leaves an open editor in the old palette
+      // until it is closed and reopened (spec §7).
+      surfaces.applySettings(next);
     },
     focusActive() {
+      // With a non-terminal surface active, focus must reach IT. The failure
+      // mode is silent: focus lands on a pane the user cannot see and their
+      // keystrokes go to a shell (spec §7).
+      if (surfaces.activeIndex() >= 0) {
+        surfaces.focus();
+        return;
+      }
       activeManager()?.focusActive();
+    },
+    notifySurfacesChanged() {
+      syncViews();
     },
     dispose() {
       disposed = true;

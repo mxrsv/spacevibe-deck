@@ -20,6 +20,7 @@ import {
 export type ShortcutGroupId =
   | "panes"
   | "tabs"
+  | "files"
   | "presets"
   | "text"
   | "scrollback"
@@ -34,6 +35,7 @@ export const SHORTCUT_GROUPS: readonly {
 }[] = [
   { id: "panes", label: "panes" },
   { id: "tabs", label: "tabs" },
+  { id: "files", label: "files" },
   { id: "presets", label: "layout presets" },
   { id: "text", label: "text & search" },
   { id: "scrollback", label: "scrollback" },
@@ -67,6 +69,9 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   "next-tab": "tabs",
   "prev-tab": "tabs",
   "select-last-tab": "tabs",
+
+  "toggle-explorer": "files",
+  "save-file": "files",
 
   "new-preset": "presets",
   "save-preset": "presets",

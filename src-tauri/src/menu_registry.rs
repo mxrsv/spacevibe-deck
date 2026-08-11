@@ -31,6 +31,7 @@ pub fn build_file_menu<R: Runtime>(
     )?;
     let close_pane = action_item(handle, "close-pane", "Close Pane", Some("CmdOrCtrl+W"))?;
     let close_tab = action_item(handle, "close-tab", "Close Tab", Some("CmdOrCtrl+Shift+W"))?;
+    let save_file = action_item(handle, "save-file", "Save File", Some("CmdOrCtrl+S"))?;
     tauri::menu::SubmenuBuilder::new(handle, "File")
         .item(&new_tab)
         .item(&reopen_tab)
@@ -40,6 +41,8 @@ pub fn build_file_menu<R: Runtime>(
         .separator()
         .item(&close_pane)
         .item(&close_tab)
+        .separator()
+        .item(&save_file)
         .build()
 }
 
@@ -82,6 +85,12 @@ pub fn build_view_menu<R: Runtime>(
         "Prompts…",
         Some("CmdOrCtrl+Shift+P"),
     )?;
+    let toggle_explorer = action_item(
+        handle,
+        "toggle-explorer",
+        "File Explorer",
+        Some("CmdOrCtrl+Shift+B"),
+    )?;
     tauri::menu::SubmenuBuilder::new(handle, "View")
         .item(&split_row)
         .item(&split_column)
@@ -96,6 +105,8 @@ pub fn build_view_menu<R: Runtime>(
         .item(&focus_next_attention)
         .separator()
         .item(&toggle_prompts)
+        .separator()
+        .item(&toggle_explorer)
         .build()
 }
 
