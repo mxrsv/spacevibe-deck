@@ -213,3 +213,25 @@ describe("promptTemplates validation", () => {
     expect(validateSettings(raw).promptTemplates).toEqual([good]);
   });
 });
+
+describe("sidebarDecoration", () => {
+  it("defaults to off, including for settings files that predate it", () => {
+    expect(DEFAULT_SETTINGS.sidebarDecoration).toBe("off");
+    expect(validateSettings({}).sidebarDecoration).toBe("off");
+  });
+
+  it("keeps an id from the set", () => {
+    expect(
+      validateSettings({ sidebarDecoration: "orbit" }).sidebarDecoration,
+    ).toBe("orbit");
+  });
+
+  it("falls back to off for an id that no longer exists", () => {
+    expect(
+      validateSettings({ sidebarDecoration: "nebula" }).sidebarDecoration,
+    ).toBe("off");
+    expect(validateSettings({ sidebarDecoration: 7 }).sidebarDecoration).toBe(
+      "off",
+    );
+  });
+});

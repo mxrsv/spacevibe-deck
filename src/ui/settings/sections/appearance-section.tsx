@@ -5,6 +5,7 @@ import {
   FONT_SIZE_MIN,
   type TabBarPosition,
 } from "../../../settings/settings-schema";
+import { nextSidebarDecoration } from "../../../lib/sidebar-decorations";
 import { settings, updateSettings } from "../../../settings/settings-store";
 import { getPreset, THEME_PRESETS } from "../../../settings/themes";
 import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
@@ -35,6 +36,12 @@ export function AppearanceSection() {
     const index = TAB_BAR_CHOICES.indexOf(current.tabBarPosition);
     const next = TAB_BAR_CHOICES[(index + 1) % TAB_BAR_CHOICES.length];
     updateSettings({ tabBarPosition: next });
+  };
+
+  const cycleDecoration = (): void => {
+    updateSettings({
+      sidebarDecoration: nextSidebarDecoration(current.sidebarDecoration),
+    });
   };
 
   return (
@@ -97,6 +104,22 @@ export function AppearanceSection() {
           onClick={cycleTabBar}
         >
           {current.tabBarPosition}
+          <span class="cfg-btn__hint">
+            <DeckIcon icon={Repeat2} size={ROW_ICON} />
+          </span>
+        </button>
+      </ConfigRow>
+      {/* Directly under Tab bar position, because that row is what decides
+          whether the sidebar is on screen at all to hold this mark. */}
+      <ConfigRow label="Sidebar mark" desc="decoration at the sidebar foot">
+        <button
+          type="button"
+          class="cfg-btn"
+          title="Next mark"
+          aria-label={`Sidebar mark: ${current.sidebarDecoration}. Switch to next mark`}
+          onClick={cycleDecoration}
+        >
+          {current.sidebarDecoration}
           <span class="cfg-btn__hint">
             <DeckIcon icon={Repeat2} size={ROW_ICON} />
           </span>

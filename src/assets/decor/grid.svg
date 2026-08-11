@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="#000">
+  <g opacity=".95">
+    <circle cx="7" cy="7" r="2.4" />
+    <circle cx="17.5" cy="7" r="2.2" />
+    <circle cx="28" cy="7" r="2" />
+    <circle cx="38.5" cy="7" r="1.8" />
+  </g>
+  <g opacity=".72">
+    <circle cx="7" cy="17.5" r="2.2" />
+    <circle cx="17.5" cy="17.5" r="2" />
+    <circle cx="28" cy="17.5" r="1.8" />
+    <circle cx="38.5" cy="17.5" r="1.6" />
+  </g>
+  <g opacity=".5">
+    <circle cx="7" cy="28" r="2" />
+    <circle cx="17.5" cy="28" r="1.8" />
+    <circle cx="28" cy="28" r="1.6" />
+    <circle cx="38.5" cy="28" r="1.4" />
+  </g>
+  <g opacity=".3">
+    <circle cx="7" cy="38.5" r="1.8" />
+    <circle cx="17.5" cy="38.5" r="1.6" />
+    <circle cx="28" cy="38.5" r="1.4" />
+    <circle cx="38.5" cy="38.5" r="1.2" />
+  </g>
+</svg>

@@ -374,6 +374,35 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   dirty state lives in Monaco, the renderer pushes a dirty-registry delta whose
   entries are cleared on window death, failing toward asking.
 
+- **The sidebar decoration shipped 2026-08-11** — an opt-in ornamental mark at
+  the foot of the workspace sidebar, off by default, cycled through a
+  `Sidebar mark` row in Settings › appearance. Five forks resolved with the
+  user before any code was written. **It is built on Tauri despite the freeze**
+  — the freeze exists so nothing is written twice, and the Electron MVP plan
+  §0.3 keeps the renderer as-is, so a change confined to `src/ui` + `styles.css`
+  crosses to Electron untouched; the only cost is that `sidebarDecoration`
+  joins every other setting lost at the no-migration cutover. **The artwork is
+  bundled, not user-supplied** — five monochrome SVGs in `src/assets/decor/`,
+  which is the fork the user approved, and the cost is measured rather than
+  guessed: **+0.88 kB gzip CSS and +0.23 kB gzip JS** (8.98 → 9.86 and
+  180.55 → 180.78), because Vite inlines each file as a data URI instead of
+  emitting an asset. **It sits bottom-left, not top-left** — changed by the
+  user mid-decision, at ~44px inside the approved 40–50px. **The color comes
+  from a new `--decor` token through a CSS `mask-image`, never from the file** —
+  artwork carries shape only, so a decoration cannot fight the active theme;
+  this is a single-layer mask, not the dual-layer `mask-composite` that failed
+  in WKWebView for `.wsitem__spinner`. **DESIGN LANGUAGE gains §16 (decorative
+  imagery)** — an approved R2 fork, numbered 16 because the file explorer spec
+  already claims §15. **Not verified: how it actually looks.** `npm test`
+  (1234 passing) and `npm run build` are green, and DL §9.6 asks for an eye
+  review on a rendered screenshot, which no gate here can perform — the mask
+  path in particular has only ever been exercised by jsdom, which does not
+  paint. The load-bearing detail for whoever touches it next: the id list
+  (`lib/sidebar-decorations.ts`), the artwork and the CSS rules are three files
+  nothing ties together at runtime, so a rename in one ships an empty 44px box
+  — `scripts/sidebar-decoration-assets.test.ts` is the only thing that catches
+  it.
+
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
 

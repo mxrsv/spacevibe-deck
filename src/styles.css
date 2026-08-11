@@ -25,6 +25,13 @@
   --text-muted: color-mix(in srgb, var(--fg) 52%, var(--bg));
   --text-faint: color-mix(in srgb, var(--fg) 34%, var(--bg));
 
+  /* Ornament ink (DL-16.2). Derived from --fg like the text tokens, so a
+     decoration reads as part of the theme rather than as a picture dropped on
+     top of it. It is deliberately NOT --accent: accent means interactive or
+     active (DL-3.1), and an ornament is neither. Tune the percentage here —
+     it is the one knob for how loud every decoration is. */
+  --decor: color-mix(in srgb, var(--fg) 26%, transparent);
+
   /* The only font token in chrome. There is deliberately no --mono companion:
      the monospace face belongs to the terminal (DL-4.1), and the terminal
      takes its font from the user's setting via toFontStack() in
@@ -343,6 +350,62 @@ body,
   display: grid;
   place-items: center;
   line-height: 1;
+}
+
+/* ── Sidebar decoration (DL-16, SidebarDecoration) ──────────
+   The one ornament in the app: a mark at the sidebar's foot, off by default.
+
+   `margin-top: auto` is what pins it there. The list above is the flex item
+   that shrinks and scrolls, so the mark stays at the bottom-left whether one
+   workspace is open or twenty, and it never scrolls out of view (DL-16.3).
+
+   Masked, never painted as an image: each file carries shape only and the ink
+   comes from --decor, so switching theme restyles the ornament with no asset
+   work (DL-2.2, DL-16.2). This is a single-layer mask — not the dual-layer
+   mask-composite that proved unreliable in WKWebView for .wsitem__spinner
+   above, which is why that one stayed an SVG element. */
+.wsbar__decor {
+  flex: none;
+  /* top auto = pin to the foot; the rest is the inset from the corner. */
+  margin: auto 0 12px 12px;
+  width: 44px;
+  height: 44px;
+  background-color: var(--decor);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  pointer-events: none;
+}
+
+/* One rule per id in lib/sidebar-decorations.ts. The two lists are kept in
+   step by sidebar-decoration.test.tsx, which fails on an id with no rule and
+   on a rule with no id. */
+.wsbar__decor[data-decor="constellation"] {
+  -webkit-mask-image: url("./assets/decor/constellation.svg");
+  mask-image: url("./assets/decor/constellation.svg");
+}
+
+.wsbar__decor[data-decor="orbit"] {
+  -webkit-mask-image: url("./assets/decor/orbit.svg");
+  mask-image: url("./assets/decor/orbit.svg");
+}
+
+.wsbar__decor[data-decor="grid"] {
+  -webkit-mask-image: url("./assets/decor/grid.svg");
+  mask-image: url("./assets/decor/grid.svg");
+}
+
+.wsbar__decor[data-decor="waveform"] {
+  -webkit-mask-image: url("./assets/decor/waveform.svg");
+  mask-image: url("./assets/decor/waveform.svg");
+}
+
+.wsbar__decor[data-decor="comet"] {
+  -webkit-mask-image: url("./assets/decor/comet.svg");
+  mask-image: url("./assets/decor/comet.svg");
 }
 
 /* ── Agent attention mark (AgentAttentionMark) ──────────────

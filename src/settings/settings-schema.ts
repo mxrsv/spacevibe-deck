@@ -10,6 +10,10 @@ import {
   isValidPromptTemplate,
   type PromptTemplate,
 } from "../prompts/prompt-templates";
+import {
+  isSidebarDecorationId,
+  type SidebarDecorationId,
+} from "../lib/sidebar-decorations";
 
 export interface TerminalColors {
   background: string;
@@ -40,6 +44,8 @@ export interface Settings {
   customAgents: readonly CustomAgent[];
   /** Reusable prompt bodies the user declared for the Prompt Board. */
   promptTemplates: readonly PromptTemplate[];
+  /** Ornament at the foot of the workspace sidebar; `off` shows none. */
+  sidebarDecoration: SidebarDecorationId;
 }
 
 export const FONT_SIZE_MIN = 10;
@@ -74,6 +80,9 @@ export const DEFAULT_SETTINGS: Settings = {
   scrollback: 10_000,
   customAgents: [],
   promptTemplates: [],
+  // Off by default: chrome recedes (DL §0), and a new ornament turned on for
+  // everyone would restyle a window nobody asked to have restyled.
+  sidebarDecoration: "off",
 };
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -244,5 +253,8 @@ export function validateSettings(raw: unknown): Settings {
         : DEFAULT_SETTINGS.scrollback,
     customAgents: validateCustomAgents(source.customAgents),
     promptTemplates: validatePromptTemplates(source.promptTemplates),
+    sidebarDecoration: isSidebarDecorationId(source.sidebarDecoration)
+      ? source.sidebarDecoration
+      : DEFAULT_SETTINGS.sidebarDecoration,
   };
 }

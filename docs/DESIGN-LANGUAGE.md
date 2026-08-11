@@ -306,6 +306,46 @@ answered here rather than re-argued per button.
   (`⌘`, `⏎`, `⎋`), selection and status dots, and `WorkspaceSpinner`. A logo is
   identity and a key legend is notation; neither is an icon in a system.
 
+## 16. Decorative imagery
+
+Approved as a fork on 2026-08-11, for the sidebar mark. It is numbered 16 with
+15 left empty on purpose: §15 (docked side panels) is already spoken for by the
+[file explorer spec](specs/2026-08-12-file-explorer-design.md) `decided`, and
+re-using the number would have made two approved forks cite the same rule.
+
+Until this fork the rulebook had no answer for ornament at all: §3 forbids
+color as decoration, §14 governs icons that mean something, and DL-14.6 lists
+logos and notation as "outside the library" without saying whether anything may
+exist purely to look good. The answer is yes, under a narrow licence — §0 still
+holds, and chrome that decorates itself stops receding.
+
+- **DL-16.1** Ornament is **opt-in and off by default**. A decoration ships
+  turned off and the user turns it on; a new one may never appear in a window
+  because the app updated. It is the only class of chrome the user may add for
+  no functional reason, and the only one where "because I like it" is the whole
+  justification.
+- **DL-16.2** Ornament takes its ink from **`--decor`**, derived from `--fg`
+  like the text tokens, so it follows the theme (DL-2.2). Artwork therefore
+  carries **shape only** — it is attached as a CSS `mask-image`, never painted
+  as an `<img>` with a palette of its own. `--decor` is deliberately not
+  `--accent`: accent means interactive or active (DL-3.1), and ornament is
+  neither. One token sets how loud every decoration is.
+- **DL-16.3** Ornament lives at the **edge of a surface, never in its flow**.
+  It may not push, reflow or scroll with content — the sidebar mark is pinned
+  to the foot by `margin-top: auto` so the list above it shrinks instead. A
+  decoration that moves the UI is not decoration, it is layout.
+- **DL-16.4** Ornament is inert: `pointer-events: none` and `aria-hidden`. It
+  cannot be hovered, focused, clicked or announced, and it never carries state
+  — it is not allowed to become a status indicator by degrees.
+- **DL-16.5** Ornament does not animate. §7's motion budget has no line for it,
+  and DL-1.2 bans looping animation outright; a mark that moves while the user
+  is idle is exactly what the resource constraint (§1) exists to prevent.
+- **DL-16.6** A decoration is a **bundled, closed set** chosen by id, not an
+  arbitrary user file. That keeps the artwork inside DL-16.2's mask contract —
+  a user-supplied image would paint its own colors and break theming — and it
+  keeps ornament from turning into a second, unreviewed logo surface beside
+  `App logo` and the per-workspace logos, which are identity, not decoration.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

@@ -122,6 +122,7 @@ const EXPECTED_ROWS = [
   "Font size",
   "App logo",
   "Tab bar position",
+  "Sidebar mark",
   "Show pane bar",
   // colors
   "Background",
@@ -164,7 +165,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 22 rows by walking the rail", () => {
+  it("reaches all 23 rows by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });

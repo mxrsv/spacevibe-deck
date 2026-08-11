@@ -25,6 +25,7 @@ import { pickImagePath } from "../settings/logo-store";
 import { reportPersistError } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
 import { WorkspaceLogo } from "./workspace-logo";
+import { SidebarDecoration } from "./sidebar-decoration";
 import { shortcutLabel } from "../lib/shortcut-label";
 
 interface WorkspaceSidebarProps {
@@ -256,6 +257,10 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
           <span>Open workspace</span>
         </button>
       </div>
+      {/* Sibling of the list, not a child: the list scrolls and the ornament
+          must not scroll with it. It is pinned to the foot by `margin-top:
+          auto` in CSS (DL-16.3). */}
+      <SidebarDecoration />
       {popover.value !== null && popoverTab !== undefined && (
         <TabPopover
           left={popover.value.left}
