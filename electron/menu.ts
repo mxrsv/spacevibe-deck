@@ -110,7 +110,12 @@ function itemsFor(
       click: () => {
         const target = deps.focused();
         if (target !== null) {
-          deps.emitTo(target, EVENTS.menuAction, { id: action.id });
+          // The BARE action id, not an object: the renderer does
+          // `listen<string>("menu:action", …)` and both guards
+          // (`isUpdateMenuAction`, `isShortcutAction`) are string comparisons,
+          // so an object silently matches nothing. Rust emitted the string
+          // (menu.rs:116).
+          deps.emitTo(target, EVENTS.menuAction, action.id);
         }
       },
     });
@@ -139,8 +144,17 @@ export function buildMenu(deps: MenuDeps): void {
       : peers.map((label) => ({
           label,
           click: () => {
-            if (focused !== null) {
-              deps.emitTo(focused, EVENTS.menuMovePaneToWindow, { label });
+            // `targetLabel`, not `label`: `moveToWindowTarget`
+            // (transfer-client.ts) reads that key and returns null for anything
+            // else — and it is the whole boundary check on where a running
+            // agent's pane ends up. Also resolve the source window at CLICK
+            // time, not build time: a menu built while window A was focused
+            // would otherwise keep moving A's pane after the user switched to B.
+            const source = deps.focused();
+            if (source !== null && source !== label) {
+              deps.emitTo(source, EVENTS.menuMovePaneToWindow, {
+                targetLabel: label,
+              });
             }
           },
         }));

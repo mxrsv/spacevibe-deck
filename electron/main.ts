@@ -27,8 +27,8 @@ import {
 import { CHANNELS, EVENTS } from "./ipc/channels";
 import { WindowCoordinator, type AdoptionPayload } from "./coordinator";
 import { PtyManager } from "./pty/manager";
-import { ptyInfo } from "./pty/info";
-import { censusFor, QuitFlight } from "./quit-flow";
+import { ptyInfo, type PtyInfo } from "./pty/info";
+import { censusFor, CloseFlight, QuitFlight } from "./quit-flow";
 import { MAIN_LABEL, WindowRegistry } from "./window-lifecycle";
 import { StoreRegistry } from "./store";
 import { detectAgentsSafely, dirsExist } from "./agents";
@@ -47,16 +47,27 @@ const PRELOAD = path.join(__dirname, "preload.cjs");
 const windows = new Map<string, BrowserWindow>();
 const registry = new WindowRegistry();
 const quitFlight = new QuitFlight();
+// Per-window, separate from the app-wide quit prompt: two windows may prompt
+// at the same time, and each guards only its own panes.
+const closeFlight = new CloseFlight();
 const stores = new StoreRegistry(app.getPath("userData"));
 
-/** Emit to one window by label; a dead label is a no-op, exactly as Tauri's
- * `emit_to` was. */
-function emitTo(label: string, event: string, payload: unknown): void {
+/**
+ * Emit to one window by label. Returns false when there was no live window to
+ * receive it.
+ *
+ * The return value matters for the quit and close prompts: Rust released its
+ * flight when `emit_to` failed, and swallowing that here means a prompt nobody
+ * can answer holds the flight for the rest of the process — an app that can
+ * only be force-quit.
+ */
+function emitTo(label: string, event: string, payload: unknown): boolean {
   const window = windows.get(label);
   if (window === undefined || window.isDestroyed()) {
-    return;
+    return false;
   }
   window.webContents.send(event, payload);
+  return true;
 }
 
 const coordinator = new WindowCoordinator(emitTo);
@@ -99,49 +110,103 @@ function createWindow(label: string): BrowserWindow {
   });
   windows.set(label, window);
 
-  window.on("focus", () => registry.recordFocus(label));
+  window.on("focus", () => {
+    registry.recordFocus(label);
+    // The submenu is ordered most-recently-focused first, so focus changing
+    // changes its contents. Without this rebuild, Move Pane to Window keeps
+    // reading "No other window" for the rest of the session after a detach.
+    rebuildMenu();
+  });
 
   window.on("close", (event) => {
-    // Ask the renderer to confirm only when something is actually busy. The
-    // census comes from live PTY state, not from the window being closed.
-    const paneIds = coordinator.panesForWindow(label);
-    const infos = ptyInfo(pty.snapshots(paneIds));
-    const busy = infos.filter(
-      (info) => info.kind === "agent" || info.kind === "busy",
-    );
-    if (busy.length === 0) {
-      return;
-    }
-    event.preventDefault();
-    // A transfer left open across a close would hold its pane frozen until the
-    // timeout, and the guard would then run against a route nobody owns.
+    // Abort FIRST, census second. `window_close.rs` states the order is
+    // load-bearing: a transfer left open across a close holds its pane frozen
+    // until the timeout, and the guard would then run against a route nobody
+    // owns. Running it unconditionally matters too — an idle window can still
+    // be a transfer's source, and skipping the abort strands the pane.
     coordinator.abortInvolving(label);
-    const requestId = quitFlight.tryBegin(label);
+    for (const paneId of coordinator.takePendingOrphans()) {
+      pty.terminate(paneId);
+    }
+
+    // ALWAYS route the close through the renderer, even with nothing busy.
+    // The renderer's guard flushes debounced state before it confirms
+    // (`quit-guard.ts` `finish`), and an empty census is exactly the case it
+    // auto-confirms — deciding "nothing busy, just close" here instead would
+    // skip that flush and lose the user's last settings change.
+    event.preventDefault();
+    const requestId = closeFlight.tryBegin(label);
     if (requestId === null) {
+      // This window's own prompt is already open. Leave it up rather than
+      // opening a second one, and keep the window alive to carry it.
       return;
     }
-    emitTo(label, EVENTS.windowCloseRequested, censusFor(requestId, infos));
+    void (async () => {
+      const infos = await censusOrDeny(coordinator.panesForWindow(label));
+      if (infos === null) {
+        // The reading failed, so nothing can be asserted about what is
+        // running. Release the flight and leave the window open: refusing to
+        // close is recoverable, killing an agent on a guess is not.
+        closeFlight.take(label, requestId);
+        return;
+      }
+      if (!emitTo(label, EVENTS.windowCloseRequested, censusFor(requestId, infos))) {
+        // Nobody can answer the prompt — a wedged or gone webview. Release
+        // the flight so the next attempt is not swallowed silently.
+        closeFlight.take(label, requestId);
+      }
+    })();
   });
 
   window.on("closed", () => {
     windows.delete(label);
     registry.forgetWindow(label);
     quitFlight.forgetWindow(label);
+    closeFlight.forget(label);
     // Crash path: no close event fired and no busy guard ran, so the panes this
     // window still owned would otherwise outlive it with nobody reading them.
     for (const paneId of coordinator.handleWindowDestroyed(label)) {
       pty.terminate(paneId);
     }
-    buildMenu({ registry, emitTo, focused: () => focusedLabel() });
+    rebuildMenu();
   });
 
   void window.loadFile(path.join(RENDERER_DIR, "index.html"));
   registry.recordFocus(label);
+  // A new window is a new move-pane target for every existing window.
+  rebuildMenu();
   return window;
+}
+
+/**
+ * The census for a set of panes, or null when the process table could not be
+ * read.
+ *
+ * Null is NOT "nothing is busy". A failed reading classifies every pane
+ * `unknown`, and `unknown` is not `busy`, so treating it as an empty census
+ * would silently kill running agents with no prompt — the exact failure this
+ * subsystem exists to prevent.
+ */
+async function censusOrDeny(
+  paneIds: readonly number[],
+): Promise<PtyInfo[] | null> {
+  try {
+    return await ptyInfo(pty.snapshots(paneIds));
+  } catch (error) {
+    console.error("Deck: cannot read the process table; refusing to act", error);
+    return null;
+  }
 }
 
 function focusedLabel(): string | null {
   return registry.order()[0] ?? null;
+}
+
+/** Rebuild the application menu. Called on boot, and on every window open,
+ * focus change and close — the move-pane submenu lists peer windows, so its
+ * contents change with all three. */
+function rebuildMenu(): void {
+  buildMenu({ registry, emitTo, focused: () => focusedLabel() });
 }
 
 // ------------------------------------------------------------------ PTY
@@ -184,13 +249,15 @@ ipcMain.handle(CHANNELS.readImageAsDataUrl, (_event, { path: target }) =>
 ipcMain.handle(CHANNELS.scanWorkspaceFavicon, (_event, { dir }) =>
   scanWorkspaceFavicon(dir),
 );
-ipcMain.handle(CHANNELS.applySettingsPatch, async (event, { patch }) => {
+ipcMain.handle(CHANNELS.applySettingsPatch, async (_event, { patch }) => {
   const merged = await applySettingsPatch(stores, patch);
-  // Broadcast so every other window converges without re-reading the file.
+  // EVERY window, sender included. `settings-store.ts` states that the
+  // broadcast is the one authoritative path and that the reply is used only to
+  // detect failure — so excluding the sender left it rendering stale settings
+  // until relaunch. Resolving the sender's label after the await was also a
+  // latent throw: a window closed during the disk write has no label.
   for (const [label] of windows) {
-    if (label !== labelOf(event)) {
-      emitTo(label, EVENTS.settingsMerged, merged);
-    }
+    emitTo(label, EVENTS.settingsMerged, merged);
   }
   return merged;
 });
@@ -200,24 +267,29 @@ ipcMain.handle(CHANNELS.confirmQuit, (_event, { requestId }) => {
   if (!quitFlight.finish(requestId)) {
     return;
   }
-  pty.killAll();
-  void stores.saveAll().finally(() => app.exit(0));
+  void pty
+    .killAll()
+    .then(() => stores.saveAll())
+    .finally(() => app.exit(0));
 });
 ipcMain.handle(CHANNELS.cancelQuit, (_event, { requestId }) => {
   quitFlight.finish(requestId);
 });
 ipcMain.handle(CHANNELS.confirmCloseWindow, (event, { requestId }) => {
-  if (!quitFlight.finish(requestId)) {
+  const label = labelOf(event);
+  // Checked against the WINDOW as well as the id: close and quit ids come from
+  // different counters now, and a reply from an earlier close attempt must not
+  // destroy a window the user chose to keep.
+  if (!closeFlight.take(label, requestId)) {
     return;
   }
-  const label = labelOf(event);
   for (const paneId of coordinator.panesForWindow(label)) {
     pty.terminate(paneId);
   }
   windows.get(label)?.destroy();
 });
-ipcMain.handle(CHANNELS.cancelCloseWindow, (_event, { requestId }) => {
-  quitFlight.finish(requestId);
+ipcMain.handle(CHANNELS.cancelCloseWindow, (event, { requestId }) => {
+  closeFlight.take(labelOf(event), requestId);
 });
 
 // ------------------------------------------------------------- Transfers
@@ -334,12 +406,15 @@ ipcMain.handle("store_load", async (_event, payload) => {
   };
   const store = await stores.open(file, {
     autoSaveMs: Number(autoSave) || 0,
-    // A failed background write must reach the user, not the void: the
-    // renderer already has a persist-error surface for exactly this.
-    onError: (error) => {
-      console.error(`Deck: failed to write ${file}`, error);
-      emitTo(labelOf(_event), "store:write-failed", { file });
-    },
+  });
+  // Broadcast the failure rather than replying to the window that happened to
+  // open the file first. That window can be closed while others keep working,
+  // and its `labelOf` would then THROW inside a rejection handler — an
+  // unhandled rejection in the main process instead of a persist-error bar.
+  await stores.setErrorReporter(file, () => {
+    for (const [label] of windows) {
+      emitTo(label, "store:write-failed", { file });
+    }
   });
   // `defaults` seeds keys the file does not have yet, matching the Tauri
   // plugin — without it a fresh install reads undefined where it expected a
@@ -447,7 +522,6 @@ ipcMain.handle("app_version", () => app.getVersion());
 // ------------------------------------------------------------------ Boot
 app.whenReady().then(() => {
   createWindow(MAIN_LABEL);
-  buildMenu({ registry, emitTo, focused: () => focusedLabel() });
 });
 
 app.on("before-quit", (event) => {
@@ -455,23 +529,35 @@ app.on("before-quit", (event) => {
   if (paneIds.length === 0) {
     return;
   }
-  const infos = ptyInfo(pty.snapshots(paneIds));
-  const busy = infos.filter(
-    (info) => info.kind === "agent" || info.kind === "busy",
-  );
-  if (busy.length === 0) {
-    pty.killAll();
+  // No window can answer, so there is nobody to prompt. Rust's `exit_policy`
+  // allowed the exit outright in this case; preventing it here would leave an
+  // app that can only be force-quit.
+  const label = focusedLabel();
+  if (label === null || !windows.has(label)) {
+    void pty.killAll().finally(() => app.exit(0));
+    event.preventDefault();
     return;
   }
   event.preventDefault();
-  // Exactly one window is asked, behind the global in-flight lock: a second
+  // Exactly one window is asked, behind the app-wide in-flight lock: a second
   // quit while the dialog is open must do nothing.
-  const label = focusedLabel() ?? MAIN_LABEL;
   const requestId = quitFlight.tryBegin(label);
   if (requestId === null) {
     return;
   }
-  emitTo(label, EVENTS.quitRequested, censusFor(requestId, infos));
+  void (async () => {
+    const infos = await censusOrDeny(paneIds);
+    if (infos === null) {
+      // Cannot establish what is running; do not quit on a guess.
+      quitFlight.finish(requestId);
+      return;
+    }
+    // Sent even when nothing is busy: the renderer auto-confirms an empty
+    // census, but only after flushing debounced state to disk.
+    if (!emitTo(label, EVENTS.quitRequested, censusFor(requestId, infos))) {
+      quitFlight.finish(requestId);
+    }
+  })();
 });
 
 // The last window closing ends the app on Windows/Linux; on macOS Deck follows

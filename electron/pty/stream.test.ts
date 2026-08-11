@@ -131,3 +131,21 @@ describe("createStreamDecoder", () => {
     expect(parts.join("")).toBe("😀");
   });
 });
+
+describe("decoder tail at exit", () => {
+  it("releases a held-back partial sequence as U+FFFD", () => {
+    // A shell dying mid-character used to drop these bytes silently; Rust
+    // flushed them lossily so the user saw a replacement char.
+    const decode = createStreamDecoder();
+
+    expect(decode(new Uint8Array([0x61, 0xf0, 0x9f]))).toBe("a");
+    expect(decode.flush()).toBe("�");
+  });
+
+  it("returns nothing when the stream ended cleanly", () => {
+    const decode = createStreamDecoder();
+    decode(new Uint8Array([0x61]));
+
+    expect(decode.flush()).toBe("");
+  });
+});

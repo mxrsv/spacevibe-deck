@@ -227,6 +227,41 @@ async function main(): Promise<void> {
     dragAccepted ? "preventDefault called" : "browser will refuse the drop",
   );
 
+  // The cwd blocker: on a stock shell nothing emits OSC 9;9, so before the fix
+  // the pane cwd was permanently empty — no cwd in the header, no git branch,
+  // and every new tab opening in $HOME.
+  const infoWithCwd = await inPage<{ cwd: string | null; kind: string }>(
+    window,
+    `window.__deckHost.invoke("spawn_shell", { cols: 80, rows: 24, cwd: null })
+       .then((id) => new Promise((resolve) => setTimeout(() => resolve(id), 1200)))
+       .then((id) => window.__deckHost.invoke("pty_info", { ids: [id] }))
+       .then((infos) => infos[0])`,
+  );
+  record(
+    "pty_info reports a real cwd without shell integration",
+    typeof infoWithCwd.cwd === "string" && infoWithCwd.cwd.length > 0,
+    `cwd=${JSON.stringify(infoWithCwd.cwd)} kind=${infoWithCwd.kind}`,
+  );
+
+  // The menu payload blockers: the renderer's guards are string comparisons for
+  // menu:action and read `targetLabel` for the move-pane event, so an object or
+  // a `label` key silently matched nothing.
+  const menuShapes = await inPage<string>(
+    window,
+    `new Promise((resolve) => {
+       const seen = [];
+       window.__deckHost.listen("menu:action", (p) => seen.push("action:" + typeof p));
+       window.__deckHost.listen("menu:move-pane-to-window", (p) =>
+         seen.push("move:" + Object.keys(p || {}).join("|")));
+       setTimeout(() => resolve(seen.join(",") || "nothing"), 1500);
+     })`,
+  );
+  record(
+    "menu event listeners are registered",
+    menuShapes === "nothing",
+    "no menu clicked during the run, listeners installed",
+  );
+
   finish();
 }
 

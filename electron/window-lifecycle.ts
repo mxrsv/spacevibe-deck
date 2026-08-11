@@ -24,8 +24,12 @@ export class WindowRegistry {
 
   /** Allocate the next never-before-used label. */
   allocateLabel(): string {
+    // Post-increment: the first detached window is `deck-1`, matching Rust's
+    // `fetch_add` which returns the pre-value. The label is menu item text, so
+    // starting at `deck-2` was visible to the user.
+    const index = this.nextIndex;
     this.nextIndex += 1;
-    return `deck-${this.nextIndex}`;
+    return `deck-${index}`;
   }
 
   recordFocus(label: string): void {

@@ -110,3 +110,44 @@ export class QuitFlight {
     return true;
   }
 }
+
+/**
+ * One outstanding close prompt PER WINDOW — the port of `CloseFlight` in
+ * `src-tauri/src/window_close.rs`.
+ *
+ * Per window, not global: closing two windows at once is ordinary, and each
+ * guards only its own panes. Sharing the global `QuitFlight` here was a real
+ * bug — the second window's close was prevented with no dialog and no message,
+ * because `tryBegin` failed for a reason that meant something else entirely.
+ */
+export class CloseFlight {
+  private readonly pending = new Map<string, number>();
+  private nextId = 0;
+
+  /** Claim the prompt for `label`. Null means this window already has one. */
+  tryBegin(label: string): number | null {
+    if (this.pending.has(label)) {
+      return null;
+    }
+    this.nextId += 1;
+    this.pending.set(label, this.nextId);
+    return this.nextId;
+  }
+
+  /**
+   * Consume the prompt. False for a stale id OR a mismatched window, so a
+   * reply belonging to an earlier close attempt cannot destroy a window the
+   * user kept — and a quit reply cannot answer a close prompt.
+   */
+  take(label: string, requestId: number): boolean {
+    if (this.pending.get(label) !== requestId) {
+      return false;
+    }
+    this.pending.delete(label);
+    return true;
+  }
+
+  forget(label: string): void {
+    this.pending.delete(label);
+  }
+}

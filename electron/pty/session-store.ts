@@ -13,7 +13,7 @@
  * on.
  */
 import type { IPty } from "node-pty";
-import type { OutputBatcher } from "./stream";
+import type { OutputBatcher, StreamDecoder } from "./stream";
 import { ShellIntegrationParser } from "../shell-integration";
 
 export interface PtySession {
@@ -22,6 +22,8 @@ export interface PtySession {
   /** `/dev/ttysNNN` without the `/dev/` prefix — the join key for `ps`. */
   readonly ttyName: string;
   readonly batcher: OutputBatcher;
+  /** Streaming UTF-8 decoder; its held-back tail is released at exit. */
+  readonly decode: StreamDecoder;
   /** Latest parser state; replaced on every chunk (the parser is a value). */
   shellIntegration: ShellIntegrationParser;
   /** Last directory reported by OSC 9;9 that still exists. */

@@ -156,7 +156,19 @@ export class OutputBatcher {
  * sequence back, which is exactly what `take_valid_utf8` does in Rust —
  * including turning genuinely invalid bytes into U+FFFD rather than stalling.
  */
-export function createStreamDecoder(): (bytes: Uint8Array) => string {
+export interface StreamDecoder {
+  (bytes: Uint8Array): string;
+  /** Release any held-back partial sequence — call once, at exit. */
+  flush(): string;
+}
+
+export function createStreamDecoder(): StreamDecoder {
   const decoder = new TextDecoder("utf-8", { fatal: false });
-  return (bytes) => decoder.decode(bytes, { stream: true });
+  const decode = ((bytes: Uint8Array) =>
+    decoder.decode(bytes, { stream: true })) as StreamDecoder;
+  // Without this, a shell dying mid-character silently drops the 1-3 held
+  // bytes; Rust flushed them lossily (`String::from_utf8_lossy`) so the user
+  // saw U+FFFD rather than nothing.
+  decode.flush = () => decoder.decode();
+  return decode;
 }

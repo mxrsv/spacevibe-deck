@@ -132,3 +132,74 @@ describe("background write failures", () => {
     expect(errors).toHaveLength(1);
   });
 });
+
+describe("concurrency and recovery", () => {
+  it("returns ONE instance to concurrent opens of the same file", async () => {
+    // Awaiting before recording let two callers each build a store: divergent
+    // in-memory state, and both writing the same .tmp path so the second
+    // rename hit ENOENT.
+    const registry = new StoreRegistry(tempDir());
+
+    const [a, b] = await Promise.all([
+      registry.open("workspaces.json"),
+      registry.open("workspaces.json"),
+    ]);
+
+    expect(a).toBe(b);
+  });
+
+  it("keeps writing after a transient failure", async () => {
+    // `.then()` on a rejected chain re-rejects forever, so one full disk used
+    // to stop a store writing for the rest of the run.
+    const dir = tempDir();
+    const target = join(dir, "sub", "s.json");
+    const blocker = join(dir, "sub");
+    writeFileSync(blocker, "i am a file, not a directory");
+    const errors: unknown[] = [];
+    const store = new JsonStore(target, { onError: (e) => errors.push(e) });
+    await store.load();
+
+    store.set("k", "first");
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(errors).toHaveLength(1);
+
+    // Clear the obstruction; the next write must succeed.
+    rmSync(blocker);
+    store.set("k", "second");
+    await store.save();
+
+    expect(JSON.parse(readFileSync(target, "utf8"))).toEqual({ k: "second" });
+  });
+
+  it("flushes healthy stores even when one is failing", async () => {
+    // Promise.all is fail-fast, so one bad store used to fire app.exit while
+    // the good ones were still mid-write.
+    const dir = tempDir();
+    writeFileSync(join(dir, "blocked"), "file");
+    const registry = new StoreRegistry(dir);
+    (await registry.open("good.json")).set("x", 1);
+    (await registry.open("blocked/bad.json")).set("y", 2);
+
+    await expect(registry.saveAll()).resolves.toBeUndefined();
+
+    expect(JSON.parse(readFileSync(join(dir, "good.json"), "utf8"))).toEqual({
+      x: 1,
+    });
+  });
+
+  it("lets a later caller install the error reporter", async () => {
+    // open() drops a second caller's options, so whichever path opened the
+    // file first owned error reporting — often a background patch with none.
+    const dir = tempDir();
+    writeFileSync(join(dir, "blocked"), "file");
+    const registry = new StoreRegistry(dir);
+    const store = await registry.open("blocked/s.json");
+    const errors: unknown[] = [];
+
+    await registry.setErrorReporter("blocked/s.json", (e) => errors.push(e));
+    store.set("k", "v");
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    expect(errors).toHaveLength(1);
+  });
+});

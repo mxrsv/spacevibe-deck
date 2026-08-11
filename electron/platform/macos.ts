@@ -14,13 +14,16 @@
  * and silently break the agent chip, the dot colour and attention state.
  *
  * So: one `ps -A` per poll tick, joined by tty → tpgid → pgid. Measured at
- * 69 ms for 717 rows against a 2 s poll interval.
+ * 69 ms for 717 rows against a 2 s poll interval — run ASYNCHRONOUSLY, because
+ * this is the process that pumps every pane's output.
  */
-import { execFile, execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import os from "node:os";
 
-/** Matches `KILL_GRACE` in macos.rs — SIGHUP, then SIGKILL after this. */
-export const KILL_GRACE_MS = 2000;
+/** SIGHUP, then SIGKILL after this. 500 ms, matching `KILL_GRACE` in
+ * macos.rs — an earlier value of 2000 ms let a SIGHUP-ignoring TUI outlive its
+ * closed pane four times longer than on Tauri. */
+export const KILL_GRACE_MS = 500;
 
 export interface ShellLaunch {
   readonly executable: string;
@@ -81,26 +84,49 @@ export function argv0Name(args: string): string | null {
   return stripped.length > 0 ? stripped : null;
 }
 
-/** Snapshot of the whole process table, taken once per poll tick. */
-export function readProcessTable(): PsRow[] {
-  try {
-    return parsePsTable(
-      execFileSync("/bin/ps", ["-A", "-o", "pid=,pgid=,tpgid=,tty=,args="], {
-        encoding: "utf8",
-        maxBuffer: 16 * 1024 * 1024,
-        timeout: 4000,
-      }),
+/**
+ * Snapshot of the whole process table.
+ *
+ * ASYNCHRONOUS on purpose. The synchronous version blocked the main process
+ * for a measured 72-75 ms per call, and the renderer polls every 2 s PER
+ * WINDOW — during which no PTY byte reaches any renderer and no IPC is
+ * serviced. This is the process that pumps every pane's output; it must not
+ * fork-and-wait.
+ *
+ * Rejects rather than returning `[]` on failure. An empty table classifies
+ * every pane `unknown`, and `unknown` is not `busy`, so a swallowed failure
+ * silently unblocks the quit guard and kills running agents without a prompt.
+ * The caller must decide what a failed reading means.
+ */
+export function readProcessTable(): Promise<PsRow[]> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "/bin/ps",
+      ["-A", "-o", "pid=,pgid=,tpgid=,tty=,args="],
+      { encoding: "utf8", maxBuffer: 16 * 1024 * 1024, timeout: 4000 },
+      (error, stdout) => {
+        if (error) {
+          reject(error instanceof Error ? error : new Error(String(error)));
+          return;
+        }
+        resolve(parsePsTable(stdout));
+      },
     );
-  } catch {
-    // A failed snapshot means every pane reports Unknown for this tick, which
-    // is the honest answer — the previous values stay on screen because the
-    // poller keeps last-known on error.
-    return [];
-  }
+  });
 }
 
 export interface ForegroundProcess {
+  /** The process to inspect — the group leader where one exists. */
   readonly pid: number;
+  /**
+   * The foreground PROCESS GROUP id, or null when it cannot be established.
+   *
+   * Distinct from `pid` on purpose: `terminateProcessGroups` calls
+   * `kill(-group)`, and passing a group MEMBER's pid there signals a group
+   * that does not exist. The result is an under-kill — the foreground job
+   * survives the pane that owned it.
+   */
+  readonly group: number | null;
   /** argv0 basename — what Deck classifies on. */
   readonly name: string | null;
 }
@@ -125,38 +151,66 @@ export function foregroundProcess(
     return null;
   }
   const target = shellRow.tpgid > 0 ? shellRow.tpgid : shellRow.pgid;
-  const leader =
-    onTty.find((row) => row.pid === target) ??
-    onTty.find((row) => row.pgid === target);
-  if (leader === undefined) {
+  const leader = onTty.find((row) => row.pid === target);
+  if (leader !== undefined) {
+    // The leader's pid IS the group id, which is what killpg needs.
+    return { pid: leader.pid, group: leader.pid, name: argv0Name(leader.args) };
+  }
+  // Leader reaped, members still holding the tty. Classify from a member so
+  // the pane does not fall to `unknown`, but report NO group: a member's pid
+  // is not a group id, and signalling it would hit nothing (or, in principle,
+  // something else).
+  const member = onTty.find((row) => row.pgid === target);
+  if (member === undefined) {
     return null;
   }
-  return { pid: leader.pid, name: argv0Name(leader.args) };
+  return { pid: member.pid, group: null, name: argv0Name(member.args) };
 }
 
 /**
- * Working directory of a pid, via `lsof`.
+ * Working directories for several pids at once, via one `lsof`.
  *
- * Deliberately OFF the poll path: cwd normally arrives through OSC 9;9 shell
- * integration, exactly as it does on Tauri. This is the fallback for a shell
- * with no integration loaded, and it is slow enough (~20 ms for six pids) that
- * calling it every tick would be a regression.
+ * This is the PRIMARY cwd source, matching Rust: `info.rs` reads the
+ * foreground process's cwd with `proc_pidinfo(PROC_PIDVNODEPATHINFO)` and
+ * treats OSC 9;9 only as a fallback. An earlier version of this port had no
+ * primary source at all, so on a stock shell — which emits no OSC 9;9, because
+ * Deck injects no rc hook on macOS — the pane cwd was permanently empty: no
+ * cwd in the header, no git branch, copy-cwd a no-op, and every new tab or
+ * restored layout opening in `$HOME`.
+ *
+ * Batched because per-pid costs ~62 ms while six pids together cost ~34 ms.
+ * A failure resolves to an empty map rather than rejecting: a missing cwd is a
+ * cosmetic degradation and must never take the poll down with it.
  */
-export function processCwd(pid: number): Promise<string | null> {
+export function processCwds(
+  pids: readonly number[],
+): Promise<Map<number, string>> {
+  if (pids.length === 0) {
+    return Promise.resolve(new Map());
+  }
   return new Promise((resolve) => {
     execFile(
       "/usr/sbin/lsof",
-      ["-a", "-d", "cwd", "-p", String(pid), "-Fn"],
-      { encoding: "utf8", timeout: 4000 },
-      (error, stdout) => {
-        if (error) {
-          resolve(null);
-          return;
+      ["-a", "-d", "cwd", "-p", pids.join(","), "-Fn"],
+      { encoding: "utf8", timeout: 4000, maxBuffer: 4 * 1024 * 1024 },
+      (_error, stdout) => {
+        // `-F` output is one field per line: `p<pid>` opens a process block,
+        // `n<path>` gives the name. A partial failure still prints the pids it
+        // could read, so parse whatever came back.
+        const cwds = new Map<number, string>();
+        let current: number | null = null;
+        for (const line of String(stdout ?? "").split("\n")) {
+          if (line.startsWith("p")) {
+            const pid = Number(line.slice(1));
+            current = Number.isInteger(pid) ? pid : null;
+          } else if (line.startsWith("n") && current !== null) {
+            const path = line.slice(1);
+            if (path.length > 0 && !cwds.has(current)) {
+              cwds.set(current, path);
+            }
+          }
         }
-        const line = stdout
-          .split("\n")
-          .find((candidate) => candidate.startsWith("n"));
-        resolve(line === undefined ? null : line.slice(1) || null);
+        resolve(cwds);
       },
     );
   });

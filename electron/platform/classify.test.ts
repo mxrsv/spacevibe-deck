@@ -110,6 +110,7 @@ describe("foregroundProcess", () => {
   it("finds the foreground job through tpgid", () => {
     expect(foregroundProcess(rows, "ttys002", 610)).toEqual({
       pid: 777,
+      group: 777,
       name: "claude",
     });
   });
@@ -117,7 +118,27 @@ describe("foregroundProcess", () => {
   it("reports the shell itself when it is in the foreground", () => {
     expect(foregroundProcess(rows, "ttys001", 501)).toEqual({
       pid: 501,
+      group: 501,
       name: "zsh",
+    });
+  });
+
+  it("reports no GROUP when only a group member survives", () => {
+    // The leader was reaped but members still hold the tty. Classifying from a
+    // member is fine; signalling its pid as a process group is not — a
+    // member's pid is not a group id, so `kill(-pid)` would hit nothing and
+    // the foreground job would outlive its pane.
+    const orphaned = parsePsTable(
+      [
+        "  700   700   900 ttys009 /bin/zsh -l",
+        "  901   900   900 ttys009 npm exec claude",
+      ].join("\n"),
+    );
+
+    expect(foregroundProcess(orphaned, "ttys009", 700)).toEqual({
+      pid: 901,
+      group: null,
+      name: "npm",
     });
   });
 

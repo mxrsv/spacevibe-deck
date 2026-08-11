@@ -21,6 +21,7 @@ import {
   type ShellIntegrationEvent,
 } from "../shell-integration";
 import * as macos from "../platform/macos";
+import type { PsRow } from "../platform/macos";
 import * as windows from "../platform/windows";
 
 function platform() {
@@ -63,7 +64,7 @@ export class PtyManager {
       resume: () => pty.resume(),
     });
 
-    const session = this.store.insert({ id, pty, ttyName, batcher });
+    const session = this.store.insert({ id, pty, ttyName, batcher, decode });
 
     pty.onData((chunk) => {
       // `encoding: null` means chunks arrive as Buffers typed as strings.
@@ -106,20 +107,27 @@ export class PtyManager {
   /**
    * Terminate without consulting ownership — used when the owning window is
    * already gone, which is precisely when there is nobody to validate against.
+   *
+   * `rows` is passed in rather than read here so a mass kill takes ONE process
+   * table reading instead of one per pane: quitting with eight panes used to
+   * fork `ps` eight times and freeze the main process for most of a second.
+   * Omitting it still works — the pane is killed, only its foreground group is
+   * not signalled first.
    */
-  terminate(id: number): void {
+  terminate(id: number, rows: readonly PsRow[] = []): void {
     const session = this.store.get(id);
     if (session === undefined) {
       return;
     }
-    const rows = platform().readProcessTable();
     const foreground = platform().foregroundProcess(
       rows,
       session.ttyName,
       session.pty.pid,
     );
     platform().terminateProcessGroups(
-      foreground === null ? null : foreground.pid,
+      // `group`, never `pid`: a group MEMBER's pid is not a group id, and
+      // signalling it would hit nothing.
+      foreground?.group ?? null,
       session.pty.pid,
     );
     try {
@@ -129,9 +137,22 @@ export class PtyManager {
     }
   }
 
-  killAll(): void {
+  /**
+   * Kill every live pane, taking one process-table reading for the batch.
+   *
+   * A failed reading still kills: the shell's own group is signalled from the
+   * session, and only the foreground-group SIGHUP is skipped. Refusing to quit
+   * because `ps` failed would be worse.
+   */
+  async killAll(): Promise<void> {
+    let rows: readonly PsRow[] = [];
+    try {
+      rows = await platform().readProcessTable();
+    } catch {
+      // Fall through with an empty table — see above.
+    }
     for (const id of this.store.ids()) {
-      this.terminate(id);
+      this.terminate(id, rows);
     }
   }
 
@@ -155,6 +176,13 @@ export class PtyManager {
       return;
     }
     session.exited = true;
+    // Release any partial multibyte sequence the decoder is holding, then
+    // flush — a shell that died mid-character still renders U+FFFD rather than
+    // dropping the bytes.
+    const tail = session.decode.flush();
+    if (tail.length > 0) {
+      session.batcher.push(tail);
+    }
     session.batcher.flush();
     session.batcher.close();
     this.store.remove(session.id);

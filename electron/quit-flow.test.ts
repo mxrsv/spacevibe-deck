@@ -1,6 +1,6 @@
 /** Translated from `pane_census.rs` and `quit_flow.rs`. */
 import { describe, expect, it } from "vitest";
-import { allIdle, censusFor, QuitFlight } from "./quit-flow";
+import { allIdle, censusFor, CloseFlight, QuitFlight } from "./quit-flow";
 import type { PtyInfo } from "./pty/info";
 
 const pane = (
@@ -72,6 +72,52 @@ describe("QuitFlight", () => {
 
     expect(flight.forgetWindow("main")).toBe(false);
     expect(flight.forgetWindow("deck-2")).toBe(true);
+    expect(flight.tryBegin("main")).not.toBe(null);
+  });
+});
+
+describe("CloseFlight", () => {
+  it("lets two windows prompt at the same time", () => {
+    // Sharing the app-wide QuitFlight meant the second window's close was
+    // prevented with no dialog and no message.
+    const flight = new CloseFlight();
+
+    expect(flight.tryBegin("main")).not.toBe(null);
+    expect(flight.tryBegin("deck-1")).not.toBe(null);
+  });
+
+  it("admits one prompt per window", () => {
+    const flight = new CloseFlight();
+    flight.tryBegin("main");
+
+    expect(flight.tryBegin("main")).toBe(null);
+  });
+
+  it("refuses a reply aimed at a different window", () => {
+    // Close and quit ids come from different counters; without the label check
+    // an id valid for one path would answer the other.
+    const flight = new CloseFlight();
+    const id = flight.tryBegin("main")!;
+
+    expect(flight.take("deck-1", id)).toBe(false);
+    expect(flight.take("main", id)).toBe(true);
+  });
+
+  it("refuses a stale id so an old reply cannot close a kept window", () => {
+    const flight = new CloseFlight();
+    const first = flight.tryBegin("main")!;
+    flight.take("main", first);
+    flight.tryBegin("main");
+
+    expect(flight.take("main", first)).toBe(false);
+  });
+
+  it("releases the prompt when the window goes away", () => {
+    const flight = new CloseFlight();
+    flight.tryBegin("main");
+
+    flight.forget("main");
+
     expect(flight.tryBegin("main")).not.toBe(null);
   });
 });

@@ -50,6 +50,10 @@ export function foregroundProcess(): never {
   throw new WindowsGateUnresolvedError("foregroundProcess");
 }
 
+export function processCwds(): never {
+  throw new WindowsGateUnresolvedError("processCwds");
+}
+
 export function terminateProcessGroups(): never {
   throw new WindowsGateUnresolvedError("terminateProcessGroups");
 }
