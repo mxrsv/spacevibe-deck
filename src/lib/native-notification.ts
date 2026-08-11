@@ -16,7 +16,7 @@ import {
   isPermissionGranted as pluginIsPermissionGranted,
   requestPermission as pluginRequestPermission,
   sendNotification as pluginSendNotification,
-} from "@tauri-apps/plugin-notification";
+} from "../host/shell-host";
 
 /** Seam over the plugin's permission + send functions — injected so tests
  * never call the real Tauri API. */

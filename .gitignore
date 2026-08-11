@@ -39,3 +39,7 @@ docs/archive/
 # by hand once a cut is approved.
 marketing/video/.frames/
 marketing/video/out/
+
+# Electron host build output + local run logs
+dist-electron/
+*.log

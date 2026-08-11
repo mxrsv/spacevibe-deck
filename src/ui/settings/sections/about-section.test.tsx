@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { openUrl } = vi.hoisted(() => ({
   openUrl: vi.fn(async (_url: string) => {}),
 }));
-vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl }));
+vi.mock("../../../host/shell-host", () => ({ openUrl }));
 
 import { AboutSection } from "./about-section";
 import { activeUpdateController } from "../../../updater/active-update-controller";

@@ -1,4 +1,4 @@
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen, type UnlistenFn } from "../host/bridge";
 import {
   confirmMessage,
   QUIT_COPY,

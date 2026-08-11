@@ -1,8 +1,8 @@
 import { Plus, X } from "lucide-preact";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
-import { open } from "@tauri-apps/plugin-dialog";
-import type { UnlistenFn } from "@tauri-apps/api/event";
+import { open } from "../host/dialog-host";
+import type { UnlistenFn } from "../host/bridge";
 import {
   activeTabIndex,
   IDLE_ATTENTION_SUMMARY,

@@ -1,5 +1,5 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { UnlistenFn } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "../host/window-host";
+import type { UnlistenFn } from "../host/bridge";
 import {
   clampFontSize,
   DEFAULT_SETTINGS,

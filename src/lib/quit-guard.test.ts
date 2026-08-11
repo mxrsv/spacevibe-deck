@@ -10,8 +10,8 @@ const listenMock = vi.hoisted(() =>
   ),
 );
 const onCloseRequestedMock = vi.hoisted(() => vi.fn(async () => () => {}));
-vi.mock("@tauri-apps/api/event", () => ({ listen: listenMock }));
-vi.mock("@tauri-apps/api/window", () => ({
+vi.mock("../host/bridge", () => ({ listen: listenMock }));
+vi.mock("../host/window-host", () => ({
   getCurrentWindow: () => ({ onCloseRequested: onCloseRequestedMock }),
 }));
 

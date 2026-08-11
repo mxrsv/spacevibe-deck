@@ -1,5 +1,5 @@
 import { signal } from "@preact/signals";
-import { Store } from "@tauri-apps/plugin-store";
+import { Store } from "../host/store-host";
 import {
   forgetAgent,
   pushRecent,

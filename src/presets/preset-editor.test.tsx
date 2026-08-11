@@ -8,7 +8,7 @@ import {
 } from "../lib/platform";
 import { PresetEditor } from "./preset-editor";
 
-vi.mock("@tauri-apps/plugin-dialog", () => ({
+vi.mock("../host/dialog-host", () => ({
   open: vi.fn(async () => null),
 }));
 

@@ -1,5 +1,5 @@
 import { signal, type ReadonlySignal } from "@preact/signals";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../host/bridge";
 import type { DesktopPlatform } from "../lib/platform";
 
 const MAX_RELEASE_NOTES_LENGTH = 400;

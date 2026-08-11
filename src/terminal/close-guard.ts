@@ -1,4 +1,4 @@
-import { ask } from "@tauri-apps/plugin-dialog";
+import { ask } from "../host/dialog-host";
 import type { PaneProcessInfo } from "../lib/process-info";
 import { freshPaneInfo } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";

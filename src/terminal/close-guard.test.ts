@@ -12,7 +12,7 @@ import { createMemoryPtyClient } from "./pty-client";
 import { freshPaneInfo } from "./pane-info";
 
 const askMock = vi.hoisted(() => vi.fn());
-vi.mock("@tauri-apps/plugin-dialog", () => ({ ask: askMock }));
+vi.mock("../host/dialog-host", () => ({ ask: askMock }));
 
 function info(
   id: number,

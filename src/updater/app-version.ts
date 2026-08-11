@@ -1,5 +1,5 @@
 import { signal } from "@preact/signals";
-import { getVersion } from "@tauri-apps/api/app";
+import { getVersion } from "../host/shell-host";
 
 /**
  * The version Deck is running, read from the bundle itself.

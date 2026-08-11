@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The section pulls in the Tauri-backed settings store; stub it so the
 // component tree mounts under jsdom.
-vi.mock("@tauri-apps/plugin-store", () => ({
+vi.mock("../../../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async () => undefined),

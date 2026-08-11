@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const setMock = vi.hoisted(() => vi.fn(async () => {}));
 const saveMock = vi.hoisted(() => vi.fn(async () => {}));
-vi.mock("@tauri-apps/plugin-store", () => ({
+vi.mock("../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async (): Promise<unknown> => undefined),
@@ -28,6 +28,11 @@ describe("settings persistence", () => {
     setMock.mockClear();
     saveMock.mockClear();
     persistError.value = null;
+    // Install the in-memory sync BEFORE initSettings, which otherwise falls
+    // back to the real host client. On Tauri that client was harmless in a
+    // test; the Electron facade throws when no bridge is present, which is
+    // deliberate — a silent no-op would look like a hung PTY in production.
+    configureSettingsSync(createMemorySettingsSync());
     await initSettings();
   });
 

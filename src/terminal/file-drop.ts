@@ -1,6 +1,6 @@
-import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { UnlistenFn } from "@tauri-apps/api/event";
+import { getCurrentWebview } from "../host/window-host";
+import { getCurrentWindow } from "../host/window-host";
+import type { UnlistenFn } from "../host/bridge";
 
 export interface FileDropHandlers {
   /** Logical coordinates (CSS px) — same origin as clientX/clientY. */

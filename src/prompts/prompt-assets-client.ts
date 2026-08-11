@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../host/bridge";
 import type { PromptAssetKind } from "./snippet-format";
 
 /** Mirror of the Rust `PromptAsset` payload from `list_prompt_assets`. */

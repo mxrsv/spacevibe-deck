@@ -88,7 +88,11 @@ function freshWindowFocusController(): WindowFocusController {
 let windowFocus = freshWindowFocusController();
 const windowCloseCalls: number[] = [];
 
-vi.mock("@tauri-apps/api/window", () => ({
+vi.mock("../host/window-host", () => ({
+  // `getCurrentWindow` and `getCurrentWebview` were separate Tauri modules and
+  // are now one facade, so a single factory must supply both — two vi.mock
+  // calls for the same path would silently keep only the last.
+  getCurrentWebview: () => ({ onDragDropEvent: async () => () => {} }),
   getCurrentWindow: () => ({
     scaleFactor: async () => 1,
     // The last tab now closes THIS window rather than quitting the app
@@ -110,9 +114,6 @@ vi.mock("@tauri-apps/api/window", () => ({
       return windowFocus.unlistenFocus;
     },
   }),
-}));
-vi.mock("@tauri-apps/api/webview", () => ({
-  getCurrentWebview: () => ({ onDragDropEvent: async () => () => {} }),
 }));
 
 function fakePane(

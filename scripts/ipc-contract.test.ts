@@ -3,6 +3,13 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 /**
+ * SUPERSEDED ON THIS BRANCH by `scripts/electron-ipc-contract.test.ts`.
+ *
+ * The renderer no longer invokes Tauri commands, so this test's premise is
+ * gone and `npm test` excludes it. It is kept, unmodified below, because
+ * `src-tauri/` is still in the tree and this file is what would check it if
+ * the migration aborts at Gate C. Delete both together, never separately.
+ *
  * The one gate that crosses the IPC boundary.
  *
  * Nothing else in this repo does: Vitest mocks the PTY client, `tsc` has never

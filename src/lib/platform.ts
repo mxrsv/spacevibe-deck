@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../host/bridge";
 
 export type DesktopPlatform = "macos" | "windows" | "unsupported";
 

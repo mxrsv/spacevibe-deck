@@ -1,9 +1,9 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { useSignalEffect } from "@preact/signals";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ask, message } from "@tauri-apps/plugin-dialog";
+import { listen, type UnlistenFn } from "../host/bridge";
+import { getCurrentWindow } from "../host/window-host";
+import { ask, message } from "../host/dialog-host";
 import { installQuitGuard } from "../lib/quit-guard";
 import {
   confirmClose,

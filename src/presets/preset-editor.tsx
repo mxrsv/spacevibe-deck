@@ -1,6 +1,6 @@
 import { useSignal, type Signal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open } from "../host/dialog-host";
 import { leafIds, type Path, type TreeNode } from "../lib/split-tree";
 import { hasPrimaryModifier } from "../lib/platform";
 import {

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The screen pulls in Tauri-backed stores through its sections; stub them so
 // the component tree mounts under jsdom.
-vi.mock("@tauri-apps/plugin-store", () => ({
+vi.mock("../../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async () => undefined),
@@ -14,7 +14,7 @@ vi.mock("@tauri-apps/plugin-store", () => ({
     })),
   },
 }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({
+vi.mock("../../host/dialog-host", () => ({
   open: vi.fn(async () => null),
   ask: vi.fn(async () => true),
 }));

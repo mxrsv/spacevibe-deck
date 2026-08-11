@@ -1,0 +1,191 @@
+/**
+ * Native menu, built from the action registry.
+ *
+ * R3 says menu code is generated from the registry and never hand-edited. On
+ * Tauri that meant a codegen step producing `menu_registry.rs`, because Rust
+ * could not import a TypeScript module. Electron's main process can, so the
+ * menu is derived from `ACTION_REGISTRY` at RUNTIME instead — same single
+ * source of truth, one fewer generated artifact to drift.
+ *
+ * Accelerator translation mirrors `scripts/generate-menu.ts` exactly: an
+ * accelerator is declared by CHARACTER, never by physical position, which is
+ * why an action carrying a menu item must use a character binding.
+ */
+import { Menu, app, type MenuItemConstructorOptions } from "electron";
+import {
+  ACTION_REGISTRY,
+  MACOS_KEYMAP,
+  type ActionDefinition,
+  type KeyBinding,
+  type MenuSubmenu,
+} from "../src/terminal/action-registry";
+import { EVENTS } from "./ipc/channels";
+import type { WindowRegistry } from "./window-lifecycle";
+
+/** `event.code` → the character an accelerator string expects. */
+const CODE_TO_ACCEL: Record<string, string> = {
+  BracketLeft: "[",
+  BracketRight: "]",
+};
+
+function normalizeCode(code: string): string {
+  if (CODE_TO_ACCEL[code] !== undefined) {
+    return CODE_TO_ACCEL[code];
+  }
+  if (code.startsWith("Key")) {
+    return code.slice(3);
+  }
+  if (code.startsWith("Digit")) {
+    return code.slice(5);
+  }
+  return code;
+}
+
+function normalizeKey(key: string): string {
+  if (/^[a-z]$/.test(key)) {
+    return key.toUpperCase();
+  }
+  if (key.length > 1) {
+    return key[0].toUpperCase() + key.slice(1);
+  }
+  return key;
+}
+
+function tokenFor(binding: KeyBinding): string {
+  return "code" in binding
+    ? normalizeCode(binding.code)
+    : normalizeKey(binding.key);
+}
+
+function acceleratorFor(actionId: string): string | undefined {
+  const binding = MACOS_KEYMAP.find(
+    (candidate) => candidate.action === actionId,
+  );
+  if (binding === undefined) {
+    return undefined;
+  }
+  const parts = ["CmdOrCtrl"];
+  if (binding.shift) {
+    parts.push("Shift");
+  }
+  if (binding.alt) {
+    parts.push("Alt");
+  }
+  if (binding.ctrl) {
+    parts.push("Ctrl");
+  }
+  parts.push(tokenFor(binding));
+  return parts.join("+");
+}
+
+export interface MenuDeps {
+  readonly registry: WindowRegistry;
+  readonly emitTo: (label: string, event: string, payload: unknown) => void;
+  /** Label of the window an action should go to. */
+  readonly focused: () => string | null;
+}
+
+/** Items for one submenu, with a separator wherever the group changes. */
+function itemsFor(
+  submenu: MenuSubmenu,
+  deps: MenuDeps,
+): MenuItemConstructorOptions[] {
+  // `ACTION_REGISTRY` is a const tuple, so only the members that declare a
+  // menu carry the field in their literal type. Read it through the shared
+  // interface rather than narrowing each member.
+  const actions = (ACTION_REGISTRY as readonly ActionDefinition[]).filter(
+    (action) => action.menu?.submenu === submenu,
+  );
+  const items: MenuItemConstructorOptions[] = [];
+  let lastGroup: string | undefined;
+  for (const [index, action] of actions.entries()) {
+    if (index > 0 && action.menu?.group !== lastGroup) {
+      items.push({ type: "separator" });
+    }
+    lastGroup = action.menu?.group;
+    items.push({
+      id: action.id,
+      label: action.label,
+      accelerator: acceleratorFor(action.id),
+      click: () => {
+        const target = deps.focused();
+        if (target !== null) {
+          deps.emitTo(target, EVENTS.menuAction, { id: action.id });
+        }
+      },
+    });
+  }
+  return items;
+}
+
+/**
+ * Build and install the application menu.
+ *
+ * The move-pane submenu is rebuilt on every focus change, because it lists
+ * peer windows most-recently-focused first — the contents change as the user
+ * moves between windows.
+ */
+export function buildMenu(deps: MenuDeps): void {
+  if (process.platform !== "darwin") {
+    // Windows/Linux chrome carries its own menu; no native bar to install.
+    return;
+  }
+  const focused = deps.focused();
+  const peers = deps.registry.order(focused ?? undefined);
+
+  const movePaneSubmenu: MenuItemConstructorOptions[] =
+    peers.length === 0
+      ? [{ label: "No other window", enabled: false }]
+      : peers.map((label) => ({
+          label,
+          click: () => {
+            if (focused !== null) {
+              deps.emitTo(focused, EVENTS.menuMovePaneToWindow, { label });
+            }
+          },
+        }));
+
+  const template: MenuItemConstructorOptions[] = [
+    {
+      label: app.getName(),
+      submenu: [
+        ...itemsFor("App", deps),
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { type: "separator" },
+        // `role: "quit"` so the OS delivers it through `before-quit`, which is
+        // where the busy census runs.
+        { role: "quit" },
+      ],
+    },
+    { label: "File", submenu: itemsFor("File", deps) },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+        ...itemsFor("Edit", deps),
+      ],
+    },
+    { label: "View", submenu: itemsFor("View", deps) },
+    {
+      label: "Window",
+      submenu: [
+        ...itemsFor("Window", deps),
+        { type: "separator" },
+        { label: "Move Pane to Window", submenu: movePaneSubmenu },
+        { type: "separator" },
+        { role: "minimize" },
+        { role: "zoom" },
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}

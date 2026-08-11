@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // The rail's foot mounts `ResetSection`, and the registry's sections pull in
 // the Tauri-backed settings store — stub both so the tree mounts under
 // jsdom, same convention as `sections/reset-section.test.tsx`.
-vi.mock("@tauri-apps/plugin-store", () => ({
+vi.mock("../../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async () => undefined),
@@ -15,7 +15,7 @@ vi.mock("@tauri-apps/plugin-store", () => ({
     })),
   },
 }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({
+vi.mock("../../host/dialog-host", () => ({
   ask: vi.fn(async () => false),
 }));
 

@@ -18,8 +18,11 @@
     "build:landing": "vite build --config marketing/landing-prototype/vite.build.mjs",
     "video:preview": "vite marketing --host 127.0.0.1 --port 5174 --strictPort --open /video/",
     "video:render": "node marketing/video/render/render.mjs",
-    "test": "vitest run --exclude scripts/verify-windows-bundle.test.mjs --exclude scripts/verify-updater-manifest.test.mjs",
-    "tauri": "tauri"
+    "test": "vitest run --exclude scripts/verify-windows-bundle.test.mjs --exclude scripts/verify-updater-manifest.test.mjs --exclude scripts/ipc-contract.test.ts",
+    "tauri": "tauri",
+    "electron:build": "tsc -p tsconfig.electron.json && node scripts/build-electron-main.mjs",
+    "electron:dev": "npm run build && npm run electron:build && electron dist-electron/electron/main.cjs",
+    "electron:smoke": "npm run build && npm run electron:build && electron dist-electron/electron/smoke.cjs"
   },
   "dependencies": {
     "@preact/signals": "^2.9.2",
@@ -37,6 +40,7 @@
     "@xterm/addon-unicode-graphemes": "^0.4.0",
     "@xterm/xterm": "^6.0.0",
     "lucide-preact": "^1.30.0",
+    "node-pty": "^1.1.0",
     "ogl": "^1.0.11",
     "preact": "^10.29.3",
     "three": "^0.185.1"
@@ -44,6 +48,9 @@
   "devDependencies": {
     "@preact/preset-vite": "^2.10.5",
     "@tauri-apps/cli": "^2",
+    "@types/node": "^26.2.0",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
     "jsdom": "^29.1.1",
     "playwright-core": "^1.62.0",
     "terser": "^5.49.0",
