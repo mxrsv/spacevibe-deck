@@ -197,7 +197,7 @@ macOS keymap reads `{ key: "w", meta: true, action: "close-pane" }` — ⌘⇧W 
 dispatch path, and §7's `closeTab` row and §4.3's ⌘W are two different sites.
 Both are answered in T20.
 
-Five more findings that do not contradict the spec but are load-bearing for
+Six more findings that do not contradict the spec but are load-bearing for
 whoever implements it:
 
 **7. `cycleTab` early-returns on `tabs.length < 2`.** Spec §4.3 makes ⌘⇧] / ⌘⇧[
@@ -238,6 +238,20 @@ saving "reuses the atomic write already implemented for the store". It is
 which is a refactor of a shipped file with 205 lines of tests over it. Small,
 but it is not "reuse", and doing it by copy-paste would give the explorer a
 second implementation that drifts. T12.
+
+**12. Chords are user-rebindable as of `0cc2fdd`, which landed while this plan
+was being written.** The Shortcuts settings category added
+[`src/lib/keybindings.ts`](../../src/lib/keybindings.ts) `current`
+(`resolveKeymap` composing shipped defaults with per-platform overrides,
+`chordConflicts`, a 4-chords-per-action cap) and `Settings.keybindings`. Two
+consequences for T30. The "⌘⇧B is free on both keymaps" evidence is now a claim
+about the **shipped defaults**, which is still the right bar for choosing a
+default — but a user can rebind it away, and nothing should assume the chord.
+And rows in the Shortcuts section are built from `ACTION_REGISTRY` with a
+`PLACEMENT` lookup, where `shortcut-groups.test.ts` asserts the `other` group
+stays empty — so adding an action without placing it **fails a test rather than
+shipping an unrebindable row**. That is the gate doing its job; T30 names it so
+it is not read as a regression.
 
 ---
 
@@ -610,15 +624,21 @@ tomorrow with nothing to say so.
       with validation and defaults, and merge coverage in
       [`settings-merge.ts`](../../electron/settings-merge.ts) `current`. Two
       actions in the registry: `toggle-explorer` (View menu, **⌘⇧B /
-      Ctrl+Shift+B** — verified free on both keymaps) and `save-file` (**⌘S /
-      Ctrl+S** — also free; `save-preset` is ⌘⇧S / Ctrl+Alt+Shift+S), scoped so
-      it does nothing when no file tab is active. Both carry menu items, so both
-      **must** use `CharKeyBinding` — the registry's own RULE, because a Cocoa
-      accelerator is declared by character.
+      Ctrl+Shift+B** — free in both **shipped default** keymaps) and `save-file`
+      (**⌘S / Ctrl+S** — also free; `save-preset` is ⌘⇧S / Ctrl+Alt+Shift+S),
+      scoped so it does nothing when no file tab is active. Both carry menu
+      items, so both **must** use `CharKeyBinding` — the registry's own RULE,
+      because a Cocoa accelerator is declared by character.
+      **Both actions must also be placed in `PLACEMENT` in
+      [`shortcut-groups.ts`](../../src/ui/settings/shortcut-groups.ts)
+      `current`** (finding 12), or they land in the `other` group and
+      `shortcut-groups.test.ts` fails — which is the gate working, not a
+      surprise. `settings-schema.ts` now also carries `keybindings`, so the two
+      explorer fields are added beside it rather than into an untouched file.
       R3: edit the registry, never the output — but **commit the regenerated
       Tauri output**, because `prebuild` rewrites `src-tauri/src/menu_registry.rs`
       from the same registry (finding 8).
-      **Verify:** `unit` — `npx vitest run src/terminal/action-registry.test.ts src/settings/settings-schema.test.ts`,
+      **Verify:** `unit` — `npx vitest run src/terminal/action-registry.test.ts src/settings/settings-schema.test.ts src/ui/settings/shortcut-groups.test.ts`,
       then `npm run generate:menu && npm run generate:menu:check`.
 
 - [ ] **T31. Tree view, virtualized.**
