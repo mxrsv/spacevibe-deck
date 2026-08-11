@@ -408,3 +408,92 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ── state matrix ────────────────────────────────────────────────── */
+
+/*
+ * One block scrolls horizontally rather than shrinking its cells. The whole
+ * point of the matrix is that every cell is the same size, so a responsive
+ * column would compare two variables at once.
+ */
+.gx-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.gx-matrix__row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.gx-matrix__rowhead {
+  flex: 0 0 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.gx-matrix__statename {
+  color: var(--gx-bright);
+}
+
+.gx-matrix__statenote {
+  color: var(--gx-dim);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.gx-matrix__colhead {
+  flex: 0 0 auto;
+  color: var(--gx-dim);
+  font-size: 10.5px;
+}
+
+/*
+ * The cell publishes its theme through inline custom properties, so it needs
+ * no background of its own — `--bg` on the shell inside it is the app's.
+ */
+.gx-cell {
+  flex: 0 0 auto;
+  border: 1px solid var(--gx-line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gx-cell__inner {
+  height: 172px;
+}
+
+/*
+ * Tall enough that the sidebar's fourth workspace row and its add affordance
+ * are both above the fold: 34px titlebar + 28px status leaves 182px of rail,
+ * and at 210px the last row was cut in half.
+ */
+.gx-cell__inner--tall {
+  height: 244px;
+}
+
+/*
+ * `.window` is a viewport-sized grid in the app, and inside a cell it has to
+ * fill the cell instead. The extra `.gx-cell` in front is load-bearing:
+ * `force-states.ts` re-emits every app rule with one class prefixed, so the
+ * app's own `.window { height: 100vh; width: 100vw }` comes back as
+ * `.gx-force--hover .window` — same specificity as a two-class override, and
+ * later in the document. Three classes is what keeps a forced cell from
+ * growing to the size of the viewport.
+ */
+.gx-cell .gx-cell__inner > .window {
+  height: 100%;
+  width: 100%;
+}
+
+.gx-cell .gx-cell__inner > .settings-screen__section {
+  height: 100%;
+  background: var(--chrome-2);
+  overflow: hidden;
+}

@@ -36,6 +36,36 @@ interface Tally {
   sample: string;
 }
 
+/**
+ * Every readable stylesheet the document loaded from `src/styles.css`.
+ *
+ * Exported because the forced-state builder needs the same sheet and finding
+ * it is the fiddly part — a second copy of this lookup is a second thing to
+ * get wrong when Vite changes how it injects styles.
+ */
+export function appStyleSheets(): readonly CSSStyleSheet[] {
+  const sheets: CSSStyleSheet[] = [];
+  for (const sheet of document.styleSheets) {
+    const node = sheet.ownerNode;
+    const devId =
+      node instanceof HTMLElement ? node.dataset.viteDevId : undefined;
+    const source = devId ?? sheet.href ?? "";
+    if (!source.endsWith(APP_STYLESHEET_SUFFIX)) {
+      continue;
+    }
+    try {
+      // Touching `cssRules` is the access that throws on a cross-origin
+      // sheet. The app sheet is same-origin in dev, so this only skips
+      // something neither reader was ever going to see.
+      void sheet.cssRules;
+    } catch {
+      continue;
+    }
+    sheets.push(sheet);
+  }
+  return sheets;
+}
+
 function styleRules(): readonly CSSStyleRule[] {
   const rules: CSSStyleRule[] = [];
   const collect = (list: CSSRuleList): void => {
@@ -50,21 +80,8 @@ function styleRules(): readonly CSSStyleRule[] {
       }
     }
   };
-  for (const sheet of document.styleSheets) {
-    const node = sheet.ownerNode;
-    const devId =
-      node instanceof HTMLElement ? node.dataset.viteDevId : undefined;
-    const source = devId ?? sheet.href ?? "";
-    if (!source.endsWith(APP_STYLESHEET_SUFFIX)) {
-      continue;
-    }
-    try {
-      collect(sheet.cssRules);
-    } catch {
-      // A cross-origin sheet cannot be read. The app sheet is same-origin in
-      // dev, so this only skips something the audit was never counting.
-      continue;
-    }
+  for (const sheet of appStyleSheets()) {
+    collect(sheet.cssRules);
   }
   return rules;
 }
