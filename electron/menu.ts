@@ -57,10 +57,11 @@ function tokenFor(binding: KeyBinding): string {
     : normalizeKey(binding.key);
 }
 
-function acceleratorFor(actionId: string): string | undefined {
-  const binding = MACOS_KEYMAP.find(
-    (candidate) => candidate.action === actionId,
-  );
+function acceleratorFor(
+  actionId: string,
+  keymap: readonly KeyBinding[],
+): string | undefined {
+  const binding = keymap.find((candidate) => candidate.action === actionId);
   if (binding === undefined) {
     return undefined;
   }
@@ -83,6 +84,27 @@ export interface MenuDeps {
   readonly emitTo: (label: string, event: string, payload: unknown) => void;
   /** Label of the window an action should go to. */
   readonly focused: () => string | null;
+  /**
+   * The macOS keymap in force — shipped defaults with the user's rebinds
+   * applied, resolved through `resolveKeymap` from the same settings the
+   * renderer reads. Omitted means "no overrides stored yet".
+   *
+   * The accelerator and the webview binding MUST come from one keymap. Cocoa
+   * consumes an accelerator before the webview sees the keydown, so a menu
+   * still advertising the shipped chord after a rebind does not merely look
+   * stale — it fires the old action and the new binding never runs.
+   */
+  readonly keymap?: readonly KeyBinding[];
+  /**
+   * Strip every accelerator while a Shortcuts row is recording a chord.
+   *
+   * Same Cocoa fact from the other side: while capturing, ⌘W must reach the
+   * webview to BE the new chord. Leaving the accelerators installed means the
+   * OS runs Close Pane instead, and every menu-bound action — most of the
+   * interesting ones — becomes impossible to rebind. The items stay in place
+   * so the menu bar does not visibly empty out; only their chords go.
+   */
+  readonly suspendAccelerators?: boolean;
 }
 
 /** Items for one submenu, with a separator wherever the group changes. */
@@ -96,6 +118,7 @@ function itemsFor(
   const actions = (ACTION_REGISTRY as readonly ActionDefinition[]).filter(
     (action) => action.menu?.submenu === submenu,
   );
+  const keymap = deps.keymap ?? MACOS_KEYMAP;
   const items: MenuItemConstructorOptions[] = [];
   let lastGroup: string | undefined;
   for (const [index, action] of actions.entries()) {
@@ -106,7 +129,10 @@ function itemsFor(
     items.push({
       id: action.id,
       label: action.label,
-      accelerator: acceleratorFor(action.id),
+      accelerator:
+        deps.suspendAccelerators === true
+          ? undefined
+          : acceleratorFor(action.id, keymap),
       click: () => {
         const target = deps.focused();
         if (target !== null) {

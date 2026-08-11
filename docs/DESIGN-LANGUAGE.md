@@ -306,6 +306,46 @@ answered here rather than re-argued per button.
   (`⌘`, `⏎`, `⎋`), selection and status dots, and `WorkspaceSpinner`. A logo is
   identity and a key legend is notation; neither is an icon in a system.
 
+## 15. Shortcut rows
+
+Approved as a fork on 2026-08-11, for the Shortcuts settings category. §5 gives
+a row exactly one interactive value and §6 is a closed set of interactive
+kinds; a shortcut row breaks both, because it shows the SAME setting on two
+platforms at once and only one of the two can be edited on the machine in
+front of you. These rules say how that stays a row instead of becoming a table.
+
+The alternative was rejected on the evidence: a two-column table would have
+been a second settings surface with its own header, alignment and scroll
+behaviour, and §5's row is what makes settings scan as one document.
+
+- **DL-15.1** A shortcut row is a `cfg-row` (`.cfg-row--shortcut`) and keeps
+  every §5 property: key on the left, value slot on the right, DL-5.1 hover,
+  the same vertical rhythm. It is a row that holds notation, not a new genre.
+- **DL-15.2** The value slot holds **one chord per platform**, each preceded by
+  a faint lowercase platform tag (`mac`, `win`) of fixed width so the chords
+  form a column down the list. The tag labels the value; it is not itself a
+  value and is never interactive.
+- **DL-15.3** Exactly one chord is editable: the one for the platform the app
+  is RUNNING on. It is a `cfg-btn` pill that records a chord when clicked. The
+  other platform's chord is a **readout** — no border, `--text-faint` — because
+  a border is what promises "you can press this" everywhere else in settings,
+  and a chord can only be recorded on the keyboard that produces it.
+- **DL-15.4** An action with no chord on a platform reads `unbound` in
+  `--text-faint`. This is a normal state, not an error: most actions ship bound
+  on one keymap only.
+- **DL-15.5** A chord claimed by two actions is named on **both** rows, in the
+  row's `desc` slot, in `--red` (DL-3.2 — a shortcut that silently shadows
+  another one is an error, not a warning). It is reported, never refused:
+  swapping two actions' chords must pass through a colliding state, and
+  rejecting the first half makes the swap impossible to finish.
+- **DL-15.6** The row's only second element is DL-6.1's reset button, shown
+  when the chord differs from the shipped default. Recording covers the other
+  two outcomes without further controls — a chord rebinds, bare
+  Backspace/Delete unbinds, Esc cancels.
+- **DL-15.7** Chords are **notation, not icons** (DL-14.6): `⌘⇧D`, `Ctrl+Alt+T`
+  are rendered as text, never as pictograms, and `formatShortcutBinding`
+  (`src/lib/shortcut-label.ts`) is the only place their spelling is decided.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

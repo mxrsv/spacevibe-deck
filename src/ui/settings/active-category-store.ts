@@ -12,6 +12,7 @@ export type CategoryId =
   | "terminal"
   | "agents"
   | "links-editor"
+  | "shortcuts"
   | "notifications"
   | "about";
 

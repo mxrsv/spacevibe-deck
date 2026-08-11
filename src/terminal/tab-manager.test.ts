@@ -14,6 +14,7 @@ import {
   promptsOpen,
   saveDialogOpen,
   settingsOpen,
+  shortcutCaptureActive,
 } from "../chrome/events";
 import {
   createTabManager,
@@ -2305,6 +2306,7 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     settingsOpen.value = false;
     saveDialogOpen.value = false;
     editorRequest.value = null;
+    shortcutCaptureActive.value = false;
   });
 
   function metaKeydown(key: string): KeyboardEvent {
@@ -2322,6 +2324,39 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
       bubbles: true,
     });
   }
+
+  // The Shortcuts settings row records a chord by listening for the raw
+  // keydown. `handleShortcut` is a CAPTURE-phase window listener registered at
+  // app start, so the capture control cannot out-listen it — without this gate
+  // the keystroke runs its own action first, and rebinding ⌘W would close the
+  // pane instead of being recorded.
+  it("⌘W does nothing while a Shortcuts row is recording a replacement chord", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.splitActive("row");
+    await tm.init();
+    await flush();
+    expect(statusInfo.value.paneCount).toBe(2);
+
+    shortcutCaptureActive.value = true;
+    // The motivating case: ⌘W is `close-pane`, so recording it must not kill
+    // the pane the user is looking at.
+    window.dispatchEvent(metaKeydown("w"));
+    await flush();
+    expect(statusInfo.value.paneCount).toBe(2);
+    // …and a non-destructive chord is just as gated.
+    window.dispatchEvent(metaKeydown("d"));
+    await flush();
+    expect(statusInfo.value.paneCount).toBe(2);
+
+    // The gate releases: it must not be able to disable the app silently.
+    shortcutCaptureActive.value = false;
+    window.dispatchEvent(metaKeydown("d"));
+    await flush();
+    expect(statusInfo.value.paneCount).toBe(3);
+
+    tm.dispose();
+  });
 
   it("⌘W (close-pane) via the keydown path leaves the hidden pane untouched while the Open board is up", async () => {
     const { tm } = setup({});

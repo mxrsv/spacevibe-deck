@@ -1426,6 +1426,78 @@ button.attn-mark:hover {
   border-radius: 4px;
 }
 
+/* ── Shortcut rows (DL §15) ─────────────────────────────────────────────
+   A reference row: the key names an action, the value slot holds one chord
+   per platform. Still a `cfg-row` — same hover, same hairline, same rhythm —
+   because a shortcut list that styled itself differently would read as a
+   second kind of settings surface (DL-15.1). */
+.cfg-row--shortcut > .cfg-row__key {
+  flex: 1 1 auto;
+}
+
+.cfg-chords {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Each platform's chord and its tag travel together (DL-15.2). */
+.cfg-chord-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Which keymap this chord belongs to. Faint and lowercase: it labels the
+   value, it is not a value of its own (DL-15.2). */
+.cfg-chord-tag {
+  font-family: var(--ui-font);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  /* Both tags are 3 characters today; fixing the width keeps the chords in a
+     column down the list rather than sliding with the tag text. */
+  min-width: 2.2em;
+  text-align: right;
+}
+
+/* Fixed width so ⌘D and ⌥⌘↩ leave the rows aligned rather than ragged. */
+.cfg-chord {
+  min-width: 8.5ch;
+  justify-content: center;
+}
+
+/* An action with no chord on this platform. Not an error — most actions ship
+   bound on one keymap only (DL-15.4). */
+.cfg-chord--unbound {
+  color: var(--text-faint);
+}
+
+/* Recording. The accent border is the same "this is live" signal a focused
+   pill already carries; nothing moves (DL-1.2). */
+.cfg-chord--listening {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* The non-running platform's chord: DL-15.3's read-only value. No pill border,
+   because a border is what says "you can press this" everywhere else in
+   settings, and here you cannot. */
+.cfg-readout {
+  font-family: var(--ui-font);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+  min-width: 8.5ch;
+  text-align: center;
+}
+
+/* A chord claimed by two actions (DL-15.5). `--red` is error-only (DL-3.2),
+   and a shortcut that silently shadows another one is exactly that. */
+.cfg-row__desc--warn {
+  color: var(--red);
+}
+
 /* Reduced motion: kill every chrome transition by scope, not by an allowlist —
    an allowlist silently misses each new class (DL-1.5). */
 @media (prefers-reduced-motion: reduce) {

@@ -374,6 +374,42 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   dirty state lives in Monaco, the renderer pushes a dirty-registry delta whose
   entries are cleared on window death, failing toward asking.
 
+- **A Shortcuts settings category shipped on the Electron branch (2026-08-11)** —
+  every action, the chord it answers to on each platform, and a way to change
+  it. Four forks resolved with the user, each with its reason: **(1) it rebinds,
+  not just displays** — the user chose the editable option over a read-only
+  cheat sheet, so the work is a keymap override layer rather than a list;
+  **(2) it lands on `electron-migration`, not `main`** — the Tauri freeze is
+  honoured to the letter, so Tauri 0.12.x does not get it and the code merges
+  forward with the branch; **(3) DESIGN LANGUAGE gains a real §15 (shortcut
+  rows)**, not an extension of §6 — a row shows the same setting on two
+  platforms with only one editable, which §5's one-interactive-value rule
+  cannot express. **This takes the §15 number: the unimplemented file-explorer
+  spec's "§15 (docked side panels)" must renumber when it is written**, as must
+  the token-dashboard spec's data-table §; **(4) both keymaps are shown at
+  once**, the running platform's chord as the editable pill and the other as a
+  read-only readout — a chord can only be RECORDED on the keyboard that
+  produces it, so offering to capture a Windows chord on a Mac would be a lie.
+  What is load-bearing and easy to break: the **native menu must be rebuilt on
+  every rebind, and its accelerators suspended while a chord is being
+  recorded**. Cocoa consumes an accelerator before the webview sees the
+  keydown, so a menu still advertising the old chord runs the OLD action, and
+  without suspension pressing ⌘W to rebind `close-pane` closes the pane instead
+  of being recorded — that is most of the interesting actions. Both halves are
+  covered (`electron/menu.test.ts`, the `shortcutCaptureActive` gate in
+  `tab-manager.ts`). Overrides are stored per platform and per action, an empty
+  list means "unbound" and an absent key means "default" — confusing the two
+  turns reset into unbind. A collision is **reported on both rows, never
+  refused**, because swapping two actions' chords must pass through a colliding
+  state. Deliberately left open: rebinding the non-running platform, and
+  multiple chords per action (the store holds a list, the UI writes one).
+  **Not verified: anything needing a real window or a packaged build** — the
+  accelerator suspension and the menu rebuild are asserted against a mocked
+  `electron` module, not observed in Cocoa, so they inherit the Electron MVP's
+  outstanding manual pass. One bug the tests did catch and the design missed:
+  reserving Tab wholesale left Windows' shipped `Ctrl+Tab` / `Ctrl+Shift+Tab`
+  impossible to re-record; only BARE Tab is reserved now, for focus escape.
+
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
 

@@ -10,6 +10,7 @@ import {
   ColorsIcon,
   LinksEditorIcon,
   NotificationsIcon,
+  ShortcutsIcon,
   TerminalIcon,
 } from "./settings-nav-icons";
 import { SETTINGS_CATEGORIES } from "./settings-categories";
@@ -32,6 +33,7 @@ describe("settings-nav-icons", () => {
     },
     { name: "AgentsIcon", icon: "lucide-bot", Icon: AgentsIcon },
     { name: "LinksEditorIcon", icon: "lucide-link", Icon: LinksEditorIcon },
+    { name: "ShortcutsIcon", icon: "lucide-command", Icon: ShortcutsIcon },
     {
       name: "NotificationsIcon",
       icon: "lucide-bell",

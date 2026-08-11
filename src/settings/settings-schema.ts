@@ -10,6 +10,11 @@ import {
   isValidPromptTemplate,
   type PromptTemplate,
 } from "../prompts/prompt-templates";
+import {
+  NO_KEYBINDING_OVERRIDES,
+  validateKeybindings,
+  type KeybindingOverrides,
+} from "../lib/keybindings";
 
 export interface TerminalColors {
   background: string;
@@ -40,6 +45,13 @@ export interface Settings {
   customAgents: readonly CustomAgent[];
   /** Reusable prompt bodies the user declared for the Prompt Board. */
   promptTemplates: readonly PromptTemplate[];
+  /**
+   * Chords the user rebound, per platform, over the shipped keymaps. Keyed by
+   * platform rather than flat because the two keymaps are genuinely different
+   * documents — the same action has different chords on each, and a single map
+   * would make one machine's rebind silently rewrite the other's.
+   */
+  keybindings: KeybindingOverrides;
 }
 
 export const FONT_SIZE_MIN = 10;
@@ -74,6 +86,7 @@ export const DEFAULT_SETTINGS: Settings = {
   scrollback: 10_000,
   customAgents: [],
   promptTemplates: [],
+  keybindings: NO_KEYBINDING_OVERRIDES,
 };
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -244,5 +257,6 @@ export function validateSettings(raw: unknown): Settings {
         : DEFAULT_SETTINGS.scrollback,
     customAgents: validateCustomAgents(source.customAgents),
     promptTemplates: validatePromptTemplates(source.promptTemplates),
+    keybindings: validateKeybindings(source.keybindings),
   };
 }

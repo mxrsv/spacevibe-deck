@@ -1,9 +1,5 @@
-import {
-  MACOS_KEYMAP,
-  WINDOWS_KEYMAP,
-  type ActionId,
-  type KeyBinding,
-} from "../terminal/action-registry";
+import { type ActionId, type KeyBinding } from "../terminal/action-registry";
+import { keymapForOverrides } from "../terminal/active-keymap";
 import {
   getDesktopEnvironment,
   type DesktopPlatform,
@@ -71,11 +67,20 @@ export function formatShortcutBinding(
   return `${modifiers}${key}`;
 }
 
+/**
+ * The chord to SHOW for an action, or null when it has none.
+ *
+ * Resolves through the user's overrides rather than the shipped keymap: every
+ * caller is a tooltip or a status-bar hint, and a hint naming a chord the user
+ * has rebound away is worse than no hint at all. Reading the settings signal
+ * also means the callers re-render on a rebind, since all of them read this
+ * during render (R5).
+ */
 export function shortcutLabel(
   action: ActionId,
   platform: DesktopPlatform = getDesktopEnvironment().platform,
+  keymap: readonly KeyBinding[] = keymapForOverrides(platform),
 ): string | null {
-  const keymap = platform === "windows" ? WINDOWS_KEYMAP : MACOS_KEYMAP;
   const binding = keymap.find((candidate) => candidate.action === action);
   return binding ? formatShortcutBinding(binding, platform) : null;
 }

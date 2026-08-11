@@ -40,6 +40,7 @@ export const CHANNELS = {
   beginUpdateCheck: "begin_update_check",
   endUpdateCheck: "end_update_check",
   applySettingsPatch: "apply_settings_patch",
+  suspendMenuAccelerators: "suspend_menu_accelerators",
 } as const;
 
 /** Events: main → renderer, fire and forget. */

@@ -38,6 +38,11 @@ import { listPromptAssets } from "./prompt-assets";
 import { readImageAsDataUrl, scanWorkspaceFavicon } from "./images";
 import { applySettingsPatch } from "./settings-merge";
 import { buildMenu } from "./menu";
+import {
+  MACOS_KEYMAP,
+  type KeyBinding,
+} from "../src/terminal/action-registry";
+import { resolveKeymap, validateKeybindings } from "../src/lib/keybindings";
 
 // __dirname is `dist-electron/electron`, so the Vite output is two levels up.
 const RENDERER_DIR = path.join(__dirname, "..", "..", "dist");
@@ -210,11 +215,38 @@ function focusedLabel(): string | null {
   return registry.order()[0] ?? null;
 }
 
+/**
+ * The macOS keymap the menu advertises: shipped defaults plus whatever the
+ * user rebound. Held here rather than resolved per rebuild because
+ * `rebuildMenu` runs on every focus change, and re-reading the store on each
+ * one would put a disk read on the focus path.
+ */
+let menuKeymap: readonly KeyBinding[] = MACOS_KEYMAP;
+
+/** True while a Shortcuts row is recording — see `MenuDeps.suspendAccelerators`. */
+let acceleratorsSuspended = false;
+
+/** Re-resolve the menu keymap from a settings object and rebuild if it moved. */
+function adoptMenuKeymap(settings: unknown): void {
+  const overrides = validateKeybindings(
+    (settings as { keybindings?: unknown } | null)?.keybindings,
+  );
+  const next = resolveKeymap("macos", overrides);
+  menuKeymap = next;
+  rebuildMenu();
+}
+
 /** Rebuild the application menu. Called on boot, and on every window open,
  * focus change and close — the move-pane submenu lists peer windows, so its
  * contents change with all three. */
 function rebuildMenu(): void {
-  buildMenu({ registry, emitTo, focused: () => focusedLabel() });
+  buildMenu({
+    registry,
+    emitTo,
+    focused: () => focusedLabel(),
+    keymap: menuKeymap,
+    suspendAccelerators: acceleratorsSuspended,
+  });
 }
 
 // ------------------------------------------------------------------ PTY
@@ -273,8 +305,21 @@ ipcMain.handle(CHANNELS.readImageAsDataUrl, (_event, { path: target }) =>
 ipcMain.handle(CHANNELS.scanWorkspaceFavicon, (_event, { dir }) =>
   scanWorkspaceFavicon(dir),
 );
+ipcMain.handle(CHANNELS.suspendMenuAccelerators, (_event, { suspended }) => {
+  const next = suspended === true;
+  if (next === acceleratorsSuspended) {
+    return;
+  }
+  acceleratorsSuspended = next;
+  rebuildMenu();
+});
 ipcMain.handle(CHANNELS.applySettingsPatch, async (_event, { patch }) => {
   const merged = await applySettingsPatch(stores, patch);
+  // A rebind has to reach the native menu in the same turn it reaches the
+  // store. Until it does, Cocoa still owns the old chord and eats it before
+  // any window sees the keydown — the rebind would look applied everywhere
+  // except where it matters.
+  adoptMenuKeymap(merged);
   // EVERY window, sender included. `settings-store.ts` states that the
   // broadcast is the one authoritative path and that the reply is used only to
   // detect failure — so excluding the sender left it rendering stale settings
@@ -595,7 +640,21 @@ ipcMain.handle("app_version", () => app.getVersion());
 
 // ------------------------------------------------------------------ Boot
 app.whenReady().then(() => {
-  createWindow(MAIN_LABEL);
+  // Read the stored rebinds BEFORE the first window exists. `createWindow`
+  // rebuilds the menu itself, so resolving afterwards would install the
+  // shipped accelerators first and correct them a moment later — a window in
+  // which the OS still eats the chord the user reassigned.
+  void stores
+    .open("settings.json")
+    .then((store) => adoptMenuKeymap(store.get("settings")))
+    .catch((error: unknown) => {
+      // Defaults are already installed; an unreadable settings file must not
+      // stop the app from booting with a working menu.
+      console.warn("Deck: could not read stored keybindings", error);
+    })
+    .finally(() => {
+      createWindow(MAIN_LABEL);
+    });
 });
 
 app.on("before-quit", (event) => {

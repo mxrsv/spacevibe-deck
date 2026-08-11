@@ -82,6 +82,7 @@ import {
   reportChromeMessage,
   saveDialogOpen,
   settingsOpen,
+  shortcutCaptureActive,
 } from "../chrome/events";
 
 /**
@@ -1528,6 +1529,13 @@ export function createTabManager(
     // Never fire shortcuts while typing in a text field (same approach as
     // the IME guard above) — e.g. the tab rename input in the popover.
     if (isChromeTextField(event.target)) {
+      return;
+    }
+    // Never fire while a Shortcuts row is recording a replacement chord: the
+    // keystroke is the value being set, not a command. Without this, rebinding
+    // any bound chord runs its own action first — pressing ⌘W to rebind
+    // `close-pane` would kill the pane instead. See `shortcutCaptureActive`.
+    if (shortcutCaptureActive.value) {
       return;
     }
     const action = matchBinding(event);
