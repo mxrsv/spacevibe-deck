@@ -436,6 +436,60 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   that DL freezes **which** scales exist while the redesign chooses their
   **values**, so the rulebook is not written twice.
 
+- **The chrome redesign toward the ChatGPT desktop feel is decided at fork
+  level (2026-08-12)**, and the comparison matrix the review asked for is
+  implemented on `main`. The redesign itself is **not started**: no DL section
+  is written, no token scale exists in `:root`, no direction is designed.
+  Three forks resolved with the user, each with its reason. **It lands on
+  `electron-migration`, not `main`** — the Tauri freeze is honoured to the
+  letter, exactly as the Shortcuts category was, and the frame it has to style
+  only exists there: `5ef509a` collapsed the 26px title bar and the 33px tab
+  bar into one 34px command row, so styling `main`'s two-row chrome would be
+  designing a surface that is already gone. **DL freezes all nine scale groups
+  from the review's §3 in one pass** — spacing, radius, type, weight, leading,
+  duration/easing, border, control height, surface/state and layer — because
+  closing them in two passes writes the rulebook twice; the split already
+  decided still holds, DL says WHICH scales exist and the redesign picks their
+  VALUES. **The neutral wash moves from `--fg` to `--tone` now**, without
+  waiting for a live comparison: the matrix measured what today's rule
+  resolves to, and the same 6% hover is `rgb(192, 202, 245)` on Tokyo Night,
+  `rgb(248, 248, 242)` on Dracula and `rgb(171, 178, 191)` on One Dark — a
+  wash carrying the theme's foreground hue, which "quiet neutral surfaces"
+  cannot be built from. All four bundled presets are dark, so `--tone` is
+  `#ffffff` in every one of them and the change shows on every surface.
+
+  **The review's own section numbering is stale and must not be followed.** Its
+  §4 says "§15 is already reserved for docked side panels, so these start at
+  §16". On `electron-migration` §15 is written and is **Shortcut rows**, and
+  **DL-16 is already claimed** by the command-row frame — cited from
+  `styles.css`, `app.tsx`, `tab-bar.tsx` and `app.test.tsx`, with the rule
+  itself still awaiting R2 approval. The three new sections take their numbers
+  on that branch, against what is written there.
+
+  **What landed on `main` (gallery only — the app bundle is unchanged at
+  180.47 kB gzip, and `scripts/gallery-entry.test.ts` is what keeps that
+  true):** a seventh gallery section carrying the review's §6 item 2 matrix —
+  four themes across, five states down, both tab-bar positions, one size —
+  plus a config-row block, which is where focus and disabled are legible and
+  the window shell has almost nothing to show. Hover, active and focus are
+  forced by [`force-states.ts`](src/gallery/force-states.ts) `current`, which
+  reads the app's own rules back out of the live stylesheet and re-emits every
+  one of them scoped under a marker class. **The whole sheet is copied, in
+  source order, not only the rules carrying a pseudo-class** — copying only
+  those would move them past every later rule in the file and a selected tab
+  would start reading as a hovered one. `@media` rules are skipped: their
+  condition is about the viewport and a cell is not one. **Cell width is 680px,
+  measured rather than chosen** — below it the tab bar cannot fit four tabs
+  beside the add button and six actions, so every label clips (at 560px the
+  four labels get 7, 9, 0 and 4 pixels), and from 680 to 900 nothing changes.
+  Two defects the four green gates could not see and the rendered screenshot
+  did: the forced sheet re-applied the app's own `.window { height: 100vh;
+width: 100vw }` at a specificity the gallery's cell override merely tied
+  with, so every forced cell grew to the size of the viewport; and the
+  sidebar's fourth workspace row was cut in half. **Still blocked:** the two or
+  three real ChatGPT desktop screenshots (review §6 item 1) have not been
+  supplied, so no direction is designed and no token value is picked.
+
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
 
