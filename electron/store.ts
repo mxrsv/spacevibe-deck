@@ -18,6 +18,14 @@ import path from "node:path";
 export interface StoreOptions {
   /** Milliseconds to coalesce writes; 0 disables autosave. */
   readonly autoSaveMs?: number;
+  /**
+   * Called when a background write fails.
+   *
+   * The Tauri store plugin DISCARDED its autosave error, "which is how a full
+   * disk used to look like a successful write" (settings_merge.rs). Silently
+   * dropping it here would reintroduce a bug this project already paid for.
+   */
+  readonly onError?: (error: unknown) => void;
 }
 
 export class JsonStore {
@@ -89,7 +97,7 @@ export class JsonStore {
   private scheduleSave(): void {
     const delay = this.options.autoSaveMs ?? 0;
     if (delay <= 0) {
-      void this.save();
+      this.saveInBackground();
       return;
     }
     if (this.pendingWrite !== null) {
@@ -97,8 +105,19 @@ export class JsonStore {
     }
     this.pendingWrite = setTimeout(() => {
       this.pendingWrite = null;
-      void this.save();
+      this.saveInBackground();
     }, delay);
+  }
+
+  /** A background write whose failure is REPORTED rather than swallowed. */
+  private saveInBackground(): void {
+    this.save().catch((error: unknown) => {
+      if (this.options.onError !== undefined) {
+        this.options.onError(error);
+        return;
+      }
+      console.error(`Deck: failed to write ${this.filePath}`, error);
+    });
   }
 
   /**

@@ -332,7 +332,15 @@ ipcMain.handle("store_load", async (_event, payload) => {
     defaults?: Record<string, unknown>;
     autoSave?: number;
   };
-  const store = await stores.open(file, { autoSaveMs: Number(autoSave) || 0 });
+  const store = await stores.open(file, {
+    autoSaveMs: Number(autoSave) || 0,
+    // A failed background write must reach the user, not the void: the
+    // renderer already has a persist-error surface for exactly this.
+    onError: (error) => {
+      console.error(`Deck: failed to write ${file}`, error);
+      emitTo(labelOf(_event), "store:write-failed", { file });
+    },
+  });
   // `defaults` seeds keys the file does not have yet, matching the Tauri
   // plugin — without it a fresh install reads undefined where it expected a
   // default and silently falls back to a different value.
