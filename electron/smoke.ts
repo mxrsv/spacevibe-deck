@@ -262,6 +262,35 @@ async function main(): Promise<void> {
     "no menu clicked during the run, listeners installed",
   );
 
+  // The shortcut blocker: `desktop_environment` returning `home` instead of
+  // `homeDir` made the renderer fall back to platform "unsupported", where
+  // `hasPrimaryModifier` is false for every event and NO shortcut works.
+  const env = await inPage<{ platform: string; homeDir: string }>(
+    window,
+    `window.__deckHost.invoke("desktop_environment")`,
+  );
+  record(
+    "desktop_environment carries homeDir",
+    env.platform === "macos" && typeof env.homeDir === "string" && env.homeDir.length > 0,
+    `platform=${env.platform} homeDir=${JSON.stringify(env.homeDir)}`,
+  );
+
+  // Window dragging: the Tauri attribute means nothing to Electron, so the
+  // drag surfaces need `-webkit-app-region` from CSS.
+  const draggable = await inPage<string>(
+    window,
+    `(() => {
+       const el = document.querySelector("[data-tauri-drag-region]");
+       if (!el) return "no drag region in the DOM";
+       return getComputedStyle(el).webkitAppRegion || "none";
+     })()`,
+  );
+  record(
+    "the title bar is draggable",
+    draggable === "drag",
+    `-webkit-app-region: ${draggable}`,
+  );
+
   finish();
 }
 

@@ -7,6 +7,7 @@ import {
   type TerminalColors,
 } from "./settings-schema";
 import { reportPersistError } from "../chrome/events";
+import { listen } from "../host/bridge";
 import {
   createTauriSettingsSync,
   type SettingsSyncClient,
@@ -27,6 +28,25 @@ export function configureSettingsSync(client: SettingsSyncClient): void {
 }
 
 /** Load settings from disk at startup — on failure fall back to defaults, app keeps running. */
+/**
+ * Surface a background store-write failure.
+ *
+ * The host reports these on `store:write-failed`; without a listener a full
+ * disk stayed completely silent, which is the failure `settings_merge.rs`
+ * describes as already paid for once ("how a full disk used to look like a
+ * successful write").
+ */
+export async function listenStoreWriteFailures(): Promise<void> {
+  try {
+    await listen<{ file?: string }>("store:write-failed", (event) => {
+      const file = event.payload?.file ?? "settings";
+      reportPersistError(`Couldn't save ${file} — your changes may be lost.`);
+    });
+  } catch (err) {
+    console.warn("Could not subscribe to store write failures:", err);
+  }
+}
+
 export async function initSettings(): Promise<void> {
   try {
     store = await Store.load(STORE_FILE, {

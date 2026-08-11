@@ -110,6 +110,14 @@ function createWindow(label: string): BrowserWindow {
   });
   windows.set(label, window);
 
+  // Deck is a single local document and must never navigate. A drop that the
+  // renderer does not cancel, or any stray link, would otherwise load a new
+  // document — and the preload re-injects `__deckHost` into it, handing the
+  // whole host surface (spawn_shell, the stores, openExternal) to whatever
+  // just loaded. Proven: the bridge survives navigation.
+  window.webContents.on("will-navigate", (event) => event.preventDefault());
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+
   window.on("focus", () => {
     registry.recordFocus(label);
     // The submenu is ordered most-recently-focused first, so focus changing
@@ -233,13 +241,29 @@ ipcMain.handle(CHANNELS.detectAgents, (_event, { names }) =>
 );
 ipcMain.handle(CHANNELS.dirsExist, (_event, { paths }) => dirsExist(paths));
 ipcMain.handle(CHANNELS.desktopEnvironment, () => ({
-  platform: process.platform === "darwin" ? "macos" : process.platform,
-  home: app.getPath("home"),
+  // `homeDir`, not `home`: Rust's struct is `#[serde(rename_all = "camelCase")]`
+  // so that has always been the wire key. `platform.ts` rejects anything else,
+  // the caller swallows the error, and the app silently falls back to
+  // `platform: "unsupported"` — where `hasPrimaryModifier` returns false for
+  // every event and EVERY keyboard shortcut stops working, with nothing in the
+  // console to say why.
+  platform:
+    process.platform === "darwin"
+      ? "macos"
+      : process.platform === "win32"
+        ? "windows"
+        : "unsupported",
+  homeDir: app.getPath("home"),
 }));
 ipcMain.handle(CHANNELS.resolvePaths, (_event, { cwd, paths }) =>
   resolvePaths(cwd, paths),
 );
-ipcMain.handle(CHANNELS.openEditor, (_event, request) => openEditor(request));
+ipcMain.handle(CHANNELS.openEditor, (_event, { request }) =>
+  // Destructured: the renderer wraps the payload in `{ request }` to match the
+  // Rust parameter name, so taking the payload whole read `.editor` off the
+  // wrapper and every file link failed as "editor not supported".
+  openEditor(request),
+);
 ipcMain.handle(CHANNELS.listPromptAssets, (_event, { agent, cwd }) =>
   listPromptAssets(agent, cwd ?? null),
 );
@@ -294,7 +318,11 @@ ipcMain.handle(CHANNELS.cancelCloseWindow, (event, { requestId }) => {
 
 // ------------------------------------------------------------- Transfers
 ipcMain.handle(CHANNELS.prepareTransfer, (event, { paneId }) =>
-  coordinator.beginTransfer(labelOf(event), paneId),
+  // `paneId` arrives as a STRING — a frozen contract the renderer documents at
+  // its call site — while routes are keyed by number. Without this coercion
+  // every detach failed instantly with "Pane #N is not registered", and
+  // TypeScript could not see it because an IPC payload is `any`.
+  coordinator.beginTransfer(labelOf(event), Number(paneId)),
 );
 ipcMain.handle(
   CHANNELS.stageTransfer,
@@ -398,12 +426,35 @@ interface OpenDialogPayload {
   readonly filters?: Array<{ name: string; extensions: string[] }>;
 }
 
+/**
+ * The store files Deck owns. An allowlist, because `file` reaches
+ * `path.join(userData, file)` and `../../../` escaped it — writing arbitrary
+ * JSON to an arbitrary path, and reading any JSON file back into the renderer.
+ * Tauri had the same hole; it is nearly free to close here.
+ */
+const STORE_FILES = new Set([
+  "settings.json",
+  "workspaces.json",
+  "presets.json",
+  "logo.json",
+  "workspace-logos.json",
+  "update-attempt.json",
+]);
+
+function assertStoreFile(file: unknown): string {
+  if (typeof file !== "string" || !STORE_FILES.has(file)) {
+    throw new Error(`Unknown store file: ${String(file)}`);
+  }
+  return file;
+}
+
 ipcMain.handle("store_load", async (_event, payload) => {
-  const { file, defaults, autoSave } = payload as {
+  const { file: rawFile, defaults, autoSave } = payload as {
     file: string;
     defaults?: Record<string, unknown>;
     autoSave?: number;
   };
+  const file = assertStoreFile(rawFile);
   const store = await stores.open(file, {
     autoSaveMs: Number(autoSave) || 0,
   });
@@ -427,15 +478,17 @@ ipcMain.handle("store_load", async (_event, payload) => {
   openStores.set(file, store);
 });
 ipcMain.handle("store_get", (_event, { file, key }) =>
-  openStores.get(file)?.get(key),
+  openStores.get(assertStoreFile(file))?.get(key),
 );
 ipcMain.handle("store_set", (_event, { file, key, value }) => {
-  openStores.get(file)?.set(key, value);
+  openStores.get(assertStoreFile(file))?.set(key, value);
 });
 ipcMain.handle("store_delete", (_event, { file, key }) => {
-  openStores.get(file)?.delete(key);
+  openStores.get(assertStoreFile(file))?.delete(key);
 });
-ipcMain.handle("store_save", (_event, { file }) => openStores.get(file)?.save());
+ipcMain.handle("store_save", (_event, { file }) =>
+  openStores.get(assertStoreFile(file))?.save(),
+);
 
 ipcMain.handle("dialog_ask", async (event, payload) => {
   const { message, title, kind, okLabel, cancelLabel } = payload as DialogPayload;
@@ -494,7 +547,28 @@ ipcMain.handle("window_toggle_maximize", (event) => {
 // level, which is 1 on a 2x display at default zoom, so it silently turned the
 // physical-to-logical drop conversion into a no-op.
 
-ipcMain.handle("shell_open_url", (_event, { url }) => shell.openExternal(url));
+/**
+ * Schemes Deck will hand to the OS.
+ *
+ * Tauri enforced this in the HOST via the `opener:default` permission set;
+ * dropping it left `shell.openExternal` open to anything the renderer passed,
+ * and the renderer is not the trust boundary — an OSC 8 hyperlink carrying
+ * `file:///Applications/…` was one renderer bug away from launching it.
+ */
+const OPENABLE_SCHEMES = new Set(["http:", "https:", "mailto:", "tel:"]);
+
+ipcMain.handle("shell_open_url", (_event, { url }) => {
+  let parsed: URL;
+  try {
+    parsed = new URL(String(url));
+  } catch {
+    throw new Error("That link is not a valid URL.");
+  }
+  if (!OPENABLE_SCHEMES.has(parsed.protocol)) {
+    throw new Error(`Deck will not open ${parsed.protocol} links.`);
+  }
+  return shell.openExternal(parsed.href);
+});
 ipcMain.handle("clipboard_read_text", () => clipboard.readText());
 ipcMain.handle("clipboard_write_text", (_event, { text }) =>
   clipboard.writeText(text),
@@ -565,6 +639,15 @@ app.on("before-quit", (event) => {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
+  }
+});
+
+// macOS keeps the process alive with no windows, so clicking the dock icon has
+// to be able to bring one back. Without this the app was unreachable after the
+// last window closed and could only be force-quit.
+app.on("activate", () => {
+  if (windows.size === 0) {
+    createWindow(MAIN_LABEL);
   }
 });
 

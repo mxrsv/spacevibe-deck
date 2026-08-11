@@ -19,6 +19,11 @@ describe("label allocation", () => {
     expect(second).not.toBe(first);
   });
 
+  it("starts at deck-1", () => {
+    // The label is menu item text, so an off-by-one was user-visible.
+    expect(registry.allocateLabel()).toBe("deck-1");
+  });
+
   it("allocates deck-N labels", () => {
     expect(registry.allocateLabel()).toMatch(/^deck-\d+$/);
   });
@@ -60,15 +65,18 @@ describe("focus order", () => {
 
 describe("boot mode", () => {
   it("restores by default", () => {
-    expect(registry.bootMode("main")).toEqual({ mode: "restore" });
+    expect(registry.bootMode("main")).toEqual({ kind: "normal" });
   });
 
   it("adopts once for a reserved window, then restores", () => {
     // Consumed once: a reload must not re-adopt a pane already taken.
     registry.reserveAdoption("deck-2", "xfer-1");
 
-    expect(registry.bootMode("deck-2")).toEqual({ mode: "adopt", token: "xfer-1" });
-    expect(registry.bootMode("deck-2")).toEqual({ mode: "restore" });
+    expect(registry.bootMode("deck-2")).toEqual({
+      kind: "adopt",
+      token: "xfer-1",
+    });
+    expect(registry.bootMode("deck-2")).toEqual({ kind: "normal" });
   });
 
   it("drops a pending adoption when the window is forgotten", () => {
@@ -76,6 +84,6 @@ describe("boot mode", () => {
 
     registry.forgetWindow("deck-2");
 
-    expect(registry.bootMode("deck-2")).toEqual({ mode: "restore" });
+    expect(registry.bootMode("deck-2")).toEqual({ kind: "normal" });
   });
 });

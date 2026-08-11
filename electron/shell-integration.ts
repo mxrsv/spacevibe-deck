@@ -14,6 +14,7 @@
  */
 import path from "node:path";
 import fs from "node:fs";
+import fsPromises from "node:fs/promises";
 
 const OSC_PREFIX = Buffer.from([0x1b, 0x5d]); // ESC ]
 const MAX_PENDING_BYTES = 128 * 1024;
@@ -151,31 +152,40 @@ function parsePayload(payload: string): ShellIntegrationEvent | null {
  * Rust prefix check also rejects.
  */
 export function hasRejectedRoot(candidate: string): boolean {
+  // Normalise separators first. Rust's prefix parser rewrites `/` to `\` over
+  // the first 8 bytes before classifying, so `//server/share` parses as a UNC
+  // prefix there and is rejected; a purely textual check on backslashes let
+  // that form through. Any double-separator root is refused, which covers
+  // `\\host\share`, `//host/share`, `\\?\…` and `\\.\…` alike.
+  return /^[/\\]{2}/.test(candidate.trim());
+}
+
+/**
+ * Whether a candidate is worth a filesystem call at all — no I/O.
+ *
+ * Split out from the probe so the cheap rejections (relative paths, network
+ * roots) happen before anything touches the disk.
+ */
+export function isProbableCwd(candidate: string): boolean {
   const trimmed = candidate.trim();
-  return (
-    trimmed.startsWith("\\\\") ||
-    trimmed.startsWith("//?/") ||
-    trimmed.startsWith("//./")
-  );
+  return !hasRejectedRoot(trimmed) && path.isAbsolute(trimmed);
 }
 
 /**
  * Last candidate that names an existing directory, or `current` when this one
- * is not acceptable. Hits the filesystem, so callers must keep it off any
- * lock-holding path — the Rust comment on `validate_cwd_candidates` explains
- * why that mattered there and the same reasoning applies to the event loop.
+ * is not acceptable.
+ *
+ * SYNCHRONOUS, and therefore only for callers that are not on the event loop —
+ * tests, and nothing else. The PTY path uses `validateCwdCandidates` below.
  */
 export function retainValidCwd(
   current: string | null,
   candidate: string,
 ): string | null {
+  if (!isProbableCwd(candidate)) {
+    return current;
+  }
   const trimmed = candidate.trim();
-  if (hasRejectedRoot(trimmed)) {
-    return current;
-  }
-  if (!path.isAbsolute(trimmed)) {
-    return current;
-  }
   try {
     return fs.statSync(trimmed).isDirectory() ? trimmed : current;
   } catch {
@@ -183,12 +193,42 @@ export function retainValidCwd(
   }
 }
 
-/** Fold a batch of candidates down to the last one that validates. */
-export function validateCwdCandidates(
+/**
+ * How many candidates from one output batch get a filesystem call.
+ *
+ * A shell reports its directory once per prompt, so anything beyond a handful
+ * in a single batch is noise — or hostile. Terminal output is untrusted: a
+ * 64 KB batch has room for ~5,900 `OSC 9;9` sequences, and probing each one
+ * measured 47 ms of blocked main process per batch, which is every window and
+ * every pane frozen for as long as the output keeps coming.
+ */
+const MAX_CWD_PROBES = 8;
+
+/**
+ * Fold a batch of candidates down to the last one that validates — ASYNC.
+ *
+ * Rust ran this on a per-session emitter thread and its comment says plainly
+ * that it "must run unlocked" because it hits the filesystem. The Electron
+ * main process has no other thread to move it to, so the I/O is asynchronous
+ * instead, and the batch is capped.
+ *
+ * Only the LAST few candidates are probed: the newest report is the one that
+ * matters, so scanning backwards finds the answer without walking the noise.
+ */
+export async function validateCwdCandidates(
   candidates: readonly string[],
-): string | null {
-  return candidates.reduce<string | null>(
-    (current, candidate) => retainValidCwd(current, candidate),
-    null,
-  );
+): Promise<string | null> {
+  const probable = candidates.filter(isProbableCwd);
+  const recent = probable.slice(-MAX_CWD_PROBES);
+  for (let index = recent.length - 1; index >= 0; index -= 1) {
+    const candidate = recent[index].trim();
+    try {
+      if ((await fsPromises.stat(candidate)).isDirectory()) {
+        return candidate;
+      }
+    } catch {
+      // Missing or unreachable — try the one before it.
+    }
+  }
+  return null;
 }

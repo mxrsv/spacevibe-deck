@@ -10,11 +10,19 @@
 
 export const MAIN_LABEL = "main";
 
-/** How a window should come up. A window opened to receive a transferred pane
- * boots into adoption instead of restoring a session. */
+/**
+ * How a window should come up.
+ *
+ * The key is `kind` and the idle value is `"normal"` because that is the wire
+ * shape Rust produced (`#[serde(tag = "kind", rename_all = "lowercase")]`) and
+ * `bootModeOrNormal` in the renderer reads exactly that. Emitting
+ * `{ mode: "restore" }` instead made every detached window fall through to
+ * "normal", so it booted to the Open Board and the pane stayed stranded at the
+ * source until the transfer timed out.
+ */
 export type BootMode =
-  | { readonly mode: "restore" }
-  | { readonly mode: "adopt"; readonly token: string };
+  | { readonly kind: "normal" }
+  | { readonly kind: "adopt"; readonly token: string };
 
 export class WindowRegistry {
   /** Most-recently-focused first; the move-pane submenu is ordered by it. */
@@ -58,9 +66,9 @@ export class WindowRegistry {
   bootMode(label: string): BootMode {
     const token = this.pendingAdoptions.get(label);
     if (token === undefined) {
-      return { mode: "restore" };
+      return { kind: "normal" };
     }
     this.pendingAdoptions.delete(label);
-    return { mode: "adopt", token };
+    return { kind: "adopt", token };
   }
 }

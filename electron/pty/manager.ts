@@ -208,6 +208,15 @@ export class PtyManager {
       return;
     }
 
+    // Prompt-ready fires SYNCHRONOUSLY, in step with the output batch it
+    // arrived in: it drives attention state, and a deferred one would race the
+    // bytes that follow it.
+    for (const event of events) {
+      if (event.kind === "prompt-ready") {
+        this.deps.emitToOwner(id, EVENTS.ptyPromptReady, { id });
+      }
+    }
+
     const candidates = events
       .filter(
         (
@@ -218,16 +227,20 @@ export class PtyManager {
         > => event.kind === "current-directory",
       )
       .map((event) => event.value);
-    const cwd = validateCwdCandidates(candidates);
-    if (cwd !== null) {
-      session.cwd = cwd;
+    if (candidates.length === 0) {
+      return;
     }
-
-    for (const event of events) {
-      if (event.kind === "prompt-ready") {
-        this.deps.emitToOwner(id, EVENTS.ptyPromptReady, { id });
+    // The cwd probe hits the filesystem, so it does NOT block the emit path.
+    // Terminal output is untrusted, and a batch full of `OSC 9;9` pointing at
+    // missing paths measured 47 ms of frozen main process each — every window
+    // and every pane, for as long as the output kept coming.
+    void validateCwdCandidates(candidates).then((cwd) => {
+      // Re-read: the session may have exited while the probe was in flight.
+      const live = this.store.get(id);
+      if (live !== undefined && cwd !== null) {
+        live.cwd = cwd;
       }
-    }
+    });
   }
 
   private requireSession(id: number): PtySession {
