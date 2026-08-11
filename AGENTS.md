@@ -374,6 +374,68 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   dirty state lives in Monaco, the renderer pushes a dirty-registry delta whose
   entries are cleared on window death, failing toward asking.
 
+- **A chrome gallery landed 2026-08-12** — a second Vite entry,
+  [`gallery.html`](gallery.html) `current` → [`src/gallery/`](src/gallery/main.tsx) `current`,
+  served by `npm run prototype:gallery` on `127.0.0.1:5175`. It exists because the
+  visual system is about to be constrained (numeric scales, interaction states,
+  overlay genres) and one running app is a poor place to judge it: a live window
+  shows exactly one state at a time, while the questions being asked are
+  comparative — both tab-bar positions, all seven update phases, every attention
+  kind, both modals, the two popovers whose frames disagree. `npm run dev` is
+  **not** blocked, which was checked rather than assumed: every boot IPC call
+  catches its own failure (`window_boot_mode failed; booting normally`,
+  `Failed to load settings, using defaults`), so the app shell and the Open
+  board do paint in a plain browser — the "web-only preview" claim in this file
+  is accurate. What it cannot do is persist a setting, list prompt assets or
+  reach a second state without being driven there, which is what the gallery's
+  IPC stub and seeded signals supply. **No DL rule was changed, no
+  dependency added, nothing in the app bundle moved**, so no fork category was
+  touched; the placement question was the user's call and the answer was `main`,
+  because a dev harness carries over to Electron unchanged. Four calls, each with
+  its reason: **real components, never a mock** — `marketing/stage/appwin.js` is
+  already a hand-written second copy of the chrome and it has drifted (it holds
+  Tokyo Night at 60% saturation for the landing's sake), so the gallery mounts
+  `DesktopChrome`, `TabBar`, `WorkspaceSidebar`, `StatusBar`, `SettingsScreen`,
+  `TabPopover`, `PromptPopover`, `PresetEditor`, `SavePresetDialog` and
+  `OpenBoard` directly, plus every real settings section for the seven value
+  kinds. **A root entry, not a folder under `marketing/`** — `vite marketing`
+  resolves its config from that root, where none exists, so there is no Preact
+  plugin and `.tsx` does not compile (which is why the landing prototype is
+  plain JS with HTML strings). At the repo root it inherits `vite.config.ts`,
+  and `vite build` walks `index.html` only, so the bundle is untouched —
+  verified 180.47 kB gzip with no gallery code in `dist/`, and
+  [`scripts/gallery-entry.test.ts`](scripts/gallery-entry.test.ts) `current`
+  fails if any app module ever imports from `src/gallery/`. **Tauri IPC is
+  stubbed** in `src/gallery/tauri-stub.ts`, installed as an import side effect
+  because ES imports hoist and a call at the top of the entry would still run
+  after every module below it; unknown commands resolve `null` and are listed
+  in the page footer rather than only console-warned. **No direction picker
+  yet** — a redesign direction will be a block of token overrides, and nothing
+  honest can sit behind that switch until a direction is chosen; theme
+  switching goes through the real `updateSettings` → `applyThemeVars` path, so
+  what the specimens show is what Settings would give. One app-code change came
+  with it: the CSS-var block was lifted out of `app.tsx`'s theme effect into
+  [`applyThemeVars`](src/lib/theme-vars.ts) `current`, behaviour unchanged, so
+  the gallery cannot become a second copy of that list. Deliberately absent:
+  `.search-bar` (built imperatively against a live `Pane`, so a specimen would
+  mean re-typing its DOM) and `.zoom-overlay` (it paints `var(--bg)` and
+  nothing else). **What it measured live**, replacing the counts that used to
+  be quoted from memory: 11 font sizes, 13 radii, **23 spacing steps**, 12
+  durations, 11 `z-index` layers, 12 distinct `--fg` state mixes and 20
+  `--accent` mixes all chosen at use sites, and 3 hardcoded colours
+  (`.btn--primary` `#000`, `.search-bar`'s rgba shadow — the DL-1.3 violation
+  already in §10 — and a `white` inside `.drop-overlay.is-swap`'s `color-mix`).
+  Two of those numbers were **wrong in the first version and were corrected on
+  2026-08-12 after the external Codex review below**: the audit counted whole
+  declaration strings, so `padding: 6px 14px` read as one value and the total
+  came out 67 instead of 23 actual steps, and the colour scan matched hex and
+  `rgb()` only, so the `white` was invisible. Named colours are now scanned
+  from `cssText` with the name fenced as `(?<![-\w])…(?![-\w])`, which is what
+  keeps `white-space` and `var(--red)` from reading as violations. The
+  constraint work itself is **not started**; the sequencing decided with it is
+  that DL freezes **which** scales exist while the redesign chooses their
+  **values**, so the rulebook is not written twice.
+
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
 
