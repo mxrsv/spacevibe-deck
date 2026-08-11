@@ -90,3 +90,21 @@ export function primaryModifierName(
 ): "Cmd" | "Ctrl" {
   return platform === "windows" ? "Ctrl" : "Cmd";
 }
+
+/**
+ * `"Split vertically (⌘D)"`, or just `"Split vertically"` when the action has
+ * no chord.
+ *
+ * Exists because `shortcutLabel` can now return null for real: before rebinding
+ * existed, every action a tooltip named was bound by definition, so six call
+ * sites interpolated the result straight into a template and rendered
+ * `"New tab (null)"` the moment a user unbound something.
+ */
+export function titleWithShortcut(
+  title: string,
+  action: ActionId,
+  platform: DesktopPlatform = getDesktopEnvironment().platform,
+): string {
+  const chord = shortcutLabel(action, platform);
+  return chord === null ? title : `${title} (${chord})`;
+}

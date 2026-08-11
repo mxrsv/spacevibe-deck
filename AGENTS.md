@@ -421,6 +421,70 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   reserving Tab wholesale left Windows' shipped `Ctrl+Tab` / `Ctrl+Shift+Tab`
   impossible to re-record; only BARE Tab is reserved now, for focus escape.
 
+  **Reviewed by three parallel agents on 2026-08-11 and repaired; two of the
+  findings were blockers, and the green suite could not see either.** (1)
+  `acceleratorFor` hardcoded `["CmdOrCtrl"]` and never read `binding.meta`,
+  which was safe only while every macOS menu binding shipped with `meta` —
+  rebinding Find to ⇧D produced `CmdOrCtrl+Shift+D`, i.e. `split-column`'s
+  chord, so **Split Horizontally silently stopped working** and nothing
+  reported it, because the collision existed only in the generated accelerator
+  and never in the resolved keymap `chordConflicts` scans. Accelerators are now
+  built from the binding's own modifiers with a named-key table, and a chord
+  that cannot be spelled installs NO accelerator rather than a wrong one.
+  (2) Shift counted as a sufficient modifier, so `Shift+A` was bindable —
+  taking capital A from every pane, and making Shift+Enter (the agent newline
+  in `shift-enter.ts`, not a registry action and therefore unreportable as a
+  conflict) silently stealable. Admissibility is now one rule,
+  `isAdmissibleChord`, applied at capture **and** at load, so a hand-edited
+  `settings.json` can no longer bind what the UI refuses. Four more: bare
+  arrows/Home/End were bindable and cost every pane its shell history (the
+  "produces no character" justification was simply wrong — they send escape
+  sequences); override-vs-override ordering was **inverted**, so re-confirming
+  the chord you wanted handed it to the action you didn't; the suspension flag
+  was an unowned global in main that a window dying mid-record left stuck for
+  the whole app, and that one window un-suspended out from under another
+  (now a `Set` keyed by sender, cleared on `closed` and `render-process-gone`);
+  and `check-for-updates`/`open-release-notes` had editable pills over actions
+  `dispatchAction` cannot run — they are excluded, with a test asserting the
+  exclusion equals exactly the non-dispatchable set. DL gains **DL-15.8**
+  (a refused keystroke says why) and DL-15.6 now describes what reset actually
+  removes. The one coverage hole worth naming: **nothing tested that
+  `activeKeymap()` — the only consumer on the keydown path — picks up a
+  rebind**; `active-keymap.test.ts` now drives `matchBinding` with no keymap
+  argument.
+
+- **The shipped Windows preview answers Ctrl+R and Ctrl+W with actions Deck
+  never asked for (found 2026-08-11, fixed).** `buildMenu` returned early on
+  non-darwin without calling `Menu.setApplicationMenu`, and Electron installs
+  its DEFAULT menu whenever an app never sets one. `titleBarStyle:
+  "hiddenInset"` makes the window frameless on Windows too, so the menu **bar**
+  is skipped while its accelerators are already registered — invisible, and
+  live. `WINDOWS_KEYMAP` binds none of Ctrl+R/W/A/Z/M, so nothing contested
+  them: **Ctrl+R reloaded the renderer and Ctrl+W closed the window**, while
+  Deck's own close-pane sits on Ctrl+Shift+W. Fixed by passing `null`
+  explicitly. Unrelated to the Shortcuts feature and older than it. **Not
+  observed on a Windows machine** — the repo half is verified, the Electron
+  half is read from `root_view.cc`/`native_window.cc`, and Gate C still has no
+  hardware.
+
+- **"Cocoa consumes an accelerator before the webview sees the keydown" is a
+  Tauri-era belief that may be FALSE on Electron (raised 2026-08-11, not
+  settled).** It appears in ten places — `action-registry.ts`, `tab-manager.ts`,
+  `app.tsx` and now `keybindings.ts`/`menu.ts` — and was carried across the host
+  migration without re-testing. Chromium's `RenderWidgetHostViewCocoa` claims
+  ⌘-chords through `performKeyEquivalent:` and forwards them to the renderer;
+  the main menu is reached only on the UNHANDLED path, so a renderer
+  `preventDefault()` already stops the menu item. VS Code rebinds ⌘C/⌘V on
+  macOS with nothing but a `preventDefault` on an input — no menu suspension at
+  all. If that holds, Deck's whole accelerator-suspension mechanism is
+  redundant. **Two-minute test settles it: open Shortcuts, click a pill, press
+  ⌘Z.** Separately confirmed from Electron source: a `role:` item's accelerator
+  CANNOT be stripped (`MenuItem` backfills the role default over both
+  `undefined` and `null` via loose `==`, then freezes the property), so the ~10
+  role chords are outside the current mechanism either way. The purpose-built
+  API is `webContents.setIgnoreMenuShortcuts()`, which covers roles and needs no
+  rebuild — deferred until the two-minute test says which problem is real.
+
 - **A chrome gallery landed 2026-08-12** — a second Vite entry,
   [`gallery.html`](gallery.html) `current` → [`src/gallery/`](src/gallery/main.tsx) `current`,
   served by `npm run prototype:gallery` on `127.0.0.1:5175`. It exists because the

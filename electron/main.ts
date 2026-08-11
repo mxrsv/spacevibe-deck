@@ -114,6 +114,9 @@ function createWindow(label: string): BrowserWindow {
     },
   });
   windows.set(label, window);
+  // Captured now, not in `closed`: the webContents is destroyed by then and
+  // reading `.id` off it would throw inside the teardown handler.
+  const senderId = window.webContents.id;
 
   // Deck is a single local document and must never navigate. A drop that the
   // renderer does not cancel, or any stray link, would otherwise load a new
@@ -122,6 +125,13 @@ function createWindow(label: string): BrowserWindow {
   // just loaded. Proven: the bridge survives navigation.
   window.webContents.on("will-navigate", (event) => event.preventDefault());
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+
+  // A renderer that dies mid-recording never sends its `false`. Preact cleanup
+  // does not run on a destroyed webview, so without this the accelerators stay
+  // stripped for every window until relaunch.
+  window.webContents.on("render-process-gone", () => {
+    setRecording(senderId, false);
+  });
 
   window.on("focus", () => {
     registry.recordFocus(label);
@@ -173,6 +183,9 @@ function createWindow(label: string): BrowserWindow {
 
   window.on("closed", () => {
     windows.delete(label);
+    // Same reason as `render-process-gone`: closing a window while one of its
+    // Shortcuts rows is recording must not leave the app without accelerators.
+    setRecording(senderId, false);
     registry.forgetWindow(label);
     quitFlight.forgetWindow(label);
     closeFlight.forget(label);
@@ -223,8 +236,35 @@ function focusedLabel(): string | null {
  */
 let menuKeymap: readonly KeyBinding[] = MACOS_KEYMAP;
 
-/** True while a Shortcuts row is recording — see `MenuDeps.suspendAccelerators`. */
-let acceleratorsSuspended = false;
+/**
+ * Web contents currently recording a chord — see `MenuDeps.suspendAccelerators`.
+ *
+ * A SET keyed by sender, not a boolean, and both halves of that matter. As a
+ * boolean with no owner it could be left stuck: a window that died between
+ * `true` and `false` stripped every accelerator app-wide for the rest of the
+ * session, with no way back except guessing "open Settings, click a pill,
+ * press Escape". And with two windows recording, whichever finished FIRST
+ * un-suspended the other — so ⌘W in the still-recording window closed the
+ * pane, which is the exact failure this mechanism exists to prevent.
+ */
+const recordingSenders = new Set<number>();
+
+function acceleratorsSuspended(): boolean {
+  return recordingSenders.size > 0;
+}
+
+/** Add or remove a recorder, rebuilding the menu only when the state flips. */
+function setRecording(senderId: number, recording: boolean): void {
+  const before = acceleratorsSuspended();
+  if (recording) {
+    recordingSenders.add(senderId);
+  } else {
+    recordingSenders.delete(senderId);
+  }
+  if (acceleratorsSuspended() !== before) {
+    rebuildMenu();
+  }
+}
 
 /** Re-resolve the menu keymap from a settings object and rebuild if it moved. */
 function adoptMenuKeymap(settings: unknown): void {
@@ -245,7 +285,7 @@ function rebuildMenu(): void {
     emitTo,
     focused: () => focusedLabel(),
     keymap: menuKeymap,
-    suspendAccelerators: acceleratorsSuspended,
+    suspendAccelerators: acceleratorsSuspended(),
   });
 }
 
@@ -305,13 +345,8 @@ ipcMain.handle(CHANNELS.readImageAsDataUrl, (_event, { path: target }) =>
 ipcMain.handle(CHANNELS.scanWorkspaceFavicon, (_event, { dir }) =>
   scanWorkspaceFavicon(dir),
 );
-ipcMain.handle(CHANNELS.suspendMenuAccelerators, (_event, { suspended }) => {
-  const next = suspended === true;
-  if (next === acceleratorsSuspended) {
-    return;
-  }
-  acceleratorsSuspended = next;
-  rebuildMenu();
+ipcMain.handle(CHANNELS.suspendMenuAccelerators, (event, { suspended }) => {
+  setRecording(event.sender.id, suspended === true);
 });
 ipcMain.handle(CHANNELS.applySettingsPatch, async (_event, { patch }) => {
   const merged = await applySettingsPatch(stores, patch);

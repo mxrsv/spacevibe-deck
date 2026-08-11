@@ -339,9 +339,14 @@ behaviour, and §5's row is what makes settings scan as one document.
   swapping two actions' chords must pass through a colliding state, and
   rejecting the first half makes the swap impossible to finish.
 - **DL-15.6** The row's only second element is DL-6.1's reset button, shown
-  when the chord differs from the shipped default. Recording covers the other
-  two outcomes without further controls — a chord rebinds, bare
-  Backspace/Delete unbinds, Esc cancels.
+  whenever the row carries a user override — including an override that happens
+  to equal the shipped chord, because what reset removes is the override, not a
+  difference. Recording covers the other two outcomes without further
+  controls — a chord rebinds, bare Backspace/Delete unbinds, Esc cancels.
+- **DL-15.8** A refused keystroke says WHY, in the pill, and keeps listening.
+  Every refusal reason gets its own words: "reserved by macOS" is not the same
+  message as "add ⌘, ⌃ or ⌥", and neither may render as the idle "press keys…"
+  — a rule the user cannot see reads as a dead control.
 - **DL-15.7** Chords are **notation, not icons** (DL-14.6): `⌘⇧D`, `Ctrl+Alt+T`
   are rendered as text, never as pictograms, and `formatShortcutBinding`
   (`src/lib/shortcut-label.ts`) is the only place their spelling is decided.

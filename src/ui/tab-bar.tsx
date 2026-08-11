@@ -14,7 +14,7 @@ import { AgentAttentionMark } from "./agent-attention-mark";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { ChromeActions } from "./chrome-actions";
 import { TabPopover } from "./tab-popover";
-import { shortcutLabel } from "../lib/shortcut-label";
+import { titleWithShortcut } from "../lib/shortcut-label";
 
 interface TabBarProps {
   settingsOpen: boolean;
@@ -159,7 +159,7 @@ export function TabBar(props: TabBarProps) {
       <button
         type="button"
         class="tab-add"
-        title={`New tab (${shortcutLabel("new-tab")})`}
+        title={titleWithShortcut("New tab", "new-tab")}
         aria-label="New tab"
         onClick={props.onNewTab}
       >

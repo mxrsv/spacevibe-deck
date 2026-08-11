@@ -8,6 +8,8 @@ export function StatusBar() {
   const info = statusInfo.value;
   const themeLabel = getPreset(settings.value.themeId).label;
   const cwd = info.cwd === null ? null : tildify(info.cwd, info.home);
+  const splitRow = shortcutLabel("split-row");
+  const newTab = shortcutLabel("new-tab");
   return (
     <footer class="status">
       {info.branch !== null && (
@@ -34,10 +36,20 @@ export function StatusBar() {
         <span class="status__seg">{themeLabel}</span>
         <span class="status__vsep" aria-hidden="true" />
         <span class="status__seg">
-          <span class="status__hint">split</span>
-          <kbd class="status__kbd">{shortcutLabel("split-row")}</kbd>
-          <span class="status__hint">new tab</span>
-          <kbd class="status__kbd">{shortcutLabel("new-tab")}</kbd>
+          {/* A hint is only a hint while the chord exists. An unbound action
+              rendered an empty `kbd` pill — a floating border naming nothing. */}
+          {splitRow !== null && (
+            <>
+              <span class="status__hint">split</span>
+              <kbd class="status__kbd">{splitRow}</kbd>
+            </>
+          )}
+          {newTab !== null && (
+            <>
+              <span class="status__hint">new tab</span>
+              <kbd class="status__kbd">{newTab}</kbd>
+            </>
+          )}
         </span>
       </div>
     </footer>

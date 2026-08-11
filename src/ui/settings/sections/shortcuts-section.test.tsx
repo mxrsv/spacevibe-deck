@@ -27,12 +27,12 @@ import { DEFAULT_SETTINGS } from "../../../settings/settings-schema";
 import { shortcutCaptureActive } from "../../../chrome/events";
 import {
   NO_KEYBINDING_OVERRIDES,
-  resolveKeymap,
   withOverride,
 } from "../../../lib/keybindings";
 import { matchBinding } from "../../../terminal/keymap";
 import { resetActiveKeymapCache } from "../../../terminal/active-keymap";
 import { ACTION_REGISTRY } from "../../../terminal/action-registry";
+import { NOT_REBINDABLE } from "../shortcut-groups";
 
 function keyEvent(
   key: string,
@@ -93,7 +93,7 @@ describe("ShortcutsSection", () => {
     return button;
   };
 
-  it("gives every registry action a row", () => {
+  it("gives every rebindable registry action a row", () => {
     mount();
     const labels = new Set(
       [...host.querySelectorAll(".cfg-row--shortcut .cfg-row__label")].map(
@@ -101,6 +101,12 @@ describe("ShortcutsSection", () => {
       ),
     );
     for (const action of ACTION_REGISTRY) {
+      // `NOT_REBINDABLE` actions have no keyboard dispatch path at all, so a
+      // pill for them would sit over a permanent no-op — see shortcut-groups.ts.
+      if (NOT_REBINDABLE.has(action.id)) {
+        expect(labels.has(action.label), action.id).toBe(false);
+        continue;
+      }
       expect(labels.has(action.label), action.id).toBe(true);
     }
   });
@@ -142,13 +148,14 @@ describe("ShortcutsSection", () => {
     expect(settings.value.keybindings.macos.find).toEqual([
       { key: "j", meta: true, alt: true, shift: false, ctrl: false },
     ]);
-    resetActiveKeymapCache();
-    const keymap = resolveKeymap("macos", settings.value.keybindings);
-    expect(matchBinding(keyEvent("j", { metaKey: true, altKey: true }), keymap)).toBe(
+    // `matchBinding` with NO keymap argument — the live path. Resolving a
+    // keymap here and passing it in only re-tested `resolveKeymap`, and would
+    // have stayed green with an `activeKeymap()` cache that never invalidated.
+    expect(matchBinding(keyEvent("j", { metaKey: true, altKey: true }))).toBe(
       "find",
     );
     // …and the chord it replaced no longer fires it.
-    expect(matchBinding(keyEvent("f", { metaKey: true }), keymap)).toBeNull();
+    expect(matchBinding(keyEvent("f", { metaKey: true }))).toBeNull();
   });
 
   it("gates the app's own shortcuts while recording, and lets go after", () => {
@@ -200,7 +207,7 @@ describe("ShortcutsSection", () => {
     expect(settings.value.keybindings.macos.find).toBeUndefined();
   });
 
-  it("asks for a modifier instead of binding a bare letter", () => {
+  it("asks for a real modifier instead of binding a bare letter", () => {
     mount();
     act(() => {
       captureButton("Find…").click();

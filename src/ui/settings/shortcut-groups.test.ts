@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  NOT_REBINDABLE,
   SHORTCUT_GROUPS,
   TAB_SELECT_COUNT,
   shortcutGroups,
 } from "./shortcut-groups";
+import { DISPATCHABLE_ACTIONS } from "../../terminal/tab-manager";
 import {
   ACTION_REGISTRY,
   MACOS_KEYMAP,
@@ -14,13 +16,35 @@ import {
 const rows = () => shortcutGroups().flatMap((group) => group.rows);
 
 describe("shortcutGroups", () => {
-  it("gives every registry action a row", () => {
+  it("gives every DISPATCHABLE registry action a row", () => {
     // The whole point of building from the registry: an action with no row is
     // an action nobody can rebind, and it would go unnoticed.
     const actions = new Set(rows().map((row) => row.action));
     for (const action of ACTION_REGISTRY) {
+      if (NOT_REBINDABLE.has(action.id)) {
+        continue;
+      }
       expect(actions.has(action.id), action.id).toBe(true);
     }
+  });
+
+  it("offers no row a chord could not actually run", () => {
+    // A row whose action `dispatchAction` has no entry for renders an editable
+    // pill over a permanent no-op: the chord shows, pressing it does nothing.
+    for (const row of rows()) {
+      expect(DISPATCHABLE_ACTIONS.has(row.action), row.action).toBe(true);
+    }
+  });
+
+  it("excludes exactly the non-dispatchable actions, no more", () => {
+    // Keeps the exclusion honest in both directions: an action that becomes
+    // dispatchable later must not stay silently hidden, and the set cannot
+    // grow into a place to bury inconvenient rows.
+    const undispatchable = (ACTION_REGISTRY as readonly { id: string }[])
+      .filter((action) => !DISPATCHABLE_ACTIONS.has(action.id as never))
+      .map((action) => action.id)
+      .sort();
+    expect([...NOT_REBINDABLE].sort()).toEqual(undispatchable);
   });
 
   it("places every action — the `other` bucket must stay empty", () => {

@@ -91,9 +91,29 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   "toggle-settings": "app",
   "toggle-prompts": "app",
   "focus-next-attention": "app",
-  "check-for-updates": "app",
-  "open-release-notes": "app",
 };
+
+/**
+ * Registry actions that get NO row, because no keyboard chord could run them.
+ *
+ * `check-for-updates` and `open-release-notes` are handled by `app.tsx`'s
+ * `menu:action` listener via `isUpdateMenuAction`, not by `dispatchAction`'s
+ * command table — so a chord matched by `handleShortcut` reaches
+ * `dispatchAction` and falls off the end as a silent no-op. Offering an
+ * editable pill for them meant the row could display ⌘⇧U while ⌘⇧U did
+ * nothing, forever.
+ *
+ * Removing the row loses nothing: both are still on the macOS App menu, and
+ * both have their own button in the Settings about section.
+ *
+ * `shortcut-groups.test.ts` asserts this set is exactly the registry actions
+ * `DISPATCHABLE_ACTIONS` does not contain, so an action that becomes
+ * dispatchable later cannot stay silently excluded.
+ */
+export const NOT_REBINDABLE: ReadonlySet<string> = new Set([
+  "check-for-updates",
+  "open-release-notes",
+]);
 
 /**
  * `select-tab-1`..`select-tab-8` carry no registry row — they are a
@@ -130,6 +150,9 @@ export function shortcutGroups(): readonly ShortcutGroup[] {
     byGroup.set(group.id, []);
   }
   for (const action of ACTION_REGISTRY as readonly ActionDefinition[]) {
+    if (NOT_REBINDABLE.has(action.id)) {
+      continue;
+    }
     const target = PLACEMENT[action.id] ?? "other";
     byGroup.get(target)?.push({ action: action.id as ActionId, label: action.label });
     if (action.id === "select-last-tab") {

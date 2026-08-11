@@ -75,12 +75,63 @@ describe("captureChord", () => {
     });
   });
 
-  it("allows an unmodified key that produces no character", () => {
-    // Windows ships `find-next` on bare F3, so this exemption is not
-    // hypothetical — refusing it would make a shipped default unrepeatable.
+  it("allows a BARE function key — Windows ships find-next on F3", () => {
+    // The only bare-key exemption. Refusing it would make a shipped default
+    // impossible to re-record.
     expect(captureChord(keyEvent("F3"))).toMatchObject({ ok: true });
-    expect(captureChord(keyEvent("PageUp"))).toMatchObject({ ok: true });
-    expect(captureChord(keyEvent("ArrowUp"))).toMatchObject({ ok: true });
+    expect(captureChord(keyEvent("F12"))).toMatchObject({ ok: true });
+  });
+
+  it("refuses a BARE navigation key — those escape sequences are the shell's", () => {
+    // ArrowUp is history recall, Home/End are line motion. An earlier rule
+    // called these "keys that never produce a character the PTY would
+    // otherwise receive", which is wrong: binding bare ↑ cost every pane its
+    // history, silently, because handleShortcut preventDefaults first.
+    for (const key of ["ArrowUp", "ArrowDown", "Home", "End", "PageUp", "Delete"]) {
+      expect(captureChord(keyEvent(key)), key).toEqual({
+        ok: false,
+        reason: "needs-modifier",
+      });
+    }
+  });
+
+  it("takes Shift alone for a navigation key — the shipped scrollback chords", () => {
+    expect(captureChord(keyEvent("PageUp", { shiftKey: true }))).toMatchObject({
+      ok: true,
+    });
+    expect(captureChord(keyEvent("Home", { shiftKey: true }))).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it("refuses Shift as the only modifier on a PRINTABLE key", () => {
+    // Shift+A is a bare letter wearing a modifier. Accepting it took capital A
+    // away from every pane, and made Shift+Enter — the agent-CLI newline in
+    // shift-enter.ts, which is not in the registry and so cannot even be
+    // reported as a conflict — silently stealable.
+    expect(captureChord(keyEvent("A", { shiftKey: true }))).toEqual({
+      ok: false,
+      reason: "needs-modifier",
+    });
+    expect(captureChord(keyEvent("Enter", { shiftKey: true }))).toEqual({
+      ok: false,
+      reason: "needs-modifier",
+    });
+  });
+
+  it("names the chords macOS will never deliver instead of sitting silent", () => {
+    for (const [key, mods] of [
+      ["Tab", { metaKey: true }],
+      [" ", { metaKey: true }],
+      ["q", { metaKey: true }],
+      ["h", { metaKey: true }],
+      ["h", { metaKey: true, altKey: true }],
+    ] as const) {
+      expect(captureChord(keyEvent(key, mods)), key).toEqual({
+        ok: false,
+        reason: "system-reserved",
+      });
+    }
   });
 
   it("captures Shift alone as a modifier for a named key", () => {
