@@ -22,7 +22,8 @@
     "tauri": "tauri",
     "electron:build": "tsc -p tsconfig.electron.json && node scripts/build-electron-main.mjs",
     "electron:dev": "npm run build && npm run electron:build && electron dist-electron/electron/main.cjs",
-    "electron:smoke": "npm run build && npm run electron:build && electron dist-electron/electron/smoke.cjs"
+    "electron:smoke": "npm run build && npm run electron:build && electron dist-electron/electron/smoke.cjs",
+    "shoot": "npm run build && npm run electron:build && electron dist-electron/electron/shoot.cjs"
   },
   "dependencies": {
     "@preact/signals": "^2.9.2",

@@ -33,8 +33,12 @@
   --ui-font:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
-  --titlebar-h: 26px;
-  --tabbar-h: 33px;
+  /* DL-16: the single command row. 34px carries a 26px control comfortably
+     and clears the macOS traffic lights, which need ~28px of vertical room. */
+  --frame-h: 34px;
+  /* macOS traffic-light cluster: 3 buttons from x=20, ~70px to the last edge,
+     plus breathing room before the first tab. */
+  --frame-lights-w: 78px;
   --status-h: 28px;
   --sidebar-w: 200px;
   --radius: 10px;
@@ -59,46 +63,64 @@ body,
   height: 100vh;
   width: 100vw;
   display: grid;
-  grid-template-rows: var(--titlebar-h) var(--tabbar-h) 1fr var(--status-h);
+  /* DL-16: ONE command row. There is no separate title bar — the traffic
+     lights sit inside this row behind a reserved inset, so the frame is
+     authored chrome rather than an empty OS band above the app. */
+  grid-template-rows: var(--frame-h) 1fr var(--status-h);
   color: var(--text-primary);
   font-family: var(--ui-font);
   font-size: 13px;
   background: var(--bg);
 }
 
-/* ── Title bar: traffic lights only, full-width drag region ── */
-
-.titlebar {
-  background: var(--bg);
-}
-
-/* Native Windows chrome owns the system title row; top tabs start at row 1. */
+/* Native Windows chrome owns the system title row, so there is no inset to
+   reserve — the row is the same height and carries the same content. */
 .window--windows {
-  grid-template-rows: var(--tabbar-h) 1fr var(--status-h);
+  --frame-lights-w: 0px;
 }
 
-/* ── Sidebar shell: titlebar / [sidebar | stage] / status ── */
+/* ── Sidebar shell: frame / [sidebar | stage] / status ── */
 
 .window--sidebar {
-  /* Taller titlebar: it hosts the chrome actions in this mode. */
-  --titlebar-h: 34px;
-  grid-template-rows: var(--titlebar-h) 1fr var(--status-h);
   grid-template-columns: var(--sidebar-w) 1fr;
 }
 
-.window--sidebar > .titlebar,
-.window--sidebar > .deck-toolbar {
+/* ── DL-16: the application frame ───────────────────────────
+   Traffic lights, navigation and actions share one surface and one structural
+   hairline. `--frame-lights-w` is the macOS cluster's fixed footprint: the
+   buttons are drawn by the OS on top of the web contents, so the row reserves
+   the space rather than laying them out. */
+
+.deck-frame {
+  height: var(--frame-h);
+  background: var(--chrome-1);
+  /* DL-3.3: one structural hairline for the whole frame. */
+  border-bottom: 1px solid var(--hair);
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  gap: 8px;
   padding-right: 8px;
-  /* DL-3.3: structural separation uses the shared hairline token. */
-  border-bottom: 1px solid var(--hair);
 }
 
-.deck-toolbar {
-  background: var(--bg);
+/* The reserved footprint of the macOS traffic lights. Not a decoration and not
+   interactive — the OS paints its buttons over exactly this box, and content
+   placed here would sit underneath them. */
+.deck-frame__lights {
+  flex: 0 0 var(--frame-lights-w);
+  align-self: stretch;
+  -webkit-app-region: drag;
+}
+
+/* Windows draws its own controls on the right, so there is nothing to reserve
+   on the left and the element collapses to zero rather than leaving a gap. */
+.window--windows .deck-frame__lights {
+  display: none;
+}
+
+.deck-frame__spacer {
+  flex: 1 1 auto;
+  align-self: stretch;
 }
 
 .window--sidebar > .stage {
@@ -443,11 +465,14 @@ button.attn-mark:hover {
 
 /* ── Tab bar ─────────────────────────────────────────────── */
 
+/* DL-16: in top-tab mode the tab bar IS the frame — same height, same surface,
+   same single hairline, and it reserves the traffic-light inset itself. */
 .tabbar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 8px 0 6px;
+  height: var(--frame-h);
+  padding: 0 8px 0 0;
   background: var(--chrome-1);
   border-bottom: 1px solid var(--hair);
   min-width: 0;

@@ -100,18 +100,23 @@ export function DesktopChrome(props: DesktopChromeProps) {
     .filter(Boolean)
     .join(" ");
 
+  // DL-16: one authored command row. On macOS the traffic lights sit INSIDE it
+  // behind a fixed inset instead of owning an empty band of their own — the
+  // frame is Deck's chrome, not OS spacing the app happens to sit under. In
+  // top-tab mode the tabs occupy that same row; in sidebar mode the row carries
+  // the actions and the sidebar starts beneath it.
   return (
     <div class={classes}>
-      {!windows ? (
+      {props.sidebar ? (
         <div
-          class="titlebar"
+          class="deck-frame"
           data-tauri-drag-region
-          onDblClick={props.onMacTitlebarDoubleClick}
+          onDblClick={windows ? undefined : props.onMacTitlebarDoubleClick}
         >
-          {props.sidebar ? props.toolbar : null}
-        </div>
-      ) : props.sidebar ? (
-        <div class="deck-toolbar" aria-label="Deck actions">
+          {!windows ? (
+            <div class="deck-frame__lights" aria-hidden="true" />
+          ) : null}
+          <div class="deck-frame__spacer" data-tauri-drag-region />
           {props.toolbar}
         </div>
       ) : null}
@@ -394,8 +399,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     installQuitGuard({
       quit: {
         ...answering(QUIT_COPY),
-        confirm: (requestId: number) =>
-          defaultPtyClient.confirmQuit(requestId),
+        confirm: (requestId: number) => defaultPtyClient.confirmQuit(requestId),
         cancel: (requestId: number) => defaultPtyClient.cancelQuit(requestId),
       },
       close: {
@@ -652,7 +656,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
 
   const promptPopover = promptsOpen.value ? (
     <PromptPopover
-      capture={() => capturePromptTarget(tabsRef.current?.activePaneId() ?? null)}
+      capture={() =>
+        capturePromptTarget(tabsRef.current?.activePaneId() ?? null)
+      }
       loadAssets={(target) =>
         defaultPromptAssetsClient.list(target.agent ?? "", target.cwd)
       }
@@ -662,7 +668,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           expectedAgent: target.agent,
         }) ?? Promise.resolve("no-target" as const)
       }
-      isAlive={(paneId) => tabsRef.current?.allPaneIds().includes(paneId) ?? false}
+      isAlive={(paneId) =>
+        tabsRef.current?.allPaneIds().includes(paneId) ?? false
+      }
       onClose={closePrompts}
     />
   ) : null;
