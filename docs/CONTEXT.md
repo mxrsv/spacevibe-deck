@@ -172,6 +172,17 @@ Implemented source boundaries:
   membership
   ([release workflow](../.github/workflows/release.yml#L1-L314) `current`,
   [validator](../scripts/verify-updater-manifest.mjs) `current`).
+- The same workflow now requires every active conventional `feat`, `fix`, and
+  `perf` commit to declare `Release-Note: <user-facing description>` or
+  `Release-Note: skip` before either draft build. Standard, nested, and merge
+  reverts are removed; `skip` wins; breaking metadata routes the explicit
+  public description into its own section; both platform releases share the
+  change sections; and a release with no public entry fails before publishing
+  generic copy. Manual Windows rebuilds of older tags instead reuse the reviewed
+  stable GitHub release body, preserving the exact tag while avoiding a false
+  failure against history created before the policy
+  ([generator](../scripts/generate-release-notes.mjs#generateReleaseNotes) `current`,
+  [workflow contract](../scripts/release-workflow.test.ts) `current`).
 
 Remaining delivery gates:
 
@@ -427,6 +438,247 @@ settings rail and reset control were all legible and geometrically consistent;
 no implementation adjustment followed the review. This proves the rendered
 frontend across all four themes, not Windows WebView2 parity. The unified icon
 system is therefore `current`, while real Windows visual E2E remains separate.
+
+## Pane detach — Phase A landed 2026-08-10
+
+Implemented from
+[the plan](plans/2026-08-10-pane-detach-window.md) `current` in its own wave
+order: the Rust transfer transaction, then the wave-1 frontend against fakes,
+then the window lifecycle, then the frontend integration. Sections A, B and C
+are complete; **section D (cross-window drag) was not started** and stays behind
+the plan's §0.7 gate.
+
+**Verified by command, with output.** `cargo test --locked` — 239 passed;
+`cargo fmt --check` — clean; `npm test` — 1244 passed across 105 files;
+`npm run build` (`tsc && vite build`) — clean; `npm run generate:menu:check` —
+exits 0 with `menu_registry.rs` regenerated for the new Window-menu action.
+Bundle: `dist/assets/index-*.js` went 172.68 kB → 180.40 kB gzip, entirely
+`@xterm/addon-serialize@0.14.0` (the one dependency the spec pre-approved).
+
+**One bug the gates could not see, found by pressing the key.** The first ⌘⇧M
+failed with "Couldn't move the pane — it stayed here."; `open_pane_window`
+declared a single `args: OpenPaneWindowArgs` parameter while the frontend sent
+the frozen contract's flat `{ token, screenX?, screenY? }`. Tauri resolves each
+command parameter by looking its camelCased name up in the invoke payload
+([`ipc/command.rs`](https://docs.rs/tauri/2.11.5/src/tauri/ipc/command.rs.html)),
+so it demanded a key literally named `args`. That mismatch compiles,
+type-checks and passes every unit test — Vitest mocks the PTY client, `tsc` has
+never heard of a Rust signature, and `cargo test` cannot read `src/`. Fixed by
+taking the three arguments flat; a sweep of all 30 commands found no second
+instance.
+The [IPC contract test](../scripts/ipc-contract.test.ts) `current` now parses
+both sides and fails on any command whose required payload keys a call site
+does not send. It is the only gate in this repo that crosses
+the IPC boundary.
+
+**Verified by hand on 2026-08-10, after that fix.** ⌘⇧M on a pane detaches it
+into a second window and **the scrollback arrives intact** — so `prepare` →
+`stage` → `open_pane_window` → `claim` → `commit` all run end to end against a
+real PTY, and the serialize/replay path works. The one-pane guard below behaves
+as designed.
+
+**Still NOT verified — and the automated gates cannot see any of it.**
+Outstanding manual pass, under `npm run tauri dev`:
+
+- Typing in the new window reaches the **same process** (an agent mid-run keeps
+  answering), not a fresh shell.
+- The route lock is now held **across** `app.emit_to` (that is what makes the
+  ordering guarantee structural rather than timed). Run several panes producing
+  continuous output, detach one and close a window while they are still
+  writing, and watch for a **hang** rather than for a wrong result.
+- Detach a pane, then force-kill the destination window's webview: the PTY must
+  die, not leak (`sweep_and_reap` and `on_window_destroyed` have no unit test —
+  `AppHandle` cannot be constructed in one).
+- Destroy the destination before it claims: the source pane must return
+  **immediately**, not after ten seconds. A ten-second wait means
+  `reserve_destination` did not run.
+- ⌘Q with a busy agent in the non-focused window: exactly one dialog, naming
+  that agent; a second ⌘Q while it is open does nothing.
+- Close one window of two: only its panes die. Close the last window: the
+  process actually exits (`ps` shows no `spacevibe-deck`) — the old
+  `prevent_exit` would have hung here.
+- Change a setting in each window in turn: both stick, and both survive a
+  relaunch.
+- Windows only: F5 in a detached window does nothing, and the devtools console
+  shows no capability errors.
+
+**A fork resolved on the day, not in the spec or the plan.** ⌘⇧M from a window
+holding exactly one pane is now a **no-op with a message** rather than a move.
+Neither document covered it: the plan weighed a one-pane window only for the
+Phase B _drag_ path (Task D9 and manual item 8), and only for dragging **into
+another window**. Moving that pane to a NEW window closes this window and opens
+another holding the same pane — the window is swapped, its geometry lost, and
+the pane is risked through a whole transaction for no observable change. The
+condition is **window-level, not tab-level**: a second tab keeps the window
+alive, so splitting that tab out is still a real move. Only the new-window
+target is guarded — offering the pane to an **existing** window merges it and
+stays meaningful even from a one-pane window, which is exactly what manual item
+8 asks for.
+
+## Electron migration — prep opened 2026-08-11
+
+**Status: prep only. No product code, no Electron dependency, nothing scaffolded
+in the product tree.** The decisions are in
+[`AGENTS.md`](../AGENTS.md) `current` In flight, the work sequence in the
+[prep plan](plans/2026-08-11-electron-migration-prep.md) `current`, and the
+target design in the
+[design spec](specs/2026-08-11-electron-migration-design.md) `decided`.
+
+Deck leaves Tauri for an Electron host written in Node/TS. The motivation is
+ship speed and DX — the Rust seams are correct, they are just slow to move in —
+and it is worth naming that this buys nothing a user can see. What a user gets
+is worse on two axes at once: a larger binary and more RAM, plus a one-time
+loss of every stored setting.
+
+**Tauri feature work is frozen from this date.** Hotfixes still ship. The token
+usage dashboard ([spec](specs/2026-08-10-token-usage-dashboard-design.md) `decided`)
+and pane-detach Phase B ([plan](plans/2026-08-10-pane-detach-window.md) `current`,
+section D) are the two features the freeze holds back, and both are
+re-targeted at Electron rather than cancelled. The freeze lifts when the three
+spike gates each reach a conclusion, not on a date — see below.
+
+**The two open questions in the plan's §5 are answered (2026-08-11):**
+
+- The public "no Electron" proof point is replaced by "no accounts, no
+  telemetry" as the lead, with "made for agent CLIs" promoted beside it —
+  agent detection, attention state, prompt board, presets. Deliberately not a
+  performance claim: Electron would make one false, and a claim that a
+  competitor can disprove is worse than no claim. The copy itself is NOT
+  edited yet — [`README.md`](../README.md) `current` and
+  [`copy.js`](../marketing/landing-prototype/src/copy.js) `current` still say
+  "no Electron", which stays true until the cutover ships. Editing
+  them is a cutover-plan task.
+- The freeze ends on **gates, not on a calendar**. The plan proposed one week
+  for the spike and six weeks to MVP parity; both were replaced, because the
+  motivation ("ship speed and DX") has never been measured in hours or build
+  minutes, so any deadline would have been a guess enforced against real work.
+  The cost of the swap is the obvious one and is accepted rather than
+  overlooked: a hanging gate hangs the freeze. Gate C is hardware-blocked right
+  now, so this is not hypothetical.
+
+**Spike baseline — ran 2026-08-11, 7/7 passed.** Throwaway spike, kept out of
+the repo per F4 (session scratchpad, not the worktree): Electron 43.3.0 +
+`node-pty` 1.1.0 + a Vite/Preact/xterm renderer loaded from `file://` with
+`contextIsolation` on and `nodeIntegration` off. It spawns `$SHELL -l` on a
+real PTY, streams bytes into xterm, resizes, and kills. Resize is checked by
+reading `tput cols` back **from the shell** rather than by trusting the return
+value, so SIGWINCH is proven to arrive. Login-shell agent detection was
+reproduced exactly as [`agents.rs`](../src-tauri/src/agents.rs) `current` does
+it — `$SHELL -ilc "command -v …"`, interactive login, 3 s budget — and found
+all five built-in agents in 0.8–1.2 s. The **same script also passes inside the
+packaged universal `.app`**, which is the only version of this proof that means
+anything.
+
+Four findings that change how Gate B reads, all of them packaging rather than
+capability:
+
+- **`node-pty` 1.1.0 is pure N-API** — 38 `napi_*` imports and **zero**
+  `v8::`/`node::` internal symbols in the prebuilt `pty.node`. Its prebuilds
+  are therefore ABI-stable across Electron versions, and the plan's stated
+  Gate B risk ("`electron-rebuild`, prebuilds, ABI per Electron version") is
+  mostly not real. Prebuilds ship for `darwin-arm64`, `darwin-x64`,
+  `win32-x64` and `win32-arm64`, and the loader picks
+  `prebuilds/<platform>-<arch>` **at runtime**, so a universal app ships both
+  directories and the addon itself never needs `lipo`.
+- **The npm tarball ships `spawn-helper` without the exec bit** (`0644`), and
+  node-pty's `postinstall` only chmods `build/Release/`, never `prebuilds/`.
+  The symptom is `posix_spawnp failed` on the first spawn and nothing else —
+  no hint about permissions. A `chmod +x` fixes it and a postinstall step must
+  do that for real. Worth noticing that this is the same failure family as the
+  Tauri updater's issue #3506, which shipped a bundle with the wrong mode:
+  file modes are where this project keeps getting bitten.
+- **`asarUnpack` for `node-pty` is mandatory, not tuning.**
+  `unixTerminal.js` rewrites `app.asar` → `app.asar.unpacked` in the
+  `spawn-helper` path, so the module is unusable from inside an asar.
+- **`mac.x64ArchFiles` is required** for the universal merge.
+  `@electron/universal` refuses single-arch Mach-O files that are identical in
+  both arch builds, which is exactly what node-pty's per-arch prebuild
+  directories are. Without the rule the build fails; with
+  `**/node_modules/node-pty/prebuilds/**` it succeeds.
+
+**Measured size, apples to apples.** The packaged universal spike `.app` is
+**502 MB**, of which 486 MB is Chromium in `Contents/Frameworks` and only 16 MB
+is app code. The installed universal Tauri build is **33 MB**. That is roughly
+**15×**, and it is the concrete form of the "binary size accepted for DX"
+decision — the trade is now a number rather than a shrug. RAM was not measured.
+
+**Gate status as of 2026-08-11 — none passed:**
+
+| Gate                           | Blocked on                                                                                                                                                                                                                                                                      | Consequence                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| A — `electron-updater` E2E     | Apple Developer Program **not bought yet**; Squirrel.Mac refuses an app that is not Developer ID signed and notarized                                                                                                                                                           | No macOS auto-update proof is possible until the identity exists              |
+| B — `node-pty` universal in CI | **Partial — everything but CI is done.** A universal `.app` (x86_64 + arm64 verified with `file`) builds locally with `electron-builder` and passes the spike 7/7 when run from the bundle. What is left is one GitHub Actions run, which needs a branch pushed and is not done | Low residual risk, but the gate says "in CI" and a local build is not that    |
+| C — Windows process semantics  | **No Windows machine available.** [`job_object.rs`](../src-tauri/src/platform/windows/job_object.rs) `current` and [`process_snapshot.rs`](../src-tauri/src/platform/windows/process_snapshot.rs) `current` are ~1,100 audited LOC with no Node equivalent                      | The migration's top risk, and the trigger for the plan's §0.2 abort criterion |
+
+If Gate C can only be met with a native addon, the "pure Node/TS host" decision
+was wrong and gets reopened explicitly — adding the addon quietly would delete
+most of the DX argument that motivates the migration while leaving the
+migration in flight.
+
+## Electron MVP built — 2026-08-11
+
+**The host is implemented and runs the real app.** Branch `electron-migration`,
+commits `5b9305f` and `187af3f`, against
+[the MVP plan](plans/2026-08-11-electron-mvp.md) `building`. ~4,100 lines of
+TypeScript replace 10,504 lines of Rust; the renderer is unchanged apart from
+its imports, which now point at 277 lines of facades under `src/host/`.
+
+**The gate ordering was overridden by the owner.** Both the prep plan and the
+spec say an MVP plan may only be authored after gates A, B and C conclude.
+Gate A (no Apple identity) and Gate C (no Windows machine) are still open, so
+**a Gate C abort can still make this branch sunk cost**. That is a named,
+accepted risk, not an oversight.
+
+**Verified, and the distinction matters here.** `npm test` is 1383/1383 across
+119 files — but the suite mocks the host, so on its own it proves little about
+a migration whose whole point is replacing the host. The evidence that counts
+is a headed smoke run against the real app (`npm run electron:smoke`, 10/10):
+the preload bridge is exposed, `contextIsolation` holds, **a terminal actually
+paints (34 xterm rows after opening a workspace)**, agent detection finds all
+five built-ins over IPC, a real PTY echoes back through `pty:output`,
+`pty_info` classifies the pane as `idle-shell`/`zsh`, and `kill_pty` succeeds
+for its owner.
+
+**`pty_info` reads `ps`, not `node-pty`.** Measured, not assumed: `.process`
+returned `"2.1.227"` for a real `claude` pane — the CLI's version banner — and
+the executable name instead of argv0 for a renamed job. Deck classifies panes
+by argv0 — that is why [`macos.rs`](../src-tauri/src/platform/macos.rs) `current`
+reads `KERN_PROCARGS2` rather than `p_comm` — so trusting `.process`
+would have labelled every agent pane `Busy` and silently killed the agent chip,
+the dot colour and attention state. One `ps -A` per poll tick, joined
+tty → `tpgid` → `pgid`: 69 ms for 717 rows against a 2 s interval.
+
+**Windows is a stub that throws by name, not a port.**
+[`process_snapshot.rs`](../src-tauri/src/platform/windows/process_snapshot.rs) `current`
+and [`job_object.rs`](../src-tauri/src/platform/windows/job_object.rs) `current`
+are ~1,100 audited lines with no machine to run a replacement on.
+Porting them blind would manufacture confidence in the code where being wrong
+is worst: a bad classification either lets quit kill a working agent or leaves
+the user unable to quit.
+
+**Four bugs the gates caught, each a class rather than a typo:**
+
+1. **`offer_transfer` sent `targetLabel` while the host destructured `label`.**
+   Caught by the new Electron IPC contract test on its first run — the same
+   mismatch that shipped `open_pane_window` with four green gates.
+2. **The host is CommonJS in an ESM repo**, so a `.js` file was loaded as an ES
+   module and died on `exports`. Emitting `.cjs` was the fix; an ESM main
+   process would have forced interop on every CommonJS dependency, `node-pty`
+   included.
+3. **Vite emitted absolute asset paths**, which under `file://` resolve to the
+   filesystem root, 404, and produce a blank window with nothing on stderr.
+4. **A failed background store write was swallowed** (`void this.save()`) —
+   exactly the failure `settings_merge.rs` warns about, "how a full disk used
+   to look like a successful write". Writes now report through an `onError`
+   hook. The test was checked by reverting the fix and watching it go red.
+
+**One deliberate behaviour change:** `kill_pty` no longer unregisters the pane
+route. The exit path owns teardown, so the `pty:exit` following a kill still
+reaches its owner instead of being dropped as "no route for pane".
+
+**Not done:** the updater (Gate A), Windows (Gate C), cross-window drag,
+packaging, and the full manual pass. Nothing here ships, and the Tauri build
+remains what users run.
 
 ## Chưa khớp thực tế
 

@@ -65,7 +65,8 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 10. The landing fetches one validated GitHub Releases list, derives stable
     macOS and preview Windows downloads from it, shows the latest stable tag,
     sums verified `.dmg` and `.exe` asset downloads into the hero proof, and
-    feeds the same normalized records into the changelog page
+    feeds the same normalized records and their release-note bodies into the
+    changelog page
     ([release-data.js](../marketing/landing-prototype/src/release-data.js#fetchPublishedReleases) `current`,
     [installer download total](../marketing/landing-prototype/src/release-data.js#totalInstallerDownloads) `current`,
     [changelog-view.js](../marketing/landing-prototype/src/changelog-view.js#renderReleaseList) `current`).
@@ -132,6 +133,19 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   final release moves `windows-preview-channel`, and `releases/latest` ignores
   prereleases by construction
   ([tag and channel routing](../scripts/release-workflow.test.ts) `current`).
+- Before either platform draft can build, the release workflow requires every
+  active `feat`, `fix`, and `perf` commit since the prior source tag to carry an
+  explicit `Release-Note: <user-facing description>` or `Release-Note: skip`
+  trailer. Standard, nested, and merge-reverted commits are removed; `skip`
+  suppresses the entry; and `!` or `BREAKING CHANGE:` routes the explicit
+  public description into a separate breaking section. No public entry fails
+  the release instead of publishing boilerplate. Stable macOS and the unsigned
+  Windows preview share the same change sections; only Windows adds its
+  distribution warning. A manual Windows rebuild for a pre-policy tag reuses
+  that tag's reviewed stable GitHub release body, so retrying an already-shipped
+  artifact does not retroactively apply the commit-trailer gate
+  ([release-note generator](../scripts/generate-release-notes.mjs#generateReleaseNotes) `current`,
+  [workflow gate](../scripts/release-workflow.test.ts) `current`).
 - The updater plugin is pinned to a reviewed fork revision carrying upstream
   PR #3516 plus a macOS transactional bundle swap: the previous `.app` is moved
   aside and restored if the replacement or the permission fix fails, and the
@@ -149,6 +163,8 @@ _(reality-drift ledger — heading text mandated by the global docs convention)_
 
 | Claim | Intent | Status | Evidence |
 | ----- | ------ | ------ | -------- |
+
+| "a pane moves between windows without losing output" | `building` | (backlog) | Phase A of the pane-detach work landed 2026-08-10 with every automated gate green, but nothing that needs a real window has been exercised: no window was created, no PTY changed owner, and the lock-across-emit stall named in the plan's §0.6 is invisible to unit tests. The outstanding manual pass is listed in [CONTEXT.md](CONTEXT.md#pane-detach--phase-a-landed-2026-08-10) `building` |
 
 | "the hardened updater installs correctly on Windows" | `building` | (backlog) | 0.11.0 shipped the `ShellExecuteW` fix without ever observing it run: the Windows end-to-end upgrade was deliberately skipped on 2026-08-05. The claim holds on macOS, where rc.1 → rc.2 upgraded for real and the installed bundle kept mode `0755`. See [AGENTS.md](../AGENTS.md) `current` for the accepted cost |
 
