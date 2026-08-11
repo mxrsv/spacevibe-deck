@@ -326,8 +326,19 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   hot path.
 
 - **A file explorer panel is decided at spec level (2026-08-12)**,
-  [spec](docs/specs/2026-08-12-file-explorer-design.md) `decided`. **Not
-  implemented — no code written, plan not started, spec pending user review.**
+  [spec](docs/specs/2026-08-12-file-explorer-design.md) `decided`,
+  [plan](docs/plans/2026-08-12-file-explorer.md) `planned` (written 2026-08-12).
+  **Not implemented — no code written, spec pending user review.** The plan
+  reopens none of the seven calls below; it did surface four facts by reading
+  the Electron branch. **Gate M is blocked on MVP T19**, because
+  `npm run electron:build` compiles the main process and does not package —
+  there is no `build` key and no electron-builder config, so a packaged build
+  does not exist to test Monaco in. **`npm run test:main` does not exist** —
+  host tests are `electron/**/*.test.ts` and `npm test` already runs them.
+  **There is no CSP today**, so Gate M proves `file://` worker resolution only
+  and must be re-run if one is ever added. And **⌘Q with only file tabs open
+  would not ask**: `before-quit` returns early when `coordinator.allPanes()` is
+  empty, which is exactly §6's predicted defect already sitting in the code.
   A docked column on the right of the `.window` grid holding a file tree of the
   active workspace; clicking a file opens it as a **tab beside the terminal
   tabs**, editable and saveable in Monaco. Electron only — nothing here ships on
