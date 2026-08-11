@@ -10,7 +10,7 @@
  * owns that, which is what keeps a wedged renderer from making quit
  * unanswerable.
  */
-import { invoke, listen, type UnlistenFn } from "./bridge";
+import { invoke, type UnlistenFn } from "./bridge";
 
 /**
  * A drop position in PHYSICAL pixels, with the same `toLogical` conversion
@@ -44,26 +44,10 @@ export interface DragDropEvent {
   readonly payload: DragDropPayload;
 }
 
-/** Wire form: a plain object survives IPC, a class instance does not. */
-interface RawDragDropPayload {
-  readonly type: "enter" | "over" | "drop" | "leave";
-  readonly paths?: string[];
-  readonly position?: { x: number; y: number };
-}
-
-function reviveDragDrop(raw: RawDragDropPayload): DragDropPayload {
-  const position = new PhysicalPosition(
-    raw.position?.x ?? 0,
-    raw.position?.y ?? 0,
-  );
-  switch (raw.type) {
-    case "drop":
-      return { type: "drop", paths: raw.paths ?? [], position };
-    case "leave":
-      return { type: "leave" };
-    default:
-      return { type: raw.type, position };
-  }
+/** The preload bridge, for the one thing that is not invoke/listen. */
+function hostBridge(): { getPathForFile?: (file: File) => string } | undefined {
+  return (globalThis as { __deckHost?: { getPathForFile?: (file: File) => string } })
+    .__deckHost;
 }
 
 class DeckWindow {
@@ -75,26 +59,94 @@ class DeckWindow {
     return invoke("window_toggle_maximize");
   }
 
-  isFocused(): Promise<boolean> {
-    return invoke<boolean>("window_is_focused");
+  async isFocused(): Promise<boolean> {
+    return globalThis.document?.hasFocus() ?? true;
   }
 
-  scaleFactor(): Promise<number> {
-    return invoke<number>("window_scale_factor");
+  /**
+   * Display scale factor, for converting physical drop coordinates to CSS px.
+   *
+   * Read from the renderer's own `devicePixelRatio`, NOT from the main process:
+   * `webContents.getZoomFactor()` is the user's zoom level and returns 1 on a
+   * 2x Retina display at default zoom, which silently turned the conversion
+   * into a no-op and landed every drop at double the intended position.
+   */
+  async scaleFactor(): Promise<number> {
+    return globalThis.devicePixelRatio || 1;
   }
 
-  onFocusChanged(
+  /**
+   * Window focus changes.
+   *
+   * Uses the renderer's own focus/blur events rather than an IPC event: the
+   * page is only ever inside one window, so `window.onfocus` IS that window's
+   * focus. Wiring it through the main process would add a hop and a chance to
+   * miss the first transition.
+   *
+   * This drives whether native notifications fire, so losing it means an agent
+   * finishing in an unfocused window notifies nobody.
+   */
+  async onFocusChanged(
     handler: (event: { payload: boolean }) => void,
   ): Promise<UnlistenFn> {
-    return listen<boolean>("window:focus-changed", handler);
+    const onFocus = () => handler({ payload: true });
+    const onBlur = () => handler({ payload: false });
+    globalThis.addEventListener("focus", onFocus);
+    globalThis.addEventListener("blur", onBlur);
+    return () => {
+      globalThis.removeEventListener("focus", onFocus);
+      globalThis.removeEventListener("blur", onBlur);
+    };
   }
 
-  onDragDropEvent(
+  /**
+   * File drag-and-drop over the window.
+   *
+   * Tauri emitted this as a webview event from the host; Electron has no
+   * equivalent, so it is built from the renderer's own DOM drag events. Paths
+   * come from the preload's `getPathForFile` — Electron removed `File.path`,
+   * and `webUtils` is unreachable from the renderer under contextIsolation.
+   *
+   * `preventDefault` on dragover is mandatory: without it the browser refuses
+   * the drop and no `drop` event fires at all.
+   */
+  async onDragDropEvent(
     handler: (event: DragDropEvent) => void,
   ): Promise<UnlistenFn> {
-    return listen<RawDragDropPayload>("window:drag-drop", (event) =>
-      handler({ payload: reviveDragDrop(event.payload) }),
-    );
+    const scale = globalThis.devicePixelRatio || 1;
+    // Coordinates are handed back in PHYSICAL pixels so `toLogical` stays
+    // meaningful for callers that were written against Tauri's shape.
+    const at = (event: DragEvent) =>
+      new PhysicalPosition(event.clientX * scale, event.clientY * scale);
+
+    const onDragOver = (event: DragEvent) => {
+      event.preventDefault();
+      handler({ payload: { type: "over", position: at(event) } });
+    };
+    const onDragLeave = (event: DragEvent) => {
+      // Fires for every child element the pointer crosses; only the one that
+      // actually leaves the window counts, or the drop target flickers off.
+      if (event.relatedTarget === null) {
+        handler({ payload: { type: "leave" } });
+      }
+    };
+    const onDrop = (event: DragEvent) => {
+      event.preventDefault();
+      const files = [...(event.dataTransfer?.files ?? [])];
+      const paths = files
+        .map((file) => hostBridge()?.getPathForFile?.(file) ?? "")
+        .filter((path) => path.length > 0);
+      handler({ payload: { type: "drop", paths, position: at(event) } });
+    };
+
+    globalThis.addEventListener("dragover", onDragOver);
+    globalThis.addEventListener("dragleave", onDragLeave);
+    globalThis.addEventListener("drop", onDrop);
+    return () => {
+      globalThis.removeEventListener("dragover", onDragOver);
+      globalThis.removeEventListener("dragleave", onDragLeave);
+      globalThis.removeEventListener("drop", onDrop);
+    };
   }
 }
 

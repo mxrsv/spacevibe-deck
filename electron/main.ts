@@ -413,15 +413,11 @@ ipcMain.handle("window_toggle_maximize", (event) => {
     window.maximize();
   }
 });
-ipcMain.handle(
-  "window_is_focused",
-  (event) => BrowserWindow.fromWebContents(event.sender)?.isFocused() ?? false,
-);
-ipcMain.handle(
-  "window_scale_factor",
-  (event) =>
-    BrowserWindow.fromWebContents(event.sender)?.webContents.getZoomFactor() ?? 1,
-);
+// No `window_is_focused` / `window_scale_factor` handlers: both are answered
+// in the renderer from `document.hasFocus()` and `devicePixelRatio`. The
+// main-process versions were worse — `getZoomFactor()` returns the user's ZOOM
+// level, which is 1 on a 2x display at default zoom, so it silently turned the
+// physical-to-logical drop conversion into a no-op.
 
 ipcMain.handle("shell_open_url", (_event, { url }) => shell.openExternal(url));
 ipcMain.handle("clipboard_read_text", () => clipboard.readText());

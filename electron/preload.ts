@@ -7,7 +7,12 @@
  * `src/host/*` maps onto it one for one, which is what keeps the 44 renderer
  * files a mechanical import swap instead of a rewrite.
  */
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
+import {
+  contextBridge,
+  ipcRenderer,
+  webUtils,
+  type IpcRendererEvent,
+} from "electron";
 
 contextBridge.exposeInMainWorld("__deckHost", {
   invoke: (channel: string, payload?: unknown) =>
@@ -19,5 +24,20 @@ contextBridge.exposeInMainWorld("__deckHost", {
     // Returns an unlisten function, matching Tauri's `listen` contract so the
     // renderer's teardown code is unchanged.
     return () => ipcRenderer.off(event, wrapped);
+  },
+  /**
+   * Absolute path of a dropped `File`.
+   *
+   * Electron removed the `File.path` augmentation, so this is the only way to
+   * turn a DOM drop into a filesystem path — and it has to live in the preload,
+   * because `webUtils` is unreachable from the renderer under contextIsolation.
+   */
+  getPathForFile: (file: File): string => {
+    try {
+      return webUtils.getPathForFile(file);
+    } catch {
+      // A File constructed in JS has no disk backing; Electron throws.
+      return "";
+    }
   },
 });

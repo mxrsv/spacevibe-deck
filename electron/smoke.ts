@@ -177,6 +177,56 @@ async function main(): Promise<void> {
   );
   record("kill_pty succeeds for the owner", killed === "ok", killed);
 
+  // The three seams the host swap silently broke. Each was a listener with no
+  // emitter, and none of them failed a test.
+  const focus = await inPage<string>(
+    window,
+    `new Promise((resolve) => {
+       const seen = [];
+       window.addEventListener("focus", () => seen.push("focus"));
+       window.addEventListener("blur", () => seen.push("blur"));
+       window.dispatchEvent(new Event("blur"));
+       window.dispatchEvent(new Event("focus"));
+       setTimeout(() => resolve(seen.join(",")), 100);
+     })`,
+  );
+  record(
+    "focus tracking fires in the real window",
+    focus === "blur,focus",
+    focus || "nothing observed",
+  );
+
+  const scale = await inPage<number>(window, `window.devicePixelRatio`);
+  record(
+    "devicePixelRatio is the display scale",
+    scale >= 1,
+    `${scale}x (getZoomFactor would have said 1)`,
+  );
+
+  const dropPath = await inPage<string>(
+    window,
+    `typeof window.__deckHost.getPathForFile`,
+  );
+  record(
+    "the preload exposes getPathForFile for drops",
+    dropPath === "function",
+    dropPath,
+  );
+
+  const dragAccepted = await inPage<boolean>(
+    window,
+    `(() => {
+       const event = new Event("dragover", { cancelable: true, bubbles: true });
+       window.dispatchEvent(event);
+       return event.defaultPrevented;
+     })()`,
+  );
+  record(
+    "dragover is cancelled so a drop can land",
+    dragAccepted,
+    dragAccepted ? "preventDefault called" : "browser will refuse the drop",
+  );
+
   finish();
 }
 
