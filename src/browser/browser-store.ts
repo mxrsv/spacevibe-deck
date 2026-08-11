@@ -1,0 +1,159 @@
+/**
+ * Browser panel state — window-scoped module store of signals (R5).
+ *
+ * The panel's *content* lives in the host (a native view), so this store holds
+ * only what the chrome around it draws, plus the one piece of behaviour worth
+ * testing on its own: what happens to a grab.
+ */
+import { signal } from "@preact/signals";
+import type {
+  BrowserClient,
+  BrowserGrab,
+  BrowserState,
+} from "./browser-client";
+import { formatGrab, grabSummary } from "./grab-format";
+
+export const EMPTY_STATE: BrowserState = {
+  url: "",
+  title: "",
+  canGoBack: false,
+  canGoForward: false,
+  loading: false,
+  inspect: false,
+  error: null,
+};
+
+/** Whether the docked column is shown. The host view follows this. */
+export const browserOpen = signal(false);
+
+/** Last state the host published. */
+export const browserState = signal<BrowserState>(EMPTY_STATE);
+
+/**
+ * Width during a resize drag; `null` when no drag is in flight and the
+ * persisted setting is authoritative.
+ *
+ * It exists because two elements have to agree on the column's width every
+ * frame: the panel itself and the terminal grid it displaces. Committing to
+ * settings on every pointermove would write the store dozens of times a
+ * second, and letting the panel resize alone would leave the terminals — and
+ * the native view's rectangle — a drag behind.
+ */
+export const browserWidthLive = signal<number | null>(null);
+
+/**
+ * One line under the address bar: where the last grab went, or why it did not
+ * go anywhere. Cleared by the next navigation or grab.
+ */
+export const browserNotice = signal<string | null>(null);
+
+/** Reset for tests and for a window that closes its panel. */
+export function resetBrowserStore(): void {
+  browserOpen.value = false;
+  browserWidthLive.value = null;
+  browserState.value = EMPTY_STATE;
+  browserNotice.value = null;
+}
+
+/** What the store needs from the terminal side to deliver a grab. */
+export interface GrabTarget {
+  /** Focused pane of the active tab, or null when there is none. */
+  activePaneId(): number | null;
+  /**
+   * Paste into a pane. `autoSend` is deliberately not a parameter: a grab is
+   * never submitted (see `deliverGrab`).
+   */
+  paste(paneId: number, text: string): Promise<boolean>;
+}
+
+export type GrabOutcome = "pasted" | "clipboard" | "failed";
+
+/**
+ * Deliver one grab to the focused pane.
+ *
+ * It **pastes and stops** — no Enter, ever, not even behind the Prompt Board's
+ * triple gate. The text originates in a web page Deck did not write, and the
+ * gate answers "is this pane ready for input", not "did a human write this".
+ * A page that can make an agent run a prompt of its choosing is a different
+ * class of bug from one that can put text in front of the user, and only the
+ * second is acceptable here.
+ *
+ * The clipboard needs no work: react-grab has already written the same text
+ * there through the page's own copy path, which is what makes "no pane to
+ * paste into" a soft landing rather than a lost selection.
+ */
+export async function deliverGrab(
+  grab: BrowserGrab,
+  target: GrabTarget,
+): Promise<GrabOutcome> {
+  const text = formatGrab(grab);
+  if (text === null) {
+    return "failed";
+  }
+  const paneId = target.activePaneId();
+  if (paneId === null) {
+    return "clipboard";
+  }
+  try {
+    return (await target.paste(paneId, text)) ? "pasted" : "failed";
+  } catch {
+    return "failed";
+  }
+}
+
+export interface BrowserBridgeDeps {
+  readonly client: BrowserClient;
+  readonly target: GrabTarget;
+}
+
+/**
+ * Subscribe to the host. Returns a teardown for the window's unload path.
+ */
+export async function initBrowserBridge(
+  deps: BrowserBridgeDeps,
+): Promise<() => void> {
+  const unlisteners = await Promise.all([
+    deps.client.onState((state) => {
+      browserState.value = state;
+      if (state.error !== null) {
+        browserNotice.value = null;
+      }
+    }),
+    deps.client.onGrab((grab) => {
+      void deliverGrab(grab, deps.target).then((outcome) => {
+        browserNotice.value = grabSummary(grab.count, outcome);
+      });
+    }),
+  ]);
+  return () => unlisteners.forEach((unlisten) => unlisten());
+}
+
+/**
+ * Open the panel, loading `home` when nothing is loaded yet.
+ *
+ * Reopening keeps the page: the toggle is a view, not a session.
+ */
+export async function openBrowser(
+  client: BrowserClient,
+  home: string,
+): Promise<void> {
+  browserOpen.value = true;
+  const url = browserState.value.url === "" ? home : null;
+  try {
+    browserState.value = await client.open(url);
+  } catch (error) {
+    console.warn("Deck: the browser panel could not open:", error);
+    browserOpen.value = false;
+  }
+}
+
+export async function closeBrowser(client: BrowserClient): Promise<void> {
+  browserOpen.value = false;
+  browserNotice.value = null;
+  browserState.value = EMPTY_STATE;
+  try {
+    await client.close();
+  } catch (error) {
+    console.warn("Deck: the browser panel could not close:", error);
+  }
+}

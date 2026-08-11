@@ -346,6 +346,40 @@ behaviour, and §5's row is what makes settings scan as one document.
   are rendered as text, never as pictograms, and `formatShortcutBinding`
   (`src/lib/shortcut-label.ts`) is the only place their spelling is decided.
 
+## 16. Docked side panels
+
+Added 2026-08-12 for the browser panel, and written to cover the class rather
+than the instance — the file-explorer design reserves the same slot on the
+other side of this number (its own spec still says "§15", written before
+Shortcuts took that number; it renumbers to §17 or shares §16 when it is
+built).
+
+A docked panel is a surface §11 (full-window screens) and §13 (anchored
+popovers) do not describe: it is permanent, it displaces content instead of
+covering it, and it can hold something that is not Deck's own pixels.
+
+- **DL-16.1** A docked panel is a **column of the stage, not an overlay**. The
+  terminal grid's own bounds shrink by exactly the panel's width, so panes
+  resize around it. Nothing in the app floats permanently over a pane.
+- **DL-16.2** The seam is a single `--hair` border on the panel's inner edge
+  (DL-3.3). No shadow, no gradient, no second rule — the background step from
+  `--bg` to `--chrome-2` is what separates the two regions.
+- **DL-16.3** The panel's own header is a **bar of `iconbtn` controls**, the
+  same class and the same 13px chrome icon size the tab bar uses (DL-14.2). A
+  docked panel borrows the window's controls; it does not invent a set.
+- **DL-16.4** Width is user-set by dragging the seam and persists as an
+  ordinary setting, clamped to a min and max. The drag target is wider than the
+  hairline it sits on and paints nothing — the hairline stays 1px.
+- **DL-16.5** One status line, directly under the header, in `--text-faint`
+  (DL-3.4) — or `--red` when it reports a failure (DL-3.2). It is the panel's
+  only place for transient text; a panel does not raise dialogs of its own.
+- **DL-16.6** When a panel hosts **foreign content** (a web page, a preview),
+  Deck's chrome never overlaps it: the content gets its own rectangle below the
+  header, and that rectangle is the only part of the column Deck does not
+  paint. A native view stacked over it cannot be covered by any DOM layer, so
+  the panel must hide it whenever an overlay opens — the visual rule and the
+  implementation rule are the same rule here.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

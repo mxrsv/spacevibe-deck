@@ -41,6 +41,17 @@ export const CHANNELS = {
   endUpdateCheck: "end_update_check",
   applySettingsPatch: "apply_settings_patch",
   suspendMenuAccelerators: "suspend_menu_accelerators",
+  // Browser panel. No Tauri counterpart exists — the panel is Electron-only,
+  // so unlike every channel above these names are new rather than ported.
+  browserOpen: "browser_open",
+  browserClose: "browser_close",
+  browserNavigate: "browser_navigate",
+  browserBack: "browser_back",
+  browserForward: "browser_forward",
+  browserReload: "browser_reload",
+  browserSetBounds: "browser_set_bounds",
+  browserSetVisible: "browser_set_visible",
+  browserSetInspect: "browser_set_inspect",
 } as const;
 
 /** Events: main → renderer, fire and forget. */
@@ -55,6 +66,8 @@ export const EVENTS = {
   quitRequested: "quit-requested",
   windowCloseRequested: "window:close-requested",
   settingsMerged: "settings:merged",
+  browserState: "browser:state",
+  browserGrab: "browser:grab",
 } as const;
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS];

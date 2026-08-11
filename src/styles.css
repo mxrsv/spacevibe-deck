@@ -729,6 +729,99 @@ button.attn-mark:hover {
   display: flex;
 }
 
+/* ── Browser panel: a docked column on the right of the stage (DL-16) ─────
+   The column is real: the terminal grid's own inset shrinks by exactly the
+   panel's width, so panes resize around it instead of being covered. The web
+   content itself is a native view the host positions over
+   `.browser-panel__view`, which is why that element paints nothing at all. */
+
+.stage--browser .stage__tabs {
+  right: var(--browser-w);
+}
+
+.browser-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--browser-w);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--chrome-2);
+  /* DL-3.3: structure is a hairline, never a shadow. */
+  border-left: 1px solid var(--hair);
+}
+
+/* Drag target for the width, on the seam itself. Wider than the hairline it
+   sits on so it can be hit, and transparent so it does not draw a second one. */
+.browser-panel__grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 7px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 1;
+}
+
+.browser-panel__bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.browser-panel__form {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.browser-panel__url {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  outline: none;
+}
+
+.browser-panel__url:focus {
+  /* DL-3.1: accent marks the interactive/focused state and nothing else. */
+  border-color: var(--accent);
+}
+
+.browser-panel__url::placeholder {
+  color: var(--text-faint);
+}
+
+.browser-panel__note {
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 11px;
+  /* DL-3.4: a hint is faint, not muted. */
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--hair);
+}
+
+.browser-panel__note--error {
+  color: var(--red);
+}
+
+/* Deliberately empty: the host's native view covers exactly this rectangle. */
+.browser-panel__view {
+  flex: 1;
+  min-height: 0;
+}
+
 .tab-stage {
   flex: 1;
   min-width: 0;

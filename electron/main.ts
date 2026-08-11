@@ -13,6 +13,7 @@
  *  - Every pane command validates ownership through the coordinator before it
  *    touches a session.
  */
+import fs from "node:fs";
 import path from "node:path";
 import {
   app,
@@ -25,6 +26,8 @@ import {
   type IpcMainInvokeEvent,
 } from "electron";
 import { CHANNELS, EVENTS } from "./ipc/channels";
+import { BrowserPanels } from "./browser/view";
+import { normalizeBrowserUrl } from "./browser/url";
 import { WindowCoordinator, type AdoptionPayload } from "./coordinator";
 import { PtyManager } from "./pty/manager";
 import { ptyInfo, type PtyInfo } from "./pty/info";
@@ -76,6 +79,36 @@ function emitTo(label: string, event: string, payload: unknown): boolean {
 }
 
 const coordinator = new WindowCoordinator(emitTo);
+
+/**
+ * The vendored react-grab bundle, read once and kept.
+ *
+ * 386 kB of source is spliced into every page the panel loads, and a page
+ * reload re-injects it; re-reading the file each time would put synchronous
+ * disk I/O on the navigation path for bytes that cannot change while the app
+ * runs. An unreadable file yields `""`, which the bootstrap turns into an
+ * inert injection rather than a thrown navigation.
+ */
+let vendorCache: string | null = null;
+function reactGrabSource(): string {
+  if (vendorCache === null) {
+    const file = path.join(__dirname, "vendor", "react-grab", "index.global.js");
+    try {
+      vendorCache = fs.readFileSync(file, "utf8");
+    } catch (error) {
+      console.error("Deck: react-grab bundle is missing; Inspect is disabled", error);
+      vendorCache = "";
+    }
+  }
+  return vendorCache;
+}
+
+const browserPanels = new BrowserPanels({
+  emit: emitTo,
+  windowFor: (label) => windows.get(label),
+  vendorSource: reactGrabSource,
+  events: { state: EVENTS.browserState, grab: EVENTS.browserGrab },
+});
 
 const pty = new PtyManager({
   emitToOwner: (paneId, event, payload) =>
@@ -172,6 +205,9 @@ function createWindow(label: string): BrowserWindow {
   });
 
   window.on("closed", () => {
+    // Before `windows.delete`: closing the panel wants the window to still be
+    // resolvable so the native view can be detached from its content view.
+    browserPanels.close(label);
     windows.delete(label);
     registry.forgetWindow(label);
     quitFlight.forgetWindow(label);
@@ -586,6 +622,54 @@ ipcMain.handle("window_toggle_maximize", (event) => {
     window.maximize();
   }
 });
+/**
+ * Browser panel. Every handler resolves the window from the sender and works
+ * on THAT window's panel — panels are per window like everything else here, and
+ * a label taken from the payload would let one window drive another's.
+ */
+ipcMain.handle(CHANNELS.browserOpen, (event, { url }: { url?: string }) => {
+  // A stored URL that no longer normalizes (an old setting, a typo the user
+  // saved) opens a blank panel instead of failing the whole open.
+  const target = typeof url === "string" ? normalizeBrowserUrl(url) : null;
+  return browserPanels.open(labelOf(event), target);
+});
+ipcMain.handle(CHANNELS.browserClose, (event) => {
+  browserPanels.close(labelOf(event));
+});
+ipcMain.handle(CHANNELS.browserNavigate, (event, { url }: { url?: string }) => {
+  const target = normalizeBrowserUrl(String(url ?? ""));
+  if (target === null) {
+    // Not an error the user needs a dialog for — the address bar keeps what
+    // they typed and the caller reports the miss.
+    return null;
+  }
+  browserPanels.navigate(labelOf(event), target);
+  return target;
+});
+ipcMain.handle(CHANNELS.browserBack, (event) => browserPanels.goBack(labelOf(event)));
+ipcMain.handle(CHANNELS.browserForward, (event) =>
+  browserPanels.goForward(labelOf(event)),
+);
+ipcMain.handle(CHANNELS.browserReload, (event) => browserPanels.reload(labelOf(event)));
+ipcMain.handle(
+  CHANNELS.browserSetBounds,
+  (event, bounds: { x: number; y: number; width: number; height: number }) => {
+    browserPanels.setBounds(labelOf(event), bounds);
+  },
+);
+ipcMain.handle(
+  CHANNELS.browserSetVisible,
+  (event, { visible }: { visible: boolean }) => {
+    browserPanels.setVisible(labelOf(event), visible === true);
+  },
+);
+ipcMain.handle(
+  CHANNELS.browserSetInspect,
+  (event, { active }: { active: boolean }) => {
+    browserPanels.setInspect(labelOf(event), active === true);
+  },
+);
+
 // No `window_is_focused` / `window_scale_factor` handlers: both are answered
 // in the renderer from `document.hasFocus()` and `devicePixelRatio`. The
 // main-process versions were worse — `getZoomFactor()` returns the user's ZOOM

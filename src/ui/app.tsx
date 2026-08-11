@@ -49,6 +49,14 @@ import {
 import type { PresetArtifact } from "../presets/mock-model";
 import { PersistErrorBar } from "../presets/persist-error-bar";
 import { PromptPopover } from "../prompts/prompt-popover";
+import { BrowserPanel } from "../browser/browser-panel";
+import { defaultBrowserClient } from "../browser/browser-client";
+import {
+  browserOpen,
+  browserWidthLive,
+  closeBrowser,
+  initBrowserBridge,
+} from "../browser/browser-store";
 import { capturePromptTarget } from "../prompts/inject";
 import { defaultPromptAssetsClient } from "../prompts/prompt-assets-client";
 import { TabBar } from "./tab-bar";
@@ -415,6 +423,36 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     return () => unlisten?.();
   }, []);
 
+  // Grabs arrive from the browser panel's page, not from a Deck surface, so
+  // this listener is installed for the window's life rather than while some
+  // component is mounted: the panel can be closed and reopened, and the pane a
+  // grab lands in has nothing to do with the panel's own state.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void initBrowserBridge({
+      client: defaultBrowserClient,
+      target: {
+        activePaneId: () => tabsRef.current?.activePaneId() ?? null,
+        paste: async (paneId, text) => {
+          // `autoSend: false`, always — a grab is text from a page Deck did
+          // not write, and nothing from there submits itself to an agent.
+          const outcome = await (tabsRef.current?.injectIntoPane(paneId, text, {
+            autoSend: false,
+            expectedAgent: null,
+          }) ?? Promise.resolve("no-target" as const));
+          return outcome === "pasted" || outcome === "sent";
+        },
+      },
+    })
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch((err: unknown) => {
+        console.error("Failed to listen for browser grabs:", err);
+      });
+    return () => unlisten?.();
+  }, []);
+
   useEffect(() => {
     const unsubs: UnlistenFn[] = [];
     // Every File/Edit/View/Window item whose accelerator the macOS menu now
@@ -637,6 +675,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   });
 
+  /** Live drag width while resizing, the persisted setting otherwise. */
+  const browserWidth = (): number =>
+    browserWidthLive.value ?? settings.value.browserWidth;
+
   const closePrompts = (): void => {
     promptsOpen.value = false;
     tabsRef.current?.focusActive();
@@ -737,8 +779,26 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         />
       }
       stage={
-        <main class="stage">
+        <main
+          class={`stage ${browserOpen.value ? "stage--browser" : ""}`}
+          // One number, two consumers: the panel's own column and the inset
+          // that keeps the terminal grid clear of it. A drag updates the live
+          // signal, so both move together instead of the terminals catching up
+          // when the pointer is released.
+          style={{ "--browser-w": `${browserWidth()}px` }}
+        >
           <div class="stage__tabs" ref={stagesRef} />
+          {browserOpen.value ? (
+            <BrowserPanel
+              width={browserWidth()}
+              onWidthChange={(width) => updateSettings({ browserWidth: width })}
+              onClose={() => void closeBrowser(defaultBrowserClient)}
+              // The native view paints above every DOM layer, so "an overlay
+              // is up" has to reach the host as a hide — CSS cannot put the
+              // Open board or Settings in front of it.
+              hidden={overlayCoversPane()}
+            />
+          ) : null}
           {boardOpen.value ? (
             <OpenBoard
               canCancel={tabViews.value.length > 0}

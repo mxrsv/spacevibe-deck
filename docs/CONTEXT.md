@@ -680,6 +680,72 @@ reaches its owner instead of being dropped as "no route for pane".
 packaging, and the full manual pass. Nothing here ships, and the Tauri build
 remains what users run.
 
+## Browser panel + Inspect — 2026-08-12
+
+Electron only, on `electron-migration`. A docked column on the right of the
+stage loads a dev server; Inspect turns any element on that page into
+component-and-source context that lands in the focused agent pane.
+
+### What it is made of
+
+| Piece | Where |
+| ----- | ----- |
+| Native web view, one per window | [`electron/browser/view.ts`](../electron/browser/view.ts) `current` |
+| Injected bootstrap (pure string builder) | [`electron/browser/inject.ts`](../electron/browser/inject.ts) `current` |
+| Address-bar input rules | [`electron/browser/url.ts`](../electron/browser/url.ts) `current` |
+| Page → host bridge | [`electron/browser-preload.ts`](../electron/browser-preload.ts) `current` |
+| Vendored react-grab 0.1.50 | [`electron/vendor/react-grab/`](../electron/vendor/react-grab/SOURCE.md) `current` |
+| Panel chrome + measured hole | [`src/browser/browser-panel.tsx`](../src/browser/browser-panel.tsx) `current` |
+| Grab delivery + sanitising | [`src/browser/browser-store.ts`](../src/browser/browser-store.ts) `current`, [`grab-format.ts`](../src/browser/grab-format.ts) `current` |
+
+### The three facts that shape all of it
+
+1. **The web content is a native view, not an element.** It paints above every
+   DOM layer, so the renderer measures `.browser-panel__view` and sends the
+   rectangle, and hides the view whenever an overlay opens. CSS cannot put the
+   Open board in front of it.
+2. **The injection has to run in the page's MAIN world.** React stores its
+   fiber as an expando on the DOM node and expandos are per-world; from the
+   preload's isolated world every element is plain HTML with no component and
+   no source location. So the bundle goes in through `executeJavaScript`, and
+   the grab comes back out through a DOM `CustomEvent` the preload forwards —
+   the only channel two worlds share.
+3. **The page is untrusted.** It can dispatch the grab event itself with any
+   payload. Hence: parsed defensively, length-capped, every C0 control
+   stripped (an embedded `ESC[201~` would break out of the bracketed paste and
+   be read as keystrokes), and **never submitted** — a grab pastes and stops.
+
+### Verified on a real window (2026-08-12)
+
+`npm run electron:smoke` gained six checks and they pass: the panel attaches a
+view and loads a page; `__deckGrab`, `__REACT_GRAB__` and
+`__REACT_GRAB_MODULE__` all exist in the page's main world; a grab crosses
+page → preload → IPC → renderer intact; Inspect arms react-grab in the page;
+**no request reaches react-grab.com**; closing the panel destroys the page.
+22/24 overall — the two failures are the Linux container (`platform=unsupported`,
+cwd with no shell integration) and predate this work.
+
+Two defects that run found and the mocked suite could not:
+
+- `window.__REACT_GRAB__` was never set. Disabling the bundle's self-init also
+  skips the `setGlobalApi` call inside it, so react-grab's documented handle was
+  missing while everything else looked healthy.
+- `generateSnippet` can fail to settle in a throttled frame. `getContent` sits
+  between ⌘C and BOTH destinations, so an unsettled promise means no paste and
+  no clipboard with nothing on screen; it now races a 2 s deadline and falls
+  back to the element's markup.
+
+### Not verified
+
+- **A real React dev server.** Component names and `file:line` come from
+  react-grab reading React's fiber; no React app was available in this
+  environment. The transport is proven end to end, the richness of what it
+  carries is upstream behaviour.
+- **Windows.** Same Gate C hole as the rest of the branch.
+- **The panel under a real compositor** — resize, drag-to-width, and the
+  hide-on-overlay path were exercised by unit tests and by the smoke run's
+  bounds call, not by a human dragging the seam.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

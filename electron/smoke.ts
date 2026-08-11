@@ -291,7 +291,160 @@ async function main(): Promise<void> {
     `-webkit-app-region: ${draggable}`,
   );
 
+  await checkBrowserPanel(window);
+
   finish();
+}
+
+
+/**
+ * A local page to point the browser panel at.
+ *
+ * It has to be served over http: the panel refuses `file:` and `data:` (see
+ * `browser/url.ts`), and the injected bootstrap has to run in a real document
+ * with a real origin for any of this to mean anything.
+ */
+function servePage(): Promise<{ url: string; stop: () => void }> {
+  const http = require("node:http") as typeof import("node:http");
+  const body = `<!doctype html><title>Grab target</title>
+    <button id="target">Save</button>`;
+  const server = http.createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    response.end(body);
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const port = typeof address === "object" && address !== null ? address.port : 0;
+      resolve({
+        url: `http://127.0.0.1:${port}/`,
+        stop: () => server.close(),
+      });
+    });
+  });
+}
+
+/**
+ * Everything about the browser panel that only a running app can answer.
+ *
+ * The unit tests mock the host, so they cannot see any of this: whether the
+ * bundle reaches the page's MAIN world (where React's fiber expandos live and
+ * an isolated world would find nothing), whether a `CustomEvent` detail
+ * survives the crossing into the preload's world, or whether react-grab phones
+ * home despite the telemetry flag.
+ */
+async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
+  const { session } = require("electron") as typeof import("electron");
+  const page = await servePage();
+
+  // Record every outbound request the panel's session makes, so "telemetry is
+  // off" is observed rather than assumed from a config line.
+  const requested: string[] = [];
+  session
+    .fromPartition("persist:deck-browser")
+    .webRequest.onBeforeRequest((details, callback) => {
+      requested.push(details.url);
+      callback({});
+    });
+
+  await inPage(
+    window,
+    `window.__deckHost.invoke("browser_open", { url: ${JSON.stringify(page.url)} })`,
+  );
+  await inPage(
+    window,
+    `window.__deckHost.invoke("browser_set_bounds", { x: 700, y: 100, width: 380, height: 500 })`,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 2500));
+
+  const view = window.contentView.children.at(-1) as
+    | { webContents?: Electron.WebContents }
+    | undefined;
+  const contents = view?.webContents;
+  record(
+    "the panel attaches a web view to the window",
+    contents !== undefined && contents.getURL().startsWith(page.url),
+    contents === undefined ? "no child view" : `url=${contents.getURL()}`,
+  );
+  if (contents === undefined) {
+    page.stop();
+    return;
+  }
+
+  const armed = await contents.executeJavaScript(
+    `[typeof window.__deckGrab, typeof window.__REACT_GRAB__, typeof globalThis.__REACT_GRAB_MODULE__].join(",")`,
+  );
+  record(
+    "react-grab is initialised in the page's main world",
+    armed === "object,object,object",
+    `typeof __deckGrab,__REACT_GRAB__,__REACT_GRAB_MODULE__ = ${armed}`,
+  );
+
+  // The chain a grab actually travels: main world CustomEvent → preload
+  // (isolated world) → ipc → host → renderer event. Every hop is real here,
+  // including the structured clone of the event detail across worlds, which is
+  // the step no unit test can reach.
+  //
+  // The listener parks its result on a global instead of being awaited:
+  // `executeJavaScript` resolves the promise an expression returns, so
+  // awaiting the listener here would block until it timed out and the grab
+  // would be dispatched after the run had given up — which is exactly what the
+  // first version of this check did.
+  await inPage(
+    window,
+    `(window.__deckSmokeGrab = null,
+      window.__deckHost.listen("browser:grab", (payload) => {
+        window.__deckSmokeGrab = JSON.stringify(payload);
+      }), true)`,
+  );
+  await contents.executeJavaScript(
+    `window.dispatchEvent(new CustomEvent("deck:browser-grab", {
+       detail: JSON.stringify({ text: "[<button> in Save]", url: location.href, title: document.title, count: 1 }),
+     })), true`,
+  );
+  let delivered = "timeout";
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const seen = await inPage<string | null>(window, `window.__deckSmokeGrab`);
+    if (seen !== null && seen !== undefined) {
+      delivered = seen;
+      break;
+    }
+  }
+  record(
+    "a grab crosses page → preload → host → renderer",
+    delivered.includes("[<button> in Save]"),
+    delivered.slice(0, 120),
+  );
+
+  const inspect = await inPage<boolean>(
+    window,
+    `window.__deckHost.invoke("browser_set_inspect", { active: true }).then(() => true)`,
+  );
+  const active = await contents.executeJavaScript(`window.__deckGrab.isActive()`);
+  record(
+    "Inspect arms react-grab in the page",
+    inspect === true && active === true,
+    `isActive=${String(active)}`,
+  );
+
+  const phonedHome = requested.filter((url) => url.includes("react-grab.com"));
+  record(
+    "react-grab sends no telemetry",
+    phonedHome.length === 0,
+    phonedHome.length === 0
+      ? `${requested.length} request(s), none to react-grab.com`
+      : phonedHome.join(", "),
+  );
+
+  await inPage(window, `window.__deckHost.invoke("browser_close")`);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  record(
+    "closing the panel destroys the page",
+    contents.isDestroyed(),
+    contents.isDestroyed() ? "web contents gone" : "web contents still alive",
+  );
+  page.stop();
 }
 
 function finish(): void {

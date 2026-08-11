@@ -410,6 +410,60 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   reserving Tab wholesale left Windows' shipped `Ctrl+Tab` / `Ctrl+Shift+Tab`
   impossible to re-record; only BARE Tab is reserved now, for focus escape.
 
+- **A browser panel with react-grab Inspect shipped on the Electron branch
+  (2026-08-12)** — a docked column on the right of the stage that loads a dev
+  server, and an Inspect mode that turns any element on that page into
+  component-and-source context pasted straight into the focused agent pane.
+  Four forks resolved with the user, each with its reason: **(1) it is a docked
+  column, not a pane, a tab or a separate window** — a pane would have reopened
+  the R4 layout/pane-lifecycle seams for a surface that is not a PTY, while a
+  tab could not show the page and the agent at once, which is the entire loop;
+  **(2) react-grab is a vendored, pinned `dist/index.global.js`, not an npm
+  dependency** — the script is injected into someone else's page, so a
+  dependency entry buys no typing, no bundling and no tree shaking, and would
+  add a `react >= 17` peer plus `bippy` to a repo with no React; the committed
+  bytes are the reviewed bytes, hash-locked by a test against
+  [`SOURCE.md`](electron/vendor/react-grab/SOURCE.md) `current`; **(3) a grab
+  goes into the focused pane AND stays on the clipboard** — the clipboard half
+  is free, because our `getContent` hook returns the same string react-grab
+  copies, which also makes "no pane to paste into" a message rather than a lost
+  selection; **(4) MVP straight to code**, no spec round, decisions recorded
+  here.
+  Calls made while building, each with its reason: **a grab is NEVER submitted**
+  — not even behind the Prompt Board's triple gate, because that gate answers
+  "is this pane ready for input", not "did a human write this", and the text
+  comes from a page Deck did not write; the grab text is stripped of every C0
+  control on the way in, since a paste rides bracketed-paste and an embedded
+  `ESC[201~` would close the bracket and leave the rest being read as
+  keystrokes. **Telemetry is off** — react-grab's default is a version-check
+  request to react-grab.com on every init, and it can only be set at `init()`,
+  so the bootstrap sets `__REACT_GRAB_DISABLED__` before the bundle runs and
+  initialises it itself. **The chord is ⌘⇧I / Ctrl+Shift+I** — `i` for Inspect,
+  free on both keymaps; **`b` was deliberately left alone** because the
+  file-explorer spec reserves ⌘⇧B for its own docked panel, and the two specs
+  now claim the same slot on the right of the stage — whoever builds the
+  explorer resolves that, it is not resolved here. DESIGN LANGUAGE gains a real
+  **§16 (docked side panels)**, an approved R2 fork; the explorer spec's own
+  "§15 (docked side panels)" was already stale (Shortcuts took §15) and must
+  renumber when written.
+  **Verified in a real Electron window**, not only against mocks: the smoke
+  harness now boots the host, serves a local page into the panel and asserts
+  the whole chain — the bundle reaches the page's MAIN world (an isolated world
+  sees no React fiber expandos, which would silently reduce every grab to plain
+  HTML), a grab crosses page → preload → IPC → renderer, Inspect arms the page,
+  **no request reaches react-grab.com**, and closing the panel destroys the
+  page. 22/24 smoke checks pass; the two failures predate this work and are the
+  Linux container (`platform=unsupported`, and cwd with no shell integration).
+  That run found two things the mocked suite could not: `window.__REACT_GRAB__`
+  was never set because disabling self-init also skips its `setGlobalApi`, and
+  `generateSnippet` can fail to settle in a throttled frame — so `getContent`
+  now races a 2 s deadline and falls back to the element's markup, since that
+  hook sits between ⌘C and BOTH destinations. **Not verified: a real React dev
+  server.** Component names and `file:line` come from react-grab reading React's
+  fiber, and no React app was available here — the transport is proven, the
+  richness of what it carries is upstream's behaviour. Also unverified on
+  Windows, like everything else on this branch (Gate C).
+
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
 
