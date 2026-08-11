@@ -325,6 +325,55 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   integration as it does today; `lsof` is only the fallback and stays off the
   hot path.
 
+- **A file explorer panel is decided at spec level (2026-08-12)**,
+  [spec](docs/specs/2026-08-12-file-explorer-design.md) `decided`. **Not
+  implemented — no code written, plan not started, spec pending user review.**
+  A docked column on the right of the `.window` grid holding a file tree of the
+  active workspace; clicking a file opens it as a **tab beside the terminal
+  tabs**, editable and saveable in Monaco. Electron only — nothing here ships on
+  Tauri. Seven calls, each with its reason: **it lands after the MVP closes**
+  (T18 manual pass + T19 packaging), in the Electron-only feature queue beside
+  the token dashboard and pane-detach Phase B — folding a new feature into a
+  scope that is 10,504 lines of Rust rewritten and smoke-verified only would
+  move the parity bar mid-flight. **State is keyed by `workspacePath`, one
+  explorer per workspace** — a tab already fixes that path at Open and never
+  re-derives it from a live CWD, so an agent's `cd` cannot move the tree; the
+  cost is that switching to a terminal tab in another workspace swaps which
+  file tabs are visible. **State is per window, in memory, not persisted** —
+  this reverses the brainstormed assumption that two windows on one workspace
+  share file tabs, because Deck has no session restore (file tabs would be the
+  only restored UI state) and cross-window sync is already a named blocking
+  major; the accepted consequence is that the same file open in two windows
+  resolves last-save-wins, surfaced through the external-change bar. **File
+  tabs live in a store BESIDE `TabManager`, not inside `TabView`** — `syncViews`
+  rebuilds `tabViews` from the 2 s process poll, so a PTY-less tab would have to
+  survive a rebuild whose only input is process information, inside an R4 seam
+  freshly ported and not yet manually verified; a bug there would be
+  indistinguishable from a port bug. **Clicking opens a preview tab (italic,
+  replaced by the next click), promoted by double-click or first edit** — the
+  first edit promotes, so replacing a preview never discards work. **⌘1..9 stay
+  terminal-only** because file tabs open and close constantly and digit slots
+  would renumber several times a minute; ⌘⇧] / ⌘⇧[ reach them instead. **The
+  toggle is ⌘⇧B / Ctrl+Shift+B** — `b` is free on both keymaps; `⌘⇧E` was
+  dropped on evidence because `Ctrl+Shift+E` is already `toggle-expand` on
+  Windows. Three approved dependencies: **Monaco, a virtual list, a file-type
+  icon set** — Monaco is the largest addition this repo has made (renderer
+  bundle is 180.40 kB gzip today), so it is lazily imported on the first file
+  tab and its language set enumerated, with **Gate M** — Monaco boots, edits and
+  saves in a _packaged_ build — required before any explorer UI is written,
+  because the MVP was already bitten twice by silent packaging failures
+  (absolute Vite asset paths under `file://`, CommonJS/ESM mismatch). DESIGN
+  LANGUAGE gains **§15 (docked side panels)** — an approved R2 fork; a
+  permanently docked column is a surface class §11 (full-window) and §13
+  (popover) do not cover. Deliberately left open: `.gitignore` is not parsed in
+  v1 (a matcher is a fork), git decoration in the tree, and whether file-type
+  icons may be colored — DL-15.5 recommends monochrome because §3's color roles
+  are strict and each hue already means something. The load-bearing detail for
+  whoever implements it: **all three exits must respect a dirty file** — ⌘Q,
+  window close, and tab close — and since the census is computed in main while
+  dirty state lives in Monaco, the renderer pushes a dirty-registry delta whose
+  entries are cleared on window death, failing toward asking.
+
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
 
