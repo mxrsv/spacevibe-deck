@@ -2896,14 +2896,11 @@ button.attn-mark:hover {
 
 .settings-screen {
   position: absolute;
-  inset: 8px;
+  /* Full-bleed over the stage: the surface meets the sidebar's hairline and
+     the toolbar's, so it reads as one block with the chrome rather than a
+     floating card. */
+  inset: 0;
   background: var(--chrome-2);
-  border: 1px solid var(--hair-strong);
-  border-radius: 12px;
-  /* Clip children to the rounded corners. Without this the rail's square
-     top-left corner and its border-right run straight past the radius and
-     read as a second, broken border tucked inside the real one. */
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   /* Above the Open board (30), below a modal draft (40). A full-window
