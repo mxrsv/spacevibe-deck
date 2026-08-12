@@ -218,7 +218,17 @@ export function FeatureToolbar({ items, updateAction }: FeatureToolbarProps) {
           items={fit.overflow}
           anchor={menu}
           triggerEl={moreRef.current}
-          onClose={() => setMenu(null)}
+          onClose={() => {
+            setMenu(null);
+            // Every dismissal path inside ToolbarOverflowMenu (Escape,
+            // outside click, activating a row) calls this one callback, so
+            // restoring focus here covers all three at once (DL-13.2). This
+            // runs after the state that unmounts the menu, not inside the
+            // outside-pointerdown listener's own dispatch, so it cannot
+            // re-trigger that listener — `focus()` never fires a pointer
+            // event.
+            moreRef.current?.focus();
+          }}
         />
       )}
     </div>
