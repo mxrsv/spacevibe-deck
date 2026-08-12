@@ -47,19 +47,25 @@ import { SectionHead } from "../specimen";
 /**
  * Every cell is this wide, in every block.
  *
- * Measured, not chosen by taste. Below 680px the top tab bar cannot fit four
- * tabs beside the add button and six actions, so every label clips — at 560px
- * the four labels get 7, 9, 0 and 4 pixels. 680 is the exact width at which
- * clipping stops, and widening further changes nothing: from 680 to 900 the
- * labels stay at 37, 36, 20 and 19. A matrix that compared a degenerate tab
- * bar would answer a question nobody asked. Sidebar mode still leaves 480px of
- * stage beside its 200px rail.
+ * Measured on both frames, not chosen by taste. Below the threshold the top
+ * tab bar cannot fit four tabs beside the add button and six actions, so every
+ * label clips — at 560px the four labels get 7, 9, 0 and 4 pixels. On this
+ * branch's two-row chrome the labels come clear at 680px; on the collapsed
+ * DL-16 command row it takes 760px, because that row also gives up
+ * `--frame-lights-w` (78px) to the macOS traffic lights. Both were measured by
+ * sweeping a live cell, and above each threshold nothing moves at all: the
+ * labels sit at 37, 36, 20 and 19 from there to 900px.
+ *
+ * So the constant is the larger of the two. A matrix that compared a
+ * degenerate tab bar would answer a question nobody asked, and one number that
+ * is right on both frames beats a number that has to be edited during a merge.
+ * Sidebar mode still leaves 560px of stage beside its 200px rail.
  *
  * Four of these do not fit a laptop viewport, which is why `.gx-matrix`
  * scrolls sideways rather than shrinking: cells of different widths would
  * compare two variables at once.
  */
-const CELL_WIDTH = 680;
+const CELL_WIDTH = 760;
 
 interface StateRow {
   readonly id: string;
