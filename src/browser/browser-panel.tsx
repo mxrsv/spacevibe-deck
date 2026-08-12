@@ -169,7 +169,7 @@ export function BrowserPanel({
 
   const inspectChord = shortcutLabel("toggle-browser");
   // react-grab's own copy gesture, which Deck does not own and cannot rebind —
-  // but it is still a chord, and DL-15.7 keeps chord spelling out of literals
+  // but it is still a chord, and DL-17.7 keeps chord spelling out of literals
   // because ⌘ is not a key a Windows user has.
   const copyChord =
     getDesktopEnvironment().platform === "macos" ? "⌘C" : "Ctrl+C";

@@ -120,7 +120,7 @@ describe("ShortcutsSection", () => {
     expect(row.querySelector(".cfg-readout")?.textContent).toBe(
       "Ctrl+Shift+D",
     );
-    // Exactly one editable chord per row (DL-15.3).
+    // Exactly one editable chord per row (DL-17.3).
     expect(row.querySelectorAll(".cfg-chord")).toHaveLength(1);
     expect(row.querySelectorAll(".cfg-readout")).toHaveLength(1);
   });
@@ -128,7 +128,7 @@ describe("ShortcutsSection", () => {
   it("reads `unbound` where the platform ships no chord", () => {
     mount();
     // `copy-selection` is bound on Windows only — macOS leaves ⌘C to the Cocoa
-    // Copy role. That is a normal state, not an error (DL-15.4).
+    // Copy role. That is a normal state, not an error (DL-17.4).
     const row = rowFor("Copy Selection");
     expect(row.querySelector(".cfg-chord")?.textContent).toBe("unbound");
     expect(row.querySelector(".cfg-readout")?.textContent).toBe("Ctrl+Shift+C");

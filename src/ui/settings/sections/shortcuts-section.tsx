@@ -35,7 +35,7 @@ import { getDesktopEnvironment } from "../../../lib/platform";
 import { shortcutGroups } from "../shortcut-groups";
 import type { ActionId } from "../../../terminal/action-registry";
 
-/** Column tag beside each chord (DL-15.2) — lowercase chrome, like everything else. */
+/** Column tag beside each chord (DL-17.2) — lowercase chrome, like everything else. */
 const PLATFORM_TAG: Readonly<Record<KeymapPlatform, string>> = {
   macos: "mac",
   windows: "win",

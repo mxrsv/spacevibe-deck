@@ -33,7 +33,7 @@
   --ui-font:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
-  /* DL-16: the single command row. 34px carries a 26px control comfortably
+  /* DL-18: the single command row. 34px carries a 26px control comfortably
      and clears the macOS traffic lights, which need ~28px of vertical room. */
   --frame-h: 34px;
   /* macOS traffic-light cluster: 3 buttons from x=20, ~70px to the last edge,
@@ -63,7 +63,7 @@ body,
   height: 100vh;
   width: 100vw;
   display: grid;
-  /* DL-16: ONE command row. There is no separate title bar — the traffic
+  /* DL-18: ONE command row. There is no separate title bar — the traffic
      lights sit inside this row behind a reserved inset, so the frame is
      authored chrome rather than an empty OS band above the app. */
   grid-template-rows: var(--frame-h) 1fr var(--status-h);
@@ -85,7 +85,7 @@ body,
   grid-template-columns: var(--sidebar-w) 1fr;
 }
 
-/* ── DL-16: the application frame ───────────────────────────
+/* ── DL-18: the application frame ───────────────────────────
    Traffic lights, navigation and actions share one surface and one structural
    hairline. `--frame-lights-w` is the macOS cluster's fixed footprint: the
    buttons are drawn by the OS on top of the web contents, so the row reserves
@@ -465,7 +465,7 @@ button.attn-mark:hover {
 
 /* ── Tab bar ─────────────────────────────────────────────── */
 
-/* DL-16: in top-tab mode the tab bar IS the frame — same height, same surface,
+/* DL-18: in top-tab mode the tab bar IS the frame — same height, same surface,
    same single hairline, and it reserves the traffic-light inset itself. */
 .tabbar {
   display: flex;
@@ -754,7 +754,7 @@ button.attn-mark:hover {
   display: flex;
 }
 
-/* ── Browser panel: a docked column on the right of the stage (DL-17) ─────
+/* ── Browser panel: a docked column on the right of the stage (DL-19) ─────
    The column is real: the terminal grid's own inset shrinks by exactly the
    panel's width, so panes resize around it instead of being covered. The web
    content itself is a native view the host positions over
@@ -774,7 +774,7 @@ button.attn-mark:hover {
   flex-direction: column;
   min-width: 0;
   background: var(--chrome-2);
-  /* DL-17.2 / DL-3.3: structure is a hairline, never a shadow. */
+  /* DL-19.2 / DL-3.3: structure is a hairline, never a shadow. */
   border-left: 1px solid var(--hair);
 }
 
@@ -1548,7 +1548,7 @@ button.attn-mark:hover {
    A reference row: the key names an action, the value slot holds one chord
    per platform. Still a `cfg-row` — same hover, same hairline, same rhythm —
    because a shortcut list that styled itself differently would read as a
-   second kind of settings surface (DL-15.1). */
+   second kind of settings surface (DL-17.1). */
 .cfg-row--shortcut > .cfg-row__key {
   flex: 1 1 auto;
 }
@@ -1559,7 +1559,7 @@ button.attn-mark:hover {
   gap: 10px;
 }
 
-/* Each platform's chord and its tag travel together (DL-15.2). */
+/* Each platform's chord and its tag travel together (DL-17.2). */
 .cfg-chord-slot {
   display: inline-flex;
   align-items: center;
@@ -1567,7 +1567,7 @@ button.attn-mark:hover {
 }
 
 /* Which keymap this chord belongs to. Faint and lowercase: it labels the
-   value, it is not a value of its own (DL-15.2). */
+   value, it is not a value of its own (DL-17.2). */
 .cfg-chord-tag {
   font-family: var(--ui-font);
   font-size: 10px;
@@ -1586,7 +1586,7 @@ button.attn-mark:hover {
 }
 
 /* An action with no chord on this platform. Not an error — most actions ship
-   bound on one keymap only (DL-15.4). */
+   bound on one keymap only (DL-17.4). */
 .cfg-chord--unbound {
   color: var(--text-faint);
 }
@@ -1598,7 +1598,7 @@ button.attn-mark:hover {
   color: var(--accent);
 }
 
-/* The non-running platform's chord: DL-15.3's read-only value. No pill border,
+/* The non-running platform's chord: DL-17.3's read-only value. No pill border,
    because a border is what says "you can press this" everywhere else in
    settings, and here you cannot. */
 .cfg-readout {
@@ -1610,7 +1610,7 @@ button.attn-mark:hover {
   text-align: center;
 }
 
-/* A chord claimed by two actions (DL-15.5). `--red` is error-only (DL-3.2),
+/* A chord claimed by two actions (DL-17.5). `--red` is error-only (DL-3.2),
    and a shortcut that silently shadows another one is exactly that. */
 .cfg-row__desc--warn {
   color: var(--red);

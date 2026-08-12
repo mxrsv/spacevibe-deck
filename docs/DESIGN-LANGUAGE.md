@@ -306,7 +306,7 @@ answered here rather than re-argued per button.
   (`⌘`, `⏎`, `⎋`), selection and status dots, and `WorkspaceSpinner`. A logo is
   identity and a key legend is notation; neither is an icon in a system.
 
-## 15. Shortcut rows
+## 17. Shortcut rows
 
 Approved as a fork on 2026-08-11, for the Shortcuts settings category. §5 gives
 a row exactly one interactive value and §6 is a closed set of interactive
@@ -318,86 +318,140 @@ The alternative was rejected on the evidence: a two-column table would have
 been a second settings surface with its own header, alignment and scroll
 behaviour, and §5's row is what makes settings scan as one document.
 
-- **DL-15.1** A shortcut row is a `cfg-row` (`.cfg-row--shortcut`) and keeps
+- **DL-17.1** A shortcut row is a `cfg-row` (`.cfg-row--shortcut`) and keeps
   every §5 property: key on the left, value slot on the right, DL-5.1 hover,
   the same vertical rhythm. It is a row that holds notation, not a new genre.
-- **DL-15.2** The value slot holds **one chord per platform**, each preceded by
+- **DL-17.2** The value slot holds **one chord per platform**, each preceded by
   a faint lowercase platform tag (`mac`, `win`) of fixed width so the chords
   form a column down the list. The tag labels the value; it is not itself a
   value and is never interactive.
-- **DL-15.3** Exactly one chord is editable: the one for the platform the app
+- **DL-17.3** Exactly one chord is editable: the one for the platform the app
   is RUNNING on. It is a `cfg-btn` pill that records a chord when clicked. The
   other platform's chord is a **readout** — no border, `--text-faint` — because
   a border is what promises "you can press this" everywhere else in settings,
   and a chord can only be recorded on the keyboard that produces it.
-- **DL-15.4** An action with no chord on a platform reads `unbound` in
+- **DL-17.4** An action with no chord on a platform reads `unbound` in
   `--text-faint`. This is a normal state, not an error: most actions ship bound
   on one keymap only.
-- **DL-15.5** A chord claimed by two actions is named on **both** rows, in the
+- **DL-17.5** A chord claimed by two actions is named on **both** rows, in the
   row's `desc` slot, in `--red` (DL-3.2 — a shortcut that silently shadows
   another one is an error, not a warning). It is reported, never refused:
   swapping two actions' chords must pass through a colliding state, and
   rejecting the first half makes the swap impossible to finish.
-- **DL-15.6** The row's only second element is DL-6.1's reset button, shown
+- **DL-17.6** The row's only second element is DL-6.1's reset button, shown
   whenever the row carries a user override — including an override that happens
   to equal the shipped chord, because what reset removes is the override, not a
   difference. Recording covers the other two outcomes without further
   controls — a chord rebinds, bare Backspace/Delete unbinds, Esc cancels.
-- **DL-15.8** A refused keystroke says WHY, in the pill, and keeps listening.
+- **DL-17.8** A refused keystroke says WHY, in the pill, and keeps listening.
   Every refusal reason gets its own words: "reserved by macOS" is not the same
   message as "add ⌘, ⌃ or ⌥", and neither may render as the idle "press keys…"
   — a rule the user cannot see reads as a dead control.
-- **DL-15.7** Chords are **notation, not icons** (DL-14.6): `⌘⇧D`, `Ctrl+Alt+T`
+- **DL-17.7** Chords are **notation, not icons** (DL-14.6): `⌘⇧D`, `Ctrl+Alt+T`
   are rendered as text, never as pictograms, and `formatShortcutBinding`
   (`src/lib/shortcut-label.ts`) is the only place their spelling is decided.
 
-## 17. Docked side panels
+## 18. Command-row frame
+
+The number was in use before the text was. `DL-18` (as `DL-16`) has been cited
+from nine places in `src/` since the title bar and the tab bar were collapsed
+into one row; these rules are transcribed from those call sites on 2026-08-12,
+so they record what the frame already does rather than proposing anything new.
+
+Deck authors its own top row. §11 covers a full-window screen and §13 an
+anchored popover; neither describes the one permanent row that carries the
+window's identity and its actions at the same time.
+
+- **DL-18.1** There is **one** chrome row above the stage, never two. `.window`
+  is a three-row grid — `--frame-h`, the stage, `--status-h` — and the retired
+  `.titlebar` and `.deck-toolbar` elements do not come back. Two stacked chrome
+  rows is the shape this section exists to remove, which is why
+  `src/ui/app.test.tsx` asserts both are absent in every platform and layout
+  combination.
+- **DL-18.2** The row is `--frame-h` tall on `--chrome-1`, closed by a single
+  `--hair` bottom border (DL-3.3) and nothing else. 34px is not a taste value:
+  it carries a 26px control comfortably and clears the macOS traffic lights,
+  which need roughly 28px of vertical room.
+- **DL-18.3** **Whichever element occupies that row IS the frame.** In sidebar
+  mode it is `.deck-frame`, spanning `1 / -1` and carrying the actions, with the
+  sidebar starting beneath it. In top-tab mode it is `.tabbar` itself — same
+  height, same surface, same single hairline — and no `.deck-frame` is rendered
+  above it. A layout picks one occupant; it never nests one inside the other.
+- **DL-18.4** On macOS the traffic lights sit **inside** the row behind a
+  reserved inset of `--frame-lights-w`, and whichever element is the frame
+  reserves that inset itself. The inset is a footprint, not a control: the OS
+  paints its buttons over exactly that box, so it is `aria-hidden`, holds no
+  content, and anything placed there would sit underneath them. The frame is
+  Deck's chrome, not OS spacing the app happens to sit under.
+- **DL-18.5** Platform differences change the inset, never the row. Windows
+  draws its own controls and owns the system title row, so `--frame-lights-w`
+  is `0px` and the inset element is not rendered — the row keeps the same
+  height and the same content. Reserving space no OS will paint into is a gap,
+  not a frame.
+
+## 19. Docked side panels
 
 Added 2026-08-12 for the browser panel, and written to cover the class rather
 than the instance.
 
-**Numbered 17, not 16.** §16 belongs to the application frame: the code that
-collapsed the title bar and tab bar into one command row cites `DL-16` from
-nine places in `src/`, and it landed on this branch first. That rule's TEXT is
-not in this file yet — see the ledger at the bottom — but the number is spoken
-for, and renumbering nine citations to free it would be the expensive way
-round. The file-explorer design's own "§15 (docked side panels)" was already
-stale when Shortcuts took 15; when that panel is built it joins this section
-rather than opening a third number for the same surface class.
+**Numbered 19, not 16.** This section was written as §17 while Shortcut rows
+held §15 and the application frame held §16. On 2026-08-12 all three moved up
+by two — §17, §18, §19 — so that §15 and §16 carry exactly one meaning across
+every branch of this repository; another branch had independently spent those
+two numbers on read-only data tables and the display figure, and two rulebooks
+disagreeing about what `DL-15` addresses is a collision that merges silently.
+§18 is the application frame, immediately above. The file-explorer design's own
+"§15 (docked side panels)" was already stale before that move; when that panel
+is built it joins this section rather than opening a third number for the same
+surface class.
 
 A docked panel is a surface §11 (full-window screens) and §13 (anchored
 popovers) do not describe: it is permanent, it displaces content instead of
 covering it, and it can hold something that is not Deck's own pixels.
 
-- **DL-17.1** A docked panel is a **column of the stage, not an overlay**. The
+- **DL-19.1** A docked panel is a **column of the stage, not an overlay**. The
   terminal grid's own bounds shrink by exactly the panel's width, so panes
   resize around it. Nothing in the app floats permanently over a pane.
-- **DL-17.2** The seam is a single `--hair` border on the panel's inner edge
+- **DL-19.2** The seam is a single `--hair` border on the panel's inner edge
   (DL-3.3). No shadow, no gradient, no second rule — the background step from
   `--bg` to `--chrome-2` is what separates the two regions.
-- **DL-17.3** The panel's own header is a **bar of `iconbtn` controls**, the
+- **DL-19.3** The panel's own header is a **bar of `iconbtn` controls**, the
   same class and the same 13px chrome icon size the tab bar uses (DL-14.2). A
   docked panel borrows the window's controls; it does not invent a set.
-- **DL-17.4** Width is user-set by dragging the seam and persists as an
+- **DL-19.4** Width is user-set by dragging the seam and persists as an
   ordinary setting, clamped to a min and max. The drag target is wider than the
   hairline it sits on and paints nothing — the hairline stays 1px.
-- **DL-17.5** One status line, directly under the header, in `--text-faint`
+- **DL-19.5** One status line, directly under the header, in `--text-faint`
   (DL-3.4) — or `--red` when it reports a failure (DL-3.2). It is the panel's
   only place for transient text; a panel does not raise dialogs of its own.
-- **DL-17.6** When a panel hosts **foreign content** (a web page, a preview),
+- **DL-19.6** When a panel hosts **foreign content** (a web page, a preview),
   Deck's chrome never overlaps it: the content gets its own rectangle below the
   header, and that rectangle is the only part of the column Deck does not
   paint. A native view stacked over it cannot be covered by any DOM layer, so
   the panel must hide it whenever an overlay opens — the visual rule and the
   implementation rule are the same rule here.
 
+## 20. Numeric scales
+
+_Reserved. Proposed by [the 2026-08-12 visual review](review/2026-08-12-visual-system-codex-review.md); not adopted. Adopting it is an R2 fork._
+
+## 21. Interaction states
+
+_Reserved. Same source, same status._
+
+## 22. Surface genres
+
+_Reserved. Same source, same status._
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_
 
-| Claim | Intent | Status | Evidence |
-| ----- | ------ | ------ | -------- |
-| `DL-16` is cited from nine places in `src/` (`app.tsx`, `styles.css`, `tab-bar.tsx`, `app.test.tsx`) | The application frame — one authored command row, no separate title bar | **Rule text not written.** The number is in use and §17 was numbered around it; the rules themselves still have to be added | [`5ef509a`](../src/styles.css) `current` — the code and its comments exist, this file has no §16 |
+**Empty.** The only standing entry — `DL-16`'s text being cited from nine
+places in `src/` but never written — was closed on 2026-08-12 when the rule was
+transcribed from its call sites as §18 and the citations moved with it.
+`scripts/design-language.test.ts` now fails the suite if a cited number has no
+declared rule or section, so this class of drift is caught rather than logged.
 
 The violations table above is the DL-specific ledger; this one is for claims
 that do not match the tree. Do not remove this section (D7).

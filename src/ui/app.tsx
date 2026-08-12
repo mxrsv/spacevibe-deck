@@ -115,7 +115,7 @@ export function DesktopChrome(props: DesktopChromeProps) {
     .filter(Boolean)
     .join(" ");
 
-  // DL-16: one authored command row. On macOS the traffic lights sit INSIDE it
+  // DL-18: one authored command row. On macOS the traffic lights sit INSIDE it
   // behind a fixed inset instead of owning an empty band of their own — the
   // frame is Deck's chrome, not OS spacing the app happens to sit under. In
   // top-tab mode the tabs occupy that same row; in sidebar mode the row carries

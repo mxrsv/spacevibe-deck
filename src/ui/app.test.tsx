@@ -59,7 +59,7 @@ describe("DesktopChrome platform structure", () => {
     return host.firstElementChild as HTMLElement;
   }
 
-  // DL-16: there is no separate title bar. The frame is one command row, and it
+  // DL-18: there is no separate title bar. The frame is one command row, and it
   // only exists in sidebar mode — in top-tab mode the tab bar IS the frame and
   // carries the toolbar itself.
   it.each([
@@ -81,7 +81,7 @@ describe("DesktopChrome platform structure", () => {
         hasLightsInset,
       );
       // The retired elements must not come back — two chrome rows is the shape
-      // DL-16 exists to remove.
+      // DL-18 exists to remove.
       expect(root.querySelector(".titlebar")).toBe(null);
       expect(root.querySelector(".deck-toolbar")).toBe(null);
       expect(root.querySelector('[data-testid="sidebar"]') !== null).toBe(

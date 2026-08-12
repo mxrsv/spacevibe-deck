@@ -51,7 +51,7 @@ import { SectionHead } from "../specimen";
  * tab bar cannot fit four tabs beside the add button and six actions, so every
  * label clips — at 560px the four labels get 7, 9, 0 and 4 pixels. On this
  * branch's two-row chrome the labels come clear at 680px; on the collapsed
- * DL-16 command row it takes 760px, because that row also gives up
+ * DL-18 command row it takes 760px, because that row also gives up
  * `--frame-lights-w` (78px) to the macOS traffic lights. Both were measured by
  * sweeping a live cell, and above each threshold nothing moves at all: the
  * labels sit at 37, 36, 20 and 19 from there to 900px.

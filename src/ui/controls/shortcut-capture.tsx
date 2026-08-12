@@ -1,5 +1,5 @@
 /**
- * The one editable element in a Shortcuts row (DL-15.3): a pill showing the
+ * The one editable element in a Shortcuts row (DL-17.3): a pill showing the
  * action's current chord that becomes a recorder when clicked.
  *
  * Three outcomes from one gesture, so the row needs no second control beyond
