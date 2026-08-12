@@ -9,16 +9,13 @@
  * capture control can honestly offer, and a text field for it would invite
  * exactly the malformed input `validateKeybindings` exists to drop.
  *
- * Layout rules are DL §15; the row is still a `cfg-row`, with the two chords
+ * Layout rules are DL §17; the row is still a `cfg-row`, with the two chords
  * and the reset button sharing the value slot.
  */
 import { RotateCcw } from "lucide-preact";
 import { ConfigGroup } from "../../controls/config-row";
 import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
-import {
-  ShortcutCapture,
-  formatChords,
-} from "../../controls/shortcut-capture";
+import { ShortcutCapture, formatChords } from "../../controls/shortcut-capture";
 import { settings, updateSettings } from "../../../settings/settings-store";
 import {
   chordConflicts,
@@ -124,7 +121,9 @@ export function ShortcutsSection() {
                       const chords = chordsForAction(keymaps[side], row.action);
                       return (
                         <span key={side} class="cfg-chord-slot">
-                          <span class="cfg-chord-tag">{PLATFORM_TAG[side]}</span>
+                          <span class="cfg-chord-tag">
+                            {PLATFORM_TAG[side]}
+                          </span>
                           {side === running ? (
                             <ShortcutCapture
                               action={row.action}

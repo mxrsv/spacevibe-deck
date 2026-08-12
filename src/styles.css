@@ -1544,7 +1544,7 @@ button.attn-mark:hover {
   border-radius: 4px;
 }
 
-/* ── Shortcut rows (DL §15) ─────────────────────────────────────────────
+/* ── Shortcut rows (DL §17) ─────────────────────────────────────────────
    A reference row: the key names an action, the value slot holds one chord
    per platform. Still a `cfg-row` — same hover, same hairline, same rhythm —
    because a shortcut list that styled itself differently would read as a

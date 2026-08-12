@@ -97,8 +97,9 @@ export function TabBar(props: TabBarProps) {
     <header class="tabbar" data-tauri-drag-region ref={rootRef}>
       {/* DL-18: in top-tab mode this row IS the window frame, so it reserves
           the traffic-light inset itself rather than sitting under an empty
-          titlebar. Rendered on macOS only — elsewhere the OS owns that corner
-          or nothing does. */}
+          titlebar. Always in the tree; it reserves width only on macOS, since
+          `--frame-lights-w` is `0px` elsewhere and `.window--windows` hides it
+          outright (DL-18.5 — nothing is reserved where no OS paints). */}
       <div class="deck-frame__lights" aria-hidden="true" />
       <div class="tabbar__tabs" role="tablist" aria-label="Terminal tabs">
         {tabs.map((tab, index) => (

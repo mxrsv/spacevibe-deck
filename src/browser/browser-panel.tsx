@@ -8,7 +8,7 @@
  * column ended up. Every path that can move or resize it therefore ends in
  * `report()`.
  *
- * Styling follows DESIGN-LANGUAGE §17 (docked side panels): a real grid column
+ * Styling follows DESIGN-LANGUAGE §19 (docked side panels): a real grid column
  * with a hairline seam, chrome-2 surface, and the same `iconbtn` the tab bar
  * uses so the panel's buttons are the app's buttons.
  */
@@ -30,10 +30,7 @@ import { CHROME_ICON, DeckIcon } from "../ui/controls/deck-icon";
 import { shortcutLabel } from "../lib/shortcut-label";
 import { getDesktopEnvironment } from "../lib/platform";
 import { clampBrowserWidth } from "../settings/settings-schema";
-import {
-  defaultBrowserClient,
-  type BrowserClient,
-} from "./browser-client";
+import { defaultBrowserClient, type BrowserClient } from "./browser-client";
 import { browserNotice, browserState, browserWidthLive } from "./browser-store";
 
 interface BrowserPanelProps {

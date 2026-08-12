@@ -343,13 +343,13 @@ behaviour, and §5's row is what makes settings scan as one document.
   to equal the shipped chord, because what reset removes is the override, not a
   difference. Recording covers the other two outcomes without further
   controls — a chord rebinds, bare Backspace/Delete unbinds, Esc cancels.
+- **DL-17.7** Chords are **notation, not icons** (DL-14.6): `⌘⇧D`, `Ctrl+Alt+T`
+  are rendered as text, never as pictograms, and `formatShortcutBinding`
+  (`src/lib/shortcut-label.ts`) is the only place their spelling is decided.
 - **DL-17.8** A refused keystroke says WHY, in the pill, and keeps listening.
   Every refusal reason gets its own words: "reserved by macOS" is not the same
   message as "add ⌘, ⌃ or ⌥", and neither may render as the idle "press keys…"
   — a rule the user cannot see reads as a dead control.
-- **DL-17.7** Chords are **notation, not icons** (DL-14.6): `⌘⇧D`, `Ctrl+Alt+T`
-  are rendered as text, never as pictograms, and `formatShortcutBinding`
-  (`src/lib/shortcut-label.ts`) is the only place their spelling is decided.
 
 ## 18. Command-row frame
 
@@ -385,9 +385,11 @@ window's identity and its actions at the same time.
   Deck's chrome, not OS spacing the app happens to sit under.
 - **DL-18.5** Platform differences change the inset, never the row. Windows
   draws its own controls and owns the system title row, so `--frame-lights-w`
-  is `0px` and the inset element is not rendered — the row keeps the same
-  height and the same content. Reserving space no OS will paint into is a gap,
-  not a frame.
+  is `0px` and the inset collapses to zero width and paints nothing — the row
+  keeps the same height and the same content. Whether the element is left out
+  of the tree or collapsed by CSS is each occupant's business; what the rule
+  requires is that nothing is reserved. Reserving space no OS will paint into
+  is a gap, not a frame.
 
 ## 19. Docked side panels
 
@@ -450,8 +452,12 @@ _(reality-drift ledger — heading text mandated by the global docs convention)_
 **Empty.** The only standing entry — `DL-16`'s text being cited from nine
 places in `src/` but never written — was closed on 2026-08-12 when the rule was
 transcribed from its call sites as §18 and the citations moved with it.
-`scripts/design-language.test.ts` now fails the suite if a cited number has no
-declared rule or section, so this class of drift is caught rather than logged.
+`scripts/design-language.test.ts` now fails the suite when a citation names a
+number with no declared rule or section. It reads both spellings this repo
+uses — `DL-17.1` and `DL §17` / `DESIGN-LANGUAGE §17` — but deliberately not a
+bare `§17`, which cites a spec, a plan or a review far more often than it cites
+this document. Citing DL by section therefore means naming DL, or the gate does
+not see the citation.
 
 The violations table above is the DL-specific ledger; this one is for claims
 that do not match the tree. Do not remove this section (D7).
