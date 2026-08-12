@@ -658,7 +658,17 @@ button.attn-mark:hover {
    never runs out of room and would never overflow into `More`.
 
    Icon geometry is deliberately absent: the control is `.iconbtn`, and the
-   icon inside it is sized by `DeckIcon` alone (DL-14.3). ── */
+   icon inside it is sized by `DeckIcon` alone (DL-14.3).
+
+   This block and the two after it ship in the app stylesheet even though the
+   only thing rendering `src/ui/toolbar/` today is the gallery entry. That is a
+   decision, not an oversight: this is app chrome awaiting wiring, chrome CSS
+   belongs in this file, and CSS is not tree-shaken, so the cost is ~180 lines
+   of a stylesheet the app already loads. It does not breach R7 — the import
+   direction is app → gallery, and no shipping module imports `src/gallery/`.
+   Nothing shipping applies `.is-unavailable` to an `.iconbtn`, so no live
+   control changes appearance from it. Delete these rules with the toolbar if
+   the toolbar is ever abandoned instead of wired in. ── */
 .ftoolbar {
   flex: 1 1 auto;
   min-width: 0;
