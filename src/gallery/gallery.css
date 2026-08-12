@@ -205,6 +205,67 @@
   width: 100%;
 }
 
+/* A cut-down tab bar at an exact width, so the toolbar is judged where it
+   lives and against the space a real window would give it. The bar itself is
+   the app's own `.tabbar`; only the width and the room below belong here. */
+.gx-barpad {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  min-height: 150px;
+}
+
+/* Room for the overflow menu to open downward without being clipped. */
+.gx-barpad--menu {
+  min-height: 300px;
+}
+
+.gx-bar {
+  height: var(--tabbar-h);
+  max-width: 100%;
+  display: flex;
+}
+
+.gx-bar__inner {
+  flex: 1;
+  min-width: 0;
+}
+
+.gx-bar__tab {
+  flex: none;
+}
+
+/* Harness control, not app chrome — fixed colours and mono, like the rail. */
+.gx-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.gx-pick__opt {
+  padding: 3px 10px;
+  border: 1px solid var(--gx-line);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--gx-dim);
+  font-family: var(--gx-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.gx-pick__opt.is-active {
+  border-color: #4a4a5c;
+  color: var(--gx-bright);
+}
+
+.gx-pick__hint {
+  color: var(--gx-dim);
+  font-size: 11px;
+}
+
 /* ── specimen layout helpers ─────────────────────────────────────── */
 
 .gx-row {

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { KeyBinding } from "../terminal/action-registry";
 import {
+  formatKeyChord,
   formatShortcutBinding,
   shortcutLabel,
+  type KeyChord,
 } from "./shortcut-label";
 
 describe("shortcutLabel", () => {
@@ -57,5 +59,18 @@ describe("shortcutLabel", () => {
     expect(formatShortcutBinding(windowsOpen, "windows")).toBe(
       "Ctrl+Shift+O",
     );
+  });
+
+  it("formats a chord whose action is not registered yet", () => {
+    // The toolbar gallery previews Explorer before the action exists. Its
+    // chord has to survive the platform switch like any other, which is the
+    // whole reason this takes a chord rather than a binding.
+    const explorer: Readonly<Record<"macos" | "windows", KeyChord>> = {
+      macos: { key: "e", meta: true, shift: true },
+      windows: { key: "e", ctrl: true, shift: true },
+    };
+
+    expect(formatKeyChord(explorer.macos, "macos")).toBe("⌘⇧E");
+    expect(formatKeyChord(explorer.windows, "windows")).toBe("Ctrl+Shift+E");
   });
 });
