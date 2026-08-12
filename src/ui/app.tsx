@@ -19,7 +19,11 @@ import { applyThemeVars } from "../lib/theme-vars";
 import { resolveCwds, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
 import { settings, updateSettings } from "../settings/settings-store";
-import { agentOptions, probeNames } from "../lib/agent-catalog";
+import {
+  agentOptions,
+  agentProcessMatchers,
+  probeNames,
+} from "../lib/agent-catalog";
 import { resolveTheme } from "../settings/themes";
 import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
@@ -705,7 +709,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const promptPopover = promptsOpen.value ? (
     <PromptPopover
       capture={() =>
-        capturePromptTarget(tabsRef.current?.activePaneId() ?? null)
+        capturePromptTarget(
+          tabsRef.current?.activePaneId() ?? null,
+          defaultPtyClient,
+          agentProcessMatchers(settings.value.customAgents),
+        )
       }
       loadAssets={(target) =>
         defaultPromptAssetsClient.list(target.agent ?? "", target.cwd)

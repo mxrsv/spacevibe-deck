@@ -1088,6 +1088,7 @@ describe("createTabManager attention tracker", () => {
     it.each([
       processInfo(1, "/repo", "claude", "agent", "claude"),
       processInfo(1, "/repo", "node", "agent", "codex"),
+      processInfo(1, "/repo", "aider", "agent", "Aider"),
     ])(
       "accepts a recognized $agent agent with foreground process $process",
       async (info) => {

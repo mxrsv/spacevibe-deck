@@ -1,5 +1,5 @@
 import type { PaneProcessInfo } from "../lib/process-info";
-import type { PtyClient } from "./pty-client";
+import type { AgentProcessMatcher, PtyClient } from "./pty-client";
 
 const DEFAULT_INTERVAL_MS = 2000;
 
@@ -10,6 +10,8 @@ export interface PaneInfoPollerDeps {
   targets(): readonly number[];
   /** Focused pane of the active tab — its CWD drives the git branch. */
   activePaneId(): number | null;
+  /** Live, validated custom agents; built-ins are recognized by the host. */
+  agentMatchers?(): readonly AgentProcessMatcher[];
   /** Fired after every successful poll with the fresh infos. */
   onUpdate(infos: readonly PaneProcessInfo[]): void;
   intervalMs?: number;
@@ -40,6 +42,9 @@ export function createPaneInfoPoller(deps: PaneInfoPollerDeps): PaneInfoPoller {
   let lastBranchCwd: string | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
   let warned = false;
+  let requestedPolls = 0;
+  let completedPolls = 0;
+  let drainPromise: Promise<void> | null = null;
 
   async function updateBranch(): Promise<void> {
     const paneId = deps.activePaneId();
@@ -63,14 +68,18 @@ export function createPaneInfoPoller(deps: PaneInfoPollerDeps): PaneInfoPoller {
     }
   }
 
-  async function poll(): Promise<void> {
+  async function pollOnce(): Promise<void> {
     const ids = deps.targets();
     if (ids.length === 0) {
       return;
     }
     let infos: PaneProcessInfo[];
     try {
-      infos = await deps.pty.ptyInfo(ids);
+      infos = await deps.pty.ptyInfo(
+        ids,
+        deps.agentMatchers?.() ?? [],
+        false,
+      );
       warned = false;
     } catch (err) {
       // Keep the last known values; warn once, never break the loop
@@ -85,6 +94,33 @@ export function createPaneInfoPoller(deps: PaneInfoPollerDeps): PaneInfoPoller {
     }
     await updateBranch();
     deps.onUpdate(infos);
+  }
+
+  /**
+   * Serialize process snapshots. A slow host process-table reading can outlive
+   * the interval, and applying two readings concurrently lets the older response
+   * overwrite the newer one. Calls made while a reading is active coalesce
+   * into one trailing refresh so newly materialized panes are still observed.
+   */
+  function poll(): Promise<void> {
+    requestedPolls += 1;
+    if (drainPromise !== null) {
+      return drainPromise;
+    }
+    const drain = async (): Promise<void> => {
+      while (completedPolls < requestedPolls) {
+        const target = requestedPolls;
+        await pollOnce();
+        completedPolls = target;
+      }
+    };
+    const current = drain().finally(() => {
+      if (drainPromise === current) {
+        drainPromise = null;
+      }
+    });
+    drainPromise = current;
+    return current;
   }
 
   return {

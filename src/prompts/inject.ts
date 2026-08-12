@@ -1,4 +1,5 @@
 import type { PaneProcessInfo } from "../lib/process-info";
+import type { AgentProcessMatcher } from "../lib/agent-catalog";
 import type { PaneAttentionSnapshot } from "../terminal/agent-attention";
 import { freshPaneInfo } from "../terminal/pane-info";
 import { defaultPtyClient, type PtyClient } from "../terminal/pty-client";
@@ -80,11 +81,12 @@ export function submitAllowed({
 export async function capturePromptTarget(
   activePaneId: number | null,
   pty: PtyClient = defaultPtyClient,
+  agentMatchers: readonly AgentProcessMatcher[] = [],
 ): Promise<PromptTarget | null> {
   if (activePaneId === null) {
     return null;
   }
-  const [info] = await freshPaneInfo([activePaneId], pty);
+  const [info] = await freshPaneInfo([activePaneId], pty, agentMatchers);
   return {
     paneId: activePaneId,
     agent: info?.kind === "agent" ? info.agent : null,

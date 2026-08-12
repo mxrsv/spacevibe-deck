@@ -4,7 +4,11 @@
  * foreground job from `ps` rather than from `tcgetpgrp`.
  */
 import { describe, expect, it } from "vitest";
-import { classifyProcess, normalizedProcessName } from "./classify";
+import {
+  classifyProcess,
+  normalizedProcessName,
+  validateAgentProcessMatchers,
+} from "./classify";
 import { argv0Name, foregroundProcess, parsePsTable } from "./macos";
 
 describe("classifyProcess", () => {
@@ -27,6 +31,32 @@ describe("classifyProcess", () => {
       kind: "agent",
       agent: "agy",
     });
+  });
+
+  it("classifies a built-in agent launched through a Node shebang", () => {
+    expect(
+      classifyProcess(
+        "node",
+        true,
+        "node /Users/dev/.nvm/versions/node/v24/bin/gemini --resume",
+      ),
+    ).toEqual({ kind: "agent", agent: "gemini" });
+  });
+
+  it("classifies a validated user-declared agent", () => {
+    expect(
+      classifyProcess("aider", true, "aider --watch", [
+        { binary: "aider", agent: "Aider" },
+      ]),
+    ).toEqual({ kind: "agent", agent: "Aider" });
+  });
+
+  it("classifies a declared agent launched through a script interpreter", () => {
+    expect(
+      classifyProcess("zsh", true, "zsh /Users/dev/bin/reviewer.sh", [
+        { binary: "reviewer.sh", agent: "Reviewer" },
+      ]),
+    ).toEqual({ kind: "agent", agent: "Reviewer" });
   });
 
   it("classifies idle, busy and incomplete processes", () => {
@@ -60,6 +90,20 @@ describe("normalizedProcessName", () => {
 
   it("returns null for an empty name", () => {
     expect(normalizedProcessName("   ")).toBe(null);
+  });
+});
+
+describe("validateAgentProcessMatchers", () => {
+  it("keeps safe unique matchers and drops malformed renderer input", () => {
+    expect(
+      validateAgentProcessMatchers([
+        { binary: "/opt/bin/aider", agent: "Aider" },
+        { binary: "aider", agent: "Duplicate" },
+        { binary: "bad;name", agent: "Unsafe" },
+        { binary: "goose", agent: "" },
+        null,
+      ]),
+    ).toEqual([{ binary: "aider", agent: "Aider" }]);
   });
 });
 

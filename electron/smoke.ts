@@ -170,6 +170,26 @@ async function main(): Promise<void> {
     `kind=${info[0]?.kind} process=${info[0]?.process}`,
   );
 
+  // A real user-declared foreground process, through the same argv0 shape the
+  // renderer sends. `waitForCwd: false` is the status-poll path: classification
+  // must not wait behind the cosmetic lsof refresh.
+  await inPage<void>(
+    window,
+    `window.__deckHost.invoke("write_pty", { id: ${paneId}, data: "/bin/zsh -c 'exec -a aider /bin/sleep 10'\\r" })`,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const customInfo = await inPage<
+    Array<{ kind: string; process: string | null; agent: string | null }>
+  >(
+    window,
+    `window.__deckHost.invoke("pty_info", { ids: [${paneId}], agents: [{ binary: "aider", agent: "Aider" }], waitForCwd: false })`,
+  );
+  record(
+    "pty_info recognizes a declared foreground agent",
+    customInfo[0]?.kind === "agent" && customInfo[0]?.agent === "Aider",
+    `kind=${customInfo[0]?.kind} process=${customInfo[0]?.process} agent=${customInfo[0]?.agent}`,
+  );
+
   // Ownership: a pane belongs to the window that spawned it.
   const killed = await inPage<string>(
     window,

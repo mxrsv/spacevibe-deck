@@ -31,6 +31,7 @@ import { normalizeBrowserUrl } from "./browser/url";
 import { WindowCoordinator, type AdoptionPayload } from "./coordinator";
 import { PtyManager } from "./pty/manager";
 import { ptyInfo, type PtyInfo } from "./pty/info";
+import { validateAgentProcessMatchers } from "./platform/classify";
 import { censusFor, CloseFlight, QuitFlight } from "./quit-flow";
 import { MAIN_LABEL, WindowRegistry } from "./window-lifecycle";
 import { StoreRegistry } from "./store";
@@ -371,8 +372,12 @@ ipcMain.handle(CHANNELS.resizePty, (event, { id, cols, rows }) =>
 ipcMain.handle(CHANNELS.killPty, (event, { id }) =>
   pty.kill(labelOf(event), id),
 );
-ipcMain.handle(CHANNELS.ptyInfo, (_event, { ids }) =>
-  ptyInfo(pty.snapshots(ids)),
+ipcMain.handle(CHANNELS.ptyInfo, (_event, { ids, agents, waitForCwd }) =>
+  ptyInfo(
+    pty.snapshots(ids),
+    validateAgentProcessMatchers(agents),
+    waitForCwd !== false,
+  ),
 );
 
 // -------------------------------------------------------------- Services

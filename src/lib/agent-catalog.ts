@@ -24,6 +24,12 @@ export interface BuiltinAgent {
   readonly label: string;
 }
 
+/** Process identity sent with `pty_info` for one declared agent. */
+export interface AgentProcessMatcher {
+  readonly binary: string;
+  readonly agent: string;
+}
+
 /** Recognised out of the box; always probed, whatever the user declared. */
 export const BUILTIN_AGENTS: readonly BuiltinAgent[] = [
   { id: "claude", label: "Claude Code" },
@@ -88,6 +94,25 @@ export function binaryKey(command: string): string {
   const binary = agentBinary(command);
   const cut = Math.max(binary.lastIndexOf("/"), binary.lastIndexOf("\\"));
   return cut === -1 ? binary : binary.slice(cut + 1);
+}
+
+/**
+ * Dynamic process matchers for user-declared agents. Two declarations may
+ * share a binary, but process inspection cannot distinguish their arguments,
+ * so the first declaration is the stable display identity for that process.
+ */
+export function agentProcessMatchers(
+  customAgents: readonly CustomAgent[],
+): readonly AgentProcessMatcher[] {
+  const seen = new Set<string>();
+  return customAgents.flatMap((agent) => {
+    const binary = binaryKey(agent.command);
+    if (seen.has(binary)) {
+      return [];
+    }
+    seen.add(binary);
+    return [{ binary, agent: agent.label }];
+  });
 }
 
 function slugify(label: string): string {

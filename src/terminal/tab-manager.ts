@@ -18,7 +18,10 @@ import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { sendAgentNotification } from "../lib/native-notification";
 import { getDesktopEnvironment } from "../lib/platform";
 import type { AgentChoice } from "../lib/workspace-recents";
-import { resolveAgentCommand } from "../lib/agent-catalog";
+import {
+  agentProcessMatchers,
+  resolveAgentCommand,
+} from "../lib/agent-catalog";
 import {
   MACOS_KEYMAP,
   matchBinding,
@@ -56,7 +59,10 @@ import { confirmClose } from "./close-guard";
 import { createCloseCoordinator } from "./close-coordinator";
 import { activeAfterClose } from "./tab-close";
 import { freshCwd, freshPaneInfo } from "./pane-info";
-import { defaultPtyClient, type PtyClient } from "./pty-client";
+import {
+  defaultPtyClient,
+  type PtyClient,
+} from "./pty-client";
 import { submitAllowed, type InjectOutcome } from "../prompts/inject";
 import { defaultBrowserClient } from "../browser/browser-client";
 import { browserOpen, closeBrowser, openBrowser } from "../browser/browser-store";
@@ -211,17 +217,11 @@ const WINDOWS_AGENT_TIMEOUT_MESSAGE =
   "PowerShell was not ready in time. Launch the agent manually.";
 
 function explicitAgent(info: PaneProcessInfo | undefined): PaneAgent | null {
-  if (info?.kind !== "agent") {
+  if (info?.kind !== "agent" || info.agent === null) {
     return null;
   }
-  const agent = info.agent;
-  return agent === "claude" ||
-    agent === "codex" ||
-    agent === "gemini" ||
-    agent === "opencode" ||
-    agent === "agy"
-    ? agent
-    : null;
+  const agent = info.agent.trim();
+  return agent.length > 0 ? agent : null;
 }
 
 function processLabel(info: PaneProcessInfo | undefined): string | null {
@@ -1138,7 +1138,11 @@ export function createTabManager(
       if (!opts.autoSend) {
         return "pasted";
       }
-      const [info] = await freshPaneInfo([paneId], pty);
+      const [info] = await freshPaneInfo(
+        [paneId],
+        pty,
+        agentProcessMatchers(settings.value.customAgents),
+      );
       // Re-resolved after the await: the tab could have closed across it.
       const stillOwned = ownerOf(paneId);
       const attentionBeforeSubmit = paneAttention(paneId);
@@ -1314,10 +1318,15 @@ export function createTabManager(
     return allPaneIds();
   }
 
+  function currentAgentMatchers() {
+    return agentProcessMatchers(settings.value.customAgents);
+  }
+
   const poller = createPaneInfoPoller({
     pty,
     targets: pollTargets,
     activePaneId: () => activeManager()?.activePaneId() ?? null,
+    agentMatchers: currentAgentMatchers,
     onUpdate(infos) {
       activeManager()?.updatePaneInfo(infos, home);
       // Reconcile the tracker's explicit process gate before this cycle's

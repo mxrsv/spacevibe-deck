@@ -1,5 +1,6 @@
 export type PaneProcessKind = "idle-shell" | "agent" | "busy" | "unknown";
-export type PaneAgent = "claude" | "codex" | "gemini" | "opencode" | "agy";
+/** Built-ins use stable ids; declared agents use their validated display label. */
+export type PaneAgent = string;
 
 /** Mirror of the `PtyInfo` payload returned by the Rust `pty_info` command. */
 export interface PaneProcessInfo {
