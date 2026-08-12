@@ -8,6 +8,7 @@ import {
   findPreviousReleaseTag,
   formatReleaseNotesForChannel,
   generateReleaseNotes,
+  markPreBaselineCommits,
   readReleaseCommits,
 } from "./generate-release-notes.mjs";
 
@@ -21,7 +22,8 @@ function git(cwd: string, ...args: string[]): string {
 }
 
 function commit(cwd: string, subject: string, body?: string): string {
-  const messageArgs = body === undefined ? ["-m", subject] : ["-m", subject, "-m", body];
+  const messageArgs =
+    body === undefined ? ["-m", subject] : ["-m", subject, "-m", body];
   git(cwd, "commit", "--allow-empty", ...messageArgs);
   return git(cwd, "rev-parse", "HEAD");
 }
@@ -61,9 +63,21 @@ afterEach(() => {
 
 describe("generateReleaseNotes", () => {
   const commits = [
-    releaseCommit("1", "feat(prompt-board): add catalog", "Reuse saved prompts from the chrome"),
-    releaseCommit("2", "fix: restore Windows text paste", "Paste text and folder paths on Windows"),
-    releaseCommit("3", "perf(terminal): reduce rendering", "Keep inactive panes responsive with less rendering work"),
+    releaseCommit(
+      "1",
+      "feat(prompt-board): add catalog",
+      "Reuse saved prompts from the chrome",
+    ),
+    releaseCommit(
+      "2",
+      "fix: restore Windows text paste",
+      "Paste text and folder paths on Windows",
+    ),
+    releaseCommit(
+      "3",
+      "perf(terminal): reduce rendering",
+      "Keep inactive panes responsive with less rendering work",
+    ),
     releaseCommit("4", "docs: document the release process"),
     releaseCommit("5", "refactor(settings): split the settings store"),
     releaseCommit("6", "chore(release): bump version to 0.13.0"),
@@ -97,7 +111,9 @@ describe("generateReleaseNotes", () => {
     expect(preview).toContain(
       "**Unsigned Windows Preview** — this is not the stable Windows channel.",
     );
-    expect(preview).toContain("Windows may show SmartScreen or `Unknown publisher`");
+    expect(preview).toContain(
+      "Windows may show SmartScreen or `Unknown publisher`",
+    );
     expect(preview).not.toContain("> [!WARNING]");
     expect(preview).toContain("before installation.\n\n## New features");
     expect(preview.endsWith(stable)).toBe(true);
@@ -232,12 +248,41 @@ describe("generateReleaseNotes", () => {
       generateReleaseNotes(
         [
           releaseCommit("1", "fix: improve reliability"),
-          releaseCommit("2", "feat(prompts): add list_prompt_assets client and memory fake"),
-          releaseCommit("3", "fix(test): serialize the Windows fixture", "skip"),
+          releaseCommit(
+            "2",
+            "feat(prompts): add list_prompt_assets client and memory fake",
+          ),
+          releaseCommit(
+            "3",
+            "fix(test): serialize the Windows fixture",
+            "skip",
+          ),
         ],
         { channel: "stable" },
       ),
     ).toThrow("Missing Release-Note trailer for: fix: improve reliability");
+  });
+
+  it("waives the trailer only for commits marked as predating the policy", () => {
+    const notes = generateReleaseNotes(
+      [
+        {
+          ...releaseCommit("1", "feat(window): detach a pane"),
+          preBaseline: true,
+        },
+        releaseCommit(
+          "2",
+          "fix(terminal): keep text paste",
+          "Paste text and folder paths reliably.",
+        ),
+      ],
+      { channel: "stable" },
+    );
+
+    expect(notes).toContain(
+      "- **Terminal:** Paste text and folder paths reliably.",
+    );
+    expect(notes).not.toContain("detach a pane");
   });
 
   it("refuses to publish boilerplate when no user-facing change exists", () => {
@@ -273,9 +318,7 @@ describe("release history", () => {
   it("uses the prior RC for an RC and falls back to the prior stable tag", () => {
     const tags = ["v0.13.0-rc.2", "v0.13.0-rc.1", "v0.12.3"];
 
-    expect(findPreviousReleaseTag(tags, "v0.13.0-rc.2")).toBe(
-      "v0.13.0-rc.1",
-    );
+    expect(findPreviousReleaseTag(tags, "v0.13.0-rc.2")).toBe("v0.13.0-rc.1");
     expect(
       findPreviousReleaseTag(
         ["v0.13.0-rc.1", "v0.12.3-windows-preview", "v0.12.3"],
@@ -319,8 +362,16 @@ describe("release history", () => {
           subject: "feat(board): add prompt board",
           body: "feat(board): add prompt board\n\nRelease-Note: Open reusable prompts from the chrome.\n",
         },
-        { sha: fixSha, subject: "fix: keep pane output", body: "fix: keep pane output\n" },
-        { sha: docsSha, subject: "docs: update context", body: "docs: update context\n" },
+        {
+          sha: fixSha,
+          subject: "fix: keep pane output",
+          body: "fix: keep pane output\n",
+        },
+        {
+          sha: docsSha,
+          subject: "docs: update context",
+          body: "docs: update context\n",
+        },
       ]),
     );
   });
@@ -389,9 +440,9 @@ describe("release history", () => {
       body: "docs: explain standard revert messages\n\nThis reverts commit 1234567.\n",
     };
 
-    expect(generateReleaseNotes([feature, prose], { channel: "stable" })).toContain(
-      "Detach panes into separate windows",
-    );
+    expect(
+      generateReleaseNotes([feature, prose], { channel: "stable" }),
+    ).toContain("Detach panes into separate windows");
   });
 
   it("removes commits introduced by a reverted merge", () => {
@@ -463,6 +514,109 @@ describe("release history", () => {
   });
 });
 
+describe("Release-Note policy baseline", () => {
+  const ABSENT_BASELINE = "0".repeat(40);
+
+  function createBaselineRepository(): { cwd: string; baseline: string } {
+    const cwd = createRepository();
+    commit(cwd, "feat: initial release");
+    git(cwd, "tag", "v1.0.0");
+    commit(cwd, "feat(window): detach a pane into its own window");
+    const baseline = commit(
+      cwd,
+      "feat(release): require a Release-Note trailer on every user-facing commit",
+      "Release-Note: skip",
+    );
+    return { cwd, baseline };
+  }
+
+  it("accepts an untrailered commit that predates the baseline", () => {
+    const { cwd, baseline } = createBaselineRepository();
+    commit(
+      cwd,
+      "fix(terminal): keep text paste",
+      "Release-Note: Paste text and folder paths reliably.",
+    );
+    git(cwd, "tag", "v1.1.0");
+
+    const commits = markPreBaselineCommits(
+      cwd,
+      readReleaseCommits(cwd, "v1.0.0", "v1.1.0"),
+      "v1.1.0",
+      baseline,
+    );
+
+    expect(generateReleaseNotes(commits, { channel: "stable" })).toBe(
+      [
+        "## Fixes",
+        "",
+        "- **Terminal:** Paste text and folder paths reliably.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("still rejects an untrailered commit written after the baseline", () => {
+    const { cwd, baseline } = createBaselineRepository();
+    commit(
+      cwd,
+      "fix(terminal): keep text paste",
+      "Release-Note: Paste text and folder paths reliably.",
+    );
+    commit(cwd, "feat(toolbar): add the overflow menu");
+    git(cwd, "tag", "v1.1.0");
+
+    const commits = markPreBaselineCommits(
+      cwd,
+      readReleaseCommits(cwd, "v1.0.0", "v1.1.0"),
+      "v1.1.0",
+      baseline,
+    );
+
+    // Exact message: the pre-baseline `feat(window)` commit must not be listed,
+    // and the post-baseline one must be.
+    expect(() => generateReleaseNotes(commits, { channel: "stable" })).toThrow(
+      new Error(
+        "Missing Release-Note trailer for: feat(toolbar): add the overflow menu",
+      ),
+    );
+  });
+
+  it("errors instead of exempting when the baseline is outside the history", () => {
+    const { cwd } = createBaselineRepository();
+    commit(cwd, "feat(toolbar): add the overflow menu");
+    git(cwd, "tag", "v1.1.0");
+    const commits = readReleaseCommits(cwd, "v1.0.0", "v1.1.0");
+
+    expect(() =>
+      markPreBaselineCommits(cwd, commits, "v1.1.0", ABSENT_BASELINE),
+    ).toThrow(
+      `Release-Note policy baseline ${ABSENT_BASELINE} is not reachable from v1.1.0`,
+    );
+  });
+
+  it("does not consult the baseline when every commit declares a trailer", () => {
+    const cwd = createRepository();
+    commit(cwd, "feat: initial release");
+    git(cwd, "tag", "v1.0.0");
+    commit(
+      cwd,
+      "fix(terminal): keep text paste",
+      "Release-Note: Paste text and folder paths reliably.",
+    );
+    commit(cwd, "docs: update context");
+    git(cwd, "tag", "v1.1.0");
+    const commits = readReleaseCommits(cwd, "v1.0.0", "v1.1.0");
+
+    // Nothing needs the exemption, so an unreachable baseline is not an error
+    // here — this laziness is what keeps the baseline hardcoded with no CLI or
+    // environment override to bypass it.
+    expect(
+      markPreBaselineCommits(cwd, commits, "v1.1.0", ABSENT_BASELINE),
+    ).toBe(commits);
+  });
+});
+
 describe("formatReleaseNotesForChannel", () => {
   it("reuses approved stable notes for a Windows preview retry", () => {
     const stable = "## Fixes\n\n- Restore Windows text paste.\n";
@@ -495,15 +649,7 @@ describe("CLI", () => {
 
     const result = spawnSync(
       process.execPath,
-      [
-        SCRIPT,
-        "--sha",
-        sha,
-        "--tag",
-        "v1.1.0",
-        "--channel",
-        "stable",
-      ],
+      [SCRIPT, "--sha", sha, "--tag", "v1.1.0", "--channel", "stable"],
       { cwd, encoding: "utf8" },
     );
 
@@ -523,13 +669,7 @@ describe("CLI", () => {
 
     const result = spawnSync(
       process.execPath,
-      [
-        SCRIPT,
-        "--body-file",
-        notesPath,
-        "--channel",
-        "windows-preview",
-      ],
+      [SCRIPT, "--body-file", notesPath, "--channel", "windows-preview"],
       { cwd, encoding: "utf8" },
     );
 
@@ -537,6 +677,26 @@ describe("CLI", () => {
     expect(result.stderr).toBe("");
     expect(result.stdout).toContain("**Unsigned Windows Preview**");
     expect(result.stdout).toContain("Restore Windows text paste");
+  });
+
+  it("fails the release when the real policy baseline is outside the checkout", () => {
+    const cwd = createRepository();
+    commit(cwd, "feat: initial release");
+    git(cwd, "tag", "v1.0.0");
+    commit(cwd, "feat(toolbar): add the overflow menu");
+    const sha = git(cwd, "rev-parse", "HEAD");
+
+    const result = spawnSync(
+      process.execPath,
+      [SCRIPT, "--sha", sha, "--tag", "v1.1.0", "--channel", "stable"],
+      { cwd, encoding: "utf8" },
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain(
+      "Release-Note policy baseline d7e99d884910f2c153efab23e8b5abfc2a6d3c6e is not reachable",
+    );
   });
 
   it("accepts a SHA plus its source tag and fails nonzero for empty notes", () => {
@@ -548,15 +708,7 @@ describe("CLI", () => {
 
     const result = spawnSync(
       process.execPath,
-      [
-        SCRIPT,
-        "--sha",
-        sha,
-        "--tag",
-        "v1.1.0",
-        "--channel",
-        "windows-preview",
-      ],
+      [SCRIPT, "--sha", sha, "--tag", "v1.1.0", "--channel", "windows-preview"],
       { cwd, encoding: "utf8" },
     );
 

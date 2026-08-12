@@ -26,6 +26,21 @@ const SECTION_HEADINGS = {
   breaking: "Breaking changes",
 };
 const PUBLIC_RELEASE_TYPES = new Set(["feat", "fix", "perf"]);
+// Baseline of the mandatory Release-Note rule. This is
+// `feat(release): require a Release-Note trailer on every user-facing commit`,
+// the commit that introduced the requirement. Every commit that is an ancestor
+// of it was written before the rule existed and is exempt; every commit after it
+// is bound by it, so no future change can ship unannounced.
+//
+// It is expressed as ancestry rather than a date or a list of shas because this
+// repository rebases: dates and list positions go stale, `git rev-list` does not.
+// The two alternatives were rejected on purpose — backfilling trailers onto the
+// commits already published under the old rule means rewriting pushed history,
+// and downgrading the rule to a warning deletes the guarantee the gate exists
+// for. The baseline is deliberately not overridable from the CLI or the
+// environment: a baseline pointing at a later commit would exempt everything
+// after it, which is the failure this gate is built to prevent.
+const RELEASE_NOTE_POLICY_BASELINE = "d7e99d884910f2c153efab23e8b5abfc2a6d3c6e";
 const ACRONYMS = new Map([
   ["api", "API"],
   ["cli", "CLI"],
@@ -146,9 +161,7 @@ function finalTrailerLines(body) {
 function trailerDescriptions(body, pattern) {
   return finalTrailerLines(body).flatMap((line) => {
     const match = pattern.exec(line);
-    return match?.groups === undefined
-      ? []
-      : [match.groups.description.trim()];
+    return match?.groups === undefined ? [] : [match.groups.description.trim()];
   });
 }
 
@@ -205,22 +218,35 @@ function parsePublicEntries(commit) {
   }));
 }
 
+function requiresReleaseNote(commit) {
+  const subject = parseConventionalSubject(commit.subject);
+  if (subject === null) {
+    return false;
+  }
+  const hasBreakingMetadata =
+    subject.breaking !== undefined ||
+    trailerDescriptions(commit.body, BREAKING_CHANGE_TRAILER_PATTERN).length >
+      0;
+  return PUBLIC_RELEASE_TYPES.has(subject.type) || hasBreakingMetadata;
+}
+
+function declaresReleaseNote(commit) {
+  return (
+    trailerDescriptions(commit.body, RELEASE_NOTE_TRAILER_PATTERN).length > 0
+  );
+}
+
+function isUndeclaredPublicCommit(commit) {
+  return requiresReleaseNote(commit) && !declaresReleaseNote(commit);
+}
+
 function assertPublicCommitTrailers(commits) {
-  const missing = commits.filter((commit) => {
-    const subject = parseConventionalSubject(commit.subject);
-    if (subject === null) {
-      return false;
-    }
-    const hasBreakingMetadata =
-      subject.breaking !== undefined ||
-      trailerDescriptions(commit.body, BREAKING_CHANGE_TRAILER_PATTERN).length > 0;
-    if (!PUBLIC_RELEASE_TYPES.has(subject.type) && !hasBreakingMetadata) {
-      return false;
-    }
-    const hasReleaseNote =
-      trailerDescriptions(commit.body, RELEASE_NOTE_TRAILER_PATTERN).length > 0;
-    return !hasReleaseNote;
-  });
+  // `preBaseline` is attached by markPreBaselineCommits to commits that are
+  // ancestors of RELEASE_NOTE_POLICY_BASELINE. Anything without the flag — every
+  // fabricated commit and every commit written since the rule — stays bound.
+  const missing = commits.filter(
+    (commit) => commit.preBaseline !== true && isUndeclaredPublicCommit(commit),
+  );
   if (missing.length > 0) {
     throw new Error(
       `Missing Release-Note trailer for: ${missing.map((commit) => commit.subject).join("; ")}`,
@@ -338,7 +364,9 @@ export function generateReleaseNotes(commits, options = {}) {
   assertPublicCommitTrailers(active);
   const entries = active.flatMap(parsePublicEntries);
   if (entries.length === 0) {
-    throw new Error("No public Release-Note trailers or breaking changes found");
+    throw new Error(
+      "No public Release-Note trailers or breaking changes found",
+    );
   }
 
   const sections = SECTION_ORDER.flatMap((type) => {
@@ -490,6 +518,42 @@ export function readReleaseCommits(cwd, previousTag, currentRef) {
   });
 }
 
+function readShaList(cwd, revision) {
+  const output = runGit(cwd, ["rev-list", revision]);
+  return output === "" ? [] : output.split(/\r?\n/u);
+}
+
+function preBaselineShas(cwd, currentRef, baseline) {
+  assertSafeRevision(currentRef, "release ref");
+  assertSafeRevision(baseline, "Release-Note policy baseline");
+  const examined = new Set(readShaList(cwd, currentRef));
+  if (!examined.has(baseline)) {
+    throw new Error(
+      `Release-Note policy baseline ${baseline} is not reachable from ${currentRef}: this history cannot show which commits predate the trailer rule. Check out the full history (fetch-depth: 0) — an unreachable baseline is never treated as an exemption.`,
+    );
+  }
+  return new Set(readShaList(cwd, baseline));
+}
+
+export function markPreBaselineCommits(
+  cwd,
+  commits,
+  currentRef,
+  baseline = RELEASE_NOTE_POLICY_BASELINE,
+) {
+  // Only a commit that would otherwise fail the gate needs the exemption, so a
+  // release whose user-facing commits all declare a trailer never depends on the
+  // baseline being fetched. As soon as one does need it, an unresolvable
+  // baseline is a loud error rather than a blanket exemption.
+  if (!commits.some(isUndeclaredPublicCommit)) {
+    return commits;
+  }
+  const exempt = preBaselineShas(cwd, currentRef, baseline);
+  return commits.map((commit) =>
+    exempt.has(commit.sha) ? { ...commit, preBaseline: true } : commit,
+  );
+}
+
 function parseArguments(argv) {
   let options = {
     channel: "stable",
@@ -539,9 +603,9 @@ export function runCli(argv, cwd = process.cwd()) {
     listMergedTags(cwd, options.currentRef),
     currentTag,
   );
-  const commits = readReleaseCommits(
+  const commits = markPreBaselineCommits(
     cwd,
-    previousTag,
+    readReleaseCommits(cwd, previousTag, options.currentRef),
     options.currentRef,
   );
   return generateReleaseNotes(commits, { channel: options.channel });

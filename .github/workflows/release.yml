@@ -73,6 +73,14 @@ jobs:
           # A tag push checks out its own generator. A manual Windows retry
           # checks out the workflow branch so an older source tag can still use
           # the current release tooling without changing the artifact source.
+          #
+          # The full history is also what makes the Release-Note gate decidable.
+          # Commits that are ancestors of RELEASE_NOTE_POLICY_BASELINE in
+          # scripts/generate-release-notes.mjs — the commit that introduced the
+          # trailer rule — predate the rule and do not need a trailer; everything
+          # after it does. A shallow checkout cannot see that baseline, and the
+          # generator then fails the release instead of exempting the commits it
+          # can no longer classify. Do not lower this depth.
           fetch-depth: 0
 
       - name: Setup Node
