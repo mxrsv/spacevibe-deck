@@ -3,7 +3,7 @@ import { applyThemeVars } from "../lib/theme-vars";
 import { settings, updateSettings } from "../settings/settings-store";
 import { resolveTheme, THEME_PRESETS } from "../settings/themes";
 import { GALLERY_SECTIONS } from "./section-registry";
-import { unhandledCommands } from "./tauri-stub";
+import { unhandledCommands } from "./host-stub";
 
 /**
  * The gallery shell.
