@@ -406,7 +406,8 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   verified 180.47 kB gzip with no gallery code in `dist/`, and
   [`scripts/gallery-entry.test.ts`](scripts/gallery-entry.test.ts) `current`
   fails if any app module ever imports from `src/gallery/`. **Tauri IPC is
-  stubbed** in `src/gallery/tauri-stub.ts`, installed as an import side effect
+  stubbed** in `src/gallery/host-stub.ts` (named `tauri-stub.ts` until it grew
+  the Electron hook too), installed as an import side effect
   because ES imports hoist and a call at the top of the entry would still run
   after every module below it; unknown commands resolve `null` and are listed
   in the page footer rather than only console-warned. **No direction picker
@@ -489,6 +490,40 @@ width: 100vw }` at a specificity the gallery's cell override merely tied
   sidebar's fourth workspace row was cut in half. **Still blocked:** the two or
   three real ChatGPT desktop screenshots (review §6 item 1) have not been
   supplied, so no direction is designed and no token value is picked.
+
+  **The harness is now merge-ready for `electron-migration`, proven by merging
+  it (2026-08-12).** It was not before, and a clean `git merge-tree` said
+  nothing about it: `DesktopChromeProps` is identical on both branches and
+  `app.tsx` merges coherently — the inline CSS-var block disappears and
+  `applyThemeVars` takes over — but the stub installed only
+  `window.__TAURI_INTERNALS__`, and that branch replaced it with
+  `src/host/bridge.ts`, which reads `globalThis.__deckHost` and throws when it
+  is absent. **29 non-test renderer modules** import that layer,
+  `settings-store` among them. The failure would have been silent in the worst
+  way: `unhandledCommands` only counts calls that reach the stub, so zero
+  arriving would have printed "every IPC call the specimens made was answered
+  by the stub" while nothing was stubbed at all. **Both hooks are installed
+  now**, over one canned table split three ways — the channels both hosts share
+  (`bridge.ts` kept Tauri's names), Tauri's `plugin:*`, and the Electron host's
+  flat ones. The store shapes genuinely differ (resource id returning
+  `[value, found]` versus file name returning the bare value), so both are
+  answered against one backing map. Scale factor, focus and drag-drop are
+  deliberately NOT stubbed for Electron: `window-host.ts` answers them from
+  `devicePixelRatio`, `document.hasFocus()` and DOM drag events with no IPC
+  hop, so a channel would invent a contract that does not exist.
+  **`CELL_WIDTH` is 760px, the larger of the two frames' measured thresholds** —
+  the collapsed DL-16 command row also gives up `--frame-lights-w` (78px) to
+  the traffic lights, so labels clip until 760 there while this branch clears at
+  680, and above each threshold nothing moves up to 900. **Verified on a real
+  merge rather than asserted**: in a worktree holding the merged tree the
+  gallery boots, all seven sections list, an unknown channel sent through
+  `__deckHost` surfaces in the footer (so "all answered" is earned rather than a
+  zero-call false positive), a `store_set`/`store_get` round-trip returns its
+  value, ten settings sections and 78 config rows render, and cycling theme
+  moves `--bg` from `#16161e` to `#282a36`. Gates on that merged tree: **1495
+  tests / 129 files**, tsc, `generate:menu:check`, build 178.30 kB gzip. The
+  only merge conflict is `AGENTS.md`, where both branches appended to this
+  list — the resolution is a union.
 
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
