@@ -7,6 +7,10 @@ const host = process.env.TAURI_DEV_HOST;
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [preact()],
+  // Relative asset paths: Electron loads index.html over file://, where the
+  // default absolute "/assets/..." resolves to the filesystem root, 404s, and
+  // produces a blank window with nothing on stderr.
+  base: "./",
   build: {
     // esbuild 0.25 mis-minifies xterm 6's function-local enum in
     // InputHandler.requestMode: it drops the declaration but leaves a renamed

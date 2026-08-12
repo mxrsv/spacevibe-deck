@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // WorkspaceSidebar pulls in Tauri-backed stores (workspace logo persistence,
 // favicon scanning, the native file dialog) through its imports; stub them so
 // the tree mounts under jsdom, mirroring the settings section tests.
-vi.mock("@tauri-apps/plugin-store", () => ({
+vi.mock("../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async () => undefined),
@@ -15,8 +15,8 @@ vi.mock("@tauri-apps/plugin-store", () => ({
     })),
   },
 }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(async () => null) }));
-vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
+vi.mock("../host/dialog-host", () => ({ open: vi.fn(async () => null) }));
+vi.mock("../host/bridge", () => ({ invoke: vi.fn(async () => null) }));
 // installFileDrop talks to the real webview/window Tauri APIs (drag & drop) —
 // not exercised by these tests, so replace it with a no-op unlisten.
 vi.mock("../terminal/file-drop", () => ({

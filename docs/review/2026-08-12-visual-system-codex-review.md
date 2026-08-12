@@ -194,8 +194,10 @@ smallest set of integers; it is that nobody picks `35`, `999` or `1000` again.
 
 ## 4. Proposed rulebook sections
 
-§15 is already reserved for docked side panels (the file-explorer fork), so these start at
-§16.
+On `main`, §15 is reserved for docked side panels (the file-explorer fork) and not yet
+written. On `electron-migration`, §15 has already shipped as **Shortcut rows**
+(2026-08-11), and that entry's own text says the file-explorer's planned §15 must
+renumber when it lands. Either way §16 is free on both branches, so these start there.
 
 ### 16. Numeric scales
 

@@ -1,4 +1,4 @@
-import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { readText, writeText } from "../host/shell-host";
 import { reportChromeMessage } from "../chrome/events";
 
 interface TerminalClipboardTarget {

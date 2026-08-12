@@ -185,6 +185,22 @@ describe("createPaneInfoPoller", () => {
     expect(ptyInfo).not.toHaveBeenCalled();
   });
 
+  it("sends the live declared-agent matchers with each process snapshot", async () => {
+    const ptyInfo = vi.fn().mockResolvedValue([info(1, "/repo")]);
+    const matchers = [{ binary: "aider", agent: "Aider" }];
+    const poller = createPaneInfoPoller({
+      pty: { ptyInfo, gitBranch: async () => null },
+      targets: () => [1],
+      activePaneId: () => null,
+      agentMatchers: () => matchers,
+      onUpdate: () => {},
+    });
+
+    await poller.poll();
+
+    expect(ptyInfo).toHaveBeenCalledWith([1], matchers, false);
+  });
+
   it("polls on the interval after start() and stops on stop()", async () => {
     vi.useFakeTimers();
     const ptyInfo = vi.fn().mockResolvedValue([info(1, "/repo")]);
@@ -205,5 +221,39 @@ describe("createPaneInfoPoller", () => {
     await vi.advanceTimersByTimeAsync(250);
     expect(ptyInfo).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
+  });
+
+  it("serializes overlapping polls and coalesces them into one trailing refresh", async () => {
+    const pending: Array<(infos: PaneProcessInfo[]) => void> = [];
+    const ptyInfo = vi.fn(
+      () =>
+        new Promise<PaneProcessInfo[]>((resolve) => {
+          pending.push(resolve);
+        }),
+    );
+    let ids = [1];
+    const poller = createPaneInfoPoller({
+      pty: { ptyInfo, gitBranch: async () => null },
+      targets: () => ids,
+      activePaneId: () => null,
+      onUpdate: () => {},
+    });
+
+    const first = poller.poll();
+    ids = [2];
+    const second = poller.poll();
+
+    expect(ptyInfo).toHaveBeenCalledTimes(1);
+    expect(ptyInfo).toHaveBeenNthCalledWith(1, [1], [], false);
+
+    pending[0]([info(1, "/first")]);
+    await vi.waitFor(() => expect(ptyInfo).toHaveBeenCalledTimes(2));
+    expect(ptyInfo).toHaveBeenNthCalledWith(2, [2], [], false);
+
+    pending[1]([info(2, "/second")]);
+    await Promise.all([first, second]);
+
+    expect(poller.infoFor(1)?.cwd).toBe("/first");
+    expect(poller.infoFor(2)?.cwd).toBe("/second");
   });
 });

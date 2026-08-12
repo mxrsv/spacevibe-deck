@@ -1,6 +1,6 @@
 import { signal } from "@preact/signals";
-import { invoke } from "@tauri-apps/api/core";
-import { Store } from "@tauri-apps/plugin-store";
+import { invoke } from "../host/bridge";
+import { Store } from "../host/store-host";
 import { normalizeWorkspacePath } from "../lib/workspace-label";
 import { reportPersistError } from "../chrome/events";
 

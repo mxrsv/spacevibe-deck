@@ -1,9 +1,9 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { useSignalEffect } from "@preact/signals";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ask, message } from "@tauri-apps/plugin-dialog";
+import { listen, type UnlistenFn } from "../host/bridge";
+import { getCurrentWindow } from "../host/window-host";
+import { ask, message } from "../host/dialog-host";
 import { installQuitGuard } from "../lib/quit-guard";
 import {
   confirmClose,
@@ -19,7 +19,11 @@ import { applyThemeVars } from "../lib/theme-vars";
 import { resolveCwds, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
 import { settings, updateSettings } from "../settings/settings-store";
-import { agentOptions, probeNames } from "../lib/agent-catalog";
+import {
+  agentOptions,
+  agentProcessMatchers,
+  probeNames,
+} from "../lib/agent-catalog";
 import { resolveTheme } from "../settings/themes";
 import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
@@ -35,10 +39,12 @@ import type { AgentChoice } from "../lib/workspace-recents";
 import {
   boardOpen,
   editorRequest,
+  persistError,
   promptsOpen,
   reportPersistError,
   saveDialogOpen,
   settingsOpen,
+  tabPopoverOpen,
 } from "../chrome/events";
 import { OpenBoard } from "../open-board/open-board";
 import { PresetEditor } from "../presets/preset-editor";
@@ -49,6 +55,14 @@ import {
 import type { PresetArtifact } from "../presets/mock-model";
 import { PersistErrorBar } from "../presets/persist-error-bar";
 import { PromptPopover } from "../prompts/prompt-popover";
+import { BrowserPanel } from "../browser/browser-panel";
+import { defaultBrowserClient } from "../browser/browser-client";
+import {
+  browserOpen,
+  browserWidthLive,
+  closeBrowser,
+  initBrowserBridge,
+} from "../browser/browser-store";
 import { capturePromptTarget } from "../prompts/inject";
 import { defaultPromptAssetsClient } from "../prompts/prompt-assets-client";
 import { TabBar } from "./tab-bar";
@@ -77,6 +91,7 @@ import {
   runUpdateMenuAction,
 } from "../updater/update-menu-actions";
 import { defaultLinkClient } from "../terminal/link-client";
+import { dirtyPaths } from "../files/file-surface-store";
 
 interface DesktopChromeProps {
   readonly sidebar: boolean;
@@ -100,18 +115,23 @@ export function DesktopChrome(props: DesktopChromeProps) {
     .filter(Boolean)
     .join(" ");
 
+  // DL-18: one authored command row. On macOS the traffic lights sit INSIDE it
+  // behind a fixed inset instead of owning an empty band of their own — the
+  // frame is Deck's chrome, not OS spacing the app happens to sit under. In
+  // top-tab mode the tabs occupy that same row; in sidebar mode the row carries
+  // the actions and the sidebar starts beneath it.
   return (
     <div class={classes}>
-      {!windows ? (
+      {props.sidebar ? (
         <div
-          class="titlebar"
+          class="deck-frame"
           data-tauri-drag-region
-          onDblClick={props.onMacTitlebarDoubleClick}
+          onDblClick={windows ? undefined : props.onMacTitlebarDoubleClick}
         >
-          {props.sidebar ? props.toolbar : null}
-        </div>
-      ) : props.sidebar ? (
-        <div class="deck-toolbar" aria-label="Deck actions">
+          {!windows ? (
+            <div class="deck-frame__lights" aria-hidden="true" />
+          ) : null}
+          <div class="deck-frame__spacer" data-tauri-drag-region />
           {props.toolbar}
         </div>
       ) : null}
@@ -223,9 +243,20 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       check: checkForUpdate,
       confirmInstall: () => {
         const manager = tabsRef.current;
+        // Installing an update is a FOURTH exit, which the quit/window-close/
+        // tab-close set did not count: `app_relaunch` calls `app.exit(0)` and
+        // never reaches `before-quit`, so main's dirty registry is never
+        // consulted on this path. The renderer therefore has to supply the
+        // unsaved-file list itself. It is empty until a file surface exists,
+        // and correct the moment one does.
         return manager === null
           ? Promise.resolve(false)
-          : confirmClose(manager.allPaneIds(), defaultPtyClient, UPDATE_COPY);
+          : confirmClose(
+              manager.allPaneIds(),
+              defaultPtyClient,
+              UPDATE_COPY,
+              dirtyPaths(),
+            );
       },
       flush: flushSettingsSave,
       relaunch: relaunchDeck,
@@ -410,6 +441,36 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       })
       .catch((err: unknown) => {
         console.error("Failed to install quit guard:", err);
+      });
+    return () => unlisten?.();
+  }, []);
+
+  // Grabs arrive from the browser panel's page, not from a Deck surface, so
+  // this listener is installed for the window's life rather than while some
+  // component is mounted: the panel can be closed and reopened, and the pane a
+  // grab lands in has nothing to do with the panel's own state.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void initBrowserBridge({
+      client: defaultBrowserClient,
+      target: {
+        activePaneId: () => tabsRef.current?.activePaneId() ?? null,
+        paste: async (paneId, text) => {
+          // `autoSend: false`, always — a grab is text from a page Deck did
+          // not write, and nothing from there submits itself to an agent.
+          const outcome = await (tabsRef.current?.injectIntoPane(paneId, text, {
+            autoSend: false,
+            expectedAgent: null,
+          }) ?? Promise.resolve("no-target" as const));
+          return outcome === "pasted" || outcome === "sent";
+        },
+      },
+    })
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch((err: unknown) => {
+        console.error("Failed to listen for browser grabs:", err);
       });
     return () => unlisten?.();
   }, []);
@@ -614,6 +675,24 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   });
 
+  /**
+   * Everything that must hide the browser panel's native view.
+   *
+   * Wider than `overlayCoversPane()` on purpose: that one answers "is the
+   * FOCUSED PANE covered", which is about whether a pane-scoped action still
+   * makes sense. This one answers "is any DOM pixel trying to paint over the
+   * stage", because a native view wins that contest no matter the z-index.
+   */
+  const panelObscured = (): boolean =>
+    overlayCoversPane() ||
+    promptsOpen.value ||
+    tabPopoverOpen.value ||
+    persistError.value !== null;
+
+  /** Live drag width while resizing, the persisted setting otherwise. */
+  const browserWidth = (): number =>
+    browserWidthLive.value ?? settings.value.browserWidth;
+
   const closePrompts = (): void => {
     promptsOpen.value = false;
     tabsRef.current?.focusActive();
@@ -630,7 +709,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const promptPopover = promptsOpen.value ? (
     <PromptPopover
       capture={() =>
-        capturePromptTarget(tabsRef.current?.activePaneId() ?? null)
+        capturePromptTarget(
+          tabsRef.current?.activePaneId() ?? null,
+          defaultPtyClient,
+          agentProcessMatchers(settings.value.customAgents),
+        )
       }
       loadAssets={(target) =>
         defaultPromptAssetsClient.list(target.agent ?? "", target.cwd)
@@ -718,8 +801,31 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         />
       }
       stage={
-        <main class="stage">
+        <main
+          class={`stage ${browserOpen.value ? "stage--browser" : ""}`}
+          // One number, two consumers: the panel's own column and the inset
+          // that keeps the terminal grid clear of it. A drag updates the live
+          // signal, so both move together instead of the terminals catching up
+          // when the pointer is released.
+          style={{ "--browser-w": `${browserWidth()}px` }}
+        >
           <div class="stage__tabs" ref={stagesRef} />
+          {browserOpen.value ? (
+            <BrowserPanel
+              width={browserWidth()}
+              onWidthChange={(width) => updateSettings({ browserWidth: width })}
+              onClose={() => void closeBrowser(defaultBrowserClient)}
+              // The native view paints above every DOM layer, so "something
+              // floats over the stage" has to reach the host as a hide — CSS
+              // cannot put anything in front of it.
+              //
+              // `overlayCoversPane()` alone was not enough, and the gap was
+              // not cosmetic: the Prompt Board popover is `right: 0` and 320px
+              // wide, so at any panel width it opens INSIDE the column and the
+              // user types into something they cannot see.
+              hidden={panelObscured()}
+            />
+          ) : null}
           {boardOpen.value ? (
             <OpenBoard
               canCancel={tabViews.value.length > 0}

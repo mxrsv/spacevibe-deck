@@ -1,8 +1,8 @@
 import { Plus, X } from "lucide-preact";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
-import { open } from "@tauri-apps/plugin-dialog";
-import type { UnlistenFn } from "@tauri-apps/api/event";
+import { open } from "../host/dialog-host";
+import type { UnlistenFn } from "../host/bridge";
 import {
   activeTabIndex,
   IDLE_ATTENTION_SUMMARY,
@@ -22,10 +22,10 @@ import {
   setWorkspaceLogoFromPath,
 } from "../settings/workspace-logo-store";
 import { pickImagePath } from "../settings/logo-store";
-import { reportPersistError } from "../chrome/events";
+import { reportPersistError, tabPopoverOpen } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
 import { WorkspaceLogo } from "./workspace-logo";
-import { shortcutLabel } from "../lib/shortcut-label";
+import { titleWithShortcut } from "../lib/shortcut-label";
 
 interface WorkspaceSidebarProps {
   onSelectTab(index: number): void;
@@ -52,6 +52,14 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
     top: number;
     anchorEl: HTMLElement;
   } | null>(null);
+
+  // Mirror the popover's open state into the shared signal — the browser
+  // panel's native view has to be hidden while anything floats over the stage,
+  // and it cannot see a component-local signal.
+  useSignalEffect(() => {
+    tabPopoverOpen.value = popover.value !== null;
+  });
+
   const popoverTab =
     popover.value === null
       ? undefined
@@ -246,7 +254,7 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
         <button
           type="button"
           class="wsbar__add"
-          title={`New tab (${shortcutLabel("new-tab")})`}
+          title={titleWithShortcut("New tab", "new-tab")}
           aria-label="New tab"
           onClick={props.onNewTab}
         >

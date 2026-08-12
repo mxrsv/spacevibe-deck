@@ -1,8 +1,8 @@
 import { FolderOpen, FolderPlus, Plus, Trash2, X } from "lucide-preact";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "../host/bridge";
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open } from "../host/dialog-host";
 import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { countLeaves } from "../lib/split-tree";
 import { isBuiltIn, type Preset } from "../lib/preset-schema";

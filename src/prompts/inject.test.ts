@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { capturePromptTarget, submitAllowed } from "./inject";
 import { createMemoryPtyClient } from "../terminal/pty-client";
 import type { PaneAttentionSnapshot } from "../terminal/agent-attention";
@@ -148,6 +148,18 @@ describe("capturePromptTarget", () => {
       agent: null,
       cwd: "/repo",
     });
+  });
+
+  it("forwards declared-agent matchers to the fresh process snapshot", async () => {
+    const base = createMemoryPtyClient({
+      infos: new Map([[7, agentInfo({ id: 7, agent: "Aider" })]]),
+    });
+    const pty = { ...base, ptyInfo: vi.fn(base.ptyInfo) };
+    const matchers = [{ binary: "aider", agent: "Aider" }];
+
+    await capturePromptTarget(7, pty, matchers);
+
+    expect(pty.ptyInfo).toHaveBeenCalledWith([7], matchers);
   });
 
   it("has no target with no active pane", async () => {

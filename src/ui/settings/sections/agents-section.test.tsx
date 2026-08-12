@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The section pulls in the Tauri-backed settings store; stub it so the
 // component tree mounts under jsdom.
-vi.mock("@tauri-apps/plugin-store", () => ({
+vi.mock("../../../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async () => undefined),
@@ -154,6 +154,21 @@ describe("AgentsSection", () => {
     expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
       "already used",
     );
+  });
+
+  it("refuses a name spelled like a built-in's id", () => {
+    mount();
+    // The label is not only shown: `agentProcessMatchers` sends it as the
+    // identity a matched process reports, and "claude" reaching `dotColor` and
+    // `isPromptAgentId` would give an unrelated CLI Claude's dot and Claude's
+    // prompt snippets. Every built-in id is refused, not just this one.
+    for (const builtin of BUILTIN_AGENTS) {
+      declare(builtin.id, "mytool");
+      expect(settings.value.customAgents).toEqual([]);
+      expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
+        "built-in agent's id",
+      );
+    }
   });
 
   it("refuses a second agent with the same name", () => {

@@ -39,6 +39,13 @@ export function applyThemeVars(
   rootStyle.setProperty("--red", theme.red ?? FALLBACK_RED);
   rootStyle.setProperty("--green", theme.green ?? FALLBACK_GREEN);
   rootStyle.setProperty("--yellow", theme.yellow ?? FALLBACK_YELLOW);
+  // `:root` declares `--status-unread: var(--yellow)`, and a custom property
+  // holding `var()` is substituted where it is DECLARED — so the badge keeps
+  // whatever yellow `:root` resolved and cannot follow a theme published
+  // further down the tree. Publishing it here, like every other derived
+  // token, is a no-op on `:root` and is what lets the gallery's matrix show
+  // four themes at once without one of them lying about this colour.
+  rootStyle.setProperty("--status-unread", theme.yellow ?? FALLBACK_YELLOW);
   rootStyle.setProperty("--magenta", theme.magenta ?? FALLBACK_MAGENTA);
   rootStyle.setProperty("--cyan", theme.cyan ?? FALLBACK_CYAN);
   rootStyle.setProperty("--tone", chrome.tone);

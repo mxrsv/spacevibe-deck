@@ -42,8 +42,12 @@
   --ui-font:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
-  --titlebar-h: 26px;
-  --tabbar-h: 33px;
+  /* DL-18: the single command row. 34px carries a 26px control comfortably
+     and clears the macOS traffic lights, which need ~28px of vertical room. */
+  --frame-h: 34px;
+  /* macOS traffic-light cluster: 3 buttons from x=20, ~70px to the last edge,
+     plus breathing room before the first tab. */
+  --frame-lights-w: 78px;
   --status-h: 28px;
   --sidebar-w: 200px;
   --radius: 10px;
@@ -68,49 +72,67 @@ body,
   height: 100vh;
   width: 100vw;
   display: grid;
-  grid-template-rows: var(--titlebar-h) var(--tabbar-h) 1fr var(--status-h);
+  /* DL-18: ONE command row. There is no separate title bar — the traffic
+     lights sit inside this row behind a reserved inset, so the frame is
+     authored chrome rather than an empty OS band above the app. */
+  grid-template-rows: var(--frame-h) 1fr var(--status-h);
   color: var(--text-primary);
   font-family: var(--ui-font);
   font-size: 13px;
   background: var(--bg);
 }
 
-/* ── Title bar: traffic lights only, full-width drag region ── */
-
-.titlebar {
-  background: var(--bg);
-}
-
-/* Native Windows chrome owns the system title row; top tabs start at row 1. */
+/* Native Windows chrome owns the system title row, so there is no inset to
+   reserve — the row is the same height and carries the same content. */
 .window--windows {
-  grid-template-rows: var(--tabbar-h) 1fr var(--status-h);
+  --frame-lights-w: 0px;
 }
 
-/* ── Sidebar shell: titlebar / [sidebar | stage] / status ── */
+/* ── Sidebar shell: frame / [sidebar | stage] / status ── */
 
 .window--sidebar {
-  /* Taller titlebar: it hosts the chrome actions in this mode. */
-  --titlebar-h: 34px;
-  grid-template-rows: var(--titlebar-h) 1fr var(--status-h);
   grid-template-columns: var(--sidebar-w) 1fr;
 }
 
-.window--sidebar > .titlebar,
-.window--sidebar > .deck-toolbar {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 8px;
+/* ── DL-18: the application frame ───────────────────────────
+   Traffic lights, navigation and actions share one surface and one seam.
+   `--frame-lights-w` is the macOS cluster's fixed footprint: the buttons are
+   drawn by the OS on top of the web contents, so the row reserves the space
+   rather than laying them out. */
+
+.deck-frame {
+  height: var(--frame-h);
+  background: var(--chrome-1);
   /* DL-2.3: this line is a boundary between two surfaces, not a line inside
      one, so it takes the recessed seam rather than DL-3.3's general-purpose
      hairline. Copy this citation, not a DL-3.3 one, when migrating the next
      surface off --hair. */
   border-bottom: 1px solid var(--seam-recessed);
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
 }
 
-.deck-toolbar {
-  background: var(--bg);
+/* The reserved footprint of the macOS traffic lights. Not a decoration and not
+   interactive — the OS paints its buttons over exactly this box, and content
+   placed here would sit underneath them. */
+.deck-frame__lights {
+  flex: 0 0 var(--frame-lights-w);
+  align-self: stretch;
+  -webkit-app-region: drag;
+}
+
+/* Windows draws its own controls on the right, so there is nothing to reserve
+   on the left and the element collapses to zero rather than leaving a gap. */
+.window--windows .deck-frame__lights {
+  display: none;
+}
+
+.deck-frame__spacer {
+  flex: 1 1 auto;
+  align-self: stretch;
 }
 
 .window--sidebar > .stage {
@@ -455,11 +477,14 @@ button.attn-mark:hover {
 
 /* ── Tab bar ─────────────────────────────────────────────── */
 
+/* DL-18: in top-tab mode the tab bar IS the frame — same height, same surface,
+   same single hairline, and it reserves the traffic-light inset itself. */
 .tabbar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 8px 0 6px;
+  height: var(--frame-h);
+  padding: 0 8px 0 0;
   background: var(--chrome-1);
   border-bottom: 1px solid var(--seam-recessed);
   min-width: 0;
@@ -927,6 +952,99 @@ button.attn-mark:hover {
   inset: 0;
   padding: 8px;
   display: flex;
+}
+
+/* ── Browser panel: a docked column on the right of the stage (DL-19) ─────
+   The column is real: the terminal grid's own inset shrinks by exactly the
+   panel's width, so panes resize around it instead of being covered. The web
+   content itself is a native view the host positions over
+   `.browser-panel__view`, which is why that element paints nothing at all. */
+
+.stage--browser .stage__tabs {
+  right: var(--browser-w);
+}
+
+.browser-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--browser-w);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--chrome-2);
+  /* DL-19.2 / DL-3.3: structure is a hairline, never a shadow. */
+  border-left: 1px solid var(--hair);
+}
+
+/* Drag target for the width, on the seam itself. Wider than the hairline it
+   sits on so it can be hit, and transparent so it does not draw a second one. */
+.browser-panel__grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 7px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 1;
+}
+
+.browser-panel__bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.browser-panel__form {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.browser-panel__url {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  outline: none;
+}
+
+.browser-panel__url:focus {
+  /* DL-3.1: accent marks the interactive/focused state and nothing else. */
+  border-color: var(--accent);
+}
+
+.browser-panel__url::placeholder {
+  color: var(--text-faint);
+}
+
+.browser-panel__note {
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 11px;
+  /* DL-3.4: a hint is faint, not muted. */
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--hair);
+}
+
+.browser-panel__note--error {
+  color: var(--red);
+}
+
+/* Deliberately empty: the host's native view covers exactly this rectangle. */
+.browser-panel__view {
+  flex: 1;
+  min-height: 0;
 }
 
 .tab-stage {
@@ -1624,6 +1742,78 @@ button.attn-mark:hover {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* ── Shortcut rows (DL §17) ─────────────────────────────────────────────
+   A reference row: the key names an action, the value slot holds one chord
+   per platform. Still a `cfg-row` — same hover, same hairline, same rhythm —
+   because a shortcut list that styled itself differently would read as a
+   second kind of settings surface (DL-17.1). */
+.cfg-row--shortcut > .cfg-row__key {
+  flex: 1 1 auto;
+}
+
+.cfg-chords {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Each platform's chord and its tag travel together (DL-17.2). */
+.cfg-chord-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Which keymap this chord belongs to. Faint and lowercase: it labels the
+   value, it is not a value of its own (DL-17.2). */
+.cfg-chord-tag {
+  font-family: var(--ui-font);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  /* Both tags are 3 characters today; fixing the width keeps the chords in a
+     column down the list rather than sliding with the tag text. */
+  min-width: 2.2em;
+  text-align: right;
+}
+
+/* Fixed width so ⌘D and ⌥⌘↩ leave the rows aligned rather than ragged. */
+.cfg-chord {
+  min-width: 8.5ch;
+  justify-content: center;
+}
+
+/* An action with no chord on this platform. Not an error — most actions ship
+   bound on one keymap only (DL-17.4). */
+.cfg-chord--unbound {
+  color: var(--text-faint);
+}
+
+/* Recording. The accent border is the same "this is live" signal a focused
+   pill already carries; nothing moves (DL-1.2). */
+.cfg-chord--listening {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* The non-running platform's chord: DL-17.3's read-only value. No pill border,
+   because a border is what says "you can press this" everywhere else in
+   settings, and here you cannot. */
+.cfg-readout {
+  font-family: var(--ui-font);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+  min-width: 8.5ch;
+  text-align: center;
+}
+
+/* A chord claimed by two actions (DL-17.5). `--red` is error-only (DL-3.2),
+   and a shortcut that silently shadows another one is exactly that. */
+.cfg-row__desc--warn {
+  color: var(--red);
 }
 
 /* Reduced motion: kill every chrome transition by scope, not by an allowlist —
@@ -3029,4 +3219,120 @@ button.attn-mark:hover {
 .settings-screen__section::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--fg) 25%, transparent);
   border-radius: 3px;
+}
+
+/* ── Window dragging ────────────────────────────────────────────────────────
+ * `data-tauri-drag-region` was interpreted by the Tauri host; Electron knows
+ * nothing about it, so after the host swap the title bar and tab bar could not
+ * be dragged at all. The markup is kept — it still names the drag surfaces —
+ * and Electron's own `-webkit-app-region` is attached to it here.
+ *
+ * Every interactive descendant must opt back OUT: inside a drag region the OS
+ * takes the mouse down before the page sees it, so an unexcluded button drags
+ * the window instead of being clicked. */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+}
+
+[data-tauri-drag-region] button,
+[data-tauri-drag-region] input,
+[data-tauri-drag-region] select,
+[data-tauri-drag-region] a,
+[data-tauri-drag-region] [role="tab"],
+[data-tauri-drag-region] [role="button"],
+[data-tauri-drag-region] .tab,
+[data-tauri-drag-region] .tab-add {
+  -webkit-app-region: no-drag;
+}
+
+/* ── File view: the editor surface (mounted by the redesign) ─────────── */
+
+.fileview {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.fileview__editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.fileview__refusal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+}
+
+.fileview__refusal-name {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.fileview__refusal-text {
+  font-size: 11px;
+  color: var(--text-faint);
+  max-width: 40ch;
+  line-height: 1.5;
+}
+
+/* The external-change bar (spec §5). A row above the editor, not a dialog:
+   the decision is about the file on screen and belongs beside it. */
+.filebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--chrome-2);
+  border-bottom: 1px solid var(--hair);
+  font-size: 11px;
+  flex: none;
+}
+
+.filebar--quiet {
+  color: var(--text-faint);
+}
+
+.filebar__text {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filebar__actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.filebar__btn {
+  padding: 3px 8px;
+  border: 1px solid var(--hair);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.filebar__btn:hover {
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--text-primary);
+}
+
+.filebar__btn--primary {
+  border-color: var(--hair-strong);
+  color: var(--text-primary);
 }

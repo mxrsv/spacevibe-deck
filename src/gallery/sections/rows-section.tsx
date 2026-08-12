@@ -27,7 +27,7 @@ export function RowsSection() {
     <>
       <SectionHead
         title="Config rows"
-        blurb="Every value kind, mounted from the real settings sections — hover and focus are live, so use the pointer and the Tab key."
+        blurb="Every real settings value kind under the shared soft-row, recessed-control and neutral-selection treatment."
       />
 
       {SETTINGS_CATEGORIES.map((category) => {

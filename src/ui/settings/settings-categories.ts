@@ -4,17 +4,21 @@ import {
   AboutIcon,
   AgentsIcon,
   AppearanceIcon,
+  BrowserIcon,
   ColorsIcon,
   LinksEditorIcon,
   NotificationsIcon,
+  ShortcutsIcon,
   TerminalIcon,
 } from "./settings-nav-icons";
 import { AppearanceSection } from "./sections/appearance-section";
 import { ColorsSection } from "./sections/colors-section";
 import { TerminalSection } from "./sections/terminal-section";
 import { AgentsSection } from "./sections/agents-section";
+import { BrowserSection } from "./sections/browser-section";
 import { LinksEditorSection } from "./sections/links-editor-section";
 import { NotificationsSection } from "./sections/notifications-section";
+import { ShortcutsSection } from "./sections/shortcuts-section";
 import { AboutSection } from "./sections/about-section";
 
 /**
@@ -39,9 +43,9 @@ export interface SettingsCategory {
 }
 
 /**
- * The six navigable rail categories, in display order — the extension point
- * for a future category (agent config, keybindings) is one entry here plus
- * one file under `sections/`, no edit to `settings-screen.tsx`.
+ * The navigable rail categories, in display order — the extension point for a
+ * future category is one entry here plus one file under `sections/`, no edit
+ * to `settings-screen.tsx`. `shortcuts` was the first to arrive that way.
  *
  * `ResetSection` is deliberately absent: it is a pinned rail-foot action
  * (`settings-nav.tsx`), not a navigable category (plan §3 invariant).
@@ -55,6 +59,12 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   },
   { id: "colors", label: "colors", Icon: ColorsIcon, Section: ColorsSection },
   {
+    id: "browser",
+    label: "browser",
+    Icon: BrowserIcon,
+    Section: BrowserSection,
+  },
+  {
     id: "terminal",
     label: "terminal",
     Icon: TerminalIcon,
@@ -66,6 +76,12 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
     label: "links & editor",
     Icon: LinksEditorIcon,
     Section: LinksEditorSection,
+  },
+  {
+    id: "shortcuts",
+    label: "shortcuts",
+    Icon: ShortcutsIcon,
+    Section: ShortcutsSection,
   },
   {
     id: "notifications",

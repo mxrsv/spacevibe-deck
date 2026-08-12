@@ -1,5 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { invoke } from "../host/bridge";
+import { listen, type UnlistenFn } from "../host/bridge";
 import { DEFAULT_SETTINGS, type Settings } from "./settings-schema";
 
 const MERGED_EVENT = "settings:merged";

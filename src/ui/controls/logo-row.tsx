@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open } from "../../host/dialog-host";
 import {
   clearLogo,
   logoDataUrl,

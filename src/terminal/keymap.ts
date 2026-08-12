@@ -7,10 +7,8 @@ import {
   type PhysicalKeyBinding,
   type KeyBinding,
 } from "./action-registry";
-import {
-  getDesktopEnvironment,
-  type DesktopPlatform,
-} from "../lib/platform";
+import { type DesktopPlatform } from "../lib/platform";
+import { activeKeymap } from "./active-keymap";
 
 // Data lives in action-registry.ts (the SSOT for shortcuts + macOS menu);
 // this module is just "match a KeyboardEvent to an action" + the type/name
@@ -25,6 +23,14 @@ export {
 };
 export type ShortcutAction = ActionId;
 
+/**
+ * The keymap as SHIPPED for a platform — user rebinds not applied.
+ *
+ * Kept for the places that genuinely want the defaults (the Shortcuts settings
+ * section shows them beside the live chord so "reset" has something to mean).
+ * Anything matching a real keystroke wants `activeKeymap()` instead, which is
+ * why it, not this, is `matchBinding`'s default.
+ */
 export function keymapForPlatform(
   platform: DesktopPlatform,
 ): readonly KeyBinding[] {
@@ -75,9 +81,7 @@ function hasAltGraph(event: KeyboardEvent): boolean {
  */
 export function matchBinding(
   event: KeyboardEvent,
-  keymap: readonly KeyBinding[] = keymapForPlatform(
-    getDesktopEnvironment().platform,
-  ),
+  keymap: readonly KeyBinding[] = activeKeymap(),
 ): ShortcutAction | null {
   const key = event.key.toLowerCase();
   const altGraph = hasAltGraph(event);

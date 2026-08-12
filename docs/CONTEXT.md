@@ -683,6 +683,191 @@ reaches its owner instead of being dropped as "no route for pane".
 packaging, and the full manual pass. Nothing here ships, and the Tauri build
 remains what users run.
 
+## Browser panel + Inspect — 2026-08-12
+
+Electron only, on `electron-migration`. A docked column on the right of the
+stage loads a dev server; Inspect turns any element on that page into
+component-and-source context that lands in the focused agent pane.
+
+### What it is made of
+
+| Piece | Where |
+| ----- | ----- |
+| Native web view, one per window | [`electron/browser/view.ts`](../electron/browser/view.ts) `current` |
+| Injected bootstrap (pure string builder) | [`electron/browser/inject.ts`](../electron/browser/inject.ts) `current` |
+| Address-bar input rules | [`electron/browser/url.ts`](../electron/browser/url.ts) `current` |
+| Page → host bridge | [`electron/browser-preload.ts`](../electron/browser-preload.ts) `current` |
+| Vendored react-grab 0.1.50 | [`electron/vendor/react-grab/`](../electron/vendor/react-grab/SOURCE.md) `current` |
+| Panel chrome + measured hole | [`src/browser/browser-panel.tsx`](../src/browser/browser-panel.tsx) `current` |
+| Grab delivery + sanitising | [`src/browser/browser-store.ts`](../src/browser/browser-store.ts) `current`, [`grab-format.ts`](../src/browser/grab-format.ts) `current` |
+
+### The three facts that shape all of it
+
+1. **The web content is a native view, not an element.** It paints above every
+   DOM layer, so the renderer measures `.browser-panel__view` and sends the
+   rectangle, and hides the view whenever an overlay opens. CSS cannot put the
+   Open board in front of it.
+2. **The injection has to run in the page's MAIN world.** React stores its
+   fiber as an expando on the DOM node and expandos are per-world; from the
+   preload's isolated world every element is plain HTML with no component and
+   no source location. So the bundle goes in through `executeJavaScript`, and
+   the grab comes back out through a DOM `CustomEvent` the preload forwards —
+   the only channel two worlds share.
+3. **The page is untrusted.** It can dispatch the grab event itself with any
+   payload. Hence: parsed defensively, length-capped, every C0 control
+   stripped (an embedded `ESC[201~` would break out of the bracketed paste and
+   be read as keystrokes), and **never submitted** — a grab pastes and stops.
+
+### Verified on a real window (2026-08-12)
+
+`npm run electron:smoke` gained six checks and they pass: the panel attaches a
+view and loads a page; `__deckGrab`, `__REACT_GRAB__` and
+`__REACT_GRAB_MODULE__` all exist in the page's main world; a grab crosses
+page → preload → IPC → renderer intact; Inspect arms react-grab in the page;
+**no request reaches react-grab.com**; closing the panel destroys the page.
+22/24 overall — the two failures are the Linux container (`platform=unsupported`,
+cwd with no shell integration) and predate this work.
+
+Two defects that run found and the mocked suite could not:
+
+- `window.__REACT_GRAB__` was never set. Disabling the bundle's self-init also
+  skips the `setGlobalApi` call inside it, so react-grab's documented handle was
+  missing while everything else looked healthy.
+- `generateSnippet` can fail to settle in a throttled frame. `getContent` sits
+  between ⌘C and BOTH destinations, so an unsettled promise means no paste and
+  no clipboard with nothing on screen; it now races a 2 s deadline and falls
+  back to the element's markup.
+
+### What the code review changed (2026-08-12)
+
+15 findings, 14 real, all fixed in the follow-up commit. The ones that changed
+behaviour rather than wording:
+
+| Was | Is |
+| --- | --- |
+| Any page could dispatch the grab event; no gesture check, no rate limit | The preload gates on `isTrusted` — a bit page script cannot set — within 3 s, and both preload and host rate-limit |
+| `sanitizeGrabText` stripped C0 and DEL | It strips C1 too; `U+009B 201~` is the same bracketed-paste escape without an ESC |
+| The view hid only for `overlayCoversPane()` | It hides for every floating surface; the Prompt Board popover opened inside the panel's own column and was invisible |
+| The toggle destroyed the page | It hides it, which is what "reopening keeps the page" always claimed |
+| Grabs were sent from `getContent` | They are sent from `onCopySuccess` / `onAfterCopy`, after the bundle's abort race has decided — a cancelled copy no longer pastes |
+| `browserHomeUrl` had no UI | Settings has a **browser** category |
+| The `.js → .cjs` walk swept the vendored bundle | `vendor/` is skipped, and the output dir is cleared before the copy |
+
+One finding did not survive verification: closing a window was said to throw
+out of the cleanup path and strand PTYs. A probe on Electron 43 showed
+`webContents.close()` on an already-destroyed contents is a no-op, so it became
+a guard rather than a fix.
+
+Two traps found while fixing, both now locked by tests:
+
+- An escape written `\n` inside `inject.ts`'s template literal is consumed by
+  TypeScript and emits a real newline into the generated script. The injection
+  was a SyntaxError and Inspect was dead on every page while every `toContain`
+  assertion passed. The test now runs `new Function(script)`.
+- A synthesised DOM event can never exercise the new gate — `isTrusted` is
+  false, and `executeJavaScript(..., true)` marks user activation, not trust.
+  Only `sendInputEvent` into a focused view produces a trusted event, which is
+  how the smoke run now drives a real copy.
+
+Smoke is 24/26: a forged grab is dropped, a real `copyElement` reaches the
+renderer, and the two failures are the same pre-existing Linux ones.
+
+### Not verified
+
+- **A real React dev server.** Component names and `file:line` come from
+  react-grab reading React's fiber; no React app was available in this
+  environment. The transport is proven end to end, the richness of what it
+  carries is upstream behaviour.
+- **Windows.** Same Gate C hole as the rest of the branch.
+- **The panel under a real compositor** — resize, drag-to-width, and the
+  hide-on-overlay path were exercised by unit tests and by the smoke run's
+  bounds call, not by a human dragging the seam.
+
+## File explorer — model merged, surface dropped — 2026-08-12
+
+Electron branch only; nothing here ships on Tauri. Built against the
+[plan](plans/2026-08-12-file-explorer.md) `partly-built` task by task, from the
+[spec](specs/2026-08-12-file-explorer-design.md) `decided` — 34 of 36 tasks
+done — and then **split in half before merge**. Read the plan's §8 before
+touching any of it.
+
+**THE FEATURE IS NOT USABLE.** There is no way to open a file in Deck. The
+machinery merged and the chrome did not. That was a decision, not a shortfall:
+the owner is redesigning the Electron version completely, and while this was
+being written `electron-migration` took DESIGN LANGUAGE §16 for the application
+frame, wrote a **§17 "Docked side panels" for a browser panel that reserves
+itself for the file explorer**, docked that panel as a STAGE column rather than
+a `.window` grid column, and collapsed the chrome frame. Merging a second
+docked-panel convention into a frame about to be redrawn would have meant
+paying for the surface twice.
+
+**What merged.**
+
+- **Pure model** (`src/files/`) — the tree, the preview-slot promotion rules,
+  the §5 external-change table, the dirty model, encoding/EOL, and the path
+  bound. None of it knows what renders the text, so it survives an
+  editor-engine change intact.
+- **Host** (`electron/fs/`) — `list_dir`, `read_file`, `write_file`,
+  `stat_files`, `watch_paths` and `set_dirty_files`, every one bounded to the
+  workspace root by `path-guard.ts`. Registered in main; no renderer calls them
+  yet. `writeAtomically` moved out of `JsonStore` into `fs/write.ts` and the
+  store now calls it — one atomic writer, not two, with the store's existing
+  205 lines of tests as the regression gate on the extraction. **This half is a
+  security fix on its own**: the target branch still writes settings through a
+  fixed-name `.settings.json.tmp` and a symlink-following `fs.writeFile`.
+- **The dirty bridge across all four exits** (below).
+- **An inert `SurfaceStrip` seam** in `TabManager`, whose only implementation is
+  `INERT_SURFACES`. Nothing in production passes a real one. It stays because
+  the invariants it encodes — "last surface, not last tab", the combined cycle
+  index space, `movePane`'s refusal, the `applySettings`/`focusActive` fan-out —
+  are expensive to retrofit and cheap to keep proven.
+
+**What was dropped.** The docked panel, the virtualized tree, the file tabs in
+both chrome layouts, DESIGN LANGUAGE §16, the explorer CSS and settings, and the
+`toggle-explorer` / `save-file` actions. `file-editor.tsx` and
+`external-change-bar.tsx` stay in the tree unmounted — they are not chrome, they
+carry the Monaco lifecycle knowledge the redesign would otherwise rediscover
+(the `ready` dep, the `applying` re-entry flag, `pushEditOperations` over
+`setValue`, view-state pairing).
+
+**The exits all changed together**, because any five of the six parts is a hole,
+and this half merged whole. `app.on("before-quit")` returned early on an empty
+pane list, so a window holding only file tabs would quit with unsaved edits and
+no prompt; the census now carries `dirtyFiles`, `closeRequestOrNull` was widened
+to keep the field, and the renderer's `busyPanes === 0` auto-confirm became
+"empty in both dimensions". Installing an update is a **fourth** exit the spec's
+three did not count — `app_relaunch` calls `app.exit(0)` and never reaches
+`before-quit` — so `confirmInstall` passes `dirtyPaths()` itself. `confirmMessage`
+names a busy agent and unsaved files in ONE dialog. Window death clears that
+window's dirty entries beside the pane routes. With no surface the list is
+always empty, so `close-guard.test.ts` now covers that half directly: it is the
+only proof left that an unsaved file survives an exit.
+
+**Monaco is a declared dependency that nothing reachable imports.** The build
+therefore emits no `editor.api` chunk and the entry is 178.83 kB gzip, +0.49 kB
+over the 178.34 kB baseline. The measurements taken while the surface existed —
+entry 189.26 kB, a lazy 674.50 kB gzip `editor.api`, 27 per-language tokenizer
+chunks, two worker chunks, no language services — are recorded in the plan's
+§6.2 as what the surface cost, and must be re-taken when the redesign mounts it.
+
+**Two defects the new tests caught.** Saving through an existing symlink that
+pointed OUT of the workspace was allowed, because the link's parent was inside
+the root and the guard fell through to its "new file" branch — a real escape,
+now refused by an `lstat` check. And the first file tab got an editor with no
+model, because Monaco's dynamic import resolves after the model effect has
+already run and nothing re-ran it.
+
+**NOT verified — everything needing a real window.** Gate M has not been run and
+now has no subject: it was already blocked on MVP T19 producing a packaged
+build, and nothing imports Monaco any more. The thirteen-item manual pass has
+not been run at all; every `manual (owner)` line in the plan is outstanding.
+`npm test` (1717 passing on the merged half), `npm run build`,
+`npm run electron:build`, `generate:menu:check` and the Electron IPC contract
+test are green, and none of them opens a window. The plan's §7.2 follow-ups
+mostly went away WITH the surface — unreachable, not fixed — but three merged
+because they live in the host layer: `realpathSync` runs synchronously per entry
+on the main thread, and `stat_files` / `watch_paths` take unbounded arrays.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

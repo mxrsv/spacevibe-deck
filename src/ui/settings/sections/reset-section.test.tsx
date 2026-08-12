@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The section pulls in the Tauri-backed settings store; stub it so the
 // component tree mounts under jsdom.
-vi.mock("@tauri-apps/plugin-store", () => ({
+vi.mock("../../../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async () => undefined),
@@ -14,7 +14,7 @@ vi.mock("@tauri-apps/plugin-store", () => ({
     })),
   },
 }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({
+vi.mock("../../../host/dialog-host", () => ({
   open: vi.fn(async () => null),
   ask: vi.fn(async () => true),
 }));
@@ -27,7 +27,7 @@ vi.mock("../../../chrome/events", async (importOriginal) => {
   };
 });
 
-import { ask } from "@tauri-apps/plugin-dialog";
+import { ask } from "../../../host/dialog-host";
 import { ResetSection } from "./reset-section";
 import { settings } from "../../../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../../../settings/settings-schema";

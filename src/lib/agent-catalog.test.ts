@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   agentBinary,
+  agentProcessMatchers,
   BUILTIN_AGENTS,
   createCustomAgentId,
   isProbeSafeName,
@@ -163,5 +164,16 @@ describe("probeNames", () => {
       command: "claude --resume",
     };
     expect(probeNames([resumed])).toEqual(BUILTIN_AGENTS.map((a) => a.id));
+  });
+});
+
+describe("agentProcessMatchers", () => {
+  it("uses the binary basename and the first label for duplicate binaries", () => {
+    expect(
+      agentProcessMatchers([
+        { ...aider, command: "/opt/bin/aider --model sonnet" },
+        { id: "custom:fast", label: "Fast", command: "aider --fast" },
+      ]),
+    ).toEqual([{ binary: "aider", agent: "Aider" }]);
   });
 });

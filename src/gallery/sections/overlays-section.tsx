@@ -14,8 +14,9 @@ import { SectionHead, Specimen, StateLabel } from "../specimen";
  *
  * The modals are the interesting ones. DL-6.2 and DL-12.5 both say "never a
  * modal", yet `.preset-editor` and `.save-dialog` are modals over
- * `.modal-scrim`, with a radius and a rise-in animation no rule mentions. §13
- * covers popovers, §11 covers the settings shell; nothing covers these two.
+ * `.modal-scrim`, with a radius and a rise-in animation no rule mentions.
+ * DL §13 covers popovers, DL §11 covers the settings shell; nothing covers
+ * these two.
  *
  * `.drop-overlay` and `.zoom-overlay` are single-class elements the layout
  * engine and the drag controller attach at runtime (`layout-engine.ts`,
@@ -57,7 +58,7 @@ export function OverlaysSection() {
     <>
       <SectionHead
         title="Overlays"
-        blurb="Everything that covers the stage — the settings screen, both modal drafts, and the runtime overlays."
+        blurb="Settings, dialogs and transient states use the same surface hierarchy instead of separate visual genres."
       />
 
       <Specimen

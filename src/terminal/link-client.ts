@@ -1,5 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
-import { openUrl as openUrlWithDefaultApp } from "@tauri-apps/plugin-opener";
+import { invoke } from "../host/bridge";
+import { openUrl as openUrlWithDefaultApp } from "../host/shell-host";
 import type { OpenEditorRequest } from "../lib/editor-command";
 
 /** Backend seam for terminal links — Tauri IPC in production, fakes in tests. */

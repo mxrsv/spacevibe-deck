@@ -1,6 +1,8 @@
-import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { invoke } from "../host/bridge";
+import { listen, type UnlistenFn } from "../host/bridge";
 import type { PaneProcessInfo } from "../lib/process-info";
+import type { AgentProcessMatcher } from "../lib/agent-catalog";
+export type { AgentProcessMatcher } from "../lib/agent-catalog";
 
 /** Mirror of the Rust `AgentInfo` payload from `detect_agents`. */
 export interface DetectedAgent {
@@ -19,7 +21,11 @@ export interface PtyClient {
   resizePty(id: number, cols: number, rows: number): Promise<void>;
   killPty(id: number): Promise<void>;
   /** Fresh pty_info; throws on IPC failure (poll keeps last-known on catch). */
-  ptyInfo(ids: readonly number[]): Promise<PaneProcessInfo[]>;
+  ptyInfo(
+    ids: readonly number[],
+    agentMatchers?: readonly AgentProcessMatcher[],
+    waitForCwd?: boolean,
+  ): Promise<PaneProcessInfo[]>;
   gitBranch(cwd: string): Promise<string | null>;
   /**
    * Which of `paths` are still existing directories, positionally.
@@ -75,11 +81,15 @@ export function createTauriPtyClient(): PtyClient {
     killPty(id) {
       return invoke("kill_pty", { id });
     },
-    async ptyInfo(ids) {
+    async ptyInfo(ids, agentMatchers = [], waitForCwd = true) {
       if (ids.length === 0) {
         return [];
       }
-      return invoke<PaneProcessInfo[]>("pty_info", { ids: [...ids] });
+      return invoke<PaneProcessInfo[]>("pty_info", {
+        ids: [...ids],
+        agents: [...agentMatchers],
+        waitForCwd,
+      });
     },
     gitBranch(cwd) {
       return invoke<string | null>("git_branch", { cwd });

@@ -15,12 +15,12 @@ export interface GallerySection {
 }
 
 /**
- * Order runs from the system outward: what the visuals are made of, then the
- * one control, then the shell, then the surfaces that cover it. Adding a
- * section is one entry here plus one file under `sections/`.
+ * Order runs from the selected system outward: direction tokens, controls,
+ * shell, then the surfaces that cover it. Historical comparison pages stay
+ * out of this registry so the review surface shows one visual language only.
  */
 export const GALLERY_SECTIONS: readonly GallerySection[] = [
-  { id: "tokens", label: "tokens & spread", Section: TokensSection },
+  { id: "tokens", label: "direction tokens", Section: TokensSection },
   { id: "rows", label: "config rows", Section: RowsSection },
   { id: "chrome", label: "window chrome", Section: ChromeSection },
   { id: "toolbar", label: "feature toolbar", Section: ToolbarSection },

@@ -1,4 +1,5 @@
 import type { PaneProcessInfo } from "../lib/process-info";
+import type { AgentProcessMatcher } from "../lib/agent-catalog";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 
 function unknownPaneInfo(id: number): PaneProcessInfo {
@@ -21,12 +22,13 @@ function unknownPaneInfo(id: number): PaneProcessInfo {
 export async function freshPaneInfo(
   ids: readonly number[],
   pty: PtyClient = defaultPtyClient,
+  agentMatchers: readonly AgentProcessMatcher[] = [],
 ): Promise<PaneProcessInfo[]> {
   if (ids.length === 0) {
     return [];
   }
   try {
-    const infos = await pty.ptyInfo(ids);
+    const infos = await pty.ptyInfo(ids, agentMatchers);
     return ids.map(
       (id) =>
         infos.find((info) => info.id === id) ?? unknownPaneInfo(id),

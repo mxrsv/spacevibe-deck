@@ -35,6 +35,34 @@ export const settingsOpen = signal(false);
 export const promptsOpen = signal(false);
 
 /**
+ * Whether a tab's rename/color popover is up, in EITHER chrome layout.
+ *
+ * It exists for one consumer: the browser panel's native view paints above
+ * every DOM layer, so a popover that overlaps the panel's column is invisible
+ * unless the host is told to hide the view. The popover's own open state is
+ * component-local in `TabBar` and `WorkspaceSidebar` (only they need to know
+ * WHICH tab it belongs to); this mirrors the one bit anything outside them has
+ * a reason to read.
+ */
+export const tabPopoverOpen = signal(false);
+
+/**
+ * True while a Shortcuts row is listening for a replacement chord.
+ *
+ * `handleShortcut` (tab-manager.ts) is a CAPTURE-phase window listener that
+ * runs before anything the settings screen could register, so a capture
+ * control cannot out-listen it — pressing ⌘W to rebind it would close the pane
+ * instead of being recorded. This flag is the seam that stops it, alongside
+ * the existing `isChromeTextField` guard and for the same reason: while the
+ * user is typing a chord AT the app, they are not typing a chord TO it.
+ *
+ * A module signal rather than a DOM check because the capture control holds
+ * focus on a `<button>`, which `isChromeTextField` deliberately does not
+ * match.
+ */
+export const shortcutCaptureActive = signal(false);
+
+/**
  * Most recent local-storage write failure, shown by PersistErrorBar.
  * Stores keep the in-memory signal as the source of truth even when the
  * disk write fails — this only tells the user a change may not survive

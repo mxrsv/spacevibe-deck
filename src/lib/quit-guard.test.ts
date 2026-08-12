@@ -10,8 +10,8 @@ const listenMock = vi.hoisted(() =>
   ),
 );
 const onCloseRequestedMock = vi.hoisted(() => vi.fn(async () => () => {}));
-vi.mock("@tauri-apps/api/event", () => ({ listen: listenMock }));
-vi.mock("@tauri-apps/api/window", () => ({
+vi.mock("../host/bridge", () => ({ listen: listenMock }));
+vi.mock("../host/window-host", () => ({
   getCurrentWindow: () => ({ onCloseRequested: onCloseRequestedMock }),
 }));
 
@@ -28,6 +28,7 @@ const busyRequest: CloseRequest = {
   busyProcesses: ["claude"],
   busyPanes: 2,
   fullyNamed: true,
+  dirtyFiles: [],
 };
 
 const idleRequest: CloseRequest = {
@@ -35,6 +36,16 @@ const idleRequest: CloseRequest = {
   busyProcesses: [],
   busyPanes: 0,
   fullyNamed: true,
+  dirtyFiles: [],
+};
+
+/** No busy pane at all — a window holding only file tabs (spec §6). */
+const dirtyOnlyRequest: CloseRequest = {
+  requestId: 11,
+  busyProcesses: [],
+  busyPanes: 0,
+  fullyNamed: true,
+  dirtyFiles: ["/r/src/index.ts"],
 };
 
 function makeDeps(overrides: Partial<QuitFlowDeps> = {}): QuitFlowDeps & {
@@ -67,6 +78,29 @@ describe("closeRequestOrNull", () => {
     expect(closeRequestOrNull(null)).toBeNull();
     expect(closeRequestOrNull(42)).toBeNull();
   });
+
+  // The validator REBUILDS its object from known keys and discards the rest, so
+  // a census field it does not know about is dropped on arrival — with the
+  // sender and the typecheck both green. These three lock the widening in.
+  it("carries dirtyFiles through instead of discarding it", () => {
+    expect(closeRequestOrNull(dirtyOnlyRequest)?.dirtyFiles).toEqual([
+      "/r/src/index.ts",
+    ]);
+  });
+
+  it("treats an absent dirtyFiles as none rather than refusing to answer", () => {
+    // Refusing would leave the request unanswered, and Rust blocks the close on
+    // an answer — an older payload shape must still be closable.
+    const { dirtyFiles: _omitted, ...withoutField } = busyRequest;
+    expect(closeRequestOrNull(withoutField)?.dirtyFiles).toEqual([]);
+  });
+
+  it("drops a malformed dirty entry rather than repairing it", () => {
+    expect(
+      closeRequestOrNull({ ...busyRequest, dirtyFiles: ["/r/a.ts", 7, null] })
+        ?.dirtyFiles,
+    ).toEqual(["/r/a.ts"]);
+  });
 });
 
 describe("createQuitFlow", () => {
@@ -76,6 +110,59 @@ describe("createQuitFlow", () => {
     expect(deps.ask).not.toHaveBeenCalled();
     expect(deps.confirm).toHaveBeenCalledWith(8);
     expect(deps.cancel).not.toHaveBeenCalled();
+  });
+
+  it("prompts for unsaved files even with no busy pane at all", async () => {
+    // `busyPanes === 0` alone used to auto-confirm, so a window holding only
+    // file tabs quit with unsaved edits and no dialog (spec §6).
+    const deps = makeDeps();
+    await createQuitFlow(deps)(dirtyOnlyRequest);
+    expect(deps.ask).toHaveBeenCalledWith(
+      expect.stringContaining("index.ts has unsaved changes"),
+    );
+    expect(deps.confirm).toHaveBeenCalledWith(11);
+  });
+
+  it("names a busy agent AND unsaved files in ONE dialog", async () => {
+    const deps = makeDeps();
+    await createQuitFlow(deps)({
+      ...busyRequest,
+      dirtyFiles: ["/r/src/index.ts"],
+    });
+    expect(deps.ask).toHaveBeenCalledTimes(1);
+    const message = deps.ask.mock.calls[0][0] as string;
+    expect(message).toContain("2 panes are still running");
+    expect(message).toContain("index.ts has unsaved changes");
+  });
+
+  it("names unsaved files in the unknown-inspection copy too", async () => {
+    const deps = makeDeps();
+    await createQuitFlow(deps)({
+      ...busyRequest,
+      fullyNamed: false,
+      dirtyFiles: ["/r/src/index.ts"],
+    });
+    const message = deps.ask.mock.calls[0][0] as string;
+    expect(message).toContain("could not verify");
+    expect(message).toContain("index.ts has unsaved changes");
+  });
+
+  it("prompts when the census could not classify a pane", async () => {
+    // `unknown` is not busy, so an unreadable process table reports zero busy
+    // panes with `fullyNamed: false`. Auto-confirming there killed agents with
+    // no prompt — `quit-flow.ts`'s `allIdle` states the rule and nothing on
+    // this side enforced it.
+    const deps = makeDeps();
+    await createQuitFlow(deps)({
+      requestId: 12,
+      busyProcesses: [],
+      busyPanes: 0,
+      fullyNamed: false,
+      dirtyFiles: [],
+    });
+    expect(deps.ask).toHaveBeenCalledWith(
+      expect.stringContaining("could not verify"),
+    );
   });
 
   it("prompts with the Rust census and confirms on accept", async () => {
@@ -161,6 +248,33 @@ describe("installQuitGuard", () => {
       "quit-requested",
       "window:close-requested",
     ]);
+  });
+
+  it("asks about unsaved files that arrive on the wire, end to end", async () => {
+    // The regression gate the plan asks for: validator + flow together. Revert
+    // the validator's `dirtyFiles` widening and this goes red — the field is
+    // dropped on arrival, `busyPanes === 0` auto-confirms, and the unsaved file
+    // dies without a prompt.
+    const quit = makeDeps();
+    await installQuitGuard({ quit, close: makeDeps() });
+    const handler = listenMock.mock.calls.find(
+      (call) => call[0] === "quit-requested",
+    )?.[1] as (event: { payload: unknown }) => void;
+
+    handler({
+      payload: {
+        requestId: 3,
+        busyProcesses: [],
+        busyPanes: 0,
+        fullyNamed: true,
+        dirtyFiles: ["/r/src/index.ts"],
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(quit.ask).toHaveBeenCalledWith(
+      expect.stringContaining("index.ts has unsaved changes"),
+    );
   });
 
   it("drops a malformed payload without answering Rust with a guessed id", async () => {

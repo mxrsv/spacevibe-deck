@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl } from "../../../host/shell-host";
 import { appVersion } from "../../../updater/app-version";
 import { activeUpdateController } from "../../../updater/active-update-controller";
 import { RELEASE_NOTES_URL } from "../../../updater/update-menu-actions";

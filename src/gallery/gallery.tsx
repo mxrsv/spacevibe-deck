@@ -1,59 +1,40 @@
-import { useSignal, useSignalEffect } from "@preact/signals";
-import { applyThemeVars } from "../lib/theme-vars";
-import { settings, updateSettings } from "../settings/settings-store";
-import { resolveTheme, THEME_PRESETS } from "../settings/themes";
+import { useSignal } from "@preact/signals";
+import { useEffect, useRef } from "preact/hooks";
 import { GALLERY_SECTIONS } from "./section-registry";
-import { unhandledCommands } from "./tauri-stub";
+import { unhandledCommands } from "./host-stub";
+
+const DEFAULT_SECTION_ID = "chrome";
 
 /**
  * The gallery shell.
  *
- * Theme switching goes through the app's real path — `updateSettings` then
- * `applyThemeVars` — rather than writing CSS variables directly, so what the
- * specimens show is what a user switching theme in Settings would get. That is
- * also why there is no "direction" picker yet: a redesign direction will be a
- * block of token overrides, and there is nothing honest to put behind such a
- * switch until a direction is actually chosen.
+ * The gallery carries one selected direction. Its specimens remain live app
+ * components, while the gallery root supplies the fixed semantic token set so
+ * legacy theme values cannot leak between sections.
  */
 
 export function Gallery() {
-  const activeId = useSignal(GALLERY_SECTIONS[0].id);
-
-  useSignalEffect(() => {
-    applyThemeVars(
-      document.documentElement.style,
-      resolveTheme(settings.value),
-    );
-  });
-
-  const cycleTheme = (): void => {
-    const index = THEME_PRESETS.findIndex(
-      (preset) => preset.id === settings.value.themeId,
-    );
-    const next = THEME_PRESETS[(index + 1) % THEME_PRESETS.length];
-    updateSettings({ themeId: next.id, colorOverrides: {} });
-  };
+  const activeId = useSignal(DEFAULT_SECTION_ID);
+  const contentRef = useRef<HTMLElement>(null);
 
   const active =
     GALLERY_SECTIONS.find((section) => section.id === activeId.value) ??
     GALLERY_SECTIONS[0];
+
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [active.id]);
+
   const Section = active.Section;
   const missing = unhandledCommands.value;
 
   return (
-    <div class="gx-app">
+    <div class="gx-app gx-app--chatgpt">
       <header class="gx-topbar">
-        <span class="gx-topbar__title">Deck chrome gallery</span>
-        <button type="button" class="gx-themebtn" onClick={cycleTheme}>
-          <span
-            class="gx-themebtn__swatch"
-            style={{ background: "var(--bg)", borderColor: "var(--accent)" }}
-          />
-          {settings.value.themeId}
-        </button>
+        <span class="gx-topbar__title">Deck</span>
+        <span class="gx-direction-badge">ChatGPT Desktop</span>
         <span class="gx-topbar__hint">
-          theme drives every specimen · hover and focus are live · not the app,
-          a harness
+          selected direction · real components · gallery-only treatment
         </span>
       </header>
 
@@ -73,8 +54,10 @@ export function Gallery() {
         ))}
       </nav>
 
-      <main class="gx-content">
-        <Section />
+      <main ref={contentRef} class="gx-content">
+        <div key={active.id} class="gx-section">
+          <Section />
+        </div>
       </main>
 
       <footer class="gx-foot">

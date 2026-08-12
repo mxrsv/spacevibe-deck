@@ -51,31 +51,6 @@
   font-size: 11px;
 }
 
-.gx-themebtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 3px 9px;
-  border: 1px solid var(--gx-line);
-  border-radius: 5px;
-  background: var(--gx-panel);
-  color: var(--gx-text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.gx-themebtn:hover {
-  border-color: var(--gx-dim);
-  color: var(--gx-bright);
-}
-
-.gx-themebtn__swatch {
-  width: 11px;
-  height: 11px;
-  border: 1px solid;
-  border-radius: 3px;
-}
-
 .gx-rail {
   display: flex;
   flex-direction: column;
@@ -987,6 +962,7 @@
   white-space: nowrap;
 }
 
+
 /* ── Seam study ───────────────────────────────────────────────────
  * Three treatments of the boundary between surfaces, side by side, on the
  * app's own chrome classes.
@@ -1246,4 +1222,398 @@
 .gx-seamread strong {
   color: var(--gx-text);
   font-weight: 400;
+}
+
+
+/* ── state matrix ────────────────────────────────────────────────── */
+
+/*
+ * One block scrolls horizontally rather than shrinking its cells. The whole
+ * point of the matrix is that every cell is the same size, so a responsive
+ * column would compare two variables at once.
+ */
+.gx-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.gx-matrix__row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+/*
+ * Sticky, because the block is wider than a laptop viewport by design. Without
+ * it, scrolling right to reach one-dark and catppuccin-mocha pushes the only
+ * thing naming which state a row is off the left edge — four unlabelled cells
+ * in the state the reader most needs labelled.
+ */
+.gx-matrix__rowhead {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  flex: 0 0 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 2px;
+  background: var(--gx-bg);
+}
+
+.gx-matrix__statename {
+  color: var(--gx-bright);
+}
+
+.gx-matrix__statenote {
+  color: var(--gx-dim);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* What the row cannot show by rendering — it is why the cells look resting. */
+.gx-matrix__finding {
+  color: #d9a25f;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.gx-matrix__colhead {
+  flex: 0 0 auto;
+  color: var(--gx-dim);
+  font-size: 10.5px;
+}
+
+/*
+ * The cell publishes its theme through inline custom properties, so it needs
+ * no background of its own — `--bg` on the shell inside it is the app's.
+ */
+/*
+ * `border-box` is not decoration: nothing in this repo sets a global
+ * `box-sizing`, so the 1px border made the cell 682px against a 680px column
+ * header and every column drifted a further 2px out of line with the theme
+ * name above it.
+ */
+.gx-cell {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  border: 1px solid var(--gx-line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gx-cell__inner {
+  height: 172px;
+}
+
+/*
+ * Tall enough that the sidebar's fourth workspace row and its add affordance
+ * are both above the fold: 34px titlebar + 28px status leaves 182px of rail,
+ * and at 210px the last row was cut in half.
+ */
+.gx-cell__inner--tall {
+  height: 244px;
+}
+
+/*
+ * `.window` is a viewport-sized grid in the app, and inside a cell it has to
+ * fill the cell instead. The extra `.gx-cell` in front is load-bearing:
+ * `force-states.ts` re-emits every app rule with one class prefixed, so the
+ * app's own `.window { height: 100vh; width: 100vw }` comes back as
+ * `.gx-force--hover .window` — same specificity as a two-class override, and
+ * later in the document. Three classes is what keeps a forced cell from
+ * growing to the size of the viewport.
+ */
+.gx-cell .gx-cell__inner > .window {
+  height: 100%;
+  width: 100%;
+}
+
+/*
+ * `overflow-y: auto`, matching the app, not `hidden`. Hiding it would let a
+ * section that overflows in a real settings pane read as fitting here, and it
+ * would drop the app's own scrollbar treatment from the one place the matrix
+ * could show it.
+ */
+.gx-cell .gx-cell__inner > .settings-screen__section {
+  height: 100%;
+  background: var(--chrome-2);
+  overflow-y: auto;
+}
+
+/* ── repository / worktree hierarchy specimen ────────────────────── */
+
+.gx-chatgpt-direction .gx-workspace-tree {
+  grid-column: 1;
+  grid-row: 2 / 4;
+  min-height: 0;
+  padding: 8px 10px 14px;
+  overflow-y: auto;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+}
+
+.gx-workspace-tree__eyebrow {
+  padding: 6px 8px 8px;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  font-weight: 560;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gx-repository + .gx-repository {
+  margin-top: 10px;
+}
+
+.gx-repository__header {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.gx-repository__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 34px;
+  flex: 1;
+  padding: 4px 5px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gx-repository__toggle:hover,
+.gx-repository__actions button:hover,
+.gx-workspace-tree__add:hover {
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+}
+
+.gx-repository__mark {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--fg) 9%, transparent);
+  border-radius: 7px;
+  background: #101010;
+  color: var(--cyan);
+}
+
+.gx-repository__name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-repository__actions {
+  display: flex;
+  gap: 1px;
+  opacity: 0.48;
+  transition: opacity 130ms ease;
+}
+
+.gx-repository__header:hover .gx-repository__actions,
+.gx-repository__header:focus-within .gx-repository__actions {
+  opacity: 1;
+}
+
+.gx-repository__actions button {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.gx-repository__worktrees {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px 0 0 12px;
+}
+
+.gx-worktree {
+  position: relative;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) 20px;
+  align-items: start;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 8px 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 130ms ease,
+    border-color 130ms ease,
+    color 130ms ease;
+}
+
+.gx-worktree:hover {
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+  color: var(--text-primary);
+}
+
+.gx-worktree.is-selected {
+  border-color: color-mix(in srgb, var(--fg) 20%, transparent);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+.gx-worktree__state {
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.gx-worktree[data-state="ready"] .gx-worktree__state,
+.gx-worktree[data-state="working"] .gx-worktree__state {
+  background: var(--green);
+}
+
+.gx-worktree[data-state="attention"] .gx-worktree__state {
+  background: var(--magenta);
+}
+
+.gx-worktree__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gx-worktree__titleline {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.gx-worktree__name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 520;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-worktree__badge {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--fg) 18%, transparent);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+
+.gx-worktree__branch,
+.gx-worktree__path {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-worktree__path {
+  opacity: 0.62;
+}
+
+.gx-worktree__activity {
+  position: relative;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+}
+
+.gx-worktree-loading {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.gx-worktree-loading__tick {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1.2px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--text-faint);
+  animation: gx-worktree-loading-tick 1080ms linear infinite;
+}
+
+@keyframes gx-worktree-loading-tick {
+  0%, 9% { background: var(--text-primary); }
+  27% { background: var(--text-muted); }
+  44%, 100% { background: var(--text-faint); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gx-worktree-loading__tick {
+    animation: none;
+  }
+  .gx-worktree-loading__tick:first-child {
+    background: var(--text-primary);
+  }
+}
+
+.gx-worktree__attention-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--magenta);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--magenta) 12%, transparent);
+}
+
+.gx-workspace-tree__add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  margin-top: 12px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  cursor: pointer;
 }

@@ -7,9 +7,11 @@ import {
   AboutIcon,
   AgentsIcon,
   AppearanceIcon,
+  BrowserIcon,
   ColorsIcon,
   LinksEditorIcon,
   NotificationsIcon,
+  ShortcutsIcon,
   TerminalIcon,
 } from "./settings-nav-icons";
 import { SETTINGS_CATEGORIES } from "./settings-categories";
@@ -32,11 +34,13 @@ describe("settings-nav-icons", () => {
     },
     { name: "AgentsIcon", icon: "lucide-bot", Icon: AgentsIcon },
     { name: "LinksEditorIcon", icon: "lucide-link", Icon: LinksEditorIcon },
+    { name: "ShortcutsIcon", icon: "lucide-command", Icon: ShortcutsIcon },
     {
       name: "NotificationsIcon",
       icon: "lucide-bell",
       Icon: NotificationsIcon,
     },
+    { name: "BrowserIcon", icon: "lucide-globe", Icon: BrowserIcon },
     // An arrow landing on a baseline: this category is About/Update, and the
     // icon has always been the update rather than a generic info circle.
     { name: "AboutIcon", icon: "lucide-download", Icon: AboutIcon },

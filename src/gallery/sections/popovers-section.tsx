@@ -17,7 +17,7 @@ import { SectionHead, Specimen } from "../specimen";
  *
  * They are opened by their real triggers rather than forced open, because a
  * popover's dismissal rules (Esc, outside click, completing the action) are
- * half of what §13 specifies and a permanently-pinned specimen would show
+ * half of what DL §13 specifies and a permanently-pinned specimen would show
  * none of them.
  *
  * Worth looking at side by side: `.tab-popover` uses a real 1px border and an
@@ -123,7 +123,7 @@ export function PopoversSection() {
     <>
       <SectionHead
         title="Popovers"
-        blurb="Anchored surfaces (DL §13). Both are driven by their real triggers, so Esc and outside-click behave as shipped."
+        blurb="Both anchored surfaces share one elevated frame, one radius and one interaction rhythm."
       />
 
       <Specimen

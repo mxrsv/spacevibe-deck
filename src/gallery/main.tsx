@@ -1,11 +1,12 @@
-// MUST stay the first import: this module installs `window.__TAURI_INTERNALS__`
-// as a side effect, and ES imports evaluate in order, so anything below it
-// already sees the hook. See the comment on `installTauriStub`.
-import "./tauri-stub";
+// MUST stay the first import: this module installs both host hooks as a side
+// effect, and ES imports evaluate in order, so anything below it already sees
+// them. See the comment at the foot of `host-stub.ts`.
+import "./host-stub";
 import { render } from "preact";
 import "@xterm/xterm/css/xterm.css";
 import "../styles.css";
 import "./gallery.css";
+import "./chatgpt-direction.css";
 import { initializeDesktopEnvironmentFromBackend } from "../lib/platform";
 import { configureSettingsSync } from "../settings/settings-store";
 import { createMemorySettingsSync } from "../settings/settings-sync";

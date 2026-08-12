@@ -2,14 +2,16 @@ import { describe, expect, it } from "vitest";
 import { SETTINGS_CATEGORIES } from "./settings-categories";
 
 describe("SETTINGS_CATEGORIES", () => {
-  it("lists exactly the seven navigable categories, in rail display order", () => {
+  it("lists exactly the nine navigable categories, in rail display order", () => {
     const ids: readonly string[] = SETTINGS_CATEGORIES.map((c) => c.id);
     expect(ids).toEqual([
       "appearance",
       "colors",
+      "browser",
       "terminal",
       "agents",
       "links-editor",
+      "shortcuts",
       "notifications",
       "about",
     ]);

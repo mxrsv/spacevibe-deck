@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenEditorRequest } from "../lib/editor-command";
 import { createMemoryLinkClient, createTauriLinkClient } from "./link-client";
-import { invoke } from "@tauri-apps/api/core";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { invoke } from "../host/bridge";
+import { openUrl } from "../host/shell-host";
 
-vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
-vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn() }));
+vi.mock("../host/bridge", () => ({ invoke: vi.fn() }));
+vi.mock("../host/shell-host", () => ({ openUrl: vi.fn() }));
 
 const REQUEST: OpenEditorRequest = {
   editor: "cursor",

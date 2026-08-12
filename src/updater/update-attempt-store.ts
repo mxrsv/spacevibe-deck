@@ -1,5 +1,5 @@
-import { Store } from "@tauri-apps/plugin-store";
-import { getVersion } from "@tauri-apps/api/app";
+import { Store } from "../host/store-host";
+import { getVersion } from "../host/shell-host";
 import {
   resolveAttemptOutcome,
   type AttemptOutcome,

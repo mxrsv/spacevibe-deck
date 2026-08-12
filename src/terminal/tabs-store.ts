@@ -66,7 +66,14 @@ export interface StatusInfo {
   readonly branch: string | null;
   readonly cwd: string | null;
   readonly agent: string | null;
-  readonly paneCount: number;
+  /**
+   * Panes in the active tab, or **null when a non-terminal surface is active**.
+   *
+   * Null, not zero: spec §7 asks for the count to be ABSENT with a file tab
+   * active, not "0 panes" — a label that reads as a broken window rather than
+   * as a different kind of surface. `StatusBar` branches on it.
+   */
+  readonly paneCount: number | null;
   readonly home: string;
 }
 

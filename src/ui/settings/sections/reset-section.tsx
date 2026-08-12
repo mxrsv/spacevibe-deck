@@ -1,6 +1,6 @@
 import { RotateCcw } from "lucide-preact";
 import { useSignal } from "@preact/signals";
-import { ask } from "@tauri-apps/plugin-dialog";
+import { ask } from "../../../host/dialog-host";
 import { resetSettings } from "../../../settings/settings-store";
 import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
 import { ConfigRow } from "../../controls/config-row";

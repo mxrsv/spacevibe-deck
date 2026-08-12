@@ -3,8 +3,11 @@ import {
   busyProcesses,
   confirmClose,
   confirmMessage,
+  dirtyFilesPhrase,
+  FILE_CLOSE_COPY,
   isBusy,
   QUIT_COPY,
+  unknownMessage,
   UPDATE_COPY,
 } from "./close-guard";
 import type { PaneProcessInfo } from "../lib/process-info";
@@ -12,7 +15,7 @@ import { createMemoryPtyClient } from "./pty-client";
 import { freshPaneInfo } from "./pane-info";
 
 const askMock = vi.hoisted(() => vi.fn());
-vi.mock("@tauri-apps/plugin-dialog", () => ({ ask: askMock }));
+vi.mock("../host/dialog-host", () => ({ ask: askMock }));
 
 function info(
   id: number,
@@ -265,6 +268,136 @@ describe("freshPaneInfo", () => {
       { id: 4, cwd: null, process: null, kind: "unknown", agent: null },
       { id: 9, cwd: null, process: null, kind: "unknown", agent: null },
     ]);
+  });
+});
+
+/**
+ * The unsaved-file half of the guard. No UI reaches it on this branch — the
+ * explorer chrome is left to the Electron redesign — so these are the only
+ * proof that an unsaved file survives the four exits. They test the layer
+ * directly rather than through a surface, which is also why they must not be
+ * deleted as "unused" before that surface exists.
+ */
+describe("dirtyFilesPhrase", () => {
+  it("says nothing when nothing is unsaved", () => {
+    expect(dirtyFilesPhrase([])).toBeNull();
+  });
+
+  it("names one file by its basename, not its path", () => {
+    expect(dirtyFilesPhrase(["/home/u/work/src/main.rs"])).toBe(
+      "main.rs has unsaved changes",
+    );
+  });
+
+  it("uses the platform separator the path actually carries", () => {
+    expect(dirtyFilesPhrase(["C:\\work\\src\\main.rs"])).toBe(
+      "main.rs has unsaved changes",
+    );
+  });
+
+  it("lists up to three names, then counts the rest", () => {
+    expect(dirtyFilesPhrase(["/a/one.ts", "/a/two.ts", "/a/three.ts"])).toBe(
+      "3 files have unsaved changes (one.ts, two.ts, three.ts)",
+    );
+    expect(
+      dirtyFilesPhrase(["/a/one.ts", "/a/two.ts", "/a/three.ts", "/a/four.ts"]),
+    ).toBe("4 files have unsaved changes (one.ts, two.ts, three.ts and 1 more)");
+  });
+});
+
+describe("confirmMessage — busy panes and unsaved files together", () => {
+  it("asks once, naming both (spec §6: one dialog, never two)", () => {
+    expect(confirmMessage(["claude"], "Quit", 1, ["/a/main.rs"])).toBe(
+      "claude is still running, and main.rs has unsaved changes. Quit anyway?",
+    );
+  });
+
+  it("drops the busy clause entirely when only files are unsaved", () => {
+    // Closing a file tab passes no pane ids at all, so there is no "0 panes
+    // are still running" half to leak into the sentence.
+    expect(confirmMessage([], "Close", 0, ["/a/main.rs"])).toBe(
+      "main.rs has unsaved changes. Close anyway?",
+    );
+  });
+});
+
+describe("unknownMessage", () => {
+  it("keeps the fail-safe wording when nothing is unsaved", () => {
+    expect(unknownMessage("Quit")).toBe(
+      "Deck could not verify whether terminal processes are still running. Quit anyway?",
+    );
+  });
+
+  it("still names the unsaved files it DOES know about", () => {
+    // An unverifiable census is the one case where the file list is the only
+    // concrete thing the dialog can offer.
+    expect(unknownMessage("Quit", ["/a/main.rs"])).toBe(
+      "Deck could not verify whether terminal processes are still running, and main.rs has unsaved changes. Quit anyway?",
+    );
+  });
+});
+
+describe("confirmClose with unsaved files", () => {
+  it("prompts even when every pane is an idle shell", async () => {
+    // The fast path that skips the dialog is "all idle AND nothing unsaved".
+    // Without the second half, ⌘Q with an unsaved file and no busy pane
+    // discarded the edits silently.
+    askMock.mockClear();
+    askMock.mockResolvedValue(false);
+    const pty = createMemoryPtyClient({
+      infos: new Map([[1, info(1, "zsh")]]),
+    });
+
+    await expect(confirmClose([1], pty, QUIT_COPY, ["/a/main.rs"])).resolves.toBe(
+      false,
+    );
+    expect(askMock).toHaveBeenCalledWith(
+      "main.rs has unsaved changes. Quit anyway?",
+      expect.objectContaining({ title: "Quit Deck" }),
+    );
+  });
+
+  it("prompts with no panes at all — the file-tab close path", async () => {
+    askMock.mockClear();
+    askMock.mockResolvedValue(true);
+    const pty = createMemoryPtyClient();
+
+    await expect(
+      confirmClose([], pty, FILE_CLOSE_COPY, ["/a/notes.md"]),
+    ).resolves.toBe(true);
+    expect(askMock).toHaveBeenCalledWith(
+      "notes.md has unsaved changes. Close anyway?",
+      expect.objectContaining({
+        title: "Close File",
+        okLabel: "Discard Changes",
+      }),
+    );
+  });
+
+  it("keeps the silent fast path when nothing is unsaved and nothing is busy", async () => {
+    askMock.mockClear();
+    const pty = createMemoryPtyClient({
+      infos: new Map([[1, info(1, "zsh")]]),
+    });
+
+    await expect(confirmClose([1], pty, QUIT_COPY, [])).resolves.toBe(true);
+    expect(askMock).not.toHaveBeenCalled();
+  });
+
+  it("appends the unsaved files to an unverifiable census", async () => {
+    askMock.mockClear();
+    askMock.mockResolvedValue(false);
+    const pty = createMemoryPtyClient({
+      infos: new Map([[1, info(1, null)]]),
+    });
+
+    await expect(
+      confirmClose([1], pty, QUIT_COPY, ["/a/main.rs"]),
+    ).resolves.toBe(false);
+    expect(askMock).toHaveBeenCalledWith(
+      "Deck could not verify whether terminal processes are still running, and main.rs has unsaved changes. Quit anyway?",
+      expect.objectContaining({ title: "Quit Deck" }),
+    );
   });
 });
 

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The screen pulls in Tauri-backed stores through its sections; stub them so
 // the component tree mounts under jsdom.
-vi.mock("@tauri-apps/plugin-store", () => ({
+vi.mock("../../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async () => undefined),
@@ -14,7 +14,7 @@ vi.mock("@tauri-apps/plugin-store", () => ({
     })),
   },
 }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({
+vi.mock("../../host/dialog-host", () => ({
   open: vi.fn(async () => null),
   ask: vi.fn(async () => true),
 }));
@@ -128,6 +128,8 @@ const EXPECTED_ROWS = [
   "Foreground",
   "Cursor",
   "Selection",
+  // browser
+  "home address",
   // terminal
   "Scrollback",
   // agents (built-ins are locked rows; declared ones are added by the user)
@@ -148,6 +150,20 @@ const EXPECTED_ROWS = [
   "Restore defaults",
 ] as const;
 
+/**
+ * The Shortcuts category is deliberately OUT of `EXPECTED_ROWS`.
+ *
+ * This test asks one question — did every setting survive the move out of the
+ * old drawer — and its answer is a fixed list. Shortcut rows are generated
+ * from `ACTION_REGISTRY`, so folding them in would mean re-listing ~50 action
+ * names here and re-editing this test on every new action, turning a
+ * regression check into a transcription chore. Their own coverage
+ * (`shortcuts-section.test.tsx`, `shortcut-groups.test.ts`) asserts the far
+ * stronger property: that every registry action gets a row.
+ */
+const isShortcutRow = (label: Element): boolean =>
+  label.closest(".cfg-row--shortcut") !== null;
+
 describe("SettingsScreen — every setting survived the move", () => {
   let host: HTMLDivElement;
 
@@ -164,7 +180,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 22 rows by walking the rail", () => {
+  it("reaches all 23 rows by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });
@@ -172,6 +188,9 @@ describe("SettingsScreen — every setting survived the move", () => {
     const seen = new Set<string>();
     const collect = (): void => {
       for (const label of host.querySelectorAll(".cfg-row__label")) {
+        if (isShortcutRow(label)) {
+          continue;
+        }
         const text = label.textContent?.trim();
         if (text !== undefined && text !== "") {
           seen.add(text);

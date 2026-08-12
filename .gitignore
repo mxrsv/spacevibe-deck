@@ -42,3 +42,7 @@ marketing/video/out/
 
 # Local agent configuration and worktree bookkeeping, per-machine.
 .claude/
+
+# Electron host build output + local run logs
+dist-electron/
+*.log

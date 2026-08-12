@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // `missingPaths` steers the dirs_exist answer per test.
 const missingPaths = new Set<string>();
 let pickedFolder: string | null = null;
-vi.mock("@tauri-apps/plugin-store", () => ({
+vi.mock("../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async () => undefined),
@@ -17,7 +17,7 @@ vi.mock("@tauri-apps/plugin-store", () => ({
     })),
   },
 }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({
+vi.mock("../host/dialog-host", () => ({
   open: vi.fn(async () => pickedFolder),
 }));
 vi.mock("@tauri-apps/api/path", () => ({
@@ -25,7 +25,7 @@ vi.mock("@tauri-apps/api/path", () => ({
     throw new Error("OpenBoard must use the initialized desktop environment");
   }),
 }));
-vi.mock("@tauri-apps/api/core", () => ({
+vi.mock("../host/bridge", () => ({
   invoke: vi.fn(async (cmd: string, args?: { paths?: string[] }) => {
     if (cmd === "dirs_exist") {
       return (args?.paths ?? []).map((path) => !missingPaths.has(path));

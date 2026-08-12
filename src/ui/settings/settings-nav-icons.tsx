@@ -8,7 +8,9 @@
 import {
   AppWindow,
   Bell,
+  Globe,
   Bot,
+  Command,
   Download,
   Link,
   Palette,
@@ -28,6 +30,10 @@ export function TerminalIcon() {
   return <DeckIcon icon={SquareTerminal} size={RAIL_ICON} />;
 }
 
+export function BrowserIcon() {
+  return <DeckIcon icon={Globe} size={RAIL_ICON} />;
+}
+
 export function LinksEditorIcon() {
   return <DeckIcon icon={Link} size={RAIL_ICON} />;
 }
@@ -43,4 +49,14 @@ export function AboutIcon() {
 
 export function AgentsIcon() {
   return <DeckIcon icon={Bot} size={RAIL_ICON} />;
+}
+
+/**
+ * The ⌘ loop — what a chord IS, rather than a keyboard outline, which reads as
+ * "typing" and would collide with what `SquareTerminal` already means here.
+ * It stays right on Windows too: the glyph is the universal mark for a
+ * shortcut, not a claim about which modifier key is pressed.
+ */
+export function ShortcutsIcon() {
+  return <DeckIcon icon={Command} size={RAIL_ICON} />;
 }

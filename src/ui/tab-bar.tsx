@@ -13,8 +13,9 @@ import { tabDotCssColor, type TabDotColor } from "../lib/tab-colors";
 import { AgentAttentionMark } from "./agent-attention-mark";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { ChromeActions } from "./chrome-actions";
+import { tabPopoverOpen } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
-import { shortcutLabel } from "../lib/shortcut-label";
+import { titleWithShortcut } from "../lib/shortcut-label";
 
 interface TabBarProps {
   settingsOpen: boolean;
@@ -51,6 +52,14 @@ export function TabBar(props: TabBarProps) {
     top: number;
     anchorEl: HTMLElement;
   } | null>(null);
+
+  // Mirror the popover's open state into the shared signal — the browser
+  // panel's native view has to be hidden while anything floats over the stage,
+  // and it cannot see a component-local signal.
+  useSignalEffect(() => {
+    tabPopoverOpen.value = popover.value !== null;
+  });
+
   const popoverTab =
     popover.value === null
       ? undefined
@@ -86,6 +95,14 @@ export function TabBar(props: TabBarProps) {
 
   return (
     <header class="tabbar" data-tauri-drag-region ref={rootRef}>
+      {/* DL-18: in top-tab mode this row IS the window frame, so it reserves
+          the traffic-light inset itself rather than sitting under an empty
+          titlebar. Always in the tree; `--frame-lights-w` defaults to the
+          macOS footprint and only `.window--windows` zeroes it and hides the
+          element outright, so the `"unsupported"` platform fallback (see
+          platform.ts) also reserves that width, not just macOS
+          (DL-18.5 — nothing is reserved where no OS paints). */}
+      <div class="deck-frame__lights" aria-hidden="true" />
       <div class="tabbar__tabs" role="tablist" aria-label="Terminal tabs">
         {tabs.map((tab, index) => (
           <div
@@ -154,7 +171,7 @@ export function TabBar(props: TabBarProps) {
       <button
         type="button"
         class="tab-add"
-        title={`New tab (${shortcutLabel("new-tab")})`}
+        title={titleWithShortcut("New tab", "new-tab")}
         aria-label="New tab"
         onClick={props.onNewTab}
       >

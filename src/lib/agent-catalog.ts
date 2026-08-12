@@ -24,6 +24,12 @@ export interface BuiltinAgent {
   readonly label: string;
 }
 
+/** Process identity sent with `pty_info` for one declared agent. */
+export interface AgentProcessMatcher {
+  readonly binary: string;
+  readonly agent: string;
+}
+
 /** Recognised out of the box; always probed, whatever the user declared. */
 export const BUILTIN_AGENTS: readonly BuiltinAgent[] = [
   { id: "claude", label: "Claude Code" },
@@ -90,6 +96,29 @@ export function binaryKey(command: string): string {
   return cut === -1 ? binary : binary.slice(cut + 1);
 }
 
+/**
+ * Dynamic process matchers for user-declared agents. Two declarations may
+ * share a binary, but process inspection cannot distinguish their arguments,
+ * so the first declaration is the stable display identity for that process.
+ *
+ * `agent` is the LABEL, and it comes back as the identity every consumer of a
+ * classification reads — which is why a label may not be spelled like a
+ * built-in id. `labelProblem` in `agents-section.tsx` is where that is refused.
+ */
+export function agentProcessMatchers(
+  customAgents: readonly CustomAgent[],
+): readonly AgentProcessMatcher[] {
+  const seen = new Set<string>();
+  return customAgents.flatMap((agent) => {
+    const binary = binaryKey(agent.command);
+    if (seen.has(binary)) {
+      return [];
+    }
+    seen.add(binary);
+    return [{ binary, agent: agent.label }];
+  });
+}
+
 function slugify(label: string): string {
   return label
     .toLowerCase()
@@ -99,8 +128,10 @@ function slugify(label: string): string {
 
 /**
  * A stable id for a new agent, unique among `existing`. The `custom:` prefix
- * is what keeps a declared agent from ever colliding with a built-in id, so a
- * user may legitimately name their agent "claude".
+ * keeps this id from ever colliding with a built-in one, whatever the label
+ * slugifies to — so a label near a built-in's name, "claude-2" say, is fine
+ * here. The label ITSELF is a separate matter: it travels as the process
+ * identity, so `labelProblem` refuses one spelled exactly like a built-in id.
  */
 export function createCustomAgentId(
   label: string,

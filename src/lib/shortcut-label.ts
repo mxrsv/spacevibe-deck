@@ -1,11 +1,10 @@
 import {
-  MACOS_KEYMAP,
-  WINDOWS_KEYMAP,
   type ActionId,
   type CharKeyBinding,
   type KeyBinding,
   type PhysicalKeyBinding,
 } from "../terminal/action-registry";
+import { keymapForOverrides } from "../terminal/active-keymap";
 import { getDesktopEnvironment, type DesktopPlatform } from "./platform";
 
 const MACOS_KEY_LABELS: Readonly<Record<string, string>> = Object.freeze({
@@ -90,11 +89,20 @@ export function formatKeyChord(
   return `${modifiers}${key}`;
 }
 
+/**
+ * The chord to SHOW for an action, or null when it has none.
+ *
+ * Resolves through the user's overrides rather than the shipped keymap: every
+ * caller is a tooltip or a status-bar hint, and a hint naming a chord the user
+ * has rebound away is worse than no hint at all. Reading the settings signal
+ * also means the callers re-render on a rebind, since all of them read this
+ * during render (R5).
+ */
 export function shortcutLabel(
   action: ActionId,
   platform: DesktopPlatform = getDesktopEnvironment().platform,
+  keymap: readonly KeyBinding[] = keymapForOverrides(platform),
 ): string | null {
-  const keymap = platform === "windows" ? WINDOWS_KEYMAP : MACOS_KEYMAP;
   const binding = keymap.find((candidate) => candidate.action === action);
   return binding ? formatShortcutBinding(binding, platform) : null;
 }
@@ -103,4 +111,22 @@ export function primaryModifierName(
   platform: DesktopPlatform = getDesktopEnvironment().platform,
 ): "Cmd" | "Ctrl" {
   return platform === "windows" ? "Ctrl" : "Cmd";
+}
+
+/**
+ * `"Split vertically (⌘D)"`, or just `"Split vertically"` when the action has
+ * no chord.
+ *
+ * Exists because `shortcutLabel` can now return null for real: before rebinding
+ * existed, every action a tooltip named was bound by definition, so six call
+ * sites interpolated the result straight into a template and rendered
+ * `"New tab (null)"` the moment a user unbound something.
+ */
+export function titleWithShortcut(
+  title: string,
+  action: ActionId,
+  platform: DesktopPlatform = getDesktopEnvironment().platform,
+): string {
+  const chord = shortcutLabel(action, platform);
+  return chord === null ? title : `${title} (${chord})`;
 }
