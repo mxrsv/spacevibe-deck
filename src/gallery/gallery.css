@@ -378,6 +378,14 @@
   grid-template-columns: minmax(0, 1fr) var(--gx-workbench-dock);
 }
 
+.gx-workbench.is-dockhidden .gx-workbench__body {
+  grid-template-columns: var(--gx-workbench-nav) minmax(0, 1fr);
+}
+
+.gx-workbench.is-navhidden.is-dockhidden .gx-workbench__body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* ── workbench · region headers ──────────────────────────────────── */
 
 .gx-workbench__head {
@@ -420,14 +428,13 @@
   background: var(--green);
 }
 
-.gx-workbench__navtoggle {
+.gx-workbench__paneltoggle {
   display: flex;
   align-items: center;
   justify-content: center;
   flex: none;
   width: 22px;
   height: 22px;
-  margin-left: auto;
   padding: 0;
   border: 0;
   border-radius: 5px;
@@ -439,20 +446,33 @@
     color 0.13s ease;
 }
 
-.gx-workbench__navtoggle:hover {
+.gx-workbench__paneltoggle:hover {
   background: var(--gx-workbench-wash);
   color: var(--text-primary);
 }
 
-.gx-workbench__navtoggle:focus-visible {
+.gx-workbench__paneltoggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
-/* With the sidebar gone the toggle keeps the stage's leading edge, not its end. */
-.gx-workbench.is-navhidden .gx-workbench__navtoggle {
+/*
+ * Each toggle sits on the edge its region shares with the stage: the sidebar's
+ * at the end of its header, the explorer's at the start of its own. When a
+ * region is gone its toggle lands on the stage header's matching edge, so the
+ * control stays where the region it opens would appear.
+ */
+.gx-workbench__paneltoggle--nav {
+  margin-left: auto;
+}
+
+.gx-workbench.is-navhidden .gx-workbench__paneltoggle--nav {
   margin-left: 0;
   margin-right: 3px;
+}
+
+.gx-workbench.is-dockhidden .gx-workbench__paneltoggle--dock {
+  margin-left: auto;
 }
 
 /* ── workbench · left region ─────────────────────────────────────── */
