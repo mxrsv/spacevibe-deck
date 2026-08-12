@@ -191,6 +191,102 @@ describe("release channel isolation", () => {
   });
 });
 
+describe("release notes gate", () => {
+  it("generates user-facing notes before either draft build", () => {
+    const preparation = job("prepare-release-notes");
+
+    expect(preparation).toContain("fetch-depth: 0");
+    expect(preparation).toContain("scripts/generate-release-notes.mjs");
+    expect(preparation).toContain("--channel stable");
+    expect(preparation).toContain("--channel windows-preview");
+
+    for (const name of [
+      "build-macos-stable-draft",
+      "build-windows-preview-draft",
+    ]) {
+      expect(job(name), name).toMatch(
+        /^\s*needs:\s*\[[^\]]*\bprepare-release-notes\b[^\]]*\]$/m,
+      );
+    }
+  });
+
+  it("uses generated notes instead of static platform boilerplate", () => {
+    expect(job("build-macos-stable-draft")).toContain(
+      "needs.prepare-release-notes.outputs.stable_body",
+    );
+    expect(job("build-windows-preview-draft")).toContain(
+      "needs.prepare-release-notes.outputs.windows_body",
+    );
+    expect(job("build-macos-stable-draft")).not.toContain(
+      "Users on 0.10.0 or earlier",
+    );
+  });
+
+  it("uses an unpredictable delimiter for multiline GitHub outputs", () => {
+    const preparation = job("prepare-release-notes");
+
+    expect(preparation).toMatch(
+      /local random_suffix[\s\S]*random_suffix="\$\(openssl rand -hex 16\)"/,
+    );
+    expect(preparation).toContain(
+      'delimiter="deck_release_notes_${random_suffix}"',
+    );
+    expect(preparation).toContain('[[ "$random_suffix" =~ ^[0-9a-f]{32}$ ]]');
+    expect(preparation).toContain('grep -Fxq "$delimiter" "$path"');
+    expect(preparation).toContain(
+      "printf '%s<<%s\\n' \"$name\" \"$delimiter\"",
+    );
+    expect(preparation).toContain(
+      "printf '\\n%s\\n' \"$delimiter\"",
+    );
+    expect(preparation).not.toContain("${RANDOM}");
+  });
+
+  it("fails closed when delimiter entropy generation fails", () => {
+    const preparation = job("prepare-release-notes");
+    const helper = preparation.match(
+      /^ {10}append_output\(\) \{[\s\S]*?^ {10}\}/m,
+    )?.[0];
+    if (helper === undefined) {
+      throw new Error("prepare-release-notes has no append_output helper");
+    }
+    const runnableHelper = helper.replace(/^ {10}/gm, "");
+    const result = spawnSync(
+      "bash",
+      [
+        "-c",
+        [
+          "set -euo pipefail",
+          "openssl() { return 1; }",
+          runnableHelper,
+          "append_output notes package.json",
+        ].join("\n"),
+      ],
+      {
+        cwd: new URL("..", import.meta.url),
+        env: { ...process.env, GITHUB_OUTPUT: "/dev/null" },
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).not.toBe(0);
+  });
+
+  it("reuses the reviewed stable release body for a manual Windows retry", () => {
+    const preparation = job("prepare-release-notes");
+
+    expect(preparation).toContain(
+      'if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]',
+    );
+    expect(preparation).toContain(
+      'gh release view "$TARGET_TAG" --json body --jq .body',
+    );
+    expect(preparation).toContain(
+      "--body-file stable-release-notes.md --channel windows-preview",
+    );
+  });
+});
+
 describe("publication gates", () => {
   it("proves renamed macOS draft assets match the local build", () => {
     const collection = steps("build-macos-stable-draft").find((step) =>

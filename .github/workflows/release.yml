@@ -60,6 +60,78 @@ jobs:
             echo "rc=false" >> "$GITHUB_OUTPUT"
           fi
 
+  prepare-release-notes:
+    needs: resolve-target
+    runs-on: ubuntu-latest
+    outputs:
+      stable_body: ${{ steps.notes.outputs.stable_body }}
+      windows_body: ${{ steps.notes.outputs.windows_body }}
+    steps:
+      - name: Checkout release-note tooling and tag history
+        uses: actions/checkout@v4
+        with:
+          # A tag push checks out its own generator. A manual Windows retry
+          # checks out the workflow branch so an older source tag can still use
+          # the current release tooling without changing the artifact source.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate mandatory user-facing release notes
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ needs.resolve-target.outputs.sha }}
+          TARGET_TAG: ${{ needs.resolve-target.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            gh release view "$TARGET_TAG" --json body --jq .body \
+              > reviewed-release-notes.md
+            node scripts/generate-release-notes.mjs \
+              --body-file reviewed-release-notes.md --channel stable \
+              > stable-release-notes.md
+            node scripts/generate-release-notes.mjs \
+              --body-file stable-release-notes.md --channel windows-preview \
+              > windows-release-notes.md
+          else
+            node scripts/generate-release-notes.mjs \
+              --tag "$TARGET_TAG" --sha "$TARGET_SHA" --channel stable \
+              > stable-release-notes.md
+            node scripts/generate-release-notes.mjs \
+              --tag "$TARGET_TAG" --sha "$TARGET_SHA" --channel windows-preview \
+              > windows-release-notes.md
+          fi
+
+          append_output() {
+            local name="$1"
+            local path="$2"
+            local random_suffix
+            local delimiter
+            local attempts=0
+            while (( attempts < 5 )); do
+              random_suffix="$(openssl rand -hex 16)"
+              [[ "$random_suffix" =~ ^[0-9a-f]{32}$ ]] || return 1
+              delimiter="deck_release_notes_${random_suffix}"
+              if ! grep -Fxq "$delimiter" "$path"; then
+                break
+              fi
+              attempts=$((attempts + 1))
+            done
+            if grep -Fxq "$delimiter" "$path"; then
+              echo "Could not generate a safe GitHub output delimiter" >&2
+              return 1
+            fi
+            printf '%s<<%s\n' "$name" "$delimiter" >> "$GITHUB_OUTPUT"
+            cat "$path" >> "$GITHUB_OUTPUT"
+            printf '\n%s\n' "$delimiter" >> "$GITHUB_OUTPUT"
+          }
+          append_output stable_body stable-release-notes.md
+          append_output windows_body windows-release-notes.md
+
   validate-source:
     needs: resolve-target
     runs-on: ubuntu-latest
@@ -130,7 +202,7 @@ jobs:
   build-macos-stable-draft:
     # Skipped on a manual run — that path exists to retry Windows alone.
     if: github.event_name == 'push'
-    needs: [resolve-target, validate-source]
+    needs: [resolve-target, validate-source, prepare-release-notes]
     runs-on: macos-latest
     permissions:
       contents: write
@@ -200,7 +272,7 @@ jobs:
         with:
           tagName: ${{ needs.resolve-target.outputs.tag }}
           releaseName: ${{ needs.resolve-target.outputs.rc == 'true' && 'SpaceVibe Deck v__VERSION__ — Release Candidate' || 'SpaceVibe Deck v__VERSION__' }}
-          releaseBody: ${{ needs.resolve-target.outputs.rc == 'true' && 'Release candidate. It updates only through the isolated macOS RC channel and never moves the stable channel.' || 'Stable macOS release. Users on 0.10.0 or earlier install this build manually once; every later update arrives through the hardened updater.' }}
+          releaseBody: ${{ needs.prepare-release-notes.outputs.stable_body }}
           releaseCommitish: ${{ needs.resolve-target.outputs.sha }}
           releaseDraft: true
           prerelease: ${{ needs.resolve-target.outputs.rc == 'true' }}
@@ -338,7 +410,7 @@ jobs:
           retention-days: 7
 
   build-windows-preview-draft:
-    needs: [resolve-target, validate-source]
+    needs: [resolve-target, validate-source, prepare-release-notes]
     runs-on: windows-latest
     permissions:
       contents: write
@@ -417,10 +489,7 @@ jobs:
         with:
           tagName: ${{ needs.resolve-target.outputs.tag }}-windows-preview
           releaseName: "SpaceVibe Deck v__VERSION__ — Unsigned Windows Preview"
-          releaseBody: |
-            **Unsigned Windows Preview** — this is not the stable Windows channel.
-
-            Windows may show SmartScreen or `Unknown publisher` because this preview has no paid Authenticode certificate. The updater payload still requires Deck's Tauri signature before installation.
+          releaseBody: ${{ needs.prepare-release-notes.outputs.windows_body }}
           releaseCommitish: ${{ needs.resolve-target.outputs.sha }}
           releaseDraft: true
           prerelease: true
