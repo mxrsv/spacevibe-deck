@@ -379,27 +379,6 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "View", group: "prompts" },
   },
   {
-    id: "toggle-explorer",
-    label: "File Explorer",
-    // Tier "always", like `toggle-settings`: the panel is a COLUMN of the
-    // window grid, not an overlay, so it neither covers the stage nor is
-    // covered by it — and a toggle that could be blocked by the very surface
-    // it opens beside would be unreachable from the Open board, which is the
-    // app's own landing screen.
-    scope: "always",
-    menu: { submenu: "View", group: "explorer" },
-  },
-  {
-    id: "save-file",
-    label: "Save File",
-    // Tier "pane": it saves the ACTIVE file surface, which every overlay hides
-    // — the same reasoning as `toggle-prompts` and `save-preset`. Scoped in its
-    // own dispatch too: with no file tab active it does nothing rather than
-    // guessing at a target.
-    scope: "pane",
-    menu: { submenu: "File", group: "save-file" },
-  },
-  {
     id: "move-pane-to-new-window",
     label: "Move Pane to New Window",
     // Tier "pane": it acts on the FOCUSED pane, which every overlay hides —
@@ -664,18 +643,6 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   { key: "n", meta: true, shift: true, action: "new-preset" },
   // Capture the live layout as a preset — also in the Window menu
   { key: "s", meta: true, shift: true, action: "save-preset" },
-  // Save the active file tab. ⌘S was free on both keymaps: `save-preset` is
-  // ⌘⇧S here and Ctrl+Alt+Shift+S on Windows. CharKeyBinding is mandatory, not
-  // a style choice — this action has a menu item, and a Cocoa accelerator is
-  // declared by character (see the RULE above).
-  { key: "s", meta: true, action: "save-file" },
-  // Toggle the file explorer panel. ⌘⇧B / Ctrl+Shift+B is free in both SHIPPED
-  // keymaps (no `b`/`KeyB` binding existed on either) and `b` is the sidebar
-  // mnemonic people already carry from other editors. ⌘⇧E was the first choice
-  // and was dropped on evidence: `Ctrl+Shift+E` is already `toggle-expand` on
-  // the Windows keymap. CharKeyBinding is mandatory — this action has a menu
-  // item. A user may of course rebind it; nothing assumes the chord.
-  { key: "b", meta: true, shift: true, action: "toggle-explorer" },
   // Jump to the highest-severity actionable Attention Rail candidate; routed
   // through an app-level seam so it can share the overlay preflight with a
   // status-dot click instead of focusing directly.
@@ -821,8 +788,6 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   { key: "k", ctrl: true, shift: true, action: "clear-buffer" },
   { key: "n", ctrl: true, alt: true, shift: true, action: "new-preset" },
   { key: "s", ctrl: true, alt: true, shift: true, action: "save-preset" },
-  { key: "s", ctrl: true, action: "save-file" },
-  { key: "b", ctrl: true, shift: true, action: "toggle-explorer" },
   {
     key: "a",
     ctrl: true,

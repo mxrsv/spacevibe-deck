@@ -2704,10 +2704,6 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     // TabPopover (z-100) outranks every overlay tier this registry models,
     // and TabBar/WorkspaceSidebar sit outside `.stage`, so there is nothing
     // for a tier to protect (see the row's own comment).
-    // toggle-explorer joined it with the file explorer: the panel is a COLUMN
-    // of the window grid, so it neither covers the stage nor is covered by it,
-    // and a toggle an overlay could block would be unreachable from the Open
-    // board — the app's own landing screen.
     expect(new Set(alwaysActions)).toEqual(
       new Set([
         "check-for-updates",
@@ -2715,7 +2711,6 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
         "open-release-notes",
         "toggle-settings",
         "open-tab-options",
-        "toggle-explorer",
       ]),
     );
   });
@@ -4152,30 +4147,5 @@ describe("file surfaces in the tab strip", () => {
     tm.selectTab(0);
 
     expect(surfaces.calls).toContain("deactivate");
-  });
-
-  it("⌘S saves the active file surface", async () => {
-    const surfaces = fakeSurfaces({ count: 1, total: 1 });
-    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
-    surfaces.activeIndexValue = 0;
-    surfaces.calls.length = 0;
-
-    tm.runAction("save-file");
-
-    await vi.waitFor(() => expect(surfaces.calls).toContain("save"));
-  });
-
-  it("⌘⇧B toggles the panel setting and nothing else", async () => {
-    const surfaces = fakeSurfaces({});
-    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    const before = settings.value.explorerOpen;
-
-    tm.runAction("toggle-explorer");
-
-    await vi.waitFor(() =>
-      expect(settings.value.explorerOpen).toBe(!before),
-    );
-    expect(surfaces.calls).toEqual([]);
   });
 });

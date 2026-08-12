@@ -139,7 +139,6 @@ const COMMAND_ACTIONS = [
   "paste",
   "prev-tab",
   "reopen-tab",
-  "save-file",
   "save-preset",
   "scroll-page-down",
   "scroll-page-up",
@@ -152,7 +151,6 @@ const COMMAND_ACTIONS = [
   "swap-right",
   "swap-up",
   "toggle-expand",
-  "toggle-explorer",
   "toggle-prompts",
   "toggle-settings",
   "toggle-zoom-pane",
@@ -246,13 +244,20 @@ export interface OpenFromPresetOptions {
 /**
  * Non-terminal surfaces sharing the tab strip.
  *
- * TabManager knows only that they EXIST and can be activated — never that they
- * are files. That is spec §2.3's seam stated as a type: `TabManager` gains no
- * knowledge of files and the file store gains no knowledge of PTYs, and this
- * interface is the entire vocabulary between them.
+ * TabManager knows only that they EXIST and can be activated — never what they
+ * hold. That is the file-explorer spec's §2.3 seam stated as a type:
+ * `TabManager` gains no knowledge of files and the file store gains no
+ * knowledge of PTYs, and this interface is the entire vocabulary between them.
+ *
+ * NOTHING IMPLEMENTS THIS TODAY. The file model behind it landed
+ * (`src/files/`), but the chrome that would mount it is deliberately left to
+ * the Electron redesign, so every window runs on `INERT_SURFACES` below. The
+ * seam stays because the invariants it encodes — "last surface, not last tab",
+ * a combined cycle index space, `movePane`'s refusal — are the ones that are
+ * expensive to retrofit and cheap to keep proven.
  *
  * Every method has a no-op default (`INERT_SURFACES`), so a caller that passes
- * nothing gets exactly the pre-explorer behaviour.
+ * nothing gets exactly the behaviour that shipped before the seam existed.
  */
 export interface SurfaceStrip {
   /** Surfaces in the strip right now — the segment after the terminal tabs. */
@@ -275,7 +280,7 @@ export interface SurfaceStrip {
   applySettings(next: Settings): void;
 }
 
-/** The pre-explorer world: no surfaces, nothing to activate. */
+/** Terminals only: no surfaces, nothing to activate. Today's every window. */
 const INERT_SURFACES: SurfaceStrip = {
   count: () => 0,
   total: () => 0,
@@ -294,8 +299,9 @@ const INERT_SURFACES: SurfaceStrip = {
  */
 export interface TabManagerDeps extends TerminalManagerDeps {
   /**
-   * Surfaces in the strip that are not terminal tabs — the file explorer's
-   * file tabs today. Absent = none, and every behaviour below is unchanged.
+   * Surfaces in the strip that are not terminal tabs. No production caller
+   * passes one yet (see `SurfaceStrip`); absent = none, and every behaviour
+   * below is unchanged.
    */
   surfaces?: SurfaceStrip;
   /**
@@ -1480,13 +1486,6 @@ export function createTabManager(
     "new-preset": () => {
       editorRequest.value = { source: "live" };
     },
-    // The panel is a COLUMN of the window grid, not an overlay, so this is an
-    // ordinary settings write — the same shape as `toggle-expand` above.
-    "toggle-explorer": () =>
-      updateSettings({ explorerOpen: !settings.value.explorerOpen }),
-    // Scoped so it does nothing when no file surface is active (spec §4.3),
-    // rather than guessing at a target.
-    "save-file": () => void surfaces.save(),
   } satisfies Record<(typeof COMMAND_ACTIONS)[number], () => void>;
 
   /**

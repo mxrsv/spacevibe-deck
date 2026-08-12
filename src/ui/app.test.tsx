@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { readFileSync } from "node:fs";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,9 +12,7 @@ import {
   bootOpensTheBoard,
   closeSettingsPanel,
   DesktopChrome,
-  boardCanCancel,
   livePresetOpensATab,
-  promptsAreDisabled,
   toggleSettingsPanel,
 } from "./app";
 import { ACTION_REGISTRY, TIER_RANK } from "../terminal/action-registry";
@@ -53,7 +50,6 @@ describe("DesktopChrome platform structure", () => {
           sidebarNavigation={<nav data-testid="sidebar">sidebar</nav>}
           topTabs={<header data-testid="tabs">tabs</header>}
           stage={<main data-testid="stage">stage</main>}
-          explorer={null}
           status={<footer data-testid="status">status</footer>}
           onMacTitlebarDoubleClick={vi.fn()}
         />,
@@ -242,77 +238,5 @@ describe("bootOpensTheBoard", () => {
 
   it("skips the board when the window boots to adopt a pane", () => {
     expect(bootOpensTheBoard({ kind: "adopt", token: "t-1" })).toBe(false);
-  });
-});
-
-describe("promptsAreDisabled", () => {
-  // ONE expression, read by `ChromeActions` AND `TabBar`. It used to be written
-  // twice, which is exactly how a rule lands in one chrome layout and not the
-  // other — spec §7's last row exists for that failure.
-  it("allows prompts with a terminal tab focused and nothing covering it", () => {
-    expect(
-      promptsAreDisabled({
-        overlayCoversPane: false,
-        terminalTabCount: 1,
-        fileSurfaceActive: false,
-      }),
-    ).toBe(false);
-  });
-
-  it("disables prompts while a FILE surface holds the stage", () => {
-    // Otherwise the board offers to paste a prompt into an editor.
-    expect(
-      promptsAreDisabled({
-        overlayCoversPane: false,
-        terminalTabCount: 1,
-        fileSurfaceActive: true,
-      }),
-    ).toBe(true);
-  });
-
-  it("keeps its existing two reasons", () => {
-    expect(
-      promptsAreDisabled({
-        overlayCoversPane: true,
-        terminalTabCount: 1,
-        fileSurfaceActive: false,
-      }),
-    ).toBe(true);
-    expect(
-      promptsAreDisabled({
-        overlayCoversPane: false,
-        terminalTabCount: 0,
-        fileSurfaceActive: false,
-      }),
-    ).toBe(true);
-  });
-});
-
-describe("boardCanCancel", () => {
-  it("refuses only when there is nothing at all behind the board", () => {
-    expect(boardCanCancel(0, 0)).toBe(false);
-    expect(boardCanCancel(1, 0)).toBe(true);
-  });
-
-  it("allows cancel for a window holding ONLY file tabs", () => {
-    // The twelfth invariant site: without this the board cannot be dismissed
-    // and the file tabs behind it are unreachable.
-    expect(boardCanCancel(0, 1)).toBe(true);
-  });
-});
-
-describe("the update install path", () => {
-  it("asks about unsaved files before Install & Relaunch", () => {
-    // A FOURTH exit that spec §6's three did not count: `app_relaunch` calls
-    // `app.exit(0)` and never reaches `before-quit`, so main's dirty registry
-    // is never consulted. Asserted on the source because `confirmInstall` is
-    // built inside `App()`, which this repo has no render harness for.
-    const source = readFileSync("src/ui/app.tsx", "utf8");
-    const guard = source.slice(
-      source.indexOf("confirmInstall:"),
-      source.indexOf("flush: flushSettingsSave"),
-    );
-    expect(guard).toContain("dirtyPaths()");
-    expect(guard).toContain("UPDATE_COPY");
   });
 });

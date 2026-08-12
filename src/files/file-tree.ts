@@ -7,7 +7,11 @@
  */
 
 export interface DirEntry {
-  /** Leaf name as the filesystem reports it — real casing (DL-16.4). */
+  /**
+   * Leaf name as the filesystem reports it. Real casing, never lowercased:
+   * DL-4.1's lowercase rule governs chrome labels the app authors, and a file
+   * name is data the app reports.
+   */
   readonly name: string;
   /** Absolute path, already canonicalized by the host's path guard. */
   readonly path: string;

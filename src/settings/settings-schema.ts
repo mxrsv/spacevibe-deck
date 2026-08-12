@@ -52,17 +52,6 @@ export interface Settings {
    * would make one machine's rebind silently rewrite the other's.
    */
   keybindings: KeybindingOverrides;
-  /**
-   * Whether the file explorer panel opens with a window.
-   *
-   * The panel's width and this flag are the ONLY explorer state that persists.
-   * Which files are open, which directories are expanded and where the tree is
-   * scrolled are per window and in memory (spec §2.2) — Deck has no session
-   * restore, and file tabs would be the only restored UI state in the app.
-   */
-  explorerOpen: boolean;
-  /** Panel width in px, clamped to `EXPLORER_WIDTH_MIN`..`EXPLORER_WIDTH_MAX`. */
-  explorerWidth: number;
 }
 
 export const FONT_SIZE_MIN = 10;
@@ -75,13 +64,6 @@ export const SCROLLBACK_CHOICES = [
 ] as const;
 
 export const FONT_FALLBACK = "Menlo, Monaco, monospace";
-
-/** File explorer panel width bounds. The default is spec §3's 260px; the floor
- * is where a nested path stops being readable, and the ceiling is where the
- * panel starts competing with the stage it exists to serve. */
-export const EXPLORER_WIDTH_MIN = 180;
-export const EXPLORER_WIDTH_MAX = 560;
-export const EXPLORER_WIDTH_DEFAULT = 260;
 
 export const COLOR_KEYS = [
   "background",
@@ -105,8 +87,6 @@ export const DEFAULT_SETTINGS: Settings = {
   customAgents: [],
   promptTemplates: [],
   keybindings: NO_KEYBINDING_OVERRIDES,
-  explorerOpen: false,
-  explorerWidth: EXPLORER_WIDTH_DEFAULT,
 };
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -127,13 +107,6 @@ export function clampFontSize(size: number): number {
 
 export function clampScrollback(n: number): number {
   return Math.min(SCROLLBACK_MAX, Math.max(SCROLLBACK_MIN, Math.round(n)));
-}
-
-export function clampExplorerWidth(width: number): number {
-  return Math.min(
-    EXPLORER_WIDTH_MAX,
-    Math.max(EXPLORER_WIDTH_MIN, Math.round(width)),
-  );
 }
 
 function validateColorOverrides(raw: unknown): Partial<TerminalColors> {
@@ -285,14 +258,5 @@ export function validateSettings(raw: unknown): Settings {
     customAgents: validateCustomAgents(source.customAgents),
     promptTemplates: validatePromptTemplates(source.promptTemplates),
     keybindings: validateKeybindings(source.keybindings),
-    explorerOpen:
-      typeof source.explorerOpen === "boolean"
-        ? source.explorerOpen
-        : DEFAULT_SETTINGS.explorerOpen,
-    explorerWidth:
-      typeof source.explorerWidth === "number" &&
-      Number.isFinite(source.explorerWidth)
-        ? clampExplorerWidth(source.explorerWidth)
-        : DEFAULT_SETTINGS.explorerWidth,
   };
 }

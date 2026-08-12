@@ -23,7 +23,7 @@ import { agentOptions, probeNames } from "../lib/agent-catalog";
 import { resolveTheme } from "../settings/themes";
 import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
-import { activeTabIndex, tabViews } from "../terminal/tabs-store";
+import { tabViews } from "../terminal/tabs-store";
 import {
   markLastUsed,
   presetsData,
@@ -77,19 +77,7 @@ import {
   runUpdateMenuAction,
 } from "../updater/update-menu-actions";
 import { defaultLinkClient } from "../terminal/link-client";
-import {
-  createFileSurfaceController,
-  type FileSurfaceController,
-} from "../files/file-surface-controller";
-import {
-  activeFileTab,
-  activeWorkspace,
-  dirtyPaths,
-  setActiveWorkspace,
-  totalFileTabs,
-} from "../files/file-surface-store";
-import { ExplorerPanel } from "../files/ui/explorer-panel";
-import { FileEditor } from "../files/ui/file-editor";
+import { dirtyPaths } from "../files/file-surface-store";
 
 interface DesktopChromeProps {
   readonly sidebar: boolean;
@@ -97,8 +85,6 @@ interface DesktopChromeProps {
   readonly sidebarNavigation: ComponentChildren;
   readonly topTabs: ComponentChildren;
   readonly stage: ComponentChildren;
-  /** The docked file explorer column, or null when the panel is closed. */
-  readonly explorer: ComponentChildren;
   readonly status: ComponentChildren;
   readonly onMacTitlebarDoubleClick: () => void;
 }
@@ -111,10 +97,6 @@ export function DesktopChrome(props: DesktopChromeProps) {
     "window",
     `window--${platform}`,
     props.sidebar ? "window--sidebar" : "",
-    // The explorer is a COLUMN of this grid, never an overlay (DL-16.1) — so
-    // the grid template itself changes, and the stage's terminals reflow around
-    // it rather than being covered.
-    props.explorer ? "window--explorer" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -136,7 +118,6 @@ export function DesktopChrome(props: DesktopChromeProps) {
       ) : null}
       {props.sidebar ? props.sidebarNavigation : props.topTabs}
       {props.stage}
-      {props.explorer}
       {props.status}
     </div>
   );
@@ -228,58 +209,10 @@ export function bootOpensTheBoard(boot: BootMode): boolean {
   return boot.kind === "normal";
 }
 
-/**
- * Whether the Prompt Board has anywhere to paste.
- *
- * Extracted to module scope for the same reason as `toggleSettingsPanel` above
- * — this repo has no `<App>` render harness — and, more importantly, because
- * `promptsDisabled` is passed to `ChromeActions` AND to `TabBar`. Written
- * twice, it is exactly the kind of rule that lands in one chrome layout and not
- * the other; written once, both read the same answer.
- *
- * "No terminal pane focused", not "no tabs": with a file tab on the stage the
- * board would otherwise offer to paste a prompt into an editor.
- */
-export function promptsAreDisabled(input: {
-  readonly overlayCoversPane: boolean;
-  readonly terminalTabCount: number;
-  readonly fileSurfaceActive: boolean;
-}): boolean {
-  return (
-    input.overlayCoversPane ||
-    input.terminalTabCount === 0 ||
-    input.fileSurfaceActive
-  );
-}
-
-/**
- * Whether the Open board may be dismissed.
- *
- * The twelfth invariant site, not in the spec's table of eleven: a window
- * holding only file tabs has something behind the board, so refusing to cancel
- * leaves an Open Board that cannot be closed.
- */
-export function boardCanCancel(
-  terminalTabCount: number,
-  fileTabCount: number,
-): boolean {
-  return terminalTabCount > 0 || fileTabCount > 0;
-}
-
 export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const stagesRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<TabManager | null>(null);
   const updaterRef = useRef<UpdateController | null>(null);
-  // Created before the mount effect so `createTabManager` captures the real
-  // controller as its `surfaces` seam — the same reason `requestAttentionFocus`
-  // is defined up here.
-  const filesRef = useRef<FileSurfaceController | null>(null);
-  if (filesRef.current === null) {
-    filesRef.current = createFileSurfaceController({
-      onSurfacesChanged: () => tabsRef.current?.notifySurfacesChanged(),
-    });
-  }
-  const files = filesRef.current;
   const updatePreview = resolveUpdatePreview(
     window.location.search,
     import.meta.env.DEV,
@@ -291,11 +224,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       check: checkForUpdate,
       confirmInstall: () => {
         const manager = tabsRef.current;
-        // Installing an update is a FOURTH exit, which spec §6's three did not
-        // count: `app_relaunch` calls `app.exit(0)` and never reaches
-        // `before-quit`, so main's dirty registry is never consulted on this
-        // path. Without the fourth argument, Install & Relaunch with an unsaved
-        // file and no busy pane showed no dialog at all.
+        // Installing an update is a FOURTH exit, which the quit/window-close/
+        // tab-close set did not count: `app_relaunch` calls `app.exit(0)` and
+        // never reaches `before-quit`, so main's dirty registry is never
+        // consulted on this path. The renderer therefore has to supply the
+        // unsaved-file list itself. It is empty until a file surface exists,
+        // and correct the moment one does.
         return manager === null
           ? Promise.resolve(false)
           : confirmClose(
@@ -400,14 +334,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     const manager = createTabManager(host, undefined, {
       onRequestAttentionFocus: (tabIndex) => requestAttentionFocus(tabIndex),
       onToggleSettings: () => toggleSettings(),
-      surfaces: files,
     });
     tabsRef.current = manager;
-    void files.init().catch((err: unknown) => {
-      // The explorer degrades to "no live change notifications" rather than
-      // taking the window with it — the re-stat reconcile still runs.
-      console.error("Failed to initialize the file explorer:", err);
-    });
     if (updatePreview === null) {
       // Read the previous run's breadcrumb before starting a new check: if the
       // last install never landed, the user hears it here rather than
@@ -457,7 +385,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       });
     return () => {
       manager.dispose();
-      files.dispose();
     };
   }, []);
 
@@ -669,48 +596,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   }
 
-  /**
-   * Keep the explorer pointed at the active surface's workspace.
-   *
-   * A file surface owns the workspace while it is on the stage; otherwise the
-   * active terminal tab does — including a tab with NO workspace, which gets
-   * the empty panel that says why rather than the previous tab's tree.
-   *
-   * The one case that deliberately changes nothing: no terminal tabs and no
-   * file surface. The last workspace has to survive there, or the file tabs the
-   * "last surface, not last tab" rule protects would have nowhere to be listed.
-   */
-  useSignalEffect(() => {
-    const views = tabViews.value;
-    const index = activeTabIndex.value;
-    if (activeFileTab.value !== null || views.length === 0) {
-      return;
-    }
-    setActiveWorkspace(views[index]?.workspacePath ?? null);
-  });
-
-  const explorerWorkspace = activeWorkspace.value;
   const sidebar =
     updatePreview?.sidebar ?? settings.value.tabBarPosition === "left";
   const selectTab = (index: number): void => {
     boardOpen.value = false;
-    // Selecting a terminal tab takes the stage back from a file surface;
-    // `TabManager.selectTab` does the same through the `surfaces` seam, and
-    // this click path has to agree with it.
     tabsRef.current?.selectTab(index);
-  };
-  const selectFile = (path: string): void => {
-    boardOpen.value = false;
-    const workspacePath = activeWorkspace.value;
-    if (workspacePath !== null) {
-      files.activateFile(workspacePath, path);
-    }
-  };
-  const closeFile = (path: string): void => {
-    const workspacePath = activeWorkspace.value;
-    if (workspacePath !== null) {
-      void files.closePath(workspacePath, path);
-    }
   };
   const updateAction = (
     <UpdateAction
@@ -741,23 +631,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     settingsOpen.value ||
     editorRequest.value !== null ||
     saveDialogOpen.value;
-
-  /**
-   * Whether the Prompt Board has anywhere to paste.
-   *
-   * ONE expression, read by both chrome layouts. It used to be written twice —
-   * once for `ChromeActions` and once for `TabBar` — which is precisely how a
-   * change lands in one layout and not the other.
-   *
-   * "No terminal pane focused", not "no tabs": with a file tab on the stage the
-   * board would otherwise offer to paste a prompt into an editor.
-   */
-  const promptsUnavailable = (): boolean =>
-    promptsAreDisabled({
-      overlayCoversPane: overlayCoversPane(),
-      terminalTabCount: tabViews.value.length,
-      fileSurfaceActive: activeFileTab.value !== null,
-    });
 
   /**
    * Close an ALREADY OPEN popover the moment an overlay opens over it —
@@ -817,7 +690,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         updateSettings({ focusExpand: !settings.value.focusExpand })
       }
       promptsOpen={promptsOpen.value}
-      promptsDisabled={promptsUnavailable()}
+      promptsDisabled={overlayCoversPane() || tabViews.value.length === 0}
       promptPopover={promptPopover}
       onTogglePrompts={togglePrompts}
       onToggleSettings={toggleSettings}
@@ -846,8 +719,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           onSetTabColor={(index, color) =>
             tabsRef.current?.setTabDotColor(index, color)
           }
-          onSelectFile={selectFile}
-          onCloseFile={closeFile}
           onFocusAttention={requestAttentionFocus}
         />
       }
@@ -869,33 +740,20 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             updateSettings({ focusExpand: !settings.value.focusExpand })
           }
           promptsOpen={promptsOpen.value}
-          promptsDisabled={promptsUnavailable()}
+          promptsDisabled={overlayCoversPane() || tabViews.value.length === 0}
           promptPopover={promptPopover}
           onTogglePrompts={togglePrompts}
           onToggleSettings={toggleSettings}
           updateAction={updateAction}
-          onSelectFile={selectFile}
-          onCloseFile={closeFile}
           onFocusAttention={requestAttentionFocus}
         />
       }
       stage={
         <main class="stage">
           <div class="stage__tabs" ref={stagesRef} />
-          {/* The file surface sits over the terminal grid in the SAME stage
-              cell — it is a peer of the tabs, not an overlay, so it takes the
-              stage rather than covering it. */}
-          {activeFileTab.value !== null && (
-            <div class="stage__file">
-              <FileEditor path={activeFileTab.value} controller={files} />
-            </div>
-          )}
           {boardOpen.value ? (
             <OpenBoard
-              // A window holding only file tabs has something behind the board,
-              // so the board must be dismissible. Without the second term it is
-              // an Open Board that cannot be cancelled (plan T26).
-              canCancel={boardCanCancel(tabViews.value.length, totalFileTabs())}
+              canCancel={tabViews.value.length > 0}
               onCancel={() => {
                 boardOpen.value = false;
                 tabsRef.current?.focusActive();
@@ -932,20 +790,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           <PersistErrorBar />
           <SettingsScreen open={settingsOpen.value} onClose={closePanel} />
         </main>
-      }
-      explorer={
-        settings.value.explorerOpen ? (
-          <ExplorerPanel
-            workspacePath={explorerWorkspace}
-            activePath={activeFileTab.value}
-            width={settings.value.explorerWidth}
-            controller={files}
-            onResize={(width) => updateSettings({ explorerWidth: width })}
-            onPickFolder={() => {
-              boardOpen.value = true;
-            }}
-          />
-        ) : null
       }
       status={<StatusBar />}
       onMacTitlebarDoubleClick={maximizeMacWindow}

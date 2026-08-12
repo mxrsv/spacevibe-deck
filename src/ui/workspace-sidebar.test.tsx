@@ -32,13 +32,6 @@ import {
 import type { AgentAttentionSummary, TabView } from "../terminal/tabs-store";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 import {
-  activateTerminalSurface,
-  openFileTab,
-  resetFileSurfaces,
-  setActiveWorkspace,
-  updateDocument,
-} from "../files/file-surface-store";
-import {
   initializeDesktopEnvironment,
   resetDesktopEnvironmentForTests,
 } from "../lib/platform";
@@ -95,8 +88,6 @@ describe("WorkspaceSidebar", () => {
     onNewTab: vi.fn(),
     onRenameTab: vi.fn(),
     onSetTabColor: vi.fn(),
-    onSelectFile: vi.fn(),
-    onCloseFile: vi.fn(),
     onFocusAttention: vi.fn(),
   });
 
@@ -318,145 +309,5 @@ describe("WorkspaceSidebar", () => {
 
     expect(IDLE_ATTENTION_SUMMARY.kind).toBe("idle");
     expect(host.querySelector(".wsitem__logo-attn")).toBeNull();
-  });
-});
-
-const TAB_SELECTOR = ".wsitem";
-const LABEL_SELECTOR = ".wsitem__label";
-const DIRTY_SELECTOR = ".wsitem__dirty";
-const CLOSE_SELECTOR = ".wsitem__close";
-const stripProps = {
-  onSelectTab: vi.fn(),
-  onCloseTab: vi.fn(),
-  onNewTab: vi.fn(),
-  onRenameTab: vi.fn(),
-  onSetTabColor: vi.fn(),
-  onSelectFile: vi.fn(),
-  onCloseFile: vi.fn(),
-};
-
-function renderStrip(): HTMLDivElement {
-  stripProps.onSelectTab.mockClear();
-  stripProps.onSelectFile.mockClear();
-  stripProps.onCloseFile.mockClear();
-  tabViews.value = [
-    {
-      key: 1,
-      process: "zsh",
-      name: null,
-      dotColor: null,
-      workspacePath: "/repo",
-      agentBusy: false,
-      unread: false,
-    },
-  ];
-  activeTabIndex.value = 0;
-  const host = document.createElement("div");
-  document.body.appendChild(host);
-  act(() => {
-    render(<WorkspaceSidebar {...stripProps} />, host);
-  });
-  return host;
-}
-
-
-/**
- * File tabs in the strip (plan T27, T32).
- *
- * Run in BOTH chrome layouts, in each layout's own test file: only one mounts
- * at a time, driven by `tabBarPosition`, so a single-layout check proves half
- * the app — spec §7's last row.
- */
-describe("file tabs in the strip", () => {
-  afterEach(() => {
-    resetFileSurfaces();
-  });
-
-  it("renders the file tabs of the active surface's workspace after the terminal tabs", () => {
-    openFileTab("/repo", "/repo/src/index.ts", { keep: true });
-    const host = renderStrip();
-    const labels = [...host.querySelectorAll(LABEL_SELECTOR)].map(
-      (node) => node.textContent,
-    );
-    expect(labels[labels.length - 1]).toBe("index.ts");
-  });
-
-  it("marks a preview tab italic and a kept tab not", () => {
-    openFileTab("/repo", "/repo/preview.ts", { keep: false });
-    const host = renderStrip();
-    expect(host.querySelector(`${TAB_SELECTOR}.is-preview`)).not.toBeNull();
-
-    resetFileSurfaces();
-    openFileTab("/repo", "/repo/kept.ts", { keep: true });
-    const kept = renderStrip();
-    expect(kept.querySelector(`${TAB_SELECTOR}.is-preview`)).toBeNull();
-  });
-
-  it("shows a dot for unsaved changes", () => {
-    openFileTab("/repo", "/repo/a.ts", { keep: true });
-    expect(renderStrip().querySelector(DIRTY_SELECTOR)).toBeNull();
-
-    updateDocument("/repo/a.ts", { dirty: true });
-    expect(renderStrip().querySelector(DIRTY_SELECTOR)).not.toBeNull();
-  });
-
-  it("takes the active mark off the terminal tab while a file tab holds the stage", () => {
-    openFileTab("/repo", "/repo/a.ts", { keep: true });
-    const host = renderStrip();
-    const active = [...host.querySelectorAll(`${TAB_SELECTOR}.is-active`)];
-    expect(active).toHaveLength(1);
-    expect(active[0].getAttribute("data-file")).toBe("/repo/a.ts");
-  });
-
-  it("swaps which file tabs are visible when the active workspace changes", () => {
-    // The named cost of spec §2.1.
-    openFileTab("/repo", "/repo/a.ts", { keep: true });
-    openFileTab("/other", "/other/b.ts", { keep: true });
-    expect(renderStrip().querySelectorAll(`${TAB_SELECTOR}[data-file]`)).toHaveLength(1);
-    expect(
-      renderStrip().querySelector(`${TAB_SELECTOR}[data-file]`)?.getAttribute("data-file"),
-    ).toBe("/other/b.ts");
-
-    activateTerminalSurface();
-    setActiveWorkspace("/repo");
-    expect(
-      renderStrip().querySelector(`${TAB_SELECTOR}[data-file]`)?.getAttribute("data-file"),
-    ).toBe("/repo/a.ts");
-  });
-
-
-  it("clicking the ACTIVE terminal tab takes the stage back from a file tab", () => {
-    // The class was made conditional on `terminalActive` but the click handler
-    // still branched on the bare `index !== active`, so this click opened the
-    // Tab Options popover instead of returning to the terminal.
-    openFileTab("/repo", "/repo/a.ts", { keep: true });
-    const host = renderStrip();
-    const terminal = host.querySelector<HTMLElement>(`${TAB_SELECTOR}[data-key]`)!;
-
-    terminal.click();
-
-    expect(stripProps.onSelectTab).toHaveBeenCalledWith(0);
-  });
-
-  it("reports exactly one selected tab to assistive tech", () => {
-    openFileTab("/repo", "/repo/a.ts", { keep: true });
-    const host = renderStrip();
-    const selected = [...host.querySelectorAll('[role="tab"][aria-selected="true"]')];
-    expect(selected).toHaveLength(1);
-    expect(selected[0].getAttribute("data-file")).toBe("/repo/a.ts");
-  });
-
-  it("routes a click to onSelectFile and the × to onCloseFile", () => {
-    openFileTab("/repo", "/repo/a.ts", { keep: true });
-    const host = renderStrip();
-    const tab = host.querySelector<HTMLElement>(`${TAB_SELECTOR}[data-file]`)!;
-
-    tab.click();
-    expect(stripProps.onSelectFile).toHaveBeenCalledWith("/repo/a.ts");
-
-    tab.querySelector<HTMLButtonElement>(CLOSE_SELECTOR)!.click();
-    expect(stripProps.onCloseFile).toHaveBeenCalledWith("/repo/a.ts");
-    // The × must not also select the tab it is closing.
-    expect(stripProps.onSelectFile).toHaveBeenCalledTimes(1);
   });
 });

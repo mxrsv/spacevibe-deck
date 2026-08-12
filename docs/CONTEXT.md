@@ -680,16 +680,25 @@ reaches its owner instead of being dropped as "no route for pane".
 packaging, and the full manual pass. Nothing here ships, and the Tauri build
 remains what users run.
 
-## File explorer built — 2026-08-12
+## File explorer — model merged, surface dropped — 2026-08-12
 
 Electron branch only; nothing here ships on Tauri. Built against the
-[plan](plans/2026-08-12-file-explorer.md) `built` task by task, from the
-[spec](specs/2026-08-12-file-explorer-design.md) `decided`. 34 of 36 tasks
-done; the two that are not are the two that need a machine.
+[plan](plans/2026-08-12-file-explorer.md) `partly-built` task by task, from the
+[spec](specs/2026-08-12-file-explorer-design.md) `decided` — 34 of 36 tasks
+done — and then **split in half before merge**. Read the plan's §8 before
+touching any of it.
 
-**What landed.** A docked column on the right of the `.window` grid showing the
-active workspace's file tree, and file tabs beside the terminal tabs, editable
-and saveable in Monaco. In three layers, deliberately:
+**THE FEATURE IS NOT USABLE.** There is no way to open a file in Deck. The
+machinery merged and the chrome did not. That was a decision, not a shortfall:
+the owner is redesigning the Electron version completely, and while this was
+being written `electron-migration` took DESIGN LANGUAGE §16 for the application
+frame, wrote a **§17 "Docked side panels" for a browser panel that reserves
+itself for the file explorer**, docked that panel as a STAGE column rather than
+a `.window` grid column, and collapsed the chrome frame. Merging a second
+docked-panel convention into a frame about to be redrawn would have meant
+paying for the surface twice.
+
+**What merged.**
 
 - **Pure model** (`src/files/`) — the tree, the preview-slot promotion rules,
   the §5 external-change table, the dirty model, encoding/EOL, and the path
@@ -697,27 +706,46 @@ and saveable in Monaco. In three layers, deliberately:
   editor-engine change intact.
 - **Host** (`electron/fs/`) — `list_dir`, `read_file`, `write_file`,
   `stat_files`, `watch_paths` and `set_dirty_files`, every one bounded to the
-  workspace root by `path-guard.ts`. `writeAtomically` moved out of
-  `JsonStore` into `fs/write.ts` and the store now calls it — one atomic
-  writer, not two, with the store's existing 205 lines of tests as the
-  regression gate on the extraction.
-- **Surface** — the panel (DESIGN LANGUAGE §16), a virtualized 22px-row tree,
-  the file tabs in BOTH chrome layouts, and the editor.
+  workspace root by `path-guard.ts`. Registered in main; no renderer calls them
+  yet. `writeAtomically` moved out of `JsonStore` into `fs/write.ts` and the
+  store now calls it — one atomic writer, not two, with the store's existing
+  205 lines of tests as the regression gate on the extraction. **This half is a
+  security fix on its own**: the target branch still writes settings through a
+  fixed-name `.settings.json.tmp` and a symlink-following `fs.writeFile`.
+- **The dirty bridge across all four exits** (below).
+- **An inert `SurfaceStrip` seam** in `TabManager`, whose only implementation is
+  `INERT_SURFACES`. Nothing in production passes a real one. It stays because
+  the invariants it encodes — "last surface, not last tab", the combined cycle
+  index space, `movePane`'s refusal, the `applySettings`/`focusActive` fan-out —
+  are expensive to retrofit and cheap to keep proven.
 
-**The three exits all changed together**, because any five of the six parts is
-a hole. `app.on("before-quit")` returned early on an empty pane list, so a
-window holding only file tabs quit with unsaved edits and no prompt; the
-census now carries `dirtyFiles`, `closeRequestOrNull` was widened to keep the
-field, and the renderer's `busyPanes === 0` auto-confirm became "empty in both
-dimensions". `confirmMessage` names a busy agent and unsaved files in ONE
-dialog. Window death clears that window's dirty entries beside the pane
-routes.
+**What was dropped.** The docked panel, the virtualized tree, the file tabs in
+both chrome layouts, DESIGN LANGUAGE §16, the explorer CSS and settings, and the
+`toggle-explorer` / `save-file` actions. `file-editor.tsx` and
+`external-change-bar.tsx` stay in the tree unmounted — they are not chrome, they
+carry the Monaco lifecycle knowledge the redesign would otherwise rediscover
+(the `ready` dep, the `applying` re-entry flag, `pushEditOperations` over
+`setValue`, view-state pairing).
 
-**Measured Monaco cost.** Entry chunk 178.34 → 189.26 kB gzip (+10.92 kB, the
-explorer's own UI). `editor.api` is a separate lazily-imported 674.50 kB gzip
-chunk, plus 27 per-language tokenizer chunks and two worker chunks. No Monaco
-byte is in the entry chunk — the binding requirement holds. No language
-services are imported (the TypeScript one alone is 12 MB of the package).
+**The exits all changed together**, because any five of the six parts is a hole,
+and this half merged whole. `app.on("before-quit")` returned early on an empty
+pane list, so a window holding only file tabs would quit with unsaved edits and
+no prompt; the census now carries `dirtyFiles`, `closeRequestOrNull` was widened
+to keep the field, and the renderer's `busyPanes === 0` auto-confirm became
+"empty in both dimensions". Installing an update is a **fourth** exit the spec's
+three did not count — `app_relaunch` calls `app.exit(0)` and never reaches
+`before-quit` — so `confirmInstall` passes `dirtyPaths()` itself. `confirmMessage`
+names a busy agent and unsaved files in ONE dialog. Window death clears that
+window's dirty entries beside the pane routes. With no surface the list is
+always empty, so `close-guard.test.ts` now covers that half directly: it is the
+only proof left that an unsaved file survives an exit.
+
+**Monaco is a declared dependency that nothing reachable imports.** The build
+therefore emits no `editor.api` chunk and the entry is 178.83 kB gzip, +0.49 kB
+over the 178.34 kB baseline. The measurements taken while the surface existed —
+entry 189.26 kB, a lazy 674.50 kB gzip `editor.api`, 27 per-language tokenizer
+chunks, two worker chunks, no language services — are recorded in the plan's
+§6.2 as what the surface cost, and must be re-taken when the redesign mounts it.
 
 **Two defects the new tests caught.** Saving through an existing symlink that
 pointed OUT of the workspace was allowed, because the link's parent was inside
@@ -726,14 +754,16 @@ now refused by an `lstat` check. And the first file tab got an editor with no
 model, because Monaco's dynamic import resolves after the model effect has
 already run and nothing re-ran it.
 
-**NOT verified — everything needing a real window.** Gate M has not been run
-and cannot be until MVP T19 produces a packaged build; the thirteen-item
-manual pass has not been run at all; every `manual (owner)` line in the plan is
-outstanding. `npm test` (1740 passing), `npm run build`,
+**NOT verified — everything needing a real window.** Gate M has not been run and
+now has no subject: it was already blocked on MVP T19 producing a packaged
+build, and nothing imports Monaco any more. The thirteen-item manual pass has
+not been run at all; every `manual (owner)` line in the plan is outstanding.
+`npm test` (1717 passing on the merged half), `npm run build`,
 `npm run electron:build`, `generate:menu:check` and the Electron IPC contract
-test are green, and none of them opens a window. Details, including the two
-approved dependencies that were deliberately not added and why, are in the
-plan's §6.
+test are green, and none of them opens a window. The plan's §7.2 follow-ups
+mostly went away WITH the surface — unreachable, not fixed — but three merged
+because they live in the host layer: `realpathSync` runs synchronously per entry
+on the main thread, and `stat_files` / `watch_paths` take unbounded arrays.
 
 ## Chưa khớp thực tế
 

@@ -346,42 +346,6 @@ behaviour, and §5's row is what makes settings scan as one document.
   are rendered as text, never as pictograms, and `formatShortcutBinding`
   (`src/lib/shortcut-label.ts`) is the only place their spelling is decided.
 
-## 16. Docked side panels
-
-Approved as a fork on 2026-08-12, for the file explorer. A permanently docked
-panel is a surface class this document did not have: §11 covers a full-window
-screen and §13 an anchored popover, and neither describes a column that lives
-in the window grid alongside the stage.
-
-**Numbered 16, not 15.** The spec that approved this fork called it "§15", but
-the Shortcuts settings category took that number first (2026-08-11) and its
-rules shipped. The numbers are cited from code comments, so they are addresses,
-not an ordering — renumbering the LATER one is the only change that leaves every
-existing citation correct.
-
-- **DL-16.1** A docked panel is a **column of the `.window` grid**, never an
-  overlay. Surface `--chrome-1`, separated by a 1px `--hair` border on the stage
-  side. No shadow (DL-1.3) — depth comes from the background step, as with
-  `.wsbar`.
-- **DL-16.2** The panel owns its own scrolling. Resizing it never causes the
-  stage or the window to scroll.
-- **DL-16.3** Data rows in a panel are 22px, `--ui-font`, one fixed indent token
-  per depth level. Hover is a 4% `--fg` wash; selection is a 2px left accent bar
-  plus the wash — the same signifier as DL-11.2 and DL-5.1, so "selected" reads
-  identically everywhere.
-- **DL-16.4** **A data row keeps its content's real casing.** DL-4.1's lowercase
-  rule governs chrome labels the app authors; a file name is data the app
-  reports, and lowercasing it would be wrong, not stylish.
-- **DL-16.5** File-type icons are a **second icon vocabulary** beside §14's
-  action icons, permitted only in a docked panel's data rows.
-  **Rendered monochrome at `--text-faint`**, taking the row's color when
-  selected. Colored per-type icons are the familiar look, but §3's color roles
-  are strict and each hue there already means something; a palette of file types
-  would spend those meanings on file extensions. If colored icons are wanted,
-  that is a DL-3 exception to take explicitly.
-- **DL-16.6** A panel has one hairline-separated header row carrying its title
-  and at most two actions. It is a row, not a toolbar.
-
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

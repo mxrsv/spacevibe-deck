@@ -327,35 +327,72 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
 
 - **A file explorer panel is implemented (2026-08-12)** on the Electron branch,
   [spec](docs/specs/2026-08-12-file-explorer-design.md) `decided`,
-  [plan](docs/plans/2026-08-12-file-explorer.md) `built` — written against that
-  plan task by task, 34 of its 36 tasks done. The suite went 1654 → 1740 tests;
-  `npm test`, `npm run build`, `npm run electron:build`,
-  `generate:menu:check` and the Electron IPC contract test are all green.
+  [plan](docs/plans/2026-08-12-file-explorer.md) `partly-built` — written
+  against that plan task by task, 34 of its 36 tasks done, **then split in half
+  before merge (plan §8)**. The suite went 1654 → 1740 tests; `npm test`,
+  `npm run build`, `npm run electron:build`, `generate:menu:check` and the
+  Electron IPC contract test are all green.
+
+  **THE SURFACE IS DROPPED AND THE FEATURE IS NOT USABLE.** There is no way to
+  open a file in Deck. What merges is the machinery only: the pure model
+  (`src/files/*.ts`), the host filesystem layer (`electron/fs/*`,
+  `electron/dirty-registry.ts`, six IPC channels), the atomic-write hardening of
+  `electron/store.ts` — a **security fix**, since the target branch still writes
+  settings through a fixed-name temp and a symlink-following `fs.writeFile` —
+  the dirty bridge across all four exits, and an inert `SurfaceStrip` seam in
+  `TabManager` whose only implementation is `INERT_SURFACES`. Dropped: the
+  docked panel, the tab-strip integration, DESIGN LANGUAGE §16, the explorer CSS
+  and settings, and the `toggle-explorer` / `save-file` actions. The reason is
+  not a defect in the surface — the owner decided the Electron version gets a
+  **complete redesign**, and `electron-migration` had meanwhile taken §16 for the
+  application frame, written **§17 "Docked side panels" for a browser panel that
+  reserves that section for this feature**, docked that panel as a STAGE column
+  rather than a `.window` grid column, and collapsed the chrome frame. Merging
+  the surface would have reconciled two docked-panel conventions against a frame
+  about to be redrawn. `file-editor.tsx` and `external-change-bar.tsx` stay
+  unmounted, because they carry the Monaco lifecycle knowledge (the `ready` dep,
+  the `applying` re-entry flag, `pushEditOperations` over `setValue`, view-state
+  pairing) that the redesign would otherwise rediscover.
+
   **Not verified: everything that needs a real window.** **Gate M (T2) has not
-  been run and cannot be until MVP T19 exists** — `npm run electron:build`
-  compiles the main process and does not package, so there is no packaged build
-  to boot Monaco in; if it fails, the editor engine decision reopens (spec §9)
-  and Phases 1–3 survive it. **T35, the thirteen-item manual pass, has not been
-  run at all**, nor has any `manual (owner)` line in the plan. **There is still
-  no CSP**, so Gate M will prove `file://` worker resolution only and must be
-  re-run if one is ever added.
+  been run and now has no subject at all** — nothing reachable imports Monaco, so
+  the build no longer emits the `editor.api` chunk and the entry is back to
+  178.83 kB gzip. It was already blocked on MVP T19 (`npm run electron:build`
+  compiles the main process and does not package); if it ever fails, the editor
+  engine decision reopens (spec §9) and Phases 1–3 survive it. **T35, the
+  thirteen-item manual pass, has not been run at all**, nor has any
+  `manual (owner)` line in the plan. **There is still no CSP**, so Gate M will
+  prove `file://` worker resolution only and must be re-run if one is ever added.
+  Plan §7.2's recorded follow-ups mostly went away WITH the surface (the
+  pane-scoped-chord leak, the BOM strip, the deleted-file case) — unreachable,
+  not fixed, and worth reading before the redesign mounts anything. Three that
+  did merge, because they live in the host layer: `realpathSync` runs
+  synchronously per entry on the main thread, and `stat_files` / `watch_paths`
+  take unbounded arrays.
+
   Three things the work changed beyond the plan, each recorded in the plan's
   §6.3: **only ONE of the three approved dependencies was added** — Monaco,
   pinned at `0.56.0`; the virtual list and the file-type icon set were NOT,
-  because DL-16.3's fixed 22px row makes windowing ten lines and `lucide-preact`
-  is already bundled and already governs icons (adding a dependency is the fork,
-  declining is not — both approvals stay open). **DESIGN LANGUAGE gained §16,
-  not §15**, since the Shortcuts category took that number first and section
-  numbers are cited from code as addresses. And **two spec statements about
-  large files were reconciled**: §4.4's 2 MB read-only and §11 item 13's 50 MB
-  refusal now meet at a 16 MB hard ceiling, decided from `stat` before any bytes
-  are read. Two real defects surfaced from the new tests: a **workspace escape**
-  where saving through an existing symlink pointing out of the root was allowed
-  because its parent was inside (fixed with an `lstat` check), and **the first
-  file tab getting an editor with no model**, because Monaco's dynamic import
-  resolves after the model effect has already run (fixed with a `ready` dep).
+  because a fixed 22px row makes windowing ten lines and `lucide-preact` is
+  already bundled and already governs icons (adding a dependency is the fork,
+  declining is not — both approvals stay open). **The DESIGN LANGUAGE section
+  question is closed the other way**: the work took §16 because Shortcuts had
+  taken §15, and the split then removed §16 entirely — `electron-migration`
+  already has a §17 "Docked side panels", written for a browser panel, that
+  reserves itself for this feature, so the redesign writes into §17 and no new
+  section is owed. And **two spec statements about large files were
+  reconciled**: §4.4's 2 MB read-only and §11 item 13's 50 MB refusal now meet
+  at a 16 MB hard ceiling, decided from `stat` before any bytes are read. Two
+  real defects surfaced from the new tests: a **workspace escape** where saving
+  through an existing symlink pointing out of the root was allowed because its
+  parent was inside (fixed with an `lstat` check), and **the first file tab
+  getting an editor with no model**, because Monaco's dynamic import resolves
+  after the model effect has already run (fixed with a `ready` dep).
   The seven product calls below were reopened by neither the plan nor the
-  implementation. A docked column on the right of the `.window` grid holding a file tree of the
+  implementation, and they stand as the brief for the redesign's surface — but
+  the two that describe CHROME (a right-hand column of the `.window` grid, and
+  the tab-strip placement) are now advisory, because the frame they name is the
+  one being redrawn. A docked column on the right of the `.window` grid holding a file tree of the
   active workspace; clicking a file opens it as a **tab beside the terminal
   tabs**, editable and saveable in Monaco. Electron only — nothing here ships on
   Tauri. Seven calls, each with its reason: **it lands after the MVP closes**
@@ -390,13 +427,15 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   saves in a _packaged_ build — required before any explorer UI is written,
   because the MVP was already bitten twice by silent packaging failures
   (absolute Vite asset paths under `file://`, CommonJS/ESM mismatch). DESIGN
-  LANGUAGE gains **§16 (docked side panels)** — an approved R2 fork, written on
-  2026-08-12; a permanently docked column is a surface class §11 (full-window)
-  and §13 (popover) do not cover. It is §16 and not the §15 the spec named,
-  because the Shortcuts category took that number first and shipped. Deliberately left open: `.gitignore` is not parsed in
+  LANGUAGE gains a **docked side panels** section — an approved R2 fork; a
+  permanently docked column is a surface class §11 (full-window) and §13
+  (popover) do not cover. The number moved twice and has settled: the spec said
+  §15, Shortcuts had already taken that, the implementation wrote §16, and the
+  split removed it in favour of `electron-migration`'s existing **§17**, which
+  was written for a browser panel and reserves itself for this feature. Deliberately left open: `.gitignore` is not parsed in
   v1 (a matcher is a fork), git decoration in the tree, and whether file-type
-  icons may be colored — DL-15.5 recommends monochrome because §3's color roles
-  are strict and each hue already means something. The load-bearing detail for
+  icons may be colored — that section recommends monochrome because §3's color
+  roles are strict and each hue already means something. The load-bearing detail for
   whoever implements it: **all three exits must respect a dirty file** — ⌘Q,
   window close, and tab close — and since the census is computed in main while
   dirty state lives in Monaco, the renderer pushes a dirty-registry delta whose
@@ -412,9 +451,10 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   forward with the branch; **(3) DESIGN LANGUAGE gains a real §15 (shortcut
   rows)**, not an extension of §6 — a row shows the same setting on two
   platforms with only one editable, which §5's one-interactive-value rule
-  cannot express. **This takes the §15 number: the file-explorer
-  spec's "§15 (docked side panels)" renumbered to §16 when it was written
-  (2026-08-12)**, as must the token-dashboard spec's data-table §; **(4) both keymaps are shown at
+  cannot express. **This takes the §15 number**, so the file-explorer spec's
+  "§15 (docked side panels)" had to move — it became §16 when written
+  (2026-08-12) and then §17 at the merge split, and the token-dashboard spec's
+  data-table § must renumber the same way; **(4) both keymaps are shown at
   once**, the running platform's chord as the editable pill and the other as a
   read-only readout — a chord can only be RECORDED on the keyboard that
   produces it, so offering to capture a Windows chord on a Mac would be a lie.

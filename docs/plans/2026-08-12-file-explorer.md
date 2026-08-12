@@ -1,10 +1,14 @@
 # File Explorer — Implementation Plan
 
-**Status:** `built` — implemented 2026-08-12 against this plan, task by task.
-Everything runnable in a headless environment is green; every `manual (owner)`
-line and Gate M itself are outstanding. See §6. Authored 2026-08-12 against the
-[file explorer design](../specs/2026-08-12-file-explorer-design.md) `decided`,
-which is itself pending user approval.
+**Status:** `partly-built` — implemented 2026-08-12 against this plan task by
+task (§6), then **split before merge (§8)**: Phases 1–4 (the pure model, the
+host filesystem layer, the dirty bridge and the `SurfaceStrip` seam) merge into
+`electron-migration`; Phase 5 (the docked panel, the tab-strip integration,
+DESIGN LANGUAGE §16, the settings and the actions) is **dropped and left to the
+Electron redesign**. Every `manual (owner)` line and Gate M itself remain
+outstanding and now have no subject to run against. Authored 2026-08-12 against
+the [file explorer design](../specs/2026-08-12-file-explorer-design.md)
+`decided`, which is itself pending user approval.
 
 **Goal:** A docked file tree on the right of the `.window` grid, scoped to the
 active workspace, from which clicking a file opens it as a tab beside the
@@ -988,3 +992,91 @@ that is unchanged. It is a new path that was never wired.
 
 The fifth reviewer (Monaco lifecycle, bundle, design language) had not reported
 when this was written. Its lens is unexamined.
+
+---
+
+## 8. Split before merge, 2026-08-12 — what goes in and what is dropped
+
+The feature was written whole and merged in halves. The reason is not a defect
+in Phase 5: it is that `electron-migration` moved while this was being built,
+and the owner's answer to the collision was that **the Electron version gets a
+complete redesign, so the old layouts are not needed**.
+
+### 8.1 What the target branch had already done
+
+`electron-migration` was nine commits ahead with eighteen files in conflict, and
+three of the collisions were semantic rather than textual:
+
+- **DESIGN LANGUAGE §16 was taken** — by the application frame, not by docked
+  panels.
+- **§17 "Docked side panels" was already written**, for a browser panel, and it
+  explicitly reserves that section for the file explorer.
+- **A docked panel already exists and docks differently.** `.browser-panel` is a
+  `position: absolute` column of the STAGE with `.stage--browser .stage__tabs`
+  inset to make room; this plan's panel is a column of the `.window` GRID. The
+  chrome frame had also collapsed (`.window` rows are now
+  `var(--frame-h) 1fr var(--status-h)`).
+
+Merging Phase 5 would have meant reconciling two docked-panel conventions and
+two design-language numberings against a frame that is about to be redrawn —
+paying for a surface twice and getting the older one.
+
+### 8.2 What merges
+
+Everything below is **purely additive** to `electron-migration`: it has no
+`src/files/`, no `electron/fs/`, and no `electron/dirty-registry.ts`.
+
+- **The pure model** — `src/files/*.ts`: the tree, the content rules, the
+  preview slot, the external-change table, the dirty registry, the surface
+  store, the file client, the controller, the Monaco loader. Every test with it.
+- **The host filesystem layer** — `electron/fs/{path-guard,read,write,watch}.ts`
+  and `electron/dirty-registry.ts`, plus the six IPC channels in
+  `electron/main.ts`. Registered and tested; no renderer calls them yet.
+- **The atomic-write hardening.** `electron/store.ts` now writes settings
+  through `writeFileAtomically`. This one is a **security fix, not a feature**:
+  the target branch's copy still uses a fixed-name `.settings.json.tmp` and a
+  plain `fs.writeFile`, which is the symlink-redirect §7.1 reproduced.
+- **The dirty bridge and the four exits** — `quit-flow.ts`, `quit-guard.ts`,
+  `close-guard.ts`, and `dirtyPaths()` in `App`'s `confirmInstall`. The
+  unsaved-file list is empty until a surface exists and correct the moment one
+  does. `close-guard.test.ts` gained direct coverage of that half, because with
+  no UI these tests are now its only proof.
+- **The `SurfaceStrip` seam** in `TabManager`, with `INERT_SURFACES` as the only
+  implementation any window gets. The invariants stay proven — "last surface,
+  not last tab", the combined cycle index space, `movePane`'s refusal,
+  `applySettings`/`focusActive` fan-out — because those are what is expensive to
+  retrofit and cheap to keep.
+
+### 8.3 What is dropped
+
+Deleted outright: `explorer-panel.tsx`, `file-tree-view.tsx` (+ test),
+`file-icons.ts`, `file-tab-views.ts`. Reverted to their pre-feature state:
+`tab-bar.tsx`, `workspace-sidebar.tsx`, `status-bar.tsx` (+ tests),
+`settings-schema.ts`, `action-registry.ts` (+ test), `shortcut-groups.ts`,
+`menu_registry.rs`, and `app.tsx`'s explorer wiring. Removed: the
+`.explorer*` / `.window--explorer` / `.stage__file` CSS, the file-tab strip
+rules, DESIGN LANGUAGE §16, and the `toggle-explorer` / `save-file` actions.
+
+`src/files/ui/{file-editor,external-change-bar}.tsx` and the `.fileview` /
+`.filebar` CSS **stay**. They are not chrome — they carry the Monaco lifecycle
+knowledge §6.4 paid for (the `ready` dep, the `applying` re-entry flag,
+`pushEditOperations` over `setValue`, view-state pairing) and the external-change
+bar the spec §5 table drives. Nothing mounts them; the redesign will.
+
+### 8.4 Consequences, stated rather than discovered later
+
+- **The feature is not usable.** There is no way to open a file in Deck on this
+  branch. What merged is the machinery, proven by tests only.
+- **Gate M is not merely unrun, it now has no subject.** Monaco is a declared
+  dependency that nothing reachable imports, so `npm run build` no longer emits
+  the `editor.api` chunk at all and the entry chunk is back to 178.83 kB gzip
+  (+0.49 kB over the 178.34 kB baseline, all of it the dirty bridge). §6.2's
+  measurements stand as a record of what Phase 5 cost; they will need re-taking
+  when the redesign mounts the editor.
+- **§7.2's recorded follow-ups mostly evaporate with the surface** — the
+  pane-scoped-chord leak, the BOM strip, the deleted-file case, the tab-click
+  path. They are not fixed; they are unreachable. Whoever writes the redesign
+  should read §7.2 before mounting anything, not after.
+- **`realpathSync` per entry on the main thread** and the unbounded `stat_files`
+  / `watch_paths` arrays DID merge — they are in the host layer, not the surface.
+  Nothing calls them yet, which is exactly why they are worth naming here.
