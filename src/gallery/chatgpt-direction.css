@@ -1,0 +1,1100 @@
+/* ── ChatGPT Desktop direction ─────────────────────────────────────
+ * Gallery-only treatment. It targets the real Deck shell below this wrapper,
+ * but never enters styles.css or the shipped app bundle. The literals here are
+ * review-surface values; the shipping rebuild derives them from theme tokens,
+ * so do not copy them into the app.
+ */
+
+/* ── Gallery-wide direction contract ────────────────────────────── */
+
+.gx-app--chatgpt {
+  --gx-chat-app-under: #0d0d0d;
+  --gx-chat-surface-main: #181818;
+  --gx-chat-surface-raised: #242424;
+  --gx-chat-pane-surface: #111111;
+  --gx-chat-selected: #303030;
+  --gx-chat-border: rgb(255 255 255 / 10%);
+  --gx-chat-ink: #f3f3f3;
+  --gx-chat-ink-secondary: rgb(243 243 243 / 65%);
+  --gx-chat-ink-faint: rgb(243 243 243 / 42%);
+  --gx-chat-radius-control: 10px;
+  --gx-chat-radius-surface: 16px;
+  --gx-chat-duration: 150ms;
+  --gx-chat-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --bg: var(--gx-chat-surface-main);
+  --fg: var(--gx-chat-ink);
+  --accent: var(--gx-chat-ink);
+  --red: #ff6764;
+  --green: #40c977;
+  --yellow: #ffd240;
+  --magenta: #ad7bf9;
+  --cyan: #339cff;
+  --tone: #ffffff;
+  --chrome-1: var(--gx-chat-app-under);
+  --chrome-2: var(--gx-chat-surface-main);
+  --tab-active-bg: var(--gx-chat-selected);
+  --input-bg: color-mix(in srgb, var(--gx-chat-ink) 6%, transparent);
+  --hair: color-mix(in srgb, var(--gx-chat-ink) 5%, transparent);
+  --hair-strong: var(--gx-chat-border);
+  --text-primary: var(--gx-chat-ink);
+  --text-muted: var(--gx-chat-ink-secondary);
+  --text-faint: var(--gx-chat-ink-faint);
+  --radius: var(--gx-chat-radius-control);
+  --gx-bg: var(--gx-chat-app-under);
+  --gx-panel: var(--gx-chat-surface-main);
+  --gx-line: var(--gx-chat-border);
+  --gx-text: var(--gx-chat-ink-secondary);
+  --gx-dim: var(--gx-chat-ink-faint);
+  --gx-bright: var(--gx-chat-ink);
+
+  grid-template-rows: 52px 1fr 30px;
+  grid-template-columns: 224px minmax(0, 1fr);
+  font-family: var(--ui-font);
+}
+
+.gx-app--chatgpt .gx-topbar {
+  gap: 10px;
+  padding: 0 16px;
+  border-color: var(--gx-chat-border);
+}
+.gx-app--chatgpt .gx-topbar__title {
+  font-size: 14px;
+  font-weight: 650;
+}
+.gx-direction-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--gx-chat-border);
+  border-radius: var(--gx-chat-radius-control);
+  background: var(--gx-chat-selected);
+  color: var(--gx-chat-ink-secondary);
+  font: 500 12px/1 var(--ui-font);
+}
+.gx-app--chatgpt .gx-topbar__hint {
+  margin-left: auto;
+  color: var(--gx-chat-ink-faint);
+  font-size: 11px;
+}
+.gx-app--chatgpt .gx-rail {
+  gap: 2px;
+  padding: 10px 8px;
+  border-color: var(--gx-chat-border);
+}
+.gx-app--chatgpt .gx-rail__item {
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--gx-chat-radius-control);
+  color: var(--gx-chat-ink-secondary);
+  font: 450 13px/1 var(--ui-font);
+  transition:
+    background var(--gx-chat-duration) var(--gx-chat-ease),
+    color var(--gx-chat-duration) var(--gx-chat-ease);
+}
+.gx-app--chatgpt .gx-rail__item:hover,
+.gx-app--chatgpt .gx-rail__item.is-active {
+  border: 0;
+  background: var(--gx-chat-selected);
+  color: var(--gx-chat-ink);
+}
+.gx-app--chatgpt .gx-content {
+  padding: 28px 32px 64px;
+  background: var(--gx-chat-surface-main);
+}
+.gx-app--chatgpt .gx-section {
+  animation: gx-section-enter 180ms var(--gx-chat-ease) both;
+}
+.gx-app--chatgpt .gx-sectionhead h1 {
+  color: var(--gx-chat-ink);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.gx-app--chatgpt .gx-sectionhead p,
+.gx-app--chatgpt .gx-specimen__note {
+  color: var(--gx-chat-ink-secondary);
+  font: 400 12px/1.55 var(--ui-font);
+}
+.gx-app--chatgpt .gx-specimen__name {
+  color: var(--gx-chat-ink);
+  font: 550 13px/1.2 var(--ui-font);
+}
+.gx-app--chatgpt .gx-stage,
+.gx-direction-contract,
+.gx-app--chatgpt .gx-cell {
+  border-color: var(--gx-chat-border);
+  border-radius: var(--gx-chat-radius-surface);
+  background: var(--gx-chat-app-under);
+}
+.gx-app--chatgpt .gx-stage {
+  --bg: var(--gx-chat-surface-main);
+  --fg: var(--gx-chat-ink);
+  --accent: var(--gx-chat-ink);
+  --chrome-1: var(--gx-chat-app-under);
+  --chrome-2: var(--gx-chat-surface-main);
+  --tab-active-bg: var(--gx-chat-selected);
+  --input-bg: color-mix(in srgb, var(--gx-chat-ink) 6%, transparent);
+  --hair: color-mix(in srgb, var(--gx-chat-ink) 5%, transparent);
+  --hair-strong: var(--gx-chat-border);
+  --text-primary: var(--gx-chat-ink);
+  --text-muted: var(--gx-chat-ink-secondary);
+  --text-faint: var(--gx-chat-ink-faint);
+}
+.gx-app--chatgpt .gx-inline,
+.gx-app--chatgpt .gx-anchorpad,
+.gx-app--chatgpt .gx-overlaypad {
+  gap: 14px;
+  padding: 18px;
+}
+.gx-app--chatgpt .gx-statelabel {
+  color: var(--gx-chat-ink-faint);
+}
+.gx-app--chatgpt .gx-foot {
+  border-color: var(--gx-chat-border);
+  color: var(--gx-chat-ink-faint);
+  font-family: var(--ui-font);
+}
+
+/* Direction tokens are the compact contract; the audit below remains current. */
+.gx-direction-contract {
+  margin-bottom: 26px;
+  padding: 16px;
+  border: 1px solid var(--gx-chat-border);
+}
+
+.gx-direction-contract__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.gx-direction-contract__head strong {
+  color: var(--gx-chat-ink);
+  font: 600 13px/1 var(--ui-font);
+}
+
+.gx-direction-contract__head span {
+  color: var(--gx-chat-ink-faint);
+  font: 400 11px/1.4 var(--ui-font);
+}
+
+.gx-direction-tokens {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px;
+}
+
+.gx-direction-token {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  min-height: 42px;
+  padding: 7px;
+  border-radius: var(--gx-chat-radius-control);
+  background: color-mix(in srgb, var(--gx-chat-ink) 5%, transparent);
+}
+
+.gx-direction-token__swatch {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--gx-chat-border);
+  border-radius: 9px;
+}
+
+.gx-direction-token code,
+.gx-direction-token small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-direction-token code {
+  color: var(--gx-chat-ink);
+  font-size: 10px;
+}
+
+.gx-direction-token small {
+  margin-top: 3px;
+  color: var(--gx-chat-ink-faint);
+  font: 400 10px/1 var(--ui-font);
+}
+
+/* Real config rows and controls. */
+.gx-app--chatgpt .settings-screen__section {
+  padding: 10px 8px;
+  background: var(--gx-chat-surface-main);
+}
+
+.gx-app--chatgpt .cfg-group {
+  margin-bottom: 12px;
+}
+
+.gx-app--chatgpt .cfg-row {
+  margin: 2px 0;
+  padding: 10px;
+  border: 0;
+  border-radius: var(--gx-chat-radius-control);
+  transition: background var(--gx-chat-duration) var(--gx-chat-ease);
+}
+
+.gx-app--chatgpt .cfg-row:hover {
+  background: color-mix(in srgb, var(--gx-chat-ink) 6%, transparent);
+}
+
+.gx-app--chatgpt .cfg-row__label,
+.gx-app--chatgpt .cfg-row__key {
+  color: var(--gx-chat-ink);
+}
+
+.gx-app--chatgpt .cfg-row__desc {
+  color: var(--gx-chat-ink-secondary);
+}
+
+.gx-app--chatgpt
+  :is(
+    .cfg-btn,
+    .cfg-step,
+    .cfg-chord-slot,
+    .cfg-chord-tag,
+    .text-input,
+    .prompt-textarea,
+    .tab-popover__logo-btn
+  ) {
+  border-color: var(--gx-chat-border);
+  border-radius: var(--gx-chat-radius-control);
+  background: color-mix(in srgb, var(--gx-chat-ink) 6%, transparent);
+}
+
+.gx-app--chatgpt :is(.cfg-btn, .cfg-step__btn, .cfg-clear) {
+  transition:
+    background var(--gx-chat-duration) var(--gx-chat-ease),
+    color var(--gx-chat-duration) var(--gx-chat-ease);
+}
+
+.gx-app--chatgpt :is(.cfg-btn, .cfg-step__btn, .cfg-clear):hover {
+  background: var(--gx-chat-selected);
+}
+
+/* One geometry for both popover genres. */
+.gx-app--chatgpt :is(.tab-popover, .prompt-popover) {
+  border: 1px solid var(--gx-chat-border);
+  border-radius: var(--gx-chat-radius-surface);
+  background: var(--gx-chat-surface-raised);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 28%);
+}
+
+.gx-app--chatgpt .tab-popover__label {
+  color: var(--gx-chat-ink-faint);
+  font: 500 12px/1 var(--ui-font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.gx-app--chatgpt .tab-popover__swatch {
+  border-color: var(--gx-chat-border);
+}
+
+.gx-app--chatgpt .tab-popover__swatch.is-active {
+  outline-color: var(--gx-chat-ink);
+}
+
+.gx-app--chatgpt .prompt-popover__empty,
+.gx-app--chatgpt .prompt-picker__unavailable {
+  margin: 4px 8px;
+  padding: 14px;
+  border-radius: var(--gx-chat-radius-control);
+  background: color-mix(in srgb, var(--gx-chat-ink) 4%, transparent);
+  color: var(--gx-chat-ink-secondary);
+  text-align: center;
+}
+
+/* Full-window settings and dialogs share the same raised surface language. */
+.gx-app--chatgpt .settings-screen {
+  inset: 8px;
+  border: 1px solid var(--gx-chat-border);
+  border-radius: var(--gx-chat-radius-surface);
+  background: var(--gx-chat-surface-main);
+}
+
+.gx-app--chatgpt .settings-screen__head {
+  border-color: var(--gx-chat-border);
+}
+
+.gx-app--chatgpt .settings-screen__esc {
+  border-color: var(--gx-chat-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--gx-chat-ink) 5%, transparent);
+}
+
+.gx-app--chatgpt .settings-screen__grid {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.gx-app--chatgpt .settings-nav {
+  padding: 8px;
+  border-color: var(--gx-chat-border);
+  background: var(--gx-chat-app-under);
+}
+
+.gx-app--chatgpt .settings-nav__item {
+  margin: 2px 0;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: var(--gx-chat-radius-control);
+}
+
+.gx-app--chatgpt .settings-nav__item:hover,
+.gx-app--chatgpt .settings-nav__item.is-active {
+  border: 0;
+  background: var(--gx-chat-selected);
+}
+
+.gx-app--chatgpt :is(.preset-editor, .save-preset) {
+  overflow: hidden;
+  border: 1px solid var(--gx-chat-border);
+  border-radius: var(--gx-chat-radius-surface);
+  background: var(--gx-chat-surface-raised);
+  box-shadow: 0 18px 56px rgb(0 0 0 / 34%);
+}
+
+.gx-app--chatgpt :is(.preset-editor__toolbar, .preset-editor__footer) {
+  border-color: var(--gx-chat-border);
+}
+
+.gx-app--chatgpt
+  :is(
+    .preset-editor__tools button,
+    .preset-editor__actions button,
+    .save-preset__actions button
+  ) {
+  border-radius: var(--gx-chat-radius-control);
+}
+
+.gx-app--chatgpt
+  :is(
+    .preset-editor__actions button.is-primary,
+    .save-preset__actions button.is-primary
+  ) {
+  border-color: var(--gx-chat-ink);
+  background: var(--gx-chat-ink);
+  color: var(--gx-chat-app-under);
+}
+
+.gx-app--chatgpt .persist-error-bar {
+  border-radius: var(--gx-chat-radius-control);
+}
+
+.gx-app--chatgpt .gx-overlaypad__pane {
+  border-color: var(--gx-chat-border);
+  border-radius: 12px;
+}
+
+/* Open board: sidebar underlay plus one calm main surface. */
+.gx-app--chatgpt .open-board {
+  grid-template-columns: 260px minmax(0, 1fr);
+  background: var(--gx-chat-surface-main);
+}
+
+.gx-app--chatgpt .open-board > .rail {
+  padding: 8px;
+  border-color: var(--gx-chat-border);
+  background: var(--gx-chat-app-under);
+}
+
+.gx-app--chatgpt .open-board :is(.applogo, .openfolder, .btn) {
+  border-radius: var(--gx-chat-radius-control);
+}
+
+.gx-app--chatgpt .open-board .openfolder {
+  border-color: var(--gx-chat-border);
+  background: color-mix(in srgb, var(--gx-chat-ink) 4%, transparent);
+}
+
+.gx-app--chatgpt .open-board .openfolder:hover {
+  border-color: var(--gx-chat-border);
+  background: var(--gx-chat-selected);
+}
+
+.gx-app--chatgpt .open-board .row {
+  margin: 2px 0;
+  border: 0;
+  border-radius: var(--gx-chat-radius-control);
+  transition: background var(--gx-chat-duration) var(--gx-chat-ease);
+}
+
+.gx-app--chatgpt .open-board .row + .row {
+  border: 0;
+}
+
+.gx-app--chatgpt .open-board .row:hover,
+.gx-app--chatgpt .open-board .row.is-selected {
+  background: var(--gx-chat-selected);
+}
+
+.gx-app--chatgpt .open-board .detail {
+  background: var(--gx-chat-surface-main);
+}
+
+.gx-app--chatgpt .open-board :is(.lcard, .achip) {
+  border-color: var(--gx-chat-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gx-chat-ink) 5%, transparent);
+  transition:
+    background var(--gx-chat-duration) var(--gx-chat-ease),
+    border-color var(--gx-chat-duration) var(--gx-chat-ease);
+}
+
+.gx-app--chatgpt .open-board :is(.lcard__tools button, .lcard__rename) {
+  border-color: var(--gx-chat-border);
+  border-radius: 8px;
+  background: var(--gx-chat-surface-raised);
+}
+
+.gx-app--chatgpt .open-board .lcard__confirm,
+.gx-app--chatgpt .open-board .lcard__confirm button {
+  border-color: var(--gx-chat-border);
+  border-radius: var(--gx-chat-radius-control);
+  background: var(--gx-chat-surface-raised);
+}
+
+.gx-app--chatgpt .open-board .btn--primary {
+  border-color: var(--gx-chat-ink);
+  background: var(--gx-chat-ink);
+  color: var(--gx-chat-app-under);
+}
+
+.gx-app--chatgpt .open-board .btn--primary:hover {
+  background: color-mix(in srgb, var(--gx-chat-ink) 88%, transparent);
+}
+
+.gx-app--chatgpt .open-board :is(.lcard, .achip):hover,
+.gx-app--chatgpt .open-board :is(.lcard, .achip).is-selected {
+  border-color: var(--gx-chat-border);
+  background: var(--gx-chat-selected);
+}
+
+.gx-app--chatgpt .gx-cell {
+  background: var(--gx-chat-surface-main);
+}
+
+.gx-app--chatgpt .gx-matrix__rowhead {
+  padding: 6px;
+  border-radius: var(--gx-chat-radius-control);
+  background: var(--gx-chat-surface-main);
+}
+
+@keyframes gx-section-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.gx-chatgpt-direction {
+  --bg: #181818;
+  --fg: #f3f3f3;
+  --accent: #f3f3f3;
+  --red: #ff6764;
+  --green: #40c977;
+  --yellow: #ffd240;
+  --magenta: #ad7bf9;
+  --cyan: #339cff;
+  --tone: #ffffff;
+  --chrome-1: #212121;
+  --chrome-2: #282828;
+  --tab-active-bg: color-mix(in srgb, var(--fg) 8%, transparent);
+  --input-bg: color-mix(in srgb, var(--fg) 6%, transparent);
+  --hair: color-mix(in srgb, var(--fg) 5%, transparent);
+  --hair-strong: color-mix(in srgb, var(--fg) 12%, transparent);
+  --text-primary: var(--fg);
+  --text-muted: color-mix(in srgb, var(--fg) 65%, transparent);
+  --text-faint: color-mix(in srgb, var(--fg) 40%, transparent);
+  --sidebar-w: 275px;
+  --gx-chatgpt-explorer-w: 260px;
+  /* VS Code's editor tab strip is 35px, and the explorer head next to it has
+   * to match or the two seams stop lining up across the stage. */
+  --gx-chatgpt-head-h: 35px;
+  --status-h: 34px;
+
+  width: 100%;
+  height: 100%;
+  background: #0d0d0d;
+}
+
+.gx-chatgpt-direction .window--sidebar {
+  --frame-h: 54px;
+  grid-template-rows: var(--frame-h) 1fr var(--status-h);
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  background: #0d0d0d;
+  font-size: 13px;
+}
+
+.gx-chatgpt-direction .window--sidebar > .deck-frame {
+  grid-column: 1;
+  grid-row: 1;
+  justify-content: space-between;
+  gap: 8px;
+  height: auto;
+  padding: 10px 10px 6px 0;
+  border: 0;
+  background: transparent;
+}
+
+.gx-chatgpt-direction .deck-frame__lights {
+  order: 0;
+  flex-basis: 68px;
+}
+
+.gx-chatgpt-direction .gx-deck-switcher {
+  order: 1;
+}
+
+.gx-chatgpt-direction .deck-frame__spacer {
+  order: 2;
+}
+
+.gx-chatgpt-direction .deck-frame > .tabbar__actions {
+  order: 3;
+}
+
+.gx-chatgpt-direction .gx-deck-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font: 500 13px/1 var(--ui-font);
+  cursor: pointer;
+  transition: background 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gx-chatgpt-direction .gx-deck-switcher:hover {
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
+.gx-chatgpt-direction .gx-deck-switcher__mark {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--text-primary);
+  color: #0d0d0d;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.gx-chatgpt-direction .gx-deck-switcher__chevron {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.gx-chatgpt-direction .deck-frame .tabbar__actions {
+  gap: 1px;
+}
+
+.gx-chatgpt-direction .deck-frame .tabbar__actions > :not(:last-child),
+.gx-chatgpt-direction .deck-frame .prompts-anchor,
+.gx-chatgpt-direction .deck-frame .tabbar__sep {
+  display: none;
+}
+
+.gx-chatgpt-direction .iconbtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  transition:
+    background 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gx-chatgpt-direction .wsbar {
+  grid-column: 1;
+  grid-row: 2 / 4;
+  padding: 4px 8px 10px;
+  border: 0;
+  background: transparent;
+}
+
+.gx-chatgpt-direction .wsbar__list {
+  gap: 2px;
+  padding: 0;
+}
+
+.gx-chatgpt-direction .wsbar__list::before {
+  content: "Workspaces";
+  order: 1;
+  padding: 18px 10px 6px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.gx-chatgpt-direction .wsitem {
+  order: 2;
+  gap: 10px;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  transition:
+    background 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gx-chatgpt-direction .wsitem:hover,
+.gx-chatgpt-direction .wsitem.is-active {
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--text-primary);
+}
+
+.gx-chatgpt-direction .wsitem__logo {
+  width: 24px;
+  height: 24px;
+}
+
+.gx-chatgpt-direction .wsitem__logo-img,
+.gx-chatgpt-direction .wsitem__logo-letter {
+  border-radius: 8px;
+}
+
+.gx-chatgpt-direction .wsitem__label {
+  font-size: 13px;
+  font-weight: 450;
+}
+
+.gx-chatgpt-direction .wsitem__path {
+  display: none;
+}
+
+.gx-chatgpt-direction .wsbar__add {
+  order: 0;
+  min-height: 40px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 450;
+}
+
+.gx-chatgpt-direction .wsbar__add:hover {
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
+.gx-chatgpt-direction .wsbar__add-glyph {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
+.gx-chatgpt-direction .window--sidebar > .stage {
+  grid-column: 2;
+  grid-row: 1 / 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--gx-chatgpt-explorer-w);
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-left: 1px solid var(--hair-strong);
+  border-radius: 0;
+  background: var(--bg);
+  box-shadow: none;
+}
+
+/* The board reuses Window chrome's repository tree as its only navigation.
+ * Its legacy recent-workspace rail stays in the real component for app parity,
+ * but the gallery direction removes that duplicate navigation surface. */
+.gx-app--chatgpt .gx-open-board-direction .window--sidebar > .stage {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.gx-app--chatgpt .gx-open-board-direction .open-board {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.gx-app--chatgpt .gx-open-board-direction .open-board > .rail {
+  display: none;
+}
+
+.gx-chatgpt-terminal {
+  display: grid;
+  grid-template-rows: var(--gx-chatgpt-head-h) 1fr;
+  min-width: 0;
+  min-height: 0;
+  background:
+    radial-gradient(circle at 48% -20%, rgb(255 255 255 / 5%), transparent 42%),
+    var(--bg);
+}
+
+/* ── Session tabs ───────────────────────────────────────────────────
+ * VS Code's editor-tab anatomy on this direction's palette: a recessed
+ * strip, tabs butted together with 1px separators instead of gaps, and one
+ * lifted tab that drops the strip's bottom hairline and takes the pane's own
+ * surface — that continuity is what makes it read as an opening into the
+ * terminal rather than a selected chip.
+ *
+ * The metrics are VS Code's, not this file's: 35px strip, 13px/400 label,
+ * 10px of horizontal padding, a 16px close hit box. Nothing here is sized by
+ * taste — a session tab has to stay cheap enough that a dozen of them fit.
+ */
+.gx-chatgpt-terminal__tabs {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  font: 400 13px/1 var(--ui-font);
+}
+
+.gx-chatgpt-terminal__tab {
+  position: relative;
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 160px;
+  padding: 0 6px 0 10px;
+  border-bottom: 1px solid var(--hair);
+  color: var(--text-muted);
+  /* DL-1.2: background and colour only, inside the direction's 150ms. */
+  transition:
+    background-color var(--gx-chat-duration) var(--gx-chat-ease),
+    color var(--gx-chat-duration) var(--gx-chat-ease);
+}
+
+.gx-chatgpt-terminal__tab + .gx-chatgpt-terminal__tab {
+  border-left: 1px solid var(--hair);
+}
+
+.gx-chatgpt-terminal__tab:hover {
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  color: var(--text-primary);
+}
+
+.gx-chatgpt-terminal__tab.is-active {
+  border-bottom-color: transparent;
+  background: var(--gx-chat-pane-surface);
+  color: var(--text-primary);
+}
+
+/* Painted, not shadowed — DL-1.3 bans offset box-shadow. */
+.gx-chatgpt-terminal__tab.is-active::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--accent);
+}
+
+.gx-chatgpt-terminal__tablabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gx-chatgpt-terminal__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+}
+
+/* DL-3.2 keeps --green for "on" alone, so a suspended session is a ring
+ * rather than a second colour. The inset hairline is the DL-1.3 exception. */
+.gx-chatgpt-terminal__dot.is-running {
+  background: var(--green);
+}
+
+.gx-chatgpt-terminal__dot.is-idle {
+  box-shadow: inset 0 0 0 1px var(--text-faint);
+}
+
+/* The close affordance stays out of the way until the tab is the one being
+ * looked at or pointed at. */
+.gx-chatgpt-terminal__close {
+  display: grid;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-faint);
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    background-color var(--gx-chat-duration) var(--gx-chat-ease),
+    color var(--gx-chat-duration) var(--gx-chat-ease),
+    opacity var(--gx-chat-duration) var(--gx-chat-ease);
+}
+
+.gx-chatgpt-terminal__tab:hover .gx-chatgpt-terminal__close,
+.gx-chatgpt-terminal__tab.is-active .gx-chatgpt-terminal__close,
+.gx-chatgpt-terminal__close:focus-visible {
+  opacity: 1;
+}
+
+.gx-chatgpt-terminal__close:hover {
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  color: var(--text-primary);
+}
+
+/* The rest of the strip is still strip: it carries the seam the active tab
+ * gave up, and parks the branch on the far edge. */
+.gx-chatgpt-terminal__tabfill {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.gx-chatgpt-terminal__branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px 3px 7px;
+  border: 0;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  color: var(--text-muted);
+  font: 400 11px/1 var(--ui-font);
+  cursor: pointer;
+  transition:
+    background-color var(--gx-chat-duration) var(--gx-chat-ease),
+    color var(--gx-chat-duration) var(--gx-chat-ease);
+}
+
+.gx-chatgpt-terminal__branch:hover {
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
+  color: var(--text-primary);
+}
+
+.gx-chatgpt-terminal__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(220px, 1fr);
+  gap: 0;
+  min-height: 0;
+}
+
+.gx-chatgpt-pane {
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--gx-chat-pane-surface);
+}
+
+.gx-chatgpt-pane + .gx-chatgpt-pane {
+  border-left: 1px solid var(--hair-strong);
+}
+
+.gx-chatgpt-pane__body {
+  padding: 16px;
+  color: var(--text-primary);
+  font:
+    12px/1.75 "SF Mono",
+    ui-monospace,
+    Menlo,
+    monospace;
+}
+
+.gx-chatgpt-pane__body p {
+  margin: 0;
+}
+
+.gx-chatgpt-pane__prompt,
+.gx-chatgpt-pane__accent {
+  color: var(--cyan);
+}
+
+.gx-chatgpt-pane__success {
+  color: var(--green);
+}
+
+.gx-chatgpt-pane__muted {
+  color: var(--text-faint);
+}
+
+.gx-chatgpt-pane__cursor::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  margin-left: 5px;
+  vertical-align: -2px;
+  background: var(--text-primary);
+  animation: gx-cursor 1.1s steps(1, end) infinite;
+}
+
+.gx-chatgpt-explorer {
+  display: grid;
+  grid-template-rows: var(--gx-chatgpt-head-h) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--hair-strong);
+  background: #151515;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+}
+
+.gx-chatgpt-explorer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 0 14px;
+  border-bottom: 1px solid var(--hair);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 560;
+}
+
+.gx-chatgpt-explorer__head button {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  padding: 0 0 5px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-faint);
+  font: 600 15px/1 var(--ui-font);
+  cursor: pointer;
+}
+
+.gx-chatgpt-explorer__head button:hover {
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  color: var(--text-primary);
+}
+
+.gx-chatgpt-explorer__body {
+  min-height: 0;
+  padding: 10px 8px;
+  overflow-y: auto;
+}
+
+.gx-chatgpt-explorer__root {
+  padding: 4px 8px 8px;
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.gx-chatgpt-explorer__tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.gx-chatgpt-explorer__row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: center;
+  min-height: 28px;
+  padding: 0 7px 0 calc(7px + var(--gx-explorer-depth) * 13px);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.gx-chatgpt-explorer__row.is-selected {
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--text-primary);
+}
+
+.gx-chatgpt-explorer__glyph {
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+}
+
+.gx-chatgpt-explorer__glyph.is-folder {
+  color: var(--text-muted);
+}
+
+@keyframes gx-cursor {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gx-chatgpt-pane__cursor::after {
+    animation: none;
+  }
+
+  /* DL-1.5: the close affordance still appears, it just stops fading. */
+  .gx-chatgpt-terminal__tab,
+  .gx-chatgpt-terminal__close,
+  .gx-chatgpt-terminal__branch {
+    transition: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .gx-chatgpt-direction {
+    --sidebar-w: 232px;
+    --gx-chatgpt-explorer-w: 210px;
+  }
+
+  .gx-chatgpt-direction .deck-frame__lights {
+    flex-basis: 52px;
+  }
+
+  .gx-chatgpt-terminal__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gx-chatgpt-terminal__tab:not(.is-active) {
+    display: none;
+  }
+
+  .gx-chatgpt-terminal__tab.is-active {
+    flex: 0 1 110px;
+    max-width: 110px;
+  }
+
+  .gx-chatgpt-terminal__tabfill {
+    padding: 0 6px;
+  }
+
+  .gx-chatgpt-terminal__branch {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .gx-chatgpt-terminal__branch span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gx-chatgpt-pane:not(.gx-chatgpt-pane--primary) {
+    display: none;
+  }
+}

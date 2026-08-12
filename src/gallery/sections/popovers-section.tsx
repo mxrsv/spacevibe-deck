@@ -123,7 +123,7 @@ export function PopoversSection() {
     <>
       <SectionHead
         title="Popovers"
-        blurb="Anchored surfaces (DL §13). Both are driven by their real triggers, so Esc and outside-click behave as shipped."
+        blurb="Both anchored surfaces share one elevated frame, one radius and one interaction rhythm."
       />
 
       <Specimen

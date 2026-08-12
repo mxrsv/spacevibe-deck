@@ -313,8 +313,8 @@ export function MatrixSection() {
   return (
     <>
       <SectionHead
-        title="State matrix"
-        blurb="Four themes across, five states down, one size — the comparison the external review asked for before any wash is called neutral."
+        title="ChatGPT direction — state matrix"
+        blurb="The shared geometry and interaction model across four themes and five states; theme colour still stays user-owned."
       />
 
       <MatrixBlock

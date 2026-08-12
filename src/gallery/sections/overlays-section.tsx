@@ -57,7 +57,7 @@ export function OverlaysSection() {
     <>
       <SectionHead
         title="Overlays"
-        blurb="Everything that covers the stage — the settings screen, both modal drafts, and the runtime overlays."
+        blurb="Settings, dialogs and transient states use the same surface hierarchy instead of separate visual genres."
       />
 
       <Specimen

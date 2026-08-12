@@ -7,9 +7,6 @@ import "@xterm/xterm/css/xterm.css";
 import "../styles.css";
 import "./gallery.css";
 import "./chatgpt-direction.css";
-// The second direction. Loaded alongside the first — each is scoped to its own
-// root class, so which one applies is a class swap rather than a build change.
-import "./radius-system-direction.css";
 import { initializeDesktopEnvironmentFromBackend } from "../lib/platform";
 import { configureSettingsSync } from "../settings/settings-store";
 import { createMemorySettingsSync } from "../settings/settings-sync";

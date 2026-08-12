@@ -1,4 +1,10 @@
 import { OpenBoard } from "../../open-board/open-board";
+import { DesktopChrome } from "../../ui/app";
+import {
+  chatGptToolbarSpecimen,
+  NOOP,
+  repositorySidebarSpecimen,
+} from "../chrome-fixtures";
 import { SectionHead, Specimen } from "../specimen";
 
 /**
@@ -16,20 +22,34 @@ export function BoardSection() {
     <>
       <SectionHead
         title="Open board"
-        blurb="Cold start, with no recents — the gallery never reads the real workspace store."
+        blurb="The cold-start flow becomes a calm sidebar-and-workspace composition while preserving Deck's real actions."
       />
       <Specimen
         name=".open-board"
-        note="workspace · layout · agent, plus the brand mark (DL-14.6 exempts it)"
-        surface="bg"
+        note="shared repository/worktree navigation · workspace · layout · agent"
+        surface="none"
         tall
       >
-        <OpenBoard
-          canCancel
-          onCancel={() => {}}
-          onOpen={async () => false}
-          onNewPreset={() => {}}
-        />
+        <div class="gx-chatgpt-direction gx-open-board-direction">
+          <DesktopChrome
+            sidebar
+            toolbar={chatGptToolbarSpecimen()}
+            sidebarNavigation={repositorySidebarSpecimen()}
+            topTabs={null}
+            stage={
+              <div class="stage">
+                <OpenBoard
+                  canCancel
+                  onCancel={NOOP}
+                  onOpen={async () => false}
+                  onNewPreset={NOOP}
+                />
+              </div>
+            }
+            status={null}
+            onMacTitlebarDoubleClick={NOOP}
+          />
+        </div>
       </Specimen>
     </>
   );
