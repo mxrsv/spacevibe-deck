@@ -21,10 +21,12 @@
   --input-bg: color-mix(in srgb, var(--bg) 88%, var(--tone));
   --hair: color-mix(in srgb, var(--fg) 12%, transparent);
   --hair-strong: color-mix(in srgb, var(--fg) 20%, transparent);
-  /* Seams (approved 2026-08-12). Mixed from --tone, never --fg: a boundary
-     belongs to the background ladder, not to the terminal's text hue. The
-     recessed one sits BELOW the surface it edges, which is what makes a shell
-     boundary read as the edge of a plane instead of a drawn line. */
+  /* Seams (DL-2.3, approved 2026-08-12). Mixed from --tone, never --fg: a
+     boundary belongs to the background ladder, not to the terminal's text hue.
+     The recessed one sits BELOW the surface it edges, which is what makes a
+     shell boundary read as the edge of a plane instead of a drawn line.
+     --hair/--hair-strong above keep their meaning for lines INSIDE a surface;
+     DL-2.3's ledger row names the surfaces still waiting to migrate. */
   --seam-recessed: color-mix(in srgb, var(--bg) 98%, var(--tone));
   --seam-divider: color-mix(in srgb, var(--tone) 3%, transparent);
   --seam-raised: color-mix(in srgb, var(--bg) 86%, var(--tone));
@@ -100,8 +102,10 @@ body,
   align-items: center;
   justify-content: flex-end;
   padding-right: 8px;
-  /* DL-3.3: structural separation is a shell boundary, so it takes the
-     recessed seam rather than the general-purpose hairline. */
+  /* DL-2.3: this line is a boundary between two surfaces, not a line inside
+     one, so it takes the recessed seam rather than DL-3.3's general-purpose
+     hairline. Copy this citation, not a DL-3.3 one, when migrating the next
+     surface off --hair. */
   border-bottom: 1px solid var(--seam-recessed);
 }
 

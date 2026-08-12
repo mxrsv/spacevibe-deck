@@ -16,8 +16,10 @@ export interface ChromeColors {
   readonly hair: string;
   readonly hairStrong: string;
   /**
-   * The seam ladder, approved 2026-08-12 after the gallery study in
-   * `src/gallery/sections/seam-section.tsx`.
+   * The seam ladder (DL-2.3), approved 2026-08-12 after the gallery study in
+   * `src/gallery/sections/seam-section.tsx` — a dev-entry file that is not in
+   * the shipping bundle, so treat that path as a footnote: if the gallery is
+   * retired, drop the pointer, not the rule. DL-2.3 is the durable record.
    *
    * `hair` mixes from the FOREGROUND, which put every structural line 15–24
    * luminance units above the surface it edged while the step from `bg` to

@@ -46,14 +46,14 @@ Single source of truth: `:root` in `src/styles.css`. Theme colors are injected
 from the active terminal theme (`--bg --fg --accent --red --green --yellow
 --magenta --cyan`); everything else derives via `color-mix`:
 
-| token                                              | role                               |
-| -------------------------------------------------- | ---------------------------------- |
-| `--chrome-1` / `--chrome-2`                        | background steps for bars / panels |
-| `--input-bg`                                       | recessed input surfaces            |
-| `--hair` / `--hair-strong`                         | 1px hairlines inside a surface     |
+| token                                                  | role                                     |
+| ------------------------------------------------------ | ---------------------------------------- |
+| `--chrome-1` / `--chrome-2`                            | background steps for bars / panels       |
+| `--input-bg`                                           | recessed input surfaces                  |
+| `--hair` / `--hair-strong`                             | 1px hairlines inside a surface           |
 | `--seam-recessed` / `--seam-divider` / `--seam-raised` | the boundaries BETWEEN surfaces (DL-2.3) |
-| `--text-primary` / `--text-muted` / `--text-faint` | text hierarchy                     |
-| `--ui-font`                                        | the one chrome typeface (DL-4.1)   |
+| `--text-primary` / `--text-muted` / `--text-faint`     | text hierarchy                           |
+| `--ui-font`                                            | the one chrome typeface (DL-4.1)         |
 
 - **DL-2.1** Components never hardcode colors. Every color routes through a
   token, or comes from the live theme object (e.g. swatches previewing a
@@ -61,8 +61,6 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 - **DL-2.2** The theme drives everything: switching theme must restyle all
   chrome with zero component changes.
 - **DL-2.3** **A boundary between two surfaces is a seam, not a hairline.**
-  Approved as a fork on 2026-08-12 after the gallery study in
-  [`seam-section.tsx`](../src/gallery/sections/seam-section.tsx) `current`.
   Seams mix from `--tone`, never from `--fg`: a boundary belongs to the
   background ladder, and mixing from the foreground let the terminal's text hue
   into it. `--seam-recessed` (shell boundaries — tab bar, sidebar, status,
@@ -76,6 +74,14 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   step was 8–9, so every boundary read as ink drawn across the chrome;
   `derive-colors.test.ts` now locks the relationship for every preset.
   `--hair`/`--hair-strong` keep their meaning for lines INSIDE one surface.
+  Anchors: the tokens in [`derive-colors.ts`](../src/lib/derive-colors.ts)
+  `current` and their `:root` fallbacks in [`styles.css`](../src/styles.css)
+  `current`, locked by
+  [`derive-colors.test.ts`](../src/lib/derive-colors.test.ts) `current`.
+  Approved as a fork on 2026-08-12 after the gallery study in
+  [`seam-section.tsx`](../src/gallery/sections/seam-section.tsx) `current` —
+  that file belongs to the dev-only gallery entry, so when the gallery is
+  retired this one pointer goes with it (D8) and the rule stays.
 
 ## 3. Color roles (strict)
 
@@ -208,12 +214,13 @@ This document is the target, not a description of the whole app. Only the
 settings panel has been reworked. Known survivors, to be fixed as each surface
 is reworked — **do not "fix" them opportunistically inside an unrelated change**:
 
-| where                                                                              | violates            | note                                  |
-| ---------------------------------------------------------------------------------- | ------------------- | ------------------------------------- |
-| `.tab-popover__label`                                                              | DL-4.3 (uppercase)  | rework with the tab popover           |
-| config rows, Open board, inputs, `.search-bar`                                     | DL-2.3              | still on `--hair` for lines that are boundaries between surfaces; migrate per surface |
-| `.search-bar`                                                                      | DL-1.3 (box-shadow) | real blurred shadow — drop            |
-| `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —                   | inset hairlines, allowed under DL-1.3 |
+| where                                                                              | violates            | note                                                                                                                                                                               |
+| ---------------------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.tab-popover__label`                                                              | DL-4.3 (uppercase)  | rework with the tab popover                                                                                                                                                        |
+| config rows, Open board, inputs, `.search-bar`                                     | DL-2.3              | still on `--hair` for lines that are boundaries between surfaces; migrate per surface                                                                                              |
+| `.settings-screen`, and the other `--hair-strong` frames around floating surfaces  | DL-2.3              | a surface floating above chrome takes `--seam-raised` — `.tab-popover` was converted, `.settings-screen` (`inset: 8px` over the stage, `z-index: 35`) was not; migrate per surface |
+| `.search-bar`                                                                      | DL-1.3 (box-shadow) | real blurred shadow — drop                                                                                                                                                         |
+| `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —                   | inset hairlines, allowed under DL-1.3                                                                                                                                              |
 
 ## 11. Settings shell
 
