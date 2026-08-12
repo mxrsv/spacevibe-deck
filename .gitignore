@@ -39,3 +39,6 @@ docs/archive/
 # by hand once a cut is approved.
 marketing/video/.frames/
 marketing/video/out/
+
+# Local agent configuration and worktree bookkeeping, per-machine.
+.claude/
