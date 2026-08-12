@@ -15,6 +15,23 @@ export interface ChromeColors {
   readonly inputBg: string;
   readonly hair: string;
   readonly hairStrong: string;
+  /**
+   * The seam ladder, approved 2026-08-12 after the gallery study in
+   * `src/gallery/sections/seam-section.tsx`.
+   *
+   * `hair` mixes from the FOREGROUND, which put every structural line 15–24
+   * luminance units above the surface it edged while the step from `bg` to
+   * `chrome1` was only 8–9 — the line out-shouted the step it marked and read
+   * as ink drawn across the chrome. These three mix from `tone` instead, so a
+   * seam belongs to the background ladder rather than to the terminal's text
+   * hue, and `seamRecessed` lands BELOW the surface it edges.
+   *
+   * `hair`/`hairStrong` stay as they are: the surfaces still on them (config
+   * rows, the board, inputs) were not part of what was reviewed.
+   */
+  readonly seamRecessed: string;
+  readonly seamDivider: string;
+  readonly seamRaised: string;
   readonly textPrimary: string;
   readonly textMuted: string;
   readonly textFaint: string;
@@ -99,8 +116,11 @@ function alpha(hex: string, a: number): string {
 export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   const dark = luminance(bg) < DARK_LUMINANCE_THRESHOLD;
   const tone = dark ? "#ffffff" : "#000000";
-  const chrome1 = mixHex(bg, tone, 0.04);
-  const chrome2 = mixHex(bg, tone, 0.07);
+  // 0.05/0.09, up from 0.04/0.07: the structure now comes from the step
+  // between surfaces rather than from the line between them, so the step has
+  // to be the thing you can see.
+  const chrome1 = mixHex(bg, tone, 0.05);
+  const chrome2 = mixHex(bg, tone, 0.09);
   const tabActiveBg = mixHex(bg, tone, 0.15);
   // Kept soft on light themes — readability comes from the textPrimary floor
   const inputBg = mixHex(bg, tone, dark ? 0.12 : 0.06);
@@ -127,6 +147,14 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     inputBg,
     hair: alpha(fg, 0.12),
     hairStrong: alpha(fg, 0.2),
+    // Opaque, so a boundary paints one colour instead of two: an alpha border
+    // composites over whichever surface owns it, and the two sides of a shell
+    // seam are different surfaces by definition.
+    seamRecessed: mixHex(bg, tone, 0.02),
+    seamRaised: mixHex(bg, tone, 0.14),
+    // Alpha, because this one runs INSIDE a single surface and has to adapt to
+    // whichever one that is — the stage on one pane, `chrome1` on another.
+    seamDivider: alpha(tone, 0.03),
     textPrimary,
     textMuted: ensureContrast(
       mixHex(textPrimary, bg, 0.28),

@@ -54,6 +54,54 @@ describe("deriveChromeColors", () => {
     expect(chrome.hairStrong).toBe("rgba(192, 202, 245, 0.2)");
   });
 
+  /**
+   * The seam ladder is a set of RELATIONSHIPS, not four hex literals: what was
+   * wrong before was never a particular value, it was that a structural line
+   * sat further from its surface than the surface sat from its neighbour. A
+   * literal assertion would pass the day someone reintroduces exactly that.
+   */
+  describe("the seam ladder", () => {
+    const lum = (color: string): number => luminance(color);
+
+    it("puts a shell seam BELOW the surface it edges, on every preset", () => {
+      for (const preset of THEME_PRESETS) {
+        const bg = preset.theme.background ?? "#16161e";
+        const fg = preset.theme.foreground ?? "#c0caf5";
+        const c = deriveChromeColors(bg, fg);
+        const towardChrome = lum(c.chrome1) - lum(bg);
+        const towardSeam = lum(c.seamRecessed) - lum(bg);
+        // Between the two surfaces, and nearer the darker one — a gutter, not
+        // a stroke laid on top.
+        expect(towardSeam).toBeGreaterThan(0);
+        expect(towardSeam).toBeLessThan(towardChrome);
+      }
+    });
+
+    it("keeps the surface step louder than the seam that marks it", () => {
+      for (const preset of THEME_PRESETS) {
+        const bg = preset.theme.background ?? "#16161e";
+        const fg = preset.theme.foreground ?? "#c0caf5";
+        const c = deriveChromeColors(bg, fg);
+        const step = Math.abs(lum(c.chrome1) - lum(bg));
+        const seam = Math.abs(lum(c.seamRecessed) - lum(c.chrome1));
+        expect(seam).toBeLessThan(step);
+      }
+    });
+
+    it("raises a floating frame above the surface it frames", () => {
+      const c = deriveChromeColors("#16161e", "#c0caf5");
+      expect(lum(c.seamRaised)).toBeGreaterThan(lum(c.chrome2));
+    });
+
+    it("keeps the in-surface divider alpha, so it adapts to its ground", () => {
+      const c = deriveChromeColors("#16161e", "#c0caf5");
+      expect(c.seamDivider).toBe("rgba(255, 255, 255, 0.03)");
+      expect(deriveChromeColors("#ffffff", "#333333").seamDivider).toBe(
+        "rgba(0, 0, 0, 0.03)",
+      );
+    });
+  });
+
   // The spec's contrast floors — the app-wide standard. Every preset plus
   // the known-bad overrides must pass.
   const cases: Array<{ label: string; bg: string; fg: string }> = [
