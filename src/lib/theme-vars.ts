@@ -48,6 +48,9 @@ export function applyThemeVars(
   rootStyle.setProperty("--input-bg", chrome.inputBg);
   rootStyle.setProperty("--hair", chrome.hair);
   rootStyle.setProperty("--hair-strong", chrome.hairStrong);
+  rootStyle.setProperty("--seam-recessed", chrome.seamRecessed);
+  rootStyle.setProperty("--seam-divider", chrome.seamDivider);
+  rootStyle.setProperty("--seam-raised", chrome.seamRaised);
   rootStyle.setProperty("--text-primary", chrome.textPrimary);
   rootStyle.setProperty("--text-muted", chrome.textMuted);
   rootStyle.setProperty("--text-faint", chrome.textFaint);

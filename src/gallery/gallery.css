@@ -905,3 +905,264 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ── Seam study ───────────────────────────────────────────────────
+ * Three treatments of the boundary between surfaces, side by side, on the
+ * app's own chrome classes.
+ *
+ * This is the one block in this file that sets APP tokens rather than harness
+ * ones. It is deliberate and it is scoped: each column overrides `--chrome-1`,
+ * `--chrome-2`, `--hair` and `--hair-strong` on itself only, so nothing here
+ * reaches the app and `styles.css` needs no change to render a proposal. Every
+ * value is a `color-mix` over the live theme's `--bg`/`--tone`, never a fixed
+ * hex — the harness rule at the top of this file bans fixed colours for
+ * harness chrome, and these are not harness chrome, they are the thing under
+ * test. If a column is picked, its values move into `derive-colors.ts`, which
+ * is what actually feeds the running app.
+ *
+ * See docs/review/2026-08-12-seam-system-codex.md for the measurements and
+ * the proposal each column renders.
+ */
+
+.gx-seamrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 16px;
+}
+
+.gx-seamcol {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.gx-seamshell {
+  position: relative;
+  width: 352px;
+  height: 296px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+/* `.window` sizes itself to the viewport in the app; here it fills the study. */
+.gx-seamshell .window {
+  height: 100%;
+  width: 100%;
+}
+
+.gx-seamshell__body {
+  display: flex;
+  min-height: 0;
+}
+
+.gx-seamshell .wsbar {
+  width: 92px;
+  padding: 6px;
+  gap: 3px;
+}
+
+.gx-seamshell__ws {
+  height: 20px;
+  border-radius: 6px;
+  background: var(--tab-active-bg);
+}
+
+.gx-seamshell__ws + .gx-seamshell__ws {
+  background: transparent;
+}
+
+/* The right dock the explorer spec asks for — not built yet, but it is one of
+   the vertical seams the study exists to judge. */
+.gx-seamshell__dock {
+  width: 76px;
+  background: var(--chrome-1);
+  border-left: 1px solid var(--hair);
+}
+
+/* The split inside is absolutely positioned, so the stage has no intrinsic
+   size of its own — without this it collapses and the panes never appear. */
+.gx-seamshell .stage {
+  flex: 1;
+}
+
+.gx-seamshell .stage > .split {
+  position: absolute;
+  inset: 0;
+}
+
+.gx-seamshell .pane__bar {
+  font-size: 10px;
+  padding: 4px 11px;
+}
+
+/* Stand-in terminal output. The study is about chrome receding behind the
+   content, so a stage of empty background would flatter every variant. */
+.gx-seamshell__panebody {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 11px;
+}
+
+.gx-seamshell__line {
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--fg) 16%, transparent);
+}
+
+.gx-seamshell__line--half {
+  width: 52%;
+}
+
+.gx-seamshell__line--third {
+  width: 34%;
+}
+
+/* Stands in for a popover frame: the raised seam, over a surface rather than
+   between two. */
+.gx-seamshell__popover {
+  position: absolute;
+  right: 84px;
+  top: 150px;
+  width: 118px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: 8px;
+  background: var(--chrome-2);
+  border: 1px solid var(--hair-strong);
+}
+
+.gx-seamshell__popline {
+  height: 7px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text-faint) 40%, transparent);
+}
+
+.gx-seamshell__popline--short {
+  width: 58%;
+}
+
+/* ── A. before ──
+   The seam system as it was until 2026-08-12: one alpha line mixed from the
+   FOREGROUND, used for shell boundaries, in-surface dividers and raised frames
+   alike, over a narrower surface step. Pinned here so the comparison survives
+   the change — the column is the argument for it. */
+.gx-seam--before {
+  --chrome-1: color-mix(in srgb, var(--bg) 96%, var(--tone));
+  --chrome-2: color-mix(in srgb, var(--bg) 93%, var(--tone));
+
+  --seam-recessed: color-mix(in srgb, var(--fg) 12%, transparent);
+  --seam-divider: color-mix(in srgb, var(--fg) 12%, transparent);
+  --seam-raised: color-mix(in srgb, var(--fg) 20%, transparent);
+}
+
+/* ── B. two-tone bevel ──
+   A dark line with a 1px light counter-edge, the classic way to read "sunken".
+   The highlight is a pseudo-element, not an offset `box-shadow`: DL-1.3 bans
+   offset/blurred shadows, and losing this comparison on a technicality would
+   not tell us whether the LOOK is right. */
+.gx-seam--bevel {
+  /* Judged against the narrower step it was offered with, so the archived
+     comparison stays the one that was actually reviewed. */
+  --chrome-1: color-mix(in srgb, var(--bg) 96%, var(--tone));
+  --chrome-2: color-mix(in srgb, var(--bg) 93%, var(--tone));
+
+  --gx-seam-low: color-mix(in srgb, var(--bg) 86%, #000);
+  --gx-seam-high: color-mix(in srgb, var(--tone) 7%, transparent);
+
+  --seam-recessed: var(--gx-seam-low);
+  --seam-divider: var(--gx-seam-low);
+  --seam-raised: var(--gx-seam-low);
+}
+
+.gx-seam--bevel .tabbar,
+.gx-seam--bevel .status,
+.gx-seam--bevel .wsbar,
+.gx-seam--bevel .gx-seamshell__dock {
+  position: relative;
+}
+
+.gx-seam--bevel .tabbar::after,
+.gx-seam--bevel .status::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--gx-seam-high);
+}
+
+.gx-seam--bevel .tabbar::after {
+  bottom: -1px;
+}
+
+.gx-seam--bevel .status::after {
+  top: -1px;
+}
+
+.gx-seam--bevel .wsbar::after,
+.gx-seam--bevel .gx-seamshell__dock::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--gx-seam-high);
+}
+
+.gx-seam--bevel .wsbar::after {
+  right: -1px;
+}
+
+.gx-seam--bevel .gx-seamshell__dock::after {
+  left: -1px;
+}
+
+.gx-seam--bevel .split--row > .split__divider {
+  flex: 0 0 2px;
+  background: linear-gradient(
+    to right,
+    var(--gx-seam-low),
+    var(--gx-seam-high)
+  );
+}
+
+.gx-seam--bevel .split--column > .split__divider {
+  flex: 0 0 2px;
+  background: linear-gradient(
+    to bottom,
+    var(--gx-seam-low),
+    var(--gx-seam-high)
+  );
+}
+
+/* ── C. shipped ──
+   No overrides at all: a wider background step carrying the structure and a
+   seam that sits BELOW the surface it edges is what `derive-colors.ts` now
+   emits, so this column is simply the app. */
+
+/* Probes: 1px swatches the readout measures instead of parsing the token
+   text. `getComputedStyle` hands back `color-mix(…)` unresolved for a custom
+   property, but a resolved `background-color` is always an rgb triple. */
+.gx-seamprobe {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gx-seamread {
+  display: flex;
+  gap: 12px;
+  color: var(--gx-dim);
+  font-size: 10px;
+}
+
+.gx-seamread strong {
+  color: var(--gx-text);
+  font-weight: 400;
+}
