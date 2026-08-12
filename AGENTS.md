@@ -457,7 +457,7 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   never asked for (found 2026-08-11, fixed).** `buildMenu` returned early on
   non-darwin without calling `Menu.setApplicationMenu`, and Electron installs
   its DEFAULT menu whenever an app never sets one. `titleBarStyle:
-  "hiddenInset"` makes the window frameless on Windows too, so the menu **bar**
+"hiddenInset"` makes the window frameless on Windows too, so the menu **bar**
   is skipped while its accelerators are already registered — invisible, and
   live. `WINDOWS_KEYMAP` binds none of Ctrl+R/W/A/Z/M, so nothing contested
   them: **Ctrl+R reloaded the renderer and Ctrl+W closed the window**, while
@@ -517,7 +517,8 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   verified 180.47 kB gzip with no gallery code in `dist/`, and
   [`scripts/gallery-entry.test.ts`](scripts/gallery-entry.test.ts) `current`
   fails if any app module ever imports from `src/gallery/`. **Tauri IPC is
-  stubbed** in `src/gallery/tauri-stub.ts`, installed as an import side effect
+  stubbed** in `src/gallery/host-stub.ts` (named `tauri-stub.ts` until it grew
+  the Electron hook too), installed as an import side effect
   because ES imports hoist and a call at the top of the entry would still run
   after every module below it; unknown commands resolve `null` and are listed
   in the page footer rather than only console-warned. **No direction picker
@@ -641,6 +642,118 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   produces trust. The smoke harness now covers both sides — a forged grab is
   dropped, a REAL `copyElement` reaches the renderer — at 24/26, with the same
   two pre-existing Linux failures.
+
+- **The chrome redesign toward the ChatGPT desktop feel is decided at fork
+  level (2026-08-12)**, and the comparison matrix the review asked for is
+  implemented on `main`. The redesign itself is **not started**: no DL section
+  is written, no token scale exists in `:root`, no direction is designed.
+  Three forks resolved with the user, each with its reason. **It lands on
+  `electron-migration`, not `main`** — the Tauri freeze is honoured to the
+  letter, exactly as the Shortcuts category was, and the frame it has to style
+  only exists there: `5ef509a` collapsed the 26px title bar and the 33px tab
+  bar into one 34px command row, so styling `main`'s two-row chrome would be
+  designing a surface that is already gone. **DL freezes all nine scale groups
+  from the review's §3 in one pass** — spacing, radius, type, weight, leading,
+  duration/easing, border, control height, surface/state and layer — because
+  closing them in two passes writes the rulebook twice; the split already
+  decided still holds, DL says WHICH scales exist and the redesign picks their
+  VALUES. **The neutral wash moves from `--fg` to `--tone` now**, without
+  waiting for a live comparison: the matrix measured what today's rule
+  resolves to, and the same 6% hover is `rgb(192, 202, 245)` on Tokyo Night,
+  `rgb(248, 248, 242)` on Dracula and `rgb(171, 178, 191)` on One Dark — a
+  wash carrying the theme's foreground hue, which "quiet neutral surfaces"
+  cannot be built from. All four bundled presets are dark, so `--tone` is
+  `#ffffff` in every one of them and the change shows on every surface.
+
+  **The review's own section numbering is stale and must not be followed.** Its
+  §4 says "§15 is already reserved for docked side panels, so these start at
+  §16". On `electron-migration` §15 is written and is **Shortcut rows**, and
+  **DL-16 is already claimed** by the command-row frame — cited from
+  `styles.css`, `app.tsx`, `tab-bar.tsx` and `app.test.tsx`, with the rule
+  itself still awaiting R2 approval. The three new sections take their numbers
+  on that branch, against what is written there.
+
+  **What landed on `main` (gallery only — the app bundle is unchanged at
+  180.47 kB gzip, and `scripts/gallery-entry.test.ts` is what keeps that
+  true):** a seventh gallery section carrying the review's §6 item 2 matrix —
+  four themes across, five states down, both tab-bar positions, one size —
+  plus a config-row block, which is where focus and disabled are legible and
+  the window shell has almost nothing to show. Hover, active and focus are
+  forced by [`force-states.ts`](src/gallery/force-states.ts) `current`, which
+  reads the app's own rules back out of the live stylesheet and re-emits every
+  one of them scoped under a marker class. **The whole sheet is copied, in
+  source order, not only the rules carrying a pseudo-class** — copying only
+  those would move them past every later rule in the file and a selected tab
+  would start reading as a hovered one. `@media` rules are skipped: their
+  condition is about the viewport and a cell is not one. **Cell width is 680px,
+  measured rather than chosen** — below it the tab bar cannot fit four tabs
+  beside the add button and six actions, so every label clips (at 560px the
+  four labels get 7, 9, 0 and 4 pixels), and from 680 to 900 nothing changes.
+  Two defects the four green gates could not see and the rendered screenshot
+  did: the forced sheet re-applied the app's own `.window { height: 100vh;
+width: 100vw }` at a specificity the gallery's cell override merely tied
+  with, so every forced cell grew to the size of the viewport; and the
+  sidebar's fourth workspace row was cut in half. **Still blocked:** the two or
+  three real ChatGPT desktop screenshots (review §6 item 1) have not been
+  supplied, so no direction is designed and no token value is picked.
+
+  **The harness is now merge-ready for `electron-migration`, proven by merging
+  it (2026-08-12).** It was not before, and a clean `git merge-tree` said
+  nothing about it: `DesktopChromeProps` is identical on both branches and
+  `app.tsx` merges coherently — the inline CSS-var block disappears and
+  `applyThemeVars` takes over — but the stub installed only
+  `window.__TAURI_INTERNALS__`, and that branch replaced it with
+  `src/host/bridge.ts`, which reads `globalThis.__deckHost` and throws when it
+  is absent. **29 non-test renderer modules** import that layer,
+  `settings-store` among them. The failure would have been silent in the worst
+  way: `unhandledCommands` only counts calls that reach the stub, so zero
+  arriving would have printed "every IPC call the specimens made was answered
+  by the stub" while nothing was stubbed at all. **Both hooks are installed
+  now**, over one canned table split three ways — the channels both hosts share
+  (`bridge.ts` kept Tauri's names), Tauri's `plugin:*`, and the Electron host's
+  flat ones. The store shapes genuinely differ (resource id returning
+  `[value, found]` versus file name returning the bare value), so both are
+  answered against one backing map. Scale factor, focus and drag-drop are
+  deliberately NOT stubbed for Electron: `window-host.ts` answers them from
+  `devicePixelRatio`, `document.hasFocus()` and DOM drag events with no IPC
+  hop, so a channel would invent a contract that does not exist.
+  **`CELL_WIDTH` is 760px, the larger of the two frames' measured thresholds** —
+  the collapsed DL-16 command row also gives up `--frame-lights-w` (78px) to
+  the traffic lights, so labels clip until 760 there while this branch clears at
+  680, and above each threshold nothing moves up to 900. **Verified on a real
+  merge rather than asserted**: in a worktree holding the merged tree the
+  gallery boots, all seven sections list, an unknown channel sent through
+  `__deckHost` surfaces in the footer (so "all answered" is earned rather than a
+  zero-call false positive), a `store_set`/`store_get` round-trip returns its
+  value, ten settings sections and 78 config rows render, and cycling theme
+  moves `--bg` from `#16161e` to `#282a36`. Gates on that merged tree: **1495
+  tests / 129 files**, tsc, `generate:menu:check`, build 178.30 kB gzip. The
+  only merge conflict is `AGENTS.md`, where both branches appended to this
+  list.
+
+  **Merged into this branch on 2026-08-12, and the merge itself was the last
+  trap.** Between the dry run and the real one, `main`'s three visual-system
+  commits arrived here with **rewritten hashes** (`0309502`, `160c78e`,
+  `e2793d9`), so git no longer saw one history: it saw the gallery added twice
+  and raised **add/add conflicts on nine files**. Seven of them were resolvable
+  by provenance rather than by reading a diff — this branch's copy of every
+  gallery file and of `theme-vars.ts` was verified byte-identical to `main`'s
+  baseline, so "take the incoming side" is exactly "their content plus the
+  changes made on top of it". The review doc took the opposite side, because
+  the visual-system branch never touched it and this branch had corrected its
+  §15 premise. `AGENTS.md` needed three different answers in three hunks, not a
+  union: this branch's four new bullets, the incoming stub-path edit, and BOTH
+  sides of the third. **The trap was `tauri-stub.ts`:** the rename to
+  `host-stub.ts` happened on a commit whose identity no longer matched, so
+  rename detection failed and the merge kept the old file alongside the new
+  one — a dead duplicate of the module that is the harness's whole IPC truth,
+  which nothing imported and nothing would have failed on. It was deleted by
+  hand. **One statement inherited from the review is wrong on this branch**:
+  its §4 now says "§16 is free on both branches", but `DL-16` is already cited
+  here from `styles.css`, `app.tsx`, `tab-bar.tsx` and `app.test.tsx` for the
+  command-row frame. Left as written rather than edited inside a merge; the
+  numbering answer is the one above.
+
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.
 

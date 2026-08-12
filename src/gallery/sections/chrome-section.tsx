@@ -1,9 +1,12 @@
 import { AgentAttentionMark } from "../../ui/agent-attention-mark";
 import { DesktopChrome } from "../../ui/app";
 import { StatusBar } from "../../ui/status-bar";
-import { TabBar } from "../../ui/tab-bar";
-import { WorkspaceSidebar } from "../../ui/workspace-sidebar";
 import { WorkspaceSpinner } from "../../ui/workspace-spinner";
+import {
+  NOOP,
+  tabBarSpecimen,
+  workspaceSidebarSpecimen,
+} from "../chrome-fixtures";
 import { PresetThumb } from "../../presets/preset-thumb";
 import { UpdateAction } from "../../updater/update-action";
 import type { UpdatePhase } from "../../updater/update-controller";
@@ -19,8 +22,6 @@ import { SectionHead, Specimen, StateLabel } from "../specimen";
  * active tab opens the real `TabPopover` through `TabBar`'s own state.
  */
 
-const NOOP = (): void => {};
-
 /** Every phase the update pill can be in, `hidden` excluded — it renders nothing. */
 const UPDATE_PHASES: readonly Exclude<UpdatePhase, "hidden">[] = [
   "available",
@@ -31,29 +32,6 @@ const UPDATE_PHASES: readonly Exclude<UpdatePhase, "hidden">[] = [
   "install-failed",
   "relaunch-failed",
 ];
-
-function tabBar() {
-  return (
-    <TabBar
-      settingsOpen={false}
-      expandActive={false}
-      promptsOpen={false}
-      promptsDisabled={false}
-      onSelectTab={NOOP}
-      onCloseTab={NOOP}
-      onNewTab={NOOP}
-      onSplitRow={NOOP}
-      onSplitColumn={NOOP}
-      onClosePane={NOOP}
-      onRenameTab={NOOP}
-      onSetTabColor={NOOP}
-      onToggleSettings={NOOP}
-      onTogglePrompts={NOOP}
-      onToggleExpand={NOOP}
-      onFocusAttention={NOOP}
-    />
-  );
-}
 
 function FakeStage({ label }: { label: string }) {
   return (
@@ -81,7 +59,7 @@ export function ChromeSection() {
           sidebar={false}
           toolbar={null}
           sidebarNavigation={null}
-          topTabs={tabBar()}
+          topTabs={tabBarSpecimen()}
           stage={<FakeStage label="terminal panes live here" />}
           status={<StatusBar />}
           onMacTitlebarDoubleClick={NOOP}
@@ -97,16 +75,7 @@ export function ChromeSection() {
         <DesktopChrome
           sidebar
           toolbar={null}
-          sidebarNavigation={
-            <WorkspaceSidebar
-              onSelectTab={NOOP}
-              onCloseTab={NOOP}
-              onNewTab={NOOP}
-              onRenameTab={NOOP}
-              onSetTabColor={NOOP}
-              onFocusAttention={NOOP}
-            />
-          }
+          sidebarNavigation={workspaceSidebarSpecimen()}
           topTabs={null}
           stage={<FakeStage label="terminal panes live here" />}
           status={<StatusBar />}
