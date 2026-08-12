@@ -4,6 +4,8 @@ import { ChromeSection } from "./sections/chrome-section";
 import { OverlaysSection } from "./sections/overlays-section";
 import { PopoversSection } from "./sections/popovers-section";
 import { RowsSection } from "./sections/rows-section";
+import { SeamSection } from "./sections/seam-section";
+import { ToolbarSection } from "./sections/toolbar-section";
 import { TokensSection } from "./sections/tokens-section";
 
 export interface GallerySection {
@@ -21,6 +23,8 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "tokens", label: "tokens & spread", Section: TokensSection },
   { id: "rows", label: "config rows", Section: RowsSection },
   { id: "chrome", label: "window chrome", Section: ChromeSection },
+  { id: "toolbar", label: "feature toolbar", Section: ToolbarSection },
+  { id: "seams", label: "seam system", Section: SeamSection },
   { id: "popovers", label: "popovers", Section: PopoversSection },
   { id: "overlays", label: "overlays", Section: OverlaysSection },
   { id: "board", label: "open board", Section: BoardSection },

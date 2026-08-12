@@ -1,0 +1,226 @@
+import { Ellipsis } from "lucide-preact";
+import { Fragment, type ComponentChildren, type RefObject } from "preact";
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
+import {
+  ActionTooltip,
+  useTooltipVisibility,
+} from "../controls/action-tooltip";
+import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import {
+  isUnavailable,
+  unavailableReason,
+  type ToolbarItem,
+} from "./toolbar-item";
+import { fitToolbarItems } from "./toolbar-overflow";
+import { ToolbarOverflowMenu, type MenuAnchor } from "./toolbar-overflow-menu";
+
+/**
+ * The feature toolbar: three groups of icon controls, hairlines between them,
+ * and a `More` menu for whatever the window is too narrow to show.
+ *
+ * It owns presentation and nothing else. Activation calls straight back into
+ * `item.onActivate`, which is the same command path the keyboard and the
+ * native menu use, and every state it draws is projected in by the caller —
+ * so a pressed tool, a disabled Prompts button or an actionable update stay
+ * owned by the feature that already owns them.
+ *
+ * See docs/specs/2026-08-12-feature-toolbar-design.md.
+ */
+
+const MENU_OFFSET = 6;
+
+interface ToolbarControlProps {
+  readonly item: ToolbarItem;
+  /** Lifted only when the parent has to anchor a surface to this control. */
+  readonly controlRef?: RefObject<HTMLButtonElement>;
+}
+
+/**
+ * One icon control plus its tooltip.
+ *
+ * An unavailable action keeps `tabindex` and takes `aria-disabled` rather than
+ * `disabled`: a disabled button is unfocusable, so the reason it is disabled
+ * becomes unreachable for anyone not using a pointer. Activation is blocked
+ * here instead, where the reason is also what the tooltip says.
+ */
+function ToolbarControl({ item, controlRef }: ToolbarControlProps) {
+  const fallbackRef = useRef<HTMLButtonElement>(null);
+  const ref = controlRef ?? fallbackRef;
+  const tooltip = useTooltipVisibility();
+  const reason = unavailableReason(item);
+  const active = item.state.kind === "active";
+  const tooltipId = `action-tip-${item.id}`;
+  // A trigger whose surface is open has already answered the question the
+  // tooltip was asking, and the two would overlap: the menu opens directly
+  // under the control the tooltip hangs from.
+  const opensSurface = item.toggles === "dialog" || item.toggles === "menu";
+  const showTooltip = tooltip.anchor !== null && !(active && opensSurface);
+
+  const expansion =
+    item.toggles === "dialog" || item.toggles === "menu"
+      ? { "aria-haspopup": item.toggles, "aria-expanded": active }
+      : item.toggles === "pressed"
+        ? { "aria-pressed": active }
+        : {};
+
+  return (
+    <span class="ftoolbar__slot">
+      <button
+        ref={ref}
+        type="button"
+        class={`iconbtn ${active ? "is-active" : ""} ${
+          reason !== null ? "is-unavailable" : ""
+        }`}
+        aria-label={item.label}
+        aria-disabled={reason !== null}
+        aria-describedby={showTooltip ? tooltipId : undefined}
+        {...expansion}
+        onPointerEnter={(event) => tooltip.open(event.currentTarget)}
+        onPointerLeave={() => {
+          // Focus outlives the pointer: tabbing to a control and then moving
+          // the mouse across it must not take the description away.
+          if (document.activeElement !== ref.current) {
+            tooltip.close();
+          }
+        }}
+        onFocus={(event) => tooltip.open(event.currentTarget)}
+        onBlur={() => tooltip.close()}
+        onClick={() => {
+          if (isUnavailable(item)) {
+            return;
+          }
+          item.onActivate();
+        }}
+      >
+        <DeckIcon icon={item.icon} size={CHROME_ICON} />
+      </button>
+      {showTooltip && tooltip.anchor !== null && (
+        <ActionTooltip
+          id={tooltipId}
+          label={item.label}
+          shortcut={item.shortcut}
+          reason={reason}
+          anchor={tooltip.anchor}
+        />
+      )}
+    </span>
+  );
+}
+
+interface FeatureToolbarProps {
+  /** In render order; the last item of the last group stays rightmost. */
+  readonly items: readonly ToolbarItem[];
+  /**
+   * The update pill, which owns its own phase and width. It rides in the
+   * global group ahead of `More`, and its measured width is what the fit
+   * calculation reserves for it.
+   */
+  readonly updateAction?: ComponentChildren;
+}
+
+export function FeatureToolbar({ items, updateAction }: FeatureToolbarProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const updateRef = useRef<HTMLSpanElement>(null);
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const [available, setAvailable] = useState(0);
+  const [reserved, setReserved] = useState(0);
+  const [menu, setMenu] = useState<MenuAnchor | null>(null);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (root === null) {
+      return;
+    }
+    const measure = (): void => {
+      setAvailable(root.clientWidth);
+      setReserved(updateRef.current?.offsetWidth ?? 0);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [updateAction]);
+
+  // Zero means "not laid out yet", never "no room at all" — treating an
+  // unmeasured row as a full one would send every action into `More` for a
+  // frame and then bring them back, which reads as a flicker on every mount.
+  const fit = fitToolbarItems(
+    items,
+    available > 0 ? available : Number.POSITIVE_INFINITY,
+    reserved,
+  );
+
+  const toggleMenu = (): void => {
+    if (menu !== null) {
+      setMenu(null);
+      return;
+    }
+    const rect = moreRef.current?.getBoundingClientRect();
+    if (rect === undefined) {
+      return;
+    }
+    setMenu({
+      right: Math.max(0, window.innerWidth - rect.right),
+      top: rect.bottom + MENU_OFFSET,
+    });
+  };
+
+  const moreItem: ToolbarItem = {
+    id: "toolbar-more",
+    label: "More actions",
+    icon: Ellipsis,
+    group: "global",
+    shortcut: null,
+    state: menu !== null ? { kind: "active" } : { kind: "idle" },
+    overflowOrder: null,
+    toggles: "menu",
+    onActivate: toggleMenu,
+  };
+
+  const lastGroup = fit.groups.length - 1;
+
+  return (
+    <div ref={rootRef} class="ftoolbar">
+      {fit.groups.map((view, index) => {
+        // The trailing control of the trailing group is the one the design
+        // pins rightmost (Settings); the update pill and `More` slot in just
+        // before it, which is why this group renders in two halves.
+        const trailing = index === lastGroup;
+        const lead = trailing ? view.items.slice(0, -1) : view.items;
+        const anchorItem = trailing
+          ? view.items[view.items.length - 1]
+          : undefined;
+        return (
+          <Fragment key={view.group}>
+            {index > 0 && <span class="tabbar__sep" aria-hidden="true" />}
+            {lead.map((item) => (
+              <ToolbarControl key={item.id} item={item} />
+            ))}
+            {trailing && updateAction !== undefined && (
+              <span ref={updateRef} class="ftoolbar__update">
+                {updateAction}
+              </span>
+            )}
+            {trailing && fit.overflow.length > 0 && (
+              <ToolbarControl item={moreItem} controlRef={moreRef} />
+            )}
+            {anchorItem !== undefined && (
+              <ToolbarControl key={anchorItem.id} item={anchorItem} />
+            )}
+          </Fragment>
+        );
+      })}
+      {menu !== null && fit.overflow.length > 0 && (
+        <ToolbarOverflowMenu
+          items={fit.overflow}
+          anchor={menu}
+          triggerEl={moreRef.current}
+          onClose={() => setMenu(null)}
+        />
+      )}
+    </div>
+  );
+}

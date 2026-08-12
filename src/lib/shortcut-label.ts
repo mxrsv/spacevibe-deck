@@ -2,12 +2,11 @@ import {
   MACOS_KEYMAP,
   WINDOWS_KEYMAP,
   type ActionId,
+  type CharKeyBinding,
   type KeyBinding,
+  type PhysicalKeyBinding,
 } from "../terminal/action-registry";
-import {
-  getDesktopEnvironment,
-  type DesktopPlatform,
-} from "./platform";
+import { getDesktopEnvironment, type DesktopPlatform } from "./platform";
 
 const MACOS_KEY_LABELS: Readonly<Record<string, string>> = Object.freeze({
   arrowdown: "↓",
@@ -36,7 +35,20 @@ const CODE_LABELS: Readonly<Record<string, string>> = Object.freeze({
   BracketRight: "]",
 });
 
-function bindingKey(binding: KeyBinding, platform: DesktopPlatform): string {
+/**
+ * A binding with the action taken off — the modifiers and the key, which is
+ * all display formatting ever reads.
+ *
+ * It exists so a chord that is not (yet) a registered action can still be
+ * formatted by this file rather than written out as a literal `⌘⇧E`: the
+ * gallery previews toolbar entries whose actions are still specified, not
+ * built, and a hardcoded chord there would be a macOS label that silently
+ * survives onto Windows.
+ */
+export type KeyChord =
+  Omit<CharKeyBinding, "action"> | Omit<PhysicalKeyBinding, "action">;
+
+function bindingKey(binding: KeyChord, platform: DesktopPlatform): string {
   if ("code" in binding) {
     if (CODE_LABELS[binding.code]) {
       return CODE_LABELS[binding.code];
@@ -49,6 +61,13 @@ function bindingKey(binding: KeyBinding, platform: DesktopPlatform): string {
 
 export function formatShortcutBinding(
   binding: KeyBinding,
+  platform: DesktopPlatform,
+): string {
+  return formatKeyChord(binding, platform);
+}
+
+export function formatKeyChord(
+  binding: KeyChord,
   platform: DesktopPlatform,
 ): string {
   const key = bindingKey(binding, platform);

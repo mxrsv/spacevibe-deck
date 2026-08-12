@@ -646,6 +646,184 @@ button.attn-mark:hover {
   transform: rotate(35deg);
 }
 
+/* ── Feature toolbar ──────────────────────────────────────────
+   Tools / Pane / Global, separated by the same hairline the tab bar already
+   uses. The row takes the width the bar gives it (`flex: 1`) rather than its
+   own content width, because `toolbar-overflow.ts` decides what fits by
+   comparing controls against available space — a row sized by its content
+   never runs out of room and would never overflow into `More`.
+
+   Icon geometry is deliberately absent: the control is `.iconbtn`, and the
+   icon inside it is sized by `DeckIcon` alone (DL-14.3). ── */
+.ftoolbar {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.ftoolbar__slot,
+.ftoolbar__update {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Unavailable, not disabled: still focusable, so the reason stays reachable
+   without a pointer. It reads as `--text-faint` like every other disabled
+   state (DL-3.4) and drops the hover wash, which would otherwise promise a
+   click that does nothing. */
+.iconbtn.is-unavailable,
+.iconbtn.is-unavailable:hover {
+  color: var(--text-faint);
+  background: transparent;
+  cursor: default;
+}
+
+/* ── Action tooltip ───────────────────────────────────────────
+   Name on the left, chord on the right, reason underneath when the action
+   cannot run. One hairline and a background step for depth (DL-3.3), no
+   shadow and no blur (DL-1.3). `pointer-events: none` so it can never sit
+   between the pointer and the control that summoned it. ── */
+.action-tip {
+  position: fixed;
+  z-index: 110;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 240px;
+  padding: 5px 8px;
+  background: var(--chrome-2);
+  border: 1px solid var(--seam-raised);
+  border-radius: 7px;
+  color: var(--text-primary);
+  font: 11.5px/1.35 var(--ui-font);
+  pointer-events: none;
+  animation: action-tip-in 0.13s ease;
+}
+
+.action-tip__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  white-space: nowrap;
+}
+
+.action-tip__kbd {
+  color: var(--text-faint);
+  font: 11.5px/1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.action-tip__reason {
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+@keyframes action-tip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Toolbar overflow menu ────────────────────────────────────
+   The actions the bar could not fit, as popover rows (DL-13.1, DL-13.3):
+   same icon, same label, same chord, plus the words the bar had no room
+   for. Group order survives the move — the horizontal hairline is the bar's
+   vertical one, turned. ── */
+.toolbar-menu {
+  position: fixed;
+  z-index: 100;
+  min-width: 190px;
+  padding: 4px;
+  background: var(--chrome-2);
+  border: 1px solid var(--seam-raised);
+  border-radius: 8px;
+}
+
+.toolbar-menu__group {
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar-menu__sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--hair);
+}
+
+.toolbar-menu__row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 5px 7px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font: 12.5px/1 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.13s ease,
+    color 0.13s ease;
+}
+
+.toolbar-menu__row:hover {
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--text-primary);
+}
+
+.toolbar-menu__row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.toolbar-menu__row.is-active {
+  color: var(--accent);
+}
+
+.toolbar-menu__row.is-unavailable,
+.toolbar-menu__row.is-unavailable:hover {
+  color: var(--text-faint);
+  background: transparent;
+  cursor: default;
+}
+
+.toolbar-menu__label {
+  flex: 1;
+}
+
+.toolbar-menu__kbd {
+  color: var(--text-faint);
+  font: 11.5px/1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.toolbar-menu__reason {
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+/* The tooltip's fade and the menu row's state change are the only motion
+   here, and both are off when the system asks for less (DL-7). */
+@media (prefers-reduced-motion: reduce) {
+  .action-tip {
+    animation: none;
+  }
+
+  .toolbar-menu__row {
+    transition: none;
+  }
+}
+
 .update-action-wrap {
   position: relative;
   display: inline-flex;
