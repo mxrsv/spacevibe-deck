@@ -111,10 +111,20 @@ export function createQuitFlow(
       await deps.confirm(request.requestId);
     }
 
-    // Empty in BOTH dimensions, not just the pane one. `busyPanes === 0` alone
-    // auto-confirmed, which is how a window holding only file tabs quit with
-    // unsaved edits and no prompt (spec §6, plan §1 findings 4 and 5).
-    if (request.busyPanes === 0 && request.dirtyFiles.length === 0) {
+    // Empty in ALL THREE dimensions, not just the pane one.
+    //
+    // `busyPanes === 0` alone auto-confirmed, which is how a window holding
+    // only file tabs quit with unsaved edits and no prompt (spec §6, plan §1
+    // findings 4 and 5). `fullyNamed` is the third: an `unknown` pane is not
+    // busy, so a census that could not classify anything reports zero busy
+    // panes with `fullyNamed: false` — and auto-confirming there kills agents
+    // with no prompt. `quit-flow.ts`'s `allIdle` states the rule ("`unknown` is
+    // NOT idle") but nothing enforced it on this side.
+    if (
+      request.fullyNamed &&
+      request.busyPanes === 0 &&
+      request.dirtyFiles.length === 0
+    ) {
       await finish(true);
       return;
     }

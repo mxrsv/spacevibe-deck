@@ -872,3 +872,119 @@ real window.
   `npm test` for that reason. The ELECTRON contract test is the live gate and
   it passes.
 - **Windows is untouched.** Inherited from Gate C, not created here.
+
+---
+
+## 7. Adversarial review, 2026-08-12 — what it found and what was fixed
+
+Five parallel reviewers over the implementation diff, one lens each: the host
+filesystem layer, the three exits, the renderer state model, the `TabManager`
+seam, and Monaco/bundle/design language. Every finding below was re-verified
+against the source before being acted on; several reviewer claims did not
+survive that and are recorded as corrections rather than quietly dropped.
+
+### 7.1 Fixed in this pass
+
+**A hostile temp file could write outside the workspace.**
+`writeFileAtomically` used the fixed name `.<basename>.tmp` and a plain
+`fs.writeFile`, which follows symlinks. A repository can commit
+`.package.json.tmp -> ~/.zshrc`; the user then only has to open `package.json`
+and press ⌘S. **Reproduced before the fix**: content written outside the root,
+mode changed to the target's `chmod`, and the workspace file left as a symlink.
+It also reached `electron/store.ts`, which now calls the same helper. Fixed with
+`open(temp, "wx")` (`O_CREAT | O_EXCL`, which fails on an existing entry
+including a symlink), a per-process-unique temp name, `chmod` on the open handle
+rather than the path, and temp cleanup on failure. The unique name also closes
+the two-windows-saving-one-file race that spec §2.2 explicitly allows.
+
+**A directory target put the temp file outside the root.** `isInside` accepts
+`root === child`, correctly, for reading. On the write path a symlink to the
+workspace root therefore made `dirname(resolved)` the root's PARENT. `writeTextFile`
+now refuses any target that is not a file.
+
+**A keystroke during an in-flight save was marked as saved.** `savePath` captured
+`document.text` before the `await` and then asserted `dirty: false`. Characters
+typed during the write were reclassified clean, the tab dot cleared, and an empty
+set was pushed to main — so ⌘Q immediately afterwards quit with no prompt. Dirty
+is now recomputed against the LIVE document, and the baseline is what was
+actually written.
+
+**A keystroke during a silent reload was overwritten.** `decideExternalChange`
+refuses to auto-reload a dirty buffer, but it decides BEFORE the read, and the
+editor stays writable throughout. `readDocument` now compares the buffer against
+what it held when the read started and raises the §5 bar instead of dropping the
+disk content on top of the user's text.
+
+**Installing an update is a FOURTH exit.** Spec §6 counts three. `app_relaunch`
+calls `app.exit(0)` and never reaches `before-quit`, so main's dirty registry is
+never consulted; `confirmInstall` did not pass `dirtyFiles` either. Install &
+Relaunch with an unsaved file and no busy pane showed no dialog at all.
+
+**An all-`unknown` census auto-confirmed.** `unknown` is not busy, so an
+unreadable process table reports zero busy panes with `fullyNamed: false` — and
+the empty-census branch confirmed. `quit-flow.ts`'s `allIdle` states the rule
+("`unknown` is NOT idle") and nothing on the renderer side enforced it. The gate
+is now `fullyNamed && busyPanes === 0 && dirtyFiles.length === 0`. Pre-existing,
+but this feature rewrote that exact line.
+
+**Clicking the active terminal tab did not take the stage back.** The `is-active`
+class was made conditional on `terminalActive` in both layouts; the click handler
+and `aria-selected` were not. With one terminal tab there was no working way back
+from a file tab. Fixed in both layouts, with a regression test in each.
+
+Fourteen tests were added for these; the suite is 1740 → 1754.
+
+### 7.2 Verified, NOT fixed — recorded follow-ups
+
+None of these lose data or touch pre-existing paths, which is why they are debt
+rather than blockers. Each is real and reproduced.
+
+- **Pane-scoped shortcuts still act on the hidden terminal.** `openOverlayRanks`
+  counts only the four overlays, and a file surface is not one — so `find`,
+  `toggle-prompts`, `clear-buffer`, `paste`, `split-*`, `scroll-*` all run
+  against the pane behind the editor. The mouse path for the Prompt Board is
+  guarded (T24); the keyboard and menu paths are not. This is the widest gap
+  left and wants one answer at `overlayBlocksAction`, not eleven patches.
+- **The tree never live-updates.** Directory watch events have no consumer:
+  `applyChange` drops any path that is not an open document, and a cached
+  listing is never invalidated. A file the agent creates is invisible until the
+  window is reopened. The `directories` half of the watch scope is currently
+  pure cost.
+- **`watch_paths` is the one channel with no path guard**, so it can be pointed
+  at any directory and will report changed filenames from it.
+- **The attention rail focuses a pane behind the editor** —
+  `activateForAttention` never calls `surfaces.deactivate()`, unlike `selectTab`.
+- **A replaced preview tab leaks its document** — `openFileTab` drops the tab but
+  never the entry in `fileDocuments`, so it stays watched, re-stat'd and
+  reloaded, and reopening that file shows pre-edit content.
+- **File tabs of a workspace whose terminal tabs all closed become unreachable**
+  while still counted dirty, so ⌘Q can ask about a file the user cannot open.
+- **`root` is renderer-supplied and never validated** against the workspaces the
+  window actually has open. Defense-in-depth rather than escalation: a renderer
+  able to call this already has `spawn_shell`. The header comments in
+  `path-guard.ts` and `channels.ts` overstate the guarantee and should be
+  softened or the check added.
+- Smaller: a UTF-8 BOM is stripped on save; bare `Ctrl+S` on Windows takes a
+  chord the keymap's own rule reserves for the PTY; a deleted file stays
+  editable; `realpathSync` runs synchronously per entry on the main thread
+  (a `node_modules` listing can stall PTY reads); `stat_files` and `watch_paths`
+  take unbounded arrays; a listing that failed once is cached empty forever.
+
+### 7.3 Corrections to the reviewers
+
+Two reviewers concluded that every keyboard shortcut is dead while the editor
+has focus, because `isChromeTextField` matches Monaco's `<textarea>`. **False on
+the target platform.** Monaco 0.56 picks `nativeEditContext` whenever
+`globalThis.EditContext` exists — it does in Electron 43 — and the focused node
+is then a `<div class="native-edit-context">`, not a text field. Only the
+fallback path uses a textarea. The claim is right in jsdom and wrong in the app.
+It did surface a real adjacent defect, though: because the editor's focus does
+NOT look like a text field, pane-scoped chords fire freely into the hidden
+terminal — the first item of §7.2.
+
+One reviewer called the tab-click bug a regression of existing behaviour. It is
+not: clicking the active tab opened the popover before this feature too, and
+that is unchanged. It is a new path that was never wired.
+
+The fifth reviewer (Monaco lifecycle, bundle, design language) had not reported
+when this was written. Its lens is unexamined.

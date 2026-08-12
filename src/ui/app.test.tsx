@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -297,5 +298,21 @@ describe("boardCanCancel", () => {
     // The twelfth invariant site: without this the board cannot be dismissed
     // and the file tabs behind it are unreachable.
     expect(boardCanCancel(0, 1)).toBe(true);
+  });
+});
+
+describe("the update install path", () => {
+  it("asks about unsaved files before Install & Relaunch", () => {
+    // A FOURTH exit that spec §6's three did not count: `app_relaunch` calls
+    // `app.exit(0)` and never reaches `before-quit`, so main's dirty registry
+    // is never consulted. Asserted on the source because `confirmInstall` is
+    // built inside `App()`, which this repo has no render harness for.
+    const source = readFileSync("src/ui/app.tsx", "utf8");
+    const guard = source.slice(
+      source.indexOf("confirmInstall:"),
+      source.indexOf("flush: flushSettingsSave"),
+    );
+    expect(guard).toContain("dirtyPaths()");
+    expect(guard).toContain("UPDATE_COPY");
   });
 });

@@ -84,6 +84,7 @@ import {
 import {
   activeFileTab,
   activeWorkspace,
+  dirtyPaths,
   setActiveWorkspace,
   totalFileTabs,
 } from "../files/file-surface-store";
@@ -290,9 +291,19 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       check: checkForUpdate,
       confirmInstall: () => {
         const manager = tabsRef.current;
+        // Installing an update is a FOURTH exit, which spec §6's three did not
+        // count: `app_relaunch` calls `app.exit(0)` and never reaches
+        // `before-quit`, so main's dirty registry is never consulted on this
+        // path. Without the fourth argument, Install & Relaunch with an unsaved
+        // file and no busy pane showed no dialog at all.
         return manager === null
           ? Promise.resolve(false)
-          : confirmClose(manager.allPaneIds(), defaultPtyClient, UPDATE_COPY);
+          : confirmClose(
+              manager.allPaneIds(),
+              defaultPtyClient,
+              UPDATE_COPY,
+              dirtyPaths(),
+            );
       },
       flush: flushSettingsSave,
       relaunch: relaunchDeck,

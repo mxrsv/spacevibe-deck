@@ -17,6 +17,9 @@ import path from "node:path";
 import { applyEol, type Eol } from "../../src/files/file-content";
 import { assertWritableInsideRoot } from "./path-guard";
 
+/** Distinguishes concurrent writes to one file within a process. */
+let tempCounter = 0;
+
 /**
  * Write to a sibling temp file and rename over the target.
  *
@@ -24,9 +27,27 @@ import { assertWritableInsideRoot } from "./path-guard";
  * either the old file or the new one — never a half-written store, and never a
  * half-written source file an agent is about to read.
  *
- * `mode` preserves the target's permission bits. Without it, saving an
- * executable script through Deck would silently strip its `+x`, because the
- * temp file is created with the default mode.
+ * Two properties of the TEMP file are load-bearing, and the first one is a
+ * security boundary:
+ *
+ *  - **`wx` (`O_CREAT | O_EXCL`), so the open fails if anything is already
+ *    there — a symlink included.** The temp name used to be the fixed
+ *    `.<name>.tmp`, opened with a plain `writeFile`, which follows symlinks. A
+ *    repository can commit `.package.json.tmp -> ~/.zshrc`; the user then only
+ *    has to open `package.json` and press ⌘S, and the editor buffer lands on
+ *    the link's target with this function's `chmod` applied to it. Reproduced
+ *    before the fix: content written outside the workspace, mode changed, and
+ *    the workspace file left as a symlink.
+ *  - **A unique name**, so two windows saving the same file (spec §2.2 allows
+ *    exactly that) do not race for one temp path and fail the second rename
+ *    with `ENOENT`.
+ *
+ * A failed write removes its temp rather than leaving `.foo.ts.a1b2.tmp` in the
+ * user's repository for `git status` to find.
+ *
+ * `mode` preserves the target's permission bits — without it, saving an
+ * executable script would silently strip its `+x`. It is applied to the open
+ * HANDLE, not to the path, so it cannot land on something else.
  */
 export async function writeFileAtomically(
   filePath: string,
@@ -34,13 +55,27 @@ export async function writeFileAtomically(
   options: { readonly mode?: number } = {},
 ): Promise<void> {
   const directory = path.dirname(filePath);
-  const temp = path.join(directory, `.${path.basename(filePath)}.tmp`);
   await fs.mkdir(directory, { recursive: true });
-  await fs.writeFile(temp, contents, "utf8");
-  if (options.mode !== undefined) {
-    await fs.chmod(temp, options.mode);
+  tempCounter += 1;
+  const temp = path.join(
+    directory,
+    `.${path.basename(filePath)}.${process.pid}.${tempCounter}.tmp`,
+  );
+  let handle: Awaited<ReturnType<typeof fs.open>> | null = null;
+  try {
+    handle = await fs.open(temp, "wx");
+    await handle.writeFile(contents, "utf8");
+    if (options.mode !== undefined) {
+      await handle.chmod(options.mode);
+    }
+    await handle.close();
+    handle = null;
+    await fs.rename(temp, filePath);
+  } catch (error) {
+    await handle?.close().catch(() => undefined);
+    await fs.rm(temp, { force: true }).catch(() => undefined);
+    throw error;
   }
-  await fs.rename(temp, filePath);
 }
 
 export interface WriteFileResult {
@@ -66,8 +101,19 @@ export async function writeTextFile(
   const resolved = assertWritableInsideRoot(root, target);
   let mode: number | undefined;
   try {
-    mode = (await fs.stat(resolved)).mode & 0o777;
-  } catch {
+    const stats = await fs.stat(resolved);
+    // A directory target would make `dirname(resolved)` the workspace's PARENT,
+    // so the temp file would be created outside the root before the rename
+    // failed. Reachable through a symlink pointing at the root itself, which
+    // `isInside` accepts (a root IS inside itself, correctly, for reading).
+    if (!stats.isFile()) {
+      throw new Error("Deck can only save over a file.");
+    }
+    mode = stats.mode & 0o777;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Deck can only")) {
+      throw error;
+    }
     // The file is gone — "Save again" recreates it with the default mode,
     // which is the only honest answer once the original's bits are lost.
     mode = undefined;

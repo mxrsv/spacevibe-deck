@@ -336,6 +336,9 @@ const stripProps = {
 };
 
 function renderStrip(): HTMLDivElement {
+  stripProps.onSelectTab.mockClear();
+  stripProps.onSelectFile.mockClear();
+  stripProps.onCloseFile.mockClear();
   tabViews.value = [
     {
       key: 1,
@@ -419,6 +422,28 @@ describe("file tabs in the strip", () => {
     expect(
       renderStrip().querySelector(`${TAB_SELECTOR}[data-file]`)?.getAttribute("data-file"),
     ).toBe("/repo/a.ts");
+  });
+
+
+  it("clicking the ACTIVE terminal tab takes the stage back from a file tab", () => {
+    // The class was made conditional on `terminalActive` but the click handler
+    // still branched on the bare `index !== active`, so this click opened the
+    // Tab Options popover instead of returning to the terminal.
+    openFileTab("/repo", "/repo/a.ts", { keep: true });
+    const host = renderStrip();
+    const terminal = host.querySelector<HTMLElement>(`${TAB_SELECTOR}[data-key]`)!;
+
+    terminal.click();
+
+    expect(stripProps.onSelectTab).toHaveBeenCalledWith(0);
+  });
+
+  it("reports exactly one selected tab to assistive tech", () => {
+    openFileTab("/repo", "/repo/a.ts", { keep: true });
+    const host = renderStrip();
+    const selected = [...host.querySelectorAll('[role="tab"][aria-selected="true"]')];
+    expect(selected).toHaveLength(1);
+    expect(selected[0].getAttribute("data-file")).toBe("/repo/a.ts");
   });
 
   it("routes a click to onSelectFile and the × to onCloseFile", () => {

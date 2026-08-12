@@ -109,3 +109,75 @@ describe("writeTextFile", () => {
     fs.rmSync(escape);
   });
 });
+
+describe("the temp file is not a way out of the workspace", () => {
+  it("refuses to write through a hostile temp SYMLINK a repo can commit", async () => {
+    // Reproduced before the fix: `.notes.md.tmp -> ../outside/secret.txt`
+    // checked into a repository, user opens `notes.md` and presses ⌘S, and the
+    // editor buffer lands on the link's target with this function's chmod
+    // applied. `wx` (O_CREAT|O_EXCL) is what makes the open fail instead.
+    const target = path.join(root, "notes.md");
+    const victim = path.join(outside, "secret.txt");
+    fs.writeFileSync(target, "original\n");
+    fs.writeFileSync(victim, "untouched\n");
+    fs.symlinkSync(victim, path.join(root, `.notes.md.${process.pid}.1.tmp`));
+    // Also cover the pre-fix fixed name, in case the scheme ever changes back.
+    fs.symlinkSync(victim, path.join(root, ".notes.md.tmp"));
+
+    await writeTextFile(root, target, "PWNED\n", "lf");
+
+    expect(fs.readFileSync(victim, "utf8")).toBe("untouched\n");
+    expect(fs.readFileSync(target, "utf8")).toBe("PWNED\n");
+    expect(fs.lstatSync(target).isSymbolicLink()).toBe(false);
+    fs.rmSync(path.join(root, ".notes.md.tmp"), { force: true });
+    fs.rmSync(path.join(root, `.notes.md.${process.pid}.1.tmp`), { force: true });
+  });
+
+  it("refuses a target that resolves to a DIRECTORY, including the root", async () => {
+    // `isInside` accepts root === child (correctly, for reading), so a symlink
+    // to the workspace root used to put the temp file in the root's PARENT.
+    const link = path.join(root, "to-root.txt");
+    fs.symlinkSync(root, link);
+    try {
+      await expect(writeTextFile(root, link, "x", "lf")).rejects.toThrow(
+        /only save over a file/,
+      );
+      expect(
+        fs.readdirSync(base).filter((name) => name.endsWith(".tmp")),
+      ).toEqual([]);
+    } finally {
+      fs.unlinkSync(link);
+    }
+  });
+
+  it("leaves no temp file behind when the write fails", async () => {
+    const readOnlyDir = path.join(root, "locked");
+    fs.mkdirSync(readOnlyDir, { recursive: true });
+    fs.chmodSync(readOnlyDir, 0o500);
+    const target = path.join(readOnlyDir, "new.txt");
+    try {
+      await writeTextFile(root, target, "x", "lf");
+      // Running as root defeats the permission bit; only assert where the OS
+      // can actually enforce it.
+    } catch {
+      expect(fs.readdirSync(readOnlyDir)).toEqual([]);
+    } finally {
+      fs.chmodSync(readOnlyDir, 0o700);
+      fs.rmSync(readOnlyDir, { recursive: true, force: true });
+    }
+  });
+
+  it("gives concurrent writes to one file distinct temp paths", async () => {
+    // Spec §2.2 allows the same file open in two windows. A fixed temp name
+    // made the second rename fail ENOENT, which the controller reported as a
+    // save that failed for no visible reason.
+    const target = path.join(root, "shared.txt");
+    fs.writeFileSync(target, "start\n");
+    await Promise.all([
+      writeTextFile(root, target, "one\n", "lf"),
+      writeTextFile(root, target, "two\n", "lf"),
+    ]);
+    expect(["one\n", "two\n"]).toContain(fs.readFileSync(target, "utf8"));
+    expect(fs.readdirSync(root).filter((n) => n.endsWith(".tmp"))).toEqual([]);
+  });
+});

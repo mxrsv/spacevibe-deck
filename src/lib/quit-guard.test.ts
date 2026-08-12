@@ -147,6 +147,24 @@ describe("createQuitFlow", () => {
     expect(message).toContain("index.ts has unsaved changes");
   });
 
+  it("prompts when the census could not classify a pane", async () => {
+    // `unknown` is not busy, so an unreadable process table reports zero busy
+    // panes with `fullyNamed: false`. Auto-confirming there killed agents with
+    // no prompt — `quit-flow.ts`'s `allIdle` states the rule and nothing on
+    // this side enforced it.
+    const deps = makeDeps();
+    await createQuitFlow(deps)({
+      requestId: 12,
+      busyProcesses: [],
+      busyPanes: 0,
+      fullyNamed: false,
+      dirtyFiles: [],
+    });
+    expect(deps.ask).toHaveBeenCalledWith(
+      expect.stringContaining("could not verify"),
+    );
+  });
+
   it("prompts with the Rust census and confirms on accept", async () => {
     const deps = makeDeps();
     await createQuitFlow(deps)(busyRequest);

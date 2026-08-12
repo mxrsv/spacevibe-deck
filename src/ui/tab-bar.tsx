@@ -102,12 +102,15 @@ export function TabBar(props: TabBarProps) {
           <div
             key={tab.key}
             role="tab"
-            aria-selected={index === active}
+            aria-selected={index === active && terminalActive}
             tabIndex={0}
             data-key={tab.key}
             class={`tab ${index === active && terminalActive ? "is-active" : ""}`}
             onClick={(event) => {
-              if (index !== active) {
+              // `!terminalActive` is the second half: with a file surface on
+              // the stage this tab renders un-selected, so clicking it must
+              // take the stage BACK rather than open the popover.
+              if (index !== active || !terminalActive) {
                 props.onSelectTab(index); // inactive tab: just select
                 return;
               }

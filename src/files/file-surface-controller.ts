@@ -164,9 +164,27 @@ export function createFileSurfaceController(
     workspacePath: string,
     path: string,
   ): Promise<void> {
+    // What the buffer held when the read was decided on. `decideExternalChange`
+    // refuses to auto-reload a DIRTY buffer, but it decides before this await —
+    // and the editor stays writable throughout. Without this, typing during a
+    // silent reload had the disk content dropped on top of it, with no bar and
+    // no dialog: spec §5's "dirty + changed → never auto-decide" bypassed by
+    // timing rather than by logic.
+    const before = documentFor(path)?.text;
     try {
       const result = await client.readFile(workspacePath, path);
-      if (disposed || documentFor(path) === undefined) {
+      const live = documentFor(path);
+      if (disposed || live === undefined) {
+        return;
+      }
+      if (before !== undefined && live.text !== before && live.dirty) {
+        // The user typed while we were reading. Raise the bar this reload was
+        // supposed to be a shortcut around, and keep their text.
+        updateDocument(path, {
+          prompt: result.kind === "refused" ? "prompt-deleted" : "prompt-changed",
+          ...(result.kind === "refused" ? { gone: true } : {}),
+        });
+        notify();
         return;
       }
       if (result.kind === "refused") {
@@ -369,27 +387,37 @@ export function createFileSurfaceController(
         return;
       }
       const file = document.file;
+      // The text that is about to reach disk, captured before the await so the
+      // baseline below is what was actually WRITTEN.
+      const written = document.text;
       try {
         const result = await client.writeFile(
           document.workspacePath,
           path,
-          document.text,
+          written,
           file.eol,
         );
-        if (disposed || documentFor(path) === undefined) {
+        const live = documentFor(path);
+        if (disposed || live === undefined) {
           return;
         }
+        // Recomputed against the LIVE text, never asserted `false`. A write is
+        // a round trip through IPC, `mkdir`, `open`, `rename` and `stat`; the
+        // characters typed during it are still unsaved. Asserting clean here
+        // cleared the tab's dot AND pushed an empty set to main, so ⌘Q right
+        // afterwards quit with no prompt and those characters were gone.
+        const stillDirty = live.text !== written;
         updateDocument(path, {
           // The saved text becomes the new baseline, so a later external-change
           // comparison is against what is actually on disk.
-          file: { ...file, content: document.text },
-          dirty: false,
+          file: { ...file, content: written },
+          dirty: stillDirty,
           gone: false,
           prompt: null,
           mtimeMs: result.mtimeMs,
           size: result.size,
         });
-        dirty.set(path, false);
+        dirty.set(path, stillDirty);
       } catch (error: unknown) {
         console.error("Deck: could not save the file", error);
         // Stays dirty, deliberately: a failed save must keep the guard asking.

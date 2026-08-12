@@ -455,3 +455,96 @@ describe("the SurfaceStrip seam", () => {
     expect(h.written).toEqual([]);
   });
 });
+
+describe("typing during an in-flight operation", () => {
+  /** A promise the test resolves by hand, so it can type mid-flight. */
+  function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((r) => {
+      resolve = r;
+    });
+    return { promise, resolve };
+  }
+
+  it("keeps a keystroke made DURING a save marked as unsaved", async () => {
+    // The write is a round trip through IPC, mkdir, open, rename and stat.
+    // Asserting `dirty: false` afterwards cleared the tab dot and pushed an
+    // empty set to main, so ⌘Q right after quit with no prompt.
+    const h = harness();
+    h.setContent(FILE, "one\n");
+    await h.controller.openFile(ROOT, FILE, false);
+    h.controller.setText(FILE, "one!\n");
+
+    const gate = deferred<{ path: string; mtimeMs: number; size: number }>();
+    vi.spyOn(h.client, "writeFile").mockReturnValueOnce(gate.promise);
+    const saving = h.controller.savePath(FILE);
+    h.controller.setText(FILE, "one!!\n"); // typed while the write is in flight
+    gate.resolve({ path: FILE, mtimeMs: 2000, size: 5 });
+    await saving;
+
+    expect(documentFor(FILE)?.text).toBe("one!!\n");
+    expect(documentFor(FILE)?.dirty).toBe(true);
+    expect(lastOf(h.dirtyPushes)).toEqual([FILE]);
+    // The baseline is what actually reached disk, so the next save is a real
+    // diff rather than a no-op.
+    expect(documentFor(FILE)?.file?.content).toBe("one!\n");
+  });
+
+  it("still goes clean when nothing was typed during the save", async () => {
+    const h = harness();
+    h.setContent(FILE, "one\n");
+    await h.controller.openFile(ROOT, FILE, false);
+    h.controller.setText(FILE, "two\n");
+
+    await h.controller.savePath(FILE);
+
+    expect(documentFor(FILE)?.dirty).toBe(false);
+    expect(lastOf(h.dirtyPushes)).toEqual([]);
+  });
+
+  it("raises the bar instead of overwriting a keystroke made DURING a silent reload", async () => {
+    // `decideExternalChange` refuses to auto-reload a dirty buffer, but it
+    // decides BEFORE the read — and the editor stays writable throughout. This
+    // is spec §5's "dirty + changed → never auto-decide", enforced at the point
+    // the content actually lands rather than at the point the decision is made.
+    const h = harness();
+    h.setContent(FILE, "disk v1\n");
+    await h.controller.openFile(ROOT, FILE, false);
+
+    const gate = deferred<Awaited<ReturnType<FileClient["readFile"]>>>();
+    vi.spyOn(h.client, "readFile").mockReturnValueOnce(gate.promise);
+    h.emitChange({ path: FILE, kind: "changed", mtimeMs: 2000, size: 8 });
+    h.controller.setText(FILE, "mine\n"); // typed while the read is in flight
+    gate.resolve({
+      kind: "ok",
+      content: "disk v2\n",
+      eol: "lf",
+      encoding: "utf-8",
+      bytes: 8,
+      mixedEol: false,
+      readOnly: false,
+      reason: null,
+      mtimeMs: 2000,
+      size: 8,
+      writable: true,
+    });
+    await vi.waitFor(() =>
+      expect(documentFor(FILE)?.prompt).toBe("prompt-changed"),
+    );
+
+    expect(documentFor(FILE)?.text).toBe("mine\n");
+    expect(documentFor(FILE)?.dirty).toBe(true);
+  });
+
+  it("still reloads silently when nothing was typed during the read", async () => {
+    const h = harness();
+    h.setContent(FILE, "disk v1\n");
+    await h.controller.openFile(ROOT, FILE, false);
+
+    h.setContent(FILE, "disk v2\n", 2000);
+    h.emitChange({ path: FILE, kind: "changed", mtimeMs: 2000, size: 8 });
+
+    await vi.waitFor(() => expect(documentFor(FILE)?.text).toBe("disk v2\n"));
+    expect(documentFor(FILE)?.prompt).toBeNull();
+  });
+});
