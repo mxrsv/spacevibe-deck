@@ -7,6 +7,7 @@ import {
   AGENT_LABEL_MAX,
   BUILTIN_AGENTS,
   createCustomAgentId,
+  isBuiltinAgentId,
   isProbeSafeName,
   type CustomAgent,
 } from "../../../lib/agent-catalog";
@@ -32,6 +33,18 @@ function commandProblem(command: string): string | null {
   return null;
 }
 
+/**
+ * Why a declared name is rejected, or `null` when it is fine.
+ *
+ * The label is not only a display string: `agentProcessMatchers` sends it to
+ * the host as the identity a matched process reports back, and the rest of the
+ * app reads that identity as an agent ID — `dotColor` for the pane's dot,
+ * `isPromptAgentId` for the Prompt Board's pickers. A label spelled exactly
+ * like a built-in ID (`claude`, `codex`, …) therefore hands an unrelated CLI
+ * that built-in's colour and its prompt snippets. Reserved IDs are refused
+ * here, where the user can still see why; the built-in LABELS stay refused for
+ * the older reason, that two rows reading "Claude Code" cannot be told apart.
+ */
 function labelProblem(
   label: string,
   others: readonly CustomAgent[],
@@ -42,6 +55,9 @@ function labelProblem(
   }
   if (trimmed.length > AGENT_LABEL_MAX) {
     return `names stay under ${AGENT_LABEL_MAX} characters`;
+  }
+  if (isBuiltinAgentId(trimmed)) {
+    return `"${trimmed}" is a built-in agent's id — pick another name`;
   }
   const taken =
     others.some((agent) => agent.label === trimmed) ||

@@ -156,6 +156,21 @@ describe("AgentsSection", () => {
     );
   });
 
+  it("refuses a name spelled like a built-in's id", () => {
+    mount();
+    // The label is not only shown: `agentProcessMatchers` sends it as the
+    // identity a matched process reports, and "claude" reaching `dotColor` and
+    // `isPromptAgentId` would give an unrelated CLI Claude's dot and Claude's
+    // prompt snippets. Every built-in id is refused, not just this one.
+    for (const builtin of BUILTIN_AGENTS) {
+      declare(builtin.id, "mytool");
+      expect(settings.value.customAgents).toEqual([]);
+      expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
+        "built-in agent's id",
+      );
+    }
+  });
+
   it("refuses a second agent with the same name", () => {
     mount();
     declare("Aider", "aider");
