@@ -9,8 +9,10 @@ import {
   NO_KEYBINDING_OVERRIDES,
   chordConflicts,
   chordId,
+  bindingOf,
   chordOf,
   chordsForAction,
+  isAdmissibleChord,
   isChord,
   isOverridden,
   keymapPlatform,
@@ -191,6 +193,32 @@ describe("withOverride", () => {
   });
 });
 
+describe("override vs override — the newest edit wins", () => {
+  it("gives the chord to the most recently recorded action", () => {
+    // Appending made the OLDEST edit win, contradicting `resolveKeymap`'s own
+    // documented rule. Only override-vs-DEFAULT was tested, so it stayed green.
+    let overrides = withOverride(NO_KEYBINDING_OVERRIDES, "macos", "find", [
+      { key: "k", meta: true, alt: true },
+    ]);
+    overrides = withOverride(overrides, "macos", "split-row", [
+      { key: "k", meta: true, alt: true },
+    ]);
+    const fires = () =>
+      matchBinding(
+        keyEvent("k", { metaKey: true, altKey: true }),
+        resolveKeymap("macos", overrides),
+      );
+    expect(fires()).toBe("split-row");
+
+    // …and re-confirming a chord onto the action you WANT hands it to that
+    // action. Before the fix this no-op edit flipped it to the other one.
+    overrides = withOverride(overrides, "macos", "find", [
+      { key: "k", meta: true, alt: true },
+    ]);
+    expect(fires()).toBe("find");
+  });
+});
+
 describe("chordConflicts", () => {
   it("finds nothing in either shipped keymap", () => {
     // Also a regression check on the keymaps themselves: a duplicate chord
@@ -239,6 +267,28 @@ describe("validateKeybindings", () => {
     expect(result.macos).toEqual({ find: [{ key: "j", meta: true }] });
   });
 
+  it("drops a stored chord the capture UI would have refused", () => {
+    // A hand-edited, synced or half-written file could otherwise bind bare `a`
+    // to close-pane — every "a" closes a pane, and "a" is untypeable, from a
+    // file the app treats as valid. Shape validation alone never caught it.
+    const result = validateKeybindings({
+      macos: {
+        "close-pane": [{ key: "a" }],
+        find: [{ key: "a", shift: true }],
+        "scroll-page-up": [{ key: "arrowup" }],
+        "clear-buffer": [{ key: "j", meta: true }],
+      },
+      windows: {},
+    });
+    expect(result.macos).toEqual({ "clear-buffer": [{ key: "j", meta: true }] });
+  });
+
+  it("keeps the shipped keymaps admissible — the rule cannot outlaw a default", () => {
+    for (const binding of [...MACOS_KEYMAP, ...WINDOWS_KEYMAP]) {
+      expect(isAdmissibleChord(chordOf(binding)), binding.action).toBe(true);
+    }
+  });
+
   it("refuses a chord list longer than the cap", () => {
     const tooMany = Array.from({ length: MAX_CHORDS_PER_ACTION + 1 }, () => ({
       key: "j",
@@ -257,14 +307,22 @@ describe("validateKeybindings", () => {
   });
 });
 
-describe("chordOf", () => {
+describe("chordOf / bindingOf", () => {
   it("survives a round trip through every shipped binding", () => {
     // The store holds chords, the keymap holds bindings. If the split lost a
     // modifier, a rebind of one action would quietly alter another's chord.
+    //
+    // This asserts the round trip through BOTH halves. Comparing
+    // `chordId(chordOf(b))` against itself, as an earlier version did, only
+    // asserted that a pure function is deterministic — `bindingOf` was never
+    // called at all.
     for (const binding of [...MACOS_KEYMAP, ...WINDOWS_KEYMAP]) {
       const chord: Chord = chordOf(binding);
       expect(isChord(chord)).toBe(true);
-      expect(chordId(chord)).toBe(chordId(chordOf(binding)));
+      const restored = bindingOf(chord, binding.action);
+      expect(chordId(chordOf(restored)), binding.action).toBe(chordId(chord));
+      expect(restored.action).toBe(binding.action);
+      expect("code" in restored).toBe("code" in binding);
     }
   });
 });

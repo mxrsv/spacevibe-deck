@@ -15,7 +15,7 @@ import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { ChromeActions } from "./chrome-actions";
 import { tabPopoverOpen } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
-import { shortcutLabel } from "../lib/shortcut-label";
+import { titleWithShortcut } from "../lib/shortcut-label";
 
 interface TabBarProps {
   settingsOpen: boolean;
@@ -95,6 +95,11 @@ export function TabBar(props: TabBarProps) {
 
   return (
     <header class="tabbar" data-tauri-drag-region ref={rootRef}>
+      {/* DL-16: in top-tab mode this row IS the window frame, so it reserves
+          the traffic-light inset itself rather than sitting under an empty
+          titlebar. Rendered on macOS only — elsewhere the OS owns that corner
+          or nothing does. */}
+      <div class="deck-frame__lights" aria-hidden="true" />
       <div class="tabbar__tabs" role="tablist" aria-label="Terminal tabs">
         {tabs.map((tab, index) => (
           <div
@@ -163,7 +168,7 @@ export function TabBar(props: TabBarProps) {
       <button
         type="button"
         class="tab-add"
-        title={`New tab (${shortcutLabel("new-tab")})`}
+        title={titleWithShortcut("New tab", "new-tab")}
         aria-label="New tab"
         onClick={props.onNewTab}
       >

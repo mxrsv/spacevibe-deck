@@ -28,6 +28,37 @@ const CODE_TO_ACCEL: Record<string, string> = {
   BracketRight: "]",
 };
 
+/**
+ * `event.key` → Electron's accelerator token for keys that have a NAME rather
+ * than a character.
+ *
+ * Without this, a rebind to an arrow or PageUp produced `Arrowup` / `Pageup`,
+ * which Electron cannot parse — the accelerator was silently dropped and the
+ * menu item lost its chord while the Shortcuts row went on displaying one.
+ * Anything not in this table and not a single character or F-key is refused
+ * outright by `acceleratorFor` rather than guessed at.
+ */
+const KEY_TO_ACCEL: Record<string, string> = {
+  arrowup: "Up",
+  arrowdown: "Down",
+  arrowleft: "Left",
+  arrowright: "Right",
+  pageup: "PageUp",
+  pagedown: "PageDown",
+  home: "Home",
+  end: "End",
+  insert: "Insert",
+  delete: "Delete",
+  backspace: "Backspace",
+  enter: "Return",
+  escape: "Esc",
+  tab: "Tab",
+  " ": "Space",
+  "+": "Plus",
+};
+
+const FUNCTION_KEY = /^f([1-9]|1\d|2[0-4])$/;
+
 function normalizeCode(code: string): string {
   if (CODE_TO_ACCEL[code] !== undefined) {
     return CODE_TO_ACCEL[code];
@@ -41,22 +72,46 @@ function normalizeCode(code: string): string {
   return code;
 }
 
-function normalizeKey(key: string): string {
-  if (/^[a-z]$/.test(key)) {
+/**
+ * The accelerator token for a binding's key, or null when it cannot be
+ * expressed — a chord Electron would reject, or a dead/compose key.
+ *
+ * Null means "install no accelerator", which leaves the menu item clickable
+ * with no chord. That is the honest outcome: a wrong accelerator is worse than
+ * a missing one, because Cocoa would then claim a chord the user never chose.
+ */
+function tokenFor(binding: KeyBinding): string | null {
+  if ("code" in binding) {
+    return normalizeCode(binding.code);
+  }
+  const key = binding.key.toLowerCase();
+  if (KEY_TO_ACCEL[key] !== undefined) {
+    return KEY_TO_ACCEL[key];
+  }
+  if (FUNCTION_KEY.test(key)) {
     return key.toUpperCase();
   }
-  if (key.length > 1) {
-    return key[0].toUpperCase() + key.slice(1);
-  }
-  return key;
+  // A single character is what the user's layout produced; Electron takes it
+  // verbatim. Anything longer is a named key this table does not know.
+  return [...key].length === 1 ? key.toUpperCase() : null;
 }
 
-function tokenFor(binding: KeyBinding): string {
-  return "code" in binding
-    ? normalizeCode(binding.code)
-    : normalizeKey(binding.key);
-}
-
+/**
+ * The Cocoa accelerator for an action, built from the binding's OWN modifiers.
+ *
+ * `CmdOrCtrl` used to be hardcoded as the first part and `binding.meta` was
+ * never read. That was safe only for as long as every macOS menu binding
+ * shipped with `meta: true`; the moment a user could record a chord, it turned
+ * ⇧D into `CmdOrCtrl+Shift+D` — ⌘⇧D, which is `split-column`'s shipped chord.
+ * Edit precedes View in the template, so Cocoa ran Find and Split Horizontally
+ * silently stopped working, with no conflict reported anywhere: the collision
+ * existed only in the generated accelerator, never in the resolved keymap that
+ * `chordConflicts` scans.
+ *
+ * `Command` rather than `CmdOrCtrl` because this menu is macOS-only
+ * (`buildMenu` returns early elsewhere), so the ambiguous spelling bought
+ * nothing and hid the meta-vs-ctrl distinction that now matters.
+ */
 function acceleratorFor(
   actionId: string,
   keymap: readonly KeyBinding[],
@@ -65,17 +120,31 @@ function acceleratorFor(
   if (binding === undefined) {
     return undefined;
   }
-  const parts = ["CmdOrCtrl"];
-  if (binding.shift) {
-    parts.push("Shift");
+  const token = tokenFor(binding);
+  if (token === null) {
+    return undefined;
+  }
+  const parts: string[] = [];
+  if (binding.meta) {
+    parts.push("Command");
+  }
+  if (binding.ctrl) {
+    parts.push("Control");
   }
   if (binding.alt) {
     parts.push("Alt");
   }
-  if (binding.ctrl) {
-    parts.push("Ctrl");
+  if (binding.shift) {
+    parts.push("Shift");
   }
-  parts.push(tokenFor(binding));
+  if (parts.length === 0) {
+    // An unmodified accelerator would claim a bare key across the whole app
+    // from the menu, which no keymap rule allows. `isAdmissibleChord` already
+    // refuses these at capture; this is the backstop for the shipped bare-F3
+    // Windows binding never reaching a macOS menu.
+    return undefined;
+  }
+  parts.push(token);
   return parts.join("+");
 }
 
@@ -158,7 +227,17 @@ function itemsFor(
  */
 export function buildMenu(deps: MenuDeps): void {
   if (process.platform !== "darwin") {
-    // Windows/Linux chrome carries its own menu; no native bar to install.
+    // Windows/Linux chrome carries its own menu, but "install nothing" is not
+    // the same as "no menu". Electron installs a DEFAULT menu when the app
+    // never calls `setApplicationMenu` itself, and `titleBarStyle:
+    // "hiddenInset"` makes the window frameless on Windows — so the menu BAR
+    // is skipped while its accelerators are already registered with the focus
+    // manager. The shipped Windows preview therefore answers Ctrl+R with a
+    // renderer reload and Ctrl+W by closing the window, neither of which Deck
+    // asked for and neither of which `WINDOWS_KEYMAP` contests.
+    //
+    // Passing null is what actually removes them.
+    Menu.setApplicationMenu(null);
     return;
   }
   const focused = deps.focused();

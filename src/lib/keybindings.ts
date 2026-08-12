@@ -281,6 +281,70 @@ export function chordsForAction(
     .map((binding) => chordOf(binding));
 }
 
+/**
+ * Keys that mean something unmodified because they produce no character —
+ * function keys only.
+ *
+ * Navigation keys are deliberately NOT here. An earlier version listed
+ * arrows/Home/End/PageUp as "never produce a character the PTY would otherwise
+ * receive", which is wrong: they send escape sequences, and those escape
+ * sequences ARE shell history, readline and vim navigation. Binding a bare ↑
+ * cost every pane its history recall, silently, because `handleShortcut`
+ * preventDefaults before xterm sees the key.
+ */
+const FUNCTION_KEY = /^f([1-9]|1\d|2[0-4])$/;
+
+/**
+ * Keys that may take Shift ALONE as their modifier — they still need one, but
+ * Shift is enough because the unmodified key is already a navigation escape
+ * sequence rather than a character. The shipped `Shift+PageUp` / `Shift+Home`
+ * scrollback bindings are exactly this case.
+ */
+const NAVIGATION_KEYS: ReadonlySet<string> = new Set([
+  "pageup",
+  "pagedown",
+  "home",
+  "end",
+  "insert",
+  "delete",
+  "arrowup",
+  "arrowdown",
+  "arrowleft",
+  "arrowright",
+]);
+
+/**
+ * Whether a chord may be bound at all — the ONE rule, applied both when the
+ * user records a chord and when a stored one is read back.
+ *
+ * Shift is not a sufficient modifier for a printable key. It reads like one,
+ * and treating it as one made `Shift+A` bindable, which takes capital A away
+ * from every pane — the very outcome this rule exists to prevent — and made
+ * Shift+Enter stealable from the agent-CLI newline (`shift-enter.ts`), which
+ * is not in the registry and so cannot even be reported as a conflict.
+ *
+ * Applied at load as well as at capture on purpose: a hand-edited, synced or
+ * half-written `settings.json` could otherwise bind bare `a` to `close-pane`,
+ * something the UI refuses, and the app would treat the file as valid.
+ */
+export function isAdmissibleChord(chord: Chord): boolean {
+  if ("code" in chord) {
+    // Only the shipped keymaps carry code chords, and a capture never writes
+    // one. Nothing user-supplied reaches this branch.
+    return true;
+  }
+  const key = chord.key.toLowerCase();
+  if (FUNCTION_KEY.test(key)) {
+    return true;
+  }
+  const primary =
+    chord.meta === true || chord.ctrl === true || chord.alt === true;
+  if (NAVIGATION_KEYS.has(key)) {
+    return primary || chord.shift === true;
+  }
+  return primary;
+}
+
 function validateChordList(raw: unknown): readonly Chord[] | null {
   if (!Array.isArray(raw)) {
     return null;
@@ -290,10 +354,11 @@ function validateChordList(raw: unknown): readonly Chord[] | null {
   }
   const chords: Chord[] = [];
   for (const entry of raw) {
-    if (!isChord(entry)) {
+    if (!isChord(entry) || !isAdmissibleChord(entry)) {
       // Drop-not-repair, the discipline `validateCustomAgents` already uses:
       // a half-understood chord is not guessed at, because guessing wrong
-      // binds a key the user never asked for.
+      // binds a key the user never asked for. `isAdmissibleChord` is what
+      // stops a hand-edited file binding something the capture UI refuses.
       return null;
     }
     chords.push(entry);
@@ -362,6 +427,14 @@ export function withOverride(
 ): KeybindingOverrides {
   const current = overrideFor(overrides, platform);
   const { [action]: _cleared, ...rest } = current;
-  const next = chords === null ? rest : { ...rest, [action]: chords };
+  // PREPENDED, not appended, and the order is load-bearing. `resolveKeymap`
+  // walks these keys in insertion order and `matchBinding` takes the first
+  // match, so key order decides who wins a collision between two overrides.
+  // Appending made the MOST RECENT edit lose: binding find→⌘⌥K then
+  // split-row→⌘⌥K fired `find`, and then re-recording ⌘⌥K onto `find` — a
+  // no-op from the user's side — flipped it to `split-row`. Resolving a
+  // conflict by re-confirming the chord you want handed you the one you did
+  // not.
+  const next = chords === null ? rest : { [action]: chords, ...rest };
   return { ...overrides, [platform]: next };
 }

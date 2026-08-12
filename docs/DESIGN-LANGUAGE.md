@@ -339,41 +339,52 @@ behaviour, and §5's row is what makes settings scan as one document.
   swapping two actions' chords must pass through a colliding state, and
   rejecting the first half makes the swap impossible to finish.
 - **DL-15.6** The row's only second element is DL-6.1's reset button, shown
-  when the chord differs from the shipped default. Recording covers the other
-  two outcomes without further controls — a chord rebinds, bare
-  Backspace/Delete unbinds, Esc cancels.
+  whenever the row carries a user override — including an override that happens
+  to equal the shipped chord, because what reset removes is the override, not a
+  difference. Recording covers the other two outcomes without further
+  controls — a chord rebinds, bare Backspace/Delete unbinds, Esc cancels.
+- **DL-15.8** A refused keystroke says WHY, in the pill, and keeps listening.
+  Every refusal reason gets its own words: "reserved by macOS" is not the same
+  message as "add ⌘, ⌃ or ⌥", and neither may render as the idle "press keys…"
+  — a rule the user cannot see reads as a dead control.
 - **DL-15.7** Chords are **notation, not icons** (DL-14.6): `⌘⇧D`, `Ctrl+Alt+T`
   are rendered as text, never as pictograms, and `formatShortcutBinding`
   (`src/lib/shortcut-label.ts`) is the only place their spelling is decided.
 
-## 16. Docked side panels
+## 17. Docked side panels
 
 Added 2026-08-12 for the browser panel, and written to cover the class rather
-than the instance — the file-explorer design reserves the same slot on the
-other side of this number (its own spec still says "§15", written before
-Shortcuts took that number; it renumbers to §17 or shares §16 when it is
-built).
+than the instance.
+
+**Numbered 17, not 16.** §16 belongs to the application frame: the code that
+collapsed the title bar and tab bar into one command row cites `DL-16` from
+nine places in `src/`, and it landed on this branch first. That rule's TEXT is
+not in this file yet — see the ledger at the bottom — but the number is spoken
+for, and renumbering nine citations to free it would be the expensive way
+round. The file-explorer design's own "§15 (docked side panels)" was already
+stale when Shortcuts took 15; when that panel is built it joins this section
+rather than opening a third number for the same surface class.
 
 A docked panel is a surface §11 (full-window screens) and §13 (anchored
 popovers) do not describe: it is permanent, it displaces content instead of
 covering it, and it can hold something that is not Deck's own pixels.
 
-- **DL-16.1** A docked panel is a **column of the stage, not an overlay**. The
+- **DL-17.1** A docked panel is a **column of the stage, not an overlay**. The
   terminal grid's own bounds shrink by exactly the panel's width, so panes
   resize around it. Nothing in the app floats permanently over a pane.
-- **DL-16.2** The seam is a single `--hair` border on the panel's inner edge
+- **DL-17.2** The seam is a single `--hair` border on the panel's inner edge
   (DL-3.3). No shadow, no gradient, no second rule — the background step from
   `--bg` to `--chrome-2` is what separates the two regions.
-- **DL-16.3** The panel's own header is a **bar of `iconbtn` controls**, the
+- **DL-17.3** The panel's own header is a **bar of `iconbtn` controls**, the
   same class and the same 13px chrome icon size the tab bar uses (DL-14.2). A
   docked panel borrows the window's controls; it does not invent a set.
-- **DL-16.4** Width is user-set by dragging the seam and persists as an
+- **DL-17.4** Width is user-set by dragging the seam and persists as an
   ordinary setting, clamped to a min and max. The drag target is wider than the
   hairline it sits on and paints nothing — the hairline stays 1px.
-- **DL-16.5** One status line, directly under the header, in `--text-faint`
+- **DL-17.5** One status line, directly under the header, in `--text-faint`
   (DL-3.4) — or `--red` when it reports a failure (DL-3.2). It is the panel's
   only place for transient text; a panel does not raise dialogs of its own.
-- **DL-16.6** When a panel hosts **foreign content** (a web page, a preview),
+- **DL-17.6** When a panel hosts **foreign content** (a web page, a preview),
   Deck's chrome never overlaps it: the content gets its own rectangle below the
   header, and that rectangle is the only part of the column Deck does not
   paint. A native view stacked over it cannot be covered by any DOM layer, so
@@ -386,5 +397,7 @@ _(reality-drift ledger — heading text mandated by the global docs convention)_
 
 | Claim | Intent | Status | Evidence |
 | ----- | ------ | ------ | -------- |
+| `DL-16` is cited from nine places in `src/` (`app.tsx`, `styles.css`, `tab-bar.tsx`, `app.test.tsx`) | The application frame — one authored command row, no separate title bar | **Rule text not written.** The number is in use and §17 was numbered around it; the rules themselves still have to be added | [`5ef509a`](../src/styles.css) `current` — the code and its comments exist, this file has no §16 |
 
-Empty — verified 2026-07-27; the violations table above is the DL-specific ledger. Do not remove this section (D7).
+The violations table above is the DL-specific ledger; this one is for claims
+that do not match the tree. Do not remove this section (D7).

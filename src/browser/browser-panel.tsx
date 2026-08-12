@@ -8,7 +8,7 @@
  * column ended up. Every path that can move or resize it therefore ends in
  * `report()`.
  *
- * Styling follows DESIGN-LANGUAGE §16 (docked side panels): a real grid column
+ * Styling follows DESIGN-LANGUAGE §17 (docked side panels): a real grid column
  * with a hairline seam, chrome-2 surface, and the same `iconbtn` the tab bar
  * uses so the panel's buttons are the app's buttons.
  */

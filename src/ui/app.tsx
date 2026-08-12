@@ -15,7 +15,7 @@ import {
 import { flushSettingsSave } from "../settings/settings-store";
 import { defaultPtyClient } from "../terminal/pty-client";
 import type { BootMode } from "../terminal/transfer-client";
-import { deriveChromeColors } from "../lib/derive-colors";
+import { applyThemeVars } from "../lib/theme-vars";
 import { resolveCwds, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
 import { settings, updateSettings } from "../settings/settings-store";
@@ -110,18 +110,23 @@ export function DesktopChrome(props: DesktopChromeProps) {
     .filter(Boolean)
     .join(" ");
 
+  // DL-16: one authored command row. On macOS the traffic lights sit INSIDE it
+  // behind a fixed inset instead of owning an empty band of their own — the
+  // frame is Deck's chrome, not OS spacing the app happens to sit under. In
+  // top-tab mode the tabs occupy that same row; in sidebar mode the row carries
+  // the actions and the sidebar starts beneath it.
   return (
     <div class={classes}>
-      {!windows ? (
+      {props.sidebar ? (
         <div
-          class="titlebar"
+          class="deck-frame"
           data-tauri-drag-region
-          onDblClick={props.onMacTitlebarDoubleClick}
+          onDblClick={windows ? undefined : props.onMacTitlebarDoubleClick}
         >
-          {props.sidebar ? props.toolbar : null}
-        </div>
-      ) : props.sidebar ? (
-        <div class="deck-toolbar" aria-label="Deck actions">
+          {!windows ? (
+            <div class="deck-frame__lights" aria-hidden="true" />
+          ) : null}
+          <div class="deck-frame__spacer" data-tauri-drag-region />
           {props.toolbar}
         </div>
       ) : null}
@@ -404,8 +409,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     installQuitGuard({
       quit: {
         ...answering(QUIT_COPY),
-        confirm: (requestId: number) =>
-          defaultPtyClient.confirmQuit(requestId),
+        confirm: (requestId: number) => defaultPtyClient.confirmQuit(requestId),
         cancel: (requestId: number) => defaultPtyClient.cancelQuit(requestId),
       },
       close: {
@@ -487,29 +491,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   useSignalEffect(() => {
     const current = settings.value;
     tabsRef.current?.applySettings(current);
-    const theme = resolveTheme(current);
-    const bg = theme.background ?? "#16161e";
-    const fg = theme.foreground ?? "#c0caf5";
-    const chrome = deriveChromeColors(bg, fg);
-    const rootStyle = document.documentElement.style;
-    rootStyle.setProperty("--bg", bg);
-    rootStyle.setProperty("--fg", fg);
-    rootStyle.setProperty("--accent", theme.blue ?? "#7aa2f7");
-    rootStyle.setProperty("--red", theme.red ?? "#f7768e");
-    rootStyle.setProperty("--green", theme.green ?? "#9ece6a");
-    rootStyle.setProperty("--yellow", theme.yellow ?? "#e0af68");
-    rootStyle.setProperty("--magenta", theme.magenta ?? "#bb9af7");
-    rootStyle.setProperty("--cyan", theme.cyan ?? "#7dcfff");
-    rootStyle.setProperty("--tone", chrome.tone);
-    rootStyle.setProperty("--chrome-1", chrome.chrome1);
-    rootStyle.setProperty("--chrome-2", chrome.chrome2);
-    rootStyle.setProperty("--tab-active-bg", chrome.tabActiveBg);
-    rootStyle.setProperty("--input-bg", chrome.inputBg);
-    rootStyle.setProperty("--hair", chrome.hair);
-    rootStyle.setProperty("--hair-strong", chrome.hairStrong);
-    rootStyle.setProperty("--text-primary", chrome.textPrimary);
-    rootStyle.setProperty("--text-muted", chrome.textMuted);
-    rootStyle.setProperty("--text-faint", chrome.textFaint);
+    applyThemeVars(document.documentElement.style, resolveTheme(current));
   });
 
   /** Open board confirm: materialize + record recents + preselect memory. */
@@ -710,7 +692,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
 
   const promptPopover = promptsOpen.value ? (
     <PromptPopover
-      capture={() => capturePromptTarget(tabsRef.current?.activePaneId() ?? null)}
+      capture={() =>
+        capturePromptTarget(tabsRef.current?.activePaneId() ?? null)
+      }
       loadAssets={(target) =>
         defaultPromptAssetsClient.list(target.agent ?? "", target.cwd)
       }
@@ -720,7 +704,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           expectedAgent: target.agent,
         }) ?? Promise.resolve("no-target" as const)
       }
-      isAlive={(paneId) => tabsRef.current?.allPaneIds().includes(paneId) ?? false}
+      isAlive={(paneId) =>
+        tabsRef.current?.allPaneIds().includes(paneId) ?? false
+      }
       onClose={closePrompts}
     />
   ) : null;

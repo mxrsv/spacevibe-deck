@@ -8,7 +8,7 @@ import {
   SquareX,
 } from "lucide-preact";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
-import { shortcutLabel } from "../lib/shortcut-label";
+import { titleWithShortcut } from "../lib/shortcut-label";
 
 interface ChromeActionsProps {
   settingsOpen: boolean;
@@ -30,18 +30,21 @@ interface ChromeActionsProps {
 
 /** Pane + settings actions — lives in the tab bar (top) or the titlebar (left). */
 export function ChromeActions(props: ChromeActionsProps) {
-  const splitRow = shortcutLabel("split-row");
-  const splitColumn = shortcutLabel("split-column");
-  const closePane = shortcutLabel("close-pane");
-  const toggleExpand = shortcutLabel("toggle-expand");
-  const prompts = shortcutLabel("toggle-prompts");
-  const settings = shortcutLabel("toggle-settings");
+  // `titleWithShortcut`, not a raw interpolation: an unbound action makes
+  // `shortcutLabel` return null, and `title="Split vertically (null)"` is what
+  // that used to render.
+  const splitRow = titleWithShortcut("Split vertically", "split-row");
+  const splitColumn = titleWithShortcut("Split horizontally", "split-column");
+  const closePane = titleWithShortcut("Close pane", "close-pane");
+  const toggleExpand = titleWithShortcut("Focus expand", "toggle-expand");
+  const prompts = titleWithShortcut("Prompts", "toggle-prompts");
+  const settings = titleWithShortcut("Settings", "toggle-settings");
   return (
     <div class="tabbar__actions">
       <button
         type="button"
         class="iconbtn"
-        title={`Split vertically (${splitRow})`}
+        title={splitRow}
         aria-label="Split pane vertically"
         onClick={props.onSplitRow}
       >
@@ -50,7 +53,7 @@ export function ChromeActions(props: ChromeActionsProps) {
       <button
         type="button"
         class="iconbtn"
-        title={`Split horizontally (${splitColumn})`}
+        title={splitColumn}
         aria-label="Split pane horizontally"
         onClick={props.onSplitColumn}
       >
@@ -59,7 +62,7 @@ export function ChromeActions(props: ChromeActionsProps) {
       <button
         type="button"
         class="iconbtn"
-        title={`Close pane (${closePane})`}
+        title={closePane}
         aria-label="Close current pane"
         onClick={props.onClosePane}
       >
@@ -68,7 +71,7 @@ export function ChromeActions(props: ChromeActionsProps) {
       <button
         type="button"
         class={`iconbtn ${props.expandActive ? "is-active" : ""}`}
-        title={`Focus expand (${toggleExpand})`}
+        title={toggleExpand}
         aria-label="Toggle focus expand"
         aria-pressed={props.expandActive}
         onClick={props.onToggleExpand}
@@ -79,7 +82,7 @@ export function ChromeActions(props: ChromeActionsProps) {
         <button
           type="button"
           class={`iconbtn ${props.promptsOpen ? "is-active" : ""}`}
-          title={`Prompts (${prompts})`}
+          title={prompts}
           aria-label="Open the prompt board"
           aria-haspopup="dialog"
           aria-expanded={props.promptsOpen}
@@ -95,7 +98,7 @@ export function ChromeActions(props: ChromeActionsProps) {
       <button
         type="button"
         class={`iconbtn iconbtn--gear ${props.settingsOpen ? "is-active" : ""}`}
-        title={`Settings (${settings})`}
+        title={settings}
         aria-label="Open settings"
         aria-pressed={props.settingsOpen}
         onClick={props.onToggleSettings}

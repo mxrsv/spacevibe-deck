@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deck — chrome gallery</title>
+    <!--
+      A second Vite entry beside index.html. `vite build` only walks the root
+      index.html graph, so nothing here reaches the app bundle — the guard in
+      scripts/gallery-entry.test.ts is what keeps that true.
+    -->
+    <script type="module" src="/src/gallery/main.tsx" defer></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

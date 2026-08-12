@@ -25,7 +25,7 @@ import { pickImagePath } from "../settings/logo-store";
 import { reportPersistError, tabPopoverOpen } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
 import { WorkspaceLogo } from "./workspace-logo";
-import { shortcutLabel } from "../lib/shortcut-label";
+import { titleWithShortcut } from "../lib/shortcut-label";
 
 interface WorkspaceSidebarProps {
   onSelectTab(index: number): void;
@@ -254,7 +254,7 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
         <button
           type="button"
           class="wsbar__add"
-          title={`New tab (${shortcutLabel("new-tab")})`}
+          title={titleWithShortcut("New tab", "new-tab")}
           aria-label="New tab"
           onClick={props.onNewTab}
         >

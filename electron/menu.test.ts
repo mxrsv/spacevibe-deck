@@ -42,6 +42,21 @@ function accelerator(
   return items(template).find((item) => item.id === id)?.accelerator;
 }
 
+/** The menu as built after rebinding one action to `chord`. */
+function rebound(
+  action: string,
+  chord: Record<string, unknown>,
+): MenuItemConstructorOptions[] {
+  return render(
+    resolveKeymap(
+      "macos",
+      withOverride(NO_KEYBINDING_OVERRIDES, "macos", action as never, [
+        chord as never,
+      ]),
+    ),
+  );
+}
+
 function render(
   keymap?: ReturnType<typeof resolveKeymap>,
   suspendAccelerators?: boolean,
@@ -69,8 +84,8 @@ describe("menu accelerators", () => {
   });
 
   it("advertises the shipped chord when nothing is overridden", () => {
-    expect(accelerator(render(), "split-row")).toBe("CmdOrCtrl+D");
-    expect(accelerator(render(), "toggle-settings")).toBe("CmdOrCtrl+,");
+    expect(accelerator(render(), "split-row")).toBe("Command+D");
+    expect(accelerator(render(), "toggle-settings")).toBe("Command+,");
   });
 
   it("follows a rebind, so Cocoa stops eating the old chord", () => {
@@ -80,7 +95,7 @@ describe("menu accelerators", () => {
         { key: "j", meta: true, alt: true },
       ]),
     );
-    expect(accelerator(render(keymap), "split-row")).toBe("CmdOrCtrl+Alt+J");
+    expect(accelerator(render(keymap), "split-row")).toBe("Command+Alt+J");
   });
 
   it("drops the accelerator of an action the user unbound", () => {
@@ -105,8 +120,51 @@ describe("menu accelerators", () => {
     );
     // …and comes back afterwards.
     expect(accelerator(render(undefined, false), "split-row")).toBe(
-      "CmdOrCtrl+D",
+      "Command+D",
     );
+  });
+
+  it("builds the accelerator from the binding's OWN modifiers", () => {
+    // `["CmdOrCtrl"]` used to be hardcoded and `binding.meta` never read. The
+    // concrete break: rebinding Find to ⇧D produced `CmdOrCtrl+Shift+D` — ⌘⇧D,
+    // `split-column`'s shipped chord. Edit precedes View, so Cocoa ran Find
+    // and Split Horizontally silently stopped working, with no conflict shown
+    // anywhere: the collision lived only in the generated accelerator, never
+    // in the resolved keymap `chordConflicts` scans.
+    const shiftD = rebound("find", { key: "d", shift: true });
+    expect(accelerator(shiftD, "find")).toBe("Shift+D");
+    expect(accelerator(shiftD, "split-column")).toBe("Command+Shift+D");
+    expect(accelerator(shiftD, "find")).not.toBe(
+      accelerator(shiftD, "split-column"),
+    );
+
+    expect(
+      accelerator(rebound("find", { key: "j", ctrl: true, alt: true }), "find"),
+    ).toBe("Control+Alt+J");
+  });
+
+  it("spells named keys the way Electron parses them", () => {
+    // `Arrowup` / `Pageup` are not accelerator tokens; Electron drops them, so
+    // the menu item lost its chord while the Shortcuts row still showed one.
+    expect(
+      accelerator(rebound("find", { key: "arrowup", meta: true }), "find"),
+    ).toBe("Command+Up");
+    expect(
+      accelerator(rebound("find", { key: "pageup", meta: true }), "find"),
+    ).toBe("Command+PageUp");
+    expect(
+      accelerator(rebound("find", { key: "enter", meta: true }), "find"),
+    ).toBe("Command+Return");
+  });
+
+  it("installs NO accelerator rather than a wrong one", () => {
+    // A key this build cannot spell, and a chord with no modifier at all: both
+    // resolve to "no accelerator", which leaves the item clickable. A wrong
+    // accelerator would hand Cocoa a chord the user never chose.
+    expect(
+      accelerator(rebound("find", { key: "unidentified", meta: true }), "find"),
+    ).toBeUndefined();
+    expect(accelerator(rebound("find", { key: "f5" }), "find")).toBeUndefined();
   });
 
   it("keeps the labels while accelerators are suspended", () => {
