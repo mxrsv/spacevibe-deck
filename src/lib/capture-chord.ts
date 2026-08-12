@@ -6,33 +6,12 @@
  * `tsconfig.electron.json` ships no DOM lib, so a `KeyboardEvent` in the
  * resolver would break the main-process typecheck. Nothing in the main process
  * ever captures a chord — only the renderer does.
- */
-import type { CharChord } from "./keybindings";
-
-/**
- * Keys that carry meaning without a modifier, because they never produce a
- * character the PTY would otherwise receive. Everything else must be modified:
- * binding a bare letter would make that letter untypeable in every pane, which
- * no confirmation dialog makes acceptable.
  *
- * `f3` (Windows `find-next`) and `pageup`/`home` (scrollback, Shift-only) are
- * shipped bindings that live in exactly this exemption, so it is not a
- * hypothetical allowance.
+ * What a chord is ALLOWED to be lives in `keybindings.ts` (`isAdmissibleChord`),
+ * not here, because the same rule has to run when a stored chord is read back.
+ * This file only decides what a keydown MEANS.
  */
-const NON_TYPING_KEYS: ReadonlySet<string> = new Set([
-  "pageup",
-  "pagedown",
-  "home",
-  "end",
-  "insert",
-  "delete",
-  "arrowup",
-  "arrowdown",
-  "arrowleft",
-  "arrowright",
-]);
-
-const FUNCTION_KEY = /^f([1-9]|1\d|2[0-4])$/;
+import { isAdmissibleChord, type CharChord } from "./keybindings";
 
 const MODIFIER_KEYS: ReadonlySet<string> = new Set([
   "shift",
@@ -47,11 +26,42 @@ const MODIFIER_KEYS: ReadonlySet<string> = new Set([
 export type CaptureRejection =
   | "modifier-only"
   | "reserved"
+  | "system-reserved"
   | "needs-modifier";
 
 export type CaptureResult =
   | { readonly ok: true; readonly chord: CharChord }
   | { readonly ok: false; readonly reason: CaptureRejection };
+
+/**
+ * Chords macOS never delivers to the app, whatever the menu is doing.
+ *
+ * ⌘Tab and ⌘Space are taken by the WindowServer before Chromium sees them, so
+ * a capture would simply sit there looking broken. ⌘Q and ⌘H are NOT in that
+ * class — they are ordinary menu key equivalents and could be claimed — but
+ * claiming Quit or Hide is against the macOS HIG and is not a choice to let a
+ * user make by accident.
+ *
+ * Reported with a reason rather than silently ignored: the field convention
+ * (VS Code, Ghostty) is to let the OS win and SAY so, never to fail quietly.
+ */
+const SYSTEM_RESERVED: ReadonlySet<string> = new Set([
+  "M+tab",
+  "M+ ",
+  "M+q",
+  "M+h",
+  "MA+h",
+]);
+
+function reservationId(event: KeyboardEvent, key: string): string {
+  const modifiers = [
+    event.metaKey ? "M" : "",
+    event.ctrlKey ? "C" : "",
+    event.altKey ? "A" : "",
+    event.shiftKey ? "S" : "",
+  ].join("");
+  return `${modifiers}+${key}`;
+}
 
 /**
  * Turn a keydown into a storable chord, or say why it cannot be one.
@@ -84,6 +94,9 @@ export function captureChord(event: KeyboardEvent): CaptureResult {
   if (key === "escape" || (key === "tab" && !modified)) {
     return { ok: false, reason: "reserved" };
   }
+  if (SYSTEM_RESERVED.has(reservationId(event, key))) {
+    return { ok: false, reason: "system-reserved" };
+  }
   const chord: CharChord = {
     key,
     meta: event.metaKey,
@@ -91,8 +104,7 @@ export function captureChord(event: KeyboardEvent): CaptureResult {
     alt: event.altKey,
     ctrl: event.ctrlKey,
   };
-  const nonTyping = NON_TYPING_KEYS.has(key) || FUNCTION_KEY.test(key);
-  if (!modified && !nonTyping) {
+  if (!isAdmissibleChord(chord)) {
     return { ok: false, reason: "needs-modifier" };
   }
   return { ok: true, chord };

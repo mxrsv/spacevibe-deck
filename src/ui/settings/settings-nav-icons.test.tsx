@@ -7,6 +7,7 @@ import {
   AboutIcon,
   AgentsIcon,
   AppearanceIcon,
+  BrowserIcon,
   ColorsIcon,
   LinksEditorIcon,
   NotificationsIcon,
@@ -39,6 +40,7 @@ describe("settings-nav-icons", () => {
       icon: "lucide-bell",
       Icon: NotificationsIcon,
     },
+    { name: "BrowserIcon", icon: "lucide-globe", Icon: BrowserIcon },
     // An arrow landing on a baseline: this category is About/Update, and the
     // icon has always been the update rather than a generic info circle.
     { name: "AboutIcon", icon: "lucide-download", Icon: AboutIcon },

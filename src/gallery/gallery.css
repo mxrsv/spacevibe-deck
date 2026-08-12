@@ -1,0 +1,529 @@
+/*
+ * Chrome for the gallery itself — never for the app.
+ *
+ * Two deliberate inversions of the app's design language, both so the harness
+ * can never be mistaken for the thing it displays:
+ *   1. Fixed hex colours, not theme tokens. The harness must hold still while
+ *      the specimens change theme underneath it. DL-2.1 governs app chrome;
+ *      this file is not app chrome, and `css-audit.ts` reads only styles.css
+ *      so none of these values pollute the numbers on the tokens page.
+ *   2. A monospace face for every label. DL-4.1 reserves mono for the
+ *      terminal, so mono here reads instantly as "outside the app".
+ */
+
+.gx-app {
+  --gx-bg: #101014;
+  --gx-panel: #17171c;
+  --gx-line: #2a2a33;
+  --gx-text: #b9b9c6;
+  --gx-dim: #74748a;
+  --gx-bright: #e6e6f0;
+  --gx-mono: "SF Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 40px 1fr 26px;
+  grid-template-columns: 190px 1fr;
+  background: var(--gx-bg);
+  color: var(--gx-text);
+  font-family: var(--gx-mono);
+  font-size: 12px;
+}
+
+/* ── shell ───────────────────────────────────────────────────────── */
+
+.gx-topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--gx-line);
+}
+
+.gx-topbar__title {
+  color: var(--gx-bright);
+}
+
+.gx-topbar__hint {
+  color: var(--gx-dim);
+  font-size: 11px;
+}
+
+.gx-themebtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px;
+  border: 1px solid var(--gx-line);
+  border-radius: 5px;
+  background: var(--gx-panel);
+  color: var(--gx-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.gx-themebtn:hover {
+  border-color: var(--gx-dim);
+  color: var(--gx-bright);
+}
+
+.gx-themebtn__swatch {
+  width: 11px;
+  height: 11px;
+  border: 1px solid;
+  border-radius: 3px;
+}
+
+.gx-rail {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+  border-right: 1px solid var(--gx-line);
+  overflow-y: auto;
+}
+
+.gx-rail__item {
+  padding: 7px 14px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: none;
+  color: var(--gx-dim);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gx-rail__item:hover {
+  color: var(--gx-text);
+}
+
+.gx-rail__item.is-active {
+  border-left-color: var(--gx-bright);
+  background: #1e1e25;
+  color: var(--gx-bright);
+}
+
+.gx-content {
+  padding: 22px 26px 60px;
+  overflow-y: auto;
+}
+
+.gx-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-top: 1px solid var(--gx-line);
+  color: var(--gx-dim);
+  font-size: 11px;
+}
+
+.gx-foot code {
+  color: var(--gx-text);
+}
+
+/* ── section + specimen framing ──────────────────────────────────── */
+
+.gx-sectionhead {
+  margin: 0 0 22px;
+}
+
+.gx-sectionhead h1 {
+  margin: 0 0 5px;
+  color: var(--gx-bright);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.gx-sectionhead p {
+  margin: 0;
+  max-width: 78ch;
+  color: var(--gx-dim);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.gx-specimen {
+  margin: 0 0 26px;
+}
+
+.gx-specimen__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.gx-specimen__name {
+  color: var(--gx-bright);
+}
+
+.gx-specimen__note {
+  max-width: 74ch;
+  color: var(--gx-dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.gx-stage {
+  position: relative;
+  border: 1px solid var(--gx-line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gx-stage--bg {
+  background: var(--bg);
+}
+
+.gx-stage--chrome-1 {
+  background: var(--chrome-1);
+}
+
+.gx-stage--chrome-2 {
+  background: var(--chrome-2);
+}
+
+.gx-stage--none {
+  background: var(--bg);
+}
+
+.gx-stage--tall {
+  height: 560px;
+}
+
+/*
+ * `.window` sizes itself to the viewport in the app. Inside a stage it must
+ * fill the stage instead — the grid rows, hairlines and bar heights are still
+ * the app's own.
+ */
+.gx-stage .window {
+  height: 100%;
+  width: 100%;
+}
+
+/* Stand-in for the terminal grid, so a bar specimen has something below it. */
+.gx-fakepane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-faint);
+  font-family: var(--gx-mono);
+  font-size: 11px;
+}
+
+/* ── specimen layout helpers ─────────────────────────────────────── */
+
+.gx-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.gx-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 22px;
+  padding: 16px;
+}
+
+.gx-inline__item {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: flex-start;
+}
+
+.gx-statelabel {
+  color: var(--gx-dim);
+  font-family: var(--gx-mono);
+  font-size: 10px;
+}
+
+/* Room for a popover to open downward without being clipped by the stage. */
+.gx-anchorpad {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  min-height: 300px;
+}
+
+.gx-anchorpad--right {
+  align-items: flex-end;
+}
+
+.gx-overlaypad {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 16px;
+}
+
+.gx-overlaypad__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.gx-overlaypad__pane {
+  position: relative;
+  width: 190px;
+  height: 110px;
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+/*
+ * Both are `position: fixed` in the app and take their box from an inline
+ * rect the drag controller measures. Only the box is supplied here; every
+ * colour, border and radius stays the app's.
+ */
+.gx-overlaypad__pane .drop-overlay,
+.gx-overlaypad__pane .pane-drag-ghost {
+  position: absolute;
+}
+
+.gx-overlaypad__pane .drop-overlay {
+  inset: 12px;
+}
+
+.gx-overlaypad__pane .pane-drag-ghost {
+  top: 40px;
+  left: 20px;
+}
+
+/* ── tokens page ─────────────────────────────────────────────────── */
+
+.gx-tokens {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 2px 18px;
+  margin: 0;
+  padding: 14px 16px;
+  list-style: none;
+  border: 1px solid var(--gx-line);
+  border-radius: 6px;
+}
+
+.gx-token {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 0;
+  font-size: 11px;
+}
+
+.gx-token__swatch {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--gx-line);
+  border-radius: 3px;
+}
+
+.gx-token__name {
+  flex: none;
+  color: var(--gx-bright);
+  white-space: nowrap;
+}
+
+.gx-token__computed {
+  color: var(--gx-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-audits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.gx-audit {
+  padding: 12px 14px;
+  border: 1px solid var(--gx-line);
+  border-radius: 6px;
+  background: var(--gx-panel);
+}
+
+.gx-audit__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gx-audit__label {
+  color: var(--gx-bright);
+}
+
+.gx-audit__count {
+  color: var(--gx-dim);
+  font-size: 10.5px;
+}
+
+.gx-audit__note,
+.gx-audit__empty {
+  margin: 5px 0 9px;
+  color: var(--gx-dim);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.gx-audit__list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.gx-audit__list li {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) 58px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 10.5px;
+}
+
+.gx-audit__times {
+  color: var(--gx-dim);
+}
+
+.gx-audit__sample {
+  color: var(--gx-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── state matrix ────────────────────────────────────────────────── */
+
+/*
+ * One block scrolls horizontally rather than shrinking its cells. The whole
+ * point of the matrix is that every cell is the same size, so a responsive
+ * column would compare two variables at once.
+ */
+.gx-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.gx-matrix__row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+/*
+ * Sticky, because the block is wider than a laptop viewport by design. Without
+ * it, scrolling right to reach one-dark and catppuccin-mocha pushes the only
+ * thing naming which state a row is off the left edge — four unlabelled cells
+ * in the state the reader most needs labelled.
+ */
+.gx-matrix__rowhead {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  flex: 0 0 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 2px;
+  background: var(--gx-bg);
+}
+
+.gx-matrix__statename {
+  color: var(--gx-bright);
+}
+
+.gx-matrix__statenote {
+  color: var(--gx-dim);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* What the row cannot show by rendering — it is why the cells look resting. */
+.gx-matrix__finding {
+  color: #d9a25f;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.gx-matrix__colhead {
+  flex: 0 0 auto;
+  color: var(--gx-dim);
+  font-size: 10.5px;
+}
+
+/*
+ * The cell publishes its theme through inline custom properties, so it needs
+ * no background of its own — `--bg` on the shell inside it is the app's.
+ */
+/*
+ * `border-box` is not decoration: nothing in this repo sets a global
+ * `box-sizing`, so the 1px border made the cell 682px against a 680px column
+ * header and every column drifted a further 2px out of line with the theme
+ * name above it.
+ */
+.gx-cell {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  border: 1px solid var(--gx-line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gx-cell__inner {
+  height: 172px;
+}
+
+/*
+ * Tall enough that the sidebar's fourth workspace row and its add affordance
+ * are both above the fold: 34px titlebar + 28px status leaves 182px of rail,
+ * and at 210px the last row was cut in half.
+ */
+.gx-cell__inner--tall {
+  height: 244px;
+}
+
+/*
+ * `.window` is a viewport-sized grid in the app, and inside a cell it has to
+ * fill the cell instead. The extra `.gx-cell` in front is load-bearing:
+ * `force-states.ts` re-emits every app rule with one class prefixed, so the
+ * app's own `.window { height: 100vh; width: 100vw }` comes back as
+ * `.gx-force--hover .window` — same specificity as a two-class override, and
+ * later in the document. Three classes is what keeps a forced cell from
+ * growing to the size of the viewport.
+ */
+.gx-cell .gx-cell__inner > .window {
+  height: 100%;
+  width: 100%;
+}
+
+/*
+ * `overflow-y: auto`, matching the app, not `hidden`. Hiding it would let a
+ * section that overflows in a real settings pane read as fitting here, and it
+ * would drop the app's own scrollbar treatment from the one place the matrix
+ * could show it.
+ */
+.gx-cell .gx-cell__inner > .settings-screen__section {
+  height: 100%;
+  background: var(--chrome-2);
+  overflow-y: auto;
+}

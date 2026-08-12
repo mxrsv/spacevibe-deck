@@ -680,6 +680,106 @@ reaches its owner instead of being dropped as "no route for pane".
 packaging, and the full manual pass. Nothing here ships, and the Tauri build
 remains what users run.
 
+## Browser panel + Inspect — 2026-08-12
+
+Electron only, on `electron-migration`. A docked column on the right of the
+stage loads a dev server; Inspect turns any element on that page into
+component-and-source context that lands in the focused agent pane.
+
+### What it is made of
+
+| Piece | Where |
+| ----- | ----- |
+| Native web view, one per window | [`electron/browser/view.ts`](../electron/browser/view.ts) `current` |
+| Injected bootstrap (pure string builder) | [`electron/browser/inject.ts`](../electron/browser/inject.ts) `current` |
+| Address-bar input rules | [`electron/browser/url.ts`](../electron/browser/url.ts) `current` |
+| Page → host bridge | [`electron/browser-preload.ts`](../electron/browser-preload.ts) `current` |
+| Vendored react-grab 0.1.50 | [`electron/vendor/react-grab/`](../electron/vendor/react-grab/SOURCE.md) `current` |
+| Panel chrome + measured hole | [`src/browser/browser-panel.tsx`](../src/browser/browser-panel.tsx) `current` |
+| Grab delivery + sanitising | [`src/browser/browser-store.ts`](../src/browser/browser-store.ts) `current`, [`grab-format.ts`](../src/browser/grab-format.ts) `current` |
+
+### The three facts that shape all of it
+
+1. **The web content is a native view, not an element.** It paints above every
+   DOM layer, so the renderer measures `.browser-panel__view` and sends the
+   rectangle, and hides the view whenever an overlay opens. CSS cannot put the
+   Open board in front of it.
+2. **The injection has to run in the page's MAIN world.** React stores its
+   fiber as an expando on the DOM node and expandos are per-world; from the
+   preload's isolated world every element is plain HTML with no component and
+   no source location. So the bundle goes in through `executeJavaScript`, and
+   the grab comes back out through a DOM `CustomEvent` the preload forwards —
+   the only channel two worlds share.
+3. **The page is untrusted.** It can dispatch the grab event itself with any
+   payload. Hence: parsed defensively, length-capped, every C0 control
+   stripped (an embedded `ESC[201~` would break out of the bracketed paste and
+   be read as keystrokes), and **never submitted** — a grab pastes and stops.
+
+### Verified on a real window (2026-08-12)
+
+`npm run electron:smoke` gained six checks and they pass: the panel attaches a
+view and loads a page; `__deckGrab`, `__REACT_GRAB__` and
+`__REACT_GRAB_MODULE__` all exist in the page's main world; a grab crosses
+page → preload → IPC → renderer intact; Inspect arms react-grab in the page;
+**no request reaches react-grab.com**; closing the panel destroys the page.
+22/24 overall — the two failures are the Linux container (`platform=unsupported`,
+cwd with no shell integration) and predate this work.
+
+Two defects that run found and the mocked suite could not:
+
+- `window.__REACT_GRAB__` was never set. Disabling the bundle's self-init also
+  skips the `setGlobalApi` call inside it, so react-grab's documented handle was
+  missing while everything else looked healthy.
+- `generateSnippet` can fail to settle in a throttled frame. `getContent` sits
+  between ⌘C and BOTH destinations, so an unsettled promise means no paste and
+  no clipboard with nothing on screen; it now races a 2 s deadline and falls
+  back to the element's markup.
+
+### What the code review changed (2026-08-12)
+
+15 findings, 14 real, all fixed in the follow-up commit. The ones that changed
+behaviour rather than wording:
+
+| Was | Is |
+| --- | --- |
+| Any page could dispatch the grab event; no gesture check, no rate limit | The preload gates on `isTrusted` — a bit page script cannot set — within 3 s, and both preload and host rate-limit |
+| `sanitizeGrabText` stripped C0 and DEL | It strips C1 too; `U+009B 201~` is the same bracketed-paste escape without an ESC |
+| The view hid only for `overlayCoversPane()` | It hides for every floating surface; the Prompt Board popover opened inside the panel's own column and was invisible |
+| The toggle destroyed the page | It hides it, which is what "reopening keeps the page" always claimed |
+| Grabs were sent from `getContent` | They are sent from `onCopySuccess` / `onAfterCopy`, after the bundle's abort race has decided — a cancelled copy no longer pastes |
+| `browserHomeUrl` had no UI | Settings has a **browser** category |
+| The `.js → .cjs` walk swept the vendored bundle | `vendor/` is skipped, and the output dir is cleared before the copy |
+
+One finding did not survive verification: closing a window was said to throw
+out of the cleanup path and strand PTYs. A probe on Electron 43 showed
+`webContents.close()` on an already-destroyed contents is a no-op, so it became
+a guard rather than a fix.
+
+Two traps found while fixing, both now locked by tests:
+
+- An escape written `\n` inside `inject.ts`'s template literal is consumed by
+  TypeScript and emits a real newline into the generated script. The injection
+  was a SyntaxError and Inspect was dead on every page while every `toContain`
+  assertion passed. The test now runs `new Function(script)`.
+- A synthesised DOM event can never exercise the new gate — `isTrusted` is
+  false, and `executeJavaScript(..., true)` marks user activation, not trust.
+  Only `sendInputEvent` into a focused view produces a trusted event, which is
+  how the smoke run now drives a real copy.
+
+Smoke is 24/26: a forged grab is dropped, a real `copyElement` reaches the
+renderer, and the two failures are the same pre-existing Linux ones.
+
+### Not verified
+
+- **A real React dev server.** Component names and `file:line` come from
+  react-grab reading React's fiber; no React app was available in this
+  environment. The transport is proven end to end, the richness of what it
+  carries is upstream behaviour.
+- **Windows.** Same Gate C hole as the rest of the branch.
+- **The panel under a real compositor** — resize, drag-to-width, and the
+  hide-on-overlay path were exercised by unit tests and by the smoke run's
+  bounds call, not by a human dragging the seam.
+
 ## File explorer — model merged, surface dropped — 2026-08-12
 
 Electron branch only; nothing here ships on Tauri. Built against the

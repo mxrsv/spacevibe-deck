@@ -13,6 +13,7 @@
  *  - Every pane command validates ownership through the coordinator before it
  *    touches a session.
  */
+import fs from "node:fs";
 import path from "node:path";
 import {
   app,
@@ -25,6 +26,8 @@ import {
   type IpcMainInvokeEvent,
 } from "electron";
 import { CHANNELS, EVENTS } from "./ipc/channels";
+import { BrowserPanels } from "./browser/view";
+import { normalizeBrowserUrl } from "./browser/url";
 import { WindowCoordinator, type AdoptionPayload } from "./coordinator";
 import { PtyManager } from "./pty/manager";
 import { ptyInfo, type PtyInfo } from "./pty/info";
@@ -82,17 +85,49 @@ function emitTo(label: string, event: string, payload: unknown): boolean {
 const coordinator = new WindowCoordinator(emitTo);
 
 /**
- * Unsaved editor buffers, per window (spec §6).
+ * Unsaved editor buffers, per window (file-explorer spec §6).
  *
- * Dirty state lives in Monaco, in the renderer; the census lives here so a
+ * Dirty state lives in the renderer's editor; the census lives here so a
  * wedged webview cannot make ⌘Q unanswerable. This registry is what keeps that
  * invariant true once files are editable — main still answers the census alone.
+ * Empty today: the editor surface was left to the redesign, so nothing pushes
+ * to it yet.
  */
 const dirtyFiles = new MainDirtyRegistry();
 
 /** `fs.watch` scopes, per window. Replaced wholesale on every renderer call. */
 const watchers = createWatchRegistry((label, event) => {
   emitTo(label, EVENTS.fileChanged, event);
+});
+
+/**
+ * The vendored react-grab bundle, read once and kept.
+ *
+ * 386 kB of source is spliced into every page the panel loads, and a page
+ * reload re-injects it; re-reading the file each time would put synchronous
+ * disk I/O on the navigation path for bytes that cannot change while the app
+ * runs. An unreadable file yields `""`, which the bootstrap turns into an
+ * inert injection rather than a thrown navigation.
+ */
+let vendorCache: string | null = null;
+function reactGrabSource(): string {
+  if (vendorCache === null) {
+    const file = path.join(__dirname, "vendor", "react-grab", "index.global.js");
+    try {
+      vendorCache = fs.readFileSync(file, "utf8");
+    } catch (error) {
+      console.error("Deck: react-grab bundle is missing; Inspect is disabled", error);
+      vendorCache = "";
+    }
+  }
+  return vendorCache;
+}
+
+const browserPanels = new BrowserPanels({
+  emit: emitTo,
+  windowFor: (label) => windows.get(label),
+  vendorSource: reactGrabSource,
+  events: { state: EVENTS.browserState, grab: EVENTS.browserGrab },
 });
 
 const pty = new PtyManager({
@@ -132,6 +167,9 @@ function createWindow(label: string): BrowserWindow {
     },
   });
   windows.set(label, window);
+  // Captured now, not in `closed`: the webContents is destroyed by then and
+  // reading `.id` off it would throw inside the teardown handler.
+  const senderId = window.webContents.id;
 
   // Deck is a single local document and must never navigate. A drop that the
   // renderer does not cancel, or any stray link, would otherwise load a new
@@ -140,6 +178,13 @@ function createWindow(label: string): BrowserWindow {
   // just loaded. Proven: the bridge survives navigation.
   window.webContents.on("will-navigate", (event) => event.preventDefault());
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+
+  // A renderer that dies mid-recording never sends its `false`. Preact cleanup
+  // does not run on a destroyed webview, so without this the accelerators stay
+  // stripped for every window until relaunch.
+  window.webContents.on("render-process-gone", () => {
+    setRecording(senderId, false);
+  });
 
   window.on("focus", () => {
     registry.recordFocus(label);
@@ -198,7 +243,13 @@ function createWindow(label: string): BrowserWindow {
   });
 
   window.on("closed", () => {
+    // Before `windows.delete`: closing the panel wants the window to still be
+    // resolvable so the native view can be detached from its content view.
+    browserPanels.close(label);
     windows.delete(label);
+    // Same reason as `render-process-gone`: closing a window while one of its
+    // Shortcuts rows is recording must not leave the app without accelerators.
+    setRecording(senderId, false);
     registry.forgetWindow(label);
     quitFlight.forgetWindow(label);
     closeFlight.forget(label);
@@ -254,8 +305,35 @@ function focusedLabel(): string | null {
  */
 let menuKeymap: readonly KeyBinding[] = MACOS_KEYMAP;
 
-/** True while a Shortcuts row is recording — see `MenuDeps.suspendAccelerators`. */
-let acceleratorsSuspended = false;
+/**
+ * Web contents currently recording a chord — see `MenuDeps.suspendAccelerators`.
+ *
+ * A SET keyed by sender, not a boolean, and both halves of that matter. As a
+ * boolean with no owner it could be left stuck: a window that died between
+ * `true` and `false` stripped every accelerator app-wide for the rest of the
+ * session, with no way back except guessing "open Settings, click a pill,
+ * press Escape". And with two windows recording, whichever finished FIRST
+ * un-suspended the other — so ⌘W in the still-recording window closed the
+ * pane, which is the exact failure this mechanism exists to prevent.
+ */
+const recordingSenders = new Set<number>();
+
+function acceleratorsSuspended(): boolean {
+  return recordingSenders.size > 0;
+}
+
+/** Add or remove a recorder, rebuilding the menu only when the state flips. */
+function setRecording(senderId: number, recording: boolean): void {
+  const before = acceleratorsSuspended();
+  if (recording) {
+    recordingSenders.add(senderId);
+  } else {
+    recordingSenders.delete(senderId);
+  }
+  if (acceleratorsSuspended() !== before) {
+    rebuildMenu();
+  }
+}
 
 /** Re-resolve the menu keymap from a settings object and rebuild if it moved. */
 function adoptMenuKeymap(settings: unknown): void {
@@ -276,7 +354,7 @@ function rebuildMenu(): void {
     emitTo,
     focused: () => focusedLabel(),
     keymap: menuKeymap,
-    suspendAccelerators: acceleratorsSuspended,
+    suspendAccelerators: acceleratorsSuspended(),
   });
 }
 
@@ -336,13 +414,8 @@ ipcMain.handle(CHANNELS.readImageAsDataUrl, (_event, { path: target }) =>
 ipcMain.handle(CHANNELS.scanWorkspaceFavicon, (_event, { dir }) =>
   scanWorkspaceFavicon(dir),
 );
-ipcMain.handle(CHANNELS.suspendMenuAccelerators, (_event, { suspended }) => {
-  const next = suspended === true;
-  if (next === acceleratorsSuspended) {
-    return;
-  }
-  acceleratorsSuspended = next;
-  rebuildMenu();
+ipcMain.handle(CHANNELS.suspendMenuAccelerators, (event, { suspended }) => {
+  setRecording(event.sender.id, suspended === true);
 });
 
 // ---------------------------------------------------------- File explorer
@@ -646,6 +719,54 @@ ipcMain.handle("window_toggle_maximize", (event) => {
     window.maximize();
   }
 });
+/**
+ * Browser panel. Every handler resolves the window from the sender and works
+ * on THAT window's panel — panels are per window like everything else here, and
+ * a label taken from the payload would let one window drive another's.
+ */
+ipcMain.handle(CHANNELS.browserOpen, (event, { url }: { url?: string }) => {
+  // A stored URL that no longer normalizes (an old setting, a typo the user
+  // saved) opens a blank panel instead of failing the whole open.
+  const target = typeof url === "string" ? normalizeBrowserUrl(url) : null;
+  return browserPanels.open(labelOf(event), target);
+});
+ipcMain.handle(CHANNELS.browserClose, (event) => {
+  browserPanels.close(labelOf(event));
+});
+ipcMain.handle(CHANNELS.browserNavigate, (event, { url }: { url?: string }) => {
+  const target = normalizeBrowserUrl(String(url ?? ""));
+  if (target === null) {
+    // Not an error the user needs a dialog for — the address bar keeps what
+    // they typed and the caller reports the miss.
+    return null;
+  }
+  browserPanels.navigate(labelOf(event), target);
+  return target;
+});
+ipcMain.handle(CHANNELS.browserBack, (event) => browserPanels.goBack(labelOf(event)));
+ipcMain.handle(CHANNELS.browserForward, (event) =>
+  browserPanels.goForward(labelOf(event)),
+);
+ipcMain.handle(CHANNELS.browserReload, (event) => browserPanels.reload(labelOf(event)));
+ipcMain.handle(
+  CHANNELS.browserSetBounds,
+  (event, bounds: { x: number; y: number; width: number; height: number }) => {
+    browserPanels.setBounds(labelOf(event), bounds);
+  },
+);
+ipcMain.handle(
+  CHANNELS.browserSetVisible,
+  (event, { visible }: { visible: boolean }) => {
+    browserPanels.setVisible(labelOf(event), visible === true);
+  },
+);
+ipcMain.handle(
+  CHANNELS.browserSetInspect,
+  (event, { active }: { active: boolean }) => {
+    browserPanels.setInspect(labelOf(event), active === true);
+  },
+);
+
 // No `window_is_focused` / `window_scale_factor` handlers: both are answered
 // in the renderer from `document.hasFocus()` and `devicePixelRatio`. The
 // main-process versions were worse — `getZoomFactor()` returns the user's ZOOM

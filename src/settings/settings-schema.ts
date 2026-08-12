@@ -45,6 +45,14 @@ export interface Settings {
   customAgents: readonly CustomAgent[];
   /** Reusable prompt bodies the user declared for the Prompt Board. */
   promptTemplates: readonly PromptTemplate[];
+  /** Width of the docked browser column, in CSS pixels. */
+  browserWidth: number;
+  /**
+   * Address the browser panel opens on when nothing is loaded yet. A dev
+   * server's port is the one thing every project has and no two share, so it
+   * is a setting rather than a constant.
+   */
+  browserHomeUrl: string;
   /**
    * Chords the user rebound, per platform, over the shipped keymaps. Keyed by
    * platform rather than flat because the two keymaps are genuinely different
@@ -86,8 +94,20 @@ export const DEFAULT_SETTINGS: Settings = {
   scrollback: 10_000,
   customAgents: [],
   promptTemplates: [],
+  browserWidth: 420,
+  browserHomeUrl: "http://localhost:3000",
   keybindings: NO_KEYBINDING_OVERRIDES,
 };
+
+export const BROWSER_WIDTH_MIN = 280;
+export const BROWSER_WIDTH_MAX = 900;
+
+export function clampBrowserWidth(width: number): number {
+  return Math.min(
+    BROWSER_WIDTH_MAX,
+    Math.max(BROWSER_WIDTH_MIN, Math.round(width)),
+  );
+}
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
@@ -257,6 +277,18 @@ export function validateSettings(raw: unknown): Settings {
         : DEFAULT_SETTINGS.scrollback,
     customAgents: validateCustomAgents(source.customAgents),
     promptTemplates: validatePromptTemplates(source.promptTemplates),
+    browserWidth:
+      typeof source.browserWidth === "number" &&
+      Number.isFinite(source.browserWidth)
+        ? clampBrowserWidth(source.browserWidth)
+        : DEFAULT_SETTINGS.browserWidth,
+    // Not normalized to a URL here: the host is the one that decides what is
+    // loadable, and a value this validator "fixed" would disagree with it.
+    // An unusable address opens a blank panel, which is visible and editable.
+    browserHomeUrl:
+      typeof source.browserHomeUrl === "string" && source.browserHomeUrl.length <= 2048
+        ? source.browserHomeUrl
+        : DEFAULT_SETTINGS.browserHomeUrl,
     keybindings: validateKeybindings(source.keybindings),
   };
 }

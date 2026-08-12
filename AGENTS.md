@@ -325,6 +325,375 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   integration as it does today; `lsof` is only the fallback and stays off the
   hot path.
 
+- **A Shortcuts settings category shipped on the Electron branch (2026-08-11)** —
+  every action, the chord it answers to on each platform, and a way to change
+  it. Four forks resolved with the user, each with its reason: **(1) it rebinds,
+  not just displays** — the user chose the editable option over a read-only
+  cheat sheet, so the work is a keymap override layer rather than a list;
+  **(2) it lands on `electron-migration`, not `main`** — the Tauri freeze is
+  honoured to the letter, so Tauri 0.12.x does not get it and the code merges
+  forward with the branch; **(3) DESIGN LANGUAGE gains a real §15 (shortcut
+  rows)**, not an extension of §6 — a row shows the same setting on two
+  platforms with only one editable, which §5's one-interactive-value rule
+  cannot express. **This takes the §15 number**, so the file-explorer spec's
+  "§15 (docked side panels)" had to move — it became §16 when written
+  (2026-08-12) and then §17 at the merge split, and the token-dashboard spec's
+  data-table § must renumber the same way; **(4) both keymaps are shown at
+  once**, the running platform's chord as the editable pill and the other as a
+  read-only readout — a chord can only be RECORDED on the keyboard that
+  produces it, so offering to capture a Windows chord on a Mac would be a lie.
+  What is load-bearing and easy to break: the **native menu must be rebuilt on
+  every rebind, and its accelerators suspended while a chord is being
+  recorded**. Cocoa consumes an accelerator before the webview sees the
+  keydown, so a menu still advertising the old chord runs the OLD action, and
+  without suspension pressing ⌘W to rebind `close-pane` closes the pane instead
+  of being recorded — that is most of the interesting actions. Both halves are
+  covered (`electron/menu.test.ts`, the `shortcutCaptureActive` gate in
+  `tab-manager.ts`). Overrides are stored per platform and per action, an empty
+  list means "unbound" and an absent key means "default" — confusing the two
+  turns reset into unbind. A collision is **reported on both rows, never
+  refused**, because swapping two actions' chords must pass through a colliding
+  state. Deliberately left open: rebinding the non-running platform, and
+  multiple chords per action (the store holds a list, the UI writes one).
+  **Not verified: anything needing a real window or a packaged build** — the
+  accelerator suspension and the menu rebuild are asserted against a mocked
+  `electron` module, not observed in Cocoa, so they inherit the Electron MVP's
+  outstanding manual pass. One bug the tests did catch and the design missed:
+  reserving Tab wholesale left Windows' shipped `Ctrl+Tab` / `Ctrl+Shift+Tab`
+  impossible to re-record; only BARE Tab is reserved now, for focus escape.
+
+  **Reviewed by three parallel agents on 2026-08-11 and repaired; two of the
+  findings were blockers, and the green suite could not see either.** (1)
+  `acceleratorFor` hardcoded `["CmdOrCtrl"]` and never read `binding.meta`,
+  which was safe only while every macOS menu binding shipped with `meta` —
+  rebinding Find to ⇧D produced `CmdOrCtrl+Shift+D`, i.e. `split-column`'s
+  chord, so **Split Horizontally silently stopped working** and nothing
+  reported it, because the collision existed only in the generated accelerator
+  and never in the resolved keymap `chordConflicts` scans. Accelerators are now
+  built from the binding's own modifiers with a named-key table, and a chord
+  that cannot be spelled installs NO accelerator rather than a wrong one.
+  (2) Shift counted as a sufficient modifier, so `Shift+A` was bindable —
+  taking capital A from every pane, and making Shift+Enter (the agent newline
+  in `shift-enter.ts`, not a registry action and therefore unreportable as a
+  conflict) silently stealable. Admissibility is now one rule,
+  `isAdmissibleChord`, applied at capture **and** at load, so a hand-edited
+  `settings.json` can no longer bind what the UI refuses. Four more: bare
+  arrows/Home/End were bindable and cost every pane its shell history (the
+  "produces no character" justification was simply wrong — they send escape
+  sequences); override-vs-override ordering was **inverted**, so re-confirming
+  the chord you wanted handed it to the action you didn't; the suspension flag
+  was an unowned global in main that a window dying mid-record left stuck for
+  the whole app, and that one window un-suspended out from under another
+  (now a `Set` keyed by sender, cleared on `closed` and `render-process-gone`);
+  and `check-for-updates`/`open-release-notes` had editable pills over actions
+  `dispatchAction` cannot run — they are excluded, with a test asserting the
+  exclusion equals exactly the non-dispatchable set. DL gains **DL-15.8**
+  (a refused keystroke says why) and DL-15.6 now describes what reset actually
+  removes. The one coverage hole worth naming: **nothing tested that
+  `activeKeymap()` — the only consumer on the keydown path — picks up a
+  rebind**; `active-keymap.test.ts` now drives `matchBinding` with no keymap
+  argument.
+
+- **The shipped Windows preview answers Ctrl+R and Ctrl+W with actions Deck
+  never asked for (found 2026-08-11, fixed).** `buildMenu` returned early on
+  non-darwin without calling `Menu.setApplicationMenu`, and Electron installs
+  its DEFAULT menu whenever an app never sets one. `titleBarStyle:
+"hiddenInset"` makes the window frameless on Windows too, so the menu **bar**
+  is skipped while its accelerators are already registered — invisible, and
+  live. `WINDOWS_KEYMAP` binds none of Ctrl+R/W/A/Z/M, so nothing contested
+  them: **Ctrl+R reloaded the renderer and Ctrl+W closed the window**, while
+  Deck's own close-pane sits on Ctrl+Shift+W. Fixed by passing `null`
+  explicitly. Unrelated to the Shortcuts feature and older than it. **Not
+  observed on a Windows machine** — the repo half is verified, the Electron
+  half is read from `root_view.cc`/`native_window.cc`, and Gate C still has no
+  hardware.
+
+- **"Cocoa consumes an accelerator before the webview sees the keydown" is a
+  Tauri-era belief that may be FALSE on Electron (raised 2026-08-11, not
+  settled).** It appears in ten places — `action-registry.ts`, `tab-manager.ts`,
+  `app.tsx` and now `keybindings.ts`/`menu.ts` — and was carried across the host
+  migration without re-testing. Chromium's `RenderWidgetHostViewCocoa` claims
+  ⌘-chords through `performKeyEquivalent:` and forwards them to the renderer;
+  the main menu is reached only on the UNHANDLED path, so a renderer
+  `preventDefault()` already stops the menu item. VS Code rebinds ⌘C/⌘V on
+  macOS with nothing but a `preventDefault` on an input — no menu suspension at
+  all. If that holds, Deck's whole accelerator-suspension mechanism is
+  redundant. **Two-minute test settles it: open Shortcuts, click a pill, press
+  ⌘Z.** Separately confirmed from Electron source: a `role:` item's accelerator
+  CANNOT be stripped (`MenuItem` backfills the role default over both
+  `undefined` and `null` via loose `==`, then freezes the property), so the ~10
+  role chords are outside the current mechanism either way. The purpose-built
+  API is `webContents.setIgnoreMenuShortcuts()`, which covers roles and needs no
+  rebuild — deferred until the two-minute test says which problem is real.
+
+- **A chrome gallery landed 2026-08-12** — a second Vite entry,
+  [`gallery.html`](gallery.html) `current` → [`src/gallery/`](src/gallery/main.tsx) `current`,
+  served by `npm run prototype:gallery` on `127.0.0.1:5175`. It exists because the
+  visual system is about to be constrained (numeric scales, interaction states,
+  overlay genres) and one running app is a poor place to judge it: a live window
+  shows exactly one state at a time, while the questions being asked are
+  comparative — both tab-bar positions, all seven update phases, every attention
+  kind, both modals, the two popovers whose frames disagree. `npm run dev` is
+  **not** blocked, which was checked rather than assumed: every boot IPC call
+  catches its own failure (`window_boot_mode failed; booting normally`,
+  `Failed to load settings, using defaults`), so the app shell and the Open
+  board do paint in a plain browser — the "web-only preview" claim in this file
+  is accurate. What it cannot do is persist a setting, list prompt assets or
+  reach a second state without being driven there, which is what the gallery's
+  IPC stub and seeded signals supply. **No DL rule was changed, no
+  dependency added, nothing in the app bundle moved**, so no fork category was
+  touched; the placement question was the user's call and the answer was `main`,
+  because a dev harness carries over to Electron unchanged. Four calls, each with
+  its reason: **real components, never a mock** — `marketing/stage/appwin.js` is
+  already a hand-written second copy of the chrome and it has drifted (it holds
+  Tokyo Night at 60% saturation for the landing's sake), so the gallery mounts
+  `DesktopChrome`, `TabBar`, `WorkspaceSidebar`, `StatusBar`, `SettingsScreen`,
+  `TabPopover`, `PromptPopover`, `PresetEditor`, `SavePresetDialog` and
+  `OpenBoard` directly, plus every real settings section for the seven value
+  kinds. **A root entry, not a folder under `marketing/`** — `vite marketing`
+  resolves its config from that root, where none exists, so there is no Preact
+  plugin and `.tsx` does not compile (which is why the landing prototype is
+  plain JS with HTML strings). At the repo root it inherits `vite.config.ts`,
+  and `vite build` walks `index.html` only, so the bundle is untouched —
+  verified 180.47 kB gzip with no gallery code in `dist/`, and
+  [`scripts/gallery-entry.test.ts`](scripts/gallery-entry.test.ts) `current`
+  fails if any app module ever imports from `src/gallery/`. **Tauri IPC is
+  stubbed** in `src/gallery/host-stub.ts` (named `tauri-stub.ts` until it grew
+  the Electron hook too), installed as an import side effect
+  because ES imports hoist and a call at the top of the entry would still run
+  after every module below it; unknown commands resolve `null` and are listed
+  in the page footer rather than only console-warned. **No direction picker
+  yet** — a redesign direction will be a block of token overrides, and nothing
+  honest can sit behind that switch until a direction is chosen; theme
+  switching goes through the real `updateSettings` → `applyThemeVars` path, so
+  what the specimens show is what Settings would give. One app-code change came
+  with it: the CSS-var block was lifted out of `app.tsx`'s theme effect into
+  [`applyThemeVars`](src/lib/theme-vars.ts) `current`, behaviour unchanged, so
+  the gallery cannot become a second copy of that list. Deliberately absent:
+  `.search-bar` (built imperatively against a live `Pane`, so a specimen would
+  mean re-typing its DOM) and `.zoom-overlay` (it paints `var(--bg)` and
+  nothing else). **What it measured live**, replacing the counts that used to
+  be quoted from memory: 11 font sizes, 13 radii, **23 spacing steps**, 12
+  durations, 11 `z-index` layers, 12 distinct `--fg` state mixes and 20
+  `--accent` mixes all chosen at use sites, and 3 hardcoded colours
+  (`.btn--primary` `#000`, `.search-bar`'s rgba shadow — the DL-1.3 violation
+  already in §10 — and a `white` inside `.drop-overlay.is-swap`'s `color-mix`).
+  Two of those numbers were **wrong in the first version and were corrected on
+  2026-08-12 after the external Codex review below**: the audit counted whole
+  declaration strings, so `padding: 6px 14px` read as one value and the total
+  came out 67 instead of 23 actual steps, and the colour scan matched hex and
+  `rgb()` only, so the `white` was invisible. Named colours are now scanned
+  from `cssText` with the name fenced as `(?<![-\w])…(?![-\w])`, which is what
+  keeps `white-space` and `var(--red)` from reading as violations. The
+  constraint work itself is **not started**; the sequencing decided with it is
+  that DL freezes **which** scales exist while the redesign chooses their
+  **values**, so the rulebook is not written twice.
+- **A browser panel with react-grab Inspect shipped on the Electron branch
+  (2026-08-12)** — a docked column on the right of the stage that loads a dev
+  server, and an Inspect mode that turns any element on that page into
+  component-and-source context pasted straight into the focused agent pane.
+  Four forks resolved with the user, each with its reason: **(1) it is a docked
+  column, not a pane, a tab or a separate window** — a pane would have reopened
+  the R4 layout/pane-lifecycle seams for a surface that is not a PTY, while a
+  tab could not show the page and the agent at once, which is the entire loop;
+  **(2) react-grab is a vendored, pinned `dist/index.global.js`, not an npm
+  dependency** — the script is injected into someone else's page, so a
+  dependency entry buys no typing, no bundling and no tree shaking, and would
+  add a `react >= 17` peer plus `bippy` to a repo with no React; the committed
+  bytes are the reviewed bytes, hash-locked by a test against
+  [`SOURCE.md`](electron/vendor/react-grab/SOURCE.md) `current`; **(3) a grab
+  goes into the focused pane AND stays on the clipboard** — the clipboard half
+  is free, because our `getContent` hook returns the same string react-grab
+  copies, which also makes "no pane to paste into" a message rather than a lost
+  selection; **(4) MVP straight to code**, no spec round, decisions recorded
+  here.
+  Calls made while building, each with its reason: **a grab is NEVER submitted**
+  — not even behind the Prompt Board's triple gate, because that gate answers
+  "is this pane ready for input", not "did a human write this", and the text
+  comes from a page Deck did not write; the grab text is stripped of every C0
+  control on the way in, since a paste rides bracketed-paste and an embedded
+  `ESC[201~` would close the bracket and leave the rest being read as
+  keystrokes. **Telemetry is off** — react-grab's default is a version-check
+  request to react-grab.com on every init, and it can only be set at `init()`,
+  so the bootstrap sets `__REACT_GRAB_DISABLED__` before the bundle runs and
+  initialises it itself. **The chord is ⌘⇧I / Ctrl+Shift+I** — `i` for Inspect,
+  free on both keymaps; **`b` was deliberately left alone** because the
+  file-explorer spec reserves ⌘⇧B for its own docked panel, and the two specs
+  now claim the same slot on the right of the stage — whoever builds the
+  explorer resolves that, it is not resolved here. DESIGN LANGUAGE gains a real
+  **§17 (docked side panels)**, an approved R2 fork. It is 17 and not 16
+  because the branch's own frame work already cites `DL-16` from nine places
+  in `src/` — that rule's text is still unwritten and now carries a drift-ledger
+  row in the rulebook. The explorer spec's "§15 (docked side panels)" was
+  already stale (Shortcuts took §15) and folds into §17 when it is built.
+  **Verified in a real Electron window**, not only against mocks: the smoke
+  harness now boots the host, serves a local page into the panel and asserts
+  the whole chain — the bundle reaches the page's MAIN world (an isolated world
+  sees no React fiber expandos, which would silently reduce every grab to plain
+  HTML), a grab crosses page → preload → IPC → renderer, Inspect arms the page,
+  **no request reaches react-grab.com**, and closing the panel destroys the
+  page. 22/24 smoke checks pass; the two failures predate this work and are the
+  Linux container (`platform=unsupported`, and cwd with no shell integration).
+  That run found two things the mocked suite could not: `window.__REACT_GRAB__`
+  was never set because disabling self-init also skips its `setGlobalApi`, and
+  `generateSnippet` can fail to settle in a throttled frame — so `getContent`
+  now races a 2 s deadline and falls back to the element's markup, since that
+  hook sits between ⌘C and BOTH destinations. **Not verified: a real React dev
+  server.** Component names and `file:line` come from react-grab reading React's
+  fiber, and no React app was available here — the transport is proven, the
+  richness of what it carries is upstream's behaviour. Also unverified on
+  Windows, like everything else on this branch (Gate C). One knock-on worth
+  knowing: the menu is generated from `ACTION_REGISTRY`, which both hosts
+  share, so R3's regenerated
+  [`menu_registry.rs`](src-tauri/src/menu_registry.rs) `current` now carries a
+  View ▸ Browser item the Tauri build cannot serve. It is inert there rather
+  than broken, and it only ever matters if Gate C aborts the migration — in
+  which case this feature comes out whole.
+
+  **A code review of that commit returned 15 findings; 14 were real
+  (2026-08-12) and all are fixed.** The three that mattered: (1) any page in
+  the panel could **forge the grab event** — no gesture check, no rate limit —
+  and paste into the focused pane at will; the gate now lives in the preload's
+  isolated world and keys off `isTrusted`, which page script cannot set, with a
+  rate limit at both ends. (2) `sanitizeGrabText` stripped C0 but not **C1**,
+  and `U+009B 201~` is the 8-bit CSI form of the same bracketed-paste escape it
+  exists to block. (3) The panel hid its native view only for
+  `overlayCoversPane()`, so the **Prompt Board popover** (`right: 0`, 320px)
+  opened INSIDE the panel's column and was invisible behind it; the hide rule
+  now covers every floating surface, and `tabPopoverOpen` was added to
+  `chrome/events.ts` for the one bit the popovers' component-local state has to
+  expose. Also fixed: the toggle **destroyed the page** instead of hiding it,
+  so "reopening keeps the page" never actually happened (it rides `setVisible`
+  now); `browserHomeUrl` had no UI at all, so Settings gains a **browser
+  category**; and grabs were sent from `getContent`, which the bundle races
+  against its own abort signal, so a cancelled copy still pasted — sending
+  moved to the `onCopySuccess` / `onAfterCopy` plugin hooks. The one finding
+  that did NOT survive verification: closing a window was said to throw out of
+  the cleanup path and strand PTYs; a probe on Electron 43 showed
+  `webContents.close()` there is a no-op, so it was downgraded to a guard.
+
+  Two things the fixes themselves taught, both now locked by tests. An escape
+  written `\n` inside `inject.ts`'s template literal is consumed by TypeScript
+  and emits a REAL newline into the generated script: the whole injection was a
+  SyntaxError and Inspect was dead on every page, while every `toContain`
+  assertion still passed — the test now parses the script with `new Function`.
+  And `dispatchEvent` cannot exercise the new gate, because a synthesised event
+  is never trusted and `executeJavaScript(..., true)` marks user ACTIVATION,
+  which is a different thing; only `sendInputEvent` into a focused view
+  produces trust. The smoke harness now covers both sides — a forged grab is
+  dropped, a REAL `copyElement` reaches the renderer — at 24/26, with the same
+  two pre-existing Linux failures.
+
+- **The chrome redesign toward the ChatGPT desktop feel is decided at fork
+  level (2026-08-12)**, and the comparison matrix the review asked for is
+  implemented on `main`. The redesign itself is **not started**: no DL section
+  is written, no token scale exists in `:root`, no direction is designed.
+  Three forks resolved with the user, each with its reason. **It lands on
+  `electron-migration`, not `main`** — the Tauri freeze is honoured to the
+  letter, exactly as the Shortcuts category was, and the frame it has to style
+  only exists there: `5ef509a` collapsed the 26px title bar and the 33px tab
+  bar into one 34px command row, so styling `main`'s two-row chrome would be
+  designing a surface that is already gone. **DL freezes all nine scale groups
+  from the review's §3 in one pass** — spacing, radius, type, weight, leading,
+  duration/easing, border, control height, surface/state and layer — because
+  closing them in two passes writes the rulebook twice; the split already
+  decided still holds, DL says WHICH scales exist and the redesign picks their
+  VALUES. **The neutral wash moves from `--fg` to `--tone` now**, without
+  waiting for a live comparison: the matrix measured what today's rule
+  resolves to, and the same 6% hover is `rgb(192, 202, 245)` on Tokyo Night,
+  `rgb(248, 248, 242)` on Dracula and `rgb(171, 178, 191)` on One Dark — a
+  wash carrying the theme's foreground hue, which "quiet neutral surfaces"
+  cannot be built from. All four bundled presets are dark, so `--tone` is
+  `#ffffff` in every one of them and the change shows on every surface.
+
+  **The review's own section numbering is stale and must not be followed.** Its
+  §4 says "§15 is already reserved for docked side panels, so these start at
+  §16". On `electron-migration` §15 is written and is **Shortcut rows**, and
+  **DL-16 is already claimed** by the command-row frame — cited from
+  `styles.css`, `app.tsx`, `tab-bar.tsx` and `app.test.tsx`, with the rule
+  itself still awaiting R2 approval. The three new sections take their numbers
+  on that branch, against what is written there.
+
+  **What landed on `main` (gallery only — the app bundle is unchanged at
+  180.47 kB gzip, and `scripts/gallery-entry.test.ts` is what keeps that
+  true):** a seventh gallery section carrying the review's §6 item 2 matrix —
+  four themes across, five states down, both tab-bar positions, one size —
+  plus a config-row block, which is where focus and disabled are legible and
+  the window shell has almost nothing to show. Hover, active and focus are
+  forced by [`force-states.ts`](src/gallery/force-states.ts) `current`, which
+  reads the app's own rules back out of the live stylesheet and re-emits every
+  one of them scoped under a marker class. **The whole sheet is copied, in
+  source order, not only the rules carrying a pseudo-class** — copying only
+  those would move them past every later rule in the file and a selected tab
+  would start reading as a hovered one. `@media` rules are skipped: their
+  condition is about the viewport and a cell is not one. **Cell width is 680px,
+  measured rather than chosen** — below it the tab bar cannot fit four tabs
+  beside the add button and six actions, so every label clips (at 560px the
+  four labels get 7, 9, 0 and 4 pixels), and from 680 to 900 nothing changes.
+  Two defects the four green gates could not see and the rendered screenshot
+  did: the forced sheet re-applied the app's own `.window { height: 100vh;
+width: 100vw }` at a specificity the gallery's cell override merely tied
+  with, so every forced cell grew to the size of the viewport; and the
+  sidebar's fourth workspace row was cut in half. **Still blocked:** the two or
+  three real ChatGPT desktop screenshots (review §6 item 1) have not been
+  supplied, so no direction is designed and no token value is picked.
+
+  **The harness is now merge-ready for `electron-migration`, proven by merging
+  it (2026-08-12).** It was not before, and a clean `git merge-tree` said
+  nothing about it: `DesktopChromeProps` is identical on both branches and
+  `app.tsx` merges coherently — the inline CSS-var block disappears and
+  `applyThemeVars` takes over — but the stub installed only
+  `window.__TAURI_INTERNALS__`, and that branch replaced it with
+  `src/host/bridge.ts`, which reads `globalThis.__deckHost` and throws when it
+  is absent. **29 non-test renderer modules** import that layer,
+  `settings-store` among them. The failure would have been silent in the worst
+  way: `unhandledCommands` only counts calls that reach the stub, so zero
+  arriving would have printed "every IPC call the specimens made was answered
+  by the stub" while nothing was stubbed at all. **Both hooks are installed
+  now**, over one canned table split three ways — the channels both hosts share
+  (`bridge.ts` kept Tauri's names), Tauri's `plugin:*`, and the Electron host's
+  flat ones. The store shapes genuinely differ (resource id returning
+  `[value, found]` versus file name returning the bare value), so both are
+  answered against one backing map. Scale factor, focus and drag-drop are
+  deliberately NOT stubbed for Electron: `window-host.ts` answers them from
+  `devicePixelRatio`, `document.hasFocus()` and DOM drag events with no IPC
+  hop, so a channel would invent a contract that does not exist.
+  **`CELL_WIDTH` is 760px, the larger of the two frames' measured thresholds** —
+  the collapsed DL-16 command row also gives up `--frame-lights-w` (78px) to
+  the traffic lights, so labels clip until 760 there while this branch clears at
+  680, and above each threshold nothing moves up to 900. **Verified on a real
+  merge rather than asserted**: in a worktree holding the merged tree the
+  gallery boots, all seven sections list, an unknown channel sent through
+  `__deckHost` surfaces in the footer (so "all answered" is earned rather than a
+  zero-call false positive), a `store_set`/`store_get` round-trip returns its
+  value, ten settings sections and 78 config rows render, and cycling theme
+  moves `--bg` from `#16161e` to `#282a36`. Gates on that merged tree: **1495
+  tests / 129 files**, tsc, `generate:menu:check`, build 178.30 kB gzip. The
+  only merge conflict is `AGENTS.md`, where both branches appended to this
+  list.
+
+  **Merged into this branch on 2026-08-12, and the merge itself was the last
+  trap.** Between the dry run and the real one, `main`'s three visual-system
+  commits arrived here with **rewritten hashes** (`0309502`, `160c78e`,
+  `e2793d9`), so git no longer saw one history: it saw the gallery added twice
+  and raised **add/add conflicts on nine files**. Seven of them were resolvable
+  by provenance rather than by reading a diff — this branch's copy of every
+  gallery file and of `theme-vars.ts` was verified byte-identical to `main`'s
+  baseline, so "take the incoming side" is exactly "their content plus the
+  changes made on top of it". The review doc took the opposite side, because
+  the visual-system branch never touched it and this branch had corrected its
+  §15 premise. `AGENTS.md` needed three different answers in three hunks, not a
+  union: this branch's four new bullets, the incoming stub-path edit, and BOTH
+  sides of the third. **The trap was `tauri-stub.ts`:** the rename to
+  `host-stub.ts` happened on a commit whose identity no longer matched, so
+  rename detection failed and the merge kept the old file alongside the new
+  one — a dead duplicate of the module that is the harness's whole IPC truth,
+  which nothing imported and nothing would have failed on. It was deleted by
+  hand. **One statement inherited from the review is wrong on this branch**:
+  its §4 now says "§16 is free on both branches", but `DL-16` is already cited
+  here from `styles.css`, `app.tsx`, `tab-bar.tsx` and `app.test.tsx` for the
+  command-row frame. Left as written rather than edited inside a merge; the
+  numbering answer is the one above.
 - **A file explorer panel is implemented (2026-08-12)** on the Electron branch,
   [spec](docs/specs/2026-08-12-file-explorer-design.md) `decided`,
   [plan](docs/plans/2026-08-12-file-explorer.md) `partly-built` — written
@@ -440,43 +809,6 @@ side. Standalone desktop app — no shared DB, no API, no dependency on the web 
   window close, and tab close — and since the census is computed in main while
   dirty state lives in Monaco, the renderer pushes a dirty-registry delta whose
   entries are cleared on window death, failing toward asking.
-
-- **A Shortcuts settings category shipped on the Electron branch (2026-08-11)** —
-  every action, the chord it answers to on each platform, and a way to change
-  it. Four forks resolved with the user, each with its reason: **(1) it rebinds,
-  not just displays** — the user chose the editable option over a read-only
-  cheat sheet, so the work is a keymap override layer rather than a list;
-  **(2) it lands on `electron-migration`, not `main`** — the Tauri freeze is
-  honoured to the letter, so Tauri 0.12.x does not get it and the code merges
-  forward with the branch; **(3) DESIGN LANGUAGE gains a real §15 (shortcut
-  rows)**, not an extension of §6 — a row shows the same setting on two
-  platforms with only one editable, which §5's one-interactive-value rule
-  cannot express. **This takes the §15 number**, so the file-explorer spec's
-  "§15 (docked side panels)" had to move — it became §16 when written
-  (2026-08-12) and then §17 at the merge split, and the token-dashboard spec's
-  data-table § must renumber the same way; **(4) both keymaps are shown at
-  once**, the running platform's chord as the editable pill and the other as a
-  read-only readout — a chord can only be RECORDED on the keyboard that
-  produces it, so offering to capture a Windows chord on a Mac would be a lie.
-  What is load-bearing and easy to break: the **native menu must be rebuilt on
-  every rebind, and its accelerators suspended while a chord is being
-  recorded**. Cocoa consumes an accelerator before the webview sees the
-  keydown, so a menu still advertising the old chord runs the OLD action, and
-  without suspension pressing ⌘W to rebind `close-pane` closes the pane instead
-  of being recorded — that is most of the interesting actions. Both halves are
-  covered (`electron/menu.test.ts`, the `shortcutCaptureActive` gate in
-  `tab-manager.ts`). Overrides are stored per platform and per action, an empty
-  list means "unbound" and an absent key means "default" — confusing the two
-  turns reset into unbind. A collision is **reported on both rows, never
-  refused**, because swapping two actions' chords must pass through a colliding
-  state. Deliberately left open: rebinding the non-running platform, and
-  multiple chords per action (the store holds a list, the UI writes one).
-  **Not verified: anything needing a real window or a packaged build** — the
-  accelerator suspension and the menu rebuild are asserted against a mocked
-  `electron` module, not observed in Cocoa, so they inherit the Electron MVP's
-  outstanding manual pass. One bug the tests did catch and the design missed:
-  reserving Tab wholesale left Windows' shipped `Ctrl+Tab` / `Ctrl+Shift+Tab`
-  impossible to re-record; only BARE Tab is reserved now, for focus escape.
 
 **Forks → STOP and ask before writing code.** Collect them into ONE round at the start
 of the task; if there are none, say "no forks" and just go.

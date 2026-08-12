@@ -379,6 +379,16 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "View", group: "prompts" },
   },
   {
+    id: "toggle-browser",
+    label: "Browser",
+    // Tier "pane": the panel is a column of the stage, and every overlay
+    // covers the stage. Opening it under Settings would position a native
+    // view on top of the overlay — the one stacking order the renderer
+    // cannot fix from CSS.
+    scope: "pane",
+    menu: { submenu: "View", group: "browser" },
+  },
+  {
     id: "move-pane-to-new-window",
     label: "Move Pane to New Window",
     // Tier "pane": it acts on the FOCUSED pane, which every overlay hides —
@@ -654,6 +664,14 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // mandatory, not a style choice: this action has a macOS menu item, and a
   // Cocoa accelerator is declared by character (see the RULE above).
   { key: "p", meta: true, shift: true, action: "toggle-prompts" },
+  // Browser panel. `i` is the Inspect mnemonic and matches the chord every
+  // browser already trains people on for element inspection; it is free on
+  // BOTH keymaps. `b` — the obvious "browser" letter — is deliberately left
+  // alone: the file-explorer design reserves ⌘⇧B / Ctrl+Shift+B for its own
+  // docked panel, and taking it here would silently break a decided spec.
+  // CharKeyBinding is mandatory, not a style choice: this action has a macOS
+  // menu item, and a Cocoa accelerator is declared by character (RULE above).
+  { key: "i", meta: true, shift: true, action: "toggle-browser" },
   // Move the focused pane into its own window. Cmd+Shift+M is free on both
   // keymaps (no `m`/`KeyM` binding existed on either) and `m` is the "move"
   // mnemonic; macOS's Cmd+M Minimize is a Cocoa builtin and does not claim
@@ -774,6 +792,9 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
     shift: true,
     action: "open-tab-options",
   },
+  // Same chord as macOS, one modifier swapped — see the mac entry for why `i`
+  // and not `b`.
+  { key: "i", ctrl: true, shift: true, action: "toggle-browser" },
   { key: "tab", ctrl: true, action: "next-tab" },
   { key: "tab", ctrl: true, shift: true, action: "prev-tab" },
   ...WINDOWS_TAB_SELECT_BINDINGS,

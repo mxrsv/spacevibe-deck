@@ -176,6 +176,14 @@ output is pasted.
 - [ ] **T19. Package.** `electron-builder` with `asarUnpack` for `node-pty`,
       `x64ArchFiles` for the prebuilds, and the `spawn-helper` chmod step.
       Verify: the packaged universal `.app` runs the manual pass.
+      **Also include `dist-electron/electron/vendor/**` (added 2026-08-12).**
+      The browser panel reads the vendored react-grab bundle from disk at
+      runtime, `__dirname`-relative, so a `files` glob that only matches `.cjs`
+      drops it and Inspect dies silently in the packaged app while every gate
+      stays green — the same class of failure that bit this MVP twice already
+      (absolute Vite asset paths under `file://`, the CJS/ESM mismatch). The
+      dev build is not evidence here: it reads the file straight out of the
+      build directory.
 
 ## 2.1 Outcome (2026-08-11)
 

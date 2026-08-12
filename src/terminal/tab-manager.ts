@@ -58,6 +58,8 @@ import { activeAfterClose } from "./tab-close";
 import { freshCwd, freshPaneInfo } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { submitAllowed, type InjectOutcome } from "../prompts/inject";
+import { defaultBrowserClient } from "../browser/browser-client";
+import { browserOpen, closeBrowser, openBrowser } from "../browser/browser-store";
 import { createAgentLauncher } from "./agent-launch";
 import {
   buildClosedTabSnapshot,
@@ -107,9 +109,11 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The ids `commands` implements — 41 entries, verified against the live
- * `commands` table (`tab-manager.ts:1041-1142`), Task 4's `copy-selection`/
- * `paste` included and the Prompt Board's `toggle-prompts` alongside them.
+ * The ids `commands` implements — 42 entries, verified against the live
+ * `commands` table, Task 4's `copy-selection`/`paste` included, the Prompt
+ * Board's `toggle-prompts` and the browser panel's `toggle-browser` alongside
+ * them. (Line numbers are deliberately not cited: they rotted within one
+ * feature of being written.)
  *
  * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
  * keymap binding points at an action nothing dispatches — the defect behind
@@ -150,6 +154,7 @@ const COMMAND_ACTIONS = [
   "swap-left",
   "swap-right",
   "swap-up",
+  "toggle-browser",
   "toggle-expand",
   "toggle-prompts",
   "toggle-settings",
@@ -1454,6 +1459,18 @@ export function createTabManager(
     // the caret would land on <body> — the shortcut fires while focus sits on
     // the popover root, a div, so nothing else would take it back.
     "move-pane-to-new-window": () => void movePaneToNewWindow(),
+    // The panel is host-owned: this only flips the signal the chrome reads
+    // and tells the host to create or tear down the native view. Both store
+    // helpers swallow their own transport errors, because a browser panel
+    // that fails to open must not take a keystroke's dispatch down with it.
+    "toggle-browser": () => {
+      if (browserOpen.value) {
+        void closeBrowser(defaultBrowserClient);
+        activeManager()?.focusActive();
+        return;
+      }
+      void openBrowser(defaultBrowserClient, settings.value.browserHomeUrl);
+    },
     "toggle-prompts": () => {
       if (promptsOpen.value) {
         promptsOpen.value = false;

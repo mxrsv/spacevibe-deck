@@ -801,7 +801,7 @@ rather than the 80+ `basic-languages/monaco.contribution` registers.
 (`monaco-editor@0.56.0`, pinned exactly, as `@xterm/addon-serialize` is). The
 other two were not, and the feature ships complete without them:
 
-- **A virtual list.** DL-16.3 fixes every row at 22px, which turns windowing
+- **A virtual list.** The panel's row rule fixes every row at 22px, which turns windowing
   into `floor(scrollTop / 22)` — `visibleRange` in
   [`file-tree-view.tsx`](../../src/files/ui/file-tree-view.tsx) `current`, ~10
   lines with its own tests. The framework-agnostic candidates
@@ -809,7 +809,7 @@ other two were not, and the feature ships complete without them:
   size, so the dependency buys nothing and costs bundle weight.
 - **A file-type icon set.** `lucide-preact` is already bundled and already
   governed by DL §14; its file family (`FileCode`, `Braces`, `FileTerminal`, …)
-  is a complete file-type vocabulary. DL-16.5 governs the vocabulary's SEMANTICS
+  is a complete file-type vocabulary. The design-language rule governs the vocabulary's SEMANTICS
   — indexed by file type, monochrome at `--text-faint`, panel rows only — not
   which npm package supplies the glyphs.
 
@@ -821,10 +821,15 @@ hard constraint, and neither package would have bought behaviour.
 subject before any explorer UI existed. The explorer UI exists, so the real
 file tab is the subject and a second one would be dead code to delete.
 
-**DESIGN LANGUAGE gained §16, not §15.** The Shortcuts category took §15 on
-2026-08-11 and shipped. Section numbers are cited from code comments, so they
-are addresses: renumbering the later one is the only change that leaves every
-existing citation correct. AGENTS.md already predicted this collision.
+**DESIGN LANGUAGE gained §16, not §15 — and then lost it (see §8).** The
+Shortcuts category took §15 on 2026-08-11 and shipped, so the implementation
+wrote §16. Section numbers are cited from code comments, so they are addresses:
+renumbering the later one is the only change that leaves every existing
+citation correct, and AGENTS.md already predicted the first collision. It did
+not predict the second: `electron-migration` had meanwhile spent §16 on the
+application frame (nine citations in `src/`) and written **§17 "Docked side
+panels"** for a browser panel, reserving that section for this feature. The
+split therefore removed §16 outright; the redesign writes into §17.
 
 **Two spec statements about large files were reconciled.** §4.4 opens anything
 above 2 MB read-only; §11 item 13 expects a 50 MB file to REFUSE. Both are

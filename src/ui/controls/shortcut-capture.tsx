@@ -6,7 +6,7 @@
  * the reset button DL-6.1 already allows: a chord replaces the binding, bare
  * Backspace/Delete unbinds it, Escape cancels.
  */
-import { useEffect } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import { useSignal } from "@preact/signals";
 import { shortcutCaptureActive } from "../../chrome/events";
 import { suspendMenuAccelerators } from "../../host/menu-host";
@@ -16,14 +16,23 @@ import { formatShortcutBinding } from "../../lib/shortcut-label";
 import type { DesktopPlatform } from "../../lib/platform";
 import type { ActionId } from "../../terminal/action-registry";
 
+/**
+ * What a refused keystroke says.
+ *
+ * Every reason gets its OWN words. `reserved` and `modifier-only` used to
+ * share "press keys…", which made pressing Esc or Tab look identical to having
+ * pressed nothing at all — the user cannot tell a rule from a dead control.
+ */
 const REJECTION_HINT: Readonly<Record<CaptureRejection, string>> = {
   "modifier-only": "press keys…",
-  reserved: "press keys…",
+  reserved: "Esc and Tab are reserved",
+  "system-reserved": "reserved by macOS",
   "needs-modifier": "add ⌘, ⌃ or ⌥",
 };
 
 const WINDOWS_REJECTION_HINT: Readonly<Record<CaptureRejection, string>> = {
   ...REJECTION_HINT,
+  "system-reserved": "reserved by Windows",
   "needs-modifier": "add Ctrl or Alt",
 };
 
@@ -59,6 +68,14 @@ export function ShortcutCapture({
 }: ShortcutCaptureProps) {
   const listening = useSignal(false);
   const hint = useSignal<string>("press keys…");
+  // Held in a ref so it is NOT an effect dependency. `onCommit` is a fresh
+  // closure on every render of the section, and the section re-renders on any
+  // settings change — including a `settings:merged` broadcast from a peer
+  // window about an unrelated setting. As a dependency it tore the effect down
+  // and back up mid-recording, which flipped the gate off and on around a real
+  // IPC round trip and wiped the hint the user was reading.
+  const commitRef = useRef(onCommit);
+  commitRef.current = onCommit;
 
   useEffect(() => {
     if (!listening.value) {
@@ -93,7 +110,7 @@ export function ShortcutCapture({
         return;
       }
       if (bare && (event.key === "Backspace" || event.key === "Delete")) {
-        onCommit([]);
+        commitRef.current([]);
         stop();
         return;
       }
@@ -107,7 +124,7 @@ export function ShortcutCapture({
             : REJECTION_HINT[result.reason];
         return;
       }
-      onCommit([result.chord]);
+      commitRef.current([result.chord]);
       stop();
     };
 
@@ -119,9 +136,8 @@ export function ShortcutCapture({
       window.removeEventListener("keydown", onKeyDown, { capture: true });
       shortcutCaptureActive.value = false;
       void suspendMenuAccelerators(false);
-      hint.value = "press keys…";
     };
-  }, [listening.value, action, platform, onCommit]);
+  }, [listening.value, action, platform]);
 
   const text = listening.value
     ? hint.value
@@ -135,6 +151,9 @@ export function ShortcutCapture({
       }`}
       aria-label={`${label} shortcut: ${formatChords(chords, action, platform)}`}
       onClick={() => {
+        // Reset the hint on the way IN, not in the effect cleanup: doing it on
+        // teardown wiped "add ⌘, ⌃ or ⌥" the instant it was shown.
+        hint.value = "press keys…";
         listening.value = !listening.value;
       }}
       // Clicking elsewhere, or tabbing away, ends the recording. Without this

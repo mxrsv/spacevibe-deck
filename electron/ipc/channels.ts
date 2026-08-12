@@ -43,13 +43,25 @@ export const CHANNELS = {
   suspendMenuAccelerators: "suspend_menu_accelerators",
   // File explorer. Every one of these is bounded to a workspace root by
   // `electron/fs/path-guard.ts` — the renderer names the path, and the
-  // renderer is not the trust boundary.
+  // renderer is not the trust boundary. No renderer calls them yet: the model
+  // and host layers merged, the surface was left to the redesign.
   listDir: "list_dir",
   readFile: "read_file",
   writeFile: "write_file",
   statFiles: "stat_files",
   watchPaths: "watch_paths",
   setDirtyFiles: "set_dirty_files",
+  // Browser panel. No Tauri counterpart exists — the panel is Electron-only,
+  // so unlike every channel above these names are new rather than ported.
+  browserOpen: "browser_open",
+  browserClose: "browser_close",
+  browserNavigate: "browser_navigate",
+  browserBack: "browser_back",
+  browserForward: "browser_forward",
+  browserReload: "browser_reload",
+  browserSetBounds: "browser_set_bounds",
+  browserSetVisible: "browser_set_visible",
+  browserSetInspect: "browser_set_inspect",
 } as const;
 
 /** Events: main → renderer, fire and forget. */
@@ -65,6 +77,8 @@ export const EVENTS = {
   windowCloseRequested: "window:close-requested",
   settingsMerged: "settings:merged",
   fileChanged: "fs:changed",
+  browserState: "browser:state",
+  browserGrab: "browser:grab",
 } as const;
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS];

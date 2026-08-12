@@ -59,22 +59,31 @@ describe("DesktopChrome platform structure", () => {
     return host.firstElementChild as HTMLElement;
   }
 
+  // DL-16: there is no separate title bar. The frame is one command row, and it
+  // only exists in sidebar mode — in top-tab mode the tab bar IS the frame and
+  // carries the toolbar itself.
   it.each([
-    ["macos", false, true, false],
-    ["macos", true, true, false],
+    ["macos", false, false, false],
+    ["macos", true, true, true],
     ["windows", false, false, false],
-    ["windows", true, false, true],
+    ["windows", true, true, false],
   ] as const)(
     "%s %s mode renders only the platform-owned in-app chrome",
-    (platform, sidebar, hasTitlebar, hasWindowsToolbar) => {
+    (platform, sidebar, hasFrame, hasLightsInset) => {
       const root = mount(platform, sidebar);
 
       expect(root.classList.contains(`window--${platform}`)).toBe(true);
       expect(root.classList.contains("window--sidebar")).toBe(sidebar);
-      expect(root.querySelector(".titlebar") !== null).toBe(hasTitlebar);
-      expect(root.querySelector(".deck-toolbar") !== null).toBe(
-        hasWindowsToolbar,
+      expect(root.querySelector(".deck-frame") !== null).toBe(hasFrame);
+      // The traffic-light inset is macOS-only: elsewhere the OS owns that
+      // corner, or nothing does, and reserving space would leave a gap.
+      expect(root.querySelector(".deck-frame__lights") !== null).toBe(
+        hasLightsInset,
       );
+      // The retired elements must not come back — two chrome rows is the shape
+      // DL-16 exists to remove.
+      expect(root.querySelector(".titlebar")).toBe(null);
+      expect(root.querySelector(".deck-toolbar")).toBe(null);
       expect(root.querySelector('[data-testid="sidebar"]') !== null).toBe(
         sidebar,
       );

@@ -15,7 +15,7 @@ import {
 import { flushSettingsSave } from "../settings/settings-store";
 import { defaultPtyClient } from "../terminal/pty-client";
 import type { BootMode } from "../terminal/transfer-client";
-import { deriveChromeColors } from "../lib/derive-colors";
+import { applyThemeVars } from "../lib/theme-vars";
 import { resolveCwds, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
 import { settings, updateSettings } from "../settings/settings-store";
@@ -35,10 +35,12 @@ import type { AgentChoice } from "../lib/workspace-recents";
 import {
   boardOpen,
   editorRequest,
+  persistError,
   promptsOpen,
   reportPersistError,
   saveDialogOpen,
   settingsOpen,
+  tabPopoverOpen,
 } from "../chrome/events";
 import { OpenBoard } from "../open-board/open-board";
 import { PresetEditor } from "../presets/preset-editor";
@@ -49,6 +51,14 @@ import {
 import type { PresetArtifact } from "../presets/mock-model";
 import { PersistErrorBar } from "../presets/persist-error-bar";
 import { PromptPopover } from "../prompts/prompt-popover";
+import { BrowserPanel } from "../browser/browser-panel";
+import { defaultBrowserClient } from "../browser/browser-client";
+import {
+  browserOpen,
+  browserWidthLive,
+  closeBrowser,
+  initBrowserBridge,
+} from "../browser/browser-store";
 import { capturePromptTarget } from "../prompts/inject";
 import { defaultPromptAssetsClient } from "../prompts/prompt-assets-client";
 import { TabBar } from "./tab-bar";
@@ -101,18 +111,23 @@ export function DesktopChrome(props: DesktopChromeProps) {
     .filter(Boolean)
     .join(" ");
 
+  // DL-16: one authored command row. On macOS the traffic lights sit INSIDE it
+  // behind a fixed inset instead of owning an empty band of their own — the
+  // frame is Deck's chrome, not OS spacing the app happens to sit under. In
+  // top-tab mode the tabs occupy that same row; in sidebar mode the row carries
+  // the actions and the sidebar starts beneath it.
   return (
     <div class={classes}>
-      {!windows ? (
+      {props.sidebar ? (
         <div
-          class="titlebar"
+          class="deck-frame"
           data-tauri-drag-region
-          onDblClick={props.onMacTitlebarDoubleClick}
+          onDblClick={windows ? undefined : props.onMacTitlebarDoubleClick}
         >
-          {props.sidebar ? props.toolbar : null}
-        </div>
-      ) : props.sidebar ? (
-        <div class="deck-toolbar" aria-label="Deck actions">
+          {!windows ? (
+            <div class="deck-frame__lights" aria-hidden="true" />
+          ) : null}
+          <div class="deck-frame__spacer" data-tauri-drag-region />
           {props.toolbar}
         </div>
       ) : null}
@@ -406,8 +421,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     installQuitGuard({
       quit: {
         ...answering(QUIT_COPY),
-        confirm: (requestId: number) =>
-          defaultPtyClient.confirmQuit(requestId),
+        confirm: (requestId: number) => defaultPtyClient.confirmQuit(requestId),
         cancel: (requestId: number) => defaultPtyClient.cancelQuit(requestId),
       },
       close: {
@@ -423,6 +437,36 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       })
       .catch((err: unknown) => {
         console.error("Failed to install quit guard:", err);
+      });
+    return () => unlisten?.();
+  }, []);
+
+  // Grabs arrive from the browser panel's page, not from a Deck surface, so
+  // this listener is installed for the window's life rather than while some
+  // component is mounted: the panel can be closed and reopened, and the pane a
+  // grab lands in has nothing to do with the panel's own state.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void initBrowserBridge({
+      client: defaultBrowserClient,
+      target: {
+        activePaneId: () => tabsRef.current?.activePaneId() ?? null,
+        paste: async (paneId, text) => {
+          // `autoSend: false`, always — a grab is text from a page Deck did
+          // not write, and nothing from there submits itself to an agent.
+          const outcome = await (tabsRef.current?.injectIntoPane(paneId, text, {
+            autoSend: false,
+            expectedAgent: null,
+          }) ?? Promise.resolve("no-target" as const));
+          return outcome === "pasted" || outcome === "sent";
+        },
+      },
+    })
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch((err: unknown) => {
+        console.error("Failed to listen for browser grabs:", err);
       });
     return () => unlisten?.();
   }, []);
@@ -459,29 +503,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   useSignalEffect(() => {
     const current = settings.value;
     tabsRef.current?.applySettings(current);
-    const theme = resolveTheme(current);
-    const bg = theme.background ?? "#16161e";
-    const fg = theme.foreground ?? "#c0caf5";
-    const chrome = deriveChromeColors(bg, fg);
-    const rootStyle = document.documentElement.style;
-    rootStyle.setProperty("--bg", bg);
-    rootStyle.setProperty("--fg", fg);
-    rootStyle.setProperty("--accent", theme.blue ?? "#7aa2f7");
-    rootStyle.setProperty("--red", theme.red ?? "#f7768e");
-    rootStyle.setProperty("--green", theme.green ?? "#9ece6a");
-    rootStyle.setProperty("--yellow", theme.yellow ?? "#e0af68");
-    rootStyle.setProperty("--magenta", theme.magenta ?? "#bb9af7");
-    rootStyle.setProperty("--cyan", theme.cyan ?? "#7dcfff");
-    rootStyle.setProperty("--tone", chrome.tone);
-    rootStyle.setProperty("--chrome-1", chrome.chrome1);
-    rootStyle.setProperty("--chrome-2", chrome.chrome2);
-    rootStyle.setProperty("--tab-active-bg", chrome.tabActiveBg);
-    rootStyle.setProperty("--input-bg", chrome.inputBg);
-    rootStyle.setProperty("--hair", chrome.hair);
-    rootStyle.setProperty("--hair-strong", chrome.hairStrong);
-    rootStyle.setProperty("--text-primary", chrome.textPrimary);
-    rootStyle.setProperty("--text-muted", chrome.textMuted);
-    rootStyle.setProperty("--text-faint", chrome.textFaint);
+    applyThemeVars(document.documentElement.style, resolveTheme(current));
   });
 
   /** Open board confirm: materialize + record recents + preselect memory. */
@@ -649,6 +671,24 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   });
 
+  /**
+   * Everything that must hide the browser panel's native view.
+   *
+   * Wider than `overlayCoversPane()` on purpose: that one answers "is the
+   * FOCUSED PANE covered", which is about whether a pane-scoped action still
+   * makes sense. This one answers "is any DOM pixel trying to paint over the
+   * stage", because a native view wins that contest no matter the z-index.
+   */
+  const panelObscured = (): boolean =>
+    overlayCoversPane() ||
+    promptsOpen.value ||
+    tabPopoverOpen.value ||
+    persistError.value !== null;
+
+  /** Live drag width while resizing, the persisted setting otherwise. */
+  const browserWidth = (): number =>
+    browserWidthLive.value ?? settings.value.browserWidth;
+
   const closePrompts = (): void => {
     promptsOpen.value = false;
     tabsRef.current?.focusActive();
@@ -664,7 +704,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
 
   const promptPopover = promptsOpen.value ? (
     <PromptPopover
-      capture={() => capturePromptTarget(tabsRef.current?.activePaneId() ?? null)}
+      capture={() =>
+        capturePromptTarget(tabsRef.current?.activePaneId() ?? null)
+      }
       loadAssets={(target) =>
         defaultPromptAssetsClient.list(target.agent ?? "", target.cwd)
       }
@@ -674,7 +716,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           expectedAgent: target.agent,
         }) ?? Promise.resolve("no-target" as const)
       }
-      isAlive={(paneId) => tabsRef.current?.allPaneIds().includes(paneId) ?? false}
+      isAlive={(paneId) =>
+        tabsRef.current?.allPaneIds().includes(paneId) ?? false
+      }
       onClose={closePrompts}
     />
   ) : null;
@@ -749,8 +793,31 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         />
       }
       stage={
-        <main class="stage">
+        <main
+          class={`stage ${browserOpen.value ? "stage--browser" : ""}`}
+          // One number, two consumers: the panel's own column and the inset
+          // that keeps the terminal grid clear of it. A drag updates the live
+          // signal, so both move together instead of the terminals catching up
+          // when the pointer is released.
+          style={{ "--browser-w": `${browserWidth()}px` }}
+        >
           <div class="stage__tabs" ref={stagesRef} />
+          {browserOpen.value ? (
+            <BrowserPanel
+              width={browserWidth()}
+              onWidthChange={(width) => updateSettings({ browserWidth: width })}
+              onClose={() => void closeBrowser(defaultBrowserClient)}
+              // The native view paints above every DOM layer, so "something
+              // floats over the stage" has to reach the host as a hide — CSS
+              // cannot put anything in front of it.
+              //
+              // `overlayCoversPane()` alone was not enough, and the gap was
+              // not cosmetic: the Prompt Board popover is `right: 0` and 320px
+              // wide, so at any panel width it opens INSIDE the column and the
+              // user types into something they cannot see.
+              hidden={panelObscured()}
+            />
+          ) : null}
           {boardOpen.value ? (
             <OpenBoard
               canCancel={tabViews.value.length > 0}

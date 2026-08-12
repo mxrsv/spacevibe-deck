@@ -8,6 +8,7 @@
 import {
   AppWindow,
   Bell,
+  Globe,
   Bot,
   Command,
   Download,
@@ -27,6 +28,10 @@ export function ColorsIcon() {
 
 export function TerminalIcon() {
   return <DeckIcon icon={SquareTerminal} size={RAIL_ICON} />;
+}
+
+export function BrowserIcon() {
+  return <DeckIcon icon={Globe} size={RAIL_ICON} />;
 }
 
 export function LinksEditorIcon() {
