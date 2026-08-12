@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { groupToolbarItems } from "./toolbar-overflow";
 import {
   isUnavailable,
@@ -92,7 +92,7 @@ export function ToolbarOverflowMenu({
                   onClose();
                 }}
               >
-                <DeckIcon icon={item.icon} size={CHROME_ICON} />
+                <DeckIcon icon={item.icon} size={ROW_ICON} />
                 <span class="toolbar-menu__label">{item.label}</span>
                 {reason === null ? (
                   item.shortcut !== null && (

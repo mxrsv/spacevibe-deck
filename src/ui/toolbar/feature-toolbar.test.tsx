@@ -252,4 +252,27 @@ describe("FeatureToolbar", () => {
     });
     expect(host.querySelector(".toolbar-menu")).toBeNull();
   });
+
+  it("returns focus to the More trigger when Escape closes the menu", () => {
+    mount();
+    resizeTo(80);
+    act(() => button("More actions").click());
+    const rows = Array.from(host.querySelectorAll(".toolbar-menu__row"));
+    act(() => (rows[0] as HTMLButtonElement).focus());
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(document.activeElement).toBe(button("More actions"));
+  });
+
+  it("returns focus to the More trigger when activating a row", () => {
+    mount();
+    resizeTo(80);
+    act(() => button("More actions").click());
+    const rows = Array.from(host.querySelectorAll(".toolbar-menu__row"));
+
+    act(() => (rows[0] as HTMLButtonElement).click());
+    expect(document.activeElement).toBe(button("More actions"));
+  });
 });
