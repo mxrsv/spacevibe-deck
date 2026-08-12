@@ -50,7 +50,8 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 | -------------------------------------------------- | ---------------------------------- |
 | `--chrome-1` / `--chrome-2`                        | background steps for bars / panels |
 | `--input-bg`                                       | recessed input surfaces            |
-| `--hair` / `--hair-strong`                         | 1px structural hairlines           |
+| `--hair` / `--hair-strong`                         | 1px hairlines inside a surface     |
+| `--seam-recessed` / `--seam-divider` / `--seam-raised` | the boundaries BETWEEN surfaces (DL-2.3) |
 | `--text-primary` / `--text-muted` / `--text-faint` | text hierarchy                     |
 | `--ui-font`                                        | the one chrome typeface (DL-4.1)   |
 
@@ -59,6 +60,22 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   theme's own colors).
 - **DL-2.2** The theme drives everything: switching theme must restyle all
   chrome with zero component changes.
+- **DL-2.3** **A boundary between two surfaces is a seam, not a hairline.**
+  Approved as a fork on 2026-08-12 after the gallery study in
+  [`seam-section.tsx`](../src/gallery/sections/seam-section.tsx) `current`.
+  Seams mix from `--tone`, never from `--fg`: a boundary belongs to the
+  background ladder, and mixing from the foreground let the terminal's text hue
+  into it. `--seam-recessed` (shell boundaries — tab bar, sidebar, status,
+  pane bar) is **opaque**, because an alpha border composites over whichever
+  surface owns it and the two sides of a shell seam are different surfaces.
+  `--seam-divider` (inside one continuous surface — the pane splits) stays
+  alpha so it adapts to its ground. `--seam-raised` frames a surface that
+  floats above chrome (popovers, dialogs).
+  **The step must stay louder than the seam that marks it.** Before this rule a
+  seam sat 15–24 luminance units above its surface while the `--bg` → `--chrome-1`
+  step was 8–9, so every boundary read as ink drawn across the chrome;
+  `derive-colors.test.ts` now locks the relationship for every preset.
+  `--hair`/`--hair-strong` keep their meaning for lines INSIDE one surface.
 
 ## 3. Color roles (strict)
 
@@ -194,6 +211,7 @@ is reworked — **do not "fix" them opportunistically inside an unrelated change
 | where                                                                              | violates            | note                                  |
 | ---------------------------------------------------------------------------------- | ------------------- | ------------------------------------- |
 | `.tab-popover__label`                                                              | DL-4.3 (uppercase)  | rework with the tab popover           |
+| config rows, Open board, inputs, `.search-bar`                                     | DL-2.3              | still on `--hair` for lines that are boundaries between surfaces; migrate per surface |
 | `.search-bar`                                                                      | DL-1.3 (box-shadow) | real blurred shadow — drop            |
 | `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —                   | inset hairlines, allowed under DL-1.3 |
 

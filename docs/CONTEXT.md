@@ -32,6 +32,9 @@ Consequences worth knowing:
 ## Product snapshot
 
 - Job: observe and control many agent CLIs in parallel on desktop.
+- A Deck-native three-region workbench direction is being explored only in the
+  chrome gallery before any shipping UI changes
+  ([gallery design](specs/2026-08-12-agent-workbench-gallery-design.md) `building`).
 - macOS is the current public release; Windows 11 x64 is an engineering preview
   ([platform configs](../src-tauri/tauri.macos.conf.json) `current`,
   [Windows config](../src-tauri/tauri.windows.conf.json) `current`).
