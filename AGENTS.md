@@ -1,511 +1,132 @@
 # AGENTS.md — SpaceVibe Deck
 
-> **Boundary:** standalone desktop app — unrelated to the SpaceVibe web/backend repos, no shared DB or API.
-> Never edit sibling repos from this session. Workspace map: [`../AGENTS.md`](../AGENTS.md) `current`.
+> **Boundary:** standalone desktop app; no shared DB or API with the SpaceVibe web repos.
+> Do not edit sibling repos from this session. Workspace map:
+> [`../AGENTS.md`](../AGENTS.md) `current`.
 
-A minimal macOS terminal for running many AI agent CLIs side by side. Formerly Stackgrid. Stack: Tauri 2 + Rust backend, Preact + xterm.js frontend, Vite 6, Vitest. All strings, comments and docs in this repo are **English only**.
+Deck is a terminal for running many agent CLIs side by side. The shipping app is Tauri 2 +
+Rust + Preact + xterm.js; an Electron replacement is being built in an isolated worktree.
+Everything in this repo — UI strings, comments, docs, and commits — is **English only**.
 
-## Direction & forks
+Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) `current`; visual rules:
+[docs/DESIGN-LANGUAGE.md](docs/DESIGN-LANGUAGE.md) `current`.
 
-**Where this is going.** A minimal macOS terminal for running many agent CLIs side by
-side. Standalone desktop app — no shared DB, no API, no dependency on the web repos.
+## Current direction
 
-**In flight — already decided, do not reopen:**
-
-- v0.10.0 shipped 2026-08-04 (macOS stable + unsigned Windows preview). The tag is
-  what CI builds from, and `validate-source` rejects a tag whose `package.json`,
-  `Cargo.toml` and `tauri.conf.json` versions disagree.
-- v0.11.0 shipped 2026-08-05 — the hardened-updater release, and the gate that
-  blocked everything else is closed. `releases/latest` and the first-ever
-  `windows-preview-channel` both serve it. What it changed and what was verified
-  now lives in [`docs/CONTEXT.md`](docs/CONTEXT.md) `current` and
-  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) `current`; the plan it came from
-  is frozen at
-  [hardened-updater release plan](docs/plans/2026-08-04-hardened-updater-release.md) `current`.
-- The updater fork is [`mxrsv/plugins-workspace`](https://github.com/mxrsv/plugins-workspace),
-  branch `fix/updater-macos-transactional-swap`, based on upstream `v2` commit
-  `622f02bf` (the `ShellExecuteW` fix, PR #3516). Deck pins the exact revision
-  `71df1a095d007fb94f0eb07940b0a78e57ac984e` in
-  [`src-tauri/Cargo.toml`](src-tauri/Cargo.toml) `current` — an exact commit and
-  not the branch, because a moving ref would change what ships without changing
-  the tree. Base is `622f02bf` rather than `v2` HEAD so the pin carries only the
-  three needed fixes: `v2` HEAD adds the `system-proxy` feature, which drags new
-  dependencies into the bundle. Unpin once upstream releases a version
-  containing #3505, #3506 and #3516.
-- The updater that runs during an upgrade is the one inside the OLD build. So
-  the hardening in 0.11.0 cannot protect the 0.10.0 → 0.11.0 hop itself: users on
-  0.10.0 either bootstrap manually one last time or accept the unhardened
-  updater for exactly that one transition. From 0.11.0 onward the guarantee holds.
-- Verification before release required two hardened release candidates
-  (`0.11.0-rc.1` → `0.11.0-rc.2`) upgraded for real on macOS AND Windows, plus a
-  tampered-signature case and failure injection. **What actually ran (2026-08-05):**
-  macOS upgraded for real end to end — discover, verify signature, download,
-  install, relaunch — and the installed bundle kept mode `0755` instead of the
-  extraction directory's `0700`, which is issue #3506 proven fixed at runtime and
-  not only in tests. The tampered-signature case passed: a manifest advertising a
-  non-existent `0.11.0-rc.3` with one flipped signature byte was downloaded and
-  refused, with no install and no bundle touched. **Windows E2E was deliberately
-  skipped** (decided 2026-08-05) — accepted because `windows-preview-channel` did
-  not exist before 0.11.0, so no Windows user could receive an update through it
-  and none can lose an app. The cost is the same trap this release exists to
-  escape: the updater that runs an upgrade lives in the OLD build, so if the
-  Windows updater is broken in 0.11.0 it cannot be patched retroactively and
-  Windows users bootstrap by hand once more at 0.12.0. `ShellExecuteW` (#3516) is
-  therefore in the shipped binary but never observed running. Failure injection
-  was skipped too: the swap takes seconds, so killing it at the right instant is
-  not reproducible; the breadcrumb logic carries 11 unit tests and the
-  lose-the-app failure is covered by the fork's rollback tests.
-- A refused signature reads as a network problem. The tampered-signature run
-  surfaced it: verification happens inside Tauri's download step, so the UI lands
-  on `download-failed` and
-  [tells the user the download failed](src/updater/update-action.tsx#L24) `current`
-  when the download in fact succeeded and the signature did not verify. Those are
-  a flaky connection and a tampered update — the second deserves to stop the user,
-  not invite another Retry. Left out of 0.11.0 because that release admits no UI
-  work; it needs its own task.
-- The GitHub release list has no convention, and 0.11.0 made that visible
-  (raised 2026-08-05). Channel releases are **pointers, not versions** — each
-  holds one `latest.json` — yet they sit in the list looking exactly like
-  something to download, and every version costs two rows because the Windows
-  preview is a separate release. Decided: finish 0.11.0 first, then collapse to
-  one release per version with the Windows installer as an asset inside it, and
-  write the rule down here. Not started. The prerelease flag itself stays — it is
-  what keeps `releases/latest` from serving a test build to real users, not
-  decoration.
-- Landing download links resolve from the releases API at load (2026-08-01): the
-  hand-bumped Windows prerelease pin is gone — publishing a release is the act
-  that points the landing at it, so links never rot between releases.
-- The `deck.spacevibe.dev` landing has no host chosen yet (domain parked).
-- Four code comments still cite `FR-`/`ADR` against the claim in `docs/CONTEXT.md`
-  (`agents.rs`, `open-board.tsx`, `migrate.rs`) — logged in that file's drift ledger,
-  awaiting a human call: strip the comments or soften the claim.
-- The marketing video renders from the DOM stage shared with the app — breaking app
-  components silently breaks the video.
-- Cross-platform auto-update for macOS and Windows is approved (2026-08-02), with
-  the no-fee B2 Windows preview channel chosen on 2026-08-03: use free Tauri updater
-  signing and GitHub Releases; auto-check only, then expose an explicit chrome
-  `Update` → `Install & Relaunch` action beside Settings. Windows remains an unsigned,
-  separately labelled prerelease until paid Authenticode signing is chosen later.
-- Production builds minify with Terser, not esbuild (PR #9, merged 2026-08-04): esbuild
-  0.25 drops xterm 6's function-local enum in `InputHandler.requestMode` but keeps a
-  renamed reference, so the DECRQM query OpenCode sends at startup throws and stops
-  xterm's write queue for good — a blank pane. `scripts/vite-config.test.ts` locks it.
-- User-declared agents (`M2`) are approved (2026-08-04): an agent is a label plus a full
-  command line, declared in a new Settings category, and `AgentChoice` stays a string id
-  whose built-in ids equal their binary names — so every `lastAgent` already on disk
-  keeps resolving and no migration exists to get wrong. The editable list needs a new
-  design-language rule (§12), approved with it. See
-  [spec](docs/specs/2026-08-04-user-declared-agents-design.md) `decided`.
-- Antigravity CLI (`agy`) is the fifth built-in agent, decided and shipped in
-  **v0.12.2 on 2026-08-07** — `releases/latest` and `windows-preview-channel`
-  both serve it, and every release job passed except the two RC-channel ones,
-  which are skipped for a non-RC tag. Google cut Gemini CLI off from free, AI Pro and Ultra users on
-  2026-06-18 in favour of `agy`, so a Deck user on the new CLI got a pane with
-  no dot color, no agent label and no chip. Four calls, each with its reason:
-  **Gemini CLI stays** alongside it — paid Code Assist licences still reach the
-  service, and a built-in id equals its binary name, so removing `gemini`
-  would strand every `lastAgent` already on disk. **Label is "Antigravity"**,
-  not "Antigravity CLI" — it fits the chip. **The dot shares Gemini's
-  `--cyan`** rather than taking a new token: a fifth agent color does not
-  exist in the eight the theme injects, and the `brightBlue` token first
-  chosen was dropped on evidence — it equals `blue` in three of the four
-  presets, and `--accent` _is_ the theme's blue, so the dot would have read as
-  the accent color. **The row is ordered by reach, not history** — Claude,
-  Codex, OpenCode, Antigravity, Gemini — which moves the digit keys people
-  already know; accepted knowingly so the row leads with what gets used. The
-  brand mark is the first raster one in `AGENT_LOGOS`, since Google publishes
-  the icon as PNG. Deliberately left open: `agy`'s OSC 9;4 behaviour is
-  unobserved because nobody here has it installed. Detail in
-  [`docs/CONTEXT.md`](docs/CONTEXT.md) `current`.
-
-- The Prompt Board landed 2026-08-08 —
-  [spec](docs/specs/2026-08-08-prompt-board-design.md) `decided`,
-  [plan](docs/plans/2026-08-08-prompt-board.md) `current`, implemented against
-  that plan task by task. A chrome popover of reusable prompt templates pastes
-  one into the agent session in the focused pane; ⌘⇧P / Ctrl+Shift+P and a
-  View-menu item open it. What shipped and what was NOT verified is in
-  [`docs/CONTEXT.md`](docs/CONTEXT.md) `current`. Five forks resolved with the
-  user, then revised after an
-  external Codex review (2 blockers, 6 majors, all accepted): (1) detection
-  covers Claude Code AND Codex from v1, but Codex custom prompts are deferred —
-  they are standalone slash commands, not embeddable references; (2) each
-  template carries its own `autoSend` flag, and submit is triple-gated (fresh
-  `pty_info` agent match, idle + unlatched attention snapshot, pane alive)
-  because Enter into a permission dialog or a bare shell is the failure mode
-  that matters — a failed gate degrades to paste-only; (3) templates live in
-  the settings store beside `customAgents`; (4) the surface is a
-  chrome-anchored popover, and DESIGN-LANGUAGE gains §13 (anchored popovers +
-  `CommitTextarea`) — an approved R2 fork; (5) injection rides xterm's
-  bracketed-paste path through a new per-pane FIFO write queue in
-  `pane-lifecycle`, so paste-then-Enter ordering is structural, not timed. No
-  new dependencies; the R4 seams stay untouched. The plan closed the spec's two
-  open questions: the binding is **⌘⇧P / Ctrl+Shift+P** (`p` was free on both
-  keymaps, and `CharKeyBinding` is mandatory because the action carries a macOS
-  menu item), and a Codex agent `.toml` **does** carry a usable top-level
-  `description`, though the scanner still names the agent by file stem because
-  that is what the CLI loads by path.
-
-- Detaching a pane into its own window is decided at core-architecture level
-  (2026-08-10), [spec](docs/specs/2026-08-10-pane-detach-window-design.md) `decided`.
-  **Not implemented — no code written, and implementation planning
-  remains gated by the spec's §15 majors.** The original four product decisions
-  stand: a full Deck window, bounded scrollback via the approved
-  `@xterm/addon-serialize` dependency, cross-window drag in v1, and peer windows.
-  A second adversarial review found eight blockers in the first Rust transaction:
-  Tauri emit is not a delivery barrier, `SerializeAddon` does not preserve parser
-  continuation, frontend queues do not cover every PTY operation, adoption had
-  no payload transport, the buffer could not order prompt/exit events, death and
-  abort rules conflicted, tokens did not make retries idempotent, and global quit
-  had no complete state machine. The user approved the behavior-preserving
-  remediation: **reopen the R4 PTY read loop and window/close coordinators** for
-  a sequenced per-pane stream actor, transfer only at an acknowledged
-  restart-safe xterm boundary, stage target-bound adoption payloads, retain a
-  bounded terminal-outcome ledger, and coordinate quit in Rust. A move may fail
-  safely after a 2 s boundary deadline rather than corrupt the TUI; live-adopt
-  joins the destination tab without overwriting its metadata. If both owners are
-  gone the PTY is killed instead of leaked. Transfer IDs are process-local
-  integers, so **no `uuid` or parser dependency was approved**. Multi-window
-  settings consistency and updater ownership remain separate blocking majors
-  because neither belongs inside the pane transaction. Pointer capture evidence
-  remains macOS-only (294 outside-window events over 6.4 s, one display,
-  `scaleFactor = 2`); WebView2 and mixed-DPI are still hard gates before drag.
-
-- The token usage dashboard is decided at spec level (2026-08-10),
-  [spec](docs/specs/2026-08-10-token-usage-dashboard-design.md) `decided`.
-  **Not implemented — no code written, plan not started, spec pending user
-  review.** Machine-wide aggregates for Claude Code + Codex v1 — per-pane
-  attribution was deliberately rejected, which deletes the pane→session
-  mapping problem. Raw token counts plus USD estimated from a pinned LiteLLM
-  pricing snapshot shipped in the bundle (approved bundle fork); a dedicated
-  full-window `UsageScreen` with three entry points (ChromeActions button in
-  both layouts, ⌘⇧U / Ctrl+Shift+U + View-menu item, Settings › agents link
-  row). An external Codex review of the first strategy returned **not-sound**
-  and was accepted in full; the four blockers reshaped ingestion: Codex
-  usage is per-event cumulative **deltas** (last-snapshot misattributes
-  multi-day, multi-model sessions), the Claude dedupe cache stores
-  **contribution maps** keyed by `message.id`+`requestId` (a seen-set cannot
-  express last-wins across offset resumes), the scan glob includes
-  `subagents/*.jsonl` (~47% of Claude history by size on the dev machine),
-  and the schema keeps six counter classes separate (Codex `cached_input` is
-  a subset of input; Claude 5m/1h cache tiers price differently). Two R2
-  forks approved: DL §11 generalizes to full-window screens, and a new
-  read-only data-table §. No new dependencies, Rust or npm.
-
-- Pane detach, **Phase A implemented 2026-08-10** against
-  [the plan](docs/plans/2026-08-10-pane-detach-window.md) `current`, task by
-  task. What landed: the Rust transfer transaction (`PaneRoute` under one
-  lock, five commands, the 10 s / 4 MB bounds, the §7.6 window-death table and
-  owner validation on `write_pty`/`resize_pty`/`kill_pty`); the window
-  lifecycle (`deck-<n>` labels, boot mode, `open_pane_window`, per-window
-  close, the quit single-flight and its Rust busy census, the settings
-  patch-merge, the updater single-flight, the `Move Pane to Window ▸`
-  submenu); and the frontend (`flush`/`serializeScrollback` on `Pane`, the
-  detach and adopt orchestrators, `dockNewPane`, live-adopt into a new tab,
-  boot-adopt, and the `move-pane-to-new-window` action on ⌘⇧M / Ctrl+Shift+M —
-  `m` was free on both keymaps and macOS's Cocoa ⌘M Minimize does not claim
-  the Shift variant). Behaviour changes worth naming: the **last tab now
-  closes its window instead of quitting the app**, the frontend no longer
-  registers `onCloseRequested` (Tauri auto-prevented every close through it),
-  and the quit/close census is computed in Rust so a wedged webview can no
-  longer make ⌘Q unanswerable. One new dependency, pre-approved by the spec:
-  `@xterm/addon-serialize@0.14.0`, +7.7 kB gzip on the bundle (172.68 →
-  180.40 kB). Two contract gaps the plan added over the spec and that are now
-  load-bearing: **`stage_transfer`** (the source has no route to hand its
-  serialized buffer to `claim_transfer` otherwise) and **`transfer:settled`**
-  (after staging, the source has no other signal, so `awaitOutcome` rides
-  that event and `offerTransfer` must `Err` on a dead label rather than let
-  `emit_to` succeed silently). **Not verified: every claim that needs a real
-  window.** `npm test`, `npm run build`, `cargo test` and
-  `generate:menu:check` are green, and none of them cross the IPC boundary —
-  the wave-4 manual pass in `docs/CONTEXT.md` is still outstanding.
-  **Phase B (cross-window drag, section D) is NOT implemented and remains
-  gated** on the plan's §0.7 Windows pointer-capture re-measurement, for which
-  no machine exists today.
-
-  **Verified on a real window 2026-08-10, after one bug the gates could not
-  see.** The first ⌘⇧M failed because `open_pane_window` declared a single
-  `args: OpenPaneWindowArgs` parameter while the frontend sent the frozen
-  contract's flat `{ token, screenX?, screenY? }` — Tauri resolves each command
-  parameter by looking its camelCased name up in the invoke payload, so it
-  demanded a key named `args`. Exactly the silent-green class the plan's §0.6
-  warned about. Fixed by taking the arguments flat, and
-  [`scripts/ipc-contract.test.ts`](scripts/ipc-contract.test.ts) `current` now
-  parses both sides and fails on any command whose required payload keys a call
-  site does not send — the only gate here that crosses the IPC boundary. **Do
-  not fold those three parameters back into a struct.** After the fix, detach
-  and scrollback replay were confirmed by hand; the rest of the manual pass in
-  [`docs/CONTEXT.md`](docs/CONTEXT.md) `current` is still outstanding.
-
-  **One fork resolved on the day 2026-08-10, covered by neither spec nor plan:**
-  ⌘⇧M from a window holding exactly one pane is a **no-op with a message**, not
-  a move. Moving it would close this window and open another holding the same
-  pane — geometry lost, and the pane risked through a whole transaction for no
-  observable change. The condition is **window-level, not tab-level** (a second
-  tab keeps the window alive, so splitting that tab out is still a real move),
-  and **only the new-window target is guarded** — offering the pane to an
-  existing window merges it and stays meaningful from a one-pane window, which
-  is what the plan's Phase B manual item 8 asks for. The plan had weighed a
-  one-pane window only for the _drag_ path (Task D9).
-
-- **Leaving Tauri for Electron is decided at prep level (2026-08-11)** —
-  [prep plan](docs/plans/2026-08-11-electron-migration-prep.md) `current`,
-  [design spec](docs/specs/2026-08-11-electron-migration-design.md) `decided`.
-  **No product code is written and none may be until that spec is approved and
-  the spike clears its gates.** The reason is ship speed and DX, not a technical
-  defect in Tauri: the host becomes a full rewrite in Node/TS (`node-pty`,
-  `BrowserWindow`, `electron-updater`), and both a Rust NAPI/sidecar and a
-  long-lived dual runtime were rejected because either one keeps the Rust
-  toolchain that motivates the move. Four calls, each with its reason:
-  **Tauri features are frozen** — hotfixes still ship to `releases/latest` and
-  the Windows preview, but the token usage dashboard and pane-detach Phase B
-  now land on Electron only, so nothing new is written twice. **The freeze ends
-  on gates, not on a date** (§5-B resolved 2026-08-11): it lifts when gates A,
-  B and C each reach a conclusion — pass or abort — because a calendar deadline
-  against a motivation that has never been measured in hours would only be
-  guessed. The standing risk is a freeze that runs long if a gate hangs;
-  Gate C is hardware-blocked today, so that risk is live and named rather than
-  discovered later. **The Apple Developer Program gets bought** — Deck ships
-  unsigned on macOS today and the Tauri updater tolerates it by verifying its
-  own Minisign signature, but `electron-updater` goes through Squirrel.Mac,
-  which refuses an app that is not Developer ID signed and notarized. Without a
-  paid identity there is no macOS auto-update at all. **Not bought as of
-  2026-08-11**, which blocks Gate A. Windows stays unsigned preview (the B2
-  decision); whether `electron-updater` updates an unsigned NSIS build is a
-  spike question, not an assumption. **Cutover is a clean install with no data
-  migration** — settings, workspaces, presets, prompt templates and
-  `customAgents` do not come across, which deletes the Minisign key reuse, the
-  handoff release, the `migrate.rs` equivalent and any export/import UI. The
-  cost is accepted knowingly: a user with a configured prompt board has a
-  genuine reason to stay on 0.12.x, so a final Tauri release must say in its
-  notes that the next version is a manual download, and a doc page must name
-  the old store path. **Work is isolated in a dedicated branch and worktree**
-  (`electron-migration` at `~/Documents/Development/spacevibe-deck-worktrees/`),
-  because Electron pulls native `node-pty` and Electron binaries that fight
-  `npm install` in a checkout that must stay ready for Tauri hotfixes. Docs and
-  fork edits may happen on the primary checkout; anything adding Electron deps
-  runs only in the worktree. **"No Electron" stops being a proof point**
-  (§5-A resolved 2026-08-11): the landing and README lead instead with "no
-  accounts, no telemetry" and promote "made for agent CLIs" — deliberately not
-  a performance claim, since Electron would make one false. That copy edit
-  belongs to the cutover plan, not to prep; [`README.md`](README.md) `current`
-  and [`copy.js`](marketing/landing-prototype/src/copy.js) `current` still say
-  "no Electron" and stay true until the cutover ships.
-
-  **Spec approved and the gate sequence OVERRIDDEN by the owner, 2026-08-11.**
-  The design spec is approved; the Electron MVP starts now, with **Gate A
-  (no Apple identity) and Gate C (no Windows machine) still open**. Both the
-  prep plan and the spec said the MVP plan may only be authored after all
-  three gates conclude, and that ordering is knowingly set aside — the owner
-  asked to go full twice, after being told the spike was ~1% of the app. The
-  accepted risk is stated rather than discovered later: **a Gate C abort can
-  still kill this branch**, and the MVP work would be sunk with it. The abort
-  criterion itself is unchanged — if Windows kill-tree or process
-  classification needs a native addon, decision 2 reopens explicitly.
-  Consequently the MVP is macOS-only in substance: the Windows platform module
-  is a **stub that names Gate C**, not a port of
-  [`process_snapshot.rs`](src-tauri/src/platform/windows/process_snapshot.rs) `current`,
-  because porting 682 lines with no machine to run them would manufacture
-  false confidence. Work order and scope live in the
+- **Auto-update is a core requirement.** A release is not complete if distribution falls
+  back to manual-download-only. Release claims require platform-specific runtime evidence.
+- **Tauri is feature-frozen** except hotfixes and release support. New product features land
+  on Electron so they are not implemented twice.
+- **Electron migration is approved and building** in branch/worktree `electron-migration` at
+  `~/Documents/Development/spacevibe-deck-worktrees/`. The owner explicitly allowed MVP work
+  before Gate A (Apple signing identity) and Gate C (real Windows hardware) closed; that risk
+  remains accepted, not resolved. See
+  [design](docs/specs/2026-08-11-electron-migration-design.md) `decided` and
   [MVP plan](docs/plans/2026-08-11-electron-mvp.md) `building`.
+- The Electron cutover is a **clean install** with no settings/workspace migration. The final
+  Tauri release must explain the manual transition and old data location. “No Electron” must
+  stop being a proof point at cutover; “no accounts, no telemetry” remains valid.
+- Electron process classification must use the measured `ps` snapshot path, not
+  `node-pty.process`; the latter returned version/executable strings instead of argv0.
+- **Pane detach Phase A exists on Tauri**, including IPC contract tests; remaining native
+  manual checks live in `docs/CONTEXT.md`. Phase B is Electron-only and still gated by a real
+  Windows pointer-capture check.
+- **Queued after Electron MVP closes:** token usage dashboard and file explorer. The explorer
+  spec is [docs/specs/2026-08-12-file-explorer-design.md](docs/specs/2026-08-12-file-explorer-design.md) `decided`;
+  no explorer implementation may be folded into MVP. Monaco must first pass Gate M
+  in a packaged build. Dirty files must block tab close, window close, and app quit.
+- **Chrome gallery is current:** `gallery.html` mounts real components through
+  `src/gallery/`; run `npm run prototype:gallery`. Gallery code must never enter the shipping
+  bundle. It is the comparison surface for design-token constraint work, not a second UI copy.
 
-  **`pty_info` cannot be served by `node-pty` — decided on evidence
-  2026-08-11, not a fork** (no AGENTS fork category covers it; `ps`/`lsof` are
-  OS binaries, not shipped dependencies). Probes showed `node-pty`'s
-  `.process` returns the **wrong string**: for a real `claude` pane it
-  answered `"2.1.227"` (the CLI's version banner) and for a renamed job it
-  answered the executable name instead of argv0. Deck classifies panes by
-  argv0 — that is why [`macos.rs`](src-tauri/src/platform/macos.rs) `current`
-  reads `KERN_PROCARGS2` rather than `p_comm` — so trusting `.process` would
-  label every agent pane `Busy` and silently kill the agent chip, the dot
-  colour and attention state. The Electron host instead runs one
-  `ps -A -o pid=,pgid=,tpgid=,tty=,args=` per poll tick and joins foreground
-  jobs by tty → `tpgid` → `pgid`, mirroring `argv0_name` including the `-zsh`
-  dash strip. Measured: 717 rows in **69 ms**, against a 2 s poll interval, so
-  it fits with room to spare. `cwd` keeps coming from OSC 9;9 shell
-  integration as it does today; `lsof` is only the fallback and stays off the
-  hot path.
+Closed release history, updater-fork rationale, measurements and long decision trails belong
+in `docs/CONTEXT.md`, `docs/ARCHITECTURE.md`, frozen specs/plans, and git — not here.
 
-- **A file explorer panel is decided at spec level (2026-08-12)**,
-  [spec](docs/specs/2026-08-12-file-explorer-design.md) `decided`. **Not
-  implemented — no code written, plan not started, spec pending user review.**
-  A docked column on the right of the `.window` grid holding a file tree of the
-  active workspace; clicking a file opens it as a **tab beside the terminal
-  tabs**, editable and saveable in Monaco. Electron only — nothing here ships on
-  Tauri. Seven calls, each with its reason: **it lands after the MVP closes**
-  (T18 manual pass + T19 packaging), in the Electron-only feature queue beside
-  the token dashboard and pane-detach Phase B — folding a new feature into a
-  scope that is 10,504 lines of Rust rewritten and smoke-verified only would
-  move the parity bar mid-flight. **State is keyed by `workspacePath`, one
-  explorer per workspace** — a tab already fixes that path at Open and never
-  re-derives it from a live CWD, so an agent's `cd` cannot move the tree; the
-  cost is that switching to a terminal tab in another workspace swaps which
-  file tabs are visible. **State is per window, in memory, not persisted** —
-  this reverses the brainstormed assumption that two windows on one workspace
-  share file tabs, because Deck has no session restore (file tabs would be the
-  only restored UI state) and cross-window sync is already a named blocking
-  major; the accepted consequence is that the same file open in two windows
-  resolves last-save-wins, surfaced through the external-change bar. **File
-  tabs live in a store BESIDE `TabManager`, not inside `TabView`** — `syncViews`
-  rebuilds `tabViews` from the 2 s process poll, so a PTY-less tab would have to
-  survive a rebuild whose only input is process information, inside an R4 seam
-  freshly ported and not yet manually verified; a bug there would be
-  indistinguishable from a port bug. **Clicking opens a preview tab (italic,
-  replaced by the next click), promoted by double-click or first edit** — the
-  first edit promotes, so replacing a preview never discards work. **⌘1..9 stay
-  terminal-only** because file tabs open and close constantly and digit slots
-  would renumber several times a minute; ⌘⇧] / ⌘⇧[ reach them instead. **The
-  toggle is ⌘⇧B / Ctrl+Shift+B** — `b` is free on both keymaps; `⌘⇧E` was
-  dropped on evidence because `Ctrl+Shift+E` is already `toggle-expand` on
-  Windows. Three approved dependencies: **Monaco, a virtual list, a file-type
-  icon set** — Monaco is the largest addition this repo has made (renderer
-  bundle is 180.40 kB gzip today), so it is lazily imported on the first file
-  tab and its language set enumerated, with **Gate M** — Monaco boots, edits and
-  saves in a _packaged_ build — required before any explorer UI is written,
-  because the MVP was already bitten twice by silent packaging failures
-  (absolute Vite asset paths under `file://`, CommonJS/ESM mismatch). DESIGN
-  LANGUAGE gains **§15 (docked side panels)** — an approved R2 fork; a
-  permanently docked column is a surface class §11 (full-window) and §13
-  (popover) do not cover. Deliberately left open: `.gitignore` is not parsed in
-  v1 (a matcher is a fork), git decoration in the tree, and whether file-type
-  icons may be colored — DL-15.5 recommends monochrome because §3's color roles
-  are strict and each hue already means something. The load-bearing detail for
-  whoever implements it: **all three exits must respect a dirty file** — ⌘Q,
-  window close, and tab close — and since the census is computed in main while
-  dirty state lives in Monaco, the renderer pushes a dirty-registry delta whose
-  entries are cleared on window death, failing toward asking.
+## Forks
 
-- **A chrome gallery landed 2026-08-12** — a second Vite entry,
-  [`gallery.html`](gallery.html) `current` → [`src/gallery/`](src/gallery/main.tsx) `current`,
-  served by `npm run prototype:gallery` on `127.0.0.1:5175`. It exists because the
-  visual system is about to be constrained (numeric scales, interaction states,
-  overlay genres) and one running app is a poor place to judge it: a live window
-  shows exactly one state at a time, while the questions being asked are
-  comparative — both tab-bar positions, all seven update phases, every attention
-  kind, both modals, the two popovers whose frames disagree. `npm run dev` is
-  **not** blocked, which was checked rather than assumed: every boot IPC call
-  catches its own failure (`window_boot_mode failed; booting normally`,
-  `Failed to load settings, using defaults`), so the app shell and the Open
-  board do paint in a plain browser — the "web-only preview" claim in this file
-  is accurate. What it cannot do is persist a setting, list prompt assets or
-  reach a second state without being driven there, which is what the gallery's
-  IPC stub and seeded signals supply. **No DL rule was changed, no
-  dependency added, nothing in the app bundle moved**, so no fork category was
-  touched; the placement question was the user's call and the answer was `main`,
-  because a dev harness carries over to Electron unchanged. Four calls, each with
-  its reason: **real components, never a mock** — `marketing/stage/appwin.js` is
-  already a hand-written second copy of the chrome and it has drifted (it holds
-  Tokyo Night at 60% saturation for the landing's sake), so the gallery mounts
-  `DesktopChrome`, `TabBar`, `WorkspaceSidebar`, `StatusBar`, `SettingsScreen`,
-  `TabPopover`, `PromptPopover`, `PresetEditor`, `SavePresetDialog` and
-  `OpenBoard` directly, plus every real settings section for the seven value
-  kinds. **A root entry, not a folder under `marketing/`** — `vite marketing`
-  resolves its config from that root, where none exists, so there is no Preact
-  plugin and `.tsx` does not compile (which is why the landing prototype is
-  plain JS with HTML strings). At the repo root it inherits `vite.config.ts`,
-  and `vite build` walks `index.html` only, so the bundle is untouched —
-  verified 180.47 kB gzip with no gallery code in `dist/`, and
-  [`scripts/gallery-entry.test.ts`](scripts/gallery-entry.test.ts) `current`
-  fails if any app module ever imports from `src/gallery/`. **Tauri IPC is
-  stubbed** in `src/gallery/tauri-stub.ts`, installed as an import side effect
-  because ES imports hoist and a call at the top of the entry would still run
-  after every module below it; unknown commands resolve `null` and are listed
-  in the page footer rather than only console-warned. **No direction picker
-  yet** — a redesign direction will be a block of token overrides, and nothing
-  honest can sit behind that switch until a direction is chosen; theme
-  switching goes through the real `updateSettings` → `applyThemeVars` path, so
-  what the specimens show is what Settings would give. One app-code change came
-  with it: the CSS-var block was lifted out of `app.tsx`'s theme effect into
-  [`applyThemeVars`](src/lib/theme-vars.ts) `current`, behaviour unchanged, so
-  the gallery cannot become a second copy of that list. Deliberately absent:
-  `.search-bar` (built imperatively against a live `Pane`, so a specimen would
-  mean re-typing its DOM) and `.zoom-overlay` (it paints `var(--bg)` and
-  nothing else). **What it measured live**, replacing the counts that used to
-  be quoted from memory: 11 font sizes, 13 radii, **23 spacing steps**, 12
-  durations, 11 `z-index` layers, 12 distinct `--fg` state mixes and 20
-  `--accent` mixes all chosen at use sites, and 3 hardcoded colours
-  (`.btn--primary` `#000`, `.search-bar`'s rgba shadow — the DL-1.3 violation
-  already in §10 — and a `white` inside `.drop-overlay.is-swap`'s `color-mix`).
-  Two of those numbers were **wrong in the first version and were corrected on
-  2026-08-12 after the external Codex review below**: the audit counted whole
-  declaration strings, so `padding: 6px 14px` read as one value and the total
-  came out 67 instead of 23 actual steps, and the colour scan matched hex and
-  `rgb()` only, so the `white` was invisible. Named colours are now scanned
-  from `cssText` with the name fenced as `(?<![-\w])…(?![-\w])`, which is what
-  keeps `white-space` and `var(--red)` from reading as violations. The
-  constraint work itself is **not started**; the sequencing decided with it is
-  that DL freezes **which** scales exist while the redesign chooses their
-  **values**, so the rulebook is not written twice.
+Stop and ask before writing code when a task touches:
 
-**Forks → STOP and ask before writing code.** Collect them into ONE round at the start
-of the task; if there are none, say "no forks" and just go.
+- PTY ownership, process classification, window coordinator, tab materialization, layout or
+  close/quit coordination;
+- bundle, dependency, signing, release channel, updater or version configuration;
+- a rule in `docs/DESIGN-LANGUAGE.md`;
+- Electron/Tauri cutover scope or a platform claim without matching hardware evidence;
+- any sibling repo.
 
-- The load-bearing `src-tauri` seams: PTY, window coordinator, tab materialize, layout
-  engine, close coordinator (R4).
-- Bundle, signing, release or version config.
-- Changes to the design language rules in `docs/DESIGN-LANGUAGE.md` (R2).
-- Adding a dependency, or anything that changes what ships in the app bundle.
+Not a fork: internal renames, tests, styling within current DL rules, and editing the menu
+registry. Record a resolved fork in this queue with a one-line reason; move it to
+`docs/ARCHITECTURE.md` when the work closes.
 
-Not a fork: renaming internals, adding tests, styling within the existing DL rules,
-editing the menu registry (never the generated output — R3).
+## Verification and commands
 
-**Write the answer down.** When the user resolves a fork, it MUST be recorded in the
-"In flight" list within the same task, with a one-line reason; until it is written, the
-work is not done. This list is a QUEUE, not an archive: once a thread closes, move the
-decision down into `docs/ARCHITECTURE.md`.
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | browser-only Vite preview; IPC operations fail soft |
+| `npm run tauri dev` | current native desktop app |
+| `npm test` | Vitest suite |
+| `npm run build` | TypeScript + shipping renderer bundle |
+| `npm run generate:menu` | regenerate menu from registry |
+| `npm run generate:menu:check` | prove generated menu is current |
+| `npm run prototype:gallery` | visual comparison gallery at `127.0.0.1:5175` |
+| `npm run build:landing` | landing production build |
+| `npm run video:render` | render marketing video from DOM stage |
 
-**Prove it with commands** (L5/W4 — no output, no "done"): `npm test` ·
-`npm run build` (this is `tsc && vite build`, so it covers typecheck). No separate
-`lint` script in this repo. Note this repo uses **npm**, not pnpm like the web repos.
-
-## Common commands
-
-| Command                 | Purpose                                                             |
-| ----------------------- | ------------------------------------------------------------------- |
-| `npm run dev`           | Vite dev server (web-only preview)                                  |
-| `npm run tauri dev`     | full desktop app                                                    |
-| `npm test`              | Vitest unit tests                                                   |
-| `npm run build`         | typecheck + production build                                        |
-| `npm run generate:menu` | regenerate menu from registry — never hand-edit generated menu code |
-| `npm run video:render`  | render the marketing video from the DOM stage                       |
+Minimum completion gate: `npm test && npm run build && npm run generate:menu:check`.
+Changes under `src-tauri/` additionally require the focused Rust tests; release/updater work
+requires its dedicated scripts and real target-platform checks. Rendered UI changes require
+screenshot/recording approval; automated checks do not establish native visual correctness.
 
 ## Layout
 
-```
-src/                 # Preact UI
-├─ chrome/           #   window chrome, tabs
-├─ terminal/         #   xterm.js panes
-├─ open-board/       #   workspace board (open/recents)
-├─ presets/          #   layout presets
-├─ settings/         #   settings UI + stores
-└─ lib/              #   pure helpers
-src-tauri/src/       # Rust: pty, window coordinator, menu, migrate…
-marketing/           # marketing video stage (shares components with the app)
-docs/                # DESIGN-LANGUAGE.md (DL rulebook), CONTEXT.md, specs/, plans/, review/
+```text
+src/                  Preact renderer, xterm panes, stores and chrome
+src/gallery/          dev-only real-component gallery; never imported by app modules
+src-tauri/src/        current Rust host: PTY, windows, process snapshot, updater
+scripts/              generators and cross-boundary contract/release checks
+marketing/            landing and DOM-driven video stage
+docs/                 architecture, context, design language, specs/plans/reviews
 ```
 
-## Repo rules (R-rules — delta from the global standard)
+Electron implementation lives only in its dedicated worktree until its plan says otherwise;
+do not install Electron/native dependencies into the primary Tauri checkout.
 
-- **R1.** English only for every string, comment and doc — no Vietnamese in this repo.
-- **R2.** Chrome UI styling follows `docs/DESIGN-LANGUAGE.md`; rules are numbered (`DL-3.2`) and cited from code comments. Fix a violation → update the ledger at the bottom of that doc.
-- **R3.** Menu code is generated (`npm run generate:menu`, checked by `generate:menu:check` in CI) — edit the registry, not the output.
-- **R4.** The Rust PTY/window coordinator, tab materialize, layout engine and close-coordinator paths are load-bearing seams — treat `src-tauri` module boundaries as in-flight when planning changes there.
-- **R5.** State is Preact signals; module stores are window-scoped.
+## Repo rules
+
+- **R1. English only** for strings, comments, docs and commit messages.
+- **R2. Design language is executable policy.** Chrome styling follows numbered DL rules;
+  code comments cite them. Fixing a violation also updates the ledger in that document.
+- **R3. Menu output is generated.** Edit the registry, then run `generate:menu`; never edit
+  generated menu code manually.
+- **R4. Load-bearing seams stay explicit.** PTY/window/tab/layout/close modules require a
+  plan and cross-boundary verification, not a drive-by refactor.
+- **R5. Renderer state uses Preact signals; module stores are window-scoped.**
+- **R6. IPC payload shape is a contract.** Keep flat command arguments where the frozen
+  frontend contract sends flat keys; `scripts/ipc-contract.test.ts` guards this boundary.
+- **R7. Gallery imports flow app → gallery only.** Shipping modules must not import
+  `src/gallery/` or its stubs.
 
 ## Known traps
 
-- The ADR pipeline (`docs/decisions/`, PIPELINE.lock, derived docs) was removed on 2026-07-27 — old plans/reviews still reference it; they are point-in-time records, leave them as written.
-- Marketing video renders from the DOM through a virtual clock and shares the app stage — breaking app components can silently break the video.
-
-## Language
-
-- Docs/comments: **English only**. Commit messages: English, conventional commits.
+- The app running an update is the **old build**; updater fixes do not retroactively protect
+  the transition into that release.
+- Green unit/build checks are not Windows or macOS native evidence. Name untested platform
+  behavior as unverified.
+- Browser `npm run dev` can paint the shell because IPC failures are caught; it cannot prove
+  native persistence, PTY, updater or packaging behavior.
+- Marketing video shares application components and a virtual clock; component changes can
+  silently alter rendered media.
+- Old `FR-`/`ADR-` references are historical after removal of the ADR pipeline. Do not recreate
+  `PIPELINE.lock` or `docs/decisions/` merely to satisfy those comments.
 
 ## Chưa khớp thực tế
 
-_(reality-drift ledger — heading text mandated by the global docs convention)_
+_(Heading retained for the global living-doc convention.)_
 
 | Claim | Intent | Status | Evidence |
-| ----- | ------ | ------ | -------- |
+| --- | --- | --- | --- |
+| Electron can replace Tauri on both supported platforms | `building` | unverified | Gate A lacks Apple identity; Gate C lacks a real Windows run |
+| Pane detach is complete cross-platform | `building` | partial | Phase A has focused/native macOS evidence; Phase B and Windows pointer capture remain open |
+| File explorer is available | `decided` | backlog | Spec approved; implementation waits for Electron MVP and packaged Monaco Gate M |
 
-Empty as of 2026-08-04: the v0.8.0 row was cleared when v0.10.0 became the
-release in flight. Do not remove this section (D7).
+Updated 2026-08-12.
