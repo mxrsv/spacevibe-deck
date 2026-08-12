@@ -1,5 +1,5 @@
 import { useSignal } from "@preact/signals";
-import { PanelLeft } from "lucide-preact";
+import { PanelLeft, PanelRight } from "lucide-preact";
 import { AgentAttentionMark } from "../../ui/agent-attention-mark";
 import { CHROME_ICON, DeckIcon } from "../../ui/controls/deck-icon";
 import { tildify } from "../../lib/process-info";
@@ -87,26 +87,44 @@ function WindowControls() {
   );
 }
 
-function NavToggle({
+/** What each collapsible region is called, in the words its tooltip uses. */
+const PANEL_NAME: Readonly<Record<"nav" | "dock", string>> = {
+  nav: "sidebar",
+  dock: "explorer",
+};
+
+const PANEL_ICON = { nav: PanelLeft, dock: PanelRight } as const;
+
+/**
+ * Both side regions collapse, and both toggles live on the edge that touches
+ * the stage — the left region's at the end of its header, the right region's
+ * at the start of its own. When a region leaves, its toggle moves to the stage
+ * header's matching edge, so the control never travels across the window and
+ * the direction it points still means the same thing.
+ */
+function PanelToggle({
+  panel,
   open,
   controls,
   onToggle,
 }: {
+  panel: "nav" | "dock";
   open: boolean;
   controls: string;
   onToggle: () => void;
 }) {
+  const label = `${open ? "Hide" : "Show"} ${PANEL_NAME[panel]}`;
   return (
     <button
       type="button"
-      class="gx-workbench__navtoggle"
+      class={`gx-workbench__paneltoggle gx-workbench__paneltoggle--${panel}`}
       aria-expanded={open}
       aria-controls={controls}
-      aria-label={open ? "Hide sidebar" : "Show sidebar"}
-      title={open ? "Hide sidebar" : "Show sidebar"}
+      aria-label={label}
+      title={label}
       onClick={onToggle}
     >
-      <DeckIcon icon={PanelLeft} size={CHROME_ICON} />
+      <DeckIcon icon={PANEL_ICON[panel]} size={CHROME_ICON} />
     </button>
   );
 }
@@ -155,6 +173,7 @@ export function WorkbenchSpecimen({
   fixture = SEED_WORKBENCH,
 }: WorkbenchSpecimenProps) {
   const navOpen = useSignal(true);
+  const dockOpen = useSignal(true);
   const spec = WORKBENCH_VARIANTS[variant];
   /*
    * Compact drops the branch rather than the whole meta line: the Attention
@@ -166,20 +185,35 @@ export function WorkbenchSpecimen({
     compact && spec.navDetail === "full" ? "agent" : spec.navDetail;
   const { project, workspaces, surfaces, panes, explorer, status } = fixture;
   const cwd = status.cwd === null ? null : tildify(status.cwd, status.home);
-  const navId = `gx-workbench-nav-${variant}-${compact ? "compact" : "wide"}`;
-  const open = navOpen.value;
+  const idBase = `gx-workbench-${variant}-${compact ? "compact" : "wide"}`;
+  const navId = `${idBase}-nav`;
+  const dockId = `${idBase}-dock`;
+  const showNav = navOpen.value;
+  const showDock = dockOpen.value;
 
-  const controls = (
+  const leadingControls = (
     <>
       <WindowControls />
-      <NavToggle
-        open={open}
+      <PanelToggle
+        panel="nav"
+        open={showNav}
         controls={navId}
         onToggle={() => {
-          navOpen.value = !open;
+          navOpen.value = !showNav;
         }}
       />
     </>
+  );
+
+  const dockToggle = (
+    <PanelToggle
+      panel="dock"
+      open={showDock}
+      controls={dockId}
+      onToggle={() => {
+        dockOpen.value = !showDock;
+      }}
+    />
   );
 
   return (
@@ -187,12 +221,12 @@ export function WorkbenchSpecimen({
       class={`gx-workbench-frame ${compact ? "gx-workbench-frame--compact" : ""}`}
     >
       <div
-        class={`gx-workbench gx-workbench--${variant} ${compact ? "is-compact" : ""} ${open ? "" : "is-navhidden"}`}
+        class={`gx-workbench gx-workbench--${variant} ${compact ? "is-compact" : ""} ${showNav ? "" : "is-navhidden"} ${showDock ? "" : "is-dockhidden"}`}
         role="group"
         aria-label={`${spec.label}, ${compact ? "compact" : "wide"} width`}
       >
         <div class="gx-workbench__body">
-          {open && (
+          {showNav && (
             <div
               id={navId}
               class="gx-workbench__nav"
@@ -200,7 +234,7 @@ export function WorkbenchSpecimen({
               aria-label="Workspaces"
             >
               <div class="gx-workbench__head gx-workbench__head--nav">
-                {controls}
+                {leadingControls}
               </div>
               <ul class="gx-workbench__wslist">
                 {workspaces.map((workspace) => (
@@ -220,7 +254,7 @@ export function WorkbenchSpecimen({
             aria-label="Terminal stage"
           >
             <div class="gx-workbench__head gx-workbench__head--stage">
-              {!open && controls}
+              {!showNav && leadingControls}
               <ul class="gx-workbench__surfacelist">
                 {surfaces.map((surface) => (
                   <li
@@ -237,6 +271,7 @@ export function WorkbenchSpecimen({
                   </li>
                 ))}
               </ul>
+              {!showDock && dockToggle}
             </div>
 
             <div
@@ -257,32 +292,40 @@ export function WorkbenchSpecimen({
             </div>
           </div>
 
-          <div class="gx-workbench__dock" role="group" aria-label="Explorer">
-            <div class="gx-workbench__head gx-workbench__head--dock">
-              <span class="gx-workbench__docktitle">explorer</span>
-              <span class="gx-workbench__dockroot">{explorer.root}</span>
+          {showDock && (
+            <div
+              id={dockId}
+              class="gx-workbench__dock"
+              role="group"
+              aria-label="Explorer"
+            >
+              <div class="gx-workbench__head gx-workbench__head--dock">
+                {dockToggle}
+                <span class="gx-workbench__docktitle">explorer</span>
+                <span class="gx-workbench__dockroot">{explorer.root}</span>
+              </div>
+              <ul class="gx-workbench__tree">
+                {explorer.entries.map((entry) => (
+                  <li
+                    key={entry.id}
+                    class={`gx-workbench__row gx-workbench__row--${entry.kind} ${entry.selected ? "is-selected" : ""}`}
+                    style={`--gx-workbench-depth:${entry.depth}`}
+                    aria-current={entry.selected}
+                  >
+                    <span class="gx-workbench__rowname">{entry.name}</span>
+                    {entry.change !== "none" && (
+                      <span
+                        class={`gx-workbench__change gx-workbench__change--${entry.change}`}
+                        title={entry.change}
+                      >
+                        {CHANGE_MARK[entry.change]}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul class="gx-workbench__tree">
-              {explorer.entries.map((entry) => (
-                <li
-                  key={entry.id}
-                  class={`gx-workbench__row gx-workbench__row--${entry.kind} ${entry.selected ? "is-selected" : ""}`}
-                  style={`--gx-workbench-depth:${entry.depth}`}
-                  aria-current={entry.selected}
-                >
-                  <span class="gx-workbench__rowname">{entry.name}</span>
-                  {entry.change !== "none" && (
-                    <span
-                      class={`gx-workbench__change gx-workbench__change--${entry.change}`}
-                      title={entry.change}
-                    >
-                      {CHANGE_MARK[entry.change]}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
+          )}
         </div>
 
         <div class="gx-workbench__status">
