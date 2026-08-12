@@ -1,45 +1,66 @@
 /* ── ChatGPT Desktop direction ─────────────────────────────────────
- * Gallery-only treatment. It targets the real Deck shell below this wrapper,
- * but never enters styles.css or the shipped app bundle. The literals here are
- * review-surface values; the shipping rebuild derives them from theme tokens,
- * so do not copy them into the app.
+ * Gallery-only treatment. It targets the real Deck shell below this wrapper
+ * and never enters styles.css or the shipped app bundle.
+ *
+ * REBUILT FROM THEME TOKENS on 2026-08-13. Until then this file declared nine
+ * fixed hex values, and shipping them would have retired DL-2.1, made DL-2.2
+ * false, and left the four theme presets restyling the terminal canvas and
+ * nothing else. It now declares no colour of its own: every value below comes
+ * out of `deriveChromeColors` through `--bg`/`--tone`, so the direction follows
+ * the terminal theme and inherits the 7 / 5.5 / 4.5 contrast floors.
+ * Design: docs/specs/2026-08-13-direction-token-rebuild-design.md.
  */
 
-/* ── Gallery-wide direction contract ────────────────────────────── */
+/* ── Gallery-wide direction contract ──────────────────────────────
+ *
+ * The three relationships the nine literals encoded, and nothing else:
+ *
+ *   1. ONE NEUTRAL SURFACE RAMP. `--bg` -> `--chrome-1` -> `--chrome-2` is the
+ *      same mix toward `--tone` at t = 0, 0.05, 0.09, so the ladder is
+ *      monotonic for EVERY theme by construction. That is strictly stronger
+ *      than preserving #0d0d0d < #181818 < #242424, which was true of one.
+ *   2. ONE SELECTION STATE. `--tab-active-bg` (t = 0.15) is already the app's
+ *      "this one is active" background; the direction reuses it everywhere
+ *      rather than giving each genre a wash of its own.
+ *   3. ONE BORDER ROLE. `--hair-strong` inside a surface, `--seam-recessed`
+ *      between two of them — the distinction DL-2.3 draws, which the flat file
+ *      had collapsed into a single 10% white line.
+ *
+ * DECLARED ON THREE SELECTORS, NOT ONE. A custom property holding `var()` is
+ * substituted at computed-value time ON THE ELEMENT THAT DECLARES IT, and
+ * descendants inherit the already-resolved colour — the same mechanism
+ * `theme-vars.ts` documents for `--status-unread`. Declared only on the gallery
+ * root, every alias below would freeze to the root's theme and the state matrix,
+ * which publishes a different theme per cell, would render four identical
+ * columns while claiming to prove the opposite.
+ *
+ * Radius, duration and easing stay literal on purpose: they are geometry and
+ * motion, not colour, and they are this direction's own scale. Making that
+ * scale policy would be a DL §20 fork (spec §6), so it is not proposed here.
+ */
+
+.gx-app--chatgpt,
+.gx-app--chatgpt .gx-cell,
+.gx-app--chatgpt .gx-stage {
+  --gx-chat-app-under: var(--bg);
+  --gx-chat-surface-main: var(--chrome-1);
+  --gx-chat-surface-raised: var(--chrome-2);
+  --gx-chat-pane-surface: var(--bg);
+  --gx-chat-selected: var(--tab-active-bg);
+  --gx-chat-border: var(--hair-strong);
+  --gx-chat-seam: var(--seam-recessed);
+  --gx-chat-ink: var(--text-primary);
+  --gx-chat-ink-secondary: var(--text-muted);
+  --gx-chat-ink-faint: var(--text-faint);
+}
 
 .gx-app--chatgpt {
-  --gx-chat-app-under: #0d0d0d;
-  --gx-chat-surface-main: #181818;
-  --gx-chat-surface-raised: #242424;
-  --gx-chat-pane-surface: #111111;
-  --gx-chat-selected: #303030;
-  --gx-chat-border: rgb(255 255 255 / 10%);
-  --gx-chat-ink: #f3f3f3;
-  --gx-chat-ink-secondary: rgb(243 243 243 / 65%);
-  --gx-chat-ink-faint: rgb(243 243 243 / 42%);
   --gx-chat-radius-control: 10px;
   --gx-chat-radius-surface: 16px;
   --gx-chat-duration: 150ms;
   --gx-chat-ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --bg: var(--gx-chat-surface-main);
-  --fg: var(--gx-chat-ink);
-  --accent: var(--gx-chat-ink);
-  --red: #ff6764;
-  --green: #40c977;
-  --yellow: #ffd240;
-  --magenta: #ad7bf9;
-  --cyan: #339cff;
-  --tone: #ffffff;
-  --chrome-1: var(--gx-chat-app-under);
-  --chrome-2: var(--gx-chat-surface-main);
-  --tab-active-bg: var(--gx-chat-selected);
-  --input-bg: color-mix(in srgb, var(--gx-chat-ink) 6%, transparent);
-  --hair: color-mix(in srgb, var(--gx-chat-ink) 5%, transparent);
-  --hair-strong: var(--gx-chat-border);
-  --text-primary: var(--gx-chat-ink);
-  --text-muted: var(--gx-chat-ink-secondary);
-  --text-faint: var(--gx-chat-ink-faint);
   --radius: var(--gx-chat-radius-control);
+  /* The gallery shell's own chrome, in the same contract as the specimens. */
   --gx-bg: var(--gx-chat-app-under);
   --gx-panel: var(--gx-chat-surface-main);
   --gx-line: var(--gx-chat-border);
@@ -49,6 +70,7 @@
 
   grid-template-rows: 52px 1fr 30px;
   grid-template-columns: 224px minmax(0, 1fr);
+  background: var(--gx-chat-app-under);
   font-family: var(--ui-font);
 }
 
@@ -73,6 +95,31 @@
   color: var(--gx-chat-ink-secondary);
   font: 500 12px/1 var(--ui-font);
 }
+/* Theme picker. DL-1.4's shape: the native select carries the interaction and
+ * the pill carries the styling, so the whole control is one element and an
+ * `<option>` list. */
+.gx-themepick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--gx-chat-border);
+  border-radius: var(--gx-chat-radius-control);
+  background: var(--gx-chat-surface-raised);
+  color: var(--gx-chat-ink-faint);
+  font: 500 12px/1 var(--ui-font);
+}
+
+.gx-themepick select {
+  border: 0;
+  background: transparent;
+  color: var(--gx-chat-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
 .gx-app--chatgpt .gx-topbar__hint {
   margin-left: auto;
   color: var(--gx-chat-ink-faint);
@@ -129,20 +176,6 @@
   border-color: var(--gx-chat-border);
   border-radius: var(--gx-chat-radius-surface);
   background: var(--gx-chat-app-under);
-}
-.gx-app--chatgpt .gx-stage {
-  --bg: var(--gx-chat-surface-main);
-  --fg: var(--gx-chat-ink);
-  --accent: var(--gx-chat-ink);
-  --chrome-1: var(--gx-chat-app-under);
-  --chrome-2: var(--gx-chat-surface-main);
-  --tab-active-bg: var(--gx-chat-selected);
-  --input-bg: color-mix(in srgb, var(--gx-chat-ink) 6%, transparent);
-  --hair: color-mix(in srgb, var(--gx-chat-ink) 5%, transparent);
-  --hair-strong: var(--gx-chat-border);
-  --text-primary: var(--gx-chat-ink);
-  --text-muted: var(--gx-chat-ink-secondary);
-  --text-faint: var(--gx-chat-ink-faint);
 }
 .gx-app--chatgpt .gx-inline,
 .gx-app--chatgpt .gx-anchorpad,
@@ -288,7 +321,8 @@
   border: 1px solid var(--gx-chat-border);
   border-radius: var(--gx-chat-radius-surface);
   background: var(--gx-chat-surface-raised);
-  box-shadow: 0 12px 36px rgb(0 0 0 / 28%);
+  /* DL-1.3 bans blurred shadow; DL-13.1 gets the lift from the step instead. */
+  box-shadow: inset 0 0 0 1px var(--gx-chat-border);
 }
 
 .gx-app--chatgpt .tab-popover__label {
@@ -362,7 +396,7 @@
   border: 1px solid var(--gx-chat-border);
   border-radius: var(--gx-chat-radius-surface);
   background: var(--gx-chat-surface-raised);
-  box-shadow: 0 18px 56px rgb(0 0 0 / 34%);
+  box-shadow: inset 0 0 0 1px var(--gx-chat-border);
 }
 
 .gx-app--chatgpt :is(.preset-editor__toolbar, .preset-editor__footer) {
@@ -499,24 +533,9 @@
 }
 
 .gx-chatgpt-direction {
-  --bg: #181818;
-  --fg: #f3f3f3;
-  --accent: #f3f3f3;
-  --red: #ff6764;
-  --green: #40c977;
-  --yellow: #ffd240;
-  --magenta: #ad7bf9;
-  --cyan: #339cff;
-  --tone: #ffffff;
-  --chrome-1: #212121;
-  --chrome-2: #282828;
-  --tab-active-bg: color-mix(in srgb, var(--fg) 8%, transparent);
-  --input-bg: color-mix(in srgb, var(--fg) 6%, transparent);
-  --hair: color-mix(in srgb, var(--fg) 5%, transparent);
-  --hair-strong: color-mix(in srgb, var(--fg) 12%, transparent);
-  --text-primary: var(--fg);
-  --text-muted: color-mix(in srgb, var(--fg) 65%, transparent);
-  --text-faint: color-mix(in srgb, var(--fg) 40%, transparent);
+  /* No colour here any more. This block used to pin a SECOND ramp that
+   * disagreed with the one at the head of the file; both are gone and the
+   * shell now inherits whatever theme is published above it. */
   --sidebar-w: 275px;
   --gx-chatgpt-explorer-w: 260px;
   /* VS Code's editor tab strip is 35px, and the explorer head next to it has
@@ -526,14 +545,14 @@
 
   width: 100%;
   height: 100%;
-  background: #0d0d0d;
+  background: var(--gx-chat-app-under);
 }
 
 .gx-chatgpt-direction .window--sidebar {
   --frame-h: 54px;
   grid-template-rows: var(--frame-h) 1fr var(--status-h);
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
-  background: #0d0d0d;
+  background: var(--gx-chat-app-under);
   font-size: 13px;
 }
 
@@ -592,7 +611,7 @@
   place-items: center;
   border-radius: 7px;
   background: var(--text-primary);
-  color: #0d0d0d;
+  color: var(--gx-chat-app-under);
   font-size: 11px;
   font-weight: 650;
 }
@@ -634,13 +653,82 @@
   padding: 0;
 }
 
+/* The rail's eyebrow. Lowercase (DL-4.3), and it names what the tier below it
+ * actually is now that the flat workspace list has become repositories. */
 .gx-chatgpt-direction .wsbar__list::before {
-  content: "Workspaces";
+  content: "repositories";
   order: 1;
   padding: 18px 10px 6px;
   color: var(--text-faint);
   font-size: 12px;
   font-weight: 500;
+}
+
+/* ── The repository tier, in this direction's language ──────────────
+ * The rail is the app's own `RepositoryRail`; these rules restyle it exactly
+ * as the rules above restyle `.wsitem`, and every colour is one of the ten
+ * aliases at the head of this file.
+ *
+ * Relationship 2 is what this block is FOR: the repository header, the
+ * worktree row and the add affordance all take the same `--gx-chat-selected`
+ * wash, so "this one" reads identically at both tiers instead of once per
+ * genre. Adopting that wash in the shipped app in place of DL-11.2's 2px
+ * accent bar is the DL §21 fork — proposed here, not taken. */
+.gx-chatgpt-direction .repogroup {
+  order: 2;
+}
+
+.gx-chatgpt-direction .repogroup + .repogroup {
+  margin-top: 12px;
+}
+
+.gx-chatgpt-direction .repogroup__toggle {
+  min-height: 36px;
+  border-radius: var(--gx-chat-radius-control);
+  font-size: 13px;
+  font-weight: 560;
+  transition: background var(--gx-chat-duration) var(--gx-chat-ease);
+}
+
+.gx-chatgpt-direction .repogroup__toggle:hover,
+.gx-chatgpt-direction .repogroup__action:hover {
+  background: var(--gx-chat-selected);
+}
+
+.gx-chatgpt-direction .repogroup__mark {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border: 1px solid var(--gx-chat-border);
+  border-radius: 7px;
+  background: var(--gx-chat-app-under);
+  color: var(--gx-chat-ink-secondary);
+}
+
+.gx-chatgpt-direction .repogroup__action {
+  border-radius: 7px;
+}
+
+.gx-chatgpt-direction .repogroup__worktrees {
+  gap: 2px;
+  padding-left: 14px;
+}
+
+/* A readout keeps the geometry of a row and gives up its wash — DL-17.3, the
+ * same reason the other-platform chord in a shortcut row has no border. */
+.gx-chatgpt-direction .wsitem--readout {
+  min-height: 38px;
+}
+
+.gx-chatgpt-direction .wsitem--readout:hover {
+  background: transparent;
+}
+
+.gx-chatgpt-direction .wsitem__badge {
+  border-color: var(--gx-chat-border);
+  border-radius: 6px;
 }
 
 .gx-chatgpt-direction .wsitem {
@@ -658,8 +746,8 @@
 
 .gx-chatgpt-direction .wsitem:hover,
 .gx-chatgpt-direction .wsitem.is-active {
-  background: color-mix(in srgb, var(--fg) 8%, transparent);
-  color: var(--text-primary);
+  background: var(--gx-chat-selected);
+  color: var(--gx-chat-ink);
 }
 
 .gx-chatgpt-direction .wsitem__logo {
@@ -677,8 +765,11 @@
   font-weight: 450;
 }
 
+/* Kept, unlike in the flat list this replaced: `branch · path` is what
+ * distinguishes two worktrees of one repository, so hiding it would remove
+ * the only thing telling the rows apart. */
 .gx-chatgpt-direction .wsitem__path {
-  display: none;
+  font-size: 10.5px;
 }
 
 .gx-chatgpt-direction .wsbar__add {
@@ -740,7 +831,11 @@
   min-width: 0;
   min-height: 0;
   background:
-    radial-gradient(circle at 48% -20%, rgb(255 255 255 / 5%), transparent 42%),
+    radial-gradient(
+      circle at 48% -20%,
+      color-mix(in srgb, var(--tone) 5%, transparent),
+      transparent 42%
+    ),
     var(--bg);
 }
 
@@ -953,8 +1048,8 @@
   grid-template-rows: var(--gx-chatgpt-head-h) minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
-  border-left: 1px solid var(--hair-strong);
-  background: #151515;
+  border-left: 1px solid var(--gx-chat-seam);
+  background: var(--gx-chat-surface-main);
   color: var(--text-muted);
   font-family: var(--ui-font);
 }
@@ -998,10 +1093,10 @@
 .gx-chatgpt-explorer__root {
   padding: 4px 8px 8px;
   color: var(--text-faint);
+  /* DL-4.3: no uppercase anywhere, and letter-spacing stays <= 0.06em. */
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.045em;
-  text-transform: uppercase;
 }
 
 .gx-chatgpt-explorer__tree {

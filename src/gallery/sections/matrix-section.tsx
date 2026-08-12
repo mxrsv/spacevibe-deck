@@ -13,8 +13,8 @@ import {
 import {
   chromeActionsSpecimen,
   NOOP,
+  repositorySidebarSpecimen,
   tabBarSpecimen,
-  workspaceSidebarSpecimen,
 } from "../chrome-fixtures";
 import {
   FORCE_CLASS,
@@ -27,11 +27,13 @@ import { SectionHead } from "../specimen";
  * The comparison matrix the external review asked for (review §6 item 2): all
  * four themes, both tab-bar positions, five interaction states, one size.
  *
- * PARKED, deliberately. `section-registry.ts` dropped this section when the
- * gallery narrowed to one selected direction, so nothing renders it today. It
- * is kept rather than deleted because the state matrix is wanted again once
- * there is more than one direction to compare; until then it is unreachable
- * code that still has to compile and still has to cite live rules.
+ * BACK IN THE REGISTRY on 2026-08-13. It was parked while the direction was
+ * nine fixed hex values — four theme columns would have been four copies of
+ * one picture, and the section would have reported a pass on the exact
+ * property it exists to test. The direction now derives every colour from
+ * `--bg`/`--tone`, so the columns can finally differ, and this section is the
+ * evidence for that rebuild
+ * (docs/specs/2026-08-13-direction-token-rebuild-design.md §8).
  *
  * The point is that a wash cannot be judged on one theme. Tokyo Night's `--fg`
  * is a pale blue-violet, so a 4% `--fg` hover reads as "slightly lighter"
@@ -182,7 +184,10 @@ function WindowCell({
       toolbar={
         sidebar ? chromeActionsSpecimen({ promptsDisabled: disabled }) : null
       }
-      sidebarNavigation={sidebar ? workspaceSidebarSpecimen() : null}
+      // The repository rail, not the flat sidebar: the redesign's left region
+      // is that rail, so a matrix proving the old one would prove the wrong
+      // surface.
+      sidebarNavigation={sidebar ? repositorySidebarSpecimen() : null}
       topTabs={sidebar ? null : tabBarSpecimen({ promptsDisabled: disabled })}
       stage={<div class="stage" />}
       status={<StatusBar />}
@@ -320,7 +325,7 @@ export function MatrixSection() {
     <>
       <SectionHead
         title="ChatGPT direction — state matrix"
-        blurb="The shared geometry and interaction model across four themes and five states; theme colour still stays user-owned."
+        blurb="Four themes, five states. The direction's ramp, its one selection wash and its one border role are derived here, not declared — if any of them were still a fixed value, these four columns would be identical."
       />
 
       <MatrixBlock
@@ -335,7 +340,7 @@ export function MatrixSection() {
 
       <MatrixBlock
         title="window chrome — tabBarPosition: left"
-        note="the same shell in sidebar mode; the chrome actions move into the titlebar"
+        note="the same shell in sidebar mode, carrying the repository → worktree rail"
         tall
         absent={absent}
         render={(disabled) => <WindowCell sidebar disabled={disabled} />}
