@@ -24,8 +24,14 @@ import {
 import { SectionHead } from "../specimen";
 
 /**
- * The comparison matrix the external review asked for (§6 item 2): all four
- * themes, both tab-bar positions, five interaction states, one size.
+ * The comparison matrix the external review asked for (review §6 item 2): all
+ * four themes, both tab-bar positions, five interaction states, one size.
+ *
+ * PARKED, deliberately. `section-registry.ts` dropped this section when the
+ * gallery narrowed to one selected direction, so nothing renders it today. It
+ * is kept rather than deleted because the state matrix is wanted again once
+ * there is more than one direction to compare; until then it is unreachable
+ * code that still has to compile and still has to cite live rules.
  *
  * The point is that a wash cannot be judged on one theme. Tokyo Night's `--fg`
  * is a pale blue-violet, so a 4% `--fg` hover reads as "slightly lighter"
