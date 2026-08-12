@@ -1,25 +1,46 @@
+import { Fragment } from "preact";
 import { AgentAttentionMark } from "../../ui/agent-attention-mark";
-import { DesktopChrome } from "../../ui/app";
-import { StatusBar } from "../../ui/status-bar";
-import { TabBar } from "../../ui/tab-bar";
-import { WorkspaceSidebar } from "../../ui/workspace-sidebar";
 import { WorkspaceSpinner } from "../../ui/workspace-spinner";
 import { PresetThumb } from "../../presets/preset-thumb";
 import { UpdateAction } from "../../updater/update-action";
 import type { UpdatePhase } from "../../updater/update-controller";
 import { SEED_ATTENTION, SEED_LAYOUT } from "../seed-data";
 import { SectionHead, Specimen, StateLabel } from "../specimen";
+import {
+  WORKBENCH_VARIANTS,
+  WorkbenchSpecimen,
+  type WorkbenchVariant,
+} from "./workbench-specimen";
 
 /**
- * The window shell in both layouts, assembled by the app's own
- * `DesktopChrome` — so the grid, the hairlines and the bar heights here are
- * the shipped ones, not a reconstruction.
+ * Round one of the agent workbench comparison, over the component states the
+ * chrome is made of.
  *
- * Tab hover, tab selection and the options popover are all live: clicking the
- * active tab opens the real `TabPopover` through `TabBar`'s own state.
+ * The two `DesktopChrome` specimens that used to open this section — top tabs
+ * versus left sidebar — were a comparison of the shell Deck already ships, and
+ * that question is settled. What replaces them is the open one: which of three
+ * compositions the workbench should take
+ * (docs/specs/2026-08-12-agent-workbench-gallery-design.md). The state
+ * specimens below are untouched, because they cover components rather than
+ * composition and would lose their coverage if they moved with the shell.
  */
 
 const NOOP = (): void => {};
+
+/** Both review widths, in the order the owner compares them. */
+const WORKBENCH_ORDER: readonly WorkbenchVariant[] = [
+  "balanced",
+  "rail",
+  "stage",
+];
+
+const WORKBENCH_NOTE: Readonly<Record<WorkbenchVariant, string>> = {
+  balanced:
+    "stable workspace rail · dominant stage · medium dock — navigation and file reading cost the same",
+  rail: "widest left region, project → workspace → agent · all three panes side by side for supervision",
+  stage:
+    "narrowest navigation, widest stage · the dock stays bounded and one action away",
+};
 
 /** Every phase the update pill can be in, `hidden` excluded — it renders nothing. */
 const UPDATE_PHASES: readonly Exclude<UpdatePhase, "hidden">[] = [
@@ -32,87 +53,34 @@ const UPDATE_PHASES: readonly Exclude<UpdatePhase, "hidden">[] = [
   "relaunch-failed",
 ];
 
-function tabBar() {
-  return (
-    <TabBar
-      settingsOpen={false}
-      expandActive={false}
-      promptsOpen={false}
-      promptsDisabled={false}
-      onSelectTab={NOOP}
-      onCloseTab={NOOP}
-      onNewTab={NOOP}
-      onSplitRow={NOOP}
-      onSplitColumn={NOOP}
-      onClosePane={NOOP}
-      onRenameTab={NOOP}
-      onSetTabColor={NOOP}
-      onToggleSettings={NOOP}
-      onTogglePrompts={NOOP}
-      onToggleExpand={NOOP}
-      onFocusAttention={NOOP}
-    />
-  );
-}
-
-function FakeStage({ label }: { label: string }) {
-  return (
-    <div class="stage">
-      <div class="gx-fakepane">{label}</div>
-    </div>
-  );
-}
-
 export function ChromeSection() {
   return (
     <>
       <SectionHead
         title="Window chrome"
-        blurb="Both tab-bar positions, rendered through the app's own DesktopChrome shell."
+        blurb="Three workbench compositions on identical fixture data, each at a wide and a compact desktop width. The sidebar toggle is live — click it and the rail leaves entirely, taking the window buttons with it into the stage. Structure only: treatment is round two, so nothing below is arguing about colour yet."
       />
 
-      <Specimen
-        name="window — tabBarPosition: top"
-        note="titlebar · tab bar · stage · status, on the real grid"
-        surface="none"
-        tall
-      >
-        <DesktopChrome
-          sidebar={false}
-          toolbar={null}
-          sidebarNavigation={null}
-          topTabs={tabBar()}
-          stage={<FakeStage label="terminal panes live here" />}
-          status={<StatusBar />}
-          onMacTitlebarDoubleClick={NOOP}
-        />
-      </Specimen>
+      {WORKBENCH_ORDER.map((variant) => (
+        <Fragment key={variant}>
+          <Specimen
+            name={`${WORKBENCH_VARIANTS[variant].label} — wide`}
+            note={WORKBENCH_NOTE[variant]}
+            surface="none"
+            tall
+          >
+            <WorkbenchSpecimen variant={variant} />
+          </Specimen>
 
-      <Specimen
-        name="window — tabBarPosition: left"
-        note="the same shell in sidebar mode; the toolbar moves into the titlebar"
-        surface="none"
-        tall
-      >
-        <DesktopChrome
-          sidebar
-          toolbar={null}
-          sidebarNavigation={
-            <WorkspaceSidebar
-              onSelectTab={NOOP}
-              onCloseTab={NOOP}
-              onNewTab={NOOP}
-              onRenameTab={NOOP}
-              onSetTabColor={NOOP}
-              onFocusAttention={NOOP}
-            />
-          }
-          topTabs={null}
-          stage={<FakeStage label="terminal panes live here" />}
-          status={<StatusBar />}
-          onMacTitlebarDoubleClick={NOOP}
-        />
-      </Specimen>
+          <Specimen
+            name={`${WORKBENCH_VARIANTS[variant].label} — compact`}
+            note="900px of window: metadata collapses, both side regions narrow, the stage keeps the room"
+            surface="none"
+          >
+            <WorkbenchSpecimen variant={variant} compact />
+          </Specimen>
+        </Fragment>
+      ))}
 
       <Specimen
         name="AgentAttentionMark"

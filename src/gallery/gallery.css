@@ -205,17 +205,6 @@
   width: 100%;
 }
 
-/* Stand-in for the terminal grid, so a bar specimen has something below it. */
-.gx-fakepane {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-faint);
-  font-family: var(--gx-mono);
-  font-size: 11px;
-}
-
 /* ── specimen layout helpers ─────────────────────────────────────── */
 
 .gx-row {
@@ -298,6 +287,514 @@
 .gx-overlaypad__pane .pane-drag-ghost {
   top: 40px;
   left: 20px;
+}
+
+/* ── agent workbench (round one) ─────────────────────────────────── */
+
+/*
+ * Composition candidates for docs/specs/2026-08-12-agent-workbench-gallery-design.md.
+ *
+ * The one inversion of this file's own rule: everything inside the specimen is
+ * painted from the app's theme tokens, not from the fixed `--gx-` hexes. The
+ * harness frame around a specimen must hold still; the specimen itself is
+ * arguing about Deck's chrome and has to survive every theme the gallery can
+ * switch to (DL-2.2). Mono appears once, on terminal output, which is the only
+ * thing DL-4.1 lets it near.
+ *
+ * There is no window-spanning titlebar. Each region carries its own header at
+ * one shared height, so the three headers read as one row without being one
+ * element — which is what lets the sidebar leave entirely instead of
+ * collapsing to a stub under a bar that outlived it.
+ *
+ * The three candidates differ in exactly two numbers — the widths of the side
+ * regions — so the comparison stays a comparison. Both are custom properties;
+ * every other rule below is shared.
+ */
+
+.gx-workbench-frame {
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * The compact review width. A fixed box rather than a media query: the owner
+ * has to see both widths on one page, and a query would make what they see
+ * depend on how wide they happened to leave the gallery window. `max-width`
+ * keeps it from being the thing that scrolls the page sideways.
+ */
+.gx-workbench-frame--compact {
+  width: 900px;
+  max-width: 100%;
+  height: 460px;
+  margin: 0 auto;
+}
+
+.gx-workbench {
+  --gx-workbench-nav: 216px;
+  --gx-workbench-dock: 248px;
+  /* One height for all three region headers, so their hairlines agree. */
+  --gx-workbench-head: 34px;
+  --gx-workbench-wash: color-mix(in srgb, var(--fg) 4%, transparent);
+
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) var(--status-h);
+  height: 100%;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+  font-size: 11.5px;
+  overflow: hidden;
+}
+
+/* Navigation and files are equally frequent, so neither wins the argument. */
+.gx-workbench--balanced {
+  --gx-workbench-nav: 216px;
+  --gx-workbench-dock: 248px;
+}
+
+/* Supervising parallel agents is the primary navigation task; files recede. */
+.gx-workbench--rail {
+  --gx-workbench-nav: 272px;
+  --gx-workbench-dock: 200px;
+}
+
+/* The terminal takes everything the other two regions can survive without. */
+.gx-workbench--stage {
+  --gx-workbench-nav: 156px;
+  --gx-workbench-dock: 216px;
+}
+
+.gx-workbench__body {
+  display: grid;
+  grid-template-columns:
+    var(--gx-workbench-nav)
+    minmax(0, 1fr)
+    var(--gx-workbench-dock);
+  min-height: 0;
+}
+
+/* Hidden means gone: the column is removed, not emptied. */
+.gx-workbench.is-navhidden .gx-workbench__body {
+  grid-template-columns: minmax(0, 1fr) var(--gx-workbench-dock);
+}
+
+/* ── workbench · region headers ──────────────────────────────────── */
+
+.gx-workbench__head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: var(--gx-workbench-head);
+  padding: 0 10px;
+  background: var(--chrome-1);
+  border-bottom: 1px solid var(--hair);
+  overflow: hidden;
+}
+
+/*
+ * The window buttons sit inside whichever region is leftmost and take only that
+ * region's width — never a strip laid across the whole window.
+ */
+.gx-workbench__oscontrols {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.gx-workbench__osdot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.gx-workbench__osdot--close {
+  background: var(--red);
+}
+
+.gx-workbench__osdot--min {
+  background: var(--yellow);
+}
+
+.gx-workbench__osdot--zoom {
+  background: var(--green);
+}
+
+.gx-workbench__navtoggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition:
+    background-color 0.13s ease,
+    color 0.13s ease;
+}
+
+.gx-workbench__navtoggle:hover {
+  background: var(--gx-workbench-wash);
+  color: var(--text-primary);
+}
+
+.gx-workbench__navtoggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* With the sidebar gone the toggle keeps the stage's leading edge, not its end. */
+.gx-workbench.is-navhidden .gx-workbench__navtoggle {
+  margin-left: 0;
+  margin-right: 3px;
+}
+
+/* ── workbench · left region ─────────────────────────────────────── */
+
+.gx-workbench__nav {
+  display: grid;
+  grid-template-rows: var(--gx-workbench-head) minmax(0, 1fr);
+  min-width: 0;
+  background: var(--chrome-1);
+  border-right: 1px solid var(--hair);
+  overflow: hidden;
+}
+
+.gx-workbench__wslist {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/*
+ * Selected and hover share one signifier — 2px left accent bar over a 4% `--fg`
+ * wash — because DL-5.1 and DL-11.2 already spend it on "this row is the one",
+ * and a workbench that invented a third meaning for the same edge would be
+ * teaching the user a second vocabulary.
+ */
+.gx-workbench__ws {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1px 8px;
+  padding: 5px 8px;
+  border-left: 2px solid transparent;
+  transition:
+    background-color 0.13s ease,
+    border-color 0.13s ease,
+    color 0.13s ease;
+}
+
+.gx-workbench__ws:hover,
+.gx-workbench__ws.is-selected {
+  border-left-color: var(--accent);
+  background: var(--gx-workbench-wash);
+}
+
+.gx-workbench__wsname {
+  grid-column: 1;
+  grid-row: 1;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gx-workbench__ws:hover .gx-workbench__wsname,
+.gx-workbench__ws.is-selected .gx-workbench__wsname {
+  color: var(--text-primary);
+}
+
+.gx-workbench__wsmark {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  min-height: 13px;
+}
+
+.gx-workbench__wsmeta {
+  grid-column: 1 / -1;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── workbench · centre stage ────────────────────────────────────── */
+
+.gx-workbench__stage {
+  display: grid;
+  grid-template-rows: var(--gx-workbench-head) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.gx-workbench__surfacelist {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.gx-workbench__surface {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition:
+    background-color 0.13s ease,
+    color 0.13s ease;
+}
+
+/* Depth from a background step and an inset hairline — DL-1.3 bans the rest. */
+.gx-workbench__surface.is-selected {
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--hair-strong);
+  color: var(--text-primary);
+}
+
+.gx-workbench__surface.is-future {
+  color: var(--text-faint);
+}
+
+/*
+ * Says out loud that Deck has not built this surface. The spec refuses to let
+ * a fixture imply an unapproved feature, and a greyed-out label alone would
+ * read as "disabled right now" rather than "does not exist yet".
+ */
+.gx-workbench__surfacenote {
+  padding: 0 4px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+/* The 1px gaps are the hairlines: the grid's background shows through them. */
+.gx-workbench__panes {
+  display: grid;
+  gap: 1px;
+  background: var(--hair);
+  min-width: 0;
+  min-height: 0;
+}
+
+.gx-workbench__panes--split {
+  grid-template-columns: 62fr 38fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.gx-workbench__panes--split > .gx-workbench__pane:first-child {
+  grid-row: 1 / span 2;
+}
+
+.gx-workbench__panes--columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.gx-workbench__pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+}
+
+/* Keyboard ownership is one of the few states the restraint map lets be loud. */
+.gx-workbench__pane.is-focused {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* The one mono surface in the whole specimen — it is terminal output. */
+.gx-workbench__paneout {
+  flex: 1;
+  margin: 0;
+  padding: 8px 10px;
+  min-height: 0;
+  color: var(--text-muted);
+  font-family: var(--gx-mono);
+  font-size: 10.5px;
+  line-height: 1.55;
+  white-space: pre;
+  overflow: hidden;
+}
+
+/* ── workbench · explorer dock ───────────────────────────────────── */
+
+.gx-workbench__dock {
+  display: grid;
+  grid-template-rows: var(--gx-workbench-head) minmax(0, 1fr);
+  min-width: 0;
+  background: var(--chrome-1);
+  border-left: 1px solid var(--hair);
+  overflow: hidden;
+}
+
+.gx-workbench__docktitle {
+  flex: none;
+  color: var(--text-primary);
+}
+
+.gx-workbench__dockroot {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gx-workbench__tree {
+  margin: 0;
+  padding: 6px 8px;
+  list-style: none;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.gx-workbench__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-block: 3px;
+  padding-right: 8px;
+  padding-left: calc(8px + var(--gx-workbench-depth, 0) * 11px);
+  border-left: 2px solid transparent;
+  transition:
+    background-color 0.13s ease,
+    border-color 0.13s ease,
+    color 0.13s ease;
+}
+
+.gx-workbench__row:hover,
+.gx-workbench__row.is-selected {
+  border-left-color: var(--accent);
+  background: var(--gx-workbench-wash);
+}
+
+.gx-workbench__rowname {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Hierarchy without icons: a folder sits at full text weight, a file recedes,
+ * and depth is carried by the indent. Round one is a comparison of layouts, and
+ * the icon question (§14) belongs to the treatment round that follows it.
+ */
+.gx-workbench__row--folder .gx-workbench__rowname {
+  color: var(--text-primary);
+}
+
+.gx-workbench__row--file .gx-workbench__rowname {
+  color: var(--text-muted);
+}
+
+/*
+ * `M` / `A` in faint text, not in colour. DL-3.2 spends `--green` on
+ * on/enabled/success and `--red` on danger; a file being newly tracked is
+ * neither, and the restraint map files the dock's rows under "quiet".
+ */
+.gx-workbench__change {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+/* ── workbench · status ──────────────────────────────────────────── */
+
+.gx-workbench__status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  background: var(--chrome-1);
+  border-top: 1px solid var(--hair);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  overflow: hidden;
+}
+
+.gx-workbench__statusitem {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The project is the root of the hierarchy, so it leads and reads primary. */
+.gx-workbench__statusitem:first-child {
+  flex: none;
+  color: var(--text-primary);
+}
+
+/* ── workbench · compact width ───────────────────────────────────── */
+
+/*
+ * Compact narrows both side regions and drops metadata. What it must not do is
+ * overlay the stage or reorder anything: the dock stays a column, the rail
+ * stays first, and the terminal stays the widest region in all three
+ * candidates.
+ */
+.gx-workbench.is-compact {
+  font-size: 11px;
+}
+
+.gx-workbench--balanced.is-compact {
+  --gx-workbench-nav: 172px;
+  --gx-workbench-dock: 190px;
+}
+
+.gx-workbench--rail.is-compact {
+  --gx-workbench-nav: 208px;
+  --gx-workbench-dock: 164px;
+}
+
+.gx-workbench--stage.is-compact {
+  --gx-workbench-nav: 132px;
+  --gx-workbench-dock: 176px;
+}
+
+.gx-workbench.is-compact .gx-workbench__dockroot {
+  display: none;
+}
+
+.gx-workbench.is-compact .gx-workbench__surface {
+  padding: 3px 7px;
+}
+
+.gx-workbench.is-compact .gx-workbench__paneout {
+  padding: 6px 8px;
+}
+
+/* Scoped, not an allowlist of class names — §9.3. */
+@media (prefers-reduced-motion: reduce) {
+  .gx-workbench * {
+    transition: none;
+  }
 }
 
 /* ── tokens page ─────────────────────────────────────────────────── */
