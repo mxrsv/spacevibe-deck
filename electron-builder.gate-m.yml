@@ -1,0 +1,34 @@
+# Gate M proof package (file-explorer plan §5.0.2, approved as D10).
+#
+# A LOCAL, UNSIGNED packaging path whose only purpose is proving the Monaco
+# editor, its worker and its assets survive electron-builder — the class of
+# failure a dev server cannot show. It produces no installer, no updater
+# metadata, no signing, no notarization, no publishing, and is referenced by
+# no release workflow. `--dir --publish never` in the driving script is part
+# of the contract, not a convenience.
+appId: dev.spacevibe.deck.gate-m
+productName: Deck Gate M
+directories:
+  output: dist-gate-m
+# Electron Builder writes this into the packaged app's package.json — `main`
+# is not a top-level builder option.
+extraMetadata:
+  main: dist-electron/electron/main.cjs
+files:
+  - dist/**
+  - dist-gate-m-renderer/**
+  - dist-electron/electron/**/*.cjs
+  - dist-electron/src/**/*.cjs
+  - dist-electron/electron/vendor/**
+  - package.json
+# node-pty is a native module: it cannot load from inside the asar, and its
+# helper binaries must keep their executable modes.
+asarUnpack:
+  - "**/node_modules/node-pty/**"
+mac:
+  target:
+    - target: dir
+  identity: null
+  # Universal builds diff the two slices; node-pty's prebuilds legitimately
+  # differ per arch and must be allowed to.
+  x64ArchFiles: "**/node_modules/node-pty/**"

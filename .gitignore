@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-gate-m
+dist-gate-m-renderer
 *.local
 
 # Editor directories and files

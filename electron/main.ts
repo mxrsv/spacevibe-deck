@@ -58,6 +58,24 @@ const RENDERER_DIR = path.join(__dirname, "..", "..", "dist");
 // `.cjs` — see scripts/build-electron-main.mjs for why the host is CommonJS.
 const PRELOAD = path.join(__dirname, "preload.cjs");
 
+/**
+ * Gate M (file-explorer plan §5.0): a packaged-build proof that Monaco's
+ * editor, workers and assets survive electron-builder, driven by
+ * `scripts/verify-electron-gate-m-package.mjs`. When the launcher sets
+ * `DECK_GATE_M=1`, the window loads the dedicated harness graph instead of
+ * the application renderer, and renderer console lines are mirrored to stdout
+ * so the verifier can wait for the harness's explicit ready signal. Normal
+ * launches never read these variables; `scripts/gate-m-entry.test.ts` proves
+ * the harness graph stays out of the shipping renderer.
+ */
+const GATE_M = process.env.DECK_GATE_M === "1";
+const GATE_M_RENDERER_DIR = path.join(
+  __dirname,
+  "..",
+  "..",
+  "dist-gate-m-renderer",
+);
+
 const windows = new Map<string, BrowserWindow>();
 const registry = new WindowRegistry();
 const quitFlight = new QuitFlight();
@@ -272,7 +290,16 @@ function createWindow(label: string): BrowserWindow {
     rebuildMenu();
   });
 
-  void window.loadFile(path.join(RENDERER_DIR, "index.html"));
+  if (GATE_M) {
+    window.webContents.on("console-message", (event) => {
+      process.stdout.write(`[gate-m renderer] ${event.message}\n`);
+    });
+    void window.loadFile(path.join(GATE_M_RENDERER_DIR, "gate-m.html"), {
+      query: { file: process.env.DECK_GATE_M_FILE ?? "" },
+    });
+  } else {
+    void window.loadFile(path.join(RENDERER_DIR, "index.html"));
+  }
   registry.recordFocus(label);
   // A new window is a new move-pane target for every existing window.
   rebuildMenu();

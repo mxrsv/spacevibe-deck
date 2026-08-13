@@ -23,6 +23,9 @@
     "test": "vitest run --exclude scripts/verify-windows-bundle.test.mjs --exclude scripts/verify-updater-manifest.test.mjs --exclude scripts/ipc-contract.test.ts",
     "tauri": "tauri",
     "electron:build": "tsc -p tsconfig.electron.json && node scripts/build-electron-main.mjs",
+    "build:gate-m-renderer": "vite build --config vite.gate-m.config.mjs",
+    "electron:package:gate-m": "npm run build && npm run build:gate-m-renderer && npm run electron:build && electron-builder --config electron-builder.gate-m.yml --mac --universal --dir --publish never",
+    "electron:verify:gate-m": "node scripts/verify-electron-gate-m-package.mjs",
     "electron:dev": "npm run build && npm run electron:build && electron dist-electron/electron/main.cjs",
     "electron:smoke": "npm run build && npm run electron:build && electron dist-electron/electron/smoke.cjs",
     "shoot": "npm run build && npm run electron:build && electron dist-electron/electron/shoot.cjs"
