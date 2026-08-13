@@ -1137,16 +1137,26 @@
   }
 }
 
+/* DL-1.5, handled BY SCOPE rather than by an allowlist of class names —
+   DL §9's checklist item 3 requires it. Cited by SECTION on purpose: the
+   checklist's items are not numbered rules, so the dotted spelling resolves to
+   nothing and `scripts/design-language.test.ts` rejects it — including inside a
+   comment, which is why this sentence does not spell the bad form out. This
+   block used to name three of the thirteen
+   selectors that carry a transition here, so every rule added since kept
+   animating. The two roots are the direction's two mount points: the gallery
+   app wrapper and the standalone specimens inside the chrome and board
+   sections. Nothing appears or disappears under reduced motion — the close
+   affordance still shows, it just stops fading. */
 @media (prefers-reduced-motion: reduce) {
-  .gx-chatgpt-pane__cursor::after {
-    animation: none;
-  }
-
-  /* DL-1.5: the close affordance still appears, it just stops fading. */
-  .gx-chatgpt-terminal__tab,
-  .gx-chatgpt-terminal__close,
-  .gx-chatgpt-terminal__branch {
+  .gx-app--chatgpt *,
+  .gx-app--chatgpt *::before,
+  .gx-app--chatgpt *::after,
+  .gx-chatgpt-direction *,
+  .gx-chatgpt-direction *::before,
+  .gx-chatgpt-direction *::after {
     transition: none;
+    animation: none;
   }
 }
 
