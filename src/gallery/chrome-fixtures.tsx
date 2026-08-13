@@ -32,11 +32,13 @@ export function deckToolbarSpecimen({
   return (
     <DeckToolbar
       browserOpen={false}
+      usageOpen={false}
       settingsOpen={false}
       expandActive={false}
       promptsOpen={false}
       promptsUnavailable={promptsDisabled ? "no pane to paste into" : null}
       onToggleBrowser={NOOP}
+      onToggleUsage={NOOP}
       onSplitRow={NOOP}
       onSplitColumn={NOOP}
       onToggleExpand={NOOP}

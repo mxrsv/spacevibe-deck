@@ -139,6 +139,7 @@ const EXPECTED_ROWS = [
   "OpenCode",
   "Antigravity",
   "Add agent",
+  "Token usage",
   // links & editor
   "Editor",
   // notifications

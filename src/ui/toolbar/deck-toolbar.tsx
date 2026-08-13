@@ -1,6 +1,7 @@
 import type { ComponentChildren } from "preact";
 import {
   Columns2,
+  Gauge,
   Globe,
   Maximize2,
   MessageSquareText,
@@ -17,10 +18,11 @@ import type { ToolbarItem, ToolbarItemState } from "./toolbar-item";
  * The shipping projection of the feature toolbar — the piece that turns app
  * state and app callbacks into `ToolbarItem`s and nothing else.
  *
- * Group contents follow the approved plan's D7: `tools` holds only Browser
- * until the explorer (phase 4) and usage (phase 5) surfaces exist to open.
- * Overflow order is the toolbar spec's: Focus expand leaves first, then Close
- * pane, then the splits; Browser, Prompts and Settings never leave the bar.
+ * Group contents follow the approved plan's D7: `tools` grew Usage when its
+ * surface landed with phase 5; Explorer arrives with phase 4's surface.
+ * Overflow order is the toolbar spec's: Usage leaves the bar first, then
+ * Focus expand, Close pane and the splits; Browser, Prompts and Settings
+ * never leave.
  *
  * See docs/specs/2026-08-12-feature-toolbar-design.md and its 2026-08-14
  * Browser amendment (docs/specs/2026-08-13-browser-productization-design.md §5).
@@ -53,6 +55,7 @@ const ACTIVE: ToolbarItemState = { kind: "active" };
 
 interface DeckToolbarProps {
   readonly browserOpen: boolean;
+  readonly usageOpen: boolean;
   readonly settingsOpen: boolean;
   readonly expandActive: boolean;
   readonly promptsOpen: boolean;
@@ -62,6 +65,7 @@ interface DeckToolbarProps {
   readonly promptPopover?: ComponentChildren;
   readonly updateAction?: ComponentChildren;
   onToggleBrowser(): void;
+  onToggleUsage(): void;
   onSplitRow(): void;
   onSplitColumn(): void;
   onToggleExpand(): void;
@@ -82,6 +86,18 @@ export function DeckToolbar(props: DeckToolbarProps) {
       overflowOrder: null,
       toggles: "pressed",
       onActivate: props.onToggleBrowser,
+    },
+    {
+      id: "toggle-usage",
+      label: toolbarLabel("toggle-usage"),
+      icon: Gauge,
+      group: "tools",
+      shortcut: shortcutLabel("toggle-usage"),
+      state: props.usageOpen ? ACTIVE : IDLE,
+      // The toolbar spec's overflow order: Usage leaves the bar first.
+      overflowOrder: 1,
+      toggles: "pressed",
+      onActivate: props.onToggleUsage,
     },
     {
       id: "split-row",

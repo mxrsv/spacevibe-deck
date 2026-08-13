@@ -43,6 +43,8 @@ import { listPromptAssets } from "./prompt-assets";
 import { readImageAsDataUrl, scanWorkspaceFavicon } from "./images";
 import { applySettingsPatch } from "./settings-merge";
 import { listDir, readFile, statFiles } from "./fs/read";
+import { createUsageService } from "./usage/service";
+import { USAGE_CACHE_FILE } from "./usage/model";
 import { writeTextFile } from "./fs/write";
 import { createWatchRegistry } from "./fs/watch";
 import { MainDirtyRegistry } from "./dirty-registry";
@@ -456,6 +458,24 @@ ipcMain.handle(CHANNELS.readImageAsDataUrl, (_event, { path: target }) =>
 ipcMain.handle(CHANNELS.scanWorkspaceFavicon, (_event, { dir }) =>
   scanWorkspaceFavicon(dir),
 );
+// Token usage: one command, no payload — the scan takes no renderer input.
+// Failures inside the scan are in-band (`sources[].state`, `skippedLines`);
+// a rejection here is user-safe while the detail stays in main's log.
+const usageService = createUsageService({
+  home: app.getPath("home"),
+  cachePath: path.join(app.getPath("userData"), USAGE_CACHE_FILE),
+  reportCacheWriteFailure: (error) => {
+    console.error("Deck: the usage cache could not be written:", error);
+  },
+});
+ipcMain.handle(CHANNELS.usageSnapshot, async () => {
+  try {
+    return await usageService.snapshot();
+  } catch (error) {
+    console.error("Deck: the usage scan failed:", error);
+    throw new Error("the usage scan failed");
+  }
+});
 ipcMain.handle(CHANNELS.suspendMenuAccelerators, (event, { suspended }) => {
   setRecording(event.sender.id, suspended === true);
 });

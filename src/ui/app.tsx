@@ -45,6 +45,7 @@ import {
   saveDialogOpen,
   settingsOpen,
   tabPopoverOpen,
+  usageOpen,
 } from "../chrome/events";
 import { OpenBoard } from "../open-board/open-board";
 import { PresetEditor } from "../presets/preset-editor";
@@ -73,6 +74,7 @@ import { DeckToolbar } from "./toolbar/deck-toolbar";
 import { RepositoryRail } from "./repository-rail";
 import { StatusBar } from "./status-bar";
 import { SettingsScreen } from "./settings/settings-screen";
+import { UsageScreen } from "./usage/usage-screen";
 import { runAttentionFocus } from "./attention-focus-coordinator";
 import { getDesktopEnvironment } from "../lib/platform";
 import {
@@ -184,6 +186,10 @@ export function closeSettingsPanel(focusActive: () => void): void {
  * opens from the board like from anywhere else, and closing returns to the
  * board with its selection intact. Blocking it there left the gear button
  * silently inert, which reads as a broken app rather than a deliberate rule.
+ *
+ * Opening also closes the token usage screen, and `toggleUsagePanel` below
+ * closes Settings symmetrically — the two are full-window surfaces at the same
+ * layer, so exactly one can be up (spec §Surface, major M4).
  */
 export function toggleSettingsPanel(focusActive: () => void): void {
   if (settingsOpen.value) {
@@ -193,7 +199,58 @@ export function toggleSettingsPanel(focusActive: () => void): void {
   if (editorRequest.value !== null || saveDialogOpen.value) {
     return;
   }
+  // Mutual exclusion with the token usage screen (spec §Surface, major M4) —
+  // the mirror of the line in `toggleUsagePanel` below. A bare set-state, not
+  // `closeUsagePanel`: focus is about to land in the surface that is opening.
+  usageOpen.value = false;
   settingsOpen.value = true;
+}
+
+/**
+ * Pure Usage-close: sets `usageOpen` false and hands focus back. Same shape,
+ * same reason, as `closeSettingsPanel` above — extracted to module scope so it
+ * is unit-testable without an `<App>`-level render harness, which this repo
+ * does not have. `App()`'s `closeUsage` supplies the real
+ * `restoreFocusAfterSettings` as `focusActive`.
+ */
+export function closeUsagePanel(focusActive: () => void): void {
+  usageOpen.value = false;
+  focusActive();
+}
+
+/**
+ * Token-usage toggle — shared by the chrome chart button, ⌘⇧U / Ctrl+Shift+U,
+ * and the menu's "Token Usage…" item (the last two through `TabManagerDeps`'
+ * `onToggleUsage` seam, so all three are the literal same closure).
+ *
+ * CLOSING (the `if` branch) is unconditional, for the same reason
+ * `toggleSettingsPanel` above spells out: a full-window surface that can
+ * refuse to close strands itself.
+ *
+ * OPENING (the `else` branch) is blocked by exactly the same preflight
+ * Settings uses — a PresetEditor/SavePresetDialog draft at z-index 40 sits
+ * above this surface, so opening underneath one would be invisible and
+ * unreachable while `UsageScreen`'s mount-focus effect still stole DOM focus
+ * from the live draft. The Open board is deliberately NOT in that list, same
+ * as Settings: this screen covers the board rather than hiding under it.
+ *
+ * Opening also closes Settings (spec §Surface, major M4). It is a bare
+ * set-state, NOT `closeSettingsPanel` — that helper hands focus back to the
+ * pane, and here focus belongs in the screen that is opening, which takes it
+ * on mount. Closing Usage does not put Settings back (§0.3 decision 4):
+ * restoring a surface the user displaced is a second behavior nothing
+ * specified.
+ */
+export function toggleUsagePanel(focusActive: () => void): void {
+  if (usageOpen.value) {
+    closeUsagePanel(focusActive);
+    return;
+  }
+  if (editorRequest.value !== null || saveDialogOpen.value) {
+    return;
+  }
+  settingsOpen.value = false;
+  usageOpen.value = true;
 }
 
 /**
@@ -289,6 +346,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       overlays: {
         board: boardOpen.value,
         settings: settingsOpen.value,
+        usage: usageOpen.value,
         presetEditor: editorRequest.value !== null,
         savePresetDialog: saveDialogOpen.value,
       },
@@ -299,6 +357,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       },
       dismissSettings: () => {
         settingsOpen.value = false;
+      },
+      // Same rule as `dismissSettings`: ⌘⇧A means "take me to the agent that
+      // needs me", so the surface in the way is dropped without anyone else
+      // claiming focus first.
+      dismissUsage: () => {
+        usageOpen.value = false;
       },
       focusAttention: (i) => {
         tabsRef.current?.focusNextAttention(i);
@@ -348,6 +412,26 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     toggleSettingsPanel(restoreFocusAfterSettings);
   };
 
+  /**
+   * Usage close — reuses `restoreFocusAfterSettings` verbatim rather than
+   * getting a copy: "where focus belongs once a full-window surface closes"
+   * has one answer for both screens (the Open board if it is up, otherwise
+   * the active pane), and two copies would drift.
+   */
+  const closeUsage = (): void => {
+    closeUsagePanel(restoreFocusAfterSettings);
+  };
+
+  /**
+   * Toggle Usage — shared by the chrome chart button (direct call below),
+   * ⌘⇧U / Ctrl+Shift+U, and the menu's "Token Usage…" item, the latter two
+   * through the `onToggleUsage` seam. Delegates to the module-scope
+   * `toggleUsagePanel` for the open/close and mutual-exclusion decision.
+   */
+  const toggleUsage = (): void => {
+    toggleUsagePanel(restoreFocusAfterSettings);
+  };
+
   useEffect(() => {
     const host = stagesRef.current;
     if (!host) {
@@ -356,6 +440,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     const manager = createTabManager(host, undefined, {
       onRequestAttentionFocus: (tabIndex) => requestAttentionFocus(tabIndex),
       onToggleSettings: () => toggleSettings(),
+      onToggleUsage: () => toggleUsage(),
     });
     tabsRef.current = manager;
     if (updatePreview === null) {
@@ -654,10 +739,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * One function, read in two places: the render body (for `promptsDisabled`)
    * and INSIDE the effect below. It has to be a function, not a captured
    * boolean — see the effect's own comment.
+   *
+   * `usageOpen` belongs here for the same reason `settingsOpen` does: the
+   * usage screen is full-bleed over the stage, so the pane the popover would
+   * paste into is not on screen.
    */
   const overlayCoversPane = (): boolean =>
     boardOpen.value ||
     settingsOpen.value ||
+    usageOpen.value ||
     editorRequest.value !== null ||
     saveDialogOpen.value;
 
@@ -759,6 +849,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       }
       promptPopover={promptPopover}
       onTogglePrompts={togglePrompts}
+      usageOpen={usageOpen.value}
+      onToggleUsage={toggleUsage}
       onToggleSettings={toggleSettings}
       updateAction={updateAction}
     />
@@ -865,6 +957,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           ) : null}
           <PersistErrorBar />
           <SettingsScreen open={settingsOpen.value} onClose={closePanel} />
+          <UsageScreen open={usageOpen.value} onClose={closeUsage} />
         </main>
       }
       status={<StatusBar />}

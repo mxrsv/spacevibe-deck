@@ -21,6 +21,7 @@ describe("DeckToolbar", () => {
 
   const handlers = () => ({
     onToggleBrowser: vi.fn(),
+    onToggleUsage: vi.fn(),
     onSplitRow: vi.fn(),
     onSplitColumn: vi.fn(),
     onToggleExpand: vi.fn(),
@@ -35,6 +36,7 @@ describe("DeckToolbar", () => {
       render(
         <DeckToolbar
           browserOpen={false}
+          usageOpen={false}
           settingsOpen={false}
           expandActive={false}
           promptsOpen={false}
@@ -63,15 +65,17 @@ describe("DeckToolbar", () => {
     expect(toolbarLabel("toggle-settings")).toBe("Settings");
     expect(toolbarLabel("toggle-prompts")).toBe("Prompts");
     expect(toolbarLabel("toggle-browser")).toBe("Browser");
+    expect(toolbarLabel("toggle-usage")).toBe("Token usage");
   });
 
-  it("renders the D7 set — Browser is the only tools item", () => {
+  it("renders the D7 set — Browser and Usage in tools, Explorer still absent", () => {
     mount();
     const labels = Array.from(host.querySelectorAll("button")).map((b) =>
       b.getAttribute("aria-label"),
     );
     expect(labels).toEqual([
       "Browser",
+      "Token usage",
       "Split vertically",
       "Split horizontally",
       "Focus expand",

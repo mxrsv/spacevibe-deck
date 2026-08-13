@@ -16,6 +16,7 @@
     "preview": "vite preview",
     "preview:updater": "node scripts/capture-updater-preview.mjs",
     "prototype:gallery": "vite --host 127.0.0.1 --port 5175 --strictPort --open /gallery.html",
+    "refresh:pricing": "node scripts/refresh-usage-pricing.mjs",
     "prototype:landing": "vite marketing --host 127.0.0.1 --port 5173 --strictPort --open /landing-prototype/",
     "build:landing": "vite build --config marketing/landing-prototype/vite.build.mjs",
     "video:preview": "vite marketing --host 127.0.0.1 --port 5174 --strictPort --open /video/",

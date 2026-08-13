@@ -93,6 +93,7 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   // "app", not "panes": the panel is a surface of the window like Settings and
   // the Prompt Board, not something that acts on the focused pane.
   "toggle-browser": "app",
+  "toggle-usage": "app",
   "focus-next-attention": "app",
 };
 

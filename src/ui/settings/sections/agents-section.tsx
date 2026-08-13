@@ -12,6 +12,7 @@ import {
   type CustomAgent,
 } from "../../../lib/agent-catalog";
 import { settings, updateSettings } from "../../../settings/settings-store";
+import { settingsOpen, usageOpen } from "../../../chrome/events";
 import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
 import { ConfigGroup, ConfigRow } from "../../controls/config-row";
 import { CommitInput } from "../../controls/commit-input";
@@ -147,6 +148,23 @@ export function AgentsSection() {
     draftLabel.value = "";
     draftCommand.value = "";
     draftError.value = null;
+  };
+
+  /**
+   * Settings → Token Usage, in one click. Writes the two signals directly
+   * instead of calling `closeSettingsPanel` (app.tsx): that helper hands focus
+   * back to the active pane, and here focus must land inside the screen that
+   * is opening — `UsageScreen` takes it on mount, exactly as `SettingsScreen`
+   * does. Same mutual-exclusion rule `toggleUsagePanel` enforces (spec
+   * §Surface, major M4).
+   *
+   * No draft preflight is needed here, unlike `toggleUsagePanel`: a
+   * PresetEditor/SavePresetDialog scrim sits at z-40 over Settings' z-35, so
+   * this button is physically unclickable while a draft is up.
+   */
+  const openUsage = (): void => {
+    settingsOpen.value = false;
+    usageOpen.value = true;
   };
 
   return (
@@ -309,6 +327,15 @@ export function AgentsSection() {
           }}
         >
           {draftOpen.value ? "add" : <DeckIcon icon={Plus} size={ROW_ICON} />}
+        </button>
+      </ConfigRow>
+
+      <ConfigRow
+        label="Token usage"
+        desc="tokens and estimated cost for Claude Code and Codex"
+      >
+        <button type="button" class="cfg-btn" onClick={openUsage}>
+          open …
         </button>
       </ConfigRow>
     </>

@@ -2065,8 +2065,13 @@ button.attn-mark:hover {
 /* Reduced motion: kill every chrome transition by scope, not by an allowlist —
    an allowlist silently misses each new class (DL-1.5). */
 @media (prefers-reduced-motion: reduce) {
+  /* By SCOPE, never by an allowlist of class names (DL-1.5, §9.3): a new
+     full-window screen adds its own scope here, not the classes inside it —
+     an allowlist silently misses the next class someone adds. */
   .settings-screen,
   .settings-screen *,
+  .usage-screen,
+  .usage-screen *,
   .tabbar *,
   .wsbar *,
   .prompt-popover *,
@@ -3604,4 +3609,558 @@ button.attn-mark:hover {
 .filebar__btn--primary {
   border-color: var(--hair-strong);
   color: var(--text-primary);
+}
+
+/* ── Usage screen: full-window shell (usage-screen.tsx, DL-11.1) ───────── */
+
+/* These are their own rules rather than extra selectors bolted onto the
+   `.settings-screen` block above. The two screens share a shape, not an
+   owner: Settings must stay free to re-tune its 620px measure or its rail
+   without silently re-laying-out a screen it knows nothing about, and this
+   one needs a section area with horizontal padding and no measure clamp,
+   because a nine-column table has to be allowed to be wide (DL-15.3). */
+
+.usage-screen {
+  position: absolute;
+  /* Full-bleed over the stage: the surface meets the sidebar's hairline and
+     the toolbar's, so it reads as one block with the chrome. */
+  inset: 0;
+  background: var(--chrome-2);
+  display: flex;
+  flex-direction: column;
+  /* The same layer as the Settings screen. Safe because the two are mutually
+     exclusive — opening one closes the other — so they never stack. Above
+     the Open board (30), below a modal draft (40). */
+  z-index: 35;
+  /* A full-window surface fades and settles; it does not slide in from an
+     edge it no longer has (DL-1.2 — transform/opacity only, under 300ms). */
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  /* visibility (not just opacity) takes the closed screen's controls out of
+     the tab order, matching aria-hidden. Delayed so the fade-out still plays. */
+  visibility: hidden;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+
+.usage-screen.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  visibility: visible;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    visibility 0s;
+}
+
+.usage-screen__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--hair);
+}
+
+.usage-screen__path {
+  margin: 0;
+  font-family: var(--ui-font);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.usage-screen__path b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* The scope of the numbers, stated beside the title: one OS user's history
+   that still exists on one machine. Faint, because it is a qualifier on the
+   heading rather than a second heading (DL-3.4). */
+.usage-screen__scope {
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.usage-screen__esc {
+  margin-left: auto;
+  border: 1px solid var(--hair);
+  background: transparent;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition:
+    color 0.13s ease,
+    border-color 0.13s ease;
+}
+
+.usage-screen__esc:hover {
+  color: var(--text-primary);
+  border-color: var(--hair-strong);
+}
+
+/* Two columns: the rail is fixed, the view area owns all scrolling
+   (DL-11.1). min-height:0 on both so the grid can actually shrink, and
+   minmax(0, 1fr) so an over-wide table scrolls itself instead of stretching
+   the column (DL-15.3). */
+.usage-screen__grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.usage-screen__section {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  /* Horizontal padding here, unlike the settings section: a config row brings
+     its own 14px, a table does not. No max-width clamp either — the 620px
+     measure that keeps a key beside its value would strand the breakdown
+     table's later columns behind a scrollbar for no reason. */
+  padding: 6px 16px 16px;
+}
+
+/* Section scrollbar: thin, transparent, follows the theme — same treatment
+   as the settings section. */
+.usage-screen__section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.usage-screen__section::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.usage-screen__section::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--fg) 25%, transparent);
+  border-radius: 3px;
+}
+
+/* ── Usage rail: view tabs, no foot (usage-nav.tsx, DL-11.2/11.5) ─────── */
+
+.usage-nav {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--hair);
+}
+
+.usage-nav__list {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  overflow-y: auto;
+}
+
+.usage-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border: none;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--text-faint);
+  /* Navigation, not data — prose font (DL-4.1 / DL-11.4). */
+  font-family: var(--ui-font);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.13s ease,
+    border-left-color 0.13s ease,
+    color 0.13s ease;
+}
+
+/* Hover and active share the 2px accent bar + 4% --fg wash `.cfg-row:hover`
+   uses (DL-11.2) — no shadow, no fill (DL-1.3). */
+.usage-nav__item:hover,
+.usage-nav__item.is-active {
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  border-left-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.usage-nav__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ── Usage status strip (usage-status.tsx) ─────────────────────────────── */
+
+/* Always in the DOM so the live region is stable, and collapsed by :empty
+   rather than by a conditional render that would recreate the region on
+   every change. */
+.usage-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 7px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--hair);
+}
+
+.usage-status:empty {
+  display: none;
+}
+
+.usage-status__note {
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Absence and progress: informational, the faintest step (DL-3.4). */
+.usage-status__note--faint {
+  color: var(--text-faint);
+}
+
+/* Stale and scanning: one step brighter, because they qualify what is on
+   screen right now. Deliberately NOT --yellow — §3 assigns no role to yellow,
+   and inventing one for "slightly out of date" would spend a color role on
+   the mildest state this screen has. */
+.usage-status__note--muted {
+  color: var(--text-muted);
+}
+
+/* A source we could not read is an error, and --red means error and nothing
+   else (DL-3.2). This is the line that must never be mistaken for "no data". */
+.usage-status__note--error {
+  color: var(--red);
+}
+
+/* ── Read-only metric table (metric-table.tsx, DL §15) ─────────────────── */
+
+.metric-table {
+  margin: 14px 0 22px;
+  min-width: 0;
+}
+
+/* The heading names the table for assistive tech via aria-labelledby, and it
+   sits OUTSIDE the scroller so it stays put while wide columns move under it
+   (DL-15.7). Panel-title size, normal weight — it labels data, it does not
+   compete with it (DL-4.4). */
+.metric-table__title {
+  margin: 0 0 6px;
+  font-family: var(--ui-font);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+/* DL-15.3: horizontal overflow scrolls HERE, inside the table's own
+   container — never on the page body, never by shrinking the type. */
+.metric-table__scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+}
+
+.metric-table__scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.metric-table__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.metric-table__scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--fg) 25%, transparent);
+  border-radius: 3px;
+}
+
+/* DL-15.1: on the screen's own --chrome-2 surface, structured by hairlines.
+   No zebra striping, no fill, no shadow — depth is a background step here. */
+.metric-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ui-font);
+  font-size: 11.5px;
+  color: var(--text-primary);
+}
+
+.metric-table__cell {
+  padding: 6px 12px;
+  text-align: left;
+  /* A wrapped number is unreadable in a column; the container scrolls
+     instead (DL-15.3). */
+  white-space: nowrap;
+  border-bottom: 1px solid var(--hair);
+}
+
+/* DL-15.5: a column header is the name of the thing below it, treated like a
+   cfg-group label — lowercase --ui-font, faint, normal weight, no caret. */
+.metric-table__table thead .metric-table__cell {
+  font-weight: 400;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+}
+
+/* The row-identifying cell is a <th scope="row"> (DL-15.7) but reads as data,
+   not as a heading. */
+.metric-table__table tbody th.metric-table__cell {
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.metric-table__table tbody tr:last-child .metric-table__cell {
+  border-bottom: none;
+}
+
+/* DL-15.4: numerals right-aligned and tabular. There is no --mono token in
+   this file, by decision (see the :root comment) — the monospace face belongs
+   to the terminal (DL-4.1) — so digits are held in column by
+   font-variant-numeric, which is exactly what DL-4.2 exists for. */
+.metric-table__cell--num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* DL-15.8: an empty table still says what is absent, so "nothing yet" cannot
+   be confused with "something broke". */
+.metric-table__empty {
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+.metric-table__note {
+  margin: 6px 0 0;
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+/* There is deliberately NO `.metric-table__table tbody tr:hover` rule. A row
+   that lights up under the pointer promises a click, and there is nothing
+   behind it (DL-15.2). This comment exists so the next person does not
+   "improve" the table by adding one. */
+
+/* ── Usage overview: the display figure (overview-section.tsx, DL §16) ─── */
+
+/* A reading column, not a table. The section deliberately drops its measure
+   clamp so a nine-column table can be wide (DL-15.3); the hero wants the
+   opposite, because a share bar stretched across 1400px stops reading as a
+   proportion and starts reading as a rule across the page. */
+.usage-hero {
+  max-width: 520px;
+  padding-top: 10px;
+}
+
+/* DL-16.2: the one sanctioned uppercase in this app. The capitals are literal
+   characters in the markup — there is deliberately NO `text-transform` here,
+   so DL-4.3's ban on the property stands and the exception is greppable in
+   the source. The 0.08em is the second half of the same exception: it exceeds
+   DL-4.3's 0.06em cap, and without it small capitals read as a cramped word
+   instead of a label. */
+.usage-hero__eyebrow {
+  margin: 0;
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+/* DL-16.1: the display figure. Exactly one per screen — the number this
+   screen exists to state. Tabular so it does not jitter as a poll lands
+   (DL-4.2), and line-height pulled in because at 40px the default leading
+   opens a gap the eyebrow has to jump. */
+.usage-hero__figure {
+  margin: 2px 0 0;
+  font-family: var(--ui-font);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* DL-15.6: an absent value is an em dash in --text-faint. At display size the
+   colour is doing real work — a 40px dash in --text-primary reads as a rule
+   drawn across the page, not as "we do not know this number". */
+.usage-hero__figure--absent {
+  color: var(--text-faint);
+}
+
+/* The asterisk's other half, and the standing estimate disclaimer. Both are
+   the same faint step: they qualify the figure, they do not compete with it
+   (DL-3.4). */
+.usage-hero__footnote,
+.usage-hero__estimate {
+  margin: 3px 0 0;
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Separated from the selector above it, which is a control rather than more
+   prose about the figure. */
+.usage-hero__estimate {
+  margin-top: 10px;
+}
+
+/* DL-16.7: the period the figure covers — the one control a metric screen is
+   allowed. Segmented rather than a §6 `cycle` pill so every period is visible
+   at once; §6 asks to be extended before a new kind is invented, and DL-16.7
+   is where that argument is recorded.
+   `flex-wrap` is a safety net, not the layout: all four options fit on one row
+   down to the narrowest shell the app can be dragged to (measured at a 640px
+   window, where the section is 188px wide), and wrapping is what happens if
+   someone adds a fifth rather than the row silently overflowing. The padding
+   below is tuned to that measurement — it was 9px and wrapped to two rows. */
+.usage-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  margin: 12px 0 0;
+}
+
+.usage-range__option {
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  /* Lowercase prose, like every other label in chrome (DL-4.1, DL-4.3). */
+  font-family: var(--ui-font);
+  font-size: 11.5px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition:
+    background 0.13s ease,
+    color 0.13s ease;
+}
+
+.usage-range__option:hover {
+  color: var(--text-primary);
+}
+
+/* The signifier this app already means by "active": the 4% --fg wash of
+   DL-5.1 and DL-11.2. Not a filled pill, not a coloured chip, not an
+   underline invented here — a reader who learned "active" in Settings must
+   not have to learn it twice. No shadow (DL-1.3). */
+.usage-range__option.is-active {
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  color: var(--text-primary);
+}
+
+.usage-range__option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* No data at all is a sentence, not a $0.00 hero — the same reasoning as
+   DL-15.8: "nothing yet" must stay distinguishable from "something broke". */
+.usage-hero__empty {
+  margin: 14px 0 0;
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+/* The accounting under the figure. A plain list: the bullets carry no meaning
+   and the row already names itself. */
+.usage-hero__agents {
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 0;
+}
+
+.usage-agent + .usage-agent {
+  margin-top: 18px;
+}
+
+.usage-agent__line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.usage-agent__logo {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: block;
+}
+
+.usage-agent__label {
+  font-family: var(--ui-font);
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+
+/* Pushed to the far right so the amounts form a column the eye can compare
+   down, the same job right-alignment does in a table (DL-15.4). */
+.usage-agent__amount {
+  margin-left: auto;
+  font-family: var(--ui-font);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* DL-16.3: a printed proportion. No gradient, no shadow, no animation — and
+   deliberately no `transition` on the fill, so a poll landing does not make
+   the bars crawl to their new lengths (DL-1.2, DL-1.3). */
+.usage-agent__bar {
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  margin: 7px 0 5px;
+  overflow: hidden;
+}
+
+/* Width and colour are set inline: the width IS the datum, and the colour is
+   the agent's own theme colour resolved in TS (DL-16.4). Neither can be a
+   static rule without hardcoding a value the theme owns. */
+.usage-agent__fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.usage-agent__sub {
+  margin: 0;
+  font-family: var(--ui-font);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* There is deliberately NO `.usage-agent:hover` rule and no pointer cursor.
+   The block is a printed fact, and an affordance that reacts and then does
+   nothing is a broken promise (DL-16.6, the DL-15.2 reasoning). */
+
+/* ── Usage screen: reduced motion, applied where it can win ────────────── */
+
+/* The scope list near the top of this file already names `.usage-screen` and
+   `.usage-screen *`, which is where DL-1.5 and §9.3 say the rule is declared.
+   Listing it there is necessary but NOT sufficient, and this block is the
+   difference between the rule reading well and the rule working: that list
+   sits ~1600 lines above these surfaces, so at equal specificity every later
+   `.usage-*` declaration wins, and `.usage-screen.is-open` (0,2,0) outranks it
+   outright. Repeating the scope AFTER the last usage rule is what makes it
+   take effect — measured under `prefers-reduced-motion` emulation on
+   2026-08-10: the shell was 0.22s and the rail 0.13s before this block, both
+   0s after.
+   `.settings-screen` has the identical defect and is deliberately NOT fixed
+   here — it is another surface's rule and outside this change (W3). It is
+   reported instead. */
+@media (prefers-reduced-motion: reduce) {
+  .usage-screen,
+  .usage-screen.is-open,
+  .usage-screen * {
+    transition: none;
+  }
 }

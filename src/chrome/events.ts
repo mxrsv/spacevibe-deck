@@ -23,6 +23,21 @@ export const editorRequest = signal<EditorRequest | null>(null);
 export const settingsOpen = signal(false);
 
 /**
+ * Token usage screen open state.
+ *
+ * The exact inverse of `promptsOpen` below, which says of itself:
+ * "Deliberately NOT part of `openOverlayRanks()` (tab-manager.ts): this is a
+ * pane-level popover anchored to a chrome button, not a surface that covers
+ * the terminal grid." This one IS such a surface. `UsageScreen` is full-window
+ * like `SettingsScreen`, so it MUST be pushed by `openOverlayRanks()`
+ * (tab-manager.ts) or every pane-scoped shortcut stays live behind it — ⌘W
+ * closing a pane nobody can see is the exact failure the tier model exists to
+ * stop. It is also mutually exclusive with `settingsOpen`: opening either one
+ * closes the other (spec §Surface, major M4).
+ */
+export const usageOpen = signal(false);
+
+/**
  * Prompt Board popover open state.
  *
  * Deliberately NOT part of `openOverlayRanks()` (tab-manager.ts): this is a

@@ -88,6 +88,12 @@ pub fn build_view_menu<R: Runtime>(
         "Browser",
         Some("CmdOrCtrl+Shift+I"),
     )?;
+    let toggle_usage = action_item(
+        handle,
+        "toggle-usage",
+        "Token Usage…",
+        Some("CmdOrCtrl+Shift+U"),
+    )?;
     tauri::menu::SubmenuBuilder::new(handle, "View")
         .item(&split_row)
         .item(&split_column)
@@ -104,6 +110,8 @@ pub fn build_view_menu<R: Runtime>(
         .item(&toggle_prompts)
         .separator()
         .item(&toggle_browser)
+        .separator()
+        .item(&toggle_usage)
         .build()
 }
 

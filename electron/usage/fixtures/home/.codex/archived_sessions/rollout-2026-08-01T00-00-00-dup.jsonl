@@ -1,0 +1,2 @@
+{"timestamp":"2026-08-10T04:45:59.358Z","type":"session_meta","payload":{"id":"codex-sess-1","session_id":"codex-sess-1","cwd":"[redacted]"}}
+{"timestamp":"2026-08-10T04:46:10.000Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":600,"cache_write_input_tokens":50,"output_tokens":40}}}}

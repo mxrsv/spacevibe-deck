@@ -179,6 +179,21 @@ describe("Electron IPC contract", () => {
     expect(violations).toEqual([]);
   });
 
+  it("usage_snapshot is a zero-payload channel on both sides", () => {
+    // The explicit fixture the usage port's plan requires (§6.1.6): the scan
+    // takes no renderer input, so the call site must send nothing and the
+    // handler must destructure nothing. A payload appearing on either side
+    // is a contract change, not a refactor.
+    const sites = callSites.filter((site) => site.channel === "usage_snapshot");
+    expect(sites.length).toBeGreaterThan(0);
+    for (const site of sites) {
+      expect(site.keys).toEqual([]);
+    }
+    expect(
+      handlers.filter((handler) => handler.channel === "usage_snapshot"),
+    ).toEqual([]);
+  });
+
   it("has a handler for every channel the renderer invokes", () => {
     const handled = new Set(handlers.map((handler) => handler.channel));
     // Handlers that take the payload whole are skipped by `collectHandlers`,

@@ -15,6 +15,7 @@ import {
   saveDialogOpen,
   settingsOpen,
   shortcutCaptureActive,
+  usageOpen,
 } from "../chrome/events";
 import {
   createTabManager,
@@ -2711,6 +2712,10 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
         "focus-next-attention",
         "open-release-notes",
         "toggle-settings",
+        // The token usage screen joins the set for the same reason
+        // `toggle-settings` is in it: its own overlay rank would otherwise
+        // block the only action that can close it again.
+        "toggle-usage",
         "open-tab-options",
       ]),
     );
@@ -4148,5 +4153,99 @@ describe("file surfaces in the tab strip", () => {
     tm.selectTab(0);
 
     expect(surfaces.calls).toContain("deactivate");
+    tm.dispose();
+  });
+});
+
+describe("toggle-usage", () => {
+  beforeEach(() => {
+    // Same trap the `toggle-prompts` describe above documents: the file's
+    // earlier describes leave `settingsOpen` true and neither they nor the
+    // file-level `beforeEach` reset it. `toggle-usage` is `scope: "always"`
+    // so an open overlay cannot block IT — but the gating test below drives a
+    // `"pane"`-tiered action, which every stale overlay would block for the
+    // wrong reason and turn the assertion into a false pass.
+    usageOpen.value = false;
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    editorRequest.value = null;
+    saveDialogOpen.value = false;
+  });
+
+  afterEach(() => {
+    usageOpen.value = false;
+    settingsOpen.value = false;
+  });
+
+  it("routes through the onToggleUsage seam instead of writing the signal", async () => {
+    const onToggleUsage = vi.fn();
+    const { tm } = setup({ deps: { onToggleUsage } });
+    await tm.init();
+    await flush();
+
+    tm.runAction("toggle-usage");
+
+    expect(onToggleUsage).toHaveBeenCalledTimes(1);
+    // The seam owns the write — TabManager must never touch `usageOpen`, or
+    // the Settings/Usage mutual exclusion would live in two places.
+    expect(usageOpen.value).toBe(false);
+    tm.dispose();
+  });
+
+  it("is a safe no-op when no seam is supplied", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    expect(() => tm.runAction("toggle-usage")).not.toThrow();
+    expect(usageOpen.value).toBe(false);
+    tm.dispose();
+  });
+
+  it("still runs while Settings is open — scope 'always', or the screen could strand itself", async () => {
+    const onToggleUsage = vi.fn();
+    const { tm } = setup({ deps: { onToggleUsage } });
+    await tm.init();
+    await flush();
+    settingsOpen.value = true;
+
+    tm.runAction("toggle-usage");
+
+    expect(onToggleUsage).toHaveBeenCalledTimes(1);
+    tm.dispose();
+  });
+
+  it("blocks a pane-tiered action while the usage screen covers the grid, and unblocks once it closes", async () => {
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    await flush();
+    expect(statusInfo.value.paneCount).toBe(1);
+
+    usageOpen.value = true;
+    tm.runAction("split-row");
+    await flush();
+    expect(statusInfo.value.paneCount).toBe(1); // no split happened behind Usage
+
+    usageOpen.value = false;
+    tm.runAction("split-row");
+    await flush();
+    expect(statusInfo.value.paneCount).toBe(2); // scoped to the overlay, not broken
+
+    tm.dispose();
+  });
+
+  it("leaves board-tiered actions alone — Usage ranks below the board, exactly like Settings", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+    boardOpen.value = false;
+    usageOpen.value = true;
+
+    tm.runAction("new-tab");
+    await flush();
+
+    expect(boardOpen.value).toBe(true);
+    tm.dispose();
   });
 });

@@ -389,6 +389,24 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "View", group: "browser" },
   },
   {
+    id: "toggle-usage",
+    label: "Token Usage…",
+    // `"always"`, the same reasoning `toggle-settings` spells out above:
+    // `usageOpen` makes `openOverlayRanks()` report rank 20, which blocks
+    // every `"pane"`-tiered action — this one included if it were tiered.
+    // Gating it would strand the screen open with no shortcut and no menu
+    // item able to close it again.
+    //
+    // NOT `"settings"`: that rank still has no action tiered at it (see
+    // TIER_RANK's own doc comment), and tiering this one there would make it
+    // block itself the same way.
+    scope: "always",
+    // Its own group, so the generator emits a separator above it — the two
+    // View items below the attention group are screens, not pane operations,
+    // and the separator is what says so.
+    menu: { submenu: "View", group: "usage" },
+  },
+  {
     id: "move-pane-to-new-window",
     label: "Move Pane to New Window",
     // Tier "pane": it acts on the FOCUSED pane, which every overlay hides —
@@ -466,8 +484,7 @@ export const ACTION_REGISTRY = [
  * action with a fixed label, distinct in kind from the parameterized family.
  */
 export type ActionId =
-  | (typeof ACTION_REGISTRY)[number]["id"]
-  | `select-tab-${number}`;
+  (typeof ACTION_REGISTRY)[number]["id"] | `select-tab-${number}`;
 
 const ACTION_IDS: ReadonlySet<string> = new Set(
   ACTION_REGISTRY.map((a) => a.id),
@@ -672,6 +689,11 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // CharKeyBinding is mandatory, not a style choice: this action has a macOS
   // menu item, and a Cocoa accelerator is declared by character (RULE above).
   { key: "i", meta: true, shift: true, action: "toggle-browser" },
+  // Token usage screen. ⌘⇧U is free on both keymaps — `u` is bound nowhere at
+  // any modifier combination, verified exhaustively. CharKeyBinding is
+  // mandatory, not a style choice: this action has a macOS menu item, and a
+  // Cocoa accelerator is declared by character (see the RULE above).
+  { key: "u", meta: true, shift: true, action: "toggle-usage" },
   // Move the focused pane into its own window. Cmd+Shift+M is free on both
   // keymaps (no `m`/`KeyM` binding existed on either) and `m` is the "move"
   // mnemonic; macOS's Cmd+M Minimize is a Cocoa builtin and does not claim
@@ -817,6 +839,7 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   },
   { key: ",", ctrl: true, action: "toggle-settings" },
   { key: "p", ctrl: true, shift: true, action: "toggle-prompts" },
+  { key: "u", ctrl: true, shift: true, action: "toggle-usage" },
   { key: "m", ctrl: true, shift: true, action: "move-pane-to-new-window" },
   { key: "pageup", shift: true, action: "scroll-page-up" },
   { key: "pagedown", shift: true, action: "scroll-page-down" },

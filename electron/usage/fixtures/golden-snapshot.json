@@ -1,0 +1,109 @@
+{
+  "scannedAtMs": 1786323600000,
+  "buckets": [
+    {
+      "bucketStartMs": 1785405600000,
+      "agent": "codex",
+      "model": "gpt-5-codex",
+      "counters": {
+        "inputUncached": 300,
+        "cacheRead": 100,
+        "cacheCreate5m": 0,
+        "cacheCreate1h": 0,
+        "cacheWrite": 10,
+        "output": 30
+      }
+    },
+    {
+      "bucketStartMs": 1786337100000,
+      "agent": "codex",
+      "model": "gpt-5-codex",
+      "counters": {
+        "inputUncached": 1100,
+        "cacheRead": 1400,
+        "cacheCreate5m": 0,
+        "cacheCreate1h": 0,
+        "cacheWrite": 80,
+        "output": 150
+      }
+    },
+    {
+      "bucketStartMs": 1786338000000,
+      "agent": "claude",
+      "model": "claude-opus-5",
+      "counters": {
+        "inputUncached": 6,
+        "cacheRead": 23290,
+        "cacheCreate5m": 0,
+        "cacheCreate1h": 44316,
+        "cacheWrite": 0,
+        "output": 141
+      }
+    },
+    {
+      "bucketStartMs": 1786338000000,
+      "agent": "codex",
+      "model": "gpt-5",
+      "counters": {
+        "inputUncached": 300,
+        "cacheRead": 200,
+        "cacheCreate5m": 0,
+        "cacheCreate1h": 0,
+        "cacheWrite": 10,
+        "output": 50
+      }
+    },
+    {
+      "bucketStartMs": 1786341600000,
+      "agent": "claude",
+      "model": "claude-sonnet-5",
+      "counters": {
+        "inputUncached": 7,
+        "cacheRead": 50,
+        "cacheCreate5m": 0,
+        "cacheCreate1h": 0,
+        "cacheWrite": 0,
+        "output": 31
+      }
+    },
+    {
+      "bucketStartMs": 1786345200000,
+      "agent": "claude",
+      "model": "claude-opus-5",
+      "counters": {
+        "inputUncached": 2,
+        "cacheRead": 23190,
+        "cacheCreate5m": 300,
+        "cacheCreate1h": 44016,
+        "cacheWrite": 0,
+        "output": 116
+      }
+    },
+    {
+      "bucketStartMs": 1786346100000,
+      "agent": "claude",
+      "model": "claude-opus-5",
+      "counters": {
+        "inputUncached": 11,
+        "cacheRead": 0,
+        "cacheCreate5m": 500,
+        "cacheCreate1h": 0,
+        "cacheWrite": 0,
+        "output": 13
+      }
+    }
+  ],
+  "sources": [
+    {
+      "agent": "claude",
+      "state": "ok",
+      "filesScanned": 3
+    },
+    {
+      "agent": "codex",
+      "state": "ok",
+      "filesScanned": 2
+    }
+  ],
+  "skippedLines": 4
+}

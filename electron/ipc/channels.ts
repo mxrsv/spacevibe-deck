@@ -67,6 +67,10 @@ export const CHANNELS = {
   browserSetBounds: "browser_set_bounds",
   browserSetVisible: "browser_set_visible",
   browserSetInspect: "browser_set_inspect",
+  // Token usage. The name matches the Tauri command it was ported from, so
+  // the renderer facade is host-agnostic; the payload is empty by contract
+  // (the scan takes no renderer input at all).
+  usageSnapshot: "usage_snapshot",
 } as const;
 
 /** Events: main → renderer, fire and forget. */

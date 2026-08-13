@@ -336,6 +336,21 @@ describe("matchBinding", () => {
     );
   });
 
+  it("matches Cmd+Shift+U as toggle-usage", () => {
+    expect(matchBinding(keyEvent("u", { metaKey: true, shiftKey: true }))).toBe(
+      "toggle-usage",
+    );
+  });
+
+  // `u` is bound nowhere else on either keymap at any modifier combination —
+  // the chord is free for the Token Usage screen and must not leak onto the
+  // bare key or the plain Cmd chord, which still reach the PTY.
+  it("does not match U without both modifiers", () => {
+    expect(matchBinding(keyEvent("u"))).toBeNull();
+    expect(matchBinding(keyEvent("u", { metaKey: true }))).toBeNull();
+    expect(matchBinding(keyEvent("u", { shiftKey: true }))).toBeNull();
+  });
+
   it("does not match comma without the meta modifier", () => {
     expect(matchBinding(keyEvent(","))).toBeNull();
     expect(matchBinding(keyEvent(",", { shiftKey: true }))).toBeNull();
@@ -404,13 +419,17 @@ describe("WINDOWS_KEYMAP", () => {
     ["s", { ctrlKey: true, altKey: true, shiftKey: true }, "save-preset"],
     ["a", { ctrlKey: true, shiftKey: true }, "focus-next-attention"],
     [",", { ctrlKey: true }, "toggle-settings"],
+    ["u", { ctrlKey: true, shiftKey: true }, "toggle-usage"],
     ["pageup", { shiftKey: true }, "scroll-page-up"],
     ["pagedown", { shiftKey: true }, "scroll-page-down"],
     ["home", { shiftKey: true }, "scroll-to-top"],
     ["end", { shiftKey: true }, "scroll-to-bottom"],
-  ] as const)("maps %s with the fixed Windows modifiers", (key, mods, action) => {
-    expect(matchBinding(keyEvent(key, mods), WINDOWS_KEYMAP)).toBe(action);
-  });
+  ] as const)(
+    "maps %s with the fixed Windows modifiers",
+    (key, mods, action) => {
+      expect(matchBinding(keyEvent(key, mods), WINDOWS_KEYMAP)).toBe(action);
+    },
+  );
 
   it.each([
     ["Insert", "Unidentified", { shiftKey: true }, "paste"],
@@ -420,7 +439,9 @@ describe("WINDOWS_KEYMAP", () => {
     ["Digit8", "8", { ctrlKey: true }, "select-tab-8"],
     ["Digit9", "9", { ctrlKey: true }, "select-last-tab"],
   ] as const)("uses physical position for %s", (code, key, mods, action) => {
-    expect(matchBinding(codeEvent(code, key, mods), WINDOWS_KEYMAP)).toBe(action);
+    expect(matchBinding(codeEvent(code, key, mods), WINDOWS_KEYMAP)).toBe(
+      action,
+    );
   });
 
   it("leaves Alt+V to the active agent", () => {
@@ -466,7 +487,10 @@ describe("WINDOWS_KEYMAP", () => {
     ["arrowdown", "focus-down"],
   ] as const)("maps Ctrl+Alt+%s to %s", (key, action) => {
     expect(
-      matchBinding(keyEvent(key, { ctrlKey: true, altKey: true }), WINDOWS_KEYMAP),
+      matchBinding(
+        keyEvent(key, { ctrlKey: true, altKey: true }),
+        WINDOWS_KEYMAP,
+      ),
     ).toBe(action);
   });
 

@@ -111,12 +111,14 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 - **DL-4.2** Values still need `font-variant-numeric: tabular-nums`. Under mono
   this was nearly inert; under a proportional face it is what stops `13px` and
   `10k lines` from jittering as they change.
-- **DL-4.3** **No uppercase anywhere.** No `text-transform`. Letter-spacing
-  stays ≤ 0.06em, and tracking tuned against a monospace advance width has to
-  be re-measured when a rule moves to `--ui-font`.
+- **DL-4.3** **No uppercase anywhere**, with exactly one sanctioned exception —
+  the §16 eyebrow label, which also carries the only tracking above the cap
+  below. No `text-transform`. Letter-spacing stays ≤ 0.06em, and tracking tuned
+  against a monospace advance width has to be re-measured when a rule moves to
+  `--ui-font`.
 - **DL-4.4** Sizes (px): group label 10.5 · key 12.5 · description 10.5 ·
-  value 11.5 · panel title 12. Keys sentence-case, descriptions and values
-  lowercase.
+  value 11.5 · panel title 12 · display figure 40 (§16, at most one per
+  screen). Keys sentence-case, descriptions and values lowercase.
 
 ## 5. The one control: config row
 
@@ -204,8 +206,10 @@ Before shipping any chrome UI change:
    position" and had to be rewritten as a `cycle`.)
 2. Every color maps to a role in §3; no hardcoded hex (DL-2.1).
 3. Any animation fits the budget in §7 and the constraints in §1. Reduced-motion
-   is handled **by scope** (`.settings-screen *`), never by an allowlist of
-   class names — an allowlist silently misses the next class.
+   is handled **by scope** (`.settings-screen *`, `.usage-screen *`), never by
+   an allowlist of class names — an allowlist silently misses the next class.
+   A new full-window screen adds its own scope to that list; it does not add
+   the individual classes inside it.
 4. No uppercase (§4). No monospace anywhere in chrome — if a rule reaches for
    it, the answer is `--ui-font` (DL-4.1).
 5. Text fields go through `CommitInput`, multi-line ones through
@@ -237,31 +241,37 @@ column (DL-18.3), its selection took the §21 wash mixed from the neutral tone, 
 its chrome radii took DL-20.1's control role — still hand-copied, still importing
 nothing from `src/`, so the next chrome change must update them by hand again.
 
-## 11. Settings shell
+## 11. Full-window screens
 
-The settings surface is a full-window screen, not a drawer: a fixed category
-rail beside a section area. §5's config row is still the only control inside a
-section — these rules govern the frame around it.
+A full-window screen covers the stage instead of sitting beside it: a fixed
+nav rail beside a section area. Settings was the first and is still the
+reference implementation; the token usage screen (2026-08-10) is the second,
+which is why these rules now say "a full-window screen" where they used to say
+"the settings shell". §5's config row is still the only control inside a
+settings section — these rules govern the frame around it, whatever a given
+screen puts in its sections.
 
-- **DL-11.1** The settings shell is a two-column surface: a fixed nav rail, and
-  a section area that owns **all** scrolling. The rail never scrolls with the
-  content beside it.
-- **DL-11.2** The active category is marked by DL-21.1's selection wash — the
+- **DL-11.1** A full-window screen shell is a two-column surface: a fixed nav
+  rail, and a section area that owns **all** scrolling. The rail never scrolls
+  with the content beside it.
+- **DL-11.2** The active rail item is marked by DL-21.1's selection wash — the
   same signifier as every other "this one" in the app. No shadow, no fill
   (DL-1.3), and no accent bar: this rule mandated one until 2026-08-14, at which
   point §21 made the wash the single selection signifier. The rule's intent is
   unchanged and was always the point — "active" reads the same everywhere; only
   the mark it names has moved.
-- **DL-11.3** Category icons are Lucide icons rendered through `DeckIcon` (§14)
-  at 16px, one per category, chosen for what the category _is_ rather than for
+- **DL-11.3** Rail icons are Lucide icons rendered through `DeckIcon` (§14)
+  at 16px, one per rail item, chosen for what the item _is_ rather than for
   variety. They were hand-drawn inline SVG until 2026-08-09; the rule now
   points at §14 so icon questions are settled in one place instead of once per
-  category.
-- **DL-11.4** Category labels are lowercase `--ui-font` (DL-4.1, like all
+  item.
+- **DL-11.4** Rail labels are lowercase `--ui-font` (DL-4.1, like all
   chrome). The rail item _is_ the group label it replaced, so a section does
   not repeat its own name as a heading inside itself.
-- **DL-11.5** Destructive actions never sit among navigable categories. They
-  are pinned to the rail's foot, below a hairline, marked `--red` (DL-3.2).
+- **DL-11.5** Destructive actions never sit among navigable rail items. They
+  are pinned to the rail's foot, below a hairline, marked `--red` (DL-3.2). A
+  screen with no destructive action has no foot at all; the slot is not filled
+  with something else to keep the shape symmetrical.
 
 ## 12. Editable lists
 
@@ -351,6 +361,155 @@ answered here rather than re-argued per button.
   the Deck brand mark, agent and OS logos, keyboard and terminal notation
   (`⌘`, `⏎`, `⎋`), selection and status dots, and `WorkspaceSpinner`. A logo is
   identity and a key legend is notation; neither is an icon in a system.
+
+## 15. Read-only data tables
+
+Approved as a fork on 2026-08-10, for the token usage dashboard. §5 governs a
+row whose key carries exactly one interactive value, and §12 governs a list the
+user adds to and deletes from; a page of measured numbers is neither. A daily
+usage grid has no key to name, no value to set, and nothing to add or remove —
+every cell is a fact that was counted. These rules say how such a grid stays
+part of this design language instead of becoming a new widget genre: it is a
+**table of facts**, and the one thing it must never grow is an interaction.
+
+- **DL-15.1** A metric table sits on the screen's own `--chrome-2` surface
+  inside a 1px `--hair` container at `--radius-control` — written as "radius
+  8px, the same box §13 gives a popover" before DL-20.1 closed radii to two
+  roles; a table is content INSIDE a surface, not a floating surface, so it
+  takes the control role, minus the hairline emphasis. Rows are separated by `--hair`
+  hairlines and nothing else: no zebra striping, no fills, no shadow (DL-1.3,
+  DL-3.3). Depth in this app is a background step, and a table is not a card.
+- **DL-15.2** A metric table is **read-only and non-interactive**: no sort
+  control, no column reordering, no row click target, and — the part that gets
+  broken first — **no row hover treatment**. DL-21.2's hover wash means
+  "this row does something" (the rule named DL-5.1's accent bar before §21
+  retired it); a row that lights up under the pointer and then
+  does nothing is a broken promise, and it is the one affordance a reader will
+  try. Adding sorting or filtering is a design decision, not an implementation
+  detail: propose an edit to this document first (§9.1).
+- **DL-15.3** Horizontal overflow scrolls **inside the table's own container**,
+  never on the page body and never by shrinking the type. The container carries
+  `overflow-x: auto`; the shell around it keeps `min-height: 0` and a
+  `minmax(0, 1fr)` track so the grid can actually shrink (DL-11.1). A wide
+  table is then one element's problem instead of a horizontal scrollbar under
+  the whole app.
+- **DL-15.4** Numerals are **right-aligned** and set with
+  `font-variant-numeric: tabular-nums` (DL-4.2); text columns stay
+  left-aligned. This repo has **no `--mono` token** and will not gain one — the
+  monospace face belongs to the terminal (DL-4.1), and a mono column here would
+  read as terminal output that leaked into native UI. Tabular figures in
+  `--ui-font` are what hold a column of digits in line, and right alignment is
+  what makes magnitudes comparable down the column; between them they do
+  everything a monospace column was wanted for.
+- **DL-15.5** A column header is lowercase `--ui-font` at 10.5px in
+  `--text-faint` at normal weight (DL-4.1, DL-4.3, DL-4.4) — the same treatment
+  as a `cfg-group` label, because that is what it is: the name of the thing
+  below it, not a heading competing with the data. No uppercase, no bold, no
+  sort caret.
+- **DL-15.6** A value that is unknown, unavailable or not applicable renders as
+  a single em dash `—` in `--text-faint`. Never `0`, never `n/a`, never an
+  empty cell. Zero is a measurement and the dash is the absence of one: a table
+  that prints `0` where it means "we hold no price for this model" is stating a
+  fact it does not have.
+- **DL-15.7** The markup is a real `<table>` with `<thead>`, `<tbody>`,
+  `<th scope="col">` on every column header and `<th scope="row">` on the cell
+  that identifies the row. A grid of `<div>`s is unreadable to assistive tech,
+  and this is data whose only meaning is which row and which column a number
+  sits in. The table's accessible name comes from a visible heading above it
+  via `aria-labelledby`, and any disclaimer under it via `aria-describedby` —
+  not from `<caption>`, because a caption lives inside the DL-15.3 scroll
+  container and would slide out of view with the columns.
+- **DL-15.8** A table with no rows still renders its header row plus one
+  spanning cell saying what is absent, in `--text-faint`. A table that vanishes
+  when empty leaves the reader unable to tell "nothing has happened yet" from
+  "something is broken" — a distinction the screen around it is required to
+  make, and which it cannot make if the evidence disappears.
+
+## 16. The display figure
+
+Approved as a fork on 2026-08-10, for the token usage overview. §15 governs a
+table of facts and §5 a row whose key carries one value; neither covers a
+screen whose entire job is to state **one number** and then account for it. The
+overview is not a denser table — it is a single figure with its own breakdown
+underneath, and these rules say how that stays part of this design language
+instead of becoming a dashboard genre with its own vocabulary. It is still a
+key beside a value and a fact on a surface; only the scale of the headline and
+the shape of the proportion are new.
+
+- **DL-16.1** A screen may carry **at most one display figure**: the number the
+  screen exists to state. It is set at the DL-4.4 display size (40px), weight
+  600–700, `--text-primary`, `font-variant-numeric: tabular-nums` (DL-4.2).
+  A screen with two display figures has none — the second one demotes the
+  first to a heading and the reader no longer knows what the screen is about.
+  If a second number matters, it goes in the accounting below at ordinary
+  sizes, never at this one.
+- **DL-16.2** The display figure is introduced by an **eyebrow label**: the one
+  sanctioned uppercase in this app (`RAW TOKEN COST`), at group-label size
+  (10.5px) in `--text-muted`, with letter-spacing 0.08em. It is written as
+  literal uppercase characters, **never** with `text-transform` — so the
+  exception is greppable in the markup rather than hidden in a stylesheet, and
+  the DL-4.3 ban on the property itself stands unqualified. Both halves of this
+  are a deliberate exception to DL-4.3: the uppercase **and** the 0.08em, which
+  exceeds DL-4.3's 0.06em cap and is what stops small caps from reading as a
+  cramped word rather than a label. It is allowed here for one reason: this
+  labels a **display figure**, naming what the number is. It is not a control
+  label, not a column header, not a section heading, and it licenses uppercase
+  **nowhere else in this app** — DL-15.5 in particular keeps its lowercase
+  column headers, and a table header that reaches for this rule is a bug.
+- **DL-16.3** A **share bar** may sit under any row that names a part of a
+  stated total: a full-width track 4px tall, radius 2px (half its own
+  track — a capsule, a shape rather than a DL-20.1 scale value), track
+  `color-mix(in srgb, var(--fg) 8%, transparent)`, filled left to right by that
+  row's share. It carries no gradient, no shadow and no animation (DL-1.3,
+  DL-1.2) — it is a printed proportion, not a thing that moves.
+- **DL-16.4** The fill takes **the subject's own established colour** — for an
+  agent, the terminal-theme colour it already wears on its pane dot and tab
+  (`dotColor`, `src/lib/process-info.ts`). It never introduces a colour role of
+  its own and never uses a brand colour sampled from a logo: §3's roles stay
+  closed, and an agent that is magenta everywhere else in the app must be
+  magenta here too.
+- **DL-16.5** A share bar is a **proportion of a stated total**, and it is drawn
+  only when that total is on screen. It is not a gauge, not a progress
+  indicator, and not a meter against a budget or a quota — nothing in it may
+  imply a limit the app does not know. When the total is unavailable, every
+  bar renders as an empty track and no percentage is printed anywhere; a bar
+  that fills against an unknown denominator is an invented number.
+- **DL-16.6** A share bar is **not interactive**: no hover treatment, no click
+  target, no tooltip carrying the only copy of a value. The DL-15.2 reasoning
+  applies unchanged — an affordance that reacts and then does nothing is a
+  broken promise. The percentage is always written in text beside the bar, so
+  the bar itself is `aria-hidden` and removing it would lose no information.
+- **DL-16.7** A display figure may carry a **range selector**, and it is the
+  only control permitted on a metric screen. It is not a setting and it is not
+  a filter over a list: it says **what period the figure covers**, so it
+  belongs to the figure exactly the way the `*` disclaimer does, and it sits
+  with the figure rather than in a toolbar. DL-15.2 is unchanged and still
+  governs the tables themselves — the selector sits outside them, and nothing
+  inside a metric table becomes interactive because this rule exists.
+  - **Segmented, not a §6 `cycle` pill.** §6 says to extend its table before
+    inventing a value kind, so the reason is recorded here: every period must
+    be **visible at once**, because the set of available comparisons is itself
+    information — a reader who cannot see that "7 days" exists will not think
+    to ask for it. A `cycle` shows one option and hides the rest, and it turns
+    "go back one period" into three clicks through states the reader did not
+    want. That is a real cost paid for visual tidiness, and this is the one
+    place the app declines to pay it.
+  - **Appearance.** Options are lowercase `--ui-font` (DL-4.1) on one row. The
+    selected option is marked with the signifier this app already means by
+    "active" — the 4% `--fg` wash of DL-5.1 and DL-11.2 — never a filled pill,
+    a coloured chip, an underline or a border invented for this control. No
+    shadow (DL-1.3). A reader who has learned what "active" looks like in
+    Settings must not have to learn it twice.
+  - **Restate the range wherever it is implied.** Selecting a period changes
+    every number on the screen, so no figure, share or count may be left
+    ambiguous about what it covers: the selected option stays visible beside
+    them, and an empty period says which period is empty rather than only that
+    something is missing. A number whose period the reader has to remember is
+    a number they will misread.
+  - **Transient.** The selection is view state, not a preference: it resets
+    when the screen closes, for the reason DL-13.6 gives — a surface never
+    remembers half-finished state across opens, and a figure silently scoped
+    to a period chosen last week is worse than one that always starts whole.
 
 ## 17. Shortcut rows
 
@@ -577,8 +736,9 @@ _Reserved. Same source, same status._
 Added 2026-08-14 with the feature toolbar's shipping pass (phase 3 of the
 redesign program). §13 covers popovers a user opens on purpose; nothing covered
 the surface that appears because the pointer paused, or the menu that exists
-only because the window got narrow. Numbered 23 because §15/§16 are reserved
-for the usage branch and §20–§22 were spent by the same program
+only because the window got narrow. Numbered 23 because §15/§16 were reserved
+for the usage sections (now landed above) and §20–§22 were spent by the same
+program
 ([toolbar spec](specs/2026-08-12-feature-toolbar-design.md) `decided`).
 
 - **DL-23.1** A tooltip shows the action's **name, its chord when the active
