@@ -19,7 +19,11 @@ import { chromium } from "playwright-core";
  * is a maintainer task, not something `npm ci` should pay for.
  */
 export function findChromium() {
-  const root = join(homedir(), "Library", "Caches", "ms-playwright");
+  // PLAYWRIGHT_BROWSERS_PATH wins when set — CI and cloud sessions install
+  // there; the maintainer's Mac keeps its default per-user cache.
+  const root =
+    process.env.PLAYWRIGHT_BROWSERS_PATH ??
+    join(homedir(), "Library", "Caches", "ms-playwright");
 
   if (!existsSync(root)) {
     throw new Error(
@@ -27,21 +31,17 @@ export function findChromium() {
     );
   }
 
-  const arches = ["mac-arm64", "mac-x64", "linux64"];
+  const shells = [
+    ["chrome-headless-shell-mac-arm64", "chrome-headless-shell"],
+    ["chrome-headless-shell-mac-x64", "chrome-headless-shell"],
+    ["chrome-headless-shell-linux64", "chrome-headless-shell"],
+    ["chrome-linux", "headless_shell"],
+  ];
   const candidates = readdirSync(root)
     .filter((entry) => entry.startsWith("chromium_headless_shell-"))
     .sort()
     .reverse()
-    .flatMap((entry) =>
-      arches.map((arch) =>
-        join(
-          root,
-          entry,
-          `chrome-headless-shell-${arch}`,
-          "chrome-headless-shell",
-        ),
-      ),
-    )
+    .flatMap((entry) => shells.map((shell) => join(root, entry, ...shell)))
     .filter((path) => existsSync(path));
 
   if (candidates.length === 0) {
