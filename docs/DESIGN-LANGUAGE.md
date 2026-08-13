@@ -54,6 +54,8 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 | `--seam-recessed` / `--seam-divider` / `--seam-raised` | the boundaries BETWEEN surfaces (DL-2.3) |
 | `--text-primary` / `--text-muted` / `--text-faint`     | text hierarchy                           |
 | `--ui-font`                                            | the one chrome typeface (DL-4.1)         |
+| `--radius-control` / `--radius-surface`                | the two radius roles (DL-20.1)           |
+| `--duration` / `--ease`                                | chrome state-change motion (DL-20.2)     |
 
 - **DL-2.1** Components never hardcode colors. Every color routes through a
   token, or comes from the live theme object (e.g. swatches previewing a
@@ -132,10 +134,14 @@ cfg-row
    └─ cfg-btn …               ← the single interactive pill
 ```
 
-- **DL-5.1** Row hover: 2px left accent bar + 4% `--fg` wash. Nothing else.
-- **DL-5.2** The pill (`.cfg-btn`): the value inside a 1px `--hair` border,
-  radius 6px. Hover → `--hair-strong` border. Focus-visible → 2px `--accent`
-  outline (app-wide convention). Disabled → `--text-faint`.
+- **DL-5.1** Row hover is DL-21.2's quiet wash. Nothing else. Until 2026-08-14
+  this rule read "2px left accent bar + 4% `--fg` wash"; §21 retired the bar
+  app-wide, and this rule now points there rather than restating a second copy
+  of the signifier that would drift from it.
+- **DL-5.2** The pill (`.cfg-btn`): the value inside a 1px `--hair` border, at
+  `--radius-control` (DL-20.1 — 6px until 2026-08-14). Hover → `--hair-strong`
+  border. Focus-visible → 2px `--accent` outline (app-wide convention, DL-21.3).
+  Disabled → `--text-faint` (DL-21.4).
 - **DL-5.3** Affordance glyphs (`↹` cycle, `▾` menu, `…` picker, `↺` reset)
   live inside the pill as `--text-faint`, turning `--accent` on pill hover.
 
@@ -177,7 +183,8 @@ custom pick shows the `↺` clear button (DL-6.1); any failure shows inline via
 ## 7. Motion budget (chrome)
 
 - Panel slide-over: `transform` + `opacity`, 0.28s ease-out cubic (existing).
-- State changes (hover/active): 0.13s ease.
+- State changes (hover/active): `--duration` / `--ease` (DL-20.2). This read
+  "0.13s ease" until 2026-08-14, when the figure became a token at 150ms.
 - Nothing else moves. See DL-1.2 / DL-1.5.
 
 ## 8. Copy
@@ -221,6 +228,9 @@ is reworked — **do not "fix" them opportunistically inside an unrelated change
 | `.settings-screen`, and the other `--hair-strong` frames around floating surfaces  | DL-2.3              | a surface floating above chrome takes `--seam-raised` — `.tab-popover` was converted, `.settings-screen` (`inset: 8px` over the stage, `z-index: 35`) was not; migrate per surface |
 | `.search-bar`                                                                      | DL-1.3 (box-shadow) | real blurred shadow — drop                                                                                                                                                         |
 | `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —                   | inset hairlines, allowed under DL-1.3                                                                                                                                              |
+| every accent-bar hover/active marker (`.cfg-row`, `.settings-nav__item`)           | DL-21.1, DL-21.2    | opened 2026-08-14 by §21 itself. The app complied with the rule §21 replaced; phase 2 step 3 (navigation) and step 4 (atoms) migrate them to the wash                              |
+| `--radius: 10px` as the app's only radius token                                    | DL-20.1             | opened 2026-08-14 by §20. One token cannot carry two roles; phase 2 step 1 replaces it with `--radius-control`/`--radius-surface`, and pills at 6px / popovers at 8px move with it |
+| hard-coded `0.13s` / `150ms` transition durations across `styles.css`              | DL-20.2             | opened 2026-08-14 by §20. Phase 2 routes them through `--duration`/`--ease`                                                                                                        |
 
 ## 11. Settings shell
 
@@ -231,9 +241,12 @@ section — these rules govern the frame around it.
 - **DL-11.1** The settings shell is a two-column surface: a fixed nav rail, and
   a section area that owns **all** scrolling. The rail never scrolls with the
   content beside it.
-- **DL-11.2** The active category is marked by a 2px left accent bar plus a 4%
-  `--fg` wash — the same signifier as config row hover (DL-5.1), so "active"
-  reads the same everywhere in the app. No shadow, no fill (DL-1.3).
+- **DL-11.2** The active category is marked by DL-21.1's selection wash — the
+  same signifier as every other "this one" in the app. No shadow, no fill
+  (DL-1.3), and no accent bar: this rule mandated one until 2026-08-14, at which
+  point §21 made the wash the single selection signifier. The rule's intent is
+  unchanged and was always the point — "active" reads the same everywhere; only
+  the mark it names has moved.
 - **DL-11.3** Category icons are Lucide icons rendered through `DeckIcon` (§14)
   at 16px, one per category, chosen for what the category _is_ rather than for
   variety. They were hand-drawn inline SVG until 2026-08-09; the rule now
@@ -277,9 +290,12 @@ a settings section; a popover is a small screen anchored to a chrome button,
 and these rules say how it stays made of rows instead of becoming a new widget
 genre.
 
-- **DL-13.1** A popover is a `--chrome-2` surface with a 1px `--hair-strong`
-  inset hairline, radius 8px, anchored to its trigger. No blurred shadow
-  (DL-1.3); depth comes from the background step.
+- **DL-13.1** A popover is a `--chrome-2` surface with a 1px `--seam-raised`
+  inset hairline at `--radius-surface` (DL-20.1 — 8px until 2026-08-14),
+  anchored to its trigger. No blurred shadow (DL-1.3); depth comes from the
+  background step. The frame is a seam, not a hairline: a popover floats above
+  chrome, so its edge is a boundary between two surfaces (DL-2.3), which is the
+  §10 debt this rule carried while it still said `--hair-strong`.
 - **DL-13.2** Dismissal: Esc, outside click, or completing the popover's
   action. On dismiss, focus returns to the pane (or control) that had it. The
   trigger carries `aria-expanded`; the surface is `role="dialog"` with a label.
@@ -462,11 +478,80 @@ covering it, and it can hold something that is not Deck's own pixels.
 
 ## 20. Numeric scales
 
-_Reserved. Proposed by [the 2026-08-12 visual review](review/2026-08-12-visual-system-codex-review.md); not adopted. Adopting it is an R2 fork._
+Approved as a fork on 2026-08-14 (plan decision D2). Proposed by
+[the 2026-08-12 visual review](review/2026-08-12-visual-system-codex-review.md)
+`current`, which asked for seven closed scales; **two of them are adopted and the rest are
+not**. The numbers are the ones the owner eye-approved in the gallery direction,
+not the review's, because a scale nobody has looked at rendered is a table, not a
+decision. Design:
+[direction token rebuild §9.4](specs/2026-08-13-direction-token-rebuild-design.md)
+`decided`.
+
+- **DL-20.1** Two radius roles, and no third picked at a use site.
+  `--radius-control` (10px) is anything the pointer acts on inside a surface —
+  rows, pills, icon buttons, chips. `--radius-surface` (16px) is anything that
+  floats above chrome — popovers, dialogs, the settings screen. A value chosen
+  by feel at a use site is not part of this scale, and `border-radius: 50%`
+  stays a shape rather than a scale value.
+- **DL-20.2** One motion pair for chrome state change: `--duration` (150ms) and
+  `--ease` (`cubic-bezier(0.4, 0, 0.2, 1)`). §7's 0.13s figure was this rule
+  before it had a token; it is now spelled `--duration`. The panel slide-over's
+  0.28s entrance is unchanged and stays inside DL-1.2's 300ms ceiling.
+- **DL-20.3** **Type is not in this section.** DL-4.4 remains the only authority
+  on chrome text sizes. The direction's 13px labels were a convenience of a
+  comparison surface — one font size read at gallery zoom, never reviewed at
+  native density — and adopting them would have moved every label in the app on
+  the strength of a screenshot that was not asking about type.
+- **DL-20.4** **Frame height is not in this section either.** DL-18.2's 34px is
+  load-bearing geometry: `hiddenInset` and `--frame-lights-w` are tuned so the
+  macOS traffic lights centre inside the row. The direction's 54px was never seen
+  at native density. Changing the frame is a window-chrome decision with its own
+  fork, not a numeric-scale entry.
+- **DL-20.5** Spacing, weight, border-width and layer scales are **not adopted**.
+  The review proposed all four; none of them was rendered for review, and the
+  z-index ladder in particular is behavioural — settings-under-scrim depends on
+  40 > 35, so turning it into a named scale is a logic change wearing a token's
+  clothes.
 
 ## 21. Interaction states
 
-_Reserved. Same source, same status._
+Approved as a fork on 2026-08-14 (plan decision D1). This section resolves what
+the direction rebuild called
+[a real conflict, not a gap](specs/2026-08-13-direction-token-rebuild-design.md)
+`decided`: the reviewed direction marks selection with a full rounded wash,
+while DL-5.1 and DL-11.2 mandated a 2px left accent bar. Both cannot be "how
+active reads everywhere". The wash wins, because it is what the owner approved
+looking at rendered specimens across four themes.
+
+- **DL-21.1** **Selection is a full wash on `--tab-active-bg`, at
+  `--radius-control`, and nothing else.** No accent bar, no border, no fill of
+  `--accent`, no shadow. One signifier for every genre: active tab, active rail
+  item, active settings category, selected board row, selected workspace row.
+- **DL-21.2** **Hover is a quieter wash than selection, never the same one.**
+  Hover is a neutral `--tone` wash at 6%; selection is `--tab-active-bg`. They
+  are different values on purpose — a hover that paints what "selected" looks
+  like tells the user they have already chosen something they have not, and the
+  gallery direction sheet shipped exactly that collision on the rail and the
+  settings nav. The state matrix's hover column is where this is checked.
+  The wash mixes from `--tone`, not from `--fg`: the reviewed direction wrote it
+  as 6% of its ink alias, which is `--fg`, and that is the same mistake DL-2.3
+  corrected for seams — a neutral wash belongs to the background ladder, and
+  mixing it from the foreground lets the terminal's text hue into chrome that is
+  supposed to be colourless. The percentage is the direction's; the source is
+  normalized on purpose.
+- **DL-21.3** Focus-visible stays a 2px `--accent` outline (DL-5.2), and it
+  composes with either wash rather than replacing it. Focus is where the
+  keyboard is; selection is what the app is showing. A surface can be both.
+- **DL-21.4** Disabled stays `--text-faint` on the unchanged surface (DL-3.4).
+  It reads quietly in the dark presets and that is accepted: `--text-faint` is
+  one shared token, and loudening it here would move every disabled control in
+  the app on the strength of one surface's reading.
+- **DL-21.5** State changes transition with DL-20.2's `--duration`/`--ease`, and
+  only the properties DL-1.2 allows. Reduced motion is handled **by scope**, per
+  §9's checklist item 3 — never by an allowlist of class names.
+- **DL-21.6** The retired accent bar does not come back as a second marker
+  beside the wash. Two signifiers for one state is how the app got a rule and a
+  direction disagreeing in the first place.
 
 ## 22. Surface genres
 
