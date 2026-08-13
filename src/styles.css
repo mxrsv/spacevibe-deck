@@ -1528,10 +1528,15 @@ button.attn-mark:hover {
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
+/* DL-21.2: hover is the quiet wash, never the selection wash — this button
+   rests transparent like `.iconbtn`, so it takes the same hover step. */
 .search-bar__btn:hover {
-  background: var(--tab-active-bg);
+  background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 
