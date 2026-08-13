@@ -375,7 +375,7 @@ body,
   flex-shrink: 0;
   border: none;
   padding: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   display: grid;
   place-items: center;
   opacity: 0;
@@ -385,9 +385,9 @@ body,
   line-height: 1;
   cursor: pointer;
   transition:
-    opacity 0.14s ease,
-    background 0.14s ease,
-    color 0.14s ease;
+    opacity var(--duration) var(--ease),
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
 .wsitem:hover .wsitem__close,
@@ -407,7 +407,7 @@ body,
   margin-top: 2px;
   padding: 7px 6px 7px 9px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-faint);
   font-family: inherit;
@@ -476,7 +476,7 @@ body,
   font-size: 12.5px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--duration) var(--ease);
 }
 
 .repogroup__toggle:hover,
@@ -509,15 +509,15 @@ body,
   padding: 0;
   place-items: center;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-faint);
   opacity: 0;
   cursor: pointer;
   transition:
-    opacity 0.14s ease,
-    background 0.14s ease,
-    color 0.14s ease;
+    opacity var(--duration) var(--ease),
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
 .repogroup__head:hover .repogroup__action,
@@ -601,7 +601,7 @@ body,
   flex-shrink: 0;
   padding: 0 5px;
   border: 1px solid var(--hair);
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   color: var(--text-faint);
   font-size: 9.5px;
   line-height: 1.5;
@@ -629,7 +629,7 @@ button.attn-mark {
   border: none;
   background: none;
   cursor: pointer;
-  transition: filter 0.15s ease;
+  transition: filter var(--duration) var(--ease);
 }
 
 /* Widen the 14px button to a 20px circle so a mark whose visible core is
@@ -640,7 +640,7 @@ button.attn-mark::after {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  transition: background 0.15s ease;
+  transition: background var(--duration) var(--ease);
 }
 
 /* That hit circle is invisible at rest, so a click landing 6px off the dot
@@ -786,7 +786,7 @@ button.attn-mark:hover {
   height: 16px;
   border: none;
   padding: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   display: grid;
   place-items: center;
   opacity: 0;
@@ -796,9 +796,9 @@ button.attn-mark:hover {
   line-height: 1;
   cursor: pointer;
   transition:
-    opacity 0.14s ease,
-    background 0.14s ease,
-    color 0.14s ease;
+    opacity var(--duration) var(--ease),
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
 .tab:hover .tab__close,
@@ -814,7 +814,7 @@ button.attn-mark:hover {
 .tab-add {
   width: 24px;
   height: 24px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -871,19 +871,19 @@ button.attn-mark:hover {
   width: 24px;
   height: 24px;
   border: none;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   display: grid;
   place-items: center;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
 .iconbtn:hover {
-  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 
@@ -966,7 +966,7 @@ button.attn-mark:hover {
   padding: 5px 8px;
   background: var(--chrome-2);
   border: 1px solid var(--seam-raised);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   color: var(--text-primary);
   font: 11.5px/1.35 var(--ui-font);
   pointer-events: none;
@@ -1013,7 +1013,7 @@ button.attn-mark:hover {
   padding: 4px;
   background: var(--chrome-2);
   border: 1px solid var(--seam-raised);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
 }
 
 .toolbar-menu__group {
@@ -1034,19 +1034,19 @@ button.attn-mark:hover {
   width: 100%;
   padding: 5px 7px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   font: 12.5px/1 var(--ui-font);
   text-align: left;
   cursor: pointer;
   transition:
-    background 0.13s ease,
-    color 0.13s ease;
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
 .toolbar-menu__row:hover {
-  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 
@@ -1102,16 +1102,16 @@ button.attn-mark:hover {
   height: 24px;
   padding: 0 9px;
   border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--accent) 15%, transparent);
   color: var(--accent);
   font: 500 11.5px/1 var(--ui-font);
   white-space: nowrap;
   cursor: pointer;
   transition:
-    background 0.13s ease,
-    color 0.13s ease,
-    border-color 0.13s ease;
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
 
 .update-action:hover:not(:disabled) {
@@ -1126,7 +1126,7 @@ button.attn-mark:hover {
 
 .update-action:disabled {
   border-color: transparent;
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  background: var(--state-hover-bg);
   color: var(--text-faint);
   cursor: default;
 }
@@ -1241,7 +1241,7 @@ button.attn-mark:hover {
   height: 22px;
   padding: 0 8px;
   border: 1px solid var(--hair);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   background: var(--input-bg);
   color: var(--text-primary);
   font-family: var(--ui-font);
@@ -1345,7 +1345,7 @@ button.attn-mark:hover {
   position: relative;
   flex: 0 0 1px;
   background: var(--seam-divider);
-  transition: background 0.15s ease;
+  transition: background var(--duration) var(--ease);
 }
 
 .split__divider::after {
@@ -1397,7 +1397,7 @@ button.attn-mark:hover {
   flex-direction: column;
   overflow: hidden;
   background: var(--bg);
-  transition: box-shadow 0.18s ease;
+  transition: box-shadow var(--duration) var(--ease);
 }
 
 /* Active pane (only when >1 pane): an inset accent hairline, no border box
@@ -1446,8 +1446,8 @@ button.attn-mark:hover {
   opacity: 0;
   transform: translate(-50%, -6px);
   transition:
-    opacity 0.16s ease,
-    transform 0.16s ease;
+    opacity var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
 }
 
 .pane-bar-hidden .pane__anchor {
@@ -1484,10 +1484,13 @@ button.attn-mark:hover {
   align-items: center;
   gap: 6px;
   padding: 4px 6px;
-  border: 1px solid var(--hair-strong);
-  border-radius: 7px;
+  /* DL-2.3: a surface floating above a pane takes the raised seam. DL-1.3:
+     the blurred shadow that sat here is banned outright — the last real one in
+     this file, and DL §10's fourth ledger row. Depth is the background step
+     plus the seam, which is what every other floating surface already uses. */
+  border: 1px solid var(--seam-raised);
+  border-radius: var(--radius-surface);
   background: var(--chrome-2);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
   font: 12px var(--ui-font);
 }
 
@@ -1500,7 +1503,7 @@ button.attn-mark:hover {
   width: 160px;
   padding: 2px 6px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   background: var(--input-bg);
   color: var(--text-primary);
   font: inherit;
@@ -1517,7 +1520,7 @@ button.attn-mark:hover {
 .search-bar__btn {
   padding: 2px 5px;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   background: none;
   color: var(--text-muted);
   font-size: 14px;
@@ -1550,7 +1553,7 @@ button.attn-mark:hover {
   font-family: var(--ui-font);
   font-size: 10px;
   padding: 2px 7px;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
 }
 
 .pane__badge--agent {
@@ -1601,7 +1604,7 @@ button.attn-mark:hover {
 .pane__term .xterm-scrollable-element > .scrollbar.vertical > .slider {
   width: 6px !important;
   left: 0 !important;
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--fg) 25%, transparent) !important;
 }
 
@@ -1662,7 +1665,7 @@ button.attn-mark:hover {
 .status__kbd {
   font-size: 10px;
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--hair-strong);
   color: var(--text-muted);
   background: color-mix(in srgb, var(--fg) 4%, transparent);
@@ -1693,16 +1696,18 @@ button.attn-mark:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 14px;
-  border-left: 2px solid transparent;
-  transition:
-    background 0.13s ease,
-    border-left-color 0.13s ease;
+  padding: 6px 10px;
+  margin: 0 4px;
+  border-radius: var(--radius-control);
+  transition: background var(--duration) var(--ease);
 }
 
+/* DL-21.1 and DL-21.6: the 2px left accent bar this row carried until
+   2026-08-14 is retired app-wide. One signifier, and it is the wash — two
+   marks for one state is how the rulebook and the direction ended up
+   disagreeing about what "active" looks like. */
 .cfg-row:hover {
-  background: color-mix(in srgb, var(--fg) 4%, transparent);
-  border-left-color: var(--accent);
+  background: var(--state-hover-bg);
 }
 
 .cfg-row__key {
@@ -1746,12 +1751,12 @@ button.attn-mark:hover {
   color: var(--text-primary);
   background: transparent;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   padding: 3px 8px;
   cursor: pointer;
   transition:
-    color 0.13s ease,
-    border-color 0.13s ease;
+    color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
 
 .cfg-btn:hover {
@@ -1776,7 +1781,7 @@ button.attn-mark:hover {
 .cfg-btn__hint {
   display: flex;
   color: var(--text-faint);
-  transition: color 0.13s ease;
+  transition: color var(--duration) var(--ease);
 }
 
 .cfg-btn__hex {
@@ -1820,7 +1825,7 @@ button.attn-mark:hover {
 .cfg-swatch {
   width: 12px;
   height: 12px;
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--hair-strong);
   flex-shrink: 0;
 }
@@ -1836,7 +1841,7 @@ button.attn-mark:hover {
   font-size: 12px;
   color: var(--accent);
   padding: 3px 8px;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   cursor: pointer;
 }
 
@@ -1857,7 +1862,7 @@ button.attn-mark:hover {
   color: var(--accent);
   width: 20px;
   height: 20px;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   font-size: 12px;
 }
@@ -1884,7 +1889,7 @@ button.attn-mark:hover {
   box-sizing: border-box;
   padding: 6px 10px;
   border: 1px solid var(--hair-strong);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--input-bg);
   color: var(--text-primary);
   font-family: var(--ui-font);
@@ -1945,7 +1950,7 @@ button.attn-mark:hover {
 .cfg-row__label--edit:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
 }
 
 .cfg-row__remove {
@@ -1961,7 +1966,7 @@ button.attn-mark:hover {
   line-height: 1;
   color: var(--text-faint);
   cursor: pointer;
-  transition: color 0.16s ease;
+  transition: color var(--duration) var(--ease);
 }
 
 .cfg-row__remove:hover {
@@ -1971,7 +1976,7 @@ button.attn-mark:hover {
 .cfg-row__remove:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
 }
 
 /* ── Shortcut rows (DL §17) ─────────────────────────────────────────────
@@ -2068,15 +2073,17 @@ button.attn-mark:hover {
   padding: 10px 12px 12px;
   background: var(--chrome-2);
   border: 1px solid var(--seam-raised);
-  border-radius: 10px;
+  border-radius: var(--radius-surface);
 }
 
+/* DL-4.3 bans uppercase with no exception, and DL-4.4 sets the group-label
+   size. This carried `text-transform: uppercase` plus 0.13em tracking — tuned
+   against a monospace advance width — as DL §10's oldest ledger row. Both go;
+   the label is a `.cfg-group` in everything but name. */
 .tab-popover__label {
   margin: 8px 0 6px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
   color: var(--text-faint);
 }
 
@@ -2116,12 +2123,12 @@ button.attn-mark:hover {
   font: inherit;
   font-size: 11.5px;
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--hair-strong);
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
-  transition: border-color 0.13s ease;
+  transition: border-color var(--duration) var(--ease);
 }
 .tab-popover__logo-btn:hover {
   border-color: var(--accent);
@@ -2148,7 +2155,7 @@ button.attn-mark:hover {
   background: var(--chrome-2);
   /* A hairline, not a shadow — depth comes from the background step (DL-1.3). */
   box-shadow: inset 0 0 0 1px var(--seam-raised);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
 }
 
 .prompt-popover:focus-visible {
@@ -2220,7 +2227,7 @@ button.attn-mark:hover {
   color: var(--text-muted);
   background: var(--chrome-2);
   border: 1px solid var(--hair-strong);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   opacity: 0.85;
   white-space: nowrap;
   overflow: hidden;
@@ -2306,7 +2313,7 @@ button.attn-mark:hover {
 .applogo {
   width: 24px;
   height: 24px;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   flex: none;
   display: grid;
   place-items: center;
@@ -2351,7 +2358,7 @@ button.attn-mark:hover {
 }
 .rail__scroll::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--fg) 18%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
 }
 
 /* One recents row — a div (its × is a real button, no button nesting). */
@@ -2365,13 +2372,14 @@ button.attn-mark:hover {
   color: inherit;
   cursor: pointer;
   padding: 6px 26px 6px 8px;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
+  transition: background var(--duration) var(--ease);
 }
 .row + .row {
   margin-top: 1px;
 }
 .row:hover {
-  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  background: var(--state-hover-bg);
 }
 .row__ico {
   /* Geometry and stroke belong to DeckIcon — a width or stroke-width here
@@ -2425,7 +2433,7 @@ button.attn-mark:hover {
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   background: none;
   color: var(--text-faint);
   cursor: pointer;
@@ -2443,19 +2451,22 @@ button.attn-mark:hover {
   color: var(--red);
 }
 
-/* Selection like a Finder sidebar: solid accent, text flips to var(--bg) so
-   it follows the theme. Secondary text sits at 82% — over the contrast floor
-   yet behind the folder name. */
+/* DL-21.1: the selection wash, the same one the tab bar and both rails use.
+   This row was a solid `--accent` fill with its text flipped to `--bg` until
+   2026-08-14 — a decorative fill over a large area, which DL-3.1 bans outright,
+   and a second selection language in an app that is supposed to have one. The
+   text colours come back to the ladder because the ground is a neutral wash
+   again, not a saturated one. */
 .row.is-selected {
-  background: var(--accent);
+  background: var(--tab-active-bg);
 }
 .row.is-selected .row__name {
-  color: var(--bg);
+  color: var(--text-primary);
   font-weight: 600;
 }
 .row.is-selected .row__path,
 .row.is-selected .row__time {
-  color: color-mix(in srgb, var(--bg) 82%, transparent);
+  color: var(--text-muted);
 }
 .row.is-selected .row__ico {
   color: var(--bg);
@@ -2517,7 +2528,7 @@ button.attn-mark:hover {
   gap: 7px;
   width: 100%;
   height: 31px;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   font: inherit;
   font-size: 12.5px;
@@ -2564,7 +2575,7 @@ button.attn-mark:hover {
 }
 .detail__scroll::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--fg) 18%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
 }
 
 .wshead {
@@ -2626,7 +2637,7 @@ button.attn-mark:hover {
   display: block;
   width: 100%;
   padding: 8px;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--hair);
   background: var(--chrome-1);
   color: inherit;
@@ -2722,7 +2733,7 @@ button.attn-mark:hover {
   display: grid;
   place-items: center;
   border: 1px solid var(--hair-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   color: var(--text-muted);
   cursor: pointer;
@@ -2746,7 +2757,7 @@ button.attn-mark:hover {
   background: var(--input-bg);
   color: inherit;
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   padding: 1px 4px;
 }
 .lcard__confirm {
@@ -2757,7 +2768,7 @@ button.attn-mark:hover {
   gap: 4px;
   align-items: center;
   justify-content: center;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--bg) 78%, transparent);
 }
 .lcard__confirm button {
@@ -2766,7 +2777,7 @@ button.attn-mark:hover {
   background: var(--chrome-2);
   color: inherit;
   border: 1px solid var(--hair-strong);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   padding: 1px 6px;
   cursor: pointer;
 }
@@ -2782,7 +2793,7 @@ button.attn-mark:hover {
   align-items: center;
   gap: 8px;
   padding: 7px 12px 7px 9px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--hair);
   background: var(--chrome-1);
   color: var(--text-primary);
@@ -2803,7 +2814,7 @@ button.attn-mark:hover {
   font-size: 11px;
   color: var(--text-faint);
   border: 1px solid var(--hair-strong);
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   padding: 0 4px;
   line-height: 15px;
 }
@@ -2854,7 +2865,7 @@ button.attn-mark:hover {
 .preset-thumb {
   display: flex;
   height: 70px;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   overflow: hidden;
   background: var(--bg);
   padding: 3px;
@@ -2880,7 +2891,7 @@ button.attn-mark:hover {
   --bar: color-mix(in srgb, var(--fg) 28%, transparent);
   flex: 1;
   min-width: 0;
-  border-radius: 2px;
+  border-radius: var(--radius-control);
   background-color: color-mix(in srgb, var(--bg) 80%, var(--tone));
   background-image:
     linear-gradient(var(--bar), var(--bar)),
@@ -2953,14 +2964,15 @@ button.attn-mark:hover {
   font-weight: 510;
   height: 29px;
   padding: 0 14px;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--hair-strong);
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  background: var(--state-hover-bg);
   color: var(--text-primary);
   cursor: pointer;
+  transition: background var(--duration) var(--ease);
 }
 .btn:hover {
-  background: color-mix(in srgb, var(--fg) 11%, transparent);
+  background: var(--tab-active-bg);
 }
 .btn:disabled {
   opacity: 0.4;
@@ -3002,7 +3014,7 @@ button.attn-mark:hover {
   height: min(520px, 82vh);
   background: var(--chrome-1);
   border: 1px solid var(--hair-strong);
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   outline: none;
   animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   overflow: hidden;
@@ -3026,7 +3038,7 @@ button.attn-mark:hover {
   font: inherit;
   font-size: 11px;
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--hair-strong);
   background: none;
   color: var(--text-primary);
@@ -3039,7 +3051,7 @@ button.attn-mark:hover {
 .preset-editor__stage {
   flex: 1;
   margin: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   overflow: hidden;
   background: var(--bg);
 }
@@ -3124,7 +3136,7 @@ button.attn-mark:hover {
   background: var(--input-bg);
   color: var(--text-primary);
   border: 1px solid var(--hair-strong);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
 }
 .preset-editor__meta {
   flex: 1;
@@ -3139,7 +3151,7 @@ button.attn-mark:hover {
   font: inherit;
   font-size: 12px;
   padding: 6px 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--hair-strong);
   background: none;
   color: var(--text-primary);
@@ -3164,7 +3176,7 @@ button.attn-mark:hover {
   padding: 16px;
   background: var(--chrome-1);
   border: 1px solid var(--hair-strong);
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   outline: none;
   animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -3191,7 +3203,7 @@ button.attn-mark:hover {
   background: var(--input-bg);
   color: var(--text-primary);
   border: 1px solid var(--hair-strong);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
 }
 .save-preset__toggle {
   display: flex;
@@ -3209,7 +3221,7 @@ button.attn-mark:hover {
   font: inherit;
   font-size: 12px;
   padding: 6px 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--hair-strong);
   background: none;
   color: var(--text-primary);
@@ -3237,7 +3249,7 @@ button.attn-mark:hover {
   padding: 6px 12px;
   background: var(--chrome-1);
   border: 1px solid var(--red);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   font-size: 11px;
   color: var(--text-primary);
   animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
@@ -3246,7 +3258,7 @@ button.attn-mark:hover {
   font: inherit;
   font-size: 11px;
   padding: 3px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--hair-strong);
   background: none;
   color: var(--text-primary);
@@ -3276,9 +3288,10 @@ button.attn-mark:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 14px;
+  padding: 7px 10px;
+  margin: 0 6px;
   border: none;
-  border-left: 2px solid transparent;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-faint);
   /* Navigation, not data — prose font (DL-4.1 / DL-11.4). Mono here reads as
@@ -3288,17 +3301,23 @@ button.attn-mark:hover {
   text-align: left;
   cursor: pointer;
   transition:
-    background 0.13s ease,
-    border-left-color 0.13s ease,
-    color 0.13s ease;
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
-/* Hover/active share the same 2px accent bar + 4% --fg wash `.cfg-row:hover`
-   uses (DL-11.2) — no shadow, no fill (DL-1.3). */
-.settings-nav__item:hover,
+/* DL-21.2: hover is the quiet wash. It shared one declaration with `.is-active`
+   until 2026-08-14, which meant pointing at a category you had not opened
+   painted it as the open one. */
+.settings-nav__item:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+/* DL-21.1: the open category is the selection wash — the same mark the active
+   tab and the active rail row use. The 2px accent bar DL-11.2 mandated until
+   2026-08-14 is retired. */
 .settings-nav__item.is-active {
-  background: color-mix(in srgb, var(--fg) 4%, transparent);
-  border-left-color: var(--accent);
+  background: var(--tab-active-bg);
   color: var(--text-primary);
 }
 
@@ -3332,8 +3351,12 @@ button.attn-mark:hover {
   position: absolute;
   inset: 8px;
   background: var(--chrome-2);
-  border: 1px solid var(--hair-strong);
-  border-radius: 12px;
+  /* DL-2.3: this frames a surface floating above chrome, so it is a seam, not
+     an in-surface hairline. One of the two `--hair-strong` rows DL §10 carried
+     since the seam ladder landed; `.tab-popover` was converted then, this was
+     not. */
+  border: 1px solid var(--seam-raised);
+  border-radius: var(--radius-surface);
   /* Clip children to the rounded corners. Without this the rail's square
      top-left corner and its border-right run straight past the radius and
      read as a second, broken border tucked inside the real one. */
@@ -3400,11 +3423,11 @@ button.attn-mark:hover {
   font-family: var(--ui-font);
   font-size: 10.5px;
   padding: 2px 7px;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   transition:
-    color 0.13s ease,
-    border-color 0.13s ease;
+    color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
 }
 
 .settings-screen__esc:hover {
@@ -3448,7 +3471,7 @@ button.attn-mark:hover {
 
 .settings-screen__section::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--fg) 25%, transparent);
-  border-radius: 3px;
+  border-radius: var(--radius-control);
 }
 
 /* ── Window dragging ────────────────────────────────────────────────────────
@@ -3549,7 +3572,7 @@ button.attn-mark:hover {
 .filebar__btn {
   padding: 3px 8px;
   border: 1px solid var(--hair);
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   font-family: var(--ui-font);
@@ -3558,7 +3581,7 @@ button.attn-mark:hover {
 }
 
 .filebar__btn:hover {
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 

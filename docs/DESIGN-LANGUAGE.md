@@ -221,16 +221,18 @@ This document is the target, not a description of the whole app. Only the
 settings panel has been reworked. Known survivors, to be fixed as each surface
 is reworked — **do not "fix" them opportunistically inside an unrelated change**:
 
-| where                                                                              | violates            | note                                                                                                                                                                               |
-| ---------------------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.tab-popover__label`                                                              | DL-4.3 (uppercase)  | rework with the tab popover                                                                                                                                                        |
-| config rows, Open board, inputs, `.search-bar`                                     | DL-2.3              | still on `--hair` for lines that are boundaries between surfaces; migrate per surface                                                                                              |
-| `.settings-screen`, and the other `--hair-strong` frames around floating surfaces  | DL-2.3              | a surface floating above chrome takes `--seam-raised` — `.tab-popover` was converted, `.settings-screen` (`inset: 8px` over the stage, `z-index: 35`) was not; migrate per surface |
-| `.search-bar`                                                                      | DL-1.3 (box-shadow) | real blurred shadow — drop                                                                                                                                                         |
-| `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —                   | inset hairlines, allowed under DL-1.3                                                                                                                                              |
-| every accent-bar hover/active marker (`.cfg-row`, `.settings-nav__item`)           | DL-21.1, DL-21.2    | opened 2026-08-14 by §21 itself. The app complied with the rule §21 replaced; phase 2 step 3 (navigation) and step 4 (atoms) migrate them to the wash                              |
-| `--radius: 10px` as the app's only radius token                                    | DL-20.1             | opened 2026-08-14 by §20. One token cannot carry two roles; phase 2 step 1 replaces it with `--radius-control`/`--radius-surface`, and pills at 6px / popovers at 8px move with it |
-| hard-coded `0.13s` / `150ms` transition durations across `styles.css`              | DL-20.2             | opened 2026-08-14 by §20. Phase 2 routes them through `--duration`/`--ease`                                                                                                        |
+| where                                                                              | violates | note                                                                                                                                                                              |
+| ---------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.cfg-btn`, board cards, inputs                                                    | DL-2.3   | still on `--hair`. These are lines INSIDE a surface, which is what `--hair` is for, so this row is a re-read rather than a debt: the boundary cases were the frames, and they moved |
+| `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —        | inset hairlines, allowed under DL-1.3                                                                                                                                             |
+| `marketing/` chrome mirrors                                                        | §20, §21 | `marketing/stage/appwin.js`, `direction-a.css` and `video.css` are hand-copied and import nothing from `src/`, so they still render the pre-redesign chrome with no failing test   |
+
+**Closed 2026-08-14** by the redesign's phase 2, each in the commit that fixed it:
+`.tab-popover__label`'s uppercase (DL-4.3), `.settings-screen` and `.search-bar`'s
+`--hair-strong` frames (DL-2.3, now `--seam-raised`), `.search-bar`'s blurred
+`box-shadow` (DL-1.3), and the three rows §20/§21 opened for themselves — the accent
+bars, the 53 radius literals and the state-change duration literals are all on tokens.
+`.row.is-selected`'s solid `--accent` fill went with them (DL-3.1).
 
 ## 11. Settings shell
 
