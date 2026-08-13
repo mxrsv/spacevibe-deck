@@ -1247,6 +1247,8 @@ button.attn-mark:hover {
   font-family: var(--ui-font);
   font-size: 12px;
   outline: none;
+  /* DL-21.5: state changes ride the shared motion pair. */
+  transition: border-color var(--duration) var(--ease);
 }
 
 .browser-panel__url:focus {
@@ -3578,6 +3580,10 @@ button.attn-mark:hover {
   font-family: var(--ui-font);
   font-size: 11px;
   cursor: pointer;
+  /* DL-21.5: state changes ride the shared motion pair. */
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
 .filebar__btn:hover {
