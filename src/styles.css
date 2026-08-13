@@ -206,20 +206,24 @@ body,
   align-items: center;
   gap: 9px;
   padding: 7px 6px 7px 9px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   user-select: none;
   min-width: 0;
   transition:
-    background 0.16s ease,
-    color 0.16s ease;
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
+/* DL-21.2: hover is the quieter wash, and it is a different value from the
+   selection below it on purpose. The reviewed direction gave this row and
+   `.is-active` one declaration, so hovering an unselected repository painted
+   "this one is open". */
 .wsitem:hover {
   color: var(--text-primary);
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  background: var(--state-hover-bg);
 }
 
 .wsitem.is-active {
@@ -404,12 +408,12 @@ body,
   text-align: left;
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
 .wsbar__add:hover {
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  background: var(--state-hover-bg);
   color: var(--text-primary);
 }
 
@@ -458,7 +462,7 @@ body,
   min-width: 0;
   padding: 5px 6px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-primary);
   font-family: inherit;
@@ -470,7 +474,7 @@ body,
 
 .repogroup__toggle:hover,
 .repogroup__action:hover {
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  background: var(--state-hover-bg);
 }
 
 .repogroup__mark {
@@ -721,7 +725,7 @@ button.attn-mark:hover {
   gap: 8px;
   height: 25px;
   padding: 0 6px 0 12px;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   font-size: 12.5px;
@@ -729,16 +733,18 @@ button.attn-mark:hover {
   user-select: none;
   min-width: 0;
   transition:
-    background 0.16s ease,
-    color 0.16s ease;
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
 .tab:hover {
   color: var(--text-primary);
-  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  background: var(--state-hover-bg);
 }
 
-/* Active tab: background only — no other indicator (flat rule) */
+/* DL-21.1: the active tab is the selection wash and nothing else — the same
+   signifier the rail row above uses, which is what "one selection state"
+   means. */
 .tab.is-active {
   color: var(--text-primary);
   background: var(--tab-active-bg);
@@ -811,13 +817,13 @@ button.attn-mark:hover {
   place-items: center;
   flex-shrink: 0;
   transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    transform 0.15s ease;
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
 }
 
 .tab-add:hover {
-  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  background: var(--state-hover-bg);
   color: var(--text-primary);
   transform: rotate(90deg);
 }
