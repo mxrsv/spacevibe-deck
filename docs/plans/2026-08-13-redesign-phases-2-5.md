@@ -1,13 +1,15 @@
 # Redesign phases 2–5 — the full transfusion
 
-Date: 2026-08-13 · Status: proposed, pending owner approval
+Date: 2026-08-13 · Status: **executing** — see §0 for where it stopped on 2026-08-14
 
-**Execution authority:** approving this document approves its sequencing and review content
-only. It does **not** authorize implementation, commit, push, branch mutation, or any item in
-D1–D12. Each decision is approved explicitly; implementation and remote mutation remain
-separate owner instructions. The
-[token-rebuild spec](../specs/2026-08-13-direction-token-rebuild-design.md) `decided` also keeps
-its own approval boundary.
+**Execution authority:** superseded on 2026-08-14. The owner approved **all twelve** D1–D12
+recommendations as written, authorized implementation on `main` (no branch, no worktree),
+authorized the §6.0 pushes, and then instructed that the program run to completion **without
+stopping for per-fork approval or per-step screenshot review**. A resolved fork is now
+recorded in §0.3 and reported, not queued. The paragraph this replaces required the opposite,
+and it is kept in the diff rather than deleted so the change of instruction is legible. The
+[token-rebuild spec](../specs/2026-08-13-direction-token-rebuild-design.md) `decided` was
+amended by its own §9 under that authority.
 
 **Scope:** phases 2–5 of the [program handoff](./2026-08-13-redesign-program-handoff.md)
 `current` — chrome redesign, feature toolbar, file explorer surface, usage dashboard port +
@@ -19,6 +21,105 @@ D9 chooses real host isolation; it may not be described or verified as Electron-
 Owner decisions already closed in the handoff §4 are not reopened here — notably: the ramp
 ships rebuilt from `--bg`/`--tone`, never fixed hex; `deriveChromeColors` keeps its contrast
 floors; chrome keeps following the terminal theme.
+
+## 0. Handoff — state at 2026-08-14, mid-phase-2
+
+Written to stop a session and resume elsewhere. Everything below is on **`main`, local
+only**: `origin/main` is still `3093074`, so a cloud continuation must either push these first
+or start from a checkout that has them.
+
+### 0.1 Landed, in order
+
+| commit    | what                                                                                               |
+| --------- | -------------------------------------------------------------------------------------------------- |
+| `3f9c928` | `/var` symlink fixture fix — §5.0.1, pulled forward because it gated `npm test` for the whole tree |
+| `1fae8a6` | gallery drift: the tenth alias published, reduced motion by scope                                  |
+| `f3cc0e3` | **docs** — direction spec §9 (shipping addendum) + DL §20 and §21, owner-approved before commit    |
+| `d821bcc` | phase 2 step 1 — token layer                                                                       |
+| `03f6d06` | phase 2 step 2 — shell restructure                                                                 |
+| `9607bf0` | phase 2 step 3 — navigation                                                                        |
+| `5d15861` | rail 275px, fixing a drag regression step 2 introduced                                             |
+| `4014867` | phase 2 steps 4–8 — atoms, settings shell, board, popovers, imperative surfaces                    |
+
+Also done: `feat/token-usage-dashboard` (`bf6e1dd`) and `feat/workspace-reorder` (`0972508`)
+are pushed to origin, closing the §6.0 durability risk for committed work. The usage branch's
+**dirty tree and its two untracked doc files are still local only** — landing them is still
+owed and still needs its own content approval.
+
+### 0.2 Known defect in this history — decide before pushing
+
+`d821bcc` is a `feat` commit that also contains **269 lines of `docs/plans/2026-08-13-redesign-phases-2-5.md`**,
+swept in by a `git add -A`. That is a D14 breach (a doc committed without its own content
+approval) and a W5 breach (one commit, two things). It was disclosed, not discovered. Nothing
+is pushed, so `git reset --soft 3093074` and a clean re-split is still available; the owner has
+not chosen. Do not use `git add -A` in this repo.
+
+### 0.3 Forks resolved during execution, beyond D1–D12
+
+1. **The shell's shape, not just its colour** (blocking step 2). The reviewed direction moves
+   `.deck-frame` into the navigation column and runs the stage from the top of the window,
+   which contradicted DL-18.1 and DL-18.3. Put to the owner and **approved**: take the
+   direction's shape. DL-18.1/18.2/18.3 rewritten; `--frame-h` stays 34px per D2.
+2. **Stage row span.** The direction sheet spans the stage `1 / 4` and lets the status bar
+   paint over the overlap. Implemented as `1 / 3` — same picture, without two elements
+   claiming one grid cell.
+3. **`--sidebar-w` 200px → 275px.** Not cosmetic: the frame's move took the window's drag
+   affordance with it, leaving ~56px of non-button titlebar. Found by the native macOS run,
+   invisible to any browser render.
+4. **`--state-hover-bg` added to `deriveChromeColors`.** DL-21.2 needs one hover value across
+   every genre. It follows `seamDivider`'s existing pattern exactly and touches neither the
+   ramp nor the contrast floors, so it is inside the handoff's "`deriveChromeColors` does not
+   change" in intent — but it IS an edit to that file, recorded here rather than left implicit.
+5. **`--radius-control` for every non-shape radius.** DL-20.1 allows two roles; 53 literals
+   between 3px and 12px collapsed onto the control role, with floating surfaces explicitly on
+   `--radius-surface`. Small chips and scrollbar thumbs therefore got rounder. Reviewed in a
+   browser render only — this is the most likely thing an eye review will want changed.
+6. **Reduced-motion scope cites `DL §9` by section**, not the dotted form the earlier plan text
+   used: §9's checklist items are not numbered rules, and `scripts/design-language.test.ts`
+   rejects the dotted spelling — including inside a comment.
+
+### 0.4 What phase 2 still owes
+
+- **Step 9 — browser panel.** Restyle its chrome, then verify by hand that the
+  `WebContentsView` hole still aligns pixel-exact; its measured rect positions a native view
+  and padding changes misalign it silently.
+- **Step 10 — orphans.** `src/files/ui/` takes the token changes so it does not restyle-rot
+  before phase 4 mounts it.
+- **§3.4 marketing mirrors.** `marketing/stage/appwin.js`, `direction-a.css` and `video.css`
+  import nothing from `src/` and still render the pre-redesign chrome with **no failing test**.
+  Also fix the mirror comment citing the renamed `status-mark.tsx`, and manually review
+  `npm run video:render`.
+- **`electron/main.ts` L163's `#101014` pre-paint** and `src-tauri`'s `#16161e` must follow the
+  ground, per the addendum's §9.1. Decision-free, one line each, not yet done.
+- **Phase-end evidence (§3.3), none of which exists yet:** the `css-audit` re-read with the
+  owner, the Electron native pass over steps 4–8, and the **same pass under `npm run tauri dev`**.
+  Tauri has had no run at all this program; `styles.css` is shared, so that is a real gap and
+  not a formality.
+
+### 0.5 Evidence actually obtained, and its limits
+
+`npm test` 160 files / 1975 tests, `npm run build`, `npm run generate:menu:check`,
+`npm run electron:build`, `docs-anchors.sh` — all green at `4014867`. `docs-compliance.sh`
+reports 8 failures, all pre-existing in `AGENTS.md` and `docs/ARCHITECTURE.md`, none touched
+by this work.
+
+Native macOS Electron screenshots exist for **steps 1–3 only**. Measured there: frame
+275×34 at the origin, rail beneath it, stage 1080×772 from `y=0`, status full width, no
+overlap; `--state-hover-bg` = `rgba(255,255,255,0.06)` against `--tab-active-bg` =
+`rgb(57,57,64)`, published by `applyThemeVars` rather than falling back to `:root`. The state
+matrix was read across four themes and five states.
+
+Not obtained: any Tauri run, any Windows evidence, any native look at steps 4–8, any render of
+top-tab mode (step 3 changed `.tab`, which only appears there), and any render of a **populated
+rail** — every screenshot so far has zero workspaces, so hover-vs-selected on `.wsitem` has
+been proven by computed value, not by eye.
+
+### 0.6 Resuming
+
+Read this section, then §3.1 step 9 onward. The decision queue is closed — D1–D12 are approved
+as written, and the standing instruction is to resolve new forks against the plan's own
+recommendations and record them in §0.3 rather than stopping. Gates per change stay as §7
+states them.
 
 ## 1. Corrections to the handoff
 
@@ -45,11 +146,12 @@ corrected facts instead:
 - **`docs/CONTEXT.md:798` cites "§17 Docked side panels"; that section is §19.** Exactly the
   stale-citation class §3.5 warns about, in a file the citation gate never scans.
 
-## 2. Owner decision queue
+## 2. Owner decision queue — CLOSED 2026-08-14
 
 AGENTS.md makes every DL-rule change a stop-and-ask fork. This program hits several at once,
-so they are queued here, each with a recommendation. **Nothing below is decided until the
-owner says so**; the phase that needs a decision is blocked on it, not the whole program.
+so they were queued here, each with a recommendation. **All twelve were approved as written on
+2026-08-14**, so this table is now the record of what was decided rather than a list of
+blockers. Forks found after that date are in §0.3.
 
 | #   | Decision                                                                                                                                                                                                                                                                             | Needed before                                       | Recommendation                                                                                                                                                                                                                                                                                                            |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -156,7 +258,7 @@ fixes the mirror comment that still cites the renamed `status-mark.tsx`. Compone
 can silently alter rendered media (AGENTS.md trap), so `npm run video:render` gets a manual
 review.
 
-## 4. Phase 3 — feature toolbar shipping pass (blocked on D6, D7 and D12)
+## 4. Phase 3 — feature toolbar shipping pass (D6, D7, D12 approved)
 
 The gallery toolbar (`FeatureToolbar`, overflow fit, tooltips) is built; shipping it means:
 
@@ -182,7 +284,7 @@ The gallery toolbar (`FeatureToolbar`, overflow fit, tooltips) is built; shippin
 
 Gates: `generate:menu:check`, the shortcut-groups test, screenshot approval in both layouts.
 
-## 5. Phase 4 — file explorer surface (blocked on D4, D5, D10 and D11)
+## 5. Phase 4 — file explorer surface (D4, D5, D10, D11 approved)
 
 The model (`src/files/`, 9 modules), the host (`electron/fs/`, six channels), all four
 dirty-exit guards, and the `SurfaceStrip` seam in `tab-manager.ts` are merged and tested.
@@ -391,7 +493,7 @@ phase 2 ────┼─ phase 4 (/var fix → proof package + harness → Gat
 
 | Claim                                  | Intent     | Status       | Evidence                                                                                   |
 | -------------------------------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------ |
-| The tree passes `npm test`             | `current`  | contradicted | `electron/fs/read.test.ts` `/var` symlink case fails on macOS; fixed by phase 4 step 5.0.1 |
-| PR #16 merges as-is                    | `decided`  | assumption   | PR open, unreviewed, `windows-check` red with `main`'s pre-existing Gate C failure         |
+| The tree passes `npm test`             | `current`  | holds        | fixed at `3f9c928`; 160 files / 1975 tests green at `4014867`                               |
+| Phase 2 is verified on both hosts      | `current`  | contradicted | native macOS covers steps 1-3 only; steps 4-8 and every Tauri run are unobserved — §0.5   |
 | The direction holds on any theme       | `building` | unverified   | four dark presets proven; light themes reachable via overrides, untested                   |
 | The usage dashboard behaves as specced | `building` | unobserved   | the branch's acceptance table has never been run; scheduled in §6.1.3                      |
