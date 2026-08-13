@@ -32,6 +32,7 @@ function fakeClient(overrides: Partial<BrowserClient> = {}): BrowserClient {
     setInspect: vi.fn(async () => {}),
     onState: vi.fn(async () => () => {}),
     onGrab: vi.fn(async () => () => {}),
+    onNavigated: vi.fn(async () => () => {}),
     ...overrides,
   };
 }

@@ -541,6 +541,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     let unlisten: (() => void) | undefined;
     void initBrowserBridge({
       client: defaultBrowserClient,
+      // One write per committed main-frame navigation — what a cold open
+      // restores (browser productization §3).
+      onCommittedNavigation: (url) => updateSettings({ browserLastUrl: url }),
       target: {
         activePaneId: () => tabsRef.current?.activePaneId() ?? null,
         paste: async (paneId, text) => {

@@ -1495,7 +1495,12 @@ export function createTabManager(
         activeManager()?.focusActive();
         return;
       }
-      void openBrowser(defaultBrowserClient, settings.value.browserHomeUrl);
+      void openBrowser(
+        defaultBrowserClient,
+        // Restore the last committed page across relaunch; home is the
+        // first-run answer (browser productization §3).
+        settings.value.browserLastUrl || settings.value.browserHomeUrl,
+      );
     },
     "toggle-prompts": () => {
       if (promptsOpen.value) {

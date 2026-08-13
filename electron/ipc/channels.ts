@@ -88,6 +88,9 @@ export const EVENTS = {
   fileChanged: "fs:changed",
   browserState: "browser:state",
   browserGrab: "browser:grab",
+  // Committed main-frame navigations only — never in-page hash changes. What
+  // the renderer persists as `browserLastUrl` (browser productization §3).
+  browserNavigated: "browser:navigated",
 } as const;
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS];

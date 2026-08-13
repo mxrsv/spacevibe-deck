@@ -213,3 +213,20 @@ describe("promptTemplates validation", () => {
     expect(validateSettings(raw).promptTemplates).toEqual([good]);
   });
 });
+
+describe("browserLastUrl", () => {
+  it("defaults empty and keeps a stored string", () => {
+    expect(validateSettings({}).browserLastUrl).toBe("");
+    expect(
+      validateSettings({ browserLastUrl: "http://localhost:5173/app" })
+        .browserLastUrl,
+    ).toBe("http://localhost:5173/app");
+  });
+
+  it("degrades a malformed value to the default instead of fixing it", () => {
+    expect(validateSettings({ browserLastUrl: 7 }).browserLastUrl).toBe("");
+    expect(
+      validateSettings({ browserLastUrl: "x".repeat(3000) }).browserLastUrl,
+    ).toBe("");
+  });
+});

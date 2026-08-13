@@ -46,6 +46,11 @@ export interface BrowserClient {
   setInspect(active: boolean): Promise<void>;
   onState(handler: (state: BrowserState) => void): Promise<UnlistenFn>;
   onGrab(handler: (grab: BrowserGrab) => void): Promise<UnlistenFn>;
+  /**
+   * Committed main-frame navigations only — never in-page hash changes.
+   * What `browserLastUrl` persists (browser productization §3).
+   */
+  onNavigated(handler: (url: string) => void): Promise<UnlistenFn>;
 }
 
 export const defaultBrowserClient: BrowserClient = {
@@ -62,4 +67,8 @@ export const defaultBrowserClient: BrowserClient = {
     listen<BrowserState>("browser:state", (event) => handler(event.payload)),
   onGrab: (handler) =>
     listen<BrowserGrab>("browser:grab", (event) => handler(event.payload)),
+  onNavigated: (handler) =>
+    listen<{ url: string }>("browser:navigated", (event) =>
+      handler(event.payload.url),
+    ),
 };

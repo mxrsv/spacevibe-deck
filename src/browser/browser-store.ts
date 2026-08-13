@@ -104,6 +104,12 @@ export async function deliverGrab(
 export interface BrowserBridgeDeps {
   readonly client: BrowserClient;
   readonly target: GrabTarget;
+  /**
+   * A committed main-frame navigation — what `browserLastUrl` persists.
+   * One settings write per committed navigation, none during load
+   * (browser productization §3).
+   */
+  readonly onCommittedNavigation?: (url: string) => void;
 }
 
 /**
@@ -124,21 +130,28 @@ export async function initBrowserBridge(
         browserNotice.value = grabSummary(grab.count, outcome);
       });
     }),
+    deps.client.onNavigated((url) => {
+      deps.onCommittedNavigation?.(url);
+    }),
   ]);
   return () => unlisteners.forEach((unlisten) => unlisten());
 }
 
 /**
- * Open the panel, loading `home` when nothing is loaded yet.
+ * Open the panel, loading `restore` when nothing is loaded yet — the
+ * persisted last page when one exists, the home address otherwise (browser
+ * productization §3). The host's own URL gate decides whether the stored
+ * value is loadable; an unusable one opens a blank panel, visible and
+ * editable.
  *
  * Reopening keeps the page: the toggle is a view, not a session.
  */
 export async function openBrowser(
   client: BrowserClient,
-  home: string,
+  restore: string,
 ): Promise<void> {
   browserOpen.value = true;
-  const url = browserState.value.url === "" ? home : null;
+  const url = browserState.value.url === "" ? restore : null;
   try {
     browserState.value = await client.open(url);
   } catch (error) {

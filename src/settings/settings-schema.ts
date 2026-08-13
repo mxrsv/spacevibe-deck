@@ -54,6 +54,13 @@ export interface Settings {
    */
   browserHomeUrl: string;
   /**
+   * The page the panel restores on a cold open — the last committed
+   * main-frame navigation, written by the host's `browser:navigated` event.
+   * One value app-wide, last writer wins across windows (browser
+   * productization §3); empty until the panel has ever navigated.
+   */
+  browserLastUrl: string;
+  /**
    * Chords the user rebound, per platform, over the shipped keymaps. Keyed by
    * platform rather than flat because the two keymaps are genuinely different
    * documents — the same action has different chords on each, and a single map
@@ -96,6 +103,7 @@ export const DEFAULT_SETTINGS: Settings = {
   promptTemplates: [],
   browserWidth: 420,
   browserHomeUrl: "http://localhost:3000",
+  browserLastUrl: "",
   keybindings: NO_KEYBINDING_OVERRIDES,
 };
 
@@ -289,6 +297,13 @@ export function validateSettings(raw: unknown): Settings {
       typeof source.browserHomeUrl === "string" && source.browserHomeUrl.length <= 2048
         ? source.browserHomeUrl
         : DEFAULT_SETTINGS.browserHomeUrl,
+    // Same posture as browserHomeUrl: the host's own URL gate decides what is
+    // loadable at open time, and a malformed stored value degrades to a blank
+    // panel there rather than being "fixed" into a disagreement here.
+    browserLastUrl:
+      typeof source.browserLastUrl === "string" && source.browserLastUrl.length <= 2048
+        ? source.browserLastUrl
+        : DEFAULT_SETTINGS.browserLastUrl,
     keybindings: validateKeybindings(source.keybindings),
   };
 }

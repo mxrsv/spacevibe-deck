@@ -37,6 +37,7 @@ function fakeClient(overrides: Partial<BrowserClient> = {}): BrowserClient {
     setInspect: vi.fn(async () => {}),
     onState: vi.fn(async () => () => {}),
     onGrab: vi.fn(async () => () => {}),
+    onNavigated: vi.fn(async () => () => {}),
     ...overrides,
   };
 }
@@ -122,12 +123,32 @@ describe("initBrowserBridge", () => {
     );
   });
 
-  it("unsubscribes both listeners on teardown", async () => {
+  it("forwards committed navigations to the persistence seam", async () => {
+    let onNavigated: ((url: string) => void) | undefined;
+    const client = fakeClient({
+      onNavigated: vi.fn(async (handler: (url: string) => void) => {
+        onNavigated = handler;
+        return () => {};
+      }),
+    });
+    const persisted: string[] = [];
+    await initBrowserBridge({
+      client,
+      target: { activePaneId: () => null, paste: async () => true },
+      onCommittedNavigation: (url) => persisted.push(url),
+    });
+    onNavigated?.("http://localhost:3000/settings");
+    expect(persisted).toEqual(["http://localhost:3000/settings"]);
+  });
+
+  it("unsubscribes every listener on teardown", async () => {
     const stateOff = vi.fn();
     const grabOff = vi.fn();
+    const navigatedOff = vi.fn();
     const client = fakeClient({
       onState: vi.fn(async () => stateOff),
       onGrab: vi.fn(async () => grabOff),
+      onNavigated: vi.fn(async () => navigatedOff),
     });
     const teardown = await initBrowserBridge({
       client,
@@ -136,6 +157,7 @@ describe("initBrowserBridge", () => {
     teardown();
     expect(stateOff).toHaveBeenCalled();
     expect(grabOff).toHaveBeenCalled();
+    expect(navigatedOff).toHaveBeenCalled();
   });
 });
 

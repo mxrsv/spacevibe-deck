@@ -149,7 +149,11 @@ const browserPanels = new BrowserPanels({
   emit: emitTo,
   windowFor: (label) => windows.get(label),
   vendorSource: reactGrabSource,
-  events: { state: EVENTS.browserState, grab: EVENTS.browserGrab },
+  events: {
+    state: EVENTS.browserState,
+    grab: EVENTS.browserGrab,
+    navigated: EVENTS.browserNavigated,
+  },
 });
 
 const pty = new PtyManager({

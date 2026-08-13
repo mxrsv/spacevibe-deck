@@ -84,7 +84,12 @@ export interface BrowserPanelDeps {
   readonly windowFor: (label: string) => BrowserWindow | undefined;
   /** The vendored react-grab bundle, read once by the caller. */
   readonly vendorSource: () => string;
-  readonly events: { readonly state: string; readonly grab: string };
+  readonly events: {
+    readonly state: string;
+    readonly grab: string;
+    /** Committed main-frame navigations, carrying the loaded URL. */
+    readonly navigated: string;
+  };
   /** Test seam — the real constructor otherwise. */
   readonly createView?: () => WebContentsView;
   /** Test seam — `shell.openExternal` otherwise. */
@@ -370,6 +375,13 @@ export class BrowserPanels {
 
     const publish = (): void => this.publish(label);
     contents.on("did-navigate", publish);
+    // Committed main-frame navigations also feed the renderer's persisted
+    // `browserLastUrl` (browser productization §3). Deliberately NOT wired to
+    // `did-navigate-in-page`: a hash change is not a page the panel could
+    // restore to on a cold open.
+    contents.on("did-navigate", (_event, url) => {
+      this.deps.emit(label, this.deps.events.navigated, { url });
+    });
     contents.on("did-navigate-in-page", publish);
     contents.on("page-title-updated", publish);
     contents.on("did-start-loading", publish);
