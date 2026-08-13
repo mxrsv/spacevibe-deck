@@ -55,7 +55,14 @@
      plus breathing room before the first tab. */
   --frame-lights-w: 78px;
   --status-h: 28px;
-  --sidebar-w: 200px;
+  /* 275px, up from 200px on 2026-08-14, and it is a drag-affordance figure
+     before it is a taste one. The frame moved into this column (DL-18.3), so
+     the window's draggable strip is now whatever the column has left after the
+     78px traffic-light footprint and the actions — about 26px at 200px wide,
+     which is not a titlebar you can grab or double-click to zoom. 275px is the
+     reviewed direction's own rail width and leaves ~100px. Measured natively
+     on macOS, not reasoned about. */
+  --sidebar-w: 275px;
 
   /* DL-20.1: two radius roles, and no third picked at a use site.
      --radius-control is anything the pointer acts on inside a surface — rows,
