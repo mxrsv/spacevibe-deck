@@ -121,6 +121,28 @@ as written, and the standing instruction is to resolve new forks against the pla
 recommendations and record them in §0.3 rather than stopping. Gates per change stay as §7
 states them.
 
+### 0.7 Continuation — cloud session, 2026-08-14
+
+Everything §0.1 lists was pushed to `origin/main` before this session started, which mooted
+§0.2's reset option: the D14/W5 breach in `d821bcc` is now history, disclosed and kept.
+This continuation ran on `claude/redesign-phases-2-5-e6mdf5` and finished phase 2's debts:
+
+- **Steps 9–10** — the global sweep had already carried both surfaces' radii; what remained
+  was the DL-21.5 motion pair on the address bar and the external-change bar's buttons. One
+  DL-21.2 stray was found and fixed on the way: `.search-bar__btn:hover` still painted the
+  selection wash.
+- **§3.4 mirrors** — the mock's frame moved into its navigation column, its selection took
+  the §21 wash mixed from tone, its chrome radii took DL-20.1; DL §10's mirrors row closed
+  (R2). The film's capture script now honors `PLAYWRIGHT_BROWSERS_PATH`, which is what let
+  it render here.
+- **§9.1 grounds** — `electron/main.ts` pre-paints `#16161e`; Tauri's three configs already
+  did.
+- **Evidence** — all automated gates green throughout; a Linux Electron pass (xvfb) ran the
+  real app over a live PTY: smoke 24/27 (three Linux-environment artifacts), the redesigned
+  shell on screen, and the browser panel's `WebContentsView` hole **pixel-exact** against
+  its DOM rect ({680, 35, 420×657} from both sides of the IPC). Still owed: every native
+  macOS check, any Tauri run, top-tab render, owner eye review, `css-audit` re-read.
+
 ## 1. Corrections to the handoff
 
 The handoff is a frozen milestone doc; it stays as written. The program proceeds from these
@@ -493,7 +515,7 @@ phase 2 ────┼─ phase 4 (/var fix → proof package + harness → Gat
 
 | Claim                                  | Intent     | Status       | Evidence                                                                                   |
 | -------------------------------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------ |
-| The tree passes `npm test`             | `current`  | holds        | fixed at `3f9c928`; 160 files / 1975 tests green at `4014867`                               |
-| Phase 2 is verified on both hosts      | `current`  | contradicted | native macOS covers steps 1-3 only; steps 4-8 and every Tauri run are unobserved — §0.5   |
+| The tree passes `npm test`             | `current`  | holds        | fixed at `3f9c928`; 160 files / 1975 tests green at `4014867` and through §0.7              |
+| Phase 2 is verified on both hosts      | `current`  | contradicted | native macOS covers steps 1-3; a Linux Electron pass covers the shell, rail, board and browser panel (§0.7); every Tauri run is unobserved |
 | The direction holds on any theme       | `building` | unverified   | four dark presets proven; light themes reachable via overrides, untested                   |
 | The usage dashboard behaves as specced | `building` | unobserved   | the branch's acceptance table has never been run; scheduled in §6.1.3                      |

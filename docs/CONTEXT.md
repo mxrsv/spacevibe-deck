@@ -794,12 +794,15 @@ touching any of it.
 **THE FEATURE IS NOT USABLE.** There is no way to open a file in Deck. The
 machinery merged and the chrome did not. That was a decision, not a shortfall:
 the owner is redesigning the Electron version completely, and while this was
-being written `electron-migration` took DESIGN LANGUAGE §16 for the application
-frame, wrote a **§17 "Docked side panels" for a browser panel that reserves
+being written `electron-migration` took DESIGN LANGUAGE §18 for the application
+frame, wrote a **§19 "Docked side panels" for a browser panel that reserves
 itself for the file explorer**, docked that panel as a STAGE column rather than
-a `.window` grid column, and collapsed the chrome frame. Merging a second
-docked-panel convention into a frame about to be redrawn would have meant
-paying for the surface twice.
+a `.window` grid column, and collapsed the chrome frame. (Those sections were
+first numbered §16/§17 and moved up two on 2026-08-12 to dodge a cross-branch
+collision; the numbers here were rewritten to match on 2026-08-14 — the exact
+stale-citation class the redesign plan's §3.5 warns about, in a file the
+citation gate never scans.) Merging a second docked-panel convention into a
+frame about to be redrawn would have meant paying for the surface twice.
 
 **What merged.**
 
@@ -867,6 +870,45 @@ test are green, and none of them opens a window. The plan's §7.2 follow-ups
 mostly went away WITH the surface — unreachable, not fixed — but three merged
 because they live in the host layer: `realpathSync` runs synchronously per entry
 on the main thread, and `stat_files` / `watch_paths` take unbounded arrays.
+
+## Redesign phase 2 — the chrome transfusion — 2026-08-14
+
+The gallery-proven direction reached the app.
+[Plan](plans/2026-08-13-redesign-phases-2-5.md) `current`,
+[shipping addendum](specs/2026-08-13-direction-token-rebuild-design.md) `decided`
+(its §9), DL §20/§21 written, decisions D1–D12 owner-approved as written.
+
+**What landed, in ten steps plus the mirrors.** The token layer (`--radius-control`
+/ `--radius-surface`, `--duration`/`--ease`, `--state-hover-bg`); the shell —
+`.deck-frame` is the head of the navigation column and the stage reaches the
+window's top edge (DL-18.3 rewritten, rail 275px to keep a draggable titlebar);
+navigation, atoms, settings shell, Open board, popovers and imperative surfaces
+swept onto the tokens, closing four DL §10 ledger rows; the browser panel and
+`src/files/ui` took the motion-pair residue; both hosts' pre-paint grounds now
+match `--bg`'s `#16161e` (the Electron value was the gallery's `#101014`); and the
+marketing mirrors were re-shaped by hand to the new shell — they import nothing
+from `src/`, so the next chrome change owes them another manual pass.
+
+**This is a cross-host visual change (D9).** `src/styles.css` is shared; Tauri
+ships it. Nothing here may be labelled Electron-only.
+
+**Evidence obtained.** All automated gates green at every step (`npm test` 160
+files / 1975 tests, `build`, `generate:menu:check`, `electron:build`). Native
+macOS Electron screenshots exist for steps 1–3 (frame 275×34 at origin, stage
+from `y=0`, state matrix across four themes × five states). A Linux Electron
+pass (xvfb, cloud session, 2026-08-14) exercised the real app end-to-end: the
+smoke suite 24/27 (the three failures are Linux-environment PTY/platform
+artifacts, not chrome), a real workspace opened over a live PTY with the
+redesigned shell, and the browser panel's `WebContentsView` hole measured
+**pixel-exact** against its DOM rect ({680, 35, 420×657} on both sides of the
+IPC). Rendered stills of the marketing film and a headless capture of the built
+landing show the mirrored shell.
+
+**Still owed, named honestly.** The owner's eye review of every step (DL §9.6);
+the `css-audit` re-read with the owner; a native macOS pass over steps 4–10; any
+Tauri run at all — `styles.css` is shared, so that gap is real; the top-tab
+layout render; Windows anything; light themes (all four presets are dark; a
+light `--bg` via overrides is a named limit, not a claim).
 
 ## Chưa khớp thực tế
 

@@ -156,6 +156,18 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   public key; local builds without `DECK_UPDATER_PUBLIC_KEY` keep the updater
   plugin disabled while the process plugin remains available
   ([Tauri plugin registration](../src-tauri/src/lib.rs#L28-L43) `current`).
+- Redesign phase 2 (2026-08-14) closed its forks as follows, all owner-approved
+  or resolved under the plan's standing authority and recorded in
+  [the plan's §0.3 and §2](plans/2026-08-13-redesign-phases-2-5.md) `current`:
+  selection is a full wash, the accent bar is retired app-wide (DL §21);
+  radius/motion are two closed scales (DL §20); the frame is the head of the
+  navigation column and the stage reaches the window top (DL-18 rewritten,
+  rail 275px to keep a draggable titlebar); the restyle is cross-host and
+  visual-only — `src/styles.css` is shared with shipping Tauri and no evidence
+  may be labelled Electron-only (D9); `deriveChromeColors` gained only
+  `--state-hover-bg`, following `seamDivider`'s pattern, with the ramp and
+  contrast floors unchanged; and both hosts' pre-render window grounds follow
+  `--bg`'s default.
 
 ## Chưa khớp thực tế
 
