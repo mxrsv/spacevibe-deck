@@ -10,7 +10,6 @@ import {
   renderStagePane,
   renderStageSidebar,
   renderStageStatus,
-  renderStageTitlebar,
 } from "../appwin.js";
 import { BRAND, STAGE_ARIA_LABEL } from "../../../stage/brand.js";
 import { mountAurora } from "../aurora.js";
@@ -297,7 +296,6 @@ function renderStage() {
 
   return `
     <figure class="a-appwin tour__appwin" data-enter role="img" aria-label="${STAGE_ARIA_LABEL}">
-      ${renderStageTitlebar()}
       <div class="a-appwin__body" aria-hidden="true">
         ${renderStageSidebar(SIDEBAR_STATUS)}
         <div class="tour__scene">

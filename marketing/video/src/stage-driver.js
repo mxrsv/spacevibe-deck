@@ -10,14 +10,13 @@ import {
   renderStagePane,
   renderStageSidebar,
   renderStageStatus,
-  renderStageTitlebar,
 } from "../../stage/appwin.js";
 import { BRAND, STAGE_ARIA_LABEL } from "../../stage/brand.js";
 import { stagePanes, stageSidebar } from "../../stage/stage-data.js";
 import { AGENTS, BOARD_ROWS, BOOT_LINES, PRESET_CELLS } from "./copy.js";
 import { paneTranscriptAt } from "./transcript.js";
 
-/** Attention colours — src/ui/status-mark.tsx precedence order. */
+/** Attention colours — src/ui/agent-attention-mark.tsx precedence order. */
 const ATTENTION_COLORS = Object.freeze({
   error: "#f7768e",
   warning: "#e0af68",
@@ -102,7 +101,6 @@ function renderMarkup() {
 
   return `
     <figure class="a-appwin vid-appwin" role="img" aria-label="${STAGE_ARIA_LABEL}">
-      ${renderStageTitlebar()}
       <div class="a-appwin__body" aria-hidden="true">
         ${renderStageSidebar(sidebarStatus)}
         <div class="vid-scene">

@@ -25,6 +25,13 @@ export function renderChromeIcon(paths) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 }
 
+/**
+ * The frame — the head of the navigation column, mirroring the app's
+ * `.deck-frame` (DL-18.3): traffic lights and window actions on the rail's
+ * ground, with the stage reaching the window's top edge beside it. It is
+ * rendered by `renderStageSidebar`, not composed above the body, because
+ * since the 2026-08 redesign there is no full-width chrome band.
+ */
 export function renderStageTitlebar() {
   const icons = ["splitRow", "splitColumn", "closePane", "expand"]
     .map(
@@ -81,8 +88,11 @@ export function renderStageSidebar(statusById = undefined) {
 
   return `
     <aside class="a-appwin__sidebar">
-      ${items}
-      <div class="a-appwin__wsadd"><span>+</span>Open workspace</div>
+      ${renderStageTitlebar()}
+      <div class="a-appwin__wslist">
+        ${items}
+        <div class="a-appwin__wsadd"><span>+</span>Open workspace</div>
+      </div>
     </aside>
   `;
 }

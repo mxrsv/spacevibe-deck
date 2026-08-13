@@ -225,14 +225,17 @@ is reworked — **do not "fix" them opportunistically inside an unrelated change
 | ---------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `.cfg-btn`, board cards, inputs                                                    | DL-2.3   | still on `--hair`. These are lines INSIDE a surface, which is what `--hair` is for, so this row is a re-read rather than a debt: the boundary cases were the frames, and they moved |
 | `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —        | inset hairlines, allowed under DL-1.3                                                                                                                                             |
-| `marketing/` chrome mirrors                                                        | §20, §21 | `marketing/stage/appwin.js`, `direction-a.css` and `video.css` are hand-copied and import nothing from `src/`, so they still render the pre-redesign chrome with no failing test   |
 
 **Closed 2026-08-14** by the redesign's phase 2, each in the commit that fixed it:
 `.tab-popover__label`'s uppercase (DL-4.3), `.settings-screen` and `.search-bar`'s
 `--hair-strong` frames (DL-2.3, now `--seam-raised`), `.search-bar`'s blurred
 `box-shadow` (DL-1.3), and the three rows §20/§21 opened for themselves — the accent
 bars, the 53 radius literals and the state-change duration literals are all on tokens.
-`.row.is-selected`'s solid `--accent` fill went with them (DL-3.1).
+`.row.is-selected`'s solid `--accent` fill went with them (DL-3.1). The `marketing/`
+chrome mirrors followed at phase end: the mock's frame moved into its navigation
+column (DL-18.3), its selection took the §21 wash mixed from the neutral tone, and
+its chrome radii took DL-20.1's control role — still hand-copied, still importing
+nothing from `src/`, so the next chrome change must update them by hand again.
 
 ## 11. Settings shell
 

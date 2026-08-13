@@ -3,7 +3,6 @@ import {
   renderStagePane,
   renderStageSidebar,
   renderStageStatus,
-  renderStageTitlebar,
 } from "../appwin.js";
 import { REEL_ID } from "../demo-reel.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
@@ -195,7 +194,6 @@ export function renderDirectionA(copy, locale) {
 
             <div class="a-deck__stage">
               <figure class="a-appwin" role="img" aria-label="${STAGE_ARIA_LABEL}">
-                ${renderStageTitlebar()}
                 <div class="a-appwin__body" aria-hidden="true">
                   ${renderStageSidebar()}
                   <div class="a-appwin__grid">

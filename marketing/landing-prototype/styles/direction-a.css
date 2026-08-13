@@ -401,6 +401,9 @@
   font-family: var(--a-font-display);
 }
 
+/* The frame is the head of the navigation column (DL-18.3 mirror): it sits on
+   the rail's ground and paints no seam of its own — the shell's structural
+   line is vertical now, on the stage's left edge below. */
 .a-appwin__titlebar {
   display: flex;
   flex: 0 0 auto;
@@ -408,7 +411,6 @@
   justify-content: space-between;
   height: 3.4cqw;
   padding: 0 1.3cqw;
-  border-bottom: 1px solid var(--sg-hairline-soft);
 }
 
 .a-appwin__lights {
@@ -462,14 +464,30 @@
   min-height: 0;
 }
 
+/* The navigation column: frame on top, workspace list under it, one plane.
+   275/1100 in the app → 25cqw here. */
 .a-appwin__sidebar {
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;
-  width: 20cqw;
+  width: 25cqw;
+  min-height: 0;
+}
+
+/* The stage's left edge carries the shell's one structural line, running the
+   window's full height — whatever sits beside the rail (the hero's grid, the
+   tour's and the video's scene wrappers) takes it. */
+.a-appwin__sidebar + * {
+  border-left: 1px solid var(--sg-hairline-soft);
+}
+
+.a-appwin__wslist {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
   gap: 0.35cqw;
   padding: 0.8cqw;
-  border-right: 1px solid var(--sg-hairline-soft);
 }
 
 .a-appwin__wsitem {
@@ -478,13 +496,16 @@
   gap: 0.8cqw;
   min-width: 0;
   padding: 0.7cqw 0.8cqw;
-  border-radius: 0.6cqw;
+  /* --radius-control (10px at the 1000px design width). */
+  border-radius: 1cqw;
   color: var(--sg-fg-dim);
 }
 
+/* DL-21.1 mirror: selection is the full wash — 15% of the neutral tone, mixed
+   from white like the app's --tab-active-bg, never from the foreground. */
 .a-appwin__wsitem.is-active {
   color: var(--sg-fg);
-  background: color-mix(in srgb, #c0caf5 8%, transparent);
+  background: color-mix(in srgb, #ffffff 15%, transparent);
 }
 
 .a-appwin__wslogo {
@@ -683,6 +704,8 @@
   padding: 0 1.3cqw;
   border-top: 1px solid var(--sg-hairline-soft);
   color: var(--sg-fg-dim);
+  /* --chrome-1 mirror: the status bar is a raised step off the ground. */
+  background: color-mix(in srgb, #ffffff 5%, transparent);
   font-size: max(1.05cqw, 6px);
 }
 
@@ -729,7 +752,8 @@
 .a-appwin__kbd {
   padding: 0.15cqw 0.4cqw;
   border: 1px solid var(--sg-hairline);
-  border-radius: 0.3cqw;
+  /* --radius-control: the app's chips got rounder with DL-20.1. */
+  border-radius: 1cqw;
   color: var(--sg-fg-dim);
   font-family: inherit;
   font-size: inherit;
@@ -1191,9 +1215,15 @@
   }
 
   /* The sidebar collapses below the narrow breakpoint so the three panes
-     keep a legible width; fonts already bottom out via their max() floors. */
+     keep a legible width; fonts already bottom out via their max() floors.
+     The frame goes with it — it is the head of that column now — and so does
+     the stage's left seam, which has no rail to sit against. */
   .a-appwin__sidebar {
     display: none;
+  }
+
+  .a-appwin__sidebar + * {
+    border-left: none;
   }
 
   .a-appwin__line,
