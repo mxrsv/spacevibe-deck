@@ -102,6 +102,37 @@ describe("deriveChromeColors", () => {
     });
   });
 
+  describe("the interaction-state pair (DL-21)", () => {
+    // The rule §21 exists to prevent is one declaration serving both states,
+    // which is what the reviewed direction sheet shipped on the rail and the
+    // settings nav: hovering an unselected row painted "selected".
+    it("keeps hover quieter than selection on every preset", () => {
+      for (const [bg, fg] of [
+        ["#16161e", "#c0caf5"],
+        ["#282a36", "#f8f8f2"],
+        ["#282c34", "#abb2bf"],
+        ["#1e1e2e", "#cdd6f4"],
+        ["#ffffff", "#333333"],
+      ] as const) {
+        const c = deriveChromeColors(bg, fg);
+        expect(c.stateHoverBg).not.toBe(c.tabActiveBg);
+      }
+    });
+
+    it("mixes the hover wash from the tone, not the foreground", () => {
+      // From `fg` it would carry the terminal's text hue into a wash that is
+      // meant to be colourless — the mistake DL-2.3 corrected for seams. Both
+      // presets below have a strongly tinted foreground, so a foreground mix
+      // would be visible in the assertion rather than a matter of taste.
+      expect(deriveChromeColors("#16161e", "#c0caf5").stateHoverBg).toBe(
+        "rgba(255, 255, 255, 0.06)",
+      );
+      expect(deriveChromeColors("#ffffff", "#333333").stateHoverBg).toBe(
+        "rgba(0, 0, 0, 0.06)",
+      );
+    });
+  });
+
   // The spec's contrast floors — the app-wide standard. Every preset plus
   // the known-bad overrides must pass.
   const cases: Array<{ label: string; bg: string; fg: string }> = [

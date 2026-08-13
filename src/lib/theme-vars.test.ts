@@ -64,9 +64,16 @@ describe("applyThemeVars", () => {
       "--chrome-1",
       "--chrome-2",
       "--tab-active-bg",
+      "--state-hover-bg",
       "--input-bg",
       "--hair",
       "--hair-strong",
+      // The three seams were published but never asserted, which left the one
+      // token family whose whole point is following the theme outside the gate
+      // that proves tokens follow the theme.
+      "--seam-recessed",
+      "--seam-divider",
+      "--seam-raised",
       "--text-primary",
       "--text-muted",
       "--text-faint",

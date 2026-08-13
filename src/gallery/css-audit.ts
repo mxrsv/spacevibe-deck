@@ -223,7 +223,7 @@ export function auditAppStyles(): readonly AuditGroup[] {
     },
     {
       label: "border-radius",
-      note: "`--radius` exists in `:root` and is used once. Everything else is typed inline.",
+      note: "DL-20.1 names two roles — `--radius-control` and `--radius-surface`. Every literal still counted here is a third radius picked at a use site, so this number is phase 2's burn-down list.",
       entries: tally(rules, declared("border-radius")),
     },
     {

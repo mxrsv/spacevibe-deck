@@ -18,6 +18,12 @@
   --chrome-1: color-mix(in srgb, var(--bg) 95%, var(--tone));
   --chrome-2: color-mix(in srgb, var(--bg) 91%, var(--tone));
   --tab-active-bg: color-mix(in srgb, var(--bg) 85%, var(--tone));
+  /* DL-21.2: the hover half of the selection pair. 6% against --tab-active-bg's
+     15% — far enough that hover cannot be mistaken for "already selected",
+     close enough that they read as one ladder. Mixed from --tone like the
+     seams (DL-2.3), never from --fg: the terminal's text hue does not belong
+     in a wash that is supposed to be colourless. */
+  --state-hover-bg: color-mix(in srgb, var(--tone) 6%, transparent);
   --input-bg: color-mix(in srgb, var(--bg) 88%, var(--tone));
   --hair: color-mix(in srgb, var(--fg) 12%, transparent);
   --hair-strong: color-mix(in srgb, var(--fg) 20%, transparent);
@@ -50,7 +56,22 @@
   --frame-lights-w: 78px;
   --status-h: 28px;
   --sidebar-w: 200px;
-  --radius: 10px;
+
+  /* DL-20.1: two radius roles, and no third picked at a use site.
+     --radius-control is anything the pointer acts on inside a surface — rows,
+     pills, icon buttons, chips. --radius-surface is anything that floats above
+     chrome — popovers, dialogs, the settings screen, the file view.
+     These replaced a single `--radius: 10px` on 2026-08-14; `border-radius: 50%`
+     and the 999px capsule stay shapes rather than scale values. */
+  --radius-control: 10px;
+  --radius-surface: 16px;
+
+  /* DL-20.2: one motion pair for chrome state change. §7 carried this as a
+     bare "0.13s ease" figure until the scale gave it a name. The panel
+     slide-over keeps its own 0.28s entrance — that is a different budget line
+     and still inside DL-1.2's 300ms ceiling. */
+  --duration: 150ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Flat design rule: no drop shadows anywhere in this file.
@@ -2180,7 +2201,7 @@ button.attn-mark:hover {
   pointer-events: none;
   border: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
   background: color-mix(in srgb, var(--accent) 25%, transparent);
-  border-radius: var(--radius);
+  border-radius: var(--radius-surface);
   transition:
     left 0.08s ease,
     top 0.08s ease,
@@ -3430,7 +3451,7 @@ button.attn-mark:hover {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--hair);
-  border-radius: var(--radius);
+  border-radius: var(--radius-surface);
   overflow: hidden;
 }
 

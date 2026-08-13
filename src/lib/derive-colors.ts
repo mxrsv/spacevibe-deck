@@ -12,6 +12,21 @@ export interface ChromeColors {
   readonly chrome1: string;
   readonly chrome2: string;
   readonly tabActiveBg: string;
+  /**
+   * DL-21.2's hover wash — the quieter half of the selection pair, and the
+   * reason it is derived here rather than written at each use site.
+   *
+   * It mixes from `tone`, not from `fg`. The reviewed direction wrote it as 6%
+   * of its ink alias, which resolves to the foreground, and that is the same
+   * mistake DL-2.3 corrected for seams: a neutral wash belongs to the
+   * background ladder, and mixing it from the foreground lets the terminal's
+   * text hue into chrome that is meant to be colourless.
+   *
+   * Alpha, like `seamDivider` and for the same reason: hover lands on whichever
+   * surface owns the row — `bg` on the rail, `chrome1` on the frame, `chrome2`
+   * inside a popover — so it has to adapt rather than name one ground.
+   */
+  readonly stateHoverBg: string;
   readonly inputBg: string;
   readonly hair: string;
   readonly hairStrong: string;
@@ -124,6 +139,10 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   const chrome1 = mixHex(bg, tone, 0.05);
   const chrome2 = mixHex(bg, tone, 0.09);
   const tabActiveBg = mixHex(bg, tone, 0.15);
+  // 6% against tabActiveBg's 15%: far enough apart that hover cannot be read as
+  // "already selected" (DL-21.2), close enough that the two belong to one
+  // ladder. The percentage is the reviewed direction's; only its source moved.
+  const stateHoverBg = alpha(tone, 0.06);
   // Kept soft on light themes — readability comes from the textPrimary floor
   const inputBg = mixHex(bg, tone, dark ? 0.12 : 0.06);
   // Every chrome surface text can sit on, not just the darkest one. The
@@ -146,6 +165,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     chrome1,
     chrome2,
     tabActiveBg,
+    stateHoverBg,
     inputBg,
     hair: alpha(fg, 0.12),
     hairStrong: alpha(fg, 0.2),

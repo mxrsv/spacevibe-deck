@@ -52,6 +52,7 @@ export function applyThemeVars(
   rootStyle.setProperty("--chrome-1", chrome.chrome1);
   rootStyle.setProperty("--chrome-2", chrome.chrome2);
   rootStyle.setProperty("--tab-active-bg", chrome.tabActiveBg);
+  rootStyle.setProperty("--state-hover-bg", chrome.stateHoverBg);
   rootStyle.setProperty("--input-bg", chrome.inputBg);
   rootStyle.setProperty("--hair", chrome.hair);
   rootStyle.setProperty("--hair-strong", chrome.hairStrong);

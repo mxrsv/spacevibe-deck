@@ -2,16 +2,19 @@
 
 Date: 2026-08-13 · Status: proposed, pending owner approval
 
-**Baseline:** `redesign/phase-1-2` @ `edf660f` — PR #16, open, unreviewed. This plan assumes
-PR #16 merges essentially as-is; if review changes the rail or the direction file, re-read §3
-before starting. The [token-rebuild spec](../specs/2026-08-13-direction-token-rebuild-design.md)
-`decided` itself still reads "proposed, pending owner approval"; approving this plan approves
-that spec's landed state.
+**Execution authority:** approving this document approves its sequencing and review content
+only. It does **not** authorize implementation, commit, push, branch mutation, or any item in
+D1–D12. Each decision is approved explicitly; implementation and remote mutation remain
+separate owner instructions. The
+[token-rebuild spec](../specs/2026-08-13-direction-token-rebuild-design.md) `decided` also keeps
+its own approval boundary.
 
 **Scope:** phases 2–5 of the [program handoff](./2026-08-13-redesign-program-handoff.md)
 `current` — chrome redesign, feature toolbar, file explorer surface, usage dashboard port +
-browser productization. **Out of scope:** the release cutover (Gates A/C), anything on Tauri
-beyond hotfixes, and any Windows platform claim without hardware evidence.
+browser productization. **Out of scope:** the release cutover (Gates A/C), new Tauri product
+behaviour, and any Windows platform claim without hardware evidence. The renderer and
+`styles.css` are shared by Electron and Tauri, so phase 2 is a cross-host visual change unless
+D9 chooses real host isolation; it may not be described or verified as Electron-only.
 
 Owner decisions already closed in the handoff §4 are not reopened here — notably: the ramp
 ships rebuilt from `--bg`/`--tone`, never fixed hex; `deriveChromeColors` keeps its contrast
@@ -58,13 +61,17 @@ owner says so**; the phase that needs a decision is blocked on it, not the whole
 | D6  | **Toolbar copy case + disabled loudness.** Tooltip labels come from `ACTION_REGISTRY` (Title Case menu labels) while chrome copy is sentence case; disabled (`--text-faint`) reads nearly identical to enabled in the dark themes.                                                   | phase 3                                             | Sentence-case the tooltip strings at the toolbar layer (registry keeps menu labels); leave the disabled token shared and accept the quiet reading — changing it moves every disabled control in the app.                                                                                                                  |
 | D7  | **Phase 3 sequencing.** The toolbar's `tools` group is `toggle-explorer` / `toggle-browser` / `toggle-usage`, but explorer and usage surfaces arrive in phases 4–5.                                                                                                                  | phase 3 start                                       | Ship phase 3 right after phase 2 with `toggle-browser` as the only `tools` item; phases 4 and 5 each add their own toolbar item as part of their surface work. The alternative (toolbar last) leaves `ChromeActions` to be restyled in phase 2 and thrown away in phase 5.                                                |
 | D8  | **The ipc-contract gate (R6).** The test assumes a single host and is excluded from `npm test`; every `usage_*` channel phase 5 adds widens the uncovered surface.                                                                                                                   | before phase 5 host work                            | Rewrite the gate Electron-first: keep the flat-payload shape checks, drop the requirement that every channel have a `#[tauri::command]` twin, and re-include it in `npm test`. This is the R6 decision the handoff deferred.                                                                                              |
+| D9  | **Shared renderer scope.** Phase 2 changes `src/styles.css`, which both Electron and shipping Tauri load.                                                                                                                                                                            | phase 2 step 0                                      | Approve visual-only cross-host impact: no new Tauri behaviour, but both hosts receive the shared renderer restyle and both get regression evidence. If this is rejected, first design and approve a real host-scoping seam; do not hide divergence behind CSS assumptions.                                                |
+| D10 | **Gate-M-only Electron packaging.** A packaged Monaco proof needs `electron-builder` config, but bundle/signing/release configuration is a stop-and-ask fork.                                                                                                                        | phase 4 packaging task                              | Approve an unsigned, local-only `electron-builder.gate-m.yml` and `electron:package:gate-m` command. It produces no installer, updater metadata, signing, notarization, publishing, release workflow, channel, or cutover change.                                                                                         |
+| D11 | **Explorer contract conflict.** The explorer spec says a right column of `.window` on `Cmd/Ctrl+Shift+B`; the toolbar spec says a main-stage tool on `Cmd/Ctrl+Shift+E`; governing DL-19.1 says docked panels are stage columns.                                                     | phase 4 permanent surface                           | Use a stage column to satisfy DL-19.1 and keep the explorer spec's collision-free `B` chord. Amend both feature specs before implementation: the toolbar action focuses/toggles the dock and does not pretend Explorer is a main surface.                                                                                 |
+| D12 | **Browser surface contract.** The toolbar spec says Browser is a main tab/pane; the current implementation is a docked `WebContentsView`.                                                                                                                                            | phase 3 Browser item                                | Keep Browser docked for this program and amend the toolbar spec before exposing its item. A main-surface conversion changes native-view ownership and needs its own spec/plan; it is not implied by “productization.”                                                                                                     |
 
 ## 3. Phase 2 — the chrome transfusion
 
 The direction is proven in the gallery across four dark themes and five states; nothing
 defines how it reaches the app. Phase 2 is that definition plus its execution.
 
-### 3.0 Step 0 — the shipping addendum (blocked on D3)
+### 3.0 Step 0 — the shipping addendum (blocked on D1–D3 and D9)
 
 One or two pages amending the direction spec: which roles map to which `styles.css` regions,
 what happens to the `--gx-chat-*` alias layer (stays gallery-only), and the §20/§21 outcomes
@@ -135,9 +142,10 @@ the next starts.
 
 Per step: `npm test && npm run build && npm run generate:menu:check`, the state matrix read
 across 4 themes × 5 states, and a screenshot the owner approves (DL §9.6 — a green build is
-not an eye review). At phase end: re-read the gallery `css-audit` numbers with the owner, and
-run one packaged-app screenshot pass on macOS for native rendering. Renderer-only changes
-prove nothing about Tauri; the phase claims Electron only.
+not an eye review). At phase end: re-read the gallery `css-audit` numbers with the owner, run
+the Electron native screenshot pass, then run the same visual and interaction regression pass
+under `npm run tauri dev`. Evidence names the two hosts separately. Neither host proves
+Windows, and shared-renderer evidence is never labelled Electron-only.
 
 ### 3.4 Marketing mirrors — explicit final task
 
@@ -148,124 +156,227 @@ fixes the mirror comment that still cites the renamed `status-mark.tsx`. Compone
 can silently alter rendered media (AGENTS.md trap), so `npm run video:render` gets a manual
 review.
 
-## 4. Phase 3 — feature toolbar shipping pass (blocked on D6, D7)
+## 4. Phase 3 — feature toolbar shipping pass (blocked on D6, D7 and D12)
 
 The gallery toolbar (`FeatureToolbar`, overflow fit, tooltips) is built; shipping it means:
 
-1. Register `toggle-browser` in the `tools` group now; `toggle-explorer` / `toggle-usage`
-   arrive with phases 4/5 (per D7). New actions use `CharKeyBinding`, get `PLACEMENT` rows in
-   `shortcut-groups.ts`, and the menu is regenerated (`npm run generate:menu`, R3).
-2. Rebind the Windows `toggle-expand` chord (collides with `Ctrl+Shift+E`).
-3. Replace `ChromeActions` with `FeatureToolbar` at both mounts (`.deck-frame` slot in
+1. **Freeze the Browser contract first.** Write and approve
+   `docs/specs/2026-08-13-browser-productization-design.md`, resolving D12 before the toolbar
+   exposes the action. D14 applies: review the spec before any commit. If the decision is main
+   surface, STOP and replace the dock implementation plan before continuing; the existing dock
+   cannot be labelled a main tab/pane.
+2. Project the existing `toggle-browser` action into the `tools` group now;
+   `toggle-explorer` / `toggle-usage` arrive with phases 4/5 (per D7). New actions use
+   `CharKeyBinding`, get `PLACEMENT` rows in `shortcut-groups.ts`, and the menu is regenerated
+   (`npm run generate:menu`, R3).
+3. Rebind the Windows `toggle-expand` chord only if the approved D11 outcome gives Explorer
+   `Ctrl+Shift+E`; keeping the explorer spec's `B` chord leaves `toggle-expand` unchanged.
+4. Replace `ChromeActions` with `FeatureToolbar` at both mounts (`.deck-frame` slot in
    sidebar mode, inside `TabBar` in top-tab mode) — one commit, both layouts, or it
    half-lands.
-4. Write the missing DL rule for tooltips and the overflow surface — take the next free
+5. Write the missing DL rule for tooltips and the overflow surface — take the next free
    number above §22.
-5. Close or explicitly accept the three recorded gaps: overflow menu has no arrow-key roving
+6. Close or explicitly accept the three recorded gaps: overflow menu has no arrow-key roving
    focus; the update pill only re-fits on toolbar resize; tooltip/menu are `position: fixed`
    off a measured rect.
 
 Gates: `generate:menu:check`, the shortcut-groups test, screenshot approval in both layouts.
 
-## 5. Phase 4 — file explorer surface
+## 5. Phase 4 — file explorer surface (blocked on D4, D5, D10 and D11)
 
 The model (`src/files/`, 9 modules), the host (`electron/fs/`, six channels), all four
 dirty-exit guards, and the `SurfaceStrip` seam in `tab-manager.ts` are merged and tested.
 The surface was deliberately dropped; this phase rebuilds it. Cite **DL §19** for the panel —
 never DL-15 (D4).
 
-### 5.0 Prerequisites, in order
+### 5.0 Prerequisites and Gate M, in order
 
 1. **Fix the `/var` symlink test** (`electron/fs/read.test.ts:48` — compare realpaths). It is
    owned by explorer work and currently blocks any "tree passes `npm test`" claim for the
    whole program, so it lands first, as its own commit.
-2. **Create the packaging path.** `electron-builder` is a dependency with no config and no
-   script; Gate M requires a _packaged_ build and the repo cannot produce one. This is MVP
-   T19 debt and a phase-4 prerequisite, not a footnote.
-3. **Run Gate M**: a packaged build opens a file, highlights, edits, saves. Monaco workers
-   load through the same `file://` resolution that bit the MVP twice, both times silently.
-   Gate M failing loudly reopens the editor-engine decision (spec §9) — it does not degrade.
-   Note: no CSP exists today; adding one later invalidates Gate M and requires a re-run.
+2. **Create a proof-only packaging path after D10.** Add
+   `electron-builder.gate-m.yml`, referenced by `package.json`'s
+   `electron:package:gate-m` script:
+
+   ```text
+   npm run build && npm run build:gate-m-renderer && npm run electron:build &&
+   electron-builder --config electron-builder.gate-m.yml --mac --universal --dir --publish never
+   ```
+
+   The config sets `productName: Deck Gate M`, output `dist-gate-m`, and
+   `extraMetadata.main: dist-electron/electron/main.cjs` (Electron Builder packages this into
+   the app's `package.json`; `main` is not a top-level builder option). Its `files` list
+   includes `dist/**`, `dist-gate-m-renderer/**`, every
+   `dist-electron/electron/**/*.cjs`, every `dist-electron/src/**/*.cjs`, and
+   `dist-electron/electron/vendor/**`; electron-builder still supplies production
+   dependencies. It unpacks `node-pty`, sets the universal-build `x64ArchFiles` pattern for
+   its prebuilds, and preserves executable `spawn-helper` modes.
+   Add `scripts/verify-electron-gate-m-package.mjs` plus its adjacent test; the verifier fails
+   unless the app contains both renderer graphs, the complete compiled host graph, react-grab,
+   both native architectures, unpacked `node-pty`, executable helpers, and a packaged
+   `package.json` whose `main` equals that exact CJS path. It then launches the packaged entry
+   in gate mode and requires an explicit renderer-ready signal before passing. This config
+   never produces an installer or update metadata and is not referenced by release workflows.
+
+3. **Build a durable non-Explorer Gate M harness.** Add `gate-m.html`,
+   `src/files/gate-m-main.tsx` and `vite.gate-m.config.mjs`; the dedicated Vite config writes
+   only this graph to `dist-gate-m-renderer/`. The harness mounts the existing `FileEditor`
+   against a one-file `createFileSurfaceController()` supplied by the real file host, plus an
+   explicit Save button wired to `controller.savePath()`. Beside it, create one real xterm with
+   `createTerminalManager`, `defaultPtyClient` and `initFresh()`; route the real output/exit
+   listeners into that manager and dispose/unlisten on teardown. Named focus controls move to
+   Monaco and xterm so the packaged verifier can type into both and assert which surface
+   received each marker. A `DECK_GATE_M=1` branch in `electron/main.ts` loads that page and a
+   fixture path instead of the application renderer. `scripts/gate-m-entry.test.ts` proves
+   `gate-m-main.tsx` is absent from the normal `index.html` graph and normal builds never select
+   the gate page. These are permanent verification artifacts referenced by the package script,
+   not a product route or temporary repo file. No `explorer-panel.tsx`, tree, tab/rail mount or
+   Explorer action is written before Gate M, preserving the approved spec's ordering.
+4. **Run Gate M against the packaged artifact.** Execute
+   `npm run electron:package:gate-m`, then `npm run electron:verify:gate-m`. The second script
+   creates a disposable fixture outside the repo and launches the packaged executable with
+   `DECK_GATE_M=1` / `DECK_GATE_M_FILE=<fixture>`; the verifier owns cleanup. Paste six
+   individual results: file opens, syntax highlighting proves its worker loaded, edit marks
+   dirty, save reaches disk, DevTools has no `file://` worker/asset 404, and focus moves between
+   Monaco and xterm without keyboard capture. A failure reopens the editor-engine decision
+   (spec §9); it never degrades to dev-only. Adding CSP later invalidates this evidence and
+   requires a rerun.
 
 ### 5.1 Build list
 
-The explorer plan's §8.3 deletion list, read forward: `explorer-panel.tsx` (docked column,
-DL-19 rules: stage column not overlay, `iconbtn` header, one status line, no dialogs of its
-own), `file-tree-view.tsx` (22px windowing per D5), `file-icons.ts` (lucide monochrome per
-D5), `file-tab-views.ts`; wiring into `tab-bar.tsx` **and** the rail (both layouts),
-`status-bar.tsx` file branch, `app.tsx` mounting `createFileSurfaceController()` and passing
-it as `TabManagerDeps.surfaces` — which is what turns the latent tab-close dirty guard live;
-`explorerOpen`/`explorerWidth` settings with merge coverage; `toggle-explorer` + `save-file`
-actions (re-verify ⌘⇧B/⌘S against the now-user-configurable keybindings; bare Ctrl+S on
-Windows collides with a PTY-reserved chord), menu regen, `PLACEMENT` rows; panel CSS in the
-already-restyled token language.
+After Gate M passes, finish the permanent surface in reviewable units:
+
+1. **Minimum product slice:** add `explorer-panel.tsx`, `file-tree-view.tsx`,
+   `file-tab-views.ts`, the `createFileSurfaceController()` mount in `app.tsx`, one file-open
+   path and both layout mounts. Focused tests prove selecting a file creates the preview
+   surface and supplies its editor document.
+2. **Panel contract:** finish the stage-column panel using D11's approved `B` chord; add
+   `explorerOpen` / `explorerWidth` settings with merge coverage and panel CSS in the
+   restyled token language.
+3. **Tree scale:** add 22px arithmetic windowing to `file-tree-view.tsx` and monochrome
+   lucide mapping in `file-icons.ts`; tests cover empty, loading, deep, 10k-row and keyboard
+   focus states.
+4. **Chrome integration:** complete `file-tab-views.ts`, the `status-bar.tsx` file branch and
+   both layout mounts. `app.tsx` passes the controller as `TabManagerDeps.surfaces`, turning
+   the latent tab-close dirty guard live.
+5. **Actions:** add `toggle-explorer` and `save-file`, then menu generation and `PLACEMENT`
+   rows. Verify D11's chord and save against user-configurable bindings; bare `Ctrl+S` on
+   Windows remains PTY-reserved until an explicit binding decision says otherwise.
 
 ### 5.2 Defect burn-down on mount
 
-The explorer plan's §7.2 lists defects that are unreachable today and awaken with the
-surface. The two structural ones: **pane-scoped shortcuts fire into the hidden terminal**
-(fix once at `overlayBlocksAction`, not per-shortcut — Monaco 0.56 focuses a `<div>`, so
-`isChromeTextField` does not match it) and **the tree never live-updates** (watch events have
-no consumer). Also: attention-rail focus bypasses `surfaces.deactivate()`, replaced preview
-tabs leak documents, file tabs can outlive their workspace's terminal tabs while still
-counted dirty. Host hardening in the same phase: `watch_paths` takes renderer-supplied paths
-with no root guard, `realpathSync` runs per-entry on the main thread, `stat_files` /
-`watch_paths` accept unbounded arrays.
+Treat each awakened boundary as a separate task with its own focused test:
+
+1. **Action/focus boundary:** fix pane-scoped shortcuts once at `overlayBlocksAction`; Monaco
+   focuses a `<div>`, so `isChromeTextField` is insufficient. Tests prove terminal actions do
+   not fire while a file surface owns focus and that attention-rail / terminal-tab focus calls
+   `surfaces.deactivate()` before returning to xterm.
+2. **Document lifecycle:** tests cover preview replacement disposing the prior document,
+   workspace close removing its file tabs, dirty registry cleanup, and a failed close leaving
+   the document and dirty path intact.
+3. **Watch authorization and bounds:** use `electron/fs/path-guard.ts` for every `stat_files`
+   and `watch_paths` input before filesystem access. Put named limits beside this feature —
+   `MAX_STAT_PATHS = 512`, `MAX_WATCH_DIRECTORIES = 256`,
+   `MAX_WATCH_FILES = 2048` — and reject the first item over each limit with a structured IPC
+   error. Tests cover outside-root paths, symlinks escaping root, malformed payloads, cap + 1,
+   duplicate paths, and watcher teardown on workspace/window close.
+4. **Filesystem responsiveness:** replace per-entry `realpathSync` with bounded async work
+   (`MAX_REALPATH_CONCURRENCY = 32`). A 10k-entry fixture must keep the Electron event loop
+   responsive (no sampled stall above 100 ms on the verification Mac) while producing the
+   same sorted result. If the threshold cannot hold, stop and redesign rather than moving the
+   work into an unbounded `Promise.all`.
+5. **Live invalidation:** consume `fs:changed` in the controller, coalesce bursts per
+   workspace, refresh only affected branches, and prove events after controller disposal are
+   ignored.
 
 ### 5.3 Verification
 
-Gate M evidence (packaged, pasted); the explorer spec's 13-item manual pass with items 7–8
-(⌘W / window close / ⌘Q all ask; one dialog naming both a busy agent and unsaved files)
-called out as the real dirty-exit proof — unit guards are the only coverage until then;
-bundle re-measure against the recorded numbers (entry +10.92 kB gzip, lazy `editor.api`
+Gate M evidence is packaged and pasted. Run the explorer spec's manual pass and explicitly
+prove **all four exits**: tab close, window close, app quit and Install & Relaunch. For each,
+run dirty-only and busy+dirty cases; one combined dialog names both causes, Cancel preserves
+the buffer, and confirm proceeds only after settings flush. Focused tests cover
+`update-controller`, `App.confirmInstall`, the dirty registry and the `app_relaunch` path.
+Bundle re-measure against the recorded numbers (entry +10.92 kB gzip, lazy `editor.api`
 674.50 kB — "far outside expectation is a re-decision, not a footnote").
 
 ## 6. Phase 5 — usage dashboard port + browser productization
 
-### 6.0 Durability first — do this the day the plan is approved
+### 6.0 Durability first — separate remote-mutation authorization required
 
 `feat/token-usage-dashboard` is unpushed, dirty (AGENTS.md, CONTEXT.md), and holds its only
 spec and plan as **untracked files**. `feat/workspace-reorder` is also origin-absent. Push
 both; land the usage branch's dirty tree per the
 [trunk-merge plan §D3](./2026-08-12-redesign-trunk-merge.md) `current`. This costs minutes
-and removes the single most fragile artifact in the program.
+and removes the single most fragile artifact in the program, but plan approval does not grant
+that authority. Before either action, show the exact branch/ref and file set, obtain an
+explicit push/land instruction, and stage docs only after their separate D14 content approval.
 
 ### 6.1 The usage dashboard is a port, not a merge
 
 The branch's merge base predates the Electron migration by 59 `main` commits; its backend is
-~3,700 lines of Rust (`src-tauri/src/usage/`) with **no Electron counterpart**. Plan
-accordingly:
+~3,700 lines of Rust (`src-tauri/src/usage/`) with **no Electron counterpart**. This port is a
+subprogram, not one implementation bullet. It runs after D8 and in this order:
 
-1. Land the branch's docs and renderer work over current `main`: `src/lib/usage-*`,
-   `src/usage/`, `src/ui/usage/`, the chrome/action wiring, and DL §15/§16 — whose arrival
-   is exactly when the D4 citation rewrite must already be merged. The §11 generalization is
-   verified benign (no rule renumbered).
-2. Reimplement the scanner on the Electron host (Node port of scan/claude/codex/discover/
-   reader/cache) behind `usage_*` channels — after D8, so the contract gate covers the new
-   surface instead of widening its hole. The ingestion decisions are already made and
-   recorded in the branch's spec (per-event deltas for Codex, contribution-map dedupe for
-   Claude, 15-minute UTC buckets, six separate counter classes); port the decisions, not
-   just the code.
-3. **Every row of the acceptance table is unobserved** — the branch's own admission. The
-   first `electron:dev` run of the dashboard on the real corpus is a scheduled task with
-   pasted results, not a formality.
+1. **Freeze the contract and fixtures.** Land the branch's approved docs and renderer work
+   over current `main`: `src/lib/usage-*`, `src/usage/`, `src/ui/usage/`, chrome/action wiring
+   and DL §15/§16, after D4 has removed the citation trap. Keep `UsageSnapshot` and its six
+   counter classes in `src/lib/usage-snapshot.ts` as the single shared serialized contract.
+   Copy representative Claude/Codex JSONL cases into `electron/usage/fixtures/` with content
+   redacted but ids/timestamps/counters preserved; check in Rust-produced golden snapshots so
+   every Node parser test has an independent expected result.
+2. **Bounded reader and discovery:** port `reader.rs` / `discover.rs` to
+   `electron/usage/reader.ts` and `electron/usage/discover.ts`. Adjacent tests cover missing
+   roots, unreadable files, symlink loops, depth and line/identity-byte caps, malformed UTF-8,
+   oversized/partial final lines and deterministic path ordering. File discovery never reads
+   conversation bodies beyond the bounded parser input.
+3. **Agent parsers:** port `claude.rs` and `codex.rs` to
+   `electron/usage/claude.ts` / `electron/usage/codex.ts`. Golden-fixture tests prove Claude
+   contribution-map last-wins dedupe, Codex cumulative-to-delta conversion and model backfill,
+   15-minute UTC buckets, saturating counters, unknown-model preservation and all malformed
+   lines counted in-band rather than thrown.
+4. **Cache:** port `cache.rs` to `electron/usage/cache.ts`, stored under Electron's app data
+   as `usage-cache.json`, versioned independently from the Rust cache because cutover is a
+   clean install. Tests cover atomic temp-file rename, corrupt/version-mismatched cache,
+   resume offsets, replacement/truncation/deletion, 48-hour compaction, unchanged polls doing
+   zero JSONL reads and failed writes leaving the previous cache valid. Cache records may hold
+   paths, ids, timestamps, models and counters only — never prompts or responses.
+5. **Scanner orchestration:** port `scan.rs` / `mod.rs` to
+   `electron/usage/scan.ts` and `electron/usage/service.ts`. One in-flight promise serializes
+   scans; filesystem work stays off the renderer and yields between bounded batches so PTY and
+   window IPC remain responsive. Tests cover concurrent callers, partial source failure,
+   permission loss, cache recovery and cold/warm result stability.
+6. **IPC and client:** add `usageSnapshot` to `electron/ipc/channels.ts`, a thin handler in
+   `electron/main.ts`, add `src/host/usage-host.ts` on the existing bridge, and switch
+   `src/usage/usage-client.ts` to that facade rather than a direct Tauri import.
+   `scripts/electron-ipc-contract.test.ts` gets an explicit zero-payload fixture for
+   `usage_snapshot`; handler failures expose a user-safe message while detailed path/error
+   context stays in main-process logs.
+7. **Parity gate:** run focused Vitest for all six modules, the Electron IPC contract and the
+   retained Rust usage tests against the same golden fixtures. Node output must deep-equal the
+   Rust-produced snapshot for every fixture before the real corpus is touched.
+8. **Real-corpus acceptance:** fingerprint the corpus by source/file counts without recording
+   content, compare totals to an independent sample oracle, record cold/warm duration and peak
+   RSS, prove unchanged polling reads zero JSONL bytes, and exercise missing/unreadable/stale
+   sources. The dashboard must remain interactive during the scan. Paste every acceptance row;
+   Windows remains unverified.
 
 ### 6.2 Browser productization
 
-No spec exists — CONTEXT.md's browser section is a retrospective. First task: write the
-productization spec. Candidate scope (synthesis, to be confirmed by that spec): restore the
-loaded page across relaunch (today only the home URL persists), the real-compositor manual
-pass CONTEXT.md lists as never done (resize, drag-to-width, hide-under-overlay), an Inspect
-payload check against a real dev server, and an explicit decision to claim the panel as
-Electron-only rather than implying Tauri parity. Tabs, history, bookmarks stay out unless
-the owner asks.
+The Browser productization spec was authored and approved before phase 3 because D12 controls
+what the toolbar opens. Phase 5 implements that approved contract: restore the loaded page
+across relaunch (today only the home URL persists), run the real-compositor manual pass
+CONTEXT.md lists as never done (resize, drag-to-width, hide-under-overlay), check an Inspect
+payload against a real dev server, and label the native view Electron-only. Tabs, history and
+bookmarks remain out unless the approved spec explicitly adds them.
 
 ## 7. Program sequencing and gates
 
 ```
-            ┌─ phase 3 (toolbar, grows in 4 and 5)
-phase 2 ────┼─ phase 4 (explorer: /var fix → packaging → Gate M → surface)
-            └─ phase 5 (usage port + browser spec)   [6.0 durability: immediately]
+            ┌─ phase 3 (Browser spec → toolbar; toolbar grows in 4 and 5)
+phase 2 ────┼─ phase 4 (/var fix → proof package + harness → Gate M → minimal surface → finish)
+            └─ phase 5 (usage port + approved Browser productization)
+
+6.0 durability is independent and runs only after explicit remote-mutation authorization.
 ```
 
 - Minimum gate per change: `npm test && npm run build && npm run generate:menu:check`;
