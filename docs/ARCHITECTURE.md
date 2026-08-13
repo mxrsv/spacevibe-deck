@@ -102,6 +102,11 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   [clipboard text boundary](../src/terminal/terminal-clipboard.ts#L45-L55) `current`,
   [menu generator](../scripts/generate-menu.ts) `current`).
 - The macOS menu path can't tell an accelerator from a mouse click (Tauri's `MenuEvent` carries only an id), so only `destructive: true` actions (`close-pane`/`close-tab`/`clear-buffer`) are suppressed while a chrome text field holds the caret — every other action still runs there — [ActionDefinition.destructive](../src/terminal/action-registry.ts#L82-L115) `current`, [runAction](../src/terminal/tab-manager.ts#L1032-L1054) `current`.
+- Terminal panes use xterm's official WebGL renderer so continuous block and
+  box-drawing glyphs used by agent TUIs render without DOM-renderer seams. It
+  is loaded only after `Terminal.open()` and disposes on initialization failure
+  or WebGL context loss, preserving xterm's DOM renderer as a compatibility
+  fallback ([pane.ts](../src/terminal/pane.ts) `current`).
 - Windows uses native decorated system chrome; Preact renders only Deck's
   internal toolbar and omits synthetic minimize/maximize/close controls
   ([tauri.windows.conf.json](../src-tauri/tauri.windows.conf.json) `current`,

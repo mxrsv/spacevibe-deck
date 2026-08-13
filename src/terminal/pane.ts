@@ -3,6 +3,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
+import { WebglAddon } from "@xterm/addon-webgl";
 import { FONT_FALLBACK, type Settings } from "../settings/settings-schema";
 import { applyWebkitImeFix, isWebKitWebView } from "./webkit-ime-fix";
 import { installShiftEnterNewline } from "./shift-enter";
@@ -159,7 +160,9 @@ export function createPane(
     cursorWidth: 1,
     fontSize: initial.fontSize,
     fontFamily: toFontStack(initial.fontFamily),
-    lineHeight: 1.25,
+    // Keep cell rows flush: OpenCode joins block and box-drawing glyphs across
+    // rows, and extra leading slices its wordmark and prompt borders apart.
+    lineHeight: 1,
     scrollback: initial.scrollback,
     // Option must stay a character key on macOS so IMEs (Vietnamese Telex,
     // dead-key accents) can compose — `true` swallows it as Meta.
@@ -288,9 +291,27 @@ export function createPane(
   });
   let opened = false;
 
+  function loadWebglRenderer(): void {
+    let addon: WebglAddon | undefined;
+    try {
+      addon = new WebglAddon();
+      const renderer = addon;
+      renderer.onContextLoss(() => renderer.dispose());
+      term.loadAddon(renderer);
+    } catch {
+      // WebGL is optional. Disposing a partially activated addon restores
+      // xterm's DOM renderer, which keeps the terminal usable on older GPUs.
+      addon?.dispose();
+    }
+  }
+
   function mount(): void {
     if (!opened) {
       term.open(termEl);
+      // xterm's DOM renderer does not support custom glyphs, so block and
+      // box-drawing characters used by TUIs such as OpenCode look segmented.
+      // WebGL draws those glyphs continuously and must be loaded after open().
+      loadWebglRenderer();
       if (isWebKitWebView()) {
         applyWebkitImeFix(term);
       }
