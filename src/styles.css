@@ -123,13 +123,15 @@ body,
 
 .deck-frame {
   height: var(--frame-h);
-  background: var(--chrome-1);
-  /* DL-2.3: this line is a boundary between two surfaces, not a line inside
-     one, so it takes the recessed seam rather than DL-3.3's general-purpose
-     hairline. Copy this citation, not a DL-3.3 one, when migrating the next
-     surface off --hair. */
-  border-bottom: 1px solid var(--seam-recessed);
-  grid-column: 1 / -1;
+  /* DL-18.3: in sidebar mode the frame is the TOP OF THE NAVIGATION COLUMN, not
+     a band across the window. It sits on the navigation ground with the rail
+     below it and paints nothing of its own — which is why there is no seam
+     here either: the frame and the rail are one continuous surface, and a
+     boundary inside one surface is not a boundary (DL-2.3). The seam that
+     matters now runs vertically, on the stage's left edge. */
+  background: transparent;
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -156,8 +158,20 @@ body,
   align-self: stretch;
 }
 
+/* DL-18.3: the stage runs from the top of the window to the status bar with no
+   chrome row above it. The frame occupies row 1 of the NAVIGATION column, so
+   column 2 has nothing to sit under and the terminal reaches the window edge.
+   Rows `1 / 3`, not `1 / 4`: the status bar keeps its full-width row, which is
+   what the reviewed direction actually renders — its stage spans all three rows
+   and the status bar, later in the DOM, paints straight over the overlap. Same
+   picture, without two elements claiming one cell. */
 .window--sidebar > .stage {
   grid-column: 2;
+  grid-row: 1 / 3;
+  /* The one structural line in the shell, and it is vertical now. It lives on
+     the stage rather than on the rail because it has to run the frame's full
+     height too, and the frame is a sibling of the rail, not its parent. */
+  border-left: 1px solid var(--seam-recessed);
 }
 
 .window--sidebar > .status {
@@ -166,11 +180,16 @@ body,
 
 .wsbar {
   grid-column: 1;
+  grid-row: 2;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--chrome-1);
-  border-right: 1px solid var(--seam-recessed);
+  /* The navigation column IS the ground (`--bg`), not a surface raised off it.
+     The reviewed direction puts every rail on the ground — this one, the
+     settings nav, the Open board's rail — and reserves `--chrome-1` for the
+     content those rails point at. Transparent rather than `background: var(--bg)`
+     so the column reads as one plane with the frame above it. */
+  background: transparent;
 }
 
 .wsbar__list {

@@ -255,21 +255,21 @@ where in `src/styles.css` that token is consumed, so the migration is a list of
 regions rather than a search for colours. The token column is the contract; the
 region column is the work.
 
-| direction role       | app token                               | `styles.css` regions that consume it                                                                             |
-| -------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| navigation ground    | `--bg`                                  | `html`/`body`/`#root`, `.window`, the repository rail's ground, the settings nav ground                          |
-| terminal canvas      | `--bg`                                  | the pane stage only — no chrome colour enters the xterm canvas, and no `--mono` token is added                   |
-| primary workspace    | `--chrome-1`                            | `.deck-frame`, `.tabbar`, the status bar, the sidebar, the pane bar                                              |
-| controls / overlays  | `--chrome-2`                            | tab popover, prompt popover, preset editor, save dialog, settings screen, persist-error bar                      |
-| persistent selection | `--tab-active-bg`                       | active tab, active rail item, active settings category, selected board row, selected workspace row (§9.4, DL-21) |
-| quiet structure      | `--hair-strong`                         | lines INSIDE one surface: config rows, board cards, inputs                                                       |
-| shell boundaries     | `--seam-recessed`                       | frame bottom, tab bar, sidebar, status bar, pane bar — the DL-2.3 seam, already in place                         |
-| floating frames      | `--seam-raised`                         | the frame around any surface that floats above chrome; clears both DL §10 `--hair-strong` rows                   |
-| primary text         | `--text-primary`                        | keys, values, active labels                                                                                      |
-| supporting text      | `--text-muted`                          | secondary values, inactive labels                                                                                |
-| quiet metadata       | `--text-faint`                          | descriptions, group labels, hints, disabled                                                                      |
-| control geometry     | `--radius-control` / `--radius-surface` | new in `:root` (§9.4, DL-20)                                                                                     |
-| chrome motion        | `--duration` / `--ease`                 | new in `:root` (§9.4, DL-20)                                                                                     |
+| direction role       | app token                               | `styles.css` regions that consume it                                                                                         |
+| -------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| navigation ground    | `--bg`                                  | `html`/`body`/`#root`, `.window`, `.deck-frame` and the repository rail in sidebar mode, the settings nav, the Open board rail |
+| terminal canvas      | `--bg`                                  | the pane stage only — no chrome colour enters the xterm canvas, and no `--mono` token is added                               |
+| primary workspace    | `--chrome-1`                            | the content a rail points at: settings screen body, Open board body, the status bar, `.tabbar` in top-tab mode, the pane bar |
+| controls / overlays  | `--chrome-2`                            | tab popover, prompt popover, preset editor, save dialog, settings screen, persist-error bar                                  |
+| persistent selection | `--tab-active-bg`                       | active tab, active rail item, active settings category, selected board row, selected workspace row (§9.4, DL-21)             |
+| quiet structure      | `--hair-strong`                         | lines INSIDE one surface: config rows, board cards, inputs                                                                   |
+| shell boundaries     | `--seam-recessed`                       | frame bottom, tab bar, sidebar, status bar, pane bar — the DL-2.3 seam, already in place                                     |
+| floating frames      | `--seam-raised`                         | the frame around any surface that floats above chrome; clears both DL §10 `--hair-strong` rows                               |
+| primary text         | `--text-primary`                        | keys, values, active labels                                                                                                  |
+| supporting text      | `--text-muted`                          | secondary values, inactive labels                                                                                            |
+| quiet metadata       | `--text-faint`                          | descriptions, group labels, hints, disabled                                                                                  |
+| control geometry     | `--radius-control` / `--radius-surface` | new in `:root` (§9.4, DL-20)                                                                                                 |
+| chrome motion        | `--duration` / `--ease`                 | new in `:root` (§9.4, DL-20)                                                                                                 |
 
 Nothing in this table is a new colour. Every row already exists in
 `deriveChromeColors`; what phase 2 changes is which region asks for which one,

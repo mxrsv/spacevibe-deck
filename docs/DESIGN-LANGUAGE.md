@@ -403,23 +403,33 @@ Deck authors its own top row. §11 covers a full-window screen and §13 an
 anchored popover; neither describes the one permanent row that carries the
 window's identity and its actions at the same time.
 
-- **DL-18.1** There is **one** chrome row above the stage, never two. `.window`
-  is a three-row grid — `--frame-h`, the stage, `--status-h` — and the retired
+- **DL-18.1** There is **one** chrome row per layout, never two, and the retired
   `.titlebar` and `.deck-toolbar` elements do not come back. Two stacked chrome
   rows is the shape this section exists to remove, which is why
   `src/ui/app.test.tsx` asserts both are absent in every platform and layout
-  combination.
-- **DL-18.2** The row is `--frame-h` tall on `--chrome-1`, closed by a single
-  `--seam-recessed` bottom border and nothing else. That border is a boundary
-  between two surfaces, so it takes the seam (DL-2.3), not the in-surface
-  hairline this rule cited while the frame still used `--hair`. 34px is not a
-  taste value: it carries a 26px control comfortably and clears the macOS
-  traffic lights, which need roughly 28px of vertical room.
-- **DL-18.3** **Whichever element occupies that row IS the frame.** In sidebar
-  mode it is `.deck-frame`, spanning `1 / -1` and carrying the actions, with the
-  sidebar starting beneath it. In top-tab mode it is `.tabbar` itself — same
-  height, same surface, same single seam — and no `.deck-frame` is rendered
-  above it. A layout picks one occupant; it never nests one inside the other.
+  combination. Until 2026-08-14 this rule also said the row sits **above the
+  stage**; in sidebar mode it no longer does (DL-18.3), and the count is what
+  the rule was always about.
+- **DL-18.2** The row is `--frame-h` tall, and what it paints depends on which
+  element is the frame. In top-tab mode it is `--chrome-1` closed by a single
+  `--seam-recessed` bottom border and nothing else — that border is a boundary
+  between two surfaces, so it takes the seam (DL-2.3). In sidebar mode it paints
+  **nothing**: it is the top of the navigation column, continuous with the rail
+  under it, and a line inside one surface is not a boundary. The shell's
+  structural line is vertical there — the stage's left edge. 34px is not a taste
+  value in either mode: it carries a 26px control comfortably and clears the
+  macOS traffic lights, which need roughly 28px of vertical room. The reviewed
+  direction drew it at 54px and that figure was declined under DL-20.4.
+- **DL-18.3** **Whichever element occupies that row IS the frame, and the
+  layout decides where the row is.** In sidebar mode it is `.deck-frame` at
+  column 1, row 1 — the head of the navigation column, carrying the actions,
+  with the rail beneath it and the stage spanning rows 1–2 of column 2 so the
+  terminal reaches the top of the window with no chrome above it. In top-tab
+  mode there is no navigation column, so the frame is `.tabbar` spanning the
+  window — same height, same `--chrome-1`, same single seam — and no
+  `.deck-frame` is rendered. A layout picks one occupant; it never nests one
+  inside the other. Adopted 2026-08-14 with the redesign's shell; before it,
+  sidebar mode put a full-width band above both columns.
 - **DL-18.4** On macOS the traffic lights sit **inside** the row behind a
   reserved inset of `--frame-lights-w`, and whichever element is the frame
   reserves that inset itself. The inset is a footprint, not a control: the OS
