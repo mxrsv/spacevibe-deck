@@ -67,7 +67,10 @@ import { capturePromptTarget } from "../prompts/inject";
 import { defaultPromptAssetsClient } from "../prompts/prompt-assets-client";
 import { TabBar } from "./tab-bar";
 import { ChromeActions } from "./chrome-actions";
-import { WorkspaceSidebar } from "./workspace-sidebar";
+// The sidebar slot's occupant. `WorkspaceSidebar` is deliberately still in the
+// tree with its tests: the rail keeps its exact callback contract, so swapping
+// back is this one import and the JSX tag below it.
+import { RepositoryRail } from "./repository-rail";
 import { StatusBar } from "./status-bar";
 import { SettingsScreen } from "./settings/settings-screen";
 import { runAttentionFocus } from "./attention-focus-coordinator";
@@ -763,7 +766,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       sidebar={sidebar}
       toolbar={chromeActions}
       sidebarNavigation={
-        <WorkspaceSidebar
+        <RepositoryRail
           onSelectTab={selectTab}
           onCloseTab={(index) => void tabsRef.current?.closeTab(index)}
           onNewTab={() => void tabsRef.current?.newTab()}

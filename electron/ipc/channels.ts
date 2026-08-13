@@ -16,6 +16,11 @@ export const CHANNELS = {
   killPty: "kill_pty",
   ptyInfo: "pty_info",
   gitBranch: "git_branch",
+  // Repository/worktree rail. Electron-only, like the two blocks at the foot
+  // of this table: no `#[tauri::command]` counterpart exists, and writing one
+  // would implement a feature twice on a host `AGENTS.md` has frozen. See
+  // `docs/specs/2026-08-13-repository-worktree-rail-design.md` §7.3.
+  gitRepository: "git_repository",
   detectAgents: "detect_agents",
   dirsExist: "dirs_exist",
   desktopEnvironment: "desktop_environment",

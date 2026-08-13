@@ -37,6 +37,7 @@ import { MAIN_LABEL, WindowRegistry } from "./window-lifecycle";
 import { StoreRegistry } from "./store";
 import { detectAgentsSafely, dirsExist } from "./agents";
 import { gitBranch } from "./git";
+import { scanRepository } from "./worktrees";
 import { resolvePaths, openEditor } from "./links";
 import { listPromptAssets } from "./prompt-assets";
 import { readImageAsDataUrl, scanWorkspaceFavicon } from "./images";
@@ -382,6 +383,11 @@ ipcMain.handle(CHANNELS.ptyInfo, (_event, { ids, agents, waitForCwd }) =>
 
 // -------------------------------------------------------------- Services
 ipcMain.handle(CHANNELS.gitBranch, (_event, { cwd }) => gitBranch(cwd));
+// Never rejects: every failure arrives as a `plain` scan, so the rail degrades
+// to the flat folder list Deck already shows rather than raising an error.
+ipcMain.handle(CHANNELS.gitRepository, (_event, { path }) =>
+  scanRepository(path),
+);
 ipcMain.handle(CHANNELS.detectAgents, (_event, { names }) =>
   detectAgentsSafely(names ?? []),
 );
@@ -622,6 +628,9 @@ const STORE_FILES = new Set([
   "logo.json",
   "workspace-logos.json",
   "update-attempt.json",
+  // The repository rail's collapse state, and nothing else — the worktree
+  // list itself is re-read every launch and never written down.
+  "repositories.json",
 ]);
 
 function assertStoreFile(file: unknown): string {

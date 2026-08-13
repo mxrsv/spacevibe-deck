@@ -6,6 +6,7 @@ import { initLogo } from "./settings/logo-store";
 import { initWorkspaceLogos } from "./settings/workspace-logo-store";
 import { initPresets } from "./presets/presets-store";
 import { initWorkspaces } from "./open-board/workspaces-store";
+import { initRepositories } from "./repositories/repositories-store";
 import { initializeDesktopEnvironmentFromBackend } from "./lib/platform";
 import { App } from "./ui/app";
 import { defaultTransferClient } from "./terminal/transfer-client";
@@ -22,6 +23,7 @@ async function main(): Promise<void> {
   await Promise.all([
     initPresets(),
     initWorkspaces(),
+    initRepositories(),
     initLogo(),
     initWorkspaceLogos(),
   ]);

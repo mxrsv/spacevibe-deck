@@ -65,6 +65,62 @@ function storeFor(key: string): Map<string, unknown> {
 }
 
 /**
+ * Canned repository scans for the rail.
+ *
+ * Deliberately uneven, because the rail's whole point is the states it can be
+ * in: a worktree nobody has opened, one git calls prunable (design §5's
+ * `missing`), one locked, and — through the fall-through below — a folder that
+ * is not a repository at all. A stub where every row looked the same would
+ * make the gallery green on the one thing it exists to show.
+ */
+const HOME = "/Users/deck";
+const GALLERY_REPOSITORIES = [
+  {
+    kind: "repository" as const,
+    key: `${HOME}/spacevibe-deck/.git`,
+    root: `${HOME}/spacevibe-deck`,
+    worktrees: [
+      wt(`${HOME}/spacevibe-deck`, "main"),
+      wt(`${HOME}/deck-worktrees/electron-migration`, "electron-migration"),
+      wt(`${HOME}/deck-worktrees/redesign`, "redesign/phase-1-2", {
+        prunable: "gitdir file points to non-existent location",
+      }),
+    ],
+  },
+  {
+    kind: "repository" as const,
+    key: `${HOME}/spacevibe-api/.git`,
+    root: `${HOME}/spacevibe-api`,
+    worktrees: [
+      wt(`${HOME}/spacevibe-api`, "main"),
+      wt(`${HOME}/api-worktrees/billing`, "billing", { locked: "on a removable drive" }),
+    ],
+  },
+  {
+    kind: "repository" as const,
+    key: `${HOME}/spacevibe-hub/.git`,
+    root: `${HOME}/spacevibe-hub`,
+    worktrees: [wt(`${HOME}/spacevibe-hub`, "main")],
+  },
+];
+
+function wt(
+  path: string,
+  branch: string,
+  extra: { locked?: string; prunable?: string } = {},
+) {
+  return {
+    path,
+    head: "0".repeat(40),
+    branch,
+    bare: false,
+    detached: false,
+    locked: extra.locked ?? null,
+    prunable: extra.prunable ?? null,
+  };
+}
+
+/**
  * Commands both hosts answer under the same name — `bridge.ts` kept the Tauri
  * channel names precisely so the renderer's call sites did not have to change.
  */
@@ -77,6 +133,16 @@ const SHARED: Readonly<Record<string, CannedHandler>> = {
   // catalog answers unevenly.
   detect_agents: () => ["claude", "codex", "agy"],
   git_branch: () => "main",
+  // `~/scratch` falls through to `plain` on purpose: a folder that is not a
+  // repository still has to render, and the gallery is where that is checked.
+  git_repository: (args) => {
+    const path = readString(args, "path");
+    return (
+      GALLERY_REPOSITORIES.find((scan) =>
+        scan.worktrees.some((worktree) => worktree.path === path),
+      ) ?? { kind: "plain", reason: "not a git repository" }
+    );
+  },
   dirs_exist: (args) => {
     const paths = Array.isArray(args.paths) ? args.paths : [];
     return paths.map(() => true);

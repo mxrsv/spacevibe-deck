@@ -379,6 +379,183 @@ body,
   line-height: 1;
 }
 
+/* ── Repository rail (RepositoryRail) ───────────────────────
+   Two tiers over the rows the flat sidebar already had: a repository header,
+   then its worktrees. Hover, selection and the close affordance stay
+   `.wsitem`'s, untouched — the rail REGROUPS rows, it does not restyle them,
+   so "this workspace is active" keeps reading exactly as it always has and
+   this surface adds no row to DL §10's ledger.
+   Design: docs/specs/2026-08-13-repository-worktree-rail-design.md §6. ── */
+.wsbar--repos .wsbar__list {
+  gap: 1px;
+}
+
+.repogroup + .repogroup {
+  margin-top: 8px;
+}
+
+/* A folder git knows nothing about keeps the flat shape it has always had:
+   no header, no indent, no `primary` badge — inventing a repository tier for
+   it would be the rail claiming knowledge it does not have. */
+.repogroup--plain {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.repogroup__head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.repogroup__toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.repogroup__toggle:hover,
+.repogroup__action:hover {
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+}
+
+.repogroup__mark {
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+}
+
+.repogroup__name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The rescan affordance is icon-only because it is familiar, repeated and
+   carries a tooltip (DL-14.4); it stays out of the way until the header is
+   pointed at, like the row close button above. */
+.repogroup__action {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  padding: 0;
+  place-items: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    opacity 0.14s ease,
+    background 0.14s ease,
+    color 0.14s ease;
+}
+
+.repogroup__head:hover .repogroup__action,
+.repogroup__action:focus-visible {
+  opacity: 1;
+}
+
+.repogroup__action:hover {
+  color: var(--text-primary);
+}
+
+/* The rail's one indent: a worktree belongs to the repository above it. */
+.repogroup__worktrees {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 10px;
+}
+
+/* A worktree with no session. DL-17.3's precedent: a control that cannot be
+   pressed drops its border and its pointer rather than gaining a disabled
+   pill, because a border is what promises "you can press this" everywhere
+   else. Opening one is the tab-materialization fork (spec §7.1). */
+.wsitem--readout {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.wsitem--readout:hover {
+  background: transparent;
+  color: var(--text-faint);
+}
+
+/* State dot, sized to the logo slot it stands in for so both rows share one
+   text baseline. DL-3.2 reserves --green for "on", so `attention` takes
+   --magenta and `missing` is a hollow ring rather than a fourth colour — the
+   inset hairline is DL-1.3's permitted exception. Colour is never the only
+   carrier: every state also names itself in the row's accessible label. */
+.wsitem__state {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  margin: 0 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.wsitem[data-state="ready"] .wsitem__state,
+.wsitem[data-state="working"] .wsitem__state {
+  background: var(--green);
+}
+
+.wsitem[data-state="attention"] .wsitem__state {
+  background: var(--magenta);
+}
+
+.wsitem[data-state="missing"] .wsitem__state {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--text-faint);
+}
+
+/* The badge must not be eaten by the name's ellipsis, so the label becomes a
+   row and only the name shrinks. Scoped to the rail: the flat sidebar puts
+   bare text in `.wsitem__label` and an anonymous flex item cannot ellipsize. */
+.wsbar--repos .wsitem__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wsitem__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* DL-4.3: lowercase, like every other chrome label. */
+.wsitem__badge {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border: 1px solid var(--hair);
+  border-radius: 5px;
+  color: var(--text-faint);
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+
 /* ── Agent attention mark (AgentAttentionMark) ──────────────
    Shared status mark for a tab/workspace's attention state. Actionable
    kinds and unread share one dot shape — 8px here, 10px in the sidebar's
