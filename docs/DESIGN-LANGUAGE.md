@@ -572,6 +572,50 @@ looking at rendered specimens across four themes.
 
 _Reserved. Same source, same status._
 
+## 23. Action tooltips and the overflow menu
+
+Added 2026-08-14 with the feature toolbar's shipping pass (phase 3 of the
+redesign program). §13 covers popovers a user opens on purpose; nothing covered
+the surface that appears because the pointer paused, or the menu that exists
+only because the window got narrow. Numbered 23 because §15/§16 are reserved
+for the usage branch and §20–§22 were spent by the same program
+([toolbar spec](specs/2026-08-12-feature-toolbar-design.md) `decided`).
+
+- **DL-23.1** A tooltip shows the action's **name, its chord when the active
+  platform has one, and the reason when the action cannot run** — nothing
+  else. No empty brackets for a missing chord, no idle placeholder. The same
+  content reaches assistive technology through the trigger's accessible
+  description; the tooltip is never the only carrier.
+- **DL-23.2** Tooltip copy is **sentence case at the toolbar layer**. The
+  action registry keeps its Title Case menu labels and trailing ellipses —
+  menu grammar belongs to menus — and the projection re-cases at its own
+  boundary, so neither surface leaks its grammar into the other.
+- **DL-23.3** A tooltip is a `--chrome-2` step with a 1px `--seam-raised`
+  hairline (DL-2.3), `--radius-control` (it hugs one control, it does not
+  float like a screen), DL-20.2 motion, and `pointer-events: none` — it may
+  never sit between the pointer and the control that summoned it. No timers
+  drive it (DL-1.3): it appears on hover/focus and leaves with them.
+- **DL-23.4** Tooltip and overflow menu position `fixed` from a rect measured
+  at open. **Accepted, not a debt:** both are dismissed by scroll-free
+  interactions and outlive no layout change; an anchored-positioning rewrite
+  buys nothing the app can show. Revisit only if chrome ever scrolls under an
+  open tooltip.
+- **DL-23.5** The overflow menu is a §13 popover made of rows: group order,
+  icon, label, chord and state survive the move off the bar, and the group
+  separator moves with them. `role="menu"` promises arrow keys, so arrows
+  move focus with wraparound and Home/End jump; unavailable rows stay in the
+  cycle because their reason must be reachable without a pointer (DL-23.6).
+- **DL-23.6** **Unavailable is not disabled.** A control that cannot run keeps
+  its place in the tab order, reads `--text-faint` on an unchanged surface
+  (DL-21.4), drops the hover wash, blocks activation, and says why in its
+  tooltip. A `disabled` attribute would make the reason unreachable by
+  keyboard.
+- **DL-23.7** The update pill re-measures its reserved width when the toolbar
+  itself resizes. **Accepted:** a phase change that widens the pill without a
+  resize can overlap for one frame until the next layout pass; wiring the
+  pill's phase into the fit calculation would couple the toolbar to updater
+  state for a one-frame cosmetic. Revisit if the pill ever animates width.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

@@ -12,30 +12,22 @@ import { dotColor } from "../lib/process-info";
 import { tabDotCssColor, type TabDotColor } from "../lib/tab-colors";
 import { AgentAttentionMark } from "./agent-attention-mark";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
-import { ChromeActions } from "./chrome-actions";
 import { tabPopoverOpen } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
 import { titleWithShortcut } from "../lib/shortcut-label";
 
 interface TabBarProps {
-  settingsOpen: boolean;
   onSelectTab(index: number): void;
   onCloseTab(index: number): void;
   onNewTab(): void;
-  onSplitRow(): void;
-  onSplitColumn(): void;
-  onClosePane(): void;
   onRenameTab(index: number, name: string | null): void;
   onSetTabColor(index: number, color: TabDotColor | null): void;
-  onToggleSettings(): void;
-  expandActive: boolean;
-  /** Whether the Prompt Board popover is up — forwarded to ChromeActions. */
-  promptsOpen: boolean;
-  promptsDisabled: boolean;
-  promptPopover?: ComponentChildren;
-  onTogglePrompts(): void;
-  updateAction?: ComponentChildren;
-  onToggleExpand(): void;
+  /**
+   * The feature toolbar, built once by `App` so this mount and the sidebar
+   * frame's mount can never drift apart (one element, both layouts). TabBar
+   * places it; it does not know what is in it.
+   */
+  toolbar: ComponentChildren;
   /** Invoked when a tab's actionable attention mark is clicked. */
   onFocusAttention?(index: number): void;
 }
@@ -178,20 +170,7 @@ export function TabBar(props: TabBarProps) {
         <DeckIcon icon={Plus} size={CHROME_ICON} />
       </button>
       <div class="tabbar__spacer" data-tauri-drag-region />
-      <ChromeActions
-        settingsOpen={props.settingsOpen}
-        expandActive={props.expandActive}
-        onSplitRow={props.onSplitRow}
-        onSplitColumn={props.onSplitColumn}
-        onClosePane={props.onClosePane}
-        onToggleExpand={props.onToggleExpand}
-        promptsOpen={props.promptsOpen}
-        promptsDisabled={props.promptsDisabled}
-        promptPopover={props.promptPopover}
-        onTogglePrompts={props.onTogglePrompts}
-        onToggleSettings={props.onToggleSettings}
-        updateAction={props.updateAction}
-      />
+      {props.toolbar}
       {popover.value !== null && popoverTab !== undefined && (
         <TabPopover
           left={popover.value.left}

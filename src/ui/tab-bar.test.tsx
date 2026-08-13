@@ -63,21 +63,14 @@ describe("TabBar", () => {
   });
 
   const baseProps = () => ({
-    settingsOpen: false,
     onSelectTab: vi.fn(),
     onCloseTab: vi.fn(),
     onNewTab: vi.fn(),
-    onSplitRow: vi.fn(),
-    onSplitColumn: vi.fn(),
-    onClosePane: vi.fn(),
     onRenameTab: vi.fn(),
     onSetTabColor: vi.fn(),
-    onToggleSettings: vi.fn(),
-    expandActive: false,
-    onToggleExpand: vi.fn(),
-    promptsOpen: false,
-    promptsDisabled: false,
-    onTogglePrompts: vi.fn(),
+    // TabBar places the toolbar element `App` builds; a marker div is enough
+    // to prove the placement without dragging the whole projection in here.
+    toolbar: <div data-testid="toolbar-slot" />,
     onFocusAttention: vi.fn(),
   });
 

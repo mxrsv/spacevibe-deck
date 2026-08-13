@@ -38,6 +38,17 @@ export function ToolbarOverflowMenu({
 }: OverflowMenuProps) {
   const rootRef = useRef<HTMLDivElement>(null);
 
+  // `role="menu"` promises arrow-key movement, so the promise is kept here:
+  // focus lands on the first row when the menu opens, arrows move it with
+  // wraparound, Home/End jump. Unavailable rows stay in the cycle — they are
+  // focusable on purpose, so their reason is reachable without a pointer.
+  const rows = (): HTMLButtonElement[] =>
+    Array.from(rootRef.current?.querySelectorAll("button") ?? []);
+
+  useEffect(() => {
+    rows()[0]?.focus();
+  }, []);
+
   useEffect(() => {
     const onPointerDown = (event: PointerEvent): void => {
       const target = event.target as Node;
@@ -52,7 +63,33 @@ export function ToolbarOverflowMenu({
       if (event.key === "Escape") {
         event.preventDefault();
         onClose();
+        return;
       }
+      if (
+        event.key !== "ArrowDown" &&
+        event.key !== "ArrowUp" &&
+        event.key !== "Home" &&
+        event.key !== "End"
+      ) {
+        return;
+      }
+      const all = rows();
+      if (all.length === 0) {
+        return;
+      }
+      event.preventDefault();
+      const current = all.indexOf(document.activeElement as HTMLButtonElement);
+      const next =
+        event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? all.length - 1
+            : event.key === "ArrowDown"
+              ? (current + 1) % all.length
+              : current <= 0
+                ? all.length - 1
+                : current - 1;
+      all[next]?.focus();
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("keydown", onKeyDown);

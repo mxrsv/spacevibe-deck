@@ -66,7 +66,7 @@ import {
 import { capturePromptTarget } from "../prompts/inject";
 import { defaultPromptAssetsClient } from "../prompts/prompt-assets-client";
 import { TabBar } from "./tab-bar";
-import { ChromeActions } from "./chrome-actions";
+import { DeckToolbar } from "./toolbar/deck-toolbar";
 // The sidebar slot's occupant. `WorkspaceSidebar` is deliberately still in the
 // tree with its tests: the rail keeps its exact callback contract, so swapping
 // back is this one import and the JSX tag below it.
@@ -734,10 +734,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     />
   ) : null;
 
+  // One element, both layouts: DesktopChrome mounts it in the frame in
+  // sidebar mode, TabBar mounts the same element in top-tab mode. Building it
+  // once is what keeps the two mounts from drifting apart.
   const chromeActions = (
-    <ChromeActions
+    <DeckToolbar
+      browserOpen={browserOpen.value}
       settingsOpen={settingsOpen.value}
       expandActive={settings.value.focusExpand}
+      onToggleBrowser={() => tabsRef.current?.runAction("toggle-browser")}
       onSplitRow={() => void tabsRef.current?.splitActive("row")}
       onSplitColumn={() => void tabsRef.current?.splitActive("column")}
       onClosePane={() => void tabsRef.current?.closePane()}
@@ -745,7 +750,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         updateSettings({ focusExpand: !settings.value.focusExpand })
       }
       promptsOpen={promptsOpen.value}
-      promptsDisabled={overlayCoversPane() || tabViews.value.length === 0}
+      promptsUnavailable={
+        tabViews.value.length === 0
+          ? "no pane to paste into"
+          : overlayCoversPane()
+            ? "a surface is covering the pane"
+            : null
+      }
       promptPopover={promptPopover}
       onTogglePrompts={togglePrompts}
       onToggleSettings={toggleSettings}
@@ -779,27 +790,14 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       }
       topTabs={
         <TabBar
-          settingsOpen={settingsOpen.value}
           onSelectTab={selectTab}
           onCloseTab={(index) => void tabsRef.current?.closeTab(index)}
           onNewTab={() => void tabsRef.current?.newTab()}
-          onSplitRow={() => void tabsRef.current?.splitActive("row")}
-          onSplitColumn={() => void tabsRef.current?.splitActive("column")}
-          onClosePane={() => void tabsRef.current?.closePane()}
           onRenameTab={(index, name) => tabsRef.current?.renameTab(index, name)}
           onSetTabColor={(index, color) =>
             tabsRef.current?.setTabDotColor(index, color)
           }
-          expandActive={settings.value.focusExpand}
-          onToggleExpand={() =>
-            updateSettings({ focusExpand: !settings.value.focusExpand })
-          }
-          promptsOpen={promptsOpen.value}
-          promptsDisabled={overlayCoversPane() || tabViews.value.length === 0}
-          promptPopover={promptPopover}
-          onTogglePrompts={togglePrompts}
-          onToggleSettings={toggleSettings}
-          updateAction={updateAction}
+          toolbar={chromeActions}
           onFocusAttention={requestAttentionFocus}
         />
       }

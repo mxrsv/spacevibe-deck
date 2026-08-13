@@ -840,12 +840,6 @@ button.attn-mark:hover {
   align-self: stretch;
 }
 
-.tabbar__actions {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
 .tabbar__sep {
   width: 1px;
   height: 16px;
@@ -915,15 +909,9 @@ button.attn-mark:hover {
    Icon geometry is deliberately absent: the control is `.iconbtn`, and the
    icon inside it is sized by `DeckIcon` alone (DL-14.3).
 
-   This block and the two after it ship in the app stylesheet even though the
-   only thing rendering `src/ui/toolbar/` today is the gallery entry. That is a
-   decision, not an oversight: this is app chrome awaiting wiring, chrome CSS
-   belongs in this file, and CSS is not tree-shaken, so the cost is ~180 lines
-   of a stylesheet the app already loads. It does not breach R7 — the import
-   direction is app → gallery, and no shipping module imports `src/gallery/`.
-   Nothing shipping applies `.is-unavailable` to an `.iconbtn`, so no live
-   control changes appearance from it. Delete these rules with the toolbar if
-   the toolbar is ever abandoned instead of wired in. ── */
+   Wired into both layouts since phase 3: `DeckToolbar` projects the shipping
+   actions into it, `App` mounts it in the frame (sidebar mode) and hands the
+   same element to `TabBar` (top-tab mode). ── */
 .ftoolbar {
   flex: 1 1 auto;
   min-width: 0;
@@ -933,10 +921,25 @@ button.attn-mark:hover {
   gap: 3px;
 }
 
+/* The free width the row claimed, returned to the window as a drag surface —
+   without this, mounting the toolbar in the frame would eat the titlebar
+   band's grab area (the same regression the 275px rail exists to prevent). */
+.ftoolbar__drag {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0;
+}
+
 .ftoolbar__slot,
 .ftoolbar__update {
   display: inline-flex;
   align-items: center;
+}
+
+/* The slot is the positioning context for anything anchored to its control —
+   the Prompt Board popover hangs off the Prompts trigger here (DL-13.1). */
+.ftoolbar__slot {
+  position: relative;
 }
 
 /* Unavailable, not disabled: still focusable, so the reason stays reachable

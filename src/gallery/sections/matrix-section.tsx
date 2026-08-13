@@ -11,7 +11,7 @@ import {
   ToggleRow,
 } from "../../ui/controls/config-row";
 import {
-  chromeActionsSpecimen,
+  deckToolbarSpecimen,
   NOOP,
   repositorySidebarSpecimen,
   tabBarSpecimen,
@@ -182,7 +182,7 @@ function WindowCell({
       // renders them itself. Passing the real component either way is what
       // gives the disabled row something to show in both positions.
       toolbar={
-        sidebar ? chromeActionsSpecimen({ promptsDisabled: disabled }) : null
+        sidebar ? deckToolbarSpecimen({ promptsDisabled: disabled }) : null
       }
       // The repository rail, not the flat sidebar: the redesign's left region
       // is that rail, so a matrix proving the old one would prove the wrong

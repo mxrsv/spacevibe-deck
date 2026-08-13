@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-preact";
+import type { ComponentChildren } from "preact";
 
 /**
  * What a toolbar entry is, as far as the toolbar is concerned.
@@ -60,6 +61,19 @@ export interface ToolbarItem {
    * describes a state it does not have.
    */
   readonly toggles?: "pressed" | "dialog" | "menu";
+  /**
+   * Extra class on the control itself, for the one or two controls whose
+   * presentation carries history — the Settings gear keeps `iconbtn--gear`
+   * so its §7-budgeted spin survives the move off `ChromeActions`.
+   */
+  readonly controlClass?: string;
+  /**
+   * A surface anchored to this control, rendered inside its slot while
+   * present — the Prompt Board popover hangs off its trigger this way
+   * (DL-13.1). The slot is the positioning context; the surface positions
+   * itself.
+   */
+  readonly anchored?: ComponentChildren;
   readonly onActivate: () => void;
 }
 

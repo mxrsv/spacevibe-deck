@@ -171,11 +171,13 @@ export function PromptPopover(props: PromptPopoverProps) {
   }, []);
 
   // Dismiss on any pointerdown outside the anchor (which contains both the
-  // trigger and this surface, so the trigger's own toggle still works).
+  // trigger and this surface, so the trigger's own toggle still works). The
+  // shipping anchor is the toolbar slot the trigger lives in; the gallery's
+  // popover specimen still mounts the bare `.prompts-anchor` wrapper.
   useEffect(() => {
     const onPointerDown = (event: PointerEvent): void => {
       const node = event.target as Element | null;
-      if (node?.closest(".prompts-anchor") === null) {
+      if (node?.closest(".prompts-anchor, .ftoolbar__slot") === null) {
         props.onClose();
       }
     };

@@ -11,7 +11,7 @@ import {
   unavailableReason,
   type ToolbarItem,
 } from "./toolbar-item";
-import { fitToolbarItems } from "./toolbar-overflow";
+import { TOOLBAR_GAP, fitToolbarItems } from "./toolbar-overflow";
 import { ToolbarOverflowMenu, type MenuAnchor } from "./toolbar-overflow-menu";
 
 /**
@@ -68,9 +68,9 @@ function ToolbarControl({ item, controlRef }: ToolbarControlProps) {
       <button
         ref={ref}
         type="button"
-        class={`iconbtn ${active ? "is-active" : ""} ${
-          reason !== null ? "is-unavailable" : ""
-        }`}
+        class={`iconbtn ${item.controlClass ?? ""} ${
+          active ? "is-active" : ""
+        } ${reason !== null ? "is-unavailable" : ""}`}
         aria-label={item.label}
         aria-disabled={reason !== null}
         aria-describedby={showTooltip ? tooltipId : undefined}
@@ -103,6 +103,7 @@ function ToolbarControl({ item, controlRef }: ToolbarControlProps) {
           anchor={tooltip.anchor}
         />
       )}
+      {item.anchored}
     </span>
   );
 }
@@ -147,9 +148,12 @@ export function FeatureToolbar({ items, updateAction }: FeatureToolbarProps) {
   // Zero means "not laid out yet", never "no room at all" — treating an
   // unmeasured row as a full one would send every action into `More` for a
   // frame and then bring them back, which reads as a flicker on every mount.
+  // One gap is deducted for the drag filler, which the row arithmetic does
+  // not know about: it is a flex sibling like any control, so the `gap`
+  // after it is real spent width.
   const fit = fitToolbarItems(
     items,
-    available > 0 ? available : Number.POSITIVE_INFINITY,
+    available > 0 ? available - TOOLBAR_GAP : Number.POSITIVE_INFINITY,
     reserved,
   );
 
@@ -184,6 +188,11 @@ export function FeatureToolbar({ items, updateAction }: FeatureToolbarProps) {
 
   return (
     <div ref={rootRef} class="ftoolbar">
+      {/* The row claims free width so overflow can be computed from it
+          (`flex: 1` below is load-bearing); this filler hands that free width
+          back to the window as a drag surface, so the titlebar band the
+          toolbar sits in stays grabbable on both hosts. */}
+      <div class="ftoolbar__drag" data-tauri-drag-region />
       {fit.groups.map((view, index) => {
         // The trailing control of the trailing group is the one the design
         // pins rightmost (Settings); the update pill and `More` slot in just
