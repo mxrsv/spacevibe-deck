@@ -114,8 +114,11 @@ prose; the links are not.
 here: queue position, `workspacePath` keying, per-window in-memory state, a
 store beside `TabManager`, preview-on-click, ⌘1..9 staying terminal-only, and
 ⌘⇧B as the toggle. The three dependencies (Monaco, a virtual list, a file-type
-icon set) and DL §15 are approved fork outcomes and are implemented, not
-re-argued.
+icon set) and DL §19 (the docked-panel section, §15 before the 2026-08-12
+renumber — rewritten here under D4 so the citation cannot silently resolve to
+the usage branch's §15) are approved fork outcomes and are implemented, not
+re-argued. (D5 later narrowed the dependencies: fixed-row windowing arithmetic
+instead of a virtual-list library, `lucide-preact` instead of an icon package.)
 
 One thing that _looks_ like a fork and is not: the extra invariant site found in
 §1 finding 15 (`OpenBoard canCancel`). It is the same class as the spec's eleven
@@ -273,7 +276,7 @@ src/files/                    # renderer, all host-free and unit-testable
 ├─ file-content.ts            #   size cap, binary refusal, encoding, EOL
 ├─ editor-host.ts             #   lazy Monaco import + theme mapping
 └─ ui/
-   ├─ explorer-panel.tsx      #   the docked column (DL §15)
+   ├─ explorer-panel.tsx      #   the docked column (DL §19 after the renumber; D4)
    ├─ file-tree-view.tsx      #   virtualized rows
    ├─ file-editor.tsx         #   imperative Monaco mount, Pane-shaped
    └─ external-change-bar.tsx #   the §5 bar
@@ -598,19 +601,24 @@ tomorrow with nothing to say so.
 
 ### Phase 5 — Surface (gated on T2)
 
-- [x] **T28. DESIGN LANGUAGE §15.**
-      Write the six approved rules (DL-15.1 … DL-15.6) into
+- [x] **T28. DESIGN LANGUAGE §15.** _(Overtaken 2026-08-14, D4: the
+      docked-panel section shipped as **§19** — written from the browser panel —
+      and §15 is spent by the usage branch on read-only data tables. The
+      explorer-specific rules join §19 when the surface is rebuilt; the spec's
+      §8 carries the mapping.)_
+      Original task: write the six approved rules into
       [`docs/DESIGN-LANGUAGE.md`](../DESIGN-LANGUAGE.md) `current` after
       §14, and add the row to its violations ledger if any existing surface now
       conflicts. Approved R2 fork, so this is transcription, not a decision.
-      DL-15.5's open recommendation — monochrome file-type icons at
+      The file-type-icon recommendation — monochrome at
       `--text-faint` — is written as the rule; colored icons stay a DL-3
       exception someone must take explicitly.
-      **Verify:** `unit` — none; it is a doc. Read back that §15's numbering does
+      **Verify:** `unit` — none; it is a doc. Read back that the numbering does
       not collide and the ledger is intact.
 
 - [x] **T29. The panel as a real grid column.**
-      A column of `.window`, never an overlay (DL-15.1). Three CSS variants
+      A column of the stage, never an overlay (DL-19.1 after D4/D11; the
+      original `.window`-column wording is superseded). Three CSS variants
       exist and all three are touched: `.window`, `.window--windows` (no
       titlebar row) and `.window--sidebar` (which already has
       `grid-template-columns: var(--sidebar-w) 1fr` and rules pinning `.titlebar`
@@ -619,7 +627,7 @@ tomorrow with nothing to say so.
       deliberate and is the reason the panel is a column rather than something
       layered on the stage. Default 260px, drag-resizable on its inner edge,
       clamped; the panel owns its own scrolling and resizing it never scrolls the
-      stage or the window (DL-15.2).
+      stage or the window (spec §8's scrolling rule, joining DL §19).
       **Verify:** `unit` — `npm run build`.
       `manual (owner)` — resize in both layouts; the terminals reflow and nothing
       is covered.
@@ -648,9 +656,10 @@ tomorrow with nothing to say so.
       then `npm run generate:menu && npm run generate:menu:check`.
 
 - [x] **T31. Tree view, virtualized.**
-      Rows at 22px with one fixed indent token per depth (DL-15.3); real casing
-      preserved (DL-15.4); monochrome file-type icons (DL-15.5); one
-      hairline-separated header row with at most two actions (DL-15.6). Keyboard
+      Rows at 22px with one fixed indent token per depth; real casing
+      preserved; monochrome file-type icons; one
+      hairline-separated header row with at most two actions (spec §8's rules,
+      joining DL §19 with the surface; header row is DL-19.3). Keyboard
       arrows navigate and expand. **Virtualized** — a 10k-entry directory is
       normal in the repos Deck is pointed at, and rendering it as DOM is the
       difference between a panel and a freeze.
@@ -709,7 +718,7 @@ implementation: file search / go-to-symbol; git status decoration in the tree
 (`electron/git.ts` exists, so the data is nearby — that is scope, not
 difficulty); diff view; multi-root workspaces; a terminal-side "reveal in
 explorer"; `.gitignore` parsing; persistence of any explorer state; cross-window
-sync of file tabs; and a left-docked variant (DL-15.1 is written so that answer
+sync of file tabs; and a left-docked variant (DL-19.1 is written so that answer
 is a CSS column choice later, not a rewrite).
 
 Also out of scope, inherited: deleting `src-tauri`, auto-update, and anything

@@ -267,35 +267,49 @@ be given an explicit answer, and none may be answered by accident:
 | `applySettings`              | Theme changes must reach Monaco as well as xterm.                                                                                                                                                                           |
 | Both layouts                 | Every behavior above holds in `TabBar` _and_ `WorkspaceSidebar`.                                                                                                                                                            |
 
-## 8. Design language — new §15 (approved R2 fork)
+## 8. Design language — joins §19 (approved R2 fork; renumbered 2026-08-14)
 
-A permanently docked panel is a surface class `docs/DESIGN-LANGUAGE.md` does not
+> **Amended under D4 of the
+> [phases 2–5 plan](../plans/2026-08-13-redesign-phases-2-5.md):** this section
+> was written as "new §15" before DESIGN-LANGUAGE renumbered its docked-panel
+> section to **§19** — and before another branch spent §15 on read-only data
+> tables, which is exactly the silent collision D4 exists to prevent. The
+> general rules below shipped as **DL-19.1–19.6** (in the browser panel's
+> words); the explorer-specific rows join §19 when this surface is built.
+> One content correction rides the renumber: the selection mark below predates
+> DL §21, which retired the 2px accent bar app-wide — selection is now
+> DL-21.1's wash and hover DL-21.2's quieter one.
+
+A permanently docked panel is a surface class `docs/DESIGN-LANGUAGE.md` did not
 have. §11 covers a full-window screen and §13 an anchored popover; neither
 describes a column that lives in the grid alongside the stage. Approved as a
 fork on 2026-08-12.
 
-- **DL-15.1** A docked panel is a **column of the `.window` grid**, never an
-  overlay. Surface `--chrome-1`, separated by a 1px `--hair` border on the stage
-  side. No shadow (DL-1.3) — depth comes from the background step, as with
-  `.wsbar`.
-- **DL-15.2** The panel owns its own scrolling. Resizing it never causes the
-  stage or the window to scroll.
-- **DL-15.3** Data rows in a panel are 22px, `--ui-font`, one fixed indent token
-  per depth level. Hover is a 4% `--fg` wash; selection is a 2px left accent bar
-  plus the wash — the same signifier as DL-11.2 and DL-5.1, so "selected" reads
-  identically everywhere.
-- **DL-15.4** **A data row keeps its content's real casing.** DL-4.1's lowercase
-  rule governs chrome labels the app authors; a file name is data the app
-  reports, and lowercasing it would be wrong, not stylish.
-- **DL-15.5** File-type icons are a **second icon vocabulary** beside §14's
-  Lucide set, permitted only in a docked panel's data rows.
-  **Recommended: rendered monochrome at `--text-faint`**, taking the row's color
-  when selected. Colored per-type icons are the familiar look, but §3's color
-  roles are strict and each hue there already means something; a palette of file
-  types would spend those meanings on file extensions. If colored icons are
-  wanted, that is a DL-3 exception to take explicitly.
-- **DL-15.6** A panel has one hairline-separated header row carrying its title
-  and at most two actions. It is a row, not a toolbar.
+- **(now DL-19.1)** A docked panel is a **column of the stage**, never an
+  overlay (the `.window`-grid wording predates the shipped rule; D11 resolved
+  the difference in favour of the stage column). Separated by a 1px `--hair`
+  border on the stage side. No shadow (DL-1.3) — depth comes from the
+  background step, as with `.wsbar`.
+- **(joins §19 with the surface)** The panel owns its own scrolling. Resizing
+  it never causes the stage or the window to scroll.
+- **(joins §19 with the surface)** Data rows in a panel are 22px, `--ui-font`,
+  one fixed indent token per depth level. Hover and selection are DL-21.2's
+  and DL-21.1's washes — the same signifier as everywhere else, which was
+  always this rule's point; its original accent-bar wording is superseded.
+- **(joins §19 with the surface)** **A data row keeps its content's real
+  casing.** DL-4.1's lowercase rule governs chrome labels the app authors; a
+  file name is data the app reports, and lowercasing it would be wrong, not
+  stylish.
+- **(joins §19 with the surface)** File-type icons are a **second icon
+  vocabulary** beside §14's Lucide set, permitted only in a docked panel's
+  data rows. **Recommended: rendered monochrome at `--text-faint`**, taking
+  the row's color when selected. Colored per-type icons are the familiar look,
+  but §3's color roles are strict and each hue there already means something;
+  a palette of file types would spend those meanings on file extensions. If
+  colored icons are wanted, that is a DL-3 exception to take explicitly.
+  (D5 later resolved the icon set itself: `lucide-preact`, no new dependency.)
+- **(now DL-19.3)** A panel has one hairline-separated header row carrying its
+  title and at most two actions. It is a row, not a toolbar.
 
 ## 9. Dependencies (approved fork)
 
@@ -305,7 +319,7 @@ Three, all approved on 2026-08-12:
 | -------------------- | ---------- | --------------------------------------------------- |
 | **Monaco**           | the editor | The single largest addition this repo has ever made |
 | a virtual list       | the tree   | Small; §3.1 explains why it is not optional         |
-| a file-type icon set | tree rows  | Governed by DL-15.5                                 |
+| a file-type icon set | tree rows  | Governed by §8's file-type-icon rule (joins DL §19) |
 
 Not added: no watcher library (§5 uses `fs.watch`), no gitignore matcher
 (§3.1), no syntax highlighter beyond Monaco's own.
@@ -379,7 +393,7 @@ Manual pass, because nothing above proves it:
   Deck's keymap sits above them. Gate M's edit step is the first evidence.
 - **Assumed:** the theme tokens Deck derives map onto a Monaco theme closely
   enough to look like one app. Untested.
-- **Open:** whether the panel should also be dockable left. Deferred — DL-15.1
+- **Open:** whether the panel should also be dockable left. Deferred — DL-19.1
   is written so the answer is a CSS column choice, not a rewrite.
 - **Open:** git status decoration in the tree. `electron/git.ts` already exists
   for the status bar's branch, so the data is nearby. Out of v1 on scope, not on
