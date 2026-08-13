@@ -92,8 +92,10 @@ registry. Record a resolved fork in this queue with a one-line reason; move it t
 Minimum completion gate: `npm test && npm run build && npm run generate:menu:check`.
 Changes under `electron/` additionally require `npm run electron:build`; changes under
 `src-tauri/` require the focused Rust tests; release/updater work requires its dedicated
-scripts and real target-platform checks. `npm test` excludes three suites by configuration —
-run `scripts/ipc-contract.test.ts` explicitly when touching IPC. Rendered UI changes require
+scripts and real target-platform checks. `npm test` excludes three suites by configuration;
+the live IPC gate is `scripts/electron-ipc-contract.test.ts`, which `npm test` runs — the
+excluded `scripts/ipc-contract.test.ts` is the superseded Tauri twin, kept for a Gate C
+abort (D8, 2026-08-14). Rendered UI changes require
 screenshot/recording approval; automated checks do not establish native visual correctness.
 
 ## Layout
@@ -126,7 +128,8 @@ it runs on rather than implying both.
   plan and cross-boundary verification, not a drive-by refactor.
 - **R5. Renderer state uses Preact signals; module stores are window-scoped.**
 - **R6. IPC payload shape is a contract.** Keep flat command arguments where the frozen
-  frontend contract sends flat keys; `scripts/ipc-contract.test.ts` guards this boundary.
+  frontend contract sends flat keys; `scripts/electron-ipc-contract.test.ts` guards this
+  boundary in `npm test` (the excluded Tauri twin stays until `src-tauri/` goes — D8).
 - **R7. Gallery imports flow app → gallery only.** Shipping modules must not import
   `src/gallery/` or its stubs.
 

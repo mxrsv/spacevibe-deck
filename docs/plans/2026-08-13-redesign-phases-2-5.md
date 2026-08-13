@@ -82,6 +82,12 @@ not chosen. Do not use `git add -A` in this repo.
    instruction, which postdates that sentence: the spec records D12 exactly as approved, its
    status line names the owed review, and the toolbar spec carries the amendment pointer.
    If the owner's read changes the contract, phase 5 §6.2 is the blast radius.
+8. **D8 was already satisfied when phase 5 reached it.** `scripts/electron-ipc-contract.test.ts`
+   is the Electron-first rewrite the decision asked for — flat-payload shape checks, no
+   Tauri-twin requirement — and `npm test` has run it since the Electron MVP merge; only
+   AGENTS.md still described the gate as switched off, and that correction is the whole
+   D8 change. The superseded Tauri test stays excluded, per its own header, until
+   `src-tauri/` leaves the tree.
 
 ### 0.4 What phase 2 still owes
 
