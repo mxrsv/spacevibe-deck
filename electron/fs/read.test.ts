@@ -11,7 +11,13 @@ let root: string;
 let outside: string;
 
 beforeAll(() => {
-  base = fs.mkdtempSync(path.join(os.tmpdir(), "deck-fs-read-"));
+  // `os.tmpdir()` is itself a symlink on macOS (`/var` -> `/private/var`), and
+  // every path the host returns has already been through `path-guard`'s
+  // realpath. Canonicalize the fixture root once so the expectations compare
+  // realpath to realpath instead of asserting that the guard does not resolve.
+  base = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "deck-fs-read-")),
+  );
   root = path.join(base, "workspace");
   outside = path.join(base, "outside");
   fs.mkdirSync(path.join(root, "src"), { recursive: true });
@@ -42,7 +48,9 @@ describe("listDir", () => {
     ]);
     // The exclusion list is the RENDERER's (`file-tree.ts`): the host reports
     // what is there, so a "show hidden" toggle needs no second round-trip.
-    expect(rows.find((row) => row.name === "node_modules")?.directory).toBe(true);
+    expect(rows.find((row) => row.name === "node_modules")?.directory).toBe(
+      true,
+    );
   });
 
   it("flags a symlink resolving out of the root and calls it a leaf", async () => {
