@@ -910,6 +910,53 @@ Tauri run at all — `styles.css` is shared, so that gap is real; the top-tab
 layout render; Windows anything; light themes (all four presets are dark; a
 light `--bg` via overrides is a named limit, not a claim).
 
+## Redesign phases 3–5 — toolbar, Gate M path, usage port — 2026-08-14
+
+The same program, continued to the edge of what a Linux cloud session can
+verify. [Plan §0.8](plans/2026-08-13-redesign-phases-2-5.md) `current` is the
+detailed record; the durable facts:
+
+**Feature toolbar shipped (phase 3).** `DeckToolbar` projects registry actions
+into the gallery-proven `FeatureToolbar`; `App` builds one element and both
+layouts mount it, so the mounts cannot drift. `ChromeActions` is retired (its
+gallery specimens render the shipping projection now). Browser is docked by
+contract — [productization spec](specs/2026-08-13-browser-productization-design.md)
+`decided`, amending the toolbar spec's main-surface sentence — and Usage joined
+the tools group when its surface landed. DL §23 governs the tooltip and the
+overflow menu; the menu got roving arrow-key focus, and the two remaining
+toolbar gaps are accepted inside DL-23.4/23.7 with reasons.
+
+**Gate M has a complete path and no run (phase 4).** `electron-builder.gate-m.yml`
+(unsigned, local, `--dir --publish never` — D10), the `gate-m.html` harness
+mounting the real `FileEditor` + one real xterm over the real hosts, and
+`scripts/verify-electron-gate-m-package.mjs`, which checks the packaged
+structure with a dependency-free asar reader and then drives typed focus
+markers, tokenization, save-to-disk and `file://` asset health over CDP. The
+harness ran end-to-end UNPACKAGED on Linux (tokenized Monaco, markers routed by
+focus, save byte-exact, the dirty guard blocking a graceful close). **Gate M
+itself requires the verification Mac, and no explorer surface exists or may be
+written before it passes.**
+
+**The usage dashboard is landed and ported (phase 5).** The branch merged over
+`main` as a true merge; DL gained its §15/§16 in the reserved slots,
+era-corrected against §20/§21. The ~3,700-line Rust backend now has a
+module-for-module TypeScript port in `electron/usage/` — reader, discovery,
+both parsers, atomic versioned cache (independent version space; cutover is a
+clean install), single-flight scan yielding between bounded batches — behind
+`usage_snapshot` on the bridge facade, with the renderer's direct Tauri import
+gone. The parity gate is the load-bearing piece: a redacted JSONL fixture
+corpus is checked in with a golden snapshot produced by the RUST scanner
+itself, and `electron/usage/parity.test.ts` deep-equals the port against it,
+cold and warm. An xvfb run rendered the dashboard over this machine's real
+Claude transcripts through the real IPC path. The §6.1.8 owner-machine
+acceptance table has still never been run.
+
+**Browser restore (phase 5 §6.2).** `browserLastUrl` persists committed
+main-frame navigations (a dedicated `browser:navigated` event — hash changes
+deliberately excluded) and the toggle's cold open restores it, proven live
+against a real HTTP server across a hard kill. The compositor manual pass and
+a real-React Inspect check stay owed, as does everything native.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

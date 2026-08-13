@@ -154,6 +154,37 @@ This continuation ran on `claude/redesign-phases-2-5-e6mdf5` and finished phase 
   its DOM rect ({680, 35, 420×657} from both sides of the IPC). Still owed: every native
   macOS check, any Tauri run, top-tab render, owner eye review, `css-audit` re-read.
 
+### 0.8 Continuation, phases 3–5 — same session
+
+Phases 3–5 ran to the edge of what this environment can verify; what remains is listed at
+the end, all of it needing the owner's hardware or eyes.
+
+- **Phase 3** — Browser contract frozen (D12, §0.3.7); `DeckToolbar` projects the registry
+  into the gallery-proven `FeatureToolbar`, one element at both mounts; `ChromeActions`
+  retired; DL §23 written; the overflow menu's roving-focus gap closed, the other two gaps
+  accepted in DL-23.4/23.7; a drag filler keeps the titlebar band grabbable on both hosts.
+  Both layouts rendered and exercised under xvfb, including real overflow at rail width.
+- **Phase 4** — stopped exactly where the approved ordering stops it: the D10 packaging
+  path, the Gate M harness and the packaged verifier are in-tree and tested, and the
+  harness ran end-to-end UNPACKAGED on Linux (Monaco tokenized a real fixture, typed
+  markers landed per focus control, Save reached disk byte-for-byte, the dirty guard
+  blocked a graceful close). **Gate M itself needs the verification Mac; no explorer
+  surface is written before it passes.**
+- **Phase 5** — D8 closed as a correction (§0.3.8); D4's citation rewrite done; the usage
+  branch landed over main as a true merge and its Rust backend ported module-for-module to
+  `electron/usage/`, gated by a checked-in fixture corpus whose golden snapshot was
+  produced by the RUST scanner itself and deep-equalled by the port, cold and warm. The
+  dashboard ran end-to-end under xvfb over this machine's real Claude transcripts.
+  `browserLastUrl` restores the loaded page across relaunch, proven live against a real
+  HTTP server through a hard kill.
+
+**The program's remaining debt, all environment-bound:** owner eye review of every rendered
+change (DL §9.6) and the `css-audit` re-read; the native macOS pass over phase 2 steps 4–10
+and both toolbar layouts; any `npm run tauri dev` run at all; Gate M on the verification Mac,
+then phase 4's surface build (§5.1–§5.3); the §6.1.8 real-corpus acceptance table; §6.2's
+compositor manual pass and real-React Inspect check; the usage branch's owner-local dirty
+tree and untracked docs (§6.0); every Windows claim (Gate C).
+
 ## 1. Corrections to the handoff
 
 The handoff is a frozen milestone doc; it stays as written. The program proceeds from these
@@ -529,4 +560,5 @@ phase 2 ────┼─ phase 4 (/var fix → proof package + harness → Gat
 | The tree passes `npm test`             | `current`  | holds        | fixed at `3f9c928`; 160 files / 1975 tests green at `4014867` and through §0.7              |
 | Phase 2 is verified on both hosts      | `current`  | contradicted | native macOS covers steps 1-3; a Linux Electron pass covers the shell, rail, board and browser panel (§0.7); every Tauri run is unobserved |
 | The direction holds on any theme       | `building` | unverified   | four dark presets proven; light themes reachable via overrides, untested                   |
-| The usage dashboard behaves as specced | `building` | unobserved   | the branch's acceptance table has never been run; scheduled in §6.1.3                      |
+| The usage dashboard behaves as specced | `building` | partial      | Rust-parity gate green over golden fixtures; a real-corpus xvfb run rendered live data (§0.8); the owner-machine acceptance table (§6.1.8) has never been run |
+| The Electron port equals the Rust scanner | `current` | holds | `electron/usage/parity.test.ts` deep-equals the Rust-produced golden snapshot, cold and warm |

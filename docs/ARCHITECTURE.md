@@ -156,6 +156,19 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   public key; local builds without `DECK_UPDATER_PUBLIC_KEY` keep the updater
   plugin disabled while the process plugin remains available
   ([Tauri plugin registration](../src-tauri/src/lib.rs#L28-L43) `current`).
+- Redesign phases 3–5 (2026-08-14) closed under the same standing authority:
+  the toolbar is the single chrome actions surface, built once by `App` and
+  mounted by both layouts (`DeckToolbar` → `FeatureToolbar`; `ChromeActions`
+  removed); Browser is a docked panel by frozen contract and its toolbar
+  action toggles the dock (D12,
+  [spec](specs/2026-08-13-browser-productization-design.md) `decided`);
+  tooltips and the overflow menu are governed by DL §23; the live IPC gate is
+  `scripts/electron-ipc-contract.test.ts` (D8 closed as a correction); the
+  usage scanner exists twice on purpose — Rust for the frozen Tauri host,
+  `electron/usage/` for the shipping direction — held equal by a
+  Rust-produced golden-fixture parity test; and Gate M's packaging path is
+  local and unsigned by design (D10), with the explorer surface ordered
+  strictly after a Gate M pass on real hardware.
 - Redesign phase 2 (2026-08-14) closed its forks as follows, all owner-approved
   or resolved under the plan's standing authority and recorded in
   [the plan's §0.3 and §2](plans/2026-08-13-redesign-phases-2-5.md) `current`:

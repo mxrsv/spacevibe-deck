@@ -45,10 +45,12 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   [decided](docs/specs/2026-08-12-file-explorer-design.md); building the surface is a new
   task, not a resumption. Monaco must first pass Gate M in a packaged build, and dirty files
   must block tab close, window close, and app quit.
-- **Queued after Electron MVP closes:** the token usage dashboard, which is still unmerged on
-  its own branch. Its design language sections are why `docs/DESIGN-LANGUAGE.md` has no §15
-  or §16 — those numbers are reserved, as are the §20-§22 stubs. Take the next free number
-  above §22 rather than filling a gap.
+- **The token usage dashboard is landed and ported.** The branch merged over `main` during
+  the redesign's phase 5; its Rust backend has an Electron port in `electron/usage/` gated
+  by a Rust-produced golden-fixture parity test. `docs/DESIGN-LANGUAGE.md`'s §15/§16 now
+  hold its sections, §20/§21/§23 are written, and §22 stays reserved — take the next free
+  number above §23 rather than filling a gap. The owner-machine acceptance table and the
+  branch's owner-local dirty tree remain owed.
 - **Chrome gallery is current:** `gallery.html` mounts real components through `src/gallery/`;
   run `npm run prototype:gallery`. Gallery code must never enter the shipping bundle. Its
   window-chrome section is narrowed to the one selected direction on purpose; parked
@@ -160,4 +162,4 @@ _(Heading retained for the global living-doc convention.)_
 | File explorer is available                             | `decided`  | backlog    | Model and host layers merged; the surface was dropped before merge and only `dirtyPaths` is consumed |
 | The browser panel works everywhere Deck does           | `building` | partial    | Electron-only; no Tauri implementation exists                                                        |
 
-Updated 2026-08-13.
+Updated 2026-08-14.
