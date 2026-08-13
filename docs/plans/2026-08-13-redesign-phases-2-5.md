@@ -77,6 +77,11 @@ not chosen. Do not use `git add -A` in this repo.
 6. **Reduced-motion scope cites `DL §9` by section**, not the dotted form the earlier plan text
    used: §9's checklist items are not numbered rules, and `scripts/design-language.test.ts`
    rejects the dotted spelling — including inside a comment.
+7. **The Browser productization spec was authored and committed without a stopped-for owner
+   review** (phase 3 step 1 says "D14 applies"). Resolved against §0.6's run-to-completion
+   instruction, which postdates that sentence: the spec records D12 exactly as approved, its
+   status line names the owed review, and the toolbar spec carries the amendment pointer.
+   If the owner's read changes the contract, phase 5 §6.2 is the blast radius.
 
 ### 0.4 What phase 2 still owes
 

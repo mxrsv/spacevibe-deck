@@ -2,6 +2,11 @@
 
 Date: 2026-08-12 · Status: pending user approval
 
+> **Amended 2026-08-14 (D12):** the Browser activation contract in §3 and §4 is
+> superseded — Browser stays a docked column and the toolbar action toggles it.
+> See [browser productization §5](2026-08-13-browser-productization-design.md)
+> `decided`. The text below is kept as written.
+
 ## 1. Context
 
 **Origin:**
