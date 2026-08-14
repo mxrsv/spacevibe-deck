@@ -4207,6 +4207,43 @@ describe("file surfaces in the tab strip", () => {
     expect(surfaces.calls).toContain("deactivate");
     tm.dispose();
   });
+
+  it("focusNextAttention's activateForAttention deactivates a file surface before acknowledging the candidate pane", async () => {
+    // Same boundary as `selectTab` above, for the attention-rail's own path
+    // into a tab (Task 7): jumping to a candidate PANE must return keyboard
+    // focus to xterm, not leave it on a file editor that is no longer on
+    // screen once the tab's terminal grid retakes the stage.
+    const surfaces = fakeSurfaces({ count: 1, total: 1 });
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] }); // tab 0 -> pane 1
+    surfaces.activeIndexValue = 0;
+    surfaces.calls.length = 0;
+
+    tm.activateForAttention(0, 1);
+
+    expect(surfaces.calls).toContain("deactivate");
+    tm.dispose();
+  });
+
+  it("split-row via runAction is a no-op while a file surface owns the stage", async () => {
+    // Task 7: Monaco focuses a plain `<div>` — `isChromeTextField` never
+    // sees it — so a "pane"-tiered action must not reach the terminal tab
+    // hidden behind the file surface. `allPaneIds()` reads the REAL terminal
+    // pane count (T17: a file surface never contributes to it), so it stays
+    // a faithful proof even though `statusInfo.paneCount` is masked to null
+    // while a surface is active (T19).
+    const surfaces = fakeSurfaces({ count: 1, total: 1 });
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    const before = tm.allPaneIds().length;
+    surfaces.activeIndexValue = 0;
+
+    tm.runAction("split-row");
+    await flush();
+
+    expect(tm.allPaneIds().length).toBe(before); // no split happened behind the file surface
+    tm.dispose();
+  });
 });
 
 /**

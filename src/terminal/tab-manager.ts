@@ -794,6 +794,12 @@ export function createTabManager(
     if (!target || !target.manager.paneIds().includes(paneId)) {
       return; // unknown/dead candidate — no tab change, no ack of any pane
     }
+    // The attention rail is jumping to a terminal PANE — a file surface may
+    // be on the stage over either the current tab or the target, same-tab or
+    // cross-tab. Mirrors `selectTab`'s own `surfaces.deactivate()` (Task 7):
+    // without it, focus/ack below lands on a pane the user cannot see while
+    // an editor still holds the DOM's keyboard focus.
+    surfaces.deactivate();
     if (index === active) {
       target.manager.focusPane(paneId); // same-tab: ack ONLY the candidate
       return;
@@ -1627,8 +1633,39 @@ export function createTabManager(
     ) {
       return false;
     }
+    // A file surface owns the stage the same way an overlay does, but it is
+    // invisible to `isChromeTextField` (Monaco focuses a plain `<div>`, never
+    // an `<input>`/`<textarea>`), so nothing upstream of this guard can tell
+    // a "pane"-tiered action it is about to act on a terminal tab hidden
+    // behind an open editor. `isSurfaceRoutedAction` exempts the few actions
+    // that are already surface-aware themselves; every other "pane" action
+    // targets `activeManager()` directly and must not reach it here.
+    if (
+      scope === "pane" &&
+      surfaces.activeIndex() >= 0 &&
+      !isSurfaceRoutedAction(action)
+    ) {
+      return true;
+    }
     const targetRank = TIER_RANK[scope];
     return openOverlayRanks().some((rank) => rank >= targetRank);
+  }
+
+  /**
+   * "pane"-tiered actions that already know how to reach a file surface
+   * themselves: `close-pane` -> `surfaces.close()`, `save-file` ->
+   * `surfaces.save()` (both in the `commands` table below), and
+   * `move-pane-to-new-window`, which refuses with its own chrome message
+   * (`movePane` above) rather than acting on `activeManager()`.
+   * `overlayBlocksAction` exempts exactly these three from the file-surface
+   * block so that surface-aware behavior still runs.
+   */
+  function isSurfaceRoutedAction(action: ShortcutAction): boolean {
+    return (
+      action === "close-pane" ||
+      action === "save-file" ||
+      action === "move-pane-to-new-window"
+    );
   }
 
   /**
