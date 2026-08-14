@@ -254,6 +254,28 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "File", group: "preset" },
   },
   {
+    id: "save-file",
+    label: "Save",
+    // Tier "pane" (spec docs/specs/2026-08-12-file-explorer-design.md §4.3):
+    // it saves whichever file surface is currently visible, and every
+    // overlay hides that surface the same way it hides the focused pane —
+    // same reasoning as close-pane/close-tab below.
+    //
+    // "No-op when no file surface is active" (§4.3) is NOT this field: it is
+    // runtime dispatch behavior, resolved against `SurfaceStrip.save()`
+    // (tab-manager.ts's own doc comment: "Save the active surface; a no-op
+    // when it has nothing to save"). That table lives in tab-manager.ts,
+    // owned by a concurrent task at the time this row landed — see
+    // dispatch-coverage.test.ts / shortcut-groups.test.ts for the two tests
+    // that stay red until `"save-file"` joins `COMMAND_ACTIONS` there.
+    scope: "pane",
+    // Own group ("save"), between the layout-preset group and Close: saving
+    // the open file is neither a preset operation nor a close operation, and
+    // sits naturally between "create/capture" and "close" in the File menu's
+    // top-to-bottom flow.
+    menu: { submenu: "File", group: "save" },
+  },
+  {
     id: "close-pane",
     label: "Close Pane",
     scope: "pane",
@@ -680,6 +702,14 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   { key: "n", meta: true, shift: true, action: "new-preset" },
   // Capture the live layout as a preset — also in the Window menu
   { key: "s", meta: true, shift: true, action: "save-preset" },
+  // Save the active file surface (spec
+  // docs/specs/2026-08-12-file-explorer-design.md §4.3). Bare ⌘S, distinct
+  // from ⌘⇧S save-preset above. No Windows binding: bare Ctrl+S stays
+  // PTY-reserved (terminal flow control) until an explicit binding decision
+  // says otherwise — see WINDOWS_KEYMAP's own top-of-file comment on bare
+  // Ctrl+ chords staying available to the PTY. Has a menu item, so
+  // CharKeyBinding is mandatory, not a style choice (RULE above).
+  { key: "s", meta: true, action: "save-file" },
   // Jump to the highest-severity actionable Attention Rail candidate; routed
   // through an app-level seam so it can share the overlay preflight with a
   // status-dot click instead of focusing directly.

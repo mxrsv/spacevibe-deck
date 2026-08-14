@@ -21,6 +21,7 @@ export type ShortcutGroupId =
   | "panes"
   | "tabs"
   | "presets"
+  | "files"
   | "text"
   | "scrollback"
   | "display"
@@ -35,6 +36,7 @@ export const SHORTCUT_GROUPS: readonly {
   { id: "panes", label: "panes" },
   { id: "tabs", label: "tabs" },
   { id: "presets", label: "layout presets" },
+  { id: "files", label: "files" },
   { id: "text", label: "text & search" },
   { id: "scrollback", label: "scrollback" },
   { id: "display", label: "display" },
@@ -70,6 +72,12 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
 
   "new-preset": "presets",
   "save-preset": "presets",
+
+  // Own group, not "app": it acts on file-tab CONTENT (the open file), the
+  // same kind of target "text" below has (the terminal buffer) — not a
+  // window-surface toggle like the "app" group's toggle-explorer/
+  // toggle-browser/toggle-usage rows.
+  "save-file": "files",
 
   find: "text",
   "find-next": "text",

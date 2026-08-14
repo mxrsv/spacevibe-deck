@@ -29,6 +29,7 @@ pub fn build_file_menu<R: Runtime>(
         "Save Layout as Preset…",
         Some("CmdOrCtrl+Shift+S"),
     )?;
+    let save_file = action_item(handle, "save-file", "Save", Some("CmdOrCtrl+S"))?;
     let close_pane = action_item(handle, "close-pane", "Close Pane", Some("CmdOrCtrl+W"))?;
     let close_tab = action_item(handle, "close-tab", "Close Tab", Some("CmdOrCtrl+Shift+W"))?;
     tauri::menu::SubmenuBuilder::new(handle, "File")
@@ -37,6 +38,8 @@ pub fn build_file_menu<R: Runtime>(
         .separator()
         .item(&new_preset)
         .item(&save_preset)
+        .separator()
+        .item(&save_file)
         .separator()
         .item(&close_pane)
         .item(&close_tab)

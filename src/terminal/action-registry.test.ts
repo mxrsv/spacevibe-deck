@@ -89,6 +89,24 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
+  it("binds save-file on macOS, and leaves bare Ctrl+S unbound on Windows (PTY-reserved)", () => {
+    const mac = MACOS_KEYMAP.filter(
+      (binding) => binding.action === "save-file",
+    );
+    const win = WINDOWS_KEYMAP.filter(
+      (binding) => binding.action === "save-file",
+    );
+    expect(mac).toEqual([{ key: "s", meta: true, action: "save-file" }]);
+    // Bare Ctrl+S stays PTY-reserved on Windows until an explicit binding
+    // decision says otherwise (task-6 brief; spec
+    // docs/specs/2026-08-12-file-explorer-design.md §4.3 only commits to
+    // ⌘S) — asserting `[]` locks that deliberate absence in, so a future
+    // add is a conscious edit here, not a silent gap.
+    expect(win).toEqual([]);
+    // It has a menu item, so the RULE above CharKeyBinding requires `key`.
+    expect(mac[0]).not.toHaveProperty("code");
+  });
+
   it("binds move-pane-to-new-window on both platforms without colliding", () => {
     const mac = MACOS_KEYMAP.filter(
       (binding) => binding.action === "move-pane-to-new-window",
@@ -106,7 +124,9 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
-  it("has exactly the 46 action ids including updater menu actions", () => {
+  // 48 = the 47 rows verified passing before Task 6, plus "save-file" (task-6
+  // brief, spec §4.3) — the file-explorer's ⌘S save action.
+  it("has exactly the 48 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -140,6 +160,7 @@ describe("ACTION_REGISTRY", () => {
         "focus-next-attention",
         "new-preset",
         "save-preset",
+        "save-file",
         "focus-next",
         "focus-prev",
         "focus-left",
