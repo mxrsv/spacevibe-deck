@@ -24,13 +24,11 @@ const normalizeRelativePath = (path: string): string =>
 const SOURCE_ROOT = pathFromFileUrl(new URL("../src/", import.meta.url));
 
 /**
- * The two SVGs that are not functional icons, with the count each file is
+ * The SVG that is not a functional icon, with the count its file is
  * allowed. Counts matter as much as paths: a file on this list must not become
  * a place where a hand-drawn icon can hide.
  */
 const ALLOWED_SVG: ReadonlyMap<string, number> = new Map([
-  // The Deck brand mark. A logo is identity, not an icon in a system.
-  ["open-board/open-board-home.tsx", 1],
   // The agent-pending ring: ticks positioned by hand and spun by CSS. No
   // library icon expresses it, and it is a status visual, not an action.
   ["ui/workspace-spinner.tsx", 1],

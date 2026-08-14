@@ -49,6 +49,8 @@ export function applyThemeVars(
   rootStyle.setProperty("--magenta", theme.magenta ?? FALLBACK_MAGENTA);
   rootStyle.setProperty("--cyan", theme.cyan ?? FALLBACK_CYAN);
   rootStyle.setProperty("--tone", chrome.tone);
+  rootStyle.setProperty("--sidebar-bg", chrome.sidebarBg);
+  rootStyle.setProperty("--sidebar-seam", chrome.sidebarSeam);
   rootStyle.setProperty("--chrome-1", chrome.chrome1);
   rootStyle.setProperty("--chrome-2", chrome.chrome2);
   rootStyle.setProperty("--tab-active-bg", chrome.tabActiveBg);

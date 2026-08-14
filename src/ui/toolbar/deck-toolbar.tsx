@@ -1,6 +1,7 @@
 import type { ComponentChildren } from "preact";
 import {
   Columns2,
+  FolderTree,
   Gauge,
   Globe,
   Maximize2,
@@ -19,10 +20,11 @@ import type { ToolbarItem, ToolbarItemState } from "./toolbar-item";
  * state and app callbacks into `ToolbarItem`s and nothing else.
  *
  * Group contents follow the approved plan's D7: `tools` grew Usage when its
- * surface landed with phase 5; Explorer arrives with phase 4's surface.
- * Overflow order is the toolbar spec's: Usage leaves the bar first, then
- * Focus expand, Close pane and the splits; Browser, Prompts and Settings
- * never leave.
+ * surface landed with phase 5, and Explorer when its surface landed on
+ * 2026-08-14 — until then the panel was keyboard- and menu-only, with no
+ * toolbar affordance to discover it. Overflow order is the toolbar spec's:
+ * Usage leaves the bar first, then Focus expand, Close pane and the splits;
+ * Explorer, Browser, Prompts and Settings never leave.
  *
  * See docs/specs/2026-08-12-feature-toolbar-design.md and its 2026-08-14
  * Browser amendment (docs/specs/2026-08-13-browser-productization-design.md §5).
@@ -54,6 +56,7 @@ const IDLE: ToolbarItemState = { kind: "idle" };
 const ACTIVE: ToolbarItemState = { kind: "active" };
 
 interface DeckToolbarProps {
+  readonly explorerOpen: boolean;
   readonly browserOpen: boolean;
   readonly usageOpen: boolean;
   readonly settingsOpen: boolean;
@@ -64,6 +67,7 @@ interface DeckToolbarProps {
   /** Rendered inside the Prompts control's slot while open. */
   readonly promptPopover?: ComponentChildren;
   readonly updateAction?: ComponentChildren;
+  onToggleExplorer(): void;
   onToggleBrowser(): void;
   onToggleUsage(): void;
   onSplitRow(): void;
@@ -76,6 +80,20 @@ interface DeckToolbarProps {
 
 export function DeckToolbar(props: DeckToolbarProps) {
   const items: ToolbarItem[] = [
+    {
+      id: "toggle-explorer",
+      label: toolbarLabel("toggle-explorer"),
+      icon: FolderTree,
+      group: "tools",
+      // From the registry, never written out: the chord is ⌘⇧B / Ctrl+Shift+B,
+      // not the ⌘⇧E the frozen toolbar spec drafted before the file-explorer
+      // work picked its binding.
+      shortcut: shortcutLabel("toggle-explorer"),
+      state: props.explorerOpen ? ACTIVE : IDLE,
+      overflowOrder: null,
+      toggles: "pressed",
+      onActivate: props.onToggleExplorer,
+    },
     {
       id: "toggle-browser",
       label: toolbarLabel("toggle-browser"),

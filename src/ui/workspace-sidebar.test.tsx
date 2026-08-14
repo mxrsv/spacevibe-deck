@@ -31,10 +31,7 @@ import {
 } from "../terminal/tabs-store";
 import type { AgentAttentionSummary, TabView } from "../terminal/tabs-store";
 import { WorkspaceSidebar } from "./workspace-sidebar";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { resetDesktopEnvironmentForTests } from "../lib/platform";
 
 function actionable(
   overrides: Partial<AgentAttentionSummary> = {},
@@ -55,6 +52,7 @@ function tab(overrides: Partial<TabView> = {}): TabView {
     name: "Tab",
     dotColor: null,
     workspacePath: "/Users/dev/project",
+    agents: [],
     agentBusy: false,
     unread: false,
     ...overrides,
@@ -85,7 +83,7 @@ describe("WorkspaceSidebar", () => {
   const baseProps = () => ({
     onSelectTab: vi.fn(),
     onCloseTab: vi.fn(),
-    onNewTab: vi.fn(),
+    onOpenWorkspace: vi.fn(),
     onRenameTab: vi.fn(),
     onSetTabColor: vi.fn(),
     onFocusAttention: vi.fn(),
@@ -106,20 +104,14 @@ describe("WorkspaceSidebar", () => {
     expect(close.getAttribute("aria-label")).toBe("Close workspace");
   });
 
-  it("shows the Windows New Tab shortcut without changing its accessible label", () => {
-    initializeDesktopEnvironment({
-      platform: "windows",
-      homeDir: "C:\\Users\\Deck",
-    });
+  it("labels the footer row as the Open board's entry, not the quick-pick shortcut", () => {
     mount(baseProps());
 
     const add = host.querySelector(".wsbar__add") as HTMLButtonElement;
-    expect(add.title).toBe("New tab (Ctrl+Shift+T)");
-    expect(add.getAttribute("aria-label")).toBe("New tab");
+    expect(add.title).toBe("Open a workspace, worktree, or layout preset");
+    expect(add.getAttribute("aria-label")).toBe("Open workspace");
     expect(add.querySelector(".lucide-plus")).not.toBeNull();
-    // The word stays: this control is wide and reads as a labelled action.
     expect(add.textContent).toContain("Open workspace");
-
   });
 
   it("renders the label, path, and logo for each row", () => {

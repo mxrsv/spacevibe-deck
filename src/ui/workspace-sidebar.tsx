@@ -22,15 +22,16 @@ import {
   setWorkspaceLogoFromPath,
 } from "../settings/workspace-logo-store";
 import { pickImagePath } from "../settings/logo-store";
-import { reportPersistError, tabPopoverOpen } from "../chrome/events";
+import { reportPersistError } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
+import { useTabPopoverSlot } from "./tab-popover-slot";
 import { WorkspaceLogo } from "./workspace-logo";
-import { titleWithShortcut } from "../lib/shortcut-label";
 
 interface WorkspaceSidebarProps {
   onSelectTab(index: number): void;
   onCloseTab(index: number): void;
-  onNewTab(): void;
+  /** Footer "Open workspace" row: the Open board's full flow (kept in sync with RepositoryRail's same-named prop for the one-line revert). */
+  onOpenWorkspace(): void;
   onRenameTab(index: number, name: string | null): void;
   onSetTabColor(index: number, color: TabDotColor | null): void;
   /** Invoked when a row's actionable attention mark is clicked. */
@@ -56,9 +57,7 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
   // Mirror the popover's open state into the shared signal — the browser
   // panel's native view has to be hidden while anything floats over the stage,
   // and it cannot see a component-local signal.
-  useSignalEffect(() => {
-    tabPopoverOpen.value = popover.value !== null;
-  });
+  useTabPopoverSlot("sidebar", popover);
 
   const popoverTab =
     popover.value === null
@@ -254,9 +253,9 @@ export function WorkspaceSidebar(props: WorkspaceSidebarProps) {
         <button
           type="button"
           class="wsbar__add"
-          title={titleWithShortcut("New tab", "new-tab")}
-          aria-label="New tab"
-          onClick={props.onNewTab}
+          title="Open a workspace, worktree, or layout preset"
+          aria-label="Open workspace"
+          onClick={props.onOpenWorkspace}
         >
           <span class="wsbar__add-glyph">
             <DeckIcon icon={Plus} size={CHROME_ICON} />

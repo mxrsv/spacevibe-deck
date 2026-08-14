@@ -39,9 +39,11 @@ Consequences worth knowing:
   ([platform configs](../src-tauri/tauri.macos.conf.json) `current`,
   [Windows config](../src-tauri/tauri.windows.conf.json) `current`).
 - Surfaces: layout presets and the preset editor, pane swap, multi-window
-  move/join, the Open board (workspace ∥ preset), the post-materialize agent
-  picker, the file sidebar with preview and diff, and a full-window Settings
-  screen with a category rail
+  move/join, the Open board (workspace ∥ preset) reached from the sidebar's
+  "Open workspace" row, AgentQuickPicker (the tab strip's `+`/⌘T fast path —
+  single pane, active tab's workspace, no workspace/preset step), the
+  post-materialize agent picker, the file sidebar with preview and diff, and a
+  full-window Settings screen with a category rail
   ([`SettingsScreen`](../src/ui/settings/settings-screen.tsx) `current`,
   [category registry](../src/ui/settings/settings-categories.ts) `current`) —
   a new category is one registry entry plus one file under `sections/`.
@@ -691,15 +693,15 @@ component-and-source context that lands in the focused agent pane.
 
 ### What it is made of
 
-| Piece | Where |
-| ----- | ----- |
-| Native web view, one per window | [`electron/browser/view.ts`](../electron/browser/view.ts) `current` |
-| Injected bootstrap (pure string builder) | [`electron/browser/inject.ts`](../electron/browser/inject.ts) `current` |
-| Address-bar input rules | [`electron/browser/url.ts`](../electron/browser/url.ts) `current` |
-| Page → host bridge | [`electron/browser-preload.ts`](../electron/browser-preload.ts) `current` |
-| Vendored react-grab 0.1.50 | [`electron/vendor/react-grab/`](../electron/vendor/react-grab/SOURCE.md) `current` |
-| Panel chrome + measured hole | [`src/browser/browser-panel.tsx`](../src/browser/browser-panel.tsx) `current` |
-| Grab delivery + sanitising | [`src/browser/browser-store.ts`](../src/browser/browser-store.ts) `current`, [`grab-format.ts`](../src/browser/grab-format.ts) `current` |
+| Piece                                    | Where                                                                                                                                    |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Native web view, one per window          | [`electron/browser/view.ts`](../electron/browser/view.ts) `current`                                                                      |
+| Injected bootstrap (pure string builder) | [`electron/browser/inject.ts`](../electron/browser/inject.ts) `current`                                                                  |
+| Address-bar input rules                  | [`electron/browser/url.ts`](../electron/browser/url.ts) `current`                                                                        |
+| Page → host bridge                       | [`electron/browser-preload.ts`](../electron/browser-preload.ts) `current`                                                                |
+| Vendored react-grab 0.1.50               | [`electron/vendor/react-grab/`](../electron/vendor/react-grab/SOURCE.md) `current`                                                       |
+| Panel chrome + measured hole             | [`src/browser/browser-panel.tsx`](../src/browser/browser-panel.tsx) `current`                                                            |
+| Grab delivery + sanitising               | [`src/browser/browser-store.ts`](../src/browser/browser-store.ts) `current`, [`grab-format.ts`](../src/browser/grab-format.ts) `current` |
 
 ### The three facts that shape all of it
 
@@ -743,15 +745,15 @@ Two defects that run found and the mocked suite could not:
 15 findings, 14 real, all fixed in the follow-up commit. The ones that changed
 behaviour rather than wording:
 
-| Was | Is |
-| --- | --- |
-| Any page could dispatch the grab event; no gesture check, no rate limit | The preload gates on `isTrusted` — a bit page script cannot set — within 3 s, and both preload and host rate-limit |
-| `sanitizeGrabText` stripped C0 and DEL | It strips C1 too; `U+009B 201~` is the same bracketed-paste escape without an ESC |
-| The view hid only for `overlayCoversPane()` | It hides for every floating surface; the Prompt Board popover opened inside the panel's own column and was invisible |
-| The toggle destroyed the page | It hides it, which is what "reopening keeps the page" always claimed |
-| Grabs were sent from `getContent` | They are sent from `onCopySuccess` / `onAfterCopy`, after the bundle's abort race has decided — a cancelled copy no longer pastes |
-| `browserHomeUrl` had no UI | Settings has a **browser** category |
-| The `.js → .cjs` walk swept the vendored bundle | `vendor/` is skipped, and the output dir is cleared before the copy |
+| Was                                                                     | Is                                                                                                                                |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Any page could dispatch the grab event; no gesture check, no rate limit | The preload gates on `isTrusted` — a bit page script cannot set — within 3 s, and both preload and host rate-limit                |
+| `sanitizeGrabText` stripped C0 and DEL                                  | It strips C1 too; `U+009B 201~` is the same bracketed-paste escape without an ESC                                                 |
+| The view hid only for `overlayCoversPane()`                             | It hides for every floating surface; the Prompt Board popover opened inside the panel's own column and was invisible              |
+| The toggle destroyed the page                                           | It hides it, which is what "reopening keeps the page" always claimed                                                              |
+| Grabs were sent from `getContent`                                       | They are sent from `onCopySuccess` / `onAfterCopy`, after the bundle's abort race has decided — a cancelled copy no longer pastes |
+| `browserHomeUrl` had no UI                                              | Settings has a **browser** category                                                                                               |
+| The `.js → .cjs` walk swept the vendored bundle                         | `vendor/` is skipped, and the output dir is cleared before the copy                                                               |
 
 One finding did not survive verification: closing a window was said to throw
 out of the cleanup path and strand PTYs. A probe on Electron 43 showed
@@ -791,8 +793,11 @@ Electron branch only; nothing here ships on Tauri. Built against the
 done — and then **split in half before merge**. Read the plan's §8 before
 touching any of it.
 
-**THE FEATURE IS NOT USABLE.** There is no way to open a file in Deck. The
-machinery merged and the chrome did not. That was a decision, not a shortfall:
+~~**THE FEATURE IS NOT USABLE.** There is no way to open a file in Deck.~~
+**Superseded 2026-08-14: the surface was built on top of this model and host —
+see the straight-through completion run below.** The
+machinery merged and the chrome did not, at the time this section was written.
+That was a decision, not a shortfall:
 the owner is redesigning the Electron version completely, and while this was
 being written `electron-migration` took DESIGN LANGUAGE §18 for the application
 frame, wrote a **§19 "Docked side panels" for a browser panel that reserves
@@ -926,16 +931,18 @@ the tools group when its surface landed. DL §23 governs the tooltip and the
 overflow menu; the menu got roving arrow-key focus, and the two remaining
 toolbar gaps are accepted inside DL-23.4/23.7 with reasons.
 
-**Gate M has a complete path and no run (phase 4).** `electron-builder.gate-m.yml`
+**Gate M has a complete path~~ and no run~~ (phase 4).** `electron-builder.gate-m.yml`
 (unsigned, local, `--dir --publish never` — D10), the `gate-m.html` harness
 mounting the real `FileEditor` + one real xterm over the real hosts, and
 `scripts/verify-electron-gate-m-package.mjs`, which checks the packaged
 structure with a dependency-free asar reader and then drives typed focus
 markers, tokenization, save-to-disk and `file://` asset health over CDP. The
 harness ran end-to-end UNPACKAGED on Linux (tokenized Monaco, markers routed by
-focus, save byte-exact, the dirty guard blocking a graceful close). **Gate M
+focus, save byte-exact, the dirty guard blocking a graceful close). ~~Gate M
 itself requires the verification Mac, and no explorer surface exists or may be
-written before it passes.**
+written before it passes.~~ **Superseded 2026-08-14: Gate M ran packaged on the
+verification Mac, PASS 6/6, and the explorer surface was built after it passed —
+see the straight-through completion run below.**
 
 **The usage dashboard is landed and ported (phase 5).** The branch merged over
 `main` as a true merge; DL gained its §15/§16 in the reserved slots,
@@ -948,14 +955,326 @@ gone. The parity gate is the load-bearing piece: a redacted JSONL fixture
 corpus is checked in with a golden snapshot produced by the RUST scanner
 itself, and `electron/usage/parity.test.ts` deep-equals the port against it,
 cold and warm. An xvfb run rendered the dashboard over this machine's real
-Claude transcripts through the real IPC path. The §6.1.8 owner-machine
-acceptance table has still never been run.
+Claude transcripts through the real IPC path. ~~The §6.1.8 owner-machine
+acceptance table has still never been run.~~ **Superseded 2026-08-14: it ran
+on this machine's real corpus — see the straight-through completion run
+below.**
 
 **Browser restore (phase 5 §6.2).** `browserLastUrl` persists committed
 main-frame navigations (a dedicated `browser:navigated` event — hash changes
 deliberately excluded) and the toggle's cold open restores it, proven live
 against a real HTTP server across a hard kill. The compositor manual pass and
 a real-React Inspect check stay owed, as does everything native.
+
+## Straight-through completion run — explorer surface, board redesign, usage acceptance — 2026-08-14
+
+Executed from the
+[straight-through completion plan](plans/2026-08-14-straight-through-completion.md)
+`current`, 17 tasks run in parallel tracks on `main` with no new branch (owner's
+global no-auto-branch rule). Full per-task evidence, screenshots and raw command
+output live in
+[the evidence record](review/2026-08-14-straight-through-evidence.md) `current`;
+this section is the durable summary.
+
+**Gate M passed packaged, on the owner's verification Mac.** All 6 checks PASS:
+file opens in the packaged Monaco, syntax tokenization proves the packaged
+`editor.worker` chunk loaded, a keystroke mutates the focused document, save
+reaches disk, no `file://` asset 404s inside DevTools, and focus moves between
+Monaco and xterm without either capturing the other's keystrokes
+([verifier](../scripts/verify-electron-gate-m-package.mjs) `current`,
+[gate-m harness](../gate-m.html) `current`). "Edit marks dirty" is evidenced as
+content mutation, not a visible dirty-badge assertion — the harness page has no
+dirty indicator to assert on. Adding a Content-Security-Policy later
+invalidates this run and requires a rerun.
+
+**The file explorer surface is built**, gated behind that Gate M pass as the
+spec required: the docked panel, the virtualized tree at 22px row height with
+monochrome icons, file tabs rendered as chips in both the sidebar and top-tab
+toolbar layouts, the `toggle-explorer` (⌘⇧B) and `save-file` (⌘S) actions with
+a regenerated menu, a focus guard so pane shortcuts no longer fire while a file
+surface holds focus, document lifecycle fixes (an evicted preview document is
+now disposed; `closeWorkspaceSurface`/`closeWorkspace` now exist and are wired
+to a real caller), and `fs:changed` events driving a targeted tree refresh
+instead of a full reload
+([`createFileSurfaceController`](../src/files/file-surface-controller.ts#L115) `current`,
+[`explorer-panel.tsx`](../src/files/ui/explorer-panel.tsx) `current`,
+[`file-tree-view.tsx`](../src/files/ui/file-tree-view.tsx) `current`,
+[`SurfaceStrip`](../src/terminal/tab-manager.ts#L278-L322) `current` — no
+longer inert; a real strip is passed in). Electron only; no Tauri
+implementation exists. **Pending: the owner's eye review of every rendered
+change (DL §9.6) and a native macOS sign-off** — automated gates cannot
+establish this, per this repo's own known-traps section in `AGENTS.md`.
+
+**STOP #2 (10k-entry filesystem stall) cleared.** `listDir`'s per-symlink
+`fs.realpathSync` was serial and blocking; a bounded async pool
+(`MAX_REALPATH_CONCURRENCY = 32`) now resolves symlinked entries concurrently
+without reordering the result
+([`electron/fs/read.ts`](../electron/fs/read.ts) `current`). Measured on a
+quiet machine, two 10k-entry fixtures (mixed symlinks; and the worst case,
+every entry escaping the root), 10 reps each, two independent runs: max
+sampled event-loop stall 13–16 ms, well under the 100 ms threshold that would
+have forced a redesign.
+
+**STOP #3 (bundle size) judged within expectation, not a blowout.** Entry
+bundle gzip is 201.90 kB against a previously recorded 189.26 kB baseline —
++12.64 kB, explained by six further explorer commits landing on top of the
+commit that baseline was measured at (file-tab chips, the worktree flow,
+`fs:changed` refresh, the toggle-explorer/save-file actions, tree windowing,
+the focus-guard fix). The lazy `editor.api` chunk is byte-identical at
+674.50 kB gzip, proving no Monaco byte leaked into the eager entry and no new
+eager Monaco chunk appeared.
+
+**All four close/quit exits driven against the real production code path**,
+intercepting `dialog.showMessageBox` rather than reading pixels (no Screen
+Recording permission in this environment). A structural finding, verified
+rather than assumed: **tab-level close guards never aggregate busy + dirty
+into one dialog, by design** — only window-close and app-quit do that,
+because a file tab's prompt should not accuse an unrelated terminal tab of
+being busy
+([`close-coordinator.ts`](../src/terminal/close-coordinator.ts) `current`,
+[`close-guard.ts`](../src/terminal/close-guard.ts) `current`). Window-close and
+quit both proved the combined message ("X is still running, and Y has unsaved
+changes"), both proved settings flush before teardown by direct file mtime
+comparison, and both survived repeated Cancel without silently clearing either
+cause. The fourth exit, Install & Relaunch, needs a signed updater build and
+stays blocked on Gate A.
+
+**Usage §6.1.8 owner-machine acceptance ran on this machine's real
+`~/.claude`/`~/.codex` corpus** — all 7 rows pass. An independent
+hand-reimplemented oracle matched the real scanner exactly on 6 sampled files
+(3 Claude, 3 Codex, including one subagent and one archived file). Cold scan:
+5.76 s / ≈627.5 MiB peak RSS; warm scan (cache reload, unchanged corpus):
+60.5 ms / ≈85.4 MiB — ≈95× faster, ≈7.4× lower peak RSS. A byte-level
+instrumentation proof showed zero bytes read from any of 2050 unchanged files
+on a warm poll. Missing/unreadable/stale corpus states all classify correctly.
+The dashboard stayed interactive through a live cold scan (nav clicks
+answered immediately while the header still read "reading this machine's
+recorded history…"); a supplementary event-loop-lag measurement peaked at
+106–120 ms during the scan's per-batch yields — noticeable but not a freeze,
+and not the same 100 ms gate as STOP #2's `listDir` threshold.
+
+**Major finding, not fixed — flagged for a follow-up task.**
+[`discoverClaude`](../electron/usage/discover.ts#L197-L217) `current` walks
+only one level into each session's `subagents/` directory. On this machine,
+470 of 1906 total Claude `.jsonl` files (~25% of the corpus) live one level
+deeper, at `<session>/subagents/workflows/<id>/*.jsonl`, and are silently
+invisible to every count and total the Usage dashboard shows. Real,
+reproducible, confirmed independently of the parity fixture (which never
+exercised this depth) — the real-corpus run is what caught it, not the
+fixture. Windows corpus behaviour is unverified (Gate C); everything above
+ran on macOS only.
+
+**Browser panel: compositor pass and a real-dev-server Inspect round trip.**
+Resize (via an emulated viewport, no OS-level resize available in this
+sandbox), drag-to-width (via the real `startResize` pointer-capture handler)
+and hide-under-overlay (the panel's `WebContentsView` survives a Settings
+open/close cycle without being destroyed, consistent with a visibility toggle
+rather than teardown) are evidenced by DOM state and code citation, not a
+native pixel overlay proof — that needs Screen Recording permission this
+sandbox does not have
+([`browser-panel.tsx`](../src/browser/browser-panel.tsx#L104-L165) `current`).
+Inspect was driven end to end against this repo's own real Vite dev server:
+react-grab's overlay highlighted a real element, a grab crossed
+page → preload → IPC → renderer, and the formatted payload landed in the
+focused pane's PTY. The panel's root now carries an explicit "Electron only"
+tooltip and accessible name
+([`browser-panel.tsx`](../src/browser/browser-panel.tsx) `current`). Both
+toolbar layouts were captured with real content, closing a standing plan gap —
+top-tab mode had never been rendered before this run.
+
+**First `npm run tauri dev` run of this entire program.** Cargo built clean,
+the native binary launched, and it loaded the same shared `styles.css` and
+Vite dev server Electron uses. No CDP or screen-capture path exists for
+WKWebView in this sandbox, so this is process/network proof only, named
+honestly as such: the dev binary's dedicated `com.apple.WebKit.Networking` XPC
+helper process held an ESTABLISHED TCP connection to `localhost:1420` with
+real bytes exchanged. No pixel or interaction evidence for the redesigned
+chrome under Tauri exists; that remains a real, open gap — `src/styles.css` is
+shared, so the visual claim is untested on the host most users actually run.
+
+**The open board was redesigned to one center surface with three views**
+(home / config / worktree) and the board's own second sidebar (`.rail`) was
+removed — the app's own `WorkspaceSidebar` is the one sidebar now
+([`open-board.tsx`](../src/open-board/open-board.tsx) `current`,
+[`open-board-home.tsx`](../src/open-board/open-board-home.tsx) `current`).
+Home is mouse-only: centered mark, "Open project" (⌘O), a "Create worktree"
+button, and the grouped Recent list; a single click on a recent switches to
+config (Layout + Agent + Open, unchanged content, now with a Back control); a
+double click opens immediately with the remembered combo. Contract invariant:
+home ⟺ nothing picked. Known, disclosed gap: the home view has no footer, so a
+mouse-only user with `canCancel: true` has no visible dismiss control there
+besides Esc — flagged for the owner, not patched, because the locked contract
+specified no footer on home.
+
+**Create-worktree is an Electron-only flow reached from the open board's home
+view**, gated behind `worktree-host`'s `available` (a `window.__deckHost`
+presence check — every `src/host/*` facade in this repo is already
+Electron-only, so this is the same three-way truth table the rest of the host
+layer already uses)
+([`worktree-host.ts`](../src/host/worktree-host.ts) `current`). `git worktree
+add` runs main-process side via `execFile` with an argv array, never a shell
+string; raw git error text never crosses IPC — only one of five closed error
+codes does
+([`electron/git/worktree.ts`](../electron/git/worktree.ts) `current`). The new
+`worktree_add` IPC channel keeps the flat payload contract, pinned by both the
+generic scanner and an explicit fixture in
+[the IPC contract test](../scripts/electron-ipc-contract.test.ts) `current`.
+Driven end to end in a real Electron host against a throwaway git repo: a real
+`git worktree add` ran, the board handed off straight to the config view with
+the new path selected, and a real `branch-exists` failure surfaced as friendly
+copy with git's own error text staying out of the renderer. Windows is
+unverified (Gate C); the destination-path builder is POSIX-only.
+
+**Still owed, named honestly** (the deferred register this plan closes on):
+the owner's eye review of every rendered change against the captured evidence
+(DL §9.6); the `css-audit` re-read with the owner; native macOS sign-off for
+phase 2 steps 4–10, both toolbar layouts, the explorer surface and the
+redesigned open board; a Tauri-run sign-off; Install & Relaunch (Gate A);
+every Windows claim across this whole run (Gate C); a Gate M rerun if a CSP is
+ever added or the owner designates a different verification Mac; and the
+browser productization spec's owed owner read.
+
+## The stage tab strip, and the document off the panel — 2026-08-14
+
+The explorer surface shipped with the editor parked in a `__preview` block at
+the bottom of `ExplorerPanel` — the minimum slice that proved click-a-row →
+document → edit end to end, and its own file comment said so. Spec §4.2 always
+put the document **on the stage**; that half was never wired. Sidebar layout
+compounded it: file tabs were nested rows in `RepositoryRail`, so the user's
+open documents lived in a left column while the thing they opened rendered in
+the bottom-right corner of a right column.
+
+Both are closed now, on one shape the owner picked from three:
+
+- **The chips moved out of the frame and into their own component.**
+  [`TabStrip`](../src/ui/tab-strip.tsx) `current` holds the terminal segment,
+  the separator, the file segment, the add button and the rename/colour
+  popover; [`TabBar`](../src/ui/tab-bar.tsx) `current` is now only top-tab
+  mode's frame around it (lights, strip, spacer, toolbar). No coordination
+  moved with it — same six callbacks, same `FileSurfaceController` calls, so
+  R4's seams were untouched and `tab-bar.test.tsx` passed unedited, which is
+  the evidence the extraction was presentational.
+- **Sidebar mode mounts the same strip on the stage**, as `.stage__strip`, in
+  the half of the frame row that column 2 owns and that used to be empty. That
+  is a new DL rule, [DL-18.6](DESIGN-LANGUAGE.md) `current`, plus an amendment
+  to DL-18.3: the sidebar frame row now has **two** occupants split by the
+  shell's vertical seam, not one. It adds an occupant, not a row — DL-18.1's
+  count is what that rule was ever about.
+- **The document renders on the stage** as `.stage__surface`, laid **over**
+  `.stage__tabs` rather than replacing it, so the terminal grid keeps its
+  measured size and taking the stage back costs no xterm reflow and no PTY
+  resize round-trip. The mount condition **did** change, and for the better:
+  the old preview block inherited `ExplorerPanel`'s `explorerOpen` gate, so its
+  real condition was `explorerOpen && activeFileTab !== null` and ⌘⇧B disposed
+  the open document along with the tree. It is `activeFileTab !== null` alone
+  now — an open document is not part of the file tree. The condition lives in
+  [`StageSurface`](../src/files/ui/stage-surface.tsx) `current` rather than
+  inline in `App`, because `App` has no render harness here and anything
+  written inline in it is unassertable. (The first draft of this section
+  claimed the condition was unchanged; both reviewers caught it.)
+- **The rail no longer lists documents at all.** Not moved — removed, with the
+  "last surface, not last tab" fallback group and the `wsitem--file` styling.
+  A rail row says which repository and worktree a session is in; the strip says
+  what is open. Chosen by the owner over keeping both.
+
+`ExplorerPanel` is the tree and nothing else now
+([explorer-panel.tsx](../src/files/ui/explorer-panel.tsx) `current`).
+
+**The co-mount class of bug, and the two rounds it took to actually close.**
+Sidebar layout mounts the rail and the strip **together** — the first time two
+tab surfaces have ever been alive at once. Both reach for module-level state
+written on the assumption that only one of them exists.
+
+Round one caught the visible half: `requestTabOptionsKey` (⌘⇧R) had two
+listeners, so one keystroke opened two popovers. That was patched by giving the
+chord to one surface.
+
+Round two came out of the review, and it was the half that mattered.
+`tabPopoverOpen` — the flag that hides the browser panel's native
+`WebContentsView`, because a native view wins over every DOM layer no matter
+the z-index — was a plain boolean that each surface assigned as
+`open = mine !== null`. With both mounted, dismissing either popover cleared it
+while the other was still up, and the native view came back **over a live
+popover**: the same failure the Prompt Board case already cost this repo once.
+The chord also went to the **rail** rather than the strip on review — the
+rail's row is what the user is looking at in that layout, and its popover is
+the only one carrying the workspace-logo actions, which the first fix had
+silently dropped from the keyboard path.
+
+Round three answered the question the fix left open: two popovers floating at
+once was still reachable (right-click a rail row, then click a strip chip), and
+the owner chose to forbid it rather than live with it. The shared state is now
+**one slot**, not a set — `openTabPopover` / `closeTabPopover` /
+`tabPopoverOwner` in [`events.ts`](../src/chrome/events.ts) `current` — so
+claiming it IS how a surface tells the others to stand down. Two rules carry
+the whole contract, and both are in one hook
+([`useTabPopoverSlot`](../src/ui/tab-popover-slot.ts) `current`) so three
+surfaces cannot drift into three answers: **a surface may only retract its own
+claim** (the loser standing down must not report "nothing is open" while the
+winner is on screen), and **an empty slot is not somebody else's** (or an
+effect ordering would close the popover the same click just opened).
+
+Every test in the repo mounted these components **alone**, which is why nothing
+caught any of it. `repository-rail.test.tsx` now renders the sidebar layout the
+way `App` assembles it, and each guard was confirmed by removing it and
+watching the test fail: last-write-wins for the flag, then the stand-down
+effect, then the ownership check in `closeTabPopover`.
+
+**Evidence.** `npm test` 2391 passed / 196 files; `npm run build` clean;
+`npm run generate:menu:check` clean; `npx tsc --noEmit` clean.
+`scripts/design-language.test.ts` caught the DL-18.6 citations before the rule
+was written, which is the ledger gate working. Shell geometry was eyeballed in
+the **browser** preview (`npm run dev`, chips and documents injected through
+the real stores) — that proves the row placement, the panel insets and the
+document rectangle, and it proves nothing native. **Owed: a real
+`npm run electron:dev` look, the owner's eye review (DL §9.6), and native macOS
+sign-off.** The shape the explorer's Gate M pass covered has changed, so that
+run's 6/6 does not carry over to this surface; plan T35 (packaged manual pass,
+both layouts) was already unchecked and now covers a different picture.
+Electron-only for the explorer half; the strip and the stage surface are shared
+renderer code, so Tauri behaviour is unverified.
+
+## AgentQuickPicker — the tab strip fast path — 2026-08-14
+
+The tab strip's `+` button (`TabStrip`'s `.tab-add`, ⌘T) used to raise the Open
+board's full workspace ∥ preset ∥ agent flow via `newTab()`
+(`tab-manager.ts`). It now raises a lighter modal instead:
+[`AgentQuickPicker`](../src/ui/agent-quick-picker.tsx) `current`, a
+`.modal-scrim` genre alongside `PresetEditor`/`SavePresetDialog` — same
+`agentQuickPickerOpen` signal, same "modal" tier in `openOverlayRanks()`
+([`chrome/events.ts`](../src/chrome/events.ts) `current`,
+[`tab-manager.ts`](../src/terminal/tab-manager.ts) `current`). Picking a chip
+(click or digit key `1-9`/`0`) calls
+[`TabManager.openQuickAgent`](../src/terminal/tab-manager.ts) `current`, which
+materializes a single pane in the active tab's **live** cwd — a fresh
+`pty_info` read of the focused pane, not the tab's static `workspacePath` —
+carrying the active tab's workspace tag, with no workspace/preset step. A
+window with no tabs yet falls back to `$HOME`, same as a bare pre-cutover
+`newTab()` did.
+
+The Open board's full flow (new workspace, worktree, layout preset) did not go
+away; its entry point moved to the sidebar. `RepositoryRail`'s "Open
+workspace" footer row (`onOpenWorkspace` prop, renamed from `onNewTab`) now
+sets `boardOpen` directly instead of sharing the tab strip's `+`/⌘T action.
+`WorkspaceSidebar` got the identical rename — dead code today, but the two are
+deliberately kept prop-identical for the one-line revert
+[`repository-rail.tsx`](../src/ui/repository-rail.tsx) `current` describes.
+
+`new-tab`'s action scope stays `"board"`
+([`action-registry.ts`](../src/terminal/action-registry.ts) `current`),
+unchanged: the F2 reasoning that keeps ⌘T blocked while a modal-tier draft is
+open (mount-focus stealing) holds just as well now that the action's own
+target is a modal-tier overlay rather than the board.
+
+**Evidence.** `npm test` 2423 passed / 199 files (the one failure,
+`file-tree-view.test.tsx`'s 10,000-row windowing timeout, reproduces on an
+unmodified tree — pre-existing, unrelated); `npm run build` clean; `npm run
+generate:menu:check` clean. The component's visual design was built and
+eye-approved against a screenshot via a real-component gallery specimen
+(`overlays-section.tsx` `current`) before being wired into the app. **Owed:** a
+native `npm run electron:dev` click-through and the owner's eye review of the
+wired flow (not just the gallery specimen) — this session had no display to
+drive a native Electron window.
 
 ## Chưa khớp thực tế
 

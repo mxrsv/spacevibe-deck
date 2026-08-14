@@ -21,9 +21,14 @@ vi.mock("../terminal/file-drop", () => ({
   installFileDrop: vi.fn(async () => () => {}),
 }));
 
-import { activeTabIndex, tabViews } from "../terminal/tabs-store";
+import {
+  activeTabIndex,
+  requestTabOptionsKey,
+  tabViews,
+} from "../terminal/tabs-store";
 import type { TabView } from "../terminal/tabs-store";
 import { RepositoryRail } from "./repository-rail";
+import { TabStrip } from "./tab-strip";
 import {
   collapsedRepositories,
   configureRepositoryClient,
@@ -39,6 +44,7 @@ import {
   type FileSurfaceController,
 } from "../files/file-surface-controller";
 import { resetFileSurfaces } from "../files/file-surface-store";
+import { tabPopoverOpen } from "../chrome/events";
 import type { FileClient } from "../files/file-client";
 
 const fileClient: FileClient = {
@@ -85,6 +91,7 @@ function tab(overrides: Partial<TabView> = {}): TabView {
     name: null,
     dotColor: null,
     workspacePath: "/r/main",
+    agents: [],
     agentBusy: false,
     unread: false,
     ...overrides,
@@ -105,11 +112,47 @@ function mount(
         onSelectTab={NOOP}
         onCloseTab={NOOP}
         fileController={fileController}
-        onNewTab={NOOP}
+        onOpenWorkspace={NOOP}
         onRenameTab={NOOP}
         onSetTabColor={NOOP}
+        showAgentPresence
         {...props}
       />,
+      host,
+    );
+  });
+}
+
+/**
+ * Sidebar layout as `App` actually assembles it since 2026-08-14: the rail in
+ * the navigation column AND the tab strip on the stage, alive at the same
+ * time. Everything else in this file mounts the rail alone, which is exactly
+ * the blind spot that let a chord fire twice.
+ */
+function mountSidebarLayout(): void {
+  act(() => {
+    render(
+      <>
+        <RepositoryRail
+          onSelectTab={NOOP}
+          onCloseTab={NOOP}
+          fileController={fileController}
+          onOpenWorkspace={NOOP}
+          onRenameTab={NOOP}
+          onSetTabColor={NOOP}
+        />
+        <div class="stage__strip">
+          <TabStrip
+            onSelectTab={NOOP}
+            onCloseTab={NOOP}
+            fileController={fileController}
+            onNewTab={NOOP}
+            onRenameTab={NOOP}
+            onSetTabColor={NOOP}
+            ownsTabOptionsChord={false}
+          />
+        </div>
+      </>,
       host,
     );
   });
@@ -155,6 +198,72 @@ describe("RepositoryRail", () => {
     // nobody has opened.
     expect(host.querySelectorAll(".wsitem").length).toBe(2);
     expect(host.querySelectorAll(".wsitem--readout").length).toBe(1);
+  });
+
+  it("uses a hollow state dot instead of a workspace avatar for every row", async () => {
+    mount();
+    await settle();
+
+    const rows = host.querySelectorAll(".wsitem");
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row.querySelector(".wsitem__state")).not.toBeNull();
+      expect(row.querySelector(".wsitem__logo")).toBeNull();
+    }
+    expect(
+      rows[0].querySelector(".wsitem__state")?.getAttribute("aria-label"),
+    ).toBe("main: open");
+    expect(
+      rows[1].querySelector(".wsitem__state")?.getAttribute("aria-label"),
+    ).toBe("side: not open");
+  });
+
+  it("keeps an attention state dot actionable without selecting its row", async () => {
+    tabViews.value = [
+      tab({
+        attention: {
+          kind: "error",
+          actionableCount: 1,
+          workingCount: 0,
+          unreadCount: 0,
+        },
+      }),
+    ];
+    const onFocusAttention = vi.fn();
+    const onSelectTab = vi.fn();
+    mount({ onFocusAttention, onSelectTab });
+    await settle();
+
+    const dot = host.querySelector("button.wsitem__state") as HTMLButtonElement;
+    expect(dot).not.toBeNull();
+    expect(dot.getAttribute("aria-label")).toBe("main: needs attention");
+
+    act(() => {
+      dot.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onFocusAttention).toHaveBeenCalledWith(0);
+    expect(onSelectTab).not.toHaveBeenCalled();
+    expect(host.querySelector(".tab-popover")).toBeNull();
+  });
+
+  it("shows the worktree's recognized agents independently from activity", async () => {
+    tabViews.value = [tab({ agents: ["claude", "codex"], agentBusy: false })];
+    mount();
+    await settle();
+
+    expect(host.querySelectorAll(".worktree-agents__logo")).toHaveLength(2);
+    expect(
+      host.querySelector(".worktree-agents")?.getAttribute("aria-label"),
+    ).toBe("Agents in this worktree: Claude Code, Codex");
+  });
+
+  it("keeps agent presence out of a host that does not enable it", async () => {
+    tabViews.value = [tab({ agents: ["claude"] })];
+    mount({ showAgentPresence: false });
+    await settle();
+
+    expect(host.querySelector(".worktree-agents")).toBeNull();
   });
 
   it("selects a tab through the same callback the flat sidebar used", async () => {
@@ -260,19 +369,13 @@ describe("RepositoryRail", () => {
 });
 
 /**
- * File tabs join the sidebar after the active workspace's row (spec §4.2's
- * ordering, stated spatially for the nested variant), driven by the same
- * controller wired as `TabManager`'s `SurfaceStrip` (Task 5).
+ * The rail answers "which repository and worktree is this session in", and
+ * nothing else. "Which documents are open" is the stage strip's question
+ * since 2026-08-14, and only `TabStrip` answers it — the rail's file rows are
+ * gone, not moved.
  */
-describe("RepositoryRail file tabs (spec §4.2)", () => {
-  it("renders no file rows when nothing is open", async () => {
-    mount();
-    await settle();
-
-    expect(host.querySelector(".wsitem--file")).toBeNull();
-  });
-
-  it("nests file tabs right after the open tab's row, preview italic on the unedited slot only", async () => {
+describe("RepositoryRail and file tabs", () => {
+  it("renders no file rows, however many files the active workspace has open", async () => {
     tabViews.value = [tab()]; // /r/main, the open tab
     activeTabIndex.value = 0;
     await fileController.openFile("/r/main", "/r/main/a.ts", true); // kept
@@ -280,48 +383,29 @@ describe("RepositoryRail file tabs (spec §4.2)", () => {
     mount();
     await settle();
 
-    const rows = host.querySelectorAll(".wsitem:not(.wsitem--readout)");
-    // The open tab's row, then its two file rows, in order.
-    expect(rows).toHaveLength(3);
-    expect(rows[1].classList.contains("wsitem--file")).toBe(true);
-    expect(rows[1].querySelector(".wsitem__label")?.textContent).toBe("a.ts");
-    expect(rows[2].querySelector(".wsitem__label")?.textContent).toBe("b.ts");
-    expect(rows[1].querySelector(".wsitem__label--preview")).toBeNull(); // kept
-    expect(rows[2].querySelector(".wsitem__label--preview")).not.toBeNull(); // preview
+    expect(host.querySelector(".wsitem--file")).toBeNull();
+    // The open tab's own row, and only it.
+    expect(host.querySelectorAll(".wsitem:not(.wsitem--readout)")).toHaveLength(
+      1,
+    );
   });
 
-  it("clicking a file row activates it through the controller, not onSelectTab", async () => {
+  it("renders no rail rows at all once the window's last terminal tab is gone, file tabs open or not", async () => {
     tabViews.value = [tab()];
+    activeTabIndex.value = 0;
     await fileController.openFile("/r/main", "/r/main/a.ts", true);
-    const onSelectTab = vi.fn();
-    mount({ onSelectTab });
+    // The window's only terminal tab closed — `activeWorkspace` survives that
+    // (file-surface-store.ts's own doc comment), and the file tab with it, but
+    // the rail is not where that tab is listed anymore. `buildRail` derives
+    // every row from open tabs, so with zero tabs it returns no groups, and
+    // there is no longer a fallback section adding any.
+    tabViews.value = [];
+    activeTabIndex.value = -1;
+    mount();
     await settle();
 
-    const fileRow = host.querySelector(".wsitem--file") as HTMLElement;
-    act(() => {
-      fileRow.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(onSelectTab).not.toHaveBeenCalled();
-  });
-
-  it("closing a file row calls closePath, not onCloseTab", async () => {
-    tabViews.value = [tab()];
-    await fileController.openFile("/r/main", "/r/main/a.ts", true);
-    const onCloseTab = vi.fn();
-    const closePath = vi.spyOn(fileController, "closePath");
-    mount({ onCloseTab });
-    await settle();
-
-    const close = host.querySelector(
-      ".wsitem--file .wsitem__close",
-    ) as HTMLButtonElement;
-    act(() => {
-      close.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(closePath).toHaveBeenCalledWith("/r/main", "/r/main/a.ts");
-    expect(onCloseTab).not.toHaveBeenCalled();
+    expect(host.querySelector(".repogroup__name")).toBeNull();
+    expect(host.querySelector(".wsitem")).toBeNull();
   });
 
   it("clicking the terminal row that's still 'active' takes the stage back while a file surface is on top", async () => {
@@ -348,26 +432,83 @@ describe("RepositoryRail file tabs (spec §4.2)", () => {
     expect(host.querySelector(".tab-popover")).toBeNull();
   });
 
-  it('"last surface, not last tab": file rows survive as their own group once the window has no open terminal tab at all', async () => {
-    tabViews.value = [tab()];
-    activeTabIndex.value = 0;
-    await fileController.openFile("/r/main", "/r/main/a.ts", true);
-    // The window's only terminal tab closed — `activeWorkspace` survives
-    // that (file-surface-store.ts's own doc comment), which is the whole
-    // point of spec §7's rule. `buildRail` derives every row from open tabs,
-    // so with zero tabs anywhere it returns no groups at all — the fallback
-    // section (`activeWorkspaceHasRow`) is what keeps the file tabs visible.
-    // Simulated directly here since driving it through a real `TabManager`
-    // close is Task 5's integration test's job, not this presentational
-    // component's.
-    tabViews.value = [];
-    activeTabIndex.value = -1;
-    mount();
+  it("open-tab-options opens ONE popover, the rail's, with the stage strip mounted beside it", async () => {
+    // `requestTabOptionsKey` was designed for "exactly one navigation surface
+    // is mounted, whichever it is". Sidebar layout broke that assumption when
+    // the strip moved onto the stage: both surfaces carry a row for the same
+    // tab key, so two listeners would answer one keystroke with two popovers.
+    // The rail owns the chord whenever it is mounted — it is the row the user
+    // is looking at, and the only popover carrying the logo actions.
+    mountSidebarLayout();
     await settle();
 
-    expect(host.querySelector(".repogroup__name")).toBeNull(); // no scanned group left to name
-    const fileRow = host.querySelector(".wsitem--file");
-    expect(fileRow).not.toBeNull();
-    expect(fileRow?.querySelector(".wsitem__label")?.textContent).toBe("a.ts");
+    act(() => {
+      requestTabOptionsKey.value = 1;
+    });
+
+    expect(host.querySelectorAll(".tab-popover")).toHaveLength(1);
+    // The rail's, not the strip's: only the rail wires `onSetLogo`, so the
+    // Logo section is what tells the two apart in the DOM.
+    expect(host.querySelector(".tab-popover__logo")).not.toBeNull();
+    expect(requestTabOptionsKey.value).toBeNull(); // consumed exactly once
+  });
+
+  it("one popover at a time: the strip claiming the slot closes the rail's", async () => {
+    mountSidebarLayout();
+    await settle();
+
+    // The rail's, via right-click — the mouse path, independent of the chord.
+    const row = host.querySelector(
+      ".wsitem:not(.wsitem--readout)",
+    ) as HTMLElement;
+    act(() => {
+      row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
+    });
+    expect(host.querySelectorAll(".tab-popover")).toHaveLength(1);
+    expect(host.querySelector(".tab-popover__logo")).not.toBeNull(); // the rail's
+
+    // The strip's, via a click on its active chip. `TabPopover`'s own
+    // outside-close listener is on `pointerdown`, so it is NOT what closes the
+    // rail's here — the shared slot is.
+    const chip = host.querySelector(".stage__strip .tab") as HTMLElement;
+    act(() => {
+      chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(host.querySelectorAll(".tab-popover")).toHaveLength(1);
+    expect(host.querySelector(".tab-popover__logo")).toBeNull(); // now the strip's
+    expect(tabPopoverOpen.value).toBe(true);
+  });
+
+  it("the surface that stood down cannot clear the holder's claim", async () => {
+    // The flag drives `panelObscured()`, which hides the browser panel's
+    // native view — and a native view wins over every DOM layer, so a false
+    // here paints the WebContentsView straight over a live popover. Standing
+    // down runs the loser's own release path; without the "only if you still
+    // hold it" guard in `closeTabPopover`, that release would retract the
+    // winner's claim and report nothing open while the strip's popover is
+    // plainly on screen.
+    mountSidebarLayout();
+    await settle();
+
+    const row = host.querySelector(
+      ".wsitem:not(.wsitem--readout)",
+    ) as HTMLElement;
+    act(() => {
+      row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
+    });
+    const chip = host.querySelector(".stage__strip .tab") as HTMLElement;
+    act(() => {
+      chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(host.querySelectorAll(".tab-popover")).toHaveLength(1);
+    expect(tabPopoverOpen.value).toBe(true);
+
+    // …and the slot empties for real once the holder itself closes.
+    act(() => {
+      chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(host.querySelector(".tab-popover")).toBeNull();
+    expect(tabPopoverOpen.value).toBe(false);
   });
 });

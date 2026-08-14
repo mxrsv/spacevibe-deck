@@ -2,6 +2,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { shortcutLabel } from "../../lib/shortcut-label";
 import { DeckToolbar, toolbarLabel } from "./deck-toolbar";
 
 /**
@@ -20,6 +21,7 @@ describe("DeckToolbar", () => {
   });
 
   const handlers = () => ({
+    onToggleExplorer: vi.fn(),
     onToggleBrowser: vi.fn(),
     onToggleUsage: vi.fn(),
     onSplitRow: vi.fn(),
@@ -35,6 +37,7 @@ describe("DeckToolbar", () => {
     act(() =>
       render(
         <DeckToolbar
+          explorerOpen={false}
           browserOpen={false}
           usageOpen={false}
           settingsOpen={false}
@@ -66,14 +69,16 @@ describe("DeckToolbar", () => {
     expect(toolbarLabel("toggle-prompts")).toBe("Prompts");
     expect(toolbarLabel("toggle-browser")).toBe("Browser");
     expect(toolbarLabel("toggle-usage")).toBe("Token usage");
+    expect(toolbarLabel("toggle-explorer")).toBe("Explorer");
   });
 
-  it("renders the D7 set — Browser and Usage in tools, Explorer still absent", () => {
+  it("renders the D7 set — Explorer, Browser and Usage in tools", () => {
     mount();
     const labels = Array.from(host.querySelectorAll("button")).map((b) =>
       b.getAttribute("aria-label"),
     );
     expect(labels).toEqual([
+      "Explorer",
       "Browser",
       "Token usage",
       "Split vertically",
@@ -83,6 +88,27 @@ describe("DeckToolbar", () => {
       "Prompts",
       "Settings",
     ]);
+  });
+
+  it("routes Explorer activation and reflects the open panel", () => {
+    const on = mount({ explorerOpen: true });
+    const explorer = button("Explorer");
+    expect(explorer.getAttribute("aria-pressed")).toBe("true");
+    explorer.click();
+    expect(on.onToggleExplorer).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The frozen toolbar spec drafted ⌘⇧E for Explorer; the shipped binding is
+   * ⌘⇧B. The control must read the registry, or the toolbar teaches a chord
+   * that does nothing.
+   */
+  it("shows Explorer's registered chord, not the spec's draft", () => {
+    mount();
+    act(() => button("Explorer").focus());
+    const tip = host.querySelector(".action-tip")?.textContent ?? "";
+    expect(tip).toContain(shortcutLabel("toggle-explorer"));
+    expect(tip).not.toContain("⇧E");
   });
 
   it("routes Browser activation and reflects the open panel", () => {

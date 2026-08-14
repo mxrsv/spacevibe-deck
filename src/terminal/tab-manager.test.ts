@@ -8,6 +8,7 @@ import { createMemoryTransferClient } from "./transfer-client";
 import { MACOS_KEYMAP, type ShortcutAction } from "./keymap";
 import { ACTION_REGISTRY } from "./action-registry";
 import {
+  agentQuickPickerOpen,
   boardOpen,
   editorRequest,
   persistError,
@@ -324,6 +325,15 @@ beforeEach(() => {
   vi.mocked(sendAgentNotification).mockClear();
 });
 
+// `newTab()` (the "new-tab" action) flips this module signal — a global
+// reset, not a per-describe one like `boardOpen`'s scattered resets below,
+// because leaving it true after whichever test exercises "new-tab" would
+// silently rank every later test's `openOverlayRanks()` at "modal", failing
+// unrelated pane-tiered assertions with no visible connection to the cause.
+afterEach(() => {
+  agentQuickPickerOpen.value = false;
+});
+
 describe("createTabManager materialize (through the createPane seam)", () => {
   it("publishes the initialized home directory", async () => {
     resetDesktopEnvironmentForTests();
@@ -475,6 +485,64 @@ describe("createTabManager materialize (through the createPane seam)", () => {
 
     expect(activeTabIndex.value).toBe(1); // select-tab-2 → 0-based index 1
 
+    tm.dispose();
+  });
+});
+
+describe("createTabManager openQuickAgent (AgentQuickPicker confirm)", () => {
+  it("newTab() opens AgentQuickPicker rather than materializing directly", async () => {
+    const { tm } = setup({});
+    agentQuickPickerOpen.value = false;
+
+    await tm.newTab();
+
+    expect(agentQuickPickerOpen.value).toBe(true);
+    expect(tabViews.value).toHaveLength(0); // no tab spawned — the picker owns that
+    tm.dispose();
+  });
+
+  it("single pane, inheriting the active tab's LIVE cwd — not its static workspacePath", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo/sub-dir", "zsh", "idle-shell", null)],
+    ]);
+    const { tm, pty } = setup({ infos });
+    await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+      workspacePath: "/repo",
+    });
+
+    const ok = await tm.openQuickAgent(null);
+
+    expect(ok).toBe(true);
+    expect(tabViews.value).toHaveLength(2);
+    expect(tabViews.value[1].workspacePath).toBe("/repo"); // carried from the active tab
+    expect(pty.sessions.get(2)?.cwd).toBe("/repo/sub-dir"); // fresh, not "/repo"
+    tm.dispose();
+  });
+
+  it("arms the chosen agent, same as an Open board confirm", async () => {
+    vi.useFakeTimers();
+    const { tm, pty } = setup({});
+    await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+      workspacePath: "/repo",
+    });
+
+    await tm.openQuickAgent("claude");
+    await vi.advanceTimersByTimeAsync(3000);
+
+    expect(pty.writes).toEqual([{ id: 2, data: "claude\r" }]);
+    tm.dispose();
+    vi.useRealTimers();
+  });
+
+  it("falls back to $HOME with no workspace tag when there is no active tab", async () => {
+    const { tm, pty } = setup({});
+
+    const ok = await tm.openQuickAgent(null);
+
+    expect(ok).toBe(true);
+    expect(tabViews.value).toHaveLength(1);
+    expect(tabViews.value[0].workspacePath).toBeNull();
+    expect(pty.sessions.get(1)?.cwd).toBeNull(); // spawnShell falls back to $HOME
     tm.dispose();
   });
 });
@@ -658,16 +726,19 @@ describe("createTabManager workspace identity", () => {
 
   it("lights agentBusy only while the agent reports it is working", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, processInfo(1, "/repo", "vim", "busy", null)],
+      [1, processInfo(1, "/repo", "codex", "agent", "codex")],
       [2, processInfo(2, "/repo", "claude", "agent", "claude")],
-      [3, processInfo(3, "/other", "npm", "busy", null)],
+      [3, processInfo(3, "/repo", "claude", "agent", "claude")],
+      [4, processInfo(4, "/other", "npm", "busy", null)],
     ]);
     const { tm, pty } = setup({ infos });
-    // Tab 0: two panes — the focused one runs vim, the background one claude.
+    // Tab 0: three panes — Codex plus two Claude panes, so identity aggregation
+    // also proves that one CLI is listed once rather than once per pane.
     await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
       workspacePath: "/repo",
     });
     await tm.splitActive("row");
+    await tm.splitActive("column");
     // Tab 1: a single pane running npm — busy, but not an agent. Opening it
     // polls again, and that poll now covers tab 0's background pane too.
     await tm.openFromPreset({ type: "leaf" }, ["/other"], {
@@ -678,6 +749,8 @@ describe("createTabManager workspace identity", () => {
 
     // An agent sitting idle at its prompt is NOT busy — no spinner.
     expect(tabViews.value[0].agentBusy).toBe(false);
+    expect(tabViews.value[0]).toMatchObject({ agents: ["codex", "claude"] });
+    expect(tabViews.value[1]).toMatchObject({ agents: [] });
 
     // Claude reports busy via OSC 9;4 from tab 0's background pane.
     pty.emitOutput(2, "\x1b]9;4;3\x07");
@@ -687,9 +760,10 @@ describe("createTabManager workspace identity", () => {
     // The clear report ends the spinner even though output just arrived.
     pty.emitOutput(2, "done.\x1b]9;4;0\x07");
     expect(tabViews.value[0].agentBusy).toBe(false);
+    expect(tabViews.value[0]).toMatchObject({ agents: ["codex", "claude"] });
 
     // npm output never lights the spinner — not an agent.
-    pty.emitOutput(3, "installing...");
+    pty.emitOutput(4, "installing...");
     expect(tabViews.value[1].agentBusy).toBe(false);
 
     tm.dispose();
@@ -2163,9 +2237,9 @@ describe("createTabManager notifier — dedupe on attention latch identity, not 
 });
 
 describe("runAction — the macOS menu bridge", () => {
-  // `new-tab` is the probe: it raises the Open board rather than spawning a
-  // tab (the board owns workspace ∥ preset ∥ agent), so `boardOpen` is the
-  // observable, not `tabViews.length`.
+  // `new-tab` is the probe: it raises AgentQuickPicker rather than spawning
+  // a tab directly (the picker owns the agent choice), so
+  // `agentQuickPickerOpen` is the observable, not `tabViews.length`.
   async function ready(): Promise<TabManager> {
     boardOpen.value = false;
     const { tm } = setup({});
@@ -2185,7 +2259,7 @@ describe("runAction — the macOS menu bridge", () => {
     tm.runAction("new-tab");
     await flush();
 
-    expect(boardOpen.value).toBe(true);
+    expect(agentQuickPickerOpen.value).toBe(true);
     tm.dispose();
   });
 
@@ -2261,7 +2335,7 @@ describe("runAction — the macOS menu bridge", () => {
     tm.runAction("new-tab");
     await flush();
 
-    expect(boardOpen.value).toBe(true);
+    expect(agentQuickPickerOpen.value).toBe(true);
     input.remove();
     tm.dispose();
   });
@@ -2474,17 +2548,17 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it("new-tab still raises the Open board while Settings is open — harmless, so it is not gated", async () => {
+  it("new-tab still raises AgentQuickPicker while Settings is open — harmless, so it is not gated", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
-    boardOpen.value = false;
+    agentQuickPickerOpen.value = false;
     settingsOpen.value = true;
 
     tm.runAction("new-tab");
     await flush();
 
-    expect(boardOpen.value).toBe(true);
+    expect(agentQuickPickerOpen.value).toBe(true);
 
     tm.dispose();
   });
@@ -2492,20 +2566,22 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
   // F2 (2026-07-27 code review): new-tab used to be scope "always", which
   // bypassed the guard UNCONDITIONALLY — including while a PresetEditor/
   // SavePresetDialog draft was up. That let Cmd+T (or the menu's "New Tab")
-  // mount the board underneath the modal scrim (z-40 > board's z-30): the
-  // board's own mount-focus effect then stole DOM focus away from the live
-  // draft, so a later Enter could silently open a workspace tab behind it.
+  // mount an overlay underneath the modal scrim (z-40 > board's z-30): its
+  // own mount-focus effect then stole DOM focus away from the live draft, so
+  // a later Enter could silently act on something behind it. Still true now
+  // that new-tab opens AgentQuickPicker (also rank "modal") instead of the
+  // board — the "board" scope (rank 30) blocks both.
   it("new-tab is now blocked while a PresetEditor draft is open (F2 — 'always' used to bypass every overlay, not just the board)", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
-    boardOpen.value = false;
+    agentQuickPickerOpen.value = false;
 
     editorRequest.value = { source: "live" };
     tm.runAction("new-tab");
     await flush();
 
-    expect(boardOpen.value).toBe(false);
+    expect(agentQuickPickerOpen.value).toBe(false);
 
     editorRequest.value = null;
     tm.dispose();
@@ -2515,13 +2591,13 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     const { tm } = setup({});
     await tm.init();
     await flush();
-    boardOpen.value = false;
+    agentQuickPickerOpen.value = false;
 
     saveDialogOpen.value = true;
     tm.runAction("new-tab");
     await flush();
 
-    expect(boardOpen.value).toBe(false);
+    expect(agentQuickPickerOpen.value).toBe(false);
 
     saveDialogOpen.value = false;
     tm.dispose();
@@ -4487,13 +4563,13 @@ describe("toggle-usage", () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
-    boardOpen.value = false;
+    agentQuickPickerOpen.value = false;
     usageOpen.value = true;
 
     tm.runAction("new-tab");
     await flush();
 
-    expect(boardOpen.value).toBe(true);
+    expect(agentQuickPickerOpen.value).toBe(true);
     tm.dispose();
   });
 });

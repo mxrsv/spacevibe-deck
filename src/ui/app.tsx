@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
-import { useSignalEffect } from "@preact/signals";
+import { useSignal, useSignalEffect } from "@preact/signals";
 import { listen, type UnlistenFn } from "../host/bridge";
 import { getCurrentWindow } from "../host/window-host";
 import { ask, message } from "../host/dialog-host";
@@ -13,7 +13,7 @@ import {
   type ConfirmCopy,
 } from "../terminal/close-guard";
 import { flushSettingsSave } from "../settings/settings-store";
-import { defaultPtyClient } from "../terminal/pty-client";
+import { defaultPtyClient, type DetectedAgent } from "../terminal/pty-client";
 import type { BootMode } from "../terminal/transfer-client";
 import { applyThemeVars } from "../lib/theme-vars";
 import { resolveCwds, type Preset } from "../lib/preset-schema";
@@ -37,6 +37,7 @@ import { recordWorkspaceOpen } from "../open-board/workspaces-store";
 import { resolveAgentChoice } from "../lib/workspace-recents";
 import type { AgentChoice } from "../lib/workspace-recents";
 import {
+  agentQuickPickerOpen,
   boardOpen,
   editorRequest,
   persistError,
@@ -47,6 +48,7 @@ import {
   tabPopoverOpen,
   usageOpen,
 } from "../chrome/events";
+import { AgentQuickPicker } from "./agent-quick-picker";
 import { OpenBoard } from "../open-board/open-board";
 import { PresetEditor } from "../presets/preset-editor";
 import {
@@ -107,6 +109,8 @@ import {
   type FileSurfaceController,
 } from "../files/file-surface-controller";
 import { ExplorerPanel } from "../files/ui/explorer-panel";
+import { StageSurface } from "../files/ui/stage-surface";
+import { TabStrip } from "./tab-strip";
 
 interface DesktopChromeProps {
   readonly sidebar: boolean;
@@ -384,6 +388,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     void loadAppVersion();
   }
   const updater = updaterRef.current;
+
+  /** Agents AgentQuickPicker offers — re-probed each time it opens. */
+  const quickPickerAgents = useSignal<readonly DetectedAgent[]>([]);
 
   /**
    * Single coordinator-backed entry point for every attention-focus trigger
@@ -699,6 +706,34 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     applyThemeVars(document.documentElement.style, resolveTheme(current));
   });
 
+  // Re-probes whenever AgentQuickPicker opens (or the declared set changes
+  // while it is up) — same reasoning as the Open board's own detect effect:
+  // adding an agent in Settings and coming straight back has to show it
+  // without a relaunch.
+  useSignalEffect(() => {
+    if (!agentQuickPickerOpen.value) {
+      return;
+    }
+    const customAgents = settings.value.customAgents;
+    let cancelled = false;
+    defaultPtyClient
+      .detectAgents(probeNames(customAgents))
+      .then((found) => {
+        if (!cancelled) {
+          quickPickerAgents.value = found;
+        }
+      })
+      .catch((err: unknown) => {
+        console.warn("detect_agents failed:", err);
+        if (!cancelled) {
+          quickPickerAgents.value = []; // picker degrades to Shell only
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
+
   /** Open board confirm: materialize + record recents + preselect memory. */
   async function handleOpen(
     workspace: string,
@@ -956,9 +991,14 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // once is what keeps the two mounts from drifting apart.
   const chromeActions = (
     <DeckToolbar
+      explorerOpen={settings.value.explorerOpen}
       browserOpen={browserOpen.value}
       settingsOpen={settingsOpen.value}
       expandActive={settings.value.focusExpand}
+      // Through the action, not straight at the setting: the chord path owns
+      // the focus guard, so a button that flipped `explorerOpen` itself would
+      // be a second, unguarded way in.
+      onToggleExplorer={() => tabsRef.current?.runAction("toggle-explorer")}
       onToggleBrowser={() => tabsRef.current?.runAction("toggle-browser")}
       onSplitRow={() => void tabsRef.current?.splitActive("row")}
       onSplitColumn={() => void tabsRef.current?.splitActive("column")}
@@ -999,7 +1039,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         <RepositoryRail
           onSelectTab={selectTab}
           onCloseTab={(index) => void closeTab(index)}
-          onNewTab={() => void tabsRef.current?.newTab()}
+          onOpenWorkspace={() => {
+            boardOpen.value = true;
+          }}
           onRenameTab={(index, name) => tabsRef.current?.renameTab(index, name)}
           onSetTabColor={(index, color) =>
             tabsRef.current?.setTabDotColor(index, color)
@@ -1026,7 +1068,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         <main
           class={`stage ${browserOpen.value ? "stage--browser" : ""} ${
             settings.value.explorerOpen ? "stage--explorer" : ""
-          }`}
+          } ${sidebar ? "stage--strip" : ""}`}
           // One number, two consumers per panel: the panel's own column and
           // the inset that keeps the terminal grid clear of it. A drag
           // updates the live signal, so both move together instead of the
@@ -1036,7 +1078,45 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             "--explorer-w": `${explorerWidth()}px`,
           }}
         >
+          {/* DL-18.6: sidebar mode's half of the frame row. The stage spans
+              row 1 of column 2, which used to be empty — the tab strip
+              occupies it, so the same chips exist in both layouts and the
+              row keeps its single-row count (DL-18.1). Top-tab mode already
+              has its strip inside `TabBar`, so nothing mounts here. */}
+          {sidebar ? (
+            // Drag region for the same reason `.tabbar` is one: this is chrome
+            // now, not stage. `[data-tauri-drag-region]`'s own rule exempts
+            // buttons and `role="tab"`, so every chip and the add button stay
+            // clickable without listing them here (styles.css).
+            <div class="stage__strip" data-tauri-drag-region>
+              <TabStrip
+                onSelectTab={selectTab}
+                onCloseTab={(index) => void closeTab(index)}
+                onNewTab={() => void tabsRef.current?.newTab()}
+                onRenameTab={(index, name) =>
+                  tabsRef.current?.renameTab(index, name)
+                }
+                onSetTabColor={(index, color) =>
+                  tabsRef.current?.setTabDotColor(index, color)
+                }
+                onFocusAttention={requestAttentionFocus}
+                fileController={fileController}
+                // Sidebar layout: the rail answers the chord, not this mount.
+                ownsTabOptionsChord={false}
+              />
+            </div>
+          ) : null}
           <div class="stage__tabs" ref={stagesRef} />
+          {/* The document, on the stage rather than parked in the explorer
+              panel (spec §4.2). It COVERS `.stage__tabs` instead of
+              unmounting it: the terminal grid keeps its size, so taking the
+              stage back costs no xterm reflow and no PTY resize round-trip.
+              Deliberately NOT gated on `explorerOpen`, unlike the old preview
+              block that inherited that gate from the panel around it — an
+              open document is not part of the file tree, and ⌘⇧B should not
+              throw an editor away. `StageSurface` owns the condition so it is
+              testable without an `<App>` harness. */}
+          <StageSurface controller={fileController} />
           {/* Gated on the `explorerOpen` setting, flipped by the
               `toggle-explorer` chord (⌘⇧B / Ctrl+Shift+B — tab-manager.ts's
               `commands` table). `ExplorerPanel` itself renders the empty
@@ -1079,6 +1159,28 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               }
               onNewPreset={(workspace) => {
                 editorRequest.value = { source: "board", workspace };
+              }}
+            />
+          ) : null}
+          {agentQuickPickerOpen.value ? (
+            <AgentQuickPicker
+              detected={quickPickerAgents.value}
+              customAgents={settings.value.customAgents}
+              onSelect={(agentId) => {
+                // Closes immediately (the "quick" in AgentQuickPicker) —
+                // `materialize`'s own selectTab already focuses the new
+                // pane on success, and a failure is surfaced through the
+                // shared chrome bar rather than keeping the picker up.
+                agentQuickPickerOpen.value = false;
+                void tabsRef.current?.openQuickAgent(agentId).then((ok) => {
+                  if (!ok) {
+                    reportPersistError("Could not open a new tab.");
+                  }
+                });
+              }}
+              onCancel={() => {
+                agentQuickPickerOpen.value = false;
+                tabsRef.current?.focusActive();
               }}
             />
           ) : null}

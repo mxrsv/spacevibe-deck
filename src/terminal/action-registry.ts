@@ -160,15 +160,17 @@ export const ACTION_REGISTRY = [
   {
     id: "new-tab",
     label: "New Tab",
-    // Tiered "board", not "always" (2026-07-27 code review, F2): only sets
-    // boardOpen.value = true, so it is harmless while the board is ALREADY
-    // open — but "always" used to bypass the guard unconditionally,
-    // including while a PresetEditor/SavePresetDialog draft (rank "modal",
-    // above the board) was up. That mounted the board underneath the modal
-    // scrim, where its own mount-focus effect could steal focus away from
-    // the live draft. "board" blocks it exactly there while still letting
-    // it run over Settings (rank below "board" — see TIER_RANK's doc
-    // comment above).
+    // Tiered "board", not "always" (2026-07-27 code review, F2). Originally
+    // only set boardOpen.value = true; since 2026-08-14 it opens
+    // AgentQuickPicker (rank "modal") instead, but the reasoning still holds
+    // unchanged: "always" used to bypass the guard unconditionally,
+    // including while a PresetEditor/SavePresetDialog/AgentQuickPicker draft
+    // (rank "modal", above "board") was up, mounting a fresh overlay
+    // underneath the live modal scrim where its own mount-focus effect could
+    // steal focus away from the draft. "board" (rank 30) blocks it there —
+    // every modal-tier overlay ranks >= 30 — and also while the Open board
+    // itself is already up, while still letting it run over Settings (rank
+    // below "board" — see TIER_RANK's doc comment above).
     scope: "board",
     menu: { submenu: "File", group: "primary" },
   },

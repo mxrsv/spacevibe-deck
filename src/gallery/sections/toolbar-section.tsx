@@ -12,11 +12,7 @@ import {
   SquareX,
 } from "lucide-preact";
 import { ACTION_REGISTRY, type ActionId } from "../../terminal/action-registry";
-import {
-  formatKeyChord,
-  shortcutLabel,
-  type KeyChord,
-} from "../../lib/shortcut-label";
+import { shortcutLabel } from "../../lib/shortcut-label";
 import type { DesktopPlatform } from "../../lib/platform";
 import { FeatureToolbar } from "../../ui/toolbar/feature-toolbar";
 import type {
@@ -30,29 +26,21 @@ import { SectionHead, Specimen, StateLabel } from "../specimen";
  * The feature toolbar from docs/specs/2026-08-12-feature-toolbar-design.md,
  * as the design requires before any shipping chrome changes.
  *
- * Two things here are fixtures and nothing else: the platform switch, and the
- * Explorer / Browser / Usage entries. Those three actions are specified but
- * not built, so they are not in `ACTION_REGISTRY` yet — registering them now
- * would put a live `Ctrl+Shift+E` into the feature-frozen Tauri app. Their
- * chords are still formatted through `shortcut-label.ts` rather than written
- * out, because a hardcoded `⌘⇧E` is exactly the failure the design names: a
- * macOS label that survives onto Windows.
+ * One thing here is a fixture and nothing else: the platform switch. Explorer,
+ * Browser and Usage were fixtures too while they were specified but unbuilt;
+ * all three are in `ACTION_REGISTRY` now — Explorer joined on 2026-08-14 with
+ * its surface — so they read their labels and chords from it like every other
+ * item. That matters for Explorer specifically: this section drew `⌘⇧E` from
+ * the design's draft, and the shipped binding is `⌘⇧B`, so a specimen holding
+ * its own chord taught a key that does nothing.
  *
- * Everything else is real. The controls, the tooltip, the overflow menu and
- * the fit calculation are the shipping components, and the five existing
- * actions read their labels and chords from the registry.
+ * Everything else is real: the controls, the tooltip, the overflow menu and
+ * the fit calculation are the shipping components.
  */
 
 type GalleryPlatform = Extract<DesktopPlatform, "macos" | "windows">;
 
 const PLATFORMS: readonly GalleryPlatform[] = ["macos", "windows"];
-
-/** Explorer matches VS Code on both platforms — the design's one hard chord. */
-const EXPLORER_CHORD: Readonly<Record<GalleryPlatform, KeyChord>> =
-  Object.freeze({
-    macos: { key: "e", meta: true, shift: true },
-    windows: { key: "e", ctrl: true, shift: true },
-  });
 
 const REGISTRY_LABELS: ReadonlyMap<string, string> = new Map(
   ACTION_REGISTRY.map((action) => [action.id, action.label]),
@@ -98,38 +86,38 @@ function toolbarItems(
   { states = {} }: ItemOverrides = {},
 ): readonly ToolbarItem[] {
   return [
-    {
-      id: "toggle-explorer",
-      label: "Explorer",
-      icon: FolderTree,
-      group: "tools",
-      shortcut: formatKeyChord(EXPLORER_CHORD[platform], platform),
-      state: states["toggle-explorer"] ?? ACTIVE,
-      overflowOrder: null,
-      toggles: "pressed",
-      onActivate: NOOP,
-    },
-    {
-      id: "toggle-browser",
-      label: "Browser",
-      icon: Globe,
-      group: "tools",
-      shortcut: null,
-      state: states["toggle-browser"] ?? IDLE,
-      overflowOrder: null,
-      toggles: "pressed",
-      onActivate: NOOP,
-    },
-    {
-      id: "toggle-usage",
-      label: "Usage",
-      icon: Gauge,
-      group: "tools",
-      shortcut: null,
-      state: states["toggle-usage"] ?? IDLE,
-      overflowOrder: 1,
-      onActivate: NOOP,
-    },
+    // Explorer stays ACTIVE by default — this specimen's job includes showing
+    // what an open tool looks like, and it is the section's chosen example.
+    registryItem(
+      "toggle-explorer",
+      platform,
+      {
+        id: "toggle-explorer",
+        icon: FolderTree,
+        group: "tools",
+        overflowOrder: null,
+        toggles: "pressed",
+      },
+      { "toggle-explorer": ACTIVE, ...states },
+    ),
+    registryItem(
+      "toggle-browser",
+      platform,
+      {
+        id: "toggle-browser",
+        icon: Globe,
+        group: "tools",
+        overflowOrder: null,
+        toggles: "pressed",
+      },
+      states,
+    ),
+    registryItem(
+      "toggle-usage",
+      platform,
+      { id: "toggle-usage", icon: Gauge, group: "tools", overflowOrder: 1 },
+      states,
+    ),
     registryItem(
       "split-row",
       platform,

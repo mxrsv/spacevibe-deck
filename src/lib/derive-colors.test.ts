@@ -54,6 +54,29 @@ describe("deriveChromeColors", () => {
     expect(chrome.hairStrong).toBe("rgba(192, 202, 245, 0.2)");
   });
 
+  describe("the focused stage surface", () => {
+    it("keeps both sidebar tokens distinct from the stage on every preset", () => {
+      for (const preset of THEME_PRESETS) {
+        const bg = preset.theme.background ?? "#16161e";
+        const fg = preset.theme.foreground ?? "#c0caf5";
+        const chrome = deriveChromeColors(bg, fg);
+        expect(chrome.sidebarBg).not.toBe(bg);
+        expect(luminance(chrome.sidebarBg)).toBeLessThan(luminance(bg));
+        expect(chrome.sidebarSeam).not.toBe(bg);
+        expect(chrome.sidebarSeam).not.toBe(chrome.sidebarBg);
+      }
+    });
+
+    it("preserves the distinction for light and pure-black overrides", () => {
+      for (const [bg, fg] of [
+        ["#ffffff", "#333333"],
+        ["#000000", "#ffffff"],
+      ] as const) {
+        expect(deriveChromeColors(bg, fg).sidebarBg).not.toBe(bg);
+      }
+    });
+  });
+
   /**
    * The seam ladder is a set of RELATIONSHIPS, not four hex literals: what was
    * wrong before was never a particular value, it was that a structural line
@@ -153,7 +176,7 @@ describe("deriveChromeColors", () => {
       const c = deriveChromeColors(bg, fg);
       // Checked against EVERY surface, not just chrome1: the panel body is
       // chrome2 and the active row is tabActiveBg, and both are lighter.
-      const surfaces = [c.chrome1, c.chrome2, c.tabActiveBg];
+      const surfaces = [c.sidebarBg, c.chrome1, c.chrome2, c.tabActiveBg];
       for (const surface of [c.inputBg, ...surfaces]) {
         expect(contrastRatio(c.textPrimary, surface)).toBeGreaterThanOrEqual(
           4.5,
@@ -171,7 +194,12 @@ describe("deriveChromeColors", () => {
       // inverse the ladder on a dim-foreground theme — textMuted came out
       // LOUDER than textPrimary. primary >= muted >= faint, on every surface.
       const c = deriveChromeColors(bg, fg);
-      for (const surface of [c.chrome1, c.chrome2, c.tabActiveBg]) {
+      for (const surface of [
+        c.sidebarBg,
+        c.chrome1,
+        c.chrome2,
+        c.tabActiveBg,
+      ]) {
         const primary = contrastRatio(c.textPrimary, surface);
         const muted = contrastRatio(c.textMuted, surface);
         const faint = contrastRatio(c.textFaint, surface);

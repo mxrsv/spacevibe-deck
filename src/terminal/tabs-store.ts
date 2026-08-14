@@ -1,4 +1,5 @@
 import { signal } from "@preact/signals";
+import type { PaneAgent } from "../lib/process-info";
 import type { TabDotColor } from "../lib/tab-colors";
 import type { AgentAttentionSummary } from "./agent-attention";
 
@@ -25,6 +26,8 @@ export interface TabView {
   readonly dotColor: TabDotColor | null;
   /** Workspace this tab belongs to — null for pre-0.2.2 restored tabs. */
   readonly workspacePath: string | null;
+  /** Recognized agents currently present across this tab's panes, busy or idle. */
+  readonly agents: readonly PaneAgent[];
   /** A recognized agent runs in at least one pane of this tab. */
   readonly agentBusy: boolean;
   /** New output arrived in this tab while it was not active; cleared on open. */
@@ -81,10 +84,17 @@ export const tabViews = signal<readonly TabView[]>([]);
 export const activeTabIndex = signal(0);
 /**
  * Tab whose rename/dot-color popover a keyboard action (⌘⇧R,
- * `open-tab-options`) wants opened next. Set by TabManager, consumed and
- * reset to `null` by whichever chrome component (TabBar or WorkspaceSidebar)
- * is currently mounted — only one renders at a time (Settings'
- * `tabBarPosition`), so there is exactly one consumer per request.
+ * `open-tab-options`) wants opened next. Set by TabManager, consumed and reset
+ * to `null` by the chrome component that owns the chord in the current layout.
+ *
+ * "Whichever component is mounted" was the rule until 2026-08-14, when it
+ * stopped being enough: sidebar layout mounts `RepositoryRail` AND the stage's
+ * `TabStrip` together, and both carry a row for the same tab key, so two
+ * listeners answered one keystroke with two popovers. Ownership is explicit
+ * now — the rail takes it whenever it is mounted (its row is what the user is
+ * looking at, and its popover is the one with the workspace-logo actions), and
+ * `TabStrip` takes it only in top-tab mode, where there is no rail. Exactly one
+ * consumer per request, again, but by construction rather than by luck.
  */
 export const requestTabOptionsKey = signal<number | null>(null);
 export const statusInfo = signal<StatusInfo>({

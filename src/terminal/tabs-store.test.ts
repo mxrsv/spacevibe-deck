@@ -13,6 +13,7 @@ const base: TabView = {
   name: null,
   dotColor: null,
   workspacePath: "/Users/k/dev/stackgrid",
+  agents: ["claude"],
   agentBusy: true,
   unread: false,
 };
@@ -55,19 +56,21 @@ describe("applyTabOverride", () => {
     });
   });
 
-  it("never touches workspacePath, agentBusy or unread (not user overrides)", () => {
+  it("never touches workspacePath, agents, agentBusy or unread (not user overrides)", () => {
     const merged = applyTabOverride(base, { name: "api", dotColor: "cyan" });
     expect(merged.workspacePath).toBe("/Users/k/dev/stackgrid");
+    expect(merged.agents).toBe(base.agents);
     expect(merged.agentBusy).toBe(true);
     expect(merged.unread).toBe(false);
   });
 
-  it("never touches workspacePath, agentBusy, unread or attention summary", () => {
+  it("never touches workspacePath, agents, agentBusy, unread or attention summary", () => {
     const merged = applyTabOverride(withAttention, {
       name: "api",
       dotColor: "cyan",
     });
     expect(merged.workspacePath).toBe(withAttention.workspacePath);
+    expect(merged.agents).toBe(withAttention.agents);
     expect(merged.agentBusy).toBe(withAttention.agentBusy);
     expect(merged.unread).toBe(withAttention.unread);
     expect(merged.attention).toBe(attentionSummary);

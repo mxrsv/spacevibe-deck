@@ -437,24 +437,13 @@
   background: var(--gx-chat-surface-main);
 }
 
-.gx-app--chatgpt .open-board > .rail {
-  padding: 8px;
-  border-color: var(--gx-chat-border);
-  background: var(--gx-chat-app-under);
-}
-
-.gx-app--chatgpt .open-board :is(.applogo, .openfolder, .btn) {
+/* `.rail`, `.openfolder` and `.detail` were dropped from this file on
+   2026-08-14: the board's redesign that day replaced that DOM, and none of the
+   three is emitted by `src/open-board/` any more. Rules that match nothing are
+   worse than absent here — they read as a treatment the direction still asks
+   for. */
+.gx-app--chatgpt .open-board :is(.applogo, .btn) {
   border-radius: var(--gx-chat-radius-control);
-}
-
-.gx-app--chatgpt .open-board .openfolder {
-  border-color: var(--gx-chat-border);
-  background: color-mix(in srgb, var(--gx-chat-ink) 4%, transparent);
-}
-
-.gx-app--chatgpt .open-board .openfolder:hover {
-  border-color: var(--gx-chat-border);
-  background: var(--gx-chat-selected);
 }
 
 .gx-app--chatgpt .open-board .row {
@@ -471,10 +460,6 @@
 .gx-app--chatgpt .open-board .row:hover,
 .gx-app--chatgpt .open-board .row.is-selected {
   background: var(--gx-chat-selected);
-}
-
-.gx-app--chatgpt .open-board .detail {
-  background: var(--gx-chat-surface-main);
 }
 
 .gx-app--chatgpt .open-board :is(.lcard, .achip) {
@@ -810,19 +795,16 @@
   box-shadow: none;
 }
 
-/* The board reuses Window chrome's repository tree as its only navigation.
- * Its legacy recent-workspace rail stays in the real component for app parity,
- * but the gallery direction removes that duplicate navigation surface. */
+/* The board reuses Window chrome's repository tree as its only navigation, and
+ * both columns collapse to one so nothing duplicates it. The rule that hid the
+ * board's own legacy recent-workspace rail went with the rail itself on
+ * 2026-08-14 — the real component no longer renders one. */
 .gx-app--chatgpt .gx-open-board-direction .window--sidebar > .stage {
   grid-template-columns: minmax(0, 1fr);
 }
 
 .gx-app--chatgpt .gx-open-board-direction .open-board {
   grid-template-columns: minmax(0, 1fr);
-}
-
-.gx-app--chatgpt .gx-open-board-direction .open-board > .rail {
-  display: none;
 }
 
 .gx-chatgpt-terminal {

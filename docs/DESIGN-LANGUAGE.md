@@ -48,6 +48,7 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 
 | token                                                  | role                                     |
 | ------------------------------------------------------ | ---------------------------------------- |
+| `--sidebar-bg` / `--sidebar-seam`                      | recessed side columns and their boundary |
 | `--chrome-1` / `--chrome-2`                            | background steps for bars / panels       |
 | `--input-bg`                                           | recessed input surfaces                  |
 | `--hair` / `--hair-strong`                             | 1px hairlines inside a surface           |
@@ -225,10 +226,10 @@ This document is the target, not a description of the whole app. Only the
 settings panel has been reworked. Known survivors, to be fixed as each surface
 is reworked — **do not "fix" them opportunistically inside an unrelated change**:
 
-| where                                                                              | violates | note                                                                                                                                                                              |
-| ---------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| where                                                                              | violates | note                                                                                                                                                                                |
+| ---------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `.cfg-btn`, board cards, inputs                                                    | DL-2.3   | still on `--hair`. These are lines INSIDE a surface, which is what `--hair` is for, so this row is a re-read rather than a debt: the boundary cases were the frames, and they moved |
-| `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —        | inset hairlines, allowed under DL-1.3                                                                                                                                             |
+| `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —        | inset hairlines, allowed under DL-1.3                                                                                                                                               |
 
 **Closed 2026-08-14** by the redesign's phase 2, each in the commit that fixed it:
 `.tab-popover__label`'s uppercase (DL-4.3), `.settings-screen` and `.search-bar`'s
@@ -240,6 +241,20 @@ chrome mirrors followed at phase end: the mock's frame moved into its navigation
 column (DL-18.3), its selection took the §21 wash mixed from the neutral tone, and
 its chrome radii took DL-20.1's control role — still hand-copied, still importing
 nothing from `src/`, so the next chrome change must update them by hand again.
+
+**Also closed 2026-08-14**, by the gallery-vs-app pass rather than the redesign —
+both were rows the gallery had been documenting rather than rows this section
+carried, which is why neither appears in the table above:
+
+- **The disabled pill had no treatment at all** (DL-5.2, DL-21.4). `.cfg-btn`
+  declared nothing for `:disabled` or `.cfg-btn--disabled`, so a disabled pill
+  rendered identically to an enabled one — the state matrix measured this and
+  said so in the specimen. Now `--text-faint`, with the hover border and hint
+  accent switched off, matching both the attribute and the class.
+- **`.tab-popover` drew a real border where `.prompt-popover` drew an inset
+  hairline** (DL-13.1). The radius already agreed; the edge did not. The
+  `border` is now the same `box-shadow: inset 0 0 0 1px var(--seam-raised)`,
+  which DL-1.3 permits and DL-13.1 asks for by name.
 
 ## 11. Full-window screens
 
@@ -577,23 +592,25 @@ window's identity and its actions at the same time.
 - **DL-18.2** The row is `--frame-h` tall, and what it paints depends on which
   element is the frame. In top-tab mode it is `--chrome-1` closed by a single
   `--seam-recessed` bottom border and nothing else — that border is a boundary
-  between two surfaces, so it takes the seam (DL-2.3). In sidebar mode it paints
-  **nothing**: it is the top of the navigation column, continuous with the rail
-  under it, and a line inside one surface is not a boundary. The shell's
-  structural line is vertical there — the stage's left edge. 34px is not a taste
-  value in either mode: it carries a 26px control comfortably and clears the
-  macOS traffic lights, which need roughly 28px of vertical room. The reviewed
-  direction drew it at 54px and that figure was declined under DL-20.4.
+  between two surfaces, so it takes the seam (DL-2.3). In sidebar mode its two
+  occupants paint their own columns: `.deck-frame` uses `--sidebar-bg`, continuous
+  with the rail under it, while `.stage__strip` stays transparent on the stage's
+  `--bg`. The shell's structural line is vertical there — the stage's left edge.
+  34px is not a taste value in either mode: it carries a 26px control comfortably
+  and clears the macOS traffic lights, which need roughly 28px of vertical room.
+  The reviewed direction drew it at 54px and that figure was declined under
+  DL-20.4.
 - **DL-18.3** **Whichever element occupies that row IS the frame, and the
-  layout decides where the row is.** In sidebar mode it is `.deck-frame` at
-  column 1, row 1 — the head of the navigation column, carrying the actions,
-  with the rail beneath it and the stage spanning rows 1–2 of column 2 so the
-  terminal reaches the top of the window with no chrome above it. In top-tab
-  mode there is no navigation column, so the frame is `.tabbar` spanning the
-  window — same height, same `--chrome-1`, same single seam — and no
-  `.deck-frame` is rendered. A layout picks one occupant; it never nests one
-  inside the other. Adopted 2026-08-14 with the redesign's shell; before it,
-  sidebar mode put a full-width band above both columns.
+  layout decides where the row is.** In sidebar mode the row is split by the
+  shell's vertical seam and has one occupant per side: `.deck-frame` at column
+  1, carrying the actions with the rail beneath it, and `.stage__strip` at
+  column 2, carrying the tabs (DL-18.6). In top-tab mode there is no
+  navigation column, so the frame is `.tabbar` spanning the window — same
+  height, same `--chrome-1`, same single seam — and no `.deck-frame` is
+  rendered. Neither layout nests one occupant inside another. Adopted
+  2026-08-14 with the redesign's shell; before it, sidebar mode put a
+  full-width band above both columns, and until later the same day column 2's
+  half of the row was empty and the terminal ran to the top of the window.
 - **DL-18.4** On macOS the traffic lights sit **inside** the row behind a
   reserved inset of `--frame-lights-w`, and whichever element is the frame
   reserves that inset itself. The inset is a footprint, not a control: the OS
@@ -607,6 +624,31 @@ window's identity and its actions at the same time.
   of the tree or collapsed by CSS is each occupant's business; what the rule
   requires is that nothing is reserved. Reserving space no OS will paint into
   is a gap, not a frame.
+- **DL-18.6** **The tabs are the frame row's stage-side occupant, in both
+  layouts.** Top-tab mode has always drawn them there; sidebar mode does too
+  since 2026-08-14, as `.stage__strip` — the same `TabStrip` component, the
+  same `--frame-h` row, filling the half of it that column 2 owns. It stays
+  transparent on the stage's `--bg`, matching DL-18.2's sidebar clause; it does
+  not introduce another surface or horizontal seam. Its right edge stops at
+  whatever docked panel is open
+  (DL-19.1's arithmetic, `--explorer-w` and `--browser-w`), because those
+  panels own their columns top to bottom. This adds an occupant, not a row —
+  DL-18.1's count is unchanged, and no layout stacks two chrome rows. One
+  consequence is deliberate and worth stating: the same chips exist in both
+  layouts, so the navigation rail no longer lists documents at all. A rail row
+  says which repository and worktree a session is in; the strip says what is
+  open.
+- **DL-18.7** **The stage is the focal surface in every theme.** The terminal
+  and document surface keep the active theme's `--bg`; the left navigation
+  frame/rail and every docked side panel share the derived `--sidebar-bg`.
+  `--sidebar-bg` must never equal `--bg`, including for light and pure-black
+  overrides, and the vertical boundary uses the derived `--sidebar-seam`.
+  The invariant is derived and published by
+  [`derive-colors.ts`](../src/lib/derive-colors.ts) `current` and
+  [`theme-vars.ts`](../src/lib/theme-vars.ts) `current`, with preset and override
+  coverage in [`derive-colors.test.ts`](../src/lib/derive-colors.test.ts)
+  `current`. Approved by the owner on 2026-08-14 to keep attention on the center
+  work area instead of either sidebar.
 
 ## 19. Docked side panels
 
@@ -633,7 +675,8 @@ covering it, and it can hold something that is not Deck's own pixels.
   resize around it. Nothing in the app floats permanently over a pane.
 - **DL-19.2** The seam is a single `--hair` border on the panel's inner edge
   (DL-3.3). No shadow, no gradient, no second rule — the background step from
-  `--bg` to `--chrome-2` is what separates the two regions.
+  `--bg` to `--sidebar-bg` is what separates the two regions and keeps the panel
+  in the same recessed family as the navigation sidebar (DL-18.7).
 - **DL-19.3** The panel's own header is a **bar of `iconbtn` controls**, the
   same class and the same 13px chrome icon size the tab bar uses (DL-14.2). A
   docked panel borrows the window's controls; it does not invent a set.

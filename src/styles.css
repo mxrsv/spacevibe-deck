@@ -15,6 +15,10 @@
      :root by app.tsx; the values below are pre-JS fallbacks for first paint.
      --tone is white on dark themes, black on light ones. */
   --tone: #ffffff;
+  /* The stage stays on the terminal theme background; both side columns use
+     one recessed surface so the work area remains the visual focal point. */
+  --sidebar-bg: color-mix(in srgb, var(--bg) 76%, #000000);
+  --sidebar-seam: color-mix(in srgb, var(--sidebar-bg) 50%, var(--bg));
   --chrome-1: color-mix(in srgb, var(--bg) 95%, var(--tone));
   --chrome-2: color-mix(in srgb, var(--bg) 91%, var(--tone));
   --tab-active-bg: color-mix(in srgb, var(--bg) 85%, var(--tone));
@@ -134,12 +138,11 @@ body,
 .deck-frame {
   height: var(--frame-h);
   /* DL-18.3: in sidebar mode the frame is the TOP OF THE NAVIGATION COLUMN, not
-     a band across the window. It sits on the navigation ground with the rail
-     below it and paints nothing of its own — which is why there is no seam
-     here either: the frame and the rail are one continuous surface, and a
-     boundary inside one surface is not a boundary (DL-2.3). The seam that
-     matters now runs vertically, on the stage's left edge. */
-  background: transparent;
+     a band across the window. It shares `--sidebar-bg` with the rail below,
+     so there is no seam between them: the frame and rail are one continuous
+     surface (DL-18.7). The seam that matters runs vertically, on the stage's
+     left edge. */
+  background: var(--sidebar-bg);
   grid-column: 1;
   grid-row: 1;
   display: flex;
@@ -181,7 +184,7 @@ body,
   /* The one structural line in the shell, and it is vertical now. It lives on
      the stage rather than on the rail because it has to run the frame's full
      height too, and the frame is a sibling of the rail, not its parent. */
-  border-left: 1px solid var(--seam-recessed);
+  border-left: 1px solid var(--sidebar-seam);
 }
 
 .window--sidebar > .status {
@@ -194,12 +197,9 @@ body,
   display: flex;
   flex-direction: column;
   min-height: 0;
-  /* The navigation column IS the ground (`--bg`), not a surface raised off it.
-     The reviewed direction puts every rail on the ground — this one, the
-     settings nav, the Open board's rail — and reserves `--chrome-1` for the
-     content those rails point at. Transparent rather than `background: var(--bg)`
-     so the column reads as one plane with the frame above it. */
-  background: transparent;
+  /* The frame and rail share one recessed side surface. The stage keeps
+     `--bg`, so the terminal remains the focal plane in every theme. */
+  background: var(--sidebar-bg);
 }
 
 .wsbar__list {
@@ -403,25 +403,6 @@ body,
   color: var(--red);
 }
 
-/* File tabs nested under their workspace's row (spec §4.2, stated spatially
-   for this layout) — the same `.wsitem` shell, indented to read as a child
-   of the row above it, and no logo (a file has none). */
-.wsitem--file {
-  padding-left: 32px;
-}
-
-.wsitem--file .wsitem__label--preview {
-  font-style: italic;
-}
-
-.wsitem__dot--dirty {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: var(--accent);
-}
-
 .wsbar__add {
   display: flex;
   align-items: center;
@@ -573,32 +554,56 @@ body,
   color: var(--text-faint);
 }
 
-/* State dot, sized to the logo slot it stands in for so both rows share one
-   text baseline. DL-3.2 reserves --green for "on", so `attention` takes
-   --magenta and `missing` is a hollow ring rather than a fourth colour — the
-   inset hairline is DL-1.3's permitted exception. Colour is never the only
-   carrier: every state also names itself in the row's accessible label. */
+/* Every worktree uses the same hollow status ring instead of an avatar. The
+   transparent centre keeps the marker quiet; semantic colour carries state,
+   while the marker's accessible label keeps colour from being the only cue. */
 .wsitem__state {
   width: 8px;
   height: 8px;
   flex-shrink: 0;
   margin: 0 6px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px solid currentColor;
   border-radius: 50%;
-  background: var(--text-faint);
+  background: transparent;
+  color: var(--text-faint);
 }
 
-.wsitem[data-state="ready"] .wsitem__state,
+.wsitem[data-state="ready"] .wsitem__state {
+  color: var(--green);
+}
+
 .wsitem[data-state="working"] .wsitem__state {
-  background: var(--green);
+  color: var(--accent);
 }
 
 .wsitem[data-state="attention"] .wsitem__state {
-  background: var(--magenta);
+  color: var(--magenta);
 }
 
 .wsitem[data-state="missing"] .wsitem__state {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--text-faint);
+  color: var(--red);
+}
+
+button.wsitem__state {
+  position: relative;
+  appearance: none;
+  cursor: pointer;
+}
+
+/* Keep the visible ring at 8px while giving the actionable state a 20px hit
+   target, matching the attention mark it replaces. */
+button.wsitem__state::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+}
+
+button.wsitem__state:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 /* The badge must not be eaten by the name's ellipsis, so the label becomes a
@@ -627,6 +632,63 @@ body,
   color: var(--text-faint);
   font-size: 9.5px;
   line-height: 1.5;
+}
+
+/* Agent identity is stable presence, separate from the logo's activity and
+   attention marks. DL-14.6 permits real product marks here; declared agents
+   fall back to the same deterministic letter treatment as workspaces. Three
+   marks are the row-width budget, with the remainder summarized as +N. */
+.worktree-agents {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-left: 2px;
+  padding-right: 2px;
+}
+
+.worktree-agents__item {
+  display: grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  box-sizing: border-box;
+  border: 1px solid var(--hair);
+  border-radius: 50%;
+  background: var(--chrome-1);
+}
+
+.worktree-agents__item + .worktree-agents__item,
+.worktree-agents__more {
+  margin-left: -4px;
+}
+
+.worktree-agents__logo {
+  display: block;
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+}
+
+.worktree-agents__letter {
+  font-size: 8.5px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.worktree-agents__more {
+  display: grid;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 3px;
+  place-items: center;
+  box-sizing: border-box;
+  border: 1px solid var(--hair);
+  border-radius: 9px;
+  background: var(--chrome-1);
+  color: var(--text-muted);
+  font-size: 8.5px;
+  font-weight: 650;
+  line-height: 1;
 }
 
 /* ── Agent attention mark (AgentAttentionMark) ──────────────
@@ -1211,6 +1273,9 @@ button.attn-mark:hover {
   position: relative;
   min-height: 0;
   min-width: 0;
+  /* DL-18.7: explicit on the focal surface so its theme background does not
+     depend on whichever shell happens to contain it. */
+  background: var(--bg);
 }
 
 .stage__tabs {
@@ -1218,6 +1283,82 @@ button.attn-mark:hover {
   inset: 0;
   padding: 8px;
   display: flex;
+}
+
+/* ── DL-18.6: the stage's tab strip (sidebar layout only) ─────────────────
+   Sidebar mode's frame row is one row with two occupants: `.deck-frame` at
+   column 1 and this at column 2. It is `--frame-h` tall and stays transparent
+   on the stage's `--bg`, while the navigation-side occupant paints the
+   recessed `--sidebar-bg` (DL-18.2, DL-18.7). No extra horizontal surface or
+   seam is introduced.
+
+   Right inset is the same arithmetic `.stage__tabs` uses below: the docked
+   panels own their columns top to bottom, so the strip stops at their edge
+   rather than running under them (DL-19.1). */
+
+.stage__strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--frame-h);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  background: transparent;
+  min-width: 0;
+}
+
+.stage--strip .stage__tabs {
+  top: var(--frame-h);
+}
+
+.stage--explorer .stage__strip {
+  right: var(--explorer-w);
+}
+
+.stage--browser .stage__strip {
+  right: var(--browser-w);
+}
+
+.stage--browser.stage--explorer .stage__strip {
+  right: calc(var(--browser-w) + var(--explorer-w));
+}
+
+/* ── The document surface (spec §4.2) ─────────────────────────────────────
+   Same rectangle as `.stage__tabs`, laid over it rather than replacing it:
+   the terminal grid keeps its measured size while a file holds the stage, so
+   coming back costs no reflow and no PTY resize. Opaque for the same reason
+   — the panes are still there underneath. */
+
+.stage__surface {
+  position: absolute;
+  inset: 0;
+  /* The same 8px gutter `.stage__tabs` gives its panes, so the document lands
+     on exactly the rectangle the terminal was occupying instead of shifting
+     by a gutter when the stage changes hands. */
+  padding: 8px;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+}
+
+.stage--strip .stage__surface {
+  top: var(--frame-h);
+}
+
+.stage--explorer .stage__surface {
+  right: var(--explorer-w);
+}
+
+.stage--browser .stage__surface {
+  right: var(--browser-w);
+}
+
+.stage--browser.stage--explorer .stage__surface {
+  right: calc(var(--browser-w) + var(--explorer-w));
 }
 
 /* ── Browser panel: a docked column on the right of the stage (DL-19) ─────
@@ -1239,7 +1380,7 @@ button.attn-mark:hover {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--chrome-2);
+  background: var(--sidebar-bg);
   /* DL-19.2 / DL-3.3: structure is a hairline, never a shadow. */
   border-left: 1px solid var(--hair);
 }
@@ -1866,6 +2007,29 @@ button.attn-mark:hover {
   border-color: color-mix(in srgb, var(--red) 45%, transparent);
 }
 
+/* Disabled → `--text-faint` and no affordance left alive (DL-5.2, DL-21.4).
+   Until 2026-08-14 no such rule existed, so a disabled pill was pixel-identical
+   to an enabled one — the gap the gallery's state matrix surfaced. The pill
+   arrives disabled two ways: the native attribute (`ToggleRow`, the update
+   pill) and a `--disabled` class, which about-section sets independently of the
+   attribute. Matching only one leaves the treatment half applied. Declared
+   after the `--on`/`--off`/`--danger` colours so it wins at equal specificity. */
+.cfg-btn:disabled,
+.cfg-btn--disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.cfg-btn:disabled:hover,
+.cfg-btn--disabled:hover {
+  border-color: var(--hair);
+}
+
+.cfg-btn:disabled:hover .cfg-btn__hint,
+.cfg-btn--disabled:hover .cfg-btn__hint {
+  color: var(--text-faint);
+}
+
 /* Invisible native input stretched over the pill (menu / color kinds, DL-1.4) */
 .cfg-btn--overlay input,
 .cfg-btn--overlay select {
@@ -2132,7 +2296,10 @@ button.attn-mark:hover {
   width: 216px;
   padding: 10px 12px 12px;
   background: var(--chrome-2);
-  border: 1px solid var(--seam-raised);
+  /* An inset hairline, matching `.prompt-popover` — DL-13.1 asks every popover
+     for the same edge, and a real border here made the two disagree by a pixel
+     of box size while claiming the same treatment (DL-1.3 permits the inset). */
+  box-shadow: inset 0 0 0 1px var(--seam-raised);
   border-radius: var(--radius-surface);
 }
 
@@ -2394,12 +2561,9 @@ button.attn-mark:hover {
 .applogo--lg {
   width: 56px;
   height: 56px;
+  background: transparent;
+  border: 0;
 }
-.applogo--lg svg {
-  width: 30px;
-  height: 30px;
-}
-
 .board-home__actions {
   display: flex;
   gap: 10px;
@@ -3359,6 +3523,29 @@ button.attn-mark:hover {
   color: var(--bg);
 }
 
+/* ---------- Agent quick picker ---------- */
+.agent-quick-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(420px, 90vw);
+  padding: 16px;
+  background: var(--chrome-1);
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  outline: none;
+  animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.agent-quick-picker h1 {
+  font-size: 13px;
+  margin: 0;
+}
+.agent-quick-picker__hint {
+  margin: -6px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .persist-error-bar {
   position: absolute;
   bottom: 40px;
@@ -4298,7 +4485,7 @@ button.attn-mark:hover {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: var(--chrome-2);
+  background: var(--sidebar-bg);
   /* DL-19.2: the seam is a single hairline, never a shadow. */
   border-left: 1px solid var(--hair);
 }
@@ -4352,15 +4539,6 @@ button.attn-mark:hover {
   font-family: var(--ui-font);
   font-size: 12px;
   line-height: 1.4;
-}
-
-/* `.fileview` (below) already carries `flex: 1; min-height: 0`, so it fills
-   this row on its own once mounted. */
-.explorer-panel__preview {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  border-top: 1px solid var(--hair);
 }
 
 .file-tree {

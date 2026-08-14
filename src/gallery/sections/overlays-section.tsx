@@ -1,9 +1,11 @@
 import type { ComponentChildren } from "preact";
 import { useSignal } from "@preact/signals";
 import { persistError } from "../../chrome/events";
+import type { CustomAgent } from "../../lib/agent-catalog";
 import { PersistErrorBar } from "../../presets/persist-error-bar";
 import { PresetEditor } from "../../presets/preset-editor";
 import { SavePresetDialog } from "../../presets/save-preset-dialog";
+import { AgentQuickPicker } from "../../ui/agent-quick-picker";
 import { SettingsScreen } from "../../ui/settings/settings-screen";
 import { SEED_PRESETS } from "../seed-data";
 import { SectionHead, Specimen, StateLabel } from "../specimen";
@@ -25,6 +27,19 @@ import { SectionHead, Specimen, StateLabel } from "../specimen";
  */
 
 const NOOP = (): void => {};
+
+/** claude/codex/gemini found on `$PATH`; the declared "Aider" is not, so the
+ * specimen shows both a normal chip and the dashed "declared, but missing"
+ * state at once. */
+const SEED_DETECTED_AGENTS: readonly { name: string; path: string }[] = [
+  { name: "claude", path: "/usr/local/bin/claude" },
+  { name: "codex", path: "/usr/local/bin/codex" },
+  { name: "gemini", path: "/usr/local/bin/gemini" },
+];
+
+const SEED_CUSTOM_AGENTS: readonly CustomAgent[] = [
+  { id: "custom:aider", label: "Aider", command: "aider --model gpt-4" },
+];
 
 function ScrimStage({ children }: { children: ComponentChildren }) {
   return <div class="modal-scrim">{children}</div>;
@@ -100,6 +115,22 @@ export function OverlaysSection() {
             existing={SEED_PRESETS}
             onCancel={NOOP}
             onSave={NOOP}
+          />
+        </ScrimStage>
+      </Specimen>
+
+      <Specimen
+        name=".modal-scrim + .agent-quick-picker"
+        note="the + button's fast path — chips reuse .achip from the open board, digit keys 1-9 / 0 pick immediately"
+        surface="bg"
+        tall
+      >
+        <ScrimStage>
+          <AgentQuickPicker
+            detected={SEED_DETECTED_AGENTS}
+            customAgents={SEED_CUSTOM_AGENTS}
+            onSelect={NOOP}
+            onCancel={NOOP}
           />
         </ScrimStage>
       </Specimen>

@@ -12,6 +12,7 @@ function tab(key: number, workspacePath: string | null, over: Partial<TabView> =
     name: null,
     dotColor: null,
     workspacePath,
+    agents: [],
     agentBusy: false,
     unread: false,
     attention: IDLE,
@@ -262,6 +263,28 @@ describe("buildRail", () => {
     });
     expect(groups[0].worktrees[0].tabs[0].active).toBe(false);
     expect(groups[0].worktrees[1].tabs[0].active).toBe(true);
+  });
+
+  it("aggregates and deduplicates agent identities across a worktree's tabs", () => {
+    const scan = repo("/r/.git", [{ path: "/r/main" }]);
+    const groups = buildRail({
+      tabs: [
+        tab(1, "/r/main", { agents: ["claude", "codex"] }),
+        tab(2, "/r/main/packages/web", {
+          agents: ["claude", "Custom Agent"],
+        }),
+      ],
+      activeIndex: 0,
+      scans: new Map([
+        ["/r/main", scan],
+        ["/r/main/packages/web", scan],
+      ]),
+      collapsed: new Set(),
+    });
+
+    expect(groups[0].worktrees[0]).toMatchObject({
+      agents: ["claude", "codex", "Custom Agent"],
+    });
   });
 
   it("gives a tab with no workspace path a home of its own", () => {

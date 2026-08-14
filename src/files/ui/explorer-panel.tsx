@@ -17,17 +17,16 @@
  * in one place, `App`, so this component and its tests don't need to know
  * about the settings module at all.
  *
- * The editor lives INSIDE the panel for now. Spec §4.2 puts file tabs in the
- * terminal strip and the document on the stage; wiring that through
- * `TabManager` is a later task (`fileTabViews` in `file-tab-views.ts` is its
- * input). This is the minimum slice that proves the whole path end to end:
- * click a row, get a document, edit it.
+ * The panel is the TREE and nothing else. The document renders on the stage
+ * (`.stage__surface`, mounted by `App`), which is what spec §4.2 always
+ * asked for — until 2026-08-14 the editor was parked in a `__preview` block
+ * at the bottom of this panel as the minimum slice that proved the path end
+ * to end, and it is not parked here anymore.
  */
-import { activeFileTab, explorerWidthLive } from "../file-surface-store";
+import { explorerWidthLive } from "../file-surface-store";
 import type { FileSurfaceController } from "../file-surface-controller";
 import { clampExplorerWidth } from "../../settings/settings-schema";
 import { FileTreeView } from "./file-tree-view";
-import { FileEditor } from "./file-editor";
 
 export interface ExplorerPanelProps {
   readonly controller: FileSurfaceController;
@@ -40,8 +39,6 @@ export interface ExplorerPanelProps {
 }
 
 export function ExplorerPanel(props: ExplorerPanelProps) {
-  const activePath = activeFileTab.value;
-
   // DL-19.4: drag the seam to resize, clamped, one settings write on
   // release. Mirrors `BrowserPanel.startResize` exactly — same grip
   // placement (the panel's LEFT/inner edge), same live-signal-during-drag,
@@ -104,11 +101,6 @@ export function ExplorerPanel(props: ExplorerPanelProps) {
           />
         )}
       </div>
-      {activePath !== null && (
-        <div class="explorer-panel__preview">
-          <FileEditor path={activePath} controller={props.controller} />
-        </div>
-      )}
     </aside>
   );
 }

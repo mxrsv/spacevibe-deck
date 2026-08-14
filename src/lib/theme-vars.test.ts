@@ -61,6 +61,8 @@ describe("applyThemeVars", () => {
       "--cyan",
       "--status-unread",
       "--tone",
+      "--sidebar-bg",
+      "--sidebar-seam",
       "--chrome-1",
       "--chrome-2",
       "--tab-active-bg",

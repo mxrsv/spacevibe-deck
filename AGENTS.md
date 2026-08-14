@@ -39,18 +39,57 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
 - **Browser panel is built and wired** on the Electron host: a docked `WebContentsView` with
   react-grab Inspect, rendered from `src/browser/` and hosted by `electron/browser/`. No Tauri
   implementation exists; its behaviour under `npm run tauri dev` is unverified.
-- **File explorer: the model and host layers are in-tree, the surface is not.** `src/files/`
-  and `electron/fs/` landed, and the explorer UI was deliberately dropped again before merge —
-  `app.tsx` consumes only `dirtyPaths` from it today. The spec stays
-  [decided](docs/specs/2026-08-12-file-explorer-design.md); building the surface is a new
-  task, not a resumption. Monaco must first pass Gate M in a packaged build, and dirty files
-  must block tab close, window close, and app quit.
-- **The token usage dashboard is landed and ported.** The branch merged over `main` during
-  the redesign's phase 5; its Rust backend has an Electron port in `electron/usage/` gated
-  by a Rust-produced golden-fixture parity test. `docs/DESIGN-LANGUAGE.md`'s §15/§16 now
-  hold its sections, §20/§21/§23 are written, and §22 stays reserved — take the next free
-  number above §23 rather than filling a gap. The owner-machine acceptance table and the
-  branch's owner-local dirty tree remain owed.
+- **Gate M has passed packaged, on the owner's verification Mac (2026-08-14), 6/6.** The
+  file explorer surface is now built on top of the merged model/host layers: the docked
+  panel, the virtualized tree, file-tab chips in both toolbar layouts, `toggle-explorer`
+  (⌘⇧B) and `save-file` (⌘S), a focus guard, document-lifecycle fixes, and `fs:changed`-driven
+  tree refresh. The [spec](docs/specs/2026-08-12-file-explorer-design.md) `decided` stays
+  frozen; full details and evidence in
+  [docs/CONTEXT.md](docs/CONTEXT.md#straight-through-completion-run--explorer-surface-board-redesign-usage-acceptance--2026-08-14)
+  `current`. **Pending: owner eye review (DL §9.6) and native macOS sign-off** — no
+  automated gate establishes this. Adding a CSP later invalidates the Gate M run and
+  requires a rerun. Electron only; no Tauri implementation exists.
+- **The tabs are one strip on the stage's own frame-row half, and the document
+  renders on the stage (2026-08-14).** [`TabStrip`](src/ui/tab-strip.tsx) `current` is
+  the chips; `TabBar` is top-tab mode's frame around it and `.stage__strip` is sidebar
+  mode's mount (DL-18.6). The editor left `ExplorerPanel`'s preview block for
+  `.stage__surface`, which covers the terminal grid rather than replacing it, and
+  `RepositoryRail` stopped listing file tabs entirely. Verified by suite/build only:
+  the shape Gate M covered has changed, so **that pass does not carry over** — the
+  packaged both-layout manual pass (plan T35) and the owner eye review are owed on
+  the new picture. See
+  [docs/CONTEXT.md](docs/CONTEXT.md#the-stage-tab-strip-and-the-document-off-the-panel--2026-08-14)
+  `current`.
+- **The token usage dashboard is landed, ported, and its owner-machine acceptance table has
+  run (2026-08-14).** The branch merged over `main` during the redesign's phase 5; its Rust
+  backend has an Electron port in `electron/usage/` gated by a Rust-produced golden-fixture
+  parity test. `docs/DESIGN-LANGUAGE.md`'s §15/§16 now hold its sections, §20/§21/§23 are
+  written, and §22 stays reserved — take the next free number above §23 rather than filling
+  a gap. The §6.1.8 acceptance table ran against this machine's real `~/.claude`/`~/.codex`
+  corpus, all 7 rows pass — but it surfaced a real, unfixed gap:
+  [`discoverClaude`](electron/usage/discover.ts#L197-L217) `current` only walks one level into
+  `subagents/`, so `subagents/workflows/<id>/*.jsonl` (~25% of this machine's Claude corpus)
+  is invisible to every count the dashboard shows. Not remediated; a follow-up task. Windows
+  corpus behaviour is unverified (Gate C). The branch's owner-local dirty tree remains owed.
+- **The open board is one center surface with three views (home/config/worktree), and
+  create-worktree is an Electron-only flow reached from home (2026-08-14).** The board's own
+  second sidebar is retired — the app's own `WorkspaceSidebar` is the one sidebar now.
+  `git worktree add` runs main-process side via `execFile` argv (never a shell string) behind
+  a flat `worktree_add` IPC channel; Windows is unverified (Gate C). Details in
+  [docs/CONTEXT.md](docs/CONTEXT.md#straight-through-completion-run--explorer-surface-board-redesign-usage-acceptance--2026-08-14)
+  `current`.
+- **The tab strip's `+`/⌘T opens AgentQuickPicker, not the Open board, since 2026-08-14.**
+  [`AgentQuickPicker`](src/ui/agent-quick-picker.tsx) `current` is a `.modal-scrim` genre
+  alongside `PresetEditor`/`SavePresetDialog` (same "modal" tier in `openOverlayRanks()`):
+  pick an agent chip (click or digit key `1-9`/`0`) and `TabManager.openQuickAgent` spawns a
+  single pane in the active tab's **live** cwd, carrying its workspace tag, no workspace/preset
+  step. The Open board's full flow did not go away — `RepositoryRail`'s "Open workspace" footer
+  row now opens it directly (`onOpenWorkspace`, renamed from `onNewTab`; `WorkspaceSidebar` got
+  the identical rename to keep the two prop-identical for the one-line revert). Verified by
+  suite/build only — no native `npm run electron:dev` click-through or owner eye review of the
+  wired flow yet, only of the gallery specimen it was built from. See
+  [docs/CONTEXT.md](docs/CONTEXT.md#agentquickpicker--the-tab-strip-fast-path--2026-08-14)
+  `current`.
 - **Chrome gallery is current:** `gallery.html` mounts real components through `src/gallery/`;
   run `npm run prototype:gallery`. Gallery code must never enter the shipping bundle. Its
   window-chrome section is narrowed to the one selected direction on purpose; parked
@@ -74,22 +113,46 @@ Not a fork: internal renames, tests, styling within current DL rules, and editin
 registry. Record a resolved fork in this queue with a one-line reason; move it to
 `docs/ARCHITECTURE.md` when the work closes.
 
+Resolved:
+
+- 2026-08-14: the center stage became the focal theme surface while the navigation and
+  docked side panels moved onto one derived recessed background — touched
+  `DESIGN-LANGUAGE` (new DL-18.7, amended DL-18.2/DL-18.6/DL-19.2). User required the
+  center background to remain distinct from both sidebars under every theme.
+- 2026-08-14: the tab strip moved onto the stage in sidebar layout and the document
+  moved out of the explorer panel onto the stage — touched layout, `DESIGN-LANGUAGE`
+  (new DL-18.6, amended DL-18.3) and the chip-rendering half of `TabBar`. User chose
+  one strip carrying both segments beside the kept sidebar, over flipping
+  `tabBarPosition` or a file-only strip, and chose to drop the rail's file rows
+  rather than duplicate them. No tab coordination moved (R4 seams untouched).
+- 2026-08-14: `electron:dev:watch` script + `scripts/electron-dev-watch.mjs` — touched
+  `package.json` scripts and `electron/main.ts`'s window-load branch. User chose the
+  renderer-HMR-plus-main-process-watch-rebuild approach over renderer-only; no new
+  dependency added.
+- 2026-08-14: `TabManager.newTab()`/`openQuickAgent` — touched tab materialization
+  (`tab-manager.ts`'s `materialize()` gained a new call site) and `action-registry.ts`'s
+  `new-tab` scope comment. Approved through a full brainstorming + demo-surface cycle in
+  chat first (gallery specimen eye-reviewed before wiring); user chose a lightweight modal
+  reusing the Open board's agent chips over reshaping the Open board itself, and chose to
+  keep its full flow reachable rather than fold it into the quick picker.
+
 ## Verification and commands
 
-| Command                       | Purpose                                                     |
-| ----------------------------- | ----------------------------------------------------------- |
-| `npm run dev`                 | browser-only Vite preview; IPC operations fail soft         |
-| `npm run tauri dev`           | current native desktop app, the one releases build          |
-| `npm run electron:dev`        | the Electron host, built and launched from `dist-electron/` |
-| `npm run electron:build`      | typecheck and bundle the Electron main process              |
-| `npm run electron:smoke`      | headed smoke test; needs a display server and a real PTY    |
-| `npm test`                    | Vitest suite                                                |
-| `npm run build`               | TypeScript + shipping renderer bundle                       |
-| `npm run generate:menu`       | regenerate menu from registry                               |
-| `npm run generate:menu:check` | prove generated menu is current                             |
-| `npm run prototype:gallery`   | visual comparison gallery at `127.0.0.1:5175`               |
-| `npm run build:landing`       | landing production build                                    |
-| `npm run video:render`        | render marketing video from DOM stage                       |
+| Command                       | Purpose                                                                                                                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                 | browser-only Vite preview; IPC operations fail soft                                                                                                                                                     |
+| `npm run tauri dev`           | current native desktop app, the one releases build                                                                                                                                                      |
+| `npm run electron:dev`        | the Electron host, built and launched from `dist-electron/`                                                                                                                                             |
+| `npm run electron:dev:watch`  | same host with hot reload: renderer loads the Vite dev server (real HMR), main process rebuilds and relaunches on save via [`scripts/electron-dev-watch.mjs`](scripts/electron-dev-watch.mjs) `current` |
+| `npm run electron:build`      | typecheck and bundle the Electron main process                                                                                                                                                          |
+| `npm run electron:smoke`      | headed smoke test; needs a display server and a real PTY                                                                                                                                                |
+| `npm test`                    | Vitest suite                                                                                                                                                                                            |
+| `npm run build`               | TypeScript + shipping renderer bundle                                                                                                                                                                   |
+| `npm run generate:menu`       | regenerate menu from registry                                                                                                                                                                           |
+| `npm run generate:menu:check` | prove generated menu is current                                                                                                                                                                         |
+| `npm run prototype:gallery`   | visual comparison gallery at `127.0.0.1:5175`                                                                                                                                                           |
+| `npm run build:landing`       | landing production build                                                                                                                                                                                |
+| `npm run video:render`        | render marketing video from DOM stage                                                                                                                                                                   |
 
 Minimum completion gate: `npm test && npm run build && npm run generate:menu:check`.
 Changes under `electron/` additionally require `npm run electron:build`; changes under
@@ -154,12 +217,13 @@ it runs on rather than implying both.
 
 _(Heading retained for the global living-doc convention.)_
 
-| Claim                                                  | Intent     | Status     | Evidence                                                                                             |
-| ------------------------------------------------------ | ---------- | ---------- | ---------------------------------------------------------------------------------------------------- |
-| Electron can replace Tauri on both supported platforms | `building` | unverified | Gate A lacks Apple identity; Gate C lacks a real Windows run                                         |
-| Deck ships the Electron host                           | `decided`  | backlog    | `electron/` is on `main`, but the tag workflow still builds Tauri and the updater path is unchanged  |
-| Pane detach is complete cross-platform                 | `building` | partial    | Phase A has focused/native macOS evidence; Phase B and Windows pointer capture remain open           |
-| File explorer is available                             | `decided`  | backlog    | Model and host layers merged; the surface was dropped before merge and only `dirtyPaths` is consumed |
-| The browser panel works everywhere Deck does           | `building` | partial    | Electron-only; no Tauri implementation exists                                                        |
+| Claim                                                  | Intent     | Status     | Evidence                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------ | ---------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Electron can replace Tauri on both supported platforms | `building` | unverified | Gate A lacks Apple identity; Gate C lacks a real Windows run                                                                                                                                                                                                                                       |
+| Deck ships the Electron host                           | `decided`  | backlog    | `electron/` is on `main`, but the tag workflow still builds Tauri and the updater path is unchanged                                                                                                                                                                                                |
+| Pane detach is complete cross-platform                 | `building` | partial    | Phase A has focused/native macOS evidence; Phase B and Windows pointer capture remain open                                                                                                                                                                                                         |
+| File explorer is available                             | `decided`  | backlog    | Surface built 2026-08-14 behind a passed Gate M (6/6 packaged), then reshaped the same day — tabs on the stage strip, document on the stage — so that pass no longer covers it. Owner eye review, packaged both-layout pass and native macOS sign-off owed. Electron only, no Tauri implementation |
+| The browser panel works everywhere Deck does           | `building` | partial    | Electron-only; no Tauri implementation exists                                                                                                                                                                                                                                                      |
+| AgentQuickPicker's wired flow is native-verified       | `building` | unverified | Built and wired 2026-08-14; visual design eye-approved via a gallery specimen only — no native `npm run electron:dev` click-through or owner eye review of the wired flow itself yet                                                                                                               |
 
 Updated 2026-08-14.

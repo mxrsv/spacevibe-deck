@@ -56,6 +56,7 @@ function tab(overrides: Partial<TabView> = {}): TabView {
     name: "Tab",
     dotColor: null,
     workspacePath: "/Users/dev/project",
+    agents: [],
     agentBusy: false,
     unread: false,
     ...overrides,

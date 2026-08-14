@@ -50,14 +50,16 @@ import { writeTextFile } from "./fs/write";
 import { createWatchRegistry } from "./fs/watch";
 import { MainDirtyRegistry } from "./dirty-registry";
 import { buildMenu } from "./menu";
-import {
-  MACOS_KEYMAP,
-  type KeyBinding,
-} from "../src/terminal/action-registry";
+import { MACOS_KEYMAP, type KeyBinding } from "../src/terminal/action-registry";
 import { resolveKeymap, validateKeybindings } from "../src/lib/keybindings";
 
 // __dirname is `dist-electron/electron`, so the Vite output is two levels up.
 const RENDERER_DIR = path.join(__dirname, "..", "..", "dist");
+
+// Set by `scripts/electron-dev-watch.mjs`: when present, windows load the
+// Vite dev server instead of the built renderer, so `electron:dev:watch` gets
+// real renderer HMR without a full `npm run build` on every edit.
+const DEV_SERVER_URL = process.env.DECK_DEV_SERVER_URL;
 // `.cjs` — see scripts/build-electron-main.mjs for why the host is CommonJS.
 const PRELOAD = path.join(__dirname, "preload.cjs");
 
@@ -135,11 +137,19 @@ const watchers = createWatchRegistry((label, event) => {
 let vendorCache: string | null = null;
 function reactGrabSource(): string {
   if (vendorCache === null) {
-    const file = path.join(__dirname, "vendor", "react-grab", "index.global.js");
+    const file = path.join(
+      __dirname,
+      "vendor",
+      "react-grab",
+      "index.global.js",
+    );
     try {
       vendorCache = fs.readFileSync(file, "utf8");
     } catch (error) {
-      console.error("Deck: react-grab bundle is missing; Inspect is disabled", error);
+      console.error(
+        "Deck: react-grab bundle is missing; Inspect is disabled",
+        error,
+      );
       vendorCache = "";
     }
   }
@@ -304,6 +314,9 @@ function createWindow(label: string): BrowserWindow {
     void window.loadFile(path.join(GATE_M_RENDERER_DIR, "gate-m.html"), {
       query: { file: process.env.DECK_GATE_M_FILE ?? "" },
     });
+  } else if (DEV_SERVER_URL !== undefined) {
+    void window.loadURL(DEV_SERVER_URL);
+    window.webContents.openDevTools({ mode: "detach" });
   } else {
     void window.loadFile(path.join(RENDERER_DIR, "index.html"));
   }
@@ -328,7 +341,10 @@ async function censusOrDeny(
   try {
     return await ptyInfo(pty.snapshots(paneIds));
   } catch (error) {
-    console.error("Deck: cannot read the process table; refusing to act", error);
+    console.error(
+      "Deck: cannot read the process table; refusing to act",
+      error,
+    );
     return null;
   }
 }
@@ -600,27 +616,24 @@ ipcMain.handle(CHANNELS.windowBootMode, (event) =>
  * crossed the IPC boundary. The contract is frozen in that shape; do not fold
  * these back into an object.
  */
-ipcMain.handle(
-  CHANNELS.openPaneWindow,
-  (_event, payload) => {
-    // Flat arguments, never a wrapper object — the frozen contract. Optional
-    // keys are read off the payload rather than destructured in the signature
-    // so the contract test does not read them as required.
-    const { token, screenX, screenY } = payload as {
-      token: string;
-      screenX?: number;
-      screenY?: number;
-    };
-    const label = registry.allocateLabel();
-    registry.reserveAdoption(label, token);
-    coordinator.reserveDestination(token, label);
-    const window = createWindow(label);
-    if (screenX !== undefined && screenY !== undefined) {
-      window.setPosition(Math.round(screenX), Math.round(screenY));
-    }
-    return label;
-  },
-);
+ipcMain.handle(CHANNELS.openPaneWindow, (_event, payload) => {
+  // Flat arguments, never a wrapper object — the frozen contract. Optional
+  // keys are read off the payload rather than destructured in the signature
+  // so the contract test does not read them as required.
+  const { token, screenX, screenY } = payload as {
+    token: string;
+    screenX?: number;
+    screenY?: number;
+  };
+  const label = registry.allocateLabel();
+  registry.reserveAdoption(label, token);
+  coordinator.reserveDestination(token, label);
+  const window = createWindow(label);
+  if (screenX !== undefined && screenY !== undefined) {
+    window.setPosition(Math.round(screenX), Math.round(screenY));
+  }
+  return label;
+});
 
 // `targetLabel`, not `label`: this is the frozen wire contract (camelCase of
 // Rust's `target_label`) and the renderer already sends it. Caught by
@@ -657,7 +670,10 @@ ipcMain.handle(CHANNELS.endUpdateCheck, () => {
 // These back `src/host/*`. They are not Tauri command names because Tauri had
 // no equivalent — each was a plugin call in the renderer. Naming them here
 // keeps every host call on one wire with one contract.
-const openStores = new Map<string, Awaited<ReturnType<StoreRegistry["open"]>>>();
+const openStores = new Map<
+  string,
+  Awaited<ReturnType<StoreRegistry["open"]>>
+>();
 
 interface DialogPayload {
   readonly message: string;
@@ -700,7 +716,11 @@ function assertStoreFile(file: unknown): string {
 }
 
 ipcMain.handle("store_load", async (_event, payload) => {
-  const { file: rawFile, defaults, autoSave } = payload as {
+  const {
+    file: rawFile,
+    defaults,
+    autoSave,
+  } = payload as {
     file: string;
     defaults?: Record<string, unknown>;
     autoSave?: number;
@@ -742,7 +762,8 @@ ipcMain.handle("store_save", (_event, { file }) =>
 );
 
 ipcMain.handle("dialog_ask", async (event, payload) => {
-  const { message, title, kind, okLabel, cancelLabel } = payload as DialogPayload;
+  const { message, title, kind, okLabel, cancelLabel } =
+    payload as DialogPayload;
   const window = BrowserWindow.fromWebContents(event.sender);
   const result = await dialog.showMessageBox(window!, {
     type: kind ?? "info",
@@ -816,11 +837,15 @@ ipcMain.handle(CHANNELS.browserNavigate, (event, { url }: { url?: string }) => {
   browserPanels.navigate(labelOf(event), target);
   return target;
 });
-ipcMain.handle(CHANNELS.browserBack, (event) => browserPanels.goBack(labelOf(event)));
+ipcMain.handle(CHANNELS.browserBack, (event) =>
+  browserPanels.goBack(labelOf(event)),
+);
 ipcMain.handle(CHANNELS.browserForward, (event) =>
   browserPanels.goForward(labelOf(event)),
 );
-ipcMain.handle(CHANNELS.browserReload, (event) => browserPanels.reload(labelOf(event)));
+ipcMain.handle(CHANNELS.browserReload, (event) =>
+  browserPanels.reload(labelOf(event)),
+);
 ipcMain.handle(
   CHANNELS.browserSetBounds,
   (event, bounds: { x: number; y: number; width: number; height: number }) => {

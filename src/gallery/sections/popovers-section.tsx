@@ -20,9 +20,11 @@ import { SectionHead, Specimen } from "../specimen";
  * half of what DL §13 specifies and a permanently-pinned specimen would show
  * none of them.
  *
- * Worth looking at side by side: `.tab-popover` uses a real 1px border and an
- * 8px-plus radius while `.prompt-popover` uses the inset hairline DL-13.1
- * asks for. They should not disagree.
+ * Side by side is what caught the one thing they used to disagree about:
+ * `.tab-popover` drew a real 1px border where `.prompt-popover` drew the inset
+ * hairline DL-13.1 asks for. Both take the inset since 2026-08-14, and both
+ * take `--radius-surface`, so this pair is now a match check rather than a
+ * finding.
  */
 
 const TARGET: PromptTarget = {

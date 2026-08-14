@@ -25,10 +25,10 @@ import {
   setWorkspaceLogoFromPath,
 } from "../settings/workspace-logo-store";
 import { pickImagePath } from "../settings/logo-store";
-import { reportPersistError, tabPopoverOpen } from "../chrome/events";
+import { reportPersistError } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
-import { WorkspaceLogo } from "./workspace-logo";
-import { titleWithShortcut } from "../lib/shortcut-label";
+import { useTabPopoverSlot } from "./tab-popover-slot";
+import { WorktreeAgentStack } from "./worktree-agent-stack";
 import {
   collapsedRepositories,
   ensureRepositoriesScanned,
@@ -43,9 +43,8 @@ import {
   type WorktreeRow,
 } from "../repositories/repository-model";
 import { open } from "../host/dialog-host";
+import { available as electronHostAvailable } from "../host/worktree-host";
 import type { FileSurfaceController } from "../files/file-surface-controller";
-import { activeWorkspace } from "../files/file-surface-store";
-import { fileTabViews, type TabViewModel } from "../files/file-tab-views";
 
 /**
  * The repository → worktree navigation rail.
@@ -54,10 +53,12 @@ import { fileTabViews, type TabViewModel } from "../files/file-tab-views";
  *
  * It occupies `DesktopChrome`'s existing `sidebarNavigation` slot and keeps
  * `WorkspaceSidebar`'s callback contract exactly — same six props, same
- * meanings. That is deliberate: a rail that also changed what selecting or
- * closing a tab means would be a change to tab coordination (R4), and this is
- * a change to presentation. `WorkspaceSidebar` stays in the tree beside it, so
- * reverting is one line in `app.tsx`.
+ * meanings (including the 2026-08-14 rename of the footer row's callback to
+ * `onOpenWorkspace`, applied to both so the shapes stay identical). That is
+ * deliberate: a rail that also changed what selecting or closing a tab means
+ * would be a change to tab coordination (R4), and this is a change to
+ * presentation. `WorkspaceSidebar` stays in the tree beside it, so reverting
+ * is one line in `app.tsx`.
  *
  * What is NOT here, and why: opening a worktree that has no tab. That
  * materializes a tab from a path the user chose no layout and no agent for,
@@ -70,15 +71,24 @@ import { fileTabViews, type TabViewModel } from "../files/file-tab-views";
 interface RepositoryRailProps {
   onSelectTab(index: number): void;
   onCloseTab(index: number): void;
-  onNewTab(): void;
+  /**
+   * Footer "Open workspace" row: the Open board's full workspace/preset/
+   * agent flow. Distinct from the tab strip's `+` (AgentQuickPicker,
+   * `TabManager.newTab()`) since this row opens a NEW workspace rather than
+   * a fast pick in the active one — same distinction the design that split
+   * them draws.
+   */
+  onOpenWorkspace(): void;
   onRenameTab(index: number, name: string | null): void;
   onSetTabColor(index: number, color: TabDotColor | null): void;
   onFocusAttention?(index: number): void;
+  /** Test/gallery override; production defaults to the Electron host marker. */
+  showAgentPresence?: boolean;
   /**
-   * The same `SurfaceStrip` wired into `TabManager` (Task 5) — read here only
-   * for `fileTabViews`'s projection and the `activate`/`closePath` calls its
-   * own rows need. The rail never learns what a file IS, only what this
-   * projects (spec §2.3's seam, extended to the renderer).
+   * The same `SurfaceStrip` wired into `TabManager` (Task 5), read for one
+   * thing only: whether a file surface holds the stage, which decides whether
+   * a tab row still draws as the active one. The rail lists no file tabs and
+   * opens none — it never learns what a file IS.
    */
   fileController: FileSurfaceController;
 }
@@ -92,15 +102,56 @@ const STATE_LABEL: Record<WorktreeRow["state"], string> = {
   idle: "not open",
 };
 
+interface WorktreeStateDotProps {
+  readonly state: WorktreeRow["state"];
+  readonly label: string;
+  readonly onActivate?: () => void;
+}
+
+/** Hollow status ring; colour carries the visual state, text carries a11y. */
+function WorktreeStateDot({
+  state,
+  label,
+  onActivate,
+}: WorktreeStateDotProps) {
+  const stateLabel = STATE_LABEL[state];
+  if (state === "attention" && onActivate !== undefined) {
+    return (
+      <button
+        type="button"
+        class="wsitem__state"
+        aria-label={`${label}: ${stateLabel}`}
+        title={stateLabel}
+        onClick={(event) => {
+          event.stopPropagation();
+          onActivate();
+        }}
+      />
+    );
+  }
+  return (
+    <span
+      class="wsitem__state"
+      role="status"
+      aria-label={`${label}: ${stateLabel}`}
+      title={stateLabel}
+    />
+  );
+}
+
 export function RepositoryRail(props: RepositoryRailProps) {
   const tabs = tabViews.value;
   const active = activeTabIndex.value;
   const home = statusInfo.value.home;
+  const showAgentPresence = props.showAgentPresence ?? electronHostAvailable;
   // A file surface can hold the stage while `tab.active`/`active` still name
   // whichever terminal tab it sits on top of (selecting a file never touches
   // `TabManager`'s own `active` index) — so a tab row is only the VISIBLE
   // active row when neither is true.
-  const fileTabs = fileTabViews(props.fileController);
+  //
+  // The rail does NOT list file tabs. It answers "which repository and
+  // worktree is this session in"; "which documents are open" is the stage
+  // strip's question, and it is the only place that answers it (2026-08-14).
   const surfaceActive = props.fileController.activeIndex() >= 0;
   const navRef = useRef<HTMLElement>(null);
   const dragOverKey = useSignal<number | null>(null);
@@ -119,22 +170,10 @@ export function RepositoryRail(props: RepositoryRailProps) {
     scans: repositoryScans.value,
     collapsed: collapsedRepositories.value,
   });
-  // `buildRail` derives every row from OPEN TABS (`RailInput.tabs`) — a
-  // workspace with none gets no worktree row at all, group included. That is
-  // exactly the "last surface, not last tab" case (spec §7): the window's
-  // last terminal tab of `activeWorkspace` can close while its file tabs
-  // stay open, and `worktreeRows` below has nothing to attach them to. The
-  // fallback section past `groups.map` below covers it — this flag decides
-  // whether that fallback is needed.
-  const activeWorkspaceHasRow = groups.some((group) =>
-    group.worktrees.some((worktree) => worktree.path === activeWorkspace.value),
-  );
-
-  // The browser panel's native view has to be hidden while anything floats
-  // over the stage, and it cannot see a component-local signal.
-  useSignalEffect(() => {
-    tabPopoverOpen.value = popover.value !== null;
-  });
+  // Claim / stand down / release the one window-wide popover slot. The stage
+  // strip is mounted beside this rail, so "is a popover open" is not a
+  // question either of them can answer alone.
+  useTabPopoverSlot("rail", popover);
 
   const popoverTab =
     popover.value === null
@@ -222,8 +261,15 @@ export function RepositoryRail(props: RepositoryRailProps) {
     popover.value = { key, left: rect.right + 6, top: rect.top, anchorEl };
   }
 
-  // The open-tab-options shortcut doesn't know which navigation surface is
-  // mounted, so it arrives through this shared signal.
+  // The open-tab-options shortcut doesn't know which chrome is mounted, so it
+  // arrives through this shared signal.
+  //
+  // The rail owns it whenever it is mounted, which is exactly sidebar layout.
+  // Since 2026-08-14 the stage's `TabStrip` is mounted alongside — it takes the
+  // chord only in top-tab mode (`ownsTabOptionsChord`), because two listeners
+  // would answer one keystroke with two popovers, and because this row is both
+  // what the user is looking at and the only popover carrying the workspace
+  // logo actions.
   useSignalEffect(() => {
     const key = requestTabOptionsKey.value;
     if (key === null) {
@@ -300,14 +346,11 @@ export function RepositoryRail(props: RepositoryRailProps) {
           openPopover(tab.key, event.currentTarget as HTMLElement);
         }}
       >
-        <WorkspaceLogo
-          workspacePath={tab.workspacePath}
+        <WorktreeStateDot
+          state={worktree.state}
           label={label}
-          pending={tab.agentBusy}
-          unread={tab.unread}
-          attention={tab.attention}
-          onFocusAttention={
-            props.onFocusAttention
+          onActivate={
+            worktree.state === "attention" && props.onFocusAttention
               ? () => props.onFocusAttention!(tab.index)
               : undefined
           }
@@ -323,6 +366,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
               container — without it the leading "~" flips to the end. */}
           <span class="wsitem__path">{`‎${subtitle(worktree)}`}</span>
         </span>
+        {showAgentPresence && <WorktreeAgentStack agents={worktree.agents} />}
         <button
           type="button"
           class="wsitem__close"
@@ -361,7 +405,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
             : "Open this worktree from the Open board."
         }
       >
-        <span class="wsitem__state" aria-hidden="true" />
+        <WorktreeStateDot state={worktree.state} label={worktree.name} />
         <span class="wsitem__text">
           <span class="wsitem__label">
             <span class="wsitem__name">{worktree.name}</span>
@@ -376,70 +420,14 @@ export function RepositoryRail(props: RepositoryRailProps) {
   }
 
   /**
-   * One file tab, nested under its workspace's row (spec §4.2 stated
-   * spatially: the flat strip has no "nesting", so the sidebar variant
-   * anchors the same "after the terminal tabs of the active workspace" rule
-   * to that workspace's row instead). `index` is this tab's position in
-   * `fileTabs` — the strip's file segment — which `activate` addresses.
-   */
-  function fileTabRow(view: TabViewModel, index: number) {
-    return (
-      <div
-        key={`file:${view.path}`}
-        role="tab"
-        aria-selected={view.active}
-        tabIndex={0}
-        class={`wsitem wsitem--file ${view.active ? "is-active" : ""}`}
-        onClick={() => props.fileController.activate(index)}
-      >
-        <span class="wsitem__text">
-          <span
-            class={`wsitem__label ${view.preview ? "wsitem__label--preview" : ""}`}
-          >
-            {view.name}
-          </span>
-        </span>
-        {view.dirty && <span class="wsitem__dot--dirty" aria-hidden="true" />}
-        <button
-          type="button"
-          class="wsitem__close"
-          aria-label={`Close ${view.name}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            const workspacePath = activeWorkspace.value;
-            if (workspacePath !== null) {
-              void props.fileController.closePath(workspacePath, view.path);
-            }
-          }}
-        >
-          <DeckIcon icon={X} size={CHROME_ICON} />
-        </button>
-      </div>
-    );
-  }
-
-  /**
-   * `worktree`'s own rows (tab rows, or one readout row when nothing is
-   * open), followed by the strip's file segment when this is the workspace
-   * `fileTabs` belongs to (spec §4.2). Reused by both the plain and tiered
-   * group branches below so the placement rule can't drift between them.
-   *
-   * Anchored on `worktree.path === activeWorkspace.value`, NOT on any tab's
-   * `active` flag: `activeWorkspace` is the one signal that survives a
-   * workspace's last terminal tab closing (`file-surface-store.ts`'s own doc
-   * comment — the "last surface, not last tab" rule, spec §7), so this is
-   * the only anchor that still has a row to attach to in that case (the
-   * `worktree.tabs.length === 0` readout branch).
+   * `worktree`'s own rows: one per open tab, or a single readout row when
+   * nothing is open. Reused by both the plain and tiered group branches below
+   * so the placement rule can't drift between them.
    */
   function worktreeRows(worktree: WorktreeRow, tiered: boolean) {
-    const rows =
-      worktree.tabs.length === 0
-        ? [readoutRow(worktree, tiered)]
-        : worktree.tabs.map((tab) => tabRow(worktree, tab, tiered));
-    if (worktree.path === "" || worktree.path !== activeWorkspace.value) {
-      return rows;
-    }
-    return [...rows, ...fileTabs.map((view, index) => fileTabRow(view, index))];
+    return worktree.tabs.length === 0
+      ? [readoutRow(worktree, tiered)]
+      : worktree.tabs.map((tab) => tabRow(worktree, tab, tiered));
   }
 
   return (
@@ -491,21 +479,12 @@ export function RepositoryRail(props: RepositoryRailProps) {
             </section>
           ),
         )}
-        {/* "Last surface, not last tab" fallback (spec §7) — the active
-            workspace's file tabs have no worktree row to nest under (see
-            `activeWorkspaceHasRow`'s comment above), so they get their own
-            unadorned group rather than vanishing from the rail entirely. */}
-        {fileTabs.length > 0 && !activeWorkspaceHasRow && (
-          <div class="repogroup repogroup--plain">
-            {fileTabs.map((view, index) => fileTabRow(view, index))}
-          </div>
-        )}
         <button
           type="button"
           class="wsbar__add"
-          title={titleWithShortcut("New tab", "new-tab")}
-          aria-label="New tab"
-          onClick={props.onNewTab}
+          title="Open a workspace, worktree, or layout preset"
+          aria-label="Open workspace"
+          onClick={props.onOpenWorkspace}
         >
           <span class="wsbar__add-glyph">
             <DeckIcon icon={Plus} size={CHROME_ICON} />

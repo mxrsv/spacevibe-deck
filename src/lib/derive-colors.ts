@@ -9,6 +9,8 @@
 
 export interface ChromeColors {
   readonly tone: string;
+  readonly sidebarBg: string;
+  readonly sidebarSeam: string;
   readonly chrome1: string;
   readonly chrome2: string;
   readonly tabActiveBg: string;
@@ -133,6 +135,15 @@ function alpha(hex: string, a: number): string {
 export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   const dark = luminance(bg) < DARK_LUMINANCE_THRESHOLD;
   const tone = dark ? "#ffffff" : "#000000";
+  // The stage keeps the terminal theme's background while both side columns
+  // recede onto one darker surface. Dark themes need a larger step because
+  // they have less luminance headroom; light themes only need a quiet tint.
+  // Pure (or near) black cannot darken after 8-bit rounding, so fall back to a
+  // small tone mix to preserve the invariant that the surfaces always differ.
+  const recessedSidebar = mixHex(bg, "#000000", dark ? 0.24 : 0.05);
+  const sidebarBg =
+    recessedSidebar === bg ? mixHex(bg, tone, 0.05) : recessedSidebar;
+  const sidebarSeam = mixHex(sidebarBg, bg, 0.5);
   // 0.05/0.09, up from 0.04/0.07: the structure now comes from the step
   // between surfaces rather than from the line between them, so the step has
   // to be the thing you can see.
@@ -150,7 +161,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   // `tabActiveBg`, both lighter than `chrome1` — measuring the floors on
   // `chrome1` alone left the two surfaces users read most sitting below the
   // ratio the floor promised (2.1:1 for `textFaint` on `tabActiveBg`).
-  const surfaces = [chrome1, chrome2, tabActiveBg];
+  const surfaces = [sidebarBg, chrome1, chrome2, tabActiveBg];
   // The three text tones are one ladder, built DOWNWARD from `textPrimary` by
   // mixing back toward the background. Deriving each independently from `bg`
   // and raising it to its own floor can inverse the ladder: on a theme whose
@@ -162,6 +173,8 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   const textPrimary = ensureContrast(fg, [inputBg, ...surfaces], 7, tone);
   return {
     tone,
+    sidebarBg,
+    sidebarSeam,
     chrome1,
     chrome2,
     tabActiveBg,

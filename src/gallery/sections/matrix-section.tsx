@@ -119,15 +119,14 @@ const STATE_ROWS: readonly StateRow[] = [
 /**
  * Said on the `disabled` row because the row cannot say it by rendering.
  *
- * `ToggleRow` puts `cfg-btn--disabled` on the element and `styles.css`
- * declares no rule for it, nor for `.cfg-btn:disabled`. Measured rather than
- * read: the pill's colour, background, border and opacity are identical in
- * the disabled row and the selected row. DL-5.2 says a disabled pill is
- * `--text-faint`, so this is a gap in the app that the matrix surfaced — and
- * DL §10 says it gets fixed when the config row is reworked, not here.
+ * This row used to report a gap: the pill was pixel-identical to an enabled
+ * one, because `styles.css` declared nothing for `:disabled` or
+ * `.cfg-btn--disabled`. The rule landed on 2026-08-14 (DL §10's closed list),
+ * so the caption now names the treatment the row is showing rather than the
+ * absence it used to show.
  */
 const DISABLED_FINDING =
-  "identical to selected: no .cfg-btn:disabled or .cfg-btn--disabled rule exists, against DL-5.2";
+  "--text-faint, hover border and hint accent both off (DL-5.2, DL-21.4)";
 
 /**
  * A theme scope. `applyThemeVars` takes a `CSSStyleDeclaration`, so pointing it

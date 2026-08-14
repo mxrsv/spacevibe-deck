@@ -18,6 +18,7 @@ import { defaultTransferClient, type TransferClient } from "./transfer-client";
 import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
 import { sendAgentNotification } from "../lib/native-notification";
 import { getDesktopEnvironment } from "../lib/platform";
+import { BUILT_IN_PRESET } from "../lib/preset-schema";
 import type { AgentChoice } from "../lib/workspace-recents";
 import {
   agentProcessMatchers,
@@ -86,6 +87,7 @@ import {
 } from "./tabs-store";
 import type { TabDotColor } from "../lib/tab-colors";
 import {
+  agentQuickPickerOpen,
   boardOpen,
   editorRequest,
   promptsOpen,
@@ -374,6 +376,11 @@ export interface TabManager {
     cwds: readonly (string | null)[],
     options?: OpenFromPresetOptions,
   ): Promise<boolean>;
+  /**
+   * AgentQuickPicker confirm: single pane, active tab's workspace, no
+   * workspace/preset step — the `+` button's fast path (`newTab()`).
+   */
+  openQuickAgent(agentId: AgentChoice): Promise<boolean>;
   /** Workspace of the active tab; null when it has none (or no tab). */
   activeWorkspacePath(): string | null;
   /** Live layout + fresh per-pane CWDs for save-as-preset; null when no tab. */
@@ -551,6 +558,13 @@ export function createTabManager(
     return active >= 0 && active < tabs.length ? tabs[active].manager : null;
   }
 
+  /** Workspace of the active tab; null when it has none (or no tab). */
+  function activeWorkspacePath(): string | null {
+    return active >= 0 && active < tabs.length
+      ? tabs[active].workspacePath
+      : null;
+  }
+
   function syncViews(): void {
     tabViews.value = tabs.map((tab) => {
       const paneId = tab.manager.activePaneId();
@@ -566,6 +580,18 @@ export function createTabManager(
         // invalidates whatever the old program reported.
         activity.noteProcess(id, processLabel(poller.infoFor(id)));
       }
+      // Identity is separate from activity: an agent sitting at its prompt
+      // still belongs in the worktree presence stack. Stable pane order plus
+      // Set insertion order makes this deterministic and removes duplicates
+      // when several panes run the same CLI.
+      const agents = [
+        ...new Set(
+          paneIds.flatMap((id) => {
+            const agent = explicitAgent(poller.infoFor(id));
+            return agent === null ? [] : [agent];
+          }),
+        ),
+      ];
       const agentBusy = paneIds.some(
         (id) =>
           explicitAgent(poller.infoFor(id)) !== null && activity.working(id),
@@ -577,6 +603,7 @@ export function createTabManager(
           name: null,
           dotColor: null,
           workspacePath: tab.workspacePath,
+          agents,
           agentBusy,
           unread: unread.has(tab.key),
           // Additive Attention Rail summary; `agentBusy`/`unread` above keep
@@ -1045,8 +1072,12 @@ export function createTabManager(
   }
 
   async function newTab(): Promise<void> {
-    // New tab goes through the Open board (workspace ∥ preset ∥ agent).
-    boardOpen.value = true;
+    // The + button's fast path: AgentQuickPicker (app.tsx), not the Open
+    // board — pick an agent, land in the active tab's workspace, no
+    // workspace/preset step. `openQuickAgent` below does the materialize
+    // once a chip is picked. The Open board's full flow (new workspace,
+    // worktree, layout preset) stays reachable from its own sidebar entry.
+    agentQuickPickerOpen.value = true;
   }
 
   /**
@@ -1106,6 +1137,26 @@ export function createTabManager(
         ? { workspacePath: options.workspacePath }
         : {}),
       ...(options.agent !== undefined ? { agent: options.agent } : {}),
+    });
+  }
+
+  /**
+   * AgentQuickPicker confirm: a single pane in the active tab's workspace,
+   * running `agentId` (`null` = Shell only). The active pane's live CWD
+   * (not the workspace root) is what the new pane inherits, same as the
+   * Layout preset editor's "↑ inherit" — a picker opened from a pane the
+   * user has already `cd`'d into should land there, not jump back to the
+   * repo root. No tab at all resolves both to `null`, which `materialize`
+   * falls back to `$HOME` for, matching a bare `newTab()` pre-cutover.
+   */
+  async function openQuickAgent(agentId: AgentChoice): Promise<boolean> {
+    const cwd = await activePaneCwd();
+    const workspacePath = activeWorkspacePath();
+    return materialize({
+      layout: BUILT_IN_PRESET.layout,
+      cwds: [cwd],
+      agent: agentId,
+      ...(workspacePath !== null ? { workspacePath } : {}),
     });
   }
 
@@ -1577,9 +1628,9 @@ export function createTabManager(
 
   /**
    * Ranks of every overlay that is currently open (Open board, Settings, the
-   * token usage screen, PresetEditor/SavePresetDialog share the "modal" rank
-   * — see `TIER_RANK`'s doc comment in action-registry.ts for why). Empty
-   * when nothing covers the terminal grid.
+   * token usage screen, PresetEditor/SavePresetDialog/AgentQuickPicker share
+   * the "modal" rank — see `TIER_RANK`'s doc comment in action-registry.ts
+   * for why). Empty when nothing covers the terminal grid.
    *
    * Usage reuses `TIER_RANK.settings` rather than getting a member of its own
    * in the `OverlayTier` union. The rank is what an action is compared
@@ -1598,7 +1649,11 @@ export function createTabManager(
     if (boardOpen.value) {
       ranks.push(TIER_RANK.board);
     }
-    if (editorRequest.value !== null || saveDialogOpen.value) {
+    if (
+      editorRequest.value !== null ||
+      saveDialogOpen.value ||
+      agentQuickPickerOpen.value
+    ) {
       ranks.push(TIER_RANK.modal);
     }
     return ranks;
@@ -2021,11 +2076,8 @@ export function createTabManager(
     init,
     materialize,
     openFromPreset,
-    activeWorkspacePath() {
-      return active >= 0 && active < tabs.length
-        ? tabs[active].workspacePath
-        : null;
-    },
+    openQuickAgent,
+    activeWorkspacePath,
     captureActiveLayout,
     activePaneCwd,
     activePaneId() {

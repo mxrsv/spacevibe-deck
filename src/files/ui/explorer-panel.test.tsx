@@ -93,10 +93,10 @@ describe("ExplorerPanel", () => {
     // (spec §4.1) — the read itself resolves to "refused" here on purpose.
     expect(activeFileTab.value).toBe(FILE);
     expect(documentFor(FILE)).toBeDefined();
-    // FileEditor mounted and was handed that document.
-    expect(
-      host.querySelector(".explorer-panel__preview .fileview"),
-    ).not.toBeNull();
+    // …and the panel renders NO editor. The document goes to the stage
+    // (`.stage__surface`, mounted by `App`) since 2026-08-14; a click here
+    // opens the tab and stops there.
+    expect(host.querySelector(".fileview")).toBeNull();
   });
 
   it("shows an empty state instead of a tree when the tab has no workspace", () => {

@@ -4,17 +4,11 @@ import { folderName, formatRelativeTime } from "../lib/workspace-recents";
 import type { RecentWorkspace } from "../lib/workspace-recents";
 import { tildify } from "../lib/process-info";
 import { logoDataUrl } from "../settings/logo-store";
+import defaultLogoUrl from "../../.github/assets/icon.svg";
 
-/** The default Deck mark, shown until the user sets a logo in Settings. */
+/** The SpaceVibe Deck logo, shown until the user sets a logo in Settings. */
 function DefaultMark() {
-  return (
-    <svg viewBox="0 0 48 48" role="img" aria-label="Deck">
-      <rect x="6" y="6" width="16" height="16" rx="2" />
-      <rect x="26" y="6" width="16" height="16" rx="2" />
-      <rect x="6" y="26" width="16" height="16" rx="2" />
-      <rect x="26" y="26" width="16" height="16" rx="2" />
-    </svg>
-  );
+  return <img src={defaultLogoUrl} alt="SpaceVibe Deck" />;
 }
 
 export interface OpenBoardHomeProps {

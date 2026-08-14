@@ -15,7 +15,7 @@ import type { UpdatePhase } from "../../updater/update-controller";
 import {
   chatGptToolbarSpecimen,
   NOOP,
-  repositorySidebarSpecimen,
+  worktreeAgentPresenceSpecimen,
 } from "../chrome-fixtures";
 import { SEED_ATTENTION, SEED_LAYOUT } from "../seed-data";
 import { SectionHead, Specimen, StateLabel } from "../specimen";
@@ -207,7 +207,7 @@ export function ChromeSection() {
           <DesktopChrome
             sidebar
             toolbar={chatGptToolbarSpecimen()}
-            sidebarNavigation={repositorySidebarSpecimen()}
+            sidebarNavigation={worktreeAgentPresenceSpecimen()}
             topTabs={null}
             stage={<ChatGptTerminalStage />}
             status={null}

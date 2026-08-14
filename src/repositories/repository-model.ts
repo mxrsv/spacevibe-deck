@@ -8,6 +8,7 @@
  * renders what this returns.
  */
 import { workspaceLabel } from "../lib/workspace-label";
+import type { PaneAgent } from "../lib/process-info";
 import type { AgentAttentionSummary, TabView } from "../terminal/tabs-store";
 import { IDLE_ATTENTION_SUMMARY } from "../terminal/tabs-store";
 import type { RepositoryScan } from "./repository-client";
@@ -29,6 +30,7 @@ export interface RailTab {
   readonly customName: string | null;
   readonly workspacePath: string | null;
   readonly active: boolean;
+  readonly agents: readonly PaneAgent[];
   readonly attention: AgentAttentionSummary;
   readonly agentBusy: boolean;
   readonly unread: boolean;
@@ -55,6 +57,8 @@ export interface WorktreeRow {
   readonly locked: string | null;
   /** Open tabs on this worktree, in tab order. Empty means not open. */
   readonly tabs: readonly RailTab[];
+  /** Agents present anywhere in the worktree, deduplicated in tab/pane order. */
+  readonly agents: readonly PaneAgent[];
 }
 
 export interface RepositoryGroup {
@@ -85,10 +89,15 @@ function tabOf(tab: TabView, index: number, activeIndex: number): RailTab {
     customName: tab.name,
     workspacePath: tab.workspacePath,
     active: index === activeIndex,
+    agents: tab.agents,
     attention: tab.attention ?? IDLE_ATTENTION_SUMMARY,
     agentBusy: tab.agentBusy,
     unread: tab.unread,
   };
+}
+
+function agentsForTabs(tabs: readonly RailTab[]): readonly PaneAgent[] {
+  return [...new Set(tabs.flatMap((tab) => tab.agents))];
 }
 
 /**
@@ -199,6 +208,7 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
             state: worktreeState(null, groupTabs),
             locked: null,
             tabs: groupTabs,
+            agents: agentsForTabs(groupTabs),
           },
         ],
       };
@@ -230,6 +240,7 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
           state: worktreeState(entry.prunable, tabs),
           locked: entry.locked,
           tabs,
+          agents: agentsForTabs(tabs),
         };
       }),
     };

@@ -74,6 +74,12 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 ## Standing architecture decisions
 
 - English only across strings/comments/docs — [AGENTS.md](../AGENTS.md) `current`.
+- The active theme's background belongs to the center stage; both side columns
+  share a separately derived recessed surface so changing themes cannot flatten
+  the three-column hierarchy. The derivation, publication, and governing visual
+  rule live in [derive-colors.ts](../src/lib/derive-colors.ts) `current`,
+  [theme-vars.ts](../src/lib/theme-vars.ts) `current`, and
+  [DESIGN-LANGUAGE.md §18](DESIGN-LANGUAGE.md#18-application-frame) `current`.
 - Functional icons come from `lucide-preact` through a single `DeckIcon`
   primitive, and nothing else authors an `<svg>` or presses a glyph character
   into an action's place. This is chrome's one approved runtime dependency
@@ -181,6 +187,32 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   `--state-hover-bg`, following `seamDivider`'s pattern, with the ramp and
   contrast floors unchanged; and both hosts' pre-render window grounds follow
   `--bg`'s default.
+- The straight-through completion run (2026-08-14) closed the forks it opened,
+  recorded in
+  [the plan](plans/2026-08-14-straight-through-completion.md) `current` and
+  [the evidence record](review/2026-08-14-straight-through-evidence.md)
+  `current`: the file explorer surface is built now that Gate M has passed
+  packaged on real hardware, and file-tab chips render in both toolbar layouts
+  rather than only one, because the spec's strip-ordering intent and the
+  task's own "file tabs join the strip" wording bind over an incomplete task
+  file list ([`SurfaceStrip`](../src/terminal/tab-manager.ts#L278-L322)
+  `current` is live, not the inert stub); tab-level close guards deliberately
+  never aggregate busy + dirty into one dialog — only window-close and
+  app-quit do, so a file tab's prompt never accuses an unrelated terminal tab
+  of being busy
+  ([`close-guard.ts`](../src/terminal/close-guard.ts) `current`); `listDir`
+  bounds its per-symlink resolution to a 32-worker async pool rather than
+  resolving serially or unboundedly
+  ([`electron/fs/read.ts`](../electron/fs/read.ts) `current`); the open board
+  is one center surface with three views (home/config/worktree) and the
+  board's own second sidebar is retired in favor of the app's own
+  `WorkspaceSidebar` as the one sidebar
+  ([`open-board.tsx`](../src/open-board/open-board.tsx) `current`); and
+  create-worktree is an Electron-only flow gated on `worktree-host`'s
+  presence check, running `git worktree add` via `execFile` argv (never a
+  shell string) behind the new flat `worktree_add` IPC channel
+  ([`electron/git/worktree.ts`](../electron/git/worktree.ts) `current`,
+  [`worktree-host.ts`](../src/host/worktree-host.ts) `current`).
 
 ## Chưa khớp thực tế
 

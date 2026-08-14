@@ -28,6 +28,7 @@
     "electron:package:gate-m": "npm run build && npm run build:gate-m-renderer && npm run electron:build && electron-builder --config electron-builder.gate-m.yml --mac --universal --dir --publish never",
     "electron:verify:gate-m": "node scripts/verify-electron-gate-m-package.mjs",
     "electron:dev": "npm run build && npm run electron:build && electron dist-electron/electron/main.cjs",
+    "electron:dev:watch": "node scripts/electron-dev-watch.mjs",
     "electron:smoke": "npm run build && npm run electron:build && electron dist-electron/electron/smoke.cjs",
     "shoot": "npm run build && npm run electron:build && electron dist-electron/electron/shoot.cjs"
   },

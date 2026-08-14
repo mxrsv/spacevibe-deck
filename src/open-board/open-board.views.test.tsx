@@ -119,7 +119,7 @@ describe("OpenBoard home/config views", () => {
 
     expect(host.querySelector(".board-home")).not.toBeNull();
     expect(
-      host.querySelector(".board-home svg[aria-label='Deck']"),
+      host.querySelector(".board-home img[alt='SpaceVibe Deck']"),
     ).not.toBeNull();
     expect(host.querySelector(".home-action")?.textContent).toContain(
       "Open project",
