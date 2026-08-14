@@ -4,7 +4,14 @@ import os from "node:os";
 import path from "node:path";
 import { MAX_EDITABLE_BYTES } from "../../src/files/file-content";
 import { PathOutsideWorkspaceError } from "./path-guard";
-import { listDir, readFile, statFiles } from "./read";
+import {
+  listDir,
+  MalformedStatRequestError,
+  MAX_STAT_PATHS,
+  readFile,
+  statFiles,
+  TooManyStatPathsError,
+} from "./read";
 
 let base: string;
 let root: string;
@@ -105,6 +112,50 @@ describe("statFiles", () => {
       mtimeMs: null,
       size: null,
     });
+  });
+
+  it("reports a symlink escaping the root as absent rather than throwing", async () => {
+    const [result] = await statFiles(root, [
+      path.join(root, "away", "secret.txt"),
+    ]);
+    expect(result.exists).toBe(false);
+  });
+
+  it("rejects a malformed payload that is not an array", async () => {
+    await expect(statFiles(root, null as unknown as string[])).rejects.toThrow(
+      MalformedStatRequestError,
+    );
+    await expect(
+      statFiles(root, "index.ts" as unknown as string[]),
+    ).rejects.toThrow(MalformedStatRequestError);
+  });
+
+  it("rejects a payload whose entries are not strings", async () => {
+    await expect(statFiles(root, [123 as unknown as string])).rejects.toThrow(
+      MalformedStatRequestError,
+    );
+  });
+
+  it("rejects a batch one over MAX_STAT_PATHS", async () => {
+    const paths = Array.from({ length: MAX_STAT_PATHS + 1 }, (_, index) =>
+      path.join(root, `file-${index}.ts`),
+    );
+    await expect(statFiles(root, paths)).rejects.toThrow(TooManyStatPathsError);
+  });
+
+  it("accepts a batch exactly at MAX_STAT_PATHS", async () => {
+    const paths = Array.from({ length: MAX_STAT_PATHS }, (_, index) =>
+      path.join(root, `file-${index}.ts`),
+    );
+    await expect(statFiles(root, paths)).resolves.toHaveLength(MAX_STAT_PATHS);
+  });
+
+  it("keeps duplicate paths index-aligned rather than deduping them", async () => {
+    const target = path.join(root, "src", "index.ts");
+    const results = await statFiles(root, [target, target]);
+    expect(results).toHaveLength(2);
+    expect(results[0]).toEqual(results[1]);
+    expect(results[0].exists).toBe(true);
   });
 });
 

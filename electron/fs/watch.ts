@@ -22,7 +22,45 @@
  */
 import nodeFs from "node:fs";
 import path from "node:path";
-import { resolveInsideRoot } from "./path-guard";
+import {
+  PathOutsideWorkspaceError,
+  resolveInsideRoot,
+  resolveRoot,
+} from "./path-guard";
+
+/**
+ * Upper bounds on one window's declared `watch_paths` scope (plan T9).
+ *
+ * These bound the two INPUT lists independently, not the derived watcher
+ * count `replace` actually opens — the renderer's declared "directories
+ * expanded" and "files open" counts are what a runaway tree/tab state would
+ * inflate, and that is the resource this guards against.
+ */
+export const MAX_WATCH_DIRECTORIES = 256;
+export const MAX_WATCH_FILES = 2048;
+
+export class MalformedWatchScopeError extends Error {
+  constructor(message: string) {
+    super(`watch_paths: ${message}`);
+    this.name = "MalformedWatchScopeError";
+  }
+}
+
+export class TooManyWatchDirectoriesError extends Error {
+  constructor(count: number) {
+    super(
+      `watch_paths: ${count} directories exceeds the ${MAX_WATCH_DIRECTORIES} limit.`,
+    );
+    this.name = "TooManyWatchDirectoriesError";
+  }
+}
+
+export class TooManyWatchFilesError extends Error {
+  constructor(count: number) {
+    super(`watch_paths: ${count} files exceeds the ${MAX_WATCH_FILES} limit.`);
+    this.name = "TooManyWatchFilesError";
+  }
+}
 
 export interface FileChangeEvent {
   readonly path: string;
@@ -37,7 +75,11 @@ export interface WatchFs {
     directory: string,
     listener: (event: string, filename: string | null) => void,
   ): { close(): void };
-  statSync(target: string): { mtimeMs: number; size: number; isFile(): boolean };
+  statSync(target: string): {
+    mtimeMs: number;
+    size: number;
+    isFile(): boolean;
+  };
 }
 
 const nodeWatchFs: WatchFs = {
@@ -78,6 +120,35 @@ interface WindowWatch {
   directories: Set<string>;
   root: string;
   readonly pending: Map<string, ReturnType<typeof setTimeout>>;
+}
+
+/**
+ * Structural validation ONLY — shape and the two raw-count caps. Whether an
+ * entry actually lives inside the workspace is a separate, later question
+ * (`replace`'s authorization filter), because that check needs the
+ * filesystem and a bad shape should reject before touching it.
+ */
+function assertWellFormedScope(scope: WatchScope): void {
+  if (
+    typeof scope.root !== "string" ||
+    scope.root.length === 0 ||
+    !Array.isArray(scope.directories) ||
+    !Array.isArray(scope.files) ||
+    scope.directories.some((entry) => typeof entry !== "string") ||
+    scope.files.some((entry) => typeof entry !== "string")
+  ) {
+    throw new MalformedWatchScopeError(
+      "root must be a non-empty string, and directories/files must be arrays of strings.",
+    );
+  }
+  // Raw count, duplicates included — see `read.ts`'s `MAX_STAT_PATHS` check
+  // for why deduping before the cap would be the wrong bound to enforce.
+  if (scope.directories.length > MAX_WATCH_DIRECTORIES) {
+    throw new TooManyWatchDirectoriesError(scope.directories.length);
+  }
+  if (scope.files.length > MAX_WATCH_FILES) {
+    throw new TooManyWatchFilesError(scope.files.length);
+  }
 }
 
 export function createWatchRegistry(
@@ -160,14 +231,32 @@ export function createWatchRegistry(
 
   return {
     replace(label, scope) {
-      const state = stateFor(label, scope.root);
-      state.files = new Set(scope.files);
-      state.directories = new Set(scope.directories);
+      assertWellFormedScope(scope);
+      const canonicalRoot = resolveRoot(scope.root);
+      if (canonicalRoot === null) {
+        throw new PathOutsideWorkspaceError(scope.root);
+      }
+      // Authorization, same rule as every other fs channel: the renderer is
+      // not the trust boundary, so a directory/file that does not resolve
+      // inside the root is dropped here — BEFORE it ever reaches `io.watch`
+      // — rather than trusted because it came back out at event time via
+      // `flush`'s own guard. A directory must exist to be watched at all, so
+      // it is checked directly; a FILE is checked through its PARENT so a
+      // deleted-but-still-open tab (the "Save again" case) keeps its watcher.
+      const authorizedDirectories = scope.directories.filter(
+        (directory) => resolveInsideRoot(canonicalRoot, directory) !== null,
+      );
+      const authorizedFiles = scope.files.filter(
+        (file) => resolveInsideRoot(canonicalRoot, path.dirname(file)) !== null,
+      );
+      const state = stateFor(label, canonicalRoot);
+      state.files = new Set(authorizedFiles);
+      state.directories = new Set(authorizedDirectories);
       // A file is watched through its parent: an atomic save renames over the
       // target, which a per-file watcher would lose track of entirely.
       const wanted = new Set<string>([
-        ...scope.directories,
-        ...scope.files.map((file) => path.dirname(file)),
+        ...authorizedDirectories,
+        ...authorizedFiles.map((file) => path.dirname(file)),
       ]);
       for (const [directory, watcher] of state.watchers) {
         if (!wanted.has(directory)) {

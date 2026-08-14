@@ -18,6 +18,29 @@ import {
 } from "../../src/files/file-content";
 import { assertInsideRoot, resolveInsideRoot } from "./path-guard";
 
+/**
+ * Upper bound on one `stat_files` batch (plan T9).
+ *
+ * `statFiles` is the focus/activation reconcile (spec §5): without a cap, a
+ * renderer bug asking to reconcile an unbounded list would put an unbounded
+ * amount of `fs.stat` work on the main process from a single IPC call.
+ */
+export const MAX_STAT_PATHS = 512;
+
+export class MalformedStatRequestError extends Error {
+  constructor(message: string) {
+    super(`stat_files: ${message}`);
+    this.name = "MalformedStatRequestError";
+  }
+}
+
+export class TooManyStatPathsError extends Error {
+  constructor(count: number) {
+    super(`stat_files: ${count} paths exceeds the ${MAX_STAT_PATHS} limit.`);
+    this.name = "TooManyStatPathsError";
+  }
+}
+
 /** One row of a directory listing, as the renderer's tree model wants it. */
 export interface DirEntryPayload {
   readonly name: string;
@@ -58,7 +81,12 @@ export async function listDir(
     if (resolved === null) {
       // Out of the root, or dangling. Either way it renders as a leaf and does
       // not open (spec §3.1) — and its type is not worth another stat.
-      rows.push({ name: entry.name, path: full, directory: false, outOfRoot: true });
+      rows.push({
+        name: entry.name,
+        path: full,
+        directory: false,
+        outOfRoot: true,
+      });
       continue;
     }
     let directoryTarget = false;
@@ -96,6 +124,18 @@ export async function statFiles(
   root: string,
   paths: readonly string[],
 ): Promise<FileStatPayload[]> {
+  if (
+    !Array.isArray(paths) ||
+    paths.some((entry) => typeof entry !== "string")
+  ) {
+    throw new MalformedStatRequestError("paths must be an array of strings.");
+  }
+  // The cap is on the RAW count, duplicates included: deduping first would
+  // let a caller pad past the limit with one path repeated, and it would
+  // break the batch's index-alignment contract for anyone who did.
+  if (paths.length > MAX_STAT_PATHS) {
+    throw new TooManyStatPathsError(paths.length);
+  }
   return Promise.all(
     paths.map(async (target): Promise<FileStatPayload> => {
       const resolved = resolveInsideRoot(root, target);

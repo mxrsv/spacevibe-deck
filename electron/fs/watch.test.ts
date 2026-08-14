@@ -1,8 +1,24 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createWatchRegistry, type WatchFs } from "./watch";
+import {
+  createWatchRegistry,
+  MalformedWatchScopeError,
+  MAX_WATCH_DIRECTORIES,
+  MAX_WATCH_FILES,
+  TooManyWatchDirectoriesError,
+  TooManyWatchFilesError,
+  type WatchFs,
+} from "./watch";
 
 /**
  * The scope-set arithmetic and teardown, over a FAKE watcher.
@@ -13,12 +29,20 @@ import { createWatchRegistry, type WatchFs } from "./watch";
  */
 let base: string;
 let root: string;
+let root2: string;
+let outside: string;
 
 beforeAll(() => {
   base = fs.mkdtempSync(path.join(os.tmpdir(), "deck-fs-watch-"));
   root = path.join(base, "workspace");
+  root2 = path.join(base, "workspace-2");
+  outside = path.join(base, "outside");
   fs.mkdirSync(path.join(root, "src"), { recursive: true });
+  fs.mkdirSync(path.join(root2, "src"), { recursive: true });
+  fs.mkdirSync(outside, { recursive: true });
   fs.writeFileSync(path.join(root, "src", "index.ts"), "a\n");
+  fs.writeFileSync(path.join(root2, "src", "index.ts"), "a\n");
+  fs.symlinkSync(outside, path.join(root, "away"));
 });
 
 afterAll(() => {
@@ -93,7 +117,9 @@ describe("scope", () => {
     });
     registry.replace("main", { root, directories: [root], files: [] });
     expect(registry.watchedDirectories("main")).toEqual([root]);
-    expect(watchers.find((w) => w.directory.endsWith("src"))?.closed).toBe(true);
+    expect(watchers.find((w) => w.directory.endsWith("src"))?.closed).toBe(
+      true,
+    );
   });
 
   it("keeps an unchanged directory's watcher across a replace", () => {
@@ -134,6 +160,143 @@ describe("scope", () => {
     expect(registry.watchedDirectories("deck-2")).toEqual([
       path.join(root, "src"),
     ]);
+  });
+});
+
+describe("authorization", () => {
+  it("does not watch a directory outside the root", () => {
+    const { io, watchers } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    registry.replace("main", { root, directories: [outside], files: [] });
+    expect(registry.watchedDirectories("main")).toEqual([]);
+    expect(watchers).toHaveLength(0);
+  });
+
+  it("does not watch through a symlinked directory that escapes the root", () => {
+    const { io, watchers } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    registry.replace("main", {
+      root,
+      directories: [path.join(root, "away")],
+      files: [],
+    });
+    expect(registry.watchedDirectories("main")).toEqual([]);
+    expect(watchers).toHaveLength(0);
+  });
+
+  it("does not watch a file's parent when the parent is outside the root", () => {
+    const { io, watchers } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    registry.replace("main", {
+      root,
+      directories: [],
+      files: [path.join(outside, "secret.txt")],
+    });
+    expect(registry.watchedDirectories("main")).toEqual([]);
+    expect(watchers).toHaveLength(0);
+  });
+
+  it("still watches a deleted-but-open file's parent", () => {
+    // The parent exists inside the root even though the leaf does not — the
+    // same "Save again" case `assertWritableInsideRoot` exists for.
+    const { io } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    registry.replace("main", {
+      root,
+      directories: [],
+      files: [path.join(root, "src", "ghost.ts")],
+    });
+    expect(registry.watchedDirectories("main")).toEqual([
+      path.join(root, "src"),
+    ]);
+  });
+});
+
+describe("malformed payloads", () => {
+  it("rejects a non-array directories list", () => {
+    const { io } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    expect(() =>
+      registry.replace("main", {
+        root,
+        directories: "nope" as unknown as string[],
+        files: [],
+      }),
+    ).toThrow(MalformedWatchScopeError);
+  });
+
+  it("rejects a non-array files list", () => {
+    const { io } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    expect(() =>
+      registry.replace("main", {
+        root,
+        directories: [],
+        files: "nope" as unknown as string[],
+      }),
+    ).toThrow(MalformedWatchScopeError);
+  });
+
+  it("rejects entries that are not strings", () => {
+    const { io } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    expect(() =>
+      registry.replace("main", {
+        root,
+        directories: [123 as unknown as string],
+        files: [],
+      }),
+    ).toThrow(MalformedWatchScopeError);
+  });
+
+  it("rejects an empty or non-string root", () => {
+    const { io } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    expect(() =>
+      registry.replace("main", {
+        root: "" as unknown as string,
+        directories: [],
+        files: [],
+      }),
+    ).toThrow(MalformedWatchScopeError);
+  });
+});
+
+describe("bounds", () => {
+  it("rejects one directory over MAX_WATCH_DIRECTORIES", () => {
+    const { io } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    const directories = Array.from(
+      { length: MAX_WATCH_DIRECTORIES + 1 },
+      (_, index) => `/nonexistent-${index}`,
+    );
+    expect(() =>
+      registry.replace("main", { root, directories, files: [] }),
+    ).toThrow(TooManyWatchDirectoriesError);
+  });
+
+  it("rejects one file over MAX_WATCH_FILES", () => {
+    const { io } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    const files = Array.from(
+      { length: MAX_WATCH_FILES + 1 },
+      (_, index) => `/nonexistent-${index}.ts`,
+    );
+    expect(() =>
+      registry.replace("main", { root, directories: [], files }),
+    ).toThrow(TooManyWatchFilesError);
+  });
+
+  it("counts duplicate directories toward the raw cap rather than deduping first", () => {
+    const { io } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    const directories = Array.from(
+      { length: MAX_WATCH_DIRECTORIES + 1 },
+      () => root,
+    );
+    expect(() =>
+      registry.replace("main", { root, directories, files: [] }),
+    ).toThrow(TooManyWatchDirectoriesError);
   });
 });
 
@@ -252,5 +415,16 @@ describe("teardown", () => {
     registry.replace("deck-2", { root, directories: [root], files: [] });
     registry.dispose();
     expect(watchers.every((w) => w.closed)).toBe(true);
+  });
+
+  it("closes the prior workspace's watchers when a window switches root", () => {
+    // Closing one workspace and opening another reuses the window's label —
+    // `replace` is the only signal the old root is gone.
+    const { io, watchers } = fakeFs();
+    const registry = createWatchRegistry(() => {}, io);
+    registry.replace("main", { root, directories: [root], files: [] });
+    registry.replace("main", { root: root2, directories: [root2], files: [] });
+    expect(watchers.find((w) => w.directory === root)?.closed).toBe(true);
+    expect(registry.watchedDirectories("main")).toEqual([root2]);
   });
 });
