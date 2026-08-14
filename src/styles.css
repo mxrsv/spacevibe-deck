@@ -403,6 +403,25 @@ body,
   color: var(--red);
 }
 
+/* File tabs nested under their workspace's row (spec §4.2, stated spatially
+   for this layout) — the same `.wsitem` shell, indented to read as a child
+   of the row above it, and no logo (a file has none). */
+.wsitem--file {
+  padding-left: 32px;
+}
+
+.wsitem--file .wsitem__label--preview {
+  font-style: italic;
+}
+
+.wsitem__dot--dirty {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--accent);
+}
+
 .wsbar__add {
   display: flex;
   align-items: center;
@@ -812,6 +831,16 @@ button.attn-mark:hover {
 .tab__close:hover {
   background: color-mix(in srgb, var(--red) 22%, transparent);
   color: var(--red);
+}
+
+/* File tabs, appended after the terminal tabs (spec §4.2) — same `.tab`
+   shell, no process dot. */
+.tab__label--preview {
+  font-style: italic;
+}
+
+.tab__dot--dirty {
+  background: var(--accent);
 }
 
 .tab-add {

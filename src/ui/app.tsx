@@ -1005,6 +1005,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             tabsRef.current?.setTabDotColor(index, color)
           }
           onFocusAttention={requestAttentionFocus}
+          fileController={fileController}
         />
       }
       topTabs={
@@ -1018,6 +1019,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           }
           toolbar={chromeActions}
           onFocusAttention={requestAttentionFocus}
+          fileController={fileController}
         />
       }
       stage={

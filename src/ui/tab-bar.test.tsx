@@ -15,6 +15,27 @@ import {
   initializeDesktopEnvironment,
   resetDesktopEnvironmentForTests,
 } from "../lib/platform";
+import {
+  createFileSurfaceController,
+  type FileSurfaceController,
+} from "../files/file-surface-controller";
+import {
+  openFileTab,
+  resetFileSurfaces,
+  updateDocument,
+} from "../files/file-surface-store";
+import type { FileClient } from "../files/file-client";
+
+const fileClient: FileClient = {
+  listDir: async () => [],
+  readFile: async () => ({ kind: "refused", reason: "unused in this test" }),
+  writeFile: async (_root, path) => ({ path, mtimeMs: 1, size: 1 }),
+  statFiles: async (_root, paths) =>
+    paths.map((path) => ({ path, exists: true, mtimeMs: 1, size: 1 })),
+  watchPaths: async () => {},
+  setDirtyFiles: async () => {},
+  listenFileChanged: async () => () => {},
+};
 
 function actionable(
   overrides: Partial<AgentAttentionSummary> = {},
@@ -43,6 +64,7 @@ function tab(overrides: Partial<TabView> = {}): TabView {
 
 describe("TabBar", () => {
   let host: HTMLDivElement;
+  let fileController: FileSurfaceController;
 
   beforeEach(() => {
     resetDesktopEnvironmentForTests();
@@ -52,6 +74,8 @@ describe("TabBar", () => {
     tabViews.value = [];
     activeTabIndex.value = 0;
     requestTabOptionsKey.value = null;
+    resetFileSurfaces();
+    fileController = createFileSurfaceController({ client: fileClient });
   });
 
   afterEach(() => {
@@ -60,6 +84,8 @@ describe("TabBar", () => {
     });
     requestTabOptionsKey.value = null;
     resetDesktopEnvironmentForTests();
+    fileController.dispose();
+    resetFileSurfaces();
   });
 
   const baseProps = () => ({
@@ -72,6 +98,7 @@ describe("TabBar", () => {
     // to prove the placement without dragging the whole projection in here.
     toolbar: <div data-testid="toolbar-slot" />,
     onFocusAttention: vi.fn(),
+    fileController,
   });
 
   const mount = (props: ReturnType<typeof baseProps>): void => {
@@ -323,5 +350,99 @@ describe("TabBar", () => {
     });
     expect(props.onCloseTab).toHaveBeenCalledWith(0);
     expect(props.onFocusAttention).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * File tabs join the strip after every terminal tab (spec §4.2), driven by
+   * the same controller wired as `TabManager`'s `SurfaceStrip` (Task 5).
+   */
+  describe("file tabs (spec §4.2)", () => {
+    it("renders no file segment and no separator when nothing is open", () => {
+      tabViews.value = [tab({ key: 1, name: "Alpha" })];
+      mount(baseProps());
+
+      expect(host.querySelector(".tab--file")).toBeNull();
+      expect(host.querySelector(".tabbar__sep")).toBeNull();
+    });
+
+    it("renders file tabs after the terminal tabs, preview italic on the unedited preview slot only", async () => {
+      tabViews.value = [tab({ key: 1, name: "Alpha" })];
+      await fileController.openFile("/repo", "/repo/a.ts", true); // kept
+      await fileController.openFile("/repo", "/repo/b.ts", false); // preview, untouched
+      mount(baseProps());
+
+      const rows = host.querySelectorAll(".tab");
+      // 1 terminal + 2 file rows, file rows AFTER the terminal one, in order.
+      expect(rows).toHaveLength(3);
+      expect(rows[1].querySelector(".tab__label")?.textContent).toBe("a.ts");
+      expect(rows[2].querySelector(".tab__label")?.textContent).toBe("b.ts");
+      expect(rows[1].querySelector(".tab__label--preview")).toBeNull(); // kept
+      expect(rows[2].querySelector(".tab__label--preview")).not.toBeNull(); // preview
+      expect(host.querySelector(".tabbar__sep")).not.toBeNull();
+    });
+
+    it("renders the dirty dot on a file tab whose document is dirty", async () => {
+      tabViews.value = [tab({ key: 1, name: "Alpha" })];
+      await fileController.openFile("/repo", "/repo/a.ts", true);
+      updateDocument("/repo/a.ts", { dirty: true });
+      mount(baseProps());
+
+      expect(host.querySelector(".tab--file .tab__dot--dirty")).not.toBeNull();
+    });
+
+    it("clicking a file tab activates it through the controller, not onSelectTab", () => {
+      tabViews.value = [tab({ key: 1, name: "Alpha" })];
+      openFileTab("/repo", "/repo/a.ts", { keep: true });
+      const props = baseProps();
+      mount(props);
+
+      const fileRow = host.querySelector(".tab--file") as HTMLElement;
+      act(() => {
+        fileRow.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      expect(props.onSelectTab).not.toHaveBeenCalled();
+    });
+
+    it("closing a file tab calls closePath, not onCloseTab", () => {
+      tabViews.value = [tab({ key: 1, name: "Alpha" })];
+      openFileTab("/repo", "/repo/a.ts", { keep: true });
+      const props = baseProps();
+      const closePath = vi.spyOn(fileController, "closePath");
+      mount(props);
+
+      const close = host.querySelector(
+        ".tab--file .tab__close",
+      ) as HTMLButtonElement;
+      act(() => {
+        close.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      expect(closePath).toHaveBeenCalledWith("/repo", "/repo/a.ts");
+      expect(props.onCloseTab).not.toHaveBeenCalled();
+    });
+
+    it("clicking the terminal tab that's still 'active' takes the stage back while a file surface is on top", () => {
+      // Regression guard for the popover-vs-reselect fork: `index === active`
+      // alone used to open the rename popover, which would leave the file
+      // surface on the stage forever with no way back via that tab's chip.
+      tabViews.value = [tab({ key: 1, name: "Alpha" })];
+      activeTabIndex.value = 0;
+      openFileTab("/repo", "/repo/a.ts", { keep: true }); // activates the file surface
+      const props = baseProps();
+      mount(props);
+
+      const terminalRow = host.querySelector(
+        ".tab:not(.tab--file)",
+      ) as HTMLElement;
+      expect(terminalRow.classList.contains("is-active")).toBe(false);
+
+      act(() => {
+        terminalRow.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      expect(props.onSelectTab).toHaveBeenCalledWith(0);
+      expect(host.querySelector(".tab-popover")).toBeNull();
+    });
   });
 });

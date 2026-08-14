@@ -34,6 +34,23 @@ import {
   initializeDesktopEnvironment,
   resetDesktopEnvironmentForTests,
 } from "../lib/platform";
+import {
+  createFileSurfaceController,
+  type FileSurfaceController,
+} from "../files/file-surface-controller";
+import { resetFileSurfaces } from "../files/file-surface-store";
+import type { FileClient } from "../files/file-client";
+
+const fileClient: FileClient = {
+  listDir: async () => [],
+  readFile: async () => ({ kind: "refused", reason: "unused in this test" }),
+  writeFile: async (_root, path) => ({ path, mtimeMs: 1, size: 1 }),
+  statFiles: async (_root, paths) =>
+    paths.map((path) => ({ path, exists: true, mtimeMs: 1, size: 1 })),
+  watchPaths: async () => {},
+  setDirtyFiles: async () => {},
+  listenFileChanged: async () => () => {},
+};
 
 const SCAN: RepositoryScan = {
   kind: "repository",
@@ -75,15 +92,19 @@ function tab(overrides: Partial<TabView> = {}): TabView {
 }
 
 let host: HTMLDivElement;
+let fileController: FileSurfaceController;
 
 const NOOP = (): void => {};
 
-function mount(props: Partial<Parameters<typeof RepositoryRail>[0]> = {}): void {
+function mount(
+  props: Partial<Parameters<typeof RepositoryRail>[0]> = {},
+): void {
   act(() => {
     render(
       <RepositoryRail
         onSelectTab={NOOP}
         onCloseTab={NOOP}
+        fileController={fileController}
         onNewTab={NOOP}
         onRenameTab={NOOP}
         onSetTabColor={NOOP}
@@ -111,6 +132,8 @@ beforeEach(() => {
   configureRepositoryClient({ scan: async () => SCAN });
   tabViews.value = [tab()];
   activeTabIndex.value = 0;
+  resetFileSurfaces();
+  fileController = createFileSurfaceController({ client: fileClient });
 });
 
 afterEach(() => {
@@ -118,6 +141,8 @@ afterEach(() => {
   host.remove();
   invalidateRepositoryScans();
   resetDesktopEnvironmentForTests();
+  fileController.dispose();
+  resetFileSurfaces();
   vi.restoreAllMocks();
 });
 
@@ -138,7 +163,9 @@ describe("RepositoryRail", () => {
     activeTabIndex.value = 0;
     mount({ onSelectTab });
     await settle();
-    const rows = host.querySelectorAll<HTMLElement>(".wsitem:not(.wsitem--readout)");
+    const rows = host.querySelectorAll<HTMLElement>(
+      ".wsitem:not(.wsitem--readout)",
+    );
     expect(rows.length).toBe(2);
     act(() => {
       rows[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -229,5 +256,118 @@ describe("RepositoryRail", () => {
     mount();
     await settle();
     expect(host.querySelectorAll(".wsitem").length).toBe(1);
+  });
+});
+
+/**
+ * File tabs join the sidebar after the active workspace's row (spec §4.2's
+ * ordering, stated spatially for the nested variant), driven by the same
+ * controller wired as `TabManager`'s `SurfaceStrip` (Task 5).
+ */
+describe("RepositoryRail file tabs (spec §4.2)", () => {
+  it("renders no file rows when nothing is open", async () => {
+    mount();
+    await settle();
+
+    expect(host.querySelector(".wsitem--file")).toBeNull();
+  });
+
+  it("nests file tabs right after the open tab's row, preview italic on the unedited slot only", async () => {
+    tabViews.value = [tab()]; // /r/main, the open tab
+    activeTabIndex.value = 0;
+    await fileController.openFile("/r/main", "/r/main/a.ts", true); // kept
+    await fileController.openFile("/r/main", "/r/main/b.ts", false); // preview
+    mount();
+    await settle();
+
+    const rows = host.querySelectorAll(".wsitem:not(.wsitem--readout)");
+    // The open tab's row, then its two file rows, in order.
+    expect(rows).toHaveLength(3);
+    expect(rows[1].classList.contains("wsitem--file")).toBe(true);
+    expect(rows[1].querySelector(".wsitem__label")?.textContent).toBe("a.ts");
+    expect(rows[2].querySelector(".wsitem__label")?.textContent).toBe("b.ts");
+    expect(rows[1].querySelector(".wsitem__label--preview")).toBeNull(); // kept
+    expect(rows[2].querySelector(".wsitem__label--preview")).not.toBeNull(); // preview
+  });
+
+  it("clicking a file row activates it through the controller, not onSelectTab", async () => {
+    tabViews.value = [tab()];
+    await fileController.openFile("/r/main", "/r/main/a.ts", true);
+    const onSelectTab = vi.fn();
+    mount({ onSelectTab });
+    await settle();
+
+    const fileRow = host.querySelector(".wsitem--file") as HTMLElement;
+    act(() => {
+      fileRow.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onSelectTab).not.toHaveBeenCalled();
+  });
+
+  it("closing a file row calls closePath, not onCloseTab", async () => {
+    tabViews.value = [tab()];
+    await fileController.openFile("/r/main", "/r/main/a.ts", true);
+    const onCloseTab = vi.fn();
+    const closePath = vi.spyOn(fileController, "closePath");
+    mount({ onCloseTab });
+    await settle();
+
+    const close = host.querySelector(
+      ".wsitem--file .wsitem__close",
+    ) as HTMLButtonElement;
+    act(() => {
+      close.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(closePath).toHaveBeenCalledWith("/r/main", "/r/main/a.ts");
+    expect(onCloseTab).not.toHaveBeenCalled();
+  });
+
+  it("clicking the terminal row that's still 'active' takes the stage back while a file surface is on top", async () => {
+    // Regression guard for the popover-vs-reselect fork: `tab.active` alone
+    // used to open the rename popover, which would leave the file surface on
+    // the stage forever with no way back via that row.
+    tabViews.value = [tab()];
+    activeTabIndex.value = 0;
+    await fileController.openFile("/r/main", "/r/main/a.ts", true); // activates the file surface
+    const onSelectTab = vi.fn();
+    mount({ onSelectTab });
+    await settle();
+
+    const terminalRow = host.querySelector(
+      ".wsitem:not(.wsitem--readout):not(.wsitem--file)",
+    ) as HTMLElement;
+    expect(terminalRow.classList.contains("is-active")).toBe(false);
+
+    act(() => {
+      terminalRow.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onSelectTab).toHaveBeenCalledWith(0);
+    expect(host.querySelector(".tab-popover")).toBeNull();
+  });
+
+  it('"last surface, not last tab": file rows survive as their own group once the window has no open terminal tab at all', async () => {
+    tabViews.value = [tab()];
+    activeTabIndex.value = 0;
+    await fileController.openFile("/r/main", "/r/main/a.ts", true);
+    // The window's only terminal tab closed — `activeWorkspace` survives
+    // that (file-surface-store.ts's own doc comment), which is the whole
+    // point of spec §7's rule. `buildRail` derives every row from open tabs,
+    // so with zero tabs anywhere it returns no groups at all — the fallback
+    // section (`activeWorkspaceHasRow`) is what keeps the file tabs visible.
+    // Simulated directly here since driving it through a real `TabManager`
+    // close is Task 5's integration test's job, not this presentational
+    // component's.
+    tabViews.value = [];
+    activeTabIndex.value = -1;
+    mount();
+    await settle();
+
+    expect(host.querySelector(".repogroup__name")).toBeNull(); // no scanned group left to name
+    const fileRow = host.querySelector(".wsitem--file");
+    expect(fileRow).not.toBeNull();
+    expect(fileRow?.querySelector(".wsitem__label")?.textContent).toBe("a.ts");
   });
 });

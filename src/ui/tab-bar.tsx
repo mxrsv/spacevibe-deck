@@ -15,6 +15,9 @@ import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 import { tabPopoverOpen } from "../chrome/events";
 import { TabPopover } from "./tab-popover";
 import { titleWithShortcut } from "../lib/shortcut-label";
+import type { FileSurfaceController } from "../files/file-surface-controller";
+import { activeWorkspace } from "../files/file-surface-store";
+import { fileTabViews } from "../files/file-tab-views";
 
 interface TabBarProps {
   onSelectTab(index: number): void;
@@ -30,11 +33,24 @@ interface TabBarProps {
   toolbar: ComponentChildren;
   /** Invoked when a tab's actionable attention mark is clicked. */
   onFocusAttention?(index: number): void;
+  /**
+   * The same `SurfaceStrip` wired into `TabManager` (Task 5) — read here
+   * only for `fileTabViews`'s projection and the `activate`/`closePath`
+   * calls its own chips need. TabBar never learns what a file IS, only
+   * what this projects (spec §2.3's seam, extended to the renderer).
+   */
+  fileController: FileSurfaceController;
 }
 
 export function TabBar(props: TabBarProps) {
   const tabs = tabViews.value;
   const active = activeTabIndex.value;
+  // A file surface can hold the stage while `active` still names whichever
+  // terminal tab it sits on top of (selecting a file never touches
+  // `TabManager`'s own `active` index) — so a terminal chip is only the
+  // VISIBLE active tab when neither is true.
+  const fileTabs = fileTabViews(props.fileController);
+  const surfaceActive = props.fileController.activeIndex() >= 0;
   const rootRef = useRef<HTMLElement>(null);
   // Anchored by tab key, not index — tabs can close (and indexes shift)
   // while the popover is open; actions resolve the index at call time.
@@ -100,13 +116,17 @@ export function TabBar(props: TabBarProps) {
           <div
             key={tab.key}
             role="tab"
-            aria-selected={index === active}
+            aria-selected={index === active && !surfaceActive}
             tabIndex={0}
             data-key={tab.key}
-            class={`tab ${index === active ? "is-active" : ""}`}
+            class={`tab ${index === active && !surfaceActive ? "is-active" : ""}`}
             onClick={(event) => {
-              if (index !== active) {
-                props.onSelectTab(index); // inactive tab: just select
+              // A file surface sitting on top of THIS same index still
+              // needs the click to take the stage back — `index === active`
+              // alone would open the rename popover instead (spec §7,
+              // "selecting a terminal tab takes the stage back").
+              if (index !== active || surfaceActive) {
+                props.onSelectTab(index);
                 return;
               }
               if (popover.value?.key === tab.key) {
@@ -153,6 +173,43 @@ export function TabBar(props: TabBarProps) {
               onClick={(event) => {
                 event.stopPropagation();
                 props.onCloseTab(index);
+              }}
+            >
+              <DeckIcon icon={X} size={CHROME_ICON} />
+            </button>
+          </div>
+        ))}
+        {/* File tabs of the active surface's workspace, after every terminal
+            tab (spec §4.2) — the strip's file segment, driven by the same
+            controller wired as TabManager's SurfaceStrip (Task 5). */}
+        {fileTabs.length > 0 && <span class="tabbar__sep" aria-hidden="true" />}
+        {fileTabs.map((tab, index) => (
+          <div
+            key={tab.path}
+            role="tab"
+            aria-selected={tab.active}
+            tabIndex={0}
+            class={`tab tab--file ${tab.active ? "is-active" : ""}`}
+            onClick={() => props.fileController.activate(index)}
+          >
+            <span
+              class={`tab__label ${tab.preview ? "tab__label--preview" : ""}`}
+            >
+              {tab.name}
+            </span>
+            {tab.dirty && (
+              <span class="tab__dot tab__dot--dirty" aria-hidden="true" />
+            )}
+            <button
+              type="button"
+              class="tab__close"
+              aria-label={`Close ${tab.name}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                const workspacePath = activeWorkspace.value;
+                if (workspacePath !== null) {
+                  void props.fileController.closePath(workspacePath, tab.path);
+                }
               }}
             >
               <DeckIcon icon={X} size={CHROME_ICON} />

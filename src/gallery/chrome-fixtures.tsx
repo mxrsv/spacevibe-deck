@@ -2,6 +2,7 @@ import { RepositoryRail } from "../ui/repository-rail";
 import { TabBar } from "../ui/tab-bar";
 import { DeckToolbar } from "../ui/toolbar/deck-toolbar";
 import { WorkspaceSidebar } from "../ui/workspace-sidebar";
+import { createFileSurfaceController } from "../files/file-surface-controller";
 
 /**
  * The chrome components wired up for a specimen, in one place.
@@ -19,6 +20,13 @@ import { WorkspaceSidebar } from "../ui/workspace-sidebar";
  */
 
 export const NOOP = (): void => {};
+
+/**
+ * No specimen opens a file, so a single shared controller with no file tabs
+ * ever open is a faithful stand-in — `fileTabViews` projects an empty strip
+ * segment, and neither renderer calls anything on it beyond that read.
+ */
+const fileControllerFixture = createFileSurfaceController();
 
 interface SpecimenOptions {
   /** No pane to paste into — the one unavailable control the chrome has. */
@@ -61,6 +69,7 @@ export function tabBarSpecimen({
       onSetTabColor={NOOP}
       toolbar={deckToolbarSpecimen({ promptsDisabled })}
       onFocusAttention={NOOP}
+      fileController={fileControllerFixture}
     />
   );
 }
@@ -110,6 +119,7 @@ export function repositorySidebarSpecimen() {
       onRenameTab={NOOP}
       onSetTabColor={NOOP}
       onFocusAttention={NOOP}
+      fileController={fileControllerFixture}
     />
   );
 }
