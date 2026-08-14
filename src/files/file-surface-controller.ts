@@ -53,6 +53,27 @@ import { defaultFileClient, type FileClient } from "./file-client";
  */
 export const editorSettings = signal<Settings | null>(null);
 
+/**
+ * Coalesce window for `fs:changed` bursts before the tree re-`listDir`s.
+ *
+ * The host already debounces `fs.watch`'s own duplicate events (`COALESCE_MS`
+ * in `electron/fs/watch.ts`); this is a SEPARATE window on the renderer side,
+ * because one filesystem operation on this side of the IPC boundary — an
+ * agent writing several files, a `git checkout` — still arrives as several
+ * distinct `fs:changed` events. Long enough that a burst collapses into one
+ * `listDir` per affected directory, short enough that the tree still reads as
+ * live.
+ */
+const TREE_REFRESH_COALESCE_MS = 100;
+
+/** Split an absolute path into its parent directory. Paths in this module are
+ * opaque strings from the host — never parsed with `node:path`, which is not
+ * available to the renderer (spec: renderer stays host-free). */
+function parentDirectory(path: string): string {
+  const index = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  return index <= 0 ? path : path.slice(0, index);
+}
+
 export interface FileSurfaceController extends SurfaceStrip {
   /** Install the change listener and the focus reconcile. */
   init(): Promise<void>;
@@ -114,6 +135,10 @@ export function createFileSurfaceController(
   let unlistenChange: UnlistenFn | null = null;
   let focusEditor: (() => void) | null = null;
   let onWindowFocus: (() => void) | null = null;
+  // Directories an `fs:changed` burst wants re-listed, per workspace, and the
+  // one pending flush timer per workspace that will do it.
+  const pendingTreeRefresh = new Map<string, Set<string>>();
+  const treeRefreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   /** Paths of every open document, across every workspace. */
   function openPaths(): string[] {
@@ -270,6 +295,64 @@ export function createFileSurfaceController(
     }
   }
 
+  /** Flush one workspace's pending directories through `loadListing`, once
+   * the coalesce window has closed. */
+  function flushTreeRefresh(workspacePath: string): void {
+    treeRefreshTimers.delete(workspacePath);
+    const directories = pendingTreeRefresh.get(workspacePath);
+    pendingTreeRefresh.delete(workspacePath);
+    if (disposed || directories === undefined) {
+      return;
+    }
+    for (const directory of directories) {
+      void loadListing(workspacePath, directory);
+    }
+  }
+
+  /** Add one directory to a workspace's pending burst. The first call in a
+   * burst arms the timer; later calls just grow the set it will flush. */
+  function scheduleTreeRefresh(workspacePath: string, directory: string): void {
+    const pending = pendingTreeRefresh.get(workspacePath) ?? new Set<string>();
+    pending.add(directory);
+    pendingTreeRefresh.set(workspacePath, pending);
+    if (treeRefreshTimers.has(workspacePath)) {
+      return;
+    }
+    treeRefreshTimers.set(
+      workspacePath,
+      setTimeout(
+        () => flushTreeRefresh(workspacePath),
+        TREE_REFRESH_COALESCE_MS,
+      ),
+    );
+  }
+
+  /**
+   * Route one `fs:changed` path to whichever workspace's tree it belongs to.
+   *
+   * A changed path is reported as the entry itself (a file, or a directory
+   * whose OWN watcher fired), so both the entry's parent AND the entry itself
+   * are candidate branches: the parent covers "a file appeared/vanished/
+   * changed inside a listed directory", the entry itself covers "a listed
+   * directory was renamed or deleted out from under its own row". Only a
+   * directory the tree currently shows (`visibleDirectories`) schedules a
+   * refresh — a change outside every expanded branch is not this window's
+   * concern (the focus/activation re-`stat` and the next `listDir` on
+   * re-expand are what pick it up instead).
+   */
+  function handleTreeChange(changedPath: string): void {
+    const parent = parentDirectory(changedPath);
+    for (const workspacePath of fileSurfaces.value.keys()) {
+      const visible = visibleDirectories(workspacePath);
+      if (visible.includes(parent)) {
+        scheduleTreeRefresh(workspacePath, parent);
+      }
+      if (changedPath !== parent && visible.includes(changedPath)) {
+        scheduleTreeRefresh(workspacePath, changedPath);
+      }
+    }
+  }
+
   /** Activate a file surface by index within the strip's file segment. */
   function activateIndex(index: number): void {
     const strip = stripFileTabs();
@@ -338,6 +421,7 @@ export function createFileSurfaceController(
           mtimeMs: event.mtimeMs,
           size: event.size,
         });
+        handleTreeChange(event.path);
       });
       // `fs.watch` misses events on every platform for different reasons; the
       // re-`stat` on focus is the designed mitigation (spec §5), not a belt
@@ -572,6 +656,11 @@ export function createFileSurfaceController(
         onWindowFocus = null;
       }
       focusEditor = null;
+      for (const timer of treeRefreshTimers.values()) {
+        clearTimeout(timer);
+      }
+      treeRefreshTimers.clear();
+      pendingTreeRefresh.clear();
     },
   };
 }

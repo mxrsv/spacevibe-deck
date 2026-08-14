@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FileClient, FileChangedPayload } from "./file-client";
 import {
   createFileSurfaceController,
@@ -13,6 +13,7 @@ import {
   resetFileSurfaces,
   setActiveWorkspace,
 } from "./file-surface-store";
+import type { DirEntry } from "./file-tree";
 
 const ROOT = "/r";
 const FILE = "/r/src/index.ts";
@@ -23,8 +24,10 @@ interface Harness {
   readonly dirtyPushes: string[][];
   readonly watched: { root: string; directories: string[]; files: string[] }[];
   readonly written: { path: string; text: string; eol: string }[];
+  readonly listDirCalls: { root: string; directory: string }[];
   emitChange(event: FileChangedPayload): void;
   setContent(path: string, content: string, mtimeMs?: number): void;
+  setDirListing(directory: string, entries: DirEntry[]): void;
   readonly confirmDiscard: ReturnType<typeof vi.fn>;
 }
 
@@ -33,12 +36,15 @@ function harness(): Harness {
   const dirtyPushes: string[][] = [];
   const watched: Harness["watched"] = [];
   const written: Harness["written"] = [];
+  const listDirCalls: Harness["listDirCalls"] = [];
+  const dirListings = new Map<string, DirEntry[]>();
   let changeHandler: ((event: FileChangedPayload) => void) | null = null;
   const confirmDiscard = vi.fn(async () => true);
 
   const client: FileClient = {
-    async listDir() {
-      return [];
+    async listDir(root, directory) {
+      listDirCalls.push({ root, directory });
+      return dirListings.get(directory) ?? [];
     },
     async readFile(_root, path) {
       const entry = disk.get(path);
@@ -110,9 +116,13 @@ function harness(): Harness {
     dirtyPushes,
     watched,
     written,
+    listDirCalls,
     emitChange: (event) => changeHandler?.(event),
     setContent: (path, content, mtimeMs = 1000) => {
       disk.set(path, { content, mtimeMs });
+    },
+    setDirListing: (directory, entries) => {
+      dirListings.set(directory, entries);
     },
     confirmDiscard,
   };
@@ -488,6 +498,87 @@ describe("closing a workspace", () => {
     expect(documentFor(FILE)?.text).toBe("mine\n");
     expect(documentFor(FILE)?.dirty).toBe(true);
     expect(lastOf(h.dirtyPushes)).toEqual([FILE]);
+  });
+});
+
+describe("fs:changed drives the tree", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("coalesces a burst of events into one refresh per directory", async () => {
+    const h = harness();
+    await h.controller.ensureListing(ROOT, ROOT);
+    const before = h.listDirCalls.length;
+
+    h.emitChange({ path: "/r/a.ts", kind: "changed", mtimeMs: 1, size: 1 });
+    h.emitChange({ path: "/r/b.ts", kind: "changed", mtimeMs: 1, size: 1 });
+    h.emitChange({ path: "/r/c.ts", kind: "changed", mtimeMs: 1, size: 1 });
+
+    // Nothing fires while the burst is still landing.
+    expect(h.listDirCalls.length).toBe(before);
+
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(h.listDirCalls.slice(before)).toEqual([
+      { root: ROOT, directory: ROOT },
+    ]);
+  });
+
+  it("refreshes only the branch the change belongs to", async () => {
+    const h = harness();
+    h.setDirListing(ROOT, [
+      { name: "src", path: "/r/src", directory: true, outOfRoot: false },
+      { name: "lib", path: "/r/lib", directory: true, outOfRoot: false },
+    ]);
+    await h.controller.ensureListing(ROOT, ROOT);
+    // Expands "src" only — "lib" stays a collapsed row.
+    h.controller.toggleDirectory(ROOT, "/r/src");
+    await vi.waitFor(() =>
+      expect(h.listDirCalls.some((call) => call.directory === "/r/src")).toBe(
+        true,
+      ),
+    );
+    const before = h.listDirCalls.length;
+
+    // Inside the collapsed "lib" branch — not a tracked branch, ignored.
+    h.emitChange({
+      path: "/r/lib/other.ts",
+      kind: "changed",
+      mtimeMs: 1,
+      size: 1,
+    });
+    // Inside the expanded "src" branch — the one that should refresh.
+    h.emitChange({
+      path: "/r/src/new.ts",
+      kind: "changed",
+      mtimeMs: 1,
+      size: 1,
+    });
+
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(h.listDirCalls.slice(before)).toEqual([
+      { root: ROOT, directory: "/r/src" },
+    ]);
+  });
+
+  it("ignores a refresh scheduled before the controller was disposed", async () => {
+    const h = harness();
+    await h.controller.ensureListing(ROOT, ROOT);
+    const before = h.listDirCalls.length;
+
+    h.emitChange({ path: "/r/a.ts", kind: "changed", mtimeMs: 1, size: 1 });
+    h.controller.dispose();
+    // The listener is unsubscribed on dispose — an event after it goes nowhere.
+    h.emitChange({ path: "/r/b.ts", kind: "changed", mtimeMs: 1, size: 1 });
+
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(h.listDirCalls.length).toBe(before);
   });
 });
 
