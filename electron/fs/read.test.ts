@@ -1,5 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
+import fsAsync from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { MAX_EDITABLE_BYTES } from "../../src/files/file-content";
@@ -7,10 +8,12 @@ import { PathOutsideWorkspaceError } from "./path-guard";
 import {
   listDir,
   MalformedStatRequestError,
+  MAX_REALPATH_CONCURRENCY,
   MAX_STAT_PATHS,
   readFile,
   statFiles,
   TooManyStatPathsError,
+  type DirEntryPayload,
 } from "./read";
 
 let base: string;
@@ -36,6 +39,10 @@ beforeAll(() => {
   fs.writeFileSync(path.join(outside, "secret.txt"), "no\n");
   fs.symlinkSync(outside, path.join(root, "away"));
   fs.symlinkSync(path.join(root, "src"), path.join(root, "src-link"));
+  fs.symlinkSync(
+    path.join(root, "does-not-exist"),
+    path.join(root, "dangling-link"),
+  );
 });
 
 afterAll(() => {
@@ -48,6 +55,7 @@ describe("listDir", () => {
     expect(rows.map((row) => row.name).sort()).toEqual([
       "away",
       "binary.bin",
+      "dangling-link",
       "node_modules",
       "readme.md",
       "src",
@@ -78,6 +86,17 @@ describe("listDir", () => {
     expect(link?.directory).toBe(true);
   });
 
+  it("flags a dangling symlink as a leaf, not out of root by escaping", async () => {
+    const rows = await listDir(root, root);
+    const dangling = rows.find((row) => row.name === "dangling-link");
+    expect(dangling).toEqual({
+      name: "dangling-link",
+      path: path.join(root, "dangling-link"),
+      directory: false,
+      outOfRoot: true,
+    });
+  });
+
   it("refuses a directory outside the root", async () => {
     await expect(listDir(root, outside)).rejects.toThrow(
       PathOutsideWorkspaceError,
@@ -86,6 +105,176 @@ describe("listDir", () => {
       PathOutsideWorkspaceError,
     );
   });
+});
+
+/**
+ * Independent, synchronous reference implementation of the pre-T10 per-entry
+ * `realpathSync` algorithm that `listDir` used before this task — the parity
+ * oracle for the bounded-async version under test. Deliberately does not
+ * import from `read.ts` or `path-guard.ts`, so it proves the new code against
+ * a fixed, hand-written ground truth rather than against itself.
+ */
+function listDirSyncReference(
+  canonicalRoot: string,
+  directory: string,
+): DirEntryPayload[] {
+  const entries = fs.readdirSync(directory, { withFileTypes: true });
+  const rows: DirEntryPayload[] = [];
+  for (const entry of entries) {
+    const full = path.join(directory, entry.name);
+    if (!entry.isSymbolicLink()) {
+      rows.push({
+        name: entry.name,
+        path: full,
+        directory: entry.isDirectory(),
+        outOfRoot: false,
+      });
+      continue;
+    }
+    let canonical: string;
+    try {
+      canonical = fs.realpathSync(full);
+    } catch {
+      rows.push({
+        name: entry.name,
+        path: full,
+        directory: false,
+        outOfRoot: true,
+      });
+      continue;
+    }
+    const relative = path.relative(canonicalRoot, canonical);
+    const inside =
+      canonical === canonicalRoot ||
+      (relative !== "" &&
+        !relative.startsWith("..") &&
+        !path.isAbsolute(relative));
+    if (!inside) {
+      rows.push({
+        name: entry.name,
+        path: full,
+        directory: false,
+        outOfRoot: true,
+      });
+      continue;
+    }
+    let directoryTarget = false;
+    try {
+      directoryTarget = fs.statSync(canonical).isDirectory();
+    } catch {
+      directoryTarget = false;
+    }
+    rows.push({
+      name: entry.name,
+      path: full,
+      directory: directoryTarget,
+      outOfRoot: false,
+    });
+  }
+  return rows;
+}
+
+describe("listDir — bounded async realpath on a 10k-entry directory", () => {
+  // A directory dominated by symlinks with no natural yield point between
+  // them is the stall case (plan T10): before this task, every symlink
+  // called `realpathSync` synchronously and the branch that resolves out of
+  // root or dangling never hit an `await` at all, so a long run of such
+  // entries blocked the event loop back to back.
+  const PLAIN_FILE_COUNT = 4000;
+  const PLAIN_DIR_COUNT = 2000;
+  const SYMLINK_TO_FILE_COUNT = 2000;
+  const SYMLINK_ESCAPING_COUNT = 1000;
+  const DANGLING_SYMLINK_COUNT = 1000;
+  const TOTAL_ENTRIES =
+    PLAIN_FILE_COUNT +
+    PLAIN_DIR_COUNT +
+    SYMLINK_TO_FILE_COUNT +
+    SYMLINK_ESCAPING_COUNT +
+    DANGLING_SYMLINK_COUNT;
+  const SYMLINK_COUNT =
+    SYMLINK_TO_FILE_COUNT + SYMLINK_ESCAPING_COUNT + DANGLING_SYMLINK_COUNT;
+
+  let bigBase: string;
+  let bigRoot: string;
+  let bigDir: string;
+
+  beforeAll(() => {
+    bigBase = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "deck-fs-read-10k-")),
+    );
+    bigRoot = path.join(bigBase, "workspace");
+    const bigOutside = path.join(bigBase, "outside");
+    bigDir = path.join(bigRoot, "many");
+    fs.mkdirSync(bigDir, { recursive: true });
+    fs.mkdirSync(bigOutside, { recursive: true });
+    for (let i = 0; i < PLAIN_FILE_COUNT; i += 1) {
+      fs.writeFileSync(path.join(bigDir, `file-${i}.txt`), "x");
+    }
+    for (let i = 0; i < PLAIN_DIR_COUNT; i += 1) {
+      fs.mkdirSync(path.join(bigDir, `dir-${i}`));
+    }
+    const symlinkTarget = path.join(bigDir, "file-0.txt");
+    for (let i = 0; i < SYMLINK_TO_FILE_COUNT; i += 1) {
+      fs.symlinkSync(symlinkTarget, path.join(bigDir, `link-to-file-${i}`));
+    }
+    for (let i = 0; i < SYMLINK_ESCAPING_COUNT; i += 1) {
+      fs.symlinkSync(bigOutside, path.join(bigDir, `link-escaping-${i}`));
+    }
+    for (let i = 0; i < DANGLING_SYMLINK_COUNT; i += 1) {
+      fs.symlinkSync(
+        path.join(bigDir, "does-not-exist"),
+        path.join(bigDir, `link-dangling-${i}`),
+      );
+    }
+  }, 60_000);
+
+  afterAll(() => {
+    fs.rmSync(bigBase, { recursive: true, force: true });
+  });
+
+  it("exports MAX_REALPATH_CONCURRENCY as 32", () => {
+    expect(MAX_REALPATH_CONCURRENCY).toBe(32);
+  });
+
+  it("resolves every symlink through fs.realpath, at most MAX_REALPATH_CONCURRENCY in flight", async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    let callCount = 0;
+    const real = fsAsync.realpath.bind(fsAsync);
+    const spy = vi
+      .spyOn(fsAsync, "realpath")
+      .mockImplementation(
+        async (...args: Parameters<typeof fsAsync.realpath>) => {
+          callCount += 1;
+          inFlight += 1;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return await (real as any)(...args);
+          } finally {
+            inFlight -= 1;
+          }
+        },
+      );
+    try {
+      const rows = await listDir(bigRoot, bigDir);
+      expect(rows).toHaveLength(TOTAL_ENTRIES);
+      expect(callCount).toBe(SYMLINK_COUNT);
+      expect(maxInFlight).toBe(MAX_REALPATH_CONCURRENCY);
+    } finally {
+      spy.mockRestore();
+    }
+  }, 60_000);
+
+  it("matches the pre-T10 synchronous resolution algorithm, sorted by path", async () => {
+    const expected = listDirSyncReference(bigRoot, bigDir).sort((a, b) =>
+      a.path.localeCompare(b.path),
+    );
+    const actual = (await listDir(bigRoot, bigDir)).sort((a, b) =>
+      a.path.localeCompare(b.path),
+    );
+    expect(actual).toEqual(expected);
+  }, 60_000);
 });
 
 describe("statFiles", () => {
