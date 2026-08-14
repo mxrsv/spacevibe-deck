@@ -27,7 +27,7 @@ import {
 import { resolveTheme } from "../settings/themes";
 import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
-import { tabViews } from "../terminal/tabs-store";
+import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import {
   markLastUsed,
   presetsData,
@@ -96,7 +96,16 @@ import {
   runUpdateMenuAction,
 } from "../updater/update-menu-actions";
 import { defaultLinkClient } from "../terminal/link-client";
-import { dirtyPaths } from "../files/file-surface-store";
+import {
+  activeWorkspace,
+  dirtyPaths,
+  setActiveWorkspace,
+} from "../files/file-surface-store";
+import {
+  createFileSurfaceController,
+  type FileSurfaceController,
+} from "../files/file-surface-controller";
+import { ExplorerPanel } from "../files/ui/explorer-panel";
 
 interface DesktopChromeProps {
   readonly sidebar: boolean;
@@ -292,6 +301,16 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const stagesRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<TabManager | null>(null);
   const updaterRef = useRef<UpdateController | null>(null);
+  const fileControllerRef = useRef<FileSurfaceController | null>(null);
+  if (fileControllerRef.current === null) {
+    fileControllerRef.current = createFileSurfaceController({
+      // `syncViews` never runs for a file-only transition (spec §2.3's
+      // seam) — this is how the file store tells `TabManager` to re-derive
+      // the strip's status without either module knowing about the other.
+      onSurfacesChanged: () => tabsRef.current?.notifySurfacesChanged(),
+    });
+  }
+  const fileController = fileControllerRef.current;
   const updatePreview = resolveUpdatePreview(
     window.location.search,
     import.meta.env.DEV,
@@ -494,6 +513,26 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       manager.dispose();
     };
   }, []);
+
+  // Installs the file-changed listener and the focus reconcile (spec §5) —
+  // own effect, separate from the tab manager's mount above, since the two
+  // lifecycles do not depend on each other (spec §2.3's seam).
+  useEffect(() => {
+    void fileController.init();
+    return () => {
+      fileController.dispose();
+    };
+  }, [fileController]);
+
+  // Points the explorer panel and the strip's file segment at the active
+  // terminal tab's workspace (`file-surface-store.ts`'s `setActiveWorkspace`
+  // doc comment names App as this caller). Null for a tab with no workspace
+  // (pre-0.2.2 restored, or a bare `newTab()`) — never a `$HOME` fallback
+  // (spec §2.1).
+  useSignalEffect(() => {
+    const active = tabViews.value[activeTabIndex.value];
+    setActiveWorkspace(active?.workspacePath ?? null);
+  });
 
   useEffect(() => {
     let unlisten: UnlistenFn | undefined;
@@ -898,7 +937,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       }
       stage={
         <main
-          class={`stage ${browserOpen.value ? "stage--browser" : ""}`}
+          class={`stage ${browserOpen.value ? "stage--browser" : ""} stage--explorer`}
           // One number, two consumers: the panel's own column and the inset
           // that keeps the terminal grid clear of it. A drag updates the live
           // signal, so both move together instead of the terminals catching up
@@ -906,6 +945,14 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           style={{ "--browser-w": `${browserWidth()}px` }}
         >
           <div class="stage__tabs" ref={stagesRef} />
+          {/* Unconditional for this slice — there is no toggle chord yet
+              (that, the drag-resize and the persisted width all arrive
+              together in a later task). `ExplorerPanel` itself renders the
+              empty state when the active tab has no workspace (spec §2.1). */}
+          <ExplorerPanel
+            controller={fileController}
+            workspacePath={activeWorkspace.value}
+          />
           {browserOpen.value ? (
             <BrowserPanel
               width={browserWidth()}

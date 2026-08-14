@@ -63,6 +63,9 @@
      reviewed direction's own rail width and leaves ~100px. Measured natively
      on macOS, not reasoned about. */
   --sidebar-w: 275px;
+  /* Explorer panel default width (spec §3). Fixed for this slice — the
+     drag-resize and the persisted setting arrive with the toggle chord. */
+  --explorer-w: 260px;
 
   /* DL-20.1: two radius roles, and no third picked at a use site.
      --radius-control is anything the pointer acts on inside a surface — rows,
@@ -4143,4 +4146,115 @@ button.attn-mark:hover {
   .usage-screen * {
     transition: none;
   }
+}
+
+/* ── Explorer panel: a docked column on the right of the stage (DL-19) ────
+   Plan Task 2 (spec: docs/specs/2026-08-12-file-explorer-design.md §3).
+   Same structure as the browser panel above: `.stage__tabs`' own inset
+   shrinks by exactly the panel's width, so terminal panes resize around it
+   (DL-19.1) instead of being covered. `--explorer-w` is fixed for this
+   slice — no drag, no persisted setting, no show/hide chord yet (those land
+   with a later task). When the browser panel is ALSO open, the explorer
+   sits to its left instead of overlapping it (DL-19.6: foreign content gets
+   its own rectangle Deck's chrome never paints over). */
+
+.stage--explorer .stage__tabs {
+  right: var(--explorer-w);
+}
+
+.stage--browser.stage--explorer .stage__tabs {
+  right: calc(var(--browser-w) + var(--explorer-w));
+}
+
+.explorer-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--explorer-w);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--chrome-2);
+  /* DL-19.2: the seam is a single hairline, never a shadow. */
+  border-left: 1px solid var(--hair);
+}
+
+.stage--browser .explorer-panel {
+  right: var(--browser-w);
+}
+
+/* DL-19.3: one hairline-separated header row carrying the panel's title. */
+.explorer-panel__header {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--hair);
+  flex-shrink: 0;
+}
+
+.explorer-panel__title {
+  font-family: var(--ui-font);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.explorer-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* DL-19.5: transient text under the header, in --text-faint. */
+.explorer-panel__empty {
+  margin: 0;
+  padding: 10px 8px;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* `.fileview` (below) already carries `flex: 1; min-height: 0`, so it fills
+   this row on its own once mounted. */
+.explorer-panel__preview {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  border-top: 1px solid var(--hair);
+}
+
+.file-tree {
+  display: flex;
+  flex-direction: column;
+}
+
+.file-tree__row {
+  display: flex;
+  align-items: center;
+  /* DL-19: data rows are 22px, --ui-font. */
+  height: 22px;
+  padding-right: 8px;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--duration) var(--ease);
+}
+
+/* DL-21.2: hover is the quieter wash — the same signifier used everywhere
+   else, per DL-19's own citation of that rule. */
+.file-tree__row:hover {
+  color: var(--text-primary);
+  background: var(--state-hover-bg);
+}
+
+.file-tree__name {
+  /* DL-19: a data row keeps its content's real casing. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
