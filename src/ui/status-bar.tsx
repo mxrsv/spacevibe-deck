@@ -3,6 +3,11 @@ import { getPreset } from "../settings/themes";
 import { statusInfo } from "../terminal/tabs-store";
 import { tildify } from "../lib/process-info";
 import { shortcutLabel } from "../lib/shortcut-label";
+import {
+  activeFileTab,
+  currentFileStatus,
+  documentFor,
+} from "../files/file-surface-store";
 
 export function StatusBar() {
   const info = statusInfo.value;
@@ -10,6 +15,12 @@ export function StatusBar() {
   const cwd = info.cwd === null ? null : tildify(info.cwd, info.home);
   const splitRow = shortcutLabel("split-row");
   const newTab = shortcutLabel("new-tab");
+  // A file surface reads its own branch of `statusInfo` — relative path,
+  // dirty, position and encoding/EOL, instead of cwd and pane count (spec
+  // §7). `currentFileStatus()` is null the instant a terminal tab holds the
+  // stage again, so this branches the same way `paneCount` already does.
+  const fileStatus = currentFileStatus();
+  const fileDirty = documentFor(activeFileTab.value)?.dirty ?? false;
   return (
     <footer class="status">
       {info.branch !== null && (
@@ -21,7 +32,20 @@ export function StatusBar() {
           <span class="status__vsep" aria-hidden="true" />
         </>
       )}
-      {cwd !== null && <span class="status__seg">{cwd}</span>}
+      {fileStatus !== null ? (
+        <span class="status__seg">
+          {fileStatus.relativePath}
+          {fileDirty && (
+            <span
+              class="status__dirty-dot"
+              aria-hidden="true"
+              title="Unsaved changes"
+            />
+          )}
+        </span>
+      ) : (
+        cwd !== null && <span class="status__seg">{cwd}</span>
+      )}
       {info.agent !== null && (
         <>
           <span class="status__vsep" aria-hidden="true" />
@@ -29,9 +53,24 @@ export function StatusBar() {
         </>
       )}
       <div class="status__right">
-        <span class="status__seg">
-          {info.paneCount} {info.paneCount === 1 ? "pane" : "panes"}
-        </span>
+        {fileStatus !== null ? (
+          <>
+            <span class="status__seg">{fileStatus.position}</span>
+            <span class="status__vsep" aria-hidden="true" />
+            <span class="status__seg">{fileStatus.encoding}</span>
+            <span class="status__vsep" aria-hidden="true" />
+            <span class="status__seg">{fileStatus.eol}</span>
+          </>
+        ) : (
+          // Absent, never zero-with-a-label (spec §7): `paneCount` is null
+          // while a file surface is active, and rendering `null panes` read
+          // as a broken window rather than a different kind of surface.
+          info.paneCount !== null && (
+            <span class="status__seg">
+              {info.paneCount} {info.paneCount === 1 ? "pane" : "panes"}
+            </span>
+          )
+        )}
         <span class="status__vsep" aria-hidden="true" />
         <span class="status__seg">{themeLabel}</span>
         <span class="status__vsep" aria-hidden="true" />

@@ -118,12 +118,12 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The ids `commands` implements — 43 entries, verified against the live
+ * The ids `commands` implements — 44 entries, verified against the live
  * `commands` table, Task 4's `copy-selection`/`paste` included, the Prompt
  * Board's `toggle-prompts`, the browser panel's `toggle-browser`, the file
- * explorer's `toggle-explorer` and the token usage screen's `toggle-usage`
- * alongside them. (Line numbers are deliberately not cited: they rotted
- * within one feature of being written.)
+ * explorer's `toggle-explorer`/`save-file` and the token usage screen's
+ * `toggle-usage` alongside them. (Line numbers are deliberately not cited:
+ * they rotted within one feature of being written.)
  *
  * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
  * keymap binding points at an action nothing dispatches — the defect behind
@@ -153,6 +153,7 @@ const COMMAND_ACTIONS = [
   "paste",
   "prev-tab",
   "reopen-tab",
+  "save-file",
   "save-preset",
   "scroll-page-down",
   "scroll-page-up",
@@ -260,15 +261,19 @@ export interface OpenFromPresetOptions {
  * `TabManager` gains no knowledge of files and the file store gains no
  * knowledge of PTYs, and this interface is the entire vocabulary between them.
  *
- * NOTHING IMPLEMENTS THIS TODAY. The file model behind it landed
- * (`src/files/`), but the chrome that would mount it is deliberately left to
- * the Electron redesign, so every window runs on `INERT_SURFACES` below. The
- * seam stays because the invariants it encodes — "last surface, not last tab",
- * a combined cycle index space, `movePane`'s refusal — are the ones that are
- * expensive to retrofit and cheap to keep proven.
+ * `FileSurfaceController` (`src/files/file-surface-controller.ts`) is the
+ * one production implementation, wired in as `TabManagerDeps.surfaces` by
+ * `src/ui/app.tsx` (file-explorer plan Task 5) — every window now runs on it
+ * instead of `INERT_SURFACES` below. The seam was built and proven against a
+ * fake before that wiring landed because the invariants it encodes — "last
+ * surface, not last tab", a combined cycle index space, `movePane`'s
+ * refusal — are the ones that are expensive to retrofit and cheap to keep
+ * proven; `tab-manager.test.ts` still exercises both the fake AND the real
+ * controller for exactly that reason.
  *
  * Every method has a no-op default (`INERT_SURFACES`), so a caller that passes
- * nothing gets exactly the behaviour that shipped before the seam existed.
+ * nothing (still true of every test in this file that omits `deps.surfaces`)
+ * gets exactly the behaviour that shipped before the seam existed.
  */
 export interface SurfaceStrip {
   /** Surfaces in the strip right now — the segment after the terminal tabs. */
@@ -1541,6 +1546,12 @@ export function createTabManager(
     // (highlight/jump inside a pane's buffer), same scope as clear-buffer.
     "find-next": () => activeManager()?.findNext(),
     "find-previous": () => activeManager()?.findPrevious(),
+    // Task 6's action; wired here (Task 5 owns this table). `surfaces.save()`
+    // is ALREADY a no-op with nothing to save when no file surface is active
+    // (`FileSurfaceController.save`, file-surface-controller.ts) — matching
+    // the registry's "scoped: no-op when no file tab is active" without a
+    // second check here.
+    "save-file": () => void surfaces.save(),
     // The overlay scope guard in `dispatchAction` already blocks this while
     // any overlay (including the board) is up — this check is pure business
     // logic (nothing to save with zero tabs), not scope.

@@ -1692,6 +1692,18 @@ button.attn-mark:hover {
   background: var(--green);
 }
 
+/* A file surface's unsaved-changes mark — same dot shape as `.status__gitdot`
+   above, `--accent` rather than `--green` since this signals a pending write,
+   not a VCS fact. */
+.status__dirty-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-left: 6px;
+}
+
 /* ── Settings panel: slide-over anchored to the stage's right edge ── */
 
 /* ── Config rows: the one control (docs/DESIGN-LANGUAGE.md §5–6) ── */

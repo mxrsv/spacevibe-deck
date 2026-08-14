@@ -66,3 +66,77 @@ describe("fileTabViews", () => {
     expect(fileTabViews(controller)).toEqual([]);
   });
 });
+
+/**
+ * Spec §4.1, driven through the real controller rather than the store
+ * directly — `fileTabViews` is the projection `TabBar`/`WorkspaceSidebar`
+ * would read, so these lock the shape it sees for the promotion rules, not
+ * just the store functions underneath it.
+ */
+describe("fileTabViews reflects preview/promotion (spec §4.1)", () => {
+  it("replacing a clean preview drops the prior tab and never discards work", async () => {
+    await controller.openFile("/r", "/r/a.ts", false); // preview
+    await controller.openFile("/r", "/r/b.ts", false); // replaces the preview
+
+    const views = fileTabViews(controller);
+    expect(views.map((v) => v.path)).toEqual(["/r/b.ts"]);
+    expect(views[0]).toMatchObject({ preview: true, active: true });
+  });
+
+  it("a double-clicked tab opens already promoted — not the italic preview", async () => {
+    await controller.openFile("/r", "/r/a.ts", true); // double-click path
+
+    const [view] = fileTabViews(controller);
+    expect(view).toMatchObject({ preview: false, active: true });
+  });
+
+  it("the first edit promotes the preview tab in place", async () => {
+    // The default `client` at the top of this file refuses every read, so
+    // `document.file` never populates and `setText`'s dirty check (which
+    // reads `document.file.content`) can never see a change — this test
+    // needs a client that actually opens the file, so it gets its own
+    // controller rather than borrowing `beforeEach`'s.
+    const readableClient: FileClient = {
+      ...client,
+      readFile: async () => ({
+        kind: "ok",
+        content: "original\n",
+        eol: "lf",
+        encoding: "utf-8",
+        bytes: 9,
+        mixedEol: false,
+        readOnly: false,
+        reason: null,
+        mtimeMs: 1,
+        size: 9,
+        writable: true,
+      }),
+    };
+    const readableController = createFileSurfaceController({
+      client: readableClient,
+    });
+    await readableController.openFile("/r", "/r/a.ts", false); // preview
+    expect(fileTabViews(readableController)[0]).toMatchObject({
+      preview: true,
+    });
+
+    readableController.setText("/r/a.ts", "changed\n");
+
+    const [view] = fileTabViews(readableController);
+    expect(view).toMatchObject({
+      path: "/r/a.ts",
+      preview: false,
+      dirty: true,
+    });
+  });
+
+  it("a promoted tab survives a later preview click beside it", async () => {
+    await controller.openFile("/r", "/r/a.ts", true); // kept
+    await controller.openFile("/r", "/r/b.ts", false); // fresh preview beside it
+
+    const views = fileTabViews(controller);
+    expect(views.map((v) => v.path)).toEqual(["/r/a.ts", "/r/b.ts"]);
+    expect(views[0].preview).toBe(false);
+    expect(views[1].preview).toBe(true);
+  });
+});

@@ -298,6 +298,42 @@ export function bootOpensTheBoard(boot: BootMode): boolean {
   return boot.kind === "normal";
 }
 
+/**
+ * The workspace `tabs[closingIndex]` belongs to, when closing that tab
+ * leaves it with no terminal tab left in THIS window while at least one
+ * other terminal tab (of a DIFFERENT workspace) still exists — the case
+ * where that workspace's file tabs would otherwise go unreachable behind a
+ * live tab of another workspace, yet stay open, watched and dirty-blocking
+ * quit. Null when there is nothing to close (no workspace, or another tab of
+ * the same workspace survives).
+ *
+ * Deliberately returns null when `remaining.length === 0` — the window's
+ * LAST terminal tab closing is `TabManager`'s "last surface, not last tab"
+ * territory (spec §7): `disposeTab` already keeps the window alive on that
+ * workspace's own file surface via `SurfaceStrip.total()`, and closing those
+ * same file tabs here would defeat the rule that just kept them reachable.
+ *
+ * Extracted to module scope (like `livePresetOpensATab`/`bootOpensTheBoard`
+ * above) so it is unit-testable without an `<App>` render harness, which
+ * this repo does not have.
+ */
+export function workspaceOrphanedByClose(
+  tabs: readonly { readonly workspacePath: string | null }[],
+  closingIndex: number,
+): string | null {
+  const workspacePath = tabs[closingIndex]?.workspacePath ?? null;
+  if (workspacePath === null) {
+    return null;
+  }
+  const remaining = tabs.filter((_, index) => index !== closingIndex);
+  if (remaining.length === 0) {
+    return null;
+  }
+  return remaining.some((tab) => tab.workspacePath === workspacePath)
+    ? null
+    : workspacePath;
+}
+
 export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const stagesRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<TabManager | null>(null);
@@ -461,6 +497,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       onRequestAttentionFocus: (tabIndex) => requestAttentionFocus(tabIndex),
       onToggleSettings: () => toggleSettings(),
       onToggleUsage: () => toggleUsage(),
+      // The seam going live (Task 5): TabManager's `SurfaceStrip` consumer
+      // (cycling, ⌘W routing, "last surface, not last tab", focus,
+      // applySettings — src/terminal/tab-manager.ts:269) and the file
+      // controller's production of it (file-surface-controller.ts) were both
+      // already built and tested against a fake; this is the one line that
+      // connects the real halves. Replaces `INERT_SURFACES`.
+      surfaces: fileController,
     });
     tabsRef.current = manager;
     if (updatePreview === null) {
@@ -530,9 +573,24 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // doc comment names App as this caller). Null for a tab with no workspace
   // (pre-0.2.2 restored, or a bare `newTab()`) — never a `$HOME` fallback
   // (spec §2.1).
+  //
+  // `tabViews.value[activeTabIndex.value]` is `undefined`, not a tab with a
+  // null workspace, the moment a FILE surface takes the stage: `disposeTab`/
+  // `removeEmptyTab` set `active = -1` and hand the stage to `surfaces` in
+  // the same synchronous pass (spec §7, "last surface, not last tab"). Now
+  // that `surfaces: fileController` is wired above, that pass runs for real
+  // — and without this guard, this effect fires one render later and
+  // clobbers `activeWorkspace` back to null, pulling the strip's file
+  // segment and the panel's tree out from under the surface `disposeTab`
+  // just activated. `setActiveWorkspace`'s own doc comment already says this
+  // setter is "deliberately NOT called when the window runs out of terminal
+  // tabs" — this is that rule enforced at its one call site.
   useSignalEffect(() => {
     const active = tabViews.value[activeTabIndex.value];
-    setActiveWorkspace(active?.workspacePath ?? null);
+    if (active === undefined) {
+      return;
+    }
+    setActiveWorkspace(active.workspacePath);
   });
 
   useEffect(() => {
@@ -759,6 +817,28 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     boardOpen.value = false;
     tabsRef.current?.selectTab(index);
   };
+  /**
+   * The chrome's one tab-close entry point (RepositoryRail's "Close
+   * workspace" row and TabBar's close button) — captures
+   * `workspaceOrphanedByClose` BEFORE the close (indexes shift once
+   * `tabViews` updates), then closes the file surface left behind, if any.
+   * `closeWorkspace` has its own dirty guard (one `confirmDiscard` for the
+   * whole workspace), so this never asks twice for the same files. `closeTab`
+   * still runs the terminal-side busy guard on its own; nothing here bypasses
+   * it.
+   *
+   * ⌘⇧W (`close-tab`) does NOT go through this — that action runs entirely
+   * inside `TabManager`, which has no notion of a file surface's workspace.
+   * Flagged in the report rather than fixed here: closing it means widening
+   * `SurfaceStrip`, out of this task's file scope.
+   */
+  const closeTab = async (index: number): Promise<void> => {
+    const orphaned = workspaceOrphanedByClose(tabViews.value, index);
+    await tabsRef.current?.closeTab(index);
+    if (orphaned !== null) {
+      await fileController.closeWorkspace(orphaned);
+    }
+  };
   const updateAction = (
     <UpdateAction
       view={updatePreview ?? updater.view.value}
@@ -918,7 +998,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       sidebarNavigation={
         <RepositoryRail
           onSelectTab={selectTab}
-          onCloseTab={(index) => void tabsRef.current?.closeTab(index)}
+          onCloseTab={(index) => void closeTab(index)}
           onNewTab={() => void tabsRef.current?.newTab()}
           onRenameTab={(index, name) => tabsRef.current?.renameTab(index, name)}
           onSetTabColor={(index, color) =>
@@ -930,7 +1010,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       topTabs={
         <TabBar
           onSelectTab={selectTab}
-          onCloseTab={(index) => void tabsRef.current?.closeTab(index)}
+          onCloseTab={(index) => void closeTab(index)}
           onNewTab={() => void tabsRef.current?.newTab()}
           onRenameTab={(index, name) => tabsRef.current?.renameTab(index, name)}
           onSetTabColor={(index, color) =>
