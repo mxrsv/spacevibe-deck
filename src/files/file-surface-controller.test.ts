@@ -61,7 +61,10 @@ function harness(): Harness {
     },
     async writeFile(_root, path, text, eol) {
       written.push({ path, text, eol });
-      const next = { content: text, mtimeMs: (disk.get(path)?.mtimeMs ?? 0) + 100 };
+      const next = {
+        content: text,
+        mtimeMs: (disk.get(path)?.mtimeMs ?? 0) + 100,
+      };
       disk.set(path, next);
       return { path, mtimeMs: next.mtimeMs, size: text.length };
     },
@@ -398,6 +401,93 @@ describe("closing", () => {
     await h.controller.closePath(ROOT, FILE);
 
     expect(lastOf(h.dirtyPushes)).toEqual([]);
+  });
+
+  it("a failed close leaves the document and dirty path intact", async () => {
+    const h = harness();
+    h.setContent(FILE, "a\n");
+    await h.controller.openFile(ROOT, FILE, false);
+    h.controller.setText(FILE, "mine\n");
+    h.confirmDiscard.mockResolvedValueOnce(false);
+
+    await h.controller.closePath(ROOT, FILE);
+
+    expect(documentFor(FILE)).toBeDefined();
+    expect(documentFor(FILE)?.text).toBe("mine\n");
+    expect(documentFor(FILE)?.dirty).toBe(true);
+    expect(lastOf(h.dirtyPushes)).toEqual([FILE]);
+  });
+});
+
+describe("preview replacement disposes the prior document", () => {
+  it("stops watching and no longer reacts to changes for the replaced preview", async () => {
+    const h = harness();
+    h.setContent(FILE, "a\n");
+    h.setContent("/r/b.ts", "b\n");
+    await h.controller.openFile(ROOT, FILE, false);
+    await h.controller.openFile(ROOT, "/r/b.ts", false);
+
+    expect(documentFor(FILE)).toBeUndefined();
+    const last = h.watched[h.watched.length - 1];
+    expect(last.files).not.toContain(FILE);
+
+    h.emitChange({ path: FILE, kind: "changed", mtimeMs: 9999, size: 1 });
+    expect(documentFor(FILE)).toBeUndefined();
+  });
+});
+
+describe("closing a workspace", () => {
+  it("asks once for every dirty file, then closes and disposes them all", async () => {
+    const h = harness();
+    h.setContent(FILE, "a\n");
+    h.setContent("/r/b.ts", "b\n");
+    await h.controller.openFile(ROOT, FILE, true);
+    await h.controller.openFile(ROOT, "/r/b.ts", true);
+    h.controller.setText(FILE, "mine\n");
+
+    await h.controller.closeWorkspace(ROOT);
+
+    expect(h.confirmDiscard).toHaveBeenCalledWith([FILE]);
+    expect(fileTabsFor(ROOT)).toHaveLength(0);
+    expect(documentFor(FILE)).toBeUndefined();
+    expect(documentFor("/r/b.ts")).toBeUndefined();
+  });
+
+  it("clears the dirty entries for the closed workspace", async () => {
+    const h = harness();
+    h.setContent(FILE, "a\n");
+    await h.controller.openFile(ROOT, FILE, false);
+    h.controller.setText(FILE, "mine\n");
+
+    await h.controller.closeWorkspace(ROOT);
+
+    expect(lastOf(h.dirtyPushes)).toEqual([]);
+  });
+
+  it("closes a clean workspace without asking", async () => {
+    const h = harness();
+    h.setContent(FILE, "a\n");
+    await h.controller.openFile(ROOT, FILE, false);
+
+    await h.controller.closeWorkspace(ROOT);
+
+    expect(h.confirmDiscard).not.toHaveBeenCalled();
+    expect(fileTabsFor(ROOT)).toHaveLength(0);
+  });
+
+  it("leaves everything intact when the discard is refused", async () => {
+    const h = harness();
+    h.setContent(FILE, "a\n");
+    await h.controller.openFile(ROOT, FILE, false);
+    h.controller.setText(FILE, "mine\n");
+    h.confirmDiscard.mockResolvedValueOnce(false);
+
+    await h.controller.closeWorkspace(ROOT);
+
+    expect(fileTabsFor(ROOT)).toHaveLength(1);
+    expect(documentFor(FILE)?.text).toBe("mine\n");
+    expect(documentFor(FILE)?.dirty).toBe(true);
+    expect(lastOf(h.dirtyPushes)).toEqual([FILE]);
   });
 });
 

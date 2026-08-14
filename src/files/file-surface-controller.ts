@@ -25,6 +25,7 @@ import {
   activeStripIndex,
   activeWorkspace,
   closeFileSurface,
+  closeWorkspaceSurface,
   documentFor,
   fileDocuments,
   fileSurfaces,
@@ -70,6 +71,9 @@ export interface FileSurfaceController extends SurfaceStrip {
   savePath(path: string): Promise<void>;
   /** Close one file tab, asking first when it has unsaved changes. */
   closePath(workspacePath: string, path: string): Promise<void>;
+  /** Close every file tab of one workspace at once, asking a SINGLE time for
+   * every unsaved file across the whole workspace. */
+  closeWorkspace(workspacePath: string): Promise<void>;
   /** Answer the external-change bar. */
   resolve(path: string, resolution: ChangeResolution): Promise<void>;
   /** Re-`stat` open files and reconcile — window focus and tab activation. */
@@ -181,7 +185,8 @@ export function createFileSurfaceController(
         // The user typed while we were reading. Raise the bar this reload was
         // supposed to be a shortcut around, and keep their text.
         updateDocument(path, {
-          prompt: result.kind === "refused" ? "prompt-deleted" : "prompt-changed",
+          prompt:
+            result.kind === "refused" ? "prompt-deleted" : "prompt-changed",
           ...(result.kind === "refused" ? { gone: true } : {}),
         });
         notify();
@@ -224,7 +229,9 @@ export function createFileSurfaceController(
       updateDocument(path, {
         file: null,
         refusal:
-          error instanceof Error ? error.message : "Deck could not read this file.",
+          error instanceof Error
+            ? error.message
+            : "Deck could not read this file.",
       });
     } finally {
       notify();
@@ -289,16 +296,35 @@ export function createFileSurfaceController(
     }
   }
 
-  async function closePath(
-    workspacePath: string,
-    path: string,
-  ): Promise<void> {
+  async function closePath(workspacePath: string, path: string): Promise<void> {
     const document = documentFor(path);
     if (document?.dirty === true && !(await confirmDiscard([path]))) {
       return;
     }
     closeFileSurface(workspacePath, path);
     dirty.forget(path);
+    notify();
+    refreshWatch();
+  }
+
+  async function closeWorkspace(workspacePath: string): Promise<void> {
+    const dirtyInWorkspace = openPaths().filter(
+      (path) =>
+        documentFor(path)?.workspacePath === workspacePath &&
+        documentFor(path)?.dirty === true,
+    );
+    // ONE prompt for the whole workspace, not one per file — the same
+    // `confirmDiscard([path])` used by `closePath` already takes a list.
+    if (
+      dirtyInWorkspace.length > 0 &&
+      !(await confirmDiscard(dirtyInWorkspace))
+    ) {
+      return;
+    }
+    closeWorkspaceSurface(workspacePath);
+    // The store already dropped the now-orphaned documents; prune brings the
+    // registry's own bookkeeping back in sync in the same pass.
+    dirty.prune(openPaths());
     notify();
     refreshWatch();
   }
@@ -428,6 +454,7 @@ export function createFileSurfaceController(
     },
 
     closePath,
+    closeWorkspace,
 
     async resolve(path, resolution) {
       const document = documentFor(path);

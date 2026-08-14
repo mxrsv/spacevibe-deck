@@ -7,6 +7,7 @@ import {
   activeStripIndex,
   activeWorkspace,
   closeFileSurface,
+  closeWorkspaceSurface,
   dirtyPaths,
   documentFor,
   EMPTY_SURFACE,
@@ -150,6 +151,31 @@ describe("opening file tabs", () => {
     ]);
     expect(dirtyPaths()).toEqual(["/r/a.ts"]);
   });
+
+  it("disposes the previous preview's document when a clean preview is replaced", () => {
+    // Otherwise the evicted document lingers in `fileDocuments` forever: still
+    // watched, still reacting to external-change events, for a file no tab
+    // shows anymore.
+    openFileTab("/r", "/r/a.ts", { keep: false });
+    expect(documentFor("/r/a.ts")).toBeDefined();
+
+    openFileTab("/r", "/r/b.ts", { keep: false });
+
+    expect(documentFor("/r/a.ts")).toBeUndefined();
+    expect(fileTabsFor("/r").map((t) => t.path)).toEqual(["/r/b.ts"]);
+  });
+
+  it("keeps the evicted preview's document if another workspace still holds it open", () => {
+    // `fileDocuments` is keyed by absolute path, window-wide (module doc
+    // comment) — a path tabbed in a second workspace must survive eviction
+    // from the first.
+    openFileTab("/r", "/shared.ts", { keep: false });
+    openFileTab("/other", "/shared.ts", { keep: true });
+
+    openFileTab("/r", "/r/b.ts", { keep: false });
+
+    expect(documentFor("/shared.ts")).toBeDefined();
+  });
 });
 
 describe("the active surface", () => {
@@ -212,6 +238,47 @@ describe("closing a file tab", () => {
     updateDocument("/r/a.ts", { dirty: true });
     closeFileSurface("/r", "/r/a.ts");
     expect(dirtyPaths()).toEqual([]);
+  });
+});
+
+describe("closing a workspace", () => {
+  it("drops every tab and document for that workspace only", () => {
+    openFileTab("/a", "/a/one.ts", { keep: true });
+    openFileTab("/a", "/a/two.ts", { keep: true });
+    openFileTab("/b", "/b/three.ts", { keep: true });
+
+    closeWorkspaceSurface("/a");
+
+    expect(fileTabsFor("/a")).toEqual([]);
+    expect(documentFor("/a/one.ts")).toBeUndefined();
+    expect(documentFor("/a/two.ts")).toBeUndefined();
+    expect(fileTabsFor("/b").map((t) => t.path)).toEqual(["/b/three.ts"]);
+    expect(documentFor("/b/three.ts")).toBeDefined();
+  });
+
+  it("clears the active file tab when it belonged to the closed workspace", () => {
+    openFileTab("/a", "/a/one.ts", { keep: true });
+    closeWorkspaceSurface("/a");
+    expect(activeFileTab.value).toBeNull();
+  });
+
+  it("leaves the active file tab alone when it belongs to a different workspace", () => {
+    openFileTab("/a", "/a/one.ts", { keep: true });
+    openFileTab("/b", "/b/two.ts", { keep: true });
+    closeWorkspaceSurface("/a");
+    expect(activeFileTab.value).toBe("/b/two.ts");
+  });
+
+  it("is a no-op for a workspace with no surface entry", () => {
+    expect(() => closeWorkspaceSurface("/never-opened")).not.toThrow();
+    expect(totalFileTabs()).toBe(0);
+  });
+
+  it("keeps a path's document alive if it is also open in another workspace", () => {
+    openFileTab("/a", "/shared.ts", { keep: true });
+    openFileTab("/b", "/shared.ts", { keep: true });
+    closeWorkspaceSurface("/a");
+    expect(documentFor("/shared.ts")).toBeDefined();
   });
 });
 

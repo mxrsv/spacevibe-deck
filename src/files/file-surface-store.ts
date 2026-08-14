@@ -19,13 +19,20 @@
 import { signal } from "@preact/signals";
 import type { ChangeAction } from "./external-change";
 import type { DirEntry, Listings } from "./file-tree";
-import { flattenTree, openDirectories, toggleExpanded, type TreeRow } from "./file-tree";
+import {
+  flattenTree,
+  openDirectories,
+  toggleExpanded,
+  type TreeRow,
+} from "./file-tree";
 import type { FileContent } from "./file-content";
 import {
   activeAfterFileClose,
   closeFileTab,
+  hasTab,
   openKept,
   openPreview,
+  previewTab,
   promoteTab,
   type FileTabEntry,
 } from "./preview-slot";
@@ -99,7 +106,9 @@ export const fileSurfaces = signal<ReadonlyMap<string, FileSurfaceState>>(
 );
 
 /** Open documents, keyed by absolute path. */
-export const fileDocuments = signal<ReadonlyMap<string, FileDocument>>(new Map());
+export const fileDocuments = signal<ReadonlyMap<string, FileDocument>>(
+  new Map(),
+);
 
 /**
  * The workspace the panel and the strip's file segment belong to.
@@ -141,7 +150,10 @@ function writeSurface(
   fileSurfaces.value = next;
 }
 
-export function setShowHidden(workspacePath: string, showHidden: boolean): void {
+export function setShowHidden(
+  workspacePath: string,
+  showHidden: boolean,
+): void {
   writeSurface(workspacePath, { showHidden });
 }
 
@@ -162,13 +174,19 @@ export function setListing(
 /** Expand or collapse one directory. Collapsing keeps its listing cached —
  * re-expanding is then instant, and the watch scope is recomputed from the
  * visible rows, so a collapsed directory still cannot leak a watcher. */
-export function toggleDirectory(workspacePath: string, directory: string): void {
+export function toggleDirectory(
+  workspacePath: string,
+  directory: string,
+): void {
   writeSurface(workspacePath, {
     expanded: toggleExpanded(surfaceFor(workspacePath).expanded, directory),
   });
 }
 
-export function expandDirectory(workspacePath: string, directory: string): void {
+export function expandDirectory(
+  workspacePath: string,
+  directory: string,
+): void {
   const surface = surfaceFor(workspacePath);
   if (surface.expanded.has(directory)) {
     return;
@@ -247,6 +265,28 @@ function dirtySet(): ReadonlySet<string> {
   return new Set(dirtyPaths());
 }
 
+/** Whether `path` is still tabbed in ANY workspace — `fileDocuments` is keyed
+ * by absolute path window-wide, so a document is only safe to drop once no
+ * surface references it at all. */
+function isOpenAnywhere(path: string): boolean {
+  for (const surface of fileSurfaces.value.values()) {
+    if (hasTab(surface.tabs, path)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Drop `path`'s document if nothing tabs it anymore. */
+function disposeIfOrphaned(path: string): void {
+  if (isOpenAnywhere(path)) {
+    return;
+  }
+  const documents = new Map(fileDocuments.value);
+  documents.delete(path);
+  fileDocuments.value = documents;
+}
+
 /**
  * Open a file as the workspace's preview tab (single click) or as a kept tab
  * (double click), activate it, and make its workspace the active one.
@@ -259,12 +299,24 @@ export function openFileTab(
   options: { readonly keep: boolean },
 ): boolean {
   const surface = surfaceFor(workspacePath);
+  // Captured before the replace: a CLEAN preview slot is replaced in place
+  // (`openPreview`), which silently orphans its former occupant's document —
+  // still watched, still reacting to external-change events for a file no tab
+  // shows anymore.
+  const priorPreview = previewTab(surface.tabs);
   const tabs = options.keep
     ? openKept(surface.tabs, path, dirtySet())
     : openPreview(surface.tabs, path, dirtySet());
   writeSurface(workspacePath, { tabs, activePath: path });
   activeWorkspace.value = workspacePath;
   activeFileTab.value = path;
+  if (
+    priorPreview !== undefined &&
+    priorPreview.path !== path &&
+    !hasTab(tabs, priorPreview.path)
+  ) {
+    disposeIfOrphaned(priorPreview.path);
+  }
   if (fileDocuments.value.has(path)) {
     return false;
   }
@@ -318,7 +370,11 @@ export function setActiveWorkspace(workspacePath: string | null): void {
  */
 export function closeFileSurface(workspacePath: string, path: string): void {
   const surface = surfaceFor(workspacePath);
-  const nextActive = activeAfterFileClose(surface.tabs, path, surface.activePath);
+  const nextActive = activeAfterFileClose(
+    surface.tabs,
+    path,
+    surface.activePath,
+  );
   writeSurface(workspacePath, {
     tabs: closeFileTab(surface.tabs, path),
     activePath: nextActive,
@@ -328,6 +384,36 @@ export function closeFileSurface(workspacePath: string, path: string): void {
   fileDocuments.value = documents;
   if (activeFileTab.value === path) {
     activeFileTab.value = nextActive;
+  }
+}
+
+/**
+ * Close every file tab of one workspace at once and drop its surface entry
+ * entirely — not merely empty it, so a stale explorer state does not linger
+ * for a workspace nothing has open anymore. Unguarded, matching
+ * `closeFileSurface`'s split: the dirty guard is the caller's.
+ *
+ * `activeWorkspace` is left untouched — `surfaceFor` already answers an
+ * unknown workspace with `EMPTY_SURFACE`, and this is not "last surface"
+ * territory (plan T21), which only ever loses terminal tabs, never the
+ * workspace itself.
+ */
+export function closeWorkspaceSurface(workspacePath: string): void {
+  const surface = fileSurfaces.value.get(workspacePath);
+  if (surface === undefined) {
+    return;
+  }
+  const closingPaths = surface.tabs.map((tab) => tab.path);
+  const next = new Map(fileSurfaces.value);
+  next.delete(workspacePath);
+  fileSurfaces.value = next;
+  for (const path of closingPaths) {
+    // A path also tabbed in another workspace survives — `fileDocuments` is
+    // window-wide, same rule as the preview-eviction path above.
+    disposeIfOrphaned(path);
+  }
+  if (closingPaths.includes(activeFileTab.value ?? "")) {
+    activeFileTab.value = null;
   }
 }
 
@@ -402,7 +488,11 @@ export function currentFileStatus(): FileStatus | null {
           ? "UTF-8"
           : "UTF-8 (invalid)",
     eol:
-      document.file === null ? "—" : document.file.eol === "crlf" ? "CRLF" : "LF",
+      document.file === null
+        ? "—"
+        : document.file.eol === "crlf"
+          ? "CRLF"
+          : "LF",
   };
 }
 
