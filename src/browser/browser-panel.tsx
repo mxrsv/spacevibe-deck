@@ -172,7 +172,11 @@ export function BrowserPanel({
     getDesktopEnvironment().platform === "macos" ? "⌘C" : "Ctrl+C";
 
   return (
-    <aside class="browser-panel" aria-label="Browser">
+    <aside
+      class="browser-panel"
+      aria-label="Browser (Electron only)"
+      title="Browser panel — Electron only, not available on Tauri"
+    >
       <div
         class="browser-panel__grip"
         onPointerDown={startResize}
