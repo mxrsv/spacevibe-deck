@@ -30,7 +30,7 @@ const SOURCE_ROOT = pathFromFileUrl(new URL("../src/", import.meta.url));
  */
 const ALLOWED_SVG: ReadonlyMap<string, number> = new Map([
   // The Deck brand mark. A logo is identity, not an icon in a system.
-  ["open-board/open-board.tsx", 1],
+  ["open-board/open-board-home.tsx", 1],
   // The agent-pending ring: ticks positioned by hand and spun by CSS. No
   // library icon expresses it, and it is a status visual, not an action.
   ["ui/workspace-spinner.tsx", 1],

@@ -99,51 +99,53 @@ describe("OpenBoard removal flow", () => {
     });
   };
 
-  const keydown = async (init: KeyboardEventInit): Promise<void> => {
-    const board = host.querySelector<HTMLDivElement>(".open-board");
-    await act(async () => {
-      board?.dispatchEvent(
-        new KeyboardEvent("keydown", { ...init, bubbles: true }),
-      );
-    });
-  };
-
   const rowNames = (): string[] =>
     [...host.querySelectorAll(".row .row__name")].map(
       (el) => el.textContent ?? "",
     );
+
+  const removeButton = (name: string): HTMLButtonElement | null => {
+    const row = [...host.querySelectorAll(".row")].find(
+      (el) => el.querySelector(".row__name")?.textContent === name,
+    );
+    return row?.querySelector<HTMLButtonElement>(".row__x") ?? null;
+  };
 
   it("draws the folder, remove and new-layout actions as icons", async () => {
     seed(["/w/alpha"]);
     await mount();
 
     expect(host.querySelector(".row__ico.lucide-folder-open")).not.toBeNull();
-    expect(host.querySelector(".openfolder .lucide-folder-plus")).not.toBeNull();
+    expect(
+      host.querySelector(".home-action .lucide-folder-plus"),
+    ).not.toBeNull();
 
-    const x = host.querySelector<HTMLButtonElement>(".row.is-selected .row__x");
+    const x = removeButton("alpha");
     // Removing a recent forgets a pointer; it deletes nothing on disk, so it
     // is a dismissal (X), not a trash can.
     expect(x?.querySelector(".lucide-x")).not.toBeNull();
     expect(x?.textContent).toBe("");
+
+    await act(async () => {
+      host
+        .querySelector<HTMLLIElement>(".row")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
     expect(host.querySelector(".lcard--new .lucide-plus")).not.toBeNull();
   });
 
-  it("removing the selected recent moves selection to the next row", async () => {
+  it("removing a recent drops just that row", async () => {
     seed(["/w/alpha", "/w/beta", "/w/gamma"]);
     await mount();
     expect(rowNames()).toEqual(["alpha", "beta", "gamma"]);
 
-    const x = host.querySelector<HTMLButtonElement>(".row.is-selected .row__x");
+    const x = removeButton("beta");
     expect(x).not.toBeNull();
     await act(async () => {
       x?.click();
     });
 
-    // The removed path must not resurrect as a fabricated "picked" entry.
-    expect(rowNames()).toEqual(["beta", "gamma"]);
-    expect(host.querySelector(".row.is-selected .row__name")?.textContent).toBe(
-      "beta",
-    );
+    expect(rowNames()).toEqual(["alpha", "gamma"]);
   });
 
   it("uses the initialized Windows home directory for display", async () => {
@@ -174,32 +176,19 @@ describe("OpenBoard removal flow", () => {
     expect(host.querySelectorAll(".row")).toHaveLength(0);
   });
 
-  it("Backspace on the workspace section removes the selected recent", async () => {
-    seed(["/w/alpha", "/w/beta"]);
-    await mount();
-
-    await keydown({ key: "Backspace" });
-
-    expect(rowNames()).toEqual(["beta"]);
-    expect(host.querySelector(".row.is-selected .row__name")?.textContent).toBe(
-      "beta",
-    );
-  });
-
   it("double-clicking a row's × removes without opening the workspace", async () => {
     seed(["/w/alpha", "/w/beta"]);
     const onOpen = vi.fn(async () => true);
     await mount(onOpen);
 
-    const x = host.querySelector<HTMLButtonElement>(".row.is-selected .row__x");
+    const x = removeButton("alpha");
     await act(async () => {
       x?.click();
     });
     // Second rapid click on the same spot fires a dblclick on the × of the
-    // row that moved up — it must not bubble into the row's open handler.
-    const nextX = host.querySelector<HTMLButtonElement>(
-      ".row.is-selected .row__x",
-    );
+    // row that took its place — it must not bubble into the row's open
+    // handler.
+    const nextX = removeButton("beta");
     await act(async () => {
       nextX?.dispatchEvent(
         new MouseEvent("dblclick", { bubbles: true, cancelable: true }),
@@ -209,71 +198,43 @@ describe("OpenBoard removal flow", () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
-  it("Backspace does not discard a just-picked folder that is not a recent yet", async () => {
-    seed(["/w/alpha"]);
-    pickedFolder = "/w/fresh";
-    await mount();
-
-    await keydown({ key: "o", metaKey: true }); // ⌘O → picks /w/fresh
-    expect(rowNames()).toEqual(["fresh", "alpha"]);
-
-    await keydown({ key: "Backspace" });
-
-    // The pick survives, stays selected, and the store is untouched.
-    expect(rowNames()).toEqual(["fresh", "alpha"]);
-    expect(host.querySelector(".row.is-selected .row__name")?.textContent).toBe(
-      "fresh",
-    );
-    expect(workspacesData.value.recents.map((r) => r.path)).toEqual([
-      "/w/alpha",
-    ]);
-  });
-
-  it("opens the folder picker with Ctrl+Shift+O on Windows", async () => {
+  it("opens the folder picker with Ctrl+Shift+O on Windows and lands in the config view", async () => {
     resetDesktopEnvironmentForTests();
     initializeDesktopEnvironment({
       platform: "windows",
       homeDir: String.raw`C:\Users\dev`,
     });
-    pickedFolder = String.raw`C:\work`;
+    pickedFolder = "C:/work";
     await mount();
 
-    expect(host.querySelector(".openfolder kbd")?.textContent).toBe(
-      "Ctrl+Shift+O",
-    );
-    await keydown({ key: "o", ctrlKey: true });
-    expect(rowNames()).toEqual([]);
+    const openAction = host.querySelector<HTMLButtonElement>(".home-action");
+    expect(openAction?.querySelector("kbd")?.textContent).toBe("Ctrl+Shift+O");
 
-    await keydown({ key: "O", ctrlKey: true, shiftKey: true });
-    expect(rowNames()).toHaveLength(1);
-  });
+    const board = host.querySelector<HTMLDivElement>(".open-board");
+    await act(async () => {
+      board?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "o",
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+    });
+    // Plain Ctrl+O is the Windows new-tab binding, not Deck's — no pick.
+    expect(host.querySelector(".board-config")).toBeNull();
 
-  it("removal applies the next row's remembered preset/agent combo", async () => {
-    presetsData.value = {
-      version: PRESETS_VERSION,
-      presets: [{ id: "p-grid", name: "Grid", layout: { type: "leaf" } }],
-    };
-    workspacesData.value = {
-      version: WORKSPACES_VERSION,
-      recents: [
-        { path: "/w/alpha", lastOpenedAt: NOW },
-        { path: "/w/beta", lastOpenedAt: NOW - 1, lastPresetId: "p-grid" },
-      ],
-    };
-    await mount();
-    // alpha remembers nothing → the default built-in preset starts selected.
-    expect(
-      host.querySelector(".lcard.is-selected .lcard__name")?.textContent,
-    ).toBe("Single pane");
+    await act(async () => {
+      board?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "O",
+          ctrlKey: true,
+          shiftKey: true,
+          bubbles: true,
+        }),
+      );
+    });
 
-    await keydown({ key: "Backspace" }); // removes alpha, selects beta
-
-    // selectWorkspace ran for beta: its remembered preset is now selected.
-    expect(host.querySelector(".row.is-selected .row__name")?.textContent).toBe(
-      "beta",
-    );
-    expect(
-      host.querySelector(".lcard.is-selected .lcard__name")?.textContent,
-    ).toBe("Grid");
+    expect(host.querySelector(".board-config")).not.toBeNull();
+    expect(host.querySelector(".wshead__title")?.textContent).toBe("work");
   });
 });

@@ -2281,10 +2281,9 @@ button.attn-mark:hover {
   outline-offset: -2px;
 }
 
-/* ---------- Open board — rail (recents) + detail ---------- */
+/* ---------- Open board — Cursor-style home + config views ---------- */
 /* The board's paddings/widths are authored border-box (there is no global
-   reset in this stylesheet, and divs default to content-box — a .row at
-   width 100% + 34px padding would overflow the 300px rail otherwise). */
+   reset in this stylesheet, and divs default to content-box). */
 .open-board,
 .open-board * {
   box-sizing: border-box;
@@ -2293,8 +2292,8 @@ button.attn-mark:hover {
   position: absolute;
   inset: 0;
   z-index: 30;
-  display: grid;
-  grid-template-columns: 300px 1fr;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   background: var(--bg);
   color: var(--text-primary);
@@ -2312,20 +2311,18 @@ button.attn-mark:hover {
   }
 }
 
-/* Left rail: app logo + recents list, Open Folder pinned to the bottom. */
-.rail {
+/* Home view: the board's only surface until a workspace is picked. The
+   app's WorkspaceSidebar is the one rail now (contract 2026-08-14) — this
+   view draws no rail of its own, just a centered mark, the two entry
+   actions, and the Recent list below. */
+.board-home {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  background: var(--chrome-1);
-  border-right: 1px solid var(--hair);
-}
-.rail__head {
-  flex: none;
-  display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 13px 12px 9px;
+  overflow-y: auto;
+  padding: 13vh 24px 40px;
 }
 .applogo {
   width: 24px;
@@ -2348,34 +2345,69 @@ button.attn-mark:hover {
   height: 100%;
   object-fit: cover;
 }
-.rail__title {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 640;
-  letter-spacing: -0.012em;
+/* The home mark reads as the screen's own identity, not a chrome icon —
+   double the rail-era size. */
+.applogo--lg {
+  width: 56px;
+  height: 56px;
 }
-.rail__count {
-  flex: none;
+.applogo--lg svg {
+  width: 30px;
+  height: 30px;
+}
+
+.board-home__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+.home-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 33px;
+  padding: 0 16px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 590;
+  letter-spacing: -0.01em;
+  /* Dashed outline, no fill — same affordance language as `.lcard--new`
+     ("+ New Layout") in the config view. DL-3.1: accent marks the
+     interactive/active state, it is not a fill. */
+  background: none;
+  border: 1px dashed var(--hair-strong);
+  color: var(--text-muted);
+}
+.home-action:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.home-action kbd {
+  font: inherit;
   font-size: 11.5px;
+  /* DL-3.4: keyboard hints are `--text-faint`. */
   color: var(--text-faint);
 }
-.rail__scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  /* 8px top, not the old 2px: the list now starts under the Open Folder
-     hairline rather than under the head's own padding. */
-  padding: 8px 8px 10px;
+
+.board-home__recents {
+  width: min(480px, 100%);
+  margin-top: 34px;
+}
+.board-home__recents-head {
+  padding: 0 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.board-home__list {
   margin: 0;
+  padding: 0;
   list-style: none;
-}
-.rail__scroll::-webkit-scrollbar {
-  width: 7px;
-}
-.rail__scroll::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--fg) 18%, transparent);
-  border-radius: var(--radius-control);
 }
 
 /* One recents row — a div (its × is a real button, no button nesting). */
@@ -2459,42 +2491,12 @@ button.attn-mark:hover {
   opacity: 0;
   padding: 0;
 }
-.row:hover .row__x,
-.row.is-selected .row__x {
+.row:hover .row__x {
   opacity: 1;
 }
 .row__x:hover {
   background: color-mix(in srgb, var(--red) 22%, transparent);
   color: var(--red);
-}
-
-/* DL-21.1: the selection wash, the same one the tab bar and both rails use.
-   This row was a solid `--accent` fill with its text flipped to `--bg` until
-   2026-08-14 — a decorative fill over a large area, which DL-3.1 bans outright,
-   and a second selection language in an app that is supposed to have one. The
-   text colours come back to the ladder because the ground is a neutral wash
-   again, not a saturated one. */
-.row.is-selected {
-  background: var(--tab-active-bg);
-}
-.row.is-selected .row__name {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-.row.is-selected .row__path,
-.row.is-selected .row__time {
-  color: var(--text-muted);
-}
-.row.is-selected .row__ico {
-  color: var(--bg);
-  opacity: 1;
-}
-.row.is-selected .row__x {
-  color: color-mix(in srgb, var(--bg) 78%, transparent);
-}
-.row.is-selected .row__x:hover {
-  background: color-mix(in srgb, var(--bg) 18%, transparent);
-  color: var(--bg);
 }
 
 .row.is-missing .row__name {
@@ -2530,69 +2532,47 @@ button.attn-mark:hover {
 }
 
 /* Sits directly under the rail head, above the recents list — head padding
-   supplies the gap above it, so only the sides and bottom are padded here.
-   No background of its own: head + action read as one block on the rail, and
-   the hairline is what separates them from the list. */
-.rail__act {
-  flex: none;
-  padding: 0 9px 9px;
-  border-bottom: 1px solid var(--hair);
-}
-.openfolder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  width: 100%;
-  height: 31px;
-  border-radius: var(--radius-control);
-  cursor: pointer;
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 590;
-  letter-spacing: -0.01em;
-  /* Dashed outline, no fill — same affordance language as `.lcard--new`
-     ("+ New Layout") in the detail column. The old solid accent fill broke
-     DL-3.1: accent marks interactive/active state, it is not a fill. */
-  background: none;
-  border: 1px dashed var(--hair-strong);
-  color: var(--text-muted);
-}
-.openfolder:hover {
-  border-color: var(--accent);
-  color: var(--text-primary);
-}
-.openfolder kbd {
-  font: inherit;
-  font-size: 11.5px;
-  /* Was opacity 0.6, which read fine over the accent fill but stacks with the
-     now-muted label into near-invisible. A token instead (DL-2.1/DL-3.4:
-     keyboard hints are `--text-faint`), so hover leaves the hint behind. */
-  color: var(--text-faint);
-}
-
-/* Detail column: workspace header → layout grid → agent chips → footer.
-   min-width: 0 lets the 1fr grid track shrink below the content's
-   min-content on a narrow window, so paths ellipsize instead of pushing
-   the footer actions off-screen. */
-.detail {
+   supplies the gap above it, so only the sides and bottom are padded here. */
+/* Config view: back control → workspace header → layout grid → agent chips
+   → footer. min-width: 0 lets the column shrink below the content's
+   min-content on a narrow window, so paths ellipsize instead of pushing the
+   footer actions off-screen. */
+.board-config {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
 }
-.detail__scroll {
+.board-config__scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: 20px 24px 18px;
 }
-.detail__scroll::-webkit-scrollbar {
+.board-config__scroll::-webkit-scrollbar {
   width: 7px;
 }
-.detail__scroll::-webkit-scrollbar-thumb {
+.board-config__scroll::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--fg) 18%, transparent);
   border-radius: var(--radius-control);
+}
+
+.board-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.board-back:hover {
+  color: var(--text-primary);
 }
 
 .wshead {
