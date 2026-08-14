@@ -4230,12 +4230,13 @@ button.attn-mark:hover {
 }
 
 /* ── Explorer panel: a docked column on the right of the stage (DL-19) ────
-   Plan Task 2 (spec: docs/specs/2026-08-12-file-explorer-design.md §3).
+   Plan Task 3 (spec: docs/specs/2026-08-12-file-explorer-design.md §3).
    Same structure as the browser panel above: `.stage__tabs`' own inset
    shrinks by exactly the panel's width, so terminal panes resize around it
-   (DL-19.1) instead of being covered. `--explorer-w` is fixed for this
-   slice — no drag, no persisted setting, no show/hide chord yet (those land
-   with a later task). When the browser panel is ALSO open, the explorer
+   (DL-19.1) instead of being covered. `--explorer-w` is set inline by `App`
+   from the live-drag-or-settled width (DL-19.4); the value here is only the
+   fallback for a mount with no `App` around it (the gallery, this panel's
+   own isolated tests). When the browser panel is ALSO open, the explorer
    sits to its left instead of overlapping it (DL-19.6: foreign content gets
    its own rectangle Deck's chrome never paints over). */
 
@@ -4263,6 +4264,20 @@ button.attn-mark:hover {
 
 .stage--browser .explorer-panel {
   right: var(--browser-w);
+}
+
+/* DL-19.4: the drag target for the width, on the seam itself — same shape as
+   `.browser-panel__grip` above. Wider than the hairline it sits on so it can
+   be hit, and transparent so it does not draw a second one. */
+.explorer-panel__grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 7px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 1;
 }
 
 /* DL-19.3: one hairline-separated header row carrying the panel's title. */
@@ -4308,13 +4323,25 @@ button.attn-mark:hover {
 }
 
 .file-tree {
-  display: flex;
-  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  outline: none;
+}
+
+/* Its height is `rows.length * 22px` (plan T4's windowing math), set inline
+   from the row count — this is what keeps the scrollbar's size honest while
+   only the rows near the viewport are actually mounted. */
+.file-tree__rows {
+  position: relative;
 }
 
 .file-tree__row {
+  position: absolute;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
+  gap: 4px;
   /* DL-19: data rows are 22px, --ui-font. */
   height: 22px;
   padding-right: 8px;
@@ -4333,9 +4360,35 @@ button.attn-mark:hover {
   background: var(--state-hover-bg);
 }
 
+/* DL-21.3: focus-visible stays a 2px --accent outline, same as the roving
+   tabindex list in settings-nav.tsx. */
+.file-tree__row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.file-tree__chevron,
+.file-tree__icon {
+  display: flex;
+  flex-shrink: 0;
+  /* DL §8/§19's file-type icon rule: monochrome at --text-faint. Taking the
+     row's color when selected is deferred — this row has no persisted
+     selection state yet, only the roving keyboard focus above. */
+  color: var(--text-faint);
+}
+
 .file-tree__name {
   /* DL-19: a data row keeps its content's real casing. */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.file-tree__status {
+  margin: 0;
+  padding: 10px 8px;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  line-height: 1.4;
 }
