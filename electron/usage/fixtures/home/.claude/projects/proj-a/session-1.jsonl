@@ -1,0 +1,2 @@
+{"type":"assistant","timestamp":"2026-08-10T05:05:00.000Z","sessionId":"sess-1","requestId":"req-1","message":{"id":"msg-1","model":"claude-opus-5","usage":{"input_tokens":6,"cache_read_input_tokens":23290,"cache_creation":{"ephemeral_1h_input_tokens":44316},"output_tokens":141}}}
+not-json-garbage-line

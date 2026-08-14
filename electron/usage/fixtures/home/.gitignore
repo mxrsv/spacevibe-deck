@@ -1,0 +1,6 @@
+# The repo-root .gitignore excludes any directory named `.claude/` anywhere
+# in the tree (local agent configuration). This fixture home genuinely needs
+# a tracked `.claude/` subtree to exercise the Claude source scanner, so it
+# is explicitly un-ignored here, scoped to this fixture only.
+!.claude/
+!.claude/**

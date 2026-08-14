@@ -1,0 +1,2 @@
+{"type":"assistant","timestamp":"2026-08-10T06:07:00.000Z","sessionId":"sess-2","requestId":"req-2","message":{"id":"msg-2","model":"claude-sonnet-5","usage":{"input_tokens":7,"cache_read_input_tokens":50,"output_tokens":31}}}
+not-json-garbage-line
