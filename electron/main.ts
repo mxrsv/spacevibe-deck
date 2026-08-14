@@ -38,6 +38,7 @@ import { StoreRegistry } from "./store";
 import { detectAgentsSafely, dirsExist } from "./agents";
 import { gitBranch } from "./git";
 import { scanRepository } from "./worktrees";
+import { addWorktree } from "./git/worktree";
 import { resolvePaths, openEditor } from "./links";
 import { listPromptAssets } from "./prompt-assets";
 import { readImageAsDataUrl, scanWorkspaceFavicon } from "./images";
@@ -424,6 +425,9 @@ ipcMain.handle(CHANNELS.gitBranch, (_event, { cwd }) => gitBranch(cwd));
 // to the flat folder list Deck already shows rather than raising an error.
 ipcMain.handle(CHANNELS.gitRepository, (_event, { path }) =>
   scanRepository(path),
+);
+ipcMain.handle(CHANNELS.worktreeAdd, (_event, { repoPath, branch, destPath }) =>
+  addWorktree({ repoPath, branch, destPath }),
 );
 ipcMain.handle(CHANNELS.detectAgents, (_event, { names }) =>
   detectAgentsSafely(names ?? []),

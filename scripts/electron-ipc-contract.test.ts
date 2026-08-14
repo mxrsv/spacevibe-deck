@@ -194,6 +194,25 @@ describe("Electron IPC contract", () => {
     ).toEqual([]);
   });
 
+  it("worktree_add carries the flat { repoPath, branch, destPath } payload on both sides", () => {
+    // Task 16's explicit fixture, pinned the same way usage_snapshot pins its
+    // zero-payload contract above: proof this generic scanner actually
+    // reaches the new channel, not just an assertion that would pass
+    // vacuously if collectCallSites/collectHandlers found nothing for it.
+    const sites = callSites.filter((site) => site.channel === "worktree_add");
+    expect(sites.length).toBeGreaterThan(0);
+    for (const site of sites) {
+      expect(site.keys).toEqual(["repoPath", "branch", "destPath"]);
+    }
+    const worktreeHandlers = handlers.filter(
+      (handler) => handler.channel === "worktree_add",
+    );
+    expect(worktreeHandlers.length).toBeGreaterThan(0);
+    for (const handler of worktreeHandlers) {
+      expect(handler.required).toEqual(["repoPath", "branch", "destPath"]);
+    }
+  });
+
   it("has a handler for every channel the renderer invokes", () => {
     const handled = new Set(handlers.map((handler) => handler.channel));
     // Handlers that take the payload whole are skipped by `collectHandlers`,

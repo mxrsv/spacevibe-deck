@@ -2561,6 +2561,87 @@ button.attn-mark:hover {
   border-radius: var(--radius-control);
 }
 
+/* Create-worktree form (task 16): the same board-config shell (back button,
+   wshead, footer) with its own field stack in between. */
+.board-worktree {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.board-worktree__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 18px;
+}
+.wtf__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 520px;
+  margin-top: 20px;
+}
+.wtf__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.wtf__row {
+  display: flex;
+  gap: 8px;
+}
+.wtf__select,
+.wtf__input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 12.5px;
+  padding: 7px 10px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+}
+.wtf__select:focus,
+.wtf__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.wtf__browse {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+.wtf__browse:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.wtf__error {
+  margin-top: 16px;
+  font-size: 12px;
+  /* DL-3.2: --red marks a failure, not the softer --yellow warning tone —
+     a worktree that failed to create is a stop, not a heads-up. */
+  color: var(--red);
+}
+/* No `.foot__lead` in this footer (no summary line to show) — the actions
+   move to the right so the primary button still lands where a form's
+   confirm action is expected. */
+.board-worktree .foot {
+  justify-content: flex-end;
+}
+
 .board-back {
   display: inline-flex;
   align-items: center;

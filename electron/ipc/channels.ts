@@ -21,6 +21,9 @@ export const CHANNELS = {
   // would implement a feature twice on a host `AGENTS.md` has frozen. See
   // `docs/specs/2026-08-13-repository-worktree-rail-design.md` §7.3.
   gitRepository: "git_repository",
+  // Create-worktree flow (open board, task 16). Electron-only like the block
+  // above: no `#[tauri::command]` counterpart, per the frozen Tauri host.
+  worktreeAdd: "worktree_add",
   detectAgents: "detect_agents",
   dirsExist: "dirs_exist",
   desktopEnvironment: "desktop_environment",

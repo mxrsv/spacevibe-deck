@@ -26,6 +26,7 @@ export interface OpenBoardHomeProps {
   readonly missingGroup: readonly RecentWorkspace[];
   describeCombo(recent: RecentWorkspace): string;
   onPickFolder(): void;
+  onCreateWorktree(): void;
   /** A single click picks the row and switches to the config view. */
   onSelect(path: string): void;
   /** A double click picks the row and opens it with its remembered combo. */
@@ -47,6 +48,7 @@ export function OpenBoardHome({
   missingGroup,
   describeCombo,
   onPickFolder,
+  onCreateWorktree,
   onSelect,
   onOpen,
   onRemove,
@@ -108,7 +110,7 @@ export function OpenBoardHome({
           Open project<kbd>{openFolderShortcut}</kbd>
         </button>
         {canCreateWorktree ? (
-          <button class="home-action" onClick={onPickFolder}>
+          <button class="home-action" onClick={onCreateWorktree}>
             <DeckIcon icon={GitBranchPlus} size={ROW_ICON} />
             Create worktree
           </button>

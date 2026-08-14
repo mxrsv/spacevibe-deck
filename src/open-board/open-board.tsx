@@ -34,6 +34,9 @@ import { AGENT_LOGOS } from "../lib/agent-logos";
 import { formatShortcutBinding } from "../lib/shortcut-label";
 import { OpenBoardHome } from "./open-board-home";
 import { OpenBoardLayoutSection } from "./open-board-layout-section";
+import { OpenBoardWorktreeForm } from "./open-board-worktree-form";
+import { available as worktreeHostAvailable } from "../host/worktree-host";
+import { useWorktreeForm } from "./use-worktree-form";
 
 export interface OpenBoardProps {
   canCancel: boolean;
@@ -47,8 +50,11 @@ export interface OpenBoardProps {
   onNewPreset(workspace: string | null): void;
 }
 
-/** Home: pick a workspace. Config: the Layout + Agent + Open combo for it. */
-type BoardView = "home" | "config";
+/**
+ * Home: pick a workspace. Config: the Layout + Agent + Open combo for it.
+ * Worktree: task 16's create-worktree form, reached from home only.
+ */
+type BoardView = "home" | "config" | "worktree";
 type BoardSection = "layout" | "agent";
 
 function agentLabel(id: string, customAgents: readonly CustomAgent[]): string {
@@ -68,16 +74,6 @@ function buildAgentChips(
     ...option,
     logo: AGENT_LOGOS[option.id],
   }));
-}
-
-/**
- * Task 16 owns the `worktree-host` facade. Until it lands this always
- * resolves false, so the button never reaches the DOM (contract 2026-08-14)
- * rather than rendering disabled — the seam stays trivial for that task to
- * fill in.
- */
-function hostCanCreateWorktrees(): boolean {
-  return false;
 }
 
 export function OpenBoard({
@@ -128,6 +124,8 @@ export function OpenBoard({
     agent: AgentChoice;
     message: string;
   } | null>(null);
+  // Create-worktree form state (task 16), split into its own hook (F8).
+  const worktreeForm = useWorktreeForm();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -292,6 +290,23 @@ export function OpenBoard({
     }
   }
 
+  /** Fresh state every time the form is opened — never a stale attempt. */
+  function openWorktreeForm(): void {
+    worktreeForm.reset();
+    view.value = "worktree";
+  }
+
+  /** Success hands straight to the config view, same as `pickFolder` — a
+   * freshly created worktree is never in `missing`, so it opens like any
+   * workspace (contract 2026-08-14). */
+  function submitWorktree(): void {
+    void worktreeForm.submit((path) => {
+      selectedPath.value = path;
+      selectedAgent.value = undefined;
+      enterConfig();
+    });
+  }
+
   /**
    * Guards a second Open (button/Enter/double-click) during the first spawn.
    * Reads every signal fresh rather than closing over the render-scope
@@ -442,9 +457,9 @@ export function OpenBoard({
     if (key === "Escape") {
       if (confirmDeleteId.value !== null) {
         confirmDeleteId.value = null;
-      } else if (view.value === "config") {
-        // Contract 2026-08-14: Escape backs out of config before it reaches
-        // the board's own cancel.
+      } else if (view.value === "config" || view.value === "worktree") {
+        // Contract 2026-08-14: Escape backs out of config (or the worktree
+        // form) before it reaches the board's own cancel.
         goHome();
       } else if (canCancel) {
         onCancel();
@@ -670,17 +685,34 @@ export function OpenBoard({
         <OpenBoardHome
           homeDir={home}
           openFolderShortcut={openFolderShortcut}
-          canCreateWorktree={hostCanCreateWorktrees()}
+          canCreateWorktree={worktreeHostAvailable}
           alive={groups.alive}
           missingGroup={groups.missing}
           describeCombo={describeCombo}
           onPickFolder={() => void pickFolder()}
+          onCreateWorktree={openWorktreeForm}
           onSelect={selectWorkspace}
           onOpen={(path) => {
             selectWorkspace(path);
             void confirmOpen();
           }}
           onRemove={removeRecentRows}
+        />
+      ) : view.value === "worktree" ? (
+        <OpenBoardWorktreeForm
+          recents={recents}
+          homeDir={home}
+          repoPath={worktreeForm.state.repoPath}
+          branch={worktreeForm.state.branch}
+          destPath={worktreeForm.state.destPath}
+          error={worktreeForm.state.error}
+          creating={worktreeForm.state.creating}
+          onRepoChange={worktreeForm.setRepo}
+          onBrowseRepo={() => void worktreeForm.browseRepo()}
+          onBranchChange={worktreeForm.setBranch}
+          onDestChange={worktreeForm.setDest}
+          onBack={goHome}
+          onSubmit={submitWorktree}
         />
       ) : (
         configView()
