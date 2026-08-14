@@ -389,6 +389,16 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "View", group: "browser" },
   },
   {
+    id: "toggle-explorer",
+    label: "Explorer",
+    // Tier "pane", same reasoning as toggle-browser above: the panel is a
+    // column of the stage, and every overlay covers the stage.
+    scope: "pane",
+    // Its own group, matching toggle-usage's own-group reasoning: this is a
+    // panel toggle, not a pane operation like the split/zoom items above it.
+    menu: { submenu: "View", group: "explorer" },
+  },
+  {
     id: "toggle-usage",
     label: "Token Usage…",
     // `"always"`, the same reasoning `toggle-settings` spells out above:
@@ -684,11 +694,18 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // Browser panel. `i` is the Inspect mnemonic and matches the chord every
   // browser already trains people on for element inspection; it is free on
   // BOTH keymaps. `b` — the obvious "browser" letter — is deliberately left
-  // alone: the file-explorer design reserves ⌘⇧B / Ctrl+Shift+B for its own
-  // docked panel, and taking it here would silently break a decided spec.
-  // CharKeyBinding is mandatory, not a style choice: this action has a macOS
-  // menu item, and a Cocoa accelerator is declared by character (RULE above).
+  // alone here: the file-explorer design claims ⌘⇧B / Ctrl+Shift+B for its
+  // own docked panel below (spec §3), and reusing it here would collide with
+  // that decided chord. CharKeyBinding is mandatory, not a style choice: this
+  // action has a macOS menu item, and a Cocoa accelerator is declared by
+  // character (RULE above).
   { key: "i", meta: true, shift: true, action: "toggle-browser" },
+  // File explorer panel (spec §3: docs/specs/2026-08-12-file-explorer-design.md).
+  // `b` is verified unused in both keymaps — the browser panel above
+  // deliberately left it alone for exactly this. CharKeyBinding is mandatory,
+  // not a style choice: this action has a macOS menu item, and a Cocoa
+  // accelerator is declared by character (RULE above).
+  { key: "b", meta: true, shift: true, action: "toggle-explorer" },
   // Token usage screen. ⌘⇧U is free on both keymaps — `u` is bound nowhere at
   // any modifier combination, verified exhaustively. CharKeyBinding is
   // mandatory, not a style choice: this action has a macOS menu item, and a
@@ -817,6 +834,8 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   // Same chord as macOS, one modifier swapped — see the mac entry for why `i`
   // and not `b`.
   { key: "i", ctrl: true, shift: true, action: "toggle-browser" },
+  // Same chord as macOS, one modifier swapped — see the mac entry above.
+  { key: "b", ctrl: true, shift: true, action: "toggle-explorer" },
   { key: "tab", ctrl: true, action: "next-tab" },
   { key: "tab", ctrl: true, shift: true, action: "prev-tab" },
   ...WINDOWS_TAB_SELECT_BINDINGS,

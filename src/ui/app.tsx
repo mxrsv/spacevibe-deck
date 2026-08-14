@@ -99,6 +99,7 @@ import { defaultLinkClient } from "../terminal/link-client";
 import {
   activeWorkspace,
   dirtyPaths,
+  explorerWidthLive,
   setActiveWorkspace,
 } from "../files/file-surface-store";
 import {
@@ -828,6 +829,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const browserWidth = (): number =>
     browserWidthLive.value ?? settings.value.browserWidth;
 
+  /** Same shape as `browserWidth` above, for the explorer column. */
+  const explorerWidth = (): number =>
+    explorerWidthLive.value ?? settings.value.explorerWidth;
+
   const closePrompts = (): void => {
     promptsOpen.value = false;
     tabsRef.current?.focusActive();
@@ -937,22 +942,33 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       }
       stage={
         <main
-          class={`stage ${browserOpen.value ? "stage--browser" : ""} stage--explorer`}
-          // One number, two consumers: the panel's own column and the inset
-          // that keeps the terminal grid clear of it. A drag updates the live
-          // signal, so both move together instead of the terminals catching up
-          // when the pointer is released.
-          style={{ "--browser-w": `${browserWidth()}px` }}
+          class={`stage ${browserOpen.value ? "stage--browser" : ""} ${
+            settings.value.explorerOpen ? "stage--explorer" : ""
+          }`}
+          // One number, two consumers per panel: the panel's own column and
+          // the inset that keeps the terminal grid clear of it. A drag
+          // updates the live signal, so both move together instead of the
+          // terminals catching up when the pointer is released.
+          style={{
+            "--browser-w": `${browserWidth()}px`,
+            "--explorer-w": `${explorerWidth()}px`,
+          }}
         >
           <div class="stage__tabs" ref={stagesRef} />
-          {/* Unconditional for this slice — there is no toggle chord yet
-              (that, the drag-resize and the persisted width all arrive
-              together in a later task). `ExplorerPanel` itself renders the
-              empty state when the active tab has no workspace (spec §2.1). */}
-          <ExplorerPanel
-            controller={fileController}
-            workspacePath={activeWorkspace.value}
-          />
+          {/* Gated on the `explorerOpen` setting, flipped by the
+              `toggle-explorer` chord (⌘⇧B / Ctrl+Shift+B — tab-manager.ts's
+              `commands` table). `ExplorerPanel` itself renders the empty
+              state when the active tab has no workspace (spec §2.1). */}
+          {settings.value.explorerOpen ? (
+            <ExplorerPanel
+              controller={fileController}
+              workspacePath={activeWorkspace.value}
+              width={explorerWidth()}
+              onWidthChange={(width) =>
+                updateSettings({ explorerWidth: width })
+              }
+            />
+          ) : null}
           {browserOpen.value ? (
             <BrowserPanel
               width={browserWidth()}

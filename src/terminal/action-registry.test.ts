@@ -72,6 +72,23 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
+  it("binds toggle-explorer on both platforms without colliding", () => {
+    const mac = MACOS_KEYMAP.filter(
+      (binding) => binding.action === "toggle-explorer",
+    );
+    const win = WINDOWS_KEYMAP.filter(
+      (binding) => binding.action === "toggle-explorer",
+    );
+    expect(mac).toEqual([
+      { key: "b", meta: true, shift: true, action: "toggle-explorer" },
+    ]);
+    expect(win).toEqual([
+      { key: "b", ctrl: true, shift: true, action: "toggle-explorer" },
+    ]);
+    // It has a menu item, so the RULE above CharKeyBinding requires `key`.
+    expect(mac[0]).not.toHaveProperty("code");
+  });
+
   it("binds move-pane-to-new-window on both platforms without colliding", () => {
     const mac = MACOS_KEYMAP.filter(
       (binding) => binding.action === "move-pane-to-new-window",
@@ -89,7 +106,7 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
-  it("has exactly the 45 action ids including updater menu actions", () => {
+  it("has exactly the 46 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -115,6 +132,7 @@ describe("ACTION_REGISTRY", () => {
         "split-column",
         "toggle-zoom-pane",
         "toggle-browser",
+        "toggle-explorer",
         "toggle-expand",
         "zoom-in",
         "zoom-out",

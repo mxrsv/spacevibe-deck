@@ -93,6 +93,7 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   // "app", not "panes": the panel is a surface of the window like Settings and
   // the Prompt Board, not something that acts on the focused pane.
   "toggle-browser": "app",
+  "toggle-explorer": "app",
   "toggle-usage": "app",
   "focus-next-attention": "app",
 };
@@ -158,7 +159,9 @@ export function shortcutGroups(): readonly ShortcutGroup[] {
       continue;
     }
     const target = PLACEMENT[action.id] ?? "other";
-    byGroup.get(target)?.push({ action: action.id as ActionId, label: action.label });
+    byGroup
+      .get(target)
+      ?.push({ action: action.id as ActionId, label: action.label });
     if (action.id === "select-last-tab") {
       byGroup.get(target)?.push(...tabSelectRows());
     }

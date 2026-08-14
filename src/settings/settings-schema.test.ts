@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, validateSettings } from "./settings-schema";
+import {
+  DEFAULT_SETTINGS,
+  EXPLORER_WIDTH_MAX,
+  EXPLORER_WIDTH_MIN,
+  validateSettings,
+} from "./settings-schema";
 
 describe("validateSettings", () => {
   it("silently drops the legacy restoreTabs field", () => {
@@ -211,6 +216,53 @@ describe("promptTemplates validation", () => {
   it("keeps only the four known fields", () => {
     const raw = { promptTemplates: [{ ...good, extra: "dropped" }] };
     expect(validateSettings(raw).promptTemplates).toEqual([good]);
+  });
+});
+
+describe("explorerOpen", () => {
+  it("defaults to false", () => {
+    expect(DEFAULT_SETTINGS.explorerOpen).toBe(false);
+    expect(validateSettings({}).explorerOpen).toBe(false);
+  });
+
+  it("accepts a boolean and rejects other types", () => {
+    expect(validateSettings({ explorerOpen: true }).explorerOpen).toBe(true);
+    expect(validateSettings({ explorerOpen: "yes" }).explorerOpen).toBe(false);
+  });
+});
+
+describe("explorerWidth", () => {
+  it("defaults to 260 when missing", () => {
+    expect(DEFAULT_SETTINGS.explorerWidth).toBe(260);
+    expect(validateSettings({}).explorerWidth).toBe(260);
+  });
+
+  it("falls back to 260 on a non-number", () => {
+    expect(validateSettings({ explorerWidth: "abc" }).explorerWidth).toBe(260);
+  });
+
+  it("clamps below the minimum", () => {
+    expect(validateSettings({ explorerWidth: 10 }).explorerWidth).toBe(
+      EXPLORER_WIDTH_MIN,
+    );
+  });
+
+  it("clamps above the maximum", () => {
+    expect(validateSettings({ explorerWidth: 9999 }).explorerWidth).toBe(
+      EXPLORER_WIDTH_MAX,
+    );
+  });
+
+  it("keeps an in-range value", () => {
+    expect(validateSettings({ explorerWidth: 300 }).explorerWidth).toBe(300);
+  });
+});
+
+describe("a settings file predating the explorer panel", () => {
+  it("merges to the default explorerOpen/explorerWidth when both keys are missing", () => {
+    const validated = validateSettings({ tabBarPosition: "top" });
+    expect(validated.explorerOpen).toBe(DEFAULT_SETTINGS.explorerOpen);
+    expect(validated.explorerWidth).toBe(DEFAULT_SETTINGS.explorerWidth);
   });
 });
 

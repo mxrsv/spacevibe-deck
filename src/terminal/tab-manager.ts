@@ -8,6 +8,7 @@ import {
 import {
   flushSettingsSave,
   settings,
+  toggleExplorer,
   updateSettings,
 } from "../settings/settings-store";
 import { type Direction, type SerializedNode } from "../lib/split-tree";
@@ -59,13 +60,14 @@ import { confirmClose } from "./close-guard";
 import { createCloseCoordinator } from "./close-coordinator";
 import { activeAfterClose } from "./tab-close";
 import { freshCwd, freshPaneInfo } from "./pane-info";
-import {
-  defaultPtyClient,
-  type PtyClient,
-} from "./pty-client";
+import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { submitAllowed, type InjectOutcome } from "../prompts/inject";
 import { defaultBrowserClient } from "../browser/browser-client";
-import { browserOpen, closeBrowser, openBrowser } from "../browser/browser-store";
+import {
+  browserOpen,
+  closeBrowser,
+  openBrowser,
+} from "../browser/browser-store";
 import { createAgentLauncher } from "./agent-launch";
 import {
   buildClosedTabSnapshot,
@@ -116,11 +118,12 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The ids `commands` implements — 42 entries, verified against the live
+ * The ids `commands` implements — 43 entries, verified against the live
  * `commands` table, Task 4's `copy-selection`/`paste` included, the Prompt
- * Board's `toggle-prompts`, the browser panel's `toggle-browser` and the
- * token usage screen's `toggle-usage` alongside them. (Line numbers are
- * deliberately not cited: they rotted within one feature of being written.)
+ * Board's `toggle-prompts`, the browser panel's `toggle-browser`, the file
+ * explorer's `toggle-explorer` and the token usage screen's `toggle-usage`
+ * alongside them. (Line numbers are deliberately not cited: they rotted
+ * within one feature of being written.)
  *
  * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
  * keymap binding points at an action nothing dispatches — the defect behind
@@ -163,6 +166,7 @@ const COMMAND_ACTIONS = [
   "swap-up",
   "toggle-browser",
   "toggle-expand",
+  "toggle-explorer",
   "toggle-prompts",
   "toggle-settings",
   "toggle-usage",
@@ -587,7 +591,8 @@ export function createTabManager(
       agent: explicitAgent(info),
       // Null, not zero: a non-terminal surface owns no panes, and spec §7 asks
       // for the count to be ABSENT rather than reading "0 panes".
-      paneCount: surfaces.activeIndex() >= 0 ? null : (manager?.paneCount() ?? 0),
+      paneCount:
+        surfaces.activeIndex() >= 0 ? null : (manager?.paneCount() ?? 0),
       home,
     };
   }
@@ -985,7 +990,11 @@ export function createTabManager(
     // time drops every buffered chunk and any `pty:exit` among them — silently
     // and permanently. `paneIds()` stays empty until the adopt places the pane,
     // so an entry parked here matches nothing until it genuinely owns it.
-    const placeholder: TabEntry = { key: nextKey, manager, workspacePath: null };
+    const placeholder: TabEntry = {
+      key: nextKey,
+      manager,
+      workspacePath: null,
+    };
     tabs.push(placeholder);
     const result = await manager.initFromAdoption(token);
     const parked = tabs.indexOf(placeholder);
@@ -1412,7 +1421,9 @@ export function createTabManager(
     // to close, and closing the terminal tab behind it would be a silent
     // catastrophe.
     "close-pane": () =>
-      surfaces.activeIndex() >= 0 ? void surfaces.close() : void close.closePane(),
+      surfaces.activeIndex() >= 0
+        ? void surfaces.close()
+        : void close.closePane(),
     "focus-next": () => activeManager()?.cycleFocus(1),
     "focus-prev": () => activeManager()?.cycleFocus(-1),
     "toggle-expand": () =>
@@ -1501,6 +1512,17 @@ export function createTabManager(
         // first-run answer (browser productization §3).
         settings.value.browserLastUrl || settings.value.browserHomeUrl,
       );
+    },
+    // Plain setting flip, unlike toggle-browser above: the panel is pure DOM
+    // content, so there is no host view to create or tear down. Focus still
+    // returns to the pane on close, same reasoning as toggle-browser and
+    // toggle-prompts below — this path never goes through a close callback of
+    // the panel's own.
+    "toggle-explorer": () => {
+      toggleExplorer();
+      if (!settings.value.explorerOpen) {
+        activeManager()?.focusActive();
+      }
     },
     "toggle-prompts": () => {
       if (promptsOpen.value) {

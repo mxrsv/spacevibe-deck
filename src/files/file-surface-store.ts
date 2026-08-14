@@ -134,6 +134,17 @@ export const activeWorkspace = signal<string | null>(null);
  */
 export const activeFileTab = signal<string | null>(null);
 
+/**
+ * Width during a resize drag; `null` when no drag is in flight and the
+ * persisted `explorerWidth` setting is authoritative.
+ *
+ * Same reasoning as `browserWidthLive` (`browser-store.ts`): the panel and
+ * the terminal grid it displaces both need the live value every frame, and
+ * committing to settings on every pointermove would write the store dozens
+ * of times a second.
+ */
+export const explorerWidthLive = signal<number | null>(null);
+
 export function surfaceFor(workspacePath: string | null): FileSurfaceState {
   if (workspacePath === null) {
     return EMPTY_SURFACE;
@@ -503,4 +514,5 @@ export function resetFileSurfaces(): void {
   fileDocuments.value = new Map();
   activeWorkspace.value = null;
   activeFileTab.value = null;
+  explorerWidthLive.value = null;
 }

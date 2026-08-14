@@ -25,10 +25,12 @@ import {
 import {
   activeFileTab,
   documentFor,
+  explorerWidthLive,
   resetFileSurfaces,
   setListing,
 } from "../file-surface-store";
 import type { FileClient } from "../file-client";
+import { EXPLORER_WIDTH_MAX } from "../../settings/settings-schema";
 import {
   initializeDesktopEnvironment,
   resetDesktopEnvironmentForTests,
@@ -73,7 +75,12 @@ describe("ExplorerPanel", () => {
     });
     act(() => {
       render(
-        <ExplorerPanel controller={controller} workspacePath={WS} />,
+        <ExplorerPanel
+          controller={controller}
+          workspacePath={WS}
+          width={260}
+          onWidthChange={() => {}}
+        />,
         host,
       );
     });
@@ -95,13 +102,91 @@ describe("ExplorerPanel", () => {
   it("shows an empty state instead of a tree when the tab has no workspace", () => {
     act(() => {
       render(
-        <ExplorerPanel controller={controller} workspacePath={null} />,
+        <ExplorerPanel
+          controller={controller}
+          workspacePath={null}
+          width={260}
+          onWidthChange={() => {}}
+        />,
         host,
       );
     });
 
     expect(host.querySelector(".file-tree")).toBeNull();
     expect(host.querySelector(".explorer-panel__empty")).not.toBeNull();
+  });
+});
+
+describe("ExplorerPanel resize", () => {
+  it("drags the inner-edge grip, updates the live width, clamps, and commits once on release", async () => {
+    const onWidthChange = vi.fn();
+    act(() => {
+      render(
+        <ExplorerPanel
+          controller={controller}
+          workspacePath={WS}
+          width={260}
+          onWidthChange={onWidthChange}
+        />,
+        host,
+      );
+    });
+
+    const grip = host.querySelector<HTMLElement>(".explorer-panel__grip")!;
+    // jsdom does not implement pointer capture (DL-19.4's drag target).
+    grip.setPointerCapture = vi.fn();
+    grip.releasePointerCapture = vi.fn();
+
+    await act(async () => {
+      grip.dispatchEvent(
+        new PointerEvent("pointerdown", {
+          clientX: 500,
+          pointerId: 1,
+          bubbles: true,
+        }),
+      );
+    });
+    expect(explorerWidthLive.value).toBeNull();
+
+    // The grip sits on the panel's LEFT (inner) edge, so dragging left widens
+    // it — moved 60px left from the drag start.
+    await act(async () => {
+      grip.dispatchEvent(
+        new PointerEvent("pointermove", {
+          clientX: 440,
+          pointerId: 1,
+          bubbles: true,
+        }),
+      );
+    });
+    expect(explorerWidthLive.value).toBe(320);
+    expect(onWidthChange).not.toHaveBeenCalled();
+
+    // Dragged far past the max clamps instead of growing unbounded.
+    await act(async () => {
+      grip.dispatchEvent(
+        new PointerEvent("pointermove", {
+          clientX: -1000,
+          pointerId: 1,
+          bubbles: true,
+        }),
+      );
+    });
+    expect(explorerWidthLive.value).toBe(EXPLORER_WIDTH_MAX);
+
+    await act(async () => {
+      grip.dispatchEvent(
+        new PointerEvent("pointerup", { pointerId: 1, bubbles: true }),
+      );
+    });
+
+    // One settings write, on release — not on every pointermove.
+    expect(onWidthChange).toHaveBeenCalledTimes(1);
+    expect(onWidthChange).toHaveBeenCalledWith(EXPLORER_WIDTH_MAX);
+    // Cleared before the commit, same reasoning as the browser panel's grip:
+    // the settings write is async, and leaving the live value up would jump
+    // the column back to the old width for a frame if the write is slow.
+    expect(explorerWidthLive.value).toBeNull();
   });
 });
 
@@ -127,7 +212,12 @@ describe("ExplorerPanel — both chrome layouts", () => {
             topTabs={<header />}
             stage={
               <main>
-                <ExplorerPanel controller={controller} workspacePath={WS} />
+                <ExplorerPanel
+                  controller={controller}
+                  workspacePath={WS}
+                  width={260}
+                  onWidthChange={() => {}}
+                />
               </main>
             }
             status={<footer />}

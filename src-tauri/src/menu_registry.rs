@@ -88,6 +88,12 @@ pub fn build_view_menu<R: Runtime>(
         "Browser",
         Some("CmdOrCtrl+Shift+I"),
     )?;
+    let toggle_explorer = action_item(
+        handle,
+        "toggle-explorer",
+        "Explorer",
+        Some("CmdOrCtrl+Shift+B"),
+    )?;
     let toggle_usage = action_item(
         handle,
         "toggle-usage",
@@ -110,6 +116,8 @@ pub fn build_view_menu<R: Runtime>(
         .item(&toggle_prompts)
         .separator()
         .item(&toggle_browser)
+        .separator()
+        .item(&toggle_explorer)
         .separator()
         .item(&toggle_usage)
         .build()

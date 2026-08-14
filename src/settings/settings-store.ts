@@ -140,6 +140,18 @@ export function updateSettings(patch: Partial<Settings>): void {
   });
 }
 
+/**
+ * Toggle the docked file-explorer column open/closed.
+ *
+ * Unlike the browser panel (`browser-store.ts`'s `openBrowser`/`closeBrowser`),
+ * this needs no host coordination — the panel is pure DOM content, not a
+ * native view the host has to create or tear down — so a direct settings flip
+ * is the whole operation.
+ */
+export function toggleExplorer(): void {
+  updateSettings({ explorerOpen: !settings.value.explorerOpen });
+}
+
 /** Set or remove (value = undefined) a single color override. */
 export function updateColorOverride(
   key: keyof TerminalColors,

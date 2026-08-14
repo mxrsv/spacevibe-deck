@@ -3732,6 +3732,36 @@ describe("toggle-prompts", () => {
   });
 });
 
+describe("toggle-explorer", () => {
+  beforeEach(() => {
+    // Same trap the `toggle-prompts` describe above documents: an earlier
+    // describe in this file can leave an overlay signal open, and
+    // `scope: "pane"` blocks this action while ANY overlay is open.
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    editorRequest.value = null;
+    saveDialogOpen.value = false;
+    settings.value = DEFAULT_SETTINGS;
+  });
+
+  afterEach(() => {
+    settings.value = DEFAULT_SETTINGS;
+  });
+
+  it("flips explorerOpen on each call, with no pane required", () => {
+    const manager = createTabManager(
+      document.createElement("div"),
+      createMemoryPtyClient(),
+    );
+    expect(settings.value.explorerOpen).toBe(false);
+    manager.runAction("toggle-explorer");
+    expect(settings.value.explorerOpen).toBe(true);
+    manager.runAction("toggle-explorer");
+    expect(settings.value.explorerOpen).toBe(false);
+    manager.dispose();
+  });
+});
+
 describe("TabManager window lifecycle", () => {
   async function windowSetup(deps: Partial<TabManagerDeps> = {}) {
     const transfer = createMemoryTransferClient();
@@ -3900,11 +3930,13 @@ describe("TabManager move-to-new-window guard", () => {
  * `TabManager` never learns what a file is: it talks to a `SurfaceStrip`, and
  * this fake is the whole vocabulary between them.
  */
-function fakeSurfaces(state: {
-  count?: number;
-  total?: number;
-  activeIndex?: number;
-} = {}) {
+function fakeSurfaces(
+  state: {
+    count?: number;
+    total?: number;
+    activeIndex?: number;
+  } = {},
+) {
   const calls: string[] = [];
   const strip = {
     countValue: state.count ?? 0,
@@ -4043,9 +4075,7 @@ describe("file surfaces in the tab strip", () => {
 
     await tm.closeTab(0);
 
-    await vi.waitFor(() =>
-      expect(windowCloseCalls.length).toBe(before + 1),
-    );
+    await vi.waitFor(() => expect(windowCloseCalls.length).toBe(before + 1));
   });
 
   it("T21: cycleTab reaches file surfaces — one terminal tab plus file tabs", async () => {

@@ -60,6 +60,10 @@ export interface Settings {
    * productization §3); empty until the panel has ever navigated.
    */
   browserLastUrl: string;
+  /** Whether the docked file-explorer column is shown (spec §2.2, §3). */
+  explorerOpen: boolean;
+  /** Width of the docked file-explorer column, in CSS pixels (spec §3). */
+  explorerWidth: number;
   /**
    * Chords the user rebound, per platform, over the shipped keymaps. Keyed by
    * platform rather than flat because the two keymaps are genuinely different
@@ -104,6 +108,8 @@ export const DEFAULT_SETTINGS: Settings = {
   browserWidth: 420,
   browserHomeUrl: "http://localhost:3000",
   browserLastUrl: "",
+  explorerOpen: false,
+  explorerWidth: 260,
   keybindings: NO_KEYBINDING_OVERRIDES,
 };
 
@@ -114,6 +120,20 @@ export function clampBrowserWidth(width: number): number {
   return Math.min(
     BROWSER_WIDTH_MAX,
     Math.max(BROWSER_WIDTH_MIN, Math.round(width)),
+  );
+}
+
+// Narrower than the browser column's range: a file tree never needs to show
+// a full web page, and the default (260) sits close to the floor rather than
+// centered, matching spec §3's "default width 260px" as the comfortable case
+// rather than a midpoint.
+export const EXPLORER_WIDTH_MIN = 180;
+export const EXPLORER_WIDTH_MAX = 480;
+
+export function clampExplorerWidth(width: number): number {
+  return Math.min(
+    EXPLORER_WIDTH_MAX,
+    Math.max(EXPLORER_WIDTH_MIN, Math.round(width)),
   );
 }
 
@@ -294,16 +314,27 @@ export function validateSettings(raw: unknown): Settings {
     // loadable, and a value this validator "fixed" would disagree with it.
     // An unusable address opens a blank panel, which is visible and editable.
     browserHomeUrl:
-      typeof source.browserHomeUrl === "string" && source.browserHomeUrl.length <= 2048
+      typeof source.browserHomeUrl === "string" &&
+      source.browserHomeUrl.length <= 2048
         ? source.browserHomeUrl
         : DEFAULT_SETTINGS.browserHomeUrl,
     // Same posture as browserHomeUrl: the host's own URL gate decides what is
     // loadable at open time, and a malformed stored value degrades to a blank
     // panel there rather than being "fixed" into a disagreement here.
     browserLastUrl:
-      typeof source.browserLastUrl === "string" && source.browserLastUrl.length <= 2048
+      typeof source.browserLastUrl === "string" &&
+      source.browserLastUrl.length <= 2048
         ? source.browserLastUrl
         : DEFAULT_SETTINGS.browserLastUrl,
+    explorerOpen:
+      typeof source.explorerOpen === "boolean"
+        ? source.explorerOpen
+        : DEFAULT_SETTINGS.explorerOpen,
+    explorerWidth:
+      typeof source.explorerWidth === "number" &&
+      Number.isFinite(source.explorerWidth)
+        ? clampExplorerWidth(source.explorerWidth)
+        : DEFAULT_SETTINGS.explorerWidth,
     keybindings: validateKeybindings(source.keybindings),
   };
 }
