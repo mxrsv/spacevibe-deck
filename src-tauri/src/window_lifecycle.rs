@@ -365,17 +365,6 @@ pub fn menu_target<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<Strin
     app.state::<FocusRegistry>().most_recent_among(&live)
 }
 
-/// Live window labels, most recently focused first.
-///
-/// Read-only on purpose. It does not focus, raise or reorder anything: spec
-/// §11.2 forbids raising a window mid-drag because `setFocus` steals focus and
-/// risks breaking pointer capture, and this must not become a back door to it.
-#[tauri::command]
-pub fn focus_order(app: tauri::AppHandle) -> Vec<String> {
-    let live: Vec<String> = app.webview_windows().keys().cloned().collect();
-    app.state::<FocusRegistry>().rank(&live)
-}
-
 #[cfg(test)]
 mod tests {
     use super::{BootMode, FocusRegistry, PendingAdoptions, WindowLabels, DECK_LABEL_PREFIX};

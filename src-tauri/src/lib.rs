@@ -95,7 +95,6 @@ pub fn run() {
             window_lifecycle::window_boot_mode,
             window_lifecycle::open_pane_window,
             window_lifecycle::offer_transfer,
-            window_lifecycle::focus_order,
             window_close::confirm_close_window,
             window_close::cancel_close_window,
             update_flight::begin_update_check,
