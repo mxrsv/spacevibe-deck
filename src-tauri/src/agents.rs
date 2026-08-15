@@ -145,7 +145,7 @@ pub(crate) fn parse_command_v_output(output: &str, probed: &[String]) -> Vec<Age
 /// terminal's PATH and masks the bug. Interactive-login matches the panes and
 /// fixes both. Any failure (spawn error, non-blocking-pool panic, or a hung rc
 /// file past `DETECT_TIMEOUT`) degrades to an empty list (picker then shows
-/// Shell only — FR-025) instead of blocking a Tokio worker thread forever.
+/// Shell only) instead of blocking a Tokio worker thread forever.
 /// `names` are the caller's declared agent binaries; they are re-filtered here
 /// and merged with the built-ins by `probe_names`.
 #[tauri::command]
@@ -153,7 +153,7 @@ pub async fn detect_agents(names: Vec<String>) -> Vec<AgentInfo> {
     crate::platform::discover_agents(probe_names(names)).await
 }
 
-/// Existence check for workspace recents (FR-003 AC-2); order mirrors input.
+/// Existence check for workspace recents; order mirrors input.
 #[tauri::command]
 pub async fn dirs_exist(paths: Vec<String>) -> Vec<bool> {
     paths

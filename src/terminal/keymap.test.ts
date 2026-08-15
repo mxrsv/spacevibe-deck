@@ -261,11 +261,11 @@ describe("matchBinding", () => {
     expect(matchBinding(keyEvent("ArrowLeft"))).toBeNull();
   });
 
-  // Gap found while adding Task 4's own matchBinding tests: swap-* (Task 1,
-  // FR-032) never got one — routing/behavior were covered in
+  // Gap found while adding Task 4's own matchBinding tests: swap-* (Task 1)
+  // never got one — routing/behavior were covered in
   // tab-manager.test.ts/terminal-manager.test.ts, but not the actual chord
   // match itself. Closing it here.
-  it("matches Cmd+Option+Shift+Arrows to swap-pane (FR-032)", () => {
+  it("matches Cmd+Option+Shift+Arrows to swap-pane", () => {
     const mods = { metaKey: true, altKey: true, shiftKey: true };
     expect(matchBinding(keyEvent("ArrowLeft", mods))).toBe("swap-left");
     expect(matchBinding(keyEvent("ArrowRight", mods))).toBe("swap-right");

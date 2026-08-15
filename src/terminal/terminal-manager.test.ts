@@ -256,7 +256,7 @@ describe("createTerminalManager focusPane", () => {
   });
 });
 
-// FR-032 (docs/plans/2026-07-27-keyboard-parity.md Task 1): swap the active
+// docs/plans/2026-07-27-keyboard-parity.md Task 1: swap the active
 // pane with its neighbor, reusing focusDirection's own nearestInDirection
 // resolution + the already-shipped swapLeaves (pane-drag.ts's onSwap uses the
 // same primitive). jsdom never lays out real geometry — every slot's
@@ -266,7 +266,7 @@ describe("createTerminalManager focusPane", () => {
 // without real layout: a lone pane has no neighbor in any direction (no-op);
 // a two-pane split has exactly one "other" pane, so any direction call
 // swaps with it, letting behavior (DOM slot order, focus, zoom) be verified.
-describe("createTerminalManager swapDirection (FR-032)", () => {
+describe("createTerminalManager swapDirection", () => {
   it("no neighbor (single pane) — no-op, no extra focus", async () => {
     const { tm, container, onPaneFocus } = setup();
     await tm.initFresh();
@@ -284,7 +284,7 @@ describe("createTerminalManager swapDirection (FR-032)", () => {
     expect(onPaneFocus).not.toHaveBeenCalled();
   });
 
-  it("swaps the active pane with its neighbor — active id stays the same, only its slot moves (FR-032 AC-1/AC-2)", async () => {
+  it("swaps the active pane with its neighbor — active id stays the same, only its slot moves", async () => {
     const { tm, container, onPaneFocus } = setup();
     await tm.initFresh();
     await tm.splitActive("row");

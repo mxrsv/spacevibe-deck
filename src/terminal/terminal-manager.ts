@@ -144,7 +144,7 @@ export interface TerminalManager {
   /** Move focus to the nearest pane in a direction; no pane there → no-op. */
   focusDirection(dir: FocusDirection): void;
   /**
-   * Swap the active pane with its neighbor in a direction (FR-032); no
+   * Swap the active pane with its neighbor in a direction; no
    * neighbor there → no-op. Unlike `focusDirection`, this rebuilds the DOM
    * (each pane's element must reparent into its new slot) and so — like
    * `splitActive`/`closePane` — unconditionally drops zoom as a side effect
@@ -602,7 +602,7 @@ export function createTerminalManager(
     }
     const target = nearestInDirection(layout.slotRects(), activeId, dir);
     if (target === null) {
-      return; // no neighbor in that direction — FR-032 AC-3
+      return; // no neighbor in that direction
     }
     const next = swapLeaves(tree, activeId, target);
     if (next === tree) {
@@ -610,8 +610,8 @@ export function createTerminalManager(
     }
     tree = next;
     render();
-    // activeId is unchanged (only its slot moved) — focus follows it
-    // (FR-032 AC-2). Not routed through setActive: activeId === activeId is
+    // activeId is unchanged (only its slot moved) — focus follows it.
+    // Not routed through setActive: activeId === activeId is
     // always a no-op there, so this calls pane.focus() directly, same as
     // pane-drag.ts's onSwap below does after its own swapLeaves.
     life.panes.get(activeId)?.focus();

@@ -3,7 +3,7 @@ use std::io;
 use std::path::Path;
 use tauri::Manager;
 
-/// The bundle identifier the app shipped under before the rename (ADR 0028).
+/// The bundle identifier the app shipped under before the rename.
 const LEGACY_IDENTIFIER: &str = "com.kyantran.stackgrid";
 
 /// Carry an existing install's stored state across the identifier change.

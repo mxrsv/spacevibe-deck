@@ -40,9 +40,11 @@ export interface ExplorerPanelProps {
 
 export function ExplorerPanel(props: ExplorerPanelProps) {
   // DL-19.4: drag the seam to resize, clamped, one settings write on
-  // release. Mirrors `BrowserPanel.startResize` exactly — same grip
-  // placement (the panel's LEFT/inner edge), same live-signal-during-drag,
-  // settle-on-release shape.
+  // release. The grip sits on the panel's LEFT/inner edge; the width rides a
+  // live signal during the drag and settles into settings on release. (This
+  // used to say "mirrors BrowserPanel.startResize" — the browser's docked
+  // column and its own resize were removed on 2026-08-15, so the explorer is
+  // now the only docked panel with a seam.)
   const startResize = (event: PointerEvent): void => {
     event.preventDefault();
     const startX = event.clientX;
