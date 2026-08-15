@@ -15,9 +15,30 @@ const STORE_FILE = "settings.json";
 const STORE_KEY = "settings";
 
 /**
+ * Keys a past version wrote that no version reads any more.
+ *
+ * `validateSettings` in `src/settings/settings-schema.ts` rebuilds Settings from
+ * a fixed whitelist, so a retired key is already invisible to every READ. What
+ * nothing did was remove it from disk — this merge writes the RAW stored object
+ * back, so a profile created before the key was retired carries it forever.
+ *
+ * Named retirees only, deliberately: dropping every key absent from the
+ * whitelist would also destroy keys written by a NEWER Deck when a user
+ * downgrades, turning a harmless stale value into real data loss.
+ */
+const RETIRED_KEYS: readonly string[] = [
+  // The browser's docked right column, its resize drag and `browserWidth` were
+  // removed on 2026-08-15 when the browser became a tab on the stage strip.
+  "browserWidth",
+];
+
+/**
  * Shallow merge: a patch's top-level keys replace their values outright,
  * matching `{ ...settings.value, ...patch }` on the renderer side. A patch that
  * is not an object is ignored rather than allowed to replace everything.
+ *
+ * Retired keys are dropped from the result so the next write also cleans them
+ * off disk.
  */
 export function mergeSettings(current: unknown, patch: unknown): unknown {
   if (typeof patch !== "object" || patch === null || Array.isArray(patch)) {
@@ -27,7 +48,10 @@ export function mergeSettings(current: unknown, patch: unknown): unknown {
     typeof current === "object" && current !== null && !Array.isArray(current)
       ? (current as Record<string, unknown>)
       : {};
-  return { ...base, ...(patch as Record<string, unknown>) };
+  const merged = { ...base, ...(patch as Record<string, unknown>) };
+  return Object.fromEntries(
+    Object.entries(merged).filter(([key]) => !RETIRED_KEYS.includes(key)),
+  );
 }
 
 /**

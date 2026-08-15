@@ -4,7 +4,9 @@ import { mergeSettings } from "./settings-merge";
 
 describe("mergeSettings", () => {
   it("replaces a patched key and keeps the rest", () => {
-    expect(mergeSettings({ fontSize: 13, theme: "dark" }, { fontSize: 15 })).toEqual({
+    expect(
+      mergeSettings({ fontSize: 13, theme: "dark" }, { fontSize: 15 }),
+    ).toEqual({
       fontSize: 15,
       theme: "dark",
     });
@@ -13,18 +15,48 @@ describe("mergeSettings", () => {
   it("replaces a nested value outright rather than deep-merging", () => {
     // Matches `{ ...settings.value, ...patch }` on the renderer side.
     expect(
-      mergeSettings({ colors: { fg: "#fff", bg: "#000" } }, { colors: { fg: "#eee" } }),
+      mergeSettings(
+        { colors: { fg: "#fff", bg: "#000" } },
+        { colors: { fg: "#eee" } },
+      ),
     ).toEqual({ colors: { fg: "#eee" } });
   });
 
   it("ignores a patch that is not an object", () => {
     // Otherwise a malformed patch would replace the whole settings object.
-    expect(mergeSettings({ fontSize: 13 }, "nonsense")).toEqual({ fontSize: 13 });
+    expect(mergeSettings({ fontSize: 13 }, "nonsense")).toEqual({
+      fontSize: 13,
+    });
     expect(mergeSettings({ fontSize: 13 }, null)).toEqual({ fontSize: 13 });
     expect(mergeSettings({ fontSize: 13 }, [1, 2])).toEqual({ fontSize: 13 });
   });
 
   it("treats absent current settings as empty", () => {
     expect(mergeSettings(null, { fontSize: 15 })).toEqual({ fontSize: 15 });
+  });
+
+  it("drops a retired key an old profile still carries", () => {
+    // `browserWidth` was retired on 2026-08-15. Reads already ignored it, but
+    // the raw object was written straight back, so it survived every patch.
+    expect(
+      mergeSettings({ fontSize: 13, browserWidth: 420 }, { fontSize: 15 }),
+    ).toEqual({
+      fontSize: 15,
+    });
+  });
+
+  it("drops a retired key even when the patch itself sets it", () => {
+    expect(mergeSettings({ fontSize: 13 }, { browserWidth: 500 })).toEqual({
+      fontSize: 13,
+    });
+  });
+
+  it("keeps unknown keys that are not retired", () => {
+    // A key written by a newer Deck must survive a downgrade — only NAMED
+    // retirees are dropped.
+    expect(mergeSettings({ somethingNewer: true }, { fontSize: 15 })).toEqual({
+      somethingNewer: true,
+      fontSize: 15,
+    });
   });
 });
