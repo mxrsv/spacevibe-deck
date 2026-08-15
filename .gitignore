@@ -48,3 +48,8 @@ marketing/video/out/
 # Electron host build output + local run logs
 dist-electron/
 *.log
+
+# Design screenshots dropped at the repo root during a session. Review evidence
+# belongs in docs/review/assets/ and IS tracked; these are working captures.
+/deck-navigation-picker.png
+/deck-primary-contrast-8-proposal.png
