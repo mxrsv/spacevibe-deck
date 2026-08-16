@@ -1,0 +1,48 @@
+# Local Electron package.
+#
+# An UNSIGNED, local-only packaging path for running the Electron host as a
+# real app instead of a dev-server process. It produces no installer, no
+# updater metadata, no signing, no notarization and no publishing, and is
+# referenced by no release workflow — `.github/workflows/release.yml` still
+# builds Tauri, and switching what ships is a separate decision gated on
+# Gate A (Apple identity) and Gate C (Windows hardware).
+#
+# Identity is deliberately NOT the shipping identity: `Deck Electron` /
+# `dev.spacevibe.deck.electron` cannot overwrite an installed Tauri
+# `SpaceVibe Deck`, and it gets its own userData directory
+# (`~/Library/Application Support/Deck Electron`), which matches the
+# cutover's clean-install decision — no settings or workspace migration.
+appId: dev.spacevibe.deck.electron
+productName: Deck Electron
+directories:
+  output: dist-electron-app
+# Electron Builder writes this into the packaged app's package.json — `main`
+# is not a top-level builder option.
+#
+# `productName` is repeated here on purpose, and it is not cosmetic:
+# `app.getName()` reads the packaged package.json, NOT Info.plist's
+# CFBundleName, so without this line the app would call itself
+# `spacevibe-deck` (the package name) and share
+# `~/Library/Application Support/spacevibe-deck` with every `electron:dev`
+# run — measured, not assumed.
+extraMetadata:
+  main: dist-electron/electron/main.cjs
+  productName: Deck Electron
+files:
+  - dist/**
+  - dist-electron/electron/**/*.cjs
+  - dist-electron/src/**/*.cjs
+  - dist-electron/electron/vendor/**
+  - package.json
+# node-pty is a native module: it cannot load from inside the asar, and its
+# helper binaries must keep their executable modes.
+asarUnpack:
+  - "**/node_modules/node-pty/**"
+mac:
+  target:
+    - target: dir
+  identity: null
+  category: public.app-category.developer-tools
+  # `build/` does not exist in this repo, so the default icon lookup finds
+  # nothing; both hosts share the Tauri icon set.
+  icon: src-tauri/icons/icon.icns
