@@ -7,7 +7,7 @@ export type AgentChoice = string | null;
 export interface RecentWorkspace {
   readonly path: string;
   readonly lastOpenedAt: number;
-  /** Layout preset last used for this folder (preselects the board). */
+  /** Layout preset last used for this folder; the board reopens with it. */
   readonly lastPresetId?: string;
   /** Agent last launched for this folder; `null` = Shell only, absent = never recorded. */
   readonly lastAgent?: AgentChoice;

@@ -13,11 +13,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  activeTabIndex,
-  requestTabOptionsKey,
-  tabViews,
-} from "../terminal/tabs-store";
+import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import type { TabView } from "../terminal/tabs-store";
 import { TabStrip } from "./tab-strip";
 import {
@@ -29,7 +25,17 @@ import {
   type FileSurfaceController,
 } from "../files/file-surface-controller";
 import { openFileTab, resetFileSurfaces } from "../files/file-surface-store";
+import { nextOpenSequence, resetOpenSequence } from "../lib/open-sequence";
 import type { FileClient } from "../files/file-client";
+import { repositoryScans } from "../repositories/repositories-store";
+import type { RepositoryScan } from "../repositories/repository-client";
+import {
+  browserOpen,
+  browserState,
+  browserSurfaceActive,
+  EMPTY_STATE,
+  resetBrowserStore,
+} from "../browser/browser-store";
 
 const fileClient: FileClient = {
   listDir: async () => [],
@@ -68,8 +74,10 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     document.body.appendChild(host);
     tabViews.value = [];
     activeTabIndex.value = 0;
-    requestTabOptionsKey.value = null;
+    repositoryScans.value = new Map();
     resetFileSurfaces();
+    resetBrowserStore();
+    resetOpenSequence();
     fileController = createFileSurfaceController({ client: fileClient });
   });
 
@@ -77,13 +85,13 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     act(() => {
       render(null, host);
     });
-    requestTabOptionsKey.value = null;
+    repositoryScans.value = new Map();
     resetDesktopEnvironmentForTests();
     fileController.dispose();
     resetFileSurfaces();
   });
 
-  const mount = (): void => {
+  const mount = (props: Partial<Parameters<typeof TabStrip>[0]> = {}): void => {
     act(() => {
       render(
         // The same wrapper `App` puts it in — a plain div, not the frame.
@@ -92,11 +100,11 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
             onSelectTab={vi.fn()}
             onCloseTab={vi.fn()}
             onNewTab={vi.fn()}
-            onRenameTab={vi.fn()}
-            onSetTabColor={vi.fn()}
-            onFocusAttention={vi.fn()}
+            onSelectBrowser={vi.fn()}
+            onCloseBrowser={vi.fn()}
             fileController={fileController}
-            ownsTabOptionsChord
+            scopeToActiveRepository
+            {...props}
           />
         </div>,
         host,
@@ -104,7 +112,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     });
   };
 
-  it("renders both segments and the add button with no .tabbar in the tree", () => {
+  it("renders every chip and the add button with no .tabbar in the tree", () => {
     tabViews.value = [tab({ key: 1, name: "Alpha" })];
     openFileTab("/repo", "/repo/a.ts", { keep: true });
     mount();
@@ -114,26 +122,158 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(host.querySelector(".tab--file .tab__label")?.textContent).toBe(
       "a.ts",
     );
-    expect(host.querySelector(".tabbar__sep")).not.toBeNull();
+    // One row since 2026-08-16 (DL-18.6): no segment hairline anywhere in it.
+    expect(host.querySelector(".tabbar__sep")).toBeNull();
     expect(host.querySelector(".tab-add")).not.toBeNull();
   });
 
-  it("open-tab-options still finds its anchor from this mount", () => {
-    // The anchor lookup's root moved from the `<header class="tabbar">` to the
-    // tablist when the chips were extracted. Sidebar mode has no header at
-    // all, so a lookup that still expected one would silently never open.
+  it("places a chip by when it was opened, not by what kind it is", () => {
+    // The file opens FIRST, so its chip leads a terminal tab opened after it.
+    // Under the old two-segment strip every file chip followed every terminal
+    // chip, whatever the clock said.
+    openFileTab("/repo", "/repo/a.ts", { keep: true });
     tabViews.value = [
-      tab({ key: 1, name: "Alpha" }),
-      tab({ key: 2, name: "Beta" }),
+      tab({ key: 1, name: "Alpha", openedAt: nextOpenSequence() }),
     ];
-    activeTabIndex.value = 1;
     mount();
 
-    act(() => {
-      requestTabOptionsKey.value = 1; // Alpha, not the active tab
-    });
+    const labels = [...host.querySelectorAll(".tab .tab__label")].map(
+      (node) => node.textContent,
+    );
+    expect(labels).toEqual(["a.ts", "Alpha"]);
+  });
 
-    expect(host.querySelector(".tab-popover")).not.toBeNull();
-    expect(requestTabOptionsKey.value).toBeNull(); // consumed — won't re-fire
+  it("follows the active tab's repository without losing global tab indexes", () => {
+    // Scoping moved from the worktree to the REPOSITORY on 2026-08-16
+    // (agent-status-rail spec §4.1): the rail's rows are tabs in a project, so
+    // a strip scoped tighter than the rail would hide a sibling tab the rail
+    // is still listing. `/r/side` therefore stays on the strip beside
+    // `/r/main` — it is the SECOND repository that changes the projection.
+    const scan: RepositoryScan = {
+      kind: "repository",
+      key: "/r/.git",
+      root: "/r/main",
+      worktrees: [
+        {
+          path: "/r/main",
+          head: "a",
+          branch: "main",
+          bare: false,
+          detached: false,
+          locked: null,
+          prunable: null,
+        },
+        {
+          path: "/r/side",
+          head: "b",
+          branch: "side",
+          bare: false,
+          detached: false,
+          locked: null,
+          prunable: null,
+        },
+      ],
+    };
+    const other: RepositoryScan = {
+      kind: "repository",
+      key: "/other/.git",
+      root: "/other",
+      worktrees: [
+        {
+          path: "/other",
+          head: "c",
+          branch: "main",
+          bare: false,
+          detached: false,
+          locked: null,
+          prunable: null,
+        },
+      ],
+    };
+    repositoryScans.value = new Map([
+      ["/r/main", scan],
+      ["/r/main/packages/app", scan],
+      ["/r/side", scan],
+      ["/other", other],
+    ]);
+    tabViews.value = [
+      tab({ key: 1, name: "main · claude", workspacePath: "/r/main" }),
+      tab({ key: 2, name: "side · codex", workspacePath: "/r/side" }),
+      tab({
+        key: 3,
+        name: "main · opencode",
+        workspacePath: "/r/main/packages/app",
+      }),
+      tab({ key: 4, name: "other · gemini", workspacePath: "/other" }),
+    ];
+    activeTabIndex.value = 0;
+    const onSelectTab = vi.fn();
+    mount({ onSelectTab });
+
+    const labels = () =>
+      [...host.querySelectorAll(".tab:not(.tab--file) .tab__label")].map(
+        (label) => label.textContent,
+      );
+    // Every tab of the repository, in TAB order — a sub-package tab resolves
+    // through the same longest-prefix match, and the other repository's tab
+    // stays out.
+    expect(labels()).toEqual([
+      "main · claude",
+      "side · codex",
+      "main · opencode",
+    ]);
+
+    act(() => {
+      const visibleTabs = host.querySelectorAll<HTMLElement>(
+        ".tab:not(.tab--file)",
+      );
+      visibleTabs[2].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onSelectTab).toHaveBeenCalledWith(2);
+
+    act(() => {
+      activeTabIndex.value = 3; // the other repository
+    });
+    expect(labels()).toEqual(["other · gemini"]);
+  });
+
+  it("renders the browser chip while the tab is open and routes its actions", () => {
+    tabViews.value = [tab({ key: 1, name: "Alpha" })];
+    const onSelectBrowser = vi.fn();
+    const onCloseBrowser = vi.fn();
+    mount({ onSelectBrowser, onCloseBrowser });
+    // Closed: no chip, no separator claiming an empty segment.
+    expect(host.querySelector(".tab--browser")).toBeNull();
+
+    act(() => {
+      browserOpen.value = true;
+      browserState.value = { ...EMPTY_STATE, title: "Academy — Home" };
+    });
+    const chip = host.querySelector<HTMLElement>(".tab--browser")!;
+    expect(chip.textContent).toContain("Academy — Home");
+    expect(chip.getAttribute("aria-selected")).toBe("false");
+
+    chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onSelectBrowser).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      browserSurfaceActive.value = true;
+    });
+    expect(chip.getAttribute("aria-selected")).toBe("true");
+    // The terminal chip stands down while the browser holds the stage.
+    expect(
+      host
+        .querySelector(".tab:not(.tab--file):not(.tab--browser)")
+        ?.getAttribute("aria-selected"),
+    ).toBe("false");
+    // A click on the ALREADY-active chip must not re-fire selection.
+    chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onSelectBrowser).toHaveBeenCalledTimes(1);
+
+    chip
+      .querySelector<HTMLButtonElement>(".tab__close")!
+      .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(onCloseBrowser).toHaveBeenCalledTimes(1);
+    expect(onSelectBrowser).toHaveBeenCalledTimes(1); // ✕ never selects
   });
 });

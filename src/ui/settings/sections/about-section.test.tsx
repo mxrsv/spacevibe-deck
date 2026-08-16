@@ -63,7 +63,7 @@ describe("AboutSection", () => {
     activeUpdateController.value = controller();
     act(() => render(<AboutSection />, host));
 
-    expect(host.textContent).toContain("currently 0.11.0");
+    expect(host.textContent).toContain("Currently 0.11.0");
     expect(pills(host)[0].textContent).toBe("check");
   });
 
@@ -80,7 +80,7 @@ describe("AboutSection", () => {
     });
 
     expect(updater.checkNow).toHaveBeenCalledTimes(1);
-    expect(host.textContent).toContain("you're on the latest version");
+    expect(host.textContent).toContain("You're on the latest version");
   });
 
   it("drives the existing state machine instead of a second one", async () => {
@@ -144,7 +144,7 @@ describe("AboutSection", () => {
       pills(host)[0].click();
     });
 
-    expect(host.textContent).toContain("couldn't reach the update server");
+    expect(host.textContent).toContain("Couldn't reach the update server");
   });
 
   it("shows the running version even with no update available", () => {

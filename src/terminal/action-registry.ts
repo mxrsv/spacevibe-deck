@@ -55,8 +55,8 @@ export interface ActionDefinition {
   readonly label: string;
   /**
    * Decides whether `overlayBlocksAction` (tab-manager.ts) lets this action
-   * run while an overlay (Open board / Settings / PresetEditor /
-   * SavePresetDialog) is up.
+   * run while an overlay (Settings / Usage / Session history / Open board /
+   * PresetEditor / SavePresetDialog / AgentQuickPicker) is up.
    *
    * An `OverlayTier` (`"pane" | "settings" | "board" | "modal"`, see
    * `TIER_RANK` above) blocks the action while any currently open overlay's
@@ -181,41 +181,6 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "File", group: "primary" },
   },
   {
-    id: "open-tab-options",
-    label: "Rename Tab / Dot Color…",
-    // Opens the same TabPopover a tab click already opens — no menu item
-    // (same "already has a mouse path" reasoning as focus-*/swap-* above).
-    //
-    // Tiered "always" (Task 2, docs/plans/2026-07-27-keyboard-parity.md),
-    // deliberately NOT a new OverlayTier: TabPopover renders at z-index 100
-    // (src/styles.css) — above `.modal-scrim` (40), `.open-board` (30), and
-    // `.settings-screen` (35), i.e. above every overlay this registry models — and
-    // TabBar/WorkspaceSidebar sit outside `.stage`, so they stay visible and
-    // clickable no matter which overlay is open (the same reason
-    // select-tab-N/next-tab/prev-tab are click-parity-exempt via
-    // isTabSwitchAction, not this field). There is no "action runs on a
-    // hidden surface" risk here for the tier model to guard against — this
-    // is a UI-layer fact (where TabPopover paints, where TabBar lives in the
-    // DOM), not an overlay this registry needs to know about.
-    //
-    // Verified before shipping (would otherwise reproduce F3's "steal focus
-    // from a draft" bug in a new spot): TabPopover mount-focuses its rename
-    // input (tab-popover.tsx), and its own Escape handler does not
-    // stopPropagation. But PresetEditor/SavePresetDialog's Escape handling
-    // is an element-scoped `onKeyDown` on their own `.preset-editor`/
-    // `.save-preset` div (not a `window` listener), and TabPopover lives in
-    // TabBar/WorkspaceSidebar — a completely separate DOM subtree from
-    // `<main class="stage">` where those modals render — so an Escape
-    // bubbling from TabPopover's input can never reach their handler; the
-    // draft cannot be discarded this way. Settings' Escape listener IS
-    // global (`window`, settings/settings-screen.tsx) and would also fire if Settings
-    // happened to be open at the same time, but `toggleSettingsPanel`
-    // already guarantees Settings can only be open when both the board AND
-    // a modal draft are closed — so that cascade can only ever call
-    // focusActive() on a pane that is not hidden behind anything.
-    scope: "always",
-  },
-  {
     id: "new-preset",
     label: "New Layout Preset…",
     // Moved from the Window menu to File (HIG: File owns create/save
@@ -324,8 +289,8 @@ export const ACTION_REGISTRY = [
     scope: "pane",
     // The one action in this task with a menu item (Task 3,
     // docs/plans/2026-07-27-keyboard-parity.md) — before this it was the
-    // only new action with NO mouse path at all (unlike swap-*/
-    // open-tab-options, which already have drag-dock/click-tab). Per the
+    // only new action with NO mouse path at all (unlike swap-*, which
+    // already has drag-dock). Per the
     // RULE above, having a menu item means the webview binding MUST be
     // CharKeyBinding (key: "c"), not code.
     menu: { submenu: "Edit" },
@@ -405,40 +370,47 @@ export const ACTION_REGISTRY = [
   {
     id: "toggle-browser",
     label: "Browser",
-    // Tier "pane": the panel is a column of the stage, and every overlay
+    // Tier "pane": the browser is a surface ON the stage, and every overlay
     // covers the stage. Opening it under Settings would position a native
     // view on top of the overlay — the one stacking order the renderer
-    // cannot fix from CSS.
+    // cannot fix from CSS. A file surface does NOT block it: the command is
+    // in tab-manager's `isSurfaceRoutedAction` set, because toggling the
+    // browser IS a surface transition.
     scope: "pane",
     menu: { submenu: "View", group: "browser" },
   },
   {
+    id: "toggle-dock",
+    label: "Side Panel",
+    // Tier "pane", same overlay reasoning as toggle-browser above: the dock is
+    // a column of the stage, and every overlay covers the stage.
+    scope: "pane",
+    // Shares the panel group with the tabs it opens onto — the column and the
+    // three surfaces it can show are one cluster in the View menu, not four
+    // unrelated items.
+    menu: { submenu: "View", group: "explorer" },
+  },
+  {
     id: "toggle-explorer",
     label: "Explorer",
-    // Tier "pane", same reasoning as toggle-browser above: the panel is a
-    // column of the stage, and every overlay covers the stage.
+    // Tier "pane", same overlay reasoning as toggle-browser above: the
+    // explorer is a tab of the dock, and every overlay covers the stage.
     scope: "pane",
-    // Its own group, matching toggle-usage's own-group reasoning: this is a
-    // panel toggle, not a pane operation like the split/zoom items above it.
     menu: { submenu: "View", group: "explorer" },
   },
   {
     id: "toggle-usage",
-    label: "Token Usage…",
-    // `"always"`, the same reasoning `toggle-settings` spells out above:
-    // `usageOpen` makes `openOverlayRanks()` report rank 20, which blocks
-    // every `"pane"`-tiered action — this one included if it were tiered.
-    // Gating it would strand the screen open with no shortcut and no menu
-    // item able to close it again.
-    //
-    // NOT `"settings"`: that rank still has no action tiered at it (see
-    // TIER_RANK's own doc comment), and tiering this one there would make it
-    // block itself the same way.
-    scope: "always",
-    // Its own group, so the generator emits a separator above it — the two
-    // View items below the attention group are screens, not pane operations,
-    // and the separator is what says so.
-    menu: { submenu: "View", group: "usage" },
+    label: "Token Usage",
+    // `"pane"` since 2026-08-16, and the trailing ellipsis went with it. This
+    // was `"always"` because `usageOpen` pushed rank 20 in `openOverlayRanks()`
+    // and a `"pane"`-tiered action would have blocked itself, stranding a
+    // full-window screen open with nothing able to close it. Usage is a tab of
+    // the dock now: it opens no overlay, pushes no rank, and displaces the
+    // terminal grid instead of covering it — so it takes the ordinary tier its
+    // sibling tabs take, and "…" no longer belongs on a label that opens no
+    // dialog (menu grammar, DL-23.2's registry half).
+    scope: "pane",
+    menu: { submenu: "View", group: "explorer" },
   },
   {
     id: "move-pane-to-new-window",
@@ -695,10 +667,6 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // so CharKeyBinding is mandatory here, not a style choice (RULE above).
   { key: "c", meta: true, shift: true, action: "copy-cwd" },
   { key: "t", meta: true, shift: true, action: "reopen-tab" },
-  // Opens the rename/dot-color popover for the active tab (Task 2,
-  // docs/plans/2026-07-27-keyboard-parity.md) — no menu item, "r" is a
-  // letter mnemonic (RULE above: CharKeyBinding, not code).
-  { key: "r", meta: true, shift: true, action: "open-tab-options" },
   // Sketch a new layout preset from scratch (Task 4, unified with the menu's
   // "New Layout Preset…" accelerator, already Cmd+Shift+N since 09f5c4d).
   { key: "n", meta: true, shift: true, action: "new-preset" },
@@ -856,13 +824,6 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   { key: "enter", ctrl: true, shift: true, action: "toggle-zoom-pane" },
   { key: "t", ctrl: true, shift: true, action: "new-tab" },
   { key: "t", ctrl: true, alt: true, shift: true, action: "reopen-tab" },
-  {
-    key: "r",
-    ctrl: true,
-    alt: true,
-    shift: true,
-    action: "open-tab-options",
-  },
   // Same chord as macOS, one modifier swapped — see the mac entry for why `i`
   // and not `b`.
   { key: "i", ctrl: true, shift: true, action: "toggle-browser" },

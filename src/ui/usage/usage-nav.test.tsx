@@ -39,17 +39,17 @@ describe("UsageNav", () => {
   const getTabs = (): HTMLButtonElement[] =>
     Array.from(host.querySelectorAll('[role="tab"]'));
 
-  it("renders the three views in registry order, labels lowercase (DL-11.4)", () => {
+  it("renders the three views in registry order, labels sentence-case (DL-11.4)", () => {
     mount();
     const tabs = getTabs();
     expect(tabs).toHaveLength(USAGE_VIEWS.length);
     expect(tabs.map((tab) => tab.textContent)).toEqual([
-      "overview",
-      "daily",
-      "breakdown",
+      "Overview",
+      "Daily",
+      "Breakdown",
     ]);
     for (const tab of tabs) {
-      expect(tab.textContent).toBe(tab.textContent?.toLowerCase());
+      expect(tab.textContent).not.toBe(tab.textContent?.toUpperCase());
     }
   });
 
@@ -68,7 +68,7 @@ describe("UsageNav", () => {
     activeUsageView.value = "daily";
     mount();
     for (const tab of getTabs()) {
-      const shouldBeActive = tab.textContent === "daily";
+      const shouldBeActive = tab.textContent === "Daily";
       expect(tab.classList.contains("is-active")).toBe(shouldBeActive);
       expect(tab.getAttribute("aria-selected")).toBe(String(shouldBeActive));
     }

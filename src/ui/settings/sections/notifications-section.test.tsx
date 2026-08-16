@@ -68,7 +68,7 @@ describe("NotificationsSection — agent notifications toggle (Task 22)", () => 
 
   const getToggle = (): HTMLButtonElement =>
     host.querySelector(
-      '[aria-label="agent notifications"]',
+      '[aria-label="Agent notifications"]',
     ) as HTMLButtonElement;
 
   it("does NOT request permission on render/mount", () => {

@@ -180,6 +180,95 @@
   width: 100%;
 }
 
+.gx-scoped-terminal {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 28px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-family: var(--mono-font);
+  font-size: 13px;
+}
+
+.gx-scoped-terminal__prompt,
+.gx-scoped-terminal__result {
+  color: var(--accent);
+}
+
+.gx-scoped-terminal__result {
+  margin-left: 12px;
+}
+
+/* The selected SidebarBanner treatment over the real 40px app component. */
+.gx-banner-directions {
+  width: min(620px, 100%);
+  padding: 24px;
+}
+
+.gx-banner-direction {
+  min-width: 0;
+}
+
+.gx-banner-direction__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.gx-banner-direction__label {
+  color: var(--text-primary);
+  font: 560 12px/1.2 var(--ui-font);
+}
+
+.gx-banner-direction__rail {
+  --sidebar-banner-bleed-inline: 10px;
+  --sidebar-banner-bleed-bottom: 10px;
+  display: flex;
+  height: 176px;
+  flex-direction: column;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
+  background: var(--sidebar-bg);
+  box-shadow:
+    0 12px 34px rgb(0 0 0 / 22%),
+    inset 0 1px rgb(255 255 255 / 2%);
+}
+
+.gx-banner-direction__eyebrow {
+  margin: 8px 2px 10px;
+  color: var(--text-faint);
+  font: 500 10px/1 var(--ui-font);
+}
+
+.gx-banner-direction__repository {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+  color: var(--text-primary);
+  font: 560 11px/1 var(--ui-font);
+}
+
+.gx-banner-direction__repository small {
+  overflow: hidden;
+  color: var(--text-faint);
+  font: 450 9px/1 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-banner-direction p {
+  margin: 9px 0 0;
+  color: var(--text-faint);
+  font: 450 9.5px/1.45 var(--ui-font);
+}
+
 /* A cut-down tab bar at an exact width, so the toolbar is judged where it
    lives and against the space a real window would give it. The bar itself is
    the app's own `.tabbar`; only the width and the room below belong here. */
@@ -1279,6 +1368,459 @@
   color: #d9a25f;
   font-size: 10px;
   line-height: 1.4;
+}
+
+/* Contrast is shown as rendered text plus a number. The number comes from the
+ * same derivation functions that publish the app tokens, so this is evidence,
+ * not a manually maintained accessibility claim. */
+.gx-contrast-grid {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 2px 0 8px;
+}
+
+.gx-contrast-grid > .gx-cell {
+  flex: 0 0 auto;
+}
+
+.gx-contrast-card {
+  box-sizing: border-box;
+  min-height: 242px;
+  padding: 14px;
+  background: var(--chrome-2);
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+}
+
+.gx-contrast-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.gx-contrast-card__head strong {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.gx-contrast-card__head span {
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+.gx-contrast-card__palette {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) 0.7fr;
+  height: 8px;
+  gap: 2px;
+  margin: 11px 0 2px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.gx-contrast-card__swatch--stage {
+  background: var(--bg);
+}
+
+.gx-contrast-card__swatch--sidebar {
+  background: var(--sidebar-bg);
+}
+
+.gx-contrast-card__swatch--chrome-1 {
+  background: var(--chrome-1);
+}
+
+.gx-contrast-card__swatch--chrome-2 {
+  background: var(--chrome-2);
+}
+
+.gx-contrast-card__swatch--accent {
+  background: var(--accent);
+}
+
+.gx-contrast-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.gx-contrast-row:last-child {
+  border-bottom: 0;
+}
+
+.gx-contrast-row > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gx-contrast-row__sample {
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-contrast-row__sample--primary {
+  color: var(--text-primary);
+}
+
+.gx-contrast-row__sample--muted {
+  color: var(--text-muted);
+}
+
+.gx-contrast-row__sample--faint {
+  color: var(--text-faint);
+}
+
+.gx-contrast-row__use {
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-contrast-row__ratio {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  color: var(--green);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.gx-contrast-row__ratio small {
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: 9.5px;
+  font-weight: 400;
+}
+
+.gx-surface-matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(480px, 1fr));
+  gap: 12px;
+}
+
+.gx-surface-matrix {
+  padding: 13px;
+  background: var(--chrome-2);
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+}
+
+.gx-surface-matrix__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.gx-surface-matrix__head strong {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.gx-surface-matrix__head span {
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.gx-surface-matrix__table {
+  display: grid;
+  grid-template-columns: 74px repeat(6, minmax(48px, 1fr));
+  align-items: stretch;
+  padding-top: 8px;
+}
+
+.gx-surface-matrix__surface {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 0 2px 8px;
+  color: var(--text-faint);
+  font-size: 9.5px;
+  text-align: center;
+}
+
+.gx-surface-matrix__dot {
+  width: 18px;
+  height: 5px;
+  border: 1px solid var(--hair);
+  border-radius: 2px;
+}
+
+.gx-surface-matrix__dot--stage {
+  background: var(--bg);
+}
+
+.gx-surface-matrix__dot--sidebar {
+  background: var(--sidebar-bg);
+}
+
+.gx-surface-matrix__dot--chrome-1 {
+  background: var(--chrome-1);
+}
+
+.gx-surface-matrix__dot--chrome-2 {
+  background: var(--chrome-2);
+}
+
+.gx-surface-matrix__dot--selected {
+  background: var(--tab-active-bg);
+}
+
+.gx-surface-matrix__dot--input {
+  background: var(--input-bg);
+}
+
+.gx-surface-matrix__role,
+.gx-surface-matrix__ratio {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  box-sizing: border-box;
+  border-top: 1px solid var(--hair);
+}
+
+.gx-surface-matrix__role {
+  justify-content: space-between;
+  gap: 4px;
+  padding-right: 8px;
+  font-size: 10.5px;
+}
+
+.gx-surface-matrix__role small {
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-surface-matrix__role--primary {
+  color: var(--text-primary);
+}
+
+.gx-surface-matrix__role--muted {
+  color: var(--text-muted);
+}
+
+.gx-surface-matrix__role--faint {
+  color: var(--text-faint);
+}
+
+.gx-surface-matrix__ratio {
+  justify-content: center;
+  border-left: 1px solid var(--hair);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.gx-surface-matrix__ratio.is-safe {
+  color: var(--green);
+}
+
+.gx-surface-matrix__ratio.is-unsafe {
+  color: var(--yellow);
+}
+
+/* The selected type ramp retained as a stable visual reference. */
+.gx-type-grid {
+  width: min(440px, 100%);
+}
+
+.gx-type-card {
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-surface);
+  background: var(--chrome-2);
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+}
+
+.gx-type-card__head {
+  display: flex;
+  min-height: 46px;
+  box-sizing: border-box;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.gx-type-card__head strong {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.gx-type-card__head span {
+  color: var(--text-faint);
+  font-size: 10.5px;
+}
+
+.gx-type-card__sample {
+  display: flex;
+  min-height: 142px;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 9px;
+  padding: 18px 16px;
+}
+
+.gx-type-card__title {
+  color: var(--text-primary);
+  font-size: var(--gx-type-title);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.gx-type-card__body {
+  max-width: 34ch;
+  color: var(--text-primary);
+  font-size: var(--gx-type-body);
+  line-height: 1.45;
+}
+
+.gx-type-card__meta {
+  color: var(--text-muted);
+  font-size: var(--gx-type-meta);
+  line-height: 1.35;
+}
+
+.gx-type-card__micro {
+  color: var(--text-faint);
+  font-size: var(--gx-type-micro);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.gx-type-card footer {
+  padding: 8px 14px;
+  border-top: 1px solid var(--hair);
+  color: var(--text-faint);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 940px) {
+  .gx-surface-matrix-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Fast visual review before the exhaustive audit rows. These are the real
+ * shell components at two widths; the strip scrolls rather than shrinking a
+ * window and accidentally changing the thing being compared. */
+.gx-native-detail-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 2px 0 8px;
+}
+
+.gx-native-detail {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--gx-line);
+  border-radius: var(--radius-surface);
+  background: var(--gx-panel);
+}
+
+.gx-native-detail__head {
+  display: flex;
+  min-height: 34px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  box-sizing: border-box;
+  padding: 9px 12px 8px;
+  border-bottom: 1px solid var(--gx-line);
+  font-family: var(--ui-font);
+}
+
+.gx-native-detail__head strong {
+  color: var(--gx-bright);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.gx-native-detail__head span {
+  color: var(--gx-dim);
+  font-size: 10px;
+}
+
+.gx-native-detail__window {
+  height: 278px;
+}
+
+.gx-native-detail__window > .window {
+  width: 100%;
+  height: 100%;
+}
+
+.gx-native-terminal {
+  box-sizing: border-box;
+  padding: 28px;
+  color: var(--text-primary);
+  font-family: var(--mono-font);
+  font-size: 13px;
+}
+
+.gx-native-terminal p {
+  margin: 0 0 8px;
+}
+
+.gx-native-terminal__prompt,
+.gx-native-terminal__result {
+  color: var(--accent);
+}
+
+.gx-native-terminal__muted {
+  color: var(--text-muted);
+}
+
+/* Draft inactive-window treatment for eye review only. The stage is excluded:
+ * terminal content stays trustworthy while authored chrome recedes like an
+ * unfocused native window. The semantic accent override also removes a false
+ * "keyboard target is here" signal from controls in the inactive specimen. */
+.gx-cell--inactive
+  .window
+  > :is(.deck-frame, .wsbar, .tabbar, .status),
+.gx-cell--inactive .settings-screen__section {
+  --accent: var(--text-faint);
+  --status-unread: var(--text-faint);
+}
+
+.gx-cell--inactive
+  .window
+  > :is(.deck-frame, .wsbar, .tabbar, .status) {
+  filter: saturate(0.35);
+}
+
+.gx-cell--inactive .settings-screen__section {
+  filter: saturate(0.35);
 }
 
 .gx-matrix__colhead {

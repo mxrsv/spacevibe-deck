@@ -36,29 +36,30 @@ describe("USAGE_RANGES", () => {
       "all",
     ]);
     expect(USAGE_RANGES.map((range) => range.label)).toEqual([
-      "today",
+      "Today",
       "7 days",
       "30 days",
-      "all",
+      "All",
     ]);
   });
 
-  it("labels every option in lowercase (DL-16.7, DL-4.3)", () => {
+  it("labels every option sentence-case, never uppercase (DL-16.7, DL-4.3, DL-4.4)", () => {
     for (const range of USAGE_RANGES) {
-      expect(range.label).toBe(range.label.toLowerCase());
+      expect(range.label).not.toBe(range.label.toUpperCase());
+      expect(range.label[0]).not.toMatch(/[a-z]/);
     }
   });
 
   it("names the period in its own empty message, never just 'nothing'", () => {
     // DL-16.7: an empty period says WHICH period is empty.
-    expect(rangeById("today").emptyLabel).toBe("no usage today");
+    expect(rangeById("today").emptyLabel).toBe("No usage today");
     expect(rangeById("7d").emptyLabel).toBe(
-      "no usage in the last 7 local days",
+      "No usage in the last 7 local days",
     );
     expect(rangeById("30d").emptyLabel).toBe(
-      "no usage in the last 30 local days",
+      "No usage in the last 30 local days",
     );
-    expect(rangeById("all").emptyLabel).toBe("no data yet");
+    expect(rangeById("all").emptyLabel).toBe("No data yet");
   });
 });
 

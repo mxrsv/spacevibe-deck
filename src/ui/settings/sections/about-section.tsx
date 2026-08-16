@@ -27,11 +27,11 @@ const PILL: Readonly<Record<UpdatePhase, string>> = {
 };
 
 const CHECK_RESULT_DESC: Readonly<Record<UpdateCheckResult, string>> = {
-  available: "an update is ready",
-  current: "you're on the latest version",
-  failed: "couldn't reach the update server",
+  available: "An update is ready",
+  current: "You're on the latest version",
+  failed: "Couldn't reach the update server",
   // A build compiled without the updater public key: no channel to ask.
-  unsupported: "this build can't update itself",
+  unsupported: "This build can't update itself",
 };
 
 /**
@@ -86,14 +86,16 @@ export function AboutSection() {
   };
 
   const working = phase === "downloading" || phase === "installing";
-  const running =
-    appVersion.value === "" ? "" : `currently ${appVersion.value}`;
+  const version = appVersion.value;
   // The outcome of the last check wins over the version line: pressing the
-  // pill has to visibly answer, or it reads as a dead button.
+  // pill has to visibly answer, or it reads as a dead button. "currently"
+  // stays lowercase after the dash — mid-sentence, not a fresh label (DL-4.4).
   const desc =
     phase === "hidden" && lastCheck.value !== null
-      ? `${CHECK_RESULT_DESC[lastCheck.value]}${running === "" ? "" : ` — ${running}`}`
-      : running;
+      ? `${CHECK_RESULT_DESC[lastCheck.value]}${version === "" ? "" : ` — currently ${version}`}`
+      : version === ""
+        ? ""
+        : `Currently ${version}`;
 
   return (
     <>
@@ -107,7 +109,7 @@ export function AboutSection() {
           {busy.value && phase === "hidden" ? "checking…" : PILL[phase]}
         </button>
       </ConfigRow>
-      <ConfigRow label="Release notes" desc="what changed in each version">
+      <ConfigRow label="Release notes" desc="What changed in each version">
         <button
           type="button"
           class="cfg-btn"

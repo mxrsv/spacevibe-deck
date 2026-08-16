@@ -64,8 +64,8 @@ export function OpenBoardWorktreeForm({
     destPath.trim() !== "" &&
     !creating;
 
-  /** Enter submits, Escape backs out — same as the board's config view, but
-   * scoped here because the board's own key handler ignores input targets. */
+  /** Enter submits, Escape backs out — scoped here rather than left to the
+   * board's own key handler, which ignores input targets. */
   function handleKeyDown(event: KeyboardEvent): void {
     if (event.key === "Enter") {
       event.preventDefault();

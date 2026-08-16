@@ -7,16 +7,13 @@ import {
   editorRequest,
   saveDialogOpen,
   settingsOpen,
-  usageOpen,
 } from "../chrome/events";
 import {
   bootOpensTheBoard,
   closeSettingsPanel,
-  closeUsagePanel,
   DesktopChrome,
   livePresetOpensATab,
   toggleSettingsPanel,
-  toggleUsagePanel,
 } from "./app";
 import { ACTION_REGISTRY, TIER_RANK } from "../terminal/action-registry";
 import {
@@ -62,6 +59,34 @@ describe("DesktopChrome platform structure", () => {
     return host.firstElementChild as HTMLElement;
   }
 
+  // DL-18.9 (2026-08-16): the hide control is a WINDOW control, so it sits in
+  // the frame row immediately after the traffic-light inset — before the drag
+  // spacer, and before anything the app puts in that row.
+  it("puts the sidebar hide control right after the traffic lights", () => {
+    initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/deck" });
+    act(() => {
+      render(
+        <DesktopChrome
+          sidebar
+          sidebarToggle={<button type="button" data-testid="hide" />}
+          toolbar={null}
+          sidebarNavigation={<nav />}
+          topTabs={<header />}
+          stage={<main />}
+          status={<footer />}
+          onMacTitlebarDoubleClick={vi.fn()}
+        />,
+        host,
+      );
+    });
+
+    const frame = host.querySelector(".deck-frame")!;
+    const order = [...frame.children].map(
+      (child) => child.getAttribute("data-testid") ?? child.className,
+    );
+    expect(order).toEqual(["deck-frame__lights", "hide", "deck-frame__spacer"]);
+  });
+
   // DL-18: there is no separate title bar. The frame is one command row, and it
   // only exists in sidebar mode — in top-tab mode the tab bar IS the frame and
   // carries the toolbar itself.
@@ -98,6 +123,34 @@ describe("DesktopChrome platform structure", () => {
       );
     },
   );
+
+  // The bottom band is a setting (`showStatusBar`, off by default). With no
+  // occupant the ROW must go too — a 28px stripe of empty chrome is not a
+  // hidden status bar.
+  it("drops the status row when nothing occupies it", () => {
+    initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/deck" });
+    act(() => {
+      render(
+        <DesktopChrome
+          sidebar
+          toolbar={<span />}
+          sidebarNavigation={<nav />}
+          topTabs={<header />}
+          stage={<main />}
+          status={null}
+          onMacTitlebarDoubleClick={vi.fn()}
+        />,
+        host,
+      );
+    });
+    const root = host.firstElementChild as HTMLElement;
+    expect(root.classList.contains("window--no-status")).toBe(true);
+  });
+
+  it("keeps the row while the status bar is shown", () => {
+    const root = mount("macos", true);
+    expect(root.classList.contains("window--no-status")).toBe(false);
+  });
 });
 
 // Escape-stacking investigation (team lead thread): Settings' own mount-focus
@@ -114,7 +167,6 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
   beforeEach(() => {
     boardOpen.value = false;
     settingsOpen.value = false;
-    usageOpen.value = false;
     editorRequest.value = null;
     saveDialogOpen.value = false;
     focusActive.mockClear();
@@ -123,7 +175,6 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
   afterEach(() => {
     boardOpen.value = false;
     settingsOpen.value = false;
-    usageOpen.value = false;
     editorRequest.value = null;
     saveDialogOpen.value = false;
   });
@@ -202,8 +253,9 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
 // materialized a tab anyway — behind the board (z-30 covers the stage), whose
 // pane silently took DOM focus, and with no tab open yet there was no active
 // pane to inherit a CWD from, so it spawned in $HOME instead of the folder
-// selected on the board. Saving the preset and leaving the board up matches
-// what the `source: "board"` branch already does with no workspace picked.
+// selected on the board. Saving the preset and leaving the board up is the
+// whole behaviour now that the board has no layout picker of its own
+// (2026-08-16) — the preset is picked up by the next open that remembers it.
 describe("livePresetOpensATab — ⌘⇧N over the Open board saves the preset without opening a tab", () => {
   it("opens a tab in a live window, where the stage is actually visible", () => {
     expect(livePresetOpensATab(false)).toBe(true);
@@ -261,137 +313,3 @@ describe("bootOpensTheBoard", () => {
 // `toggleSettingsPanel` exactly — CLOSING is unconditional (or the screen
 // strands itself open, the b7e6021 trap), OPENING is blocked only by a
 // PresetEditor/SavePresetDialog draft at z-40.
-describe("toggleUsagePanel — mirrors the Settings guard, and the two surfaces displace each other", () => {
-  const focusActive = vi.fn();
-
-  beforeEach(() => {
-    boardOpen.value = false;
-    settingsOpen.value = false;
-    usageOpen.value = false;
-    editorRequest.value = null;
-    saveDialogOpen.value = false;
-    focusActive.mockClear();
-  });
-
-  afterEach(() => {
-    boardOpen.value = false;
-    settingsOpen.value = false;
-    usageOpen.value = false;
-    editorRequest.value = null;
-    saveDialogOpen.value = false;
-  });
-
-  it("opens Usage normally when no overlay holds a draft", () => {
-    toggleUsagePanel(focusActive);
-
-    expect(usageOpen.value).toBe(true);
-  });
-
-  it("does NOT open Usage while a PresetEditor draft is up", () => {
-    editorRequest.value = { source: "live" };
-
-    toggleUsagePanel(focusActive);
-
-    expect(usageOpen.value).toBe(false);
-  });
-
-  it("does NOT open Usage while a SavePresetDialog draft is up", () => {
-    saveDialogOpen.value = true;
-
-    toggleUsagePanel(focusActive);
-
-    expect(usageOpen.value).toBe(false);
-  });
-
-  it("DOES open Usage over the Open board — it covers the board, same as Settings", () => {
-    boardOpen.value = true;
-
-    toggleUsagePanel(focusActive);
-
-    expect(usageOpen.value).toBe(true);
-  });
-
-  it("still CLOSES Usage when it is already open, even with a PresetEditor draft also up", () => {
-    usageOpen.value = true;
-    editorRequest.value = { source: "live" };
-
-    toggleUsagePanel(focusActive);
-
-    expect(usageOpen.value).toBe(false);
-    expect(focusActive).toHaveBeenCalledTimes(1);
-  });
-
-  it("still CLOSES Usage when it is already open, even with the Open board also up", () => {
-    usageOpen.value = true;
-    boardOpen.value = true;
-
-    toggleUsagePanel(focusActive);
-
-    expect(usageOpen.value).toBe(false);
-    expect(focusActive).toHaveBeenCalledTimes(1);
-  });
-
-  it("still closes Usage normally with no draft open at all", () => {
-    usageOpen.value = true;
-
-    toggleUsagePanel(focusActive);
-
-    expect(usageOpen.value).toBe(false);
-    expect(focusActive).toHaveBeenCalledTimes(1);
-  });
-
-  it("opening Usage closes Settings", () => {
-    settingsOpen.value = true;
-
-    toggleUsagePanel(focusActive);
-
-    expect(usageOpen.value).toBe(true);
-    expect(settingsOpen.value).toBe(false);
-    // Displacing Settings is a set-state, not a close+focus-return: focus is
-    // about to land inside the screen that is opening.
-    expect(focusActive).not.toHaveBeenCalled();
-  });
-
-  it("opening Settings closes Usage", () => {
-    usageOpen.value = true;
-
-    toggleSettingsPanel(focusActive);
-
-    expect(settingsOpen.value).toBe(true);
-    expect(usageOpen.value).toBe(false);
-    expect(focusActive).not.toHaveBeenCalled();
-  });
-
-  // §0.3 decision 4: the spec says "Escape closes and focus returns to the
-  // terminal exactly as Settings does". Reopening the surface Usage displaced
-  // would be a second, unspecified behavior.
-  it("closing Usage does NOT reopen the Settings screen it displaced", () => {
-    settingsOpen.value = true;
-    toggleUsagePanel(focusActive); // displaces Settings
-    expect(settingsOpen.value).toBe(false);
-
-    toggleUsagePanel(focusActive); // Escape / the button / ⌘⇧U again
-
-    expect(usageOpen.value).toBe(false);
-    expect(settingsOpen.value).toBe(false);
-    expect(focusActive).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("closeUsagePanel", () => {
-  afterEach(() => {
-    usageOpen.value = false;
-    editorRequest.value = null;
-  });
-
-  it("always closes and hands off focus, unconditionally", () => {
-    usageOpen.value = true;
-    editorRequest.value = { source: "live" };
-    const focusActive = vi.fn();
-
-    closeUsagePanel(focusActive);
-
-    expect(usageOpen.value).toBe(false);
-    expect(focusActive).toHaveBeenCalledTimes(1);
-  });
-});

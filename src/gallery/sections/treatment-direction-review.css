@@ -1,0 +1,99 @@
+/* Gallery-only record of the selected treatment; never shipping policy. */
+
+.gx-treatment-direction {
+  width: min(760px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--gx-line);
+  border-radius: 8px;
+  background: var(--gx-panel);
+}
+
+.gx-treatment-direction__head {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(330px, auto);
+  min-height: 72px;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--gx-line);
+  font-family: var(--ui-font);
+}
+
+.gx-treatment-direction__identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gx-treatment-direction__identity strong {
+  color: var(--gx-bright);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.gx-treatment-direction__identity span {
+  overflow: hidden;
+  color: var(--gx-dim);
+  font-size: 10.5px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-treatment-direction__spec {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.gx-treatment-direction__spec div {
+  min-width: 0;
+}
+
+.gx-treatment-direction__spec dt {
+  margin-bottom: 3px;
+  color: var(--gx-dim);
+  font-size: 8.5px;
+}
+
+.gx-treatment-direction__spec dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--gx-text);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-treatment-direction__window {
+  height: 304px;
+}
+
+.gx-treatment-direction__window > .window {
+  width: 100%;
+  height: 100%;
+}
+
+/* The current native direction, made explicit rather than left implicit. */
+.gx-treatment-direction--balanced .window {
+  --sidebar-w: 275px;
+  --frame-h: 34px;
+  --status-h: 28px;
+  --radius-control: 10px;
+  --radius-surface: 16px;
+}
+
+@media (max-width: 860px) {
+  .gx-treatment-direction__head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gx-treatment-direction__spec {
+    grid-column: 1;
+  }
+}

@@ -71,14 +71,24 @@ export function formatGrab(grab: GrabLike): string | null {
   return withSource.slice(0, MAX_GRAB_CHARS);
 }
 
-/** Status line under the address bar after a grab lands. */
-export function grabSummary(count: number, outcome: "pasted" | "clipboard" | "failed"): string {
+/**
+ * Status line under the address bar after a grab lands.
+ *
+ * The `clipboard` wording stopped being an apology on 2026-08-16: it is the
+ * only outcome a successful grab has while `GRAB_PASTE_DISABLED` is up, and it
+ * now fires with a focused pane sitting right there. The `pasted` branch is
+ * kept for the revert that flips that constant back.
+ */
+export function grabSummary(
+  count: number,
+  outcome: "pasted" | "clipboard" | "failed",
+): string {
   const what = count > 1 ? `${count} elements` : "Element";
   if (outcome === "pasted") {
     return `${what} sent to the focused pane`;
   }
   if (outcome === "clipboard") {
-    return `${what} copied — no pane to paste into`;
+    return `${what} copied to the clipboard`;
   }
-  return `${what} could not be pasted`;
+  return `${what} could not be copied`;
 }

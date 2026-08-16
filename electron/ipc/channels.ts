@@ -24,6 +24,13 @@ export const CHANNELS = {
   // Create-worktree flow (open board, task 16). Electron-only like the block
   // above: no `#[tauri::command]` counterpart, per the frozen Tauri host.
   worktreeAdd: "worktree_add",
+  // Session restore. Electron-only, like the block above: no
+  // `#[tauri::command]` counterpart, and Tauri is feature-frozen.
+  resumeLookup: "resume_lookup",
+  // Window label accessor, for the same restore work: no renderer accessor
+  // existed before this (main derived it per-request via `labelOf(event)`
+  // only). Electron-only, like the block above.
+  windowLabel: "window_label",
   detectAgents: "detect_agents",
   dirsExist: "dirs_exist",
   desktopEnvironment: "desktop_environment",
@@ -39,7 +46,6 @@ export const CHANNELS = {
   windowBootMode: "window_boot_mode",
   openPaneWindow: "open_pane_window",
   offerTransfer: "offer_transfer",
-  focusOrder: "focus_order",
   prepareTransfer: "prepare_transfer",
   stageTransfer: "stage_transfer",
   claimTransfer: "claim_transfer",
@@ -74,6 +80,18 @@ export const CHANNELS = {
   // the renderer facade is host-agnostic; the payload is empty by contract
   // (the scan takes no renderer input at all).
   usageSnapshot: "usage_snapshot",
+  // Themes folder. Electron-only, like the repository and browser blocks
+  // above: no `#[tauri::command]` counterpart, and the renderer degrades to
+  // built-in themes wherever these are unanswered. All three take no payload —
+  // the folder is `<userData>/themes` and the renderer never names a path.
+  themesList: "themes_list",
+  themesImport: "themes_import",
+  themesReveal: "themes_reveal",
+  // Session history. Electron-only like the blocks above: no `#[tauri::command]`
+  // counterpart, and the renderer hides its control wherever this is
+  // unanswered. Flat `{ limit }` per R6; the reply is
+  // `electron/sessions/model.ts`'s `SessionsSnapshot`.
+  sessionsList: "sessions_list",
 } as const;
 
 /** Events: main → renderer, fire and forget. */

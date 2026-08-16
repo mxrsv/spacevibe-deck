@@ -26,6 +26,20 @@ export interface TerminalColors {
 /** `left` = workspace sidebar (default), `top` = the classic horizontal bar. */
 export type TabBarPosition = "top" | "left";
 
+/**
+ * The docked right column's tabs. Declared here rather than in the dock's own
+ * registry because this is a PERSISTED value: the schema is what a stored
+ * profile is validated against, and a UI module owning the union would make
+ * the storage contract depend on a render layer.
+ */
+export type DockTab = "explorer" | "usage" | "sessions";
+
+export const DOCK_TABS: readonly DockTab[] = Object.freeze([
+  "explorer",
+  "usage",
+  "sessions",
+]);
+
 export interface Settings {
   fontFamily: string;
   fontSize: number;
@@ -33,8 +47,26 @@ export interface Settings {
   colorOverrides: Partial<TerminalColors>;
   focusExpand: boolean;
   showPaneBar: boolean;
+  /**
+   * The window's bottom status row. Off since 2026-08-16: the row is pure
+   * readout, and the owner asked for the height back. The setting exists
+   * so the choice stays the user's rather than being deleted for them.
+   */
+  showStatusBar: boolean;
   agentNotifications: boolean;
   tabBarPosition: TabBarPosition;
+  /**
+   * Width of the navigation sidebar column, in CSS pixels (DL-18.9). Only
+   * `tabBarPosition: "left"` renders that column; the value is kept either way
+   * so flipping the layout back restores the width the user set.
+   */
+  sidebarWidth: number;
+  /**
+   * Whether that column is collapsed to its icon rail (DL-18.9). Collapsed is
+   * NOT hidden: the frame row lives inside this column on macOS (DL-18.3), so
+   * the traffic lights and the toolbar keep a column to sit in.
+   */
+  sidebarCollapsed: boolean;
   /** Editor launched through the platform link-activation gesture. */
   editorId: EditorId;
   /** Command template used when `editorId` is `custom` (empty until set). */
@@ -45,8 +77,6 @@ export interface Settings {
   customAgents: readonly CustomAgent[];
   /** Reusable prompt bodies the user declared for the Prompt Board. */
   promptTemplates: readonly PromptTemplate[];
-  /** Width of the docked browser column, in CSS pixels. */
-  browserWidth: number;
   /**
    * Address the browser panel opens on when nothing is loaded yet. A dev
    * server's port is the one thing every project has and no two share, so it
@@ -60,10 +90,16 @@ export interface Settings {
    * productization §3); empty until the panel has ever navigated.
    */
   browserLastUrl: string;
-  /** Whether the docked file-explorer column is shown (spec §2.2, §3). */
-  explorerOpen: boolean;
-  /** Width of the docked file-explorer column, in CSS pixels (spec §3). */
-  explorerWidth: number;
+  /**
+   * Whether the docked right column is shown. It was `explorerOpen` while the
+   * file tree was the column's only occupant; the column now hosts several
+   * surfaces as tabs, so the flag is about the dock, not about one tab of it.
+   */
+  dockOpen: boolean;
+  /** Width of the docked right column, in CSS pixels. */
+  dockWidth: number;
+  /** Which tab the dock shows. Restored on open; falls back when unavailable. */
+  dockTab: DockTab;
   /**
    * Chords the user rebound, per platform, over the shipped keymaps. Keyed by
    * platform rather than flat because the two keymaps are genuinely different
@@ -71,6 +107,8 @@ export interface Settings {
    * would make one machine's rebind silently rewrite the other's.
    */
   keybindings: KeybindingOverrides;
+  /** Reopen last session's tabs and resume agent conversations at launch. */
+  restoreSessions: boolean;
 }
 
 export const FONT_SIZE_MIN = 10;
@@ -98,19 +136,23 @@ export const DEFAULT_SETTINGS: Settings = {
   colorOverrides: {},
   focusExpand: false,
   showPaneBar: false,
+  showStatusBar: false,
   agentNotifications: false,
   tabBarPosition: "left",
+  sidebarWidth: 275,
+  sidebarCollapsed: false,
   editorId: "vscode",
   editorCommand: "",
   scrollback: 10_000,
   customAgents: [],
   promptTemplates: [],
-  browserWidth: 420,
   browserHomeUrl: "http://localhost:3000",
   browserLastUrl: "",
-  explorerOpen: false,
-  explorerWidth: 260,
+  dockOpen: false,
+  dockWidth: 420,
+  dockTab: "explorer",
   keybindings: NO_KEYBINDING_OVERRIDES,
+  restoreSessions: true,
 };
 
 export const BROWSER_WIDTH_MIN = 280;
@@ -123,18 +165,36 @@ export function clampBrowserWidth(width: number): number {
   );
 }
 
-// Narrower than the browser column's range: a file tree never needs to show
-// a full web page, and the default (260) sits close to the floor rather than
-// centered, matching spec §3's "default width 260px" as the comfortable case
-// rather than a midpoint.
-export const EXPLORER_WIDTH_MIN = 180;
-export const EXPLORER_WIDTH_MAX = 480;
+// Wider than the file tree's old range (180–480, default 260), and
+// deliberately so: the column stopped being a file tree when it became the
+// dock. Its narrowest tab is still the tree, but its widest is the usage
+// dashboard's data tables (DL §15), and 360 is the floor those were built to
+// survive. The consequence is stated rather than hidden — a user who kept a
+// 180px file tree cannot have one any more; one column serving three surfaces
+// takes its floor from the widest of them.
+export const DOCK_WIDTH_MIN = 360;
+export const DOCK_WIDTH_MAX = 720;
 
-export function clampExplorerWidth(width: number): number {
+// The navigation sidebar's own range (DL-18.9). The floor is 200, below the
+// 275px default that `styles.css` still explains as a drag-affordance figure:
+// at 275 the frame row had ~100px of grabbable titlebar left after the traffic
+// lights and the actions, and a narrower column eats into that. What changed
+// is that the stage now carries its own drag region (`.stage__strip`), so a
+// user who chooses a narrow rail still has a titlebar to grab — on the other
+// side of the seam. Anything below the floor is not a narrower rail, it is the
+// collapse gesture (see `PANEL_COLLAPSE_SLACK`).
+export const SIDEBAR_WIDTH_MIN = 200;
+export const SIDEBAR_WIDTH_MAX = 420;
+
+export function clampSidebarWidth(width: number): number {
   return Math.min(
-    EXPLORER_WIDTH_MAX,
-    Math.max(EXPLORER_WIDTH_MIN, Math.round(width)),
+    SIDEBAR_WIDTH_MAX,
+    Math.max(SIDEBAR_WIDTH_MIN, Math.round(width)),
   );
+}
+
+export function clampDockWidth(width: number): number {
+  return Math.min(DOCK_WIDTH_MAX, Math.max(DOCK_WIDTH_MIN, Math.round(width)));
 }
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -280,6 +340,10 @@ export function validateSettings(raw: unknown): Settings {
       typeof source.focusExpand === "boolean"
         ? source.focusExpand
         : DEFAULT_SETTINGS.focusExpand,
+    showStatusBar:
+      typeof source.showStatusBar === "boolean"
+        ? source.showStatusBar
+        : DEFAULT_SETTINGS.showStatusBar,
     showPaneBar:
       typeof source.showPaneBar === "boolean"
         ? source.showPaneBar
@@ -291,6 +355,15 @@ export function validateSettings(raw: unknown): Settings {
     tabBarPosition: isTabBarPosition(source.tabBarPosition)
       ? source.tabBarPosition
       : DEFAULT_SETTINGS.tabBarPosition,
+    sidebarWidth:
+      typeof source.sidebarWidth === "number" &&
+      Number.isFinite(source.sidebarWidth)
+        ? clampSidebarWidth(source.sidebarWidth)
+        : DEFAULT_SETTINGS.sidebarWidth,
+    sidebarCollapsed:
+      typeof source.sidebarCollapsed === "boolean"
+        ? source.sidebarCollapsed
+        : DEFAULT_SETTINGS.sidebarCollapsed,
     editorId: isEditorId(source.editorId)
       ? source.editorId
       : DEFAULT_SETTINGS.editorId,
@@ -305,11 +378,6 @@ export function validateSettings(raw: unknown): Settings {
         : DEFAULT_SETTINGS.scrollback,
     customAgents: validateCustomAgents(source.customAgents),
     promptTemplates: validatePromptTemplates(source.promptTemplates),
-    browserWidth:
-      typeof source.browserWidth === "number" &&
-      Number.isFinite(source.browserWidth)
-        ? clampBrowserWidth(source.browserWidth)
-        : DEFAULT_SETTINGS.browserWidth,
     // Not normalized to a URL here: the host is the one that decides what is
     // loadable, and a value this validator "fixed" would disagree with it.
     // An unusable address opens a blank panel, which is visible and editable.
@@ -326,15 +394,24 @@ export function validateSettings(raw: unknown): Settings {
       source.browserLastUrl.length <= 2048
         ? source.browserLastUrl
         : DEFAULT_SETTINGS.browserLastUrl,
-    explorerOpen:
-      typeof source.explorerOpen === "boolean"
-        ? source.explorerOpen
-        : DEFAULT_SETTINGS.explorerOpen,
-    explorerWidth:
-      typeof source.explorerWidth === "number" &&
-      Number.isFinite(source.explorerWidth)
-        ? clampExplorerWidth(source.explorerWidth)
-        : DEFAULT_SETTINGS.explorerWidth,
+    dockOpen:
+      typeof source.dockOpen === "boolean"
+        ? source.dockOpen
+        : DEFAULT_SETTINGS.dockOpen,
+    dockWidth:
+      typeof source.dockWidth === "number" && Number.isFinite(source.dockWidth)
+        ? clampDockWidth(source.dockWidth)
+        : DEFAULT_SETTINGS.dockWidth,
+    // An unknown tab id resolves to the default rather than being kept: this
+    // value names a surface, and a name nothing answers to would leave the
+    // dock rendering an empty column.
+    dockTab: DOCK_TABS.includes(source.dockTab as DockTab)
+      ? (source.dockTab as DockTab)
+      : DEFAULT_SETTINGS.dockTab,
     keybindings: validateKeybindings(source.keybindings),
+    restoreSessions:
+      typeof source.restoreSessions === "boolean"
+        ? source.restoreSessions
+        : DEFAULT_SETTINGS.restoreSessions,
   };
 }

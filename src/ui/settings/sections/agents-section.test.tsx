@@ -24,7 +24,7 @@ import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
 import { settings, updateSettings } from "../../../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../../../settings/settings-schema";
 import { BUILTIN_AGENTS } from "../../../lib/agent-catalog";
-import { settingsOpen, usageOpen } from "../../../chrome/events";
+import { settingsOpen } from "../../../chrome/events";
 
 describe("AgentsSection", () => {
   let host: HTMLDivElement;
@@ -228,7 +228,7 @@ describe("AgentsSection", () => {
   describe("the token usage link row", () => {
     afterEach(() => {
       settingsOpen.value = false;
-      usageOpen.value = false;
+      settings.value.dockOpen = false;
     });
 
     const usageButton = (): HTMLButtonElement => {
@@ -243,13 +243,13 @@ describe("AgentsSection", () => {
 
     it("swaps Settings for the usage screen in one click", () => {
       settingsOpen.value = true;
-      usageOpen.value = false;
+      settings.value.dockOpen = false;
       mount();
 
       click(usageButton());
 
       expect(settingsOpen.value).toBe(false);
-      expect(usageOpen.value).toBe(true);
+      expect(settings.value.dockOpen).toBe(true);
     });
 
     it("reads as a link row, not a value pill — the about-section pattern", () => {

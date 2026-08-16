@@ -17,7 +17,8 @@ class FakeResizeObserver {
   observe(): void {}
   disconnect(): void {}
 }
-(globalThis as { ResizeObserver?: unknown }).ResizeObserver = FakeResizeObserver;
+(globalThis as { ResizeObserver?: unknown }).ResizeObserver =
+  FakeResizeObserver;
 
 function fakeClient(overrides: Partial<BrowserClient> = {}): BrowserClient {
   return {
@@ -49,13 +50,7 @@ describe("BrowserPanel", () => {
   function mount(client: BrowserClient, hidden = false) {
     act(() => {
       render(
-        <BrowserPanel
-          width={420}
-          onWidthChange={() => {}}
-          onClose={() => {}}
-          hidden={hidden}
-          client={client}
-        />,
+        <BrowserPanel onClose={() => {}} hidden={hidden} client={client} />,
         host,
       );
     });
@@ -93,7 +88,9 @@ describe("BrowserPanel", () => {
     await act(async () => {
       host
         .querySelector("form")!
-        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+        .dispatchEvent(
+          new Event("submit", { bubbles: true, cancelable: true }),
+        );
     });
     expect(client.navigate).toHaveBeenCalledWith("not an address");
     expect(browserNotice.value).toBe("That is not an address Deck can open.");
@@ -136,7 +133,7 @@ describe("BrowserPanel", () => {
   it("prefers a load error over the last grab notice", () => {
     const client = fakeClient();
     act(() => {
-      browserNotice.value = "Element sent to the focused pane";
+      browserNotice.value = "Element copied to the clipboard";
       browserState.value = { ...EMPTY_STATE, error: "Connection refused" };
     });
     mount(client);

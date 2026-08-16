@@ -18,6 +18,8 @@ import {
   initSettings,
   settings,
   updateSettings,
+  openDockTab,
+  revealDockTab,
 } from "./settings-store";
 import { createMemorySettingsSync } from "./settings-sync";
 import { DEFAULT_SETTINGS } from "./settings-schema";
@@ -104,5 +106,61 @@ describe("settings patch sync", () => {
     // Coercion, not rejection: the message was understandable, so the rest
     // of it applies and this one field falls back.
     expect(settings.value.fontSize).toBe(DEFAULT_SETTINGS.fontSize);
+  });
+});
+
+describe("revealDockTab", () => {
+  beforeEach(() => {
+    settings.value = { ...DEFAULT_SETTINGS };
+  });
+
+  it("opens the dock on the asked-for tab when it is closed", () => {
+    expect(revealDockTab("usage")).toBe(false);
+    expect(settings.value.dockOpen).toBe(true);
+    expect(settings.value.dockTab).toBe("usage");
+  });
+
+  it("switches tabs without closing when another one is showing", () => {
+    settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: "usage" };
+
+    expect(revealDockTab("explorer")).toBe(false);
+    expect(settings.value.dockOpen).toBe(true);
+    expect(settings.value.dockTab).toBe("explorer");
+  });
+
+  // Press it again to put it away — and say so, because only this branch hands
+  // focus back to the pane.
+  it("closes, and reports closing, when the asked-for tab is already showing", () => {
+    settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: "usage" };
+
+    expect(revealDockTab("usage")).toBe(true);
+    expect(settings.value.dockOpen).toBe(false);
+    // The tab is remembered, so reopening lands where the user left off.
+    expect(settings.value.dockTab).toBe("usage");
+  });
+});
+
+describe("openDockTab", () => {
+  beforeEach(() => {
+    settings.value = { ...DEFAULT_SETTINGS };
+  });
+
+  it("opens the dock on the asked-for tab", () => {
+    openDockTab("sessions");
+
+    expect(settings.value.dockOpen).toBe(true);
+    expect(settings.value.dockTab).toBe("sessions");
+  });
+
+  // The whole difference from `revealDockTab`: the rail's rows are shortcuts
+  // that open, so pressing the row of the tab already on screen must not be
+  // the thing that puts the column away.
+  it("leaves the dock open when its tab is already showing", () => {
+    settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: "usage" };
+
+    openDockTab("usage");
+
+    expect(settings.value.dockOpen).toBe(true);
+    expect(settings.value.dockTab).toBe("usage");
   });
 });

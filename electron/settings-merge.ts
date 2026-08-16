@@ -30,6 +30,13 @@ const RETIRED_KEYS: readonly string[] = [
   // The browser's docked right column, its resize drag and `browserWidth` were
   // removed on 2026-08-15 when the browser became a tab on the stage strip.
   "browserWidth",
+  // The docked right column stopped being the file explorer's on 2026-08-16:
+  // it hosts several surfaces as tabs, so `explorerOpen`/`explorerWidth` became
+  // `dockOpen`/`dockWidth`. The width is not carried over on purpose — the old
+  // floor (180) is below the new one (360), so an old value would arrive
+  // already out of range.
+  "explorerOpen",
+  "explorerWidth",
 ];
 
 /**

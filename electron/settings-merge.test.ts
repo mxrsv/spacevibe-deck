@@ -51,6 +51,19 @@ describe("mergeSettings", () => {
     });
   });
 
+  it("drops the file explorer's old column keys", () => {
+    // Retired on 2026-08-16 when the docked right column became the dock and
+    // the keys became `dockOpen`/`dockWidth`. The old width is not migrated:
+    // 260 sits below the dock's 360 floor, so carrying it over would restore a
+    // width the new range cannot hold.
+    expect(
+      mergeSettings(
+        { fontSize: 13, explorerOpen: true, explorerWidth: 260 },
+        { fontSize: 15 },
+      ),
+    ).toEqual({ fontSize: 15 });
+  });
+
   it("keeps unknown keys that are not retired", () => {
     // A key written by a newer Deck must survive a downgrade — only NAMED
     // retirees are dropped.

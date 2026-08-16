@@ -206,7 +206,7 @@ export function OverviewSection() {
   // selector either — there is nothing to scope, so the control would be a
   // set of four buttons that all say the same thing.
   if (agentTotals(buckets, null).length === 0) {
-    return <p class="usage-hero__empty">no data yet</p>;
+    return <p class="usage-hero__empty">No data yet</p>;
   }
 
   // Unknown id can only come from a stale signal; fall back to the whole
@@ -244,10 +244,9 @@ export function OverviewSection() {
 
   return (
     <div class="usage-hero">
-      {/* The single sanctioned uppercase in this app, written as literal
-          capitals rather than `text-transform` so the exception is greppable
-          (DL-16.2). It licenses uppercase nowhere else. */}
-      <p class="usage-hero__eyebrow">RAW TOKEN COST</p>
+      {/* Sentence-case microcopy in --text-muted, no text-transform, no
+          tracking (DL-4.3, DL-16.2). */}
+      <p class="usage-hero__eyebrow">Raw token cost</p>
       {/* The absent figure is faint, per DL-15.6's "em dash in --text-faint".
           At 40px in --text-primary a bare dash stops reading as "unknown" and
           starts reading as a rule across the page or a loading skeleton; the

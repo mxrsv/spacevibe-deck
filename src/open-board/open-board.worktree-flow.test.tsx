@@ -99,7 +99,8 @@ describe("OpenBoard create-worktree flow", () => {
           canCancel={true}
           onCancel={() => {}}
           onOpen={onOpen}
-          onNewPreset={() => {}}
+          recentSessions={[]}
+          onResumeSession={() => {}}
         />,
         host,
       );
@@ -213,13 +214,14 @@ describe("OpenBoard create-worktree flow", () => {
     expect(notice?.textContent).not.toContain("fatal:");
   });
 
-  it("success switches to the config view with the new worktree selected", async () => {
+  it("success opens the new worktree straight through", async () => {
     seed(["/Users/dev/deck"]);
     addWorktreeMock.mockResolvedValue({
       ok: true,
       path: "/Users/dev/deck-worktrees/redesign",
     });
-    await mount();
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
 
     const createButton = [...host.querySelectorAll(".home-action")].find((el) =>
       el.textContent?.includes("Create worktree"),
@@ -242,9 +244,13 @@ describe("OpenBoard create-worktree flow", () => {
       submit?.click();
     });
 
-    expect(host.querySelector(".board-worktree")).toBeNull();
-    expect(host.querySelector(".board-config")).not.toBeNull();
-    expect(host.querySelector(".wshead__title")?.textContent).toBe("redesign");
+    // A freshly created worktree has no remembered combo, so it opens with
+    // the default preset and whatever the probe found (nothing → Shell).
+    expect(onOpen).toHaveBeenCalledWith(
+      "/Users/dev/deck-worktrees/redesign",
+      expect.anything(),
+      null,
+    );
   });
 
   it("Escape in the worktree view returns home before it cancels the board", async () => {

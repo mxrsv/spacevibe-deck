@@ -298,7 +298,7 @@ describe("PromptPopover", () => {
         throw new Error("ipc");
       },
     });
-    expect(host.textContent).toContain("skills unavailable");
+    expect(host.textContent).toContain("Skills unavailable");
     expect(host.querySelectorAll(".cfg-row--item")).toHaveLength(2);
   });
 

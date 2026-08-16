@@ -1,11 +1,26 @@
 import { describe, expect, it } from "vitest";
 import type { TabView } from "../terminal/tabs-store";
 import type { RepositoryScan } from "./repository-client";
-import { buildRail, worktreeForPath } from "./repository-model";
+import {
+  activeRepositoryTabIndexes,
+  activeWorktreeTabIndexes,
+  buildRail,
+  filterRailToWorkspaceHistory,
+  worktreeForPath,
+} from "./repository-model";
 
-const IDLE = { kind: "idle", actionableCount: 0, workingCount: 0, unreadCount: 0 } as const;
+const IDLE = {
+  kind: "idle",
+  actionableCount: 0,
+  workingCount: 0,
+  unreadCount: 0,
+} as const;
 
-function tab(key: number, workspacePath: string | null, over: Partial<TabView> = {}): TabView {
+function tab(
+  key: number,
+  workspacePath: string | null,
+  over: Partial<TabView> = {},
+): TabView {
   return {
     key,
     process: "zsh",
@@ -73,6 +88,7 @@ describe("buildRail", () => {
         ["/r/side", scan],
       ]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(groups).toHaveLength(1);
     expect(groups[0].kind).toBe("repository");
@@ -93,6 +109,7 @@ describe("buildRail", () => {
       activeIndex: 0,
       scans: new Map([["/r/spacevibe-deck", scan]]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(groups[0].name).toBe("spacevibe-deck");
     expect(groups[0].worktrees.map((w) => w.name)).toEqual([
@@ -108,6 +125,7 @@ describe("buildRail", () => {
       activeIndex: 0,
       scans: new Map([["/r/detached", scan]]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(groups[0].worktrees[0].name).toBe("detached");
   });
@@ -122,6 +140,7 @@ describe("buildRail", () => {
       activeIndex: 0,
       scans: new Map([["/r/main", scan]]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(groups[0].worktrees[1]).toMatchObject({ state: "idle", tabs: [] });
   });
@@ -134,6 +153,7 @@ describe("buildRail", () => {
         ["/home/me/scratch", { kind: "plain", reason: "not a git repository" }],
       ]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(groups[0].kind).toBe("plain");
     expect(groups[0].name).toBe("scratch");
@@ -146,6 +166,7 @@ describe("buildRail", () => {
       activeIndex: 0,
       scans: new Map(),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(before[0].kind).toBe("plain");
     expect(before[0].worktrees[0].tabs).toHaveLength(1);
@@ -155,6 +176,7 @@ describe("buildRail", () => {
       activeIndex: 0,
       scans: new Map([["/r/main", repo("/r/.git", [{ path: "/r/main" }])]]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(after[0].kind).toBe("repository");
   });
@@ -167,7 +189,10 @@ describe("buildRail", () => {
     const scan = repo("/r/.git", [
       { path: "/r/main" },
       { path: "/r/side" },
-      { path: "/r/gone", prunable: "gitdir file points to non-existent location" },
+      {
+        path: "/r/gone",
+        prunable: "gitdir file points to non-existent location",
+      },
     ]);
     const groups = buildRail({
       tabs: [busy, shouting],
@@ -177,6 +202,7 @@ describe("buildRail", () => {
         ["/r/side", scan],
       ]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(groups[0].worktrees.map((w) => w.state)).toEqual([
       "working",
@@ -190,13 +216,17 @@ describe("buildRail", () => {
     // handle it was reached through.
     const scan = repo("/r/.git", [
       { path: "/r/main" },
-      { path: "/r/gone", prunable: "gitdir file points to non-existent location" },
+      {
+        path: "/r/gone",
+        prunable: "gitdir file points to non-existent location",
+      },
     ]);
     const groups = buildRail({
       tabs: [tab(1, "/r/gone")],
       activeIndex: 0,
       scans: new Map([["/r/gone", scan]]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     const gone = groups[0].worktrees.find((w) => w.path === "/r/gone");
     expect(gone).toMatchObject({ state: "missing" });
@@ -210,6 +240,7 @@ describe("buildRail", () => {
       activeIndex: 0,
       scans: new Map([["/r/main/packages/web", scan]]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(groups[0].worktrees[0].tabs).toHaveLength(1);
   });
@@ -245,6 +276,7 @@ describe("buildRail", () => {
       activeIndex: 0,
       scans: new Map([["/r/main", scan]]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(groups[0].worktrees.map((w) => w.path)).toEqual(["/r/main"]);
     expect(groups[0].worktrees[0].primary).toBe(true);
@@ -260,6 +292,7 @@ describe("buildRail", () => {
         ["/r/side", scan],
       ]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(groups[0].worktrees[0].tabs[0].active).toBe(false);
     expect(groups[0].worktrees[1].tabs[0].active).toBe(true);
@@ -280,6 +313,7 @@ describe("buildRail", () => {
         ["/r/main/packages/web", scan],
       ]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
 
     expect(groups[0].worktrees[0]).toMatchObject({
@@ -293,6 +327,7 @@ describe("buildRail", () => {
       activeIndex: 0,
       scans: new Map(),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(groups[0].key).toBe("plain:unknown-7");
     expect(groups[0].worktrees[0].tabs).toHaveLength(1);
@@ -309,6 +344,7 @@ describe("buildRail", () => {
         ["/b", b],
       ]),
       collapsed: new Set(),
+      archivedPaths: new Set(),
     });
     expect(groups.map((group) => group.key)).toEqual(["/b/.git", "/a/.git"]);
   });
@@ -320,7 +356,185 @@ describe("buildRail", () => {
       activeIndex: 0,
       scans: new Map([["/r/main", scan]]),
       collapsed: new Set(["/r/.git"]),
+      archivedPaths: new Set(),
     });
     expect(groups[0].collapsed).toBe(true);
+  });
+
+  it("marks an empty worktree resumable when the archive holds its exact path", () => {
+    const scan = repo("/r/.git", [
+      { path: "/r/main", branch: "main" },
+      { path: "/r/side", branch: "side" },
+    ]);
+    const groups = buildRail({
+      tabs: [tab(1, "/r/main")],
+      activeIndex: 0,
+      scans: new Map([["/r/main", scan]]),
+      collapsed: new Set(),
+      archivedPaths: new Set(["/r/side"]),
+    });
+    const side = groups[0].worktrees.find((w) => w.path === "/r/side");
+    expect(side).toMatchObject({ resumable: true, tabs: [] });
+  });
+
+  it("lights up a worktree from an archive entry recorded on a subdirectory", () => {
+    const scan = repo("/r/.git", [
+      { path: "/r/main", branch: "main" },
+      { path: "/r/side", branch: "side" },
+    ]);
+    const groups = buildRail({
+      tabs: [tab(1, "/r/main")],
+      activeIndex: 0,
+      scans: new Map([["/r/main", scan]]),
+      collapsed: new Set(),
+      archivedPaths: new Set(["/r/side/packages/web"]),
+    });
+    const side = groups[0].worktrees.find((w) => w.path === "/r/side");
+    expect(side?.resumable).toBe(true);
+  });
+
+  it("keeps a worktree with open tabs non-resumable, even when archived", () => {
+    const scan = repo("/r/.git", [{ path: "/r/main", branch: "main" }]);
+    const groups = buildRail({
+      tabs: [tab(1, "/r/main")],
+      activeIndex: 0,
+      scans: new Map([["/r/main", scan]]),
+      collapsed: new Set(),
+      archivedPaths: new Set(["/r/main"]),
+    });
+    expect(groups[0].worktrees[0]).toMatchObject({
+      resumable: false,
+      tabs: [expect.anything()],
+    });
+  });
+
+  it("leaves an empty, never-archived worktree non-resumable", () => {
+    const scan = repo("/r/.git", [
+      { path: "/r/main", branch: "main" },
+      { path: "/r/side", branch: "side" },
+    ]);
+    const groups = buildRail({
+      tabs: [tab(1, "/r/main")],
+      activeIndex: 0,
+      scans: new Map([["/r/main", scan]]),
+      collapsed: new Set(),
+      archivedPaths: new Set(),
+    });
+    const side = groups[0].worktrees.find((w) => w.path === "/r/side");
+    expect(side).toMatchObject({ resumable: false, tabs: [] });
+  });
+});
+
+describe("filterRailToWorkspaceHistory", () => {
+  it("keeps current sessions and previously opened worktrees, including subfolders", () => {
+    const scan = repo("/r/.git", [
+      { path: "/r/main", branch: "main" },
+      { path: "/r/visited", branch: "visited" },
+      { path: "/r/never", branch: "never" },
+    ]);
+    const groups = buildRail({
+      tabs: [tab(1, "/r/main")],
+      activeIndex: 0,
+      scans: new Map([["/r/main", scan]]),
+      collapsed: new Set(),
+      archivedPaths: new Set(),
+    });
+
+    const filtered = filterRailToWorkspaceHistory(groups, [
+      "/r/visited/packages/web",
+    ]);
+
+    expect(filtered[0].worktrees.map((worktree) => worktree.path)).toEqual([
+      "/r/main",
+      "/r/visited",
+    ]);
+    expect(groups[0].worktrees).toHaveLength(3);
+  });
+});
+
+describe("activeRepositoryTabIndexes", () => {
+  it("spans every worktree of the repository, where the worktree scope does not", () => {
+    // The difference the function exists for: the rail's unit is a tab in a
+    // project, so a sibling tab on another checkout of the same repository
+    // stays in the strip instead of disappearing when it is selected.
+    const scan = repo("/r/.git", [
+      { path: "/r/main", branch: "main" },
+      { path: "/r/side", branch: "side" },
+    ]);
+    const tabs = [tab(1, "/r/main"), tab(2, "/r/side")];
+    const scans = new Map([
+      ["/r/main", scan],
+      ["/r/side", scan],
+    ]);
+
+    expect(activeRepositoryTabIndexes(tabs, 0, scans)).toEqual([0, 1]);
+    expect(activeWorktreeTabIndexes(tabs, 0, scans)).toEqual([0]);
+  });
+
+  it("claims a tab opened in a sub-package through the same longest-prefix match", () => {
+    const scan = repo("/r/.git", [{ path: "/r/main", branch: "main" }]);
+    const tabs = [tab(1, "/r/main"), tab(2, "/r/main/packages/web")];
+
+    expect(
+      activeRepositoryTabIndexes(
+        tabs,
+        1,
+        new Map([
+          ["/r/main", scan],
+          ["/r/main/packages/web", scan],
+        ]),
+      ),
+    ).toEqual([0, 1]);
+  });
+
+  it("groups a plain folder's tabs together, as its own repository of one", () => {
+    const tabs = [tab(1, "/home/me/scratch"), tab(2, "/home/me/scratch")];
+
+    expect(
+      activeRepositoryTabIndexes(
+        tabs,
+        0,
+        new Map([
+          [
+            "/home/me/scratch",
+            { kind: "plain", reason: "not a git repository" },
+          ],
+        ]),
+      ),
+    ).toEqual([0, 1]);
+  });
+
+  it("answers with nothing when no tab is active", () => {
+    const scan = repo("/r/.git", [{ path: "/r/main", branch: "main" }]);
+
+    expect(
+      activeRepositoryTabIndexes(
+        [tab(1, "/r/main")],
+        -1,
+        new Map([["/r/main", scan]]),
+      ),
+    ).toEqual([]);
+  });
+
+  it("returns indexes ascending, not in worktree order", () => {
+    // git lists `main` before `side`, but the tabs were opened the other way
+    // round. Walking worktrees would hand the strip [2, 0] and put ⌘1..⌘9 out
+    // of step with what the user sees.
+    const scan = repo("/r/.git", [
+      { path: "/r/main", branch: "main" },
+      { path: "/r/side", branch: "side" },
+    ]);
+    const tabs = [tab(1, "/r/side"), tab(2, "/other"), tab(3, "/r/main")];
+
+    expect(
+      activeRepositoryTabIndexes(
+        tabs,
+        2,
+        new Map([
+          ["/r/main", scan],
+          ["/r/side", scan],
+        ]),
+      ),
+    ).toEqual([0, 2]);
   });
 });

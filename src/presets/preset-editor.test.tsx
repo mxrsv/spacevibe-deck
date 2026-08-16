@@ -67,3 +67,52 @@ describe("PresetEditor platform split gestures", () => {
     expect(host.querySelectorAll(".mock-pane")).toHaveLength(2);
   });
 });
+
+// DL-29.3. The other two modals close on a scrim click; this one must not,
+// because its draft — the split tree, the per-pane cwds, the name — exists
+// nowhere but this component until "Create tab" is pressed.
+describe("PresetEditor scrim", () => {
+  let host: HTMLDivElement;
+
+  beforeEach(() => {
+    host = document.createElement("div");
+    document.body.appendChild(host);
+  });
+
+  afterEach(() => {
+    act(() => render(null, host));
+    host.remove();
+    resetDesktopEnvironmentForTests();
+  });
+
+  it("ignores a click on the scrim so a slipped click cannot drop the draft", () => {
+    const onCancel = vi.fn();
+    act(() => {
+      render(<PresetEditor onCancel={onCancel} onCreate={() => {}} />, host);
+    });
+    const scrim = host.querySelector<HTMLDivElement>(".modal-scrim")!;
+
+    act(() => {
+      scrim.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      scrim.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it("still closes on Escape", () => {
+    const onCancel = vi.fn();
+    act(() => {
+      render(<PresetEditor onCancel={onCancel} onCreate={() => {}} />, host);
+    });
+    const editor = host.querySelector<HTMLDivElement>(".preset-editor")!;
+
+    act(() => {
+      editor.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});

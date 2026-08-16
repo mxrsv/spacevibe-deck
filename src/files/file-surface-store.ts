@@ -26,6 +26,7 @@ import {
   type TreeRow,
 } from "./file-tree";
 import type { FileContent } from "./file-content";
+import { nextOpenSequence } from "../lib/open-sequence";
 import {
   activeAfterFileClose,
   closeFileTab,
@@ -136,14 +137,23 @@ export const activeFileTab = signal<string | null>(null);
 
 /**
  * Width during a resize drag; `null` when no drag is in flight and the
- * persisted `explorerWidth` setting is authoritative.
+ * persisted `dockWidth` setting is authoritative.
  *
- * Same reasoning as `browserWidthLive` (`browser-store.ts`): the panel and
- * the terminal grid it displaces both need the live value every frame, and
- * committing to settings on every pointermove would write the store dozens
- * of times a second.
+ * The panel and the terminal grid it displaces both need the live value
+ * every frame, and committing to settings on every pointermove would write
+ * the store dozens of times a second.
  */
-export const explorerWidthLive = signal<number | null>(null);
+export const dockWidthLive = signal<number | null>(null);
+
+/**
+ * True while a resize drag has been pulled far enough past the floor that
+ * releasing it will close the panel (DL-19.4, `resolvePanelDrag`).
+ *
+ * The panel dims itself on this rather than closing mid-drag: closing unmounts
+ * the grip the pointer is captured on, which ends the gesture with no way to
+ * pull the column back out, and makes an overshoot unrecoverable.
+ */
+export const dockCollapseArmed = signal(false);
 
 export function surfaceFor(workspacePath: string | null): FileSurfaceState {
   if (workspacePath === null) {
@@ -315,9 +325,18 @@ export function openFileTab(
   // still watched, still reacting to external-change events for a file no tab
   // shows anymore.
   const priorPreview = previewTab(surface.tabs);
+  // One key per open attempt, spent only when a tab is actually created —
+  // `openPreview` reuses the replaced slot's key and returns the list
+  // untouched for an already-open path, so a re-click never reorders the
+  // strip. An unspent key is simply a gap in the sequence; the order is what
+  // matters, not the values.
+  const openTabOptions = {
+    openedAt: nextOpenSequence(),
+    dirtyPaths: dirtySet(),
+  };
   const tabs = options.keep
-    ? openKept(surface.tabs, path, dirtySet())
-    : openPreview(surface.tabs, path, dirtySet());
+    ? openKept(surface.tabs, path, openTabOptions)
+    : openPreview(surface.tabs, path, openTabOptions);
   writeSurface(workspacePath, { tabs, activePath: path });
   activeWorkspace.value = workspacePath;
   activeFileTab.value = path;
@@ -514,5 +533,6 @@ export function resetFileSurfaces(): void {
   fileDocuments.value = new Map();
   activeWorkspace.value = null;
   activeFileTab.value = null;
-  explorerWidthLive.value = null;
+  dockWidthLive.value = null;
+  dockCollapseArmed.value = false;
 }

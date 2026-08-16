@@ -39,11 +39,14 @@ import { detectAgentsSafely, dirsExist } from "./agents";
 import { gitBranch } from "./git";
 import { scanRepository } from "./worktrees";
 import { addWorktree } from "./git/worktree";
+import { resolveResume, validateResumeRequests } from "./resume/resolve";
+import { listSessions } from "./sessions/list";
 import { resolvePaths, openEditor } from "./links";
 import { listPromptAssets } from "./prompt-assets";
 import { readImageAsDataUrl, scanWorkspaceFavicon } from "./images";
 import { applySettingsPatch } from "./settings-merge";
 import { listDir, readFile, statFiles } from "./fs/read";
+import { importThemes, listThemes, revealThemes } from "./themes";
 import { createUsageService } from "./usage/service";
 import { USAGE_CACHE_FILE } from "./usage/model";
 import { writeTextFile } from "./fs/write";
@@ -445,6 +448,10 @@ ipcMain.handle(CHANNELS.gitRepository, (_event, { path }) =>
 ipcMain.handle(CHANNELS.worktreeAdd, (_event, { repoPath, branch, destPath }) =>
   addWorktree({ repoPath, branch, destPath }),
 );
+ipcMain.handle(CHANNELS.resumeLookup, (_event, { requests }) =>
+  resolveResume(app.getPath("home"), validateResumeRequests(requests)),
+);
+ipcMain.handle(CHANNELS.windowLabel, (event) => labelOf(event));
 ipcMain.handle(CHANNELS.detectAgents, (_event, { names }) =>
   detectAgentsSafely(names ?? []),
 );
@@ -500,9 +507,27 @@ ipcMain.handle(CHANNELS.usageSnapshot, async () => {
     throw new Error("the usage scan failed");
   }
 });
+ipcMain.handle(CHANNELS.sessionsList, (_event, { limit }) =>
+  listSessions(
+    app.getPath("home"),
+    typeof limit === "number" ? limit : undefined,
+  ),
+);
 ipcMain.handle(CHANNELS.suspendMenuAccelerators, (event, { suspended }) => {
   setRecording(event.sender.id, suspended === true);
 });
+
+// --------------------------------------------------------- Themes folder
+// `<userData>/themes`, read as text and handed to the renderer to parse. The
+// renderer never names a path here — unlike the explorer block below, there is
+// nothing to guard because there is nothing to address.
+ipcMain.handle(CHANNELS.themesList, () => listThemes());
+ipcMain.handle(CHANNELS.themesImport, (event) =>
+  // Modal to the window that asked, so a second window cannot inherit a sheet
+  // opened from the first.
+  importThemes(BrowserWindow.fromWebContents(event.sender)),
+);
+ipcMain.handle(CHANNELS.themesReveal, () => revealThemes());
 
 // ---------------------------------------------------------- File explorer
 // Every path is bounded to the workspace root by `fs/path-guard.ts`. `root`
@@ -602,7 +627,6 @@ ipcMain.handle(CHANNELS.commitTransfer, (event, { token }) =>
 ipcMain.handle(CHANNELS.abortTransfer, (_event, { token }) =>
   coordinator.abort(token),
 );
-ipcMain.handle(CHANNELS.focusOrder, (event) => registry.order(labelOf(event)));
 ipcMain.handle(CHANNELS.windowBootMode, (event) =>
   registry.bootMode(labelOf(event)),
 );
@@ -702,10 +726,13 @@ const STORE_FILES = new Set([
   "presets.json",
   "logo.json",
   "workspace-logos.json",
+  "sidebar-banner.json",
   "update-attempt.json",
   // The repository rail's collapse state, and nothing else — the worktree
   // list itself is re-read every launch and never written down.
   "repositories.json",
+  // Session journal: live window records + per-workspace archive (restore).
+  "session.json",
 ]);
 
 function assertStoreFile(file: unknown): string {

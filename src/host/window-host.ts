@@ -46,8 +46,9 @@ export interface DragDropEvent {
 
 /** The preload bridge, for the one thing that is not invoke/listen. */
 function hostBridge(): { getPathForFile?: (file: File) => string } | undefined {
-  return (globalThis as { __deckHost?: { getPathForFile?: (file: File) => string } })
-    .__deckHost;
+  return (
+    globalThis as { __deckHost?: { getPathForFile?: (file: File) => string } }
+  ).__deckHost;
 }
 
 class DeckWindow {
@@ -158,4 +159,18 @@ export function getCurrentWindow(): DeckWindow {
 
 export function getCurrentWebview(): DeckWindow {
   return current;
+}
+
+/**
+ * This window's label, as the main process assigns it (`labelOf(event)`).
+ *
+ * No prior renderer accessor existed: `windowBootMode` returns a `BootMode`
+ * with no label, and every other module that needed one let the main process
+ * derive it per-request from the sender. Session restore needs to name this
+ * window's own `window:<label>` journal key from the renderer side, so this
+ * is the smallest possible channel for that (`electron/ipc/channels.ts`'s
+ * `windowLabel`).
+ */
+export function currentWindowLabel(): Promise<string> {
+  return invoke<string>("window_label");
 }

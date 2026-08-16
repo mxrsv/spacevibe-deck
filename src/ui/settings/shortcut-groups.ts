@@ -33,15 +33,15 @@ export const SHORTCUT_GROUPS: readonly {
   readonly id: ShortcutGroupId;
   readonly label: string;
 }[] = [
-  { id: "panes", label: "panes" },
-  { id: "tabs", label: "tabs" },
-  { id: "presets", label: "layout presets" },
-  { id: "files", label: "files" },
-  { id: "text", label: "text & search" },
-  { id: "scrollback", label: "scrollback" },
-  { id: "display", label: "display" },
-  { id: "app", label: "app" },
-  { id: "other", label: "other" },
+  { id: "panes", label: "Panes" },
+  { id: "tabs", label: "Tabs" },
+  { id: "presets", label: "Layout presets" },
+  { id: "files", label: "Files" },
+  { id: "text", label: "Text & search" },
+  { id: "scrollback", label: "Scrollback" },
+  { id: "display", label: "Display" },
+  { id: "app", label: "App" },
+  { id: "other", label: "Other" },
 ];
 
 const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
@@ -65,7 +65,6 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   "new-tab": "tabs",
   "reopen-tab": "tabs",
   "close-tab": "tabs",
-  "open-tab-options": "tabs",
   "next-tab": "tabs",
   "prev-tab": "tabs",
   "select-last-tab": "tabs",
@@ -101,6 +100,7 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   // "app", not "panes": the panel is a surface of the window like Settings and
   // the Prompt Board, not something that acts on the focused pane.
   "toggle-browser": "app",
+  "toggle-dock": "app",
   "toggle-explorer": "app",
   "toggle-usage": "app",
   "focus-next-attention": "app",

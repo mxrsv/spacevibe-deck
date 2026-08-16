@@ -6,29 +6,21 @@ import {
   type TabBarPosition,
 } from "../../../settings/settings-schema";
 import { settings, updateSettings } from "../../../settings/settings-store";
-import { getPreset, THEME_PRESETS } from "../../../settings/themes";
 import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
-import { ConfigRow, ToggleRow } from "../../controls/config-row";
+import { ConfigGroup, ConfigRow, ToggleRow } from "../../controls/config-row";
 import { FontRow } from "../../controls/font-row";
 import { LogoRow } from "../../controls/logo-row";
+import { ThemeGallery } from "../theme-gallery";
+import { ColorOverrides } from "../color-overrides";
+import { SidebarBannerSettings } from "../sidebar-banner-settings";
 
 const TAB_BAR_CHOICES: readonly TabBarPosition[] = ["left", "top"];
 
 export function AppearanceSection() {
   const current = settings.value;
-  const preset = getPreset(current.themeId);
 
   const stepFontSize = (delta: number): void => {
     updateSettings({ fontSize: clampFontSize(current.fontSize + delta) });
-  };
-
-  const cycleTheme = (): void => {
-    const index = THEME_PRESETS.findIndex(
-      (themePreset) => themePreset.id === current.themeId,
-    );
-    const next = THEME_PRESETS[(index + 1) % THEME_PRESETS.length];
-    // Switching theme clears previous color overrides
-    updateSettings({ themeId: next.id, colorOverrides: {} });
   };
 
   const cycleTabBar = (): void => {
@@ -39,27 +31,14 @@ export function AppearanceSection() {
 
   return (
     <>
-      <ConfigRow label="Theme" desc="terminal palette">
-        <button
-          type="button"
-          class="cfg-btn"
-          title="Next theme"
-          aria-label={`Theme: ${preset.label}. Switch to next theme`}
-          onClick={cycleTheme}
-        >
-          <span
-            class="cfg-swatch"
-            style={{
-              background: preset.theme.background,
-              borderColor: preset.theme.blue,
-            }}
-          />
-          {preset.id}
-          <span class="cfg-btn__hint">
-            <DeckIcon icon={Repeat2} size={ROW_ICON} />
-          </span>
-        </button>
-      </ConfigRow>
+      <ThemeGallery />
+      {/* The overrides live directly under the gallery because the gallery is
+          what clears them: picking a card resets `colorOverrides`, so the rows
+          that show what is overridden belong next to the control that wipes
+          them, not one rail category away (2026-08-16). */}
+      <ConfigGroup label="Colors" />
+      <ColorOverrides />
+      <ConfigGroup label="Type and chrome" />
       <FontRow
         value={current.fontFamily}
         onChange={(fontFamily) => updateSettings({ fontFamily })}
@@ -88,7 +67,7 @@ export function AppearanceSection() {
         </span>
       </ConfigRow>
       <LogoRow />
-      <ConfigRow label="Tab bar position" desc="where the tab list sits">
+      <ConfigRow label="Tab bar position" desc="Where the tab list sits">
         <button
           type="button"
           class="cfg-btn"
@@ -104,10 +83,19 @@ export function AppearanceSection() {
       </ConfigRow>
       <ToggleRow
         label="Show pane bar"
-        desc="pane name bar inside splits"
+        desc="Pane name bar inside splits"
         checked={current.showPaneBar}
         onToggle={() => updateSettings({ showPaneBar: !current.showPaneBar })}
       />
+      <ToggleRow
+        label="Show status bar"
+        desc="Branch, path and window readout along the bottom"
+        checked={current.showStatusBar}
+        onToggle={() =>
+          updateSettings({ showStatusBar: !current.showStatusBar })
+        }
+      />
+      <SidebarBannerSettings />
     </>
   );
 }

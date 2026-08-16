@@ -1,12 +1,11 @@
 /**
  * Persistent key/value files — the replacement for `@tauri-apps/plugin-store`.
  *
- * The renderer loads six of these by name (`settings.json`, `workspaces.json`,
- * `presets.json`, `logo.json`, `workspace-logos.json`,
- * `update-attempt.json`), so the file names and the JSON shape are kept
- * identical even though nothing migrates across from a Tauri install — the
- * cutover is a clean install by decision, but keeping the shape means the
- * renderer code and its tests do not have to change.
+ * The renderer loads a fixed allowlist of these by name. Existing files keep
+ * their Tauri-era JSON shape, while renderer-only features add their own
+ * narrowly named stores (for example `sidebar-banner.json`). The cutover is a
+ * clean install by decision, but keeping each shape stable means the renderer
+ * code and its tests do not have to fork by host.
  *
  * Writes are atomic: a crash mid-write must not leave a truncated
  * `settings.json`, because the renderer treats an unreadable store as "no

@@ -8,7 +8,6 @@ import {
   AgentsIcon,
   AppearanceIcon,
   BrowserIcon,
-  ColorsIcon,
   LinksEditorIcon,
   NotificationsIcon,
   ShortcutsIcon,
@@ -26,7 +25,6 @@ describe("settings-nav-icons", () => {
 
   const icons: Array<{ name: string; icon: string; Icon: ComponentType }> = [
     { name: "AppearanceIcon", icon: "lucide-app-window", Icon: AppearanceIcon },
-    { name: "ColorsIcon", icon: "lucide-palette", Icon: ColorsIcon },
     {
       name: "TerminalIcon",
       icon: "lucide-square-terminal",

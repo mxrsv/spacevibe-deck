@@ -16,7 +16,6 @@ import {
   saveDialogOpen,
   settingsOpen,
   shortcutCaptureActive,
-  usageOpen,
 } from "../chrome/events";
 import {
   createTabManager,
@@ -545,6 +544,42 @@ describe("createTabManager openQuickAgent (AgentQuickPicker confirm)", () => {
     expect(pty.sessions.get(1)?.cwd).toBeNull(); // spawnShell falls back to $HOME
     tm.dispose();
   });
+
+  // A destination the picker offered is a worktree, so it has to become BOTH
+  // the cwd and the workspace tag — tagging it is what files the new tab
+  // under the right rail row instead of the one the user came from.
+  it("a chosen destination overrides both the live cwd and the workspace tag", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo/sub-dir", "zsh", "idle-shell", null)],
+    ]);
+    const { tm, pty } = setup({ infos });
+    await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+      workspacePath: "/repo",
+    });
+
+    const ok = await tm.openQuickAgent(null, "/repo-feature");
+
+    expect(ok).toBe(true);
+    expect(tabViews.value[1].workspacePath).toBe("/repo-feature");
+    expect(pty.sessions.get(2)?.cwd).toBe("/repo-feature");
+    tm.dispose();
+  });
+
+  it("a null destination keeps the pre-picker behaviour exactly", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo/sub-dir", "zsh", "idle-shell", null)],
+    ]);
+    const { tm, pty } = setup({ infos });
+    await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+      workspacePath: "/repo",
+    });
+
+    await tm.openQuickAgent(null, null);
+
+    expect(tabViews.value[1].workspacePath).toBe("/repo");
+    expect(pty.sessions.get(2)?.cwd).toBe("/repo/sub-dir");
+    tm.dispose();
+  });
 });
 
 describe("createTabManager agent launch", () => {
@@ -565,6 +600,52 @@ describe("createTabManager agent launch", () => {
     await vi.advanceTimersByTimeAsync(3000);
 
     expect(pty.writes).toEqual([{ id: 1, data: "claude\r" }]);
+    tm.dispose();
+  });
+
+  it("arms per-pane paneCommands, overriding the tab-wide agent fallback", async () => {
+    const { tm, pty } = setup({});
+    await tm.materialize({
+      layout: {
+        type: "split",
+        direction: "row",
+        ratio: 0.5,
+        first: { type: "leaf" },
+        second: { type: "leaf" },
+      },
+      cwds: ["/a", "/b"],
+      paneCommands: ["claude --resume abc", null],
+      workspacePath: "/work",
+    });
+
+    await vi.advanceTimersByTimeAsync(3000);
+
+    // Pane 1 arms the literal restore command; pane 2's null slot arms nothing.
+    expect(pty.writes).toEqual([{ id: 1, data: "claude --resume abc\r" }]);
+    tm.dispose();
+  });
+
+  it("arms the legacy agent fallback for every pane when paneCommands is absent", async () => {
+    const { tm, pty } = setup({});
+    await tm.materialize({
+      layout: {
+        type: "split",
+        direction: "row",
+        ratio: 0.5,
+        first: { type: "leaf" },
+        second: { type: "leaf" },
+      },
+      cwds: ["/a", "/b"],
+      agent: "claude",
+      workspacePath: "/work",
+    });
+
+    await vi.advanceTimersByTimeAsync(3000);
+
+    expect(pty.writes).toEqual([
+      { id: 1, data: "claude\r" },
+      { id: 2, data: "claude\r" },
+    ]);
     tm.dispose();
   });
 
@@ -799,6 +880,98 @@ describe("createTabManager workspace identity", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("projects every pane of the tab with its id, agent and tracker state", async () => {
+    // The per-tab rollup cannot name the pane behind a mark, and the agent
+    // rail's chips and expanded rows both activate an EXACT pane
+    // (`docs/specs/2026-08-16-agent-status-rail-design.md` §2.2). `TabView.panes`
+    // is that projection; a shell pane stays in it because filtering rows is
+    // the rail's job, not the projection's.
+    vi.useFakeTimers();
+    try {
+      const infos = new Map<number, PaneProcessInfo>([
+        [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+        [2, processInfo(2, "/repo", "zsh", "idle-shell", null)],
+      ]);
+      const { tm, pty } = setup({ infos });
+      await tm.init();
+      await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+        workspacePath: "/repo",
+      });
+      await tm.splitActive("row"); // pane 2, a plain shell beside the agent
+      await vi.advanceTimersByTimeAsync(2000); // both panes polled, gate open
+
+      pty.emitOutput(1, "\x1b]9;4;3\x07"); // Claude reports it is working
+
+      expect(tabViews.value[0].panes).toEqual([
+        {
+          paneId: 1,
+          agent: "claude",
+          attention: "none",
+          phase: "working",
+          changedAt: expect.any(Number),
+        },
+        // Polled and recognised as a shell: no agent identity, and the
+        // tracker's gate never opened for it, so nothing latched and the
+        // phase is still `unknown`.
+        {
+          paneId: 2,
+          agent: null,
+          attention: "none",
+          phase: "unknown",
+          changedAt: 0,
+        },
+      ]);
+      expect(tabViews.value[0].panes?.[0].changedAt).toBeGreaterThan(0);
+
+      // Attention latches on its own axis: the pane is still working.
+      pty.emitOutput(1, "\x1b]9;4;2\x07");
+      expect(tabViews.value[0].panes?.[0]).toMatchObject({
+        paneId: 1,
+        attention: "error",
+        phase: "working",
+      });
+      expect(tabViews.value[0].panes?.[1].attention).toBe("none");
+
+      tm.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("createTabManager captureSession (session journal)", () => {
+  it("captures every tab with polled cwd/agent and chrome overrides", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/w/a", "claude", "agent", "claude")],
+    ]);
+    const { tm } = setup({ infos });
+    await tm.openFromPreset({ type: "leaf" }, ["/w/a"], {
+      workspacePath: "/w/a",
+    });
+    tm.renameTab(0, "renamed");
+    // Second tab has no workspace and no info for its pane — the poller
+    // never learns about id 2, so its snapshot stays unknown.
+    await tm.openFromPreset({ type: "leaf" }, [null], {});
+    await flush(); // let materialize's `void poller.poll()` resolve
+
+    expect(tm.captureSession()).toEqual([
+      {
+        workspacePath: "/w/a",
+        layout: { type: "leaf" },
+        panes: [{ cwd: "/w/a", agent: "claude" }],
+        name: "renamed",
+        dotColor: null,
+      },
+      {
+        workspacePath: null,
+        layout: { type: "leaf" },
+        panes: [{ cwd: null, agent: null }],
+        name: null,
+        dotColor: null,
+      },
+    ]);
   });
 });
 
@@ -2794,10 +2967,10 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
         "focus-next-attention",
         "open-release-notes",
         "toggle-settings",
-        // The token usage screen joins the set for the same reason
-        // `toggle-settings` is in it: its own overlay rank would otherwise
-        // block the only action that can close it again.
-        "toggle-usage",
+        // `toggle-usage` LEFT this set on 2026-08-16. It was "always"
+        // because the usage screen pushed an overlay rank that would have
+        // blocked the only action able to close it; as a dock tab it pushes
+        // no rank, so it takes the ordinary "pane" tier again.
         "open-tab-options",
       ]),
     );
@@ -3830,16 +4003,16 @@ describe("toggle-explorer", () => {
     settings.value = DEFAULT_SETTINGS;
   });
 
-  it("flips explorerOpen on each call, with no pane required", () => {
+  it("flips dockOpen on each call, with no pane required", () => {
     const manager = createTabManager(
       document.createElement("div"),
       createMemoryPtyClient(),
     );
-    expect(settings.value.explorerOpen).toBe(false);
+    expect(settings.value.dockOpen).toBe(false);
     manager.runAction("toggle-explorer");
-    expect(settings.value.explorerOpen).toBe(true);
+    expect(settings.value.dockOpen).toBe(true);
     manager.runAction("toggle-explorer");
-    expect(settings.value.explorerOpen).toBe(false);
+    expect(settings.value.dockOpen).toBe(false);
     manager.dispose();
   });
 });
@@ -4428,17 +4601,50 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
     tm.dispose();
   });
 
-  it("⌘1..9 never resolve into the file segment — digits stay terminal-only", async () => {
+  it("⌘1..9 count CHIPS, so a digit can land on a file (2026-08-16)", async () => {
+    // Reversed on 2026-08-16 with the merged strip: the digits used to stay
+    // terminal-only, which meant ⌘2 did nothing at all on a window whose
+    // second chip was a document. "The second chip" now means the same thing
+    // to the keymap as it does to the eye (DL-18.6).
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ["/a"] }); // one terminal tab
-    await surfaces.openFile("/a", "/a/one.ts", true);
-    await surfaces.openFile("/a", "/a/two.ts", true);
-    const before = surfaces.activeIndex();
+    await tm.materialize({ layout: null, cwds: ["/a"] }); // chip 1
+    await surfaces.openFile("/a", "/a/one.ts", true); // chip 2
+    await surfaces.openFile("/a", "/a/two.ts", true); // chip 3
 
-    tm.runAction("select-tab-2"); // no second terminal tab exists
+    tm.runAction("select-tab-2");
+    expect(surfaces.activeIndex()).toBe(0); // the first file tab
 
-    expect(surfaces.activeIndex()).toBe(before); // untouched
+    tm.runAction("select-tab-3");
+    expect(surfaces.activeIndex()).toBe(1);
+
+    // ⌘9 takes the LAST chip, wherever it sits and whatever kind it is.
+    tm.runAction("select-tab-1");
+    expect(surfaces.activeIndex()).toBe(-1);
+    tm.runAction("select-last-tab");
+    expect(surfaces.activeIndex()).toBe(1);
+
+    // An index past the end of the strip is still a no-op.
+    tm.runAction("select-tab-8");
+    expect(surfaces.activeIndex()).toBe(1);
     expect(activeTabIndex.value).toBe(0);
+
+    tm.dispose();
+  });
+
+  it("a file opened BEFORE a terminal tab takes the earlier digit", async () => {
+    // The projection the strip paints and the one the keymap walks are the
+    // same merge, so this cannot drift into "the eye says 1, ⌘1 says 2".
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await surfaces.openFile("/a", "/a/first.ts", true); // chip 2 for now
+    await tm.materialize({ layout: null, cwds: ["/a"] }); // opened last → chip 3
+
+    tm.runAction("select-tab-2");
+    expect(surfaces.activeIndex()).toBe(0); // the file, not the second terminal
+
+    tm.runAction("select-tab-3");
+    expect(surfaces.activeIndex()).toBe(-1);
+    expect(activeTabIndex.value).toBe(1);
 
     tm.dispose();
   });
@@ -4485,11 +4691,8 @@ describe("toggle-usage", () => {
   beforeEach(() => {
     // Same trap the `toggle-prompts` describe above documents: the file's
     // earlier describes leave `settingsOpen` true and neither they nor the
-    // file-level `beforeEach` reset it. `toggle-usage` is `scope: "always"`
-    // so an open overlay cannot block IT — but the gating test below drives a
-    // `"pane"`-tiered action, which every stale overlay would block for the
-    // wrong reason and turn the assertion into a false pass.
-    usageOpen.value = false;
+    // file-level `beforeEach` reset it, which would block a `"pane"`-tiered
+    // action for the wrong reason and turn an assertion into a false pass.
     boardOpen.value = false;
     settingsOpen.value = false;
     editorRequest.value = null;
@@ -4497,7 +4700,6 @@ describe("toggle-usage", () => {
   });
 
   afterEach(() => {
-    usageOpen.value = false;
     settingsOpen.value = false;
   });
 
@@ -4510,9 +4712,9 @@ describe("toggle-usage", () => {
     tm.runAction("toggle-usage");
 
     expect(onToggleUsage).toHaveBeenCalledTimes(1);
-    // The seam owns the write — TabManager must never touch `usageOpen`, or
-    // the Settings/Usage mutual exclusion would live in two places.
-    expect(usageOpen.value).toBe(false);
+    // The seam owns the reveal — TabManager must never reach into the dock
+    // itself, or the reveal-and-focus rule would live in two places.
+    expect(settings.value.dockOpen).toBe(false);
     tm.dispose();
   });
 
@@ -4522,11 +4724,11 @@ describe("toggle-usage", () => {
     await flush();
 
     expect(() => tm.runAction("toggle-usage")).not.toThrow();
-    expect(usageOpen.value).toBe(false);
+    expect(settings.value.dockOpen).toBe(false);
     tm.dispose();
   });
 
-  it("still runs while Settings is open — scope 'always', or the screen could strand itself", async () => {
+  it("is blocked while Settings covers the grid — an ordinary 'pane' tier now that usage is a dock tab", async () => {
     const onToggleUsage = vi.fn();
     const { tm } = setup({ deps: { onToggleUsage } });
     await tm.init();
@@ -4535,41 +4737,13 @@ describe("toggle-usage", () => {
 
     tm.runAction("toggle-usage");
 
-    expect(onToggleUsage).toHaveBeenCalledTimes(1);
-    tm.dispose();
-  });
-
-  it("blocks a pane-tiered action while the usage screen covers the grid, and unblocks once it closes", async () => {
-    const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ["/a"] });
-    await tm.init();
-    await flush();
-    expect(statusInfo.value.paneCount).toBe(1);
-
-    usageOpen.value = true;
-    tm.runAction("split-row");
-    await flush();
-    expect(statusInfo.value.paneCount).toBe(1); // no split happened behind Usage
-
-    usageOpen.value = false;
-    tm.runAction("split-row");
-    await flush();
-    expect(statusInfo.value.paneCount).toBe(2); // scoped to the overlay, not broken
-
-    tm.dispose();
-  });
-
-  it("leaves board-tiered actions alone — Usage ranks below the board, exactly like Settings", async () => {
-    const { tm } = setup({});
-    await tm.init();
-    await flush();
-    agentQuickPickerOpen.value = false;
-    usageOpen.value = true;
-
-    tm.runAction("new-tab");
-    await flush();
-
-    expect(agentQuickPickerOpen.value).toBe(true);
+    expect(onToggleUsage).not.toHaveBeenCalled();
     tm.dispose();
   });
 });
+
+// The session history screen is the third surface pushed at
+// `TIER_RANK.settings` by `openOverlayRanks()`. There is no `toggle-sessions`
+// action in v1 (spec §3.1: toolbar control only, no shortcut, no menu item),
+// so only the RANK half of the `toggle-usage` block above transfers here —
+// the seam tests have no action to drive.

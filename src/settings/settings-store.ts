@@ -3,6 +3,7 @@ import { Store } from "../host/store-host";
 import {
   DEFAULT_SETTINGS,
   validateSettings,
+  type DockTab,
   type Settings,
   type TerminalColors,
 } from "./settings-schema";
@@ -141,15 +142,48 @@ export function updateSettings(patch: Partial<Settings>): void {
 }
 
 /**
- * Toggle the docked file-explorer column open/closed.
+ * Toggle the docked right column open/closed, keeping whichever tab it last
+ * showed.
  *
  * Unlike the browser panel (`browser-store.ts`'s `openBrowser`/`closeBrowser`),
- * this needs no host coordination — the panel is pure DOM content, not a
+ * this needs no host coordination — the column is pure DOM content, not a
  * native view the host has to create or tear down — so a direct settings flip
  * is the whole operation.
  */
-export function toggleExplorer(): void {
-  updateSettings({ explorerOpen: !settings.value.explorerOpen });
+export function toggleDock(): void {
+  updateSettings({ dockOpen: !settings.value.dockOpen });
+}
+
+/**
+ * Reveal one tab of the dock, and report whether the dock ended up closed.
+ *
+ * "Reveal" rather than "select": a closed dock opens on that tab, an open dock
+ * showing a different tab switches to it, and only asking for the tab already
+ * on screen closes the column. That is what makes one chord per surface behave
+ * the way a user expects — press it to see the thing, press it again to put it
+ * away — without a second action per tab.
+ *
+ * The boolean is for the caller's focus handling: closing the dock should hand
+ * focus back to the pane, and revealing a tab should not.
+ */
+export function revealDockTab(tab: DockTab): boolean {
+  const current = settings.value;
+  const closing = current.dockOpen && current.dockTab === tab;
+  updateSettings({ dockOpen: !closing, dockTab: tab });
+  return closing;
+}
+
+/**
+ * Open the dock on one tab, and never close it.
+ *
+ * The rail's `Tools` rows are shortcuts that OPEN (DL §28): pressing the row of
+ * a tab already on screen does nothing, because putting the column away is the
+ * dock toggle's job, not a shortcut's. Chords keep `revealDockTab`'s
+ * press-again-to-put-away behaviour — that is the difference between a chord
+ * and a launcher, and it is deliberate rather than an inconsistency.
+ */
+export function openDockTab(tab: DockTab): void {
+  updateSettings({ dockOpen: true, dockTab: tab });
 }
 
 /** Set or remove (value = undefined) a single color override. */

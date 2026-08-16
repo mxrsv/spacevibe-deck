@@ -1,8 +1,8 @@
 import { useSignal, type Signal } from "@preact/signals";
-import { useEffect, useRef } from "preact/hooks";
 import { open } from "../host/dialog-host";
 import { leafIds, type Path, type TreeNode } from "../lib/split-tree";
 import { hasPrimaryModifier } from "../lib/platform";
+import { Modal } from "../ui/modal";
 import {
   canRemove,
   createMockModel,
@@ -43,9 +43,7 @@ function MockNode({ node, path, model }: MockNodeProps) {
           model.value = selectPane(model.value, node.paneId);
         }}
       >
-        <span class="mock-pane__cwd">
-          ● {cwd ?? "↑ inherit"}
-        </span>
+        <span class="mock-pane__cwd">● {cwd ?? "↑ inherit"}</span>
         <span class="mock-pane__label">pane {index + 1}</span>
       </div>
     );
@@ -94,11 +92,6 @@ export function PresetEditor({ onCancel, onCreate }: PresetEditorProps) {
   const name = useSignal("");
   const paneCount = leafIds(model.value.tree).length;
   const selectedCwd = model.value.cwds.get(model.value.selectedId);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    containerRef.current?.focus();
-  }, []);
 
   async function pickCwd(): Promise<void> {
     try {
@@ -122,9 +115,6 @@ export function PresetEditor({ onCancel, onCreate }: PresetEditorProps) {
     if (event.target instanceof HTMLInputElement) {
       if (event.key === "Enter") {
         confirmCreate();
-      }
-      if (event.key === "Escape") {
-        onCancel();
       }
       return;
     }
@@ -159,9 +149,6 @@ export function PresetEditor({ onCancel, onCreate }: PresetEditorProps) {
       case "Enter":
         confirmCreate();
         break;
-      case "Escape":
-        onCancel();
-        break;
       default:
         return;
     }
@@ -170,77 +157,80 @@ export function PresetEditor({ onCancel, onCreate }: PresetEditorProps) {
   }
 
   return (
-    <div class="modal-scrim">
-      <div
-        class="preset-editor"
-        tabIndex={0}
-        onKeyDown={handleKeyDown}
-        ref={containerRef}
-      >
-        <header class="preset-editor__toolbar">
-          <h1>▦ New layout preset</h1>
-          <div class="preset-editor__tools">
-            <button
-              onClick={() => {
-                model.value = splitSelected(model.value, "row");
-              }}
-            >
-              Split right
-            </button>
-            <button
-              onClick={() => {
-                model.value = splitSelected(model.value, "column");
-              }}
-            >
-              Split down
-            </button>
-            <button
-              disabled={!canRemove(model.value)}
-              onClick={() => {
-                model.value = removeSelected(model.value);
-              }}
-            >
-              Remove
-            </button>
-            <button onClick={() => void pickCwd()}>Set CWD</button>
-            {selectedCwd !== undefined ? (
-              <button
-                onClick={() => {
-                  model.value = setSelectedCwd(model.value, null);
-                }}
-              >
-                Clear CWD
-              </button>
-            ) : null}
-          </div>
-        </header>
-        <div class="preset-editor__stage">
-          <MockNode node={model.value.tree} path={[]} model={model} />
-        </div>
-        <footer class="preset-editor__footer">
-          <input
-            class="preset-editor__name"
-            placeholder="Preset name"
-            value={name.value}
-            onInput={(event) => {
-              name.value = (event.target as HTMLInputElement).value;
+    // The one modal that does NOT dismiss on a scrim click (DL-29.3): the
+    // draft here — a split tree, per-pane cwds and a name — exists nowhere
+    // else until "Create tab", so a slipped click would be the only gesture
+    // in the app that silently destroys work.
+    <Modal
+      panelClass="preset-editor"
+      label="New layout preset"
+      onDismiss={onCancel}
+      dismissOnScrim={false}
+      onKeyDown={handleKeyDown}
+    >
+      <header class="preset-editor__toolbar">
+        <h1>▦ New layout preset</h1>
+        <div class="preset-editor__tools">
+          <button
+            onClick={() => {
+              model.value = splitSelected(model.value, "row");
             }}
-          />
-          <span class="preset-editor__meta">
-            {paneCount} {paneCount === 1 ? "pane" : "panes"} · drag dividers
-          </span>
-          <div class="preset-editor__actions">
-            <button onClick={onCancel}>Cancel</button>
+          >
+            Split right
+          </button>
+          <button
+            onClick={() => {
+              model.value = splitSelected(model.value, "column");
+            }}
+          >
+            Split down
+          </button>
+          <button
+            disabled={!canRemove(model.value)}
+            onClick={() => {
+              model.value = removeSelected(model.value);
+            }}
+          >
+            Remove
+          </button>
+          <button onClick={() => void pickCwd()}>Set CWD</button>
+          {selectedCwd !== undefined ? (
             <button
-              class="is-primary"
-              disabled={name.value.trim() === ""}
-              onClick={confirmCreate}
+              onClick={() => {
+                model.value = setSelectedCwd(model.value, null);
+              }}
             >
-              Create tab
+              Clear CWD
             </button>
-          </div>
-        </footer>
+          ) : null}
+        </div>
+      </header>
+      <div class="preset-editor__stage">
+        <MockNode node={model.value.tree} path={[]} model={model} />
       </div>
-    </div>
+      <footer class="preset-editor__footer">
+        <input
+          class="preset-editor__name"
+          placeholder="Preset name"
+          value={name.value}
+          onInput={(event) => {
+            name.value = (event.target as HTMLInputElement).value;
+          }}
+        />
+        <span class="preset-editor__meta">
+          {paneCount} {paneCount === 1 ? "pane" : "panes"} · drag dividers
+        </span>
+        <div class="preset-editor__actions">
+          <button onClick={onCancel}>Cancel</button>
+          <button
+            class="is-primary"
+            disabled={name.value.trim() === ""}
+            onClick={confirmCreate}
+          >
+            Create tab
+          </button>
+        </div>
+      </footer>
+    </Modal>
   );
 }

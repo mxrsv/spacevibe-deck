@@ -1,13 +1,37 @@
+import { signal } from "@preact/signals";
 import type { ITheme } from "@xterm/xterm";
 import type { Settings } from "./settings-schema";
+import type { ThemeColors } from "./theme-formats/theme-draft";
 
 export interface ThemePreset {
   id: string;
   label: string;
-  theme: Required<
-    Pick<ITheme, "background" | "foreground" | "cursor" | "selectionBackground">
-  > &
-    ITheme;
+  theme: ThemeColors;
+  /**
+   * Name of the file in the themes folder this preset was parsed from. Present
+   * only on imported themes — its absence is what "built-in" means, so the four
+   * literals below need no field of their own and no edit when the concept
+   * arrived.
+   */
+  fileName?: string;
+}
+
+/**
+ * Themes parsed from the themes folder, published by `custom-themes-store.ts`.
+ *
+ * It lives here rather than beside its loader because `getPreset` is the single
+ * lookup the whole app goes through — `pane.ts`, `editor-host.ts`, the search
+ * bar and the status bar all call it synchronously — and a lookup that could
+ * not see imported themes would resolve every one of them to the fallback.
+ * Declaring the signal at the lookup keeps that one-way: the store writes, and
+ * nothing here imports the store (which would be a cycle through the host
+ * bridge, and would drag IPC into every test that renders a pane).
+ */
+export const customPresets = signal<readonly ThemePreset[]>([]);
+
+/** Built-ins first, imports after — the gallery renders in this order. */
+export function allPresets(): readonly ThemePreset[] {
+  return [...THEME_PRESETS, ...customPresets.value];
 }
 
 export const THEME_PRESETS: ThemePreset[] = [
@@ -117,9 +141,17 @@ export const THEME_PRESETS: ThemePreset[] = [
   },
 ];
 
+/**
+ * Resolve a saved `themeId`, falling back to the first built-in.
+ *
+ * The fallback is load-bearing for imports: `themeId` persists across launches
+ * but the themes folder is scanned asynchronously after boot, and a file the
+ * user deleted outside the app never comes back at all. Both land here, and
+ * both get a running terminal rather than an undefined theme.
+ */
 export function getPreset(themeId: string): ThemePreset {
   return (
-    THEME_PRESETS.find((preset) => preset.id === themeId) ?? THEME_PRESETS[0]
+    allPresets().find((preset) => preset.id === themeId) ?? THEME_PRESETS[0]
   );
 }
 

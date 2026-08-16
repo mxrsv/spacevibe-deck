@@ -241,6 +241,28 @@ describe("FeatureToolbar", () => {
     expect(host.querySelector(".toolbar-menu")).toBeNull();
   });
 
+  // The shipping projection hands every action to `pinnedMenu` (DL-23.8), so
+  // the bar itself draws no groups at all. `More` used to be rendered from
+  // inside the group loop, which meant an empty bar rendered nothing — the
+  // toolbar would have disappeared rather than collapsed.
+  it("still draws More when the bar itself has no controls", () => {
+    act(() => render(<FeatureToolbar items={[]} pinnedMenu={items()} />, host));
+
+    expect(
+      Array.from(host.querySelectorAll(".ftoolbar__slot button")).map(
+        (control) => control.getAttribute("aria-label"),
+      ),
+    ).toEqual(["More actions"]);
+    expect(host.querySelectorAll(".tabbar__sep")).toHaveLength(0);
+
+    act(() => button("More actions").click());
+    expect(
+      Array.from(host.querySelectorAll(".toolbar-menu__row")).map(
+        (row) => row.querySelector(".toolbar-menu__label")?.textContent,
+      ),
+    ).toEqual(["Explorer", "Split Vertically", "Close Pane", "Settings"]);
+  });
+
   it("closes More on Escape", () => {
     mount();
     resizeTo(80);

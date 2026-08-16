@@ -15,8 +15,11 @@ import { TOOLBAR_GAP, fitToolbarItems } from "./toolbar-overflow";
 import { ToolbarOverflowMenu, type MenuAnchor } from "./toolbar-overflow-menu";
 
 /**
- * The feature toolbar: three groups of icon controls, hairlines between them,
- * and a `More` menu for whatever the window is too narrow to show.
+ * The feature toolbar: groups of icon controls, hairlines between them, and a
+ * `More` menu carrying both the actions pinned to it and whatever the window
+ * is too narrow to show. Since 2026-08-16 the pinned half is the whole bar —
+ * `DeckToolbar` hands every pane action to `pinnedMenu`, so what renders here
+ * is the `More` control alone (DL-23.8).
  *
  * It owns presentation and nothing else. Activation calls straight back into
  * `item.onActivate`, which is the same command path the keyboard and the
@@ -117,9 +120,30 @@ interface FeatureToolbarProps {
    * calculation reserves for it.
    */
   readonly updateAction?: ComponentChildren;
+  /**
+   * Controls that live in `More` no matter how wide the window is, ahead of
+   * whatever overflowed into it. Two callers use it: the pane group, which
+   * moved here wholesale on 2026-08-16 (DL-23.8), and top-tab mode's copy of
+   * the actions the sidebar's own footer carries in the other layout — there
+   * is no sidebar there, so one menu stands in for that footer rather than a
+   * second row of icons appearing in a layout the other one does not have.
+   */
+  readonly pinnedMenu?: readonly ToolbarItem[];
+  /**
+   * A surface anchored to the `More` control while open — the Prompt Board
+   * popover, when its row lives in the menu instead of on the bar. The row
+   * that opened it is gone by then (activating a row closes the menu,
+   * DL-23.5), so the trigger is the only thing left to hang it from.
+   */
+  readonly pinnedMenuAnchored?: ComponentChildren;
 }
 
-export function FeatureToolbar({ items, updateAction }: FeatureToolbarProps) {
+export function FeatureToolbar({
+  items,
+  updateAction,
+  pinnedMenu,
+  pinnedMenuAnchored,
+}: FeatureToolbarProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const updateRef = useRef<HTMLSpanElement>(null);
   const moreRef = useRef<HTMLButtonElement>(null);
@@ -172,6 +196,13 @@ export function FeatureToolbar({ items, updateAction }: FeatureToolbarProps) {
     });
   };
 
+  // Pinned first, then whatever the width pushed out: the menu reads as
+  // "the things that live here" followed by "the things that had to move".
+  const menuItems: readonly ToolbarItem[] = [
+    ...(pinnedMenu ?? []),
+    ...fit.overflow,
+  ];
+
   const moreItem: ToolbarItem = {
     id: "toolbar-more",
     label: "More actions",
@@ -181,10 +212,31 @@ export function FeatureToolbar({ items, updateAction }: FeatureToolbarProps) {
     state: menu !== null ? { kind: "active" } : { kind: "idle" },
     overflowOrder: null,
     toggles: "menu",
+    anchored: pinnedMenuAnchored,
     onActivate: toggleMenu,
   };
 
   const lastGroup = fit.groups.length - 1;
+
+  // The update pill and `More`, as one unit so they can be placed in two
+  // spots without drifting: inside the trailing group when the bar drew any
+  // controls, and on their own when it drew none. Since 2026-08-16 the second
+  // case is the shipping one — every pane action lives in `More` (DL-23.8),
+  // so `items` arrives empty and the group loop below has nothing to run
+  // over. Rendering `More` only from inside that loop would have left the
+  // toolbar blank.
+  const trailingExtras = (
+    <>
+      {updateAction !== undefined && (
+        <span ref={updateRef} class="ftoolbar__update">
+          {updateAction}
+        </span>
+      )}
+      {menuItems.length > 0 && (
+        <ToolbarControl item={moreItem} controlRef={moreRef} />
+      )}
+    </>
+  );
 
   return (
     <div ref={rootRef} class="ftoolbar">
@@ -208,23 +260,17 @@ export function FeatureToolbar({ items, updateAction }: FeatureToolbarProps) {
             {lead.map((item) => (
               <ToolbarControl key={item.id} item={item} />
             ))}
-            {trailing && updateAction !== undefined && (
-              <span ref={updateRef} class="ftoolbar__update">
-                {updateAction}
-              </span>
-            )}
-            {trailing && fit.overflow.length > 0 && (
-              <ToolbarControl item={moreItem} controlRef={moreRef} />
-            )}
+            {trailing && trailingExtras}
             {anchorItem !== undefined && (
               <ToolbarControl key={anchorItem.id} item={anchorItem} />
             )}
           </Fragment>
         );
       })}
-      {menu !== null && fit.overflow.length > 0 && (
+      {fit.groups.length === 0 && trailingExtras}
+      {menu !== null && menuItems.length > 0 && (
         <ToolbarOverflowMenu
-          items={fit.overflow}
+          items={menuItems}
           anchor={menu}
           triggerEl={moreRef.current}
           onClose={() => {

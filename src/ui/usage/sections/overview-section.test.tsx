@@ -100,9 +100,8 @@ describe("OverviewSection", () => {
     usageSnapshot.value = priced();
     mount();
 
-    // Literal uppercase in the markup, never `text-transform` (DL-16.2) — so
-    // the one sanctioned uppercase is greppable in the source.
-    expect(text(".usage-hero__eyebrow")).toBe("RAW TOKEN COST");
+    // Sentence-case microcopy, no text-transform, no tracking (DL-4.3, DL-16.2).
+    expect(text(".usage-hero__eyebrow")).toBe("Raw token cost");
     // claude 1M input @ $5/M = $5.00, codex 1M @ $1.25/M = $1.25 → $6.25.
     expect(text(".usage-hero__figure")).toBe("$6.25*");
     expect(text(".usage-hero__footnote")).toBe("* if billed at full API rate");
@@ -472,7 +471,7 @@ describe("OverviewSection", () => {
       usageSnapshot.value = spread();
       mount();
 
-      pick("today");
+      pick("Today");
       expect(text(".usage-hero__figure")).toBe("$5.00*");
 
       pick("7 days");
@@ -481,7 +480,7 @@ describe("OverviewSection", () => {
       pick("30 days");
       expect(text(".usage-hero__figure")).toBe("$15.00*");
 
-      pick("all");
+      pick("All");
       expect(text(".usage-hero__figure")).toBe("$16.25*");
     });
 
@@ -509,7 +508,7 @@ describe("OverviewSection", () => {
     it("keeps shares summing to 100 inside the chosen range", () => {
       usageSnapshot.value = spread();
       mount();
-      pick("all");
+      pick("All");
       const shares = blocks().map((block) => {
         const match = blockText(block, ".usage-agent__sub").match(
           /^([\d.]+)% of cost/,
@@ -549,7 +548,7 @@ describe("OverviewSection", () => {
       it("dashes the figure instead of claiming $0.00", () => {
         usageSnapshot.value = onlyOld();
         mount();
-        pick("today");
+        pick("Today");
         expect(text(".usage-hero__figure")).toBe(EM_DASH);
         expect(host.textContent).not.toContain("$0.00");
         expect(
@@ -562,20 +561,20 @@ describe("OverviewSection", () => {
       it("drops the agent blocks and says WHICH period is empty", () => {
         usageSnapshot.value = onlyOld();
         mount();
-        pick("today");
+        pick("Today");
         expect(blocks()).toHaveLength(0);
-        expect(text(".usage-hero__empty")).toBe("no usage today");
+        expect(text(".usage-hero__empty")).toBe("No usage today");
 
         pick("7 days");
         expect(text(".usage-hero__empty")).toBe(
-          "no usage in the last 7 local days",
+          "No usage in the last 7 local days",
         );
       });
 
       it("prints no dangling footnote — there are no models to name", () => {
         usageSnapshot.value = onlyOld();
         mount();
-        pick("today");
+        pick("Today");
         // `no price for ` with nothing after it was a real bug: an empty
         // range has no models at all, priced or otherwise.
         expect(host.querySelector(".usage-hero__footnote")).toBeNull();
@@ -585,11 +584,11 @@ describe("OverviewSection", () => {
       it("keeps the selector reachable so the reader is not stranded", () => {
         usageSnapshot.value = onlyOld();
         mount();
-        pick("today");
+        pick("Today");
         expect(host.querySelectorAll(".usage-range__option")).toHaveLength(
           USAGE_RANGES.length,
         );
-        pick("all");
+        pick("All");
         expect(text(".usage-hero__figure")).toBe("$5.00*");
       });
     });
@@ -597,7 +596,7 @@ describe("OverviewSection", () => {
 
   it("shows the no-data treatment rather than a $0.00 hero", () => {
     mount();
-    expect(text(".usage-hero__empty")).toBe("no data yet");
+    expect(text(".usage-hero__empty")).toBe("No data yet");
     expect(host.querySelector(".usage-hero__figure")).toBeNull();
     expect(host.textContent).not.toContain("$0.00");
   });

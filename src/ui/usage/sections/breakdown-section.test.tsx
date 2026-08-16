@@ -50,15 +50,15 @@ describe("BreakdownSection", () => {
     expect(
       [...host.querySelectorAll("thead th")].map((cell) => cell.textContent),
     ).toEqual([
-      "agent",
-      "model",
-      "input uncached",
-      "cache read",
-      "cache create 5m",
-      "cache create 1h",
-      "cache write",
-      "output",
-      "est. usd",
+      "Agent",
+      "Model",
+      "Input uncached",
+      "Cache read",
+      "Cache create 5m",
+      "Cache create 1h",
+      "Cache write",
+      "Output",
+      "Est. USD",
     ]);
   });
 

@@ -13,6 +13,23 @@ export interface FileTabEntry {
   readonly path: string;
   /** True while this is the replaceable preview slot. */
   readonly preview: boolean;
+  /**
+   * Where this tab sits in the strip's one open order
+   * (`lib/open-sequence.ts`), against terminal tabs and the browser chip as
+   * well as against the other files (DL-18.6, 2026-08-16).
+   *
+   * Passed IN rather than taken from the counter here: this module is pure
+   * list arithmetic, and it stays that way.
+   */
+  readonly openedAt: number;
+}
+
+/** What opening a file needs beyond the path itself. */
+export interface OpenTabOptions {
+  /** Order key for the tab if this open creates one (`nextOpenSequence()`). */
+  readonly openedAt: number;
+  /** Unsaved paths — the preview-replacement safety net below. */
+  readonly dirtyPaths?: ReadonlySet<string>;
 }
 
 /** The preview tab of a workspace, or null when nothing is previewed. */
@@ -42,23 +59,28 @@ export function hasTab(tabs: readonly FileTabEntry[], path: string): boolean {
 export function openPreview(
   tabs: readonly FileTabEntry[],
   path: string,
-  dirtyPaths: ReadonlySet<string> = new Set(),
+  options: OpenTabOptions,
 ): FileTabEntry[] {
+  const { openedAt, dirtyPaths = new Set<string>() } = options;
   if (hasTab(tabs, path)) {
     return [...tabs];
   }
   const slot = tabs.findIndex((tab) => tab.preview);
   if (slot === -1) {
-    return [...tabs, { path, preview: true }];
+    return [...tabs, { path, preview: true, openedAt }];
   }
   if (dirtyPaths.has(tabs[slot].path)) {
     return [
       ...tabs.map((tab) => (tab.preview ? { ...tab, preview: false } : tab)),
-      { path, preview: true },
+      { path, preview: true, openedAt },
     ];
   }
+  // Replaced in place, order key included: the slot does not move, and since
+  // 2026-08-16 "does not move" also means it keeps its place among the
+  // terminal tabs — a fresh key would send the chip to the end of the strip
+  // under the pointer, which is the jump this branch exists to prevent.
   const next = [...tabs];
-  next[slot] = { path, preview: true };
+  next[slot] = { path, preview: true, openedAt: tabs[slot].openedAt };
   return next;
 }
 
@@ -76,9 +98,9 @@ export function promoteTab(
 export function openKept(
   tabs: readonly FileTabEntry[],
   path: string,
-  dirtyPaths: ReadonlySet<string> = new Set(),
+  options: OpenTabOptions,
 ): FileTabEntry[] {
-  return promoteTab(openPreview(tabs, path, dirtyPaths), path);
+  return promoteTab(openPreview(tabs, path, options), path);
 }
 
 export function closeFileTab(

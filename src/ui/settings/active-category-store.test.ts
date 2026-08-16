@@ -7,8 +7,8 @@ describe("activeCategory", () => {
   });
 
   it("sticks when assigned", () => {
-    activeCategory.value = "colors";
-    expect(activeCategory.value).toBe("colors");
+    activeCategory.value = "terminal";
+    expect(activeCategory.value).toBe("terminal");
 
     activeCategory.value = "notifications";
     expect(activeCategory.value).toBe("notifications");

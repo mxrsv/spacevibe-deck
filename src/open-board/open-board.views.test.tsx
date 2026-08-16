@@ -32,8 +32,20 @@ vi.mock("../host/bridge", () => ({
     return null;
   }),
 }));
+// `detectGate` lets a test hold the probe open past a click, which is the
+// race one-click-opens introduced: a click that resolves its remembered agent
+// against an empty list would quietly spawn a Shell instead.
+let detected: { readonly name: string; readonly path: string }[] = [];
+let detectGate: Promise<void> | null = null;
 vi.mock("../terminal/pty-client", () => ({
-  defaultPtyClient: { detectAgents: vi.fn(async () => []) },
+  defaultPtyClient: {
+    detectAgents: vi.fn(async () => {
+      if (detectGate !== null) {
+        await detectGate;
+      }
+      return detected;
+    }),
+  },
 }));
 
 import { WORKSPACES_VERSION } from "../lib/workspace-recents";
@@ -57,7 +69,7 @@ function seed(paths: readonly string[]): void {
   workspacesData.value = { version: WORKSPACES_VERSION, recents };
 }
 
-describe("OpenBoard home/config views", () => {
+describe("OpenBoard home view", () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
@@ -71,6 +83,8 @@ describe("OpenBoard home/config views", () => {
     document.body.appendChild(host);
     missingPaths.clear();
     pickedFolder = null;
+    detected = [];
+    detectGate = null;
   });
 
   afterEach(() => {
@@ -96,7 +110,8 @@ describe("OpenBoard home/config views", () => {
           canCancel={props.canCancel ?? false}
           onCancel={() => {}}
           onOpen={onOpen}
-          onNewPreset={() => {}}
+          recentSessions={[]}
+          onResumeSession={() => {}}
         />,
         host,
       );
@@ -133,8 +148,10 @@ describe("OpenBoard home/config views", () => {
       [...host.querySelectorAll(".row .row__name")].map((el) => el.textContent),
     ).toEqual(["alpha", "ghost"]);
     expect(host.querySelector(".gsep")).not.toBeNull();
-    // Config-only surface must not be present on the default view.
+    // The retired config view (2026-08-16) has no mount left anywhere.
     expect(host.querySelector(".board-config")).toBeNull();
+    expect(host.querySelector(".achip")).toBeNull();
+    expect(host.querySelector(".lgrid")).toBeNull();
   });
 
   it("empty recents renders no list — logo and buttons only", async () => {
@@ -146,40 +163,11 @@ describe("OpenBoard home/config views", () => {
     expect(host.querySelector(".board-home__recents")).toBeNull();
   });
 
-  it("selecting a recent switches to config view with that path shown", async () => {
-    seed(["/w/alpha"]);
-    await mount();
-
-    const row = host.querySelector<HTMLLIElement>(".row");
-    await act(async () => {
-      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(host.querySelector(".board-home")).toBeNull();
-    expect(host.querySelector(".board-config")).not.toBeNull();
-    expect(host.querySelector(".wshead__title")?.textContent).toBe("alpha");
-  });
-
-  it("back returns home", async () => {
-    seed(["/w/alpha"]);
-    await mount();
-
-    const row = host.querySelector<HTMLLIElement>(".row");
-    await act(async () => {
-      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(host.querySelector(".board-config")).not.toBeNull();
-
-    const back = host.querySelector<HTMLButtonElement>(".board-back");
-    await act(async () => {
-      back?.click();
-    });
-
-    expect(host.querySelector(".board-home")).not.toBeNull();
-    expect(host.querySelector(".board-config")).toBeNull();
-  });
-
-  it("double-click calls onOpen with the remembered preset/agent", async () => {
+  it("one click opens the recent with its remembered preset and agent", async () => {
+    // Non-empty detection matters here: against an EMPTY list a dropped
+    // `null` would fall back to `null` too, and the assertion below would
+    // pass without proving the remembered Shell was carried at all.
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
     presetsData.value = {
       version: PRESETS_VERSION,
       presets: [{ id: "p-grid", name: "Grid", layout: { type: "leaf" } }],
@@ -200,9 +188,11 @@ describe("OpenBoard home/config views", () => {
 
     const row = host.querySelector<HTMLLIElement>(".row");
     await act(async () => {
-      row?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
+    // `null` is a remembered Shell-only open and it is carried through — the
+    // config view's "Shell is only ever an explicit click" rule went with it.
     expect(onOpen).toHaveBeenCalledWith(
       "/w/beta",
       expect.objectContaining({ id: "p-grid" }),
@@ -210,7 +200,66 @@ describe("OpenBoard home/config views", () => {
     );
   });
 
-  it("Escape in config view returns to home before it cancels the board", async () => {
+  it("waits for the agent probe before opening, so a fast click keeps its remembered agent", async () => {
+    let release!: () => void;
+    detectGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+
+    const row = host.querySelector<HTMLLIElement>(".row");
+    await act(async () => {
+      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onOpen).not.toHaveBeenCalled();
+
+    await act(async () => {
+      release();
+      await detectGate;
+    });
+
+    expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.anything(), "claude");
+  });
+
+  it("a missing folder says so instead of opening nothing", async () => {
+    seed(["/w/ghost"]);
+    missingPaths.add("/w/ghost");
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+
+    const row = host.querySelector<HTMLLIElement>(".row");
+    await act(async () => {
+      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(host.querySelector(".board-home__notice")?.textContent).toContain(
+      "ghost is missing",
+    );
+  });
+
+  it("a failed open is said on home — the board's only place to say it", async () => {
+    seed(["/w/alpha"]);
+    const onOpen = vi.fn(async () => false);
+    await mount(onOpen);
+
+    const row = host.querySelector<HTMLLIElement>(".row");
+    await act(async () => {
+      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const notice = host.querySelector(".board-home__notice");
+    expect(notice?.getAttribute("role")).toBe("status");
+    expect(notice?.textContent).toContain("Couldn't start a shell here");
+  });
+
+  it("Escape cancels the board from home", async () => {
     seed(["/w/alpha"]);
     const onCancel = vi.fn();
     await act(async () => {
@@ -219,21 +268,12 @@ describe("OpenBoard home/config views", () => {
           canCancel={true}
           onCancel={onCancel}
           onOpen={async () => true}
-          onNewPreset={() => {}}
+          recentSessions={[]}
+          onResumeSession={() => {}}
         />,
         host,
       );
     });
-
-    const row = host.querySelector<HTMLLIElement>(".row");
-    await act(async () => {
-      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(host.querySelector(".board-config")).not.toBeNull();
-
-    await keydown({ key: "Escape" });
-    expect(host.querySelector(".board-home")).not.toBeNull();
-    expect(onCancel).not.toHaveBeenCalled();
 
     await keydown({ key: "Escape" });
     expect(onCancel).toHaveBeenCalledTimes(1);

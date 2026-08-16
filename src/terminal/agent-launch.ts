@@ -1,4 +1,3 @@
-import type { AgentChoice } from "../lib/workspace-recents";
 import type { DesktopPlatform } from "../lib/platform";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 
@@ -7,14 +6,21 @@ export const AGENT_LAUNCH_TIMEOUT_MS = 3000;
 /** Windows cancels automatic launch if structured readiness never arrives. */
 export const WINDOWS_AGENT_LAUNCH_TIMEOUT_MS = 15_000;
 
+/** One pane's launch command; `command: null` arms nothing for that pane. */
+export interface AgentLaunchEntry {
+  readonly id: number;
+  /** Verbatim command typed into the pane's shell; null arms nothing. */
+  readonly command: string | null;
+}
+
 /**
  * Types the chosen agent into each new pane's interactive shell. macOS keeps
  * first-output plus timeout readiness; Windows accepts only the structured
  * prompt-ready event and permanently cancels that pane on timeout.
  */
 export interface AgentLauncher {
-  /** Queue `agent` for each pane; `null` (Shell only) queues nothing. */
-  arm(paneIds: readonly number[], agent: AgentChoice): void;
+  /** Queue each entry's command; a `null` command queues nothing for that pane. */
+  arm(entries: readonly AgentLaunchEntry[]): void;
   /** A pane printed output; this is readiness only on macOS. */
   noteOutput(id: number): void;
   /** A pane emitted structured prompt readiness. */
@@ -26,7 +32,7 @@ export interface AgentLauncher {
 }
 
 interface Armed {
-  readonly agent: string;
+  readonly command: string;
   readonly timer: ReturnType<typeof setTimeout>;
 }
 
@@ -91,7 +97,7 @@ export function createAgentLauncher(
       armed: removeArmed(state.armed, id),
       launched: addId(state.launched, id),
     };
-    pty.writePty(id, `${entry.agent}\r`).catch((err: unknown) => {
+    pty.writePty(id, `${entry.command}\r`).catch((err: unknown) => {
       // A failed write leaves the pane as an empty shell — never sink the tab.
       console.error("agent launch write_pty failed:", err);
     });
@@ -118,12 +124,10 @@ export function createAgentLauncher(
   }
 
   return {
-    arm(paneIds, agent) {
-      if (agent === null) {
-        return;
-      }
-      for (const id of paneIds) {
+    arm(entries) {
+      for (const { id, command } of entries) {
         if (
+          command === null ||
           state.launched.has(id) ||
           state.cancelled.has(id) ||
           state.armed.has(id)
@@ -133,7 +137,7 @@ export function createAgentLauncher(
         const timer = setTimeout(() => expire(id), timeoutMs);
         state = {
           ...state,
-          armed: new Map(state.armed).set(id, { agent, timer }),
+          armed: new Map(state.armed).set(id, { command, timer }),
         };
         const ready =
           platform === "windows"
@@ -164,18 +168,14 @@ export function createAgentLauncher(
         }
       }
       state = {
-        armed: new Map(
-          [...state.armed].filter(([id]) => aliveSet.has(id)),
-        ),
+        armed: new Map([...state.armed].filter(([id]) => aliveSet.has(id))),
         sawOutput: new Set(
           [...state.sawOutput].filter((id) => aliveSet.has(id)),
         ),
         promptReady: new Set(
           [...state.promptReady].filter((id) => aliveSet.has(id)),
         ),
-        launched: new Set(
-          [...state.launched].filter((id) => aliveSet.has(id)),
-        ),
+        launched: new Set([...state.launched].filter((id) => aliveSet.has(id))),
         cancelled: new Set(
           [...state.cancelled].filter((id) => aliveSet.has(id)),
         ),

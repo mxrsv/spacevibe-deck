@@ -92,7 +92,8 @@ describe("OpenBoard removal flow", () => {
           canCancel={false}
           onCancel={() => {}}
           onOpen={onOpen}
-          onNewPreset={() => {}}
+          recentSessions={[]}
+          onResumeSession={() => {}}
         />,
         host,
       );
@@ -111,7 +112,7 @@ describe("OpenBoard removal flow", () => {
     return row?.querySelector<HTMLButtonElement>(".row__x") ?? null;
   };
 
-  it("draws the folder, remove and new-layout actions as icons", async () => {
+  it("draws the folder and remove actions as icons", async () => {
     seed(["/w/alpha"]);
     await mount();
 
@@ -125,13 +126,6 @@ describe("OpenBoard removal flow", () => {
     // is a dismissal (X), not a trash can.
     expect(x?.querySelector(".lucide-x")).not.toBeNull();
     expect(x?.textContent).toBe("");
-
-    await act(async () => {
-      host
-        .querySelector<HTMLLIElement>(".row")
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(host.querySelector(".lcard--new .lucide-plus")).not.toBeNull();
   });
 
   it("removing a recent drops just that row", async () => {
@@ -198,14 +192,15 @@ describe("OpenBoard removal flow", () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
-  it("opens the folder picker with Ctrl+Shift+O on Windows and lands in the config view", async () => {
+  it("opens the folder picker with Ctrl+Shift+O on Windows and opens what it picks", async () => {
     resetDesktopEnvironmentForTests();
     initializeDesktopEnvironment({
       platform: "windows",
       homeDir: String.raw`C:\Users\dev`,
     });
     pickedFolder = "C:/work";
-    await mount();
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
 
     const openAction = host.querySelector<HTMLButtonElement>(".home-action");
     expect(openAction?.querySelector("kbd")?.textContent).toBe("Ctrl+Shift+O");
@@ -221,7 +216,7 @@ describe("OpenBoard removal flow", () => {
       );
     });
     // Plain Ctrl+O is the Windows new-tab binding, not Deck's — no pick.
-    expect(host.querySelector(".board-config")).toBeNull();
+    expect(onOpen).not.toHaveBeenCalled();
 
     await act(async () => {
       board?.dispatchEvent(
@@ -234,7 +229,8 @@ describe("OpenBoard removal flow", () => {
       );
     });
 
-    expect(host.querySelector(".board-config")).not.toBeNull();
-    expect(host.querySelector(".wshead__title")?.textContent).toBe("work");
+    // A picked folder has no remembered combo, so it opens with the default
+    // preset and whatever the probe found (nothing here → Shell).
+    expect(onOpen).toHaveBeenCalledWith("C:/work", expect.anything(), null);
   });
 });

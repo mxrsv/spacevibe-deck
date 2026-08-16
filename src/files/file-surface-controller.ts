@@ -10,6 +10,7 @@
 import { signal } from "@preact/signals";
 import type { UnlistenFn } from "../host/bridge";
 import type { SurfaceStrip } from "../terminal/tab-manager";
+import { UNSEQUENCED } from "../lib/open-sequence";
 import { FILE_CLOSE_COPY, confirmClose } from "../terminal/close-guard";
 import type { Settings } from "../settings/settings-schema";
 import {
@@ -614,6 +615,11 @@ export function createFileSurfaceController(
     count: () => stripFileTabs().length,
     total: () => totalFileTabs(),
     activeIndex: () => activeStripIndex(),
+    // The whole of what the merged strip asks a surface for: when it opened.
+    // An index nothing occupies reads as `UNSEQUENCED` rather than throwing —
+    // `count()` and this are read in separate turns, and a tab can close
+    // between them.
+    orderKey: (index) => stripFileTabs()[index]?.openedAt ?? UNSEQUENCED,
     activate: activateIndex,
     deactivate() {
       if (activeFileTab.value === null) {

@@ -11,6 +11,7 @@ import {
   updateDocument,
 } from "./file-surface-store";
 import type { FileClient } from "./file-client";
+import { resetOpenSequence } from "../lib/open-sequence";
 
 const client: FileClient = {
   listDir: async () => [],
@@ -31,10 +32,14 @@ beforeEach(() => {
 });
 
 describe("fileTabViews", () => {
-  it("projects the active workspace's tabs — name, preview italic flag and active", () => {
+  it("projects the active workspace's tabs — name, preview italic flag, active and open order", () => {
+    resetOpenSequence();
     openFileTab("/r", "/r/a.ts", { keep: true }); // kept
     openFileTab("/r", "/r/b.ts", { keep: false }); // preview, and now active
 
+    // `openedAt` is what lets the strip interleave these chips with the
+    // terminal tabs instead of parking them after every one of them
+    // (DL-18.6): the projection carries it, the strip only sorts by it.
     expect(fileTabViews(controller)).toEqual([
       {
         path: "/r/a.ts",
@@ -42,6 +47,7 @@ describe("fileTabViews", () => {
         dirty: false,
         preview: false,
         active: false,
+        openedAt: 1,
       },
       {
         path: "/r/b.ts",
@@ -49,6 +55,7 @@ describe("fileTabViews", () => {
         dirty: false,
         preview: true,
         active: true,
+        openedAt: 2,
       },
     ]);
   });

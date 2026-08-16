@@ -2,13 +2,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { dotColor as processDotColor } from "../lib/process-info";
-import { tabDotCssColor } from "../lib/tab-colors";
-import {
-  activeTabIndex,
-  requestTabOptionsKey,
-  tabViews,
-} from "../terminal/tabs-store";
+import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import type { AgentAttentionSummary, TabView } from "../terminal/tabs-store";
 import { TabBar } from "./tab-bar";
 import {
@@ -74,7 +68,6 @@ describe("TabBar", () => {
     document.body.appendChild(host);
     tabViews.value = [];
     activeTabIndex.value = 0;
-    requestTabOptionsKey.value = null;
     resetFileSurfaces();
     fileController = createFileSurfaceController({ client: fileClient });
   });
@@ -83,7 +76,6 @@ describe("TabBar", () => {
     act(() => {
       render(null, host);
     });
-    requestTabOptionsKey.value = null;
     resetDesktopEnvironmentForTests();
     fileController.dispose();
     resetFileSurfaces();
@@ -100,6 +92,8 @@ describe("TabBar", () => {
     toolbar: <div data-testid="toolbar-slot" />,
     onFocusAttention: vi.fn(),
     fileController,
+    onSelectBrowser: vi.fn(),
+    onCloseBrowser: vi.fn(),
   });
 
   const mount = (props: ReturnType<typeof baseProps>): void => {
@@ -133,66 +127,6 @@ describe("TabBar", () => {
     expect(close.getAttribute("aria-label")).toBe("Close tab");
   });
 
-  it("clicking the status mark calls onFocusAttention(index) and does not select or toggle the popover", () => {
-    tabViews.value = [
-      tab({
-        key: 1,
-        name: "Alpha",
-        attention: actionable({ kind: "error", actionableCount: 3 }),
-      }),
-      tab({ key: 2, name: "Beta" }),
-    ];
-    activeTabIndex.value = 0; // active tab: a non-mark click here would toggle the popover
-    const props = baseProps();
-    mount(props);
-
-    const button = host.querySelector(".tab__attn button") as HTMLButtonElement;
-    expect(button).not.toBeNull();
-
-    act(() => {
-      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(props.onFocusAttention).toHaveBeenCalledTimes(1);
-    expect(props.onFocusAttention).toHaveBeenCalledWith(0);
-    expect(props.onSelectTab).not.toHaveBeenCalled();
-    expect(host.querySelector(".tab-popover")).toBeNull();
-  });
-
-  it("clicking the status mark on an INACTIVE tab calls onFocusAttention(index) and does not leak into onSelectTab", () => {
-    // Regression guard: on the active tab the row's own onClick can never
-    // reach onSelectTab, so that case alone can't prove stopPropagation is
-    // doing anything. Here the marked tab (index 1) is inactive — without
-    // the .tab__attn wrapper's stopPropagation, this click would bubble to
-    // the tab and call onSelectTab(1).
-    tabViews.value = [
-      tab({ key: 1, name: "Alpha" }),
-      tab({
-        key: 2,
-        name: "Beta",
-        attention: actionable({ kind: "error", actionableCount: 2 }),
-      }),
-    ];
-    activeTabIndex.value = 0;
-    const props = baseProps();
-    mount(props);
-
-    const tabs = host.querySelectorAll(".tab");
-    const button = tabs[1].querySelector(
-      ".tab__attn button",
-    ) as HTMLButtonElement;
-    expect(button).not.toBeNull();
-
-    act(() => {
-      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(props.onFocusAttention).toHaveBeenCalledTimes(1);
-    expect(props.onFocusAttention).toHaveBeenCalledWith(1);
-    expect(props.onSelectTab).not.toHaveBeenCalled();
-    expect(host.querySelector(".tab-popover")).toBeNull();
-  });
-
   it("clicking an inactive tab calls onSelectTab", () => {
     tabViews.value = [
       tab({ key: 1, name: "Alpha" }),
@@ -211,7 +145,10 @@ describe("TabBar", () => {
     expect(props.onSelectTab).toHaveBeenCalledWith(1);
   });
 
-  it("clicking the active tab opens the popover, and clicking it again closes it", () => {
+  it("clicking the chip that already holds the stage does nothing", () => {
+    // It used to open the rename popover. The owner removed that popover from
+    // the strip on 2026-08-16, so the click is inert — it must not fall
+    // through to a selection either.
     tabViews.value = [tab({ key: 1, name: "Alpha" })];
     activeTabIndex.value = 0;
     const props = baseProps();
@@ -221,48 +158,9 @@ describe("TabBar", () => {
     act(() => {
       row.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    expect(host.querySelector(".tab-popover")).not.toBeNull();
+
+    expect(host.querySelector(".tab-popover")).toBeNull();
     expect(props.onSelectTab).not.toHaveBeenCalled();
-
-    act(() => {
-      row.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(host.querySelector(".tab-popover")).toBeNull();
-  });
-
-  // open-tab-options (⌘⇧R, docs/plans/2026-07-27-keyboard-parity.md Task 2):
-  // the keyboard trigger doesn't know which chrome component is mounted, so
-  // it goes through a shared signal instead of an imperative handle — each
-  // side (TabBar/WorkspaceSidebar) listens and consumes it independently.
-  it("requestTabOptionsKey opens the popover for that tab, anchored to its DOM element, then resets to null", () => {
-    tabViews.value = [
-      tab({ key: 1, name: "Alpha" }),
-      tab({ key: 2, name: "Beta" }),
-    ];
-    activeTabIndex.value = 1; // active tab need not be the one requested
-    mount(baseProps());
-
-    act(() => {
-      requestTabOptionsKey.value = 1; // Alpha, not the active tab
-    });
-
-    const popover = host.querySelector(".tab-popover");
-    expect(popover).not.toBeNull();
-    expect(requestTabOptionsKey.value).toBeNull(); // consumed — won't re-fire
-  });
-
-  it("requestTabOptionsKey for a tab not in the DOM is a safe no-op — still resets to null, no throw", () => {
-    tabViews.value = [tab({ key: 1, name: "Alpha" })];
-    mount(baseProps());
-
-    expect(() => {
-      act(() => {
-        requestTabOptionsKey.value = 999;
-      });
-    }).not.toThrow();
-
-    expect(host.querySelector(".tab-popover")).toBeNull();
-    expect(requestTabOptionsKey.value).toBeNull();
   });
 
   it("clicking close calls onCloseTab only", () => {
@@ -292,73 +190,65 @@ describe("TabBar", () => {
     expect(host.querySelector(".tab-popover")).toBeNull();
   });
 
-  it("renders tab__dot using the process-derived color when no dotColor override is set", () => {
-    tabViews.value = [
-      tab({ key: 1, name: "Alpha", process: "claude", dotColor: null }),
-    ];
-    mount(baseProps());
-
-    const dot = host.querySelector(".tab__dot") as HTMLElement;
-    expect(dot).not.toBeNull();
-    expect(dot.getAttribute("style")).toContain(processDotColor("claude"));
-  });
-
-  it("renders tab__dot using the dotColor override when set, regardless of process", () => {
-    tabViews.value = [
-      tab({ key: 1, name: "Alpha", process: "claude", dotColor: "red" }),
-    ];
-    mount(baseProps());
-
-    const dot = host.querySelector(".tab__dot") as HTMLElement;
-    expect(dot.getAttribute("style")).toContain(tabDotCssColor("red"));
-  });
-
-  it("does not render a .tab__attn wrapper for an idle-attention tab (no empty flex-gap slot)", () => {
-    tabViews.value = [tab({ key: 1, name: "Alpha", attention: undefined })];
-    mount(baseProps());
-
-    expect(host.querySelector(".tab__attn")).toBeNull();
-  });
-
-  it("keeps a two-digit count off the mark while both the close and status buttons stay clickable", () => {
+  it("leads a terminal chip with the agent's mark and no colour dot", () => {
+    // The colour dot left the chip on 2026-08-16 (DL-18.10 amended). Both of
+    // the tests this replaced asserted its fill — from the process, and from
+    // the `dotColor` override — and the override itself is untouched
+    // (`tabs-store.test.ts` still covers the merge); it simply has nothing on
+    // the strip to paint any more.
     tabViews.value = [
       tab({
         key: 1,
         name: "Alpha",
+        process: "claude",
+        agents: ["claude"],
+        dotColor: "red",
+      }),
+    ];
+    mount(baseProps());
+
+    expect(host.querySelector(".tab .tab__dot")).toBeNull();
+    expect(host.querySelector(".tab .tab__logo")).not.toBeNull();
+  });
+
+  it("falls back to the terminal glyph for a tab running no recognised agent", () => {
+    tabViews.value = [
+      tab({ key: 1, name: "Alpha", process: "zsh", agents: [] }),
+    ];
+    mount(baseProps());
+
+    expect(host.querySelector(".tab .tab__logo")).toBeNull();
+    expect(host.querySelector(".tab .tab__glyph svg")).not.toBeNull();
+    expect(host.querySelector(".tab .tab__dot")).toBeNull();
+  });
+
+  it("carries no attention mark, whatever the tab's state", () => {
+    // The strip stopped showing agent state on 2026-08-16 (DL-18.10): a chip
+    // says what is open, the rail says what an agent is doing. Both an idle
+    // summary and a loud actionable one render exactly the same chip.
+    tabViews.value = [
+      tab({ key: 1, name: "Alpha", attention: undefined }),
+      tab({
+        key: 2,
+        name: "Beta",
         attention: actionable({ kind: "error", actionableCount: 12 }),
       }),
     ];
-    const props = baseProps();
-    mount(props);
+    mount(baseProps());
 
-    const statusButton = host.querySelector(
-      ".tab__attn button",
-    ) as HTMLButtonElement;
-    const closeButton = host.querySelector(".tab__close") as HTMLButtonElement;
-    expect(statusButton).not.toBeNull();
-    expect(closeButton).not.toBeNull();
-    expect(statusButton.textContent).toBe("");
-    expect(statusButton.getAttribute("title")).toContain("12");
-
-    act(() => {
-      statusButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(props.onFocusAttention).toHaveBeenCalledWith(0);
-    expect(props.onCloseTab).not.toHaveBeenCalled();
-
-    act(() => {
-      closeButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(props.onCloseTab).toHaveBeenCalledWith(0);
-    expect(props.onFocusAttention).toHaveBeenCalledTimes(1);
+    expect(host.querySelector(".tab__attn")).toBeNull();
+    expect(host.querySelector(".attn-mark")).toBeNull();
+    expect(host.querySelectorAll(".tab")).toHaveLength(2);
   });
 
   /**
-   * File tabs join the strip after every terminal tab (spec §4.2), driven by
-   * the same controller wired as `TabManager`'s `SurfaceStrip` (Task 5).
+   * File chips share the one strip with the terminal tabs (spec §4.2), driven
+   * by the same controller wired as `TabManager`'s `SurfaceStrip` (Task 5).
+   * Since 2026-08-16 they sit in open order rather than in a segment of their
+   * own, and the hairline that used to split the two is gone (DL-18.6).
    */
   describe("file tabs (spec §4.2)", () => {
-    it("renders no file segment and no separator when nothing is open", () => {
+    it("renders no file chip when nothing is open", () => {
       tabViews.value = [tab({ key: 1, name: "Alpha" })];
       mount(baseProps());
 
@@ -366,7 +256,7 @@ describe("TabBar", () => {
       expect(host.querySelector(".tabbar__sep")).toBeNull();
     });
 
-    it("renders file tabs after the terminal tabs, preview italic on the unedited preview slot only", async () => {
+    it("renders file tabs after a terminal tab that predates them, preview italic on the unedited preview slot only", async () => {
       tabViews.value = [tab({ key: 1, name: "Alpha" })];
       await fileController.openFile("/repo", "/repo/a.ts", true); // kept
       await fileController.openFile("/repo", "/repo/b.ts", false); // preview, untouched
@@ -379,7 +269,8 @@ describe("TabBar", () => {
       expect(rows[2].querySelector(".tab__label")?.textContent).toBe("b.ts");
       expect(rows[1].querySelector(".tab__label--preview")).toBeNull(); // kept
       expect(rows[2].querySelector(".tab__label--preview")).not.toBeNull(); // preview
-      expect(host.querySelector(".tabbar__sep")).not.toBeNull();
+      // The segment hairline is gone with the segments themselves (DL-18.6).
+      expect(host.querySelector(".tabbar__sep")).toBeNull();
     });
 
     it("renders the dirty dot on a file tab whose document is dirty", async () => {

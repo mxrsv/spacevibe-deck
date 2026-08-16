@@ -8,7 +8,6 @@ import { signal } from "@preact/signals";
  */
 export type CategoryId =
   | "appearance"
-  | "colors"
   | "terminal"
   | "agents"
   | "links-editor"

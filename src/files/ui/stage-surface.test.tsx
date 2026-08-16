@@ -3,7 +3,7 @@
  * The regression guard for this feature's headline behaviour: opening a file
  * puts an editor ON THE STAGE, and closing the file tree does not take it
  * away. Both were previously untestable — the editor was nested in
- * `ExplorerPanel`, whose own mount `App` gates on `explorerOpen`, and `App`
+ * `ExplorerPanel`, whose own mount `App` gates on `dockOpen`, and `App`
  * has no render harness in this repo.
  */
 import { render } from "preact";
@@ -73,8 +73,8 @@ describe("StageSurface", () => {
     expect(host.querySelector(".stage__surface .fileview")).not.toBeNull();
   });
 
-  it("does not depend on the explorer panel: nothing here reads explorerOpen", () => {
-    // The old preview block inherited `ExplorerPanel`'s `explorerOpen` gate,
+  it("does not depend on the explorer panel: nothing here reads dockOpen", () => {
+    // The old preview block inherited `ExplorerPanel`'s `dockOpen` gate,
     // so ⌘⇧B disposed the editor along with the tree. This component takes one
     // input, the controller, and reads one signal, `activeFileTab` — there is
     // no settings path into it to regress.

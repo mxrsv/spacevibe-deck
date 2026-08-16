@@ -7,10 +7,10 @@ import {
   X,
 } from "lucide-preact";
 import { useSignal, useSignalEffect } from "@preact/signals";
+import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import {
   activeTabIndex,
-  requestTabOptionsKey,
   statusInfo,
   tabViews,
 } from "../terminal/tabs-store";
@@ -18,16 +18,7 @@ import { CHROME_ICON, DeckIcon, RAIL_ICON } from "./controls/deck-icon";
 import { tildify } from "../lib/process-info";
 import { type TabDotColor } from "../lib/tab-colors";
 import { installFileDrop } from "../terminal/file-drop";
-import {
-  clearWorkspaceLogo,
-  ensureFaviconScanned,
-  hasCustomWorkspaceLogo,
-  setWorkspaceLogoFromPath,
-} from "../settings/workspace-logo-store";
-import { pickImagePath } from "../settings/logo-store";
 import { reportPersistError } from "../chrome/events";
-import { TabPopover } from "./tab-popover";
-import { useTabPopoverSlot } from "./tab-popover-slot";
 import { WorktreeAgentStack } from "./worktree-agent-stack";
 import {
   collapsedRepositories,
@@ -37,14 +28,17 @@ import {
   repositoryScans,
   toggleRepositoryCollapsed,
 } from "../repositories/repositories-store";
+import { sessionArchive } from "../terminal/session-journal";
 import {
   buildRail,
-  type RailTab,
+  filterRailToWorkspaceHistory,
   type WorktreeRow,
 } from "../repositories/repository-model";
 import { open } from "../host/dialog-host";
 import { available as electronHostAvailable } from "../host/worktree-host";
 import type { FileSurfaceController } from "../files/file-surface-controller";
+import { workspacesData } from "../open-board/workspaces-store";
+import { SidebarBanner } from "./sidebar-banner";
 
 /**
  * The repository → worktree navigation rail.
@@ -60,12 +54,17 @@ import type { FileSurfaceController } from "../files/file-surface-controller";
  * presentation. `WorkspaceSidebar` stays in the tree beside it, so reverting
  * is one line in `app.tsx`.
  *
- * What is NOT here, and why: opening a worktree that has no tab. That
- * materializes a tab from a path the user chose no layout and no agent for,
- * which is `AGENTS.md`'s tab-materialization fork. Until it is approved such a
- * row is a **readout** — DL-17.3's precedent, where a control that cannot be
- * pressed drops its border rather than gaining a disabled pill, because a
- * border is what promises "you can press this" everywhere else in the app.
+ * What is NOT here, and why: opening a worktree that has no tab AND no
+ * archived session. That materializes a tab from a path the user chose no
+ * layout and no agent for, which is `AGENTS.md`'s tab-materialization fork —
+ * still unapproved. A worktree WITH an archived session is a different case:
+ * `docs/plans/2026-08-15-session-restore.md` (Task 9; fork queue entry in
+ * `AGENTS.md`, Task 11) resolves it by rebuilding that recorded session
+ * instead of materializing a fresh, unspecified one, so its empty row becomes
+ * pressable through `onResumeWorktree`. Every other empty row stays a
+ * **readout** — DL-17.3's precedent, where a control that cannot be pressed
+ * drops its border rather than gaining a disabled pill, because a border is
+ * what promises "you can press this" everywhere else in the app.
  */
 
 interface RepositoryRailProps {
@@ -79,11 +78,17 @@ interface RepositoryRailProps {
    * them draws.
    */
   onOpenWorkspace(): void;
-  onRenameTab(index: number, name: string | null): void;
-  onSetTabColor(index: number, color: TabDotColor | null): void;
   onFocusAttention?(index: number): void;
+  /** A resumable row was clicked: rebuild that worktree's archived session. */
+  onResumeWorktree(path: string): void;
   /** Test/gallery override; production defaults to the Electron host marker. */
   showAgentPresence?: boolean;
+  /**
+   * Pinned under the scrolling list and above the banner: the rail's own
+   * footer of window actions (`SidebarActions`, DL §28). `App` builds it,
+   * the same way it builds the toolbar once for both layouts.
+   */
+  footer?: ComponentChildren;
   /**
    * The same `SurfaceStrip` wired into `TabManager` (Task 5), read for one
    * thing only: whether a file surface holds the stage, which decides whether
@@ -109,11 +114,7 @@ interface WorktreeStateDotProps {
 }
 
 /** Hollow status ring; colour carries the visual state, text carries a11y. */
-function WorktreeStateDot({
-  state,
-  label,
-  onActivate,
-}: WorktreeStateDotProps) {
+function WorktreeStateDot({ state, label, onActivate }: WorktreeStateDotProps) {
   const stateLabel = STATE_LABEL[state];
   if (state === "attention" && onActivate !== undefined) {
     return (
@@ -153,46 +154,40 @@ export function RepositoryRail(props: RepositoryRailProps) {
   // worktree is this session in"; "which documents are open" is the stage
   // strip's question, and it is the only place that answers it (2026-08-14).
   const surfaceActive = props.fileController.activeIndex() >= 0;
-  const navRef = useRef<HTMLElement>(null);
-  const dragOverKey = useSignal<number | null>(null);
-  // Anchored by tab key, not index — tabs can close (and indexes shift) while
-  // the popover is open. Same reasoning as the tab bar and the old sidebar.
-  const popover = useSignal<{
-    key: number;
-    left: number;
-    top: number;
-    anchorEl: HTMLElement;
-  } | null>(null);
 
-  const groups = buildRail({
-    tabs,
-    activeIndex: active,
-    scans: repositoryScans.value,
-    collapsed: collapsedRepositories.value,
-  });
-  // Claim / stand down / release the one window-wide popover slot. The stage
-  // strip is mounted beside this rail, so "is a popover open" is not a
-  // question either of them can answer alone.
-  useTabPopoverSlot("rail", popover);
+  const groups = filterRailToWorkspaceHistory(
+    buildRail({
+      tabs,
+      activeIndex: active,
+      scans: repositoryScans.value,
+      collapsed: collapsedRepositories.value,
+      archivedPaths: new Set(Object.keys(sessionArchive.value)),
+    }),
+    workspacesData.value.recents.map((recent) => recent.path),
+  );
+  const lastSelectedTabKeys = useSignal<ReadonlyMap<string, number>>(new Map());
+  const selectedWorktree = groups
+    .flatMap((group) => group.worktrees)
+    .find((worktree) => worktree.tabs.some((tab) => tab.active));
+  const selectedTab = selectedWorktree?.tabs.find((tab) => tab.active);
 
-  const popoverTab =
-    popover.value === null
-      ? undefined
-      : tabs.find((tab) => tab.key === popover.value?.key);
-  const resolvePopoverIndex = (): number =>
-    popover.value === null
-      ? -1
-      : tabs.findIndex((tab) => tab.key === popover.value?.key);
-
-  // Scan each open workspace for a favicon once — the default logo source.
+  // Remember one terminal per worktree for the broad row target. Agent marks
+  // still focus an exact tab; leaving and returning to the row restores that
+  // choice instead of falling back to its first tab every time.
   useEffect(() => {
-    for (const tab of tabs) {
-      if (tab.workspacePath !== null) {
-        ensureFaviconScanned(tab.workspacePath);
-      }
+    if (selectedWorktree === undefined || selectedTab === undefined) {
+      return;
     }
-  }, [tabs]);
-
+    if (
+      lastSelectedTabKeys.value.get(selectedWorktree.id) === selectedTab.key
+    ) {
+      return;
+    }
+    lastSelectedTabKeys.value = new Map([
+      ...lastSelectedTabKeys.value,
+      [selectedWorktree.id, selectedTab.key],
+    ]);
+  }, [selectedWorktree?.id, selectedTab?.key]);
   // Repository scans: on demand for every open workspace, and again whenever
   // the window comes back (spec §2 — the invalidation that replaces a watcher).
   useEffect(() => installRepositoryRescanOnFocus(), []);
@@ -204,160 +199,54 @@ export function RepositoryRail(props: RepositoryRailProps) {
     );
   });
 
-  // Drop an image onto a workspace row → that workspace's custom logo.
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let disposed = false;
-
-    function rowAt(x: number, y: number): HTMLElement | null | undefined {
-      return document.elementFromPoint(x, y)?.closest<HTMLElement>(".wsitem");
-    }
-
-    installFileDrop({
-      onOver(x, y) {
-        const key = rowAt(x, y)?.dataset.key;
-        dragOverKey.value = key === undefined ? null : Number(key);
-      },
-      onLeave() {
-        dragOverKey.value = null;
-      },
-      onDrop(x, y, paths) {
-        dragOverKey.value = null;
-        const workspacePath = rowAt(x, y)?.dataset.workspace || null;
-        if (workspacePath === null) {
-          return; // not a workspace row — leave it to the terminal/logo panel
-        }
-        const image = pickImagePath(paths);
-        if (image === null) {
-          reportPersistError("Use a .png, .jpg, .svg or .webp image");
-          return;
-        }
-        setWorkspaceLogoFromPath(workspacePath, image).catch((err: unknown) => {
-          reportPersistError(
-            err instanceof Error ? err.message : "Couldn't set the logo",
-          );
-        });
-      },
-    })
-      .then((fn) => {
-        if (disposed) {
-          fn();
-        } else {
-          unlisten = fn;
-        }
-      })
-      .catch((err: unknown) => {
-        console.warn("Failed to install workspace logo drop:", err);
-      });
-
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, []);
-
-  function openPopover(key: number, anchorEl: HTMLElement): void {
-    const rect = anchorEl.getBoundingClientRect();
-    popover.value = { key, left: rect.right + 6, top: rect.top, anchorEl };
-  }
-
-  // The open-tab-options shortcut doesn't know which chrome is mounted, so it
-  // arrives through this shared signal.
-  //
-  // The rail owns it whenever it is mounted, which is exactly sidebar layout.
-  // Since 2026-08-14 the stage's `TabStrip` is mounted alongside — it takes the
-  // chord only in top-tab mode (`ownsTabOptionsChord`), because two listeners
-  // would answer one keystroke with two popovers, and because this row is both
-  // what the user is looking at and the only popover carrying the workspace
-  // logo actions.
-  useSignalEffect(() => {
-    const key = requestTabOptionsKey.value;
-    if (key === null) {
-      return;
-    }
-    const anchorEl = navRef.current?.querySelector<HTMLElement>(
-      `[data-key="${key}"]`,
-    );
-    if (anchorEl) {
-      openPopover(key, anchorEl);
-    }
-    requestTabOptionsKey.value = null;
-  });
-
-  async function pickLogoFor(workspacePath: string): Promise<void> {
-    try {
-      const picked = await open({
-        multiple: false,
-        directory: false,
-        filters: [
-          { name: "Image", extensions: ["png", "jpg", "jpeg", "svg", "webp"] },
-        ],
-      });
-      if (typeof picked === "string") {
-        await setWorkspaceLogoFromPath(workspacePath, picked);
-      }
-    } catch (err: unknown) {
-      reportPersistError(
-        err instanceof Error ? err.message : "Couldn't set the logo",
-      );
-    }
-  }
-
   /** The quiet line under a row's name (DL-3.4). The branch is the name. */
   function subtitle(worktree: WorktreeRow): string {
     return worktree.path === "" ? "" : tildify(worktree.path, home);
   }
 
-  function tabRow(worktree: WorktreeRow, tab: RailTab, tiered: boolean) {
-    // The user's own name wins; otherwise the row is named after the worktree
-    // it stands for, not after the folder the tab happens to point at.
-    const label = tab.customName ?? worktree.name;
-    // A file surface on top means THIS row is no longer the visible active
-    // one, even though `tab.active` (TabManager's own `active` index) still
-    // names it — see the file-level comment on `surfaceActive` above.
-    const visiblyActive = tab.active && !surfaceActive;
+  function worktreeRow(worktree: WorktreeRow, tiered: boolean) {
+    const activeTab = worktree.tabs.find((tab) => tab.active);
+    const rememberedTab = worktree.tabs.find(
+      (tab) => tab.key === lastSelectedTabKeys.value.get(worktree.id),
+    );
+    const primaryTab = activeTab ?? rememberedTab ?? worktree.tabs[0];
+    const attentionTab = worktree.tabs.find(
+      (tab) => tab.attention.actionableCount > 0,
+    );
+    // A file surface on top means the worktree is no longer the visible
+    // active row, even though TabManager still names one of its tabs.
+    const visiblyActive = activeTab !== undefined && !surfaceActive;
     return (
       <div
-        key={tab.key}
+        key={worktree.id}
         role="tab"
         aria-selected={visiblyActive}
         tabIndex={0}
-        data-key={tab.key}
-        data-workspace={tab.workspacePath ?? ""}
+        data-key={primaryTab.key}
+        data-workspace={primaryTab.workspacePath ?? ""}
         data-state={worktree.state}
-        class={`wsitem ${visiblyActive ? "is-active" : ""} ${dragOverKey.value === tab.key ? "is-drag-over" : ""}`}
-        onClick={(event) => {
-          // A file surface sitting on top of THIS same tab still needs the
-          // click to take the stage back — `tab.active` alone would open the
-          // rename popover instead (spec §7, "selecting a terminal tab takes
-          // the stage back").
-          if (!tab.active || surfaceActive) {
-            props.onSelectTab(tab.index);
-            return;
-          }
-          if (popover.value?.key === tab.key) {
-            popover.value = null;
-            return;
-          }
-          openPopover(tab.key, event.currentTarget as HTMLElement);
-        }}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          openPopover(tab.key, event.currentTarget as HTMLElement);
+        class={`wsitem ${visiblyActive ? "is-active" : ""}`}
+        onClick={() => {
+          // The exact tab is chosen by its agent button. The worktree body is
+          // the broad target for its active tab, falling back to the first tab
+          // when this worktree is not active in the window. Pressing the row
+          // of the tab already showing used to raise `TabPopover`; that
+          // component was removed on 2026-08-16, so it is a plain select now.
+          props.onSelectTab((activeTab ?? primaryTab).index);
         }}
       >
         <WorktreeStateDot
           state={worktree.state}
-          label={label}
+          label={worktree.name}
           onActivate={
-            worktree.state === "attention" && props.onFocusAttention
-              ? () => props.onFocusAttention!(tab.index)
+            attentionTab !== undefined && props.onFocusAttention
+              ? () => props.onFocusAttention!(attentionTab.index)
               : undefined
           }
         />
         <span class="wsitem__text">
           <span class="wsitem__label">
-            <span class="wsitem__name">{label}</span>
+            <span class="wsitem__name">{worktree.name}</span>
             {tiered && worktree.primary && (
               <span class="wsitem__badge">primary</span>
             )}
@@ -366,25 +255,33 @@ export function RepositoryRail(props: RepositoryRailProps) {
               container — without it the leading "~" flips to the end. */}
           <span class="wsitem__path">{`‎${subtitle(worktree)}`}</span>
         </span>
-        {showAgentPresence && <WorktreeAgentStack agents={worktree.agents} />}
-        <button
-          type="button"
-          class="wsitem__close"
-          aria-label="Close workspace"
-          onClick={(event) => {
-            event.stopPropagation();
-            props.onCloseTab(tab.index);
-          }}
-        >
-          <DeckIcon icon={X} size={CHROME_ICON} />
-        </button>
+        {showAgentPresence && (
+          <WorktreeAgentStack
+            tabs={worktree.tabs}
+            onSelectTab={props.onSelectTab}
+          />
+        )}
+        {activeTab !== undefined && (
+          <button
+            type="button"
+            class="wsitem__close"
+            aria-label={`Close active tab in ${worktree.name}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              props.onCloseTab(activeTab.index);
+            }}
+          >
+            <DeckIcon icon={X} size={CHROME_ICON} />
+          </button>
+        )}
       </div>
     );
   }
 
   /**
-   * A worktree with no session. DL-17.3: no border, `--text-faint`, because a
-   * border promises "you can press this" and opening this row is §7.1's fork.
+   * A previously opened worktree with no current session. DL-17.3: no border,
+   * `--text-faint`, because a border promises "you can press this" and opening
+   * this row is §7.1's fork.
    */
   function readoutRow(worktree: WorktreeRow, tiered: boolean) {
     const lock =
@@ -420,18 +317,63 @@ export function RepositoryRail(props: RepositoryRailProps) {
   }
 
   /**
-   * `worktree`'s own rows: one per open tab, or a single readout row when
-   * nothing is open. Reused by both the plain and tiered group branches below
-   * so the placement rule can't drift between them.
+   * A previously opened worktree with no current session, but a recorded one
+   * in `sessionArchive` — DL-21.1/21.2: full `.wsitem` genre (no
+   * `--readout` modifier), so it carries the same hover/selection washes as a
+   * live row, because unlike the plain readout this one IS pressable.
+   * Resolves the "unapproved fork" this file's header used to name — see its
+   * doc comment.
+   */
+  function resumableRow(worktree: WorktreeRow, tiered: boolean) {
+    const activate = () => props.onResumeWorktree(worktree.path);
+    return (
+      <div
+        key={worktree.id}
+        class="wsitem"
+        data-state={worktree.state}
+        tabIndex={0}
+        role="button"
+        aria-label={`Resume last session in ${worktree.name}`}
+        onClick={activate}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            activate();
+          }
+        }}
+      >
+        <WorktreeStateDot state="idle" label={worktree.name} />
+        <span class="wsitem__text">
+          <span class="wsitem__label">
+            <span class="wsitem__name">{worktree.name}</span>
+            {tiered && worktree.primary && (
+              <span class="wsitem__badge">primary</span>
+            )}
+          </span>
+          <span class="wsitem__path">{`‎${subtitle(worktree)}`}</span>
+        </span>
+      </div>
+    );
+  }
+
+  /**
+   * Exactly one row per worktree. Open tabs become focusable agent buttons
+   * inside that row; an empty worktree with an archived session becomes a
+   * pressable resume row; every other empty worktree stays a readout.
    */
   function worktreeRows(worktree: WorktreeRow, tiered: boolean) {
-    return worktree.tabs.length === 0
-      ? [readoutRow(worktree, tiered)]
-      : worktree.tabs.map((tab) => tabRow(worktree, tab, tiered));
+    if (worktree.tabs.length > 0) {
+      return [worktreeRow(worktree, tiered)];
+    }
+    return [
+      worktree.resumable
+        ? resumableRow(worktree, tiered)
+        : readoutRow(worktree, tiered),
+    ];
   }
 
   return (
-    <nav class="wsbar wsbar--repos" aria-label="Repositories" ref={navRef}>
+    <nav class="wsbar wsbar--repos" aria-label="Repositories">
       <div class="wsbar__list" role="tablist" aria-label="Workspace tabs">
         {groups.map((group) =>
           // A folder that is not a repository does not sprout a repository
@@ -489,51 +431,13 @@ export function RepositoryRail(props: RepositoryRailProps) {
           <span class="wsbar__add-glyph">
             <DeckIcon icon={Plus} size={CHROME_ICON} />
           </span>
-          <span>Open workspace</span>
+          {/* Classed so the collapsed rail can drop the words and keep the
+              glyph (DL-18.9); `aria-label` above already carries the name. */}
+          <span class="wsbar__add-label">Open workspace</span>
         </button>
       </div>
-      {popover.value !== null && popoverTab !== undefined && (
-        <TabPopover
-          left={popover.value.left}
-          top={popover.value.top}
-          anchorEl={popover.value.anchorEl}
-          name={popoverTab.name}
-          dotColor={popoverTab.dotColor}
-          hasLogo={
-            popoverTab.workspacePath !== null &&
-            hasCustomWorkspaceLogo(popoverTab.workspacePath)
-          }
-          onRename={(name) => {
-            const index = resolvePopoverIndex();
-            if (index !== -1) {
-              props.onRenameTab(index, name);
-            }
-          }}
-          onPickColor={(color) => {
-            const index = resolvePopoverIndex();
-            if (index !== -1) {
-              props.onSetTabColor(index, color);
-            }
-          }}
-          onSetLogo={() => {
-            const path = popoverTab.workspacePath;
-            popover.value = null;
-            if (path !== null) {
-              void pickLogoFor(path);
-            }
-          }}
-          onRemoveLogo={() => {
-            const path = popoverTab.workspacePath;
-            popover.value = null;
-            if (path !== null) {
-              clearWorkspaceLogo(path);
-            }
-          }}
-          onClose={() => {
-            popover.value = null;
-          }}
-        />
-      )}
+      {props.footer}
+      <SidebarBanner />
     </nav>
   );
 }

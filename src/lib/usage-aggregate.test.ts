@@ -16,6 +16,7 @@ import {
   agentTotals,
   breakdownRows,
   dailyRows,
+  dailyTotals,
   localDayKey,
 } from "./usage-aggregate";
 import {
@@ -356,6 +357,118 @@ describe("dailyRows", () => {
 
     expect(rows[0].costUsd).toBeNull();
     expect(rows[0].unpricedTokens).toBe(4);
+  });
+});
+
+describe("dailyTotals", () => {
+  const nowMs = Date.parse("2026-08-10T18:00:00Z"); // 14:00 local
+
+  it("emits one row per day, carrying that day's agents, newest first", () => {
+    const rows = dailyTotals(
+      [
+        bucket("2026-08-10T12:00:00Z", "codex", "gpt-5.6-sol", { output: 1 }),
+        bucket("2026-08-10T12:00:00Z", "claude", "claude-opus-5", {
+          output: 1,
+        }),
+        bucket("2026-08-09T12:00:00Z", "claude", "claude-opus-5", {
+          output: 1,
+        }),
+      ],
+      3,
+      nowMs,
+    );
+
+    expect(rows.map((row) => row.day)).toEqual(["2026-08-10", "2026-08-09"]);
+    expect(rows[0].agents.map((agent) => agent.agent)).toEqual([
+      "claude",
+      "codex",
+    ]);
+    expect(rows[1].agents.map((agent) => agent.agent)).toEqual(["claude"]);
+  });
+
+  it("sums the day's counters and the day's priced cost across agents", () => {
+    const rows = dailyTotals(
+      [
+        bucket("2026-08-10T12:00:00Z", "claude", "claude-opus-5", {
+          output: 1000,
+        }),
+        bucket("2026-08-10T12:15:00Z", "codex", "gpt-5.6-sol", {
+          output: 1000,
+        }),
+      ],
+      3,
+      nowMs,
+    );
+
+    const [claude, codex] = rows[0].agents;
+    expect(rows[0].counters.output).toBe(2000);
+    expect(rows[0].costUsd).toBeCloseTo(
+      (claude.costUsd ?? 0) + (codex.costUsd ?? 0),
+      10,
+    );
+  });
+
+  it("prices what it can when one agent on the day is entirely unpriced", () => {
+    const rows = dailyTotals(
+      [
+        bucket("2026-08-10T12:00:00Z", "claude", "claude-opus-5", {
+          output: 1000,
+        }),
+        bucket("2026-08-10T12:15:00Z", "codex", "gpt-from-the-future", {
+          output: 7,
+        }),
+      ],
+      3,
+      nowMs,
+    );
+
+    expect(rows[0].costUsd).toBeCloseTo(0.025, 10);
+    expect(rows[0].unpricedModels).toEqual(["gpt-from-the-future"]);
+    expect(rows[0].unpricedTokens).toBe(7);
+  });
+
+  it("keeps a model string shared by two agents on separate lines", () => {
+    // `unknown` really does appear under both agents on the real corpus.
+    // Rolling the day up per agent first is what stops the two counters from
+    // fusing into one entry — a day row must still be able to say who spent
+    // what.
+    const rows = dailyTotals(
+      [
+        bucket("2026-08-10T12:00:00Z", "claude", "unknown", { output: 3 }),
+        bucket("2026-08-10T12:15:00Z", "codex", "unknown", { output: 5 }),
+      ],
+      3,
+      nowMs,
+    );
+
+    expect(rows[0].agents.map((agent) => agent.counters.output)).toEqual([
+      3, 5,
+    ]);
+    expect(rows[0].counters.output).toBe(8);
+  });
+
+  it("dashes a day whose every model is unpriced", () => {
+    const rows = dailyTotals(
+      [
+        bucket("2026-08-10T12:00:00Z", "claude", "claude-from-the-future", {
+          output: 4,
+        }),
+      ],
+      3,
+      nowMs,
+    );
+
+    expect(rows[0].costUsd).toBeNull();
+    expect(rows[0].unpricedTokens).toBe(4);
+  });
+
+  it("returns nothing for a non-positive or unusable window", () => {
+    const one = [
+      bucket("2026-08-10T12:00:00Z", "claude", "claude-opus-5", { output: 1 }),
+    ];
+
+    expect(dailyTotals(one, 0, nowMs)).toEqual([]);
+    expect(dailyTotals(one, 3, Number.NaN)).toEqual([]);
   });
 });
 

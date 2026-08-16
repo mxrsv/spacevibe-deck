@@ -116,20 +116,27 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
  * even after a row is dropped.
  */
 const EXPECTED_ROWS = [
-  // appearance
-  "Theme",
+  // appearance. The theme itself is no longer a row: it became the gallery
+  // grid (DL-24), which this walk cannot see because it counts `cfg-row`
+  // labels. `theme-gallery.test.tsx` owns the cards; these two are the rows
+  // the gallery brought with it.
+  "Import theme",
+  "Themes folder",
+  // The colour overrides are an appearance group since 2026-08-16, not their
+  // own rail category.
+  "Background",
+  "Foreground",
+  "Cursor",
+  "Selection",
   "Font",
   "Font size",
   "App logo",
   "Tab bar position",
   "Show pane bar",
-  // colors
-  "Background",
-  "Foreground",
-  "Cursor",
-  "Selection",
+  "Show status bar",
+  "Sidebar banner",
   // browser
-  "home address",
+  "Home address",
   // terminal
   "Scrollback",
   // agents (built-ins are locked rows; declared ones are added by the user)
@@ -143,7 +150,8 @@ const EXPECTED_ROWS = [
   // links & editor
   "Editor",
   // notifications
-  "agent notifications",
+  "Agent notifications",
+  "Restore sessions on launch",
   // about
   "Check for updates",
   "Release notes",
@@ -181,7 +189,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 23 rows by walking the rail", () => {
+  it("reaches all 28 rows by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });

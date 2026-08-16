@@ -125,6 +125,12 @@ export interface MaterializeIntent {
    * reopen passes `null` (⌘⇧T does not re-run agents).
    */
   readonly agent?: AgentChoice;
+  /**
+   * Per-pane launch commands, zipped to leaves left-to-right. When present it
+   * overrides `agent` per pane (a null slot leaves that pane a plain shell).
+   * Session restore is the caller: each pane resumes its own conversation.
+   */
+  readonly paneCommands?: readonly (string | null)[];
   readonly chrome?: MaterializeChrome;
   /** Workspace the new tab belongs to; absent = a tab with no workspace. */
   readonly workspacePath?: string;

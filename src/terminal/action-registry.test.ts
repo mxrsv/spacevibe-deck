@@ -126,7 +126,7 @@ describe("ACTION_REGISTRY", () => {
 
   // 48 = the 47 rows verified passing before Task 6, plus "save-file" (task-6
   // brief, spec §4.3) — the file-explorer's ⌘S save action.
-  it("has exactly the 48 action ids including updater menu actions", () => {
+  it("has exactly the 49 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -152,6 +152,7 @@ describe("ACTION_REGISTRY", () => {
         "split-column",
         "toggle-zoom-pane",
         "toggle-browser",
+        "toggle-dock",
         "toggle-explorer",
         "toggle-expand",
         "zoom-in",

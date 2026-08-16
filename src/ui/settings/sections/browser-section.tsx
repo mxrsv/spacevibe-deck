@@ -16,8 +16,8 @@ export function BrowserSection() {
 
   return (
     <ConfigRow
-      label="home address"
-      desc="opened when the browser panel has no page yet"
+      label="Home address"
+      desc="Opened when the browser panel has no page yet"
     >
       <CommitInput
         value={current.browserHomeUrl}

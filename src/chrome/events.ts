@@ -5,9 +5,14 @@ import { computed, signal } from "@preact/signals";
  * Not Layout preset domain — lives here so Workspace / Session chrome do not
  * import through `presets/`.
  */
-export type EditorRequest =
-  | { readonly source: "board"; readonly workspace: string | null }
-  | { readonly source: "live" };
+/**
+ * One source since 2026-08-16: the board's `+ New Layout` card went with the
+ * config view, so `new-preset` (⌘⇧N / menu) is the only way in. Kept as a
+ * tagged union rather than collapsed to a bare signal — the tag is what
+ * `handleEditorCreate` branches on, and a second source is the likely shape
+ * of the next entry point.
+ */
+export type EditorRequest = { readonly source: "live" };
 
 export const boardOpen = signal(false);
 export const saveDialogOpen = signal(false);
@@ -22,28 +27,13 @@ export const editorRequest = signal<EditorRequest | null>(null);
 export const agentQuickPickerOpen = signal(false);
 /**
  * Settings panel open state. Promoted from a local `useSignal` in `app.tsx`
- * to a module signal here so it sits alongside the other three overlays that
- * shadow the terminal grid — `tab-manager.ts`'s overlay scope guard (which
+ * to a module signal here so it is the one overlay signal that shadows the
+ * terminal grid — `tab-manager.ts`'s overlay scope guard (which
  * decides whether a shortcut/menu action may run while an overlay is up)
  * needs to read it, and only module-level signals are visible outside
  * `App`'s component closure.
  */
 export const settingsOpen = signal(false);
-
-/**
- * Token usage screen open state.
- *
- * The exact inverse of `promptsOpen` below, which says of itself:
- * "Deliberately NOT part of `openOverlayRanks()` (tab-manager.ts): this is a
- * pane-level popover anchored to a chrome button, not a surface that covers
- * the terminal grid." This one IS such a surface. `UsageScreen` is full-window
- * like `SettingsScreen`, so it MUST be pushed by `openOverlayRanks()`
- * (tab-manager.ts) or every pane-scoped shortcut stays live behind it — ⌘W
- * closing a pane nobody can see is the exact failure the tier model exists to
- * stop. It is also mutually exclusive with `settingsOpen`: opening either one
- * closes the other (spec §Surface, major M4).
- */
-export const usageOpen = signal(false);
 
 /**
  * Prompt Board popover open state.

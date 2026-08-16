@@ -11,8 +11,12 @@ import {
   isProbeSafeName,
   type CustomAgent,
 } from "../../../lib/agent-catalog";
-import { settings, updateSettings } from "../../../settings/settings-store";
-import { settingsOpen, usageOpen } from "../../../chrome/events";
+import {
+  revealDockTab,
+  settings,
+  updateSettings,
+} from "../../../settings/settings-store";
+import { settingsOpen } from "../../../chrome/events";
 import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
 import { ConfigGroup, ConfigRow } from "../../controls/config-row";
 import { CommitInput } from "../../controls/commit-input";
@@ -154,24 +158,24 @@ export function AgentsSection() {
    * Settings → Token Usage, in one click. Writes the two signals directly
    * instead of calling `closeSettingsPanel` (app.tsx): that helper hands focus
    * back to the active pane, and here focus must land inside the screen that
-   * is opening — `UsageScreen` takes it on mount, exactly as `SettingsScreen`
+   * is opening — the dock's usage tab takes it, exactly as `SettingsScreen`
    * does. Same mutual-exclusion rule `toggleUsagePanel` enforces (spec
    * §Surface, major M4).
    *
-   * No draft preflight is needed here, unlike `toggleUsagePanel`: a
+   * No draft preflight is needed here, unlike the Settings toggle: a
    * PresetEditor/SavePresetDialog scrim sits at z-40 over Settings' z-35, so
    * this button is physically unclickable while a draft is up.
    */
   const openUsage = (): void => {
     settingsOpen.value = false;
-    usageOpen.value = true;
+    revealDockTab("usage");
   };
 
   return (
     <>
-      <ConfigGroup label="built in" />
+      <ConfigGroup label="Built in" />
       {BUILTIN_AGENTS.map((agent) => (
-        <ConfigRow key={agent.id} label={agent.label} desc="always available">
+        <ConfigRow key={agent.id} label={agent.label} desc="Always available">
           <button
             type="button"
             class="cfg-btn cfg-btn--disabled"
@@ -183,7 +187,7 @@ export function AgentsSection() {
         </ConfigRow>
       ))}
 
-      <ConfigGroup label="declared" />
+      <ConfigGroup label="Declared" />
       {customAgents.map((agent) => (
         <Fragment key={agent.id}>
           <div
@@ -313,7 +317,7 @@ export function AgentsSection() {
 
       <ConfigRow
         label="Add agent"
-        desc="a name and the command to type into each pane"
+        desc="A name and the command to type into each pane"
       >
         <button
           type="button"
@@ -332,7 +336,7 @@ export function AgentsSection() {
 
       <ConfigRow
         label="Token usage"
-        desc="tokens and estimated cost for Claude Code and Codex"
+        desc="Tokens and estimated cost for Claude Code and Codex"
       >
         <button type="button" class="cfg-btn" onClick={openUsage}>
           open …

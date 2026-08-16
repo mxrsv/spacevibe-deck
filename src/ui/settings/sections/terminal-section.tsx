@@ -31,7 +31,7 @@ export function TerminalSection() {
   };
 
   return (
-    <ConfigRow label="Scrollback" desc="lines kept per pane">
+    <ConfigRow label="Scrollback" desc="Lines kept per pane">
       <button
         type="button"
         class="cfg-btn"

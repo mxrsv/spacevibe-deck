@@ -178,12 +178,10 @@ describe("deriveChromeColors", () => {
       // chrome2 and the active row is tabActiveBg, and both are lighter.
       const surfaces = [c.sidebarBg, c.chrome1, c.chrome2, c.tabActiveBg];
       for (const surface of [c.inputBg, ...surfaces]) {
-        expect(contrastRatio(c.textPrimary, surface)).toBeGreaterThanOrEqual(
-          4.5,
-        );
+        expect(contrastRatio(c.textPrimary, surface)).toBeGreaterThanOrEqual(8);
       }
       for (const surface of surfaces) {
-        expect(contrastRatio(c.textMuted, surface)).toBeGreaterThanOrEqual(5.5);
+        expect(contrastRatio(c.textMuted, surface)).toBeGreaterThanOrEqual(6);
         // 4.5, not 3 — this token styles 10.5px text (WCAG AA "normal").
         expect(contrastRatio(c.textFaint, surface)).toBeGreaterThanOrEqual(4.5);
       }
@@ -210,7 +208,7 @@ describe("deriveChromeColors", () => {
   }
 
   it("keeps the three tones visually distinct on every preset", () => {
-    // The floors are stacked (7 / 5.5 / 4.5) so the label/description
+    // The floors are stacked (8 / 6 / 4.5) so the label/description
     // hierarchy in a config row survives; guard they never converge.
     for (const preset of THEME_PRESETS) {
       const c = deriveChromeColors(
@@ -221,10 +219,13 @@ describe("deriveChromeColors", () => {
     }
   });
 
-  it("keeps a high-contrast fg unchanged as textPrimary", () => {
-    // Tokyo Night fg is already >> 4.5:1 on its surfaces — no raise needed
+  it("raises Tokyo Night's fg the one step the 8:1 primary floor now needs", () => {
+    // Under the old 7:1 floor this fg passed untouched. At 8:1 its raw
+    // contrast (7.10:1 on inputBg, 7.88:1 on chrome2) falls just short, so
+    // `ensureContrast` now takes one 2% step toward `tone` — a real,
+    // intentional consequence of raising the floor, not a regression.
     expect(deriveChromeColors("#16161e", "#c0caf5").textPrimary).toBe(
-      "#c0caf5",
+      "#cfd7f7",
     );
   });
 });

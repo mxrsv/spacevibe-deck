@@ -26,7 +26,7 @@ export function BoardSection() {
       />
       <Specimen
         name=".open-board"
-        note="shared repository/worktree navigation · workspace · layout · agent"
+        note="shared repository/worktree navigation · workspace · one click opens"
         surface="none"
         tall
       >
@@ -42,7 +42,11 @@ export function BoardSection() {
                   canCancel
                   onCancel={NOOP}
                   onOpen={async () => false}
-                  onNewPreset={NOOP}
+                  // The board's "Recent sessions" block reads a real scan in
+                  // the app; the gallery has no host, so this specimen shows
+                  // the board without it rather than with invented sessions.
+                  recentSessions={[]}
+                  onResumeSession={NOOP}
                 />
               </div>
             }

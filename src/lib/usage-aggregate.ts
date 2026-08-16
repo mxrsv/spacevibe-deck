@@ -57,6 +57,31 @@ export interface DailyRow {
   readonly unpricedTokens: number;
 }
 
+/**
+ * One local day, with the agents that ran on it kept as their own entries.
+ *
+ * The daily table shows a day per row (2026-08-15), so the row carries both
+ * levels: the per-agent figures the reader compares inside the day, and the
+ * day's own totals in the numeric columns. The split is not cosmetic — costs
+ * are rolled up per (day, agent) and then summed, never by flattening the two
+ * agents' models into one map first, because two agents can report the same
+ * model string (`unknown` does, on the real corpus) and flattening would fuse
+ * two different agents' counters into a single priced entry.
+ */
+export interface DailyTotal {
+  /** Local calendar day, "YYYY-MM-DD". */
+  readonly day: string;
+  /** Agents with data that day, in `dailyRows` order (agent ascending). */
+  readonly agents: readonly DailyRow[];
+  /** The day's counters, summed across its agents. */
+  readonly counters: UsageCounters;
+  /** Sum over the agents that have a price; null only when none does. */
+  readonly costUsd: number | null;
+  readonly unpricedModels: readonly string[];
+  /** Tokens belonging to `unpricedModels` — the part `costUsd` excludes. */
+  readonly unpricedTokens: number;
+}
+
 export interface BreakdownRow {
   readonly agent: UsageAgent;
   /** The raw model string, verbatim. */
@@ -249,6 +274,54 @@ export function dailyRows(
         compareStrings(right.day, left.day) ||
         compareStrings(left.agent, right.agent),
     );
+}
+
+/**
+ * One row per local day, each carrying its agents' rows and the day's own
+ * totals. Same window, same ordering and same absence rule as `dailyRows`:
+ * newest day first, days without usage absent rather than zero-filled.
+ *
+ * The money follows the 2026-08-10 rule one level up: the day's `costUsd` is
+ * the sum over the agents that HAVE a price and is null only when not one of
+ * them does, with `unpricedModels` beside it so the omission is stated rather
+ * than silent. Summing already-rolled-up agent costs is what keeps a model
+ * string shared by both agents from collapsing into one entry.
+ */
+export function dailyTotals(
+  buckets: readonly UsageBucket[],
+  days: number,
+  nowMs: number,
+): readonly DailyTotal[] {
+  const byDay = new Map<string, readonly DailyRow[]>();
+  for (const row of dailyRows(buckets, days, nowMs)) {
+    byDay.set(row.day, [...(byDay.get(row.day) ?? []), row]);
+  }
+  // Insertion order is already newest day first: `dailyRows` sorted it.
+  return [...byDay.entries()].map(([day, agents]) => {
+    let counters = EMPTY_COUNTERS;
+    let priced = 0;
+    let costUsd = 0;
+    let unpricedTokens = 0;
+    const unpriced: string[] = [];
+    for (const agent of agents) {
+      counters = addCounters(counters, agent.counters);
+      unpricedTokens += agent.unpricedTokens;
+      unpriced.push(...agent.unpricedModels);
+      if (agent.costUsd === null) {
+        continue;
+      }
+      costUsd += agent.costUsd;
+      priced += 1;
+    }
+    return {
+      day,
+      agents,
+      counters,
+      costUsd: priced === 0 ? null : costUsd,
+      unpricedModels: [...new Set(unpriced)].sort(compareStrings),
+      unpricedTokens,
+    };
+  });
 }
 
 /**

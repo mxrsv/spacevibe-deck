@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BrowserClient, BrowserGrab, BrowserState } from "./browser-client";
+import type {
+  BrowserClient,
+  BrowserGrab,
+  BrowserState,
+} from "./browser-client";
 import {
+  activateBrowserSurface,
   browserNotice,
   browserOpen,
   browserState,
+  browserSurfaceActive,
   closeBrowser,
+  deactivateBrowserSurface,
   deliverGrab,
   EMPTY_STATE,
   initBrowserBridge,
@@ -52,46 +59,82 @@ describe("deliverGrab", () => {
     paste = vi.fn(async () => true),
   ): GrabTarget => ({ activePaneId: () => paneId, paste });
 
-  it("pastes into the focused pane", async () => {
+  it("stops at the clipboard with a pane sitting right there", async () => {
+    // The current behaviour (2026-08-16): a grab reaches the clipboard react-grab
+    // already wrote and goes no further, so nothing a page produced can land in a
+    // live agent session on its own. The non-call is the requirement.
     const paste = vi.fn(async () => true);
-    expect(await deliverGrab(GRAB, target(7, paste))).toBe("pasted");
-    expect(paste).toHaveBeenCalledWith(7, expect.stringContaining("in Save"));
+    expect(await deliverGrab(GRAB, target(7, paste))).toBe("clipboard");
+    expect(paste).not.toHaveBeenCalled();
   });
 
-  it("never asks for a submit", async () => {
-    // The paste seam takes no `autoSend`, so there is no argument that could
-    // turn a page's text into a command an agent runs. This asserts the shape
-    // stays that way.
-    const paste = vi.fn(async () => true);
-    await deliverGrab(GRAB, target(7, paste));
-    expect(paste).toHaveBeenCalledTimes(1);
-    expect(paste.mock.calls[0]).toHaveLength(2);
-  });
-
-  it("falls back to the clipboard when there is no pane", async () => {
-    // react-grab already wrote the same text to the clipboard from the page,
-    // so this outcome is a message, not a recovery step.
+  it("reports the clipboard when there is no pane either", async () => {
     expect(await deliverGrab(GRAB, target(null))).toBe("clipboard");
   });
 
-  it("reports a paste that did not land", async () => {
-    expect(await deliverGrab(GRAB, target(1, vi.fn(async () => false)))).toBe(
-      "failed",
-    );
-  });
-
-  it("survives a paste that throws", async () => {
-    const paste = vi.fn(async () => {
-      throw new Error("pane went away");
-    });
-    expect(await deliverGrab(GRAB, target(1, paste))).toBe("failed");
-  });
-
-  it("refuses an empty grab before touching a pane", async () => {
+  it("refuses an empty grab", async () => {
     const paste = vi.fn(async () => true);
-    const outcome = await deliverGrab({ ...GRAB, text: "  " }, target(1, paste));
+    const outcome = await deliverGrab(
+      { ...GRAB, text: "  " },
+      target(1, paste),
+    );
     expect(outcome).toBe("failed");
     expect(paste).not.toHaveBeenCalled();
+  });
+
+  // The paste path is kept wired for the revert that flips `GRAB_PASTE_DISABLED`
+  // back, so it is still exercised — through the parameter that constant feeds.
+  describe("with the paste path enabled", () => {
+    const deliver = (grab: BrowserGrab, to: GrabTarget) =>
+      deliverGrab(grab, to, false);
+
+    it("pastes into the focused pane", async () => {
+      const paste = vi.fn(async () => true);
+      expect(await deliver(GRAB, target(7, paste))).toBe("pasted");
+      expect(paste).toHaveBeenCalledWith(7, expect.stringContaining("in Save"));
+    });
+
+    it("never asks for a submit", async () => {
+      // The paste seam takes no `autoSend`, so there is no argument that could
+      // turn a page's text into a command an agent runs. This asserts the shape
+      // stays that way.
+      const paste = vi.fn(async () => true);
+      await deliver(GRAB, target(7, paste));
+      expect(paste).toHaveBeenCalledTimes(1);
+      expect(paste.mock.calls[0]).toHaveLength(2);
+    });
+
+    it("falls back to the clipboard when there is no pane", async () => {
+      // react-grab already wrote the same text to the clipboard from the page,
+      // so this outcome is a message, not a recovery step.
+      expect(await deliver(GRAB, target(null))).toBe("clipboard");
+    });
+
+    it("reports a paste that did not land", async () => {
+      expect(
+        await deliver(
+          GRAB,
+          target(
+            1,
+            vi.fn(async () => false),
+          ),
+        ),
+      ).toBe("failed");
+    });
+
+    it("survives a paste that throws", async () => {
+      const paste = vi.fn(async () => {
+        throw new Error("pane went away");
+      });
+      expect(await deliver(GRAB, target(1, paste))).toBe("failed");
+    });
+
+    it("refuses an empty grab before touching a pane", async () => {
+      const paste = vi.fn(async () => true);
+      const outcome = await deliver({ ...GRAB, text: "  " }, target(1, paste));
+      expect(outcome).toBe("failed");
+      expect(paste).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -119,7 +162,7 @@ describe("initBrowserBridge", () => {
 
     onGrab?.({ ...GRAB, count: 2 });
     await vi.waitFor(() =>
-      expect(browserNotice.value).toBe("2 elements sent to the focused pane"),
+      expect(browserNotice.value).toBe("2 elements copied to the clipboard"),
     );
   });
 
@@ -169,6 +212,8 @@ describe("openBrowser", () => {
     await openBrowser(client, "http://localhost:5173");
     expect(client.open).toHaveBeenCalledWith("http://localhost:5173");
     expect(browserOpen.value).toBe(true);
+    // Opening puts the surface on the stage, not just the chip on the strip.
+    expect(browserSurfaceActive.value).toBe(true);
 
     await openBrowser(client, "http://localhost:5173");
     // Reopening is a view toggle: it must not reload the page the user left.
@@ -182,7 +227,38 @@ describe("openBrowser", () => {
       }),
     });
     await openBrowser(client, "http://localhost:3000");
+    // BOTH signals reset — a failed open must not leave a chip on the strip
+    // or an active surface with no view behind it.
     expect(browserOpen.value).toBe(false);
+    expect(browserSurfaceActive.value).toBe(false);
+  });
+});
+
+describe("activateBrowserSurface / deactivateBrowserSurface", () => {
+  it("puts an open tab back on the stage, and refuses when no tab is open", () => {
+    activateBrowserSurface();
+    expect(browserSurfaceActive.value).toBe(false); // no chip, nothing to show
+
+    browserOpen.value = true;
+    activateBrowserSurface();
+    expect(browserSurfaceActive.value).toBe(true);
+  });
+
+  it("steps off the stage and hides the native view, keeping the chip", () => {
+    browserOpen.value = true;
+    browserSurfaceActive.value = true;
+    const client = fakeClient();
+    deactivateBrowserSurface(client);
+    expect(browserSurfaceActive.value).toBe(false);
+    expect(browserOpen.value).toBe(true); // the chip stays on the strip
+    expect(client.setVisible).toHaveBeenCalledWith(false);
+  });
+
+  it("is a no-op — no host call — while the surface is not on the stage", () => {
+    browserOpen.value = true;
+    const client = fakeClient();
+    deactivateBrowserSurface(client);
+    expect(client.setVisible).not.toHaveBeenCalled();
   });
 });
 
@@ -198,12 +274,15 @@ describe("closeBrowser", () => {
     expect(client.setVisible).toHaveBeenCalledWith(false);
     expect(client.close).not.toHaveBeenCalled();
     expect(browserOpen.value).toBe(false);
+    expect(browserSurfaceActive.value).toBe(false);
     expect(browserState.value.url).toBe("http://localhost:3000/deep/route");
   });
 
   it("reopening after a hide asks for no URL", async () => {
     const client = fakeClient({
-      open: vi.fn(async () => state({ url: "http://localhost:3000/deep/route" })),
+      open: vi.fn(async () =>
+        state({ url: "http://localhost:3000/deep/route" }),
+      ),
     });
     browserState.value = state({ url: "http://localhost:3000/deep/route" });
     await closeBrowser(client);

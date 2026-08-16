@@ -64,7 +64,7 @@ export function FontRow({ value, onChange }: FontRowProps) {
 
   return (
     <>
-      <ConfigRow label="Font" desc="terminal typeface">
+      <ConfigRow label="Font" desc="Terminal typeface">
         <span class="cfg-btn cfg-btn--overlay">
           <span class="cfg-btn__text">
             {selectValue === CUSTOM_VALUE ? value || "custom…" : value}

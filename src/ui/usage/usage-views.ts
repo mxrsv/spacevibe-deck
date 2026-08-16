@@ -34,14 +34,14 @@ export interface UsageView {
 export const USAGE_VIEWS: readonly UsageView[] = [
   {
     id: "overview",
-    label: "overview",
+    label: "Overview",
     Icon: OverviewIcon,
     Section: OverviewSection,
   },
-  { id: "daily", label: "daily", Icon: DailyIcon, Section: DailySection },
+  { id: "daily", label: "Daily", Icon: DailyIcon, Section: DailySection },
   {
     id: "breakdown",
-    label: "breakdown",
+    label: "Breakdown",
     Icon: BreakdownIcon,
     Section: BreakdownSection,
   },

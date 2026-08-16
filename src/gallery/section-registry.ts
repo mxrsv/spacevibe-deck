@@ -2,6 +2,7 @@ import type { ComponentType } from "preact";
 import { BoardSection } from "./sections/board-section";
 import { ChromeSection } from "./sections/chrome-section";
 import { MatrixSection } from "./sections/matrix-section";
+import { NavigationSection } from "./sections/navigation-section";
 import { OverlaysSection } from "./sections/overlays-section";
 import { PopoversSection } from "./sections/popovers-section";
 import { RowsSection } from "./sections/rows-section";
@@ -30,7 +31,8 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "tokens", label: "direction tokens", Section: TokensSection },
   { id: "rows", label: "config rows", Section: RowsSection },
   { id: "chrome", label: "window chrome", Section: ChromeSection },
-  { id: "matrix", label: "state matrix", Section: MatrixSection },
+  { id: "matrix", label: "native detail matrix", Section: MatrixSection },
+  { id: "navigation", label: "navigation", Section: NavigationSection },
   { id: "toolbar", label: "feature toolbar", Section: ToolbarSection },
   { id: "seams", label: "seam system", Section: SeamSection },
   { id: "popovers", label: "popovers", Section: PopoversSection },

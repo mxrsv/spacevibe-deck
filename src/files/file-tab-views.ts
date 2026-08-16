@@ -22,6 +22,12 @@ export interface TabViewModel {
   readonly preview: boolean;
   /** This tab holds the stage right now. */
   readonly active: boolean;
+  /**
+   * Place in the strip's one open order (`lib/open-sequence.ts`) — what lets
+   * the strip interleave this chip with the terminal tabs instead of parking
+   * every file after them (DL-18.6, 2026-08-16).
+   */
+  readonly openedAt: number;
 }
 
 function baseName(path: string): string {
@@ -40,5 +46,6 @@ export function fileTabViews(
     dirty: documentFor(tab.path)?.dirty ?? false,
     preview: tab.preview,
     active: index === activeIndex,
+    openedAt: tab.openedAt,
   }));
 }

@@ -1,5 +1,6 @@
 import type { Preset } from "../lib/preset-schema";
 import type { SerializedNode } from "../lib/split-tree";
+import type { ArchiveEntry } from "../lib/session-schema";
 import type {
   AgentAttentionSummary,
   StatusInfo,
@@ -19,6 +20,46 @@ import type {
 const HOME = "/Users/deck";
 
 export const SEED_HOME = HOME;
+
+/** In-memory Deck history for rail specimens; never touches the real store. */
+export const SEED_WORKSPACE_HISTORY: readonly string[] = [
+  `${HOME}/spacevibe-deck`,
+  `${HOME}/deck-worktrees/electron-migration`,
+  `${HOME}/deck-worktrees/redesign`,
+  `${HOME}/spacevibe-api`,
+  `${HOME}/api-worktrees/billing`,
+  `${HOME}/spacevibe-hub`,
+  `${HOME}/scratch`,
+];
+
+/**
+ * In-memory archive for rail specimens; never touches the real store.
+ *
+ * Keyed to `deck-worktrees/electron-migration` — a worktree `host-stub.ts`
+ * scans as a real, unlocked, unprunable repository, and one `SEED_TABS` never
+ * opens a tab in. That combination is what the rail's `resumable` state
+ * requires (`repository-model.ts`'s `resumableWorktreePaths`): an archived
+ * entry with no live tab covering the same path.
+ */
+export const SEED_SESSION_ARCHIVE: Readonly<Record<string, ArchiveEntry>> = {
+  [`${HOME}/deck-worktrees/electron-migration`]: {
+    savedAt: Date.now(),
+    tabs: [
+      {
+        workspacePath: `${HOME}/deck-worktrees/electron-migration`,
+        layout: { type: "leaf" },
+        panes: [
+          {
+            cwd: `${HOME}/deck-worktrees/electron-migration`,
+            agent: "claude",
+          },
+        ],
+        name: null,
+        dotColor: null,
+      },
+    ],
+  },
+};
 
 function attention(
   kind: AgentAttentionSummary["kind"],
@@ -43,6 +84,28 @@ export const SEED_TABS: readonly TabView[] = [
     agentBusy: true,
     unread: false,
     attention: attention("working", { workingCount: 1 }),
+  },
+  {
+    key: 5,
+    process: "codex",
+    name: "architecture review",
+    dotColor: null,
+    workspacePath: `${HOME}/spacevibe-deck`,
+    agents: ["codex"],
+    agentBusy: false,
+    unread: false,
+    attention: attention("idle"),
+  },
+  {
+    key: 6,
+    process: "opencode",
+    name: "test sweep",
+    dotColor: null,
+    workspacePath: `${HOME}/spacevibe-deck`,
+    agents: ["opencode"],
+    agentBusy: false,
+    unread: false,
+    attention: attention("idle"),
   },
   {
     key: 2,

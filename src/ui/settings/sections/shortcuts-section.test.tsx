@@ -111,27 +111,25 @@ describe("ShortcutsSection", () => {
     }
   });
 
-  it("shows both platforms' chords, editing only the running one", () => {
+  it("shows only the running platform's chord, as the editable pill", () => {
     mount();
     const row = rowFor("Split Vertically");
     // The dev-preview platform is `unsupported`, which resolves to the macOS
-    // keymap — so macOS is the editable side here.
+    // keymap — so macOS is the running side here.
     expect(row.querySelector(".cfg-chord")?.textContent).toBe("⌘D");
-    expect(row.querySelector(".cfg-readout")?.textContent).toBe(
-      "Ctrl+Shift+D",
-    );
-    // Exactly one editable chord per row (DL-17.3).
+    // Exactly one editable chord per row (DL-17.3), and nothing else: the
+    // other platform's chord and its tag left the row (DL-17.2, 2026-08-15).
     expect(row.querySelectorAll(".cfg-chord")).toHaveLength(1);
-    expect(row.querySelectorAll(".cfg-readout")).toHaveLength(1);
+    expect(row.querySelectorAll(".cfg-readout")).toHaveLength(0);
+    expect(row.querySelectorAll(".cfg-chord-tag")).toHaveLength(0);
   });
 
-  it("reads `unbound` where the platform ships no chord", () => {
+  it("reads `unbound` where the running platform ships no chord", () => {
     mount();
     // `copy-selection` is bound on Windows only — macOS leaves ⌘C to the Cocoa
     // Copy role. That is a normal state, not an error (DL-17.4).
     const row = rowFor("Copy Selection");
     expect(row.querySelector(".cfg-chord")?.textContent).toBe("unbound");
-    expect(row.querySelector(".cfg-readout")?.textContent).toBe("Ctrl+Shift+C");
   });
 
   it("records a pressed chord and makes it the one that fires", () => {
@@ -242,7 +240,8 @@ describe("ShortcutsSection", () => {
     mount();
     expect(rowFor("Split Vertically").querySelector(".cfg-clear")).toBeNull();
 
-    const reset = rowFor("Find…").querySelector<HTMLButtonElement>(".cfg-clear");
+    const reset =
+      rowFor("Find…").querySelector<HTMLButtonElement>(".cfg-clear");
     expect(reset).not.toBeNull();
     act(() => {
       reset?.click();

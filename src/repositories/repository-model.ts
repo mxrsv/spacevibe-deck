@@ -14,11 +14,7 @@ import { IDLE_ATTENTION_SUMMARY } from "../terminal/tabs-store";
 import type { RepositoryScan } from "./repository-client";
 
 export type WorktreeState =
-  | "missing"
-  | "attention"
-  | "working"
-  | "ready"
-  | "idle";
+  "missing" | "attention" | "working" | "ready" | "idle";
 
 /** One open tab, carrying the index its callbacks need. */
 export interface RailTab {
@@ -59,6 +55,12 @@ export interface WorktreeRow {
   readonly tabs: readonly RailTab[];
   /** Agents present anywhere in the worktree, deduplicated in tab/pane order. */
   readonly agents: readonly PaneAgent[];
+  /**
+   * Empty row with an archived session (`session-journal.ts`'s
+   * `sessionArchive`): a pressable "resume" row, not a readout. False
+   * whenever `tabs` is non-empty — a live worktree resumes nothing.
+   */
+  readonly resumable: boolean;
 }
 
 export interface RepositoryGroup {
@@ -77,7 +79,12 @@ export interface RailInput {
   readonly scans: ReadonlyMap<string, RepositoryScan>;
   /** Repository keys the user has collapsed. */
   readonly collapsed: ReadonlySet<string>;
+  /** Workspace paths with an archived session — their empty rows become pressable. */
+  readonly archivedPaths: ReadonlySet<string>;
 }
+
+const NO_COLLAPSED_REPOSITORIES: ReadonlySet<string> = new Set();
+const NO_ARCHIVED_PATHS: ReadonlySet<string> = new Set();
 
 function tabOf(tab: TabView, index: number, activeIndex: number): RailTab {
   return {
@@ -85,7 +92,9 @@ function tabOf(tab: TabView, index: number, activeIndex: number): RailTab {
     key: tab.key,
     label:
       tab.name ??
-      (tab.workspacePath === null ? "Unknown" : workspaceLabel(tab.workspacePath)),
+      (tab.workspacePath === null
+        ? "Unknown"
+        : workspaceLabel(tab.workspacePath)),
     customName: tab.name,
     workspacePath: tab.workspacePath,
     active: index === activeIndex,
@@ -125,6 +134,49 @@ export function worktreeForPath(
     }
   }
   return best;
+}
+
+/**
+ * Which of `worktreePaths` an archived session lights up.
+ *
+ * Archive keys (`session-journal.ts`'s `sessionArchive`) are workspace
+ * paths, exactly like tab workspace paths — an entry recorded on a
+ * subdirectory still owns its worktree, so this reuses `worktreeForPath`'s
+ * longest-prefix match rather than an exact-path check.
+ */
+function resumableWorktreePaths(
+  archivedPaths: ReadonlySet<string>,
+  worktreePaths: readonly string[],
+): ReadonlySet<string> {
+  return new Set(
+    [...archivedPaths]
+      .map((path) => worktreeForPath(worktreePaths, path))
+      .filter((path): path is string => path !== null),
+  );
+}
+
+/**
+ * Keep current sessions plus worktrees represented in Deck's persisted
+ * workspace history. Git discovery supplies metadata; it does not decide
+ * which never-opened siblings become navigation rows.
+ */
+export function filterRailToWorkspaceHistory(
+  groups: readonly RepositoryGroup[],
+  workspaceHistoryPaths: readonly string[],
+): readonly RepositoryGroup[] {
+  return groups.flatMap((group) => {
+    const worktreePaths = group.worktrees.map((worktree) => worktree.path);
+    const historicalWorktrees = new Set(
+      workspaceHistoryPaths
+        .map((path) => worktreeForPath(worktreePaths, path))
+        .filter((path): path is string => path !== null),
+    );
+    const worktrees = group.worktrees.filter(
+      (worktree) =>
+        worktree.tabs.length > 0 || historicalWorktrees.has(worktree.path),
+    );
+    return worktrees.length === 0 ? [] : [{ ...group, worktrees }];
+  });
 }
 
 /**
@@ -170,7 +222,9 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
 
   for (const tab of railTabs) {
     const scan =
-      tab.workspacePath === null ? undefined : input.scans.get(tab.workspacePath);
+      tab.workspacePath === null
+        ? undefined
+        : input.scans.get(tab.workspacePath);
     const key =
       scan !== undefined && scan.kind === "repository"
         ? scan.key
@@ -180,7 +234,11 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
       order.push(key);
     }
     tabsByKey.get(key)!.push(tab);
-    if (scan !== undefined && scan.kind === "repository" && !scanByKey.has(key)) {
+    if (
+      scan !== undefined &&
+      scan.kind === "repository" &&
+      !scanByKey.has(key)
+    ) {
       scanByKey.set(key, scan);
     }
   }
@@ -193,22 +251,33 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
       // landed yet. One synthetic worktree row so the tab still has a home —
       // this is the flat list Deck shows today, wearing the rail's clothes.
       const path = groupTabs[0]?.workspacePath ?? "";
+      const resumable = resumableWorktreePaths(
+        input.archivedPaths,
+        path === "" ? [] : [path],
+      );
       return {
         key,
         kind: "plain" as const,
-        name: path === "" ? (groupTabs[0]?.label ?? "Unknown") : workspaceLabel(path),
+        name:
+          path === ""
+            ? (groupTabs[0]?.label ?? "Unknown")
+            : workspaceLabel(path),
         collapsed: input.collapsed.has(key),
         worktrees: [
           {
             id: key,
             path,
-            name: path === "" ? (groupTabs[0]?.label ?? "Unknown") : workspaceLabel(path),
+            name:
+              path === ""
+                ? (groupTabs[0]?.label ?? "Unknown")
+                : workspaceLabel(path),
             branch: null,
             primary: true,
             state: worktreeState(null, groupTabs),
             locked: null,
             tabs: groupTabs,
             agents: agentsForTabs(groupTabs),
+            resumable: groupTabs.length === 0 && resumable.has(path),
           },
         ],
       };
@@ -218,6 +287,7 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
     // can run and it is not a row.
     const entries = scan.worktrees.filter((entry) => !entry.bare);
     const paths = entries.map((entry) => entry.path);
+    const resumable = resumableWorktreePaths(input.archivedPaths, paths);
     return {
       key,
       kind: "repository" as const,
@@ -238,6 +308,7 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
           branch: entry.branch,
           primary: index === 0,
           state: worktreeState(entry.prunable, tabs),
+          resumable: tabs.length === 0 && resumable.has(entry.path),
           locked: entry.locked,
           tabs,
           agents: agentsForTabs(tabs),
@@ -245,4 +316,79 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
       }),
     };
   });
+}
+
+/**
+ * Global tab indexes belonging to the worktree that owns `activeIndex`.
+ *
+ * The sidebar and its stage strip must derive identity through the same rail
+ * model: exact `workspacePath` equality is not enough when a tab runs from a
+ * package below a worktree root. Returning global indexes keeps every existing
+ * tab callback on `TabManager`'s coordinate system while presentation is
+ * scoped to the selected row.
+ */
+export function activeWorktreeTabIndexes(
+  tabs: readonly TabView[],
+  activeIndex: number,
+  scans: ReadonlyMap<string, RepositoryScan>,
+): readonly number[] {
+  const groups = buildRail({
+    tabs,
+    activeIndex,
+    scans,
+    collapsed: NO_COLLAPSED_REPOSITORIES,
+    archivedPaths: NO_ARCHIVED_PATHS,
+  });
+  for (const group of groups) {
+    const activeWorktree = group.worktrees.find((worktree) =>
+      worktree.tabs.some((tab) => tab.active),
+    );
+    if (activeWorktree !== undefined) {
+      return activeWorktree.tabs.map((tab) => tab.index);
+    }
+  }
+  return [];
+}
+
+/**
+ * Global tab indexes belonging to the REPOSITORY that owns `activeIndex`.
+ *
+ * The sibling of `activeWorktreeTabIndexes`, and the one the stage strip uses
+ * since 2026-08-16: the agent rail's unit is a tab in a project, not a
+ * checkout, so scoping the strip by worktree would hide a sibling tab of the
+ * same project the rail is still listing. 46 of 51 repositories in the
+ * measured corpus have exactly one working directory, so for almost every
+ * project the two answers are identical — the difference only shows up in the
+ * handful of repositories that really do run several worktrees, and there the
+ * project is the unit the rail agreed on
+ * (`docs/specs/2026-08-16-agent-status-rail-design.md` §4.1).
+ *
+ * Both functions stay: this one is a change to what the STRIP scopes by, not
+ * a claim that a worktree stopped being a real grouping — `buildRail` still
+ * groups by it, and the rail still names it as a row suffix.
+ */
+export function activeRepositoryTabIndexes(
+  tabs: readonly TabView[],
+  activeIndex: number,
+  scans: ReadonlyMap<string, RepositoryScan>,
+): readonly number[] {
+  const groups = buildRail({
+    tabs,
+    activeIndex,
+    scans,
+    collapsed: NO_COLLAPSED_REPOSITORIES,
+    archivedPaths: NO_ARCHIVED_PATHS,
+  });
+  for (const group of groups) {
+    const tabsInGroup = group.worktrees.flatMap((worktree) => worktree.tabs);
+    if (tabsInGroup.some((tab) => tab.active)) {
+      // Tab order, not worktree order: the strip paints one row of chips and
+      // its left-to-right order must match `TabManager`'s own, or ⌘1..⌘9 and
+      // the visible sequence disagree.
+      return tabsInGroup
+        .map((tab) => tab.index)
+        .sort((left, right) => left - right);
+    }
+  }
+  return [];
 }

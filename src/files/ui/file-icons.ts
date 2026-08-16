@@ -1,7 +1,11 @@
 /**
- * The tree's monochrome icon vocabulary (spec §3.1, DL §8/§19 file-type icon
- * rule) — a second icon set beside §14's Lucide chrome set, permitted only in
- * a docked panel's data rows.
+ * The monochrome file-type icon vocabulary (spec §3.1, DL-18.10).
+ *
+ * Written for the tree's data rows and docked-panel-only until 2026-08-16,
+ * when the tab strip's chips became glyph-led: a document's chip takes the
+ * same glyph its row in the tree has, so the two can never name the same file
+ * with two different pictures. Still Lucide, so DL-14.1 is untouched — this
+ * is a vocabulary inside the one icon library, not a second library.
  *
  * `EXCLUDED_NAMES` already lives in `file-tree.ts` as the tree's one named
  * exclusion-list constant (spec §3.1); this module owns icon selection only

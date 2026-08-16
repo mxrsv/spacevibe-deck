@@ -331,7 +331,7 @@ export function PromptPopover(props: PromptPopoverProps) {
       }}
     >
       {templates.length === 0 && !draftOpen.value ? (
-        <div class="cfg-custom prompt-popover__empty">no templates yet</div>
+        <div class="cfg-custom prompt-popover__empty">No templates yet</div>
       ) : null}
 
       {templates.map((template) => (
@@ -460,7 +460,7 @@ export function PromptPopover(props: PromptPopoverProps) {
         </>
       ) : null}
 
-      <ConfigRow label="New template" desc="a name and the prompt body">
+      <ConfigRow label="New template" desc="A name and the prompt body">
         <button
           type="button"
           class="cfg-btn"
@@ -480,12 +480,12 @@ export function PromptPopover(props: PromptPopoverProps) {
         <div class="prompt-picker">
           {assetsFailed.value ? (
             <div class="cfg-custom prompt-picker__unavailable">
-              skills unavailable
+              Skills unavailable
             </div>
           ) : (
             <>
               <AssetPicker
-                label="skill"
+                label="Skill"
                 assets={assets.value.skills}
                 chosen={skill.value}
                 onPick={(name) => {
@@ -493,7 +493,7 @@ export function PromptPopover(props: PromptPopoverProps) {
                 }}
               />
               <AssetPicker
-                label="subagent"
+                label="Subagent"
                 assets={assets.value.subagents}
                 chosen={subagent.value}
                 onPick={(name) => {

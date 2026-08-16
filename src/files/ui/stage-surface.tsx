@@ -3,7 +3,7 @@
  *
  * Until then the editor was parked in a `__preview` block at the bottom of
  * `ExplorerPanel`, which made its real mount condition
- * `explorerOpen && activeFileTab !== null`: closing the file tree also took
+ * `dockOpen && activeFileTab !== null`: closing the file tree also took
  * the open document away and disposed Monaco with it. Here the only condition
  * is `activeFileTab`, so ⌘⇧B hides the tree and nothing else, and switching
  * the tree off and on again no longer costs an editor teardown.
@@ -12,7 +12,7 @@
  * render harness in this repo (see `closeSettingsPanel`'s comment for the same
  * call), so anything written inline there is untestable. This is the seam that
  * makes "opening a file puts an editor on the stage" assertable — and makes it
- * structurally impossible for `explorerOpen` to creep back into the condition.
+ * structurally impossible for `dockOpen` to creep back into the condition.
  *
  * It renders the layer only; the rectangle it occupies (and the insets that
  * keep it clear of the docked panels) is `.stage__surface` in styles.css.

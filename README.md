@@ -54,8 +54,8 @@ Every pane is backed by a real PTY via Rust's `portable-pty`. macOS runs your lo
 ### 🗂️ Workspaces & the Open board
 
 - A **workspace** is a folder you pick as the working root. Each tab belongs to one workspace, and you can open the same workspace as many times as you like — every Open gets its own tab, so one repo can run several agent sessions side by side.
-- The **Open board** is the app's single entry point (also shown on New Tab): a two-column screen — a rail of **recent workspaces** (each row removable with its × or Backspace, missing folders grouped under a one-click Remove all, Open Folder pinned at the bottom) and a detail column of **layout presets → agent** for the selected folder.
-- Each recent row **remembers your last layout + agent combo** and preselects them, so reopening a project is a keystroke away — or **double-click** any workspace, layout, or agent chip to open immediately.
+- The **Open board** is the app's single entry point: your **recent workspaces** (each row removable with its ×, missing folders grouped under a one-click Remove all), plus Open project and Create worktree.
+- **One click opens.** Each recent row remembers the layout + agent it was last opened with and reopens with exactly that — hover a row to see the combo. To pick a different agent, use the quick picker (⌘T) instead.
 - Switch between a vertical **workspace sidebar** and a horizontal **tab bar** in Settings.
 - **Workspace logos** — each workspace auto-detects a favicon from the repo as its icon, or drag-drop your own image onto it.
 - **Agent status at a glance** — in the vertical workspace sidebar, each avatar shows a spinning ring while an agent is **actively working on a prompt** (not merely open at its prompt — Deck reads the agent's own OSC 9;4 progress reports, the same signal Ghostty renders as a progress bar), a **yellow dot** when a background tab has printed new output you haven't seen yet, and nothing when it's idle — so you can track every workspace without switching to it. Opening a tab clears its unread dot.
@@ -71,13 +71,13 @@ v1 uses one generic "needs attention" label — it doesn't yet distinguish a pro
 
 ### 🤖 Launch agents into every pane
 
-- Pick an agent once on the Open board and Deck launches it in **every pane** of the new tab — four panes, four agents running in parallel.
-- Agents are auto-discovered from the active platform environment (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity — and anything else you declare in Settings). macOS uses the interactive login shell; Windows resolves allowlisted executables from `PATH` and known command suffixes ([Windows discovery](src-tauri/src/platform/windows/agent_discovery.rs#L41-L109) `current`). The **first detected agent is preselected by default** — Shell is opt-in via the **Shell only** chip (or `0`), never the silent default.
+- One agent per tab, launched into **every pane** — four panes, four agents running in parallel. The board reuses whatever a workspace ran last time; the quick picker (⌘T) is where you choose a different one.
+- Agents are auto-discovered from the active platform environment (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity — and anything else you declare in Settings). macOS uses the interactive login shell; Windows resolves allowlisted executables from `PATH` and known command suffixes ([Windows discovery](src-tauri/src/platform/windows/agent_discovery.rs#L41-L109) `current`). A workspace with no memory opens with the **first detected agent**; **Shell only** is a chip in the quick picker (or `0`), never the silent default.
 - Running agents get **chrome**: the pane header, status bar, and busy dot are colored by process — Claude magenta, Codex green, OpenCode yellow, and cyan for both of Google's CLIs (Gemini and Antigravity share a hue; the header names which one) — so you can read the state of every pane in one glance.
 
 ### 💾 Layout presets
 
-Save a split layout (plus optional per-pane working directories) as a **named preset** — from a live layout or by sketching one in a mini editor. Rename, overwrite, and delete; presets persist across restarts.
+Save a split layout (plus optional per-pane working directories) as a **named preset** — from a live layout or by sketching one in a mini editor. Overwrite an existing one with ⌘⇧S; presets persist across restarts. (Renaming and deleting a preset lived on the board's layout cards and left with them on 2026-08-16 — no replacement surface yet.)
 
 ### 🎨 Themes
 
@@ -170,34 +170,34 @@ plain Explorer Copy of a folder (`CF_HDROP` file list) is unsupported
 
 ### Windows engineering preview
 
-| Shortcut                  | Action                                |
-| ------------------------- | ------------------------------------- |
-| Ctrl+Shift+C              | Copy selection                        |
-| Ctrl+V / Ctrl+Shift+V / Shift+Insert | Paste clipboard text       |
-| Ctrl+Alt+Shift+C          | Copy pane working directory           |
-| Ctrl+Shift+D              | Split pane vertically                 |
-| Ctrl+Alt+Shift+D          | Split pane horizontally               |
-| Ctrl+Shift+W              | Close pane                            |
-| Ctrl+Alt+Shift+W          | Close tab                             |
-| Ctrl+Alt+] / [            | Focus next / previous pane            |
-| Ctrl+Alt+Arrow            | Focus pane by direction               |
-| Ctrl+Alt+Shift+Arrow      | Swap pane by direction                |
-| Ctrl+Shift+E              | Toggle Focus Expand                   |
-| Ctrl+Shift+Enter          | Zoom / restore active pane            |
-| Ctrl+Shift+T              | New tab (Open board)                  |
-| Ctrl+Alt+Shift+T          | Reopen closed tab                     |
-| Ctrl+Alt+Shift+R          | Rename tab / change dot color         |
-| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous tab                   |
-| Ctrl+1 … Ctrl+8 / Ctrl+9  | Select tab _N_ / last tab             |
-| Ctrl+Shift+F              | Find in scrollback                    |
-| F3 / Shift+F3             | Find next / previous match            |
-| Ctrl+Shift+K              | Clear buffer                          |
-| Ctrl+Alt+Shift+N / S      | New / save layout preset              |
-| Ctrl+Shift+A              | Jump to the pane that needs attention |
-| Ctrl+= / Ctrl+- / Ctrl+0  | Font zoom in / out / reset            |
-| Ctrl+,                    | Toggle Settings                       |
-| Shift+PgUp / PgDn         | Scroll scrollback by page             |
-| Shift+Home / End          | Scroll to top / latest output         |
+| Shortcut                             | Action                                |
+| ------------------------------------ | ------------------------------------- |
+| Ctrl+Shift+C                         | Copy selection                        |
+| Ctrl+V / Ctrl+Shift+V / Shift+Insert | Paste clipboard text                  |
+| Ctrl+Alt+Shift+C                     | Copy pane working directory           |
+| Ctrl+Shift+D                         | Split pane vertically                 |
+| Ctrl+Alt+Shift+D                     | Split pane horizontally               |
+| Ctrl+Shift+W                         | Close pane                            |
+| Ctrl+Alt+Shift+W                     | Close tab                             |
+| Ctrl+Alt+] / [                       | Focus next / previous pane            |
+| Ctrl+Alt+Arrow                       | Focus pane by direction               |
+| Ctrl+Alt+Shift+Arrow                 | Swap pane by direction                |
+| Ctrl+Shift+E                         | Toggle Focus Expand                   |
+| Ctrl+Shift+Enter                     | Zoom / restore active pane            |
+| Ctrl+Shift+T                         | New tab (Open board)                  |
+| Ctrl+Alt+Shift+T                     | Reopen closed tab                     |
+| Ctrl+Alt+Shift+R                     | Rename tab / change dot color         |
+| Ctrl+Tab / Ctrl+Shift+Tab            | Next / previous tab                   |
+| Ctrl+1 … Ctrl+8 / Ctrl+9             | Select tab _N_ / last tab             |
+| Ctrl+Shift+F                         | Find in scrollback                    |
+| F3 / Shift+F3                        | Find next / previous match            |
+| Ctrl+Shift+K                         | Clear buffer                          |
+| Ctrl+Alt+Shift+N / S                 | New / save layout preset              |
+| Ctrl+Shift+A                         | Jump to the pane that needs attention |
+| Ctrl+= / Ctrl+- / Ctrl+0             | Font zoom in / out / reset            |
+| Ctrl+,                               | Toggle Settings                       |
+| Shift+PgUp / PgDn                    | Scroll scrollback by page             |
+| Shift+Home / End                     | Scroll to top / latest output         |
 
 Open Folder uses `Ctrl+Shift+O`; preset-editor splits and pane swapping use
 Ctrl as the Windows primary pointer modifier.
@@ -262,6 +262,8 @@ Open **Settings** from the toolbar (or the platform Settings shortcut) to config
 - **Theme** and per-color overrides.
 - **Editor** for Cmd/Ctrl+click — VS Code, Cursor, Zed, or a custom command.
 - **Tab bar position** — left sidebar or top bar.
+- **Sidebar banner** — optional blended artwork with built-in country flags or
+  one imported image.
 - **Scrollback** — lines kept per pane (1k … 100k).
 - **Focus Expand** and **pane bar** toggles.
 

@@ -5,8 +5,13 @@ import { DeckToolbar } from "../ui/toolbar/deck-toolbar";
 import { WorkspaceSidebar } from "../ui/workspace-sidebar";
 import { createFileSurfaceController } from "../files/file-surface-controller";
 import type { PaneAgent } from "../lib/process-info";
+import type { RailTab } from "../repositories/repository-model";
+import { IDLE_ATTENTION_SUMMARY } from "../terminal/tabs-store";
+import { activeTabIndex } from "../terminal/tabs-store";
 import { CHROME_ICON, DeckIcon, RAIL_ICON } from "../ui/controls/deck-icon";
 import { WorktreeAgentStack } from "../ui/worktree-agent-stack";
+import { TabStrip } from "../ui/tab-strip";
+import { SidebarBanner } from "../ui/sidebar-banner";
 
 /**
  * The chrome components wired up for a specimen, in one place.
@@ -26,9 +31,10 @@ import { WorktreeAgentStack } from "../ui/worktree-agent-stack";
 export const NOOP = (): void => {};
 
 /**
- * No specimen opens a file, so a single shared controller with no file tabs
- * ever open is a faithful stand-in — `fileTabViews` projects an empty strip
- * segment, and neither renderer calls anything on it beyond that read.
+ * One shared controller for every specimen. The file tabs it projects are
+ * seeded into the store by `main.tsx`, not by a specimen — `fileTabViews`
+ * reads the ACTIVE workspace's tabs from the module store, so the chips
+ * appear in every strip specimen without any of them owning the state.
  */
 const fileControllerFixture = createFileSurfaceController();
 
@@ -43,16 +49,12 @@ export function deckToolbarSpecimen({
 }: SpecimenOptions = {}) {
   return (
     <DeckToolbar
-      explorerOpen={false}
-      browserOpen={false}
-      usageOpen={false}
+      browserActive={false}
       settingsOpen={false}
       expandActive={false}
       promptsOpen={false}
       promptsUnavailable={promptsDisabled ? "no pane to paste into" : null}
-      onToggleExplorer={NOOP}
       onToggleBrowser={NOOP}
-      onToggleUsage={NOOP}
       onSplitRow={NOOP}
       onSplitColumn={NOOP}
       onToggleExpand={NOOP}
@@ -71,10 +73,9 @@ export function tabBarSpecimen({
       onSelectTab={NOOP}
       onCloseTab={NOOP}
       onNewTab={NOOP}
-      onRenameTab={NOOP}
-      onSetTabColor={NOOP}
       toolbar={deckToolbarSpecimen({ promptsDisabled })}
-      onFocusAttention={NOOP}
+      onSelectBrowser={NOOP}
+      onCloseBrowser={NOOP}
       fileController={fileControllerFixture}
     />
   );
@@ -102,6 +103,7 @@ export function workspaceSidebarSpecimen() {
       onRenameTab={NOOP}
       onSetTabColor={NOOP}
       onFocusAttention={NOOP}
+      onResumeWorktree={NOOP}
     />
   );
 }
@@ -116,16 +118,39 @@ export function workspaceSidebarSpecimen() {
  * and a folder that is not a repository — are the component's own rendering of
  * real data through the real model.
  */
-export function repositorySidebarSpecimen() {
+export function repositorySidebarSpecimen({
+  onSelectTab = NOOP,
+}: {
+  readonly onSelectTab?: (index: number) => void;
+} = {}) {
   return (
     <RepositoryRail
-      onSelectTab={NOOP}
+      onSelectTab={onSelectTab}
       onCloseTab={NOOP}
       onOpenWorkspace={NOOP}
       onRenameTab={NOOP}
       onSetTabColor={NOOP}
       onFocusAttention={NOOP}
+      onResumeWorktree={NOOP}
       fileController={fileControllerFixture}
+    />
+  );
+}
+
+/** The real sidebar-mode strip, wired so gallery rail clicks change its scope. */
+export function repositoryScopedTabStripSpecimen() {
+  const selectTab = (index: number): void => {
+    activeTabIndex.value = index;
+  };
+  return (
+    <TabStrip
+      onSelectTab={selectTab}
+      onCloseTab={NOOP}
+      onNewTab={NOOP}
+      onSelectBrowser={NOOP}
+      onCloseBrowser={NOOP}
+      fileController={fileControllerFixture}
+      scopeToActiveRepository
     />
   );
 }
@@ -146,7 +171,7 @@ const AGENT_PREVIEW_ROWS: readonly WorktreeAgentPreview[] = [
     primary: true,
     active: true,
     working: true,
-    agents: ["claude", "codex"],
+    agents: ["claude", "codex", "opencode"],
   },
   {
     name: "pr-11",
@@ -181,6 +206,21 @@ const AGENT_PREVIEW_ROWS: readonly WorktreeAgentPreview[] = [
     agents: ["opencode", "gemini", "codex", "claude"],
   },
 ];
+
+function previewTabs(worktree: WorktreeAgentPreview): readonly RailTab[] {
+  return worktree.agents.map((agent, index) => ({
+    index,
+    key: index,
+    label: agent,
+    customName: null,
+    workspacePath: null,
+    active: worktree.active === true && index === 0,
+    agents: [agent],
+    attention: IDLE_ATTENTION_SUMMARY,
+    agentBusy: worktree.working === true,
+    unread: false,
+  }));
+}
 
 /**
  * Gallery fixture for the approved worktree agent marks.
@@ -230,7 +270,10 @@ export function worktreeAgentPresenceSpecimen() {
                   </span>
                   <span class="wsitem__path">{worktree.path}</span>
                 </span>
-                <WorktreeAgentStack agents={worktree.agents} />
+                <WorktreeAgentStack
+                  tabs={previewTabs(worktree)}
+                  onSelectTab={NOOP}
+                />
               </div>
             ))}
           </div>
@@ -242,6 +285,129 @@ export function worktreeAgentPresenceSpecimen() {
           <span>Open workspace</span>
         </button>
       </div>
+      <SidebarBanner />
     </nav>
+  );
+}
+
+type WorktreeItemDirection = "compact" | "focus" | "agent";
+
+const WORKTREE_ITEM_DIRECTIONS = [
+  {
+    id: "compact",
+    index: "A",
+    label: "Compact tree",
+    note: "One-line index · path on title · edge selection",
+  },
+  {
+    id: "focus",
+    index: "B",
+    label: "Focus expand",
+    note: "Compact at rest · selected context opens in place",
+  },
+  {
+    id: "agent",
+    index: "C",
+    label: "Agent lane",
+    note: "Full-width branch · terminal controls own row two",
+  },
+] as const satisfies readonly {
+  readonly id: WorktreeItemDirection;
+  readonly index: string;
+  readonly label: string;
+  readonly note: string;
+}[];
+
+const WORKTREE_VARIANT_ROWS = AGENT_PREVIEW_ROWS.filter(
+  (worktree) =>
+    worktree.name !== "feat/token-usage-dashboard" &&
+    worktree.name !== "feat/workspace-recorder",
+);
+
+function previewState(worktree: WorktreeAgentPreview): string {
+  if (worktree.working) {
+    return "working";
+  }
+  return worktree.agents.length > 0 ? "ready" : "idle";
+}
+
+function WorktreeVariantRow({
+  direction,
+  worktree,
+}: {
+  readonly direction: WorktreeItemDirection;
+  readonly worktree: WorktreeAgentPreview;
+}) {
+  return (
+    <div
+      class={`wsitem gx-worktree-row ${worktree.active ? "is-active" : ""}`}
+      data-state={previewState(worktree)}
+      title={direction === "compact" ? worktree.path : undefined}
+    >
+      <span
+        class="wsitem__state"
+        role="status"
+        aria-label={`${worktree.name}: ${previewState(worktree)}`}
+      />
+      <span class="wsitem__text">
+        <span class="wsitem__label">
+          <span class="wsitem__name">{worktree.name}</span>
+          {worktree.primary && <span class="wsitem__badge">primary</span>}
+        </span>
+        <span class="wsitem__path">{worktree.path}</span>
+      </span>
+      <WorktreeAgentStack tabs={previewTabs(worktree)} onSelectTab={NOOP} />
+    </div>
+  );
+}
+
+function WorktreeVariantRail({
+  direction,
+}: {
+  readonly direction: WorktreeItemDirection;
+}) {
+  return (
+    <nav
+      class={`gx-worktree-variant__rail gx-worktree-variant--${direction}`}
+      aria-label={`${direction} worktree item direction`}
+    >
+      <header class="gx-worktree-variant__repo">
+        <span class="repogroup__mark" aria-hidden="true">
+          <DeckIcon icon={FolderGit2} size={RAIL_ICON} />
+        </span>
+        <span>spacevibe-deck</span>
+        <DeckIcon icon={ChevronDown} size={CHROME_ICON} />
+      </header>
+      <div class="gx-worktree-variant__rows">
+        {WORKTREE_VARIANT_ROWS.map((worktree) => (
+          <WorktreeVariantRow
+            key={worktree.name}
+            direction={direction}
+            worktree={worktree}
+          />
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+/** Three gallery-only item compositions; no shipping rail behavior changes. */
+export function worktreeItemVariantsSpecimen() {
+  return (
+    <div class="gx-worktree-variants">
+      {WORKTREE_ITEM_DIRECTIONS.map((direction) => (
+        <article
+          key={direction.id}
+          class={`gx-worktree-variant gx-worktree-variant--${direction.id}`}
+        >
+          <header class="gx-worktree-variant__head">
+            <span class="gx-worktree-variant__index">{direction.index}</span>
+            <span class="gx-worktree-variant__title">{direction.label}</span>
+            <span class="gx-worktree-variant__note">{direction.note}</span>
+          </header>
+          <WorktreeVariantRail direction={direction.id} />
+        </article>
+      ))}
+    </div>
   );
 }

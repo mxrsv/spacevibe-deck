@@ -1,7 +1,7 @@
-import type { ComponentChildren } from "preact";
 import { useSignal } from "@preact/signals";
 import { persistError } from "../../chrome/events";
 import type { CustomAgent } from "../../lib/agent-catalog";
+import type { QuickDestination } from "../../repositories/worktree-destinations";
 import { PersistErrorBar } from "../../presets/persist-error-bar";
 import { PresetEditor } from "../../presets/preset-editor";
 import { SavePresetDialog } from "../../presets/save-preset-dialog";
@@ -11,14 +11,14 @@ import { SEED_PRESETS } from "../seed-data";
 import { SectionHead, Specimen, StateLabel } from "../specimen";
 
 /**
- * Surfaces that cover the stage: the full-window settings screen, the two
- * modal drafts, the transient chrome bar, and the drag/zoom overlays.
+ * Surfaces that cover the stage: the full-window settings screen, the three
+ * modals, the transient chrome bar, and the drag/zoom overlays.
  *
- * The modals are the interesting ones. DL-6.2 and DL-12.5 both say "never a
- * modal", yet `.preset-editor` and `.save-dialog` are modals over
- * `.modal-scrim`, with a radius and a rise-in animation no rule mentions.
- * DL §13 covers popovers, DL §11 covers the settings shell; nothing covers
- * these two.
+ * The modal gap this file used to document — a genre with a radius, a scrim
+ * and a rise-in that no DL section governed — closed on 2026-08-16 with
+ * DL §29 and [`Modal`](../../ui/modal.tsx). Each specimen below therefore
+ * brings its OWN scrim, through that shell; the gallery no longer wraps one
+ * around them (it used to, which painted the wash twice).
  *
  * `.drop-overlay` and `.zoom-overlay` are single-class elements the layout
  * engine and the drag controller attach at runtime (`layout-engine.ts`,
@@ -41,9 +41,21 @@ const SEED_CUSTOM_AGENTS: readonly CustomAgent[] = [
   { id: "custom:aider", label: "Aider", command: "aider --model gpt-4" },
 ];
 
-function ScrimStage({ children }: { children: ComponentChildren }) {
-  return <div class="modal-scrim">{children}</div>;
-}
+/** Two worktrees of one repository, so the destination row is a real menu. */
+const SEED_DESTINATIONS: readonly QuickDestination[] = [
+  {
+    path: "/dev/spacevibe-deck",
+    name: "spacevibe-deck",
+    branch: "main",
+    primary: true,
+  },
+  {
+    path: "/dev/deck-modal-shell",
+    name: "deck-modal-shell",
+    branch: "feat/modal-shell",
+    primary: false,
+  },
+];
 
 function PersistBarSpecimen() {
   return (
@@ -95,44 +107,40 @@ export function OverlaysSection() {
 
       <Specimen
         name=".modal-scrim + .preset-editor"
-        note="radius 12px, rise-in 0.2s — a modal genre no DL section governs"
+        note="DL §29 — the one modal whose scrim is inert (DL-29.3): it holds an unsaved draft, so only Escape and Cancel close it"
         surface="bg"
         tall
       >
-        <ScrimStage>
-          <PresetEditor onCancel={NOOP} onCreate={NOOP} />
-        </ScrimStage>
+        <PresetEditor onCancel={NOOP} onCreate={NOOP} />
       </Specimen>
 
       <Specimen
         name=".modal-scrim + save dialog"
-        note="the second modal; compare its frame with the editor's"
+        note="the second modal; same shell, same blurred scrim, its own body"
         surface="bg"
         tall
       >
-        <ScrimStage>
-          <SavePresetDialog
-            existing={SEED_PRESETS}
-            onCancel={NOOP}
-            onSave={NOOP}
-          />
-        </ScrimStage>
+        <SavePresetDialog
+          existing={SEED_PRESETS}
+          onCancel={NOOP}
+          onSave={NOOP}
+        />
       </Specimen>
 
       <Specimen
         name=".modal-scrim + .agent-quick-picker"
-        note="the + button's fast path — chips reuse .achip from the open board, digit keys 1-9 / 0 pick immediately"
+        note="the + button's fast path (DL-29.7) — one destination stated above a COLUMN of agent rows; digit keys 1-9 / 0 still pick, the badges came off on 2026-08-16"
         surface="bg"
         tall
       >
-        <ScrimStage>
-          <AgentQuickPicker
-            detected={SEED_DETECTED_AGENTS}
-            customAgents={SEED_CUSTOM_AGENTS}
-            onSelect={NOOP}
-            onCancel={NOOP}
-          />
-        </ScrimStage>
+        <AgentQuickPicker
+          detected={SEED_DETECTED_AGENTS}
+          customAgents={SEED_CUSTOM_AGENTS}
+          destinations={SEED_DESTINATIONS}
+          initialDestination={SEED_DESTINATIONS[1].path}
+          onSelect={NOOP}
+          onCancel={NOOP}
+        />
       </Specimen>
 
       <Specimen

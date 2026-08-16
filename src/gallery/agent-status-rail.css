@@ -1,0 +1,176 @@
+/*
+ * Agent status rail — the SPECIMEN'S OWN HARNESS, and nothing else.
+ *
+ * The rail's chrome moved into `src/styles.css` under DL §27 when it was
+ * ported into the app; the class names are unchanged on purpose, so the
+ * shipped rail and the picture the owner approved cannot drift. What is left
+ * here is the study around it (`.asr-study*`) and the fake pane grid the
+ * focus ping is demonstrated against (`.asr-stage*`) — neither exists in the
+ * app, and neither may be added to it.
+ *
+ * `src/gallery/main.tsx` imports `../styles.css` BEFORE this file, so the one
+ * override below wins over the shipping base rule.
+ */
+
+.asr-study {
+  display: grid;
+  gap: 14px;
+  padding: 20px 22px 26px;
+  background: var(--chrome-2);
+}
+
+.asr-study__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.asr-study__state {
+  color: var(--text-muted);
+  font: 500 11.5px/1.2 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.asr-study__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.asr-study__actions button {
+  padding: 5px 11px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  font: 520 11px/1.2 var(--ui-font);
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.asr-study__actions button:hover {
+  border-color: var(--hair-strong);
+  background: color-mix(in srgb, var(--tone) 6%, transparent);
+  color: var(--text-primary);
+}
+
+.asr-study__actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* One rail at the width it actually gets in the window shell. */
+.asr-study__stage {
+  display: grid;
+  justify-content: start;
+  grid-template-columns: 276px;
+}
+
+/*
+ * The standalone specimen's frame. In the app the sidebar owns the frame, so
+ * the shipping rule paints no edge, no radius and no surface of its own —
+ * and `.asr-rail--mounted` there only adds the fill height. Standing on the
+ * study's own background this one needs a frame, so every declaration the
+ * shipping rule does not carry is restored here, including the surface a
+ * chip's badge ring cuts itself out of. The chrome specimen's rail sits
+ * outside this scope and keeps the shipping look.
+ */
+.asr-study__stage .asr-rail {
+  --asr-cutout: var(--chrome-1);
+  /* The shipping rule places the rail in the window grid's navigation cell
+     (column 1, row 2). This specimen stands in a one-column study grid where
+     that placement would leave row 1 empty, so it is handed back to auto. */
+  grid-column: auto;
+  grid-row: auto;
+  min-height: 316px;
+  padding: 8px 7px 7px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-surface);
+  background: var(--chrome-1);
+}
+
+/*
+ * The agent mark in the fake stage's pane header. It is the only `.asr-row__*`
+ * rule that stayed behind: the shipped rail draws agents as chips, so this
+ * class exists for the specimen's stand-in terminal grid and nowhere else.
+ */
+.asr-row__logo {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+}
+
+/* ------------------------------------------------- the stage's pane grid */
+
+.asr-stage {
+  display: grid;
+  height: 100%;
+  gap: 1px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--hair);
+}
+
+.asr-stage__pane {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--bg);
+}
+
+.asr-stage__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font: 520 11.5px/1.2 var(--ui-font);
+}
+
+.asr-stage__line {
+  margin: 0;
+  color: var(--text-faint);
+  font: 450 12px/1.5 var(--term-font, var(--ui-font));
+}
+
+/*
+ * The focus ping, against this fake grid rather than a real `.pane-slot`. It
+ * is the same contract `.pane-ping` ships in `src/styles.css` (DL-27.7): an
+ * inset hairline rather than a glow, because DL-1.3 bans blurred and offset
+ * shadows and is not amended, and what animates is `opacity`, the property
+ * DL-1.2 allows. Its keyframes carry their own name so the two files never
+ * shadow one another.
+ */
+.asr-stage__ring {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 2px var(--accent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes asr-ping {
+    0% {
+      opacity: 0;
+    }
+    12% {
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .asr-stage__ring {
+    animation: asr-ping 1500ms var(--ease) 1 both;
+  }
+}

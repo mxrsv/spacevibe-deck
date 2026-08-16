@@ -46,6 +46,9 @@ import {
 import { resetFileSurfaces } from "../files/file-surface-store";
 import { tabPopoverOpen } from "../chrome/events";
 import type { FileClient } from "../files/file-client";
+import { workspacesData } from "../open-board/workspaces-store";
+import { WORKSPACES_VERSION } from "../lib/workspace-recents";
+import { sessionArchive } from "../terminal/session-journal";
 
 const fileClient: FileClient = {
   listDir: async () => [],
@@ -115,6 +118,7 @@ function mount(
         onOpenWorkspace={NOOP}
         onRenameTab={NOOP}
         onSetTabColor={NOOP}
+        onResumeWorktree={NOOP}
         showAgentPresence
         {...props}
       />,
@@ -140,6 +144,7 @@ function mountSidebarLayout(): void {
           onOpenWorkspace={NOOP}
           onRenameTab={NOOP}
           onSetTabColor={NOOP}
+          onResumeWorktree={NOOP}
         />
         <div class="stage__strip">
           <TabStrip
@@ -147,9 +152,9 @@ function mountSidebarLayout(): void {
             onCloseTab={NOOP}
             fileController={fileController}
             onNewTab={NOOP}
-            onRenameTab={NOOP}
-            onSetTabColor={NOOP}
-            ownsTabOptionsChord={false}
+            onSelectBrowser={NOOP}
+            onCloseBrowser={NOOP}
+            scopeToActiveRepository
           />
         </div>
       </>,
@@ -173,10 +178,18 @@ beforeEach(() => {
   invalidateRepositoryScans();
   collapsedRepositories.value = new Set();
   configureRepositoryClient({ scan: async () => SCAN });
+  workspacesData.value = {
+    version: WORKSPACES_VERSION,
+    recents: [
+      { path: "/r/main", lastOpenedAt: 2 },
+      { path: "/r/side", lastOpenedAt: 1 },
+    ],
+  };
   tabViews.value = [tab()];
   activeTabIndex.value = 0;
   resetFileSurfaces();
   fileController = createFileSurfaceController({ client: fileClient });
+  sessionArchive.value = {};
 });
 
 afterEach(() => {
@@ -184,8 +197,10 @@ afterEach(() => {
   host.remove();
   invalidateRepositoryScans();
   resetDesktopEnvironmentForTests();
+  workspacesData.value = { version: WORKSPACES_VERSION, recents: [] };
   fileController.dispose();
   resetFileSurfaces();
+  sessionArchive.value = {};
   vi.restoreAllMocks();
 });
 
@@ -194,10 +209,23 @@ describe("RepositoryRail", () => {
     mount();
     await settle();
     expect(host.querySelector(".repogroup__name")?.textContent).toBe("main");
-    // One interactive row for the open tab, one readout for the worktree
-    // nobody has opened.
+    // One interactive row for the open tab, one readout for a previously
+    // opened worktree with no current session.
     expect(host.querySelectorAll(".wsitem").length).toBe(2);
     expect(host.querySelectorAll(".wsitem--readout").length).toBe(1);
+  });
+
+  it("hides discovered worktrees that have never appeared in Deck recents", async () => {
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/r/main", lastOpenedAt: 1 }],
+    };
+    mount();
+    await settle();
+
+    expect(host.querySelectorAll(".wsitem")).toHaveLength(1);
+    expect(host.textContent).toContain("main");
+    expect(host.textContent).not.toContain("side");
   });
 
   it("uses a hollow state dot instead of a workspace avatar for every row", async () => {
@@ -248,14 +276,43 @@ describe("RepositoryRail", () => {
   });
 
   it("shows the worktree's recognized agents independently from activity", async () => {
-    tabViews.value = [tab({ agents: ["claude", "codex"], agentBusy: false })];
+    tabViews.value = [
+      tab({ key: 1, agents: ["claude"], agentBusy: false }),
+      tab({ key: 2, agents: ["codex"], agentBusy: false }),
+    ];
     mount();
     await settle();
 
     expect(host.querySelectorAll(".worktree-agents__logo")).toHaveLength(2);
     expect(
       host.querySelector(".worktree-agents")?.getAttribute("aria-label"),
-    ).toBe("Agents in this worktree: Claude Code, Codex");
+    ).toBe("2 agent tabs in this worktree");
+  });
+
+  it("renders one worktree row with one focusable agent button per tab", async () => {
+    const onSelectTab = vi.fn();
+    tabViews.value = [
+      tab({ key: 1, agents: ["claude"] }),
+      tab({ key: 2, agents: ["claude"] }),
+      tab({ key: 3, agents: ["codex"] }),
+    ];
+    activeTabIndex.value = 1;
+    mount({ onSelectTab });
+    await settle();
+
+    expect(host.querySelectorAll(".wsitem:not(.wsitem--readout)")).toHaveLength(
+      1,
+    );
+    const agentButtons = host.querySelectorAll<HTMLButtonElement>(
+      ".worktree-agents__item",
+    );
+    expect(agentButtons).toHaveLength(3);
+    expect(agentButtons[1].getAttribute("aria-current")).toBe("page");
+
+    act(() => {
+      agentButtons[2].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onSelectTab).toHaveBeenCalledWith(2);
   });
 
   it("keeps agent presence out of a host that does not enable it", async () => {
@@ -282,14 +339,45 @@ describe("RepositoryRail", () => {
     expect(onSelectTab).toHaveBeenCalledWith(1);
   });
 
-  it("closes a tab by index, not by row position", async () => {
+  it("restores the last selected tab when returning to a worktree", async () => {
+    const onSelectTab = vi.fn((index: number) => {
+      activeTabIndex.value = index;
+    });
+    tabViews.value = [
+      tab({ key: 1, agents: ["claude"] }),
+      tab({ key: 2, agents: ["codex"] }),
+      tab({ key: 3, workspacePath: "/r/side", agents: ["opencode"] }),
+    ];
+    activeTabIndex.value = 1;
+    mount({ onSelectTab });
+    await settle();
+
+    act(() => {
+      host
+        .querySelector<HTMLElement>('[data-workspace="/r/side"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+    expect(onSelectTab).toHaveBeenLastCalledWith(2);
+
+    act(() => {
+      host
+        .querySelector<HTMLElement>('[data-workspace="/r/main"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onSelectTab).toHaveBeenLastCalledWith(1);
+  });
+
+  it("closes only the active tab in an aggregated worktree row", async () => {
     const onCloseTab = vi.fn();
-    tabViews.value = [tab(), tab({ key: 2, workspacePath: "/r/side" })];
+    tabViews.value = [tab(), tab({ key: 2 }), tab({ key: 3 })];
+    activeTabIndex.value = 1;
     mount({ onCloseTab });
     await settle();
     const closers = host.querySelectorAll<HTMLElement>(".wsitem__close");
+    expect(closers).toHaveLength(1);
     act(() => {
-      closers[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      closers[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(onCloseTab).toHaveBeenCalledWith(1);
   });
@@ -301,6 +389,43 @@ describe("RepositoryRail", () => {
     expect(readout?.tagName).toBe("DIV");
     expect(readout?.querySelector("button")).toBeNull();
     expect(readout?.getAttribute("aria-label")).toContain("not open");
+  });
+
+  it("renders an archived empty worktree as a focusable resume row, not a readout", async () => {
+    sessionArchive.value = { "/r/side": { savedAt: 1, tabs: [] } };
+    const onResumeWorktree = vi.fn();
+    mount({ onResumeWorktree });
+    await settle();
+
+    expect(host.querySelector(".wsitem--readout")).toBeNull();
+    const resumeRow = host.querySelector<HTMLElement>('.wsitem[role="button"]');
+    expect(resumeRow).not.toBeNull();
+    expect(resumeRow?.getAttribute("tabindex")).toBe("0");
+    expect(resumeRow?.getAttribute("aria-label")).toBe(
+      "Resume last session in side",
+    );
+
+    act(() => {
+      resumeRow?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onResumeWorktree).toHaveBeenCalledWith("/r/side");
+
+    onResumeWorktree.mockClear();
+    act(() => {
+      resumeRow?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+    });
+    expect(onResumeWorktree).toHaveBeenCalledWith("/r/side");
+  });
+
+  it("keeps a non-archived empty worktree a readout, not focusable", async () => {
+    mount();
+    await settle();
+
+    expect(host.querySelector('.wsitem[role="button"]')).toBeNull();
+    const readout = host.querySelector<HTMLElement>(".wsitem--readout");
+    expect(readout?.getAttribute("tabindex")).toBeNull();
   });
 
   it("names every state in the accessible label, not only in colour", async () => {
@@ -453,11 +578,16 @@ describe("RepositoryRail and file tabs", () => {
     expect(requestTabOptionsKey.value).toBeNull(); // consumed exactly once
   });
 
-  it("one popover at a time: the strip claiming the slot closes the rail's", async () => {
+  it("the rail's popover claims the shared slot, and closing it releases", async () => {
+    // Two tests lived here until 2026-08-16, both about the strip and the rail
+    // trading the one slot. The strip no longer raises a popover at all, so
+    // what is left to prove is the half that still runs: the claim drives
+    // `tabPopoverOpen`, which hides the browser's native view — a view that
+    // paints over every DOM layer, so a stale claim either hides it forever or
+    // paints it straight over a live popover.
     mountSidebarLayout();
     await settle();
 
-    // The rail's, via right-click — the mouse path, independent of the chord.
     const row = host.querySelector(
       ".wsitem:not(.wsitem--readout)",
     ) as HTMLElement;
@@ -466,47 +596,13 @@ describe("RepositoryRail and file tabs", () => {
     });
     expect(host.querySelectorAll(".tab-popover")).toHaveLength(1);
     expect(host.querySelector(".tab-popover__logo")).not.toBeNull(); // the rail's
-
-    // The strip's, via a click on its active chip. `TabPopover`'s own
-    // outside-close listener is on `pointerdown`, so it is NOT what closes the
-    // rail's here — the shared slot is.
-    const chip = host.querySelector(".stage__strip .tab") as HTMLElement;
-    act(() => {
-      chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(host.querySelectorAll(".tab-popover")).toHaveLength(1);
-    expect(host.querySelector(".tab-popover__logo")).toBeNull(); // now the strip's
-    expect(tabPopoverOpen.value).toBe(true);
-  });
-
-  it("the surface that stood down cannot clear the holder's claim", async () => {
-    // The flag drives `panelObscured()`, which hides the browser panel's
-    // native view — and a native view wins over every DOM layer, so a false
-    // here paints the WebContentsView straight over a live popover. Standing
-    // down runs the loser's own release path; without the "only if you still
-    // hold it" guard in `closeTabPopover`, that release would retract the
-    // winner's claim and report nothing open while the strip's popover is
-    // plainly on screen.
-    mountSidebarLayout();
-    await settle();
-
-    const row = host.querySelector(
-      ".wsitem:not(.wsitem--readout)",
-    ) as HTMLElement;
-    act(() => {
-      row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
-    });
-    const chip = host.querySelector(".stage__strip .tab") as HTMLElement;
-    act(() => {
-      chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(host.querySelectorAll(".tab-popover")).toHaveLength(1);
     expect(tabPopoverOpen.value).toBe(true);
 
-    // …and the slot empties for real once the holder itself closes.
+    // `TabPopover` closes itself on a pointerdown outside its own box.
     act(() => {
-      chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      document.body.dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: true }),
+      );
     });
     expect(host.querySelector(".tab-popover")).toBeNull();
     expect(tabPopoverOpen.value).toBe(false);

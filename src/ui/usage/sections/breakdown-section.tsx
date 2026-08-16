@@ -32,15 +32,15 @@ import {
  */
 
 const COLUMNS: readonly MetricColumn[] = [
-  { key: "agent", label: "agent" },
-  { key: "model", label: "model" },
-  { key: "input-uncached", label: "input uncached", numeric: true },
-  { key: "cache-read", label: "cache read", numeric: true },
-  { key: "cache-create-5m", label: "cache create 5m", numeric: true },
-  { key: "cache-create-1h", label: "cache create 1h", numeric: true },
-  { key: "cache-write", label: "cache write", numeric: true },
-  { key: "output", label: "output", numeric: true },
-  { key: "usd", label: "est. usd", numeric: true },
+  { key: "agent", label: "Agent" },
+  { key: "model", label: "Model" },
+  { key: "input-uncached", label: "Input uncached", numeric: true },
+  { key: "cache-read", label: "Cache read", numeric: true },
+  { key: "cache-create-5m", label: "Cache create 5m", numeric: true },
+  { key: "cache-create-1h", label: "Cache create 1h", numeric: true },
+  { key: "cache-write", label: "Cache write", numeric: true },
+  { key: "output", label: "Output", numeric: true },
+  { key: "usd", label: "Est. USD", numeric: true },
 ];
 
 export function BreakdownSection() {
@@ -63,11 +63,11 @@ export function BreakdownSection() {
 
   return (
     <MetricTable
-      title="per agent and model"
+      title="Per agent and model"
       note={ESTIMATE_NOTE}
       columns={COLUMNS}
       rows={rows}
-      emptyLabel="no data yet"
+      emptyLabel="No data yet"
     />
   );
 }

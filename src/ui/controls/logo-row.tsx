@@ -39,7 +39,7 @@ export function LogoRow() {
 
   return (
     <>
-      <ConfigRow label="App logo" desc="shown on the open board">
+      <ConfigRow label="App logo" desc="Shown on the open board">
         <button
           type="button"
           class="cfg-btn"

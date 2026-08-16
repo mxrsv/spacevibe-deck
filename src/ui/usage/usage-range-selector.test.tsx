@@ -33,18 +33,18 @@ describe("UsageRangeSelector", () => {
   const options = (): HTMLButtonElement[] =>
     Array.from(host.querySelectorAll('[role="tab"]'));
 
-  it("shows every period at once, lowercase (DL-16.7)", () => {
+  it("shows every period at once, sentence-case (DL-16.7, DL-4.4)", () => {
     mount();
     // All four visible is the rule, not a layout accident: the set of
     // available comparisons is itself information.
     expect(options().map((option) => option.textContent)).toEqual([
-      "today",
+      "Today",
       "7 days",
       "30 days",
-      "all",
+      "All",
     ]);
     for (const option of options()) {
-      expect(option.textContent).toBe(option.textContent?.toLowerCase());
+      expect(option.textContent).not.toBe(option.textContent?.toUpperCase());
     }
   });
 
@@ -54,7 +54,7 @@ describe("UsageRangeSelector", () => {
       (option) => option.getAttribute("aria-selected") === "true",
     );
     expect(selected).toHaveLength(1);
-    expect(selected[0].textContent).toBe("all");
+    expect(selected[0].textContent).toBe("All");
   });
 
   it("marks exactly one option active, by class and by aria", () => {

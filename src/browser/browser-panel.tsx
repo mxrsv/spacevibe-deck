@@ -1,16 +1,17 @@
 /**
- * The browser panel's chrome: address bar, navigation, Inspect, and the hole
- * the host's native view is positioned over.
+ * The browser surface's chrome: address bar, navigation, Inspect, and the
+ * hole the host's native view is positioned over. Mounted by
+ * `BrowserSurface` while the browser tab holds the stage (DL-18.8).
  *
  * `.browser-panel__view` is that hole — an empty element that never paints
  * anything. It exists to be measured: the web content is a `WebContentsView`
  * stacked on the window by the host, which has no way to know where this
- * column ended up. Every path that can move or resize it therefore ends in
+ * surface ended up. Every path that can move or resize it therefore ends in
  * `report()`.
  *
- * Styling follows DESIGN-LANGUAGE §19 (docked side panels): a real grid column
- * with a hairline seam, chrome-2 surface, and the same `iconbtn` the tab bar
- * uses so the panel's buttons are the app's buttons.
+ * Styling follows the document surface it shares the stage with (DL §18.7's
+ * focal stage, spec §4.2's cover-don't-unmount rule) and reuses the same
+ * `iconbtn` the tab bar uses so the surface's buttons are the app's buttons.
  */
 import {
   useCallback,
@@ -29,15 +30,11 @@ import {
 import { CHROME_ICON, DeckIcon } from "../ui/controls/deck-icon";
 import { shortcutLabel } from "../lib/shortcut-label";
 import { getDesktopEnvironment } from "../lib/platform";
-import { clampBrowserWidth } from "../settings/settings-schema";
 import { defaultBrowserClient, type BrowserClient } from "./browser-client";
-import { browserNotice, browserState, browserWidthLive } from "./browser-store";
+import { browserNotice, browserState } from "./browser-store";
 
 interface BrowserPanelProps {
-  /** Live width — the drag value while resizing, the setting otherwise. */
-  readonly width: number;
-  /** Committed at the end of a drag, not during it — one settings write. */
-  readonly onWidthChange: (width: number) => void;
+  /** Closes the browser TAB — the chip leaves the strip, the page is kept. */
   readonly onClose: () => void;
   /** Hidden while a DOM overlay covers the stage; see `App`. */
   readonly hidden: boolean;
@@ -45,8 +42,6 @@ interface BrowserPanelProps {
 }
 
 export function BrowserPanel({
-  width,
-  onWidthChange,
   onClose,
   hidden,
   client = defaultBrowserClient,
@@ -89,7 +84,7 @@ export function BrowserPanel({
 
   useLayoutEffect(() => {
     report();
-  }, [report, width, hidden]);
+  }, [report, hidden]);
 
   useEffect(() => {
     const element = viewRef.current;
@@ -133,37 +128,6 @@ export function BrowserPanel({
     );
   };
 
-  const startResize = (event: PointerEvent): void => {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startWidth = width;
-    const target = event.currentTarget as HTMLElement;
-    target.setPointerCapture(event.pointerId);
-
-    const move = (moveEvent: PointerEvent): void => {
-      // The handle is on the panel's LEFT edge, so dragging left widens it.
-      browserWidthLive.value = clampBrowserWidth(
-        startWidth + (startX - moveEvent.clientX),
-      );
-    };
-    const end = (): void => {
-      target.removeEventListener("pointermove", move);
-      target.removeEventListener("pointerup", end);
-      target.removeEventListener("pointercancel", end);
-      const dragged = browserWidthLive.value;
-      // Cleared BEFORE the commit: the settings write is async, and leaving
-      // the live value up until it lands makes the column jump back to the old
-      // width for a frame if the write is slow.
-      browserWidthLive.value = null;
-      if (dragged !== null) {
-        onWidthChange(dragged);
-      }
-    };
-    target.addEventListener("pointermove", move);
-    target.addEventListener("pointerup", end);
-    target.addEventListener("pointercancel", end);
-  };
-
   const inspectChord = shortcutLabel("toggle-browser");
   // react-grab's own copy gesture, which Deck does not own and cannot rebind —
   // but it is still a chord, and DL-17.7 keeps chord spelling out of literals
@@ -175,15 +139,8 @@ export function BrowserPanel({
     <aside
       class="browser-panel"
       aria-label="Browser (Electron only)"
-      title="Browser panel — Electron only, not available on Tauri"
+      title="Browser — Electron only, not available on Tauri"
     >
-      <div
-        class="browser-panel__grip"
-        onPointerDown={startResize}
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize the browser panel"
-      />
       <div class="browser-panel__bar">
         <button
           type="button"
@@ -247,8 +204,8 @@ export function BrowserPanel({
         <button
           type="button"
           class="iconbtn"
-          title="Close the browser panel"
-          aria-label="Close the browser panel"
+          title="Close the browser tab"
+          aria-label="Close the browser tab"
           onClick={onClose}
         >
           <DeckIcon icon={X} size={CHROME_ICON} />

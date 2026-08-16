@@ -66,6 +66,14 @@ interface Rgb {
 const DARK_LUMINANCE_THRESHOLD = 0.45;
 // Step size when raising a text color toward the tone (2% per step)
 const RAISE_STEP = 0.02;
+// WCAG contrast floors for the three chrome text tones, checked against
+// every surface a tone can land on (see `surfaces` in `deriveChromeColors`).
+// Exported so a review surface can LABEL the floor it is measuring against
+// without restating the number — DL-3.5 is the rule, this is the one place it
+// is implemented, and a second copy could only ever drift away from it.
+export const TEXT_PRIMARY_FLOOR = 8;
+export const TEXT_MUTED_FLOOR = 6;
+export const TEXT_FAINT_FLOOR = 4.5;
 
 function hexToRgb(hex: string): Rgb {
   const value = Number.parseInt(hex.slice(1), 16);
@@ -170,7 +178,12 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   // up louder than the loud one. Mixing toward `bg` can only ever lower
   // contrast, so ordering holds by construction; the `ensureContrast` pass
   // after each mix only pulls a step back up if it undershot its floor.
-  const textPrimary = ensureContrast(fg, [inputBg, ...surfaces], 7, tone);
+  const textPrimary = ensureContrast(
+    fg,
+    [inputBg, ...surfaces],
+    TEXT_PRIMARY_FLOOR,
+    tone,
+  );
   return {
     tone,
     sidebarBg,
@@ -194,7 +207,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     textMuted: ensureContrast(
       mixHex(textPrimary, bg, 0.28),
       surfaces,
-      5.5,
+      TEXT_MUTED_FLOOR,
       tone,
     ),
     // 4.5, not 3: this token styles 10.5–11px text — config row descriptions,
@@ -203,7 +216,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     textFaint: ensureContrast(
       mixHex(textPrimary, bg, 0.5),
       surfaces,
-      4.5,
+      TEXT_FAINT_FLOOR,
       tone,
     ),
   };

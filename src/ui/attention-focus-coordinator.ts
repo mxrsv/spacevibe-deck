@@ -18,12 +18,6 @@ export interface AttentionOverlaySnapshot {
   board: boolean;
   /** Settings panel open. */
   settings: boolean;
-  /**
-   * Token usage screen open. A full-window surface like Settings, so ⌘⇧A must
-   * drop it before focusing a pane — otherwise the shortcut acknowledges an
-   * attention badge on a pane the user cannot see.
-   */
-  usage: boolean;
   /** PresetEditor open (holds a draft). */
   presetEditor: boolean;
   /** SavePresetDialog open (holds a draft). */
@@ -40,19 +34,14 @@ export interface AttentionFocusRequest {
   overlays: AttentionOverlaySnapshot;
   /**
    * NON-focusing set-state (e.g. `boardOpen.value = false`) — NOT
-   * `OpenBoard.onCancel`.
+   * `OpenBoard.onCancel`, which focuses the active pane.
    */
   dismissBoard: () => void;
   /**
    * NON-focusing set-state (e.g. `settingsOpen.value = false`) — NOT
-   * `closePanel()`.
+   * `closePanel()`, which focuses the active pane.
    */
   dismissSettings: () => void;
-  /**
-   * NON-focusing set-state (e.g. `usageOpen.value = false`) — NOT
-   * `closeUsagePanel()`.
-   */
-  dismissUsage: () => void;
   /**
    * e.g. `tabsRef.focusNextAttention(tabIndex)`; it re-validates the
    * candidate itself.
@@ -68,8 +57,8 @@ export interface AttentionFocusRequest {
  * 2. `presetEditor` or `savePresetDialog` open → BLOCKED: complete no-op,
  *    every overlay (including board/settings) stays open and every draft
  *    stays intact.
- * 3. Otherwise: dismiss `board`/`settings`/`usage` (only the ones that are
- *    open), then call `focusAttention`.
+ * 3. Otherwise: dismiss `board`/`settings` (only the ones
+ *    that are open), then call `focusAttention`.
  *
  * There is no `await` anywhere in this function — dismissal and focus run
  * back-to-back in the same synchronous tick.
@@ -81,7 +70,6 @@ export function runAttentionFocus(req: AttentionFocusRequest): void {
     overlays,
     dismissBoard,
     dismissSettings,
-    dismissUsage,
     focusAttention,
   } = req;
 
@@ -98,9 +86,6 @@ export function runAttentionFocus(req: AttentionFocusRequest): void {
   }
   if (overlays.settings) {
     dismissSettings();
-  }
-  if (overlays.usage) {
-    dismissUsage();
   }
   focusAttention(tabIndex);
 }

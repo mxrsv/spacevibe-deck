@@ -91,6 +91,7 @@ pub fn build_view_menu<R: Runtime>(
         "Browser",
         Some("CmdOrCtrl+Shift+I"),
     )?;
+    let toggle_dock = action_item(handle, "toggle-dock", "Side Panel", None)?;
     let toggle_explorer = action_item(
         handle,
         "toggle-explorer",
@@ -100,7 +101,7 @@ pub fn build_view_menu<R: Runtime>(
     let toggle_usage = action_item(
         handle,
         "toggle-usage",
-        "Token Usage…",
+        "Token Usage",
         Some("CmdOrCtrl+Shift+U"),
     )?;
     tauri::menu::SubmenuBuilder::new(handle, "View")
@@ -120,8 +121,8 @@ pub fn build_view_menu<R: Runtime>(
         .separator()
         .item(&toggle_browser)
         .separator()
+        .item(&toggle_dock)
         .item(&toggle_explorer)
-        .separator()
         .item(&toggle_usage)
         .build()
 }

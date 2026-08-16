@@ -8,14 +8,18 @@ import {
 import {
   flushSettingsSave,
   settings,
-  toggleExplorer,
+  revealDockTab,
+  toggleDock,
   updateSettings,
 } from "../settings/settings-store";
 import { type Direction, type SerializedNode } from "../lib/split-tree";
 import type { PaneAgent, PaneProcessInfo } from "../lib/process-info";
+import type { SessionTab } from "../lib/session-schema";
 import type { DetachTarget } from "./pane-detach";
 import { defaultTransferClient, type TransferClient } from "./transfer-client";
 import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
+import { nextOpenSequence, UNSEQUENCED } from "../lib/open-sequence";
+import { mergeStripOrder, type StripSlot } from "../lib/strip-order";
 import { sendAgentNotification } from "../lib/native-notification";
 import { getDesktopEnvironment } from "../lib/platform";
 import { BUILT_IN_PRESET } from "../lib/preset-schema";
@@ -65,8 +69,10 @@ import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { submitAllowed, type InjectOutcome } from "../prompts/inject";
 import { defaultBrowserClient } from "../browser/browser-client";
 import {
+  activateBrowserSurface,
   browserOpen,
-  closeBrowser,
+  browserSurfaceActive,
+  deactivateBrowserSurface,
   openBrowser,
 } from "../browser/browser-store";
 import { createAgentLauncher } from "./agent-launch";
@@ -80,12 +86,11 @@ import {
 import {
   activeTabIndex,
   applyTabOverride,
-  requestTabOptionsKey,
   statusInfo,
   tabViews,
+  type PaneView,
   type TabOverride,
 } from "./tabs-store";
-import type { TabDotColor } from "../lib/tab-colors";
 import {
   agentQuickPickerOpen,
   boardOpen,
@@ -95,7 +100,6 @@ import {
   saveDialogOpen,
   settingsOpen,
   shortcutCaptureActive,
-  usageOpen,
 } from "../chrome/events";
 
 /**
@@ -120,11 +124,11 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The ids `commands` implements — 44 entries, verified against the live
+ * The ids `commands` implements — 45 entries, verified against the live
  * `commands` table, Task 4's `copy-selection`/`paste` included, the Prompt
- * Board's `toggle-prompts`, the browser panel's `toggle-browser`, the file
- * explorer's `toggle-explorer`/`save-file` and the token usage screen's
- * `toggle-usage` alongside them. (Line numbers are deliberately not cited:
+ * Board's `toggle-prompts`, the browser surface's `toggle-browser`, and the
+ * dock's `toggle-dock`/`toggle-explorer`/`toggle-usage`/`save-file`
+ * alongside them. (Line numbers are deliberately not cited:
  * they rotted within one feature of being written.)
  *
  * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
@@ -151,7 +155,6 @@ const COMMAND_ACTIONS = [
   "new-preset",
   "new-tab",
   "next-tab",
-  "open-tab-options",
   "paste",
   "prev-tab",
   "reopen-tab",
@@ -168,6 +171,7 @@ const COMMAND_ACTIONS = [
   "swap-right",
   "swap-up",
   "toggle-browser",
+  "toggle-dock",
   "toggle-expand",
   "toggle-explorer",
   "toggle-prompts",
@@ -241,6 +245,13 @@ interface TabEntry {
   readonly key: number;
   readonly manager: TerminalManager;
   /**
+   * This tab's place in the strip's one open order (`lib/open-sequence.ts`).
+   * Separate from `key`, which is an identity and happens to be allocated in
+   * creation order: the order key is shared with surfaces this manager knows
+   * nothing about, so it cannot come from a counter only tabs advance.
+   */
+  readonly openedAt: number;
+  /**
    * The directory picked on Open, fixed for the tab's life — one per tab, but
    * several tabs may share one workspace. Never re-derived from a pane's live
    * CWD (a `cd` must not rename the tab).
@@ -285,6 +296,18 @@ export interface SurfaceStrip {
   total(): number;
   /** Index within the strip's segment, or -1 when a terminal tab is active. */
   activeIndex(): number;
+  /**
+   * When the surface at `index` was opened, on the window's shared clock
+   * (`lib/open-sequence.ts`).
+   *
+   * The entire vocabulary the merged strip needs: TabManager orders its tabs
+   * against the surfaces without learning what a surface IS, which is the
+   * §2.3 seam restated for ordering. Optional so an implementation written
+   * before 2026-08-16 (every `SurfaceStrip` fake in the suite) keeps
+   * compiling — a missing key reads as `UNSEQUENCED` and reproduces the old
+   * terminals-then-surfaces strip exactly.
+   */
+  orderKey?(index: number): number;
   /** Activate the surface at `index` within the segment. */
   activate(index: number): void;
   /** A terminal tab is taking the stage. */
@@ -303,6 +326,7 @@ const INERT_SURFACES: SurfaceStrip = {
   count: () => 0,
   total: () => 0,
   activeIndex: () => -1,
+  orderKey: () => UNSEQUENCED,
   activate: () => {},
   deactivate: () => {},
   focus: () => {},
@@ -339,11 +363,10 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    */
   onToggleSettings?: () => void;
   /**
-   * ⌘⇧U (`toggle-usage`) and the menu's "Token Usage…" item route here rather
-   * than writing `usageOpen` directly — the same reason `onToggleSettings`
-   * above exists. App owns the open/close+focus-return flow AND the
-   * Settings/Usage mutual exclusion (spec §Surface, major M4); writing the
-   * signal from here would put half of that rule in a second place. Missing
+   * ⌘⇧U (`toggle-usage`) and the menu's "Token Usage" item route here rather
+   * than reaching into the dock directly — the same reason `onToggleSettings`
+   * above exists. App owns the reveal+focus-return flow for every surface it
+   * mounts; duplicating half of it here is how the two would drift. Missing
    * = no-op, same as the other two seams.
    */
   onToggleUsage?: () => void;
@@ -380,7 +403,15 @@ export interface TabManager {
    * AgentQuickPicker confirm: single pane, active tab's workspace, no
    * workspace/preset step — the `+` button's fast path (`newTab()`).
    */
-  openQuickAgent(agentId: AgentChoice): Promise<boolean>;
+  /**
+   * `destination` is a worktree path the quick picker offered; it becomes
+   * both the new tab's cwd and its workspace tag. Omit (or pass null) to keep
+   * the focused pane's live cwd and the active tab's workspace.
+   */
+  openQuickAgent(
+    agentId: AgentChoice,
+    destination?: string | null,
+  ): Promise<boolean>;
   /** Workspace of the active tab; null when it has none (or no tab). */
   activeWorkspacePath(): string | null;
   /** Live layout + fresh per-pane CWDs for save-as-preset; null when no tab. */
@@ -388,6 +419,13 @@ export interface TabManager {
     layout: SerializedNode;
     cwds: readonly (string | null)[];
   } | null>;
+  /**
+   * Polled snapshot of every tab for the session journal. No IPC and no
+   * awaits — reads the 2 s poll cache, which is the deliberate accuracy
+   * bound for a journal that survives power-off (there is no "at quit"
+   * moment to be fresher at).
+   */
+  captureSession(): readonly SessionTab[];
   /** Fresh CWD of the focused pane (editor "↑ inherit" from a live window). */
   activePaneCwd(): Promise<string | null>;
   /** The focused pane of the active tab; null when there is no tab. */
@@ -439,10 +477,6 @@ export interface TabManager {
    * to decide whether the shortcut/click has anything to do.
    */
   hasActionableAttention(tabIndex?: number): boolean;
-  /** Set or clear (null) a custom tab name; overrides the process label. */
-  renameTab(index: number, name: string | null): void;
-  /** Set or clear (null) a custom tab dot color token. */
-  setTabDotColor(index: number, color: TabDotColor | null): void;
   cycleTab(step: 1 | -1): void;
   /**
    * Run a keymap action that did NOT arrive as a key event — today only the
@@ -596,9 +630,25 @@ export function createTabManager(
         (id) =>
           explicitAgent(poller.infoFor(id)) !== null && activity.working(id),
       );
+      // The per-pane projection the agent rail's chips and expanded rows both
+      // need (agent-status-rail spec §5, tier 2). It reports every pane, agent
+      // or not — filtering shell panes out of a ROW list is the rail's job,
+      // and a projection that dropped them would also drop the pane ids that
+      // make a `+N` count add up.
+      const panes: readonly PaneView[] = paneIds.map((id) => {
+        const snap = tracker.snapshot(id);
+        return {
+          paneId: id,
+          agent: explicitAgent(poller.infoFor(id)),
+          attention: snap?.attention ?? "none",
+          phase: snap?.phase ?? "unknown",
+          changedAt: snap?.changedAt ?? 0,
+        };
+      });
       return applyTabOverride(
         {
           key: tab.key,
+          openedAt: tab.openedAt,
           process: processLabel(info),
           name: null,
           dotColor: null,
@@ -609,6 +659,7 @@ export function createTabManager(
           // Additive Attention Rail summary; `agentBusy`/`unread` above keep
           // their existing semantics untouched.
           attention: tracker.summarize(paneIds),
+          panes,
         },
         overrides.get(tab.key),
       );
@@ -770,6 +821,7 @@ export function createTabManager(
     tabs.push({
       key: nextKey,
       manager,
+      openedAt: nextOpenSequence(),
       // The only place a tab's workspace is ever set — normalize here so every
       // entry point (Open, reopen, live preset) agrees on one spelling.
       workspacePath:
@@ -872,20 +924,6 @@ export function createTabManager(
 
   function hasActionableAttention(tabIndex?: number): boolean {
     return nextAttentionCandidate(tabIndex) !== null;
-  }
-
-  function setOverride(index: number, patch: TabOverride): void {
-    const entry = tabs[index];
-    if (!entry) {
-      return;
-    }
-    const next = { ...(overrides.get(entry.key) ?? {}), ...patch };
-    if (next.name === undefined && next.dotColor === undefined) {
-      overrides.delete(entry.key);
-    } else {
-      overrides.set(entry.key, next);
-    }
-    syncViews();
   }
 
   /**
@@ -1031,6 +1069,7 @@ export function createTabManager(
     const placeholder: TabEntry = {
       key: nextKey,
       manager,
+      openedAt: nextOpenSequence(),
       workspacePath: null,
     };
     tabs.push(placeholder);
@@ -1107,19 +1146,25 @@ export function createTabManager(
     }
     selectTab(tabs.length - 1);
     void poller.poll();
-    // Each pane types its agent once its shell prints the first byte; `null`
-    // (Shell only / reopen) arms nothing. The id becomes a command line HERE
-    // rather than inside the launcher: `arm` still takes a plain string and
+    // Each pane types its command once its shell prints the first byte;
+    // `null` arms nothing. The id becomes a command line HERE rather than
+    // inside the launcher: `arm` still takes a plain string per pane and
     // writes it verbatim, so its readiness/timeout state machine stays out of
     // the catalog's business. A declared agent deleted since the workspace
     // remembered it resolves to null and arms nothing — an empty shell, not a
-    // pane that types a stale command.
+    // pane that types a stale command. `paneCommands` (session restore) wins
+    // per pane over the tab-wide `agent` fallback.
     const agentId = intent.agent ?? null;
-    launcher.arm(
-      entry.manager.paneIds(),
+    const fallback =
       agentId === null
         ? null
-        : resolveAgentCommand(agentId, settings.value.customAgents),
+        : resolveAgentCommand(agentId, settings.value.customAgents);
+    const paneIds = entry.manager.paneIds();
+    launcher.arm(
+      paneIds.map((id, index) => ({
+        id,
+        command: intent.paneCommands?.[index] ?? fallback,
+      })),
     );
     return true;
   }
@@ -1149,9 +1194,17 @@ export function createTabManager(
    * repo root. No tab at all resolves both to `null`, which `materialize`
    * falls back to `$HOME` for, matching a bare `newTab()` pre-cutover.
    */
-  async function openQuickAgent(agentId: AgentChoice): Promise<boolean> {
-    const cwd = await activePaneCwd();
-    const workspacePath = activeWorkspacePath();
+  async function openQuickAgent(
+    agentId: AgentChoice,
+    destination: string | null = null,
+  ): Promise<boolean> {
+    // A destination is a worktree the picker offered, so it is BOTH the cwd
+    // and the workspace tag: tagging the tab with the worktree it runs in is
+    // what puts it under the right rail row. Passing null keeps the original
+    // behaviour exactly — the focused pane's live cwd, the active tab's
+    // workspace — which is what every host without `git_repository` gets.
+    const cwd = destination ?? (await activePaneCwd());
+    const workspacePath = destination ?? activeWorkspacePath();
     return materialize({
       layout: BUILT_IN_PRESET.layout,
       cwds: [cwd],
@@ -1171,6 +1224,29 @@ export function createTabManager(
       return null;
     }
     return capturePresetLayout(manager.paneIds(), layout, pty);
+  }
+
+  function captureSession(): readonly SessionTab[] {
+    return tabs.flatMap((entry) => {
+      const layout = entry.manager.serializeLayout();
+      if (layout === null) {
+        return [];
+      }
+      const override = overrides.get(entry.key);
+      const panes = entry.manager.paneIds().map((id) => {
+        const info = poller.infoFor(id);
+        return { cwd: info?.cwd ?? null, agent: info?.agent ?? null };
+      });
+      return [
+        {
+          workspacePath: entry.workspacePath,
+          layout,
+          panes,
+          name: override?.name ?? null,
+          dotColor: override?.dotColor ?? null,
+        },
+      ];
+    });
   }
 
   function activePaneCwd(): Promise<string | null> {
@@ -1430,28 +1506,62 @@ export function createTabManager(
   });
 
   /**
+   * The strip as the user sees it: every chip, terminal or surface, in the
+   * one open order (`lib/strip-order.ts`).
+   *
+   * Every keyboard path that names a POSITION goes through this — cycling,
+   * ⌘1–9 and ⌘9 — so "the third chip" resolves the same way for the keymap
+   * as it paints in `TabStrip`. Recomputed per call rather than cached: tabs
+   * and surfaces both open and close underneath it, and the list is at most a
+   * few dozen entries.
+   */
+  function stripSlots(): readonly StripSlot[] {
+    return mergeStripOrder(
+      tabs.map((tab) => ({ openedAt: tab.openedAt })),
+      Array.from({ length: surfaces.count() }, (_, index) => ({
+        openedAt: surfaces.orderKey?.(index) ?? UNSEQUENCED,
+      })),
+    );
+  }
+
+  /** Take the chip at `position` in the merged strip. Out of range = no-op. */
+  function selectStripSlot(position: number): void {
+    const slot = stripSlots()[position];
+    if (slot === undefined) {
+      return;
+    }
+    if (slot.kind === "tab") {
+      selectTab(slot.index);
+      return;
+    }
+    surfaces.activate(slot.index);
+  }
+
+  /**
    * ⌘⇧] / ⌘⇧[ — cycle every SURFACE in the strip, not just the terminal tabs.
    *
-   * The strip is the terminal tabs followed by the non-terminal segment, so the
-   * cycle runs over one combined index space. The old `tabs.length < 2` early
-   * return is why one terminal tab plus three file tabs used to do nothing at
-   * all: file tabs are the keyboard path to a file (spec §4.3), and that guard
-   * silently removed it.
+   * Walks the merged open order (2026-08-16), not the old
+   * terminals-then-surfaces segments: a strip whose chips are interleaved
+   * would otherwise cycle in an order nothing on screen explains. The
+   * `tabs.length < 2` early return this replaced is why one terminal tab plus
+   * three file tabs used to do nothing at all: file tabs are the keyboard path
+   * to a file (spec §4.3), and that guard silently removed it.
    */
   function cycleTab(step: 1 | -1): void {
-    const surfaceCount = surfaces.count();
-    const total = tabs.length + surfaceCount;
-    if (total < 2) {
+    const slots = stripSlots();
+    if (slots.length < 2) {
       return;
     }
     const surfaceIndex = surfaces.activeIndex();
-    const current = surfaceIndex >= 0 ? tabs.length + surfaceIndex : active;
-    const next = (current + step + total) % total;
-    if (next < tabs.length) {
-      selectTab(next);
-      return;
-    }
-    surfaces.activate(next - tabs.length);
+    const current = slots.findIndex((slot) =>
+      surfaceIndex >= 0
+        ? slot.kind === "surface" && slot.index === surfaceIndex
+        : slot.kind === "tab" && slot.index === active,
+    );
+    // No active chip at all (no tabs yet, or an active index nothing owns):
+    // step from before the first slot so ⌘⇧] lands on it and ⌘⇧[ on the last.
+    const from = current === -1 ? (step === 1 ? -1 : 0) : current;
+    selectStripSlot((from + step + slots.length) % slots.length);
   }
 
   /**
@@ -1521,15 +1631,6 @@ export function createTabManager(
     "scroll-page-down": () => activeManager()?.scrollActivePage(1),
     "scroll-to-top": () => activeManager()?.scrollActiveToEdge("top"),
     "scroll-to-bottom": () => activeManager()?.scrollActiveToEdge("bottom"),
-    // Opens the same rename/dot-color popover the tab click already opens —
-    // TabPopover itself is unchanged, this only adds the keyboard trigger.
-    // Unknown active tab (no tabs yet) → no-op, nothing to request.
-    "open-tab-options": () => {
-      const tab = tabs[active];
-      if (tab) {
-        requestTabOptionsKey.value = tab.key;
-      }
-    },
     "reopen-tab": () => void reopenTab(),
     // Never calls `focusNextAttention` directly — routes the request through
     // the optional app seam so the app can run the overlay preflight (Task
@@ -1549,8 +1650,7 @@ export function createTabManager(
     "toggle-usage": () => deps.onToggleUsage?.(),
     // Writes the signal directly rather than routing through an App seam
     // (unlike toggle-settings): the popover has no draft to protect and no
-    // overlay stack to keep consistent — the same reason `open-tab-options`
-    // sets `requestTabOptionsKey` itself.
+    // overlay stack to keep consistent.
     //
     // The close branch returns focus HERE, not in the popover: this path
     // unmounts the surface without ever calling its `onClose`, so DL-13.2's
@@ -1558,31 +1658,54 @@ export function createTabManager(
     // the caret would land on <body> — the shortcut fires while focus sits on
     // the popover root, a div, so nothing else would take it back.
     "move-pane-to-new-window": () => void movePaneToNewWindow(),
-    // The panel is host-owned: this only flips the signal the chrome reads
-    // and tells the host to create or tear down the native view. Both store
-    // helpers swallow their own transport errors, because a browser panel
+    // The browser is a strip tab whose surface covers the stage: the toggle
+    // walks it through take-the-stage / step-back, never through close — the
+    // chip's own ✕ is the only close. The view is host-owned, and the store
+    // helpers swallow their own transport errors, because a browser surface
     // that fails to open must not take a keystroke's dispatch down with it.
+    // `syncViews()` after every branch for the same reason the file side
+    // routes `onSurfacesChanged` into `notifySurfacesChanged`: TabManager's
+    // derived views cannot see a store-signal transition on their own.
     "toggle-browser": () => {
-      if (browserOpen.value) {
-        void closeBrowser(defaultBrowserClient);
+      if (browserSurfaceActive.value) {
+        deactivateBrowserSurface(defaultBrowserClient);
+        syncViews();
         activeManager()?.focusActive();
         return;
       }
-      void openBrowser(
-        defaultBrowserClient,
-        // Restore the last committed page across relaunch; home is the
-        // first-run answer (browser productization §3).
-        settings.value.browserLastUrl || settings.value.browserHomeUrl,
-      );
+      // An active file surface steps back first — exactly one surface owns
+      // the stage, and this is one of the synchronous paths that keeps it so.
+      surfaces.deactivate();
+      if (browserOpen.value) {
+        activateBrowserSurface();
+      } else {
+        void openBrowser(
+          defaultBrowserClient,
+          // Restore the last committed page across relaunch; home is the
+          // first-run answer (browser productization §3).
+          settings.value.browserLastUrl || settings.value.browserHomeUrl,
+        );
+      }
+      syncViews();
     },
-    // Plain setting flip, unlike toggle-browser above: the panel is pure DOM
+    // Plain setting flips, unlike toggle-browser above: the dock is pure DOM
     // content, so there is no host view to create or tear down. Focus still
     // returns to the pane on close, same reasoning as toggle-browser and
     // toggle-prompts below — this path never goes through a close callback of
-    // the panel's own.
+    // the dock's own.
+    //
+    // `toggle-dock` opens the column on whichever tab it last showed;
+    // `toggle-explorer` names a tab, so it REVEALS that one (open on it,
+    // switch to it, or — only if it is already the tab on screen — close).
+    // One chord per surface, and the chord always means "show me this".
+    "toggle-dock": () => {
+      toggleDock();
+      if (!settings.value.dockOpen) {
+        activeManager()?.focusActive();
+      }
+    },
     "toggle-explorer": () => {
-      toggleExplorer();
-      if (!settings.value.explorerOpen) {
+      if (revealDockTab("explorer")) {
         activeManager()?.focusActive();
       }
     },
@@ -1628,22 +1751,29 @@ export function createTabManager(
 
   /**
    * Ranks of every overlay that is currently open (Open board, Settings, the
-   * token usage screen, PresetEditor/SavePresetDialog/AgentQuickPicker share
-   * the "modal" rank — see `TIER_RANK`'s doc comment in action-registry.ts
-   * for why). Empty when nothing covers the terminal grid.
+   * token usage screen, the session history screen,
+   * PresetEditor/SavePresetDialog/AgentQuickPicker share the "modal" rank —
+   * see `TIER_RANK`'s doc comment in action-registry.ts for why). Empty when
+   * nothing covers the terminal grid.
    *
-   * Usage reuses `TIER_RANK.settings` rather than getting a member of its own
-   * in the `OverlayTier` union. The rank is what an action is compared
-   * AGAINST, and Usage covers the grid exactly the way Settings does (both
-   * full-window, both above the board, both below a modal draft) — so the
-   * comparison it wants already exists. Adding a fifth tier would introduce a
-   * rank nothing is tiered at, next to `"settings"`, which is already a rank
-   * nothing is tiered at. One such rank is a documented deliberate gap; two
-   * is a pattern nobody can explain.
+   * Usage AND session history both reuse `TIER_RANK.settings` rather than
+   * getting a member of their own in the `OverlayTier` union. The rank is
+   * what an action is compared AGAINST, and each of them covers the grid
+   * exactly the way Settings does (all full-window, all above the board, all
+   * below a modal draft) — so the comparison they want already exists.
+   * Adding a tier per surface would introduce a rank nothing is tiered at,
+   * next to `"settings"`, which is already a rank nothing is tiered at. One
+   * such rank is a documented deliberate gap; two is a pattern nobody can
+   * explain.
    */
   function openOverlayRanks(): readonly number[] {
     const ranks: number[] = [];
-    if (settingsOpen.value || usageOpen.value) {
+    // Settings alone since 2026-08-16: token usage and session history left
+    // full-window for tabs of the dock, and a docked column displaces the
+    // terminal grid instead of covering it (DL-19.1). A pane-scoped shortcut
+    // behind an open dock still has its pane on screen, so blocking it would
+    // be the tier model firing at a surface it was not written for.
+    if (settingsOpen.value) {
       ranks.push(TIER_RANK.settings);
     }
     if (boardOpen.value) {
@@ -1661,8 +1791,9 @@ export function createTabManager(
 
   /**
    * Single choke point deciding whether `action` may run while an overlay
-   * (Open board, Settings, PresetEditor, SavePresetDialog) is covering the
-   * terminal grid. Default tier is `"pane"` (rank 0) — blocked whenever ANY
+   * (Settings, Usage, Session history, Open board, PresetEditor,
+   * SavePresetDialog, AgentQuickPicker) is covering the terminal grid.
+   * Default tier is `"pane"` (rank 0) — blocked whenever ANY
    * overlay is open, since every open overlay's rank is >= 0. Every action
    * that reaches into the terminal/tab/pane state needs this: it is
    * invisible and dangerous while its target is hidden (⌘W closing a pane
@@ -1707,18 +1838,21 @@ export function createTabManager(
   }
 
   /**
-   * "pane"-tiered actions that already know how to reach a file surface
-   * themselves: `close-pane` -> `surfaces.close()`, `save-file` ->
-   * `surfaces.save()` (both in the `commands` table below), and
+   * "pane"-tiered actions that already know how to reach a non-terminal
+   * surface themselves: `close-pane` -> `surfaces.close()`, `save-file` ->
+   * `surfaces.save()` (both in the `commands` table below),
    * `move-pane-to-new-window`, which refuses with its own chrome message
-   * (`movePane` above) rather than acting on `activeManager()`.
-   * `overlayBlocksAction` exempts exactly these three from the file-surface
-   * block so that surface-aware behavior still runs.
+   * (`movePane` above) rather than acting on `activeManager()`, and
+   * `toggle-browser`, whose command IS a surface transition — blocking it
+   * while an editor holds the stage would make the chord a no-op exactly
+   * when it is most useful. `overlayBlocksAction` exempts exactly these four
+   * from the surface block so that surface-aware behavior still runs.
    */
   function isSurfaceRoutedAction(action: ShortcutAction): boolean {
     return (
       action === "close-pane" ||
       action === "save-file" ||
+      action === "toggle-browser" ||
       action === "move-pane-to-new-window"
     );
   }
@@ -1770,7 +1904,12 @@ export function createTabManager(
     // invariant on the mouse path: `canCancel={tabViews.value.length > 0}`
     // (app.tsx) refuses to let Cancel/Escape close it with zero tabs — this
     // guard is the keyboard half of the same rule.
-    if (isTabSwitchAction(action) && tabs.length > 0) {
+    // `stripSlots().length` rather than `tabs.length` since 2026-08-16: the
+    // guard asks "is there anything behind the board to switch TO", and with
+    // "last surface, not last tab" a window can hold zero terminal tabs and
+    // still have file chips. Counting only tabs there would let a digit
+    // activate a document UNDER a board that never dismissed.
+    if (isTabSwitchAction(action) && stripSlots().length > 0) {
       // F1 (2026-07-27 code review): mirrors App.selectTab's click path
       // (app.tsx), which has always cleared boardOpen before switching.
       // Without this, selectTab()'s manager.show() focuses the newly active
@@ -1786,15 +1925,19 @@ export function createTabManager(
       // itself needs no board-awareness of its own.
       boardOpen.value = false;
     }
+    // ⌘1–9 and ⌘9 count CHIPS, not terminal tabs (2026-08-16): the strip is
+    // one interleaved row, so "the second chip" has to mean the second thing
+    // on screen even when that is a file. The consequence is deliberate and
+    // was the user's call — ⌘2 can now land on a document.
     if (action === "select-last-tab") {
-      // -1 when there are no tabs yet — selectTab's own range check no-ops
+      // -1 when the strip is empty — selectStripSlot's own range check no-ops
       // it, same as an out-of-range select-tab-N below.
-      selectTab(tabs.length - 1);
+      selectStripSlot(stripSlots().length - 1);
       return;
     }
     const tabIndex = selectTabIndex(action);
     if (tabIndex !== null) {
-      selectTab(tabIndex); // out-of-range indexes are a no-op
+      selectStripSlot(tabIndex); // out-of-range indexes are a no-op
       return;
     }
     // `action` is a `COMMAND_ACTIONS` member here at runtime — both
@@ -2079,6 +2222,7 @@ export function createTabManager(
     openQuickAgent,
     activeWorkspacePath,
     captureActiveLayout,
+    captureSession,
     activePaneCwd,
     activePaneId() {
       return activeManager()?.activePaneId() ?? null;
@@ -2094,13 +2238,6 @@ export function createTabManager(
     activateForAttention,
     focusNextAttention,
     hasActionableAttention,
-    renameTab(index, name) {
-      const trimmed = name?.trim() ?? "";
-      setOverride(index, { name: trimmed === "" ? undefined : trimmed });
-    },
-    setTabDotColor(index, color) {
-      setOverride(index, { dotColor: color ?? undefined });
-    },
     cycleTab,
     runAction,
     splitActive,

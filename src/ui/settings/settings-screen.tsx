@@ -1,4 +1,6 @@
+import { X } from "lucide-preact";
 import { useEffect, useRef } from "preact/hooks";
+import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
 import { activeCategory } from "./active-category-store";
 import {
   categoryTabId,
@@ -84,11 +86,12 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
         <button
           ref={escRef}
           type="button"
-          class="settings-screen__esc"
+          class="iconbtn settings-screen__esc"
+          title="Close settings"
           aria-label="Close settings"
           onClick={onClose}
         >
-          esc
+          <DeckIcon icon={X} size={CHROME_ICON} />
         </button>
       </header>
 

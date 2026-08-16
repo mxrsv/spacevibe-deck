@@ -2,7 +2,6 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { shortcutLabel } from "../../lib/shortcut-label";
 import { DeckToolbar, toolbarLabel } from "./deck-toolbar";
 
 /**
@@ -21,9 +20,7 @@ describe("DeckToolbar", () => {
   });
 
   const handlers = () => ({
-    onToggleExplorer: vi.fn(),
     onToggleBrowser: vi.fn(),
-    onToggleUsage: vi.fn(),
     onSplitRow: vi.fn(),
     onSplitColumn: vi.fn(),
     onToggleExpand: vi.fn(),
@@ -37,9 +34,9 @@ describe("DeckToolbar", () => {
     act(() =>
       render(
         <DeckToolbar
-          explorerOpen={false}
-          browserOpen={false}
-          usageOpen={false}
+          browserActive={false}
+          // Defaults to the host every release still ships (no `sessions_list`),
+          // which is also what keeps the D7 label list below exhaustive.
           settingsOpen={false}
           expandActive={false}
           promptsOpen={false}
@@ -72,78 +69,79 @@ describe("DeckToolbar", () => {
     expect(toolbarLabel("toggle-explorer")).toBe("Explorer");
   });
 
-  it("renders the D7 set — Explorer, Browser and Usage in tools", () => {
+  // Shrunk twice on 2026-08-16. First File explorer, Token usage and Session
+  // history left the bar for the docked side panel, which carries its own tab
+  // row. Then the pane group moved into `More` (DL-23.8), leaving the bar with
+  // exactly one control. Browser, Prompts and Settings never rode here at all:
+  // they became rows in the rail's footer (DL-28.3), and top-tab mode stands
+  // the same rows up in `More`. Mounting them here too would put a second
+  // Prompt Board popover on screen at the same time as the footer's.
+  it("draws the More control and nothing else", () => {
     mount();
     const labels = Array.from(host.querySelectorAll("button")).map((b) =>
       b.getAttribute("aria-label"),
     );
-    expect(labels).toEqual([
-      "Explorer",
-      "Browser",
-      "Token usage",
+    expect(labels).toEqual(["More actions"]);
+  });
+
+  it("carries the whole pane group as named rows inside More", () => {
+    const on = mount();
+    act(() => button("More actions").click());
+
+    const rows = Array.from(
+      document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]'),
+    );
+    expect(
+      rows.map((row) => row.querySelector(".toolbar-menu__label")?.textContent),
+    ).toEqual([
       "Split vertically",
       "Split horizontally",
       "Focus expand",
       "Close pane",
-      "Prompts",
-      "Settings",
     ]);
+
+    // A row runs the same callback the icon used to, so the command path the
+    // keyboard and the native menu take is untouched by the move.
+    act(() => (rows[3] as HTMLButtonElement).click());
+    expect(on.onClosePane).toHaveBeenCalledTimes(1);
   });
 
-  it("routes Explorer activation and reflects the open panel", () => {
-    const on = mount({ explorerOpen: true });
-    const explorer = button("Explorer");
-    expect(explorer.getAttribute("aria-pressed")).toBe("true");
-    explorer.click();
-    expect(on.onToggleExplorer).toHaveBeenCalledTimes(1);
-  });
-
-  /**
-   * The frozen toolbar spec drafted ⌘⇧E for Explorer; the shipped binding is
-   * ⌘⇧B. The control must read the registry, or the toolbar teaches a chord
-   * that does nothing.
-   */
-  it("shows Explorer's registered chord, not the spec's draft", () => {
-    mount();
-    act(() => button("Explorer").focus());
-    const tip = host.querySelector(".action-tip")?.textContent ?? "";
-    expect(tip).toContain(shortcutLabel("toggle-explorer"));
-    expect(tip).not.toContain("⇧E");
-  });
-
-  it("routes Browser activation and reflects the open panel", () => {
-    const on = mount({ browserOpen: true });
-    const browser = button("Browser");
-    expect(browser.getAttribute("aria-pressed")).toBe("true");
-    browser.click();
-    expect(on.onToggleBrowser).toHaveBeenCalledTimes(1);
-  });
-
-  it("keeps unavailable Prompts focusable but inert", () => {
-    const on = mount({ promptsUnavailable: "no pane to paste into" });
-    const prompts = button("Prompts");
-    expect(prompts.getAttribute("aria-disabled")).toBe("true");
-    expect(prompts.hasAttribute("disabled")).toBe(false);
-    prompts.click();
-    expect(on.onTogglePrompts).not.toHaveBeenCalled();
-  });
-
-  it("anchors the popover to the Prompts slot while open", () => {
-    mount({
-      promptsOpen: true,
-      promptPopover: <div data-testid="popover" />,
-    });
-    const slot = button("Prompts").closest(".ftoolbar__slot");
-    expect(slot?.querySelector("[data-testid=popover]")).not.toBeNull();
-  });
-
-  it("keeps the Settings gear class so its spin survives", () => {
-    mount();
-    expect(button("Settings").classList.contains("iconbtn--gear")).toBe(true);
+  it("renders no history control on a host without session history", () => {
+    const labels = Array.from(host.querySelectorAll("button")).map((b) =>
+      b.getAttribute("aria-label"),
+    );
+    expect(labels).not.toContain("Session history");
   });
 
   it("hands the window's free width back as a drag surface", () => {
     mount();
     expect(host.querySelector(".ftoolbar__drag")).not.toBeNull();
+  });
+  it("stands the global pair up in More when the layout is compact", () => {
+    mount({ compact: true });
+    const more = button("More actions");
+
+    act(() => more.click());
+
+    const rows = Array.from(
+      document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]'),
+    ).map((row) => row.textContent);
+    expect(rows?.some((row) => row?.includes("Browser"))).toBe(true);
+    expect(rows?.some((row) => row?.includes("Prompts"))).toBe(true);
+    expect(rows?.some((row) => row?.includes("Settings"))).toBe(true);
+  });
+
+  // The bar itself must never carry them, in either layout — that is what
+  // keeps a second Prompt Board popover off the screen.
+  it("never puts the rail's own rows on the bar", () => {
+    for (const compact of [true, false]) {
+      mount({ compact });
+      const labels = Array.from(host.querySelectorAll(".ftoolbar > * button"))
+        .map((b) => b.getAttribute("aria-label"))
+        .filter((label) => label !== "More actions");
+      expect(labels).not.toContain("Prompts");
+      expect(labels).not.toContain("Settings");
+      expect(labels).not.toContain("Browser");
+    }
   });
 });

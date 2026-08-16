@@ -8,37 +8,65 @@ import {
   previewTab,
   promoteTab,
   type FileTabEntry,
+  type OpenTabOptions,
 } from "./preview-slot";
 
-const tab = (path: string, preview = false): FileTabEntry => ({ path, preview });
+const tab = (path: string, preview = false, openedAt = 0): FileTabEntry => ({
+  path,
+  preview,
+  openedAt,
+});
+
+/** The store spends one order key per open attempt; tests name it explicitly
+ * so an assertion about POSITION in the strip cannot pass by accident. */
+const opening = (
+  openedAt = 0,
+  dirtyPaths?: ReadonlySet<string>,
+): OpenTabOptions => ({ openedAt, dirtyPaths });
 
 describe("openPreview", () => {
   it("opens the first click into a new preview slot", () => {
-    expect(openPreview([], "/r/a.ts")).toEqual([tab("/r/a.ts", true)]);
+    expect(openPreview([], "/r/a.ts", opening())).toEqual([
+      tab("/r/a.ts", true),
+    ]);
   });
 
   it("replaces the preview slot in place, so the tab does not jump", () => {
     const tabs = [tab("/r/kept.ts"), tab("/r/a.ts", true), tab("/r/other.ts")];
-    expect(openPreview(tabs, "/r/b.ts")).toEqual([
+    expect(openPreview(tabs, "/r/b.ts", opening())).toEqual([
       tab("/r/kept.ts"),
       tab("/r/b.ts", true),
       tab("/r/other.ts"),
     ]);
   });
 
+  it("keeps the replaced slot's place in the strip's open order", () => {
+    // "Does not jump" is about the strip as a whole since 2026-08-16: a fresh
+    // order key would move the chip past every terminal tab opened since,
+    // which is the same jump this branch has always existed to prevent.
+    const tabs = [tab("/r/a.ts", true, 4)];
+    expect(openPreview(tabs, "/r/b.ts", opening(9))[0].openedAt).toBe(4);
+  });
+
+  it("gives an appended tab the key it was opened with", () => {
+    expect(openPreview([tab("/r/kept.ts")], "/r/a.ts", opening(7))[1]).toEqual(
+      tab("/r/a.ts", true, 7),
+    );
+  });
+
   it("leaves the list untouched when the file is already open", () => {
     const tabs = [tab("/r/kept.ts"), tab("/r/a.ts", true)];
-    expect(openPreview(tabs, "/r/kept.ts")).toEqual(tabs);
-    expect(openPreview(tabs, "/r/a.ts")).toEqual(tabs);
+    expect(openPreview(tabs, "/r/kept.ts", opening())).toEqual(tabs);
+    expect(openPreview(tabs, "/r/a.ts", opening())).toEqual(tabs);
   });
 
   it("never demotes a kept tab back to a preview", () => {
     const tabs = [tab("/r/kept.ts")];
-    expect(openPreview(tabs, "/r/kept.ts")[0].preview).toBe(false);
+    expect(openPreview(tabs, "/r/kept.ts", opening())[0].preview).toBe(false);
   });
 
   it("appends beside kept tabs when there is no preview slot", () => {
-    expect(openPreview([tab("/r/kept.ts")], "/r/a.ts")).toEqual([
+    expect(openPreview([tab("/r/kept.ts")], "/r/a.ts", opening())).toEqual([
       tab("/r/kept.ts"),
       tab("/r/a.ts", true),
     ]);
@@ -60,11 +88,13 @@ describe("promoteTab", () => {
 
 describe("openKept", () => {
   it("opens a double-click straight to a kept tab", () => {
-    expect(openKept([], "/r/a.ts")).toEqual([tab("/r/a.ts")]);
+    expect(openKept([], "/r/a.ts", opening())).toEqual([tab("/r/a.ts")]);
   });
 
   it("promotes the existing preview when it is the same file", () => {
-    expect(openKept([tab("/r/a.ts", true)], "/r/a.ts")).toEqual([tab("/r/a.ts")]);
+    expect(openKept([tab("/r/a.ts", true)], "/r/a.ts", opening())).toEqual([
+      tab("/r/a.ts"),
+    ]);
   });
 });
 
@@ -74,7 +104,11 @@ describe("replacing a preview never discards unsaved work", () => {
   // break silently.
   it("promotes a dirty preview instead of replacing it", () => {
     const tabs = [tab("/r/dirty.ts", true)];
-    const next = openPreview(tabs, "/r/new.ts", new Set(["/r/dirty.ts"]));
+    const next = openPreview(
+      tabs,
+      "/r/new.ts",
+      opening(0, new Set(["/r/dirty.ts"])),
+    );
     expect(next).toEqual([tab("/r/dirty.ts"), tab("/r/new.ts", true)]);
     expect(hasTab(next, "/r/dirty.ts")).toBe(true);
   });
@@ -88,7 +122,7 @@ describe("replacing a preview never discards unsaved work", () => {
     ];
     for (const tabs of arrangements) {
       const dirty = new Set(["/r/dirty.ts"]);
-      const next = openPreview(tabs, "/r/clicked.ts", dirty);
+      const next = openPreview(tabs, "/r/clicked.ts", opening(0, dirty));
       for (const path of dirty) {
         if (hasTab(tabs, path)) {
           expect(hasTab(next, path)).toBe(true);
@@ -132,6 +166,8 @@ describe("activeAfterFileClose", () => {
   });
 
   it("has nothing to activate once the last tab is gone", () => {
-    expect(activeAfterFileClose([tab("/r/a.ts")], "/r/a.ts", "/r/a.ts")).toBeNull();
+    expect(
+      activeAfterFileClose([tab("/r/a.ts")], "/r/a.ts", "/r/a.ts"),
+    ).toBeNull();
   });
 });

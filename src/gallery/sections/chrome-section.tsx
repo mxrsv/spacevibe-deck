@@ -5,16 +5,27 @@ import {
   MoreHorizontal,
   X,
 } from "lucide-preact";
+import { useSignal } from "@preact/signals";
 import { PresetThumb } from "../../presets/preset-thumb";
 import { AgentAttentionMark } from "../../ui/agent-attention-mark";
 import { DesktopChrome } from "../../ui/app";
 import { CHROME_ICON, DeckIcon } from "../../ui/controls/deck-icon";
 import { WorkspaceSpinner } from "../../ui/workspace-spinner";
+import { StatusBar } from "../../ui/status-bar";
+import { SidebarBanner } from "../../ui/sidebar-banner";
+import { activeTabIndex } from "../../terminal/tabs-store";
+import { SIDEBAR_HIDDEN_WIDTH } from "../../ui/panel-resize";
+import { SidebarToggle } from "../../ui/sidebar-toggle";
+import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
+
 import { UpdateAction } from "../../updater/update-action";
 import type { UpdatePhase } from "../../updater/update-controller";
 import {
   chatGptToolbarSpecimen,
+  deckToolbarSpecimen,
   NOOP,
+  repositorySidebarSpecimen,
+  repositoryScopedTabStripSpecimen,
   worktreeAgentPresenceSpecimen,
 } from "../chrome-fixtures";
 import { SEED_ATTENTION, SEED_LAYOUT } from "../seed-data";
@@ -51,6 +62,8 @@ const TERMINAL_TABS = [
   { label: "codex", activity: "idle" },
   { label: "shell", activity: "idle" },
 ] as const;
+
+const WOVEN_FLAG_NOTE = "Textile grain · shallow fold light · matte colour";
 
 /**
  * The window shell in both layouts, assembled by the app's own
@@ -190,6 +203,13 @@ function ChatGptTerminalStage() {
 }
 
 export function ChromeSection() {
+  const selectGalleryTab = (index: number): void => {
+    activeTabIndex.value = index;
+  };
+  // The specimen owns this the way `App` owns the setting — same component,
+  // different owner (DL-18.9). Local, so toggling it in the gallery cannot
+  // write the running app's settings.
+  const railCollapsed = useSignal(false);
   return (
     <>
       <SectionHead
@@ -211,6 +231,89 @@ export function ChromeSection() {
             topTabs={null}
             stage={<ChatGptTerminalStage />}
             status={null}
+            onMacTitlebarDoubleClick={NOOP}
+          />
+        </div>
+      </Specimen>
+
+      <Specimen
+        name="SidebarBanner · Woven Flag"
+        note="selected treatment · real 40px artwork · gallery-only reference"
+        surface="chrome-1"
+      >
+        <div class="gx-banner-directions">
+          <article class="gx-banner-direction gx-banner-direction--woven">
+            <header class="gx-banner-direction__head">
+              <span class="gx-banner-direction__label">Woven Flag</span>
+            </header>
+            <div class="gx-banner-direction__rail">
+              <span class="gx-banner-direction__eyebrow">repositories</span>
+              <span class="gx-banner-direction__repository">
+                <span>spacevibe-deck</span>
+                <small>main · primary</small>
+              </span>
+              <SidebarBanner />
+            </div>
+            <p>{WOVEN_FLAG_NOTE}</p>
+          </article>
+        </div>
+      </Specimen>
+
+      <Specimen
+        name="Worktree-scoped TabStrip"
+        note="click a worktree or agent mark in the real rail — the real stage strip follows that row and hides tabs from every other project"
+        surface="none"
+        tall
+      >
+        {/* The shipped app writes these two onto `:root` (sidebar-shell.ts);
+            a specimen writes them onto its own wrapper instead, so one
+            collapsed rail here does not collapse every other rail on the
+            page. Same attribute, same variable, same CSS. */}
+        <div
+          data-sidebar-collapsed={railCollapsed.value ? "true" : "false"}
+          style={{
+            "--sidebar-w": `${
+              railCollapsed.value
+                ? SIDEBAR_HIDDEN_WIDTH
+                : DEFAULT_SETTINGS.sidebarWidth
+            }px`,
+          }}
+        >
+          <DesktopChrome
+            sidebar
+            // `onSidebarWidthChange` is left out on purpose: that is the drag
+            // seam, and a seam a screenshot cannot drag is only a cursor
+            // change.
+            toolbar={deckToolbarSpecimen()}
+            sidebarNavigation={repositorySidebarSpecimen({
+              onSelectTab: selectGalleryTab,
+            })}
+            topTabs={null}
+            stage={
+              <main class="stage stage--strip">
+                <div class="stage__strip" data-tauri-drag-region>
+                  {/* The shipped control, not a redraw of it — the reason it
+                      became a component at all (sidebar-toggle.tsx). */}
+                  <SidebarToggle
+                    collapsed={railCollapsed.value}
+                    onToggle={() => {
+                      railCollapsed.value = !railCollapsed.value;
+                    }}
+                  />
+                  {repositoryScopedTabStripSpecimen()}
+                </div>
+                <div class="stage__tabs">
+                  <div class="gx-scoped-terminal" aria-label="Terminal preview">
+                    <span class="gx-scoped-terminal__prompt">❯</span>
+                    <span> npm test</span>
+                    <span class="gx-scoped-terminal__result">
+                      ✓ active worktree tabs only
+                    </span>
+                  </div>
+                </div>
+              </main>
+            }
+            status={<StatusBar />}
             onMacTitlebarDoubleClick={NOOP}
           />
         </div>

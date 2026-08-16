@@ -5,14 +5,12 @@ import {
   AgentsIcon,
   AppearanceIcon,
   BrowserIcon,
-  ColorsIcon,
   LinksEditorIcon,
   NotificationsIcon,
   ShortcutsIcon,
   TerminalIcon,
 } from "./settings-nav-icons";
 import { AppearanceSection } from "./sections/appearance-section";
-import { ColorsSection } from "./sections/colors-section";
 import { TerminalSection } from "./sections/terminal-section";
 import { AgentsSection } from "./sections/agents-section";
 import { BrowserSection } from "./sections/browser-section";
@@ -49,45 +47,49 @@ export interface SettingsCategory {
  *
  * `ResetSection` is deliberately absent: it is a pinned rail-foot action
  * (`settings-nav.tsx`), not a navigable category (plan §3 invariant).
+ *
+ * `colors` is absent since 2026-08-16 for a different reason: four colour rows
+ * that only ever edit the running theme were a whole rail stop away from the
+ * theme picker that clears them, so they moved into `appearance` as a group
+ * ([`color-overrides.tsx`](./color-overrides.tsx)).
  */
 export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   {
     id: "appearance",
-    label: "appearance",
+    label: "Appearance",
     Icon: AppearanceIcon,
     Section: AppearanceSection,
   },
-  { id: "colors", label: "colors", Icon: ColorsIcon, Section: ColorsSection },
   {
     id: "browser",
-    label: "browser",
+    label: "Browser",
     Icon: BrowserIcon,
     Section: BrowserSection,
   },
   {
     id: "terminal",
-    label: "terminal",
+    label: "Terminal",
     Icon: TerminalIcon,
     Section: TerminalSection,
   },
-  { id: "agents", label: "agents", Icon: AgentsIcon, Section: AgentsSection },
+  { id: "agents", label: "Agents", Icon: AgentsIcon, Section: AgentsSection },
   {
     id: "links-editor",
-    label: "links & editor",
+    label: "Links & editor",
     Icon: LinksEditorIcon,
     Section: LinksEditorSection,
   },
   {
     id: "shortcuts",
-    label: "shortcuts",
+    label: "Shortcuts",
     Icon: ShortcutsIcon,
     Section: ShortcutsSection,
   },
   {
     id: "notifications",
-    label: "notifications",
+    label: "Notifications",
     Icon: NotificationsIcon,
     Section: NotificationsSection,
   },
-  { id: "about", label: "about", Icon: AboutIcon, Section: AboutSection },
+  { id: "about", label: "About", Icon: AboutIcon, Section: AboutSection },
 ];

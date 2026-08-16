@@ -53,16 +53,16 @@ describe("DailySection", () => {
     mount();
     expect(DAILY_DAYS).toBe(30);
     expect(host.querySelector(".metric-table__title")?.textContent).toBe(
-      `last ${DAILY_DAYS} local days`,
+      `Last ${DAILY_DAYS} local days`,
     );
     // Empty is a statement, not a disappearance (DL-15.8).
     expect(host.querySelector(".metric-table__empty")?.textContent).toBe(
-      `no data yet in the last ${DAILY_DAYS} local days`,
+      `No data yet in the last ${DAILY_DAYS} local days`,
     );
     expect(host.querySelectorAll("thead th")).toHaveLength(4);
   });
 
-  it("renders one row per local day and agent, day as the row header", () => {
+  it("renders one row per local day, both agents inside it, day as the row header", () => {
     usageSnapshot.value = snapshot([
       {
         bucketStartMs: NOW,
@@ -80,13 +80,62 @@ describe("DailySection", () => {
     mount();
 
     const rows = host.querySelectorAll("tbody tr");
-    expect(rows).toHaveLength(2);
-    const today = localDayKey(NOW);
-    for (const row of rows) {
-      expect(row.querySelector('th[scope="row"]')?.textContent).toBe(today);
-    }
+    expect(rows).toHaveLength(1);
+    expect(rows[0].querySelector('th[scope="row"]')?.textContent).toBe(
+      localDayKey(NOW),
+    );
+    const lines = rows[0].querySelectorAll(".usage-day-agent");
+    expect(lines).toHaveLength(2);
     expect(host.textContent).toContain("Claude Code");
     expect(host.textContent).toContain("Codex");
+    // The day's own totals stay in the numeric columns: 15 + 3 tokens.
+    const cells = [...rows[0].querySelectorAll("th, td")].map(
+      (cell) => cell.textContent,
+    );
+    expect(cells[2]).toBe("18");
+  });
+
+  it("gives every agent line its brand mark, with no alt beside its name", () => {
+    usageSnapshot.value = snapshot([
+      {
+        bucketStartMs: NOW,
+        agent: "claude",
+        model: "claude-opus-4-20250514",
+        counters: { ...EMPTY_COUNTERS, output: 5 },
+      },
+      {
+        bucketStartMs: NOW,
+        agent: "codex",
+        model: "gpt-5",
+        counters: { ...EMPTY_COUNTERS, output: 1 },
+      },
+    ]);
+    mount();
+
+    const logos = [
+      ...host.querySelectorAll<HTMLImageElement>("img.usage-day-agent__logo"),
+    ];
+    expect(logos).toHaveLength(2);
+    // DL-15.9: the name is the next element, so the mark is decorative here.
+    for (const logo of logos) {
+      expect(logo.getAttribute("alt")).toBe("");
+      expect(logo.getAttribute("src")).toBeTruthy();
+    }
+  });
+
+  it("keeps the table non-interactive, cells included (DL-15.2)", () => {
+    usageSnapshot.value = snapshot([
+      {
+        bucketStartMs: NOW,
+        agent: "claude",
+        model: "claude-opus-4-20250514",
+        counters: { ...EMPTY_COUNTERS, output: 5 },
+      },
+    ]);
+    mount();
+
+    expect(host.querySelectorAll("tbody button, tbody a")).toHaveLength(0);
+    expect(host.querySelector("[title]")).toBeNull();
   });
 
   it("prices what it can when one model on the day is unrecognised", () => {

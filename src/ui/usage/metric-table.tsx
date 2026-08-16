@@ -1,3 +1,4 @@
+import type { ComponentChild } from "preact";
 import { useId } from "preact/hooks";
 import { EM_DASH } from "./usage-format";
 
@@ -35,8 +36,14 @@ export interface MetricRow {
    * One entry per column, in column order. `null` — and a row shorter than
    * the column list — renders the em dash (DL-15.6). Values arrive
    * pre-formatted: the table decides alignment and absence, never units.
+   *
+   * A cell may be rendered content rather than a string (DL-15.9), which is
+   * how the daily view stacks an agent's brand mark, name and figures inside
+   * one cell. What it may NOT become is an interaction: DL-15.2 governs
+   * whatever a section puts in here, so no cell carries a button, a link or a
+   * hover treatment.
    */
-  readonly cells: readonly (string | null)[];
+  readonly cells: readonly ComponentChild[];
 }
 
 interface MetricTableProps {

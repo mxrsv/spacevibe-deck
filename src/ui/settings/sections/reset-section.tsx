@@ -53,7 +53,7 @@ export function ResetSection() {
   return (
     <ConfigRow
       label="Restore defaults"
-      desc="theme, font, colors, behavior, agents, prompts"
+      desc="Theme, font, colors, behavior, agents, prompts"
       danger
     >
       <button

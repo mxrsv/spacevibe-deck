@@ -1,5 +1,4 @@
 import type { ComponentChildren } from "preact";
-import type { TabDotColor } from "../lib/tab-colors";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { TabStrip } from "./tab-strip";
 
@@ -7,18 +6,23 @@ interface TabBarProps {
   onSelectTab(index: number): void;
   onCloseTab(index: number): void;
   onNewTab(): void;
-  onRenameTab(index: number, name: string | null): void;
-  onSetTabColor(index: number, color: TabDotColor | null): void;
   /**
    * The feature toolbar, built once by `App` so this mount and the sidebar
    * frame's mount can never drift apart (one element, both layouts). TabBar
    * places it; it does not know what is in it.
    */
   toolbar: ComponentChildren;
-  /** Invoked when a tab's actionable attention mark is clicked. */
-  onFocusAttention?(index: number): void;
+  /**
+   * Sits between the chips and the toolbar. Top-tab mode has no
+   * `.stage__strip`, so the dock's toggle rides here instead — same trailing
+   * position on the frame row, same control (DL-18.9's other edge).
+   */
+  trailing?: ComponentChildren;
   /** Passed straight through to `TabStrip`; TabBar never reads it. */
   fileController: FileSurfaceController;
+  /** Passed straight through to `TabStrip`, like `fileController`. */
+  onSelectBrowser(): void;
+  onCloseBrowser(): void;
 }
 
 /**
@@ -43,15 +47,13 @@ export function TabBar(props: TabBarProps) {
         onSelectTab={props.onSelectTab}
         onCloseTab={props.onCloseTab}
         onNewTab={props.onNewTab}
-        onRenameTab={props.onRenameTab}
-        onSetTabColor={props.onSetTabColor}
-        onFocusAttention={props.onFocusAttention}
         fileController={props.fileController}
-        // Top-tab mode has no rail, so this strip is the only surface that
-        // can answer the open-tab-options chord.
-        ownsTabOptionsChord
+        onSelectBrowser={props.onSelectBrowser}
+        onCloseBrowser={props.onCloseBrowser}
+        scopeToActiveRepository={false}
       />
       <div class="tabbar__spacer" data-tauri-drag-region />
+      {props.trailing}
       {props.toolbar}
     </header>
   );

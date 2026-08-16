@@ -2,7 +2,7 @@
  * Category icons for the settings rail — Lucide through `DeckIcon` at 16px
  * (`DL-11.3`, `DL-14.1`). These stay as named semantic components so
  * `settings-categories.ts` keeps describing categories, not icon libraries:
- * changing which pictogram means "colors" is one edit here.
+ * changing which pictogram means "appearance" is one edit here.
  */
 
 import {
@@ -13,17 +13,12 @@ import {
   Command,
   Download,
   Link,
-  Palette,
   SquareTerminal,
 } from "lucide-preact";
 import { DeckIcon, RAIL_ICON } from "../controls/deck-icon";
 
 export function AppearanceIcon() {
   return <DeckIcon icon={AppWindow} size={RAIL_ICON} />;
-}
-
-export function ColorsIcon() {
-  return <DeckIcon icon={Palette} size={RAIL_ICON} />;
 }
 
 export function TerminalIcon() {

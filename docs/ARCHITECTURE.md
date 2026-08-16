@@ -74,12 +74,36 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 ## Standing architecture decisions
 
 - English only across strings/comments/docs — [AGENTS.md](../AGENTS.md) `current`.
+- The repository rail renders one row per worktree rather than one row per
+  terminal tab. Each tab is projected as a separate focusable agent button;
+  same-agent tabs remain distinct, the active tab stays inside the three-button
+  visible budget, and `+N` exposes the rest. Selection and close still leave
+  through `App`'s existing callbacks, so ownership stays in `TabManager`
+  ([worktree row projection](../src/ui/repository-rail.tsx#L315-L442) `current`,
+  [agent tab controls](../src/ui/worktree-agent-stack.tsx#L41-L251) `current`).
+- Sidebar navigation owns presentation scope, not terminal ownership. Its
+  [`TabStrip`](../src/ui/tab-strip.tsx) `current` derives the active worktree
+  through the same repository model as the rail and projects only that row's
+  terminal tabs; every action still carries the original global index into
+  `TabManager`. [`RepositoryRail`](../src/ui/repository-rail.tsx) `current`
+  remembers the last selected tab key per worktree for row-level navigation.
+  Top-tab mode remains global because it has no worktree rail to change scope.
 - The active theme's background belongs to the center stage; both side columns
   share a separately derived recessed surface so changing themes cannot flatten
   the three-column hierarchy. The derivation, publication, and governing visual
   rule live in [derive-colors.ts](../src/lib/derive-colors.ts) `current`,
   [theme-vars.ts](../src/lib/theme-vars.ts) `current`, and
   [DESIGN-LANGUAGE.md §18](DESIGN-LANGUAGE.md#18-application-frame) `current`.
+- A theme comes from one of two places and is looked up through one function.
+  Four built-ins are literals; the rest are files in `<userData>/themes`, read
+  as text by the host and parsed in the renderer
+  ([theme-formats](../src/settings/theme-formats/parse-theme-file.ts) `current`,
+  [themes folder host](../electron/themes.ts) `current`). Imported presets are
+  published on a signal that [getPreset](../src/settings/themes.ts#L144-L156)
+  `current` reads, so `pane.ts`, `editor-host.ts` and the status bar resolve
+  both sources through the same call and every derived chrome token follows for
+  free. Electron only — the Tauri host has no such channel, and the renderer
+  treats that as "no imported themes" rather than an error.
 - Functional icons come from `lucide-preact` through a single `DeckIcon`
   primitive, and nothing else authors an `<svg>` or presses a glyph character
   into an action's place. This is chrome's one approved runtime dependency
@@ -90,9 +114,44 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   ([DeckIcon](../src/ui/controls/deck-icon.tsx) `current`,
   [rules §14](DESIGN-LANGUAGE.md) `current`,
   [guard](../scripts/icon-system.test.ts) `current`).
+- The shared design contract has three homes in code, and the renderer reads the
+  same ones under any host. Standard chrome text takes its size from the four `--type-*` roles
+  declared once in `:root` ([styles.css](../src/styles.css#--type-title)
+  `current`); the text-contrast floors (8 / 6 / 4.5) are constants inside the
+  colour derivation
+  ([TEXT_PRIMARY_FLOOR](../src/lib/derive-colors.ts#TEXT_PRIMARY_FLOOR)
+  `current`, applied by
+  [deriveChromeColors](../src/lib/derive-colors.ts#deriveChromeColors)
+  `current`); and the banner treatment is one class on one component
+  ([SidebarBanner](../src/ui/sidebar-banner.tsx#SidebarBanner) `current`). The
+  rules those implement — DL-3.5, DL-4.3, DL-4.4, DL-4.5, DL-16.2 and §26 of
+  [DESIGN-LANGUAGE.md](DESIGN-LANGUAGE.md) `current` — are executable policy,
+  parsed out of the stylesheet by
+  [design-language.test.ts](../scripts/design-language.test.ts) `current`
+  rather than left to review attention. **There is no host-specific stylesheet
+  and no Electron-only fork:** `src/styles.css` is the one stylesheet the
+  renderer ships, so a typography or contrast change reaches every surface that
+  mounts it. The Gallery may
+  consume these tokens; it may never declare a second set of them
+  ([gallery-entry.test.ts](../scripts/gallery-entry.test.ts) `current`).
+  Established by the Native balanced rollout, 2026-08-16
+  ([plan](plans/2026-08-16-native-balanced-rollout.md) `current`,
+  [CONTEXT.md](CONTEXT.md#the-native-balanced-rollout--2026-08-16) `current`).
 - ADR pipeline removed 2026-07-27; decisions now live in dated specs/plans — [CONTEXT.md](CONTEXT.md) `current`.
 - Menu is generated from a registry, never hand-edited — CI runs `generate:menu:check` — [menu_registry.rs](../src-tauri/src/menu_registry.rs) `current`.
 - Overlay guard ranks overlays by z-order — `pane`(0) < `settings`(20) < `board`(30) < `modal`(40) — and blocks an action while any open overlay's rank is `>=` its own tier; `>=` (not `>`) is deliberate so two `modal`-tier overlays exclude each other with no extra concept needed — [OverlayTier/TIER_RANK](../src/terminal/action-registry.ts#L8-L37) `current`, [overlayBlocksAction](../src/terminal/tab-manager.ts#L931-L962) `current`.
+- Every modal mounts through one shell, so the scrim, the `role="dialog"`
+  frame, focus-on-mount and both exits (Escape; a scrim click, unless the modal
+  holds an unsaved draft) live in one place instead of a copy per modal —
+  [Modal](../src/ui/modal.tsx) `current`, rules in
+  [DESIGN-LANGUAGE §29](DESIGN-LANGUAGE.md) `current`. It is a **frame, not a
+  coordinator**: it renders a scrim and a panel, knows nothing about tabs, panes
+  or the overlay guard above, and each modal keeps its own panel class. Two
+  separate registrations still have to name a modal by hand — the overlay guard's
+  `modal` tier and `panelObscured()`, which hides the browser's native view;
+  neither is derivable from mounting the shell
+  ([CONTEXT.md](CONTEXT.md#one-modal-shell-and-a-scrim-that-closes--2026-08-16)
+  `current`).
 - Action identity and scope are shared, but macOS and Windows keymaps are
   separate. Cocoa menu generation reads only the macOS map; the Windows map
   preserves bare Ctrl terminal controls except standard text paste:
@@ -204,9 +263,10 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   bounds its per-symlink resolution to a 32-worker async pool rather than
   resolving serially or unboundedly
   ([`electron/fs/read.ts`](../electron/fs/read.ts) `current`); the open board
-  is one center surface with three views (home/config/worktree) and the
-  board's own second sidebar is retired in favor of the app's own
-  `WorkspaceSidebar` as the one sidebar
+  is one center surface with two views (home/worktree — the Layout + Agent
+  config view was deleted on 2026-08-16, so picking a workspace opens it with
+  the combo it was last opened with) and the board's own second sidebar is
+  retired in favor of the app's own `WorkspaceSidebar` as the one sidebar
   ([`open-board.tsx`](../src/open-board/open-board.tsx) `current`); and
   create-worktree is an Electron-only flow gated on `worktree-host`'s
   presence check, running `git worktree add` via `execFile` argv (never a
@@ -224,6 +284,8 @@ _(reality-drift ledger — heading text mandated by the global docs convention)_
 | "a pane moves between windows without losing output" | `building` | (backlog) | Phase A of the pane-detach work landed 2026-08-10 with every automated gate green, but nothing that needs a real window has been exercised: no window was created, no PTY changed owner, and the lock-across-emit stall named in the plan's §0.6 is invisible to unit tests. The outstanding manual pass is listed in [CONTEXT.md](CONTEXT.md#pane-detach--phase-a-landed-2026-08-10) `building` |
 
 | "the hardened updater installs correctly on Windows" | `building` | (backlog) | 0.11.0 shipped the `ShellExecuteW` fix without ever observing it run: the Windows end-to-end upgrade was deliberately skipped on 2026-08-05. The claim holds on macOS, where rc.1 → rc.2 upgraded for real and the installed bundle kept mode `0755`. See [AGENTS.md](../AGENTS.md) `current` for the accepted cost |
+
+| "Deck shows the Native balanced treatment" | `current` | `unverified` | The 2026-08-16 rollout landed in the shared renderer, but nobody launched `npm run electron:dev` and no owner eye review has happened. Evidence is the suite, the builds, and a `npm run prototype:gallery` browser pass; the Gallery is a dev harness on stub IPC, not the app. See [CONTEXT.md](CONTEXT.md#the-native-balanced-rollout--2026-08-16) `current` |
 
 Updater claims above were re-checked on 2026-08-05 against the published
 `0.11.0` bytes; the remaining `current` source/config claims were last checked

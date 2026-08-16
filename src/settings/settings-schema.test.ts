@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_SETTINGS,
-  EXPLORER_WIDTH_MAX,
-  EXPLORER_WIDTH_MIN,
+  DOCK_TABS,
+  DOCK_WIDTH_MAX,
+  DOCK_WIDTH_MIN,
+  SIDEBAR_WIDTH_MAX,
+  SIDEBAR_WIDTH_MIN,
   validateSettings,
 } from "./settings-schema";
 
@@ -94,6 +97,32 @@ describe("agentNotifications", () => {
     expect(validateSettings({ agentNotifications: 1 }).agentNotifications).toBe(
       false,
     );
+  });
+});
+
+describe("restoreSessions", () => {
+  it("defaults to true", () => {
+    expect(DEFAULT_SETTINGS.restoreSessions).toBe(true);
+    expect(validateSettings({}).restoreSessions).toBe(true);
+  });
+
+  it("accepts true", () => {
+    expect(validateSettings({ restoreSessions: true }).restoreSessions).toBe(
+      true,
+    );
+  });
+
+  it("accepts false", () => {
+    expect(validateSettings({ restoreSessions: false }).restoreSessions).toBe(
+      false,
+    );
+  });
+
+  it("falls back to true on invalid types (string, number)", () => {
+    expect(validateSettings({ restoreSessions: "yes" }).restoreSessions).toBe(
+      true,
+    );
+    expect(validateSettings({ restoreSessions: 0 }).restoreSessions).toBe(true);
   });
 });
 
@@ -219,50 +248,116 @@ describe("promptTemplates validation", () => {
   });
 });
 
-describe("explorerOpen", () => {
+describe("dockOpen", () => {
   it("defaults to false", () => {
-    expect(DEFAULT_SETTINGS.explorerOpen).toBe(false);
-    expect(validateSettings({}).explorerOpen).toBe(false);
+    expect(DEFAULT_SETTINGS.dockOpen).toBe(false);
+    expect(validateSettings({}).dockOpen).toBe(false);
   });
 
   it("accepts a boolean and rejects other types", () => {
-    expect(validateSettings({ explorerOpen: true }).explorerOpen).toBe(true);
-    expect(validateSettings({ explorerOpen: "yes" }).explorerOpen).toBe(false);
+    expect(validateSettings({ dockOpen: true }).dockOpen).toBe(true);
+    expect(validateSettings({ dockOpen: "yes" }).dockOpen).toBe(false);
   });
 });
 
-describe("explorerWidth", () => {
-  it("defaults to 260 when missing", () => {
-    expect(DEFAULT_SETTINGS.explorerWidth).toBe(260);
-    expect(validateSettings({}).explorerWidth).toBe(260);
+describe("dockWidth", () => {
+  it("defaults to 420 when missing", () => {
+    expect(DEFAULT_SETTINGS.dockWidth).toBe(420);
+    expect(validateSettings({}).dockWidth).toBe(420);
   });
 
-  it("falls back to 260 on a non-number", () => {
-    expect(validateSettings({ explorerWidth: "abc" }).explorerWidth).toBe(260);
+  it("falls back to 420 on a non-number", () => {
+    expect(validateSettings({ dockWidth: "abc" }).dockWidth).toBe(420);
   });
 
   it("clamps below the minimum", () => {
-    expect(validateSettings({ explorerWidth: 10 }).explorerWidth).toBe(
-      EXPLORER_WIDTH_MIN,
-    );
+    expect(validateSettings({ dockWidth: 10 }).dockWidth).toBe(DOCK_WIDTH_MIN);
   });
 
   it("clamps above the maximum", () => {
-    expect(validateSettings({ explorerWidth: 9999 }).explorerWidth).toBe(
-      EXPLORER_WIDTH_MAX,
+    expect(validateSettings({ dockWidth: 9999 }).dockWidth).toBe(
+      DOCK_WIDTH_MAX,
     );
   });
 
   it("keeps an in-range value", () => {
-    expect(validateSettings({ explorerWidth: 300 }).explorerWidth).toBe(300);
+    expect(validateSettings({ dockWidth: 500 }).dockWidth).toBe(500);
+  });
+});
+
+describe("dockTab", () => {
+  it("defaults to the file explorer", () => {
+    expect(DEFAULT_SETTINGS.dockTab).toBe("explorer");
+    expect(validateSettings({}).dockTab).toBe("explorer");
+  });
+
+  it("keeps every tab the dock knows", () => {
+    for (const tab of DOCK_TABS) {
+      expect(validateSettings({ dockTab: tab }).dockTab).toBe(tab);
+    }
+  });
+
+  // A stored name nothing answers to would leave the dock painting an empty
+  // column, so it resolves to the default rather than surviving as data.
+  it("falls back to the explorer on an unknown or mistyped tab", () => {
+    expect(validateSettings({ dockTab: "terminal" }).dockTab).toBe("explorer");
+    expect(validateSettings({ dockTab: 3 }).dockTab).toBe("explorer");
+  });
+});
+
+describe("sidebarWidth", () => {
+  it("defaults to the 275px figure the frame row was measured against", () => {
+    expect(DEFAULT_SETTINGS.sidebarWidth).toBe(275);
+    expect(validateSettings({}).sidebarWidth).toBe(275);
+  });
+
+  it("falls back to the default on a non-number", () => {
+    expect(validateSettings({ sidebarWidth: null }).sidebarWidth).toBe(275);
+    expect(validateSettings({ sidebarWidth: Number.NaN }).sidebarWidth).toBe(
+      275,
+    );
+  });
+
+  it("clamps to the range", () => {
+    expect(validateSettings({ sidebarWidth: 10 }).sidebarWidth).toBe(
+      SIDEBAR_WIDTH_MIN,
+    );
+    expect(validateSettings({ sidebarWidth: 9999 }).sidebarWidth).toBe(
+      SIDEBAR_WIDTH_MAX,
+    );
+    expect(validateSettings({ sidebarWidth: 320 }).sidebarWidth).toBe(320);
+  });
+});
+
+describe("sidebarCollapsed", () => {
+  it("defaults to false — a first launch shows the rail with its labels", () => {
+    expect(DEFAULT_SETTINGS.sidebarCollapsed).toBe(false);
+    expect(validateSettings({}).sidebarCollapsed).toBe(false);
+  });
+
+  it("accepts a boolean and rejects other types", () => {
+    expect(validateSettings({ sidebarCollapsed: true }).sidebarCollapsed).toBe(
+      true,
+    );
+    expect(validateSettings({ sidebarCollapsed: 1 }).sidebarCollapsed).toBe(
+      false,
+    );
+  });
+});
+
+describe("a settings file predating the sidebar seam", () => {
+  it("takes both defaults when neither key is stored", () => {
+    const validated = validateSettings({ tabBarPosition: "left" });
+    expect(validated.sidebarWidth).toBe(DEFAULT_SETTINGS.sidebarWidth);
+    expect(validated.sidebarCollapsed).toBe(DEFAULT_SETTINGS.sidebarCollapsed);
   });
 });
 
 describe("a settings file predating the explorer panel", () => {
-  it("merges to the default explorerOpen/explorerWidth when both keys are missing", () => {
+  it("merges to the default dockOpen/dockWidth when both keys are missing", () => {
     const validated = validateSettings({ tabBarPosition: "top" });
-    expect(validated.explorerOpen).toBe(DEFAULT_SETTINGS.explorerOpen);
-    expect(validated.explorerWidth).toBe(DEFAULT_SETTINGS.explorerWidth);
+    expect(validated.dockOpen).toBe(DEFAULT_SETTINGS.dockOpen);
+    expect(validated.dockWidth).toBe(DEFAULT_SETTINGS.dockWidth);
   });
 });
 
@@ -280,5 +375,20 @@ describe("browserLastUrl", () => {
     expect(
       validateSettings({ browserLastUrl: "x".repeat(3000) }).browserLastUrl,
     ).toBe("");
+  });
+});
+
+describe("showStatusBar", () => {
+  // Off by default since 2026-08-16: the row is pure readout and the window
+  // keeps its height instead. The setting exists so the choice stays the
+  // user's rather than being deleted for them.
+  it("defaults to false", () => {
+    expect(DEFAULT_SETTINGS.showStatusBar).toBe(false);
+    expect(validateSettings({}).showStatusBar).toBe(false);
+  });
+
+  it("accepts a boolean and rejects other types", () => {
+    expect(validateSettings({ showStatusBar: true }).showStatusBar).toBe(true);
+    expect(validateSettings({ showStatusBar: "yes" }).showStatusBar).toBe(false);
   });
 });
