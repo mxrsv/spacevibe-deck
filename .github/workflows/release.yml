@@ -20,7 +20,39 @@ permissions:
   contents: read
 
 jobs:
+  # RELEASE FREEZE — 2026-08-17.
+  #
+  # A tag push is the only trigger that ships, and what it ships is Tauri: it
+  # builds the macOS stable draft, publishes it, and installed apps take that
+  # update on their own. `main` now carries a large body of renderer work that
+  # has never been run under Tauri, so the next tag would push an unverified
+  # build to real users through a channel they cannot decline.
+  #
+  # The freeze holds until the Electron host can update itself, which is
+  # blocked on Gate A (no Apple Developer identity: Squirrel.Mac refuses an app
+  # that is not Developer ID signed and notarized). The last Tauri release will
+  # then be a deliberate one that explains the manual move, because the two
+  # hosts are different bundle identities and no updater bridges them.
+  #
+  # A manual `workflow_dispatch` run stays allowed on purpose: it rebuilds the
+  # Windows preview from a tag that already shipped, never from `main`.
+  #
+  # To lift the freeze, delete this job and the `needs:` line under
+  # `resolve-target`.
+  release-freeze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse to ship from a tag push
+        if: github.event_name == 'push'
+        run: |
+          echo "Release is frozen: a tag push builds and publishes nothing."
+          echo "No macOS draft was built and no updater manifest was written."
+          echo "The tag itself is untouched and can stay."
+          echo "See the comment above this job in .github/workflows/release.yml."
+          exit 1
+
   resolve-target:
+    needs: release-freeze
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.pick.outputs.tag }}
