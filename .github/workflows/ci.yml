@@ -187,9 +187,16 @@ jobs:
   # on 2026-08-18. The artifact is still unsigned and SmartScreen still warns.
   #
   # `workflow_dispatch` only — a 119 MB artifact on every push is waste.
+  #
+  # Deliberately NOT `needs: windows-check`. That job has been red since before
+  # this work — 17 failures on this runner, all of them pre-existing and none
+  # of them about the Electron host: POSIX file modes, symlink realpath,
+  # a vendored bundle hash, and `pty/info.test.ts` fixtures that hand POSIX
+  # rows to whatever platform module the host resolves. Gating packaging behind
+  # it would mean packaging never runs, which is what already happened to
+  # `windows-engineering-bundle` above.
   windows-electron-package:
     if: github.event_name == 'workflow_dispatch'
-    needs: windows-check
     runs-on: windows-latest
     permissions:
       contents: read
