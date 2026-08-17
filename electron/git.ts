@@ -13,7 +13,10 @@ export function gitBranch(cwd: string): Promise<string | null> {
     execFile(
       "git",
       ["-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"],
-      { encoding: "utf8", timeout: 4000 },
+      // `windowsHide`, like both siblings that spawn on this platform: this
+      // runs on every cwd change, and without it Windows flashes a console
+      // window each time. The same defect was found and fixed in the Rust host.
+      { encoding: "utf8", timeout: 4000, windowsHide: true },
       (error, stdout) => {
         if (error) {
           resolve(null);
