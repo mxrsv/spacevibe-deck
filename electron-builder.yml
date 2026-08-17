@@ -46,3 +46,25 @@ mac:
   # `build/` does not exist in this repo, so the default icon lookup finds
   # nothing; both hosts share the Tauri icon set.
   icon: src-tauri/icons/icon.icns
+
+# Windows preview target — UNSIGNED, and cross-built from macOS.
+#
+# Added 2026-08-18 to produce the first Windows artifact of the Electron host.
+# It carries no code signature, so SmartScreen will warn on every install, and
+# it inherits `electron/platform/windows.ts`, which no Windows machine has yet
+# executed (Gate C). This is a preview channel artifact by construction, not a
+# shipping installer.
+#
+# `perMachine: false` keeps the install per-user: no elevation prompt, and a
+# tester can remove it without touching Program Files.
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: src-tauri/icons/icon.ico
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: Deck-Electron-${version}-win-x64-setup.${ext}
