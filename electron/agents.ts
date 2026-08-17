@@ -12,6 +12,7 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import * as macos from "./platform/macos";
+import * as windows from "./platform/windows";
 
 /** A login shell that hangs (a `.zprofile` waiting on the network) must not
  * wedge the picker forever — degrade to empty after this. */
@@ -153,6 +154,41 @@ export function parseCommandVOutput(
 }
 
 /**
+ * Windows discovery: walk PATH directly, no shell.
+ *
+ * There is no `-ilc` here and no rc file to source — a PowerShell profile is
+ * not where a CLI registers its PATH — so the shell probe is not merely
+ * unnecessary, it is wrong twice over. This module used to run it
+ * unconditionally through the macOS launcher, which ENOENTs on Windows;
+ * `detectAgentsSafely` swallowed that to `[]`, and the picker reported "Shell
+ * only" on a machine with every agent installed.
+ *
+ * Each name resolves through `COMMAND_SUFFIXES`, so an npm `.cmd` shim with no
+ * bare `.exe` is found. `name` carries the probe key rather than the file's
+ * basename: what the renderer stores is `claude`, never `claude.cmd`.
+ */
+export function discoverAgentsWindows(
+  requested: readonly string[],
+  resolve: (name: string) => string | null = (name) =>
+    windows.resolveOnPath(name),
+): AgentInfo[] {
+  const found: AgentInfo[] = [];
+  const seen = new Set<string>();
+  for (const name of probeNames(requested)) {
+    const key = probeKey(name);
+    if (seen.has(key)) {
+      continue;
+    }
+    const path = resolve(name);
+    if (path !== null) {
+      seen.add(key);
+      found.push({ name: key, path });
+    }
+  }
+  return found;
+}
+
+/**
  * Probe the login shell. Any failure — spawn error, or an rc file still
  * hanging past the timeout — degrades to an empty list rather than leaving the
  * picker waiting forever.
@@ -160,6 +196,9 @@ export function parseCommandVOutput(
 export function discoverAgents(
   requested: readonly string[],
 ): Promise<AgentInfo[]> {
+  if (process.platform === "win32") {
+    return Promise.resolve(discoverAgentsWindows(requested));
+  }
   const names = probeNames(requested);
   const script = names.map((name) => `command -v ${name}`).join("; ");
   const launch = macos.shellLaunch();

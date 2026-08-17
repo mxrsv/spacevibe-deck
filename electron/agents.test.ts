@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import os from "node:os";
 import path from "node:path";
 import {
+  discoverAgentsWindows,
   BUILTIN_AGENTS,
   dirsExist,
   isProbeSafe,
@@ -161,5 +162,53 @@ describe("dirsExist", () => {
     const missing = path.join(os.tmpdir(), "deck-definitely-missing-dir");
 
     expect(await dirsExist([os.tmpdir(), missing])).toEqual([true, false]);
+  });
+});
+
+describe("discoverAgentsWindows", () => {
+  it("finds an agent that only exists as a .cmd shim", () => {
+    // The Windows failure this replaces: discovery ran the macOS login-shell
+    // probe, ENOENTed, was swallowed to `[]`, and the picker said "Shell only"
+    // on a machine with every agent installed.
+    const found = discoverAgentsWindows([], (name) =>
+      name === "claude" ? "C:\\npm\\claude.cmd" : null,
+    );
+
+    expect(found).toEqual([{ name: "claude", path: "C:\\npm\\claude.cmd" }]);
+  });
+
+  it("reports the probe key, not the file's basename", () => {
+    // `lastAgent` on disk is `claude`; storing `claude.cmd` would stop every
+    // remembered workspace from resolving.
+    const found = discoverAgentsWindows([], (name) =>
+      name === "codex" ? "C:\\bin\\CODEX.EXE" : null,
+    );
+
+    expect(found[0].name).toBe("codex");
+  });
+
+  it("probes every built-in even when the caller asks for none", () => {
+    const probed: string[] = [];
+    discoverAgentsWindows([], (name) => {
+      probed.push(name);
+      return null;
+    });
+
+    expect(probed).toEqual([...BUILTIN_AGENTS]);
+  });
+
+  it("adds a safe declared agent and skips an unsafe one", () => {
+    const probed: string[] = [];
+    discoverAgentsWindows(["my-agent", "rm -rf /; evil"], (name) => {
+      probed.push(name);
+      return null;
+    });
+
+    expect(probed).toContain("my-agent");
+    expect(probed).not.toContain("rm -rf /; evil");
+  });
+
+  it("omits an agent that is not installed", () => {
+    expect(discoverAgentsWindows([], () => null)).toEqual([]);
   });
 });
