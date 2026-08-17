@@ -490,6 +490,37 @@ registerBrowser({ labelOf, browserPanels });
 
 registerShell();
 
+// ------------------------------------------------------- Windows identity
+// Both of these are no-ops away from Windows, and both are load-bearing on it.
+//
+// Without the AppUserModelID, a toast attributes itself to "Electron" and
+// taskbar entries do not group — and `notification_send` is how an agent tells
+// the user it is waiting for them, so the notification that matters most is
+// the one wearing the wrong name.
+//
+// Without the single-instance lock, launching Deck twice yields two processes
+// sharing one `userData`: `settings.json` and `workspaces.json` become
+// last-writer-wins between them, and the session journal — which mirrors every
+// window's live tabs — is written by both.
+app.setAppUserModelId("dev.spacevibe.deck.electron");
+if (!app.requestSingleInstanceLock()) {
+  // A second launch hands its argv to the first instance and leaves. Quitting
+  // before `whenReady` means no window, no PTY and no store was ever opened
+  // here, so there is nothing to tear down.
+  app.quit();
+}
+app.on("second-instance", () => {
+  // The user asked for Deck and Windows gave them the running copy: surface it
+  // rather than doing nothing, which reads as a failed launch.
+  const existing = BrowserWindow.getAllWindows()[0];
+  if (existing !== undefined) {
+    if (existing.isMinimized()) {
+      existing.restore();
+    }
+    existing.focus();
+  }
+});
+
 // ------------------------------------------------------------------ Boot
 app.whenReady().then(() => {
   // Read the stored rebinds BEFORE the first window exists. `createWindow`
