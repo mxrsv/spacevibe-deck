@@ -48,13 +48,16 @@ const RETIRED_KEYS: readonly string[] = [
  * off disk.
  */
 export function mergeSettings(current: unknown, patch: unknown): unknown {
+  if (
+    current !== undefined &&
+    (typeof current !== "object" || current === null || Array.isArray(current))
+  ) {
+    throw new Error("Stored settings are malformed; write blocked");
+  }
   if (typeof patch !== "object" || patch === null || Array.isArray(patch)) {
     return current;
   }
-  const base =
-    typeof current === "object" && current !== null && !Array.isArray(current)
-      ? (current as Record<string, unknown>)
-      : {};
+  const base = (current ?? {}) as Record<string, unknown>;
   const merged = { ...base, ...(patch as Record<string, unknown>) };
   return Object.fromEntries(
     Object.entries(merged).filter(([key]) => !RETIRED_KEYS.includes(key)),
@@ -73,6 +76,9 @@ export async function applySettingsPatch(
   patch: unknown,
 ): Promise<unknown> {
   const store = await stores.open(STORE_FILE);
+  if (!store.requireObjectValue(STORE_KEY)) {
+    throw new Error("Stored settings are malformed; write blocked");
+  }
   const merged = mergeSettings(store.get(STORE_KEY), patch);
   store.set(STORE_KEY, merged);
   await store.save();

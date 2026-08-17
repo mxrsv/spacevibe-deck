@@ -32,7 +32,19 @@ describe("mergeSettings", () => {
   });
 
   it("treats absent current settings as empty", () => {
-    expect(mergeSettings(null, { fontSize: 15 })).toEqual({ fontSize: 15 });
+    expect(mergeSettings(undefined, { fontSize: 15 })).toEqual({
+      fontSize: 15,
+    });
+  });
+
+  it("rejects a malformed stored settings value instead of overwriting it", () => {
+    expect(() => mergeSettings(null, { fontSize: 15 })).toThrow(
+      /stored settings/i,
+    );
+    expect(() => mergeSettings("broken", { fontSize: 15 })).toThrow(
+      /stored settings/i,
+    );
+    expect(() => mergeSettings(null, null)).toThrow(/stored settings/i);
   });
 
   it("drops a retired key an old profile still carries", () => {

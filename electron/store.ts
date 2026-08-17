@@ -7,9 +7,9 @@
  * clean install by decision, but keeping each shape stable means the renderer
  * code and its tests do not have to fork by host.
  *
- * Writes are atomic: a crash mid-write must not leave a truncated
- * `settings.json`, because the renderer treats an unreadable store as "no
- * settings" and would silently reset the user's configuration.
+ * Writes are atomic, and an unreadable store is write-locked: a failed read
+ * must never become permission to replace the user's recoverable bytes with
+ * defaults.
  */
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -28,11 +28,29 @@ export interface StoreOptions {
   readonly onError?: (error: unknown) => void;
 }
 
+export interface StoreLoadState {
+  readonly state: "ready" | "unreadable";
+  readonly fresh: boolean;
+}
+
 export class JsonStore {
   private data: Record<string, unknown> = {};
   private loaded = false;
+  /**
+   * The file EXISTS but could not be turned into an object.
+   *
+   * Distinct from "no file": a missing store is a fresh install and writing
+   * over nothing is correct. An unreadable one holds the user's real
+   * configuration, and the caller above treats it as `{}` — which used to end
+   * with the defaults being seeded and autosaved straight over it.
+   */
+  private currentLoadState: StoreLoadState = {
+    state: "ready",
+    fresh: true,
+  };
   private pendingWrite: NodeJS.Timeout | null = null;
   private writing: Promise<void> = Promise.resolve();
+  private reloading: Promise<StoreLoadState> | null = null;
 
   private onError: ((error: unknown) => void) | undefined;
 
@@ -48,9 +66,9 @@ export class JsonStore {
     this.onError = onError;
   }
 
-  async load(): Promise<void> {
+  async load(): Promise<StoreLoadState> {
     if (this.loaded) {
-      return;
+      return this.currentLoadState;
     }
     try {
       const raw = await fs.readFile(this.filePath, "utf8");
@@ -58,14 +76,89 @@ export class JsonStore {
       // A store file that is not an object is corrupt, not empty. Treat it as
       // empty here but keep the file — overwriting it would destroy whatever a
       // user might still recover by hand.
-      this.data =
-        typeof parsed === "object" && parsed !== null
-          ? (parsed as Record<string, unknown>)
-          : {};
-    } catch {
+      const usable =
+        typeof parsed === "object" && parsed !== null && !Array.isArray(parsed);
+      this.data = usable ? (parsed as Record<string, unknown>) : {};
+      this.currentLoadState = {
+        state: usable ? "ready" : "unreadable",
+        fresh: false,
+      };
+    } catch (error: unknown) {
       this.data = {};
+      // ENOENT is the only benign case — every other reason (bad JSON, a
+      // truncated file from a power loss, a cloud-sync conflict copy, EACCES)
+      // means real data is sitting there unread.
+      const fresh = (error as NodeJS.ErrnoException).code === "ENOENT";
+      this.currentLoadState = {
+        state: fresh ? "ready" : "unreadable",
+        fresh,
+      };
+      if (!fresh) {
+        console.error(`Deck: could not read ${this.filePath}`, error);
+      }
     }
     this.loaded = true;
+    return this.currentLoadState;
+  }
+
+  get loadState(): StoreLoadState {
+    return this.currentLoadState;
+  }
+
+  /**
+   * Require one key to be an object when present.
+   *
+   * The root JSON can be valid while a domain value is not (`settings: null`).
+   * Marking that state unreadable gives the domain the same write lock and
+   * repair/retry path as malformed JSON without teaching this generic store
+   * which keys each caller owns. An absent value remains healthy so defaults
+   * can seed a fresh or older store.
+   */
+  requireObjectValue(key: string): boolean {
+    if (!this.loaded) {
+      throw new Error(`${path.basename(this.filePath)} has not been loaded`);
+    }
+    if (this.currentLoadState.state === "unreadable") {
+      return false;
+    }
+    const value = this.data[key];
+    const usable =
+      value === undefined ||
+      (typeof value === "object" && value !== null && !Array.isArray(value));
+    if (!usable) {
+      this.currentLoadState = { state: "unreadable", fresh: false };
+    }
+    return usable;
+  }
+
+  /**
+   * Re-read only a write-locked store, so Settings' Retry can recover after
+   * the user repairs the file without risking an unsaved healthy snapshot.
+   */
+  retryUnreadable(): Promise<StoreLoadState> {
+    if (this.currentLoadState.state === "ready") {
+      return Promise.resolve(this.currentLoadState);
+    }
+    if (this.reloading !== null) {
+      return this.reloading;
+    }
+    this.loaded = false;
+    const attempt = this.load().finally(() => {
+      this.reloading = null;
+    });
+    this.reloading = attempt;
+    return attempt;
+  }
+
+  private assertWritable(): void {
+    if (!this.loaded) {
+      throw new Error(`${path.basename(this.filePath)} has not been loaded`);
+    }
+    if (this.currentLoadState.state === "unreadable") {
+      throw new Error(
+        `${path.basename(this.filePath)} is unreadable; write blocked`,
+      );
+    }
   }
 
   get<T>(key: string): T | undefined {
@@ -77,23 +170,27 @@ export class JsonStore {
   }
 
   set(key: string, value: unknown): void {
+    this.assertWritable();
     this.data = { ...this.data, [key]: value };
     this.scheduleSave();
   }
 
   delete(key: string): void {
+    this.assertWritable();
     const { [key]: _removed, ...rest } = this.data;
     this.data = rest;
     this.scheduleSave();
   }
 
   clear(): void {
+    this.assertWritable();
     this.data = {};
     this.scheduleSave();
   }
 
   /** Flush now and wait — used on quit, where a debounce would lose the write. */
   async save(): Promise<void> {
+    this.assertWritable();
     if (this.pendingWrite !== null) {
       clearTimeout(this.pendingWrite);
       this.pendingWrite = null;
@@ -166,7 +263,10 @@ export class StoreRegistry {
   open(fileName: string, options?: StoreOptions): Promise<JsonStore> {
     const existing = this.stores.get(fileName);
     if (existing !== undefined) {
-      return existing;
+      return existing.then(async (store) => {
+        await store.retryUnreadable();
+        return store;
+      });
     }
     const store = new JsonStore(
       path.join(this.baseDirectory, fileName),
