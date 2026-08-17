@@ -39,6 +39,13 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      # `tsconfig.json` covers `src` only, and `tsconfig.electron.json` was
+      # invoked by nothing in CI — so a type error anywhere in `electron/`
+      # merged green, and Vitest transpiles the test files without checking
+      # them. This step is the whole typecheck of the Electron main process.
+      - name: Typecheck and bundle the Electron main process
+        run: npm run electron:build
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
@@ -93,6 +100,14 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      # This runner is the Windows machine Gate C has been waiting for. `npm test`
+      # above already spawns a real ConPTY through `electron/pty/windows-pty.test.ts`
+      # — the only kind of test that could have caught the string-vs-Buffer
+      # crash the first Windows preview shipped with. This step adds the
+      # typecheck the Electron host never had in CI.
+      - name: Typecheck and bundle the Electron main process
+        run: npm run electron:build
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
@@ -155,5 +170,57 @@ jobs:
         with:
           name: spacevibe-deck-windows-engineering-preview
           path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  # Build the Electron host's Windows installer ON WINDOWS.
+  #
+  # It was cross-built from a Mac to get the first preview out, and that path
+  # is not one to keep: `@electron/rebuild` cannot cross-compile node-pty
+  # (`node-gyp does not support cross-compiling native modules from source`),
+  # so the cross-build only worked with the rebuild disabled and the shipped
+  # prebuilds taken on trust. Here the native step runs for real.
+  #
+  # No private-repository guard, unlike `windows-engineering-bundle` above:
+  # `release.yml` already publishes an unsigned Windows preview installer from
+  # this public repo, and the owner published the Electron preview the same way
+  # on 2026-08-18. The artifact is still unsigned and SmartScreen still warns.
+  #
+  # `workflow_dispatch` only — a 119 MB artifact on every push is waste.
+  windows-electron-package:
+    if: github.event_name == 'workflow_dispatch'
+    needs: windows-check
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build renderer
+        run: npm run build
+
+      - name: Build Electron main process
+        run: npm run electron:build
+
+      - name: Package unsigned Windows installer
+        run: npx electron-builder --config electron-builder.yml --win --x64 --publish never
+
+      - name: Upload Electron Windows preview
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: deck-electron-windows-preview
+          path: |
+            dist-electron-app/*-setup.exe
+            dist-electron-app/latest.yml
           if-no-files-found: error
           retention-days: 7
