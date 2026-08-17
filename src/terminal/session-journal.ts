@@ -303,13 +303,25 @@ export function resumeSessionJournal(): void {
   suspended = false;
 }
 
-/** Write pending state now — the quit flow's flush hook. */
-export async function flushSessionJournal(): Promise<void> {
+/**
+ * Write pending state now — the quit flow's flush hook.
+ *
+ * `force` exists because the quit flow SUSPENDS first, on purpose: a pane-exit
+ * signal arriving mid-teardown must not re-arm the debounce and clobber what
+ * was just flushed. Without `force` that ordering made this function a no-op
+ * — it cancelled the armed write and then returned on the suspension check,
+ * so quitting inside the debounce window silently dropped the last tab change
+ * instead of persisting it. Suspension still blocks every OTHER caller, and
+ * still blocks re-arming after this write, because `suspended` stays true.
+ */
+export async function flushSessionJournal(
+  options: { readonly force?: boolean } = {},
+): Promise<void> {
   if (timer !== null) {
     clearTimeout(timer);
     timer = null;
   }
-  if (suspended || activeDeps === null) {
+  if (activeDeps === null || (suspended && options.force !== true)) {
     return;
   }
   await writeNow(activeDeps);
