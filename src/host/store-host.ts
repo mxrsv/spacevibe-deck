@@ -13,17 +13,24 @@ export interface StoreOptions {
   readonly autoSave?: number | boolean;
 }
 
+export interface StoreLoadState {
+  readonly state: "ready" | "unreadable";
+  readonly fresh: boolean;
+}
+
 export class Store {
-  private constructor(private readonly file: string) {}
+  private constructor(
+    private readonly file: string,
+    readonly loadState: StoreLoadState,
+  ) {}
 
   static async load(file: string, options?: StoreOptions): Promise<Store> {
-    await invoke("store_load", {
+    const loadState = await invoke<StoreLoadState>("store_load", {
       file,
       defaults: options?.defaults ?? {},
-      autoSave:
-        typeof options?.autoSave === "number" ? options.autoSave : 0,
+      autoSave: typeof options?.autoSave === "number" ? options.autoSave : 0,
     });
-    return new Store(file);
+    return new Store(file, loadState);
   }
 
   get<T>(key: string): Promise<T | undefined> {

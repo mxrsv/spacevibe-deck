@@ -1,15 +1,16 @@
-import type { ComponentChildren } from "preact";
 import {
-  Columns2,
+  ArrowsOut,
+  ChatText,
+  Gear,
   Globe,
-  Maximize2,
-  MessageSquareText,
-  Rows2,
-  Settings,
-  SquareX,
-} from "lucide-preact";
+  SquareSplitHorizontal,
+  SquareSplitVertical,
+  XSquare,
+} from "@phosphor-icons/react";
+import type { ComponentChildren } from "preact";
 import { ACTION_REGISTRY, type ActionId } from "../../terminal/action-registry";
 import { shortcutLabel } from "../../lib/shortcut-label";
+import { SIDEBAR_TOOLS_HIDDEN } from "../sidebar-actions";
 import { FeatureToolbar } from "./feature-toolbar";
 import type { ToolbarItem, ToolbarItemState } from "./toolbar-item";
 
@@ -93,7 +94,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "split-row",
       label: toolbarLabel("split-row"),
-      icon: Columns2,
+      icon: SquareSplitHorizontal,
       group: "pane",
       shortcut: shortcutLabel("split-row"),
       state: IDLE,
@@ -103,7 +104,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "split-column",
       label: toolbarLabel("split-column"),
-      icon: Rows2,
+      icon: SquareSplitVertical,
       group: "pane",
       shortcut: shortcutLabel("split-column"),
       state: IDLE,
@@ -113,7 +114,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "toggle-expand",
       label: toolbarLabel("toggle-expand"),
-      icon: Maximize2,
+      icon: ArrowsOut,
       group: "pane",
       shortcut: shortcutLabel("toggle-expand"),
       state: props.expandActive ? ACTIVE : IDLE,
@@ -124,7 +125,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "close-pane",
       label: toolbarLabel("close-pane"),
-      icon: SquareX,
+      icon: XSquare,
       group: "pane",
       shortcut: shortcutLabel("close-pane"),
       state: IDLE,
@@ -148,7 +149,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "toggle-prompts",
       label: toolbarLabel("toggle-prompts"),
-      icon: MessageSquareText,
+      icon: ChatText,
       group: "global",
       shortcut: shortcutLabel("toggle-prompts"),
       state:
@@ -165,7 +166,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
     {
       id: "toggle-settings",
       label: toolbarLabel("toggle-settings"),
-      icon: Settings,
+      icon: Gear,
       group: "global",
       shortcut: shortcutLabel("toggle-settings"),
       state: props.settingsOpen ? ACTIVE : IDLE,
@@ -185,11 +186,18 @@ export function DeckToolbar(props: DeckToolbarProps) {
       // is what keeps a second Prompt Board popover off the screen.
       items={[]}
       updateAction={props.updateAction}
-      pinnedMenu={props.compact ? [...paneItems, ...globalItems] : paneItems}
-      // Only while the popover's own row lives in the menu: on the bar the
-      // Prompts control still owns its slot and its anchor.
+      pinnedMenu={
+        props.compact || SIDEBAR_TOOLS_HIDDEN
+          ? [...paneItems, ...globalItems]
+          : paneItems
+      }
+      // Only while the popover's own row lives in the menu. That is top-tab
+      // mode always, and sidebar mode too while the rail's footer is hidden —
+      // with no footer there is no other row to anchor the Prompt Board to.
       pinnedMenuAnchored={
-        props.compact && props.promptsOpen ? props.promptPopover : undefined
+        (props.compact || SIDEBAR_TOOLS_HIDDEN) && props.promptsOpen
+          ? props.promptPopover
+          : undefined
       }
     />
   );

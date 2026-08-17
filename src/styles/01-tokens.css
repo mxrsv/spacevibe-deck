@@ -1,0 +1,186 @@
+:root {
+  /* Theme base vars — set from JS on theme change (app.tsx) */
+  --bg: #16161e;
+  --fg: #cbcbcb;
+  --accent: #7aa2f7;
+  --red: #f7768e;
+  --green: #9ece6a;
+  --yellow: #e0af68;
+  --magenta: #bb9af7;
+  --cyan: #7dcfff;
+  /* Unread-output badge. Rides the theme's yellow so it tracks light/dark. */
+  --status-unread: var(--yellow);
+
+  /* Derived chrome tones — computed in JS (lib/derive-colors.ts) and set on
+     :root by app.tsx; the values below are pre-JS fallbacks for first paint.
+     --tone is white on dark themes, black on light ones. */
+  --tone: #ffffff;
+  /* The stage stays on the terminal theme background; both side columns use
+     one recessed surface so the work area remains the visual focal point. */
+  --sidebar-bg: color-mix(in srgb, var(--bg) 76%, #000000);
+  --sidebar-seam: color-mix(in srgb, var(--sidebar-bg) 50%, var(--bg));
+  --chrome-1: color-mix(in srgb, var(--bg) 95%, var(--tone));
+  --chrome-2: color-mix(in srgb, var(--bg) 91%, var(--tone));
+  --tab-active-bg: color-mix(in srgb, var(--bg) 85%, var(--tone));
+  /* DL-21.2: the hover half of the selection pair. 6% against --tab-active-bg's
+     15% — far enough that hover cannot be mistaken for "already selected",
+     close enough that they read as one ladder. Mixed from --tone like the
+     seams (DL-2.3), never from --fg: the terminal's text hue does not belong
+     in a wash that is supposed to be colourless. */
+  --state-hover-bg: color-mix(in srgb, var(--tone) 6%, transparent);
+  /* DL-21.7: a tab-strip chip's RESTING wash, half of hover's 6%. It exists
+     only because a chip has no list around it — it floats on the stage's own
+     `--bg`, so with no wash at all an idle chip was invisible as an object and
+     the owner could not see how many tabs were open. Defined here rather than
+     in `derive-colors.ts` on purpose: it is one step of the same `--tone`
+     ladder hover and selection already ride, and JS keeps `--tone` current, so
+     a second derived value would only be another thing to keep in sync. */
+  --tab-rest-bg: color-mix(in srgb, var(--tone) 3%, transparent);
+  --input-bg: color-mix(in srgb, var(--bg) 88%, var(--tone));
+  /* Lines INSIDE a surface. Mixed from --tone since 2026-08-17 (DL-2.3's
+     carve-out closed): on --fg these were the last chrome tokens carrying the
+     terminal's text hue, so a blue-violet theme drew blue-violet rules across
+     chrome that is supposed to be colourless. */
+  --hair: color-mix(in srgb, var(--tone) 12%, transparent);
+  --hair-strong: color-mix(in srgb, var(--tone) 20%, transparent);
+  /* Seams (DL-2.3, approved 2026-08-12). Mixed from --tone, never --fg: a
+     boundary belongs to the background ladder, not to the terminal's text hue.
+     The recessed one sits BELOW the surface it edges, which is what makes a
+     shell boundary read as the edge of a plane instead of a drawn line.
+     --hair/--hair-strong above are the same mix at a different job: lines
+     inside one surface rather than the boundary between two. */
+  --seam-recessed: color-mix(in srgb, var(--bg) 98%, var(--tone));
+  --seam-divider: color-mix(in srgb, var(--tone) 12%, transparent);
+  --seam-raised: color-mix(in srgb, var(--bg) 86%, var(--tone));
+  --text-primary: var(--fg);
+  --text-muted: color-mix(in srgb, var(--fg) 52%, var(--bg));
+  --text-faint: color-mix(in srgb, var(--fg) 34%, var(--bg));
+
+  /* The only font token in chrome. There is deliberately no --mono companion:
+     the monospace face belongs to the terminal (DL-4.1), and the terminal
+     takes its font from the user's setting via toFontStack() in
+     terminal/pane.ts, never from a CSS token. A --mono token here would only
+     be an invitation to leak terminal typography back into native UI. */
+  --ui-font:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+
+  /* DL-4.4 names the four standard chrome text sizes (Native balanced,
+     2026-08-16); DL-4.5 requires the ladder to live here as variables, once
+     each, never as a px literal repeated at a use site. Tasks 4-8 migrate
+     consumers onto these — this task only declares them. */
+  --type-title: 14px;
+  --type-body: 12.5px;
+  --type-meta: 11px;
+  --type-micro: 10.5px;
+
+  /* DL-18: the single command row. 34px carries a 26px control comfortably
+     and clears the macOS traffic lights, which need ~28px of vertical room. */
+  --frame-h: 34px;
+  /* macOS traffic-light cluster: 3 buttons from x=20, ~70px to the last edge,
+     plus breathing room before the first tab. */
+  --frame-lights-w: 78px;
+  --status-h: 28px;
+  /* 275px, up from 200px on 2026-08-14, and it is a drag-affordance figure
+     before it is a taste one. The frame moved into this column (DL-18.3), so
+     the window's draggable strip is now whatever the column has left after the
+     78px traffic-light footprint and the actions — about 26px at 200px wide,
+     which is not a titlebar you can grab or double-click to zoom. 275px is the
+     reviewed direction's own rail width and leaves ~100px. Measured natively
+     on macOS, not reasoned about. */
+  --sidebar-w: 275px;
+  /* Explorer panel default width (spec §3). Fixed for this slice — the
+     drag-resize and the persisted setting arrive with the toggle chord. */
+  --dock-w: 260px;
+
+  /* DL-20.1: three radius roles, and no fourth picked at a use site.
+     --radius-tight is anything drawn INSIDE a control or row — marks, bars,
+     scrollbar thumbs, the parts of a miniature. --radius-control is anything
+     the pointer acts on inside a surface — rows, pills, icon buttons, chips.
+     --radius-surface is anything that floats above chrome — popovers, dialogs,
+     the file view. The settings screen is not in this set: it is full-bleed
+     over the stage (DL-11), so it has no radius of its own.
+     Two roles replaced a single `--radius: 10px` on 2026-08-14; the third
+     arrived on 2026-08-16, when surface came down from 16px so the closed
+     scale reads 8/10/12. `border-radius: 50%` and the 999px capsule stay
+     shapes rather than scale values.
+     --radius-flat is the fourth role (owner, 2026-08-17): a control packed
+     into a DENSE row, where a 10px corner forces horizontal padding to keep
+     text off the curve and the padding is width the text needed. The tab
+     strip's chips are the whole membership. */
+  --radius-tight: 8px;
+  --radius-control: 10px;
+  --radius-surface: 12px;
+  --radius-flat: 2px;
+
+  /* DL-20.2: one motion pair for chrome state change. §7 carried this as a
+     bare "0.13s ease" figure until the scale gave it a name. The panel
+     slide-over keeps its own 0.28s entrance — that is a different budget line
+     and still inside DL-1.2's 300ms ceiling. */
+  --duration: 150ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Flat design rule: no drop shadows anywhere in this file.
+   Depth comes from background steps and 1px hairline borders only. */
+
+/* `clip`, not `hidden` (2026-08-16). `overflow: hidden` still makes a SCROLL
+   CONTAINER — it only hides the scrollbar — so any descendant that overhangs
+   the viewport by a pixel makes the whole shell scrollable, and the first
+   `scrollIntoView` the browser runs on focus shifts every fixed thing in the
+   app up: traffic lights clipped, stage strip off its row, terminal under the
+   chrome. Nothing scrolls it back, because nothing knows it moved. `clip`
+   clips the same pixels without a scrollport, so that class of bug cannot
+   happen here again — the overhang stays a bug worth fixing, it just stops
+   being a bug that moves the window. */
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: clip;
+  background: var(--bg);
+}
+
+/* ── Scrollbars (2026-08-17) ──────────────────────────────────────────────
+   ONE treatment for every scroll container in the app. The platform's own is
+   a 15px opaque band, and next to 30px rail rows or a centred board it reads
+   as a column of chrome rather than as an edge of the list it belongs to —
+   the owner hit it on the rail and the open board within minutes of each
+   other, which is why this is declared once here instead of per surface.
+
+   6px, no track, and a thumb on the `--radius-tight` scale DL-20.1 already
+   names for "bars, scrollbar thumbs and miniature parts".
+
+   The thumb is invisible at rest and paints only while the pointer is inside
+   the scroll container: `*:hover` matches ANCESTORS too, so anywhere over the
+   list counts. Nothing becomes unreachable — a wheel or trackpad gesture
+   needs the pointer in the box anyway, and the bar is still grabbable the
+   moment it appears.
+
+   No `transition`: Chrome does not animate scrollbar pseudo-elements, so
+   declaring one would only be a lie in the stylesheet.
+
+   Base layer on purpose. A surface that needs a different thumb still wins by
+   coming later in the cascade; what it must not do is re-declare this one. */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: var(--radius-tight);
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--fg) 20%, transparent);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--fg) 32%, transparent);
+}

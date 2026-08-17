@@ -1,4 +1,4 @@
-import { X } from "lucide-preact";
+import { X } from "@phosphor-icons/react";
 import { useEffect, useRef } from "preact/hooks";
 import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
 import { activeCategory } from "./active-category-store";
@@ -8,6 +8,8 @@ import {
   SETTINGS_CATEGORIES,
 } from "./settings-categories";
 import { SettingsNav } from "./settings-nav";
+import { initSettings, settingsLoadState } from "../../settings/settings-store";
+import { LoadError } from "../controls/load-error";
 
 interface SettingsScreenProps {
   open: boolean;
@@ -102,7 +104,14 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
           id={SECTION_PANEL_ID}
           role="tabpanel"
           aria-labelledby={categoryTabId(active.id)}
+          aria-busy={settingsLoadState.value.status === "loading"}
         >
+          {settingsLoadState.value.status === "error" ? (
+            <LoadError
+              message={settingsLoadState.value.message}
+              onRetry={() => void initSettings()}
+            />
+          ) : null}
           <Section />
         </section>
       </div>

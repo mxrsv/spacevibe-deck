@@ -1,0 +1,353 @@
+/* ── Dock tabs: the docked panel's own tablist (src/ui/dock/dock-tabs.tsx) ──
+   Switches which of the panel's surfaces (explorer / usage / sessions) is
+   showing. Selection follows the app's one selection language rather than
+   inventing a chip look of its own: the active chip is DL-21.1's full
+   `--tab-active-bg` wash at `--radius-control` (DL-20.1) and nothing else —
+   idle chips carry no fill — hover is the quieter DL-21.2 wash, and
+   focus-visible is the standard 2px `--accent` outline (DL-21.3). Icons are
+   `DeckIcon` at `FEATURE_ICON` (DL-14.1–14.3), text is `--ui-font` at
+   `--type-meta` in sentence case (DL-4.1, DL-4.4, DL-4.5, §8) — no
+   monospace, no px literal, no uppercase. */
+.dock-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+}
+
+.dock-tabs__chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+  padding: 4px 8px;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.dock-tabs__chip:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+/* DL-21.1: selection is the full wash and nothing else — no border, no
+   `--accent` fill, no second signifier (DL-21.6). */
+.dock-tabs__chip.is-active {
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+
+.dock-tabs__chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ── Explorer panel: a docked column on the right of the stage (DL-19) ────
+   Plan Task 3 (spec: docs/specs/2026-08-12-file-explorer-design.md §3).
+   `.stage__tabs`' own inset shrinks by exactly the panel's width, so
+   terminal panes resize around it (DL-19.1) instead of being covered.
+   `--dock-w` is set inline by `App` from the live-drag-or-settled width
+   (DL-19.4); the value here is only the fallback for a mount with no `App`
+   around it (the gallery, this panel's own isolated tests). */
+
+.stage--dock .stage__tabs {
+  right: var(--dock-w);
+}
+
+.dock-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--dock-w);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--sidebar-bg);
+  /* DL-19.2: the seam is a single hairline, never a shadow. */
+  border-left: 1px solid var(--hair);
+}
+
+/* DL-19.4: the drag target for the width, on the seam itself. Wider than
+   the hairline it sits on so it can be hit, and transparent so it does not
+   draw a second one. */
+.dock-panel__grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 7px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 1;
+}
+
+/* DL-19.4: a drag pulled far enough past the floor closes the column on
+   release. It dims while the gesture is armed instead of vanishing under the
+   pointer — unmounting the grip mid-drag would end the gesture with the
+   column gone and no way to pull it back. */
+.dock-panel.is-collapse-armed {
+  opacity: 0.45;
+}
+
+/* DL-19.3, amended 2026-08-16: the header row carries the tab row rather than
+   a single surface's title and hide control. Still one hairline-separated row
+   of the app's own controls; the hide control moved to the stage strip,
+   because a closed column cannot hold its own way back out (DL-18.9's
+   reasoning on the other edge). */
+.dock-panel__header {
+  display: flex;
+  align-items: center;
+  /* `--frame-h`, not a literal: the stage strip beside it is exactly that
+     tall, and the two rows sit side by side across one seam. At 28px the
+     dock's hairline landed 5px above the strip's `--seam-recessed` line, so
+     the boundary between chrome and work area broke in the middle of the
+     window (owner, 2026-08-16). One token now moves both. */
+  height: var(--frame-h);
+  /* This file has no global box-sizing reset, and the strip solves the same
+     problem the same way: border-box keeps the seam off the height, so the
+     two hairlines land on the same pixel row rather than one pixel apart. */
+  box-sizing: border-box;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--hair);
+  flex-shrink: 0;
+}
+
+.dock-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* DL-19.5: transient text under the header, in --text-faint. */
+.explorer-tab__empty {
+  margin: 0;
+  padding: 10px 8px;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  line-height: 1.4;
+}
+
+.file-tree-shell {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.file-tree {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  outline: none;
+}
+
+/* Its height is `rows.length * 22px` (plan T4's windowing math), set inline
+   from the row count — this is what keeps the scrollbar's size honest while
+   only the rows near the viewport are actually mounted. */
+.file-tree__rows {
+  position: relative;
+}
+
+.file-tree__row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* DL-19: data rows are 22px, --ui-font. */
+  height: 22px;
+  padding-right: 8px;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--duration) var(--ease);
+}
+
+/* DL-21.2: hover is the quieter wash — the same signifier used everywhere
+   else, per DL-19's own citation of that rule. */
+.file-tree__row:hover {
+  color: var(--text-primary);
+  background: var(--state-hover-bg);
+}
+
+/* DL-21.3: focus-visible stays a 2px --accent outline, same as the roving
+   tabindex list in settings-nav.tsx. */
+.file-tree__row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.file-tree__chevron,
+.file-tree__icon {
+  display: flex;
+  flex-shrink: 0;
+  /* DL §8/§19's file-type icon rule: monochrome at --text-faint. Taking the
+     row's color when selected is deferred — this row has no persisted
+     selection state yet, only the roving keyboard focus above. */
+  color: var(--text-faint);
+}
+
+.file-tree__name {
+  /* DL-19: a data row keeps its content's real casing. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-tree__status {
+  margin: 0;
+  padding: 10px 8px;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  line-height: 1.4;
+}
+
+/* ── Usage in the dock: the narrow-column layout ─────────────── */
+/* ── Usage body: dock variant (usage-body.tsx, additive to §11/§15/§19) ──
+   `UsageBody`'s "screen" variant reuses `.usage-screen__grid` /
+   `.usage-screen__section` verbatim — every rule already in this file above
+   under those two class names keeps applying unchanged, so nothing here
+   touches them. This block is ONLY the new "dock" path: the same status
+   strip / rail / view panel content, sized for a narrow docked column
+   (target 360-560px, default 420px).
+
+   The consumer that docks `<UsageBody variant="dock" />` must itself be a
+   `display: flex; flex-direction: column; min-height: 0;` box — the same
+   role `.usage-screen` plays for the screen variant — so `.usage-dock__grid`
+   below can size within it. Insert this block after the existing
+   `.usage-agent__sub` / "no hover" comment (around the current line 5736 in
+   `src/styles.css`, i.e. right before the "Usage screen: reduced motion"
+   section), so it reads as the dock counterpart sitting next to the screen
+   rules it reuses. */
+
+/* Stacked instead of side-by-side: at 360px width a 220px fixed rail
+   (`.usage-screen__grid`'s own `220px minmax(0, 1fr)` columns) would leave
+   ~140px for data, which is too narrow for even the daily table. The rail
+   becomes a horizontal strip above the content instead (below). */
+.usage-dock__grid {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+/* `.usage-nav` itself is untouched (usage-nav.tsx) — these are descendant
+   overrides scoped to the dock grid, same idiom `.usage-screen__grid`'s
+   sibling rules already use for the rail's OWN look. Row axis, scrolls
+   horizontally if a future 4th view ever overflows the strip, bottom accent
+   in place of the rail's left accent (DL-11.2's wash is unchanged either
+   way). */
+.usage-dock__grid .usage-nav {
+  flex-direction: row;
+  border-right: none;
+  border-bottom: 1px solid var(--hair);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.usage-dock__grid .usage-nav__list {
+  flex-direction: row;
+  padding: 4px 6px;
+  gap: 2px;
+}
+
+.usage-dock__grid .usage-nav__item {
+  border-left: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.usage-dock__grid .usage-nav__item:hover,
+.usage-dock__grid .usage-nav__item.is-active {
+  border-left-color: transparent;
+  border-bottom-color: var(--accent);
+}
+
+/* Section: same scrolling contract as `.usage-screen__section`
+  (min-height: 0, owns its own overflow-y), tighter horizontal padding so a
+  360px column keeps more of its width for the table/hero inside — 16px a
+  side there is 32px of a 420px column's own padding alone. */
+.usage-dock__section {
+  min-height: 0;
+  min-width: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 10px 12px;
+}
+
+/* The section's scrollbar is the app-wide one (`01-tokens.css`, 2026-08-17). */
+
+/* A wide table (breakdown's 9 columns) still gets its OWN
+   `overflow-x: auto` container per DL-15.3 — `.metric-table__scroll` is
+   unchanged and unscoped, so this is true in dock mode with no new rule.
+   Cell padding is trimmed here only, so more columns stay visible before the
+   scroller kicks in; type size is untouched (DL-20.3 reserves that to
+   DL-4.4). */
+.usage-dock__section .metric-table__cell {
+  padding: 5px 8px;
+}
+
+/* The hero (overview, DL §16) has no fixed width of its own beyond its
+   520px max — it already shrinks to fit a 360-560px column, so no override
+   is needed here. Listed for completeness: nothing to add. */
+
+/* ── Sessions in the dock: the narrow-column layout ─────────────── */
+/* SessionsBody dock variant (src/ui/sessions/sessions-body.tsx).
+
+   Was the screen variant's two-column grid at a narrower rail column until
+   2026-08-16, when the rail became a chip ROW above the list (DL-19.8): a
+   fixed 120px column at a dock width of 360 is a third of the panel, and it
+   was spending it on labels it then clipped to `Cla…`. The section keeps
+   ownership of scrolling (DL-11.1). DL §25's history-row rules are unchanged;
+   only the container and the row's meta line get width-driven overrides. */
+
+.sessions-body--dock {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* The project filter `<select>` has no shrink guard in the screen variant
+   (it never needs one at full-window width). A native select refuses to
+   shrink below its intrinsic content width by default, which at 360px can
+   push the column wider than its container — the one horizontal-scroll risk
+   the screen variant's CSS doesn't already cover. */
+.sessions-body--dock .sessions-list__filter-row {
+  min-width: 0;
+}
+
+.sessions-body--dock .sessions-list__project {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* DL-25.2 protects the agent and time fields from being pushed out of their
+   place by a long title, but doesn't guarantee they fit on one line at
+   360px alongside a project path. Wrapping (rather than shrinking them, or
+   letting the row overflow) keeps every field's full text on screen with no
+   horizontal scroll — the row grows taller instead, which DL-25.2 doesn't
+   forbid. */
+.sessions-body--dock .session-row__meta {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+
+.sessions-body--dock .session-row__time {
+  margin-left: 0;
+}

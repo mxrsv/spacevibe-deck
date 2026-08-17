@@ -17,7 +17,10 @@
  * `src/ui/sessions` — three imports that would make the host depend on
  * everything it hosts.
  */
-import { dockCollapseArmed, dockWidthLive } from "../../files/file-surface-store";
+import {
+  dockCollapseArmed,
+  dockWidthLive,
+} from "../../files/file-surface-store";
 import type { DockTab } from "../../settings/settings-schema";
 import { DOCK_DRAG_BOUNDS, resolvePanelDrag } from "../panel-resize";
 import { DockTabs } from "./dock-tabs";

@@ -13,22 +13,77 @@ import {
   createTauriSettingsSync,
   type SettingsSyncClient,
 } from "./settings-sync";
+import {
+  LOAD_LOADING,
+  LOAD_READY,
+  loadError,
+  type LoadState,
+} from "../lib/load-state";
 
 const STORE_FILE = "settings.json";
 const STORE_KEY = "settings";
 const AUTOSAVE_DEBOUNCE_MS = 300;
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
+export const settingsLoadState = signal<LoadState>(LOAD_LOADING);
 
 let store: Store | null = null;
 let sync: SettingsSyncClient | null = null;
+let loadGeneration = 0;
+let mergedRevision = 0;
+let settingsDegraded = false;
+let syncListener: {
+  readonly client: SettingsSyncClient;
+  readonly ready: Promise<void>;
+  readonly stop?: () => void;
+} | null = null;
 
 /** Test seam; production installs the Tauri client from `initSettings`. */
 export function configureSettingsSync(client: SettingsSyncClient): void {
+  syncListener?.stop?.();
+  syncListener = null;
   sync = client;
 }
 
-/** Load settings from disk at startup — on failure fall back to defaults, app keeps running. */
+function adoptMergedSettings(merged: unknown): void {
+  // Shape guard at the boundary, NOT a try/catch: `validateSettings` never
+  // throws — it coerces, and for a non-object it returns DEFAULT_SETTINGS
+  // wholesale. Ignore malformed broadcasts and keep the last-good object.
+  if (typeof merged !== "object" || merged === null || Array.isArray(merged)) {
+    console.warn("Ignoring a structurally invalid settings broadcast");
+    return;
+  }
+  mergedRevision += 1;
+  settings.value = validateSettings(merged);
+}
+
+async function ensureSyncListener(client: SettingsSyncClient): Promise<void> {
+  if (syncListener?.client === client) {
+    await syncListener.ready;
+    return;
+  }
+  syncListener?.stop?.();
+  let listener!: NonNullable<typeof syncListener>;
+  const ready = client
+    .listenMerged(adoptMergedSettings)
+    .then((stop) => {
+      if (syncListener === listener) {
+        syncListener = { ...listener, stop };
+      } else {
+        stop();
+      }
+    })
+    .catch((error: unknown) => {
+      if (syncListener === listener) {
+        syncListener = null;
+      }
+      throw error;
+    });
+  listener = { client, ready };
+  syncListener = listener;
+  await listener.ready;
+}
+
 /**
  * Surface a background store-write failure.
  *
@@ -49,37 +104,59 @@ export async function listenStoreWriteFailures(): Promise<void> {
 }
 
 export async function initSettings(): Promise<void> {
+  loadGeneration += 1;
+  const forGeneration = loadGeneration;
+  const mergedAtStart = mergedRevision;
+  settingsLoadState.value = LOAD_LOADING;
   try {
-    store = await Store.load(STORE_FILE, {
+    const loadedStore = await Store.load(STORE_FILE, {
       defaults: { [STORE_KEY]: DEFAULT_SETTINGS },
       autoSave: AUTOSAVE_DEBOUNCE_MS,
     });
-    const raw = await store.get<unknown>(STORE_KEY);
-    if (raw !== undefined && raw !== null) {
-      settings.value = validateSettings(raw);
+    if (forGeneration !== loadGeneration) {
+      return;
+    }
+    if (loadedStore.loadState.state === "unreadable") {
+      throw new Error("settings.json is unreadable");
+    }
+    const raw = await loadedStore.get<unknown>(STORE_KEY);
+    if (forGeneration !== loadGeneration) {
+      return;
+    }
+    let loadedSettings: Settings | null = null;
+    if (raw !== undefined) {
+      if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+        throw new Error("settings.json does not contain a settings object");
+      }
+      loadedSettings = validateSettings(raw);
     }
     if (sync === null) {
       sync = createTauriSettingsSync();
     }
-    await sync.listenMerged((merged) => {
-      // Shape guard at the boundary, NOT a try/catch: `validateSettings` never
-      // throws — it coerces, and for a non-object it returns DEFAULT_SETTINGS
-      // wholesale (settings-schema.ts:199-201). So handing it a structurally
-      // malformed broadcast would silently reset this window's live settings to
-      // defaults, which is the worst possible response to "I cannot understand
-      // this message". Ignore it instead and keep what we have.
-      //
-      // Per-field junk is deliberately NOT treated the same way: that already
-      // has defined coercion semantics used everywhere else in this repo, and
-      // changing them is out of scope.
-      if (typeof merged !== "object" || merged === null) {
-        console.warn("Ignoring a structurally invalid settings broadcast");
-        return;
-      }
-      settings.value = validateSettings(merged);
-    });
+    await ensureSyncListener(sync);
+    if (forGeneration !== loadGeneration) {
+      return;
+    }
+    store = loadedStore;
+    // A merged broadcast is newer than the disk snapshot by definition. It
+    // can arrive while the listener is being registered, or while a retry is
+    // re-reading disk through an already-live listener; never replace it with
+    // the older snapshot read at the start of this init.
+    if (loadedSettings !== null && mergedRevision === mergedAtStart) {
+      settings.value = loadedSettings;
+    }
+    settingsDegraded = false;
+    settingsLoadState.value = LOAD_READY;
   } catch (err) {
-    console.warn("Failed to load settings, using defaults:", err);
+    if (forGeneration !== loadGeneration) {
+      return;
+    }
+    store = null;
+    settingsDegraded = true;
+    settingsLoadState.value = loadError(
+      "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
+    );
+    console.warn("Failed to load settings; defaults are temporary:", err);
   }
 }
 
@@ -99,7 +176,7 @@ export async function initSettings(): Promise<void> {
  */
 function persist(next: Settings): void {
   const current = store;
-  if (current === null) {
+  if (current === null || settingsLoadState.value.status !== "ready") {
     return;
   }
   void (async () => {
@@ -115,12 +192,21 @@ function persist(next: Settings): void {
 }
 
 export function updateSettings(patch: Partial<Settings>): void {
+  const next = { ...settings.value, ...patch };
+  if (settingsLoadState.value.status !== "ready") {
+    settings.value = next;
+    if (settingsDegraded) {
+      reportPersistError(
+        "Settings are temporary until Deck can load settings.json.",
+      );
+    }
+    return;
+  }
   // Optimistic and synchronous on purpose: every caller reads
   // `settings.value` on the next line (tab-manager.ts:1074-1075, :1080-1084), and
   // a round trip would make the UI wait on IPC for a font-size bump. The
   // Rust merge is what stops two windows clobbering each other; the merged
   // broadcast reconciles this window a moment later.
-  const next = { ...settings.value, ...patch };
   settings.value = next;
   persist(next);
   // `apply_settings_patch` ALSO returns the merged object, and this
@@ -202,10 +288,11 @@ export function updateColorOverride(
  * autosave window.
  */
 export async function flushSettingsSave(): Promise<void> {
-  await store?.save();
+  if (settingsLoadState.value.status === "ready") {
+    await store?.save();
+  }
 }
 
 export function resetSettings(): void {
-  settings.value = DEFAULT_SETTINGS;
-  persist(DEFAULT_SETTINGS);
+  updateSettings(DEFAULT_SETTINGS);
 }

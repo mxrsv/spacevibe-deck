@@ -1,12 +1,12 @@
 import {
+  ChatText,
+  ClockCounterClockwise,
   Gauge,
+  Gear,
   Globe,
-  History,
-  MessageSquareText,
-  Settings,
-} from "lucide-preact";
+} from "@phosphor-icons/react";
 import type { ComponentChildren } from "preact";
-import { ROW_ICON, DeckIcon } from "./controls/deck-icon";
+import { DeckIcon, FEATURE_ICON } from "./controls/deck-icon";
 
 /**
  * The rail's own footer of window actions (DL §28).
@@ -51,11 +51,27 @@ interface ActionRowProps {
 function ActionRow({ label, icon, onActivate }: ActionRowProps) {
   return (
     <button type="button" class="sidebar-actions__row" onClick={onActivate}>
-      <DeckIcon icon={icon} size={ROW_ICON} />
+      <DeckIcon icon={icon} size={FEATURE_ICON} class="feature-glyph" />
       <span>{label}</span>
     </button>
   );
 }
+
+/**
+ * The footer is HIDDEN for now (owner, 2026-08-17): the rail ends at its last
+ * workspace row and the `Tools` block is gone from the column. DL §28, this
+ * component and its CSS all stand — restoring it is flipping this one
+ * constant, the same revert seam `PANE_TREE_HIDDEN` and `GRAB_PASTE_DISABLED`
+ * established.
+ *
+ * It is NOT just a hide: `DeckToolbar` reads this flag too, because these five
+ * rows were mounted in exactly one place per layout — the footer in sidebar
+ * mode, `More` in top-tab mode — and the Prompt Board popover is anchored to
+ * the `Prompts` row. Dropping the footer alone would leave ⌘⇧P toggling a
+ * popover with nowhere to render. With the flag on, `More` carries the global
+ * group in BOTH layouts, which is where the popover then anchors.
+ */
+export const SIDEBAR_TOOLS_HIDDEN = true;
 
 export function SidebarActions(props: SidebarActionsProps) {
   const unavailable = props.promptsUnavailable !== null;
@@ -79,7 +95,7 @@ export function SidebarActions(props: SidebarActionsProps) {
       {props.sessionsAvailable ? (
         <ActionRow
           label="Session history"
-          icon={History}
+          icon={ClockCounterClockwise}
           onActivate={props.onOpenSessions}
         />
       ) : null}
@@ -104,14 +120,14 @@ export function SidebarActions(props: SidebarActionsProps) {
             props.onOpenPrompts();
           }}
         >
-          <DeckIcon icon={MessageSquareText} size={ROW_ICON} />
+          <DeckIcon icon={ChatText} size={FEATURE_ICON} class="feature-glyph" />
           <span>Prompts</span>
         </button>
         {props.promptsOpen ? props.promptPopover : null}
       </div>
       <ActionRow
         label="Settings"
-        icon={Settings}
+        icon={Gear}
         onActivate={props.onOpenSettings}
       />
     </nav>

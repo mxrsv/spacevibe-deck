@@ -6,6 +6,12 @@
 
 import { BRAND } from "../../../stage/brand.js";
 import { deepFreeze } from "../product-stage.js";
+import { REPO_URL } from "../release-data.js";
+
+// Derived rather than spelled out: the proof terminal must quote the same repo
+// the page's own links point at, or one of the two goes stale on a rename.
+const REPO_SLUG = new URL(REPO_URL).pathname.slice(1);
+const REPO_DIR = REPO_SLUG.split("/").at(-1);
 
 /** Agent identity chips on the Open board rows. */
 export const AGENTS = deepFreeze({
@@ -98,14 +104,19 @@ export const PROOF_TERM_STEPS = deepFreeze([
     out: ["box-drawing ├─┬─┐ │ └─┴─┘ renders clean ✓"],
     chip: "Pty",
   },
+  // Clone first, grep second: the telemetry claim used to be proved against the
+  // installed bundle, which stopped being a clean read once the app shipped a
+  // Chromium runtime. The source tree is where the claim actually lives, and
+  // pointing at it is only honest because the repo is public — which is the
+  // proof the clone line carries.
   {
-    cmd: `grep -ri telemetry ${BRAND.bundlePath}`,
-    out: ["(no matches)"],
-    chip: "Local",
+    cmd: `gh repo clone ${REPO_SLUG}`,
+    out: [`Cloning into '${REPO_DIR}'... done.`],
+    chip: "Open",
   },
   {
-    cmd: `du -sh ${BRAND.bundlePath}`,
-    out: [` 18M\t${BRAND.bundlePath}`],
-    chip: "Native",
+    cmd: `grep -ri telemetry ${REPO_DIR}/src`,
+    out: ["(no matches)"],
+    chip: "Local",
   },
 ]);

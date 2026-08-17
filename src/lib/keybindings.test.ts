@@ -91,7 +91,10 @@ describe("chordId", () => {
       true,
     );
     expect(
-      sameChord({ key: "d", meta: true }, { key: "d", meta: true, shift: true }),
+      sameChord(
+        { key: "d", meta: true },
+        { key: "d", meta: true, shift: true },
+      ),
     ).toBe(false);
   });
 
@@ -280,7 +283,9 @@ describe("validateKeybindings", () => {
       },
       windows: {},
     });
-    expect(result.macos).toEqual({ "clear-buffer": [{ key: "j", meta: true }] });
+    expect(result.macos).toEqual({
+      "clear-buffer": [{ key: "j", meta: true }],
+    });
   });
 
   it("keeps the shipped keymaps admissible — the rule cannot outlaw a default", () => {

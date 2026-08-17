@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  agentForWorkspace,
   folderName,
   forgetAgent,
   formatRelativeTime,
@@ -226,7 +227,10 @@ describe("forgetAgent", () => {
     pushRecent([], path, NOW, "preset-1", agent);
 
   it("drops the memory of one agent, keeping the folder", () => {
-    const [entry] = forgetAgent(withAgent("/a", "custom:aider"), "custom:aider");
+    const [entry] = forgetAgent(
+      withAgent("/a", "custom:aider"),
+      "custom:aider",
+    );
     expect(entry.path).toBe("/a");
     expect(entry.lastPresetId).toBe("preset-1");
     expect("lastAgent" in entry).toBe(false);
@@ -241,7 +245,9 @@ describe("forgetAgent", () => {
       "claude",
     );
     const after = forgetAgent(list, "custom:aider");
-    expect(after.find((entry) => entry.path === "/b")?.lastAgent).toBe("claude");
+    expect(after.find((entry) => entry.path === "/b")?.lastAgent).toBe(
+      "claude",
+    );
   });
 
   it("returns the same entry objects when nothing remembered it", () => {
@@ -256,9 +262,51 @@ describe("forgetAgent", () => {
     // regenerates custom:aider and the folder would launch the new command.
     const list = withAgent("/a", "custom:aider");
     const after = forgetAgent(list, "custom:aider");
-    expect(resolveAgentChoice(after[0].lastAgent, [{ id: "custom:aider" }])).toBe(
-      "custom:aider",
-    );
+    expect(
+      resolveAgentChoice(after[0].lastAgent, [{ id: "custom:aider" }]),
+    ).toBe("custom:aider");
     expect(after[0].lastAgent).toBeUndefined();
+  });
+});
+
+describe("agentForWorkspace", () => {
+  const AGENTS = [{ id: "claude" }, { id: "codex" }];
+  const RECENTS = [
+    { path: "/work/alpha", lastOpenedAt: NOW, lastAgent: "codex" },
+    { path: "/work/beta", lastOpenedAt: NOW, lastAgent: null },
+    { path: "/work/gamma", lastOpenedAt: NOW },
+  ];
+
+  it("returns the agent the folder was last opened with", () => {
+    expect(agentForWorkspace(RECENTS, "/work/alpha", AGENTS)).toBe("codex");
+  });
+
+  it("matches across a trailing slash", () => {
+    expect(agentForWorkspace(RECENTS, "/work/alpha/", AGENTS)).toBe("codex");
+  });
+
+  it("keeps a remembered Shell-only open as Shell", () => {
+    expect(agentForWorkspace(RECENTS, "/work/beta", AGENTS)).toBeNull();
+  });
+
+  it("takes the first detected agent when the folder never recorded one", () => {
+    expect(agentForWorkspace(RECENTS, "/work/gamma", AGENTS)).toBe("claude");
+  });
+
+  it("takes the first detected agent for an unknown folder", () => {
+    expect(agentForWorkspace(RECENTS, "/elsewhere", AGENTS)).toBe("claude");
+  });
+
+  it("takes the first detected agent for a tab with no workspace", () => {
+    expect(agentForWorkspace(RECENTS, null, AGENTS)).toBe("claude");
+  });
+
+  it("falls back past an agent that has left $PATH", () => {
+    const gone = [{ path: "/work/alpha", lastOpenedAt: NOW, lastAgent: "agy" }];
+    expect(agentForWorkspace(gone, "/work/alpha", AGENTS)).toBe("claude");
+  });
+
+  it("degrades to Shell when nothing is detected", () => {
+    expect(agentForWorkspace(RECENTS, "/work/alpha", [])).toBeNull();
   });
 });

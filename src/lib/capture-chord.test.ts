@@ -23,7 +23,9 @@ describe("captureChord", () => {
   it("records the character, lowercased, with all four modifiers", () => {
     // Lowercased because `matchBinding` lowercases `event.key` before
     // comparing; storing "D" would produce a chord that never matches.
-    const result = captureChord(keyEvent("D", { metaKey: true, shiftKey: true }));
+    const result = captureChord(
+      keyEvent("D", { metaKey: true, shiftKey: true }),
+    );
     expect(result).toEqual({
       ok: true,
       chord: { key: "d", meta: true, shift: true, alt: false, ctrl: false },
@@ -87,7 +89,14 @@ describe("captureChord", () => {
     // called these "keys that never produce a character the PTY would
     // otherwise receive", which is wrong: binding bare ↑ cost every pane its
     // history, silently, because handleShortcut preventDefaults first.
-    for (const key of ["ArrowUp", "ArrowDown", "Home", "End", "PageUp", "Delete"]) {
+    for (const key of [
+      "ArrowUp",
+      "ArrowDown",
+      "Home",
+      "End",
+      "PageUp",
+      "Delete",
+    ]) {
       expect(captureChord(keyEvent(key)), key).toEqual({
         ok: false,
         reason: "needs-modifier",

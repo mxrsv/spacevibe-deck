@@ -1,16 +1,16 @@
+import {
+  ArrowsOut,
+  ChatText,
+  Gauge,
+  Gear,
+  Globe,
+  SquareSplitHorizontal,
+  SquareSplitVertical,
+  TreeView,
+  XSquare,
+} from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
 import type { ComponentChildren } from "preact";
-import {
-  Columns2,
-  FolderTree,
-  Gauge,
-  Globe,
-  Maximize2,
-  MessageSquareText,
-  Rows2,
-  Settings,
-  SquareX,
-} from "lucide-preact";
 import { ACTION_REGISTRY, type ActionId } from "../../terminal/action-registry";
 import { shortcutLabel } from "../../lib/shortcut-label";
 import type { DesktopPlatform } from "../../lib/platform";
@@ -93,7 +93,7 @@ function toolbarItems(
       platform,
       {
         id: "toggle-explorer",
-        icon: FolderTree,
+        icon: TreeView,
         group: "tools",
         overflowOrder: null,
         toggles: "pressed",
@@ -121,13 +121,23 @@ function toolbarItems(
     registryItem(
       "split-row",
       platform,
-      { id: "split-row", icon: Columns2, group: "pane", overflowOrder: 5 },
+      {
+        id: "split-row",
+        icon: SquareSplitHorizontal,
+        group: "pane",
+        overflowOrder: 5,
+      },
       states,
     ),
     registryItem(
       "split-column",
       platform,
-      { id: "split-column", icon: Rows2, group: "pane", overflowOrder: 4 },
+      {
+        id: "split-column",
+        icon: SquareSplitVertical,
+        group: "pane",
+        overflowOrder: 4,
+      },
       states,
     ),
     registryItem(
@@ -135,7 +145,7 @@ function toolbarItems(
       platform,
       {
         id: "toggle-expand",
-        icon: Maximize2,
+        icon: ArrowsOut,
         group: "pane",
         overflowOrder: 2,
         toggles: "pressed",
@@ -145,7 +155,7 @@ function toolbarItems(
     registryItem(
       "close-pane",
       platform,
-      { id: "close-pane", icon: SquareX, group: "pane", overflowOrder: 3 },
+      { id: "close-pane", icon: XSquare, group: "pane", overflowOrder: 3 },
       states,
     ),
     registryItem(
@@ -153,7 +163,7 @@ function toolbarItems(
       platform,
       {
         id: "toggle-prompts",
-        icon: MessageSquareText,
+        icon: ChatText,
         group: "global",
         overflowOrder: null,
         toggles: "dialog",
@@ -165,7 +175,7 @@ function toolbarItems(
       platform,
       {
         id: "toggle-settings",
-        icon: Settings,
+        icon: Gear,
         group: "global",
         overflowOrder: null,
         toggles: "pressed",

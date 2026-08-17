@@ -11,23 +11,23 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 
 ## Modules and boundaries
 
-| Module                                                                                                                        | Responsibility                                                           | In            | Out           |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------- | ------------- |
-| [src-tauri/src/pty.rs](../src-tauri/src/pty.rs) `current`                                                                     | PTY spawn/IO for agent CLIs                                              | commands      | shell procs   |
-| [src-tauri/src/coordinator.rs](../src-tauri/src/coordinator.rs) `current`                                                     | window/pane coordination (load-bearing seam)                             | frontend      | windows       |
-| [src-tauri/src/menu.rs](../src-tauri/src/menu.rs) `current` + [menu_registry.rs](../src-tauri/src/menu_registry.rs) `current` | native menu — generated, edit the registry                               | build script  | macOS menu    |
-| [src-tauri/src/migrate.rs](../src-tauri/src/migrate.rs) `current`                                                             | settings carry-over from the Stackgrid bundle id                         | first launch  | app dirs      |
-| [src-tauri/src/platform/](../src-tauri/src/platform) `current`                                                                | platform shell, home, discovery and process lifecycle                    | PTY state     | OS APIs       |
-| [src-tauri/src/info.rs](../src-tauri/src/info.rs#L10-L34) `current`                                                           | explicit pane CWD/process kind/agent truth                               | PTY sessions  | frontend      |
-| [src-tauri/tauri.windows.conf.json](../src-tauri/tauri.windows.conf.json) `current`                                           | native Windows chrome, WebView2 and NSIS-only bundle config              | Tauri build   | Windows app   |
-| [src/terminal/](../src/terminal) `current`                                                                                    | xterm.js panes                                                           | chrome        | Tauri IPC     |
-| [src/chrome/](../src/chrome) `current`                                                                                        | window chrome, tabs                                                      | main          | terminal      |
-| [src/open-board/](../src/open-board) `current`                                                                                | workspace board: open, recents, workspaces store                         | chrome        | lib           |
-| [src/settings/](../src/settings) `current` + [src/presets/](../src/presets) `current`                                         | settings UI/stores, layout presets                                       | chrome        | lib           |
+| Module                                                                                                                        | Responsibility                                                             | In            | Out                   |
+| ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------- | --------------------- |
+| [src-tauri/src/pty.rs](../src-tauri/src/pty.rs) `current`                                                                     | PTY spawn/IO for agent CLIs                                                | commands      | shell procs           |
+| [src-tauri/src/coordinator.rs](../src-tauri/src/coordinator.rs) `current`                                                     | window/pane coordination (load-bearing seam)                               | frontend      | windows               |
+| [src-tauri/src/menu.rs](../src-tauri/src/menu.rs) `current` + [menu_registry.rs](../src-tauri/src/menu_registry.rs) `current` | native menu — generated, edit the registry                                 | build script  | macOS menu            |
+| [src-tauri/src/migrate.rs](../src-tauri/src/migrate.rs) `current`                                                             | settings carry-over from the Stackgrid bundle id                           | first launch  | app dirs              |
+| [src-tauri/src/platform/](../src-tauri/src/platform) `current`                                                                | platform shell, home, discovery and process lifecycle                      | PTY state     | OS APIs               |
+| [src-tauri/src/info.rs](../src-tauri/src/info.rs#L10-L34) `current`                                                           | explicit pane CWD/process kind/agent truth                                 | PTY sessions  | frontend              |
+| [src-tauri/tauri.windows.conf.json](../src-tauri/tauri.windows.conf.json) `current`                                           | native Windows chrome, WebView2 and NSIS-only bundle config                | Tauri build   | Windows app           |
+| [src/terminal/](../src/terminal) `current`                                                                                    | xterm.js panes                                                             | chrome        | Tauri IPC             |
+| [src/chrome/](../src/chrome) `current`                                                                                        | window chrome, tabs                                                        | main          | terminal              |
+| [src/open-board/](../src/open-board) `current`                                                                                | workspace board: open, recents, workspaces store                           | chrome        | lib                   |
+| [src/settings/](../src/settings) `current` + [src/presets/](../src/presets) `current`                                         | settings UI/stores, layout presets                                         | chrome        | lib                   |
 | [src/ui/controls/deck-icon.tsx](../src/ui/controls/deck-icon.tsx) `current`                                                   | the one icon primitive — Phosphor presentation defaults and the four sizes | every surface | @phosphor-icons/react |
-| [src/updater/](../src/updater) `current`                                                                                      | single-flight update state, Tauri adapter and chrome action              | app           | Tauri         |
-| [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                      | multi-page landing and live GitHub release changelog                     | Releases API  | dist          |
-| [marketing/video/](../marketing/video) `current`                                                                              | marketing video stage — shares app components, virtual clock             | app stage     | video         |
+| [src/updater/](../src/updater) `current`                                                                                      | single-flight update state, Tauri adapter and chrome action                | app           | Tauri                 |
+| [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                      | multi-page landing and live GitHub release changelog                       | Releases API  | dist                  |
+| [marketing/video/](../marketing/video) `current`                                                                              | marketing video stage — shares app components, virtual clock               | app stage     | video                 |
 
 ## Main flows
 
@@ -171,6 +171,26 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   [clipboard text boundary](../src/terminal/terminal-clipboard.ts#L45-L55) `current`,
   [menu generator](../scripts/generate-menu.ts) `current`).
 - The macOS menu path can't tell an accelerator from a mouse click (Tauri's `MenuEvent` carries only an id), so only `destructive: true` actions (`close-pane`/`close-tab`/`clear-buffer`) are suppressed while a chrome text field holds the caret — every other action still runs there — [ActionDefinition.destructive](../src/terminal/action-registry.ts#L82-L115) `current`, [runAction](../src/terminal/tab-manager.ts#L1032-L1054) `current`.
+- Which renderer paints a pane is a setting, `terminalRenderer`, defaulting to
+  `dom` — the renderer every shipped build has used
+  ([settings-schema.ts](../src/settings/settings-schema.ts) `current`,
+  [appearance-section.tsx](../src/ui/settings/sections/appearance-section.tsx) `current`).
+  `webgl` is opt-in and buys one thing: xterm's DOM renderer cannot draw custom
+  glyphs, so block and box-drawing characters that agent TUIs join across cells
+  (OpenCode's wordmark, prompt borders) come out segmented, while the WebGL
+  renderer draws them to the full cell box. It costs text fidelity in exchange —
+  all glyphs route through xterm core's shared `TextureAtlas`, giving grayscale
+  antialiasing and cell widths rounded to whole device pixels. `canvas` is not
+  offered because it shares that atlas and so carries the same cost.
+- `syncRenderer` in [pane.ts](../src/terminal/pane.ts) `current` is the one
+  reconcile both `mount()` and `applySettings()` call, so the switch is live and
+  no pane is respawned: WebGL loads only after `Terminal.open()`, and disposing
+  it hands rendering back to the DOM path. The handle is cleared on
+  initialization failure and on context loss alike, so a spent addon cannot make
+  a later switch a silent no-op. Renderer-side, so it reaches both hosts.
+- `lineHeight` stays 1.25: flush rows were never the fix, since custom glyphs
+  are drawn to the full cell box and `device.cell.height` already multiplies the
+  char height by that value.
 - Windows uses native decorated system chrome; Preact renders only Deck's
   internal toolbar and omits synthetic minimize/maximize/close controls
   ([tauri.windows.conf.json](../src-tauri/tauri.windows.conf.json) `current`,
@@ -284,6 +304,30 @@ Forks resolved in [`../AGENTS.md`](../AGENTS.md) `current`, moved here when the 
 closed. Newest first; each entry states what the fork touched and which choice the
 owner made.
 
+- 2026-08-17: **the rail's `New` row moved to the top, gained a `Workspace`
+  caption, and dropped a type rung** — DL-27.14 said "the rail's LAST row" and
+  named `--type-title`, so all three are rule changes, the listed fork. Owner
+  asked from the shipped rail: `New` reads as the rail's primary action, and
+  with several projects open the old placement put it below the fold. Kept
+  inside the scrollport rather than pinned, so it is a reorder and not a new
+  structural row; `.asr-cluster:first-child`'s `padding-top: 2px` override went
+  with it, since every cluster head now has something above it. The caption is
+  deliberately outside the button (owner picked "label riêng, không bấm được"
+  over folding it into `New`), which is why the button shrank to its content.
+  The size ask was "2px smaller" — 12px, which is off DL-4.4's ladder — and the
+  owner chose `--type-body` (12.5px) over opening DL-4.5's closed exception
+  list for a literal.
+- 2026-08-17: **built-in theme foregrounds are neutral gray, and hairlines
+  left `--fg`** — a `docs/DESIGN-LANGUAGE.md` rule, the listed fork. Offered the
+  owner three shapes for "the text looks blue": neutralize only inside
+  `deriveChromeColors` (chrome goes gray, palettes untouched, reaches imported
+  themes too), rewrite the built-in `foreground` literals, or both. Owner chose
+  the palettes, and separately chose to bring `--hair`/`--hair-strong` along.
+  Recorded as new **DL-3.6**, with DL-2.3's hairline carve-out closed. The ANSI
+  sixteen and imported themes' own foregrounds are explicitly out of scope; the
+  replacement grays match each palette's WCAG luminance, so DL-3.5's floors did
+  not move. See
+  [docs/CONTEXT.md](CONTEXT.md#chrome-ink-goes-neutral--2026-08-17) `current`.
 - 2026-08-16: **a local, unsigned Electron package path exists** —
   [`electron-builder.yml`](../electron-builder.yml) `current` plus an
   `electron:package` script, which is bundle configuration, the listed fork.

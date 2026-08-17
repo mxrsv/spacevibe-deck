@@ -1,4 +1,4 @@
-import { PanelLeft } from "lucide-preact";
+import { SidebarSimple } from "@phosphor-icons/react";
 import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 
 interface SidebarToggleProps {
@@ -18,19 +18,24 @@ interface SidebarToggleProps {
  * State-free on purpose. It takes the painted `collapsed` and a callback and
  * reads no store, so a specimen can drive it from a local signal while `App`
  * drives it from settings — one component, one look, two owners.
+ *
+ * `collapsed` drives the label and `aria-pressed` and NOTHING visual (DL-21.8):
+ * a hidden sidebar is a change to the whole window, so painting the 24px button
+ * as well said it twice. The ARIA state is the only readout a screen reader
+ * gets, which is why it stays.
  */
 export function SidebarToggle({ collapsed, onToggle }: SidebarToggleProps) {
   const label = collapsed ? "Expand the sidebar" : "Collapse the sidebar";
   return (
     <button
       type="button"
-      class={`iconbtn ${collapsed ? "is-active" : ""}`}
+      class="iconbtn"
       aria-label={label}
       aria-pressed={collapsed}
       title={label}
       onClick={onToggle}
     >
-      <DeckIcon icon={PanelLeft} size={CHROME_ICON} />
+      <DeckIcon icon={SidebarSimple} size={CHROME_ICON} />
     </button>
   );
 }

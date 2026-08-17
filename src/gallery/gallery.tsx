@@ -53,7 +53,7 @@ export function Gallery() {
     <div class="gx-app gx-app--chatgpt">
       <header class="gx-topbar">
         <span class="gx-topbar__title">Deck</span>
-        <span class="gx-direction-badge">ChatGPT Desktop</span>
+        <span class="gx-direction-badge">Deck Electron</span>
         {/* DL-1.4: a native select behind a styled pill — zero JS, zero extra
             DOM, free accessibility. */}
         <label class="gx-themepick">

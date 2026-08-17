@@ -13,7 +13,6 @@
  *  - Every pane command validates ownership through the coordinator before it
  *    touches a session.
  */
-import fs from "node:fs";
 import path from "node:path";
 import {
   app,
@@ -27,7 +26,6 @@ import {
 } from "electron";
 import { CHANNELS, EVENTS } from "./ipc/channels";
 import { BrowserPanels } from "./browser/view";
-import { normalizeBrowserUrl } from "./browser/url";
 import { WindowCoordinator, type AdoptionPayload } from "./coordinator";
 import { PtyManager } from "./pty/manager";
 import { ptyInfo, type PtyInfo } from "./pty/info";
@@ -35,26 +33,18 @@ import { validateAgentProcessMatchers } from "./platform/classify";
 import { censusFor, CloseFlight, QuitFlight } from "./quit-flow";
 import { MAIN_LABEL, WindowRegistry } from "./window-lifecycle";
 import { StoreRegistry } from "./store";
-import { detectAgentsSafely, dirsExist } from "./agents";
-import { gitBranch } from "./git";
-import { scanRepository } from "./worktrees";
-import { addWorktree } from "./git/worktree";
-import { resolveResume, validateResumeRequests } from "./resume/resolve";
-import { listSessions } from "./sessions/list";
-import { resolvePaths, openEditor } from "./links";
-import { listPromptAssets } from "./prompt-assets";
-import { readImageAsDataUrl, scanWorkspaceFavicon } from "./images";
-import { applySettingsPatch } from "./settings-merge";
-import { listDir, readFile, statFiles } from "./fs/read";
-import { importThemes, listThemes, revealThemes } from "./themes";
-import { createUsageService } from "./usage/service";
-import { USAGE_CACHE_FILE } from "./usage/model";
-import { writeTextFile } from "./fs/write";
 import { createWatchRegistry } from "./fs/watch";
 import { MainDirtyRegistry } from "./dirty-registry";
-import { buildMenu } from "./menu";
-import { MACOS_KEYMAP, type KeyBinding } from "../src/terminal/action-registry";
-import { resolveKeymap, validateKeybindings } from "../src/lib/keybindings";
+import { createMenuState } from "./menu-state";
+import { registerSettingsIpc } from "./settings-ipc";
+import { registerServices } from "./ipc/register-services";
+import { registerThemes } from "./ipc/register-themes";
+import { registerExplorer } from "./ipc/register-explorer";
+import { registerStore } from "./ipc/register-store";
+import { registerDialogs } from "./ipc/register-dialogs";
+import { registerBrowser, reactGrabSource } from "./ipc/register-browser";
+import { registerShell } from "./ipc/register-shell";
+import { registerUpdater } from "./ipc/register-updater";
 
 // __dirname is `dist-electron/electron`, so the Vite output is two levels up.
 const RENDERER_DIR = path.join(__dirname, "..", "..", "dist");
@@ -128,37 +118,6 @@ const watchers = createWatchRegistry((label, event) => {
   emitTo(label, EVENTS.fileChanged, event);
 });
 
-/**
- * The vendored react-grab bundle, read once and kept.
- *
- * 386 kB of source is spliced into every page the panel loads, and a page
- * reload re-injects it; re-reading the file each time would put synchronous
- * disk I/O on the navigation path for bytes that cannot change while the app
- * runs. An unreadable file yields `""`, which the bootstrap turns into an
- * inert injection rather than a thrown navigation.
- */
-let vendorCache: string | null = null;
-function reactGrabSource(): string {
-  if (vendorCache === null) {
-    const file = path.join(
-      __dirname,
-      "vendor",
-      "react-grab",
-      "index.global.js",
-    );
-    try {
-      vendorCache = fs.readFileSync(file, "utf8");
-    } catch (error) {
-      console.error(
-        "Deck: react-grab bundle is missing; Inspect is disabled",
-        error,
-      );
-      vendorCache = "";
-    }
-  }
-  return vendorCache;
-}
-
 const browserPanels = new BrowserPanels({
   emit: emitTo,
   windowFor: (label) => windows.get(label),
@@ -227,7 +186,11 @@ function createWindow(label: string): BrowserWindow {
   // does not run on a destroyed webview, so without this the accelerators stay
   // stripped for every window until relaunch.
   window.webContents.on("render-process-gone", () => {
-    setRecording(senderId, false);
+    menuState.setRecording(senderId, false);
+    // The window survives a dead renderer, so `closed` may never fire — but
+    // the renderer that claimed the update-check flight is gone and will never
+    // release it.
+    updater.forgetWindow(label);
   });
 
   window.on("focus", () => {
@@ -235,10 +198,19 @@ function createWindow(label: string): BrowserWindow {
     // The submenu is ordered most-recently-focused first, so focus changing
     // changes its contents. Without this rebuild, Move Pane to Window keeps
     // reading "No other window" for the rest of the session after a detach.
-    rebuildMenu();
+    menuState.rebuildMenu();
   });
 
   window.on("close", (event) => {
+    if (updater.isInstalling()) {
+      // The installer is taking the app down. `quitAndInstall` closes every
+      // window before `before-quit` ever fires, and the renderer already ran
+      // this census with update copy (`confirmInstall` in `src/ui/app.tsx`)
+      // and already killed the panes through `prepareForInstall`. Prompting
+      // again would ask a question the user has answered and deadlock the
+      // install behind it.
+      return;
+    }
     // Abort FIRST, census second. `window_close.rs` states the order is
     // load-bearing: a transfer left open across a close holds its pane frozen
     // until the timeout, and the guard would then run against a route nobody
@@ -293,10 +265,15 @@ function createWindow(label: string): BrowserWindow {
     windows.delete(label);
     // Same reason as `render-process-gone`: closing a window while one of its
     // Shortcuts rows is recording must not leave the app without accelerators.
-    setRecording(senderId, false);
+    menuState.setRecording(senderId, false);
     registry.forgetWindow(label);
     quitFlight.forgetWindow(label);
     closeFlight.forget(label);
+    // Same reason as the two flights above: a window that dies holding the
+    // update-check flight would otherwise tell every peer that a check is in
+    // progress for the rest of the process, and the automatic check would stop
+    // happening with nothing said.
+    updater.forgetWindow(label);
     // Same reason the pane routes are cleared right here: a renderer that dies
     // mid-edit would otherwise leave main permanently believing a file is
     // unsaved, and ⌘Q would ask about a window that no longer exists.
@@ -307,7 +284,7 @@ function createWindow(label: string): BrowserWindow {
     for (const paneId of coordinator.handleWindowDestroyed(label)) {
       pty.terminate(paneId);
     }
-    rebuildMenu();
+    menuState.rebuildMenu();
   });
 
   if (GATE_M) {
@@ -325,7 +302,7 @@ function createWindow(label: string): BrowserWindow {
   }
   registry.recordFocus(label);
   // A new window is a new move-pane target for every existing window.
-  rebuildMenu();
+  menuState.rebuildMenu();
   return window;
 }
 
@@ -356,66 +333,7 @@ function focusedLabel(): string | null {
   return registry.order()[0] ?? null;
 }
 
-/**
- * The macOS keymap the menu advertises: shipped defaults plus whatever the
- * user rebound. Held here rather than resolved per rebuild because
- * `rebuildMenu` runs on every focus change, and re-reading the store on each
- * one would put a disk read on the focus path.
- */
-let menuKeymap: readonly KeyBinding[] = MACOS_KEYMAP;
-
-/**
- * Web contents currently recording a chord — see `MenuDeps.suspendAccelerators`.
- *
- * A SET keyed by sender, not a boolean, and both halves of that matter. As a
- * boolean with no owner it could be left stuck: a window that died between
- * `true` and `false` stripped every accelerator app-wide for the rest of the
- * session, with no way back except guessing "open Settings, click a pill,
- * press Escape". And with two windows recording, whichever finished FIRST
- * un-suspended the other — so ⌘W in the still-recording window closed the
- * pane, which is the exact failure this mechanism exists to prevent.
- */
-const recordingSenders = new Set<number>();
-
-function acceleratorsSuspended(): boolean {
-  return recordingSenders.size > 0;
-}
-
-/** Add or remove a recorder, rebuilding the menu only when the state flips. */
-function setRecording(senderId: number, recording: boolean): void {
-  const before = acceleratorsSuspended();
-  if (recording) {
-    recordingSenders.add(senderId);
-  } else {
-    recordingSenders.delete(senderId);
-  }
-  if (acceleratorsSuspended() !== before) {
-    rebuildMenu();
-  }
-}
-
-/** Re-resolve the menu keymap from a settings object and rebuild if it moved. */
-function adoptMenuKeymap(settings: unknown): void {
-  const overrides = validateKeybindings(
-    (settings as { keybindings?: unknown } | null)?.keybindings,
-  );
-  const next = resolveKeymap("macos", overrides);
-  menuKeymap = next;
-  rebuildMenu();
-}
-
-/** Rebuild the application menu. Called on boot, and on every window open,
- * focus change and close — the move-pane submenu lists peer windows, so its
- * contents change with all three. */
-function rebuildMenu(): void {
-  buildMenu({
-    registry,
-    emitTo,
-    focused: () => focusedLabel(),
-    keymap: menuKeymap,
-    suspendAccelerators: acceleratorsSuspended(),
-  });
-}
+const menuState = createMenuState({ registry, emitTo, focused: focusedLabel });
 
 // ------------------------------------------------------------------ PTY
 ipcMain.handle(CHANNELS.spawnShell, (event, { cols, rows, cwd }) =>
@@ -439,140 +357,19 @@ ipcMain.handle(CHANNELS.ptyInfo, (_event, { ids, agents, waitForCwd }) =>
 );
 
 // -------------------------------------------------------------- Services
-ipcMain.handle(CHANNELS.gitBranch, (_event, { cwd }) => gitBranch(cwd));
-// Never rejects: every failure arrives as a `plain` scan, so the rail degrades
-// to the flat folder list Deck already shows rather than raising an error.
-ipcMain.handle(CHANNELS.gitRepository, (_event, { path }) =>
-  scanRepository(path),
-);
-ipcMain.handle(CHANNELS.worktreeAdd, (_event, { repoPath, branch, destPath }) =>
-  addWorktree({ repoPath, branch, destPath }),
-);
-ipcMain.handle(CHANNELS.resumeLookup, (_event, { requests }) =>
-  resolveResume(app.getPath("home"), validateResumeRequests(requests)),
-);
-ipcMain.handle(CHANNELS.windowLabel, (event) => labelOf(event));
-ipcMain.handle(CHANNELS.detectAgents, (_event, { names }) =>
-  detectAgentsSafely(names ?? []),
-);
-ipcMain.handle(CHANNELS.dirsExist, (_event, { paths }) => dirsExist(paths));
-ipcMain.handle(CHANNELS.desktopEnvironment, () => ({
-  // `homeDir`, not `home`: Rust's struct is `#[serde(rename_all = "camelCase")]`
-  // so that has always been the wire key. `platform.ts` rejects anything else,
-  // the caller swallows the error, and the app silently falls back to
-  // `platform: "unsupported"` — where `hasPrimaryModifier` returns false for
-  // every event and EVERY keyboard shortcut stops working, with nothing in the
-  // console to say why.
-  platform:
-    process.platform === "darwin"
-      ? "macos"
-      : process.platform === "win32"
-        ? "windows"
-        : "unsupported",
-  homeDir: app.getPath("home"),
-}));
-ipcMain.handle(CHANNELS.resolvePaths, (_event, { cwd, paths }) =>
-  resolvePaths(cwd, paths),
-);
-ipcMain.handle(CHANNELS.openEditor, (_event, { request }) =>
-  // Destructured: the renderer wraps the payload in `{ request }` to match the
-  // Rust parameter name, so taking the payload whole read `.editor` off the
-  // wrapper and every file link failed as "editor not supported".
-  openEditor(request),
-);
-ipcMain.handle(CHANNELS.listPromptAssets, (_event, { agent, cwd }) =>
-  listPromptAssets(agent, cwd ?? null),
-);
-ipcMain.handle(CHANNELS.readImageAsDataUrl, (_event, { path: target }) =>
-  readImageAsDataUrl(target),
-);
-ipcMain.handle(CHANNELS.scanWorkspaceFavicon, (_event, { dir }) =>
-  scanWorkspaceFavicon(dir),
-);
-// Token usage: one command, no payload — the scan takes no renderer input.
-// Failures inside the scan are in-band (`sources[].state`, `skippedLines`);
-// a rejection here is user-safe while the detail stays in main's log.
-const usageService = createUsageService({
-  home: app.getPath("home"),
-  cachePath: path.join(app.getPath("userData"), USAGE_CACHE_FILE),
-  reportCacheWriteFailure: (error) => {
-    console.error("Deck: the usage cache could not be written:", error);
-  },
-});
-ipcMain.handle(CHANNELS.usageSnapshot, async () => {
-  try {
-    return await usageService.snapshot();
-  } catch (error) {
-    console.error("Deck: the usage scan failed:", error);
-    throw new Error("the usage scan failed");
-  }
-});
-ipcMain.handle(CHANNELS.sessionsList, (_event, { limit }) =>
-  listSessions(
-    app.getPath("home"),
-    typeof limit === "number" ? limit : undefined,
-  ),
-);
-ipcMain.handle(CHANNELS.suspendMenuAccelerators, (event, { suspended }) => {
-  setRecording(event.sender.id, suspended === true);
-});
+registerServices({ labelOf, setRecording: menuState.setRecording });
 
 // --------------------------------------------------------- Themes folder
-// `<userData>/themes`, read as text and handed to the renderer to parse. The
-// renderer never names a path here — unlike the explorer block below, there is
-// nothing to guard because there is nothing to address.
-ipcMain.handle(CHANNELS.themesList, () => listThemes());
-ipcMain.handle(CHANNELS.themesImport, (event) =>
-  // Modal to the window that asked, so a second window cannot inherit a sheet
-  // opened from the first.
-  importThemes(BrowserWindow.fromWebContents(event.sender)),
-);
-ipcMain.handle(CHANNELS.themesReveal, () => revealThemes());
+registerThemes();
 
 // ---------------------------------------------------------- File explorer
-// Every path is bounded to the workspace root by `fs/path-guard.ts`. `root`
-// travels with each call rather than being remembered per window: a tab fixes
-// its workspace at Open and a second window may hold a different one, so a
-// cached root would authorize the wrong tree.
-ipcMain.handle(CHANNELS.listDir, (_event, { root, directory }) =>
-  listDir(root, directory),
-);
-ipcMain.handle(CHANNELS.readFile, (_event, { root, path: target }) =>
-  readFile(root, target),
-);
-ipcMain.handle(
-  CHANNELS.writeFile,
-  (_event, { root, path: target, text, eol }) =>
-    writeTextFile(root, target, text, eol),
-);
-ipcMain.handle(CHANNELS.statFiles, (_event, { root, paths }) =>
-  statFiles(root, paths),
-);
-ipcMain.handle(CHANNELS.watchPaths, (event, { root, directories, files }) => {
-  // A REPLACE. Adding would let a collapsed directory leak a watcher for the
-  // rest of the window's life.
-  watchers.replace(labelOf(event), { root, directories, files });
-});
-ipcMain.handle(CHANNELS.setDirtyFiles, (event, { paths }) => {
-  dirtyFiles.replace(labelOf(event), Array.isArray(paths) ? paths : []);
-});
+registerExplorer({ labelOf, watchers, dirtyFiles });
 
-ipcMain.handle(CHANNELS.applySettingsPatch, async (_event, { patch }) => {
-  const merged = await applySettingsPatch(stores, patch);
-  // A rebind has to reach the native menu in the same turn it reaches the
-  // store. Until it does, Cocoa still owns the old chord and eats it before
-  // any window sees the keydown — the rebind would look applied everywhere
-  // except where it matters.
-  adoptMenuKeymap(merged);
-  // EVERY window, sender included. `settings-store.ts` states that the
-  // broadcast is the one authoritative path and that the reply is used only to
-  // detect failure — so excluding the sender left it rendering stale settings
-  // until relaunch. Resolving the sender's label after the await was also a
-  // latent throw: a window closed during the disk write has no label.
-  for (const [label] of windows) {
-    emitTo(label, EVENTS.settingsMerged, merged);
-  }
-  return merged;
+registerSettingsIpc({
+  stores,
+  windows,
+  emitTo,
+  adoptMenuKeymap: menuState.adoptMenuKeymap,
 });
 
 // ------------------------------------------------------------------ Quit
@@ -674,275 +471,24 @@ ipcMain.handle(CHANNELS.offerTransfer, (_event, { token, targetLabel }) => {
 });
 
 // --------------------------------------------------------------- Updater
-// Gate A: no Apple Developer identity exists yet, so `electron-updater` cannot
-// be proven end to end on macOS (Squirrel.Mac refuses an app that is not
-// Developer ID signed and notarized). The single-flight is kept so the
-// renderer's controller behaves identically; the check itself is a stub.
-let updateInFlight = false;
-ipcMain.handle(CHANNELS.beginUpdateCheck, () => {
-  if (updateInFlight) {
-    return false;
-  }
-  updateInFlight = true;
-  return true;
-});
-ipcMain.handle(CHANNELS.endUpdateCheck, () => {
-  updateInFlight = false;
-});
-
-// ----------------------------------------------------- Renderer facades
-// These back `src/host/*`. They are not Tauri command names because Tauri had
-// no equivalent — each was a plugin call in the renderer. Naming them here
-// keeps every host call on one wire with one contract.
-const openStores = new Map<
-  string,
-  Awaited<ReturnType<StoreRegistry["open"]>>
->();
-
-interface DialogPayload {
-  readonly message: string;
-  readonly title?: string;
-  readonly kind?: "info" | "warning" | "error";
-  readonly okLabel?: string;
-  readonly cancelLabel?: string;
-}
-
-interface OpenDialogPayload {
-  readonly directory?: boolean;
-  readonly multiple?: boolean;
-  readonly title?: string;
-  readonly filters?: Array<{ name: string; extensions: string[] }>;
-}
-
-/**
- * The store files Deck owns. An allowlist, because `file` reaches
- * `path.join(userData, file)` and `../../../` escaped it — writing arbitrary
- * JSON to an arbitrary path, and reading any JSON file back into the renderer.
- * Tauri had the same hole; it is nearly free to close here.
- */
-const STORE_FILES = new Set([
-  "settings.json",
-  "workspaces.json",
-  "presets.json",
-  "logo.json",
-  "workspace-logos.json",
-  "sidebar-banner.json",
-  "update-attempt.json",
-  // The repository rail's collapse state, and nothing else — the worktree
-  // list itself is re-read every launch and never written down.
-  "repositories.json",
-  // Session journal: live window records + per-workspace archive (restore).
-  "session.json",
-]);
-
-function assertStoreFile(file: unknown): string {
-  if (typeof file !== "string" || !STORE_FILES.has(file)) {
-    throw new Error(`Unknown store file: ${String(file)}`);
-  }
-  return file;
-}
-
-ipcMain.handle("store_load", async (_event, payload) => {
-  const {
-    file: rawFile,
-    defaults,
-    autoSave,
-  } = payload as {
-    file: string;
-    defaults?: Record<string, unknown>;
-    autoSave?: number;
-  };
-  const file = assertStoreFile(rawFile);
-  const store = await stores.open(file, {
-    autoSaveMs: Number(autoSave) || 0,
-  });
-  // Broadcast the failure rather than replying to the window that happened to
-  // open the file first. That window can be closed while others keep working,
-  // and its `labelOf` would then THROW inside a rejection handler — an
-  // unhandled rejection in the main process instead of a persist-error bar.
-  await stores.setErrorReporter(file, () => {
-    for (const [label] of windows) {
-      emitTo(label, "store:write-failed", { file });
-    }
-  });
-  // `defaults` seeds keys the file does not have yet, matching the Tauri
-  // plugin — without it a fresh install reads undefined where it expected a
-  // default and silently falls back to a different value.
-  for (const [key, value] of Object.entries(defaults ?? {})) {
-    if (store.get(key) === undefined) {
-      store.set(key, value);
-    }
-  }
-  openStores.set(file, store);
-});
-ipcMain.handle("store_get", (_event, { file, key }) =>
-  openStores.get(assertStoreFile(file))?.get(key),
-);
-ipcMain.handle("store_set", (_event, { file, key, value }) => {
-  openStores.get(assertStoreFile(file))?.set(key, value);
-});
-ipcMain.handle("store_delete", (_event, { file, key }) => {
-  openStores.get(assertStoreFile(file))?.delete(key);
-});
-ipcMain.handle("store_save", (_event, { file }) =>
-  openStores.get(assertStoreFile(file))?.save(),
-);
-
-ipcMain.handle("dialog_ask", async (event, payload) => {
-  const { message, title, kind, okLabel, cancelLabel } =
-    payload as DialogPayload;
-  const window = BrowserWindow.fromWebContents(event.sender);
-  const result = await dialog.showMessageBox(window!, {
-    type: kind ?? "info",
-    message: title ?? message,
-    detail: title === undefined ? undefined : message,
-    buttons: [okLabel ?? "OK", cancelLabel ?? "Cancel"],
-    defaultId: 0,
-    cancelId: 1,
-  });
-  return result.response === 0;
-});
-ipcMain.handle("dialog_message", async (event, payload) => {
-  const { message, title, kind } = payload as DialogPayload;
-  const window = BrowserWindow.fromWebContents(event.sender);
-  await dialog.showMessageBox(window!, {
-    type: kind ?? "info",
-    message: title ?? message,
-    detail: title === undefined ? undefined : message,
-    buttons: ["OK"],
-  });
-});
-ipcMain.handle("dialog_open", async (event, payload) => {
-  const { directory, multiple, title, filters } = payload as OpenDialogPayload;
-  const window = BrowserWindow.fromWebContents(event.sender);
-  const result = await dialog.showOpenDialog(window!, {
-    title,
-    filters,
-    properties: [
-      directory === true ? "openDirectory" : "openFile",
-      ...(multiple === true ? (["multiSelections"] as const) : []),
-    ],
-  });
-  return result.canceled ? null : (result.filePaths[0] ?? null);
-});
-
-ipcMain.handle("window_close", (event) =>
-  BrowserWindow.fromWebContents(event.sender)?.close(),
-);
-ipcMain.handle("window_toggle_maximize", (event) => {
-  const window = BrowserWindow.fromWebContents(event.sender);
-  if (window === null) {
-    return;
-  }
-  if (window.isMaximized()) {
-    window.unmaximize();
-  } else {
-    window.maximize();
-  }
-});
-/**
- * Browser panel. Every handler resolves the window from the sender and works
- * on THAT window's panel — panels are per window like everything else here, and
- * a label taken from the payload would let one window drive another's.
- */
-ipcMain.handle(CHANNELS.browserOpen, (event, { url }: { url?: string }) => {
-  // A stored URL that no longer normalizes (an old setting, a typo the user
-  // saved) opens a blank panel instead of failing the whole open.
-  const target = typeof url === "string" ? normalizeBrowserUrl(url) : null;
-  return browserPanels.open(labelOf(event), target);
-});
-ipcMain.handle(CHANNELS.browserClose, (event) => {
-  browserPanels.close(labelOf(event));
-});
-ipcMain.handle(CHANNELS.browserNavigate, (event, { url }: { url?: string }) => {
-  const target = normalizeBrowserUrl(String(url ?? ""));
-  if (target === null) {
-    // Not an error the user needs a dialog for — the address bar keeps what
-    // they typed and the caller reports the miss.
-    return null;
-  }
-  browserPanels.navigate(labelOf(event), target);
-  return target;
-});
-ipcMain.handle(CHANNELS.browserBack, (event) =>
-  browserPanels.goBack(labelOf(event)),
-);
-ipcMain.handle(CHANNELS.browserForward, (event) =>
-  browserPanels.goForward(labelOf(event)),
-);
-ipcMain.handle(CHANNELS.browserReload, (event) =>
-  browserPanels.reload(labelOf(event)),
-);
-ipcMain.handle(
-  CHANNELS.browserSetBounds,
-  (event, bounds: { x: number; y: number; width: number; height: number }) => {
-    browserPanels.setBounds(labelOf(event), bounds);
+const updater = registerUpdater({
+  labelOf,
+  // The same order `confirm_quit` uses below. An install exit skips that
+  // handler entirely, so without this the PTYs would die with the process and
+  // the debounced stores would never reach disk.
+  prepareForInstall: async () => {
+    await pty.killAll();
+    await stores.saveAll();
   },
-);
-ipcMain.handle(
-  CHANNELS.browserSetVisible,
-  (event, { visible }: { visible: boolean }) => {
-    browserPanels.setVisible(labelOf(event), visible === true);
-  },
-);
-ipcMain.handle(
-  CHANNELS.browserSetInspect,
-  (event, { active }: { active: boolean }) => {
-    browserPanels.setInspect(labelOf(event), active === true);
-  },
-);
-
-// No `window_is_focused` / `window_scale_factor` handlers: both are answered
-// in the renderer from `document.hasFocus()` and `devicePixelRatio`. The
-// main-process versions were worse — `getZoomFactor()` returns the user's ZOOM
-// level, which is 1 on a 2x display at default zoom, so it silently turned the
-// physical-to-logical drop conversion into a no-op.
-
-/**
- * Schemes Deck will hand to the OS.
- *
- * Tauri enforced this in the HOST via the `opener:default` permission set;
- * dropping it left `shell.openExternal` open to anything the renderer passed,
- * and the renderer is not the trust boundary — an OSC 8 hyperlink carrying
- * `file:///Applications/…` was one renderer bug away from launching it.
- */
-const OPENABLE_SCHEMES = new Set(["http:", "https:", "mailto:", "tel:"]);
-
-ipcMain.handle("shell_open_url", (_event, { url }) => {
-  let parsed: URL;
-  try {
-    parsed = new URL(String(url));
-  } catch {
-    throw new Error("That link is not a valid URL.");
-  }
-  if (!OPENABLE_SCHEMES.has(parsed.protocol)) {
-    throw new Error(`Deck will not open ${parsed.protocol} links.`);
-  }
-  return shell.openExternal(parsed.href);
 });
-ipcMain.handle("clipboard_read_text", () => clipboard.readText());
-ipcMain.handle("clipboard_write_text", (_event, { text }) =>
-  clipboard.writeText(text),
-);
-// Electron needs no permission grant for notifications; answering true keeps
-// the renderer's request/grant flow unchanged.
-ipcMain.handle("notification_permission_granted", () =>
-  Notification.isSupported(),
-);
-ipcMain.handle("notification_request_permission", () =>
-  Notification.isSupported() ? "granted" : "denied",
-);
-ipcMain.handle("notification_send", (_event, payload) => {
-  const { title, body } = payload as { title: string; body?: string };
-  if (Notification.isSupported()) {
-    new Notification({ title, body }).show();
-  }
-});
-ipcMain.handle("app_relaunch", () => {
-  app.relaunch();
-  app.exit(0);
-});
-ipcMain.handle("app_version", () => app.getVersion());
+
+registerStore({ stores, windows, emitTo });
+
+registerDialogs();
+
+registerBrowser({ labelOf, browserPanels });
+
+registerShell();
 
 // ------------------------------------------------------------------ Boot
 app.whenReady().then(() => {
@@ -952,7 +498,7 @@ app.whenReady().then(() => {
   // which the OS still eats the chord the user reassigned.
   void stores
     .open("settings.json")
-    .then((store) => adoptMenuKeymap(store.get("settings")))
+    .then((store) => menuState.adoptMenuKeymap(store.get("settings")))
     .catch((error: unknown) => {
       // Defaults are already installed; an unreadable settings file must not
       // stop the app from booting with a working menu.
@@ -964,6 +510,11 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", (event) => {
+  if (updater.isInstalling()) {
+    // Same reason as the window-close guard above: this quit IS the install,
+    // and it was already confirmed in the renderer.
+    return;
+  }
   const paneIds = coordinator.allPanes();
   // The dirty registry is part of this question, not an afterthought: a window
   // holding only file tabs owns NO panes, so `allPanes()` is empty and this

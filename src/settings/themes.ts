@@ -34,14 +34,32 @@ export function allPresets(): readonly ThemePreset[] {
   return [...THEME_PRESETS, ...customPresets.value];
 }
 
+/**
+ * Every built-in `foreground` is a NEUTRAL gray, not the palette's own tinted
+ * ink (2026-08-17, owner's call). Three of the four upstream palettes carry a
+ * blue-violet foreground — Tokyo Night `#c0caf5` is 73% saturated, Catppuccin
+ * Mocha `#cdd6f4` 64% — and because `deriveChromeColors` builds the whole
+ * chrome text ladder out of `foreground`, that hue reached far past the
+ * terminal: every label, path and menu item in the app was tinted blue.
+ *
+ * The replacements are the gray of MATCHING WCAG relative luminance, so the
+ * contrast ratio each palette shipped is preserved to within 0.06 and DL-3.5's
+ * floors are unaffected — only the hue is gone. The ANSI sixteen are
+ * deliberately untouched: they are what makes a palette recognizable, and
+ * program output is supposed to look like the theme.
+ *
+ * `cursor` follows `foreground` only where the palette already had them equal.
+ * One Dark's `#528bff` and Catppuccin's rosewater are deliberate accents, not
+ * a copy of the ink, so they stay.
+ */
 export const THEME_PRESETS: ThemePreset[] = [
   {
     id: "tokyo-night",
     label: "Tokyo Night",
     theme: {
       background: "#16161e",
-      foreground: "#c0caf5",
-      cursor: "#c0caf5",
+      foreground: "#cbcbcb",
+      cursor: "#cbcbcb",
       selectionBackground: "#33467c",
       black: "#15161e",
       red: "#f7768e",
@@ -66,8 +84,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     label: "Dracula",
     theme: {
       background: "#282a36",
-      foreground: "#f8f8f2",
-      cursor: "#f8f8f2",
+      foreground: "#f8f8f8",
+      cursor: "#f8f8f8",
       selectionBackground: "#44475a",
       black: "#21222c",
       red: "#ff5555",
@@ -92,7 +110,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     label: "One Dark",
     theme: {
       background: "#282c34",
-      foreground: "#abb2bf",
+      foreground: "#b2b2b2",
       cursor: "#528bff",
       selectionBackground: "#3e4451",
       black: "#282c34",
@@ -118,7 +136,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     label: "Catppuccin Mocha",
     theme: {
       background: "#1e1e2e",
-      foreground: "#cdd6f4",
+      foreground: "#d7d7d7",
       cursor: "#f5e0dc",
       selectionBackground: "#585b70",
       black: "#45475a",

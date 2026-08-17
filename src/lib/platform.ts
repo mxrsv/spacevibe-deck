@@ -29,10 +29,7 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === "object" && value !== null;
 }
 
-function hasAbsoluteHome(
-  platform: DesktopPlatform,
-  homeDir: string,
-): boolean {
+function hasAbsoluteHome(platform: DesktopPlatform, homeDir: string): boolean {
   if (platform === "macos") {
     return MACOS_ABSOLUTE_PATH.test(homeDir);
   }
@@ -42,9 +39,7 @@ function hasAbsoluteHome(
   return homeDir === "";
 }
 
-export function parseDesktopEnvironment(
-  value: unknown,
-): DesktopEnvironment {
+export function parseDesktopEnvironment(value: unknown): DesktopEnvironment {
   if (!isRecord(value) || !SUPPORTED_PLATFORMS.has(String(value.platform))) {
     throw new Error("Desktop environment has an invalid platform");
   }
@@ -54,9 +49,7 @@ export function parseDesktopEnvironment(
   const platform = value.platform as DesktopPlatform;
   if (!hasAbsoluteHome(platform, value.homeDir)) {
     const requirement =
-      platform === "unsupported"
-        ? "must be empty"
-        : "must be an absolute path";
+      platform === "unsupported" ? "must be empty" : "must be an absolute path";
     throw new Error(`Desktop environment homeDir ${requirement}`);
   }
   return Object.freeze({ platform, homeDir: value.homeDir });

@@ -233,6 +233,10 @@ describe("openDirectories", () => {
       new Set(["/r/src", "/r/src/deep"]),
       false,
     );
-    expect(openDirectories(rows, "/r")).toEqual(["/r", "/r/src", "/r/src/deep"]);
+    expect(openDirectories(rows, "/r")).toEqual([
+      "/r",
+      "/r/src",
+      "/r/src/deep",
+    ]);
   });
 });

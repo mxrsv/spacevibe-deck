@@ -1,7 +1,7 @@
 {
   "name": "spacevibe-deck",
   "private": true,
-  "version": "0.12.3",
+  "version": "0.12.4-electron-preview.1",
   "type": "module",
   "scripts": {
     "generate:menu": "tsx scripts/generate-menu.ts",
@@ -25,6 +25,7 @@
     "tauri": "tauri",
     "electron:build": "tsc -p tsconfig.electron.json && node scripts/build-electron-main.mjs",
     "build:gate-m-renderer": "vite build --config vite.gate-m.config.mjs",
+    "electron:package": "npm run build && npm run electron:build && electron-builder --config electron-builder.yml --mac --arm64 --dir --publish never",
     "electron:package:gate-m": "npm run build && npm run build:gate-m-renderer && npm run electron:build && electron-builder --config electron-builder.gate-m.yml --mac --universal --dir --publish never",
     "electron:verify:gate-m": "node scripts/verify-electron-gate-m-package.mjs",
     "electron:dev": "npm run build && npm run electron:build && electron dist-electron/electron/main.cjs",
@@ -33,6 +34,7 @@
     "shoot": "npm run build && npm run electron:build && electron dist-electron/electron/shoot.cjs"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "@preact/signals": "^2.9.2",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
@@ -46,8 +48,9 @@
     "@xterm/addon-search": "^0.16.0",
     "@xterm/addon-serialize": "0.14.0",
     "@xterm/addon-unicode-graphemes": "^0.4.0",
+    "@xterm/addon-webgl": "^0.19.0",
     "@xterm/xterm": "^6.0.0",
-    "lucide-preact": "^1.30.0",
+    "electron-updater": "^6.8.9",
     "monaco-editor": "0.56.0",
     "node-pty": "^1.1.0",
     "ogl": "^1.0.11",

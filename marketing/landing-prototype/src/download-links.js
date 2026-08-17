@@ -12,6 +12,12 @@
  * the hand-bumped WINDOWS_TAG pin — publishing a release is the act that
  * points the landing at it, so an unpublished build can never be served.
  *
+ * 2026-08-17, for the Windows Electron release: the page carries no macOS
+ * ANCHOR right now — the macOS control is a disabled button until the Electron
+ * macOS build ships, so nothing matches the `downloadMac` retarget and the old
+ * Tauri .dmg is never handed out. The call below stays because restoring macOS
+ * is then a markup change alone: turn the button back into an anchor.
+ *
  * Failure contract: on any miss (offline, rate limit, no matching asset) the
  * anchors keep their server-rendered page hrefs — a releases page, never a
  * dead file URL.
@@ -88,11 +94,7 @@ export async function upgradeReleaseLinks(root) {
 
   retargetAnchors(root, "downloadMac", urls.mac);
   retargetAnchors(root, "downloadWin", urls.win);
-  setDownloadProofState(
-    root,
-    "ready",
-    totalInstallerDownloads(releases),
-  );
+  setDownloadProofState(root, "ready", totalInstallerDownloads(releases));
 
   const stableTag = latestStableTag(releases);
 

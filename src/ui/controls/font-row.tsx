@@ -1,7 +1,7 @@
+import { CaretDown } from "@phosphor-icons/react";
 import { useMemo, useState } from "preact/hooks";
 import { CommitInput } from "./commit-input";
 import { ConfigRow } from "./config-row";
-import { ChevronDown } from "lucide-preact";
 import { DeckIcon, ROW_ICON } from "./deck-icon";
 
 const FONT_CANDIDATES = [
@@ -70,7 +70,7 @@ export function FontRow({ value, onChange }: FontRowProps) {
             {selectValue === CUSTOM_VALUE ? value || "custom…" : value}
           </span>
           <span class="cfg-btn__hint">
-            <DeckIcon icon={ChevronDown} size={ROW_ICON} />
+            <DeckIcon icon={CaretDown} size={ROW_ICON} />
           </span>
           <select
             value={selectValue}

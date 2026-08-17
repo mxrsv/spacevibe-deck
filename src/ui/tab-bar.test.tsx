@@ -121,9 +121,9 @@ describe("TabBar", () => {
     const add = host.querySelector(".tab-add") as HTMLButtonElement;
     const close = host.querySelector(".tab__close") as HTMLButtonElement;
 
-    expect(add.querySelector(".lucide-plus")).not.toBeNull();
+    expect(add.querySelector(".deck-icon--plus")).not.toBeNull();
     expect(add.textContent).toBe("");
-    expect(close.querySelector(".lucide-x")).not.toBeNull();
+    expect(close.querySelector(".deck-icon--x")).not.toBeNull();
     expect(close.getAttribute("aria-label")).toBe("Close tab");
   });
 

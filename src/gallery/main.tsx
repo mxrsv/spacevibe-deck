@@ -8,15 +8,25 @@ import "../styles.css";
 import "./gallery.css";
 import "./chatgpt-direction.css";
 import "./agent-status-rail.css";
+import "./agent-rail-variants.css";
 import { initializeDesktopEnvironmentFromBackend } from "../lib/platform";
-import { configureSettingsSync } from "../settings/settings-store";
+import {
+  configureSettingsSync,
+  settingsLoadState,
+} from "../settings/settings-store";
 import { createMemorySettingsSync } from "../settings/settings-sync";
+import { LOAD_READY } from "../lib/load-state";
 import { activeTabIndex, statusInfo, tabViews } from "../terminal/tabs-store";
-import { openFileTab } from "../files/file-surface-store";
+import {
+  activateTerminalSurface,
+  openFileTab,
+} from "../files/file-surface-store";
 import { nextOpenSequence } from "../lib/open-sequence";
 import { presetsData } from "../presets/presets-store";
 import { sessionArchive } from "../terminal/session-journal";
+import { paneTails } from "../terminal/session-tail-store";
 import {
+  SEED_PANE_TAILS,
   SEED_PRESETS,
   SEED_SESSION_ARCHIVE,
   SEED_STATUS,
@@ -49,6 +59,7 @@ function main(): void {
   // In-memory sync so a settings change in a specimen stays local. Without it
   // `updateSettings` would try to broadcast a patch through Rust.
   configureSettingsSync(createMemorySettingsSync());
+  settingsLoadState.value = LOAD_READY;
 
   // The strip is one row of mixed chips in open order since 2026-08-16
   // (DL-18.6), so the gallery seeds it that way: a document opened before the
@@ -63,10 +74,19 @@ function main(): void {
   openFileTab(seedWorkspace, `${seedWorkspace}/src/styles.css`, {
     keep: false,
   });
+  // `openFileTab` hands the stage to the file it opened; the gallery's resting
+  // state is a terminal tab holding it — the strip still lists both files, and
+  // the agent rail can show its selection wash, which a covering file surface
+  // rightly suppresses.
+  activateTerminalSurface();
   activeTabIndex.value = 0;
   statusInfo.value = SEED_STATUS;
   presetsData.value = { version: 1, presets: SEED_PRESETS };
   sessionArchive.value = SEED_SESSION_ARCHIVE;
+  // The rail reads `session_tail` in the app; in a browser there is no session
+  // log to read, so the store is seeded directly — without it every rail
+  // specimen shows the never-spoken fallback and none of DL-27.15.
+  paneTails.value = SEED_PANE_TAILS;
   sidebarBanner.value = { ...DEFAULT_SIDEBAR_BANNER, enabled: true };
   const seededAt = Date.now();
   workspacesData.value = {

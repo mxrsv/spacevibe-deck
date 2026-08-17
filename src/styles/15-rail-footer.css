@@ -1,0 +1,108 @@
+/* ── Rail footer: window actions (src/ui/sidebar-actions.tsx) ──────────────
+   DL §28. Pinned under the scrolling workspace list and above the banner, so
+   the banner keeps the closing position it has always had (DL-26.4). Rows,
+   not icons: the column has prose width, so a row can say what it does. ── */
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 0 0 auto;
+  /* Bottom is deliberately larger than the rest: this group ends at the
+     window edge (or at the banner), and a row flush against that edge reads
+     as clipped rather than as the last item. 20px also clears the window's
+     rounded corner. */
+  padding: 6px 6px 20px;
+  border-top: 1px solid var(--sidebar-seam);
+}
+
+/* DL-4.4: names something, so sentence case, and since the 2026-08-16
+   amendment a label heading a LIST OF ROWS stands one rung above them
+   (`--type-title` over the rows' `--type-body`) in `--text-muted` — the same
+   treatment as the stream's cluster header (DL-27.9) directly above it in this
+   very column. This rule also carried a real defect until that pass:
+   `--type-caption` is not a token this app declares, so the declaration was
+   invalid and the label silently inherited its size from the shell. */
+.sidebar-actions__label {
+  padding: 2px 6px 4px;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: var(--type-title);
+  font-weight: 560;
+}
+
+/* The positioning context for the Prompt Board popover, which opens from the
+   row rather than from a toolbar slot in this layout. */
+.sidebar-actions__slot {
+  position: relative;
+}
+
+.sidebar-actions__row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 6px 7px 9px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: var(--type-body);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+/* DL-21.2: the quieter hover wash. */
+.sidebar-actions__row:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+/* DL-21.1: the full wash says which surface is up. */
+.sidebar-actions__row.is-active {
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+
+/* DL-23.6: unavailable is not disabled — faint on an unchanged surface, no
+   hover wash, still focusable so its reason stays reachable. */
+.sidebar-actions__row.is-unavailable,
+.sidebar-actions__row.is-unavailable:hover {
+  background: transparent;
+  color: var(--text-faint);
+  cursor: default;
+}
+
+/* The collapsed rail sheds prose (DL-18.9), so these rows shed their labels
+   with everything else and centre on the icon that is left. */
+.window--sidebar-collapsed .sidebar-actions__label,
+.window--sidebar-collapsed .sidebar-actions__row span:not([class]) {
+  display: none;
+}
+
+.window--sidebar-collapsed .sidebar-actions__row {
+  justify-content: center;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* This layout's Prompt Board opens from the rail's bottom-left corner, so it
+   flies UP and to the RIGHT instead of down-and-left off a toolbar button.
+   Same surface, same 320px, same §13 treatment — only the direction differs. */
+.sidebar-actions__slot .prompt-popover {
+  top: auto;
+  right: auto;
+  bottom: calc(100% + 6px);
+  left: 0;
+}
+
+/* The bottom status row is a setting (`showStatusBar`, off by default since
+   2026-08-16). Zeroing the token rather than the row keeps the grid's three
+   rows in one place: `.window` still reads `--status-h`, and there is exactly
+   one number to change. */
+.window--no-status {
+  --status-h: 0px;
+}

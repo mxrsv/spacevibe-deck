@@ -10,6 +10,7 @@ import {
   sessionLimit,
   sessionProjectFilter,
   sessionsLoading,
+  sessionsLoadState,
   sessionTotals,
 } from "../../sessions/sessions-store";
 import type { SessionEntry } from "../../lib/session-history";
@@ -37,6 +38,7 @@ describe("SessionsBody", () => {
     sessionTotals.value = { claude: 1, codex: 0 };
     sessionLimit.value = 500;
     sessionsLoading.value = false;
+    sessionsLoadState.value = { status: "ready" };
     deadProjects.value = new Set();
     sessionAgentFilter.value = "all";
     sessionProjectFilter.value = null;
@@ -121,5 +123,33 @@ describe("SessionsBody", () => {
       (node) => node.textContent,
     );
     expect(labels).toEqual(["All sessions", "Claude Code", "Codex"]);
+  });
+
+  it("shows a scan failure instead of claiming there are no sessions", () => {
+    sessionEntries.value = [];
+    sessionsLoadState.value = {
+      status: "error",
+      message: "Couldn't read recorded sessions.",
+    };
+
+    mount("dock");
+
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      "Couldn't read recorded sessions.",
+    );
+    expect(host.textContent).not.toContain("No sessions found");
+  });
+
+  it("only claims the history is empty after a successful scan", () => {
+    sessionEntries.value = [];
+    sessionsLoadState.value = { status: "loading" };
+    sessionsLoading.value = true;
+
+    mount("dock");
+
+    expect(host.textContent).toContain(
+      "Reading this machine's recorded sessions",
+    );
+    expect(host.textContent).not.toContain("No sessions found");
   });
 });

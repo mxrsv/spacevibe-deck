@@ -16,9 +16,12 @@ import {
   sessionLimit,
   sessionProjectFilter,
   sessionsLoading,
+  sessionsLoadState,
   sessionTotals,
+  refreshSessions,
 } from "../../sessions/sessions-store";
 import { SessionRow } from "./session-row";
+import { LoadError } from "../controls/load-error";
 
 interface SessionsListProps {
   onResume(entry: SessionEntry): void;
@@ -52,7 +55,10 @@ export function SessionsList({ onResume }: SessionsListProps) {
   const capped = cappedAgents(sessionTotals.value, sessionLimit.value);
 
   return (
-    <div class="sessions-list">
+    <div
+      class="sessions-list"
+      aria-busy={sessionsLoadState.value.status === "loading"}
+    >
       {sessionsLoading.value ? (
         // A status line ABOVE the list, not a state that replaces it —
         // mirrors usage-status.tsx: what is already known stays on screen
@@ -60,6 +66,13 @@ export function SessionsList({ onResume }: SessionsListProps) {
         <p class="sessions-list__note">
           Reading this machine's recorded sessions…
         </p>
+      ) : null}
+
+      {sessionsLoadState.value.status === "error" ? (
+        <LoadError
+          message={sessionsLoadState.value.message}
+          onRetry={() => void refreshSessions()}
+        />
       ) : null}
 
       {projects.length > 0 ? (
@@ -98,7 +111,7 @@ export function SessionsList({ onResume }: SessionsListProps) {
         </p>
       ) : null}
 
-      {rows.length === 0 ? (
+      {rows.length === 0 && sessionsLoadState.value.status === "ready" ? (
         <p class="sessions-list__empty">
           {sessionEntries.value.length === 0
             ? // Spec §3.2: name where Deck looked, so an empty list reads
@@ -106,7 +119,7 @@ export function SessionsList({ onResume }: SessionsListProps) {
               "No sessions found in ~/.claude/projects or ~/.codex/sessions."
             : "No sessions match this filter."}
         </p>
-      ) : (
+      ) : rows.length > 0 ? (
         <ul class="sessions-list__rows" aria-label="Past sessions">
           {rows.map((entry) => (
             <SessionRow
@@ -118,7 +131,7 @@ export function SessionsList({ onResume }: SessionsListProps) {
             />
           ))}
         </ul>
-      )}
+      ) : null}
     </div>
   );
 }

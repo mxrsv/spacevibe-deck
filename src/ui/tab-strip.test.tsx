@@ -36,6 +36,8 @@ import {
   EMPTY_STATE,
   resetBrowserStore,
 } from "../browser/browser-store";
+import { paneTails } from "../terminal/session-tail-store";
+import type { PaneView } from "../terminal/tabs-store";
 
 const fileClient: FileClient = {
   listDir: async () => [],
@@ -62,6 +64,19 @@ function tab(overrides: Partial<TabView> = {}): TabView {
   };
 }
 
+/** One agent pane, for the chips that carry a session tail (DL-18.10). */
+function pane(overrides: Partial<PaneView> = {}): PaneView {
+  return {
+    paneId: 11,
+    agent: "claude",
+    attention: "none",
+    phase: "idle",
+    hasRun: true,
+    changedAt: 1_000,
+    ...overrides,
+  };
+}
+
 describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
   let host: HTMLDivElement;
   let fileController: FileSurfaceController;
@@ -78,6 +93,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     resetFileSurfaces();
     resetBrowserStore();
     resetOpenSequence();
+    paneTails.value = new Map();
     fileController = createFileSurfaceController({ client: fileClient });
   });
 
@@ -89,6 +105,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     resetDesktopEnvironmentForTests();
     fileController.dispose();
     resetFileSurfaces();
+    paneTails.value = new Map();
   });
 
   const mount = (props: Partial<Parameters<typeof TabStrip>[0]> = {}): void => {
@@ -125,6 +142,41 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     // One row since 2026-08-16 (DL-18.6): no segment hairline anywhere in it.
     expect(host.querySelector(".tabbar__sep")).toBeNull();
     expect(host.querySelector(".tab-add")).not.toBeNull();
+  });
+
+  it("puts the tab's newest turn on its chip, and keeps a typed name over it", () => {
+    // DL-18.10 amended (2026-08-17, owner): a chip carries the same sentence
+    // the rail row shows, through the same precedence — so the two surfaces
+    // cannot quote different agents for one tab. A name the user typed still
+    // wins, exactly as it does in the rail (DL-27.15).
+    tabViews.value = [
+      tab({ key: 1, name: null, panes: [pane({ paneId: 11 })] }),
+      tab({ key: 2, name: "release cut", panes: [pane({ paneId: 21 })] }),
+    ];
+    paneTails.value = new Map([
+      [11, "Reading the rail model"],
+      [21, "Wrote the migration"],
+    ]);
+    mount({ scopeToActiveRepository: false });
+
+    const labels = [...host.querySelectorAll(".tab .tab__label")].map(
+      (node) => node.textContent,
+    );
+    expect(labels).toEqual(["Reading the rail model", "release cut"]);
+    // The whole sentence stays reachable even though the chip trims it
+    // (DL-27.4's contract, inherited with the sentence).
+    expect(host.querySelector(".tab")?.getAttribute("title")).toBe(
+      "Reading the rail model",
+    );
+  });
+
+  it("keeps the process name on a chip whose agent has said nothing", () => {
+    tabViews.value = [
+      tab({ key: 1, name: null, process: "codex", panes: [pane()] }),
+    ];
+    mount({ scopeToActiveRepository: false });
+
+    expect(host.querySelector(".tab .tab__label")?.textContent).toBe("codex");
   });
 
   it("places a chip by when it was opened, not by what kind it is", () => {

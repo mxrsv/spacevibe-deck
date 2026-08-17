@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { effect } from "@preact/signals";
 import { readFileSync } from "node:fs";
 import {
   activateFileTab,
@@ -12,11 +13,13 @@ import {
   documentFor,
   EMPTY_SURFACE,
   fileTabsFor,
+  listingErrorsFor,
   openFileTab,
   promoteFileTab,
   resetFileSurfaces,
   setActiveWorkspace,
   setListing,
+  setListingError,
   setShowHidden,
   stripFileTabs,
   surfaceFor,
@@ -51,16 +54,29 @@ describe("the seam", () => {
     // gains no knowledge of PTYs. Asserted on the IMPORT statements rather
     // than on the whole text — both files name the other in prose, which is
     // the point of the seam being written down.
+    //
+    // `tab-manager.ts`'s module-scope header (types + pure constants) moved
+    // out 2026-08-16 into surface-strip.ts, tab-manager-types.ts and
+    // tab-action-scope.ts — code that escaped tab-manager.ts this way would
+    // slip past a check scoped to that one file, so all four are covered.
     const imports = (source: string): string[] =>
       [...source.matchAll(/from\s+"([^"]+)"/g)].map((match) => match[1]);
+    const tabManagerModules = [
+      "src/terminal/tab-manager.ts",
+      "src/terminal/surface-strip.ts",
+      "src/terminal/tab-manager-types.ts",
+      "src/terminal/tab-action-scope.ts",
+    ];
     expect(
       imports(readFileSync("src/files/file-surface-store.ts", "utf8")),
     ).not.toContain("../terminal/tab-manager");
-    expect(
-      imports(readFileSync("src/terminal/tab-manager.ts", "utf8")).filter(
-        (specifier) => specifier.includes("/files/"),
-      ),
-    ).toEqual([]);
+    for (const modulePath of tabManagerModules) {
+      expect(
+        imports(readFileSync(modulePath, "utf8")).filter((specifier) =>
+          specifier.includes("/files/"),
+        ),
+      ).toEqual([]);
+    }
   });
 });
 
@@ -88,6 +104,42 @@ describe("keying by workspacePath", () => {
 });
 
 describe("the tree", () => {
+  it("keeps the last-good listing when a refresh reports an error", () => {
+    setListing("/r", "/r", [file("/r/a.ts")]);
+
+    setListingError("/r", "/r", "Couldn't read this folder.");
+
+    expect(treeRows("/r").map((row) => row.name)).toEqual(["a.ts"]);
+    expect(listingErrorsFor("/r").get("/r")).toBe("Couldn't read this folder.");
+  });
+
+  it("clears a directory error after its next successful listing", () => {
+    setListingError("/r", "/r", "Couldn't read this folder.");
+
+    setListing("/r", "/r", []);
+
+    expect(listingErrorsFor("/r").has("/r")).toBe(false);
+  });
+
+  it("publishes a recovered listing and cleared error as one snapshot", () => {
+    setListingError("/r", "/r", "Couldn't read this folder.");
+    const snapshots: { listing: boolean; error: boolean }[] = [];
+    const stop = effect(() => {
+      snapshots.push({
+        listing: surfaceFor("/r").listings.has("/r"),
+        error: listingErrorsFor("/r").has("/r"),
+      });
+    });
+
+    setListing("/r", "/r", [file("/r/a.ts")]);
+    stop();
+
+    expect(snapshots).toEqual([
+      { listing: false, error: true },
+      { listing: true, error: false },
+    ]);
+  });
+
   it("flattens listings through the expansion set", () => {
     setListing("/r", "/r", [dir("/r/src"), file("/r/a.ts")]);
     setListing("/r", "/r/src", [file("/r/src/index.ts")]);

@@ -6,6 +6,7 @@ import { FileTreeView } from "./file-tree-view";
 import {
   resetFileSurfaces,
   setListing,
+  setListingError,
   toggleDirectory,
 } from "../file-surface-store";
 import type { FileSurfaceController } from "../file-surface-controller";
@@ -203,6 +204,49 @@ describe("FileTreeView", () => {
     expect(rows()).toEqual([]);
     expect(tree().textContent).not.toMatch(/loading/i);
     expect((tree().textContent ?? "").length).toBeGreaterThan(0);
+  });
+
+  it("shows a sticky read error and retries the failed directory", () => {
+    setListingError(WS, WS, "Couldn't read this folder.");
+    const controller = fakeController();
+
+    mount(controller);
+    const alert = host.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain("Couldn't read this folder.");
+
+    act(() => {
+      alert?.querySelector<HTMLButtonElement>("button")?.click();
+    });
+    expect(controller.ensureListing).toHaveBeenCalledWith(WS, WS);
+  });
+
+  it("keeps Retry outside the tree keyboard handler when rows are retained", () => {
+    act(() => {
+      setListing(WS, WS, [
+        {
+          name: "a.ts",
+          path: `${WS}/a.ts`,
+          directory: false,
+          outOfRoot: false,
+        },
+      ]);
+      setListingError(WS, WS, "Couldn't read this folder.");
+    });
+    const controller = fakeController();
+    mount(controller);
+    const retry = host.querySelector<HTMLButtonElement>(".load-error__retry")!;
+
+    expect(tree().contains(retry)).toBe(false);
+    act(() => {
+      retry.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+      retry.click();
+    });
+
+    expect(controller.openFile).not.toHaveBeenCalled();
+    expect(controller.toggleDirectory).not.toHaveBeenCalled();
+    expect(controller.ensureListing).toHaveBeenCalledWith(WS, WS);
   });
 
   it("keeps depth-based indentation correct for a deeply nested expanded path", () => {

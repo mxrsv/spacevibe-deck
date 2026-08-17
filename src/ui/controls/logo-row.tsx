@@ -1,3 +1,4 @@
+import { ArrowCounterClockwise, DotsThree } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
 import { open } from "../../host/dialog-host";
 import {
@@ -6,7 +7,6 @@ import {
   setLogoFromPath,
 } from "../../settings/logo-store";
 import { ConfigRow } from "./config-row";
-import { Ellipsis, RotateCcw } from "lucide-preact";
 import { DeckIcon, ROW_ICON } from "./deck-icon";
 
 /**
@@ -48,7 +48,7 @@ export function LogoRow() {
         >
           {hasLogo ? "custom" : "default"}
           <span class="cfg-btn__hint">
-            <DeckIcon icon={Ellipsis} size={ROW_ICON} />
+            <DeckIcon icon={DotsThree} size={ROW_ICON} />
           </span>
         </button>
         {hasLogo ? (
@@ -62,7 +62,7 @@ export function LogoRow() {
               clearLogo();
             }}
           >
-            <DeckIcon icon={RotateCcw} size={ROW_ICON} />
+            <DeckIcon icon={ArrowCounterClockwise} size={ROW_ICON} />
           </button>
         ) : null}
       </ConfigRow>

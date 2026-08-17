@@ -1,14 +1,9 @@
-import type {
-  UpdateCheckResult,
-  UpdateController,
-} from "./update-controller";
+import type { UpdateCheckResult, UpdateController } from "./update-controller";
 
 export const RELEASE_NOTES_URL =
   "https://deck.spacevibe.dev/landing-prototype/changelog/";
 
-export type UpdateMenuAction =
-  | "check-for-updates"
-  | "open-release-notes";
+export type UpdateMenuAction = "check-for-updates" | "open-release-notes";
 
 type MessageKind = "info" | "error";
 

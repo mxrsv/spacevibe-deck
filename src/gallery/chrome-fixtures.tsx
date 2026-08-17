@@ -1,8 +1,8 @@
-import { ChevronDown, FolderGit2, Plus } from "lucide-preact";
+import { CaretDown, GitFork, Plus } from "@phosphor-icons/react";
 import { RepositoryRail } from "../ui/repository-rail";
+import { AgentRail } from "../ui/agent-rail";
 import { TabBar } from "../ui/tab-bar";
 import { DeckToolbar } from "../ui/toolbar/deck-toolbar";
-import { WorkspaceSidebar } from "../ui/workspace-sidebar";
 import { createFileSurfaceController } from "../files/file-surface-controller";
 import type { PaneAgent } from "../lib/process-info";
 import type { RailTab } from "../repositories/repository-model";
@@ -12,6 +12,7 @@ import { CHROME_ICON, DeckIcon, RAIL_ICON } from "../ui/controls/deck-icon";
 import { WorktreeAgentStack } from "../ui/worktree-agent-stack";
 import { TabStrip } from "../ui/tab-strip";
 import { SidebarBanner } from "../ui/sidebar-banner";
+import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "../ui/sidebar-actions";
 
 /**
  * The chrome components wired up for a specimen, in one place.
@@ -24,7 +25,7 @@ import { SidebarBanner } from "../ui/sidebar-banner";
  *
  * Only the parts that are genuinely identical live here. How a section
  * assembles `DesktopChrome` around them is the section's own business: the
- * chrome and Open board pages share the Deck toolbar and repository tree,
+ * chrome and Open board pages share the Deck toolbar and AgentRail navigation,
  * while the matrix keeps the shipping toolbar needed by its state rows.
  */
 
@@ -37,6 +38,10 @@ export const NOOP = (): void => {};
  * appear in every strip specimen without any of them owning the state.
  */
 const fileControllerFixture = createFileSurfaceController();
+
+function selectGalleryTab(index: number): void {
+  activeTabIndex.value = index;
+}
 
 interface SpecimenOptions {
   /** No pane to paste into — the one unavailable control the chrome has. */
@@ -94,16 +99,52 @@ export function chatGptToolbarSpecimen() {
   );
 }
 
-export function workspaceSidebarSpecimen() {
+interface AgentRailSpecimenOptions {
+  readonly onSelectTab?: (index: number) => void;
+  readonly onFocusPane?: (index: number, paneId: number) => void;
+  readonly showFooter?: boolean;
+  readonly promptsDisabled?: boolean;
+}
+
+/**
+ * The shipping sidebar navigation with seeded gallery stores underneath it.
+ * Current shell specimens share this fixture so none can silently fall back
+ * to the parked `RepositoryRail` or to a hand-built copy of the rail.
+ */
+export function agentRailNavigationSpecimen({
+  onSelectTab = selectGalleryTab,
+  onFocusPane = (index) => selectGalleryTab(index),
+  // Follows the shipped rail: while `SIDEBAR_TOOLS_HIDDEN` is on, the target
+  // shell has no footer, and a specimen that kept drawing one would be drift.
+  // A specimen that wants the footer as a DL §28 record still passes `true`.
+  showFooter = !SIDEBAR_TOOLS_HIDDEN,
+  promptsDisabled = false,
+}: AgentRailSpecimenOptions = {}) {
   return (
-    <WorkspaceSidebar
-      onSelectTab={NOOP}
+    <AgentRail
+      onSelectTab={onSelectTab}
       onCloseTab={NOOP}
       onOpenWorkspace={NOOP}
-      onRenameTab={NOOP}
-      onSetTabColor={NOOP}
-      onFocusAttention={NOOP}
+      onFocusPane={onFocusPane}
       onResumeWorktree={NOOP}
+      showAgentPresence
+      fileController={fileControllerFixture}
+      footer={
+        showFooter ? (
+          <SidebarActions
+            sessionsAvailable
+            promptsUnavailable={
+              promptsDisabled ? "no pane to paste into" : null
+            }
+            promptsOpen={false}
+            onOpenBrowser={NOOP}
+            onOpenUsage={NOOP}
+            onOpenSessions={NOOP}
+            onOpenPrompts={NOOP}
+            onOpenSettings={NOOP}
+          />
+        ) : null
+      }
     />
   );
 }
@@ -128,8 +169,6 @@ export function repositorySidebarSpecimen({
       onSelectTab={onSelectTab}
       onCloseTab={NOOP}
       onOpenWorkspace={NOOP}
-      onRenameTab={NOOP}
-      onSetTabColor={NOOP}
       onFocusAttention={NOOP}
       onResumeWorktree={NOOP}
       fileController={fileControllerFixture}
@@ -139,12 +178,9 @@ export function repositorySidebarSpecimen({
 
 /** The real sidebar-mode strip, wired so gallery rail clicks change its scope. */
 export function repositoryScopedTabStripSpecimen() {
-  const selectTab = (index: number): void => {
-    activeTabIndex.value = index;
-  };
   return (
     <TabStrip
-      onSelectTab={selectTab}
+      onSelectTab={selectGalleryTab}
       onCloseTab={NOOP}
       onNewTab={NOOP}
       onSelectBrowser={NOOP}
@@ -241,10 +277,10 @@ export function worktreeAgentPresenceSpecimen() {
           <header class="repogroup__head">
             <div class="repogroup__toggle">
               <span class="repogroup__mark" aria-hidden="true">
-                <DeckIcon icon={FolderGit2} size={RAIL_ICON} />
+                <DeckIcon icon={GitFork} size={RAIL_ICON} />
               </span>
               <span class="repogroup__name">spacevibe-deck</span>
-              <DeckIcon icon={ChevronDown} size={CHROME_ICON} />
+              <DeckIcon icon={CaretDown} size={CHROME_ICON} />
             </div>
           </header>
           <div class="repogroup__worktrees">
@@ -373,10 +409,10 @@ function WorktreeVariantRail({
     >
       <header class="gx-worktree-variant__repo">
         <span class="repogroup__mark" aria-hidden="true">
-          <DeckIcon icon={FolderGit2} size={RAIL_ICON} />
+          <DeckIcon icon={GitFork} size={RAIL_ICON} />
         </span>
         <span>spacevibe-deck</span>
-        <DeckIcon icon={ChevronDown} size={CHROME_ICON} />
+        <DeckIcon icon={CaretDown} size={CHROME_ICON} />
       </header>
       <div class="gx-worktree-variant__rows">
         {WORKTREE_VARIANT_ROWS.map((worktree) => (

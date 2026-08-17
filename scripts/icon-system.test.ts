@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * The migration to `lucide-preact` is only worth anything if it holds. Nothing
+ * The migration to one icon library is only worth anything if it holds. It has
+ * outlived the library it was written for — `lucide-preact` in 2026-08-09,
+ * `@phosphor-icons/react` since 2026-08-16 — which is the point: this test
+ * asserts that icons come from a package at all, never which one. Nothing
  * stops a later change from hand-drawing one more icon or typing one more
  * arrow into a button, and each of those is invisible in review — this test is
  * what makes them loud.

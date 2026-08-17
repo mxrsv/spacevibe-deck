@@ -263,7 +263,7 @@ describe("matchBinding", () => {
 
   // Gap found while adding Task 4's own matchBinding tests: swap-* (Task 1)
   // never got one — routing/behavior were covered in
-  // tab-manager.test.ts/terminal-manager.test.ts, but not the actual chord
+  // tab-manager.chord-actions.test.ts/terminal-manager.test.ts, but not the actual chord
   // match itself. Closing it here.
   it("matches Cmd+Option+Shift+Arrows to swap-pane", () => {
     const mods = { metaKey: true, altKey: true, shiftKey: true };
@@ -404,7 +404,6 @@ describe("WINDOWS_KEYMAP", () => {
     ["enter", { ctrlKey: true, shiftKey: true }, "toggle-zoom-pane"],
     ["t", { ctrlKey: true, shiftKey: true }, "new-tab"],
     ["t", { ctrlKey: true, altKey: true, shiftKey: true }, "reopen-tab"],
-    ["r", { ctrlKey: true, altKey: true, shiftKey: true }, "open-tab-options"],
     ["tab", { ctrlKey: true }, "next-tab"],
     ["tab", { ctrlKey: true, shiftKey: true }, "prev-tab"],
     ["=", { ctrlKey: true }, "zoom-in"],

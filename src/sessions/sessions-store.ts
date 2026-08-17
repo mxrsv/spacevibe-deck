@@ -6,7 +6,7 @@
  * re-stat on re-open, and the main-process cache makes the second open cheap.
  * A 5 s poll here would re-read up to 1000 transcript heads for nothing.
  */
-import { signal } from "@preact/signals";
+import { batch, signal } from "@preact/signals";
 import { defaultSessionsClient, type SessionsClient } from "./sessions-client";
 import type { AgentFilter } from "./session-filters";
 import {
@@ -14,6 +14,13 @@ import {
   type SessionAgent,
   type SessionEntry,
 } from "../lib/session-history";
+import {
+  LOAD_IDLE,
+  LOAD_LOADING,
+  LOAD_READY,
+  loadError,
+  type LoadState,
+} from "../lib/load-state";
 
 export const sessionEntries = signal<readonly SessionEntry[]>([]);
 export const sessionTotals = signal<Readonly<Record<SessionAgent, number>>>({
@@ -24,6 +31,7 @@ export const sessionLimit = signal(SESSIONS_DEFAULT_LIMIT);
 
 /** A cold scan is running and there is nothing yet to show. */
 export const sessionsLoading = signal(false);
+export const sessionsLoadState = signal<LoadState>(LOAD_IDLE);
 
 /**
  * False once the facade has answered `null` — this host has no
@@ -37,6 +45,10 @@ export const deadProjects = signal<ReadonlySet<string>>(new Set());
 
 export const sessionAgentFilter = signal<AgentFilter>("all");
 export const sessionProjectFilter = signal<string | null>(null);
+
+/** Probe and refresh freshness are independent; a probe never supersedes data. */
+let probeGeneration = 0;
+let refreshGeneration = 0;
 
 export function resetSessionFilters(): void {
   sessionAgentFilter.value = "all";
@@ -57,53 +69,78 @@ export function resetSessionFilters(): void {
 export async function probeSessionsSupport(
   client: SessionsClient = defaultSessionsClient,
 ): Promise<void> {
+  // Preact runs child effects before parent effects. A restored Sessions dock
+  // can therefore start its full refresh before App starts this boot probe.
+  // The refresh already proves support and owns the visible state; do not let
+  // a limit-1 probe supersede it or strand its loading flag.
+  if (sessionsLoadState.value.status === "loading") {
+    return;
+  }
+  probeGeneration += 1;
+  const forProbe = probeGeneration;
+  const refreshAtStart = refreshGeneration;
   try {
-    sessionsSupported.value = (await client.list(1)) !== null;
+    const supported = (await client.list(1)) !== null;
+    if (forProbe === probeGeneration && refreshAtStart === refreshGeneration) {
+      sessionsSupported.value = supported;
+    }
   } catch {
-    sessionsSupported.value = false;
+    if (forProbe === probeGeneration && refreshAtStart === refreshGeneration) {
+      sessionsLoadState.value = loadError("Couldn't read recorded sessions.");
+    }
   }
 }
-
-/** Bumped by every refresh; a reply from a superseded one is dropped. */
-let generation = 0;
 
 export async function refreshSessions(
   client: SessionsClient = defaultSessionsClient,
 ): Promise<void> {
-  generation += 1;
-  const forGeneration = generation;
+  refreshGeneration += 1;
+  const forGeneration = refreshGeneration;
   if (sessionEntries.value.length === 0) {
     sessionsLoading.value = true;
   }
+  sessionsLoadState.value = LOAD_LOADING;
   try {
     const snapshot = await client.list(SESSIONS_DEFAULT_LIMIT);
-    if (forGeneration !== generation) {
+    if (forGeneration !== refreshGeneration) {
       return;
     }
     if (snapshot === null) {
-      sessionsSupported.value = false;
-      sessionEntries.value = [];
+      batch(() => {
+        sessionsSupported.value = false;
+        sessionEntries.value = [];
+        sessionsLoadState.value = LOAD_READY;
+      });
       return;
     }
-    sessionsSupported.value = true;
-    sessionEntries.value = snapshot.entries;
-    sessionTotals.value = snapshot.totals;
-    sessionLimit.value = snapshot.limit;
     const projects = [...new Set(snapshot.entries.map((entry) => entry.cwd))];
     const alive = await client.dirsExist(projects);
-    if (forGeneration !== generation) {
+    if (forGeneration !== refreshGeneration) {
       return;
     }
-    deadProjects.value = new Set(
-      projects.filter((_, index) => alive[index] !== true),
-    );
+    // Commit one complete snapshot only after both host reads succeed. If the
+    // liveness probe fails, publishing new rows with the old dead-project set
+    // would be a half-new state masquerading as last-good data.
+    batch(() => {
+      sessionsSupported.value = true;
+      sessionEntries.value = snapshot.entries;
+      sessionTotals.value = snapshot.totals;
+      sessionLimit.value = snapshot.limit;
+      deadProjects.value = new Set(
+        projects.filter((_, index) => alive[index] !== true),
+      );
+      sessionsLoadState.value = LOAD_READY;
+    });
   } catch (error: unknown) {
     // Keep whatever is on screen. Blanking it would turn one failed scan into
     // "you have no sessions", which is a lie — the same rule usage-store
     // states for its own failure path.
-    console.warn("sessions_list failed:", error);
+    if (forGeneration === refreshGeneration) {
+      console.warn("sessions_list failed:", error);
+      sessionsLoadState.value = loadError("Couldn't read recorded sessions.");
+    }
   } finally {
-    if (forGeneration === generation) {
+    if (forGeneration === refreshGeneration) {
       sessionsLoading.value = false;
     }
   }

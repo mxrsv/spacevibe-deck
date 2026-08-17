@@ -4,10 +4,7 @@ import type { SerializedNode } from "./split-tree";
 export const MAX_LAYOUT_DEPTH = 8;
 
 /** null = corrupt/foreign shape — callers decide the fallback. */
-export function validateLayout(
-  raw: unknown,
-  depth = 0,
-): SerializedNode | null {
+export function validateLayout(raw: unknown, depth = 0): SerializedNode | null {
   if (typeof raw !== "object" || raw === null || depth > MAX_LAYOUT_DEPTH) {
     return null;
   }

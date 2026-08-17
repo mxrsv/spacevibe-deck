@@ -1,0 +1,578 @@
+/* ── Tab bar ─────────────────────────────────────────────── */
+
+/* DL-18: in top-tab mode the tab bar IS the frame — same height, same surface,
+   same single hairline, and it reserves the traffic-light inset itself. */
+.tabbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--frame-h);
+  padding: 0 8px 0 0;
+  background: var(--chrome-1);
+  /* `--seam-divider`, matching the pane splits and `.stage__strip` (DL-18.6
+     amended 2026-08-17, owner). Both layouts close their strip with one line,
+     and it is now the same line the work area uses everywhere else. */
+  border-bottom: 1px solid var(--seam-divider);
+  min-width: 0;
+}
+
+.tabbar__tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Since 2026-08-17 (owner) a chip carries the tab's newest turn, not its
+   process name (DL-18.10 amended), and the three declarations below are what
+   pay for the extra text: `--radius-flat` (DL-20.1's fourth role) drops the
+   corner so the left padding no longer has to hold text off a curve, the label
+   steps down to `--type-meta`, and `max-width` keeps ONE chip from eating the
+   strip — a sentence is trimmed to a glance, never spelled out here. */
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 25px;
+  max-width: 210px;
+  /* border-box so the frame the ACTIVE chip wears (below) costs no height and
+     shifts no label: every chip carries the same transparent 1px all the time,
+     and only its colour changes. A border that appeared on selection would
+     move the row by 2px each time a tab was clicked. */
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  padding: 0 4px 0 6px;
+  border-radius: var(--radius-flat);
+  /* Not transparent (DL-21.7): every chip is a visible object at rest, and the
+     three states are one ladder — 3% at rest, 6% on hover, `--tab-active-bg`
+     plus the frame when selected. */
+  background: var(--tab-rest-bg);
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  cursor: pointer;
+  user-select: none;
+  min-width: 0;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.tab:hover {
+  color: var(--text-primary);
+  background: var(--state-hover-bg);
+}
+
+/* DL-21.1: the active tab is the selection wash and nothing else — the same
+   signifier the rail row above uses, which is what "one selection state"
+   means. */
+.tab.is-active {
+  color: var(--text-primary);
+  background: var(--tab-active-bg);
+  /* DL-21.1 amended 2026-08-16: the wash alone, plus a hairline frame. A chip
+     floats on a transparent strip with no neighbouring rows to compare
+     against — the one place in the app where a 15% wash on `--bg` had nothing
+     to be brighter THAN — so the owner asked for the selected chip to be
+     framed. Neutral (`--hair-strong`), not `--accent`: this is not the
+     retired accent marker coming back (DL-21.6), and it traces the chip
+     rather than sitting beside it. */
+  border-color: var(--hair-strong);
+}
+
+/* DL-18.6: every chip leads with ONE glyph slot, whatever it opened — an
+   agent's brand mark, a file's type icon, the browser's globe. Fixed box so a
+   strip of mixed chips keeps one left edge for its labels; `place-items` so a
+   13px icon and a 7px dot both sit centred in it. */
+.tab__glyph {
+  position: relative;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.tab__logo {
+  width: 15px;
+  height: 15px;
+  border-radius: var(--radius-tight);
+  display: block;
+  object-fit: contain;
+}
+
+/* A declared agent ships no brand mark and wears its letter instead — same
+   fallback as the rail rows (`AgentGlyph`). */
+.tab__logo--letter {
+  display: grid;
+  place-items: center;
+  background: var(--state-hover-bg);
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* The only dot left on a chip is the file chip's dirty marker. The terminal
+   chip's colour dot was removed on 2026-08-16 (DL-18.10 amended): with a brand
+   mark already in the glyph slot, a second mark on the same 15px box read as
+   noise rather than identity. */
+.tab__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-faint);
+}
+
+/* The chip's own `max-width` is the cap now, so the label shrinks with it
+   instead of carrying a second, smaller number of its own — one 140px label
+   inside a 210px chip would have left the trim in two places. */
+.tab__label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* An inline flex box for an `AgentAttentionMark` standing beside text. The
+   strip stopped using it on 2026-08-16 (DL-18.10: a chip says what is open,
+   the rail says what an agent is doing); the gallery's mark specimen still
+   does, which is also what keeps the mark itself reviewable. */
+.tab__attn {
+  display: flex;
+  align-items: center;
+}
+
+.tab__close {
+  margin-left: 2px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  padding: 0;
+  border-radius: var(--radius-control);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    opacity var(--duration) var(--ease),
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.tab:hover .tab__close,
+.tab.is-active .tab__close {
+  opacity: 1;
+}
+
+/* DL-21.2's quiet neutral wash, not a red one (2026-08-16). Closing a tab is
+   an everyday action with an undo (⌘⇧T), so `--red` was doing DL-3.2's
+   danger job for something that is not dangerous — and the colour change made
+   one chip shout while the rest of the strip stayed calm. */
+.tab__close:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+/* File chips: the same `.tab` shell as every other chip, with the tree's
+   file-type glyph in the slot an agent mark occupies (spec §4.2, DL-18.6). */
+.tab__label--preview {
+  font-style: italic;
+}
+
+.tab__dot--dirty {
+  background: var(--accent);
+}
+
+.tab-add {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-control);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 17px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    transform var(--duration) var(--ease);
+}
+
+.tab-add:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+  transform: rotate(90deg);
+}
+
+.tabbar__spacer {
+  flex: 1;
+  align-self: stretch;
+}
+
+/* Group separator inside the feature toolbar. It left the tab strip on
+   2026-08-16 when the two chip segments became one row (DL-18.6); the toolbar
+   still groups its buttons, so the rule stays. */
+.tabbar__sep {
+  width: 1px;
+  height: 16px;
+  background: var(--hair);
+  margin: 0 5px;
+}
+
+/* ── Functional icons (DeckIcon → @phosphor-icons/react) ──────────────
+   One rule for every icon in the app instead of alignment declarations at
+   each call site: an inline <svg> sits on the text baseline and leaves a
+   descender-sized gap inside whatever button it lands in.
+
+   The selector is `DeckIcon`'s own unconditional class, not the icon
+   library's — Phosphor emits no class of its own, and the app must not go
+   looking for a vendor's naming convention to lay itself out (2026-08-16,
+   replacing `.lucide`).
+
+   Size and weight deliberately do NOT appear here. CSS beats SVG presentation
+   attributes, so a `width` or `stroke-width` in this file would silently
+   override `DeckIcon` and put icon geometry in two places (DL-14.3). Colour
+   is set with `color`, never `stroke` or `fill`, so `currentColor` keeps
+   resolving. ── */
+.deck-icon {
+  display: block;
+  flex: none;
+}
+
+/* Feature entry points use the chrome's highest-contrast neutral tone. Their
+   surrounding hover/selection surface stays on the quieter DL-21 ladder. */
+.feature-glyph {
+  color: var(--tone);
+}
+
+.iconbtn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.iconbtn:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.iconbtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* DL-21.8, 2026-08-16: there is deliberately NO `.iconbtn.is-active` rule.
+   An icon button that toggles a surface paints no active state — the surface
+   it opens is the readout, and a wash on a 24px button only repeats what the
+   hidden sidebar, the open panel, the standing menu or the live inspect
+   crosshair already say across the whole window. Earlier the same day this
+   selector was recoloured from an `--accent` fill to the neutral
+   `--tab-active-bg` wash; the owner then removed the state instead. The
+   buttons keep `aria-pressed` / `aria-expanded`, which is what carries the
+   state now, so do not "fix" a toggle by adding a wash back here. */
+
+.iconbtn--gear svg {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.iconbtn--gear:hover svg {
+  transform: rotate(35deg);
+}
+
+/* ── Feature toolbar ──────────────────────────────────────────
+   Tools / Pane / Global, separated by the same hairline the tab bar already
+   uses. The row takes the width the bar gives it (`flex: 1`) rather than its
+   own content width, because `toolbar-overflow.ts` decides what fits by
+   comparing controls against available space — a row sized by its content
+   never runs out of room and would never overflow into `More`.
+
+   Icon geometry is deliberately absent: the control is `.iconbtn`, and the
+   icon inside it is sized by `DeckIcon` alone (DL-14.3).
+
+   Wired into both layouts since phase 3: `DeckToolbar` projects the shipping
+   actions into it, `App` mounts it in the frame (sidebar mode) and hands the
+   same element to `TabBar` (top-tab mode). ── */
+.ftoolbar {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+/* The free width the row claimed, returned to the window as a drag surface —
+   without this, mounting the toolbar in the frame would eat the titlebar
+   band's grab area (the same regression the 275px rail exists to prevent). */
+.ftoolbar__drag {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0;
+}
+
+.ftoolbar__slot,
+.ftoolbar__update {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The slot is the positioning context for anything anchored to its control —
+   the Prompt Board popover hangs off the Prompts trigger here (DL-13.1). */
+.ftoolbar__slot {
+  position: relative;
+}
+
+/* Unavailable, not disabled: still focusable, so the reason stays reachable
+   without a pointer. It reads as `--text-faint` like every other disabled
+   state (DL-3.4) and drops the hover wash, which would otherwise promise a
+   click that does nothing. */
+.iconbtn.is-unavailable,
+.iconbtn.is-unavailable:hover {
+  color: var(--text-faint);
+  background: transparent;
+  cursor: default;
+}
+
+/* ── Action tooltip ───────────────────────────────────────────
+   Name on the left, chord on the right, reason underneath when the action
+   cannot run. One hairline and a background step for depth (DL-3.3), no
+   shadow and no blur (DL-1.3). `pointer-events: none` so it can never sit
+   between the pointer and the control that summoned it. ── */
+.action-tip {
+  position: fixed;
+  z-index: 110;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 240px;
+  padding: 5px 8px;
+  background: var(--chrome-2);
+  border: 1px solid var(--seam-raised);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  font: var(--type-meta)/1.35 var(--ui-font);
+  pointer-events: none;
+  animation: action-tip-in var(--duration) var(--ease);
+}
+
+.action-tip__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  white-space: nowrap;
+}
+
+.action-tip__kbd {
+  color: var(--text-faint);
+  font: var(--type-meta)/1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.action-tip__reason {
+  color: var(--text-faint);
+  font-size: var(--type-micro);
+}
+
+@keyframes action-tip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Toolbar overflow menu ────────────────────────────────────
+   The actions the bar could not fit, as popover rows (DL-13.1, DL-13.3):
+   same icon, same label, same chord, plus the words the bar had no room
+   for. Group order survives the move — the horizontal hairline is the bar's
+   vertical one, turned. ── */
+.toolbar-menu {
+  position: fixed;
+  z-index: 100;
+  min-width: 190px;
+  padding: 4px;
+  background: var(--chrome-2);
+  border: 1px solid var(--seam-raised);
+  /* DL-13.1: a surface floating above chrome takes the surface radius. */
+  border-radius: var(--radius-surface);
+}
+
+.toolbar-menu__group {
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar-menu__sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--hair);
+}
+
+.toolbar-menu__row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 7px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  /* DL-23.9: the menu row reads one rung up the DL-4.4 ladder — it is the
+     only place these actions ever say their name, and it is read at a
+     glance mid-task, not scanned like a settings list. */
+  font: var(--type-title)/1 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.toolbar-menu__row:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.toolbar-menu__row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.toolbar-menu__row.is-active {
+  color: var(--accent);
+}
+
+.toolbar-menu__row.is-unavailable,
+.toolbar-menu__row.is-unavailable:hover {
+  color: var(--text-faint);
+  background: transparent;
+  cursor: default;
+}
+
+.toolbar-menu__label {
+  flex: 1;
+}
+
+/* DL-23.9: the trailing pair moves up with the label, staying one rung
+   below it so the chord and the reason still read as annotation. */
+.toolbar-menu__kbd {
+  color: var(--text-faint);
+  font: var(--type-body)/1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.toolbar-menu__reason {
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+
+/* The tooltip's fade and the menu row's state change are the only motion
+   here, and both are off when the system asks for less (DL-7). */
+@media (prefers-reduced-motion: reduce) {
+  .action-tip {
+    animation: none;
+  }
+
+  .toolbar-menu__row {
+    transition: none;
+  }
+}
+
+.update-action-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.update-action {
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  font: 500 var(--type-meta)/1 var(--ui-font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.update-action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 23%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 58%, transparent);
+}
+
+.update-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.update-action:disabled {
+  border-color: transparent;
+  background: var(--state-hover-bg);
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.update-action--failed {
+  border-color: color-mix(in srgb, var(--red) 42%, transparent);
+  background: color-mix(in srgb, var(--red) 13%, transparent);
+  color: var(--red);
+}
+
+.update-action__compact {
+  display: none;
+}
+
+.update-action__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 520px) {
+  .update-action__full:has(+ .update-action__compact) {
+    display: none;
+  }
+
+  .update-action__compact {
+    display: inline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .update-action {
+    transition: none;
+  }
+}

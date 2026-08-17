@@ -1,0 +1,689 @@
+/* ── Agent status rail (AgentRail, DL §27) ──────────────────
+   The rail whose unit is a live agent rather than a checkout. Ported from the
+   owner-approved gallery specimen on 2026-08-16; the class names are the
+   specimen's, 1:1, so the shipped rail and the reviewed picture cannot drift.
+   Design: docs/specs/2026-08-16-agent-status-rail-design.md.
+
+   The row is ONE line: agent marks · the newest turn, or the tab's own name
+   until an agent has spoken · optional worktree suffix · age · one status mark
+   at the right edge. The turn stands where the name stands rather than under
+   it (DL-27.15, amended 2026-08-17) — the glyph left of it already says which
+   agent this is, and three `claude` rows in one project were told apart by
+   nothing else. There is no status word in the row — it lives in `title` and
+   the accessible name, so the shape is the fast read and never the only read
+   (DL-27.2, DL-27.11).
+
+   Colour split (revocabularised 2026-08-16, owner): `asked` is `--yellow` and
+   now means "needs your eyes" in full — a question, a permission wait, or a
+   finished run you have not checked (the accent `done` ring folded in here
+   TEMPORARILY); `failed` is `--red`; `done` is `--green`, a run you checked;
+   `idle` is neutral, an agent that never ran anything (DL-27.3, DL-3).
+
+   Status marks sit outside the icon system by intent (DL-14.6) and are drawn
+   here in CSS — with ONE exception, also the owner's: `done` renders the icon
+   system's CheckCircle. No file under `src/` may hand-author vector markup
+   (DL-14.1).
+
+   Sizes come from the DL-4.4 ladder rather than the specimen's px literals
+   (DL-4.5): the specimen's 12 → `--type-body`, its 11.5/11 → `--type-meta`,
+   its 10.5 and the `+N` chip's 9.5 → `--type-micro`. NOTHING in this file
+   reaches `--type-title` any more: the cluster header held it from 2026-08-16
+   so a project name outranked the tab names, and took `--type-meta` on
+   2026-08-17 so it stops outranking them (DL-27.9). Motion is scoped inside
+   a `prefers-reduced-motion: no-preference` block rather than switched off by
+   class name (DESIGN-LANGUAGE §9 checklist 3); the rail's transitions are
+   turned off by the reduce-scope list further down this file. ── */
+
+/* The sidebar owns the frame, so the rail paints no edge of its own. The
+   gallery's standalone specimen restores a frame with its own scoped
+   override; nothing in the app does. */
+/* The rail occupies the navigation column of the window grid, and it has to
+   SAY so: `DesktopChrome` renders `sidebarNavigation` as a direct grid child
+   of `.window`, so a rail with no placement of its own auto-flows into the
+   next free cell — under the stage, on top of the status row — and leaves the
+   column it was meant to fill empty. `.wsbar` has always carried these two
+   lines; the rail that replaced it needs them for the same reason. */
+.asr-rail {
+  /* The colour a chip's badge ring cuts itself out of: the surface the rail
+     actually sits on, which is the recessed side column (DL-18.7). The
+     standalone specimen re-points it at its own surface. */
+  --asr-cutout: var(--sidebar-bg);
+  /* And the surface the banner's fade dissolves into — same reason. */
+  --sidebar-banner-fade-color: var(--sidebar-bg);
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  /* Explicit, and load-bearing: this file has no global box-sizing reset, so
+     `height: 100%` on `--mounted` below plus this padding made the rail 15px
+     TALLER than the row it fills. That overflowed `#root`, which is
+     `overflow: hidden` — hidden hides the scrollbar, it does not stop a
+     focus from calling `scrollIntoView`, so the first control the user
+     focused scrolled the whole shell up by up to 15px and nothing ever
+     scrolled it back. The traffic lights and the stage strip then read as
+     misaligned. Measured 2026-08-16: rail 701px in a 686px row. */
+  box-sizing: border-box;
+  /* Asymmetric on purpose (2026-08-17, owner: "make the right edge match the
+     left"). The leading inset is one number — 8px here plus the row's own 7px
+     — but the trailing one is a stack: this padding, then the 6px scrollbar
+     track `.asr-rail__list` reserves below, then the row's trailing padding,
+     then the 3.5px of centring a 9px mark in its 16px slot. At 8px right that
+     summed to 23.5px against 15px on the left, and the column read as though
+     it had a wide dead margin nobody asked for. 2px here is what brings the
+     total back to the leading inset; the scrollbar keeps its own 6px of
+     breathing room, so nothing is flush against the seam. */
+  padding: 8px 2px 7px 8px;
+  /* DL-18.7: the frame and the rail are one continuous recessed surface, and
+     the stage keeps `--bg` so the terminal stays the focal plane. Transparent
+     here would let the stage colour up into the navigation column. */
+  background: var(--sidebar-bg);
+}
+
+/* The app's root carries `asr-rail asr-rail--mounted`, and the frameless look
+   above is the only one it has — so the modifier's own business is the one
+   thing that differs from a rail standing on its own: it fills the column it
+   is given instead of sizing to its rows. */
+.asr-rail--mounted {
+  height: 100%;
+}
+
+/* The scrolling half. The footer row and the banner are pinned to the bottom
+   of the column, so the rows have to scroll inside their own box rather than
+   growing the rail past the cell — the same split `.wsbar__list` draws, and
+   `min-height: 0` is what lets a flex child actually shrink to its scrollport
+   instead of stretching to its content. */
+.asr-rail__list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow-y: auto;
+  /* Declared, not left to the default: CSS resolves the other axis of a
+     scroll container to `auto`, never `visible`, so `overflow-y` alone was
+     silently buying a horizontal scrollbar too. The rail scrolls one way. */
+  overflow-x: hidden;
+  /* The gutter is reserved whether or not the rows overflow, so a row's width
+     — and the point where its name ellipsizes — does not change the moment
+     one more tab opens. The bar itself is the app-wide 6px one declared in
+     `01-tokens.css`; this rail only asks to keep its space. */
+  scrollbar-gutter: stable;
+}
+
+.asr-stream {
+  display: grid;
+  align-content: start;
+  /* The one column, declared rather than implicit. An IMPLICIT column is
+     `auto`, and an auto track's item keeps `min-width: auto` — so the turn
+     line's `white-space: nowrap` (its min-content IS its max-content) pushed
+     the whole cluster past the rail instead of ellipsizing inside it: measured
+     2026-08-17, a 558px `.asr-cluster` in a 229px stream, clipped by
+     `.asr-rail__list`'s `overflow-x` with the ellipsis drawn off-screen.
+     `minmax(0, 1fr)` is the same floor `.asr-row`'s own name/message columns
+     already carry, and it is what makes DL-27.4's "trimmed by the layout"
+     true here. */
+  grid-template-columns: minmax(0, 1fr);
+  /* Four pixels keep adjacent compact rows from reading as one text block.
+     The header's own top padding adds the stronger break between projects. */
+  gap: 4px;
+  flex: 1;
+}
+
+/* DL-27.9/DL-27.12: the stream is clustered by project, so the name is printed
+   once above its tabs instead of once per row. Every project prints the same
+   header, including a project with one tab, so the hierarchy never changes
+   shape as tabs open or close. */
+.asr-cluster {
+  display: grid;
+  align-content: start;
+  /* Same reason as `.asr-stream` above: the cluster is a grid inside a grid,
+     and BOTH have to declare the floor or the row simply overflows one level
+     further down. */
+  grid-template-columns: minmax(0, 1fr);
+  /* The gap between two tabs of one project. Same 4px as the stream so rows
+     keep one rhythm regardless of how many siblings they have. */
+  gap: 4px;
+}
+
+/* One project control above its tabs. It folds the whole group rather than
+   opening a third pane level inside an individual tab.
+
+   DL-27.9 called the project name the loudest word in a row, and from
+   2026-08-16 the type said so too: one rung ABOVE the tab names, at
+   `--type-title`. The size half of that is reversed below; the `--text-muted`
+   tone it also introduced is NOT, and still keeps the label off the faint
+   rung a caption would sit on. */
+/* DL-27.9, amended 2026-08-17 (owner, from the shipped rail): the project name
+   drops to `--type-meta`, BELOW the `--type-body` rows it heads, and the row
+   closes up (9/3 → 6/2). This is the one scoped exception to DL-4.4's
+   group-label rung — `Tools` (DL-28.2) and `.cfg-group` keep `--type-title`,
+   because they head a handful of rows on a surface the eye is already parked
+   on, while the rail prints a project name above EVERY cluster and the loudest
+   word in the column was the one nobody is looking for. The tone stays
+   `--text-muted`, not `--text-faint`: DL-3.4's half of that amendment is what
+   kept the label from reading as a caption, and it is not reversed here. */
+.asr-cluster__head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px 2px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: 560 var(--type-meta) / 1.2 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: color var(--duration) var(--ease);
+}
+
+.asr-cluster__head:hover {
+  color: var(--text-primary);
+}
+
+.asr-cluster__head:focus-visible {
+  border-radius: var(--radius-control);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.asr-cluster__head span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.asr-cluster__caret {
+  flex: none;
+  transition: transform var(--duration) var(--ease);
+}
+
+.asr-cluster__head[aria-expanded="true"] .asr-cluster__caret {
+  transform: rotate(90deg);
+}
+
+/* The first cluster's `padding-top: 2px` override is gone (2026-08-17). It
+   existed because the stream started the column and the header's 6px read as
+   a dent in the top; `New` sits above the stream now, so every cluster head
+   has something to be separated FROM and they all take the same 6px. */
+
+/* `.asr-rail__foot` is gone: the Open workspace row moved INSIDE the list on
+   2026-08-16, so it scrolls with the workspaces instead of sitting under a
+   separator. On 2026-08-17 it moved again, to the TOP of that list. Both the
+   shipped rail and the gallery specimen render it that way, so no rule is
+   left for the retired element. */
+
+/* DL-27.14: `New` is the rail's one launcher, so it is sized as one — the
+   `--type-title` rung the cluster headers take, one above the `--type-body`
+   tab names it sits under, with `RAIL_ICON` beside it. Same shape DL-23.9
+   gave the `More` menu's rows for the same reason: a row that names an action
+   the user is looking for is not a caption on the list above it. No new size
+   — DL-4.5's closed exception list is untouched — and the resulting ~34px row
+   matches the tab rows' own height. */
+/* The row `New` shares with its caption (owner, 2026-08-17). The button no
+   longer spans the rail: it shrinks to its own content at the TRAILING edge
+   and `Workspace` sits at the leading one, so the hover wash marks exactly
+   what is clickable instead of washing a caption that does nothing. The
+   caption leads because it heads the project list under it, the same way
+   every `.asr-cluster__head` does. */
+.asr-openrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* The caption over the project list. One rung below `New` in size, and on the
+   muted tone the cluster headers below it already carry (owner, 2026-08-17:
+   the faint tone read as disabled text once the caption moved to the leading
+   edge, where it heads the list rather than trailing an action). Muted is
+   still DL-3.4's supporting rung — it does not outrank the tab names, which
+   are the loud thing here. Nothing is interactive, and `.asr-openrow` gives
+   the caption no hover of its own. */
+.asr-openrow__label {
+  flex: none;
+  /* The 2px `.asr-cluster__head` starts on, so the caption and the project
+     names it heads share one leading edge. */
+  padding-left: 2px;
+  color: var(--text-muted);
+  font: 560 var(--type-meta) / 1.2 var(--ui-font);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.asr-open {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-faint);
+  /* `--type-body`, down from `--type-title` (owner, 2026-08-17: "smaller").
+     The ask was 2px off 14; 12.5 is the rung below it and DL-4.5's exception
+     list is closed, so the ladder answers rather than a 12px literal. */
+  font: 540 var(--type-body) / 1.2 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.asr-open:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-muted);
+  /* The row is also a drop source: hovering says "this can be picked up",
+     the same grab affordance `.pane__bar` carries. `cursor: pointer` above
+     stays the resting state — the click is still the primary action. */
+  cursor: grab;
+}
+
+/* The glyph is what survives the collapse (DL-18.9), so it is a box of its
+   own rather than an icon leaning on the label's line box. */
+.asr-open__glyph {
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+/* ------------------------------------------------- the collapsed column */
+
+/*
+ * DL-18.9 for this rail. Collapsed is not hidden: the column keeps what the
+ * rail is FOR — the agent chips and the status mark — and drops everything
+ * that needs prose width. `.wsbar`'s own copy of these rules stays beside
+ * this one for the parked `RepositoryRail`; neither surface can style the
+ * other, which is why replacing the rail did not carry them across.
+ */
+[data-sidebar-collapsed="true"] .asr-rail {
+  overflow: hidden;
+  padding-right: 4px;
+  padding-left: 4px;
+}
+
+[data-sidebar-collapsed="true"] .asr-cluster__head,
+[data-sidebar-collapsed="true"] .asr-row__name,
+[data-sidebar-collapsed="true"] .asr-row__age,
+[data-sidebar-collapsed="true"] .asr-row__msg,
+[data-sidebar-collapsed="true"] .asr-row__actions,
+/* Leaves are prose-width rows; the collapsed rail keeps the parent's mark. */
+[data-sidebar-collapsed="true"] .asr-leaf,
+[data-sidebar-collapsed="true"] .asr-open__label,
+/* The caption is prose beside a glyph column — it goes with the words it
+   captions, not with the button that survives. */
+[data-sidebar-collapsed="true"] .asr-openrow__label,
+[data-sidebar-collapsed="true"] .asr-rail .sidebar-banner {
+  display: none;
+}
+
+/* Name and age have left the flow, so the row is chips then mark. */
+[data-sidebar-collapsed="true"] .asr-row--tab {
+  grid-template-columns: minmax(0, 1fr) 10px;
+  gap: 0 6px;
+  padding-right: 6px;
+  padding-left: 6px;
+}
+
+[data-sidebar-collapsed="true"] .asr-row--tab > .asr-chips {
+  grid-column: 1;
+}
+
+[data-sidebar-collapsed="true"] .asr-row--tab > .asr-row__mark {
+  grid-column: 2;
+}
+
+[data-sidebar-collapsed="true"] .asr-chips {
+  justify-content: center;
+}
+
+/* An archived row keeps only its mark, so the mark takes the whole width
+   instead of hugging an edge the name no longer reaches. */
+[data-sidebar-collapsed="true"] .asr-row--archived {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  padding-right: 6px;
+  padding-left: 6px;
+}
+
+/* `flex: 1` restores what the base rule dropped when the button stopped
+   spanning the rail: with the caption gone there is one child left, and a
+   shrink-to-content button cannot centre its glyph in the column. */
+[data-sidebar-collapsed="true"] .asr-open {
+  flex: 1;
+  justify-content: center;
+  padding-right: 6px;
+  padding-left: 6px;
+}
+
+/* ---------------------------------------------------------------- one row */
+
+/*
+ * The base row contract. Live tab rows specify their compact five-column
+ * shape in `04b`; archived rows specify their own two-column shape there.
+ */
+.asr-row {
+  display: grid;
+  width: 100%;
+  /* `width: 100%` PLUS padding, with no global `border-box` reset in this
+     stylesheet, made the row 262px wide inside a 245px column — 17px of
+     overflow, which is exactly the horizontal scrollbar the sidebar grew
+     (measured 2026-08-16). `min-width: 0` is here for the other half of the
+     same problem: a grid item's automatic minimum size refuses to shrink
+     below its content, so a long name would widen the row again. */
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 5px 8px 6px 7px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  align-items: center;
+  grid-template-columns: 20px minmax(0, 1fr) auto 10px;
+  gap: 2px 8px;
+  min-height: 30px;
+  cursor: pointer;
+  text-align: left;
+  position: relative;
+  transition: background var(--duration) var(--ease);
+}
+
+/*
+ * The full-bleed hit layer. It sits behind the row's content and takes every
+ * click a chip does not, so the row reads as one target while the chips stay
+ * separate controls (DL-27.1).
+ */
+.asr-row__hit {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  cursor: pointer;
+}
+
+.asr-row__hit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Text is inert so its clicks fall through to the layer; controls are not. */
+.asr-row--tab > span {
+  pointer-events: none;
+}
+
+.asr-row--tab > .asr-chips,
+.asr-row--tab > .asr-row__actions {
+  pointer-events: auto;
+}
+
+/* DL-21.2: hover is a quieter wash than selection, mixed from --tone. */
+.asr-row:hover {
+  background: var(--state-hover-bg);
+}
+
+.asr-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.asr-row__name {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.asr-row__name strong {
+  color: var(--text-primary);
+  font: 545 var(--type-body) / 1.25 var(--ui-font);
+  white-space: nowrap;
+}
+
+/*
+ * The worktree, shown only when a tab is not in the primary checkout. It is a
+ * suffix rather than a second line: the exception should cost one word, not a
+ * row of vertical space.
+ */
+.asr-row__worktree {
+  overflow: hidden;
+  color: var(--text-faint);
+  font: 450 var(--type-meta) / 1.25 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asr-row__worktree::before {
+  content: "·";
+  padding-right: 5px;
+}
+
+.asr-row__age {
+  flex: none;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.2 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+/*
+ * The newest turn, on EVERY row that has one (DL-27.15, 2026-08-17) rather
+ * than on `asked`/`failed` alone: with real session tails behind it the line
+ * reports what the agent is doing, and a list where only the loud rows carried
+ * a sentence read as two kinds of thing. It is trimmed by the layout, never by
+ * slicing the string — the full sentence stays in the tooltip and in the
+ * accessible name (DL-27.4, DL-27.11).
+ *
+ * Since the same rule's one-line amendment it is a child of `.asr-row__name`,
+ * where it takes the slot the agent's name held rather than a second grid row
+ * beneath it — hence a flex item here, not `grid-column: 2 / -1`. `flex: 1`
+ * plus `min-width: 0` is what lets it shrink: a flex item's automatic minimum
+ * size otherwise holds it at its content width and pushes the age off the row.
+ */
+.asr-row__msg {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--text-muted);
+  font: 450 var(--type-meta) / 1.25 var(--ui-font);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* DL-27.15: a quiet row's turn recedes with the rest of the row. Kept here
+   beside its base rule rather than with the other quiet rules in
+   `04b-agent-rail-rows.css`, so the one declaration it overrides is the line
+   it is read against. */
+.asr-row--tab[data-quiet="true"] .asr-row__msg {
+  color: var(--text-faint);
+}
+
+/* The leaf's own turn: the same shape as `.asr-row__msg` and, since DL-27.15's
+   one-line amendment (2026-08-17), in the same place — the slot the agent's
+   name held, between the glyph and the age. It no longer wraps to a line of
+   its own, so the indent that used to align it under that name is gone with
+   it (DL-27.4 trimming contract still holds: layout, never slicing).
+ */
+.asr-leaf__msg {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: var(--text-muted);
+  font: 450 var(--type-meta) / 1.25 var(--ui-font);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asr-leaf--flat[data-quiet="true"] .asr-leaf__msg {
+  color: var(--text-faint);
+}
+
+/* ------------------------------------------------------- the hover action */
+
+/*
+ * DL-27.5: close owns a fixed trailing column. The control is revealed with
+ * `opacity`, never `display: none`, so it stays in the tab order and
+ * `:focus-within` can reveal it for a keyboard without moving the row.
+ */
+.asr-row__actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  /* The SAME cell the status mark occupies: close swaps in over it on hover
+     while the mark fades out (DL-27.5, amended 2026-08-16) — one trailing
+     slot, not a reserved column beside it. Row pinned so the two overlap
+     instead of auto-flowing apart. */
+  grid-row: 1;
+  grid-column: 4;
+  align-items: center;
+  justify-self: center;
+  gap: 1px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration) var(--ease);
+}
+
+.asr-row:hover .asr-row__actions,
+.asr-row:focus-within .asr-row__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* The same 16px box `.tab__close` uses, so a 14px `ROW_ICON` sits in it the
+   way it sits in every other icon-only chrome control (DL-14.2, DL-14.3 —
+   the control owns the geometry, the icon never sets it). */
+.asr-row__action {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  place-items: center;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.asr-row__action:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.asr-row__action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* The same quiet neutral wash `.tab__close` moved to on 2026-08-16 (DL-21.2),
+   extended to the rail on the owner's ask the same day: closing a tab is an
+   everyday action with an undo (⌘⇧T), so `--red` was doing DL-3.2's danger
+   job for something that is not dangerous. */
+.asr-row__action--close:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+/* -------------------------------------------------------------- the marks */
+
+/* DL-27.3's palette, revocabularised 2026-08-16 (owner): `--red` filled for
+   `failed`, `--yellow` filled with a halo for `asked` — which now also covers
+   a finished run nobody has checked, the old accent `done` folded in
+   TEMPORARILY — `--text-primary` as a turning arc for `working`, the icon
+   system's green check for `done` (ran, checked; DL-14.6's one exception),
+   and a hairline ring with a core for `idle` (never ran anything). */
+.asr-row__mark {
+  position: relative;
+  /* 7px → 9px on 2026-08-16 (owner: "+2px"): at 7px the state mark was the
+     smallest thing in a row whose type had just grown, and a dot that has to
+     be read at a glance from across the sidebar cannot be the quietest pixel
+     in it. Every state moved by the same 2px so the five stay one family;
+     `justify-self: center` in the shared mark/close slot means nothing
+     shifts around them. */
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  justify-self: end;
+  transition: opacity var(--duration) var(--ease);
+}
+
+/* failed — a filled danger dot, and the loudest thing the row can say. It
+   carries no halo: the halo means "answer me", and a crashed agent is not
+   asking a question (DL-3.2, DL-27.3). */
+.asr-row__mark[data-state="failed"] {
+  background: var(--red);
+}
+
+/* asked — a filled attention dot with a halo pushing out of it. */
+.asr-row__mark[data-state="asked"] {
+  background: var(--yellow);
+}
+
+.asr-row__mark[data-state="asked"]::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 1px solid var(--yellow);
+  border-radius: 50%;
+}
+
+/* done — a run you checked. The one mark the icon system draws (the owner
+   chose the library's CheckCircle over a CSS drawing, DL-14.6's scoped
+   exception), so the span is only a placement box for the green icon, and
+   green joins the rail's palette (DL-3). */
+.asr-row__mark[data-state="done"] {
+  display: inline-flex;
+  width: auto;
+  height: auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.asr-row__check {
+  flex: none;
+  color: var(--green);
+}
+
+/* working — an open arc that turns. */
+.asr-row__mark[data-state="working"] {
+  width: 11px;
+  height: 11px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 110deg,
+    var(--text-primary) 330deg
+  );
+  /* Radii scaled with the box (×11/9), not kept: holding 2.5/3.1 at 11px
+     would have thickened the arc into a disc instead of growing the ring. */
+  mask: radial-gradient(circle, transparent 0 3.05px, #000 3.8px);
+}
+
+/* idle — never ran anything. The owner's R4 pick: a hairline ring keeping a
+   small ember, so the quietest mark still says "someone is here" rather than
+   drawing an empty slot. */
+.asr-row__mark[data-state="idle"] {
+  border: 1px solid var(--hair-strong);
+}
+
+.asr-row__mark[data-state="idle"]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* Scaled with the ring around it: a 3px ember inside a 9px ring reads as
+     an empty circle, which is the one thing this mark exists not to be. */
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 45%, transparent);
+  transform: translate(-50%, -50%);
+}

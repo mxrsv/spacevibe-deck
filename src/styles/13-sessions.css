@@ -1,0 +1,460 @@
+/* ── Sessions screen: full-window shell (sessions-screen.tsx, DL-11.1) ──── */
+
+/* Its own rules, not extra selectors bolted onto `.usage-screen` above —
+   same reasoning as that block's own header comment: the screens share a
+   shape, not an owner. */
+
+.sessions-screen {
+  position: absolute;
+  /* Full-bleed over the stage: the surface meets the sidebar's hairline and
+     the toolbar's, so it reads as one block with the chrome. */
+  inset: 0;
+  background: var(--chrome-2);
+  display: flex;
+  flex-direction: column;
+  /* Same layer as Settings and Usage. Safe because the three are mutually
+     exclusive — opening one closes the other two — so they never stack.
+     Above the Open board (30), below a modal draft (40). */
+  z-index: 35;
+  /* A full-window surface fades and settles; it does not slide in from an
+     edge it no longer has (DL-1.2 — transform/opacity only, under 300ms). */
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  /* visibility (not just opacity) takes the closed screen's controls out of
+     the tab order, matching aria-hidden. Delayed so the fade-out still plays. */
+  visibility: hidden;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+
+.sessions-screen.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  visibility: visible;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    visibility 0s;
+}
+
+.sessions-screen__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--hair);
+}
+
+.sessions-screen__path {
+  margin: 0;
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.sessions-screen__path b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* The scope of the list, stated beside the title: one OS user's history that
+   still exists on one machine — same discipline as the usage screen's. */
+.sessions-screen__scope {
+  font-family: var(--ui-font);
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+}
+
+/* Same close control as the settings screen — see `.settings-screen__esc`. */
+.sessions-screen__esc {
+  margin-left: auto;
+}
+
+/* Two columns: the rail is fixed, the list area owns all scrolling
+   (DL-11.1). min-height:0 on both so the grid can actually shrink. */
+.sessions-screen__grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.sessions-screen__section {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 6px 16px 16px;
+}
+
+/* The section's scrollbar is the app-wide one (`01-tokens.css`, 2026-08-17). */
+
+/* ── Sessions rail: agent filter, no foot (sessions-nav.tsx, DL-11.2/11.3/11.5) ── */
+
+.sessions-nav {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--hair);
+}
+
+.sessions-nav__list {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  overflow-y: auto;
+}
+
+.sessions-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-faint);
+  /* Navigation, not data — prose font (DL-4.1 / DL-11.4). */
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+/* DL-21.1/21.2, via DL-11.2: selection is the full `--tab-active-bg` wash,
+   hover a quieter `--state-hover-bg` — two different values, never one
+   shared between the states. Deliberately NOT `.usage-nav__item`'s pattern a
+   few hundred lines up, which still shares one declaration between `:hover`
+   and `.is-active` and paints a `border-left-color: var(--accent)` accent
+   bar — exactly what DL-11.2 says the wash retired on 2026-08-14 (DL-21.6).
+   Fixing that rule is out of this task's scope (W3); reported here rather
+   than touched, the same way this file already reports `.settings-screen`'s
+   reduced-motion defect a few dozen lines up instead of fixing it. */
+.sessions-nav__item:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.sessions-nav__item.is-active {
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+
+.sessions-nav__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.sessions-nav__label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sessions-nav__count {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+/* DL-25.2's mark on the filter that selects that same agent. Same box as the
+   16px `RAIL_ICON` the `all` chip still draws, so a row of mixed marks keeps
+   one baseline. */
+.sessions-nav__logo {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: var(--radius-tight);
+  display: block;
+  object-fit: contain;
+}
+
+.sessions-nav__logo--letter {
+  display: grid;
+  place-items: center;
+  background: var(--state-hover-bg);
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* DL-19.8 (2026-08-16): the same tablist, laid out as a chip row for the
+   docked column. The rail's own column, its right seam and its prose-width
+   labels all go — what stays is the selection language, which is unchanged
+   because `.sessions-nav__item` is shared. */
+.sessions-nav--compact {
+  flex-direction: row;
+  border-right: none;
+  min-height: auto;
+}
+
+.sessions-nav--compact .sessions-nav__list {
+  flex-direction: row;
+  gap: 4px;
+  padding: 6px 12px 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+}
+
+.sessions-nav--compact .sessions-nav__item {
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: var(--type-meta);
+}
+
+/* The chip is sized by its own content: a label that stretches would push the
+   counts apart and turn three chips into three columns. */
+.sessions-nav--compact .sessions-nav__label {
+  flex: none;
+}
+
+/* ── Sessions list: filter, cap notice, states (sessions-list.tsx) ───────── */
+
+.sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.sessions-list__filter-row {
+  display: flex;
+  padding-bottom: 4px;
+}
+
+.sessions-list__project {
+  min-width: 0;
+  max-width: 320px;
+  font: inherit;
+  font-size: var(--type-body);
+  padding: 5px 8px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  /* A line inside this surface, not a boundary between two — `--hair` is
+     correct here (DL-2.3's re-read, §10's migration table). */
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+}
+
+.sessions-list__project:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.sessions-list__cap-note {
+  margin: 0 0 4px;
+  font-family: var(--ui-font);
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+}
+
+.sessions-list__note,
+.sessions-list__empty {
+  margin: 10px 0 0;
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+}
+
+.sessions-list__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ── Session history: one row (session-row.tsx, DL §25) ──────────────────── */
+
+.session-row__slot {
+  list-style: none;
+}
+
+/* DL-25.1, amended 2026-08-16: a container, not a button. No cursor, no hover
+   wash and no focus ring live here any more — DL-21.2's wash is a control's
+   state, and painting one on inert content would promise a click the row no
+   longer answers. The one control inside owns all three. */
+.session-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  /* Explicit because this stopped being a `<button>` on 2026-08-16: form
+     controls get `border-box` from the UA, a plain element does not, so
+     `width: 100%` plus the padding below started overflowing its column and
+     put a horizontal scrollbar under the list. */
+  box-sizing: border-box;
+  text-align: left;
+  color: inherit;
+  padding: 8px 12px;
+  border-radius: var(--radius-control);
+  font: inherit;
+}
+
+/* DL-25.2's identity mark, now the agent's own brand mark. Same box and same
+   `--letter` fallback as a strip chip's `.tab__logo`, one size up for a row
+   that has prose width to spend. */
+.session-row__logo {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: var(--radius-tight);
+  display: block;
+  object-fit: contain;
+}
+
+.session-row__logo--letter {
+  display: grid;
+  place-items: center;
+  background: var(--state-hover-bg);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* DL-25.5: the row's one action wears DL-5.2's quiet bordered pill skin —
+   transparent until hover, which then moves `border-color` only (DL-1.2). It
+   is not a value control, so it takes the skin and none of `.cfg-btn`'s value
+   affordances. */
+.session-row__resume {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition:
+    color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.session-row__resume:hover {
+  border-color: var(--hair-strong);
+  color: var(--accent);
+}
+
+.session-row__resume:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.session-row__ico {
+  /* Geometry and stroke belong to DeckIcon (DL-14.3); colour is `color`, so
+     the icon's `currentColor` keeps resolving. */
+  color: var(--accent);
+  opacity: 0.85;
+  flex: none;
+}
+
+.session-row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* DL-25.2: the title gives way and truncates; the row's other three fields
+   never do. */
+.session-row__title {
+  min-width: 0;
+  font-size: var(--type-body);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-row__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--ui-font);
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+}
+
+.session-row__agent {
+  flex: none;
+}
+
+.session-row__path {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-row__time {
+  flex: none;
+  margin-left: auto;
+}
+
+.session-row__gone {
+  flex: none;
+  font-family: var(--ui-font);
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+}
+
+/* DL-25.3, deferring to DL-23.6: unavailable, not disabled. No `disabled`
+   attribute anywhere — only the ink changes, the surface itself does not
+   (DL-21.4). Since 2026-08-16 the state reaches the ACTION as well as the
+   text: the button is what a dead row can no longer run, so it is the thing
+   that must stop looking runnable. */
+.session-row.is-unavailable {
+  color: var(--text-faint);
+}
+
+.session-row.is-unavailable .session-row__ico {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+.session-row.is-unavailable .session-row__title {
+  color: var(--text-faint);
+}
+
+.session-row.is-unavailable .session-row__resume {
+  cursor: default;
+  color: var(--text-faint);
+}
+
+.session-row.is-unavailable .session-row__resume:hover {
+  border-color: var(--hair);
+  color: var(--text-faint);
+}
+
+/* ── Sessions screen: reduced motion, applied where it can win ──────────── */
+
+/* Same specificity trap the usage screen's own block above documents: the
+   scope list near the top of this file is necessary but not sufficient,
+   because every later `.sessions-*` declaration at equal or higher
+   specificity — `.sessions-screen.is-open` most of all — is declared AFTER
+   it and wins the cascade. Repeating the scope here, after the last sessions
+   rule, is what actually turns the transitions off. */
+@media (prefers-reduced-motion: reduce) {
+  .sessions-screen,
+  .sessions-screen.is-open,
+  .sessions-screen * {
+    transition: none;
+  }
+}

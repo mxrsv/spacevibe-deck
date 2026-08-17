@@ -44,9 +44,7 @@ describe("buildOpenEditorRequest", () => {
   });
 
   it("defaults a missing line and column to 1", () => {
-    expect(
-      buildOpenEditorRequest("zed", "", "/a/b.ts", null, null),
-    ).toEqual({
+    expect(buildOpenEditorRequest("zed", "", "/a/b.ts", null, null)).toEqual({
       editor: "zed",
       template: "",
       file: "/a/b.ts",
@@ -75,19 +73,12 @@ describe("buildOpenEditorRequest", () => {
 
   it("does not leak the custom setting into a built-in editor request", () => {
     expect(
-      buildOpenEditorRequest(
-        "cursor",
-        "malicious {file}",
-        "/a/b.ts",
-        1,
-        1,
-      )?.template,
+      buildOpenEditorRequest("cursor", "malicious {file}", "/a/b.ts", 1, 1)
+        ?.template,
     ).toBe("");
   });
 
   it("returns null for an empty custom template", () => {
-    expect(
-      buildOpenEditorRequest("custom", "   ", "/a/b.ts", 1, 1),
-    ).toBeNull();
+    expect(buildOpenEditorRequest("custom", "   ", "/a/b.ts", 1, 1)).toBeNull();
   });
 });

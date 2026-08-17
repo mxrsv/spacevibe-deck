@@ -301,7 +301,9 @@ describe("dirtyFilesPhrase", () => {
     );
     expect(
       dirtyFilesPhrase(["/a/one.ts", "/a/two.ts", "/a/three.ts", "/a/four.ts"]),
-    ).toBe("4 files have unsaved changes (one.ts, two.ts, three.ts and 1 more)");
+    ).toBe(
+      "4 files have unsaved changes (one.ts, two.ts, three.ts and 1 more)",
+    );
   });
 });
 
@@ -348,9 +350,9 @@ describe("confirmClose with unsaved files", () => {
       infos: new Map([[1, info(1, "zsh")]]),
     });
 
-    await expect(confirmClose([1], pty, QUIT_COPY, ["/a/main.rs"])).resolves.toBe(
-      false,
-    );
+    await expect(
+      confirmClose([1], pty, QUIT_COPY, ["/a/main.rs"]),
+    ).resolves.toBe(false);
     expect(askMock).toHaveBeenCalledWith(
       "main.rs has unsaved changes. Quit anyway?",
       expect.objectContaining({ title: "Quit Deck" }),

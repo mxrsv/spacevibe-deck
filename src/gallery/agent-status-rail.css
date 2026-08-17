@@ -14,54 +14,8 @@
 
 .asr-study {
   display: grid;
-  gap: 14px;
   padding: 20px 22px 26px;
   background: var(--chrome-2);
-}
-
-.asr-study__bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--hair);
-}
-
-.asr-study__state {
-  color: var(--text-muted);
-  font: 500 11.5px/1.2 var(--ui-font);
-  font-variant-numeric: tabular-nums;
-}
-
-.asr-study__actions {
-  display: flex;
-  gap: 6px;
-}
-
-.asr-study__actions button {
-  padding: 5px 11px;
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--text-muted);
-  font: 520 11px/1.2 var(--ui-font);
-  cursor: pointer;
-  transition:
-    background var(--duration) var(--ease),
-    border-color var(--duration) var(--ease),
-    color var(--duration) var(--ease);
-}
-
-.asr-study__actions button:hover {
-  border-color: var(--hair-strong);
-  background: color-mix(in srgb, var(--tone) 6%, transparent);
-  color: var(--text-primary);
-}
-
-.asr-study__actions button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
 }
 
 /* One rail at the width it actually gets in the window shell. */
@@ -95,11 +49,12 @@
 }
 
 /*
- * The agent mark in the fake stage's pane header. It is the only `.asr-row__*`
- * rule that stayed behind: the shipped rail draws agents as chips, so this
- * class exists for the specimen's stand-in terminal grid and nowhere else.
+ * The agent mark in the fake stage's pane header. A stage class, not an
+ * `.asr-row__*` one: every real row class now belongs to the shipped rail in
+ * `src/styles.css`, and this exists for the specimen's stand-in terminal grid
+ * and nowhere else.
  */
-.asr-row__logo {
+.asr-stage__logo {
   width: 15px;
   height: 15px;
   object-fit: contain;
@@ -132,19 +87,13 @@
   font: 520 11.5px/1.2 var(--ui-font);
 }
 
-.asr-stage__line {
-  margin: 0;
-  color: var(--text-faint);
-  font: 450 12px/1.5 var(--term-font, var(--ui-font));
-}
-
 /*
- * The focus ping, against this fake grid rather than a real `.pane-slot`. It
- * is the same contract `.pane-ping` ships in `src/styles.css` (DL-27.7): an
- * inset hairline rather than a glow, because DL-1.3 bans blurred and offset
- * shadows and is not amended, and what animates is `opacity`, the property
- * DL-1.2 allows. Its keyframes carry their own name so the two files never
- * shadow one another.
+ * The focus ping, against this fake grid rather than a real `.pane-slot`.
+ * SPECIMEN ONLY since 2026-08-17: the shipping `.pane-ping` it mirrored was
+ * deleted that day at the owner's request and DL-27.7 withdrawn, so this is
+ * now a picture of an effect the app no longer has. Kept because the gallery
+ * is where the rail's reviewed direction is recorded; delete it whenever the
+ * rail's specimen is next revised.
  */
 .asr-stage__ring {
   position: absolute;

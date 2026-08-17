@@ -1,20 +1,20 @@
 /**
- * Category icons for the settings rail — Lucide through `DeckIcon` at 16px
+ * Category icons for the settings rail — Phosphor through `DeckIcon` at 16px
  * (`DL-11.3`, `DL-14.1`). These stay as named semantic components so
  * `settings-categories.ts` keeps describing categories, not icon libraries:
  * changing which pictogram means "appearance" is one edit here.
  */
-
 import {
   AppWindow,
   Bell,
-  Globe,
-  Bot,
   Command,
-  Download,
+  DownloadSimple,
+  Globe,
   Link,
-  SquareTerminal,
-} from "lucide-preact";
+  Robot,
+  TerminalWindow,
+} from "@phosphor-icons/react";
+
 import { DeckIcon, RAIL_ICON } from "../controls/deck-icon";
 
 export function AppearanceIcon() {
@@ -22,7 +22,7 @@ export function AppearanceIcon() {
 }
 
 export function TerminalIcon() {
-  return <DeckIcon icon={SquareTerminal} size={RAIL_ICON} />;
+  return <DeckIcon icon={TerminalWindow} size={RAIL_ICON} />;
 }
 
 export function BrowserIcon() {
@@ -39,16 +39,16 @@ export function NotificationsIcon() {
 
 /** An arrow landing on a baseline — the update, not a generic info circle. */
 export function AboutIcon() {
-  return <DeckIcon icon={Download} size={RAIL_ICON} />;
+  return <DeckIcon icon={DownloadSimple} size={RAIL_ICON} />;
 }
 
 export function AgentsIcon() {
-  return <DeckIcon icon={Bot} size={RAIL_ICON} />;
+  return <DeckIcon icon={Robot} size={RAIL_ICON} />;
 }
 
 /**
  * The ⌘ loop — what a chord IS, rather than a keyboard outline, which reads as
- * "typing" and would collide with what `SquareTerminal` already means here.
+ * "typing" and would collide with what `TerminalWindow` already means here.
  * It stays right on Windows too: the glyph is the universal mark for a
  * shortcut, not a claim about which modifier key is pressed.
  */

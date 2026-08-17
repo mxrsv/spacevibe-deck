@@ -44,7 +44,7 @@ Every pane is backed by a real PTY via Rust's `portable-pty`. macOS runs your lo
 
 ### 🔲 Split panes & layouts
 
-- Split any pane **vertically** or **horizontally** into a nested layout tree; visible shortcut labels follow the active platform ([platform keymaps](src/terminal/action-registry.ts#L520-L784) `current`).
+- Split any pane **vertically** or **horizontally** into a nested layout tree; visible shortcut labels follow the active platform ([platform keymaps](src/terminal/default-keymaps.ts#L86-L358) `current`).
 - **Drag the dividers** to resize; each split remembers its ratio.
 - **Focus** by cycling or by direction using the platform keymap.
 - **Zoom** a single pane to fill the tab (tmux-style), or use **Focus Expand** to gently enlarge whichever pane is active.
@@ -120,12 +120,9 @@ persist.
 
 ### macOS
 
-1. Download the latest `.dmg` from [Releases](https://github.com/mxrsv/spacevibe-deck/releases/latest).
-2. Drag **SpaceVibe Deck** into **Applications**.
-3. First launch — the app is not signed with an Apple Developer ID yet, so macOS Gatekeeper will block it ("Apple could not verify…"). Click **Done** (not "Move to Trash"), then either:
-   - Run `xattr -cr "/Applications/SpaceVibe Deck.app"` once, or
-   - Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
-   - On macOS 14 and earlier you can also right-click **SpaceVibe Deck.app** → **Open** → **Open**.
+Stable macOS distribution is paused until the app is Developer ID signed and
+notarized. Do not bypass Gatekeeper or install an unsigned Deck build from a
+release asset.
 
 ### Windows engineering preview
 
@@ -156,7 +153,7 @@ install the first updater-enabled release once.
 ## Keyboard shortcuts
 
 Both platform maps come from
-[`action-registry.ts`](src/terminal/action-registry.ts#L520-L784) `current`.
+[`default-keymaps.ts`](src/terminal/default-keymaps.ts#L86-L358) `current`.
 Bare Windows `Ctrl+C`, `Ctrl+D`, `Ctrl+W`, `Ctrl+K`, and `Ctrl+F` remain PTY
 input. `Ctrl+V`, `Ctrl+Shift+V`, and physical `Shift+Insert` paste clipboard
 text through the shared action path — keymap, then the `commands` table, then

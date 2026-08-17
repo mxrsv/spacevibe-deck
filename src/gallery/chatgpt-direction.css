@@ -34,9 +34,10 @@
  * which publishes a different theme per cell, would render four identical
  * columns while claiming to prove the opposite.
  *
- * Radius, duration and easing stay literal on purpose: they are geometry and
- * motion, not colour, and they are this direction's own scale. Making that
- * scale policy would be a DL §20 fork (spec §6), so it is not proposed here.
+ * Radius follows Deck's live DL-20.1 scale. The gallery is the current review
+ * surface, so it must not preserve a private geometry scale after the shipping
+ * language changes. Duration and easing remain aliases of the live tokens for
+ * the same reason.
  */
 
 .gx-app--chatgpt,
@@ -55,10 +56,10 @@
 }
 
 .gx-app--chatgpt {
-  --gx-chat-radius-control: 10px;
-  --gx-chat-radius-surface: 16px;
-  --gx-chat-duration: 150ms;
-  --gx-chat-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --gx-chat-radius-control: var(--radius-control);
+  --gx-chat-radius-surface: var(--radius-surface);
+  --gx-chat-duration: var(--duration);
+  --gx-chat-ease: var(--ease);
   --radius: var(--gx-chat-radius-control);
   /* The gallery shell's own chrome, in the same contract as the specimens. */
   --gx-bg: var(--gx-chat-app-under);
@@ -1286,7 +1287,9 @@
 
 /* B — only the selected worktree earns vertical space. Resting rows keep one
    line; the selected row opens its path without moving agent controls away. */
-.gx-chatgpt-direction .gx-worktree-variant--focus .gx-worktree-row:not(.is-active) {
+.gx-chatgpt-direction
+  .gx-worktree-variant--focus
+  .gx-worktree-row:not(.is-active) {
   min-height: 34px;
   padding-block: 3px;
 }
@@ -1353,7 +1356,11 @@
 
 .gx-chatgpt-direction .gx-worktree-variant--agent .gx-worktree-row.is-active {
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 15%, transparent), transparent 72%),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent) 15%, transparent),
+      transparent 72%
+    ),
     var(--gx-chat-selected);
   box-shadow: inset 2px 0 var(--accent);
 }

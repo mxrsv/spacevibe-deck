@@ -11,7 +11,7 @@
  * Layout rules are DL §17; the row is still a `cfg-row`, with the chord pill
  * and the reset button sharing the value slot.
  */
-import { RotateCcw } from "lucide-preact";
+import { ArrowCounterClockwise } from "@phosphor-icons/react";
 import { ConfigGroup } from "../../controls/config-row";
 import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
 import { ShortcutCapture } from "../../controls/shortcut-capture";
@@ -120,7 +120,7 @@ export function ShortcutsSection() {
                       title="Reset to default shortcut"
                       onClick={() => reset(row.action)}
                     >
-                      <DeckIcon icon={RotateCcw} size={ROW_ICON} />
+                      <DeckIcon icon={ArrowCounterClockwise} size={ROW_ICON} />
                     </button>
                   )}
                 </div>

@@ -36,9 +36,9 @@ describe("shellEscapePath", () => {
   });
 
   it("quotes Windows paths as PowerShell literals", () => {
-    expect(shellEscapePath(String.raw`C:\My Files\Tài liệu.txt`, "windows")).toBe(
-      String.raw`'C:\My Files\Tài liệu.txt'`,
-    );
+    expect(
+      shellEscapePath(String.raw`C:\My Files\Tài liệu.txt`, "windows"),
+    ).toBe(String.raw`'C:\My Files\Tài liệu.txt'`);
     expect(
       shellEscapePath(String.raw`\\server\share\file.txt`, "windows"),
     ).toBe(String.raw`'\\server\share\file.txt'`);
@@ -55,7 +55,10 @@ describe("shellEscapePaths", () => {
   it("joins escaped paths with spaces and adds a trailing space", () => {
     expect(shellEscapePaths(["/a b", "/c"], "macos")).toBe("/a\\ b /c ");
     expect(
-      shellEscapePaths([String.raw`C:\a b`, String.raw`\\server\share\c`], "windows"),
+      shellEscapePaths(
+        [String.raw`C:\a b`, String.raw`\\server\share\c`],
+        "windows",
+      ),
     ).toBe(String.raw`'C:\a b' '\\server\share\c' `);
   });
 

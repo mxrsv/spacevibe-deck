@@ -75,11 +75,7 @@ export function createPaneInfoPoller(deps: PaneInfoPollerDeps): PaneInfoPoller {
     }
     let infos: PaneProcessInfo[];
     try {
-      infos = await deps.pty.ptyInfo(
-        ids,
-        deps.agentMatchers?.() ?? [],
-        false,
-      );
+      infos = await deps.pty.ptyInfo(ids, deps.agentMatchers?.() ?? [], false);
       warned = false;
     } catch (err) {
       // Keep the last known values; warn once, never break the loop

@@ -353,6 +353,41 @@
   align-items: flex-start;
 }
 
+/* Review frame for the high-contrast feature-glyph draft. The children are
+   shipping components; this wrapper only places the dock row, launcher rail
+   and status visual beside one another so their neutral emphasis can be
+   judged together. */
+.gx-icon-trial {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px auto;
+  gap: 18px;
+  padding: 16px;
+  align-items: start;
+}
+
+.gx-icon-trial__dock {
+  min-width: 0;
+  border: 1px solid var(--seam-recessed);
+  border-radius: var(--radius-control);
+}
+
+.gx-icon-trial__rail {
+  background: var(--sidebar-bg);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+
+.gx-icon-trial__rail .sidebar-actions {
+  border-top: 0;
+}
+
+.gx-icon-trial__spinner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
 .gx-statelabel {
   color: var(--gx-dim);
   font-family: var(--gx-mono);
@@ -1051,7 +1086,6 @@
   white-space: nowrap;
 }
 
-
 /* ── Seam study ───────────────────────────────────────────────────
  * Three treatments of the boundary between surfaces, side by side, on the
  * app's own chrome classes.
@@ -1312,7 +1346,6 @@
   color: var(--gx-text);
   font-weight: 400;
 }
-
 
 /* ── state matrix ────────────────────────────────────────────────── */
 
@@ -1805,17 +1838,13 @@
  * terminal content stays trustworthy while authored chrome recedes like an
  * unfocused native window. The semantic accent override also removes a false
  * "keyboard target is here" signal from controls in the inactive specimen. */
-.gx-cell--inactive
-  .window
-  > :is(.deck-frame, .wsbar, .tabbar, .status),
+.gx-cell--inactive .window > :is(.deck-frame, .wsbar, .tabbar, .status),
 .gx-cell--inactive .settings-screen__section {
   --accent: var(--text-faint);
   --status-unread: var(--text-faint);
 }
 
-.gx-cell--inactive
-  .window
-  > :is(.deck-frame, .wsbar, .tabbar, .status) {
+.gx-cell--inactive .window > :is(.deck-frame, .wsbar, .tabbar, .status) {
   filter: saturate(0.35);
 }
 

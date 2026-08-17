@@ -22,6 +22,7 @@ const idle = (
   confidence: "explicit",
   agentLabel: "claude",
   unread: false,
+  hasRun: false,
   changedAt: 0,
   revision: 1,
   ...patch,

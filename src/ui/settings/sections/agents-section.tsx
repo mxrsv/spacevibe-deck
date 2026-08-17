@@ -1,6 +1,6 @@
+import { Plus, Trash, X } from "@phosphor-icons/react";
 import { Fragment } from "preact";
 import { useSignal } from "@preact/signals";
-import { Plus, Trash2, X } from "lucide-preact";
 import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
 import {
   agentBinary,
@@ -250,7 +250,7 @@ export function AgentsSection() {
               title={`Remove ${agent.label}`}
               onClick={() => removeAgent(agent.id)}
             >
-              <DeckIcon icon={Trash2} size={ROW_ICON} />
+              <DeckIcon icon={Trash} size={ROW_ICON} />
             </button>
           </div>
           {editError.value?.id === agent.id && (

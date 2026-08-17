@@ -1,0 +1,308 @@
+/*
+ * Agent rail row-structure candidates — gallery-only harness for
+ * `agent-rail-variants.tsx`. Nothing here may move into `src/styles/`:
+ * shipping a candidate means restating it under DL §27, not copying these
+ * rules. Status marks are NOT restyled here — the candidates reuse the
+ * shipped `.asr-row__mark` so every state stays authentic.
+ *
+ * `.gxa-head--upper` carries `text-transform`/`letter-spacing` on purpose:
+ * DL-4.3 bans both in shipping chrome (no exceptions, 2026-08-16), and the
+ * candidate exists so the owner can eye-judge whether an exception would be
+ * worth reopening. The design-language gate scans `src/styles/` only.
+ */
+
+.gxa-variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 20px 22px 26px;
+  background: var(--chrome-2);
+}
+
+.gxa-variant {
+  display: grid;
+  gap: 10px;
+  width: 264px;
+}
+
+.gxa-variant__head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  align-items: baseline;
+}
+
+.gxa-variant__index {
+  color: var(--accent);
+  font: 620 var(--type-caption) / 1.2 var(--ui-font);
+}
+
+.gxa-variant__title {
+  color: var(--text-primary);
+  font: 560 var(--type-caption) / 1.2 var(--ui-font);
+}
+
+.gxa-variant__note {
+  grid-column: 2;
+  color: var(--text-muted);
+  font: 450 var(--type-micro) / 1.35 var(--ui-font);
+}
+
+/* The candidate rail's frame, matching the standalone study's ground. */
+.gxa-rail {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-height: 300px;
+  padding: 8px 7px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-surface);
+  background: var(--chrome-1);
+}
+
+.gxa-cluster {
+  display: grid;
+  gap: 2px;
+}
+
+/* ------------------------------------------------------- cluster headers */
+
+.gxa-head {
+  padding: 9px 8px 3px 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gxa-cluster:first-child > .gxa-head,
+.gxa-card:first-child > .gxa-head {
+  padding-top: 2px;
+}
+
+/* A — the retired header voice, preserved as historical comparison. */
+.gxa-head--archive {
+  color: var(--text-faint);
+  font: 560 var(--type-micro) / 1.2 var(--ui-font);
+}
+
+/* B/C — the Tools-label voice (`.sidebar-actions__label`): one group-label
+   sound for the whole rail. */
+.gxa-head--label {
+  color: var(--text-faint);
+  font: 450 var(--type-caption) / 1.2 var(--ui-font);
+}
+
+/* D — the DL-4.3 exception candidate. Gallery-only; see the file comment. */
+.gxa-head--upper {
+  color: var(--text-faint);
+  font: 560 10px/1.2 var(--ui-font);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------ rows */
+
+.gxa-item {
+  padding: 5px 8px;
+  border-radius: var(--radius-control);
+}
+
+.gxa-item[data-active="true"] {
+  background: var(--tab-active-bg);
+}
+
+.gxa-name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font: 545 var(--type-body) / 1.25 var(--ui-font);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gxa-logos {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+}
+
+.gxa-logo {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.gxa-age {
+  flex: none;
+  color: var(--text-muted);
+  font: 450 var(--type-micro) / 1.2 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A — the retired two-line shape: name + trailing chips + mark, meta below. */
+.gxa-archive-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.gxa-archive-line .gxa-name {
+  flex: 1;
+}
+
+.gxa-archive-meta {
+  display: block;
+  padding-top: 3px;
+  color: var(--text-muted);
+  font: 450 var(--type-micro) / 1.2 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+/* B/C/D — one line: glyphs lead, the age sits against the mark. */
+.gxa-inline-line {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.gxa-inline-line .gxa-name {
+  flex: 1;
+}
+
+.gxa-msg {
+  display: block;
+  overflow: hidden;
+  padding: 3px 0 0 21px;
+  color: var(--text-muted);
+  font: 450 var(--type-micro) / 1.35 var(--ui-font);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------ resting mark candidates */
+
+.gxa-variant--marks {
+  width: 232px;
+}
+
+.gxa-rail--marks {
+  min-height: 0;
+}
+
+/* Same geometry as the shipped `.asr-row__mark`, so only the treatment under
+   comparison differs between candidates. */
+.gxa-mark {
+  position: relative;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+/* R1 — the earlier resting ring, retained for comparison. */
+.gxa-mark--ring {
+  border: 1px solid var(--hair-strong);
+}
+
+/* R2 — filled, still neutral: reads "someone is here", not "empty slot". */
+.gxa-mark--dot {
+  background: color-mix(in srgb, var(--tone) 30%, transparent);
+}
+
+/* R3 — the presence idiom conflicts with done's established green role. */
+.gxa-mark--presence {
+  background: color-mix(in srgb, var(--green) 70%, transparent);
+}
+
+/* R4 — the ring keeps a small ember at its centre. */
+.gxa-mark--core {
+  border: 1px solid var(--hair-strong);
+}
+
+.gxa-mark--core::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 45%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+/* R5 — alive but silent. Opacity only, the property the working arc's DL-1.2
+   exception already animates; still gallery-only until that exception is
+   widened on purpose. */
+.gxa-mark--breathe {
+  border: 1px solid var(--hair-strong);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes gxa-breathe {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .gxa-mark--breathe {
+    animation: gxa-breathe 4.5s var(--ease) infinite;
+  }
+}
+
+/* C — a labelled project stands in a recessed frame; the wash stays inside
+   the quiet band chrome washes live in. */
+.gxa-card {
+  display: grid;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--tone) 4%, transparent);
+}
+
+.gxa-card > .gxa-head {
+  padding-left: 4px;
+}
+
+/* ------------------------------------------------------- pane tree (multi) */
+
+/* The leaves indent under their parent and a hairline elbow says who owns
+   them — the guide vocabulary file trees already taught, drawn with borders
+   (no vector markup, DL-14.1). */
+.gxa-tree__parent .gxa-name {
+  font-weight: 560;
+}
+
+.gxa-tree__leaf {
+  position: relative;
+  margin-left: 13px;
+  padding-left: 16px;
+}
+
+/* The elbow: down from the row above, then out to the leaf. */
+.gxa-tree__leaf::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  bottom: 50%;
+  left: 5px;
+  width: 8px;
+  border-bottom: 1px solid var(--hair-strong);
+  border-left: 1px solid var(--hair-strong);
+  border-bottom-left-radius: 5px;
+}
+
+/* The trunk continues past every leaf but the last. */
+.gxa-tree__leaf:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  bottom: -3px;
+  left: 5px;
+  border-left: 1px solid var(--hair-strong);
+}

@@ -1,4 +1,4 @@
-import { FolderX, Play } from "lucide-preact";
+import { FolderDashed, Play } from "@phosphor-icons/react";
 import { AgentGlyph } from "../controls/agent-glyph";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { tildify } from "../../lib/process-info";
@@ -50,7 +50,11 @@ export function SessionRow({
     <li class="session-row__slot">
       <div class={`session-row ${dead ? "is-unavailable" : ""}`}>
         {dead ? (
-          <DeckIcon icon={FolderX} size={ROW_ICON} class="session-row__ico" />
+          <DeckIcon
+            icon={FolderDashed}
+            size={ROW_ICON}
+            class="session-row__ico"
+          />
         ) : (
           <AgentGlyph agent={entry.agent} className="session-row__logo" />
         )}

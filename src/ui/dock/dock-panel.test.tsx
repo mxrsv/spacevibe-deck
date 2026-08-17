@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DockPanel } from "./dock-panel";
 import { availableDockTabs } from "./dock-tab-registry";
 import { ExplorerTab } from "../../files/ui/explorer-tab";
-import { DesktopChrome } from "../app";
+import { DesktopChrome } from "../desktop-chrome";
 import {
   createFileSurfaceController,
   type FileSurfaceController,
@@ -358,4 +359,35 @@ describe("DockPanel — both chrome layouts", () => {
       expect(host.querySelector(".dock-panel")).not.toBeNull();
     },
   );
+});
+
+/**
+ * The dock's header and the stage strip stand side by side across one seam, so
+ * a height literal in either file is a hairline that breaks in the middle of
+ * the window. Asserted against the stylesheets rather than a rendered box:
+ * jsdom applies no stylesheet, and the point is that neither rule owns a
+ * number of its own.
+ */
+describe("dock header height (aligned with the stage strip)", () => {
+  function ruleBody(file: string, selector: string): string {
+    const sheet = readFileSync(file, "utf8");
+    const start = sheet.indexOf(`\n${selector} {`);
+    expect(start, `no \`${selector} {\` rule in ${file}`).toBeGreaterThan(-1);
+    const open = sheet.indexOf("{", start);
+    return sheet.slice(open + 1, sheet.indexOf("}", open));
+  }
+
+  it("takes its height from --frame-h, the same token the stage strip does", () => {
+    const header = ruleBody("src/styles/14-dock.css", ".dock-panel__header");
+    const strip = ruleBody("src/styles/06-stage-panes.css", ".stage__strip");
+    expect(header).toMatch(/height:\s*var\(--frame-h\)/);
+    expect(strip).toMatch(/height:\s*var\(--frame-h\)/);
+  });
+
+  it("keeps its own seam off that height, so both hairlines land on one row", () => {
+    const header = ruleBody("src/styles/14-dock.css", ".dock-panel__header");
+    expect(header).toMatch(/border-bottom:\s*1px solid/);
+    // No global reset in this app: without border-box the seam adds a pixel.
+    expect(header).toMatch(/box-sizing:\s*border-box/);
+  });
 });

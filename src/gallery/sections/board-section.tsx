@@ -1,10 +1,7 @@
 import { OpenBoard } from "../../open-board/open-board";
-import { DesktopChrome } from "../../ui/app";
-import {
-  chatGptToolbarSpecimen,
-  NOOP,
-  repositorySidebarSpecimen,
-} from "../chrome-fixtures";
+import { DesktopChrome } from "../../ui/desktop-chrome";
+import { SidebarToggle } from "../../ui/sidebar-toggle";
+import { agentRailNavigationSpecimen, NOOP } from "../chrome-fixtures";
 import { SectionHead, Specimen } from "../specimen";
 
 /**
@@ -26,15 +23,16 @@ export function BoardSection() {
       />
       <Specimen
         name=".open-board"
-        note="shared repository/worktree navigation · workspace · one click opens"
+        note="shared project/tab AgentRail · workspace · one click opens"
         surface="none"
         tall
       >
         <div class="gx-chatgpt-direction gx-open-board-direction">
           <DesktopChrome
             sidebar
-            toolbar={chatGptToolbarSpecimen()}
-            sidebarNavigation={repositorySidebarSpecimen()}
+            sidebarToggle={<SidebarToggle collapsed={false} onToggle={NOOP} />}
+            toolbar={null}
+            sidebarNavigation={agentRailNavigationSpecimen()}
             topTabs={null}
             stage={
               <div class="stage">

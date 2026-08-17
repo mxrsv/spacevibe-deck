@@ -95,11 +95,7 @@ export function decideExternalChange(
 }
 
 /** The bar's two choices, per row of the table. */
-export type ChangeResolution =
-  | "reload"
-  | "keep-mine"
-  | "save-again"
-  | "close";
+export type ChangeResolution = "reload" | "keep-mine" | "save-again" | "close";
 
 /** Whether a resolution belongs to the bar the state is showing — a stale
  * click (the bar changed kind between render and click) is refused rather

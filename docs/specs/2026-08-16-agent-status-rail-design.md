@@ -158,12 +158,13 @@ it, else the agents running in it, else `shell`.
 This is not the worktree-first tree §9 rules out, and the difference is
 enforceable rather than stylistic:
 
-- The header is a **label, not a row**: no state mark, no age, no disclosure,
-  nothing to press. Nothing about the click contract in §2.2 changes.
+- The header originally shipped as a **label, not a row**: no state mark, age,
+  disclosure or press. Superseded by §2.6: it is now the one project-level
+  collapse control, still without tab state or worktree data.
 - **The worktree stays a suffix on the row.** It never becomes a level.
-- **A cluster of one prints no header.** Most projects have exactly one tab —
-  the §1 corpus is the reason — so a header apiece would double the rail's
-  height to repeat what the row already says.
+- **The original rule omitted the header for a cluster of one.** Superseded by
+  §2.7: saving one line made singleton and multi-tab projects use different
+  hierarchies.
 - **Clusters are ordered by their newest tab**, the same recency the rows
   inside them use. Nothing is ordered by name.
 - **The pinned block is never clustered.** It is a queue of answers owed, and a
@@ -215,6 +216,63 @@ asked for the change from a screenshot of the shipped rail.
 Carried by `DL-27.10`, which also amends `DL-27.5` and voids one sentence of
 `DL-27.9`.
 
+### 2.6 The rail stops at the tab
+
+**Amendment, 2026-08-16, from the running Electron rail.** The owner found the
+project → tab → pane expansion visually dense and difficult to control, then
+approved a two-level rail: **project → tab**. This supersedes §2.1's two-line
+default, §2.2's pane-row and `+N` destinations, §2.3 in full, and §2.5's move
+of the age onto its own line.
+
+- A tab is one compact row: leading agent glyphs, tab identity, age, one
+  rolled-up state mark, and the hover-only close slot. The age is back on that
+  line; appearing close owns a fixed column and never reflows it.
+- Agent glyphs carry identity only. Their per-pane state badges are gone; the
+  row's one mark remains the only visual state signifier. A glyph is still a
+  direct, pane-exact focus target.
+- The budget remains three glyphs. `+N` is a quiet count, not a button and not
+  a second face of a disclosure.
+- No row unfolds. The disclosure gutter and the nested pane rows are removed.
+  Pane-exact focus remains available through every visible agent glyph and the
+  stage itself remains the place to manage the full pane layout.
+- A message line is exceptional: it appears only for `asked` or `failed`, when
+  the turn carries something the user must act on. `done`, `working` and
+  `resting` rows remain one line even when a fallback title exists.
+- A labelled project header becomes the one disclosure in the rail. Pressing
+  it collapses or restores all of that project's tab rows. It still carries no
+  state, age or worktree level. §2.7 removes its former singleton exception.
+
+The current click contract is therefore:
+
+| Click target          | Destination                                       |
+| --------------------- | ------------------------------------------------- |
+| The row itself        | The tab, at whichever pane was last focused in it |
+| A visible agent glyph | **That agent's pane**, focused directly           |
+| A project header      | Collapse or restore that project's tab rows       |
+| An archived row       | Resume that workspace                             |
+
+Carried by `DL-27.11`, amended by `DL-27.12`.
+
+### 2.7 Every project keeps its header
+
+**Amendment, 2026-08-16, from the running Electron rail.** The owner compared a
+multi-tab project with a singleton project and found the two shapes needlessly
+different. The hierarchy is now invariant:
+
+- Every live project prints a project header, including a project with one tab
+  or one agent pane.
+- Every live row beneath it names the tab: the user's name, else its agents,
+  else `shell`. It never substitutes the project name.
+- The header keeps the collapse contract from §2.6. No new worktree level,
+  state mark or action is added.
+
+The vertical cost is one header for a singleton project. The comprehension gain
+is that the project never changes visual type when a second tab opens, and two
+projects can no longer appear as one project header followed by an unrelated
+project-looking tab.
+
+Carried by `DL-27.12`.
+
 ## 3. State model
 
 The tracker already produces everything the rail needs.
@@ -225,16 +283,25 @@ The tracker already produces everything the rail needs.
 [`TabView`](../../src/terminal/tabs-store.ts#L18-L40) `current` already exposes
 `workspacePath`, `agents`, `agentBusy`, `unread` and `attention`.
 
-| Pane snapshot            | Rail state | Mark              | Colour             |
-| ------------------------ | ---------- | ----------------- | ------------------ |
-| `attention: "requested"` | `asked`    | filled dot + halo | `--yellow`         |
-| `attention: "completed"` | `done`     | hollow dot        | `--accent`         |
-| `attention: "error"`     | `failed`   | filled dot        | `--red` (DL-3.2)   |
-| `attention: "warning"`   | `asked`    | filled dot + halo | `--yellow` (owner) |
-| `phase: "working"`       | `working`  | turning open arc  | `--text-primary`   |
-| otherwise                | `resting`  | hairline ring     | `--hair-strong`    |
+**Amended 2026-08-16 (owner): the vocabulary now reads from the dev's side.**
+`attention: "completed"` folds into `asked` — a finished run nobody checked
+needs your eyes like a question does — recorded as TEMPORARY, so unfolding it
+is one case label in `paneState`. The quiet state split on a new tracker bit,
+`hasRun`: `done` is a run you checked, `idle` is an agent that never ran
+anything (the bit resets when a new agent opens the pane's gate). The original
+table below it is superseded.
 
-`failed` is **not** allowed to read as `resting`. A crashed agent outranks an
+| Pane snapshot            | Rail state | Mark                      | Colour             |
+| ------------------------ | ---------- | ------------------------- | ------------------ |
+| `attention: "requested"` | `asked`    | filled dot + halo         | `--yellow`         |
+| `attention: "completed"` | `asked`    | filled dot + halo         | `--yellow` (owner) |
+| `attention: "error"`     | `failed`   | filled dot                | `--red` (DL-3.2)   |
+| `attention: "warning"`   | `asked`    | filled dot + halo         | `--yellow` (owner) |
+| `phase: "working"`       | `working`  | turning open arc          | `--text-primary`   |
+| quiet, `hasRun`          | `done`     | `CheckCircle` (DL-14.6)   | `--green`          |
+| quiet, never ran         | `idle`     | hairline ring with a core | `--hair-strong`    |
+
+`failed` is **not** allowed to read as `idle`. A crashed agent outranks an
 asking one wherever the two are compared — inside a folded row's precedence,
 and nowhere else since §2.5 removed the pinned block.
 
@@ -247,7 +314,15 @@ not weaken either: the message line under a failed row is the failure itself
 `failed` in words.
 
 Precedence when a tab folds its panes into one row: `failed` > `asked` >
-`done` > `working` > `resting`.
+`working` > `done` > `idle`.
+
+**Amended again the same day (owner): the pane tree.** A tab running several
+agents lists each pane as an always-visible leaf row under the tab, joined by
+a hairline elbow (DL-27.13) — reversing §2.6's two-level rule. The parent row
+drops its chips and names the tab (custom name, else `N agents`); each leaf
+carries its own glyph, age and mark, and pressing it is §2.2's chip contract —
+focus that exact pane. §2.1's chip budget and `+N` are dead with it. A
+single-agent tab keeps §2.6's one-row shape, chip leading.
 
 `unread` does **not** get its own mark in v1. It already drives the tab strip's
 badge, and a second unread signifier in the rail would be DL-21.6's "two
@@ -305,8 +380,9 @@ Recorded because each reverses or narrows something already written down.
   `current` gains a sibling, `activeRepositoryTabIndexes`, which returns every
   tab in the active tab's repository group rather than in its worktree.
 - [`src/ui/tab-strip.tsx`](../../src/ui/tab-strip.tsx#L84-L135) `current`
-  calls it at both sites (the visible projection and the popover guard) and
-  renames the prop `scopeToActiveWorktree` → `scopeToActiveRepository`.
+  calls it at both sites (the visible projection and, until `TabPopover` was
+  removed on 2026-08-16, the popover guard) and renames the prop
+  `scopeToActiveWorktree` → `scopeToActiveRepository`.
 - File-tab chips do not pass through this filter and are unaffected.
 
 ### Tier 1c — the focus ping
@@ -363,13 +439,20 @@ Recorded because each reverses or narrows something already written down.
 
 ## 6. Hover actions
 
-Rename, recolour and close are revealed by hover and focus alike; they are
-keyboard reachable through the row's own focus, and the row keeps its
-accessible name unchanged. **Amended by §2.5:** they used to swap in over the
-age + mark pair at the name line's right edge. The age has left that line, so
-they sit at the meta line's trailing end instead, in space it reserves at rest
-— the actions must never cover an agent chip, which is a target rather than a
-readout, and reserving on `:hover` alone would be a reflow.
+Close is revealed by hover and focus alike; it is keyboard reachable through
+the row's own focus, and the row keeps its accessible name unchanged.
+
+**Amended by §2.5:** the pair used to swap in over the age + mark at the name
+line's right edge. The age has left that line, so the action sits at the meta
+line's trailing end instead, in space reserved at rest — it must never cover an
+agent chip, which is a target rather than a readout, and reserving on `:hover`
+alone would be a reflow.
+
+**Amended again, 2026-08-16:** rename and recolour are gone. `TabPopover` and
+the features it carried (tab rename, dot colour, workspace logo) were removed
+at the owner's request, so the options button that opened it went too. Closing
+a tab is the only action a row carries, and the four destinations in §2.2 are
+unchanged — none of them was the popover.
 
 ## 7. The yellow rule
 
@@ -424,14 +507,15 @@ the backend work than after.
 
 ## 12. Implementation status
 
-**The gallery specimen is complete and owner-approved (2026-08-16)**: row
-shape, state marks, the yellow/accent split, per-row disclosure, clickable
-agent chips, worktree suffix, the mounted-in-the-window-shell view, and the
-1.5s focus ping against a real pane grid. It lives in
+**The original gallery specimen was owner-approved (2026-08-16)**: row shape,
+state marks, the yellow/accent split, clickable agent chips, worktree suffix,
+the mounted-in-the-window-shell view, and the 1.5s focus ping against a real
+pane grid. It lives in
 [`src/gallery/agent-status-rail.tsx`](../../src/gallery/agent-status-rail.tsx)
 `current` and is reachable at `npm run prototype:gallery` → navigation.
 
-**Nothing is implemented in the app.** No file under `src/ui/`,
-`src/repositories/`, `src/terminal/` or `electron/` has changed, no
-`session_tail` channel exists, and the specimen's conversation lines are
-seeded strings. Approval covers the design, not a shipped rail.
+**The app implementation exists and §2.6 is current.**
+[`AgentRail`](../../src/ui/agent-rail.tsx) `current` renders the two-level,
+compact form; the per-pane projection and focus ping remain live behind its
+glyph targets. Tier 3's `session_tail` channel still does not exist, so an
+actionable message can only show the current fallback title today.

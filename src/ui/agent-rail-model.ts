@@ -34,16 +34,34 @@ import type { PaneView, TabView } from "../terminal/tabs-store";
 import { NO_PANES } from "../terminal/tabs-store";
 import { UNSEQUENCED } from "../lib/open-sequence";
 
-/** Spec §3. `failed` is new relative to the gallery specimen. */
-export type RailState = "failed" | "asked" | "done" | "working" | "resting";
+/**
+ * Spec §3, revocabularised on the owner's ask (2026-08-16) to read from the
+ * dev's side rather than the agent's: `asked` is everything waiting on your
+ * eyes (a question, a permission wait, or a finished run you have not checked
+ * — the old `done` folded in here, TEMPORARILY, so unfolding it is one case
+ * label in `paneState`); `done` is a run you checked; `idle` is a pane whose
+ * agent has never run anything. `idle` and the accent-ringed `done` are
+ * gone.
+ */
+export type RailState = "failed" | "asked" | "working" | "done" | "idle";
 
 /** One agent pane inside a tab row. */
 export interface RailPaneRow {
   readonly paneId: number;
   readonly agent: PaneAgent;
   readonly state: RailState;
-  /** Head of the newest turn. The tab's title until tier 3 lands. */
+  /**
+   * Head of this pane's newest turn when `AgentRailInput.tails` carries one,
+   * else empty.
+   *
+   * Empty means "this agent has said nothing", never "print the tab's name
+   * instead": since DL-27.15's one-line amendment (2026-08-17) the turn takes
+   * the AGENT NAME's place on the row, so a fallback here would put a word the
+   * user typed where the sentence the agent said belongs.
+   */
   readonly message: string;
+  /** Short relative string for this pane alone; empty before any change. */
+  readonly age: string;
   readonly changedAt: number;
 }
 
@@ -57,16 +75,21 @@ export interface RailTabRow {
   /**
    * What this tab is, when the cluster header above it has already said where
    * it is: the user's own tab name, else the agents running in it, else
-   * `shell`. Rendered in place of `project` inside a labelled cluster (§2.4).
+   * `shell`. Rendered in place of `project` inside a labelled cluster (§2.4),
+   * and itself given up to `message` once an agent here has spoken — unless
+   * `named`, since a word the user typed is not a stand-in for a turn.
    */
   readonly identity: string;
   /** Rendered only when the tab is NOT in the repository's primary checkout. */
   readonly worktree: string | null;
   /** The tab's own label (custom name, else workspace label). */
   readonly title: string;
+  /** True when the label is a name a PERSON typed, not one derived from a path. */
+  readonly named: boolean;
   /**
-   * The line under the row: the newest turn, or empty when there is nothing to
-   * say that the row has not already said (§2.4).
+   * The newest turn of the pane this row speaks for, or empty when no agent
+   * here has said anything. It shares the row's one line with `identity`
+   * rather than sitting under it (DL-27.15, amended 2026-08-17).
    */
   readonly message: string;
   /** Short relative string, e.g. `2m`. Empty when nothing has changed yet. */
@@ -105,8 +128,8 @@ export interface RailArchivedRow {
  * The stream is grouped rather than flat because the project name is the
  * loudest word in a row and N tabs in one project printed it N times, scattered
  * by recency. Grouping moves the name up one level; it does NOT reinstate the
- * repository → worktree tree §9 rules out — a cluster has no state, no age, no
- * disclosure and nothing to press, and the worktree stays a suffix on the row.
+ * repository → worktree tree §9 rules out — a cluster has no state, age or
+ * worktree level, and its one control only collapses its tab rows.
  *
  * Since 2026-08-16 a cluster holds EVERY tab of its project, including the ones
  * waiting on the user: the pinned block that used to lift those out is gone, so
@@ -118,10 +141,9 @@ export interface RailStreamGroup {
   /** The project name, printed once above the rows. */
   readonly project: string;
   /**
-   * Whether the header is printed at all. A cluster of one prints no header
-   * and its row names the project itself: most projects have exactly one tab,
-   * and a header per row would double the rail's height to say what the row
-   * already says.
+   * Whether the header is printed. The current project → tab contract labels
+   * every non-empty cluster, including one-tab projects, so this is always
+   * true for `buildAgentRail` output.
    */
   readonly labelled: boolean;
   readonly rows: readonly RailTabRow[];
@@ -142,6 +164,14 @@ export interface AgentRailInput {
   readonly archivedPaths: ReadonlySet<string>;
   /** Deck's persisted workspace history, newest first. */
   readonly workspaceHistoryPaths: readonly string[];
+  /**
+   * The newest turn of each agent pane, by pane id — spec §10's tier 3. Absent
+   * for a pane whose session has said nothing yet, and absent entirely for a
+   * caller that reads no sessions at all (the gallery, most tests), which is
+   * why the whole map is optional rather than empty-by-convention: a rail with
+   * no tails is the shape this model shipped with, not a degraded one.
+   */
+  readonly tails?: ReadonlyMap<number, string>;
   /** Injected clock — the model never calls `Date.now()` itself. */
   readonly now: number;
 }
@@ -150,9 +180,9 @@ export interface AgentRailInput {
 const STATE_RANK: Readonly<Record<RailState, number>> = {
   failed: 4,
   asked: 3,
-  done: 2,
-  working: 1,
-  resting: 0,
+  working: 2,
+  done: 1,
+  idle: 0,
 };
 
 /** The rail has no collapse affordance — it is one flat list (spec §2). */
@@ -164,13 +194,18 @@ const DAY = 24 * HOUR;
 const WEEK = 7 * DAY;
 
 /**
- * Spec §3's mapping, exactly.
+ * Spec §3's mapping, under the 2026-08-16 vocabulary.
  *
  * Attention is read BEFORE phase: the tracker latches attention and leaves
  * phase live, so a pane can be `working` while carrying a warning nobody has
  * answered, and the latched state is the one the user has to act on.
- * `warning` folds into `asked` (§4.6) — both mean "come look", and the palette
- * stays three marks wide rather than four.
+ * `warning` folds into `asked` (§4.6), and so does `completed` — the owner's
+ * temporary merge: a finished run you have not checked needs your eyes the
+ * same way a question does, so both wear the yellow mark. The tracker still
+ * distinguishes them; unfolding is restoring one case label here.
+ *
+ * A quiet pane splits on the tracker's `hasRun` bit: `done` is a run you
+ * checked, `idle` is an agent that has never run anything.
  */
 function paneState(pane: PaneView): RailState {
   switch (pane.attention) {
@@ -178,11 +213,13 @@ function paneState(pane: PaneView): RailState {
       return "failed";
     case "requested":
     case "warning":
-      return "asked";
     case "completed":
-      return "done";
+      return "asked";
     default:
-      return pane.phase === "working" ? "working" : "resting";
+      if (pane.phase === "working") {
+        return "working";
+      }
+      return pane.hasRun ? "done" : "idle";
   }
 }
 
@@ -193,8 +230,16 @@ function paneState(pane: PaneView): RailState {
  * the rail answers "which agent", so they are not rows — but they remain part
  * of the tab, which is why `tabs-store.ts` reports every pane and the filter
  * lives with the surface instead.
+ *
+ * The tail is read PER PANE rather than for the tab as a whole: two agents in
+ * one tab have two conversations, so one of them having said something recent
+ * must not put that sentence under the other's name.
  */
-function paneRows(tab: TabView | undefined, message: string): RailPaneRow[] {
+function paneRows(
+  tab: TabView | undefined,
+  tails: ReadonlyMap<number, string> | undefined,
+  now: number,
+): RailPaneRow[] {
   return (tab?.panes ?? NO_PANES).flatMap((pane) =>
     pane.agent === null
       ? []
@@ -202,41 +247,54 @@ function paneRows(tab: TabView | undefined, message: string): RailPaneRow[] {
           {
             paneId: pane.paneId,
             agent: pane.agent,
-            message,
+            message: tails?.get(pane.paneId) ?? "",
             state: paneState(pane),
+            age: formatShortAge(pane.changedAt, now),
             changedAt: pane.changedAt,
           },
         ],
   );
 }
 
-/**
- * The turn under a row, while tier 3 (`session_tail`) is not built.
- *
- * §5 makes the tab title the fallback, and `label` is that title — but a tab
- * nobody renamed derives its label from its own workspace path, so the fallback
- * printed the project name again, once under the row and once under every pane
- * inside it. Only the name a PERSON typed says something the row has not: a
- * derived label repeating the line above it is not a turn, so the row stays one
- * line high until a real turn exists to put there.
- */
-function messageOf(railTab: RailTab): string {
-  return railTab.customName ?? "";
+/** A label the user typed, as opposed to one derived from the workspace path. */
+function isNamed(railTab: RailTab): boolean {
+  return railTab.customName !== null && railTab.customName !== "";
 }
 
 /**
  * What a row is called inside a labelled cluster, in order of how much it says:
- * the user's own tab name, else the agents running in it, else `shell` — a tab
- * with no recognised agent is a shell, and saying so beats repeating the
- * project name the header above already carries.
+ * the user's own tab name, else its one agent, else NOTHING, else `shell`.
+ * Since the pane tree (2026-08-16), a multi-agent tab lists every agent as a
+ * leaf row of its own — the tree IS the identity, so an unnamed parent prints
+ * no label at all: the owner dropped the `N agents` count the same day it was
+ * added, as a declaration the leaves already make.
  */
 function identityOf(railTab: RailTab, panes: readonly RailPaneRow[]): string {
-  if (railTab.customName !== null && railTab.customName !== "") {
-    return railTab.customName;
+  if (isNamed(railTab)) {
+    return railTab.customName ?? "";
   }
-  return panes.length === 0
-    ? "shell"
-    : panes.map((pane) => pane.agent).join(" + ");
+  if (panes.length === 0) {
+    return "shell";
+  }
+  return panes.length === 1 ? panes[0].agent : "";
+}
+
+/**
+ * The one turn a FOLDED view of a tab shows: the tail of the pane this tab's
+ * rail row would speak for, or empty when no agent in it has said anything.
+ *
+ * Exported for the tab strip (DL-18.10, amended 2026-08-17), which prints the
+ * same sentence on its chip. It reads through the same `loudestPane`
+ * precedence rather than reimplementing "which pane speaks", so the strip and
+ * the rail can never quote two different agents for one tab.
+ */
+export function tabTail(
+  tab: TabView | undefined,
+  tails: ReadonlyMap<number, string> | undefined,
+): string {
+  // `now` only formats the age this caller does not read; the tails and the
+  // precedence are what it is here for.
+  return loudestPane(paneRows(tab, tails, 0))?.message ?? "";
 }
 
 /**
@@ -266,11 +324,15 @@ function tabRow(
   input: AgentRailInput,
 ): RailTabRow {
   const title = railTab.label;
-  const message = messageOf(railTab);
   const tab = input.tabs[railTab.index];
-  const panes = paneRows(tab, message);
+  const panes = paneRows(tab, input.tails, input.now);
   const voice = loudestPane(panes);
-  const state = voice?.state ?? "resting";
+  // A folded row says what the pane it speaks for is saying, so the sentence
+  // on the row and the mark beside it come from the same agent. With no agent
+  // pane at all there is nothing said and the row keeps its own name.
+  const message = voice?.message ?? "";
+  // A tab with no agent panes has never run an agent: `idle`, not `done`.
+  const state = voice?.state ?? "idle";
   // Agent panes only: a tab whose shells have been busy all morning has still
   // said nothing an agent rail can report, so its age stays empty.
   const changedAt = panes.reduce(
@@ -287,6 +349,7 @@ function tabRow(
     worktree: worktree.primary ? null : worktree.name,
     identity: identityOf(railTab, panes),
     title,
+    named: isNamed(railTab),
     message,
     age: formatShortAge(changedAt, input.now),
     changedAt,
@@ -345,8 +408,8 @@ function firstOf(group: RailStreamGroup): number {
   );
 }
 
-/** A cluster of one prints no header; its row names the project itself. */
-const LOWEST_LABELLED_SIZE = 2;
+/** Every live project keeps the same project → tab hierarchy. */
+const LOWEST_LABELLED_SIZE = 1;
 
 /**
  * How recently the user opened a worktree, as a position in Deck's persisted
@@ -403,7 +466,7 @@ function archivedRows(
  * below.
  *
  * Every open tab produces a row. A tab running no recognised agent still gets
- * one — empty `panes`, `voice: null`, `resting` — because the rail is the
+ * one — empty `panes`, `voice: null`, `idle` — because the rail is the
  * sidebar's only list, and a tab the rail declines to draw is a tab the user
  * cannot reach from there.
  */

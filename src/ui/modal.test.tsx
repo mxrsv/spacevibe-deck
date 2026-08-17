@@ -21,16 +21,31 @@ function press(target: EventTarget): void {
   });
 }
 
+/** The other half of a real gesture — a browser always fires it before click. */
+function release(target: EventTarget): void {
+  act(() => {
+    target.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+  });
+}
+
 function click(target: EventTarget): void {
   act(() => {
     target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
 }
 
-function key(target: EventTarget, name: string): void {
+function key(
+  target: EventTarget,
+  name: string,
+  modifiers: { shiftKey?: boolean } = {},
+): void {
   act(() => {
     target.dispatchEvent(
-      new KeyboardEvent("keydown", { key: name, bubbles: true }),
+      new KeyboardEvent("keydown", {
+        key: name,
+        bubbles: true,
+        shiftKey: modifiers.shiftKey === true,
+      }),
     );
   });
 }
@@ -102,9 +117,23 @@ describe("Modal", () => {
     const { onDismiss } = mount();
 
     press(scrim());
+    release(scrim());
     click(scrim());
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  // The other direction of the same rule: a sweep that STARTS on the scrim and
+  // ends inside the panel also fires `click` on the scrim, so reading the
+  // press alone threw away whatever the user had typed.
+  it("a press on the scrim released inside the panel does NOT dismiss", () => {
+    const { onDismiss } = mount();
+
+    press(scrim());
+    release(host.querySelector(".demo-modal__field") as HTMLInputElement);
+    click(scrim());
+
+    expect(onDismiss).not.toHaveBeenCalled();
   });
 
   // The reason dismissal tracks pointerdown rather than click alone: a drag
@@ -114,6 +143,7 @@ describe("Modal", () => {
     const { onDismiss } = mount();
 
     press(panel());
+    release(scrim());
     click(scrim());
 
     expect(onDismiss).not.toHaveBeenCalled();
@@ -121,9 +151,13 @@ describe("Modal", () => {
 
   it("clicking inside the panel does not dismiss", () => {
     const { onDismiss } = mount();
+    const action = host.querySelector(
+      ".demo-modal__action",
+    ) as HTMLButtonElement;
 
     press(panel());
-    click(host.querySelector(".demo-modal__action") as HTMLButtonElement);
+    release(action);
+    click(action);
 
     expect(onDismiss).not.toHaveBeenCalled();
   });
@@ -132,8 +166,10 @@ describe("Modal", () => {
     const { onDismiss } = mount();
 
     press(panel());
+    release(scrim());
     click(scrim());
     press(scrim());
+    release(scrim());
     click(scrim());
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
@@ -143,6 +179,7 @@ describe("Modal", () => {
     const { onDismiss } = mount({ dismissOnScrim: false });
 
     press(scrim());
+    release(scrim());
     click(scrim());
 
     expect(onDismiss).not.toHaveBeenCalled();
@@ -183,5 +220,76 @@ describe("Modal", () => {
     key(host.querySelector("input") as HTMLInputElement, "Escape");
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  // `aria-modal="true"` promises the rest of the app is inert. Without a trap
+  // the first Shift+Tab walked out of the dialog into the stage strip and
+  // landed in xterm's textarea, so every keystroke went to the running agent
+  // while the modal was still on screen.
+  it("Shift+Tab from the first stop wraps to the last, never out of the panel", () => {
+    mount({ initialFocus: "input" });
+    const action = host.querySelector(
+      ".demo-modal__action",
+    ) as HTMLButtonElement;
+
+    key(host.querySelector("input") as HTMLInputElement, "Tab", {
+      shiftKey: true,
+    });
+
+    expect(document.activeElement).toBe(action);
+  });
+
+  it("Tab from the last stop wraps to the first", () => {
+    mount({ initialFocus: ".demo-modal__action" });
+    const field = host.querySelector("input") as HTMLInputElement;
+
+    key(host.querySelector(".demo-modal__action") as HTMLButtonElement, "Tab");
+
+    expect(document.activeElement).toBe(field);
+  });
+
+  it("Tab from the panel itself stays inside the panel", () => {
+    mount();
+
+    key(panel(), "Tab", { shiftKey: true });
+
+    expect(panel().contains(document.activeElement)).toBe(true);
+  });
+
+  // Closing used to leave `document.activeElement` on `<body>`: the user could
+  // not type into anything until they clicked a pane with the mouse.
+  it("gives focus back to whatever held it when the modal opened", () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+
+    mount();
+    expect(document.activeElement).toBe(panel());
+
+    act(() => {
+      render(null, host);
+    });
+
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
+  it("leaves focus alone when the close already moved it somewhere real", () => {
+    const opener = document.createElement("button");
+    const elsewhere = document.createElement("button");
+    document.body.append(opener, elsewhere);
+    opener.focus();
+    mount();
+
+    // A modal that opens a tab hands focus to the new pane; restoring blindly
+    // would yank it straight back out.
+    act(() => {
+      render(null, host);
+      elsewhere.focus();
+    });
+
+    expect(document.activeElement).toBe(elsewhere);
+    opener.remove();
+    elsewhere.remove();
   });
 });

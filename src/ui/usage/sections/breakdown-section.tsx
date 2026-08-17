@@ -15,7 +15,7 @@ import {
  *
  * The title says "per agent and model" rather than the multiplication-sign
  * notation the plan drafted. That character is a RETIRED glyph in this repo —
- * it meant remove/close before the Lucide migration — and
+ * it meant remove/close before the unified icon migration — and
  * `scripts/icon-system.test.ts` fails any source file that contains one,
  * comments included. Naming the two keys in words costs nothing and keeps
  * that guard intact.

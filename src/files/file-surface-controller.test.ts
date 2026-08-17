@@ -10,8 +10,11 @@ import {
   activeWorkspace,
   documentFor,
   fileTabsFor,
+  listingErrorsFor,
   resetFileSurfaces,
   setActiveWorkspace,
+  setListingError,
+  surfaceFor,
 } from "./file-surface-store";
 import type { DirEntry } from "./file-tree";
 
@@ -133,6 +136,17 @@ function lastOf<T>(values: readonly T[]): T | undefined {
   return values[values.length - 1];
 }
 
+function deferred<T>(): {
+  readonly promise: Promise<T>;
+  readonly reject: (reason: unknown) => void;
+} {
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((_resolve, decline) => {
+    reject = decline;
+  });
+  return { promise, reject };
+}
+
 beforeEach(() => {
   resetFileSurfaces();
 });
@@ -165,6 +179,64 @@ describe("opening and reading", () => {
     const last = h.watched[h.watched.length - 1];
     expect(last.root).toBe(ROOT);
     expect(last.files).toContain(FILE);
+  });
+});
+
+describe("directory listing recovery", () => {
+  it("retries a cached last-good listing after its refresh failed", async () => {
+    const h = harness();
+    const oldEntries: DirEntry[] = [
+      {
+        name: "old.ts",
+        path: "/r/old.ts",
+        directory: false,
+        outOfRoot: false,
+      },
+    ];
+    const repairedEntries: DirEntry[] = [
+      {
+        name: "new.ts",
+        path: "/r/new.ts",
+        directory: false,
+        outOfRoot: false,
+      },
+    ];
+    h.setDirListing(ROOT, oldEntries);
+    await h.controller.ensureListing(ROOT, ROOT);
+    setListingError(ROOT, ROOT, "Couldn't read this folder.");
+    h.setDirListing(ROOT, repairedEntries);
+    const before = h.listDirCalls.length;
+
+    await h.controller.ensureListing(ROOT, ROOT);
+
+    expect(h.listDirCalls).toHaveLength(before + 1);
+    expect(surfaceFor(ROOT).listings.get(ROOT)).toEqual(repairedEntries);
+    expect(listingErrorsFor(ROOT).has(ROOT)).toBe(false);
+  });
+
+  it("ignores an older directory failure after a retry succeeds", async () => {
+    const h = harness();
+    const oldListing = deferred<never>();
+    const nextEntries: DirEntry[] = [
+      {
+        name: "new.ts",
+        path: "/r/new.ts",
+        directory: false,
+        outOfRoot: false,
+      },
+    ];
+    vi.spyOn(h.client, "listDir")
+      .mockImplementationOnce(() => oldListing.promise)
+      .mockResolvedValueOnce(nextEntries);
+
+    const first = h.controller.ensureListing(ROOT, ROOT);
+    const retry = h.controller.ensureListing(ROOT, ROOT);
+    await retry;
+    oldListing.reject(new Error("stale directory failure"));
+    await first;
+
+    expect(surfaceFor(ROOT).listings.get(ROOT)).toEqual(nextEntries);
+    expect(listingErrorsFor(ROOT).has(ROOT)).toBe(false);
   });
 });
 

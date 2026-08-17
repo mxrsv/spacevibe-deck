@@ -1,5 +1,5 @@
+import { CaretDown } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
-import { ChevronDown } from "lucide-preact";
 import { open } from "../../host/dialog-host";
 import {
   selectSidebarBanner,
@@ -73,7 +73,7 @@ export function SidebarBannerSettings() {
         <span class="cfg-btn cfg-btn--overlay">
           <span class="cfg-btn__text">{selectedLabel}</span>
           <span class="cfg-btn__hint">
-            <DeckIcon icon={ChevronDown} size={ROW_ICON} />
+            <DeckIcon icon={CaretDown} size={ROW_ICON} />
           </span>
           <select
             value={controlValue}

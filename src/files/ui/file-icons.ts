@@ -4,25 +4,25 @@
  * Written for the tree's data rows and docked-panel-only until 2026-08-16,
  * when the tab strip's chips became glyph-led: a document's chip takes the
  * same glyph its row in the tree has, so the two can never name the same file
- * with two different pictures. Still Lucide, so DL-14.1 is untouched — this
- * is a vocabulary inside the one icon library, not a second library.
+ * with two different pictures. Still the one library DL-14.1 names, so this
+ * is a vocabulary inside it rather than a second library.
  *
  * `EXCLUDED_NAMES` already lives in `file-tree.ts` as the tree's one named
  * exclusion-list constant (spec §3.1); this module owns icon selection only
  * and never re-lists which entries are hidden.
  */
 import {
-  ChevronDown,
-  ChevronRight,
+  BracketsCurly,
+  CaretDown,
+  CaretRight,
   File,
   FileCode,
   FileImage,
-  FileJson,
   FileText,
   Folder,
   FolderOpen,
-  type LucideIcon,
-} from "lucide-preact";
+} from "@phosphor-icons/react";
+import type { DeckIconComponent } from "../../ui/controls/deck-icon";
 import type { TreeRow } from "../file-tree";
 
 const CODE_EXTENSIONS: readonly string[] = [
@@ -55,17 +55,17 @@ const IMAGE_EXTENSIONS: readonly string[] = [
 const TEXT_EXTENSIONS: readonly string[] = ["md", "mdx", "txt"];
 
 /** Extension → glyph, built once from the readable lists above. */
-const EXTENSION_ICONS: ReadonlyMap<string, LucideIcon> = new Map([
-  ...CODE_EXTENSIONS.map((extension): [string, LucideIcon] => [
+const EXTENSION_ICONS: ReadonlyMap<string, DeckIconComponent> = new Map([
+  ...CODE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [
     extension,
     FileCode,
   ]),
-  ["json", FileJson],
-  ...IMAGE_EXTENSIONS.map((extension): [string, LucideIcon] => [
+  ["json", BracketsCurly],
+  ...IMAGE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [
     extension,
     FileImage,
   ]),
-  ...TEXT_EXTENSIONS.map((extension): [string, LucideIcon] => [
+  ...TEXT_EXTENSIONS.map((extension): [string, DeckIconComponent] => [
     extension,
     FileText,
   ]),
@@ -82,12 +82,12 @@ function extensionOf(name: string): string | null {
 }
 
 /** A directory's glyph, open or closed. */
-export function directoryIcon(expanded: boolean): LucideIcon {
+export function directoryIcon(expanded: boolean): DeckIconComponent {
   return expanded ? FolderOpen : Folder;
 }
 
 /** A file's glyph by extension, falling back to the generic file glyph. */
-export function fileIcon(name: string): LucideIcon {
+export function fileIcon(name: string): DeckIconComponent {
   const extension = extensionOf(name);
   if (extension === null) {
     return File;
@@ -96,11 +96,11 @@ export function fileIcon(name: string): LucideIcon {
 }
 
 /** The disclosure chevron for one row's expansion state. */
-export function chevronForRow(row: TreeRow): LucideIcon {
-  return row.expanded ? ChevronDown : ChevronRight;
+export function chevronForRow(row: TreeRow): DeckIconComponent {
+  return row.expanded ? CaretDown : CaretRight;
 }
 
 /** The type glyph for one row, directory or file. */
-export function iconForRow(row: TreeRow): LucideIcon {
+export function iconForRow(row: TreeRow): DeckIconComponent {
   return row.directory ? directoryIcon(row.expanded) : fileIcon(row.name);
 }

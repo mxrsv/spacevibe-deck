@@ -12,9 +12,9 @@ interface TreatmentDirection {
 const NATIVE_BALANCED: TreatmentDirection = {
   label: "Native balanced",
   summary: "Compact native rhythm with a clear three-level reading order.",
-  type: "row 12.5 · meta 10.5 · status 11",
+  type: "title 14 · body 12.5 · meta 11 · micro 10.5",
   geometry: "rail 275 · frame 34 · status 28",
-  structure: "radius 10/16 · standard hairlines",
+  structure: "radius 8/10/12 · role-based seams",
 };
 
 interface TreatmentDirectionReviewProps {
@@ -45,9 +45,18 @@ export function TreatmentDirectionReview({
             <span>{NATIVE_BALANCED.summary}</span>
           </div>
           <dl class="gx-treatment-direction__spec">
-            <div><dt>Type</dt><dd>{NATIVE_BALANCED.type}</dd></div>
-            <div><dt>Geometry</dt><dd>{NATIVE_BALANCED.geometry}</dd></div>
-            <div><dt>Structure</dt><dd>{NATIVE_BALANCED.structure}</dd></div>
+            <div>
+              <dt>Type</dt>
+              <dd>{NATIVE_BALANCED.type}</dd>
+            </div>
+            <div>
+              <dt>Geometry</dt>
+              <dd>{NATIVE_BALANCED.geometry}</dd>
+            </div>
+            <div>
+              <dt>Structure</dt>
+              <dd>{NATIVE_BALANCED.structure}</dd>
+            </div>
           </dl>
         </header>
         <div class="gx-treatment-direction__window">{renderWindow()}</div>

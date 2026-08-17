@@ -3,11 +3,8 @@ import { getPreset } from "../settings/themes";
 import { statusInfo } from "../terminal/tabs-store";
 import { tildify } from "../lib/process-info";
 import { shortcutLabel } from "../lib/shortcut-label";
-import {
-  activeFileTab,
-  currentFileStatus,
-  documentFor,
-} from "../files/file-surface-store";
+import { activeFileTab, documentFor } from "../files/file-surface-store";
+import { currentFileStatus } from "../files/file-status";
 
 export function StatusBar() {
   const info = statusInfo.value;

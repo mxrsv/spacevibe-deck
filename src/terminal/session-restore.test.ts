@@ -14,6 +14,21 @@ import type { ResumeRef, ResumeRequest } from "../lib/agent-resume";
 import type { FileStatResult } from "../files/file-client";
 import type { MaterializeIntent } from "./tab-materialize";
 
+/**
+ * The rail's tail store is a window-scoped signal module; restore only ever
+ * tells it which panes reopened a conversation, so the whole module stands in
+ * as that one spy. Hoisted for the same reason the tail store's own test does
+ * it: the factory runs while this file's imports are evaluated.
+ */
+const tailStore = vi.hoisted(() => ({
+  noteResumedPane:
+    vi.fn<(workspacePath: string | null, agent: string) => void>(),
+}));
+
+vi.mock("./session-tail-store", () => ({
+  noteResumedPane: tailStore.noteResumedPane,
+}));
+
 const LEAF = { type: "leaf" } as const;
 
 function tab(overrides: Partial<SessionTab> = {}): SessionTab {
@@ -351,6 +366,65 @@ describe("restoreSession", () => {
     const { deps } = createFakeDeps({ records, materializeResults: [false] });
     const result = await restoreSession(deps, "main");
     expect(result).toBe(false);
+  });
+
+  it("marks each resumed pane for the rail, once per matched session", async () => {
+    tailStore.noteResumedPane.mockClear();
+    const twoPaneTab = tab({
+      workspacePath: "/w",
+      panes: [
+        { cwd: "/w", agent: "claude" },
+        { cwd: "/w", agent: "claude" },
+      ],
+    });
+    const records = new Map<string, WindowRecord>([
+      ["main", record({ tabs: [twoPaneTab] })],
+    ]);
+    const lookup = vi.fn(
+      async (
+        _requests: readonly ResumeRequest[],
+      ): Promise<readonly ResumeRef[]> => [
+        { kind: "id", id: "aaa" },
+        { kind: "id", id: "bbb" },
+      ],
+    );
+    const { deps } = createFakeDeps({ records, lookup });
+    await restoreSession(deps, "main");
+    expect(tailStore.noteResumedPane.mock.calls).toEqual([
+      ["/w", "claude"],
+      ["/w", "claude"],
+    ]);
+  });
+
+  it("marks nothing when the lookup matched no session — that pane starts fresh", async () => {
+    tailStore.noteResumedPane.mockClear();
+    const records = new Map<string, WindowRecord>([
+      ["main", record({ tabs: [tab({ workspacePath: "/w" })] })],
+    ]);
+    // `createFakeDeps`'s default lookup answers `null` for every request, which
+    // is the bare-command case: a new conversation, not a resumed one.
+    const { deps } = createFakeDeps({ records });
+    await restoreSession(deps, "main");
+    expect(tailStore.noteResumedPane).not.toHaveBeenCalled();
+  });
+
+  it("marks nothing for a tab whose materialize failed", async () => {
+    tailStore.noteResumedPane.mockClear();
+    const records = new Map<string, WindowRecord>([
+      ["main", record({ tabs: [tab({ workspacePath: "/w" })] })],
+    ]);
+    const lookup = vi.fn(
+      async (
+        _requests: readonly ResumeRequest[],
+      ): Promise<readonly ResumeRef[]> => [{ kind: "id", id: "aaa" }],
+    );
+    const { deps } = createFakeDeps({
+      records,
+      lookup,
+      materializeResults: [false],
+    });
+    await restoreSession(deps, "main");
+    expect(tailStore.noteResumedPane).not.toHaveBeenCalled();
   });
 
   it("point 6: opens surviving file tabs (filtered by statFiles) and activates the survived active path last", async () => {

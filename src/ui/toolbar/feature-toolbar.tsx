@@ -1,4 +1,4 @@
-import { Ellipsis } from "lucide-preact";
+import { DotsThree } from "@phosphor-icons/react";
 import { Fragment, type ComponentChildren, type RefObject } from "preact";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import {
@@ -68,12 +68,15 @@ function ToolbarControl({ item, controlRef }: ToolbarControlProps) {
 
   return (
     <span class="ftoolbar__slot">
+      {/* DL-21.8: `active` reaches ARIA and the tooltip, never the paint —
+          whatever a toolbar control opens is visible on the stage the moment
+          it opens, so a wash here would say it a second time. */}
       <button
         ref={ref}
         type="button"
         class={`iconbtn ${item.controlClass ?? ""} ${
-          active ? "is-active" : ""
-        } ${reason !== null ? "is-unavailable" : ""}`}
+          reason !== null ? "is-unavailable" : ""
+        }`}
         aria-label={item.label}
         aria-disabled={reason !== null}
         aria-describedby={showTooltip ? tooltipId : undefined}
@@ -206,7 +209,7 @@ export function FeatureToolbar({
   const moreItem: ToolbarItem = {
     id: "toolbar-more",
     label: "More actions",
-    icon: Ellipsis,
+    icon: DotsThree,
     group: "global",
     shortcut: null,
     state: menu !== null ? { kind: "active" } : { kind: "idle" },

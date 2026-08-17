@@ -15,9 +15,9 @@ describe("the enumerated language set", () => {
     // the two drifting apart is silent otherwise.
     const source = readFileSync("src/files/editor-host.ts", "utf8");
     const imported = new Set(
-      [...source.matchAll(/languages\/definitions\/([\w-]+)\/register\.js/g)].map(
-        (match) => match[1],
-      ),
+      [
+        ...source.matchAll(/languages\/definitions\/([\w-]+)\/register\.js/g),
+      ].map((match) => match[1]),
     );
     const declared = new Set(EDITOR_LANGUAGES.map((language) => language.id));
     // `.json` rides the JavaScript tokenizer, so every declared id must be
@@ -35,11 +35,15 @@ describe("the enumerated language set", () => {
     );
     // The TypeScript language service alone is 12 MB of the package.
     expect(
-      specifiers.filter((specifier) => specifier.includes("languages/features/")),
+      specifiers.filter((specifier) =>
+        specifier.includes("languages/features/"),
+      ),
     ).toEqual([]);
     // The catch-all contribution registers 80+ languages in one import.
     expect(
-      specifiers.filter((specifier) => specifier.includes("monaco.contribution")),
+      specifiers.filter((specifier) =>
+        specifier.includes("monaco.contribution"),
+      ),
     ).toEqual([]);
   });
 
@@ -47,7 +51,9 @@ describe("the enumerated language set", () => {
     // Anything Monaco-shaped at module scope lands in the entry chunk, and
     // startup is unchanged only for a user who never opens a file (spec §9).
     const source = readFileSync("src/files/editor-host.ts", "utf8");
-    const staticImports = [...source.matchAll(/^import\s[^(]*from\s+"([^"]+)"/gm)]
+    const staticImports = [
+      ...source.matchAll(/^import\s[^(]*from\s+"([^"]+)"/gm),
+    ]
       .map((match) => match[1])
       .filter((specifier) => specifier.startsWith("monaco-editor"));
     expect(staticImports).toEqual([]);

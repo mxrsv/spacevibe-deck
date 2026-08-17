@@ -9,7 +9,7 @@
  * Window-scoped module state, per R5. Nothing here is per-tab or per-pane: the
  * themes folder is one folder for the whole app.
  */
-import { signal } from "@preact/signals";
+import { batch, signal } from "@preact/signals";
 import {
   importThemeFiles,
   listThemeFiles,
@@ -18,6 +18,13 @@ import {
 } from "../host/theme-host";
 import { parseThemeFile } from "./theme-formats/parse-theme-file";
 import { customPresets, type ThemePreset } from "./themes";
+import {
+  LOAD_IDLE,
+  LOAD_LOADING,
+  LOAD_READY,
+  loadError,
+  type LoadState,
+} from "../lib/load-state";
 
 export interface ThemeImportFailure {
   readonly fileName: string;
@@ -37,14 +44,15 @@ export const themeImportFailures = signal<readonly ThemeImportFailure[]>([]);
 
 /** True while a scan or an import round trip is in flight. */
 export const themesLoading = signal(false);
+export const themeLoadState = signal<LoadState>(LOAD_IDLE);
+let collectionGeneration = 0;
 
 /**
  * Read the folder and publish what is in it.
  *
- * Never rejects. The host call fails on the Tauri build (no such channel) and
- * in a browser-only `npm run dev` preview (no bridge at all), and in both cases
- * the honest answer is "no imported themes" — not an error banner over a
- * gallery whose four built-ins work fine.
+ * Never rejects. A failed host read keeps the last successful snapshot and
+ * publishes an explicit retry state; it never turns transport failure into a
+ * believable claim that the themes folder is empty.
  */
 export async function loadCustomThemes(): Promise<void> {
   await collect(listThemeFiles);
@@ -52,6 +60,9 @@ export async function loadCustomThemes(): Promise<void> {
 
 /** Open the picker, copy the chosen files in, then republish the folder. */
 export async function importCustomThemes(): Promise<void> {
+  if (themeLoadState.value.status === "error") {
+    return;
+  }
   await collect(importThemeFiles);
 }
 
@@ -67,7 +78,10 @@ export async function openThemesFolder(): Promise<void> {
 }
 
 async function collect(read: () => Promise<ThemeScan>): Promise<void> {
+  collectionGeneration += 1;
+  const forGeneration = collectionGeneration;
   themesLoading.value = true;
+  themeLoadState.value = LOAD_LOADING;
   try {
     const { entries, rejected } = await read();
     const presets: ThemePreset[] = [];
@@ -90,16 +104,24 @@ async function collect(read: () => Promise<ThemeScan>): Promise<void> {
         });
       }
     }
-    customPresets.value = presets;
-    themeImportFailures.value = failures;
+    if (forGeneration !== collectionGeneration) {
+      return;
+    }
+    batch(() => {
+      customPresets.value = presets;
+      themeImportFailures.value = failures;
+      themeLoadState.value = LOAD_READY;
+    });
   } catch {
-    // See `loadCustomThemes` — an unreachable folder means no imported themes,
-    // and the built-ins are unaffected. Leaving the previous list in place
-    // would be worse: it would claim files exist that the host just failed to
-    // confirm.
-    customPresets.value = [];
-    themeImportFailures.value = [];
+    // Keep the last successful folder snapshot. Replacing it with [] would
+    // turn a transport failure into a believable claim that every file was
+    // deleted.
+    if (forGeneration === collectionGeneration) {
+      themeLoadState.value = loadError("Couldn't read the themes folder.");
+    }
   } finally {
-    themesLoading.value = false;
+    if (forGeneration === collectionGeneration) {
+      themesLoading.value = false;
+    }
   }
 }

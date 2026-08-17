@@ -11,6 +11,7 @@ vi.mock("../../host/store-host", () => ({
       get: vi.fn(async () => undefined),
       set: vi.fn(async () => {}),
       save: vi.fn(async () => {}),
+      loadState: { state: "ready", fresh: false },
     })),
   },
 }));
@@ -32,6 +33,7 @@ vi.mock("../../chrome/events", async (importOriginal) => {
 import { SettingsScreen } from "./settings-screen";
 import { activeCategory } from "./active-category-store";
 import { SETTINGS_CATEGORIES } from "./settings-categories";
+import { settingsLoadState } from "../../settings/settings-store";
 
 describe("SettingsScreen — Escape / focus (M2)", () => {
   let host: HTMLDivElement;
@@ -41,6 +43,7 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
     host = document.createElement("div");
     document.body.appendChild(host);
     activeCategory.value = "appearance";
+    settingsLoadState.value = { status: "ready" };
   });
 
   // Unmount so the screen's window keydown listener is removed between tests —
@@ -103,6 +106,19 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
     });
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it("keeps a settings load failure visible with a retry action", () => {
+    settingsLoadState.value = {
+      status: "error",
+      message:
+        "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
+    };
+    mount(true);
+
+    const alert = host.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain("Couldn't load settings.");
+    expect(alert?.querySelector("button")?.textContent).toMatch(/retry/i);
+  });
 });
 
 /**
@@ -130,6 +146,7 @@ const EXPECTED_ROWS = [
   "Selection",
   "Font",
   "Font size",
+  "Terminal renderer",
   "App logo",
   "Tab bar position",
   "Show pane bar",
@@ -189,7 +206,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 28 rows by walking the rail", () => {
+  it("reaches all 29 rows by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });

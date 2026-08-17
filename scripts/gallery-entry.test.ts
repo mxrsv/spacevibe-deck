@@ -91,6 +91,25 @@ describe("the gallery entry stays out of the app bundle", () => {
     expect(scripts["prototype:gallery"]).not.toContain("1420");
   });
 
+  it("returns the Electron store load-state contract from the gallery host", () => {
+    const host = readFileSync(
+      join(SOURCE_ROOT, "gallery/host-stub.ts"),
+      "utf8",
+    );
+    const handler = host.match(
+      /store_load:\s*\(args\)\s*=>\s*\{[\s\S]*?\n\s*\},/,
+    );
+
+    expect(handler?.[0]).toContain('return { state: "ready", fresh: false };');
+  });
+
+  it("seeds Settings as ready without reading the user's real store", () => {
+    const entry = readFileSync(join(SOURCE_ROOT, "gallery/main.tsx"), "utf8");
+
+    expect(entry).toContain("settingsLoadState.value = LOAD_READY");
+    expect(entry).not.toContain("initSettings(");
+  });
+
   it("includes all three worktree-item directions in one review specimen", () => {
     const fixtures = readFileSync(
       join(SOURCE_ROOT, "gallery/chrome-fixtures.tsx"),
@@ -117,7 +136,10 @@ describe("the gallery entry stays out of the app bundle", () => {
       join(SOURCE_ROOT, "gallery/chatgpt-direction.css"),
       "utf8",
     );
-    const styles = readFileSync(join(SOURCE_ROOT, "styles.css"), "utf8");
+    const styles = readFileSync(
+      join(SOURCE_ROOT, "styles/02-shell.css"),
+      "utf8",
+    );
 
     expect(direction).toContain(
       "--sidebar-banner-fade-color: var(--gx-chat-app-under);",
@@ -167,6 +189,41 @@ describe("the gallery entry stays out of the app bundle", () => {
     expect(chrome).toContain("Woven Flag");
     expect(chrome).not.toContain("Graphic Pattern");
     expect(chrome).not.toContain("Ambient Light");
+  });
+
+  it("mounts the shipping AgentRail in every current shell specimen", () => {
+    const currentShells = [
+      "gallery/sections/chrome-section.tsx",
+      "gallery/sections/matrix-section.tsx",
+      "gallery/sections/board-section.tsx",
+    ];
+
+    for (const path of currentShells) {
+      const source = readFileSync(join(SOURCE_ROOT, path), "utf8");
+      expect(source, path).toContain("agentRailNavigationSpecimen");
+      expect(source, path).not.toContain("repositorySidebarSpecimen");
+      expect(source, path).not.toContain("worktreeAgentPresenceSpecimen");
+    }
+
+    const gallery = readFileSync(
+      join(SOURCE_ROOT, "gallery/gallery.tsx"),
+      "utf8",
+    );
+    expect(gallery).toContain("Deck Electron");
+    expect(gallery).not.toContain("ChatGPT Desktop");
+
+    const chrome = readFileSync(
+      join(SOURCE_ROOT, "gallery/sections/chrome-section.tsx"),
+      "utf8",
+    );
+    expect(chrome).toContain("Current Electron target shell");
+    expect(chrome).not.toContain("Shipping Electron shell");
+
+    const fixtures = readFileSync(
+      join(SOURCE_ROOT, "gallery/chrome-fixtures.tsx"),
+      "utf8",
+    );
+    expect(fixtures).toContain("promptsDisabled ?");
   });
 
   /**

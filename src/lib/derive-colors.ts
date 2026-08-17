@@ -30,6 +30,17 @@ export interface ChromeColors {
    */
   readonly stateHoverBg: string;
   readonly inputBg: string;
+  /**
+   * Lines INSIDE a surface — config rows, the board, input borders.
+   *
+   * Alpha over the `tone` since 2026-08-17, not over `fg`: these were the last
+   * chrome tokens still mixing from the foreground, which is what let a
+   * blue-violet theme draw blue-violet rules across chrome DL-2.3 already
+   * declared colourless. That rule's ledger row carved them out only because
+   * the surfaces carrying them had not been reviewed yet; neutralizing the
+   * built-in foregrounds the same day closed the carve-out, since a hairline
+   * left on `fg` would have been the one blue thing remaining.
+   */
   readonly hair: string;
   readonly hairStrong: string;
   /**
@@ -38,15 +49,14 @@ export interface ChromeColors {
    * the shipping bundle, so treat that path as a footnote: if the gallery is
    * retired, drop the pointer, not the rule. DL-2.3 is the durable record.
    *
-   * `hair` mixes from the FOREGROUND, which put every structural line 15–24
-   * luminance units above the surface it edged while the step from `bg` to
-   * `chrome1` was only 8–9 — the line out-shouted the step it marked and read
-   * as ink drawn across the chrome. These three mix from `tone` instead, so a
-   * seam belongs to the background ladder rather than to the terminal's text
-   * hue, and `seamRecessed` lands BELOW the surface it edges.
+   * `hair` used to mix from the FOREGROUND, which put every structural line
+   * 15–24 luminance units above the surface it edged while the step from `bg`
+   * to `chrome1` was only 8–9 — the line out-shouted the step it marked and
+   * read as ink drawn across the chrome. These three mix from `tone` instead,
+   * so a seam belongs to the background ladder rather than to the terminal's
+   * text hue, and `seamRecessed` lands BELOW the surface it edges.
    *
-   * `hair`/`hairStrong` stay as they are: the surfaces still on them (config
-   * rows, the board, inputs) were not part of what was reviewed.
+   * `hair`/`hairStrong` joined them on 2026-08-17 — see their own note above.
    */
   readonly seamRecessed: string;
   readonly seamDivider: string;
@@ -74,6 +84,29 @@ const RAISE_STEP = 0.02;
 export const TEXT_PRIMARY_FLOOR = 8;
 export const TEXT_MUTED_FLOOR = 6;
 export const TEXT_FAINT_FLOOR = 4.5;
+/** Imported terminal text is normal-size content, so WCAG AA starts at 4.5. */
+export const TERMINAL_TEXT_FLOOR = 4.5;
+/** A cursor is a non-text visual indicator and must clear the 3:1 floor. */
+export const TERMINAL_CURSOR_FLOOR = 3;
+
+type ChromeTextToken = "textPrimary" | "textMuted" | "textFaint";
+type ChromeTextSurface =
+  "inputBg" | "sidebarBg" | "chrome1" | "chrome2" | "tabActiveBg";
+
+export interface ChromeContrastFailure {
+  readonly token: ChromeTextToken;
+  readonly surface: ChromeTextSurface;
+  readonly actual: number;
+  readonly required: number;
+}
+
+export type ChromeContrastCheck =
+  | { readonly ok: true }
+  | {
+      readonly ok: false;
+      readonly reason: string;
+      readonly failures: readonly ChromeContrastFailure[];
+    };
 
 function hexToRgb(hex: string): Rgb {
   const value = Number.parseInt(hex.slice(1), 16);
@@ -173,7 +206,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   // The three text tones are one ladder, built DOWNWARD from `textPrimary` by
   // mixing back toward the background. Deriving each independently from `bg`
   // and raising it to its own floor can inverse the ladder: on a theme whose
-  // foreground is itself dim (One Dark, fg #abb2bf), the muted step gets
+  // foreground is itself dim (One Dark, fg #b2b2b2), the muted step gets
   // raised past a primary that never needed raising, and the quiet tone ends
   // up louder than the loud one. Mixing toward `bg` can only ever lower
   // contrast, so ordering holds by construction; the `ensureContrast` pass
@@ -193,8 +226,8 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     tabActiveBg,
     stateHoverBg,
     inputBg,
-    hair: alpha(fg, 0.12),
-    hairStrong: alpha(fg, 0.2),
+    hair: alpha(tone, 0.12),
+    hairStrong: alpha(tone, 0.2),
     // Opaque, so a boundary paints one colour instead of two: an alpha border
     // composites over whichever surface owns it, and the two sides of a shell
     // seam are different surfaces by definition.
@@ -202,7 +235,13 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     seamRaised: mixHex(bg, tone, 0.14),
     // Alpha, because this one runs INSIDE a single surface and has to adapt to
     // whichever one that is — the stage on one pane, `chrome1` on another.
-    seamDivider: alpha(tone, 0.03),
+    //
+    // 12%, raised from 3% on 2026-08-17 at the owner's request: unlike a shell
+    // seam, this line has no background STEP beside it to help — both sides of
+    // a pane split are the same surface — so the line is the only thing marking
+    // the boundary and 3% left a terminal grid reading as one undivided sheet.
+    // 12% is the same weight `hair` carries, one ladder step below `hairStrong`.
+    seamDivider: alpha(tone, 0.12),
     textPrimary,
     textMuted: ensureContrast(
       mixHex(textPrimary, bg, 0.28),
@@ -219,5 +258,59 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
       TEXT_FAINT_FLOOR,
       tone,
     ),
+  };
+}
+
+/**
+ * Report when the best colours Deck can derive still miss DL-3.5.
+ *
+ * `ensureContrast` deliberately returns the best available tone when a floor
+ * is impossible. Built-in themes and live overrides keep that graceful
+ * fallback, while imported files call this boundary check and are rejected
+ * before an unreadable theme can become selectable.
+ */
+export function checkChromeTextContrast(
+  bg: string,
+  fg: string,
+): ChromeContrastCheck {
+  const chrome = deriveChromeColors(bg, fg);
+  const surfaces: Readonly<Record<ChromeTextSurface, string>> = {
+    inputBg: chrome.inputBg,
+    sidebarBg: chrome.sidebarBg,
+    chrome1: chrome.chrome1,
+    chrome2: chrome.chrome2,
+    tabActiveBg: chrome.tabActiveBg,
+  };
+  const checks: readonly [ChromeTextToken, number, ChromeTextSurface[]][] = [
+    [
+      "textPrimary",
+      TEXT_PRIMARY_FLOOR,
+      Object.keys(surfaces) as ChromeTextSurface[],
+    ],
+    [
+      "textMuted",
+      TEXT_MUTED_FLOOR,
+      ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"],
+    ],
+    [
+      "textFaint",
+      TEXT_FAINT_FLOOR,
+      ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"],
+    ],
+  ];
+  const failures = checks.flatMap(([token, required, names]) =>
+    names.flatMap((surface) => {
+      const actual = contrastRatio(chrome[token], surfaces[surface]);
+      return actual < required ? [{ token, surface, actual, required }] : [];
+    }),
+  );
+  if (failures.length === 0) {
+    return { ok: true };
+  }
+  const first = failures[0];
+  return {
+    ok: false,
+    reason: `Deck chrome cannot meet DL-3.5 (${first.token} on ${first.surface}: ${first.actual.toFixed(2)}:1, needs ${first.required}:1)`,
+    failures,
   };
 }

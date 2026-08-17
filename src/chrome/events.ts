@@ -1,4 +1,4 @@
-import { computed, signal } from "@preact/signals";
+import { signal } from "@preact/signals";
 
 /**
  * App-chrome UI intents: keymap / menu / Open board raise them, App renders.
@@ -46,59 +46,6 @@ export const settingsOpen = signal(false);
  * then hidden.
  */
 export const promptsOpen = signal(false);
-
-/**
- * Chrome surfaces that can each hold a tab rename/colour popover.
- *
- * `"sidebar"` is `WorkspaceSidebar`, still in the tree behind `RepositoryRail`
- * as its one-line revert (see app.tsx's import comment).
- */
-export type TabPopoverOwner = "rail" | "strip" | "sidebar";
-
-/**
- * The ONE surface whose tab popover is up, or `null`.
- *
- * A single slot, not a set: sidebar layout mounts the rail and the stage strip
- * together, and two options popovers floating over the same window at once is
- * not a state this app has any use for. Claiming the slot is therefore also
- * how a surface tells the others to close (`useTabPopoverSlot`).
- */
-const popoverOwner = signal<TabPopoverOwner | null>(null);
-
-/** Claim the slot. Any other surface holding it must close its own popover. */
-export function openTabPopover(owner: TabPopoverOwner): void {
-  popoverOwner.value = owner;
-}
-
-/**
- * Release the slot — **only if you still hold it.**
- *
- * The guard is the whole point and is not defensive padding. Every surface
- * used to write `flag = mine !== null` unconditionally, which is correct only
- * while exactly one of them is mounted; once two were, the one that closed
- * last spoke for both, and dismissing either popover said "nothing is open"
- * while the other still was. That un-hid the browser panel's native view over
- * a live popover — a native view wins over every DOM layer, no z-index
- * involved. An owner may only retract its own claim.
- */
-export function closeTabPopover(owner: TabPopoverOwner): void {
-  if (popoverOwner.value === owner) {
-    popoverOwner.value = null;
-  }
-}
-
-/** Who holds the slot — read by each surface to know when to stand down. */
-export const tabPopoverOwner = computed(() => popoverOwner.value);
-
-/**
- * Whether a tab's rename/colour popover is up at all.
- *
- * It exists for one consumer: the browser panel's native view paints above
- * every DOM layer, so a popover that overlaps the panel's column is invisible
- * unless the host is told to hide the view. Which tab it belongs to stays
- * component-local; this is the one bit anything outside has a reason to read.
- */
-export const tabPopoverOpen = computed(() => popoverOwner.value !== null);
 
 /**
  * True while a Shortcuts row is listening for a replacement chord.

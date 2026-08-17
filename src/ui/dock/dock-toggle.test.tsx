@@ -37,14 +37,18 @@ describe("DockToggle", () => {
 
   // The one control says both things: open, it is the way to hide the panel,
   // and it reads pressed so the state is not carried by the label alone.
-  it("offers to hide an open panel, and reads pressed", () => {
+  //
+  // DL-21.8: pressed is said in ARIA and NOWHERE in the paint — an open panel
+  // occupies a column of the window, which is the readout. The class assertion
+  // is inverted on purpose, guarding against the wash coming back.
+  it("offers to hide an open panel, and reads pressed without painting it", () => {
     act(() => render(<DockToggle open onToggle={vi.fn()} />, host));
 
     const button = control();
     expect(button.getAttribute("aria-label")).toBe("Hide the side panel");
     expect(button.getAttribute("title")).toBe("Hide the side panel");
     expect(button.getAttribute("aria-pressed")).toBe("true");
-    expect(button.classList.contains("is-active")).toBe(true);
+    expect(button.classList.contains("is-active")).toBe(false);
   });
 
   it("reports a click and keeps no state of its own", () => {

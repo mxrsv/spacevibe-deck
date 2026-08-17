@@ -50,51 +50,51 @@ describe("listSessions", () => {
 
   afterEach(() => rmSync(home, { recursive: true, force: true }));
 
-  it("sorts newest first across agents", () => {
+  it("sorts newest first across agents", async () => {
     claudeSession(home, "older", "/a", "first", T0);
     claudeSession(home, "newer", "/b", "second", T0 + 60_000);
-    const snapshot = listSessions(home);
+    const snapshot = await listSessions(home);
     expect(snapshot.entries.map((e) => e.sessionId)).toEqual([
       "newer",
       "older",
     ]);
   });
 
-  it("drops a session whose transcript names no cwd", () => {
+  it("drops a session whose transcript names no cwd", async () => {
     claudeSession(home, "nocwd", null, "orphan", T0);
-    expect(listSessions(home).entries).toHaveLength(0);
+    expect((await listSessions(home)).entries).toHaveLength(0);
   });
 
-  it("carries the title and the agent id", () => {
+  it("carries the title and the agent id", async () => {
     claudeSession(home, "sid", "/work", "make it green", T0);
-    const [entry] = listSessions(home).entries;
+    const [entry] = (await listSessions(home)).entries;
     expect(entry.agent).toBe("claude");
     expect(entry.title).toBe("make it green");
     expect(entry.cwd).toBe("/work");
   });
 
-  it("caps entries per agent and reports the pre-cap total", () => {
+  it("caps entries per agent and reports the pre-cap total", async () => {
     for (let i = 0; i < 4; i += 1) {
       claudeSession(home, `s${i}`, "/work", `t${i}`, T0 + i * 1000);
     }
-    const snapshot = listSessions(home, 2);
+    const snapshot = await listSessions(home, 2);
     expect(snapshot.entries).toHaveLength(2);
     expect(snapshot.totals.claude).toBe(4);
     expect(snapshot.limit).toBe(2);
   });
 
-  it("re-reads a file whose mtime changed", () => {
+  it("re-reads a file whose mtime changed", async () => {
     claudeSession(home, "sid", "/work", "first title", T0);
-    expect(listSessions(home).entries[0].title).toBe("first title");
+    expect((await listSessions(home)).entries[0].title).toBe("first title");
     claudeSession(home, "sid", "/work", "second title", T0 + 60_000);
-    expect(listSessions(home).entries[0].title).toBe("second title");
+    expect((await listSessions(home)).entries[0].title).toBe("second title");
   });
 
   // The assertion that makes the cache real. A cache applied AFTER the scan
   // would pass the mtime test above and still read every head twice — this
   // one counts the reads, so it can only pass if the key is checked BEFORE
   // the file is opened (spec §1.4 step 3).
-  it("opens no file on a second scan when nothing changed", () => {
+  it("opens no file on a second scan when nothing changed", async () => {
     claudeSession(home, "a", "/work", "one", T0);
     claudeSession(home, "b", "/work", "two", T0 + 1000);
     let reads = 0;
@@ -108,14 +108,14 @@ describe("listSessions", () => {
       },
       codex: () => null,
     };
-    listSessions(home, 500, readers);
+    await listSessions(home, 500, readers);
     expect(reads).toBe(2);
-    listSessions(home, 500, readers);
+    await listSessions(home, 500, readers);
     expect(reads).toBe(2);
   });
 
-  it("answers an empty snapshot when no state directory exists", () => {
-    const snapshot = listSessions(path.join(home, "nowhere"));
+  it("answers an empty snapshot when no state directory exists", async () => {
+    const snapshot = await listSessions(path.join(home, "nowhere"));
     expect(snapshot.entries).toEqual([]);
     expect(snapshot.totals.claude).toBe(0);
     expect(snapshot.totals.codex).toBe(0);

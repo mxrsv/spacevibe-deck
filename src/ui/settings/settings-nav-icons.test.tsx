@@ -24,24 +24,28 @@ describe("settings-nav-icons", () => {
   });
 
   const icons: Array<{ name: string; icon: string; Icon: ComponentType }> = [
-    { name: "AppearanceIcon", icon: "lucide-app-window", Icon: AppearanceIcon },
+    {
+      name: "AppearanceIcon",
+      icon: "deck-icon--app-window",
+      Icon: AppearanceIcon,
+    },
     {
       name: "TerminalIcon",
-      icon: "lucide-square-terminal",
+      icon: "deck-icon--terminal-window",
       Icon: TerminalIcon,
     },
-    { name: "AgentsIcon", icon: "lucide-bot", Icon: AgentsIcon },
-    { name: "LinksEditorIcon", icon: "lucide-link", Icon: LinksEditorIcon },
-    { name: "ShortcutsIcon", icon: "lucide-command", Icon: ShortcutsIcon },
+    { name: "AgentsIcon", icon: "deck-icon--robot", Icon: AgentsIcon },
+    { name: "LinksEditorIcon", icon: "deck-icon--link", Icon: LinksEditorIcon },
+    { name: "ShortcutsIcon", icon: "deck-icon--command", Icon: ShortcutsIcon },
     {
       name: "NotificationsIcon",
-      icon: "lucide-bell",
+      icon: "deck-icon--bell",
       Icon: NotificationsIcon,
     },
-    { name: "BrowserIcon", icon: "lucide-globe", Icon: BrowserIcon },
+    { name: "BrowserIcon", icon: "deck-icon--globe", Icon: BrowserIcon },
     // An arrow landing on a baseline: this category is About/Update, and the
     // icon has always been the update rather than a generic info circle.
-    { name: "AboutIcon", icon: "lucide-download", Icon: AboutIcon },
+    { name: "AboutIcon", icon: "deck-icon--download-simple", Icon: AboutIcon },
   ];
 
   for (const { name, icon, Icon } of icons) {
@@ -54,8 +58,9 @@ describe("settings-nav-icons", () => {
       expect(svg?.getAttribute("aria-hidden")).toBe("true");
       expect(svg?.getAttribute("width")).toBe("16");
       expect(svg?.getAttribute("height")).toBe("16");
-      expect(svg?.getAttribute("stroke")).toBe("currentColor");
-      expect(svg?.getAttribute("stroke-width")).toBe("1.8");
+      // Phosphor is fill-based: colour reaches the icon through `fill`, and
+      // weight lives in the path data rather than in a stroke attribute.
+      expect(svg?.getAttribute("fill")).toBe("currentColor");
     });
   }
 

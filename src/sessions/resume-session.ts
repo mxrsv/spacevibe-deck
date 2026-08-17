@@ -11,6 +11,7 @@
  *   this feature — it is a caller of an existing seam, not a widening of it.
  */
 import { buildResumeCommand } from "../lib/agent-resume";
+import { noteResumedPane } from "../terminal/session-tail-store";
 import type { CustomAgent } from "../lib/agent-catalog";
 import { BUILT_IN_PRESET } from "../lib/preset-schema";
 import type { SessionEntry } from "../lib/session-history";
@@ -50,10 +51,18 @@ export async function resumeSession(
   ) {
     return false;
   }
-  return deps.materialize({
+  const opened = await deps.materialize({
     layout: BUILT_IN_PRESET.layout,
     cwds: [entry.cwd],
     paneCommands: [command],
     workspacePath: entry.cwd,
   });
+  // The rail's turn line, same reason as session restore (2026-08-17): this
+  // pane continues an existing conversation, so the session already on disk is
+  // its own and the tail store's never-ran rule must not hide it. Marked only
+  // once the tab exists — an intent that failed leaves no pane to claim it.
+  if (opened) {
+    noteResumedPane(entry.cwd, entry.agent);
+  }
+  return opened;
 }

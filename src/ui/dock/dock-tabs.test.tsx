@@ -101,7 +101,9 @@ describe("DockTabs", () => {
     );
 
     getTabs().forEach((tab) => {
-      expect(tab.querySelector("svg")).not.toBeNull();
+      const icon = tab.querySelector("svg.feature-glyph");
+      expect(icon).not.toBeNull();
+      expect(icon?.getAttribute("width")).toBe("15");
     });
   });
 });

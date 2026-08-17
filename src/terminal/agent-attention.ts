@@ -20,19 +20,11 @@ import type { AgentPhase, ActivityTransition } from "./agent-activity";
 
 /** A latched, actionable attention state for a pane. */
 export type AttentionKind =
-  | "none"
-  | "completed"
-  | "requested"
-  | "warning"
-  | "error";
+  "none" | "completed" | "requested" | "warning" | "error";
 
 /** What produced the current attention. */
 export type AttentionSource =
-  | "osc-progress"
-  | "osc-notification"
-  | "bell"
-  | "output-heuristic"
-  | "process";
+  "osc-progress" | "osc-notification" | "bell" | "output-heuristic" | "process";
 
 /** The public per-pane state the rest of the app reads. */
 export interface PaneAttentionSnapshot {
@@ -48,6 +40,13 @@ export interface PaneAttentionSnapshot {
   agentLabel: string | null;
   /** Per-pane unread, independent of the legacy tab-level unread. */
   unread: boolean;
+  /**
+   * The current agent has reached `working` at least once. What separates a
+   * pane that finished a run and was checked (the rail's `done`) from one
+   * that has never run anything (`idle`) — the fold itself lives in
+   * `agent-rail-model.ts`, not here.
+   */
+  hasRun: boolean;
   /** When the visible state last changed (tracker clock). */
   changedAt: number;
   /** Bumps on every meaningful change — the notifier's dedupe key. */
@@ -133,6 +132,8 @@ interface PaneState {
   readonly confidence: "explicit" | "inferred";
   readonly agentLabel: string | null;
   readonly unread: boolean;
+  /** The current agent has reached `working` at least once (see snapshot). */
+  readonly hasRun: boolean;
   readonly changedAt: number;
   readonly revision: number;
   /** Gate open — the last poll recognised an agent. */
@@ -173,6 +174,7 @@ function freshState(): PaneState {
     confidence: "explicit",
     agentLabel: null,
     unread: false,
+    hasRun: false,
     changedAt: 0,
     revision: 0,
     isAgent: false,
@@ -209,6 +211,7 @@ function toSnapshot(s: PaneState): PaneAttentionSnapshot {
     confidence: s.confidence,
     agentLabel: s.agentLabel,
     unread: s.unread,
+    hasRun: s.hasRun,
     changedAt: s.changedAt,
     revision: s.revision,
   };
@@ -311,7 +314,7 @@ export function createAgentAttentionTracker(
     transition: ActivityTransition,
   ): PaneState {
     if (transition.phase === "working") {
-      let next: PaneState = { ...prev, phase: "working" };
+      let next: PaneState = { ...prev, phase: "working", hasRun: true };
       // A fresh work cycle self-clears a stale completed; a latched
       // requested/warning/error stays.
       if (next.attention === "completed") {
@@ -406,12 +409,15 @@ export function createAgentAttentionTracker(
         } else {
           // pre-poll/shell → agent: open the gate. Opening does not replay any
           // pre-gate activity/signal, so phase/attention are left as-is.
+          // `hasRun` resets with the gate: a fresh agent has run nothing yet,
+          // whatever the previous occupant of this pane did.
           candidate = {
             ...prev,
             agentLabel: process,
             isAgent: true,
             hasProcess: true,
             lastProcess: process,
+            hasRun: false,
             gateOpenedAt: now(),
           };
         }

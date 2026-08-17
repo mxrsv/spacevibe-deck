@@ -1,8 +1,9 @@
-import { Minus, Plus, Repeat2 } from "lucide-preact";
+import { Minus, Plus, Repeat } from "@phosphor-icons/react";
 import {
   clampFontSize,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
+  TERMINAL_RENDERERS,
   type TabBarPosition,
 } from "../../../settings/settings-schema";
 import { settings, updateSettings } from "../../../settings/settings-store";
@@ -27,6 +28,12 @@ export function AppearanceSection() {
     const index = TAB_BAR_CHOICES.indexOf(current.tabBarPosition);
     const next = TAB_BAR_CHOICES[(index + 1) % TAB_BAR_CHOICES.length];
     updateSettings({ tabBarPosition: next });
+  };
+
+  const cycleRenderer = (): void => {
+    const index = TERMINAL_RENDERERS.indexOf(current.terminalRenderer);
+    const next = TERMINAL_RENDERERS[(index + 1) % TERMINAL_RENDERERS.length];
+    updateSettings({ terminalRenderer: next });
   };
 
   return (
@@ -66,6 +73,27 @@ export function AppearanceSection() {
           </button>
         </span>
       </ConfigRow>
+      {/* Sits with the type rows because that is what it changes: the renderer
+          is the thing that puts glyphs on screen, so it belongs beside font
+          and size rather than under a Terminal category the user would reach
+          only after the text already looked wrong. */}
+      <ConfigRow
+        label="Terminal renderer"
+        desc="webgl joins block glyphs in TUIs; text antialiasing differs"
+      >
+        <button
+          type="button"
+          class="cfg-btn"
+          title="Next renderer"
+          aria-label={`Terminal renderer: ${current.terminalRenderer}. Switch to next renderer`}
+          onClick={cycleRenderer}
+        >
+          {current.terminalRenderer}
+          <span class="cfg-btn__hint">
+            <DeckIcon icon={Repeat} size={ROW_ICON} />
+          </span>
+        </button>
+      </ConfigRow>
       <LogoRow />
       <ConfigRow label="Tab bar position" desc="Where the tab list sits">
         <button
@@ -77,7 +105,7 @@ export function AppearanceSection() {
         >
           {current.tabBarPosition}
           <span class="cfg-btn__hint">
-            <DeckIcon icon={Repeat2} size={ROW_ICON} />
+            <DeckIcon icon={Repeat} size={ROW_ICON} />
           </span>
         </button>
       </ConfigRow>

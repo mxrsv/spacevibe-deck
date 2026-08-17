@@ -52,6 +52,7 @@ import {
   initializeDesktopEnvironment,
   resetDesktopEnvironmentForTests,
 } from "../lib/platform";
+import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
 
 const NOW = 1_800_000_000_000;
 
@@ -63,10 +64,27 @@ function seed(paths: readonly string[]): void {
   workspacesData.value = { version: WORKSPACES_VERSION, recents };
 }
 
+/**
+ * Drain the open path's awaits before asserting.
+ *
+ * One click opens, and `openWorkspace` awaits the agent probe AND the
+ * `dirs_exist` liveness pass before it reaches `onOpen`. A bare `act` returns
+ * while those are still in flight, so an assertion could read the board
+ * mid-click.
+ */
+const settle = async (): Promise<void> => {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+};
+
 describe("OpenBoard create-worktree flow", () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
+    // The probe is cached in a module store now, so a list one test detected
+    // would otherwise answer for the next one.
+    resetAgentDetectionForTests();
     resetDesktopEnvironmentForTests();
     initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/dev" });
     document.body.innerHTML = "";
@@ -243,6 +261,8 @@ describe("OpenBoard create-worktree flow", () => {
     await act(async () => {
       submit?.click();
     });
+
+    await settle();
 
     // A freshly created worktree has no remembered combo, so it opens with
     // the default preset and whatever the probe found (nothing → Shell).

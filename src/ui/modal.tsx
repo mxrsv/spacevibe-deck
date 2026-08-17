@@ -44,6 +44,51 @@ export interface ModalProps {
   children: ComponentChildren;
 }
 
+/**
+ * Everything inside the panel a Tab can land on, in document order.
+ *
+ * The panel itself is excluded: it carries `tabIndex={0}` so a modal driven by
+ * bare keys has somewhere to put focus, but it is a container, not a stop the
+ * cycle should keep returning to.
+ */
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Keep Tab inside the panel (DL-29, and what `aria-modal="true"` promises).
+ *
+ * Without this the first Shift+Tab walks out of the dialog into the stage
+ * strip and lands in xterm's textarea — the modal stays on screen while every
+ * keystroke goes to the agent running behind it, and Escape reaches the pty
+ * instead of the dialog.
+ */
+function trapTab(event: KeyboardEvent, panel: HTMLElement | null): void {
+  if (panel === null) {
+    return;
+  }
+  const stops = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
+  if (stops.length === 0) {
+    // Nothing to cycle through: hold focus on the panel rather than let Tab
+    // escape into the app behind the scrim.
+    event.preventDefault();
+    panel.focus();
+    return;
+  }
+  const first = stops[0];
+  const last = stops[stops.length - 1];
+  const active = document.activeElement;
+  const inside = active instanceof Node && panel.contains(active);
+  if (event.shiftKey && (!inside || active === first || active === panel)) {
+    event.preventDefault();
+    last.focus();
+    return;
+  }
+  if (!event.shiftKey && (!inside || active === last)) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 export function Modal({
   panelClass,
   label,
@@ -64,17 +109,43 @@ export function Modal({
    * that gesture from closing the modal the user was working in.
    */
   const pressedOnScrim = useRef(false);
+  /**
+   * Whether the pointer was RELEASED on the scrim too.
+   *
+   * The press alone is not enough in the other direction: a sweep that starts
+   * on the scrim and ends inside the panel also fires `click` on the scrim,
+   * so reading the press by itself threw away a half-typed preset name.
+   * Dismissal needs both ends of the gesture outside the panel.
+   */
+  const releasedOnScrim = useRef(false);
+  /** What had focus when this modal opened, so closing can give it back. */
+  const focusOnOpen = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const panel = panelRef.current;
     if (panel === null) {
       return;
     }
+    const previous = document.activeElement;
+    focusOnOpen.current = previous instanceof HTMLElement ? previous : null;
     const requested =
       initialFocus === undefined
         ? null
         : panel.querySelector<HTMLElement>(initialFocus);
     (requested ?? panel).focus();
+    return () => {
+      const target = focusOnOpen.current;
+      focusOnOpen.current = null;
+      // Only when this modal still owns focus, or focus has already fallen to
+      // nothing. A modal that opened a tab hands focus to the new pane, and
+      // restoring unconditionally would yank it straight back out.
+      const active = document.activeElement;
+      const ours =
+        active === null || active === document.body || panel.contains(active);
+      if (target !== null && target.isConnected && ours) {
+        target.focus();
+      }
+    };
     // Mount only: a modal's focus is claimed once, and re-running this on a
     // prop change would yank focus back out of whatever the user moved to.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -84,10 +155,17 @@ export function Modal({
     pressedOnScrim.current = event.target === event.currentTarget;
   }
 
+  function handleScrimPointerUp(event: PointerEvent): void {
+    releasedOnScrim.current = event.target === event.currentTarget;
+  }
+
   function handleScrimClick(event: MouseEvent): void {
     const onScrim =
-      pressedOnScrim.current && event.target === event.currentTarget;
+      pressedOnScrim.current &&
+      releasedOnScrim.current &&
+      event.target === event.currentTarget;
     pressedOnScrim.current = false;
+    releasedOnScrim.current = false;
     if (dismissOnScrim && onScrim) {
       onDismiss();
     }
@@ -103,6 +181,10 @@ export function Modal({
       event.stopPropagation();
       return;
     }
+    if (event.key === "Tab") {
+      trapTab(event, panelRef.current);
+      return;
+    }
     onKeyDown?.(event);
   }
 
@@ -110,6 +192,7 @@ export function Modal({
     <div
       class="modal-scrim"
       onPointerDown={handleScrimPointerDown}
+      onPointerUp={handleScrimPointerUp}
       onClick={handleScrimClick}
     >
       <div

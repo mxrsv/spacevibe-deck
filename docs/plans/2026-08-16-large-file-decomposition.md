@@ -1,7 +1,7 @@
 # Plan — decomposing the oversized modules
 
-Status: **proposed, nothing implemented.** Written 2026-08-16 from a read-only survey.
-Owner decision required on the forks in §7 before any code is written.
+Status: **executed 2026-08-16**, R4 seams deliberately excluded. See §9 for what actually
+happened and how it differed from this plan. Written the same day from a read-only survey.
 
 > Every line range below is a 2026-08-16 snapshot of a tree three other sessions were writing
 > to during the survey — `app.tsx` moved 1705 → 1708 mid-session. Re-verify offsets before
@@ -289,3 +289,114 @@ coordination, tab materialization, layout or close/quit coordination. That cover
 - `src/gallery/agent-status-rail.tsx` (603) still draws the pre-cluster rail shape, so the
   approved specimen no longer matches the shipped rail. Already recorded in AGENTS.md as owed;
   restated here because §5.4 touches the same component family.
+
+## 9. Execution log — 2026-08-16
+
+Run as twelve tasks across six agents on the shared checkout, on `main`, nothing committed —
+in parallel wherever two tasks touched no file in common. A thirteenth task (§5.4, agent-rail)
+was dispatched and withdrawn; see Deviations. Every move was a pure move: no renamed exports,
+no changed signatures, no behaviour change.
+
+### Result
+
+| File                                   | Before | After                                                         |
+| -------------------------------------- | ------ | ------------------------------------------------------------- |
+| `src/styles.css`                       | 6547   | 15-line `@import` index + 16 partials (101–512 each)          |
+| `src/terminal/tab-manager.test.ts`     | 4639   | deleted → 12 test files (232–669) + `tab-manager.fixtures.ts` |
+| `src/terminal/tab-manager.ts`          | 2286   | **1902** (rest is the R4 closure)                             |
+| `src/ui/app.tsx`                       | 1675   | **1407** (rest is `App`, incl. the R4 boot/quit effects)      |
+| `electron/main.ts`                     | 1032   | **551**                                                       |
+| `src/terminal/terminal-manager.ts`     | 920    | **764**                                                       |
+| `src/terminal/action-registry.ts`      | 906    | **526**                                                       |
+| `src/files/file-surface-controller.ts` | 680    | **601**                                                       |
+| `src/files/file-surface-store.ts`      | 538    | **490**                                                       |
+
+Files over the 800-line ceiling in `src/` + `electron/` (excluding `src/gallery/`): **6 → 2**.
+Both survivors are R4 seams left untouched on purpose. 34 new files; 93 paths touched.
+
+### Deviations from this plan
+
+- **§5.4 (agent-rail) was dropped, not done.** The file is 492 lines, not 711 — the popover,
+  logo-drop and favicon-scan features were removed in commit `7be6a04`, which landed _during_
+  this work. Four of the six proposed modules had no source left to move, and at 492 lines the
+  file is already under the ceiling. The agent stopped and reported instead of forcing it.
+- **The test split produced 12 files, not 9.** The repo's `file-guard.sh` hook enforces 800 as
+  a hard cap and fired on a 871-line write.
+- **`src/styles/04-agent-rail.css` needed a second cut.** At 978 lines the first slice was
+  still over the cap; split at the `the motion` banner into `04a` (512) and `04b` (466).
+- **§5.5 shipped without the re-export it proposed.** Re-exporting `file-status.ts` from
+  `file-surface-store.ts` created a real value-level import cycle to save one consumer edit;
+  the re-export was removed and `src/ui/status-bar.tsx` now imports directly.
+
+### Things a naive move would have broken
+
+- **`reactGrabSource()`'s vendor path.** Moving it into `electron/ipc/` puts `__dirname` one
+  level deeper than `scripts/build-electron-main.mjs` copies the react-grab bundle to. The read
+  would have failed into an empty string and left Inspect silently inert — no throw. Fixed with
+  a `".."`; verified against `ROOT = "dist-electron"` in the build script, and it is the only
+  `__dirname` use among the 12 new Electron modules.
+- **`electron/wire-contract.test.ts`** hard-codes `readFileSync("electron/main.ts")` and
+  string-scans for `OPENABLE_SCHEMES`, `assertStoreFile` and `homeDir` — all three moved out.
+  Left alone, those three checks would have passed against nothing. Retargeted.
+- **The two silent DL gates** (§5.1) were fixed as required: `readStylesheet()` derives the
+  partial list from the index's `@import` order, so it cannot drift. It needed zero changes
+  when `04` was later split into `04a`/`04b` — the derivation held.
+- **The test-mock harness could not be shared.** `beforeEach` reassigns `windowFocus`, and an
+  ES import is a read-only live binding, so both `vi.mock` blocks and the two mutable locals
+  are duplicated into each of the 12 files by necessity. Each carries a comment saying so, to
+  stop a future reader "deduplicating" them back.
+
+### Verification status
+
+Scoped `vitest` only, per the owner's standing instruction not to run full gates unasked.
+
+- Baseline before any edit: 235 files / 2848 tests pass, **1 pre-existing failure**
+  (`src/open-board/open-board.views.test.tsx:258`, missing `role="status"`) — untouched.
+- `src/terminal/`: 49 files / **671 pass**. Tab-manager tests: **186/186**, matching the
+  pre-split count exactly, with `describe`/`it` title sets diffed old-vs-new before deletion.
+- Per-unit scoped runs: 153, 27, 26, 65→69, 230, 20+41, 42 — all green.
+- `npm run generate:menu:check` clean; `git diff` on `src-tauri/src/menu_registry.rs` empty.
+- CSS split proven byte-identical by `cat`-in-import-order + `diff` (twice: the 15-way cut and
+  the `04a`/`04b` cut).
+
+**Not verified, and it matters:**
+
+1. **Nothing has compiled.** No `tsc`, no `npm run build`, no `npm run electron:build`. The 12
+   new Electron modules have never been imported by anything, and `terminal-manager.ts`'s
+   unused-import cleanup is grep-verified only.
+2. **Vite's `@import` inlining is assumed, not observed.** It is what keeps
+   `src/gallery/css-audit.ts`'s `data-vite-dev-id` lookup and `force-states.ts` working. No
+   build or `npm run dev` pass has confirmed it.
+3. **No native pass.** Nothing was run under Electron or Tauri.
+
+### Owed
+
+- `npm run build` + `npm run electron:build` + a `npm run dev` gallery check, in that order —
+  they close gaps 1 and 2 above.
+- A commit. Everything above is uncommitted working-tree state on `main`, shared with three
+  concurrent sessions, one of which already produced a checkpoint commit mid-run. The next
+  such commit will sweep all 93 paths in without review.
+
+### Done in the same task — documentation anchors (D8)
+
+`docs-anchors.sh` reported 15 broken anchors; **9 were caused by this refactor and were
+repaired here**, verified independently by re-running the script: 15 → 6, and the 6 survivors
+are exactly the pre-existing set (`repository-rail.tsx`, `DESIGN-LANGUAGE.md#18-…`,
+`tab-popover.tsx`, `explorer-panel.tsx` ×2, `tab-popover-slot.ts`) — none of them ours.
+
+- Six `action-registry.ts` line-range anchors → `default-keymaps.ts`, split by what each site's
+  prose actually names: `#L86-L358` where it says "platform keymaps", `#L289-L358` where it
+  names `WINDOWS_KEYMAP`. Spot-checked: `MACOS_KEYMAP` is at L86, `WINDOWS_KEYMAP` at L289, the
+  file is 358 lines.
+- Two `styles.css#--type-title` anchors → `src/styles/01-tokens.css#--type-title` (L67).
+- One `tab-manager.test.ts` anchor → `tab-manager.chord-actions.test.ts`, found by grepping the
+  `FR-032` marker the sentence cites: exactly two hits, matching the prose's "two".
+
+Where a link's LABEL was the filename itself, the label moved too — leaving a filename label
+pointing at a different file would be fresh drift, not a fix. Intent labels (D6) untouched.
+
+### One-way door
+
+Another session's DL-23.9 work landed _inside_ the new CSS partials during this run, so other
+work is already built on top of the split. A rollback-by-revert is no longer available; undoing
+any part of this means a forward change.

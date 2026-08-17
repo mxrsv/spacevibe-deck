@@ -13,11 +13,39 @@ import {
   webUtils,
   type IpcRendererEvent,
 } from "electron";
+import { EVENTS, INVOKABLE_CHANNELS } from "./ipc/channels";
+
+/** Events the main process actually emits — the other half of the door. */
+const LISTENABLE_EVENTS: ReadonlySet<string> = new Set<string>(
+  Object.values(EVENTS),
+);
 
 contextBridge.exposeInMainWorld("__deckHost", {
-  invoke: (channel: string, payload?: unknown) =>
-    ipcRenderer.invoke(channel, payload ?? {}),
+  /**
+   * Invoke a KNOWN channel. An unknown name is refused here rather than
+   * forwarded.
+   *
+   * This bridge used to pass any string through, which made it a single-line
+   * path from injected script to the whole host: `spawn_shell` followed by
+   * `write_pty` is arbitrary command execution, `store_get` reads every store,
+   * `read_file` reads the workspace. The window runs `sandbox: false`, so
+   * there was no process-level backstop behind it either. Nothing legitimate
+   * needs an open bridge — `src/host/*` only ever names channels from the
+   * table this set is built from.
+   */
+  invoke: (channel: string, payload?: unknown) => {
+    if (!INVOKABLE_CHANNELS.has(channel)) {
+      return Promise.reject(
+        new Error(`Deck: refused an unknown host channel "${channel}"`),
+      );
+    }
+    return ipcRenderer.invoke(channel, payload ?? {});
+  },
   listen: (event: string, handler: (payload: unknown) => void) => {
+    if (!LISTENABLE_EVENTS.has(event)) {
+      console.warn(`Deck: refused an unknown host event "${event}"`);
+      return () => {};
+    }
     const wrapped = (_event: IpcRendererEvent, payload: unknown) =>
       handler(payload);
     ipcRenderer.on(event, wrapped);

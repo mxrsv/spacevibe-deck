@@ -1,4 +1,4 @@
-import { PanelRight } from "lucide-preact";
+import { SidebarSimple } from "@phosphor-icons/react";
 import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
 
 interface DockToggleProps {
@@ -8,9 +8,11 @@ interface DockToggleProps {
 
 /**
  * The docked side panel's own hide control — the mirror of `SidebarToggle`
- * (`src/ui/sidebar-toggle.tsx`), same `iconbtn` class, same `is-active` /
- * `aria-pressed` shape, glyph flipped to `PanelRight` since this one hides a
- * column on the opposite edge. It lives on the stage, not on the panel
+ * (`src/ui/sidebar-toggle.tsx`), same `iconbtn` class, same `aria-pressed`-only
+ * shape (no painted state, DL-21.8), drawing the same `SidebarSimple` mirrored since this
+ * one hides a column on the opposite edge — Phosphor draws the mark facing
+ * left only, so the flip is a prop rather than a second icon
+ * (2026-08-16). It lives on the stage, not on the panel
  * itself, for the reason `SidebarToggle` lives there: a closed panel has no
  * room left to hold its own way back open, so the control has to sit
  * somewhere that survives the panel closing.
@@ -24,13 +26,13 @@ export function DockToggle({ open, onToggle }: DockToggleProps) {
   return (
     <button
       type="button"
-      class={`iconbtn ${open ? "is-active" : ""}`}
+      class="iconbtn"
       aria-label={label}
       aria-pressed={open}
       title={label}
       onClick={onToggle}
     >
-      <DeckIcon icon={PanelRight} size={CHROME_ICON} />
+      <DeckIcon icon={SidebarSimple} size={CHROME_ICON} mirrored />
     </button>
   );
 }

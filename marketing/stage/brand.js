@@ -6,9 +6,9 @@
  * Stackgrid → Deck rename stays one edit instead of a grep across three
  * renderers.
  *
- * `name` and `bundlePath` deliberately disagree: the product goes by Deck in
- * prose, but the shipped bundle carries the full `SpaceVibe Deck` (ADR 0028),
- * and the landing's proof terminal quotes a path a user can actually paste.
+ * The product goes by Deck in prose while the shipped bundle carries the full
+ * `SpaceVibe Deck`; only the prose name lives here, since nothing renders the
+ * installed path any more.
  */
 
 export const BRAND = Object.freeze({
@@ -16,8 +16,6 @@ export const BRAND = Object.freeze({
   name: "Deck",
   /** App mark. Resolved through the module URL so both Vite roots work. */
   iconSrc: new URL("./assets/deck-icon.svg", import.meta.url).href,
-  /** Installed bundle path, quoted by the landing's proof terminal. */
-  bundlePath: "/Applications/SpaceVibe Deck.app",
   /** Lowercase slug used for workspace folders in mock transcripts. */
   slug: "deck",
 });

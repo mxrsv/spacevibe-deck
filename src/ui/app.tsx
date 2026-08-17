@@ -1,4 +1,3 @@
-import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { listen, type UnlistenFn } from "../host/bridge";
@@ -12,8 +11,16 @@ import {
   WINDOW_CLOSE_COPY,
   type ConfirmCopy,
 } from "../terminal/close-guard";
-import { flushSettingsSave } from "../settings/settings-store";
-import { defaultPtyClient, type DetectedAgent } from "../terminal/pty-client";
+import {
+  flushSettingsSave,
+  initSettings,
+  settingsLoadState,
+} from "../settings/settings-store";
+import { defaultPtyClient } from "../terminal/pty-client";
+import {
+  detectedAgents,
+  ensureAgentsDetected,
+} from "../terminal/agent-detection-store";
 import type { BootMode } from "../terminal/transfer-client";
 import { applyThemeVars } from "../lib/theme-vars";
 import { resolveCwds, type Preset } from "../lib/preset-schema";
@@ -29,7 +36,6 @@ import { agentProcessMatchers, probeNames } from "../lib/agent-catalog";
 import { resolveTheme } from "../settings/themes";
 import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
-import { pingPane } from "../terminal/pane-ping";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import {
   markLastUsed,
@@ -47,7 +53,6 @@ import {
   reportPersistError,
   saveDialogOpen,
   settingsOpen,
-  tabPopoverOpen,
 } from "../chrome/events";
 import { AgentQuickPicker } from "./agent-quick-picker";
 import { OpenBoard } from "../open-board/open-board";
@@ -67,6 +72,7 @@ import {
 } from "../presets/save-preset-dialog";
 import type { PresetArtifact } from "../presets/mock-model";
 import { PersistErrorBar } from "../presets/persist-error-bar";
+import { LoadError } from "./controls/load-error";
 import { PromptPopover } from "../prompts/prompt-popover";
 import { BrowserSurface } from "../browser/browser-surface";
 import { defaultBrowserClient } from "../browser/browser-client";
@@ -77,6 +83,7 @@ import {
   deactivateBrowserSurface,
   initBrowserBridge,
 } from "../browser/browser-store";
+import { installSessionTailSync } from "../terminal/session-tail-store";
 import { composeSurfaceStrip } from "./stage-surface-strip";
 import { capturePromptTarget } from "../prompts/inject";
 import { defaultPromptAssetsClient } from "../prompts/prompt-assets-client";
@@ -103,7 +110,12 @@ import {
 import { activeUpdateController } from "../updater/active-update-controller";
 import { loadAppVersion } from "../updater/app-version";
 import { UpdateAction } from "../updater/update-action";
-import { checkForUpdate, relaunchDeck } from "../updater/tauri-updater-adapter";
+// Host-agnostic by construction: it answers the Electron host, delegates to
+// `tauri-updater-adapter.ts` under Tauri, and fails soft in a browser preview.
+import {
+  checkForUpdate,
+  relaunchDeck,
+} from "../updater/electron-updater-adapter";
 import { resolveUpdatePreview } from "../updater/update-preview";
 import {
   recordUpdateAttempt,
@@ -129,36 +141,24 @@ import {
 import { ExplorerTab } from "../files/ui/explorer-tab";
 import { SessionsDockTab } from "./sessions/sessions-dock-tab";
 import { DockPanel } from "./dock/dock-panel";
-import { SidebarActions } from "./sidebar-actions";
+import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "./sidebar-actions";
 import { DockToggle } from "./dock/dock-toggle";
 import { availableDockTabs, resolveDockTab } from "./dock/dock-tab-registry";
 import { StageSurface } from "../files/ui/stage-surface";
 import { TabStrip } from "./tab-strip";
-import {
-  SidebarGrip,
-  sidebarCollapseArmed,
-  sidebarWidthLive,
-} from "./sidebar-grip";
+import { sidebarCollapseArmed, sidebarWidthLive } from "./sidebar-grip";
 import { SIDEBAR_HIDDEN_WIDTH } from "./panel-resize";
 import { applySidebarShell } from "./sidebar-shell";
 import { SidebarToggle } from "./sidebar-toggle";
-import { defaultFileClient } from "../files/file-client";
 import {
   clearWindowRecord,
   flushSessionJournal,
   initSessionJournal,
-  readWindowRecords,
   resumeSessionJournal,
   sessionArchive,
-  sessionRestoreMarker,
   suspendSessionJournal,
 } from "../terminal/session-journal";
-import {
-  restoreSession,
-  resumeWorkspace,
-  type RestoreDeps,
-} from "../terminal/session-restore";
-import { resumeLookup } from "../host/resume-host";
+import { restoreSession, resumeWorkspace } from "../terminal/session-restore";
 import { worktreeForPath } from "../repositories/repository-model";
 import {
   ensureRepositoriesScanned,
@@ -169,274 +169,21 @@ import {
   worktreeDestinations,
   type QuickDestination,
 } from "../repositories/worktree-destinations";
-
-interface DesktopChromeProps {
-  readonly sidebar: boolean;
-  /**
-   * The sidebar's resize seam (DL-18.9). Optional as a set: `App` always
-   * supplies all three, and the gallery specimens that mount this shell to
-   * photograph a layout supply none — a seam they cannot drag would only be a
-   * cursor change in a screenshot.
-   *
-   * The painted WIDTH and the collapsed flag do not travel through here; they
-   * are written to `:root` by `applySidebarShell` (see that file for why).
-   * This prop is the drag's starting point, which the grip needs regardless.
-   */
-  readonly sidebarWidth?: number;
-  readonly onSidebarWidthChange?: (width: number) => void;
-  readonly onSidebarCollapsedChange?: (collapsed: boolean) => void;
-  /**
-   * The hide control, in the frame row immediately after the traffic lights
-   * (DL-18.9, 2026-08-16). `App` passes it only while the column is SHOWN —
-   * a hidden column has no frame row, so the control moves to the stage strip
-   * and `App` mounts it there instead.
-   */
-  readonly sidebarToggle?: ComponentChildren;
-  readonly toolbar: ComponentChildren;
-  readonly sidebarNavigation: ComponentChildren;
-  readonly topTabs: ComponentChildren;
-  readonly stage: ComponentChildren;
-  readonly status: ComponentChildren;
-  readonly onMacTitlebarDoubleClick: () => void;
-}
-
-/** Platform shell only; native Windows system controls stay outside Preact. */
-export function DesktopChrome(props: DesktopChromeProps) {
-  const platform = getDesktopEnvironment().platform;
-  const windows = platform === "windows";
-  // No occupant, no row: the grid reserves `--status-h` for the bottom band,
-  // so leaving it at 28px with nothing in it would be a stripe of empty
-  // chrome rather than a hidden bar.
-  const hasStatus = props.status !== null && props.status !== undefined;
-  const classes = [
-    "window",
-    `window--${platform}`,
-    props.sidebar ? "window--sidebar" : "",
-    hasStatus ? "" : "window--no-status",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const resizable =
-    props.sidebar &&
-    props.sidebarWidth !== undefined &&
-    props.onSidebarWidthChange !== undefined &&
-    props.onSidebarCollapsedChange !== undefined;
-
-  // DL-18: one authored command row. On macOS the traffic lights sit INSIDE it
-  // behind a fixed inset instead of owning an empty band of their own — the
-  // frame is Deck's chrome, not OS spacing the app happens to sit under. In
-  // top-tab mode the tabs occupy that same row; in sidebar mode the row carries
-  // the actions and the sidebar starts beneath it.
-  return (
-    <div class={classes}>
-      {props.sidebar ? (
-        <div
-          class="deck-frame"
-          data-tauri-drag-region
-          onDblClick={windows ? undefined : props.onMacTitlebarDoubleClick}
-        >
-          {!windows ? (
-            <div class="deck-frame__lights" aria-hidden="true" />
-          ) : null}
-          {/* Beside the OS buttons, before anything else: hiding the column is
-              a window gesture, and this is the row the window's own controls
-              live in (DL-18.9). */}
-          {props.sidebarToggle}
-          <div class="deck-frame__spacer" data-tauri-drag-region />
-          {props.toolbar}
-        </div>
-      ) : null}
-      {props.sidebar ? props.sidebarNavigation : props.topTabs}
-      {resizable ? (
-        <SidebarGrip
-          width={props.sidebarWidth!}
-          onWidthChange={props.onSidebarWidthChange!}
-          onCollapsedChange={props.onSidebarCollapsedChange!}
-        />
-      ) : null}
-      {props.stage}
-      {props.status}
-    </div>
-  );
-}
-
-/**
- * Pure Settings-close: sets `settingsOpen` false and hands focus back.
- * Extracted to module scope (out of `App()`'s closure) so it and
- * `toggleSettingsPanel` below can be unit-tested directly — this repo has no
- * `<App>`-level render harness, and building one just for this guard would
- * be disproportionate. `App()`'s `closePanel` supplies the real
- * `tabsRef.current?.focusActive()` as `focusActive`.
- */
-export function closeSettingsPanel(focusActive: () => void): void {
-  settingsOpen.value = false;
-  focusActive();
-}
-
-/**
- * Settings toggle — shared by the gear button and `⌘,`/the menu's
- * "Settings…" item (both call `App()`'s `toggleSettings` closure below,
- * the literal same function reference, so this guard covers both entry
- * points at once).
- *
- * CLOSING (the `if` branch) stays unconditional — Settings must always be
- * reachable to close, or it could strand itself open forever, the exact
- * trap `b7e6021` already had to design around for the overlay scope guard.
- *
- * OPENING (the `else` branch) is blocked only while a PresetEditor/
- * SavePresetDialog draft is up. A draft's modal-scrim sits at z-index 40,
- * above Settings' 35 (styles.css) — opening Settings underneath one would be
- * invisible and unreachable, while `SettingsScreen`'s mount-focus effect
- * (settings/settings-screen.tsx) still stole DOM focus from the draft, so a
- * later Escape closed the invisible Settings and orphaned focus behind a
- * surface that never moved. Same check `runAttentionFocus` makes for
- * Cmd+Shift+A (attention-focus-coordinator.ts:80-82).
- *
- * The Open board is deliberately NOT in that list any more. F3 (2026-07-27
- * code review) added it because Settings was then a 300px drawer at z-20,
- * genuinely hidden beneath the z-30 board. Settings is now a full-window
- * surface at z-35: it covers the board rather than hiding under it, so it
- * opens from the board like from anywhere else, and closing returns to the
- * board with its selection intact. Blocking it there left the gear button
- * silently inert, which reads as a broken app rather than a deliberate rule.
- *
- * Settings is the only full-window surface left since 2026-08-16: token usage
- * and session history became tabs of the dock, which displaces the terminal
- * grid instead of covering it. The mutual exclusion those three used to keep
- * (spec §Surface, major M4) went with them — a docked column and a
- * full-window screen do not compete for the same layer.
- */
-export function toggleSettingsPanel(focusActive: () => void): void {
-  if (settingsOpen.value) {
-    closeSettingsPanel(focusActive);
-    return;
-  }
-  if (editorRequest.value !== null || saveDialogOpen.value) {
-    return;
-  }
-  settingsOpen.value = true;
-}
-
-/**
- * Whether a preset created through the LIVE-WINDOW flow (⌘⇧N, or File ▸ "New
- * Layout Preset…") should also materialize a tab, or stop once the preset is
- * saved.
- *
- * `new-preset` is tiered `"modal"` in action-registry.ts, so it deliberately
- * opens the editor OVER the Open board (rank 30 < 40) — sketching a layout
- * from scratch needs no tab and no workspace, which is the whole point of F4.
- * What must NOT follow is the live-window tail that materializes a tab: the
- * board is still up at z-30 covering the stage, so that tab would be
- * invisible while its pane quietly takes DOM focus behind the board, and on
- * the app's default landing screen (no tabs yet) there is no active pane to
- * inherit a CWD from either — it would spawn in `$HOME` instead of the folder
- * selected on the board.
- *
- * Stopping at the save leaves the preset available and the board up, and the
- * user opens a folder with it — which since 2026-08-16 means the preset is
- * picked up by the next open of a workspace that remembers it, the board
- * itself having no layout picker any more. Extracted to module scope (like
- * `toggleSettingsPanel` above) purely so it is unit testable — this repo has
- * no `<App>`-level render harness.
- */
-export function livePresetOpensATab(boardIsOpen: boolean): boolean {
-  return !boardIsOpen;
-}
-
-/**
- * A window that booted to adopt a pane already has its content: showing the
- * Open board would cover a live terminal with a "pick a folder" screen
- * (spec §9.2). Extracted to module scope for the same reason as
- * `livePresetOpensATab` above — this repo has no `<App>` render harness.
- */
-export function bootOpensTheBoard(boot: BootMode): boolean {
-  return boot.kind === "normal";
-}
-
-/**
- * The workspace `tabs[closingIndex]` belongs to, when closing that tab
- * leaves it with no terminal tab left in THIS window while at least one
- * other terminal tab (of a DIFFERENT workspace) still exists — the case
- * where that workspace's file tabs would otherwise go unreachable behind a
- * live tab of another workspace, yet stay open, watched and dirty-blocking
- * quit. Null when there is nothing to close (no workspace, or another tab of
- * the same workspace survives).
- *
- * Deliberately returns null when `remaining.length === 0` — the window's
- * LAST terminal tab closing is `TabManager`'s "last surface, not last tab"
- * territory (spec §7): `disposeTab` already keeps the window alive on that
- * workspace's own file surface via `SurfaceStrip.total()`, and closing those
- * same file tabs here would defeat the rule that just kept them reachable.
- *
- * Extracted to module scope (like `livePresetOpensATab`/`bootOpensTheBoard`
- * above) so it is unit-testable without an `<App>` render harness, which
- * this repo does not have.
- */
-export function workspaceOrphanedByClose(
-  tabs: readonly { readonly workspacePath: string | null }[],
-  closingIndex: number,
-): string | null {
-  const workspacePath = tabs[closingIndex]?.workspacePath ?? null;
-  if (workspacePath === null) {
-    return null;
-  }
-  const remaining = tabs.filter((_, index) => index !== closingIndex);
-  if (remaining.length === 0) {
-    return null;
-  }
-  return remaining.some((tab) => tab.workspacePath === workspacePath)
-    ? null
-    : workspacePath;
-}
-
-/**
- * Bundles `restoreSession`'s dependencies from the app's real hosts —
- * `manager`/`files` are the only pieces that vary by call site (the boot
- * effect's own `manager`/`fileController`), everything else is a fixed
- * wiring of the existing clients and the session-journal module.
- */
-function restoreDeps(deps: {
-  readonly manager: RestoreDeps["manager"];
-  readonly files: RestoreDeps["files"];
-}): RestoreDeps {
-  return {
-    manager: deps.manager,
-    files: deps.files,
-    dirsExist: (paths) => defaultPtyClient.dirsExist(paths),
-    statFiles: (root, paths) => defaultFileClient.statFiles(root, paths),
-    lookup: resumeLookup,
-    customAgents: () => settings.value.customAgents,
-    journal: {
-      readWindowRecords,
-      clearWindowRecord,
-    },
-    marker: sessionRestoreMarker,
-  };
-}
-
-/**
- * Dependencies for the rail's "resume" click — the same fixed wiring
- * `restoreDeps` uses, narrowed to what `resumeWorkspace` needs: it rebuilds
- * one archived workspace's tabs on demand, so it has no file surfaces, no
- * journal and no crash-loop marker to bundle.
- */
-function railResumeDeps(
-  manager: RestoreDeps["manager"],
-): Pick<RestoreDeps, "manager" | "dirsExist" | "lookup" | "customAgents"> {
-  return {
-    manager,
-    dirsExist: (paths) => defaultPtyClient.dirsExist(paths),
-    lookup: resumeLookup,
-    customAgents: () => settings.value.customAgents,
-  };
-}
-
-/** Guards the rail's "resume" click against a double click/Enter firing two
- *  concurrent `resumeWorkspace` calls for the same workspace — each lookup
- *  is independent, so both would pick the same archived session id and
- *  materialize duplicate tabs (H3). Module-level: the rail row has no
- *  per-item component state to hang this off. */
-const resumingWorkspaces = new Set<string>();
+import { DesktopChrome } from "./desktop-chrome";
+import {
+  bootOpensTheBoard,
+  browserPanelObscured,
+  closeSettingsPanel,
+  livePresetOpensATab,
+  stripShowsTabs,
+  toggleSettingsPanel,
+  workspaceOrphanedByClose,
+} from "./app-policy";
+import {
+  railResumeDeps,
+  restoreDeps,
+  resumingWorkspaces,
+} from "./app-restore-deps";
 
 export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const stagesRef = useRef<HTMLDivElement>(null);
@@ -489,8 +236,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   }
   const updater = updaterRef.current;
 
-  /** Agents AgentQuickPicker offers — re-probed each time it opens. */
-  const quickPickerAgents = useSignal<readonly DetectedAgent[]>([]);
   /**
    * Focused pane's live cwd, resolved when the picker opens.
    *
@@ -575,7 +320,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       },
       focusAttention: () => {
         tabsRef.current?.activateForAttention(index, paneId);
-        pingPane(paneId);
       },
     });
   };
@@ -586,7 +330,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * `requestAttentionFocus` above) so `toggleSettings` below — passed into
    * `createTabManager` as the `onToggleSettings` seam for ⌘, and the menu's
    * "Settings…" item — captures this, not a stale reference. Delegates to
-   * the module-scope `closeSettingsPanel` (see above) so App keeps owning
+   * `closeSettingsPanel` (module scope, app-policy.ts) so App keeps owning
    * the close+focus-return flow, the same as every other overlay, while the
    * open/close decision itself stays unit-testable.
    */
@@ -615,7 +359,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * Toggle Settings open/closed — shared by the gear button (direct call
    * below), ⌘, (keymap.ts `toggle-settings`), and the menu's "Settings…"
    * item, both of the latter through the `onToggleSettings` seam. Delegates
-   * to the module-scope `toggleSettingsPanel` (see above) for the actual
+   * to `toggleSettingsPanel` (module scope, app-policy.ts) for the actual
    * open/close decision.
    */
   const toggleSettings = (): void => {
@@ -655,6 +399,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         tabsRef.current?.materialize(intent) ?? Promise.resolve(false),
       customAgents: settings.value.customAgents,
       isDead: (cwd) => deadProjects.value.has(cwd),
+    }).then((resumed) => {
+      // Say something. `resumeSession` answers false for an unusable session
+      // ref, a directory that vanished between the scan and the click, and a
+      // failed materialize — and discarding that answer made every one of
+      // them look exactly like a button that does nothing, on a row the user
+      // will simply click again.
+      if (!resumed) {
+        reportPersistError("Couldn't resume that session.");
+      }
     });
   };
 
@@ -667,6 +420,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   useEffect(() => {
     void probeSessionsSupport();
   }, []);
+
+  // The rail's tails: a debounced sync that re-reads a pane's newest turn only
+  // when that pane's state actually moved. Inert off Electron, and the install
+  // returns its own disposer, so this is the whole wiring.
+  useEffect(() => installSessionTailSync(), []);
 
   // The Open board's "Recent sessions" block reads the same store the screen
   // does, so it needs a scan of its own — a user who never opens the screen
@@ -844,7 +602,14 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         // flushed record mid-teardown (M1a). No resume needed.
         flush: async () => {
           suspendSessionJournal();
-          await Promise.all([flushSettingsSave(), flushSessionJournal()]);
+          await Promise.all([
+            flushSettingsSave(),
+            // `force`, because the line above suspended: without it this pair
+            // cancelled the armed debounce and then wrote NOTHING, so quitting
+            // within a second of opening or switching a tab dropped that
+            // change from `session.json` entirely.
+            flushSessionJournal({ force: true }),
+          ]);
         },
         confirm: (requestId: number) => defaultPtyClient.confirmQuit(requestId),
         cancel: (requestId: number) => defaultPtyClient.cancelQuit(requestId),
@@ -965,10 +730,21 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   });
 
-  // Re-probes whenever AgentQuickPicker opens (or the declared set changes
+  // The agent probe, started at boot rather than when a panel that needs it is
+  // already on screen: discovery spends an interactive login shell and measured
+  // ~1.1s here (see `agent-detection-store.ts`), so a picker that probes on
+  // open offers "Shell only" for a second first. Reading `customAgents` also
+  // re-runs this when settings land, and the store's own freshness window is
+  // what stops an ordinary settings broadcast from paying for a second probe.
+  useSignalEffect(() => {
+    void ensureAgentsDetected(probeNames(settings.value.customAgents));
+  });
+
+  // Refreshes whenever AgentQuickPicker opens (or the declared set changes
   // while it is up) — same reasoning as the Open board's own detect effect:
   // adding an agent in Settings and coming straight back has to show it
-  // without a relaunch.
+  // without a relaunch. The cached list is what the panel paints; this open is
+  // only the moment the refresh behind it is asked for.
   useSignalEffect(() => {
     if (!agentQuickPickerOpen.value) {
       return;
@@ -988,19 +764,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         quickPickerCwd.value = cwd;
       }
     });
-    defaultPtyClient
-      .detectAgents(probeNames(customAgents))
-      .then((found) => {
-        if (!cancelled) {
-          quickPickerAgents.value = found;
-        }
-      })
-      .catch((err: unknown) => {
-        console.warn("detect_agents failed:", err);
-        if (!cancelled) {
-          quickPickerAgents.value = []; // picker degrades to Shell only
-        }
-      });
+    void ensureAgentsDetected(probeNames(customAgents));
     return () => {
       cancelled = true;
     };
@@ -1259,19 +1023,21 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * stage", because a native view wins that contest no matter the z-index.
    */
   const panelObscured = (): boolean =>
-    overlayCoversPane() ||
-    // `agentQuickPickerOpen` is deliberately here and NOT in
-    // `overlayCoversPane()`: it is a modal on the same scrim as the other two
-    // (`openOverlayRanks()` already ranks it as one), so it paints over the
-    // stage and the native view must go — but it opens a NEW tab rather than
-    // covering the focused one, so the pane-scoped question that
-    // `overlayCoversPane()` answers is a different one. Missing from here
-    // until 2026-08-16, which meant ⌘T over an open browser tab drew the
-    // picker underneath the `WebContentsView`.
-    agentQuickPickerOpen.value ||
-    promptsOpen.value ||
-    tabPopoverOpen.value ||
-    persistError.value !== null;
+    browserPanelObscured({
+      overlayCoversPane: overlayCoversPane(),
+      // `agentQuickPickerOpen` is deliberately here and NOT in
+      // `overlayCoversPane()`: it is a modal on the same scrim as the other two
+      // (`openOverlayRanks()` already ranks it as one), so it paints over the
+      // stage and the native view must go — but it opens a NEW tab rather than
+      // covering the focused one, so the pane-scoped question that
+      // `overlayCoversPane()` answers is a different one. Missing from here
+      // until 2026-08-16, which meant ⌘T over an open browser tab drew the
+      // picker underneath the `WebContentsView`.
+      agentQuickPickerOpen: agentQuickPickerOpen.value,
+      promptsOpen: promptsOpen.value,
+      persistErrorVisible: persistError.value !== null,
+      settingsLoadError: settingsLoadState.value.status === "error",
+    });
 
   /** Live drag width while resizing, the persisted setting otherwise. */
   const dockWidth = (): number =>
@@ -1423,11 +1189,31 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       toolbar={sidebar ? null : chromeActions}
       sidebarNavigation={
         <AgentRail
-          footer={railActions}
+          // Hidden on the owner's ask (2026-08-17); `More` carries these rows
+          // in both layouts while the flag is on. See `SIDEBAR_TOOLS_HIDDEN`.
+          footer={SIDEBAR_TOOLS_HIDDEN ? undefined : railActions}
           onSelectTab={selectTab}
           onCloseTab={(index) => void closeTab(index)}
           onOpenWorkspace={() => {
             boardOpen.value = true;
+          }}
+          newPaneDrop={{
+            // Read at pointer time, so the rects belong to whatever tab is on
+            // the stage right now rather than to the one that was there when
+            // the rail last rendered.
+            //
+            // `panelObscured()`, not `overlayCoversPane()`: the question here
+            // is the native view's question — "is anything painting over the
+            // stage" — because the rail keeps its column while the board, the
+            // full-bleed Settings screen and every modal cover the panes.
+            // Reporting no targets is how the drag goes inert; a pane docked
+            // behind an opaque screen is the ⌘T-under-`WebContentsView` bug in
+            // another shape.
+            slotRects: () =>
+              panelObscured() ? [] : (tabsRef.current?.activeSlotRects() ?? []),
+            onDrop: (paneId, edge) => {
+              void tabsRef.current?.dropAgentPane(paneId, edge);
+            },
           }}
           onFocusPane={focusRailPane}
           fileController={fileController}
@@ -1462,12 +1248,18 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             // mid-materialize would fold a partial tab set into the archive,
             // overwriting the very entry being resumed (M1c).
             suspendSessionJournal();
-            void resumeWorkspace(railResumeDeps(manager), entry, path).finally(
-              () => {
+            void resumeWorkspace(railResumeDeps(manager), entry, path)
+              .catch((err: unknown) => {
+                // `restoreTabs` awaits `dirs_exist` and `resume_lookup`
+                // unguarded, so a rejecting host left this as an unhandled
+                // rejection and a row that visibly did nothing.
+                console.warn("Failed to resume workspace:", err);
+                reportPersistError("Couldn't resume that workspace.");
+              })
+              .finally(() => {
                 resumingWorkspaces.delete(path);
                 resumeSessionJournal();
-              },
-            );
+              });
           }}
         />
       }
@@ -1521,15 +1313,24 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               {settings.value.sidebarCollapsed ? (
                 <SidebarToggle collapsed onToggle={toggleSidebarCollapsed} />
               ) : null}
-              <TabStrip
-                onSelectTab={selectTab}
-                onCloseTab={(index) => void closeTab(index)}
-                onNewTab={() => void tabsRef.current?.newTab()}
-                fileController={fileController}
-                onSelectBrowser={selectBrowserTab}
-                onCloseBrowser={closeBrowserTab}
-                scopeToActiveRepository
-              />
+              {/* The window's controls survive a full-window surface; the
+                  chips do not — see `stripShowsTabs`. The strip itself stays
+                  mounted either way, because the row it occupies is the frame
+                  row while the sidebar is hidden. */}
+              {stripShowsTabs({
+                boardOpen: boardOpen.value,
+                settingsOpen: settingsOpen.value,
+              }) ? (
+                <TabStrip
+                  onSelectTab={selectTab}
+                  onCloseTab={(index) => void closeTab(index)}
+                  onNewTab={() => void tabsRef.current?.newTab()}
+                  fileController={fileController}
+                  onSelectBrowser={selectBrowserTab}
+                  onCloseBrowser={closeBrowserTab}
+                  scopeToActiveRepository
+                />
+              ) : null}
               {/* The feature toolbar's sidebar-mode mount (2026-08-16). It
                   rides the strip's trailing end rather than the frame row so
                   the sidebar's width stops deciding how many of its controls
@@ -1619,7 +1420,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           ) : null}
           {agentQuickPickerOpen.value ? (
             <AgentQuickPicker
-              detected={quickPickerAgents.value}
+              detected={detectedAgents.value}
               customAgents={settings.value.customAgents}
               destinations={quickPickerDestinations()}
               initialDestination={quickPickerDefaultDestination()}
@@ -1663,6 +1464,14 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 void handleSavePreset(target, includeCwds)
               }
             />
+          ) : null}
+          {settingsLoadState.value.status === "error" && !settingsOpen.value ? (
+            <div class="settings-load-alert">
+              <LoadError
+                message={settingsLoadState.value.message}
+                onRetry={() => void initSettings()}
+              />
+            </div>
           ) : null}
           <PersistErrorBar />
           <SettingsScreen open={settingsOpen.value} onClose={closePanel} />

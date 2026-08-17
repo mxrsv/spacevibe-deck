@@ -12,6 +12,7 @@ import {
   importCustomThemes,
   loadCustomThemes,
   themeImportFailures,
+  themeLoadState,
   themesLoading,
 } from "./custom-themes-store";
 import { customPresets, getPreset, THEME_PRESETS } from "./themes";
@@ -19,15 +20,33 @@ import { customPresets, getPreset, THEME_PRESETS } from "./themes";
 const mockedList = vi.mocked(listThemeFiles);
 const mockedImport = vi.mocked(importThemeFiles);
 
+function deferred<T>(): {
+  readonly promise: Promise<T>;
+  readonly reject: (reason: unknown) => void;
+} {
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((_resolve, decline) => {
+    reject = decline;
+  });
+  return { promise, reject };
+}
+
 const ORANGE = JSON.stringify({
   name: "Orange Mechanic",
   background: "#101014",
   foreground: "#e8e3d8",
 });
 
+const MID_GRAY = JSON.stringify({
+  name: "Mid Gray",
+  background: "#777777",
+  foreground: "#000000",
+});
+
 beforeEach(() => {
   customPresets.value = [];
   themeImportFailures.value = [];
+  themeLoadState.value = { status: "idle" };
   vi.clearAllMocks();
   mockedList.mockResolvedValue({ entries: [], rejected: [] });
 });
@@ -68,6 +87,20 @@ describe("loadCustomThemes", () => {
     ]);
   });
 
+  it("surfaces a parseable theme that cannot keep Deck chrome readable", async () => {
+    mockedList.mockResolvedValue({
+      entries: [{ fileName: "mid-gray.json", content: MID_GRAY }],
+      rejected: [],
+    });
+
+    await loadCustomThemes();
+
+    expect(customPresets.value).toEqual([]);
+    expect(themeImportFailures.value).toEqual([
+      { fileName: "mid-gray.json", reason: expect.stringContaining("DL-3.5") },
+    ]);
+  });
+
   it("surfaces a file the host refused, beside the ones the parser refused", async () => {
     // DL-24.6 covers both halves: a file screened out before it reached the
     // folder and a file that reached the parser and failed are the same thing
@@ -87,9 +120,7 @@ describe("loadCustomThemes", () => {
     ]);
   });
 
-  it("treats an unreachable host as no imported themes", async () => {
-    // The Tauri build has no such channel and a browser-only dev preview has
-    // no bridge at all. Both are "no imported themes", not an error state.
+  it("keeps the last-good themes and reports an unreachable host", async () => {
     customPresets.value = [
       { id: "file:stale.json", label: "Stale", theme: THEME_PRESETS[0].theme },
     ];
@@ -97,7 +128,35 @@ describe("loadCustomThemes", () => {
 
     await loadCustomThemes();
 
-    expect(customPresets.value).toEqual([]);
+    expect(customPresets.value.map((preset) => preset.label)).toEqual([
+      "Stale",
+    ]);
+    expect(themeLoadState.value).toEqual({
+      status: "error",
+      message: "Couldn't read the themes folder.",
+    });
+    expect(themesLoading.value).toBe(false);
+  });
+
+  it("ignores an older scan failure after a retry succeeds", async () => {
+    const oldScan = deferred<never>();
+    mockedList
+      .mockImplementationOnce(() => oldScan.promise)
+      .mockResolvedValueOnce({
+        entries: [{ fileName: "orange.json", content: ORANGE }],
+        rejected: [],
+      });
+
+    const first = loadCustomThemes();
+    const retry = loadCustomThemes();
+    await retry;
+    oldScan.reject(new Error("stale scan failure"));
+    await first;
+
+    expect(customPresets.value.map((preset) => preset.label)).toEqual([
+      "Orange Mechanic",
+    ]);
+    expect(themeLoadState.value).toEqual({ status: "ready" });
     expect(themesLoading.value).toBe(false);
   });
 });

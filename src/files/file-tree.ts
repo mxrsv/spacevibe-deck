@@ -135,7 +135,10 @@ export function flattenTree(
       return;
     }
     walked.add(directory);
-    for (const entry of visibleEntries(listings.get(directory) ?? [], showHidden)) {
+    for (const entry of visibleEntries(
+      listings.get(directory) ?? [],
+      showHidden,
+    )) {
       const open = canExpand(entry) && expanded.has(entry.path);
       rows.push({
         path: entry.path,
@@ -176,6 +179,9 @@ export function toggleExpanded(
  * worth loading — one answer, so the two can never disagree about which
  * directories matter.
  */
-export function openDirectories(rows: readonly TreeRow[], root: string): string[] {
+export function openDirectories(
+  rows: readonly TreeRow[],
+  root: string,
+): string[] {
   return [root, ...rows.filter((row) => row.expanded).map((row) => row.path)];
 }

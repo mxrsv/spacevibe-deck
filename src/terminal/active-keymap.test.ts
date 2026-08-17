@@ -16,10 +16,7 @@ import { matchBinding } from "./keymap";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { MACOS_KEYMAP } from "./action-registry";
-import {
-  NO_KEYBINDING_OVERRIDES,
-  withOverride,
-} from "../lib/keybindings";
+import { NO_KEYBINDING_OVERRIDES, withOverride } from "../lib/keybindings";
 
 function keyEvent(
   key: string,
@@ -90,7 +87,9 @@ describe("activeKeymap — the default keymap matchBinding uses", () => {
         { key: "l", meta: true, alt: true },
       ]),
     };
-    expect(matchBinding(keyEvent("j", { metaKey: true, altKey: true }))).toBeNull();
+    expect(
+      matchBinding(keyEvent("j", { metaKey: true, altKey: true })),
+    ).toBeNull();
     expect(matchBinding(keyEvent("l", { metaKey: true, altKey: true }))).toBe(
       "find",
     );

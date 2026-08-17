@@ -53,9 +53,8 @@ function makeModel(value: string, language: string | undefined): StubModel {
 }
 
 vi.mock("../editor-host", async () => {
-  const actual = await vi.importActual<typeof import("../editor-host")>(
-    "../editor-host",
-  );
+  const actual =
+    await vi.importActual<typeof import("../editor-host")>("../editor-host");
   return {
     ...actual,
     loadMonaco: async () => ({

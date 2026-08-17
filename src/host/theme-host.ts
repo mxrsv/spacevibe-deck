@@ -3,9 +3,9 @@
  *
  * Electron-only, like `worktree-host.ts` next door: there is no `#[tauri::
  * command]` counterpart and writing one would implement a feature twice on a
- * host `AGENTS.md` has frozen. On the Tauri build every call below rejects, and
- * `custom-themes-store.ts` treats that as "no imported themes", which is the
- * truth there.
+ * host `AGENTS.md` has frozen. On the Tauri build every call below rejects;
+ * `custom-themes-store.ts` keeps the last-good snapshot and exposes that host
+ * failure rather than pretending the folder was read as empty.
  *
  * The renderer receives file TEXT, never parsed themes: parsing lives in
  * `src/settings/theme-formats/` so the four grammars have one implementation

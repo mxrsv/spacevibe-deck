@@ -14,6 +14,10 @@ const windowsConfig = readFileSync(
   new URL("../src-tauri/tauri.windows.conf.json", import.meta.url),
   "utf8",
 );
+const ciWorkflow = readFileSync(
+  new URL("../.github/workflows/ci.yml", import.meta.url),
+  "utf8",
+);
 
 const MACOS_RC_CHANNEL = "macos-rc-channel";
 const WINDOWS_RC_CHANNEL = "windows-rc-channel";
@@ -288,6 +292,75 @@ describe("release notes gate", () => {
 });
 
 describe("publication gates", () => {
+  it("pins every third-party action to an immutable commit", () => {
+    for (const source of [workflow, ciWorkflow]) {
+      const actionRefs = [...source.matchAll(/uses:\s+([^\s#]+)/g)].map(
+        (match) => match[1],
+      );
+      expect(actionRefs.length).toBeGreaterThan(0);
+      for (const ref of actionRefs) {
+        expect(ref, ref).toMatch(/@[0-9a-f]{40}$/);
+      }
+    }
+  });
+
+  it("blocks the macOS build before tauri-action without release signing", () => {
+    const build = job("build-macos-stable-draft");
+    const gate = steps("build-macos-stable-draft").find((step) =>
+      step.includes("Verify macOS release signing"),
+    );
+
+    expect(gate).toContain("scripts/verify-macos-release-signing.mjs");
+    expect(build.indexOf("Verify macOS release signing")).toBeLessThan(
+      build.indexOf("Build stable macOS updater draft"),
+    );
+
+    const result = spawnSync(
+      process.execPath,
+      ["scripts/verify-macos-release-signing.mjs"],
+      {
+        cwd: new URL("..", import.meta.url),
+        env: {},
+        encoding: "utf8",
+      },
+    );
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("macOS release signing is not configured");
+
+    const configured = spawnSync(
+      process.execPath,
+      ["scripts/verify-macos-release-signing.mjs"],
+      {
+        cwd: new URL("..", import.meta.url),
+        env: {
+          APPLE_CERTIFICATE: "certificate",
+          APPLE_CERTIFICATE_PASSWORD: "certificate-password",
+          KEYCHAIN_PASSWORD: "keychain-password",
+          APPLE_ID: "release@example.com",
+          APPLE_PASSWORD: "app-password",
+          APPLE_TEAM_ID: "TEAMID",
+        },
+        encoding: "utf8",
+      },
+    );
+    expect(configured.status).toBe(0);
+  });
+
+  it("verifies the signed and notarized app and DMG before collection", () => {
+    const build = job("build-macos-stable-draft");
+    const verification = steps("build-macos-stable-draft").find((step) =>
+      step.includes("Verify signed and notarized macOS bundle"),
+    );
+
+    expect(verification).toContain("codesign --verify --deep --strict");
+    expect(verification).toContain("spctl --assess --type execute");
+    expect(verification).toContain("spctl --assess --type open");
+    expect(verification?.match(/xcrun stapler validate/g)).toHaveLength(2);
+    expect(build.indexOf("Verify signed and notarized macOS bundle")).toBeLessThan(
+      build.indexOf("Collect exact macOS updater artifacts"),
+    );
+  });
+
   it("proves renamed macOS draft assets match the local build", () => {
     const collection = steps("build-macos-stable-draft").find((step) =>
       step.includes("Collect exact macOS updater artifacts"),

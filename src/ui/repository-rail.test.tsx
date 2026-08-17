@@ -21,11 +21,7 @@ vi.mock("../terminal/file-drop", () => ({
   installFileDrop: vi.fn(async () => () => {}),
 }));
 
-import {
-  activeTabIndex,
-  requestTabOptionsKey,
-  tabViews,
-} from "../terminal/tabs-store";
+import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import type { TabView } from "../terminal/tabs-store";
 import { RepositoryRail } from "./repository-rail";
 import { TabStrip } from "./tab-strip";
@@ -44,7 +40,6 @@ import {
   type FileSurfaceController,
 } from "../files/file-surface-controller";
 import { resetFileSurfaces } from "../files/file-surface-store";
-import { tabPopoverOpen } from "../chrome/events";
 import type { FileClient } from "../files/file-client";
 import { workspacesData } from "../open-board/workspaces-store";
 import { WORKSPACES_VERSION } from "../lib/workspace-recents";
@@ -116,8 +111,6 @@ function mount(
         onCloseTab={NOOP}
         fileController={fileController}
         onOpenWorkspace={NOOP}
-        onRenameTab={NOOP}
-        onSetTabColor={NOOP}
         onResumeWorktree={NOOP}
         showAgentPresence
         {...props}
@@ -142,8 +135,6 @@ function mountSidebarLayout(): void {
           onCloseTab={NOOP}
           fileController={fileController}
           onOpenWorkspace={NOOP}
-          onRenameTab={NOOP}
-          onSetTabColor={NOOP}
           onResumeWorktree={NOOP}
         />
         <div class="stage__strip">
@@ -536,7 +527,9 @@ describe("RepositoryRail and file tabs", () => {
   it("clicking the terminal row that's still 'active' takes the stage back while a file surface is on top", async () => {
     // Regression guard for the popover-vs-reselect fork: `tab.active` alone
     // used to open the rename popover, which would leave the file surface on
-    // the stage forever with no way back via that row.
+    // the stage forever with no way back via that row. The popover was removed
+    // on 2026-08-16, so every row press is a plain select now — the assertion
+    // below stays as the guard that no third behaviour crept back in.
     tabViews.value = [tab()];
     activeTabIndex.value = 0;
     await fileController.openFile("/r/main", "/r/main/a.ts", true); // activates the file surface
@@ -557,34 +550,12 @@ describe("RepositoryRail and file tabs", () => {
     expect(host.querySelector(".tab-popover")).toBeNull();
   });
 
-  it("open-tab-options opens ONE popover, the rail's, with the stage strip mounted beside it", async () => {
-    // `requestTabOptionsKey` was designed for "exactly one navigation surface
-    // is mounted, whichever it is". Sidebar layout broke that assumption when
-    // the strip moved onto the stage: both surfaces carry a row for the same
-    // tab key, so two listeners would answer one keystroke with two popovers.
-    // The rail owns the chord whenever it is mounted — it is the row the user
-    // is looking at, and the only popover carrying the logo actions.
-    mountSidebarLayout();
-    await settle();
-
-    act(() => {
-      requestTabOptionsKey.value = 1;
-    });
-
-    expect(host.querySelectorAll(".tab-popover")).toHaveLength(1);
-    // The rail's, not the strip's: only the rail wires `onSetLogo`, so the
-    // Logo section is what tells the two apart in the DOM.
-    expect(host.querySelector(".tab-popover__logo")).not.toBeNull();
-    expect(requestTabOptionsKey.value).toBeNull(); // consumed exactly once
-  });
-
-  it("the rail's popover claims the shared slot, and closing it releases", async () => {
-    // Two tests lived here until 2026-08-16, both about the strip and the rail
-    // trading the one slot. The strip no longer raises a popover at all, so
-    // what is left to prove is the half that still runs: the claim drives
-    // `tabPopoverOpen`, which hides the browser's native view — a view that
-    // paints over every DOM layer, so a stale claim either hides it forever or
-    // paints it straight over a live popover.
+  it("raises no popover from a row press or a right-click", async () => {
+    // `TabPopover`, the `open-tab-options` action and the shared popover slot
+    // were all removed on 2026-08-16 with the rename and workspace-logo
+    // features they carried. Both gestures that used to raise one are covered
+    // here, in the layout where the strip is mounted beside the rail — the
+    // configuration that once had two surfaces trading a single slot.
     mountSidebarLayout();
     await settle();
 
@@ -594,17 +565,11 @@ describe("RepositoryRail and file tabs", () => {
     act(() => {
       row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
     });
-    expect(host.querySelectorAll(".tab-popover")).toHaveLength(1);
-    expect(host.querySelector(".tab-popover__logo")).not.toBeNull(); // the rail's
-    expect(tabPopoverOpen.value).toBe(true);
+    expect(host.querySelector(".tab-popover")).toBeNull();
 
-    // `TabPopover` closes itself on a pointerdown outside its own box.
     act(() => {
-      document.body.dispatchEvent(
-        new PointerEvent("pointerdown", { bubbles: true }),
-      );
+      row.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(host.querySelector(".tab-popover")).toBeNull();
-    expect(tabPopoverOpen.value).toBe(false);
   });
 });

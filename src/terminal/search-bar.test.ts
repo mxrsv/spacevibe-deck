@@ -264,9 +264,13 @@ describe("the search bar's own controls", () => {
 
     // Named explicitly, not by their text: once the glyph is an aria-hidden
     // icon, the only name left would be the tooltip.
-    expect(named("Previous match").querySelector(".lucide-chevron-left")).not.toBeNull();
-    expect(named("Next match").querySelector(".lucide-chevron-right")).not.toBeNull();
-    expect(named("Close").querySelector(".lucide-x")).not.toBeNull();
+    expect(
+      named("Previous match").querySelector(".deck-icon--caret-left"),
+    ).not.toBeNull();
+    expect(
+      named("Next match").querySelector(".deck-icon--caret-right"),
+    ).not.toBeNull();
+    expect(named("Close").querySelector(".deck-icon--x")).not.toBeNull();
     expect(named("Close").textContent).toBe("");
   });
 
@@ -285,7 +289,6 @@ describe("the search bar's own controls", () => {
     closeSearchBarForPane(pane.id);
     expect(second.querySelectorAll("svg")).toHaveLength(0);
   });
-
 });
 
 describe("advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or without an open bar)", () => {

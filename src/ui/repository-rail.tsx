@@ -1,24 +1,17 @@
 import {
-  ChevronDown,
-  ChevronRight,
-  FolderGit2,
+  ArrowsClockwise,
+  CaretDown,
+  CaretRight,
+  GitFork,
   Plus,
-  RefreshCw,
   X,
-} from "lucide-preact";
+} from "@phosphor-icons/react";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import type { ComponentChildren } from "preact";
-import { useEffect, useRef } from "preact/hooks";
-import {
-  activeTabIndex,
-  statusInfo,
-  tabViews,
-} from "../terminal/tabs-store";
+import { useEffect } from "preact/hooks";
+import { activeTabIndex, statusInfo, tabViews } from "../terminal/tabs-store";
 import { CHROME_ICON, DeckIcon, RAIL_ICON } from "./controls/deck-icon";
 import { tildify } from "../lib/process-info";
-import { type TabDotColor } from "../lib/tab-colors";
-import { installFileDrop } from "../terminal/file-drop";
-import { reportPersistError } from "../chrome/events";
 import { WorktreeAgentStack } from "./worktree-agent-stack";
 import {
   collapsedRepositories,
@@ -34,7 +27,6 @@ import {
   filterRailToWorkspaceHistory,
   type WorktreeRow,
 } from "../repositories/repository-model";
-import { open } from "../host/dialog-host";
 import { available as electronHostAvailable } from "../host/worktree-host";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { workspacesData } from "../open-board/workspaces-store";
@@ -393,11 +385,11 @@ export function RepositoryRail(props: RepositoryRailProps) {
                   onClick={() => toggleRepositoryCollapsed(group.key)}
                 >
                   <span class="repogroup__mark" aria-hidden="true">
-                    <DeckIcon icon={FolderGit2} size={RAIL_ICON} />
+                    <DeckIcon icon={GitFork} size={RAIL_ICON} />
                   </span>
                   <span class="repogroup__name">{group.name}</span>
                   <DeckIcon
-                    icon={group.collapsed ? ChevronRight : ChevronDown}
+                    icon={group.collapsed ? CaretRight : CaretDown}
                     size={CHROME_ICON}
                   />
                 </button>
@@ -408,7 +400,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
                   title="Rescan worktrees"
                   onClick={invalidateRepositoryScans}
                 >
-                  <DeckIcon icon={RefreshCw} size={CHROME_ICON} />
+                  <DeckIcon icon={ArrowsClockwise} size={CHROME_ICON} />
                 </button>
               </header>
               {!group.collapsed && (

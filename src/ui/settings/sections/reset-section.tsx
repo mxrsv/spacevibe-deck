@@ -1,4 +1,4 @@
-import { RotateCcw } from "lucide-preact";
+import { ArrowCounterClockwise } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
 import { ask } from "../../../host/dialog-host";
 import { resetSettings } from "../../../settings/settings-store";
@@ -63,7 +63,7 @@ export function ResetSection() {
         disabled={resetting.value}
         onClick={() => void handleReset()}
       >
-        <DeckIcon icon={RotateCcw} size={ROW_ICON} />
+        <DeckIcon icon={ArrowCounterClockwise} size={ROW_ICON} />
         reset
       </button>
     </ConfigRow>

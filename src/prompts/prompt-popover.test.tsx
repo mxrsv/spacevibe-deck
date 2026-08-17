@@ -178,11 +178,15 @@ describe("PromptPopover", () => {
     expect(paste.title).toBe("Paste into the focused pane");
     expect(send.title).toBe("Send to the focused pane");
     expect(
-      paste.querySelector("svg")?.classList.contains("lucide-clipboard-paste"),
+      paste
+        .querySelector("svg")
+        ?.classList.contains("deck-icon--clipboard-text"),
     ).toBe(true);
-    expect(send.querySelector("svg")?.classList.contains("lucide-send")).toBe(
-      true,
-    );
+    expect(
+      send
+        .querySelector("svg")
+        ?.classList.contains("deck-icon--paper-plane-tilt"),
+    ).toBe(true);
     // Neither is named by its glyph: the icon is decoration, the label is the
     // action, and a Send that fails its gate still only pasted.
     expect(paste.textContent).toBe("");
@@ -226,10 +230,10 @@ describe("PromptPopover", () => {
     expect(
       host
         .querySelector('[aria-label="Remove fix bug"] svg')
-        ?.classList.contains("lucide-trash-2"),
+        ?.classList.contains("deck-icon--trash"),
     ).toBe(true);
     expect(
-      host.querySelector(".prompt-picker .lucide-chevron-down"),
+      host.querySelector(".prompt-picker .deck-icon--caret-down"),
     ).not.toBeNull();
   });
 

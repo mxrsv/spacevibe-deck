@@ -47,6 +47,7 @@ import {
   initializeDesktopEnvironment,
   resetDesktopEnvironmentForTests,
 } from "../lib/platform";
+import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
 
 const NOW = 1_800_000_000_000;
 
@@ -58,10 +59,27 @@ function seed(paths: readonly string[]): void {
   workspacesData.value = { version: WORKSPACES_VERSION, recents };
 }
 
+/**
+ * Drain the open path's awaits before asserting.
+ *
+ * One click opens, and `openWorkspace` awaits the agent probe AND the
+ * `dirs_exist` liveness pass before it reaches `onOpen`. A bare `act` returns
+ * while those are still in flight, so an assertion could read the board
+ * mid-click.
+ */
+const settle = async (): Promise<void> => {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+};
+
 describe("OpenBoard removal flow", () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
+    // The probe is cached in a module store now, so a list one test detected
+    // would otherwise answer for the next one.
+    resetAgentDetectionForTests();
     resetDesktopEnvironmentForTests();
     initializeDesktopEnvironment({
       platform: "macos",
@@ -116,15 +134,17 @@ describe("OpenBoard removal flow", () => {
     seed(["/w/alpha"]);
     await mount();
 
-    expect(host.querySelector(".row__ico.lucide-folder-open")).not.toBeNull();
     expect(
-      host.querySelector(".home-action .lucide-folder-plus"),
+      host.querySelector(".row__ico.deck-icon--folder-open"),
+    ).not.toBeNull();
+    expect(
+      host.querySelector(".home-action .deck-icon--folder-plus"),
     ).not.toBeNull();
 
     const x = removeButton("alpha");
     // Removing a recent forgets a pointer; it deletes nothing on disk, so it
     // is a dismissal (X), not a trash can.
-    expect(x?.querySelector(".lucide-x")).not.toBeNull();
+    expect(x?.querySelector(".deck-icon--x")).not.toBeNull();
     expect(x?.textContent).toBe("");
   });
 
@@ -228,6 +248,8 @@ describe("OpenBoard removal flow", () => {
         }),
       );
     });
+
+    await settle();
 
     // A picked folder has no remembered combo, so it opens with the default
     // preset and whatever the probe found (nothing here → Shell).

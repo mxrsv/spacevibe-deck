@@ -10,6 +10,7 @@ vi.mock("../../host/store-host", () => ({
       get: vi.fn(async () => undefined),
       set: vi.fn(async () => {}),
       save: vi.fn(async () => {}),
+      loadState: { state: "ready", fresh: false },
     })),
   },
 }));
@@ -22,6 +23,7 @@ vi.mock("../../settings/custom-themes-store", async () => {
   const { signal } = await import("@preact/signals");
   return {
     themeImportFailures: signal([]),
+    themeLoadState: signal({ status: "ready" }),
     themesLoading: signal(false),
     loadCustomThemes: vi.fn(async () => {}),
     importCustomThemes: vi.fn(async () => {}),
@@ -34,6 +36,7 @@ import {
   loadCustomThemes,
   openThemesFolder,
   themeImportFailures,
+  themeLoadState,
 } from "../../settings/custom-themes-store";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { settings } from "../../settings/settings-store";
@@ -54,6 +57,7 @@ describe("ThemeGallery", () => {
     settings.value = { ...DEFAULT_SETTINGS };
     customPresets.value = [];
     themeImportFailures.value = [];
+    themeLoadState.value = { status: "ready" };
     host = document.createElement("div");
     document.body.appendChild(host);
   });
@@ -188,5 +192,18 @@ describe("ThemeGallery", () => {
 
     expect(vi.mocked(importCustomThemes)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(openThemesFolder)).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a transport failure visible and offers retry", () => {
+    themeLoadState.value = {
+      status: "error",
+      message: "Couldn't read the themes folder.",
+    };
+    mount();
+
+    const alert = host.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain("Couldn't read the themes folder.");
+    act(() => alert?.querySelector<HTMLButtonElement>("button")?.click());
+    expect(vi.mocked(loadCustomThemes)).toHaveBeenCalledTimes(2);
   });
 });

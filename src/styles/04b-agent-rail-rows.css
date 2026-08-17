@@ -1,0 +1,498 @@
+/* -------------------------------------------------------------- the motion */
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes asr-halo {
+    0% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    70%,
+    100% {
+      opacity: 0;
+      transform: scale(2.4);
+    }
+  }
+
+  @keyframes asr-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  /* No arrival animation: the rail no longer moves a row when its state
+     changes (the pinned block it used to fly into was removed 2026-08-16), so
+     there is nothing entering — only a mark changing shape in place. */
+
+  .asr-row__mark[data-state="asked"]::after {
+    animation: asr-halo 2.4s var(--ease) infinite;
+  }
+
+  .asr-row__mark[data-state="working"] {
+    animation: asr-spin 1.8s linear infinite;
+  }
+}
+
+/* ------------------------------------------------------- the flat tab item */
+
+.asr-item {
+  position: relative;
+}
+
+/* The clusters carry the row's own padding; the item adds none. */
+.asr-stream .asr-item {
+  padding: 0;
+}
+
+/* ---------------------------------------------- tab rows and agent chips */
+
+/* One line in its resting shape: agent glyphs, tab name, age, one rolled-up
+   state, then the hover-only close slot. Any row with a turn to report spends
+   a second line on it (DL-27.15) — the quiet ones dim rather than go blank. */
+.asr-row--tab {
+  /* ONE trailing slot (DL-27.5, amended 2026-08-16): the status mark rests in
+     it and the hover close replaces the mark in place — no separate close
+     column reserving width the row rarely uses. 16px fits the icon-system
+     marks (`done`'s 13px CheckCircle) and the 16px close box alike. */
+  grid-template-columns: auto minmax(0, 1fr) auto 16px;
+  gap: 2px 7px;
+  min-height: 34px;
+  /* 6px → 4px trailing (2026-08-17): the row is the last of the four things
+     stacked between the mark and the sidebar's edge (see `.asr-rail`), and
+     this is its share of bringing that total down to the 15px the leading
+     edge carries. The mark's right edge now lands 15.5px in — 2 rail + 6
+     scrollbar + 4 here + 3.5 centring the 9px mark in the 16px slot. The slot
+     itself is untouched: it is DL-27.5's shared mark/close cell and the close
+     button's hit box. */
+  padding: 6px 4px 6px 7px;
+}
+
+.asr-row--tab > .asr-chips {
+  grid-column: 1;
+}
+
+.asr-row--tab > .asr-row__name {
+  grid-column: 2;
+}
+
+.asr-row--tab > .asr-row__age {
+  grid-column: 3;
+}
+
+.asr-row--tab > .asr-row__mark {
+  /* Row pinned: the close shares this exact cell, and auto-placement would
+     push the second occupant to a new row instead of overlapping them. */
+  grid-row: 1;
+  grid-column: 4;
+  /* Centred in the shared slot, not end-aligned: the close that swaps in on
+     hover is a 16px box, and the two must sit on one visual centre. */
+  justify-self: center;
+}
+
+/* The swap's other half: while the close is shown, the mark stands down.
+   `opacity`, matching how the close itself is revealed, so the two cross-fade
+   in the one slot instead of stacking (DL-27.5). */
+.asr-row--tab:hover > .asr-row__mark,
+.asr-row--tab:focus-within > .asr-row__mark {
+  opacity: 0;
+}
+
+/* Dropping an image onto a row sets that workspace's logo — the identical
+   treatment `.wsitem.is-drag-over` already carries. It reads over both hover
+   and selection. The inset hairline is what DL-1.3 permits; it is not a
+   shadow. */
+.asr-row--tab.is-drag-over {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* DL-27.8 (amended 2026-08-16): the one selection wash (DL-21.1) stops at the
+   tab ROW. It used to cover the whole item, but with the pane tree under the
+   row it painted over the leaves and their guides, and the owner ruled that
+   NOTHING covers the tree — not selection, not hover (DL-27.13). A
+   single-line item and its row are the same rectangle, so nothing changes
+   there. Same value `.wsitem.is-active` carries; `:not(.is-drag-over)`
+   because a drag still reads over selection. */
+.asr-item[data-active="true"] > .asr-row--tab:not(.is-drag-over) {
+  border-radius: var(--radius-control);
+  background: var(--tab-active-bg);
+}
+
+/* DL-27.15: a quiet row (working/done/idle) takes the archived row's faint
+   treatment — the derived tone ladder is too tight for a one-step dim to
+   read (primary 207 → muted 183 measured on tokyo-night, 2026-08-17). The
+   state mark keeps full colour: state is meaning, not emphasis. */
+.asr-row--tab[data-quiet="true"] .asr-row__name strong {
+  color: var(--text-faint);
+  font-weight: 480;
+}
+
+/* A HEADLESS item — a multi-agent tab rendering no parent row (DL-27.13) —
+   has no row to wash, and it marks selection with NOTHING: the accent bar
+   that stood beside the leaves was hidden on the owner's ask (2026-08-16),
+   the same day the tree itself went behind `PANE_TREE_HIDDEN`. Which pane is
+   focused is the stage's job; the rail stays quiet. */
+
+/* ---------------------------------------------------- archived workspaces */
+
+/*
+ * The quiet resume rows at the foot of the stream (spec §8): a workspace with
+ * an archived session and no live tab. Closed off by a hairline above, the
+ * mirror of the pinned block's hairline at the other end of the list.
+ */
+.asr-archive {
+  display: grid;
+  gap: 1px;
+  padding-top: 9px;
+  margin-top: 8px;
+  border-top: 1px solid var(--hair);
+}
+
+/*
+ * Two columns only — the name and a resting mark. No chips, no age, no
+ * message line: no live pane has said anything, and a row that printed an
+ * age would be dating a session rather than reporting one.
+ *
+ * Declared in full rather than leaning on `.asr-row`, so the row is styled
+ * whether or not the component pairs the two classes; where they overlap this
+ * rule is the later one and wins. It IS pressable, so it keeps the live row's
+ * hover wash (DL-21.2) and carries its own focus ring — it is a
+ * `role="button"` div, which gets no ring for free.
+ */
+.asr-row--archived {
+  position: relative;
+  display: grid;
+  width: 100%;
+  /* 8px → 7px trailing (2026-08-17), the archived row's share of the same
+     realignment: its mark is `justify-self: end` in a 13px column, so the
+     padding IS the whole trailing offset — 2 rail + 6 scrollbar + 7 puts its
+     right edge on the live row's 15.5px vertical. */
+  padding: 4px 7px 5px 9px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  align-items: center;
+  /* 13px to match the tab row's widened mark column. */
+  grid-template-columns: minmax(0, 1fr) 13px;
+  gap: 2px 8px;
+  min-height: 26px;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--duration) var(--ease);
+}
+
+.asr-row--archived:hover {
+  background: var(--state-hover-bg);
+}
+
+.asr-row--archived:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Quieter than a live row all the way down: the whole row is the faint tone,
+   including the name a live row sets in `--text-primary` (DL-3.4). */
+.asr-row--archived,
+.asr-row--archived .asr-row__name strong {
+  color: var(--text-faint);
+}
+
+.asr-row--archived .asr-row__name strong {
+  font-weight: 500;
+}
+
+.asr-chips {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.asr-chip {
+  position: relative;
+  display: grid;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  place-items: center;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+
+.asr-chip:hover {
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+}
+
+.asr-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.asr-chip__logo {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+/* The brand mark recedes with its row (DL-27.15). Opacity rather than a
+   colour: the glyph is an image for most agents, so there is no token to
+   swap — and the letter-avatar fallback below dims by the same amount. */
+.asr-row--tab[data-quiet="true"] .asr-chip__logo {
+  opacity: 0.45;
+}
+
+/* A declared agent ships no brand mark, so it wears the same letter avatar
+   the workspace rail and the agent chips already use (`lib/letter-avatar.ts`)
+   rather than a generic glyph — one fallback, not a third invention. It fills
+   the same box the `<img>` occupies, so a mixed strip stays on one baseline.
+   The glyph size is geometry inside that box, which is DL-4.5's third
+   exception, not a text role. */
+.asr-chip__logo--letter {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: var(--ui-font);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+/* Agent glyphs carry identity only. The one rolled-up mark at the row's right
+   edge carries state; per-glyph badges would restate it as visual confetti. */
+
+/* ---------------------------------------------------- the pane tree (multi)
+
+   DL-27.13 (owner, 2026-08-16): a tab running several agents lists each one
+   as a leaf row under the tab, joined by a hairline elbow — the guide
+   vocabulary file trees already taught, drawn with borders (DL-14.1). The
+   `.asr-chip--more` overflow count died with the chip budget this replaced:
+   every agent is a visible leaf now, so there is nothing left to count. */
+
+.asr-leaf {
+  /* The glyph box and the flex gap. `--asr-leaf-indent` stood beside them
+     until 2026-08-17 to align a wrapped turn line under the agent name; the
+     turn shares that name's own slot now (DL-27.15), so nothing indents. */
+  --asr-leaf-glyph: 14px;
+  --asr-leaf-gap: 7px;
+  position: relative;
+  display: flex;
+  /* A button never stretches to its grid/block parent on its own, and this
+     file has no global box-sizing reset (see Known traps) — both declared,
+     or the age and mark hug the name instead of holding the right edge. */
+  box-sizing: border-box;
+  width: calc(100% - 21px);
+  min-height: 26px;
+  align-items: center;
+  gap: var(--asr-leaf-gap);
+  /* The guides live in this gutter, OUTSIDE the button's own box, so no
+     wash — hover or selection — can ever paint over them (DL-27.13). */
+  margin-left: 21px;
+  /* 8px trailing (10px until 2026-08-17): the parent's one mark/close slot
+     (16px, now ending 4px from the row edge) centres its mark 12px in, and a
+     leaf's mark is `flex-end` rather than centred — so the padding has to be
+     that 12px less the mark's own half-width, rounded the same way the old
+     pair was. This keeps the leaf's mark on the tab row's vertical. */
+  padding: 3px 8px 3px 8px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+
+.asr-leaf:hover {
+  background: var(--state-hover-bg);
+}
+
+.asr-leaf:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* The elbow: down from the row above, then out to the leaf — drawn in the
+   gutter left of the button (negative offset), never under its wash. */
+.asr-leaf::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  bottom: 50%;
+  left: -16px;
+  width: 8px;
+  border-bottom: 1px solid var(--hair-strong);
+  border-left: 1px solid var(--hair-strong);
+  border-bottom-left-radius: 5px;
+}
+
+/* The trunk continues past every leaf but the last. */
+.asr-leaf:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  bottom: -3px;
+  left: -16px;
+  border-left: 1px solid var(--hair-strong);
+}
+
+.asr-leaf__logo {
+  width: var(--asr-leaf-glyph);
+  height: var(--asr-leaf-glyph);
+  flex: none;
+  object-fit: contain;
+}
+
+.asr-leaf__agent {
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+  color: var(--text-primary);
+  font: 480 var(--type-body) / 1.25 var(--ui-font);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.asr-leaf__age {
+  flex: none;
+  color: var(--text-muted);
+  font: 450 var(--type-micro) / 1.2 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The tree hidden (`PANE_TREE_HIDDEN`, owner 2026-08-16, temporary): a leaf
+   stands as a plain full-width agent row — no gutter, no guides — matching
+   the single-agent row's geometry, so the rail reads as agents under
+   projects and nothing else. */
+/* One line high, and the SAME line a tab row is: since the turn moved into the
+   agent name's slot (DL-27.15, 2026-08-17) a leaf has nothing to wrap to, and
+   the padding/min-height below match `.asr-row` so a rail of mixed rows keeps
+   one rhythm rather than two. */
+.asr-leaf--flat {
+  width: 100%;
+  /* The tab row's own height and vertical padding (`.asr-row--tab` above):
+     with the turn on one line a leaf and a tab row are the same object seen
+     twice, and 4px of difference read as two lists. The 8px trailing edge
+     stays the leaf's own — it is what puts its mark on the tab row's mark
+     vertical, which reserves a 16px column instead. */
+  min-height: 34px;
+  margin-left: 0;
+  padding: 6px 8px 6px 7px;
+}
+
+.asr-leaf--flat::before,
+.asr-leaf--flat::after {
+  display: none;
+}
+
+.asr-leaf--flat .asr-leaf__agent {
+  font-weight: 545;
+}
+
+/* The leaf's half of the quiet treatment (DL-27.15): a leaf is a row in its
+   own right, so it dims on its OWN pane's state — one agent asking beside
+   another working must not read as one mood. */
+.asr-leaf--flat[data-quiet="true"] .asr-leaf__agent {
+  color: var(--text-faint);
+  font-weight: 480;
+}
+
+.asr-leaf--flat[data-quiet="true"] .asr-leaf__logo {
+  opacity: 0.45;
+}
+
+/* ── Agent attention mark (AgentAttentionMark) ──────────────
+   Shared status mark for a tab/workspace's attention state. Actionable
+   kinds and unread share one dot shape — 8px here, 10px in the sidebar's
+   ringed slot; `working` renders the spinner instead. Actionable is an
+   interactive button, working and unread are decoration. The count is
+   never painted: it lives in the accessible name and the tooltip. Colors
+   are semantic vars only — never hardcoded hex. ── */
+.attn-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+button.attn-mark {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: filter var(--duration) var(--ease);
+}
+
+/* Widen the 14px button to a 20px circle so a mark whose visible core is
+   only 8px stays easy to click — the same widen-past-the-paint trick the
+   1px split divider uses. */
+button.attn-mark::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  transition: background var(--duration) var(--ease);
+}
+
+/* That hit circle is invisible at rest, so a click landing 6px off the dot
+   reads as a click on the row — and it is not: it acks the pane and the
+   mark disappears. Tint the circle on hover so the real target shows up
+   before the click. currentColor already carries the kind's hue. */
+button.attn-mark:hover::after {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+button.attn-mark:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 50%;
+}
+
+button.attn-mark:hover {
+  filter: brightness(1.25);
+}
+
+.attn-mark--error {
+  color: var(--red);
+}
+
+.attn-mark--warning {
+  color: var(--yellow);
+}
+
+.attn-mark--requested {
+  color: var(--magenta);
+}
+
+.attn-mark--completed {
+  color: var(--green);
+}
+
+/* Working: the same tick-ring spinner as the workspace logo, in a sized
+   relative box so its absolute-positioned SVG (see .wsitem__spinner) has a
+   frame to sit in. Reduced-motion is already handled by that shared rule. */
+.attn-mark--working {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+/* Unread: a small solid dot, same semantic color as the workspace logo's
+   unread badge. */
+.attn-mark--unread {
+  width: 14px;
+  height: 14px;
+  color: var(--status-unread);
+}
+
+/* One dot shape for every kind; the mark's own `color` picks the semantic
+   hue, so a kind only ever sets `color`. */
+.attn-mark__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}

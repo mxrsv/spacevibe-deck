@@ -17,12 +17,7 @@ export interface PromptTarget {
 }
 
 /** Result of one atomic, per-pane Prompt Board injection attempt. */
-export type InjectOutcome =
-  | "sent"
-  | "pasted"
-  | "failed"
-  | "busy"
-  | "no-target";
+export type InjectOutcome = "sent" | "pasted" | "failed" | "busy" | "no-target";
 
 export interface SubmitGateInput {
   /** The agent captured when the popover opened. */

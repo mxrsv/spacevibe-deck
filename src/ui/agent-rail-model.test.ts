@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { RepositoryScan } from "../repositories/repository-client";
 import type { PaneView, TabView } from "../terminal/tabs-store";
 import type { AgentRailInput, AgentRailView } from "./agent-rail-model";
-import { buildAgentRail, formatShortAge } from "./agent-rail-model";
+import { buildAgentRail, formatShortAge, tabTail } from "./agent-rail-model";
 
 /** The stream's rows in render order, flattened out of their clusters. */
 function streamRows(view: AgentRailView) {
@@ -30,6 +30,9 @@ function pane(paneId: number, over: Partial<PaneView> = {}): PaneView {
     agent: "claude",
     attention: "none",
     phase: "idle",
+    // The default fixture pane has run and been checked: `done`. Tests that
+    // want `idle` say `hasRun: false` themselves.
+    hasRun: true,
     changedAt: NOW - MINUTE,
     ...over,
   };
@@ -141,20 +144,24 @@ describe("buildAgentRail state mapping", () => {
               pane(4, { attention: "completed" }),
               pane(5, { attention: "none", phase: "working" }),
               pane(6, { attention: "none", phase: "idle" }),
+              pane(7, { attention: "none", phase: "idle", hasRun: false }),
             ],
           }),
         ],
       }),
     );
 
+    // `completed` folds into `asked` (owner merge, 2026-08-16), and a quiet
+    // pane splits on `hasRun`: checked run → done, never ran → idle.
     const row = streamRows(view)[0];
     expect(row.panes.map((entry) => entry.state)).toEqual([
       "failed",
       "asked",
       "asked",
-      "done",
+      "asked",
       "working",
-      "resting",
+      "done",
+      "idle",
     ]);
   });
 
@@ -173,7 +180,7 @@ describe("buildAgentRail state mapping", () => {
     expect(streamRows(view)[0].state).toBe("asked");
   });
 
-  it("never lets a crashed agent read as resting", () => {
+  it("never lets a crashed agent read as idle", () => {
     const view = buildAgentRail(
       railInput({
         tabs: [
@@ -234,11 +241,12 @@ describe("buildAgentRail folding", () => {
     );
 
     // A failed tab does not climb over an asked one: the list stays where the
-    // user put it and the marks say what happened (2026-08-16).
+    // user put it and the marks say what happened (2026-08-16). The third
+    // tab's `completed` reads as asked under the owner's merge.
     expect(streamRows(view).map((row) => row.state)).toEqual([
       "asked",
       "failed",
-      "done",
+      "asked",
     ]);
   });
 
@@ -370,8 +378,11 @@ describe("buildAgentRail rows", () => {
     );
 
     expect(streamRows(view)[0].title).toBe("api handoff");
-    // Tier 3 is not built: every message line is the tab's title (spec §5).
-    expect(streamRows(view)[0].panes[0].message).toBe("api handoff");
+    expect(streamRows(view)[0].named).toBe(true);
+    // A title is not a turn: with no tail for this pane the row has nothing
+    // the agent said, and the name stands on the row by itself (DL-27.15,
+    // amended 2026-08-17).
+    expect(streamRows(view)[0].panes[0].message).toBe("");
   });
 
   it("takes the newest agent pane's change as the row's age", () => {
@@ -392,7 +403,7 @@ describe("buildAgentRail rows", () => {
     expect(streamRows(view)[0].age).toBe("14m");
   });
 
-  it("keeps a tab with no recognised agent as a row, resting and voiceless", () => {
+  it("keeps a tab with no recognised agent as a row, idle and voiceless", () => {
     // The rail is the sidebar's only list: a tab it declines to draw is a tab
     // the user cannot reach from there (spec §9 drops shell ROWS, not tabs).
     const view = buildAgentRail(
@@ -410,7 +421,7 @@ describe("buildAgentRail rows", () => {
 
     expect(streamRows(view)).toHaveLength(1);
     expect(streamRows(view)[0]).toMatchObject({
-      state: "resting",
+      state: "idle",
       voice: null,
       panes: [],
       changedAt: 0,
@@ -464,7 +475,7 @@ describe("buildAgentRail clusters", () => {
     });
   }
 
-  it("prints one header for a project with several tabs", () => {
+  it("labels every project, including a project with one tab", () => {
     const view = buildAgentRail(
       twoProjects({
         tabs: [
@@ -482,10 +493,10 @@ describe("buildAgentRail clusters", () => {
         group.rows.length,
       ]),
     ).toEqual([
-      // deck was opened first, so its cluster leads; a project with one tab
-      // prints no header and its row names the project itself.
+      // Deck was opened first, so its cluster leads. Both projects keep the
+      // same project → tab hierarchy regardless of their tab count.
       ["deck", true, 2],
-      ["api", false, 1],
+      ["api", true, 1],
     ]);
     // Inside a cluster the rows keep the order they were opened in.
     expect(view.stream[0].rows.map((row) => row.key)).toEqual([1, 2]);
@@ -550,7 +561,7 @@ describe("buildAgentRail clusters", () => {
     );
 
     expect(view.stream.map((group) => [group.project, group.labelled])).toEqual(
-      [["deck", false]],
+      [["deck", true]],
     );
     expect(view.stream[0].rows[0].state).toBe("failed");
   });
@@ -568,31 +579,30 @@ describe("buildAgentRail clusters", () => {
       }),
     );
 
+    // An unnamed multi-agent tab has NO identity: the pane tree under the row
+    // is the identity, and even its count was declared noise (DL-27.13).
     expect(streamRows(view).map((row) => row.identity)).toEqual([
-      "claude + codex",
+      "",
       "api handoff",
       "shell",
     ]);
   });
 
-  it("drops a message line that only repeats the name above it", () => {
+  it("leaves the turn empty until an agent has actually spoken", () => {
+    // Neither a derived title nor a typed one is a turn: the message carries
+    // what an agent said and nothing else, so a row with no tail has none —
+    // its name holds the row's one line instead (DL-27.15, 2026-08-17).
     const view = buildAgentRail(
       railInput({
         tabs: [
-          // Nobody renamed this tab, so its title IS the workspace name and
-          // the fallback turn would print `deck` under a row saying `deck`.
           tab(1, "/w/deck", { panes: [pane(1)] }),
           tab(2, "/w/deck", { name: "api handoff", panes: [pane(2)] }),
         ],
       }),
     );
 
-    expect(streamRows(view).map((row) => row.message)).toEqual([
-      "",
-      "api handoff",
-    ]);
-    // The pane rows under an unfolded tab carry the same line, so they go
-    // quiet with it rather than each repeating the project name.
+    expect(streamRows(view).map((row) => row.message)).toEqual(["", ""]);
+    expect(streamRows(view).map((row) => row.named)).toEqual([false, true]);
     expect(streamRows(view)[0].panes[0].message).toBe("");
   });
 
@@ -605,6 +615,127 @@ describe("buildAgentRail clusters", () => {
       worktree: "release-hardening",
       message: "",
     });
+  });
+});
+
+describe("buildAgentRail session tails", () => {
+  /** One agent pane in a renamed tab: a tail to read, a name to keep beside it. */
+  function baseInput(): AgentRailInput {
+    return railInput({
+      tabs: [tab(1, "/w/deck", { name: "review", panes: [pane(101)] })],
+    });
+  }
+
+  it("reads a pane's tail onto the row that speaks for it", () => {
+    const view = buildAgentRail({
+      ...baseInput(),
+      tails: new Map([[101, "Permission needed: prisma migrate dev"]]),
+    });
+
+    const row = streamRows(view)[0];
+    expect(row.message).toBe("Permission needed: prisma migrate dev");
+    expect(row.panes[0].message).toBe("Permission needed: prisma migrate dev");
+  });
+
+  it("says nothing when no tail exists, rather than echoing the name", () => {
+    const view = buildAgentRail({ ...baseInput(), tails: new Map() });
+
+    expect(streamRows(view)[0]).toMatchObject({
+      message: "",
+      identity: "review",
+    });
+  });
+
+  it("keeps working without the tails input at all", () => {
+    const view = buildAgentRail(baseInput());
+
+    expect(streamRows(view)[0].message).toBe("");
+  });
+
+  it("takes the folded row's line from the pane it speaks for", () => {
+    const view = buildAgentRail({
+      ...railInput({
+        tabs: [
+          tab(1, "/w/deck", {
+            name: "review",
+            panes: [
+              pane(101, { agent: "codex", phase: "working" }),
+              pane(102, { agent: "claude", attention: "error" }),
+            ],
+          }),
+        ],
+      }),
+      // Only the loudest pane's tail reaches the tab row; every pane keeps
+      // its own.
+      tails: new Map([
+        [101, "Running the suite"],
+        [102, "Cannot reach the daemon"],
+      ]),
+    });
+
+    const row = streamRows(view)[0];
+    expect(row.message).toBe("Cannot reach the daemon");
+    expect(row.panes.map((entry) => entry.message)).toEqual([
+      "Running the suite",
+      "Cannot reach the daemon",
+    ]);
+  });
+
+  it("reads the tail per pane, not per tab", () => {
+    const view = buildAgentRail({
+      ...railInput({
+        tabs: [
+          tab(1, "/w/deck", {
+            name: "review",
+            panes: [
+              pane(101, { agent: "codex" }),
+              pane(102, { agent: "claude" }),
+            ],
+          }),
+        ],
+      }),
+      tails: new Map([[102, "Wrote the migration"]]),
+    });
+
+    expect(streamRows(view)[0].panes.map((entry) => entry.message)).toEqual([
+      "",
+      "Wrote the migration",
+    ]);
+  });
+});
+
+describe("tabTail", () => {
+  // The tab strip prints this too (DL-18.10, amended 2026-08-17), so the
+  // question "which pane speaks for this tab" is answered once.
+  it("quotes the pane the rail row would speak for", () => {
+    const view = tab(1, "/w/deck", {
+      panes: [
+        pane(101, { agent: "codex", phase: "working" }),
+        pane(102, { agent: "claude", attention: "error" }),
+      ],
+    });
+
+    expect(
+      tabTail(
+        view,
+        new Map([
+          [101, "Running the suite"],
+          [102, "Cannot reach the daemon"],
+        ]),
+      ),
+    ).toBe("Cannot reach the daemon");
+  });
+
+  it("is empty for a tab with no tail, no agent pane, or no tab at all", () => {
+    const spoken = tab(1, "/w/deck", { panes: [pane(101)] });
+    const shellOnly = tab(2, "/w/deck", {
+      panes: [pane(102, { agent: null })],
+    });
+
+    expect(tabTail(spoken, new Map())).toBe("");
+    expect(tabTail(spoken, undefined)).toBe("");
+    expect(tabTail(shellOnly, new Map([[102, "not an agent"]]))).toBe("");
+    expect(tabTail(undefined, new Map([[101, "orphan"]]))).toBe("");
   });
 });
 

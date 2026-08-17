@@ -33,7 +33,7 @@ export function TokensSection() {
 
       <section class="gx-specimen gx-direction-contract">
         <header class="gx-specimen__head">
-          <span class="gx-specimen__name">ChatGPT Desktop direction</span>
+          <span class="gx-specimen__name">Deck Electron direction</span>
           <span class="gx-specimen__note">
             one neutral surface ramp, one selection state, one border role
           </span>

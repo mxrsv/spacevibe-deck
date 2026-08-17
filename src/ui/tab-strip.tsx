@@ -8,10 +8,9 @@
  * A chip says WHAT is open and nothing else (DL-18.10). It carried an agent
  * attention mark and opened a rename/colour popover until 2026-08-16, when the
  * owner removed both: agent state is the rail's job, and a chip that also
- * reported it made the strip a second status surface. `TabPopover` itself is
- * unchanged and still raised by the rails — only this mount stopped raising
- * one, which is why the strip no longer claims the window-wide popover slot
- * (`tab-popover-slot.ts`) or answers ⌘⇧R.
+ * reported it made the strip a second status surface. `TabPopover` itself was
+ * deleted later the same day, with the rename and workspace-logo features it
+ * carried and the ⌘⇧R chord that raised it.
  *
  * Until 2026-08-16 this was two segments split by a hairline: every terminal
  * tab, `.tabbar__sep`, then every surface. One chip shape and one order
@@ -30,7 +29,7 @@
  * keeps ownership. Only the sidebar projection is scoped; file chips continue
  * through `FileSurfaceController` exactly as before.
  */
-import { Globe, Plus, SquareTerminal, X } from "lucide-preact";
+import { Globe, Plus, TerminalWindow, X } from "@phosphor-icons/react";
 import { activeTabIndex, tabViews, type TabView } from "../terminal/tabs-store";
 import type { PaneAgent } from "../lib/process-info";
 import { UNSEQUENCED } from "../lib/open-sequence";
@@ -50,6 +49,8 @@ import {
 } from "../browser/browser-store";
 import { repositoryScans } from "../repositories/repositories-store";
 import { activeRepositoryTabIndexes } from "../repositories/repository-model";
+import { paneTails } from "../terminal/session-tail-store";
+import { tabTail } from "./agent-rail-model";
 
 export interface TabStripProps {
   onSelectTab(index: number): void;
@@ -137,11 +138,17 @@ export function TabStrip(props: TabStripProps) {
    * It carried the tab's colour dot as a corner badge for one day. The owner
    * removed both the dot and the picker behind it on 2026-08-16 (DL-18.10
    * amended): the chips are glyph-led, and a second mark on the same 15px box
-   * was noise rather than identity. The `dotColor` override itself is parked,
-   * not deleted — see `tab-popover.tsx`.
+   * was noise rather than identity. `TabView.dotColor` still exists and is
+   * still carried across a window transfer, but nothing can set it since
+   * `TabPopover` was deleted later that day.
    */
   function terminalChip(tab: TabView, index: number) {
-    const label = tab.name ?? tab.process ?? "shell";
+    // The chip says what this tab's agent just said (DL-18.10, amended
+    // 2026-08-17, owner) — the same sentence the rail row shows, through the
+    // same precedence. A name the user typed still wins, exactly as it does
+    // there, and a tab whose agent has said nothing keeps its process name.
+    const tail = tabTail(tab, paneTails.value);
+    const label = tab.name ?? (tail !== "" ? tail : (tab.process ?? "shell"));
     const agent = chipAgent(tab);
     return (
       <div
@@ -150,6 +157,10 @@ export function TabStrip(props: TabStripProps) {
         aria-selected={index === active && !surfaceActive}
         tabIndex={0}
         class={`tab ${index === active && !surfaceActive ? "is-active" : ""}`}
+        // The chip is narrow by design, so the sentence it carries is trimmed
+        // by the layout and kept whole here (DL-27.4's contract, which the
+        // strip inherits along with the sentence).
+        title={label}
         // A file surface sitting on top of THIS same index still needs the
         // click to take the stage back (spec §7, "selecting a terminal tab
         // takes the stage back"); clicking the chip that already holds it is
@@ -162,7 +173,7 @@ export function TabStrip(props: TabStripProps) {
       >
         <span class="tab__glyph">
           {agent === null ? (
-            <DeckIcon icon={SquareTerminal} size={CHROME_ICON} />
+            <DeckIcon icon={TerminalWindow} size={CHROME_ICON} />
           ) : (
             <AgentGlyph agent={agent} className="tab__logo" />
           )}

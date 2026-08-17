@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MACOS_KEYMAP, WINDOWS_KEYMAP } from "./keymap";
-import { DISPATCHABLE_ACTIONS } from "./tab-manager";
+import { DISPATCHABLE_ACTIONS } from "./tab-action-scope";
 
 /**
  * Prior review H1 and pre-ship audit A4 were the same defect twice: a chord

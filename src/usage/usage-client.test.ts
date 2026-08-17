@@ -5,10 +5,7 @@ vi.mock("../host/bridge", () => ({
   invoke: (...args: unknown[]) => invoke(...args),
 }));
 
-import {
-  createMemoryUsageClient,
-  createHostUsageClient,
-} from "./usage-client";
+import { createMemoryUsageClient, createHostUsageClient } from "./usage-client";
 import {
   EMPTY_USAGE_SNAPSHOT,
   type UsageSnapshot,

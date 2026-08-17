@@ -70,8 +70,12 @@ function agyCwdMatches(
  * transcript never wrote one), so the wildcard stays for them; `agy` never
  * reaches this function — `resolveOne` routes it to `agyCwdMatches` instead,
  * since a null `cwd` there just means "not extracted", not "absent".
+ *
+ * Exported because `session-tail.ts` ranks candidates the same way and must
+ * pick the SAME session this function's caller would — a second copy of the
+ * predicate is a second place for the two answers to drift apart.
  */
-function cwdMatches(
+export function cwdMatches(
   request: ResumeRequest,
   candidate: CandidateSession,
 ): boolean {

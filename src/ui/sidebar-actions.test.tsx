@@ -53,6 +53,16 @@ describe("SidebarActions", () => {
     ]);
   });
 
+  it("gives each launcher one prominent feature glyph larger than its text", () => {
+    act(() => render(<SidebarActions {...base} />, host));
+
+    for (const row of rows()) {
+      const icons = row.querySelectorAll("svg.feature-glyph");
+      expect(icons).toHaveLength(1);
+      expect(icons[0]?.getAttribute("width")).toBe("15");
+    }
+  });
+
   // Same precedent as the dock's own tab row: a row that opens an empty
   // surface is worse than no row.
   it("drops Session history on a host that cannot answer for it", () => {

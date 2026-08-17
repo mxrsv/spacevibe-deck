@@ -5,7 +5,7 @@ import {
   TAB_SELECT_COUNT,
   shortcutGroups,
 } from "./shortcut-groups";
-import { DISPATCHABLE_ACTIONS } from "../../terminal/tab-manager";
+import { DISPATCHABLE_ACTIONS } from "../../terminal/tab-action-scope";
 import {
   ACTION_REGISTRY,
   MACOS_KEYMAP,
@@ -62,7 +62,9 @@ describe("shortcutGroups", () => {
     // Right after `select-last-tab`, in the same group — they are one family
     // to the user even though only one of them is a registry row.
     const tabs = shortcutGroups().find((group) => group.id === "tabs");
-    const last = tabs?.rows.findIndex((row) => row.action === "select-last-tab");
+    const last = tabs?.rows.findIndex(
+      (row) => row.action === "select-last-tab",
+    );
     expect(last).toBeGreaterThanOrEqual(0);
     expect(tabs?.rows[(last ?? 0) + 1]?.action).toBe("select-tab-1");
   });

@@ -5,10 +5,7 @@ import type {
   UpdateController,
   UpdateView,
 } from "./update-controller";
-import {
-  RELEASE_NOTES_URL,
-  runUpdateMenuAction,
-} from "./update-menu-actions";
+import { RELEASE_NOTES_URL, runUpdateMenuAction } from "./update-menu-actions";
 
 function controller(
   result: UpdateCheckResult,

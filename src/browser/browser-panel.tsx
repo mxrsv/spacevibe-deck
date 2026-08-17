@@ -14,19 +14,19 @@
  * `iconbtn` the tab bar uses so the surface's buttons are the app's buttons.
  */
 import {
+  ArrowClockwise,
+  ArrowLeft,
+  ArrowRight,
+  CursorClick,
+  X,
+} from "@phosphor-icons/react";
+import {
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
 } from "preact/hooks";
-import {
-  ArrowLeft,
-  ArrowRight,
-  MousePointerClick,
-  RotateCw,
-  X,
-} from "lucide-preact";
 import { CHROME_ICON, DeckIcon } from "../ui/controls/deck-icon";
 import { shortcutLabel } from "../lib/shortcut-label";
 import { getDesktopEnvironment } from "../lib/platform";
@@ -169,7 +169,7 @@ export function BrowserPanel({
           aria-label="Reload the page"
           onClick={() => fire(client.reload())}
         >
-          <DeckIcon icon={RotateCw} size={CHROME_ICON} />
+          <DeckIcon icon={ArrowClockwise} size={CHROME_ICON} />
         </button>
         <form class="browser-panel__form" onSubmit={submitUrl}>
           <input
@@ -191,15 +191,18 @@ export function BrowserPanel({
             }}
           />
         </form>
+        {/* DL-21.8: no painted active state on the Inspect toggle — the
+            crosshair following the pointer is the readout, and `aria-pressed`
+            is what still says it out loud. */}
         <button
           type="button"
-          class={`iconbtn ${state.inspect ? "is-active" : ""}`}
+          class="iconbtn"
           title={`Inspect element — hover, then ${copyChord} (${inspectChord} toggles the panel)`}
           aria-label="Inspect element"
           aria-pressed={state.inspect}
           onClick={() => fire(client.setInspect(!state.inspect))}
         >
-          <DeckIcon icon={MousePointerClick} size={CHROME_ICON} />
+          <DeckIcon icon={CursorClick} size={CHROME_ICON} />
         </button>
         <button
           type="button"

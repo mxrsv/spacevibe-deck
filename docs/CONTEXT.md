@@ -12,6 +12,282 @@
   material, kept for provenance, not authoritative.
 - Domain glossary: repo-root `CONTEXT.md`.
 
+## Chrome ink goes neutral — 2026-08-17
+
+The owner read the app's text as "hơi ánh xanh" — faintly blue — and asked for
+gray. The tint was measurable, not a matter of taste: `deriveChromeColors`
+builds the entire `--text-*` ladder out of the theme's `foreground`, and three
+of the four built-in palettes ship a blue-violet one. Tokyo Night's `#c0caf5`
+is 73% saturated, Catppuccin Mocha's `#cdd6f4` 64%; the derived `--text-primary`
+came out at `#cfd7f7` (s71%) and `#dee4f8` (s65%) respectively. Nothing in the
+chrome was blue on purpose — every label, path, tab title and menu item in the
+app was simply wearing the terminal's ink.
+
+**The fix is at the palettes, not at the derivation** (owner's call, offered
+against the alternative of neutralizing inside `deriveChromeColors`). Each
+built-in `foreground` is now the gray of MATCHING WCAG relative luminance:
+
+| theme            | fg before | fg after  | contrast on its own bg |
+| ---------------- | --------- | --------- | ---------------------- |
+| Tokyo Night      | `#c0caf5` | `#cbcbcb` | 11.14 → 11.09          |
+| Dracula          | `#f8f8f2` | `#f8f8f8` | 13.36 → 13.41          |
+| One Dark         | `#abb2bf` | `#b2b2b2` | 6.57 → 6.60            |
+| Catppuccin Mocha | `#cdd6f4` | `#d7d7d7` | 11.34 → 11.40          |
+
+Matching the luminance is what makes this a hue-only change: every ratio moves
+by less than 0.06, so DL-3.5's floors, the `ensureContrast` raise and the
+ordering guarantee are all untouched, and `checkChromeTextContrast` still
+returns `ok` for all four. The derived ladder now measures 0–4% saturation
+instead of 65–71%; the residue is `textMuted`/`textFaint` mixing back toward a
+background that is itself faintly blue, which is why the new test asserts a 6%
+ceiling rather than a literal gray.
+
+**The ANSI sixteen are deliberately untouched.** They are what makes a palette
+recognizable and what program output is supposed to look like — Tokyo Night's
+blue is still Tokyo Night's blue. `cursor` followed `foreground` only where the
+palette already had the two equal (Tokyo Night, Dracula); One Dark's `#528bff`
+and Catppuccin's rosewater are deliberate accents and stay.
+
+Recorded as **DL-3.6**, and it binds the four built-ins ONLY. An imported theme
+keeps whatever foreground its file declares — the file is the user's, and
+rewriting it would make an import a suggestion — so chrome under a tinted
+import is still tinted. That is the trade this shape accepts in exchange for
+never overriding a user's file.
+
+**`--hair`/`--hair-strong` came along** (owner, same ask). They were the last
+chrome tokens still mixing from `--fg`, so every input border and config rule
+was drawn in the palette's blue; once the ink beside them went neutral, a
+tinted hairline would have been the one coloured thing left in the chrome.
+They now mix from `--tone` like the seams do, which closes the carve-out
+DL-2.3 had been carrying ("the surfaces still on them were not part of what was
+reviewed"). Source and job are separate questions now: `--tone` answers the
+first for every line in chrome, inside-vs-between-surfaces answers the second.
+
+**Evidence.** `npm test` 3009 passed / 2 failed of 3011 — both reds
+(`agents-section`, `prompt-popover`) belong to a concurrent session's
+uncommitted work in this checkout: those files were last written 2026-08-16
+23:34, before this task started, and contain zero references to theme, `--fg`
+or hair. `npm run build` clean. A Chrome pass against the running
+`prototype:gallery` confirmed the live values (`--fg: #cbcbcb`,
+`--hair: rgba(255,255,255,0.12)`, `--text-primary: #d9d9d9`) and photographed
+the window-chrome specimen under Tokyo Night and Catppuccin Mocha. **Not
+established:** no `npm run electron:dev` pass, no `npm run tauri dev` pass, and
+**no owner eye review** — a gallery is a browser, and this is a colour change,
+which is exactly the class of work a screenshot in a dev harness is weakest at
+proving. Renderer-only plus a data change, so it reaches BOTH hosts.
+
+## opencode answers a tail, and its store had moved — 2026-08-17
+
+The owner ran an opencode pane, watched it answer in the terminal, and saw the
+rail row still say nothing but `opencode`. Two separate causes sat behind that
+one symptom, and the second one only surfaced because fixing the first did not
+help.
+
+**Cause one: a deliberate v1 absence.**
+[`session-tail.ts`](../electron/resume/session-tail.ts) `current` listed opencode
+as an absence with ONE stated reason — its storage layout was unconfirmed —
+so it answered `null` before any scanning happened. Reading the layout expired
+that reason.
+
+**Cause two, the real one: opencode 1.18 moved its state into SQLite.** Deck's
+scanner walked `~/.local/share/opencode/storage/` — a json tree of session
+objects, `message/<sessionID>/` turns and `part/<messageID>/` words — and that
+tree is now **frozen legacy data**. Everything current lives in `opencode.db`
+beside it, ids and json blobs unchanged. Nothing failed: the directory still
+exists and still parses, so the scan returned old sessions and the rail showed
+the fallback. On this machine the tree's newest file was hours stale while panes
+were answering, and **no session in it named any workspace the owner had open**.
+`lsof` on the running `opencode` process is what settled it.
+
+That means the defect was never only cosmetic. `resolve.ts` reads the SAME
+scanner, so **session restore was resolving opencode panes against dead data** —
+resuming a months-old conversation or none — with no error anywhere.
+
+### How it reads now
+
+[`opencode-db.ts`](../electron/resume/opencode-db.ts) `current` uses
+**`node:sqlite`**, Node's own driver: no npm dependency, no native rebuild, no
+packaging or signing consequence. That was the fork the owner approved
+(`better-sqlite3` was the alternative, rejected for its ABI-rebuild cost).
+Verified present in the Node that Electron 43 embeds — 24.18.1 — via
+`ELECTRON_RUN_AS_NODE=1`, which is also how to run any Electron-runtime check
+headlessly on this Mac.
+
+[`opencode.ts`](../electron/resume/opencode.ts) `current` merges both layouts,
+database first, and `resolve.ts` did not change a line — it still calls
+`opencode.candidates`. Four details are load-bearing:
+
+- **The merge dedupes by id.** The migration carried ids over unchanged, so a
+  migrated session exists in both stores. Two copies would defeat the greedy
+  `takenByAgent` dedup: pane two would "match" the file copy of the session pane
+  one already took, and both panes would resume one conversation.
+- **Sub-agent sessions are excluded** (`parent_id IS NOT NULL` — 56 of this
+  machine's 157). They share their parent's `directory`, so one would otherwise
+  rank as a candidate and show a delegated task's turn as the pane's own.
+- **`type = 'text'` exactly, in SQL as in the file walk.** A `reasoning` part
+  carries a `text` field of its own and is frequently the NEWEST part of a turn;
+  matching the field's presence would print the model's private thinking on the
+  rail. A tool-only turn contributes no row, so ordering by time and taking one
+  row IS the walk-back to the turn before it.
+- **The connection never outlives the call.** Opening reads a page, not the
+  290 MB file (measured 7 ms for a tail query), and a held handle would sit on a
+  database another process is actively writing.
+
+The legacy tree still answers when the database does not, for an install that
+never migrated — that half is `legacyCandidates`/`legacySessionTailText`, with
+its ids `[A-Za-z0-9_-]`-checked before they reach `path.join` (C7). The
+`TAIL_SOURCES` entry shape also changed, from `{ candidates, parse }` to
+`{ candidates, read }`, because opencode's reader owns the whole read; the
+`sourcePath === undefined → null` guard moved INTO the Claude/Codex closures,
+since opencode's candidates never carry a path.
+
+### Verification state
+
+`electron/resume` suites **45/45** (`opencode-db` 10, `session-tail` 20,
+`resolve` 15) and `tsc -p tsconfig.electron.json` clean. A `tsx` smoke against
+the owner's real `opencode.db` resolved the live `spacevibe-api` pane to its own
+session id (`resolveResume` → `ses_ff1000cf2…`) and to the exact sentence
+visible in the terminal, and two panes in one cwd took two different sessions.
+**No full suite, no bundle, no native `electron:dev` pass, no owner eye review.**
+Electron only; on Tauri the rail keeps its fallback.
+
+## One line, and the sentence takes the agent's name — 2026-08-17
+
+Same day, hours after the section below: the turn stopped being a SECOND line
+and took the agent name's slot, so every rail row is one line — and the tab
+strip's chips print the same sentence. Both are the owner's calls, made from
+the shipped rail; [DL-27.15](DESIGN-LANGUAGE.md) `current` and
+[DL-18.10](DESIGN-LANGUAGE.md) `current` carry the amendments, and DL-20.1
+gained a fourth radius role for the chip.
+
+**Why the name went.** A project running three `claude` panes printed `claude`
+three times: the word was already said by the brand glyph beside it, and the
+only text telling those rows apart was the sentence underneath — which was
+also the text being trimmed hardest. So the row spends its one slot on the
+turn. Two exceptions keep a word that exists nowhere else and let the turn
+follow it on the same line: a name the USER typed, and an unlabelled row (no
+cluster header above it to carry the project name). A pane that has said
+nothing keeps its agent name, so no row is ever blank.
+
+**What that cost, accepted.** Sharing the line with the age and the state mark
+trims the sentence sooner than a full-width second line did — measured at the
+276px specimen width, roughly 30 characters before the ellipsis. The sidebar
+is resizable (DL-18.9) and the whole sentence stays in `title` and the
+accessible name (DL-27.4).
+
+**The model got simpler, not richer.** `RailPaneRow.message` is now the tail
+or empty — the custom-name fallback inside
+[`agent-rail-model.ts`](../src/ui/agent-rail-model.ts) `current` is gone,
+because the name it fell back to now stands on the row itself. `RailTabRow`
+gained one boolean, `named`, which is the whole of the "a typed name is not
+replaceable" rule. `.asr-leaf--flat` took the tab row's own height and vertical
+padding (34px, 6px): with the turn on one line a leaf and a tab row are the
+same object seen twice, and 4px of difference read as two lists.
+
+**The strip quotes the rail, through the rail's own precedence.**
+[`tabTail`](../src/ui/agent-rail-model.ts) `current` is exported for
+`TabStrip`, so "which pane speaks for this tab" is answered in ONE place and
+the two surfaces cannot quote different agents. The chip reports no agent
+STATE — everything 2026-08-16 took off it (dot, attention mark, popover) stays
+off; only the text changed. Paying for the longer text: `--radius-flat` (2px,
+DL-20.1's new dense-row role) so the left padding stops holding text off a
+curve, `--type-meta` instead of `--type-body`, `max-width: 210px`, and the
+label's own 140px cap removed so the trim lives in one place.
+
+**Verification.** Rail and strip suites green; `scripts/design-language.test.ts`
+green after its radius gate learned the new role (the gate is why the token,
+the rulebook prose and the table row all had to move together). Gallery
+screenshots at 276px rail width: every row 34px, chips at 2px radius / 11px /
+≤210px. `paneTails` is now seeded in the gallery
+([`SEED_PANE_TAILS`](../src/gallery/seed-data.ts) `current`) — without it no
+specimen could show a turn at all, since a browser has no session log. `npm run
+build` is clean, and the four suites that own this work are 95/95 —
+`agent-rail-model`, `agent-rail`, `tab-strip` and `tab-bar`, including new
+cases for `tabTail` and for all three chip branches.
+
+The full suite read 2997 pass / 4 fail at 15:57, and **every failure belongs to
+a session running concurrently in this same checkout**: `AgentsSection`'s label
+id, `PromptPopover`'s empty body and two `OpenBoard home view` cases, in files
+last written 15:49–15:51 and importing nothing from this work. That session also
+briefly broke `src/ui/app.tsx` mid-run (`DetectedAgent`, then
+`quickPickerAgents`), which is worth knowing when a build here fails in a file
+nobody in this task opened. **Owed: the native `electron:dev` pass and the owner
+eye review**, on both surfaces.
+
+## The rail says what the agent just said — 2026-08-17
+
+Tier 3 of the agent status rail is built. Every rail row now spends its second
+line on the agent's newest turn, and a quiet row dims — the treatment the owner
+approved from rendered specimens in
+[`attention-direction.tsx`](../src/gallery/sections/attention-direction.tsx) `current`
+on 2026-08-17. It is the HYBRID of that section's two variants, not
+either alone: a turn on every row (variant A) AND quiet rows faint (variant B).
+New [DL-27.15](DESIGN-LANGUAGE.md) `current`; DL-27.11's "only `asked`/`failed`
+may spend a second line" sentence is superseded.
+
+Two frozen decisions were overridden on the owner's explicit ask that day, and
+both are recorded here rather than edited out of the spec:
+[spec](specs/2026-08-16-agent-status-rail-design.md) `decided` §2.6's "a message line is
+exceptional", and §10's sequencing gate ("tier 1 native pass before tier 3
+starts"). The rail has been in the owner's daily native use since 2026-08-16;
+the native eye review still happens, as this work's own gate, not as a
+precondition.
+
+### Where the sentence comes from
+
+[`session-tail.ts`](../electron/resume/session-tail.ts) `current` reads it off
+the agent's own session log, in the main process, over a new flat `session_tail`
+channel (R6) that mirrors `resume_lookup` request-for-request. It reuses the
+resume scanners rather than re-walking disk: `CandidateSession` gained an
+optional `sourcePath`, which `SessionRecord` already declared — so **neither
+`claude.ts` nor `codex.ts` changed at all**, which is the one deviation from the
+plan (it asked for a new `filePath` field, a second name for the same thing).
+[`tailBytes`](../electron/resume/head.ts) `current` is `headBytes`' mirror:
+`lstat`-guarded, symlink-refusing, reading the LAST 64 KiB instead of the first.
+Ranking, the 30-day cutoff and the greedy `takenByAgent` dedup are
+`resolveResume`'s, imported rather than copied — without the dedup, two panes
+running one agent in one cwd would wear the same sentence.
+
+**`claude`, `codex` and `opencode` produce a real tail.** `gemini` (no candidate
+scan at all), `agy` (protobuf, no schema) and declared custom agents answer
+`null`, and those rows keep the fallback they had. `opencode` shipped in that
+list on 2026-08-17 and left it hours later, once its store was found — see
+[opencode's SQLite move](#opencode-answers-a-tail-and-its-store-had-moved--2026-08-17)
+above. Every failure —
+unreadable file, malformed request, unparseable line — answers `null` AT ITS OWN
+POSITION, so a batch of eight panes cannot lose seven because one scan tripped.
+
+### When it asks
+
+[`session-tail-store.ts`](../src/terminal/session-tail-store.ts) `current` is a
+window-scoped signal store (R5) driven by `tabViews`, **never by a timer**: a
+300ms debounce, a fingerprint of every agent pane's `changedAt`, one batch in
+flight at a time with the latest fingerprint winning. Two rules carry its
+correctness. **Only a pane with `hasRun === true` is asked**, because a freshly
+opened pane's cwd may well hold yesterday's session and the rail would dress a
+silent pane in someone else's sentence. And **a `null` answer keeps the previous
+tail** rather than erasing it — a scan that raced a write is not evidence the
+pane never spoke. The sent fingerprint is claimed before the await and kept on
+failure: resetting it would turn `pane-info-poller`'s 2s cadence into a retry
+loop, which is the interval this store exists to avoid.
+
+### v1 limits, accepted
+
+- A pane spawned in a subdirectory or another worktree drifts from its tab's
+  `workspacePath`; the cwd match fails silently and that pane's tail stays null.
+- A tail refreshed mid-turn can show a partial sentence. The debounce plus
+  `changedAt` should mostly avoid it; the owner rules after the native look.
+- A `failed` pane shows its last assistant text, not the error line. Open.
+
+### Verification state
+
+Electron only; no Tauri implementation exists, and on Tauri the rail degrades to
+the custom-name fallback. `npm test` 2968 pass / 253 files, `npm run build`,
+`npm run generate:menu:check` and `npm run electron:build` all clean on
+2026-08-17. **The native `electron:dev` pass and the owner eye review of the
+running rail are both OWED** — the gallery pass on the real `AgentRail` is the
+only visual evidence so far. Windows is unverified (Gate C).
+
 ## `New`, and a pane you can drag into place — 2026-08-16
 
 The rail's last row is `New` now, and it answers "another one, where?" two
@@ -2577,13 +2853,14 @@ silent no-op), and the focus call is the pane-exact one rather than
 of the one that was pressed. No PTY, window, materialization, close or
 process-classification path changed.
 
-**The pane answers back.** [`pingPane`](../src/terminal/pane-ping.ts) `current`
-rings the target pane for 1.5s, because the rail otherwise drops the user into
-a grid of identical terminals and they have to re-find the thing they just
-asked for. It replaces the element rather than reusing it — a CSS animation
-only restarts when its element is new — and clears every other slot, so two
-rings never burn at once. There is no cleanup timer: the span is inert, and the
-next ping or the next layout rebuild removes it.
+**The pane answers back — deleted 2026-08-17.** `pingPane` rang the target pane
+for 1.5s on the reasoning that the rail otherwise drops the user into a grid of
+identical terminals. The owner removed it: the flash read as an accent event
+with no visible cause, and the permanent active-pane bar
+([`.pane-slot.is-active .pane::before`](../src/styles/06-stage-panes.css)
+`current`) already says which pane holds the keys. `src/terminal/pane-ping.ts`,
+its five-case suite and the `.pane-ping` CSS are gone, and DL-27.7 — the rule
+that bought it an exception to DL-1.2's 300ms cap — is withdrawn.
 
 **State model.** `attention: "error"` reads as `failed` and outranks everything
 — a crashed agent belongs in the pinned block, ABOVE `asked`, and is not
@@ -2943,35 +3220,35 @@ run — files last touched 15:17–15:25 while this task was running). The
 **Not established.** No `npm run electron:dev` pass and no owner eye review.
 Renderer-only, so it reaches the Tauri host too, where nothing has been run.
 
-
 ## Verification state ledger
 
 Full evidence behind [`../AGENTS.md`](../AGENTS.md) `current`'s "Chưa khớp thực tế" table.
 That table keeps the claim, its intent label and its status; the evidence prose lives here so
 the always-loaded file stays small.
 
-| Claim | Intent | Status | Evidence |
-| ----- | ------ | ------ | -------- |
-| Electron can replace Tauri on both supported platforms | `building` | unverified | Gate A lacks Apple identity; Gate C lacks a real Windows run |
-| Deck ships the Electron host | `decided` | backlog | `electron/` is on `main`, but the tag workflow still builds Tauri and the updater path is unchanged |
-| Pane detach is complete cross-platform | `building` | partial | Phase A has focused/native macOS evidence; Phase B and Windows pointer capture remain open |
-| File explorer is available | `decided` | backlog | Surface built 2026-08-14 behind a passed Gate M (6/6 packaged), then reshaped the same day — tabs on the stage strip, document on the stage — so that pass no longer covers it. Owner eye review, packaged both-layout pass and native macOS sign-off owed. Electron only, no Tauri implementation |
-| The browser tab works everywhere Deck does | `building` | partial | Electron-only; no Tauri implementation exists. The 2026-08-15 tab-on-stage reshape is verified by suite/build only — native `electron:dev` pass and owner eye review owed |
-| AgentQuickPicker's wired flow is native-verified | `building` | unverified | Built and wired 2026-08-14; visual design eye-approved via a gallery specimen only — no native `npm run electron:dev` click-through or owner eye review of the wired flow itself yet |
-| Sidebar collapse and drag-to-close are native-verified | `building` | unverified | Landed 2026-08-16 (DL-18.9; DL-19.4 amended). Suite/build plus a browser (`npm run dev`) measurement of the hide, the drag and both controls — no native `electron:dev` pass, no owner eye review of either surface. The renderer is shared, so the sidebar seam reaches the Tauri host too, where nothing has been run; the Windows collapse floor is unverified (Gate C) |
-| The unified tab strip is native-verified | `building` | unverified | Landed 2026-08-16 (new DL-18.10): one chip shape, one row, open order, and the keyboard counting chips. Suite/build plus a gallery screenshot of the merged strip — no native `electron:dev` pass and no owner eye review of the running app. Renderer-only, so it reaches the Tauri host too, where nothing has been run |
-| The side panel's three tabs work | `building` | unverified | Landed 2026-08-16: the docked column became a tab host (file explorer / token usage / session history) and the rail grew an action footer. Explorer and usage: suite/build evidence only — no native `electron:dev` pass, no owner eye review, no gallery specimen, and both were reshaped for a 360–560px column they have never been seen rendered in. **Session history is the exception since 2026-08-16:** it was rendered natively against this machine's real corpus (794 rows, 717 brand marks, 794 `Resume` controls) and measured at dock widths 360 and 520 with zero horizontal overflow — but that is a machine's reading, not the owner's eye, and Windows stays unverified (Gate C). Session history still sits on `src/ui/sessions/`, an untracked copy of an unmerged branch |
-| Session restore resumes agent conversations | `building` | unverified | Landed 2026-08-15, suite/build evidence only (`npm test` 2619 green); no native macOS run, no owner eye review of the rail row; Windows unverified (Gate C); gemini/agy are best-effort by design |
-| The agent rail replaces the repository rail | `building` | partial | Landed 2026-08-16 and reshaped through DL-27.12/spec §2.7: the rail is project → tab only, with 34px flat rows, direct pane-focus glyphs, no tab disclosure or nested pane rows, one project-level collapse, and the same header for singleton and multi-tab projects. Targeted rail/design tests pass 70/70; production build, Electron build, menu check and diff check exit 0. An isolated native Electron window restored four live tabs across two projects and measured two headers, zero tab disclosures, zero pane rows and zero horizontal overflow, with open/collapsed screenshots captured. The owner has not eye-approved that screenshot; Tauri and Windows are unverified. The last full-suite run is red from the repository-wide Phosphor/Vitest QName fault (2,574 pass, 277 fail), not from a rail assertion. `RepositoryRail` stays parked until the owner review closes the replacement gate |
-| The rail row shows the agent's newest turn | `decided` | backlog | Tier 3 (`session_tail`) is not built — spec §10 gates it behind the tier-1 native pass. Every message line is the tab title today, so a `failed` row cannot yet show the failure text §3 asks for |
-| The blurred modal scrim is native-verified | `building` | unverified | Landed 2026-08-16 with DL §29 and DL-1.3's `backdrop-filter` exception. Suite/build plus a browser measurement — the gallery specimen photographed over a synthetic terminal ground, which is where `blur(10px)` was chosen over 6px and 14px. A gallery is a browser, not a host: how the blur composites in a packaged app over a real xterm canvas is unverified, and the frugality claim behind the exception (a transient compositing layer) is reasoned, never profiled. Renderer-only, so it reaches Tauri too, where nothing has been run |
-| The collapsed feature toolbar is native-verified | `building` | unverified | Landed 2026-08-16 (new DL-23.8): the pane group moved off the bar into `More`, leaving one `Ellipsis` control at the stage strip's trailing end. Suite/build evidence only — no native `electron:dev` pass and no owner eye review of the running toolbar or of the menu in top-tab mode, where the pane group and the DL-28.4 rows share one popover for the first time. Renderer-only, so it reaches Tauri too, where nothing has been run |
-| Dragging `New` onto a pane docks an agent pane there | `building` | unverified | Landed 2026-08-16 (new DL-27.14). Suite/build evidence: the drag controller's 9 cases, `dropAgentPane`/`activeSlotRects`'s 6, `agentForWorkspace`'s 8, `npm run build`, `npm run electron:build` and `generate:menu:check` all green. **Nothing here has been dragged by a hand**: every drop is a synthesized pointer sequence against fabricated rects, so the drag has never been seen over a real xterm canvas, over a `WebContentsView` or the Settings screen (where the inert path matters most), or over a zoomed pane (where the slot list collapses to one rect). No owner eye review. Renderer-only, so it reaches Tauri too, where nothing has been run |
-| The quick picker opens into a chosen worktree | `building` | unverified | Landed 2026-08-16 (new DL-29.7). Suite/build plus a gallery specimen — **no worktree has actually been opened into**: every test feeds `worktreeDestinations` a fabricated scan, so nothing here proves `git_repository`'s real output resolves to the destinations the row lists, nor that a tab tagged with a chosen worktree files under the right rail row. Electron-only in effect; the row is omitted on Tauri, which has no such channel |
-| One click on the open board opens the workspace | `current` | unverified | Landed 2026-08-16 with the config view's deletion. Evidence is one gate: `npx tsc --noEmit` exits clean over the whole tree. **No `npm test`, no `npm run build`, no native pass** — the board's suites were rewritten in the same pass and have never executed. Unproven by anything: that the awaited probe actually closes the fast-click race in a real window, that a remembered `null` agent opens a Shell rather than an agent, and that the notice line is the only reachable failure surface. Renderer-only, so it reaches Tauri too, where nothing has been run |
-| The icon set is Phosphor everywhere | `current` | unverified | Swapped 2026-08-16 (DL-1.1's exception moved, DL-14.1 rewritten): `lucide-preact` uninstalled, 41 source files and 31 class assertions rewritten, `.lucide` → `.deck-icon`. Evidence is `npx tsc --noEmit` alone — **no `npm test`, no `npm run build`, no native pass**, and DL-1.1's gzip ceiling has not been re-measured against the new package (§10 ledger). The owner eye-reviewed a gallery specimen and picked `regular` from it, but four marks were chosen AFTER that review and have never been seen rendered: `GitFork`, `FolderDashed`, `TreeView` and the mirrored dock toggle. Renderer-only, so it reaches the Tauri host too, where nothing has been run |
-| A preset can be renamed or deleted | `current` | **false** | Was true until 2026-08-16 and is now unreachable: the layout cards were the only call sites of `renamePreset` / `deletePreset`, and they went with the config view. `presets-store` still exports both. Creating (⌘⇧N / menu) and overwriting (⌘⇧S) still work. Named and accepted at removal time, not an oversight — restoring it needs a new home, most likely a settings section |
-| The new chrome typography and the stateless toggles are native-verified | `building` | unverified | Landed 2026-08-16: group labels went to 14px `--text-muted` (DL-4.4/DL-3.4) and `.iconbtn.is-active` was deleted (DL-21.8). Evidence is `npx tsc --noEmit` clean plus CSSOM/computed-style measurements taken in `npm run dev` — the group labels read 14px/560/muted, `.iconbtn.is-active` is absent from the stylesheet, and a collapsed sidebar leaves its button transparent with `aria-pressed="true"`. **No suite run and no owner eye review**: every component test that draws an icon is currently red under vitest with `InvalidCharacterError: "[object Object]"`, which predates this work and belongs to the in-flight Phosphor migration. Renderer-only, so it reaches Tauri too, where nothing has been run |
+| Claim                                                                   | Intent     | Status     | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Electron can replace Tauri on both supported platforms                  | `building` | unverified | Gate A lacks Apple identity; Gate C lacks a real Windows run                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Deck ships the Electron host                                            | `decided`  | backlog    | `electron/` is on `main`, but the tag workflow still builds Tauri and the updater path is unchanged                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Pane detach is complete cross-platform                                  | `building` | partial    | Phase A has focused/native macOS evidence; Phase B and Windows pointer capture remain open                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| File explorer is available                                              | `decided`  | backlog    | Surface built 2026-08-14 behind a passed Gate M (6/6 packaged), then reshaped the same day — tabs on the stage strip, document on the stage — so that pass no longer covers it. Owner eye review, packaged both-layout pass and native macOS sign-off owed. Electron only, no Tauri implementation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| The browser tab works everywhere Deck does                              | `building` | partial    | Electron-only; no Tauri implementation exists. The 2026-08-15 tab-on-stage reshape is verified by suite/build only — native `electron:dev` pass and owner eye review owed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| AgentQuickPicker's wired flow is native-verified                        | `building` | unverified | Built and wired 2026-08-14; visual design eye-approved via a gallery specimen only — no native `npm run electron:dev` click-through or owner eye review of the wired flow itself yet                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Sidebar collapse and drag-to-close are native-verified                  | `building` | unverified | Landed 2026-08-16 (DL-18.9; DL-19.4 amended). Suite/build plus a browser (`npm run dev`) measurement of the hide, the drag and both controls — no native `electron:dev` pass, no owner eye review of either surface. The renderer is shared, so the sidebar seam reaches the Tauri host too, where nothing has been run; the Windows collapse floor is unverified (Gate C)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| The unified tab strip is native-verified                                | `building` | unverified | Landed 2026-08-16 (new DL-18.10): one chip shape, one row, open order, and the keyboard counting chips. Suite/build plus a gallery screenshot of the merged strip — no native `electron:dev` pass and no owner eye review of the running app. Renderer-only, so it reaches the Tauri host too, where nothing has been run                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| The side panel's three tabs work                                        | `building` | unverified | Landed 2026-08-16: the docked column became a tab host (file explorer / token usage / session history) and the rail grew an action footer. Explorer and usage: suite/build evidence only — no native `electron:dev` pass, no owner eye review, no gallery specimen, and both were reshaped for a 360–560px column they have never been seen rendered in. **Session history is the exception since 2026-08-16:** it was rendered natively against this machine's real corpus (794 rows, 717 brand marks, 794 `Resume` controls) and measured at dock widths 360 and 520 with zero horizontal overflow — but that is a machine's reading, not the owner's eye, and Windows stays unverified (Gate C). Session history still sits on `src/ui/sessions/`, an untracked copy of an unmerged branch                                                                                                                     |
+| Session restore resumes agent conversations                             | `building` | unverified | Landed 2026-08-15, suite/build evidence only (`npm test` 2619 green); no native macOS run, no owner eye review of the rail row; Windows unverified (Gate C); gemini/agy are best-effort by design                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| The agent rail replaces the repository rail                             | `building` | partial    | Landed 2026-08-16 and reshaped through DL-27.12/spec §2.7: the rail is project → tab only, with 34px flat rows, direct pane-focus glyphs, no tab disclosure or nested pane rows, one project-level collapse, and the same header for singleton and multi-tab projects. Targeted rail/design tests pass 70/70; production build, Electron build, menu check and diff check exit 0. An isolated native Electron window restored four live tabs across two projects and measured two headers, zero tab disclosures, zero pane rows and zero horizontal overflow, with open/collapsed screenshots captured. The owner has not eye-approved that screenshot; Tauri and Windows are unverified. The last full-suite run is red from the repository-wide Phosphor/Vitest QName fault (2,574 pass, 277 fail), not from a rail assertion. `RepositoryRail` stays parked until the owner review closes the replacement gate |
+| The rail row shows the agent's newest turn                              | `building` | unverified | Tier 3 (`session_tail`) landed 2026-08-17 (new DL-27.15), then the same day the turn took the agent name's slot so every row is one line, and the tab strip's chips print the same sentence (DL-18.10/DL-20.1 amended). Suite evidence: rail, strip and design-language suites green, plus gallery screenshots at 276px — every row 34px, chips 2px/11px/≤210px. `claude`, `codex` and (since later that day) `opencode` produce a real tail; `gemini`, `agy` and custom agents keep the name. `npm run build` clean; the four owning suites 95/95; the full suite's 4 failures at 15:57 all belong to a concurrent session in the same checkout. **No native `electron:dev` pass and no owner eye review of either surface.** Electron only for the tail itself; the one-line shape is renderer-only and reaches Tauri, where nothing has been run                                                               |
+| The blurred modal scrim is native-verified                              | `building` | unverified | Landed 2026-08-16 with DL §29 and DL-1.3's `backdrop-filter` exception. Suite/build plus a browser measurement — the gallery specimen photographed over a synthetic terminal ground, which is where `blur(10px)` was chosen over 6px and 14px. A gallery is a browser, not a host: how the blur composites in a packaged app over a real xterm canvas is unverified, and the frugality claim behind the exception (a transient compositing layer) is reasoned, never profiled. Renderer-only, so it reaches Tauri too, where nothing has been run                                                                                                                                                                                                                                                                                                                                                                 |
+| The collapsed feature toolbar is native-verified                        | `building` | unverified | Landed 2026-08-16 (new DL-23.8): the pane group moved off the bar into `More`, leaving one `Ellipsis` control at the stage strip's trailing end. Suite/build evidence only — no native `electron:dev` pass and no owner eye review of the running toolbar or of the menu in top-tab mode, where the pane group and the DL-28.4 rows share one popover for the first time. Renderer-only, so it reaches Tauri too, where nothing has been run                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Dragging `New` onto a pane docks an agent pane there                    | `building` | unverified | Landed 2026-08-16 (new DL-27.14). Suite/build evidence: the drag controller's 9 cases, `dropAgentPane`/`activeSlotRects`'s 6, `agentForWorkspace`'s 8, `npm run build`, `npm run electron:build` and `generate:menu:check` all green. **Nothing here has been dragged by a hand**: every drop is a synthesized pointer sequence against fabricated rects, so the drag has never been seen over a real xterm canvas, over a `WebContentsView` or the Settings screen (where the inert path matters most), or over a zoomed pane (where the slot list collapses to one rect). No owner eye review. Renderer-only, so it reaches Tauri too, where nothing has been run                                                                                                                                                                                                                                               |
+| The quick picker opens into a chosen worktree                           | `building` | unverified | Landed 2026-08-16 (new DL-29.7). Suite/build plus a gallery specimen — **no worktree has actually been opened into**: every test feeds `worktreeDestinations` a fabricated scan, so nothing here proves `git_repository`'s real output resolves to the destinations the row lists, nor that a tab tagged with a chosen worktree files under the right rail row. Electron-only in effect; the row is omitted on Tauri, which has no such channel                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| One click on the open board opens the workspace                         | `current`  | unverified | Landed 2026-08-16 with the config view's deletion. Evidence is one gate: `npx tsc --noEmit` exits clean over the whole tree. **No `npm test`, no `npm run build`, no native pass** — the board's suites were rewritten in the same pass and have never executed. Unproven by anything: that the awaited probe actually closes the fast-click race in a real window, that a remembered `null` agent opens a Shell rather than an agent, and that the notice line is the only reachable failure surface. Renderer-only, so it reaches Tauri too, where nothing has been run                                                                                                                                                                                                                                                                                                                                         |
+| The icon set is Phosphor everywhere                                     | `current`  | unverified | Swapped 2026-08-16 (DL-1.1's exception moved, DL-14.1 rewritten): `lucide-preact` uninstalled, 41 source files and 31 class assertions rewritten, `.lucide` → `.deck-icon`. Evidence is `npx tsc --noEmit` alone — **no `npm test`, no `npm run build`, no native pass**, and DL-1.1's gzip ceiling has not been re-measured against the new package (§10 ledger). The owner eye-reviewed a gallery specimen and picked `regular` from it, but four marks were chosen AFTER that review and have never been seen rendered: `GitFork`, `FolderDashed`, `TreeView` and the mirrored dock toggle. Renderer-only, so it reaches the Tauri host too, where nothing has been run                                                                                                                                                                                                                                        |
+| A preset can be renamed or deleted                                      | `current`  | **false**  | Was true until 2026-08-16 and is now unreachable: the layout cards were the only call sites of `renamePreset` / `deletePreset`, and they went with the config view. `presets-store` still exports both. Creating (⌘⇧N / menu) and overwriting (⌘⇧S) still work. Named and accepted at removal time, not an oversight — restoring it needs a new home, most likely a settings section                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| The neutral chrome ink is native-verified                               | `building` | unverified | Landed 2026-08-17 (new DL-3.6; DL-2.3's hairline carve-out closed). The four built-in `foreground` literals became luminance-matched grays and `--hair`/`--hair-strong` moved from `--fg` to `--tone`. Evidence: `npm test` 3009/3011 (both reds are a concurrent session's uncommitted `agents-section` / `prompt-popover` work, files last written 2026-08-16 23:34, zero theme references), `npm run build` clean, and a Chrome pass against the running `prototype:gallery` reading the live `--fg`, `--hair` and `--text-*` values and photographing the window-chrome specimen under two palettes. **No `electron:dev` pass, no `tauri dev` pass, and no owner eye review** — a browser harness is the weakest evidence class there is for a colour decision. Renderer-only plus a data change, so it reaches both hosts. See [the section above](#chrome-ink-goes-neutral--2026-08-17) `current`           |
+| The new chrome typography and the stateless toggles are native-verified | `building` | unverified | Landed 2026-08-16: group labels went to 14px `--text-muted` (DL-4.4/DL-3.4) and `.iconbtn.is-active` was deleted (DL-21.8). Evidence is `npx tsc --noEmit` clean plus CSSOM/computed-style measurements taken in `npm run dev` — the group labels read 14px/560/muted, `.iconbtn.is-active` is absent from the stylesheet, and a collapsed sidebar leaves its button transparent with `aria-pressed="true"`. **No suite run and no owner eye review**: every component test that draws an icon is currently red under vitest with `InvalidCharacterError: "[object Object]"`, which predates this work and belongs to the in-flight Phosphor migration. Renderer-only, so it reaches Tauri too, where nothing has been run                                                                                                                                                                                        |
 
 ## Chưa khớp thực tế
 

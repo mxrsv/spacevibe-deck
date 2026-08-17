@@ -1,0 +1,344 @@
+/* ── Repository rail (RepositoryRail) ───────────────────────
+   Two tiers over the rows the flat sidebar already had: a repository header,
+   then its worktrees. Hover, selection and the close affordance stay
+   `.wsitem`'s, untouched — the rail REGROUPS rows, it does not restyle them,
+   so "this workspace is active" keeps reading exactly as it always has and
+   this surface adds no row to DL §10's ledger.
+   Design: docs/specs/2026-08-13-repository-worktree-rail-design.md §6. ── */
+.wsbar--repos .wsbar__list {
+  gap: 1px;
+}
+
+.repogroup + .repogroup {
+  margin-top: 8px;
+}
+
+/* A folder git knows nothing about keeps the flat shape it has always had:
+   no header, no indent, no `primary` badge — inventing a repository tier for
+   it would be the rail claiming knowledge it does not have. */
+.repogroup--plain {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.repogroup__head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.repogroup__toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 6px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--type-body);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+
+.repogroup__toggle:hover,
+.repogroup__action:hover {
+  background: var(--state-hover-bg);
+}
+
+.repogroup__mark {
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+}
+
+.repogroup__name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The rescan affordance is icon-only because it is familiar, repeated and
+   carries a tooltip (DL-14.4); it stays out of the way until the header is
+   pointed at, like the row close button above. */
+.repogroup__action {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  padding: 0;
+  place-items: center;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-faint);
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    opacity var(--duration) var(--ease),
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.repogroup__head:hover .repogroup__action,
+.repogroup__action:focus-visible {
+  opacity: 1;
+}
+
+.repogroup__action:hover {
+  color: var(--text-primary);
+}
+
+/* The rail's one indent: a worktree belongs to the repository above it. */
+.repogroup__worktrees {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 10px;
+}
+
+/* A worktree with no session. DL-17.3's precedent: a control that cannot be
+   pressed drops its border and its pointer rather than gaining a disabled
+   pill, because a border is what promises "you can press this" everywhere
+   else. Opening one is the tab-materialization fork (spec §7.1). */
+.wsitem--readout {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.wsitem--readout:hover {
+  background: transparent;
+  color: var(--text-faint);
+}
+
+/* Every worktree uses the same hollow status ring instead of an avatar. The
+   transparent centre keeps the marker quiet; semantic colour carries state,
+   while the marker's accessible label keeps colour from being the only cue. */
+.wsitem__state {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  margin: 0 6px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-faint);
+}
+
+.wsitem[data-state="ready"] .wsitem__state {
+  color: var(--green);
+}
+
+.wsitem[data-state="working"] .wsitem__state {
+  color: var(--accent);
+}
+
+.wsitem[data-state="attention"] .wsitem__state {
+  color: var(--magenta);
+}
+
+.wsitem[data-state="missing"] .wsitem__state {
+  color: var(--red);
+}
+
+button.wsitem__state {
+  position: relative;
+  appearance: none;
+  cursor: pointer;
+}
+
+/* Keep the visible ring at 8px while giving the actionable state a 20px hit
+   target, matching the attention mark it replaces. */
+button.wsitem__state::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+}
+
+button.wsitem__state:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* The badge must not be eaten by the name's ellipsis, so the label becomes a
+   row and only the name shrinks. Scoped to the rail: the flat sidebar puts
+   bare text in `.wsitem__label` and an anonymous flex item cannot ellipsize. */
+.wsbar--repos .wsitem__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wsitem__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* DL-4.3: lowercase, like every other chrome label. */
+.wsitem__badge {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+  color: var(--text-faint);
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+
+/* One focusable agent mark per terminal tab. DL-14.6 permits real product
+   marks here; declared/shell tabs use the deterministic letter treatment.
+   Three marks are the row-width budget. Unlike the former overlapping
+   identity readout, every 26px control is a reliable click target that focuses
+   its exact tab; +N exposes the remaining tabs without growing the row. */
+.worktree-agents {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  margin-left: 2px;
+}
+
+.worktree-agents__item {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  padding: 0;
+  place-items: center;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.worktree-agents__item:hover,
+.worktree-agents__more:hover,
+.worktree-agents__more.is-open {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.worktree-agents__item.is-active {
+  border-color: color-mix(in srgb, var(--accent) 62%, transparent);
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+
+.worktree-agents__item:focus-visible,
+.worktree-agents__more:focus-visible,
+.worktree-agents__menu-item:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.worktree-agents__logo {
+  display: block;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.worktree-agents__letter {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.worktree-agents__more {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  padding: 0;
+  place-items: center;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.worktree-agents__menu {
+  position: absolute;
+  z-index: 40;
+  right: 0;
+  bottom: calc(100% + 6px);
+  display: flex;
+  width: 172px;
+  padding: 5px;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-surface);
+  background: var(--chrome-2);
+  box-shadow: inset 0 0 0 1px var(--seam-raised);
+}
+
+.worktree-agents__menu-item {
+  display: flex;
+  min-width: 0;
+  height: 30px;
+  padding: 2px 7px;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+  text-align: left;
+  cursor: pointer;
+}
+
+.worktree-agents__menu-item:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.worktree-agents__menu-mark {
+  display: grid;
+  flex: 0 0 16px;
+  place-items: center;
+}
+
+.worktree-agents__menu-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

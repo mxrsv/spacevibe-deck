@@ -7,7 +7,6 @@ import {
 } from "./settings/settings-store";
 import { loadCustomThemes } from "./settings/custom-themes-store";
 import { initLogo } from "./settings/logo-store";
-import { initWorkspaceLogos } from "./settings/workspace-logo-store";
 import { initSidebarBanner } from "./settings/sidebar-banner-store";
 import { initPresets } from "./presets/presets-store";
 import { initWorkspaces } from "./open-board/workspaces-store";
@@ -30,7 +29,6 @@ async function main(): Promise<void> {
     initWorkspaces(),
     initRepositories(),
     initLogo(),
-    initWorkspaceLogos(),
     initSidebarBanner(),
     // The themes folder has to be scanned at boot, not when Settings first
     // opens: `themeId` persists a `file:` id across launches, and until the

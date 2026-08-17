@@ -30,8 +30,7 @@ export async function freshPaneInfo(
   try {
     const infos = await pty.ptyInfo(ids, agentMatchers);
     return ids.map(
-      (id) =>
-        infos.find((info) => info.id === id) ?? unknownPaneInfo(id),
+      (id) => infos.find((info) => info.id === id) ?? unknownPaneInfo(id),
     );
   } catch (err) {
     console.warn("pty_info failed:", err);

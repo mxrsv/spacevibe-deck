@@ -1,27 +1,41 @@
-/**
- * Updater adapter.
- *
- * On Tauri this wrapped `@tauri-apps/plugin-updater`. On Electron the update
- * path is BLOCKED at Gate A: `electron-updater` goes through Squirrel.Mac,
- * which refuses an app that is not Developer ID signed and notarized, and no
- * Apple Developer identity has been bought yet.
- *
- * So this returns "no update available" rather than pretending to check.
- * That is deliberate and visible: the UI's Check for Updates simply finds
- * nothing, instead of reporting a failure the user cannot act on. The
- * single-flight guard in the main process is still wired, so the controller's
- * behaviour is unchanged when the real implementation lands.
- *
- * The file name is kept so the 44-file import swap stayed mechanical; it is
- * renamed when the Electron updater is implemented.
- */
-import { relaunch } from "../host/shell-host";
+import { relaunch as relaunchElectron } from "../host/shell-host";
 import type { PendingUpdate } from "./update-controller";
 
-export async function checkForUpdate(): Promise<PendingUpdate | null> {
-  return null;
+function isTauriHost(): boolean {
+  return (
+    typeof globalThis !== "undefined" &&
+    (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !==
+      undefined
+  );
 }
 
-export function relaunchDeck(): Promise<void> {
-  return relaunch();
+export async function checkForUpdate(): Promise<PendingUpdate | null> {
+  // Reached only through `electron-updater-adapter.ts`, and only under Tauri.
+  // Tauri is still the shipping host and owes one more release — the migration
+  // notice — so its signed Minisign updater path stays live until cutover. The
+  // guard is kept anyway: this file is the one place that must never run a
+  // Tauri import on a host without Tauri.
+  if (!isTauriHost()) {
+    return null;
+  }
+  const { check } = await import("@tauri-apps/plugin-updater");
+  const update = await check();
+  if (update === null) {
+    return null;
+  }
+  return Object.freeze({
+    currentVersion: update.currentVersion,
+    version: update.version,
+    notes: update.body ?? null,
+    download: () => update.download(),
+    install: () => update.install(),
+  });
+}
+
+export async function relaunchDeck(): Promise<void> {
+  if (isTauriHost()) {
+    const { relaunch } = await import("@tauri-apps/plugin-process");
+    return relaunch();
+  }
+  return relaunchElectron();
 }

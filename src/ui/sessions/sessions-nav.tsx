@@ -1,5 +1,5 @@
+import { ClockCounterClockwise } from "@phosphor-icons/react";
 import { useRef } from "preact/hooks";
-import { History } from "lucide-preact";
 import { AgentGlyph } from "../controls/agent-glyph";
 import { DeckIcon, RAIL_ICON } from "../controls/deck-icon";
 import type { SessionAgent } from "../../lib/session-history";
@@ -48,7 +48,7 @@ const SESSIONS_NAV_ITEMS: readonly SessionsNavItem[] = [
  *  has no brand, so it keeps the surface's own history glyph. */
 function NavGlyph({ agent }: { readonly agent: AgentFilter }) {
   return agent === "all" ? (
-    <DeckIcon icon={History} size={RAIL_ICON} />
+    <DeckIcon icon={ClockCounterClockwise} size={RAIL_ICON} />
   ) : (
     <AgentGlyph agent={agent as SessionAgent} className="sessions-nav__logo" />
   );

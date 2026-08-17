@@ -6,11 +6,7 @@ import {
 } from "../appwin.js";
 import { REEL_ID } from "../demo-reel.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
-import {
-  REPO_URL,
-  RELEASES_URL,
-  WINDOWS_FALLBACK_URL,
-} from "../download-links.js";
+import { REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
 import { CHANGELOG_URL } from "../release-data.js";
 import packageData from "../../../../package.json";
 import {
@@ -23,7 +19,7 @@ const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
 
 // Hero beams field. White key light on purpose: the hero runs a neutral
 // grey-white light language, and the one white face in the column is the
-// macOS download. See beams.js for what each knob does.
+// Windows download. See beams.js for what each knob does.
 //
 // rotation 14 is not arbitrary — it is the same 14° off-vertical the hub
 // landing tilts its light sweep to. Straight columns read as blinds behind
@@ -82,7 +78,7 @@ export function renderDirectionA(copy, locale) {
             <a class="a-topbar__brand" href="/landing-prototype/?direction=A" aria-label="${copy.navProduct}">
               ${renderBrandMark(copy)}
             </a>
-            <span class="a-topbar__descriptor">Native macOS / PTY field</span>
+            <span class="a-topbar__descriptor">Windows + macOS / PTY field</span>
             <a class="a-topbar__changelog" href="${CHANGELOG_URL}">
               <span data-copy="navChangelog">${copy.navChangelog}</span>
             </a>
@@ -116,21 +112,16 @@ export function renderDirectionA(copy, locale) {
               <p class="a-subhead" data-copy="subhead">${copy.subhead}</p>
 
               <div class="a-actions">
-                <a
-                  class="a-primary-cta"
-                  href="${RELEASES_URL}"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <span class="a-cta-lead">
-                    ${renderAppleIcon()}
-                    <span data-copy="downloadMac">${copy.downloadMac}</span>
-                  </span>
-                  <i aria-hidden="true">↓</i>
-                </a>
+                <p class="a-cta-new">
+                  <span
+                    class="a-cta-tag a-cta-new__tag"
+                    data-copy="newBadge"
+                    >${copy.newBadge}</span
+                  >
+                </p>
 
                 <a
-                  class="a-quiet-cta"
+                  class="a-primary-cta"
                   href="${WINDOWS_FALLBACK_URL}"
                   target="_blank"
                   rel="noreferrer"
@@ -139,14 +130,31 @@ export function renderDirectionA(copy, locale) {
                     ${renderWindowsIcon()}
                     <span data-copy="downloadWin">${copy.downloadWin}</span>
                   </span>
-                  <span class="a-cta-tag" data-copy="winPreviewTag"
-                    >${copy.winPreviewTag}</span
-                  >
+                  <span class="a-cta-trail">
+                    <span class="a-cta-tag" data-copy="winPreviewTag"
+                      >${copy.winPreviewTag}</span
+                    >
+                    <i aria-hidden="true">↓</i>
+                  </span>
                 </a>
 
                 <p class="a-cta-note" data-copy="winUnsignedNote">
                   ${copy.winUnsignedNote}
                 </p>
+
+                <!-- A button, not an anchor: the macOS build is announced, not
+                     offered, until the Electron macOS release lands. Being a
+                     non-anchor is also what keeps upgradeReleaseLinks from
+                     retargeting it at the old .dmg — see download-links.js. -->
+                <button class="a-quiet-cta" type="button" disabled>
+                  <span class="a-cta-lead">
+                    ${renderAppleIcon()}
+                    <span data-copy="downloadMac">${copy.downloadMac}</span>
+                  </span>
+                  <span class="a-cta-tag" data-copy="comingSoon"
+                    >${copy.comingSoon}</span
+                  >
+                </button>
 
                 <a class="a-quiet-cta" href="#${REEL_ID}">
                   <span class="a-cta-lead">

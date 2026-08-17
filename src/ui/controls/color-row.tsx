@@ -1,5 +1,5 @@
+import { ArrowCounterClockwise } from "@phosphor-icons/react";
 import { ConfigRow } from "./config-row";
-import { RotateCcw } from "lucide-preact";
 import { DeckIcon, ROW_ICON } from "./deck-icon";
 
 interface ColorRowProps {
@@ -29,7 +29,7 @@ export function ColorRow({
           aria-label={`Reset ${label} to theme color`}
           onClick={onClear}
         >
-          <DeckIcon icon={RotateCcw} size={ROW_ICON} />
+          <DeckIcon icon={ArrowCounterClockwise} size={ROW_ICON} />
         </button>
       )}
       <span class="cfg-btn cfg-btn--overlay">

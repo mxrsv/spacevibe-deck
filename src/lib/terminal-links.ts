@@ -164,10 +164,7 @@ function startsSpacedAbsoluteWindowsPath(
   return continuation.includes("\\") || continuation.includes("/");
 }
 
-function matchPathPattern(
-  source: string,
-  pattern: RegExp,
-): LinkCandidate[] {
+function matchPathPattern(source: string, pattern: RegExp): LinkCandidate[] {
   const out: LinkCandidate[] = [];
   pattern.lastIndex = 0;
   for (let m = pattern.exec(source); m !== null; m = pattern.exec(source)) {
@@ -212,7 +209,8 @@ function matchPathPattern(
 function matchPaths(source: string): LinkCandidate[] {
   const windows = matchPathPattern(source, WINDOWS_PATH_RE);
   const portable = matchPathPattern(source, PATH_RE).filter(
-    (candidate) => !windows.some((windowsPath) => overlaps(candidate, windowsPath)),
+    (candidate) =>
+      !windows.some((windowsPath) => overlaps(candidate, windowsPath)),
   );
   return [...windows, ...portable].sort((a, b) => a.start - b.start);
 }

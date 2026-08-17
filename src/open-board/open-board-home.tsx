@@ -1,11 +1,11 @@
 import {
-  Bot,
   FolderOpen,
   FolderPlus,
-  GitBranchPlus,
+  GitBranch,
+  Robot,
   Terminal,
   X,
-} from "lucide-preact";
+} from "@phosphor-icons/react";
 import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { folderName, formatRelativeTime } from "../lib/workspace-recents";
 import type { RecentWorkspace } from "../lib/workspace-recents";
@@ -19,7 +19,7 @@ import defaultLogoUrl from "../../.github/assets/icon.svg";
 
 /** Identity mark per agent (DL-25.2), same choice as the session-history
  *  screen's own row so the two surfaces read as one system. */
-const SESSION_AGENT_ICON = { claude: Bot, codex: Terminal } as const;
+const SESSION_AGENT_ICON = { claude: Robot, codex: Terminal } as const;
 
 /** The caller (`app.tsx`) already slices to five before handing this prop
  *  down, but the component re-caps defensively rather than trusting that. */
@@ -204,7 +204,7 @@ export function OpenBoardHome({
         </button>
         {canCreateWorktree ? (
           <button class="home-action" onClick={onCreateWorktree}>
-            <DeckIcon icon={GitBranchPlus} size={ROW_ICON} />
+            <DeckIcon icon={GitBranch} size={ROW_ICON} />
             Create worktree
           </button>
         ) : null}

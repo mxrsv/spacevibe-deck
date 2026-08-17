@@ -74,7 +74,11 @@ export const EDITOR_LANGUAGES: readonly EditorLanguage[] = [
   { id: "sql", extensions: [".sql"] },
   { id: "xml", extensions: [".xml", ".svg", ".plist"] },
   { id: "ini", extensions: [".ini", ".toml", ".cfg", ".conf", ".properties"] },
-  { id: "dockerfile", extensions: [], filenames: ["Dockerfile", "Containerfile"] },
+  {
+    id: "dockerfile",
+    extensions: [],
+    filenames: ["Dockerfile", "Containerfile"],
+  },
   { id: "cpp", extensions: [".c", ".h", ".cc", ".cpp", ".hpp", ".hh"] },
   { id: "csharp", extensions: [".cs"] },
   { id: "lua", extensions: [".lua"] },
@@ -140,7 +144,7 @@ function bare(color: string): string {
 export function monacoThemeFor(settings: Settings): MonacoThemeData {
   const theme = resolveTheme(settings);
   const background = theme.background ?? "#16161e";
-  const foreground = theme.foreground ?? "#c0caf5";
+  const foreground = theme.foreground ?? "#cbcbcb";
   const chrome = deriveChromeColors(background, foreground);
   const red = theme.red ?? "#f7768e";
   const green = theme.green ?? "#9ece6a";
@@ -155,7 +159,11 @@ export function monacoThemeFor(settings: Settings): MonacoThemeData {
     inherit: true,
     rules: [
       { token: "", foreground: bare(chrome.textPrimary) },
-      { token: "comment", foreground: bare(chrome.textFaint), fontStyle: "italic" },
+      {
+        token: "comment",
+        foreground: bare(chrome.textFaint),
+        fontStyle: "italic",
+      },
       { token: "string", foreground: bare(green) },
       { token: "number", foreground: bare(yellow) },
       { token: "keyword", foreground: bare(magenta) },
@@ -221,9 +229,8 @@ export function loadMonaco(): Promise<MonacoApi> {
     // Workers resolve through the same `base: "./"` path that produced two
     // silent packaging failures in the MVP, which is why Gate M runs against a
     // packaged build and not `electron:dev`.
-    const { default: EditorWorker } = await import(
-      "monaco-editor/editor/editor.worker?worker"
-    );
+    const { default: EditorWorker } =
+      await import("monaco-editor/editor/editor.worker?worker");
     (globalThis as { MonacoEnvironment?: unknown }).MonacoEnvironment = {
       getWorker: () => new EditorWorker(),
     };

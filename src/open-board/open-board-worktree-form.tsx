@@ -1,4 +1,4 @@
-import { ArrowLeft, FolderOpen } from "lucide-preact";
+import { ArrowLeft, FolderOpen } from "@phosphor-icons/react";
 import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { folderName } from "../lib/workspace-recents";
 import type { RecentWorkspace } from "../lib/workspace-recents";

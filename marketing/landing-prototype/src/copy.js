@@ -3,16 +3,16 @@ export const messages = {
     navProduct: "Deck",
     navChangelog: "Changelog",
     navGithub: "GitHub",
-    heroLabel: "// native macOS terminal for agent CLIs",
+    heroLabel: "// desktop terminal for agent CLIs",
     headlineLead: "Run the grid.",
     headlineTail: "Keep every agent in sight.",
     subhead:
-      "SpaceVibe Deck is a native macOS terminal built to launch, watch, and steer AI coding agents in parallel.",
+      "SpaceVibe Deck is a desktop terminal built to launch, watch, and steer AI coding agents in parallel.",
     primaryCta: "Watch the 16-sec demo",
     secondaryCta: "View on GitHub",
     downloadCountUnit: "downloads",
     downloadCountLoading: "Checking GitHub Releases",
-    downloadCountReady: "macOS + Windows · GitHub verified",
+    downloadCountReady: "GitHub Releases · verified",
     downloadCountUnavailable: "Live count unavailable",
     changelogBack: "Back to Deck",
     changelogKicker: "// release ledger",
@@ -54,6 +54,7 @@ export const messages = {
     downloadMac: "Download for macOS",
     downloadWin: "Download for Windows",
     comingSoon: "coming soon",
+    newBadge: "New",
     winPreviewTag: "preview",
     winUnsignedNote:
       "Unsigned build \u2014 Windows will show a SmartScreen warning. Choose More info \u2192 Run anyway.",
@@ -61,40 +62,40 @@ export const messages = {
     proofPtyTitle: "Real PTY, real shell",
     proofPtyBody:
       "Every pane runs your login shell ($SHELL -l) — PATH, aliases, and dotfiles just work.",
+    proofOpenTitle: "Open source, MIT licensed",
+    proofOpenBody:
+      "The whole app is on GitHub — read it, build it, fork it, ship a patch.",
     proofLocalTitle: "Local-first, no telemetry",
     proofLocalBody:
       "Everything stays on your machine — no accounts, no tracking, no network beyond what your agents do.",
-    proofNativeTitle: "Native Tauri 2, no Electron",
-    proofNativeBody: "A lightweight native shell that stays out of your way.",
     scSplit: "split",
     scSplitH: "split down",
     scTab: "new tab",
     scExpand: "focus expand",
     scFind: "find",
     scClear: "clear",
-    footerTagline:
-      "A native macOS terminal for running AI agent CLIs side by side.",
+    footerTagline: "A desktop terminal for running AI agent CLIs side by side.",
     footerColProduct: "Product",
     footerColProject: "Project",
     footerReleases: "Releases",
     footerIssues: "Issues",
     footerLicense: "MIT License",
-    footerBuilt: "Built with Tauri 2 · xterm.js · Preact",
+    footerBuilt: "Built with xterm.js · Preact",
   },
   vi: {
     navProduct: "Deck",
     navChangelog: "Changelog",
     navGithub: "GitHub",
-    heroLabel: "// terminal macOS native cho agent CLI",
+    heroLabel: "// terminal desktop cho agent CLI",
     headlineLead: "Vận hành cả đội hình.",
     headlineTail: "Không agent nào rời khỏi tầm mắt.",
     subhead:
-      "SpaceVibe Deck là terminal macOS native để khởi chạy, quan sát và điều phối nhiều AI coding agent song song.",
+      "SpaceVibe Deck là terminal desktop để khởi chạy, quan sát và điều phối nhiều AI coding agent song song.",
     primaryCta: "Xem demo 16 giây",
     secondaryCta: "Xem trên GitHub",
     downloadCountUnit: "downloads",
     downloadCountLoading: "Checking GitHub Releases",
-    downloadCountReady: "macOS + Windows · GitHub verified",
+    downloadCountReady: "GitHub Releases · verified",
     downloadCountUnavailable: "Live count unavailable",
     changelogBack: "Về trang Deck",
     changelogKicker: "// nhật ký phát hành",
@@ -136,6 +137,10 @@ export const messages = {
     downloadMac: "Tải cho macOS",
     downloadWin: "Tải cho Windows",
     comingSoon: "sắp có",
+    // Kept English in both locales (owner, 2026-08-17): the badge is one word
+    // that reads the same either way, and "New" beside a Vietnamese CTA is
+    // shorter and louder than "Mới".
+    newBadge: "New",
     winPreviewTag: "thử nghiệm",
     winUnsignedNote:
       "Bản chưa ký \u2014 Windows sẽ hiện cảnh báo SmartScreen. Chọn More info \u2192 Run anyway.",
@@ -143,25 +148,25 @@ export const messages = {
     proofPtyTitle: "PTY thật, shell thật",
     proofPtyBody:
       "Mỗi pane chạy đúng login shell của bạn ($SHELL -l) — PATH, alias, dotfiles hoạt động y nguyên.",
+    proofOpenTitle: "Mã nguồn mở, giấy phép MIT",
+    proofOpenBody:
+      "Toàn bộ app nằm trên GitHub — đọc, tự build, fork hay gửi patch đều được.",
     proofLocalTitle: "Local-first, không telemetry",
     proofLocalBody:
       "Mọi thứ nằm trên máy bạn — không tài khoản, không theo dõi, không kết nối nào ngoài của chính agent.",
-    proofNativeTitle: "Tauri 2 native, không Electron",
-    proofNativeBody: "Vỏ native gọn nhẹ, không choán tài nguyên máy.",
     scSplit: "chia dọc",
     scSplitH: "chia ngang",
     scTab: "tab mới",
     scExpand: "focus expand",
     scFind: "tìm kiếm",
     scClear: "xoá buffer",
-    footerTagline:
-      "Terminal macOS native để chạy song song nhiều AI agent CLI.",
+    footerTagline: "Terminal desktop để chạy song song nhiều AI agent CLI.",
     footerColProduct: "Sản phẩm",
     footerColProject: "Dự án",
     footerReleases: "Bản phát hành",
     footerIssues: "Báo lỗi",
     footerLicense: "Giấy phép MIT",
-    footerBuilt: "Xây bằng Tauri 2 · xterm.js · Preact",
+    footerBuilt: "Xây bằng xterm.js · Preact",
   },
 };
 

@@ -3,10 +3,14 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
-import { FONT_FALLBACK, type Settings } from "../settings/settings-schema";
+import { WebglAddon } from "@xterm/addon-webgl";
+import {
+  FONT_FALLBACK,
+  type Settings,
+  type TerminalRenderer,
+} from "../settings/settings-schema";
 import { applyWebkitImeFix, isWebKitWebView } from "./webkit-ime-fix";
 import { installShiftEnterNewline } from "./shift-enter";
-import { installImeTrace } from "./ime-trace";
 import { resolveTheme } from "../settings/themes";
 import type { PaneHeaderInfo } from "../lib/process-info";
 import { createLinkProvider } from "./link-provider";
@@ -159,6 +163,10 @@ export function createPane(
     cursorWidth: 1,
     fontSize: initial.fontSize,
     fontFamily: toFontStack(initial.fontFamily),
+    // Stays 1.25 on purpose. Flush rows are NOT what joins OpenCode's block
+    // and box-drawing glyphs — the WebGL renderer draws those to the full cell
+    // box, and `device.cell.height` already folds this multiplier in, so the
+    // leading grows with them rather than slicing them apart.
     lineHeight: 1.25,
     scrollback: initial.scrollback,
     // Option must stay a character key on macOS so IMEs (Vietnamese Telex,
@@ -287,6 +295,55 @@ export function createPane(
     }, RESIZE_DEBOUNCE_MS);
   });
   let opened = false;
+  let renderer: TerminalRenderer = initial.terminalRenderer;
+  let webglAddon: WebglAddon | undefined;
+
+  /**
+   * Bring the live renderer in line with the setting. One reconcile rather
+   * than a load path and an unload path, because both `mount()` and
+   * `applySettings()` reach it and neither knows what the other already did.
+   *
+   * Turning WebGL OFF is `dispose()`: xterm falls back to its DOM renderer on
+   * its own, so the switch is live and no pane has to be respawned.
+   */
+  function syncRenderer(): void {
+    if (!opened) {
+      return;
+    }
+    if (renderer === "webgl" && webglAddon === undefined) {
+      // Declared outside the `try` because the throw comes from `loadAddon`,
+      // which is where xterm activates the addon — by then it exists and is
+      // the thing that has to be disposed.
+      let addon: WebglAddon | undefined;
+      try {
+        addon = new WebglAddon();
+        const pending = addon;
+        // Clearing the handle here too, not only on an explicit switch: after
+        // a lost context the addon is spent, and a stale handle would make the
+        // next dom→webgl toggle a no-op that silently leaves the pane on DOM.
+        pending.onContextLoss(() => {
+          pending.dispose();
+          // Identity-checked: a late loss event from a retired addon must not
+          // clear the handle of the one that replaced it.
+          if (webglAddon === pending) {
+            webglAddon = undefined;
+          }
+        });
+        term.loadAddon(pending);
+        webglAddon = pending;
+      } catch {
+        // WebGL is optional. Disposing a partially activated addon restores
+        // xterm's DOM renderer, which keeps the terminal usable on older GPUs.
+        addon?.dispose();
+        webglAddon = undefined;
+      }
+      return;
+    }
+    if (renderer === "dom" && webglAddon !== undefined) {
+      webglAddon.dispose();
+      webglAddon = undefined;
+    }
+  }
 
   function mount(): void {
     if (!opened) {
@@ -294,13 +351,13 @@ export function createPane(
       if (isWebKitWebView()) {
         applyWebkitImeFix(term);
       }
-      // Diagnostic keystroke tap — dev builds only, never in production
-      // (it POSTs every keystroke and PTY byte to a local collector).
-      if (import.meta.env.DEV) {
-        installImeTrace(term);
-      }
       observer.observe(termEl);
       opened = true;
+      // Last, and only now: xterm's DOM renderer cannot draw custom glyphs, so
+      // block and box-drawing characters used by TUIs such as OpenCode look
+      // segmented, and the WebGL renderer that draws them to the full cell box
+      // needs both an element from `open()` and the flag `syncRenderer` gates on.
+      syncRenderer();
     }
     fit();
   }
@@ -342,6 +399,11 @@ export function createPane(
     term.options.fontSize = next.fontSize;
     term.options.theme = resolveTheme(next);
     term.options.scrollback = next.scrollback;
+    renderer = next.terminalRenderer;
+    // Held in a closure variable rather than read at mount time: settings can
+    // change between `createPane` and the pane being shown, and a pane that
+    // mounted later would otherwise come up on the renderer the user left.
+    syncRenderer();
     fit();
   }
 
@@ -396,6 +458,11 @@ export function createPane(
     osc777Handler.dispose();
     bellHandler.dispose();
     serializeAddon.dispose();
+    // Explicit like `serializeAddon` above, though `term.dispose()` would also
+    // reach it: this one holds a GPU context, so it is released on the line
+    // that decides to, not as a side effect further down.
+    webglAddon?.dispose();
+    webglAddon = undefined;
     term.dispose();
     element.remove();
   }

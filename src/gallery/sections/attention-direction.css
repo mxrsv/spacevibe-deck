@@ -1,0 +1,399 @@
+/* ── Attention direction (gallery-only, 2026-08-17) ─────────────────────────
+   Proposal drawings for the attention-first review. Every class is `gxa-` and
+   nothing here is imported by the shipping renderer. Values ride the DL
+   tokens — tone washes, seam hairlines, the type ladder — so a promoted
+   variant translates to shipped CSS without inventing a vocabulary. */
+
+/* The rail studies stand at the sidebar's own width, on its own plane. */
+.gxa-study {
+  width: var(--sidebar-w);
+  padding: 8px 6px;
+  border: 1px solid var(--seam-recessed);
+  border-radius: var(--radius-surface);
+  background: var(--sidebar-bg);
+}
+
+.gxa-rail {
+  display: grid;
+  gap: 2px;
+}
+
+.gxa-cluster {
+  display: grid;
+  gap: 1px;
+}
+
+.gxa-cluster + .gxa-cluster {
+  margin-top: 7px;
+}
+
+/* The cluster head mirrors `.asr-cluster__head`'s tone: a label, not a row. */
+.gxa-cluster__head {
+  padding: 3px 7px 2px;
+  color: var(--text-faint);
+  font: 500 var(--type-meta) / 1.2 var(--ui-font);
+}
+
+/* One drawn row on the shipped row's grammar: glyph · name · age · mark,
+   with the proposal's tail line spanning below (same seam DL-27.4 uses). */
+.gxa-row {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr) auto 16px;
+  gap: 1px 7px;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 30px;
+  padding: 5px 7px;
+  border-radius: var(--radius-control);
+}
+
+.gxa-row .gxa-glyph {
+  grid-column: 1;
+}
+
+.gxa-row__name {
+  grid-column: 2;
+  overflow: hidden;
+  color: var(--text-primary);
+  font: 545 var(--type-body) / 1.25 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gxa-row__age {
+  grid-column: 3;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.2 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.gxa-row > .asr-row__mark {
+  grid-column: 4;
+  justify-self: center;
+}
+
+/* The proposed session_tail line. Trimmed by layout, never sliced. */
+.gxa-row__tail {
+  grid-column: 2 / -1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font: 450 var(--type-meta) / 1.35 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Variant A — tail everywhere: a quiet row carries its turn faint, so the
+   list reads loud-to-quiet by text tone alone. */
+.gxa-rail--tail .gxa-row--quiet .gxa-row__tail {
+  color: var(--text-faint);
+}
+
+/* Variant B — dim the quiet: the quiet row borrows the archived row's own
+   treatment (`.asr-row--archived`: faint tone, lighter weight) rather than
+   stepping to `--text-muted` — the derived ladder sits primary 207 → muted
+   183 → faint 160, so one step is invisible at 12.5px (measured 2026-08-17).
+   Glyph included, mark excluded (state colour is meaning, not emphasis). */
+.gxa-rail--dim .gxa-row--quiet .gxa-row__name {
+  color: var(--text-faint);
+  font-weight: 480;
+}
+
+.gxa-rail--dim .gxa-row--quiet .gxa-glyph {
+  opacity: 0.45;
+}
+
+/* Agent glyphs in drawings: the same 14px box the rail's chips give them. */
+.gxa-glyph {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.gxa-glyph--letter {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+.gxa-glyph--shell {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  color: var(--text-faint);
+  font: 600 var(--type-meta) / 1 var(--ui-font);
+}
+
+/* ── The drawn stage: three panes, one focused ─────────────────────────── */
+
+.gxa-stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.gxa-tile {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.gxa-tile__label {
+  color: var(--text-faint);
+  font: 500 var(--type-meta) / 1.2 var(--ui-font);
+}
+
+.gxa-stage {
+  display: flex;
+  width: 380px;
+  height: 190px;
+  overflow: hidden;
+  border: 1px solid var(--seam-recessed);
+  border-radius: var(--radius-tight);
+  background: var(--bg);
+}
+
+.gxa-stage__divider {
+  flex: 0 0 1px;
+  background: var(--seam-divider);
+}
+
+.gxa-pane {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  transition: opacity var(--duration) var(--ease);
+}
+
+/* The shipped focus treatment, reproduced: a 55% inset accent hairline. */
+.gxa-pane--focused {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* A · dim — the unfocused pane's CONTENT drops to half strength. */
+.gxa-stage--dim .gxa-pane:not(.gxa-pane--focused) {
+  opacity: 0.5;
+}
+
+/* B · bar — milder dim, because the bar already answers "which pane". */
+.gxa-stage--bar .gxa-pane:not(.gxa-pane--focused) {
+  opacity: 0.68;
+}
+
+.gxa-pane__bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--seam-recessed);
+  background: var(--chrome-1);
+  color: var(--text-faint);
+  font: 500 var(--type-meta) / 1.2 var(--ui-font);
+}
+
+/* DL-3.1: accent marks the focused state and nothing else. */
+.gxa-pane--focused .gxa-pane__bar {
+  color: color-mix(in srgb, var(--accent) 85%, var(--fg));
+}
+
+.gxa-pane__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Fake terminal output. Mono belongs to the terminal (DL-4.1); this IS a
+   drawing of the terminal, so the stack is declared here, gallery-only. */
+.gxa-pane__term {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  padding: 8px 10px;
+  overflow: hidden;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--fg);
+}
+
+.gxa-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gxa-line--ok {
+  color: var(--green);
+}
+
+.gxa-line--warn {
+  color: var(--yellow);
+}
+
+.gxa-line--err {
+  color: var(--red);
+}
+
+.gxa-line--dim {
+  color: var(--text-muted);
+}
+
+/* ── Switcher shots: a ground stage with an overlay on top ─────────────── */
+
+.gxa-shot {
+  position: relative;
+  width: 560px;
+  max-width: 100%;
+  height: 270px;
+  overflow: hidden;
+  border: 1px solid var(--seam-recessed);
+  border-radius: var(--radius-surface);
+  background: var(--bg);
+}
+
+.gxa-shot__ground {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.gxa-shot__ground .gxa-stage {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+/* The DL §29 scrim, reproduced at the shot's scale: the 42% wash plus the
+   blur that keeps terminal text from competing with the panel through it. */
+.gxa-scrim {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg) 42%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+/* Variant A: the modal queue. The recessed plane every modal stands on
+   (DL-29.6), the raised seam, the surface radius. */
+.gxa-switcher {
+  display: grid;
+  gap: 2px;
+  width: 400px;
+  padding: 10px;
+  border: 1px solid var(--seam-raised);
+  border-radius: var(--radius-surface);
+  background: var(--sidebar-bg);
+}
+
+.gxa-switcher__head {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 2px 7px 6px;
+  color: var(--text-muted);
+  font: 500 var(--type-meta) / 1.2 var(--ui-font);
+}
+
+.gxa-switcher__count {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.gxa-switcher__row {
+  display: grid;
+  grid-template-columns: 17px minmax(0, auto) minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 6px 7px;
+  border-radius: var(--radius-control);
+}
+
+.gxa-switcher__row.is-active {
+  background: var(--tab-active-bg);
+}
+
+.gxa-switcher__where {
+  overflow: hidden;
+  color: var(--text-primary);
+  font: 545 var(--type-body) / 1.25 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gxa-switcher__tail {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font: 450 var(--type-meta) / 1.3 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The digit pick, on the status bar's kbd treatment. */
+.gxa-switcher__key {
+  padding: 1px 5px;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  color: var(--text-muted);
+  font: 450 var(--type-micro) / 1.2 var(--ui-font);
+}
+
+.gxa-switcher__hint {
+  padding: 6px 7px 2px;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.2 var(--ui-font);
+}
+
+/* Variant B: the non-modal peek — one floating row under the strip. */
+.gxa-peek {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  max-width: calc(100% - 40px);
+  padding: 5px 12px;
+  border: 1px solid var(--seam-raised);
+  border-radius: 999px;
+  background: var(--chrome-2);
+}
+
+.gxa-peek__where {
+  color: var(--text-primary);
+  font: 545 var(--type-body) / 1.25 var(--ui-font);
+  white-space: nowrap;
+}
+
+.gxa-peek__tail {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font: 450 var(--type-meta) / 1.3 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gxa-peek__more {
+  flex: none;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.2 var(--ui-font);
+  white-space: nowrap;
+}

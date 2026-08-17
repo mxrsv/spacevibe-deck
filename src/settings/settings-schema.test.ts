@@ -126,6 +126,31 @@ describe("restoreSessions", () => {
   });
 });
 
+describe("terminalRenderer", () => {
+  it("defaults to dom — the accelerated path is opt-in", () => {
+    expect(DEFAULT_SETTINGS.terminalRenderer).toBe("dom");
+    expect(validateSettings({}).terminalRenderer).toBe("dom");
+  });
+
+  it("keeps both declared renderers", () => {
+    expect(validateSettings({ terminalRenderer: "dom" }).terminalRenderer).toBe(
+      "dom",
+    );
+    expect(
+      validateSettings({ terminalRenderer: "webgl" }).terminalRenderer,
+    ).toBe("webgl");
+  });
+
+  it("falls back to dom on an unknown or non-string value", () => {
+    expect(
+      validateSettings({ terminalRenderer: "canvas" }).terminalRenderer,
+    ).toBe("dom");
+    expect(validateSettings({ terminalRenderer: 1 }).terminalRenderer).toBe(
+      "dom",
+    );
+  });
+});
+
 describe("scrollback", () => {
   it("defaults to 10000 when missing", () => {
     expect(DEFAULT_SETTINGS.scrollback).toBe(10_000);
@@ -389,6 +414,8 @@ describe("showStatusBar", () => {
 
   it("accepts a boolean and rejects other types", () => {
     expect(validateSettings({ showStatusBar: true }).showStatusBar).toBe(true);
-    expect(validateSettings({ showStatusBar: "yes" }).showStatusBar).toBe(false);
+    expect(validateSettings({ showStatusBar: "yes" }).showStatusBar).toBe(
+      false,
+    );
   });
 });

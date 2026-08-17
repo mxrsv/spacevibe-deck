@@ -1,5 +1,5 @@
-import type { LucideIcon } from "lucide-preact";
 import type { ComponentChildren } from "preact";
+import type { DeckIconComponent } from "../controls/deck-icon";
 
 /**
  * What a toolbar entry is, as far as the toolbar is concerned.
@@ -38,7 +38,7 @@ export interface ToolbarItem {
   readonly id: string;
   /** English label: the accessible name and the tooltip's first line. */
   readonly label: string;
-  readonly icon: LucideIcon;
+  readonly icon: DeckIconComponent;
   readonly group: ToolbarGroup;
   /**
    * The chord as the active platform writes it, already formatted through

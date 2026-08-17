@@ -1,4 +1,4 @@
-import { Columns2 } from "lucide-preact";
+import { SquareSplitHorizontal } from "@phosphor-icons/react";
 import { describe, expect, it } from "vitest";
 import type { ToolbarGroup, ToolbarItem } from "./toolbar-item";
 import {
@@ -24,7 +24,7 @@ function item(
   return {
     id,
     label: id,
-    icon: Columns2,
+    icon: SquareSplitHorizontal,
     group,
     shortcut: null,
     state: { kind: "idle" },

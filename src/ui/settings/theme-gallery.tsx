@@ -1,10 +1,11 @@
-import { Check, FolderOpen, Import } from "lucide-preact";
+import { ArrowSquareIn, Check, FolderOpen } from "@phosphor-icons/react";
 import { useEffect, useRef } from "preact/hooks";
 import {
   importCustomThemes,
   loadCustomThemes,
   openThemesFolder,
   themeImportFailures,
+  themeLoadState,
   themesLoading,
 } from "../../settings/custom-themes-store";
 import { settings, updateSettings } from "../../settings/settings-store";
@@ -12,6 +13,7 @@ import { allPresets, getPreset, type ThemePreset } from "../../settings/themes";
 import { ConfigGroup, ConfigRow } from "../controls/config-row";
 import { CHROME_ICON, DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { ThemeCardPreview } from "./theme-card-preview";
+import { LoadError } from "../controls/load-error";
 
 /**
  * The theme gallery (DL-24).
@@ -118,6 +120,12 @@ export function ThemeGallery() {
           );
         })}
       </div>
+      {themeLoadState.value.status === "error" ? (
+        <LoadError
+          message={themeLoadState.value.message}
+          onRetry={() => void loadCustomThemes()}
+        />
+      ) : null}
       <ConfigRow
         label="Import theme"
         desc="iTerm2, Windows Terminal, Ghostty, Alacritty"
@@ -125,12 +133,14 @@ export function ThemeGallery() {
         <button
           type="button"
           class="cfg-btn"
-          disabled={themesLoading.value}
+          disabled={
+            themesLoading.value || themeLoadState.value.status === "error"
+          }
           onClick={() => void importCustomThemes()}
         >
           {themesLoading.value ? "reading…" : "choose files"}
           <span class="cfg-btn__hint">
-            <DeckIcon icon={Import} size={ROW_ICON} />
+            <DeckIcon icon={ArrowSquareIn} size={ROW_ICON} />
           </span>
         </button>
       </ConfigRow>

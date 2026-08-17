@@ -93,7 +93,9 @@ const GALLERY_REPOSITORIES = [
     root: `${HOME}/spacevibe-api`,
     worktrees: [
       wt(`${HOME}/spacevibe-api`, "main"),
-      wt(`${HOME}/api-worktrees/billing`, "billing", { locked: "on a removable drive" }),
+      wt(`${HOME}/api-worktrees/billing`, "billing", {
+        locked: "on a removable drive",
+      }),
     ],
   },
   {
@@ -250,7 +252,7 @@ const ELECTRON_ONLY: Readonly<Record<string, CannedHandler>> = {
         }
       }
     }
-    return null;
+    return { state: "ready", fresh: false };
   },
   // `undefined`, not `[value, found]`: `Store.get` hands its result straight
   // back to the caller, so a tuple would be read as the value itself.

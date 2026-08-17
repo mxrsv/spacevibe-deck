@@ -56,9 +56,7 @@ describe("shortcutLabel", () => {
     };
 
     expect(formatShortcutBinding(macOpen, "macos")).toBe("⌘O");
-    expect(formatShortcutBinding(windowsOpen, "windows")).toBe(
-      "Ctrl+Shift+O",
-    );
+    expect(formatShortcutBinding(windowsOpen, "windows")).toBe("Ctrl+Shift+O");
   });
 
   it("formats a chord whose action is not registered yet", () => {

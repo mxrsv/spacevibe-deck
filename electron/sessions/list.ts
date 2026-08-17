@@ -94,14 +94,36 @@ function safeList(run: () => FileCandidate[]): FileCandidate[] {
   }
 }
 
-function collect(
+/**
+ * Files read between breaths.
+ *
+ * The same figure `electron/usage/scan.ts` uses, for the same reason: the main
+ * process owns every PTY, so a long synchronous run here stops output reaching
+ * panes and keystrokes reaching agents. A history scan reads up to
+ * `SESSIONS_MAX_LIMIT` heads per agent at 64 KiB each — tens of megabytes of
+ * blocking I/O in one go before this yielded at all.
+ */
+const READ_BATCH_FILES = 8;
+
+/** Hand the event loop back, so PTY and window IPC are not starved. */
+function breathe(): Promise<void> {
+  return new Promise<void>((resolve) => setImmediate(resolve));
+}
+
+async function collect(
   agent: SessionAgent,
   files: readonly FileCandidate[],
   limit: number,
   read: (file: FileCandidate) => SessionRecord | null,
   into: SessionEntry[],
-): void {
+): Promise<void> {
+  let sinceBreath = 0;
   for (const file of files.slice(0, limit)) {
+    sinceBreath += 1;
+    if (sinceBreath >= READ_BATCH_FILES) {
+      sinceBreath = 0;
+      await breathe();
+    }
     const key = fileCacheKey(file);
     let record: SessionRecord | null;
     if (enriched.has(key)) {
@@ -120,20 +142,33 @@ function collect(
   }
 }
 
-export function listSessions(
+/**
+ * Async because it runs on the MAIN process, which owns every PTY.
+ *
+ * The two directory walks are still synchronous — they are stat-only and the
+ * scanners they live in are shared with the boot restore path — but the head
+ * reads, which are the expensive half, now yield every `READ_BATCH_FILES`
+ * files, and the walks are separated by a breath. Before this, opening the
+ * history tab (or the boot probe, whose `limit: 1` caps reads but NOT the
+ * walk) blocked the loop for the whole scan: no `pty:output` delivered, no
+ * keystroke forwarded, every window frozen.
+ */
+export async function listSessions(
   home: string,
   limit: number = SESSIONS_DEFAULT_LIMIT,
   readers: SessionReaders = DEFAULT_READERS,
-): SessionsSnapshot {
+): Promise<SessionsSnapshot> {
   const capped = Math.max(1, Math.min(Math.floor(limit), SESSIONS_MAX_LIMIT));
   const claudeFiles = safeList(() => listClaudeFiles(home));
+  await breathe();
   const codexFiles = safeList(() =>
     listCodexFiles(home, CODEX_HISTORY_SCAN.includeArchived),
   );
+  await breathe();
 
   const entries: SessionEntry[] = [];
-  collect("claude", claudeFiles, capped, readers.claude, entries);
-  collect("codex", codexFiles, capped, readers.codex, entries);
+  await collect("claude", claudeFiles, capped, readers.claude, entries);
+  await collect("codex", codexFiles, capped, readers.codex, entries);
   entries.sort((left, right) => right.lastActivityMs - left.lastActivityMs);
 
   return {

@@ -45,9 +45,7 @@ describe("UpdateAction", () => {
     const { button } = mount({ ...base, phase });
     expect(button?.textContent).toContain(label);
     expect(button?.disabled).toBe(disabled);
-    expect(button?.getAttribute("aria-busy")).toBe(
-      disabled ? "true" : null,
-    );
+    expect(button?.getAttribute("aria-busy")).toBe(disabled ? "true" : null);
   });
 
   it("routes download, install, and relaunch as separate actions", () => {

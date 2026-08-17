@@ -180,6 +180,10 @@ describe("AgentQuickPicker", () => {
 
     act(() => {
       scrim.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      // The release matters as much as the press: `Modal` dismisses only when
+      // BOTH ends of the gesture land on the scrim, so a sweep that starts
+      // outside and finishes inside the panel cannot throw the panel away.
+      scrim.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
       scrim.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 

@@ -109,16 +109,16 @@ describe("AgentsSection", () => {
     );
     // Trash removes something the user declared and persisted; the draft's
     // X only dismisses a row that never existed.
-    expect(remove?.classList.contains("lucide-trash-2")).toBe(true);
+    expect(remove?.classList.contains("deck-icon--trash")).toBe(true);
 
     // Closed, the add row is the icon; open, it commits and says so in words.
-    expect(addButton().querySelector(".lucide-plus")).not.toBeNull();
+    expect(addButton().querySelector(".deck-icon--plus")).not.toBeNull();
 
     click(addButton());
     const discard = host.querySelector(
       '[aria-label="Discard the new agent"] svg',
     );
-    expect(discard?.classList.contains("lucide-x")).toBe(true);
+    expect(discard?.classList.contains("deck-icon--x")).toBe(true);
     expect(addButton().textContent?.trim()).toBe("add");
   });
 

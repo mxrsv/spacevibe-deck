@@ -1,4 +1,4 @@
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { DeckIcon, FEATURE_ICON } from "../controls/deck-icon";
 import type { DockTabDescriptor, DockTabId } from "./dock-tab-registry";
 
 interface DockTabsProps {
@@ -34,7 +34,11 @@ export function DockTabs({ items, active, onSelect }: DockTabsProps) {
             class={`dock-tabs__chip ${isActive ? "is-active" : ""}`}
             onClick={() => onSelect(item.id)}
           >
-            <DeckIcon icon={item.icon} size={CHROME_ICON} />
+            <DeckIcon
+              icon={item.icon}
+              size={FEATURE_ICON}
+              class="feature-glyph"
+            />
             <span class="dock-tabs__label">{item.label}</span>
           </button>
         );

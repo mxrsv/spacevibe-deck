@@ -27,6 +27,11 @@ export const CHANNELS = {
   // Session restore. Electron-only, like the block above: no
   // `#[tauri::command]` counterpart, and Tauri is feature-frozen.
   resumeLookup: "resume_lookup",
+  // Tier 3 of the agent rail (spec §5): newest agent turn per pane. Same
+  // request shape as `resume_lookup` and the same scanners behind it, so the
+  // rail's sentence names the session restore would resume into. Electron-only,
+  // like the block above.
+  sessionTail: "session_tail",
   // Window label accessor, for the same restore work: no renderer accessor
   // existed before this (main derived it per-request via `labelOf(event)`
   // only). Electron-only, like the block above.
@@ -53,6 +58,15 @@ export const CHANNELS = {
   abortTransfer: "abort_transfer",
   beginUpdateCheck: "begin_update_check",
   endUpdateCheck: "end_update_check",
+  // Auto-update. Electron-only, unlike the two names above: Tauri reaches its
+  // own updater plugin from the renderer
+  // (`src/updater/tauri-updater-adapter.ts`) and never through IPC, so no
+  // `#[tauri::command]` counterpart exists or should. All three are
+  // zero-payload — the renderer names no version, no URL and no file; the
+  // feed and the pending update live in `electron/updater/updater.ts`.
+  updateCheck: "update_check",
+  updateDownload: "update_download",
+  updateInstall: "update_install",
   applySettingsPatch: "apply_settings_patch",
   suspendMenuAccelerators: "suspend_menu_accelerators",
   // File explorer. Every one of these is bounded to a workspace root by
@@ -112,7 +126,57 @@ export const EVENTS = {
   // Committed main-frame navigations only — never in-page hash changes. What
   // the renderer persists as `browserLastUrl` (browser productization §3).
   browserNavigated: "browser:navigated",
+  // Broadcast when a background store write fails, so every window can raise
+  // its persist-error bar. Registered with a bare string in
+  // `register-store.ts` until the preload gained an event allowlist and it had
+  // to be a name both sides agree on.
+  storeWriteFailed: "store:write-failed",
 } as const;
+
+/**
+ * Commands registered with a bare string rather than through `CHANNELS`.
+ *
+ * These predate the table — they are the Tauri plugin surfaces (store, dialog,
+ * clipboard, notification, shell, app, window) whose names came from the
+ * plugins themselves. They are listed here for one reason: the preload bridge
+ * needs the COMPLETE set of invokable names, and `scripts/electron-ipc-contract.test.ts`
+ * proves this list plus `CHANNELS` is exactly what the main process registers.
+ */
+export const PLUGIN_CHANNELS = [
+  "app_relaunch",
+  "app_version",
+  "clipboard_read_text",
+  "clipboard_write_text",
+  "dialog_ask",
+  "dialog_message",
+  "dialog_open",
+  "notification_permission_granted",
+  "notification_request_permission",
+  "notification_send",
+  "shell_open_url",
+  "store_delete",
+  "store_get",
+  "store_load",
+  "store_save",
+  "store_set",
+  "window_close",
+  "window_toggle_maximize",
+] as const;
+
+/**
+ * Every channel the renderer is allowed to invoke.
+ *
+ * The preload bridge used to forward ANY name straight to `ipcRenderer.invoke`,
+ * so one injected script in a renderer that runs with `sandbox: false` reached
+ * the whole host surface in a line — `spawn_shell` plus `write_pty` is
+ * arbitrary command execution. Nothing about the app needs an open bridge:
+ * this is the closed set, and the contract test fails if a registration ever
+ * appears outside it.
+ */
+export const INVOKABLE_CHANNELS: ReadonlySet<string> = new Set<string>([
+  ...Object.values(CHANNELS),
+  ...PLUGIN_CHANNELS,
+]);
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS];
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

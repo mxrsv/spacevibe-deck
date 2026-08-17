@@ -745,7 +745,7 @@
   border-color: rgb(255 255 255 / 60%);
 }
 
-/* Windows is announced here, not offered — same pill as the others, unfilled,
+/* macOS is announced here, not offered — same pill as the others, unfilled,
    with the hover sweep switched off so nothing invites a press. Mirrors
    `.a-quiet-cta:disabled` in the hero's action column. */
 .tour__cta:disabled {
@@ -756,6 +756,14 @@
 
 .tour__cta:disabled::before {
   display: none;
+}
+
+/* Same reason as `.a-primary-cta .a-cta-tag`: the tag's own ink is a
+   light-on-dark token and disappears on the filled face. */
+.tour__cta--primary .a-cta-tag {
+  border-color: currentColor;
+  color: inherit;
+  opacity: 0.66;
 }
 
 .tour__cta--primary {

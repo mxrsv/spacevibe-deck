@@ -39,14 +39,18 @@ describe("SidebarToggle", () => {
 
   // The one control says both things: collapsed, it is the way back out, and
   // it reads pressed so the state is not carried by the label alone.
-  it("offers to expand a collapsed sidebar, and reads pressed", () => {
+  //
+  // DL-21.8: pressed is said in ARIA and NOWHERE in the paint. A hidden
+  // sidebar is a change to the whole window, so the class assertion below is
+  // inverted on purpose — it guards against the wash coming back.
+  it("offers to expand a collapsed sidebar, and reads pressed without painting it", () => {
     act(() => render(<SidebarToggle collapsed onToggle={vi.fn()} />, host));
 
     const button = control();
     expect(button.getAttribute("aria-label")).toBe("Expand the sidebar");
     expect(button.getAttribute("title")).toBe("Expand the sidebar");
     expect(button.getAttribute("aria-pressed")).toBe("true");
-    expect(button.classList.contains("is-active")).toBe(true);
+    expect(button.classList.contains("is-active")).toBe(false);
   });
 
   it("reports a click and keeps no state of its own", () => {

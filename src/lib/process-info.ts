@@ -116,3 +116,17 @@ export function paneHeaderInfo(
     agent: agent !== null,
   };
 }
+
+export function explicitAgent(
+  info: PaneProcessInfo | undefined,
+): PaneAgent | null {
+  if (info?.kind !== "agent" || info.agent === null) {
+    return null;
+  }
+  const agent = info.agent.trim();
+  return agent.length > 0 ? agent : null;
+}
+
+export function processLabel(info: PaneProcessInfo | undefined): string | null {
+  return explicitAgent(info) ?? info?.process ?? null;
+}

@@ -60,7 +60,7 @@ describe("EditorRow", () => {
     });
 
     expect(
-      host.querySelector(".cfg-btn__hint .lucide-chevron-down"),
+      host.querySelector(".cfg-btn__hint .deck-icon--caret-down"),
     ).not.toBeNull();
   });
 });

@@ -59,10 +59,7 @@ function TabAgentMark({ tab }: { readonly tab: RailTab }) {
   const color = tabDotCssColor(avatar.color);
 
   return logo === undefined ? (
-    <span
-      class="worktree-agents__letter"
-      style={customAvatarStyle(color)}
-    >
+    <span class="worktree-agents__letter" style={customAvatarStyle(color)}>
       {avatar.letter}
     </span>
   ) : (
@@ -76,11 +73,7 @@ interface TabAgentButtonProps {
   readonly onOpenOptions?: (tab: RailTab, anchorEl: HTMLElement) => void;
 }
 
-function TabAgentButton({
-  tab,
-  onSelect,
-  onOpenOptions,
-}: TabAgentButtonProps) {
+function TabAgentButton({ tab, onSelect, onOpenOptions }: TabAgentButtonProps) {
   const label = tabLabel(tab);
   return (
     <button

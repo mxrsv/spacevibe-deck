@@ -1,0 +1,612 @@
+/* ── Settings panel: slide-over anchored to the stage's right edge ── */
+
+/* ── Config rows: the one control (docs/DESIGN-LANGUAGE.md §5–6) ── */
+
+/* DL-4.4, amended 2026-08-16: a label that heads a LIST OF ROWS stands one
+   rung above the rows it heads (`--type-title` over the row's `--type-body`)
+   and takes `--text-muted`, not `--text-faint`. Printed smaller and fainter
+   than every line under it, the name a whole group belongs to read as a
+   caption on its first row. Same treatment as the agent rail's cluster header
+   (DL-27.9) — the two are the same object. A column header is NOT this
+   (DL-15.5 keeps 10.5/faint): it labels a cell, not a list. */
+.cfg-group {
+  font-family: var(--ui-font);
+  font-size: var(--type-title);
+  font-weight: 560;
+  color: var(--text-muted);
+  padding: 16px 16px 6px;
+}
+
+.cfg-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  margin: 0 4px;
+  border-radius: var(--radius-control);
+  transition: background var(--duration) var(--ease);
+}
+
+/* DL-21.1 and DL-21.6: the 2px left accent bar this row carried until
+   2026-08-14 is retired app-wide. One signifier, and it is the wash — two
+   marks for one state is how the rulebook and the direction ended up
+   disagreeing about what "active" looks like. */
+.cfg-row:hover {
+  background: var(--state-hover-bg);
+}
+
+.cfg-row__key {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.cfg-row__label {
+  font-size: var(--type-body);
+  color: var(--text-primary);
+}
+
+.cfg-row__label--danger {
+  color: var(--red);
+}
+
+.cfg-row__desc {
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+}
+
+.cfg-row__value {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* The value pill — every interactive value wears this skin (DL-5.2) */
+.cfg-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition:
+    color var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.cfg-btn:hover {
+  border-color: var(--hair-strong);
+}
+
+.cfg-btn:hover .cfg-btn__hint {
+  color: var(--accent);
+}
+
+/* The pill itself is the focus target only when it IS the control (a button, or
+   a pill wrapping one invisible native input). A pill holding several buttons
+   (step) delegates the ring to whichever button is focused — else the keyboard
+   user can't tell which one Enter would press. */
+.cfg-btn:focus-visible,
+.cfg-btn--overlay:focus-within,
+.cfg-step__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.cfg-btn__hint {
+  display: flex;
+  color: var(--text-faint);
+  transition: color var(--duration) var(--ease);
+}
+
+.cfg-btn__hex {
+  color: var(--text-muted);
+}
+
+.cfg-btn__text {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cfg-btn--on {
+  color: var(--green);
+}
+
+.cfg-btn--off {
+  color: var(--text-faint);
+}
+
+.cfg-btn--danger {
+  color: var(--red);
+}
+
+.cfg-btn--danger:hover {
+  border-color: color-mix(in srgb, var(--red) 45%, transparent);
+}
+
+/* Disabled → `--text-faint` and no affordance left alive (DL-5.2, DL-21.4).
+   Until 2026-08-14 no such rule existed, so a disabled pill was pixel-identical
+   to an enabled one — the gap the gallery's state matrix surfaced. The pill
+   arrives disabled two ways: the native attribute (`ToggleRow`, the update
+   pill) and a `--disabled` class, which about-section sets independently of the
+   attribute. Matching only one leaves the treatment half applied. Declared
+   after the `--on`/`--off`/`--danger` colours so it wins at equal specificity. */
+.cfg-btn:disabled,
+.cfg-btn--disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.cfg-btn:disabled:hover,
+.cfg-btn--disabled:hover {
+  border-color: var(--hair);
+}
+
+.cfg-btn:disabled:hover .cfg-btn__hint,
+.cfg-btn--disabled:hover .cfg-btn__hint {
+  color: var(--text-faint);
+}
+
+/* Invisible native input stretched over the pill (menu / color kinds, DL-1.4) */
+.cfg-btn--overlay input,
+.cfg-btn--overlay select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.cfg-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--hair-strong);
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------- Theme gallery (DL-24)
+   The one grid §5 allows, and only for the one setting whose value is a
+   picture. Every colour INSIDE a card is an inline style from that theme's own
+   object (DL-24.3) — the rules here own layout and the card frame only, which
+   is why nothing below paints a swatch. */
+/* The track has a MAX as well as a min (2026-08-16): with `1fr` the cards ate
+   every pixel the settings panel had, so a wide window turned seven small
+   pictures into four posters. A theme card is a thumbnail — it has to be read
+   at a glance next to its neighbours, not admired — so the track stops growing
+   at 132px and the leftover space stays leftover. */
+.theme-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 132px));
+  gap: 8px;
+  padding: 2px 10px 10px;
+  margin: 0 4px;
+}
+
+/* The card frame is a seam: a card is a surface floating on the section, not a
+   line drawn inside one (DL-2.3). */
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  padding: 3px;
+  background: transparent;
+  border: 1px solid var(--seam-raised);
+  border-radius: var(--radius-surface);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--duration) var(--ease),
+    background var(--duration) var(--ease);
+}
+
+.theme-card:hover {
+  background: var(--state-hover-bg);
+}
+
+/* DL-24.4: the selected card is marked by its border AND its check, because a
+   card carries a picture that can be any colour — the wash every other
+   selection uses (DL-21.1) is invisible under a preview. */
+.theme-card--active {
+  border-color: var(--accent);
+}
+
+.theme-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.theme-card__foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 3px 1px;
+}
+
+.theme-card__name {
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-card__mark {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 1px solid var(--hair-strong);
+  border-radius: 50%;
+  color: var(--bg);
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.theme-card--active .theme-card__mark {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* The miniature: a drawing of Deck's own frame, rail and stage (DL-24.2).
+   Every length below is tuned against the SMALLEST card the track allows: a
+   108px card leaves a mini 102px wide and 64px tall, and the parts are fixed
+   px rather than percentages, so the narrow end is the one that overflows.
+   Rail 33px + frame 11px and stage 40px + frame 11px both clear that 64px,
+   which is why the drawing still has all its parts at the bottom of the
+   range. */
+.theme-mini {
+  display: block;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius-tight);
+  overflow: hidden;
+}
+
+.theme-mini__frame {
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 11px;
+  padding: 0 4px;
+}
+
+.theme-mini__light {
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.theme-mini__chip {
+  margin-left: auto;
+  width: 32%;
+  height: 3.5px;
+  border-radius: var(--radius-tight);
+}
+
+.theme-mini__body {
+  display: flex;
+  height: calc(100% - 11px);
+}
+
+.theme-mini__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 27%;
+  padding: 5px 4px;
+  border-right: 1px solid;
+}
+
+.theme-mini__tab {
+  width: 72%;
+  height: 5px;
+  border-radius: var(--radius-tight);
+}
+
+.theme-mini__row {
+  width: 88%;
+  height: 3px;
+  border-radius: var(--radius-tight);
+}
+
+.theme-mini__stage {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 6px;
+  min-width: 0;
+}
+
+.theme-mini__line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.theme-mini__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.theme-mini__bar {
+  width: 36%;
+  height: 6px;
+  border-radius: var(--radius-tight);
+}
+
+.theme-mini__bar--wide {
+  width: 62%;
+}
+
+.theme-mini__bar--wider {
+  width: 80%;
+}
+
+/* step kind: −/+ zones inside one pill */
+.cfg-step {
+  padding: 0;
+}
+
+.cfg-step__btn {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: var(--accent);
+  padding: 3px 8px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+.cfg-step__btn:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.cfg-step__val {
+  min-width: 4ch;
+  text-align: center;
+}
+
+/* Clear-override button — the only permitted second element in a value slot (DL-6.1) */
+.cfg-clear {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.cfg-clear:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* Inline row under a menu/picker row: the custom-font field, or a picker error */
+.cfg-custom {
+  padding: 2px 16px 6px;
+}
+
+/* picker error (DL-3.2: --red = error only) */
+.cfg-custom--error {
+  font-family: var(--ui-font);
+  font-size: var(--type-micro);
+  color: var(--red);
+}
+
+.text-input {
+  appearance: none;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+}
+
+.text-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.text-input--small {
+  font-size: var(--type-meta);
+}
+
+/* Multi-line field (DL-13.5): inherits .text-input, grows by content up to a
+   ceiling set in JS, then scrolls. No resize grip — the height is derived. */
+.prompt-textarea {
+  min-height: 60px;
+  max-height: 220px;
+  resize: none;
+  line-height: 1.45;
+  font-size: var(--type-meta);
+}
+
+/* ── Editable list rows (DL-12) ──────────────────────────── */
+
+/* An item row differs from a config row in one way: its key is editable too,
+   so both sides are inputs and the destructive affordance follows the value
+   (DL-12.2). Everything else — hover bar, spacing, hairline — is inherited. */
+.cfg-row--item > .cfg-row__key {
+  flex: 0 1 40%;
+  min-width: 0;
+}
+
+.cfg-row--item .text-input {
+  width: 100%;
+  min-width: 160px;
+}
+
+/* The key at rest reads as a plain row label; it only looks interactive on
+   hover, so a list of items still scans like a list of rows (DL-12.1). */
+.cfg-row__label--edit {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--type-body);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: text;
+}
+
+.cfg-row__label--edit:hover {
+  color: var(--accent);
+}
+
+.cfg-row__label--edit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+
+.cfg-row__remove {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--duration) var(--ease);
+}
+
+.cfg-row__remove:hover {
+  color: var(--red);
+}
+
+.cfg-row__remove:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+
+/* ── Shortcut rows (DL §17) ─────────────────────────────────────────────
+   A reference row: the key names an action, the value slot holds the running
+   platform's chord (DL-17.2). Still a `cfg-row` — same hover, same hairline,
+   same rhythm — because a shortcut list that styled itself differently would
+   read as a second kind of settings surface (DL-17.1). */
+.cfg-row--shortcut > .cfg-row__key {
+  flex: 1 1 auto;
+}
+
+/* Fixed width so ⌘D and ⌥⌘↩ leave the rows aligned rather than ragged. */
+.cfg-chord {
+  min-width: 8.5ch;
+  justify-content: center;
+}
+
+/* An action with no chord on the running platform. Not an error — most
+   actions ship bound on one keymap only (DL-17.4). */
+.cfg-chord--unbound {
+  color: var(--text-faint);
+}
+
+/* Recording. The accent border is the same "this is live" signal a focused
+   pill already carries; nothing moves (DL-1.2). */
+.cfg-chord--listening {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* A chord claimed by two actions (DL-17.5). `--red` is error-only (DL-3.2),
+   and a shortcut that silently shadows another one is exactly that. */
+.cfg-row__desc--warn {
+  color: var(--red);
+}
+
+/* Reduced motion: kill every chrome transition by scope, not by an allowlist —
+   an allowlist silently misses each new class (DL-1.5). */
+@media (prefers-reduced-motion: reduce) {
+  /* By SCOPE, never by an allowlist of class names (DL-1.5, §9.3): a new
+     full-window screen adds its own scope here, not the classes inside it —
+     an allowlist silently misses the next class someone adds. */
+  .settings-screen,
+  .settings-screen *,
+  .usage-screen,
+  .usage-screen *,
+  .sessions-screen,
+  .sessions-screen *,
+  .tabbar *,
+  .wsbar *,
+  /* The agent status rail is its own root, not a child of `.wsbar` — its
+     scope has to be named here or none of its transitions turn off. Its
+     ANIMATIONS need no entry: they are declared inside a
+     `prefers-reduced-motion: no-preference` block and simply do not exist
+     here (DL-1.5, §9.3). */
+  .asr-rail,
+  .asr-rail *,
+  .prompt-popover *,
+  .status * {
+    transition: none;
+  }
+}
+.load-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  margin: 6px 8px;
+  padding: 5px 8px;
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 28%, transparent);
+  border-radius: var(--radius-tight);
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+}
+
+.load-error__message {
+  min-width: 0;
+  flex: 1;
+}
+
+.load-error__retry {
+  flex-shrink: 0;
+  padding: 3px 7px;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-tight);
+  font: inherit;
+  cursor: pointer;
+}
+
+.load-error__retry:hover {
+  background: var(--state-hover-bg);
+}
+
+.load-error__retry:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

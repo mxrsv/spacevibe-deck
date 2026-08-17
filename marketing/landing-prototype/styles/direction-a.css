@@ -776,9 +776,10 @@
    stretches to the column — a content-width button in a rail this narrow wraps
    its own label before the rail ever runs out.
 
-   Exactly one white face in the stack, and it is the macOS download. The
-   Windows twin and the demo are the same box unfilled, so the column reads
-   top-down as: get it, it is coming, or look first. */
+   Exactly one white face in the stack, and it is the Windows download — the
+   platform that actually has a build to hand out. The macOS twin and the demo
+   are the same box unfilled, so the column reads top-down as: get it, it is
+   coming, or look first. */
 .a-actions {
   position: relative;
   z-index: 4;
@@ -832,7 +833,9 @@
 .a-download-proof strong {
   color: var(--a-ink-soft);
   font: 560 clamp(1.85rem, 2.6vw, 2.35rem) / 0.85 var(--a-font-display);
-  font-feature-settings: "tnum" 1, "zero" 1;
+  font-feature-settings:
+    "tnum" 1,
+    "zero" 1;
   letter-spacing: -0.055em;
 }
 
@@ -925,12 +928,12 @@
   outline-offset: 4px;
 }
 
-/* Windows is announced, not offered. Left visible and legible — hiding it says
-   nothing, and greying it to unreadable says the wrong thing — but not
-   pressable, so nobody clicks expecting a file. */
+/* macOS is announced, not offered, until the Electron macOS build ships. Left
+   visible and legible — hiding it says nothing, and greying it to unreadable
+   says the wrong thing — but not pressable, so nobody clicks expecting a file. */
 .a-quiet-cta:disabled {
   /* Wrapping is what protects the label. When the column is too narrow for
-     "Download for Windows" AND the tag on one line, flex moves the whole tag
+     "Download for macOS" AND the tag on one line, flex moves the whole tag
      to a second line and gives the label the full width back — without this
      the label is the thing that shrinks, to two and then three lines. No-op
      at widths where both fit. */
@@ -963,6 +966,75 @@
   font: 500 0.53rem/1 var(--a-font-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+/* The tag rides the white face now that Windows is the filled button, and its
+   own tokens are light-on-dark — they vanish there. currentColor follows the
+   hover invert for free, same trick as `.a-os-icon`. */
+.a-primary-cta .a-cta-tag {
+  border-color: currentColor;
+  color: inherit;
+  opacity: 0.66;
+}
+
+/* The badge that dates this build. It sat beside a sentence listing what the
+   release added until 2026-08-17, when the owner cut the sentence: a line of
+   feature names directly above the download competed with the CTA it was
+   meant to sell, and the changelog link in the nav already carries the detail.
+   One word is left, so the word has to carry the emphasis the sentence used to
+   — see `.a-cta-new__tag`. The badge stays an OUTLINE tag: the column is
+   allowed exactly one white face (see the .a-actions note above) and the CTA
+   has it. */
+.a-cta-new {
+  display: flex;
+  max-width: 34ch;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+/* Bigger and bolder than the `.a-cta-tag` idiom it inherits (owner,
+   2026-08-17): 0.72rem/700 against the base 0.53rem/500, which is the size
+   the deleted sentence used to run at — the emphasis moved into the badge
+   rather than leaving the slot quieter than before. Tighter tracking than the
+   base tag because a bolder face at this size no longer needs 0.06em to stay
+   readable. `text-transform` is inherited untouched, so it still renders NEW
+   and still reads as one family with the PREVIEW / COMING SOON chips. */
+.a-cta-new__tag {
+  padding: 0.3rem 0.55rem;
+  border-color: var(--a-line-strong);
+  color: var(--a-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  animation: a-cta-new-pulse 2.8s var(--a-ease-lock) infinite;
+}
+
+/* The lightest motion that still says "look here": the outline and a faint
+   halo breathe, nothing moves and nothing changes size, so the CTA below it
+   never shifts. Opacity and shadow only — both composite off the main thread.
+   Disabled under `prefers-reduced-motion` at the foot of this file. */
+@keyframes a-cta-new-pulse {
+  0%,
+  100% {
+    border-color: var(--a-line-strong);
+    box-shadow: 0 0 0 0 rgb(var(--a-accent-rgb) / 0%);
+  }
+
+  50% {
+    border-color: rgb(var(--a-accent-rgb) / 62%);
+    box-shadow: 0 0 0 3px rgb(var(--a-accent-rgb) / 9%);
+  }
+}
+
+/* Tag and arrow share the trailing slot: the tag qualifies the build, the ↓
+   still says this is a file. Kept together so `justify-content: space-between`
+   pins the pair to the right edge as one unit. */
+.a-cta-trail {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.55rem;
 }
 
 .a-primary-cta {
@@ -1259,6 +1331,15 @@
     font-size: 0.48rem;
   }
 
+  /* The rule above shrinks every tag for the narrow column; this badge is the
+     one that must not shrink with them, because it is the whole slot now. Kept
+     a rung down from its desktop size all the same — 0.66rem beside a 0.61rem
+     CTA, not 0.72rem. */
+  .a-cta-new__tag {
+    padding: 0.26rem 0.48rem;
+    font-size: 0.66rem;
+  }
+
   .a-secondary-cta {
     font-size: 0.58rem;
   }
@@ -1266,12 +1347,13 @@
   .a-project-cta::after {
     display: none;
   }
-
 }
 
 @media (prefers-reduced-motion: reduce) {
   .a-appwin__cursor,
-  .a-appwin__spinner {
+  .a-appwin__spinner,
+  /* The badge keeps its size and weight here; only the breathing stops. */
+  .a-cta-new__tag {
     animation: none;
   }
 
@@ -1288,5 +1370,4 @@
   .a-topbar__github::after {
     transition: none;
   }
-
 }

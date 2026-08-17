@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createUpdateController,
+  UPDATE_UNSUPPORTED,
   type PendingUpdate,
   type UpdateControllerDependencies,
 } from "./update-controller";
@@ -87,6 +88,20 @@ describe("createUpdateController", () => {
       "Update check failed",
       expect.any(Error),
     );
+  });
+
+  it("reports a host with no updater as unsupported, not as up to date", async () => {
+    // The distinction the Electron host had no way to make: it reports a real
+    // platform, so `platform === "unsupported"` never fires, and a `null`
+    // check made the menu answer "SpaceVibe Deck is up to date" to a build
+    // that cannot update at all.
+    const { controller, deps } = setup(null, {
+      check: vi.fn().mockResolvedValue(UPDATE_UNSUPPORTED),
+    });
+
+    await expect(controller.checkNow()).resolves.toBe("unsupported");
+    expect(controller.view.value.phase).toBe("hidden");
+    expect(deps.report).not.toHaveBeenCalled();
   });
 
   it("requires separate download and install actions", async () => {
@@ -213,7 +228,8 @@ describe("install breadcrumb", () => {
     expect(deps.recordAttempt).toHaveBeenCalledWith(update!.version);
     // Ordering is the whole point: on Windows the installer exits this
     // process, so anything after install() may never run.
-    const recordOrder = vi.mocked(deps.recordAttempt).mock.invocationCallOrder[0];
+    const recordOrder = vi.mocked(deps.recordAttempt).mock
+      .invocationCallOrder[0];
     const installOrder = vi.mocked(update!.install).mock.invocationCallOrder[0];
     expect(recordOrder).toBeLessThan(installOrder);
   });

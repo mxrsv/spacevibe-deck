@@ -29,9 +29,22 @@ export interface PendingUpdate {
   install(): Promise<void>;
 }
 
+/**
+ * "This build cannot update itself", as distinct from "nothing new".
+ *
+ * `check()` returning `null` used to carry both meanings, and the Electron
+ * host — which had no updater at all — therefore answered "SpaceVibe Deck is
+ * up to date" to every check. That is a false statement, not a missing
+ * feature. `deps.platform === "unsupported"` cannot cover it: Electron reports
+ * a real platform and still has no updater until a build is packaged and
+ * signed, so the ADAPTER is the only layer that knows.
+ */
+export const UPDATE_UNSUPPORTED = "update-unsupported";
+export type UpdateUnsupported = typeof UPDATE_UNSUPPORTED;
+
 export interface UpdateControllerDependencies {
   readonly platform: DesktopPlatform;
-  check(): Promise<PendingUpdate | null>;
+  check(): Promise<PendingUpdate | UpdateUnsupported | null>;
   confirmInstall(): Promise<boolean>;
   flush(): Promise<void>;
   relaunch(): Promise<void>;
@@ -126,7 +139,13 @@ export function createUpdateController(
 
     checkOperation = (async () => {
       try {
-        update = await deps.check();
+        const result = await deps.check();
+        if (result === UPDATE_UNSUPPORTED) {
+          update = null;
+          view.value = HIDDEN_VIEW;
+          return "unsupported";
+        }
+        update = result;
         view.value =
           update === null ? HIDDEN_VIEW : updateView(update, "available");
         return update === null ? "current" : "available";

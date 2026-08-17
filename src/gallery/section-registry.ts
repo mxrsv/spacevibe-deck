@@ -1,4 +1,5 @@
 import type { ComponentType } from "preact";
+import { AttentionDirectionSection } from "./sections/attention-direction";
 import { BoardSection } from "./sections/board-section";
 import { ChromeSection } from "./sections/chrome-section";
 import { MatrixSection } from "./sections/matrix-section";
@@ -33,6 +34,11 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "chrome", label: "window chrome", Section: ChromeSection },
   { id: "matrix", label: "native detail matrix", Section: MatrixSection },
   { id: "navigation", label: "navigation", Section: NavigationSection },
+  {
+    id: "attention",
+    label: "attention direction",
+    Section: AttentionDirectionSection,
+  },
   { id: "toolbar", label: "feature toolbar", Section: ToolbarSection },
   { id: "seams", label: "seam system", Section: SeamSection },
   { id: "popovers", label: "popovers", Section: PopoversSection },

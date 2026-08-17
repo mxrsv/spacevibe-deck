@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -7,7 +7,29 @@ import { describe, expect, it } from "vitest";
 // `scripts/gallery-entry.test.ts` learned this first.
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const RULEBOOK = join(ROOT, "docs/DESIGN-LANGUAGE.md");
+const GALLERY_DIRECTION = join(ROOT, "src/gallery/chatgpt-direction.css");
+// `src/styles.css` is an `@import` index over `src/styles/*.css` partials
+// (2026-08-16 split) — see `readStylesheet()` below.
 const STYLESHEET = join(ROOT, "src/styles.css");
+
+/**
+ * `src/styles.css` no longer carries any rule blocks itself — it is an
+ * `@import` index over contiguous partials in `src/styles/`. Every gate below
+ * used to read `STYLESHEET` directly and scan the whole cascade; reading only
+ * the index today would scan zero rules and pass every gate vacuously. This
+ * reads the index, pulls the `@import` paths out IN ORDER and concatenates
+ * the partials — derived from the index rather than a hardcoded partial
+ * list, so a new partial cannot silently drop out of the gate.
+ */
+function readStylesheet(): string {
+  const index = readFileSync(STYLESHEET, "utf8");
+  const importPaths = [...index.matchAll(/@import\s+["']([^"']+)["'];/g)].map(
+    (match) => match[1],
+  );
+  return importPaths
+    .map((path) => readFileSync(resolve(dirname(STYLESHEET), path), "utf8"))
+    .join("\n");
+}
 const SCANNED_DIRS = ["src", "electron", "scripts"];
 const SCANNED_EXT = /\.(ts|tsx|css)$/;
 const SECTION = /^## (\d+)\. (.+)$/gm;
@@ -33,11 +55,14 @@ const GLYPH_GEOMETRY_SELECTORS = new Set([".pane__anchor-grip"]);
 /**
  * DL-20.1's closed radius scale, plus the two shapes it names as shapes rather
  * than scale values (the circle and the capsule) and the square corner. A
- * fourth number picked by feel at a use site is what this list exists to
- * reject: the rule says three roles, and "three" is only true if nothing else
- * can be written. Adding an entry here is an edit to DL-20.1 first.
+ * number picked by feel at a use site is what this list exists to reject: the
+ * rule names its roles, and that count is only true if nothing else can be
+ * written. Adding an entry here is an edit to DL-20.1 first — which is exactly
+ * how `--radius-flat` arrived on 2026-08-17 (owner), for controls packed into
+ * a dense row.
  */
 const RADIUS_VALUES = new Set([
+  "var(--radius-flat)",
   "var(--radius-tight)",
   "var(--radius-control)",
   "var(--radius-surface)",
@@ -85,7 +110,7 @@ function declared(): { sections: Set<string>; rules: Set<string> } {
  * which is the one that owns the declaration.
  */
 function styledCasingViolations(): string[] {
-  const css = readFileSync(STYLESHEET, "utf8").replace(CSS_COMMENT, "");
+  const css = readStylesheet().replace(CSS_COMMENT, "");
   const violations: string[] = [];
   for (const [, prelude, body] of css.matchAll(CSS_BLOCK)) {
     const selector = prelude.trim().replace(/\s+/g, " ");
@@ -117,7 +142,7 @@ describe("design-language typography policy", () => {
  * its own numbers.
  */
 function offScaleRadii(): string[] {
-  const css = readFileSync(STYLESHEET, "utf8").replace(CSS_COMMENT, "");
+  const css = readStylesheet().replace(CSS_COMMENT, "");
   const violations: string[] = [];
   for (const [, prelude, body] of css.matchAll(CSS_BLOCK)) {
     const selector = prelude.trim().replace(/\s+/g, " ");
@@ -133,9 +158,11 @@ function offScaleRadii(): string[] {
 }
 
 describe("design-language radius scale", () => {
-  it("declares the DL-20.1 roles at 8/10/12", () => {
-    const css = readFileSync(STYLESHEET, "utf8").replace(CSS_COMMENT, "");
+  it("declares the DL-20.1 roles at 2/8/10/12", () => {
+    const css = readStylesheet().replace(CSS_COMMENT, "");
     for (const [name, size] of Object.entries({
+      // The dense-row role, added 2026-08-17 with the tab strip's turn text.
+      "--radius-flat": "2px",
       "--radius-tight": "8px",
       "--radius-control": "10px",
       "--radius-surface": "12px",
@@ -143,7 +170,7 @@ describe("design-language radius scale", () => {
       const declarations = [...css.matchAll(new RegExp(`${name}\\s*:`, "g"))];
       expect(
         declarations.length,
-        `${name} should be declared exactly once in src/styles.css`,
+        `${name} should be declared exactly once across src/styles/*.css`,
       ).toBe(1);
       expect(
         new RegExp(`${name}\\s*:\\s*${size}\\s*;`).test(css),
@@ -154,6 +181,60 @@ describe("design-language radius scale", () => {
 
   it("rejects a radius picked by feel at a use site", () => {
     expect(offScaleRadii()).toEqual([]);
+  });
+
+  it("keeps the rulebook synchronized with the 2/8/10/12 token contract", () => {
+    const rulebook = readFileSync(RULEBOOK, "utf8");
+
+    expect(rulebook).toContain("Four radius roles");
+    expect(rulebook).toContain("`--radius-flat` (2px)");
+    expect(rulebook).toContain("`--radius-tight` (8px)");
+    expect(rulebook).toContain("`--radius-control` (10px)");
+    expect(rulebook).toContain("`--radius-surface` (12px)");
+    expect(rulebook).not.toContain("the two radius roles");
+    expect(rulebook).not.toContain("Two radius roles");
+    // The count in the rule's own first sentence moved with the role; a
+    // rulebook still saying "three" would leave the gate asserting one number
+    // and the prose teaching another.
+    expect(rulebook).not.toContain("Three radius roles");
+  });
+
+  it("uses the surface radius and raised seam for every modal shell", () => {
+    const css = readStylesheet().replace(CSS_COMMENT, "");
+    for (const selector of [
+      ".preset-editor",
+      ".save-preset",
+      ".agent-quick-picker",
+    ]) {
+      const declarations = [...css.matchAll(CSS_BLOCK)].find(
+        ([, prelude]) => prelude.trim() === selector,
+      )?.[2];
+
+      expect(
+        declarations,
+        `${selector} should have a rule block`,
+      ).toBeDefined();
+      expect(declarations).toMatch(
+        /border:\s*1px solid var\(--seam-raised\)\s*;/,
+      );
+      expect(declarations).toMatch(
+        /border-radius:\s*var\(--radius-surface\)\s*;/,
+      );
+    }
+  });
+
+  it("keeps the gallery on the live radius scale", () => {
+    const gallery = readFileSync(GALLERY_DIRECTION, "utf8").replace(
+      CSS_COMMENT,
+      "",
+    );
+
+    expect(gallery).toMatch(
+      /--gx-chat-radius-control:\s*var\(--radius-control\)\s*;/,
+    );
+    expect(gallery).toMatch(
+      /--gx-chat-radius-surface:\s*var\(--radius-surface\)\s*;/,
+    );
   });
 });
 
@@ -171,13 +252,13 @@ const TYPE_LADDER: Record<string, string> = {
 
 describe("design-language typography tokens", () => {
   it("declares the DL-4.4 type ladder exactly once each, at its named size", () => {
-    const css = readFileSync(STYLESHEET, "utf8").replace(CSS_COMMENT, "");
+    const css = readStylesheet().replace(CSS_COMMENT, "");
     for (const [name, size] of Object.entries(TYPE_LADDER)) {
       const nameOnly = new RegExp(`${name}\\s*:`, "g");
       const declarations = [...css.matchAll(nameOnly)];
       expect(
         declarations.length,
-        `${name} should be declared exactly once in src/styles.css`,
+        `${name} should be declared exactly once across src/styles/*.css`,
       ).toBe(1);
 
       const exactValue = new RegExp(
@@ -228,11 +309,32 @@ describe("design-language citations", () => {
   });
 
   it("keeps the stage-bound file editor square", () => {
-    const styles = readFileSync(STYLESHEET, "utf8");
+    const styles = readStylesheet();
     const fileView = styles.match(/\.fileview\s*\{([^}]*)\}/)?.[1] ?? "";
 
     // DL-20.1 reserves surface radius for UI floating above chrome. The file
     // editor occupies the stage itself; rounding it clips Monaco's gutter.
     expect(fileView).not.toMatch(/border-radius\s*:/);
+  });
+});
+
+describe("design-language feature glyph treatment", () => {
+  it("keeps feature glyphs prominent and interaction surfaces neutral", () => {
+    const css = readStylesheet();
+    expect(css).toMatch(/\.feature-glyph\s*\{[^}]*color:\s*var\(--tone\)/s);
+    expect(css).toMatch(/\.wsitem__spinner\s*\{[^}]*color:\s*var\(--tone\)/s);
+    expect(css).not.toContain("--accent-icon");
+
+    for (const selector of [
+      ".dock-tabs__chip:hover",
+      ".dock-tabs__chip.is-active",
+      ".sidebar-actions__row:hover",
+      ".sidebar-actions__row.is-active",
+    ]) {
+      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const body =
+        css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+      expect(body).not.toContain("--accent");
+    }
   });
 });

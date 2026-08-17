@@ -192,7 +192,9 @@ describe("createLinkProvider", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(persistError.value).toMatch(/Couldn't open the editor: Error: ipc down/);
+    expect(persistError.value).toMatch(
+      /Couldn't open the editor: Error: ipc down/,
+    );
   });
 
   it("maps the link back onto its cells", async () => {

@@ -22,7 +22,10 @@ import {
   type MonacoApi,
 } from "../editor-host";
 import { documentFor } from "../file-surface-store";
-import { editorSettings, type FileSurfaceController } from "../file-surface-controller";
+import {
+  editorSettings,
+  type FileSurfaceController,
+} from "../file-surface-controller";
 import { ExternalChangeBar } from "./external-change-bar";
 
 export interface FileEditorProps {

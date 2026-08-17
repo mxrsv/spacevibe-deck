@@ -91,6 +91,10 @@ describe("DeckToolbar", () => {
     const rows = Array.from(
       document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]'),
     );
+    // The pane group leads, and the global group follows it in BOTH layouts
+    // since 2026-08-17: `SIDEBAR_TOOLS_HIDDEN` took the rail's footer away, so
+    // `More` is the only place left for those rows — and the only anchor the
+    // Prompt Board popover has. Restoring the footer drops the last three.
     expect(
       rows.map((row) => row.querySelector(".toolbar-menu__label")?.textContent),
     ).toEqual([
@@ -98,6 +102,9 @@ describe("DeckToolbar", () => {
       "Split horizontally",
       "Focus expand",
       "Close pane",
+      "Browser",
+      "Prompts",
+      "Settings",
     ]);
 
     // A row runs the same callback the icon used to, so the command path the

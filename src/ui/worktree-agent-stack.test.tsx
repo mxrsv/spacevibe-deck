@@ -104,7 +104,9 @@ describe("WorktreeAgentStack", () => {
     );
 
     expect(host.querySelectorAll(".worktree-agents__item")).toHaveLength(3);
-    const more = host.querySelector<HTMLButtonElement>(".worktree-agents__more");
+    const more = host.querySelector<HTMLButtonElement>(
+      ".worktree-agents__more",
+    );
     expect(more?.textContent).toBe("+2");
 
     act(() => {

@@ -119,7 +119,10 @@ export function decodeUtf8(bytes: Uint8Array): {
       encoding: "utf-8",
     };
   } catch {
-    return { text: new TextDecoder("utf-8").decode(bytes), encoding: "invalid-utf-8" };
+    return {
+      text: new TextDecoder("utf-8").decode(bytes),
+      encoding: "invalid-utf-8",
+    };
   }
 }
 

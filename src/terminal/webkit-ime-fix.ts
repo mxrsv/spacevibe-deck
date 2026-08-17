@@ -49,9 +49,9 @@ interface ImeEmitState {
   suppressTrailingToken: object | null;
 }
 
-const VIET_VOWELS = new Set(
-  [..."aáàảãạăắằẳẵặâấầẩẫậeéèẻẽẹêếềểễệiíìỉĩịoóòỏõọôốồổỗộơớờởỡợuúùủũụưứừửữựyýỳỷỹỵ"],
-);
+const VIET_VOWELS = new Set([
+  ..."aáàảãạăắằẳẵặâấầẩẫậeéèẻẽẹêếềểễệiíìỉĩịoóòỏõọôốồổỗộơớờởỡợuúùủũụưứừửữựyýỳỷỹỵ",
+]);
 
 function isVietVowel(ch: string): boolean {
   return VIET_VOWELS.has(ch.toLowerCase());
@@ -185,7 +185,10 @@ function patchInputEvent(core: XtermCore, state: ImeEmitState): void {
       core._unprocessedDeadKey = false;
       let data = ev.data;
       if ([...ev.data].length > 1) {
-        const deletedOldestFirst = state.deletedBurst.slice().reverse().join("");
+        const deletedOldestFirst = state.deletedBurst
+          .slice()
+          .reverse()
+          .join("");
         const hadDeleteBurst = deletedOldestFirst.length > 0;
         const prefix = consonantPrefixToRestore(deletedOldestFirst, ev.data);
         state.deletedBurst = [];

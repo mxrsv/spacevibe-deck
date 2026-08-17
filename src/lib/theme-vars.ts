@@ -18,7 +18,7 @@ import { deriveChromeColors } from "./derive-colors";
  * the stylesheet would have shown before any JS ran.
  */
 const FALLBACK_BG = "#16161e";
-const FALLBACK_FG = "#c0caf5";
+const FALLBACK_FG = "#cbcbcb";
 const FALLBACK_ACCENT = "#7aa2f7";
 const FALLBACK_RED = "#f7768e";
 const FALLBACK_GREEN = "#9ece6a";

@@ -1,6 +1,10 @@
+import { CaretLeft, CaretRight, X } from "@phosphor-icons/react";
 import { h, render } from "preact";
-import { ChevronLeft, ChevronRight, X, type LucideIcon } from "lucide-preact";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import {
+  DeckIcon,
+  ROW_ICON,
+  type DeckIconComponent,
+} from "../ui/controls/deck-icon";
 import type { ISearchOptions } from "@xterm/addon-search";
 import { settings } from "../settings/settings-store";
 import { resolveTheme } from "../settings/themes";
@@ -163,7 +167,7 @@ function findNormalized(
  * fall back to except the tooltip.
  */
 function barButton(
-  icon: LucideIcon,
+  icon: DeckIconComponent,
   name: string,
   title: string,
   onClick: () => void,
@@ -213,13 +217,8 @@ export function openSearchBar(pane: Pane): void {
   element.append(
     input,
     counter,
-    barButton(
-      ChevronLeft,
-      "Previous match",
-      "Previous match (⇧↩)",
-      findPrevious,
-    ),
-    barButton(ChevronRight, "Next match", "Next match (↩)", findNext),
+    barButton(CaretLeft, "Previous match", "Previous match (⇧↩)", findPrevious),
+    barButton(CaretRight, "Next match", "Next match (↩)", findNext),
     barButton(X, "Close", "Close (Esc)", closeSearchBar),
   );
 

@@ -17,10 +17,11 @@
 import type { ComponentChild } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { canExpand, type TreeRow } from "../file-tree";
-import { surfaceFor, treeRows } from "../file-surface-store";
+import { listingErrorsFor, surfaceFor, treeRows } from "../file-surface-store";
 import type { FileSurfaceController } from "../file-surface-controller";
 import { DeckIcon, ROW_ICON } from "../../ui/controls/deck-icon";
 import { chevronForRow, iconForRow } from "./file-icons";
+import { LoadError } from "../../ui/controls/load-error";
 
 export interface FileTreeViewProps {
   readonly controller: FileSurfaceController;
@@ -39,6 +40,7 @@ export function FileTreeView(props: FileTreeViewProps) {
   const { controller, workspacePath } = props;
   const rows = treeRows(workspacePath);
   const loaded = surfaceFor(workspacePath).listings.has(workspacePath);
+  const listingErrors = listingErrorsFor(workspacePath);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -206,7 +208,9 @@ export function FileTreeView(props: FileTreeViewProps) {
   const visible = rows.slice(startIndex, endIndex);
 
   let body: ComponentChild;
-  if (!loaded) {
+  if (!loaded && listingErrors.has(workspacePath)) {
+    body = null;
+  } else if (!loaded) {
     body = <p class="file-tree__status">Loading…</p>;
   } else if (rows.length === 0) {
     body = <p class="file-tree__status">No files</p>;
@@ -266,15 +270,29 @@ export function FileTreeView(props: FileTreeViewProps) {
   }
 
   return (
-    <div
-      ref={containerRef}
-      class="file-tree"
-      role="tree"
-      aria-label="File explorer"
-      onScroll={handleScroll}
-      onKeyDown={handleKeyDown}
-    >
-      {body}
+    <div class="file-tree-shell">
+      {listingErrors.size > 0 ? (
+        <LoadError
+          message={
+            listingErrors.values().next().value ?? "Couldn't read this folder."
+          }
+          onRetry={() => {
+            for (const directory of listingErrors.keys()) {
+              void controller.ensureListing(workspacePath, directory);
+            }
+          }}
+        />
+      ) : null}
+      <div
+        ref={containerRef}
+        class="file-tree"
+        role="tree"
+        aria-label="File explorer"
+        onScroll={handleScroll}
+        onKeyDown={handleKeyDown}
+      >
+        {body}
+      </div>
     </div>
   );
 }

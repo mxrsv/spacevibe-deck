@@ -15,11 +15,7 @@ import { BRAND, STAGE_ARIA_LABEL } from "../../../stage/brand.js";
 import { mountAurora } from "../aurora.js";
 import { REEL_ID } from "../demo-reel.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
-import {
-  REPO_URL,
-  RELEASES_URL,
-  WINDOWS_FALLBACK_URL,
-} from "../download-links.js";
+import { REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
 import { mountStageStream, stagePanes } from "../product-stage.js";
 import {
   AGENTS,
@@ -315,7 +311,7 @@ function renderStage() {
 }
 
 function renderFinale(copy) {
-  const proofs = ["Pty", "Local", "Native"]
+  const proofs = ["Pty", "Open", "Local"]
     .map(
       (key, index) => `
         <article class="tour__proof" data-proof="${key}" data-reveal style="--reveal-delay: ${80 + index * 80}ms">
@@ -368,18 +364,6 @@ function renderFinale(copy) {
       <div class="tour__ctas" data-reveal style="--reveal-delay: 220ms">
         <a
           class="tour__cta tour__cta--primary"
-          href="${RELEASES_URL}"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <span class="a-cta-lead">
-            ${renderAppleIcon()}
-            <span data-copy="downloadMac">${copy.downloadMac}</span>
-          </span>
-          <span aria-hidden="true">↓</span>
-        </a>
-        <a
-          class="tour__cta"
           href="${WINDOWS_FALLBACK_URL}"
           target="_blank"
           rel="noreferrer"
@@ -391,7 +375,19 @@ function renderFinale(copy) {
           <span class="a-cta-tag" data-copy="winPreviewTag"
             >${copy.winPreviewTag}</span
           >
+          <span aria-hidden="true">↓</span>
         </a>
+        <!-- Mirrors the hero: a disabled button, so it is neither pressable nor
+             a target for upgradeReleaseLinks' anchor retargeting. -->
+        <button class="tour__cta" type="button" disabled>
+          <span class="a-cta-lead">
+            ${renderAppleIcon()}
+            <span data-copy="downloadMac">${copy.downloadMac}</span>
+          </span>
+          <span class="a-cta-tag" data-copy="comingSoon"
+            >${copy.comingSoon}</span
+          >
+        </button>
 
         <p class="a-cta-note" data-copy="winUnsignedNote">
           ${copy.winUnsignedNote}
@@ -428,7 +424,7 @@ function renderFooter(copy) {
         </div>
         <nav class="site-footer__col" aria-label="${copy.footerColProduct}">
           <span class="site-footer__coltitle" data-copy="footerColProduct">${copy.footerColProduct}</span>
-          <a href="${RELEASES_URL}" target="_blank" rel="noreferrer" data-copy="downloadMac">${copy.downloadMac}</a>
+          <a href="${WINDOWS_FALLBACK_URL}" target="_blank" rel="noreferrer" data-copy="downloadWin">${copy.downloadWin}</a>
           <a class="site-footer__link" href="#${REEL_ID}" data-copy="primaryCta">${copy.primaryCta}</a>
         </nav>
         <nav class="site-footer__col" aria-label="${copy.footerColProject}">

@@ -176,6 +176,49 @@ describe("parseThemeFile — Alacritty", () => {
 });
 
 describe("parseThemeFile — what it refuses and what it fills in", () => {
+  it("rejects a valid theme whose chrome text cannot meet DL-3.5", () => {
+    const { result } = parseThemeFile(
+      "mid-gray.json",
+      JSON.stringify({
+        name: "Mid Gray",
+        background: "#777777",
+        // 4.69:1 clears terminal text, while the derived chrome cannot reach
+        // DL-3.5's stricter 8/6/4.5 ladder on this middle-luminance base.
+        foreground: "#000000",
+      }),
+    );
+
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.reason).toContain("DL-3.5");
+  });
+
+  it.each(["#000000", "#ffffff"])(
+    "rejects an imported theme with invisible %s terminal text",
+    (colour) => {
+      const result = parseThemeFile(
+        "invisible.json",
+        JSON.stringify({ background: colour, foreground: colour }),
+      ).result;
+
+      expect(result.ok).toBe(false);
+      expect(!result.ok && result.reason).toContain("terminal foreground");
+    },
+  );
+
+  it("rejects an explicitly invisible cursor", () => {
+    const result = parseThemeFile(
+      "cursor.json",
+      JSON.stringify({
+        background: "#000000",
+        foreground: "#ffffff",
+        cursorColor: "#000000",
+      }),
+    ).result;
+
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.reason).toContain("terminal cursor");
+  });
+
   it("rejects a file with no background and foreground", () => {
     const { result } = parseThemeFile(
       "half.json",

@@ -10,7 +10,8 @@ import {
 } from "../lib/workspace-recents";
 import type { AgentChoice, RecentWorkspace } from "../lib/workspace-recents";
 import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
-import { defaultPtyClient, type DetectedAgent } from "../terminal/pty-client";
+import type { DetectedAgent } from "../terminal/pty-client";
+import { ensureAgentsDetected } from "../terminal/agent-detection-store";
 import {
   agentOptions,
   BUILTIN_AGENTS,
@@ -92,28 +93,41 @@ export function OpenBoard({
   const worktreeForm = useWorktreeForm();
   const containerRef = useRef<HTMLDivElement>(null);
   /**
-   * The in-flight agent probe, not just its result. One click now opens, so a
-   * click landing before `detect_agents` answers would otherwise resolve a
-   * remembered agent against an EMPTY list and quietly open a Shell pane
-   * instead — `resolveAgentChoice` falls back rather than waiting. The open
-   * path awaits this instead of reading a signal that may not be filled yet.
+   * The agent list this board resolves against, as a promise rather than a
+   * value. One click now opens, so a click landing before discovery answers
+   * would otherwise resolve a remembered agent against an EMPTY list and
+   * quietly open a Shell pane instead — `resolveAgentChoice` falls back rather
+   * than waiting. The open path awaits this instead of reading a signal that
+   * may not be filled yet.
+   *
+   * Since the cache landed (`agent-detection-store.ts`) this is normally
+   * already resolved: the boot probe answered long before the board opened, and
+   * only a first launch — or a set of declared agents nothing has probed yet —
+   * makes the await do any waiting.
    */
   const probe = useRef<Promise<readonly DetectedAgent[]> | null>(null);
+  /**
+   * The in-flight `dirs_exist` pass, for the same reason `probe` is held: the
+   * open path must not decide a folder is alive just because the answer has
+   * not arrived. Resolves to the set of missing paths, or `null` when the
+   * probe itself failed and liveness is simply unknown.
+   */
+  const livenessProbe = useRef<Promise<ReadonlySet<string> | null> | null>(
+    null,
+  );
   const customAgents = settings.value.customAgents;
 
   useEffect(() => {
     containerRef.current?.focus();
   }, []);
 
-  // Re-probes whenever the declared set changes: adding an agent in Settings
-  // and coming straight back to the board has to see it without a relaunch.
+  // Refreshes whenever the declared set changes: adding an agent in Settings
+  // and coming straight back to the board has to see it without a relaunch —
+  // which the cache keys on, so a changed set is awaited rather than served
+  // stale. Never rejects (the store degrades to the best list it knows), so the
+  // board still falls back to Shell only when discovery cannot answer at all.
   useEffect(() => {
-    probe.current = defaultPtyClient
-      .detectAgents(probeNames(customAgents))
-      .catch((err: unknown) => {
-        console.warn("detect_agents failed:", err);
-        return [] as readonly DetectedAgent[]; // board degrades to Shell only
-      });
+    probe.current = ensureAgentsDetected(probeNames(customAgents));
   }, [customAgents]);
 
   useEffect(() => {
@@ -123,16 +137,32 @@ export function OpenBoard({
       // in `missing` would keep blocking Open for a folder picked again after
       // being recreated on disk.
       missing.value = new Set();
+      // Drop the previous pass with them, or a folder picked fresh would be
+      // judged against an answer about rows that no longer exist.
+      livenessProbe.current = null;
       return;
     }
     let cancelled = false;
-    invoke<boolean[]>("dirs_exist", { paths })
+    // Held the same way the agent probe is, and for the same reason: one click
+    // now opens. A click landing before this answers would read an EMPTY
+    // `missing` set, walk past the guard, and hand a deleted folder to the
+    // spawn — where `resolveSpawnCwd` silently falls back to $HOME and the
+    // user gets a shell in their home directory under a project's name, with
+    // the dead path written back into recents. The board's one notice never
+    // fires there, because as far as the app is concerned the open SUCCEEDED.
+    livenessProbe.current = invoke<boolean[]>("dirs_exist", { paths })
       .then((flags) => {
+        const gone = new Set(paths.filter((_, index) => !flags[index]));
         if (!cancelled) {
-          missing.value = new Set(paths.filter((_, index) => !flags[index]));
+          missing.value = gone;
         }
+        return gone;
       })
-      .catch((err: unknown) => console.warn("dirs_exist failed:", err));
+      .catch((err: unknown) => {
+        console.warn("dirs_exist failed:", err);
+        // An unanswerable probe must not read as "every folder is fine".
+        return null;
+      });
     return () => {
       cancelled = true;
     };
@@ -171,6 +201,15 @@ export function OpenBoard({
     }
     notice.value = null;
     opening.value = true;
+    // Wait for the liveness pass the same way the agent probe is waited for.
+    // `null` means the probe failed, so nothing is known and the open goes
+    // ahead — refusing on an unanswerable probe would strand the board.
+    const gone = await livenessProbe.current;
+    if (gone?.has(path) === true) {
+      opening.value = false;
+      notice.value = `${folderName(path)} is missing — pick another folder`;
+      return;
+    }
     const entry = recents.find((recent) => recent.path === path);
     const preset =
       presets.find((p) => p.id === entry?.lastPresetId) ??

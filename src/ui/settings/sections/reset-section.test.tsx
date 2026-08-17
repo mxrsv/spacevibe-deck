@@ -86,7 +86,9 @@ describe("ResetSection — Restore defaults confirm", () => {
     // one, so the icon supplements the label rather than replacing it.
     expect(reset.textContent?.trim()).toBe("reset");
     expect(
-      reset.querySelector("svg")?.classList.contains("lucide-rotate-ccw"),
+      reset
+        .querySelector("svg")
+        ?.classList.contains("deck-icon--arrow-counter-clockwise"),
     ).toBe(true);
   });
 

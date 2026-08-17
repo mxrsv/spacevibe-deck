@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { render } from "preact";
+import { readFileSync } from "node:fs";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -10,11 +11,13 @@ import {
 } from "../chrome/events";
 import {
   bootOpensTheBoard,
+  browserPanelObscured,
   closeSettingsPanel,
-  DesktopChrome,
   livePresetOpensATab,
+  stripShowsTabs,
   toggleSettingsPanel,
-} from "./app";
+} from "./app-policy";
+import { DesktopChrome } from "./desktop-chrome";
 import { ACTION_REGISTRY, TIER_RANK } from "../terminal/action-registry";
 import {
   initializeDesktopEnvironment,
@@ -150,6 +153,78 @@ describe("DesktopChrome platform structure", () => {
   it("keeps the row while the status bar is shown", () => {
     const root = mount("macos", true);
     expect(root.classList.contains("window--no-status")).toBe(false);
+  });
+});
+
+describe("settings load recovery layer", () => {
+  it("hides a native browser surface while the settings load alert is visible", () => {
+    expect(
+      browserPanelObscured({
+        overlayCoversPane: false,
+        agentQuickPickerOpen: false,
+        promptsOpen: false,
+        persistErrorVisible: false,
+        settingsLoadError: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("stacks the settings load alert above the Open board", () => {
+    const modalCss = readFileSync("src/styles/10-modals.css", "utf8");
+    const boardCss = readFileSync("src/styles/09-open-board.css", "utf8");
+    const alertZ = Number(
+      modalCss.match(/\.settings-load-alert\s*\{[^}]*z-index:\s*(\d+)/s)?.[1],
+    );
+    const boardZ = Number(
+      boardCss.match(/\.open-board\s*\{[^}]*z-index:\s*(\d+)/s)?.[1],
+    );
+
+    expect(alertZ).toBeGreaterThan(boardZ);
+  });
+});
+
+// DL-18.6/18.9: in sidebar mode the stage's first `--frame-h` IS the frame row
+// — it carries the traffic-light inset, the sidebar's only way back out while
+// the column is hidden, the feature toolbar and the dock's control. A
+// full-window surface authored `inset: 0` swallowed all of it: with the
+// sidebar collapsed and the board up on a window with no tabs (so the board
+// cannot even be cancelled), NOTHING on screen could bring the sidebar back.
+// Same rectangle rule `.stage__surface` has always used for the document.
+describe("full-window surfaces leave the stage strip's row alone", () => {
+  it.each([
+    ["src/styles/09-open-board.css", ".open-board"],
+    ["src/styles/11-settings-screen.css", ".settings-screen"],
+  ])("%s starts %s below the strip in sidebar mode", (file, selector) => {
+    const css = readFileSync(file, "utf8");
+    const escaped = selector.replace(".", "\\.");
+    const rule = css.match(
+      new RegExp(`\\.stage--strip\\s+${escaped}[^{]*\\{[^}]*\\}`, "s"),
+    )?.[0];
+
+    expect(rule).toBeDefined();
+    expect(rule).toContain("top: var(--frame-h)");
+  });
+});
+
+// The other half of the same fix: the strip survives a full-window surface, so
+// what it carries has to be what still MEANS something over one. The window
+// controls do; a list of tab chips does not — the surface replaced the tabs.
+// A modal is deliberately absent: it floats on a scrim with the strip legible
+// underneath it, and hiding the chips there would be a second, silent change.
+describe("stripShowsTabs", () => {
+  it("keeps the chips while only the terminal grid is on the stage", () => {
+    expect(stripShowsTabs({ boardOpen: false, settingsOpen: false })).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    ["the Open board", true, false],
+    ["the Settings screen", false, true],
+  ])("drops the chips under %s", (_label, board, settings) => {
+    expect(stripShowsTabs({ boardOpen: board, settingsOpen: settings })).toBe(
+      false,
+    );
   });
 });
 

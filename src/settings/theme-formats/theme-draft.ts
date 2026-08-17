@@ -8,6 +8,12 @@
  * one file with no second copy of the "is this usable" rule.
  */
 import type { ITheme } from "@xterm/xterm";
+import {
+  checkChromeTextContrast,
+  contrastRatio,
+  TERMINAL_CURSOR_FLOOR,
+  TERMINAL_TEXT_FLOOR,
+} from "../../lib/derive-colors";
 
 /** Exactly the theme object `ThemePreset` carries — see `../themes.ts`. */
 export type ThemeColors = Required<
@@ -76,6 +82,25 @@ export function finishDraft(
       reason: "no background and foreground colour in this file",
     };
   }
+  const terminalTextContrast = contrastRatio(background, foreground);
+  if (terminalTextContrast < TERMINAL_TEXT_FLOOR) {
+    return {
+      ok: false,
+      reason: `terminal foreground on background is ${terminalTextContrast.toFixed(2)}:1; needs ${TERMINAL_TEXT_FLOOR}:1`,
+    };
+  }
+  const cursor = draft.colors.cursor ?? foreground;
+  const cursorContrast = contrastRatio(background, cursor);
+  if (cursorContrast < TERMINAL_CURSOR_FLOOR) {
+    return {
+      ok: false,
+      reason: `terminal cursor on background is ${cursorContrast.toFixed(2)}:1; needs ${TERMINAL_CURSOR_FLOOR}:1`,
+    };
+  }
+  const contrast = checkChromeTextContrast(background, foreground);
+  if (!contrast.ok) {
+    return { ok: false, reason: contrast.reason };
+  }
   const label = (draft.label ?? fallbackLabel).trim();
   return {
     ok: true,
@@ -84,7 +109,7 @@ export function finishDraft(
       ...draft.colors,
       background,
       foreground,
-      cursor: draft.colors.cursor ?? foreground,
+      cursor,
       // The selection wash is the one slot with no sensible neutral default,
       // so it borrows the palette's own bright black — the colour every
       // collection uses for "dim chrome" — before falling back to the cursor.

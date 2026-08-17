@@ -1,5 +1,5 @@
-import type { LucideIcon } from "lucide-preact";
-import { FolderTree, Gauge, History } from "lucide-preact";
+import { ClockCounterClockwise, Gauge, TreeView } from "@phosphor-icons/react";
+import type { DeckIconComponent } from "../controls/deck-icon";
 import type { DockTab } from "../../settings/settings-schema";
 
 /**
@@ -15,13 +15,14 @@ export type DockTabId = DockTab;
 export interface DockTabDescriptor {
   readonly id: DockTabId;
   readonly label: string;
-  readonly icon: LucideIcon;
+  readonly icon: DeckIconComponent;
 }
 
 /**
  * The panel's fixed tab list, explorer / usage / sessions. Labels are
  * sentence case (DL-4.4, §8); icons are the same ones `deck-toolbar.tsx`
- * already draws for these three features (`FolderTree`, `Gauge`, `History`),
+ * already draws for these three features (`TreeView`, `Gauge`,
+ * `ClockCounterClockwise`),
  * so a user does not have to learn a second icon for a surface they already
  * recognise from the toolbar.
  *
@@ -30,9 +31,9 @@ export interface DockTabDescriptor {
  * narrows it; this constant itself never changes shape.
  */
 export const DOCK_TABS: readonly DockTabDescriptor[] = Object.freeze([
-  { id: "explorer", label: "File explorer", icon: FolderTree },
+  { id: "explorer", label: "File explorer", icon: TreeView },
   { id: "usage", label: "Token usage", icon: Gauge },
-  { id: "sessions", label: "Session history", icon: History },
+  { id: "sessions", label: "Session history", icon: ClockCounterClockwise },
 ]);
 
 /**

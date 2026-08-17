@@ -24,10 +24,7 @@ const MODIFIER_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 export type CaptureRejection =
-  | "modifier-only"
-  | "reserved"
-  | "system-reserved"
-  | "needs-modifier";
+  "modifier-only" | "reserved" | "system-reserved" | "needs-modifier";
 
 export type CaptureResult =
   | { readonly ok: true; readonly chord: CharChord }

@@ -1,8 +1,6 @@
-import { useRef } from "preact/hooks";
+import { ChatText } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
-import { MessageSquareText } from "lucide-preact";
 import { CHROME_ICON, DeckIcon } from "../../ui/controls/deck-icon";
-import { TabPopover } from "../../ui/tab-popover";
 import { PromptPopover } from "../../prompts/prompt-popover";
 import type { PromptTarget } from "../../prompts/inject";
 import {
@@ -13,18 +11,16 @@ import { defaultPromptAssetsClient } from "../../prompts/prompt-assets-client";
 import { SectionHead, Specimen } from "../specimen";
 
 /**
- * DL §13's anchored popovers, both of them, live.
+ * DL §13's anchored popover, live.
  *
- * They are opened by their real triggers rather than forced open, because a
+ * `.tab-popover` was the other one until 2026-08-16, when it was removed with
+ * the tab rename and workspace-logo features it carried; the section keeps its
+ * name because the genre (DL §13) still has a member.
+ *
+ * It is opened by its real trigger rather than forced open, because a
  * popover's dismissal rules (Esc, outside click, completing the action) are
  * half of what DL §13 specifies and a permanently-pinned specimen would show
  * none of them.
- *
- * Side by side is what caught the one thing they used to disagree about:
- * `.tab-popover` drew a real 1px border where `.prompt-popover` drew the inset
- * hairline DL-13.1 asks for. Both take the inset since 2026-08-14, and both
- * take `--radius-surface`, so this pair is now a match check rather than a
- * finding.
  */
 
 const TARGET: PromptTarget = {
@@ -32,53 +28,6 @@ const TARGET: PromptTarget = {
   agent: "claude",
   cwd: "/Users/deck/spacevibe-deck",
 };
-
-function TabPopoverSpecimen() {
-  const anchorRef = useRef<HTMLButtonElement>(null);
-  const open = useSignal(false);
-  const at = useSignal<{ left: number; top: number } | null>(null);
-
-  const toggle = (): void => {
-    const anchor = anchorRef.current;
-    if (anchor === null) {
-      return;
-    }
-    const rect = anchor.getBoundingClientRect();
-    at.value = { left: rect.left, top: rect.bottom + 6 };
-    open.value = !open.value;
-  };
-
-  return (
-    <div class="gx-anchorpad">
-      <button
-        ref={anchorRef}
-        type="button"
-        class="tab is-active"
-        onClick={toggle}
-      >
-        <span class="tab__dot" style={{ background: "var(--cyan)" }} />
-        <span class="tab__label">click to open options</span>
-      </button>
-      {open.value && at.value !== null && anchorRef.current !== null && (
-        <TabPopover
-          left={at.value.left}
-          top={at.value.top}
-          anchorEl={anchorRef.current}
-          name={null}
-          dotColor={null}
-          hasLogo={false}
-          onRename={() => {}}
-          onPickColor={() => {}}
-          onSetLogo={() => {}}
-          onRemoveLogo={() => {}}
-          onClose={() => {
-            open.value = false;
-          }}
-        />
-      )}
-    </div>
-  );
-}
 
 function PromptPopoverSpecimen() {
   const open = useSignal(true);
@@ -102,7 +51,7 @@ function PromptPopoverSpecimen() {
             open.value = !open.value;
           }}
         >
-          <DeckIcon icon={MessageSquareText} size={CHROME_ICON} />
+          <DeckIcon icon={ChatText} size={CHROME_ICON} />
         </button>
         {open.value && (
           <PromptPopover
@@ -127,14 +76,6 @@ export function PopoversSection() {
         title="Popovers"
         blurb="Both anchored surfaces share one elevated frame, one radius and one interaction rhythm."
       />
-
-      <Specimen
-        name=".tab-popover"
-        note="rename + dot colour + logo; opened from the active tab"
-        surface="chrome-1"
-      >
-        <TabPopoverSpecimen />
-      </Specimen>
 
       <Specimen
         name=".prompt-popover"

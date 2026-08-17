@@ -1,3 +1,5 @@
+import { normalizeWorkspacePath } from "./workspace-label";
+
 export const WORKSPACES_VERSION = 2;
 export const MAX_RECENTS = 8;
 
@@ -169,6 +171,33 @@ export function resolveAgentChoice(
     return choice;
   }
   return agents[0]?.id ?? null;
+}
+
+/**
+ * The agent a workspace should open with when nobody is there to pick one —
+ * the `New` row dropped onto a pane spawns without a picker step, so the
+ * answer has to come from memory alone.
+ *
+ * Paths are normalized on both sides: a tab's `workspacePath` is normalized at
+ * materialize time while a recents entry carries whatever spelling the picker
+ * handed in, and a trailing slash must not read as a different folder.
+ * A tab with no workspace, or a folder never opened, falls through to
+ * `resolveAgentChoice`'s first-detected rule.
+ */
+export function agentForWorkspace(
+  recents: readonly RecentWorkspace[],
+  workspacePath: string | null,
+  agents: readonly { readonly id: string }[],
+): AgentChoice {
+  const wanted =
+    workspacePath === null ? null : normalizeWorkspacePath(workspacePath);
+  const entry =
+    wanted === null
+      ? undefined
+      : recents.find(
+          (recent) => normalizeWorkspacePath(recent.path) === wanted,
+        );
+  return resolveAgentChoice(entry?.lastAgent, agents);
 }
 
 export function folderName(path: string): string {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  checkChromeTextContrast,
   contrastRatio,
   deriveChromeColors,
   luminance,
@@ -48,10 +49,17 @@ describe("deriveChromeColors", () => {
     expect(deriveChromeColors("#ffffff", "#333333").tone).toBe("#000000");
   });
 
-  it("emits alpha hairlines from the foreground", () => {
+  it("emits alpha hairlines from the tone, not the foreground", () => {
+    // A line inside a surface belongs to the background ladder for the same
+    // reason a seam does (DL-2.3). The fg below is strongly tinted on purpose,
+    // so a foreground mix would show up in the assertion rather than being a
+    // matter of taste.
     const chrome = deriveChromeColors("#16161e", "#c0caf5");
-    expect(chrome.hair).toBe("rgba(192, 202, 245, 0.12)");
-    expect(chrome.hairStrong).toBe("rgba(192, 202, 245, 0.2)");
+    expect(chrome.hair).toBe("rgba(255, 255, 255, 0.12)");
+    expect(chrome.hairStrong).toBe("rgba(255, 255, 255, 0.2)");
+    const light = deriveChromeColors("#ffffff", "#333333");
+    expect(light.hair).toBe("rgba(0, 0, 0, 0.12)");
+    expect(light.hairStrong).toBe("rgba(0, 0, 0, 0.2)");
   });
 
   describe("the focused stage surface", () => {
@@ -118,9 +126,9 @@ describe("deriveChromeColors", () => {
 
     it("keeps the in-surface divider alpha, so it adapts to its ground", () => {
       const c = deriveChromeColors("#16161e", "#c0caf5");
-      expect(c.seamDivider).toBe("rgba(255, 255, 255, 0.03)");
+      expect(c.seamDivider).toBe("rgba(255, 255, 255, 0.12)");
       expect(deriveChromeColors("#ffffff", "#333333").seamDivider).toBe(
-        "rgba(0, 0, 0, 0.03)",
+        "rgba(0, 0, 0, 0.12)",
       );
     });
   });
@@ -130,13 +138,14 @@ describe("deriveChromeColors", () => {
     // which is what the reviewed direction sheet shipped on the rail and the
     // settings nav: hovering an unselected row painted "selected".
     it("keeps hover quieter than selection on every preset", () => {
-      for (const [bg, fg] of [
-        ["#16161e", "#c0caf5"],
-        ["#282a36", "#f8f8f2"],
-        ["#282c34", "#abb2bf"],
-        ["#1e1e2e", "#cdd6f4"],
+      const pairs: readonly (readonly [string, string])[] = [
+        ...THEME_PRESETS.map(
+          (preset) =>
+            [preset.theme.background, preset.theme.foreground] as const,
+        ),
         ["#ffffff", "#333333"],
-      ] as const) {
+      ];
+      for (const [bg, fg] of pairs) {
         const c = deriveChromeColors(bg, fg);
         expect(c.stateHoverBg).not.toBe(c.tabActiveBg);
       }
@@ -144,9 +153,10 @@ describe("deriveChromeColors", () => {
 
     it("mixes the hover wash from the tone, not the foreground", () => {
       // From `fg` it would carry the terminal's text hue into a wash that is
-      // meant to be colourless — the mistake DL-2.3 corrected for seams. Both
-      // presets below have a strongly tinted foreground, so a foreground mix
-      // would be visible in the assertion rather than a matter of taste.
+      // meant to be colourless — the mistake DL-2.3 corrected for seams. The
+      // fg below is a strongly tinted one (an imported theme's, since the
+      // built-ins are neutral now), so a foreground mix would be visible in
+      // the assertion rather than a matter of taste.
       expect(deriveChromeColors("#16161e", "#c0caf5").stateHoverBg).toBe(
         "rgba(255, 255, 255, 0.06)",
       );
@@ -219,13 +229,69 @@ describe("deriveChromeColors", () => {
     }
   });
 
-  it("raises Tokyo Night's fg the one step the 8:1 primary floor now needs", () => {
-    // Under the old 7:1 floor this fg passed untouched. At 8:1 its raw
-    // contrast (7.10:1 on inputBg, 7.88:1 on chrome2) falls just short, so
-    // `ensureContrast` now takes one 2% step toward `tone` — a real,
-    // intentional consequence of raising the floor, not a regression.
-    expect(deriveChromeColors("#16161e", "#c0caf5").textPrimary).toBe(
-      "#cfd7f7",
+  it("raises Tokyo Night's fg the few steps the 8:1 primary floor needs", () => {
+    // Its raw contrast falls short of 8:1 on the two tightest surfaces
+    // (7.84:1 on inputBg, 7.06:1 on tabActiveBg), so `ensureContrast` steps it
+    // toward `tone` — an intentional consequence of the floor, not a
+    // regression. The result is still neutral: the fg it starts from is now a
+    // gray, so raising it toward white cannot reintroduce a hue.
+    expect(deriveChromeColors("#16161e", "#cbcbcb").textPrimary).toBe(
+      "#d9d9d9",
     );
+  });
+
+  it("keeps the built-in text ladder neutral", () => {
+    // The whole point of the 2026-08-17 change: chrome ink must not carry the
+    // palette's blue. Any residue comes from mixing back toward a tinted
+    // background, which is a fraction of a percent, so hold every tone under a
+    // 6% saturation ceiling rather than demanding a literal gray.
+    const saturation = (hex: string): number => {
+      const v = Number.parseInt(hex.slice(1), 16);
+      const channels = [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
+      const max = Math.max(...channels);
+      const min = Math.min(...channels);
+      return max === 0 ? 0 : (max - min) / max;
+    };
+    for (const preset of THEME_PRESETS) {
+      const c = deriveChromeColors(
+        preset.theme.background,
+        preset.theme.foreground,
+      );
+      for (const tone of [c.textPrimary, c.textMuted, c.textFaint]) {
+        expect(saturation(tone)).toBeLessThan(0.06);
+      }
+    }
+  });
+});
+
+describe("checkChromeTextContrast", () => {
+  it("accepts every built-in theme", () => {
+    for (const preset of THEME_PRESETS) {
+      expect(
+        checkChromeTextContrast(
+          preset.theme.background,
+          preset.theme.foreground,
+        ),
+      ).toEqual({ ok: true });
+    }
+  });
+
+  it("rejects a mid-gray theme whose derived text cannot meet DL-3.5", () => {
+    const result = checkChromeTextContrast("#777777", "#777777");
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          token: "textPrimary",
+          surface: "inputBg",
+          required: 8,
+        }),
+      ]),
+    );
+    expect(result.reason).toContain("DL-3.5");
   });
 });

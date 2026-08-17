@@ -2,13 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const setMock = vi.hoisted(() => vi.fn(async () => {}));
 const saveMock = vi.hoisted(() => vi.fn(async () => {}));
+const getMock = vi.hoisted(() =>
+  vi.fn(async (): Promise<unknown> => undefined),
+);
+const loadMock = vi.hoisted(() =>
+  vi.fn(async () => ({ get: getMock, set: setMock, save: saveMock })),
+);
 vi.mock("../host/store-host", () => ({
   Store: {
-    load: vi.fn(async () => ({
-      get: vi.fn(async (): Promise<unknown> => undefined),
-      set: setMock,
-      save: saveMock,
-    })),
+    load: loadMock,
   },
 }));
 
@@ -20,13 +22,38 @@ import {
   updateSettings,
   openDockTab,
   revealDockTab,
+  settingsLoadState,
 } from "./settings-store";
 import { createMemorySettingsSync } from "./settings-sync";
+import type { SettingsSyncClient } from "./settings-sync";
 import { DEFAULT_SETTINGS } from "./settings-schema";
 import { persistError } from "../chrome/events";
 
+function deferred<T>(): {
+  readonly promise: Promise<T>;
+  readonly resolve: (value: T) => void;
+  readonly reject: (reason: unknown) => void;
+} {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((accept, decline) => {
+    resolve = accept;
+    reject = decline;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("settings persistence", () => {
   beforeEach(async () => {
+    loadMock.mockClear();
+    loadMock.mockImplementation(async () => ({
+      get: getMock,
+      set: setMock,
+      save: saveMock,
+      loadState: { state: "ready", fresh: false },
+    }));
+    getMock.mockReset();
+    getMock.mockResolvedValue(undefined);
     setMock.mockClear();
     saveMock.mockClear();
     persistError.value = null;
@@ -50,9 +77,91 @@ describe("settings persistence", () => {
     await flushSettingsSave();
     expect(saveMock).toHaveBeenCalled();
   });
+
+  it("reports a load failure and blocks writes until a retry succeeds", async () => {
+    const before = settings.value;
+    setMock.mockClear();
+    loadMock.mockRejectedValueOnce(new Error("permission denied"));
+
+    await initSettings();
+    updateSettings({ fontSize: before.fontSize + 1 });
+
+    expect(settingsLoadState.value).toEqual({
+      status: "error",
+      message:
+        "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
+    });
+    expect(settings.value.fontSize).toBe(before.fontSize + 1);
+    expect(setMock).not.toHaveBeenCalled();
+  });
+
+  it("treats a null settings payload as unreadable rather than as fresh defaults", async () => {
+    getMock.mockResolvedValueOnce(null);
+
+    await initSettings();
+
+    expect(settingsLoadState.value.status).toBe("error");
+  });
+
+  it("ignores an older load failure after a retry succeeds", async () => {
+    const oldLoad = deferred<never>();
+    loadMock
+      .mockImplementationOnce(() => oldLoad.promise)
+      .mockImplementationOnce(async () => ({
+        get: getMock,
+        set: setMock,
+        save: saveMock,
+        loadState: { state: "ready", fresh: false },
+      }));
+
+    const first = initSettings();
+    const retry = initSettings();
+    await retry;
+    oldLoad.reject(new Error("stale permission failure"));
+    await first;
+
+    expect(settingsLoadState.value).toEqual({ status: "ready" });
+  });
 });
 
 describe("settings patch sync", () => {
+  it("re-registers the merged listener after a transient subscription failure", async () => {
+    const listenMerged = vi
+      .fn<SettingsSyncClient["listenMerged"]>()
+      .mockRejectedValueOnce(new Error("bridge not ready"))
+      .mockResolvedValueOnce(() => {});
+    configureSettingsSync({
+      sendPatch: vi.fn(async () => ({})),
+      listenMerged,
+    });
+
+    await initSettings();
+    expect(settingsLoadState.value.status).toBe("error");
+
+    await initSettings();
+
+    expect(settingsLoadState.value.status).toBe("ready");
+    expect(listenMerged).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps a merged broadcast delivered while subscribing newer than disk", async () => {
+    getMock.mockResolvedValueOnce({ ...DEFAULT_SETTINGS, fontSize: 15 });
+    const client: SettingsSyncClient = {
+      async sendPatch() {
+        return {};
+      },
+      async listenMerged(handler) {
+        handler({ ...DEFAULT_SETTINGS, fontSize: 20 });
+        return () => {};
+      },
+    };
+    configureSettingsSync(client);
+
+    await initSettings();
+
+    expect(settings.value.fontSize).toBe(20);
+  });
+
   it("sends only the patch, not the whole object, and updates the signal at once", async () => {
     const sync = createMemorySettingsSync();
     configureSettingsSync(sync);
@@ -88,6 +197,7 @@ describe("settings patch sync", () => {
     sync.broadcast(null);
     sync.broadcast("not settings");
     sync.broadcast(42);
+    sync.broadcast([]);
 
     // Not merely "still 17" — the exact object, proving nothing was rebuilt
     // from DEFAULT_SETTINGS, which is what validateSettings would have

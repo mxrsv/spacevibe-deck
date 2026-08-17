@@ -1,0 +1,130 @@
+/* ── Prompt Board popover (DL §13) ───────────────────────── */
+
+/* The anchor holds both the trigger and the surface, so "outside click" is
+   one containment test and no rect math is needed (DL-13.1). */
+.prompts-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.prompt-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100;
+  width: 320px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 6px 0 8px;
+  background: var(--chrome-2);
+  /* A hairline, not a shadow — depth comes from the background step (DL-1.3). */
+  box-shadow: inset 0 0 0 1px var(--seam-raised);
+  /* DL-13.1: a surface floating above chrome takes the surface radius. */
+  border-radius: var(--radius-surface);
+}
+
+.prompt-popover:focus-visible {
+  outline: none;
+}
+
+.prompt-popover__empty,
+.prompt-picker__unavailable {
+  font-family: var(--ui-font);
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+}
+
+/* Non-interactive marker that a row's template presses Enter after pasting.
+   Faint, so the pill stays the only thing that reads as clickable. */
+.prompt-row__auto {
+  margin-right: 8px;
+  font-family: var(--ui-font);
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+}
+
+/* The one inline editor a row may expand beneath it (DL-13.4). */
+.prompt-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prompt-editor__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Pickers sit under a hairline: they compose the prompt, they are not a
+   template (DL-3.3 — structure from hairlines, not color). */
+.prompt-picker {
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--hair);
+}
+
+/* ── Pane drag-dock ──────────────────────────────────────── */
+
+.has-multiple-panes .pane__bar {
+  cursor: grab;
+}
+
+.is-pane-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+/* Block pointer events on terminals while dragging a pane — no text
+   selection, no hit-test noise (hit-testing uses rect math so it still works) */
+.is-pane-dragging .pane {
+  pointer-events: none;
+}
+
+.pane-drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  max-width: 240px;
+  padding: 6px 11px;
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+  color: var(--text-muted);
+  background: var(--chrome-2);
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drop-overlay {
+  position: fixed;
+  z-index: 999;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: var(--radius-surface);
+  transition:
+    left 0.08s ease,
+    top 0.08s ease,
+    width 0.08s ease,
+    height 0.08s ease;
+}
+
+/* Cmd-drag swap: a dashed full-pane overlay, distinct from the solid
+   half-edge dock preview so "trade places" reads apart from "dock here". */
+.drop-overlay.is-swap {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--accent) 90%, white);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* ── File drop target ────────────────────────────────────── */
+
+.pane-slot.is-drop-target .pane {
+  border-color: color-mix(in srgb, var(--accent) 80%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: -2px;
+}

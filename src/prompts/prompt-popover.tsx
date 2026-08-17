@@ -1,5 +1,11 @@
+import {
+  CaretDown,
+  ClipboardText,
+  PaperPlaneTilt,
+  Plus,
+  Trash,
+} from "@phosphor-icons/react";
 import { Fragment } from "preact";
-import { ChevronDown, ClipboardPaste, Plus, Send, Trash2 } from "lucide-preact";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { settings, updateSettings } from "../settings/settings-store";
@@ -80,7 +86,7 @@ function AssetPicker({
       <span class="cfg-btn cfg-btn--overlay">
         <span class="cfg-btn__text">{chosen === "" ? "none" : chosen}</span>
         <span class="cfg-btn__hint">
-          <DeckIcon icon={ChevronDown} size={ROW_ICON} />
+          <DeckIcon icon={CaretDown} size={ROW_ICON} />
         </span>
         <select
           value={chosen}
@@ -371,7 +377,7 @@ export function PromptPopover(props: PromptPopoverProps) {
                 onClick={() => void injectTemplate(template)}
               >
                 <DeckIcon
-                  icon={template.autoSend ? Send : ClipboardPaste}
+                  icon={template.autoSend ? PaperPlaneTilt : ClipboardText}
                   size={ROW_ICON}
                 />
               </button>
@@ -413,7 +419,7 @@ export function PromptPopover(props: PromptPopoverProps) {
                   title={`Remove ${template.label}`}
                   onClick={() => removeTemplate(template.id)}
                 >
-                  <DeckIcon icon={Trash2} size={ROW_ICON} />
+                  <DeckIcon icon={Trash} size={ROW_ICON} />
                 </button>
               </div>
             </div>

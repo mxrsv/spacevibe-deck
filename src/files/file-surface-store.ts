@@ -16,7 +16,7 @@
  * restored UI state in the app. Only the panel's width and default-open state
  * persist, and those are ordinary settings.
  */
-import { signal } from "@preact/signals";
+import { batch, signal } from "@preact/signals";
 import type { ChangeAction } from "./external-change";
 import type { DirEntry, Listings } from "./file-tree";
 import {
@@ -106,6 +106,43 @@ export const fileSurfaces = signal<ReadonlyMap<string, FileSurfaceState>>(
   new Map(),
 );
 
+/** Failed directory reads, separate from last-good listings they must retain. */
+const listingErrors = signal<ReadonlyMap<string, ReadonlyMap<string, string>>>(
+  new Map(),
+);
+
+export function listingErrorsFor(
+  workspacePath: string,
+): ReadonlyMap<string, string> {
+  return listingErrors.value.get(workspacePath) ?? new Map();
+}
+
+export function setListingError(
+  workspacePath: string,
+  directory: string,
+  message: string,
+): void {
+  const workspaceErrors = new Map(listingErrorsFor(workspacePath));
+  workspaceErrors.set(directory, message);
+  const next = new Map(listingErrors.value);
+  next.set(workspacePath, workspaceErrors);
+  listingErrors.value = next;
+}
+
+function clearListingError(workspacePath: string, directory: string): void {
+  const workspaceErrors = new Map(listingErrorsFor(workspacePath));
+  if (!workspaceErrors.delete(directory)) {
+    return;
+  }
+  const next = new Map(listingErrors.value);
+  if (workspaceErrors.size === 0) {
+    next.delete(workspacePath);
+  } else {
+    next.set(workspacePath, workspaceErrors);
+  }
+  listingErrors.value = next;
+}
+
 /** Open documents, keyed by absolute path. */
 export const fileDocuments = signal<ReadonlyMap<string, FileDocument>>(
   new Map(),
@@ -189,7 +226,10 @@ export function setListing(
 ): void {
   const listings = new Map(surfaceFor(workspacePath).listings);
   listings.set(directory, entries);
-  writeSurface(workspacePath, { listings });
+  batch(() => {
+    writeSurface(workspacePath, { listings });
+    clearListingError(workspacePath, directory);
+  });
 }
 
 /** Expand or collapse one directory. Collapsing keeps its listing cached —
@@ -472,64 +512,11 @@ export function totalFileTabs(): number {
   return total;
 }
 
-/** What the status bar shows instead of a pane's CWD and pane count. */
-export interface FileStatus {
-  /** Path relative to the workspace root (spec §7). */
-  readonly relativePath: string;
-  /** `line:column`, 1-based. */
-  readonly position: string;
-  readonly encoding: string;
-  readonly eol: string;
-}
-
-/** Relative form of `path` under `root`, falling back to the absolute path. */
-export function relativeToWorkspace(root: string | null, path: string): string {
-  if (root === null) {
-    return path;
-  }
-  const prefix = root.endsWith("/") ? root : `${root}/`;
-  return path.startsWith(prefix) ? path.slice(prefix.length) : path;
-}
-
-/**
- * Status for the active file surface, or null when a terminal tab holds the
- * stage.
- *
- * A function rather than a signal so it stays derived: two sources of truth for
- * "which file is showing" is exactly how a status bar starts lying. Reading it
- * inside a component subscribes to the signals it touches, as usual.
- */
-export function currentFileStatus(): FileStatus | null {
-  const path = activeFileTab.value;
-  if (path === null) {
-    return null;
-  }
-  const document = fileDocuments.value.get(path);
-  if (document === undefined) {
-    return null;
-  }
-  return {
-    relativePath: relativeToWorkspace(document.workspacePath, path),
-    position: `${document.line}:${document.column}`,
-    encoding:
-      document.file === null
-        ? "—"
-        : document.file.encoding === "utf-8"
-          ? "UTF-8"
-          : "UTF-8 (invalid)",
-    eol:
-      document.file === null
-        ? "—"
-        : document.file.eol === "crlf"
-          ? "CRLF"
-          : "LF",
-  };
-}
-
 /** Reset everything. Tests only — the store is window-scoped (R5) and a real
  * window discards it by dying. */
 export function resetFileSurfaces(): void {
   fileSurfaces.value = new Map();
+  listingErrors.value = new Map();
   fileDocuments.value = new Map();
   activeWorkspace.value = null;
   activeFileTab.value = null;

@@ -1,4 +1,4 @@
-import { Repeat2 } from "lucide-preact";
+import { Repeat } from "@phosphor-icons/react";
 import {
   clampScrollback,
   SCROLLBACK_CHOICES,
@@ -41,7 +41,7 @@ export function TerminalSection() {
       >
         {scrollbackLabel(current.scrollback)}
         <span class="cfg-btn__hint">
-          <DeckIcon icon={Repeat2} size={ROW_ICON} />
+          <DeckIcon icon={Repeat} size={ROW_ICON} />
         </span>
       </button>
     </ConfigRow>

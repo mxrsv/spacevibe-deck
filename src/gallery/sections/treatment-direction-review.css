@@ -84,8 +84,6 @@
   --sidebar-w: 275px;
   --frame-h: 34px;
   --status-h: 28px;
-  --radius-control: 10px;
-  --radius-surface: 16px;
 }
 
 @media (max-width: 860px) {

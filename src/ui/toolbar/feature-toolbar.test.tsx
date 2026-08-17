@@ -1,5 +1,10 @@
 // @vitest-environment jsdom
-import { Columns2, FolderTree, Settings, SquareX } from "lucide-preact";
+import {
+  Gear,
+  SquareSplitHorizontal,
+  TreeView,
+  XSquare,
+} from "@phosphor-icons/react";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -53,7 +58,7 @@ describe("FeatureToolbar", () => {
       {
         id: "explorer",
         label: "Explorer",
-        icon: FolderTree,
+        icon: TreeView,
         group: "tools",
         shortcut: "⌘⇧E",
         state: { kind: "active" },
@@ -64,7 +69,7 @@ describe("FeatureToolbar", () => {
       {
         id: "split-row",
         label: "Split Vertically",
-        icon: Columns2,
+        icon: SquareSplitHorizontal,
         group: "pane",
         shortcut: "⌘D",
         state: { kind: "idle" },
@@ -74,7 +79,7 @@ describe("FeatureToolbar", () => {
       {
         id: "close-pane",
         label: "Close Pane",
-        icon: SquareX,
+        icon: XSquare,
         group: "pane",
         shortcut: "⌘W",
         state: { kind: "unavailable", reason: "only one pane is open" },
@@ -84,7 +89,7 @@ describe("FeatureToolbar", () => {
       {
         id: "settings",
         label: "Settings",
-        icon: Settings,
+        icon: Gear,
         group: "global",
         shortcut: "⌘,",
         state: { kind: "idle" },

@@ -1,0 +1,305 @@
+/* ── Settings rail: category tabs + pinned reset foot (settings-nav.tsx) ── */
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--hair);
+}
+
+.settings-nav__list {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  overflow-y: auto;
+}
+
+.settings-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  margin: 0 6px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-faint);
+  /* Navigation, not data — prose font (DL-4.1 / DL-11.4). Mono here reads as
+     a terminal value and fights the native chrome around it. */
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+/* DL-21.2: hover is the quiet wash. It shared one declaration with `.is-active`
+   until 2026-08-14, which meant pointing at a category you had not opened
+   painted it as the open one. */
+.settings-nav__item:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+/* DL-21.1: the open category is the selection wash — the same mark the active
+   tab and the active rail row use. The 2px accent bar DL-11.2 mandated until
+   2026-08-14 is retired. */
+.settings-nav__item.is-active {
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+
+.settings-nav__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.settings-nav__foot {
+  flex-shrink: 0;
+  border-top: 1px solid var(--hair);
+  padding-top: 6px;
+}
+
+/* The rail is far narrower than the section area, so the foot's config row
+   stacks instead of splitting left/right — side by side at this width the
+   label wraps to three ragged lines and collides with its own button. */
+.settings-nav__foot .cfg-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+}
+
+.settings-nav__foot .cfg-row__value {
+  justify-content: flex-start;
+}
+
+/* ── Settings screen: full-window shell (settings-screen.tsx, DL-11.1) ── */
+
+.settings-screen {
+  position: absolute;
+  /* Full-bleed over the stage: the surface meets the sidebar's hairline and
+     the toolbar's, so it reads as one block with the chrome. No inset, no
+     radius, no raised seam — those belong to surfaces that float (DL-20.1). */
+  inset: 0;
+  background: var(--chrome-2);
+  display: flex;
+  flex-direction: column;
+  /* Above the Open board (30), below a modal draft (40). A full-window
+     Settings surface has to be reachable from anywhere — when it was a 300px
+     drawer at 20 it hid under the board, which is why opening it there used
+     to be blocked outright (app.tsx). */
+  z-index: 35;
+  /* A full-window surface fades and settles; it does not slide in from an
+     edge it no longer has (DL-1.2 — transform/opacity only, under 300ms). */
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  /* visibility (not just opacity) — it takes the closed screen's buttons and
+     native inputs out of the tab order, matching aria-hidden. Delayed so the
+     fade-out still plays. */
+  visibility: hidden;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+
+/* Same reasoning as the board's (09-open-board.css): sidebar mode's strip is
+   the frame row, and a full-window surface that starts at `inset: 0` takes the
+   window's own controls with it. */
+.stage--strip .settings-screen {
+  top: var(--frame-h);
+}
+
+.settings-screen.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  visibility: visible;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    visibility 0s;
+}
+
+.settings-screen__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--hair);
+}
+
+.settings-screen__path {
+  margin: 0;
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  font-weight: 400;
+  color: var(--text-primary);
+}
+
+.settings-screen__path b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* A full-window screen closes with the same icon button every other close in
+   the app uses (§14, DL-14.1) — the styling is `.iconbtn`'s, and this class is
+   only the header slot. It used to be a bordered `esc` text pill: chrome that
+   names a key instead of the action, in a slot where every sibling surface
+   draws an X. The keyboard route is unchanged; ⎋ still closes the screen. */
+.settings-screen__esc {
+  margin-left: auto;
+}
+
+/* Two columns: the rail is fixed, the section area owns all scrolling
+   (DL-11.1). min-height:0 on both so the grid can actually shrink. */
+.settings-screen__grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.settings-screen__section {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 0 12px;
+}
+
+/* A config row is a key on the left and its value on the right (DL-5). At
+   drawer width that reads as one object; stretched across a full window the
+   value drifts a screen away from the key it belongs to, so the rows keep a
+   readable measure instead of filling the pane. */
+.settings-screen__section .cfg-row,
+.settings-screen__section .cfg-group {
+  max-width: 620px;
+}
+
+/* The section's scrollbar is the app-wide one (`01-tokens.css`, 2026-08-17).
+   The three rules that used to stand here said the same thing in a slightly
+   different dialect — 25% instead of the shared thumb, `--radius-control`
+   instead of the thumb scale — and were the reason two surfaces could look
+   different for no reason anyone chose. */
+
+/* ── Window dragging ────────────────────────────────────────────────────────
+ * `data-tauri-drag-region` was interpreted by the Tauri host; Electron knows
+ * nothing about it, so after the host swap the title bar and tab bar could not
+ * be dragged at all. The markup is kept — it still names the drag surfaces —
+ * and Electron's own `-webkit-app-region` is attached to it here.
+ *
+ * Every interactive descendant must opt back OUT: inside a drag region the OS
+ * takes the mouse down before the page sees it, so an unexcluded button drags
+ * the window instead of being clicked. */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+}
+
+[data-tauri-drag-region] button,
+[data-tauri-drag-region] input,
+[data-tauri-drag-region] select,
+[data-tauri-drag-region] a,
+[data-tauri-drag-region] [role="tab"],
+[data-tauri-drag-region] [role="button"],
+[data-tauri-drag-region] .tab,
+[data-tauri-drag-region] .tab-add {
+  -webkit-app-region: no-drag;
+}
+
+/* ── File view: the editor surface (mounted by the redesign) ─────────── */
+
+.fileview {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--hair);
+  overflow: hidden;
+}
+
+.fileview__editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.fileview__refusal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+}
+
+.fileview__refusal-name {
+  font-size: var(--type-title);
+  color: var(--text-primary);
+}
+
+.fileview__refusal-text {
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+  max-width: 40ch;
+  line-height: 1.5;
+}
+
+/* The external-change bar (spec §5). A row above the editor, not a dialog:
+   the decision is about the file on screen and belongs beside it. */
+.filebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--chrome-2);
+  border-bottom: 1px solid var(--hair);
+  font-size: var(--type-meta);
+  flex: none;
+}
+
+.filebar--quiet {
+  color: var(--text-faint);
+}
+
+.filebar__text {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filebar__actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.filebar__btn {
+  padding: 3px 8px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+  cursor: pointer;
+  /* DL-21.5: state changes ride the shared motion pair. */
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.filebar__btn:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.filebar__btn--primary {
+  border-color: var(--hair-strong);
+  color: var(--text-primary);
+}

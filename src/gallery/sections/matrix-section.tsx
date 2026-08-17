@@ -14,17 +14,20 @@ import {
   THEME_PRESETS,
   type ThemePreset,
 } from "../../settings/themes";
-import { DesktopChrome } from "../../ui/app";
+import { DesktopChrome } from "../../ui/desktop-chrome";
 import { StatusBar } from "../../ui/status-bar";
+import { SidebarToggle } from "../../ui/sidebar-toggle";
+import { DockToggle } from "../../ui/dock/dock-toggle";
 import {
   ConfigGroup,
   ConfigRow,
   ToggleRow,
 } from "../../ui/controls/config-row";
 import {
+  agentRailNavigationSpecimen,
   deckToolbarSpecimen,
   NOOP,
-  repositorySidebarSpecimen,
+  repositoryScopedTabStripSpecimen,
   tabBarSpecimen,
 } from "../chrome-fixtures";
 import {
@@ -54,7 +57,7 @@ import { TreatmentDirectionReview } from "./treatment-direction-review";
  * to see that in a single glance instead of four screenshots taken minutes
  * apart.
  *
- * Every cell is the app's own `DesktopChrome`, `TabBar`, `WorkspaceSidebar`,
+ * Every cell is the app's own `DesktopChrome`, `TabBar`, `AgentRail`,
  * `StatusBar` and config rows. The states come from two places and neither is
  * a hand-written copy of app CSS: `selected` and `disabled` are real props on
  * real components, and `hover` / `active` / `focus` are the app's own rules
@@ -207,33 +210,47 @@ function WindowCell({
   disabled: boolean;
   stageWitness?: boolean;
 }) {
+  const stageWitnessBody = stageWitness ? (
+    <div class="gx-native-terminal">
+      <p>
+        <span class="gx-native-terminal__prompt">❯</span> npm test
+      </p>
+      <p class="gx-native-terminal__result">✓ 2631 tests passed</p>
+      <p class="gx-native-terminal__muted">
+        terminal stage remains at full contrast
+      </p>
+    </div>
+  ) : null;
+
   return (
     <DesktopChrome
       sidebar={sidebar}
-      // In sidebar mode the actions live in the titlebar; in top mode `TabBar`
-      // renders them itself. Passing the real component either way is what
-      // gives the disabled row something to show in both positions.
-      toolbar={
-        sidebar ? deckToolbarSpecimen({ promptsDisabled: disabled }) : null
+      sidebarToggle={
+        sidebar ? <SidebarToggle collapsed={false} onToggle={NOOP} /> : null
       }
-      // The repository rail, not the flat sidebar: the redesign's left region
-      // is that rail, so a matrix proving the old one would prove the wrong
-      // surface.
-      sidebarNavigation={sidebar ? repositorySidebarSpecimen() : null}
+      // The shipping frame row carries window controls only in sidebar mode;
+      // its toolbar lives at the trailing end of the stage strip.
+      toolbar={null}
+      sidebarNavigation={
+        sidebar
+          ? agentRailNavigationSpecimen({ promptsDisabled: disabled })
+          : null
+      }
       topTabs={sidebar ? null : tabBarSpecimen({ promptsDisabled: disabled })}
       stage={
-        stageWitness ? (
-          <div class="stage gx-native-terminal">
-            <p>
-              <span class="gx-native-terminal__prompt">❯</span> npm test
-            </p>
-            <p class="gx-native-terminal__result">✓ 2631 tests passed</p>
-            <p class="gx-native-terminal__muted">
-              terminal stage remains at full contrast
-            </p>
-          </div>
+        sidebar ? (
+          <main class="stage stage--strip">
+            <div class="stage__strip" data-tauri-drag-region>
+              {repositoryScopedTabStripSpecimen()}
+              <div class="stage__strip-actions">
+                {deckToolbarSpecimen({ promptsDisabled: disabled })}
+              </div>
+              <DockToggle open={false} onToggle={NOOP} />
+            </div>
+            <div class="stage__tabs">{stageWitnessBody}</div>
+          </main>
         ) : (
-          <div class="stage" />
+          <div class="stage">{stageWitnessBody}</div>
         )
       }
       status={<StatusBar />}
@@ -788,7 +805,7 @@ export function MatrixSection() {
 
       <MatrixBlock
         title="window chrome — tabBarPosition: left"
-        note="the same shell in sidebar mode, carrying the repository → worktree rail"
+        note="the same shell in sidebar mode, carrying AgentRail's project → tab and agent navigation"
         tall
         absent={absent}
         render={(disabled) => <WindowCell sidebar disabled={disabled} />}

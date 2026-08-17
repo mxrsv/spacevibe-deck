@@ -3,6 +3,7 @@ import type { SerializedNode } from "../lib/split-tree";
 import type { ArchiveEntry } from "../lib/session-schema";
 import type {
   AgentAttentionSummary,
+  PaneView,
   StatusInfo,
   TabView,
 } from "../terminal/tabs-store";
@@ -73,6 +74,30 @@ function attention(
   };
 }
 
+const SEEDED_AT = Date.now();
+
+/** `PaneView.changedAt` for a state that settled this many minutes ago. */
+const minutesAgo = (minutes: number): number => SEEDED_AT - minutes * 60_000;
+
+/**
+ * One seeded pane. The agent rail reads the PANE projection, not the per-tab
+ * rollup: its chips, ages and the five DL-27.3 states all come from
+ * `attention`/`phase`/`changedAt` here, so every tab below carries panes that
+ * agree with its summary.
+ */
+function pane(
+  paneId: number,
+  agent: PaneView["agent"],
+  attention: PaneView["attention"],
+  phase: PaneView["phase"],
+  changedAt: number,
+  // Quiet panes split on this: true renders `done` (green check), false
+  // renders `idle` (ring with a core).
+  hasRun = false,
+): PaneView {
+  return { paneId, agent, attention, phase, hasRun, changedAt };
+}
+
 export const SEED_TABS: readonly TabView[] = [
   {
     key: 1,
@@ -84,6 +109,7 @@ export const SEED_TABS: readonly TabView[] = [
     agentBusy: true,
     unread: false,
     attention: attention("working", { workingCount: 1 }),
+    panes: [pane(101, "claude", "none", "working", minutesAgo(3), true)],
   },
   {
     key: 5,
@@ -94,7 +120,10 @@ export const SEED_TABS: readonly TabView[] = [
     agents: ["codex"],
     agentBusy: false,
     unread: false,
-    attention: attention("idle"),
+    attention: attention("completed", { actionableCount: 1 }),
+    // `completed` renders as `asked` since the owner's 2026-08-16 merge: a
+    // finished run nobody checked wears the same yellow as a question.
+    panes: [pane(102, "codex", "completed", "idle", minutesAgo(8), true)],
   },
   {
     key: 6,
@@ -102,10 +131,19 @@ export const SEED_TABS: readonly TabView[] = [
     name: "test sweep",
     dotColor: null,
     workspacePath: `${HOME}/spacevibe-deck`,
-    agents: ["opencode"],
-    agentBusy: false,
+    agents: ["opencode", "codex", "gemini", "claude"],
+    agentBusy: true,
     unread: false,
-    attention: attention("idle"),
+    attention: attention("working", { workingCount: 1 }),
+    // Four agent panes: the row that renders the pane TREE (DL-27.13), with
+    // every quiet leaf state on show — one checked run (done), one that never
+    // ran (idle).
+    panes: [
+      pane(103, "opencode", "none", "working", SEEDED_AT - 30_000, true),
+      pane(104, "codex", "none", "idle", minutesAgo(18), true),
+      pane(105, "gemini", "none", "idle", minutesAgo(26)),
+      pane(106, "claude", "none", "idle", minutesAgo(44), true),
+    ],
   },
   {
     key: 2,
@@ -117,6 +155,7 @@ export const SEED_TABS: readonly TabView[] = [
     agentBusy: true,
     unread: true,
     attention: attention("requested", { actionableCount: 1 }),
+    panes: [pane(107, "codex", "requested", "idle", minutesAgo(4))],
   },
   {
     key: 3,
@@ -128,6 +167,24 @@ export const SEED_TABS: readonly TabView[] = [
     agentBusy: true,
     unread: false,
     attention: attention("error", { actionableCount: 2 }),
+    panes: [pane(108, "agy", "error", "idle", minutesAgo(12))],
+  },
+  {
+    key: 7,
+    process: "claude",
+    name: null,
+    dotColor: null,
+    workspacePath: `${HOME}/spacevibe-api`,
+    agents: ["claude", "agy"],
+    agentBusy: false,
+    unread: false,
+    attention: attention("requested", { actionableCount: 1 }),
+    // Unnamed multi-agent: the parent row prints NO label (DL-27.13) — the
+    // tree is the identity. This tab keeps that case visible in the gallery.
+    panes: [
+      pane(110, "claude", "requested", "idle", minutesAgo(1), true),
+      pane(111, "agy", "none", "idle", minutesAgo(35)),
+    ],
   },
   {
     key: 4,
@@ -139,14 +196,39 @@ export const SEED_TABS: readonly TabView[] = [
     agentBusy: false,
     unread: false,
     attention: attention("idle"),
+    // A shell pane is part of the tab but never a rail row (spec §9): this tab
+    // is what keeps the rail's `shell` identity and empty age visible.
+    panes: [pane(109, null, "none", "unknown", 0)],
   },
 ];
+
+/**
+ * The newest turn of each seeded agent pane, keyed by pane id — the gallery's
+ * stand-in for `session_tail` (DL-27.15), which reads real session logs no
+ * browser harness has.
+ *
+ * Deliberately uneven: panes 105/111 are LEFT OUT so the rail shows what a
+ * pane that has said nothing falls back to (its agent's name), and the
+ * sentences that are here run long enough to be trimmed at rail width — the
+ * one-line row (2026-08-17) shares its line with the age and the state mark,
+ * so a specimen of short strings would prove nothing about the trim.
+ */
+export const SEED_PANE_TAILS: ReadonlyMap<number, string> = new Map([
+  [101, "Reading the rail model to see where the turn line is built"],
+  [102, "Done — the three sections you asked for are in the spec now"],
+  [103, "Running the suite; 812 of 2619 files so far"],
+  [104, "Rewrote the fixture so both hosts read the same journal"],
+  [106, "Waiting on you: overwrite the existing worktree?"],
+  [107, "Permission needed: prisma migrate dev"],
+  [108, "Cannot reach the daemon — the socket at /tmp/agy.sock is gone"],
+  [110, "Which branch should the release cut come from?"],
+]);
 
 export const SEED_STATUS: StatusInfo = {
   branch: "main",
   cwd: `${HOME}/spacevibe-deck`,
   agent: "claude",
-  paneCount: 3,
+  paneCount: 1,
   home: HOME,
 };
 

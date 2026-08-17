@@ -30,6 +30,7 @@ import type {
 import type { FileStatResult } from "../files/file-client";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { materializeChromeFrom } from "./tab-materialize";
+import { noteResumedPane } from "./session-tail-store";
 import type { TabManager } from "./tab-manager";
 
 const BUILTIN_AGENT_IDS = new Set(BUILTIN_AGENTS.map((agent) => agent.id));
@@ -205,6 +206,31 @@ function paneCommandsFor(
   });
 }
 
+/**
+ * Tell the rail's tail store which panes are reopening a conversation rather
+ * than starting one (2026-08-17). Without this a restored pane shows no turn
+ * until the user prompts it again: the store's default rule is "never ran
+ * anything, so any session lying in this cwd belongs to someone else", and a
+ * resumed pane is the one case where that session IS its own.
+ *
+ * Keyed on the REF, not on the command: a pane whose lookup found nothing gets
+ * `buildResumeCommand`'s bare form, which opens a new conversation and must
+ * keep the default rule. The workspace path is the tab's, because that is the
+ * coordinate the tail request itself is built from.
+ */
+function noteResumedPanes(
+  tab: LiveTab,
+  tabIndex: number,
+  refs: ReadonlyMap<string, ResumeRef>,
+): void {
+  tab.panes.forEach((pane, paneIndex) => {
+    const ref = refs.get(paneKey(tabIndex, paneIndex)) ?? null;
+    if (pane.agent !== null && ref !== null) {
+      noteResumedPane(tab.source.workspacePath, pane.agent);
+    }
+  });
+}
+
 /** Materialize every live tab sequentially. A failed materialize (thrown or
  *  returning false) skips that tab and continues — only successes count. */
 async function materializeAll(
@@ -228,6 +254,7 @@ async function materializeAll(
       });
       if (ok) {
         restored += 1;
+        noteResumedPanes(tab, tabIndex, refs);
       }
     } catch (err) {
       console.error("session restore: materialize failed:", err);

@@ -65,7 +65,10 @@ export function selectPane(model: MockModel, id: number): MockModel {
 export function moveSelection(model: MockModel, step: 1 | -1): MockModel {
   const ids = leafIds(model.tree);
   const index = ids.indexOf(model.selectedId);
-  return { ...model, selectedId: ids[(index + step + ids.length) % ids.length] };
+  return {
+    ...model,
+    selectedId: ids[(index + step + ids.length) % ids.length],
+  };
 }
 
 /** cwd = null clears back to inherit. */
@@ -95,7 +98,11 @@ export function setMockRatio(
 }
 
 /** Path of a/b branches from the root to the leaf; null when absent. */
-function pathToLeaf(node: TreeNode, id: number, prefix: Path = []): Path | null {
+function pathToLeaf(
+  node: TreeNode,
+  id: number,
+  prefix: Path = [],
+): Path | null {
   if (node.kind === "leaf") {
     return node.paneId === id ? prefix : null;
   }
