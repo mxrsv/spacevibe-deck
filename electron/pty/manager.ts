@@ -67,9 +67,10 @@ export class PtyManager {
     const session = this.store.insert({ id, pty, ttyName, batcher, decode });
 
     pty.onData((chunk) => {
-      // `encoding: null` means chunks arrive as Buffers typed as strings.
-      const bytes = chunk as unknown as Uint8Array;
-      batcher.push(decode(bytes));
+      // Buffers on Unix (`encoding: null`), STRINGS on Windows, where node-pty
+      // ignores the encoding option. `decode` takes both — see the comment on
+      // `createStreamDecoder`, which is where that difference is resolved.
+      batcher.push(decode(chunk as unknown as Uint8Array | string));
     });
     pty.onExit(() => this.handleExit(session));
 

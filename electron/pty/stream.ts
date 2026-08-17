@@ -157,15 +157,31 @@ export class OutputBatcher {
  * including turning genuinely invalid bytes into U+FFFD rather than stalling.
  */
 export interface StreamDecoder {
-  (bytes: Uint8Array): string;
+  (chunk: Uint8Array | string): string;
   /** Release any held-back partial sequence — call once, at exit. */
   flush(): string;
 }
 
 export function createStreamDecoder(): StreamDecoder {
   const decoder = new TextDecoder("utf-8", { fatal: false });
-  const decode = ((bytes: Uint8Array) =>
-    decoder.decode(bytes, { stream: true })) as StreamDecoder;
+  const decode = ((chunk: Uint8Array | string) =>
+    // A STRING is the Windows case, and it is not defensive typing: node-pty
+    // warns "Setting encoding on Windows is not supported" and ignores
+    // `encoding: null` outright (`windowsTerminal.js`), so the ConPTY path
+    // delivers text where the Unix path delivers Buffers. Handing that string
+    // to `TextDecoder.decode` throws ERR_INVALID_ARG_TYPE out of node-pty's
+    // own event emitter, where nothing catches it — an uncaught exception in
+    // the main process, which Electron shows as a modal error dialog and the
+    // pane never produces a byte. Reported by the first Windows user to run
+    // the preview, 2026-08-18.
+    //
+    // Passed through rather than re-encoded: node-pty has already decoded it,
+    // so a round trip could only lose. The streaming holdback below is
+    // therefore a Unix-only guarantee — on Windows node-pty owns that
+    // boundary and we inherit whatever it did.
+    typeof chunk === "string"
+      ? chunk
+      : decoder.decode(chunk, { stream: true })) as StreamDecoder;
   // Without this, a shell dying mid-character silently drops the 1-3 held
   // bytes; Rust flushed them lossily (`String::from_utf8_lossy`) so the user
   // saw U+FFFD rather than nothing.

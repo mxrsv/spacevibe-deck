@@ -149,3 +149,35 @@ describe("decoder tail at exit", () => {
     expect(decode.flush()).toBe("");
   });
 });
+
+describe("createStreamDecoder on Windows", () => {
+  it("passes a string chunk through instead of throwing", () => {
+    // node-pty warns "Setting encoding on Windows is not supported" and hands
+    // the ConPTY path a STRING. `TextDecoder.decode` throws
+    // ERR_INVALID_ARG_TYPE on one, and it throws inside node-pty's emitter
+    // where nothing catches it: the first Windows user to run the preview got
+    // a modal "A JavaScript error occurred in the main process" and a pane
+    // that never produced a byte.
+    const decode = createStreamDecoder();
+
+    expect(decode("\u001b]133;A\u0007PS D:\\TuHoc> ")).toBe(
+      "\u001b]133;A\u0007PS D:\\TuHoc> ",
+    );
+  });
+
+  it("still holds back a split multi-byte sequence for byte chunks", () => {
+    // The Unix guarantee must survive the Windows fix.
+    const decode = createStreamDecoder();
+    const bytes = new TextEncoder().encode("→");
+
+    expect(decode(bytes.slice(0, 2))).toBe("");
+    expect(decode(bytes.slice(2))).toBe("→");
+  });
+
+  it("flushes to empty when only strings were seen", () => {
+    const decode = createStreamDecoder();
+    decode("plain text");
+
+    expect(decode.flush()).toBe("");
+  });
+});
