@@ -1,4 +1,7 @@
-import { defineConfig } from "vite";
+// `vitest/config` re-exports Vite's own `defineConfig` with the `test` key
+// typed. Importing it from "vite" instead would make the `test` block below a
+// type error, and dropping that block silently breaks 276 component tests.
+import { defineConfig } from "vitest/config";
 import preact from "@preact/preset-vite";
 
 // @ts-expect-error process is a nodejs global
@@ -19,6 +22,24 @@ export default defineConfig(async () => ({
     // write queue and leaves OpenCode running behind a blank pane. Terser
     // preserves the local binding and produces an equally compact bundle.
     minify: "terser",
+  },
+  test: {
+    server: {
+      deps: {
+        // `@preact/preset-vite` aliases react -> preact/compat through
+        // `resolve.alias`, which only applies to modules Vite TRANSFORMS.
+        // Vitest externalizes node_modules by default, so Phosphor's own
+        // `import * as o from "react"` escaped the alias and resolved to the
+        // real React 19 that npm auto-installs as its peer. React's
+        // `forwardRef` returns an object, Preact sends a non-function vnode
+        // type straight to `document.createElement`, and every component test
+        // that draws an icon died with
+        // `InvalidCharacterError: "[object Object]" did not match the QName
+        // production`. Inlining the package puts it back through the
+        // transform pipeline, where the alias reaches it.
+        inline: [/@phosphor-icons\/react/],
+      },
+    },
   },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
