@@ -199,7 +199,7 @@ interface TabItemProps {
  * it. `data-active` sits on the wrapper and the row itself stays transparent.
  */
 /**
- * The pane TREE is hidden for now (owner, 2026-08-16, "tạm thời"): every
+ * The pane TREE is hidden for now (owner, 2026-08-16, "temporarily"): every
  * multi-agent tab — named or not — renders its panes as plain full-width
  * agent rows, no parent row, no elbow guides, so the rail shows only agents
  * and projects. The tree's markup, CSS and DL-27.13 all stand; restoring it

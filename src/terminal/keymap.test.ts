@@ -122,7 +122,7 @@ describe("matchBinding", () => {
     ).toBe("prev-tab");
   });
 
-  it("matches focus-next/prev and next/prev-tab by physical key position, not the layout-produced character (Lỗi 1 regression)", () => {
+  it("matches focus-next/prev and next/prev-tab by physical key position, not the layout-produced character (Bug 1 regression)", () => {
     // AZERTY: the key in the BracketRight position produces "$" unshifted
     // and "£" shifted; the key in the BracketLeft position produces "*"
     // unshifted and "¨" shifted — never "]"/"}" or "["/"{". A key-based

@@ -246,6 +246,27 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const quickPickerCwd = useSignal<string | null>(null);
 
   /**
+   * The overlay half of the attention-focus preflight, shared by every
+   * entry point below: what is on screen right now, plus the non-focusing
+   * dismissals. NOT `OpenBoard.onCancel` / `closePanel()`, which focus the
+   * active pane and could ack the wrong pane first.
+   */
+  const overlayPreflight = () => ({
+    overlays: {
+      board: boardOpen.value,
+      settings: settingsOpen.value,
+      presetEditor: editorRequest.value !== null,
+      savePresetDialog: saveDialogOpen.value,
+    },
+    dismissBoard: () => {
+      boardOpen.value = false;
+    },
+    dismissSettings: () => {
+      settingsOpen.value = false;
+    },
+  });
+
+  /**
    * Single coordinator-backed entry point for every attention-focus trigger
    * (sidebar/tab-bar status click, Cmd+Shift+A). Reads `hasCandidate` and the
    * overlay snapshot at request time so status click and shortcut always run
@@ -259,20 +280,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     runAttentionFocus({
       tabIndex: index,
       hasCandidate: tabsRef.current?.hasActionableAttention(index) ?? false,
-      overlays: {
-        board: boardOpen.value,
-        settings: settingsOpen.value,
-        presetEditor: editorRequest.value !== null,
-        savePresetDialog: saveDialogOpen.value,
-      },
-      // Non-focusing set-state — NOT `OpenBoard.onCancel` / `closePanel()`,
-      // which focus the active pane and could ack the wrong pane first.
-      dismissBoard: () => {
-        boardOpen.value = false;
-      },
-      dismissSettings: () => {
-        settingsOpen.value = false;
-      },
+      ...overlayPreflight(),
       focusAttention: (i) => {
         tabsRef.current?.focusNextAttention(i);
       },
@@ -306,18 +314,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     runAttentionFocus({
       tabIndex: index,
       hasCandidate: true,
-      overlays: {
-        board: boardOpen.value,
-        settings: settingsOpen.value,
-        presetEditor: editorRequest.value !== null,
-        savePresetDialog: saveDialogOpen.value,
-      },
-      dismissBoard: () => {
-        boardOpen.value = false;
-      },
-      dismissSettings: () => {
-        settingsOpen.value = false;
-      },
+      ...overlayPreflight(),
       focusAttention: () => {
         tabsRef.current?.activateForAttention(index, paneId);
       },

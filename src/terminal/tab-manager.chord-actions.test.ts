@@ -181,7 +181,7 @@ describe("createTabManager toggle-settings routing (⌘, / Settings… menu item
   });
 });
 
-// Lỗi 2 fix: ⌘9 used to parse as select-tab-9 (fixed index 8), a no-op with
+// Bug 2 fix: ⌘9 used to parse as select-tab-9 (fixed index 8), a no-op with
 // fewer than 9 tabs and just plain wrong with more — macOS convention
 // (Safari, Chrome, iTerm2, Terminal.app) is that ⌘9 always jumps to the
 // LAST tab, whatever the current count.

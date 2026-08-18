@@ -83,11 +83,12 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   parity test. `docs/DESIGN-LANGUAGE.md`'s §15/§16 now hold its sections, §20/§21/§23 are
   written, and §22 stays reserved — take the next free number above §23 rather than filling
   a gap. The §6.1.8 acceptance table ran against this machine's real `~/.claude`/`~/.codex`
-  corpus, all 7 rows pass — but it surfaced a real, unfixed gap:
-  [`discoverClaude`](electron/usage/discover.ts#L197-L217) `current` only walks one level into
-  `subagents/`, so `subagents/workflows/<id>/*.jsonl` (~25% of this machine's Claude corpus)
-  is invisible to every count the dashboard shows. Not remediated; a follow-up task. Windows
-  corpus behaviour is unverified (Gate C). The branch's owner-local dirty tree remains owed.
+   corpus, all 7 rows pass — and the gap that run surfaced is fixed (2026-08-18):
+   [`discoverClaude`](electron/usage/discover.ts#L199-L223) `current` walks `subagents/`
+   recursively (capped at `MAX_WALK_DEPTH`), so `subagents/workflows/<id>/*.jsonl` (~25% of
+   this machine's Claude corpus) counts; the Rust twin got the same walk to keep the
+   parity gate honest, and a nested-file case pins both. Windows corpus behaviour is
+   unverified (Gate C). The branch's owner-local dirty tree remains owed.
 - **The open board is one center surface with three views (home/config/worktree), and
   create-worktree is an Electron-only flow reached from home (2026-08-14).** The board's own
   second sidebar is retired — the app's own `WorkspaceSidebar` is the one sidebar now.

@@ -391,18 +391,22 @@ export function createTabManager(
     }
   }
 
+  /** Prune every per-pane tracker against the live pane set. */
+  function pruneAll(live: readonly number[]): void {
+    launcher.prune(live);
+    activity.prune(live);
+    tracker.prune(live);
+    notifier.prune(live);
+    pruneNotifiedKinds(live);
+    // Every pane of every tab is polled now, so a long session would
+    // otherwise leave one cache entry behind per pane ever opened.
+    poller.prune(live);
+  }
+
   const callbacks = {
     onLayoutChange(): void {
       syncViews();
-      const live = allPaneIds();
-      launcher.prune(live);
-      activity.prune(live);
-      tracker.prune(live);
-      notifier.prune(live);
-      pruneNotifiedKinds(live);
-      // Every pane of every tab is polled now, so a long session would
-      // otherwise leave one cache entry behind per pane ever opened.
-      poller.prune(live);
+      pruneAll(allPaneIds());
     },
     onAttentionSignal(id: number, signal: PaneAttentionSignal): void {
       // Structured OSC 9/777 notification or bell from a pane. Stamp it with
@@ -651,13 +655,7 @@ export function createTabManager(
    * that path entirely, so this is not redundant.
    */
   function pruneMovedPane(paneId: number): void {
-    const live = allPaneIds().filter((id) => id !== paneId);
-    launcher.prune(live);
-    activity.prune(live);
-    tracker.prune(live);
-    notifier.prune(live);
-    pruneNotifiedKinds(live);
-    poller.prune(live);
+    pruneAll(allPaneIds().filter((id) => id !== paneId));
   }
 
   /** Remove a tab whose last pane MOVED — no busy guard, no reopen snapshot. */
@@ -1116,13 +1114,7 @@ export function createTabManager(
     tabs.splice(removeAt, 1);
     overrides.delete(entry.key);
     unread.delete(entry.key);
-    const live = allPaneIds();
-    launcher.prune(live);
-    activity.prune(live);
-    tracker.prune(live);
-    notifier.prune(live);
-    pruneNotifiedKinds(live);
-    poller.prune(live);
+    pruneAll(allPaneIds());
     if (tabs.length === 0) {
       // Every window is a peer (spec §2, §9.5): the last SURFACE closes THIS
       // window, and the host decides whether that was also the last window and
