@@ -386,11 +386,13 @@ export function App({ boot = { kind: 'normal' } }: { boot?: BootMode } = {}) {
   // does, so it needs a scan of its own — a user who never opens the screen
   // would otherwise always see an empty block. Keyed on the board opening, not
   // on mount: this is the one place the block becomes visible.
+  /* oxlint-disable react-hooks/exhaustive-deps -- Preact signal: boardOpen.value is the reactive dep (keyed on the board opening, not on mount) */
   useEffect(() => {
     if (boardOpen.value) {
       void refreshSessions();
     }
-  }, []);
+  }, [boardOpen.value]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   /* oxlint-disable react-hooks/exhaustive-deps -- boot-once: the window's TabManager is built a single time */
   useEffect(() => {
