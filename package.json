@@ -26,6 +26,7 @@
     "electron:build": "tsc -p tsconfig.electron.json && node scripts/build-electron-main.mjs",
     "build:gate-m-renderer": "vite build --config vite.gate-m.config.mjs",
     "electron:package": "npm run build && npm run electron:build && electron-builder --config electron-builder.yml --mac --arm64 --dir --publish never",
+    "electron:package:release": "node scripts/verify-electron-release-signing.mjs && npm run build && npm run electron:build && electron-builder --config electron-builder.release.yml --mac --arm64 --publish never",
     "electron:package:gate-m": "npm run build && npm run build:gate-m-renderer && npm run electron:build && electron-builder --config electron-builder.gate-m.yml --mac --universal --dir --publish never",
     "electron:verify:gate-m": "node scripts/verify-electron-gate-m-package.mjs",
     "electron:dev": "npm run build && npm run electron:build && electron dist-electron/electron/main.cjs",

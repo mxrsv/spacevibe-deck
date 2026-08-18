@@ -13,6 +13,7 @@ dist-ssr
 dist-gate-m
 dist-gate-m-renderer
 dist-electron-app
+dist-electron-release
 *.local
 
 # Editor directories and files

@@ -1,0 +1,86 @@
+# The SHIPPING Electron package: signed, hardened, notarized, published.
+#
+# This is the third electron-builder config in the repo and the only one that
+# produces a release. `electron-builder.yml` (local, unsigned, `dir`) and
+# `electron-builder.gate-m.yml` (the Gate M packaged run) stay exactly as they
+# are — their headers say they are not a release path, and that stays true.
+#
+# Notarization credentials arrive as environment variables, never as config:
+# app-builder-lib reads APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID
+# (MacTargetHelper.getNotarizeOptions). Tauri's workflow calls the middle one
+# APPLE_PASSWORD, so the CI job maps one secret onto both names.
+#
+# Plan: docs/plans/2026-08-18-gate-a-electron-signing.md
+#
+# Identity is the Tauri bundle's own (fork F1, 2026-08-14): this build REPLACES
+# an installed `SpaceVibe Deck` rather than standing beside it. The cutover is
+# still a clean install — Electron's userData is
+# `~/Library/Application Support/SpaceVibe Deck` while Tauri's is
+# `~/Library/Application Support/dev.spacevibe.deck`, so no settings or
+# workspaces carry over, and no updater bridges the two.
+appId: dev.spacevibe.deck
+productName: SpaceVibe Deck
+directories:
+  output: dist-electron-release
+# Electron Builder writes this into the packaged app's package.json — `main`
+# is not a top-level builder option. `productName` is repeated here because
+# `app.getName()` reads that packaged package.json, not Info.plist's
+# CFBundleName, and it is what names the userData directory.
+extraMetadata:
+  main: dist-electron/electron/main.cjs
+  productName: SpaceVibe Deck
+files:
+  - dist/**
+  - dist-electron/electron/**/*.cjs
+  - dist-electron/src/**/*.cjs
+  - dist-electron/electron/vendor/**
+  - package.json
+# node-pty is a native module: it cannot load from inside the asar, and its
+# helper binaries must keep their executable modes. Notarization rejects any
+# unsigned Mach-O, so these are signed in place — see the plan's Task 5 Step 3.
+asarUnpack:
+  - "**/node_modules/node-pty/**"
+mac:
+  # BOTH targets are required. electron-updater updates macOS from the zip; the
+  # dmg is only the first-install download. A dmg-only release can never
+  # self-update, which is the one failure this whole plan exists to prevent.
+  #
+  # arm64 only (fork F2): merging two asar-unpacked node-pty trees through
+  # @electron/universal is its own problem and does not belong inside Gate A's
+  # evidence chain. Intel Macs are not served by this build.
+  target:
+    - target: dmg
+      arch:
+        - arm64
+    - target: zip
+      arch:
+        - arm64
+  category: public.app-category.developer-tools
+  # `build/` holds only the entitlements plist; both hosts share the Tauri icon
+  # set rather than duplicating it.
+  icon: src-tauri/icons/icon.icns
+  # Notarization requires the hardened runtime, and the hardened runtime
+  # requires the entitlements — see build/entitlements.mac.plist for what each
+  # key buys back.
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Gatekeeper cannot assess a bundle that has not been notarized yet, and this
+  # runs before notarization. The real assessment is `spctl --assess` against
+  # the finished artifact, which the release workflow runs and reports.
+  gatekeeperAssess: false
+  notarize: true
+publish:
+  # `channel` is deliberately absent (fork F4). app-builder-lib fills it from
+  # the app version's prerelease component when it is unset
+  # (PublishManager.js:416-429), so version `X.Y.Z-electron.N` produces
+  # `electron-mac.yml` — the same name GitHubProvider derives from the tag on
+  # the client side (GitHubProvider.js:132-134). Naming it here would let the
+  # two drift apart on the next version bump.
+  #
+  # The tag must stay parseable as semver: GitHubProvider.js:71 skips every
+  # release whose tag fails `semver.valid`, so `electron-v1.0.0` would be
+  # invisible to the updater while everything else looked healthy.
+  - provider: github
+    owner: mxrsv
+    repo: spacevibe-deck

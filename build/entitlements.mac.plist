@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hardened-runtime entitlements for the shipping macOS build.
+
+  Notarization requires the hardened runtime, and the hardened runtime removes
+  permissions an Electron terminal needs back. The first three keys are
+  electron-builder's own default template
+  (node_modules/app-builder-lib/templates/entitlements.mac.plist), copied into
+  the repo rather than inherited so they are reviewable here and cannot change
+  under a dependency bump.
+
+  This app is NOT sandboxed: it spawns arbitrary agent CLIs through a PTY,
+  which the App Sandbox forbids outright. That is also why Deck can never ship
+  through the Mac App Store.
+-->
+<plist version="1.0">
+  <dict>
+    <!-- V8 compiles JavaScript at runtime; the hardened runtime forbids
+         writable-executable memory without these two. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <!-- node-pty is loaded from asarUnpack, outside the main binary's own
+         library set. Without this the hardened runtime refuses to load it and
+         every pane fails to spawn. -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    <!-- Deck hands each agent CLI an environment. The hardened runtime strips
+         DYLD_* from a process's environment otherwise, which breaks agents
+         installed through version managers. -->
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+  </dict>
+</plist>
