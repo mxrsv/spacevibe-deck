@@ -8,9 +8,15 @@
  * machine is unit-testable with the network layer faked, and so a dev run that
  * can never update (`app.isPackaged === false`) never constructs it at all.
  *
- * Three decisions this module encodes, each of which is a correctness rule
+ * Four decisions this module encodes, each of which is a correctness rule
  * rather than a preference:
  *
+ *  - **`allowPrerelease` is on.** The Electron releases are pre-releases on
+ *    `X.Y.Z-electron.N`, so they cannot be mistaken for the Tauri releases in
+ *    the same repository. With this flag off — its default — `GitHubProvider`
+ *    resolves `releases/latest`, finds a Tauri release with no
+ *    `electron-mac.yml` in it, and every check answers "up to date" while the
+ *    release pipeline looks perfectly healthy.
  *  - **`autoInstallOnAppQuit` is off.** It defaults ON, which would install a
  *    downloaded-but-unconfirmed update on any ordinary quit — behind the
  *    renderer's busy-pane confirmation AND behind `recordAttempt`, whose whole
@@ -31,6 +37,12 @@
 export interface AutoUpdaterLike {
   autoDownload: boolean;
   autoInstallOnAppQuit: boolean;
+  /**
+   * Off by default, which makes `GitHubProvider` read `releases/latest` — a
+   * Tauri release on this repository, carrying no `electron-mac.yml`. On, it
+   * walks the release feed for the channel this build's own version names.
+   */
+  allowPrerelease: boolean;
   checkForUpdates(): Promise<UpdateCheckLike | null>;
   downloadUpdate(): Promise<readonly string[]>;
   quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void;
@@ -158,9 +170,10 @@ export function createUpdateLifecycle(
       return updater;
     }
     const loaded = deps.loadUpdater();
-    // Both flags are load-bearing; see the docblock.
+    // All three flags are load-bearing; see the docblock.
     loaded.autoDownload = false;
     loaded.autoInstallOnAppQuit = false;
+    loaded.allowPrerelease = true;
     loaded.on("update-downloaded", () => settleDownload());
     loaded.on("error", (error) => {
       // `electron-updater` has ONE error channel for every operation, so an

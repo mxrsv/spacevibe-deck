@@ -21,6 +21,7 @@ type Handler = (payload: never) => void;
 class FakeUpdater implements AutoUpdaterLike {
   autoDownload = true;
   autoInstallOnAppQuit = true;
+  allowPrerelease = false;
   checkResult: UpdateCheckLike | null = null;
   checkError: Error | null = null;
   downloadCalls = 0;
@@ -134,6 +135,25 @@ describe("check", () => {
     // behind `recordAttempt`.
     expect(updater.autoDownload).toBe(false);
     expect(updater.autoInstallOnAppQuit).toBe(false);
+  });
+
+  it("allows pre-releases, because the channel lives in the version", async () => {
+    const { lifecycle, updater } = setup();
+    updater.checkResult = {
+      isUpdateAvailable: false,
+      updateInfo: { version: "0.12.3" },
+    };
+
+    await lifecycle.check();
+
+    // The Electron releases are published as pre-releases on `X.Y.Z-electron.N`
+    // so that they cannot be confused with the Tauri releases in the same
+    // repository. `allowPrerelease` defaults OFF, and with it off
+    // `GitHubProvider` resolves `releases/latest` — a Tauri release, which
+    // carries no `electron-mac.yml` — instead of walking the feed for the
+    // channel this build's own version names. The whole pipeline would build,
+    // publish and verify clean, and every check would answer "up to date".
+    expect(updater.allowPrerelease).toBe(true);
   });
 
   it("reports current with the host's version", async () => {
