@@ -202,7 +202,12 @@ describe("AgentsSection", () => {
     const nameInput = openField("Aider", "Name for Aider");
     type(nameInput, "Aider fast");
     act(() => {
-      nameInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+      // Real focus methods, not a synthetic FocusEvent: `preact/compat`
+      // rewrites `onBlur` to `onfocusout`, and this file pulls compat in
+      // through its icons, so a dispatched `blur` reaches the node and no
+      // handler.
+      nameInput.focus();
+      nameInput.blur();
     });
 
     expect(settings.value.customAgents).toEqual([
@@ -219,7 +224,12 @@ describe("AgentsSection", () => {
     const commandInput = openField("aider", "Command for Aider");
     type(commandInput, "$(id)");
     act(() => {
-      commandInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+      // Real focus methods, not a synthetic FocusEvent: `preact/compat`
+      // rewrites `onBlur` to `onfocusout`, and this file pulls compat in
+      // through its icons, so a dispatched `blur` reaches the node and no
+      // handler.
+      commandInput.focus();
+      commandInput.blur();
     });
 
     expect(settings.value.customAgents[0].command).toBe("aider");
@@ -309,9 +319,13 @@ describe("AgentsSection — refusals and cleanup", () => {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     act(() => {
-      // A real browser fires both: `blur` is what CommitInput commits on, and
-      // `focusout` (the bubbling one) is what closes the editor.
-      input.dispatchEvent(new FocusEvent("blur"));
+      // `focus()` + `blur()` rather than a synthetic FocusEvent, because
+      // `preact/compat` rewrites `onBlur` to `onfocusout` (compat/src/render.js)
+      // and any test file that pulls in an icon pulls in compat — so a
+      // hand-dispatched `blur` reaches the DOM node and no handler at all.
+      // Going through the real methods fires whichever one is wired.
+      input.focus();
+      input.blur();
       input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
     });
   };

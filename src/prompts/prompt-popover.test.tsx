@@ -337,7 +337,12 @@ describe("PromptPopover", () => {
       body.dispatchEvent(new Event("input", { bubbles: true }));
     });
     act(() => {
-      body.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+      // Real focus methods, not a synthetic FocusEvent: `preact/compat`
+      // rewrites `onBlur` to `onfocusout`, and this file pulls compat in
+      // through its icons, so a dispatched `blur` reaches the node and no
+      // handler.
+      body.focus();
+      body.blur();
     });
     expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
       "a body is required",
