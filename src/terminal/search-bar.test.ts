@@ -273,7 +273,9 @@ describe('advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or with
     closeSearchBar();
   });
 
-  it('nothing has ever been searched: silent no-op', async () => {
+  // `vi.resetModules()` + a fresh dynamic import re-transforms the module on
+  // demand; under full-suite parallel load that can exceed the 5 s default.
+  it('nothing has ever been searched: silent no-op', { timeout: 15_000 }, async () => {
     // `lastQuery` is module-level state and earlier describe blocks above
     // (real `openSearchBar` + typing) already set it — reset the module so
     // this test genuinely observes a pane that has never been searched,

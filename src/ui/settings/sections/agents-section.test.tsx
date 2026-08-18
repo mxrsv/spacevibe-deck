@@ -191,7 +191,11 @@ describe('AgentsSection', () => {
     const nameInput = openField('Aider', 'Name for Aider');
     type(nameInput, 'Aider fast');
     act(() => {
+      // A real browser fires both: the phosphor icons load preact/compat,
+      // which rewrites `onBlur` to `onfocusout` on every DOM vnode, so the
+      // commit rides the bubbling event whenever this tree mounts an icon.
       nameInput.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+      nameInput.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
     });
 
     expect(settings.value.customAgents).toEqual([
@@ -208,7 +212,11 @@ describe('AgentsSection', () => {
     const commandInput = openField('aider', 'Command for Aider');
     type(commandInput, '$(id)');
     act(() => {
+      // Both events, as a real browser fires them — see the label test above:
+      // without the `focusout` the commit would never run and this assertion
+      // would pass without ever exercising the refusal.
       commandInput.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+      commandInput.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
     });
 
     expect(settings.value.customAgents[0].command).toBe('aider');

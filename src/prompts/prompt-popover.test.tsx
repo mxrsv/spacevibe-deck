@@ -316,7 +316,11 @@ describe('PromptPopover', () => {
       body.dispatchEvent(new Event('input', { bubbles: true }));
     });
     act(() => {
+      // Both events, as a real browser fires them: the phosphor icons load
+      // preact/compat, which rewrites `onBlur` to `onfocusout` on every DOM
+      // vnode, so the commit rides the bubbling event when an icon mounts.
       body.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+      body.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
     });
     expect(host.querySelector('.cfg-custom--error')?.textContent).toContain('a body is required');
     expect(settings.value.promptTemplates[0].body).toBe('Fix it.');

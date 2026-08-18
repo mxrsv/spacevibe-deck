@@ -370,25 +370,31 @@ describe('FileTreeView', () => {
       }
     });
 
-    it('keeps a 10,000-row directory down to only the rows near the viewport', () => {
-      act(() => {
-        setListing(
-          WS,
-          WS,
-          Array.from({ length: 10_000 }, (_, index) => ({
-            name: `file-${String(index).padStart(5, '0')}.ts`,
-            path: `${WS}/file-${index}.ts`,
-            directory: false,
-            outOfRoot: false,
-          })),
-        );
-      });
-      mount(fakeController());
+    // 10,000 rows of jsdom DOM work exceeds the 5 s default under full-suite
+    // parallel load; the math itself is instant, the tree building is not.
+    it(
+      'keeps a 10,000-row directory down to only the rows near the viewport',
+      { timeout: 30_000 },
+      () => {
+        act(() => {
+          setListing(
+            WS,
+            WS,
+            Array.from({ length: 10_000 }, (_, index) => ({
+              name: `file-${String(index).padStart(5, '0')}.ts`,
+              path: `${WS}/file-${index}.ts`,
+              directory: false,
+              outOfRoot: false,
+            })),
+          );
+        });
+        mount(fakeController());
 
-      expect(rows().length).toBeGreaterThan(0);
-      // 220px / 22px = 10 rows on screen; even a generous overscan stays far
-      // below the 10,000 total rows a non-windowed render would produce.
-      expect(rows().length).toBeLessThan(50);
-    });
+        expect(rows().length).toBeGreaterThan(0);
+        // 220px / 22px = 10 rows on screen; even a generous overscan stays far
+        // below the 10,000 total rows a non-windowed render would produce.
+        expect(rows().length).toBeLessThan(50);
+      },
+    );
   });
 });
