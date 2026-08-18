@@ -9,17 +9,12 @@
  *
  * Flat `{ limit }` per R6; `scripts/electron-ipc-contract.test.ts` pins it.
  */
-import { invoke } from "./bridge";
-import {
-  asSessionsSnapshot,
-  type SessionsSnapshot,
-} from "../lib/session-history";
+import { invoke } from './bridge';
+import { asSessionsSnapshot, type SessionsSnapshot } from '../lib/session-history';
 
-export async function listSessions(
-  limit: number,
-): Promise<SessionsSnapshot | null> {
+export async function listSessions(limit: number): Promise<SessionsSnapshot | null> {
   try {
-    const raw = await invoke<unknown>("sessions_list", { limit });
+    const raw = await invoke<unknown>('sessions_list', { limit });
     return asSessionsSnapshot(raw);
   } catch {
     return null;

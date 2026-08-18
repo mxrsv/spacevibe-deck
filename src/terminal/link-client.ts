@@ -1,6 +1,6 @@
-import { invoke } from "../host/bridge";
-import { openUrl as openUrlWithDefaultApp } from "../host/shell-host";
-import type { OpenEditorRequest } from "../lib/editor-command";
+import { invoke } from '../host/bridge';
+import { openUrl as openUrlWithDefaultApp } from '../host/shell-host';
+import type { OpenEditorRequest } from '../lib/editor-command';
 
 /** Backend seam for terminal links — Tauri IPC in production, fakes in tests. */
 export interface LinkClient {
@@ -8,10 +8,7 @@ export interface LinkClient {
    * Absolute path of every candidate that is an existing file, index-aligned
    * with `paths` (a candidate that is not a file comes back as null).
    */
-  resolvePaths(
-    cwd: string,
-    paths: readonly string[],
-  ): Promise<(string | null)[]>;
+  resolvePaths(cwd: string, paths: readonly string[]): Promise<(string | null)[]>;
   /** Send validated editor intent to the native launch boundary. */
   openEditor(request: OpenEditorRequest): Promise<void>;
   /** Hand an http/https URL to the default browser. */
@@ -24,13 +21,13 @@ export function createTauriLinkClient(): LinkClient {
       if (paths.length === 0) {
         return [];
       }
-      return invoke<(string | null)[]>("resolve_paths", {
+      return invoke<(string | null)[]>('resolve_paths', {
         cwd,
         paths: [...paths],
       });
     },
     openEditor(request) {
-      return invoke("open_editor", { request });
+      return invoke('open_editor', { request });
     },
     openUrl(url) {
       return openUrlWithDefaultApp(url);
@@ -53,7 +50,7 @@ export function createMemoryLinkClient(
     openedUrls,
     async resolvePaths(cwd, paths) {
       return paths.map((path) => {
-        const full = path.startsWith("/") ? path : `${cwd}/${path}`;
+        const full = path.startsWith('/') ? path : `${cwd}/${path}`;
         return files.has(full) ? full : null;
       });
     },

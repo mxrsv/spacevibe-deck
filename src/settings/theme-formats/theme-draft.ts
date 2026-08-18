@@ -7,17 +7,17 @@
  * and hands the draft here. That split is what lets a fifth format arrive as
  * one file with no second copy of the "is this usable" rule.
  */
-import type { ITheme } from "@xterm/xterm";
+import type { ITheme } from '@xterm/xterm';
 import {
   checkChromeTextContrast,
   contrastRatio,
   TERMINAL_CURSOR_FLOOR,
   TERMINAL_TEXT_FLOOR,
-} from "../../lib/derive-colors";
+} from '../../lib/derive-colors';
 
 /** Exactly the theme object `ThemePreset` carries — see `../themes.ts`. */
 export type ThemeColors = Required<
-  Pick<ITheme, "background" | "foreground" | "cursor" | "selectionBackground">
+  Pick<ITheme, 'background' | 'foreground' | 'cursor' | 'selectionBackground'>
 > &
   ITheme;
 
@@ -27,22 +27,22 @@ export type ThemeColors = Required<
  * them out. Index IS the ANSI code; the order is not cosmetic.
  */
 export const ANSI_SLOTS = [
-  "black",
-  "red",
-  "green",
-  "yellow",
-  "blue",
-  "magenta",
-  "cyan",
-  "white",
-  "brightBlack",
-  "brightRed",
-  "brightGreen",
-  "brightYellow",
-  "brightBlue",
-  "brightMagenta",
-  "brightCyan",
-  "brightWhite",
+  'black',
+  'red',
+  'green',
+  'yellow',
+  'blue',
+  'magenta',
+  'cyan',
+  'white',
+  'brightBlack',
+  'brightRed',
+  'brightGreen',
+  'brightYellow',
+  'brightBlue',
+  'brightMagenta',
+  'brightCyan',
+  'brightWhite',
 ] as const satisfies readonly (keyof ITheme)[];
 
 export interface ThemeDraft {
@@ -71,15 +71,12 @@ export function emptyDraft(): ThemeDraft {
  * and most collections omit at least one, so rejecting on them would refuse
  * usable themes over decoration — they fall back to values the file did supply.
  */
-export function finishDraft(
-  draft: ThemeDraft,
-  fallbackLabel: string,
-): ThemeParseResult {
+export function finishDraft(draft: ThemeDraft, fallbackLabel: string): ThemeParseResult {
   const { background, foreground } = draft.colors;
   if (background === undefined || foreground === undefined) {
     return {
       ok: false,
-      reason: "no background and foreground colour in this file",
+      reason: 'no background and foreground colour in this file',
     };
   }
   const terminalTextContrast = contrastRatio(background, foreground);

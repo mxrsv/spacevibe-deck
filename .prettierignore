@@ -1,0 +1,13 @@
+# Docs are hand-maintained prose — prettier must not reformat them.
+*.md
+# Vendored third-party bundle — never reformatted.
+electron/vendor/**
+# Separate prototype app — out of scope for the app baseline.
+marketing/**
+# Binary/image assets — no parser.
+src/assets/**
+# Test fixture data — bytes are part of the test contract, never formatted.
+electron/usage/fixtures/**
+# Shell fixtures — no parser.
+*.zsh
+*.jsonl

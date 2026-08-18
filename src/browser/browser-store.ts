@@ -6,18 +6,14 @@
  * what the chrome around it draws, plus the one piece of behaviour worth
  * testing on its own: what happens to a grab.
  */
-import { signal } from "@preact/signals";
-import { nextOpenSequence, UNSEQUENCED } from "../lib/open-sequence";
-import type {
-  BrowserClient,
-  BrowserGrab,
-  BrowserState,
-} from "./browser-client";
-import { formatGrab, grabSummary } from "./grab-format";
+import { signal } from '@preact/signals';
+import { nextOpenSequence, UNSEQUENCED } from '../lib/open-sequence';
+import type { BrowserClient, BrowserGrab, BrowserState } from './browser-client';
+import { formatGrab, grabSummary } from './grab-format';
 
 export const EMPTY_STATE: BrowserState = {
-  url: "",
-  title: "",
+  url: '',
+  title: '',
   canGoBack: false,
   canGoForward: false,
   loading: false,
@@ -80,7 +76,7 @@ export interface GrabTarget {
   paste(paneId: number, text: string): Promise<boolean>;
 }
 
-export type GrabOutcome = "pasted" | "clipboard" | "failed";
+export type GrabOutcome = 'pasted' | 'clipboard' | 'failed';
 
 /**
  * Whether a grab is allowed to reach a pane at all.
@@ -126,19 +122,19 @@ export async function deliverGrab(
 ): Promise<GrabOutcome> {
   const text = formatGrab(grab);
   if (text === null) {
-    return "failed";
+    return 'failed';
   }
   if (pasteDisabled) {
-    return "clipboard";
+    return 'clipboard';
   }
   const paneId = target.activePaneId();
   if (paneId === null) {
-    return "clipboard";
+    return 'clipboard';
   }
   try {
-    return (await target.paste(paneId, text)) ? "pasted" : "failed";
+    return (await target.paste(paneId, text)) ? 'pasted' : 'failed';
   } catch {
-    return "failed";
+    return 'failed';
   }
 }
 
@@ -156,9 +152,7 @@ export interface BrowserBridgeDeps {
 /**
  * Subscribe to the host. Returns a teardown for the window's unload path.
  */
-export async function initBrowserBridge(
-  deps: BrowserBridgeDeps,
-): Promise<() => void> {
+export async function initBrowserBridge(deps: BrowserBridgeDeps): Promise<() => void> {
   const unlisteners = await Promise.all([
     deps.client.onState((state) => {
       browserState.value = state;
@@ -187,18 +181,15 @@ export async function initBrowserBridge(
  *
  * Reopening keeps the page: the toggle is a view, not a session.
  */
-export async function openBrowser(
-  client: BrowserClient,
-  restore: string,
-): Promise<void> {
+export async function openBrowser(client: BrowserClient, restore: string): Promise<void> {
   browserOpen.value = true;
   browserOpenedAt.value = nextOpenSequence();
   browserSurfaceActive.value = true;
-  const url = browserState.value.url === "" ? restore : null;
+  const url = browserState.value.url === '' ? restore : null;
   try {
     browserState.value = await client.open(url);
   } catch (error) {
-    console.warn("Deck: the browser surface could not open:", error);
+    console.warn('Deck: the browser surface could not open:', error);
     browserOpen.value = false;
     browserOpenedAt.value = UNSEQUENCED;
     browserSurfaceActive.value = false;
@@ -229,7 +220,7 @@ export function deactivateBrowserSurface(client: BrowserClient): void {
   }
   browserSurfaceActive.value = false;
   void client.setVisible(false).catch((error: unknown) => {
-    console.warn("Deck: the browser surface could not be hidden:", error);
+    console.warn('Deck: the browser surface could not be hidden:', error);
   });
 }
 
@@ -257,6 +248,6 @@ export async function closeBrowser(client: BrowserClient): Promise<void> {
   try {
     await client.setVisible(false);
   } catch (error) {
-    console.warn("Deck: the browser surface could not be hidden:", error);
+    console.warn('Deck: the browser surface could not be hidden:', error);
   }
 }

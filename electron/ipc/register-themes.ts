@@ -2,9 +2,9 @@
  * Themes-folder IPC handlers: list, import through a native file picker, and
  * reveal `<userData>/themes` in the OS file manager.
  */
-import { BrowserWindow, ipcMain } from "electron";
-import { CHANNELS } from "./channels";
-import { importThemes, listThemes, revealThemes } from "../themes";
+import { BrowserWindow, ipcMain } from 'electron';
+import { CHANNELS } from './channels';
+import { importThemes, listThemes, revealThemes } from '../themes';
 
 export function registerThemes(): void {
   // `<userData>/themes`, read as text and handed to the renderer to parse. The

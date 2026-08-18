@@ -1,5 +1,5 @@
-import type { UsageSnapshot } from "../../lib/usage-snapshot";
-import { formatTokens, USAGE_AGENT_LABEL } from "./usage-format";
+import type { UsageSnapshot } from '../../lib/usage-snapshot';
+import { formatTokens, USAGE_AGENT_LABEL } from './usage-format';
 
 /**
  * The strip of things the screen has to admit: a cold scan in progress, a
@@ -27,7 +27,7 @@ interface UsageStatusProps {
   readonly stale: boolean;
 }
 
-type NoteTone = "faint" | "muted" | "error";
+type NoteTone = 'faint' | 'muted' | 'error';
 
 interface StatusNote {
   readonly key: string;
@@ -35,11 +35,7 @@ interface StatusNote {
   readonly tone: NoteTone;
 }
 
-function buildNotes({
-  snapshot,
-  loading,
-  stale,
-}: UsageStatusProps): readonly StatusNote[] {
+function buildNotes({ snapshot, loading, stale }: UsageStatusProps): readonly StatusNote[] {
   const notes: StatusNote[] = [];
 
   // Only the COLD scan is announced. Once data is on screen the 5 s poll runs
@@ -47,33 +43,33 @@ function buildNotes({
   // over the numbers the user is actually reading.
   if (snapshot === null && loading) {
     notes.push({
-      key: "loading",
+      key: 'loading',
       text: "reading this machine's recorded history…",
-      tone: "muted",
+      tone: 'muted',
     });
   }
 
   if (stale) {
     notes.push({
-      key: "stale",
-      text: "stale — showing the last good read",
-      tone: "muted",
+      key: 'stale',
+      text: 'stale — showing the last good read',
+      tone: 'muted',
     });
   }
 
   for (const source of snapshot?.sources ?? []) {
     const agent = USAGE_AGENT_LABEL[source.agent];
-    if (source.state === "unreadable") {
+    if (source.state === 'unreadable') {
       notes.push({
         key: `source-${source.agent}`,
         text: `couldn't read ${agent} history on this machine`,
-        tone: "error",
+        tone: 'error',
       });
-    } else if (source.state === "missing") {
+    } else if (source.state === 'missing') {
       notes.push({
         key: `source-${source.agent}`,
         text: `${agent}: no data yet`,
-        tone: "faint",
+        tone: 'faint',
       });
     }
   }
@@ -81,9 +77,9 @@ function buildNotes({
   const skipped = snapshot?.skippedLines ?? 0;
   if (skipped > 0) {
     notes.push({
-      key: "skipped",
+      key: 'skipped',
       text: `${formatTokens(skipped)} lines skipped`,
-      tone: "faint",
+      tone: 'faint',
     });
   }
 
@@ -99,10 +95,7 @@ export function UsageStatus(props: UsageStatusProps) {
   return (
     <div class="usage-status" role="status" aria-live="polite">
       {notes.map((note) => (
-        <span
-          key={note.key}
-          class={`usage-status__note usage-status__note--${note.tone}`}
-        >
+        <span key={note.key} class={`usage-status__note usage-status__note--${note.tone}`}>
           {note.text}
         </span>
       ))}

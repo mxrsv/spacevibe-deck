@@ -12,9 +12,9 @@
  * starting at 1, never reused, and they are what every renderer message keys
  * on.
  */
-import type { IPty } from "node-pty";
-import type { OutputBatcher, StreamDecoder } from "./stream";
-import { ShellIntegrationParser } from "../shell-integration";
+import type { IPty } from 'node-pty';
+import type { OutputBatcher, StreamDecoder } from './stream';
+import { ShellIntegrationParser } from '../shell-integration';
 
 export interface PtySession {
   readonly id: number;
@@ -50,9 +50,7 @@ export class PtySessionStore {
     return id;
   }
 
-  insert(
-    session: Omit<PtySession, "shellIntegration" | "cwd" | "exited">,
-  ): PtySession {
+  insert(session: Omit<PtySession, 'shellIntegration' | 'cwd' | 'exited'>): PtySession {
     const full: PtySession = {
       ...session,
       shellIntegration: new ShellIntegrationParser(),

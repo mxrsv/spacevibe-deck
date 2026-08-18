@@ -13,9 +13,9 @@
  * explorer column — is `.stage__surface` in styles.css; the browser variant
  * only zeroes the padding so the native view meets the surface's edges.
  */
-import { browserSurfaceActive } from "./browser-store";
-import type { BrowserClient } from "./browser-client";
-import { BrowserPanel } from "./browser-panel";
+import { browserSurfaceActive } from './browser-store';
+import type { BrowserClient } from './browser-client';
+import { BrowserPanel } from './browser-panel';
 
 export interface BrowserSurfaceProps {
   /** Closes the browser TAB — the chip leaves the strip, the page is kept. */
@@ -31,11 +31,7 @@ export function BrowserSurface(props: BrowserSurfaceProps) {
   }
   return (
     <div class="stage__surface stage__surface--browser">
-      <BrowserPanel
-        onClose={props.onClose}
-        hidden={props.hidden}
-        client={props.client}
-      />
+      <BrowserPanel onClose={props.onClose} hidden={props.hidden} client={props.client} />
     </div>
   );
 }

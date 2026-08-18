@@ -5,9 +5,9 @@
  * `sessions`/`archived_sessions`, depth-bounded, symlink-refusing traversal
  * `electron/usage/discover.ts` already owns.
  */
-import { statSync } from "node:fs";
-import { discoverCodex } from "../usage/discover";
-import { IDENTITY_HEAD_BYTES } from "../usage/model";
+import { statSync } from 'node:fs';
+import { discoverCodex } from '../usage/discover';
+import { IDENTITY_HEAD_BYTES } from '../usage/model';
 import {
   headBytes,
   headJsonLines,
@@ -17,7 +17,7 @@ import {
   type ScanOptions,
   type ScanResult,
   type SessionRecord,
-} from "./head";
+} from './head';
 
 /** Extra knobs only Codex has: two directories and two kinds of non-human run. */
 export interface CodexScanOptions extends ScanOptions {
@@ -58,31 +58,31 @@ export const CODEX_RESTORE_SCAN: CodexScanOptions = Object.freeze({
  * "must carry a known-good marker" would delete them from restore.
  */
 function isNonInteractiveSource(source: unknown): boolean {
-  if (source === "exec") {
+  if (source === 'exec') {
     return true;
   }
-  return source !== null && typeof source === "object";
+  return source !== null && typeof source === 'object';
 }
 
 /** Injected context blocks open with a tag; a person's first line does not. */
 function codexUserText(payload: Record<string, unknown>): string | null {
-  if (payload.type === "user_message" && typeof payload.message === "string") {
+  if (payload.type === 'user_message' && typeof payload.message === 'string') {
     return payload.message;
   }
-  if (payload.type !== "message" || payload.role !== "user") {
+  if (payload.type !== 'message' || payload.role !== 'user') {
     return null;
   }
   const content = payload.content;
-  if (typeof content === "string") {
+  if (typeof content === 'string') {
     return content;
   }
   if (!Array.isArray(content)) {
     return null;
   }
   for (const part of content) {
-    if (part !== null && typeof part === "object") {
+    if (part !== null && typeof part === 'object') {
       const text = (part as Record<string, unknown>).text;
-      if (typeof text === "string") {
+      if (typeof text === 'string') {
         return text;
       }
     }
@@ -91,14 +91,9 @@ function codexUserText(payload: Record<string, unknown>): string | null {
 }
 
 /** Every rollout, newest first, stat only — no file is opened here. */
-export function listCodexFiles(
-  home: string,
-  includeArchived: boolean,
-): FileCandidate[] {
+export function listCodexFiles(home: string, includeArchived: boolean): FileCandidate[] {
   const discovery = discoverCodex(home);
-  const files = includeArchived
-    ? [...discovery.active, ...discovery.archived]
-    : discovery.active;
+  const files = includeArchived ? [...discovery.active, ...discovery.archived] : discovery.active;
   const out: FileCandidate[] = [];
   for (const filePath of files) {
     try {
@@ -121,11 +116,11 @@ export function readCodexRecord(
   }
   const lines = headJsonLines(head, options.headLines);
   const first = lines[0];
-  if (first === null || typeof first !== "object") {
+  if (first === null || typeof first !== 'object') {
     return null;
   }
   const payload = (first as Record<string, unknown>).payload;
-  if (payload === null || typeof payload !== "object") {
+  if (payload === null || typeof payload !== 'object') {
     return null;
   }
   const meta = payload as Record<string, unknown>;
@@ -133,22 +128,22 @@ export function readCodexRecord(
     return null;
   }
   const id = meta.id;
-  if (typeof id !== "string" || id === "") {
+  if (typeof id !== 'string' || id === '') {
     return null;
   }
-  const cwd = typeof meta.cwd === "string" && meta.cwd !== "" ? meta.cwd : null;
+  const cwd = typeof meta.cwd === 'string' && meta.cwd !== '' ? meta.cwd : null;
   let title: string | null = null;
   if (options.withTitle) {
     for (const line of lines.slice(1)) {
-      if (line === null || typeof line !== "object") {
+      if (line === null || typeof line !== 'object') {
         continue;
       }
       const body = (line as Record<string, unknown>).payload;
-      if (body === null || typeof body !== "object") {
+      if (body === null || typeof body !== 'object') {
         continue;
       }
       const text = codexUserText(body as Record<string, unknown>);
-      if (text === null || text.trimStart().startsWith("<")) {
+      if (text === null || text.trimStart().startsWith('<')) {
         continue;
       }
       title = normalizeTitle(text);

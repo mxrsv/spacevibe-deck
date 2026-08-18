@@ -1,49 +1,49 @@
 // @vitest-environment jsdom
-import { render } from "preact";
-import { act } from "preact/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render } from 'preact';
+import { act } from 'preact/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The screen pulls in Tauri-backed stores through its sections; stub them so
 // the component tree mounts under jsdom.
-vi.mock("../../host/store-host", () => ({
+vi.mock('../../host/store-host', () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async () => undefined),
       set: vi.fn(async () => {}),
       save: vi.fn(async () => {}),
-      loadState: { state: "ready", fresh: false },
+      loadState: { state: 'ready', fresh: false },
     })),
   },
 }));
-vi.mock("../../host/dialog-host", () => ({
+vi.mock('../../host/dialog-host', () => ({
   open: vi.fn(async () => null),
   ask: vi.fn(async () => true),
 }));
-vi.mock("../../lib/native-notification", () => ({
+vi.mock('../../lib/native-notification', () => ({
   requestAgentNotificationPermission: vi.fn(),
 }));
-vi.mock("../../chrome/events", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../chrome/events")>();
+vi.mock('../../chrome/events', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../chrome/events')>();
   return {
     ...actual,
     reportPersistError: vi.fn(),
   };
 });
 
-import { SettingsScreen } from "./settings-screen";
-import { activeCategory } from "./active-category-store";
-import { SETTINGS_CATEGORIES } from "./settings-categories";
-import { settingsLoadState } from "../../settings/settings-store";
+import { SettingsScreen } from './settings-screen';
+import { activeCategory } from './active-category-store';
+import { SETTINGS_CATEGORIES } from './settings-categories';
+import { settingsLoadState } from '../../settings/settings-store';
 
-describe("SettingsScreen — Escape / focus (M2)", () => {
+describe('SettingsScreen — Escape / focus (M2)', () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
-    document.body.innerHTML = "";
-    host = document.createElement("div");
+    document.body.innerHTML = '';
+    host = document.createElement('div');
     document.body.appendChild(host);
-    activeCategory.value = "appearance";
-    settingsLoadState.value = { status: "ready" };
+    activeCategory.value = 'appearance';
+    settingsLoadState.value = { status: 'ready' };
   });
 
   // Unmount so the screen's window keydown listener is removed between tests —
@@ -61,63 +61,56 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
     return onClose;
   };
 
-  it("moves focus onto the close pill when it opens", () => {
+  it('moves focus onto the close pill when it opens', () => {
     mount(true);
-    expect(document.activeElement).toBe(
-      host.querySelector(".settings-screen__esc"),
-    );
+    expect(document.activeElement).toBe(host.querySelector('.settings-screen__esc'));
   });
 
-  it("Escape closes the screen when focus is not in a terminal", () => {
+  it('Escape closes the screen when focus is not in a terminal', () => {
     const onClose = mount(true);
     act(() => {
       (document.activeElement ?? window).dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
       );
     });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("Escape does NOT close the screen when a terminal owns focus (vim/fzf)", () => {
+  it('Escape does NOT close the screen when a terminal owns focus (vim/fzf)', () => {
     const onClose = mount(true);
 
     // Simulate a focused xterm sitting behind the surface.
-    const term = document.createElement("div");
-    term.className = "xterm";
-    const textarea = document.createElement("textarea");
+    const term = document.createElement('div');
+    term.className = 'xterm';
+    const textarea = document.createElement('textarea');
     term.appendChild(textarea);
     document.body.appendChild(term);
     textarea.focus();
 
     act(() => {
-      textarea.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     });
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("stops listening for Escape once closed", () => {
+  it('stops listening for Escape once closed', () => {
     const onClose = mount(false);
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     });
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("keeps a settings load failure visible with a retry action", () => {
+  it('keeps a settings load failure visible with a retry action', () => {
     settingsLoadState.value = {
-      status: "error",
-      message:
-        "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
+      status: 'error',
+      message: "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
     };
     mount(true);
 
     const alert = host.querySelector('[role="alert"]');
     expect(alert?.textContent).toContain("Couldn't load settings.");
-    expect(alert?.querySelector("button")?.textContent).toMatch(/retry/i);
+    expect(alert?.querySelector('button')?.textContent).toMatch(/retry/i);
   });
 });
 
@@ -136,44 +129,44 @@ const EXPECTED_ROWS = [
   // grid (DL-24), which this walk cannot see because it counts `cfg-row`
   // labels. `theme-gallery.test.tsx` owns the cards; these two are the rows
   // the gallery brought with it.
-  "Import theme",
-  "Themes folder",
+  'Import theme',
+  'Themes folder',
   // The colour overrides are an appearance group since 2026-08-16, not their
   // own rail category.
-  "Background",
-  "Foreground",
-  "Cursor",
-  "Selection",
-  "Font",
-  "Font size",
-  "Terminal renderer",
-  "App logo",
-  "Tab bar position",
-  "Show pane bar",
-  "Show status bar",
-  "Sidebar banner",
+  'Background',
+  'Foreground',
+  'Cursor',
+  'Selection',
+  'Font',
+  'Font size',
+  'Terminal renderer',
+  'App logo',
+  'Tab bar position',
+  'Show pane bar',
+  'Show status bar',
+  'Sidebar banner',
   // browser
-  "Home address",
+  'Home address',
   // terminal
-  "Scrollback",
+  'Scrollback',
   // agents (built-ins are locked rows; declared ones are added by the user)
-  "Claude Code",
-  "Codex",
-  "Gemini CLI",
-  "OpenCode",
-  "Antigravity",
-  "Add agent",
-  "Token usage",
+  'Claude Code',
+  'Codex',
+  'Gemini CLI',
+  'OpenCode',
+  'Antigravity',
+  'Add agent',
+  'Token usage',
   // links & editor
-  "Editor",
+  'Editor',
   // notifications
-  "Agent notifications",
-  "Restore sessions on launch",
+  'Agent notifications',
+  'Restore sessions on launch',
   // about
-  "Check for updates",
-  "Release notes",
+  'Check for updates',
+  'Release notes',
   // rail foot, reachable from every category
-  "Restore defaults",
+  'Restore defaults',
 ] as const;
 
 /**
@@ -187,17 +180,16 @@ const EXPECTED_ROWS = [
  * (`shortcuts-section.test.tsx`, `shortcut-groups.test.ts`) asserts the far
  * stronger property: that every registry action gets a row.
  */
-const isShortcutRow = (label: Element): boolean =>
-  label.closest(".cfg-row--shortcut") !== null;
+const isShortcutRow = (label: Element): boolean => label.closest('.cfg-row--shortcut') !== null;
 
-describe("SettingsScreen — every setting survived the move", () => {
+describe('SettingsScreen — every setting survived the move', () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
-    document.body.innerHTML = "";
-    host = document.createElement("div");
+    document.body.innerHTML = '';
+    host = document.createElement('div');
     document.body.appendChild(host);
-    activeCategory.value = "appearance";
+    activeCategory.value = 'appearance';
   });
 
   afterEach(() => {
@@ -206,28 +198,26 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 29 rows by walking the rail", () => {
+  it('reaches all 29 rows by walking the rail', () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });
 
     const seen = new Set<string>();
     const collect = (): void => {
-      for (const label of host.querySelectorAll(".cfg-row__label")) {
+      for (const label of host.querySelectorAll('.cfg-row__label')) {
         if (isShortcutRow(label)) {
           continue;
         }
         const text = label.textContent?.trim();
-        if (text !== undefined && text !== "") {
+        if (text !== undefined && text !== '') {
           seen.add(text);
         }
       }
     };
 
     collect();
-    for (const tab of host.querySelectorAll<HTMLButtonElement>(
-      '[role="tab"]',
-    )) {
+    for (const tab of host.querySelectorAll<HTMLButtonElement>('[role="tab"]')) {
       act(() => {
         tab.click();
       });
@@ -237,7 +227,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     expect([...seen].sort()).toEqual([...EXPECTED_ROWS].sort());
   });
 
-  it("visits every registered category on the walk", () => {
+  it('visits every registered category on the walk', () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });
@@ -255,22 +245,20 @@ describe("SettingsScreen — every setting survived the move", () => {
     expect(visited).toEqual(SETTINGS_CATEGORIES.map((c) => c.id));
   });
 
-  it("wires the tab/panel ARIA pair so the panel is announced with its tab", () => {
+  it('wires the tab/panel ARIA pair so the panel is announced with its tab', () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });
 
     const panel = host.querySelector('[role="tabpanel"]');
-    const selectedTab = host.querySelector(
-      '[role="tab"][aria-selected="true"]',
-    );
+    const selectedTab = host.querySelector('[role="tab"][aria-selected="true"]');
     expect(panel).not.toBeNull();
     expect(selectedTab).not.toBeNull();
     // Every tab must control a panel that exists, and the live panel must name
     // the tab that is actually selected.
     for (const tab of host.querySelectorAll('[role="tab"]')) {
-      expect(tab.getAttribute("aria-controls")).toBe(panel?.id);
+      expect(tab.getAttribute('aria-controls')).toBe(panel?.id);
     }
-    expect(panel?.getAttribute("aria-labelledby")).toBe(selectedTab?.id);
+    expect(panel?.getAttribute('aria-labelledby')).toBe(selectedTab?.id);
   });
 });

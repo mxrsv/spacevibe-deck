@@ -1,11 +1,8 @@
-import { Repeat } from "@phosphor-icons/react";
-import {
-  clampScrollback,
-  SCROLLBACK_CHOICES,
-} from "../../../settings/settings-schema";
-import { settings, updateSettings } from "../../../settings/settings-store";
-import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
-import { ConfigRow } from "../../controls/config-row";
+import { Repeat } from '@phosphor-icons/react';
+import { clampScrollback, SCROLLBACK_CHOICES } from '../../../settings/settings-schema';
+import { settings, updateSettings } from '../../../settings/settings-store';
+import { DeckIcon, ROW_ICON } from '../../controls/deck-icon';
+import { ConfigRow } from '../../controls/config-row';
 
 function scrollbackLabel(n: number): string {
   if (n >= 1000) {
@@ -22,10 +19,7 @@ export function TerminalSection() {
     // Off-choice values (legacy / typed) count as the nearest choice at or below.
     // CHOICES is sorted ascending, so the count of choices at or below the
     // current value is one past its index.
-    const index = Math.max(
-      0,
-      SCROLLBACK_CHOICES.filter((choice) => choice <= clamped).length - 1,
-    );
+    const index = Math.max(0, SCROLLBACK_CHOICES.filter((choice) => choice <= clamped).length - 1);
     const next = SCROLLBACK_CHOICES[(index + 1) % SCROLLBACK_CHOICES.length];
     updateSettings({ scrollback: next });
   };

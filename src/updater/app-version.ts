@@ -1,5 +1,5 @@
-import { signal } from "@preact/signals";
-import { getVersion } from "../host/shell-host";
+import { signal } from '@preact/signals';
+import { getVersion } from '../host/shell-host';
 
 /**
  * The version Deck is running, read from the bundle itself.
@@ -11,11 +11,11 @@ import { getVersion } from "../host/shell-host";
  * Empty until `loadAppVersion` resolves, and empty forever in a context with
  * no Tauri host (tests, the web-only dev preview).
  */
-export const appVersion = signal("");
+export const appVersion = signal('');
 
 /** Fills `appVersion` once, at startup. Safe to call again; it will not refetch. */
 export async function loadAppVersion(): Promise<void> {
-  if (appVersion.value !== "") {
+  if (appVersion.value !== '') {
     return;
   }
   try {

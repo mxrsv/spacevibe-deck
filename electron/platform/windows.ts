@@ -27,11 +27,11 @@
  * and the unit tests below exercise the pure halves only. Do not read a green
  * suite as Windows evidence.
  */
-import { execFile } from "node:child_process";
-import os from "node:os";
-import path from "node:path";
-import fs from "node:fs";
-import type { ForegroundProcess, PsRow, ShellLaunch } from "./macos";
+import { execFile } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
+import type { ForegroundProcess, PsRow, ShellLaunch } from './macos';
 
 /**
  * Grace between the polite terminate and the forced one, matching
@@ -44,7 +44,7 @@ const LOWEST_KILLABLE_PID = 4;
 
 /** `;` — the Windows PATH separator, named because the host `path` module is
  * POSIX everywhere this file is tested. */
-const WINDOWS_PATH_DELIMITER = ";";
+const WINDOWS_PATH_DELIMITER = ';';
 
 /**
  * The prompt function Deck injects, ported verbatim from `shell.rs`.
@@ -71,7 +71,7 @@ function Global:prompt {
   return $out;
 }`;
 
-const POWERSHELL_CANDIDATES = ["pwsh.exe", "powershell.exe"] as const;
+const POWERSHELL_CANDIDATES = ['pwsh.exe', 'powershell.exe'] as const;
 
 /**
  * Where to look for a shell, in order: `PATH` first, then the well-known
@@ -81,30 +81,19 @@ const POWERSHELL_CANDIDATES = ["pwsh.exe", "powershell.exe"] as const;
  * reliably on `PATH`, but a PowerShell 7 installed by MSI is not always, and
  * preferring it is the point of the candidate order.
  */
-export function executableCandidates(
-  name: string,
-  env: NodeJS.ProcessEnv = process.env,
-): string[] {
+export function executableCandidates(name: string, env: NodeJS.ProcessEnv = process.env): string[] {
   // `path.win32`, not `path`: this module only ever RUNS on Windows but is
   // only ever TESTED on the maintainer's Mac, where the default `path` splits
   // `C:\a;C:\b` on ":" and calls every Windows path relative. On Windows the
   // two are the same object.
-  const candidates = (env.PATH ?? env.Path ?? "")
+  const candidates = (env.PATH ?? env.Path ?? '')
     .split(WINDOWS_PATH_DELIMITER)
     .filter((directory) => directory.length > 0)
     .map((directory) => path.win32.join(directory, name));
-  if (name.toLowerCase() === "pwsh.exe" && env.ProgramFiles) {
-    candidates.push(path.win32.join(env.ProgramFiles, "PowerShell", "7", name));
-  } else if (name.toLowerCase() === "powershell.exe" && env.SystemRoot) {
-    candidates.push(
-      path.win32.join(
-        env.SystemRoot,
-        "System32",
-        "WindowsPowerShell",
-        "v1.0",
-        name,
-      ),
-    );
+  if (name.toLowerCase() === 'pwsh.exe' && env.ProgramFiles) {
+    candidates.push(path.win32.join(env.ProgramFiles, 'PowerShell', '7', name));
+  } else if (name.toLowerCase() === 'powershell.exe' && env.SystemRoot) {
+    candidates.push(path.win32.join(env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', name));
   }
   return candidates;
 }
@@ -118,7 +107,7 @@ export function executableCandidates(
  * probes for the bare name — or only appends `.exe` — finds nothing and the
  * picker collapses to "Shell only" as if nothing were installed.
  */
-export const COMMAND_SUFFIXES = ["", ".exe", ".cmd", ".bat", ".ps1"] as const;
+export const COMMAND_SUFFIXES = ['', '.exe', '.cmd', '.bat', '.ps1'] as const;
 
 /**
  * Resolve a command name against PATH, probing every Windows suffix.
@@ -132,11 +121,9 @@ export function resolveOnPath(
   env: NodeJS.ProcessEnv = process.env,
   exists: (candidate: string) => boolean = isFile,
 ): string | null {
-  const directories = (env.PATH ?? env.Path ?? "")
+  const directories = (env.PATH ?? env.Path ?? '')
     .split(WINDOWS_PATH_DELIMITER)
-    .filter(
-      (directory) => directory.length > 0 && path.win32.isAbsolute(directory),
-    );
+    .filter((directory) => directory.length > 0 && path.win32.isAbsolute(directory));
   for (const directory of directories) {
     for (const suffix of COMMAND_SUFFIXES) {
       const candidate = path.win32.join(directory, `${name}${suffix}`);
@@ -181,17 +168,17 @@ export function buildShellLaunch(
   env: NodeJS.ProcessEnv = process.env,
   exists: (candidate: string) => boolean = isFile,
 ): ShellLaunch {
-  const executable = POWERSHELL_CANDIDATES.map((name) =>
-    findExecutable(name, env, exists),
-  ).find((found): found is string => found !== null);
+  const executable = POWERSHELL_CANDIDATES.map((name) => findExecutable(name, env, exists)).find(
+    (found): found is string => found !== null,
+  );
   if (executable === undefined) {
     throw new Error(
-      "No supported PowerShell executable was found. Install PowerShell 7 or enable Windows PowerShell.",
+      'No supported PowerShell executable was found. Install PowerShell 7 or enable Windows PowerShell.',
     );
   }
   return {
     executable,
-    args: ["-NoLogo", "-NoExit", "-Command", PROMPT_INTEGRATION],
+    args: ['-NoLogo', '-NoExit', '-Command', PROMPT_INTEGRATION],
   };
 }
 
@@ -202,7 +189,7 @@ export function shellLaunch(): ShellLaunch {
 export function userHome(): string {
   const profile = process.env.USERPROFILE ?? os.homedir();
   if (profile.length === 0) {
-    throw new Error("The Windows user profile directory is unavailable");
+    throw new Error('The Windows user profile directory is unavailable');
   }
   return profile;
 }
@@ -236,14 +223,14 @@ export interface WindowsProcessRow extends PsRow {
  * `wmic` is also removed from current Windows, so CIM is the only door left.
  */
 const SNAPSHOT_SCRIPT = [
-  "Get-CimInstance -ClassName Win32_Process",
-  "-Property ProcessId,ParentProcessId,CreationDate,Name,ExecutablePath,CommandLine",
-  "| ForEach-Object {",
-  "$c = 0;",
-  "if ($_.CreationDate) { $c = $_.CreationDate.ToFileTimeUtc() };",
-  "[pscustomobject]@{p=$_.ProcessId;pp=$_.ParentProcessId;c=$c;n=$_.Name;e=$_.ExecutablePath;l=$_.CommandLine}",
-  "| ConvertTo-Json -Compress }",
-].join(" ");
+  'Get-CimInstance -ClassName Win32_Process',
+  '-Property ProcessId,ParentProcessId,CreationDate,Name,ExecutablePath,CommandLine',
+  '| ForEach-Object {',
+  '$c = 0;',
+  'if ($_.CreationDate) { $c = $_.CreationDate.ToFileTimeUtc() };',
+  '[pscustomobject]@{p=$_.ProcessId;pp=$_.ParentProcessId;c=$c;n=$_.Name;e=$_.ExecutablePath;l=$_.CommandLine}',
+  '| ConvertTo-Json -Compress }',
+].join(' ');
 
 interface SnapshotRecord {
   readonly p?: unknown;
@@ -255,11 +242,11 @@ interface SnapshotRecord {
 }
 
 function asNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 function asString(value: unknown): string {
-  return typeof value === "string" ? value : "";
+  return typeof value === 'string' ? value : '';
 }
 
 /**
@@ -268,9 +255,9 @@ function asString(value: unknown): string {
  */
 export function parseProcessTable(output: string): WindowsProcessRow[] {
   const rows: WindowsProcessRow[] = [];
-  for (const line of output.split("\n")) {
+  for (const line of output.split('\n')) {
     const trimmed = line.trim();
-    if (trimmed.length === 0 || !trimmed.startsWith("{")) {
+    if (trimmed.length === 0 || !trimmed.startsWith('{')) {
       continue;
     }
     let record: SnapshotRecord;
@@ -290,7 +277,7 @@ export function parseProcessTable(output: string): WindowsProcessRow[] {
       // The seam's field, carrying the parent pid — see `WindowsProcessRow`.
       pgid: ppid,
       tpgid: -1,
-      tty: "",
+      tty: '',
       args: asString(record.l) || executable,
       ppid,
       creationDate: asNumber(record.c) ?? 0,
@@ -313,12 +300,12 @@ export function parseProcessTable(output: string): WindowsProcessRow[] {
  * proves too slow the answer is a longer poll interval, not a silent cache.
  */
 export function readProcessTable(): Promise<WindowsProcessRow[]> {
-  const shell = findExecutable("powershell.exe") ?? "powershell.exe";
+  const shell = findExecutable('powershell.exe') ?? 'powershell.exe';
   return new Promise((resolve, reject) => {
     execFile(
       shell,
-      ["-NoProfile", "-NonInteractive", "-Command", SNAPSHOT_SCRIPT],
-      { encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 8000 },
+      ['-NoProfile', '-NonInteractive', '-Command', SNAPSHOT_SCRIPT],
+      { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 8000 },
       (error, stdout) => {
         if (error) {
           reject(error instanceof Error ? error : new Error(String(error)));
@@ -437,13 +424,13 @@ function outranks(candidate: Descendant, best: Descendant): boolean {
 
 function isWindowsRow(row: PsRow): row is WindowsProcessRow {
   return (
-    typeof (row as WindowsProcessRow).creationDate === "number" &&
-    typeof (row as WindowsProcessRow).ppid === "number"
+    typeof (row as WindowsProcessRow).creationDate === 'number' &&
+    typeof (row as WindowsProcessRow).ppid === 'number'
   );
 }
 
 function processName(row: WindowsProcessRow): string | null {
-  const name = row.executable.split(/[/\\]/).pop() ?? "";
+  const name = row.executable.split(/[/\\]/).pop() ?? '';
   return name.length > 0 ? name : null;
 }
 
@@ -459,9 +446,7 @@ function processName(row: WindowsProcessRow): string | null {
  * that does not emit OSC 9;9 keeps the last directory it reported, and a pane
  * that never emitted one shows the directory it was spawned in.
  */
-export function processCwds(
-  _pids: readonly number[],
-): Promise<Map<number, string>> {
+export function processCwds(_pids: readonly number[]): Promise<Map<number, string>> {
   return Promise.resolve(new Map());
 }
 
@@ -499,10 +484,7 @@ export function terminateProcessGroups(
  * Exported because it is the whole safety argument for this file: everything
  * else here reports, this one destroys.
  */
-export function killablePid(
-  pid: number | null,
-  selfPid: number = process.pid,
-): number | null {
+export function killablePid(pid: number | null, selfPid: number = process.pid): number | null {
   if (pid === null || !Number.isInteger(pid) || pid <= LOWEST_KILLABLE_PID) {
     return null;
   }
@@ -510,11 +492,11 @@ export function killablePid(
 }
 
 function taskkill(pid: number, force: boolean): void {
-  const args = ["/PID", String(pid), "/T"];
+  const args = ['/PID', String(pid), '/T'];
   if (force) {
-    args.push("/F");
+    args.push('/F');
   }
-  execFile("taskkill", args, { timeout: 4000, windowsHide: true }, () => {
+  execFile('taskkill', args, { timeout: 4000, windowsHide: true }, () => {
     // A non-zero exit means the process was already gone, which is the
     // outcome we wanted. Nothing here can act on the difference.
   });

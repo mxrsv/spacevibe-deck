@@ -200,7 +200,7 @@
   transition: transform var(--duration) var(--ease);
 }
 
-.asr-cluster__head[aria-expanded="true"] .asr-cluster__caret {
+.asr-cluster__head[aria-expanded='true'] .asr-cluster__caret {
   transform: rotate(90deg);
 }
 
@@ -299,7 +299,7 @@
  * this one for the parked `RepositoryRail`; neither surface can style the
  * other, which is why replacing the rail did not carry them across.
  */
-[data-sidebar-collapsed="true"] .asr-rail {
+[data-sidebar-collapsed='true'] .asr-rail {
   overflow: hidden;
   padding-right: 4px;
   padding-left: 4px;
@@ -321,28 +321,28 @@
 }
 
 /* Name and age have left the flow, so the row is chips then mark. */
-[data-sidebar-collapsed="true"] .asr-row--tab {
+[data-sidebar-collapsed='true'] .asr-row--tab {
   grid-template-columns: minmax(0, 1fr) 10px;
   gap: 0 6px;
   padding-right: 6px;
   padding-left: 6px;
 }
 
-[data-sidebar-collapsed="true"] .asr-row--tab > .asr-chips {
+[data-sidebar-collapsed='true'] .asr-row--tab > .asr-chips {
   grid-column: 1;
 }
 
-[data-sidebar-collapsed="true"] .asr-row--tab > .asr-row__mark {
+[data-sidebar-collapsed='true'] .asr-row--tab > .asr-row__mark {
   grid-column: 2;
 }
 
-[data-sidebar-collapsed="true"] .asr-chips {
+[data-sidebar-collapsed='true'] .asr-chips {
   justify-content: center;
 }
 
 /* An archived row keeps only its mark, so the mark takes the whole width
    instead of hugging an edge the name no longer reaches. */
-[data-sidebar-collapsed="true"] .asr-row--archived {
+[data-sidebar-collapsed='true'] .asr-row--archived {
   grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   padding-right: 6px;
@@ -352,7 +352,7 @@
 /* `flex: 1` restores what the base rule dropped when the button stopped
    spanning the rail: with the caption gone there is one child left, and a
    shrink-to-content button cannot centre its glyph in the column. */
-[data-sidebar-collapsed="true"] .asr-open {
+[data-sidebar-collapsed='true'] .asr-open {
   flex: 1;
   justify-content: center;
   padding-right: 6px;
@@ -458,7 +458,7 @@
 }
 
 .asr-row__worktree::before {
-  content: "·";
+  content: '·';
   padding-right: 5px;
 }
 
@@ -499,7 +499,7 @@
    beside its base rule rather than with the other quiet rules in
    `04b-agent-rail-rows.css`, so the one declaration it overrides is the line
    it is read against. */
-.asr-row--tab[data-quiet="true"] .asr-row__msg {
+.asr-row--tab[data-quiet='true'] .asr-row__msg {
   color: var(--text-faint);
 }
 
@@ -520,7 +520,7 @@
   white-space: nowrap;
 }
 
-.asr-leaf--flat[data-quiet="true"] .asr-leaf__msg {
+.asr-leaf--flat[data-quiet='true'] .asr-leaf__msg {
   color: var(--text-faint);
 }
 
@@ -619,17 +619,17 @@
 /* failed — a filled danger dot, and the loudest thing the row can say. It
    carries no halo: the halo means "answer me", and a crashed agent is not
    asking a question (DL-3.2, DL-27.3). */
-.asr-row__mark[data-state="failed"] {
+.asr-row__mark[data-state='failed'] {
   background: var(--red);
 }
 
 /* asked — a filled attention dot with a halo pushing out of it. */
-.asr-row__mark[data-state="asked"] {
+.asr-row__mark[data-state='asked'] {
   background: var(--yellow);
 }
 
-.asr-row__mark[data-state="asked"]::after {
-  content: "";
+.asr-row__mark[data-state='asked']::after {
+  content: '';
   position: absolute;
   inset: -2px;
   border: 1px solid var(--yellow);
@@ -640,7 +640,7 @@
    chose the library's CheckCircle over a CSS drawing, DL-14.6's scoped
    exception), so the span is only a placement box for the green icon, and
    green joins the rail's palette (DL-3). */
-.asr-row__mark[data-state="done"] {
+.asr-row__mark[data-state='done'] {
   display: inline-flex;
   width: auto;
   height: auto;
@@ -654,14 +654,10 @@
 }
 
 /* working — an open arc that turns. */
-.asr-row__mark[data-state="working"] {
+.asr-row__mark[data-state='working'] {
   width: 11px;
   height: 11px;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg 110deg,
-    var(--text-primary) 330deg
-  );
+  background: conic-gradient(from 0deg, transparent 0deg 110deg, var(--text-primary) 330deg);
   /* Radii scaled with the box (×11/9), not kept: holding 2.5/3.1 at 11px
      would have thickened the arc into a disc instead of growing the ring. */
   mask: radial-gradient(circle, transparent 0 3.05px, #000 3.8px);
@@ -670,12 +666,12 @@
 /* idle — never ran anything. The owner's R4 pick: a hairline ring keeping a
    small ember, so the quietest mark still says "someone is here" rather than
    drawing an empty slot. */
-.asr-row__mark[data-state="idle"] {
+.asr-row__mark[data-state='idle'] {
   border: 1px solid var(--hair-strong);
 }
 
-.asr-row__mark[data-state="idle"]::after {
-  content: "";
+.asr-row__mark[data-state='idle']::after {
+  content: '';
   position: absolute;
   top: 50%;
   left: 50%;

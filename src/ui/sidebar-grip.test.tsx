@@ -1,13 +1,9 @@
 // @vitest-environment jsdom
-import { render } from "preact";
-import { act } from "preact/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  SidebarGrip,
-  sidebarCollapseArmed,
-  sidebarWidthLive,
-} from "./sidebar-grip";
-import { SIDEBAR_WIDTH_MIN } from "../settings/settings-schema";
+import { render } from 'preact';
+import { act } from 'preact/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SidebarGrip, sidebarCollapseArmed, sidebarWidthLive } from './sidebar-grip';
+import { SIDEBAR_WIDTH_MIN } from '../settings/settings-schema';
 
 let host: HTMLDivElement;
 
@@ -19,7 +15,7 @@ function mount(props: {
   act(() => {
     render(<SidebarGrip {...props} />, host);
   });
-  const grip = host.querySelector<HTMLElement>(".sidebar-grip")!;
+  const grip = host.querySelector<HTMLElement>('.sidebar-grip')!;
   // jsdom implements neither pointer capture method.
   grip.setPointerCapture = vi.fn();
   grip.releasePointerCapture = vi.fn();
@@ -29,7 +25,7 @@ function mount(props: {
 function drag(grip: HTMLElement, from: number, to: readonly number[]): void {
   act(() => {
     grip.dispatchEvent(
-      new PointerEvent("pointerdown", {
+      new PointerEvent('pointerdown', {
         clientX: from,
         pointerId: 1,
         bubbles: true,
@@ -37,7 +33,7 @@ function drag(grip: HTMLElement, from: number, to: readonly number[]): void {
     );
     for (const x of to) {
       grip.dispatchEvent(
-        new PointerEvent("pointermove", {
+        new PointerEvent('pointermove', {
           clientX: x,
           pointerId: 1,
           bubbles: true,
@@ -49,16 +45,14 @@ function drag(grip: HTMLElement, from: number, to: readonly number[]): void {
 
 function release(grip: HTMLElement): void {
   act(() => {
-    grip.dispatchEvent(
-      new PointerEvent("pointerup", { pointerId: 1, bubbles: true }),
-    );
+    grip.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, bubbles: true }));
   });
 }
 
 beforeEach(() => {
   sidebarWidthLive.value = null;
   sidebarCollapseArmed.value = false;
-  host = document.createElement("div");
+  host = document.createElement('div');
   document.body.appendChild(host);
 });
 
@@ -69,8 +63,8 @@ afterEach(() => {
   sidebarCollapseArmed.value = false;
 });
 
-describe("SidebarGrip", () => {
-  it("widens the column when dragged outward and commits once on release", () => {
+describe('SidebarGrip', () => {
+  it('widens the column when dragged outward and commits once on release', () => {
     const onWidthChange = vi.fn();
     const onCollapsedChange = vi.fn();
     const grip = mount({ width: 275, onWidthChange, onCollapsedChange });
@@ -88,7 +82,7 @@ describe("SidebarGrip", () => {
     expect(sidebarWidthLive.value).toBeNull();
   });
 
-  it("arms the collapse past the floor and collapses on release without writing a width", () => {
+  it('arms the collapse past the floor and collapses on release without writing a width', () => {
     const onWidthChange = vi.fn();
     const onCollapsedChange = vi.fn();
     const grip = mount({ width: 275, onWidthChange, onCollapsedChange });
@@ -107,7 +101,7 @@ describe("SidebarGrip", () => {
     expect(sidebarCollapseArmed.value).toBe(false);
   });
 
-  it("pulls a hidden column back out, restoring both the width and the state", () => {
+  it('pulls a hidden column back out, restoring both the width and the state', () => {
     const onWidthChange = vi.fn();
     const onCollapsedChange = vi.fn();
     // `width` is what the column is PAINTED at, and a hidden column is painted
@@ -134,16 +128,14 @@ describe("SidebarGrip", () => {
     expect(onCollapsedChange).not.toHaveBeenCalled();
   });
 
-  it("abandons the drag on pointercancel the same way it ends on pointerup", () => {
+  it('abandons the drag on pointercancel the same way it ends on pointerup', () => {
     const onWidthChange = vi.fn();
     const onCollapsedChange = vi.fn();
     const grip = mount({ width: 275, onWidthChange, onCollapsedChange });
 
     drag(grip, 275, [330]);
     act(() => {
-      grip.dispatchEvent(
-        new PointerEvent("pointercancel", { pointerId: 1, bubbles: true }),
-      );
+      grip.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }));
     });
 
     expect(onWidthChange).toHaveBeenCalledWith(330);

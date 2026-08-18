@@ -1,6 +1,6 @@
-import type { Pane } from "./pane";
-import type { TabDotColor } from "../lib/tab-colors";
-import type { AdoptionPayload, TransferClient } from "./transfer-client";
+import type { Pane } from './pane';
+import type { TabDotColor } from '../lib/tab-colors';
+import type { AdoptionPayload, TransferClient } from './transfer-client';
 
 /** Serialized scrollback bound (spec §7.5) — never fail a move over history. */
 export const SERIALIZE_SCROLLBACK_LINES = 10_000;
@@ -16,12 +16,10 @@ export interface PaneIdentity {
 }
 
 export type DetachTarget =
-  | { readonly kind: "new-window" }
-  | { readonly kind: "window"; readonly label: string };
+  { readonly kind: 'new-window' } | { readonly kind: 'window'; readonly label: string };
 
 export type DetachResult =
-  | { readonly kind: "moved" }
-  | { readonly kind: "kept"; readonly reason: string };
+  { readonly kind: 'moved' } | { readonly kind: 'kept'; readonly reason: string };
 
 export interface DetachDeps {
   readonly transfer: TransferClient;
@@ -66,7 +64,7 @@ export async function detachPane(
 ): Promise<DetachResult> {
   const pane = deps.pane(id);
   if (pane === undefined) {
-    return { kind: "kept", reason: "unknown-pane" };
+    return { kind: 'kept', reason: 'unknown-pane' };
   }
 
   await deps.drainWrites(id);
@@ -78,7 +76,7 @@ export async function detachPane(
     // A stalled parser is not a reason to strand the pane where it is: the
     // worst case is a scrollback snapshot missing the last few bytes, which
     // the destination shows anyway once the PTY writes again.
-    console.warn("Pane flush failed before transfer; continuing:", err);
+    console.warn('Pane flush failed before transfer; continuing:', err);
   }
 
   let token: string;
@@ -86,9 +84,9 @@ export async function detachPane(
     token = await deps.transfer.prepareTransfer(id);
   } catch (err) {
     releaseHold();
-    console.warn("prepare_transfer failed:", err);
+    console.warn('prepare_transfer failed:', err);
     deps.report("Couldn't move the pane — it stayed here.");
-    return { kind: "kept", reason: "prepare-failed" };
+    return { kind: 'kept', reason: 'prepare-failed' };
   }
 
   // Flushed AGAIN, after `prepare` quiesced the stream. The first flush only
@@ -101,17 +99,15 @@ export async function detachPane(
   try {
     await pane.flush();
   } catch (err) {
-    console.warn("Pane flush after prepare failed; continuing:", err);
+    console.warn('Pane flush after prepare failed; continuing:', err);
   }
 
-  let scrollback = "";
+  let scrollback = '';
   try {
-    scrollback = withinByteBound(
-      pane.serializeScrollback(SERIALIZE_SCROLLBACK_LINES),
-    );
+    scrollback = withinByteBound(pane.serializeScrollback(SERIALIZE_SCROLLBACK_LINES));
   } catch (err) {
     // Spec §13: losing history is not worth losing the session.
-    console.warn("Scrollback serialization failed; moving without it:", err);
+    console.warn('Scrollback serialization failed; moving without it:', err);
   }
 
   const identity = deps.identity(id);
@@ -128,23 +124,20 @@ export async function detachPane(
     workspacePath: identity.workspacePath,
   };
 
-  const failed = async (
-    reason: string,
-    err: unknown,
-  ): Promise<DetachResult> => {
+  const failed = async (reason: string, err: unknown): Promise<DetachResult> => {
     console.warn(`Pane transfer ${reason}:`, err);
     await deps.transfer.abortTransfer(token).catch(() => {
       // Rust aborts on its own bounds (spec §7.5) — a failed abort is noise.
     });
     releaseHold();
     deps.report("Couldn't move the pane — it stayed here.");
-    return { kind: "kept", reason };
+    return { kind: 'kept', reason };
   };
 
   try {
     await deps.transfer.stageTransfer(token, payload);
   } catch (err) {
-    return failed("stage-failed", err);
+    return failed('stage-failed', err);
   }
 
   // Subscribed BEFORE the token is handed over, and deliberately not awaited
@@ -156,29 +149,26 @@ export async function detachPane(
   const settled = deps.transfer.awaitOutcome(token);
 
   try {
-    if (target.kind === "new-window") {
+    if (target.kind === 'new-window') {
       await deps.transfer.openPaneWindow(token);
     } else {
       await deps.transfer.offerTransfer(token, target.label);
     }
   } catch (err) {
-    return failed(
-      target.kind === "new-window" ? "open-window-failed" : "offer-failed",
-      err,
-    );
+    return failed(target.kind === 'new-window' ? 'open-window-failed' : 'offer-failed', err);
   }
 
   // The DESTINATION commits (spec §7.3: `caller == to`), so the source waits
   // for the outcome instead of committing. It has to wait rather than release
   // optimistically: spec §13 requires a failed commit to leave the pane here.
   const outcome = await settled;
-  if (outcome.kind === "aborted") {
+  if (outcome.kind === 'aborted') {
     releaseHold();
     deps.report("The pane couldn't be moved — it stayed here.");
-    return { kind: "kept", reason: outcome.reason };
+    return { kind: 'kept', reason: outcome.reason };
   }
 
   deps.release(id);
   releaseHold();
-  return { kind: "moved" };
+  return { kind: 'moved' };
 }

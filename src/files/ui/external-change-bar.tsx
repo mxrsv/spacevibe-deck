@@ -7,20 +7,20 @@
  * purpose, because a bar for something Deck already handled is noise the user
  * has to dismiss.
  */
-import type { ChangeAction } from "../external-change";
-import type { ChangeResolution } from "../external-change";
+import type { ChangeAction } from '../external-change';
+import type { ChangeResolution } from '../external-change';
 
 export interface ExternalChangeBarProps {
-  readonly prompt: ChangeAction["kind"] | null;
+  readonly prompt: ChangeAction['kind'] | null;
   readonly fileName: string;
   readonly onResolve: (resolution: ChangeResolution) => void;
 }
 
 export function ExternalChangeBar(props: ExternalChangeBarProps) {
-  if (props.prompt !== "prompt-changed" && props.prompt !== "prompt-deleted") {
+  if (props.prompt !== 'prompt-changed' && props.prompt !== 'prompt-deleted') {
     return null;
   }
-  const changed = props.prompt === "prompt-changed";
+  const changed = props.prompt === 'prompt-changed';
   return (
     <div class="filebar" role="status">
       <span class="filebar__text">
@@ -31,17 +31,13 @@ export function ExternalChangeBar(props: ExternalChangeBarProps) {
       <div class="filebar__actions">
         {changed ? (
           <>
-            <button
-              type="button"
-              class="filebar__btn"
-              onClick={() => props.onResolve("reload")}
-            >
+            <button type="button" class="filebar__btn" onClick={() => props.onResolve('reload')}>
               Reload
             </button>
             <button
               type="button"
               class="filebar__btn filebar__btn--primary"
-              onClick={() => props.onResolve("keep-mine")}
+              onClick={() => props.onResolve('keep-mine')}
             >
               Keep mine
             </button>
@@ -51,15 +47,11 @@ export function ExternalChangeBar(props: ExternalChangeBarProps) {
             <button
               type="button"
               class="filebar__btn filebar__btn--primary"
-              onClick={() => props.onResolve("save-again")}
+              onClick={() => props.onResolve('save-again')}
             >
               Save again
             </button>
-            <button
-              type="button"
-              class="filebar__btn"
-              onClick={() => props.onResolve("close")}
-            >
+            <button type="button" class="filebar__btn" onClick={() => props.onResolve('close')}>
               Close
             </button>
           </>

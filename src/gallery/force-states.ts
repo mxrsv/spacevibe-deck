@@ -1,4 +1,4 @@
-import { appRuleLists } from "./css-audit";
+import { appRuleLists } from './css-audit';
 
 /**
  * Interaction states forced onto a specimen, built from the app's own rules.
@@ -39,13 +39,9 @@ import { appRuleLists } from "./css-audit";
  * browser apply them.
  */
 
-export type ForcedState = "hover" | "active" | "focus";
+export type ForcedState = 'hover' | 'active' | 'focus';
 
-export const FORCED_STATES: readonly ForcedState[] = [
-  "hover",
-  "active",
-  "focus",
-];
+export const FORCED_STATES: readonly ForcedState[] = ['hover', 'active', 'focus'];
 
 /**
  * Longest first. `:focus-visible` and `:focus-within` both contain `:focus`,
@@ -53,33 +49,33 @@ export const FORCED_STATES: readonly ForcedState[] = [
  * selector and the rule would silently match nothing.
  */
 const FORCED_PSEUDOS: Record<ForcedState, readonly string[]> = {
-  hover: [":hover"],
-  active: [":active"],
-  focus: [":focus-visible", ":focus-within", ":focus"],
+  hover: [':hover'],
+  active: [':active'],
+  focus: [':focus-visible', ':focus-within', ':focus'],
 };
 
 export const FORCE_CLASS: Record<ForcedState, string> = {
-  hover: "gx-force--hover",
-  active: "gx-force--active",
-  focus: "gx-force--focus",
+  hover: 'gx-force--hover',
+  active: 'gx-force--active',
+  focus: 'gx-force--focus',
 };
 
 /**
  * The stand-in for a stripped pseudo-class: one class of specificity, and it
  * matches every element because nothing anywhere sets this class.
  */
-const NEVER = ":not(.gx-never)";
+const NEVER = ':not(.gx-never)';
 
 /** The app stylesheet reduced to what the transform needs, in source order. */
 export type RuleNode =
   | {
-      readonly kind: "style";
+      readonly kind: 'style';
       readonly selectorText: string;
       /** The declaration block without its braces, `!important` intact. */
       readonly declarations: string;
     }
   | {
-      readonly kind: "group";
+      readonly kind: 'group';
       /** The at-rule as it will be re-opened, e.g. `@media (min-width: 40em)`. */
       readonly condition: string;
       readonly children: readonly RuleNode[];
@@ -102,22 +98,22 @@ export function splitSelectorList(selectorText: string): readonly string[] {
   for (let i = 0; i < selectorText.length; i += 1) {
     const char = selectorText[i];
     if (quote !== null) {
-      if (char === quote && selectorText[i - 1] !== "\\") {
+      if (char === quote && selectorText[i - 1] !== '\\') {
         quote = null;
       }
     } else if (char === '"' || char === "'") {
       quote = char;
-    } else if (char === "(" || char === "[") {
+    } else if (char === '(' || char === '[') {
       depth += 1;
-    } else if (char === ")" || char === "]") {
+    } else if (char === ')' || char === ']') {
       depth -= 1;
-    } else if (char === "," && depth === 0) {
+    } else if (char === ',' && depth === 0) {
       parts.push(selectorText.slice(start, i));
       start = i + 1;
     }
   }
   parts.push(selectorText.slice(start));
-  return parts.map((part) => part.trim()).filter((part) => part !== "");
+  return parts.map((part) => part.trim()).filter((part) => part !== '');
 }
 
 /** Whether a selector carries any pseudo-class this state forces. */
@@ -126,10 +122,7 @@ function carries(selectorText: string, state: ForcedState): boolean {
 }
 
 /** `.a:hover, .b` under `hover` → `.gx-force--hover .a:not(.gx-never), .gx-force--hover .b`. */
-export function scopeSelector(
-  selectorText: string,
-  state: ForcedState,
-): string {
+export function scopeSelector(selectorText: string, state: ForcedState): string {
   return splitSelectorList(selectorText)
     .map((part) => {
       let selector = part;
@@ -140,36 +133,28 @@ export function scopeSelector(
       }
       return `.${FORCE_CLASS[state]} ${selector}`;
     })
-    .join(", ");
+    .join(', ');
 }
 
-function emit(
-  nodes: readonly RuleNode[],
-  state: ForcedState,
-  into: string[],
-): void {
+function emit(nodes: readonly RuleNode[], state: ForcedState, into: string[]): void {
   for (const node of nodes) {
-    if (node.kind === "style") {
-      if (node.declarations !== "") {
-        into.push(
-          `${scopeSelector(node.selectorText, state)} { ${node.declarations} }`,
-        );
+    if (node.kind === 'style') {
+      if (node.declarations !== '') {
+        into.push(`${scopeSelector(node.selectorText, state)} { ${node.declarations} }`);
       }
       continue;
     }
     const inner: string[] = [];
     emit(node.children, state, inner);
     if (inner.length > 0) {
-      into.push(`${node.condition} {\n${inner.join("\n")}\n}`);
+      into.push(`${node.condition} {\n${inner.join('\n')}\n}`);
     }
   }
 }
 
 function anyCarries(nodes: readonly RuleNode[], state: ForcedState): boolean {
   return nodes.some((node) =>
-    node.kind === "style"
-      ? carries(node.selectorText, state)
-      : anyCarries(node.children, state),
+    node.kind === 'style' ? carries(node.selectorText, state) : anyCarries(node.children, state),
   );
 }
 
@@ -186,9 +171,7 @@ export interface ForcedStateSheet {
   readonly absent: readonly ForcedState[];
 }
 
-export function buildForcedStates(
-  nodes: readonly RuleNode[],
-): ForcedStateSheet {
+export function buildForcedStates(nodes: readonly RuleNode[]): ForcedStateSheet {
   const present: ForcedState[] = [];
   const absent: ForcedState[] = [];
   const lines: string[] = [];
@@ -200,7 +183,7 @@ export function buildForcedStates(
     present.push(state);
     emit(nodes, state, lines);
   }
-  return { css: lines.join("\n"), present, absent };
+  return { css: lines.join('\n'), present, absent };
 }
 
 /** The app sheet as `RuleNode`s, conditions preserved, in source order. */
@@ -210,19 +193,19 @@ function appRules(): readonly RuleNode[] {
     for (const rule of list) {
       if (rule instanceof CSSStyleRule) {
         nodes.push({
-          kind: "style",
+          kind: 'style',
           selectorText: rule.selectorText,
           declarations: rule.style.cssText,
         });
       } else if (rule instanceof CSSMediaRule) {
         nodes.push({
-          kind: "group",
+          kind: 'group',
           condition: `@media ${rule.conditionText}`,
           children: read(rule.cssRules),
         });
       } else if (rule instanceof CSSSupportsRule) {
         nodes.push({
-          kind: "group",
+          kind: 'group',
           condition: `@supports ${rule.conditionText}`,
           children: read(rule.cssRules),
         });
@@ -251,8 +234,8 @@ export interface InstalledForcedStates {
  */
 export function installForcedStates(): InstalledForcedStates {
   const built = buildForcedStates(appRules());
-  const style = document.createElement("style");
-  style.dataset.gxForcedStates = "";
+  const style = document.createElement('style');
+  style.dataset.gxForcedStates = '';
   style.textContent = built.css;
   document.head.append(style);
   return {

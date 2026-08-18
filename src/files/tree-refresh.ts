@@ -8,7 +8,7 @@
  * `loadListing` and the disposed flag are injected because both live in the
  * controller's closure — this module owns no filesystem access of its own.
  */
-import { fileSurfaces, visibleDirectories } from "./file-surface-store";
+import { fileSurfaces, visibleDirectories } from './file-surface-store';
 
 /**
  * Coalesce window for `fs:changed` bursts before the tree re-`listDir`s.
@@ -27,16 +27,13 @@ const TREE_REFRESH_COALESCE_MS = 100;
  * opaque strings from the host — never parsed with `node:path`, which is not
  * available to the renderer (spec: renderer stays host-free). */
 function parentDirectory(path: string): string {
-  const index = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  const index = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
   return index <= 0 ? path : path.slice(0, index);
 }
 
 export interface TreeRefreshDeps {
   /** Re-`listDir` one directory and apply the result to the store. */
-  readonly loadListing: (
-    workspacePath: string,
-    directory: string,
-  ) => Promise<void>;
+  readonly loadListing: (workspacePath: string, directory: string) => Promise<void>;
   /** Whether the owning controller has already disposed. */
   readonly isDisposed: () => boolean;
 }
@@ -91,10 +88,7 @@ export function createTreeRefresh(deps: TreeRefreshDeps): TreeRefresh {
     }
     treeRefreshTimers.set(
       workspacePath,
-      setTimeout(
-        () => flushTreeRefresh(workspacePath),
-        TREE_REFRESH_COALESCE_MS,
-      ),
+      setTimeout(() => flushTreeRefresh(workspacePath), TREE_REFRESH_COALESCE_MS),
     );
   }
 

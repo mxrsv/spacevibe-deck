@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { createMemorySessionsClient } from "./sessions-client";
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createMemorySessionsClient } from './sessions-client';
 import {
   deadProjects,
   probeSessionsSupport,
@@ -11,8 +11,8 @@ import {
   sessionsLoading,
   sessionsSupported,
   sessionTotals,
-} from "./sessions-store";
-import type { SessionEntry } from "../lib/session-history";
+} from './sessions-store';
+import type { SessionEntry } from '../lib/session-history';
 
 function deferred<T>(): {
   readonly promise: Promise<T>;
@@ -30,12 +30,12 @@ function deferred<T>(): {
 
 function entry(over: Partial<SessionEntry>): SessionEntry {
   return {
-    agent: "claude",
-    sessionId: "id",
-    cwd: "/work/a",
+    agent: 'claude',
+    sessionId: 'id',
+    cwd: '/work/a',
     lastActivityMs: 1,
-    title: "t",
-    sourcePath: "/p",
+    title: 't',
+    sourcePath: '/p',
     ...over,
   };
 }
@@ -43,68 +43,68 @@ function entry(over: Partial<SessionEntry>): SessionEntry {
 beforeEach(() => {
   sessionEntries.value = [];
   sessionsSupported.value = true;
-  sessionsLoadState.value = { status: "idle" };
+  sessionsLoadState.value = { status: 'idle' };
   deadProjects.value = new Set();
   resetSessionFilters();
 });
 
-describe("refreshSessions", () => {
-  it("stores entries and totals from one scan", async () => {
+describe('refreshSessions', () => {
+  it('stores entries and totals from one scan', async () => {
     await refreshSessions(
       createMemorySessionsClient({
-        entries: [entry({ sessionId: "a" })],
+        entries: [entry({ sessionId: 'a' })],
         totals: { claude: 900, codex: 3 },
         limit: 500,
       }),
     );
-    expect(sessionEntries.value.map((e) => e.sessionId)).toEqual(["a"]);
+    expect(sessionEntries.value.map((e) => e.sessionId)).toEqual(['a']);
     expect(sessionTotals.value.claude).toBe(900);
     expect(sessionsLoading.value).toBe(false);
   });
 
-  it("marks the host unsupported when the facade answers null", async () => {
+  it('marks the host unsupported when the facade answers null', async () => {
     await refreshSessions(createMemorySessionsClient(null));
     expect(sessionsSupported.value).toBe(false);
     expect(sessionEntries.value).toEqual([]);
   });
 
-  it("records the cwds that no longer exist", async () => {
+  it('records the cwds that no longer exist', async () => {
     await refreshSessions(
       createMemorySessionsClient(
         {
           entries: [
-            entry({ sessionId: "a", cwd: "/gone" }),
-            entry({ sessionId: "b", cwd: "/here" }),
+            entry({ sessionId: 'a', cwd: '/gone' }),
+            entry({ sessionId: 'b', cwd: '/here' }),
           ],
           totals: { claude: 2, codex: 0 },
           limit: 500,
         },
-        { alive: (path) => path === "/here" },
+        { alive: (path) => path === '/here' },
       ),
     );
-    expect([...deadProjects.value]).toEqual(["/gone"]);
+    expect([...deadProjects.value]).toEqual(['/gone']);
   });
 
-  it("keeps the previous list when a scan throws", async () => {
+  it('keeps the previous list when a scan throws', async () => {
     await refreshSessions(
       createMemorySessionsClient({
-        entries: [entry({ sessionId: "a" })],
+        entries: [entry({ sessionId: 'a' })],
         totals: { claude: 1, codex: 0 },
         limit: 500,
       }),
     );
     await refreshSessions(createMemorySessionsClient(null, { fail: true }));
-    expect(sessionEntries.value.map((e) => e.sessionId)).toEqual(["a"]);
+    expect(sessionEntries.value.map((e) => e.sessionId)).toEqual(['a']);
     expect(sessionsLoadState.value).toEqual({
-      status: "error",
+      status: 'error',
       message: "Couldn't read recorded sessions.",
     });
   });
 
-  it("keeps the whole last-good snapshot when directory liveness fails", async () => {
+  it('keeps the whole last-good snapshot when directory liveness fails', async () => {
     await refreshSessions(
       createMemorySessionsClient({
-        entries: [entry({ sessionId: "old" })],
+        entries: [entry({ sessionId: 'old' })],
         totals: { claude: 1, codex: 0 },
         limit: 500,
       }),
@@ -113,22 +113,22 @@ describe("refreshSessions", () => {
     await refreshSessions({
       async list() {
         return {
-          entries: [entry({ sessionId: "new", cwd: "/work/new" })],
+          entries: [entry({ sessionId: 'new', cwd: '/work/new' })],
           totals: { claude: 2, codex: 0 },
           limit: 500,
         };
       },
       async dirsExist() {
-        throw new Error("dirs_exist failed");
+        throw new Error('dirs_exist failed');
       },
     });
 
-    expect(sessionEntries.value.map((item) => item.sessionId)).toEqual(["old"]);
+    expect(sessionEntries.value.map((item) => item.sessionId)).toEqual(['old']);
     expect(sessionTotals.value).toEqual({ claude: 1, codex: 0 });
-    expect(sessionsLoadState.value.status).toBe("error");
+    expect(sessionsLoadState.value.status).toBe('error');
   });
 
-  it("ignores an older refresh failure after a retry succeeds", async () => {
+  it('ignores an older refresh failure after a retry succeeds', async () => {
     const oldList = deferred<never>();
     const first = refreshSessions({
       list: () => oldList.promise,
@@ -136,21 +136,21 @@ describe("refreshSessions", () => {
     });
     await refreshSessions(
       createMemorySessionsClient({
-        entries: [entry({ sessionId: "new" })],
+        entries: [entry({ sessionId: 'new' })],
         totals: { claude: 1, codex: 0 },
         limit: 500,
       }),
     );
-    oldList.reject(new Error("stale scan failure"));
+    oldList.reject(new Error('stale scan failure'));
     await first;
 
-    expect(sessionEntries.value.map((item) => item.sessionId)).toEqual(["new"]);
-    expect(sessionsLoadState.value).toEqual({ status: "ready" });
+    expect(sessionEntries.value.map((item) => item.sessionId)).toEqual(['new']);
+    expect(sessionsLoadState.value).toEqual({ status: 'ready' });
   });
 
-  it("lets a pending refresh finish when the support probe starts later", async () => {
+  it('lets a pending refresh finish when the support probe starts later', async () => {
     const snapshot = {
-      entries: [entry({ sessionId: "new" })],
+      entries: [entry({ sessionId: 'new' })],
       totals: { claude: 1, codex: 0 },
       limit: 500,
     };
@@ -165,29 +165,29 @@ describe("refreshSessions", () => {
     await refresh;
 
     expect(sessionsLoading.value).toBe(false);
-    expect(sessionEntries.value.map((item) => item.sessionId)).toEqual(["new"]);
-    expect(sessionsLoadState.value).toEqual({ status: "ready" });
+    expect(sessionEntries.value.map((item) => item.sessionId)).toEqual(['new']);
+    expect(sessionsLoadState.value).toEqual({ status: 'ready' });
   });
 
-  it("resets filters that no longer match anything", () => {
-    sessionAgentFilter.value = "codex";
+  it('resets filters that no longer match anything', () => {
+    sessionAgentFilter.value = 'codex';
     resetSessionFilters();
-    expect(sessionAgentFilter.value).toBe("all");
+    expect(sessionAgentFilter.value).toBe('all');
   });
 });
 
-describe("probeSessionsSupport", () => {
-  it("marks the host unsupported when the facade answers null", async () => {
+describe('probeSessionsSupport', () => {
+  it('marks the host unsupported when the facade answers null', async () => {
     await probeSessionsSupport(createMemorySessionsClient(null));
     expect(sessionsSupported.value).toBe(false);
     expect(sessionEntries.value).toEqual([]);
   });
 
-  it("marks the host supported without storing the reply", async () => {
+  it('marks the host supported without storing the reply', async () => {
     const totalsBefore = sessionTotals.value;
     await probeSessionsSupport(
       createMemorySessionsClient({
-        entries: [entry({ sessionId: "a" })],
+        entries: [entry({ sessionId: 'a' })],
         totals: { claude: 900, codex: 3 },
         limit: 1,
       }),
@@ -197,18 +197,16 @@ describe("probeSessionsSupport", () => {
     // that entry would paint a one-row history over an unscanned list.
     expect(sessionEntries.value).toEqual([]);
     expect(sessionTotals.value).toBe(totalsBefore);
-    expect(sessionsLoadState.value.status).toBe("idle");
+    expect(sessionsLoadState.value.status).toBe('idle');
   });
 
-  it("keeps the host available for retry when the probe throws", async () => {
-    await probeSessionsSupport(
-      createMemorySessionsClient(null, { fail: true }),
-    );
+  it('keeps the host available for retry when the probe throws', async () => {
+    await probeSessionsSupport(createMemorySessionsClient(null, { fail: true }));
     expect(sessionsSupported.value).toBe(true);
-    expect(sessionsLoadState.value.status).toBe("error");
+    expect(sessionsLoadState.value.status).toBe('error');
   });
 
-  it("ignores an older probe failure after a full refresh succeeds", async () => {
+  it('ignores an older probe failure after a full refresh succeeds', async () => {
     const oldProbe = deferred<never>();
     const probe = probeSessionsSupport({
       list: () => oldProbe.promise,
@@ -216,14 +214,14 @@ describe("probeSessionsSupport", () => {
     });
     await refreshSessions(
       createMemorySessionsClient({
-        entries: [entry({ sessionId: "new" })],
+        entries: [entry({ sessionId: 'new' })],
         totals: { claude: 1, codex: 0 },
         limit: 500,
       }),
     );
-    oldProbe.reject(new Error("stale probe failure"));
+    oldProbe.reject(new Error('stale probe failure'));
     await probe;
 
-    expect(sessionsLoadState.value).toEqual({ status: "ready" });
+    expect(sessionsLoadState.value).toEqual({ status: 'ready' });
   });
 });

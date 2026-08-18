@@ -1,6 +1,6 @@
-import type { Edge } from "../lib/split-tree";
-import type { PaneRect } from "../lib/pane-geometry";
-import { dropTargetAt } from "../terminal/pane-drag";
+import type { Edge } from '../lib/split-tree';
+import type { PaneRect } from '../lib/pane-geometry';
+import { dropTargetAt } from '../terminal/pane-drag';
 
 /**
  * Drag a chrome control onto a pane to dock a NEW pane at one of its edges.
@@ -68,23 +68,23 @@ export function createNewPaneDragController(
     pointerId = event.pointerId;
     startX = event.clientX;
     startY = event.clientY;
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerCancel);
-    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
+    window.addEventListener('keydown', onKeyDown, true);
   }
 
   function beginDrag(): void {
     dragging = true;
     // On `body`, not on a tab container: this controller never gets one, and
     // `.is-pane-dragging .pane` reaches every pane from here just the same.
-    document.body.classList.add("is-pane-dragging");
-    ghost = document.createElement("div");
-    ghost.className = "pane-drag-ghost";
+    document.body.classList.add('is-pane-dragging');
+    ghost = document.createElement('div');
+    ghost.className = 'pane-drag-ghost';
     ghost.textContent = opts.ghostLabel;
-    overlay = document.createElement("div");
-    overlay.className = "drop-overlay";
-    overlay.style.display = "none";
+    overlay = document.createElement('div');
+    overlay.className = 'drop-overlay';
+    overlay.style.display = 'none';
     document.body.append(ghost, overlay);
     opts.onDragStart?.();
   }
@@ -118,18 +118,18 @@ export function createNewPaneDragController(
     let top = rect.top;
     let width = fullWidth;
     let height = fullHeight;
-    if (edge === "left") {
+    if (edge === 'left') {
       width = fullWidth / 2;
-    } else if (edge === "right") {
+    } else if (edge === 'right') {
       left = rect.left + fullWidth / 2;
       width = fullWidth / 2;
-    } else if (edge === "top") {
+    } else if (edge === 'top') {
       height = fullHeight / 2;
     } else {
       top = rect.top + fullHeight / 2;
       height = fullHeight / 2;
     }
-    overlay.style.display = "block";
+    overlay.style.display = 'block';
     overlay.style.left = `${left}px`;
     overlay.style.top = `${top}px`;
     overlay.style.width = `${width}px`;
@@ -138,7 +138,7 @@ export function createNewPaneDragController(
 
   function hideOverlay(): void {
     if (overlay) {
-      overlay.style.display = "none";
+      overlay.style.display = 'none';
     }
   }
 
@@ -169,12 +169,12 @@ export function createNewPaneDragController(
     const swallow = (event: Event): void => {
       event.preventDefault();
       event.stopPropagation();
-      window.removeEventListener("click", swallow, true);
+      window.removeEventListener('click', swallow, true);
     };
-    window.addEventListener("click", swallow, true);
+    window.addEventListener('click', swallow, true);
     // A drop over a pane produces no click at all, so the swallow has to
     // expire on its own — leaving it armed would eat an unrelated click later.
-    setTimeout(() => window.removeEventListener("click", swallow, true), 0);
+    setTimeout(() => window.removeEventListener('click', swallow, true), 0);
   }
 
   function onPointerUp(event: PointerEvent): void {
@@ -201,18 +201,18 @@ export function createNewPaneDragController(
   }
 
   function onKeyDown(event: KeyboardEvent): void {
-    if (event.key === "Escape" && dragging) {
+    if (event.key === 'Escape' && dragging) {
       event.preventDefault();
       cleanup();
     }
   }
 
   function cleanup(): void {
-    window.removeEventListener("pointermove", onPointerMove);
-    window.removeEventListener("pointerup", onPointerUp);
-    window.removeEventListener("pointercancel", onPointerCancel);
-    window.removeEventListener("keydown", onKeyDown, true);
-    document.body.classList.remove("is-pane-dragging");
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerCancel);
+    window.removeEventListener('keydown', onKeyDown, true);
+    document.body.classList.remove('is-pane-dragging');
     ghost?.remove();
     overlay?.remove();
     ghost = null;
@@ -222,11 +222,11 @@ export function createNewPaneDragController(
     dragging = false;
   }
 
-  handle.addEventListener("pointerdown", onPointerDown);
+  handle.addEventListener('pointerdown', onPointerDown);
 
   return {
     dispose(): void {
-      handle.removeEventListener("pointerdown", onPointerDown);
+      handle.removeEventListener('pointerdown', onPointerDown);
       cleanup();
     },
   };

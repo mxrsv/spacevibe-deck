@@ -1,22 +1,18 @@
-import { ask } from "../host/dialog-host";
-import type { PaneProcessInfo } from "../lib/process-info";
-import { freshPaneInfo } from "./pane-info";
-import { defaultPtyClient, type PtyClient } from "./pty-client";
+import { ask } from '../host/dialog-host';
+import type { PaneProcessInfo } from '../lib/process-info';
+import { freshPaneInfo } from './pane-info';
+import { defaultPtyClient, type PtyClient } from './pty-client';
 
 /** Named busy state comes from the explicit process classification. */
 export function isBusy(info: PaneProcessInfo): boolean {
-  return info.kind === "agent" || info.kind === "busy";
+  return info.kind === 'agent' || info.kind === 'busy';
 }
 
 /** Busy process names, deduplicated, in pane order. */
 export function busyProcesses(infos: readonly PaneProcessInfo[]): string[] {
   const names: string[] = [];
   for (const info of infos) {
-    if (
-      isBusy(info) &&
-      info.process !== null &&
-      !names.includes(info.process)
-    ) {
+    if (isBusy(info) && info.process !== null && !names.includes(info.process)) {
       names.push(info.process);
     }
   }
@@ -38,49 +34,49 @@ export interface ConfirmCopy {
 }
 
 const CLOSE_COPY: ConfirmCopy = {
-  title: "Close Terminal",
-  okLabel: "Close",
-  action: "Close",
+  title: 'Close Terminal',
+  okLabel: 'Close',
+  action: 'Close',
 };
 
 /** Closing a file tab with unsaved edits — the third of spec §6's three exits. */
 export const FILE_CLOSE_COPY: ConfirmCopy = {
-  title: "Close File",
-  okLabel: "Discard Changes",
-  action: "Close",
+  title: 'Close File',
+  okLabel: 'Discard Changes',
+  action: 'Close',
 };
 
 export const QUIT_COPY: ConfirmCopy = {
-  title: "Quit Deck",
-  okLabel: "Quit",
-  action: "Quit",
+  title: 'Quit Deck',
+  okLabel: 'Quit',
+  action: 'Quit',
 };
 
 export const WINDOW_CLOSE_COPY: ConfirmCopy = {
-  title: "Close Window",
-  okLabel: "Close Window",
+  title: 'Close Window',
+  okLabel: 'Close Window',
   // Not "Quit": with peer windows this kills only THIS window's panes, and
   // the app keeps running unless it was the last one.
-  action: "Close this window",
+  action: 'Close this window',
 };
 
 export const UPDATE_COPY: ConfirmCopy = {
-  title: "Install Deck Update",
-  okLabel: "Install & Restart",
-  action: "Install update and restart",
+  title: 'Install Deck Update',
+  okLabel: 'Install & Restart',
+  action: 'Install update and restart',
   // The installer runs outside Deck and Deck cannot watch it finish: on
   // Windows the updater exits the process the moment it hands over, and on
   // macOS a failure late in the swap can leave neither version in place. So
   // the dialog has to say plainly that this is not a normal restart.
   detail:
-    "Deck will quit while it installs. Running processes are terminated and terminal sessions are not restored. If the install fails, Deck may need to be downloaded again.",
+    'Deck will quit while it installs. Running processes are terminated and terminal sessions are not restored. If the install fails, Deck may need to be downloaded again.',
 };
 
 /** How many unsaved file names are spelled out before the message summarizes. */
 const MAX_NAMED_FILES = 3;
 
 function baseName(path: string): string {
-  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
   return cut === -1 ? path : path.slice(cut + 1);
 }
 
@@ -99,7 +95,7 @@ export function dirtyFilesPhrase(paths: readonly string[]): string | null {
   if (names.length === 1) {
     return `${names[0]} has unsaved changes`;
   }
-  const shown = names.slice(0, MAX_NAMED_FILES).join(", ");
+  const shown = names.slice(0, MAX_NAMED_FILES).join(', ');
   const rest = names.length - MAX_NAMED_FILES;
   const list = rest > 0 ? `${shown} and ${rest} more` : shown;
   return `${names.length} files have unsaved changes (${list})`;
@@ -110,18 +106,15 @@ export function dirtyFilesPhrase(paths: readonly string[]): string | null {
  * `claude` deduplicate to one name, and "claude is still running" badly
  * understates what is about to be killed.
  */
-function busyPhrase(
-  names: readonly string[],
-  busyPanes: number,
-): string | null {
+function busyPhrase(names: readonly string[], busyPanes: number): string | null {
   if (busyPanes === 0 && names.length === 0) {
     return null;
   }
   return busyPanes > names.length
-    ? `${busyPanes} panes are still running (${names.join(", ")})`
+    ? `${busyPanes} panes are still running (${names.join(', ')})`
     : names.length === 1
       ? `${names[0]} is still running`
-      : `These processes are still running: ${names.join(", ")}`;
+      : `These processes are still running: ${names.join(', ')}`;
 }
 
 /**
@@ -134,13 +127,13 @@ function busyPhrase(
  */
 export function confirmMessage(
   names: readonly string[],
-  action: string = "Close",
+  action: string = 'Close',
   busyPanes: number = names.length,
   dirtyFiles: readonly string[] = [],
 ): string {
   const subject = [busyPhrase(names, busyPanes), dirtyFilesPhrase(dirtyFiles)]
     .filter((phrase): phrase is string => phrase !== null)
-    .join(", and ");
+    .join(', and ');
   return `${subject}. ${action} anyway?`;
 }
 
@@ -151,14 +144,11 @@ export function confirmMessage(
  * unsaved-files clause has to reach both, and two copies of one sentence is
  * exactly how one of them gets it and the other does not.
  */
-export function unknownMessage(
-  action: string,
-  dirtyFiles: readonly string[] = [],
-): string {
+export function unknownMessage(action: string, dirtyFiles: readonly string[] = []): string {
   const dirty = dirtyFilesPhrase(dirtyFiles);
   const subject =
     dirty === null
-      ? "Deck could not verify whether terminal processes are still running"
+      ? 'Deck could not verify whether terminal processes are still running'
       : `Deck could not verify whether terminal processes are still running, and ${dirty}`;
   return `${subject}. ${action} anyway?`;
 }
@@ -190,38 +180,29 @@ export async function confirmClose(
   prompting = true;
   try {
     const infos = await freshPaneInfo(paneIds, pty);
-    if (
-      infos.every((info) => info.kind === "idle-shell") &&
-      dirtyFiles.length === 0
-    ) {
+    if (infos.every((info) => info.kind === 'idle-shell') && dirtyFiles.length === 0) {
       return true;
     }
     const names = busyProcesses(infos);
     const fullyNamed = infos.every(
       (info) =>
-        info.kind === "idle-shell" ||
-        ((info.kind === "agent" || info.kind === "busy") &&
-          info.process !== null),
+        info.kind === 'idle-shell' ||
+        ((info.kind === 'agent' || info.kind === 'busy') && info.process !== null),
     );
     const message =
       (fullyNamed
-        ? confirmMessage(
-            names,
-            copy.action,
-            infos.filter(isBusy).length,
-            dirtyFiles,
-          )
+        ? confirmMessage(names, copy.action, infos.filter(isBusy).length, dirtyFiles)
         : unknownMessage(copy.action, dirtyFiles)) +
-      (copy.detail === undefined ? "" : `\n\n${copy.detail}`);
+      (copy.detail === undefined ? '' : `\n\n${copy.detail}`);
     try {
       return await ask(message, {
         title: copy.title,
-        kind: "warning",
+        kind: 'warning',
         okLabel: copy.okLabel,
-        cancelLabel: "Cancel",
+        cancelLabel: 'Cancel',
       });
     } catch (err: unknown) {
-      console.error("Close prompt failed:", err);
+      console.error('Close prompt failed:', err);
       return false;
     }
   } finally {

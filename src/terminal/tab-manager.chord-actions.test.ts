@@ -1,36 +1,29 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { PaneProcessInfo } from "../lib/process-info";
-import type { Pane } from "./pane";
-import type { CreatePaneFn } from "./pane-lifecycle";
-import type { TabManager } from "./tab-manager";
-import { closeSearchBar } from "./search-bar";
-import {
-  agentQuickPickerOpen,
-  boardOpen,
-  settingsOpen,
-} from "../chrome/events";
-import { activeTabIndex, tabViews } from "./tabs-store";
-import { settings } from "../settings/settings-store";
-import { DEFAULT_SETTINGS } from "../settings/settings-schema";
-import { sendAgentNotification } from "../lib/native-notification";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PaneProcessInfo } from '../lib/process-info';
+import type { Pane } from './pane';
+import type { CreatePaneFn } from './pane-lifecycle';
+import type { TabManager } from './tab-manager';
+import { closeSearchBar } from './search-bar';
+import { agentQuickPickerOpen, boardOpen, settingsOpen } from '../chrome/events';
+import { activeTabIndex, tabViews } from './tabs-store';
+import { settings } from '../settings/settings-store';
+import { DEFAULT_SETTINGS } from '../settings/settings-schema';
+import { sendAgentNotification } from '../lib/native-notification';
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
 import {
   fakePane,
   flush,
   freshWindowFocusController,
   processInfo,
   setup,
-} from "./tab-manager.fixtures";
+} from './tab-manager.fixtures';
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
 // `@tauri-apps/plugin-notification` API, regardless of the
 // `agentNotifications` setting's value at the time.
-vi.mock("../lib/native-notification", () => ({
+vi.mock('../lib/native-notification', () => ({
   sendAgentNotification: vi.fn(),
 }));
 
@@ -48,7 +41,7 @@ vi.mock("../lib/native-notification", () => ({
 let windowFocus = freshWindowFocusController();
 const windowCloseCalls: number[] = [];
 
-vi.mock("../host/window-host", () => ({
+vi.mock('../host/window-host', () => ({
   // `getCurrentWindow` and `getCurrentWebview` were separate Tauri modules and
   // are now one facade, so a single factory must supply both — two vi.mock
   // calls for the same path would silently keep only the last.
@@ -79,10 +72,10 @@ vi.mock("../host/window-host", () => ({
 beforeEach(() => {
   resetDesktopEnvironmentForTests();
   initializeDesktopEnvironment({
-    platform: "macos",
-    homeDir: "/Users/dev",
+    platform: 'macos',
+    homeDir: '/Users/dev',
   });
-  document.body.innerHTML = "";
+  document.body.innerHTML = '';
   tabViews.value = [];
   activeTabIndex.value = 0;
   windowFocus = freshWindowFocusController();
@@ -101,21 +94,21 @@ afterEach(() => {
   agentQuickPickerOpen.value = false;
 });
 
-describe("createTabManager toggle-settings routing (⌘, / Settings… menu item)", () => {
+describe('createTabManager toggle-settings routing (⌘, / Settings… menu item)', () => {
   afterEach(() => {
     boardOpen.value = false;
     settingsOpen.value = false;
   });
 
   function commaKeydown(): KeyboardEvent {
-    return new KeyboardEvent("keydown", {
-      key: ",",
+    return new KeyboardEvent('keydown', {
+      key: ',',
       metaKey: true,
       bubbles: true,
     });
   }
 
-  it("⌘, routes through onToggleSettings exactly once, the same pattern Cmd+Shift+A uses for onRequestAttentionFocus", async () => {
+  it('⌘, routes through onToggleSettings exactly once, the same pattern Cmd+Shift+A uses for onRequestAttentionFocus', async () => {
     const onToggleSettings = vi.fn();
     const { tm } = setup({ deps: { onToggleSettings } });
     await tm.init();
@@ -129,7 +122,7 @@ describe("createTabManager toggle-settings routing (⌘, / Settings… menu item
     tm.dispose();
   });
 
-  it("without the dep: ⌘, is a safe no-op — no throw, nothing to toggle", async () => {
+  it('without the dep: ⌘, is a safe no-op — no throw, nothing to toggle', async () => {
     const { tm } = setup({}); // no onToggleSettings
     await tm.init();
     await flush();
@@ -145,35 +138,35 @@ describe("createTabManager toggle-settings routing (⌘, / Settings… menu item
     await tm.init();
     await flush();
 
-    tm.runAction("toggle-settings");
+    tm.runAction('toggle-settings');
 
     expect(onToggleSettings).toHaveBeenCalledTimes(1);
 
     tm.dispose();
   });
 
-  it("is NOT blocked by the overlay scope guard while Settings is already open — the case that would otherwise strand the panel open forever", async () => {
+  it('is NOT blocked by the overlay scope guard while Settings is already open — the case that would otherwise strand the panel open forever', async () => {
     const onToggleSettings = vi.fn();
     const { tm } = setup({ deps: { onToggleSettings } });
     await tm.init();
     await flush();
 
     settingsOpen.value = true;
-    tm.runAction("toggle-settings");
+    tm.runAction('toggle-settings');
 
     expect(onToggleSettings).toHaveBeenCalledTimes(1);
 
     tm.dispose();
   });
 
-  it("is NOT blocked while the Open board is up either — matches clicking the always-reachable gear button", async () => {
+  it('is NOT blocked while the Open board is up either — matches clicking the always-reachable gear button', async () => {
     const onToggleSettings = vi.fn();
     const { tm } = setup({ deps: { onToggleSettings } });
     await tm.init();
     await flush();
 
     boardOpen.value = true;
-    tm.runAction("toggle-settings");
+    tm.runAction('toggle-settings');
 
     expect(onToggleSettings).toHaveBeenCalledTimes(1);
 
@@ -185,14 +178,14 @@ describe("createTabManager toggle-settings routing (⌘, / Settings… menu item
 // fewer than 9 tabs and just plain wrong with more — macOS convention
 // (Safari, Chrome, iTerm2, Terminal.app) is that ⌘9 always jumps to the
 // LAST tab, whatever the current count.
-describe("select-last-tab (⌘9) — always the last tab, never a fixed index 8", () => {
+describe('select-last-tab (⌘9) — always the last tab, never a fixed index 8', () => {
   async function nTabs(tm: TabManager, count: number): Promise<void> {
     for (let i = 0; i < count; i += 1) {
       await tm.materialize({ layout: null, cwds: [] });
     }
   }
 
-  it("with 3 tabs, ⌘9 selects index 2 — the last tab, not index 8", async () => {
+  it('with 3 tabs, ⌘9 selects index 2 — the last tab, not index 8', async () => {
     const { tm } = setup({});
     await nTabs(tm, 3);
     await tm.init();
@@ -201,7 +194,7 @@ describe("select-last-tab (⌘9) — always the last tab, never a fixed index 8"
     await flush();
     expect(activeTabIndex.value).toBe(0);
 
-    tm.runAction("select-last-tab");
+    tm.runAction('select-last-tab');
     await flush();
 
     expect(activeTabIndex.value).toBe(2);
@@ -209,7 +202,7 @@ describe("select-last-tab (⌘9) — always the last tab, never a fixed index 8"
     tm.dispose();
   });
 
-  it("with 12 tabs, ⌘9 selects index 11 — always the last tab, whatever the count", async () => {
+  it('with 12 tabs, ⌘9 selects index 11 — always the last tab, whatever the count', async () => {
     const { tm } = setup({});
     await nTabs(tm, 12);
     await tm.init();
@@ -218,7 +211,7 @@ describe("select-last-tab (⌘9) — always the last tab, never a fixed index 8"
     await flush();
     expect(activeTabIndex.value).toBe(0);
 
-    tm.runAction("select-last-tab");
+    tm.runAction('select-last-tab');
     await flush();
 
     expect(activeTabIndex.value).toBe(11);
@@ -226,13 +219,13 @@ describe("select-last-tab (⌘9) — always the last tab, never a fixed index 8"
     tm.dispose();
   });
 
-  it("with no tabs, ⌘9 is a safe no-op", async () => {
+  it('with no tabs, ⌘9 is a safe no-op', async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
     expect(activeTabIndex.value).toBe(-1);
 
-    expect(() => tm.runAction("select-last-tab")).not.toThrow();
+    expect(() => tm.runAction('select-last-tab')).not.toThrow();
     await flush();
 
     expect(activeTabIndex.value).toBe(-1);
@@ -241,25 +234,25 @@ describe("select-last-tab (⌘9) — always the last tab, never a fixed index 8"
   });
 });
 
-describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the last search)", () => {
+describe('createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the last search)', () => {
   afterEach(() => {
     boardOpen.value = false;
     settingsOpen.value = false;
     closeSearchBar();
   });
 
-  function searchSpies(): Pane["search"] {
+  function searchSpies(): Pane['search'] {
     return {
       findNext: vi.fn(() => true),
       findPrevious: vi.fn(() => true),
       clearDecorations: vi.fn(),
       onDidChangeResults: vi.fn(() => ({ dispose: vi.fn() })),
-    } as unknown as Pane["search"];
+    } as unknown as Pane['search'];
   }
 
   function gKeydown(shift = false): KeyboardEvent {
-    return new KeyboardEvent("keydown", {
-      key: "g",
+    return new KeyboardEvent('keydown', {
+      key: 'g',
       metaKey: true,
       shiftKey: shift,
       bubbles: true,
@@ -268,16 +261,14 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
 
   /** ⌘F, type, Escape — the exact flow the shortcut exists to continue. */
   function searchThenClose(pane: Pane, tm: TabManager, query: string): void {
-    tm.runAction("find");
-    const input = pane.element.querySelector(
-      ".search-bar__input",
-    ) as HTMLInputElement;
+    tm.runAction('find');
+    const input = pane.element.querySelector('.search-bar__input') as HTMLInputElement;
     input.value = query;
-    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
     closeSearchBar();
   }
 
-  it("find-next: blocked by the overlay guard while Settings is open, reaches the pane once it closes — via the real ⌘G keydown path", async () => {
+  it('find-next: blocked by the overlay guard while Settings is open, reaches the pane once it closes — via the real ⌘G keydown path', async () => {
     const panes = new Map<number, Pane>();
     const createPane: CreatePaneFn = (id, _settings, events) => {
       const pane = fakePane(id, events, { search: searchSpies() });
@@ -285,14 +276,12 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
       return pane;
     };
     const { tm } = setup({ deps: { createPane } });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ['/a'] });
     await tm.init();
     await flush();
 
-    searchThenClose(panes.get(1)!, tm, "needle");
-    const findNextSpy = panes.get(1)!.search.findNext as ReturnType<
-      typeof vi.fn
-    >;
+    searchThenClose(panes.get(1)!, tm, 'needle');
+    const findNextSpy = panes.get(1)!.search.findNext as ReturnType<typeof vi.fn>;
     findNextSpy.mockClear(); // drop the incremental-typing call above
 
     settingsOpen.value = true;
@@ -303,12 +292,12 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
     settingsOpen.value = false;
     window.dispatchEvent(gKeydown());
     await flush();
-    expect(findNextSpy).toHaveBeenCalledWith("needle", expect.anything());
+    expect(findNextSpy).toHaveBeenCalledWith('needle', expect.anything());
 
     tm.dispose();
   });
 
-  it("find-previous: blocked by the overlay guard while the Open board is up, reaches the pane once it closes — via the menu bridge (runAction)", async () => {
+  it('find-previous: blocked by the overlay guard while the Open board is up, reaches the pane once it closes — via the menu bridge (runAction)', async () => {
     const panes = new Map<number, Pane>();
     const createPane: CreatePaneFn = (id, _settings, events) => {
       const pane = fakePane(id, events, { search: searchSpies() });
@@ -316,23 +305,21 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
       return pane;
     };
     const { tm } = setup({ deps: { createPane } });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ['/a'] });
     await tm.init();
     await flush();
 
-    searchThenClose(panes.get(1)!, tm, "needle");
-    const findPrevSpy = panes.get(1)!.search.findPrevious as ReturnType<
-      typeof vi.fn
-    >;
+    searchThenClose(panes.get(1)!, tm, 'needle');
+    const findPrevSpy = panes.get(1)!.search.findPrevious as ReturnType<typeof vi.fn>;
     findPrevSpy.mockClear();
 
     boardOpen.value = true;
-    tm.runAction("find-previous");
+    tm.runAction('find-previous');
     expect(findPrevSpy).not.toHaveBeenCalled();
 
     boardOpen.value = false;
-    tm.runAction("find-previous");
-    expect(findPrevSpy).toHaveBeenCalledWith("needle", expect.anything());
+    tm.runAction('find-previous');
+    expect(findPrevSpy).toHaveBeenCalledWith('needle', expect.anything());
 
     tm.dispose();
   });
@@ -353,26 +340,22 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
       return pane;
     };
     const { tm } = setup({ deps: { createPane } });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ['/a'] });
     await tm.init();
     await flush();
 
-    tm.runAction("find"); // opens the bar
-    const input = panes
-      .get(1)!
-      .element.querySelector(".search-bar__input") as HTMLInputElement;
-    input.value = "needle";
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    const findNextSpy = panes.get(1)!.search.findNext as ReturnType<
-      typeof vi.fn
-    >;
+    tm.runAction('find'); // opens the bar
+    const input = panes.get(1)!.element.querySelector('.search-bar__input') as HTMLInputElement;
+    input.value = 'needle';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const findNextSpy = panes.get(1)!.search.findNext as ReturnType<typeof vi.fn>;
     findNextSpy.mockClear(); // drop the incremental-typing call above
     input.focus(); // bar stays OPEN — caret sits in its own input, not closed
 
-    tm.runAction("find-next"); // the real production path: menu bridge
+    tm.runAction('find-next'); // the real production path: menu bridge
     await flush();
 
-    expect(findNextSpy).toHaveBeenCalledWith("needle", expect.anything());
+    expect(findNextSpy).toHaveBeenCalledWith('needle', expect.anything());
 
     tm.dispose();
   });
@@ -387,7 +370,7 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
 // pane-tier action. Proven via a focus-call spy: swapDirection always calls
 // pane.focus() on success (never on a no-op), so a spy is a reliable proxy
 // for "the whole chain ran" without needing DOM slot inspection at this layer.
-describe("createTabManager swap-* actions (FR-032)", () => {
+describe('createTabManager swap-* actions (FR-032)', () => {
   afterEach(() => {
     settingsOpen.value = false;
   });
@@ -403,20 +386,20 @@ describe("createTabManager swap-* actions (FR-032)", () => {
       return pane;
     };
     const { tm } = setup({ deps: { createPane } });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
-    await tm.splitActive("row"); // active pane is now the freshly split one
+    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.splitActive('row'); // active pane is now the freshly split one
     await tm.init();
     await flush();
     return { tm, panes };
   }
 
-  it("swap-left via runAction reaches TerminalManager.swapDirection", async () => {
+  it('swap-left via runAction reaches TerminalManager.swapDirection', async () => {
     const { tm, panes } = await twoPaneSetup();
     // splitActive leaves the newer pane (id 2) active.
-    const focusSpy = vi.spyOn(panes.get(2)!, "focus");
+    const focusSpy = vi.spyOn(panes.get(2)!, 'focus');
     focusSpy.mockClear(); // drop splitActive's own focus call
 
-    tm.runAction("swap-left");
+    tm.runAction('swap-left');
     await flush();
 
     expect(focusSpy).toHaveBeenCalled(); // swapDirection only focuses on success
@@ -424,13 +407,13 @@ describe("createTabManager swap-* actions (FR-032)", () => {
     tm.dispose();
   });
 
-  it("swap-left via runAction is blocked while Settings is open", async () => {
+  it('swap-left via runAction is blocked while Settings is open', async () => {
     const { tm, panes } = await twoPaneSetup();
-    const focusSpy = vi.spyOn(panes.get(2)!, "focus");
+    const focusSpy = vi.spyOn(panes.get(2)!, 'focus');
     focusSpy.mockClear();
 
     settingsOpen.value = true;
-    tm.runAction("swap-left");
+    tm.runAction('swap-left');
     await flush();
 
     expect(focusSpy).not.toHaveBeenCalled();
@@ -443,20 +426,20 @@ describe("createTabManager swap-* actions (FR-032)", () => {
 // docs/plans/2026-07-27-keyboard-parity.md Task 3): both surfaces share the
 // exact same commands["copy-cwd"] closure via dispatchAction, so one set of
 // tests through runAction covers both — no separate Tauri event to test.
-describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
+describe('createTabManager copy-cwd (⌘⇧C / menu Edit)', () => {
   const originalClipboard = navigator.clipboard;
 
   afterEach(() => {
     boardOpen.value = false;
     settingsOpen.value = false;
-    Object.defineProperty(navigator, "clipboard", {
+    Object.defineProperty(navigator, 'clipboard', {
       value: originalClipboard,
       configurable: true,
     });
   });
 
   function stubClipboard(writeText: ReturnType<typeof vi.fn>): void {
-    Object.defineProperty(navigator, "clipboard", {
+    Object.defineProperty(navigator, 'clipboard', {
       value: { writeText },
       configurable: true,
     });
@@ -464,31 +447,31 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
 
   it("copies the active pane's polled CWD to the clipboard", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, processInfo(1, "/repo/spacevibe-deck", "zsh", "idle-shell", null)],
+      [1, processInfo(1, '/repo/spacevibe-deck', 'zsh', 'idle-shell', null)],
     ]);
     const writeText = vi.fn(() => Promise.resolve());
     stubClipboard(writeText);
     const { tm } = setup({ infos });
-    await tm.materialize({ layout: null, cwds: ["/repo/spacevibe-deck"] });
+    await tm.materialize({ layout: null, cwds: ['/repo/spacevibe-deck'] });
     await tm.init();
     await flush();
 
-    tm.runAction("copy-cwd");
+    tm.runAction('copy-cwd');
     await flush();
 
-    expect(writeText).toHaveBeenCalledWith("/repo/spacevibe-deck");
+    expect(writeText).toHaveBeenCalledWith('/repo/spacevibe-deck');
 
     tm.dispose();
   });
 
-  it("no active pane (no tabs yet) — no-op, clipboard untouched", async () => {
+  it('no active pane (no tabs yet) — no-op, clipboard untouched', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     stubClipboard(writeText);
     const { tm } = setup({});
     await tm.init();
     await flush();
 
-    tm.runAction("copy-cwd");
+    tm.runAction('copy-cwd');
     await flush();
 
     expect(writeText).not.toHaveBeenCalled();
@@ -496,15 +479,15 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
     tm.dispose();
   });
 
-  it("CWD not polled yet — no-op, clipboard untouched, no throw", async () => {
+  it('CWD not polled yet — no-op, clipboard untouched, no throw', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     stubClipboard(writeText);
     const { tm } = setup({}); // no `infos` — poller never learns a cwd for pane 1
-    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ['/a'] });
     await tm.init();
     await flush();
 
-    expect(() => tm.runAction("copy-cwd")).not.toThrow();
+    expect(() => tm.runAction('copy-cwd')).not.toThrow();
     await flush();
 
     expect(writeText).not.toHaveBeenCalled();
@@ -512,7 +495,7 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
     tm.dispose();
   });
 
-  it("clipboard write failure reports through notifyError, not a swallowed error", async () => {
+  it('clipboard write failure reports through notifyError, not a swallowed error', async () => {
     const panes = new Map<number, Pane>();
     const createPane: CreatePaneFn = (id, _settings, events) => {
       const pane = fakePane(id, events);
@@ -520,40 +503,38 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
       return pane;
     };
     const infos = new Map<number, PaneProcessInfo>([
-      [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
+      [1, processInfo(1, '/repo', 'zsh', 'idle-shell', null)],
     ]);
-    const writeText = vi.fn(() => Promise.reject(new Error("denied")));
+    const writeText = vi.fn(() => Promise.reject(new Error('denied')));
     stubClipboard(writeText);
     const { tm } = setup({ infos, deps: { createPane } });
-    await tm.materialize({ layout: null, cwds: ["/repo"] });
+    await tm.materialize({ layout: null, cwds: ['/repo'] });
     await tm.init();
     await flush();
-    const writelnSpy = vi.spyOn(panes.get(1)!, "writeln");
+    const writelnSpy = vi.spyOn(panes.get(1)!, 'writeln');
 
-    tm.runAction("copy-cwd");
+    tm.runAction('copy-cwd');
     await flush();
 
     expect(writelnSpy).toHaveBeenCalledTimes(1);
-    expect(writelnSpy.mock.calls[0]![0]).toContain(
-      "Couldn't copy the working directory",
-    );
+    expect(writelnSpy.mock.calls[0]![0]).toContain("Couldn't copy the working directory");
 
     tm.dispose();
   });
 
-  it("is blocked while Settings is open, like every other pane-tier action", async () => {
+  it('is blocked while Settings is open, like every other pane-tier action', async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
+      [1, processInfo(1, '/repo', 'zsh', 'idle-shell', null)],
     ]);
     const writeText = vi.fn(() => Promise.resolve());
     stubClipboard(writeText);
     const { tm } = setup({ infos });
-    await tm.materialize({ layout: null, cwds: ["/repo"] });
+    await tm.materialize({ layout: null, cwds: ['/repo'] });
     await tm.init();
     await flush();
 
     settingsOpen.value = true;
-    tm.runAction("copy-cwd");
+    tm.runAction('copy-cwd');
     await flush();
 
     expect(writeText).not.toHaveBeenCalled();
@@ -566,7 +547,7 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
 // docs/plans/2026-07-27-keyboard-parity.md Task 4): routing + overlay-guard
 // gating only — TerminalManager.scrollActivePage/scrollActiveToEdge's own
 // delegation is covered directly in terminal-manager.test.ts.
-describe("createTabManager scroll-page-up/down, scroll-to-top/bottom (Task 4)", () => {
+describe('createTabManager scroll-page-up/down, scroll-to-top/bottom (Task 4)', () => {
   afterEach(() => {
     settingsOpen.value = false;
   });
@@ -582,18 +563,18 @@ describe("createTabManager scroll-page-up/down, scroll-to-top/bottom (Task 4)", 
       return pane;
     };
     const { tm } = setup({ deps: { createPane } });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ['/a'] });
     await tm.init();
     await flush();
     return { tm, panes };
   }
 
-  it("scroll-page-up/down route to scrollPage(-1)/scrollPage(1) on the active pane", async () => {
+  it('scroll-page-up/down route to scrollPage(-1)/scrollPage(1) on the active pane', async () => {
     const { tm, panes } = await onePaneSetup();
-    const scrollPageSpy = vi.spyOn(panes.get(1)!, "scrollPage");
+    const scrollPageSpy = vi.spyOn(panes.get(1)!, 'scrollPage');
 
-    tm.runAction("scroll-page-up");
-    tm.runAction("scroll-page-down");
+    tm.runAction('scroll-page-up');
+    tm.runAction('scroll-page-down');
     await flush();
 
     expect(scrollPageSpy).toHaveBeenNthCalledWith(1, -1);
@@ -604,26 +585,26 @@ describe("createTabManager scroll-page-up/down, scroll-to-top/bottom (Task 4)", 
 
   it("scroll-to-top/scroll-to-bottom route to scrollToEdge('top')/('bottom') on the active pane", async () => {
     const { tm, panes } = await onePaneSetup();
-    const scrollToEdgeSpy = vi.spyOn(panes.get(1)!, "scrollToEdge");
+    const scrollToEdgeSpy = vi.spyOn(panes.get(1)!, 'scrollToEdge');
 
-    tm.runAction("scroll-to-top");
-    tm.runAction("scroll-to-bottom");
+    tm.runAction('scroll-to-top');
+    tm.runAction('scroll-to-bottom');
     await flush();
 
-    expect(scrollToEdgeSpy).toHaveBeenNthCalledWith(1, "top");
-    expect(scrollToEdgeSpy).toHaveBeenNthCalledWith(2, "bottom");
+    expect(scrollToEdgeSpy).toHaveBeenNthCalledWith(1, 'top');
+    expect(scrollToEdgeSpy).toHaveBeenNthCalledWith(2, 'bottom');
 
     tm.dispose();
   });
 
-  it("all four are blocked while Settings is open, like every other pane-tier action", async () => {
+  it('all four are blocked while Settings is open, like every other pane-tier action', async () => {
     const { tm, panes } = await onePaneSetup();
-    const scrollPageSpy = vi.spyOn(panes.get(1)!, "scrollPage");
-    const scrollToEdgeSpy = vi.spyOn(panes.get(1)!, "scrollToEdge");
+    const scrollPageSpy = vi.spyOn(panes.get(1)!, 'scrollPage');
+    const scrollToEdgeSpy = vi.spyOn(panes.get(1)!, 'scrollToEdge');
 
     settingsOpen.value = true;
-    tm.runAction("scroll-page-up");
-    tm.runAction("scroll-to-top");
+    tm.runAction('scroll-page-up');
+    tm.runAction('scroll-to-top');
     await flush();
 
     expect(scrollPageSpy).not.toHaveBeenCalled();

@@ -21,60 +21,43 @@ import {
   FileText,
   Folder,
   FolderOpen,
-} from "@phosphor-icons/react";
-import type { DeckIconComponent } from "../../ui/controls/deck-icon";
-import type { TreeRow } from "../file-tree";
+} from '@phosphor-icons/react';
+import type { DeckIconComponent } from '../../ui/controls/deck-icon';
+import type { TreeRow } from '../file-tree';
 
 const CODE_EXTENSIONS: readonly string[] = [
-  "ts",
-  "tsx",
-  "js",
-  "jsx",
-  "mjs",
-  "cjs",
-  "rs",
-  "py",
-  "go",
-  "css",
-  "html",
-  "toml",
-  "yaml",
-  "yml",
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
+  'mjs',
+  'cjs',
+  'rs',
+  'py',
+  'go',
+  'css',
+  'html',
+  'toml',
+  'yaml',
+  'yml',
 ];
 
-const IMAGE_EXTENSIONS: readonly string[] = [
-  "png",
-  "jpg",
-  "jpeg",
-  "gif",
-  "svg",
-  "webp",
-  "ico",
-];
+const IMAGE_EXTENSIONS: readonly string[] = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico'];
 
-const TEXT_EXTENSIONS: readonly string[] = ["md", "mdx", "txt"];
+const TEXT_EXTENSIONS: readonly string[] = ['md', 'mdx', 'txt'];
 
 /** Extension → glyph, built once from the readable lists above. */
 const EXTENSION_ICONS: ReadonlyMap<string, DeckIconComponent> = new Map([
-  ...CODE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [
-    extension,
-    FileCode,
-  ]),
-  ["json", BracketsCurly],
-  ...IMAGE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [
-    extension,
-    FileImage,
-  ]),
-  ...TEXT_EXTENSIONS.map((extension): [string, DeckIconComponent] => [
-    extension,
-    FileText,
-  ]),
+  ...CODE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [extension, FileCode]),
+  ['json', BracketsCurly],
+  ...IMAGE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [extension, FileImage]),
+  ...TEXT_EXTENSIONS.map((extension): [string, DeckIconComponent] => [extension, FileText]),
 ]);
 
 /** The part after the last dot, lowercased. A leading-dot dotfile (`.env`)
  * has no extension in this sense — it is a whole name, not a suffixed one. */
 function extensionOf(name: string): string | null {
-  const dot = name.lastIndexOf(".");
+  const dot = name.lastIndexOf('.');
   if (dot <= 0) {
     return null;
   }

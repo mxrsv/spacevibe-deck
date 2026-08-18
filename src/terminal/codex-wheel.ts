@@ -1,7 +1,7 @@
-import type { DesktopPlatform } from "../lib/platform";
+import type { DesktopPlatform } from '../lib/platform';
 
-export const CODEX_PAGE_UP = "\x1b[5~";
-export const CODEX_PAGE_DOWN = "\x1b[6~";
+export const CODEX_PAGE_UP = '\x1b[5~';
+export const CODEX_PAGE_DOWN = '\x1b[6~';
 
 const DOM_DELTA_PIXEL = 0;
 const PIXEL_PAGE_THRESHOLD = 40;
@@ -30,16 +30,13 @@ interface CodexWheelDeps {
  * keys or an SGR mouse report. Pixel-mode touchpad events are accumulated to
  * avoid turning every tiny delta into a whole-page jump.
  */
-export function createCodexWheelHandler(
-  deps: CodexWheelDeps,
-): (event: WheelEvent) => boolean {
+export function createCodexWheelHandler(deps: CodexWheelDeps): (event: WheelEvent) => boolean {
   let pixelRemainder = 0;
 
   return (event) => {
-    const modified =
-      event.ctrlKey || event.shiftKey || event.altKey || event.metaKey;
+    const modified = event.ctrlKey || event.shiftKey || event.altKey || event.metaKey;
     if (
-      deps.platform !== "windows" ||
+      deps.platform !== 'windows' ||
       !deps.isCodex() ||
       !deps.isAlternateBuffer() ||
       modified ||
@@ -51,10 +48,7 @@ export function createCodexWheelHandler(
 
     let sequence: string | null = null;
     if (event.deltaMode === DOM_DELTA_PIXEL) {
-      if (
-        pixelRemainder !== 0 &&
-        Math.sign(pixelRemainder) !== Math.sign(event.deltaY)
-      ) {
+      if (pixelRemainder !== 0 && Math.sign(pixelRemainder) !== Math.sign(event.deltaY)) {
         pixelRemainder = 0;
       }
       pixelRemainder += event.deltaY;

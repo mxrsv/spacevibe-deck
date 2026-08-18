@@ -12,9 +12,9 @@
  *  - a lone trailing ESC is kept, because the `]` may be in the next chunk;
  *  - a payload that is not valid UTF-8 is skipped rather than throwing.
  */
-import path from "node:path";
-import fs from "node:fs";
-import fsPromises from "node:fs/promises";
+import path from 'node:path';
+import fs from 'node:fs';
+import fsPromises from 'node:fs/promises';
 
 const OSC_PREFIX = Buffer.from([0x1b, 0x5d]); // ESC ]
 const MAX_PENDING_BYTES = 128 * 1024;
@@ -23,8 +23,8 @@ const BEL = 0x07;
 const BACKSLASH = 0x5c;
 
 export type ShellIntegrationEvent =
-  | { readonly kind: "prompt-ready" }
-  | { readonly kind: "current-directory"; readonly value: string };
+  | { readonly kind: 'prompt-ready' }
+  | { readonly kind: 'current-directory'; readonly value: string };
 
 export interface ParseResult {
   readonly parser: ShellIntegrationParser;
@@ -40,7 +40,7 @@ export class ShellIntegrationParser {
   }
 
   parse(chunk: string): ParseResult {
-    let input = Buffer.concat([this.pending, Buffer.from(chunk, "utf8")]);
+    let input = Buffer.concat([this.pending, Buffer.from(chunk, 'utf8')]);
     if (input.length > MAX_PENDING_BYTES) {
       input = input.subarray(input.length - MAX_PENDING_BYTES);
     }
@@ -62,9 +62,7 @@ export class ShellIntegrationParser {
         break;
       }
       const payloadEnd = payloadStart + terminator.payloadLength;
-      const payload = decodeUtf8Strict(
-        input.subarray(payloadStart, payloadEnd),
-      );
+      const payload = decodeUtf8Strict(input.subarray(payloadStart, payloadEnd));
       if (payload !== null) {
         const event = parsePayload(payload);
         if (event !== null) {
@@ -114,27 +112,21 @@ function findTerminator(input: Buffer): Terminator | null {
  * malformed payload is skipped here exactly as it is there.
  */
 function decodeUtf8Strict(bytes: Buffer): string | null {
-  const decoded = bytes.toString("utf8");
-  return Buffer.compare(Buffer.from(decoded, "utf8"), bytes) === 0
-    ? decoded
-    : null;
+  const decoded = bytes.toString('utf8');
+  return Buffer.compare(Buffer.from(decoded, 'utf8'), bytes) === 0 ? decoded : null;
 }
 
 function parsePayload(payload: string): ShellIntegrationEvent | null {
-  if (payload === "133;B") {
-    return { kind: "prompt-ready" };
+  if (payload === '133;B') {
+    return { kind: 'prompt-ready' };
   }
-  if (!payload.startsWith("9;9;")) {
+  if (!payload.startsWith('9;9;')) {
     return null;
   }
-  const raw = payload.slice("9;9;".length).trim();
+  const raw = payload.slice('9;9;'.length).trim();
   const unquoted =
-    raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')
-      ? raw.slice(1, -1)
-      : raw;
-  return unquoted.length > 0
-    ? { kind: "current-directory", value: unquoted }
-    : null;
+    raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"') ? raw.slice(1, -1) : raw;
+  return unquoted.length > 0 ? { kind: 'current-directory', value: unquoted } : null;
 }
 
 /**
@@ -178,10 +170,7 @@ export function isProbableCwd(candidate: string): boolean {
  * SYNCHRONOUS, and therefore only for callers that are not on the event loop —
  * tests, and nothing else. The PTY path uses `validateCwdCandidates` below.
  */
-export function retainValidCwd(
-  current: string | null,
-  candidate: string,
-): string | null {
+export function retainValidCwd(current: string | null, candidate: string): string | null {
   if (!isProbableCwd(candidate)) {
     return current;
   }
@@ -215,9 +204,7 @@ const MAX_CWD_PROBES = 8;
  * Only the LAST few candidates are probed: the newest report is the one that
  * matters, so scanning backwards finds the answer without walking the noise.
  */
-export async function validateCwdCandidates(
-  candidates: readonly string[],
-): Promise<string | null> {
+export async function validateCwdCandidates(candidates: readonly string[]): Promise<string | null> {
   const probable = candidates.filter(isProbableCwd);
   const recent = probable.slice(-MAX_CWD_PROBES);
   for (let index = recent.length - 1; index >= 0; index -= 1) {

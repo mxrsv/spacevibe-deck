@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import { discoverClaude } from "./discover";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { discoverClaude } from './discover';
 
 const temps: string[] = [];
 afterEach(() => {
@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 function fixtureHome(): string {
-  const home = mkdtempSync(path.join(tmpdir(), "usage-discover-"));
+  const home = mkdtempSync(path.join(tmpdir(), 'usage-discover-'));
   temps.push(home);
   return home;
 }
@@ -20,34 +20,31 @@ function fixtureHome(): string {
 function write(home: string, rel: string): string {
   const target = path.join(home, rel);
   mkdirSync(path.dirname(target), { recursive: true });
-  writeFileSync(target, "{}\n");
+  writeFileSync(target, '{}\n');
   return target;
 }
 
-describe("discoverClaude", () => {
-  it("reaches subagent transcripts nested under subagents/workflows/<id>/", () => {
+describe('discoverClaude', () => {
+  it('reaches subagent transcripts nested under subagents/workflows/<id>/', () => {
     const home = fixtureHome();
-    const session = write(home, ".claude/projects/proj-a/session-1.jsonl");
-    const flat = write(
-      home,
-      ".claude/projects/proj-a/session-3/subagents/agent-1.jsonl",
-    );
+    const session = write(home, '.claude/projects/proj-a/session-1.jsonl');
+    const flat = write(home, '.claude/projects/proj-a/session-3/subagents/agent-1.jsonl');
     const nested = write(
       home,
-      ".claude/projects/proj-a/session-3/subagents/workflows/wf-1/agent-2.jsonl",
+      '.claude/projects/proj-a/session-3/subagents/workflows/wf-1/agent-2.jsonl',
     );
 
     const found = discoverClaude(home);
-    expect(found.state).toBe("present");
+    expect(found.state).toBe('present');
     expect(found.files).toEqual([session, flat, nested]);
   });
 
-  it("treats a project without a subagents directory as present, not unreadable", () => {
+  it('treats a project without a subagents directory as present, not unreadable', () => {
     const home = fixtureHome();
-    const session = write(home, ".claude/projects/proj-a/session-1.jsonl");
+    const session = write(home, '.claude/projects/proj-a/session-1.jsonl');
 
     const found = discoverClaude(home);
-    expect(found.state).toBe("present");
+    expect(found.state).toBe('present');
     expect(found.files).toEqual([session]);
   });
 });

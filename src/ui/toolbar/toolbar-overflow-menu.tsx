@@ -1,11 +1,7 @@
-import { useEffect, useRef } from "preact/hooks";
-import { DeckIcon, RAIL_ICON } from "../controls/deck-icon";
-import { groupToolbarItems } from "./toolbar-overflow";
-import {
-  isUnavailable,
-  unavailableReason,
-  type ToolbarItem,
-} from "./toolbar-item";
+import { useEffect, useRef } from 'preact/hooks';
+import { DeckIcon, RAIL_ICON } from '../controls/deck-icon';
+import { groupToolbarItems } from './toolbar-overflow';
+import { isUnavailable, unavailableReason, type ToolbarItem } from './toolbar-item';
 
 /**
  * Where the actions the bar could not fit go.
@@ -30,12 +26,7 @@ interface OverflowMenuProps {
   readonly onClose: () => void;
 }
 
-export function ToolbarOverflowMenu({
-  items,
-  anchor,
-  triggerEl,
-  onClose,
-}: OverflowMenuProps) {
+export function ToolbarOverflowMenu({ items, anchor, triggerEl, onClose }: OverflowMenuProps) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   // `role="menu"` promises arrow-key movement, so the promise is kept here:
@@ -43,7 +34,7 @@ export function ToolbarOverflowMenu({
   // wraparound, Home/End jump. Unavailable rows stay in the cycle — they are
   // focusable on purpose, so their reason is reachable without a pointer.
   const rows = (): HTMLButtonElement[] =>
-    Array.from(rootRef.current?.querySelectorAll("button") ?? []);
+    Array.from(rootRef.current?.querySelectorAll('button') ?? []);
 
   useEffect(() => {
     rows()[0]?.focus();
@@ -52,24 +43,21 @@ export function ToolbarOverflowMenu({
   useEffect(() => {
     const onPointerDown = (event: PointerEvent): void => {
       const target = event.target as Node;
-      if (
-        rootRef.current?.contains(target) !== true &&
-        triggerEl?.contains(target) !== true
-      ) {
+      if (rootRef.current?.contains(target) !== true && triggerEl?.contains(target) !== true) {
         onClose();
       }
     };
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
         return;
       }
       if (
-        event.key !== "ArrowDown" &&
-        event.key !== "ArrowUp" &&
-        event.key !== "Home" &&
-        event.key !== "End"
+        event.key !== 'ArrowDown' &&
+        event.key !== 'ArrowUp' &&
+        event.key !== 'Home' &&
+        event.key !== 'End'
       ) {
         return;
       }
@@ -80,22 +68,22 @@ export function ToolbarOverflowMenu({
       event.preventDefault();
       const current = all.indexOf(document.activeElement as HTMLButtonElement);
       const next =
-        event.key === "Home"
+        event.key === 'Home'
           ? 0
-          : event.key === "End"
+          : event.key === 'End'
             ? all.length - 1
-            : event.key === "ArrowDown"
+            : event.key === 'ArrowDown'
               ? (current + 1) % all.length
               : current <= 0
                 ? all.length - 1
                 : current - 1;
       all[next]?.focus();
     };
-    document.addEventListener("pointerdown", onPointerDown, true);
-    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown, true);
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown);
     };
   }, [triggerEl, onClose]);
 
@@ -118,8 +106,8 @@ export function ToolbarOverflowMenu({
                 type="button"
                 role="menuitem"
                 class={`toolbar-menu__row ${
-                  item.state.kind === "active" ? "is-active" : ""
-                } ${reason !== null ? "is-unavailable" : ""}`}
+                  item.state.kind === 'active' ? 'is-active' : ''
+                } ${reason !== null ? 'is-unavailable' : ''}`}
                 aria-disabled={isUnavailable(item)}
                 onClick={() => {
                   if (isUnavailable(item)) {
@@ -135,9 +123,7 @@ export function ToolbarOverflowMenu({
                 <DeckIcon icon={item.icon} size={RAIL_ICON} />
                 <span class="toolbar-menu__label">{item.label}</span>
                 {reason === null ? (
-                  item.shortcut !== null && (
-                    <kbd class="toolbar-menu__kbd">{item.shortcut}</kbd>
-                  )
+                  item.shortcut !== null && <kbd class="toolbar-menu__kbd">{item.shortcut}</kbd>
                 ) : (
                   <span class="toolbar-menu__reason">{reason}</span>
                 )}

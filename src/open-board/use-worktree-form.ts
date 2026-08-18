@@ -3,10 +3,10 @@
  * F8 — the board file was already at its split threshold before this task's
  * fields and handlers landed on top of it.
  */
-import { useSignal } from "@preact/signals";
-import { open } from "../host/dialog-host";
-import { addWorktree, type WorktreeAddErrorCode } from "../host/worktree-host";
-import { suggestWorktreeDest } from "../lib/worktree-path";
+import { useSignal } from '@preact/signals';
+import { open } from '../host/dialog-host';
+import { addWorktree, type WorktreeAddErrorCode } from '../host/worktree-host';
+import { suggestWorktreeDest } from '../lib/worktree-path';
 
 export interface WorktreeFormState {
   readonly repoPath: string;
@@ -33,9 +33,9 @@ export interface UseWorktreeForm {
 }
 
 export function useWorktreeForm(): UseWorktreeForm {
-  const repoPath = useSignal("");
-  const branch = useSignal("");
-  const dest = useSignal("");
+  const repoPath = useSignal('');
+  const branch = useSignal('');
+  const dest = useSignal('');
   // True once the user has typed in the destination field directly — stops
   // the repo/branch-driven prefill from clobbering a deliberate edit.
   const destTouched = useSignal(false);
@@ -49,9 +49,9 @@ export function useWorktreeForm(): UseWorktreeForm {
   }
 
   function reset(): void {
-    repoPath.value = "";
-    branch.value = "";
-    dest.value = "";
+    repoPath.value = '';
+    branch.value = '';
+    dest.value = '';
     destTouched.value = false;
     error.value = null;
     creating.value = false;
@@ -78,11 +78,11 @@ export function useWorktreeForm(): UseWorktreeForm {
   async function browseRepo(): Promise<void> {
     try {
       const picked = await open({ directory: true, multiple: false });
-      if (typeof picked === "string") {
+      if (typeof picked === 'string') {
         setRepo(picked);
       }
     } catch (err: unknown) {
-      console.warn("Folder picker failed:", err);
+      console.warn('Folder picker failed:', err);
     }
   }
 
@@ -93,7 +93,7 @@ export function useWorktreeForm(): UseWorktreeForm {
     const repo = repoPath.value;
     const branchName = branch.value.trim();
     const destPath = dest.value.trim();
-    if (repo === "" || branchName === "" || destPath === "") {
+    if (repo === '' || branchName === '' || destPath === '') {
       return;
     }
     creating.value = true;

@@ -8,13 +8,9 @@
  * waits on the in-flight scan (on the very first cold scan there is nothing
  * better to return).
  */
-import { loadCache, writeCache } from "./cache";
-import { buildSnapshot, scanAll } from "./scan";
-import {
-  emptyCache,
-  type UsageCache,
-  type UsageSnapshot,
-} from "./model";
+import { loadCache, writeCache } from './cache';
+import { buildSnapshot, scanAll } from './scan';
+import { emptyCache, type UsageCache, type UsageSnapshot } from './model';
 
 /**
  * The answer when the home directory cannot be resolved at all.
@@ -27,8 +23,8 @@ export function unreadableSnapshot(scannedAtMs: number): UsageSnapshot {
     scannedAtMs,
     buckets: [],
     sources: [
-      { agent: "claude", state: "unreadable", filesScanned: 0 },
-      { agent: "codex", state: "unreadable", filesScanned: 0 },
+      { agent: 'claude', state: 'unreadable', filesScanned: 0 },
+      { agent: 'codex', state: 'unreadable', filesScanned: 0 },
     ],
     skippedLines: 0,
   };

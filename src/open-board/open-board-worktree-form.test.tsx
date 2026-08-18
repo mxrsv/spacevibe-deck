@@ -1,27 +1,24 @@
 // @vitest-environment jsdom
-import { render } from "preact";
-import { act } from "preact/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  OpenBoardWorktreeForm,
-  worktreeErrorCopy,
-} from "./open-board-worktree-form";
-import type { RecentWorkspace } from "../lib/workspace-recents";
-import type { WorktreeAddErrorCode } from "../host/worktree-host";
+import { render } from 'preact';
+import { act } from 'preact/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { OpenBoardWorktreeForm, worktreeErrorCopy } from './open-board-worktree-form';
+import type { RecentWorkspace } from '../lib/workspace-recents';
+import type { WorktreeAddErrorCode } from '../host/worktree-host';
 
 const RECENTS: RecentWorkspace[] = [
-  { path: "/Users/dev/deck", lastOpenedAt: 1 },
-  { path: "/Users/dev/hub", lastOpenedAt: 2 },
+  { path: '/Users/dev/deck', lastOpenedAt: 1 },
+  { path: '/Users/dev/hub', lastOpenedAt: 2 },
 ];
 
-describe("worktreeErrorCopy", () => {
-  it("gives every error code its own friendly sentence", () => {
+describe('worktreeErrorCopy', () => {
+  it('gives every error code its own friendly sentence', () => {
     const codes: WorktreeAddErrorCode[] = [
-      "not-a-repository",
-      "branch-exists",
-      "destination-exists",
-      "git-not-found",
-      "unknown",
+      'not-a-repository',
+      'branch-exists',
+      'destination-exists',
+      'git-not-found',
+      'unknown',
     ];
     const seen = new Set<string>();
     for (const code of codes) {
@@ -33,12 +30,12 @@ describe("worktreeErrorCopy", () => {
   });
 });
 
-describe("OpenBoardWorktreeForm", () => {
+describe('OpenBoardWorktreeForm', () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
-    document.body.innerHTML = "";
-    host = document.createElement("div");
+    document.body.innerHTML = '';
+    host = document.createElement('div');
     document.body.appendChild(host);
   });
 
@@ -48,9 +45,7 @@ describe("OpenBoardWorktreeForm", () => {
     });
   });
 
-  function mount(
-    overrides: Partial<Parameters<typeof OpenBoardWorktreeForm>[0]> = {},
-  ) {
+  function mount(overrides: Partial<Parameters<typeof OpenBoardWorktreeForm>[0]> = {}) {
     const handlers = {
       onRepoChange: vi.fn(),
       onBrowseRepo: vi.fn(),
@@ -78,94 +73,88 @@ describe("OpenBoardWorktreeForm", () => {
     return handlers;
   }
 
-  it("lists recents in the repository dropdown", () => {
+  it('lists recents in the repository dropdown', () => {
     mount();
-    const options = [...host.querySelectorAll("#wtf-repo option")].map(
+    const options = [...host.querySelectorAll('#wtf-repo option')].map(
       (option) => option.textContent,
     );
-    expect(options.some((text) => text?.startsWith("deck"))).toBe(true);
-    expect(options.some((text) => text?.startsWith("hub"))).toBe(true);
+    expect(options.some((text) => text?.startsWith('deck'))).toBe(true);
+    expect(options.some((text) => text?.startsWith('hub'))).toBe(true);
   });
 
-  it("calls onBrowseRepo from the Browse button", () => {
+  it('calls onBrowseRepo from the Browse button', () => {
     const handlers = mount();
-    const browse = host.querySelector<HTMLButtonElement>(".wtf__browse");
+    const browse = host.querySelector<HTMLButtonElement>('.wtf__browse');
     act(() => {
-      browse?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      browse?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     expect(handlers.onBrowseRepo).toHaveBeenCalled();
   });
 
-  it("shows the friendly copy for the given error code, never raw git text", () => {
-    mount({ error: "not-a-repository" });
-    const notice = host.querySelector(".wtf__error");
-    expect(notice?.textContent).toBe(worktreeErrorCopy("not-a-repository"));
-    expect(notice?.textContent).not.toContain("fatal:");
+  it('shows the friendly copy for the given error code, never raw git text', () => {
+    mount({ error: 'not-a-repository' });
+    const notice = host.querySelector('.wtf__error');
+    expect(notice?.textContent).toBe(worktreeErrorCopy('not-a-repository'));
+    expect(notice?.textContent).not.toContain('fatal:');
   });
 
-  it("renders no error element when there is no error", () => {
+  it('renders no error element when there is no error', () => {
     mount();
-    expect(host.querySelector(".wtf__error")).toBeNull();
+    expect(host.querySelector('.wtf__error')).toBeNull();
   });
 
-  it("disables Create worktree until repo, branch and destination are all filled", () => {
-    mount({ repoPath: "", branch: "", destPath: "" });
-    const submit = host.querySelector<HTMLButtonElement>(".btn--primary");
+  it('disables Create worktree until repo, branch and destination are all filled', () => {
+    mount({ repoPath: '', branch: '', destPath: '' });
+    const submit = host.querySelector<HTMLButtonElement>('.btn--primary');
     expect(submit?.disabled).toBe(true);
   });
 
-  it("enables Create worktree once every field is filled", () => {
-    mount({ repoPath: "/Users/dev/deck", branch: "feature/x", destPath: "/x" });
-    const submit = host.querySelector<HTMLButtonElement>(".btn--primary");
+  it('enables Create worktree once every field is filled', () => {
+    mount({ repoPath: '/Users/dev/deck', branch: 'feature/x', destPath: '/x' });
+    const submit = host.querySelector<HTMLButtonElement>('.btn--primary');
     expect(submit?.disabled).toBe(false);
   });
 
-  it("Enter in the branch field submits when the form is complete", () => {
+  it('Enter in the branch field submits when the form is complete', () => {
     const handlers = mount({
-      repoPath: "/Users/dev/deck",
-      branch: "feature/x",
-      destPath: "/x",
+      repoPath: '/Users/dev/deck',
+      branch: 'feature/x',
+      destPath: '/x',
     });
-    const branchInput = host.querySelector<HTMLInputElement>("#wtf-branch");
+    const branchInput = host.querySelector<HTMLInputElement>('#wtf-branch');
     act(() => {
-      branchInput?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      branchInput?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     });
     expect(handlers.onSubmit).toHaveBeenCalled();
   });
 
-  it("Enter does not submit an incomplete form", () => {
-    const handlers = mount({ repoPath: "", branch: "", destPath: "" });
-    const branchInput = host.querySelector<HTMLInputElement>("#wtf-branch");
+  it('Enter does not submit an incomplete form', () => {
+    const handlers = mount({ repoPath: '', branch: '', destPath: '' });
+    const branchInput = host.querySelector<HTMLInputElement>('#wtf-branch');
     act(() => {
-      branchInput?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      branchInput?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     });
     expect(handlers.onSubmit).not.toHaveBeenCalled();
   });
 
-  it("Escape in the destination field calls onBack", () => {
+  it('Escape in the destination field calls onBack', () => {
     const handlers = mount();
-    const destInput = host.querySelector<HTMLInputElement>("#wtf-dest");
+    const destInput = host.querySelector<HTMLInputElement>('#wtf-dest');
     act(() => {
-      destInput?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      destInput?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     });
     expect(handlers.onBack).toHaveBeenCalled();
   });
 
-  it("shows Creating… and disables submit while creating", () => {
+  it('shows Creating… and disables submit while creating', () => {
     mount({
-      repoPath: "/Users/dev/deck",
-      branch: "feature/x",
-      destPath: "/x",
+      repoPath: '/Users/dev/deck',
+      branch: 'feature/x',
+      destPath: '/x',
       creating: true,
     });
-    const submit = host.querySelector<HTMLButtonElement>(".btn--primary");
-    expect(submit?.textContent).toBe("Creating…");
+    const submit = host.querySelector<HTMLButtonElement>('.btn--primary');
+    expect(submit?.textContent).toBe('Creating…');
     expect(submit?.disabled).toBe(true);
   });
 });

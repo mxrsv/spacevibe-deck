@@ -1,11 +1,11 @@
-import type { ComponentChildren } from "preact";
-import type { PaneAgent } from "../../lib/process-info";
-import { AgentGlyph } from "../../ui/controls/agent-glyph";
-import { RailStatusMark } from "../../ui/agent-rail";
-import type { RailState } from "../../ui/agent-rail-model";
-import { agentRailNavigationSpecimen } from "../chrome-fixtures";
-import { SectionHead, Specimen } from "../specimen";
-import "./attention-direction.css";
+import type { ComponentChildren } from 'preact';
+import type { PaneAgent } from '../../lib/process-info';
+import { AgentGlyph } from '../../ui/controls/agent-glyph';
+import { RailStatusMark } from '../../ui/agent-rail';
+import type { RailState } from '../../ui/agent-rail-model';
+import { agentRailNavigationSpecimen } from '../chrome-fixtures';
+import { SectionHead, Specimen } from '../specimen';
+import './attention-direction.css';
 
 /**
  * Attention-first direction review (2026-08-17). PROPOSALS ONLY — nothing in
@@ -41,69 +41,69 @@ interface AttentionCluster {
 /** Mirrors the seeded rail content so current and proposed compare honestly. */
 const CLUSTERS: readonly AttentionCluster[] = [
   {
-    project: "spacevibe-deck",
+    project: 'spacevibe-deck',
     rows: [
       {
-        agent: "claude",
-        name: "claude",
-        age: "3m",
-        state: "working",
-        tail: "Running the vitest suite — 214 of 2619",
+        agent: 'claude',
+        name: 'claude',
+        age: '3m',
+        state: 'working',
+        tail: 'Running the vitest suite — 214 of 2619',
       },
       {
-        agent: "codex",
-        name: "architecture review",
-        age: "8m",
-        state: "asked",
-        tail: "Plan ready — approve the R4 fork before I refactor?",
+        agent: 'codex',
+        name: 'architecture review',
+        age: '8m',
+        state: 'asked',
+        tail: 'Plan ready — approve the R4 fork before I refactor?',
       },
       {
-        agent: "opencode",
-        name: "test sweep",
-        age: "30s",
-        state: "working",
-        tail: "Bisecting the flaky pane resize test",
+        agent: 'opencode',
+        name: 'test sweep',
+        age: '30s',
+        state: 'working',
+        tail: 'Bisecting the flaky pane resize test',
       },
     ],
   },
   {
-    project: "spacevibe-api",
+    project: 'spacevibe-api',
     rows: [
       {
-        agent: "codex",
-        name: "review",
-        age: "4m",
-        state: "asked",
-        tail: "Permission needed: prisma migrate dev",
+        agent: 'codex',
+        name: 'review',
+        age: '4m',
+        state: 'asked',
+        tail: 'Permission needed: prisma migrate dev',
       },
       {
-        agent: "claude",
-        name: "claude",
-        age: "1m",
-        state: "asked",
-        tail: "Which module owns the vote write path?",
+        agent: 'claude',
+        name: 'claude',
+        age: '1m',
+        state: 'asked',
+        tail: 'Which module owns the vote write path?',
       },
     ],
   },
   {
-    project: "spacevibe-hub",
+    project: 'spacevibe-hub',
     rows: [
       {
-        agent: "agy",
-        name: "agy",
-        age: "12m",
-        state: "failed",
-        tail: "npm install failed — lockfile conflict on preact",
+        agent: 'agy',
+        name: 'agy',
+        age: '12m',
+        state: 'failed',
+        tail: 'npm install failed — lockfile conflict on preact',
       },
     ],
   },
   {
-    project: "scratch",
-    rows: [{ agent: null, name: "zsh", age: "", state: "idle", tail: "" }],
+    project: 'scratch',
+    rows: [{ agent: null, name: 'zsh', age: '', state: 'idle', tail: '' }],
   },
 ];
 
-const ACTIONABLE: ReadonlySet<RailState> = new Set(["asked", "failed"]);
+const ACTIONABLE: ReadonlySet<RailState> = new Set(['asked', 'failed']);
 
 function RowGlyph({ agent }: { readonly agent: PaneAgent | null }) {
   return agent === null ? (
@@ -123,7 +123,7 @@ function RowGlyph({ agent }: { readonly agent: PaneAgent | null }) {
  *   actionable rows keep full strength plus the message line that already
  *   exists (DL-27.4).
  */
-function DrawnRail({ variant }: { readonly variant: "tail" | "dim" }) {
+function DrawnRail({ variant }: { readonly variant: 'tail' | 'dim' }) {
   return (
     <div class={`gxa-rail gxa-rail--${variant}`}>
       {CLUSTERS.map((cluster) => (
@@ -131,15 +131,15 @@ function DrawnRail({ variant }: { readonly variant: "tail" | "dim" }) {
           <div class="gxa-cluster__head">{cluster.project}</div>
           {cluster.rows.map((row) => {
             const loud = ACTIONABLE.has(row.state);
-            const showTail = row.tail !== "" && (variant === "tail" || loud);
+            const showTail = row.tail !== '' && (variant === 'tail' || loud);
             return (
               <div
-                class={`gxa-row ${loud ? "gxa-row--loud" : "gxa-row--quiet"}`}
+                class={`gxa-row ${loud ? 'gxa-row--loud' : 'gxa-row--quiet'}`}
                 key={`${cluster.project}-${row.name}`}
               >
                 <RowGlyph agent={row.agent} />
                 <span class="gxa-row__name">{row.name}</span>
-                {row.age !== "" && <span class="gxa-row__age">{row.age}</span>}
+                {row.age !== '' && <span class="gxa-row__age">{row.age}</span>}
                 <RailStatusMark state={row.state} />
                 {showTail && <span class="gxa-row__tail">{row.tail}</span>}
               </div>
@@ -153,7 +153,7 @@ function DrawnRail({ variant }: { readonly variant: "tail" | "dim" }) {
 
 interface FakePaneLine {
   readonly text: string;
-  readonly tone?: "ok" | "warn" | "err" | "dim";
+  readonly tone?: 'ok' | 'warn' | 'err' | 'dim';
 }
 
 interface FakePane {
@@ -165,36 +165,36 @@ interface FakePane {
 
 const FAKE_PANES: readonly FakePane[] = [
   {
-    agent: "claude",
-    title: "claude",
+    agent: 'claude',
+    title: 'claude',
     focused: true,
     lines: [
-      { text: "❯ claude" },
-      { text: "reading src/terminal/pane.ts", tone: "dim" },
-      { text: "⚠ transcript saving is off", tone: "warn" },
-      { text: "3 files changed, 128 insertions", tone: "ok" },
-      { text: "waiting for review" },
+      { text: '❯ claude' },
+      { text: 'reading src/terminal/pane.ts', tone: 'dim' },
+      { text: '⚠ transcript saving is off', tone: 'warn' },
+      { text: '3 files changed, 128 insertions', tone: 'ok' },
+      { text: 'waiting for review' },
     ],
   },
   {
-    agent: "codex",
-    title: "codex",
+    agent: 'codex',
+    title: 'codex',
     focused: false,
     lines: [
-      { text: "❯ codex review" },
-      { text: "42 tests, 42 passed in 3.1s", tone: "ok" },
-      { text: "suggested order of attack: #1 → #2", tone: "dim" },
-      { text: "API error: connection reset", tone: "err" },
+      { text: '❯ codex review' },
+      { text: '42 tests, 42 passed in 3.1s', tone: 'ok' },
+      { text: 'suggested order of attack: #1 → #2', tone: 'dim' },
+      { text: 'API error: connection reset', tone: 'err' },
     ],
   },
   {
     agent: null,
-    title: "zsh",
+    title: 'zsh',
     focused: false,
     lines: [
-      { text: "❯ git status --short" },
-      { text: " M src/ui/app.tsx", tone: "dim" },
-      { text: "❯ npm run electron:dev", tone: "dim" },
+      { text: '❯ git status --short' },
+      { text: ' M src/ui/app.tsx', tone: 'dim' },
+      { text: '❯ npm run electron:dev', tone: 'dim' },
     ],
   },
 ];
@@ -207,21 +207,14 @@ const FAKE_PANES: readonly FakePane[] = [
  * - `bar`: milder dim plus a named pane bar on every pane, the focused one
  *   carrying the accent-marked name (DL-3.1: accent = the focused state).
  */
-function DrawnStage({
-  treatment,
-}: {
-  readonly treatment: "current" | "dim" | "bar";
-}) {
+function DrawnStage({ treatment }: { readonly treatment: 'current' | 'dim' | 'bar' }) {
   return (
     <div class={`gxa-stage gxa-stage--${treatment}`}>
       {FAKE_PANES.map((pane, index) => (
         <>
           {index > 0 && <span class="gxa-stage__divider" />}
-          <div
-            key={pane.title}
-            class={`gxa-pane ${pane.focused ? "gxa-pane--focused" : ""}`}
-          >
-            {treatment === "bar" && (
+          <div key={pane.title} class={`gxa-pane ${pane.focused ? 'gxa-pane--focused' : ''}`}>
+            {treatment === 'bar' && (
               <div class="gxa-pane__bar">
                 <RowGlyph agent={pane.agent} />
                 <span class="gxa-pane__title">{pane.title}</span>
@@ -231,7 +224,7 @@ function DrawnStage({
               {pane.lines.map((line) => (
                 <span
                   key={line.text}
-                  class={`gxa-line ${line.tone ? `gxa-line--${line.tone}` : ""}`}
+                  class={`gxa-line ${line.tone ? `gxa-line--${line.tone}` : ''}`}
                 >
                   {line.text}
                 </span>
@@ -254,22 +247,22 @@ interface QueueEntry {
 /** The needs-you queue both switcher shapes list, severity first. */
 const QUEUE: readonly QueueEntry[] = [
   {
-    agent: "agy",
-    where: "spacevibe-hub",
-    tail: "npm install failed — lockfile conflict on preact",
-    age: "12m",
+    agent: 'agy',
+    where: 'spacevibe-hub',
+    tail: 'npm install failed — lockfile conflict on preact',
+    age: '12m',
   },
   {
-    agent: "codex",
-    where: "spacevibe-api · review",
-    tail: "Permission needed: prisma migrate dev",
-    age: "4m",
+    agent: 'codex',
+    where: 'spacevibe-api · review',
+    tail: 'Permission needed: prisma migrate dev',
+    age: '4m',
   },
   {
-    agent: "codex",
-    where: "spacevibe-deck · architecture review",
-    tail: "Plan ready — approve the R4 fork?",
-    age: "8m",
+    agent: 'codex',
+    where: 'spacevibe-deck · architecture review',
+    tail: 'Plan ready — approve the R4 fork?',
+    age: '8m',
   },
 ];
 
@@ -296,19 +289,14 @@ function SwitcherModal() {
             <span class="gxa-switcher__count">3</span>
           </div>
           {QUEUE.map((entry, index) => (
-            <div
-              class={`gxa-switcher__row ${index === 0 ? "is-active" : ""}`}
-              key={entry.where}
-            >
+            <div class={`gxa-switcher__row ${index === 0 ? 'is-active' : ''}`} key={entry.where}>
               <AgentGlyph agent={entry.agent} className="gxa-glyph" />
               <span class="gxa-switcher__where">{entry.where}</span>
               <span class="gxa-switcher__tail">{entry.tail}</span>
               <span class="gxa-switcher__key">{index + 1}</span>
             </div>
           ))}
-          <div class="gxa-switcher__hint">
-            ↵ jump · 1–3 pick · ⌘J cycles · esc
-          </div>
+          <div class="gxa-switcher__hint">↵ jump · 1–3 pick · ⌘J cycles · esc</div>
         </div>
       </div>
     </ShotGround>
@@ -342,9 +330,7 @@ export function AttentionDirectionSection() {
         note="the shipped AgentRail on the seeded stores — the baseline the variants below are judged against; every row is one line and the newest turn is absent unless a state is actionable"
         surface="none"
       >
-        <div class="gxa-study">
-          {agentRailNavigationSpecimen({ showFooter: false })}
-        </div>
+        <div class="gxa-study">{agentRailNavigationSpecimen({ showFooter: false })}</div>
       </Specimen>
       <Specimen
         name="Attention rail · A — every row says its turn"
@@ -375,9 +361,7 @@ export function AttentionDirectionSection() {
             <DrawnStage treatment="current" />
           </figure>
           <figure class="gxa-tile">
-            <figcaption class="gxa-tile__label">
-              A · dim the unfocused
-            </figcaption>
+            <figcaption class="gxa-tile__label">A · dim the unfocused</figcaption>
             <DrawnStage treatment="dim" />
           </figure>
           <figure class="gxa-tile">

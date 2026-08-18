@@ -1,37 +1,37 @@
-import { CaretDown } from "@phosphor-icons/react";
-import { useMemo, useState } from "preact/hooks";
-import { CommitInput } from "./commit-input";
-import { ConfigRow } from "./config-row";
-import { DeckIcon, ROW_ICON } from "./deck-icon";
+import { CaretDown } from '@phosphor-icons/react';
+import { useMemo, useState } from 'preact/hooks';
+import { CommitInput } from './commit-input';
+import { ConfigRow } from './config-row';
+import { DeckIcon, ROW_ICON } from './deck-icon';
 
 const FONT_CANDIDATES = [
-  "SF Mono",
-  "Menlo",
-  "Monaco",
-  "JetBrains Mono",
-  "Fira Code",
-  "Cascadia Code",
-  "Source Code Pro",
-  "IBM Plex Mono",
-  "Hack",
+  'SF Mono',
+  'Menlo',
+  'Monaco',
+  'JetBrains Mono',
+  'Fira Code',
+  'Cascadia Code',
+  'Source Code Pro',
+  'IBM Plex Mono',
+  'Hack',
 ];
 
-const CUSTOM_VALUE = "__custom__";
+const CUSTOM_VALUE = '__custom__';
 
 // Compare rendered width against fallback fonts — document.fonts.check()
 // returns false positives for system fonts that are not installed
 function detectInstalledFonts(): string[] {
-  const context = document.createElement("canvas").getContext("2d");
+  const context = document.createElement('canvas').getContext('2d');
   if (!context) {
     return FONT_CANDIDATES;
   }
-  const sample = "mmmmmmmmmmlliWQ@#1470";
+  const sample = 'mmmmmmmmmmlliWQ@#1470';
   const measure = (font: string): number => {
     context.font = font;
     return context.measureText(sample).width;
   };
-  const baselineMono = measure("16px monospace");
-  const baselineSerif = measure("16px serif");
+  const baselineMono = measure('16px monospace');
+  const baselineSerif = measure('16px serif');
   return FONT_CANDIDATES.filter(
     (family) =>
       measure(`16px "${family}", monospace`) !== baselineMono ||
@@ -55,19 +55,16 @@ export function FontRow({ value, onChange }: FontRowProps) {
     }
     return detected;
   }, []);
-  const [customMode, setCustomMode] = useState(
-    () => !available.includes(value),
-  );
+  const [customMode, setCustomMode] = useState(() => !available.includes(value));
 
-  const selectValue =
-    customMode || !available.includes(value) ? CUSTOM_VALUE : value;
+  const selectValue = customMode || !available.includes(value) ? CUSTOM_VALUE : value;
 
   return (
     <>
       <ConfigRow label="Font" desc="Terminal typeface">
         <span class="cfg-btn cfg-btn--overlay">
           <span class="cfg-btn__text">
-            {selectValue === CUSTOM_VALUE ? value || "custom…" : value}
+            {selectValue === CUSTOM_VALUE ? value || 'custom…' : value}
           </span>
           <span class="cfg-btn__hint">
             <DeckIcon icon={CaretDown} size={ROW_ICON} />

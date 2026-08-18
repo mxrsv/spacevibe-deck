@@ -6,9 +6,9 @@
  * `scripts/electron-ipc-contract.test.ts` carries the zero-payload fixture
  * that pins this shape (R6).
  */
-import { invoke } from "./bridge";
-import type { UsageSnapshot } from "../lib/usage-snapshot";
+import { invoke } from './bridge';
+import type { UsageSnapshot } from '../lib/usage-snapshot';
 
 export function usageSnapshot(): Promise<UsageSnapshot> {
-  return invoke<UsageSnapshot>("usage_snapshot");
+  return invoke<UsageSnapshot>('usage_snapshot');
 }

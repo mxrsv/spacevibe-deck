@@ -27,9 +27,9 @@ const WITH_ALPHA = /^[0-9a-f]{8}$/;
  */
 export function normalizeHex(raw: string): string | null {
   let body = raw.trim().toLowerCase();
-  if (body.startsWith("#")) {
+  if (body.startsWith('#')) {
     body = body.slice(1);
-  } else if (body.startsWith("0x")) {
+  } else if (body.startsWith('0x')) {
     body = body.slice(2);
   }
   if (SHORT.test(body)) {
@@ -52,15 +52,11 @@ export function normalizeHex(raw: string): string | null {
  * is 255 while an unclamped 1.004 is 256, which formats as `100` and produces a
  * seven-digit string.
  */
-export function hexFromUnitRgb(
-  red: number,
-  green: number,
-  blue: number,
-): string {
+export function hexFromUnitRgb(red: number, green: number, blue: number): string {
   return `#${channel(red)}${channel(green)}${channel(blue)}`;
 }
 
 function channel(value: number): string {
   const scaled = Math.round(Math.min(1, Math.max(0, value)) * 255);
-  return scaled.toString(16).padStart(2, "0");
+  return scaled.toString(16).padStart(2, '0');
 }

@@ -202,8 +202,8 @@
 [data-tauri-drag-region] input,
 [data-tauri-drag-region] select,
 [data-tauri-drag-region] a,
-[data-tauri-drag-region] [role="tab"],
-[data-tauri-drag-region] [role="button"],
+[data-tauri-drag-region] [role='tab'],
+[data-tauri-drag-region] [role='button'],
 [data-tauri-drag-region] .tab,
 [data-tauri-drag-region] .tab-add {
   -webkit-app-region: no-drag;

@@ -9,10 +9,10 @@
  * picker collapses to Shell only — while a dev run launched from a terminal
  * inherits the terminal's PATH and hides the bug.
  */
-import { execFile } from "node:child_process";
-import fs from "node:fs/promises";
-import * as macos from "./platform/macos";
-import * as windows from "./platform/windows";
+import { execFile } from 'node:child_process';
+import fs from 'node:fs/promises';
+import * as macos from './platform/macos';
+import * as windows from './platform/windows';
 
 /** A login shell that hangs (a `.zprofile` waiting on the network) must not
  * wedge the picker forever — degrade to empty after this. */
@@ -25,13 +25,7 @@ export interface AgentInfo {
 
 /** Recognised out of the box; always probed, whatever the caller asks for.
  * Mirrors `BUILTIN_AGENTS` in `src/lib/agent-catalog.ts`. */
-export const BUILTIN_AGENTS = [
-  "claude",
-  "codex",
-  "opencode",
-  "agy",
-  "gemini",
-] as const;
+export const BUILTIN_AGENTS = ['claude', 'codex', 'opencode', 'agy', 'gemini'] as const;
 
 /** Upper bound on a probed name; mirrors `PROBE_NAME_MAX` in agent-catalog.ts. */
 const PROBE_NAME_MAX = 128;
@@ -49,9 +43,7 @@ const PROBE_SAFE = /^[A-Za-z0-9._~+/-]+$/;
  * caller lands here first.
  */
 export function isProbeSafe(name: string): boolean {
-  return (
-    name.length > 0 && name.length <= PROBE_NAME_MAX && PROBE_SAFE.test(name)
-  );
+  return name.length > 0 && name.length <= PROBE_NAME_MAX && PROBE_SAFE.test(name);
 }
 
 /** Every built-in, then each safe caller-supplied name not already present.
@@ -83,7 +75,7 @@ export function probeKey(name: string): string {
  * hides the `command -v` path behind it.
  */
 export function stripAnsi(line: string): string {
-  const bytes = Buffer.from(line, "utf8");
+  const bytes = Buffer.from(line, 'utf8');
   const out: number[] = [];
   let i = 0;
   while (i < bytes.length) {
@@ -122,26 +114,23 @@ export function stripAnsi(line: string): string {
       i += 1;
     }
   }
-  return Buffer.from(out).toString("utf8");
+  return Buffer.from(out).toString('utf8');
 }
 
 /**
  * Keep only absolute paths whose basename was asked for; first hit per name
  * wins, ordered by first appearance so numbering in the picker stays stable.
  */
-export function parseCommandVOutput(
-  output: string,
-  probed: readonly string[],
-): AgentInfo[] {
+export function parseCommandVOutput(output: string, probed: readonly string[]): AgentInfo[] {
   const wanted = new Set(probed.map(probeKey));
   const found: AgentInfo[] = [];
   const seen = new Set<string>();
-  for (const line of output.split("\n")) {
+  for (const line of output.split('\n')) {
     const candidate = stripAnsi(line).trim();
-    if (!candidate.startsWith("/")) {
+    if (!candidate.startsWith('/')) {
       continue;
     }
-    const name = candidate.split("/").pop();
+    const name = candidate.split('/').pop();
     if (name === undefined || name.length === 0) {
       continue;
     }
@@ -169,8 +158,7 @@ export function parseCommandVOutput(
  */
 export function discoverAgentsWindows(
   requested: readonly string[],
-  resolve: (name: string) => string | null = (name) =>
-    windows.resolveOnPath(name),
+  resolve: (name: string) => string | null = (name) => windows.resolveOnPath(name),
 ): AgentInfo[] {
   const found: AgentInfo[] = [];
   const seen = new Set<string>();
@@ -193,22 +181,20 @@ export function discoverAgentsWindows(
  * hanging past the timeout — degrades to an empty list rather than leaving the
  * picker waiting forever.
  */
-export function discoverAgents(
-  requested: readonly string[],
-): Promise<AgentInfo[]> {
-  if (process.platform === "win32") {
+export function discoverAgents(requested: readonly string[]): Promise<AgentInfo[]> {
+  if (process.platform === 'win32') {
     return Promise.resolve(discoverAgentsWindows(requested));
   }
   const names = probeNames(requested);
-  const script = names.map((name) => `command -v ${name}`).join("; ");
+  const script = names.map((name) => `command -v ${name}`).join('; ');
   const launch = macos.shellLaunch();
   return new Promise((resolve) => {
     execFile(
       launch.executable,
-      ["-ilc", script],
-      { encoding: "utf8", timeout: DETECT_TIMEOUT_MS, env: process.env },
+      ['-ilc', script],
+      { encoding: 'utf8', timeout: DETECT_TIMEOUT_MS, env: process.env },
       (_error, stdout) => {
-        resolve(parseCommandVOutput(String(stdout ?? ""), names));
+        resolve(parseCommandVOutput(String(stdout ?? ''), names));
       },
     );
   });
@@ -232,9 +218,7 @@ export async function dirsExist(paths: readonly string[]): Promise<boolean[]> {
  * rather than surface an error, which is what the Rust command did by
  * returning an empty vector on every failure path.
  */
-export async function detectAgentsSafely(
-  names: readonly string[],
-): Promise<AgentInfo[]> {
+export async function detectAgentsSafely(names: readonly string[]): Promise<AgentInfo[]> {
   try {
     return await discoverAgents(names);
   } catch {

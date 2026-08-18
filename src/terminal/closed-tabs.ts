@@ -1,5 +1,5 @@
-import type { SerializedNode } from "../lib/split-tree";
-import type { TabDotColor } from "../lib/tab-colors";
+import type { SerializedNode } from '../lib/split-tree';
+import type { TabDotColor } from '../lib/tab-colors';
 
 export const MAX_CLOSED_TABS = 10;
 

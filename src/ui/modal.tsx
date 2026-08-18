@@ -1,5 +1,5 @@
-import type { ComponentChildren } from "preact";
-import { useEffect, useRef } from "preact/hooks";
+import type { ComponentChildren } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
 
 /**
  * The one modal shell (DL §29). Every surface that covers the stage on
@@ -129,9 +129,7 @@ export function Modal({
     const previous = document.activeElement;
     focusOnOpen.current = previous instanceof HTMLElement ? previous : null;
     const requested =
-      initialFocus === undefined
-        ? null
-        : panel.querySelector<HTMLElement>(initialFocus);
+      initialFocus === undefined ? null : panel.querySelector<HTMLElement>(initialFocus);
     (requested ?? panel).focus();
     return () => {
       const target = focusOnOpen.current;
@@ -140,8 +138,7 @@ export function Modal({
       // nothing. A modal that opened a tab hands focus to the new pane, and
       // restoring unconditionally would yank it straight back out.
       const active = document.activeElement;
-      const ours =
-        active === null || active === document.body || panel.contains(active);
+      const ours = active === null || active === document.body || panel.contains(active);
       if (target !== null && target.isConnected && ours) {
         target.focus();
       }
@@ -161,9 +158,7 @@ export function Modal({
 
   function handleScrimClick(event: MouseEvent): void {
     const onScrim =
-      pressedOnScrim.current &&
-      releasedOnScrim.current &&
-      event.target === event.currentTarget;
+      pressedOnScrim.current && releasedOnScrim.current && event.target === event.currentTarget;
     pressedOnScrim.current = false;
     releasedOnScrim.current = false;
     if (dismissOnScrim && onScrim) {
@@ -172,7 +167,7 @@ export function Modal({
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
-    if (event.key === "Escape") {
+    if (event.key === 'Escape') {
       onDismiss();
       // The terminal is one element away and reads raw keys; an Escape that
       // only closed the modal and then kept travelling would also reach the
@@ -181,7 +176,7 @@ export function Modal({
       event.stopPropagation();
       return;
     }
-    if (event.key === "Tab") {
+    if (event.key === 'Tab') {
       trapTab(event, panelRef.current);
       return;
     }

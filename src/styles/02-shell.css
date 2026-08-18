@@ -125,21 +125,21 @@
    the tree for the one-line revert. Naming just `.wsbar` left the live rail
    at 8px of padding overhanging the stage instead of gone — measured
    2026-08-16, and the reason this rule names both. */
-[data-sidebar-collapsed="true"] .asr-rail,
-[data-sidebar-collapsed="true"] .wsbar,
-[data-sidebar-collapsed="true"] .deck-frame {
+[data-sidebar-collapsed='true'] .asr-rail,
+[data-sidebar-collapsed='true'] .wsbar,
+[data-sidebar-collapsed='true'] .deck-frame {
   display: none;
 }
 
 /* The stage takes the whole width, and its own leading hairline goes: with no
    column on the other side of it there are no two surfaces for a seam to
    separate (DL-2.3). */
-[data-sidebar-collapsed="true"] .window--sidebar > .stage {
+[data-sidebar-collapsed='true'] .window--sidebar > .stage {
   grid-column: 1 / -1;
   border-left: none;
 }
 
-[data-sidebar-collapsed="true"] .stage__strip {
+[data-sidebar-collapsed='true'] .stage__strip {
   padding-left: calc(var(--frame-lights-w) + 8px);
   /* The strip IS the frame row now, so it carries that row's surface instead
      of sitting transparent on the stage (DL-18.2's sidebar clause). */
@@ -246,14 +246,14 @@
   height: 100%;
   transform: none;
   background:
-    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 42%
-      8% / 16px 10px no-repeat,
-    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 58%
-      8% / 16px 10px no-repeat,
-    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 42%
-      92% / 16px 10px no-repeat,
-    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 58%
-      92% / 16px 10px no-repeat;
+    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 42% 8% / 16px 10px
+      no-repeat,
+    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 58% 8% / 16px 10px
+      no-repeat,
+    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 42% 92% / 16px 10px
+      no-repeat,
+    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 58% 92% / 16px 10px
+      no-repeat;
 }
 
 .sidebar-banner__mark--taegeuk::before,
@@ -264,7 +264,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  content: "";
+  content: '';
   transform: translate(-50%, -50%) rotate(30deg);
 }
 
@@ -289,7 +289,7 @@
   position: absolute;
   z-index: 1;
   inset: 0;
-  content: "";
+  content: '';
   pointer-events: none;
   background:
     linear-gradient(
@@ -307,11 +307,7 @@
       rgb(0 0 0 / 7%) 1px 2px,
       transparent 2px 4px
     ),
-    repeating-linear-gradient(
-      90deg,
-      rgb(255 255 255 / 4%) 0 1px,
-      transparent 1px 3px
-    );
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 4%) 0 1px, transparent 1px 3px);
   mix-blend-mode: soft-light;
 }
 
@@ -319,7 +315,7 @@
   position: absolute;
   z-index: 2;
   inset: 0;
-  content: "";
+  content: '';
   background: linear-gradient(
     to bottom,
     var(--sidebar-banner-fade-color, var(--sidebar-bg)) 0%,

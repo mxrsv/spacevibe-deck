@@ -1,14 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const setMock = vi.hoisted(() => vi.fn(async () => {}));
 const saveMock = vi.hoisted(() => vi.fn(async () => {}));
-const getMock = vi.hoisted(() =>
-  vi.fn(async (): Promise<unknown> => undefined),
-);
+const getMock = vi.hoisted(() => vi.fn(async (): Promise<unknown> => undefined));
 const loadMock = vi.hoisted(() =>
   vi.fn(async () => ({ get: getMock, set: setMock, save: saveMock })),
 );
-vi.mock("../host/store-host", () => ({
+vi.mock('../host/store-host', () => ({
   Store: {
     load: loadMock,
   },
@@ -23,11 +21,11 @@ import {
   openDockTab,
   revealDockTab,
   settingsLoadState,
-} from "./settings-store";
-import { createMemorySettingsSync } from "./settings-sync";
-import type { SettingsSyncClient } from "./settings-sync";
-import { DEFAULT_SETTINGS } from "./settings-schema";
-import { persistError } from "../chrome/events";
+} from './settings-store';
+import { createMemorySettingsSync } from './settings-sync';
+import type { SettingsSyncClient } from './settings-sync';
+import { DEFAULT_SETTINGS } from './settings-schema';
+import { persistError } from '../chrome/events';
 
 function deferred<T>(): {
   readonly promise: Promise<T>;
@@ -43,14 +41,14 @@ function deferred<T>(): {
   return { promise, resolve, reject };
 }
 
-describe("settings persistence", () => {
+describe('settings persistence', () => {
   beforeEach(async () => {
     loadMock.mockClear();
     loadMock.mockImplementation(async () => ({
       get: getMock,
       set: setMock,
       save: saveMock,
-      loadState: { state: "ready", fresh: false },
+      loadState: { state: 'ready', fresh: false },
     }));
     getMock.mockReset();
     getMock.mockResolvedValue(undefined);
@@ -65,45 +63,44 @@ describe("settings persistence", () => {
     await initSettings();
   });
 
-  it("surfaces a failed settings write to the user", async () => {
-    setMock.mockRejectedValueOnce(new Error("disk full"));
+  it('surfaces a failed settings write to the user', async () => {
+    setMock.mockRejectedValueOnce(new Error('disk full'));
     updateSettings({ fontSize: 15 });
     await vi.waitFor(() => {
       expect(persistError.value).not.toBeNull();
     });
   });
 
-  it("flushSettingsSave forces the autosaved store to disk", async () => {
+  it('flushSettingsSave forces the autosaved store to disk', async () => {
     await flushSettingsSave();
     expect(saveMock).toHaveBeenCalled();
   });
 
-  it("reports a load failure and blocks writes until a retry succeeds", async () => {
+  it('reports a load failure and blocks writes until a retry succeeds', async () => {
     const before = settings.value;
     setMock.mockClear();
-    loadMock.mockRejectedValueOnce(new Error("permission denied"));
+    loadMock.mockRejectedValueOnce(new Error('permission denied'));
 
     await initSettings();
     updateSettings({ fontSize: before.fontSize + 1 });
 
     expect(settingsLoadState.value).toEqual({
-      status: "error",
-      message:
-        "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
+      status: 'error',
+      message: "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
     });
     expect(settings.value.fontSize).toBe(before.fontSize + 1);
     expect(setMock).not.toHaveBeenCalled();
   });
 
-  it("treats a null settings payload as unreadable rather than as fresh defaults", async () => {
+  it('treats a null settings payload as unreadable rather than as fresh defaults', async () => {
     getMock.mockResolvedValueOnce(null);
 
     await initSettings();
 
-    expect(settingsLoadState.value.status).toBe("error");
+    expect(settingsLoadState.value.status).toBe('error');
   });
 
-  it("ignores an older load failure after a retry succeeds", async () => {
+  it('ignores an older load failure after a retry succeeds', async () => {
     const oldLoad = deferred<never>();
     loadMock
       .mockImplementationOnce(() => oldLoad.promise)
@@ -111,24 +108,24 @@ describe("settings persistence", () => {
         get: getMock,
         set: setMock,
         save: saveMock,
-        loadState: { state: "ready", fresh: false },
+        loadState: { state: 'ready', fresh: false },
       }));
 
     const first = initSettings();
     const retry = initSettings();
     await retry;
-    oldLoad.reject(new Error("stale permission failure"));
+    oldLoad.reject(new Error('stale permission failure'));
     await first;
 
-    expect(settingsLoadState.value).toEqual({ status: "ready" });
+    expect(settingsLoadState.value).toEqual({ status: 'ready' });
   });
 });
 
-describe("settings patch sync", () => {
-  it("re-registers the merged listener after a transient subscription failure", async () => {
+describe('settings patch sync', () => {
+  it('re-registers the merged listener after a transient subscription failure', async () => {
     const listenMerged = vi
-      .fn<SettingsSyncClient["listenMerged"]>()
-      .mockRejectedValueOnce(new Error("bridge not ready"))
+      .fn<SettingsSyncClient['listenMerged']>()
+      .mockRejectedValueOnce(new Error('bridge not ready'))
       .mockResolvedValueOnce(() => {});
     configureSettingsSync({
       sendPatch: vi.fn(async () => ({})),
@@ -136,15 +133,15 @@ describe("settings patch sync", () => {
     });
 
     await initSettings();
-    expect(settingsLoadState.value.status).toBe("error");
+    expect(settingsLoadState.value.status).toBe('error');
 
     await initSettings();
 
-    expect(settingsLoadState.value.status).toBe("ready");
+    expect(settingsLoadState.value.status).toBe('ready');
     expect(listenMerged).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps a merged broadcast delivered while subscribing newer than disk", async () => {
+  it('keeps a merged broadcast delivered while subscribing newer than disk', async () => {
     getMock.mockResolvedValueOnce({ ...DEFAULT_SETTINGS, fontSize: 15 });
     const client: SettingsSyncClient = {
       async sendPatch() {
@@ -162,7 +159,7 @@ describe("settings patch sync", () => {
     expect(settings.value.fontSize).toBe(20);
   });
 
-  it("sends only the patch, not the whole object, and updates the signal at once", async () => {
+  it('sends only the patch, not the whole object, and updates the signal at once', async () => {
     const sync = createMemorySettingsSync();
     configureSettingsSync(sync);
     await initSettings();
@@ -173,7 +170,7 @@ describe("settings patch sync", () => {
     expect(sync.patches).toEqual([{ fontSize: 17 }]);
   });
 
-  it("adopts a merged broadcast from another window", async () => {
+  it('adopts a merged broadcast from another window', async () => {
     const sync = createMemorySettingsSync();
     configureSettingsSync(sync);
     await initSettings();
@@ -187,7 +184,7 @@ describe("settings patch sync", () => {
   // difference is the whole point: a structurally broken message is a bug in
   // the sender and must change nothing, while a well-shaped message with one
   // junk field goes through this repo's existing coercion.
-  it("ignores a structurally invalid broadcast and keeps live settings untouched", async () => {
+  it('ignores a structurally invalid broadcast and keeps live settings untouched', async () => {
     const sync = createMemorySettingsSync();
     configureSettingsSync(sync);
     await initSettings();
@@ -195,7 +192,7 @@ describe("settings patch sync", () => {
     const before = settings.value;
 
     sync.broadcast(null);
-    sync.broadcast("not settings");
+    sync.broadcast('not settings');
     sync.broadcast(42);
     sync.broadcast([]);
 
@@ -206,12 +203,12 @@ describe("settings patch sync", () => {
     expect(settings.value.fontSize).toBe(17);
   });
 
-  it("coerces a single bad field in an otherwise well-formed broadcast", async () => {
+  it('coerces a single bad field in an otherwise well-formed broadcast', async () => {
     const sync = createMemorySettingsSync();
     configureSettingsSync(sync);
     await initSettings();
 
-    sync.broadcast({ ...DEFAULT_SETTINGS, fontSize: "huge" });
+    sync.broadcast({ ...DEFAULT_SETTINGS, fontSize: 'huge' });
 
     // Coercion, not rejection: the message was understandable, so the rest
     // of it applies and this one field falls back.
@@ -219,58 +216,58 @@ describe("settings patch sync", () => {
   });
 });
 
-describe("revealDockTab", () => {
+describe('revealDockTab', () => {
   beforeEach(() => {
     settings.value = { ...DEFAULT_SETTINGS };
   });
 
-  it("opens the dock on the asked-for tab when it is closed", () => {
-    expect(revealDockTab("usage")).toBe(false);
+  it('opens the dock on the asked-for tab when it is closed', () => {
+    expect(revealDockTab('usage')).toBe(false);
     expect(settings.value.dockOpen).toBe(true);
-    expect(settings.value.dockTab).toBe("usage");
+    expect(settings.value.dockTab).toBe('usage');
   });
 
-  it("switches tabs without closing when another one is showing", () => {
-    settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: "usage" };
+  it('switches tabs without closing when another one is showing', () => {
+    settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: 'usage' };
 
-    expect(revealDockTab("explorer")).toBe(false);
+    expect(revealDockTab('explorer')).toBe(false);
     expect(settings.value.dockOpen).toBe(true);
-    expect(settings.value.dockTab).toBe("explorer");
+    expect(settings.value.dockTab).toBe('explorer');
   });
 
   // Press it again to put it away — and say so, because only this branch hands
   // focus back to the pane.
-  it("closes, and reports closing, when the asked-for tab is already showing", () => {
-    settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: "usage" };
+  it('closes, and reports closing, when the asked-for tab is already showing', () => {
+    settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: 'usage' };
 
-    expect(revealDockTab("usage")).toBe(true);
+    expect(revealDockTab('usage')).toBe(true);
     expect(settings.value.dockOpen).toBe(false);
     // The tab is remembered, so reopening lands where the user left off.
-    expect(settings.value.dockTab).toBe("usage");
+    expect(settings.value.dockTab).toBe('usage');
   });
 });
 
-describe("openDockTab", () => {
+describe('openDockTab', () => {
   beforeEach(() => {
     settings.value = { ...DEFAULT_SETTINGS };
   });
 
-  it("opens the dock on the asked-for tab", () => {
-    openDockTab("sessions");
+  it('opens the dock on the asked-for tab', () => {
+    openDockTab('sessions');
 
     expect(settings.value.dockOpen).toBe(true);
-    expect(settings.value.dockTab).toBe("sessions");
+    expect(settings.value.dockTab).toBe('sessions');
   });
 
   // The whole difference from `revealDockTab`: the rail's rows are shortcuts
   // that open, so pressing the row of the tab already on screen must not be
   // the thing that puts the column away.
-  it("leaves the dock open when its tab is already showing", () => {
-    settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: "usage" };
+  it('leaves the dock open when its tab is already showing', () => {
+    settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: 'usage' };
 
-    openDockTab("usage");
+    openDockTab('usage');
 
     expect(settings.value.dockOpen).toBe(true);
-    expect(settings.value.dockTab).toBe("usage");
+    expect(settings.value.dockTab).toBe('usage');
   });
 });

@@ -1,27 +1,19 @@
-import { signal } from "@preact/signals";
-import { Store } from "../host/store-host";
+import { signal } from '@preact/signals';
+import { Store } from '../host/store-host';
 import {
   DEFAULT_SETTINGS,
   validateSettings,
   type DockTab,
   type Settings,
   type TerminalColors,
-} from "./settings-schema";
-import { reportPersistError } from "../chrome/events";
-import { listen } from "../host/bridge";
-import {
-  createTauriSettingsSync,
-  type SettingsSyncClient,
-} from "./settings-sync";
-import {
-  LOAD_LOADING,
-  LOAD_READY,
-  loadError,
-  type LoadState,
-} from "../lib/load-state";
+} from './settings-schema';
+import { reportPersistError } from '../chrome/events';
+import { listen } from '../host/bridge';
+import { createTauriSettingsSync, type SettingsSyncClient } from './settings-sync';
+import { LOAD_LOADING, LOAD_READY, loadError, type LoadState } from '../lib/load-state';
 
-const STORE_FILE = "settings.json";
-const STORE_KEY = "settings";
+const STORE_FILE = 'settings.json';
+const STORE_KEY = 'settings';
 const AUTOSAVE_DEBOUNCE_MS = 300;
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
@@ -49,8 +41,8 @@ function adoptMergedSettings(merged: unknown): void {
   // Shape guard at the boundary, NOT a try/catch: `validateSettings` never
   // throws — it coerces, and for a non-object it returns DEFAULT_SETTINGS
   // wholesale. Ignore malformed broadcasts and keep the last-good object.
-  if (typeof merged !== "object" || merged === null || Array.isArray(merged)) {
-    console.warn("Ignoring a structurally invalid settings broadcast");
+  if (typeof merged !== 'object' || merged === null || Array.isArray(merged)) {
+    console.warn('Ignoring a structurally invalid settings broadcast');
     return;
   }
   mergedRevision += 1;
@@ -94,12 +86,12 @@ async function ensureSyncListener(client: SettingsSyncClient): Promise<void> {
  */
 export async function listenStoreWriteFailures(): Promise<void> {
   try {
-    await listen<{ file?: string }>("store:write-failed", (event) => {
-      const file = event.payload?.file ?? "settings";
+    await listen<{ file?: string }>('store:write-failed', (event) => {
+      const file = event.payload?.file ?? 'settings';
       reportPersistError(`Couldn't save ${file} — your changes may be lost.`);
     });
   } catch (err) {
-    console.warn("Could not subscribe to store write failures:", err);
+    console.warn('Could not subscribe to store write failures:', err);
   }
 }
 
@@ -116,8 +108,8 @@ export async function initSettings(): Promise<void> {
     if (forGeneration !== loadGeneration) {
       return;
     }
-    if (loadedStore.loadState.state === "unreadable") {
-      throw new Error("settings.json is unreadable");
+    if (loadedStore.loadState.state === 'unreadable') {
+      throw new Error('settings.json is unreadable');
     }
     const raw = await loadedStore.get<unknown>(STORE_KEY);
     if (forGeneration !== loadGeneration) {
@@ -125,8 +117,8 @@ export async function initSettings(): Promise<void> {
     }
     let loadedSettings: Settings | null = null;
     if (raw !== undefined) {
-      if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-        throw new Error("settings.json does not contain a settings object");
+      if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+        throw new Error('settings.json does not contain a settings object');
       }
       loadedSettings = validateSettings(raw);
     }
@@ -156,7 +148,7 @@ export async function initSettings(): Promise<void> {
     settingsLoadState.value = loadError(
       "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
     );
-    console.warn("Failed to load settings; defaults are temporary:", err);
+    console.warn('Failed to load settings; defaults are temporary:', err);
   }
 }
 
@@ -176,7 +168,7 @@ export async function initSettings(): Promise<void> {
  */
 function persist(next: Settings): void {
   const current = store;
-  if (current === null || settingsLoadState.value.status !== "ready") {
+  if (current === null || settingsLoadState.value.status !== 'ready') {
     return;
   }
   void (async () => {
@@ -184,21 +176,17 @@ function persist(next: Settings): void {
       await current.set(STORE_KEY, next);
       await current.save();
     } catch {
-      reportPersistError(
-        "Couldn't save settings — changes may not survive a relaunch.",
-      );
+      reportPersistError("Couldn't save settings — changes may not survive a relaunch.");
     }
   })();
 }
 
 export function updateSettings(patch: Partial<Settings>): void {
   const next = { ...settings.value, ...patch };
-  if (settingsLoadState.value.status !== "ready") {
+  if (settingsLoadState.value.status !== 'ready') {
     settings.value = next;
     if (settingsDegraded) {
-      reportPersistError(
-        "Settings are temporary until Deck can load settings.json.",
-      );
+      reportPersistError('Settings are temporary until Deck can load settings.json.');
     }
     return;
   }
@@ -220,10 +208,8 @@ export function updateSettings(patch: Partial<Settings>): void {
   //
   // So the reply is used for ONE thing: knowing the write failed.
   void sync?.sendPatch(patch).catch((err: unknown) => {
-    console.warn("Settings patch merge failed:", err);
-    reportPersistError(
-      "Couldn't sync settings across windows — other windows may be stale.",
-    );
+    console.warn('Settings patch merge failed:', err);
+    reportPersistError("Couldn't sync settings across windows — other windows may be stale.");
   });
 }
 
@@ -273,10 +259,7 @@ export function openDockTab(tab: DockTab): void {
 }
 
 /** Set or remove (value = undefined) a single color override. */
-export function updateColorOverride(
-  key: keyof TerminalColors,
-  value: string | undefined,
-): void {
+export function updateColorOverride(key: keyof TerminalColors, value: string | undefined): void {
   const { [key]: _removed, ...rest } = settings.value.colorOverrides;
   const colorOverrides = value === undefined ? rest : { ...rest, [key]: value };
   updateSettings({ colorOverrides });
@@ -288,7 +271,7 @@ export function updateColorOverride(
  * autosave window.
  */
 export async function flushSettingsSave(): Promise<void> {
-  if (settingsLoadState.value.status === "ready") {
+  if (settingsLoadState.value.status === 'ready') {
     await store?.save();
   }
 }

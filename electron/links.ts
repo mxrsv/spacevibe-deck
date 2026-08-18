@@ -12,12 +12,12 @@
  *    placeholders, never as a shell string with the file interpolated. The
  *    POSIX path quotes every argument before it reaches `sh -c`.
  */
-import { execFile } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { hasRejectedRoot } from "./shell-integration";
-import * as macos from "./platform/macos";
+import { execFile } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { hasRejectedRoot } from './shell-integration';
+import * as macos from './platform/macos';
 
 /** Upper bound on one hover's resolve batch. The renderer already caps its
  * candidates per line; this keeps a hostile or garbled line cheap. */
@@ -30,23 +30,19 @@ const MAX_EDITOR_TEMPLATE_BYTES = 4_096;
 const EDITOR_TIMEOUT_MS = 10_000;
 
 function isWindowsAbsolute(raw: string): boolean {
-  return /^[A-Za-z]:[\\/]/.test(raw) || raw.startsWith("\\\\");
+  return /^[A-Za-z]:[\\/]/.test(raw) || raw.startsWith('\\\\');
 }
 
 function expandTilde(raw: string, home: string): string | null {
-  if (raw === "~") {
+  if (raw === '~') {
     return home;
   }
-  const rest = raw.startsWith("~/")
-    ? raw.slice(2)
-    : raw.startsWith("~\\")
-      ? raw.slice(2)
-      : null;
+  const rest = raw.startsWith('~/') ? raw.slice(2) : raw.startsWith('~\\') ? raw.slice(2) : null;
   if (rest === null) {
     return raw;
   }
-  const separator = home.includes("\\") && !home.includes("/") ? "\\" : "/";
-  return `${home.replace(/[/\\]+$/, "")}${separator}${rest}`;
+  const separator = home.includes('\\') && !home.includes('/') ? '\\' : '/';
+  return `${home.replace(/[/\\]+$/, '')}${separator}${rest}`;
 }
 
 /**
@@ -60,11 +56,7 @@ function expandTilde(raw: string, home: string): string | null {
  *
  * Directories are deliberately not linkified: there is no line to jump to.
  */
-export function resolveOne(
-  base: string | null,
-  home: string,
-  raw: string,
-): string | null {
+export function resolveOne(base: string | null, home: string, raw: string): string | null {
   const expanded = expandTilde(raw, home);
   if (expanded === null) {
     return null;
@@ -87,10 +79,7 @@ export function resolveOne(
 }
 
 /** Resolve link candidates against a pane's cwd; index-aligned with `paths`. */
-export function resolvePaths(
-  cwd: string,
-  paths: readonly string[],
-): (string | null)[] {
+export function resolvePaths(cwd: string, paths: readonly string[]): (string | null)[] {
   const home = os.homedir();
   let base: string | null = null;
   if (cwd.length > 0 && (path.isAbsolute(cwd) || isWindowsAbsolute(cwd))) {
@@ -101,9 +90,7 @@ export function resolvePaths(
     }
   }
   return paths.map((raw, index) =>
-    index < MAX_PATHS && raw.length <= MAX_PATH_BYTES
-      ? resolveOne(base, home, raw)
-      : null,
+    index < MAX_PATHS && raw.length <= MAX_PATH_BYTES ? resolveOne(base, home, raw) : null,
   );
 }
 
@@ -115,7 +102,7 @@ export interface OpenEditorRequest {
   readonly column: number;
 }
 
-const EDITORS = ["vscode", "cursor", "zed", "custom"] as const;
+const EDITORS = ['vscode', 'cursor', 'zed', 'custom'] as const;
 type EditorId = (typeof EDITORS)[number];
 
 interface ValidatedRequest {
@@ -134,60 +121,53 @@ function positivePosition(value: number, label: string): number {
 }
 
 /** Error messages are user-facing verbatim, so they stay plain. */
-export function validateOpenEditorRequest(
-  request: OpenEditorRequest,
-): ValidatedRequest {
+export function validateOpenEditorRequest(request: OpenEditorRequest): ValidatedRequest {
   if (!EDITORS.includes(request.editor as EditorId)) {
-    throw new Error("The selected editor is not supported.");
+    throw new Error('The selected editor is not supported.');
   }
   const editor = request.editor as EditorId;
-  if (
-    request.template.length > MAX_EDITOR_TEMPLATE_BYTES ||
-    request.template.includes("\0")
-  ) {
-    throw new Error("The custom editor command is invalid or too long.");
+  if (request.template.length > MAX_EDITOR_TEMPLATE_BYTES || request.template.includes('\0')) {
+    throw new Error('The custom editor command is invalid or too long.');
   }
-  if (request.file.length > MAX_PATH_BYTES || request.file.includes("\0")) {
-    throw new Error("The editor file path is invalid or too long.");
+  if (request.file.length > MAX_PATH_BYTES || request.file.includes('\0')) {
+    throw new Error('The editor file path is invalid or too long.');
   }
   const template = request.template.trim();
-  if (editor === "custom" && template.length === 0) {
-    throw new Error("No custom editor command is configured.");
+  if (editor === 'custom' && template.length === 0) {
+    throw new Error('No custom editor command is configured.');
   }
-  const executableToken = template.split(/\s+/)[0] ?? "";
+  const executableToken = template.split(/\s+/)[0] ?? '';
   if (
-    editor === "custom" &&
-    ["{file}", "{line}", "{col}"].some((placeholder) =>
-      executableToken.includes(placeholder),
-    )
+    editor === 'custom' &&
+    ['{file}', '{line}', '{col}'].some((placeholder) => executableToken.includes(placeholder))
   ) {
     // The executable itself must be fixed: a placeholder there would let
     // terminal output choose which program runs.
-    throw new Error("The custom editor executable must be a fixed command.");
+    throw new Error('The custom editor executable must be a fixed command.');
   }
-  const line = positivePosition(request.line, "line");
-  const column = positivePosition(request.column, "column");
-  if (request.file.toLowerCase().startsWith("\\\\?\\")) {
-    throw new Error("The editor file path must not use a verbatim prefix.");
+  const line = positivePosition(request.line, 'line');
+  const column = positivePosition(request.column, 'column');
+  if (request.file.toLowerCase().startsWith('\\\\?\\')) {
+    throw new Error('The editor file path must not use a verbatim prefix.');
   }
   if (!(path.isAbsolute(request.file) || isWindowsAbsolute(request.file))) {
-    throw new Error("The editor file path must be absolute.");
+    throw new Error('The editor file path must be absolute.');
   }
   if (hasRejectedRoot(request.file)) {
-    throw new Error("The editor file path must not be a network location.");
+    throw new Error('The editor file path must not be a network location.');
   }
   let canonical: string;
   try {
     canonical = fs.realpathSync(request.file);
   } catch {
-    throw new Error("The editor file does not exist or cannot be read.");
+    throw new Error('The editor file does not exist or cannot be read.');
   }
   if (!fs.statSync(canonical).isFile()) {
-    throw new Error("The editor target must be a file.");
+    throw new Error('The editor target must be a file.');
   }
   if (request.file !== canonical) {
     // A non-canonical path means symlink or `..` trickery got this far.
-    throw new Error("The editor file path is not canonical.");
+    throw new Error('The editor file path is not canonical.');
   }
   return { editor, template, file: canonical, line, column };
 }
@@ -200,14 +180,14 @@ interface EditorProgram {
 function fixedEditorProgram(request: ValidatedRequest): EditorProgram {
   const location = `${request.file}:${request.line}:${request.column}`;
   switch (request.editor) {
-    case "vscode":
-      return { executable: "code", args: ["-g", location] };
-    case "cursor":
-      return { executable: "cursor", args: ["-g", location] };
-    case "zed":
-      return { executable: "zed", args: [location] };
-    case "custom":
-      throw new Error("A custom editor needs a command template.");
+    case 'vscode':
+      return { executable: 'code', args: ['-g', location] };
+    case 'cursor':
+      return { executable: 'cursor', args: ['-g', location] };
+    case 'zed':
+      return { executable: 'zed', args: [location] };
+    case 'custom':
+      throw new Error('A custom editor needs a command template.');
   }
 }
 
@@ -218,20 +198,20 @@ function posixQuote(value: string): string {
 /** The command string handed to `$SHELL -l -c`. Every argument is quoted, so a
  * path containing a space or a quote cannot become extra arguments. */
 export function posixEditorCommand(request: ValidatedRequest): string {
-  if (request.editor !== "custom") {
+  if (request.editor !== 'custom') {
     const program = fixedEditorProgram(request);
-    return [program.executable, ...program.args].map(posixQuote).join(" ");
+    return [program.executable, ...program.args].map(posixQuote).join(' ');
   }
   if (request.template.length === 0) {
-    throw new Error("No custom editor command is configured.");
+    throw new Error('No custom editor command is configured.');
   }
-  const template = request.template.includes("{file}")
+  const template = request.template.includes('{file}')
     ? request.template
     : `${request.template} {file}`;
   return template
-    .replaceAll("{line}", String(request.line))
-    .replaceAll("{col}", String(request.column))
-    .replaceAll("{file}", posixQuote(request.file));
+    .replaceAll('{line}', String(request.line))
+    .replaceAll('{col}', String(request.column))
+    .replaceAll('{file}', posixQuote(request.file));
 }
 
 /**
@@ -244,15 +224,15 @@ export function posixEditorCommand(request: ValidatedRequest): string {
  */
 export function openEditor(request: OpenEditorRequest): Promise<void> {
   const validated = validateOpenEditorRequest(request);
-  if (process.platform === "win32") {
-    throw new Error("Opening an editor is unavailable on this platform.");
+  if (process.platform === 'win32') {
+    throw new Error('Opening an editor is unavailable on this platform.');
   }
   const command = posixEditorCommand(validated);
   const launch = macos.shellLaunch();
   return new Promise((resolve, reject) => {
     const child = execFile(
       launch.executable,
-      [...launch.args, "-c", command],
+      [...launch.args, '-c', command],
       { timeout: EDITOR_TIMEOUT_MS },
       (error, _stdout, stderr) => {
         if (error === null) {
@@ -260,7 +240,7 @@ export function openEditor(request: OpenEditorRequest): Promise<void> {
           return;
         }
         // A timeout means the editor is still running, which is success.
-        if ((error as NodeJS.ErrnoException).code === "ETIMEDOUT") {
+        if ((error as NodeJS.ErrnoException).code === 'ETIMEDOUT') {
           resolve();
           return;
         }

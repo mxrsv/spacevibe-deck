@@ -1,16 +1,13 @@
-import { CaretDown } from "@phosphor-icons/react";
-import { useSignal } from "@preact/signals";
-import { agentOptions, type CustomAgent } from "../lib/agent-catalog";
-import { AGENT_LOGOS } from "../lib/agent-logos";
-import { letterAvatar } from "../lib/letter-avatar";
-import type { AgentChoice } from "../lib/workspace-recents";
-import {
-  destinationLabel,
-  type QuickDestination,
-} from "../repositories/worktree-destinations";
-import { ConfigRow } from "./controls/config-row";
-import { DeckIcon, ROW_ICON } from "./controls/deck-icon";
-import { Modal } from "./modal";
+import { CaretDown } from '@phosphor-icons/react';
+import { useSignal } from '@preact/signals';
+import { agentOptions, type CustomAgent } from '../lib/agent-catalog';
+import { AGENT_LOGOS } from '../lib/agent-logos';
+import { letterAvatar } from '../lib/letter-avatar';
+import type { AgentChoice } from '../lib/workspace-recents';
+import { destinationLabel, type QuickDestination } from '../repositories/worktree-destinations';
+import { ConfigRow } from './controls/config-row';
+import { DeckIcon, ROW_ICON } from './controls/deck-icon';
+import { Modal } from './modal';
 
 /**
  * The `+` button's fast path: pick a destination and an agent, open a tab.
@@ -91,7 +88,7 @@ export function AgentQuickPicker({
     if (event.target instanceof HTMLSelectElement) {
       return;
     }
-    if (event.key === "0") {
+    if (event.key === '0') {
       pick(null);
     } else if (/^[1-9]$/.test(event.key)) {
       const chip = chips[Number(event.key) - 1];
@@ -123,14 +120,12 @@ export function AgentQuickPicker({
           {/* menu value kind (DL-6, DL-1.4): a native select overlaid
               invisibly on the styled pill. */}
           <span class="cfg-btn cfg-btn--overlay">
-            <span class="cfg-btn__text">
-              {current === null ? "—" : destinationLabel(current)}
-            </span>
+            <span class="cfg-btn__text">{current === null ? '—' : destinationLabel(current)}</span>
             <span class="cfg-btn__hint">
               <DeckIcon icon={CaretDown} size={ROW_ICON} />
             </span>
             <select
-              value={current?.path ?? ""}
+              value={current?.path ?? ''}
               aria-label="Worktree"
               onChange={(event) => {
                 chosen.value = event.currentTarget.value;
@@ -152,31 +147,23 @@ export function AgentQuickPicker({
           <span class="cfg-readout">{destinationLabel(current)}</span>
         </ConfigRow>
       ) : (
-        <p class="agent-quick-picker__hint">
-          Runs in this workspace — pick an agent to launch it
-        </p>
+        <p class="agent-quick-picker__hint">Runs in this workspace — pick an agent to launch it</p>
       )}
       <div class="agents">
         {chips.map((chip) => {
-          const avatar =
-            chip.logo === undefined ? letterAvatar(chip.label, chip.id) : null;
+          const avatar = chip.logo === undefined ? letterAvatar(chip.label, chip.id) : null;
           return (
             <button
               key={chip.id}
               type="button"
-              class={`achip ${chip.missing ? "is-missing" : ""}`}
-              title={
-                chip.missing ? `${chip.detail} — not on $PATH` : chip.detail
-              }
+              class={`achip ${chip.missing ? 'is-missing' : ''}`}
+              title={chip.missing ? `${chip.detail} — not on $PATH` : chip.detail}
               onClick={() => pick(chip.id)}
             >
               {chip.logo !== undefined ? (
                 <img class="achip__logo" src={chip.logo} alt="" />
               ) : (
-                <span
-                  class="achip__letter"
-                  style={{ color: `var(--${avatar?.color})` }}
-                >
+                <span class="achip__letter" style={{ color: `var(--${avatar?.color})` }}>
                   {avatar?.letter}
                 </span>
               )}

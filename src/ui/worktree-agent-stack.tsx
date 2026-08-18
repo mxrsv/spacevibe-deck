@@ -1,11 +1,11 @@
-import { useSignal, type Signal } from "@preact/signals";
-import type { JSX } from "preact";
-import { BUILTIN_AGENTS } from "../lib/agent-catalog";
-import { AGENT_LOGOS } from "../lib/agent-logos";
-import { letterAvatar } from "../lib/letter-avatar";
-import type { PaneAgent } from "../lib/process-info";
-import { tabDotCssColor } from "../lib/tab-colors";
-import type { RailTab } from "../repositories/repository-model";
+import { useSignal, type Signal } from '@preact/signals';
+import type { JSX } from 'preact';
+import { BUILTIN_AGENTS } from '../lib/agent-catalog';
+import { AGENT_LOGOS } from '../lib/agent-logos';
+import { letterAvatar } from '../lib/letter-avatar';
+import type { PaneAgent } from '../lib/process-info';
+import { tabDotCssColor } from '../lib/tab-colors';
+import type { RailTab } from '../repositories/repository-model';
 
 const MAX_VISIBLE_TABS = 3;
 
@@ -16,9 +16,7 @@ interface WorktreeAgentStackProps {
 }
 
 function agentLabel(agent: PaneAgent): string {
-  return (
-    BUILTIN_AGENTS.find((candidate) => candidate.id === agent)?.label ?? agent
-  );
+  return BUILTIN_AGENTS.find((candidate) => candidate.id === agent)?.label ?? agent;
 }
 
 function tabLabel(tab: RailTab): string {
@@ -26,7 +24,7 @@ function tabLabel(tab: RailTab): string {
     return tab.customName;
   }
   if (tab.agents.length > 0) {
-    return tab.agents.map(agentLabel).join(" + ");
+    return tab.agents.map(agentLabel).join(' + ');
   }
   return tab.label;
 }
@@ -44,10 +42,7 @@ function visibleTabs(tabs: readonly RailTab[]): readonly RailTab[] {
   }
   const activeIndex = tabs.findIndex((tab) => tab.active);
   const focusIndex = activeIndex === -1 ? 0 : activeIndex;
-  const start = Math.min(
-    Math.max(focusIndex - 1, 0),
-    tabs.length - MAX_VISIBLE_TABS,
-  );
+  const start = Math.min(Math.max(focusIndex - 1, 0), tabs.length - MAX_VISIBLE_TABS);
   return tabs.slice(start, start + MAX_VISIBLE_TABS);
 }
 
@@ -78,9 +73,9 @@ function TabAgentButton({ tab, onSelect, onOpenOptions }: TabAgentButtonProps) {
   return (
     <button
       type="button"
-      class={`worktree-agents__item ${tab.active ? "is-active" : ""}`}
+      class={`worktree-agents__item ${tab.active ? 'is-active' : ''}`}
       aria-label={`Focus ${label}`}
-      aria-current={tab.active ? "page" : undefined}
+      aria-current={tab.active ? 'page' : undefined}
       title={label}
       data-key={tab.key}
       onClick={(event) => {
@@ -114,8 +109,8 @@ function MoreTabsButton({ count, open, onToggle }: MoreTabsButtonProps) {
   return (
     <button
       type="button"
-      class={`worktree-agents__more ${open ? "is-open" : ""}`}
-      aria-label={`Show ${count} more agent ${count === 1 ? "tab" : "tabs"}`}
+      class={`worktree-agents__more ${open ? 'is-open' : ''}`}
+      aria-label={`Show ${count} more agent ${count === 1 ? 'tab' : 'tabs'}`}
       aria-expanded={open}
       title={`${count} more tabs`}
       onClick={(event) => {
@@ -175,7 +170,7 @@ function AgentTabControls(props: AgentTabControlsProps) {
     <span
       class="worktree-agents"
       role="group"
-      aria-label={`${props.tabs.length} agent ${props.tabs.length === 1 ? "tab" : "tabs"} in this worktree`}
+      aria-label={`${props.tabs.length} agent ${props.tabs.length === 1 ? 'tab' : 'tabs'} in this worktree`}
       onBlur={(event) => {
         const next = event.relatedTarget;
         if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
@@ -183,7 +178,7 @@ function AgentTabControls(props: AgentTabControlsProps) {
         }
       }}
       onKeyDown={(event) => {
-        if (event.key === "Escape") {
+        if (event.key === 'Escape') {
           event.stopPropagation();
           props.menuOpen.value = false;
         }
@@ -204,19 +199,13 @@ function AgentTabControls(props: AgentTabControlsProps) {
           props.menuOpen.value = !props.menuOpen.value;
         }}
       />
-      {props.menuOpen.value && (
-        <HiddenTabMenu tabs={props.hidden} onSelect={props.onSelect} />
-      )}
+      {props.menuOpen.value && <HiddenTabMenu tabs={props.hidden} onSelect={props.onSelect} />}
     </span>
   );
 }
 
 /** One focusable agent mark per terminal tab in a worktree. */
-export function WorktreeAgentStack({
-  tabs,
-  onSelectTab,
-  onOpenOptions,
-}: WorktreeAgentStackProps) {
+export function WorktreeAgentStack({ tabs, onSelectTab, onOpenOptions }: WorktreeAgentStackProps) {
   const menuOpen = useSignal(false);
   if (tabs.length === 0) {
     return null;

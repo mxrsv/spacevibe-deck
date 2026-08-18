@@ -1,5 +1,5 @@
-import type { Settings } from "../settings/settings-schema";
-import { UNSEQUENCED } from "../lib/open-sequence";
+import type { Settings } from '../settings/settings-schema';
+import { UNSEQUENCED } from '../lib/open-sequence';
 
 /**
  * Non-terminal surfaces sharing the tab strip.

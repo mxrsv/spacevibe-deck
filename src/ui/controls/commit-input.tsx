@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from 'preact/hooks';
 
 interface CommitInputProps {
   /** The committed value from the store. */
@@ -45,7 +45,7 @@ export function CommitInput({
 
   const commit = (): void => {
     const next = draft.trim();
-    if (next === "" || next === committed.current) {
+    if (next === '' || next === committed.current) {
       return;
     }
     committed.current = next;
@@ -63,7 +63,7 @@ export function CommitInput({
       onInput={(event) => setDraft(event.currentTarget.value)}
       onBlur={commit}
       onKeyDown={(event) => {
-        if (event.key === "Enter") {
+        if (event.key === 'Enter') {
           event.preventDefault();
           commit();
         }

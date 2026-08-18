@@ -27,7 +27,7 @@ export class MainDirtyRegistry {
    */
   replace(label: string, paths: readonly unknown[]): void {
     const clean = paths
-      .filter((path): path is string => typeof path === "string" && path !== "")
+      .filter((path): path is string => typeof path === 'string' && path !== '')
       .slice(0, MAX_PATHS_PER_WINDOW);
     if (clean.length === 0) {
       this.byWindow.delete(label);

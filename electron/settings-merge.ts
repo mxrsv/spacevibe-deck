@@ -8,11 +8,11 @@
  * change existed. The fix is to send the CHANGE, not the result — the main
  * process holds the only writer and every window learns the merged value.
  */
-import type { StoreRegistry } from "./store";
+import type { StoreRegistry } from './store';
 
 /** Mirrors `src/settings/settings-store.ts` — same file, same key. */
-const STORE_FILE = "settings.json";
-const STORE_KEY = "settings";
+const STORE_FILE = 'settings.json';
+const STORE_KEY = 'settings';
 
 /**
  * Keys a past version wrote that no version reads any more.
@@ -29,14 +29,14 @@ const STORE_KEY = "settings";
 const RETIRED_KEYS: readonly string[] = [
   // The browser's docked right column, its resize drag and `browserWidth` were
   // removed on 2026-08-15 when the browser became a tab on the stage strip.
-  "browserWidth",
+  'browserWidth',
   // The docked right column stopped being the file explorer's on 2026-08-16:
   // it hosts several surfaces as tabs, so `explorerOpen`/`explorerWidth` became
   // `dockOpen`/`dockWidth`. The width is not carried over on purpose — the old
   // floor (180) is below the new one (360), so an old value would arrive
   // already out of range.
-  "explorerOpen",
-  "explorerWidth",
+  'explorerOpen',
+  'explorerWidth',
 ];
 
 /**
@@ -50,18 +50,16 @@ const RETIRED_KEYS: readonly string[] = [
 export function mergeSettings(current: unknown, patch: unknown): unknown {
   if (
     current !== undefined &&
-    (typeof current !== "object" || current === null || Array.isArray(current))
+    (typeof current !== 'object' || current === null || Array.isArray(current))
   ) {
-    throw new Error("Stored settings are malformed; write blocked");
+    throw new Error('Stored settings are malformed; write blocked');
   }
-  if (typeof patch !== "object" || patch === null || Array.isArray(patch)) {
+  if (typeof patch !== 'object' || patch === null || Array.isArray(patch)) {
     return current;
   }
   const base = (current ?? {}) as Record<string, unknown>;
   const merged = { ...base, ...(patch as Record<string, unknown>) };
-  return Object.fromEntries(
-    Object.entries(merged).filter(([key]) => !RETIRED_KEYS.includes(key)),
-  );
+  return Object.fromEntries(Object.entries(merged).filter(([key]) => !RETIRED_KEYS.includes(key)));
 }
 
 /**
@@ -71,13 +69,10 @@ export function mergeSettings(current: unknown, patch: unknown): unknown {
  * discards its error, which is how a full disk used to look like a successful
  * write. Broadcasting to the other windows is the caller's job.
  */
-export async function applySettingsPatch(
-  stores: StoreRegistry,
-  patch: unknown,
-): Promise<unknown> {
+export async function applySettingsPatch(stores: StoreRegistry, patch: unknown): Promise<unknown> {
   const store = await stores.open(STORE_FILE);
   if (!store.requireObjectValue(STORE_KEY)) {
-    throw new Error("Stored settings are malformed; write blocked");
+    throw new Error('Stored settings are malformed; write blocked');
   }
   const merged = mergeSettings(store.get(STORE_KEY), patch);
   store.set(STORE_KEY, merged);

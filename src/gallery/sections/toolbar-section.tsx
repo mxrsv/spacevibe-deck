@@ -8,19 +8,16 @@ import {
   SquareSplitVertical,
   TreeView,
   XSquare,
-} from "@phosphor-icons/react";
-import { useSignal } from "@preact/signals";
-import type { ComponentChildren } from "preact";
-import { ACTION_REGISTRY, type ActionId } from "../../terminal/action-registry";
-import { shortcutLabel } from "../../lib/shortcut-label";
-import type { DesktopPlatform } from "../../lib/platform";
-import { FeatureToolbar } from "../../ui/toolbar/feature-toolbar";
-import type {
-  ToolbarItem,
-  ToolbarItemState,
-} from "../../ui/toolbar/toolbar-item";
-import { UpdateAction } from "../../updater/update-action";
-import { SectionHead, Specimen, StateLabel } from "../specimen";
+} from '@phosphor-icons/react';
+import { useSignal } from '@preact/signals';
+import type { ComponentChildren } from 'preact';
+import { ACTION_REGISTRY, type ActionId } from '../../terminal/action-registry';
+import { shortcutLabel } from '../../lib/shortcut-label';
+import type { DesktopPlatform } from '../../lib/platform';
+import { FeatureToolbar } from '../../ui/toolbar/feature-toolbar';
+import type { ToolbarItem, ToolbarItemState } from '../../ui/toolbar/toolbar-item';
+import { UpdateAction } from '../../updater/update-action';
+import { SectionHead, Specimen, StateLabel } from '../specimen';
 
 /**
  * The feature toolbar from docs/specs/2026-08-12-feature-toolbar-design.md,
@@ -38,9 +35,9 @@ import { SectionHead, Specimen, StateLabel } from "../specimen";
  * the fit calculation are the shipping components.
  */
 
-type GalleryPlatform = Extract<DesktopPlatform, "macos" | "windows">;
+type GalleryPlatform = Extract<DesktopPlatform, 'macos' | 'windows'>;
 
-const PLATFORMS: readonly GalleryPlatform[] = ["macos", "windows"];
+const PLATFORMS: readonly GalleryPlatform[] = ['macos', 'windows'];
 
 const REGISTRY_LABELS: ReadonlyMap<string, string> = new Map(
   ACTION_REGISTRY.map((action) => [action.id, action.label]),
@@ -53,11 +50,11 @@ const REGISTRY_LABELS: ReadonlyMap<string, string> = new Map(
  * tooltip wants the name.
  */
 function actionLabel(id: ActionId): string {
-  return (REGISTRY_LABELS.get(id) ?? id).replace(/…$/, "");
+  return (REGISTRY_LABELS.get(id) ?? id).replace(/…$/, '');
 }
 
-const IDLE: ToolbarItemState = { kind: "idle" };
-const ACTIVE: ToolbarItemState = { kind: "active" };
+const IDLE: ToolbarItemState = { kind: 'idle' };
+const ACTIVE: ToolbarItemState = { kind: 'active' };
 
 const NOOP = (): void => {};
 
@@ -69,7 +66,7 @@ interface ItemOverrides {
 function registryItem(
   id: ActionId,
   platform: GalleryPlatform,
-  item: Omit<ToolbarItem, "label" | "shortcut" | "state" | "onActivate">,
+  item: Omit<ToolbarItem, 'label' | 'shortcut' | 'state' | 'onActivate'>,
   states: Readonly<Record<string, ToolbarItemState>>,
 ): ToolbarItem {
   return {
@@ -89,96 +86,96 @@ function toolbarItems(
     // Explorer stays ACTIVE by default — this specimen's job includes showing
     // what an open tool looks like, and it is the section's chosen example.
     registryItem(
-      "toggle-explorer",
+      'toggle-explorer',
       platform,
       {
-        id: "toggle-explorer",
+        id: 'toggle-explorer',
         icon: TreeView,
-        group: "tools",
+        group: 'tools',
         overflowOrder: null,
-        toggles: "pressed",
+        toggles: 'pressed',
       },
-      { "toggle-explorer": ACTIVE, ...states },
+      { 'toggle-explorer': ACTIVE, ...states },
     ),
     registryItem(
-      "toggle-browser",
+      'toggle-browser',
       platform,
       {
-        id: "toggle-browser",
+        id: 'toggle-browser',
         icon: Globe,
-        group: "tools",
+        group: 'tools',
         overflowOrder: null,
-        toggles: "pressed",
+        toggles: 'pressed',
       },
       states,
     ),
     registryItem(
-      "toggle-usage",
+      'toggle-usage',
       platform,
-      { id: "toggle-usage", icon: Gauge, group: "tools", overflowOrder: 1 },
+      { id: 'toggle-usage', icon: Gauge, group: 'tools', overflowOrder: 1 },
       states,
     ),
     registryItem(
-      "split-row",
+      'split-row',
       platform,
       {
-        id: "split-row",
+        id: 'split-row',
         icon: SquareSplitHorizontal,
-        group: "pane",
+        group: 'pane',
         overflowOrder: 5,
       },
       states,
     ),
     registryItem(
-      "split-column",
+      'split-column',
       platform,
       {
-        id: "split-column",
+        id: 'split-column',
         icon: SquareSplitVertical,
-        group: "pane",
+        group: 'pane',
         overflowOrder: 4,
       },
       states,
     ),
     registryItem(
-      "toggle-expand",
+      'toggle-expand',
       platform,
       {
-        id: "toggle-expand",
+        id: 'toggle-expand',
         icon: ArrowsOut,
-        group: "pane",
+        group: 'pane',
         overflowOrder: 2,
-        toggles: "pressed",
+        toggles: 'pressed',
       },
       states,
     ),
     registryItem(
-      "close-pane",
+      'close-pane',
       platform,
-      { id: "close-pane", icon: XSquare, group: "pane", overflowOrder: 3 },
+      { id: 'close-pane', icon: XSquare, group: 'pane', overflowOrder: 3 },
       states,
     ),
     registryItem(
-      "toggle-prompts",
+      'toggle-prompts',
       platform,
       {
-        id: "toggle-prompts",
+        id: 'toggle-prompts',
         icon: ChatText,
-        group: "global",
+        group: 'global',
         overflowOrder: null,
-        toggles: "dialog",
+        toggles: 'dialog',
       },
       states,
     ),
     registryItem(
-      "toggle-settings",
+      'toggle-settings',
       platform,
       {
-        id: "toggle-settings",
+        id: 'toggle-settings',
         icon: Gear,
-        group: "global",
+        group: 'global',
         overflowOrder: null,
-        toggles: "pressed",
+        toggles: 'pressed',
       },
       states,
     ),
@@ -186,18 +183,12 @@ function toolbarItems(
 }
 
 /** A strip of the real tab bar, at a width the window could actually give it. */
-function BarFrame({
-  width,
-  children,
-}: {
-  width: number;
-  children: ComponentChildren;
-}) {
+function BarFrame({ width, children }: { width: number; children: ComponentChildren }) {
   return (
     <div class="gx-bar" style={{ width: `${width}px` }}>
       <div class="tabbar gx-bar__inner">
         <span class="tab is-active gx-bar__tab">
-          <span class="tab__dot" style={{ background: "var(--cyan)" }} />
+          <span class="tab__dot" style={{ background: 'var(--cyan)' }} />
           <span class="tab__label">deck</span>
         </span>
         {children}
@@ -207,7 +198,7 @@ function BarFrame({
 }
 
 export function ToolbarSection() {
-  const platform = useSignal<GalleryPlatform>("macos");
+  const platform = useSignal<GalleryPlatform>('macos');
 
   return (
     <>
@@ -221,9 +212,7 @@ export function ToolbarSection() {
           <button
             key={candidate}
             type="button"
-            class={`gx-pick__opt ${
-              platform.value === candidate ? "is-active" : ""
-            }`}
+            class={`gx-pick__opt ${platform.value === candidate ? 'is-active' : ''}`}
             aria-pressed={platform.value === candidate}
             onClick={() => {
               platform.value = candidate;
@@ -233,8 +222,8 @@ export function ToolbarSection() {
           </button>
         ))}
         <span class="gx-pick__hint">
-          every chord below is formatted for this platform — Explorer reads ⌘⇧E
-          on macOS and Ctrl+Shift+E on Windows
+          every chord below is formatted for this platform — Explorer reads ⌘⇧E on macOS and
+          Ctrl+Shift+E on Windows
         </span>
       </div>
 
@@ -250,10 +239,10 @@ export function ToolbarSection() {
               updateAction={
                 <UpdateAction
                   view={{
-                    phase: "available",
-                    currentVersion: "0.12.2",
-                    availableVersion: "0.12.3",
-                    notes: "Fixes the thing.",
+                    phase: 'available',
+                    currentVersion: '0.12.2',
+                    availableVersion: '0.12.3',
+                    notes: 'Fixes the thing.',
                   }}
                   onDownload={NOOP}
                   onInstall={NOOP}
@@ -275,9 +264,7 @@ export function ToolbarSection() {
           <BarFrame width={420}>
             <FeatureToolbar items={toolbarItems(platform.value)} />
           </BarFrame>
-          <StateLabel>
-            240px — the pane group is gone, its hairline with it
-          </StateLabel>
+          <StateLabel>240px — the pane group is gone, its hairline with it</StateLabel>
           <BarFrame width={240}>
             <FeatureToolbar items={toolbarItems(platform.value)} />
           </BarFrame>
@@ -294,14 +281,14 @@ export function ToolbarSection() {
             <FeatureToolbar
               items={toolbarItems(platform.value, {
                 states: {
-                  "toggle-explorer": IDLE,
-                  "close-pane": {
-                    kind: "unavailable",
-                    reason: "only one pane is open",
+                  'toggle-explorer': IDLE,
+                  'close-pane': {
+                    kind: 'unavailable',
+                    reason: 'only one pane is open',
                   },
-                  "toggle-prompts": {
-                    kind: "unavailable",
-                    reason: "no pane to paste into",
+                  'toggle-prompts': {
+                    kind: 'unavailable',
+                    reason: 'no pane to paste into',
                   },
                 },
               })}

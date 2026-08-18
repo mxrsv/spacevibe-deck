@@ -4,11 +4,11 @@
  */
 export function normalizeWorkspacePath(path: string): string | null {
   const trimmed = path.trim();
-  if (trimmed === "") {
+  if (trimmed === '') {
     return null;
   }
-  const stripped = trimmed.replace(/\/+$/, "");
-  return stripped === "" ? "/" : stripped;
+  const stripped = trimmed.replace(/\/+$/, '');
+  return stripped === '' ? '/' : stripped;
 }
 
 /**
@@ -17,16 +17,16 @@ export function normalizeWorkspacePath(path: string): string | null {
  */
 export function workspaceLabel(path: string): string {
   const trimmed = path.trim();
-  if (trimmed === "") {
-    return "Unknown";
+  if (trimmed === '') {
+    return 'Unknown';
   }
-  if (trimmed === "/") {
-    return "/";
+  if (trimmed === '/') {
+    return '/';
   }
-  const withoutTrailing = trimmed.replace(/\/+$/, "");
-  if (withoutTrailing === "") {
-    return "/";
+  const withoutTrailing = trimmed.replace(/\/+$/, '');
+  if (withoutTrailing === '') {
+    return '/';
   }
-  const base = withoutTrailing.slice(withoutTrailing.lastIndexOf("/") + 1);
-  return base === "" ? "Unknown" : base;
+  const base = withoutTrailing.slice(withoutTrailing.lastIndexOf('/') + 1);
+  return base === '' ? 'Unknown' : base;
 }

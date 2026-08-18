@@ -8,7 +8,7 @@
  * back, and a reused label would resurrect a window that no longer exists.
  */
 
-export const MAIN_LABEL = "main";
+export const MAIN_LABEL = 'main';
 
 /**
  * How a window should come up.
@@ -21,8 +21,7 @@ export const MAIN_LABEL = "main";
  * source until the transfer timed out.
  */
 export type BootMode =
-  | { readonly kind: "normal" }
-  | { readonly kind: "adopt"; readonly token: string };
+  { readonly kind: 'normal' } | { readonly kind: 'adopt'; readonly token: string };
 
 export class WindowRegistry {
   /** Most-recently-focused first; the move-pane submenu is ordered by it. */
@@ -66,9 +65,9 @@ export class WindowRegistry {
   bootMode(label: string): BootMode {
     const token = this.pendingAdoptions.get(label);
     if (token === undefined) {
-      return { kind: "normal" };
+      return { kind: 'normal' };
     }
     this.pendingAdoptions.delete(label);
-    return { kind: "adopt", token };
+    return { kind: 'adopt', token };
   }
 }

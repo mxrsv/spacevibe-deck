@@ -1,6 +1,6 @@
-import { ClockCounterClockwise, Gauge, TreeView } from "@phosphor-icons/react";
-import type { DeckIconComponent } from "../controls/deck-icon";
-import type { DockTab } from "../../settings/settings-schema";
+import { ClockCounterClockwise, Gauge, TreeView } from '@phosphor-icons/react';
+import type { DeckIconComponent } from '../controls/deck-icon';
+import type { DockTab } from '../../settings/settings-schema';
 
 /**
  * The three surfaces the docked side panel can host. Order of `DOCK_TABS`
@@ -31,9 +31,9 @@ export interface DockTabDescriptor {
  * narrows it; this constant itself never changes shape.
  */
 export const DOCK_TABS: readonly DockTabDescriptor[] = Object.freeze([
-  { id: "explorer", label: "File explorer", icon: TreeView },
-  { id: "usage", label: "Token usage", icon: Gauge },
-  { id: "sessions", label: "Session history", icon: ClockCounterClockwise },
+  { id: 'explorer', label: 'File explorer', icon: TreeView },
+  { id: 'usage', label: 'Token usage', icon: Gauge },
+  { id: 'sessions', label: 'Session history', icon: ClockCounterClockwise },
 ]);
 
 /**
@@ -42,13 +42,11 @@ export const DOCK_TABS: readonly DockTabDescriptor[] = Object.freeze([
  * the same precedent: a control that opens an empty surface is worse than no
  * control, so the tab is omitted rather than shown disabled.
  */
-export function availableDockTabs(
-  sessionsAvailable: boolean,
-): readonly DockTabDescriptor[] {
+export function availableDockTabs(sessionsAvailable: boolean): readonly DockTabDescriptor[] {
   if (sessionsAvailable) {
     return DOCK_TABS;
   }
-  return DOCK_TABS.filter((tab) => tab.id !== "sessions");
+  return DOCK_TABS.filter((tab) => tab.id !== 'sessions');
 }
 
 /**
@@ -57,10 +55,7 @@ export function availableDockTabs(
  * `sessions_list`. Explorer is the panel's original, always-available
  * surface, so it is the one safe default to resolve to.
  */
-export function resolveDockTab(
-  requested: DockTabId,
-  sessionsAvailable: boolean,
-): DockTabId {
+export function resolveDockTab(requested: DockTabId, sessionsAvailable: boolean): DockTabId {
   const available = availableDockTabs(sessionsAvailable);
-  return available.some((tab) => tab.id === requested) ? requested : "explorer";
+  return available.some((tab) => tab.id === requested) ? requested : 'explorer';
 }

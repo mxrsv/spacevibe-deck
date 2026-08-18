@@ -6,13 +6,9 @@
  * conversation a terminal pane resumes into, so unlike
  * `electron/usage/discover.ts`'s counter this scanner never descends there.
  */
-import { lstatSync, readdirSync } from "node:fs";
-import path from "node:path";
-import {
-  CLAUDE_DIR,
-  CLAUDE_PROJECTS_DIR,
-  IDENTITY_HEAD_BYTES,
-} from "../usage/model";
+import { lstatSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR, IDENTITY_HEAD_BYTES } from '../usage/model';
 import {
   headBytes,
   headJsonLines,
@@ -22,7 +18,7 @@ import {
   type ScanOptions,
   type ScanResult,
   type SessionRecord,
-} from "./head";
+} from './head';
 
 /**
  * `sessionId` is on line one; `cwd` lands within the first few lines (line 5
@@ -46,9 +42,7 @@ function isRegularFile(candidate: string): boolean {
 
 function isDirectory(candidate: string): boolean {
   try {
-    return (
-      lstatSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true
-    );
+    return lstatSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true;
   } catch {
     return false;
   }
@@ -72,7 +66,7 @@ function transcriptFiles(projectDir: string): string[] {
     return [];
   }
   return names
-    .filter((name) => name.endsWith(".jsonl"))
+    .filter((name) => name.endsWith('.jsonl'))
     .map((name) => path.join(projectDir, name))
     .filter(isRegularFile);
 }
@@ -98,57 +92,54 @@ function datedTranscripts(root: string): FileCandidate[] {
  * a `{ type: "text" }` part, is user-authored.
  */
 function claudeUserText(line: Record<string, unknown>): string | null {
-  if (line.type !== "user") {
+  if (line.type !== 'user') {
     return null;
   }
   const message = line.message;
-  if (message === null || typeof message !== "object") {
+  if (message === null || typeof message !== 'object') {
     return null;
   }
   const content = (message as Record<string, unknown>).content;
-  if (typeof content === "string") {
+  if (typeof content === 'string') {
     return content;
   }
   if (!Array.isArray(content)) {
     return null;
   }
   for (const part of content) {
-    if (part === null || typeof part !== "object") {
+    if (part === null || typeof part !== 'object') {
       continue;
     }
     const node = part as Record<string, unknown>;
-    if (node.type === "text" && typeof node.text === "string") {
+    if (node.type === 'text' && typeof node.text === 'string') {
       return node.text;
     }
   }
   return null;
 }
 
-export function readClaudeRecord(
-  entry: FileCandidate,
-  options: ScanOptions,
-): SessionRecord | null {
+export function readClaudeRecord(entry: FileCandidate, options: ScanOptions): SessionRecord | null {
   const head = headBytes(entry.filePath, options.headBytes);
   if (head === null) {
     return null;
   }
   const lines = headJsonLines(head, options.headLines);
   const first = lines[0];
-  if (first === null || typeof first !== "object") {
+  if (first === null || typeof first !== 'object') {
     return null;
   }
   const sessionId = (first as Record<string, unknown>).sessionId;
-  if (typeof sessionId !== "string" || sessionId === "") {
+  if (typeof sessionId !== 'string' || sessionId === '') {
     return null;
   }
   let cwd: string | null = null;
   let title: string | null = null;
   for (const line of lines) {
-    if (line === null || typeof line !== "object") {
+    if (line === null || typeof line !== 'object') {
       continue;
     }
     const node = line as Record<string, unknown>;
-    if (cwd === null && typeof node.cwd === "string" && node.cwd !== "") {
+    if (cwd === null && typeof node.cwd === 'string' && node.cwd !== '') {
       cwd = node.cwd;
     }
     if (options.withTitle && title === null) {
@@ -173,9 +164,7 @@ export function readClaudeRecord(
 /** Every transcript, newest first, stat only — no file is opened here. */
 export function listClaudeFiles(home: string): FileCandidate[] {
   const root = path.join(home, CLAUDE_DIR, CLAUDE_PROJECTS_DIR);
-  return datedTranscripts(root).sort(
-    (left, right) => right.mtimeMs - left.mtimeMs,
-  );
+  return datedTranscripts(root).sort((left, right) => right.mtimeMs - left.mtimeMs);
 }
 
 /** List + cap + read, with no cache. The boot path's shape; the history

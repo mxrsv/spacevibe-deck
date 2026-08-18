@@ -4,17 +4,17 @@
  * Every transformation returns a new tree and never mutates the old one.
  */
 
-export type Direction = "row" | "column";
-export type Branch = "a" | "b";
+export type Direction = 'row' | 'column';
+export type Branch = 'a' | 'b';
 export type Path = readonly Branch[];
 
 export interface LeafNode {
-  readonly kind: "leaf";
+  readonly kind: 'leaf';
   readonly paneId: number;
 }
 
 export interface SplitNode {
-  readonly kind: "split";
+  readonly kind: 'split';
   readonly dir: Direction;
   readonly ratio: number;
   readonly a: TreeNode;
@@ -24,7 +24,7 @@ export interface SplitNode {
 export type TreeNode = LeafNode | SplitNode;
 
 export function leaf(paneId: number): LeafNode {
-  return { kind: "leaf", paneId };
+  return { kind: 'leaf', paneId };
 }
 
 /** Replace leaf `targetId` with a split containing it and the new pane `newId`. */
@@ -34,9 +34,9 @@ export function splitLeaf(
   newId: number,
   dir: Direction,
 ): TreeNode {
-  if (node.kind === "leaf") {
+  if (node.kind === 'leaf') {
     return node.paneId === targetId
-      ? { kind: "split", dir, ratio: 0.5, a: node, b: leaf(newId) }
+      ? { kind: 'split', dir, ratio: 0.5, a: node, b: leaf(newId) }
       : node;
   }
   return {
@@ -46,19 +46,14 @@ export function splitLeaf(
   };
 }
 
-export type Edge = "top" | "bottom" | "left" | "right";
+export type Edge = 'top' | 'bottom' | 'left' | 'right';
 
 /**
  * Detach leaf `sourceId` from the tree and dock it onto the `edge` of leaf
  * `targetId`. Returns a new tree; returns the old tree BY REFERENCE when the
  * operation is invalid (source === target, or either id is not in the tree).
  */
-export function movePane(
-  node: TreeNode,
-  sourceId: number,
-  targetId: number,
-  edge: Edge,
-): TreeNode {
+export function movePane(node: TreeNode, sourceId: number, targetId: number, edge: Edge): TreeNode {
   if (sourceId === targetId) {
     return node;
   }
@@ -71,8 +66,8 @@ export function movePane(
     // Cannot happen while target remains, but removeLeaf returns TreeNode | null.
     return node;
   }
-  const dir: Direction = edge === "left" || edge === "right" ? "row" : "column";
-  const sourceFirst = edge === "left" || edge === "top";
+  const dir: Direction = edge === 'left' || edge === 'right' ? 'row' : 'column';
+  const sourceFirst = edge === 'left' || edge === 'top';
   return dockIntoLeaf(withoutSource, targetId, sourceId, dir, sourceFirst);
 }
 
@@ -86,17 +81,12 @@ export function movePane(
  * either: it takes a direction rather than an edge and always appends the new
  * pane to branch `b`, so `left` and `top` would land on the wrong side.
  */
-export function dockNewPane(
-  node: TreeNode,
-  targetId: number,
-  newId: number,
-  edge: Edge,
-): TreeNode {
+export function dockNewPane(node: TreeNode, targetId: number, newId: number, edge: Edge): TreeNode {
   if (!leafIds(node).includes(targetId)) {
     return node;
   }
-  const dir: Direction = edge === "left" || edge === "right" ? "row" : "column";
-  const newFirst = edge === "left" || edge === "top";
+  const dir: Direction = edge === 'left' || edge === 'right' ? 'row' : 'column';
+  const newFirst = edge === 'left' || edge === 'top';
   return dockIntoLeaf(node, targetId, newId, dir, newFirst);
 }
 
@@ -108,13 +98,13 @@ function dockIntoLeaf(
   dir: Direction,
   sourceFirst: boolean,
 ): TreeNode {
-  if (node.kind === "leaf") {
+  if (node.kind === 'leaf') {
     if (node.paneId !== targetId) {
       return node;
     }
     const source = leaf(sourceId);
     return {
-      kind: "split",
+      kind: 'split',
       dir,
       ratio: 0.5,
       a: sourceFirst ? source : node,
@@ -130,7 +120,7 @@ function dockIntoLeaf(
 
 /** Remove a leaf — its parent split collapses into the remaining branch. Returns null when the tree becomes empty. */
 export function removeLeaf(node: TreeNode, paneId: number): TreeNode | null {
-  if (node.kind === "leaf") {
+  if (node.kind === 'leaf') {
     return node.paneId === paneId ? null : node;
   }
   const a = removeLeaf(node.a, paneId);
@@ -148,12 +138,8 @@ export function removeLeaf(node: TreeNode, paneId: number): TreeNode | null {
 }
 
 /** Swap a leaf's id (used when respawning a session into the same spot). */
-export function replaceLeaf(
-  node: TreeNode,
-  oldId: number,
-  newId: number,
-): TreeNode {
-  if (node.kind === "leaf") {
+export function replaceLeaf(node: TreeNode, oldId: number, newId: number): TreeNode {
+  if (node.kind === 'leaf') {
     return node.paneId === oldId ? leaf(newId) : node;
   }
   return {
@@ -181,12 +167,8 @@ export function swapLeaves(node: TreeNode, idA: number, idB: number): TreeNode {
 }
 
 function swapRec(node: TreeNode, idA: number, idB: number): TreeNode {
-  if (node.kind === "leaf") {
-    return node.paneId === idA
-      ? leaf(idB)
-      : node.paneId === idB
-        ? leaf(idA)
-        : node;
+  if (node.kind === 'leaf') {
+    return node.paneId === idA ? leaf(idB) : node.paneId === idB ? leaf(idA) : node;
   }
   return {
     ...node,
@@ -197,21 +179,19 @@ function swapRec(node: TreeNode, idA: number, idB: number): TreeNode {
 
 /** Pane ids in left→right, top→bottom order. */
 export function leafIds(node: TreeNode): number[] {
-  return node.kind === "leaf"
-    ? [node.paneId]
-    : [...leafIds(node.a), ...leafIds(node.b)];
+  return node.kind === 'leaf' ? [node.paneId] : [...leafIds(node.a), ...leafIds(node.b)];
 }
 
 /** Update the ratio of the split at `path` (a/b walk from the root). */
 export function setRatio(node: TreeNode, path: Path, ratio: number): TreeNode {
-  if (node.kind === "leaf") {
+  if (node.kind === 'leaf') {
     return node;
   }
   if (path.length === 0) {
     return { ...node, ratio };
   }
   const [head, ...rest] = path;
-  return head === "a"
+  return head === 'a'
     ? { ...node, a: setRatio(node.a, rest, ratio) }
     : { ...node, b: setRatio(node.b, rest, ratio) };
 }
@@ -223,12 +203,8 @@ export function setRatio(node: TreeNode, path: Path, ratio: number): TreeNode {
  * Returns the node by reference when nothing changes or when `paneId` is
  * not in the tree.
  */
-export function expandForPane(
-  node: TreeNode,
-  paneId: number,
-  minRatio: number,
-): TreeNode {
-  if (node.kind === "leaf") {
+export function expandForPane(node: TreeNode, paneId: number, minRatio: number): TreeNode {
+  if (node.kind === 'leaf') {
     return node;
   }
   const inA = leafIds(node.a).includes(paneId);
@@ -236,9 +212,7 @@ export function expandForPane(
   if (!inA && !inB) {
     return node;
   }
-  const ratio = inA
-    ? Math.max(node.ratio, minRatio)
-    : Math.min(node.ratio, 1 - minRatio);
+  const ratio = inA ? Math.max(node.ratio, minRatio) : Math.min(node.ratio, 1 - minRatio);
   const a = inA ? expandForPane(node.a, paneId, minRatio) : node.a;
   const b = inB ? expandForPane(node.b, paneId, minRatio) : node.b;
   if (a === node.a && b === node.b && ratio === node.ratio) {
@@ -254,28 +228,28 @@ export interface RatioEntry {
 
 /** Every split's path and ratio, pre-order (root first). Pure — used by LayoutEngine. */
 export function ratioEntries(node: TreeNode): RatioEntry[] {
-  if (node.kind === "leaf") {
+  if (node.kind === 'leaf') {
     return [];
   }
   return [
     { path: [], ratio: node.ratio },
     ...ratioEntries(node.a).map((entry): RatioEntry => ({
       ...entry,
-      path: ["a", ...entry.path],
+      path: ['a', ...entry.path],
     })),
     ...ratioEntries(node.b).map((entry): RatioEntry => ({
       ...entry,
-      path: ["b", ...entry.path],
+      path: ['b', ...entry.path],
     })),
   ];
 }
 
 export interface SerializedLeaf {
-  readonly type: "leaf";
+  readonly type: 'leaf';
 }
 
 export interface SerializedSplit {
-  readonly type: "split";
+  readonly type: 'split';
   readonly direction: Direction;
   readonly ratio: number;
   readonly first: SerializedNode;
@@ -286,11 +260,11 @@ export type SerializedNode = SerializedLeaf | SerializedSplit;
 
 /** Structure-only snapshot for session persistence — pane ids are dropped. */
 export function serializeTree(node: TreeNode): SerializedNode {
-  if (node.kind === "leaf") {
-    return { type: "leaf" };
+  if (node.kind === 'leaf') {
+    return { type: 'leaf' };
   }
   return {
-    type: "split",
+    type: 'split',
     direction: node.dir,
     ratio: node.ratio,
     first: serializeTree(node.a),
@@ -299,19 +273,14 @@ export function serializeTree(node: TreeNode): SerializedNode {
 }
 
 export function countLeaves(layout: SerializedNode): number {
-  return layout.type === "leaf"
-    ? 1
-    : countLeaves(layout.first) + countLeaves(layout.second);
+  return layout.type === 'leaf' ? 1 : countLeaves(layout.first) + countLeaves(layout.second);
 }
 
 /**
  * Rebuild a tree from a serialized layout, assigning `paneIds` to leaves
  * left-to-right. `paneIds` must hold exactly `countLeaves(layout)` ids.
  */
-export function treeFromLayout(
-  layout: SerializedNode,
-  paneIds: readonly number[],
-): TreeNode {
+export function treeFromLayout(layout: SerializedNode, paneIds: readonly number[]): TreeNode {
   const [node, used] = buildFromLayout(layout, paneIds, 0);
   if (used !== paneIds.length) {
     throw new Error(`Layout has ${used} leaves but got ${paneIds.length} ids`);
@@ -324,7 +293,7 @@ function buildFromLayout(
   paneIds: readonly number[],
   offset: number,
 ): [TreeNode, number] {
-  if (layout.type === "leaf") {
+  if (layout.type === 'leaf') {
     const id = paneIds[offset];
     if (id === undefined) {
       throw new Error(`Layout needs more than ${paneIds.length} pane ids`);
@@ -333,8 +302,5 @@ function buildFromLayout(
   }
   const [a, afterA] = buildFromLayout(layout.first, paneIds, offset);
   const [b, afterB] = buildFromLayout(layout.second, paneIds, afterA);
-  return [
-    { kind: "split", dir: layout.direction, ratio: layout.ratio, a, b },
-    afterB,
-  ];
+  return [{ kind: 'split', dir: layout.direction, ratio: layout.ratio, a, b }, afterB];
 }

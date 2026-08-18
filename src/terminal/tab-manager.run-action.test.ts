@@ -1,34 +1,22 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Pane } from "./pane";
-import type { CreatePaneFn } from "./pane-lifecycle";
-import type { ShortcutAction } from "./keymap";
-import type { TabManager } from "./tab-manager";
-import {
-  agentQuickPickerOpen,
-  boardOpen,
-  saveDialogOpen,
-} from "../chrome/events";
-import { activeTabIndex, tabViews } from "./tabs-store";
-import { settings } from "../settings/settings-store";
-import { DEFAULT_SETTINGS } from "../settings/settings-schema";
-import { sendAgentNotification } from "../lib/native-notification";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
-import {
-  fakePane,
-  flush,
-  freshWindowFocusController,
-  setup,
-} from "./tab-manager.fixtures";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Pane } from './pane';
+import type { CreatePaneFn } from './pane-lifecycle';
+import type { ShortcutAction } from './keymap';
+import type { TabManager } from './tab-manager';
+import { agentQuickPickerOpen, boardOpen, saveDialogOpen } from '../chrome/events';
+import { activeTabIndex, tabViews } from './tabs-store';
+import { settings } from '../settings/settings-store';
+import { DEFAULT_SETTINGS } from '../settings/settings-schema';
+import { sendAgentNotification } from '../lib/native-notification';
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
+import { fakePane, flush, freshWindowFocusController, setup } from './tab-manager.fixtures';
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
 // `@tauri-apps/plugin-notification` API, regardless of the
 // `agentNotifications` setting's value at the time.
-vi.mock("../lib/native-notification", () => ({
+vi.mock('../lib/native-notification', () => ({
   sendAgentNotification: vi.fn(),
 }));
 
@@ -46,7 +34,7 @@ vi.mock("../lib/native-notification", () => ({
 let windowFocus = freshWindowFocusController();
 const windowCloseCalls: number[] = [];
 
-vi.mock("../host/window-host", () => ({
+vi.mock('../host/window-host', () => ({
   // `getCurrentWindow` and `getCurrentWebview` were separate Tauri modules and
   // are now one facade, so a single factory must supply both — two vi.mock
   // calls for the same path would silently keep only the last.
@@ -77,10 +65,10 @@ vi.mock("../host/window-host", () => ({
 beforeEach(() => {
   resetDesktopEnvironmentForTests();
   initializeDesktopEnvironment({
-    platform: "macos",
-    homeDir: "/Users/dev",
+    platform: 'macos',
+    homeDir: '/Users/dev',
   });
-  document.body.innerHTML = "";
+  document.body.innerHTML = '';
   tabViews.value = [];
   activeTabIndex.value = 0;
   windowFocus = freshWindowFocusController();
@@ -99,7 +87,7 @@ afterEach(() => {
   agentQuickPickerOpen.value = false;
 });
 
-describe("runAction — the macOS menu bridge", () => {
+describe('runAction — the macOS menu bridge', () => {
   // `new-tab` is the probe: it raises AgentQuickPicker rather than spawning
   // a tab directly (the picker owns the agent choice), so
   // `agentQuickPickerOpen` is the observable, not `tabViews.length`.
@@ -116,10 +104,10 @@ describe("runAction — the macOS menu bridge", () => {
     boardOpen.value = false;
   });
 
-  it("runs the same action the keymap would", async () => {
+  it('runs the same action the keymap would', async () => {
     const tm = await ready();
 
-    tm.runAction("new-tab");
+    tm.runAction('new-tab');
     await flush();
 
     expect(agentQuickPickerOpen.value).toBe(true);
@@ -135,7 +123,7 @@ describe("runAction — the macOS menu bridge", () => {
   // something" — it isn't destructive, so it now runs unconditionally (see
   // the dedicated test for that below). `clear-buffer` (destructive: true)
   // takes over as the probe for these two tests.
-  it("a destructive action (clear-buffer) is a no-op while a chrome text field holds the caret", async () => {
+  it('a destructive action (clear-buffer) is a no-op while a chrome text field holds the caret', async () => {
     const panes = new Map<number, Pane>();
     const createPane: CreatePaneFn = (id, _settings, events) => {
       const pane = fakePane(id, events);
@@ -143,15 +131,15 @@ describe("runAction — the macOS menu bridge", () => {
       return pane;
     };
     const { tm } = setup({ deps: { createPane } });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ['/a'] });
     await tm.init();
     await flush();
-    const clearSpy = vi.spyOn(panes.get(1)!, "clear");
-    const input = document.createElement("input");
+    const clearSpy = vi.spyOn(panes.get(1)!, 'clear');
+    const input = document.createElement('input');
     document.body.appendChild(input);
     input.focus();
 
-    tm.runAction("clear-buffer");
+    tm.runAction('clear-buffer');
     await flush();
 
     expect(clearSpy).not.toHaveBeenCalled();
@@ -170,18 +158,18 @@ describe("runAction — the macOS menu bridge", () => {
       return pane;
     };
     const { tm } = setup({ deps: { createPane } });
-    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ['/a'] });
     await tm.init();
     await flush();
-    const clearSpy = vi.spyOn(panes.get(1)!, "clear");
-    const term = document.createElement("div");
-    term.className = "pane__term";
-    const textarea = document.createElement("textarea");
+    const clearSpy = vi.spyOn(panes.get(1)!, 'clear');
+    const term = document.createElement('div');
+    term.className = 'pane__term';
+    const textarea = document.createElement('textarea');
     term.appendChild(textarea);
     document.body.appendChild(term);
     textarea.focus();
 
-    tm.runAction("clear-buffer");
+    tm.runAction('clear-buffer');
     await flush();
 
     expect(clearSpy).toHaveBeenCalledTimes(1);
@@ -189,13 +177,13 @@ describe("runAction — the macOS menu bridge", () => {
     tm.dispose();
   });
 
-  it("a NON-destructive action (new-tab) now runs via runAction even while a chrome text field holds the caret", async () => {
+  it('a NON-destructive action (new-tab) now runs via runAction even while a chrome text field holds the caret', async () => {
     const tm = await ready();
-    const input = document.createElement("input");
+    const input = document.createElement('input');
     document.body.appendChild(input);
     input.focus();
 
-    tm.runAction("new-tab");
+    tm.runAction('new-tab');
     await flush();
 
     expect(agentQuickPickerOpen.value).toBe(true);
@@ -207,17 +195,17 @@ describe("runAction — the macOS menu bridge", () => {
   // search bar's input (or any other chrome text field) still holds focus —
   // before this fix, the blanket guard silently swallowed it: no dialog, no
   // error, nothing.
-  it("save-preset (F-B2) now runs via runAction even while a chrome text field holds the caret", async () => {
+  it('save-preset (F-B2) now runs via runAction even while a chrome text field holds the caret', async () => {
     boardOpen.value = false;
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ['/a'] });
     await tm.init();
     await flush();
-    const input = document.createElement("input");
+    const input = document.createElement('input');
     document.body.appendChild(input);
     input.focus();
 
-    tm.runAction("save-preset");
+    tm.runAction('save-preset');
     await flush();
 
     expect(saveDialogOpen.value).toBe(true);
@@ -226,10 +214,10 @@ describe("runAction — the macOS menu bridge", () => {
     tm.dispose();
   });
 
-  it("ignores an action name the dispatch table does not know", async () => {
+  it('ignores an action name the dispatch table does not know', async () => {
     const tm = await ready();
 
-    tm.runAction("split-diagonal" as ShortcutAction);
+    tm.runAction('split-diagonal' as ShortcutAction);
     await flush();
 
     expect(boardOpen.value).toBe(false);

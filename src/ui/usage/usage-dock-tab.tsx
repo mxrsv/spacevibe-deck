@@ -1,6 +1,6 @@
-import { useEffect } from "preact/hooks";
-import { startUsagePolling, stopUsagePolling } from "../../usage/usage-store";
-import { UsageBody } from "./usage-body";
+import { useEffect } from 'preact/hooks';
+import { startUsagePolling, stopUsagePolling } from '../../usage/usage-store';
+import { UsageBody } from './usage-body';
 
 /**
  * Token usage as a tab of the docked side panel (DL-19.7).

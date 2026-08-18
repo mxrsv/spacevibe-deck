@@ -1,5 +1,5 @@
-import type { ComponentChildren } from "preact";
-import type { DeckIconComponent } from "../controls/deck-icon";
+import type { ComponentChildren } from 'preact';
+import type { DeckIconComponent } from '../controls/deck-icon';
 
 /**
  * What a toolbar entry is, as far as the toolbar is concerned.
@@ -15,12 +15,12 @@ import type { DeckIconComponent } from "../controls/deck-icon";
  */
 
 /** The three clusters, in the order they render, separated by hairlines. */
-export type ToolbarGroup = "tools" | "pane" | "global";
+export type ToolbarGroup = 'tools' | 'pane' | 'global';
 
 export const TOOLBAR_GROUP_ORDER: readonly ToolbarGroup[] = Object.freeze([
-  "tools",
-  "pane",
-  "global",
+  'tools',
+  'pane',
+  'global',
 ]);
 
 /**
@@ -29,9 +29,9 @@ export const TOOLBAR_GROUP_ORDER: readonly ToolbarGroup[] = Object.freeze([
  * activation is blocked.
  */
 export type ToolbarItemState =
-  | { readonly kind: "idle" }
-  | { readonly kind: "active" }
-  | { readonly kind: "unavailable"; readonly reason: string };
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'active' }
+  | { readonly kind: 'unavailable'; readonly reason: string };
 
 export interface ToolbarItem {
   /** Stable identity for keys and tests — the action id once one exists. */
@@ -60,7 +60,7 @@ export interface ToolbarItem {
    * neither — `aria-pressed="false"` on a button that never stays pressed
    * describes a state it does not have.
    */
-  readonly toggles?: "pressed" | "dialog" | "menu";
+  readonly toggles?: 'pressed' | 'dialog' | 'menu';
   /**
    * Extra class on the control itself, for the one or two controls whose
    * presentation carries history — the Settings gear keeps `iconbtn--gear`
@@ -78,10 +78,10 @@ export interface ToolbarItem {
 }
 
 export function isUnavailable(item: ToolbarItem): boolean {
-  return item.state.kind === "unavailable";
+  return item.state.kind === 'unavailable';
 }
 
 /** The tooltip's second line — a reason, or nothing at all. */
 export function unavailableReason(item: ToolbarItem): string | null {
-  return item.state.kind === "unavailable" ? item.state.reason : null;
+  return item.state.kind === 'unavailable' ? item.state.reason : null;
 }

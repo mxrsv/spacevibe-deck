@@ -1,19 +1,14 @@
-import type { AgentTotal } from "../../../lib/usage-aggregate";
-import { agentTotals } from "../../../lib/usage-aggregate";
-import { AGENT_LOGOS } from "../../../lib/agent-logos";
-import { dotColor } from "../../../lib/process-info";
-import { formatUsd } from "../../../lib/usage-pricing";
-import { totalTokens } from "../../../lib/usage-snapshot";
-import { usageSnapshot } from "../../../usage/usage-store";
-import { activeUsageRange } from "../active-usage-view-store";
-import { UsageRangeSelector } from "../usage-range-selector";
-import { rangeSinceMs, USAGE_RANGES } from "../usage-ranges";
-import {
-  EM_DASH,
-  ESTIMATE_NOTE,
-  formatTokensCompact,
-  USAGE_AGENT_LABEL,
-} from "../usage-format";
+import type { AgentTotal } from '../../../lib/usage-aggregate';
+import { agentTotals } from '../../../lib/usage-aggregate';
+import { AGENT_LOGOS } from '../../../lib/agent-logos';
+import { dotColor } from '../../../lib/process-info';
+import { formatUsd } from '../../../lib/usage-pricing';
+import { totalTokens } from '../../../lib/usage-snapshot';
+import { usageSnapshot } from '../../../usage/usage-store';
+import { activeUsageRange } from '../active-usage-view-store';
+import { UsageRangeSelector } from '../usage-range-selector';
+import { rangeSinceMs, USAGE_RANGES } from '../usage-ranges';
+import { EM_DASH, ESTIMATE_NOTE, formatTokensCompact, USAGE_AGENT_LABEL } from '../usage-format';
 
 /**
  * The overview: one display figure saying what this machine's recorded agent
@@ -89,10 +84,7 @@ function largestRemainderShares(costs: readonly number[]): readonly number[] {
   const assigned = tenths.reduce((running, part) => running + part, 0);
   const byRemainder = exact
     .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
-    .sort(
-      (left, right) =>
-        right.fraction - left.fraction || left.index - right.index,
-    );
+    .sort((left, right) => right.fraction - left.fraction || left.index - right.index);
   for (let spare = 0; spare < PERCENT_TENTHS - assigned; spare += 1) {
     tenths[byRemainder[spare % byRemainder.length].index] += 1;
   }
@@ -120,17 +112,12 @@ function compareBlocks(left: AgentTotal, right: AgentTotal): number {
   return byTokens !== 0 ? byTokens : left.agent.localeCompare(right.agent);
 }
 
-function buildBlocks(
-  totals: readonly AgentTotal[],
-  total: number | null,
-): readonly AgentBlock[] {
+function buildBlocks(totals: readonly AgentTotal[], total: number | null): readonly AgentBlock[] {
   const ordered = [...totals].sort(compareBlocks);
   // A share needs a stated total. Without one there is nothing to be a
   // proportion of, so no bar fills and no percentage is printed (DL-16.5).
   const shares =
-    total === null
-      ? null
-      : largestRemainderShares(ordered.map((entry) => entry.costUsd ?? 0));
+    total === null ? null : largestRemainderShares(ordered.map((entry) => entry.costUsd ?? 0));
   return ordered.map((entry, index) => ({
     agent: entry.agent,
     label: USAGE_AGENT_LABEL[entry.agent],
@@ -161,9 +148,7 @@ function subLine(block: AgentBlock): string {
     return `unpriced · ${tokens}`;
   }
   const omitted =
-    block.unpricedTokens > 0
-      ? ` · ${formatTokensCompact(block.unpricedTokens)} unpriced`
-      : "";
+    block.unpricedTokens > 0 ? ` · ${formatTokensCompact(block.unpricedTokens)} unpriced` : '';
   if (block.sharePercent === null) {
     return `${tokens}${omitted}`;
   }
@@ -221,9 +206,7 @@ export function OverviewSection() {
   // Scoped to the range on purpose: a model that went unpriced last month has
   // nothing to do with a figure covering this week, and naming it there would
   // be a disclosure about data the reader is not being shown.
-  const unpriced = [
-    ...new Set(recorded.flatMap((entry) => entry.unpricedModels)),
-  ].sort();
+  const unpriced = [...new Set(recorded.flatMap((entry) => entry.unpricedModels))].sort();
 
   // Four footnotes for four honest situations. An EMPTY range has no models
   // at all, so it gets none: `no price for ` with nothing after it was a real
@@ -232,13 +215,13 @@ export function OverviewSection() {
   // figure and a gap, the asterisk's "this is an estimate" is extended to say
   // where the estimate stops — a partial sum is only acceptable while it
   // admits it.
-  let footnote: string | null = "* if billed at full API rate";
+  let footnote: string | null = '* if billed at full API rate';
   if (blocks.length === 0) {
     footnote = null;
   } else if (total === null) {
-    footnote = `no price for ${unpriced.join(", ")}`;
+    footnote = `no price for ${unpriced.join(', ')}`;
   } else if (unpriced.length > 0) {
-    const plural = unpriced.length === 1 ? "model" : "models";
+    const plural = unpriced.length === 1 ? 'model' : 'models';
     footnote += ` · excludes ${unpriced.length} ${plural} with no published price`;
   }
 
@@ -252,16 +235,10 @@ export function OverviewSection() {
           starts reading as a rule across the page or a loading skeleton; the
           faint step is what keeps it legible as an absence. Same size either
           way, so the block below does not jump when a price lands. */}
-      <p
-        class={`usage-hero__figure ${
-          total === null ? "usage-hero__figure--absent" : ""
-        }`}
-      >
+      <p class={`usage-hero__figure ${total === null ? 'usage-hero__figure--absent' : ''}`}>
         {total === null ? EM_DASH : `${formatUsd(total)}*`}
       </p>
-      {footnote === null ? null : (
-        <p class="usage-hero__footnote">{footnote}</p>
-      )}
+      {footnote === null ? null : <p class="usage-hero__footnote">{footnote}</p>}
       {/* The period the figure covers (DL-16.7). This REPLACED a standalone
           `today · $X · N tokens` line on 2026-08-10 — do not restore it as a
           "fix". The spec's "today and recorded history" is still satisfied,

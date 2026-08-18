@@ -3,9 +3,9 @@
  * `StoreRegistry`, plus the file-name allowlist that keeps a store path
  * inside the app's own data directory.
  */
-import { ipcMain, type BrowserWindow } from "electron";
-import type { StoreRegistry } from "../store";
-import { EVENTS } from "./channels";
+import { ipcMain, type BrowserWindow } from 'electron';
+import type { StoreRegistry } from '../store';
+import { EVENTS } from './channels';
 
 export interface RegisterStoreDeps {
   readonly stores: StoreRegistry;
@@ -20,34 +20,31 @@ export interface RegisterStoreDeps {
  * Tauri had the same hole; it is nearly free to close here.
  */
 const STORE_FILES = new Set([
-  "settings.json",
-  "workspaces.json",
-  "presets.json",
-  "logo.json",
-  "workspace-logos.json",
-  "sidebar-banner.json",
-  "update-attempt.json",
+  'settings.json',
+  'workspaces.json',
+  'presets.json',
+  'logo.json',
+  'workspace-logos.json',
+  'sidebar-banner.json',
+  'update-attempt.json',
   // The repository rail's collapse state, and nothing else — the worktree
   // list itself is re-read every launch and never written down.
-  "repositories.json",
+  'repositories.json',
   // Session journal: live window records + per-workspace archive (restore).
-  "session.json",
+  'session.json',
 ]);
 
 function assertStoreFile(file: unknown): string {
-  if (typeof file !== "string" || !STORE_FILES.has(file)) {
+  if (typeof file !== 'string' || !STORE_FILES.has(file)) {
     throw new Error(`Unknown store file: ${String(file)}`);
   }
   return file;
 }
 
 export function registerStore(deps: RegisterStoreDeps): void {
-  const openStores = new Map<
-    string,
-    Awaited<ReturnType<StoreRegistry["open"]>>
-  >();
+  const openStores = new Map<string, Awaited<ReturnType<StoreRegistry['open']>>>();
 
-  ipcMain.handle("store_load", async (_event, payload) => {
+  ipcMain.handle('store_load', async (_event, payload) => {
     const {
       file: rawFile,
       defaults,
@@ -70,14 +67,14 @@ export function registerStore(deps: RegisterStoreDeps): void {
         deps.emitTo(label, EVENTS.storeWriteFailed, { file });
       }
     });
-    if (file === "settings.json") {
-      store.requireObjectValue("settings");
+    if (file === 'settings.json') {
+      store.requireObjectValue('settings');
     }
     // `defaults` seeds keys the file does not have yet, matching the Tauri
     // plugin — without it a fresh install reads undefined where it expected a
     // default and silently falls back to a different value. An unreadable file
     // is never seeded: defaults are not evidence that its bytes may be replaced.
-    if (store.loadState.state === "ready") {
+    if (store.loadState.state === 'ready') {
       for (const [key, value] of Object.entries(defaults ?? {})) {
         if (store.get(key) === undefined) {
           store.set(key, value);
@@ -87,16 +84,14 @@ export function registerStore(deps: RegisterStoreDeps): void {
     openStores.set(file, store);
     return store.loadState;
   });
-  ipcMain.handle("store_get", (_event, { file, key }) =>
+  ipcMain.handle('store_get', (_event, { file, key }) =>
     openStores.get(assertStoreFile(file))?.get(key),
   );
-  ipcMain.handle("store_set", (_event, { file, key, value }) => {
+  ipcMain.handle('store_set', (_event, { file, key, value }) => {
     openStores.get(assertStoreFile(file))?.set(key, value);
   });
-  ipcMain.handle("store_delete", (_event, { file, key }) => {
+  ipcMain.handle('store_delete', (_event, { file, key }) => {
     openStores.get(assertStoreFile(file))?.delete(key);
   });
-  ipcMain.handle("store_save", (_event, { file }) =>
-    openStores.get(assertStoreFile(file))?.save(),
-  );
+  ipcMain.handle('store_save', (_event, { file }) => openStores.get(assertStoreFile(file))?.save());
 }

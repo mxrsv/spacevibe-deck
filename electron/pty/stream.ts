@@ -141,7 +141,7 @@ export class OutputBatcher {
         break;
       }
     }
-    const batch = this.queue.slice(0, count).join("");
+    const batch = this.queue.slice(0, count).join('');
     this.queue = this.queue.slice(count);
     this.queuedBytes -= size;
     this.options.emit(batch);
@@ -163,7 +163,7 @@ export interface StreamDecoder {
 }
 
 export function createStreamDecoder(): StreamDecoder {
-  const decoder = new TextDecoder("utf-8", { fatal: false });
+  const decoder = new TextDecoder('utf-8', { fatal: false });
   const decode = ((chunk: Uint8Array | string) =>
     // A STRING is the Windows case, and it is not defensive typing: node-pty
     // warns "Setting encoding on Windows is not supported" and ignores
@@ -179,9 +179,7 @@ export function createStreamDecoder(): StreamDecoder {
     // so a round trip could only lose. The streaming holdback below is
     // therefore a Unix-only guarantee — on Windows node-pty owns that
     // boundary and we inherit whatever it did.
-    typeof chunk === "string"
-      ? chunk
-      : decoder.decode(chunk, { stream: true })) as StreamDecoder;
+    typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true })) as StreamDecoder;
   // Without this, a shell dying mid-character silently drops the 1-3 held
   // bytes; Rust flushed them lossily (`String::from_utf8_lossy`) so the user
   // saw U+FFFD rather than nothing.

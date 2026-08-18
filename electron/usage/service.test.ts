@@ -1,15 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { createUsageService, unreadableSnapshot } from "./service";
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createUsageService, unreadableSnapshot } from './service';
 
 const T0 = 1_786_320_000_000;
 const NOW = T0 + 60 * 60 * 1000;
 
 const temps: string[] = [];
 function tempDir(): string {
-  const dir = mkdtempSync(path.join(tmpdir(), "usage-service-"));
+  const dir = mkdtempSync(path.join(tmpdir(), 'usage-service-'));
   temps.push(dir);
   return dir;
 }
@@ -21,19 +21,19 @@ afterEach(() => {
 
 function seedHome(): string {
   const home = tempDir();
-  const project = path.join(home, ".claude", "projects", "proj");
+  const project = path.join(home, '.claude', 'projects', 'proj');
   mkdirSync(project, { recursive: true });
-  const file = path.join(project, "sess.jsonl");
+  const file = path.join(project, 'sess.jsonl');
   writeFileSync(
     file,
     `${JSON.stringify({
-      type: "assistant",
-      timestamp: "2026-08-10T05:06:00.351Z",
-      requestId: "req-1",
-      sessionId: "sess-1",
+      type: 'assistant',
+      timestamp: '2026-08-10T05:06:00.351Z',
+      requestId: 'req-1',
+      sessionId: 'sess-1',
       message: {
-        id: "msg-1",
-        model: "claude-opus-5",
+        id: 'msg-1',
+        model: 'claude-opus-5',
         usage: { input_tokens: 1, output_tokens: 4 },
       },
     })}\n`,
@@ -42,8 +42,8 @@ function seedHome(): string {
   return home;
 }
 
-describe("usage service", () => {
-  it("answers unreadable-for-both when home cannot be resolved", async () => {
+describe('usage service', () => {
+  it('answers unreadable-for-both when home cannot be resolved', async () => {
     const service = createUsageService({
       home: null,
       cachePath: null,
@@ -52,7 +52,7 @@ describe("usage service", () => {
     await expect(service.snapshot()).resolves.toEqual(unreadableSnapshot(NOW));
   });
 
-  it("serializes concurrent callers onto one scan", async () => {
+  it('serializes concurrent callers onto one scan', async () => {
     const home = seedHome();
     const service = createUsageService({
       home,
@@ -71,10 +71,10 @@ describe("usage service", () => {
     expect(first.buckets).toHaveLength(1);
   });
 
-  it("keeps answering when the cache cannot be written", async () => {
+  it('keeps answering when the cache cannot be written', async () => {
     const home = seedHome();
     const cacheDir = tempDir();
-    const cachePath = path.join(cacheDir, "usage-cache.json");
+    const cachePath = path.join(cacheDir, 'usage-cache.json');
     // Squat a directory on the temp path so every write fails.
     mkdirSync(`${cachePath}.tmp`);
     const report = vi.fn();
@@ -89,9 +89,9 @@ describe("usage service", () => {
     expect(report).toHaveBeenCalledTimes(1);
   });
 
-  it("reuses the in-memory cache across polls — the second scan is warm", async () => {
+  it('reuses the in-memory cache across polls — the second scan is warm', async () => {
     const home = seedHome();
-    const cachePath = path.join(tempDir(), "usage-cache.json");
+    const cachePath = path.join(tempDir(), 'usage-cache.json');
     const service = createUsageService({
       home,
       cachePath,

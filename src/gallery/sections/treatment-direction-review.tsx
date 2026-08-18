@@ -1,5 +1,5 @@
-import type { ComponentChildren } from "preact";
-import "./treatment-direction-review.css";
+import type { ComponentChildren } from 'preact';
+import './treatment-direction-review.css';
 
 interface TreatmentDirection {
   readonly label: string;
@@ -10,11 +10,11 @@ interface TreatmentDirection {
 }
 
 const NATIVE_BALANCED: TreatmentDirection = {
-  label: "Native balanced",
-  summary: "Compact native rhythm with a clear three-level reading order.",
-  type: "title 14 · body 12.5 · meta 11 · micro 10.5",
-  geometry: "rail 275 · frame 34 · status 28",
-  structure: "radius 8/10/12 · role-based seams",
+  label: 'Native balanced',
+  summary: 'Compact native rhythm with a clear three-level reading order.',
+  type: 'title 14 · body 12.5 · meta 11 · micro 10.5',
+  geometry: 'rail 275 · frame 34 · status 28',
+  structure: 'radius 8/10/12 · role-based seams',
 };
 
 interface TreatmentDirectionReviewProps {
@@ -27,9 +27,7 @@ interface TreatmentDirectionReviewProps {
  * The caller supplies the real window so this module cannot grow a second
  * chrome fixture. None of its CSS is imported by the shipping renderer.
  */
-export function TreatmentDirectionReview({
-  renderWindow,
-}: TreatmentDirectionReviewProps) {
+export function TreatmentDirectionReview({ renderWindow }: TreatmentDirectionReviewProps) {
   return (
     <section class="gx-specimen">
       <header class="gx-specimen__head">

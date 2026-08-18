@@ -27,9 +27,9 @@ export const MAX_READABLE_BYTES = 16 * 1024 * 1024;
 /** How much of a file is inspected for the binary verdict. */
 export const BINARY_SNIFF_BYTES = 8192;
 
-export type Eol = "lf" | "crlf";
+export type Eol = 'lf' | 'crlf';
 
-export type FileEncoding = "utf-8" | "invalid-utf-8";
+export type FileEncoding = 'utf-8' | 'invalid-utf-8';
 
 export interface FileContent {
   /** Always LF-normalized — the editor works in LF and `applyEol` restores
@@ -47,8 +47,8 @@ export interface FileContent {
 }
 
 export type FileRead =
-  | { readonly kind: "ok"; readonly file: FileContent }
-  | { readonly kind: "refused"; readonly reason: string };
+  | { readonly kind: 'ok'; readonly file: FileContent }
+  | { readonly kind: 'refused'; readonly reason: string };
 
 /**
  * A NUL byte in the first block means binary (spec §4.4).
@@ -87,18 +87,18 @@ export function detectEol(text: string): { eol: Eol; mixed: boolean } {
       lf += 1;
     }
   }
-  return { eol: crlf > lf ? "crlf" : "lf", mixed: crlf > 0 && lf > 0 };
+  return { eol: crlf > lf ? 'crlf' : 'lf', mixed: crlf > 0 && lf > 0 };
 }
 
 /** Collapse every CRLF to LF. The editor never sees a carriage return. */
 export function normalizeEol(text: string): string {
-  return text.replace(/\r\n/g, "\n");
+  return text.replace(/\r\n/g, '\n');
 }
 
 /** Restore `eol` on the way back to disk — the save half of `normalizeEol`. */
 export function applyEol(text: string, eol: Eol): string {
   const lf = normalizeEol(text);
-  return eol === "crlf" ? lf.replace(/\n/g, "\r\n") : lf;
+  return eol === 'crlf' ? lf.replace(/\n/g, '\r\n') : lf;
 }
 
 /**
@@ -115,19 +115,18 @@ export function decodeUtf8(bytes: Uint8Array): {
 } {
   try {
     return {
-      text: new TextDecoder("utf-8", { fatal: true }).decode(bytes),
-      encoding: "utf-8",
+      text: new TextDecoder('utf-8', { fatal: true }).decode(bytes),
+      encoding: 'utf-8',
     };
   } catch {
     return {
-      text: new TextDecoder("utf-8").decode(bytes),
-      encoding: "invalid-utf-8",
+      text: new TextDecoder('utf-8').decode(bytes),
+      encoding: 'invalid-utf-8',
     };
   }
 }
 
-export const BINARY_REFUSAL =
-  "This looks like a binary file, so Deck will not open it.";
+export const BINARY_REFUSAL = 'This looks like a binary file, so Deck will not open it.';
 
 export function oversizeReason(bytes: number): string {
   const mb = (bytes / (1024 * 1024)).toFixed(1);
@@ -149,8 +148,7 @@ export function refuseForSize(bytes: number): string | null {
   return `This file is ${mb} MB — too large for Deck to open.`;
 }
 
-export const INVALID_UTF8_REASON =
-  "This file is not valid UTF-8, so it opens read-only.";
+export const INVALID_UTF8_REASON = 'This file is not valid UTF-8, so it opens read-only.';
 
 /**
  * The whole verdict for one file's bytes.
@@ -165,21 +163,21 @@ export function readFileContent(bytes: Uint8Array): FileRead {
   if (tooLarge !== null) {
     // Defence in depth. The host refuses from `stat` before reading, so
     // reaching this line means something read the bytes anyway.
-    return { kind: "refused", reason: tooLarge };
+    return { kind: 'refused', reason: tooLarge };
   }
   if (looksBinary(bytes)) {
-    return { kind: "refused", reason: BINARY_REFUSAL };
+    return { kind: 'refused', reason: BINARY_REFUSAL };
   }
   const oversize = bytes.length > MAX_EDITABLE_BYTES;
   const { text, encoding } = decodeUtf8(bytes);
   const { eol, mixed } = detectEol(text);
   const reason = oversize
     ? oversizeReason(bytes.length)
-    : encoding === "invalid-utf-8"
+    : encoding === 'invalid-utf-8'
       ? INVALID_UTF8_REASON
       : null;
   return {
-    kind: "ok",
+    kind: 'ok',
     file: {
       content: normalizeEol(text),
       eol,
@@ -194,9 +192,9 @@ export function readFileContent(bytes: Uint8Array): FileRead {
 
 /** Status-bar spelling of a file's encoding and ending. */
 export function encodingLabel(file: FileContent): string {
-  return file.encoding === "utf-8" ? "UTF-8" : "UTF-8 (invalid)";
+  return file.encoding === 'utf-8' ? 'UTF-8' : 'UTF-8 (invalid)';
 }
 
 export function eolLabel(file: FileContent): string {
-  return file.eol === "crlf" ? "CRLF" : "LF";
+  return file.eol === 'crlf' ? 'CRLF' : 'LF';
 }

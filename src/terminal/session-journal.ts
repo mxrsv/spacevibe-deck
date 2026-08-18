@@ -14,11 +14,11 @@
  * run first. Whichever caller opens the store first wins; everyone else
  * reuses that same instance.
  */
-import { effect, signal, type Signal } from "@preact/signals";
-import { Store } from "../host/store-host";
-import { reportPersistError } from "../chrome/events";
-import { tabViews, activeTabIndex } from "./tabs-store";
-import { fileSurfaces, activeFileTab } from "../files/file-surface-store";
+import { effect, signal, type Signal } from '@preact/signals';
+import { Store } from '../host/store-host';
+import { reportPersistError } from '../chrome/events';
+import { tabViews, activeTabIndex } from './tabs-store';
+import { fileSurfaces, activeFileTab } from '../files/file-surface-store';
 import {
   MAX_JOURNAL_TABS,
   pushArchiveEntry,
@@ -28,26 +28,26 @@ import {
   type SessionFileSurface,
   type SessionTab,
   type WindowRecord,
-} from "../lib/session-schema";
+} from '../lib/session-schema';
 
-export const SESSION_STORE_FILE = "session.json";
+export const SESSION_STORE_FILE = 'session.json';
 
-const ARCHIVE_KEY = "archive";
+const ARCHIVE_KEY = 'archive';
 /**
  * Registry of every `window:<label>` key ever written, so `readWindowRecords`
  * can enumerate them through nothing but `get`/`set` — `Store` (the renderer
  * facade) has no "list keys" primitive, unlike the main-process `JsonStore`
  * it wraps.
  */
-const LABELS_KEY = "windowLabels";
-const MARKER_KEY = "restoreAttempt";
+const LABELS_KEY = 'windowLabels';
+const MARKER_KEY = 'restoreAttempt';
 const DEFAULT_DEBOUNCE_MS = 1000;
 
 function windowKey(label: string): string {
   return `window:${label}`;
 }
 
-type StoreSeam = Pick<Store, "get" | "set" | "delete" | "save">;
+type StoreSeam = Pick<Store, 'get' | 'set' | 'delete' | 'save'>;
 
 export interface SessionJournalDeps {
   /** TabManager.captureSession, injected to avoid a manager import cycle. */
@@ -61,8 +61,7 @@ export interface SessionJournalDeps {
 }
 
 /** Last known session per workspace — the rail's data source. */
-export const sessionArchive: Signal<Readonly<Record<string, ArchiveEntry>>> =
-  signal({});
+export const sessionArchive: Signal<Readonly<Record<string, ArchiveEntry>>> = signal({});
 
 let storePromise: Promise<StoreSeam> | null = null;
 let activeDeps: SessionJournalDeps | null = null;
@@ -81,7 +80,7 @@ function openStore(): Promise<StoreSeam> {
 async function registeredLabels(store: StoreSeam): Promise<readonly string[]> {
   const raw = await store.get<unknown>(LABELS_KEY);
   return Array.isArray(raw)
-    ? raw.filter((label): label is string => typeof label === "string")
+    ? raw.filter((label): label is string => typeof label === 'string')
     : [];
 }
 
@@ -105,9 +104,7 @@ async function unregisterLabel(store: StoreSeam, label: string): Promise<void> {
 }
 
 /** Read all persisted window records (restore) and the archive. */
-export async function readWindowRecords(): Promise<
-  ReadonlyMap<string, WindowRecord>
-> {
+export async function readWindowRecords(): Promise<ReadonlyMap<string, WindowRecord>> {
   const store = await openStore();
   const labels = await registeredLabels(store);
   const result = new Map<string, WindowRecord>();
@@ -242,7 +239,7 @@ async function writeNow(deps: SessionJournalDeps): Promise<void> {
     await store.save();
     lastWritten = fingerprint;
   } catch (err) {
-    console.warn("Failed to write session journal:", err);
+    console.warn('Failed to write session journal:', err);
     reportPersistError("Couldn't save your session — it may not restore.");
   }
 }
@@ -262,9 +259,7 @@ function schedule(deps: SessionJournalDeps): void {
 }
 
 /** Load the store, seed `sessionArchive`, install the debounced write effect. */
-export async function initSessionJournal(
-  deps: SessionJournalDeps,
-): Promise<void> {
+export async function initSessionJournal(deps: SessionJournalDeps): Promise<void> {
   if (deps.store) {
     storePromise = Promise.resolve(deps.store);
   }
@@ -273,7 +268,7 @@ export async function initSessionJournal(
     const raw = await store.get<unknown>(ARCHIVE_KEY);
     sessionArchive.value = validateArchive(raw);
   } catch (err) {
-    console.warn("Failed to load session archive:", err);
+    console.warn('Failed to load session archive:', err);
     reportPersistError("Couldn't load your saved sessions.");
   }
   activeDeps = deps;

@@ -108,7 +108,7 @@
   border-radius: var(--radius-control);
 }
 
-.gxa-item[data-active="true"] {
+.gxa-item[data-active='true'] {
   background: var(--tab-active-bg);
 }
 
@@ -221,7 +221,7 @@
 }
 
 .gxa-mark--core::after {
-  content: "";
+  content: '';
   position: absolute;
   top: 50%;
   left: 50%;
@@ -286,7 +286,7 @@
 
 /* The elbow: down from the row above, then out to the leaf. */
 .gxa-tree__leaf::before {
-  content: "";
+  content: '';
   position: absolute;
   top: -3px;
   bottom: 50%;
@@ -299,7 +299,7 @@
 
 /* The trunk continues past every leaf but the last. */
 .gxa-tree__leaf:not(:last-child)::after {
-  content: "";
+  content: '';
   position: absolute;
   top: 50%;
   bottom: -3px;

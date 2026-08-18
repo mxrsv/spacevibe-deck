@@ -1,6 +1,6 @@
-import { settings, updateSettings } from "../../../settings/settings-store";
-import { ConfigRow } from "../../controls/config-row";
-import { CommitInput } from "../../controls/commit-input";
+import { settings, updateSettings } from '../../../settings/settings-store';
+import { ConfigRow } from '../../controls/config-row';
+import { CommitInput } from '../../controls/commit-input';
 
 /**
  * The browser panel's one persistent choice.
@@ -15,10 +15,7 @@ export function BrowserSection() {
   const current = settings.value;
 
   return (
-    <ConfigRow
-      label="Home address"
-      desc="Opened when the browser panel has no page yet"
-    >
+    <ConfigRow label="Home address" desc="Opened when the browser panel has no page yet">
       <CommitInput
         value={current.browserHomeUrl}
         placeholder="http://localhost:3000"

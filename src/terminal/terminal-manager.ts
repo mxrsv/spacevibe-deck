@@ -1,4 +1,4 @@
-import { settings } from "../settings/settings-store";
+import { settings } from '../settings/settings-store';
 import {
   countLeaves,
   dockNewPane,
@@ -15,27 +15,23 @@ import {
   type Edge,
   type SerializedNode,
   type TreeNode,
-} from "../lib/split-tree";
-import { nearestInDirection, type FocusDirection } from "../lib/pane-geometry";
-import { paneHeaderInfo } from "../lib/process-info";
-import { shellEscapePaths } from "../lib/shell-escape";
-import { getDesktopEnvironment } from "../lib/platform";
-import { reportPersistError } from "../chrome/events";
-import { createLayoutEngine } from "./layout-engine";
-import { createPaneLifecycle } from "./pane-lifecycle";
-import type { Pane } from "./pane";
-import { detachPane, type DetachTarget } from "./pane-detach";
-import { adoptTransfer, type AdoptResult } from "./pane-adopt";
-import { defaultTransferClient, type AdoptionPayload } from "./transfer-client";
-import { clearPaneCwd, paneCwd, setPaneCwd } from "./pane-cwd";
-import { freshCwd } from "./pane-info";
-import { defaultPtyClient, type PtyClient } from "./pty-client";
-import { createPaneDragController, type PaneDragController } from "./pane-drag";
-import {
-  advanceSearch,
-  closeSearchBarForPane,
-  openSearchBar,
-} from "./search-bar";
+} from '../lib/split-tree';
+import { nearestInDirection, type FocusDirection } from '../lib/pane-geometry';
+import { paneHeaderInfo } from '../lib/process-info';
+import { shellEscapePaths } from '../lib/shell-escape';
+import { getDesktopEnvironment } from '../lib/platform';
+import { reportPersistError } from '../chrome/events';
+import { createLayoutEngine } from './layout-engine';
+import { createPaneLifecycle } from './pane-lifecycle';
+import type { Pane } from './pane';
+import { detachPane, type DetachTarget } from './pane-detach';
+import { adoptTransfer, type AdoptResult } from './pane-adopt';
+import { defaultTransferClient, type AdoptionPayload } from './transfer-client';
+import { clearPaneCwd, paneCwd, setPaneCwd } from './pane-cwd';
+import { freshCwd } from './pane-info';
+import { defaultPtyClient, type PtyClient } from './pty-client';
+import { createPaneDragController, type PaneDragController } from './pane-drag';
+import { advanceSearch, closeSearchBarForPane, openSearchBar } from './search-bar';
 import {
   TRANSFER_FALLBACK_COLS,
   TRANSFER_FALLBACK_ROWS,
@@ -44,7 +40,7 @@ import {
   type ManagerCallbacks,
   type TerminalManager,
   type TerminalManagerDeps,
-} from "./terminal-manager-types";
+} from './terminal-manager-types';
 
 // Re-exported so existing consumers (tab-manager.ts, close-coordinator.ts,
 // terminal-manager.test.ts) keep importing types from this module's own
@@ -74,14 +70,14 @@ export function createTerminalManager(
 
   // Pane bar visibility is CSS-only: pane.ts always builds and populates the
   // bar (the drag ghost and anchor still read its cwd) — this class hides it.
-  container.classList.toggle("pane-bar-hidden", !settings.value.showPaneBar);
+  container.classList.toggle('pane-bar-hidden', !settings.value.showPaneBar);
 
   const life = createPaneLifecycle({
     pty,
     getSettings: () => settings.value,
     createPane: deps.createPane,
     onWriteWhileExited(id, data) {
-      if (data === "\r") {
+      if (data === '\r') {
         void respawn(id);
       }
     },
@@ -172,9 +168,7 @@ export function createTerminalManager(
       return;
     }
     life.exited.add(id);
-    pane.writeln(
-      "\r\n\x1b[33m[Session ended — press Enter to start a new one]\x1b[0m",
-    );
+    pane.writeln('\r\n\x1b[33m[Session ended — press Enter to start a new one]\x1b[0m');
   }
 
   async function respawn(oldId: number): Promise<void> {
@@ -286,10 +280,7 @@ export function createTerminalManager(
     };
   }
 
-  async function detachPaneById(
-    id: number,
-    target: DetachTarget,
-  ): Promise<DetachOutcome> {
+  async function detachPaneById(id: number, target: DetachTarget): Promise<DetachOutcome> {
     transferring.add(id);
     try {
       return await runDetach(id, target);
@@ -298,10 +289,7 @@ export function createTerminalManager(
     }
   }
 
-  async function runDetach(
-    id: number,
-    target: DetachTarget,
-  ): Promise<DetachOutcome> {
+  async function runDetach(id: number, target: DetachTarget): Promise<DetachOutcome> {
     const result = await detachPane(id, target, {
       transfer,
       drainWrites: (paneId) => life.drainWrites(paneId),
@@ -319,12 +307,12 @@ export function createTerminalManager(
       release: releaseMovedPane,
       report: reportPersistError,
     });
-    if (result.kind === "kept") {
+    if (result.kind === 'kept') {
       return result;
     }
     const tabEmpty = tree === null;
     callbacks.onLayoutChange();
-    return { kind: "moved", tabEmpty };
+    return { kind: 'moved', tabEmpty };
   }
 
   function adoptDeps(place: (pane: Pane, payload: AdoptionPayload) => void) {
@@ -351,10 +339,8 @@ export function createTerminalManager(
     );
   }
 
-  function adoptIntoActiveTab(
-    request: AdoptIntoActiveTabRequest,
-  ): Promise<AdoptResult> {
-    const edge = request.edge ?? "right";
+  function adoptIntoActiveTab(request: AdoptIntoActiveTabRequest): Promise<AdoptResult> {
+    const edge = request.edge ?? 'right';
     return adoptTransfer(
       request.token,
       adoptDeps((pane) => {
@@ -409,9 +395,7 @@ export function createTerminalManager(
       pane.focus();
       callbacks.onLayoutChange();
     } catch (err) {
-      life.panes
-        .get(targetId)
-        ?.writeln(`\r\n\x1b[31mFailed to open new pane: ${err}\x1b[0m`);
+      life.panes.get(targetId)?.writeln(`\r\n\x1b[31mFailed to open new pane: ${err}\x1b[0m`);
     }
   }
 
@@ -424,10 +408,7 @@ export function createTerminalManager(
    * appends to branch `b`, so a drop on the left or top edge would land on the
    * wrong side — the same reason `adoptIntoActiveTab` above uses it.
    */
-  async function dockNewPaneAt(
-    targetPaneId: number,
-    edge: Edge,
-  ): Promise<number | null> {
+  async function dockNewPaneAt(targetPaneId: number, edge: Edge): Promise<number | null> {
     if (!tree || !life.isInTree(tree, targetPaneId)) {
       return null;
     }
@@ -451,9 +432,7 @@ export function createTerminalManager(
       callbacks.onLayoutChange();
       return pane.id;
     } catch (err) {
-      life.panes
-        .get(targetPaneId)
-        ?.writeln(`\r\n\x1b[31mFailed to open new pane: ${err}\x1b[0m`);
+      life.panes.get(targetPaneId)?.writeln(`\r\n\x1b[31mFailed to open new pane: ${err}\x1b[0m`);
       return null;
     }
   }
@@ -562,13 +541,11 @@ export function createTerminalManager(
       return; // pane already exited — never write into a dead PTY
     }
     const data = shellEscapePaths(paths, getDesktopEnvironment().platform);
-    if (data === "") {
+    if (data === '') {
       return;
     }
     pty.writePty(id, data).catch(() => {
-      reportPersistError(
-        "Couldn't send input to the terminal — the session may have ended.",
-      );
+      reportPersistError("Couldn't send input to the terminal — the session may have ended.");
     });
     setActive(id);
     life.panes.get(id)?.focus();
@@ -586,10 +563,7 @@ export function createTerminalManager(
     },
     slotRects: () => layout.slotRects(),
     ghostLabel(id) {
-      return (
-        life.panes.get(id)?.element.querySelector(".pane__cwd")?.textContent ||
-        "pane"
-      );
+      return life.panes.get(id)?.element.querySelector('.pane__cwd')?.textContent || 'pane';
     },
     onMove(sourceId: number, targetId: number, edge: Edge) {
       if (!tree) {
@@ -625,7 +599,7 @@ export function createTerminalManager(
     initFresh,
     initFromLayout,
     show(options) {
-      container.style.display = "";
+      container.style.display = '';
       for (const pane of life.panes.values()) {
         pane.fit();
       }
@@ -634,7 +608,7 @@ export function createTerminalManager(
       }
     },
     hide() {
-      container.style.display = "none";
+      container.style.display = 'none';
     },
     splitActive,
     dockNewPaneAt,
@@ -729,7 +703,7 @@ export function createTerminalManager(
       if (!life.panes.has(id) || life.exited.has(id)) {
         return null;
       }
-      return life.enqueueWrite(id, "\r");
+      return life.enqueueWrite(id, '\r');
     },
     scrollActivePage(dir) {
       if (activeId !== null) {
@@ -753,7 +727,7 @@ export function createTerminalManager(
       if (activeId !== null) {
         const pane = life.panes.get(activeId);
         if (pane) {
-          advanceSearch(pane, "next");
+          advanceSearch(pane, 'next');
         }
       }
     },
@@ -761,12 +735,12 @@ export function createTerminalManager(
       if (activeId !== null) {
         const pane = life.panes.get(activeId);
         if (pane) {
-          advanceSearch(pane, "previous");
+          advanceSearch(pane, 'previous');
         }
       }
     },
     applySettings(next) {
-      container.classList.toggle("pane-bar-hidden", !next.showPaneBar);
+      container.classList.toggle('pane-bar-hidden', !next.showPaneBar);
       for (const pane of life.panes.values()) {
         pane.applySettings(next);
       }

@@ -1,6 +1,6 @@
-import type { ComponentChildren } from "preact";
-import type { FileSurfaceController } from "../files/file-surface-controller";
-import { TabStrip } from "./tab-strip";
+import type { ComponentChildren } from 'preact';
+import type { FileSurfaceController } from '../files/file-surface-controller';
+import { TabStrip } from './tab-strip';
 
 interface TabBarProps {
   onSelectTab(index: number): void;

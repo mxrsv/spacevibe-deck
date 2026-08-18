@@ -18,7 +18,7 @@
  * silent reload would throw away the cursor position the first one preserved.
  */
 
-export type ChangeKind = "changed" | "deleted";
+export type ChangeKind = 'changed' | 'deleted';
 
 export interface ChangeEvent {
   readonly path: string;
@@ -44,15 +44,15 @@ export interface OpenFileState {
 
 export type ChangeAction =
   /** Nothing to do: not open, unchanged, or already answered. */
-  | { readonly kind: "none" }
+  | { readonly kind: 'none' }
   /** Clean + changed: re-read and swap the content, holding scroll and cursor. */
-  | { readonly kind: "reload" }
+  | { readonly kind: 'reload' }
   /** Clean + deleted: keep the last content on screen, read-only. */
-  | { readonly kind: "mark-gone" }
+  | { readonly kind: 'mark-gone' }
   /** Dirty + changed: Reload (discard mine) / Keep mine. */
-  | { readonly kind: "prompt-changed" }
+  | { readonly kind: 'prompt-changed' }
   /** Dirty + deleted: Save again / Close. */
-  | { readonly kind: "prompt-deleted" };
+  | { readonly kind: 'prompt-deleted' };
 
 /**
  * The whole table, as one function.
@@ -66,19 +66,19 @@ export function decideExternalChange(
   state: OpenFileState | undefined,
 ): ChangeAction {
   if (state === undefined) {
-    return { kind: "none" };
+    return { kind: 'none' };
   }
   if (state.prompting) {
     // A bar is already up. Replacing it would move the buttons under a
     // pointer that is on its way to one of them, and the user's answer still
     // applies: whichever content they choose is re-checked when it lands.
-    return { kind: "none" };
+    return { kind: 'none' };
   }
-  if (event.kind === "deleted") {
+  if (event.kind === 'deleted') {
     if (state.gone) {
-      return { kind: "none" };
+      return { kind: 'none' };
     }
-    return state.dirty ? { kind: "prompt-deleted" } : { kind: "mark-gone" };
+    return state.dirty ? { kind: 'prompt-deleted' } : { kind: 'mark-gone' };
   }
   // A file that came back is a change, even if its mtime matches what we last
   // saw — checking `gone` first is what makes "deleted then rewritten" reload
@@ -89,26 +89,26 @@ export function decideExternalChange(
     event.mtimeMs === state.mtimeMs &&
     event.size === state.size
   ) {
-    return { kind: "none" };
+    return { kind: 'none' };
   }
-  return state.dirty ? { kind: "prompt-changed" } : { kind: "reload" };
+  return state.dirty ? { kind: 'prompt-changed' } : { kind: 'reload' };
 }
 
 /** The bar's two choices, per row of the table. */
-export type ChangeResolution = "reload" | "keep-mine" | "save-again" | "close";
+export type ChangeResolution = 'reload' | 'keep-mine' | 'save-again' | 'close';
 
 /** Whether a resolution belongs to the bar the state is showing — a stale
  * click (the bar changed kind between render and click) is refused rather
  * than applied to the wrong row. */
 export function resolutionApplies(
-  action: ChangeAction["kind"],
+  action: ChangeAction['kind'],
   resolution: ChangeResolution,
 ): boolean {
-  if (action === "prompt-changed") {
-    return resolution === "reload" || resolution === "keep-mine";
+  if (action === 'prompt-changed') {
+    return resolution === 'reload' || resolution === 'keep-mine';
   }
-  if (action === "prompt-deleted") {
-    return resolution === "save-again" || resolution === "close";
+  if (action === 'prompt-deleted') {
+    return resolution === 'save-again' || resolution === 'close';
   }
   return false;
 }

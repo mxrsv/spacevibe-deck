@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
 /** Ceiling before the field scrolls instead of growing (DL-13.5). */
 const MAX_HEIGHT_PX = 220;
@@ -55,7 +55,7 @@ export function CommitTextarea({
     if (field === null) {
       return;
     }
-    field.style.height = "auto";
+    field.style.height = 'auto';
     field.style.height = `${Math.min(field.scrollHeight, MAX_HEIGHT_PX)}px`;
   }, [draft]);
 
@@ -78,12 +78,12 @@ export function CommitTextarea({
       onInput={(event) => setDraft(event.currentTarget.value)}
       onBlur={commit}
       onKeyDown={(event) => {
-        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
           event.preventDefault();
           commit();
           return;
         }
-        if (event.key === "Escape") {
+        if (event.key === 'Escape') {
           event.preventDefault();
           event.stopPropagation();
           setDraft(committed.current);

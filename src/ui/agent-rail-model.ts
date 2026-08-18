@@ -18,21 +18,17 @@
  *
  * The clock is injected (`AgentRailInput.now`). Nothing here calls `Date.now`.
  */
-import type { PaneAgent } from "../lib/process-info";
-import type { RepositoryScan } from "../repositories/repository-client";
-import type {
-  RailTab,
-  RepositoryGroup,
-  WorktreeRow,
-} from "../repositories/repository-model";
+import type { PaneAgent } from '../lib/process-info';
+import type { RepositoryScan } from '../repositories/repository-client';
+import type { RailTab, RepositoryGroup, WorktreeRow } from '../repositories/repository-model';
 import {
   buildRail,
   filterRailToWorkspaceHistory,
   worktreeForPath,
-} from "../repositories/repository-model";
-import type { PaneView, TabView } from "../terminal/tabs-store";
-import { NO_PANES } from "../terminal/tabs-store";
-import { UNSEQUENCED } from "../lib/open-sequence";
+} from '../repositories/repository-model';
+import type { PaneView, TabView } from '../terminal/tabs-store';
+import { NO_PANES } from '../terminal/tabs-store';
+import { UNSEQUENCED } from '../lib/open-sequence';
 
 /**
  * Spec §3, revocabularised on the owner's ask (2026-08-16) to read from the
@@ -43,7 +39,7 @@ import { UNSEQUENCED } from "../lib/open-sequence";
  * agent has never run anything. `idle` and the accent-ringed `done` are
  * gone.
  */
-export type RailState = "failed" | "asked" | "working" | "done" | "idle";
+export type RailState = 'failed' | 'asked' | 'working' | 'done' | 'idle';
 
 /** One agent pane inside a tab row. */
 export interface RailPaneRow {
@@ -209,17 +205,17 @@ const WEEK = 7 * DAY;
  */
 function paneState(pane: PaneView): RailState {
   switch (pane.attention) {
-    case "error":
-      return "failed";
-    case "requested":
-    case "warning":
-    case "completed":
-      return "asked";
+    case 'error':
+      return 'failed';
+    case 'requested':
+    case 'warning':
+    case 'completed':
+      return 'asked';
     default:
-      if (pane.phase === "working") {
-        return "working";
+      if (pane.phase === 'working') {
+        return 'working';
       }
-      return pane.hasRun ? "done" : "idle";
+      return pane.hasRun ? 'done' : 'idle';
   }
 }
 
@@ -247,7 +243,7 @@ function paneRows(
           {
             paneId: pane.paneId,
             agent: pane.agent,
-            message: tails?.get(pane.paneId) ?? "",
+            message: tails?.get(pane.paneId) ?? '',
             state: paneState(pane),
             age: formatShortAge(pane.changedAt, now),
             changedAt: pane.changedAt,
@@ -258,7 +254,7 @@ function paneRows(
 
 /** A label the user typed, as opposed to one derived from the workspace path. */
 function isNamed(railTab: RailTab): boolean {
-  return railTab.customName !== null && railTab.customName !== "";
+  return railTab.customName !== null && railTab.customName !== '';
 }
 
 /**
@@ -271,12 +267,12 @@ function isNamed(railTab: RailTab): boolean {
  */
 function identityOf(railTab: RailTab, panes: readonly RailPaneRow[]): string {
   if (isNamed(railTab)) {
-    return railTab.customName ?? "";
+    return railTab.customName ?? '';
   }
   if (panes.length === 0) {
-    return "shell";
+    return 'shell';
   }
-  return panes.length === 1 ? panes[0].agent : "";
+  return panes.length === 1 ? panes[0].agent : '';
 }
 
 /**
@@ -294,7 +290,7 @@ export function tabTail(
 ): string {
   // `now` only formats the age this caller does not read; the tails and the
   // precedence are what it is here for.
-  return loudestPane(paneRows(tab, tails, 0))?.message ?? "";
+  return loudestPane(paneRows(tab, tails, 0))?.message ?? '';
 }
 
 /**
@@ -330,15 +326,12 @@ function tabRow(
   // A folded row says what the pane it speaks for is saying, so the sentence
   // on the row and the mark beside it come from the same agent. With no agent
   // pane at all there is nothing said and the row keeps its own name.
-  const message = voice?.message ?? "";
+  const message = voice?.message ?? '';
   // A tab with no agent panes has never run an agent: `idle`, not `done`.
-  const state = voice?.state ?? "idle";
+  const state = voice?.state ?? 'idle';
   // Agent panes only: a tab whose shells have been busy all morning has still
   // said nothing an agent rail can report, so its age stays empty.
-  const changedAt = panes.reduce(
-    (newest, pane) => Math.max(newest, pane.changedAt),
-    0,
-  );
+  const changedAt = panes.reduce((newest, pane) => Math.max(newest, pane.changedAt), 0);
   return {
     key: railTab.key,
     index: railTab.index,
@@ -384,12 +377,9 @@ function sortByOpenOrder(rows: readonly RailTabRow[]): readonly RailTabRow[] {
  * project already on screen never moves that project. Nothing here reorders by
  * name — the rail is a resume surface, not a directory (spec §1).
  */
-function sortClusters(
-  groups: readonly RailStreamGroup[],
-): readonly RailStreamGroup[] {
+function sortClusters(groups: readonly RailStreamGroup[]): readonly RailStreamGroup[] {
   return [...groups].sort(
-    (left, right) =>
-      openedFirst(left) - openedFirst(right) || firstOf(left) - firstOf(right),
+    (left, right) => openedFirst(left) - openedFirst(right) || firstOf(left) - firstOf(right),
   );
 }
 
@@ -402,10 +392,7 @@ function openedFirst(group: RailStreamGroup): number {
 
 /** Tie-break for clusters whose tabs carry no open key: the tabs' own order. */
 function firstOf(group: RailStreamGroup): number {
-  return group.rows.reduce(
-    (lowest, row) => Math.min(lowest, row.index),
-    Number.MAX_SAFE_INTEGER,
-  );
+  return group.rows.reduce((lowest, row) => Math.min(lowest, row.index), Number.MAX_SAFE_INTEGER);
 }
 
 /** Every live project keeps the same project → tab hierarchy. */
@@ -456,9 +443,7 @@ function archivedRows(
       });
     }
   }
-  return ranked
-    .sort((left, right) => left.rank - right.rank)
-    .map((entry) => entry.row);
+  return ranked.sort((left, right) => left.rank - right.rank).map((entry) => entry.row);
 }
 
 /**
@@ -526,11 +511,11 @@ export function formatShortAge(then: number, now: number): string {
   if (then === 0) {
     // The tracker has never seen this pane's state change. Not "0m" — nothing
     // has happened, and a zero would claim it happened this second.
-    return "";
+    return '';
   }
   const age = Math.max(0, now - then);
   if (age < MINUTE) {
-    return "now";
+    return 'now';
   }
   if (age < HOUR) {
     return `${Math.floor(age / MINUTE)}m`;

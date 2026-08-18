@@ -1,20 +1,19 @@
-import { ArrowLeft, FolderOpen } from "@phosphor-icons/react";
-import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
-import { folderName } from "../lib/workspace-recents";
-import type { RecentWorkspace } from "../lib/workspace-recents";
-import { tildify } from "../lib/process-info";
-import type { WorktreeAddErrorCode } from "../host/worktree-host";
+import { ArrowLeft, FolderOpen } from '@phosphor-icons/react';
+import { DeckIcon, ROW_ICON } from '../ui/controls/deck-icon';
+import { folderName } from '../lib/workspace-recents';
+import type { RecentWorkspace } from '../lib/workspace-recents';
+import { tildify } from '../lib/process-info';
+import type { WorktreeAddErrorCode } from '../host/worktree-host';
 
 /** C5/C6: friendly copy for the form; the git text that produced each code
  * is logged main-process side only (`electron/git/worktree.ts`), never sent
  * over IPC. */
 const ERROR_COPY: Record<WorktreeAddErrorCode, string> = {
-  "not-a-repository": "That folder isn't a git repository",
-  "branch-exists": "A branch with that name already exists",
-  "destination-exists": "That destination folder already exists",
-  "git-not-found": "git isn't installed, or isn't on PATH",
-  unknown:
-    "Couldn't create the worktree — check the folder and branch and try again",
+  'not-a-repository': "That folder isn't a git repository",
+  'branch-exists': 'A branch with that name already exists',
+  'destination-exists': 'That destination folder already exists',
+  'git-not-found': "git isn't installed, or isn't on PATH",
+  unknown: "Couldn't create the worktree — check the folder and branch and try again",
 };
 
 export function worktreeErrorCopy(code: WorktreeAddErrorCode): string {
@@ -58,21 +57,17 @@ export function OpenBoardWorktreeForm({
   onBack,
   onSubmit,
 }: OpenBoardWorktreeFormProps) {
-  const canSubmit =
-    repoPath !== "" &&
-    branch.trim() !== "" &&
-    destPath.trim() !== "" &&
-    !creating;
+  const canSubmit = repoPath !== '' && branch.trim() !== '' && destPath.trim() !== '' && !creating;
 
   /** Enter submits, Escape backs out — scoped here rather than left to the
    * board's own key handler, which ignores input targets. */
   function handleKeyDown(event: KeyboardEvent): void {
-    if (event.key === "Enter") {
+    if (event.key === 'Enter') {
       event.preventDefault();
       if (canSubmit) {
         onSubmit();
       }
-    } else if (event.key === "Escape") {
+    } else if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
       onBack();
@@ -103,15 +98,13 @@ export function OpenBoardWorktreeForm({
               id="wtf-repo"
               class="wtf__select"
               value={repoPath}
-              onChange={(event) =>
-                onRepoChange((event.target as HTMLSelectElement).value)
-              }
+              onChange={(event) => onRepoChange((event.target as HTMLSelectElement).value)}
             >
               <option value="">Select a repository…</option>
               {recents.map((recent) => (
                 <option key={recent.path} value={recent.path}>
-                  {folderName(recent.path)} —{" "}
-                  {homeDir === "" ? recent.path : tildify(recent.path, homeDir)}
+                  {folderName(recent.path)} —{' '}
+                  {homeDir === '' ? recent.path : tildify(recent.path, homeDir)}
                 </option>
               ))}
             </select>
@@ -131,9 +124,7 @@ export function OpenBoardWorktreeForm({
             class="wtf__input"
             value={branch}
             placeholder="feature/my-branch"
-            onInput={(event) =>
-              onBranchChange((event.target as HTMLInputElement).value)
-            }
+            onInput={(event) => onBranchChange((event.target as HTMLInputElement).value)}
           />
         </div>
 
@@ -145,9 +136,7 @@ export function OpenBoardWorktreeForm({
             id="wtf-dest"
             class="wtf__input"
             value={destPath}
-            onInput={(event) =>
-              onDestChange((event.target as HTMLInputElement).value)
-            }
+            onInput={(event) => onDestChange((event.target as HTMLInputElement).value)}
           />
         </div>
 
@@ -163,12 +152,8 @@ export function OpenBoardWorktreeForm({
           <button class="btn" onClick={onBack}>
             Back
           </button>
-          <button
-            class="btn btn--primary"
-            disabled={!canSubmit}
-            onClick={onSubmit}
-          >
-            {creating ? "Creating…" : "Create worktree"}
+          <button class="btn btn--primary" disabled={!canSubmit} onClick={onSubmit}>
+            {creating ? 'Creating…' : 'Create worktree'}
           </button>
         </div>
       </footer>

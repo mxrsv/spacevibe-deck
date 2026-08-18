@@ -1,14 +1,14 @@
-import { useSignal } from "@preact/signals";
-import { persistError } from "../../chrome/events";
-import type { CustomAgent } from "../../lib/agent-catalog";
-import type { QuickDestination } from "../../repositories/worktree-destinations";
-import { PersistErrorBar } from "../../presets/persist-error-bar";
-import { PresetEditor } from "../../presets/preset-editor";
-import { SavePresetDialog } from "../../presets/save-preset-dialog";
-import { AgentQuickPicker } from "../../ui/agent-quick-picker";
-import { SettingsScreen } from "../../ui/settings/settings-screen";
-import { SEED_PRESETS } from "../seed-data";
-import { SectionHead, Specimen, StateLabel } from "../specimen";
+import { useSignal } from '@preact/signals';
+import { persistError } from '../../chrome/events';
+import type { CustomAgent } from '../../lib/agent-catalog';
+import type { QuickDestination } from '../../repositories/worktree-destinations';
+import { PersistErrorBar } from '../../presets/persist-error-bar';
+import { PresetEditor } from '../../presets/preset-editor';
+import { SavePresetDialog } from '../../presets/save-preset-dialog';
+import { AgentQuickPicker } from '../../ui/agent-quick-picker';
+import { SettingsScreen } from '../../ui/settings/settings-screen';
+import { SEED_PRESETS } from '../seed-data';
+import { SectionHead, Specimen, StateLabel } from '../specimen';
 
 /**
  * Surfaces that cover the stage: the full-window settings screen, the three
@@ -32,27 +32,27 @@ const NOOP = (): void => {};
  * specimen shows both a normal chip and the dashed "declared, but missing"
  * state at once. */
 const SEED_DETECTED_AGENTS: readonly { name: string; path: string }[] = [
-  { name: "claude", path: "/usr/local/bin/claude" },
-  { name: "codex", path: "/usr/local/bin/codex" },
-  { name: "gemini", path: "/usr/local/bin/gemini" },
+  { name: 'claude', path: '/usr/local/bin/claude' },
+  { name: 'codex', path: '/usr/local/bin/codex' },
+  { name: 'gemini', path: '/usr/local/bin/gemini' },
 ];
 
 const SEED_CUSTOM_AGENTS: readonly CustomAgent[] = [
-  { id: "custom:aider", label: "Aider", command: "aider --model gpt-4" },
+  { id: 'custom:aider', label: 'Aider', command: 'aider --model gpt-4' },
 ];
 
 /** Two worktrees of one repository, so the destination row is a real menu. */
 const SEED_DESTINATIONS: readonly QuickDestination[] = [
   {
-    path: "/dev/spacevibe-deck",
-    name: "spacevibe-deck",
-    branch: "main",
+    path: '/dev/spacevibe-deck',
+    name: 'spacevibe-deck',
+    branch: 'main',
     primary: true,
   },
   {
-    path: "/dev/deck-modal-shell",
-    name: "deck-modal-shell",
-    branch: "feat/modal-shell",
+    path: '/dev/deck-modal-shell',
+    name: 'deck-modal-shell',
+    branch: 'feat/modal-shell',
     primary: false,
   },
 ];
@@ -64,16 +64,13 @@ function PersistBarSpecimen() {
         type="button"
         class="cfg-btn"
         onClick={() => {
-          persistError.value =
-            "Could not save presets — the change may not survive relaunch.";
+          persistError.value = 'Could not save presets — the change may not survive relaunch.';
         }}
       >
         trigger the bar
       </button>
       <PersistErrorBar />
-      <StateLabel>
-        auto-dismisses after 6s — that timing is the specimen
-      </StateLabel>
+      <StateLabel>auto-dismisses after 6s — that timing is the specimen</StateLabel>
     </div>
   );
 }
@@ -120,11 +117,7 @@ export function OverlaysSection() {
         surface="bg"
         tall
       >
-        <SavePresetDialog
-          existing={SEED_PRESETS}
-          onCancel={NOOP}
-          onSave={NOOP}
-        />
+        <SavePresetDialog existing={SEED_PRESETS} onCancel={NOOP} onSave={NOOP} />
       </Specimen>
 
       <Specimen

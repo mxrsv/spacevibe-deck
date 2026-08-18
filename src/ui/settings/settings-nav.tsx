@@ -1,11 +1,7 @@
-import { useRef } from "preact/hooks";
-import { activeCategory } from "./active-category-store";
-import {
-  categoryTabId,
-  SECTION_PANEL_ID,
-  SETTINGS_CATEGORIES,
-} from "./settings-categories";
-import { ResetSection } from "./sections/reset-section";
+import { useRef } from 'preact/hooks';
+import { activeCategory } from './active-category-store';
+import { categoryTabId, SECTION_PANEL_ID, SETTINGS_CATEGORIES } from './settings-categories';
+import { ResetSection } from './sections/reset-section';
 
 /**
  * The settings rail: a vertical list of category tabs above a pinned Reset
@@ -32,9 +28,9 @@ export function SettingsNav() {
 
   const handleKeyDown = (event: KeyboardEvent): void => {
     let step: 1 | -1;
-    if (event.key === "ArrowDown") {
+    if (event.key === 'ArrowDown') {
       step = 1;
-    } else if (event.key === "ArrowUp") {
+    } else if (event.key === 'ArrowUp') {
       step = -1;
     } else {
       return;
@@ -71,7 +67,7 @@ export function SettingsNav() {
               aria-selected={isActive}
               aria-controls={SECTION_PANEL_ID}
               tabIndex={isActive ? 0 : -1}
-              class={`settings-nav__item ${isActive ? "is-active" : ""}`}
+              class={`settings-nav__item ${isActive ? 'is-active' : ''}`}
               onClick={() => selectCategory(index)}
             >
               <Icon />

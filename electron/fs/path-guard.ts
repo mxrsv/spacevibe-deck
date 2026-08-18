@@ -13,9 +13,9 @@
  * Same instinct as `hasRejectedRoot` in `links.ts`: refuse before touching the
  * filesystem where possible, and refuse loudly rather than degrade.
  */
-import fs from "node:fs";
-import path from "node:path";
-import { hasRejectedRoot } from "../shell-integration";
+import fs from 'node:fs';
+import path from 'node:path';
+import { hasRejectedRoot } from '../shell-integration';
 
 /** Upper bound on one path, mirroring `links.ts`'s own cap. */
 const MAX_PATH_BYTES = 32_768;
@@ -23,7 +23,7 @@ const MAX_PATH_BYTES = 32_768;
 export class PathOutsideWorkspaceError extends Error {
   constructor(target: string) {
     super(`Path is outside the workspace: ${target}`);
-    this.name = "PathOutsideWorkspaceError";
+    this.name = 'PathOutsideWorkspaceError';
   }
 }
 
@@ -61,11 +61,7 @@ export function isInside(parent: string, child: string): boolean {
     return true;
   }
   const relative = path.relative(parent, child);
-  return (
-    relative !== "" &&
-    !relative.startsWith("..") &&
-    !path.isAbsolute(relative)
-  );
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
 /**
@@ -75,11 +71,8 @@ export function isInside(parent: string, child: string): boolean {
  * replaced while Deck is running, and a cached root would keep authorizing
  * writes into a directory the user no longer has open.
  */
-export function resolveRoot(
-  root: string,
-  io: PathGuardFs = nodeFs,
-): string | null {
-  if (typeof root !== "string" || root.length === 0 || root.length > MAX_PATH_BYTES) {
+export function resolveRoot(root: string, io: PathGuardFs = nodeFs): string | null {
+  if (typeof root !== 'string' || root.length === 0 || root.length > MAX_PATH_BYTES) {
     return null;
   }
   if (!path.isAbsolute(root) || hasRejectedRoot(root)) {
@@ -110,16 +103,14 @@ export function resolveInsideRoot(
     return null;
   }
   if (
-    typeof target !== "string" ||
+    typeof target !== 'string' ||
     target.length === 0 ||
     target.length > MAX_PATH_BYTES ||
-    target.includes("\0")
+    target.includes('\0')
   ) {
     return null;
   }
-  const absolute = path.isAbsolute(target)
-    ? target
-    : path.join(canonicalRoot, target);
+  const absolute = path.isAbsolute(target) ? target : path.join(canonicalRoot, target);
   if (hasRejectedRoot(absolute)) {
     return null;
   }
@@ -135,11 +126,7 @@ export function resolveInsideRoot(
 /** `resolveInsideRoot` that throws instead of returning null — for IPC handlers,
  * where a rejected path must surface as an error the renderer can report rather
  * than as a silently empty result. */
-export function assertInsideRoot(
-  root: string,
-  target: string,
-  io: PathGuardFs = nodeFs,
-): string {
+export function assertInsideRoot(root: string, target: string, io: PathGuardFs = nodeFs): string {
   const resolved = resolveInsideRoot(root, target, io);
   if (resolved === null) {
     throw new PathOutsideWorkspaceError(String(target));
@@ -165,7 +152,7 @@ export function assertWritableInsideRoot(
   if (existing !== null) {
     return existing;
   }
-  if (typeof target !== "string" || !path.isAbsolute(target)) {
+  if (typeof target !== 'string' || !path.isAbsolute(target)) {
     throw new PathOutsideWorkspaceError(String(target));
   }
   // The path EXISTS and still did not resolve inside the root — a symlink

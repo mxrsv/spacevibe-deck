@@ -1,6 +1,6 @@
-import type { ITheme } from "@xterm/xterm";
-import { describe, expect, it } from "vitest";
-import { applyThemeVars } from "./theme-vars";
+import type { ITheme } from '@xterm/xterm';
+import { describe, expect, it } from 'vitest';
+import { applyThemeVars } from './theme-vars';
 
 /**
  * `applyThemeVars` is the one place a theme becomes CSS, and its contract is
@@ -26,59 +26,59 @@ function recordProperties(theme: ITheme): ReadonlyMap<string, string> {
 }
 
 const THEME: ITheme = {
-  background: "#282a36",
-  foreground: "#f8f8f2",
-  blue: "#bd93f9",
-  red: "#ff5555",
-  green: "#50fa7b",
-  yellow: "#f1fa8c",
-  magenta: "#ff79c6",
-  cyan: "#8be9fd",
+  background: '#282a36',
+  foreground: '#f8f8f2',
+  blue: '#bd93f9',
+  red: '#ff5555',
+  green: '#50fa7b',
+  yellow: '#f1fa8c',
+  magenta: '#ff79c6',
+  cyan: '#8be9fd',
 };
 
-describe("applyThemeVars", () => {
-  it("publishes the unread badge colour, not only the yellow behind it", () => {
+describe('applyThemeVars', () => {
+  it('publishes the unread badge colour, not only the yellow behind it', () => {
     const written = recordProperties(THEME);
-    expect(written.get("--yellow")).toBe("#f1fa8c");
-    expect(written.get("--status-unread")).toBe("#f1fa8c");
+    expect(written.get('--yellow')).toBe('#f1fa8c');
+    expect(written.get('--status-unread')).toBe('#f1fa8c');
   });
 
-  it("falls back for a theme missing the colour, like every other token", () => {
+  it('falls back for a theme missing the colour, like every other token', () => {
     const written = recordProperties({ ...THEME, yellow: undefined });
-    expect(written.get("--status-unread")).toBe(written.get("--yellow"));
+    expect(written.get('--status-unread')).toBe(written.get('--yellow'));
   });
 
-  it("publishes every theme-driven base colour and derived chrome tone", () => {
+  it('publishes every theme-driven base colour and derived chrome tone', () => {
     const written = recordProperties(THEME);
     for (const name of [
-      "--bg",
-      "--fg",
-      "--accent",
-      "--red",
-      "--green",
-      "--yellow",
-      "--magenta",
-      "--cyan",
-      "--status-unread",
-      "--tone",
-      "--sidebar-bg",
-      "--sidebar-seam",
-      "--chrome-1",
-      "--chrome-2",
-      "--tab-active-bg",
-      "--state-hover-bg",
-      "--input-bg",
-      "--hair",
-      "--hair-strong",
+      '--bg',
+      '--fg',
+      '--accent',
+      '--red',
+      '--green',
+      '--yellow',
+      '--magenta',
+      '--cyan',
+      '--status-unread',
+      '--tone',
+      '--sidebar-bg',
+      '--sidebar-seam',
+      '--chrome-1',
+      '--chrome-2',
+      '--tab-active-bg',
+      '--state-hover-bg',
+      '--input-bg',
+      '--hair',
+      '--hair-strong',
       // The three seams were published but never asserted, which left the one
       // token family whose whole point is following the theme outside the gate
       // that proves tokens follow the theme.
-      "--seam-recessed",
-      "--seam-divider",
-      "--seam-raised",
-      "--text-primary",
-      "--text-muted",
-      "--text-faint",
+      '--seam-recessed',
+      '--seam-divider',
+      '--seam-raised',
+      '--text-primary',
+      '--text-muted',
+      '--text-faint',
     ]) {
       expect(written.has(name)).toBe(true);
     }

@@ -1,7 +1,7 @@
-import { Plus, Trash, X } from "@phosphor-icons/react";
-import { Fragment } from "preact";
-import { useSignal } from "@preact/signals";
-import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
+import { Plus, Trash, X } from '@phosphor-icons/react';
+import { Fragment } from 'preact';
+import { useSignal } from '@preact/signals';
+import { DeckIcon, ROW_ICON } from '../../controls/deck-icon';
 import {
   agentBinary,
   AGENT_LABEL_MAX,
@@ -10,16 +10,12 @@ import {
   isBuiltinAgentId,
   isProbeSafeName,
   type CustomAgent,
-} from "../../../lib/agent-catalog";
-import {
-  revealDockTab,
-  settings,
-  updateSettings,
-} from "../../../settings/settings-store";
-import { settingsOpen } from "../../../chrome/events";
-import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
-import { ConfigGroup, ConfigRow } from "../../controls/config-row";
-import { CommitInput } from "../../controls/commit-input";
+} from '../../../lib/agent-catalog';
+import { revealDockTab, settings, updateSettings } from '../../../settings/settings-store';
+import { settingsOpen } from '../../../chrome/events';
+import { forgetWorkspaceAgent } from '../../../open-board/workspaces-store';
+import { ConfigGroup, ConfigRow } from '../../controls/config-row';
+import { CommitInput } from '../../controls/commit-input';
 
 /**
  * Why a declared command is rejected, or `null` when it is fine. The binary is
@@ -29,11 +25,11 @@ import { CommitInput } from "../../controls/commit-input";
  */
 function commandProblem(command: string): string | null {
   const binary = agentBinary(command);
-  if (binary === "") {
-    return "a command is required";
+  if (binary === '') {
+    return 'a command is required';
   }
   if (!isProbeSafeName(binary)) {
-    return "the command name may only use letters, digits and . _ - / ~ +";
+    return 'the command name may only use letters, digits and . _ - / ~ +';
   }
   return null;
 }
@@ -50,13 +46,10 @@ function commandProblem(command: string): string | null {
  * here, where the user can still see why; the built-in LABELS stay refused for
  * the older reason, that two rows reading "Claude Code" cannot be told apart.
  */
-function labelProblem(
-  label: string,
-  others: readonly CustomAgent[],
-): string | null {
+function labelProblem(label: string, others: readonly CustomAgent[]): string | null {
   const trimmed = label.trim();
-  if (trimmed === "") {
-    return "a name is required";
+  if (trimmed === '') {
+    return 'a name is required';
   }
   if (trimmed.length > AGENT_LABEL_MAX) {
     return `names stay under ${AGENT_LABEL_MAX} characters`;
@@ -67,7 +60,7 @@ function labelProblem(
   const taken =
     others.some((agent) => agent.label === trimmed) ||
     BUILTIN_AGENTS.some((agent) => agent.label === trimmed);
-  return taken ? "that name is already used" : null;
+  return taken ? 'that name is already used' : null;
 }
 
 /** Which field is open for editing — one row's key or its value, never both. */
@@ -84,8 +77,8 @@ export function AgentsSection() {
   /** Why the last in-place edit was refused, and which row refused it. */
   const editError = useSignal<{ id: string; message: string } | null>(null);
   const draftOpen = useSignal(false);
-  const draftLabel = useSignal("");
-  const draftCommand = useSignal("");
+  const draftLabel = useSignal('');
+  const draftCommand = useSignal('');
   const draftError = useSignal<string | null>(null);
 
   const replace = (next: readonly CustomAgent[]): void => {
@@ -103,9 +96,7 @@ export function AgentsSection() {
     }
     editError.value = null;
     replace(
-      customAgents.map((agent) =>
-        agent.id === id ? { ...agent, label: label.trim() } : agent,
-      ),
+      customAgents.map((agent) => (agent.id === id ? { ...agent, label: label.trim() } : agent)),
     );
   };
 
@@ -134,8 +125,7 @@ export function AgentsSection() {
   const commitDraft = (): void => {
     const label = draftLabel.value;
     const command = draftCommand.value;
-    const problem =
-      labelProblem(label, customAgents) ?? commandProblem(command);
+    const problem = labelProblem(label, customAgents) ?? commandProblem(command);
     if (problem !== null) {
       draftError.value = problem;
       return;
@@ -149,8 +139,8 @@ export function AgentsSection() {
       },
     ]);
     draftOpen.value = false;
-    draftLabel.value = "";
-    draftCommand.value = "";
+    draftLabel.value = '';
+    draftCommand.value = '';
     draftError.value = null;
   };
 
@@ -168,7 +158,7 @@ export function AgentsSection() {
    */
   const openUsage = (): void => {
     settingsOpen.value = false;
-    revealDockTab("usage");
+    revealDockTab('usage');
   };
 
   return (
@@ -289,7 +279,7 @@ export function AgentsSection() {
                   draftError.value = null;
                 }}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") {
+                  if (event.key === 'Enter') {
                     commitDraft();
                   }
                 }}
@@ -315,10 +305,7 @@ export function AgentsSection() {
         </>
       ) : null}
 
-      <ConfigRow
-        label="Add agent"
-        desc="A name and the command to type into each pane"
-      >
+      <ConfigRow label="Add agent" desc="A name and the command to type into each pane">
         <button
           type="button"
           class="cfg-btn"
@@ -330,14 +317,11 @@ export function AgentsSection() {
             draftOpen.value = true;
           }}
         >
-          {draftOpen.value ? "add" : <DeckIcon icon={Plus} size={ROW_ICON} />}
+          {draftOpen.value ? 'add' : <DeckIcon icon={Plus} size={ROW_ICON} />}
         </button>
       </ConfigRow>
 
-      <ConfigRow
-        label="Token usage"
-        desc="Tokens and estimated cost for Claude Code and Codex"
-      >
+      <ConfigRow label="Token usage" desc="Tokens and estimated cost for Claude Code and Codex">
         <button type="button" class="cfg-btn" onClick={openUsage}>
           open …
         </button>

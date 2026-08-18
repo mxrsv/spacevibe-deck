@@ -1,18 +1,18 @@
-import { CaretDown, GitFork, Plus } from "@phosphor-icons/react";
-import { RepositoryRail } from "../ui/repository-rail";
-import { AgentRail } from "../ui/agent-rail";
-import { TabBar } from "../ui/tab-bar";
-import { DeckToolbar } from "../ui/toolbar/deck-toolbar";
-import { createFileSurfaceController } from "../files/file-surface-controller";
-import type { PaneAgent } from "../lib/process-info";
-import type { RailTab } from "../repositories/repository-model";
-import { IDLE_ATTENTION_SUMMARY } from "../terminal/tabs-store";
-import { activeTabIndex } from "../terminal/tabs-store";
-import { CHROME_ICON, DeckIcon, RAIL_ICON } from "../ui/controls/deck-icon";
-import { WorktreeAgentStack } from "../ui/worktree-agent-stack";
-import { TabStrip } from "../ui/tab-strip";
-import { SidebarBanner } from "../ui/sidebar-banner";
-import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "../ui/sidebar-actions";
+import { CaretDown, GitFork, Plus } from '@phosphor-icons/react';
+import { RepositoryRail } from '../ui/repository-rail';
+import { AgentRail } from '../ui/agent-rail';
+import { TabBar } from '../ui/tab-bar';
+import { DeckToolbar } from '../ui/toolbar/deck-toolbar';
+import { createFileSurfaceController } from '../files/file-surface-controller';
+import type { PaneAgent } from '../lib/process-info';
+import type { RailTab } from '../repositories/repository-model';
+import { IDLE_ATTENTION_SUMMARY } from '../terminal/tabs-store';
+import { activeTabIndex } from '../terminal/tabs-store';
+import { CHROME_ICON, DeckIcon, RAIL_ICON } from '../ui/controls/deck-icon';
+import { WorktreeAgentStack } from '../ui/worktree-agent-stack';
+import { TabStrip } from '../ui/tab-strip';
+import { SidebarBanner } from '../ui/sidebar-banner';
+import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from '../ui/sidebar-actions';
 
 /**
  * The chrome components wired up for a specimen, in one place.
@@ -49,16 +49,14 @@ interface SpecimenOptions {
 }
 
 /** The shipping toolbar, exactly as both layouts mount it since phase 3. */
-export function deckToolbarSpecimen({
-  promptsDisabled = false,
-}: SpecimenOptions = {}) {
+export function deckToolbarSpecimen({ promptsDisabled = false }: SpecimenOptions = {}) {
   return (
     <DeckToolbar
       browserActive={false}
       settingsOpen={false}
       expandActive={false}
       promptsOpen={false}
-      promptsUnavailable={promptsDisabled ? "no pane to paste into" : null}
+      promptsUnavailable={promptsDisabled ? 'no pane to paste into' : null}
       onToggleBrowser={NOOP}
       onSplitRow={NOOP}
       onSplitColumn={NOOP}
@@ -70,9 +68,7 @@ export function deckToolbarSpecimen({
   );
 }
 
-export function tabBarSpecimen({
-  promptsDisabled = false,
-}: SpecimenOptions = {}) {
+export function tabBarSpecimen({ promptsDisabled = false }: SpecimenOptions = {}) {
   return (
     <TabBar
       onSelectTab={NOOP}
@@ -133,9 +129,7 @@ export function agentRailNavigationSpecimen({
         showFooter ? (
           <SidebarActions
             sessionsAvailable
-            promptsUnavailable={
-              promptsDisabled ? "no pane to paste into" : null
-            }
+            promptsUnavailable={promptsDisabled ? 'no pane to paste into' : null}
             promptsOpen={false}
             onOpenBrowser={NOOP}
             onOpenUsage={NOOP}
@@ -202,44 +196,44 @@ interface WorktreeAgentPreview {
 
 const AGENT_PREVIEW_ROWS: readonly WorktreeAgentPreview[] = [
   {
-    name: "main",
-    path: "…/spacevibe-workspace/spacevibe-deck",
+    name: 'main',
+    path: '…/spacevibe-workspace/spacevibe-deck',
     primary: true,
     active: true,
     working: true,
-    agents: ["claude", "codex", "opencode"],
+    agents: ['claude', 'codex', 'opencode'],
   },
   {
-    name: "pr-11",
-    path: "…-892c-10bc5d1733d6/scratchpad/pr-11",
+    name: 'pr-11',
+    path: '…-892c-10bc5d1733d6/scratchpad/pr-11',
     agents: [],
   },
   {
-    name: "electron-migration",
-    path: "…/spacevibe-deck-worktrees/electron-migration",
-    agents: ["codex"],
+    name: 'electron-migration',
+    path: '…/spacevibe-deck-worktrees/electron-migration',
+    agents: ['codex'],
   },
   {
-    name: "redesign/phase-1-2",
-    path: "…/spacevibe-deck-worktrees/redesign-phase-1-2",
+    name: 'redesign/phase-1-2',
+    path: '…/spacevibe-deck-worktrees/redesign-phase-1-2',
     working: true,
-    agents: ["claude"],
+    agents: ['claude'],
   },
   {
-    name: "feat/token-usage-dashboard",
-    path: "…/spacevibe-deck-worktrees/token-usage-dashboard",
-    agents: ["agy"],
+    name: 'feat/token-usage-dashboard',
+    path: '…/spacevibe-deck-worktrees/token-usage-dashboard',
+    agents: ['agy'],
   },
   {
-    name: "feat/workspace-recorder",
-    path: "…/spacevibe-deck-worktrees/workspace-recorder",
+    name: 'feat/workspace-recorder',
+    path: '…/spacevibe-deck-worktrees/workspace-recorder',
     agents: [],
   },
   {
-    name: "refactor/deepen-architecture",
-    path: "…/scratchpad-worktrees/deepen-architecture",
+    name: 'refactor/deepen-architecture',
+    path: '…/scratchpad-worktrees/deepen-architecture',
     working: true,
-    agents: ["opencode", "gemini", "codex", "claude"],
+    agents: ['opencode', 'gemini', 'codex', 'claude'],
   },
 ];
 
@@ -287,29 +281,20 @@ export function worktreeAgentPresenceSpecimen() {
             {AGENT_PREVIEW_ROWS.map((worktree) => (
               <div
                 key={worktree.name}
-                class={`wsitem ${worktree.active ? "is-active" : ""}`}
+                class={`wsitem ${worktree.active ? 'is-active' : ''}`}
                 data-state={
-                  worktree.working
-                    ? "working"
-                    : worktree.agents.length > 0
-                      ? "ready"
-                      : "idle"
+                  worktree.working ? 'working' : worktree.agents.length > 0 ? 'ready' : 'idle'
                 }
               >
                 <span class="wsitem__state" aria-hidden="true" />
                 <span class="wsitem__text">
                   <span class="wsitem__label">
                     <span class="wsitem__name">{worktree.name}</span>
-                    {worktree.primary && (
-                      <span class="wsitem__badge">primary</span>
-                    )}
+                    {worktree.primary && <span class="wsitem__badge">primary</span>}
                   </span>
                   <span class="wsitem__path">{worktree.path}</span>
                 </span>
-                <WorktreeAgentStack
-                  tabs={previewTabs(worktree)}
-                  onSelectTab={NOOP}
-                />
+                <WorktreeAgentStack tabs={previewTabs(worktree)} onSelectTab={NOOP} />
               </div>
             ))}
           </div>
@@ -326,26 +311,26 @@ export function worktreeAgentPresenceSpecimen() {
   );
 }
 
-type WorktreeItemDirection = "compact" | "focus" | "agent";
+type WorktreeItemDirection = 'compact' | 'focus' | 'agent';
 
 const WORKTREE_ITEM_DIRECTIONS = [
   {
-    id: "compact",
-    index: "A",
-    label: "Compact tree",
-    note: "One-line index · path on title · edge selection",
+    id: 'compact',
+    index: 'A',
+    label: 'Compact tree',
+    note: 'One-line index · path on title · edge selection',
   },
   {
-    id: "focus",
-    index: "B",
-    label: "Focus expand",
-    note: "Compact at rest · selected context opens in place",
+    id: 'focus',
+    index: 'B',
+    label: 'Focus expand',
+    note: 'Compact at rest · selected context opens in place',
   },
   {
-    id: "agent",
-    index: "C",
-    label: "Agent lane",
-    note: "Full-width branch · terminal controls own row two",
+    id: 'agent',
+    index: 'C',
+    label: 'Agent lane',
+    note: 'Full-width branch · terminal controls own row two',
   },
 ] as const satisfies readonly {
   readonly id: WorktreeItemDirection;
@@ -356,15 +341,14 @@ const WORKTREE_ITEM_DIRECTIONS = [
 
 const WORKTREE_VARIANT_ROWS = AGENT_PREVIEW_ROWS.filter(
   (worktree) =>
-    worktree.name !== "feat/token-usage-dashboard" &&
-    worktree.name !== "feat/workspace-recorder",
+    worktree.name !== 'feat/token-usage-dashboard' && worktree.name !== 'feat/workspace-recorder',
 );
 
 function previewState(worktree: WorktreeAgentPreview): string {
   if (worktree.working) {
-    return "working";
+    return 'working';
   }
-  return worktree.agents.length > 0 ? "ready" : "idle";
+  return worktree.agents.length > 0 ? 'ready' : 'idle';
 }
 
 function WorktreeVariantRow({
@@ -376,9 +360,9 @@ function WorktreeVariantRow({
 }) {
   return (
     <div
-      class={`wsitem gx-worktree-row ${worktree.active ? "is-active" : ""}`}
+      class={`wsitem gx-worktree-row ${worktree.active ? 'is-active' : ''}`}
       data-state={previewState(worktree)}
-      title={direction === "compact" ? worktree.path : undefined}
+      title={direction === 'compact' ? worktree.path : undefined}
     >
       <span
         class="wsitem__state"
@@ -397,11 +381,7 @@ function WorktreeVariantRow({
   );
 }
 
-function WorktreeVariantRail({
-  direction,
-}: {
-  readonly direction: WorktreeItemDirection;
-}) {
+function WorktreeVariantRail({ direction }: { readonly direction: WorktreeItemDirection }) {
   return (
     <nav
       class={`gx-worktree-variant__rail gx-worktree-variant--${direction}`}
@@ -416,11 +396,7 @@ function WorktreeVariantRail({
       </header>
       <div class="gx-worktree-variant__rows">
         {WORKTREE_VARIANT_ROWS.map((worktree) => (
-          <WorktreeVariantRow
-            key={worktree.name}
-            direction={direction}
-            worktree={worktree}
-          />
+          <WorktreeVariantRow key={worktree.name} direction={direction} worktree={worktree} />
         ))}
       </div>
     </nav>

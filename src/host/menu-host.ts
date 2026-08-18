@@ -5,7 +5,7 @@
  * row is recording one. Everything else about the menu is derived in the main
  * process from `ACTION_REGISTRY`, which is why there is nothing else here.
  */
-import { invoke } from "./bridge";
+import { invoke } from './bridge';
 
 /**
  * Ask the host to install the menu with, or without, its accelerators.
@@ -16,11 +16,9 @@ import { invoke } from "./bridge";
  * there is nothing to suspend, and a rejected promise here would turn a
  * working capture into a visible error for no user-facing reason.
  */
-export async function suspendMenuAccelerators(
-  suspended: boolean,
-): Promise<void> {
+export async function suspendMenuAccelerators(suspended: boolean): Promise<void> {
   try {
-    await invoke("suspend_menu_accelerators", { suspended });
+    await invoke('suspend_menu_accelerators', { suspended });
   } catch {
     // No host bridge, or a host with no menu. Capture still works.
   }

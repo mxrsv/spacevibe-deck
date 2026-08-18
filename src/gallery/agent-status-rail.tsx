@@ -1,15 +1,15 @@
-import { useSignal } from "@preact/signals";
-import { activeTabIndex, NO_PANES, tabViews } from "../terminal/tabs-store";
-import { AgentGlyph } from "../ui/controls/agent-glyph";
-import { DesktopChrome } from "../ui/desktop-chrome";
-import { SidebarToggle } from "../ui/sidebar-toggle";
-import { DockToggle } from "../ui/dock/dock-toggle";
+import { useSignal } from '@preact/signals';
+import { activeTabIndex, NO_PANES, tabViews } from '../terminal/tabs-store';
+import { AgentGlyph } from '../ui/controls/agent-glyph';
+import { DesktopChrome } from '../ui/desktop-chrome';
+import { SidebarToggle } from '../ui/sidebar-toggle';
+import { DockToggle } from '../ui/dock/dock-toggle';
 import {
   agentRailNavigationSpecimen,
   deckToolbarSpecimen,
   NOOP,
   repositoryScopedTabStripSpecimen,
-} from "./chrome-fixtures";
+} from './chrome-fixtures';
 
 /**
  * Gallery specimens for the agent status rail — the SHIPPED `AgentRail`, not a
@@ -74,9 +74,7 @@ function AgentStatusRailChrome() {
   // an animation only replays when its element is new.
   const ping = useSignal(0);
   const activeTab = tabViews.value[activeTabIndex.value];
-  const stagePanes = (activeTab?.panes ?? NO_PANES).filter(
-    (pane) => pane.agent !== null,
-  );
+  const stagePanes = (activeTab?.panes ?? NO_PANES).filter((pane) => pane.agent !== null);
   return (
     <DesktopChrome
       sidebar
@@ -108,10 +106,7 @@ function AgentStatusRailChrome() {
                 >
                   <header class="asr-stage__head">
                     {pane.agent !== null && (
-                      <AgentGlyph
-                        agent={pane.agent}
-                        className="asr-stage__logo"
-                      />
+                      <AgentGlyph agent={pane.agent} className="asr-stage__logo" />
                     )}
                     <span>{pane.agent}</span>
                   </header>

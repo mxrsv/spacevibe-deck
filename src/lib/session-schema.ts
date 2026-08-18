@@ -1,6 +1,6 @@
-import { countLeaves, type SerializedNode } from "./split-tree";
-import { validateLayout } from "./layout-validation";
-import { isTabDotColor, type TabDotColor } from "./tab-colors";
+import { countLeaves, type SerializedNode } from './split-tree';
+import { validateLayout } from './layout-validation';
+import { isTabDotColor, type TabDotColor } from './tab-colors';
 
 export const SESSION_VERSION = 1;
 // Sanity bounds so a corrupt file cannot flood the rail or a boot restore.
@@ -52,18 +52,18 @@ export interface ArchiveEntry {
 
 /** Malformed field → default null; never rejects the pane (drop is by the caller's array). */
 function validateSessionPane(raw: unknown): SessionPane {
-  if (typeof raw !== "object" || raw === null) {
+  if (typeof raw !== 'object' || raw === null) {
     return { cwd: null, agent: null };
   }
   const source = raw as Record<string, unknown>;
   return {
-    cwd: typeof source.cwd === "string" ? source.cwd : null,
-    agent: typeof source.agent === "string" ? source.agent : null,
+    cwd: typeof source.cwd === 'string' ? source.cwd : null,
+    agent: typeof source.agent === 'string' ? source.agent : null,
   };
 }
 
 function validateSessionTab(raw: unknown): SessionTab | null {
-  if (typeof raw !== "object" || raw === null) {
+  if (typeof raw !== 'object' || raw === null) {
     return null;
   }
   const source = raw as Record<string, unknown>;
@@ -71,42 +71,38 @@ function validateSessionTab(raw: unknown): SessionTab | null {
   if (layout === null) {
     return null;
   }
-  if (
-    !Array.isArray(source.panes) ||
-    source.panes.length !== countLeaves(layout)
-  ) {
+  if (!Array.isArray(source.panes) || source.panes.length !== countLeaves(layout)) {
     return null;
   }
   return {
-    workspacePath:
-      typeof source.workspacePath === "string" ? source.workspacePath : null,
+    workspacePath: typeof source.workspacePath === 'string' ? source.workspacePath : null,
     layout,
     panes: source.panes.map(validateSessionPane),
-    name: typeof source.name === "string" ? source.name : null,
+    name: typeof source.name === 'string' ? source.name : null,
     dotColor: isTabDotColor(source.dotColor) ? source.dotColor : null,
   };
 }
 
 function validateSessionFileTab(raw: unknown): SessionFileTab | null {
-  if (typeof raw !== "object" || raw === null) {
+  if (typeof raw !== 'object' || raw === null) {
     return null;
   }
   const source = raw as Record<string, unknown>;
-  if (typeof source.path !== "string" || source.path === "") {
+  if (typeof source.path !== 'string' || source.path === '') {
     return null;
   }
-  if (typeof source.preview !== "boolean") {
+  if (typeof source.preview !== 'boolean') {
     return null;
   }
   return { path: source.path, preview: source.preview };
 }
 
 function validateSessionFileSurface(raw: unknown): SessionFileSurface | null {
-  if (typeof raw !== "object" || raw === null) {
+  if (typeof raw !== 'object' || raw === null) {
     return null;
   }
   const source = raw as Record<string, unknown>;
-  if (typeof source.workspacePath !== "string" || source.workspacePath === "") {
+  if (typeof source.workspacePath !== 'string' || source.workspacePath === '') {
     return null;
   }
   if (!Array.isArray(source.tabs)) {
@@ -118,8 +114,7 @@ function validateSessionFileSurface(raw: unknown): SessionFileSurface | null {
   return {
     workspacePath: source.workspacePath,
     tabs,
-    activePath:
-      typeof source.activePath === "string" ? source.activePath : null,
+    activePath: typeof source.activePath === 'string' ? source.activePath : null,
   };
 }
 
@@ -127,18 +122,17 @@ function clampActiveTabIndex(raw: unknown, tabCount: number): number {
   if (tabCount === 0) {
     return 0;
   }
-  const requested =
-    typeof raw === "number" && Number.isFinite(raw) ? Math.trunc(raw) : 0;
+  const requested = typeof raw === 'number' && Number.isFinite(raw) ? Math.trunc(raw) : 0;
   return Math.min(Math.max(requested, 0), tabCount - 1);
 }
 
 /** Invalid envelope → null; invalid tabs/files are dropped one by one. */
 export function validateWindowRecord(raw: unknown): WindowRecord | null {
-  if (typeof raw !== "object" || raw === null) {
+  if (typeof raw !== 'object' || raw === null) {
     return null;
   }
   const source = raw as Record<string, unknown>;
-  if (typeof source.savedAt !== "number" || !Number.isFinite(source.savedAt)) {
+  if (typeof source.savedAt !== 'number' || !Number.isFinite(source.savedAt)) {
     return null;
   }
   if (!Array.isArray(source.tabs)) {
@@ -157,17 +151,16 @@ export function validateWindowRecord(raw: unknown): WindowRecord | null {
     activeTabIndex: clampActiveTabIndex(source.activeTabIndex, tabs.length),
     tabs,
     files,
-    activeFileTab:
-      typeof source.activeFileTab === "string" ? source.activeFileTab : null,
+    activeFileTab: typeof source.activeFileTab === 'string' ? source.activeFileTab : null,
   };
 }
 
 function validateArchiveEntry(raw: unknown): ArchiveEntry | null {
-  if (typeof raw !== "object" || raw === null) {
+  if (typeof raw !== 'object' || raw === null) {
     return null;
   }
   const source = raw as Record<string, unknown>;
-  if (typeof source.savedAt !== "number" || !Number.isFinite(source.savedAt)) {
+  if (typeof source.savedAt !== 'number' || !Number.isFinite(source.savedAt)) {
     return null;
   }
   if (!Array.isArray(source.tabs)) {
@@ -185,10 +178,8 @@ function validateArchiveEntry(raw: unknown): ArchiveEntry | null {
  *  with `pushArchiveEntry`'s drop-oldest-savedAt, rather than a first-N slice
  *  in raw key order (which would discard the newest entries, since writes
  *  append last). */
-export function validateArchive(
-  raw: unknown,
-): Readonly<Record<string, ArchiveEntry>> {
-  if (typeof raw !== "object" || raw === null) {
+export function validateArchive(raw: unknown): Readonly<Record<string, ArchiveEntry>> {
+  if (typeof raw !== 'object' || raw === null) {
     return {};
   }
   const source = raw as Record<string, unknown>;
@@ -219,11 +210,7 @@ export function pushArchiveEntry(
   if (overflow <= 0) {
     return next;
   }
-  const oldestFirst = Object.entries(next).sort(
-    ([, a], [, b]) => a.savedAt - b.savedAt,
-  );
+  const oldestFirst = Object.entries(next).sort(([, a], [, b]) => a.savedAt - b.savedAt);
   const drop = new Set(oldestFirst.slice(0, overflow).map(([key]) => key));
-  return Object.fromEntries(
-    Object.entries(next).filter(([key]) => !drop.has(key)),
-  );
+  return Object.fromEntries(Object.entries(next).filter(([key]) => !drop.has(key)));
 }

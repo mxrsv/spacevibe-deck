@@ -6,9 +6,9 @@ import {
   type CharKeyBinding,
   type PhysicalKeyBinding,
   type KeyBinding,
-} from "./action-registry";
-import { type DesktopPlatform } from "../lib/platform";
-import { activeKeymap } from "./active-keymap";
+} from './action-registry';
+import { type DesktopPlatform } from '../lib/platform';
+import { activeKeymap } from './active-keymap';
 
 // Data lives in action-registry.ts (the SSOT for shortcuts + macOS menu);
 // this module is just "match a KeyboardEvent to an action" + the type/name
@@ -31,10 +31,8 @@ export type ShortcutAction = ActionId;
  * Anything matching a real keystroke wants `activeKeymap()` instead, which is
  * why it, not this, is `matchBinding`'s default.
  */
-export function keymapForPlatform(
-  platform: DesktopPlatform,
-): readonly KeyBinding[] {
-  return platform === "windows" ? WINDOWS_KEYMAP : MACOS_KEYMAP;
+export function keymapForPlatform(platform: DesktopPlatform): readonly KeyBinding[] {
+  return platform === 'windows' ? WINDOWS_KEYMAP : MACOS_KEYMAP;
 }
 
 /**
@@ -62,10 +60,7 @@ export function isShortcutAction(value: unknown): value is ShortcutAction {
  * modifier flags without the method.
  */
 function hasAltGraph(event: KeyboardEvent): boolean {
-  return (
-    typeof event.getModifierState === "function" &&
-    event.getModifierState("AltGraph")
-  );
+  return typeof event.getModifierState === 'function' && event.getModifierState('AltGraph');
 }
 
 /**
@@ -89,8 +84,7 @@ export function matchBinding(
     if (altGraph && binding.ctrl && binding.alt) {
       continue;
     }
-    const keyMatches =
-      "code" in binding ? binding.code === event.code : binding.key === key;
+    const keyMatches = 'code' in binding ? binding.code === event.code : binding.key === key;
     if (
       keyMatches &&
       !!binding.meta === event.metaKey &&

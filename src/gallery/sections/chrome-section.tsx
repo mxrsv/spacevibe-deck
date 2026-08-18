@@ -1,42 +1,42 @@
-import { useSignal } from "@preact/signals";
-import { PresetThumb } from "../../presets/preset-thumb";
-import { AgentAttentionMark } from "../../ui/agent-attention-mark";
-import { DesktopChrome } from "../../ui/desktop-chrome";
-import { WorkspaceSpinner } from "../../ui/workspace-spinner";
-import { SidebarBanner } from "../../ui/sidebar-banner";
-import { activeTabIndex } from "../../terminal/tabs-store";
-import { SIDEBAR_HIDDEN_WIDTH } from "../../ui/panel-resize";
-import { SidebarToggle } from "../../ui/sidebar-toggle";
-import { DockToggle } from "../../ui/dock/dock-toggle";
-import { SidebarActions } from "../../ui/sidebar-actions";
-import { DockTabs } from "../../ui/dock/dock-tabs";
-import { DOCK_TABS } from "../../ui/dock/dock-tab-registry";
-import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
+import { useSignal } from '@preact/signals';
+import { PresetThumb } from '../../presets/preset-thumb';
+import { AgentAttentionMark } from '../../ui/agent-attention-mark';
+import { DesktopChrome } from '../../ui/desktop-chrome';
+import { WorkspaceSpinner } from '../../ui/workspace-spinner';
+import { SidebarBanner } from '../../ui/sidebar-banner';
+import { activeTabIndex } from '../../terminal/tabs-store';
+import { SIDEBAR_HIDDEN_WIDTH } from '../../ui/panel-resize';
+import { SidebarToggle } from '../../ui/sidebar-toggle';
+import { DockToggle } from '../../ui/dock/dock-toggle';
+import { SidebarActions } from '../../ui/sidebar-actions';
+import { DockTabs } from '../../ui/dock/dock-tabs';
+import { DOCK_TABS } from '../../ui/dock/dock-tab-registry';
+import { DEFAULT_SETTINGS } from '../../settings/settings-schema';
 
-import { UpdateAction } from "../../updater/update-action";
-import type { UpdatePhase } from "../../updater/update-controller";
-import { agentStatusRailChromeSpecimen } from "../agent-status-rail";
+import { UpdateAction } from '../../updater/update-action';
+import type { UpdatePhase } from '../../updater/update-controller';
+import { agentStatusRailChromeSpecimen } from '../agent-status-rail';
 import {
   agentRailNavigationSpecimen,
   deckToolbarSpecimen,
   NOOP,
   repositoryScopedTabStripSpecimen,
-} from "../chrome-fixtures";
-import { SEED_ATTENTION, SEED_LAYOUT } from "../seed-data";
-import { SectionHead, Specimen, StateLabel } from "../specimen";
+} from '../chrome-fixtures';
+import { SEED_ATTENTION, SEED_LAYOUT } from '../seed-data';
+import { SectionHead, Specimen, StateLabel } from '../specimen';
 
 /** Every phase the update pill can be in, `hidden` excluded — it renders nothing. */
-const UPDATE_PHASES: readonly Exclude<UpdatePhase, "hidden">[] = [
-  "available",
-  "downloading",
-  "downloaded",
-  "download-failed",
-  "installing",
-  "install-failed",
-  "relaunch-failed",
+const UPDATE_PHASES: readonly Exclude<UpdatePhase, 'hidden'>[] = [
+  'available',
+  'downloading',
+  'downloaded',
+  'download-failed',
+  'installing',
+  'install-failed',
+  'relaunch-failed',
 ];
 
-const WOVEN_FLAG_NOTE = "Textile grain · shallow fold light · matte colour";
+const WOVEN_FLAG_NOTE = 'Textile grain · shallow fold light · matte colour';
 
 export function ChromeSection() {
   const selectGalleryTab = (index: number): void => {
@@ -46,9 +46,7 @@ export function ChromeSection() {
   // different owner (DL-18.9). Local, so toggling it in the gallery cannot
   // write the running app's settings.
   const railCollapsed = useSignal(false);
-  const workingAttention = SEED_ATTENTION.find(
-    (summary) => summary.kind === "working",
-  );
+  const workingAttention = SEED_ATTENTION.find((summary) => summary.kind === 'working');
   return (
     <>
       <SectionHead
@@ -99,12 +97,10 @@ export function ChromeSection() {
             collapsed rail here does not collapse every other rail on the
             page. Same attribute, same variable, same CSS. */}
         <div
-          data-sidebar-collapsed={railCollapsed.value ? "true" : "false"}
+          data-sidebar-collapsed={railCollapsed.value ? 'true' : 'false'}
           style={{
-            "--sidebar-w": `${
-              railCollapsed.value
-                ? SIDEBAR_HIDDEN_WIDTH
-                : DEFAULT_SETTINGS.sidebarWidth
+            '--sidebar-w': `${
+              railCollapsed.value ? SIDEBAR_HIDDEN_WIDTH : DEFAULT_SETTINGS.sidebarWidth
             }px`,
           }}
         >
@@ -142,18 +138,14 @@ export function ChromeSection() {
                     />
                   ) : null}
                   {repositoryScopedTabStripSpecimen()}
-                  <div class="stage__strip-actions">
-                    {deckToolbarSpecimen()}
-                  </div>
+                  <div class="stage__strip-actions">{deckToolbarSpecimen()}</div>
                   <DockToggle open={false} onToggle={NOOP} />
                 </div>
                 <div class="stage__tabs">
                   <div class="gx-scoped-terminal" aria-label="Terminal preview">
                     <span class="gx-scoped-terminal__prompt">❯</span>
                     <span> npm test</span>
-                    <span class="gx-scoped-terminal__result">
-                      ✓ active worktree tabs only
-                    </span>
+                    <span class="gx-scoped-terminal__result">✓ active worktree tabs only</span>
                   </div>
                 </div>
               </main>
@@ -204,9 +196,9 @@ export function ChromeSection() {
               <UpdateAction
                 view={{
                   phase,
-                  currentVersion: "0.12.2",
-                  availableVersion: "0.12.3",
-                  notes: "Fixes the thing.",
+                  currentVersion: '0.12.2',
+                  availableVersion: '0.12.3',
+                  notes: 'Fixes the thing.',
                 }}
                 onDownload={NOOP}
                 onInstall={NOOP}
@@ -241,10 +233,7 @@ export function ChromeSection() {
           <span class="gx-icon-trial__spinner">
             <StateLabel>agent working</StateLabel>
             {workingAttention !== undefined ? (
-              <AgentAttentionMark
-                summary={workingAttention}
-                label="Neutral icon treatment"
-              />
+              <AgentAttentionMark summary={workingAttention} label="Neutral icon treatment" />
             ) : null}
           </span>
         </div>

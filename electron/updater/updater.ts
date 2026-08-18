@@ -34,10 +34,7 @@ export interface AutoUpdaterLike {
   checkForUpdates(): Promise<UpdateCheckLike | null>;
   downloadUpdate(): Promise<readonly string[]>;
   quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void;
-  on(
-    event: "update-downloaded" | "error",
-    handler: (payload: never) => void,
-  ): unknown;
+  on(event: 'update-downloaded' | 'error', handler: (payload: never) => void): unknown;
 }
 
 /** `electron-updater`'s `UpdateCheckResult`, narrowed to what is read here. */
@@ -57,10 +54,10 @@ export interface UpdateCheckLike {
  * able to say so instead of reporting "SpaceVibe Deck is up to date".
  */
 export type UpdateCheckReply =
-  | { readonly status: "unsupported" }
-  | { readonly status: "current"; readonly currentVersion: string }
+  | { readonly status: 'unsupported' }
+  | { readonly status: 'current'; readonly currentVersion: string }
   | {
-      readonly status: "available";
+      readonly status: 'available';
       readonly currentVersion: string;
       readonly version: string;
       readonly notes: string | null;
@@ -103,18 +100,18 @@ function releaseNotesText(notes: unknown): string | null {
   // GitHub releases give a string; other providers give an array of
   // `{ version, note }`. Anything else is dropped rather than stringified into
   // "[object Object]" and shown to the user.
-  if (typeof notes === "string") {
+  if (typeof notes === 'string') {
     return notes;
   }
   if (Array.isArray(notes)) {
     const joined = notes
       .map((entry) =>
-        typeof entry === "object" && entry !== null && "note" in entry
-          ? String((entry as { note: unknown }).note ?? "")
-          : "",
+        typeof entry === 'object' && entry !== null && 'note' in entry
+          ? String((entry as { note: unknown }).note ?? '')
+          : '',
       )
       .filter((note) => note.length > 0)
-      .join("\n");
+      .join('\n');
     return joined.length > 0 ? joined : null;
   }
   return null;
@@ -124,9 +121,7 @@ function asError(value: unknown): Error {
   return value instanceof Error ? value : new Error(String(value));
 }
 
-export function createUpdateLifecycle(
-  deps: UpdateLifecycleDependencies,
-): UpdateLifecycle {
+export function createUpdateLifecycle(deps: UpdateLifecycleDependencies): UpdateLifecycle {
   let updater: AutoUpdaterLike | null = null;
   let availableVersion: string | null = null;
   let downloadedVersion: string | null = null;
@@ -161,8 +156,8 @@ export function createUpdateLifecycle(
     // Both flags are load-bearing; see the docblock.
     loaded.autoDownload = false;
     loaded.autoInstallOnAppQuit = false;
-    loaded.on("update-downloaded", () => settleDownload());
-    loaded.on("error", (error) => {
+    loaded.on('update-downloaded', () => settleDownload());
+    loaded.on('error', (error) => {
       // `electron-updater` has ONE error channel for every operation, so an
       // error here may belong to a check another window started. Blaming it on
       // whatever is outstanding was worse than useless: a failed check during
@@ -175,7 +170,7 @@ export function createUpdateLifecycle(
         sink(asError(error));
         return;
       }
-      deps.report("Updater reported an error", error);
+      deps.report('Updater reported an error', error);
     });
     updater = loaded;
     return loaded;
@@ -183,17 +178,17 @@ export function createUpdateLifecycle(
 
   const check = async (): Promise<UpdateCheckReply> => {
     if (!deps.supported) {
-      return { status: "unsupported" };
+      return { status: 'unsupported' };
     }
     const result = await load().checkForUpdates();
     if (result === null) {
       // `electron-updater` answers null when it refuses to run at all — an
       // unpackaged app, or no update configuration. Honest "unsupported", not
       // "up to date".
-      return { status: "unsupported" };
+      return { status: 'unsupported' };
     }
     if (!result.isUpdateAvailable) {
-      return { status: "current", currentVersion: deps.currentVersion };
+      return { status: 'current', currentVersion: deps.currentVersion };
     }
     const version = result.updateInfo.version;
     if (version !== availableVersion) {
@@ -203,7 +198,7 @@ export function createUpdateLifecycle(
     }
     availableVersion = version;
     return {
-      status: "available",
+      status: 'available',
       currentVersion: deps.currentVersion,
       version,
       notes: releaseNotesText(result.updateInfo.releaseNotes),
@@ -213,7 +208,7 @@ export function createUpdateLifecycle(
   const download = (): Promise<void> => {
     const target = availableVersion;
     if (target === null) {
-      return Promise.reject(new Error("No update has been found to download."));
+      return Promise.reject(new Error('No update has been found to download.'));
     }
     if (downloadedVersion === target) {
       return Promise.resolve();
@@ -227,9 +222,7 @@ export function createUpdateLifecycle(
       return downloadTarget === target
         ? downloadInFlight
         : Promise.reject(
-            new Error(
-              `Deck is already downloading ${downloadTarget ?? "another update"}.`,
-            ),
+            new Error(`Deck is already downloading ${downloadTarget ?? 'another update'}.`),
           );
     }
     downloadTarget = target;
@@ -261,17 +254,13 @@ export function createUpdateLifecycle(
       // forever — and `MacUpdater.quitAndInstall` adds another
       // `update-downloaded` listener each time, so a later success would run
       // the handover once per attempt.
-      return Promise.reject(
-        new Error("Deck has already handed this update to the installer."),
-      );
+      return Promise.reject(new Error('Deck has already handed this update to the installer.'));
     }
     if (availableVersion === null || downloadedVersion !== availableVersion) {
       // Also the guard for "another window downloaded a different version":
       // refusing is the honest answer, because the file on disk is not the one
       // this window is showing.
-      return Promise.reject(
-        new Error("The update has not finished downloading yet."),
-      );
+      return Promise.reject(new Error('The update has not finished downloading yet.'));
     }
     if (installInFlight !== null) {
       return installInFlight;

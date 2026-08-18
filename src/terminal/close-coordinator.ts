@@ -1,4 +1,4 @@
-import type { TerminalManager } from "./terminal-manager";
+import type { TerminalManager } from './terminal-manager';
 
 /**
  * Dependencies the Close coordinator needs from TabManager.
@@ -30,9 +30,7 @@ export interface CloseCoordinator {
  * Deep Close lifecycle: routing, post-dialog ID pin, Busy guard.
  * Auto-exit in TerminalManager stays outside — it is not a user Close.
  */
-export function createCloseCoordinator(
-  deps: CloseCoordinatorDeps,
-): CloseCoordinator {
+export function createCloseCoordinator(deps: CloseCoordinatorDeps): CloseCoordinator {
   async function closeTab(index: number): Promise<void> {
     const entry = deps.tabAt(index);
     if (!entry) {

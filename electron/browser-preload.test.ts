@@ -7,11 +7,11 @@
  * gate lives in the preload's isolated world precisely so the page cannot read
  * or call it — and `isTrusted` is the one bit page script cannot forge.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const sent: { channel: string; payload: unknown }[] = [];
 
-vi.mock("electron", () => ({
+vi.mock('electron', () => ({
   ipcRenderer: {
     send: (channel: string, payload: unknown) => {
       sent.push({ channel, payload });
@@ -42,13 +42,13 @@ function fire(
   }
 }
 
-const GRAB = "deck:browser-grab";
-const payload = JSON.stringify({ text: "[<button> in Save]" });
+const GRAB = 'deck:browser-grab';
+const payload = JSON.stringify({ text: '[<button> in Save]' });
 
 async function load(): Promise<Map<string, Listener[]>> {
   const listeners = installWindow();
   vi.resetModules();
-  await import("./browser-preload");
+  await import('./browser-preload');
   return listeners;
 }
 
@@ -57,15 +57,15 @@ beforeEach(() => {
   vi.useRealTimers();
 });
 
-describe("browser preload", () => {
-  it("forwards a grab that follows a real user gesture", async () => {
+describe('browser preload', () => {
+  it('forwards a grab that follows a real user gesture', async () => {
     const listeners = await load();
-    fire(listeners, "keydown", { isTrusted: true });
+    fire(listeners, 'keydown', { isTrusted: true });
     fire(listeners, GRAB, { detail: payload });
     expect(sent).toEqual([{ channel: GRAB, payload }]);
   });
 
-  it("drops a grab with no gesture behind it", async () => {
+  it('drops a grab with no gesture behind it', async () => {
     // The whole forged-grab scenario: a page calls `dispatchEvent` on a timer
     // with nobody touching the keyboard.
     const listeners = await load();
@@ -73,19 +73,19 @@ describe("browser preload", () => {
     expect(sent).toEqual([]);
   });
 
-  it("does not accept a gesture the page synthesised", async () => {
+  it('does not accept a gesture the page synthesised', async () => {
     // `dispatchEvent(new KeyboardEvent("keydown"))` produces isTrusted false,
     // and no page script can set it true. That is what makes this a gate and
     // not a speed bump.
     const listeners = await load();
-    fire(listeners, "keydown", { isTrusted: false });
+    fire(listeners, 'keydown', { isTrusted: false });
     fire(listeners, GRAB, { detail: payload });
     expect(sent).toEqual([]);
   });
 
-  it("stops a flood even when a gesture did happen", async () => {
+  it('stops a flood even when a gesture did happen', async () => {
     const listeners = await load();
-    fire(listeners, "pointerdown", { isTrusted: true });
+    fire(listeners, 'pointerdown', { isTrusted: true });
     for (let i = 0; i < 100; i += 1) {
       fire(listeners, GRAB, { detail: payload });
     }
@@ -93,19 +93,19 @@ describe("browser preload", () => {
     expect(sent).toHaveLength(1);
   });
 
-  it("stops trusting a gesture once it is stale", async () => {
+  it('stops trusting a gesture once it is stale', async () => {
     vi.useFakeTimers();
     const listeners = await load();
-    fire(listeners, "keydown", { isTrusted: true });
+    fire(listeners, 'keydown', { isTrusted: true });
     vi.setSystemTime(Date.now() + 10_000);
     fire(listeners, GRAB, { detail: payload });
     expect(sent).toEqual([]);
   });
 
-  it("ignores a payload that is not a string", async () => {
+  it('ignores a payload that is not a string', async () => {
     const listeners = await load();
-    fire(listeners, "keydown", { isTrusted: true });
-    fire(listeners, GRAB, { detail: { text: "object, not the wire shape" } });
+    fire(listeners, 'keydown', { isTrusted: true });
+    fire(listeners, GRAB, { detail: { text: 'object, not the wire shape' } });
     expect(sent).toEqual([]);
   });
 });

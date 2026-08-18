@@ -1,7 +1,4 @@
-import {
-  parseProgressEvents,
-  type OscProgressEvent,
-} from "../lib/osc-progress";
+import { parseProgressEvents, type OscProgressEvent } from '../lib/osc-progress';
 
 /**
  * Per-pane "is the program actually working?" tracker, fed from raw PTY
@@ -53,13 +50,13 @@ export interface AgentActivity {
 }
 
 /** Coarse lifecycle phase derived from a pane's activity signal. */
-export type AgentPhase = "unknown" | "idle" | "working" | "exited";
+export type AgentPhase = 'unknown' | 'idle' | 'working' | 'exited';
 
 /** Which signal produced the current phase/severity. */
-export type ActivitySource = "osc-progress" | "output-heuristic";
+export type ActivitySource = 'osc-progress' | 'output-heuristic';
 
 /** OSC state 2 → error, state 4 → warning; everything else has none. */
-export type ActivitySeverity = "warning" | "error" | null;
+export type ActivitySeverity = 'warning' | 'error' | null;
 
 /** One ordered activity transition emitted by `noteOutputEvents`. */
 export interface ActivityTransition {
@@ -113,7 +110,7 @@ export interface AgentActivityOptions {
 
 function freshRecord(): PaneRecord {
   return {
-    carry: "",
+    carry: '',
     oscState: null,
     streakStart: 0,
     lastOutputAt: 0,
@@ -132,15 +129,15 @@ function deriveFromOscState(oscState: number): {
   severity: ActivitySeverity;
 } {
   if (oscState === 0) {
-    return { phase: "idle", severity: null };
+    return { phase: 'idle', severity: null };
   }
   if (oscState === 2) {
-    return { phase: "working", severity: "error" };
+    return { phase: 'working', severity: 'error' };
   }
   if (oscState === 4) {
-    return { phase: "working", severity: "warning" };
+    return { phase: 'working', severity: 'warning' };
   }
-  return { phase: "working", severity: null };
+  return { phase: 'working', severity: null };
 }
 
 /** Result of feeding one chunk through the shared OSC/fallback bookkeeping. */
@@ -192,9 +189,7 @@ function applyChunk(
   return { events: [], usedFallback: true };
 }
 
-export function createAgentActivity(
-  options: AgentActivityOptions = {},
-): AgentActivity {
+export function createAgentActivity(options: AgentActivityOptions = {}): AgentActivity {
   const now = options.now ?? Date.now;
   const recentMs = options.recentMs ?? DEFAULT_RECENT_MS;
   const echoMs = options.echoMs ?? DEFAULT_ECHO_MS;
@@ -239,19 +234,13 @@ export function createAgentActivity(
       const record = getOrCreate(paneId);
       const at = now();
       const before = isWorking(record, at);
-      const { events, usedFallback } = applyChunk(
-        record,
-        chunk,
-        at,
-        echoMs,
-        streakGapMs,
-      );
+      const { events, usedFallback } = applyChunk(record, chunk, at, echoMs, streakGapMs);
       if (events.length > 0) {
         return events.map((event): ActivityTransition => {
           const { phase, severity } = deriveFromOscState(event.state);
           return {
             phase,
-            source: "osc-progress",
+            source: 'osc-progress',
             severity,
             oscState: event.state,
             observedAt: at,
@@ -267,8 +256,8 @@ export function createAgentActivity(
       }
       return [
         {
-          phase: after ? "working" : "idle",
-          source: "output-heuristic",
+          phase: after ? 'working' : 'idle',
+          source: 'output-heuristic',
           severity: null,
           oscState: null,
           observedAt: at,
@@ -292,7 +281,7 @@ export function createAgentActivity(
         record.oscState = null;
         record.streakStart = 0;
         record.lastOutputAt = 0;
-        record.carry = "";
+        record.carry = '';
       }
     },
     working(paneId) {
@@ -302,7 +291,7 @@ export function createAgentActivity(
       const record = panes.get(paneId);
       if (record === undefined) {
         return {
-          phase: "unknown",
+          phase: 'unknown',
           source: null,
           severity: null,
           oscState: null,
@@ -312,7 +301,7 @@ export function createAgentActivity(
         const { phase, severity } = deriveFromOscState(record.oscState);
         return {
           phase,
-          source: "osc-progress",
+          source: 'osc-progress',
           severity,
           oscState: record.oscState,
         };
@@ -321,15 +310,15 @@ export function createAgentActivity(
       // fresh, or just reset by `noteProcess`) has produced no signal yet.
       if (record.lastOutputAt === 0) {
         return {
-          phase: "unknown",
+          phase: 'unknown',
           source: null,
           severity: null,
           oscState: null,
         };
       }
       return {
-        phase: isWorking(record, now()) ? "working" : "idle",
-        source: "output-heuristic",
+        phase: isWorking(record, now()) ? 'working' : 'idle',
+        source: 'output-heuristic',
         severity: null,
         oscState: null,
       };

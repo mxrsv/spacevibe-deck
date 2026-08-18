@@ -8,7 +8,7 @@
  *
  * Design: `docs/specs/2026-08-13-repository-worktree-rail-design.md` §1.1.
  */
-import { invoke } from "../host/bridge";
+import { invoke } from '../host/bridge';
 
 export interface WorktreeEntry {
   readonly path: string;
@@ -22,18 +22,18 @@ export interface WorktreeEntry {
 
 export type RepositoryScan =
   | {
-      readonly kind: "repository";
+      readonly kind: 'repository';
       /** Absolute `--git-common-dir`: identical across a repository's worktrees. */
       readonly key: string;
       readonly root: string;
       readonly worktrees: readonly WorktreeEntry[];
     }
-  | { readonly kind: "plain"; readonly reason: string };
+  | { readonly kind: 'plain'; readonly reason: string };
 
 export interface RepositoryClient {
   scan(path: string): Promise<RepositoryScan>;
 }
 
 export const defaultRepositoryClient: RepositoryClient = {
-  scan: (path) => invoke<RepositoryScan>("git_repository", { path }),
+  scan: (path) => invoke<RepositoryScan>('git_repository', { path }),
 };

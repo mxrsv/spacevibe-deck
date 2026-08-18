@@ -3,9 +3,9 @@
  * `src/usage/usage-client.ts`, including the reason it exists: the store must
  * be unit-testable with no host bridge at all.
  */
-import { listSessions } from "../host/sessions-host";
-import { defaultPtyClient } from "../terminal/pty-client";
-import type { SessionsSnapshot } from "../lib/session-history";
+import { listSessions } from '../host/sessions-host';
+import { defaultPtyClient } from '../terminal/pty-client';
+import type { SessionsSnapshot } from '../lib/session-history';
 
 export interface SessionsClient {
   /** `null` means this host has no session history (Tauri, browser dev). */
@@ -31,7 +31,7 @@ export function createMemorySessionsClient(
   return {
     async list() {
       if (options.fail === true) {
-        throw new Error("sessions_list failed");
+        throw new Error('sessions_list failed');
       }
       return snapshot;
     },

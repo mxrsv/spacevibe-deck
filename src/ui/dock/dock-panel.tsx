@@ -17,15 +17,12 @@
  * `src/ui/sessions` — three imports that would make the host depend on
  * everything it hosts.
  */
-import {
-  dockCollapseArmed,
-  dockWidthLive,
-} from "../../files/file-surface-store";
-import type { DockTab } from "../../settings/settings-schema";
-import { DOCK_DRAG_BOUNDS, resolvePanelDrag } from "../panel-resize";
-import { DockTabs } from "./dock-tabs";
-import type { DockTabDescriptor } from "./dock-tab-registry";
-import type { ComponentChildren } from "preact";
+import { dockCollapseArmed, dockWidthLive } from '../../files/file-surface-store';
+import type { DockTab } from '../../settings/settings-schema';
+import { DOCK_DRAG_BOUNDS, resolvePanelDrag } from '../panel-resize';
+import { DockTabs } from './dock-tabs';
+import type { DockTabDescriptor } from './dock-tab-registry';
+import type { ComponentChildren } from 'preact';
 
 export interface DockPanelProps {
   /** Tabs this host can show — already filtered for host support. */
@@ -62,17 +59,14 @@ export function DockPanel(props: DockPanelProps) {
       // The RAW width goes to `resolvePanelDrag`, not a clamped one: clamping
       // maps every overdrag onto the floor, and "past the floor" is exactly
       // what the collapse gesture is made of (DL-19.4).
-      const outcome = resolvePanelDrag(
-        startWidth + (startX - moveEvent.clientX),
-        DOCK_DRAG_BOUNDS,
-      );
+      const outcome = resolvePanelDrag(startWidth + (startX - moveEvent.clientX), DOCK_DRAG_BOUNDS);
       dockWidthLive.value = outcome.width;
       dockCollapseArmed.value = outcome.collapsed;
     };
     const end = (): void => {
-      target.removeEventListener("pointermove", move);
-      target.removeEventListener("pointerup", end);
-      target.removeEventListener("pointercancel", end);
+      target.removeEventListener('pointermove', move);
+      target.removeEventListener('pointerup', end);
+      target.removeEventListener('pointercancel', end);
       const dragged = dockWidthLive.value;
       const collapse = dockCollapseArmed.value;
       // Cleared BEFORE the commit: the settings write is async, and leaving
@@ -91,14 +85,14 @@ export function DockPanel(props: DockPanelProps) {
         props.onWidthChange(dragged);
       }
     };
-    target.addEventListener("pointermove", move);
-    target.addEventListener("pointerup", end);
-    target.addEventListener("pointercancel", end);
+    target.addEventListener('pointermove', move);
+    target.addEventListener('pointerup', end);
+    target.addEventListener('pointercancel', end);
   };
 
   return (
     <aside
-      class={`dock-panel ${dockCollapseArmed.value ? "is-collapse-armed" : ""}`}
+      class={`dock-panel ${dockCollapseArmed.value ? 'is-collapse-armed' : ''}`}
       aria-label="Side panel"
     >
       <div
@@ -115,11 +109,7 @@ export function DockPanel(props: DockPanelProps) {
           closed column cannot hold its own way back out, the same reasoning
           DL-18.9 gives for the navigation sidebar. */}
       <div class="dock-panel__header">
-        <DockTabs
-          items={props.tabs}
-          active={props.activeTab}
-          onSelect={props.onSelectTab}
-        />
+        <DockTabs items={props.tabs} active={props.activeTab} onSelect={props.onSelectTab} />
       </div>
       <div class="dock-panel__body">{props.children}</div>
     </aside>

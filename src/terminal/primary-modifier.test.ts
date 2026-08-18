@@ -1,32 +1,29 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { afterEach, describe, expect, it } from 'vitest';
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
 import {
   isPrimaryModifierHeld,
   onPrimaryModifierChange,
   syncPrimaryModifierHeld,
-} from "./primary-modifier";
+} from './primary-modifier';
 
-describe("primary modifier held state", () => {
+describe('primary modifier held state', () => {
   afterEach(() => {
     syncPrimaryModifierHeld({ metaKey: false, ctrlKey: false });
     resetDesktopEnvironmentForTests();
   });
 
-  it("tracks Cmd on macOS and Ctrl on Windows", () => {
+  it('tracks Cmd on macOS and Ctrl on Windows', () => {
     initializeDesktopEnvironment({
-      platform: "macos",
-      homeDir: "/Users/dev",
+      platform: 'macos',
+      homeDir: '/Users/dev',
     });
     syncPrimaryModifierHeld({ metaKey: true, ctrlKey: false });
     expect(isPrimaryModifierHeld()).toBe(true);
 
     resetDesktopEnvironmentForTests();
     initializeDesktopEnvironment({
-      platform: "windows",
+      platform: 'windows',
       homeDir: String.raw`C:\Users\dev`,
     });
     syncPrimaryModifierHeld({ metaKey: true, ctrlKey: false });
@@ -35,9 +32,9 @@ describe("primary modifier held state", () => {
     expect(isPrimaryModifierHeld()).toBe(true);
   });
 
-  it("notifies subscribers only when held state changes", () => {
+  it('notifies subscribers only when held state changes', () => {
     initializeDesktopEnvironment({
-      platform: "windows",
+      platform: 'windows',
       homeDir: String.raw`C:\Users\dev`,
     });
     const changes: boolean[] = [];

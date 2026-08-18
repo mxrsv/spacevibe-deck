@@ -14,7 +14,7 @@
  */
 
 /** Schemes the panel will load. Everything else is rejected outright. */
-const ALLOWED = new Set(["http:", "https:"]);
+const ALLOWED = new Set(['http:', 'https:']);
 
 /**
  * `localhost`, `127.x`, `::1`, `*.localhost` and `*.local` — the hosts a dev
@@ -23,24 +23,24 @@ const ALLOWED = new Set(["http:", "https:"]);
  * certificate error in front of the common case.
  */
 function isLocalHost(host: string): boolean {
-  const bare = host.replace(/^\[|\]$/g, "").toLowerCase();
+  const bare = host.replace(/^\[|\]$/g, '').toLowerCase();
   return (
-    bare === "localhost" ||
-    bare === "::1" ||
-    bare === "0.0.0.0" ||
-    bare.endsWith(".localhost") ||
-    bare.endsWith(".local") ||
+    bare === 'localhost' ||
+    bare === '::1' ||
+    bare === '0.0.0.0' ||
+    bare.endsWith('.localhost') ||
+    bare.endsWith('.local') ||
     /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(bare)
   );
 }
 
 /** Split `host:port` (or a bracketed IPv6 literal) off the front of an input. */
 function hostOf(input: string): string {
-  const authority = input.split(/[/?#]/, 1)[0] ?? "";
-  if (authority.startsWith("[")) {
-    return authority.slice(0, authority.indexOf("]") + 1);
+  const authority = input.split(/[/?#]/, 1)[0] ?? '';
+  if (authority.startsWith('[')) {
+    return authority.slice(0, authority.indexOf(']') + 1);
   }
-  return authority.split(":")[0] ?? "";
+  return authority.split(':')[0] ?? '';
 }
 
 /**
@@ -52,13 +52,13 @@ function hostOf(input: string): string {
  */
 export function normalizeBrowserUrl(input: string): string | null {
   const trimmed = input.trim();
-  if (trimmed === "") {
+  if (trimmed === '') {
     return null;
   }
 
   // A scheme-relative URL (`//example.com`) has no scheme to inspect, so it is
   // resolved as https before the parse below rather than after it.
-  const candidate = trimmed.startsWith("//") ? `https:${trimmed}` : trimmed;
+  const candidate = trimmed.startsWith('//') ? `https:${trimmed}` : trimmed;
 
   if (/^[a-z][a-z0-9+.-]*:/i.test(candidate)) {
     let parsed: URL;
@@ -84,15 +84,15 @@ function schemeless(input: string): string | null {
   const host = hostOf(input);
   // Rejects "some sentence", "./relative" and "" — anything with no host to
   // put in front of a scheme.
-  if (host === "" || /[\s]/.test(host)) {
+  if (host === '' || /[\s]/.test(host)) {
     return null;
   }
-  const hasDot = host.includes(".");
+  const hasDot = host.includes('.');
   const local = isLocalHost(host);
   if (!hasDot && !local) {
     return null;
   }
-  const scheme = local ? "http://" : "https://";
+  const scheme = local ? 'http://' : 'https://';
   try {
     const parsed = new URL(`${scheme}${input}`);
     return ALLOWED.has(parsed.protocol) ? parsed.href : null;
@@ -122,6 +122,6 @@ export function displayHost(url: string): string {
   try {
     return new URL(url).host;
   } catch {
-    return "";
+    return '';
   }
 }

@@ -1,13 +1,9 @@
-import { CaretDown } from "@phosphor-icons/react";
-import {
-  EDITOR_PRESETS,
-  isEditorId,
-  type EditorId,
-} from "../../lib/editor-command";
-import { CommitInput } from "./commit-input";
-import { ConfigRow } from "./config-row";
-import { primaryModifierName } from "../../lib/shortcut-label";
-import { DeckIcon, ROW_ICON } from "./deck-icon";
+import { CaretDown } from '@phosphor-icons/react';
+import { EDITOR_PRESETS, isEditorId, type EditorId } from '../../lib/editor-command';
+import { CommitInput } from './commit-input';
+import { ConfigRow } from './config-row';
+import { primaryModifierName } from '../../lib/shortcut-label';
+import { DeckIcon, ROW_ICON } from './deck-icon';
 
 interface EditorRowProps {
   value: EditorId;
@@ -17,21 +13,12 @@ interface EditorRowProps {
 }
 
 /** menu value kind (DL-6), plus an inline command row when "custom…" is picked. */
-export function EditorRow({
-  value,
-  command,
-  onChange,
-  onCommandChange,
-}: EditorRowProps) {
-  const label =
-    EDITOR_PRESETS.find((preset) => preset.id === value)?.label ?? value;
+export function EditorRow({ value, command, onChange, onCommandChange }: EditorRowProps) {
+  const label = EDITOR_PRESETS.find((preset) => preset.id === value)?.label ?? value;
 
   return (
     <>
-      <ConfigRow
-        label="Editor"
-        desc={`${primaryModifierName()}+click a file path`}
-      >
+      <ConfigRow label="Editor" desc={`${primaryModifierName()}+click a file path`}>
         <span class="cfg-btn cfg-btn--overlay">
           <span class="cfg-btn__text">{label}</span>
           <span class="cfg-btn__hint">
@@ -55,7 +42,7 @@ export function EditorRow({
           </select>
         </span>
       </ConfigRow>
-      {value === "custom" && (
+      {value === 'custom' && (
         <div class="cfg-custom">
           <CommitInput
             value={command}

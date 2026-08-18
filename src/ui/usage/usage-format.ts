@@ -9,29 +9,29 @@
  * never touches a module with arithmetic in it.
  */
 
-import type { UsageAgent } from "../../lib/usage-snapshot";
-import { formatUsd } from "../../lib/usage-pricing";
-import { PRICING_SNAPSHOT_DATE } from "../../lib/usage-pricing-snapshot";
+import type { UsageAgent } from '../../lib/usage-snapshot';
+import { formatUsd } from '../../lib/usage-pricing';
+import { PRICING_SNAPSHOT_DATE } from '../../lib/usage-pricing-snapshot';
 
 /**
  * What a cell shows when a value is unknown, unavailable or not applicable
  * (DL-15.6). Not `0` — zero is a measurement, the dash is the absence of one.
  */
-export const EM_DASH = "—";
+export const EM_DASH = '—';
 
 /**
  * Fixed grouping locale. The chrome is English-only (R1), and pinning the
  * locale keeps a rendered count identical on every machine and in CI instead
  * of following whatever the host is set to.
  */
-const TOKEN_LOCALE = "en-US";
+const TOKEN_LOCALE = 'en-US';
 
 /**
  * The agents the scanner covers, in the order every table lists them —
  * the same order `sources` arrives in from Rust (§0.2.2: Claude then Codex),
  * so the screen never disagrees with the payload about which came first.
  */
-export const USAGE_AGENT_ORDER: readonly UsageAgent[] = ["claude", "codex"];
+export const USAGE_AGENT_ORDER: readonly UsageAgent[] = ['claude', 'codex'];
 
 /**
  * Display names. Exhaustive over `UsageAgent` by type, so teaching the scanner
@@ -40,8 +40,8 @@ export const USAGE_AGENT_ORDER: readonly UsageAgent[] = ["claude", "codex"];
  * not carry two names in one app.
  */
 export const USAGE_AGENT_LABEL: Readonly<Record<UsageAgent, string>> = {
-  claude: "Claude Code",
-  codex: "Codex",
+  claude: 'Claude Code',
+  codex: 'Codex',
 };
 
 /**
@@ -66,10 +66,10 @@ const COMPACT_TIERS: readonly {
   readonly at: number;
   readonly suffix: string;
 }[] = [
-  { at: 1e12, suffix: "T" },
-  { at: 1e9, suffix: "B" },
-  { at: 1e6, suffix: "M" },
-  { at: 1e3, suffix: "K" },
+  { at: 1e12, suffix: 'T' },
+  { at: 1e9, suffix: 'B' },
+  { at: 1e6, suffix: 'M' },
+  { at: 1e3, suffix: 'K' },
 ];
 
 /** One decimal — enough to rank magnitudes, not enough to imply precision. */
@@ -92,7 +92,7 @@ const COMPACT_MANTISSA_CEILING = 1000;
  */
 export function formatTokensCompact(value: number): string {
   if (!Number.isFinite(value) || value <= 0) {
-    return "0";
+    return '0';
   }
   for (const [index, tier] of COMPACT_TIERS.entries()) {
     if (value < tier.at) {

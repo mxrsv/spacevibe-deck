@@ -32,13 +32,7 @@ const TICKS: readonly Tick[] = Array.from({ length: COUNT }, (_, i) => {
 
 export function WorkspaceSpinner() {
   return (
-    <svg
-      class="wsitem__spinner"
-      viewBox="0 0 26 26"
-      width="26"
-      height="26"
-      aria-hidden="true"
-    >
+    <svg class="wsitem__spinner" viewBox="0 0 26 26" width="26" height="26" aria-hidden="true">
       {TICKS.map((tick, i) => (
         <rect
           key={i}

@@ -13,41 +13,41 @@
 // guard in `electron/main.ts`), so every save that touches watched files
 // discards unsaved editor buffers and live PTY/agent sessions in that window.
 // `killElectron()` warns when it actually does this.
-import { spawn } from "node:child_process";
-import { watch } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { spawn } from 'node:child_process';
+import { watch } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 // The `electron` package's main export is the path to its executable — the
 // standard way to invoke it without depending on node_modules/.bin being on
 // PATH, which is only true when this script itself was launched via `npm run`.
-import electronBin from "electron";
+import electronBin from 'electron';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 // Fixed by `vite.config.ts` for the Tauri host too; Electron's window loads
 // the same URL in dev mode.
-const DEV_SERVER_URL = "http://localhost:1420";
+const DEV_SERVER_URL = 'http://localhost:1420';
 const DEBOUNCE_MS = 200;
 // `npm` resolves to `npm.cmd` on Windows, which `spawn()` cannot exec without
 // a shell. Verified on macOS only — Windows path is untested.
-const IS_WINDOWS = process.platform === "win32";
+const IS_WINDOWS = process.platform === 'win32';
 
 function spawnProcess(command, args, extraEnv, options) {
   return spawn(command, args, {
     cwd: ROOT,
-    stdio: "inherit",
+    stdio: 'inherit',
     env: { ...process.env, ...extraEnv },
     ...options,
   });
 }
 
 function runNpm(args) {
-  return spawnProcess("npm", args, {}, { shell: IS_WINDOWS });
+  return spawnProcess('npm', args, {}, { shell: IS_WINDOWS });
 }
 
 function runElectron() {
   return spawnProcess(
     electronBin,
-    ["dist-electron/electron/main.cjs"],
+    ['dist-electron/electron/main.cjs'],
     { DECK_DEV_SERVER_URL: DEV_SERVER_URL },
     {},
   );
@@ -57,12 +57,10 @@ function runElectron() {
 async function waitForDevServer(viteChild) {
   let died = null;
   const onDeath = (codeOrError) => {
-    died = new Error(
-      `vite dev server exited before it became ready: ${codeOrError}`,
-    );
+    died = new Error(`vite dev server exited before it became ready: ${codeOrError}`);
   };
-  viteChild.once("exit", onDeath);
-  viteChild.once("error", onDeath);
+  viteChild.once('exit', onDeath);
+  viteChild.once('error', onDeath);
   try {
     for (;;) {
       if (died !== null) {
@@ -76,8 +74,8 @@ async function waitForDevServer(viteChild) {
       }
     }
   } finally {
-    viteChild.removeListener("exit", onDeath);
-    viteChild.removeListener("error", onDeath);
+    viteChild.removeListener('exit', onDeath);
+    viteChild.removeListener('error', onDeath);
   }
 }
 
@@ -89,7 +87,7 @@ let rebuildQueued = false;
 function killElectron() {
   if (electronChild !== null && !electronChild.killed) {
     console.warn(
-      "electron-dev-watch: relaunching — this hard-kills the running window, discarding unsaved editor buffers and any live PTY/agent sessions in it.",
+      'electron-dev-watch: relaunching — this hard-kills the running window, discarding unsaved editor buffers and any live PTY/agent sessions in it.',
     );
     electronChild.kill();
   }
@@ -104,8 +102,8 @@ async function rebuildAndLaunch() {
   building = true;
   // Build BEFORE killing the running window: a failed build leaves the
   // previous window open and usable, and the error message below stays true.
-  currentBuild = runNpm(["run", "electron:build"]);
-  const code = await new Promise((resolve) => currentBuild.on("exit", resolve));
+  currentBuild = runNpm(['run', 'electron:build']);
+  const code = await new Promise((resolve) => currentBuild.on('exit', resolve));
   currentBuild = null;
   building = false;
   if (code === 0) {
@@ -113,7 +111,7 @@ async function rebuildAndLaunch() {
     electronChild = runElectron();
   } else {
     console.error(
-      "electron-dev-watch: electron:build failed; the previous window is still open — fix the error and save again.",
+      'electron-dev-watch: electron:build failed; the previous window is still open — fix the error and save again.',
     );
   }
   if (rebuildQueued) {
@@ -125,14 +123,14 @@ async function rebuildAndLaunch() {
 let debounceTimer = null;
 function scheduleRebuild(filename) {
   // Test files never reach the compiled main-process bundle.
-  if (typeof filename === "string" && filename.endsWith(".test.ts")) {
+  if (typeof filename === 'string' && filename.endsWith('.test.ts')) {
     return;
   }
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => void rebuildAndLaunch(), DEBOUNCE_MS);
 }
 
-const vite = runNpm(["run", "dev"]);
+const vite = runNpm(['run', 'dev']);
 // The exact `src/` directories `electron/**/*.ts` imports from today (menu
 // keymap and platform helpers from `lib/`, the transfer client and action
 // registry from `terminal/`, update-menu wiring from `updater/`, file-content
@@ -141,16 +139,14 @@ const vite = runNpm(["run", "dev"]);
 // gallery/, ...) does not discard the running window on every save; if a
 // future `electron/*.ts` starts importing a new top-level `src/` directory,
 // add it here too.
-const SRC_WATCH_DIRS = ["files", "lib", "terminal", "updater"];
+const SRC_WATCH_DIRS = ['files', 'lib', 'terminal', 'updater'];
 const watchers = [
-  watch(path.join(ROOT, "electron"), { recursive: true }, (_event, filename) =>
+  watch(path.join(ROOT, 'electron'), { recursive: true }, (_event, filename) =>
     scheduleRebuild(filename),
   ),
   ...SRC_WATCH_DIRS.map((dir) =>
-    watch(
-      path.join(ROOT, "src", dir),
-      { recursive: true },
-      (_event, filename) => scheduleRebuild(filename),
+    watch(path.join(ROOT, 'src', dir), { recursive: true }, (_event, filename) =>
+      scheduleRebuild(filename),
     ),
   ),
 ];
@@ -165,8 +161,8 @@ function shutdown() {
   vite.kill();
   process.exit(0);
 }
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 try {
   await waitForDevServer(vite);

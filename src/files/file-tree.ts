@@ -32,15 +32,15 @@ export interface DirEntry {
  * list (spec §3.1). Named as a known gap in the plan's §4, not an oversight.
  */
 export const EXCLUDED_NAMES: ReadonlySet<string> = new Set([
-  ".git",
-  "node_modules",
-  "dist",
-  "target",
+  '.git',
+  'node_modules',
+  'dist',
+  'target',
 ]);
 
 /** Dot-entries, revealed by the "show hidden" toggle and nothing else. */
 export function isHidden(name: string): boolean {
-  return name.startsWith(".");
+  return name.startsWith('.');
 }
 
 /**
@@ -76,7 +76,7 @@ export function sortEntries(entries: readonly DirEntry[]): DirEntry[] {
       return a.directory ? -1 : 1;
     }
     const insensitive = a.name.localeCompare(b.name, undefined, {
-      sensitivity: "base",
+      sensitivity: 'base',
     });
     if (insensitive !== 0) {
       return insensitive;
@@ -86,10 +86,7 @@ export function sortEntries(entries: readonly DirEntry[]): DirEntry[] {
 }
 
 /** Sorted, filtered listing of one directory. */
-export function visibleEntries(
-  entries: readonly DirEntry[],
-  showHidden: boolean,
-): DirEntry[] {
+export function visibleEntries(entries: readonly DirEntry[], showHidden: boolean): DirEntry[] {
   return sortEntries(entries.filter((entry) => isVisible(entry, showHidden)));
 }
 
@@ -135,10 +132,7 @@ export function flattenTree(
       return;
     }
     walked.add(directory);
-    for (const entry of visibleEntries(
-      listings.get(directory) ?? [],
-      showHidden,
-    )) {
+    for (const entry of visibleEntries(listings.get(directory) ?? [], showHidden)) {
       const open = canExpand(entry) && expanded.has(entry.path);
       rows.push({
         path: entry.path,
@@ -158,10 +152,7 @@ export function flattenTree(
 }
 
 /** Toggle one directory's expansion, returning a new set. */
-export function toggleExpanded(
-  expanded: ReadonlySet<string>,
-  path: string,
-): Set<string> {
+export function toggleExpanded(expanded: ReadonlySet<string>, path: string): Set<string> {
   const next = new Set(expanded);
   if (next.has(path)) {
     next.delete(path);
@@ -179,9 +170,6 @@ export function toggleExpanded(
  * worth loading — one answer, so the two can never disagree about which
  * directories matter.
  */
-export function openDirectories(
-  rows: readonly TreeRow[],
-  root: string,
-): string[] {
+export function openDirectories(rows: readonly TreeRow[], root: string): string[] {
   return [root, ...rows.filter((row) => row.expanded).map((row) => row.path)];
 }

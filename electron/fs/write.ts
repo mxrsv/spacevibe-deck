@@ -12,10 +12,10 @@
  * resolved before writing**, so a save replaces the target and not the link.
  * That is carried by `assertWritableInsideRoot`, which realpaths on the way in.
  */
-import fs from "node:fs/promises";
-import path from "node:path";
-import { applyEol, type Eol } from "../../src/files/file-content";
-import { assertWritableInsideRoot } from "./path-guard";
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { applyEol, type Eol } from '../../src/files/file-content';
+import { assertWritableInsideRoot } from './path-guard';
 
 /** Distinguishes concurrent writes to one file within a process. */
 let tempCounter = 0;
@@ -63,8 +63,8 @@ export async function writeFileAtomically(
   );
   let handle: Awaited<ReturnType<typeof fs.open>> | null = null;
   try {
-    handle = await fs.open(temp, "wx");
-    await handle.writeFile(contents, "utf8");
+    handle = await fs.open(temp, 'wx');
+    await handle.writeFile(contents, 'utf8');
     if (options.mode !== undefined) {
       await handle.chmod(options.mode);
     }
@@ -107,22 +107,18 @@ export async function writeTextFile(
     // failed. Reachable through a symlink pointing at the root itself, which
     // `isInside` accepts (a root IS inside itself, correctly, for reading).
     if (!stats.isFile()) {
-      throw new Error("Deck can only save over a file.");
+      throw new Error('Deck can only save over a file.');
     }
     mode = stats.mode & 0o777;
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith("Deck can only")) {
+    if (error instanceof Error && error.message.startsWith('Deck can only')) {
       throw error;
     }
     // The file is gone — "Save again" recreates it with the default mode,
     // which is the only honest answer once the original's bits are lost.
     mode = undefined;
   }
-  await writeFileAtomically(
-    resolved,
-    applyEol(text, eol),
-    mode === undefined ? {} : { mode },
-  );
+  await writeFileAtomically(resolved, applyEol(text, eol), mode === undefined ? {} : { mode });
   const stats = await fs.stat(resolved);
   return { path: resolved, mtimeMs: stats.mtimeMs, size: stats.size };
 }

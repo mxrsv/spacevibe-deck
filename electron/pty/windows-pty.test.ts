@@ -19,20 +19,20 @@
  * Skipped everywhere else, including the maintainer's Mac, where none of it
  * means anything.
  */
-import { describe, expect, it } from "vitest";
-import { createStreamDecoder } from "./stream";
-import { buildShellLaunch, readProcessTable } from "../platform/windows";
+import { describe, expect, it } from 'vitest';
+import { createStreamDecoder } from './stream';
+import { buildShellLaunch, readProcessTable } from '../platform/windows';
 
-const onWindows = process.platform === "win32";
+const onWindows = process.platform === 'win32';
 /** Generous: a cold PowerShell on a shared runner is not fast. */
 const OUTPUT_TIMEOUT_MS = 20_000;
 
-describe.skipIf(!onWindows)("a real Windows pty", () => {
-  it("produces output the stream decoder can read, and the injected prompt reports itself", async () => {
-    const pty = await import("node-pty");
+describe.skipIf(!onWindows)('a real Windows pty', () => {
+  it('produces output the stream decoder can read, and the injected prompt reports itself', async () => {
+    const pty = await import('node-pty');
     const launch = buildShellLaunch();
     const session = pty.spawn(launch.executable, [...launch.args], {
-      name: "xterm-256color",
+      name: 'xterm-256color',
       cols: 80,
       rows: 24,
       // The exact option node-pty ignores here. Kept so this test spawns the
@@ -43,7 +43,7 @@ describe.skipIf(!onWindows)("a real Windows pty", () => {
 
     try {
       const text = await new Promise<string>((resolve, reject) => {
-        let seen = "";
+        let seen = '';
         const timer = setTimeout(
           () =>
             reject(
@@ -62,7 +62,7 @@ describe.skipIf(!onWindows)("a real Windows pty", () => {
             reject(error instanceof Error ? error : new Error(String(error)));
             return;
           }
-          if (seen.includes("]133;")) {
+          if (seen.includes(']133;')) {
             clearTimeout(timer);
             resolve(seen);
           }
@@ -73,14 +73,14 @@ describe.skipIf(!onWindows)("a real Windows pty", () => {
       // only source of a pane's working directory on this platform, so its
       // absence would be a silent loss of the cwd, the git branch and every
       // new tab's starting directory.
-      expect(text).toContain("]133;");
-      expect(text).toContain("]9;9;");
+      expect(text).toContain(']133;');
+      expect(text).toContain(']9;9;');
     } finally {
       session.kill();
     }
   }, 40_000);
 
-  it("reads a process table that contains this very process", async () => {
+  it('reads a process table that contains this very process', async () => {
     // Proves `Get-CimInstance` runs, emits the fields the parser expects, and
     // survives the NDJSON round trip — none of which the fixture-based tests
     // can establish.
@@ -90,17 +90,17 @@ describe.skipIf(!onWindows)("a real Windows pty", () => {
     const self = rows.find((row) => row.pid === process.pid);
     expect(self).toBeDefined();
     expect(self?.creationDate).toBeGreaterThan(0);
-    expect(self?.executable.toLowerCase()).toContain("node");
+    expect(self?.executable.toLowerCase()).toContain('node');
   }, 40_000);
 
-  it("finds the shell it just launched in that table", async () => {
+  it('finds the shell it just launched in that table', async () => {
     // The join the pane classifier depends on: a spawned shell must be visible
     // as a row, or every pane reports `unknown` and the quit guard stops
     // guarding.
-    const pty = await import("node-pty");
+    const pty = await import('node-pty');
     const launch = buildShellLaunch();
     const session = pty.spawn(launch.executable, [...launch.args], {
-      name: "xterm-256color",
+      name: 'xterm-256color',
       cols: 80,
       rows: 24,
     } as never);

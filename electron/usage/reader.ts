@@ -4,7 +4,7 @@
  * the semantics (committed offsets, the byte cap, Zulu-only timestamps) are
  * the contract the parity gate holds the two implementations to.
  */
-import { closeSync, openSync, readSync } from "node:fs";
+import { closeSync, openSync, readSync } from 'node:fs';
 
 /**
  * Largest line the parser will hold in memory.
@@ -26,11 +26,11 @@ const READ_BUFFER_BYTES = 64 * 1024;
 /** What one turn of the reader produced. */
 export type LineEvent =
   /** A complete line without its newline, and the offset safe to commit. */
-  | { readonly kind: "line"; readonly bytes: Buffer; readonly offset: number }
+  | { readonly kind: 'line'; readonly bytes: Buffer; readonly offset: number }
   /** A complete line longer than the cap; bytes consumed and discarded. */
-  | { readonly kind: "oversized"; readonly offset: number }
+  | { readonly kind: 'oversized'; readonly offset: number }
   /** No further complete line. A partial trailing line stays uncommitted. */
-  | { readonly kind: "end" };
+  | { readonly kind: 'end' };
 
 /**
  * A streaming line reader with a hard per-line byte cap, over an open fd.
@@ -74,7 +74,7 @@ export class LineReader {
     for (;;) {
       const available = this.fill();
       if (available === 0) {
-        return { kind: "end" };
+        return { kind: 'end' };
       }
       const window = this.buffer.subarray(this.start, this.end);
       const newlineAt = window.indexOf(0x0a);
@@ -95,20 +95,16 @@ export class LineReader {
       this.consumed += taken;
       if (newline) {
         return oversized
-          ? { kind: "oversized", offset: this.consumed }
-          : { kind: "line", bytes: Buffer.concat(pieces), offset: this.consumed };
+          ? { kind: 'oversized', offset: this.consumed }
+          : { kind: 'line', bytes: Buffer.concat(pieces), offset: this.consumed };
       }
     }
   }
 }
 
 /** Open + iterate + close, for callers that want the whole tail. */
-export function readLines(
-  path: string,
-  start: number,
-  onEvent: (event: LineEvent) => void,
-): void {
-  const fd = openSync(path, "r");
+export function readLines(path: string, start: number, onEvent: (event: LineEvent) => void): void {
+  const fd = openSync(path, 'r');
   try {
     const reader = new LineReader(fd, start);
     for (;;) {
@@ -120,7 +116,7 @@ export function readLines(
         // the next scan resume from there rather than losing them.
         return;
       }
-      if (event.kind === "end") {
+      if (event.kind === 'end') {
         return;
       }
       onEvent(event);
@@ -145,11 +141,11 @@ export function parseRfc3339Ms(text: string): number | null {
     return null;
   }
   if (
-    text[4] !== "-" ||
-    text[7] !== "-" ||
-    text[10] !== "T" ||
-    text[13] !== ":" ||
-    text[16] !== ":"
+    text[4] !== '-' ||
+    text[7] !== '-' ||
+    text[10] !== 'T' ||
+    text[13] !== ':' ||
+    text[16] !== ':'
   ) {
     return null;
   }
@@ -177,11 +173,7 @@ export function parseRfc3339Ms(text: string): number | null {
   if (hour > 23 || minute > 59 || second > 59) {
     return null;
   }
-  const seconds =
-    daysFromCivil(year, month, day) * 86_400 +
-    hour * 3_600 +
-    minute * 60 +
-    second;
+  const seconds = daysFromCivil(year, month, day) * 86_400 + hour * 3_600 + minute * 60 + second;
   if (seconds < 0) {
     return null;
   }
@@ -198,10 +190,10 @@ function digits(text: string): number | null {
 
 /** The `[.fraction]Z` tail as whole milliseconds. */
 function fractionMs(tail: string): number | null {
-  if (tail === "Z") {
+  if (tail === 'Z') {
     return 0;
   }
-  if (!tail.startsWith(".") || !tail.endsWith("Z") || tail.length < 3) {
+  if (!tail.startsWith('.') || !tail.endsWith('Z') || tail.length < 3) {
     return null;
   }
   const fraction = tail.slice(1, -1);

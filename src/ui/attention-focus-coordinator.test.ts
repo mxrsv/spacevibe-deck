@@ -1,13 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from 'vitest';
 import {
   runAttentionFocus,
   type AttentionFocusRequest,
   type AttentionOverlaySnapshot,
-} from "./attention-focus-coordinator";
+} from './attention-focus-coordinator';
 
-function overlays(
-  partial: Partial<AttentionOverlaySnapshot> = {},
-): AttentionOverlaySnapshot {
+function overlays(partial: Partial<AttentionOverlaySnapshot> = {}): AttentionOverlaySnapshot {
   return {
     board: false,
     settings: false,
@@ -27,9 +25,9 @@ interface Spies {
 function makeSpies(): Spies {
   const order: string[] = [];
   return {
-    dismissBoard: vi.fn(() => order.push("dismissBoard")),
-    dismissSettings: vi.fn(() => order.push("dismissSettings")),
-    focusAttention: vi.fn(() => order.push("focusAttention")),
+    dismissBoard: vi.fn(() => order.push('dismissBoard')),
+    dismissSettings: vi.fn(() => order.push('dismissSettings')),
+    focusAttention: vi.fn(() => order.push('focusAttention')),
     order,
   };
 }
@@ -51,10 +49,10 @@ function request(
 // The same matrix runs for a global request (no tabIndex — shortcut) and a
 // scoped request (tabIndex given — status-mark click).
 describe.each([
-  { label: "global (no tabIndex)", tabIndex: undefined },
-  { label: "scoped (tabIndex given)", tabIndex: 2 },
-])("runAttentionFocus — $label", ({ tabIndex }) => {
-  it("no candidate: calls nothing, regardless of overlay state", () => {
+  { label: 'global (no tabIndex)', tabIndex: undefined },
+  { label: 'scoped (tabIndex given)', tabIndex: 2 },
+])('runAttentionFocus — $label', ({ tabIndex }) => {
+  it('no candidate: calls nothing, regardless of overlay state', () => {
     const combos: AttentionOverlaySnapshot[] = [
       overlays(),
       overlays({ board: true }),
@@ -66,9 +64,7 @@ describe.each([
     ];
     for (const snapshot of combos) {
       const spies = makeSpies();
-      runAttentionFocus(
-        request(spies, { tabIndex, hasCandidate: false, overlays: snapshot }),
-      );
+      runAttentionFocus(request(spies, { tabIndex, hasCandidate: false, overlays: snapshot }));
       expect(spies.dismissBoard).not.toHaveBeenCalled();
       expect(spies.dismissSettings).not.toHaveBeenCalled();
       expect(spies.focusAttention).not.toHaveBeenCalled();
@@ -77,16 +73,14 @@ describe.each([
 
   it("no overlays open, candidate present: focusAttention called once with the request's tabIndex, no dismiss", () => {
     const spies = makeSpies();
-    runAttentionFocus(
-      request(spies, { tabIndex, hasCandidate: true, overlays: overlays() }),
-    );
+    runAttentionFocus(request(spies, { tabIndex, hasCandidate: true, overlays: overlays() }));
     expect(spies.dismissBoard).not.toHaveBeenCalled();
     expect(spies.dismissSettings).not.toHaveBeenCalled();
     expect(spies.focusAttention).toHaveBeenCalledTimes(1);
     expect(spies.focusAttention).toHaveBeenCalledWith(tabIndex);
   });
 
-  it("board only: dismissBoard once, no dismissSettings, then focusAttention once", () => {
+  it('board only: dismissBoard once, no dismissSettings, then focusAttention once', () => {
     const spies = makeSpies();
     runAttentionFocus(
       request(spies, {
@@ -99,10 +93,10 @@ describe.each([
     expect(spies.dismissSettings).not.toHaveBeenCalled();
     expect(spies.focusAttention).toHaveBeenCalledTimes(1);
     expect(spies.focusAttention).toHaveBeenCalledWith(tabIndex);
-    expect(spies.order).toEqual(["dismissBoard", "focusAttention"]);
+    expect(spies.order).toEqual(['dismissBoard', 'focusAttention']);
   });
 
-  it("settings only: dismissSettings once, no dismissBoard, then focusAttention once", () => {
+  it('settings only: dismissSettings once, no dismissBoard, then focusAttention once', () => {
     const spies = makeSpies();
     runAttentionFocus(
       request(spies, {
@@ -115,10 +109,10 @@ describe.each([
     expect(spies.dismissBoard).not.toHaveBeenCalled();
     expect(spies.focusAttention).toHaveBeenCalledTimes(1);
     expect(spies.focusAttention).toHaveBeenCalledWith(tabIndex);
-    expect(spies.order).toEqual(["dismissSettings", "focusAttention"]);
+    expect(spies.order).toEqual(['dismissSettings', 'focusAttention']);
   });
 
-  it("board + settings: both dismissed once, then focusAttention once", () => {
+  it('board + settings: both dismissed once, then focusAttention once', () => {
     const spies = makeSpies();
     runAttentionFocus(
       request(spies, {
@@ -132,15 +126,13 @@ describe.each([
     expect(spies.focusAttention).toHaveBeenCalledTimes(1);
     expect(spies.focusAttention).toHaveBeenCalledWith(tabIndex);
     // dismiss must happen before focus
-    expect(spies.order.indexOf("dismissBoard")).toBeLessThan(
-      spies.order.indexOf("focusAttention"),
-    );
-    expect(spies.order.indexOf("dismissSettings")).toBeLessThan(
-      spies.order.indexOf("focusAttention"),
+    expect(spies.order.indexOf('dismissBoard')).toBeLessThan(spies.order.indexOf('focusAttention'));
+    expect(spies.order.indexOf('dismissSettings')).toBeLessThan(
+      spies.order.indexOf('focusAttention'),
     );
   });
 
-  it("no overlay open: nothing dismissed, focusAttention once", () => {
+  it('no overlay open: nothing dismissed, focusAttention once', () => {
     const spies = makeSpies();
     runAttentionFocus(
       request(spies, {
@@ -154,7 +146,7 @@ describe.each([
     expect(spies.focusAttention).toHaveBeenCalledWith(tabIndex);
   });
 
-  it("no overlay open, candidate present: focusAttention once, no dismiss", () => {
+  it('no overlay open, candidate present: focusAttention once, no dismiss', () => {
     const spies = makeSpies();
     runAttentionFocus(
       request(spies, {
@@ -171,7 +163,7 @@ describe.each([
   // The coordinator is a pure function over a caller-supplied snapshot, so
   // it asserts on the snapshot it is handed rather than on any invariant the
   // app enforces elsewhere.
-  it("board + settings: both dismissed, then focusAttention once", () => {
+  it('board + settings: both dismissed, then focusAttention once', () => {
     const spies = makeSpies();
     runAttentionFocus(
       request(spies, {
@@ -183,15 +175,13 @@ describe.each([
     expect(spies.dismissBoard).toHaveBeenCalledTimes(1);
     expect(spies.dismissSettings).toHaveBeenCalledTimes(1);
     expect(spies.focusAttention).toHaveBeenCalledTimes(1);
-    expect(spies.order.indexOf("dismissBoard")).toBeLessThan(
-      spies.order.indexOf("focusAttention"),
-    );
-    expect(spies.order.indexOf("dismissSettings")).toBeLessThan(
-      spies.order.indexOf("focusAttention"),
+    expect(spies.order.indexOf('dismissBoard')).toBeLessThan(spies.order.indexOf('focusAttention'));
+    expect(spies.order.indexOf('dismissSettings')).toBeLessThan(
+      spies.order.indexOf('focusAttention'),
     );
   });
 
-  it("a draft outranks everything: nothing called, the draft stays up", () => {
+  it('a draft outranks everything: nothing called, the draft stays up', () => {
     const spies = makeSpies();
     runAttentionFocus(
       request(spies, {
@@ -203,7 +193,7 @@ describe.each([
     expect(spies.focusAttention).not.toHaveBeenCalled();
   });
 
-  it("presetEditor open (alone, and combined with board/settings): nothing called — draft preserved", () => {
+  it('presetEditor open (alone, and combined with board/settings): nothing called — draft preserved', () => {
     const combos: AttentionOverlaySnapshot[] = [
       overlays({ presetEditor: true }),
       overlays({ presetEditor: true, board: true }),
@@ -212,16 +202,14 @@ describe.each([
     ];
     for (const snapshot of combos) {
       const spies = makeSpies();
-      runAttentionFocus(
-        request(spies, { tabIndex, hasCandidate: true, overlays: snapshot }),
-      );
+      runAttentionFocus(request(spies, { tabIndex, hasCandidate: true, overlays: snapshot }));
       expect(spies.dismissBoard).not.toHaveBeenCalled();
       expect(spies.dismissSettings).not.toHaveBeenCalled();
       expect(spies.focusAttention).not.toHaveBeenCalled();
     }
   });
 
-  it("savePresetDialog open (alone, and combined with board/settings): nothing called — draft preserved", () => {
+  it('savePresetDialog open (alone, and combined with board/settings): nothing called — draft preserved', () => {
     const combos: AttentionOverlaySnapshot[] = [
       overlays({ savePresetDialog: true }),
       overlays({ savePresetDialog: true, board: true }),
@@ -230,16 +218,14 @@ describe.each([
     ];
     for (const snapshot of combos) {
       const spies = makeSpies();
-      runAttentionFocus(
-        request(spies, { tabIndex, hasCandidate: true, overlays: snapshot }),
-      );
+      runAttentionFocus(request(spies, { tabIndex, hasCandidate: true, overlays: snapshot }));
       expect(spies.dismissBoard).not.toHaveBeenCalled();
       expect(spies.dismissSettings).not.toHaveBeenCalled();
       expect(spies.focusAttention).not.toHaveBeenCalled();
     }
   });
 
-  it("presetEditor + savePresetDialog together with board+settings: nothing called", () => {
+  it('presetEditor + savePresetDialog together with board+settings: nothing called', () => {
     const spies = makeSpies();
     runAttentionFocus(
       request(spies, {
@@ -258,7 +244,7 @@ describe.each([
     expect(spies.focusAttention).not.toHaveBeenCalled();
   });
 
-  it("only calls the 3 injected spies — never anything resembling a focusing cancel/close", () => {
+  it('only calls the 3 injected spies — never anything resembling a focusing cancel/close', () => {
     const spies = makeSpies();
     const onCancel = vi.fn();
     const closePanel = vi.fn();
@@ -277,10 +263,6 @@ describe.each([
     expect(closePanel).not.toHaveBeenCalled();
     // The coordinator's request shape only exposes these 3 closures — assert
     // exactly those are the ones invoked, in this order.
-    expect(spies.order).toEqual([
-      "dismissBoard",
-      "dismissSettings",
-      "focusAttention",
-    ]);
+    expect(spies.order).toEqual(['dismissBoard', 'dismissSettings', 'focusAttention']);
   });
 });

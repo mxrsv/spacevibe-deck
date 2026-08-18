@@ -1,5 +1,5 @@
-import { deriveChromeColors } from "../../lib/derive-colors";
-import type { ThemePreset } from "../../settings/themes";
+import { deriveChromeColors } from '../../lib/derive-colors';
+import type { ThemePreset } from '../../settings/themes';
 
 /**
  * The miniature of Deck a theme card shows (DL-24.2).
@@ -48,10 +48,7 @@ export function ThemeCardPreview({ preset }: { preset: ThemePreset }) {
         <span class="theme-mini__light" style={{ background: theme.red }} />
         <span class="theme-mini__light" style={{ background: theme.yellow }} />
         <span class="theme-mini__light" style={{ background: theme.green }} />
-        <span
-          class="theme-mini__chip"
-          style={{ background: chrome.stateHoverBg }}
-        />
+        <span class="theme-mini__chip" style={{ background: chrome.stateHoverBg }} />
       </span>
       <span class="theme-mini__body">
         <span
@@ -70,22 +67,13 @@ export function ThemeCardPreview({ preset }: { preset: ThemePreset }) {
             />
           ))}
         </span>
-        <span
-          class="theme-mini__stage"
-          style={{ background: theme.background }}
-        >
+        <span class="theme-mini__stage" style={{ background: theme.background }}>
           <span class="theme-mini__line">
             <span class="theme-mini__dot" style={{ background: accent }} />
-            <span
-              class="theme-mini__bar theme-mini__bar--wide"
-              style={{ background: accent }}
-            />
+            <span class="theme-mini__bar theme-mini__bar--wide" style={{ background: accent }} />
           </span>
           <span class="theme-mini__line" style={{ opacity: MUTED_LINE }}>
-            <span
-              class="theme-mini__dot"
-              style={{ background: chrome.textFaint }}
-            />
+            <span class="theme-mini__dot" style={{ background: chrome.textFaint }} />
             <span
               class="theme-mini__bar theme-mini__bar--wider"
               style={{ background: chrome.textFaint }}

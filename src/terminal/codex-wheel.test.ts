@@ -1,9 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import {
-  CODEX_PAGE_DOWN,
-  CODEX_PAGE_UP,
-  createCodexWheelHandler,
-} from "./codex-wheel";
+import { describe, expect, it, vi } from 'vitest';
+import { CODEX_PAGE_DOWN, CODEX_PAGE_UP, createCodexWheelHandler } from './codex-wheel';
 
 interface WheelFixture {
   readonly event: WheelEvent;
@@ -39,13 +35,13 @@ function wheel(
   };
 }
 
-function setup(platform: "windows" | "macos" = "windows") {
-  let agent: string | null = "codex";
+function setup(platform: 'windows' | 'macos' = 'windows') {
+  let agent: string | null = 'codex';
   let alternate = true;
   const send = vi.fn();
   const handler = createCodexWheelHandler({
     platform,
-    isCodex: () => agent === "codex",
+    isCodex: () => agent === 'codex',
     isAlternateBuffer: () => alternate,
     send,
   });
@@ -61,8 +57,8 @@ function setup(platform: "windows" | "macos" = "windows") {
   };
 }
 
-describe("createCodexWheelHandler", () => {
-  it("maps Windows Codex wheel directions to PageUp and PageDown", () => {
+describe('createCodexWheelHandler', () => {
+  it('maps Windows Codex wheel directions to PageUp and PageDown', () => {
     const { handler, send } = setup();
     const up = wheel(-3);
     const down = wheel(3);
@@ -78,7 +74,7 @@ describe("createCodexWheelHandler", () => {
     expect(down.stopImmediatePropagation).toHaveBeenCalledOnce();
   });
 
-  it("accumulates small Windows touchpad deltas before sending one page", () => {
+  it('accumulates small Windows touchpad deltas before sending one page', () => {
     const { handler, send } = setup();
 
     for (const delta of [8, 8, 8, 8]) {
@@ -91,7 +87,7 @@ describe("createCodexWheelHandler", () => {
     expect(send).toHaveBeenCalledWith(CODEX_PAGE_DOWN);
   });
 
-  it("resets a partial touchpad gesture when direction reverses", () => {
+  it('resets a partial touchpad gesture when direction reverses', () => {
     const { handler, send } = setup();
 
     handler(wheel(24, { deltaMode: 0 }).event);
@@ -103,15 +99,15 @@ describe("createCodexWheelHandler", () => {
     expect(send).toHaveBeenCalledWith(CODEX_PAGE_UP);
   });
 
-  it("leaves macOS, other agents, zero deltas and modified wheels to xterm", () => {
-    const mac = setup("macos");
+  it('leaves macOS, other agents, zero deltas and modified wheels to xterm', () => {
+    const mac = setup('macos');
     expect(mac.handler(wheel(-3).event)).toBe(true);
     expect(mac.send).not.toHaveBeenCalled();
 
     const windows = setup();
-    windows.setAgent("opencode");
+    windows.setAgent('opencode');
     expect(windows.handler(wheel(-3).event)).toBe(true);
-    windows.setAgent("codex");
+    windows.setAgent('codex');
     expect(windows.handler(wheel(0).event)).toBe(true);
     expect(windows.handler(wheel(-3, { ctrlKey: true }).event)).toBe(true);
     expect(windows.handler(wheel(-3, { shiftKey: true }).event)).toBe(true);
@@ -123,7 +119,7 @@ describe("createCodexWheelHandler", () => {
   // Codex only shows the alternate screen while its Ctrl+T transcript overlay
   // is open, and that pager is the only surface binding PageUp/PageDown. On the
   // chat screen the wheel has to keep scrolling the pane's scrollback.
-  it("leaves the normal buffer to xterm, untouched", () => {
+  it('leaves the normal buffer to xterm, untouched', () => {
     const { handler, send, setAlternateBuffer } = setup();
     setAlternateBuffer(false);
     const gesture = wheel(-3);
@@ -134,7 +130,7 @@ describe("createCodexWheelHandler", () => {
     expect(gesture.stopImmediatePropagation).not.toHaveBeenCalled();
   });
 
-  it("drops a partial touchpad gesture when the overlay closes mid-scroll", () => {
+  it('drops a partial touchpad gesture when the overlay closes mid-scroll', () => {
     const { handler, send, setAlternateBuffer } = setup();
 
     handler(wheel(24, { deltaMode: 0 }).event);

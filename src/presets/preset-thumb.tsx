@@ -1,19 +1,15 @@
-import type { SerializedNode } from "../lib/split-tree";
+import type { SerializedNode } from '../lib/split-tree';
 
 interface PresetThumbProps {
   layout: SerializedNode;
 }
 
 function ThumbNode({ node }: { node: SerializedNode }) {
-  if (node.type === "leaf") {
+  if (node.type === 'leaf') {
     return <div class="preset-thumb__leaf" />;
   }
   return (
-    <div
-      class={`preset-thumb__split ${
-        node.direction === "row" ? "is-row" : "is-column"
-      }`}
-    >
+    <div class={`preset-thumb__split ${node.direction === 'row' ? 'is-row' : 'is-column'}`}>
       <div class="preset-thumb__branch" style={{ flex: node.ratio }}>
         <ThumbNode node={node.first} />
       </div>

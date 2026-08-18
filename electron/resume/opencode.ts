@@ -16,25 +16,20 @@
  * legacy half; they still matter for an install that never migrated, and their
  * ids are the same ids, so a session present in both is one candidate, not two.
  */
-import { lstatSync, readdirSync } from "node:fs";
-import path from "node:path";
-import * as db from "./opencode-db";
-import { headBytes, type CandidateSession } from "./head";
+import { lstatSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import * as db from './opencode-db';
+import { headBytes, type CandidateSession } from './head';
 
-const OPENCODE_STORAGE_DIR = path.join(
-  ".local",
-  "share",
-  "opencode",
-  "storage",
-);
+const OPENCODE_STORAGE_DIR = path.join('.local', 'share', 'opencode', 'storage');
 
-const OPENCODE_SESSION_DIR = path.join(OPENCODE_STORAGE_DIR, "session");
+const OPENCODE_SESSION_DIR = path.join(OPENCODE_STORAGE_DIR, 'session');
 
 /** `message/<sessionID>/<messageID>.json` — role and timing, no words. */
-const OPENCODE_MESSAGE_DIR = path.join(OPENCODE_STORAGE_DIR, "message");
+const OPENCODE_MESSAGE_DIR = path.join(OPENCODE_STORAGE_DIR, 'message');
 
 /** `part/<messageID>/<partID>.json` — where the words actually live. */
-const OPENCODE_PART_DIR = path.join(OPENCODE_STORAGE_DIR, "part");
+const OPENCODE_PART_DIR = path.join(OPENCODE_STORAGE_DIR, 'part');
 
 /** A session object is metadata, not conversation content — generous enough
  * to hold one whole file, small enough that an oversized/corrupt file is
@@ -81,9 +76,7 @@ function isRegularFile(candidate: string): boolean {
 
 function isDirectory(candidate: string): boolean {
   try {
-    return (
-      lstatSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true
-    );
+    return lstatSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true;
   } catch {
     return false;
   }
@@ -107,7 +100,7 @@ function jsonFiles(dir: string): string[] {
     return [];
   }
   return names
-    .filter((name) => name.endsWith(".json"))
+    .filter((name) => name.endsWith('.json'))
     .map((name) => path.join(dir, name))
     .filter(isRegularFile);
 }
@@ -133,9 +126,7 @@ function dated(filePaths: readonly string[]): DatedFile[] {
  *  unreadable directory is an empty list, never a throw. */
 function newestFirstIn(dir: string): DatedFile[] {
   // Sorting the copy `dated` just built, not a shared array (C1).
-  return dated(jsonFiles(dir)).sort(
-    (left, right) => right.mtimeMs - left.mtimeMs,
-  );
+  return dated(jsonFiles(dir)).sort((left, right) => right.mtimeMs - left.mtimeMs);
 }
 
 function datedSessions(root: string): DatedFile[] {
@@ -148,21 +139,18 @@ function datedSessions(root: string): DatedFile[] {
 
 /** One bounded head window parsed as a single JSON object, or null when the
  *  file is missing, oversized, truncated mid-value or not an object. */
-function readJsonObject(
-  filePath: string,
-  cap: number,
-): Record<string, unknown> | null {
+function readJsonObject(filePath: string, cap: number): Record<string, unknown> | null {
   const head = headBytes(filePath, cap);
   if (head === null) {
     return null;
   }
   let value: unknown;
   try {
-    value = JSON.parse(head.toString("utf8"));
+    value = JSON.parse(head.toString('utf8'));
   } catch {
     return null;
   }
-  if (value === null || typeof value !== "object") {
+  if (value === null || typeof value !== 'object') {
     return null;
   }
   return value as Record<string, unknown>;
@@ -174,27 +162,24 @@ function readCandidate(entry: DatedFile): CandidateSession | null {
     return null;
   }
   const id = node.id;
-  if (typeof id !== "string" || id === "") {
+  if (typeof id !== 'string' || id === '') {
     return null;
   }
   const directory = node.directory;
-  const cwd =
-    typeof directory === "string" && directory !== "" ? directory : null;
+  const cwd = typeof directory === 'string' && directory !== '' ? directory : null;
   const time = node.time;
   const updated =
-    time !== null && typeof time === "object"
+    time !== null && typeof time === 'object'
       ? (time as Record<string, unknown>).updated
       : undefined;
-  const mtimeMs = typeof updated === "number" ? updated : entry.mtimeMs;
+  const mtimeMs = typeof updated === 'number' ? updated : entry.mtimeMs;
   return { id, cwd, mtimeMs };
 }
 
 /** The pre-1.18 json tree's sessions. */
 function legacyCandidates(home: string): CandidateSession[] {
   const root = path.join(home, OPENCODE_SESSION_DIR);
-  const newestFirst = datedSessions(root).sort(
-    (left, right) => right.mtimeMs - left.mtimeMs,
-  );
+  const newestFirst = datedSessions(root).sort((left, right) => right.mtimeMs - left.mtimeMs);
   const out: CandidateSession[] = [];
   for (const entry of newestFirst.slice(0, MAX_FILES)) {
     const candidate = readCandidate(entry);
@@ -248,11 +233,11 @@ function newestTextPart(home: string, messageId: string): string | null {
     }
     read += 1;
     const part = readJsonObject(entry.filePath, PART_HEAD_BYTES);
-    if (part === null || part.type !== "text") {
+    if (part === null || part.type !== 'text') {
       continue;
     }
     const text = part.text;
-    if (typeof text === "string" && text.trim() !== "") {
+    if (typeof text === 'string' && text.trim() !== '') {
       return text;
     }
   }
@@ -287,11 +272,11 @@ function legacySessionTailText(home: string, sessionId: string): string | null {
     }
     read += 1;
     const message = readJsonObject(entry.filePath, MESSAGE_HEAD_BYTES);
-    if (message === null || message.role !== "assistant") {
+    if (message === null || message.role !== 'assistant') {
       continue;
     }
     const id = message.id;
-    if (typeof id !== "string" || id === "") {
+    if (typeof id !== 'string' || id === '') {
       continue;
     }
     const text = newestTextPart(home, id);
@@ -312,12 +297,6 @@ function legacySessionTailText(home: string, sessionId: string): string | null {
  * `resolve.ts` — the sentence a pane wears has to come from the session that
  * pane is running.
  */
-export function sessionTailText(
-  home: string,
-  sessionId: string,
-): string | null {
-  return (
-    db.sessionTailText(home, sessionId) ??
-    legacySessionTailText(home, sessionId)
-  );
+export function sessionTailText(home: string, sessionId: string): string | null {
+  return db.sessionTailText(home, sessionId) ?? legacySessionTailText(home, sessionId);
 }

@@ -23,11 +23,11 @@
      changes (the pinned block it used to fly into was removed 2026-08-16), so
      there is nothing entering — only a mark changing shape in place. */
 
-  .asr-row__mark[data-state="asked"]::after {
+  .asr-row__mark[data-state='asked']::after {
     animation: asr-halo 2.4s var(--ease) infinite;
   }
 
-  .asr-row__mark[data-state="working"] {
+  .asr-row__mark[data-state='working'] {
     animation: asr-spin 1.8s linear infinite;
   }
 }
@@ -112,7 +112,7 @@
    single-line item and its row are the same rectangle, so nothing changes
    there. Same value `.wsitem.is-active` carries; `:not(.is-drag-over)`
    because a drag still reads over selection. */
-.asr-item[data-active="true"] > .asr-row--tab:not(.is-drag-over) {
+.asr-item[data-active='true'] > .asr-row--tab:not(.is-drag-over) {
   border-radius: var(--radius-control);
   background: var(--tab-active-bg);
 }
@@ -121,7 +121,7 @@
    treatment — the derived tone ladder is too tight for a one-step dim to
    read (primary 207 → muted 183 measured on tokyo-night, 2026-08-17). The
    state mark keeps full colour: state is meaning, not emphasis. */
-.asr-row--tab[data-quiet="true"] .asr-row__name strong {
+.asr-row--tab[data-quiet='true'] .asr-row__name strong {
   color: var(--text-faint);
   font-weight: 480;
 }
@@ -238,7 +238,7 @@
 /* The brand mark recedes with its row (DL-27.15). Opacity rather than a
    colour: the glyph is an image for most agents, so there is no token to
    swap — and the letter-avatar fallback below dims by the same amount. */
-.asr-row--tab[data-quiet="true"] .asr-chip__logo {
+.asr-row--tab[data-quiet='true'] .asr-chip__logo {
   opacity: 0.45;
 }
 
@@ -315,7 +315,7 @@
 /* The elbow: down from the row above, then out to the leaf — drawn in the
    gutter left of the button (negative offset), never under its wash. */
 .asr-leaf::before {
-  content: "";
+  content: '';
   position: absolute;
   top: -3px;
   bottom: 50%;
@@ -328,7 +328,7 @@
 
 /* The trunk continues past every leaf but the last. */
 .asr-leaf:not(:last-child)::after {
-  content: "";
+  content: '';
   position: absolute;
   top: 50%;
   bottom: -3px;
@@ -392,12 +392,12 @@
 /* The leaf's half of the quiet treatment (DL-27.15): a leaf is a row in its
    own right, so it dims on its OWN pane's state — one agent asking beside
    another working must not read as one mood. */
-.asr-leaf--flat[data-quiet="true"] .asr-leaf__agent {
+.asr-leaf--flat[data-quiet='true'] .asr-leaf__agent {
   color: var(--text-faint);
   font-weight: 480;
 }
 
-.asr-leaf--flat[data-quiet="true"] .asr-leaf__logo {
+.asr-leaf--flat[data-quiet='true'] .asr-leaf__logo {
   opacity: 0.45;
 }
 
@@ -430,7 +430,7 @@ button.attn-mark {
    only 8px stays easy to click — the same widen-past-the-paint trick the
    1px split divider uses. */
 button.attn-mark::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: -3px;
   border-radius: 50%;

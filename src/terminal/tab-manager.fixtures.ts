@@ -1,14 +1,10 @@
-import { vi } from "vitest";
-import type { PaneProcessInfo } from "../lib/process-info";
-import type { Pane, PaneEvents, PaneAttentionSignal } from "./pane";
-import type { CreatePaneFn } from "./pane-lifecycle";
-import { createMemoryPtyClient, type PtyClient } from "./pty-client";
-import {
-  createTabManager,
-  type TabManager,
-  type TabManagerDeps,
-} from "./tab-manager";
-import type { AgentNotifier, AttentionNotification } from "./agent-notifier";
+import { vi } from 'vitest';
+import type { PaneProcessInfo } from '../lib/process-info';
+import type { Pane, PaneEvents, PaneAttentionSignal } from './pane';
+import type { CreatePaneFn } from './pane-lifecycle';
+import { createMemoryPtyClient, type PtyClient } from './pty-client';
+import { createTabManager, type TabManager, type TabManagerDeps } from './tab-manager';
+import type { AgentNotifier, AttentionNotification } from './agent-notifier';
 
 /**
  * Shared, mock-free harness for `tab-manager.*.test.ts` — split out of the
@@ -27,8 +23,8 @@ export function processInfo(
   id: number,
   cwd: string | null,
   process: string | null,
-  kind: PaneProcessInfo["kind"],
-  agent: PaneProcessInfo["agent"],
+  kind: PaneProcessInfo['kind'],
+  agent: PaneProcessInfo['agent'],
 ): PaneProcessInfo {
   return { id, cwd, process, kind, agent };
 }
@@ -42,18 +38,18 @@ export function fakePane(
   // no-ops — the Windows clipboard-chord test passes spies so it can assert
   // the real capture-phase dispatch path reaches the pane.
   overrides: {
-    search?: Pane["search"];
-    copySelection?: Pane["copySelection"];
-    paste?: Pane["paste"];
-    pasteText?: Pane["pasteText"];
+    search?: Pane['search'];
+    copySelection?: Pane['copySelection'];
+    paste?: Pane['paste'];
+    pasteText?: Pane['pasteText'];
   } = {},
 ): Pane {
-  const element = document.createElement("div");
+  const element = document.createElement('div');
   // Mirrors xterm's textarea: shortcut events originate below the pane root,
   // then the window capture listener decides whether Deck owns the chord.
-  const terminalInput = document.createElement("textarea");
-  terminalInput.dataset.testid = "fake-terminal-input";
-  element.className = "pane__term";
+  const terminalInput = document.createElement('textarea');
+  terminalInput.dataset.testid = 'fake-terminal-input';
+  element.className = 'pane__term';
   element.appendChild(terminalInput);
   // Focusable + real DOM focus movement (like xterm's textarea would): the
   // Task 11 visibility predicate checks `element.contains(document.activeElement)`,
@@ -63,7 +59,7 @@ export function fakePane(
   return {
     id,
     element,
-    search: overrides.search ?? ({} as Pane["search"]),
+    search: overrides.search ?? ({} as Pane['search']),
     mount() {},
     write() {},
     cols: 80,
@@ -72,15 +68,14 @@ export function fakePane(
       return Promise.resolve();
     },
     serializeScrollback() {
-      return "";
+      return '';
     },
     writeln() {},
     fit() {},
     clear() {},
     copySelection: overrides.copySelection ?? (() => {}),
     paste: overrides.paste ?? (() => {}),
-    pasteText:
-      overrides.pasteText ?? ((text: string) => events.onData(id, text)),
+    pasteText: overrides.pasteText ?? ((text: string) => events.onData(id, text)),
     scrollPage() {},
     scrollToEdge() {},
     focus() {
@@ -122,7 +117,7 @@ export function wire(
   emitSignal: EmitSignal;
   focusPaneDirectly: FocusPaneDirectly;
 } {
-  const host = document.createElement("div");
+  const host = document.createElement('div');
   document.body.appendChild(host);
   const eventsById = new Map<number, PaneEvents>();
   const panesById = new Map<number, Pane>();
@@ -161,11 +156,7 @@ export function setup(options: {
     infos: options.infos,
     ...(options.dirs !== undefined ? { dirs: options.dirs } : {}),
   });
-  const { tm, emitSignal, focusPaneDirectly } = wire(
-    pty,
-    options.deps,
-    options.paneOverrides,
-  );
+  const { tm, emitSignal, focusPaneDirectly } = wire(pty, options.deps, options.paneOverrides);
   return { tm, pty, emitSignal, focusPaneDirectly };
 }
 

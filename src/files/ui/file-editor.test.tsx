@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { render } from "preact";
-import { act } from "preact/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render } from 'preact';
+import { act } from 'preact/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * Over a STUBBED editor. Whether Monaco itself boots, tokenizes and saves is
@@ -15,10 +15,7 @@ interface StubModel {
   language: string | undefined;
   getValue(): string;
   getFullModelRange(): string;
-  pushEditOperations(
-    before: unknown,
-    edits: { range: string; text: string }[],
-  ): null;
+  pushEditOperations(before: unknown, edits: { range: string; text: string }[]): null;
   dispose(): void;
 }
 
@@ -28,8 +25,7 @@ const stub = {
   currentModel: null as StubModel | null,
   contentHandler: null as (() => void) | null,
   cursorHandler: null as
-    | ((event: { position: { lineNumber: number; column: number } }) => void)
-    | null,
+    ((event: { position: { lineNumber: number; column: number } }) => void) | null,
   focused: 0,
   themes: [] as string[],
   disposed: 0,
@@ -40,7 +36,7 @@ function makeModel(value: string, language: string | undefined): StubModel {
     value,
     language,
     getValue: () => model.value,
-    getFullModelRange: () => "full",
+    getFullModelRange: () => 'full',
     pushEditOperations(_before, edits) {
       model.value = edits[0].text;
       stub.contentHandler?.();
@@ -52,9 +48,8 @@ function makeModel(value: string, language: string | undefined): StubModel {
   return model;
 }
 
-vi.mock("../editor-host", async () => {
-  const actual =
-    await vi.importActual<typeof import("../editor-host")>("../editor-host");
+vi.mock('../editor-host', async () => {
+  const actual = await vi.importActual<typeof import('../editor-host')>('../editor-host');
   return {
     ...actual,
     loadMonaco: async () => ({
@@ -66,13 +61,11 @@ vi.mock("../editor-host", async () => {
               stub.contentHandler = handler;
             },
             onDidChangeCursorPosition: (
-              handler: (event: {
-                position: { lineNumber: number; column: number };
-              }) => void,
+              handler: (event: { position: { lineNumber: number; column: number } }) => void,
             ) => {
               stub.cursorHandler = handler;
             },
-            getValue: () => stub.currentModel?.getValue() ?? "",
+            getValue: () => stub.currentModel?.getValue() ?? '',
             getModel: () => stub.currentModel,
             setModel: (model: StubModel) => {
               stub.currentModel = model;
@@ -104,23 +97,19 @@ vi.mock("../editor-host", async () => {
   };
 });
 
-import { FileEditor } from "./file-editor";
+import { FileEditor } from './file-editor';
 import {
   createFileSurfaceController,
   type FileSurfaceController,
-} from "../file-surface-controller";
-import {
-  openFileTab,
-  resetFileSurfaces,
-  updateDocument,
-} from "../file-surface-store";
-import type { FileClient } from "../file-client";
+} from '../file-surface-controller';
+import { openFileTab, resetFileSurfaces, updateDocument } from '../file-surface-store';
+import type { FileClient } from '../file-client';
 
-const PATH = "/r/src/index.ts";
+const PATH = '/r/src/index.ts';
 
 const client: FileClient = {
   listDir: async () => [],
-  readFile: async () => ({ kind: "refused", reason: "unused in this test" }),
+  readFile: async () => ({ kind: 'refused', reason: 'unused in this test' }),
   writeFile: async (_root, path) => ({ path, mtimeMs: 1, size: 1 }),
   statFiles: async (_root, paths) =>
     paths.map((path) => ({ path, exists: true, mtimeMs: 1, size: 1 })),
@@ -134,9 +123,9 @@ let controller: FileSurfaceController;
 
 function textFile(overrides: Record<string, unknown> = {}) {
   return {
-    content: "const a = 1;\n",
-    eol: "lf" as const,
-    encoding: "utf-8" as const,
+    content: 'const a = 1;\n',
+    eol: 'lf' as const,
+    encoding: 'utf-8' as const,
     bytes: 13,
     mixedEol: false,
     readOnly: false,
@@ -162,7 +151,7 @@ beforeEach(() => {
   stub.disposed = 0;
   stub.options = {};
   controller = createFileSurfaceController({ client });
-  host = document.createElement("div");
+  host = document.createElement('div');
   document.body.appendChild(host);
 });
 
@@ -174,55 +163,55 @@ afterEach(() => {
   controller.dispose();
 });
 
-describe("FileEditor", () => {
-  it("renders the refusal with its stated reason, never an empty editor", () => {
-    openFileTab("/r", PATH, { keep: true });
+describe('FileEditor', () => {
+  it('renders the refusal with its stated reason, never an empty editor', () => {
+    openFileTab('/r', PATH, { keep: true });
     updateDocument(PATH, {
-      refusal: "This looks like a binary file, so Deck will not open it.",
+      refusal: 'This looks like a binary file, so Deck will not open it.',
     });
     mount();
 
-    expect(host.textContent).toContain("binary file");
-    expect(host.textContent).toContain("index.ts");
-    expect(host.querySelector(".fileview__editor")).toBeNull();
+    expect(host.textContent).toContain('binary file');
+    expect(host.textContent).toContain('index.ts');
+    expect(host.querySelector('.fileview__editor')).toBeNull();
   });
 
-  it("mounts an editor for a readable file", async () => {
-    openFileTab("/r", PATH, { keep: true });
-    updateDocument(PATH, { file: textFile(), text: "const a = 1;\n" });
+  it('mounts an editor for a readable file', async () => {
+    openFileTab('/r', PATH, { keep: true });
+    updateDocument(PATH, { file: textFile(), text: 'const a = 1;\n' });
     mount();
     await act(async () => {});
 
-    expect(host.querySelector(".fileview__editor")).not.toBeNull();
-    expect(stub.themes).toContain("deck");
+    expect(host.querySelector('.fileview__editor')).not.toBeNull();
+    expect(stub.themes).toContain('deck');
     expect(stub.focused).toBeGreaterThan(0);
   });
 
-  it("reports a user edit but NOT its own reload", async () => {
+  it('reports a user edit but NOT its own reload', async () => {
     // Deck's reload writes the model directly; reporting that as an edit would
     // mark a freshly reloaded file dirty and promote its preview tab.
-    openFileTab("/r", PATH, { keep: true });
-    updateDocument(PATH, { file: textFile(), text: "const a = 1;\n" });
+    openFileTab('/r', PATH, { keep: true });
+    updateDocument(PATH, { file: textFile(), text: 'const a = 1;\n' });
     mount();
     await act(async () => {});
-    const setText = vi.spyOn(controller, "setText");
+    const setText = vi.spyOn(controller, 'setText');
 
     // A reload: the document's text changes, the component writes the model.
     act(() => {
-      updateDocument(PATH, { text: "rewritten\n" });
+      updateDocument(PATH, { text: 'rewritten\n' });
     });
     mount();
     expect(setText).not.toHaveBeenCalled();
 
     // A real keystroke comes through Monaco's own listener.
-    stub.currentModel!.value = "typed\n";
+    stub.currentModel!.value = 'typed\n';
     stub.contentHandler?.();
-    expect(setText).toHaveBeenCalledWith(PATH, "typed\n");
+    expect(setText).toHaveBeenCalledWith(PATH, 'typed\n');
   });
 
-  it("forwards the caret position for the status bar", async () => {
-    openFileTab("/r", PATH, { keep: true });
-    updateDocument(PATH, { file: textFile(), text: "a\n" });
+  it('forwards the caret position for the status bar', async () => {
+    openFileTab('/r', PATH, { keep: true });
+    updateDocument(PATH, { file: textFile(), text: 'a\n' });
     mount();
     await act(async () => {});
 
@@ -232,54 +221,51 @@ describe("FileEditor", () => {
     expect(stub.cursorHandler).not.toBeNull();
   });
 
-  it("opens a read-only document read-only, with its reason on screen", async () => {
-    openFileTab("/r", PATH, { keep: true });
+  it('opens a read-only document read-only, with its reason on screen', async () => {
+    openFileTab('/r', PATH, { keep: true });
     updateDocument(PATH, {
-      file: textFile({ readOnly: true, reason: "opens read-only." }),
-      text: "big\n",
+      file: textFile({ readOnly: true, reason: 'opens read-only.' }),
+      text: 'big\n',
     });
     mount();
     await act(async () => {});
 
     expect(stub.options.readOnly).toBe(true);
-    expect(host.textContent).toContain("read-only");
+    expect(host.textContent).toContain('read-only');
   });
 
-  it("raises the external-change bar and answers through the controller", async () => {
-    const resolve = vi.spyOn(controller, "resolve").mockResolvedValue();
-    openFileTab("/r", PATH, { keep: true });
+  it('raises the external-change bar and answers through the controller', async () => {
+    const resolve = vi.spyOn(controller, 'resolve').mockResolvedValue();
+    openFileTab('/r', PATH, { keep: true });
     updateDocument(PATH, {
       file: textFile(),
-      text: "mine\n",
+      text: 'mine\n',
       dirty: true,
-      prompt: "prompt-changed",
+      prompt: 'prompt-changed',
     });
     mount();
     await act(async () => {});
 
-    const buttons = host.querySelectorAll<HTMLButtonElement>(".filebar__btn");
-    expect([...buttons].map((b) => b.textContent)).toEqual([
-      "Reload",
-      "Keep mine",
-    ]);
+    const buttons = host.querySelectorAll<HTMLButtonElement>('.filebar__btn');
+    expect([...buttons].map((b) => b.textContent)).toEqual(['Reload', 'Keep mine']);
     buttons[0].click();
-    expect(resolve).toHaveBeenCalledWith(PATH, "reload");
+    expect(resolve).toHaveBeenCalledWith(PATH, 'reload');
   });
 
-  it("says so when the file was deleted and nothing is unsaved", async () => {
-    openFileTab("/r", PATH, { keep: true });
-    updateDocument(PATH, { file: textFile(), text: "a\n", gone: true });
+  it('says so when the file was deleted and nothing is unsaved', async () => {
+    openFileTab('/r', PATH, { keep: true });
+    updateDocument(PATH, { file: textFile(), text: 'a\n', gone: true });
     mount();
     await act(async () => {});
 
-    expect(host.textContent).toContain("was deleted on disk");
+    expect(host.textContent).toContain('was deleted on disk');
     // Still readable — the last content Deck read stays on screen.
-    expect(host.querySelector(".fileview__editor")).not.toBeNull();
+    expect(host.querySelector('.fileview__editor')).not.toBeNull();
   });
 
-  it("disposes the editor on unmount and hands back the focus seam", async () => {
-    openFileTab("/r", PATH, { keep: true });
-    updateDocument(PATH, { file: textFile(), text: "a\n" });
+  it('disposes the editor on unmount and hands back the focus seam', async () => {
+    openFileTab('/r', PATH, { keep: true });
+    updateDocument(PATH, { file: textFile(), text: 'a\n' });
     mount();
     await act(async () => {});
 

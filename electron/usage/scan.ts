@@ -3,14 +3,10 @@
  * aggregation into the payload's bucket list.
  * Port of `src-tauri/src/usage/scan.rs`.
  */
-import { statSync, type Stats } from "node:fs";
-import { ingest } from "./codex";
-import {
-  discoverClaude,
-  discoverCodex,
-  fileIdentity,
-} from "./discover";
-import { readLines } from "./reader";
+import { statSync, type Stats } from 'node:fs';
+import { ingest } from './codex';
+import { discoverClaude, discoverCodex, fileIdentity } from './discover';
+import { readLines } from './reader';
 import {
   COMPACT_AFTER_MS,
   USAGE_CACHE_VERSION,
@@ -27,17 +23,17 @@ import {
   type UsageSnapshot,
   type UsageSource,
   type UsageSourceState,
-} from "./model";
+} from './model';
 
 /** What one file contributed to this pass. */
 type FileScan =
-  | { readonly kind: "updated"; readonly record: FileRecord }
+  | { readonly kind: 'updated'; readonly record: FileRecord }
   /**
    * The file could not be statted or opened. The caller keeps the previous
    * record: a transient permission error must not delete a scan's worth of
    * contributions.
    */
-  | { readonly kind: "failed" };
+  | { readonly kind: 'failed' };
 
 /**
  * A file's modification time in Unix ms. An unreadable or pre-epoch mtime
@@ -63,12 +59,7 @@ function compacted(record: FileRecord, nowMs: number): FileRecord {
   const entries = record.entries;
   record.entries = new Map();
   for (const contribution of entries.values()) {
-    addTotal(
-      record.totals,
-      contribution.bucketStartMs,
-      contribution.model,
-      contribution.counters,
-    );
+    addTotal(record.totals, contribution.bucketStartMs, contribution.model, contribution.counters);
   }
   sortTotals(record.totals);
   record.cumulative = null;
@@ -105,10 +96,10 @@ function scanFile(
   try {
     meta = statSync(filePath, { throwIfNoEntry: false });
   } catch {
-    return { kind: "failed" };
+    return { kind: 'failed' };
   }
   if (meta === undefined || !meta.isFile()) {
-    return { kind: "failed" };
+    return { kind: 'failed' };
   }
   const size = meta.size;
   const mtime = mtimeMsOf(meta);
@@ -118,12 +109,12 @@ function scanFile(
   // The compaction check still runs: a file scanned fresh today only crosses
   // the 48 h line on a later poll where nothing moved.
   if (previous !== undefined && previous.mtimeMs === mtime && previous.size === size) {
-    return { kind: "updated", record: compacted(cloneRecord(previous), nowMs) };
+    return { kind: 'updated', record: compacted(cloneRecord(previous), nowMs) };
   }
 
   const identity = fileIdentity(filePath);
   if (identity === null) {
-    return { kind: "failed" };
+    return { kind: 'failed' };
   }
   // Resume only when the same session is still there, the file has not
   // shrunk, and there is still a contribution map to resume into.
@@ -141,21 +132,21 @@ function scanFile(
 
   try {
     readLines(filePath, record.offset, (event) => {
-      if (event.kind === "line") {
-        if (ingest(agent, event.bytes, record) === "skipped") {
+      if (event.kind === 'line') {
+        if (ingest(agent, event.bytes, record) === 'skipped') {
           record.skippedLines += 1;
         }
         record.offset = event.offset;
-      } else if (event.kind === "oversized") {
+      } else if (event.kind === 'oversized') {
         record.skippedLines += 1;
         record.offset = event.offset;
       }
     });
   } catch {
-    return { kind: "failed" };
+    return { kind: 'failed' };
   }
   sortTotals(record.totals);
-  return { kind: "updated", record: compacted(record, nowMs) };
+  return { kind: 'updated', record: compacted(record, nowMs) };
 }
 
 export interface ScanOutcome {
@@ -196,11 +187,9 @@ async function scanInto(
     const key = paths[index];
     const priorCandidate = previous.files.get(key);
     const prior =
-      priorCandidate !== undefined && priorCandidate.agent === agent
-        ? priorCandidate
-        : undefined;
+      priorCandidate !== undefined && priorCandidate.agent === agent ? priorCandidate : undefined;
     const outcome = scanFile(agent, key, prior, nowMs);
-    if (outcome.kind === "updated") {
+    if (outcome.kind === 'updated') {
       files.set(key, outcome.record);
       accounted += 1;
     } else if (prior !== undefined) {
@@ -215,11 +204,7 @@ async function scanInto(
  * but cannot be listed: the data is still on disk, this scan simply could
  * not look at it.
  */
-function carryOver(
-  previous: UsageCache,
-  agent: UsageAgent,
-  files: Map<string, FileRecord>,
-): void {
+function carryOver(previous: UsageCache, agent: UsageAgent, files: Map<string, FileRecord>): void {
   for (const [key, record] of previous.files) {
     if (record.agent === agent) {
       files.set(key, cloneRecord(record));
@@ -232,7 +217,7 @@ function carryOver(
  * nothing inside it is.
  */
 function sourceState(accounted: number, candidates: number): UsageSourceState {
-  return accounted === 0 && candidates > 0 ? "unreadable" : "ok";
+  return accounted === 0 && candidates > 0 ? 'unreadable' : 'ok';
 }
 
 function recordsEqual(left: FileRecord, right: FileRecord): boolean {
@@ -242,10 +227,7 @@ function recordsEqual(left: FileRecord, right: FileRecord): boolean {
   );
 }
 
-function filesEqual(
-  left: Map<string, FileRecord>,
-  right: Map<string, FileRecord>,
-): boolean {
+function filesEqual(left: Map<string, FileRecord>, right: Map<string, FileRecord>): boolean {
   if (left.size !== right.size) {
     return false;
   }
@@ -267,11 +249,7 @@ function cachedIdentity(filePath: string, previous: UsageCache): string | null {
   if (record !== undefined) {
     try {
       const meta = statSync(filePath, { throwIfNoEntry: false });
-      if (
-        meta !== undefined &&
-        record.size === meta.size &&
-        record.mtimeMs === mtimeMsOf(meta)
-      ) {
+      if (meta !== undefined && record.size === meta.size && record.mtimeMs === mtimeMsOf(meta)) {
         return record.identity;
       }
     } catch {
@@ -293,21 +271,15 @@ export async function scanAll(
   let claude: UsageSourceState;
   switch (claudeFound.state) {
     // The root is gone: so is the data it described.
-    case "missing":
-      claude = "missing";
+    case 'missing':
+      claude = 'missing';
       break;
-    case "unreadable":
-      carryOver(previous, "claude", files);
-      claude = "unreadable";
+    case 'unreadable':
+      carryOver(previous, 'claude', files);
+      claude = 'unreadable';
       break;
-    case "present": {
-      const accounted = await scanInto(
-        "claude",
-        claudeFound.files,
-        previous,
-        nowMs,
-        files,
-      );
+    case 'present': {
+      const accounted = await scanInto('claude', claudeFound.files, previous, nowMs, files);
       claude = sourceState(accounted, claudeFound.files.length);
       break;
     }
@@ -316,21 +288,15 @@ export async function scanAll(
   const codexFound = discoverCodex(home);
   let codex: UsageSourceState;
   switch (codexFound.state) {
-    case "missing":
-      codex = "missing";
+    case 'missing':
+      codex = 'missing';
       break;
-    case "unreadable":
-      carryOver(previous, "codex", files);
-      codex = "unreadable";
+    case 'unreadable':
+      carryOver(previous, 'codex', files);
+      codex = 'unreadable';
       break;
-    case "present": {
-      let accounted = await scanInto(
-        "codex",
-        codexFound.active,
-        previous,
-        nowMs,
-        files,
-      );
+    case 'present': {
+      let accounted = await scanInto('codex', codexFound.active, previous, nowMs, files);
       // An archived copy of a session that is still active would be counted
       // twice, so it is dropped rather than scanned.
       const activeIds = new Set<string>();
@@ -344,11 +310,8 @@ export async function scanAll(
         const identity = cachedIdentity(archivedPath, previous);
         return identity === null || !activeIds.has(identity);
       });
-      accounted += await scanInto("codex", archived, previous, nowMs, files);
-      codex = sourceState(
-        accounted,
-        codexFound.active.length + archived.length,
-      );
+      accounted += await scanInto('codex', archived, previous, nowMs, files);
+      codex = sourceState(accounted, codexFound.active.length + archived.length);
       break;
     }
   }
@@ -384,7 +347,7 @@ export function aggregateBuckets(cache: UsageCache): UsageBucket[] {
   const claudeEntries = new Map<string, Contribution>();
   const totals = new Map<string, UsageCounters>();
   const keyOf = (bucketStartMs: number, agent: UsageAgent, model: string) =>
-    `${String(bucketStartMs).padStart(16, "0")} ${agent === "claude" ? 0 : 1} ${model}`;
+    `${String(bucketStartMs).padStart(16, '0')} ${agent === 'claude' ? 0 : 1} ${model}`;
   for (const record of cache.files.values()) {
     for (const [key, contribution] of record.entries) {
       claudeEntries.set(key, contribution);
@@ -401,7 +364,7 @@ export function aggregateBuckets(cache: UsageCache): UsageBucket[] {
     }
   }
   for (const contribution of claudeEntries.values()) {
-    const slot = keyOf(contribution.bucketStartMs, "claude", contribution.model);
+    const slot = keyOf(contribution.bucketStartMs, 'claude', contribution.model);
     const existing = totals.get(slot);
     totals.set(
       slot,
@@ -412,11 +375,11 @@ export function aggregateBuckets(cache: UsageCache): UsageBucket[] {
   }
   const keys = [...totals.keys()].sort();
   return keys.map((slot) => {
-    const [paddedBucket, agentIndex, ...modelParts] = slot.split(" ");
+    const [paddedBucket, agentIndex, ...modelParts] = slot.split(' ');
     return {
       bucketStartMs: Number.parseInt(paddedBucket, 10),
-      agent: agentIndex === "0" ? "claude" : "codex",
-      model: modelParts.join(" "),
+      agent: agentIndex === '0' ? 'claude' : 'codex',
+      model: modelParts.join(' '),
       counters: totals.get(slot)!,
     };
   });
@@ -432,20 +395,17 @@ function countFiles(cache: UsageCache, agent: UsageAgent): number {
   return count;
 }
 
-export function buildSnapshot(
-  outcome: ScanOutcome,
-  scannedAtMs: number,
-): UsageSnapshot {
+export function buildSnapshot(outcome: ScanOutcome, scannedAtMs: number): UsageSnapshot {
   const sources: UsageSource[] = [
     {
-      agent: "claude",
+      agent: 'claude',
       state: outcome.claude,
-      filesScanned: countFiles(outcome.cache, "claude"),
+      filesScanned: countFiles(outcome.cache, 'claude'),
     },
     {
-      agent: "codex",
+      agent: 'codex',
       state: outcome.codex,
-      filesScanned: countFiles(outcome.cache, "codex"),
+      filesScanned: countFiles(outcome.cache, 'codex'),
     },
   ];
   let skippedLines = 0;

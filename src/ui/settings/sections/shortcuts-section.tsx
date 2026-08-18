@@ -11,11 +11,11 @@
  * Layout rules are DL §17; the row is still a `cfg-row`, with the chord pill
  * and the reset button sharing the value slot.
  */
-import { ArrowCounterClockwise } from "@phosphor-icons/react";
-import { ConfigGroup } from "../../controls/config-row";
-import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
-import { ShortcutCapture } from "../../controls/shortcut-capture";
-import { settings, updateSettings } from "../../../settings/settings-store";
+import { ArrowCounterClockwise } from '@phosphor-icons/react';
+import { ConfigGroup } from '../../controls/config-row';
+import { DeckIcon, ROW_ICON } from '../../controls/deck-icon';
+import { ShortcutCapture } from '../../controls/shortcut-capture';
+import { settings, updateSettings } from '../../../settings/settings-store';
 import {
   chordConflicts,
   chordId,
@@ -25,10 +25,10 @@ import {
   resolveKeymap,
   withOverride,
   type Chord,
-} from "../../../lib/keybindings";
-import { getDesktopEnvironment } from "../../../lib/platform";
-import { shortcutGroups } from "../shortcut-groups";
-import type { ActionId } from "../../../terminal/action-registry";
+} from '../../../lib/keybindings';
+import { getDesktopEnvironment } from '../../../lib/platform';
+import { shortcutGroups } from '../shortcut-groups';
+import type { ActionId } from '../../../terminal/action-registry';
 
 /** Action id → display name, for naming the other side of a conflict. */
 function labelIndex(): ReadonlyMap<ActionId, string> {
@@ -81,9 +81,7 @@ export function ShortcutsSection() {
         }
       }
     }
-    return others.size === 0
-      ? undefined
-      : `also bound to ${[...others].join(", ")}`;
+    return others.size === 0 ? undefined : `also bound to ${[...others].join(', ')}`;
   };
 
   return (
@@ -99,9 +97,7 @@ export function ShortcutsSection() {
                 <div class="cfg-row__key">
                   <span class="cfg-row__label">{row.label}</span>
                   {conflict !== undefined && (
-                    <span class="cfg-row__desc cfg-row__desc--warn">
-                      {conflict}
-                    </span>
+                    <span class="cfg-row__desc cfg-row__desc--warn">{conflict}</span>
                   )}
                 </div>
                 <div class="cfg-row__value">

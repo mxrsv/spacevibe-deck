@@ -1,5 +1,5 @@
-import { signal } from "@preact/signals";
-import type { UpdateController } from "./update-controller";
+import { signal } from '@preact/signals';
+import type { UpdateController } from './update-controller';
 
 /**
  * The window's live update controller, published so surfaces outside the app

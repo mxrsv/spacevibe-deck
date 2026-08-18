@@ -1,4 +1,4 @@
-import { signal } from "@preact/signals";
+import { signal } from '@preact/signals';
 
 /**
  * Canned host IPC so real app components mount in a plain browser.
@@ -35,7 +35,7 @@ type CannedHandler = (args: InvokeArgs) => unknown;
 export const unhandledCommands = signal<readonly string[]>([]);
 
 /** Label the stubbed `getCurrentWindow()` reports. */
-const WINDOW_LABEL = "main";
+const WINDOW_LABEL = 'main';
 
 /**
  * One in-memory persisted store per key, standing in for whichever store the
@@ -51,7 +51,7 @@ let nextStoreRid = 1;
 
 function readString(args: InvokeArgs, key: string): string {
   const value = args[key];
-  return typeof value === "string" ? value : "";
+  return typeof value === 'string' ? value : '';
 }
 
 function storeFor(key: string): Map<string, unknown> {
@@ -73,47 +73,43 @@ function storeFor(key: string): Map<string, unknown> {
  * is not a repository at all. A stub where every row looked the same would
  * make the gallery green on the one thing it exists to show.
  */
-const HOME = "/Users/deck";
+const HOME = '/Users/deck';
 const GALLERY_REPOSITORIES = [
   {
-    kind: "repository" as const,
+    kind: 'repository' as const,
     key: `${HOME}/spacevibe-deck/.git`,
     root: `${HOME}/spacevibe-deck`,
     worktrees: [
-      wt(`${HOME}/spacevibe-deck`, "main"),
-      wt(`${HOME}/deck-worktrees/electron-migration`, "electron-migration"),
-      wt(`${HOME}/deck-worktrees/redesign`, "redesign/phase-1-2", {
-        prunable: "gitdir file points to non-existent location",
+      wt(`${HOME}/spacevibe-deck`, 'main'),
+      wt(`${HOME}/deck-worktrees/electron-migration`, 'electron-migration'),
+      wt(`${HOME}/deck-worktrees/redesign`, 'redesign/phase-1-2', {
+        prunable: 'gitdir file points to non-existent location',
       }),
     ],
   },
   {
-    kind: "repository" as const,
+    kind: 'repository' as const,
     key: `${HOME}/spacevibe-api/.git`,
     root: `${HOME}/spacevibe-api`,
     worktrees: [
-      wt(`${HOME}/spacevibe-api`, "main"),
-      wt(`${HOME}/api-worktrees/billing`, "billing", {
-        locked: "on a removable drive",
+      wt(`${HOME}/spacevibe-api`, 'main'),
+      wt(`${HOME}/api-worktrees/billing`, 'billing', {
+        locked: 'on a removable drive',
       }),
     ],
   },
   {
-    kind: "repository" as const,
+    kind: 'repository' as const,
     key: `${HOME}/spacevibe-hub/.git`,
     root: `${HOME}/spacevibe-hub`,
-    worktrees: [wt(`${HOME}/spacevibe-hub`, "main")],
+    worktrees: [wt(`${HOME}/spacevibe-hub`, 'main')],
   },
 ];
 
-function wt(
-  path: string,
-  branch: string,
-  extra: { locked?: string; prunable?: string } = {},
-) {
+function wt(path: string, branch: string, extra: { locked?: string; prunable?: string } = {}) {
   return {
     path,
-    head: "0".repeat(40),
+    head: '0'.repeat(40),
     branch,
     bare: false,
     detached: false,
@@ -127,22 +123,22 @@ function wt(
  * channel names precisely so the renderer's call sites did not have to change.
  */
 const SHARED: Readonly<Record<string, CannedHandler>> = {
-  desktop_environment: () => ({ platform: "macos", homeDir: "/Users/deck" }),
-  window_boot_mode: () => ({ kind: "normal" }),
+  desktop_environment: () => ({ platform: 'macos', homeDir: '/Users/deck' }),
+  window_boot_mode: () => ({ kind: 'normal' }),
 
   // Two of the five built-ins "missing" is deliberate: the agents section
   // renders a found agent and a not-found one side by side only if the
   // catalog answers unevenly.
-  detect_agents: () => ["claude", "codex", "agy"],
-  git_branch: () => "main",
+  detect_agents: () => ['claude', 'codex', 'agy'],
+  git_branch: () => 'main',
   // `~/scratch` falls through to `plain` on purpose: a folder that is not a
   // repository still has to render, and the gallery is where that is checked.
   git_repository: (args) => {
-    const path = readString(args, "path");
+    const path = readString(args, 'path');
     return (
       GALLERY_REPOSITORIES.find((scan) =>
         scan.worktrees.some((worktree) => worktree.path === path),
-      ) ?? { kind: "plain", reason: "not a git repository" }
+      ) ?? { kind: 'plain', reason: 'not a git repository' }
     );
   },
   dirs_exist: (args) => {
@@ -153,24 +149,24 @@ const SHARED: Readonly<Record<string, CannedHandler>> = {
   list_prompt_assets: () => ({
     skills: [
       {
-        kind: "skill",
-        name: "superpowers:brainstorming",
-        description: "Turn an idea into a design before writing code.",
-        source: "plugin",
+        kind: 'skill',
+        name: 'superpowers:brainstorming',
+        description: 'Turn an idea into a design before writing code.',
+        source: 'plugin',
       },
       {
-        kind: "skill",
-        name: "log-wiki",
-        description: "",
-        source: "global",
+        kind: 'skill',
+        name: 'log-wiki',
+        description: '',
+        source: 'global',
       },
     ],
     subagents: [
       {
-        kind: "subagent",
-        name: "code-reviewer",
-        description: "Findings-first review of a change.",
-        source: "project",
+        kind: 'subagent',
+        name: 'code-reviewer',
+        description: 'Findings-first review of a change.',
+        source: 'project',
       },
     ],
   }),
@@ -182,54 +178,46 @@ const SHARED: Readonly<Record<string, CannedHandler>> = {
 /** Tauri's plugin channels, which the Electron host replaced wholesale. */
 const TAURI_ONLY: Readonly<Record<string, CannedHandler>> = {
   // A retina factor, because that is what the machines this is designed on use.
-  "plugin:window|scale_factor": () => 2,
+  'plugin:window|scale_factor': () => 2,
 
   // plugin-store addresses a loaded file by resource id.
-  "plugin:store|load": () => {
+  'plugin:store|load': () => {
     const rid = nextStoreRid;
     nextStoreRid += 1;
     storeFor(`rid:${rid}`);
     return rid;
   },
-  "plugin:store|get": (args) => {
+  'plugin:store|get': (args) => {
     const store = stores.get(`rid:${String(args.rid)}`);
-    const key = readString(args, "key");
+    const key = readString(args, 'key');
     if (store === undefined || !store.has(key)) {
       return [null, false];
     }
     return [store.get(key), true];
   },
-  "plugin:store|set": (args) => {
-    stores
-      .get(`rid:${String(args.rid)}`)
-      ?.set(readString(args, "key"), args.value);
+  'plugin:store|set': (args) => {
+    stores.get(`rid:${String(args.rid)}`)?.set(readString(args, 'key'), args.value);
     return null;
   },
-  "plugin:store|has": (args) =>
-    stores.get(`rid:${String(args.rid)}`)?.has(readString(args, "key")) ??
-    false,
-  "plugin:store|delete": (args) =>
-    stores.get(`rid:${String(args.rid)}`)?.delete(readString(args, "key")) ??
-    false,
-  "plugin:store|keys": (args) => [
-    ...(stores.get(`rid:${String(args.rid)}`)?.keys() ?? []),
-  ],
-  "plugin:store|entries": (args) => [
-    ...(stores.get(`rid:${String(args.rid)}`)?.entries() ?? []),
-  ],
-  "plugin:store|save": () => null,
-  "plugin:store|reload": () => null,
+  'plugin:store|has': (args) =>
+    stores.get(`rid:${String(args.rid)}`)?.has(readString(args, 'key')) ?? false,
+  'plugin:store|delete': (args) =>
+    stores.get(`rid:${String(args.rid)}`)?.delete(readString(args, 'key')) ?? false,
+  'plugin:store|keys': (args) => [...(stores.get(`rid:${String(args.rid)}`)?.keys() ?? [])],
+  'plugin:store|entries': (args) => [...(stores.get(`rid:${String(args.rid)}`)?.entries() ?? [])],
+  'plugin:store|save': () => null,
+  'plugin:store|reload': () => null,
 
-  "plugin:event|listen": () => 0,
-  "plugin:event|unlisten": () => null,
-  "plugin:event|emit": () => null,
-  "plugin:event|emit_to": () => null,
+  'plugin:event|listen': () => 0,
+  'plugin:event|unlisten': () => null,
+  'plugin:event|emit': () => null,
+  'plugin:event|emit_to': () => null,
 
   // The gallery must never open a real OS dialog.
-  "plugin:dialog|open": () => null,
-  "plugin:dialog|save": () => null,
-  "plugin:dialog|message": () => null,
-  "plugin:dialog|ask": () => true,
+  'plugin:dialog|open': () => null,
+  'plugin:dialog|save': () => null,
+  'plugin:dialog|message': () => null,
+  'plugin:dialog|ask': () => true,
 };
 
 /**
@@ -243,27 +231,26 @@ const TAURI_ONLY: Readonly<Record<string, CannedHandler>> = {
 const ELECTRON_ONLY: Readonly<Record<string, CannedHandler>> = {
   // The store addresses a file by name rather than by resource id.
   store_load: (args) => {
-    const store = storeFor(readString(args, "file"));
+    const store = storeFor(readString(args, 'file'));
     const defaults = args.defaults;
-    if (typeof defaults === "object" && defaults !== null) {
+    if (typeof defaults === 'object' && defaults !== null) {
       for (const [key, value] of Object.entries(defaults)) {
         if (!store.has(key)) {
           store.set(key, value);
         }
       }
     }
-    return { state: "ready", fresh: false };
+    return { state: 'ready', fresh: false };
   },
   // `undefined`, not `[value, found]`: `Store.get` hands its result straight
   // back to the caller, so a tuple would be read as the value itself.
-  store_get: (args) =>
-    stores.get(readString(args, "file"))?.get(readString(args, "key")),
+  store_get: (args) => stores.get(readString(args, 'file'))?.get(readString(args, 'key')),
   store_set: (args) => {
-    storeFor(readString(args, "file")).set(readString(args, "key"), args.value);
+    storeFor(readString(args, 'file')).set(readString(args, 'key'), args.value);
     return null;
   },
   store_delete: (args) => {
-    stores.get(readString(args, "file"))?.delete(readString(args, "key"));
+    stores.get(readString(args, 'file'))?.delete(readString(args, 'key'));
     return null;
   },
   store_save: () => null,
@@ -275,13 +262,13 @@ const ELECTRON_ONLY: Readonly<Record<string, CannedHandler>> = {
   dialog_message: () => null,
   dialog_ask: () => true,
 
-  app_version: () => "0.0.0-gallery",
+  app_version: () => '0.0.0-gallery',
   app_relaunch: () => null,
-  clipboard_read_text: () => "",
+  clipboard_read_text: () => '',
   clipboard_write_text: () => null,
   // Denied, so a specimen can never raise a real OS notification.
   notification_permission_granted: () => false,
-  notification_request_permission: () => "denied",
+  notification_request_permission: () => 'denied',
   notification_send: () => null,
   shell_open_url: () => null,
   suspend_menu_accelerators: () => null,
@@ -305,9 +292,7 @@ function invokeStub(command: string, args: InvokeArgs): Promise<unknown> {
 }
 
 function asArgs(payload: unknown): InvokeArgs {
-  return typeof payload === "object" && payload !== null
-    ? (payload as InvokeArgs)
-    : {};
+  return typeof payload === 'object' && payload !== null ? (payload as InvokeArgs) : {};
 }
 
 interface CallbackHost {
@@ -322,10 +307,7 @@ function installTauriHook(): void {
   const internals = {
     invoke: (command: string, args?: InvokeArgs): Promise<unknown> =>
       invokeStub(command, args ?? {}),
-    transformCallback: (
-      callback?: (payload: unknown) => void,
-      once = false,
-    ): number => {
+    transformCallback: (callback?: (payload: unknown) => void, once = false): number => {
       const id = nextCallbackId;
       nextCallbackId += 1;
       const key = `_${id}`;
@@ -344,7 +326,7 @@ function installTauriHook(): void {
     metadata: { currentWindow: { label: WINDOW_LABEL } },
   };
 
-  Object.defineProperty(window, "__TAURI_INTERNALS__", {
+  Object.defineProperty(window, '__TAURI_INTERNALS__', {
     value: internals,
     configurable: true,
   });
@@ -367,7 +349,7 @@ function installDeckHostHook(): void {
     getPathForFile: (file: File): string => file.name,
   };
 
-  Object.defineProperty(globalThis, "__deckHost", {
+  Object.defineProperty(globalThis, '__deckHost', {
     value: bridge,
     configurable: true,
   });

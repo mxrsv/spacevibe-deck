@@ -41,7 +41,7 @@ export const BUFFER_MAX_BYTES = 4 * 1024 * 1024;
  * accumulating one entry per move forever. */
 const SETTLED_TOKENS_MAX = 64;
 
-export const EVENT_TRANSFER_SETTLED = "transfer:settled";
+export const EVENT_TRANSFER_SETTLED = 'transfer:settled';
 
 export interface AdoptionPayload {
   readonly paneId: number;
@@ -58,17 +58,16 @@ export interface AdoptionPayload {
 export type AbortReason =
   /** A window called abort — the destination refused, or the source changed
    * its mind. */
-  | "requested"
+  | 'requested'
   /** No commit within TRANSFER_TIMEOUT_MS. */
-  | "timedOut"
+  | 'timedOut'
   /** The held-back output passed BUFFER_MAX_BYTES. */
-  | "bufferFull"
+  | 'bufferFull'
   /** A window the transfer depends on was destroyed or is closing. */
-  | "windowGone";
+  | 'windowGone';
 
 type Settled =
-  | { readonly outcome: "committed" }
-  | { readonly outcome: "aborted"; readonly reason: AbortReason };
+  { readonly outcome: 'committed' } | { readonly outcome: 'aborted'; readonly reason: AbortReason };
 
 interface BufferedEvent {
   readonly event: string;
@@ -93,19 +92,14 @@ interface Transfer {
 }
 
 type PaneRoute =
-  | { readonly kind: "owned"; readonly label: string }
-  | { readonly kind: "transferring"; readonly transfer: Transfer };
+  | { readonly kind: 'owned'; readonly label: string }
+  | { readonly kind: 'transferring'; readonly transfer: Transfer };
 
 /** Where the coordinator emits. Production sends to a window; tests record,
  * which is the only way to assert delivery ORDER. */
-export type EventSink = (
-  label: string,
-  event: string,
-  payload: unknown,
-) => void;
+export type EventSink = (label: string, event: string, payload: unknown) => void;
 
-export type PaneAccessErrorKind =
-  "not-routed" | "transferring" | "owned-by-other";
+export type PaneAccessErrorKind = 'not-routed' | 'transferring' | 'owned-by-other';
 
 export class PaneAccessError extends Error {
   constructor(
@@ -114,13 +108,13 @@ export class PaneAccessError extends Error {
     readonly owner?: string,
   ) {
     super(
-      kind === "not-routed"
+      kind === 'not-routed'
         ? `Pane #${paneId} is not registered`
-        : kind === "transferring"
+        : kind === 'transferring'
           ? `Pane #${paneId} is being moved to another window`
           : `Pane #${paneId} belongs to window ${owner}`,
     );
-    this.name = "PaneAccessError";
+    this.name = 'PaneAccessError';
   }
 }
 
@@ -139,12 +133,12 @@ export class WindowCoordinator {
   constructor(private readonly sink: EventSink) {}
 
   register(paneId: number, windowLabel: string): void {
-    this.routes.set(paneId, { kind: "owned", label: windowLabel });
+    this.routes.set(paneId, { kind: 'owned', label: windowLabel });
   }
 
   unregister(paneId: number): void {
     const route = this.routes.get(paneId);
-    if (route?.kind === "transferring") {
+    if (route?.kind === 'transferring') {
       // Mid-transfer the entry must outlive the PTY: it holds the exit event
       // the destination is owed on commit. `settle` drops the route instead of
       // re-owning it.
@@ -158,14 +152,14 @@ export class WindowCoordinator {
    * has no owner, and saying otherwise would let a caller act on it. */
   owner(paneId: number): string | null {
     const route = this.routes.get(paneId);
-    return route?.kind === "owned" ? route.label : null;
+    return route?.kind === 'owned' ? route.label : null;
   }
 
   /** Pane ids still owned by this window, for close-window dispose. */
   panesForWindow(windowLabel: string): number[] {
     const ids: number[] = [];
     for (const [id, route] of this.routes) {
-      if (route.kind === "owned" && route.label === windowLabel) {
+      if (route.kind === 'owned' && route.label === windowLabel) {
         ids.push(id);
       }
     }
@@ -186,12 +180,7 @@ export class WindowCoordinator {
 
   /** Route one PTY event. Emission is synchronous and in-order, so a chunk
    * read during a commit cannot overtake the flush that commit performs. */
-  deliver(
-    paneId: number,
-    event: string,
-    payload: unknown,
-    now: number = Date.now(),
-  ): void {
+  deliver(paneId: number, event: string, payload: unknown, now: number = Date.now()): void {
     this.sweep(now);
     const route = this.routes.get(paneId);
     if (route === undefined) {
@@ -199,7 +188,7 @@ export class WindowCoordinator {
       console.warn(`Deck: no route for pane ${paneId}, dropping ${event}`);
       return;
     }
-    if (route.kind === "owned") {
+    if (route.kind === 'owned') {
       this.sink(route.label, event, payload);
       return;
     }
@@ -212,8 +201,8 @@ export class WindowCoordinator {
       );
       // The overflowing chunk was already pushed, so the flush carries it too.
       this.settle(paneId, transfer.from, {
-        outcome: "aborted",
-        reason: "bufferFull",
+        outcome: 'aborted',
+        reason: 'bufferFull',
       });
     }
   }
@@ -227,28 +216,19 @@ export class WindowCoordinator {
   sweep(now: number = Date.now()): void {
     const expired: Array<[number, string]> = [];
     for (const [id, route] of this.routes) {
-      if (
-        route.kind === "transferring" &&
-        now - route.transfer.started >= TRANSFER_TIMEOUT_MS
-      ) {
+      if (route.kind === 'transferring' && now - route.transfer.started >= TRANSFER_TIMEOUT_MS) {
         expired.push([id, route.transfer.from]);
       }
     }
     for (const [paneId, source] of expired) {
-      console.warn(
-        `Deck: transfer for pane ${paneId} timed out, returning it to window ${source}`,
-      );
-      this.settle(paneId, source, { outcome: "aborted", reason: "timedOut" });
+      console.warn(`Deck: transfer for pane ${paneId} timed out, returning it to window ${source}`);
+      this.settle(paneId, source, { outcome: 'aborted', reason: 'timedOut' });
     }
   }
 
   /** Open a transfer for a pane this window owns. Output starts buffering the
    * moment this returns. */
-  beginTransfer(
-    from: string,
-    paneId: number,
-    now: number = Date.now(),
-  ): string {
+  beginTransfer(from: string, paneId: number, now: number = Date.now()): string {
     // Before the route check, so a pane whose previous transfer expired can
     // start a new one.
     this.sweep(now);
@@ -256,7 +236,7 @@ export class WindowCoordinator {
     if (route === undefined) {
       throw new Error(`Pane #${paneId} is not registered`);
     }
-    if (route.kind === "transferring") {
+    if (route.kind === 'transferring') {
       throw new Error(`Pane #${paneId} is already being transferred`);
     }
     if (route.label !== from) {
@@ -265,7 +245,7 @@ export class WindowCoordinator {
     this.nextToken += 1;
     const token = `xfer-${this.nextToken}`;
     this.routes.set(paneId, {
-      kind: "transferring",
+      kind: 'transferring',
       transfer: {
         from,
         to: null,
@@ -300,9 +280,7 @@ export class WindowCoordinator {
     }
     const { transfer } = found;
     if (transfer.from !== caller) {
-      throw new Error(
-        `Transfer ${token} can only be staged by window ${transfer.from}`,
-      );
+      throw new Error(`Transfer ${token} can only be staged by window ${transfer.from}`);
     }
     if (transfer.staged !== null) {
       throw new Error(`Transfer ${token} already carries a payload`);
@@ -311,11 +289,7 @@ export class WindowCoordinator {
   }
 
   /** The destination takes the payload and records itself as the receiver. */
-  claim(
-    token: string,
-    caller: string,
-    now: number = Date.now(),
-  ): AdoptionPayload {
+  claim(token: string, caller: string, now: number = Date.now()): AdoptionPayload {
     this.sweep(now);
     const found = this.findTransfer(token);
     if (found === null) {
@@ -348,7 +322,7 @@ export class WindowCoordinator {
     const settled = this.settled.get(token);
     if (settled !== undefined) {
       // Idempotent by token: a retry after the fact still gets an answer.
-      if (settled.outcome === "committed") {
+      if (settled.outcome === 'committed') {
         return;
       }
       throw new Error(`Transfer ${token} was aborted`);
@@ -358,11 +332,9 @@ export class WindowCoordinator {
       throw new Error(`Transfer ${token} is not open`);
     }
     if (found.transfer.to !== caller) {
-      throw new Error(
-        `Transfer ${token} can only be committed by the window that claimed it`,
-      );
+      throw new Error(`Transfer ${token} can only be committed by the window that claimed it`);
     }
-    this.settle(found.paneId, caller, { outcome: "committed" });
+    this.settle(found.paneId, caller, { outcome: 'committed' });
   }
 
   /**
@@ -376,7 +348,7 @@ export class WindowCoordinator {
     this.sweep(now);
     const settled = this.settled.get(token);
     if (settled !== undefined) {
-      if (settled.outcome === "aborted") {
+      if (settled.outcome === 'aborted') {
         return;
       }
       throw new Error(`Transfer ${token} was already committed`);
@@ -386,8 +358,8 @@ export class WindowCoordinator {
       throw new Error(`Transfer ${token} is not open`);
     }
     this.settle(found.paneId, found.transfer.from, {
-      outcome: "aborted",
-      reason: "requested",
+      outcome: 'aborted',
+      reason: 'requested',
     });
   }
 
@@ -401,22 +373,18 @@ export class WindowCoordinator {
     this.sweep(now);
     const involved: Array<[number, string]> = [];
     for (const [id, route] of this.routes) {
-      if (route.kind !== "transferring") {
+      if (route.kind !== 'transferring') {
         continue;
       }
       const { transfer } = route;
-      if (
-        transfer.from === label ||
-        transfer.to === label ||
-        transfer.reservedTo === label
-      ) {
+      if (transfer.from === label || transfer.to === label || transfer.reservedTo === label) {
         involved.push([id, transfer.from]);
       }
     }
     for (const [paneId, source] of involved) {
       this.settle(paneId, source, {
-        outcome: "aborted",
-        reason: "windowGone",
+        outcome: 'aborted',
+        reason: 'windowGone',
       });
     }
   }
@@ -426,13 +394,13 @@ export class WindowCoordinator {
   assertAccess(paneId: number, caller: string): void {
     const route = this.routes.get(paneId);
     if (route === undefined) {
-      throw new PaneAccessError("not-routed", paneId);
+      throw new PaneAccessError('not-routed', paneId);
     }
-    if (route.kind === "transferring") {
-      throw new PaneAccessError("transferring", paneId);
+    if (route.kind === 'transferring') {
+      throw new PaneAccessError('transferring', paneId);
     }
     if (route.label !== caller) {
-      throw new PaneAccessError("owned-by-other", paneId, route.label);
+      throw new PaneAccessError('owned-by-other', paneId, route.label);
     }
   }
 
@@ -460,7 +428,7 @@ export class WindowCoordinator {
     // by a window that died before it could claim.
     const aborting: Array<[number, string]> = [];
     for (const [id, route] of this.routes) {
-      if (route.kind !== "transferring") {
+      if (route.kind !== 'transferring') {
         continue;
       }
       const { transfer } = route;
@@ -470,8 +438,8 @@ export class WindowCoordinator {
     }
     for (const [paneId, source] of aborting) {
       this.settle(paneId, source, {
-        outcome: "aborted",
-        reason: "windowGone",
+        outcome: 'aborted',
+        reason: 'windowGone',
       });
     }
 
@@ -480,7 +448,7 @@ export class WindowCoordinator {
     // else will ever kill them.
     const orphans: number[] = [];
     for (const [id, route] of this.routes) {
-      if (route.kind === "owned" && this.dead.has(route.label)) {
+      if (route.kind === 'owned' && this.dead.has(route.label)) {
         orphans.push(id);
       }
     }
@@ -494,11 +462,9 @@ export class WindowCoordinator {
     return orphans;
   }
 
-  private findTransfer(
-    token: string,
-  ): { paneId: number; transfer: Transfer } | null {
+  private findTransfer(token: string): { paneId: number; transfer: Transfer } | null {
     for (const [paneId, route] of this.routes) {
-      if (route.kind === "transferring" && route.transfer.token === token) {
+      if (route.kind === 'transferring' && route.transfer.token === token) {
         return { paneId, transfer: route.transfer };
       }
     }
@@ -511,7 +477,7 @@ export class WindowCoordinator {
    */
   private settle(paneId: number, label: string, outcome: Settled): void {
     const route = this.routes.get(paneId);
-    if (route === undefined || route.kind !== "transferring") {
+    if (route === undefined || route.kind !== 'transferring') {
       return;
     }
     const { transfer } = route;
@@ -532,7 +498,7 @@ export class WindowCoordinator {
       // for the rest of the process run — queue it for the kill instead.
       this.pendingOrphans.push(paneId);
     } else {
-      this.routes.set(paneId, { kind: "owned", label });
+      this.routes.set(paneId, { kind: 'owned', label });
     }
     this.rememberSettled(transfer.token, outcome);
   }
@@ -574,7 +540,7 @@ export class WindowCoordinator {
  * open, i.e. for tens of milliseconds per move. */
 function estimateBytes(payload: unknown): number {
   try {
-    return Buffer.byteLength(JSON.stringify(payload) ?? "");
+    return Buffer.byteLength(JSON.stringify(payload) ?? '');
   } catch {
     return 0;
   }

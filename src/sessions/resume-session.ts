@@ -10,12 +10,12 @@
  *   (session restore, 2026-08-15). Nothing in tab materialization changes for
  *   this feature — it is a caller of an existing seam, not a widening of it.
  */
-import { buildResumeCommand } from "../lib/agent-resume";
-import { noteResumedPane } from "../terminal/session-tail-store";
-import type { CustomAgent } from "../lib/agent-catalog";
-import { BUILT_IN_PRESET } from "../lib/preset-schema";
-import type { SessionEntry } from "../lib/session-history";
-import type { MaterializeIntent } from "../terminal/tab-materialize";
+import { buildResumeCommand } from '../lib/agent-resume';
+import { noteResumedPane } from '../terminal/session-tail-store';
+import type { CustomAgent } from '../lib/agent-catalog';
+import { BUILT_IN_PRESET } from '../lib/preset-schema';
+import type { SessionEntry } from '../lib/session-history';
+import type { MaterializeIntent } from '../terminal/tab-materialize';
 
 export interface ResumeSessionDeps {
   materialize(intent: MaterializeIntent): Promise<boolean>;
@@ -36,7 +36,7 @@ export async function resumeSession(
   }
   const command = buildResumeCommand(
     entry.agent,
-    { kind: "id", id: entry.sessionId },
+    { kind: 'id', id: entry.sessionId },
     deps.customAgents,
   );
   // `buildResumeCommand` degrades an unsafe id to the BARE agent command. A
@@ -44,11 +44,7 @@ export async function resumeSession(
   // asked to resume an old one, so this path refuses instead. The empty id is
   // its own clause: it also fails `SESSION_REF_SAFE`, but every string
   // `.includes("")`, so the survived-into-the-command test cannot see it.
-  if (
-    command === null ||
-    entry.sessionId === "" ||
-    !command.includes(entry.sessionId)
-  ) {
+  if (command === null || entry.sessionId === '' || !command.includes(entry.sessionId)) {
     return false;
   }
   const opened = await deps.materialize({

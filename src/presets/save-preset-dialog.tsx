@@ -1,9 +1,8 @@
-import { useSignal } from "@preact/signals";
-import type { Preset } from "../lib/preset-schema";
-import { Modal } from "../ui/modal";
+import { useSignal } from '@preact/signals';
+import type { Preset } from '../lib/preset-schema';
+import { Modal } from '../ui/modal';
 
-export type SaveTarget =
-  { kind: "new"; name: string } | { kind: "overwrite"; id: string };
+export type SaveTarget = { kind: 'new'; name: string } | { kind: 'overwrite'; id: string };
 
 export interface SavePresetDialogProps {
   existing: readonly Preset[];
@@ -11,20 +10,16 @@ export interface SavePresetDialogProps {
   onSave(target: SaveTarget, includeCwds: boolean): void;
 }
 
-export function SavePresetDialog({
-  existing,
-  onCancel,
-  onSave,
-}: SavePresetDialogProps) {
-  const name = useSignal("");
+export function SavePresetDialog({ existing, onCancel, onSave }: SavePresetDialogProps) {
+  const name = useSignal('');
   const overwriteId = useSignal<string | null>(null);
   const includeCwds = useSignal(true); // default on
 
   const target: SaveTarget | null =
     overwriteId.value !== null
-      ? { kind: "overwrite", id: overwriteId.value }
-      : name.value.trim() !== ""
-        ? { kind: "new", name: name.value.trim() }
+      ? { kind: 'overwrite', id: overwriteId.value }
+      : name.value.trim() !== ''
+        ? { kind: 'new', name: name.value.trim() }
         : null;
 
   function confirm(): void {
@@ -34,7 +29,7 @@ export function SavePresetDialog({
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
-    if (event.key !== "Enter") {
+    if (event.key !== 'Enter') {
       return;
     }
     confirm();
@@ -66,10 +61,10 @@ export function SavePresetDialog({
         <label class="save-preset__row">
           <span>Or overwrite</span>
           <select
-            value={overwriteId.value ?? ""}
+            value={overwriteId.value ?? ''}
             onChange={(event) => {
               const value = (event.target as HTMLSelectElement).value;
-              overwriteId.value = value === "" ? null : value;
+              overwriteId.value = value === '' ? null : value;
             }}
           >
             <option value="">—</option>

@@ -1,5 +1,5 @@
-import { SidebarSimple } from "@phosphor-icons/react";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { SidebarSimple } from '@phosphor-icons/react';
+import { CHROME_ICON, DeckIcon } from '../controls/deck-icon';
 
 interface DockToggleProps {
   readonly open: boolean;
@@ -22,7 +22,7 @@ interface DockToggleProps {
  * from settings.
  */
 export function DockToggle({ open, onToggle }: DockToggleProps) {
-  const label = open ? "Hide the side panel" : "Show the side panel";
+  const label = open ? 'Hide the side panel' : 'Show the side panel';
   return (
     <button
       type="button"

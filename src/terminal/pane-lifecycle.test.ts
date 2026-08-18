@@ -1,21 +1,18 @@
-import { describe, expect, it, vi } from "vitest";
-import { leaf } from "../lib/split-tree";
-import { DEFAULT_SETTINGS, type Settings } from "../settings/settings-schema";
-import { createPaneLifecycle } from "./pane-lifecycle";
-import type { Pane, PaneAttentionSignal, PaneEvents } from "./pane";
-import { createMemoryPtyClient } from "./pty-client";
-import { persistError } from "../chrome/events";
-import { paneCwd } from "./pane-cwd";
+import { describe, expect, it, vi } from 'vitest';
+import { leaf } from '../lib/split-tree';
+import { DEFAULT_SETTINGS, type Settings } from '../settings/settings-schema';
+import { createPaneLifecycle } from './pane-lifecycle';
+import type { Pane, PaneAttentionSignal, PaneEvents } from './pane';
+import { createMemoryPtyClient } from './pty-client';
+import { persistError } from '../chrome/events';
+import { paneCwd } from './pane-cwd';
 
-function fakePane(
-  id: number,
-  events: PaneEvents,
-): Pane & { focusCalls: number } {
+function fakePane(id: number, events: PaneEvents): Pane & { focusCalls: number } {
   const focusCalls = { n: 0 };
   const pane: Pane & { focusCalls: number } = {
     id,
     element: {} as HTMLElement,
-    search: {} as Pane["search"],
+    search: {} as Pane['search'],
     focusCalls: 0,
     mount() {},
     write() {},
@@ -25,7 +22,7 @@ function fakePane(
       return Promise.resolve();
     },
     serializeScrollback() {
-      return "";
+      return '';
     },
     writeln() {},
     fit() {},
@@ -53,8 +50,8 @@ function fakePane(
   return pane;
 }
 
-describe("createPaneLifecycle respawn", () => {
-  it("does not focus the fresh pane (caller focuses after render/mount)", async () => {
+describe('createPaneLifecycle respawn', () => {
+  it('does not focus the fresh pane (caller focuses after render/mount)', async () => {
     const pty = createMemoryPtyClient({ nextId: 1 });
     const made: Array<Pane & { focusCalls: number }> = [];
     const life = createPaneLifecycle({
@@ -79,7 +76,7 @@ describe("createPaneLifecycle respawn", () => {
     expect(made[1].focusCalls).toBe(0);
   });
 
-  it("replaces the leaf id and removes the old pane from the map", async () => {
+  it('replaces the leaf id and removes the old pane from the map', async () => {
     const pty = createMemoryPtyClient({ nextId: 10 });
     const life = createPaneLifecycle({
       pty,
@@ -91,7 +88,7 @@ describe("createPaneLifecycle respawn", () => {
       },
     });
 
-    const old = await life.spawnPane("/tmp");
+    const old = await life.spawnPane('/tmp');
     const result = await life.respawn(old.id, leaf(old.id), old.id);
     expect(result?.tree).toEqual(leaf(11));
     expect(life.panes.has(10)).toBe(false);
@@ -99,12 +96,12 @@ describe("createPaneLifecycle respawn", () => {
   });
 });
 
-describe("createPaneLifecycle write failures", () => {
-  it("surfaces a failed keystroke write to the user", async () => {
+describe('createPaneLifecycle write failures', () => {
+  it('surfaces a failed keystroke write to the user', async () => {
     persistError.value = null;
     const pty = {
       ...createMemoryPtyClient({ nextId: 1 }),
-      writePty: vi.fn().mockRejectedValue(new Error("session gone")),
+      writePty: vi.fn().mockRejectedValue(new Error('session gone')),
     };
     const life = createPaneLifecycle({
       pty,
@@ -116,16 +113,16 @@ describe("createPaneLifecycle write failures", () => {
       },
     });
     const pane = await life.spawnPane();
-    await expect(life.paneEvents.onData(pane.id, "x")).resolves.toBe(false);
+    await expect(life.paneEvents.onData(pane.id, 'x')).resolves.toBe(false);
     await vi.waitFor(() => {
-      expect(persistError.value).toContain("input");
+      expect(persistError.value).toContain('input');
     });
   });
 
-  it("keeps later independent input usable after one failed write", async () => {
+  it('keeps later independent input usable after one failed write', async () => {
     const writePty = vi
       .fn()
-      .mockRejectedValueOnce(new Error("transient"))
+      .mockRejectedValueOnce(new Error('transient'))
       .mockResolvedValueOnce(undefined);
     const life = createPaneLifecycle({
       pty: { ...createMemoryPtyClient({ nextId: 1 }), writePty },
@@ -138,13 +135,13 @@ describe("createPaneLifecycle write failures", () => {
     });
     const pane = await life.spawnPane();
 
-    await expect(life.enqueueWrite(pane.id, "first")).resolves.toBe(false);
-    await expect(life.enqueueWrite(pane.id, "second")).resolves.toBe(true);
-    expect(writePty).toHaveBeenNthCalledWith(2, pane.id, "second");
+    await expect(life.enqueueWrite(pane.id, 'first')).resolves.toBe(false);
+    await expect(life.enqueueWrite(pane.id, 'second')).resolves.toBe(true);
+    expect(writePty).toHaveBeenNthCalledWith(2, pane.id, 'second');
   });
 });
 
-describe("createPaneLifecycle attention signals", () => {
+describe('createPaneLifecycle attention signals', () => {
   it("forwards a signal from the pane's events to deps.onAttentionSignal with the same pane id", async () => {
     const pty = createMemoryPtyClient({ nextId: 1 });
     const onAttentionSignal = vi.fn();
@@ -163,15 +160,15 @@ describe("createPaneLifecycle attention signals", () => {
 
     const pane = await life.spawnPane();
     const signal: PaneAttentionSignal = {
-      kind: "requested",
-      source: "osc-notification",
+      kind: 'requested',
+      source: 'osc-notification',
     };
     capturedEvents!.onAttentionSignal?.(pane.id, signal);
 
     expect(onAttentionSignal).toHaveBeenCalledWith(pane.id, signal);
   });
 
-  it("is a safe no-op when no onAttentionSignal dep is provided", async () => {
+  it('is a safe no-op when no onAttentionSignal dep is provided', async () => {
     const pty = createMemoryPtyClient({ nextId: 1 });
     let capturedEvents: PaneEvents | null = null;
     const life = createPaneLifecycle({
@@ -188,14 +185,14 @@ describe("createPaneLifecycle attention signals", () => {
     const pane = await life.spawnPane();
     expect(() =>
       capturedEvents!.onAttentionSignal?.(pane.id, {
-        kind: "requested",
-        source: "bell",
+        kind: 'requested',
+        source: 'bell',
       }),
     ).not.toThrow();
   });
 });
 
-describe("write queue", () => {
+describe('write queue', () => {
   /** Let every pending microtask chain settle before asserting. */
   const flush = async (): Promise<void> => {
     for (let tick = 0; tick < 8; tick += 1) {
@@ -233,8 +230,7 @@ describe("write queue", () => {
     createPaneLifecycle({
       pty: gate.client,
       getSettings: () => DEFAULT_SETTINGS,
-      createPane: (id, _settings: Settings, events: PaneEvents) =>
-        fakePane(id, events),
+      createPane: (id, _settings: Settings, events: PaneEvents) => fakePane(id, events),
       onWriteWhileExited,
       onFocus: () => {},
     });
@@ -242,47 +238,47 @@ describe("write queue", () => {
   const sent = (gate: ReturnType<typeof gatedPty>): string[] =>
     gate.writes.map((write) => write.data);
 
-  it("starts a write only after the previous one settles", async () => {
+  it('starts a write only after the previous one settles', async () => {
     const gate = gatedPty();
     const life = mount(gate);
     const pane = await life.spawnPane();
 
-    life.enqueueWrite(pane.id, "frame");
-    life.enqueueWrite(pane.id, "\r");
+    life.enqueueWrite(pane.id, 'frame');
+    life.enqueueWrite(pane.id, '\r');
     await flush();
     // The second write must not have started while the first is unsettled.
-    expect(sent(gate)).toEqual(["frame"]);
+    expect(sent(gate)).toEqual(['frame']);
 
     gate.releases[0]();
     await flush();
-    expect(sent(gate)).toEqual(["frame", "\r"]);
+    expect(sent(gate)).toEqual(['frame', '\r']);
   });
 
-  it("drops a queued write for a pane that exited meanwhile", async () => {
+  it('drops a queued write for a pane that exited meanwhile', async () => {
     const gate = gatedPty();
     const life = mount(gate);
     const pane = await life.spawnPane();
 
-    life.enqueueWrite(pane.id, "frame");
+    life.enqueueWrite(pane.id, 'frame');
     await flush();
-    expect(sent(gate)).toEqual(["frame"]);
+    expect(sent(gate)).toEqual(['frame']);
 
     // Queued while the pane is still alive, so it passes the enqueue-time
     // guard; the pane then exits before its turn comes up.
-    life.enqueueWrite(pane.id, "\r");
+    life.enqueueWrite(pane.id, '\r');
     life.exited.add(pane.id);
     gate.releases[0]();
     await flush();
-    expect(sent(gate)).toEqual(["frame"]);
+    expect(sent(gate)).toEqual(['frame']);
   });
 
-  it("still routes a bare Enter on an exited pane to the respawn path", async () => {
+  it('still routes a bare Enter on an exited pane to the respawn path', async () => {
     const gate = gatedPty();
     const respawns: number[] = [];
     const life = mount(gate, (id: number) => respawns.push(id));
     const pane = await life.spawnPane();
     life.exited.add(pane.id);
-    life.paneEvents.onData(pane.id, "\r");
+    life.paneEvents.onData(pane.id, '\r');
     // Synchronous: the enqueue-time guard fires before any microtask.
     expect(respawns).toEqual([pane.id]);
     await flush();
@@ -290,10 +286,10 @@ describe("write queue", () => {
   });
 });
 
-describe("createPaneLifecycle discardPane", () => {
-  it("kills the PTY session", async () => {
+describe('createPaneLifecycle discardPane', () => {
+  it('kills the PTY session', async () => {
     const pty = createMemoryPtyClient({ nextId: 1 });
-    const killSpy = vi.spyOn(pty, "killPty");
+    const killSpy = vi.spyOn(pty, 'killPty');
     const life = createPaneLifecycle({
       pty,
       getSettings: () => DEFAULT_SETTINGS as Settings,
@@ -310,7 +306,7 @@ describe("createPaneLifecycle discardPane", () => {
   });
 });
 
-describe("createPaneLifecycle write gate", () => {
+describe('createPaneLifecycle write gate', () => {
   function lifecycleWithFakePane() {
     const pty = createMemoryPtyClient({ nextId: 1 });
     const life = createPaneLifecycle({
@@ -323,37 +319,37 @@ describe("createPaneLifecycle write gate", () => {
     return { pty, life };
   }
 
-  it("drainWrites resolves only after every queued write has reached the PTY", async () => {
+  it('drainWrites resolves only after every queued write has reached the PTY', async () => {
     const { pty, life } = lifecycleWithFakePane();
     const pane = await life.spawnPane();
-    void life.enqueueWrite(pane.id, "a");
-    void life.enqueueWrite(pane.id, "b");
+    void life.enqueueWrite(pane.id, 'a');
+    void life.enqueueWrite(pane.id, 'b');
 
     await life.drainWrites(pane.id);
 
-    expect(pty.writes.map((w) => w.data)).toEqual(["a", "b"]);
+    expect(pty.writes.map((w) => w.data)).toEqual(['a', 'b']);
   });
 
-  it("holdWrites parks a write instead of sending it, and the release lets it through in order", async () => {
+  it('holdWrites parks a write instead of sending it, and the release lets it through in order', async () => {
     const { pty, life } = lifecycleWithFakePane();
     const pane = await life.spawnPane();
     const release = life.holdWrites(pane.id);
 
-    void life.enqueueWrite(pane.id, "held");
+    void life.enqueueWrite(pane.id, 'held');
     await Promise.resolve();
     await Promise.resolve();
     expect(pty.writes).toEqual([]);
 
     release();
     await life.drainWrites(pane.id);
-    expect(pty.writes.map((w) => w.data)).toEqual(["held"]);
+    expect(pty.writes.map((w) => w.data)).toEqual(['held']);
   });
 
-  it("a write parked behind a hold is dropped when the pane is released meanwhile", async () => {
+  it('a write parked behind a hold is dropped when the pane is released meanwhile', async () => {
     const { pty, life } = lifecycleWithFakePane();
     const pane = await life.spawnPane();
     const release = life.holdWrites(pane.id);
-    const parked = life.enqueueWrite(pane.id, "gone");
+    const parked = life.enqueueWrite(pane.id, 'gone');
 
     life.panes.delete(pane.id);
     release();
@@ -363,17 +359,17 @@ describe("createPaneLifecycle write gate", () => {
   });
 });
 
-describe("createPaneLifecycle adopt and release", () => {
+describe('createPaneLifecycle adopt and release', () => {
   const payload = {
     paneId: 42,
-    cwd: "/repo",
-    agentId: "claude",
-    scrollback: "restored",
+    cwd: '/repo',
+    agentId: 'claude',
+    scrollback: 'restored',
     cols: 120,
     rows: 40,
     tabName: null,
     dotColor: null,
-    workspacePath: "/repo",
+    workspacePath: '/repo',
   } as const;
 
   it("adoptPane registers the pane under the payload's pty id without spawning", async () => {
@@ -396,10 +392,10 @@ describe("createPaneLifecycle adopt and release", () => {
     expect(life.panes.get(42)).toBe(pane);
     expect(pty.sessions.size).toBe(0);
     expect(geometries).toEqual([{ cols: 120, rows: 40 }]);
-    expect(paneCwd(42)).toBe("/repo");
+    expect(paneCwd(42)).toBe('/repo');
   });
 
-  it("releasePane forgets and disposes the pane but never kills the PTY", async () => {
+  it('releasePane forgets and disposes the pane but never kills the PTY', async () => {
     const pty = createMemoryPtyClient({ nextId: 5 });
     const killed: number[] = [];
     const disposed: number[] = [];

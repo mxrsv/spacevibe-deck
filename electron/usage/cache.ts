@@ -5,14 +5,8 @@
  * cutover is a clean install, and this loader discards anything it did not
  * write itself.
  */
-import {
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import path from "node:path";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import {
   CACHE_TEMP_SUFFIX,
   USAGE_CACHE_VERSION,
@@ -20,10 +14,10 @@ import {
   type Contribution,
   type FileRecord,
   type UsageCache,
-} from "./model";
+} from './model';
 
 /** The serialized shape — `entries` as a plain object with sorted keys. */
-interface StoredRecord extends Omit<FileRecord, "entries"> {
+interface StoredRecord extends Omit<FileRecord, 'entries'> {
   entries: Record<string, Contribution>;
 }
 
@@ -94,16 +88,16 @@ export function loadCache(cachePath: string | null): UsageCache {
   }
   let stored: StoredCache;
   try {
-    stored = JSON.parse(bytes.toString("utf8")) as StoredCache;
+    stored = JSON.parse(bytes.toString('utf8')) as StoredCache;
   } catch {
     return emptyCache();
   }
   if (
     stored === null ||
-    typeof stored !== "object" ||
+    typeof stored !== 'object' ||
     stored.cacheVersion !== USAGE_CACHE_VERSION ||
     stored.files === null ||
-    typeof stored.files !== "object"
+    typeof stored.files !== 'object'
   ) {
     return emptyCache();
   }

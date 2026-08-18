@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS, type Settings } from "../settings/settings-schema";
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_SETTINGS, type Settings } from '../settings/settings-schema';
 
 const xterm = vi.hoisted(() => ({
   constructorOptions: undefined as Record<string, unknown> | undefined,
@@ -16,12 +16,12 @@ const webgl = vi.hoisted(() => ({
   throwOnActivate: false,
 }));
 
-vi.mock("@xterm/xterm", () => ({
+vi.mock('@xterm/xterm', () => ({
   Terminal: class {
     options: Record<string, unknown>;
-    unicode = { activeVersion: "" };
+    unicode = { activeVersion: '' };
     parser = { registerOscHandler: () => ({ dispose() {} }) };
-    buffer = { active: { type: "normal" } };
+    buffer = { active: { type: 'normal' } };
     cols = 80;
     rows = 24;
 
@@ -53,7 +53,7 @@ vi.mock("@xterm/xterm", () => ({
   },
 }));
 
-vi.mock("@xterm/addon-webgl", () => ({
+vi.mock('@xterm/addon-webgl', () => ({
   WebglAddon: class {
     activatedAfterOpen = false;
     disposed = 0;
@@ -64,7 +64,7 @@ vi.mock("@xterm/addon-webgl", () => ({
     }
     activate() {
       this.activatedAfterOpen = xterm.opened;
-      if (webgl.throwOnActivate) throw new Error("WebGL2 unavailable");
+      if (webgl.throwOnActivate) throw new Error('WebGL2 unavailable');
     }
     onContextLoss(handler: () => void) {
       this.contextLossHandler = handler;
@@ -79,45 +79,45 @@ vi.mock("@xterm/addon-webgl", () => ({
   },
 }));
 
-vi.mock("@xterm/addon-fit", () => ({
+vi.mock('@xterm/addon-fit', () => ({
   FitAddon: class {
     fit() {}
   },
 }));
-vi.mock("@xterm/addon-search", () => ({ SearchAddon: class {} }));
-vi.mock("@xterm/addon-serialize", () => ({
+vi.mock('@xterm/addon-search', () => ({ SearchAddon: class {} }));
+vi.mock('@xterm/addon-serialize', () => ({
   SerializeAddon: class {
     serialize() {
-      return "";
+      return '';
     }
     dispose() {}
   },
 }));
-vi.mock("@xterm/addon-unicode-graphemes", () => ({
+vi.mock('@xterm/addon-unicode-graphemes', () => ({
   UnicodeGraphemesAddon: class {},
 }));
-vi.mock("./webkit-ime-fix", () => ({
+vi.mock('./webkit-ime-fix', () => ({
   applyWebkitImeFix: vi.fn(),
   isWebKitWebView: () => false,
 }));
-vi.mock("./shift-enter", () => ({ installShiftEnterNewline: () => vi.fn() }));
-vi.mock("../settings/themes", () => ({ resolveTheme: () => ({}) }));
-vi.mock("./link-provider", () => ({ createLinkProvider: () => ({}) }));
-vi.mock("./osc-link-handler", () => ({ createOscLinkHandler: () => ({}) }));
-vi.mock("./pane-cwd", () => ({ paneCwd: () => "" }));
-vi.mock("../lib/osc-notification", () => ({
+vi.mock('./shift-enter', () => ({ installShiftEnterNewline: () => vi.fn() }));
+vi.mock('../settings/themes', () => ({ resolveTheme: () => ({}) }));
+vi.mock('./link-provider', () => ({ createLinkProvider: () => ({}) }));
+vi.mock('./osc-link-handler', () => ({ createOscLinkHandler: () => ({}) }));
+vi.mock('./pane-cwd', () => ({ paneCwd: () => '' }));
+vi.mock('../lib/osc-notification', () => ({
   classifyOscNotification: () => null,
 }));
-vi.mock("./terminal-clipboard", () => ({
+vi.mock('./terminal-clipboard', () => ({
   copyTerminalSelection: vi.fn(),
   pasteIntoTerminal: vi.fn(),
 }));
-vi.mock("../lib/platform", () => ({
-  getDesktopEnvironment: () => ({ platform: "windows" }),
+vi.mock('../lib/platform', () => ({
+  getDesktopEnvironment: () => ({ platform: 'windows' }),
 }));
-vi.mock("./codex-wheel", () => ({ createCodexWheelHandler: () => vi.fn() }));
+vi.mock('./codex-wheel', () => ({ createCodexWheelHandler: () => vi.fn() }));
 
-import { createPane } from "./pane";
+import { createPane } from './pane';
 
 class ResizeObserverStub {
   observe() {}
@@ -129,7 +129,7 @@ beforeEach(() => {
   xterm.opened = false;
   webgl.instances = [];
   webgl.throwOnActivate = false;
-  vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+  vi.stubGlobal('ResizeObserver', ResizeObserverStub);
 });
 
 const events = {
@@ -140,35 +140,35 @@ const events = {
 
 const WEBGL_SETTINGS: Settings = {
   ...DEFAULT_SETTINGS,
-  terminalRenderer: "webgl",
+  terminalRenderer: 'webgl',
 };
 
-describe("createPane OpenCode glyph rendering", () => {
-  it("leaves line height alone — WebGL fills the cell, not flush rows", () => {
+describe('createPane OpenCode glyph rendering', () => {
+  it('leaves line height alone — WebGL fills the cell, not flush rows', () => {
     createPane(1, DEFAULT_SETTINGS, events);
     expect(xterm.constructorOptions?.lineHeight).toBe(1.25);
   });
 
-  it("stays on the DOM renderer under default settings", () => {
+  it('stays on the DOM renderer under default settings', () => {
     const pane = createPane(1, DEFAULT_SETTINGS, events);
     pane.mount();
     expect(webgl.instances).toHaveLength(0);
   });
 
-  it("loads WebGL only after the terminal is open", () => {
+  it('loads WebGL only after the terminal is open', () => {
     const pane = createPane(1, WEBGL_SETTINGS, events);
     pane.mount();
     expect(webgl.instances[0].activatedAfterOpen).toBe(true);
   });
 
-  it("falls back when WebGL cannot initialize", () => {
+  it('falls back when WebGL cannot initialize', () => {
     webgl.throwOnActivate = true;
     const pane = createPane(1, WEBGL_SETTINGS, events);
     expect(() => pane.mount()).not.toThrow();
     expect(webgl.instances[0].disposed).toBe(1);
   });
 
-  it("disposes WebGL on context loss", () => {
+  it('disposes WebGL on context loss', () => {
     const pane = createPane(1, WEBGL_SETTINGS, events);
     pane.mount();
     webgl.instances[0].emitContextLoss();
@@ -176,29 +176,29 @@ describe("createPane OpenCode glyph rendering", () => {
   });
 });
 
-describe("switching the renderer setting on a live pane", () => {
-  it("loads WebGL when a mounted DOM pane is switched to it", () => {
+describe('switching the renderer setting on a live pane', () => {
+  it('loads WebGL when a mounted DOM pane is switched to it', () => {
     const pane = createPane(1, DEFAULT_SETTINGS, events);
     pane.mount();
     pane.applySettings(WEBGL_SETTINGS);
     expect(webgl.instances).toHaveLength(1);
   });
 
-  it("disposes WebGL when switched back to the DOM renderer", () => {
+  it('disposes WebGL when switched back to the DOM renderer', () => {
     const pane = createPane(1, WEBGL_SETTINGS, events);
     pane.mount();
     pane.applySettings(DEFAULT_SETTINGS);
     expect(webgl.instances[0].disposed).toBe(1);
   });
 
-  it("does not stack a second addon when the setting is re-applied", () => {
+  it('does not stack a second addon when the setting is re-applied', () => {
     const pane = createPane(1, WEBGL_SETTINGS, events);
     pane.mount();
     pane.applySettings(WEBGL_SETTINGS);
     expect(webgl.instances).toHaveLength(1);
   });
 
-  it("can reload WebGL after a context loss retired the first addon", () => {
+  it('can reload WebGL after a context loss retired the first addon', () => {
     const pane = createPane(1, WEBGL_SETTINGS, events);
     pane.mount();
     webgl.instances[0].emitContextLoss();

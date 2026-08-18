@@ -1,8 +1,8 @@
-import { useSignal } from "@preact/signals";
-import { settings, updateSettings } from "../../../settings/settings-store";
-import { ToggleRow } from "../../controls/config-row";
-import { reportPersistError } from "../../../chrome/events";
-import { requestAgentNotificationPermission } from "../../../lib/native-notification";
+import { useSignal } from '@preact/signals';
+import { settings, updateSettings } from '../../../settings/settings-store';
+import { ToggleRow } from '../../controls/config-row';
+import { reportPersistError } from '../../../chrome/events';
+import { requestAgentNotificationPermission } from '../../../lib/native-notification';
 
 /** The "agent notifications" row — moved verbatim from the settings drawer this screen replaced
  * (Task 4), including its async permission guard. */
@@ -31,7 +31,7 @@ export function NotificationsSection() {
       if (granted) {
         updateSettings({ agentNotifications: true });
       } else {
-        reportPersistError("Notification permission was denied.");
+        reportPersistError('Notification permission was denied.');
       }
     } catch {
       reportPersistError("Couldn't request notification permission.");
@@ -53,9 +53,7 @@ export function NotificationsSection() {
         label="Restore sessions on launch"
         desc="Reopen last session's tabs and resume agent conversations"
         checked={current.restoreSessions}
-        onToggle={() =>
-          updateSettings({ restoreSessions: !current.restoreSessions })
-        }
+        onToggle={() => updateSettings({ restoreSessions: !current.restoreSessions })}
       />
     </>
   );

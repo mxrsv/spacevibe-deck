@@ -6,15 +6,15 @@
  * the reset button DL-6.1 already allows: a chord replaces the binding, bare
  * Backspace/Delete unbinds it, Escape cancels.
  */
-import { useEffect, useRef } from "preact/hooks";
-import { useSignal } from "@preact/signals";
-import { shortcutCaptureActive } from "../../chrome/events";
-import { suspendMenuAccelerators } from "../../host/menu-host";
-import { bindingOf, type Chord } from "../../lib/keybindings";
-import { captureChord, type CaptureRejection } from "../../lib/capture-chord";
-import { formatShortcutBinding } from "../../lib/shortcut-label";
-import type { DesktopPlatform } from "../../lib/platform";
-import type { ActionId } from "../../terminal/action-registry";
+import { useEffect, useRef } from 'preact/hooks';
+import { useSignal } from '@preact/signals';
+import { shortcutCaptureActive } from '../../chrome/events';
+import { suspendMenuAccelerators } from '../../host/menu-host';
+import { bindingOf, type Chord } from '../../lib/keybindings';
+import { captureChord, type CaptureRejection } from '../../lib/capture-chord';
+import { formatShortcutBinding } from '../../lib/shortcut-label';
+import type { DesktopPlatform } from '../../lib/platform';
+import type { ActionId } from '../../terminal/action-registry';
 
 /**
  * What a refused keystroke says.
@@ -24,16 +24,16 @@ import type { ActionId } from "../../terminal/action-registry";
  * pressed nothing at all — the user cannot tell a rule from a dead control.
  */
 const REJECTION_HINT: Readonly<Record<CaptureRejection, string>> = {
-  "modifier-only": "press keys…",
-  reserved: "Esc and Tab are reserved",
-  "system-reserved": "reserved by macOS",
-  "needs-modifier": "add ⌘, ⌃ or ⌥",
+  'modifier-only': 'press keys…',
+  reserved: 'Esc and Tab are reserved',
+  'system-reserved': 'reserved by macOS',
+  'needs-modifier': 'add ⌘, ⌃ or ⌥',
 };
 
 const WINDOWS_REJECTION_HINT: Readonly<Record<CaptureRejection, string>> = {
   ...REJECTION_HINT,
-  "system-reserved": "reserved by Windows",
-  "needs-modifier": "add Ctrl or Alt",
+  'system-reserved': 'reserved by Windows',
+  'needs-modifier': 'add Ctrl or Alt',
 };
 
 export function formatChords(
@@ -42,11 +42,11 @@ export function formatChords(
   platform: DesktopPlatform,
 ): string {
   if (chords.length === 0) {
-    return "unbound";
+    return 'unbound';
   }
   return chords
     .map((chord) => formatShortcutBinding(bindingOf(chord, action), platform))
-    .join(" · ");
+    .join(' · ');
 }
 
 interface ShortcutCaptureProps {
@@ -67,7 +67,7 @@ export function ShortcutCapture({
   onCommit,
 }: ShortcutCaptureProps) {
   const listening = useSignal(false);
-  const hint = useSignal<string>("press keys…");
+  const hint = useSignal<string>('press keys…');
   // Held in a ref so it is NOT an effect dependency. `onCommit` is a fresh
   // closure on every render of the section, and the section re-renders on any
   // settings change — including a `settings:merged` broadcast from a peer
@@ -93,23 +93,22 @@ export function ShortcutCapture({
     };
 
     const onKeyDown = (event: KeyboardEvent): void => {
-      const bare =
-        !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey;
+      const bare = !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey;
       // BARE Tab keeps moving focus — not preventDefault'ed, or this control
       // becomes a keyboard trap with no way out except the mouse. A MODIFIED
       // Tab is a real chord (Windows ships next-tab on Ctrl+Tab) and is
       // recorded like any other.
-      if (event.key === "Tab" && bare) {
+      if (event.key === 'Tab' && bare) {
         stop();
         return;
       }
       event.preventDefault();
       event.stopPropagation();
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         stop();
         return;
       }
-      if (bare && (event.key === "Backspace" || event.key === "Delete")) {
+      if (bare && (event.key === 'Backspace' || event.key === 'Delete')) {
         commitRef.current([]);
         stop();
         return;
@@ -119,7 +118,7 @@ export function ShortcutCapture({
         // Not an error to report — the user is mid-chord, still holding
         // modifiers down. Say what is missing and keep listening.
         hint.value =
-          platform === "windows"
+          platform === 'windows'
             ? WINDOWS_REJECTION_HINT[result.reason]
             : REJECTION_HINT[result.reason];
         return;
@@ -131,29 +130,27 @@ export function ShortcutCapture({
     // Capture phase, and on `window`, to match `handleShortcut`'s own
     // registration — a bubble-phase listener would see the event only after
     // xterm's textarea had already taken it.
-    window.addEventListener("keydown", onKeyDown, { capture: true });
+    window.addEventListener('keydown', onKeyDown, { capture: true });
     return () => {
-      window.removeEventListener("keydown", onKeyDown, { capture: true });
+      window.removeEventListener('keydown', onKeyDown, { capture: true });
       shortcutCaptureActive.value = false;
       void suspendMenuAccelerators(false);
     };
   }, [listening.value, action, platform]);
 
-  const text = listening.value
-    ? hint.value
-    : formatChords(chords, action, platform);
+  const text = listening.value ? hint.value : formatChords(chords, action, platform);
 
   return (
     <button
       type="button"
-      class={`cfg-btn cfg-chord ${listening.value ? "cfg-chord--listening" : ""} ${
-        chords.length === 0 ? "cfg-chord--unbound" : ""
+      class={`cfg-btn cfg-chord ${listening.value ? 'cfg-chord--listening' : ''} ${
+        chords.length === 0 ? 'cfg-chord--unbound' : ''
       }`}
       aria-label={`${label} shortcut: ${formatChords(chords, action, platform)}`}
       onClick={() => {
         // Reset the hint on the way IN, not in the effect cleanup: doing it on
         // teardown wiped "add ⌘, ⌃ or ⌥" the instant it was shown.
-        hint.value = "press keys…";
+        hint.value = 'press keys…';
         listening.value = !listening.value;
       }}
       // Clicking elsewhere, or tabbing away, ends the recording. Without this

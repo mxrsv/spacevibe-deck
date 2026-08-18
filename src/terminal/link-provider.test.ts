@@ -1,16 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ILink, Terminal } from "@xterm/xterm";
-import { createLinkProvider } from "./link-provider";
-import { createMemoryLinkClient } from "./link-client";
-import { settings } from "../settings/settings-store";
-import { DEFAULT_SETTINGS } from "../settings/settings-schema";
-import { persistError } from "../chrome/events";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ILink, Terminal } from '@xterm/xterm';
+import { createLinkProvider } from './link-provider';
+import { createMemoryLinkClient } from './link-client';
+import { settings } from '../settings/settings-store';
+import { DEFAULT_SETTINGS } from '../settings/settings-schema';
+import { persistError } from '../chrome/events';
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
 
-const CWD = "/repo";
+const CWD = '/repo';
 
 /** Minimal Terminal stand-in: unwrapped rows of text. */
 function fakeTerminalRows(rows: readonly string[]): Terminal {
@@ -30,9 +27,9 @@ function fakeTerminalRows(rows: readonly string[]): Terminal {
               if (x >= cols) {
                 return undefined;
               }
-              const char = text[x] ?? " ";
+              const char = text[x] ?? ' ';
               return {
-                getChars: () => (char === " " ? "" : char),
+                getChars: () => (char === ' ' ? '' : char),
                 getWidth: () => 1,
               };
             },
@@ -48,10 +45,7 @@ function fakeTerminal(text: string): Terminal {
   return fakeTerminalRows([text]);
 }
 
-function provide(
-  term: Terminal,
-  client: ReturnType<typeof createMemoryLinkClient>,
-) {
+function provide(term: Terminal, client: ReturnType<typeof createMemoryLinkClient>) {
   const provider = createLinkProvider(term, {
     getCwd: () => CWD,
     client,
@@ -65,141 +59,124 @@ function click(link: ILink, metaKey: boolean, ctrlKey = false): void {
   link.activate({ metaKey, ctrlKey } as MouseEvent, link.text);
 }
 
-describe("createLinkProvider", () => {
+describe('createLinkProvider', () => {
   beforeEach(() => {
     resetDesktopEnvironmentForTests();
     initializeDesktopEnvironment({
-      platform: "macos",
-      homeDir: "/Users/dev",
+      platform: 'macos',
+      homeDir: '/Users/dev',
     });
     settings.value = DEFAULT_SETTINGS;
     persistError.value = null;
   });
 
-  it("links a url and opens it in the browser on ⌘+click", async () => {
+  it('links a url and opens it in the browser on ⌘+click', async () => {
     const client = createMemoryLinkClient();
-    const links = await provide(
-      fakeTerminal("see https://example.com now"),
-      client,
-    );
+    const links = await provide(fakeTerminal('see https://example.com now'), client);
 
     expect(links).toHaveLength(1);
-    expect(links?.[0].text).toBe("https://example.com");
+    expect(links?.[0].text).toBe('https://example.com');
     click(links![0], true);
-    expect(client.openedUrls).toEqual(["https://example.com"]);
+    expect(client.openedUrls).toEqual(['https://example.com']);
     expect(client.openedEditor).toEqual([]);
   });
 
-  it("ignores a plain click so the terminal keeps it", async () => {
+  it('ignores a plain click so the terminal keeps it', async () => {
     const client = createMemoryLinkClient();
-    const links = await provide(
-      fakeTerminal("see https://example.com now"),
-      client,
-    );
+    const links = await provide(fakeTerminal('see https://example.com now'), client);
 
     click(links![0], false);
     expect(client.openedUrls).toEqual([]);
   });
 
-  it("opens with Ctrl on Windows and ignores Cmd", async () => {
+  it('opens with Ctrl on Windows and ignores Cmd', async () => {
     resetDesktopEnvironmentForTests();
     initializeDesktopEnvironment({
-      platform: "windows",
+      platform: 'windows',
       homeDir: String.raw`C:\Users\dev`,
     });
     const client = createMemoryLinkClient();
-    const links = await provide(
-      fakeTerminal("see https://example.com now"),
-      client,
-    );
+    const links = await provide(fakeTerminal('see https://example.com now'), client);
 
     click(links![0], true);
     click(links![0], false, true);
 
-    expect(client.openedUrls).toEqual(["https://example.com"]);
+    expect(client.openedUrls).toEqual(['https://example.com']);
   });
 
-  it("links only the paths that resolve to a real file", async () => {
+  it('links only the paths that resolve to a real file', async () => {
     const client = createMemoryLinkClient({ files: [`${CWD}/src/foo.ts`] });
-    const links = await provide(
-      fakeTerminal("src/foo.ts and src/gone.ts"),
-      client,
-    );
+    const links = await provide(fakeTerminal('src/foo.ts and src/gone.ts'), client);
 
-    expect(links?.map((link) => link.text)).toEqual(["src/foo.ts"]);
+    expect(links?.map((link) => link.text)).toEqual(['src/foo.ts']);
   });
 
-  it("opens the resolved file at its line and column", async () => {
+  it('opens the resolved file at its line and column', async () => {
     const client = createMemoryLinkClient({ files: [`${CWD}/src/foo.ts`] });
-    const links = await provide(
-      fakeTerminal("at src/foo.ts:12:5 boom"),
-      client,
-    );
+    const links = await provide(fakeTerminal('at src/foo.ts:12:5 boom'), client);
 
     click(links![0], true);
     expect(client.openedEditor).toEqual([
       {
-        editor: "vscode",
-        template: "",
-        file: "/repo/src/foo.ts",
+        editor: 'vscode',
+        template: '',
+        file: '/repo/src/foo.ts',
         line: 12,
         column: 5,
       },
     ]);
   });
 
-  it("uses the configured custom editor command", async () => {
+  it('uses the configured custom editor command', async () => {
     settings.value = {
       ...DEFAULT_SETTINGS,
-      editorId: "custom",
-      editorCommand: "vim +{line} {file}",
+      editorId: 'custom',
+      editorCommand: 'vim +{line} {file}',
     };
     const client = createMemoryLinkClient({ files: [`${CWD}/src/foo.ts`] });
-    const links = await provide(fakeTerminal("src/foo.ts:9"), client);
+    const links = await provide(fakeTerminal('src/foo.ts:9'), client);
 
     click(links![0], true);
     expect(client.openedEditor).toEqual([
       {
-        editor: "custom",
-        template: "vim +{line} {file}",
-        file: "/repo/src/foo.ts",
+        editor: 'custom',
+        template: 'vim +{line} {file}',
+        file: '/repo/src/foo.ts',
         line: 9,
         column: 1,
       },
     ]);
   });
 
-  it("surfaces an error when the custom editor command is blank", async () => {
+  it('surfaces an error when the custom editor command is blank', async () => {
     settings.value = {
       ...DEFAULT_SETTINGS,
-      editorId: "custom",
-      editorCommand: "",
+      editorId: 'custom',
+      editorCommand: '',
     };
     const client = createMemoryLinkClient({ files: [`${CWD}/src/foo.ts`] });
-    const links = await provide(fakeTerminal("src/foo.ts"), client);
+    const links = await provide(fakeTerminal('src/foo.ts'), client);
 
     click(links![0], true);
     expect(client.openedEditor).toEqual([]);
     expect(persistError.value).toMatch(/No editor command/);
   });
 
-  it("surfaces an editor IPC failure", async () => {
+  it('surfaces an editor IPC failure', async () => {
     const client = createMemoryLinkClient({ files: [`${CWD}/src/foo.ts`] });
-    client.openEditor = () => Promise.reject(new Error("ipc down"));
-    const links = await provide(fakeTerminal("src/foo.ts"), client);
+    client.openEditor = () => Promise.reject(new Error('ipc down'));
+    const links = await provide(fakeTerminal('src/foo.ts'), client);
 
     click(links![0], true);
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(persistError.value).toMatch(
-      /Couldn't open the editor: Error: ipc down/,
-    );
+    expect(persistError.value).toMatch(/Couldn't open the editor: Error: ipc down/);
   });
 
-  it("maps the link back onto its cells", async () => {
+  it('maps the link back onto its cells', async () => {
     const client = createMemoryLinkClient({ files: [`${CWD}/a.ts`] });
-    const links = await provide(fakeTerminal("xx a.ts"), client);
+    const links = await provide(fakeTerminal('xx a.ts'), client);
 
     // "a.ts" sits at 0-based cells 3..6 — xterm ranges are 1-based inclusive.
     expect(links?.[0].range).toEqual({
@@ -208,10 +185,10 @@ describe("createLinkProvider", () => {
     });
   });
 
-  it("resolves each line only once", async () => {
+  it('resolves each line only once', async () => {
     const client = createMemoryLinkClient({ files: [`${CWD}/a.ts`] });
-    const spy = vi.spyOn(client, "resolvePaths");
-    const term = fakeTerminal("xx a.ts");
+    const spy = vi.spyOn(client, 'resolvePaths');
+    const term = fakeTerminal('xx a.ts');
     const provider = createLinkProvider(term, { getCwd: () => CWD, client });
 
     await new Promise<void>((done) => provider.provideLinks(1, () => done()));
@@ -220,10 +197,10 @@ describe("createLinkProvider", () => {
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it("yields no links when resolution fails, and says why", async () => {
+  it('yields no links when resolution fails, and says why', async () => {
     const client = createMemoryLinkClient();
-    vi.spyOn(client, "resolvePaths").mockRejectedValue(new Error("ipc down"));
-    const links = await provide(fakeTerminal("src/foo.ts"), client);
+    vi.spyOn(client, 'resolvePaths').mockRejectedValue(new Error('ipc down'));
+    const links = await provide(fakeTerminal('src/foo.ts'), client);
 
     expect(links).toBeUndefined();
     // Without this the backend going down looks exactly like a detection bug:
@@ -231,14 +208,12 @@ describe("createLinkProvider", () => {
     expect(persistError.value).toMatch(/ipc down/);
   });
 
-  it("retries a line whose paths did not resolve the first time", async () => {
+  it('retries a line whose paths did not resolve the first time', async () => {
     vi.useFakeTimers();
     try {
       const client = createMemoryLinkClient();
-      const spy = vi
-        .spyOn(client, "resolvePaths")
-        .mockResolvedValue([null] as (string | null)[]);
-      const term = fakeTerminal("xx a.ts");
+      const spy = vi.spyOn(client, 'resolvePaths').mockResolvedValue([null] as (string | null)[]);
+      const term = fakeTerminal('xx a.ts');
       const provider = createLinkProvider(term, { getCwd: () => CWD, client });
       const hover = (): Promise<ILink[] | undefined> =>
         new Promise((resolve) => provider.provideLinks(1, resolve));
@@ -250,23 +225,23 @@ describe("createLinkProvider", () => {
       spy.mockResolvedValue([`${CWD}/a.ts`]);
       vi.advanceTimersByTime(6_000);
 
-      expect((await hover())?.map((link) => link.text)).toEqual(["a.ts"]);
+      expect((await hover())?.map((link) => link.text)).toEqual(['a.ts']);
       expect(spy).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("drops a reply the pointer has already moved past", async () => {
+  it('drops a reply the pointer has already moved past', async () => {
     const pending: ((value: (string | null)[]) => void)[] = [];
     const client = createMemoryLinkClient();
-    vi.spyOn(client, "resolvePaths").mockImplementation(
+    vi.spyOn(client, 'resolvePaths').mockImplementation(
       () =>
         new Promise<(string | null)[]>((resolve) => {
           pending.push(resolve);
         }),
     );
-    const provider = createLinkProvider(fakeTerminalRows(["a.ts", "b.ts"]), {
+    const provider = createLinkProvider(fakeTerminalRows(['a.ts', 'b.ts']), {
       getCwd: () => CWD,
       client,
     });

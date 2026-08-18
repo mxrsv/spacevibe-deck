@@ -1,4 +1,4 @@
-import { TAB_DOT_COLORS, type TabDotColor } from "./tab-colors";
+import { TAB_DOT_COLORS, type TabDotColor } from './tab-colors';
 
 export interface LetterAvatar {
   /** Single uppercase glyph shown when a workspace has no image logo. */
@@ -14,7 +14,7 @@ function firstLetter(label: string): string {
       return char.toUpperCase();
     }
   }
-  return "?";
+  return '?';
 }
 
 /** Stable non-negative hash (djb2) — same seed always maps to the same color. */

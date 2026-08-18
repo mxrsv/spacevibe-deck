@@ -1,17 +1,17 @@
-import { settings } from "../settings/settings-store";
-import { getPreset } from "../settings/themes";
-import { statusInfo } from "../terminal/tabs-store";
-import { tildify } from "../lib/process-info";
-import { shortcutLabel } from "../lib/shortcut-label";
-import { activeFileTab, documentFor } from "../files/file-surface-store";
-import { currentFileStatus } from "../files/file-status";
+import { settings } from '../settings/settings-store';
+import { getPreset } from '../settings/themes';
+import { statusInfo } from '../terminal/tabs-store';
+import { tildify } from '../lib/process-info';
+import { shortcutLabel } from '../lib/shortcut-label';
+import { activeFileTab, documentFor } from '../files/file-surface-store';
+import { currentFileStatus } from '../files/file-status';
 
 export function StatusBar() {
   const info = statusInfo.value;
   const themeLabel = getPreset(settings.value.themeId).label;
   const cwd = info.cwd === null ? null : tildify(info.cwd, info.home);
-  const splitRow = shortcutLabel("split-row");
-  const newTab = shortcutLabel("new-tab");
+  const splitRow = shortcutLabel('split-row');
+  const newTab = shortcutLabel('new-tab');
   // A file surface reads its own branch of `statusInfo` — relative path,
   // dirty, position and encoding/EOL, instead of cwd and pane count (spec
   // §7). `currentFileStatus()` is null the instant a terminal tab holds the
@@ -33,11 +33,7 @@ export function StatusBar() {
         <span class="status__seg">
           {fileStatus.relativePath}
           {fileDirty && (
-            <span
-              class="status__dirty-dot"
-              aria-hidden="true"
-              title="Unsaved changes"
-            />
+            <span class="status__dirty-dot" aria-hidden="true" title="Unsaved changes" />
           )}
         </span>
       ) : (
@@ -64,7 +60,7 @@ export function StatusBar() {
           // as a broken window rather than a different kind of surface.
           info.paneCount !== null && (
             <span class="status__seg">
-              {info.paneCount} {info.paneCount === 1 ? "pane" : "panes"}
+              {info.paneCount} {info.paneCount === 1 ? 'pane' : 'panes'}
             </span>
           )
         )}

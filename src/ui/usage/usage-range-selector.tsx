@@ -1,6 +1,6 @@
-import { useRef } from "preact/hooks";
-import { activeUsageRange } from "./active-usage-view-store";
-import { USAGE_RANGES } from "./usage-ranges";
+import { useRef } from 'preact/hooks';
+import { activeUsageRange } from './active-usage-view-store';
+import { USAGE_RANGES } from './usage-ranges';
 
 /**
  * The period the display figure covers (DL-16.7) — the only control this
@@ -30,29 +30,22 @@ export function UsageRangeSelector() {
 
   const handleKeyDown = (event: KeyboardEvent): void => {
     let step: 1 | -1;
-    if (event.key === "ArrowRight") {
+    if (event.key === 'ArrowRight') {
       step = 1;
-    } else if (event.key === "ArrowLeft") {
+    } else if (event.key === 'ArrowLeft') {
       step = -1;
     } else {
       return;
     }
     event.preventDefault();
     const length = USAGE_RANGES.length;
-    const currentIndex = USAGE_RANGES.findIndex(
-      (range) => range.id === activeUsageRange.value,
-    );
+    const currentIndex = USAGE_RANGES.findIndex((range) => range.id === activeUsageRange.value);
     const from = currentIndex === -1 ? 0 : currentIndex;
     selectRange((from + step + length) % length);
   };
 
   return (
-    <div
-      class="usage-range"
-      role="tablist"
-      aria-label="Cost range"
-      onKeyDown={handleKeyDown}
-    >
+    <div class="usage-range" role="tablist" aria-label="Cost range" onKeyDown={handleKeyDown}>
       {USAGE_RANGES.map((range, index) => {
         const isActive = range.id === activeUsageRange.value;
         return (
@@ -65,7 +58,7 @@ export function UsageRangeSelector() {
             role="tab"
             aria-selected={isActive}
             tabIndex={isActive ? 0 : -1}
-            class={`usage-range__option ${isActive ? "is-active" : ""}`}
+            class={`usage-range__option ${isActive ? 'is-active' : ''}`}
             onClick={() => selectRange(index)}
           >
             {range.label}

@@ -1,7 +1,7 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
 
 /**
  * The migration to one icon library is only worth anything if it holds. It has
@@ -16,15 +16,12 @@ import { describe, expect, it } from "vitest";
  * imperative DOM, so "icons live in components" is a habit, not a guarantee.
  */
 
-const pathFromFileUrl = (
-  url: URL,
-  windows = process.platform === "win32",
-): string => fileURLToPath(url, { windows });
+const pathFromFileUrl = (url: URL, windows = process.platform === 'win32'): string =>
+  fileURLToPath(url, { windows });
 
-const normalizeRelativePath = (path: string): string =>
-  path.replaceAll("\\", "/");
+const normalizeRelativePath = (path: string): string => path.replaceAll('\\', '/');
 
-const SOURCE_ROOT = pathFromFileUrl(new URL("../src/", import.meta.url));
+const SOURCE_ROOT = pathFromFileUrl(new URL('../src/', import.meta.url));
 
 /**
  * The SVG that is not a functional icon, with the count its file is
@@ -34,7 +31,7 @@ const SOURCE_ROOT = pathFromFileUrl(new URL("../src/", import.meta.url));
 const ALLOWED_SVG: ReadonlyMap<string, number> = new Map([
   // The agent-pending ring: ticks positioned by hand and spun by CSS. No
   // library icon expresses it, and it is a status visual, not an action.
-  ["ui/workspace-spinner.tsx", 1],
+  ['ui/workspace-spinner.tsx', 1],
 ]);
 
 /**
@@ -43,14 +40,14 @@ const ALLOWED_SVG: ReadonlyMap<string, number> = new Map([
  * is not an action.
  */
 const RETIRED_GLYPHS: ReadonlyArray<{ glyph: string; meant: string }> = [
-  { glyph: "↩", meant: "inject/submit" },
-  { glyph: "▾", meant: "disclosure" },
-  { glyph: "‹", meant: "previous" },
-  { glyph: "›", meant: "next" },
-  { glyph: "×", meant: "remove/close" },
-  { glyph: "＋", meant: "add" },
-  { glyph: "↹", meant: "cycle" },
-  { glyph: "↺", meant: "reset" },
+  { glyph: '↩', meant: 'inject/submit' },
+  { glyph: '▾', meant: 'disclosure' },
+  { glyph: '‹', meant: 'previous' },
+  { glyph: '›', meant: 'next' },
+  { glyph: '×', meant: 'remove/close' },
+  { glyph: '＋', meant: 'add' },
+  { glyph: '↹', meant: 'cycle' },
+  { glyph: '↺', meant: 'reset' },
 ];
 
 /**
@@ -59,16 +56,16 @@ const RETIRED_GLYPHS: ReadonlyArray<{ glyph: string; meant: string }> = [
  * assert on them.
  */
 const GLYPH_EXEMPT = (path: string): boolean =>
-  path.endsWith(".test.ts") ||
-  path.endsWith(".test.tsx") ||
-  path === "lib/shortcut-label.ts" ||
-  path === "terminal/link-provider.ts" ||
-  path === "open-board/workspaces-store.ts" ||
+  path.endsWith('.test.ts') ||
+  path.endsWith('.test.tsx') ||
+  path === 'lib/shortcut-label.ts' ||
+  path === 'terminal/link-provider.ts' ||
+  path === 'open-board/workspaces-store.ts' ||
   // Its tooltips spell the Enter key as `⇧↩` / `↩`. Same character as the
   // Prompt Board's retired inject glyph, opposite meaning — one names a key,
   // the other named an action. The Paste/Send icons are asserted directly in
   // `prompt-popover.test.tsx`, so nothing is lost by exempting this file.
-  path === "terminal/search-bar.ts";
+  path === 'terminal/search-bar.ts';
 
 function sourceFiles(dir = SOURCE_ROOT): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -76,61 +73,54 @@ function sourceFiles(dir = SOURCE_ROOT): string[] {
     if (entry.isDirectory()) {
       return sourceFiles(full);
     }
-    return entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")
-      ? [full]
-      : [];
+    return entry.name.endsWith('.tsx') || entry.name.endsWith('.ts') ? [full] : [];
   });
 }
 
 const files = sourceFiles().map((full) => ({
   path: normalizeRelativePath(relative(SOURCE_ROOT, full)),
-  text: readFileSync(full, "utf8"),
+  text: readFileSync(full, 'utf8'),
 }));
 
-describe("icon system", () => {
-  it("converts Windows file URLs without duplicating the drive root", () => {
-    expect(
-      pathFromFileUrl(new URL("file:///D:/a/spacevibe-deck/src/"), true),
-    ).toBe("D:\\a\\spacevibe-deck\\src\\");
-  });
-
-  it("normalizes Windows separators for platform-neutral allowlists", () => {
-    expect(normalizeRelativePath("open-board\\open-board.tsx")).toBe(
-      "open-board/open-board.tsx",
+describe('icon system', () => {
+  it('converts Windows file URLs without duplicating the drive root', () => {
+    expect(pathFromFileUrl(new URL('file:///D:/a/spacevibe-deck/src/'), true)).toBe(
+      'D:\\a\\spacevibe-deck\\src\\',
     );
   });
 
-  it("finds source files at all — a silent empty scan would pass everything", () => {
+  it('normalizes Windows separators for platform-neutral allowlists', () => {
+    expect(normalizeRelativePath('open-board\\open-board.tsx')).toBe('open-board/open-board.tsx');
+  });
+
+  it('finds source files at all — a silent empty scan would pass everything', () => {
     expect(files.length).toBeGreaterThan(50);
   });
 
-  it("authors no SVG outside the two documented exceptions", () => {
+  it('authors no SVG outside the two documented exceptions', () => {
     const drawn = files
       .map(({ path, text }) => ({
         path,
-        count: text.split("<svg").length - 1,
+        count: text.split('<svg').length - 1,
       }))
       .filter(({ count }) => count > 0);
 
-    const unexpected = drawn.filter(
-      ({ path, count }) => ALLOWED_SVG.get(path) !== count,
-    );
+    const unexpected = drawn.filter(({ path, count }) => ALLOWED_SVG.get(path) !== count);
 
     expect(
       unexpected.map(
-        ({ path, count }) =>
-          `${path}: ${count} <svg>, allowed ${ALLOWED_SVG.get(path) ?? 0}`,
+        ({ path, count }) => `${path}: ${count} <svg>, allowed ${ALLOWED_SVG.get(path) ?? 0}`,
       ),
     ).toEqual([]);
   });
 
-  it("keeps every allowed exception alive, so the list cannot rot", () => {
+  it('keeps every allowed exception alive, so the list cannot rot', () => {
     for (const path of ALLOWED_SVG.keys()) {
       expect(files.some((file) => file.path === path)).toBe(true);
     }
   });
 
-  it("does not put a retired glyph back to work as an icon", () => {
+  it('does not put a retired glyph back to work as an icon', () => {
     const offenders = files
       .filter(({ path }) => !GLYPH_EXEMPT(path))
       .flatMap(({ path, text }) =>

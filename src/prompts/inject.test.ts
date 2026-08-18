@@ -1,26 +1,24 @@
-import { describe, expect, it, vi } from "vitest";
-import { capturePromptTarget, submitAllowed } from "./inject";
-import { createMemoryPtyClient } from "../terminal/pty-client";
-import type { PaneAttentionSnapshot } from "../terminal/agent-attention";
-import type { PaneProcessInfo } from "../lib/process-info";
+import { describe, expect, it, vi } from 'vitest';
+import { capturePromptTarget, submitAllowed } from './inject';
+import { createMemoryPtyClient } from '../terminal/pty-client';
+import type { PaneAttentionSnapshot } from '../terminal/agent-attention';
+import type { PaneProcessInfo } from '../lib/process-info';
 
 const agentInfo = (patch: Partial<PaneProcessInfo> = {}): PaneProcessInfo => ({
   id: 1,
-  cwd: "/repo",
-  process: "claude",
-  kind: "agent",
-  agent: "claude",
+  cwd: '/repo',
+  process: 'claude',
+  kind: 'agent',
+  agent: 'claude',
   ...patch,
 });
 
-const idle = (
-  patch: Partial<PaneAttentionSnapshot> = {},
-): PaneAttentionSnapshot => ({
-  phase: "idle",
-  attention: "none",
+const idle = (patch: Partial<PaneAttentionSnapshot> = {}): PaneAttentionSnapshot => ({
+  phase: 'idle',
+  attention: 'none',
   source: null,
-  confidence: "explicit",
-  agentLabel: "claude",
+  confidence: 'explicit',
+  agentLabel: 'claude',
   unread: false,
   hasRun: false,
   changedAt: 0,
@@ -28,11 +26,11 @@ const idle = (
   ...patch,
 });
 
-describe("submitAllowed", () => {
-  it("passes when all three gates hold", () => {
+describe('submitAllowed', () => {
+  it('passes when all three gates hold', () => {
     expect(
       submitAllowed({
-        expectedAgent: "claude",
+        expectedAgent: 'claude',
         info: agentInfo(),
         attention: idle(),
         alive: true,
@@ -40,30 +38,30 @@ describe("submitAllowed", () => {
     ).toBe(true);
   });
 
-  it("passes on a completed run — the agent is done, not mid-dialog", () => {
+  it('passes on a completed run — the agent is done, not mid-dialog', () => {
     expect(
       submitAllowed({
-        expectedAgent: "claude",
+        expectedAgent: 'claude',
         info: agentInfo(),
-        attention: idle({ attention: "completed" }),
+        attention: idle({ attention: 'completed' }),
         alive: true,
       }),
     ).toBe(true);
   });
 
-  it("fails gate 1 when the pane is no longer that agent", () => {
+  it('fails gate 1 when the pane is no longer that agent', () => {
     expect(
       submitAllowed({
-        expectedAgent: "claude",
-        info: agentInfo({ kind: "idle-shell", agent: null }),
+        expectedAgent: 'claude',
+        info: agentInfo({ kind: 'idle-shell', agent: null }),
         attention: idle(),
         alive: true,
       }),
     ).toBe(false);
     expect(
       submitAllowed({
-        expectedAgent: "claude",
-        info: agentInfo({ agent: "codex", process: "codex" }),
+        expectedAgent: 'claude',
+        info: agentInfo({ agent: 'codex', process: 'codex' }),
         attention: idle(),
         alive: true,
       }),
@@ -78,7 +76,7 @@ describe("submitAllowed", () => {
     ).toBe(false);
     expect(
       submitAllowed({
-        expectedAgent: "claude",
+        expectedAgent: 'claude',
         info: undefined,
         attention: idle(),
         alive: true,
@@ -86,16 +84,16 @@ describe("submitAllowed", () => {
     ).toBe(false);
   });
 
-  it("fails gate 2 while working or while attention is latched", () => {
+  it('fails gate 2 while working or while attention is latched', () => {
     for (const attention of [
-      idle({ phase: "working" }),
-      idle({ attention: "requested" }),
-      idle({ attention: "warning" }),
-      idle({ attention: "error" }),
+      idle({ phase: 'working' }),
+      idle({ attention: 'requested' }),
+      idle({ attention: 'warning' }),
+      idle({ attention: 'error' }),
     ]) {
       expect(
         submitAllowed({
-          expectedAgent: "claude",
+          expectedAgent: 'claude',
           info: agentInfo(),
           attention,
           alive: true,
@@ -104,7 +102,7 @@ describe("submitAllowed", () => {
     }
     expect(
       submitAllowed({
-        expectedAgent: "claude",
+        expectedAgent: 'claude',
         info: agentInfo(),
         attention: null,
         alive: true,
@@ -112,10 +110,10 @@ describe("submitAllowed", () => {
     ).toBe(false);
   });
 
-  it("fails gate 3 when the pane is gone from the layout", () => {
+  it('fails gate 3 when the pane is gone from the layout', () => {
     expect(
       submitAllowed({
-        expectedAgent: "claude",
+        expectedAgent: 'claude',
         info: agentInfo(),
         attention: idle(),
         alive: false,
@@ -124,48 +122,46 @@ describe("submitAllowed", () => {
   });
 });
 
-describe("capturePromptTarget", () => {
-  it("snapshots the pane, its agent and its cwd", async () => {
+describe('capturePromptTarget', () => {
+  it('snapshots the pane, its agent and its cwd', async () => {
     const pty = createMemoryPtyClient({
       infos: new Map([[7, agentInfo({ id: 7 })]]),
     });
     await expect(capturePromptTarget(7, pty)).resolves.toEqual({
       paneId: 7,
-      agent: "claude",
-      cwd: "/repo",
+      agent: 'claude',
+      cwd: '/repo',
     });
   });
 
-  it("reports a bare shell as no agent, not as a missing target", async () => {
+  it('reports a bare shell as no agent, not as a missing target', async () => {
     const info = agentInfo({
       id: 8,
-      kind: "idle-shell",
+      kind: 'idle-shell',
       agent: null,
-      process: "zsh",
+      process: 'zsh',
     });
     const pty = createMemoryPtyClient({ infos: new Map([[8, info]]) });
     await expect(capturePromptTarget(8, pty)).resolves.toEqual({
       paneId: 8,
       agent: null,
-      cwd: "/repo",
+      cwd: '/repo',
     });
   });
 
-  it("forwards declared-agent matchers to the fresh process snapshot", async () => {
+  it('forwards declared-agent matchers to the fresh process snapshot', async () => {
     const base = createMemoryPtyClient({
-      infos: new Map([[7, agentInfo({ id: 7, agent: "Aider" })]]),
+      infos: new Map([[7, agentInfo({ id: 7, agent: 'Aider' })]]),
     });
     const pty = { ...base, ptyInfo: vi.fn(base.ptyInfo) };
-    const matchers = [{ binary: "aider", agent: "Aider" }];
+    const matchers = [{ binary: 'aider', agent: 'Aider' }];
 
     await capturePromptTarget(7, pty, matchers);
 
     expect(pty.ptyInfo).toHaveBeenCalledWith([7], matchers);
   });
 
-  it("has no target with no active pane", async () => {
-    await expect(
-      capturePromptTarget(null, createMemoryPtyClient()),
-    ).resolves.toBeNull();
+  it('has no target with no active pane', async () => {
+    await expect(capturePromptTarget(null, createMemoryPtyClient())).resolves.toBeNull();
   });
 });

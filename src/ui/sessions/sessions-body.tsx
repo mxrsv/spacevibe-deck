@@ -1,7 +1,7 @@
-import type { SessionEntry } from "../../lib/session-history";
-import { sessionAgentFilter } from "../../sessions/sessions-store";
-import { SessionsNav, sessionsTabId, SESSIONS_PANEL_ID } from "./sessions-nav";
-import { SessionsList } from "./sessions-list";
+import type { SessionEntry } from '../../lib/session-history';
+import { sessionAgentFilter } from '../../sessions/sessions-store';
+import { SessionsNav, sessionsTabId, SESSIONS_PANEL_ID } from './sessions-nav';
+import { SessionsList } from './sessions-list';
 
 interface SessionsBodyProps {
   /**
@@ -14,7 +14,7 @@ interface SessionsBodyProps {
    * beside it (DL-19.8), because a 360-560px column has no prose width to
    * rent out to a second vertical rail. See `styles.css` for both classes.
    */
-  variant?: "screen" | "dock";
+  variant?: 'screen' | 'dock';
   onResume(entry: SessionEntry): void;
 }
 
@@ -28,13 +28,10 @@ interface SessionsBodyProps {
  * renamed or restructured (session history spec still open on an unmerged
  * branch; keeping this cheap to redo later).
  */
-export function SessionsBody({
-  variant = "screen",
-  onResume,
-}: SessionsBodyProps) {
+export function SessionsBody({ variant = 'screen', onResume }: SessionsBodyProps) {
   const content = (
     <>
-      <SessionsNav variant={variant === "dock" ? "compact" : "rail"} />
+      <SessionsNav variant={variant === 'dock' ? 'compact' : 'rail'} />
       <section
         class="sessions-screen__section"
         id={SESSIONS_PANEL_ID}
@@ -46,7 +43,7 @@ export function SessionsBody({
     </>
   );
 
-  if (variant === "dock") {
+  if (variant === 'dock') {
     return <div class="sessions-body sessions-body--dock">{content}</div>;
   }
 

@@ -103,7 +103,7 @@
   cursor: row-resize;
 }
 .mock-divider::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: -3px;
 }

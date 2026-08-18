@@ -1,13 +1,13 @@
-import { resumeLookup } from "../host/resume-host";
-import { defaultFileClient } from "../files/file-client";
-import { defaultPtyClient } from "../terminal/pty-client";
+import { resumeLookup } from '../host/resume-host';
+import { defaultFileClient } from '../files/file-client';
+import { defaultPtyClient } from '../terminal/pty-client';
 import {
   clearWindowRecord,
   readWindowRecords,
   sessionRestoreMarker,
-} from "../terminal/session-journal";
-import { settings } from "../settings/settings-store";
-import type { RestoreDeps } from "../terminal/session-restore";
+} from '../terminal/session-journal';
+import { settings } from '../settings/settings-store';
+import type { RestoreDeps } from '../terminal/session-restore';
 
 /**
  * Bundles `restoreSession`'s dependencies from the app's real hosts —
@@ -16,8 +16,8 @@ import type { RestoreDeps } from "../terminal/session-restore";
  * wiring of the existing clients and the session-journal module.
  */
 export function restoreDeps(deps: {
-  readonly manager: RestoreDeps["manager"];
-  readonly files: RestoreDeps["files"];
+  readonly manager: RestoreDeps['manager'];
+  readonly files: RestoreDeps['files'];
 }): RestoreDeps {
   return {
     manager: deps.manager,
@@ -41,8 +41,8 @@ export function restoreDeps(deps: {
  * journal and no crash-loop marker to bundle.
  */
 export function railResumeDeps(
-  manager: RestoreDeps["manager"],
-): Pick<RestoreDeps, "manager" | "dirsExist" | "lookup" | "customAgents"> {
+  manager: RestoreDeps['manager'],
+): Pick<RestoreDeps, 'manager' | 'dirsExist' | 'lookup' | 'customAgents'> {
   return {
     manager,
     dirsExist: (paths) => defaultPtyClient.dirsExist(paths),

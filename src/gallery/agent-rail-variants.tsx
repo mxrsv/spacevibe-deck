@@ -1,7 +1,7 @@
-import { AgentGlyph } from "../ui/controls/agent-glyph";
-import type { PaneAgent } from "../lib/process-info";
-import type { RailState } from "../ui/agent-rail-model";
-import { RailStatusMark } from "../ui/agent-rail";
+import { AgentGlyph } from '../ui/controls/agent-glyph';
+import type { PaneAgent } from '../lib/process-info';
+import type { RailState } from '../ui/agent-rail-model';
+import { RailStatusMark } from '../ui/agent-rail';
 
 /**
  * Gallery-only COMPARISON of candidate row structures for the agent rail —
@@ -54,86 +54,86 @@ interface VariantCluster {
  */
 const CLUSTERS: readonly VariantCluster[] = [
   {
-    project: "spacevibe-active",
+    project: 'spacevibe-active',
     labelled: true,
     tabs: [
       {
-        id: "active-claude-1",
-        name: "claude",
-        agents: [{ agent: "claude", state: "working" }],
-        state: "working",
-        age: "6m",
+        id: 'active-claude-1',
+        name: 'claude',
+        agents: [{ agent: 'claude', state: 'working' }],
+        state: 'working',
+        age: '6m',
       },
       {
-        id: "active-claude-2",
-        name: "claude",
-        agents: [{ agent: "claude", state: "working" }],
-        state: "working",
-        age: "2m",
+        id: 'active-claude-2',
+        name: 'claude',
+        agents: [{ agent: 'claude', state: 'working' }],
+        state: 'working',
+        age: '2m',
         active: true,
       },
       {
-        id: "active-codex",
-        name: "codex",
-        agents: [{ agent: "codex", state: "done" }],
-        state: "done",
-        age: "5m",
+        id: 'active-codex',
+        name: 'codex',
+        agents: [{ agent: 'codex', state: 'done' }],
+        state: 'done',
+        age: '5m',
       },
       {
-        id: "active-sweep",
-        name: "test sweep",
+        id: 'active-sweep',
+        name: 'test sweep',
         agents: [
-          { agent: "opencode", state: "working" },
-          { agent: "codex", state: "idle" },
-          { agent: "gemini", state: "idle" },
+          { agent: 'opencode', state: 'working' },
+          { agent: 'codex', state: 'idle' },
+          { agent: 'gemini', state: 'idle' },
         ],
-        state: "working",
-        age: "now",
-        message: "42 tests passed, wiring the dock next",
+        state: 'working',
+        age: 'now',
+        message: '42 tests passed, wiring the dock next',
       },
     ],
   },
   {
-    project: "spacevibe-academy",
+    project: 'spacevibe-academy',
     labelled: false,
     tabs: [
       {
-        id: "academy",
-        name: "spacevibe-academy",
-        agents: [{ agent: "claude", state: "idle" }],
-        state: "idle",
-        age: "",
+        id: 'academy',
+        name: 'spacevibe-academy',
+        agents: [{ agent: 'claude', state: 'idle' }],
+        state: 'idle',
+        age: '',
       },
     ],
   },
 ];
 
-type VariantKind = "archive" | "inline" | "card" | "upper";
+type VariantKind = 'archive' | 'inline' | 'card' | 'upper';
 
 const VARIANTS = [
   {
-    kind: "archive",
-    index: "A",
-    label: "Archived two-line shape",
-    note: "Retired 2026-08-16 · trailing chips · historical baseline",
+    kind: 'archive',
+    index: 'A',
+    label: 'Archived two-line shape',
+    note: 'Retired 2026-08-16 · trailing chips · historical baseline',
   },
   {
-    kind: "inline",
-    index: "B",
-    label: "One line, glyph leads",
-    note: "Logo opens the row · age beside the mark · a second line only when a turn exists",
+    kind: 'inline',
+    index: 'B',
+    label: 'One line, glyph leads',
+    note: 'Logo opens the row · age beside the mark · a second line only when a turn exists',
   },
   {
-    kind: "card",
-    index: "C",
-    label: "Cluster as inset card",
+    kind: 'card',
+    index: 'C',
+    label: 'Cluster as inset card',
     note: "B's rows · a labelled project stands in a recessed frame",
   },
   {
-    kind: "upper",
-    index: "D",
-    label: "B + uppercase header",
-    note: "Needs a DL-4.3 exception to ship — drawn to judge, not to keep",
+    kind: 'upper',
+    index: 'D',
+    label: 'B + uppercase header',
+    note: 'Needs a DL-4.3 exception to ship — drawn to judge, not to keep',
   },
 ] as const satisfies readonly {
   readonly kind: VariantKind;
@@ -150,11 +150,7 @@ function Logos({ agents }: { readonly agents: readonly VariantAgent[] }) {
   return (
     <span class="gxa-logos">
       {agents.map((entry) => (
-        <AgentGlyph
-          key={entry.agent}
-          agent={entry.agent}
-          className="gxa-logo"
-        />
+        <AgentGlyph key={entry.agent} agent={entry.agent} className="gxa-logo" />
       ))}
     </span>
   );
@@ -169,7 +165,7 @@ function ArchivedRow({ tab }: { readonly tab: VariantTab }) {
         <Logos agents={tab.agents} />
         <Mark state={tab.state} />
       </div>
-      {tab.age !== "" && <span class="gxa-archive-meta">{tab.age}</span>}
+      {tab.age !== '' && <span class="gxa-archive-meta">{tab.age}</span>}
     </div>
   );
 }
@@ -196,15 +192,15 @@ function ClusterBlock({
   readonly cluster: VariantCluster;
   readonly kind: VariantKind;
 }) {
-  const Row = kind === "archive" ? ArchivedRow : InlineRow;
+  const Row = kind === 'archive' ? ArchivedRow : InlineRow;
   const head =
-    kind === "archive"
-      ? "gxa-head gxa-head--archive"
-      : kind === "upper"
-        ? "gxa-head gxa-head--upper"
-        : "gxa-head gxa-head--label";
+    kind === 'archive'
+      ? 'gxa-head gxa-head--archive'
+      : kind === 'upper'
+        ? 'gxa-head gxa-head--upper'
+        : 'gxa-head gxa-head--label';
   const rows = cluster.tabs.map((tab) => <Row key={tab.id} tab={tab} />);
-  if (kind === "card" && cluster.labelled) {
+  if (kind === 'card' && cluster.labelled) {
     return (
       <section class="gxa-card">
         <span class={head}>{cluster.project}</span>
@@ -233,11 +229,7 @@ export function agentRailVariantsSpecimen() {
           </header>
           <div class="gxa-rail">
             {CLUSTERS.map((cluster) => (
-              <ClusterBlock
-                key={cluster.project}
-                cluster={cluster}
-                kind={variant.kind}
-              />
+              <ClusterBlock key={cluster.project} cluster={cluster} kind={variant.kind} />
             ))}
           </div>
         </article>
@@ -248,38 +240,38 @@ export function agentRailVariantsSpecimen() {
 
 /* ------------------------------------------------ resting mark candidates */
 
-type MarkKind = "ring" | "dot" | "presence" | "core" | "breathe";
+type MarkKind = 'ring' | 'dot' | 'presence' | 'core' | 'breathe';
 
 const MARKS = [
   {
-    kind: "ring",
-    index: "R1",
-    label: "Hairline ring",
-    note: "Earlier bare-ring direction — retired by R4",
+    kind: 'ring',
+    index: 'R1',
+    label: 'Hairline ring',
+    note: 'Earlier bare-ring direction — retired by R4',
   },
   {
-    kind: "dot",
-    index: "R2",
-    label: "Soft dot",
-    note: "Filled and neutral: present rather than hollow",
+    kind: 'dot',
+    index: 'R2',
+    label: 'Soft dot',
+    note: 'Filled and neutral: present rather than hollow',
   },
   {
-    kind: "presence",
-    index: "R3",
-    label: "Presence green",
+    kind: 'presence',
+    index: 'R3',
+    label: 'Presence green',
     note: "Conflicts with done's green — cannot ship without reopening the closed palette",
   },
   {
-    kind: "core",
-    index: "R4",
-    label: "Ring with a core",
-    note: "Shipping — the ring keeps a small neutral core",
+    kind: 'core',
+    index: 'R4',
+    label: 'Ring with a core',
+    note: 'Shipping — the ring keeps a small neutral core',
   },
   {
-    kind: "breathe",
-    index: "R5",
-    label: "Breathing ring",
-    note: "Slow opacity pulse — judge it LIVE, a still cannot show it; needs a DL-1.2 exception like the working arc",
+    kind: 'breathe',
+    index: 'R5',
+    label: 'Breathing ring',
+    note: 'Slow opacity pulse — judge it LIVE, a still cannot show it; needs a DL-1.2 exception like the working arc',
   },
 ] as const satisfies readonly {
   readonly kind: MarkKind;
@@ -305,11 +297,7 @@ function MarkRow({
           <AgentGlyph agent={agent} className="gxa-logo" />
         </span>
         <strong class="gxa-name">{name}</strong>
-        <span
-          class={`gxa-mark gxa-mark--${kind}`}
-          data-state="idle"
-          aria-hidden="true"
-        />
+        <span class={`gxa-mark gxa-mark--${kind}`} data-state="idle" aria-hidden="true" />
       </div>
     </div>
   );
@@ -327,28 +315,28 @@ function MarkRow({
 export function statePaletteSpecimen() {
   const rows = [
     {
-      state: "failed" as RailState,
-      agent: "agy" as PaneAgent,
-      note: "filled red dot — crashed; the loudest, and no halo: it is not asking",
+      state: 'failed' as RailState,
+      agent: 'agy' as PaneAgent,
+      note: 'filled red dot — crashed; the loudest, and no halo: it is not asking',
     },
     {
-      state: "asked" as RailState,
-      agent: "claude" as PaneAgent,
-      note: "yellow dot with a halo — needs your eyes: asking, waiting for permission, OR finished and unchecked (unread folded in here for now, owner 2026-08-16)",
+      state: 'asked' as RailState,
+      agent: 'claude' as PaneAgent,
+      note: 'yellow dot with a halo — needs your eyes: asking, waiting for permission, OR finished and unchecked (unread folded in here for now, owner 2026-08-16)',
     },
     {
-      state: "working" as RailState,
-      agent: "opencode" as PaneAgent,
-      note: "open arc, turning — the one animated mark (scoped DL-1.2 exception)",
+      state: 'working' as RailState,
+      agent: 'opencode' as PaneAgent,
+      note: 'open arc, turning — the one animated mark (scoped DL-1.2 exception)',
     },
     {
-      state: "done" as RailState,
-      agent: "gemini" as PaneAgent,
-      note: "green Phosphor check — it ran and you checked it",
+      state: 'done' as RailState,
+      agent: 'gemini' as PaneAgent,
+      note: 'green Phosphor check — it ran and you checked it',
     },
     {
-      state: "idle" as RailState,
-      agent: "claude" as PaneAgent,
+      state: 'idle' as RailState,
+      agent: 'claude' as PaneAgent,
       note: "R4 ring with a core — alive at the prompt, nothing run yet (the owner's idle pick; the bare ring is retired)",
     },
   ];
@@ -487,9 +475,9 @@ export function paneTreeSpecimen() {
               age="now"
               state="working"
               panes={[
-                { agent: "opencode", state: "working", age: "now" },
-                { agent: "codex", state: "asked", age: "18m" },
-                { agent: "gemini", state: "done", age: "26m" },
+                { agent: 'opencode', state: 'working', age: 'now' },
+                { agent: 'codex', state: 'asked', age: '18m' },
+                { agent: 'gemini', state: 'done', age: '26m' },
               ]}
             />
             <TreeParent
@@ -497,9 +485,9 @@ export function paneTreeSpecimen() {
               age="1m"
               state="asked"
               panes={[
-                { agent: "claude", state: "asked", age: "1m" },
-                { agent: "codex", state: "done", age: "9m" },
-                { agent: "agy", state: "idle", age: "" },
+                { agent: 'claude', state: 'asked', age: '1m' },
+                { agent: 'codex', state: 'done', age: '9m' },
+                { agent: 'agy', state: 'idle', age: '' },
               ]}
             />
           </section>

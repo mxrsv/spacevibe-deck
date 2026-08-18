@@ -3,13 +3,9 @@
  * store owns state, this file owns the arithmetic, and the arithmetic is what
  * the tests care about.
  */
-import {
-  SESSION_AGENTS,
-  type SessionAgent,
-  type SessionEntry,
-} from "../lib/session-history";
+import { SESSION_AGENTS, type SessionAgent, type SessionEntry } from '../lib/session-history';
 
-export type AgentFilter = SessionAgent | "all";
+export type AgentFilter = SessionAgent | 'all';
 
 export interface SessionFilterState {
   readonly agent: AgentFilter;
@@ -23,15 +19,13 @@ export function filterSessions(
 ): readonly SessionEntry[] {
   return entries.filter(
     (entry) =>
-      (filters.agent === "all" || entry.agent === filters.agent) &&
+      (filters.agent === 'all' || entry.agent === filters.agent) &&
       (filters.project === null || entry.cwd === filters.project),
   );
 }
 
 /** Each cwd once, ordered by the most recent session that used it. */
-export function distinctProjects(
-  entries: readonly SessionEntry[],
-): readonly string[] {
+export function distinctProjects(entries: readonly SessionEntry[]): readonly string[] {
   const newest = new Map<string, number>();
   for (const entry of entries) {
     const seen = newest.get(entry.cwd);
@@ -40,9 +34,7 @@ export function distinctProjects(
     }
   }
   return [...newest.entries()]
-    .sort(
-      (left, right) => right[1] - left[1] || left[0].localeCompare(right[0]),
-    )
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
     .map(([cwd]) => cwd);
 }
 

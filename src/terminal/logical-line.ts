@@ -42,11 +42,7 @@ export interface LogicalLine {
 }
 
 /** The logical line containing 0-based row `row`, or null when it is empty. */
-export function readLogicalLine(
-  buffer: BufferLike,
-  cols: number,
-  row: number,
-): LogicalLine | null {
+export function readLogicalLine(buffer: BufferLike, cols: number, row: number): LogicalLine | null {
   let start = row;
   for (let step = 0; step < MAX_ROWS; step += 1) {
     if (start === 0) {
@@ -59,7 +55,7 @@ export function readLogicalLine(
     start -= 1;
   }
 
-  let text = "";
+  let text = '';
   const spans: CellSpan[] = [];
   // The backward walk clamps after MAX_ROWS, so on a logical line longer than
   // that `start` can still sit MAX_ROWS above `row`. Reading only
@@ -84,7 +80,7 @@ export function readLogicalLine(
       }
       // A blank cell reads as "" — keep it as a space so indices stay aligned
       // with the cells and so a path never fuses with the next word.
-      const chars = cell.getChars() || " ";
+      const chars = cell.getChars() || ' ';
       text += chars;
       // One span per UTF-16 code unit, not per code point: the regex that
       // consumes `text` reports code-unit indices, so an astral character (an

@@ -24,20 +24,17 @@ export interface SidebarShellState {
   readonly sidebar: boolean;
 }
 
-export const SIDEBAR_COLLAPSED_ATTR = "data-sidebar-collapsed";
+export const SIDEBAR_COLLAPSED_ATTR = 'data-sidebar-collapsed';
 
-export function applySidebarShell(
-  root: HTMLElement,
-  state: SidebarShellState,
-): void {
+export function applySidebarShell(root: HTMLElement, state: SidebarShellState): void {
   if (!state.sidebar) {
     // Top-tab layout has no sidebar column. Both values are removed rather
     // than left at their last sidebar-mode reading, so the stylesheet's own
     // declarations are what answer while no column exists.
-    root.style.removeProperty("--sidebar-w");
+    root.style.removeProperty('--sidebar-w');
     root.removeAttribute(SIDEBAR_COLLAPSED_ATTR);
     return;
   }
-  root.style.setProperty("--sidebar-w", `${state.width}px`);
-  root.setAttribute(SIDEBAR_COLLAPSED_ATTR, state.collapsed ? "true" : "false");
+  root.style.setProperty('--sidebar-w', `${state.width}px`);
+  root.setAttribute(SIDEBAR_COLLAPSED_ATTR, state.collapsed ? 'true' : 'false');
 }

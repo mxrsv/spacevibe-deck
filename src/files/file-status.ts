@@ -6,7 +6,7 @@
  * status bar reads from that state. The dependency is strictly one-way — this
  * module imports from the store, and the store imports nothing back.
  */
-import { activeFileTab, fileDocuments } from "./file-surface-store";
+import { activeFileTab, fileDocuments } from './file-surface-store';
 
 /** What the status bar shows instead of a pane's CWD and pane count. */
 export interface FileStatus {
@@ -23,7 +23,7 @@ export function relativeToWorkspace(root: string | null, path: string): string {
   if (root === null) {
     return path;
   }
-  const prefix = root.endsWith("/") ? root : `${root}/`;
+  const prefix = root.endsWith('/') ? root : `${root}/`;
   return path.startsWith(prefix) ? path.slice(prefix.length) : path;
 }
 
@@ -49,15 +49,10 @@ export function currentFileStatus(): FileStatus | null {
     position: `${document.line}:${document.column}`,
     encoding:
       document.file === null
-        ? "—"
-        : document.file.encoding === "utf-8"
-          ? "UTF-8"
-          : "UTF-8 (invalid)",
-    eol:
-      document.file === null
-        ? "—"
-        : document.file.eol === "crlf"
-          ? "CRLF"
-          : "LF",
+        ? '—'
+        : document.file.encoding === 'utf-8'
+          ? 'UTF-8'
+          : 'UTF-8 (invalid)',
+    eol: document.file === null ? '—' : document.file.eol === 'crlf' ? 'CRLF' : 'LF',
   };
 }

@@ -1,13 +1,13 @@
-import type { ILinkDecorations, ILinkHandler } from "@xterm/xterm";
-import { reportPersistError } from "../chrome/events";
-import { hasPrimaryModifier } from "../lib/platform";
-import { isBrowsableUrl } from "../lib/terminal-links";
-import { defaultLinkClient, type LinkClient } from "./link-client";
+import type { ILinkDecorations, ILinkHandler } from '@xterm/xterm';
+import { reportPersistError } from '../chrome/events';
+import { hasPrimaryModifier } from '../lib/platform';
+import { isBrowsableUrl } from '../lib/terminal-links';
+import { defaultLinkClient, type LinkClient } from './link-client';
 import {
   isPrimaryModifierHeld,
   onPrimaryModifierChange,
   syncPrimaryModifierHeld,
-} from "./primary-modifier";
+} from './primary-modifier';
 
 /**
  * OSC 8 hyperlink handler — routes through Tauri instead of the xterm
@@ -52,8 +52,8 @@ export function createOscLinkHandler(client?: LinkClient): ILinkHandler {
         // Restore immediately — Linkifier installs accessors once per hover.
         Object.defineProperties = defineProperties;
         if (
-          Object.prototype.hasOwnProperty.call(props, "underline") &&
-          Object.prototype.hasOwnProperty.call(props, "pointerCursor")
+          Object.prototype.hasOwnProperty.call(props, 'underline') &&
+          Object.prototype.hasOwnProperty.call(props, 'pointerCursor')
         ) {
           decorations = obj as ILinkDecorations;
         }

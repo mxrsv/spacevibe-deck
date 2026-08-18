@@ -1,7 +1,7 @@
-import { useSignal, useSignalEffect } from "@preact/signals";
-import { useRef } from "preact/hooks";
-import { settings } from "../../settings/settings-store";
-import { SectionHead, Specimen, StateLabel } from "../specimen";
+import { useSignal, useSignalEffect } from '@preact/signals';
+import { useRef } from 'preact/hooks';
+import { settings } from '../../settings/settings-store';
+import { SectionHead, Specimen, StateLabel } from '../specimen';
 
 /**
  * The seam study: three treatments of the boundary between surfaces, on the
@@ -30,22 +30,22 @@ interface SeamVariant {
 
 const VARIANTS: readonly SeamVariant[] = [
   {
-    id: "before",
-    label: "A · before",
-    note: "one --hair for every seam, mixed from --fg",
-    variantClass: "gx-seam--before",
+    id: 'before',
+    label: 'A · before',
+    note: 'one --hair for every seam, mixed from --fg',
+    variantClass: 'gx-seam--before',
   },
   {
-    id: "bevel",
-    label: "B · two-tone bevel",
-    note: "dark line + 1px counter-edge; 2px of seam",
-    variantClass: "gx-seam--bevel",
+    id: 'bevel',
+    label: 'B · two-tone bevel',
+    note: 'dark line + 1px counter-edge; 2px of seam',
+    variantClass: 'gx-seam--bevel',
   },
   {
-    id: "shipped",
-    label: "C · shipped",
-    note: "wider step, seam below the surface, three roles",
-    variantClass: "",
+    id: 'shipped',
+    label: 'C · shipped',
+    note: 'wider step, seam below the surface, three roles',
+    variantClass: '',
   },
 ];
 
@@ -65,7 +65,7 @@ function parseColor(value: string): Rgba | null {
   if (srgb !== null) {
     const parts = srgb[1]
       .split(/[\s/]+/)
-      .filter((part) => part !== "")
+      .filter((part) => part !== '')
       .map((part) => Number.parseFloat(part));
     if (parts.length < 3 || parts.some(Number.isNaN)) {
       return null;
@@ -96,8 +96,7 @@ function luminance(color: Rgba): number {
   return 0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2];
 }
 
-const signed = (value: number): string =>
-  `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(1)}`;
+const signed = (value: number): string => `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(1)}`;
 
 function SeamShell({ variant }: { variant: SeamVariant }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -116,13 +115,11 @@ function SeamShell({ variant }: { variant: SeamVariant }) {
       }
       const read = (name: string): Rgba | null => {
         const probe = root.querySelector(`[data-probe="${name}"]`);
-        return probe === null
-          ? null
-          : parseColor(getComputedStyle(probe).backgroundColor);
+        return probe === null ? null : parseColor(getComputedStyle(probe).backgroundColor);
       };
-      const bg = read("bg");
-      const chrome = read("chrome");
-      const seam = read("seam");
+      const bg = read('bg');
+      const chrome = read('chrome');
+      const seam = read('seam');
       if (bg === null || chrome === null || seam === null) {
         return;
       }
@@ -137,27 +134,19 @@ function SeamShell({ variant }: { variant: SeamVariant }) {
     <div class="gx-seamcol">
       <StateLabel>{variant.label}</StateLabel>
       <div ref={rootRef} class={`gx-seamshell ${variant.variantClass}`}>
-        <span
-          class="gx-seamprobe"
-          data-probe="bg"
-          style={{ background: "var(--bg)" }}
-        />
-        <span
-          class="gx-seamprobe"
-          data-probe="chrome"
-          style={{ background: "var(--chrome-1)" }}
-        />
+        <span class="gx-seamprobe" data-probe="bg" style={{ background: 'var(--bg)' }} />
+        <span class="gx-seamprobe" data-probe="chrome" style={{ background: 'var(--chrome-1)' }} />
         <span
           class="gx-seamprobe"
           data-probe="seam"
-          style={{ background: "var(--seam-recessed)" }}
+          style={{ background: 'var(--seam-recessed)' }}
         />
 
         <div class="window">
           <div class="titlebar" />
           <div class="tabbar">
             <span class="tab is-active">
-              <span class="tab__dot" style={{ background: "var(--cyan)" }} />
+              <span class="tab__dot" style={{ background: 'var(--cyan)' }} />
               <span class="tab__label">deck</span>
             </span>
             <span class="tabbar__spacer" />
@@ -232,7 +221,7 @@ function SeamShell({ variant }: { variant: SeamVariant }) {
       </div>
       <div class="gx-seamread">
         <span>
-          step / seam <strong>{readout.value ?? "…"}</strong>
+          step / seam <strong>{readout.value ?? '…'}</strong>
         </span>
       </div>
     </div>

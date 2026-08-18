@@ -11,14 +11,14 @@
  * comment marker wherever it appears — only a line that STARTS with one is a
  * comment. Getting that backwards silently drops every colour in the file.
  */
-import { normalizeHex } from "./normalize-hex";
-import { ANSI_SLOTS, emptyDraft, type ThemeDraft } from "./theme-draft";
+import { normalizeHex } from './normalize-hex';
+import { ANSI_SLOTS, emptyDraft, type ThemeDraft } from './theme-draft';
 
 const KEY_MAP: Readonly<Record<string, string>> = {
-  background: "background",
-  foreground: "foreground",
-  "cursor-color": "cursor",
-  "selection-background": "selectionBackground",
+  background: 'background',
+  foreground: 'foreground',
+  'cursor-color': 'cursor',
+  'selection-background': 'selectionBackground',
 };
 
 const PALETTE_ENTRY = /^(\d{1,2})\s*=\s*(.+)$/;
@@ -32,9 +32,7 @@ export function looksLikeGhostty(source: string): boolean {
   if (/^\s*\[/m.test(source)) {
     return false;
   }
-  return /^\s*(palette|background|foreground|cursor-color|selection-background)\s*=/m.test(
-    source,
-  );
+  return /^\s*(palette|background|foreground|cursor-color|selection-background)\s*=/m.test(source);
 }
 
 export function parseGhostty(source: string): ThemeDraft | null {
@@ -42,18 +40,18 @@ export function parseGhostty(source: string): ThemeDraft | null {
     return null;
   }
   const draft = emptyDraft();
-  for (const rawLine of source.split("\n")) {
+  for (const rawLine of source.split('\n')) {
     const line = rawLine.trim();
-    if (line.length === 0 || line.startsWith("#")) {
+    if (line.length === 0 || line.startsWith('#')) {
       continue;
     }
-    const separator = line.indexOf("=");
+    const separator = line.indexOf('=');
     if (separator === -1) {
       continue;
     }
     const key = line.slice(0, separator).trim();
     const value = line.slice(separator + 1).trim();
-    if (key === "palette") {
+    if (key === 'palette') {
       applyPaletteEntry(draft, value);
       continue;
     }

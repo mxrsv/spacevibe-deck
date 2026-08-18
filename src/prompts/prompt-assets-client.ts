@@ -1,5 +1,5 @@
-import { invoke } from "../host/bridge";
-import type { PromptAssetKind } from "./snippet-format";
+import { invoke } from '../host/bridge';
+import type { PromptAssetKind } from './snippet-format';
 
 /** Mirror of the Rust `PromptAsset` payload from `list_prompt_assets`. */
 export interface PromptAsset {
@@ -8,7 +8,7 @@ export interface PromptAsset {
   readonly name: string;
   /** May be "" — a descriptor without a description is still selectable. */
   readonly description: string;
-  readonly source: "global" | "project" | "plugin";
+  readonly source: 'global' | 'project' | 'plugin';
 }
 
 export interface PromptAssets {
@@ -27,7 +27,7 @@ export interface PromptAssetsClient {
 export function createTauriPromptAssetsClient(): PromptAssetsClient {
   return {
     list(agent, cwd) {
-      return invoke<PromptAssets>("list_prompt_assets", { agent, cwd });
+      return invoke<PromptAssets>('list_prompt_assets', { agent, cwd });
     },
   };
 }
@@ -40,7 +40,7 @@ export function createMemoryPromptAssetsClient(
   return {
     async list() {
       if (options.fail === true) {
-        throw new Error("list_prompt_assets failed");
+        throw new Error('list_prompt_assets failed');
       }
       return assets;
     },
@@ -48,5 +48,4 @@ export function createMemoryPromptAssetsClient(
 }
 
 /** Shared production client — callers accept an override for tests. */
-export const defaultPromptAssetsClient: PromptAssetsClient =
-  createTauriPromptAssetsClient();
+export const defaultPromptAssetsClient: PromptAssetsClient = createTauriPromptAssetsClient();

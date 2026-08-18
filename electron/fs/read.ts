@@ -8,22 +8,18 @@
  * The size and binary verdicts are applied HERE rather than in the renderer, so
  * a 50 MB file is never pulled across the bridge to be rejected on the far side.
  */
-import fs from "node:fs/promises";
-import { constants } from "node:fs";
-import path from "node:path";
-import {
-  readFileContent,
-  refuseForSize,
-  type FileRead,
-} from "../../src/files/file-content";
-import { hasRejectedRoot } from "../shell-integration";
+import fs from 'node:fs/promises';
+import { constants } from 'node:fs';
+import path from 'node:path';
+import { readFileContent, refuseForSize, type FileRead } from '../../src/files/file-content';
+import { hasRejectedRoot } from '../shell-integration';
 import {
   assertInsideRoot,
   isInside,
   PathOutsideWorkspaceError,
   resolveInsideRoot,
   resolveRoot,
-} from "./path-guard";
+} from './path-guard';
 
 /**
  * Upper bound on one `stat_files` batch (plan T9).
@@ -37,14 +33,14 @@ export const MAX_STAT_PATHS = 512;
 export class MalformedStatRequestError extends Error {
   constructor(message: string) {
     super(`stat_files: ${message}`);
-    this.name = "MalformedStatRequestError";
+    this.name = 'MalformedStatRequestError';
   }
 }
 
 export class TooManyStatPathsError extends Error {
   constructor(count: number) {
     super(`stat_files: ${count} paths exceeds the ${MAX_STAT_PATHS} limit.`);
-    this.name = "TooManyStatPathsError";
+    this.name = 'TooManyStatPathsError';
   }
 }
 
@@ -137,10 +133,7 @@ async function resolveSymlinkEntry(
  * pointed at (spec §3.1), and truncating one silently would read as "that is
  * all there is". The panel virtualizes instead.
  */
-export async function listDir(
-  root: string,
-  directory: string,
-): Promise<DirEntryPayload[]> {
+export async function listDir(root: string, directory: string): Promise<DirEntryPayload[]> {
   const canonicalDirectory = assertInsideRoot(root, directory);
   // Resolved once per call, not once per symlinked entry: `directory` above
   // already proved `root` resolves, and the filesystem cannot change between
@@ -169,21 +162,17 @@ export async function listDir(
     // question about a row it is already drawing.
     symlinkIndices.push(index);
   }
-  await mapWithConcurrencyLimit(
-    symlinkIndices,
-    MAX_REALPATH_CONCURRENCY,
-    async (entryIndex) => {
-      const entry = entries[entryIndex];
-      const full = path.join(canonicalDirectory, entry.name);
-      const verdict = await resolveSymlinkEntry(canonicalRoot, full);
-      rows[entryIndex] = {
-        name: entry.name,
-        path: full,
-        directory: verdict.directory,
-        outOfRoot: verdict.outOfRoot,
-      };
-    },
-  );
+  await mapWithConcurrencyLimit(symlinkIndices, MAX_REALPATH_CONCURRENCY, async (entryIndex) => {
+    const entry = entries[entryIndex];
+    const full = path.join(canonicalDirectory, entry.name);
+    const verdict = await resolveSymlinkEntry(canonicalRoot, full);
+    rows[entryIndex] = {
+      name: entry.name,
+      path: full,
+      directory: verdict.directory,
+      outOfRoot: verdict.outOfRoot,
+    };
+  });
   return rows;
 }
 
@@ -206,11 +195,8 @@ export async function statFiles(
   root: string,
   paths: readonly string[],
 ): Promise<FileStatPayload[]> {
-  if (
-    !Array.isArray(paths) ||
-    paths.some((entry) => typeof entry !== "string")
-  ) {
-    throw new MalformedStatRequestError("paths must be an array of strings.");
+  if (!Array.isArray(paths) || paths.some((entry) => typeof entry !== 'string')) {
+    throw new MalformedStatRequestError('paths must be an array of strings.');
   }
   // The cap is on the RAW count, duplicates included: deduping first would
   // let a caller pad past the limit with one path repeated, and it would
@@ -241,10 +227,10 @@ export async function statFiles(
 
 export type ReadFileResult =
   | {
-      readonly kind: "ok";
+      readonly kind: 'ok';
       readonly content: string;
-      readonly eol: "lf" | "crlf";
-      readonly encoding: "utf-8" | "invalid-utf-8";
+      readonly eol: 'lf' | 'crlf';
+      readonly encoding: 'utf-8' | 'invalid-utf-8';
       readonly bytes: number;
       readonly mixedEol: boolean;
       readonly readOnly: boolean;
@@ -255,7 +241,7 @@ export type ReadFileResult =
        * disk must not present an editor that cannot save. */
       readonly writable: boolean;
     }
-  | { readonly kind: "refused"; readonly reason: string };
+  | { readonly kind: 'refused'; readonly reason: string };
 
 /**
  * One file's content plus the verdicts from `file-content.ts`.
@@ -263,22 +249,19 @@ export type ReadFileResult =
  * The size check runs against `stat` BEFORE the read, which is the ordering the
  * whole module exists for.
  */
-export async function readFile(
-  root: string,
-  target: string,
-): Promise<ReadFileResult> {
+export async function readFile(root: string, target: string): Promise<ReadFileResult> {
   const resolved = assertInsideRoot(root, target);
   const stats = await fs.stat(resolved);
   if (!stats.isFile()) {
-    return { kind: "refused", reason: "That is not a file." };
+    return { kind: 'refused', reason: 'That is not a file.' };
   }
   const tooLarge = refuseForSize(stats.size);
   if (tooLarge !== null) {
-    return { kind: "refused", reason: tooLarge };
+    return { kind: 'refused', reason: tooLarge };
   }
   const bytes = await fs.readFile(resolved);
   const verdict: FileRead = readFileContent(new Uint8Array(bytes));
-  if (verdict.kind === "refused") {
+  if (verdict.kind === 'refused') {
     return verdict;
   }
   let writable = true;
@@ -288,7 +271,7 @@ export async function readFile(
     writable = false;
   }
   return {
-    kind: "ok",
+    kind: 'ok',
     content: verdict.file.content,
     eol: verdict.file.eol,
     encoding: verdict.file.encoding,
@@ -297,7 +280,7 @@ export async function readFile(
     readOnly: verdict.file.readOnly || !writable,
     reason:
       verdict.file.reason ??
-      (writable ? null : "This file is not writable, so it opens read-only."),
+      (writable ? null : 'This file is not writable, so it opens read-only.'),
     mtimeMs: stats.mtimeMs,
     size: stats.size,
     writable,

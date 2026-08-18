@@ -5,7 +5,7 @@
  * `listen` per event, and an interface so the store can be tested without a
  * host bridge.
  */
-import { invoke, listen, type UnlistenFn } from "../host/bridge";
+import { invoke, listen, type UnlistenFn } from '../host/bridge';
 
 /** What the host reports about the page in the panel. */
 export interface BrowserState {
@@ -54,21 +54,17 @@ export interface BrowserClient {
 }
 
 export const defaultBrowserClient: BrowserClient = {
-  open: (url) => invoke<BrowserState>("browser_open", { url }),
-  close: () => invoke<void>("browser_close"),
-  navigate: (url) => invoke<string | null>("browser_navigate", { url }),
-  back: () => invoke<void>("browser_back"),
-  forward: () => invoke<void>("browser_forward"),
-  reload: () => invoke<void>("browser_reload"),
-  setBounds: (bounds) => invoke<void>("browser_set_bounds", bounds),
-  setVisible: (visible) => invoke<void>("browser_set_visible", { visible }),
-  setInspect: (active) => invoke<void>("browser_set_inspect", { active }),
-  onState: (handler) =>
-    listen<BrowserState>("browser:state", (event) => handler(event.payload)),
-  onGrab: (handler) =>
-    listen<BrowserGrab>("browser:grab", (event) => handler(event.payload)),
+  open: (url) => invoke<BrowserState>('browser_open', { url }),
+  close: () => invoke<void>('browser_close'),
+  navigate: (url) => invoke<string | null>('browser_navigate', { url }),
+  back: () => invoke<void>('browser_back'),
+  forward: () => invoke<void>('browser_forward'),
+  reload: () => invoke<void>('browser_reload'),
+  setBounds: (bounds) => invoke<void>('browser_set_bounds', bounds),
+  setVisible: (visible) => invoke<void>('browser_set_visible', { visible }),
+  setInspect: (active) => invoke<void>('browser_set_inspect', { active }),
+  onState: (handler) => listen<BrowserState>('browser:state', (event) => handler(event.payload)),
+  onGrab: (handler) => listen<BrowserGrab>('browser:grab', (event) => handler(event.payload)),
   onNavigated: (handler) =>
-    listen<{ url: string }>("browser:navigated", (event) =>
-      handler(event.payload.url),
-    ),
+    listen<{ url: string }>('browser:navigated', (event) => handler(event.payload.url)),
 };

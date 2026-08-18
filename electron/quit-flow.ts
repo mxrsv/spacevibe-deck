@@ -11,17 +11,17 @@
  * That last part is the whole point and must not drift back into the renderer:
  * a wedged webview would otherwise make quit unanswerable.
  */
-import type { PtyInfo } from "./pty/info";
+import type { PtyInfo } from './pty/info';
 
 function isBusy(info: PtyInfo): boolean {
-  return info.kind === "agent" || info.kind === "busy";
+  return info.kind === 'agent' || info.kind === 'busy';
 }
 
 /** True when every pane is explicitly an idle shell — the one case that skips
  * the dialog entirely. Note `unknown` is NOT idle: an unclassified pane must
  * still prompt. */
 export function allIdle(infos: readonly PtyInfo[]): boolean {
-  return infos.every((info) => info.kind === "idle-shell");
+  return infos.every((info) => info.kind === 'idle-shell');
 }
 
 export interface BusyCensus {
@@ -57,10 +57,10 @@ export function censusFor(
     }
   }
   const fullyNamed = infos.every((info) => {
-    if (info.kind === "idle-shell") {
+    if (info.kind === 'idle-shell') {
       return true;
     }
-    if (info.kind === "unknown") {
+    if (info.kind === 'unknown') {
       return false;
     }
     return info.process !== null;

@@ -1,8 +1,8 @@
-import { invoke } from "../host/bridge";
-import { listen, type UnlistenFn } from "../host/bridge";
-import { DEFAULT_SETTINGS, type Settings } from "./settings-schema";
+import { invoke } from '../host/bridge';
+import { listen, type UnlistenFn } from '../host/bridge';
+import { DEFAULT_SETTINGS, type Settings } from './settings-schema';
 
-const MERGED_EVENT = "settings:merged";
+const MERGED_EVENT = 'settings:merged';
 
 /**
  * Cross-window settings sync (spec §9.5).
@@ -32,7 +32,7 @@ export interface SettingsSyncClient {
 export function createTauriSettingsSync(): SettingsSyncClient {
   return {
     sendPatch(patch) {
-      return invoke<unknown>("apply_settings_patch", { patch });
+      return invoke<unknown>('apply_settings_patch', { patch });
     },
     listenMerged(handler) {
       return listen<unknown>(MERGED_EVENT, (event) => handler(event.payload));

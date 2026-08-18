@@ -1,9 +1,5 @@
-import {
-  ACTION_REGISTRY,
-  type ActionDefinition,
-  type OverlayTier,
-} from "./action-registry";
-import { MACOS_KEYMAP, WINDOWS_KEYMAP, type ShortcutAction } from "./keymap";
+import { ACTION_REGISTRY, type ActionDefinition, type OverlayTier } from './action-registry';
+import { MACOS_KEYMAP, WINDOWS_KEYMAP, type ShortcutAction } from './keymap';
 
 /**
  * `action.scope` per id, from the single source of truth
@@ -11,8 +7,9 @@ import { MACOS_KEYMAP, WINDOWS_KEYMAP, type ShortcutAction } from "./keymap";
  * `overlayBlocksAction` below. Module-level: the registry is static, so this
  * is computed once per module load, not once per `createTabManager` call.
  */
-export const ACTION_SCOPE: ReadonlyMap<string, OverlayTier | "always"> =
-  new Map(ACTION_REGISTRY.map((action) => [action.id, action.scope] as const));
+export const ACTION_SCOPE: ReadonlyMap<string, OverlayTier | 'always'> = new Map(
+  ACTION_REGISTRY.map((action) => [action.id, action.scope] as const),
+);
 
 /**
  * Ids with `destructive: true` in the registry — read by `runAction` below.
@@ -20,9 +17,9 @@ export const ACTION_SCOPE: ReadonlyMap<string, OverlayTier | "always"> =
  * the full reasoning (F-B1/F-B2, 2026-07-27 code review).
  */
 export const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
-  ACTION_REGISTRY.filter(
-    (action: ActionDefinition) => action.destructive === true,
-  ).map((action) => action.id),
+  ACTION_REGISTRY.filter((action: ActionDefinition) => action.destructive === true).map(
+    (action) => action.id,
+  ),
 );
 
 /**
@@ -38,51 +35,51 @@ export const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
  * prior review H1 and pre-ship audit A4, which a keymap-only test cannot see.
  */
 export const COMMAND_ACTIONS = [
-  "clear-buffer",
-  "close-pane",
-  "close-tab",
-  "copy-cwd",
-  "copy-selection",
-  "find",
-  "find-next",
-  "find-previous",
-  "focus-down",
-  "focus-left",
-  "focus-next",
-  "focus-next-attention",
-  "focus-prev",
-  "focus-right",
-  "focus-up",
-  "move-pane-to-new-window",
-  "new-preset",
-  "new-tab",
-  "next-tab",
-  "paste",
-  "prev-tab",
-  "reopen-tab",
-  "save-file",
-  "save-preset",
-  "scroll-page-down",
-  "scroll-page-up",
-  "scroll-to-bottom",
-  "scroll-to-top",
-  "split-column",
-  "split-row",
-  "swap-down",
-  "swap-left",
-  "swap-right",
-  "swap-up",
-  "toggle-browser",
-  "toggle-dock",
-  "toggle-expand",
-  "toggle-explorer",
-  "toggle-prompts",
-  "toggle-settings",
-  "toggle-usage",
-  "toggle-zoom-pane",
-  "zoom-in",
-  "zoom-out",
-  "zoom-reset",
+  'clear-buffer',
+  'close-pane',
+  'close-tab',
+  'copy-cwd',
+  'copy-selection',
+  'find',
+  'find-next',
+  'find-previous',
+  'focus-down',
+  'focus-left',
+  'focus-next',
+  'focus-next-attention',
+  'focus-prev',
+  'focus-right',
+  'focus-up',
+  'move-pane-to-new-window',
+  'new-preset',
+  'new-tab',
+  'next-tab',
+  'paste',
+  'prev-tab',
+  'reopen-tab',
+  'save-file',
+  'save-preset',
+  'scroll-page-down',
+  'scroll-page-up',
+  'scroll-to-bottom',
+  'scroll-to-top',
+  'split-column',
+  'split-row',
+  'swap-down',
+  'swap-left',
+  'swap-right',
+  'swap-up',
+  'toggle-browser',
+  'toggle-dock',
+  'toggle-expand',
+  'toggle-explorer',
+  'toggle-prompts',
+  'toggle-settings',
+  'toggle-usage',
+  'toggle-zoom-pane',
+  'zoom-in',
+  'zoom-out',
+  'zoom-reset',
 ] as const satisfies readonly ShortcutAction[];
 
 /**
@@ -119,11 +116,10 @@ export const COMMAND_ACTIONS = [
  * keymap binding points at an action nothing dispatches — the defect behind
  * prior review H1 and pre-ship audit A4, which a keymap-only test cannot see.
  */
-export const DISPATCHABLE_ACTIONS: ReadonlySet<ShortcutAction> =
-  new Set<ShortcutAction>([
-    ...COMMAND_ACTIONS,
-    "select-last-tab",
-    ...[...MACOS_KEYMAP, ...WINDOWS_KEYMAP]
-      .map((binding) => binding.action)
-      .filter((action) => /^select-tab-\d+$/.test(action)),
-  ]);
+export const DISPATCHABLE_ACTIONS: ReadonlySet<ShortcutAction> = new Set<ShortcutAction>([
+  ...COMMAND_ACTIONS,
+  'select-last-tab',
+  ...[...MACOS_KEYMAP, ...WINDOWS_KEYMAP]
+    .map((binding) => binding.action)
+    .filter((action) => /^select-tab-\d+$/.test(action)),
+]);

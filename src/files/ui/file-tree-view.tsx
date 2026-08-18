@@ -14,14 +14,14 @@
  * it and expand/collapse (spec §3.1), matching the pattern `settings-nav.tsx`
  * already uses for a vertical list.
  */
-import type { ComponentChild } from "preact";
-import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { canExpand, type TreeRow } from "../file-tree";
-import { listingErrorsFor, surfaceFor, treeRows } from "../file-surface-store";
-import type { FileSurfaceController } from "../file-surface-controller";
-import { DeckIcon, ROW_ICON } from "../../ui/controls/deck-icon";
-import { chevronForRow, iconForRow } from "./file-icons";
-import { LoadError } from "../../ui/controls/load-error";
+import type { ComponentChild } from 'preact';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { canExpand, type TreeRow } from '../file-tree';
+import { listingErrorsFor, surfaceFor, treeRows } from '../file-surface-store';
+import type { FileSurfaceController } from '../file-surface-controller';
+import { DeckIcon, ROW_ICON } from '../../ui/controls/deck-icon';
+import { chevronForRow, iconForRow } from './file-icons';
+import { LoadError } from '../../ui/controls/load-error';
 
 export interface FileTreeViewProps {
   readonly controller: FileSurfaceController;
@@ -67,7 +67,7 @@ export function FileTreeView(props: FileTreeViewProps) {
     }
     const measure = (): void => setViewportHeight(node.clientHeight);
     measure();
-    if (typeof ResizeObserver === "undefined") {
+    if (typeof ResizeObserver === 'undefined') {
       return;
     }
     const observer = new ResizeObserver(measure);
@@ -78,9 +78,7 @@ export function FileTreeView(props: FileTreeViewProps) {
   // A collapse (or a filtered listing) can shrink the row count below the
   // focused index. Growing the list never moves focus.
   useEffect(() => {
-    setFocusedIndex((current) =>
-      Math.min(current, Math.max(0, rows.length - 1)),
-    );
+    setFocusedIndex((current) => Math.min(current, Math.max(0, rows.length - 1)));
   }, [rows.length]);
 
   // Runs after every render; a no-op unless a keyboard move left a pending
@@ -129,11 +127,7 @@ export function FileTreeView(props: FileTreeViewProps) {
     void controller.openFile(workspacePath, row.path, false);
   }
 
-  function handleRowClick(
-    row: TreeRow,
-    index: number,
-    target: HTMLDivElement,
-  ): void {
+  function handleRowClick(row: TreeRow, index: number, target: HTMLDivElement): void {
     setFocusedIndex(index);
     target.focus();
     activateRow(row);
@@ -149,14 +143,14 @@ export function FileTreeView(props: FileTreeViewProps) {
     if (rows.length === 0) {
       return;
     }
-    if (event.key === "ArrowDown") {
+    if (event.key === 'ArrowDown') {
       event.preventDefault();
       const next = Math.min(rows.length - 1, focusedIndex + 1);
       pendingFocusRef.current = next;
       setFocusedIndex(next);
       return;
     }
-    if (event.key === "ArrowUp") {
+    if (event.key === 'ArrowUp') {
       event.preventDefault();
       const next = Math.max(0, focusedIndex - 1);
       pendingFocusRef.current = next;
@@ -167,21 +161,21 @@ export function FileTreeView(props: FileTreeViewProps) {
     if (row === undefined) {
       return;
     }
-    if (event.key === "ArrowRight") {
+    if (event.key === 'ArrowRight') {
       event.preventDefault();
       if (row.directory && canExpand(row) && !row.expanded) {
         controller.toggleDirectory(workspacePath, row.path);
       }
       return;
     }
-    if (event.key === "ArrowLeft") {
+    if (event.key === 'ArrowLeft') {
       event.preventDefault();
       if (row.directory && row.expanded) {
         controller.toggleDirectory(workspacePath, row.path);
       }
       return;
     }
-    if (event.key === "Enter") {
+    if (event.key === 'Enter') {
       event.preventDefault();
       activateRow(row);
     }
@@ -196,14 +190,9 @@ export function FileTreeView(props: FileTreeViewProps) {
   // anything is a directory large enough that windowing matters, and a real
   // window always reports a real height before that directory is visible.
   const measured = viewportHeight > 0;
-  const startIndex = measured
-    ? Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN)
-    : 0;
+  const startIndex = measured ? Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN) : 0;
   const endIndex = measured
-    ? Math.min(
-        rows.length,
-        Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT) + OVERSCAN,
-      )
+    ? Math.min(rows.length, Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT) + OVERSCAN)
     : rows.length;
   const visible = rows.slice(startIndex, endIndex);
 
@@ -216,10 +205,7 @@ export function FileTreeView(props: FileTreeViewProps) {
     body = <p class="file-tree__status">No files</p>;
   } else {
     body = (
-      <div
-        class="file-tree__rows"
-        style={{ height: `${rows.length * ROW_HEIGHT}px` }}
-      >
+      <div class="file-tree__rows" style={{ height: `${rows.length * ROW_HEIGHT}px` }}>
         {visible.map((row, offset) => {
           const index = startIndex + offset;
           return (
@@ -242,18 +228,12 @@ export function FileTreeView(props: FileTreeViewProps) {
                 top: `${index * ROW_HEIGHT}px`,
                 paddingLeft: `${8 + row.depth * 14}px`,
               }}
-              onClick={(event) =>
-                handleRowClick(
-                  row,
-                  index,
-                  event.currentTarget as HTMLDivElement,
-                )
-              }
+              onClick={(event) => handleRowClick(row, index, event.currentTarget as HTMLDivElement)}
               onDblClick={() => handleDoubleClick(row)}
             >
               <span
                 class="file-tree__chevron"
-                style={{ visibility: row.directory ? "visible" : "hidden" }}
+                style={{ visibility: row.directory ? 'visible' : 'hidden' }}
               >
                 <DeckIcon icon={chevronForRow(row)} size={ROW_ICON} />
               </span>
@@ -273,9 +253,7 @@ export function FileTreeView(props: FileTreeViewProps) {
     <div class="file-tree-shell">
       {listingErrors.size > 0 ? (
         <LoadError
-          message={
-            listingErrors.values().next().value ?? "Couldn't read this folder."
-          }
+          message={listingErrors.values().next().value ?? "Couldn't read this folder."}
           onRetry={() => {
             for (const directory of listingErrors.keys()) {
               void controller.ensureListing(workspacePath, directory);

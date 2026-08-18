@@ -1,6 +1,6 @@
-import { ArrowCounterClockwise } from "@phosphor-icons/react";
-import { ConfigRow } from "./config-row";
-import { DeckIcon, ROW_ICON } from "./deck-icon";
+import { ArrowCounterClockwise } from '@phosphor-icons/react';
+import { ConfigRow } from './config-row';
+import { DeckIcon, ROW_ICON } from './deck-icon';
 
 interface ColorRowProps {
   label: string;
@@ -12,13 +12,7 @@ interface ColorRowProps {
 
 /** color value kind: swatch + hex pill over an invisible native color input (DL-6). */
 
-export function ColorRow({
-  label,
-  value,
-  overridden,
-  onChange,
-  onClear,
-}: ColorRowProps) {
+export function ColorRow({ label, value, overridden, onChange, onClear }: ColorRowProps) {
   return (
     <ConfigRow label={label}>
       {overridden && (

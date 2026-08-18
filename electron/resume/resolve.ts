@@ -7,11 +7,11 @@
  * rather than aborting the whole batch — a boot-time lookup for eight panes
  * must not lose the other seven because one scanner tripped.
  */
-import * as claude from "./claude";
-import * as codex from "./codex";
-import * as opencode from "./opencode";
-import * as agy from "./agy";
-import type { CandidateSession } from "./head";
+import * as claude from './claude';
+import * as codex from './codex';
+import * as opencode from './opencode';
+import * as agy from './agy';
+import type { CandidateSession } from './head';
 
 export interface ResumeRequest {
   readonly agent: string;
@@ -20,9 +20,7 @@ export interface ResumeRequest {
 }
 
 export type ResumeRef =
-  | { readonly kind: "id"; readonly id: string }
-  | { readonly kind: "latest" }
-  | null;
+  { readonly kind: 'id'; readonly id: string } | { readonly kind: 'latest' } | null;
 
 /** Agents this module can scan for identity-precise resume. `gemini` is
  * deliberately absent: it is answered directly in `resolveOne`, with no
@@ -37,7 +35,7 @@ const SCANNERS: Record<string, (home: string) => CandidateSession[]> = {
 /** Agents whose "no match found" answer is still resumable, just without an
  * exact id — the CLI's own `--continue`/latest-session flag. Every other
  * scanned agent answers `null` (a bare, non-resuming launch) instead. */
-const FALLBACK_LATEST = new Set<string>(["agy"]);
+const FALLBACK_LATEST = new Set<string>(['agy']);
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -49,17 +47,11 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
  * against every `agy` candidate; a candidate with no `headHaystack` (head was
  * unreadable) can never satisfy a non-null request cwd.
  */
-function agyCwdMatches(
-  request: ResumeRequest,
-  candidate: CandidateSession,
-): boolean {
+function agyCwdMatches(request: ResumeRequest, candidate: CandidateSession): boolean {
   if (request.cwd === null) {
     return true;
   }
-  return (
-    candidate.headHaystack !== undefined &&
-    candidate.headHaystack.includes(request.cwd)
-  );
+  return candidate.headHaystack !== undefined && candidate.headHaystack.includes(request.cwd);
 }
 
 /**
@@ -75,10 +67,7 @@ function agyCwdMatches(
  * pick the SAME session this function's caller would — a second copy of the
  * predicate is a second place for the two answers to drift apart.
  */
-export function cwdMatches(
-  request: ResumeRequest,
-  candidate: CandidateSession,
-): boolean {
+export function cwdMatches(request: ResumeRequest, candidate: CandidateSession): boolean {
   if (request.cwd === null || candidate.cwd === null) {
     return true;
   }
@@ -90,8 +79,8 @@ function resolveOne(
   candidatesFor: (agent: string) => CandidateSession[],
   takenByAgent: Map<string, Set<string>>,
 ): ResumeRef {
-  if (request.agent === "gemini") {
-    return { kind: "latest" };
+  if (request.agent === 'gemini') {
+    return { kind: 'latest' };
   }
   const scanner = SCANNERS[request.agent];
   if (scanner === undefined) {
@@ -100,25 +89,22 @@ function resolveOne(
   const taken = takenByAgent.get(request.agent) ?? new Set<string>();
   takenByAgent.set(request.agent, taken);
 
-  const matchesCwd = request.agent === "agy" ? agyCwdMatches : cwdMatches;
+  const matchesCwd = request.agent === 'agy' ? agyCwdMatches : cwdMatches;
   const cutoffMs = request.lastSeenAt - THIRTY_DAYS_MS;
   const eligible = candidatesFor(request.agent).filter(
     (candidate) =>
-      candidate.mtimeMs >= cutoffMs &&
-      !taken.has(candidate.id) &&
-      matchesCwd(request, candidate),
+      candidate.mtimeMs >= cutoffMs && !taken.has(candidate.id) && matchesCwd(request, candidate),
   );
   eligible.sort(
     (left, right) =>
-      Math.abs(left.mtimeMs - request.lastSeenAt) -
-      Math.abs(right.mtimeMs - request.lastSeenAt),
+      Math.abs(left.mtimeMs - request.lastSeenAt) - Math.abs(right.mtimeMs - request.lastSeenAt),
   );
   const best = eligible[0];
   if (best === undefined) {
-    return FALLBACK_LATEST.has(request.agent) ? { kind: "latest" } : null;
+    return FALLBACK_LATEST.has(request.agent) ? { kind: 'latest' } : null;
   }
   taken.add(best.id);
-  return { kind: "id", id: best.id };
+  return { kind: 'id', id: best.id };
 }
 
 /**
@@ -166,20 +152,17 @@ export function resolveResume(
 }
 
 function isValidRequest(entry: unknown): entry is ResumeRequest {
-  if (entry === null || typeof entry !== "object") {
+  if (entry === null || typeof entry !== 'object') {
     return false;
   }
   const node = entry as Record<string, unknown>;
-  if (typeof node.agent !== "string" || node.agent === "") {
+  if (typeof node.agent !== 'string' || node.agent === '') {
     return false;
   }
-  if (node.cwd !== null && typeof node.cwd !== "string") {
+  if (node.cwd !== null && typeof node.cwd !== 'string') {
     return false;
   }
-  if (
-    typeof node.lastSeenAt !== "number" ||
-    !Number.isFinite(node.lastSeenAt)
-  ) {
+  if (typeof node.lastSeenAt !== 'number' || !Number.isFinite(node.lastSeenAt)) {
     return false;
   }
   return true;

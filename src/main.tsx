@@ -1,19 +1,16 @@
-import { render } from "preact";
-import "@xterm/xterm/css/xterm.css";
-import "./styles.css";
-import {
-  initSettings,
-  listenStoreWriteFailures,
-} from "./settings/settings-store";
-import { loadCustomThemes } from "./settings/custom-themes-store";
-import { initLogo } from "./settings/logo-store";
-import { initSidebarBanner } from "./settings/sidebar-banner-store";
-import { initPresets } from "./presets/presets-store";
-import { initWorkspaces } from "./open-board/workspaces-store";
-import { initRepositories } from "./repositories/repositories-store";
-import { initializeDesktopEnvironmentFromBackend } from "./lib/platform";
-import { App } from "./ui/app";
-import { defaultTransferClient } from "./terminal/transfer-client";
+import { render } from 'preact';
+import '@xterm/xterm/css/xterm.css';
+import './styles.css';
+import { initSettings, listenStoreWriteFailures } from './settings/settings-store';
+import { loadCustomThemes } from './settings/custom-themes-store';
+import { initLogo } from './settings/logo-store';
+import { initSidebarBanner } from './settings/sidebar-banner-store';
+import { initPresets } from './presets/presets-store';
+import { initWorkspaces } from './open-board/workspaces-store';
+import { initRepositories } from './repositories/repositories-store';
+import { initializeDesktopEnvironmentFromBackend } from './lib/platform';
+import { App } from './ui/app';
+import { defaultTransferClient } from './terminal/transfer-client';
 
 async function main(): Promise<void> {
   await initializeDesktopEnvironmentFromBackend();
@@ -41,9 +38,9 @@ async function main(): Promise<void> {
     // latency rather than one per file.
     loadCustomThemes(),
   ]);
-  const root = document.getElementById("root");
+  const root = document.getElementById('root');
   if (!root) {
-    throw new Error("#root element not found");
+    throw new Error('#root element not found');
   }
   render(<App boot={boot} />, root);
 }

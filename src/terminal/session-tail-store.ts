@@ -24,11 +24,11 @@
  * [`session-journal.ts`](./session-journal.ts) and driven the same way — by
  * the signal changing, never by an interval.
  */
-import { effect, signal, type Signal } from "@preact/signals";
-import { available as electronHostAvailable } from "../host/worktree-host";
-import { sessionTails } from "../host/session-tail-host";
-import { NO_PANES, tabViews, type PaneView, type TabView } from "./tabs-store";
-import type { ResumeRequest } from "../lib/agent-resume";
+import { effect, signal, type Signal } from '@preact/signals';
+import { available as electronHostAvailable } from '../host/worktree-host';
+import { sessionTails } from '../host/session-tail-host';
+import { NO_PANES, tabViews, type PaneView, type TabView } from './tabs-store';
+import type { ResumeRequest } from '../lib/agent-resume';
 
 /** Newest turn per pane id. Absent means "nothing known", never "silent". */
 export const paneTails: Signal<ReadonlyMap<number, string>> = signal(new Map());
@@ -75,7 +75,7 @@ const resumedPaneIds = new Set<number>();
 
 function claimKey(workspacePath: string | null, agent: string): string {
   // NUL: a path cannot contain one, so no pair of coordinates can collide.
-  return `${workspacePath ?? ""}\u0000${agent}`;
+  return `${workspacePath ?? ''}\u0000${agent}`;
 }
 
 /**
@@ -84,10 +84,7 @@ function claimKey(workspacePath: string | null, agent: string): string {
  * actually succeeded — an intent that never became a tab must not leave a mark
  * for an unrelated pane to claim later.
  */
-export function noteResumedPane(
-  workspacePath: string | null,
-  agent: string,
-): void {
+export function noteResumedPane(workspacePath: string | null, agent: string): void {
   const key = claimKey(workspacePath, agent);
   resumeClaims.set(key, (resumeClaims.get(key) ?? 0) + 1);
 }
@@ -122,7 +119,7 @@ function fingerprintOf(tabs: readonly TabView[]): string {
         .filter((pane) => pane.agent !== null)
         .map((pane) => `${pane.paneId}:${pane.changedAt}`),
     )
-    .join("|");
+    .join('|');
 }
 
 /**
@@ -182,7 +179,7 @@ function merged(
   const next = new Map(current);
   entries.forEach((entry, index) => {
     const tail = answers[index];
-    if (typeof tail === "string" && tail.length > 0) {
+    if (typeof tail === 'string' && tail.length > 0) {
       next.set(entry.paneId, tail);
     }
   });
@@ -215,7 +212,7 @@ async function run(): Promise<void> {
     const answers = await sessionTails(entries.map((entry) => entry.request));
     paneTails.value = merged(paneTails.value, entries, answers);
   } catch (err) {
-    console.warn("Failed to read session tails:", err);
+    console.warn('Failed to read session tails:', err);
   } finally {
     inFlight = false;
     if (queued) {

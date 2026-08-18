@@ -8,9 +8,9 @@
  * never an error — the Prompt Board still pastes templates when detection
  * finds nothing.
  */
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 /** Bytes read from any descriptor. Frontmatter sits at the top, so a
  * multi-megabyte SKILL.md must never be pulled into memory to find it. */
@@ -22,8 +22,8 @@ const RESULT_CAP = 200;
 /** Descriptions land in a `<select>` option; past this they are noise. */
 const DESCRIPTION_MAX = 256;
 
-export type AssetKind = "skill" | "subagent";
-export type AssetSource = "global" | "project" | "plugin";
+export type AssetKind = 'skill' | 'subagent';
+export type AssetSource = 'global' | 'project' | 'plugin';
 
 export interface PromptAsset {
   readonly kind: AssetKind;
@@ -63,8 +63,8 @@ export function parseFrontmatter(head: string): {
   name: string | null;
   description: string | null;
 } {
-  const lines = head.split("\n");
-  if (lines[0]?.trim() !== "---") {
+  const lines = head.split('\n');
+  if (lines[0]?.trim() !== '---') {
     return { name: null, description: null };
   }
   let name: string | null = null;
@@ -80,15 +80,14 @@ export function parseFrontmatter(head: string): {
   };
 
   for (const line of lines.slice(1)) {
-    if (line.trim() === "---") {
+    if (line.trim() === '---') {
       break;
     }
-    const indented = line.startsWith(" ") || line.startsWith("\t");
+    const indented = line.startsWith(' ') || line.startsWith('\t');
     if (folding !== null && (indented || line.trim().length === 0)) {
       const piece = line.trim();
       if (piece.length > 0) {
-        folding.joined =
-          folding.joined.length > 0 ? `${folding.joined} ${piece}` : piece;
+        folding.joined = folding.joined.length > 0 ? `${folding.joined} ${piece}` : piece;
       }
       continue;
     }
@@ -96,20 +95,20 @@ export function parseFrontmatter(head: string): {
       assign(folding.isName, folding.joined);
       folding = null;
     }
-    const separator = line.indexOf(":");
+    const separator = line.indexOf(':');
     if (separator === -1) {
       continue;
     }
     const key = line.slice(0, separator).trim();
-    if (key !== "name" && key !== "description") {
+    if (key !== 'name' && key !== 'description') {
       continue;
     }
     const value = line.slice(separator + 1).trim();
-    if ([">", "|", ">-", "|-", ">+", "|+"].includes(value)) {
-      folding = { isName: key === "name", joined: "" };
+    if (['>', '|', '>-', '|-', '>+', '|+'].includes(value)) {
+      folding = { isName: key === 'name', joined: '' };
       continue;
     }
-    assign(key === "name", unquote(value));
+    assign(key === 'name', unquote(value));
   }
   if (folding !== null) {
     assign(folding.isName, folding.joined);
@@ -124,16 +123,16 @@ export function parseFrontmatter(head: string): {
  * `description` below either is not the agent's own.
  */
 export function parseTomlDescription(head: string): string | null {
-  for (const line of head.split("\n")) {
+  for (const line of head.split('\n')) {
     const trimmed = line.trim();
-    if (trimmed.startsWith("[") || trimmed.includes('"""')) {
+    if (trimmed.startsWith('[') || trimmed.includes('"""')) {
       break;
     }
-    const separator = trimmed.indexOf("=");
+    const separator = trimmed.indexOf('=');
     if (separator === -1) {
       continue;
     }
-    if (trimmed.slice(0, separator).trim() !== "description") {
+    if (trimmed.slice(0, separator).trim() !== 'description') {
       continue;
     }
     const value = unquote(trimmed.slice(separator + 1).trim());
@@ -144,8 +143,8 @@ export function parseTomlDescription(head: string): string | null {
 
 /** One line, collapsed whitespace, clamped to DESCRIPTION_MAX characters. */
 export function clampDescription(value: string | null): string {
-  const flattened = (value ?? "").split(/\s+/).filter(Boolean).join(" ");
-  return [...flattened].slice(0, DESCRIPTION_MAX).join("");
+  const flattened = (value ?? '').split(/\s+/).filter(Boolean).join(' ');
+  return [...flattened].slice(0, DESCRIPTION_MAX).join('');
 }
 
 /**
@@ -161,10 +160,10 @@ export function readHead(target: string): string | null {
     if (meta.isSymbolicLink() || !meta.isFile()) {
       return null;
     }
-    handle = fs.openSync(target, "r");
+    handle = fs.openSync(target, 'r');
     const buffer = Buffer.alloc(HEAD_BYTES);
     const read = fs.readSync(handle, buffer, 0, HEAD_BYTES, 0);
-    return buffer.subarray(0, read).toString("utf8");
+    return buffer.subarray(0, read).toString('utf8');
   } catch {
     return null;
   } finally {
@@ -188,13 +187,13 @@ export function projectRoot(cwd: string): string | null {
   let current = path.resolve(cwd);
   for (;;) {
     try {
-      if (fs.statSync(path.join(current, ".claude")).isDirectory()) {
+      if (fs.statSync(path.join(current, '.claude')).isDirectory()) {
         return current;
       }
     } catch {
       // Not here; try `.git` then walk up.
     }
-    if (fs.existsSync(path.join(current, ".git"))) {
+    if (fs.existsSync(path.join(current, '.git'))) {
       return current;
     }
     const parent = path.dirname(current);
@@ -220,27 +219,23 @@ export function pluginRoots(installedJson: string): Array<[string, string]> {
     return [];
   }
   const plugins = (parsed as { plugins?: unknown })?.plugins;
-  if (typeof plugins !== "object" || plugins === null) {
+  if (typeof plugins !== 'object' || plugins === null) {
     return [];
   }
   const roots: Array<[string, string]> = [];
-  for (const [key, installs] of Object.entries(
-    plugins as Record<string, unknown>,
-  )) {
-    const name = key.split("@")[0] ?? key;
+  for (const [key, installs] of Object.entries(plugins as Record<string, unknown>)) {
+    const name = key.split('@')[0] ?? key;
     if (!Array.isArray(installs)) {
       continue;
     }
     for (const entry of installs) {
       const install = (entry as { installPath?: unknown })?.installPath;
-      if (typeof install === "string") {
+      if (typeof install === 'string') {
         roots.push([name, install]);
       }
     }
   }
-  roots.sort((a, b) =>
-    a[0] === b[0] ? a[1].localeCompare(b[1]) : a[0].localeCompare(b[0]),
-  );
+  roots.sort((a, b) => (a[0] === b[0] ? a[1].localeCompare(b[1]) : a[0].localeCompare(b[0])));
   return roots;
 }
 
@@ -278,16 +273,16 @@ function scanSkills(
   prefix: string | null,
   out: PromptAsset[],
 ): void {
-  const dir = path.join(root, "skills");
+  const dir = path.join(root, 'skills');
   for (const entry of childDirNames(dir)) {
-    const head = readHead(path.join(dir, entry, "SKILL.md"));
+    const head = readHead(path.join(dir, entry, 'SKILL.md'));
     if (head === null) {
       continue;
     }
     const { name: declared, description } = parseFrontmatter(head);
     const base = declared ?? entry;
     out.push({
-      kind: "skill",
+      kind: 'skill',
       name: prefix === null ? base : `${prefix}:${base}`,
       description: clampDescription(description),
       source,
@@ -307,18 +302,16 @@ function scanAgents(
   extension: string,
   out: PromptAsset[],
 ): void {
-  const dir = path.join(root, "agents");
+  const dir = path.join(root, 'agents');
   for (const stem of childFileStems(dir, extension)) {
     const head = readHead(path.join(dir, `${stem}.${extension}`));
     if (head === null) {
       continue;
     }
     const description =
-      extension === "toml"
-        ? parseTomlDescription(head)
-        : parseFrontmatter(head).description;
+      extension === 'toml' ? parseTomlDescription(head) : parseFrontmatter(head).description;
     out.push({
-      kind: "subagent",
+      kind: 'subagent',
       name: stem,
       description: clampDescription(description),
       source,
@@ -342,35 +335,29 @@ function merge(ordered: PromptAsset[]): PromptAsset[] {
 }
 
 /** The scan itself, with its roots injected so tests never touch a real home. */
-export function collect(
-  agent: string,
-  home: string,
-  project: string | null,
-): PromptAssets {
+export function collect(agent: string, home: string, project: string | null): PromptAssets {
   const skills: PromptAsset[] = [];
   const subagents: PromptAsset[] = [];
 
-  if (agent === "claude") {
+  if (agent === 'claude') {
     if (project !== null) {
-      const root = path.join(project, ".claude");
-      scanSkills(root, "project", null, skills);
-      scanAgents(root, "project", "md", subagents);
+      const root = path.join(project, '.claude');
+      scanSkills(root, 'project', null, skills);
+      scanAgents(root, 'project', 'md', subagents);
     }
-    const user = path.join(home, ".claude");
-    scanSkills(user, "global", null, skills);
-    scanAgents(user, "global", "md", subagents);
-    const manifest = readHead(
-      path.join(user, "plugins", "installed_plugins.json"),
-    );
+    const user = path.join(home, '.claude');
+    scanSkills(user, 'global', null, skills);
+    scanAgents(user, 'global', 'md', subagents);
+    const manifest = readHead(path.join(user, 'plugins', 'installed_plugins.json'));
     if (manifest !== null) {
       for (const [name, install] of pluginRoots(manifest)) {
-        scanSkills(install, "plugin", name, skills);
+        scanSkills(install, 'plugin', name, skills);
       }
     }
-  } else if (agent === "codex") {
-    const user = path.join(home, ".codex");
-    scanSkills(user, "global", null, skills);
-    scanAgents(user, "global", "toml", subagents);
+  } else if (agent === 'codex') {
+    const user = path.join(home, '.codex');
+    scanSkills(user, 'global', null, skills);
+    scanAgents(user, 'global', 'toml', subagents);
   }
   // Unknown / unverified CLI (gemini, opencode, agy, a declared agent): empty
   // lists, not an error — the picker hides itself.
@@ -379,10 +366,7 @@ export function collect(
 }
 
 /** The one command. `cwd` is a pane's working directory, not a project root. */
-export function listPromptAssets(
-  agent: string,
-  cwd: string | null,
-): PromptAssets {
+export function listPromptAssets(agent: string, cwd: string | null): PromptAssets {
   const project = cwd === null ? null : projectRoot(cwd);
   return collect(agent, os.homedir(), project);
 }

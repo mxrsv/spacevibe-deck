@@ -33,9 +33,7 @@ export interface OpenTabOptions {
 }
 
 /** The preview tab of a workspace, or null when nothing is previewed. */
-export function previewTab(
-  tabs: readonly FileTabEntry[],
-): FileTabEntry | undefined {
+export function previewTab(tabs: readonly FileTabEntry[]): FileTabEntry | undefined {
   return tabs.find((tab) => tab.preview);
 }
 
@@ -85,13 +83,8 @@ export function openPreview(
 }
 
 /** Double-click in the tree, or the first edit. Idempotent for a kept tab. */
-export function promoteTab(
-  tabs: readonly FileTabEntry[],
-  path: string,
-): FileTabEntry[] {
-  return tabs.map((tab) =>
-    tab.path === path && tab.preview ? { ...tab, preview: false } : tab,
-  );
+export function promoteTab(tabs: readonly FileTabEntry[], path: string): FileTabEntry[] {
+  return tabs.map((tab) => (tab.path === path && tab.preview ? { ...tab, preview: false } : tab));
 }
 
 /** Open a file as a kept tab outright — the double-click path. */
@@ -103,10 +96,7 @@ export function openKept(
   return promoteTab(openPreview(tabs, path, options), path);
 }
 
-export function closeFileTab(
-  tabs: readonly FileTabEntry[],
-  path: string,
-): FileTabEntry[] {
+export function closeFileTab(tabs: readonly FileTabEntry[], path: string): FileTabEntry[] {
   return tabs.filter((tab) => tab.path !== path);
 }
 
@@ -124,7 +114,7 @@ export function activeAfterFileClose(
   active: string | null,
 ): string | null {
   if (active !== closing) {
-    return hasTab(closeFileTab(tabs, closing), active ?? "") ? active : null;
+    return hasTab(closeFileTab(tabs, closing), active ?? '') ? active : null;
   }
   const index = tabs.findIndex((tab) => tab.path === closing);
   const remaining = closeFileTab(tabs, closing);

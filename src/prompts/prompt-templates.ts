@@ -19,7 +19,7 @@ export interface PromptTemplate {
   readonly autoSend: boolean;
 }
 
-export const TEMPLATE_ID_PREFIX = "tpl:";
+export const TEMPLATE_ID_PREFIX = 'tpl:';
 
 /** Long enough to name a prompt, short enough to stay one row. */
 export const TEMPLATE_LABEL_MAX = 48;
@@ -31,23 +31,20 @@ export const TEMPLATE_LABEL_MAX = 48;
  */
 export const TEMPLATE_BODY_MAX = 20_000;
 
-const FALLBACK_SLUG = "prompt";
+const FALLBACK_SLUG = 'prompt';
 
 function slugify(label: string): string {
   return label
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 /**
  * A stable id for a new template, unique among `existing`. Same shape as
  * `createCustomAgentId`: slug, then a numeric suffix on collision.
  */
-export function createPromptTemplateId(
-  label: string,
-  existing: readonly PromptTemplate[],
-): string {
+export function createPromptTemplateId(label: string, existing: readonly PromptTemplate[]): string {
   const base = slugify(label) || FALLBACK_SLUG;
   const taken = new Set(existing.map((entry) => entry.id));
   const first = `${TEMPLATE_ID_PREFIX}${base}`;
@@ -68,30 +65,30 @@ export function createPromptTemplateId(
  * contract `isValidCustomAgent` holds for declared agents.
  */
 export function isValidPromptTemplate(value: unknown): value is PromptTemplate {
-  if (typeof value !== "object" || value === null) {
+  if (typeof value !== 'object' || value === null) {
     return false;
   }
   const entry = value as Record<string, unknown>;
   if (
-    typeof entry.id !== "string" ||
+    typeof entry.id !== 'string' ||
     !entry.id.startsWith(TEMPLATE_ID_PREFIX) ||
     entry.id.length <= TEMPLATE_ID_PREFIX.length
   ) {
     return false;
   }
   if (
-    typeof entry.label !== "string" ||
-    entry.label.trim() === "" ||
+    typeof entry.label !== 'string' ||
+    entry.label.trim() === '' ||
     entry.label.length > TEMPLATE_LABEL_MAX
   ) {
     return false;
   }
   if (
-    typeof entry.body !== "string" ||
-    entry.body.trim() === "" ||
+    typeof entry.body !== 'string' ||
+    entry.body.trim() === '' ||
     entry.body.length > TEMPLATE_BODY_MAX
   ) {
     return false;
   }
-  return typeof entry.autoSend === "boolean";
+  return typeof entry.autoSend === 'boolean';
 }

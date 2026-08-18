@@ -1,18 +1,14 @@
-import { Store } from "../host/store-host";
-import { getVersion } from "../host/shell-host";
-import {
-  resolveAttemptOutcome,
-  type AttemptOutcome,
-  type UpdateAttempt,
-} from "./update-attempt";
+import { Store } from '../host/store-host';
+import { getVersion } from '../host/shell-host';
+import { resolveAttemptOutcome, type AttemptOutcome, type UpdateAttempt } from './update-attempt';
 
 /**
  * Persistence for the install breadcrumb. Its own file, not `settings.json`:
  * this is transient machine state, and a settings reset must not erase the
  * evidence that an update failed.
  */
-const STORE_FILE = "update-attempt.json";
-const STORE_KEY = "attempt";
+const STORE_FILE = 'update-attempt.json';
+const STORE_KEY = 'attempt';
 
 async function open(): Promise<Store> {
   return Store.load(STORE_FILE, { defaults: {}, autoSave: false });
@@ -30,10 +26,7 @@ async function open(): Promise<Store> {
  * Written and flushed synchronously — an autosave timer would lose the race
  * with an installer that exits the process.
  */
-export async function recordUpdateAttempt(
-  targetVersion: string,
-  startedAt: number,
-): Promise<void> {
+export async function recordUpdateAttempt(targetVersion: string, startedAt: number): Promise<void> {
   const store = await open();
   const attempt: UpdateAttempt = {
     targetVersion,
@@ -54,26 +47,26 @@ export async function recordUpdateAttempt(
  * launch, which is the safe direction) and still returns what was read.
  */
 export async function takeUpdateOutcome(): Promise<AttemptOutcome> {
-  let outcome: AttemptOutcome = { kind: "none" };
+  let outcome: AttemptOutcome = { kind: 'none' };
   let store: Store;
   try {
     store = await open();
     const raw = await store.get<unknown>(STORE_KEY);
     if (raw === undefined || raw === null) {
-      return { kind: "none" };
+      return { kind: 'none' };
     }
     outcome = resolveAttemptOutcome(raw, await getVersion());
   } catch (error: unknown) {
     // Reading is best-effort: a missing or unreadable file means we have no
     // evidence, which is the same as no attempt.
-    console.warn("Could not read the update attempt:", error);
-    return { kind: "none" };
+    console.warn('Could not read the update attempt:', error);
+    return { kind: 'none' };
   }
   try {
     await store.delete(STORE_KEY);
     await store.save();
   } catch (error: unknown) {
-    console.warn("Could not clear the update attempt:", error);
+    console.warn('Could not clear the update attempt:', error);
   }
   return outcome;
 }

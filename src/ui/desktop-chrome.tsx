@@ -1,6 +1,6 @@
-import type { ComponentChildren } from "preact";
-import { getDesktopEnvironment } from "../lib/platform";
-import { SidebarGrip } from "./sidebar-grip";
+import type { ComponentChildren } from 'preact';
+import { getDesktopEnvironment } from '../lib/platform';
+import { SidebarGrip } from './sidebar-grip';
 
 /**
  * The one-row window shell both layouts paint into: `App` supplies every
@@ -43,19 +43,19 @@ interface DesktopChromeProps {
 /** Platform shell only; native Windows system controls stay outside Preact. */
 export function DesktopChrome(props: DesktopChromeProps) {
   const platform = getDesktopEnvironment().platform;
-  const windows = platform === "windows";
+  const windows = platform === 'windows';
   // No occupant, no row: the grid reserves `--status-h` for the bottom band,
   // so leaving it at 28px with nothing in it would be a stripe of empty
   // chrome rather than a hidden bar.
   const hasStatus = props.status !== null && props.status !== undefined;
   const classes = [
-    "window",
+    'window',
     `window--${platform}`,
-    props.sidebar ? "window--sidebar" : "",
-    hasStatus ? "" : "window--no-status",
+    props.sidebar ? 'window--sidebar' : '',
+    hasStatus ? '' : 'window--no-status',
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(' ');
   const resizable =
     props.sidebar &&
     props.sidebarWidth !== undefined &&
@@ -75,9 +75,7 @@ export function DesktopChrome(props: DesktopChromeProps) {
           data-tauri-drag-region
           onDblClick={windows ? undefined : props.onMacTitlebarDoubleClick}
         >
-          {!windows ? (
-            <div class="deck-frame__lights" aria-hidden="true" />
-          ) : null}
+          {!windows ? <div class="deck-frame__lights" aria-hidden="true" /> : null}
           {/* Beside the OS buttons, before anything else: hiding the column is
               a window gesture, and this is the row the window's own controls
               live in (DL-18.9). */}

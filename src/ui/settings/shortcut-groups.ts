@@ -15,95 +15,87 @@ import {
   ACTION_REGISTRY,
   type ActionDefinition,
   type ActionId,
-} from "../../terminal/action-registry";
+} from '../../terminal/action-registry';
 
 export type ShortcutGroupId =
-  | "panes"
-  | "tabs"
-  | "presets"
-  | "files"
-  | "text"
-  | "scrollback"
-  | "display"
-  | "app"
-  | "other";
+  'panes' | 'tabs' | 'presets' | 'files' | 'text' | 'scrollback' | 'display' | 'app' | 'other';
 
 /** Display order of the groups, with the label each renders under (DL-11.4). */
 export const SHORTCUT_GROUPS: readonly {
   readonly id: ShortcutGroupId;
   readonly label: string;
 }[] = [
-  { id: "panes", label: "Panes" },
-  { id: "tabs", label: "Tabs" },
-  { id: "presets", label: "Layout presets" },
-  { id: "files", label: "Files" },
-  { id: "text", label: "Text & search" },
-  { id: "scrollback", label: "Scrollback" },
-  { id: "display", label: "Display" },
-  { id: "app", label: "App" },
-  { id: "other", label: "Other" },
+  { id: 'panes', label: 'Panes' },
+  { id: 'tabs', label: 'Tabs' },
+  { id: 'presets', label: 'Layout presets' },
+  { id: 'files', label: 'Files' },
+  { id: 'text', label: 'Text & search' },
+  { id: 'scrollback', label: 'Scrollback' },
+  { id: 'display', label: 'Display' },
+  { id: 'app', label: 'App' },
+  { id: 'other', label: 'Other' },
 ];
 
 const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
-  "split-row": "panes",
-  "split-column": "panes",
-  "close-pane": "panes",
-  "toggle-zoom-pane": "panes",
-  "toggle-expand": "panes",
-  "move-pane-to-new-window": "panes",
-  "focus-next": "panes",
-  "focus-prev": "panes",
-  "focus-left": "panes",
-  "focus-right": "panes",
-  "focus-up": "panes",
-  "focus-down": "panes",
-  "swap-left": "panes",
-  "swap-right": "panes",
-  "swap-up": "panes",
-  "swap-down": "panes",
+  'split-row': 'panes',
+  'split-column': 'panes',
+  'close-pane': 'panes',
+  'toggle-zoom-pane': 'panes',
+  'toggle-expand': 'panes',
+  'move-pane-to-new-window': 'panes',
+  'focus-next': 'panes',
+  'focus-prev': 'panes',
+  'focus-left': 'panes',
+  'focus-right': 'panes',
+  'focus-up': 'panes',
+  'focus-down': 'panes',
+  'swap-left': 'panes',
+  'swap-right': 'panes',
+  'swap-up': 'panes',
+  'swap-down': 'panes',
 
-  "new-tab": "tabs",
-  "reopen-tab": "tabs",
-  "close-tab": "tabs",
-  "next-tab": "tabs",
-  "prev-tab": "tabs",
-  "select-last-tab": "tabs",
+  'new-tab': 'tabs',
+  'reopen-tab': 'tabs',
+  'close-tab': 'tabs',
+  'next-tab': 'tabs',
+  'prev-tab': 'tabs',
+  'select-last-tab': 'tabs',
 
-  "new-preset": "presets",
-  "save-preset": "presets",
+  'new-preset': 'presets',
+  'save-preset': 'presets',
 
   // Own group, not "app": it acts on file-tab CONTENT (the open file), the
   // same kind of target "text" below has (the terminal buffer) — not a
   // window-surface toggle like the "app" group's toggle-explorer/
   // toggle-browser/toggle-usage rows.
-  "save-file": "files",
+  'save-file': 'files',
 
-  find: "text",
-  "find-next": "text",
-  "find-previous": "text",
-  "clear-buffer": "text",
-  "copy-selection": "text",
-  "copy-cwd": "text",
-  paste: "text",
+  find: 'text',
+  'find-next': 'text',
+  'find-previous': 'text',
+  'clear-buffer': 'text',
+  'copy-selection': 'text',
+  'copy-cwd': 'text',
+  paste: 'text',
 
-  "scroll-page-up": "scrollback",
-  "scroll-page-down": "scrollback",
-  "scroll-to-top": "scrollback",
-  "scroll-to-bottom": "scrollback",
+  'scroll-page-up': 'scrollback',
+  'scroll-page-down': 'scrollback',
+  'scroll-to-top': 'scrollback',
+  'scroll-to-bottom': 'scrollback',
 
-  "zoom-in": "display",
-  "zoom-out": "display",
-  "zoom-reset": "display",
+  'zoom-in': 'display',
+  'zoom-out': 'display',
+  'zoom-reset': 'display',
 
-  "toggle-settings": "app",
-  "toggle-prompts": "app",
+  'toggle-settings': 'app',
+  'toggle-prompts': 'app',
   // "app", not "panes": the panel is a surface of the window like Settings and
   // the Prompt Board, not something that acts on the focused pane.
-  "toggle-browser": "app",
-  "toggle-dock": "app",
-  "toggle-explorer": "app",
-  "toggle-usage": "app",
-  "focus-next-attention": "app",
+  'toggle-browser': 'app',
+  'toggle-dock': 'app',
+  'toggle-explorer': 'app',
+  'toggle-usage': 'app',
+  'focus-next-attention': 'app',
 };
 
 /**
@@ -124,8 +116,8 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
  * dispatchable later cannot stay silently excluded.
  */
 export const NOT_REBINDABLE: ReadonlySet<string> = new Set([
-  "check-for-updates",
-  "open-release-notes",
+  'check-for-updates',
+  'open-release-notes',
 ]);
 
 /**
@@ -166,11 +158,9 @@ export function shortcutGroups(): readonly ShortcutGroup[] {
     if (NOT_REBINDABLE.has(action.id)) {
       continue;
     }
-    const target = PLACEMENT[action.id] ?? "other";
-    byGroup
-      .get(target)
-      ?.push({ action: action.id as ActionId, label: action.label });
-    if (action.id === "select-last-tab") {
+    const target = PLACEMENT[action.id] ?? 'other';
+    byGroup.get(target)?.push({ action: action.id as ActionId, label: action.label });
+    if (action.id === 'select-last-tab') {
       byGroup.get(target)?.push(...tabSelectRows());
     }
   }

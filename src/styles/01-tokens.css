@@ -61,8 +61,7 @@
      takes its font from the user's setting via toFontStack() in
      terminal/pane.ts, never from a CSS token. A --mono token here would only
      be an invitation to leak terminal typography back into native UI. */
-  --ui-font:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --ui-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
 
   /* DL-4.4 names the four standard chrome text sizes (Native balanced,
      2026-08-16); DL-4.5 requires the ladder to live here as variables, once

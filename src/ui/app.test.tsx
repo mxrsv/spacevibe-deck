@@ -1,14 +1,9 @@
 // @vitest-environment jsdom
-import { render } from "preact";
-import { readFileSync } from "node:fs";
-import { act } from "preact/test-utils";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  boardOpen,
-  editorRequest,
-  saveDialogOpen,
-  settingsOpen,
-} from "../chrome/events";
+import { render } from 'preact';
+import { readFileSync } from 'node:fs';
+import { act } from 'preact/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { boardOpen, editorRequest, saveDialogOpen, settingsOpen } from '../chrome/events';
 import {
   bootOpensTheBoard,
   browserPanelObscured,
@@ -16,34 +11,34 @@ import {
   livePresetOpensATab,
   stripShowsTabs,
   toggleSettingsPanel,
-} from "./app-policy";
-import { DesktopChrome } from "./desktop-chrome";
-import { ACTION_REGISTRY, TIER_RANK } from "../terminal/action-registry";
+} from './app-policy';
+import { DesktopChrome } from './desktop-chrome';
+import { ACTION_REGISTRY, TIER_RANK } from '../terminal/action-registry';
 import {
   initializeDesktopEnvironment,
   resetDesktopEnvironmentForTests,
   type DesktopPlatform,
-} from "../lib/platform";
+} from '../lib/platform';
 
-describe("DesktopChrome platform structure", () => {
+describe('DesktopChrome platform structure', () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
     resetDesktopEnvironmentForTests();
-    host = document.createElement("div");
+    host = document.createElement('div');
     document.body.appendChild(host);
   });
 
   afterEach(() => {
     act(() => render(null, host));
     resetDesktopEnvironmentForTests();
-    document.body.innerHTML = "";
+    document.body.innerHTML = '';
   });
 
   function mount(platform: DesktopPlatform, sidebar: boolean): HTMLElement {
     initializeDesktopEnvironment({
       platform,
-      homeDir: platform === "windows" ? "C:\\Users\\Deck" : "/Users/deck",
+      homeDir: platform === 'windows' ? 'C:\\Users\\Deck' : '/Users/deck',
     });
     act(() => {
       render(
@@ -65,8 +60,8 @@ describe("DesktopChrome platform structure", () => {
   // DL-18.9 (2026-08-16): the hide control is a WINDOW control, so it sits in
   // the frame row immediately after the traffic-light inset — before the drag
   // spacer, and before anything the app puts in that row.
-  it("puts the sidebar hide control right after the traffic lights", () => {
-    initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/deck" });
+  it('puts the sidebar hide control right after the traffic lights', () => {
+    initializeDesktopEnvironment({ platform: 'macos', homeDir: '/Users/deck' });
     act(() => {
       render(
         <DesktopChrome
@@ -83,55 +78,47 @@ describe("DesktopChrome platform structure", () => {
       );
     });
 
-    const frame = host.querySelector(".deck-frame")!;
+    const frame = host.querySelector('.deck-frame')!;
     const order = [...frame.children].map(
-      (child) => child.getAttribute("data-testid") ?? child.className,
+      (child) => child.getAttribute('data-testid') ?? child.className,
     );
-    expect(order).toEqual(["deck-frame__lights", "hide", "deck-frame__spacer"]);
+    expect(order).toEqual(['deck-frame__lights', 'hide', 'deck-frame__spacer']);
   });
 
   // DL-18: there is no separate title bar. The frame is one command row, and it
   // only exists in sidebar mode — in top-tab mode the tab bar IS the frame and
   // carries the toolbar itself.
   it.each([
-    ["macos", false, false, false],
-    ["macos", true, true, true],
-    ["windows", false, false, false],
-    ["windows", true, true, false],
+    ['macos', false, false, false],
+    ['macos', true, true, true],
+    ['windows', false, false, false],
+    ['windows', true, true, false],
   ] as const)(
-    "%s %s mode renders only the platform-owned in-app chrome",
+    '%s %s mode renders only the platform-owned in-app chrome',
     (platform, sidebar, hasFrame, hasLightsInset) => {
       const root = mount(platform, sidebar);
 
       expect(root.classList.contains(`window--${platform}`)).toBe(true);
-      expect(root.classList.contains("window--sidebar")).toBe(sidebar);
-      expect(root.querySelector(".deck-frame") !== null).toBe(hasFrame);
+      expect(root.classList.contains('window--sidebar')).toBe(sidebar);
+      expect(root.querySelector('.deck-frame') !== null).toBe(hasFrame);
       // The traffic-light inset is macOS-only: elsewhere the OS owns that
       // corner, or nothing does, and reserving space would leave a gap.
-      expect(root.querySelector(".deck-frame__lights") !== null).toBe(
-        hasLightsInset,
-      );
+      expect(root.querySelector('.deck-frame__lights') !== null).toBe(hasLightsInset);
       // The retired elements must not come back — two chrome rows is the shape
       // DL-18 exists to remove.
-      expect(root.querySelector(".titlebar")).toBe(null);
-      expect(root.querySelector(".deck-toolbar")).toBe(null);
-      expect(root.querySelector('[data-testid="sidebar"]') !== null).toBe(
-        sidebar,
-      );
-      expect(root.querySelector('[data-testid="tabs"]') !== null).toBe(
-        !sidebar,
-      );
-      expect(root.querySelector('[data-testid="toolbar"]') !== null).toBe(
-        sidebar,
-      );
+      expect(root.querySelector('.titlebar')).toBe(null);
+      expect(root.querySelector('.deck-toolbar')).toBe(null);
+      expect(root.querySelector('[data-testid="sidebar"]') !== null).toBe(sidebar);
+      expect(root.querySelector('[data-testid="tabs"]') !== null).toBe(!sidebar);
+      expect(root.querySelector('[data-testid="toolbar"]') !== null).toBe(sidebar);
     },
   );
 
   // The bottom band is a setting (`showStatusBar`, off by default). With no
   // occupant the ROW must go too — a 28px stripe of empty chrome is not a
   // hidden status bar.
-  it("drops the status row when nothing occupies it", () => {
-    initializeDesktopEnvironment({ platform: "macos", homeDir: "/Users/deck" });
+  it('drops the status row when nothing occupies it', () => {
+    initializeDesktopEnvironment({ platform: 'macos', homeDir: '/Users/deck' });
     act(() => {
       render(
         <DesktopChrome
@@ -147,17 +134,17 @@ describe("DesktopChrome platform structure", () => {
       );
     });
     const root = host.firstElementChild as HTMLElement;
-    expect(root.classList.contains("window--no-status")).toBe(true);
+    expect(root.classList.contains('window--no-status')).toBe(true);
   });
 
-  it("keeps the row while the status bar is shown", () => {
-    const root = mount("macos", true);
-    expect(root.classList.contains("window--no-status")).toBe(false);
+  it('keeps the row while the status bar is shown', () => {
+    const root = mount('macos', true);
+    expect(root.classList.contains('window--no-status')).toBe(false);
   });
 });
 
-describe("settings load recovery layer", () => {
-  it("hides a native browser surface while the settings load alert is visible", () => {
+describe('settings load recovery layer', () => {
+  it('hides a native browser surface while the settings load alert is visible', () => {
     expect(
       browserPanelObscured({
         overlayCoversPane: false,
@@ -169,15 +156,11 @@ describe("settings load recovery layer", () => {
     ).toBe(true);
   });
 
-  it("stacks the settings load alert above the Open board", () => {
-    const modalCss = readFileSync("src/styles/10-modals.css", "utf8");
-    const boardCss = readFileSync("src/styles/09-open-board.css", "utf8");
-    const alertZ = Number(
-      modalCss.match(/\.settings-load-alert\s*\{[^}]*z-index:\s*(\d+)/s)?.[1],
-    );
-    const boardZ = Number(
-      boardCss.match(/\.open-board\s*\{[^}]*z-index:\s*(\d+)/s)?.[1],
-    );
+  it('stacks the settings load alert above the Open board', () => {
+    const modalCss = readFileSync('src/styles/10-modals.css', 'utf8');
+    const boardCss = readFileSync('src/styles/09-open-board.css', 'utf8');
+    const alertZ = Number(modalCss.match(/\.settings-load-alert\s*\{[^}]*z-index:\s*(\d+)/s)?.[1]);
+    const boardZ = Number(boardCss.match(/\.open-board\s*\{[^}]*z-index:\s*(\d+)/s)?.[1]);
 
     expect(alertZ).toBeGreaterThan(boardZ);
   });
@@ -192,17 +175,15 @@ describe("settings load recovery layer", () => {
 // Same rectangle rule `.stage__surface` has always used for the document.
 describe("full-window surfaces leave the stage strip's row alone", () => {
   it.each([
-    ["src/styles/09-open-board.css", ".open-board"],
-    ["src/styles/11-settings-screen.css", ".settings-screen"],
-  ])("%s starts %s below the strip in sidebar mode", (file, selector) => {
-    const css = readFileSync(file, "utf8");
-    const escaped = selector.replace(".", "\\.");
-    const rule = css.match(
-      new RegExp(`\\.stage--strip\\s+${escaped}[^{]*\\{[^}]*\\}`, "s"),
-    )?.[0];
+    ['src/styles/09-open-board.css', '.open-board'],
+    ['src/styles/11-settings-screen.css', '.settings-screen'],
+  ])('%s starts %s below the strip in sidebar mode', (file, selector) => {
+    const css = readFileSync(file, 'utf8');
+    const escaped = selector.replace('.', '\\.');
+    const rule = css.match(new RegExp(`\\.stage--strip\\s+${escaped}[^{]*\\{[^}]*\\}`, 's'))?.[0];
 
     expect(rule).toBeDefined();
-    expect(rule).toContain("top: var(--frame-h)");
+    expect(rule).toContain('top: var(--frame-h)');
   });
 });
 
@@ -211,20 +192,16 @@ describe("full-window surfaces leave the stage strip's row alone", () => {
 // controls do; a list of tab chips does not — the surface replaced the tabs.
 // A modal is deliberately absent: it floats on a scrim with the strip legible
 // underneath it, and hiding the chips there would be a second, silent change.
-describe("stripShowsTabs", () => {
-  it("keeps the chips while only the terminal grid is on the stage", () => {
-    expect(stripShowsTabs({ boardOpen: false, settingsOpen: false })).toBe(
-      true,
-    );
+describe('stripShowsTabs', () => {
+  it('keeps the chips while only the terminal grid is on the stage', () => {
+    expect(stripShowsTabs({ boardOpen: false, settingsOpen: false })).toBe(true);
   });
 
   it.each([
-    ["the Open board", true, false],
-    ["the Settings screen", false, true],
-  ])("drops the chips under %s", (_label, board, settings) => {
-    expect(stripShowsTabs({ boardOpen: board, settingsOpen: settings })).toBe(
-      false,
-    );
+    ['the Open board', true, false],
+    ['the Settings screen', false, true],
+  ])('drops the chips under %s', (_label, board, settings) => {
+    expect(stripShowsTabs({ boardOpen: board, settingsOpen: settings })).toBe(false);
   });
 });
 
@@ -236,7 +213,7 @@ describe("stripShowsTabs", () => {
 // styles.css). Fix: block toggle-settings' OPEN branch while a draft is up;
 // CLOSE stays unconditional so Settings can never strand itself open (the
 // exact trap b7e6021 already had to avoid for the overlay scope guard).
-describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetDialog draft, never blocks closing", () => {
+describe('toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetDialog draft, never blocks closing', () => {
   const focusActive = vi.fn();
 
   beforeEach(() => {
@@ -254,21 +231,21 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
     saveDialogOpen.value = false;
   });
 
-  it("opens Settings normally when no overlay holds a draft", () => {
+  it('opens Settings normally when no overlay holds a draft', () => {
     toggleSettingsPanel(focusActive);
 
     expect(settingsOpen.value).toBe(true);
   });
 
-  it("does NOT open Settings while a PresetEditor draft is up", () => {
-    editorRequest.value = { source: "live" };
+  it('does NOT open Settings while a PresetEditor draft is up', () => {
+    editorRequest.value = { source: 'live' };
 
     toggleSettingsPanel(focusActive);
 
     expect(settingsOpen.value).toBe(false);
   });
 
-  it("does NOT open Settings while a SavePresetDialog draft is up", () => {
+  it('does NOT open Settings while a SavePresetDialog draft is up', () => {
     saveDialogOpen.value = true;
 
     toggleSettingsPanel(focusActive);
@@ -284,7 +261,7 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
   // a global surface that silently refuses to open reads as a broken app.
   // Drafts (modal-scrim, z-40) still outrank Settings and still block it —
   // covered by the two cases above.
-  it("DOES open Settings over the Open board — it now covers the board (z-35 > z-30) instead of hiding under it", () => {
+  it('DOES open Settings over the Open board — it now covers the board (z-35 > z-30) instead of hiding under it', () => {
     boardOpen.value = true;
 
     toggleSettingsPanel(focusActive);
@@ -292,9 +269,9 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
     expect(settingsOpen.value).toBe(true);
   });
 
-  it("still CLOSES Settings when it is already open, even with a PresetEditor draft also up (the trap b7e6021 already had to avoid)", () => {
+  it('still CLOSES Settings when it is already open, even with a PresetEditor draft also up (the trap b7e6021 already had to avoid)', () => {
     settingsOpen.value = true;
-    editorRequest.value = { source: "live" }; // both open at once — an edge case, not the common path
+    editorRequest.value = { source: 'live' }; // both open at once — an edge case, not the common path
 
     toggleSettingsPanel(focusActive);
 
@@ -302,7 +279,7 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
     expect(focusActive).toHaveBeenCalledTimes(1);
   });
 
-  it("still CLOSES Settings when it is already open, even with the Open board also up", () => {
+  it('still CLOSES Settings when it is already open, even with the Open board also up', () => {
     settingsOpen.value = true;
     boardOpen.value = true;
 
@@ -312,7 +289,7 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
     expect(focusActive).toHaveBeenCalledTimes(1);
   });
 
-  it("still closes Settings normally with no draft open at all", () => {
+  it('still closes Settings normally with no draft open at all', () => {
     settingsOpen.value = true;
 
     toggleSettingsPanel(focusActive);
@@ -331,12 +308,12 @@ describe("toggleSettingsPanel — blocks opening over a PresetEditor/SavePresetD
 // selected on the board. Saving the preset and leaving the board up is the
 // whole behaviour now that the board has no layout picker of its own
 // (2026-08-16) — the preset is picked up by the next open that remembers it.
-describe("livePresetOpensATab — ⌘⇧N over the Open board saves the preset without opening a tab", () => {
-  it("opens a tab in a live window, where the stage is actually visible", () => {
+describe('livePresetOpensATab — ⌘⇧N over the Open board saves the preset without opening a tab', () => {
+  it('opens a tab in a live window, where the stage is actually visible', () => {
     expect(livePresetOpensATab(false)).toBe(true);
   });
 
-  it("does NOT open a tab while the Open board covers the stage", () => {
+  it('does NOT open a tab while the Open board covers the stage', () => {
     expect(livePresetOpensATab(true)).toBe(false);
   });
 
@@ -344,23 +321,21 @@ describe("livePresetOpensATab — ⌘⇧N over the Open board saves the preset w
   // anyone retiers it back to "board" (or lower), the overlay guard blocks
   // ⌘⇧N on the board outright and this whole branch becomes dead code — fail
   // here so that is a deliberate decision, not a silent one.
-  it("is only reachable because new-preset outranks the board tier", () => {
-    const newPreset = ACTION_REGISTRY.find(
-      (action) => action.id === "new-preset",
-    );
-    expect(newPreset?.scope).toBe("modal");
+  it('is only reachable because new-preset outranks the board tier', () => {
+    const newPreset = ACTION_REGISTRY.find((action) => action.id === 'new-preset');
+    expect(newPreset?.scope).toBe('modal');
     expect(TIER_RANK.modal).toBeGreaterThan(TIER_RANK.board);
   });
 });
 
-describe("closeSettingsPanel", () => {
+describe('closeSettingsPanel', () => {
   afterEach(() => {
     settingsOpen.value = false;
   });
 
-  it("always closes and hands off focus, unconditionally", () => {
+  it('always closes and hands off focus, unconditionally', () => {
     settingsOpen.value = true;
-    editorRequest.value = { source: "live" };
+    editorRequest.value = { source: 'live' };
     const focusActive = vi.fn();
 
     closeSettingsPanel(focusActive);
@@ -372,13 +347,13 @@ describe("closeSettingsPanel", () => {
   });
 });
 
-describe("bootOpensTheBoard", () => {
-  it("opens the board on a normal boot", () => {
-    expect(bootOpensTheBoard({ kind: "normal" })).toBe(true);
+describe('bootOpensTheBoard', () => {
+  it('opens the board on a normal boot', () => {
+    expect(bootOpensTheBoard({ kind: 'normal' })).toBe(true);
   });
 
-  it("skips the board when the window boots to adopt a pane", () => {
-    expect(bootOpensTheBoard({ kind: "adopt", token: "t-1" })).toBe(false);
+  it('skips the board when the window boots to adopt a pane', () => {
+    expect(bootOpensTheBoard({ kind: 'adopt', token: 't-1' })).toBe(false);
   });
 });
 

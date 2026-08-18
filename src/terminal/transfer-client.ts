@@ -1,6 +1,6 @@
-import { invoke } from "../host/bridge";
-import { listen, type UnlistenFn } from "../host/bridge";
-import type { TabDotColor } from "../lib/tab-colors";
+import { invoke } from '../host/bridge';
+import { listen, type UnlistenFn } from '../host/bridge';
+import type { TabDotColor } from '../lib/tab-colors';
 
 /**
  * Everything that moves with a pane (spec §10.2), serialized across the
@@ -27,20 +27,18 @@ export interface AdoptionPayload {
 }
 
 export type TransferOutcome =
-  | { readonly kind: "committed" }
-  | { readonly kind: "aborted"; readonly reason: string };
+  { readonly kind: 'committed' } | { readonly kind: 'aborted'; readonly reason: string };
 
 export type BootMode =
-  | { readonly kind: "normal" }
-  | { readonly kind: "adopt"; readonly token: string };
+  { readonly kind: 'normal' } | { readonly kind: 'adopt'; readonly token: string };
 
-const SETTLED_EVENT = "transfer:settled";
-const OFFER_EVENT = "transfer:offer";
-const MOVE_TO_WINDOW_EVENT = "menu:move-pane-to-window";
+const SETTLED_EVENT = 'transfer:settled';
+const OFFER_EVENT = 'transfer:offer';
+const MOVE_TO_WINDOW_EVENT = 'menu:move-pane-to-window';
 
 interface SettledPayload {
   token: string;
-  outcome: "committed" | "aborted";
+  outcome: 'committed' | 'aborted';
   reason?: string;
 }
 
@@ -77,9 +75,7 @@ export interface TransferClient {
    * to the FOCUSED window with the chosen destination label; this window is
    * then the source of the transfer.
    */
-  listenMoveToWindow(
-    handler: (targetLabel: string) => void,
-  ): Promise<UnlistenFn>;
+  listenMoveToWindow(handler: (targetLabel: string) => void): Promise<UnlistenFn>;
   windowBootMode(): Promise<BootMode>;
 }
 
@@ -90,14 +86,14 @@ export interface TransferClient {
  * is always a usable app.
  */
 export function bootModeOrNormal(raw: unknown): BootMode {
-  if (typeof raw !== "object" || raw === null) {
-    return { kind: "normal" };
+  if (typeof raw !== 'object' || raw === null) {
+    return { kind: 'normal' };
   }
   const value = raw as { kind?: unknown; token?: unknown };
-  if (value.kind === "adopt" && typeof value.token === "string") {
-    return { kind: "adopt", token: value.token };
+  if (value.kind === 'adopt' && typeof value.token === 'string') {
+    return { kind: 'adopt', token: value.token };
   }
-  return { kind: "normal" };
+  return { kind: 'normal' };
 }
 
 /**
@@ -111,11 +107,11 @@ export function bootModeOrNormal(raw: unknown): BootMode {
  * value that decides where a running agent's pane ends up (C7/C8).
  */
 export function moveToWindowTarget(raw: unknown): string | null {
-  if (typeof raw !== "object" || raw === null) {
+  if (typeof raw !== 'object' || raw === null) {
     return null;
   }
   const label = (raw as { targetLabel?: unknown }).targetLabel;
-  return typeof label === "string" && label !== "" ? label : null;
+  return typeof label === 'string' && label !== '' ? label : null;
 }
 
 /** Production adapter — Tauri IPC. */
@@ -125,19 +121,19 @@ export function createTauriTransferClient(): TransferClient {
       // `paneId` crosses as a STRING and is parsed to u32 in Rust. Every
       // other PTY command keeps a numeric id; this one is deliberately
       // different (frozen 2026-08-10) — do not "normalize" it back.
-      return invoke<string>("prepare_transfer", { paneId: String(paneId) });
+      return invoke<string>('prepare_transfer', { paneId: String(paneId) });
     },
     stageTransfer(token, payload) {
-      return invoke("stage_transfer", { token, payload });
+      return invoke('stage_transfer', { token, payload });
     },
     claimTransfer(token) {
-      return invoke<AdoptionPayload>("claim_transfer", { token });
+      return invoke<AdoptionPayload>('claim_transfer', { token });
     },
     commitTransfer(token) {
-      return invoke("commit_transfer", { token });
+      return invoke('commit_transfer', { token });
     },
     abortTransfer(token) {
-      return invoke("abort_transfer", { token });
+      return invoke('abort_transfer', { token });
     },
     async awaitOutcome(token) {
       // The listener is per-transfer and MUST be torn down: a window runs
@@ -158,9 +154,9 @@ export function createTauriTransferClient(): TransferClient {
           }
           stop();
           resolve(
-            event.payload.outcome === "committed"
-              ? { kind: "committed" }
-              : { kind: "aborted", reason: event.payload.reason ?? "aborted" },
+            event.payload.outcome === 'committed'
+              ? { kind: 'committed' }
+              : { kind: 'aborted', reason: event.payload.reason ?? 'aborted' },
           );
         }).then((fn) => {
           if (settled) {
@@ -177,13 +173,13 @@ export function createTauriTransferClient(): TransferClient {
       // Returns the created window's label. This section ignores it — the
       // destination announces itself by claiming — but it must NOT be typed
       // `void`: the drag section needs the label (merged §0.2).
-      return invoke<string>("open_pane_window", {
+      return invoke<string>('open_pane_window', {
         token,
         ...(screen ? { screenX: screen.x, screenY: screen.y } : {}),
       });
     },
     offerTransfer(token, targetLabel) {
-      return invoke("offer_transfer", { token, targetLabel });
+      return invoke('offer_transfer', { token, targetLabel });
     },
     listenTransferOffer(handler) {
       return listen<{ token: string }>(OFFER_EVENT, (event) => {
@@ -194,7 +190,7 @@ export function createTauriTransferClient(): TransferClient {
       return listen<unknown>(MOVE_TO_WINDOW_EVENT, (event) => {
         const label = moveToWindowTarget(event.payload);
         if (label === null) {
-          console.warn("Ignoring malformed menu:move-pane-to-window payload");
+          console.warn('Ignoring malformed menu:move-pane-to-window payload');
           return;
         }
         handler(label);
@@ -202,10 +198,10 @@ export function createTauriTransferClient(): TransferClient {
     },
     async windowBootMode() {
       try {
-        return bootModeOrNormal(await invoke<unknown>("window_boot_mode"));
+        return bootModeOrNormal(await invoke<unknown>('window_boot_mode'));
       } catch (err) {
-        console.warn("window_boot_mode failed; booting normally:", err);
-        return { kind: "normal" };
+        console.warn('window_boot_mode failed; booting normally:', err);
+        return { kind: 'normal' };
       }
     },
   };
@@ -269,19 +265,19 @@ export function createMemoryTransferClient(
     },
     async prepareTransfer(paneId) {
       calls.push(`prepare:${paneId}`);
-      guard("prepareTransfer");
+      guard('prepareTransfer');
       const token = `xfer-${nextToken}`;
       nextToken += 1;
       return token;
     },
     async stageTransfer(token, payload) {
       calls.push(`stage:${token}`);
-      guard("stageTransfer");
+      guard('stageTransfer');
       staged.set(token, payload);
     },
     async claimTransfer(token) {
       calls.push(`claim:${token}`);
-      guard("claimTransfer");
+      guard('claimTransfer');
       const payload = staged.get(token);
       if (payload === undefined) {
         throw new Error(`unknown token ${token}`);
@@ -290,7 +286,7 @@ export function createMemoryTransferClient(
     },
     async commitTransfer(token) {
       calls.push(`commit:${token}`);
-      guard("commitTransfer");
+      guard('commitTransfer');
     },
     async abortTransfer(token) {
       calls.push(`abort:${token}`);
@@ -311,12 +307,12 @@ export function createMemoryTransferClient(
           ? `open-window:${token}`
           : `open-window:${token}:${screen.x},${screen.y}`,
       );
-      guard("openPaneWindow");
-      return "deck-1";
+      guard('openPaneWindow');
+      return 'deck-1';
     },
     async offerTransfer(token, targetLabel) {
       calls.push(`offer:${token}:${targetLabel}`);
-      guard("offerTransfer");
+      guard('offerTransfer');
     },
     async listenTransferOffer(handler) {
       offerHandlers.add(handler);
@@ -331,11 +327,10 @@ export function createMemoryTransferClient(
       };
     },
     async windowBootMode() {
-      return options.bootMode ?? { kind: "normal" };
+      return options.bootMode ?? { kind: 'normal' };
     },
   };
 }
 
 /** Shared production client — factories accept an override for tests. */
-export const defaultTransferClient: TransferClient =
-  createTauriTransferClient();
+export const defaultTransferClient: TransferClient = createTauriTransferClient();

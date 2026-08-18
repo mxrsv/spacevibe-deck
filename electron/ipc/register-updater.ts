@@ -13,14 +13,11 @@
  * Squirrel.Mac refuses an unsigned app. Unpackaged and unsigned runs therefore
  * answer `unsupported`, which is an honest answer rather than a false one.
  */
-import { app, ipcMain, type IpcMainInvokeEvent } from "electron";
-import { autoUpdater } from "electron-updater";
-import { CHANNELS } from "./channels";
-import {
-  createUpdateLifecycle,
-  type AutoUpdaterLike,
-} from "../updater/updater";
-import { UpdateFlight } from "../updater/update-flight";
+import { app, ipcMain, type IpcMainInvokeEvent } from 'electron';
+import { autoUpdater } from 'electron-updater';
+import { CHANNELS } from './channels';
+import { createUpdateLifecycle, type AutoUpdaterLike } from '../updater/updater';
+import { UpdateFlight } from '../updater/update-flight';
 
 export interface UpdaterDependencies {
   /** The window a request came from, as every other register module names it. */
@@ -55,9 +52,7 @@ export interface UpdaterHandle {
 
 export function registerUpdater(deps: UpdaterDependencies): UpdaterHandle {
   const flight = new UpdateFlight();
-  ipcMain.handle(CHANNELS.beginUpdateCheck, (event) =>
-    flight.tryBegin(deps.labelOf(event)),
-  );
+  ipcMain.handle(CHANNELS.beginUpdateCheck, (event) => flight.tryBegin(deps.labelOf(event)));
   ipcMain.handle(CHANNELS.endUpdateCheck, (event) => {
     const label = deps.labelOf(event);
     if (!flight.finish(label)) {
@@ -77,9 +72,9 @@ export function registerUpdater(deps: UpdaterDependencies): UpdaterHandle {
       // `latest-mac.yml` / `latest.yml`; Tauri's `latest.json` is a separate
       // manifest with separate trust material and is never touched here.
       autoUpdater.setFeedURL({
-        provider: "github",
-        owner: "mxrsv",
-        repo: "spacevibe-deck",
+        provider: 'github',
+        owner: 'mxrsv',
+        repo: 'spacevibe-deck',
       });
       return autoUpdater as unknown as AutoUpdaterLike;
     },

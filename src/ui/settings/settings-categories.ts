@@ -1,5 +1,5 @@
-import type { ComponentType } from "preact";
-import type { CategoryId } from "./active-category-store";
+import type { ComponentType } from 'preact';
+import type { CategoryId } from './active-category-store';
 import {
   AboutIcon,
   AgentsIcon,
@@ -9,15 +9,15 @@ import {
   NotificationsIcon,
   ShortcutsIcon,
   TerminalIcon,
-} from "./settings-nav-icons";
-import { AppearanceSection } from "./sections/appearance-section";
-import { TerminalSection } from "./sections/terminal-section";
-import { AgentsSection } from "./sections/agents-section";
-import { BrowserSection } from "./sections/browser-section";
-import { LinksEditorSection } from "./sections/links-editor-section";
-import { NotificationsSection } from "./sections/notifications-section";
-import { ShortcutsSection } from "./sections/shortcuts-section";
-import { AboutSection } from "./sections/about-section";
+} from './settings-nav-icons';
+import { AppearanceSection } from './sections/appearance-section';
+import { TerminalSection } from './sections/terminal-section';
+import { AgentsSection } from './sections/agents-section';
+import { BrowserSection } from './sections/browser-section';
+import { LinksEditorSection } from './sections/links-editor-section';
+import { NotificationsSection } from './sections/notifications-section';
+import { ShortcutsSection } from './sections/shortcuts-section';
+import { AboutSection } from './sections/about-section';
 
 /**
  * The one section panel the rail swaps content into. A single stable id (not
@@ -25,7 +25,7 @@ import { AboutSection } from "./sections/about-section";
  * `aria-controls` has to point at an element that actually exists, and a
  * per-category id would leave four of the five dangling.
  */
-export const SECTION_PANEL_ID = "settings-section-panel";
+export const SECTION_PANEL_ID = 'settings-section-panel';
 
 /** Id of a category's rail tab — the panel points back at it via `aria-labelledby`. */
 export function categoryTabId(id: CategoryId): string {
@@ -55,41 +55,41 @@ export interface SettingsCategory {
  */
 export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   {
-    id: "appearance",
-    label: "Appearance",
+    id: 'appearance',
+    label: 'Appearance',
     Icon: AppearanceIcon,
     Section: AppearanceSection,
   },
   {
-    id: "browser",
-    label: "Browser",
+    id: 'browser',
+    label: 'Browser',
     Icon: BrowserIcon,
     Section: BrowserSection,
   },
   {
-    id: "terminal",
-    label: "Terminal",
+    id: 'terminal',
+    label: 'Terminal',
     Icon: TerminalIcon,
     Section: TerminalSection,
   },
-  { id: "agents", label: "Agents", Icon: AgentsIcon, Section: AgentsSection },
+  { id: 'agents', label: 'Agents', Icon: AgentsIcon, Section: AgentsSection },
   {
-    id: "links-editor",
-    label: "Links & editor",
+    id: 'links-editor',
+    label: 'Links & editor',
     Icon: LinksEditorIcon,
     Section: LinksEditorSection,
   },
   {
-    id: "shortcuts",
-    label: "Shortcuts",
+    id: 'shortcuts',
+    label: 'Shortcuts',
     Icon: ShortcutsIcon,
     Section: ShortcutsSection,
   },
   {
-    id: "notifications",
-    label: "Notifications",
+    id: 'notifications',
+    label: 'Notifications',
     Icon: NotificationsIcon,
     Section: NotificationsSection,
   },
-  { id: "about", label: "About", Icon: AboutIcon, Section: AboutSection },
+  { id: 'about', label: 'About', Icon: AboutIcon, Section: AboutSection },
 ];

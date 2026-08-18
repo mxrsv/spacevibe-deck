@@ -12,8 +12,8 @@
  * `input_uncached = input - cached` precisely so nothing is counted twice.
  */
 
-export type UsageAgent = "claude" | "codex";
-export type UsageSourceState = "ok" | "missing" | "unreadable";
+export type UsageAgent = 'claude' | 'codex';
+export type UsageSourceState = 'ok' | 'missing' | 'unreadable';
 
 export interface UsageCounters {
   readonly inputUncached: number;
@@ -71,17 +71,14 @@ export const EMPTY_USAGE_SNAPSHOT: UsageSnapshot = {
   scannedAtMs: 0,
   buckets: [],
   sources: [
-    { agent: "claude", state: "missing", filesScanned: 0 },
-    { agent: "codex", state: "missing", filesScanned: 0 },
+    { agent: 'claude', state: 'missing', filesScanned: 0 },
+    { agent: 'codex', state: 'missing', filesScanned: 0 },
   ],
   skippedLines: 0,
 };
 
 /** Field-wise sum. Returns a new object; neither argument is touched (C1). */
-export function addCounters(
-  left: UsageCounters,
-  right: UsageCounters,
-): UsageCounters {
+export function addCounters(left: UsageCounters, right: UsageCounters): UsageCounters {
   return {
     inputUncached: left.inputUncached + right.inputUncached,
     cacheRead: left.cacheRead + right.cacheRead,

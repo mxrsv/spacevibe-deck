@@ -135,19 +135,19 @@
   color: var(--text-faint);
 }
 
-.wsitem[data-state="ready"] .wsitem__state {
+.wsitem[data-state='ready'] .wsitem__state {
   color: var(--green);
 }
 
-.wsitem[data-state="working"] .wsitem__state {
+.wsitem[data-state='working'] .wsitem__state {
   color: var(--accent);
 }
 
-.wsitem[data-state="attention"] .wsitem__state {
+.wsitem[data-state='attention'] .wsitem__state {
   color: var(--magenta);
 }
 
-.wsitem[data-state="missing"] .wsitem__state {
+.wsitem[data-state='missing'] .wsitem__state {
   color: var(--red);
 }
 
@@ -160,7 +160,7 @@ button.wsitem__state {
 /* Keep the visible ring at 8px while giving the actionable state a 20px hit
    target, matching the attention mark it replaces. */
 button.wsitem__state::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: -6px;
   border-radius: 50%;

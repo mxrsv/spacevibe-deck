@@ -1,17 +1,16 @@
-import type { Pane } from "./pane";
-import type { AdoptionPayload, TransferClient } from "./transfer-client";
+import type { Pane } from './pane';
+import type { AdoptionPayload, TransferClient } from './transfer-client';
 
 /** Written into the pane when history did not survive (spec §13). */
-const NO_SCROLLBACK_NOTICE =
-  "\x1b[2m[Scrollback could not be restored for this move]\x1b[0m";
+const NO_SCROLLBACK_NOTICE = '\x1b[2m[Scrollback could not be restored for this move]\x1b[0m';
 
 export type AdoptResult =
   | {
-      readonly kind: "adopted";
+      readonly kind: 'adopted';
       readonly paneId: number;
       readonly payload: AdoptionPayload;
     }
-  | { readonly kind: "failed"; readonly reason: string };
+  | { readonly kind: 'failed'; readonly reason: string };
 
 export interface AdoptDeps {
   readonly transfer: TransferClient;
@@ -42,10 +41,7 @@ export interface AdoptDeps {
  * Never throws: every failure resolves as `failed` and leaves nothing
  * half-built behind.
  */
-export async function adoptTransfer(
-  token: string,
-  deps: AdoptDeps,
-): Promise<AdoptResult> {
+export async function adoptTransfer(token: string, deps: AdoptDeps): Promise<AdoptResult> {
   let payload: AdoptionPayload;
   try {
     payload = await deps.transfer.claimTransfer(token);
@@ -56,8 +52,8 @@ export async function adoptTransfer(
     // 10 s bound (spec §7.5) returns the pane to the source on its own. Spec
     // §13's "closes that window and aborts" is satisfied by the caller: the
     // boot path closes the window (Task C9) and Rust's timeout does the abort.
-    console.warn("claim_transfer failed:", err);
-    return { kind: "failed", reason: "claim-failed" };
+    console.warn('claim_transfer failed:', err);
+    return { kind: 'failed', reason: 'claim-failed' };
   }
 
   const abort = async (reason: string, err: unknown): Promise<AdoptResult> => {
@@ -65,7 +61,7 @@ export async function adoptTransfer(
     await deps.transfer.abortTransfer(token).catch(() => {
       // Rust aborts on its own bounds anyway — a failed abort is noise.
     });
-    return { kind: "failed", reason };
+    return { kind: 'failed', reason };
   };
 
   let releaseHold: (() => void) | null = null;
@@ -75,11 +71,11 @@ export async function adoptTransfer(
     pane = deps.adopt(payload);
   } catch (err) {
     releaseHold?.();
-    return abort("adopt-failed", err);
+    return abort('adopt-failed', err);
   }
 
   try {
-    if (payload.scrollback === "") {
+    if (payload.scrollback === '') {
       pane.writeln(NO_SCROLLBACK_NOTICE);
     } else {
       pane.write(payload.scrollback);
@@ -88,7 +84,7 @@ export async function adoptTransfer(
   } catch (err) {
     // Spec §13 again, mirrored: an unreplayable buffer costs history, never
     // the session.
-    console.warn("Scrollback replay failed; continuing:", err);
+    console.warn('Scrollback replay failed; continuing:', err);
   }
 
   deps.place(pane, payload);
@@ -98,13 +94,13 @@ export async function adoptTransfer(
   } catch (err) {
     releaseHold();
     deps.discard(payload.paneId);
-    deps.report("The pane did not arrive — it stayed in its original window.");
-    return abort("commit-failed", err);
+    deps.report('The pane did not arrive — it stayed in its original window.');
+    return abort('commit-failed', err);
   }
 
   releaseHold();
   // Only now is `resize_pty` accepted again: the route is `Owned` by this
   // window, so the pane can leave the source's capture geometry behind.
   pane.fit();
-  return { kind: "adopted", paneId: payload.paneId, payload };
+  return { kind: 'adopted', paneId: payload.paneId, payload };
 }

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { beforeAll, describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, type Settings } from "../settings/settings-schema";
-import { createPane } from "./pane";
-import type { PaneEvents } from "./pane";
+import { beforeAll, describe, expect, it } from 'vitest';
+import { DEFAULT_SETTINGS, type Settings } from '../settings/settings-schema';
+import { createPane } from './pane';
+import type { PaneEvents } from './pane';
 
 beforeAll(() => {
   // Never fires: nothing in this file resizes anything, and `fit()` is
@@ -21,22 +21,22 @@ const silentEvents: PaneEvents = {
   onFocus: () => {},
 };
 
-describe("Pane transfer primitives", () => {
-  it("flush() resolves after xterm has parsed everything already written", async () => {
+describe('Pane transfer primitives', () => {
+  it('flush() resolves after xterm has parsed everything already written', async () => {
     const pane = createPane(1, DEFAULT_SETTINGS as Settings, silentEvents);
-    pane.write("hello");
+    pane.write('hello');
     await pane.flush();
-    expect(pane.serializeScrollback(100)).toContain("hello");
+    expect(pane.serializeScrollback(100)).toContain('hello');
     pane.dispose();
   });
 
-  it("flush() resolves on an idle terminal with nothing queued", async () => {
+  it('flush() resolves on an idle terminal with nothing queued', async () => {
     const pane = createPane(2, DEFAULT_SETTINGS as Settings, silentEvents);
     await expect(pane.flush()).resolves.toBeUndefined();
     pane.dispose();
   });
 
-  it("serializeScrollback keeps the newest lines when the buffer is longer", async () => {
+  it('serializeScrollback keeps the newest lines when the buffer is longer', async () => {
     const pane = createPane(3, DEFAULT_SETTINGS as Settings, silentEvents, {
       cols: 20,
       rows: 4,
@@ -46,12 +46,12 @@ describe("Pane transfer primitives", () => {
     }
     await pane.flush();
     const serialized = pane.serializeScrollback(5);
-    expect(serialized).toContain("line-39");
-    expect(serialized).not.toContain("line-0\r");
+    expect(serialized).toContain('line-39');
+    expect(serialized).not.toContain('line-0\r');
     pane.dispose();
   });
 
-  it("constructs at the requested geometry so an adopted pane starts at capture size", () => {
+  it('constructs at the requested geometry so an adopted pane starts at capture size', () => {
     const pane = createPane(4, DEFAULT_SETTINGS as Settings, silentEvents, {
       cols: 133,
       rows: 41,

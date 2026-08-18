@@ -19,8 +19,8 @@
  * chip clicks) are backstopped by App's exclusion effect instead — the two
  * stores never import each other.
  */
-import type { SurfaceStrip } from "../terminal/tab-manager";
-import type { BrowserClient } from "../browser/browser-client";
+import type { SurfaceStrip } from '../terminal/tab-manager';
+import type { BrowserClient } from '../browser/browser-client';
 import {
   activateBrowserSurface,
   browserOpen,
@@ -28,8 +28,8 @@ import {
   browserSurfaceActive,
   closeBrowser,
   deactivateBrowserSurface,
-} from "../browser/browser-store";
-import { UNSEQUENCED } from "../lib/open-sequence";
+} from '../browser/browser-store';
+import { UNSEQUENCED } from '../lib/open-sequence';
 
 export interface StageSurfaceStripDeps {
   /** The file controller's own strip — delegated to for every file index. */
@@ -57,8 +57,7 @@ export function composeSurfaceStrip(deps: StageSurfaceStripDeps): SurfaceStrip {
   return {
     count: () => files.count() + browserSlot(),
     total: () => files.total() + browserSlot(),
-    activeIndex: () =>
-      browserSurfaceActive.value ? files.count() : files.activeIndex(),
+    activeIndex: () => (browserSurfaceActive.value ? files.count() : files.activeIndex()),
     // Same delegation as every other method: file indexes go to the file
     // strip, the browser's own slot answers from its store. The merged strip
     // then places the chip by when it was opened, not by this index space —

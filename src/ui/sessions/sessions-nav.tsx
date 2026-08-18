@@ -1,16 +1,10 @@
-import { ClockCounterClockwise } from "@phosphor-icons/react";
-import { useRef } from "preact/hooks";
-import { AgentGlyph } from "../controls/agent-glyph";
-import { DeckIcon, RAIL_ICON } from "../controls/deck-icon";
-import type { SessionAgent } from "../../lib/session-history";
-import {
-  filterSessions,
-  type AgentFilter,
-} from "../../sessions/session-filters";
-import {
-  sessionAgentFilter,
-  sessionEntries,
-} from "../../sessions/sessions-store";
+import { ClockCounterClockwise } from '@phosphor-icons/react';
+import { useRef } from 'preact/hooks';
+import { AgentGlyph } from '../controls/agent-glyph';
+import { DeckIcon, RAIL_ICON } from '../controls/deck-icon';
+import type { SessionAgent } from '../../lib/session-history';
+import { filterSessions, type AgentFilter } from '../../sessions/session-filters';
+import { sessionAgentFilter, sessionEntries } from '../../sessions/sessions-store';
 
 /**
  * Id of the one panel every rail item controls. This rail filters a single
@@ -18,7 +12,7 @@ import {
  * — unlike `usage-nav.tsx`'s per-view `viewTabId` — there is exactly one
  * panel id, defined once here and consumed by `sessions-screen.tsx`.
  */
-export const SESSIONS_PANEL_ID = "sessions-view-panel";
+export const SESSIONS_PANEL_ID = 'sessions-view-panel';
 
 /** Id of a rail item's tab — the panel points back at it via `aria-labelledby`. */
 export function sessionsTabId(agent: AgentFilter): string {
@@ -39,15 +33,15 @@ interface SessionsNavItem {
 /** DL-11.4: sentence-case labels; "Claude Code" and "Codex" are product
  *  names and keep their capitals (the 2026-08-15 casing fork). */
 const SESSIONS_NAV_ITEMS: readonly SessionsNavItem[] = [
-  { agent: "all", label: "All sessions", short: "All" },
-  { agent: "claude", label: "Claude Code", short: "Claude" },
-  { agent: "codex", label: "Codex", short: "Codex" },
+  { agent: 'all', label: 'All sessions', short: 'All' },
+  { agent: 'claude', label: 'Claude Code', short: 'Claude' },
+  { agent: 'codex', label: 'Codex', short: 'Codex' },
 ];
 
 /** DL-25.2's mark, reused on the filter that selects that same agent: `all`
  *  has no brand, so it keeps the surface's own history glyph. */
 function NavGlyph({ agent }: { readonly agent: AgentFilter }) {
-  return agent === "all" ? (
+  return agent === 'all' ? (
     <DeckIcon icon={ClockCounterClockwise} size={RAIL_ICON} />
   ) : (
     <AgentGlyph agent={agent as SessionAgent} className="sessions-nav__logo" />
@@ -72,11 +66,11 @@ function NavGlyph({ agent }: { readonly agent: AgentFilter }) {
  * rail paying prose-width rent while delivering none of it.
  */
 interface SessionsNavProps {
-  readonly variant?: "rail" | "compact";
+  readonly variant?: 'rail' | 'compact';
 }
-export function SessionsNav({ variant = "rail" }: SessionsNavProps) {
+export function SessionsNav({ variant = 'rail' }: SessionsNavProps) {
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const compact = variant === "compact";
+  const compact = variant === 'compact';
 
   const selectItem = (index: number): void => {
     sessionAgentFilter.value = SESSIONS_NAV_ITEMS[index].agent;
@@ -86,8 +80,8 @@ export function SessionsNav({ variant = "rail" }: SessionsNavProps) {
   const handleKeyDown = (event: KeyboardEvent): void => {
     // A tablist is walked along the axis it is laid out on, so the compact
     // row answers ←/→ and the rail keeps ↑/↓. Same wraparound formula.
-    const next = compact ? "ArrowRight" : "ArrowDown";
-    const previous = compact ? "ArrowLeft" : "ArrowUp";
+    const next = compact ? 'ArrowRight' : 'ArrowDown';
+    const previous = compact ? 'ArrowLeft' : 'ArrowUp';
     let step: 1 | -1;
     if (event.key === next) {
       step = 1;
@@ -107,13 +101,13 @@ export function SessionsNav({ variant = "rail" }: SessionsNavProps) {
 
   return (
     <nav
-      class={`sessions-nav ${compact ? "sessions-nav--compact" : ""}`}
+      class={`sessions-nav ${compact ? 'sessions-nav--compact' : ''}`}
       aria-label="Session filters"
     >
       <div
         class="sessions-nav__list"
         role="tablist"
-        aria-orientation={compact ? "horizontal" : "vertical"}
+        aria-orientation={compact ? 'horizontal' : 'vertical'}
         onKeyDown={handleKeyDown}
       >
         {SESSIONS_NAV_ITEMS.map((item, index) => {
@@ -136,7 +130,7 @@ export function SessionsNav({ variant = "rail" }: SessionsNavProps) {
               aria-selected={isActive}
               aria-controls={SESSIONS_PANEL_ID}
               tabIndex={isActive ? 0 : -1}
-              class={`sessions-nav__item ${isActive ? "is-active" : ""}`}
+              class={`sessions-nav__item ${isActive ? 'is-active' : ''}`}
               aria-label={compact ? item.label : undefined}
               onClick={() => selectItem(index)}
             >
@@ -144,9 +138,7 @@ export function SessionsNav({ variant = "rail" }: SessionsNavProps) {
                   brand mark where it has one, so the filter and the rows it
                   filters name the agent the same way. */}
               <NavGlyph agent={item.agent} />
-              <span class="sessions-nav__label">
-                {compact ? item.short : item.label}
-              </span>
+              <span class="sessions-nav__label">{compact ? item.short : item.label}</span>
               <span class="sessions-nav__count">{count}</span>
             </button>
           );

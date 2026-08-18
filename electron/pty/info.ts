@@ -15,10 +15,10 @@ import {
   classifyProcess,
   type AgentProcessMatcher,
   type Classification,
-} from "../platform/classify";
-import * as macos from "../platform/macos";
-import * as windows from "../platform/windows";
-import type { PtySessionSnapshot } from "./session-store";
+} from '../platform/classify';
+import * as macos from '../platform/macos';
+import * as windows from '../platform/windows';
+import type { PtySessionSnapshot } from './session-store';
 
 export interface PtyInfoPlatform {
   readProcessTable(): Promise<macos.PsRow[]>;
@@ -31,15 +31,15 @@ export interface PtyInfoPlatform {
 }
 
 function platform(): PtyInfoPlatform {
-  return process.platform === "win32" ? windows : macos;
+  return process.platform === 'win32' ? windows : macos;
 }
 
 export interface PtyInfo {
   readonly id: number;
   readonly cwd: string | null;
   readonly process: string | null;
-  readonly kind: Classification["kind"];
-  readonly agent: Classification["agent"];
+  readonly kind: Classification['kind'];
+  readonly agent: Classification['agent'];
 }
 
 function unknownInfo(snapshot: PtySessionSnapshot): PtyInfo {
@@ -47,7 +47,7 @@ function unknownInfo(snapshot: PtySessionSnapshot): PtyInfo {
     id: snapshot.id,
     cwd: snapshot.cwd,
     process: null,
-    kind: "unknown",
+    kind: 'unknown',
     agent: null,
   };
 }
@@ -67,24 +67,13 @@ export function buildPtyInfo(
   agentMatchers: readonly AgentProcessMatcher[] = [],
 ): PtyInfo[] {
   return snapshots.map((snapshot) => {
-    const foreground = processPlatform.foregroundProcess(
-      rows,
-      snapshot.ttyName,
-      snapshot.pid,
-    );
+    const foreground = processPlatform.foregroundProcess(rows, snapshot.ttyName, snapshot.pid);
     if (foreground === null) {
       return unknownInfo(snapshot);
     }
     const commandLine =
-      rows.find((row) => row.pid === foreground.pid)?.args ??
-      foreground.name ??
-      "";
-    const { kind, agent } = classifyProcess(
-      foreground.name,
-      true,
-      commandLine,
-      agentMatchers,
-    );
+      rows.find((row) => row.pid === foreground.pid)?.args ?? foreground.name ?? '';
+    const { kind, agent } = classifyProcess(foreground.name, true, commandLine, agentMatchers);
     return {
       id: snapshot.id,
       // Live cwd first, OSC 9;9 second — `info.rs` orders it the same way.
@@ -113,17 +102,13 @@ export interface PtyInfoReader {
  * Stateful reader so cwd discovery can lag behind process classification
  * without losing the last verified directory for the same foreground pid.
  */
-export function createPtyInfoReader(
-  getPlatform: () => PtyInfoPlatform = platform,
-): PtyInfoReader {
+export function createPtyInfoReader(getPlatform: () => PtyInfoPlatform = platform): PtyInfoReader {
   const cwdByPane = new Map<number, CachedCwd>();
   let pendingCwdTargets = new Map<number, number>();
   let cwdRefresh: Promise<void> | null = null;
   let processTableRead: Promise<macos.PsRow[]> | null = null;
 
-  function readSharedProcessTable(
-    processPlatform: PtyInfoPlatform,
-  ): Promise<macos.PsRow[]> {
+  function readSharedProcessTable(processPlatform: PtyInfoPlatform): Promise<macos.PsRow[]> {
     if (processTableRead !== null) {
       return processTableRead;
     }
@@ -162,7 +147,7 @@ export function createPtyInfoReader(
     };
     const current = refresh()
       .catch((error) => {
-        console.warn("Deck: cwd refresh failed", error);
+        console.warn('Deck: cwd refresh failed', error);
       })
       .finally(() => {
         if (cwdRefresh === current) {
@@ -183,11 +168,7 @@ export function createPtyInfoReader(
       const cachedCwds = new Map<number, string>();
       const foregroundTargets = new Map<number, number>();
       for (const snapshot of snapshots) {
-        const foreground = processPlatform.foregroundProcess(
-          rows,
-          snapshot.ttyName,
-          snapshot.pid,
-        );
+        const foreground = processPlatform.foregroundProcess(rows, snapshot.ttyName, snapshot.pid);
         if (foreground === null) {
           continue;
         }
@@ -214,13 +195,7 @@ export function createPtyInfoReader(
         }
         scheduleCwdRefresh(processPlatform);
       }
-      return buildPtyInfo(
-        snapshots,
-        rows,
-        cachedCwds,
-        processPlatform,
-        agentMatchers,
-      );
+      return buildPtyInfo(snapshots, rows, cachedCwds, processPlatform, agentMatchers);
     },
   };
 }

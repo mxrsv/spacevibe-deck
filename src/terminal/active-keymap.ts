@@ -11,15 +11,15 @@
  * render re-renders when a chord changes (R5), which is what keeps chrome
  * tooltips and the status bar honest after a rebind.
  */
-import { settings } from "../settings/settings-store";
+import { settings } from '../settings/settings-store';
 import {
   resolveKeymap,
   keymapPlatform,
   type KeybindingOverrides,
   type KeymapPlatform,
-} from "../lib/keybindings";
-import { getDesktopEnvironment, type DesktopPlatform } from "../lib/platform";
-import type { KeyBinding } from "./action-registry";
+} from '../lib/keybindings';
+import { getDesktopEnvironment, type DesktopPlatform } from '../lib/platform';
+import type { KeyBinding } from './action-registry';
 
 interface Cached {
   readonly platform: KeymapPlatform;
@@ -42,11 +42,7 @@ export function activeKeymapPlatform(): KeymapPlatform {
 export function activeKeymap(): readonly KeyBinding[] {
   const platform = activeKeymapPlatform();
   const overrides = settings.value.keybindings;
-  if (
-    cached !== null &&
-    cached.platform === platform &&
-    cached.overrides === overrides
-  ) {
+  if (cached !== null && cached.platform === platform && cached.overrides === overrides) {
     return cached.keymap;
   }
   const keymap = resolveKeymap(platform, overrides);
@@ -63,9 +59,7 @@ export function activeKeymap(): readonly KeyBinding[] {
  * path, and caching a second entry would buy nothing but an invalidation rule
  * to get wrong.
  */
-export function keymapForOverrides(
-  platform: DesktopPlatform,
-): readonly KeyBinding[] {
+export function keymapForOverrides(platform: DesktopPlatform): readonly KeyBinding[] {
   return resolveKeymap(platform, settings.value.keybindings);
 }
 

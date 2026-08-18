@@ -12,10 +12,10 @@
  * truth table the board needs — Electron true, Tauri and browser dev false —
  * with no separate Tauri detection required.
  */
-import { invoke } from "./bridge";
+import { invoke } from './bridge';
 
 export const available: boolean =
-  typeof globalThis !== "undefined" &&
+  typeof globalThis !== 'undefined' &&
   (globalThis as { __deckHost?: unknown }).__deckHost !== undefined;
 
 export interface AddWorktreeArgs {
@@ -25,11 +25,7 @@ export interface AddWorktreeArgs {
 }
 
 export type WorktreeAddErrorCode =
-  | "not-a-repository"
-  | "branch-exists"
-  | "destination-exists"
-  | "git-not-found"
-  | "unknown";
+  'not-a-repository' | 'branch-exists' | 'destination-exists' | 'git-not-found' | 'unknown';
 
 export type AddWorktreeResult =
   | { readonly ok: true; readonly path: string }
@@ -44,7 +40,7 @@ export function addWorktree({
   branch,
   destPath,
 }: AddWorktreeArgs): Promise<AddWorktreeResult> {
-  return invoke<AddWorktreeResult>("worktree_add", {
+  return invoke<AddWorktreeResult>('worktree_add', {
     repoPath,
     branch,
     destPath,

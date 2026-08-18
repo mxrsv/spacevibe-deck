@@ -12,28 +12,16 @@
  * and stay in RAM for the life of the process, matching the contract the usage
  * cache states for itself (spec §1.4, "Privacy").
  */
-import {
-  CLAUDE_RESTORE_SCAN,
-  listClaudeFiles,
-  readClaudeRecord,
-} from "../resume/claude";
-import {
-  CODEX_RESTORE_SCAN,
-  listCodexFiles,
-  readCodexRecord,
-} from "../resume/codex";
-import {
-  fileCacheKey,
-  type FileCandidate,
-  type SessionRecord,
-} from "../resume/head";
+import { CLAUDE_RESTORE_SCAN, listClaudeFiles, readClaudeRecord } from '../resume/claude';
+import { CODEX_RESTORE_SCAN, listCodexFiles, readCodexRecord } from '../resume/codex';
+import { fileCacheKey, type FileCandidate, type SessionRecord } from '../resume/head';
 import {
   SESSIONS_DEFAULT_LIMIT,
   SESSIONS_MAX_LIMIT,
   type SessionAgent,
   type SessionEntry,
   type SessionsSnapshot,
-} from "./model";
+} from './model';
 
 /** The history budget: the restore budget plus titles. */
 const CLAUDE_HISTORY_SCAN = { ...CLAUDE_RESTORE_SCAN, withTitle: true };
@@ -65,10 +53,7 @@ export function clearSessionsCache(): void {
   enriched.clear();
 }
 
-function toEntry(
-  agent: SessionAgent,
-  record: SessionRecord,
-): SessionEntry | null {
+function toEntry(agent: SessionAgent, record: SessionRecord): SessionEntry | null {
   // No recorded directory means no correct place to resume, so the row is
   // dropped rather than shown and then refused (spec §1.4).
   if (record.cwd === null) {
@@ -161,14 +146,12 @@ export async function listSessions(
   const capped = Math.max(1, Math.min(Math.floor(limit), SESSIONS_MAX_LIMIT));
   const claudeFiles = safeList(() => listClaudeFiles(home));
   await breathe();
-  const codexFiles = safeList(() =>
-    listCodexFiles(home, CODEX_HISTORY_SCAN.includeArchived),
-  );
+  const codexFiles = safeList(() => listCodexFiles(home, CODEX_HISTORY_SCAN.includeArchived));
   await breathe();
 
   const entries: SessionEntry[] = [];
-  await collect("claude", claudeFiles, capped, readers.claude, entries);
-  await collect("codex", codexFiles, capped, readers.codex, entries);
+  await collect('claude', claudeFiles, capped, readers.claude, entries);
+  await collect('codex', codexFiles, capped, readers.codex, entries);
   entries.sort((left, right) => right.lastActivityMs - left.lastActivityMs);
 
   return {

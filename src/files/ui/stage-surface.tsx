@@ -17,9 +17,9 @@
  * It renders the layer only; the rectangle it occupies (and the insets that
  * keep it clear of the docked panels) is `.stage__surface` in styles.css.
  */
-import { activeFileTab } from "../file-surface-store";
-import type { FileSurfaceController } from "../file-surface-controller";
-import { FileEditor } from "./file-editor";
+import { activeFileTab } from '../file-surface-store';
+import type { FileSurfaceController } from '../file-surface-controller';
+import { FileEditor } from './file-editor';
 
 export interface StageSurfaceProps {
   readonly controller: FileSurfaceController;
