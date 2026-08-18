@@ -39,11 +39,21 @@ const ENTITLEMENTS_PATH = new URL(
   import.meta.url,
 );
 const PACKAGE_PATH = new URL("../package.json", import.meta.url);
+const WORKFLOW_PATH = new URL(
+  "../.github/workflows/electron-release.yml",
+  import.meta.url,
+);
+const TAURI_WORKFLOW_PATH = new URL(
+  "../.github/workflows/release.yml",
+  import.meta.url,
+);
 
 const releaseConfig = readFileSync(RELEASE_CONFIG_PATH, "utf8");
 const localConfig = readFileSync(LOCAL_CONFIG_PATH, "utf8");
 const entitlements = readFileSync(ENTITLEMENTS_PATH, "utf8");
 const packageJson = JSON.parse(readFileSync(PACKAGE_PATH, "utf8"));
+const workflow = readFileSync(WORKFLOW_PATH, "utf8");
+const tauriWorkflow = readFileSync(TAURI_WORKFLOW_PATH, "utf8");
 
 /**
  * The config's own lines, with comments and blanks removed.
@@ -183,5 +193,71 @@ describe("the release packaging script", () => {
 
   it("builds the arch the config declares", () => {
     expect(script).toContain("--arm64");
+  });
+});
+
+describe("the Electron release workflow", () => {
+  it("triggers on a tag electron-updater can actually parse", () => {
+    // `GitHubProvider.getLatestVersion` skips every feed entry whose tag fails
+    // `semver.valid`, so `electron-v1.0.0` would be invisible to the updater
+    // while the release itself looked perfectly healthy.
+    expect(workflow).toContain('- "v[0-9]+.[0-9]+.[0-9]+-electron.[0-9]+"');
+    expect(workflow).not.toContain('- "electron-v');
+  });
+
+  it("maps the one notarization secret onto the name app-builder-lib reads", () => {
+    // `release.yml` stores it as APPLE_PASSWORD; app-builder-lib reads
+    // APPLE_APP_SPECIFIC_PASSWORD. Dropping the mapping fails the run at
+    // notarization, minutes after the build started.
+    expect(workflow).toContain(
+      "APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}",
+    );
+  });
+
+  it("unlocks the imported key for codesign on a headless runner", () => {
+    // Without `set-key-partition-list`, `codesign` blocks on a GUI prompt that
+    // a runner can never answer, and the job hangs until it times out.
+    expect(workflow).toContain("security set-key-partition-list");
+  });
+
+  it("runs the signing preflight before it builds anything", () => {
+    expect(
+      workflow.indexOf("verify-electron-release-signing.mjs"),
+    ).toBeLessThan(workflow.indexOf("npx electron-builder"));
+  });
+
+  it("publishes, unlike the local packaging script", () => {
+    expect(workflow).toContain("--publish always");
+  });
+
+  it("proves the artifacts are notarized, not merely signed", () => {
+    // A signed but un-notarized app installs with a Gatekeeper warning and
+    // Squirrel.Mac refuses to update into it.
+    expect(workflow).toContain("spctl --assess --type execute");
+    expect(workflow).toContain("xcrun stapler validate");
+    // node-pty's helper is outside the asar and is the first thing a
+    // dependency bump leaves unsigned.
+    expect(workflow).toContain("node-pty/build/Release/spawn-helper");
+  });
+
+  it("requires the zip and the channel manifest in the published release", () => {
+    expect(workflow).toContain("electron-mac.yml");
+    expect(workflow).toContain("grep -q '\\.zip$' published.txt");
+  });
+
+  it("promotes the draft to a pre-release, never to latest", () => {
+    // `releases/latest` keeps serving the Tauri release until the cutover
+    // retires it; an installed Electron build finds this one by walking the
+    // feed for its own channel.
+    expect(workflow).toContain("gh release edit");
+    expect(workflow).toContain("--prerelease");
+  });
+
+  it("leaves the Tauri release path frozen", () => {
+    // This whole workflow exists so that shipping Electron does not require
+    // touching `release.yml`. If the freeze job is gone, a tag push builds and
+    // publishes Tauri from whatever `main` happens to be.
+    expect(tauriWorkflow).toContain("release-freeze:");
+    expect(tauriWorkflow).toContain("Refuse to ship from a tag push");
   });
 });

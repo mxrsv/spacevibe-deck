@@ -1,0 +1,174 @@
+name: Electron Release
+
+# The Electron host's release path, deliberately separate from `release.yml`.
+#
+# `release.yml` builds Tauri and is frozen at the job level; every one of its
+# jobs assumes the Tauri artifact set (`latest.json`, `.sig`, provenance, a
+# trust-chain validator). Nothing here touches it, and a tag that matches this
+# workflow cannot match that one: its patterns are `vX.Y.Z` and `vX.Y.Z-rc.N`.
+#
+# The tag shape is NOT free. `GitHubProvider.getLatestVersion` skips every
+# release whose tag fails `semver.valid`, and derives the update channel from
+# `semver.prerelease(tag)[0]`. `vX.Y.Z-electron.N` therefore does two jobs at
+# once: it stays parseable, and it names the `electron` channel that
+# `electron-mac.yml` belongs to. A tag like `electron-v1.0.0` would be
+# invisible to the updater while every other signal looked healthy.
+#
+# Plan: docs/plans/2026-08-18-electron-release-pipeline.md
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+-electron.[0-9]+"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the exact tag
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate the tag, the version and the channel it names
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # The version is the channel. Both halves of the update path derive
+          # it from this one string — app-builder-lib from `appInfo.channel`
+          # when `publish.channel` is unset, electron-updater from the tag —
+          # so a version that carries no `electron` prerelease component
+          # publishes `latest-mac.yml` and orphans every installed build.
+          #
+          # Matched with a regex rather than `semver`: that package is only a
+          # transitive of the toolchain here, not a declared dependency, and
+          # this check must not start failing because someone else's dependency
+          # tree moved.
+          version="$(node -p "require('./package.json').version")"
+          if [[ "$TAG" != "v$version" ]]; then
+            echo "Tag $TAG does not match package version $version"
+            exit 1
+          fi
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-electron\.[0-9]+$ ]]; then
+            echo "Version $version must be X.Y.Z-electron.N — it names the update channel"
+            exit 1
+          fi
+
+      - name: Validate source
+        run: |
+          npm run generate:menu:check
+          npm test
+          npm run build
+
+      - name: Import the Apple Developer ID certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # Lifted from `release.yml`'s step of the same name, including
+          # `set-key-partition-list` — without it `codesign` blocks on a GUI
+          # prompt that a headless runner can never answer.
+          certificate="$RUNNER_TEMP/deck-developer-id.p12"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$certificate"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import "$certificate" -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          identity="$(security find-identity -v -p codesigning build.keychain | sed -n 's/.*"\(Developer ID Application:.*\)".*/\1/p' | head -n 1)"
+          if [[ -z "$identity" ]]; then
+            echo "No Developer ID Application identity was imported"
+            exit 1
+          fi
+          rm -f "$certificate"
+
+      - name: Build, sign, notarize and publish the draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          # One secret, two names. app-builder-lib reads
+          # APPLE_APP_SPECIFIC_PASSWORD (MacTargetHelper.getNotarizeOptions);
+          # `release.yml` reads the same value as APPLE_PASSWORD. Notarization
+          # fails late and confusingly when this mapping is dropped.
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          # The preflight costs seconds and refuses a run that cannot finish;
+          # a missing identity does NOT fail electron-builder, it silently
+          # produces an unsigned app.
+          node scripts/verify-electron-release-signing.mjs
+          npm run electron:build
+          npx electron-builder --config electron-builder.release.yml \
+            --mac --arm64 --publish always
+
+      - name: Verify the artifacts are signed, notarized and stapled
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apps=(dist-electron-release/mac-arm64/*.app)
+          images=(dist-electron-release/*.dmg)
+          archives=(dist-electron-release/*.zip)
+          manifests=(dist-electron-release/electron-mac.yml)
+          if [[ ${#apps[@]} -ne 1 || ${#images[@]} -ne 1 ]]; then
+            echo "Expected exactly one app bundle and one dmg"
+            exit 1
+          fi
+          if [[ ${#archives[@]} -ne 1 || ${#manifests[@]} -ne 1 ]]; then
+            # electron-updater reads the zip and this manifest, and nothing
+            # else. Their absence is a release that installs and can never
+            # update — the failure the whole pipeline exists to prevent.
+            echo "Expected exactly one zip and an electron-mac.yml manifest"
+            exit 1
+          fi
+          codesign --verify --deep --strict --verbose=2 "${apps[0]}"
+          # node-pty's helper lives outside the asar. Notarization rejects any
+          # unsigned Mach-O, so this is already implied — it is named because
+          # it is the first thing a dependency bump breaks.
+          codesign --verify --verbose=2 \
+            "${apps[0]}/Contents/Resources/app.asar.unpacked/node_modules/node-pty/build/Release/spawn-helper"
+          spctl --assess --type execute --verbose=2 "${apps[0]}"
+          xcrun stapler validate "${apps[0]}"
+          xcrun stapler validate "${images[0]}"
+
+      - name: Confirm the draft carries the exact updater asset set
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # electron-builder creates a DRAFT by default, so nothing is visible
+          # to an installed app yet. This reads what the release actually
+          # serves, not what the runner produced.
+          gh release view "$TAG" --json assets --jq '.assets[].name' | sort > published.txt
+          cat published.txt
+          grep -q '\.dmg$' published.txt
+          grep -q '\.zip$' published.txt
+          grep -qx 'electron-mac.yml' published.txt
+
+      - name: Promote the draft to a pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Pre-release, never `latest`: an installed Electron build finds this
+          # by walking the release feed for its own channel, while
+          # `releases/latest` keeps serving the Tauri release until the cutover
+          # retires it.
+          gh release edit "$TAG" --draft=false --prerelease
