@@ -11,14 +11,21 @@ import {
   WINDOW_CLOSE_COPY,
   type ConfirmCopy,
 } from '../terminal/close-guard';
-import { flushSettingsSave, initSettings, settingsLoadState } from '../settings/settings-store';
+import {
+  flushSettingsSave,
+  initSettings,
+  settingsLoadState,
+  openDockTab,
+  revealDockTab,
+  settings,
+  updateSettings,
+} from '../settings/settings-store';
 import { defaultPtyClient } from '../terminal/pty-client';
 import { detectedAgents, ensureAgentsDetected } from '../terminal/agent-detection-store';
 import type { BootMode } from '../terminal/transfer-client';
 import { applyThemeVars } from '../lib/theme-vars';
 import { resolveCwds, type Preset } from '../lib/preset-schema';
 import { resolveInheritedCwds } from '../terminal/tab-materialize';
-import { openDockTab, revealDockTab, settings, updateSettings } from '../settings/settings-store';
 import type { DockTab } from '../settings/settings-schema';
 import { agentProcessMatchers, probeNames } from '../lib/agent-catalog';
 import { resolveTheme } from '../settings/themes';
@@ -181,7 +188,7 @@ export function App({ boot = { kind: 'normal' } }: { boot?: BootMode } = {}) {
       },
       flush: flushSettingsSave,
       relaunch: relaunchDeck,
-      report: (message, error) => console.error(`${message}:`, error),
+      report: (body, error) => console.error(`${body}:`, error),
       recordAttempt: (targetVersion) => recordUpdateAttempt(targetVersion, Date.now()),
     });
     activeUpdateController.value = updaterRef.current;
@@ -383,8 +390,9 @@ export function App({ boot = { kind: 'normal' } }: { boot?: BootMode } = {}) {
     if (boardOpen.value) {
       void refreshSessions();
     }
-  }, [boardOpen.value]);
+  }, []);
 
+  /* oxlint-disable react-hooks/exhaustive-deps -- boot-once: the window's TabManager is built a single time */
   useEffect(() => {
     const host = stagesRef.current;
     if (!host) {
@@ -416,9 +424,9 @@ export function App({ boot = { kind: 'normal' } }: { boot?: BootMode } = {}) {
       // wondering why the version never changes. Reporting is fire-and-forget
       // — a diagnostic must never delay the terminal coming up.
       void takeUpdateOutcome().then((outcome) => {
-        const message = attemptMessage(outcome);
-        if (message !== null) {
-          reportPersistError(message);
+        const notice = attemptMessage(outcome);
+        if (notice !== null) {
+          reportPersistError(notice);
         }
       });
       void updater.start();
@@ -489,6 +497,7 @@ export function App({ boot = { kind: 'normal' } }: { boot?: BootMode } = {}) {
       manager.dispose();
     };
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Installs the file-changed listener and the focus reconcile (spec §5) —
   // own effect, separate from the tab manager's mount above, since the two
@@ -626,6 +635,7 @@ export function App({ boot = { kind: 'normal' } }: { boot?: BootMode } = {}) {
     return () => unlisten?.();
   }, []);
 
+  /* oxlint-disable react-hooks/exhaustive-deps -- installed for the window's life; the callbacks are stable */
   useEffect(() => {
     const unsubs: UnlistenFn[] = [];
     // Every File/Edit/View/Window item whose accelerator the macOS menu now
@@ -653,6 +663,7 @@ export function App({ boot = { kind: 'normal' } }: { boot?: BootMode } = {}) {
     }).then((fn) => unsubs.push(fn));
     return () => unsubs.forEach((fn) => fn());
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Push theme colors into terminals and the chrome CSS vars
   useSignalEffect(() => {

@@ -1,3 +1,4 @@
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 import { readdir, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -8,9 +9,9 @@ async function requireDirectory(root) {
     metadata = await stat(root);
   } catch (error) {
     if (error?.code === 'ENOENT') {
-      throw new Error(`Windows bundle root does not exist: ${root}`);
+      throw new Error(`Windows bundle root does not exist: ${root}`, { cause: error });
     }
-    throw new Error(`Could not inspect Windows bundle root ${root}: ${error}`);
+    throw new Error(`Could not inspect Windows bundle root ${root}: ${error}`, { cause: error });
   }
   if (!metadata.isDirectory()) {
     throw new Error(`Windows bundle root is not a directory: ${root}`);

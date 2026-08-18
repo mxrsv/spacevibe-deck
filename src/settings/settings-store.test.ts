@@ -22,8 +22,7 @@ import {
   revealDockTab,
   settingsLoadState,
 } from './settings-store';
-import { createMemorySettingsSync } from './settings-sync';
-import type { SettingsSyncClient } from './settings-sync';
+import { createMemorySettingsSync, type SettingsSyncClient } from './settings-sync';
 import { DEFAULT_SETTINGS } from './settings-schema';
 import { persistError } from '../chrome/events';
 

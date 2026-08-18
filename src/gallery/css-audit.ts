@@ -88,10 +88,10 @@ function styleRules(): readonly CSSStyleRule[] {
 
 function toEntries(tallies: ReadonlyMap<string, Tally>): readonly AuditEntry[] {
   return [...tallies]
-    .map(([value, tally]) => ({
+    .map(([value, entry]) => ({
       value,
-      count: tally.count,
-      sample: tally.sample,
+      count: entry.count,
+      sample: entry.sample,
     }))
     .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
 }

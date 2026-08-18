@@ -18,8 +18,14 @@
  */
 import { batch, signal } from '@preact/signals';
 import type { ChangeAction } from './external-change';
-import type { DirEntry, Listings } from './file-tree';
-import { flattenTree, openDirectories, toggleExpanded, type TreeRow } from './file-tree';
+import {
+  type DirEntry,
+  type Listings,
+  flattenTree,
+  openDirectories,
+  toggleExpanded,
+  type TreeRow,
+} from './file-tree';
 import type { FileContent } from './file-content';
 import { nextOpenSequence } from '../lib/open-sequence';
 import {

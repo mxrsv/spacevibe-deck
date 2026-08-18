@@ -5,8 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(async () => null) }));
 
-import { EMPTY_COUNTERS } from '../../../lib/usage-snapshot';
-import type { UsageBucket, UsageSnapshot } from '../../../lib/usage-snapshot';
+import { EMPTY_COUNTERS, type UsageBucket, type UsageSnapshot } from '../../../lib/usage-snapshot';
 import { localDayKey } from '../../../lib/usage-aggregate';
 import { usageSnapshot } from '../../../usage/usage-store';
 import { DAILY_DAYS, DailySection } from './daily-section';

@@ -1,5 +1,12 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync, utimesSync } from 'node:fs';
-import { readdirSync, statSync } from 'node:fs';
+import {
+  cpSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  readdirSync,
+  statSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

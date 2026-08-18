@@ -4,9 +4,7 @@
   "installCommand": "npm ci",
   "buildCommand": "vite build --config marketing/landing-prototype/vite.build.mjs",
   "outputDirectory": "marketing/landing-prototype/dist",
-  "rewrites": [
-    { "source": "/", "destination": "/landing-prototype/index.html" }
-  ],
+  "rewrites": [{ "source": "/", "destination": "/landing-prototype/index.html" }],
   "headers": [
     {
       "source": "/assets/(.*)",

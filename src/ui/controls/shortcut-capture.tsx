@@ -77,6 +77,7 @@ export function ShortcutCapture({
   const commitRef = useRef(onCommit);
   commitRef.current = onCommit;
 
+  /* oxlint-disable react-hooks/exhaustive-deps -- one-shot listener; the hint signal is captured by reference */
   useEffect(() => {
     if (!listening.value) {
       return;
@@ -137,6 +138,7 @@ export function ShortcutCapture({
       void suspendMenuAccelerators(false);
     };
   }, [listening.value, action, platform]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   const text = listening.value ? hint.value : formatChords(chords, action, platform);
 

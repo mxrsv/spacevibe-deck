@@ -55,16 +55,16 @@ describe('gate-m graph isolation', () => {
     const shipping = readFileSync(join(REPO_ROOT, 'vite.config.ts'), 'utf8');
     expect(shipping).not.toContain('gate-m');
     const gate = readFileSync(join(REPO_ROOT, 'vite.gate-m.config.mjs'), 'utf8');
-    expect(gate).toContain('input: "gate-m.html"');
+    expect(gate).toContain("input: 'gate-m.html'");
     expect(gate).toContain('dist-gate-m-renderer');
   });
 
   it('the host loads the gate page only behind DECK_GATE_M=1', () => {
     const main = readFileSync(join(REPO_ROOT, 'electron', 'main.ts'), 'utf8');
-    expect(main).toContain('process.env.DECK_GATE_M === "1"');
+    expect(main).toContain("process.env.DECK_GATE_M === '1'");
     // The gate page is referenced exactly once, inside the GATE_M branch,
     // and the normal path still loads the application renderer.
     expect(main.match(/gate-m\.html/g)).toHaveLength(1);
-    expect(main).toContain('path.join(RENDERER_DIR, "index.html")');
+    expect(main).toContain("path.join(RENDERER_DIR, 'index.html')");
   });
 });

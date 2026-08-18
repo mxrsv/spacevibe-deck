@@ -29,7 +29,7 @@ export function registerServices(deps: RegisterServicesDeps): void {
   ipcMain.handle(CHANNELS.gitBranch, (_event, { cwd }) => gitBranch(cwd));
   // Never rejects: every failure arrives as a `plain` scan, so the rail degrades
   // to the flat folder list Deck already shows rather than raising an error.
-  ipcMain.handle(CHANNELS.gitRepository, (_event, { path }) => scanRepository(path));
+  ipcMain.handle(CHANNELS.gitRepository, (_event, { path: repoPath }) => scanRepository(repoPath));
   ipcMain.handle(CHANNELS.worktreeAdd, (_event, { repoPath, branch, destPath }) =>
     addWorktree({ repoPath, branch, destPath }),
   );
@@ -89,7 +89,7 @@ export function registerServices(deps: RegisterServicesDeps): void {
       return await usageService.snapshot();
     } catch (error) {
       console.error('Deck: the usage scan failed:', error);
-      throw new Error('the usage scan failed');
+      throw new Error('the usage scan failed', { cause: error });
     }
   });
   ipcMain.handle(CHANNELS.sessionsList, (_event, { limit }) =>

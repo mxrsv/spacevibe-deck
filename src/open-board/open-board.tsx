@@ -3,8 +3,13 @@ import { useSignal } from '@preact/signals';
 import { useEffect, useRef } from 'preact/hooks';
 import { open } from '../host/dialog-host';
 import type { Preset } from '../lib/preset-schema';
-import { folderName, partitionRecents, resolveAgentChoice } from '../lib/workspace-recents';
-import type { AgentChoice, RecentWorkspace } from '../lib/workspace-recents';
+import {
+  folderName,
+  partitionRecents,
+  resolveAgentChoice,
+  type AgentChoice,
+  type RecentWorkspace,
+} from '../lib/workspace-recents';
 import { getDesktopEnvironment, hasPrimaryModifier } from '../lib/platform';
 import type { DetectedAgent } from '../terminal/pty-client';
 import { ensureAgentsDetected } from '../terminal/agent-detection-store';
@@ -115,6 +120,7 @@ export function OpenBoard({
     probe.current = ensureAgentsDetected(probeNames(customAgents));
   }, [customAgents]);
 
+  /* oxlint-disable react-hooks/exhaustive-deps -- re-runs on recents only; the missing-signal read is a snapshot */
   useEffect(() => {
     const paths = recents.map((recent) => recent.path);
     if (paths.length === 0) {
@@ -152,6 +158,7 @@ export function OpenBoard({
       cancelled = true;
     };
   }, [recents]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   const groups = partitionRecents(recents, missing.value);
 

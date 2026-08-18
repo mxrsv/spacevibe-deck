@@ -1,3 +1,4 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -89,7 +90,7 @@ describe('the gallery entry stays out of the app bundle', () => {
     const host = readFileSync(join(SOURCE_ROOT, 'gallery/host-stub.ts'), 'utf8');
     const handler = host.match(/store_load:\s*\(args\)\s*=>\s*\{[\s\S]*?\n\s*\},/);
 
-    expect(handler?.[0]).toContain('return { state: "ready", fresh: false };');
+    expect(handler?.[0]).toContain("return { state: 'ready', fresh: false };");
   });
 
   it("seeds Settings as ready without reading the user's real store", () => {
@@ -103,9 +104,9 @@ describe('the gallery entry stays out of the app bundle', () => {
     const fixtures = readFileSync(join(SOURCE_ROOT, 'gallery/chrome-fixtures.tsx'), 'utf8');
 
     expect(fixtures).toContain('worktreeItemVariantsSpecimen');
-    expect(fixtures).toContain('id: "compact"');
-    expect(fixtures).toContain('id: "focus"');
-    expect(fixtures).toContain('id: "agent"');
+    expect(fixtures).toContain("id: 'compact'");
+    expect(fixtures).toContain("id: 'focus'");
+    expect(fixtures).toContain("id: 'agent'");
   });
 
   it('applies the selected woven banner treatment to the full shell specimen', () => {

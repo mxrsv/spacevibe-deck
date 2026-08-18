@@ -19,8 +19,7 @@ vi.mock('../../usage/usage-store', async () => {
 
 import type { UsageSnapshot } from '../../lib/usage-snapshot';
 import { UsageBody } from './usage-body';
-import { activeUsageView } from './active-usage-view-store';
-import type { UsageViewId } from './active-usage-view-store';
+import { activeUsageView, type UsageViewId } from './active-usage-view-store';
 import { usageSnapshot } from '../../usage/usage-store';
 
 // Two agents, two models each, so the breakdown table has more than one row

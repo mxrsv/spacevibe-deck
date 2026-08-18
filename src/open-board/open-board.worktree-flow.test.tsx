@@ -42,8 +42,7 @@ vi.mock('../host/worktree-host', () => ({
   addWorktree: (...args: unknown[]) => addWorktreeMock(...args),
 }));
 
-import { WORKSPACES_VERSION } from '../lib/workspace-recents';
-import type { RecentWorkspace } from '../lib/workspace-recents';
+import { WORKSPACES_VERSION, type RecentWorkspace } from '../lib/workspace-recents';
 import { PRESETS_VERSION } from '../lib/preset-schema';
 import { presetsData } from '../presets/presets-store';
 import { workspacesData } from './workspaces-store';

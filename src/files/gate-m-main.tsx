@@ -1,3 +1,4 @@
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 /**
  * Gate M harness (file-explorer plan §5.0.3) — the page a PACKAGED build
  * proves Monaco on, before any explorer surface exists.

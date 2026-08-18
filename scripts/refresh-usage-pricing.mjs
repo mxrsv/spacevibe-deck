@@ -184,7 +184,9 @@ async function fetchCatalog(fetchImpl) {
   try {
     response = await fetchImpl(SOURCE_URL);
   } catch (error) {
-    throw new Error(`Could not reach the pricing catalog: ${describeError(error)}`);
+    throw new Error(`Could not reach the pricing catalog: ${describeError(error)}`, {
+      cause: error,
+    });
   }
   if (!response.ok) {
     throw new Error(`Pricing catalog request failed: HTTP ${response.status}`);
@@ -193,7 +195,7 @@ async function fetchCatalog(fetchImpl) {
   try {
     return JSON.parse(body);
   } catch (error) {
-    throw new Error(`Pricing catalog is not valid JSON: ${describeError(error)}`);
+    throw new Error(`Pricing catalog is not valid JSON: ${describeError(error)}`, { cause: error });
   }
 }
 

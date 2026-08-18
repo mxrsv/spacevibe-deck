@@ -1,3 +1,4 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { DEFAULT_SETTINGS } from '../settings/settings-schema';

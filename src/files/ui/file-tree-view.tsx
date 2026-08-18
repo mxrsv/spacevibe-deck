@@ -85,6 +85,7 @@ export function FileTreeView(props: FileTreeViewProps) {
   // target. Scrolling the target into view happens first (which re-renders,
   // so this effect runs again); the row is then focused once its own row
   // element exists in `rowRefs`.
+  /* oxlint-disable react-hooks/exhaustive-deps -- runs after every render by design; the setState is guarded */
   useEffect(() => {
     const node = containerRef.current;
     const index = pendingFocusRef.current;
@@ -112,6 +113,7 @@ export function FileTreeView(props: FileTreeViewProps) {
     }
     pendingFocusRef.current = null;
   });
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   function activateRow(row: TreeRow): void {
     if (row.directory) {

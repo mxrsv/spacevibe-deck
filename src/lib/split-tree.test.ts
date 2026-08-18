@@ -60,8 +60,8 @@ describe('treeFromLayout', () => {
   });
 
   it('throws when the id count does not match the leaf count', () => {
-    expect(() => treeFromLayout(layout, [1, 2])).toThrow();
-    expect(() => treeFromLayout(layout, [1, 2, 3, 4])).toThrow();
+    expect(() => treeFromLayout(layout, [1, 2])).toThrow('needs more than 2 pane ids');
+    expect(() => treeFromLayout(layout, [1, 2, 3, 4])).toThrow('but got 4 ids');
   });
 });
 

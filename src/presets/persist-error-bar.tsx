@@ -15,7 +15,7 @@ export function PersistErrorBar() {
       persistError.value = null;
     }, AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [persistError.value]);
+  }, []);
 
   if (persistError.value === null) {
     return null;

@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-import type { ComponentType } from 'preact';
-import { render } from 'preact';
+import { render, type ComponentType } from 'preact';
 import { act } from 'preact/test-utils';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {

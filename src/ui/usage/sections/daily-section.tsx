@@ -1,10 +1,8 @@
 import { AGENT_LOGOS } from '../../../lib/agent-logos';
-import type { DailyRow } from '../../../lib/usage-aggregate';
-import { dailyTotals } from '../../../lib/usage-aggregate';
+import { type DailyRow, dailyTotals } from '../../../lib/usage-aggregate';
 import { totalTokens } from '../../../lib/usage-snapshot';
 import { usageSnapshot } from '../../../usage/usage-store';
-import { MetricTable } from '../metric-table';
-import type { MetricColumn, MetricRow } from '../metric-table';
+import { MetricTable, type MetricColumn, type MetricRow } from '../metric-table';
 import {
   EM_DASH,
   ESTIMATE_NOTE,
@@ -81,7 +79,7 @@ export function DailySection() {
     key: row.day,
     cells: [
       row.day,
-      <ul class="usage-day-agents">
+      <ul class="usage-day-agents" key="agents">
         {row.agents.map((agent) => (
           <DayAgentLine key={agent.agent} row={agent} />
         ))}

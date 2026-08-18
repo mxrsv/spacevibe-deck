@@ -251,5 +251,5 @@ function extract(source: string, name: string): string[] {
   if (start === -1 || end === -1) {
     return [];
   }
-  return [...source.slice(start, end).matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+  return [...source.slice(start, end).matchAll(/['"]([^'"]+)['"]/g)].map((match) => match[1]);
 }

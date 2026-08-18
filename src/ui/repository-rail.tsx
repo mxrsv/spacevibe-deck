@@ -159,6 +159,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
   // Remember one terminal per worktree for the broad row target. Agent marks
   // still focus an exact tab; leaving and returning to the row restores that
   // choice instead of falling back to its first tab every time.
+  /* oxlint-disable react-hooks/exhaustive-deps -- deps are the worktree id and tab key, not object identity */
   useEffect(() => {
     if (selectedWorktree === undefined || selectedTab === undefined) {
       return;
@@ -171,6 +172,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
       [selectedWorktree.id, selectedTab.key],
     ]);
   }, [selectedWorktree?.id, selectedTab?.key]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
   // Repository scans: on demand for every open workspace, and again whenever
   // the window comes back (spec §2 — the invalidation that replaces a watcher).
   useEffect(() => installRepositoryRescanOnFocus(), []);

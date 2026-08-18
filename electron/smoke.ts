@@ -1,3 +1,4 @@
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 /**
  * Headed smoke test for the Electron host.
  *

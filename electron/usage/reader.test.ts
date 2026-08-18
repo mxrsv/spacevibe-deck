@@ -1,8 +1,7 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, openSync, closeSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { openSync, closeSync } from 'node:fs';
 import {
   LineReader,
   MAX_LINE_BYTES,

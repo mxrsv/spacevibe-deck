@@ -696,7 +696,7 @@ describe('the SurfaceStrip seam', () => {
 
 describe('typing during an in-flight operation', () => {
   /** A promise the test resolves by hand, so it can type mid-flight. */
-  function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  function manualDeferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
     let resolve!: (value: T) => void;
     const promise = new Promise<T>((r) => {
       resolve = r;
@@ -713,7 +713,7 @@ describe('typing during an in-flight operation', () => {
     await h.controller.openFile(ROOT, FILE, false);
     h.controller.setText(FILE, 'one!\n');
 
-    const gate = deferred<{ path: string; mtimeMs: number; size: number }>();
+    const gate = manualDeferred<{ path: string; mtimeMs: number; size: number }>();
     vi.spyOn(h.client, 'writeFile').mockReturnValueOnce(gate.promise);
     const saving = h.controller.savePath(FILE);
     h.controller.setText(FILE, 'one!!\n'); // typed while the write is in flight
@@ -749,7 +749,7 @@ describe('typing during an in-flight operation', () => {
     h.setContent(FILE, 'disk v1\n');
     await h.controller.openFile(ROOT, FILE, false);
 
-    const gate = deferred<Awaited<ReturnType<FileClient['readFile']>>>();
+    const gate = manualDeferred<Awaited<ReturnType<FileClient['readFile']>>>();
     vi.spyOn(h.client, 'readFile').mockReturnValueOnce(gate.promise);
     h.emitChange({ path: FILE, kind: 'changed', mtimeMs: 2000, size: 8 });
     h.controller.setText(FILE, 'mine\n'); // typed while the read is in flight

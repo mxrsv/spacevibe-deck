@@ -76,12 +76,14 @@ describe('desktop_environment', () => {
     // Getting this wrong disabled EVERY keyboard shortcut: the validator threw,
     // the caller swallowed it, and the app fell back to platform "unsupported"
     // where `hasPrimaryModifier` is false for every event.
-    expect(SERVICES).toContain('homeDir: app.getPath("home")');
+    expect(SERVICES).toContain("homeDir: app.getPath('home')");
     expect(() =>
       parseDesktopEnvironment({ platform: 'macos', homeDir: '/Users/dev' }),
     ).not.toThrow();
     // The shape that shipped: `home` instead of `homeDir`.
-    expect(() => parseDesktopEnvironment({ platform: 'macos', home: '/Users/dev' })).toThrow();
+    expect(() => parseDesktopEnvironment({ platform: 'macos', home: '/Users/dev' })).toThrow(
+      'homeDir must be a string',
+    );
   });
 });
 
@@ -89,7 +91,7 @@ describe('navigation is blocked', () => {
   it('installs will-navigate and denies window.open', () => {
     // The preload re-injects the full host bridge into any document the window
     // navigates to, and a dropped .html file is a real way to get there.
-    expect(MAIN).toContain('webContents.on("will-navigate"');
+    expect(MAIN).toContain("webContents.on('will-navigate'");
     expect(MAIN).toContain('setWindowOpenHandler');
   });
 });
@@ -134,7 +136,7 @@ describe("the preload bridge's channel allowlist", () => {
   const registered = new Set<string>();
   for (const file of electronSources('electron')) {
     const text = readFileSync(file, 'utf8');
-    for (const match of text.matchAll(/ipcMain\.(?:handle|on)\(\s*"([a-z_]+)"/g)) {
+    for (const match of text.matchAll(/ipcMain\.(?:handle|on)\(\s*['"]([a-z_]+)['"]/g)) {
       registered.add(match[1]);
     }
     for (const match of text.matchAll(/ipcMain\.(?:handle|on)\(\s*CHANNELS\.([A-Za-z]+)/g)) {

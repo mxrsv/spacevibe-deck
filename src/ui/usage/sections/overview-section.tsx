@@ -1,5 +1,4 @@
-import type { AgentTotal } from '../../../lib/usage-aggregate';
-import { agentTotals } from '../../../lib/usage-aggregate';
+import { type AgentTotal, agentTotals } from '../../../lib/usage-aggregate';
 import { AGENT_LOGOS } from '../../../lib/agent-logos';
 import { dotColor } from '../../../lib/process-info';
 import { formatUsd } from '../../../lib/usage-pricing';

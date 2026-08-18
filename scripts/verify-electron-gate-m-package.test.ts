@@ -106,7 +106,7 @@ describe('asar reader', () => {
     expect(readAsarFile(asar, 'dist/index.html').toString()).toBe('hello');
     expect(asarHasDir(asar, 'dist')).toBe(true);
     expect(asarHasDir(asar, 'missing')).toBe(false);
-    expect(() => readAsarFile(asar, 'missing.txt')).toThrow();
+    expect(() => readAsarFile(asar, 'missing.txt')).toThrow('is not a file inside');
   });
 });
 

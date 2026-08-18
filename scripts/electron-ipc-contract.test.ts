@@ -20,8 +20,8 @@ import { join } from 'node:path';
  */
 
 const HANDLER = /ipcMain\.handle\(\s*([^,]+),\s*(?:async\s*)?\(([^)]*)\)/g;
-const INVOKE = /invoke<[^>]*>\(\s*"([^"]+)"(?:\s*,\s*\{([^}]*)\})?/g;
-const INVOKE_UNTYPED = /(?<!\w)invoke\(\s*"([^"]+)"(?:\s*,\s*\{([^}]*)\})?/g;
+const INVOKE = /invoke<[^>]*>\(\s*['"]([^'"]+)['"](?:\s*,\s*\{([^}]*)\})?/g;
+const INVOKE_UNTYPED = /(?<!\w)invoke\(\s*['"]([^'"]+)['"](?:\s*,\s*\{([^}]*)\})?/g;
 
 function filesUnder(dir: string, extensions: readonly string[]): string[] {
   const found: string[] = [];
@@ -41,7 +41,7 @@ function filesUnder(dir: string, extensions: readonly string[]): string[] {
 
 /** `CHANNELS.spawnShell` → the string it resolves to. */
 function resolveChannelName(expression: string, channels: Record<string, string>): string | null {
-  const literal = expression.trim().match(/^"([^"]+)"$/);
+  const literal = expression.trim().match(/^['"]([^'"]+)['"]$/);
   if (literal !== null) {
     return literal[1];
   }
@@ -60,7 +60,7 @@ function readChannels(): Record<string, string> {
     source.indexOf('export const EVENTS'),
   );
   const channels: Record<string, string> = {};
-  for (const match of table.matchAll(/(\w+):\s*"([^"]+)"/g)) {
+  for (const match of table.matchAll(/(\w+):\s*['"]([^'"]+)['"]/g)) {
     channels[match[1]] = match[2];
   }
   return channels;

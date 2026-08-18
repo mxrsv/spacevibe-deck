@@ -300,6 +300,7 @@ function isInjectedText(key: string): boolean {
   if (chars.length <= 1) {
     return false;
   }
+  // oxlint-disable-next-line no-control-regex -- non-ASCII detection is the point of this check
   if (/[^\x00-\x7f]/.test(key)) {
     return true;
   }

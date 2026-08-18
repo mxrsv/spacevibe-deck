@@ -1,3 +1,4 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 /**
  * Translated from the Rust tests in `src-tauri/src/shell_integration.rs`.
  * Same cases, same names, so a behavioural divergence between the two hosts

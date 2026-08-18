@@ -7,8 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // so the tree mounts under jsdom (the workspace-sidebar.test.tsx idiom).
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(async () => null) }));
 
-import { EMPTY_COUNTERS } from '../../../lib/usage-snapshot';
-import type { UsageBucket, UsageSnapshot } from '../../../lib/usage-snapshot';
+import { EMPTY_COUNTERS, type UsageBucket, type UsageSnapshot } from '../../../lib/usage-snapshot';
 import { PRICING_SNAPSHOT_DATE } from '../../../lib/usage-pricing-snapshot';
 import { dotColor } from '../../../lib/process-info';
 import { usageSnapshot } from '../../../usage/usage-store';

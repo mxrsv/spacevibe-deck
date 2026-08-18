@@ -64,6 +64,7 @@
     "electron": "^43.3.0",
     "electron-builder": "^26.15.3",
     "jsdom": "^29.1.1",
+    "oxlint": "^1.78.0",
     "playwright-core": "^1.62.0",
     "prettier": "^3.9.6",
     "terser": "^5.49.0",

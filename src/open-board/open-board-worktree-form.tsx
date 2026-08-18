@@ -1,7 +1,6 @@
 import { ArrowLeft, FolderOpen } from '@phosphor-icons/react';
 import { DeckIcon, ROW_ICON } from '../ui/controls/deck-icon';
-import { folderName } from '../lib/workspace-recents';
-import type { RecentWorkspace } from '../lib/workspace-recents';
+import { folderName, type RecentWorkspace } from '../lib/workspace-recents';
 import { tildify } from '../lib/process-info';
 import type { WorktreeAddErrorCode } from '../host/worktree-host';
 

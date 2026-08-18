@@ -24,11 +24,11 @@ files:
 # node-pty is a native module: it cannot load from inside the asar, and its
 # helper binaries must keep their executable modes.
 asarUnpack:
-  - "**/node_modules/node-pty/**"
+  - '**/node_modules/node-pty/**'
 mac:
   target:
     - target: dir
   identity: null
   # Universal builds diff the two slices; node-pty's prebuilds legitimately
   # differ per arch and must be allowed to.
-  x64ArchFiles: "**/node_modules/node-pty/**"
+  x64ArchFiles: '**/node_modules/node-pty/**'

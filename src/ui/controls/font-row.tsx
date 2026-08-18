@@ -48,6 +48,7 @@ interface FontRowProps {
     inline text row when "custom…" is picked. */
 export function FontRow({ value, onChange }: FontRowProps) {
   // Only list fonts actually installed; keep the currently selected one
+  /* oxlint-disable react-hooks/exhaustive-deps -- detection runs once per mount; re-running per value would re-scan */
   const available = useMemo(() => {
     const detected = detectInstalledFonts();
     if (!detected.includes(value) && FONT_CANDIDATES.includes(value)) {
@@ -55,6 +56,7 @@ export function FontRow({ value, onChange }: FontRowProps) {
     }
     return detected;
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
   const [customMode, setCustomMode] = useState(() => !available.includes(value));
 
   const selectValue = customMode || !available.includes(value) ? CUSTOM_VALUE : value;

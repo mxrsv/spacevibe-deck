@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import { beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, type Settings } from '../settings/settings-schema';
-import { createPane } from './pane';
-import type { PaneEvents } from './pane';
+import { createPane, type PaneEvents } from './pane';
 
 beforeAll(() => {
   // Never fires: nothing in this file resizes anything, and `fit()` is

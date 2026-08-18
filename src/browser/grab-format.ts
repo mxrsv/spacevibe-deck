@@ -47,6 +47,7 @@ export function sanitizeGrabText(text: string): string {
       // C0-only filter, reaches the PTY as the bytes C2 9B, and any terminal
       // honouring 8-bit controls reads it as the end of the paste. That is the
       // same escape this function exists to prevent, spelled differently.
+      // oxlint-disable-next-line no-control-regex -- the filter's job is matching C0/C1 controls
       .replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trimEnd()

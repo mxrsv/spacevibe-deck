@@ -277,10 +277,10 @@ export async function initSessionJournal(deps: SessionJournalDeps): Promise<void
     // Read every dependency so the effect re-runs on any of them — the
     // record itself is rebuilt from `deps.capture()` inside `writeNow`, not
     // from these values, but each one changing is what a write must react to.
-    tabViews.value;
-    activeTabIndex.value;
-    fileSurfaces.value;
-    activeFileTab.value;
+    void tabViews.value;
+    void activeTabIndex.value;
+    void fileSurfaces.value;
+    void activeFileTab.value;
     schedule(deps);
   });
 }

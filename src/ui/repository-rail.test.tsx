@@ -21,8 +21,7 @@ vi.mock('../terminal/file-drop', () => ({
   installFileDrop: vi.fn(async () => () => {}),
 }));
 
-import { activeTabIndex, tabViews } from '../terminal/tabs-store';
-import type { TabView } from '../terminal/tabs-store';
+import { activeTabIndex, tabViews, type TabView } from '../terminal/tabs-store';
 import { RepositoryRail } from './repository-rail';
 import { TabStrip } from './tab-strip';
 import {

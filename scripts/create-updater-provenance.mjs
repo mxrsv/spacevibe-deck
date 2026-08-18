@@ -1,3 +1,4 @@
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 import { createHash } from 'node:crypto';
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';

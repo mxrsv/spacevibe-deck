@@ -1,3 +1,4 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -109,8 +110,8 @@ describe('release tag resolution', () => {
       workflow.indexOf('workflow_dispatch:'),
     );
 
-    expect(triggers).toContain('"v[0-9]+.[0-9]+.[0-9]+"');
-    expect(triggers).toContain('"v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"');
+    expect(triggers).toContain("'v[0-9]+.[0-9]+.[0-9]+'");
+    expect(triggers).toContain("'v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+'");
     expect(triggers).not.toContain('windows-preview');
   });
 

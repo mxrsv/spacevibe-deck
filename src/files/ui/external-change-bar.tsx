@@ -7,8 +7,7 @@
  * purpose, because a bar for something Deck already handled is noise the user
  * has to dismiss.
  */
-import type { ChangeAction } from '../external-change';
-import type { ChangeResolution } from '../external-change';
+import type { ChangeAction, ChangeResolution } from '../external-change';
 
 export interface ExternalChangeBarProps {
   readonly prompt: ChangeAction['kind'] | null;

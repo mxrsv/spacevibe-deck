@@ -1,7 +1,6 @@
 import { breakdownRows } from '../../../lib/usage-aggregate';
 import { usageSnapshot } from '../../../usage/usage-store';
-import { MetricTable } from '../metric-table';
-import type { MetricColumn, MetricRow } from '../metric-table';
+import { MetricTable, type MetricColumn, type MetricRow } from '../metric-table';
 import { ESTIMATE_NOTE, formatTokens, usdCell, USAGE_AGENT_LABEL } from '../usage-format';
 
 /**

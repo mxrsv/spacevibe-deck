@@ -13,8 +13,7 @@
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { activeTabIndex, tabViews } from '../terminal/tabs-store';
-import type { TabView } from '../terminal/tabs-store';
+import { activeTabIndex, tabViews, type TabView, type PaneView } from '../terminal/tabs-store';
 import { TabStrip } from './tab-strip';
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
 import {
@@ -34,7 +33,6 @@ import {
   resetBrowserStore,
 } from '../browser/browser-store';
 import { paneTails } from '../terminal/session-tail-store';
-import type { PaneView } from '../terminal/tabs-store';
 
 const fileClient: FileClient = {
   listDir: async () => [],

@@ -9,8 +9,11 @@
  */
 import { workspaceLabel } from '../lib/workspace-label';
 import type { PaneAgent } from '../lib/process-info';
-import type { AgentAttentionSummary, TabView } from '../terminal/tabs-store';
-import { IDLE_ATTENTION_SUMMARY } from '../terminal/tabs-store';
+import {
+  type AgentAttentionSummary,
+  type TabView,
+  IDLE_ATTENTION_SUMMARY,
+} from '../terminal/tabs-store';
 import type { RepositoryScan } from './repository-client';
 
 export type WorktreeState = 'missing' | 'attention' | 'working' | 'ready' | 'idle';

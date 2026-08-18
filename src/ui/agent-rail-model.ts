@@ -20,14 +20,15 @@
  */
 import type { PaneAgent } from '../lib/process-info';
 import type { RepositoryScan } from '../repositories/repository-client';
-import type { RailTab, RepositoryGroup, WorktreeRow } from '../repositories/repository-model';
 import {
+  type RailTab,
+  type RepositoryGroup,
+  type WorktreeRow,
   buildRail,
   filterRailToWorkspaceHistory,
   worktreeForPath,
 } from '../repositories/repository-model';
-import type { PaneView, TabView } from '../terminal/tabs-store';
-import { NO_PANES } from '../terminal/tabs-store';
+import { type PaneView, type TabView, NO_PANES } from '../terminal/tabs-store';
 import { UNSEQUENCED } from '../lib/open-sequence';
 
 /**

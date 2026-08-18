@@ -126,6 +126,7 @@ export function PromptPopover(props: PromptPopoverProps) {
 
   // Capture first, then scan with what was captured (spec §7). Both are
   // one-shot: transient state never survives an open (DL-13.6).
+  /* oxlint-disable react-hooks/exhaustive-deps -- one-shot open; the popover unmounts on close */
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -157,11 +158,13 @@ export function PromptPopover(props: PromptPopoverProps) {
       cancelled = true;
     };
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Dismiss on any pointerdown outside the anchor (which contains both the
   // trigger and this surface, so the trigger's own toggle still works). The
   // shipping anchor is the toolbar slot the trigger lives in; the gallery's
   // popover specimen still mounts the bare `.prompts-anchor` wrapper.
+  /* oxlint-disable react-hooks/exhaustive-deps -- one-shot listener; onClose is a stable parent callback */
   useEffect(() => {
     const onPointerDown = (event: PointerEvent): void => {
       const node = event.target as Element | null;
@@ -173,12 +176,13 @@ export function PromptPopover(props: PromptPopoverProps) {
     rootRef.current?.focus();
     return () => document.removeEventListener('pointerdown', onPointerDown, true);
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // The captured pane can exit or have its tab closed while this is open;
   // `tabViews` is what `syncViews` bumps on every layout change, poll and
   // exit, so reading it here is the subscription (spec §7, §12).
   useSignalEffect(() => {
-    tabViews.value;
+    void tabViews.value;
     const captured = target.value;
     if (captured !== null && !props.isAlive(captured.paneId)) {
       props.onClose();

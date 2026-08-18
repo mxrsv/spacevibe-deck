@@ -256,7 +256,7 @@ export function installSessionTailSync(): () => void {
   const dispose = effect(() => {
     // The one dependency: any new `tabViews` identity re-arms the debounce,
     // and `run` decides from the fingerprint whether it was a real change.
-    tabViews.value;
+    void tabViews.value;
     schedule();
   });
   disposeEffect = dispose;

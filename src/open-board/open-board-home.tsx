@@ -1,7 +1,6 @@
 import { FolderOpen, FolderPlus, GitBranch, Robot, Terminal, X } from '@phosphor-icons/react';
 import { BOARD_ICON, DeckIcon, ROW_ICON } from '../ui/controls/deck-icon';
-import { folderName, formatRelativeTime } from '../lib/workspace-recents';
-import type { RecentWorkspace } from '../lib/workspace-recents';
+import { folderName, formatRelativeTime, type RecentWorkspace } from '../lib/workspace-recents';
 import { tildify } from '../lib/process-info';
 import { logoDataUrl } from '../settings/logo-store';
 import { SESSION_AGENT_LABELS, type SessionEntry } from '../lib/session-history';

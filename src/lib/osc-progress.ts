@@ -15,6 +15,7 @@
 const CLEAR = 0;
 
 /** Matches one COMPLETE OSC 9;4 sequence; group 1 = state, group 2 = progress. */
+// oxlint-disable-next-line no-control-regex -- OSC sequences are control characters by definition
 const OSC_9_4 = /\x1b\]9;4(?:;(\d+)(?:;(\d*))?)?(?:\x07|\x1b\\)/g;
 
 /** One parsed OSC 9;4 report. `progress` is present only when the sequence
@@ -42,10 +43,12 @@ export const OSC_CARRY_LENGTH = 24;
 /** Incremental prefixes of an OSC 9;4 sequence that have not yet reached a
  * terminator: `\x1b`, `\x1b]`, `\x1b]9`, `\x1b]9;`, `\x1b]9;4`, `\x1b]9;4;`,
  * `\x1b]9;4;1`, `\x1b]9;4;1;`, `\x1b]9;4;1;42` … */
+// oxlint-disable-next-line no-control-regex -- OSC sequences are control characters by definition
 const INCOMPLETE_PREFIX = /^\x1b(\](9(;(4(;\d*(;\d*)?)?)?)?)?)?$/;
 
 /** The ST terminator itself split across chunks: digits (and optional
  * progress) followed by a lone ESC whose `\` arrives next chunk. */
+// oxlint-disable-next-line no-control-regex -- OSC sequences are control characters by definition
 const INCOMPLETE_SPLIT_ST = /^\x1b\]9;4;\d*(;\d*)?\x1b$/;
 
 /**

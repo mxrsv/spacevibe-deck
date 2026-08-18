@@ -94,7 +94,7 @@ function rustCommands(): Map<string, string[]> {
  * as sent is exactly the mistake that would let the bug this file exists for
  * slip through a second time.
  */
-export function topLevelKeys(payload: string): string[] {
+function topLevelKeys(payload: string): string[] {
   const keys = new Set<string>();
   let depth = 0;
   for (let i = 0; i < payload.length; i += 1) {

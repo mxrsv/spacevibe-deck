@@ -2,8 +2,12 @@
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { activeTabIndex, tabViews } from '../terminal/tabs-store';
-import type { AgentAttentionSummary, TabView } from '../terminal/tabs-store';
+import {
+  activeTabIndex,
+  tabViews,
+  type AgentAttentionSummary,
+  type TabView,
+} from '../terminal/tabs-store';
 import { TabBar } from './tab-bar';
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
 import {

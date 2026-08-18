@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { readFileSync } from 'node:fs';
 import { render } from 'preact';
 import { act } from 'preact/test-utils';
@@ -35,8 +36,7 @@ vi.mock('./controls/deck-icon', () => ({
   DeckIcon: () => null,
 }));
 
-import { activeTabIndex, tabViews } from '../terminal/tabs-store';
-import type { PaneView, TabView } from '../terminal/tabs-store';
+import { activeTabIndex, tabViews, type PaneView, type TabView } from '../terminal/tabs-store';
 import { AgentRail } from './agent-rail';
 import { TabStrip } from './tab-strip';
 import {

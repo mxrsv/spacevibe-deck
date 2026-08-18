@@ -3,8 +3,8 @@ name: Release
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+'
   # Re-run the Windows preview alone against a tag that already shipped. The
   # Windows channel is an unsigned preview and will break again; without this,
   # retrying it means moving the tag, which rebuilds and republishes a macOS
@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing vX.Y.Z tag to rebuild the Windows preview from"
+        description: 'Existing vX.Y.Z tag to rebuild the Windows preview from'
         required: true
         type: string
 
@@ -582,7 +582,7 @@ jobs:
           DECK_UPDATER_PUBLIC_KEY: ${{ vars.DECK_UPDATER_PUBLIC_KEY }}
         with:
           tagName: ${{ needs.resolve-target.outputs.tag }}-windows-preview
-          releaseName: "SpaceVibe Deck v__VERSION__ — Unsigned Windows Preview"
+          releaseName: 'SpaceVibe Deck v__VERSION__ — Unsigned Windows Preview'
           releaseBody: ${{ needs.prepare-release-notes.outputs.windows_body }}
           releaseCommitish: ${{ needs.resolve-target.outputs.sha }}
           releaseDraft: true
@@ -739,8 +739,7 @@ jobs:
         run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false
 
   publish-windows-preview:
-    needs:
-      [resolve-target, build-windows-preview-draft, validate-windows-preview]
+    needs: [resolve-target, build-windows-preview-draft, validate-windows-preview]
     runs-on: ubuntu-latest
     permissions:
       contents: write

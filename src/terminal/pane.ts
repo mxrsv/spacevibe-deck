@@ -201,10 +201,10 @@ export function createPane(
   let capturePasteWrite: ((write: Promise<boolean>) => void) | null = null;
 
   function forwardData(data: string): Promise<boolean> {
-    const write = events.onData(id, data);
-    capturePasteWrite?.(write);
+    const result = events.onData(id, data);
+    capturePasteWrite?.(result);
     capturePasteWrite = null;
-    return write;
+    return result;
   }
 
   term.attachCustomWheelEventHandler(
@@ -485,8 +485,8 @@ export function createPane(
     },
     pasteText(text) {
       let capturedWrite: Promise<boolean> | null = null;
-      capturePasteWrite = (write) => {
-        capturedWrite = write;
+      capturePasteWrite = (pending) => {
+        capturedWrite = pending;
       };
       try {
         // xterm's public paste path synchronously emits one prepared/bracketed

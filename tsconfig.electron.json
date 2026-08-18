@@ -3,9 +3,7 @@
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "node",
-    "lib": [
-      "ES2022"
-    ],
+    "lib": ["ES2022"],
     "outDir": "dist-electron",
     "rootDir": ".",
     "strict": true,
@@ -16,15 +14,8 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "sourceMap": true,
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
-  "include": [
-    "electron/**/*.ts",
-    "src/terminal/action-registry.ts"
-  ],
-  "exclude": [
-    "electron/**/*.test.ts"
-  ]
+  "include": ["electron/**/*.ts", "src/terminal/action-registry.ts"],
+  "exclude": ["electron/**/*.test.ts"]
 }

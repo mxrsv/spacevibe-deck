@@ -44,6 +44,6 @@ describe('createMemoryPromptAssetsClient', () => {
     const client = createMemoryPromptAssetsClient(EMPTY_PROMPT_ASSETS, {
       fail: true,
     });
-    await expect(client.list('claude', null)).rejects.toThrow();
+    await expect(client.list('claude', null)).rejects.toThrow('list_prompt_assets failed');
   });
 });

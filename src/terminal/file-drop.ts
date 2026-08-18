@@ -1,5 +1,4 @@
-import { getCurrentWebview } from '../host/window-host';
-import { getCurrentWindow } from '../host/window-host';
+import { getCurrentWebview, getCurrentWindow } from '../host/window-host';
 import type { UnlistenFn } from '../host/bridge';
 
 export interface FileDropHandlers {

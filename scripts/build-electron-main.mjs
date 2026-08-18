@@ -1,3 +1,4 @@
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 // Rename the compiled main process to `.cjs`.
 //
 // The repo is ESM ("type": "module" in package.json), so Node treats a `.js`

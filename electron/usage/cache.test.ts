@@ -74,7 +74,7 @@ describe('usage cache', () => {
     // these tests may run as root, which permission bits do not stop.)
     mkdirSync(`${file}.tmp`);
     try {
-      expect(() => writeCache(file, sampleCache())).toThrow();
+      expect(() => writeCache(file, sampleCache())).toThrow('EISDIR');
     } finally {
       rmSync(`${file}.tmp`, { recursive: true, force: true });
     }

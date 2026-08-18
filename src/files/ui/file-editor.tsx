@@ -67,6 +67,7 @@ export function FileEditor(props: FileEditorProps) {
 
   // Mount once. Monaco arrives through a dynamic import, so this effect can
   // resolve after the component has already unmounted — hence `cancelled`.
+  /* oxlint-disable react-hooks/exhaustive-deps -- mount-once; the cancelled flag guards the async tail */
   useEffect(() => {
     const host = hostRef.current;
     if (host === null) {
@@ -140,9 +141,11 @@ export function FileEditor(props: FileEditorProps) {
       }
     };
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Swap the model when the path changes, and re-apply the content whenever the
   // document's baseline moves — a reload, or the first read landing.
+  /* oxlint-disable react-hooks/exhaustive-deps -- re-runs on path and the ready bump; document is read at run time */
   useEffect(() => {
     const handle = handleRef.current;
     if (handle === null || document === undefined) {
@@ -184,6 +187,7 @@ export function FileEditor(props: FileEditorProps) {
       readOnly: document.file === null || document.file.readOnly,
     });
   }, [props.path, document?.text, document?.file, ready.value]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Theme, font family and font size follow the SAME `applySettings` call the
   // terminals do — a theme switch must not leave the editor in the old palette

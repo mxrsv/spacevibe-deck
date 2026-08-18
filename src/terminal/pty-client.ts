@@ -1,5 +1,4 @@
-import { invoke } from '../host/bridge';
-import { listen, type UnlistenFn } from '../host/bridge';
+import { invoke, listen, type UnlistenFn } from '../host/bridge';
 import type { PaneProcessInfo } from '../lib/process-info';
 import type { AgentProcessMatcher } from '../lib/agent-catalog';
 export type { AgentProcessMatcher } from '../lib/agent-catalog';

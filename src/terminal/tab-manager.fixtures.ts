@@ -236,6 +236,6 @@ export function freshWindowFocusController(): WindowFocusController {
     isFocusedError: null,
     onFocusChangedError: null,
     emitFocusChanged: null,
-    unlistenFocus: vi.fn(),
+    unlistenFocus: vi.fn<() => void>(),
   };
 }

@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { RepositoryScan } from '../repositories/repository-client';
 import type { PaneView, TabView } from '../terminal/tabs-store';
-import type { AgentRailInput, AgentRailView } from './agent-rail-model';
-import { buildAgentRail, formatShortAge, tabTail } from './agent-rail-model';
+import {
+  type AgentRailInput,
+  type AgentRailView,
+  buildAgentRail,
+  formatShortAge,
+  tabTail,
+} from './agent-rail-model';
 
 /** The stream's rows in render order, flattened out of their clusters. */
 function streamRows(view: AgentRailView) {

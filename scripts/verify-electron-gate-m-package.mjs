@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 /**
  * Gate M verifier (file-explorer plan §5.0.2 / §5.0.4).
  *
@@ -134,13 +135,13 @@ export function structureFailures(app) {
     return failures;
   }
 
-  let main = null;
+  let entry = null;
   try {
-    main = JSON.parse(readAsarFile(app.asar, 'package.json').toString()).main;
+    entry = JSON.parse(readAsarFile(app.asar, 'package.json').toString()).main;
   } catch (error) {
     failures.push(`packaged package.json unreadable: ${String(error)}`);
   }
-  need(main === EXPECTED_MAIN, `packaged main is ${String(main)}, expected ${EXPECTED_MAIN}`);
+  need(entry === EXPECTED_MAIN, `packaged main is ${String(entry)}, expected ${EXPECTED_MAIN}`);
 
   need(
     asarHasDir(app.asar, 'dist') &&

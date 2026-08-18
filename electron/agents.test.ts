@@ -1,3 +1,4 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 /**
  * Translated from the Rust tests in `src-tauri/src/agents.rs`, case for case.
  * The metacharacter list in particular is a security assertion, not a style
