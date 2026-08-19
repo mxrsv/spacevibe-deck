@@ -1,0 +1,732 @@
+/* Gallery-only Settings proposal. The `gxs-` namespace never enters shipping. */
+
+.gxs-review-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 3px;
+  border: 1px solid var(--gx-line);
+  border-radius: 6px;
+  background: var(--gx-panel);
+}
+
+.gxs-review-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 7px;
+}
+
+.gxs-review-toolbar label > span {
+  color: var(--gx-dim);
+  font-size: 10px;
+}
+
+.gxs-review-toolbar button,
+.gxs-review-toolbar select {
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid var(--gx-line);
+  border-radius: 4px;
+  background: #18181e;
+  color: var(--gx-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.gxs-review-toolbar button:hover,
+.gxs-review-toolbar select:hover {
+  color: var(--gx-bright);
+}
+
+.gxs-review-stack {
+  display: grid;
+  gap: 26px;
+}
+
+.gxs-review-case {
+  display: grid;
+  gap: 8px;
+}
+
+.gxs-review-case > header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.gxs-review-case > header strong {
+  color: var(--gx-bright);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.gxs-review-case > header span {
+  color: var(--gx-dim);
+  font-size: 10px;
+}
+
+.gxs-review-viewport {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 12px;
+  border: 1px solid var(--gx-line);
+  border-radius: 6px;
+  background: #0c0c0f;
+}
+
+.gxs-settings-frame {
+  --gxs-header-height: 46px;
+  --gxs-heading-size: 24px;
+  --gxs-wide-rail: 190px;
+  --gxs-compact-rail: 54px;
+
+  display: flex;
+  height: 620px;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  background: var(--chrome-2);
+  color: var(--text-primary);
+  font-family: var(--ui-font);
+}
+
+.gxs-settings-frame--wide {
+  width: 960px;
+}
+
+.gxs-settings-frame--compact {
+  width: 480px;
+}
+
+.gxs-settings-head {
+  display: flex;
+  min-height: var(--gxs-header-height);
+  flex: 0 0 var(--gxs-header-height);
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  padding: 0 14px 0 16px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.gxs-settings-head h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--type-body);
+  font-weight: 400;
+}
+
+.gxs-settings-head h2 b {
+  color: var(--text-muted);
+  font-weight: 650;
+}
+
+.gxs-settings-head > button {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.gxs-settings-head > button:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.gxs-settings-head > button:focus-visible {
+  outline: 2px solid var(--text-muted);
+  outline-offset: -2px;
+}
+
+.gxs-settings-grid {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: var(--gxs-wide-rail) minmax(0, 1fr);
+}
+
+.gxs-settings-frame--compact .gxs-settings-grid {
+  grid-template-columns: var(--gxs-compact-rail) minmax(0, 1fr);
+}
+
+.gxs-settings-nav {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  border-right: 1px solid var(--hair);
+  background: var(--sidebar-bg);
+}
+
+.gxs-settings-nav__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 6px;
+  overflow-y: auto;
+}
+
+.gxs-settings-nav__list button,
+.gxs-settings-reset {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-faint);
+  font: 500 var(--type-body) / 1 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+}
+
+.gxs-settings-nav__list button:hover,
+.gxs-settings-reset:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.gxs-settings-nav__list button.is-active,
+.gxs-settings-reset.is-active {
+  border-color: var(--hair-strong);
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+
+.gxs-settings-nav__list button:focus-visible,
+.gxs-settings-reset:focus-visible {
+  outline: 2px solid var(--text-muted);
+  outline-offset: -2px;
+}
+
+.gxs-settings-nav__list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gxs-settings-frame--compact .gxs-settings-nav__list button {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.gxs-settings-frame--compact .gxs-settings-nav__list span {
+  display: none;
+}
+
+.gxs-settings-reset {
+  display: flex;
+  min-height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  margin: auto 6px 8px;
+  padding: 7px 10px;
+}
+
+/* The leading mark is a `DeckIcon` now, not a text glyph — it brings its own
+   16px box, so this slot only has to stop flexing. */
+.gxs-settings-reset > svg {
+  flex: 0 0 auto;
+}
+
+.gxs-settings-reset b {
+  overflow: hidden;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gxs-settings-frame--compact .gxs-settings-reset {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.gxs-settings-frame--compact .gxs-settings-reset b {
+  display: none;
+}
+
+.gxs-settings-content {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--chrome-2);
+}
+
+.gxs-settings-document {
+  width: min(680px, calc(100% - 80px));
+  margin: 0 auto;
+  padding: 38px 0 54px;
+}
+
+.gxs-settings-frame--compact .gxs-settings-document {
+  width: auto;
+  margin: 0;
+  padding: 28px 18px 40px;
+}
+
+.gxs-settings-intro {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.gxs-settings-intro h1 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--gxs-heading-size);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.gxs-settings-intro p {
+  max-width: 58ch;
+  margin: 10px 0 0;
+  color: var(--text-faint);
+  font-size: var(--type-title);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.gxs-settings-surface {
+  margin-top: 24px;
+  padding: 2px 0 8px;
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-surface);
+  background: var(--chrome-1);
+}
+
+.gxs-settings-surface .cfg-group {
+  padding: 18px 16px 7px;
+}
+
+.gxs-settings-surface .cfg-group:not(:first-child) {
+  margin-top: 4px;
+  border-top: 1px solid var(--hair);
+}
+
+.gxs-settings-surface .cfg-row {
+  min-height: 42px;
+  box-sizing: border-box;
+  margin: 0 6px;
+  padding: 10px;
+}
+
+.gxs-settings-surface .cfg-row:has(.cfg-row__desc) {
+  min-height: 50px;
+  padding-block: 12px;
+}
+
+/* Settings chrome stays achromatic. The terminal palette may carry colour,
+   but its green/blue roles do not leak into native preference controls. */
+.gxs-settings-frame .cfg-btn--on,
+.gxs-settings-frame .cfg-step__btn {
+  color: var(--text-primary);
+}
+
+.gxs-settings-frame .cfg-btn:hover .cfg-btn__hint {
+  color: var(--text-primary);
+}
+
+.gxs-settings-frame .cfg-btn:focus-visible,
+.gxs-settings-frame .cfg-btn--overlay:focus-within,
+.gxs-settings-frame .cfg-step__btn:focus-visible {
+  outline-color: var(--text-muted);
+}
+
+.gxs-segmented {
+  display: grid;
+  grid-auto-columns: minmax(64px, 1fr);
+  grid-auto-flow: column;
+  padding: 2px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+  background: var(--input-bg);
+}
+
+.gxs-segmented button {
+  min-height: 26px;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-control) - 3px);
+  background: transparent;
+  color: var(--text-faint);
+  font: 520 var(--type-meta) / 1 var(--ui-font);
+  cursor: pointer;
+}
+
+.gxs-segmented button:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.gxs-segmented button.is-selected {
+  border-color: var(--hair-strong);
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+
+.gxs-segmented button:focus-visible {
+  outline: 2px solid var(--text-muted);
+  outline-offset: -2px;
+}
+
+.gxs-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  flex: 0 0 38px;
+  box-sizing: border-box;
+  padding: 2px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 999px;
+  background: var(--input-bg);
+  cursor: pointer;
+}
+
+.gxs-switch span {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transform: translateX(0);
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease;
+}
+
+.gxs-switch.is-on {
+  background: var(--tab-active-bg);
+}
+
+.gxs-switch.is-on span {
+  background: var(--text-primary);
+  transform: translateX(16px);
+}
+
+.gxs-switch:hover span {
+  background: var(--text-primary);
+}
+
+.gxs-switch:focus-visible,
+.gxs-select:focus-visible,
+.gxs-number button:focus-visible,
+.gxs-number input:focus-visible,
+.gxs-action:focus-visible,
+.gxs-draft-field input:focus-visible,
+.gxs-agent-form input:focus-visible,
+.gxs-form-actions button:focus-visible,
+.gxs-shortcut-control button:focus-visible {
+  outline: 2px solid var(--text-muted);
+  outline-offset: 1px;
+}
+
+.gxs-select,
+.gxs-draft-field input,
+.gxs-agent-form input {
+  min-height: 30px;
+  box-sizing: border-box;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font: 500 var(--type-meta) / 1 var(--ui-font);
+}
+
+.gxs-select {
+  max-width: 190px;
+  padding: 4px 25px 4px 9px;
+}
+
+.gxs-number {
+  display: grid;
+  min-height: 30px;
+  grid-template-columns: 29px 39px 18px 29px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  background: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.gxs-number button {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.gxs-number button:hover {
+  background: var(--state-hover-bg);
+}
+
+.gxs-number input {
+  width: 39px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: 520 var(--type-body) / 1 var(--ui-font);
+  text-align: right;
+  appearance: textfield;
+}
+
+.gxs-number input::-webkit-inner-spin-button,
+.gxs-number input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.gxs-number > span {
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+
+.gxs-action,
+.gxs-form-actions button,
+.gxs-shortcut-control button {
+  min-height: 30px;
+  box-sizing: border-box;
+  padding: 5px 10px;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font: 520 var(--type-meta) / 1 var(--ui-font);
+  cursor: pointer;
+}
+
+.gxs-action:hover,
+.gxs-form-actions button:hover,
+.gxs-shortcut-control button:hover {
+  background: var(--state-hover-bg);
+}
+
+.gxs-action:disabled {
+  color: var(--text-disabled);
+  cursor: wait;
+}
+
+.gxs-inline-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.gxs-draft-field {
+  display: grid;
+  width: min(260px, 100%);
+  gap: 5px;
+}
+
+.gxs-draft-field input {
+  width: 100%;
+  padding: 5px 8px;
+}
+
+.gxs-draft-field span,
+.gxs-agent-form p,
+.gxs-shortcut-control span {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  line-height: 1.35;
+}
+
+.gxs-agent-list {
+  display: grid;
+  gap: 1px;
+  margin: 0 6px;
+}
+
+.gxs-agent-list > span {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.gxs-agent-list b {
+  color: var(--text-primary);
+  font-size: var(--type-body);
+  font-weight: 520;
+}
+
+.gxs-agent-list small {
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+
+.gxs-agent-form {
+  display: grid;
+  gap: 10px;
+  margin: 10px 12px 6px;
+  padding: 12px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+  background: var(--chrome-2);
+}
+
+.gxs-agent-form label {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+
+.gxs-agent-form input {
+  width: 100%;
+  padding: 5px 8px;
+}
+
+.gxs-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.gxs-form-actions button.is-primary {
+  background: var(--tab-active-bg);
+  color: var(--text-primary);
+}
+
+.gxs-settings-surface > .gxs-action {
+  margin: 10px 12px 6px;
+}
+
+.gxs-shortcut-control,
+.gxs-action-status {
+  display: flex;
+  max-width: 260px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.gxs-shortcut-control button,
+.gxs-settings-surface kbd {
+  min-width: 62px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.gxs-settings-surface kbd {
+  padding: 5px 8px;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: var(--type-meta);
+}
+
+.gxs-action-status span,
+.gxs-readonly-value {
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+
+.gxs-reset-confirm {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+}
+
+.gxs-reset-confirm h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--type-title);
+  font-weight: 600;
+}
+
+.gxs-reset-confirm p {
+  max-width: 48ch;
+  margin: 0;
+  color: var(--text-faint);
+  font-size: var(--type-body);
+  line-height: 1.5;
+}
+
+.gxs-settings-frame--compact .gxs-settings-surface .cfg-row {
+  gap: 8px;
+}
+
+.gxs-settings-frame--compact .gxs-settings-surface .cfg-row__desc {
+  max-width: 19ch;
+  line-height: 1.3;
+}
+
+.gxs-settings-frame--compact .gxs-settings-surface .cfg-btn {
+  max-width: 145px;
+}
+
+.gxs-settings-frame--compact .gxs-settings-surface .cfg-row {
+  align-items: flex-start;
+}
+
+.gxs-settings-frame--compact .gxs-settings-surface .cfg-row__copy {
+  min-width: 112px;
+}
+
+.gxs-settings-frame--compact .gxs-segmented {
+  grid-auto-columns: minmax(54px, 1fr);
+}
+
+.gxs-settings-frame--compact .gxs-inline-controls,
+.gxs-settings-frame--compact .gxs-shortcut-control,
+.gxs-settings-frame--compact .gxs-action-status {
+  max-width: 145px;
+}
+
+.gxs-settings-frame--compact .gxs-draft-field {
+  width: 145px;
+}
+
+.gxs-settings-frame--compact .gxs-agent-list > span {
+  align-items: flex-start;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+
+.gxs-settings-frame--compact .gxs-agent-form label {
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gxs-settings-frame,
+  .gxs-settings-frame * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -6,10 +6,16 @@ import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
 import { ConfigRow } from "../../controls/config-row";
 import { reportPersistError } from "../../../chrome/events";
 
-/** The "Restore defaults" row — moved verbatim from the settings drawer this screen replaced
- * (Task 4), including its async confirm guard. Rendered by `settings-nav.tsx`'s
- * pinned foot slot, not through the category-switch registry (it is not a
- * navigable category). */
+/**
+ * The "Restore defaults" row, with the async confirm guard it was written
+ * with (moved verbatim out of the settings drawer this screen replaced).
+ *
+ * It is the `reset` category's whole section since 2026-08-19 (owner,
+ * DL-11.5 amended), reached from the rail like every other stop. It rendered
+ * in `settings-nav.tsx`'s pinned foot before that — kept out of the navigable
+ * list because it is destructive — and the row is unchanged by the move: what
+ * makes it safe was always the native prompt below, never the slot it sat in.
+ */
 export function ResetSection() {
   // Same guard for the Restore-defaults confirm — one prompt per click.
   const resetting = useSignal(false);

@@ -184,3 +184,43 @@ describe("composeSurfaceStrip with the browser tab open", () => {
     expect(files.focus).not.toHaveBeenCalled();
   });
 });
+
+describe("composeSurfaceStrip and the Edit-menu commands", () => {
+  // The delegation this file exists to guarantee, for the one method added
+  // 2026-08-19. Forgetting it here is silent: `runEditCommand` is optional on
+  // `SurfaceStrip`, so a composed strip that drops it type-checks fine and
+  // simply answers "not mine" — which sends Select All back to the
+  // document-level command that cannot see Monaco at all.
+  it("forwards runEditCommand to the file strip", () => {
+    const files = fakeFiles({ runEditCommand: vi.fn(() => true) });
+    const strip = composeSurfaceStrip({
+      files,
+      client: fakeClient(),
+      onChanged: vi.fn(),
+    });
+
+    expect(strip.runEditCommand?.("select-all")).toBe(true);
+    expect(files.runEditCommand).toHaveBeenCalledWith("select-all");
+  });
+
+  it("answers false when the file strip cannot handle the command", () => {
+    const files = fakeFiles({ runEditCommand: vi.fn(() => false) });
+    const strip = composeSurfaceStrip({
+      files,
+      client: fakeClient(),
+      onChanged: vi.fn(),
+    });
+
+    expect(strip.runEditCommand?.("undo")).toBe(false);
+  });
+
+  it("answers false for a file strip that predates the method", () => {
+    const strip = composeSurfaceStrip({
+      files: fakeFiles(),
+      client: fakeClient(),
+      onChanged: vi.fn(),
+    });
+
+    expect(strip.runEditCommand?.("redo")).toBe(false);
+  });
+});

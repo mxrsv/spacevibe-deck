@@ -26,6 +26,18 @@ export const editorRequest = signal<EditorRequest | null>(null);
  */
 export const agentQuickPickerOpen = signal(false);
 /**
+ * Which project the NEXT AgentQuickPicker open targets, or null for "wherever
+ * the active tab is" — which is every open the `+`/⌘T path makes.
+ *
+ * Non-null only while the panel was raised from a rail project header
+ * (DL-27.18), where the whole point of the click is that the destination is a
+ * project other than the selected one. It lives beside `agentQuickPickerOpen`
+ * rather than inside `App` for the same reason that signal does: `newTab()` in
+ * tab-manager.ts is outside `App`'s closure and has to CLEAR it, so a rail
+ * launch cannot leak into the next ⌘T.
+ */
+export const quickPickerWorkspace = signal<string | null>(null);
+/**
  * Settings panel open state. Promoted from a local `useSignal` in `app.tsx`
  * to a module signal here so it is the one overlay signal that shadows the
  * terminal grid — `tab-manager.ts`'s overlay scope guard (which
@@ -62,6 +74,40 @@ export const promptsOpen = signal(false);
  * match.
  */
 export const shortcutCaptureActive = signal(false);
+
+/**
+ * A path an agent printed that the user just activated (design §3.2).
+ *
+ * The terminal's link provider raises this; `App` observes it, asks the main
+ * process which open workspace contains the file, and either opens it in
+ * Deck's own editor or hands it to the selected external app. It lives here,
+ * beside the other chrome intents, for one structural reason: the link
+ * provider MUST NOT import the file layer. `TabManager` knows nothing about
+ * files, and the seam that keeps it that way runs through `App` — a direct
+ * call from `link-provider.ts` into `file-surface-controller.ts` would tie a
+ * terminal module to the file store and make that seam unobservable.
+ *
+ * One-shot: `App` clears it as soon as it has read it, so re-activating the
+ * same path raises a NEW request rather than being swallowed as "unchanged".
+ * The counter is what makes that true for two clicks on one path.
+ */
+export interface PathOpenRequest {
+  /** Absolute, already canonicalised by `resolve_paths`. */
+  readonly path: string;
+  readonly line: number | null;
+  readonly column: number | null;
+  /** Distinguishes two activations of the same path. */
+  readonly nonce: number;
+}
+
+export const pathOpenRequest = signal<PathOpenRequest | null>(null);
+
+let pathOpenNonce = 0;
+
+export function requestPathOpen(request: Omit<PathOpenRequest, "nonce">): void {
+  pathOpenNonce += 1;
+  pathOpenRequest.value = { ...request, nonce: pathOpenNonce };
+}
 
 /**
  * Most recent local-storage write failure, shown by PersistErrorBar.

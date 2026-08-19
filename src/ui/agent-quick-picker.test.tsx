@@ -65,9 +65,14 @@ function mount(
     destinations?: readonly QuickDestination[];
     initialDestination?: string | null;
   } = {},
-): { onSelect: ReturnType<typeof vi.fn>; onCancel: ReturnType<typeof vi.fn> } {
+): {
+  onSelect: ReturnType<typeof vi.fn>;
+  onCancel: ReturnType<typeof vi.fn>;
+  onManageAgents: ReturnType<typeof vi.fn>;
+} {
   const onSelect = vi.fn();
   const onCancel = vi.fn();
+  const onManageAgents = vi.fn();
   act(() => {
     render(
       <AgentQuickPicker
@@ -77,11 +82,26 @@ function mount(
         initialDestination={overrides.initialDestination}
         onSelect={onSelect}
         onCancel={onCancel}
+        onManageAgents={onManageAgents}
       />,
       host,
     );
   });
-  return { onSelect, onCancel };
+  return { onSelect, onCancel, onManageAgents };
+}
+
+function panelEl(): HTMLElement {
+  return host.querySelector<HTMLElement>(".agent-quick-picker")!;
+}
+
+function chipEls(): readonly HTMLButtonElement[] {
+  return Array.from(host.querySelectorAll<HTMLButtonElement>("button.achip"));
+}
+
+function press(key: string, from: HTMLElement = panelEl()): void {
+  act(() => {
+    from.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  });
 }
 
 function selectEl(): HTMLSelectElement | null {
@@ -126,7 +146,9 @@ describe("AgentQuickPicker", () => {
 
     const aider = host.querySelectorAll<HTMLButtonElement>(".achip")[2];
     expect(aider.className).toContain("is-missing");
-    expect(aider.title).toBe("aider --model gpt-4 — not on $PATH");
+    expect(aider.title).toBe(
+      "aider --model gpt-4 — not on $PATH; opens Settings",
+    );
   });
 
   it("does not mark a detected built-in as missing", () => {
@@ -335,6 +357,7 @@ describe("AgentQuickPicker destination", () => {
       customAgents: CUSTOM,
       onSelect,
       onCancel: vi.fn(),
+      onManageAgents: vi.fn(),
     };
     act(() => {
       render(<AgentQuickPicker {...props} destinations={[]} />, host);
@@ -464,5 +487,72 @@ describe("AgentQuickPicker launch profiles", () => {
     });
 
     expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+// DL-29.8: the keys the panel answers, and the row that leads somewhere
+// instead of launching a binary that is gone.
+describe("AgentQuickPicker keyboard and unreachable rows (DL-29.8)", () => {
+  // DL-29.2 keeps focus on the PANEL at mount: a modal driven by bare keys
+  // must not put Enter one keystroke away from launching the first row.
+  it("starts with no row focused and walks into the list on ArrowDown", () => {
+    mount();
+
+    expect(document.activeElement).toBe(panelEl());
+    press("ArrowDown");
+    expect(document.activeElement).toBe(chipEls()[0]);
+    press("ArrowDown", chipEls()[0]);
+    expect(document.activeElement).toBe(chipEls()[1]);
+  });
+
+  it("wraps at both ends and jumps with Home/End", () => {
+    mount();
+    const chips = chipEls();
+
+    press("ArrowUp");
+    expect(document.activeElement).toBe(chips[chips.length - 1]);
+    press("ArrowDown", chips[chips.length - 1]);
+    expect(document.activeElement).toBe(chips[0]);
+    press("End", chips[0]);
+    expect(document.activeElement).toBe(chips[chips.length - 1]);
+    press("Home", chips[chips.length - 1]);
+    expect(document.activeElement).toBe(chips[0]);
+  });
+
+  // The arrows must not reach into the destination menu's own type-ahead —
+  // the same reason the digit keys already stop at a `<select>`.
+  it("leaves arrows inside the worktree menu alone", () => {
+    mount({ destinations: DESTINATIONS, initialDestination: "/dev/deck" });
+
+    press("ArrowDown", selectEl()!);
+    expect(document.activeElement).not.toBe(chipEls()[0]);
+  });
+
+  it("says the digit keys out loud, since the chips no longer wear them", () => {
+    mount();
+
+    const keys = host.querySelector(".agent-quick-picker__keys");
+    expect(keys?.textContent).toContain("pick");
+    expect(
+      Array.from(keys?.querySelectorAll("kbd") ?? []).map(
+        (key) => key.textContent,
+      ),
+    ).toEqual(["1", "9", "0", "↑", "↓", "Enter", "Esc"]);
+  });
+
+  it("routes a missing agent to Settings instead of launching it", () => {
+    const { onSelect, onManageAgents } = mount();
+
+    chipEls()[2].click();
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onManageAgents).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes its digit key the same way a click goes", () => {
+    const { onSelect, onManageAgents } = mount();
+
+    press("3");
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onManageAgents).toHaveBeenCalledTimes(1);
   });
 });

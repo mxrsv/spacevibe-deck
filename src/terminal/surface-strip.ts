@@ -23,6 +23,17 @@ import { UNSEQUENCED } from "../lib/open-sequence";
  * nothing (still true of every test in this file that omits `deps.surfaces`)
  * gets exactly the behaviour that shipped before the seam existed.
  */
+/**
+ * The Edit-menu commands a surface can claim.
+ *
+ * Cut/copy/paste are deliberately absent: Chromium dispatches a real DOM
+ * `cut`/`copy`/`paste` event for those, which whatever holds the caret can
+ * already answer. These three are document-level Chromium commands with no
+ * DOM event at all, so a surface that does not live in the document's own
+ * selection model (Monaco with `editContext` on) never hears about them.
+ */
+export type SurfaceEditCommand = "select-all" | "undo" | "redo";
+
 export interface SurfaceStrip {
   /** Surfaces in the strip right now — the segment after the terminal tabs. */
   count(): number;
@@ -43,6 +54,18 @@ export interface SurfaceStrip {
    * terminals-then-surfaces strip exactly.
    */
   orderKey?(index: number): number;
+  /**
+   * Run one Edit-menu command against the active surface, returning true when
+   * it handled it. False (and a missing implementation) means "not mine" —
+   * `runEditCommand` in tab-manager.ts then falls back to the browser's own
+   * editing command, which is what the native Cocoa role used to do.
+   *
+   * Still the §2.3 seam: TabManager learns that a surface may own the caret,
+   * never that the surface is a text editor. Optional for the same reason
+   * `orderKey` is — every `SurfaceStrip` fake written before this keeps
+   * compiling and keeps the pre-seam behaviour.
+   */
+  runEditCommand?(command: SurfaceEditCommand): boolean;
   /** Activate the surface at `index` within the segment. */
   activate(index: number): void;
   /** A terminal tab is taking the stage. */
@@ -62,6 +85,7 @@ export const INERT_SURFACES: SurfaceStrip = {
   total: () => 0,
   activeIndex: () => -1,
   orderKey: () => UNSEQUENCED,
+  runEditCommand: () => false,
   activate: () => {},
   deactivate: () => {},
   focus: () => {},

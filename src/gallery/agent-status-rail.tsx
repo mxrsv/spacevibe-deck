@@ -2,13 +2,13 @@ import { useSignal } from "@preact/signals";
 import { activeTabIndex, NO_PANES, tabViews } from "../terminal/tabs-store";
 import { AgentGlyph } from "../ui/controls/agent-glyph";
 import { DesktopChrome } from "../ui/desktop-chrome";
-import { SidebarToggle } from "../ui/sidebar-toggle";
 import { DockToggle } from "../ui/dock/dock-toggle";
 import {
   agentRailNavigationSpecimen,
   deckToolbarSpecimen,
   NOOP,
   repositoryScopedTabStripSpecimen,
+  sidebarFrameActionsSpecimen,
 } from "./chrome-fixtures";
 
 /**
@@ -80,7 +80,7 @@ function AgentStatusRailChrome() {
   return (
     <DesktopChrome
       sidebar
-      sidebarToggle={<SidebarToggle collapsed={false} onToggle={NOOP} />}
+      sidebarToggle={sidebarFrameActionsSpecimen()}
       toolbar={null}
       sidebarNavigation={agentRailNavigationSpecimen({
         onSelectTab: selectTab,

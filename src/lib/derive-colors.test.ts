@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   checkChromeTextContrast,
   contrastRatio,
+  DARK_LUMINANCE_THRESHOLD,
   deriveChromeColors,
   luminance,
   mixHex,
@@ -69,10 +70,82 @@ describe("deriveChromeColors", () => {
         const fg = preset.theme.foreground ?? "#c0caf5";
         const chrome = deriveChromeColors(bg, fg);
         expect(chrome.sidebarBg).not.toBe(bg);
-        expect(luminance(chrome.sidebarBg)).toBeLessThan(luminance(bg));
         expect(chrome.sidebarSeam).not.toBe(bg);
         expect(chrome.sidebarSeam).not.toBe(chrome.sidebarBg);
       }
+    });
+
+    /**
+     * The direction REVERSED for dark themes on 2026-08-19 (DL-18.7): the side
+     * columns used to be the darkest plane in the window and are now the first
+     * plane above the stage. The assertion is signed by mode rather than
+     * dropped, because "distinct from the stage" alone would pass a build that
+     * quietly swings the sidebar back under it.
+     */
+    it("raises a dark theme's sidebar off the stage and sinks a light one's", () => {
+      for (const preset of THEME_PRESETS) {
+        const bg = preset.theme.background ?? "#16161e";
+        const fg = preset.theme.foreground ?? "#c0caf5";
+        const chrome = deriveChromeColors(bg, fg);
+        if (luminance(bg) < DARK_LUMINANCE_THRESHOLD) {
+          expect(luminance(chrome.sidebarBg)).toBeGreaterThan(luminance(bg));
+        } else {
+          expect(luminance(chrome.sidebarBg)).toBeLessThan(luminance(bg));
+        }
+      }
+    });
+
+    /**
+     * The reason the dark chrome ladder is measured from `sidebarBg` rather
+     * than from `bg`: at the old offsets a raised sidebar would have landed
+     * between `chrome1` and `chrome2`, so a popover and the column behind it
+     * read as one smudged plane. Ordering is what the change bought, so
+     * ordering is what is locked.
+     */
+    it("stacks every dark chrome surface above the sidebar", () => {
+      for (const preset of THEME_PRESETS) {
+        const bg = preset.theme.background ?? "#16161e";
+        const fg = preset.theme.foreground ?? "#c0caf5";
+        if (luminance(bg) >= DARK_LUMINANCE_THRESHOLD) {
+          continue;
+        }
+        const c = deriveChromeColors(bg, fg);
+        const ladder = [
+          c.inputBg,
+          c.sidebarBg,
+          c.chrome1,
+          c.chrome2,
+          c.tabActiveBg,
+        ].map(luminance);
+        for (let step = 1; step < ladder.length; step += 1) {
+          expect(ladder[step]).toBeGreaterThan(ladder[step - 1]);
+        }
+        // The input recedes toward the stage but never falls into it.
+        expect(luminance(c.inputBg)).toBeGreaterThan(luminance(bg));
+      }
+    });
+
+    /**
+     * `#272d31` is not reachable by mixing `#17181c` toward white, so the one
+     * background the owner hand-picked a sidebar for carries a literal
+     * (DL-2.1's ledger). Pinned on the background, not the preset id: override
+     * that background and the pin correctly stops applying.
+     */
+    it("pins the sidebar Deck's own dark background was given", () => {
+      // Read off the preset rather than written twice: the pin is keyed on
+      // deck-dark's background, so a literal here would stay green on the day
+      // somebody edits that background and silently retires the pin.
+      const deckDark = THEME_PRESETS[0];
+      expect(deckDark.id).toBe("deck-dark");
+      const bg = deckDark.theme.background;
+      expect(deriveChromeColors(bg, deckDark.theme.foreground).sidebarBg).toBe(
+        "#272d31",
+      );
+      // And it is the BACKGROUND that claims it, not the preset: one channel
+      // away is a different theme, which derives its own sidebar.
+      expect(deriveChromeColors("#17181d", "#e7e7e7").sidebarBg).not.toBe(
+        "#272d31",
+      );
     });
 
     it("preserves the distinction for light and pure-black overrides", () => {
@@ -94,13 +167,30 @@ describe("deriveChromeColors", () => {
   describe("the seam ladder", () => {
     const lum = (color: string): number => luminance(color);
 
+    /**
+     * Distance travelled ALONG the tone, not up the luminance axis.
+     *
+     * Every chrome surface is `bg` mixed toward `tone`, and `tone` flips with
+     * the background: white on a dark theme, black on a light one. Written as
+     * a raw luminance difference this ladder reads backwards on a light theme
+     * — every surface sits BELOW its background there — and the assertion
+     * would fail a palette that is in fact perfectly ordered. Signing it by
+     * the tone states the relationship the ladder actually claims, and it was
+     * only ever exercised on dark presets until `deck-light` arrived
+     * (2026-08-19).
+     */
+    const towardTone = (bg: string, color: string): number =>
+      luminance(bg) < DARK_LUMINANCE_THRESHOLD
+        ? lum(color) - lum(bg)
+        : lum(bg) - lum(color);
+
     it("puts a shell seam BELOW the surface it edges, on every preset", () => {
       for (const preset of THEME_PRESETS) {
         const bg = preset.theme.background ?? "#16161e";
         const fg = preset.theme.foreground ?? "#c0caf5";
         const c = deriveChromeColors(bg, fg);
-        const towardChrome = lum(c.chrome1) - lum(bg);
-        const towardSeam = lum(c.seamRecessed) - lum(bg);
+        const towardChrome = towardTone(bg, c.chrome1);
+        const towardSeam = towardTone(bg, c.seamRecessed);
         // Between the two surfaces, and nearer the darker one — a gutter, not
         // a stroke laid on top.
         expect(towardSeam).toBeGreaterThan(0);
@@ -230,13 +320,15 @@ describe("deriveChromeColors", () => {
   });
 
   it("raises Tokyo Night's fg the few steps the 8:1 primary floor needs", () => {
-    // Its raw contrast falls short of 8:1 on the two tightest surfaces
-    // (7.84:1 on inputBg, 7.06:1 on tabActiveBg), so `ensureContrast` steps it
-    // toward `tone` — an intentional consequence of the floor, not a
-    // regression. The result is still neutral: the fg it starts from is now a
-    // gray, so raising it toward white cannot reintroduce a hue.
+    // Its raw contrast falls short of 8:1 on the tightest surface (6.54:1 on
+    // tabActiveBg), so `ensureContrast` steps it toward `tone` — an
+    // intentional consequence of the floor, not a regression. The result is
+    // still neutral: the fg it starts from is now a gray, so raising it toward
+    // white cannot reintroduce a hue. The literal rose from `#d9d9d9` on
+    // 2026-08-19 with the raised sidebar: the active row is lighter than it
+    // was, so the ink has to climb further to clear it.
     expect(deriveChromeColors("#16161e", "#cbcbcb").textPrimary).toBe(
-      "#d9d9d9",
+      "#e0e0e0",
     );
   });
 

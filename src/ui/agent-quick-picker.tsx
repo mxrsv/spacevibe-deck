@@ -30,11 +30,26 @@ import { commandFlags, profilesForAgent } from "../lib/launch-profile";
  * `folder · branch`: in git a worktree is checked out on exactly one branch.
  * See `worktree-destinations.ts` for why picking a branch independently is
  * deliberately not offered.
+ *
+ * Three things arrived on 2026-08-19 (DL-29.8). The rows answer ArrowUp/
+ * ArrowDown/Home/End with roving focus, so Enter picks without anyone having
+ * to know the digits; a `--text-muted` key line under the rows SAYS the digits,
+ * which nothing on screen did after the chips stopped wearing their number on
+ * 2026-08-16; and a declared agent whose binary has left `$PATH` no longer
+ * launches a shell that dies on `command not found` — it routes to Settings,
+ * where the catalog is what can fix it.
  */
 
 export interface AgentQuickPickerProps {
   detected: readonly { readonly name: string; readonly path: string }[];
   customAgents: readonly CustomAgent[];
+  /**
+   * Agent ids switched off in Settings. Passed in rather than read from the
+   * settings store so this panel stays prop-driven for the gallery; the
+   * filtering itself lives in `agentOptions`, which is also what numbers the
+   * digit keys.
+   */
+  disabledAgents?: readonly string[];
   /**
    * Worktrees of the repository the active tab is on. Empty for a plain
    * folder, and empty on any host with no `git_repository` channel — the
@@ -57,20 +72,38 @@ export interface AgentQuickPickerProps {
     profileId: string | null,
   ): void;
   onCancel(): void;
+  /**
+   * Open Settings, for a row whose binary is gone. Settings takes no initial
+   * category today, so this lands on its first one — the agent catalog is one
+   * click from there, and building a deep link for this is not worth a new
+   * prop on the screen.
+   */
+  onManageAgents(): void;
+}
+
+/** Every pickable row, in DOM order — what the arrow keys walk. */
+function chipsOf(panel: HTMLElement | null): readonly HTMLButtonElement[] {
+  return panel === null
+    ? []
+    : Array.from(panel.querySelectorAll<HTMLButtonElement>("button.achip"));
 }
 
 export function AgentQuickPicker({
   detected,
   customAgents,
+  disabledAgents = [],
   destinations = [],
   initialDestination = null,
   onSelect,
   onCancel,
+  onManageAgents,
 }: AgentQuickPickerProps) {
-  const chips = agentOptions(detected, customAgents).map((option) => ({
-    ...option,
-    logo: AGENT_LOGOS[option.id],
-  }));
+  const chips = agentOptions(detected, customAgents, disabledAgents).map(
+    (option) => ({
+      ...option,
+      logo: AGENT_LOGOS[option.id],
+    }),
+  );
 
   /**
    * The user's explicit pick, or null for "whatever the default resolves to".
@@ -104,6 +137,58 @@ export function AgentQuickPicker({
     return pickedProfiles.value[agentId] ?? profileDefaults[agentId] ?? "";
   }
 
+  /**
+   * What a row does when it is chosen, by click, by Enter or by digit.
+   *
+   * A missing row is a declared agent whose binary is no longer on `$PATH`.
+   * It stays listed — a chip that vanishes because a tool was uninstalled
+   * reads as lost data (`agent-catalog.ts`) — but launching it would spawn a
+   * shell that prints `command not found` and sits there, so the row leads
+   * where the problem is fixable instead. Not disabled (DL-19.7 would rather
+   * it were omitted than inert): it does something, and the something is
+   * useful.
+   */
+  function activate(chip: {
+    readonly id: string;
+    readonly missing: boolean;
+  }): void {
+    if (chip.missing) {
+      onManageAgents();
+      return;
+    }
+    pick(chip.id);
+  }
+
+  /**
+   * Roving focus over the rows (DL-29.8). Focus starts on the panel, not on a
+   * row (DL-29.2): a modal driven by bare keys must not put an Enter one
+   * keystroke away from launching whatever happens to be first. The first
+   * ArrowDown is what moves into the list.
+   */
+  function moveFocus(event: KeyboardEvent, key: string): boolean {
+    const from = event.target instanceof HTMLElement ? event.target : null;
+    const chips = chipsOf(
+      from === null ? null : from.closest(".agent-quick-picker"),
+    );
+    if (chips.length === 0) {
+      return false;
+    }
+    const at = chips.findIndex((chip) => chip === document.activeElement);
+    const last = chips.length - 1;
+    let next: number;
+    if (key === "Home") {
+      next = 0;
+    } else if (key === "End") {
+      next = last;
+    } else if (key === "ArrowDown") {
+      next = at < 0 ? 0 : (at + 1) % chips.length;
+    } else {
+      next = at < 0 ? last : (at + last) % chips.length;
+    }
+    chips[next]?.focus();
+    return true;
+  }
+
   function pick(agentId: AgentChoice): void {
     const profileId = agentId === null ? "" : profileFor(agentId);
     onSelect(
@@ -120,14 +205,25 @@ export function AgentQuickPicker({
     if (event.target instanceof HTMLSelectElement) {
       return;
     }
-    if (event.key === "0") {
+    if (
+      event.key === "ArrowDown" ||
+      event.key === "ArrowUp" ||
+      event.key === "Home" ||
+      event.key === "End"
+    ) {
+      if (!moveFocus(event, event.key)) {
+        return;
+      }
+    } else if (event.key === "0") {
       pick(null);
     } else if (/^[1-9]$/.test(event.key)) {
       const chip = chips[Number(event.key) - 1];
       if (chip === undefined) {
         return;
       }
-      pick(chip.id);
+      // Same route as a click, missing rows included — a digit must not be a
+      // way around the check the pointer gets.
+      activate(chip);
     } else {
       return;
     }
@@ -196,9 +292,11 @@ export function AgentQuickPicker({
               type="button"
               class={`achip ${chip.missing ? "is-missing" : ""}`}
               title={
-                chip.missing ? `${chip.detail} — not on $PATH` : chip.detail
+                chip.missing
+                  ? `${chip.detail} — not on $PATH; opens Settings`
+                  : chip.detail
               }
-              onClick={() => pick(chip.id)}
+              onClick={() => activate(chip)}
             >
               {chip.logo !== undefined ? (
                 <img class="achip__logo" src={chip.logo} alt="" />
@@ -253,6 +351,15 @@ export function AgentQuickPicker({
           <span class="shellmark">$</span>Shell only
         </button>
       </div>
+      {/* DL-29.8: the keys are stated, not worn. The chips lost their digit
+          badges on 2026-08-16 and the keys kept working, which left a
+          shortcut nothing on screen admitted to. One quiet line says all of
+          them once, which is cheaper than N badges and does not put a number
+          back inside every row. */}
+      <p class="agent-quick-picker__keys">
+        <kbd>1</kbd>–<kbd>9</kbd> pick · <kbd>0</kbd> shell · <kbd>↑</kbd>
+        <kbd>↓</kbd> <kbd>Enter</kbd> · <kbd>Esc</kbd> close
+      </p>
     </Modal>
   );
 }

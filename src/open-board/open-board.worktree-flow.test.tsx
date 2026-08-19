@@ -115,10 +115,11 @@ describe("OpenBoard create-worktree flow", () => {
       render(
         <OpenBoard
           canCancel={true}
+          canBrowseSessions={false}
+          openWorkspacePaths={new Set()}
           onCancel={() => {}}
           onOpen={onOpen}
-          recentSessions={[]}
-          onResumeSession={() => {}}
+          onResumeSession={async () => true}
         />,
         host,
       );

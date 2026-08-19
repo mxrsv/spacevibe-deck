@@ -1,29 +1,18 @@
 import {
+  ClockCounterClockwise,
   FolderOpen,
   FolderPlus,
   GitBranch,
-  Robot,
-  Terminal,
   X,
 } from "@phosphor-icons/react";
+import { useSignal } from "@preact/signals";
 import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { GithubStarButton } from "../ui/controls/github-star-button";
 import { folderName, formatRelativeTime } from "../lib/workspace-recents";
 import type { RecentWorkspace } from "../lib/workspace-recents";
 import { tildify } from "../lib/process-info";
 import { logoDataUrl } from "../settings/logo-store";
-import {
-  SESSION_AGENT_LABELS,
-  type SessionEntry,
-} from "../lib/session-history";
 import defaultLogoUrl from "../../.github/assets/icon.svg";
-
-/** Identity mark per agent (DL-25.2), same choice as the session-history
- *  screen's own row so the two surfaces read as one system. */
-const SESSION_AGENT_ICON = { claude: Robot, codex: Terminal } as const;
-
-/** The caller (`app.tsx`) already slices to five before handing this prop
- *  down, but the component re-caps defensively rather than trusting that. */
-const MAX_RECENT_SESSIONS_SHOWN = 5;
 
 /** The SpaceVibe Deck logo, shown until the user sets a logo in Settings. */
 function DefaultMark() {
@@ -35,8 +24,14 @@ export interface OpenBoardHomeProps {
   readonly openFolderShortcut: string;
   /** Task 16's `worktree-host` capability gate — false hides the button. */
   readonly canCreateWorktree: boolean;
+  /** Electron Sessions capability gate — false omits the history entry. */
+  readonly canBrowseSessions: boolean;
   readonly alive: readonly RecentWorkspace[];
   readonly missingGroup: readonly RecentWorkspace[];
+  /** Workspace tags on live tabs. A match means this click starts another. */
+  readonly openWorkspacePaths: ReadonlySet<string>;
+  /** The one workspace-open attempt currently in flight. */
+  readonly opening: boolean;
   /**
    * The board's one failure line — a spawn that failed or a row whose folder
    * is gone. Null when nothing has gone wrong. Contract 2026-08-16: with the
@@ -47,26 +42,13 @@ export interface OpenBoardHomeProps {
   describeCombo(recent: RecentWorkspace): string;
   onPickFolder(): void;
   onCreateWorktree(): void;
+  onBrowseSessions(): void;
   /**
    * A single click opens the row with its remembered layout and agent
    * (contract 2026-08-16) — there is no config step between the two any more.
    */
   onOpen(path: string): void;
   onRemove(paths: readonly string[]): void;
-  /**
-   * Past sessions whose recorded cwd falls under this workspace (spec §3.3,
-   * v1). Named limitation, carried verbatim rather than solved here: a
-   * session run inside a git worktree living outside the workspace path does
-   * not prefix-match and will not appear under that workspace — it stays
-   * reachable on the full session-history screen. Worktree mapping is future
-   * work, not v1.
-   *
-   * Required, not optional-with-a-default: an empty default would let a
-   * caller forget to wire this and render nothing forever with no signal,
-   * which is worse than a type error naming the missing wire.
-   */
-  readonly recentSessions: readonly SessionEntry[];
-  onResumeSession(entry: SessionEntry): void;
 }
 
 /**
@@ -81,58 +63,62 @@ export function OpenBoardHome({
   homeDir,
   openFolderShortcut,
   canCreateWorktree,
+  canBrowseSessions,
   alive,
   missingGroup,
+  openWorkspacePaths,
+  opening,
   notice,
   describeCombo,
   onPickFolder,
   onCreateWorktree,
+  onBrowseSessions,
   onOpen,
   onRemove,
-  recentSessions,
-  onResumeSession,
 }: OpenBoardHomeProps) {
   const hasRecents = alive.length > 0 || missingGroup.length > 0;
-  const shownSessions = recentSessions.slice(0, MAX_RECENT_SESSIONS_SHOWN);
+  const missingExpanded = useSignal(false);
 
-  /** One recents row — an li (not a button) so the remove action stays clickable. */
+  /** One recent: separate sibling buttons, never a button nested in a button. */
   function row(recent: RecentWorkspace, gone: boolean) {
     const combo = describeCombo(recent);
+    const name = folderName(recent.path);
+    const alreadyOpen = openWorkspacePaths.has(recent.path);
     return (
-      <li
-        key={recent.path}
-        class={`row ${gone ? "is-missing" : ""}`}
-        // A missing row stays clickable and says why through the notice line
-        // rather than going inert: an inert row with no explanation reads as a
-        // broken click, and the folder may have come back since the scan.
-        title={
-          gone
-            ? "This folder is missing"
-            : combo === ""
-              ? undefined
-              : `Opens as ${combo}`
-        }
-        onClick={() => onOpen(recent.path)}
-      >
-        <DeckIcon icon={FolderOpen} size={BOARD_ICON} class="row__ico" />
-        <span class="row__body">
-          <span class="row__name">{folderName(recent.path)}</span>
-          <span class="row__meta">
-            <span class="row__path">
-              {homeDir === "" ? recent.path : tildify(recent.path, homeDir)}
+      <li key={recent.path} class={`row ${gone ? "is-missing" : ""}`}>
+        <button
+          type="button"
+          class="row__open"
+          disabled={opening}
+          aria-label={
+            alreadyOpen
+              ? `Start another session in ${name}`
+              : `Open workspace ${name}`
+          }
+          onClick={() => onOpen(recent.path)}
+        >
+          <DeckIcon icon={FolderOpen} size={BOARD_ICON} class="row__ico" />
+          <span class="row__body">
+            <span class="row__headline">
+              <span class="row__name">{name}</span>
+              {alreadyOpen ? <span class="row__state">Open</span> : null}
             </span>
-            <span class="row__time">
-              {formatRelativeTime(recent.lastOpenedAt, Date.now())}
+            <span class="row__meta">
+              <span class="row__path">
+                {homeDir === "" ? recent.path : tildify(recent.path, homeDir)}
+              </span>
+              {combo === "" ? null : <span class="row__combo">{combo}</span>}
+              <span class="row__time">
+                {formatRelativeTime(recent.lastOpenedAt, Date.now())}
+              </span>
             </span>
           </span>
-        </span>
+        </button>
         <button
+          type="button"
           class="row__x"
-          aria-label={`Remove ${folderName(recent.path)} from recents`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onRemove([recent.path]);
-          }}
+          aria-label={`Remove ${name} from recents`}
+          onClick={() => onRemove([recent.path])}
         >
           <DeckIcon icon={X} size={ROW_ICON} />
         </button>
@@ -140,56 +126,8 @@ export function OpenBoardHome({
     );
   }
 
-  /**
-   * One past session, resumable in place — DL-25.1: the whole row is the
-   * control and its activation is the row's one job, so unlike `row()` above
-   * (which grows a second `.row__x` element for remove) this one has nothing
-   * else to protect and gets no second element. Reuses the same `.row`/
-   * `.row__*` classes the workspace recents row already established, kept
-   * keyboard-operable (`role="button"`, `tabIndex`, Enter/Space) since a real
-   * `<button>` would be by default and DL-25.1 asks this row to behave as one.
-   */
-  function sessionRow(entry: SessionEntry) {
-    const Icon = SESSION_AGENT_ICON[entry.agent];
-    function resume(): void {
-      onResumeSession(entry);
-    }
-    return (
-      <li
-        key={`${entry.agent}:${entry.sessionId}`}
-        class="row"
-        role="button"
-        tabIndex={0}
-        aria-label={`Resume ${SESSION_AGENT_LABELS[entry.agent]} session: ${entry.title ?? entry.sessionId}`}
-        onClick={resume}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            resume();
-          }
-        }}
-      >
-        <DeckIcon icon={Icon} size={BOARD_ICON} class="row__ico" />
-        <span class="row__body">
-          {/* DL-25.2: name first, then where it came from and when — fixed
-              order, the name truncates rather than displacing the rest. */}
-          <span class="row__name">{entry.title ?? entry.sessionId}</span>
-          <span class="row__meta">
-            <span class="row__path">
-              {SESSION_AGENT_LABELS[entry.agent]} ·{" "}
-              {homeDir === "" ? entry.cwd : tildify(entry.cwd, homeDir)}
-            </span>
-            <span class="row__time">
-              {formatRelativeTime(entry.lastActivityMs, Date.now())}
-            </span>
-          </span>
-        </span>
-      </li>
-    );
-  }
-
   return (
-    <div class="board-home">
+    <div class="board-home" aria-busy={opening}>
       <span class="applogo applogo--lg">
         {logoDataUrl.value === "" ? (
           <DefaultMark />
@@ -197,18 +135,52 @@ export function OpenBoardHome({
           <img src={logoDataUrl.value} alt="App logo" />
         )}
       </span>
+      <h1 class="board-home__title">Start a workspace</h1>
       <div class="board-home__actions">
-        <button class="home-action" onClick={onPickFolder}>
+        <button
+          type="button"
+          class="home-action home-action--primary"
+          disabled={opening}
+          onClick={onPickFolder}
+        >
           <DeckIcon icon={FolderPlus} size={ROW_ICON} />
-          Open project<kbd>{openFolderShortcut}</kbd>
+          Open workspace…<kbd>{openFolderShortcut}</kbd>
         </button>
         {canCreateWorktree ? (
-          <button class="home-action" onClick={onCreateWorktree}>
+          <button
+            type="button"
+            class="home-action home-action--secondary"
+            disabled={opening}
+            onClick={onCreateWorktree}
+          >
             <DeckIcon icon={GitBranch} size={ROW_ICON} />
             Create worktree
           </button>
         ) : null}
       </div>
+      {canBrowseSessions ? (
+        <button
+          type="button"
+          class="board-home__resume"
+          disabled={opening}
+          onClick={onBrowseSessions}
+        >
+          <DeckIcon icon={ClockCounterClockwise} size={ROW_ICON} />
+          Resume a previous session…
+        </button>
+      ) : null}
+      {/* The one thing Deck ever asks for. It is a resting call to action, not
+          a state (DL-3.1: `--accent` marks the interactive), and it stands on
+          its own row rather than joining the actions above — opening a
+          workspace is the work, this is not. It renders nothing once the ask
+          is answered — and comes back if the account stops starring, which is
+          the recheck's whole reason for existing. */}
+      <GithubStarButton variant="board" disabled={opening} />
+      {opening ? (
+        <p class="board-home__opening" role="status">
+          Opening workspace…
+        </p>
+      ) : null}
       {/* DL-3.2: the board's only warning, and the only place a failed open
           is ever said — `role="status"` so it reaches a screen reader too. */}
       {notice !== null ? (
@@ -218,30 +190,33 @@ export function OpenBoardHome({
       ) : null}
       {hasRecents ? (
         <div class="board-home__recents">
-          <div class="board-home__recents-head">Recent</div>
+          <div class="board-home__recents-head">Recent workspaces</div>
           <ul class="board-home__list" aria-label="Recent workspaces">
             {alive.map((recent) => row(recent, false))}
             {missingGroup.length > 0 ? (
               <li class="gsep">
-                <span>Missing</span>
                 <button
+                  type="button"
+                  class="board-home__missing-toggle"
+                  aria-expanded={missingExpanded.value}
+                  onClick={() => {
+                    missingExpanded.value = !missingExpanded.value;
+                  }}
+                >
+                  Missing workspaces ({missingGroup.length})
+                </button>
+                <button
+                  type="button"
+                  class="gsep__remove"
                   onClick={() => onRemove(missingGroup.map((r) => r.path))}
                 >
                   Remove {missingGroup.length}
                 </button>
               </li>
             ) : null}
-            {missingGroup.map((recent) => row(recent, true))}
-          </ul>
-        </div>
-      ) : null}
-      {/* No empty state here on purpose: an empty "Recent sessions" heading
-          on a workspace with none would be noise, not information. */}
-      {shownSessions.length > 0 ? (
-        <div class="board-home__recents">
-          <div class="board-home__recents-head">Recent sessions</div>
-          <ul class="board-home__list" aria-label="Recent sessions">
-            {shownSessions.map((entry) => sessionRow(entry))}
+            {missingExpanded.value
+              ? missingGroup.map((recent) => row(recent, true))
+              : null}
           </ul>
         </div>
       ) : null}

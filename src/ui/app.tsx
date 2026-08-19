@@ -36,24 +36,48 @@ import { agentProcessMatchers, probeNames } from "../lib/agent-catalog";
 import { resolveTheme } from "../settings/themes";
 import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
+import { pingPane } from "../terminal/pane-ping";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import {
   markLastUsed,
   presetsData,
   savePreset,
 } from "../presets/presets-store";
-import { recordWorkspaceOpen } from "../open-board/workspaces-store";
+import {
+  recordWorkspaceOpen,
+  removeWorkspaceRecents,
+} from "../open-board/workspaces-store";
 import type { AgentChoice } from "../lib/workspace-recents";
 import {
   agentQuickPickerOpen,
   boardOpen,
   editorRequest,
+  pathOpenRequest,
   persistError,
   promptsOpen,
+  quickPickerWorkspace,
   reportPersistError,
   saveDialogOpen,
   settingsOpen,
 } from "../chrome/events";
+import {
+  decideLinkTarget,
+  externalAppLabel,
+  resolveExternalApp,
+} from "../lib/link-target";
+import {
+  ensureExternalAppsScanned,
+  externalAppsScanned,
+  installedExternalAppIds,
+  installedExternalApps,
+} from "../links/external-apps-store";
+import { externalAppChoices } from "../links/external-app-choices";
+import { ExternalAppButton } from "./toolbar/external-app-button";
+import {
+  available as externalAppsAvailable,
+  openInApp,
+  workspaceForPath,
+} from "../host/external-apps-host";
 import { AgentQuickPicker } from "./agent-quick-picker";
 import { OpenBoard } from "../open-board/open-board";
 import type { SessionEntry } from "../lib/session-history";
@@ -126,10 +150,12 @@ import {
   runUpdateMenuAction,
 } from "../updater/update-menu-actions";
 import { defaultLinkClient } from "../terminal/link-client";
+import { buildOpenEditorRequest } from "../lib/editor-command";
 import {
   activeFileTab,
   activeWorkspace,
   dirtyPaths,
+  dockCollapseArmed,
   dockWidthLive,
   setActiveWorkspace,
 } from "../files/file-surface-store";
@@ -142,13 +168,14 @@ import { SessionsDockTab } from "./sessions/sessions-dock-tab";
 import { DockPanel } from "./dock/dock-panel";
 import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "./sidebar-actions";
 import { DockToggle } from "./dock/dock-toggle";
+import { useDockPresence } from "./dock/dock-presence";
 import { availableDockTabs, resolveDockTab } from "./dock/dock-tab-registry";
 import { StageSurface } from "../files/ui/stage-surface";
 import { TabStrip } from "./tab-strip";
 import { sidebarCollapseArmed, sidebarWidthLive } from "./sidebar-grip";
 import { SIDEBAR_HIDDEN_WIDTH } from "./panel-resize";
 import { applySidebarShell } from "./sidebar-shell";
-import { SidebarToggle } from "./sidebar-toggle";
+import { SidebarFrameActions, SidebarToggle } from "./sidebar-toggle";
 import {
   clearWindowRecord,
   flushSessionJournal,
@@ -162,6 +189,7 @@ import {
 } from "../repositories/repositories-store";
 import {
   defaultDestinationPath,
+  plainFolderDestination,
   worktreeDestinations,
   type QuickDestination,
 } from "../repositories/worktree-destinations";
@@ -171,8 +199,8 @@ import {
   bootOpensTheBoard,
   browserPanelObscured,
   closeSettingsPanel,
+  dockPaintedOpen,
   dockToggleOnStage,
-  dockVisible,
   liveRailAvailable,
   livePresetOpensATab,
   sidebarEffectivelyCollapsed,
@@ -295,9 +323,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * it, never `focusNextAttention`, which would pick the loudest pane in the
    * window instead of the one that was pressed.
    *
-   * The ping follows the focus in the same synchronous tick: the rail has just
-   * dropped the user into a grid of identical panes, and without a locator
-   * they have to re-find the thing they asked for (spec §2.2, DL-27.7).
+   * The 1.5s locator follows the focus in the same synchronous tick: the rail
+   * has just dropped the user into a grid of identical panes, and without an
+   * answer they have to re-find the thing they asked for (DL-18.11).
    */
   const focusRailPane = (index: number, paneId: number): void => {
     runAttentionFocus({
@@ -317,6 +345,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       },
       focusAttention: () => {
         tabsRef.current?.activateForAttention(index, paneId);
+        pingPane(paneId);
       },
     });
   };
@@ -731,6 +760,122 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   });
 
+  /**
+   * Open workspace roots, most relevant first (design §3.1).
+   *
+   * The active tab's own workspace leads, because a ⌘+click lands in a pane of
+   * the tab that is on the stage, and a repository opened twice (a worktree
+   * beside its main checkout) must resolve to the one the user is looking at.
+   * Duplicates and nulls are dropped: the list is a question sent over IPC,
+   * not a rendering.
+   */
+  const workspaceRoots = (): string[] => {
+    const active = tabsRef.current?.activeWorkspacePath() ?? null;
+    const roots = new Set<string>();
+    if (active !== null) {
+      roots.add(active);
+    }
+    for (const tab of tabViews.value) {
+      if (tab.workspacePath !== null) {
+        roots.add(tab.workspacePath);
+      }
+    }
+    return [...roots];
+  };
+
+  /**
+   * A path an agent printed, activated by ⌘+click (design §3).
+   *
+   * `link-provider.ts` raises the intent and this is the only place that
+   * decides what happens to it — which is what keeps the provider from
+   * importing the file layer and `TabManager` from learning what a file is.
+   * The decision itself is pure (`decideLinkTarget`); everything here is the
+   * async that surrounds it: ask main which workspace holds the file, then
+   * open it in Deck, in the selected editor, or in the selected app.
+   *
+   * The request is cleared before the await, so a second click during a slow
+   * `workspace_for_path` raises a fresh one rather than being read twice.
+   */
+  useSignalEffect(() => {
+    const request = pathOpenRequest.value;
+    if (request === null) {
+      return;
+    }
+    pathOpenRequest.value = null;
+    const roots = workspaceRoots();
+    void (async () => {
+      const [root] = await Promise.all([
+        workspaceForPath(request.path, roots),
+        // The apps are scanned lazily: this is usually already answered (the
+        // toolbar asks on mount), and on the first click of a session it is
+        // the one hop that decides whether the fallback app exists at all.
+        ensureExternalAppsScanned(),
+      ]);
+      const target = decideLinkTarget({
+        path: request.path,
+        line: request.line,
+        column: request.column,
+        workspaceRoot: root,
+        appId: resolveExternalApp(
+          settings.value.externalAppId,
+          installedExternalAppIds(),
+          // A host with no `external_apps` channel is not an empty machine:
+          // on Tauri the click has to keep reaching `open_editor` (design §5).
+          externalAppsAvailable,
+        ),
+      });
+      switch (target.kind) {
+        case "deck":
+          // A preview tab, matching the tree's single click (DL/file-explorer
+          // spec §4.1): the first edit promotes it, so a link followed and
+          // abandoned does not accumulate tabs.
+          await fileController.openFile(
+            target.workspacePath,
+            target.path,
+            false,
+            { line: target.line, column: target.column },
+          );
+          return;
+        case "editor": {
+          // Through the SAME builder the link provider used before this work,
+          // so the request `open_editor` validates has not changed shape —
+          // which is what keeps `src-tauri/src/links.rs` a valid twin.
+          const request = buildOpenEditorRequest(
+            target.editor,
+            "",
+            target.path,
+            target.line,
+            target.column,
+          );
+          if (request === null) {
+            return;
+          }
+          await defaultLinkClient
+            .openEditor(request)
+            .catch((error: unknown) => {
+              reportPersistError(`Couldn't open the editor: ${String(error)}`);
+            });
+          return;
+        }
+        case "app":
+          await openInApp({
+            appId: target.appId,
+            path: target.path,
+            isDirectory: false,
+            line: target.line,
+            column: target.column,
+          }).catch((error: unknown) => {
+            reportPersistError(
+              `Couldn't open ${externalAppLabel(target.appId)}: ${String(error)}`,
+            );
+          });
+          return;
+        case "unavailable":
+          reportPersistError(target.reason);
+      }
+    })();
+  });
+
   // The agent probe, started at boot rather than when a panel that needs it is
   // already on screen: discovery spends an interactive login shell and measured
   // ~1.1s here (see `agent-detection-store.ts`), so a picker that probes on
@@ -740,6 +885,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   useSignalEffect(() => {
     void ensureAgentsDetected(probeNames(settings.value.customAgents));
   });
+
+  // The external-app scan, started at boot for the same reason: the toolbar's
+  // split-button is ABSENT until it answers (design §4.1), and a control that
+  // appears a second after the window does reads as a glitch. A handful of
+  // `stat` calls plus one icon read per hit, so unlike the agent probe it
+  // spends no shell.
+  useEffect(() => {
+    void ensureExternalAppsScanned();
+  }, []);
 
   // Refreshes whenever AgentQuickPicker opens (or the declared set changes
   // while it is up) — same reasoning as the Open board's own detect effect:
@@ -756,15 +910,24 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     // this repository already (the store caches by path, and one scan answers
     // for every worktree of a repository), so this is normally a no-op that
     // only pays on a workspace the rail has not reached yet.
-    const workspacePath = tabsRef.current?.activeWorkspacePath() ?? null;
+    const target = quickPickerWorkspace.value;
+    const workspacePath =
+      target ?? tabsRef.current?.activeWorkspacePath() ?? null;
     if (workspacePath !== null) {
       ensureRepositoriesScanned([workspacePath]);
     }
-    void tabsRef.current?.activePaneCwd().then((cwd) => {
-      if (!cancelled) {
-        quickPickerCwd.value = cwd;
-      }
-    });
+    // The focused pane's cwd only answers for an open that means "here". A
+    // rail launch (DL-27.18) names its own project, and reading the active
+    // pane would preselect a worktree of a DIFFERENT repository.
+    if (target === null) {
+      void tabsRef.current?.activePaneCwd().then((cwd) => {
+        if (!cancelled) {
+          quickPickerCwd.value = cwd;
+        }
+      });
+    } else {
+      quickPickerCwd.value = null;
+    }
     void ensureAgentsDetected(probeNames(customAgents));
     return () => {
       cancelled = true;
@@ -781,16 +944,33 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * written for the frozen host.
    */
   const quickPickerDestinations = (): readonly QuickDestination[] => {
-    const workspacePath = tabsRef.current?.activeWorkspacePath() ?? null;
-    return workspacePath === null
-      ? []
-      : worktreeDestinations(repositoryScans.value.get(workspacePath));
+    const target = quickPickerWorkspace.value;
+    const workspacePath =
+      target ?? tabsRef.current?.activeWorkspacePath() ?? null;
+    if (workspacePath === null) {
+      return [];
+    }
+    const worktrees = worktreeDestinations(
+      repositoryScans.value.get(workspacePath),
+    );
+    // A rail launch always states its destination, even when git knows
+    // nothing about the folder: the panel's no-destination copy says "Runs in
+    // this workspace", which is a lie about a project the user pressed rather
+    // than the one on the stage.
+    return worktrees.length === 0 && target !== null
+      ? [plainFolderDestination(target)]
+      : worktrees;
   };
 
-  /** Live pane cwd first, then the tab's workspace — see `quickPickerCwd`. */
+  /**
+   * Live pane cwd first, then the tab's workspace — see `quickPickerCwd`.
+   * A rail launch skips both: its own project is the preference, and the
+   * pane cwd is held null for exactly that reason.
+   */
   const quickPickerDefaultDestination = (): string | null =>
     defaultDestinationPath(
       quickPickerDestinations(),
+      quickPickerWorkspace.value,
       quickPickerCwd.value,
       tabsRef.current?.activeWorkspacePath() ?? null,
     );
@@ -1145,8 +1325,59 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // One element, both layouts: DesktopChrome mounts it in the frame in
   // sidebar mode, TabBar mounts the same element in top-tab mode. Building it
   // once is what keeps the two mounts from drifting apart.
+  /**
+   * The external-app split-button (new DL-23.11). Built here rather than in
+   * `DeckToolbar` because it needs two things the toolbar has no access to:
+   * the installed-app scan, and the workspace the active tab is on — which is
+   * what the icon half opens. Absent entirely where nothing is installed or
+   * the host cannot answer, which is every Tauri build (design §4.1).
+   */
+  const externalAppControl = (
+    <ExternalAppButton
+      // Installed apps only, and only once the scan has answered — the
+      // catalog fallback inside `externalAppChoices` exists for the SETTINGS
+      // picker, which has to stay usable on a host that cannot answer. Here an
+      // empty list means the control does not render at all, which is both the
+      // Tauri rule (design §4.1) and what keeps the button from flashing ten
+      // unusable rows for the frame before the scan lands.
+      choices={
+        externalAppsAvailable && externalAppsScanned.value
+          ? externalAppChoices(installedExternalApps.value, true)
+          : []
+      }
+      selected={settings.value.externalAppId}
+      workspacePath={activeWorkspace.value}
+      onOpen={() => {
+        const target = activeWorkspace.value;
+        if (target === null) {
+          return;
+        }
+        void openInApp({
+          appId: settings.value.externalAppId,
+          path: target,
+          // The button always names a FOLDER, which is what selects each app's
+          // folder rule — a git client resolves it to its repository, a
+          // terminal opens it, an editor opens the project.
+          isDirectory: true,
+          line: 1,
+          column: 1,
+        }).catch((error: unknown) => {
+          reportPersistError(
+            `Couldn't open ${externalAppLabel(settings.value.externalAppId)}: ${String(error)}`,
+          );
+        });
+      }}
+      onSelect={(externalAppId) => {
+        // The same one field Settings writes (design §5), so the chrome and
+        // Settings cannot disagree about what a path opens in.
+        updateSettings({ externalAppId });
+      }}
+    />
+  );
+
   const chromeActions = (
     <DeckToolbar
+      externalApp={externalAppControl}
       compact={!sidebar}
       browserActive={browserSurfaceActive.value}
       settingsOpen={settingsOpen.value}
@@ -1178,10 +1409,25 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     boardOpen: boardOpen.value,
     dockOpen: settings.value.dockOpen,
   };
-  const showDock = dockVisible(dockState);
+  // A drag past the floor closes the column UNDER THE POINTER, the way the
+  // navigation sidebar's seam always has (2026-08-19): while a drag is in
+  // flight the armed flag answers instead of the setting, and the setting is
+  // written on release. `dockDragging` is also what holds the mount open —
+  // pointer capture survives the panel going off-stage, but not unmounting.
+  const dockDragging = dockWidthLive.value !== null;
+  const dockPainted = dockPaintedOpen({
+    ...dockState,
+    dragCollapsed: dockDragging ? dockCollapseArmed.value : null,
+  });
+  // The column outlives its own close by the length of DL §7's slide-over, so
+  // it can animate out instead of blinking away. `mounted` is what decides
+  // whether the panel is in the DOM; `entered` is what it is painted at.
+  const dockPresence = useDockPresence(dockPainted, dockDragging);
   // The chrome carries the dock's hide control only while the column is gone
-  // — an open panel holds its own at its outer edge (DL-19.3, amended).
-  const stripDockToggle = dockToggleOnStage(dockState);
+  // — an open panel holds its own at its outer edge (DL-19.3, amended). Gated
+  // on the MOUNT, not the setting: during the slide-out the panel still holds
+  // its own control, and the two must never be on screen together.
+  const stripDockToggle = dockToggleOnStage(dockState) && !dockPresence.mounted;
 
   return (
     <DesktopChrome
@@ -1199,24 +1445,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       }
       sidebarToggle={
         railAvailable && !effectiveSidebarCollapsed() ? (
-          <SidebarToggle collapsed={false} onToggle={toggleSidebarCollapsed} />
-        ) : null
-      }
-      // Sidebar layout keeps the frame row for the window's own controls only
-      // — the traffic lights and the hide control (DL-18.9, 2026-08-16). The
-      // feature toolbar moved to the stage strip's trailing end, so it is not
-      // squeezed by the column's width and does not fold into `More` the
-      // moment that column narrows. Top-tab mode is unchanged: `TabBar` still
-      // mounts the same element.
-      toolbar={sidebar ? null : chromeActions}
-      sidebarNavigation={
-        railAvailable ? (
-          <AgentRail
-            // Hidden on the owner's ask (2026-08-17); `More` carries these rows
-            // in both layouts while the flag is on. See `SIDEBAR_TOOLS_HIDDEN`.
-            footer={SIDEBAR_TOOLS_HIDDEN ? undefined : railActions}
-            onSelectTab={selectTab}
-            onCloseTab={(index) => void closeTab(index)}
+          <SidebarFrameActions
+            collapsed={false}
+            onToggle={toggleSidebarCollapsed}
             onOpenWorkspace={() => {
               boardOpen.value = true;
             }}
@@ -1240,7 +1471,34 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 void tabsRef.current?.dropAgentPane(paneId, edge);
               },
             }}
+          />
+        ) : null
+      }
+      // Sidebar layout keeps the frame row for the traffic lights and the
+      // sidebar's leading controls: hide first, then `New` (DL-18.9). The
+      // feature toolbar remains on the stage strip's trailing end, so it is
+      // not squeezed by the column's width and does not fold into `More` the
+      // moment that column narrows. Top-tab mode is unchanged: `TabBar` still
+      // mounts the same element.
+      toolbar={sidebar ? null : chromeActions}
+      sidebarNavigation={
+        railAvailable ? (
+          <AgentRail
+            // Hidden on the owner's ask (2026-08-17); `More` carries these rows
+            // in both layouts while the flag is on. See `SIDEBAR_TOOLS_HIDDEN`.
+            footer={SIDEBAR_TOOLS_HIDDEN ? undefined : railActions}
+            onSelectTab={selectTab}
+            onCloseTab={(index) => void closeTab(index)}
             onFocusPane={focusRailPane}
+            onNewTabIn={(workspacePath) => {
+              // DL-27.18: the same panel ⌘T raises, with the destination
+              // decided by which project header was pressed.
+              quickPickerWorkspace.value = workspacePath;
+              agentQuickPickerOpen.value = true;
+            }}
+            // A remembered header's close: forget the folder by dropping its
+            // history entries; the rail re-derives from `workspacesData`.
+            onRemoveWorkspace={removeWorkspaceRecents}
             fileController={fileController}
           />
         ) : null
@@ -1270,7 +1528,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       stage={
         <main
           class={`stage ${
-            showDock ? "stage--dock" : ""
+            // The MOUNT, not the setting: the terminal grid keeps its inset
+            // until the column has finished sliding out, so the panes resize
+            // once — after the animation — instead of jumping out from under
+            // a panel that is still on screen. DURING a drag the mount is held
+            // open on purpose, so the painted state answers instead and the
+            // terminals reclaim the space the moment the gesture arms.
+            (dockDragging ? dockPainted : dockPresence.mounted)
+              ? "stage--dock"
+              : ""
           } ${sidebar ? "stage--strip" : ""}`}
           // One number, two consumers: the panel's own column and the inset
           // that keeps the terminal grid clear of it. A drag updates the
@@ -1366,8 +1632,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               show. `resolveDockTab` re-checks host support on every render:
               a profile that stored "sessions" and then moved to a host with
               no `sessions_list` must not paint an empty column. */}
-          {showDock ? (
+          {dockPresence.mounted ? (
             <DockPanel
+              entered={dockPresence.entered}
               tabs={availableDockTabs(sessionsSupported.value)}
               activeTab={dockTab()}
               onSelectTab={(tab) => updateSettings({ dockTab: tab })}
@@ -1424,6 +1691,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             <AgentQuickPicker
               detected={detectedAgents.value}
               customAgents={settings.value.customAgents}
+              disabledAgents={settings.value.disabledAgents}
               destinations={quickPickerDestinations()}
               initialDestination={quickPickerDefaultDestination()}
               onSelect={(agentId, destination, profileId) => {
@@ -1432,8 +1700,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 // pane on success, and a failure is surfaced through the
                 // shared chrome bar rather than keeping the picker up.
                 agentQuickPickerOpen.value = false;
+                // The panel's own choice wins; the rail's target is the
+                // fallback for a project whose destination row was omitted.
+                const target = destination ?? quickPickerWorkspace.value;
+                quickPickerWorkspace.value = null;
                 void tabsRef.current
-                  ?.openQuickAgent(agentId, destination, profileId)
+                  ?.openQuickAgent(agentId, target, profileId)
                   .then((ok) => {
                     if (!ok) {
                       reportPersistError("Could not open a new tab.");
@@ -1442,7 +1714,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               }}
               onCancel={() => {
                 agentQuickPickerOpen.value = false;
+                quickPickerWorkspace.value = null;
                 tabsRef.current?.focusActive();
+              }}
+              onManageAgents={() => {
+                agentQuickPickerOpen.value = false;
+                quickPickerWorkspace.value = null;
+                settingsOpen.value = true;
               }}
             />
           ) : null}

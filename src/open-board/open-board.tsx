@@ -27,9 +27,14 @@ import { OpenBoardHome } from "./open-board-home";
 import { OpenBoardWorktreeForm } from "./open-board-worktree-form";
 import { available as worktreeHostAvailable } from "../host/worktree-host";
 import { useWorktreeForm } from "./use-worktree-form";
+import { SessionsBody } from "../ui/sessions/sessions-body";
 
 export interface OpenBoardProps {
   canCancel: boolean;
+  /** Session history is Electron-only; false omits the board entry entirely. */
+  canBrowseSessions: boolean;
+  /** Workspace paths currently represented by live tabs. */
+  readonly openWorkspacePaths: ReadonlySet<string>;
   onCancel(): void;
   /** Resolves to false on failure (e.g. PTY spawn error) — board stays up. */
   onOpen(
@@ -37,10 +42,8 @@ export interface OpenBoardProps {
     preset: Preset,
     agent: AgentChoice,
   ): Promise<boolean>;
-  /** Passed straight through to `OpenBoardHome` — see its own doc comment
-   *  (spec §3.3 v1 limitation, required-not-optional rationale). */
-  readonly recentSessions: readonly SessionEntry[];
-  onResumeSession(entry: SessionEntry): void;
+  /** Resolves false when the history entry could not materialize. */
+  onResumeSession(entry: SessionEntry): Promise<boolean>;
 }
 
 /**
@@ -51,7 +54,7 @@ export interface OpenBoardProps {
  * whole interaction — one click opens — and changing the agent is
  * `AgentQuickPicker`'s job (⌘T), which is where a per-open choice lives now.
  */
-type BoardView = "home" | "worktree";
+type BoardView = "home" | "sessions" | "worktree";
 
 function agentLabel(id: string, customAgents: readonly CustomAgent[]): string {
   const builtin = BUILTIN_AGENTS.find((agent) => agent.id === id);
@@ -63,9 +66,10 @@ function agentLabel(id: string, customAgents: readonly CustomAgent[]): string {
 
 export function OpenBoard({
   canCancel,
+  canBrowseSessions,
+  openWorkspacePaths,
   onCancel,
   onOpen,
-  recentSessions,
   onResumeSession,
 }: OpenBoardProps) {
   const platform = getDesktopEnvironment().platform;
@@ -172,6 +176,12 @@ export function OpenBoard({
 
   function goHome(): void {
     view.value = "home";
+    queueMicrotask(() => containerRef.current?.focus());
+  }
+
+  function openSessions(): void {
+    notice.value = null;
+    view.value = "sessions";
   }
 
   /** Fresh state every time the form is opened — never a stale attempt. */
@@ -221,11 +231,11 @@ export function OpenBoard({
     const detected = (await probe.current) ?? [];
     const agent = resolveAgentChoice(
       entry?.lastAgent,
-      agentOptions(detected, customAgents),
+      agentOptions(detected, customAgents, settings.value.disabledAgents),
     );
     const ok = await onOpen(path, preset, agent);
+    opening.value = false;
     if (!ok) {
-      opening.value = false;
       notice.value =
         "Couldn't start a shell here — check the folder and try again";
     }
@@ -246,6 +256,20 @@ export function OpenBoard({
       }
     } catch (err: unknown) {
       console.warn("Folder picker failed:", err);
+      notice.value = "Couldn't open the folder picker — try again";
+    }
+  }
+
+  async function resumePastSession(entry: SessionEntry): Promise<void> {
+    if (opening.value) {
+      return;
+    }
+    notice.value = null;
+    opening.value = true;
+    const resumed = await onResumeSession(entry);
+    opening.value = false;
+    if (!resumed) {
+      notice.value = "Couldn't resume that session — try another one";
     }
   }
 
@@ -294,9 +318,8 @@ export function OpenBoard({
     }
 
     if (key === "Escape") {
-      if (view.value === "worktree") {
-        // Escape backs out of the worktree form before it reaches the
-        // board's own cancel.
+      if (view.value !== "home") {
+        // Subviews back out before Escape reaches the board's own cancel.
         goHome();
       } else if (canCancel) {
         onCancel();
@@ -329,21 +352,41 @@ export function OpenBoard({
           onBack={goHome}
           onSubmit={submitWorktree}
         />
+      ) : view.value === "sessions" ? (
+        <div class="board-sessions">
+          <div class="board-sessions__head">
+            <button type="button" class="board-back" onClick={goHome}>
+              Back
+            </button>
+            <h1>Resume a session</h1>
+          </div>
+          {notice.value !== null ? (
+            <p class="board-home__notice" role="status">
+              {notice.value}
+            </p>
+          ) : null}
+          <SessionsBody
+            variant="dock"
+            onResume={(entry) => void resumePastSession(entry)}
+          />
+        </div>
       ) : (
         <OpenBoardHome
           homeDir={home}
           openFolderShortcut={openFolderShortcut}
           canCreateWorktree={worktreeHostAvailable}
+          canBrowseSessions={canBrowseSessions}
           alive={groups.alive}
           missingGroup={groups.missing}
+          openWorkspacePaths={openWorkspacePaths}
+          opening={opening.value}
           notice={notice.value}
           describeCombo={describeCombo}
           onPickFolder={() => void pickFolder()}
           onCreateWorktree={openWorktreeForm}
+          onBrowseSessions={openSessions}
           onOpen={(path) => void openWorkspace(path)}
           onRemove={removeRecentRows}
-          recentSessions={recentSessions}
-          onResumeSession={onResumeSession}
         />
       )}
     </div>

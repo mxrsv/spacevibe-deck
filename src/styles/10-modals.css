@@ -23,7 +23,7 @@
   flex-direction: column;
   width: min(720px, 86vw);
   height: min(520px, 82vh);
-  /* DL-29.6: the recessed chrome plane, the same ground the navigation column
+  /* DL-29.6: the sidebar's chrome plane, the same ground the navigation column
      and the docked panel stand on — not a step off `--bg`. See the note above
      `.modal-scrim`. */
   background: var(--sidebar-bg);
@@ -297,6 +297,20 @@
    row exists to show (DL-29.7). */
 .agent-quick-picker .cfg-btn__text {
   max-width: 240px;
+}
+
+/* DL-29.8: the key line. One quiet row under the choices, stating the keys
+   the panel answers — the chips stopped wearing their digits on 2026-08-16 and
+   nothing said them afterwards. `--text-faint` because DL-3.4 puts keyboard
+   hints there, and `--type-meta` so the line never competes with a row. */
+.agent-quick-picker__keys {
+  margin: 2px 0 0;
+  font-size: var(--type-meta);
+  color: var(--text-faint);
+}
+.agent-quick-picker__keys kbd {
+  font: inherit;
+  color: var(--text-muted);
 }
 
 /* DL-17.3's readout, as a class: a value that cannot be pressed has no border

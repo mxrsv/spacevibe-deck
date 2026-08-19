@@ -26,10 +26,10 @@ interface DesktopChromeProps {
   readonly onSidebarWidthChange?: (width: number) => void;
   readonly onSidebarCollapsedChange?: (collapsed: boolean) => void;
   /**
-   * The hide control, in the frame row immediately after the traffic lights
-   * (DL-18.9, 2026-08-16). `App` passes it only while the column is SHOWN —
-   * a hidden column has no frame row, so the control moves to the stage strip
-   * and `App` mounts it there instead.
+   * The sidebar's leading controls, in the frame row immediately after the
+   * traffic lights (DL-18.9). `App` passes the hide control followed by `New`
+   * only while the column is SHOWN — a hidden column has no frame row, so only
+   * the toggle moves to the stage strip.
    */
   readonly sidebarToggle?: ComponentChildren;
   readonly toolbar: ComponentChildren;
@@ -71,16 +71,28 @@ export function DesktopChrome(props: DesktopChromeProps) {
     <div class={classes}>
       {props.sidebar ? (
         <div
+          // NOT a drag region itself (2026-08-19). It was, with every button
+          // inside it opted back out through `[data-tauri-drag-region] button`,
+          // and that arrangement is what made the cursor flicker: Chromium
+          // hit-tests app-regions on its own path, so a pointer MOVING across a
+          // no-drag island inside a drag surface alternates between the OS
+          // arrow and the element's own cursor — reported over the `New`
+          // launcher, which asks for `grab`. Standing still was fine, which is
+          // what pointed at hit-testing rather than at a re-render.
+          // The row is still draggable where it should be: `__lights` and
+          // `__spacer` declare it themselves, and the spacer is `flex: 1`, so
+          // everything that is not a control still moves the window. What is
+          // lost is the 8px gap between the controls and the row's padding —
+          // dead space either way.
           class="deck-frame"
-          data-tauri-drag-region
           onDblClick={windows ? undefined : props.onMacTitlebarDoubleClick}
         >
           {!windows ? (
             <div class="deck-frame__lights" aria-hidden="true" />
           ) : null}
-          {/* Beside the OS buttons, before anything else: hiding the column is
-              a window gesture, and this is the row the window's own controls
-              live in (DL-18.9). */}
+          {/* Beside the OS buttons, before anything else: the sidebar's hide
+              control and `New` launcher form its leading frame cluster
+              (DL-18.9). */}
           {props.sidebarToggle}
           <div class="deck-frame__spacer" data-tauri-drag-region />
           {props.toolbar}

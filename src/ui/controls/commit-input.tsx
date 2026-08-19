@@ -66,6 +66,18 @@ export function CommitInput({
         if (event.key === "Enter") {
           event.preventDefault();
           commit();
+          return;
+        }
+        // Escape belongs to the draft while there IS one. It restores the
+        // saved value and goes no further, so the surface holding this field
+        // (Settings) does not also close on the same press — losing the edit
+        // and the screen to one key was the failure the design spec named.
+        // A clean field claims nothing: the event bubbles and Escape means
+        // what it means everywhere else.
+        if (event.key === "Escape" && draft !== committed.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          setDraft(committed.current);
         }
       }}
     />

@@ -31,8 +31,15 @@ const stub = {
     | ((event: { position: { lineNumber: number; column: number } }) => void)
     | null,
   focused: 0,
+  /** Stands in for "document.activeElement is inside the editor". */
+  hasTextFocus: false,
+  selections: [] as string[],
+  triggered: [] as string[],
   themes: [] as string[],
   disposed: 0,
+  /** Lines `revealLineInCenter` was asked for, and the last caret set. */
+  revealed: [] as number[],
+  position: null as { lineNumber: number; column: number } | null,
 };
 
 function makeModel(value: string, language: string | undefined): StubModel {
@@ -85,6 +92,25 @@ vi.mock("../editor-host", async () => {
             focus: () => {
               stub.focused += 1;
             },
+            revealLineInCenter: (line: number) => {
+              stub.revealed.push(line);
+            },
+            setPosition: (position: {
+              lineNumber: number;
+              column: number;
+            }) => {
+              stub.position = position;
+            },
+            // Containment stands in for "the caret is in the editor" — the
+            // real check reads `document.activeElement`, which jsdom parks on
+            // <body> with no real Monaco DOM to focus.
+            getDomNode: () => ({ contains: () => stub.hasTextFocus }),
+            setSelection: (range: string) => {
+              stub.selections.push(range);
+            },
+            trigger: (_source: string, handlerId: string) => {
+              stub.triggered.push(handlerId);
+            },
             dispose: () => {
               stub.disposed += 1;
             },
@@ -111,6 +137,8 @@ import {
 } from "../file-surface-controller";
 import {
   openFileTab,
+  pendingReveal,
+  requestReveal,
   resetFileSurfaces,
   updateDocument,
 } from "../file-surface-store";
@@ -158,9 +186,14 @@ beforeEach(() => {
   stub.contentHandler = null;
   stub.cursorHandler = null;
   stub.focused = 0;
+  stub.hasTextFocus = false;
+  stub.selections = [];
+  stub.triggered = [];
   stub.themes = [];
   stub.disposed = 0;
   stub.options = {};
+  stub.revealed = [];
+  stub.position = null;
   controller = createFileSurfaceController({ client });
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -288,5 +321,108 @@ describe("FileEditor", () => {
     });
 
     expect(stub.disposed).toBe(1);
+  });
+  it("claims Select All for the editor only while it holds the caret", async () => {
+    // The routing rule for the three Edit-menu commands whose native Cocoa
+    // roles cannot reach Monaco (2026-08-19). False is load-bearing: it is
+    // what lets the terminal and every chrome field keep the browser's own
+    // command.
+    openFileTab("/r", PATH, { keep: true });
+    updateDocument(PATH, { file: textFile(), text: "a\n" });
+    mount();
+    await act(async () => {});
+
+    stub.hasTextFocus = false;
+    expect(controller.runEditCommand("select-all")).toBe(false);
+    expect(stub.selections).toEqual([]);
+
+    stub.hasTextFocus = true;
+    expect(controller.runEditCommand("select-all")).toBe(true);
+    // The model's whole range, not a command-service round trip.
+    expect(stub.selections).toEqual(["full"]);
+  });
+
+  it("hands undo and redo to the editor's own stack", async () => {
+    openFileTab("/r", PATH, { keep: true });
+    updateDocument(PATH, { file: textFile(), text: "a\n" });
+    mount();
+    await act(async () => {});
+    stub.hasTextFocus = true;
+
+    expect(controller.runEditCommand("undo")).toBe(true);
+    expect(controller.runEditCommand("redo")).toBe(true);
+
+    expect(stub.triggered).toEqual(["undo", "redo"]);
+  });
+
+  it("stops claiming Edit commands once the editor unmounts", async () => {
+    openFileTab("/r", PATH, { keep: true });
+    updateDocument(PATH, { file: textFile(), text: "a\n" });
+    mount();
+    await act(async () => {});
+    stub.hasTextFocus = true;
+
+    act(() => {
+      render(null, host);
+    });
+
+    expect(controller.runEditCommand("select-all")).toBe(false);
+  });
+
+  // Design §3.3 — the seam a ⌘+click on a terminal path lands through. The
+  // assertions are on a MOUNTED editor rather than on a store value, because
+  // the failure this feature can have is exactly an editor that never mounts.
+  describe("revealing a position", () => {
+    it("lands on the line once a cold open's content arrives", async () => {
+      // The order `openFile` uses: the request is written BEFORE the tab
+      // exists, because a cold open has no second chance to be told.
+      requestReveal(PATH, 12, 3);
+      openFileTab("/r", PATH, { keep: false });
+      mount();
+      await act(async () => {});
+
+      // Nothing yet — the read is still in flight and the model is empty.
+      expect(stub.revealed).toEqual([]);
+      expect(pendingReveal.value).not.toBeNull();
+
+      await act(async () => {
+        updateDocument(PATH, { file: textFile(), text: "const a = 1;\n" });
+      });
+
+      expect(host.querySelector(".fileview__editor")).not.toBeNull();
+      expect(stub.revealed).toEqual([12]);
+      expect(stub.position).toEqual({ lineNumber: 12, column: 3 });
+      // Spent, so the next tab switch does not re-run it.
+      expect(pendingReveal.value).toBeNull();
+    });
+
+    it("lands on the line of a file that is already on the stage", async () => {
+      openFileTab("/r", PATH, { keep: true });
+      updateDocument(PATH, { file: textFile(), text: "const a = 1;\n" });
+      mount();
+      await act(async () => {});
+      expect(stub.revealed).toEqual([]);
+
+      await act(async () => {
+        requestReveal(PATH, 5, 2);
+      });
+
+      expect(stub.revealed).toEqual([5]);
+      expect(stub.position).toEqual({ lineNumber: 5, column: 2 });
+    });
+
+    it("ignores a request aimed at another file", async () => {
+      openFileTab("/r", PATH, { keep: true });
+      updateDocument(PATH, { file: textFile(), text: "const a = 1;\n" });
+      mount();
+      await act(async () => {});
+
+      await act(async () => {
+        requestReveal("/r/src/other.ts", 9, 1);
+      });
+
+      expect(stub.revealed).toEqual([]);
+      expect(pendingReveal.value).not.toBeNull();
+    });
   });
 });

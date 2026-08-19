@@ -26,11 +26,13 @@ export const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The ids `commands` implements — 45 entries, verified against the live
+ * The ids `commands` implements — 48 entries, verified against the live
  * `commands` table, Task 4's `copy-selection`/`paste` included, the Prompt
- * Board's `toggle-prompts`, the browser surface's `toggle-browser`, and the
- * dock's `toggle-dock`/`toggle-explorer`/`toggle-usage`/`save-file`
- * alongside them. (Line numbers are deliberately not cited:
+ * Board's `toggle-prompts`, the browser surface's `toggle-browser`, the
+ * dock's `toggle-dock`/`toggle-explorer`/`toggle-usage`/`toggle-sessions`/
+ * `save-file`, and the
+ * Edit menu's `select-all`/`undo`/`redo` alongside them.
+ * (Line numbers are deliberately not cited:
  * they rotted within one feature of being written.)
  *
  * Declared at module scope so `dispatch-coverage.test.ts` can assert that no
@@ -59,6 +61,7 @@ export const COMMAND_ACTIONS = [
   "next-tab",
   "paste",
   "prev-tab",
+  "redo",
   "reopen-tab",
   "save-file",
   "save-preset",
@@ -66,6 +69,7 @@ export const COMMAND_ACTIONS = [
   "scroll-page-up",
   "scroll-to-bottom",
   "scroll-to-top",
+  "select-all",
   "split-column",
   "split-row",
   "swap-down",
@@ -77,9 +81,11 @@ export const COMMAND_ACTIONS = [
   "toggle-expand",
   "toggle-explorer",
   "toggle-prompts",
+  "toggle-sessions",
   "toggle-settings",
   "toggle-usage",
   "toggle-zoom-pane",
+  "undo",
   "zoom-in",
   "zoom-out",
   "zoom-reset",

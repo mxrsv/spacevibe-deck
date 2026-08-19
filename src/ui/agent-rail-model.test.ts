@@ -93,7 +93,6 @@ function railInput(over: Partial<AgentRailInput> = {}): AgentRailInput {
     tabs: [],
     activeIndex: 0,
     scans: DECK_SCANS,
-    archivedPaths: new Set(),
     workspaceHistoryPaths: ["/w/deck", "/w/deck-side"],
     now: NOW,
     ...over,
@@ -546,8 +545,14 @@ describe("buildAgentRail clusters", () => {
       }),
     );
 
-    // One project, printed once, with all three of its tabs under it.
-    expect(view.stream).toHaveLength(1);
+    // One LIVE project, printed once, with all three of its tabs under it;
+    // the history's api project follows as a rowless remembered cluster.
+    expect(
+      view.stream.map((group) => [group.project, group.rows.length]),
+    ).toEqual([
+      ["deck", 3],
+      ["api", 0],
+    ]);
     expect(view.stream[0].labelled).toBe(true);
     expect(view.stream[0].rows.map((row) => row.key)).toEqual([1, 2, 3]);
     expect(view.stream[0].rows[0].state).toBe("asked");
@@ -561,7 +566,11 @@ describe("buildAgentRail clusters", () => {
     );
 
     expect(view.stream.map((group) => [group.project, group.labelled])).toEqual(
-      [["deck", true]],
+      [
+        ["deck", true],
+        // The history's api project trails as a rowless remembered cluster.
+        ["api", true],
+      ],
     );
     expect(view.stream[0].rows[0].state).toBe("failed");
   });
@@ -739,101 +748,84 @@ describe("tabTail", () => {
   });
 });
 
-describe("buildAgentRail archived rows", () => {
-  it("resumes a previously opened worktree with no live tab", () => {
+describe("buildAgentRail remembered projects (2026-08-20)", () => {
+  it("keeps a rowless cluster for a history workspace with no open tab", () => {
     const view = buildAgentRail(
-      railInput({
-        tabs: [tab(1, "/w/deck", { panes: [pane(1)] })],
-        archivedPaths: new Set(["/w/deck-side"]),
-      }),
+      railInput({ tabs: [], workspaceHistoryPaths: ["/w/deck"] }),
     );
 
-    expect(view.archived).toEqual([
-      { path: "/w/deck-side", project: "deck", worktree: "release-hardening" },
+    expect(view.stream).toEqual([
+      {
+        key: "remembered:/w/deck/.git",
+        project: "deck",
+        labelled: true,
+        rows: [],
+        path: "/w/deck",
+      },
     ]);
   });
 
-  it("leaves the worktree suffix off an archived primary checkout", () => {
+  it("folds several remembered worktrees of one repository into one cluster", () => {
     const view = buildAgentRail(
       railInput({
-        tabs: [tab(1, "/w/deck-side", { panes: [pane(1)] })],
-        archivedPaths: new Set(["/w/deck"]),
+        tabs: [],
+        workspaceHistoryPaths: ["/w/deck-side", "/w/deck"],
       }),
     );
 
-    expect(view.archived).toEqual([
-      { path: "/w/deck", project: "deck", worktree: null },
+    // Named after the repository's own checkout, and the `+` opens into the
+    // newest history entry.
+    expect(view.stream.map((group) => [group.project, group.path])).toEqual([
+      ["deck", "/w/deck-side"],
     ]);
   });
 
-  it("never lists a worktree that already has a live tab", () => {
+  it("never repeats a live project, and lists live work first", () => {
     const view = buildAgentRail(
       railInput({
         tabs: [tab(1, "/w/deck", { panes: [pane(1)] })],
-        archivedPaths: new Set(["/w/deck", "/w/deck-side"]),
+        workspaceHistoryPaths: ["/w/deck", "/w/scratch"],
       }),
     );
 
-    expect(view.archived.map((row) => row.path)).toEqual(["/w/deck-side"]);
-  });
-
-  it("does not invent a row for a never-opened sibling worktree", () => {
-    // Git discovery supplies metadata; Deck's own history decides which
-    // checkout becomes navigation.
-    const view = buildAgentRail(
-      railInput({
-        tabs: [tab(1, "/w/deck", { panes: [pane(1)] })],
-        archivedPaths: new Set(["/w/deck-side"]),
-        workspaceHistoryPaths: ["/w/deck"],
-      }),
-    );
-
-    expect(view.archived).toEqual([]);
-  });
-
-  it("leaves an empty worktree with no archived session alone", () => {
-    const view = buildAgentRail(
-      railInput({ tabs: [tab(1, "/w/deck", { panes: [pane(1)] })] }),
-    );
-
-    expect(view.archived).toEqual([]);
-  });
-
-  it("orders archived rows newest first, matching subdirectory history", () => {
-    const scan = repo("/w/deck/.git", [
-      { path: "/w/deck", branch: "main" },
-      { path: "/w/deck-side", branch: "release-hardening" },
-      { path: "/w/deck-third", branch: "usage-dashboard" },
+    expect(
+      view.stream.map((group) => [group.project, group.rows.length]),
+    ).toEqual([
+      ["deck", 1],
+      ["scratch", 0],
     ]);
+    expect(view.stream[0].path).toBeNull();
+  });
+
+  it("names a remembered folder git does not know by its basename", () => {
     const view = buildAgentRail(
       railInput({
-        tabs: [tab(1, "/w/deck", { panes: [pane(1)] })],
-        scans: new Map([["/w/deck", scan]]),
-        archivedPaths: new Set(["/w/deck-side", "/w/deck-third"]),
-        // Newest first, and the newest entry was recorded on a package below
-        // the worktree root — the same prefix match the rail filter uses.
-        workspaceHistoryPaths: [
-          "/w/deck-third/packages/web",
-          "/w/deck-side",
-          "/w/deck",
-        ],
+        tabs: [],
+        scans: new Map(),
+        workspaceHistoryPaths: ["/home/me/scratch"],
       }),
     );
 
-    expect(view.archived.map((row) => row.path)).toEqual([
-      "/w/deck-third",
-      "/w/deck-side",
+    expect(view.stream).toEqual([
+      {
+        key: "remembered:plain:/home/me/scratch",
+        project: "scratch",
+        labelled: true,
+        rows: [],
+        path: "/home/me/scratch",
+      },
     ]);
   });
 
-  it("lights up a worktree from an archive entry recorded on a subdirectory", () => {
+  it("attaches a remembered subdirectory of a live worktree to the live cluster", () => {
     const view = buildAgentRail(
       railInput({
         tabs: [tab(1, "/w/deck", { panes: [pane(1)] })],
-        archivedPaths: new Set(["/w/deck-side/packages/web"]),
+        workspaceHistoryPaths: ["/w/deck/packages/web"],
       }),
     );
 
-    expect(view.archived.map((row) => row.path)).toEqual(["/w/deck-side"]);
+    // Longest-prefix, the same attachment rule tabs use: no second cluster.
+    expect(view.stream.map((group) => group.project)).toEqual(["deck"]);
   });
 });

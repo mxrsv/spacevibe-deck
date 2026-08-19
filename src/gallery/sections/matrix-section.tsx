@@ -16,7 +16,6 @@ import {
 } from "../../settings/themes";
 import { DesktopChrome } from "../../ui/desktop-chrome";
 import { StatusBar } from "../../ui/status-bar";
-import { SidebarToggle } from "../../ui/sidebar-toggle";
 import { DockToggle } from "../../ui/dock/dock-toggle";
 import {
   ConfigGroup,
@@ -28,6 +27,7 @@ import {
   deckToolbarSpecimen,
   NOOP,
   repositoryScopedTabStripSpecimen,
+  sidebarFrameActionsSpecimen,
   tabBarSpecimen,
 } from "../chrome-fixtures";
 import {
@@ -226,7 +226,7 @@ function WindowCell({
     <DesktopChrome
       sidebar={sidebar}
       sidebarToggle={
-        sidebar ? <SidebarToggle collapsed={false} onToggle={NOOP} /> : null
+        sidebar ? sidebarFrameActionsSpecimen() : null
       }
       // The shipping frame row carries window controls only in sidebar mode;
       // its toolbar lives at the trailing end of the stage strip.

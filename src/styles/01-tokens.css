@@ -15,13 +15,17 @@
      :root by app.tsx; the values below are pre-JS fallbacks for first paint.
      --tone is white on dark themes, black on light ones. */
   --tone: #ffffff;
-  /* The stage stays on the terminal theme background; both side columns use
-     one recessed surface so the work area remains the visual focal point. */
-  --sidebar-bg: color-mix(in srgb, var(--bg) 76%, #000000);
+  /* The stage stays on the terminal theme background and is the DEEPEST
+     surface in the window; the side columns rise one step off it and the rest
+     of the chrome stacks on top of them (DL-18.7, reversed for dark themes on
+     2026-08-19). These fallbacks are the dark branch, since a new install
+     boots on deck-dark; JS replaces every one of them on first paint, and the
+     light branch — where the columns still recede — only ever exists there. */
+  --sidebar-bg: color-mix(in srgb, var(--bg) 92%, var(--tone));
   --sidebar-seam: color-mix(in srgb, var(--sidebar-bg) 50%, var(--bg));
-  --chrome-1: color-mix(in srgb, var(--bg) 95%, var(--tone));
-  --chrome-2: color-mix(in srgb, var(--bg) 91%, var(--tone));
-  --tab-active-bg: color-mix(in srgb, var(--bg) 85%, var(--tone));
+  --chrome-1: color-mix(in srgb, var(--sidebar-bg) 97%, var(--tone));
+  --chrome-2: color-mix(in srgb, var(--sidebar-bg) 94%, var(--tone));
+  --tab-active-bg: color-mix(in srgb, var(--sidebar-bg) 90%, var(--tone));
   /* DL-21.2: the hover half of the selection pair. 6% against --tab-active-bg's
      15% — far enough that hover cannot be mistaken for "already selected",
      close enough that they read as one ladder. Mixed from --tone like the
@@ -36,7 +40,9 @@
      ladder hover and selection already ride, and JS keeps `--tone` current, so
      a second derived value would only be another thing to keep in sync. */
   --tab-rest-bg: color-mix(in srgb, var(--tone) 3%, transparent);
-  --input-bg: color-mix(in srgb, var(--bg) 88%, var(--tone));
+  /* An input RECEDES, so it sinks from the sidebar back toward the stage
+     rather than climbing the chrome ladder with everything else. */
+  --input-bg: color-mix(in srgb, var(--sidebar-bg) 50%, var(--bg));
   /* Lines INSIDE a surface. Mixed from --tone since 2026-08-17 (DL-2.3's
      carve-out closed): on --fg these were the last chrome tokens carrying the
      terminal's text hue, so a blue-violet theme drew blue-violet rules across
@@ -51,7 +57,10 @@
      inside one surface rather than the boundary between two. */
   --seam-recessed: color-mix(in srgb, var(--bg) 98%, var(--tone));
   --seam-divider: color-mix(in srgb, var(--tone) 12%, transparent);
-  --seam-raised: color-mix(in srgb, var(--bg) 86%, var(--tone));
+  /* Measured from --sidebar-bg like the rest of the ladder: from --bg it would
+     land BELOW --chrome-2 now that the ladder starts at the sidebar, framing a
+     popover in a line darker than its own body. */
+  --seam-raised: color-mix(in srgb, var(--sidebar-bg) 91%, var(--tone));
   --text-primary: var(--fg);
   --text-muted: color-mix(in srgb, var(--fg) 52%, var(--bg));
   --text-faint: color-mix(in srgb, var(--fg) 34%, var(--bg));
@@ -72,6 +81,9 @@
   --type-body: 12.5px;
   --type-meta: 11px;
   --type-micro: 10.5px;
+  /* DL-27.9's one scoped chrome-text exception: the project header sits 2px
+     above metadata without climbing to the 14px title rung. */
+  --type-project: 13px;
 
   /* DL-18: the single command row. 34px carries a 26px control comfortably
      and clears the macOS traffic lights, which need ~28px of vertical room. */
@@ -118,6 +130,9 @@
      and still inside DL-1.2's 300ms ceiling. */
   --duration: 150ms;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* DL-18.11: one cycle of the shared pane current. A rail-click locator runs
+     it once; a focused working agent repeats it until the tracker stops. */
+  --pane-focus-current-duration: 1500ms;
 }
 
 /* Flat design rule: no drop shadows anywhere in this file.

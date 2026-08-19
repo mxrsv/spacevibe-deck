@@ -40,10 +40,8 @@
   }
 }
 
-/* Home view: the board's only surface until a workspace is picked. The
-   app's WorkspaceSidebar is the one rail now (contract 2026-08-14) — this
-   view draws no rail of its own, just a centered mark, the two entry
-   actions, and the Recent list below. */
+/* Home is the start surface: one heading, one primary action, and recent
+   workspaces. Live work stays in the Agent Rail; history gets its own view. */
 .board-home {
   flex: 1;
   min-height: 0;
@@ -51,7 +49,7 @@
   flex-direction: column;
   align-items: center;
   overflow-y: auto;
-  padding: 13vh 24px 40px;
+  padding: 11vh 24px 40px;
 }
 .applogo {
   width: 24px;
@@ -77,15 +75,23 @@
 /* The home mark reads as the screen's own identity, not a chrome icon —
    double the rail-era size. */
 .applogo--lg {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   background: transparent;
   border: 0;
 }
+.board-home__title {
+  margin: 16px 0 0;
+  font-size: var(--type-title);
+  font-weight: 650;
+  line-height: 1.2;
+}
 .board-home__actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 10px;
-  margin-top: 22px;
+  margin-top: 18px;
 }
 .home-action {
   display: flex;
@@ -99,22 +105,115 @@
   font: inherit;
   font-size: var(--type-body);
   font-weight: 590;
-  /* Dashed outline, no fill — "makes something that is not there yet",
-     the same affordance the retired config view's `+ New Layout` card wore.
-     DL-3.1: accent marks the interactive/active state, it is not a fill. */
   background: none;
-  border: 1px dashed var(--hair-strong);
+  border: 1px solid var(--hair-strong);
   color: var(--text-muted);
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
-.home-action:hover {
+.home-action:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--text-primary);
+}
+.home-action:focus-visible,
+.board-home__resume:focus-visible,
+.board-home__missing-toggle:focus-visible,
+.row__open:focus-visible,
+.row__x:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.home-action:disabled,
+.board-home__resume:disabled,
+.row__open:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.home-action--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+}
+.home-action--primary:hover:not(:disabled) {
+  border-color: var(--text-primary);
+  color: var(--bg);
 }
 .home-action kbd {
   font: inherit;
   font-size: var(--type-meta);
   /* DL-3.4: keyboard hints are `--text-faint`. */
   color: var(--text-faint);
+}
+.home-action--primary kbd {
+  color: inherit;
+}
+.board-home__resume {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: var(--type-meta);
+  cursor: pointer;
+}
+.board-home__resume:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--state-hover-bg);
+}
+/* The standing "Star on GitHub" row (2026-08-19, owner). A resting call to
+   action, NOT a state marker: the accent tint here is DL-3.1's "interactive",
+   the same reading `.home-action--primary`'s solid fill already has on this
+   screen, and nothing on the board is ever marked active this way. It is
+   quieter than the primary action above it (a 10% wash, not a fill) and
+   louder than `.board-home__resume` below it, which is the order the board's
+   own actions come in. */
+.board-home__star {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--type-meta);
+  font-weight: 590;
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+.board-home__star:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.board-home__star:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.board-home__star:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+/* The star is the only coloured mark: `--accent` on the glyph, so the row
+   reads as one object rather than as a warning (DL-3.2 owns `--yellow`). */
+.board-home__star-mark {
+  color: var(--accent);
+}
+
+.board-home__opening {
+  margin: 12px 0 0;
+  font-size: var(--type-meta);
+  color: var(--text-muted);
 }
 
 /* The board's one warning line, where the config footer's summary used to
@@ -144,31 +243,40 @@
   list-style: none;
 }
 
-/* One recents row — a div (its × is a real button, no button nesting). */
+/* One recent is a group: a full-width native button and a sibling Remove. */
 .row {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   width: 100%;
-  text-align: left;
-  color: inherit;
-  cursor: pointer;
-  padding: 6px 26px 6px 8px;
   border-radius: var(--radius-control);
   transition: background var(--duration) var(--ease);
 }
 .row + .row {
   margin-top: 1px;
 }
-.row:hover {
+.row:hover,
+.row:focus-within {
   background: var(--state-hover-bg);
+}
+.row__open {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 30px 7px 8px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 .row__ico {
   /* Geometry and stroke belong to DeckIcon — a width or stroke-width here
      would win over its attributes and split icon sizing in two (DL-14.3).
      Colour is `color`, so the icon's `currentColor` keeps resolving. */
-  color: var(--accent);
+  color: var(--text-muted);
   opacity: 0.85;
 }
 .row__body {
@@ -185,13 +293,28 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.row__headline {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  gap: 7px;
+}
+.row__state {
+  flex: none;
+  padding: 1px 5px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+  color: var(--text-faint);
+  font-size: var(--type-micro);
+  line-height: 1.2;
+}
 .row__meta {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: 8px;
 }
 .row__path {
+  flex: 1;
   min-width: 0;
   font-family: var(--ui-font);
   font-size: var(--type-micro);
@@ -199,6 +322,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.row__combo {
+  flex: none;
+  max-width: 150px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--type-micro);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .row__time {
   flex: none;
@@ -224,7 +356,8 @@
   opacity: 0;
   padding: 0;
 }
-.row:hover .row__x {
+.row:hover .row__x,
+.row:focus-within .row__x {
   opacity: 1;
 }
 .row__x:hover {
@@ -262,6 +395,33 @@
   color: var(--accent);
   cursor: pointer;
   padding: 0;
+}
+.gsep .board-home__missing-toggle {
+  color: var(--text-faint);
+}
+
+/* Session history is a dedicated Open Board view, never a second block under
+   workspace recents. It reuses the dock-width Sessions body and its states. */
+.board-sessions {
+  width: min(640px, 100%);
+  min-height: 0;
+  margin: 0 auto;
+  padding: 34px 24px 40px;
+  overflow-y: auto;
+}
+.board-sessions__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.board-sessions__head .board-back {
+  margin: 0;
+}
+.board-sessions__head h1 {
+  margin: 0;
+  font-size: var(--type-title);
+  font-weight: 650;
 }
 
 /* Sits directly under the rail head, above the recents list — head padding

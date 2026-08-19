@@ -32,7 +32,7 @@ import {
   resolveAgentCommand,
 } from "../lib/agent-catalog";
 import {
-  defaultLaunchCommand,
+  agentLaunchCommand,
   resolveLaunchCommand,
 } from "../lib/launch-command";
 import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
@@ -63,6 +63,7 @@ import { freshCwd, freshPaneInfo } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { submitAllowed, type InjectOutcome } from "../prompts/inject";
 import { defaultBrowserClient } from "../browser/browser-client";
+import { sessionsSupported } from "../sessions/sessions-store";
 import {
   activateBrowserSurface,
   browserOpen,
@@ -91,12 +92,13 @@ import {
   boardOpen,
   editorRequest,
   promptsOpen,
+  quickPickerWorkspace,
   reportChromeMessage,
   saveDialogOpen,
   settingsOpen,
   shortcutCaptureActive,
 } from "../chrome/events";
-import { INERT_SURFACES } from "./surface-strip";
+import { INERT_SURFACES, type SurfaceEditCommand } from "./surface-strip";
 import {
   type TabEntry,
   type OpenFromPresetOptions,
@@ -120,7 +122,7 @@ import {
 // NOT re-exported: its only two importers are tests, updated to import it
 // from tab-action-scope.ts directly. `createTabManager` itself — the load-
 // bearing R4 seam — did not move.
-export type { SurfaceStrip } from "./surface-strip";
+export type { SurfaceStrip, SurfaceEditCommand } from "./surface-strip";
 export type {
   OpenFromPresetOptions,
   TabManagerDeps,
@@ -283,9 +285,14 @@ export function createTabManager(
       // make a `+N` count add up.
       const panes: readonly PaneView[] = paneIds.map((id) => {
         const snap = tracker.snapshot(id);
+        const agent = explicitAgent(poller.infoFor(id));
+        tab.manager.setPaneWorking(
+          id,
+          agent !== null && snap?.phase === "working",
+        );
         return {
           paneId: id,
-          agent: explicitAgent(poller.infoFor(id)),
+          agent,
           attention: snap?.attention ?? "none",
           phase: snap?.phase ?? "unknown",
           hasRun: snap?.hasRun ?? false,
@@ -782,6 +789,12 @@ export function createTabManager(
     // workspace/preset step. `openQuickAgent` below does the materialize
     // once a chip is picked. The Open board's full flow (new workspace,
     // worktree, layout preset) stays reachable from its own sidebar entry.
+    //
+    // Cleared first: the rail's per-project `+` (DL-27.18) raises the same
+    // panel with a destination pinned, and an open from here means "the
+    // active tab's workspace" — inheriting the last rail target would open
+    // this ⌘T somewhere the user never pointed at.
+    quickPickerWorkspace.value = null;
     agentQuickPickerOpen.value = true;
   }
 
@@ -827,10 +840,11 @@ export function createTabManager(
     // and takes the catalog's command exactly as before.
     const launchCommand =
       intent.launchCommand === undefined
-        ? defaultLaunchCommand(
+        ? agentLaunchCommand(
             agentId,
             settings.value.launchProfiles,
             settings.value.defaultLaunchProfiles,
+            settings.value.customAgents,
           )
         : intent.launchCommand;
     const fallback =
@@ -950,7 +964,7 @@ export function createTabManager(
     const agentId = agentForWorkspace(
       workspacesData.value.recents,
       activeWorkspacePath(),
-      agentOptions(detected, customAgents),
+      agentOptions(detected, customAgents, settings.value.disabledAgents),
     );
     const paneId = await manager.dockNewPaneAt(targetPaneId, edge);
     if (paneId === null) {
@@ -959,10 +973,11 @@ export function createTabManager(
     // The drop states no mode, so the agent's default profile applies — the
     // same rule the Open board gets through `materialize`. Composed here
     // because this is the one launch that does not go through it.
-    const launchCommand = defaultLaunchCommand(
+    const launchCommand = agentLaunchCommand(
       agentId,
       settings.value.launchProfiles,
       settings.value.defaultLaunchProfiles,
+      customAgents,
     );
     if (launchCommand !== null) {
       launchCommandByPane.set(paneId, launchCommand);
@@ -1361,6 +1376,29 @@ export function createTabManager(
     });
   }
 
+  /**
+   * The Edit menu's Select All / Undo / Redo.
+   *
+   * These three used to be native Cocoa roles, which run a DOCUMENT-level
+   * Chromium command. That reaches a terminal's helper textarea and every
+   * chrome `<input>` — and reaches Monaco not at all, because with
+   * `editContext` on (its default since 0.52) the caret lives in a
+   * `div.native-edit-context` that owns no DOM selection. So a file on the
+   * stage answered ⌘A with nothing, and the ⌘C that followed copied only the
+   * cursor's line (measured 2026-08-19).
+   *
+   * The surface gets first refusal; anything it declines falls through to the
+   * very command the role used to run, so a terminal, a settings field and the
+   * file tree all keep the behaviour they had. `execCommand` is deprecated and
+   * still the only synchronous way to ask Chromium for these three.
+   */
+  function runEditCommand(command: SurfaceEditCommand): void {
+    if (surfaces.runEditCommand?.(command) === true) {
+      return;
+    }
+    document.execCommand(command === "select-all" ? "selectAll" : command);
+  }
+
   // Keymap *matching* lives in keymap.ts; this table is the dispatch half —
   // one action, one closure. `select-tab-N` and `select-last-tab` (⌘9) are
   // both handled directly in `dispatchAction`, not through this table.
@@ -1494,6 +1532,21 @@ export function createTabManager(
         focusStage();
       }
     },
+    // Guarded where its two siblings are not, because this tab can be ABSENT:
+    // `availableDockTabs` drops it on a host with no `sessions_list`, and
+    // `resolveDockTab` then falls the column back to explorer — so an
+    // unguarded reveal would answer "Session History" by opening the file
+    // explorer. Says so instead, the way `toggle-prompts` says there is no
+    // pane to paste into.
+    "toggle-sessions": () => {
+      if (!sessionsSupported.value) {
+        reportChromeMessage("Session history is not available on this host.");
+        return;
+      }
+      if (revealDockTab("sessions")) {
+        focusStage();
+      }
+    },
     "toggle-prompts": () => {
       if (promptsOpen.value) {
         promptsOpen.value = false;
@@ -1517,6 +1570,9 @@ export function createTabManager(
     // the registry's "scoped: no-op when no file tab is active" without a
     // second check here.
     "save-file": () => void surfaces.save(),
+    "select-all": () => runEditCommand("select-all"),
+    undo: () => runEditCommand("undo"),
+    redo: () => runEditCommand("redo"),
     // The overlay scope guard in `dispatchAction` already blocks this while
     // any overlay (including the board) is up — this check is pure business
     // logic (nothing to save with zero tabs), not scope.
@@ -1672,6 +1728,7 @@ export function createTabManager(
     return (
       action === "toggle-dock" ||
       action === "toggle-explorer" ||
+      action === "toggle-sessions" ||
       action === "toggle-usage"
     );
   }

@@ -134,6 +134,27 @@ describe("SidebarGrip", () => {
     expect(onCollapsedChange).not.toHaveBeenCalled();
   });
 
+  // DL-18.9, amended 2026-08-19: the seam lights for the whole gesture, not
+  // only while the pointer is still over its 9px target.
+  it("marks itself dragging for the length of the gesture", () => {
+    const grip = mount({
+      width: 275,
+      onWidthChange: vi.fn(),
+      onCollapsedChange: vi.fn(),
+    });
+    expect(grip.className).not.toContain("is-dragging");
+
+    drag(grip, 275, [330]);
+    expect(
+      host.querySelector<HTMLElement>(".sidebar-grip")!.className,
+    ).toContain("is-dragging");
+
+    release(grip);
+    expect(
+      host.querySelector<HTMLElement>(".sidebar-grip")!.className,
+    ).not.toContain("is-dragging");
+  });
+
   it("abandons the drag on pointercancel the same way it ends on pointerup", () => {
     const onWidthChange = vi.fn();
     const onCollapsedChange = vi.fn();

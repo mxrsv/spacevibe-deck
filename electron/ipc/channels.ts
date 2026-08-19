@@ -24,6 +24,11 @@ export const CHANNELS = {
   // Create-worktree flow (open board, task 16). Electron-only like the block
   // above: no `#[tauri::command]` counterpart, per the frozen Tauri host.
   worktreeAdd: "worktree_add",
+  // "Star on GitHub", read and write, through the user's own `gh` CLI.
+  // Electron-only like the block above; on Tauri both facades report the
+  // capability absent and the button falls back to opening the repository.
+  githubStarState: "github_star_state",
+  githubStar: "github_star",
   // Session restore. Electron-only, like the block above: no
   // `#[tauri::command]` counterpart, and Tauri is feature-frozen.
   resumeLookup: "resume_lookup",
@@ -41,6 +46,15 @@ export const CHANNELS = {
   desktopEnvironment: "desktop_environment",
   resolvePaths: "resolve_paths",
   openEditor: "open_editor",
+  // Opening a path an agent printed (spec 2026-08-19). Electron-only, like the
+  // blocks below: no `#[tauri::command]` counterpart, and Tauri keeps today's
+  // behaviour whole — every ⌘+click there still goes out through `open_editor`
+  // above, which is deliberately UNCHANGED so the Rust twin stays valid.
+  // `workspace_for_path` is what routes a click into Deck's own editor; the
+  // other two are the external-app catalog and its launcher.
+  workspaceForPath: "workspace_for_path",
+  externalApps: "external_apps",
+  openInApp: "open_in_app",
   listPromptAssets: "list_prompt_assets",
   readImageAsDataUrl: "read_image_as_data_url",
   scanWorkspaceFavicon: "scan_workspace_favicon",

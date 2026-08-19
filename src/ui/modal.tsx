@@ -1,5 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
+import { trapTab } from "./focus-trap";
 
 /**
  * The one modal shell (DL §29). Every surface that covers the stage on
@@ -16,6 +17,14 @@ import { useEffect, useRef } from "preact/hooks";
  *
  * The panel keeps its own class so the stylesheet is untouched: this owns
  * behaviour and the frame, each modal still owns its own size and body.
+ *
+ * Escape is caught at the DOCUMENT in the capture phase, not on the panel
+ * (DL-29.5, amended 2026-08-19). Reading it on the panel meant Escape only
+ * worked while focus was still inside the dialog — and one click on the scrim,
+ * or a modal that handed focus to a native `<select>` and got it back on the
+ * body, was enough to leave the modal on screen with Escape reaching the agent
+ * behind it instead. The listener still stops the event dead, so xterm never
+ * sees it either way.
  */
 
 export interface ModalProps {
@@ -42,51 +51,6 @@ export interface ModalProps {
   /** Every key except Escape, which this component answers itself. */
   onKeyDown?(event: KeyboardEvent): void;
   children: ComponentChildren;
-}
-
-/**
- * Everything inside the panel a Tab can land on, in document order.
- *
- * The panel itself is excluded: it carries `tabIndex={0}` so a modal driven by
- * bare keys has somewhere to put focus, but it is a container, not a stop the
- * cycle should keep returning to.
- */
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-/**
- * Keep Tab inside the panel (DL-29, and what `aria-modal="true"` promises).
- *
- * Without this the first Shift+Tab walks out of the dialog into the stage
- * strip and lands in xterm's textarea — the modal stays on screen while every
- * keystroke goes to the agent running behind it, and Escape reaches the pty
- * instead of the dialog.
- */
-function trapTab(event: KeyboardEvent, panel: HTMLElement | null): void {
-  if (panel === null) {
-    return;
-  }
-  const stops = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
-  if (stops.length === 0) {
-    // Nothing to cycle through: hold focus on the panel rather than let Tab
-    // escape into the app behind the scrim.
-    event.preventDefault();
-    panel.focus();
-    return;
-  }
-  const first = stops[0];
-  const last = stops[stops.length - 1];
-  const active = document.activeElement;
-  const inside = active instanceof Node && panel.contains(active);
-  if (event.shiftKey && (!inside || active === first || active === panel)) {
-    event.preventDefault();
-    last.focus();
-    return;
-  }
-  if (!event.shiftKey && (!inside || active === last)) {
-    event.preventDefault();
-    first.focus();
-  }
 }
 
 export function Modal({
@@ -120,6 +84,37 @@ export function Modal({
   const releasedOnScrim = useRef(false);
   /** What had focus when this modal opened, so closing can give it back. */
   const focusOnOpen = useRef<HTMLElement | null>(null);
+  /**
+   * The newest `onDismiss`, read by the document listener.
+   *
+   * The listener is installed ONCE (mount deps) so a caller passing a fresh
+   * closure every render cannot churn document listeners; the ref is what
+   * keeps that one listener from calling a stale one.
+   */
+  const dismissRef = useRef(onDismiss);
+  dismissRef.current = onDismiss;
+
+  // Escape, wherever focus is. See the note at the top of this file for why
+  // this cannot live on the panel.
+  useEffect(() => {
+    function onDocumentKeyDown(event: KeyboardEvent): void {
+      if (event.key !== "Escape") {
+        return;
+      }
+      dismissRef.current();
+      // The terminal is one element away and reads raw keys; an Escape that
+      // only closed the modal and then kept travelling would also reach the
+      // agent running behind it.
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    document.addEventListener("keydown", onDocumentKeyDown, true);
+    return () => {
+      document.removeEventListener("keydown", onDocumentKeyDown, true);
+    };
+    // Mount only — `dismissRef` carries the current callback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const panel = panelRef.current;
@@ -172,17 +167,23 @@ export function Modal({
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
-    if (event.key === "Escape") {
-      onDismiss();
-      // The terminal is one element away and reads raw keys; an Escape that
-      // only closed the modal and then kept travelling would also reach the
-      // agent running behind it.
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
+    // Escape is not here: it is answered at the document (see the top of this
+    // file), so it closes the modal from anywhere rather than only from
+    // inside the panel.
+    // Keep Tab inside the panel (DL-29, and what `aria-modal="true"`
+    // promises). Without it the first Shift+Tab walks out of the dialog into
+    // the stage strip and lands in xterm's textarea — the modal stays on
+    // screen while every keystroke goes to the agent running behind it.
+    //
+    // The selector and the wrap live in `focus-trap.ts` since 2026-08-19,
+    // shared with the Settings screen. They were two copies before that, and
+    // the copies had already diverged — this one counted a roving
+    // `tabindex="-1"` control as a tab stop, which no modal mounts today and
+    // the next one would have inherited in silence. The panel passes ITSELF as
+    // the fallback: it carries `tabIndex={0}` so a modal driven by bare keys
+    // has somewhere to hold focus when it contains no stop of its own.
     if (event.key === "Tab") {
-      trapTab(event, panelRef.current);
+      trapTab(event, panelRef.current, panelRef.current);
       return;
     }
     onKeyDown?.(event);

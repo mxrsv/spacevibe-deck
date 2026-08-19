@@ -3,9 +3,9 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// The rail's foot mounts `ResetSection`, and the registry's sections pull in
-// the Tauri-backed settings store — stub both so the tree mounts under
-// jsdom, same convention as `sections/reset-section.test.tsx`.
+// The registry's sections pull in the Tauri-backed settings store — stub it
+// so the tree mounts under jsdom, same convention as
+// `sections/reset-section.test.tsx`.
 vi.mock("../../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
@@ -85,7 +85,7 @@ describe("SettingsNav", () => {
   });
 
   it("ArrowDown from the last item wraps to the first, moving focus with it", () => {
-    activeCategory.value = "about"; // last category
+    activeCategory.value = "reset"; // last category
     mount();
     const tabs = getTabs();
     tabs[tabs.length - 1].focus();
@@ -112,23 +112,38 @@ describe("SettingsNav", () => {
       );
     });
 
-    expect(activeCategory.value).toBe("about");
+    expect(activeCategory.value).toBe("reset");
     expect(document.activeElement).toBe(tabs[tabs.length - 1]);
   });
 
-  it("renders the reset action once, outside the tabs, and clicking it does not change activeCategory", () => {
+  /**
+   * Inverted on 2026-08-19 (owner, DL-11.5 amended). This case used to assert
+   * the opposite — a reset button mounted OUTSIDE the tab list, in a pinned
+   * foot, that did not move `activeCategory`. `reset` is an ordinary category
+   * now, so the rail holds nothing but tabs and reset is reached by selecting
+   * one. The destructive control lives in the section on the right, and what
+   * keeps it safe is the confirm `reset-section.test.tsx` covers.
+   */
+  it("holds nothing but tabs — the reset action is no longer in the rail", () => {
     mount();
-    const resetButtons = host.querySelectorAll(".cfg-btn--danger");
-    expect(resetButtons).toHaveLength(1);
 
-    const resetButton = resetButtons[0] as HTMLButtonElement;
-    expect(resetButton.getAttribute("role")).not.toBe("tab");
+    expect(host.querySelectorAll(".cfg-btn--danger")).toHaveLength(0);
+    expect(host.querySelector(".settings-nav__foot")).toBeNull();
     expect(getTabs()).toHaveLength(SETTINGS_CATEGORIES.length);
+    // Every focusable thing in the rail IS a tab.
+    expect(host.querySelectorAll("button")).toHaveLength(getTabs().length);
+  });
 
+  it("reaches reset by selecting it, like any other category", () => {
+    mount();
+    const tabs = getTabs();
+    const resetTab = tabs[tabs.length - 1];
+
+    expect(resetTab.textContent?.trim()).toBe("Reset");
     act(() => {
-      resetButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      resetTab.click();
     });
 
-    expect(activeCategory.value).toBe("appearance");
+    expect(activeCategory.value).toBe("reset");
   });
 });

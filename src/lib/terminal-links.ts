@@ -14,7 +14,12 @@ export type LinkKind = "url" | "path";
 
 export interface LinkCandidate {
   readonly kind: LinkKind;
-  /** Exactly the text the user sees and clicks (includes any `:line:col`). */
+  /**
+   * Exactly the text the user sees and clicks — including a `:line:col` or a
+   * `(line,col)` suffix, excluding the quotes of a quoted path and Python's
+   * trailing `, line N`, which are the printer's punctuation rather than the
+   * thing being pointed at.
+   */
   readonly text: string;
   /** The URL, or the path without its `:line:col` suffix. */
   readonly target: string;
@@ -74,7 +79,21 @@ const WINDOWS_SEPARATOR = String.raw`[\\/]`;
 const WINDOWS_DRIVE = String.raw`[A-Za-z]:${WINDOWS_SEPARATOR}${SEG}(?:${WINDOWS_SEPARATOR}${SEG})*${WINDOWS_SEPARATOR}?`;
 const WINDOWS_UNC = String.raw`\\\\${SEG}\\${SEG}(?:\\${SEG})*\\?`;
 const WINDOWS_RELATIVE = String.raw`(?:\.{1,2}\\)?${SEG}(?:\\${SEG})+\\?`;
-const SUFFIX = String.raw`(?::(\d+))?(?::(\d+))?`;
+// Two position grammars, one suffix. `tsc` writes `path(line,col)` where
+// everything else writes `path:line:col`, and losing that position was the
+// gap: the file linked, the line did not travel with it.
+//
+// The parenthesised form is tried FIRST because the colon form can match
+// EMPTY — an alternation would settle on the empty branch and leave
+// `(340,15)` outside the candidate, which is the bug rather than the fix.
+// Both alternatives capture, so the group numbers below are 3/4 for the
+// parenthesised pair and 5/6 for the colon pair; `matchPathPattern` reads
+// whichever of the two answered. A single number in parentheses is NOT a
+// position (`Read(src/foo.ts)` is a Claude Code tool line, and `foo.ts(3)`
+// is prose), so the comma is required.
+const PAREN_SUFFIX = String.raw`\((\d+),(\d+)\)`;
+const COLON_SUFFIX = String.raw`(?::(\d+))?(?::(\d+))?`;
+const SUFFIX = `(?:${PAREN_SUFFIX}|${COLON_SUFFIX})`;
 // A candidate may only start at a token boundary, so a match never begins in
 // the middle of a longer token. This is a *consumed* group rather than a
 // lookbehind: JavaScriptCore only learned lookbehind in Safari 16.4, and
@@ -96,6 +115,54 @@ const WINDOWS_PATH_RE = new RegExp(
   `(${BOUNDARY})(${WINDOWS_DRIVE}|${WINDOWS_UNC}|${WINDOWS_RELATIVE})${SUFFIX}`,
   "gu",
 );
+
+/**
+ * A path inside double quotes, with Python's `, line N` when it follows.
+ *
+ * This is the ONLY route to a path containing a space: an unquoted one is
+ * ambiguous and stays unmatched by design (see `SEG_CHAR`), but a quote is a
+ * boundary the printer chose, so the token is stated rather than guessed.
+ * Python's traceback (`File "src/x.py", line 12`) is the sample §2.2 names,
+ * and its line number is captured even though it sits outside the clickable
+ * text — the text is the path, because that is the thing being pointed at.
+ *
+ * The tradeoff, accepted: a quoted PHRASE that happens to contain a path
+ * (`"look at src/foo.ts"`) becomes one candidate covering the whole phrase
+ * and suppresses the bare path inside it, so that line resolves to nothing
+ * and links nothing. Tool and agent output quotes paths far more often than
+ * it quotes prose about paths, and the alternative — emitting both and
+ * letting them overlap — hands xterm two links over the same cells.
+ * Single quotes are deliberately NOT matched: an apostrophe in ordinary
+ * prose would pair with the next one and swallow every path between them.
+ */
+const QUOTED_MAX = 256;
+const QUOTED_PATH_RE = new RegExp(
+  `"([${SEG_CHAR} /\\\\]{1,${QUOTED_MAX}})"(?:,\\s*line\\s+(\\d+))?`,
+  "gu",
+);
+
+/** A quoted token is only a candidate if it could be a path at all. */
+function looksLikePath(body: string): boolean {
+  return (
+    body.includes("/") ||
+    body.includes("\\") ||
+    /\.[A-Za-z][A-Za-z0-9]{0,9}$/u.test(body)
+  );
+}
+
+/**
+ * The same path without git's `a/` or `b/` diff prefix, or null when it
+ * carries neither.
+ *
+ * Stripping happens in the RENDERER, not in `resolveOne` (§2.2): the resolver
+ * has a Rust twin (`src-tauri/src/links.rs`), so a fix there would either be
+ * written twice or become a host parity gap, and it would reshape a payload R6
+ * freezes. The caller emits both spellings into the same resolve batch and
+ * prefers the verbatim hit, so `resolve_paths` never learns what a diff is.
+ */
+export function stripDiffPrefix(target: string): string | null {
+  return /^[ab]\//u.test(target) ? target.slice(2) : null;
+}
 
 /** A sentence-final dot is punctuation, never part of the path. */
 function trimTrailingDots(path: string): string {
@@ -172,8 +239,10 @@ function matchPathPattern(source: string, pattern: RegExp): LinkCandidate[] {
     // candidate's text nor its range.
     const boundary = m[1] ?? "";
     const rawPath = m[2] ?? "";
-    const line = toInt(m[3]);
-    const col = toInt(m[4]);
+    // 3/4 is `(line,col)`, 5/6 is `:line:col` — see `SUFFIX`. Exactly one of
+    // the two pairs can have answered, so the coalesce is not a preference.
+    const line = toInt(m[3] ?? m[5]);
+    const col = toInt(m[4] ?? m[6]);
     // Only trim when nothing follows the path — `foo.:12` cannot occur, so a
     // trailing dot here is always sentence punctuation.
     const path = line === null ? trimTrailingDots(rawPath) : rawPath;
@@ -206,13 +275,50 @@ function matchPathPattern(source: string, pattern: RegExp): LinkCandidate[] {
   return out;
 }
 
+function matchQuotedPaths(source: string): LinkCandidate[] {
+  const out: LinkCandidate[] = [];
+  QUOTED_PATH_RE.lastIndex = 0;
+  for (
+    let m = QUOTED_PATH_RE.exec(source);
+    m !== null;
+    m = QUOTED_PATH_RE.exec(source)
+  ) {
+    const body = m[1] ?? "";
+    // A body padded with spaces is a phrase that ended in one, never a path
+    // anybody typed — and trimming it would leave the range lying about which
+    // cells the link covers.
+    if (body !== body.trim() || !looksLikePath(body)) {
+      continue;
+    }
+    // `+ 1` steps past the opening quote: the quotes bound the token, they are
+    // not part of it, so the underline stops at the path.
+    const start = m.index + 1;
+    out.push({
+      kind: "path",
+      text: body,
+      target: body,
+      line: toInt(m[2]),
+      col: null,
+      start,
+      end: start + body.length,
+    });
+  }
+  return out;
+}
+
 function matchPaths(source: string): LinkCandidate[] {
-  const windows = matchPathPattern(source, WINDOWS_PATH_RE);
+  // Quoted wins outright: it is the only form that can carry a space, and on
+  // Python's line it is the only one that carries the position.
+  const quoted = matchQuotedPaths(source);
+  const windows = matchPathPattern(source, WINDOWS_PATH_RE).filter(
+    (candidate) => !quoted.some((quote) => overlaps(candidate, quote)),
+  );
   const portable = matchPathPattern(source, PATH_RE).filter(
     (candidate) =>
-      !windows.some((windowsPath) => overlaps(candidate, windowsPath)),
+      !windows.some((windowsPath) => overlaps(candidate, windowsPath)) &&
+      !quoted.some((quote) => overlaps(candidate, quote)),
   );
-  return [...windows, ...portable].sort((a, b) => a.start - b.start);
+  return [...quoted, ...windows, ...portable].sort((a, b) => a.start - b.start);
 }
 
 function overlaps(a: LinkCandidate, b: LinkCandidate): boolean {

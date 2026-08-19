@@ -30,6 +30,8 @@ function fakeController(
     resolve: vi.fn(async () => {}),
     reconcile: vi.fn(async () => {}),
     setEditorFocus: vi.fn(),
+    setEditorEdit: vi.fn(),
+    runEditCommand: vi.fn(() => false),
     dispose: vi.fn(),
     count: () => 0,
     total: () => 0,

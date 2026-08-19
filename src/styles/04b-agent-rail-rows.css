@@ -1,37 +1,3 @@
-/* -------------------------------------------------------------- the motion */
-
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes asr-halo {
-    0% {
-      opacity: 0.55;
-      transform: scale(1);
-    }
-    70%,
-    100% {
-      opacity: 0;
-      transform: scale(2.4);
-    }
-  }
-
-  @keyframes asr-spin {
-    to {
-      transform: rotate(1turn);
-    }
-  }
-
-  /* No arrival animation: the rail no longer moves a row when its state
-     changes (the pinned block it used to fly into was removed 2026-08-16), so
-     there is nothing entering — only a mark changing shape in place. */
-
-  .asr-row__mark[data-state="asked"]::after {
-    animation: asr-halo 2.4s var(--ease) infinite;
-  }
-
-  .asr-row__mark[data-state="working"] {
-    animation: asr-spin 1.8s linear infinite;
-  }
-}
-
 /* ------------------------------------------------------- the flat tab item */
 
 .asr-item {
@@ -45,29 +11,26 @@
 
 /* ---------------------------------------------- tab rows and agent chips */
 
-/* One line in its resting shape: agent glyphs, tab name, age, one rolled-up
-   state, then the hover-only close slot. Any row with a turn to report spends
-   a second line on it (DL-27.15) — the quiet ones dim rather than go blank. */
+/* One line in its resting shape: one optional status dot, tab name or newest
+   turn, age, then the agent glyph/hover-close slot. State never dims
+   the row (DL-27.15, amended 2026-08-19). */
 .asr-row--tab {
-  /* ONE trailing slot (DL-27.5, amended 2026-08-16): the status mark rests in
-     it and the hover close replaces the mark in place — no separate close
-     column reserving width the row rarely uses. 16px fits the icon-system
-     marks (`done`'s 13px CheckCircle) and the 16px close box alike. */
-  grid-template-columns: auto minmax(0, 1fr) auto 16px;
+  /* ONE trailing slot (DL-27.5, amended 2026-08-19): the agent glyph rests in
+     it and the hover close replaces the glyph in place — no separate close
+     column reserving width the row rarely uses. */
+  grid-template-columns: 17px minmax(0, 1fr) auto 17px;
   gap: 2px 7px;
   min-height: 34px;
-  /* 6px → 4px trailing (2026-08-17): the row is the last of the four things
-     stacked between the mark and the sidebar's edge (see `.asr-rail`), and
-     this is its share of bringing that total down to the 15px the leading
-     edge carries. The mark's right edge now lands 15.5px in — 2 rail + 6
-     scrollbar + 4 here + 3.5 centring the 9px mark in the 16px slot. The slot
-     itself is untouched: it is DL-27.5's shared mark/close cell and the close
-     button's hit box. */
+  /* The 4px trailing inset keeps the glyph/close slot aligned with the rail's
+     outer edge; 7px leading puts the status mark on the row's text rhythm. */
   padding: 6px 4px 6px 7px;
 }
 
 .asr-row--tab > .asr-chips {
-  grid-column: 1;
+  grid-row: 1;
+  grid-column: 4;
+  justify-self: center;
+  transition: opacity var(--duration) var(--ease);
 }
 
 .asr-row--tab > .asr-row__name {
@@ -79,21 +42,18 @@
 }
 
 .asr-row--tab > .asr-row__mark {
-  /* Row pinned: the close shares this exact cell, and auto-placement would
-     push the second occupant to a new row instead of overlapping them. */
   grid-row: 1;
-  grid-column: 4;
-  /* Centred in the shared slot, not end-aligned: the close that swaps in on
-     hover is a 16px box, and the two must sit on one visual centre. */
+  grid-column: 1;
   justify-self: center;
 }
 
-/* The swap's other half: while the close is shown, the mark stands down.
-   `opacity`, matching how the close itself is revealed, so the two cross-fade
-   in the one slot instead of stacking (DL-27.5). */
-.asr-row--tab:hover > .asr-row__mark,
-.asr-row--tab:focus-within > .asr-row__mark {
+/* The swap's other half: while the close is shown, the agent glyph stands
+   down. Hovering the glyph itself keeps its pane-exact target available; a
+   keyboard-focused glyph does too, while the close reveals on its own focus. */
+.asr-row--tab:hover:not(:has(.asr-chip:hover)) > .asr-chips,
+.asr-row--tab:has(.asr-row__actions:focus-within) > .asr-chips {
   opacity: 0;
+  pointer-events: none;
 }
 
 /* Dropping an image onto a row sets that workspace's logo — the identical
@@ -117,87 +77,44 @@
   background: var(--tab-active-bg);
 }
 
-/* DL-27.15: a quiet row (working/done/idle) takes the archived row's faint
-   treatment — the derived tone ladder is too tight for a one-step dim to
-   read (primary 207 → muted 183 measured on tokyo-night, 2026-08-17). The
-   state mark keeps full colour: state is meaning, not emphasis. */
-.asr-row--tab[data-quiet="true"] .asr-row__name strong {
-  color: var(--text-faint);
-  font-weight: 480;
-}
-
 /* A HEADLESS item — a multi-agent tab rendering no parent row (DL-27.13) —
    has no row to wash, and it marks selection with NOTHING: the accent bar
    that stood beside the leaves was hidden on the owner's ask (2026-08-16),
    the same day the tree itself went behind `PANE_TREE_HIDDEN`. Which pane is
    focused is the stage's job; the rail stays quiet. */
 
-/* ---------------------------------------------------- archived workspaces */
+/* DL-27.19 (owner, 2026-08-20): what it does say is that these rows are ONE
+   tab, with an edge rather than a row. The selector is the seam the hidden
+   tree left behind — `data-headless` is exactly "several panes, no parent
+   row" — so the frame needs no markup of its own; it outranks the
+   `.asr-stream .asr-item` padding reset above by one attribute.
 
-/*
- * The quiet resume rows at the foot of the stream (spec §8): a workspace with
- * an archived session and no live tab. Closed off by a hairline above, the
- * mirror of the pinned block's hairline at the other end of the list.
- */
-.asr-archive {
-  display: grid;
-  gap: 1px;
-  padding-top: 9px;
-  margin-top: 8px;
-  border-top: 1px solid var(--hair);
-}
+   The frame is an INSET hairline (DL-1.3's sanctioned `box-shadow: inset 0 0
+   0 1px`), and the two shapes it is not are both recorded because both
+   shipped and both broke, 2026-08-20:
 
-/*
- * Two columns only — the name and a resting mark. No chips, no age, no
- * message line: no live pane has said anything, and a row that printed an
- * age would be dating a session rather than reporting one.
- *
- * Declared in full rather than leaning on `.asr-row`, so the row is styled
- * whether or not the component pairs the two classes; where they overlap this
- * rule is the later one and wins. It IS pressable, so it keeps the live row's
- * hover wash (DL-21.2) and carries its own focus ring — it is a
- * `role="button"` div, which gets no ring for free.
- */
-.asr-row--archived {
-  position: relative;
-  display: grid;
-  width: 100%;
-  /* 8px → 7px trailing (2026-08-17), the archived row's share of the same
-     realignment: its mark is `justify-self: end` in a 13px column, so the
-     padding IS the whole trailing offset — 2 rail + 6 scrollbar + 7 puts its
-     right edge on the live row's 15.5px vertical. */
-  padding: 4px 7px 5px 9px;
-  border: 0;
+   A BORDER is layout. It either pushes its rows 1px inward or is bled back
+   with `margin: 0 -1px`, and that bleed put 255px of content in the 254px
+   `.asr-rail__list` — `overflow-x: hidden` hides the bar but keeps the scroll
+   container, so the first focus the browser answered with `scrollIntoView`
+   slid the whole column (Known traps: a 1px overflow moves chrome).
+
+   An OUTLINE fixed the layout half and lost the left edge. The item fills the
+   list's content box exactly, and the list has no padding of its own — the
+   rail carries it — so an outline paints on the 1px OUTSIDE that box and the
+   list's `overflow-x: hidden` clips it. An inset hairline paints on the 1px
+   inside instead: same 1px ring, same `border-radius`, still no layout, and
+   nothing to clip.
+
+   Vertically 3px in and 3px out reads even against the leaf's own 6px
+   padding, and stacks with `.asr-cluster`'s 4px gap into 10px between two
+   framed tabs against 7px to a bare row. The colour stays neutral on purpose
+   — red and yellow are the status dot's (DL-27.3). */
+.asr-stream .asr-item[data-headless="true"] {
+  margin: 3px 0;
+  padding: 3px 0;
   border-radius: var(--radius-control);
-  background: transparent;
-  align-items: center;
-  /* 13px to match the tab row's widened mark column. */
-  grid-template-columns: minmax(0, 1fr) 13px;
-  gap: 2px 8px;
-  min-height: 26px;
-  cursor: pointer;
-  text-align: left;
-  transition: background var(--duration) var(--ease);
-}
-
-.asr-row--archived:hover {
-  background: var(--state-hover-bg);
-}
-
-.asr-row--archived:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-/* Quieter than a live row all the way down: the whole row is the faint tone,
-   including the name a live row sets in `--text-primary` (DL-3.4). */
-.asr-row--archived,
-.asr-row--archived .asr-row__name strong {
-  color: var(--text-faint);
-}
-
-.asr-row--archived .asr-row__name strong {
-  font-weight: 500;
+  box-shadow: inset 0 0 0 1px var(--hair-strong);
 }
 
 .asr-chips {
@@ -235,13 +152,6 @@
   object-fit: contain;
 }
 
-/* The brand mark recedes with its row (DL-27.15). Opacity rather than a
-   colour: the glyph is an image for most agents, so there is no token to
-   swap — and the letter-avatar fallback below dims by the same amount. */
-.asr-row--tab[data-quiet="true"] .asr-chip__logo {
-  opacity: 0.45;
-}
-
 /* A declared agent ships no brand mark, so it wears the same letter avatar
    the workspace rail and the agent chips already use (`lib/letter-avatar.ts`)
    rather than a generic glyph — one fallback, not a third invention. It fills
@@ -259,8 +169,8 @@
   user-select: none;
 }
 
-/* Agent glyphs carry identity only. The one rolled-up mark at the row's right
-   edge carries state; per-glyph badges would restate it as visual confetti. */
+/* Agent glyphs carry identity only. The one leading mark carries state;
+   per-glyph badges would restate it as visual confetti. */
 
 /* ---------------------------------------------------- the pane tree (multi)
 
@@ -271,7 +181,7 @@
    every agent is a visible leaf now, so there is nothing left to count. */
 
 .asr-leaf {
-  /* The glyph box and the flex gap. `--asr-leaf-indent` stood beside them
+  /* The status box and the flex gap. `--asr-leaf-indent` stood beside them
      until 2026-08-17 to align a wrapped turn line under the agent name; the
      turn shares that name's own slot now (DL-27.15), so nothing indents. */
   --asr-leaf-glyph: 14px;
@@ -289,11 +199,8 @@
   /* The guides live in this gutter, OUTSIDE the button's own box, so no
      wash — hover or selection — can ever paint over them (DL-27.13). */
   margin-left: 21px;
-  /* 8px trailing (10px until 2026-08-17): the parent's one mark/close slot
-     (16px, now ending 4px from the row edge) centres its mark 12px in, and a
-     leaf's mark is `flex-end` rather than centred — so the padding has to be
-     that 12px less the mark's own half-width, rounded the same way the old
-     pair was. This keeps the leaf's mark on the tab row's vertical. */
+  /* The trailing edge aligns the agent glyph with the tab row's glyph/close
+     slot; the leading status mark follows the same row rhythm. */
   padding: 3px 8px 3px 8px;
   border: 0;
   border-radius: var(--radius-control);
@@ -343,12 +250,22 @@
   object-fit: contain;
 }
 
+/* No compensating margin any more (owner, 2026-08-20): the mark's box is a
+   fixed 14px in every state (04a) — the same footprint as the trailing glyph
+   — so the dot, the working ring and the glyph all hold one column and the
+   text cannot jump when states trade places. */
+
+/* The name and the turn share this slot, so they share one type (owner,
+   2026-08-20): body rung at 450, told apart from `.asr-leaf__msg` by tone
+   alone. The 480 here and the 545 the flat leaf added on top of it were the
+   two weights that made an agent name read heavier than the sentence
+   replacing it. */
 .asr-leaf__agent {
   overflow: hidden;
   min-width: 0;
   flex: 1;
   color: var(--text-primary);
-  font: 480 var(--type-body) / 1.25 var(--ui-font);
+  font: 450 var(--type-body) / 1.25 var(--ui-font);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -385,21 +302,10 @@
   display: none;
 }
 
-.asr-leaf--flat .asr-leaf__agent {
-  font-weight: 545;
-}
-
-/* The leaf's half of the quiet treatment (DL-27.15): a leaf is a row in its
-   own right, so it dims on its OWN pane's state — one agent asking beside
-   another working must not read as one mood. */
-.asr-leaf--flat[data-quiet="true"] .asr-leaf__agent {
-  color: var(--text-faint);
-  font-weight: 480;
-}
-
-.asr-leaf--flat[data-quiet="true"] .asr-leaf__logo {
-  opacity: 0.45;
-}
+/* A flat leaf used to bump its name to 545 — the tab row's own weight, back
+   when a leaf stood UNDER a parent row and had to hold the same rank. With the
+   tree hidden a leaf IS the row, and the bump only made a pane that had said
+   nothing louder than every pane that had (owner, 2026-08-20). */
 
 /* ── Agent attention mark (AgentAttentionMark) ──────────────
    Shared status mark for a tab/workspace's attention state. Actionable
@@ -495,4 +401,17 @@ button.attn-mark:hover {
   height: 8px;
   border-radius: 50%;
   background: currentColor;
+}
+
+/* The shell glyph is identity with nothing behind it to focus, so it drops the
+   chip's affordances — no pointer, no hover wash — and keeps only the box, so
+   a shell row and an agent row line up on the same 17px slot. Its ink is the
+   muted role: it names the row, it does not compete with the state mark. */
+.asr-chip--static {
+  cursor: default;
+  color: var(--text-muted);
+}
+
+.asr-chip--static:hover {
+  background: transparent;
 }

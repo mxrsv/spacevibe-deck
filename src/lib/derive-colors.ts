@@ -1,8 +1,9 @@
 /**
  * Theme-derived chrome color system (app-wide standard).
  *
- * All chrome UI derives from the terminal theme's bg/fg — no hardcoded
- * chrome colors. Text tokens are raised toward the tone until they meet
+ * All chrome UI derives from the terminal theme's bg/fg — no hardcoded chrome
+ * colors, with one exception a background may claim for its own sidebar
+ * (`PINNED_SIDEBAR_BG`, DL-2.2). Text tokens are raised toward the tone until they meet
  * WCAG contrast floors, so a low-contrast theme or user override can
  * never sink the chrome below readability.
  */
@@ -72,8 +73,15 @@ interface Rgb {
   readonly b: number;
 }
 
-// Background luminance below this mixes toward white, otherwise black
-const DARK_LUMINANCE_THRESHOLD = 0.45;
+/**
+ * Background luminance below this mixes toward white, otherwise black.
+ *
+ * Exported since 2026-08-19 because Settings' Light/Dark selector has to draw
+ * exactly the same line: a legacy theme is shown as whichever mode its own
+ * background already belongs to, and a second threshold would let the segment
+ * disagree with the chrome the same background produced.
+ */
+export const DARK_LUMINANCE_THRESHOLD = 0.45;
 // Step size when raising a text color toward the tone (2% per step)
 const RAISE_STEP = 0.02;
 // WCAG contrast floors for the three chrome text tones, checked against
@@ -88,6 +96,76 @@ export const TEXT_FAINT_FLOOR = 4.5;
 export const TERMINAL_TEXT_FLOOR = 4.5;
 /** A cursor is a non-text visual indicator and must clear the 3:1 floor. */
 export const TERMINAL_CURSOR_FLOOR = 3;
+
+/**
+ * How far the side columns stand off the stage.
+ *
+ * The dark direction REVERSED on 2026-08-19 at the owner's request: the
+ * sidebar used to be the darkest plane in the window (`bg` mixed 24% toward
+ * black) and is now the first plane ABOVE it, so the terminal is the deepest
+ * surface and every piece of chrome stands on top of it. Light themes keep
+ * receding — darkening is still the only direction with headroom there.
+ */
+const DARK_SIDEBAR_LIFT = 0.08;
+const LIGHT_SIDEBAR_RECESS = 0.05;
+
+/**
+ * Steps of the chrome ladder above whichever surface it is measured from.
+ *
+ * The dark steps are deliberately NARROWER than the light ones. They are
+ * measured from the sidebar, which already spent 8% of the headroom, and a
+ * lighter surface is what `TEXT_PRIMARY_FLOOR` runs out of room on: at 4/8/14
+ * One Dark's active row falls to 7.13:1 against white, under the 8:1 floor,
+ * which would push every chrome tone to flat white and make
+ * `checkChromeTextContrast` reject imports it accepts today. At 3/6/10 the
+ * tightest preset still measures 8.07:1.
+ */
+const DARK_CHROME_1_STEP = 0.03;
+const DARK_CHROME_2_STEP = 0.06;
+const DARK_TAB_ACTIVE_STEP = 0.1;
+const LIGHT_CHROME_1_STEP = 0.05;
+const LIGHT_CHROME_2_STEP = 0.09;
+const LIGHT_TAB_ACTIVE_STEP = 0.15;
+
+/** How far a dark theme's input surface sinks from the sidebar toward the stage. */
+const DARK_INPUT_SINK = 0.5;
+/** Kept soft on light themes — readability comes from the textPrimary floor. */
+const LIGHT_INPUT_STEP = 0.06;
+
+/**
+ * The two seams that are surfaces rather than washes (DL-2.3).
+ *
+ * `seamRaised` keeps the place in the ladder it always held — just under the
+ * active row, just over the panel body it frames — so the dark step is sized
+ * against the dark ladder (0.09 under the active row's 0.10) exactly as the
+ * light one is sized against the light ladder (0.14 under 0.15).
+ */
+const SEAM_RECESSED_STEP = 0.02;
+const DARK_SEAM_RAISED_STEP = 0.09;
+const LIGHT_SEAM_RAISED_STEP = 0.14;
+
+/**
+ * A hand-picked sidebar for a background somebody chose one for, keyed by the
+ * background itself rather than by preset id.
+ *
+ * `deriveChromeColors` is a function of `(bg, fg)` and nothing else (DL-2.2),
+ * and its four callers — the app, the editor host, the gallery matrix and the
+ * theme card preview — only ever hold those two. Keying the pin on the
+ * background keeps all four in agreement without threading a preset through
+ * any of them, and it scopes the pin correctly for free: override deck-dark's
+ * background and the pin stops applying, because it was picked FOR that
+ * background.
+ *
+ * `#272d31` is not reachable by mixing `#17181c` toward white — it is a bluer,
+ * flatter gray than any lift produces (hue 228° → 204°, saturation up) — so it
+ * is a literal, and DL-2.2 carries the exception.
+ *
+ * The key is `deck-dark`'s own `background` in `themes.ts`. Editing that value
+ * without editing this one silently retires the pin.
+ */
+const PINNED_SIDEBAR_BG: Readonly<Record<string, string>> = Object.freeze({
+  "#17181c": "#272d31",
+});
 
 type ChromeTextToken = "textPrimary" | "textMuted" | "textFaint";
 type ChromeTextSurface =
@@ -172,31 +250,68 @@ function alpha(hex: string, a: number): string {
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
+/**
+ * A light theme's side columns, one quiet step down from the stage.
+ *
+ * There is no "cannot darken" fallback any more, and there must not be one: a
+ * background light enough to reach this branch always darkens by 5% after
+ * 8-bit rounding, and the fallback this replaced mixed toward `tone` — which
+ * is BLACK here, so it recomputed the same value and would have returned `bg`
+ * itself if it ever fired, breaking the DL-18.7 invariant it existed to keep.
+ * It was written when near-black dark backgrounds landed here with a white
+ * tone; the dark branch cannot collide at all, since lifting always moves.
+ */
+function recessedSidebar(bg: string): string {
+  return mixHex(bg, "#000000", LIGHT_SIDEBAR_RECESS);
+}
+
 /** Derive every chrome token from the theme's background and foreground. */
 export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   const dark = luminance(bg) < DARK_LUMINANCE_THRESHOLD;
   const tone = dark ? "#ffffff" : "#000000";
-  // The stage keeps the terminal theme's background while both side columns
-  // recede onto one darker surface. Dark themes need a larger step because
-  // they have less luminance headroom; light themes only need a quiet tint.
-  // Pure (or near) black cannot darken after 8-bit rounding, so fall back to a
-  // small tone mix to preserve the invariant that the surfaces always differ.
-  const recessedSidebar = mixHex(bg, "#000000", dark ? 0.24 : 0.05);
-  const sidebarBg =
-    recessedSidebar === bg ? mixHex(bg, tone, 0.05) : recessedSidebar;
+  // The stage keeps the terminal theme's background. On a dark theme the side
+  // columns RISE off it by one step; on a light theme they still recede onto a
+  // darker surface (DL-18.7). Neither direction can land back on `bg`: see
+  // `recessedSidebar` for why the old rounding guard is gone.
+  const sidebarBg = dark
+    ? (PINNED_SIDEBAR_BG[bg.toLowerCase()] ??
+      mixHex(bg, tone, DARK_SIDEBAR_LIFT))
+    : recessedSidebar(bg);
   const sidebarSeam = mixHex(sidebarBg, bg, 0.5);
-  // 0.05/0.09, up from 0.04/0.07: the structure now comes from the step
-  // between surfaces rather than from the line between them, so the step has
-  // to be the thing you can see.
-  const chrome1 = mixHex(bg, tone, 0.05);
-  const chrome2 = mixHex(bg, tone, 0.09);
-  const tabActiveBg = mixHex(bg, tone, 0.15);
-  // 6% against tabActiveBg's 15%: far enough apart that hover cannot be read as
-  // "already selected" (DL-21.2), close enough that the two belong to one
-  // ladder. The percentage is the reviewed direction's; only its source moved.
+  // The chrome ladder stacks ON the sidebar on a dark theme, not on the stage.
+  // Once the sidebar rose to +8%, a ladder measured from `bg` put `chrome1`
+  // BELOW it and `chrome2` level with it, so a popover read as a smudge of the
+  // column behind it rather than as an object above it. Measuring from the
+  // sidebar makes the separation structural: every chrome surface is above the
+  // sidebar by construction, for every theme, including imports.
+  const chromeBase = dark ? sidebarBg : bg;
+  const chrome1 = mixHex(
+    chromeBase,
+    tone,
+    dark ? DARK_CHROME_1_STEP : LIGHT_CHROME_1_STEP,
+  );
+  const chrome2 = mixHex(
+    chromeBase,
+    tone,
+    dark ? DARK_CHROME_2_STEP : LIGHT_CHROME_2_STEP,
+  );
+  const tabActiveBg = mixHex(
+    chromeBase,
+    tone,
+    dark ? DARK_TAB_ACTIVE_STEP : LIGHT_TAB_ACTIVE_STEP,
+  );
+  // 6% against the active row's own step: far enough apart that hover cannot be
+  // read as "already selected" (DL-21.2), close enough that the two belong to
+  // one ladder. The percentage is the reviewed direction's; only its source
+  // moved.
   const stateHoverBg = alpha(tone, 0.06);
-  // Kept soft on light themes — readability comes from the textPrimary floor
-  const inputBg = mixHex(bg, tone, dark ? 0.12 : 0.06);
+  // An input is a RECESSED surface, so on a dark theme it sinks from the
+  // sidebar back toward the stage — below every chrome plane rather than
+  // mid-ladder, which is where the old `bg + 12%` lands now that the sidebar
+  // has passed it.
+  const inputBg = dark
+    ? mixHex(sidebarBg, bg, DARK_INPUT_SINK)
+    : mixHex(bg, tone, LIGHT_INPUT_STEP);
   // Every chrome surface text can sit on, not just the darkest one. The
   // settings panel body is `chrome2` and the active tab / workspace row is
   // `tabActiveBg`, both lighter than `chrome1` — measuring the floors on
@@ -231,8 +346,19 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     // Opaque, so a boundary paints one colour instead of two: an alpha border
     // composites over whichever surface owns it, and the two sides of a shell
     // seam are different surfaces by definition.
-    seamRecessed: mixHex(bg, tone, 0.02),
-    seamRaised: mixHex(bg, tone, 0.14),
+    // The gutter between the stage and the plane beside it stays measured from
+    // `bg`: it is the one seam whose job is to sit BETWEEN the two surfaces,
+    // and `bg` is still the lower of them on both modes.
+    seamRecessed: mixHex(bg, tone, SEAM_RECESSED_STEP),
+    // The floating frame follows the chrome ladder, not the stage. Measured
+    // from `bg` it fell BELOW `chrome2` the moment the ladder moved onto the
+    // sidebar (deck-dark: 0.0397 against 0.0409), which is a popover framed in
+    // a line darker than its own body.
+    seamRaised: mixHex(
+      chromeBase,
+      tone,
+      dark ? DARK_SEAM_RAISED_STEP : LIGHT_SEAM_RAISED_STEP,
+    ),
     // Alpha, because this one runs INSIDE a single surface and has to adapt to
     // whichever one that is — the stage on one pane, `chrome1` on another.
     //

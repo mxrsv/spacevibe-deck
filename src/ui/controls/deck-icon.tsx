@@ -6,12 +6,14 @@ import { SidebarSimple, type Icon } from "@phosphor-icons/react";
  * around it; this component owns only how every icon is drawn.
  *
  * Phosphor has no `strokeWidth`: weight is a discrete family, and the family is
- * `regular` for every icon except the named few in `SOLID_ICONS` below.
+ * `regular` for every icon except the named few in `SOLID_ICONS` below and
+ * the surface-scoped `filled` treatment requested by a caller.
  *
  * The app spent 2026-08-19 at `fill` for everything, and the owner reversed it
  * the same day after seeing it run: solid suits a panel toggle, whose icon is a
- * PICTURE OF A LAYOUT and reads better as filled area, and suits nothing else
- * in this chrome. The reason is in the shapes. Phosphor's `fill` does three
+ * PICTURE OF A LAYOUT and reads better as filled area. A later owner decision
+ * added the three dock tabs as a scoped exception, not a return to uniform
+ * fill. The reason is in the shapes. Phosphor's `fill` does three
  * different things depending on the icon — a body goes solid (folder, trash,
  * globe), a stroke figure merely thickens (`ArrowLeft`, `TreeView`), and a bare
  * glyph CHANGES SHAPE: `X`, `Plus`, `Minus` and `Check` become a solid square
@@ -23,11 +25,12 @@ import { SidebarSimple, type Icon } from "@phosphor-icons/react";
  */
 
 /**
- * The icons that draw solid. Kept here as a SET OF COMPONENTS rather than a
- * `weight` prop on `DeckIcon`, because the prop would move the decision to the
- * call sites and DL-14.1's whole point is that it lives in one file. Identity,
- * not `displayName`: a minifier may drop the name (see `iconModifier`), and a
- * silently-empty match here would quietly restore the uniform outline set.
+ * The icons that draw solid everywhere. Kept here as a SET OF COMPONENTS
+ * rather than an open `weight` prop on `DeckIcon`: the separate `filled`
+ * boolean is reserved for owner-approved, surface-scoped treatments and
+ * cannot introduce a third weight. Identity, not `displayName`: a minifier may
+ * drop the name (see `iconModifier`), and a silently-empty match here would
+ * quietly restore the uniform outline set.
  *
  * `SidebarSimple` covers BOTH panel toggles — the navigation sidebar's and the
  * dock's, which draws the same icon mirrored (DL-14.1's `mirrored` clause).
@@ -79,6 +82,8 @@ export interface DeckIconProps {
   readonly icon: Icon;
   readonly size?: DeckIconSize;
   readonly class?: string;
+  /** A surface-scoped solid treatment; omitted icons keep their shared weight. */
+  readonly filled?: boolean;
   /**
    * Phosphor draws the one-sided marks facing left only. The dock's toggle
    * points at a panel on the right, so it flips the same icon rather than the
@@ -91,13 +96,14 @@ export function DeckIcon({
   icon: Icon,
   size = 16,
   class: className,
+  filled = false,
   mirrored = false,
 }: DeckIconProps) {
   return (
     <Icon
       size={size}
       color="currentColor"
-      weight={SOLID_ICONS.has(Icon) ? "fill" : "regular"}
+      weight={filled || SOLID_ICONS.has(Icon) ? "fill" : "regular"}
       mirrored={mirrored}
       aria-hidden="true"
       focusable="false"

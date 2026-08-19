@@ -2,6 +2,7 @@ import { AgentGlyph } from "../ui/controls/agent-glyph";
 import type { PaneAgent } from "../lib/process-info";
 import type { RailState } from "../ui/agent-rail-model";
 import { RailStatusMark } from "../ui/agent-rail";
+import { type TabDotColor, tabDotCssColor } from "../lib/tab-colors";
 
 /**
  * Gallery-only COMPARISON of candidate row structures for the agent rail —
@@ -322,34 +323,35 @@ function MarkRow({
  * have not checked; the separate unread state was folded in here as a
  * TEMPORARY owner call) → done (checked), with idle reserved for a pane that
  * has never run anything. DL-27.3, spec §3 and the attention tracker carry the
- * same vocabulary; this specimen isolates the marks for comparison.
+ * same vocabulary. Since 2026-08-19 only failed, asked, and working paint the
+ * shared static dot; this specimen makes the deliberate empty slots visible.
  */
 export function statePaletteSpecimen() {
   const rows = [
     {
       state: "failed" as RailState,
       agent: "agy" as PaneAgent,
-      note: "filled red dot — crashed; the loudest, and no halo: it is not asking",
+      note: "static red dot — crashed; the loudest state",
     },
     {
       state: "asked" as RailState,
       agent: "claude" as PaneAgent,
-      note: "yellow dot with a halo — needs your eyes: asking, waiting for permission, OR finished and unchecked (unread folded in here for now, owner 2026-08-16)",
+      note: "static yellow dot — needs your eyes: asking, waiting for permission, OR finished and unchecked",
     },
     {
       state: "working" as RailState,
       agent: "opencode" as PaneAgent,
-      note: "open arc, turning — the one animated mark (scoped DL-1.2 exception)",
+      note: "static neutral dot — working without demanding attention",
     },
     {
       state: "done" as RailState,
       agent: "gemini" as PaneAgent,
-      note: "green Phosphor check — it ran and you checked it",
+      note: "no mark — it ran and you checked it",
     },
     {
       state: "idle" as RailState,
       agent: "claude" as PaneAgent,
-      note: "R4 ring with a core — alive at the prompt, nothing run yet (the owner's idle pick; the bare ring is retired)",
+      note: "no mark — alive at the prompt, nothing run yet",
     },
   ];
   return (
@@ -515,6 +517,286 @@ export function paneTreeSpecimen() {
             </div>
           </section>
         </div>
+      </article>
+    </div>
+  );
+}
+
+/* ------------------------------------ multi-agent grouping (2026-08-19) */
+
+interface GroupingTab {
+  /** A name a person typed, or "" for a tab nobody named. */
+  readonly name: string;
+  readonly panes: readonly TreePane[];
+  /** Rolled-up state and newest age — only the tree's parent row spends them. */
+  readonly state: PaletteState;
+  readonly age: string;
+  /** `TabView.dotColor` as the tab would carry it; only B4 spends it. */
+  readonly color?: TabDotColor;
+}
+
+interface GroupingCluster {
+  readonly project: string;
+  readonly labelled: boolean;
+  readonly tabs: readonly GroupingTab[];
+}
+
+/**
+ * One fixture drives every column, and its shape IS the test: two
+ * multi-agent tabs sit BACK TO BACK, the only arrangement that says whether a
+ * grouping mark alone can separate two blocks — the question B rests on, and
+ * the one ⌘1-9 would inherit if a tab stops being a row. A single-agent tab
+ * above them and a one-tab project below keep the ordinary cases in frame.
+ */
+const GROUPING_CLUSTERS: readonly GroupingCluster[] = [
+  {
+    project: "spacevibe-active",
+    labelled: true,
+    tabs: [
+      {
+        name: "",
+        state: "working",
+        age: "6m",
+        panes: [{ agent: "claude", state: "working", age: "6m" }],
+      },
+      {
+        name: "test sweep",
+        state: "working",
+        age: "now",
+        color: "cyan",
+        panes: [
+          { agent: "opencode", state: "working", age: "now" },
+          { agent: "codex", state: "asked", age: "18m" },
+          { agent: "gemini", state: "done", age: "26m" },
+        ],
+      },
+      {
+        name: "",
+        state: "asked",
+        age: "1m",
+        color: "magenta",
+        panes: [
+          { agent: "claude", state: "asked", age: "1m" },
+          { agent: "codex", state: "done", age: "9m" },
+          { agent: "agy", state: "idle", age: "" },
+        ],
+      },
+    ],
+  },
+  {
+    project: "spacevibe-academy",
+    labelled: false,
+    tabs: [
+      {
+        name: "",
+        state: "idle",
+        age: "",
+        panes: [{ agent: "codex", state: "idle", age: "" }],
+      },
+    ],
+  },
+];
+
+/**
+ * One agent, one row — the flat geometry the rail ships today, where a leaf
+ * and a tab row are deliberately the same object seen twice.
+ */
+function FlatAgentRow({ pane }: { readonly pane: TreePane }) {
+  return (
+    <div class="gxa-item gxa-item--inline">
+      <div class="gxa-inline-line">
+        <span class="gxa-logos">
+          <AgentGlyph agent={pane.agent} className="gxa-logo" />
+        </span>
+        <strong class="gxa-name">{pane.agent}</strong>
+        <span class="gxa-age">{pane.age}</span>
+        <PaletteMark state={pane.state} />
+      </div>
+    </div>
+  );
+}
+
+function ClusterHead({ cluster }: { readonly cluster: GroupingCluster }) {
+  return cluster.labelled ? (
+    <span class="gxa-head gxa-head--label">{cluster.project}</span>
+  ) : null;
+}
+
+/** A — what ships today: every pane is a row and the tab leaves no trace. */
+function FlatColumn() {
+  return (
+    <div class="gxa-rail">
+      {GROUPING_CLUSTERS.map((cluster) => (
+        <section key={cluster.project} class="gxa-cluster">
+          <ClusterHead cluster={cluster} />
+          {cluster.tabs.flatMap((tab) =>
+            tab.panes.map((pane) => (
+              <FlatAgentRow key={`${tab.name}-${pane.agent}`} pane={pane} />
+            )),
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * B — the same rows, with the panes of ONE tab banded rather than parented. No
+ * parent row, no added line, no indent: the rows keep the exact x-position
+ * column A gives them, which is the whole claim. Four ways to draw the band,
+ * because each fails differently — the rule can be too quiet to register, the
+ * wash too loud beside the selection wash it sits under, and a frame buys the
+ * loudest edge at the cost of an extra line of chrome per tab.
+ *
+ * B3/B4 (the frame) come from the owner's own sketch, 2026-08-19, drawn after
+ * B1/B2 were read as cluttered: `rail-structure-variants.tsx` records that
+ * reading as closing the separator question toward geometry, and they reopen
+ * it — a border, not a fill, is the one band treatment that pair never tried.
+ * B4 answers the sketch's two coloured pens literally: the frame takes the
+ * tab's own `TabView.dotColor`, the field the chips stopped painting on
+ * 2026-08-16 and nothing has set since `TabPopover` was deleted. Cyan and
+ * magenta on purpose — red and yellow are the status dot's words.
+ */
+function BandedColumn({
+  mark,
+}: {
+  readonly mark: "rule" | "wash" | "outline" | "tint";
+}) {
+  return (
+    <div class="gxa-rail">
+      {GROUPING_CLUSTERS.map((cluster) => (
+        <section key={cluster.project} class="gxa-cluster">
+          <ClusterHead cluster={cluster} />
+          {cluster.tabs.map((tab) =>
+            tab.panes.length === 1 ? (
+              <FlatAgentRow key={tab.panes[0].agent} pane={tab.panes[0]} />
+            ) : (
+              <div
+                key={`${cluster.project}-${tab.name}`}
+                class={`gxa-band gxa-band--${mark}`}
+                style={
+                  mark === "tint" && tab.color !== undefined
+                    ? `border-color: color-mix(in srgb, ${tabDotCssColor(tab.color)} 60%, transparent)`
+                    : undefined
+                }
+              >
+                {tab.panes.map((pane) => (
+                  <FlatAgentRow key={pane.agent} pane={pane} />
+                ))}
+              </div>
+            ),
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/** C — the parked elbow tree, restored from the same fixture for comparison. */
+function TreeColumn() {
+  return (
+    <div class="gxa-rail">
+      {GROUPING_CLUSTERS.map((cluster) => (
+        <section key={cluster.project} class="gxa-cluster">
+          <ClusterHead cluster={cluster} />
+          {cluster.tabs.map((tab) =>
+            tab.panes.length === 1 ? (
+              <FlatAgentRow key={tab.panes[0].agent} pane={tab.panes[0]} />
+            ) : (
+              <TreeParent
+                key={`${cluster.project}-${tab.name}`}
+                name={tab.name === "" ? `${tab.panes.length} agents` : tab.name}
+                age={tab.age}
+                state={tab.state}
+                panes={tab.panes}
+              />
+            ),
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * How a tab running several agents should read in the rail, five ways.
+ *
+ * The owner has removed tab-tier chrome from this rail four times running —
+ * the chip stack, the `N agents` label, the unnamed parent row, then the tree
+ * itself (`PANE_TREE_HIDDEN`) — so the flat column is where the rail actually
+ * stands, and it lost the one thing the tree carried: which panes are one tab.
+ * B is the untried quadrant, a grouping mark with no tab row at all. C is the
+ * parked direction, one constant away.
+ *
+ * **B3 shipped on 2026-08-20 as DL-27.19** — the owner picked the neutral
+ * frame and turned down B4's per-tab colour. The columns stay: A is what the
+ * rail looked like the day before, and B1/B2/B4/C are the alternatives that
+ * were judged against it, which is the comparison a later reversal needs.
+ */
+export function multiAgentGroupingSpecimen() {
+  return (
+    <div class="gxa-variants">
+      <article class="gxa-variant">
+        <div class="gxa-variant__head">
+          <span class="gxa-variant__index">A</span>
+          <span class="gxa-variant__title">flat — until 2026-08-20</span>
+          <span class="gxa-variant__note">
+            every pane is a row; nothing says two rows share a tab
+          </span>
+        </div>
+        <FlatColumn />
+      </article>
+      <article class="gxa-variant">
+        <div class="gxa-variant__head">
+          <span class="gxa-variant__index">B1</span>
+          <span class="gxa-variant__title">band, hairline — proposal</span>
+          <span class="gxa-variant__note">
+            one rule in the left padding groups a tab; no parent row, no indent
+          </span>
+        </div>
+        <BandedColumn mark="rule" />
+      </article>
+      <article class="gxa-variant">
+        <div class="gxa-variant__head">
+          <span class="gxa-variant__index">B2</span>
+          <span class="gxa-variant__title">band, wash — proposal</span>
+          <span class="gxa-variant__note">
+            the same grouping said by a ground the block stands on instead
+          </span>
+        </div>
+        <BandedColumn mark="wash" />
+      </article>
+      <article class="gxa-variant">
+        <div class="gxa-variant__head">
+          <span class="gxa-variant__index">B3</span>
+          <span class="gxa-variant__title">band, outline — SHIPPING</span>
+          <span class="gxa-variant__note">
+            DL-27.19 since 2026-08-20: a rounded hairline frame draws the
+            block's own edge; two tabs back to back close as two objects
+          </span>
+        </div>
+        <BandedColumn mark="outline" />
+      </article>
+      <article class="gxa-variant">
+        <div class="gxa-variant__head">
+          <span class="gxa-variant__index">B4</span>
+          <span class="gxa-variant__title">band, outline in tab colour</span>
+          <span class="gxa-variant__note">
+            turned down 2026-08-20: the same frame wearing the tab's own dot
+            colour, which the status dot's red and yellow would fight
+          </span>
+        </div>
+        <BandedColumn mark="tint" />
+      </article>
+      <article class="gxa-variant">
+        <div class="gxa-variant__head">
+          <span class="gxa-variant__index">C</span>
+          <span class="gxa-variant__title">elbow tree — parked</span>
+          <span class="gxa-variant__note">
+            DL-27.13 as built; the parent row buys back a name and a close
+          </span>
+        </div>
+        <TreeColumn />
       </article>
     </div>
   );

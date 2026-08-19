@@ -306,3 +306,67 @@
   left: 5px;
   border-left: 1px solid var(--hair-strong);
 }
+
+/* ------------------------------------ multi-agent grouping (2026-08-19) */
+
+/* B — the panes of one tab, banded rather than parented. The bar lives in the
+   rail's own 7px left padding, so every row keeps the x-position column A
+   gives it: the candidate buys grouping without buying an indent or a line.
+   The 4px inset at each end is what breaks the bar between two tabs that sit
+   back to back — a continuous rule would read as one block, not two. */
+.gxa-band {
+  position: relative;
+  display: grid;
+  gap: 2px;
+}
+
+/* B1 — the rule. The 4px inset at each end is what breaks it between two tabs
+   that sit back to back; a continuous line would read as one block, not two. */
+.gxa-band--rule::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -3px;
+  border-left: 1px solid var(--hair-strong);
+}
+
+/* B2 — the ground. Same 4% of `--tone` the candidate card ground uses, so the
+   block reads as one object without a mark of its own; it is bled into the
+   rail's padding so no row shifts. */
+.gxa-band--wash {
+  margin: 0 -4px;
+  padding: 2px 4px;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--tone) 4%, transparent);
+}
+
+/* B3/B4 — the frame (owner sketch, 2026-08-19). The block draws its own edge
+   instead of standing on a ground: a rounded hairline, no fill, so two tabs
+   back to back are two closed objects rather than one longer wash.
+
+   The spacing is the whole geometry. Horizontally the frame bleeds exactly its
+   own 1px border and adds no padding, so a banded row's content box starts on
+   the same x every flat row uses — the B-family claim, held to the pixel.
+   Vertically 4px of padding puts the frame 9px off the first row's ink, which
+   is what the horizontal side already measured (1px border + the row's own 8px
+   padding), so the frame sits evenly around what it holds. The 4px margin is
+   air OUTSIDE it: two frames back to back stand 10px apart against the 6px
+   between a frame and a bare row, so a closed block reads as heavier than a
+   row boundary. */
+.gxa-band--outline,
+.gxa-band--tint {
+  margin: 4px -1px;
+  padding: 4px 0;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+}
+
+/* B4 — the same frame carrying the tab's own colour. The border colour is set
+   inline from `TabView.dotColor` (the tint is mixed there, not here): the
+   colour is DATA, so a rule per swatch would be a second place to keep the
+   palette in sync. This declaration only states the fallback a colourless tab
+   falls back to — the neutral hairline B3 uses. */
+.gxa-band--tint {
+  border-color: var(--hair-strong);
+}

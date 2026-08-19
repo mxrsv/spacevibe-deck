@@ -13,6 +13,7 @@ import { WorktreeAgentStack } from "../ui/worktree-agent-stack";
 import { TabStrip } from "../ui/tab-strip";
 import { SidebarBanner } from "../ui/sidebar-banner";
 import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "../ui/sidebar-actions";
+import { SidebarFrameActions } from "../ui/sidebar-toggle";
 
 /**
  * The chrome components wired up for a specimen, in one place.
@@ -30,6 +31,17 @@ import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "../ui/sidebar-actions";
  */
 
 export const NOOP = (): void => {};
+
+/** The shipping leading frame cluster, with drag disabled in the gallery. */
+export function sidebarFrameActionsSpecimen(onToggle = NOOP) {
+  return (
+    <SidebarFrameActions
+      collapsed={false}
+      onToggle={onToggle}
+      onOpenWorkspace={NOOP}
+    />
+  );
+}
 
 /**
  * One shared controller for every specimen. The file tabs it projects are
@@ -124,9 +136,7 @@ export function agentRailNavigationSpecimen({
     <AgentRail
       onSelectTab={onSelectTab}
       onCloseTab={NOOP}
-      onOpenWorkspace={NOOP}
       onFocusPane={onFocusPane}
-      onResumeWorktree={NOOP}
       showAgentPresence
       fileController={fileControllerFixture}
       footer={

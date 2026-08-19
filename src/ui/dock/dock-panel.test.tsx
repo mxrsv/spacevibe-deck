@@ -175,12 +175,17 @@ describe("DockPanel resize", () => {
         }),
       );
     });
-    // Armed, but still mounted and still at the floor: the panel dims rather
-    // than vanishing under the pointer.
+    // Armed, and still MOUNTED: the panel is painted away by `App` (which
+    // reads this signal through `dockPaintedOpen`), but the node stays because
+    // the pointer is captured on the grip inside it. The 45% dim this used to
+    // assert is gone with the wait-for-release behaviour it belonged to
+    // (DL-19.4, amended 2026-08-19). Nothing is written until release.
     expect(dockCollapseArmed.value).toBe(true);
     expect(dockWidthLive.value).toBe(DOCK_WIDTH_MIN);
     expect(onClose).not.toHaveBeenCalled();
-    expect(host.querySelector(".dock-panel.is-collapse-armed")).not.toBeNull();
+    expect(host.querySelector(".dock-panel")).not.toBeNull();
+    // No easing inside a gesture: the pointer is the clock.
+    expect(host.querySelector(".dock-panel.is-dragging")).not.toBeNull();
 
     await act(async () => {
       grip.dispatchEvent(
@@ -256,11 +261,12 @@ describe("DockPanel resize", () => {
 });
 
 describe("DockPanel header", () => {
-  // The hide control is NOT here any more: it moved to the stage strip on
-  // 2026-08-16, because a closed column cannot hold its own way back out
-  // (DL-18.9's reasoning, applied to the other edge). What the header holds
-  // now is the tab row.
-  it("holds the tab row and no hide control", () => {
+  // The hide control came BACK here on 2026-08-19 (DL-19.3, amended again):
+  // a shown column carries its own control at its outer edge, the way the
+  // sidebar's rides the frame row beside the traffic lights. Only the closed
+  // half stayed on the stage strip, and `App` gates that one on the panel
+  // being absent — that gate is asserted in `app.test.tsx`, not here.
+  it("holds the tab row and ends it with the hide control", () => {
     const onSelectTab = vi.fn();
     act(() => {
       render(
@@ -280,7 +286,13 @@ describe("DockPanel header", () => {
 
     const header = host.querySelector(".dock-panel__header")!;
     expect(header.querySelector('[role="tablist"]')).not.toBeNull();
-    expect(header.querySelector(".iconbtn")).toBeNull();
+
+    const hide = header.querySelector<HTMLButtonElement>(":scope > .iconbtn")!;
+    expect(hide).not.toBeNull();
+    // Painted as open, because this mount only exists while the column is.
+    expect(hide.getAttribute("aria-label")).toBe("Hide the side panel");
+    // Last in the row: the auto-margined tab group sits immediately before it.
+    expect(header.lastElementChild).toBe(hide);
 
     const chips = header.querySelectorAll<HTMLButtonElement>('[role="tab"]');
     expect(chips.length).toBe(3);
@@ -288,6 +300,58 @@ describe("DockPanel header", () => {
       chips[1].click();
     });
     expect(onSelectTab).toHaveBeenCalledWith("usage");
+  });
+
+  // The panel's own control goes through `onClose`, the same seam the
+  // drag-past-the-floor gesture uses: `App` routes it into the `toggle-dock`
+  // action, which owns the focus guard. A raw settings write would skip it.
+  it("closes through onClose, not through a settings write of its own", () => {
+    const onClose = vi.fn();
+    act(() => {
+      render(
+        <DockPanel
+          tabs={availableDockTabs(true)}
+          activeTab="explorer"
+          onSelectTab={() => {}}
+          width={420}
+          onWidthChange={() => {}}
+          onClose={onClose}
+        >
+          <ExplorerTab controller={controller} workspacePath={WS} />
+        </DockPanel>,
+        host,
+      );
+    });
+
+    const hide = host.querySelector<HTMLButtonElement>(
+      ".dock-panel__header > .iconbtn",
+    )!;
+    act(() => {
+      hide.click();
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // The icon-only tabs and toggle form one compact cluster at the outer edge.
+  it("pins the tab group beside the trailing hide control", () => {
+    const sheet = readFileSync("src/styles/14-dock.css", "utf8");
+    const tabsStart = sheet.indexOf("\n.dock-tabs {");
+    expect(
+      tabsStart,
+      "no trailing-edge rule for the dock's tab group",
+    ).toBeGreaterThan(-1);
+    const tabsBody = sheet.slice(
+      sheet.indexOf("{", tabsStart) + 1,
+      sheet.indexOf("}", tabsStart),
+    );
+    expect(tabsBody).toMatch(/margin-left:\s*auto/);
+
+    const toggleStart = sheet.indexOf("\n.dock-panel__header > .iconbtn {");
+    const toggleBody = sheet.slice(
+      sheet.indexOf("{", toggleStart) + 1,
+      sheet.indexOf("}", toggleStart),
+    );
+    expect(toggleBody).toMatch(/flex-shrink:\s*0/);
   });
 
   // A host with no `sessions_list` gets two chips, not three greyed ones.
@@ -309,8 +373,8 @@ describe("DockPanel header", () => {
     });
 
     const labels = Array.from(
-      host.querySelectorAll('[role="tab"] .dock-tabs__label'),
-    ).map((node) => node.textContent);
+      host.querySelectorAll('[role="tab"]'),
+    ).map((node) => node.getAttribute("aria-label"));
     expect(labels).toEqual(["File explorer", "Token usage"]);
   });
 });

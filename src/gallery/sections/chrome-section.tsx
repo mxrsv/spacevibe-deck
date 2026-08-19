@@ -21,6 +21,7 @@ import {
   deckToolbarSpecimen,
   NOOP,
   repositoryScopedTabStripSpecimen,
+  sidebarFrameActionsSpecimen,
 } from "../chrome-fixtures";
 import { SEED_ATTENTION, SEED_LAYOUT } from "../seed-data";
 import { SectionHead, Specimen, StateLabel } from "../specimen";
@@ -115,12 +116,9 @@ export function ChromeSection() {
             // change.
             sidebarToggle={
               railCollapsed.value ? null : (
-                <SidebarToggle
-                  collapsed={false}
-                  onToggle={() => {
-                    railCollapsed.value = true;
-                  }}
-                />
+                sidebarFrameActionsSpecimen(() => {
+                  railCollapsed.value = true;
+                })
               )
             }
             toolbar={null}

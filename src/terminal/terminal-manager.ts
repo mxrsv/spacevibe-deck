@@ -792,6 +792,9 @@ export function createTerminalManager(
     paneElement(id) {
       return life.panes.get(id)?.element ?? null;
     },
+    setPaneWorking(id, working) {
+      life.panes.get(id)?.element.classList.toggle("is-agent-working", working);
+    },
     handleOutput(id, data) {
       life.panes.get(id)?.write(data);
     },

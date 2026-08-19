@@ -85,6 +85,13 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   "copy-selection": "text",
   "copy-cwd": "text",
   paste: "text",
+  // The Edit menu's own three (2026-08-19). They carry no `KeyBinding` — the
+  // native menu owns ⌘A / ⌘Z / ⌘⇧Z, so the pill starts empty — but they ARE
+  // dispatchable, so a row here is what lets a chord be added rather than the
+  // action disappearing from the section entirely.
+  "select-all": "text",
+  undo: "text",
+  redo: "text",
 
   "scroll-page-up": "scrollback",
   "scroll-page-down": "scrollback",

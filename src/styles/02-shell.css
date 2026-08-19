@@ -68,6 +68,43 @@
   align-self: stretch;
 }
 
+/* The open sidebar keeps its two leading actions as one compact cluster:
+   collapse first, then `New` (DL-18.9 / DL-27.14). */
+.sidebar-frame-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.sidebar-new {
+  display: flex;
+  height: 24px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-muted);
+  font: 540 var(--type-body) / 1 var(--ui-font);
+  cursor: pointer;
+  transition:
+    background var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.sidebar-new:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+  cursor: grab;
+}
+
+.sidebar-new:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 /* DL-18.3: the stage runs from the top of the window to the status bar with no
    chrome row above it. The frame occupies row 1 of the NAVIGATION column, so
    column 2 has nothing to sit under and the terminal reaches the window edge.
@@ -103,15 +140,58 @@
 
 .sidebar-grip {
   grid-column: 1;
+  /* The rail's row only, deliberately. Spanning the frame row too would draw
+     an unbroken line to the top of the window, but that row is a
+     `-webkit-app-region: drag` surface: an element laid over it does not
+     become droppable for the pointer, so the top 34px of the target would
+     look draggable and not be. The line starting under the frame row is the
+     honest picture of where the seam can actually be grabbed. */
   grid-row: 2;
   justify-self: end;
-  width: 7px;
-  margin-right: -4px;
+  /* 9px, up from 7 (owner, 2026-08-19): the target was narrow enough that a
+     pointer travelling along the edge crossed in and out of it repeatedly, and
+     the cursor changed on every crossing. Split 4 inside the column / 5 over
+     the stage, so the widening lands mostly on the terminal rather than on the
+     rail rows this target already covers. */
+  width: 9px;
+  margin-right: -5px;
   background: transparent;
   cursor: col-resize;
+  /* `relative` for the hover line below — the target itself still paints
+     nothing at rest (DL-18.9). */
+  position: relative;
   /* Over the stage's own edge: a grid item takes z-index without needing
-     `position`, and 4px of this target deliberately overhangs the seam. */
+     `position`, and 5px of this target deliberately overhangs the seam. */
   z-index: 2;
+}
+
+/* DL-18.9, amended 2026-08-19: at rest the target paints nothing, but hovering
+   it — or dragging it — lights the seam it sits on, the same 1px accent line a
+   pane split divider has always drawn (`.split__divider:hover`). A drag target
+   that gives no feedback until the column moves is a target the user finds by
+   guessing; this is the app's existing answer to that, applied to the other
+   two seams rather than a second idiom invented for them.
+   Exactly 1px wide and placed ON the shell's own hairline (4px in, since the
+   target starts 4px inside the column), so the line lights up — it does not
+   add a second one beside it. */
+.sidebar-grip::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+  background: transparent;
+  transition: background var(--duration) var(--ease);
+}
+
+/* Full `--accent`, not the 60% mix a pane split divider uses: this seam has a
+   chrome surface on at least one side of it (`--sidebar-bg`), and at 60% the
+   line read as a slightly lighter hairline rather than as an answer. A split
+   divider sits between two terminals on `--bg`, where 60% is plenty. */
+.sidebar-grip:hover::after,
+.sidebar-grip.is-dragging::after {
+  background: var(--accent);
 }
 
 /* Hidden means hidden (DL-18.9, revised 2026-08-16): the column goes to zero,
@@ -153,7 +233,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  /* The frame and rail share one recessed side surface. The stage keeps
+  /* The frame and rail share one side surface. The stage keeps
      `--bg`, so the terminal remains the focal plane in every theme. */
   background: var(--sidebar-bg);
 }
@@ -168,7 +248,7 @@
 }
 
 /* Decorative footer art, never a card: no edge, radius or control surface.
-   Two theme-coloured veils dissolve the image back into the recessed rail so
+   Two theme-coloured veils dissolve the image back into the rail's own plane so
    even a bright flag remains atmosphere rather than a second focal plane. */
 .sidebar-banner {
   position: relative;

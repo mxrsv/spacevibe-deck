@@ -155,6 +155,12 @@ function fakeSurfaces(
     applySettings: () => {
       calls.push("applySettings");
     },
+    /** Flipped per test: false is "the caret is somewhere else". */
+    handlesEdit: false,
+    runEditCommand: (command: string) => {
+      calls.push(`runEditCommand:${command}`);
+      return strip.handlesEdit;
+    },
   };
   return strip;
 }
@@ -374,6 +380,54 @@ describe("file surfaces in the tab strip", () => {
     tm.runAction("save-file");
 
     expect(surfaces.calls).toContain("save");
+  });
+
+  it("select-all/undo/redo offer themselves to the surface before the browser's own command", async () => {
+    // The three Edit-menu commands whose native Cocoa roles cannot reach
+    // Monaco (2026-08-19). They must arrive at the surface FIRST — falling
+    // straight through to `document.execCommand` is exactly the defect: a
+    // document-level command never touches an EditContext editor.
+    const surfaces = fakeSurfaces({ count: 1, total: 1 });
+    surfaces.handlesEdit = true;
+    const exec = vi.fn(() => true);
+    document.execCommand = exec;
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    surfaces.calls.length = 0;
+
+    tm.runAction("select-all");
+    tm.runAction("undo");
+    tm.runAction("redo");
+
+    expect(surfaces.calls).toEqual([
+      "runEditCommand:select-all",
+      "runEditCommand:undo",
+      "runEditCommand:redo",
+    ]);
+    // Claimed by the surface, so the browser's own command must NOT also run
+    // — a second select-all over the document would clobber the editor's.
+    expect(exec).not.toHaveBeenCalled();
+    tm.dispose();
+  });
+
+  it("a surface that declines an Edit command falls back to the browser's own", async () => {
+    // The terminal, a settings field and the file tree all live here: the
+    // fallback IS the behaviour the native role used to provide, so declining
+    // must not leave the chord dead.
+    const surfaces = fakeSurfaces({ count: 1, total: 1 });
+    surfaces.handlesEdit = false;
+    const exec = vi.fn(() => true);
+    document.execCommand = exec;
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+
+    tm.runAction("select-all");
+    tm.runAction("undo");
+
+    // `selectAll`, not `select-all`: the action id is Deck's, the command name
+    // is the browser's.
+    expect(exec.mock.calls).toEqual([["selectAll"], ["undo"]]);
+    tm.dispose();
   });
 
   it("selecting a terminal tab takes the stage back from a file surface", async () => {

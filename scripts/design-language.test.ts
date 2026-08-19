@@ -53,6 +53,15 @@ const SECTION_CITATION =
  */
 const GLYPH_GEOMETRY_SELECTORS = new Set([".pane__anchor-grip"]);
 /**
+ * DL-4.3's second exception (2026-08-19), kept apart from the grip because it
+ * is a different argument: this one IS readable copy, and what excuses it is
+ * display SIZE. A 24px 650-weight heading carries the face's 12.5px fitting as
+ * visible looseness, so a small negative track is optical correction rather
+ * than texture. Bounded to this selector and to negative values; a third entry
+ * anywhere is an edit to DL-4.3 first.
+ */
+const OPTICAL_TRACKING_SELECTORS = new Set([".settings-screen__title"]);
+/**
  * DL-20.1's closed radius scale, plus the two shapes it names as shapes rather
  * than scale values (the circle and the capsule) and the square corner. A
  * number picked by feel at a use site is what this list exists to reject: the
@@ -77,6 +86,7 @@ const CSS_BLOCK = /([^{}]+)\{([^{}]*)\}/g;
 const CSS_COMMENT = /\/\*[\s\S]*?\*\//g;
 const STYLED_UPPERCASE = /^text-transform\s*:\s*uppercase$/;
 const TEXT_TRACKING = /^letter-spacing\s*:/;
+const NEGATIVE_TRACKING = /^letter-spacing\s*:\s*-/;
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
@@ -118,6 +128,12 @@ function styledCasingViolations(): string[] {
     for (const raw of body.split(";")) {
       const declaration = raw.trim().replace(/\s+/g, " ");
       if (!declaration) continue;
+      if (
+        OPTICAL_TRACKING_SELECTORS.has(selector) &&
+        NEGATIVE_TRACKING.test(declaration)
+      ) {
+        continue;
+      }
       if (
         STYLED_UPPERCASE.test(declaration) ||
         TEXT_TRACKING.test(declaration)
@@ -336,5 +352,55 @@ describe("design-language feature glyph treatment", () => {
         css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
       expect(body).not.toContain("--accent");
     }
+  });
+});
+
+describe("active pane focus current", () => {
+  it("loops the yellow current while the focused agent is working", () => {
+    const css = readStylesheet().replace(CSS_COMMENT, "");
+    const base =
+      css.match(
+        /\.pane\.is-agent-working::before\s*\{([^}]*)\}/,
+      )?.[1] ?? "";
+    const current =
+      css.match(
+        /\.pane\.is-agent-working::after\s*\{([^}]*)\}/,
+      )?.[1] ?? "";
+
+    expect(css).toMatch(/--pane-focus-current-duration:\s*1500ms\s*;/);
+    expect(css).not.toMatch(/\.is-active \.pane\.is-agent-working::before/);
+    expect(base).not.toMatch(/animation\s*:/);
+    expect(current).toMatch(
+      /animation:\s*pane-focus-current var\(--pane-focus-current-duration\) linear infinite\s*;/,
+    );
+  });
+
+  it("runs a sidebar-click locator once for 1.5s", () => {
+    const css = readStylesheet().replace(CSS_COMMENT, "");
+    const paneSlot = css.match(/\.pane-slot\s*\{([^}]*)\}/)?.[1] ?? "";
+    const locator = css.match(/\.pane-ping\s*\{([^}]*)\}/)?.[1] ?? "";
+    const locatorCurrents = [
+      ...css.matchAll(/\.pane-ping::after\s*\{([^}]*)\}/g),
+    ].map((match) => match[1]);
+
+    expect(paneSlot).toMatch(/position:\s*relative\s*;/);
+    expect(locator).toMatch(
+      /animation:\s*pane-ping-line var\(--pane-focus-current-duration\) linear 1 both\s*;/,
+    );
+    expect(
+      locatorCurrents.some((body) =>
+        /animation:\s*pane-focus-current var\(--pane-focus-current-duration\) linear 1 both\s*;/.test(
+          body,
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it("freezes working to a static line and removes the locator for reduced motion", () => {
+    const css = readStylesheet().replace(CSS_COMMENT, "");
+
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.pane\.is-agent-working::after,[\s\S]*?\.pane-ping\s*\{[^}]*animation:\s*none\s*;[^}]*opacity:\s*0\s*;/,
+    );
   });
 });

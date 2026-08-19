@@ -83,7 +83,12 @@ export function CommitTextarea({
           commit();
           return;
         }
-        if (event.key === "Escape") {
+        // Guarded on a DIRTY draft, matching `CommitInput` (DL-6.3's two
+        // primitives answer this key the same way, 2026-08-19). Unguarded,
+        // this swallowed Escape even with nothing to restore — so a surface
+        // that closes on Escape could not be closed from a field the user had
+        // only clicked into, and the key silently did nothing.
+        if (event.key === "Escape" && draft !== committed.current) {
           event.preventDefault();
           event.stopPropagation();
           setDraft(committed.current);

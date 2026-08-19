@@ -1,11 +1,16 @@
-import { DotsThree } from "@phosphor-icons/react";
+import { DotsThreeOutline } from "@phosphor-icons/react";
 import { Fragment, type ComponentChildren, type RefObject } from "preact";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import {
   ActionTooltip,
   useTooltipVisibility,
 } from "../controls/action-tooltip";
-import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import {
+  CHROME_ICON,
+  DeckIcon,
+  FEATURE_ICON,
+  type DeckIconSize,
+} from "../controls/deck-icon";
 import {
   isUnavailable,
   unavailableReason,
@@ -36,6 +41,14 @@ interface ToolbarControlProps {
   readonly item: ToolbarItem;
   /** Lifted only when the parent has to anchor a surface to this control. */
   readonly controlRef?: RefObject<HTMLButtonElement>;
+  /**
+   * Presentation overrides for the one control this file itself constructs —
+   * `More`, which draws at `FEATURE_ICON` and solid (DL-14.1's surface-scoped
+   * `filled`, DL-14.2's role widening). They live here rather than on
+   * `ToolbarItem` because no caller-supplied action gets to choose them.
+   */
+  readonly iconSize?: DeckIconSize;
+  readonly iconFilled?: boolean;
 }
 
 /**
@@ -46,7 +59,12 @@ interface ToolbarControlProps {
  * becomes unreachable for anyone not using a pointer. Activation is blocked
  * here instead, where the reason is also what the tooltip says.
  */
-function ToolbarControl({ item, controlRef }: ToolbarControlProps) {
+function ToolbarControl({
+  item,
+  controlRef,
+  iconSize = CHROME_ICON,
+  iconFilled = false,
+}: ToolbarControlProps) {
   const fallbackRef = useRef<HTMLButtonElement>(null);
   const ref = controlRef ?? fallbackRef;
   const tooltip = useTooltipVisibility();
@@ -98,7 +116,7 @@ function ToolbarControl({ item, controlRef }: ToolbarControlProps) {
           item.onActivate();
         }}
       >
-        <DeckIcon icon={item.icon} size={CHROME_ICON} />
+        <DeckIcon icon={item.icon} size={iconSize} filled={iconFilled} />
       </button>
       {showTooltip && tooltip.anchor !== null && (
         <ActionTooltip
@@ -139,6 +157,13 @@ interface FeatureToolbarProps {
    * DL-23.5), so the trigger is the only thing left to hang it from.
    */
   readonly pinnedMenuAnchored?: ComponentChildren;
+  /**
+   * The external-app split-button, which owns its own icon and its own menu
+   * and therefore cannot be a `ToolbarItem` (new DL-23.11). It renders
+   * immediately before `More`, at the strip's trailing end, and is absent
+   * entirely on a host that reports no installed apps.
+   */
+  readonly externalApp?: ComponentChildren;
 }
 
 export function FeatureToolbar({
@@ -146,6 +171,7 @@ export function FeatureToolbar({
   updateAction,
   pinnedMenu,
   pinnedMenuAnchored,
+  externalApp,
 }: FeatureToolbarProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const updateRef = useRef<HTMLSpanElement>(null);
@@ -206,10 +232,13 @@ export function FeatureToolbar({
     ...fit.overflow,
   ];
 
+  // `DotsThreeOutline` solid, never `DotsThree` at `fill` — the latter is the
+  // bare-glyph case DL-14.1 records: its fill variant becomes a knocked-out
+  // tile, while the outline icon's fill is exactly three readable dots.
   const moreItem: ToolbarItem = {
     id: "toolbar-more",
     label: "More actions",
-    icon: DotsThree,
+    icon: DotsThreeOutline,
     group: "global",
     shortcut: null,
     state: menu !== null ? { kind: "active" } : { kind: "idle" },
@@ -230,13 +259,23 @@ export function FeatureToolbar({
   // toolbar blank.
   const trailingExtras = (
     <>
+      {externalApp}
       {updateAction !== undefined && (
         <span ref={updateRef} class="ftoolbar__update">
           {updateAction}
         </span>
       )}
+      {/* DL-14.2's role widening (owner, 2026-08-20): `More` is the entry
+          point to every pane action since DL-23.8, standing icon-only at the
+          strip's trailing end, so it draws at 15 like the dock header — the
+          glyph grew, the 24px `.iconbtn` box did not. */}
       {menuItems.length > 0 && (
-        <ToolbarControl item={moreItem} controlRef={moreRef} />
+        <ToolbarControl
+          item={moreItem}
+          controlRef={moreRef}
+          iconSize={FEATURE_ICON}
+          iconFilled
+        />
       )}
     </>
   );

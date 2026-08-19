@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractLinkCandidates } from "./terminal-links";
+import { extractLinkCandidates, stripDiffPrefix } from "./terminal-links";
 
 describe("extractLinkCandidates", () => {
   it("matches http and https urls", () => {
@@ -164,5 +164,88 @@ describe("extractLinkCandidates", () => {
   it("ignores a zero line number", () => {
     const [file] = extractLinkCandidates("src/foo.ts:0");
     expect(file.line).toBeNull();
+  });
+
+  // Every case below is built from a real sample in the design's §2 table.
+  describe("grammars agents actually print", () => {
+    it("captures tsc's parenthesised position", () => {
+      const source =
+        "src/ui/agent-quick-picker.test.tsx(340,15): error TS2554: Expected 1 arguments.";
+      const [file] = extractLinkCandidates(source);
+      expect(file.target).toBe("src/ui/agent-quick-picker.test.tsx");
+      expect(file.line).toBe(340);
+      expect(file.col).toBe(15);
+      // The clickable text carries the position, exactly as `:line:col` does.
+      expect(file.text).toBe("src/ui/agent-quick-picker.test.tsx(340,15)");
+      expect(source.slice(file.start, file.end)).toBe(file.text);
+    });
+
+    it("leaves a Claude Code tool line alone", () => {
+      // `Read(src/foo.ts)` — the parens are boundaries, not a position, and a
+      // single parenthesised number is not one either.
+      expect(
+        extractLinkCandidates("Read(src/foo.ts)").map((c) => c.text),
+      ).toEqual(["src/foo.ts"]);
+      expect(extractLinkCandidates("src/foo.ts(3)")[0].text).toBe("src/foo.ts");
+    });
+
+    it("keeps matching the colon position", () => {
+      const [file] = extractLinkCandidates("--> src/main.rs:12:5");
+      expect(file.target).toBe("src/main.rs");
+      expect(file.line).toBe(12);
+      expect(file.col).toBe(5);
+    });
+
+    it("captures Python's quoted path and its line", () => {
+      const source = '  File "src/x.py", line 12, in handler';
+      const [file] = extractLinkCandidates(source);
+      expect(file.target).toBe("src/x.py");
+      expect(file.line).toBe(12);
+      // The quotes bound the token; the underline stops at the path.
+      expect(source.slice(file.start, file.end)).toBe("src/x.py");
+    });
+
+    it("is the only route to a path holding a space", () => {
+      const [file] = extractLinkCandidates('opened "src/my notes/todo.md"');
+      expect(file.target).toBe("src/my notes/todo.md");
+      // Unquoted, the same text is two candidates and neither is the file.
+      expect(
+        extractLinkCandidates("opened src/my notes/todo.md").map(
+          (c) => c.target,
+        ),
+      ).not.toContain("src/my notes/todo.md");
+    });
+
+    it("ignores a quoted token that cannot be a path", () => {
+      expect(extractLinkCandidates('echo "hello world"')).toEqual([]);
+    });
+
+    it("emits one candidate for a quoted path, not two", () => {
+      // The bare-path rule would match inside the quotes as well; two links
+      // over the same cells is what the quoted rule suppresses.
+      expect(extractLinkCandidates('"src/x.py"')).toHaveLength(1);
+    });
+  });
+
+  describe("stripDiffPrefix", () => {
+    it("strips git's diff prefixes", () => {
+      expect(stripDiffPrefix("a/src/terminal/tab-manager.ts")).toBe(
+        "src/terminal/tab-manager.ts",
+      );
+      expect(stripDiffPrefix("b/src/terminal/tab-manager.ts")).toBe(
+        "src/terminal/tab-manager.ts",
+      );
+    });
+
+    it("leaves anything else alone", () => {
+      expect(stripDiffPrefix("src/a/b.ts")).toBeNull();
+      expect(stripDiffPrefix("app/main.ts")).toBeNull();
+    });
+
+    it("is what makes a diff header clickable", () => {
+      const [file] = extractLinkCandidates("--- a/src/terminal/tab-manager.ts");
+      expect(file.target).toBe("a/src/terminal/tab-manager.ts");
+      expect(stripDiffPrefix(file.target)).toBe("src/terminal/tab-manager.ts");
+    });
   });
 });

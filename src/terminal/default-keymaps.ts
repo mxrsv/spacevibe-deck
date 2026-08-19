@@ -209,6 +209,22 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // mandatory, not a style choice: this action has a macOS menu item, and a
   // Cocoa accelerator is declared by character (see the RULE above).
   { key: "u", meta: true, shift: true, action: "toggle-usage" },
+  // Session history — the dock's third tab (2026-08-19). `y` is verified
+  // unused in both keymaps at every modifier combination, and it is the
+  // letter browsers already train for history (⌘Y on macOS). ⌘⇧H, the obvious
+  // "history" chord, is NOT available: Cocoa owns it as Hide Others.
+  // CharKeyBinding is mandatory, not a style choice: this action has a macOS
+  // menu item, and a Cocoa accelerator is declared by character (RULE above).
+  { key: "y", meta: true, shift: true, action: "toggle-sessions" },
+  // The dock column itself (2026-08-19). `j` is verified unused in both
+  // keymaps and is the panel chord VS Code trains, which pairs with ⌘⇧B for
+  // the explorer the way ⌘J pairs with ⌘B there. ⌘⇧D — the "dock" letter — is
+  // already split-column. Ctrl+Shift+J is also Chromium's DevTools console
+  // chord; Deck installs its own menu with no DevTools role, and the same
+  // trade was already accepted for `toggle-browser` on Ctrl+Shift+I.
+  // CharKeyBinding is mandatory, not a style choice: this action has a macOS
+  // menu item, and a Cocoa accelerator is declared by character (RULE above).
+  { key: "j", meta: true, shift: true, action: "toggle-dock" },
   // Move the focused pane into its own window. Cmd+Shift+M is free on both
   // keymaps (no `m`/`KeyM` binding existed on either) and `m` is the "move"
   // mnemonic; macOS's Cmd+M Minimize is a Cocoa builtin and does not claim
@@ -350,6 +366,10 @@ export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   { key: ",", ctrl: true, action: "toggle-settings" },
   { key: "p", ctrl: true, shift: true, action: "toggle-prompts" },
   { key: "u", ctrl: true, shift: true, action: "toggle-usage" },
+  // The macOS twins of the two chords added 2026-08-19; see the reasoning on
+  // the ⌘⇧Y / ⌘⇧J entries above. Both letters are free on this keymap too.
+  { key: "y", ctrl: true, shift: true, action: "toggle-sessions" },
+  { key: "j", ctrl: true, shift: true, action: "toggle-dock" },
   { key: "m", ctrl: true, shift: true, action: "move-pane-to-new-window" },
   { key: "pageup", shift: true, action: "scroll-page-up" },
   { key: "pagedown", shift: true, action: "scroll-page-down" },

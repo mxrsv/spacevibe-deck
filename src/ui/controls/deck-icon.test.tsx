@@ -31,9 +31,9 @@ describe("DeckIcon", () => {
 
   // Phosphor expresses weight in the path data, so there is no attribute to
   // read: the only way to pin the choice is to compare what was drawn against
-  // the library's own output at each weight. Without these two, DL-14.1's
+  // the library's own output at each weight. Without these checks, DL-14.1's
   // 2026-08-19 split between the outline default and the solid exceptions
-  // would live in one unguarded conditional.
+  // default, global exception and scoped exception would be unguarded.
   const pathData = (node: ParentNode): string =>
     Array.from(node.querySelectorAll("path"))
       .map((path) => path.getAttribute("d"))
@@ -63,6 +63,14 @@ describe("DeckIcon", () => {
 
     expect(drawn).toBe(reference(SidebarSimple, "fill"));
     expect(drawn).not.toBe(reference(SidebarSimple, "regular"));
+  });
+
+  it("allows a surface-scoped solid treatment without changing the default", () => {
+    act(() => render(<DeckIcon icon={Gear} filled />, host));
+    expect(pathData(host)).toBe(reference(Gear, "fill"));
+
+    act(() => render(<DeckIcon icon={Gear} />, host));
+    expect(pathData(host)).toBe(reference(Gear, "regular"));
   });
 
   it("carries the layout class the stylesheet targets", () => {

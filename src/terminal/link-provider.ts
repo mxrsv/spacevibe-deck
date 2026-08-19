@@ -1,11 +1,10 @@
 import type { ILink, ILinkProvider, Terminal } from "@xterm/xterm";
 import {
   extractLinkCandidates,
+  stripDiffPrefix,
   type LinkCandidate,
 } from "../lib/terminal-links";
-import { buildOpenEditorRequest } from "../lib/editor-command";
-import { settings } from "../settings/settings-store";
-import { reportPersistError } from "../chrome/events";
+import { reportPersistError, requestPathOpen } from "../chrome/events";
 import { hasPrimaryModifier } from "../lib/platform";
 import { defaultLinkClient, type LinkClient } from "./link-client";
 import {
@@ -14,6 +13,7 @@ import {
   syncPrimaryModifierHeld,
 } from "./primary-modifier";
 import { readLogicalLine, type LogicalLine } from "./logical-line";
+import { eslintHeaderText, matchPositionRow } from "./eslint-positions";
 
 /** Resolved lines cached per (cwd, text) — hovering must not re-hit the IPC. */
 const CACHE_LIMIT = 40;
@@ -55,22 +55,15 @@ function openCandidate(link: ResolvedLink, client: LinkClient): void {
     });
     return;
   }
-  const { editorId, editorCommand } = settings.value;
-  const request = buildOpenEditorRequest(
-    editorId,
-    editorCommand,
-    link.target,
-    link.candidate.line,
-    link.candidate.col,
-  );
-  if (request === null) {
-    reportPersistError(
-      "No editor command is configured — set one under Settings › Editor.",
-    );
-    return;
-  }
-  client.openEditor(request).catch((err: unknown) => {
-    reportPersistError(`Couldn't open the editor: ${String(err)}`);
+  // Where the file opens is App's decision, not this module's (design §3.2):
+  // a path inside an open workspace lands in Deck's own editor, anything else
+  // goes to the app selected on the toolbar. Raising an intent rather than
+  // calling either one keeps the provider from importing the file layer,
+  // which is the seam `file-surface-controller.ts` documents.
+  requestPathOpen({
+    path: link.target,
+    line: link.candidate.line,
+    column: link.candidate.col,
   });
 }
 
@@ -199,14 +192,48 @@ export function createLinkProvider(
         callback(undefined);
         return;
       }
-      const candidates = extractLinkCandidates(logical.text);
+      const onLine = extractLinkCandidates(logical.text);
+      // ESLint's finding rows name a position but no file — the file is the
+      // header above them (design §2.3). The walk is synchronous and the
+      // header's path joins THIS line's resolve batch, so a cross-line link
+      // costs no extra IPC round trip.
+      const position = matchPositionRow(logical.text);
+      const headerText =
+        position === null
+          ? null
+          : eslintHeaderText(term.buffer.active, term.cols, bufferLineNumber - 1);
+      const headerPath =
+        headerText === null
+          ? null
+          : (extractLinkCandidates(headerText).find(
+              (candidate) => candidate.kind === "path",
+            ) ?? null);
+      const crossLine: LinkCandidate | null =
+        position !== null && headerPath !== null
+          ? {
+              kind: "path",
+              text: logical.text.slice(position.start, position.end),
+              target: headerPath.target,
+              line: position.line,
+              col: position.col,
+              start: position.start,
+              end: position.end,
+            }
+          : null;
+      const candidates =
+        crossLine === null ? onLine : [...onLine, crossLine];
       if (candidates.length === 0) {
         callback(undefined);
         return;
       }
 
       const cwd = deps.getCwd() ?? "";
-      const key = `${cwd}\u0000${logical.text}`;
+      // The header's text is part of the key, not decoration. `12:5  error
+      // no-unused-vars` is byte-identical under two different file headers, so
+      // a cache keyed by this line's text alone would open the FIRST file's
+      // document from the second file's rows — silently, and only for the user
+      // whose lint run happened to repeat a finding.
+      const key = `${cwd}\u0000${logical.text}\u0000${headerText ?? ""}`;
       const cached = recall(key);
       if (cached !== undefined) {
         callback(toLinks(cached, logical));
@@ -223,13 +250,33 @@ export function createLinkProvider(
         return;
       }
 
+      // One candidate can ask two questions. `--- a/src/foo.ts` in a git diff
+      // is not a file, but `src/foo.ts` is — and in a repository that really
+      // holds an `a/` directory the verbatim spelling is the right answer. So
+      // both go into the SAME batch and the verbatim hit wins, which is why
+      // it is pushed first (design §2.2). Worst case is 2× the per-line cap
+      // of 24, still inside the resolver's own batch cap of 64.
+      const requests: { candidate: LinkCandidate; raw: string }[] = [];
+      for (const candidate of paths) {
+        requests.push({ candidate, raw: candidate.target });
+        const stripped = stripDiffPrefix(candidate.target);
+        if (stripped !== null) {
+          requests.push({ candidate, raw: stripped });
+        }
+      }
+
       /** Pair each candidate with what the backend made of it; drop the rest. */
       function resolveLinks(results: (string | null)[]): ResolvedLink[] {
         const absolute = new Map<LinkCandidate, string>();
-        paths.forEach((candidate, index) => {
+        requests.forEach((request, index) => {
           const resolved = results[index];
-          if (typeof resolved === "string" && resolved !== "") {
-            absolute.set(candidate, resolved);
+          if (
+            typeof resolved === "string" &&
+            resolved !== "" &&
+            // First answer wins, and the verbatim spelling was asked first.
+            !absolute.has(request.candidate)
+          ) {
+            absolute.set(request.candidate, resolved);
           }
         });
         return candidates.flatMap<ResolvedLink>((candidate) => {
@@ -244,7 +291,7 @@ export function createLinkProvider(
       client
         .resolvePaths(
           cwd,
-          paths.map((candidate) => candidate.target),
+          requests.map((request) => request.raw),
         )
         .then((results) => {
           // xterm's Linkifier files every reply under the provider's index and

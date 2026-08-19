@@ -25,8 +25,8 @@
 /* ── DL-18.6: the stage's tab strip (sidebar layout only) ─────────────────
    Sidebar mode's frame row is one row with two occupants: `.deck-frame` at
    column 1 and this at column 2. It is `--frame-h` tall and stays transparent
-   on the stage's `--bg`, while the navigation-side occupant paints the
-   recessed `--sidebar-bg` (DL-18.2, DL-18.7). It introduces no extra
+   on the stage's `--bg`, while the navigation-side occupant paints
+   `--sidebar-bg` (DL-18.2, DL-18.7). It introduces no extra
    horizontal SURFACE; since 2026-08-16 it does close with the one hairline
    `.tabbar` has always drawn under itself in top-tab mode, so both layouts
    separate chrome from the work area the same way.
@@ -90,6 +90,15 @@
 .stage__surface {
   position: absolute;
   inset: 0;
+  /* Opaque is not enough on its own: several things INSIDE `.stage__tabs` open
+     with a z-index of their own — the pane's hover anchor (5), the search bar
+     (6), the zoom overlay (10), the focus bar (12), the divider's grab zone (1)
+     — and neither `.stage__tabs` nor `.stage` opens a stacking context, so at
+     `auto` they all compete in the root stacking context and paint THROUGH the
+     surface that covers them. 20 stands above every one of them and below the surfaces that
+     must still cover the document: the open board (30), Settings (35), the
+     modal tier (40) and the popovers (100+). */
+  z-index: 20;
   /* Whatever gutter `.stage__tabs` gives its panes — none, since 2026-08-17 —
      so the document lands on exactly the rectangle the terminal was occupying
      instead of shifting by a gutter when the stage changes hands. Both values
@@ -293,20 +302,16 @@
 /* ── Pane ────────────────────────────────────────────────── */
 
 .pane-slot {
-  /* No `position: relative` any more: it existed solely to anchor the focus
-     ping's overlay, and the ping was deleted 2026-08-17. `.pane` positions
-     itself, and `.drop-overlay` is `position: fixed`. */
+  /* Local containing block for the rail-click locator. Without this,
+     `.pane-ping { position: absolute }` climbs to the tab/stage ancestor and
+     draws across the top of the whole tab instead of this exact pane. */
+  position: relative;
   display: flex;
   flex: 1 1 0;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
-
-/* The focus ping lived here until 2026-08-17: a 1500ms accent ring the pane
-   flashed when the rail sent focus into it. The owner removed it — clicking a
-   rail row should move focus and say nothing else. `pane-ping.ts`, its suite
-   and DL-27.7 went with it, and DL-1.2's 300ms cap has no exception again. */
 
 .pane {
   position: relative;
@@ -319,7 +324,9 @@
   background: var(--bg);
 }
 
-/* Active pane (only when >1 pane), reshaped 2026-08-17 at the owner's request.
+/* The pane's two yellow signals share one visual language but not one life:
+   a rail click appends `.pane-ping` for a single 1.5s locator; any pane whose
+   agent is working keeps the current cycling until the tracker stops.
    It used to be a full inset ring, and the ring was the problem: three of its
    four sides landed on top of something else — the pane bar covered the top,
    the splits covered both flanks — so the only side standing on open ground
@@ -327,23 +334,110 @@
    a terminal reads as a rendering artefact, not as "this pane has the keys".
    The owner asked about it twice before it was touched.
 
-   One 2px accent bar along the TOP edge instead. It says the same thing from a
-   fixed place the eye can learn, and it sits where chrome already is rather
-   than in the middle of the work area. A pseudo-element, not a border: `.pane`
-   is a flex child sized by the split, so a border would take 2px off the
-   terminal's width and cost a PTY resize every time focus moved.
+   Both use the TOP edge instead. They are overlays, not borders: `.pane` is a
+   flex child sized by the split, so a border would take pixels off the
+   terminal and cost a PTY resize every time a signal appeared.
 
    z-index 12 because xterm's own layers run to 11 inside `.pane`, and neither
-   `.pane-slot` nor `.pane` opens a stacking context, so an `auto` bar would
+   `.pane-slot` nor `.pane` opens a stacking context, so an `auto` line would
    paint under the terminal. */
-.pane-slot.is-active .pane::before {
+.pane.is-agent-working::before {
   content: "";
   position: absolute;
   inset: 0 0 auto 0;
   height: 2px;
   z-index: 12;
-  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  background: color-mix(in srgb, var(--yellow) 72%, transparent);
   pointer-events: none;
+}
+
+/* The rail-click locator exists independently of `working`: selecting an idle
+   agent still identifies where focus landed. It replaces its DOM node on each
+   click, so the one-shot animation always restarts without a timer. */
+.pane-ping {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 13;
+  height: 2px;
+  background: color-mix(in srgb, var(--yellow) 72%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  animation:
+    pane-ping-line var(--pane-focus-current-duration) linear 1 both;
+}
+
+/* Ghostty-style charge: two bright packets cross either the working line or
+   the one-shot locator. Only transform and opacity animate, so terminal
+   geometry and paint order stay fixed while the current travels. */
+.pane.is-agent-working::after,
+.pane-ping::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  z-index: 13;
+  width: 48%;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0 8%,
+    color-mix(in srgb, var(--yellow) 42%, transparent) 14%,
+    var(--yellow) 19%,
+    color-mix(in srgb, var(--yellow) 58%, var(--tone)) 22%,
+    var(--yellow) 25%,
+    transparent 31% 62%,
+    color-mix(in srgb, var(--yellow) 40%, transparent) 68%,
+    var(--yellow) 74%,
+    transparent 82% 100%
+  );
+  pointer-events: none;
+}
+
+.pane.is-agent-working::after {
+  animation:
+    pane-focus-current var(--pane-focus-current-duration) linear infinite;
+}
+
+.pane-ping::after {
+  animation:
+    pane-focus-current var(--pane-focus-current-duration) linear 1 both;
+}
+
+@keyframes pane-ping-line {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  7% {
+    opacity: 1;
+  }
+  74% {
+    opacity: 0.72;
+  }
+}
+
+@keyframes pane-focus-current {
+  0% {
+    opacity: 0;
+    transform: translateX(-110%);
+  }
+  6% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.96;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(310%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pane.is-agent-working::after,
+  .pane-ping {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 .pane__bar {
@@ -364,18 +458,23 @@
   display: none;
 }
 
-/* ── Hover anchor: centered pill, drag handle when the bar is hidden ── */
+/* ── Hover anchor: centered grip, drag handle when the bar is hidden ── */
 
 .pane__anchor {
   position: absolute;
-  top: 5px;
+  /* Clears the divider above: `.split__divider::after` widens the 1px seam's
+     grab zone 3px into this pane, and the pill used to start at y=-1px once
+     its hidden `translateY(-6px)` was applied — sitting right on the grab
+     zone the pointer was aiming for. */
+  top: 12px;
   left: 50%;
   z-index: 5;
   display: none;
   align-items: center;
-  gap: 7px;
-  max-width: 60%;
-  padding: 3px 11px;
+  /* The pill carries the grip and nothing else, so the padding IS the hit
+     target: when the bar is hidden this is the pane's only drag handle
+     (`pane-drag.ts`), and a bare glyph is too small to aim at. */
+  padding: 4px 12px;
   border: 1px solid var(--hair-strong);
   border-radius: 999px;
   background: var(--chrome-2);
@@ -384,6 +483,11 @@
   color: var(--text-muted);
   cursor: grab;
   opacity: 0;
+  /* An opacity-0 element still takes the pointer. While hidden the pill must
+     be transparent to hit-testing, or hovering the divider lands on the pill,
+     bubbles to the pane and reveals it instead of letting the seam be dragged.
+     Re-enabled with the visible state below. */
+  pointer-events: none;
   transform: translate(-50%, -6px);
   transition:
     opacity var(--duration) var(--ease),
@@ -396,7 +500,18 @@
 
 .pane-bar-hidden .pane.is-anchor-zone .pane__anchor {
   opacity: 1;
+  pointer-events: auto;
   transform: translate(-50%, 0);
+}
+
+/* A covered pane never receives the `mouseleave` that clears `is-anchor-zone`,
+   so while a document or the browser holds the stage the pill can still be in
+   its revealed state underneath. The surface's own `z-index` already hides it;
+   this takes it out of the layout too, so no hover state survives the handover.
+   Outranks the `.pane-bar-hidden` rule above on specificity, and is removed
+   with the surface, so nothing changes for a terminal tab. */
+.stage:has(.stage__surface) .pane__anchor {
+  display: none;
 }
 
 .pane__anchor-grip {
@@ -407,12 +522,9 @@
      icon-like grip, not readable copy. */
   letter-spacing: -1px;
   flex-shrink: 0;
-}
-
-.pane__anchor-cwd {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* The glyph sits on its text baseline with the face's own descent below it,
+     which put the pill's optical centre off. */
+  line-height: 1;
 }
 
 /* ── Search bar (Cmd+F) ─────────────────────────────────── */

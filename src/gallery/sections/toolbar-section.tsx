@@ -20,6 +20,8 @@ import type {
   ToolbarItemState,
 } from "../../ui/toolbar/toolbar-item";
 import { UpdateAction } from "../../updater/update-action";
+import { ExternalAppButton } from "../../ui/toolbar/external-app-button";
+import type { ExternalAppChoice } from "../../links/external-app-choices";
 import { SectionHead, Specimen, StateLabel } from "../specimen";
 
 /**
@@ -60,6 +62,22 @@ const IDLE: ToolbarItemState = { kind: "idle" };
 const ACTIVE: ToolbarItemState = { kind: "active" };
 
 const NOOP = (): void => {};
+
+/**
+ * A generated solid-tile PNG, NOT a real app's artwork: DL-14.7 keeps
+ * third-party logos out of the repo, and in the shipping app this data URL is
+ * read off the installed bundle at runtime. The specimen only has to show the
+ * geometry — a raster mark in the button and in the menu rows.
+ */
+const TILE =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAeUlEQVR4nO3PwQkAIBDAsNvTVZzcl0P4CEKhA6Sz9vm64YIGtKABLWhACxrQgga0oAEtaEALGtCCBrSgAS1oQAsa0IIGtKABLWhACxrQgga0oAEtaEALGtCCBrSgAS1oQAsa0IIGtKABLWhACxrQgga0oAEtaEALHrtXDxG0cUPcsQAAAABJRU5ErkJggg==";
+
+const EXTAPP_CHOICES: readonly ExternalAppChoice[] = [
+  { id: "vscode", label: "VS Code", group: "editor", iconDataUrl: TILE },
+  { id: "zed", label: "Zed", group: "editor", iconDataUrl: TILE },
+  { id: "finder", label: "Finder", group: "files", iconDataUrl: TILE },
+  { id: "ghostty", label: "Ghostty", group: "terminal", iconDataUrl: null },
+];
 
 interface ItemOverrides {
   /** Keyed by item id — the states a specimen cannot reach by pointing at it. */
@@ -280,6 +298,44 @@ export function ToolbarSection() {
           </StateLabel>
           <BarFrame width={240}>
             <FeatureToolbar items={toolbarItems(platform.value)} />
+          </BarFrame>
+        </div>
+      </Specimen>
+
+      <Specimen
+        name="ExternalAppButton — the split-button (DL-23.11)"
+        note="icon opens the workspace, caret picks the app; Ghostty in the menu shows the no-icon fallback (an initial, never a stand-in logo)"
+        surface="bg"
+      >
+        <div class="gx-barpad">
+          <BarFrame width={720}>
+            <FeatureToolbar
+              items={toolbarItems(platform.value)}
+              externalApp={
+                <ExternalAppButton
+                  choices={EXTAPP_CHOICES}
+                  selected="vscode"
+                  workspacePath="/Users/dev/repo"
+                  onOpen={NOOP}
+                  onSelect={NOOP}
+                />
+              }
+            />
+          </BarFrame>
+          <StateLabel>no workspace — the icon half is unavailable</StateLabel>
+          <BarFrame width={720}>
+            <FeatureToolbar
+              items={toolbarItems(platform.value)}
+              externalApp={
+                <ExternalAppButton
+                  choices={EXTAPP_CHOICES}
+                  selected="ghostty"
+                  workspacePath={null}
+                  onOpen={NOOP}
+                  onSelect={NOOP}
+                />
+              }
+            />
           </BarFrame>
         </div>
       </Specimen>

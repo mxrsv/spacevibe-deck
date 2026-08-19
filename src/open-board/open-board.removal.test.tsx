@@ -108,10 +108,11 @@ describe("OpenBoard removal flow", () => {
       render(
         <OpenBoard
           canCancel={false}
+          canBrowseSessions={false}
+          openWorkspacePaths={new Set()}
           onCancel={() => {}}
           onOpen={onOpen}
-          recentSessions={[]}
-          onResumeSession={() => {}}
+          onResumeSession={async () => true}
         />,
         host,
       );
@@ -180,7 +181,7 @@ describe("OpenBoard removal flow", () => {
     missingPaths.add("/w/ghost").add("/w/wraith");
     await mount();
 
-    const removeAll = host.querySelector<HTMLButtonElement>(".gsep button");
+    const removeAll = host.querySelector<HTMLButtonElement>(".gsep__remove");
     expect(removeAll?.textContent).toBe("Remove 2");
     await act(async () => {
       removeAll?.click();

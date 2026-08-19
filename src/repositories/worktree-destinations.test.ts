@@ -3,6 +3,7 @@ import type { RepositoryScan, WorktreeEntry } from "./repository-client";
 import {
   defaultDestinationPath,
   destinationLabel,
+  plainFolderDestination,
   worktreeDestinations,
 } from "./worktree-destinations";
 
@@ -171,5 +172,24 @@ describe("defaultDestinationPath", () => {
 
   it("has no answer for an empty list", () => {
     expect(defaultDestinationPath([], "/dev/deck")).toBeNull();
+  });
+});
+
+// DL-27.18: the rail's per-project `+` always states where it is opening, and
+// a folder git knows nothing about still has to be stated.
+describe("plainFolderDestination", () => {
+  it("describes a folder as its own single destination", () => {
+    expect(plainFolderDestination("/dev/notes")).toEqual({
+      path: "/dev/notes",
+      name: "notes",
+      branch: null,
+      primary: true,
+    });
+  });
+
+  it("prints as the folder alone, with no branch half", () => {
+    expect(destinationLabel(plainFolderDestination("/dev/notes"))).toBe(
+      "notes",
+    );
   });
 });

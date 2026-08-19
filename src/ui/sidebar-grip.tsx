@@ -92,7 +92,11 @@ export function SidebarGrip(props: SidebarGripProps) {
 
   return (
     <div
-      class="sidebar-grip"
+      // The accent line stays lit for the whole gesture, not just while the
+      // pointer happens to be over the 9px target: a drag captured on this
+      // element routinely travels well past it, and a seam that goes dark
+      // mid-drag reads as a dropped gesture (DL-18.9, amended 2026-08-19).
+      class={`sidebar-grip ${sidebarWidthLive.value === null ? "" : "is-dragging"}`}
       onPointerDown={startResize}
       role="separator"
       aria-orientation="vertical"

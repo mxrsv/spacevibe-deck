@@ -3,7 +3,6 @@ import {
   clampFontSize,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
-  TERMINAL_RENDERERS,
   type TabBarPosition,
 } from "../../../settings/settings-schema";
 import { settings, updateSettings } from "../../../settings/settings-store";
@@ -11,8 +10,7 @@ import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
 import { ConfigGroup, ConfigRow, ToggleRow } from "../../controls/config-row";
 import { FontRow } from "../../controls/font-row";
 import { LogoRow } from "../../controls/logo-row";
-import { ThemeGallery } from "../theme-gallery";
-import { ColorOverrides } from "../color-overrides";
+import { ThemeModeSelector } from "../theme-mode-selector";
 import { SidebarBannerSettings } from "../sidebar-banner-settings";
 
 const TAB_BAR_CHOICES: readonly TabBarPosition[] = ["left", "top"];
@@ -30,21 +28,16 @@ export function AppearanceSection() {
     updateSettings({ tabBarPosition: next });
   };
 
-  const cycleRenderer = (): void => {
-    const index = TERMINAL_RENDERERS.indexOf(current.terminalRenderer);
-    const next = TERMINAL_RENDERERS[(index + 1) % TERMINAL_RENDERERS.length];
-    updateSettings({ terminalRenderer: next });
-  };
-
   return (
     <>
-      <ThemeGallery />
-      {/* The overrides live directly under the gallery because the gallery is
-          what clears them: picking a card resets `colorOverrides`, so the rows
-          that show what is overridden belong next to the control that wipes
-          them, not one rail category away (2026-08-16). */}
-      <ConfigGroup label="Colors" />
-      <ColorOverrides />
+      {/* Two segments where the theme gallery, the import action, the themes
+          folder and the four colour override rows used to be (2026-08-19).
+          None of that was deleted — `theme-gallery.tsx`, `color-overrides.tsx`
+          and every parser still build and still have their tests — it is
+          unmounted, so a legacy selection keeps working while Settings offers
+          one plain product choice. */}
+      <ConfigGroup label="Theme" />
+      <ThemeModeSelector />
       <ConfigGroup label="Type and chrome" />
       <FontRow
         value={current.fontFamily}
@@ -72,27 +65,6 @@ export function AppearanceSection() {
             <DeckIcon icon={Plus} size={ROW_ICON} />
           </button>
         </span>
-      </ConfigRow>
-      {/* Sits with the type rows because that is what it changes: the renderer
-          is the thing that puts glyphs on screen, so it belongs beside font
-          and size rather than under a Terminal category the user would reach
-          only after the text already looked wrong. */}
-      <ConfigRow
-        label="Terminal renderer"
-        desc="webgl joins block glyphs in TUIs; text antialiasing differs"
-      >
-        <button
-          type="button"
-          class="cfg-btn"
-          title="Next renderer"
-          aria-label={`Terminal renderer: ${current.terminalRenderer}. Switch to next renderer`}
-          onClick={cycleRenderer}
-        >
-          {current.terminalRenderer}
-          <span class="cfg-btn__hint">
-            <DeckIcon icon={Repeat} size={ROW_ICON} />
-          </span>
-        </button>
       </ConfigRow>
       <LogoRow />
       <ConfigRow label="Tab bar position" desc="Where the tab list sits">

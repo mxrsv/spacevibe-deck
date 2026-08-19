@@ -9,7 +9,7 @@
  */
 import { signal } from "@preact/signals";
 import type { UnlistenFn } from "../host/bridge";
-import type { SurfaceStrip } from "../terminal/tab-manager";
+import type { SurfaceStrip, SurfaceEditCommand } from "../terminal/tab-manager";
 import { UNSEQUENCED } from "../lib/open-sequence";
 import { FILE_CLOSE_COPY, confirmClose } from "../terminal/close-guard";
 import type { Settings } from "../settings/settings-schema";
@@ -34,6 +34,7 @@ import {
   listingErrorsFor,
   openFileTab,
   promoteFileTab,
+  requestReveal,
   setListing,
   setListingError,
   stripFileTabs,
@@ -60,8 +61,20 @@ export const editorSettings = signal<Settings | null>(null);
 export interface FileSurfaceController extends SurfaceStrip {
   /** Install the change listener and the focus reconcile. */
   init(): Promise<void>;
-  /** Open a file from the tree. `keep` is the double-click path. */
-  openFile(workspacePath: string, path: string, keep: boolean): Promise<void>;
+  /**
+   * Open a file from the tree. `keep` is the double-click path.
+   *
+   * `position` is the ⌘+click path's addition (design §3.3): a terminal link
+   * names a line, and the editor has to land on it whether or not it was
+   * already mounted. It is a stored request rather than an imperative call
+   * because Monaco arrives through a dynamic import — see `pendingReveal`.
+   */
+  openFile(
+    workspacePath: string,
+    path: string,
+    keep: boolean,
+    position?: { readonly line: number; readonly column: number },
+  ): Promise<void>;
   /** Bring an already-open file tab to the stage. */
   activateFile(workspacePath: string, path: string): void;
   /** Expand or collapse a directory, loading its listing on demand. */
@@ -84,8 +97,22 @@ export interface FileSurfaceController extends SurfaceStrip {
   reconcile(): Promise<void>;
   /** Register the mounted editor's focus function. */
   setEditorFocus(focus: (() => void) | null): void;
+  /**
+   * Register the mounted editor's handler for the three Edit-menu commands
+   * whose native Cocoa roles cannot reach Monaco (see `SurfaceEditCommand`).
+   */
+  setEditorEdit(run: EditorEditHandler | null): void;
+  /**
+   * Run one Edit-menu command against the mounted editor. Returns false when
+   * no editor is mounted or the caret is somewhere else entirely, which is the
+   * caller's signal to fall back to the browser's own editing command.
+   */
+  runEditCommand(command: SurfaceEditCommand): boolean;
   dispose(): void;
 }
+
+/** Returns true when the mounted editor actually ran the command. */
+export type EditorEditHandler = (command: SurfaceEditCommand) => boolean;
 
 export interface FileSurfaceDeps {
   readonly client?: FileClient;
@@ -117,6 +144,7 @@ export function createFileSurfaceController(
   let disposed = false;
   let unlistenChange: UnlistenFn | null = null;
   let focusEditor: (() => void) | null = null;
+  let editEditor: EditorEditHandler | null = null;
   let onWindowFocus: (() => void) | null = null;
   // Coalesces `fs:changed` bursts into one `listDir` per affected directory
   // (tree-refresh.ts). `loadListing` is a hoisted function declaration below,
@@ -365,7 +393,13 @@ export function createFileSurfaceController(
       window.addEventListener("focus", onWindowFocus);
     },
 
-    async openFile(workspacePath, path, keep) {
+    async openFile(workspacePath, path, keep, position) {
+      // Written BEFORE the tab opens, so the editor's very first model attach
+      // already has somewhere to go — a cold open has no second chance to be
+      // told, and `openFileTab` is what triggers that attach.
+      if (position !== undefined) {
+        requestReveal(path, position.line, position.column);
+      }
       const isNew = openFileTab(workspacePath, path, { keep });
       notify();
       refreshWatch();
@@ -546,6 +580,14 @@ export function createFileSurfaceController(
       focusEditor = focus;
     },
 
+    setEditorEdit(run) {
+      editEditor = run;
+    },
+
+    runEditCommand(command) {
+      return editEditor?.(command) ?? false;
+    },
+
     // ---- SurfaceStrip: everything `TabManager` is allowed to know ----
     count: () => stripFileTabs().length,
     total: () => totalFileTabs(),
@@ -597,6 +639,7 @@ export function createFileSurfaceController(
         onWindowFocus = null;
       }
       focusEditor = null;
+      editEditor = null;
       treeRefresh.dispose();
     },
   };

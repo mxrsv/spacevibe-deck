@@ -4,11 +4,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
 import { WebglAddon } from "@xterm/addon-webgl";
-import {
-  FONT_FALLBACK,
-  type Settings,
-  type TerminalRenderer,
-} from "../settings/settings-schema";
+import { FONT_FALLBACK, type Settings } from "../settings/settings-schema";
 import { applyWebkitImeFix, isWebKitWebView } from "./webkit-ime-fix";
 import { installShiftEnterNewline } from "./shift-enter";
 import { resolveTheme } from "../settings/themes";
@@ -133,16 +129,17 @@ export function createPane(
   bar.append(dot, cwdEl, badge);
 
   // Hover anchor: shown only while the pane bar is hidden (CSS-gated).
-  // It is the pane-drag handle and shows the cwd; revealed when the
+  // It is the pane-drag handle and nothing else — the grip glyph is the whole
+  // control. It used to print the cwd beside it, which made the pill grow with
+  // the path and read as a label rather than a handle. Revealed when the
   // pointer enters the top ~26px of the pane.
   const anchor = document.createElement("div");
   anchor.className = "pane__anchor";
+  anchor.setAttribute("aria-label", "Drag pane");
   const anchorGrip = document.createElement("span");
   anchorGrip.className = "pane__anchor-grip";
   anchorGrip.textContent = "⋮⋮";
-  const anchorCwd = document.createElement("span");
-  anchorCwd.className = "pane__anchor-cwd";
-  anchor.append(anchorGrip, anchorCwd);
+  anchor.append(anchorGrip);
 
   const termEl = document.createElement("div");
   termEl.className = "pane__term";
@@ -271,10 +268,14 @@ export function createPane(
   const ANCHOR_ZONE_PX = 26;
   element.addEventListener("mousemove", (event) => {
     const top = element.getBoundingClientRect().top;
-    element.classList.toggle(
-      "is-anchor-zone",
-      event.clientY - top < ANCHOR_ZONE_PX,
-    );
+    // The pill stands at y=12 and is taller than the zone that reveals it, so
+    // its own lower half sits OUTSIDE that zone: aiming for the grip used to
+    // remove the class and hide the pill from under the pointer. Standing on
+    // the anchor holds it open — this is the hysteresis the zone alone lacks.
+    const inZone =
+      event.clientY - top < ANCHOR_ZONE_PX ||
+      anchor.contains(event.target as Node);
+    element.classList.toggle("is-anchor-zone", inZone);
   });
   element.addEventListener("mouseleave", () => {
     element.classList.remove("is-anchor-zone");
@@ -295,53 +296,39 @@ export function createPane(
     }, RESIZE_DEBOUNCE_MS);
   });
   let opened = false;
-  let renderer: TerminalRenderer = initial.terminalRenderer;
   let webglAddon: WebglAddon | undefined;
 
-  /**
-   * Bring the live renderer in line with the setting. One reconcile rather
-   * than a load path and an unload path, because both `mount()` and
-   * `applySettings()` reach it and neither knows what the other already did.
-   *
-   * Turning WebGL OFF is `dispose()`: xterm falls back to its DOM renderer on
-   * its own, so the switch is live and no pane has to be respawned.
-   */
-  function syncRenderer(): void {
-    if (!opened) {
-      return;
+  function retireWebglAddon(addon: WebglAddon): boolean {
+    if (webglAddon !== addon) {
+      return false;
     }
-    if (renderer === "webgl" && webglAddon === undefined) {
-      // Declared outside the `try` because the throw comes from `loadAddon`,
-      // which is where xterm activates the addon — by then it exists and is
-      // the thing that has to be disposed.
-      let addon: WebglAddon | undefined;
-      try {
-        addon = new WebglAddon();
-        const pending = addon;
-        // Clearing the handle here too, not only on an explicit switch: after
-        // a lost context the addon is spent, and a stale handle would make the
-        // next dom→webgl toggle a no-op that silently leaves the pane on DOM.
-        pending.onContextLoss(() => {
-          pending.dispose();
-          // Identity-checked: a late loss event from a retired addon must not
-          // clear the handle of the one that replaced it.
-          if (webglAddon === pending) {
-            webglAddon = undefined;
-          }
-        });
-        term.loadAddon(pending);
-        webglAddon = pending;
-      } catch {
-        // WebGL is optional. Disposing a partially activated addon restores
-        // xterm's DOM renderer, which keeps the terminal usable on older GPUs.
-        addon?.dispose();
-        webglAddon = undefined;
+    webglAddon = undefined;
+    addon.dispose();
+    return true;
+  }
+
+  function activateWebglRenderer(): void {
+    let addon: WebglAddon | undefined;
+    try {
+      addon = new WebglAddon();
+      const pending = addon;
+      webglAddon = pending;
+      pending.onContextLoss(() => {
+        if (!retireWebglAddon(pending)) {
+          return;
+        }
+        console.warn(
+          "WebGL terminal renderer context lost; falling back to DOM.",
+        );
+      });
+      term.loadAddon(pending);
+    } catch (error) {
+      if (addon === undefined || retireWebglAddon(addon)) {
+        console.warn(
+          "WebGL terminal renderer initialization failed; falling back to DOM:",
+          error,
+        );
       }
-      return;
-    }
-    if (renderer === "dom" && webglAddon !== undefined) {
-      webglAddon.dispose();
-      webglAddon = undefined;
     }
   }
 
@@ -353,11 +340,9 @@ export function createPane(
       }
       observer.observe(termEl);
       opened = true;
-      // Last, and only now: xterm's DOM renderer cannot draw custom glyphs, so
-      // block and box-drawing characters used by TUIs such as OpenCode look
-      // segmented, and the WebGL renderer that draws them to the full cell box
-      // needs both an element from `open()` and the flag `syncRenderer` gates on.
-      syncRenderer();
+      // Last, and only now: WebGL activation needs the element created by
+      // `open()`. Failure leaves xterm's DOM renderer active for this pane.
+      activateWebglRenderer();
     }
     fit();
   }
@@ -399,11 +384,6 @@ export function createPane(
     term.options.fontSize = next.fontSize;
     term.options.theme = resolveTheme(next);
     term.options.scrollback = next.scrollback;
-    renderer = next.terminalRenderer;
-    // Held in a closure variable rather than read at mount time: settings can
-    // change between `createPane` and the pane being shown, and a pane that
-    // mounted later would otherwise come up on the renderer the user left.
-    syncRenderer();
     fit();
   }
 
@@ -411,7 +391,6 @@ export function createPane(
     activeAgent = info.agent ? info.badge : null;
     dot.style.background = info.dotColor;
     cwdEl.textContent = info.cwd;
-    anchorCwd.textContent = info.cwd;
     badge.textContent = info.badge;
     badge.className = `pane__badge ${
       info.agent ? "pane__badge--agent" : "pane__badge--shell"

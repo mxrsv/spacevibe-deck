@@ -566,6 +566,13 @@
      here (DL-1.5, §9.3). */
   .asr-rail,
   .asr-rail *,
+  /* The docked column is its own root too, and its slide-over is exactly what
+     DL-1.5 means by "panels appear instantly": with no transition the panel
+     lands at its open transform on the frame it mounts. `dock-presence.ts`
+     still holds the mount for the slide's length on the way out, which is
+     invisible — the column is already off-stage by then. */
+  .dock-panel,
+  .dock-panel *,
   .prompt-popover *,
   .status * {
     transition: none;

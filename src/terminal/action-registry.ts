@@ -305,6 +305,40 @@ export const ACTION_REGISTRY = [
     label: "Paste",
     scope: "pane",
   },
+  // The three Edit-menu commands the native Cocoa roles used to own. They are
+  // registry actions rather than `role: "selectAll" | "undo" | "redo"` because
+  // a role runs a DOCUMENT-level Chromium command, and Monaco 0.56 is opaque
+  // to those: with `editContext` on (its default) the caret lives in a
+  // `div.native-edit-context`, so there is no DOM selection to select and no
+  // editable region to undo. Measured 2026-08-19 — `webContents.selectAll()`
+  // followed by a copy returned one line, while the same chord delivered to
+  // the renderer returned the whole file.
+  //
+  // `scope: "always"` is a third case beyond the two `ActionScope` names —
+  // neither has its own overlay preflight nor opens the overlay that would
+  // block it. They act on whatever holds the caret and never on the pane, so
+  // the `"pane"` tier (which `overlayBlocksAction` blocks the moment a file
+  // surface takes the stage) would block them exactly where they are needed.
+  //
+  // Deliberately NO `menu` field: the Electron template hand-writes these
+  // three so they can keep the Cocoa position and label users expect, and
+  // omitting the field keeps `scripts/generate-menu.ts` — and with it Tauri's
+  // hand-written `menu.rs`, which still carries the Cocoa builtins — untouched.
+  {
+    id: "select-all",
+    label: "Select All",
+    scope: "always",
+  },
+  {
+    id: "undo",
+    label: "Undo",
+    scope: "always",
+  },
+  {
+    id: "redo",
+    label: "Redo",
+    scope: "always",
+  },
   {
     id: "split-row",
     label: "Split Vertically",
@@ -414,6 +448,21 @@ export const ACTION_REGISTRY = [
     // sibling tabs take, and "…" no longer belongs on a label that opens no
     // dialog (menu grammar, DL-23.2's registry half). In
     // `isChromeScopedAction` alongside `toggle-dock`, for the same reason.
+    scope: "pane",
+    menu: { submenu: "View", group: "explorer" },
+  },
+  {
+    id: "toggle-sessions",
+    label: "Session History",
+    // Tier "pane", same overlay reasoning as its two sibling tabs above: the
+    // session list is a tab of the dock, and every overlay covers the stage.
+    // In `isChromeScopedAction` alongside `toggle-dock`, for the same reason.
+    //
+    // It did not exist until 2026-08-19 — the file-explorer spec §3.1 shipped
+    // the sessions tab as "toolbar control only, no shortcut, no menu item",
+    // which left the dock's third tab the only one a tooltip could not print
+    // a chord for. The owner asked for the chord when the dock header grew
+    // tooltips; one chord per surface is what the other two already promise.
     scope: "pane",
     menu: { submenu: "View", group: "explorer" },
   },

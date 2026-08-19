@@ -10,10 +10,16 @@ import {
   settingsOpen,
 } from "../chrome/events";
 import {
+  boardClosesAfterResume,
   bootOpensTheBoard,
   browserPanelObscured,
   closeSettingsPanel,
+  dockPaintedOpen,
+  dockToggleOnStage,
+  dockVisible,
+  liveRailAvailable,
   livePresetOpensATab,
+  sidebarEffectivelyCollapsed,
   stripShowsTabs,
   toggleSettingsPanel,
 } from "./app-policy";
@@ -191,18 +197,50 @@ describe("settings load recovery layer", () => {
 // cannot even be cancelled), NOTHING on screen could bring the sidebar back.
 // Same rectangle rule `.stage__surface` has always used for the document.
 describe("full-window surfaces leave the stage strip's row alone", () => {
-  it.each([
-    ["src/styles/09-open-board.css", ".open-board"],
-    ["src/styles/11-settings-screen.css", ".settings-screen"],
-  ])("%s starts %s below the strip in sidebar mode", (file, selector) => {
-    const css = readFileSync(file, "utf8");
-    const escaped = selector.replace(".", "\\.");
-    const rule = css.match(
-      new RegExp(`\\.stage--strip\\s+${escaped}[^{]*\\{[^}]*\\}`, "s"),
-    )?.[0];
+  it.each([["src/styles/09-open-board.css", ".open-board"]])(
+    "%s starts %s below the strip in sidebar mode",
+    (file, selector) => {
+      const css = readFileSync(file, "utf8");
+      const escaped = selector.replace(".", "\\.");
+      const rule = css.match(
+        new RegExp(`\\.stage--strip\\s+${escaped}[^{]*\\{[^}]*\\}`, "s"),
+      )?.[0];
 
-    expect(rule).toBeDefined();
-    expect(rule).toContain("top: var(--frame-h)");
+      expect(rule).toBeDefined();
+      expect(rule).toContain("top: var(--frame-h)");
+    },
+  );
+
+  /**
+   * Settings LEFT this rule on 2026-08-19, at the owner's request, and the
+   * exemption is conditional — so it is asserted rather than just deleted.
+   *
+   * The rule above was never "the strip is sacred". It was "do not strand the
+   * user": a board opened on a window with no tabs cannot be cancelled, so
+   * covering the row left nothing on screen able to bring the sidebar back.
+   * Settings covers the whole window now and is safe doing it for one reason
+   * only — it has ways out that owe nothing to the chrome underneath. If those
+   * ever go, this exemption has to go with them.
+   */
+  it("lets Settings cover the whole window, and keeps both ways out of it", () => {
+    const css = readFileSync("src/styles/11-settings-screen.css", "utf8");
+    const shell = css.match(/\.settings-screen\s*\{[^}]*\}/s)?.[0] ?? "";
+    expect(shell).toContain("position: fixed");
+    expect(shell).toContain("inset: 0");
+    expect(css).not.toMatch(/\.stage--strip\s+\.settings-screen\s*\{/);
+
+    // Covering the frame row takes the window's drag surface and the traffic
+    // lights' reserved footprint with it, so the header has to carry both.
+    const head = css.match(/\.settings-screen__head\s*\{[^}]*\}/s)?.[0] ?? "";
+    expect(head).toContain("-webkit-app-region: drag");
+    expect(head).toContain("--frame-lights-w");
+
+    // Way out #1 is a real control, not a glyph the user has to interpret.
+    const screen = readFileSync("src/ui/settings/settings-screen.tsx", "utf8");
+    expect(screen).toContain("settings-screen__back");
+    expect(screen).toMatch(/Back/);
+    // Way out #2 is the key, and `settings-screen.test.tsx` proves it fires.
+    expect(screen).toContain('event.key === "Escape"');
   });
 });
 
@@ -225,6 +263,88 @@ describe("stripShowsTabs", () => {
     expect(stripShowsTabs({ boardOpen: board, settingsOpen: settings })).toBe(
       false,
     );
+  });
+});
+
+describe("Open Board shell visibility", () => {
+  it("hides the Agent Rail when no live tab exists", () => {
+    expect(liveRailAvailable(0)).toBe(false);
+    expect(liveRailAvailable(1)).toBe(true);
+  });
+
+  it("temporarily collapses the sidebar without changing its saved choice", () => {
+    expect(
+      sidebarEffectivelyCollapsed({
+        liveTabCount: 0,
+        savedCollapsed: false,
+        dragCollapsed: false,
+      }),
+    ).toBe(true);
+    expect(
+      sidebarEffectivelyCollapsed({
+        liveTabCount: 1,
+        savedCollapsed: false,
+        dragCollapsed: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("suppresses the dock while the board is open without changing dockOpen", () => {
+    expect(dockVisible({ boardOpen: true, dockOpen: true })).toBe(false);
+    expect(dockVisible({ boardOpen: false, dockOpen: true })).toBe(true);
+    expect(dockVisible({ boardOpen: false, dockOpen: false })).toBe(false);
+  });
+
+  // DL-19.4, amended 2026-08-19: mid-drag the gesture answers, not the setting
+  // — the same way the navigation sidebar's seam has always behaved.
+  it("lets an armed drag close the dock before the pointer is released", () => {
+    // No drag in flight: the setting is the whole answer.
+    expect(
+      dockPaintedOpen({ boardOpen: false, dockOpen: true, dragCollapsed: null }),
+    ).toBe(true);
+    expect(
+      dockPaintedOpen({
+        boardOpen: false,
+        dockOpen: false,
+        dragCollapsed: null,
+      }),
+    ).toBe(false);
+
+    // Dragging past the floor hides it at once; dragging back out brings it
+    // back, still without having written anything.
+    expect(
+      dockPaintedOpen({ boardOpen: false, dockOpen: true, dragCollapsed: true }),
+    ).toBe(false);
+    expect(
+      dockPaintedOpen({
+        boardOpen: false,
+        dockOpen: false,
+        dragCollapsed: false,
+      }),
+    ).toBe(true);
+
+    // The board still wins over both: it owns the stage.
+    expect(
+      dockPaintedOpen({ boardOpen: true, dockOpen: true, dragCollapsed: false }),
+    ).toBe(false);
+  });
+
+  it("closes the board only after a session actually resumes", () => {
+    expect(boardClosesAfterResume(true)).toBe(true);
+    expect(boardClosesAfterResume(false)).toBe(false);
+  });
+
+  // DL-19.3, amended 2026-08-19: the hide control has two mounts and exactly
+  // one is ever on screen. An open column carries its own at its outer edge,
+  // so the chrome must NOT also carry one.
+  it("hands the dock's hide control to the chrome only while the column is gone", () => {
+    expect(dockToggleOnStage({ boardOpen: false, dockOpen: false })).toBe(true);
+    expect(dockToggleOnStage({ boardOpen: false, dockOpen: true })).toBe(false);
+    // Board open: the column is suppressed, but the setting still says open
+    // and the board covers the stage — a "show the side panel" button there
+    // would promise something the click cannot deliver.
+    expect(dockToggleOnStage({ boardOpen: true, dockOpen: true })).toBe(false);
+    expect(dockToggleOnStage({ boardOpen: true, dockOpen: false })).toBe(false);
   });
 });
 

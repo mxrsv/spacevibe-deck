@@ -213,6 +213,49 @@ describe("Electron IPC contract", () => {
     }
   });
 
+  it("carries the three path-open channels flat on both sides", () => {
+    // The 2026-08-19 path-open work's explicit fixture, pinned the way
+    // `worktree_add` above is: proof this scanner actually reaches the new
+    // channels rather than passing vacuously because it found none.
+    const expected: Record<string, string[]> = {
+      workspace_for_path: ["path", "roots"],
+      external_apps: [],
+      open_in_app: ["appId", "path", "isDirectory", "line", "column"],
+    };
+    for (const [channel, keys] of Object.entries(expected)) {
+      const sites = callSites.filter((site) => site.channel === channel);
+      expect(sites.length, channel).toBeGreaterThan(0);
+      for (const site of sites) {
+        expect(site.keys, channel).toEqual(keys);
+      }
+      // Every key a handler destructures has to be one the renderer sends;
+      // `open_in_app` deliberately ignores `line`/`column`, which is legal —
+      // the generic assertion above only forbids the reverse.
+      for (const handler of handlers.filter(
+        (candidate) => candidate.channel === channel,
+      )) {
+        for (const key of handler.required) {
+          expect(keys, `${channel} handler key ${key}`).toContain(key);
+        }
+      }
+    }
+  });
+
+  it("leaves resolve_paths and open_editor untouched, so the Tauri twin stays valid", () => {
+    // Design §6: the two channels ⌘+click already used are unchanged, which is
+    // what lets `src-tauri/src/links.rs` keep answering them.
+    for (const site of callSites.filter(
+      (candidate) => candidate.channel === "resolve_paths",
+    )) {
+      expect(site.keys).toEqual(["cwd", "paths"]);
+    }
+    for (const site of callSites.filter(
+      (candidate) => candidate.channel === "open_editor",
+    )) {
+      expect(site.keys).toEqual(["request"]);
+    }
+  });
+
   it("has a handler for every channel the renderer invokes", () => {
     const handled = new Set(handlers.map((handler) => handler.channel));
     // Handlers that take the payload whole are skipped by `collectHandlers`,

@@ -36,11 +36,15 @@ constraint: **consume as few machine resources as possible.**
 - **DL-1.2** Animate only `transform`, `opacity`, `color`, `border-color`,
   `background-color`. Max duration 300ms. No infinite / looping animations.
   Nothing animates while the user is idle.
-  **The one exception this rule carried is withdrawn (2026-08-17).** From
+  **The first exception this rule carried was withdrawn (2026-08-17).** From
   2026-08-16 the focus ping was allowed 1500ms as a locator (DL-27.7); the
   owner then deleted the ping outright — a rail click moves focus and says
-  nothing else — so the cap is unconditional again. A surface that wants a
-  longer animation amends this rule afresh; there is no precedent to cite.
+  nothing else. **One new scoped exception was added 2026-08-19 by DL-18.11:**
+  a rail click runs one 1500ms locator, while each recognised working agent
+  repeats that same 1500ms current until its tracker stops. The latter is an
+  infinite CSS animation only while `.is-agent-working` exists — the state
+  removal ends it, and nothing moves while the agent is idle. No other surface
+  inherits either exception.
 - **DL-1.3** Banned: **blurred/offset** `box-shadow` (the app is a flat system —
   depth comes from background steps and 1px hairlines), `backdrop-filter`,
   `filter`, JS animation loops (`requestAnimationFrame`) for chrome, timers that
@@ -70,7 +74,7 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 
 | token                                                                        | role                                     |
 | ---------------------------------------------------------------------------- | ---------------------------------------- |
-| `--sidebar-bg` / `--sidebar-seam`                                            | recessed side columns and their boundary |
+| `--sidebar-bg` / `--sidebar-seam`                                            | the side columns and their boundary      |
 | `--chrome-1` / `--chrome-2`                                                  | background steps for bars / panels       |
 | `--input-bg`                                                                 | recessed input surfaces                  |
 | `--hair` / `--hair-strong`                                                   | 1px hairlines inside a surface           |
@@ -85,7 +89,18 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   token, or comes from the live theme object (e.g. swatches previewing a
   theme's own colors).
 - **DL-2.2** The theme drives everything: switching theme must restyle all
-  chrome with zero component changes.
+  chrome with zero component changes. Every chrome tone is a function of
+  `(background, foreground)` and nothing else — not of a preset id, not of a
+  setting — which is what lets the gallery, the editor host and a theme card
+  all show the same chrome the app does.
+  **One exception, added 2026-08-19:** a background somebody has hand-picked a
+  sidebar for may pin it, as a literal keyed by that background
+  ([`PINNED_SIDEBAR_BG`](../src/lib/derive-colors.ts) `current`). Deck's own
+  `#17181c` pins `#272d31` at the owner's request, because that gray is not
+  reachable by mixing the background toward white — it is bluer and flatter
+  than any lift produces. The pin is keyed on the background rather than on the
+  preset so the rule above still holds for all four callers, and so overriding
+  that background correctly drops the pin.
 - **DL-2.3** **A boundary between two surfaces is a seam, not a hairline.**
   Seams mix from `--tone`, never from `--fg`: a boundary belongs to the
   background ladder, and mixing from the foreground let the terminal's text hue
@@ -130,17 +145,21 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 
 - **DL-3.1** `--accent` marks **interactive or active** only: hover/focus
   borders, focus ring, active markers, affordance hints. Never a decorative
-  fill, never large areas.
+  fill, never large areas. **DL-18.11 is one scoped exception:** pane activity
+  and the rail's pane locator use `--yellow`, not `--accent`; neither becomes
+  Deck's general focus colour.
 - **DL-3.2** `--green` means only _on / enabled / success_. `--red` means only
   _danger / destructive / error_. `--yellow` means only _needs your eyes_ —
   attention a person must act on, one step below `--red`'s failure.
   Never decoration, none of the three.
+  **Amended 2026-08-19 by DL-18.11:** a working agent may spend yellow until it
+  stops, and a rail click may spend it on one 1500ms pane locator. These are
+  activity/navigation signals, not persistent focus state; buttons, fields
+  and every other focus ring remain accent.
   `--yellow` was **added 2026-08-16** with the agent status rail (DL-27.6),
   and **widened later the same day** (owner): it covers a finished run nobody
   has checked as well as a question or a permission wait — the rail's old
-  accent `done` ring folded into it, recorded as temporary in DL-27.3. The
-  same pass gave `--green` its first chrome mark: the rail's `done` check
-  (a run you checked — success, so the role does not widen).
+  accent `done` ring folded into it, recorded as temporary in DL-27.3.
   This rule assigned roles to green and red only, while `--status-unread` and
   `.attn-mark--warning` had been painting with yellow for as long as they have
   existed — a colour in use with no rule is a colour the next surface can mean
@@ -279,14 +298,14 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   and stays at 10.5/faint (DL-15.5): it names a cell, not a list. No new size
   exists; DL-4.5's closed exception list is untouched.
 
-  **One scoped exception, added 2026-08-17 (owner): the agent rail's cluster
-  header takes `--type-meta`, below its rows.** It keeps `--text-muted` — only
-  the size half is excepted, never the tone. The exception exists because the
-  rail prints a group label above EVERY cluster in a tall scrolling column, so
-  the size amendment made the project name the loudest word in a surface read
-  for its agents; `Tools` and `.cfg-group` head short groups on surfaces the
-  eye is already on, and keep `--type-title`. Reasoned in full at DL-27.9. Any
-  further surface wanting this amends DL-4.4 again rather than citing DL-27.9.
+  **One scoped exception, added 2026-08-17 and amended 2026-08-19 (owner): the
+  agent rail's cluster header takes `--type-project` at 13px.** It is exactly
+  2px above its former metadata size without climbing to the 14px title rung.
+  It keeps `--text-muted` — only the size is excepted, never the tone. The rail
+  prints a group label above EVERY cluster in a tall scrolling column; `Tools`
+  and `.cfg-group` head short groups on surfaces the eye is already on, and
+  keep `--type-title`. Reasoned in full at DL-27.9. Any further surface wanting
+  this size amends DL-4.4 again rather than citing DL-27.9.
 
   Before this amendment the rule read "group label 10.5 · key 12.5 ·
   description 10.5 · value 11.5 · panel title 12" — the same shape as bare
@@ -327,7 +346,10 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
      while the board's heading does not. Settings had no such level at all
      before this: the section title and the group labels inside it were both
      `--type-title`, so the screen's subject was printed at the size of the
-     smallest thing on it.
+     smallest thing on it;
+  6. the **Agent Rail project label** (`--type-project`, 13px, amended
+     2026-08-19) — a scoped navigation label exactly 2px above metadata and
+     1px below the title rung (DL-27.9).
 
   Anything else that wants its own size amends this list before it ships.
 
@@ -467,11 +489,11 @@ This document is the target, not a description of the whole app. Only the
 settings panel has been reworked. Known survivors, to be fixed as each surface
 is reworked — **do not "fix" them opportunistically inside an unrelated change**:
 
-| where                                                                                                   | violates | note                                                                                                                                                                                                                                                                           |
-| ------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `.cfg-btn`, inputs                                                                                      | DL-2.3   | still on `--hair`. These are lines INSIDE a surface, which is what `--hair` is for, so this row is a re-read rather than a debt: the boundary cases were the frames, and they moved. The board's layout cards were the third member and left with the config view (2026-08-16) |
-| `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected`                      | —        | inset hairlines, allowed under DL-1.3                                                                                                                                                                                                                                          |
-| `.wsitem__spinner`, `.asr-row__mark[data-state="working"]`, `.asr-row__mark[data-state="asked"]::after` | DL-1.2   | looping animations. See the note below — opened 2026-08-16, not closed                                                                                                                                                                                                         |
+| where                                                                              | violates | note                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.cfg-btn`, inputs                                                                 | DL-2.3   | still on `--hair`. These are lines INSIDE a surface, which is what `--hair` is for, so this row is a re-read rather than a debt: the boundary cases were the frames, and they moved. The board's layout cards were the third member and left with the config view (2026-08-16) |
+| `.workspace-row.is-selected`, `.preset-chip.is-selected`, `.mock-pane.is-selected` | —        | inset hairlines, allowed under DL-1.3                                                                                                                                                                                                                                          |
+| `.wsitem__spinner`                                                                 | DL-1.2   | looping animation — the rail's `working` mark shares it since the owner's 2026-08-19 reversal; opacity-only (`wschase`) since 2026-08-20, so only the loop's infinity remains outside the rule                                                                                 |
 
 **Opened 2026-08-16** by the icon-set swap, and it is one debt, not a
 violation: DL-1.1 justifies the icon dependency partly on tree-shaking "a
@@ -484,24 +506,15 @@ build and recording the gzip figure beside the one the retired set produced —
 if it regressed, that is an owner decision about the exception, not something
 to fix by re-drawing icons.
 
-**Opened 2026-08-16** by the agent status rail, and stated here because the one
-exception DL-1.2 then carried deliberately did not cover it: DL-1.2 bans
-**infinite / looping** animations
-and says nothing animates while the user is idle, but the rail's `working` arc
-turns on a 1.8s loop and its `asked` halo pulses on a 2.4s one. Both were
-rendered, reviewed and approved by the owner as the specimen's design on
-2026-08-16, and both are the app's existing practice rather than a new habit:
-`.wsitem__spinner` has shipped a 2.2s infinite spin for the same "an agent is
-working" meaning since long before this ledger, unrecorded until now. DL-27.7
-amended the **duration cap** for the focus ping alone and was frozen at that
-scope on purpose, so widening it to cover loops would have been this task
-rewriting a decision it was handed — and since 2026-08-17 there is nothing
-left to widen: the ping is deleted and the exception withdrawn, so this row
-now stands against an unconditional DL-1.2. The rows above are therefore the honest state: the
-looping marks are approved design that DL-1.2 as written forbids, and closing
-the gap — by amending DL-1.2's loop clause, by bounding the loops, or by
-dropping them — is an owner decision, not an implementation detail (§9.1). All
-three are already skipped under `prefers-reduced-motion`, which is the part
+**Opened 2026-08-16** by the rail and repository spinners. The rail appeared to
+close its half on 2026-08-19 — `working` went to a static neutral dot — and the
+owner reopened it hours later: the rail's `working` mark IS `.wsitem__spinner`
+now (DL-27.3), so both surfaces share one infinite working ring for one
+meaning, which is a single honest gap rather than two. Since 2026-08-20 the
+ring does not rotate — 8 still dots share one 1.2s staggered opacity cycle
+(`wschase`), so the loop animates only `opacity`, a property DL-1.2 allows;
+the gap is the loop's infinity, not its property.
+It is skipped under `prefers-reduced-motion`, which is the part
 that was never in question.
 
 **Closed 2026-08-16** by the group-label amendment (DL-4.4 / DL-3.4), found
@@ -640,24 +653,64 @@ the frame around it, whatever a given screen puts in its sections.
 - **DL-11.1** A full-window screen shell is a two-column surface: a fixed nav
   rail, and a section area that owns **all** scrolling. The rail never scrolls
   with the content beside it.
+  **Amended 2026-08-19 (owner), for Settings only: "full-window" means the
+  WINDOW, frame row included.** `.settings-screen` is `position: fixed;
+inset: 0` and covers the sidebar, the rail and the frame row; the Open board
+  still stops below the strip. The difference is not taste, it is whether the
+  surface can strand the user: a board opened on a window with no tabs cannot
+  be cancelled, so covering the row left nothing on screen able to bring the
+  sidebar back. Settings has two ways out that owe nothing to the chrome
+  underneath — Escape, and a **Back** control in its own header — so covering
+  the row costs a shortcut, not an exit. A screen taking this exemption
+  inherits two obligations from the row it swallowed: its header reserves the
+  macOS traffic lights' footprint (`--frame-lights-w`; the OS paints its
+  buttons over that box regardless of what the page draws there) and carries
+  the window's drag region. Locked by
+  [`app.test.tsx`](../src/ui/app.test.tsx) `current`, which asserts the
+  exemption together with both ways out rather than just deleting the old
+  assertion.
 - **DL-11.2** The active rail item is marked by DL-21.1's selection wash — the
   same signifier as every other "this one" in the app. No shadow, no fill
   (DL-1.3), and no accent bar: this rule mandated one until 2026-08-14, at which
   point §21 made the wash the single selection signifier. The rule's intent is
   unchanged and was always the point — "active" reads the same everywhere; only
   the mark it names has moved.
-- **DL-11.3** Rail icons are Lucide icons rendered through `DeckIcon` (§14)
-  at 16px, one per rail item, chosen for what the item _is_ rather than for
-  variety. They were hand-drawn inline SVG until 2026-08-09; the rule now
-  points at §14 so icon questions are settled in one place instead of once per
-  item.
+- **DL-11.3** **RETIRED 2026-08-19 (owner): a rail item is its label, and
+  nothing else.** The rule read "one 16px `DeckIcon` per rail item, chosen for
+  what the item _is_ rather than for variety" — and the honest reading of the
+  Settings rail was that the second half had stopped being true: eight
+  categories meant eight glyphs standing in for words like `Appearance` and
+  `Notifications`, which no icon says better than the word does. A rail item
+  is already one line of text in a narrow column; the glyph beside it was
+  decoration that had to be picked, drawn and kept in sync for nothing.
+  `settings-nav-icons.tsx` and its test are DELETED, not unmounted (owner's
+  call — unlike the theme gallery there is no user data or parser behind them,
+  so `git revert` is the whole restore path), and `SettingsCategory` lost its
+  `Icon` field. A future rail that wants icons back re-argues this rule; §14
+  still settles what an icon looks like everywhere it survives.
 - **DL-11.4** Rail labels are sentence-case `--ui-font` (DL-4.1, DL-4.4;
   lowercase until 2026-08-15). The rail item _is_ the group label it replaced, so a section does
   not repeat its own name as a heading inside itself.
-- **DL-11.5** Destructive actions never sit among navigable rail items. They
-  are pinned to the rail's foot, below a hairline, marked `--red` (DL-3.2). A
-  screen with no destructive action has no foot at all; the slot is not filled
-  with something else to keep the shape symmetrical.
+- **DL-11.5** **Amended 2026-08-19 (owner): a destructive action is an
+  ordinary rail category, placed LAST.** The rule read "destructive actions
+  never sit among navigable rail items; they are pinned to the rail's foot,
+  below a hairline, marked `--red`", and the pinned foot is now deleted —
+  markup, CSS and mount point.
+  What changed is the reasoning, not the caution. The foot treated POSITION as
+  the safeguard, and position was never carrying it: what stops an accidental
+  reset is the native confirm the action has always raised, and a rail slot
+  cannot add to that. Meanwhile the foot cost real quality — the rail is 220px,
+  so a config row pinned in it had to stack its label above its button and
+  print a three-line description in a column sized for one word, which is the
+  screenshot the owner objected to. As a category it gets the same title,
+  sentence and grouped surface as everything else (DL-11.6).
+  Two things survive the move: it is **last** in the registry, because the one
+  stop that throws work away belongs where a reader expects it rather than
+  between `Shortcuts` and `About`; and the row itself keeps `--red` (DL-3.2),
+  which DL-3.7's achromatic Settings surface explicitly does not override —
+  that is a warning about consequence, not a control state.
+  A screen with no destructive action simply has no such category; the slot is
+  not filled with something else to keep the shape symmetrical.
 - **DL-11.6** **The section side is a document: title, one sentence, one
   grouped surface (2026-08-19).** The active category prints its label as a
   scoped 24px structural heading (DL-4.5 exception 5, DL-4.3's optical-tracking
@@ -675,15 +728,17 @@ the frame around it, whatever a given screen puts in its sections.
   Anchors: [`settings-screen.tsx`](../src/ui/settings/settings-screen.tsx)
   `current`, [`settings-categories.ts`](../src/ui/settings/settings-categories.ts)
   `current`.
-- **DL-11.7** **Below 720px the rail is icons and the document loses its
+- **DL-11.7** **Below 720px the rail narrows and the document loses its
   gutters (2026-08-19).** Deck's supported minimum is 480px, where DL-11.1's
-  fixed 220px rail would leave 260px for a 58-character measure. The rail
-  narrows to 54px and each tab keeps its name in `aria-label` **and** `title`,
-  so what is hidden is the label, never the accessible name; the foot's Reset
-  row drops its key column and keeps the button, which says `reset` in its own
-  text. The document swaps its centring gutters for 18px of edge padding. A
-  screen that hides a control instead of narrowing it is not implementing this
-  rule.
+  fixed 220px rail would leave 260px for a 58-character measure. The rail goes
+  to 132px and the label TRUNCATES with `title` carrying the whole name; the
+  foot's Reset row drops its key column and keeps the button, which says
+  `reset` in its own text. The document swaps its centring gutters for 18px of
+  edge padding. **A screen that HIDES a control instead of narrowing it is not
+  implementing this rule** — which is what the first version of this rule did
+  to itself: it specified a 54px ICON rail, and DL-11.3 was retired hours later
+  the same day, leaving an icon rail with no icons. Text that shrinks survives
+  a change to what the row contains; a layout keyed to a glyph does not.
 
 ## 12. Editable lists
 
@@ -761,11 +816,23 @@ answered here rather than re-argued per button.
   class the stylesheet's one icon rule hangs off. Icons are imported by name.
   Nothing else authors an `<svg>`, and no glyph character stands in for an
   action — `scripts/icon-system.test.ts` enforces both.
-  **Amended 2026-08-19: `regular` for every icon, `fill` for a named few.**
-  The exception list is a set of components in `deck-icon.tsx` — today exactly
-  `SidebarSimple`, which is BOTH panel toggles (the dock draws it mirrored) —
-  and it is deliberately not a `weight` prop, because a prop moves the decision
-  to the call sites and this rule exists to keep it in one file.
+  **Amended 2026-08-19: `regular` for every icon, `fill` for named exceptions.**
+  The global exception list is a set of components in `deck-icon.tsx` — today
+  exactly `SidebarSimple`, which is BOTH panel toggles (the dock draws it
+  mirrored). **One surface-scoped exception was added later that day (owner):**
+  the three icon-only dock tabs pass `filled`, so `TreeView`, `Gauge` and
+  `ClockCounterClockwise` draw solid there without changing the same icons in
+  Open Board, the rails, or gallery specimens. The prop is a closed boolean,
+  not an open `weight` escape hatch; `DeckIcon` still chooses between the
+  design system's two allowed weights. **A second surface-scoped `filled`
+  followed on 2026-08-20 (owner):** the toolbar's `More` trigger draws
+  `DotsThreeOutline` solid. It shipped as `DotsThree` at `regular`, whose dots
+  are near-invisible at chrome size; the outline icon at `regular` would be
+  three rings, so it takes `filled`. The icon choice is the exception's own
+  mechanism at work — `DotsThree`'s fill variant is exactly the bare-glyph
+  knock-out tile this rule records, while `DotsThreeOutline`'s fill is three
+  readable dots. (`DotsThreeOutline` is a new import, and its
+  `regular`-vs-`fill` path comparison was run like the census's fifty-three.)
 
   The day arrived at that through a reversal worth keeping. The owner asked for
   solid icons, the app ran ALL of them at `fill` for an afternoon, and seeing it
@@ -793,9 +860,10 @@ answered here rather than re-argued per button.
   outline family and DL-14.1 would then describe two families at once.
 
   **The weight is not readable from an attribute** — Phosphor expresses it in
-  path data — so `deck-icon.test.tsx` pins BOTH halves by comparing what
-  `DeckIcon` drew against the library's own output: the default against
-  `regular`, and `SidebarSimple` against `fill`.
+  path data — so `deck-icon.test.tsx` compares what `DeckIcon` drew against the
+  library's own output: the default against `regular`, `SidebarSimple` against
+  `fill`, and a scoped `filled` call against `fill`. `dock-tabs.test.tsx` pins
+  the actual three surface icons the same way.
   **Amended 2026-08-16, replacing `lucide-preact`.** Phosphor is fill-based
   and has no `strokeWidth`: weight is a discrete family, and the weight it
   entered on was `regular` — superseded above — chosen from a gallery specimen
@@ -810,9 +878,25 @@ answered here rather than re-argued per button.
 
 - **DL-14.2** Four sizes, exported from `deck-icon.tsx` and used by name:
   `CHROME_ICON` 13 (tab bar, titlebar), `ROW_ICON` 14 (config-row and popover
-  actions), `BOARD_ICON` 15 (Open Board rows), `RAIL_ICON` 16 (settings rail,
+  actions), `BOARD_ICON` 15 (Open Board rows, **and the dock header's own
+  controls since 2026-08-19** — the three tab chips and the panel toggle
+  beside them, drawn through `FEATURE_ICON`, which is the same 15),
+  `RAIL_ICON` 16 (settings rail,
   and the `More` menu's rows since 2026-08-16 — DL-23.9).
-  An icon never sets a control's padding or geometry; the control does.
+  An icon never sets a control's padding or geometry; the control does. The
+  dock header is a **role widening, not a fifth rung** (owner, 2026-08-19):
+  its four glyphs are the entry points to three whole surfaces, standing alone
+  in a row with no text anywhere near them to be measured against, and at 13px
+  they read as furniture rather than as the controls the column is steered by.
+  The `.iconbtn` box stays 24px — the glyph grew, the control did not — and
+  the stage-strip mount of that same panel toggle stays at `CHROME_ICON`,
+  because there it stands beside the toolbar's own 13px glyphs.
+  **The toolbar's `More` trigger joined the widening on 2026-08-20 (owner):**
+  since DL-23.8 it is the entry point to every pane action, standing icon-only
+  at the strip's trailing end, and at 13px it read as furniture in exactly the
+  dock header's way. It draws at `FEATURE_ICON`; the box stays 24px, and the
+  external-app split-button's caret beside it stays at `CHROME_ICON` — an
+  adjunct, not an entry point.
 - **DL-14.3** CSS never sets `width`, `height`, `fill`, `stroke` or
   `stroke-width` on an icon. Those declarations beat SVG attributes, so one of
   them silently disables DL-14.1 wherever it lands. Colour is expressed as
@@ -836,11 +920,27 @@ answered here rather than re-argued per button.
 - **DL-14.6** Outside the library by intent, and not exceptions to be widened:
   the Deck brand mark, agent and OS logos, keyboard and terminal notation
   (`⌘`, `⏎`, `⎋`), selection and status dots, and `WorkspaceSpinner`. A logo is
-  identity and a key legend is notation; neither is an icon in a system.
-  **One scoped exception (owner, 2026-08-16):** the agent rail's `done` mark
-  renders the library's `CheckCircle` through `DeckIcon` (DL-27.3) — the owner
-  chose the library's check over a CSS drawing. It stays the ONLY status mark
-  the icon system draws; the rest of the rail's palette remains CSS.
+  identity and a key legend is notation; neither is an icon in a system. The
+  rail's former `CheckCircle` exception was removed on 2026-08-19 (DL-27.3),
+  so every rail status mark is CSS again.
+- **DL-14.7** **A brand mark may arrive from the user's machine at runtime
+  (2026-08-19).** The external-app control draws the icon of the version
+  actually installed — the bundle's own `.icns`, converted by `/usr/bin/sips`
+  and delivered as a `data:` URL rendered as an `<img>`. (The design named
+  `app.getFileIcon`, which was measured on 2026-08-20 returning the GENERIC
+  document icon for every `.app` bundle — VS Code's and Finder's answers were
+  byte-identical — so the mechanism moved; the rule did not.) This is not a widening of DL-14.1, which
+  governs authored functional vector icons, and not a new exception to
+  DL-14.6, which already puts logos outside the library. What is new is the
+  SOURCE, and it carries two rules of its own. **No third-party logo enters
+  the repo** — reading the installed bundle is what keeps a dozen brand assets
+  out of the tree and keeps each one current when its app updates. And
+  **a missing icon is a missing icon**: an authored mark never stands in for
+  one, so the control falls back to the app's initial on a `--chrome-2` tile
+  and lets its tooltip carry the name. Sizing lives in CSS here rather than in
+  `DeckIcon`, which DL-14.3 permits by construction: that rule forbids CSS
+  from sizing an authored `<svg>`, and this is an image with intrinsic
+  dimensions that must be constrained.
 
 ## 15. Read-only data tables
 
@@ -1154,6 +1254,23 @@ window's identity and its actions at the same time.
   coverage in [`derive-colors.test.ts`](../src/lib/derive-colors.test.ts)
   `current`. Approved by the owner on 2026-08-14 to keep attention on the center
   work area instead of either sidebar.
+  **Amended 2026-08-19, at the owner's request: on a dark theme the columns
+  RISE off the stage instead of receding into it.** The stage is now the
+  DEEPEST surface in the window and every chrome plane stands above it —
+  `--sidebar-bg` first, then `--chrome-1`, `--chrome-2`, `--tab-active-bg`,
+  each measured from the sidebar rather than from `--bg`. Measuring the ladder
+  from the sidebar is what makes the separation structural: at the old
+  `--bg`-relative offsets a raised sidebar landed BETWEEN `--chrome-1` and
+  `--chrome-2`, so a popover read as a smudge of the column behind it. The dark
+  steps are narrower than the light ones (3/6/10 against 5/9/15) because the
+  sidebar has already spent 8% of the headroom DL-3.5's 8:1 floor needs — at
+  4/8/14 One Dark's active row measures 7.13:1 against white, under the floor,
+  which would flatten every chrome tone to white and start rejecting imports
+  Deck accepts today. **`--input-bg` still recedes**, so on a dark theme it
+  sinks from the sidebar back toward the stage rather than climbing with the
+  rest; `--seam-raised` moved onto the same ladder for the same reason the
+  surfaces did. Light themes are untouched: darkening is still the only
+  direction with headroom there, so their columns still recede.
 - **DL-18.8** **The browser is a stage surface, not a docked column
   (2026-08-15).** It is one chip on the strip — globe icon plus page title,
   placed by when it was opened since DL-18.10 replaced the segment it used to
@@ -1196,6 +1313,30 @@ window's identity and its actions at the same time.
   column (DL-18.3) and could not go to zero without taking the traffic lights
   with it; moving the toolbar out and the hide control up removed the
   constraint rather than working around it.
+
+  **Amended 2026-08-19 (owner): "paints nothing" is a RESTING state, not an
+  absolute.** A resize seam lights its own hairline in full `--accent` while
+  hovered, and for the whole of a drag — a target that says nothing until the
+  column moves is found by guessing, and the app already answered this for pane
+  splits (`.split__divider:hover`). Full accent rather than that divider's 60%
+  mix: a shell seam has a chrome surface on at least one side, where the mix
+  reads as a lighter hairline instead of a lit line; a split divider stands
+  between two terminals on `--bg` and keeps its 60%. The line is 1px and sits ON the existing hairline
+  rather than beside it, so nothing new is drawn; only the colour of a line
+  that was already there changes, which keeps DL-2.3's one-boundary-one-seam
+  reading intact. The target itself also widened from 7px to 9px, for a
+  reported defect rather than a preference: along a 7px target the pointer
+  crossed the edge repeatedly and the cursor flickered with it. Same figures on
+  the docked column's seam (DL-19.4) — one gesture, one look, both edges.
+
+  **Amended 2026-08-19 (owner): `New` joins the open column's frame, directly
+  after the hide control.** The two controls form one compact leading cluster
+  ([`SidebarFrameActions`](../src/ui/sidebar-toggle.tsx) `current`); moving the
+  launcher out of the scrolling rail keeps the action visible regardless of
+  how many projects are open. It leaves with the column when the sidebar is
+  hidden, while the one control needed to restore that column still moves to
+  the stage strip. The feature toolbar remains on the stage side; this
+  amendment adds one sidebar action, not a second toolbar.
 
 - **DL-18.10** **One chip shape, one row, one order (2026-08-16).** The strip
   had two segments until this rule: every terminal tab, a `.tabbar__sep`
@@ -1266,6 +1407,27 @@ window's identity and its actions at the same time.
   with the sentence). Documents and the browser keep their own names; they
   have no turn to report.
 
+- **DL-18.11** **Rail focus is one yellow current; agent work is the same
+  current until stop (2026-08-19, owner).** These are two distinct triggers.
+  [`pingPane`](../src/terminal/pane-ping.ts) `current` is called only after an
+  Agent Rail row activates its exact pane: it replaces one inert `.pane-ping`
+  node inside that pane's positioned `.pane-slot`, so the shared current spans
+  only that pane's top edge and replays once for 1500ms, including for an idle
+  agent. Ordinary terminal focus, tab selection and attention-keyboard
+  navigation do not trigger that locator; no locator is anchored to the tab.
+
+  Separately, [`syncViews`](../src/terminal/tab-manager.ts) `current` reflects
+  every exact pane's recognised-agent tracker phase as `.is-agent-working`.
+  [`.pane.is-agent-working::after`](../src/styles/06-stage-panes.css) `current`
+  repeats a 1500ms two-packet charge across a 2px yellow base until the tracker
+  removes that class; it does not depend on which pane holds focus, so multiple
+  running agents can each report their own activity and an idle agent or shell
+  cannot keep it alive. Both paths animate only `transform` and `opacity`, take
+  no pointer events and change no pane geometry. Under
+  `prefers-reduced-motion: reduce`, the click locator is absent and a working
+  pane keeps only its static 2px yellow state. These are DL-1.2's only motion
+  exceptions and the scoped yellow exceptions recorded in DL-3.1/DL-3.2.
+
 ## 19. Docked side panels
 
 Added 2026-08-12 for the browser panel, and written to cover the class rather
@@ -1294,7 +1456,9 @@ covering it, and it can hold something that is not Deck's own pixels.
 - **DL-19.2** The seam is a single `--hair` border on the panel's inner edge
   (DL-3.3). No shadow, no gradient, no second rule — the background step from
   `--bg` to `--sidebar-bg` is what separates the two regions and keeps the panel
-  in the same recessed family as the navigation sidebar (DL-18.7).
+  on the same plane as the navigation sidebar (DL-18.7). Which SIDE of the
+  stage that plane sits on flipped for dark themes on 2026-08-19; the step
+  itself, and this rule, did not change.
 - **DL-19.3** The panel's own header is a **bar of the window's own controls**,
   the same classes and the same 13px chrome icon size the tab bar uses
   (DL-14.2). A docked panel borrows the window's controls; it does not invent
@@ -1305,6 +1469,15 @@ covering it, and it can hold something that is not Deck's own pixels.
   other edge
   ([`DockPanel`](../src/ui/dock/dock-panel.tsx) `current`,
   [`DockToggle`](../src/ui/dock/dock-toggle.tsx) `current`).
+  **Amended 2026-08-19: the hide control has two mounts, not one.** DL-18.9
+  is an arrangement, not a single position, and only its CLOSED half belongs
+  to the stage. A SHOWN column carries its own control at that column's
+  **outer** edge — the navigation sidebar's sits beside the traffic lights,
+  so the dock's ends its tab row against the window's right edge — and the
+  strip carries it only while the column is gone. Exactly one of the two is
+  ever on screen: `App` gates the stage mount on the panel being absent. The
+  control does not shrink at DL-19.4's floor; the compact tab group and the
+  way out remain together at the outer edge.
   **Amended again 2026-08-16: that bar is `--frame-h` tall, not a number of
   its own.** It stands beside the stage strip across a single vertical seam,
   so the two rows close on the SAME pixel row or the boundary between chrome
@@ -1323,6 +1496,22 @@ covering it, and it can hold something that is not Deck's own pixels.
   same threshold serves the navigation column's seam (DL-18.9), where past the
   floor means collapse
   ([`resolvePanelDrag`](../src/ui/panel-resize.ts) `current`).
+  **Amended 2026-08-19 (owner): the target paints nothing AT REST.** Hovered,
+  or for the length of a drag, it lights the panel's own hairline in the accent
+  — the wording, the colour and the 9px width are DL-18.9's, which carries the
+  reasoning for both seams.
+  **Amended again 2026-08-19 (owner): the column closes UNDER THE POINTER, and
+  the dim is gone.** The 2026-08-16 reading — dim to 45%, wait for release —
+  existed only because closing unmounted the grip the gesture was captured on.
+  [`useDockPresence`](../src/ui/dock/dock-presence.ts) `current` holds that
+  mount for the length of the drag, so the panel can be pushed off-stage while
+  the captured grip survives, and the constraint is removed rather than worked
+  around. Past the floor the column goes at once and comes back if the pointer
+  does; the setting is still written only on release. That is DL-18.9's
+  behaviour on the navigation column, which never dimmed, and the two seams now
+  answer identically. The slide-over (§7) is suppressed for the whole gesture:
+  animation belongs to the toggle and the chord, and 280ms of easing inside a
+  drag reads as the column lagging the hand.
 - **DL-19.5** One status line, directly under the header, in `--text-faint`
   (DL-3.4) — or `--red` when it reports a failure (DL-3.2). It is the panel's
   only place for transient text; a panel does not raise dialogs of its own.
@@ -1335,9 +1524,13 @@ covering it, and it can hold something that is not Deck's own pixels.
 - **DL-19.7** **A docked panel that hosts more than one surface names them
   in a tab row, and shows exactly one at a time (2026-08-16).** The row IS
   the panel's header (DL-19.3): a `role="tablist"` of `role="tab"` chips,
-  each an icon plus a sentence-case label (DL-4.4), the active chip carrying
-  DL-21.1's full wash and idle chips carrying none — the same selection
-  language the settings and usage rails already use, laid out as a row
+  the active chip carrying DL-21.1's full wash and idle chips carrying none —
+  the same selection language the settings and usage rails already use, laid
+  out as a row. **Amended 2026-08-19 (owner): the chips are icon-only and the
+  whole group sits immediately before the right-panel toggle at the window's
+  outer edge.** Each chip keeps its sentence-case name in both `aria-label`
+  and `title`; only the painted label is gone. All three glyphs use Phosphor's
+  `fill` weight as a surface-scoped DL-14.1 exception (owner, 2026-08-19)
   ([`DockTabs`](../src/ui/dock/dock-tabs.tsx) `current`). A tab the running
   host cannot serve is **omitted, not disabled**: a chip that opens an empty
   surface is worse than no chip
@@ -1581,6 +1774,35 @@ program
   rail. Scope is this menu alone — §13's other popovers and every §5 config
   row keep `--type-body` and `ROW_ICON`.
 
+- **DL-23.10** **The tooltip is not the toolbar's alone (2026-08-19,
+  owner).** Every icon-only chrome control that has an action may draw it, and
+  the dock header's three tab chips and its panel toggle now do. Two
+  consequences are rules, not incidents: a control that takes this tooltip
+  **drops its native `title`** — two tooltips for one control is one too many,
+  and the native one is the half that never appears on keyboard focus — and its
+  chord is resolved from the action id through `shortcutLabel`, never written
+  as a literal, so a rebind reaches the text and neither platform sees the
+  other's notation. A surface adopting it inherits DL-23.1's content rule:
+  name, chord when the platform has one, reason when it cannot run, nothing
+  else. Numbered after DL-23.9 rather than as a sub-point of DL-23.1, because
+  this rulebook appends and never fills a gap.
+- **DL-23.11** **The toolbar may carry a split-button (2026-08-19, owner).**
+  §23 knew two shapes — the icon control and the `More` menu — and the
+  external-app control is a third: an icon that performs the frequent action
+  (open this workspace in that app) joined to a caret that changes which app
+  it is. It is one shape rather than two controls because the two halves are
+  the same subject; it is not one control because folding the choice into the
+  action would put a menu between the user and the click they make every time.
+  Three rules come with it. The pair reads as **one object** — a shared
+  hairline frame, the caret narrower than the action, no gap between them.
+  The caret's surface is a §13 popover made of rows, **the same
+  `.toolbar-menu` the `More` control opens**, with the group hairlines DL-23.5
+  already defines; a second menu shape would say the same thing twice. And the
+  control is **absent, not disabled, when it has nothing to offer** — a host
+  that reports no installed app renders no button at all, which is DL-19.7's
+  rule read at the toolbar. The action half takes DL-23.1's tooltip and
+  DL-23.6's unavailable treatment unchanged.
+
 ## 24. The theme gallery
 
 > **Retired from the visible Settings contract on 2026-08-19, not deleted.**
@@ -1755,37 +1977,45 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   button inside a button is not operable, so a row that carries its own
   smaller targets cannot be one element — the layer is what keeps the row
   reading as a single target anyway.
-- **DL-27.2** **State is carried by ONE mark at the row's right edge, and
-  there is no status word in the row.** The word survives in `title` and in
-  the accessible name, so the shape is the fast read and never the only read.
-  A second signifier for the same state is DL-21.6's mistake in a new place.
-- **DL-27.3** **The mark palette is closed, and so is its precedence.**
-  **Revocabularised 2026-08-16 (owner), to read from the dev's side rather
-  than the agent's:** `failed` is `--red` filled · `asked` is `--yellow`
-  filled with a halo · `working` is a `--text-primary` turning arc · `done`
-  is the icon system's `CheckCircle` in `--green` (DL-14.6's one scoped
-  exception) · `idle` is a `--hair-strong` hairline ring keeping a small
-  centre core. `asked` now means _needs your eyes_ in full: a question, a
+- **DL-27.2** **State uses at most ONE mark at the row's leading edge, and there
+  is no status word in the row.** The word survives in `title` and in the
+  accessible name even when no mark is painted, so the visual vocabulary can
+  stay sparse without erasing meaning. A second signifier for the same state
+  is DL-21.6's mistake in a new place.
+- **DL-27.3** **The mark palette is exception-first: a dot at rest, a spinner
+  while working (amended twice on 2026-08-19, owner).** `failed` is `--red` ·
+  `asked` is `--status-unread` · `done` and `idle` share one gray dot,
+  `--tone` at 45% · `working` alone is not a dot at all — it is
+  `WorkspaceSpinner`, the same working ring the workspace avatar uses,
+  scaled into a 14px box. The morning's flat version made every state one
+  static dot and left `done`/`idle` unpainted; the owner reversed both halves
+  the same day, because the one state that changes on its own was the one
+  drawn as though nothing were happening, and an unpainted column read as a
+  broken row rather than a quiet one. The green `CheckCircle`, the `asked`
+  halo and the idle ring-and-ember stay retired — the reversal restores
+  motion and a resting dot, not the five-symbol vocabulary. `asked` still means
+  _needs your eyes_ in full: a question, a
   permission wait, **or a finished run you have not checked** — the old
   accent-hollow `done` mark folded into it as a TEMPORARY owner call
   (unfolding it is one case label in `paneState`); `done` now means a run you
   checked, and `idle` an agent that has never run anything (the tracker's
-  `hasRun` bit splits the two). The original palette — accent-hollow `done`,
-  bare-ring `resting`, "answer me and read my result are never the same
-  colour" — is superseded. When a tab folds its panes into one row the
+  `hasRun` bit splits the two). When a tab folds its panes into one row the
   loudest one speaks: failed > asked > working > done > idle. `failed` is
-  never allowed to read as `idle`.
-  **Sizes amended 2026-08-16 (owner, "+2px"), the same 2px for all five so
-  the family stays one set:** filled dots 7px → 9px, the ring states 9px →
-  11px (`idle` reads 2px larger than a filled dot because its 1px border
-  sits outside a 9px box — this file has no box-sizing reset, and that
-  difference is deliberate: a ring reads smaller than a disc of equal
-  diameter), and `done`'s `CheckCircle` from `CHROME_ICON` to `FEATURE_ICON`.
-  Two inner details scaled with their boxes rather than holding still — the
-  `working` arc's mask radii (×11/9) and the `idle` core (3px → 4px) —
-  because keeping them would have turned the arc into a disc and the ring
-  into an empty circle. The shared mark/close slot is unchanged: the mark is
-  centred in it, so nothing around it moved.
+  never allowed to read as `idle`. Every mark occupies ONE fixed 14px box —
+  the resting dot paints 9px of ink centred inside it — so row geometry never
+  moves between states.
+  **Amended 2026-08-20 (owner), three times:** the spinner was 12px in
+  `--text-muted` ink and read as a smudge beside the age column — it is 14px
+  in `--text-primary` now. It no longer ROTATES: the drawing is 8 round
+  dots holding still while a bright head runs around them on a staggered
+  opacity cycle (`wschase`, 1.2s), replacing the whole-SVG `wsspin` spin of
+  24 sub-pixel ticks. Opacity is on DL-1.2's animatable list, so the motion
+  budget question is unchanged — still the one recorded §5 working-spinner
+  gap. And the mark's BOX went constant: it used to be the ink's own size
+  (9px dot, 14px ring), which the tab rows' 17px grid track absorbed but the
+  flex-laid leaf rows did not — their text jumped 5px whenever a pane entered
+  or left `working`. The box is 14px in every state now, the dot centred in
+  it by `::before`, and the leaf's old 2.5px compensating margin is gone.
 - **DL-27.4** **An actionable message line is trimmed by layout, never by
   slicing the string.** Only `asked` and `failed` earn that second line;
   `working`, `done` and `idle` stay one line. `text-overflow: ellipsis` does
@@ -1813,23 +2043,26 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   fades to 0 and close fades in, both by `opacity` in the same grid cell.
   Overlaying a READOUT is fine where overlaying a target never was — the
   mark's word survives in `title` and the accessible name (DL-27.2), and
-  agent chips/leaves remain uncovered.
+  agent chips/leaves remain uncovered. **Amended 2026-08-19 (owner):** state
+  moved to the row's leading edge and the agent brand mark took the trailing
+  slot. Close now swaps with that brand mark, except while the mark itself is
+  hovered or keyboard-focused so pane-exact navigation remains available.
 - **DL-27.6** **Amends DL-3.2.** `--yellow` means only _needs your eyes_ —
   attention a person must act on, one step below `--red`'s failure. Never
   decoration. **Widened 2026-08-16 (owner)** from "an agent is waiting on
   you": it now also covers a finished run nobody has checked, the old accent
   `done` folded in (DL-27.3, temporary).
-- **DL-27.7** **WITHDRAWN 2026-08-17 (owner). A rail click moves focus and says
-  nothing else.** From 2026-08-16 this rule amended DL-1.2's 300ms cap with one
+- **DL-27.7** **WITHDRAWN 2026-08-17 (owner).** From 2026-08-16 this rule
+  amended DL-1.2's 300ms cap with one
   scoped exception — a 1500ms ring the pane flashed when the rail sent focus
   into it, on the reasoning that focus landing in a grid of identical panes
   needs a locator. The owner removed the effect outright: what the eye actually
-  read was an accent flash with no obvious cause, and the active-pane bar
-  (`.pane-slot.is-active .pane::before`) already says which pane holds the
-  keys, permanently rather than for a second and a half. `pane-ping.ts`, its
-  suite and the `.pane-ping` CSS are deleted; **DL-1.2's cap is unconditional
-  again**. The number is kept here so a future locator does not cite a rule
-  that no longer exists.
+  read was an accent flash with no obvious cause, and the then-active-pane bar
+  (`.pane-slot.is-active .pane::before`, superseded by DL-18.11) already said
+  which pane held the keys permanently. The original ring was deleted at that
+  point. `pane-ping.ts` returned on 2026-08-19 for DL-18.11's top-edge yellow
+  line, not this ring, and its current behaviour is governed there. The number
+  is kept here so a future locator does not cite the withdrawn rule.
 - **DL-27.8** **The selection wash stops at the tab row (amended 2026-08-16).**
   It originally covered the whole item; with DL-27.13's pane tree inside the
   item, that painted the wash over the leaves and their guides, and the owner
@@ -1877,6 +2110,10 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   is printed **only when a person typed that title**: a derived label repeating
   the name above it is not a turn. DL-27.11 narrows that fallback again: only
   an `asked` or `failed` row paints it.
+  **Amended 2026-08-19 (owner):** the header rises from 11px `--type-meta` to
+  the scoped 13px `--type-project` role, exactly the requested +2px. It stays
+  below the 14px title rung and keeps `--text-muted`; the project becomes
+  easier to locate without taking the agents' primary tone.
 - **DL-27.10** **A project is printed once, its tabs are all under it, and the
   list never reorders itself.** Added 2026-08-16, replacing the pinned
   `Needs you` block and recency ordering with three things that hold together:
@@ -1906,7 +2143,8 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
 - **DL-27.11** **The rail stops at the tab (2026-08-16).** From the running
   Electron rail, the owner found project → tab → pane visually dense and chose
   exactly two levels: project → tab. A tab is one compact row: leading agent
-  glyphs, identity, age, one rolled-up state mark and a fixed hover-close slot.
+  state mark, identity, age, and one agent glyph sharing the fixed trailing
+  slot with hover-close.
   No row disclosure, disclosure gutter or nested pane row exists. Visible agent
   glyphs remain pane-exact controls; the three-glyph budget remains and `+N` is
   an inert count. Glyphs carry no state badge — DL-27.2's one row mark is the
@@ -1939,14 +2177,15 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   folded `claude + codex + agy` identity said which agents were in a tab but
   hid which one was in which state. The leaves are ALWAYS visible — never
   behind a disclosure, which DL-27.11 rightly killed — and each carries its
-  own glyph, agent name, age and DL-27.3 mark, no message line. A leaf is the
+  own leading DL-27.3 mark, agent name, age and trailing glyph, no message line. A leaf is the
   agent chip's contract at row width: press to focus that exact pane. The
   parent row keeps the tab's rolled-up mark and newest age, drops its chips,
   and names the tab — the user's name, else `N agents`; a joined-name
   identity would print every agent twice. The elbow is drawn with borders
   (`--hair-strong`, DL-14.1 untouched), the trunk continuing past every leaf
   but the last — the guide vocabulary file trees already taught. A
-  single-agent tab is untouched: one row, leading chip. The cluster header
+  single-agent tab remains one row, now with its status leading and chip
+  trailing. The cluster header
   stays the rail's only disclosure; the collapsed sidebar (DL-18.9) hides
   leaves with the rest of the rail's prose. **Three owner follow-ups the same
   day, from the shipped tree:** an unnamed multi-agent tab renders **no
@@ -1965,17 +2204,14 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   guides — so the rail shows only agents and projects. This rule, the markup
   and the CSS all stand; restoring the tree is flipping that one constant.
 
-- **DL-27.14** **The rail's FIRST row is `New`, and it is a button that can also
-  be picked up (2026-08-16; moved to the top 2026-08-17, owner).** It was the
-  last row for a day, on the reading that it belongs to the workspaces it adds
-  to and should follow them. The owner reads it as the rail's primary action
-  instead, and a primary action does not sit at the bottom of a list whose
-  length nobody controls — with enough projects open it was below the fold and
-  reachable only by scrolling. It stays INSIDE `.asr-rail__list` rather than
-  being pinned above it: the rail keeps one scrolling body, and pinning would
-  add a structural row instead of reordering an existing one. Consequence, and
-  accepted: it scrolls away like any other row. Clicked, it opens the board; dragged onto a
-  pane, it docks an agent pane at that pane's nearest edge
+- **DL-27.14** **`New` is the sidebar frame's launcher beside the hide control,
+  and it can also be picked up (2026-08-16; moved into the frame 2026-08-19,
+  owner).** It began as the rail's last row, moved to its first row on
+  2026-08-17, then left the scrolling list entirely: a primary action must not
+  disappear because the project list grew. The rail now starts with live work,
+  while [`SidebarFrameActions`](../src/ui/sidebar-toggle.tsx) `current` owns
+  the compact `toggle → New` cluster. Clicked, `New` opens the board; dragged
+  onto a pane, it docks an agent pane at that pane's nearest edge
   ([`new-pane-drag.ts`](../src/ui/new-pane-drag.ts) `current`). One control,
   two verbs, because both answer the same question — "another one, where?" —
   and a second row would have said the same word twice. The drag reuses the
@@ -1984,33 +2220,19 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   half-pane `.drop-overlay` naming the edge the drop will take. No new visual
   language is introduced, and nothing is added at rest — hover adds
   `cursor: grab` and that is the whole affordance, so a user who never drags
-  sees the button they already had. **The row is `New` at its leading edge and
-  a `Workspace` caption at its trailing one (2026-08-17, owner).** The caption
-  names what the list below holds; it is NOT a second control, so it sits
-  outside the button (`.asr-openrow__label`, `aria-hidden`), which in turn
-  stopped spanning the rail and shrank to its own content — the hover wash now
-  marks exactly what is clickable instead of washing text that does nothing.
-  The caption takes `--type-meta` and `--text-faint`: it heads the cluster
-  headers below it and must not read as loud as the project names it
-  introduces (DL-3.4). **`New` is sized as a launcher, not as a caption**:
-  label `--type-body`, glyph `RAIL_ICON` (16px), 9px padding. It carried
-  `--type-title` from 2026-08-16 until the owner asked for it smaller on
-  2026-08-17; the ask was "2px off", and 12px is not on DL-4.4's ladder, so it
-  took the rung below rather than opening DL-4.5's closed exception list for a
-  literal. What the rule is protecting survives the drop: a row naming the
-  action a user came looking for must not read quieter than the list it heads,
-  and `--type-body` still stands one rung above the `--type-meta` cluster
-  headers. No new size, and the resulting ~34px row still matches the tab
-  rows' height. **A drag can only land on a pane the user
-  can actually see.** It goes inert — the ghost finds no target, rather than
+  sees the button they already had. The frame treatment uses a 24px control,
+  `--type-body` and `CHROME_ICON`, matching the toggle's scale instead of
+  carrying the retired rail row's 16px glyph and 9px padding. **A drag can
+  only land on a pane the user can actually see.** It goes inert — the ghost
+  finds no target, rather than
   the row going disabled — whenever the stage is covered: a browser or
   document surface, the Open board, the full-bleed Settings screen, any modal.
   A ZOOMED tab is the one target that changes shape instead of disappearing:
   the whole stage becomes the zoomed pane's own drop zone, with its four
   edges, since the grid behind it is not on screen to be aimed at.
 
-- **DL-27.15** **Every row spends its second line on the agent's newest turn,
-  and a quiet row recedes (2026-08-17).** The message line stops being
+- **DL-27.15** **Every row carries the agent's newest turn at equal
+  legibility (2026-08-17; dimming withdrawn 2026-08-19).** The message stops being
   exceptional: whenever a row has a turn to show, it shows it, in every state
   — which is only worth doing now that the line carries a real sentence read
   off the agent's own session log
@@ -2018,25 +2240,10 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   than the tab's custom name. A list where only the loud rows carried a
   sentence read as two kinds of thing.
 
-  A **quiet** row — `working`, `done`, `idle` — takes the archived row's faint
-  treatment: name `--text-faint` at weight 480, agent glyph at opacity 0.45,
-  turn line `--text-faint`. A **loud** row — `asked`, `failed` — keeps
-  `--text-primary` on the name and `--text-muted` on the turn. **The state
-  mark keeps full colour in both cases: state is meaning, not emphasis**, so
-  the one element that says what happened is never the one that dims.
-
-  Measured reason for dimming the quiet row rather than brightening the loud
-  one: the derived tone ladder is too tight for a one-step dim to read
-  (`--text-primary` 207 → `--text-muted` 183 on tokyo-night, measured
-  2026-08-17), so a quiet row demoted by one step is indistinguishable at a
-  glance. Two steps down, onto the tone the archived rows already wear, is the
-  smallest step the eye actually resolves.
-
-  Approved from rendered specimens in
-  [`attention-direction.tsx`](../src/gallery/sections/attention-direction.tsx)
-  `current` (owner, 2026-08-17). The shipped treatment is the **hybrid** of
-  that section's two variants — a turn on every row AND quiet rows faint — not
-  either alone. It supersedes DL-27.11's "only `asked`/`failed` may spend a
+  State never lowers the opacity, colour, or weight of the agent glyph, name,
+  or turn. The former `data-quiet` treatment made a live, clickable row read as
+  disabled; status emphasis belongs exclusively to DL-27.3's sparse leading
+  dot. This supersedes DL-27.11's "only `asked`/`failed` may spend a
   second line" sentence and leaves the rest of that rule standing. The turn
   is still trimmed by layout and never by slicing (DL-27.4), so the full
   sentence stays in the tooltip and the accessible name. **Electron only:** on
@@ -2066,6 +2273,82 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   rows follow the same shape, at the tab row's own height and vertical
   padding — with the turn on one line a leaf and a tab row are the same object
   seen twice, and two heights read as two lists.
+
+- **DL-27.16** **The Agent Rail is live work only (2026-08-19, owner).** A row
+  must originate from a live tab; persisted workspace history and archived
+  sessions never produce rail output. Resume belongs to the Sessions surface,
+  and reopening a recent folder belongs to Open Board. This reverses the rail
+  spec's §8 archived-workspace rows: one column no longer mixes "running now"
+  with "worked here before". When a window has zero live tabs, the rail and its
+  resize/toggle chrome are absent and Open Board takes the stage; this is a
+  transient shell projection, not a write to the user's saved sidebar width or
+  collapsed state. Opening Open Board while tabs are live keeps the rail as the
+  route back to running work. The right dock is likewise suppressed while Open
+  Board owns the stage, without changing its saved open tab or visibility.
+
+- **DL-27.17** **A project header reads folder → name → trailing caret
+  (2026-08-19, owner).** `Folder` establishes that the group is a workspace;
+  the caret sits at the far edge so expansion is a predictable trailing
+  affordance rather than punctuation before the name. Both glyphs are
+  decorative; the button's accessible name carries the expand/collapse action.
+  The same-day follow-up raises the folder from `CHROME_ICON` (13px) to
+  `FEATURE_ICON` (15px) and the name from 11px to `--type-project` (13px),
+  keeping the pair 2px larger without changing the caret.
+
+- **DL-27.18** **A project header carries its own launcher (2026-08-19,
+  owner).** The trailing side of the header is a `+` that opens
+  `AgentQuickPicker` (§29) with the destination already decided by which
+  project was pressed. Before it, the only `+` was the tab strip's, which
+  always means "the ACTIVE tab's workspace": launching an agent in a project
+  that was on screen but not selected meant switching tabs first, which is the
+  one thing a rail exists to make unnecessary. Three constraints on the shape:
+  the control is a SIBLING of the collapse button, never nested inside it (a
+  button inside a button is not a thing a browser resolves); it keeps its box
+  at rest and fades only its ink in on cluster hover or its own
+  `:focus-visible`, so the header does not reflow under the pointer and a
+  keyboard can still find it; and it is omitted, not disabled, for a tab that
+  carries no workspace path (DL-19.7). **Re-amended the same day (owner):**
+  the caret is the last thing on the line after all, so DL-27.17's trailing
+  affordance stands unchanged and the launcher sits one slot inside it. Header
+  reading order is folder → name → `+` → caret. The header is a grid whose two
+  trailing tracks are the tab rows' own 17px glyph slot and the one before it,
+  so the caret lands on the agent glyph's centre line and the column reads as
+  one list rather than two ragged edges; the collapse button spans every track
+  so the caret stays part of it, and the launcher is pinned over the middle
+  track, which the caret reserves from inside the button. The header also takes
+  `box-sizing: border-box` here: `width: 100%` beside its padding had made it
+  11px wider than every row under it, which is what put both trailing controls
+  off the rows' edge in the first place.
+
+- **DL-27.19** **The panes of one tab stand inside a neutral frame
+  (2026-08-20, owner).** A tab running several agents draws a rounded
+  `--hair-strong` outline at `--radius-control` around its rows, and nothing
+  else says they are one tab: DL-27.13's parent row and elbow guides stay
+  behind `PANE_TREE_HIDDEN`, so before this the rail listed a three-agent tab
+  as three unrelated rows. The frame answers that with an edge instead of a
+  row — no name, no count, no indent, no extra line. **It is DL-1.3's inset
+  hairline (`box-shadow: inset 0 0 0 1px`), not a border and not an
+  outline**, and both of those were tried first. A border is layout: it either
+  pushes its rows 1px inward or is bled back with a negative margin, and that
+  bleed made the rail's list 1px wider than its box — `overflow-x: hidden`
+  hides the bar and keeps the scroll container, which is how a 1px overflow
+  moves chrome the moment focus lands in it. An outline is not layout but
+  paints on the 1px OUTSIDE the block, which the same `hidden` clips, since the
+  block fills the list's content box exactly. The inset hairline paints on the
+  1px inside: no layout, no overflow, nothing to clip, and it follows
+  `border-radius` like the other two. Vertically it
+  pays 3px inside and 3px outside, which puts its edge ~9px off the first
+  row's ink — the inset the row's own 7px leading padding already spends on
+  the other axis — and separates two framed tabs by 10px against the 7px
+  between a frame and a bare row, so a closed block reads as heavier than a
+  row boundary. **The colour is neutral and stays neutral.** The tab's own
+  `TabView.dotColor` was the drawn alternative (gallery column B4) and is not
+  taken: the status dot owns red and yellow (DL-27.3), and a frame in either
+  would claim a state the tab is not in. The frame rides the same
+  `data-headless` seam the hidden tree left behind, so it is Electron-only
+  presence chrome — a host that reports no agents draws no frames — and if
+  the tree ever returns, a NAMED multi-agent tab leaves that seam and loses
+  its frame. That day is a decision, not a regression.
 
 ## 28. The rail's action footer
 
@@ -2168,16 +2451,20 @@ a docked panel (§19).
   panel, which meant the stage behind it read as gone rather than as waiting.
   Wash and blur together carry that at 42%: what is behind stays legible as
   shape and colour, and unreadable as text — which is what a modal wants to
-  say. Escape stops at the panel (`preventDefault` + `stopPropagation`), since
-  a live terminal reading raw keys is one element behind it.
-- **DL-29.6** **The panel stands on the recessed chrome plane
-  (`--sidebar-bg`), the same ground as the navigation column and the docked
-  panel** — not a `--chrome-1` step off the stage. Added 2026-08-16, after the
-  blur landed and the two were seen together. A panel one step off `--bg`
-  floating over a blurred `--bg` reads as a lighter smudge of the same ground
-  rather than as an object; the recessed plane is the only ground in the app
-  that never appears on the stage, so the panel is unmistakably chrome the
-  moment it opens. It also stops modals from being a third chrome surface
+  say. Escape stops dead (`preventDefault` + `stopPropagation`), since a live
+  terminal reading raw keys is one element behind it. **Amended 2026-08-19:**
+  it is caught at the DOCUMENT in the capture phase, not on the panel — see
+  DL-29.8.
+- **DL-29.6** **The panel stands on the chrome plane (`--sidebar-bg`), the
+  same ground as the navigation column and the docked panel** — not a
+  `--chrome-1` step off the stage. Added 2026-08-16, after the blur landed and
+  the two were seen together. A panel one step off `--bg` floating over a
+  blurred `--bg` reads as a lighter smudge of the same ground rather than as an
+  object; the sidebar plane is the only ground in the app that never appears on
+  the stage, so the panel is unmistakably chrome the moment it opens. It was
+  the RECESSED plane when this rule was written and is the RAISED one on dark
+  themes since 2026-08-19 (DL-18.7) — the rule names the token, not the
+  direction, so the flip left it standing. It also stops modals from being a third chrome surface
   colour: DL-18.7 already put both side columns on this plane, and a modal is
   the same kind of thing — chrome raised over the work area.
 - **DL-29.7** **A modal that acts on a target states the target ONCE, above
@@ -2195,6 +2482,33 @@ a docked panel (§19).
   one possible value keeps the row and renders as DL-17.3's **readout** — the
   choices still have to be read against somewhere — and a target with no
   values at all is **omitted, not disabled** (DL-19.7).
+- **DL-29.8** **A modal answers the keyboard from anywhere, states the keys it
+  answers, and never offers a choice that cannot run (2026-08-19, owner).**
+  Three halves of one pass over `AgentQuickPicker`, each of which generalises:
+  - **Escape is caught at the document, in the capture phase.** DL-29.2 gives
+    the panel focus on mount, but focus does not stay put — a click on the
+    scrim, a native `<select>` that hands focus back to the body, a row that
+    was removed while it had it. Reading Escape on the panel meant the modal
+    could sit on screen with the key reaching the agent behind it, which is the
+    exact failure DL-29.5's `stopPropagation` exists to prevent. The listener
+    still stops the event dead, so nothing downstream sees it either way. This
+    amends DL-29.5's last sentence.
+  - **A column of choices answers ArrowUp/ArrowDown/Home/End with roving
+    focus, and Enter is then the native button press.** Focus still STARTS on
+    the panel (DL-29.2) and not on the first row: a modal one Enter away from
+    launching whatever happens to be first is a modal that punishes a
+    reflexive keystroke. The first arrow is what enters the list.
+  - **A key that works is a key the surface says.** The quick picker's digit
+    badges came off on 2026-08-16 and the digits kept working, which left a
+    shortcut nothing on screen admitted to. One `--type-meta` / `--text-faint`
+    line under the choices (DL-3.4) states all of them once — cheaper than N
+    badges, and it does not put a number back inside every row.
+  - **A row that cannot do its job leads somewhere it can be fixed.** A
+    declared agent whose binary has left `$PATH` stays listed — a chip that
+    vanishes because a tool was uninstalled reads as lost data — but choosing
+    it opens Settings instead of spawning a shell that prints
+    `command not found` and sits there. Not disabled: DL-19.7 would rather a
+    control were omitted than inert, and this one is neither.
 
 ## Chưa khớp thực tế
 

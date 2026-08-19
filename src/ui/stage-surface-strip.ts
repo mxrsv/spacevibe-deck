@@ -68,6 +68,11 @@ export function composeSurfaceStrip(deps: StageSurfaceStripDeps): SurfaceStrip {
       browserOpen.value && index === files.count()
         ? browserOpenedAt.value
         : (files.orderKey?.(index) ?? UNSEQUENCED),
+    // Straight delegation, with no browser branch: the file side answers
+    // false unless its editor actually holds the caret, so a browser tab on
+    // the stage falls through to the browser's own handling exactly as it did
+    // when these three were native Cocoa roles.
+    runEditCommand: (command) => files.runEditCommand?.(command) ?? false,
     activate(index) {
       if (browserOpen.value && index === files.count()) {
         if (browserSurfaceActive.value) {

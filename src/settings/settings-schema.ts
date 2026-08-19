@@ -1,4 +1,8 @@
-import { isEditorId, type EditorId } from "../lib/editor-command";
+import {
+  EXTERNAL_APPS,
+  isExternalAppId,
+  type ExternalAppId,
+} from "../lib/external-app-catalog";
 import {
   agentBinary,
   AGENT_LABEL_MAX,
@@ -72,10 +76,16 @@ export interface Settings {
    * the traffic lights and the toolbar keep a column to sit in.
    */
   sidebarCollapsed: boolean;
-  /** Editor launched through the platform link-activation gesture. */
-  editorId: EditorId;
-  /** Command template used when `editorId` is `custom` (empty until set). */
-  editorCommand: string;
+  /**
+   * The app a path OUTSIDE every open workspace is handed to (design §5).
+   *
+   * One field where `editorId` + `editorCommand` used to be two. A path that
+   * belongs to a workspace this window has open never reaches it — that always
+   * opens in Deck's own editor, with no switch — so this is the fallback, not
+   * a preference about editors. Both the toolbar's split-button and Settings
+   * write it, which is what keeps the chrome and Settings from disagreeing.
+   */
+  externalAppId: ExternalAppId;
   /** Lines of scrollback kept per pane. */
   scrollback: number;
   /** Agent CLIs the user declared, beyond the built-in set. */
@@ -133,6 +143,14 @@ export interface Settings {
   keybindings: KeybindingOverrides;
   /** Reopen last session's tabs and resume agent conversations at launch. */
   restoreSessions: boolean;
+  /**
+   * True once Deck has stopped asking for a GitHub star — either the star was
+   * made through `gh`, or the user was sent to the repository page and the ask
+   * is spent. It is a REMEMBERED ANSWER, not a fact about GitHub: a `gh`-backed
+   * recheck may clear it again when the account is no longer starring, which is
+   * what makes an unstar reappear as an ask rather than being invisible.
+   */
+  githubStarred: boolean;
 }
 
 export const FONT_SIZE_MIN = 10;
@@ -170,8 +188,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tabBarPosition: "left",
   sidebarWidth: 275,
   sidebarCollapsed: false,
-  editorId: "vscode",
-  editorCommand: "",
+  externalAppId: EXTERNAL_APPS[0].id,
   scrollback: 10_000,
   customAgents: [],
   launchProfiles: [],
@@ -186,6 +203,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dockTab: "explorer",
   keybindings: NO_KEYBINDING_OVERRIDES,
   restoreSessions: true,
+  githubStarred: false,
 };
 
 export const BROWSER_WIDTH_MIN = 280;
@@ -349,6 +367,26 @@ function validatePromptTemplates(raw: unknown): readonly PromptTemplate[] {
   return result;
 }
 
+/**
+ * `externalAppId`, migrating the `editorId`/`editorCommand` pair it replaced
+ * (design §5).
+ *
+ * `vscode`, `cursor` and `zed` are the same app in the new catalog, so those
+ * profiles carry over untouched. A stored `custom` has no catalog equivalent
+ * and lands on the catalog's first app — **the custom editor command stops
+ * being reachable**, which is a real loss and is recorded in `AGENTS.md`'s
+ * drift table rather than hidden here. Reading the legacy keys at all is what
+ * makes the change invisible to everyone who never used `custom`; dropping
+ * them would silently reset every install to VS Code.
+ */
+function migrateExternalAppId(source: Record<string, unknown>): ExternalAppId {
+  if (isExternalAppId(source.externalAppId)) {
+    return source.externalAppId;
+  }
+  const legacy = source.editorId;
+  return isExternalAppId(legacy) ? legacy : DEFAULT_SETTINGS.externalAppId;
+}
+
 /** Validate data read from the store — invalid fields fall back to defaults. */
 export function validateSettings(raw: unknown): Settings {
   if (typeof raw !== "object" || raw === null) {
@@ -401,13 +439,7 @@ export function validateSettings(raw: unknown): Settings {
       typeof source.sidebarCollapsed === "boolean"
         ? source.sidebarCollapsed
         : DEFAULT_SETTINGS.sidebarCollapsed,
-    editorId: isEditorId(source.editorId)
-      ? source.editorId
-      : DEFAULT_SETTINGS.editorId,
-    editorCommand:
-      typeof source.editorCommand === "string"
-        ? source.editorCommand
-        : DEFAULT_SETTINGS.editorCommand,
+    externalAppId: migrateExternalAppId(source),
     scrollback:
       typeof source.scrollback === "number" &&
       Number.isFinite(source.scrollback)
@@ -465,5 +497,9 @@ export function validateSettings(raw: unknown): Settings {
       typeof source.restoreSessions === "boolean"
         ? source.restoreSessions
         : DEFAULT_SETTINGS.restoreSessions,
+    githubStarred:
+      typeof source.githubStarred === "boolean"
+        ? source.githubStarred
+        : DEFAULT_SETTINGS.githubStarred,
   };
 }

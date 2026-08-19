@@ -14,9 +14,9 @@ import {
   commandFlags,
   commandProblem,
   createLaunchProfileId,
-  profilesForAgent,
   type LaunchProfile,
 } from "../../lib/launch-profile";
+import { agentLaunchCommand } from "../../lib/launch-command";
 
 /**
  * The agent catalog in Settings → Agents.
@@ -76,21 +76,22 @@ function CommandLine({ command }: { command: string }) {
 
 /**
  * The command an agent launches with: the user's own preset if they wrote one,
- * else the catalog's recommendation, else the bare binary. One resolution
- * order, read by the row and by nothing else — `defaultLaunchCommand` is what
- * the launch paths use, and it answers null when the user declared nothing,
- * which is where the catalog default is applied on the way out.
+ * else the catalog's recommendation, else the bare binary.
+ *
+ * It calls the same `agentLaunchCommand` every launch path calls, and that is
+ * the point. This row used to compute the order itself while the launch path
+ * used `defaultLaunchCommand`, which knows only about the STARRED preset and
+ * answers null otherwise — so Settings printed
+ * `claude --dangerously-skip-permissions` on a fresh install and the pane
+ * typed `claude`. A display that derives the sentence independently is a
+ * promise nothing keeps.
  */
 function effectiveCommand(
   agent: BuiltinAgent,
   profiles: readonly LaunchProfile[],
   defaults: Readonly<Record<string, string>>,
 ): string {
-  const starred = defaults[agent.id];
-  const own = profilesForAgent(agent.id, profiles);
-  const chosen =
-    own.find((profile) => profile.id === starred) ?? own[0] ?? null;
-  return chosen?.command ?? agent.defaultCommand ?? agent.id;
+  return agentLaunchCommand(agent.id, profiles, defaults) ?? agent.id;
 }
 
 function EnabledToggle({

@@ -84,6 +84,91 @@ interface StripSurfaceState {
   readonly settingsOpen: boolean;
 }
 
+interface SidebarVisibilityState {
+  readonly liveTabCount: number;
+  readonly savedCollapsed: boolean;
+  readonly dragCollapsed: boolean | null;
+}
+
+interface DockVisibilityState {
+  readonly boardOpen: boolean;
+  readonly dockOpen: boolean;
+}
+
+/** The Agent Rail is a projection of live work, never persisted history. */
+export function liveRailAvailable(liveTabCount: number): boolean {
+  return liveTabCount > 0;
+}
+
+/**
+ * A window with no live work temporarily yields the sidebar's space to the
+ * start surface. The persisted collapse choice is read, never rewritten.
+ */
+export function sidebarEffectivelyCollapsed(
+  state: SidebarVisibilityState,
+): boolean {
+  if (!liveRailAvailable(state.liveTabCount)) {
+    return true;
+  }
+  return state.dragCollapsed ?? state.savedCollapsed;
+}
+
+/** The Open Board owns the stage, so the dock waits without losing its state. */
+export function dockVisible(state: DockVisibilityState): boolean {
+  return state.dockOpen && !state.boardOpen;
+}
+
+/**
+ * Whether the docked column is PAINTED open, which during a resize drag is the
+ * gesture's answer rather than the setting's (2026-08-19).
+ *
+ * The navigation sidebar has always worked this way: pull its seam past the
+ * floor and the column goes at once, pull back and it returns, and the setting
+ * is only written on release. The dock instead dimmed to 45% and waited for the
+ * pointer to come up, because closing it unmounts the grip the gesture is
+ * captured on — `useDockPresence`'s hold now keeps that mount alive through the
+ * drag, so the two seams can finally answer the same way.
+ *
+ * `dragCollapsed` is `null` when no drag is in flight, which is what keeps this
+ * from having to know about pointers: a caller with no gesture passes null and
+ * gets the setting back.
+ */
+export function dockPaintedOpen(state: DockPaintState): boolean {
+  if (state.boardOpen) {
+    return false;
+  }
+  return state.dragCollapsed === null ? state.dockOpen : !state.dragCollapsed;
+}
+
+export interface DockPaintState extends DockVisibilityState {
+  /** Armed-to-collapse while dragging; `null` when no drag is in flight. */
+  readonly dragCollapsed: boolean | null;
+}
+
+/** A failed resume keeps the start surface present so its error stays visible. */
+export function boardClosesAfterResume(resumed: boolean): boolean {
+  return resumed;
+}
+
+/**
+ * Whether the CHROME carries the dock's hide control (DL-19.3, amended
+ * 2026-08-19).
+ *
+ * The control has two mounts and exactly one of them is ever on screen. A
+ * shown column carries its own, at its outer edge (`DockPanel`); the stage —
+ * the strip in sidebar mode, `TabBar`'s trailing slot in top-tab mode — carries
+ * only the way back into a column that is gone, which is DL-18.9's arrangement
+ * for the navigation sidebar.
+ *
+ * Board-open is not the same as dock-closed and must not borrow that mount:
+ * the board covers the stage, `dockVisible` already suppresses the column
+ * without touching the setting, and offering a way to "show" a panel the board
+ * is standing on top of promises something the click cannot deliver.
+ */
+export function dockToggleOnStage(state: DockVisibilityState): boolean {
+  return !state.boardOpen && !dockVisible(state);
+}
+
 /**
  * Whether the stage strip carries its tab chips (sidebar layout only).
  *

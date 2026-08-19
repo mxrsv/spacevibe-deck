@@ -4,32 +4,20 @@
    inventing a chip look of its own: the active chip is DL-21.1's full
    `--tab-active-bg` wash at `--radius-control` (DL-20.1) and nothing else —
    idle chips carry no fill — hover is the quieter DL-21.2 wash, and
-   focus-visible is the standard 2px `--accent` outline (DL-21.3). Icons are
-   `DeckIcon` at `FEATURE_ICON` (DL-14.1–14.3), text is `--ui-font` at
-   `--type-meta` in sentence case (DL-4.1, DL-4.4, DL-4.5, §8) — no
-   monospace, no px literal, no uppercase. */
+   focus-visible is the standard 2px `--accent` outline (DL-21.3). The chips
+   are icon-only, with their names retained in `aria-label` and said aloud —
+   with their chords — by a §23 tooltip, which replaced the native `title` on
+   2026-08-19. They draw `DeckIcon` at `FEATURE_ICON` beside the panel toggle,
+   one rung up from chrome since the same day (DL-14.1–14.4). */
 .dock-tabs {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px;
+  margin-left: auto;
 }
 
 .dock-tabs__chip {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  border: none;
-  border-radius: var(--radius-control);
-  background: transparent;
   color: var(--text-faint);
-  font-family: var(--ui-font);
-  font-size: var(--type-meta);
-  padding: 4px 8px;
-  cursor: pointer;
-  transition:
-    background var(--duration) var(--ease),
-    color var(--duration) var(--ease);
 }
 
 .dock-tabs__chip:hover {
@@ -73,6 +61,32 @@
   background: var(--sidebar-bg);
   /* DL-19.2: the seam is a single hairline, never a shadow. */
   border-left: 1px solid var(--hair);
+  /* DL §7's panel slide-over, and the resting state is the CLOSED one: the
+     column is mounted for one painted frame here before `is-open` arrives, and
+     it stays mounted at this transform for the length of the slide on the way
+     out (`dock-presence.ts` owns both). 0.28s on `transform` + `opacity` only
+     — inside DL-1.2's 300ms ceiling and on the two properties it allows.
+     Off-stage by its own full width, which `#root`'s `overflow: clip` swallows
+     rather than turning into a scrollable overhang.
+     The CURVE is the app's own entrance easing, the one every other surface
+     already uses (`.usage-screen`, `.sessions-screen`, `rise-in`) — DL §7
+     names a duration and calls it "ease-out cubic", and the slide-over it
+     cited as existing is gone, so the choice is this app's curve at §7's
+     figure rather than a second easing nothing else shares.
+     `width` is deliberately NOT in this transition: a resize drag writes it
+     every pointermove, and an eased width would trail the cursor. */
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease;
+}
+
+.dock-panel.is-open {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* DL-19.4: the drag target for the width, on the seam itself. Wider than
@@ -82,29 +96,66 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: -3px;
-  width: 7px;
+  /* 9px, up from 7 (owner, 2026-08-19), split 4 outside / 5 inside — the
+     sidebar's seam took the same widening for the same reason: a pointer
+     moving along a 7px target crossed its edge repeatedly and the cursor
+     changed on every crossing. */
+  left: -4px;
+  width: 9px;
   cursor: col-resize;
   background: transparent;
   z-index: 1;
 }
 
-/* DL-19.4: a drag pulled far enough past the floor closes the column on
-   release. It dims while the gesture is armed instead of vanishing under the
-   pointer — unmounting the grip mid-drag would end the gesture with the
-   column gone and no way to pull it back. */
-.dock-panel.is-collapse-armed {
-  opacity: 0.45;
+/* DL-19.4, amended 2026-08-19: the target still paints nothing at rest, and
+   hovering or dragging it lights the panel's own hairline in the accent — the
+   same 1px line `.split__divider:hover` draws, and the same one the sidebar's
+   seam now draws. 4px in, which is where `border-left` sits once the target
+   starts 4px outside the panel: the existing hairline lights up rather than
+   gaining a second line beside it. */
+.dock-panel__grip::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+  background: transparent;
+  transition: background var(--duration) var(--ease);
+}
+
+/* Full `--accent`, the sidebar seam's reason exactly: this line has
+   `--sidebar-bg` on one side, and a 60% mix of it reads as a lighter
+   hairline instead of a lit seam. */
+.dock-panel__grip:hover::after,
+.dock-panel__grip.is-dragging::after {
+  background: var(--accent);
+}
+
+/* DL-19.4, amended 2026-08-19: a drag past the floor closes the column UNDER
+   THE POINTER now, so there is nothing to dim. The 45% wash that used to stand
+   here existed for one reason — unmounting the grip mid-drag would have ended
+   the gesture with no way back — and `useDockPresence`'s hold removes that
+   constraint instead of working around it: the panel is pushed off-stage while
+   the mount, and with it the captured grip, stays.
+   The slide-over is OFF for the whole gesture. Animation is for the toggle and
+   the chord; inside a drag the pointer is the clock, and 280ms of easing reads
+   as the column lagging the hand. */
+.dock-panel.is-dragging {
+  transition: none;
 }
 
 /* DL-19.3, amended 2026-08-16: the header row carries the tab row rather than
    a single surface's title and hide control. Still one hairline-separated row
-   of the app's own controls; the hide control moved to the stage strip,
-   because a closed column cannot hold its own way back out (DL-18.9's
-   reasoning on the other edge). */
+   of the app's own controls.
+   Amended again 2026-08-19: the hide control is back in this row, last, and
+   only while the column is open — DL-18.9's arrangement mirrored, a shown
+   column carrying its own control at its OUTER edge. The stage strip keeps
+   the closed half, because a closed column cannot hold its own way back out. */
 .dock-panel__header {
   display: flex;
   align-items: center;
+  gap: 2px;
   /* `--frame-h`, not a literal: the stage strip beside it is exactly that
      tall, and the two rows sit side by side across one seam. At 28px the
      dock's hairline landed 5px above the strip's `--seam-recessed` line, so
@@ -117,6 +168,13 @@
   box-sizing: border-box;
   padding: 0 4px;
   border-bottom: 1px solid var(--hair);
+  flex-shrink: 0;
+}
+
+/* The icon-only tab group takes `margin-left: auto`, putting it immediately
+   before the hide control at the column's OUTER edge. The toggle never
+   shrinks: the way out must remain available at every dock width. */
+.dock-panel__header > .iconbtn {
   flex-shrink: 0;
 }
 

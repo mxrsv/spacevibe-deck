@@ -489,6 +489,84 @@
   font-size: var(--type-meta);
 }
 
+/* ── External-app split-button (DL-23.11) ───────────────────────
+   Two controls reading as one: the app's own icon opens the active
+   workspace, the caret changes which app that is. They share a hairline
+   frame so the pair is one object on the strip, and the caret is narrow
+   because it is the rare half — the icon is what gets clicked.
+   The icon is an <img> carrying a data: URL main read off the installed
+   bundle (design §4.2), so it sets its own box here rather than going
+   through DeckIcon — DL-14.3's "CSS never sizes an icon" governs the
+   authored SVG set, which this is deliberately not part of. ── */
+.extapp {
+  gap: 0;
+  /* The frame's border must not make the pair taller than the 24px controls
+     beside it — border-box, per the Known trap (no global box-sizing reset). */
+  box-sizing: border-box;
+  height: 24px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+}
+
+.extapp .iconbtn {
+  height: 22px;
+  /* The UA gives a <button> ~6px of horizontal padding, which `.iconbtn`
+     never resets — its 13px SVGs overflow the padded content box by a
+     bezel-invisible 0.5px, but this control's 15px raster mark landed 6px
+     from one edge and 3px from the other, and the caret's chevron was pushed
+     4px past its own button (measured in the gallery, 2026-08-20). */
+  padding: 0;
+  border-radius: 0;
+}
+
+.extapp__open {
+  width: 24px;
+  border-top-left-radius: var(--radius-control);
+  border-bottom-left-radius: var(--radius-control);
+}
+
+.extapp__caret {
+  width: 18px;
+  box-sizing: border-box;
+  border-top-right-radius: var(--radius-control);
+  border-bottom-right-radius: var(--radius-control);
+  border-left: 1px solid var(--hair);
+}
+
+/* 18px, above every DL-14.2 rung on purpose — those size authored GLYPHS,
+   and this is raster artwork that already carries its own padding inside the
+   64px frame sips rendered (a real .icns is drawn inset), so at the glyph
+   rungs it reads a step smaller than the 13px chrome icons beside it. Owner
+   asked for the step up on 2026-08-20. */
+.extapp__icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+/* The fallback when the bundle's icon could not be read. No authored logo
+   stands in for a brand mark (DL-14.6), so the label's first letter carries
+   the control and the tooltip says the rest. */
+.extapp__initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-flat);
+  background: var(--chrome-2);
+  color: var(--text-muted);
+  font: var(--type-meta)/1 var(--ui-font);
+}
+
+/* The picker menu reuses `.toolbar-menu`; only its leading mark differs. */
+.toolbar-menu__row .extapp__icon,
+.toolbar-menu__row .extapp__initial {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
 /* The tooltip's fade and the menu row's state change are the only motion
    here, and both are off when the system asks for less (DL-7). */
 @media (prefers-reduced-motion: reduce) {

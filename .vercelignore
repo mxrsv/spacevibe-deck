@@ -1,0 +1,30 @@
+# Vercel builds ONLY the landing page (see vercel.json: buildCommand runs
+# marketing/landing-prototype/vite.build.mjs). Uploading the whole checkout
+# exceeds the 10 MB request limit — the desktop app's sources, docs, review
+# assets and the marketing video renders are megabytes the landing never reads.
+#
+# Whitelist: everything is ignored, then the few paths the install and the
+# landing build actually need are added back.
+/*
+
+!/package.json
+!/package-lock.json
+!/vercel.json
+
+# `npm ci` runs the postinstall script from here.
+!/scripts
+
+!/marketing
+/marketing/*
+!/marketing/landing-prototype
+
+# The tour panels import the shared brand marks from here.
+!/marketing/stage
+
+# The landing's agent logos live with the app's own assets.
+!/src
+/src/*
+!/src/assets
+
+# Rebuilt on Vercel; never upload the local output.
+/marketing/landing-prototype/dist

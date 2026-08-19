@@ -21,7 +21,7 @@ import {
   loadMonaco,
   type MonacoApi,
 } from "../editor-host";
-import { documentFor } from "../file-surface-store";
+import { clearReveal, documentFor, pendingReveal } from "../file-surface-store";
 import {
   editorSettings,
   type FileSurfaceController,
@@ -67,6 +67,14 @@ export function FileEditor(props: FileEditorProps) {
    */
   const ready = useSignal(0);
   const document = documentFor(props.path);
+  /**
+   * Read during render on purpose: that is what subscribes this component to
+   * the signal, so a request arriving for a file that is ALREADY on the stage
+   * re-runs the model effect below. Nothing else about that file changes when
+   * a second path in it is clicked, so without this dep the reveal would only
+   * ever work on a cold open.
+   */
+  const reveal = pendingReveal.value;
 
   // Mount once. Monaco arrives through a dynamic import, so this effect can
   // resolve after the component has already unmounted — hence `cancelled`.
@@ -121,6 +129,44 @@ export function FileEditor(props: FileEditorProps) {
           }
         });
         props.controller.setEditorFocus(() => editor.focus());
+        // The Edit menu's Select All / Undo / Redo land here rather than in a
+        // native Cocoa role: a role runs a document-level Chromium command,
+        // and Monaco's EditContext caret is invisible to those (see
+        // `SurfaceEditCommand`). Whether the caret is HERE is the whole
+        // routing rule — false means it is in a terminal, a settings field or
+        // the tree, and `runEditCommand` (tab-manager.ts) falls back to the
+        // browser's own command, which is exactly what the role used to do.
+        //
+        // Asked of `document.activeElement`, NOT of `editor.hasTextFocus()`:
+        // Monaco's focus tracker is debounced by a 0ms timeout, so for one
+        // macrotask after focus leaves for a settings field it still answers
+        // true — measured 2026-08-19 as the editor swallowing that field's
+        // ⌘A. Containment is synchronous truth. The EditContext node sits
+        // inside the editor's overflow-guard container, so it counts.
+        props.controller.setEditorEdit((command) => {
+          const root = editor.getDomNode();
+          // `globalThis.document`: this component's own `document` const is
+          // the FILE document (`documentFor`), which shadows the DOM's.
+          if (
+            root === null ||
+            !root.contains(globalThis.document.activeElement)
+          ) {
+            return false;
+          }
+          if (command === "select-all") {
+            const model = editor.getModel();
+            if (model === null) {
+              return false;
+            }
+            // `setSelection` rather than triggering `editor.action.selectAll`:
+            // that command resolves through Monaco's command service and the
+            // focused-editor lookup, and this already knows both answers.
+            editor.setSelection(model.getFullModelRange());
+            return true;
+          }
+          editor.trigger("deck-menu", command, null);
+          return true;
+        });
         editor.focus();
         // Re-runs the model effect now that there is something to attach to.
         ready.value += 1;
@@ -133,6 +179,7 @@ export function FileEditor(props: FileEditorProps) {
     return () => {
       cancelled = true;
       props.controller.setEditorFocus(null);
+      props.controller.setEditorEdit(null);
       const handle = handleRef.current;
       handleRef.current = null;
       if (handle !== null) {
@@ -191,7 +238,22 @@ export function FileEditor(props: FileEditorProps) {
     editor.updateOptions({
       readOnly: document.file === null || document.file.readOnly,
     });
-  }, [props.path, document?.text, document?.file, ready.value]);
+    // `document.file !== null` is the gate, not a nicety: on a cold open this
+    // effect runs once with an empty model (the read is still in flight), and
+    // revealing line 65 of nothing would spend the request and land the caret
+    // at 1:1 for good. Waiting for the content means the reveal runs on the
+    // NEXT pass, which `document.file` above is already a dep of.
+    if (
+      reveal !== null &&
+      reveal.path === props.path &&
+      document.file !== null
+    ) {
+      editor.revealLineInCenter(reveal.line);
+      editor.setPosition({ lineNumber: reveal.line, column: reveal.column });
+      editor.focus();
+      clearReveal(reveal.path);
+    }
+  }, [props.path, document?.text, document?.file, ready.value, reveal]);
 
   // Theme, font family and font size follow the SAME `applySettings` call the
   // terminals do — a theme switch must not leave the editor in the old palette

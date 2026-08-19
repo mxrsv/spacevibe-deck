@@ -302,6 +302,34 @@ Forks resolved in [`../AGENTS.md`](../AGENTS.md) `current`, moved here when the 
 closed. Newest first; each entry states what the fork touched and which choice the
 owner made.
 
+- 2026-08-19: **the Agent Rail stopped dimming live rows and collapsed its
+  status vocabulary** — touched `DESIGN-LANGUAGE` (DL-27.2, DL-27.3,
+  DL-27.15, new DL-27.17). The owner chose legibility and exception-first
+  status over five constantly repeated treatments: every agent row now keeps
+  full opacity; `failed`, `asked`, and `working` share one static dot shape;
+  `done` and `idle` paint no mark. The former halo, spinner, check, idle ring,
+  and `data-quiet` styling are retired. The project header adds a folder before
+  the name and moves its caret to the far edge; the follow-up removes the
+  `Workspace` caption and raises both name and folder by 2px. State derivation,
+  precedence,
+  focus, tab ownership, and accessible state words did not change. Detail:
+  [docs/CONTEXT.md](CONTEXT.md#the-agent-rail-stops-looking-disabled--2026-08-19)
+  `current`.
+- 2026-08-19: **Open Board starts work, Agent Rail shows only live work, and
+  Sessions owns history** — touched `DESIGN-LANGUAGE` (new DL-27.16, reversing
+  the archived-row genre in the rail spec's §8) and the shell projection around
+  the listed tab/layout fork. The owner chose role separation over a dashboard:
+  cold start temporarily suppresses the empty rail and dock, while opening the
+  board during active work keeps the rail. Neither path rewrites persisted
+  sidebar or dock preferences. Recent workspaces stay on Home with their
+  remembered preset/agent and visible `Open` state; session rows moved behind
+  one `Resume a previous session…` action into a dedicated board subview. The
+  existing Sessions dock remains the history surface during live work and is
+  never mounted beside the board copy. PTY ownership, tab materialization and
+  session scanning did not move. Detail:
+  [docs/CONTEXT.md](CONTEXT.md#open-board-is-the-start-surface--2026-08-19)
+  `current`; [spec](specs/2026-08-19-open-board-start-surface-design.md)
+  `decided`.
 - 2026-08-19: **Appearance shows Light and Dark, and the theme machinery stays
   in the tree unmounted** — `docs/DESIGN-LANGUAGE.md` rules (DL-3.7, DL-4.3,
   DL-4.5, DL-6.5, DL-11.6, DL-11.7, DL-21.3, §24 retired), the listed fork. The
@@ -367,6 +395,12 @@ owner made.
   The size ask was "2px smaller" — 12px, which is off DL-4.4's ladder — and the
   owner chose `--type-body` (12.5px) over opening DL-4.5's closed exception
   list for a literal.
+- 2026-08-19: **`New` moved from the rail into the sidebar frame beside its
+  toggle** — owner requested the launcher at the top chrome. The real control
+  moved, not a copy: [`SidebarFrameActions`](../src/ui/sidebar-toggle.tsx)
+  `current` owns click plus the existing drag controller, and `AgentRail`
+  returns to live project rows only. This changes the DL-18.9 / DL-27.14 mount
+  without changing `dropAgentPane` or tab materialization.
 - 2026-08-17: **built-in theme foregrounds are neutral gray, and hairlines
   left `--fg`** — a `docs/DESIGN-LANGUAGE.md` rule, the listed fork. Offered the
   owner three shapes for "the text looks blue": neutralize only inside

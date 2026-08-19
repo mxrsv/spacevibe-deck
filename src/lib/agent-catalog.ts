@@ -221,6 +221,26 @@ export function resolveAgentCommand(
   return custom?.command ?? null;
 }
 
+/**
+ * What an agent launches with when the user has written no preset for it: the
+ * catalog's shipped recommendation for a built-in, the declared command line
+ * for a custom agent, and null for an id nothing knows.
+ *
+ * `resolveAgentCommand` above stays the BARE form — `MaterializeIntent`'s
+ * explicit `launchCommand: null` means "the binary and nothing else", and that
+ * promise is what it answers.
+ */
+export function catalogLaunchCommand(
+  id: string,
+  customAgents: readonly CustomAgent[],
+): string | null {
+  const builtin = BUILTIN_AGENTS.find((agent) => agent.id === id);
+  if (builtin !== undefined) {
+    return builtin.defaultCommand ?? builtin.id;
+  }
+  return customAgents.find((agent) => agent.id === id)?.command ?? null;
+}
+
 /** One selectable agent, in the order the board offers them. */
 export interface AgentOption {
   /** The `AgentChoice` this option stands for. */
@@ -242,12 +262,19 @@ export interface AgentOption {
 export function agentOptions(
   detected: readonly { readonly name: string; readonly path: string }[],
   customAgents: readonly CustomAgent[],
+  disabledAgents: readonly string[] = [],
 ): readonly AgentOption[] {
   const paths = new Map(detected.map((agent) => [agent.name, agent.path]));
+  // Settings' Enabled/Disabled switch is the ONLY thing that takes an agent
+  // out of the pickers — a built-in cannot be deleted, since the next probe
+  // finds it again. It is applied HERE rather than at each picker because this
+  // function is also what fixes the digit keys: filtering downstream would
+  // leave a disabled agent holding its number.
+  const off = new Set(disabledAgents);
   const options: AgentOption[] = [];
   for (const builtin of BUILTIN_AGENTS) {
     const path = paths.get(builtin.id);
-    if (path !== undefined) {
+    if (path !== undefined && !off.has(builtin.id)) {
       options.push({
         id: builtin.id,
         label: builtin.label,
@@ -257,6 +284,12 @@ export function agentOptions(
     }
   }
   for (const agent of customAgents) {
+    // The same switch, applied to a declared agent. Settings only offers it on
+    // built-in rows today, but the field is an id list, not a built-in list —
+    // honouring it here is what keeps a stored id from meaning two things.
+    if (off.has(agent.id)) {
+      continue;
+    }
     options.push({
       id: agent.id,
       label: agent.label,

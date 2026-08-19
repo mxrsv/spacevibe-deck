@@ -219,6 +219,38 @@ function itemsFor(
 }
 
 /**
+ * One Edit item that dispatches a registry action instead of a Cocoa role.
+ *
+ * The accelerator is written out rather than read from the keymap on purpose:
+ * these three actions carry no `KeyBinding` at all. Giving them one would put
+ * ⌘A / ⌘Z / ⌘⇧Z into the Shortcuts screen as rebindable rows and into
+ * `handleShortcut`'s matcher, and neither buys anything — the chord users
+ * expect here is fixed by the platform, and it is the MENU that owns it.
+ *
+ * `suspendAccelerators` is honoured for the same reason every other item
+ * honours it: while a Shortcuts row is recording, ⌘A must reach the webview to
+ * BE the captured chord.
+ */
+function editCommandItem(
+  label: string,
+  accelerator: string,
+  action: string,
+  deps: MenuDeps,
+): MenuItemConstructorOptions {
+  return {
+    id: action,
+    label,
+    accelerator: deps.suspendAccelerators === true ? undefined : accelerator,
+    click: () => {
+      const target = deps.focused();
+      if (target !== null) {
+        deps.emitTo(target, EVENTS.menuAction, action);
+      }
+    },
+  };
+}
+
+/**
  * Build and install the application menu.
  *
  * The move-pane submenu is rebuilt on every focus change, because it lists
@@ -282,13 +314,28 @@ export function buildMenu(deps: MenuDeps): void {
     {
       label: "Edit",
       submenu: [
-        { role: "undo" },
-        { role: "redo" },
+        // Undo/Redo/Select All are NOT `role:` items. A role runs a
+        // document-level Chromium command, and Monaco is opaque to those:
+        // with `editContext` on (its default since 0.52) the caret lives in a
+        // `div.native-edit-context` that owns no DOM selection, so
+        // `webContents.selectAll()` selects nothing and `webContents.undo()`
+        // never reaches the editor's own undo stack. Routed to the renderer
+        // instead, which hands the chord to the focused surface and otherwise
+        // falls back to the same command the role ran (`runEditCommand`,
+        // tab-manager.ts).
+        editCommandItem("Undo", "Command+Z", "undo", deps),
+        editCommandItem("Redo", "Command+Shift+Z", "redo", deps),
         { type: "separator" },
+        // Cut/Copy/Paste STAY native: Chromium dispatches a real DOM
+        // `cut`/`copy`/`paste` event for each, and Monaco's
+        // `NativeEditContext` listens for all three — so these three roles
+        // already reach the editor, the terminal and every chrome input.
+        // Routing them through the renderer would only add a way to break
+        // them.
         { role: "cut" },
         { role: "copy" },
         { role: "paste" },
-        { role: "selectAll" },
+        editCommandItem("Select All", "Command+A", "select-all", deps),
         ...itemsFor("Edit", deps),
       ],
     },

@@ -74,6 +74,13 @@ interface DeckToolbarProps {
   /** Rendered inside the Prompts control's slot while open. */
   readonly promptPopover?: ComponentChildren;
   readonly updateAction?: ComponentChildren;
+  /**
+   * The external-app split-button (new DL-23.11), built by `App` because it
+   * needs the installed-app scan and the active workspace. Projected in as a
+   * node rather than as state: it is the one control on this bar that owns its
+   * own icon and its own menu, so `ToolbarItem` cannot describe it.
+   */
+  readonly externalApp?: ComponentChildren;
   onToggleBrowser(): void;
   onSplitRow(): void;
   onSplitColumn(): void;
@@ -185,6 +192,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
       // (DL-28.3) and top-tab mode stands the same rows up in `More`, which
       // is what keeps a second Prompt Board popover off the screen.
       items={[]}
+      externalApp={props.externalApp}
       updateAction={props.updateAction}
       pinnedMenu={
         props.compact || SIDEBAR_TOOLS_HIDDEN

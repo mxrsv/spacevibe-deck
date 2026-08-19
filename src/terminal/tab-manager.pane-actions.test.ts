@@ -13,6 +13,7 @@ import {
   settingsOpen,
 } from "../chrome/events";
 import { activeTabIndex, tabViews } from "./tabs-store";
+import { sessionsSupported } from "../sessions/sessions-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
@@ -451,7 +452,53 @@ describe("toggle-usage", () => {
 });
 
 // The session history screen is the third surface pushed at
-// `TIER_RANK.settings` by `openOverlayRanks()`. There is no `toggle-sessions`
-// action in v1 (spec §3.1: toolbar control only, no shortcut, no menu item),
-// so only the RANK half of the `toggle-usage` block above transfers here —
-// the seam tests have no action to drive.
+// `TIER_RANK.settings` by `openOverlayRanks()`. It had NO action until
+// 2026-08-19 — the file-explorer spec §3.1 shipped it as "toolbar control
+// only, no shortcut, no menu item", which is why only the RANK half of the
+// `toggle-usage` block above used to transfer here. `toggle-sessions` exists
+// now, so the seam half is testable and lives below.
+describe("toggle-sessions (2026-08-19)", () => {
+  beforeEach(() => {
+    boardOpen.value = false;
+    settingsOpen.value = false;
+    editorRequest.value = null;
+    saveDialogOpen.value = false;
+    settings.value = { ...DEFAULT_SETTINGS };
+    sessionsSupported.value = true;
+  });
+
+  afterEach(() => {
+    settingsOpen.value = false;
+    sessionsSupported.value = true;
+  });
+
+  it("reveals the sessions tab, opening the column on it", async () => {
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    tm.runAction("toggle-sessions");
+
+    expect(settings.value.dockOpen).toBe(true);
+    expect(settings.value.dockTab).toBe("sessions");
+    tm.dispose();
+  });
+
+  // The guard its two sibling tabs do not need. `availableDockTabs` drops
+  // this tab on a host with no `sessions_list` and `resolveDockTab` falls the
+  // column back to explorer — so an unguarded reveal would answer
+  // "Session History" by opening the FILE EXPLORER.
+  it("says so instead of opening the wrong tab where the host has no sessions", async () => {
+    sessionsSupported.value = false;
+    const { tm } = setup({});
+    await tm.init();
+    await flush();
+
+    tm.runAction("toggle-sessions");
+
+    expect(settings.value.dockOpen).toBe(false);
+    expect(settings.value.dockTab).not.toBe("sessions");
+    expect(persistError.value).toContain("Session history");
+    tm.dispose();
+  });
+});

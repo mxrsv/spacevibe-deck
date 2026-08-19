@@ -120,16 +120,21 @@ describe("OpenBoard home view", () => {
       preset: { id: string },
       agent: string | null,
     ) => Promise<boolean> = async () => true,
-    props: { canCancel?: boolean } = {},
+    props: {
+      canCancel?: boolean;
+      canBrowseSessions?: boolean;
+      openWorkspacePaths?: ReadonlySet<string>;
+    } = {},
   ): Promise<void> => {
     await act(async () => {
       render(
         <OpenBoard
           canCancel={props.canCancel ?? false}
+          canBrowseSessions={props.canBrowseSessions ?? false}
+          openWorkspacePaths={props.openWorkspacePaths ?? new Set()}
           onCancel={() => {}}
           onOpen={onOpen}
-          recentSessions={[]}
-          onResumeSession={() => {}}
+          onResumeSession={async () => true}
         />,
         host,
       );
@@ -145,7 +150,7 @@ describe("OpenBoard home view", () => {
     });
   };
 
-  it("home view renders the logo, Open project, and grouped recents — Create worktree stays hidden while its capability gate resolves false", async () => {
+  it("home view renders the logo, Start action, and grouped recents — Create worktree stays hidden while its capability gate resolves false", async () => {
     seed(["/w/alpha", "/w/ghost"]);
     missingPaths.add("/w/ghost");
     await mount();
@@ -155,7 +160,7 @@ describe("OpenBoard home view", () => {
       host.querySelector(".board-home img[alt='SpaceVibe Deck']"),
     ).not.toBeNull();
     expect(host.querySelector(".home-action")?.textContent).toContain(
-      "Open project",
+      "Open workspace",
     );
     expect(
       [...host.querySelectorAll(".home-action")].some((el) =>
@@ -164,7 +169,7 @@ describe("OpenBoard home view", () => {
     ).toBe(false);
     expect(
       [...host.querySelectorAll(".row .row__name")].map((el) => el.textContent),
-    ).toEqual(["alpha", "ghost"]);
+    ).toEqual(["alpha"]);
     expect(host.querySelector(".gsep")).not.toBeNull();
     // The retired config view (2026-08-16) has no mount left anywhere.
     expect(host.querySelector(".board-config")).toBeNull();
@@ -204,7 +209,7 @@ describe("OpenBoard home view", () => {
     const onOpen = vi.fn(async () => true);
     await mount(onOpen);
 
-    const row = host.querySelector<HTMLLIElement>(".row");
+    const row = host.querySelector<HTMLButtonElement>(".row__open");
     await act(async () => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -231,7 +236,7 @@ describe("OpenBoard home view", () => {
     const onOpen = vi.fn(async () => true);
     await mount(onOpen);
 
-    const row = host.querySelector<HTMLLIElement>(".row");
+    const row = host.querySelector<HTMLButtonElement>(".row__open");
     await act(async () => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -251,7 +256,11 @@ describe("OpenBoard home view", () => {
     const onOpen = vi.fn(async () => true);
     await mount(onOpen);
 
-    const row = host.querySelector<HTMLLIElement>(".row");
+    const disclosure = host.querySelector<HTMLButtonElement>(
+      ".board-home__missing-toggle",
+    );
+    act(() => disclosure?.click());
+    const row = host.querySelector<HTMLButtonElement>(".row__open");
     await act(async () => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -267,7 +276,7 @@ describe("OpenBoard home view", () => {
     const onOpen = vi.fn(async () => false);
     await mount(onOpen);
 
-    const row = host.querySelector<HTMLLIElement>(".row");
+    const row = host.querySelector<HTMLButtonElement>(".row__open");
     await act(async () => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -278,6 +287,20 @@ describe("OpenBoard home view", () => {
     expect(notice?.textContent).toContain("Couldn't start a shell here");
   });
 
+  it("opens session history as a dedicated subview and Escape returns Home", async () => {
+    await mount(undefined, { canBrowseSessions: true });
+
+    act(() => {
+      host.querySelector<HTMLButtonElement>(".board-home__resume")?.click();
+    });
+    expect(host.querySelector(".board-sessions")).not.toBeNull();
+    expect(host.querySelector(".board-home")).toBeNull();
+
+    await keydown({ key: "Escape" });
+    expect(host.querySelector(".board-sessions")).toBeNull();
+    expect(host.querySelector(".board-home")).not.toBeNull();
+  });
+
   it("Escape cancels the board from home", async () => {
     seed(["/w/alpha"]);
     const onCancel = vi.fn();
@@ -285,10 +308,11 @@ describe("OpenBoard home view", () => {
       render(
         <OpenBoard
           canCancel={true}
+          canBrowseSessions={false}
+          openWorkspacePaths={new Set()}
           onCancel={onCancel}
           onOpen={async () => true}
-          recentSessions={[]}
-          onResumeSession={() => {}}
+          onResumeSession={async () => true}
         />,
         host,
       );

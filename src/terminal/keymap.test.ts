@@ -351,6 +351,28 @@ describe("matchBinding", () => {
     expect(matchBinding(keyEvent("u", { shiftKey: true }))).toBeNull();
   });
 
+  // The dock's other two chords, added 2026-08-19 so every control in its
+  // header can print one (DL-23.1). Same shape as the ⌘⇧U pair above.
+  it("matches Cmd+Shift+Y as toggle-sessions", () => {
+    expect(matchBinding(keyEvent("y", { metaKey: true, shiftKey: true }))).toBe(
+      "toggle-sessions",
+    );
+  });
+
+  it("matches Cmd+Shift+J as toggle-dock", () => {
+    expect(matchBinding(keyEvent("j", { metaKey: true, shiftKey: true }))).toBe(
+      "toggle-dock",
+    );
+  });
+
+  it("does not match Y or J without both modifiers", () => {
+    for (const key of ["y", "j"]) {
+      expect(matchBinding(keyEvent(key))).toBeNull();
+      expect(matchBinding(keyEvent(key, { metaKey: true }))).toBeNull();
+      expect(matchBinding(keyEvent(key, { shiftKey: true }))).toBeNull();
+    }
+  });
+
   it("does not match comma without the meta modifier", () => {
     expect(matchBinding(keyEvent(","))).toBeNull();
     expect(matchBinding(keyEvent(",", { shiftKey: true }))).toBeNull();
@@ -419,6 +441,8 @@ describe("WINDOWS_KEYMAP", () => {
     ["a", { ctrlKey: true, shiftKey: true }, "focus-next-attention"],
     [",", { ctrlKey: true }, "toggle-settings"],
     ["u", { ctrlKey: true, shiftKey: true }, "toggle-usage"],
+    ["y", { ctrlKey: true, shiftKey: true }, "toggle-sessions"],
+    ["j", { ctrlKey: true, shiftKey: true }, "toggle-dock"],
     ["pageup", { shiftKey: true }, "scroll-page-up"],
     ["pagedown", { shiftKey: true }, "scroll-page-down"],
     ["home", { shiftKey: true }, "scroll-to-top"],

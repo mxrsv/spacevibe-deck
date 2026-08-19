@@ -59,6 +59,22 @@ export function worktreeDestinations(
     .map(({ prunable: _prunable, ...destination }) => destination);
 }
 
+/**
+ * The one destination a plain folder offers: itself.
+ *
+ * `worktreeDestinations` answers nothing for a directory git does not know,
+ * which is the right answer when the picker is opening into the ACTIVE tab —
+ * the caller then omits the row and the new tab lands in the focused pane's
+ * cwd. It is the wrong answer when the picker was opened from a rail project
+ * header, where "which folder" is the whole point of the click and the panel
+ * would otherwise print "Runs in this workspace" about a workspace that is not
+ * the one the user pressed. One synthetic entry states the target instead, and
+ * DL-29.7's one-value case renders it as a readout.
+ */
+export function plainFolderDestination(path: string): QuickDestination {
+  return { path, name: workspaceLabel(path), branch: null, primary: true };
+}
+
 /** `folder · branch`, or the folder alone when git reports no branch. */
 export function destinationLabel(destination: QuickDestination): string {
   return destination.branch === null

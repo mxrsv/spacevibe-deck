@@ -106,6 +106,45 @@ export const fileSurfaces = signal<ReadonlyMap<string, FileSurfaceState>>(
   new Map(),
 );
 
+/** A caret position an opened document should land on (design §3.3). */
+export interface RevealRequest {
+  readonly path: string;
+  readonly line: number;
+  readonly column: number;
+}
+
+/**
+ * The position the next mounted editor should reveal, or null.
+ *
+ * A STORED request rather than an imperative call into Monaco, because Monaco
+ * arrives through a dynamic `import()` and a ⌘+click can land before the editor
+ * exists at all. The same seam covers the already-open case, where nothing
+ * mounts: `FileEditor` re-reads this on every model attach and applies it once
+ * the document's content is actually there — revealing line 65 of an empty
+ * model would consume the request and land nowhere.
+ *
+ * Single-slot rather than a map: one activation is one destination, and a
+ * second click before the first has landed means the user changed their mind.
+ */
+export const pendingReveal = signal<RevealRequest | null>(null);
+
+export function requestReveal(
+  path: string,
+  line: number,
+  column: number,
+): void {
+  pendingReveal.value = { path, line, column };
+}
+
+/** Spend the request for `path`. A no-op for anything else — a stale entry
+ * belongs to a file that is no longer being opened, and clearing it blindly
+ * would cancel a reveal that has not run yet. */
+export function clearReveal(path: string): void {
+  if (pendingReveal.value?.path === path) {
+    pendingReveal.value = null;
+  }
+}
+
 /** Failed directory reads, separate from last-good listings they must retain. */
 const listingErrors = signal<ReadonlyMap<string, ReadonlyMap<string, string>>>(
   new Map(),
@@ -522,4 +561,5 @@ export function resetFileSurfaces(): void {
   activeFileTab.value = null;
   dockWidthLive.value = null;
   dockCollapseArmed.value = false;
+  pendingReveal.value = null;
 }

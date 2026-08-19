@@ -11,10 +11,13 @@ import { detectAgentsSafely, dirsExist } from "../agents";
 import { gitBranch } from "../git";
 import { scanRepository } from "../worktrees";
 import { addWorktree } from "../git/worktree";
+import { readStarState, starRepository } from "../github-star";
 import { resolveResume, validateResumeRequests } from "../resume/resolve";
 import { resolveSessionTails } from "../resume/session-tail";
 import { listSessions } from "../sessions/list";
 import { resolvePaths, openEditor } from "../links";
+import { listExternalApps, openInApp } from "../external-apps";
+import { workspaceForPath } from "../fs/workspace-for-path";
 import { listPromptAssets } from "../prompt-assets";
 import { readImageAsDataUrl, scanWorkspaceFavicon } from "../images";
 import { createUsageService } from "../usage/service";
@@ -37,6 +40,10 @@ export function registerServices(deps: RegisterServicesDeps): void {
     (_event, { repoPath, branch, destPath }) =>
       addWorktree({ repoPath, branch, destPath }),
   );
+  // Neither rejects: "Star on GitHub" degrades to opening the repository page,
+  // so an absent or signed-out `gh` is an ordinary answer, not an error.
+  ipcMain.handle(CHANNELS.githubStarState, () => readStarState());
+  ipcMain.handle(CHANNELS.githubStar, () => starRepository());
   ipcMain.handle(CHANNELS.resumeLookup, (_event, { requests }) =>
     resolveResume(app.getPath("home"), validateResumeRequests(requests)),
   );
@@ -74,6 +81,18 @@ export function registerServices(deps: RegisterServicesDeps): void {
     // Rust parameter name, so taking the payload whole read `.editor` off the
     // wrapper and every file link failed as "editor not supported".
     openEditor(request),
+  );
+  // Never rejects: "no open workspace holds this file" is an ORDINARY answer —
+  // it is how a click reaches the external app — so an unreadable root degrades
+  // to null rather than turning a link into an error bar.
+  ipcMain.handle(CHANNELS.workspaceForPath, (_event, { path: target, roots }) =>
+    workspaceForPath({ path: target, roots: roots ?? [] }),
+  );
+  ipcMain.handle(CHANNELS.externalApps, () => listExternalApps());
+  ipcMain.handle(
+    CHANNELS.openInApp,
+    (_event, { appId, path: target, isDirectory }) =>
+      openInApp({ appId, path: target, isDirectory: isDirectory === true }),
   );
   ipcMain.handle(CHANNELS.listPromptAssets, (_event, { agent, cwd }) =>
     listPromptAssets(agent, cwd ?? null),

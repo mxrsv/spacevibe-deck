@@ -13,9 +13,11 @@ import { useEffect, useState } from "preact/hooks";
  * the bar it lives in is a 33px row that clips, and a tooltip that renders
  * inside that row is a tooltip nobody can read.
  *
- * See docs/specs/2026-08-12-feature-toolbar-design.md. There is no numbered DL
- * rule for tooltips yet — adding one is a design-language fork and belongs to
- * the pass that puts this toolbar into the shipping chrome.
+ * See docs/specs/2026-08-12-feature-toolbar-design.md. The rules are
+ * DESIGN-LANGUAGE §23 (DL-23.1's content, DL-23.3's surface, DL-23.4's
+ * positioning) — written when the toolbar shipped, so the note that once
+ * stood here saying no rule existed yet is gone. Scope widened on 2026-08-19:
+ * the dock header's tab chips and panel toggle draw this same tooltip.
  */
 
 /** Viewport coordinates of the tooltip's top-centre point. */

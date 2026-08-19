@@ -5,18 +5,22 @@ import {
   SECTION_PANEL_ID,
   SETTINGS_CATEGORIES,
 } from "./settings-categories";
-import { ResetSection } from "./sections/reset-section";
 
 /**
- * The settings rail: a vertical list of category tabs above a pinned Reset
- * foot. Click sets `activeCategory.value` directly — a module signal, no
- * prop callback, same idiom `app.tsx` uses for `boardOpen.value = false`.
- * `↑`/`↓` wrap over the five categories, the local roving-list idiom from
+ * The settings rail: one vertical list of category tabs, and nothing else.
+ * Click sets `activeCategory.value` directly — a module signal, no prop
+ * callback, same idiom `app.tsx` uses for `boardOpen.value = false`.
+ * `↑`/`↓` wrap over the categories, the local roving-list idiom from
  * `open-board.tsx`'s `moveWorkspace`/`movePreset`
  * (`(index + step + length) % length`), and move DOM focus together with
  * the signal so the visibly-active item and the focused item never
- * disagree. `ResetSection` sits in the foot, outside this roving group — a
- * normal tab stop, not a sixth cycle item (plan §3 invariant).
+ * disagree.
+ *
+ * The pinned Reset foot is gone since 2026-08-19 (owner, DL-11.5 amended):
+ * `reset` is a registry category like every other stop, so it rides this
+ * roving group and renders on the right. That deleted the rail's only
+ * special case — a second mount point outside the list, with its own CSS
+ * teaching one config row to stack because 220px could not hold it.
  *
  * `role="tablist"`/`role="tab"` — this is the Tabs pattern (a rail
  * selection swaps a single content panel), so vertical `↑`/`↓` roving and
@@ -58,7 +62,6 @@ export function SettingsNav() {
       >
         {SETTINGS_CATEGORIES.map((category, index) => {
           const isActive = category.id === activeCategory.value;
-          const Icon = category.Icon;
           return (
             <button
               key={category.id}
@@ -72,16 +75,19 @@ export function SettingsNav() {
               aria-controls={SECTION_PANEL_ID}
               tabIndex={isActive ? 0 : -1}
               class={`settings-nav__item ${isActive ? "is-active" : ""}`}
+              // `title` survives the icon's removal (2026-08-19, DL-11.3
+              // retired): at compact width the label truncates, and the
+              // tooltip is what still says the whole name. `aria-label` is
+              // gone with the icon — the label text IS the accessible name
+              // now, and a duplicate that says the same thing is one more
+              // string to keep in sync for nothing.
+              title={category.label}
               onClick={() => selectCategory(index)}
             >
-              <Icon />
               <span class="settings-nav__label">{category.label}</span>
             </button>
           );
         })}
-      </div>
-      <div class="settings-nav__foot">
-        <ResetSection />
       </div>
     </nav>
   );

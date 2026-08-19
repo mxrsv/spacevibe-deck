@@ -2,7 +2,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SidebarToggle } from "./sidebar-toggle";
+import { SidebarFrameActions, SidebarToggle } from "./sidebar-toggle";
 
 describe("SidebarToggle", () => {
   let host: HTMLDivElement;
@@ -66,5 +66,31 @@ describe("SidebarToggle", () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
     // Nothing repainted: the owner of the state decides what happens next.
     expect(control().getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("puts New immediately after the open-sidebar toggle", () => {
+    const onOpenWorkspace = vi.fn();
+    act(() =>
+      render(
+        <SidebarFrameActions
+          collapsed={false}
+          onToggle={vi.fn()}
+          onOpenWorkspace={onOpenWorkspace}
+        />,
+        host,
+      ),
+    );
+
+    const actions = host.querySelector(".sidebar-frame-actions")!;
+    expect(
+      Array.from(actions.children).map((child) =>
+        child.getAttribute("aria-label"),
+      ),
+    ).toEqual(["Collapse the sidebar", "New"]);
+
+    act(() => {
+      host.querySelector<HTMLButtonElement>(".sidebar-new")!.click();
+    });
+    expect(onOpenWorkspace).toHaveBeenCalledTimes(1);
   });
 });

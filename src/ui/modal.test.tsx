@@ -204,6 +204,29 @@ describe("Modal", () => {
     expect(seen).not.toHaveBeenCalled();
   });
 
+  // DL-29.5, amended 2026-08-19: Escape is answered at the document, so it
+  // still closes after focus has left the panel — a click on the scrim, or a
+  // native menu that handed focus back to the body, used to strand the modal
+  // on screen with Escape reaching the agent behind it instead.
+  it("Escape dismisses from outside the panel", () => {
+    const { onDismiss } = mount();
+
+    key(document.body, "Escape");
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops answering Escape once it is unmounted", () => {
+    const { onDismiss } = mount();
+    act(() => {
+      render(null, host);
+    });
+
+    key(document.body, "Escape");
+
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
   it("keys other than Escape reach the panel's own handler", () => {
     const onKeyDown = vi.fn();
     mount({ onKeyDown });

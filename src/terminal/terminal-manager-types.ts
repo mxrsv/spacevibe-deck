@@ -173,6 +173,8 @@ export interface TerminalManager {
   paneCount(): number;
   /** Root element of a pane (overlay anchor for the agent picker). */
   paneElement(id: number): HTMLElement | null;
+  /** Reflect exact per-pane agent activity for state-gated chrome. */
+  setPaneWorking(id: number, working: boolean): void;
   /** Routed from the tab manager's single pty:output listener; ignores unowned ids. */
   handleOutput(id: number, data: string): void;
   /** Routed from the tab manager's single pty:exit listener; ignores unowned ids. */

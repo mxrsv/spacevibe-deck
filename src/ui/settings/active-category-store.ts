@@ -14,6 +14,9 @@ export type CategoryId =
   | "browser"
   | "shortcuts"
   | "notifications"
-  | "about";
+  | "about"
+  // A navigable stop since 2026-08-19 (owner), where it was a pinned rail-foot
+  // action before — see the note on `SETTINGS_CATEGORIES`.
+  | "reset";
 
 export const activeCategory = signal<CategoryId>("appearance");

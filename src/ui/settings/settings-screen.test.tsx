@@ -393,8 +393,11 @@ const EXPECTED_ROWS = [
   // `BUILTIN_AGENTS` in a test that asks a different question. Their own
   // coverage is `launch-profile-editor.test.tsx`.
   "Token usage",
-  // links & editor
-  "Editor",
+  // links & editor. One row, not two, since 2026-08-19: `editorId` +
+  // `editorCommand` became the single `externalAppId`, so the custom-command
+  // field that used to appear under the picker is gone with the setting it
+  // wrote (design §5).
+  "Open with",
   // notifications
   "Agent notifications",
   "Restore sessions on launch",

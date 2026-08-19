@@ -129,7 +129,7 @@ export function OverlaysSection() {
 
       <Specimen
         name=".modal-scrim + .agent-quick-picker"
-        note="the + button's fast path (DL-29.7) — one destination stated above a COLUMN of agent rows; digit keys 1-9 / 0 still pick, the badges came off on 2026-08-16"
+        note="the + button's fast path (DL-29.7) — one destination stated above a COLUMN of agent rows; DL-29.8 added the key line under them, arrow-key roving focus, and a missing row that opens Settings instead of launching"
         surface="bg"
         tall
       >
@@ -140,6 +140,7 @@ export function OverlaysSection() {
           initialDestination={SEED_DESTINATIONS[1].path}
           onSelect={NOOP}
           onCancel={NOOP}
+          onManageAgents={NOOP}
         />
       </Specimen>
 

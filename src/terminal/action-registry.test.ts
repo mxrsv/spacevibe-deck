@@ -124,17 +124,22 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
-  // 48 = the 47 rows verified passing before Task 6, plus "save-file" (task-6
-  // brief, spec §4.3) — the file-explorer's ⌘S save action.
-  it("has exactly the 48 action ids including updater menu actions", () => {
+  // 51 = the 48 rows verified passing after Task 6's "save-file", plus the
+  // Edit menu's "select-all"/"undo"/"redo" (2026-08-19) — routed through the
+  // renderer because their native Cocoa roles cannot reach Monaco.
+  it("has exactly the 52 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
         "check-for-updates",
         "open-release-notes",
+        "select-all",
+        "undo",
+        "redo",
         "toggle-settings",
         "toggle-prompts",
         "toggle-usage",
+        "toggle-sessions",
         "move-pane-to-new-window",
         "new-tab",
         "reopen-tab",

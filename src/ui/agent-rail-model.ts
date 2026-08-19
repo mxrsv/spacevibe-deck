@@ -1,11 +1,11 @@
 /**
- * The agent rail's view model: open tabs, repository scans and the session
- * archive in, one list of per-project clusters out.
+ * The agent rail's view model: open tabs and repository scans in, one list of
+ * per-project live clusters out.
  *
  * Pure, and for the same reason
  * [`repository-model.ts`](../repositories/repository-model.ts) `current` is:
  * every precedence, fold and ordering decision in
- * `docs/specs/2026-08-16-agent-status-rail-design.md` §2/§3/§8 lives here and
+ * `docs/specs/2026-08-16-agent-status-rail-design.md` §2/§3 lives here and
  * none of them is observable from a screenshot. The component only renders
  * what this returns.
  *
@@ -19,6 +19,7 @@
  * The clock is injected (`AgentRailInput.now`). Nothing here calls `Date.now`.
  */
 import type { PaneAgent } from "../lib/process-info";
+import { workspaceLabel } from "../lib/workspace-label";
 import type { RepositoryScan } from "../repositories/repository-client";
 import type {
   RailTab,
@@ -115,13 +116,6 @@ export interface RailTabRow {
   readonly workspacePath: string | null;
 }
 
-/** A previously opened workspace with an archived session and no live tab. */
-export interface RailArchivedRow {
-  readonly path: string;
-  readonly project: string;
-  readonly worktree: string | null;
-}
-
 /**
  * One project's stretch of the stream (§2.4).
  *
@@ -147,21 +141,36 @@ export interface RailStreamGroup {
    */
   readonly labelled: boolean;
   readonly rows: readonly RailTabRow[];
+  /**
+   * The workspace the header's `+` opens into when the cluster has no rows —
+   * a REMEMBERED project (owner, 2026-08-20): a workspace from Deck's
+   * persisted history whose last tab has closed. Null for a live cluster,
+   * whose rows carry their own workspace paths.
+   */
+  readonly path: string | null;
+  /**
+   * EVERY history entry this cluster stands for — a repository scan folds
+   * several remembered worktrees of one repository into one header, so
+   * removing the header must remove them all or it re-derives from the
+   * sibling entry on the next render and the X appears to do nothing.
+   * Empty for a live cluster, whose presence history does not control.
+   */
+  readonly historyPaths: readonly string[];
 }
 
 export interface AgentRailView {
-  /** Every open tab, clustered by project, in the order things were opened. */
+  /**
+   * Every open tab, clustered by project, in the order things were opened —
+   * followed by the rowless remembered clusters (workspace history entries
+   * with nothing open in them, owner 2026-08-20).
+   */
   readonly stream: readonly RailStreamGroup[];
-  /** Quiet resume rows at the bottom (spec §8). */
-  readonly archived: readonly RailArchivedRow[];
 }
 
 export interface AgentRailInput {
   readonly tabs: readonly TabView[];
   readonly activeIndex: number;
   readonly scans: ReadonlyMap<string, RepositoryScan>;
-  /** Workspace paths with an archived session. */
-  readonly archivedPaths: ReadonlySet<string>;
   /** Deck's persisted workspace history, newest first. */
   readonly workspaceHistoryPaths: readonly string[];
   /**
@@ -410,60 +419,64 @@ function firstOf(group: RailStreamGroup): number {
 
 /** Every live project keeps the same project → tab hierarchy. */
 const LOWEST_LABELLED_SIZE = 1;
+const NO_ARCHIVED_PATHS: ReadonlySet<string> = new Set();
+/** Live clusters answer to open tabs, not to history entries. */
+const NO_HISTORY_PATHS: readonly string[] = [];
 
 /**
- * How recently the user opened a worktree, as a position in Deck's persisted
- * history (0 is newest).
- *
- * Prefix-matched rather than compared by path: a history entry recorded on a
- * package below the root still names its worktree, exactly as
- * `filterRailToWorkspaceHistory` treats it.
+ * Remembered projects (owner, 2026-08-20): every workspace in Deck's
+ * persisted history keeps a header on the rail after its last tab closes, so
+ * a project the user was just in stays one `+` away instead of vanishing with
+ * its work. The clusters are ROWLESS — nothing is open in them — and follow
+ * the live clusters in history order (newest first; the history itself is
+ * `MAX_RECENTS`-bounded upstream). A repository scan folds several remembered
+ * worktrees of one repository into one cluster, exactly as the live tier
+ * groups them; a path git does not know stands alone under its folder name.
  */
-function historyRank(
-  workspaceHistoryPaths: readonly string[],
-  worktreePaths: readonly string[],
-  path: string,
-): number {
-  const rank = workspaceHistoryPaths.findIndex(
-    (entry) => worktreeForPath(worktreePaths, entry) === path,
-  );
-  return rank === -1 ? Number.MAX_SAFE_INTEGER : rank;
-}
-
-/**
- * Spec §8: a previously opened workspace with an archived session and no live
- * tab, as a quiet resume row. `buildRail` already decides `resumable` — this
- * only orders them the way the stream above is ordered, newest first.
- */
-function archivedRows(
-  groups: readonly RepositoryGroup[],
-  workspaceHistoryPaths: readonly string[],
-): readonly RailArchivedRow[] {
-  const ranked: { readonly row: RailArchivedRow; readonly rank: number }[] = [];
-  for (const group of groups) {
-    const worktreePaths = group.worktrees.map((worktree) => worktree.path);
-    for (const worktree of group.worktrees) {
-      if (!worktree.resumable) {
-        continue;
-      }
-      ranked.push({
-        row: {
-          path: worktree.path,
-          project: group.name,
-          worktree: worktree.primary ? null : worktree.name,
-        },
-        rank: historyRank(workspaceHistoryPaths, worktreePaths, worktree.path),
-      });
+function rememberedClusters(
+  input: AgentRailInput,
+  livePaths: readonly string[],
+): RailStreamGroup[] {
+  const clusters: RailStreamGroup[] = [];
+  // Folded siblings accumulate here: the FIRST history entry of a repository
+  // makes the cluster, and every later worktree of the same repository joins
+  // its `historyPaths` instead of printing a second header.
+  const byKey = new Map<string, string[]>();
+  for (const path of input.workspaceHistoryPaths) {
+    // A history workspace some live cluster already covers is not repeated:
+    // longest-prefix, the same attachment rule tabs use, so a remembered
+    // subdirectory of a live worktree stays under the live header.
+    if (worktreeForPath(livePaths, path) !== null) {
+      continue;
     }
+    const scan = input.scans.get(path);
+    const repository = scan?.kind === "repository" ? scan : null;
+    const key = repository?.key ?? `plain:${path}`;
+    const folded = byKey.get(key);
+    if (folded !== undefined) {
+      folded.push(path);
+      continue;
+    }
+    const historyPaths = [path];
+    byKey.set(key, historyPaths);
+    // Named like the live tier: after the repository's own checkout when a
+    // scan knows it, else after the folder itself.
+    const primary = repository?.worktrees.find((entry) => !entry.bare) ?? null;
+    clusters.push({
+      key: `remembered:${key}`,
+      project: workspaceLabel(primary?.path ?? path),
+      labelled: true,
+      rows: [],
+      path,
+      historyPaths,
+    });
   }
-  return ranked
-    .sort((left, right) => left.rank - right.rank)
-    .map((entry) => entry.row);
+  return clusters;
 }
 
 /**
- * Build the rail: one cluster per project in open order, and the resume rows
- * below.
+ * Build the rail: one cluster per live project in open order, then a rowless
+ * remembered cluster for each history workspace with nothing open in it.
  *
  * Every open tab produces a row. A tab running no recognised agent still gets
  * one — empty `panes`, `voice: null`, `idle` — because the rail is the
@@ -477,7 +490,7 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
       activeIndex: input.activeIndex,
       scans: input.scans,
       collapsed: NO_COLLAPSED_REPOSITORIES,
-      archivedPaths: input.archivedPaths,
+      archivedPaths: NO_ARCHIVED_PATHS,
     }),
     input.workspaceHistoryPaths,
   );
@@ -501,13 +514,23 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
         project: group.name,
         labelled: streamed.length >= LOWEST_LABELLED_SIZE,
         rows: sortByOpenOrder(streamed),
+        path: null,
+        historyPaths: NO_HISTORY_PATHS,
       });
     }
   }
 
+  // Live work first, in open order; the remembered tier is deduplicated
+  // against every live worktree path, so a project never prints twice.
+  const livePaths = groups
+    .flatMap((group) => group.worktrees.map((worktree) => worktree.path))
+    .filter((path) => path !== "");
+
   return {
-    stream: sortClusters(clusters),
-    archived: archivedRows(groups, input.workspaceHistoryPaths),
+    stream: [
+      ...sortClusters(clusters),
+      ...rememberedClusters(input, livePaths),
+    ],
   };
 }
 

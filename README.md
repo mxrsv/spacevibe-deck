@@ -54,9 +54,9 @@ Every pane is backed by a real PTY via Rust's `portable-pty`. macOS runs your lo
 ### 🗂️ Workspaces & the Open board
 
 - A **workspace** is a folder you pick as the working root. Each tab belongs to one workspace, and you can open the same workspace as many times as you like — every Open gets its own tab, so one repo can run several agent sessions side by side.
-- The **Open board** is the app's single entry point: your **recent workspaces** (each row removable with its ×, missing folders grouped under a one-click Remove all), plus Open project and Create worktree.
+- The **Open board** is the start surface: open a workspace, create a worktree, resume a previous session, or start again from **recent workspaces**. Missing folders stay collapsed until you ask to see them.
 - **One click opens.** Each recent row remembers the layout + agent it was last opened with and reopens with exactly that — hover a row to see the combo. To pick a different agent, use the quick picker (⌘T) instead.
-- Switch between a vertical **workspace sidebar** and a horizontal **tab bar** in Settings.
+- Switch between a vertical **Agent Rail** and a horizontal **tab bar** in Settings. The rail shows live work only; previous sessions live in Sessions.
 - **Workspace logos** — each workspace auto-detects a favicon from the repo as its icon, or drag-drop your own image onto it.
 - **Agent status at a glance** — in the vertical workspace sidebar, each avatar shows a spinning ring while an agent is **actively working on a prompt** (not merely open at its prompt — Deck reads the agent's own OSC 9;4 progress reports, the same signal Ghostty renders as a progress bar), a **yellow dot** when a background tab has printed new output you haven't seen yet, and nothing when it's idle — so you can track every workspace without switching to it. Opening a tab clears its unread dot.
 
@@ -81,7 +81,9 @@ Save a split layout (plus optional per-pane working directories) as a **named pr
 
 ### 🎨 Themes
 
-Four built-in presets — **Tokyo Night** (default), **Dracula**, **One Dark**, and **Catppuccin Mocha** — each a full 16-color ANSI palette. Override any color (background, foreground, cursor, selection) yourself. The theme drives the app's own chrome too, not just the terminal.
+**Light** and **Dark** — that is the whole choice, and it is one row in Appearance (2026-08-19). Each is a full 16-color ANSI palette, and it drives the app's own chrome too, not just the terminal.
+
+Deck used to offer four terminal palettes, imported theme files and four per-color overrides. That machinery is all still in the app and a profile that selected one keeps it working — it simply has no control any more, and picking Light or Dark replaces it (Deck asks first when an imported theme or a saved color override is what would be replaced).
 
 ### 🔗 Cmd/Ctrl+click a path or URL
 
@@ -256,7 +258,7 @@ Shift+Enter sends the terminal newline binding used by agent CLIs
 Open **Settings** from the toolbar (or the platform Settings shortcut) to configure:
 
 - **Font** family and size (default SF Mono, 13px), plus live font zoom.
-- **Theme** and per-color overrides.
+- **Appearance** — Light or Dark.
 - **Editor** for Cmd/Ctrl+click — VS Code, Cursor, Zed, or a custom command.
 - **Tab bar position** — left sidebar or top bar.
 - **Sidebar banner** — optional blended artwork with built-in country flags or
@@ -280,7 +282,7 @@ npm run tauri build   # release build → src-tauri/target/release/bundle/
 ## Tech stack
 
 - **[Tauri 2](https://tauri.app)** — native desktop shell (Rust), real PTYs via `portable-pty`.
-- **[xterm.js 6](https://xtermjs.org)** — terminal rendering, with the fit / search / unicode-graphemes addons.
+- **[xterm.js 6](https://xtermjs.org)** — terminal rendering, with the fit / search / unicode-graphemes addons. Every pane automatically attempts WebGL custom glyphs after opening; initialization failure or context loss leaves the DOM renderer as the compatibility fallback without restarting the pane or PTY ([renderer lifecycle](src/terminal/pane.ts) `current`).
 - **[Preact](https://preactjs.com)** + `@preact/signals` — UI.
 - **TypeScript**, **[Vite 6](https://vite.dev)**, **Vitest**.
 

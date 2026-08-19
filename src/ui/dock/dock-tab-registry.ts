@@ -1,5 +1,6 @@
 import { ClockCounterClockwise, Gauge, TreeView } from "@phosphor-icons/react";
 import type { DeckIconComponent } from "../controls/deck-icon";
+import type { ActionId } from "../../terminal/action-registry";
 import type { DockTab } from "../../settings/settings-schema";
 
 /**
@@ -16,6 +17,15 @@ export interface DockTabDescriptor {
   readonly id: DockTabId;
   readonly label: string;
   readonly icon: DeckIconComponent;
+  /**
+   * The action whose chord the chip's tooltip prints (DL-23.1). It is the
+   * REGISTRY id, not a literal chord, so a rebind reaches the tooltip and a
+   * platform never sees the other one's notation — `shortcutLabel` resolves
+   * both. All three tabs have one since 2026-08-19, when `toggle-sessions`
+   * was added for exactly this: a tab whose tooltip could print no chord was
+   * the odd one out of three otherwise identical chips.
+   */
+  readonly action: ActionId;
 }
 
 /**
@@ -31,9 +41,19 @@ export interface DockTabDescriptor {
  * narrows it; this constant itself never changes shape.
  */
 export const DOCK_TABS: readonly DockTabDescriptor[] = Object.freeze([
-  { id: "explorer", label: "File explorer", icon: TreeView },
-  { id: "usage", label: "Token usage", icon: Gauge },
-  { id: "sessions", label: "Session history", icon: ClockCounterClockwise },
+  {
+    id: "explorer",
+    label: "File explorer",
+    icon: TreeView,
+    action: "toggle-explorer",
+  },
+  { id: "usage", label: "Token usage", icon: Gauge, action: "toggle-usage" },
+  {
+    id: "sessions",
+    label: "Session history",
+    icon: ClockCounterClockwise,
+    action: "toggle-sessions",
+  },
 ]);
 
 /**
