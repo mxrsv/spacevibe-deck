@@ -168,12 +168,31 @@ describe("the release packaging script", () => {
 });
 
 describe("the Electron release workflow", () => {
-  it("triggers on a tag electron-updater can actually parse", () => {
-    // `GitHubProvider.getLatestVersion` skips every feed entry whose tag fails
-    // `semver.valid`, so `electron-v1.0.0` would be invisible to the updater
-    // while the release itself looked perfectly healthy.
-    expect(workflow).toContain('- "v[0-9]+.[0-9]+.[0-9]+-electron.[0-9]+"');
+  it("builds from a tag no running app can see", () => {
+    // GitHub publishes a pushed tag to `releases.atom` immediately, while this
+    // job takes ten minutes. A pushed RELEASE tag therefore advertised a
+    // version whose manifest did not exist yet, and every running app that
+    // checked in that window showed "Couldn't check for updates".
+    // `build/v…` fails `semver.valid`, so GitHubProvider skips it entirely.
+    expect(workflow).toContain(
+      '- "build/v[0-9]+.[0-9]+.[0-9]+-electron.[0-9]+"',
+    );
+    expect(workflow).not.toContain('- "v[0-9]+.[0-9]+.[0-9]+-electron');
     expect(workflow).not.toContain('- "electron-v');
+  });
+
+  it("creates the release tag only at promotion, never before", () => {
+    // A draft release holds a `tag_name` without creating the git ref, so the
+    // version stays invisible until the artifacts are verified. `--target` is
+    // what makes that possible: the tag does not exist to create it from.
+    expect(workflow).toContain("--draft --target");
+    // The steps that name the release must read the STRIPPED tag, not the
+    // pushed ref — the pushed ref still carries `build/`. Anchored to the line,
+    // because `BUILD_TAG: ${{ github.ref_name }}` is correct and contains the
+    // same substring.
+    expect(workflow).not.toMatch(/^\s+TAG: \$\{\{ github\.ref_name \}\}/m);
+    expect(workflow).toContain("BUILD_TAG: ${{ github.ref_name }}");
+    expect(workflow).toContain("TAG: ${{ steps.target.outputs.tag }}");
   });
 
   it("maps the one notarization secret onto the name app-builder-lib reads", () => {
