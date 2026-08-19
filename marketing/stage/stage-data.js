@@ -20,7 +20,11 @@ export const deepFreeze = (value) => {
   return Object.freeze(value);
 };
 
-/** Sidebar workspace list — names and truncated paths as in the app. */
+/**
+ * Sidebar workspace list — names and truncated paths as in the app.
+ *
+ * Video-only since 2026-08-20; the landing composition no longer renders it.
+ */
 export const stageSidebar = deepFreeze([
   {
     id: BRAND.slug,
@@ -48,7 +52,11 @@ export const stageSidebar = deepFreeze([
   },
 ]);
 
-/** Status bar segments — mirrors src/ui/status-bar.tsx in sidebar mode. */
+/**
+ * Status bar segments — mirrors src/ui/status-bar.tsx in sidebar mode.
+ *
+ * Video-only since 2026-08-20; the landing composition no longer renders it.
+ */
 export const stageStatus = deepFreeze({
   branch: "main",
   cwd: `~/Documents/Development/spacevibe-workspace/${BRAND.slug}`,
@@ -61,10 +69,106 @@ export const stageStatus = deepFreeze({
 });
 
 /**
+ * Agent rail — one cluster per project, one row per pane, as the app has
+ * drawn it since the 2026-08 rail work. `id` is the pane id the stream engine
+ * writes through (`data-tail` / `data-dot`); a null id is a static row that
+ * nothing animates. `framed: true` marks a tab whose several panes stand
+ * inside the DL-27.19 inset frame. `remembered` is a closed-but-remembered
+ * project: a rowless header, no caret, ever. Ages use the app's own
+ * vocabulary — "" | now | 2m | 3h | 2d | 5w, weeks being the largest unit.
+ *
+ * The resting sentences are the ones the pane scripts below leave on screen:
+ * claude carries its first `tail` because it is still working, codex and
+ * opencode their last.
+ */
+export const stageRail = deepFreeze([
+  {
+    project: "spacevibe-deck",
+    tabs: [
+      {
+        framed: true,
+        panes: [
+          {
+            id: "claude",
+            agent: "claude",
+            message: "I'll trace why the pane divider drifts on resize.",
+            age: "now",
+            state: "working",
+          },
+          {
+            id: "codex",
+            agent: "codex",
+            message: "96 passed · 0 failed",
+            age: "2m",
+            state: "done",
+          },
+          {
+            id: "opencode",
+            agent: "opencode",
+            message: "typecheck clean · the branch follows cwd now",
+            age: "2m",
+            state: "done",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    project: "spacevibe-api",
+    tabs: [
+      {
+        framed: false,
+        panes: [
+          {
+            id: null,
+            agent: "gemini",
+            message: "Should I apply the pending migration?",
+            age: "3h",
+            state: "asked",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    project: "spacevibe-hub",
+    remembered: true,
+    tabs: [],
+  },
+]);
+
+/**
+ * Tab strip — one chip shape per surface, in open order rather than by
+ * recency. The mark comes from `kind` alone: a terminal chip draws its
+ * agent's brand glyph, a file chip a file-type icon, the browser chip a
+ * globe. The active terminal chip's label is the focused pane's sentence,
+ * which the stream engine keeps in step through the same `data-tail` hook
+ * the rail row uses.
+ */
+export const stageStrip = deepFreeze([
+  {
+    kind: "terminal",
+    agent: "claude",
+    paneId: "claude",
+    label: "I'll trace why the pane divider drifts on resize.",
+    active: true,
+  },
+  { kind: "file", label: "layout-engine.ts", active: false },
+  { kind: "browser", label: "localhost:5173", active: false },
+]);
+
+/**
  * Pane scripts. Step shape: { kind: "line" | "chunk" | "think" | "rest",
- * text?, cls?, delay } — delay is ms since the previous step. "line" appends
- * a transcript row (and hides the spinner), "chunk" extends the last row,
- * "think" shows the spinner with the given text, "rest" is a pure pause.
+ * text?, cls?, delay, tail?, state? } — delay is ms since the previous step.
+ * "line" appends a transcript row (and hides the spinner), "chunk" extends
+ * the last row, "think" shows the spinner with the given text, "rest" is a
+ * pure pause.
+ *
+ * `tail` and `state` are the rail's half of a step: the sentence and the
+ * status dot it leaves on every `[data-tail]` / `[data-dot]` hook the pane
+ * owns — its rail row and, for the focused pane, the active tab chip. A step
+ * carrying neither leaves the rail as it stands. Tails are sentences, never
+ * transcript rows: no glyph prefix.
  */
 export const stagePanes = deepFreeze([
   {
@@ -87,6 +191,8 @@ export const stagePanes = deepFreeze([
         text: "● I'll trace why the pane divider drifts on resize.",
         cls: "t-body",
         delay: 600,
+        tail: "I'll trace why the pane divider drifts on resize.",
+        state: "working",
       },
       { kind: "think", text: "✳ Pondering… (esc to interrupt)", delay: 500 },
       {
@@ -102,6 +208,7 @@ export const stagePanes = deepFreeze([
         text: "● The ratio rounds to integer cells before the flex",
         cls: "t-body",
         delay: 2600,
+        tail: "The ratio rounds to integer cells before the flex pass.",
       },
       {
         kind: "chunk",
@@ -126,6 +233,8 @@ export const stagePanes = deepFreeze([
         text: "● 214 tests passed — the divider stays put now.",
         cls: "t-ok",
         delay: 2800,
+        tail: "214 tests passed — the divider stays put now.",
+        state: "done",
       },
       { kind: "rest", delay: 1200 },
     ],
@@ -144,6 +253,7 @@ export const stagePanes = deepFreeze([
         text: "› trace the flicker when a pane closes",
         cls: "t-user",
         delay: 900,
+        state: "working",
       },
       { kind: "think", text: "• Working (2s · esc to interrupt)", delay: 600 },
       { kind: "line", text: "codex", cls: "t-agent", delay: 2400 },
@@ -152,6 +262,7 @@ export const stagePanes = deepFreeze([
         text: "The old pane's canvas paints one frame after the",
         cls: "t-body",
         delay: 420,
+        tail: "The old pane's canvas paints one frame after the grid reflows.",
       },
       {
         kind: "chunk",
@@ -176,6 +287,8 @@ export const stagePanes = deepFreeze([
         text: "✓ 96 passed · 0 failed",
         cls: "t-ok",
         delay: 2400,
+        tail: "96 passed · 0 failed",
+        state: "done",
       },
       { kind: "rest", delay: 1000 },
     ],
@@ -196,6 +309,7 @@ export const stagePanes = deepFreeze([
         text: "> why does the status bar lose the branch after cd?",
         cls: "t-user",
         delay: 1100,
+        state: "working",
       },
       { kind: "think", text: "◍ thinking…", delay: 600 },
       {
@@ -203,6 +317,7 @@ export const stagePanes = deepFreeze([
         text: "The watcher only re-reads HEAD on focus. A cwd",
         cls: "t-body",
         delay: 2300,
+        tail: "The watcher only re-reads HEAD on focus.",
       },
       {
         kind: "chunk",
@@ -227,6 +342,8 @@ export const stagePanes = deepFreeze([
         text: "✓ typecheck clean · the branch follows cwd now",
         cls: "t-ok",
         delay: 2500,
+        tail: "typecheck clean · the branch follows cwd now",
+        state: "done",
       },
       { kind: "rest", delay: 1200 },
     ],
