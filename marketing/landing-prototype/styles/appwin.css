@@ -477,7 +477,15 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 0.8cqw;
-  height: 3.4cqw;
+  /* The chrome row's own floor, and the frame row and the strip MUST carry the
+     same one: a bare `3.4cqw` is 10.08px in the hero and 8.59px in a panel at a
+     390 viewport, and neither can hold the 8px type the narrow query floors
+     this chrome at. The number is derivable, not chosen: the 8px floor's line
+     box is 9px, + the chip's 1px border top and bottom = an 11px chip, + the
+     strip's 1px seam = 12, + 1px so nothing sits flush. Above the breakpoint
+     `3.4cqw` always wins (15.8px at 560, 21.7px at 768, 30.4px at 1440), so
+     this changes nothing there. */
+  height: max(3.4cqw, 13px);
   /* The trailing 8px is `.deck-frame`'s own; the leading inset is the macOS
      traffic-light gutter, which the app reserves as `--frame-lights-w` and
      the mock actually draws. */
@@ -536,7 +544,10 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 0.4cqw;
-  height: 2.4cqw;
+  /* `min-height`, not `height`, for the reason the chip below states: at 390
+     this box is 7.11px and its own floored 8px line box does not fit in it. A
+     control grows to its label; it does not spill out of itself. */
+  min-height: 2.4cqw;
   padding: 0 0.6cqw;
   border-radius: 1cqw;
   color: var(--sg-fg-dim);
@@ -664,7 +675,22 @@
 /* Fixed 17px boxes so the folder mark sits over the status dot's centre line
    and the caret over the agent glyph's: the header reads as the same row
    shape one rung up (04a:337-345). The glyphs inside them are the app's own
-   rungs — FEATURE_ICON for the folder, CHROME_ICON for the caret. */
+   rungs — FEATURE_ICON for the folder, CHROME_ICON for the caret.
+
+   SQUARE, and the height is not decoration — MEASURED 2026-08-20. The caret
+   below is `rotate(90deg)` when its cluster is expanded, and a rotation swaps
+   the rendered box: with a width but no height the slot was 15.19 x 11.61 and
+   the turned caret painted 11.61 x 15.19, i.e. 0.66px TALLER than the toggle
+   containing it. The toggle is `overflow: hidden`, so that surfaced as a 1px
+   vertical scroll container at 1024 and 1440 — the same defect class as the
+   chip strip's, from a rotated glyph rather than a floored font. A square slot
+   cannot change size when its contents turn. The app never met this because
+   its rows are a fixed 34px with slack to spare; a cqw box has none.
+
+   Two rejected alternatives, both measured: raising the toggle's line-height
+   absorbs the overflow at some sizes and not others (it fixed 1440, left 1024,
+   and `normal` was worse than either), and dropping the rotation removes a
+   real behaviour — a turned caret is what says "expanded". */
 .a-appwin__clusterfolder,
 .a-appwin__clustercaret {
   display: flex;
@@ -672,6 +698,7 @@
   align-items: center;
   justify-content: center;
   width: 1.7cqw;
+  height: 1.7cqw;
 }
 
 .a-appwin__clusterfolder svg {
@@ -1039,7 +1066,10 @@
   align-items: center;
   gap: 0.8cqw;
   min-width: 0;
-  height: 3.4cqw;
+  /* The frame row's floor, restated so the two chrome rows either side of the
+     seam stay on one line at every width — the property a screenshot gate can
+     check with one number. See `.a-appwin__framerow` for where 13 comes from. */
+  height: max(3.4cqw, 13px);
   padding: 0 0.8cqw;
   border-bottom: 1px solid var(--sg-hairline);
 }
@@ -1058,12 +1088,30 @@
    against, so "no wash" read as "nothing here" rather than "not selected".
    The 1px border is on EVERY chip and only its colour changes, so selection
    costs no height and shifts no label (05-tab-bar-toolbar.css:33-60). */
+/* `min-height` and an explicit `line-height`, never a fixed `height` — MEASURED,
+   2026-08-20. A `cqw` box stops containing its own text the moment the type
+   hits a floor: at a 390 viewport the label floors at 8px, whose `normal` line
+   box is 9px, while `2.5cqw` gave the chip a 5.41px content box in the hero and
+   4.31px in a panel. The line box spilled 1.59px / 2.69px past the chip and so
+   past `.a-appwin__chips`, which is a scroll container — the 1px-overflow class
+   of defect AGENTS.md records, arriving through a floored font rather than
+   through a padding. `min-height` is what the rail rows two blocks up already
+   use for exactly this reason: the box grows to the line box (9px at the 8px
+   floor, plus the 1px border top and bottom = an 11px chip) instead of the
+   line box spilling out of the box. Above the breakpoint `2.5cqw` exceeds the
+   line box at every width, so the chip's rendered height there is unchanged.
+
+   `line-height: 1` was tried here first and REVERTED, measured: a line-height
+   under the font's own content area makes the inline box overflow its line
+   box, which turned the label — `overflow: hidden`, for its ellipsis — into a
+   fresh 1px overflow at 1024 that did not exist before. The line box stays
+   `normal`; the box is what moves. */
 .a-appwin__chip {
   display: flex;
   box-sizing: border-box;
   min-width: 0;
   max-width: 21cqw;
-  height: 2.5cqw;
+  min-height: 2.5cqw;
   align-items: center;
   gap: 0.6cqw;
   padding: 0 0.4cqw 0 0.6cqw;
