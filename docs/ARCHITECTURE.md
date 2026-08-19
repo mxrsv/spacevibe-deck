@@ -304,16 +304,23 @@ Forks resolved in [`../AGENTS.md`](../AGENTS.md) `current`, moved here when the 
 closed. Newest first; each entry states what the fork touched and which choice the
 owner made.
 
-- 2026-08-18: **the team lint/format baseline was adopted** — the fork touched
-  dependency and tooling configuration (oxlint/prettier devDeps, a new `lint`
-  script, a CI step), all listed fork classes. Owner, through a grilling
-  session, chose the team config verbatim (The-Resonance-Team/skills) with
+- 2026-08-19: **the lint/format baseline was adopted at merge time, not before
+  it** — the fork touched dependency and tooling configuration (oxlint/prettier
+  devDeps, a `lint` script, a CI step), all listed fork classes, and it arrived
+  inside PR #18 without being raised first. The entry that landed with that PR
+  recorded an owner approval that never happened; this is the approval, made
+  when the merge was weighed. Accepted: the config as submitted, with
   `electron/vendor/**` and `marketing/**` scoped out; `max-lines` forward-only
-  (102 pre-existing over-length files stay a visible backlog, demoted to a
-  warning in the CI script); warnings non-fatal; the CI gate lands in the
-  ubuntu `check` job only, `windows-check` untouched. libraries.md /
-  frontend.md / i18n / upload are N/A here: no HTTP API, no forms, no server
-  state, no i18n — the app is a local desktop terminal.
+  (101 pre-existing over-length files stay a visible backlog) but demoted to a
+  warning in the config itself rather than by a CI-only override, so a plain
+  `oxlint` does not report 101 errors; warnings non-fatal; the gate lands in the
+  ubuntu `check` job only, `windows-check` untouched. Note that
+  `react-hooks/exhaustive-deps` is NOT enabled by this config — the
+  `oxlint-disable` comments naming it are inert, and the two Preact-signal
+  dependency arrays stripped during the branch's lint pass were hand-edits, not
+  a rule that will fire again. libraries.md / frontend.md / i18n / upload are
+  N/A here: no HTTP API, no forms, no server state, no i18n — the app is a
+  local desktop terminal.
 - 2026-08-17: **the rail's `New` row moved to the top, gained a `Workspace`
   caption, and dropped a type rung** — DL-27.14 said "the rail's LAST row" and
   named `--type-title`, so all three are rule changes, the listed fork. Owner
