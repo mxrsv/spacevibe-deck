@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  BACKGROUND_CHECK_INTERVAL_MS,
   createUpdateController,
   UPDATE_UNSUPPORTED,
   type PendingUpdate,
@@ -329,5 +330,92 @@ describe("update check single-flight", () => {
     await controller.start();
 
     expect(releaseClaim).toHaveBeenCalledOnce();
+  });
+});
+
+describe("the background recheck", () => {
+  it("checks again on its own interval when the startup check found nothing", async () => {
+    vi.useFakeTimers();
+    try {
+      const update = pending();
+      const check = vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(update);
+      const { controller } = setup(null, { check });
+
+      await controller.start();
+      expect(check).toHaveBeenCalledTimes(1);
+      expect(controller.view.value.phase).toBe("hidden");
+
+      // Deck is a terminal people leave open for days. Without this, a build
+      // that was current at launch stays "current" for the life of the window.
+      await vi.advanceTimersByTimeAsync(BACKGROUND_CHECK_INTERVAL_MS);
+
+      expect(check).toHaveBeenCalledTimes(2);
+      expect(controller.view.value).toMatchObject({
+        phase: "available",
+        availableVersion: "0.10.0",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not check while an update is already surfaced", async () => {
+    vi.useFakeTimers();
+    try {
+      const { controller, deps } = setup();
+
+      await controller.start();
+      expect(deps.check).toHaveBeenCalledTimes(1);
+      expect(controller.view.value.phase).toBe("available");
+
+      // Re-checking here would replace an update the user is about to install,
+      // and could discard a download already on disk.
+      await vi.advanceTimersByTimeAsync(BACKGROUND_CHECK_INTERVAL_MS * 3);
+
+      expect(deps.check).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps its timer even when a peer window holds the startup claim", async () => {
+    vi.useFakeTimers();
+    try {
+      const claim = vi.fn().mockResolvedValue(false);
+      const releaseClaim = vi.fn().mockResolvedValue(undefined);
+      const check = vi.fn().mockResolvedValue(null);
+      const { controller } = setup(null, { check, claim, releaseClaim });
+
+      await controller.start();
+      // The peer owns the startup check, so this window ran none.
+      expect(check).not.toHaveBeenCalled();
+
+      // But the peer can close at any time. A window that never arms its timer
+      // because it lost one race would stop checking for the whole session.
+      claim.mockResolvedValue(true);
+      await vi.advanceTimersByTimeAsync(BACKGROUND_CHECK_INTERVAL_MS);
+
+      expect(check).toHaveBeenCalledTimes(1);
+      expect(releaseClaim).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("arms no timer on a platform that cannot update", async () => {
+    vi.useFakeTimers();
+    try {
+      const { controller, deps } = setup(null, { platform: "unsupported" });
+
+      await controller.start();
+      await vi.advanceTimersByTimeAsync(BACKGROUND_CHECK_INTERVAL_MS * 2);
+
+      expect(deps.check).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

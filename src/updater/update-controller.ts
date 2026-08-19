@@ -4,6 +4,17 @@ import type { DesktopPlatform } from "../lib/platform";
 
 const MAX_RELEASE_NOTES_LENGTH = 400;
 
+/**
+ * How often a window that found nothing at launch looks again.
+ *
+ * Six hours: long enough that a day of work sees at most a few checks, short
+ * enough that a Deck left open across a working day still finds the build that
+ * shipped that morning. There is no exponential backoff and no jitter — one
+ * conditional request to GitHub per window per six hours is not a load worth
+ * engineering around.
+ */
+export const BACKGROUND_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
 export type UpdatePhase =
   | "hidden"
   | "available"
@@ -160,14 +171,16 @@ export function createUpdateController(
     return checkOperation;
   };
 
-  const start = async (): Promise<void> => {
-    if (started) {
-      return;
-    }
-    started = true;
-    const claim = deps.claim ?? (() => invoke<boolean>("begin_update_check"));
-    const release =
-      deps.releaseClaim ?? (() => invoke<void>("end_update_check"));
+  const claim = (): Promise<boolean> =>
+    deps.claim ? deps.claim() : invoke<boolean>("begin_update_check");
+  const release = (): Promise<void> =>
+    deps.releaseClaim ? deps.releaseClaim() : invoke<void>("end_update_check");
+
+  /**
+   * One claimed check. Shared by the startup pass and the background timer so
+   * neither can leak the process-wide single-flight.
+   */
+  const claimedCheck = async (): Promise<void> => {
     let mine = true;
     try {
       mine = await claim();
@@ -191,6 +204,31 @@ export function createUpdateController(
         console.warn("end_update_check failed:", err);
       }
     }
+  };
+
+  const start = async (): Promise<void> => {
+    if (started) {
+      return;
+    }
+    started = true;
+    // Armed BEFORE the claim is resolved, and never released. Deck is a
+    // terminal people leave open for days, so a window that only ever checked
+    // at launch would report a months-old build as current. Arming it after
+    // the claim would leave a window that lost that one race with no timer for
+    // the whole session — and the peer holding the claim can close at any
+    // moment.
+    if (deps.platform !== "unsupported") {
+      setInterval(() => {
+        // An update already on screen is one the user is about to install, and
+        // may already be downloaded to disk. Replacing it from a timer would
+        // discard that.
+        if (view.value.phase !== "hidden") {
+          return;
+        }
+        void claimedCheck();
+      }, BACKGROUND_CHECK_INTERVAL_MS);
+    }
+    await claimedCheck();
   };
 
   const checkNow = (): Promise<UpdateCheckResult> =>
