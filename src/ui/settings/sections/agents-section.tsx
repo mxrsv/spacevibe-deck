@@ -197,11 +197,9 @@ export function AgentsSection() {
 
   return (
     <>
-      {/* The built-in list is the editor's own since 2026-08-19: a row prints
-          the command its agent will launch with, not the agent's name beside
-          a locked badge. `LaunchProfileEditor` walks `BUILTIN_AGENTS` itself,
-          so this section states the group and hands the list over. */}
-      <ConfigGroup label="Built in" />
+      {/* No `Built in` group label above this: the editor heads its own two
+          lists with `Installed` / `Available to install`, and a third heading
+          stacked on top of them named the same thing twice. */}
       <LaunchProfileEditor />
 
       <ConfigGroup label="Declared" />
