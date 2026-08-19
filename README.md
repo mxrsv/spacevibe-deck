@@ -280,7 +280,7 @@ npm run tauri build   # release build → src-tauri/target/release/bundle/
 ## Tech stack
 
 - **[Tauri 2](https://tauri.app)** — native desktop shell (Rust), real PTYs via `portable-pty`.
-- **[xterm.js 6](https://xtermjs.org)** — terminal rendering, with the fit / search / unicode-graphemes addons.
+- **[xterm.js 6](https://xtermjs.org)** — terminal rendering, with the fit / search / unicode-graphemes addons. Every pane automatically attempts WebGL custom glyphs after opening; initialization failure or context loss leaves the DOM renderer as the compatibility fallback without restarting the pane or PTY ([renderer lifecycle](src/terminal/pane.ts) `current`).
 - **[Preact](https://preactjs.com)** + `@preact/signals` — UI.
 - **TypeScript**, **[Vite 6](https://vite.dev)**, **Vitest**.
 

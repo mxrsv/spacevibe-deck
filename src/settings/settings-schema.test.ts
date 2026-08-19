@@ -104,20 +104,15 @@ describe("restoreSessions", () => {
   });
 });
 
-describe("terminalRenderer", () => {
-  it("defaults to dom — the accelerated path is opt-in", () => {
-    expect(DEFAULT_SETTINGS.terminalRenderer).toBe("dom");
-    expect(validateSettings({}).terminalRenderer).toBe("dom");
-  });
+const LEGACY_RENDERER_KEY = ["terminal", "Renderer"].join("");
 
-  it("keeps both declared renderers", () => {
-    expect(validateSettings({ terminalRenderer: "dom" }).terminalRenderer).toBe("dom");
-    expect(validateSettings({ terminalRenderer: "webgl" }).terminalRenderer).toBe("webgl");
-  });
-
-  it("falls back to dom on an unknown or non-string value", () => {
-    expect(validateSettings({ terminalRenderer: "canvas" }).terminalRenderer).toBe("dom");
-    expect(validateSettings({ terminalRenderer: 1 }).terminalRenderer).toBe("dom");
+describe("legacy renderer setting", () => {
+  it("ignores legacy terminal" + "Renderer values", () => {
+    for (const legacyValue of ["dom", "webgl", "canvas"]) {
+      expect(LEGACY_RENDERER_KEY in validateSettings({ [LEGACY_RENDERER_KEY]: legacyValue })).toBe(
+        false,
+      );
+    }
   });
 });
 

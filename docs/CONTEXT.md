@@ -12,6 +12,35 @@
   material, kept for provenance, not authoritative.
 - Domain glossary: repo-root `CONTEXT.md`.
 
+## Automatic terminal renderer — 2026-08-19
+
+Every pane now attempts one WebGL activation after `Terminal.open()` during its
+first mount. [`activateWebglRenderer()`](../src/terminal/pane.ts) `current` owns
+that one-shot lifecycle; later mounts and `applySettings()` cannot create or
+replace the addon. Initialization failure and context loss both dispose the
+active addon, emit distinct warnings, and leave xterm's DOM renderer active
+without restarting the pane or PTY. Pane disposal explicitly releases a still
+active GPU context through the same
+[pane lifecycle](../src/terminal/pane.ts) `current`.
+
+Renderer selection no longer exists in persisted settings or the shipping
+Settings surface. [`validateSettings()`](../src/settings/settings-schema.ts)
+`current` ignores legacy renderer keys, and the
+[Appearance section](../src/ui/settings/sections/appearance-section.tsx)
+`current` exposes no selector or fallback status.
+
+Automated evidence on macOS 2026-08-19:
+
+- The focused renderer/settings run passed 72/72 tests across three files.
+- `npm run build` and `npm run electron:build` both exited 0.
+- The full `npm test` run passed 3,122 tests, skipped 3, and timed out in two
+  files outside this diff: `search-bar.test.ts` and `file-tree-view.test.tsx`.
+  Their isolated reruns passed 23/23 and 16/16 respectively.
+
+**Not established:** no native Electron or Tauri pass, no owner eye review, and
+no Windows runtime evidence. The renderer lifecycle is shared by both hosts,
+but automated renderer/build evidence is not native acceptance.
+
 ## Chrome ink goes neutral — 2026-08-17
 
 The owner read the app's text as "hơi ánh xanh" — faintly blue — and asked for
