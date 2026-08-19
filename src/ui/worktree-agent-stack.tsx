@@ -16,9 +16,7 @@ interface WorktreeAgentStackProps {
 }
 
 function agentLabel(agent: PaneAgent): string {
-  return (
-    BUILTIN_AGENTS.find((candidate) => candidate.id === agent)?.label ?? agent
-  );
+  return BUILTIN_AGENTS.find((candidate) => candidate.id === agent)?.label ?? agent;
 }
 
 function tabLabel(tab: RailTab): string {
@@ -44,10 +42,7 @@ function visibleTabs(tabs: readonly RailTab[]): readonly RailTab[] {
   }
   const activeIndex = tabs.findIndex((tab) => tab.active);
   const focusIndex = activeIndex === -1 ? 0 : activeIndex;
-  const start = Math.min(
-    Math.max(focusIndex - 1, 0),
-    tabs.length - MAX_VISIBLE_TABS,
-  );
+  const start = Math.min(Math.max(focusIndex - 1, 0), tabs.length - MAX_VISIBLE_TABS);
   return tabs.slice(start, start + MAX_VISIBLE_TABS);
 }
 
@@ -204,19 +199,13 @@ function AgentTabControls(props: AgentTabControlsProps) {
           props.menuOpen.value = !props.menuOpen.value;
         }}
       />
-      {props.menuOpen.value && (
-        <HiddenTabMenu tabs={props.hidden} onSelect={props.onSelect} />
-      )}
+      {props.menuOpen.value && <HiddenTabMenu tabs={props.hidden} onSelect={props.onSelect} />}
     </span>
   );
 }
 
 /** One focusable agent mark per terminal tab in a worktree. */
-export function WorktreeAgentStack({
-  tabs,
-  onSelectTab,
-  onOpenOptions,
-}: WorktreeAgentStackProps) {
+export function WorktreeAgentStack({ tabs, onSelectTab, onOpenOptions }: WorktreeAgentStackProps) {
   const menuOpen = useSignal(false);
   if (tabs.length === 0) {
     return null;

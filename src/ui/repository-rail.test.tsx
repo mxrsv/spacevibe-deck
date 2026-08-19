@@ -21,8 +21,7 @@ vi.mock("../terminal/file-drop", () => ({
   installFileDrop: vi.fn(async () => () => {}),
 }));
 
-import { activeTabIndex, tabViews } from "../terminal/tabs-store";
-import type { TabView } from "../terminal/tabs-store";
+import { activeTabIndex, tabViews, type TabView } from "../terminal/tabs-store";
 import { RepositoryRail } from "./repository-rail";
 import { TabStrip } from "./tab-strip";
 import {
@@ -31,10 +30,7 @@ import {
   invalidateRepositoryScans,
 } from "../repositories/repositories-store";
 import type { RepositoryScan } from "../repositories/repository-client";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   createFileSurfaceController,
   type FileSurfaceController,
@@ -101,9 +97,7 @@ let fileController: FileSurfaceController;
 
 const NOOP = (): void => {};
 
-function mount(
-  props: Partial<Parameters<typeof RepositoryRail>[0]> = {},
-): void {
+function mount(props: Partial<Parameters<typeof RepositoryRail>[0]> = {}): void {
   act(() => {
     render(
       <RepositoryRail
@@ -229,12 +223,10 @@ describe("RepositoryRail", () => {
       expect(row.querySelector(".wsitem__state")).not.toBeNull();
       expect(row.querySelector(".wsitem__logo")).toBeNull();
     }
-    expect(
-      rows[0].querySelector(".wsitem__state")?.getAttribute("aria-label"),
-    ).toBe("main: open");
-    expect(
-      rows[1].querySelector(".wsitem__state")?.getAttribute("aria-label"),
-    ).toBe("side: not open");
+    expect(rows[0].querySelector(".wsitem__state")?.getAttribute("aria-label")).toBe("main: open");
+    expect(rows[1].querySelector(".wsitem__state")?.getAttribute("aria-label")).toBe(
+      "side: not open",
+    );
   });
 
   it("keeps an attention state dot actionable without selecting its row", async () => {
@@ -275,9 +267,9 @@ describe("RepositoryRail", () => {
     await settle();
 
     expect(host.querySelectorAll(".worktree-agents__logo")).toHaveLength(2);
-    expect(
-      host.querySelector(".worktree-agents")?.getAttribute("aria-label"),
-    ).toBe("2 agent tabs in this worktree");
+    expect(host.querySelector(".worktree-agents")?.getAttribute("aria-label")).toBe(
+      "2 agent tabs in this worktree",
+    );
   });
 
   it("renders one worktree row with one focusable agent button per tab", async () => {
@@ -291,12 +283,8 @@ describe("RepositoryRail", () => {
     mount({ onSelectTab });
     await settle();
 
-    expect(host.querySelectorAll(".wsitem:not(.wsitem--readout)")).toHaveLength(
-      1,
-    );
-    const agentButtons = host.querySelectorAll<HTMLButtonElement>(
-      ".worktree-agents__item",
-    );
+    expect(host.querySelectorAll(".wsitem:not(.wsitem--readout)")).toHaveLength(1);
+    const agentButtons = host.querySelectorAll<HTMLButtonElement>(".worktree-agents__item");
     expect(agentButtons).toHaveLength(3);
     expect(agentButtons[1].getAttribute("aria-current")).toBe("page");
 
@@ -320,9 +308,7 @@ describe("RepositoryRail", () => {
     activeTabIndex.value = 0;
     mount({ onSelectTab });
     await settle();
-    const rows = host.querySelectorAll<HTMLElement>(
-      ".wsitem:not(.wsitem--readout)",
-    );
+    const rows = host.querySelectorAll<HTMLElement>(".wsitem:not(.wsitem--readout)");
     expect(rows.length).toBe(2);
     act(() => {
       rows[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -392,9 +378,7 @@ describe("RepositoryRail", () => {
     const resumeRow = host.querySelector<HTMLElement>('.wsitem[role="button"]');
     expect(resumeRow).not.toBeNull();
     expect(resumeRow?.getAttribute("tabindex")).toBe("0");
-    expect(resumeRow?.getAttribute("aria-label")).toBe(
-      "Resume last session in side",
-    );
+    expect(resumeRow?.getAttribute("aria-label")).toBe("Resume last session in side");
 
     act(() => {
       resumeRow?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -403,9 +387,7 @@ describe("RepositoryRail", () => {
 
     onResumeWorktree.mockClear();
     act(() => {
-      resumeRow?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      resumeRow?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
     expect(onResumeWorktree).toHaveBeenCalledWith("/r/side");
   });
@@ -432,9 +414,9 @@ describe("RepositoryRail", () => {
     invalidateRepositoryScans();
     mount();
     await settle();
-    expect(
-      host.querySelector(".wsitem--readout")?.getAttribute("aria-label"),
-    ).toContain("missing from disk");
+    expect(host.querySelector(".wsitem--readout")?.getAttribute("aria-label")).toContain(
+      "missing from disk",
+    );
   });
 
   it("collapses a repository and hides its worktrees", async () => {
@@ -445,9 +427,7 @@ describe("RepositoryRail", () => {
     act(() => {
       toggle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    expect(
-      host.querySelector(".repogroup__toggle")?.getAttribute("aria-expanded"),
-    ).toBe("false");
+    expect(host.querySelector(".repogroup__toggle")?.getAttribute("aria-expanded")).toBe("false");
     expect(host.querySelectorAll(".wsitem").length).toBe(0);
   });
 
@@ -501,9 +481,7 @@ describe("RepositoryRail and file tabs", () => {
 
     expect(host.querySelector(".wsitem--file")).toBeNull();
     // The open tab's own row, and only it.
-    expect(host.querySelectorAll(".wsitem:not(.wsitem--readout)")).toHaveLength(
-      1,
-    );
+    expect(host.querySelectorAll(".wsitem:not(.wsitem--readout)")).toHaveLength(1);
   });
 
   it("renders no rail rows at all once the window's last terminal tab is gone, file tabs open or not", async () => {
@@ -559,9 +537,7 @@ describe("RepositoryRail and file tabs", () => {
     mountSidebarLayout();
     await settle();
 
-    const row = host.querySelector(
-      ".wsitem:not(.wsitem--readout)",
-    ) as HTMLElement;
+    const row = host.querySelector(".wsitem:not(.wsitem--readout)") as HTMLElement;
     act(() => {
       row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
     });

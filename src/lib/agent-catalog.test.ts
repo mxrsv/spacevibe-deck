@@ -121,9 +121,7 @@ describe("resolveAgentCommand", () => {
   });
 
   it("maps a custom id to its full command line", () => {
-    expect(resolveAgentCommand("custom:aider", [aider])).toBe(
-      "aider --model sonnet",
-    );
+    expect(resolveAgentCommand("custom:aider", [aider])).toBe("aider --model sonnet");
   });
 
   it("returns null for an id nothing declares", () => {
@@ -142,9 +140,7 @@ describe("probeNames", () => {
       aider,
       { id: "custom:aider-2", label: "Aider fast", command: "aider --fast" },
     ];
-    expect(probeNames(twice).filter((name) => name === "aider")).toHaveLength(
-      1,
-    );
+    expect(probeNames(twice).filter((name) => name === "aider")).toHaveLength(1);
   });
 
   it("drops a custom binary the probe must not carry into a shell", () => {

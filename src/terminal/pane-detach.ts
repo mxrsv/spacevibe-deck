@@ -16,12 +16,10 @@ export interface PaneIdentity {
 }
 
 export type DetachTarget =
-  | { readonly kind: "new-window" }
-  | { readonly kind: "window"; readonly label: string };
+  { readonly kind: "new-window" } | { readonly kind: "window"; readonly label: string };
 
 export type DetachResult =
-  | { readonly kind: "moved" }
-  | { readonly kind: "kept"; readonly reason: string };
+  { readonly kind: "moved" } | { readonly kind: "kept"; readonly reason: string };
 
 export interface DetachDeps {
   readonly transfer: TransferClient;
@@ -106,9 +104,7 @@ export async function detachPane(
 
   let scrollback = "";
   try {
-    scrollback = withinByteBound(
-      pane.serializeScrollback(SERIALIZE_SCROLLBACK_LINES),
-    );
+    scrollback = withinByteBound(pane.serializeScrollback(SERIALIZE_SCROLLBACK_LINES));
   } catch (err) {
     // Spec §13: losing history is not worth losing the session.
     console.warn("Scrollback serialization failed; moving without it:", err);
@@ -128,10 +124,7 @@ export async function detachPane(
     workspacePath: identity.workspacePath,
   };
 
-  const failed = async (
-    reason: string,
-    err: unknown,
-  ): Promise<DetachResult> => {
+  const failed = async (reason: string, err: unknown): Promise<DetachResult> => {
     console.warn(`Pane transfer ${reason}:`, err);
     await deps.transfer.abortTransfer(token).catch(() => {
       // Rust aborts on its own bounds (spec §7.5) — a failed abort is noise.
@@ -162,10 +155,7 @@ export async function detachPane(
       await deps.transfer.offerTransfer(token, target.label);
     }
   } catch (err) {
-    return failed(
-      target.kind === "new-window" ? "open-window-failed" : "offer-failed",
-      err,
-    );
+    return failed(target.kind === "new-window" ? "open-window-failed" : "offer-failed", err);
   }
 
   // The DESTINATION commits (spec §7.3: `caller == to`), so the source waits

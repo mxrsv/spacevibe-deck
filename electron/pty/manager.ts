@@ -16,10 +16,7 @@ import { EVENTS } from "../ipc/channels";
 import { createStreamDecoder, OutputBatcher } from "./stream";
 import { PtySessionStore, type PtySession } from "./session-store";
 import { spawnShell, type SpawnOptions } from "./spawn";
-import {
-  validateCwdCandidates,
-  type ShellIntegrationEvent,
-} from "../shell-integration";
+import { validateCwdCandidates, type ShellIntegrationEvent } from "../shell-integration";
 import * as macos from "../platform/macos";
 import type { PsRow } from "../platform/macos";
 import * as windows from "../platform/windows";
@@ -29,11 +26,7 @@ function platform() {
 }
 
 /** Delivers an event to whichever window currently owns the pane. */
-export type EmitToOwner = (
-  paneId: number,
-  event: string,
-  payload: unknown,
-) => void;
+export type EmitToOwner = (paneId: number, event: string, payload: unknown) => void;
 
 export interface PtyManagerDeps {
   readonly emitToOwner: EmitToOwner;
@@ -120,11 +113,7 @@ export class PtyManager {
     if (session === undefined) {
       return;
     }
-    const foreground = platform().foregroundProcess(
-      rows,
-      session.ttyName,
-      session.pty.pid,
-    );
+    const foreground = platform().foregroundProcess(rows, session.ttyName, session.pty.pid);
     platform().terminateProcessGroups(
       // `group`, never `pid`: a group MEMBER's pid is not a group id, and
       // signalling it would hit nothing.
@@ -220,12 +209,8 @@ export class PtyManager {
 
     const candidates = events
       .filter(
-        (
-          event,
-        ): event is Extract<
-          ShellIntegrationEvent,
-          { kind: "current-directory" }
-        > => event.kind === "current-directory",
+        (event): event is Extract<ShellIntegrationEvent, { kind: "current-directory" }> =>
+          event.kind === "current-directory",
       )
       .map((event) => event.value);
     if (candidates.length === 0) {

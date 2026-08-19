@@ -24,14 +24,7 @@ import { basename, extname, join } from "node:path";
  * would drag `@xterm/xterm` types across a boundary that otherwise moves only
  * strings. `themes.test.ts` fails if the two lists drift.
  */
-const THEME_EXTENSIONS = [
-  "json",
-  "itermcolors",
-  "toml",
-  "conf",
-  "theme",
-  "txt",
-] as const;
+const THEME_EXTENSIONS = ["json", "itermcolors", "toml", "conf", "theme", "txt"] as const;
 
 /**
  * Per-file ceiling. A terminal palette is twenty-odd colours — the largest
@@ -122,9 +115,7 @@ export async function listThemes(): Promise<ThemeScan> {
  * The dialog is modal to the window that asked, so a second window cannot end
  * up owning a sheet the user opened from the first one.
  */
-export async function importThemes(
-  window: BrowserWindow | null,
-): Promise<ThemeScan> {
+export async function importThemes(window: BrowserWindow | null): Promise<ThemeScan> {
   const options: Electron.OpenDialogOptions = {
     title: "Import terminal themes",
     properties: ["openFile", "multiSelections"],
@@ -178,10 +169,7 @@ export async function importThemes(
 }
 
 /** The reason this file cannot become a theme, or null when it can. */
-async function refuseImport(
-  source: string,
-  fileName: string,
-): Promise<string | null> {
+async function refuseImport(source: string, fileName: string): Promise<string | null> {
   if (!isThemeFileName(fileName)) {
     return `${extname(fileName) || "this file type"} is not a theme file`;
   }
@@ -218,10 +206,7 @@ export function isThemeFileName(fileName: string): boolean {
     return false;
   }
   const extension = extname(fileName).slice(1).toLowerCase();
-  return (
-    extension === "" ||
-    (THEME_EXTENSIONS as readonly string[]).includes(extension)
-  );
+  return extension === "" || (THEME_EXTENSIONS as readonly string[]).includes(extension);
 }
 
 /** File text, or the reason it is not readable as a theme. */
@@ -249,10 +234,7 @@ async function readIfSmall(path: string): Promise<string | { reason: string }> {
  * silently overwriting an existing theme for — the folder is the model, and a
  * copy that clobbers is a copy that can destroy a theme the user hand-edited.
  */
-export function uniqueName(
-  fileName: string,
-  taken: ReadonlySet<string>,
-): string {
+export function uniqueName(fileName: string, taken: ReadonlySet<string>): string {
   if (!taken.has(fileName)) {
     return fileName;
   }

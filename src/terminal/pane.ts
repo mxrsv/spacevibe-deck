@@ -4,11 +4,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
 import { WebglAddon } from "@xterm/addon-webgl";
-import {
-  FONT_FALLBACK,
-  type Settings,
-  type TerminalRenderer,
-} from "../settings/settings-schema";
+import { FONT_FALLBACK, type Settings, type TerminalRenderer } from "../settings/settings-schema";
 import { applyWebkitImeFix, isWebKitWebView } from "./webkit-ime-fix";
 import { installShiftEnterNewline } from "./shift-enter";
 import { resolveTheme } from "../settings/themes";
@@ -205,10 +201,10 @@ export function createPane(
   let capturePasteWrite: ((write: Promise<boolean>) => void) | null = null;
 
   function forwardData(data: string): Promise<boolean> {
-    const write = events.onData(id, data);
-    capturePasteWrite?.(write);
+    const result = events.onData(id, data);
+    capturePasteWrite?.(result);
     capturePasteWrite = null;
-    return write;
+    return result;
   }
 
   term.attachCustomWheelEventHandler(
@@ -271,10 +267,7 @@ export function createPane(
   const ANCHOR_ZONE_PX = 26;
   element.addEventListener("mousemove", (event) => {
     const top = element.getBoundingClientRect().top;
-    element.classList.toggle(
-      "is-anchor-zone",
-      event.clientY - top < ANCHOR_ZONE_PX,
-    );
+    element.classList.toggle("is-anchor-zone", event.clientY - top < ANCHOR_ZONE_PX);
   });
   element.addEventListener("mouseleave", () => {
     element.classList.remove("is-anchor-zone");
@@ -413,9 +406,7 @@ export function createPane(
     cwdEl.textContent = info.cwd;
     anchorCwd.textContent = info.cwd;
     badge.textContent = info.badge;
-    badge.className = `pane__badge ${
-      info.agent ? "pane__badge--agent" : "pane__badge--shell"
-    }`;
+    badge.className = `pane__badge ${info.agent ? "pane__badge--agent" : "pane__badge--shell"}`;
   }
 
   function captureSelection(): SelectionSnapshot | null {
@@ -494,8 +485,8 @@ export function createPane(
     },
     pasteText(text) {
       let capturedWrite: Promise<boolean> | null = null;
-      capturePasteWrite = (write) => {
-        capturedWrite = write;
+      capturePasteWrite = (pending) => {
+        capturedWrite = pending;
       };
       try {
         // xterm's public paste path synchronously emits one prepared/bracketed
@@ -507,8 +498,7 @@ export function createPane(
       return capturedWrite ?? Promise.resolve(false);
     },
     scrollPage: (dir) => term.scrollPages(dir),
-    scrollToEdge: (edge) =>
-      edge === "top" ? term.scrollToTop() : term.scrollToBottom(),
+    scrollToEdge: (edge) => (edge === "top" ? term.scrollToTop() : term.scrollToBottom()),
     focus: () => term.focus(),
     applySettings,
     setHeaderInfo,

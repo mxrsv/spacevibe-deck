@@ -5,8 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
 
-import { EMPTY_COUNTERS } from "../../../lib/usage-snapshot";
-import type { UsageBucket, UsageSnapshot } from "../../../lib/usage-snapshot";
+import { EMPTY_COUNTERS, type UsageBucket, type UsageSnapshot } from "../../../lib/usage-snapshot";
 import { localDayKey } from "../../../lib/usage-aggregate";
 import { usageSnapshot } from "../../../usage/usage-store";
 import { DAILY_DAYS, DailySection } from "./daily-section";
@@ -81,17 +80,13 @@ describe("DailySection", () => {
 
     const rows = host.querySelectorAll("tbody tr");
     expect(rows).toHaveLength(1);
-    expect(rows[0].querySelector('th[scope="row"]')?.textContent).toBe(
-      localDayKey(NOW),
-    );
+    expect(rows[0].querySelector('th[scope="row"]')?.textContent).toBe(localDayKey(NOW));
     const lines = rows[0].querySelectorAll(".usage-day-agent");
     expect(lines).toHaveLength(2);
     expect(host.textContent).toContain("Claude Code");
     expect(host.textContent).toContain("Codex");
     // The day's own totals stay in the numeric columns: 15 + 3 tokens.
-    const cells = [...rows[0].querySelectorAll("th, td")].map(
-      (cell) => cell.textContent,
-    );
+    const cells = [...rows[0].querySelectorAll("th, td")].map((cell) => cell.textContent);
     expect(cells[2]).toBe("18");
   });
 
@@ -112,9 +107,7 @@ describe("DailySection", () => {
     ]);
     mount();
 
-    const logos = [
-      ...host.querySelectorAll<HTMLImageElement>("img.usage-day-agent__logo"),
-    ];
+    const logos = [...host.querySelectorAll<HTMLImageElement>("img.usage-day-agent__logo")];
     expect(logos).toHaveLength(2);
     // DL-15.9: the name is the next element, so the mark is decorative here.
     for (const logo of logos) {
@@ -158,9 +151,7 @@ describe("DailySection", () => {
     mount();
 
     const cells = [
-      ...(
-        host.querySelector("tbody tr") as HTMLTableRowElement
-      ).querySelectorAll("th, td"),
+      ...(host.querySelector("tbody tr") as HTMLTableRowElement).querySelectorAll("th, td"),
     ].map((cell) => cell.textContent);
     expect(cells[3]).toBe("$5.00");
     // And the omission is disclosed under the table, by name.
@@ -181,9 +172,7 @@ describe("DailySection", () => {
     mount();
 
     const cells = [
-      ...(
-        host.querySelector("tbody tr") as HTMLTableRowElement
-      ).querySelectorAll("th, td"),
+      ...(host.querySelector("tbody tr") as HTMLTableRowElement).querySelectorAll("th, td"),
     ].map((cell) => cell.textContent);
     expect(cells[3]).toBe("—");
   });

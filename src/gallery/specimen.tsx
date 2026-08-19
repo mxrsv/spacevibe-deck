@@ -46,9 +46,7 @@ export function Specimen({
         <span class="gx-specimen__name">{name}</span>
         {note !== undefined && <span class="gx-specimen__note">{note}</span>}
       </header>
-      <div
-        class={`gx-stage gx-stage--${surface} ${tall ? "gx-stage--tall" : ""}`}
-      >
+      <div class={`gx-stage gx-stage--${surface} ${tall ? "gx-stage--tall" : ""}`}>
         {framed ? <div class="window">{children}</div> : children}
       </div>
     </section>
@@ -61,13 +59,7 @@ export function SpecimenRow({ children }: { children: ComponentChildren }) {
 }
 
 /** Section heading + the one sentence that says what the section is for. */
-export function SectionHead({
-  title,
-  blurb,
-}: {
-  title: string;
-  blurb: string;
-}) {
+export function SectionHead({ title, blurb }: { title: string; blurb: string }) {
   return (
     <header class="gx-sectionhead">
       <h1>{title}</h1>

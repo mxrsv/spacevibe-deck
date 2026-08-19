@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import { allIdle, censusFor, CloseFlight, QuitFlight } from "./quit-flow";
 import type { PtyInfo } from "./pty/info";
 
-const pane = (
-  id: number,
-  kind: PtyInfo["kind"],
-  process: string | null = null,
-): PtyInfo => ({ id, cwd: null, process, kind, agent: null });
+const pane = (id: number, kind: PtyInfo["kind"], process: string | null = null): PtyInfo => ({
+  id,
+  cwd: null,
+  process,
+  kind,
+  agent: null,
+});
 
 describe("allIdle", () => {
   it("is true only when every pane is an idle shell", () => {

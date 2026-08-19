@@ -8,9 +8,7 @@ function sourceFiles(directory: string): string[] {
     if (entry.isDirectory()) {
       return sourceFiles(target);
     }
-    return /\.[cm]?[jt]sx?$/.test(entry.name) && !entry.name.includes(".test.")
-      ? [target]
-      : [];
+    return /\.[cm]?[jt]sx?$/.test(entry.name) && !entry.name.includes(".test.") ? [target] : [];
   });
 }
 

@@ -18,11 +18,7 @@ import {
 const hosts = vi.hoisted(() => ({
   available: true,
   sessionTails:
-    vi.fn<
-      (
-        requests: readonly ResumeRequest[],
-      ) => Promise<readonly (string | null)[]>
-    >(),
+    vi.fn<(requests: readonly ResumeRequest[]) => Promise<readonly (string | null)[]>>(),
 }));
 
 vi.mock("../host/worktree-host", () => ({
@@ -32,8 +28,7 @@ vi.mock("../host/worktree-host", () => ({
 }));
 
 vi.mock("../host/session-tail-host", () => ({
-  sessionTails: (requests: readonly ResumeRequest[]) =>
-    hosts.sessionTails(requests),
+  sessionTails: (requests: readonly ResumeRequest[]) => hosts.sessionTails(requests),
 }));
 
 const DEBOUNCE_MS = 300;
@@ -61,11 +56,7 @@ function pane(paneId: number, over: Partial<PaneView> = {}): PaneView {
   };
 }
 
-function tab(
-  key: number,
-  workspacePath: string | null,
-  panes: readonly PaneView[],
-): TabView {
+function tab(key: number, workspacePath: string | null, panes: readonly PaneView[]): TabView {
   return {
     key,
     process: "zsh",
@@ -121,9 +112,7 @@ describe("session tail store", () => {
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
 
     expect(hosts.sessionTails).toHaveBeenCalledTimes(1);
-    expect(batchAt(0)).toEqual([
-      { agent: "claude", cwd: "/w", lastSeenAt: NOW },
-    ]);
+    expect(batchAt(0)).toEqual([{ agent: "claude", cwd: "/w", lastSeenAt: NOW }]);
     expect(paneTails.value.get(101)).toBe("writing the tests");
   });
 
@@ -152,9 +141,7 @@ describe("session tail store", () => {
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
 
     expect(hosts.sessionTails).toHaveBeenCalledTimes(2);
-    expect(batchAt(1)).toEqual([
-      { agent: "claude", cwd: "/w", lastSeenAt: NOW + 5_000 },
-    ]);
+    expect(batchAt(1)).toEqual([{ agent: "claude", cwd: "/w", lastSeenAt: NOW + 5_000 }]);
     expect(paneTails.value.get(101)).toBe("second");
   });
 
@@ -175,20 +162,14 @@ describe("session tail store", () => {
 
   it("5. asks only for panes that have run — a never-run pane and a shell pane are skipped", async () => {
     tabViews.value = [
-      tab(1, "/w", [
-        pane(101),
-        pane(102, { hasRun: false }),
-        pane(103, { agent: null }),
-      ]),
+      tab(1, "/w", [pane(101), pane(102, { hasRun: false }), pane(103, { agent: null })]),
     ];
     hosts.sessionTails.mockResolvedValue(["only mine"]);
 
     dispose = installSessionTailSync();
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
 
-    expect(batchAt(0)).toEqual([
-      { agent: "claude", cwd: "/w", lastSeenAt: NOW },
-    ]);
+    expect(batchAt(0)).toEqual([{ agent: "claude", cwd: "/w", lastSeenAt: NOW }]);
     expect([...paneTails.value.keys()]).toEqual([101]);
   });
 
@@ -215,9 +196,7 @@ describe("session tail store", () => {
   });
 
   it("7. never asks with an empty batch", async () => {
-    tabViews.value = [
-      tab(1, "/w", [pane(101, { agent: null }), pane(102, { hasRun: false })]),
-    ];
+    tabViews.value = [tab(1, "/w", [pane(101, { agent: null }), pane(102, { hasRun: false })])];
 
     dispose = installSessionTailSync();
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS * 5);
@@ -248,9 +227,7 @@ describe("session tail store", () => {
 
     hosts.sessionTails.mockRejectedValue(new Error("no handler"));
     tabViews.value = [tab(1, "/w", [pane(101, { changedAt: NOW + 1_000 })])];
-    await expect(
-      vi.advanceTimersByTimeAsync(DEBOUNCE_MS),
-    ).resolves.not.toThrow();
+    await expect(vi.advanceTimersByTimeAsync(DEBOUNCE_MS)).resolves.not.toThrow();
 
     expect(warn).toHaveBeenCalled();
     expect(paneTails.value.get(101)).toBe("kept");
@@ -289,20 +266,13 @@ describe("session tail store", () => {
     dispose = installSessionTailSync();
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
 
-    expect(batchAt(0)).toEqual([
-      { agent: "claude", cwd: "/w", lastSeenAt: NOW },
-    ]);
+    expect(batchAt(0)).toEqual([{ agent: "claude", cwd: "/w", lastSeenAt: NOW }]);
     expect(paneTails.value.get(101)).toBe("what it said before the quit");
   });
 
   it("13. spends one mark on one pane — a second never-run pane stays skipped", async () => {
     noteResumedPane("/w", "claude");
-    tabViews.value = [
-      tab(1, "/w", [
-        pane(101, { hasRun: false }),
-        pane(102, { hasRun: false }),
-      ]),
-    ];
+    tabViews.value = [tab(1, "/w", [pane(101, { hasRun: false }), pane(102, { hasRun: false })])];
     hosts.sessionTails.mockResolvedValue(["the resumed one"]);
 
     dispose = installSessionTailSync();
@@ -320,9 +290,7 @@ describe("session tail store", () => {
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
 
     hosts.sessionTails.mockResolvedValue(["second"]);
-    tabViews.value = [
-      tab(1, "/w", [pane(101, { hasRun: false, changedAt: NOW + 1_000 })]),
-    ];
+    tabViews.value = [tab(1, "/w", [pane(101, { hasRun: false, changedAt: NOW + 1_000 })])];
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
 
     expect(hosts.sessionTails).toHaveBeenCalledTimes(2);

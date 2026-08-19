@@ -47,12 +47,7 @@ export interface SubmitGateInput {
  * no OSC signal is invisible to gate 2. Per-template `autoSend` is the user's
  * choice made in that knowledge.
  */
-export function submitAllowed({
-  expectedAgent,
-  info,
-  attention,
-  alive,
-}: SubmitGateInput): boolean {
+export function submitAllowed({ expectedAgent, info, attention, alive }: SubmitGateInput): boolean {
   if (!alive) {
     return false;
   }

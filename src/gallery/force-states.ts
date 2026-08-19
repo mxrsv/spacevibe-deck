@@ -41,11 +41,7 @@ import { appRuleLists } from "./css-audit";
 
 export type ForcedState = "hover" | "active" | "focus";
 
-export const FORCED_STATES: readonly ForcedState[] = [
-  "hover",
-  "active",
-  "focus",
-];
+export const FORCED_STATES: readonly ForcedState[] = ["hover", "active", "focus"];
 
 /**
  * Longest first. `:focus-visible` and `:focus-within` both contain `:focus`,
@@ -126,10 +122,7 @@ function carries(selectorText: string, state: ForcedState): boolean {
 }
 
 /** `.a:hover, .b` under `hover` → `.gx-force--hover .a:not(.gx-never), .gx-force--hover .b`. */
-export function scopeSelector(
-  selectorText: string,
-  state: ForcedState,
-): string {
+export function scopeSelector(selectorText: string, state: ForcedState): string {
   return splitSelectorList(selectorText)
     .map((part) => {
       let selector = part;
@@ -143,17 +136,11 @@ export function scopeSelector(
     .join(", ");
 }
 
-function emit(
-  nodes: readonly RuleNode[],
-  state: ForcedState,
-  into: string[],
-): void {
+function emit(nodes: readonly RuleNode[], state: ForcedState, into: string[]): void {
   for (const node of nodes) {
     if (node.kind === "style") {
       if (node.declarations !== "") {
-        into.push(
-          `${scopeSelector(node.selectorText, state)} { ${node.declarations} }`,
-        );
+        into.push(`${scopeSelector(node.selectorText, state)} { ${node.declarations} }`);
       }
       continue;
     }
@@ -167,9 +154,7 @@ function emit(
 
 function anyCarries(nodes: readonly RuleNode[], state: ForcedState): boolean {
   return nodes.some((node) =>
-    node.kind === "style"
-      ? carries(node.selectorText, state)
-      : anyCarries(node.children, state),
+    node.kind === "style" ? carries(node.selectorText, state) : anyCarries(node.children, state),
   );
 }
 
@@ -186,9 +171,7 @@ export interface ForcedStateSheet {
   readonly absent: readonly ForcedState[];
 }
 
-export function buildForcedStates(
-  nodes: readonly RuleNode[],
-): ForcedStateSheet {
+export function buildForcedStates(nodes: readonly RuleNode[]): ForcedStateSheet {
   const present: ForcedState[] = [];
   const absent: ForcedState[] = [];
   const lines: string[] = [];

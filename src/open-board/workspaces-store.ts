@@ -38,20 +38,10 @@ export async function initWorkspaces(): Promise<void> {
  * `pushRecent`) — no caller needs that today (every Open picks both), but the
  * store must not invent a combo for one that does.
  */
-export function recordWorkspaceOpen(
-  path: string,
-  presetId?: string,
-  agent?: AgentChoice,
-): void {
+export function recordWorkspaceOpen(path: string, presetId?: string, agent?: AgentChoice): void {
   const next: WorkspacesData = {
     version: WORKSPACES_VERSION,
-    recents: pushRecent(
-      workspacesData.value.recents,
-      path,
-      Date.now(),
-      presetId,
-      agent,
-    ),
+    recents: pushRecent(workspacesData.value.recents, path, Date.now(), presetId, agent),
   };
   workspacesData.value = next;
   persist(next, "Recent folder wasn't saved");

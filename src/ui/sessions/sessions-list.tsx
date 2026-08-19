@@ -1,14 +1,7 @@
 import { getDesktopEnvironment } from "../../lib/platform";
 import { tildify } from "../../lib/process-info";
-import {
-  SESSION_AGENT_LABELS,
-  type SessionEntry,
-} from "../../lib/session-history";
-import {
-  cappedAgents,
-  distinctProjects,
-  filterSessions,
-} from "../../sessions/session-filters";
+import { SESSION_AGENT_LABELS, type SessionEntry } from "../../lib/session-history";
+import { cappedAgents, distinctProjects, filterSessions } from "../../sessions/session-filters";
 import {
   deadProjects,
   sessionAgentFilter,
@@ -55,17 +48,12 @@ export function SessionsList({ onResume }: SessionsListProps) {
   const capped = cappedAgents(sessionTotals.value, sessionLimit.value);
 
   return (
-    <div
-      class="sessions-list"
-      aria-busy={sessionsLoadState.value.status === "loading"}
-    >
+    <div class="sessions-list" aria-busy={sessionsLoadState.value.status === "loading"}>
       {sessionsLoading.value ? (
         // A status line ABOVE the list, not a state that replaces it —
         // mirrors usage-status.tsx: what is already known stays on screen
         // while a re-scan runs, rather than a spinner hiding it.
-        <p class="sessions-list__note">
-          Reading this machine's recorded sessions…
-        </p>
+        <p class="sessions-list__note">Reading this machine's recorded sessions…</p>
       ) : null}
 
       {sessionsLoadState.value.status === "error" ? (

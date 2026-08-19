@@ -3,9 +3,7 @@ import { displayHost, isLoadableUrl, normalizeBrowserUrl } from "./url";
 
 describe("normalizeBrowserUrl", () => {
   it("keeps a full URL as it is", () => {
-    expect(normalizeBrowserUrl("https://example.com/x?y=1")).toBe(
-      "https://example.com/x?y=1",
-    );
+    expect(normalizeBrowserUrl("https://example.com/x?y=1")).toBe("https://example.com/x?y=1");
   });
 
   it("reads `localhost:5173` as a host and port, not a scheme", () => {
@@ -16,9 +14,7 @@ describe("normalizeBrowserUrl", () => {
   });
 
   it("defaults local hosts to http and everything else to https", () => {
-    expect(normalizeBrowserUrl("127.0.0.1:8080/app")).toBe(
-      "http://127.0.0.1:8080/app",
-    );
+    expect(normalizeBrowserUrl("127.0.0.1:8080/app")).toBe("http://127.0.0.1:8080/app");
     expect(normalizeBrowserUrl("deck.local")).toBe("http://deck.local/");
     expect(normalizeBrowserUrl("example.com")).toBe("https://example.com/");
   });
@@ -45,9 +41,7 @@ describe("normalizeBrowserUrl", () => {
   });
 
   it("trims surrounding whitespace", () => {
-    expect(normalizeBrowserUrl("  localhost:3000  ")).toBe(
-      "http://localhost:3000/",
-    );
+    expect(normalizeBrowserUrl("  localhost:3000  ")).toBe("http://localhost:3000/");
   });
 });
 

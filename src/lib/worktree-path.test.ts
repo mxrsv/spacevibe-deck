@@ -27,9 +27,7 @@ describe("suggestWorktreeDest", () => {
   });
 
   it("handles a repo directly under root", () => {
-    expect(suggestWorktreeDest("/deck", "redesign")).toBe(
-      "/deck-worktrees/redesign",
-    );
+    expect(suggestWorktreeDest("/deck", "redesign")).toBe("/deck-worktrees/redesign");
   });
 
   it("returns empty when the repo path is empty", () => {

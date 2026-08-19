@@ -1,3 +1,4 @@
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 // Rename the compiled main process to `.cjs`.
 //
 // The repo is ESM ("type": "module" in package.json), so Node treats a `.js`
@@ -47,12 +48,10 @@ for (const file of files) {
   // Rewrite require() targets to the new extension before renaming, or every
   // intra-bundle require resolves to a file that no longer exists.
   let source = readFileSync(file, "utf8");
-  source = source.replace(
-    /require\((["'])(\.[^"']*?)\1\)/g,
-    (match, quote, target) =>
-      target.endsWith(".cjs") || target.endsWith(".json")
-        ? match
-        : `require(${quote}${target}.cjs${quote})`,
+  source = source.replace(/require\((["'])(\.[^"']*?)\1\)/g, (match, quote, target) =>
+    target.endsWith(".cjs") || target.endsWith(".json")
+      ? match
+      : `require(${quote}${target}.cjs${quote})`,
   );
   writeFileSync(file, source);
   renameSync(file, file.replace(/\.js$/, ".cjs"));

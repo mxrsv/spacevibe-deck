@@ -37,16 +37,12 @@ vi.mock("../terminal/pty-client", () => ({
   defaultPtyClient: { detectAgents: vi.fn(async () => []) },
 }));
 
-import { WORKSPACES_VERSION } from "../lib/workspace-recents";
-import type { RecentWorkspace } from "../lib/workspace-recents";
+import { WORKSPACES_VERSION, type RecentWorkspace } from "../lib/workspace-recents";
 import { PRESETS_VERSION } from "../lib/preset-schema";
 import { presetsData } from "../presets/presets-store";
 import { workspacesData } from "./workspaces-store";
 import { OpenBoard } from "./open-board";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
 
 const NOW = 1_800_000_000_000;
@@ -101,9 +97,7 @@ describe("OpenBoard removal flow", () => {
     resetDesktopEnvironmentForTests();
   });
 
-  const mount = async (
-    onOpen: () => Promise<boolean> = async () => true,
-  ): Promise<void> => {
+  const mount = async (onOpen: () => Promise<boolean> = async () => true): Promise<void> => {
     await act(async () => {
       render(
         <OpenBoard
@@ -119,9 +113,7 @@ describe("OpenBoard removal flow", () => {
   };
 
   const rowNames = (): string[] =>
-    [...host.querySelectorAll(".row .row__name")].map(
-      (el) => el.textContent ?? "",
-    );
+    [...host.querySelectorAll(".row .row__name")].map((el) => el.textContent ?? "");
 
   const removeButton = (name: string): HTMLButtonElement | null => {
     const row = [...host.querySelectorAll(".row")].find(
@@ -134,12 +126,8 @@ describe("OpenBoard removal flow", () => {
     seed(["/w/alpha"]);
     await mount();
 
-    expect(
-      host.querySelector(".row__ico.deck-icon--folder-open"),
-    ).not.toBeNull();
-    expect(
-      host.querySelector(".home-action .deck-icon--folder-plus"),
-    ).not.toBeNull();
+    expect(host.querySelector(".row__ico.deck-icon--folder-open")).not.toBeNull();
+    expect(host.querySelector(".home-action .deck-icon--folder-plus")).not.toBeNull();
 
     const x = removeButton("alpha");
     // Removing a recent forgets a pointer; it deletes nothing on disk, so it
@@ -204,9 +192,7 @@ describe("OpenBoard removal flow", () => {
     // handler.
     const nextX = removeButton("beta");
     await act(async () => {
-      nextX?.dispatchEvent(
-        new MouseEvent("dblclick", { bubbles: true, cancelable: true }),
-      );
+      nextX?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true }));
     });
 
     expect(onOpen).not.toHaveBeenCalled();

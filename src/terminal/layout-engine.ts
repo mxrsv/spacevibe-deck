@@ -80,10 +80,7 @@ export interface LayoutEngine {
   setDropTarget(id: number | null): void;
 }
 
-export function createLayoutEngine(
-  container: HTMLElement,
-  host: LayoutEngineHost,
-): LayoutEngine {
+export function createLayoutEngine(container: HTMLElement, host: LayoutEngineHost): LayoutEngine {
   let zoomed: number | null = null;
   let zoomOverlay: HTMLElement | null = null;
 
@@ -92,9 +89,7 @@ export function createLayoutEngine(
       return;
     }
     const pane = host.getPaneElement(zoomed);
-    const slot = container.querySelector<HTMLElement>(
-      `.pane-slot[data-pane-id="${zoomed}"]`,
-    );
+    const slot = container.querySelector<HTMLElement>(`.pane-slot[data-pane-id="${zoomed}"]`);
     if (pane && slot) {
       slot.appendChild(pane);
     }
@@ -106,28 +101,17 @@ export function createLayoutEngine(
     host.fitPane(restored);
   }
 
-  function updateActiveClasses(
-    activeId: number | null,
-    paneCount: number,
-  ): void {
+  function updateActiveClasses(activeId: number | null, paneCount: number): void {
     const highlight = paneCount > 1;
     for (const slot of container.querySelectorAll<HTMLElement>(".pane-slot")) {
-      slot.classList.toggle(
-        "is-active",
-        highlight && Number(slot.dataset.paneId) === activeId,
-      );
+      slot.classList.toggle("is-active", highlight && Number(slot.dataset.paneId) === activeId);
     }
   }
 
   function applyOverlay(input: LayoutOverlayInput): void {
     applyRatios(
       container,
-      computeDisplayTree(
-        input.tree,
-        input.activeId,
-        input.focusExpand,
-        input.paneCount,
-      ),
+      computeDisplayTree(input.tree, input.activeId, input.focusExpand, input.paneCount),
     );
   }
 
@@ -201,12 +185,7 @@ export function createLayoutEngine(
 
   function paneIdAt(x: number, y: number): number | null {
     for (const rect of slotRects()) {
-      if (
-        x >= rect.left &&
-        x <= rect.right &&
-        y >= rect.top &&
-        y <= rect.bottom
-      ) {
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
         return rect.id;
       }
     }
@@ -215,10 +194,7 @@ export function createLayoutEngine(
 
   function setDropTarget(id: number | null): void {
     for (const slot of container.querySelectorAll<HTMLElement>(".pane-slot")) {
-      slot.classList.toggle(
-        "is-drop-target",
-        id !== null && Number(slot.dataset.paneId) === id,
-      );
+      slot.classList.toggle("is-drop-target", id !== null && Number(slot.dataset.paneId) === id);
     }
   }
 
@@ -243,22 +219,12 @@ interface LayoutContext {
   onRatioCommit(path: Path, ratio: number): void;
 }
 
-function renderTree(
-  container: HTMLElement,
-  root: TreeNode,
-  ctx: LayoutContext,
-): void {
+function renderTree(container: HTMLElement, root: TreeNode, ctx: LayoutContext): void {
   container.replaceChildren(buildNode(root, [], ctx));
 }
 
-function buildNode(
-  node: TreeNode,
-  path: Path,
-  ctx: LayoutContext,
-): HTMLElement {
-  return node.kind === "leaf"
-    ? buildLeaf(node, ctx)
-    : buildSplit(node, path, ctx);
+function buildNode(node: TreeNode, path: Path, ctx: LayoutContext): HTMLElement {
+  return node.kind === "leaf" ? buildLeaf(node, ctx) : buildSplit(node, path, ctx);
 }
 
 function buildLeaf(node: LeafNode, ctx: LayoutContext): HTMLElement {
@@ -275,11 +241,7 @@ function buildLeaf(node: LeafNode, ctx: LayoutContext): HTMLElement {
   return slot;
 }
 
-function buildSplit(
-  node: SplitNode,
-  path: Path,
-  ctx: LayoutContext,
-): HTMLElement {
+function buildSplit(node: SplitNode, path: Path, ctx: LayoutContext): HTMLElement {
   const split = document.createElement("div");
   split.className = `split split--${node.dir}`;
 
@@ -363,9 +325,7 @@ function applyRatios(container: HTMLElement, root: TreeNode | null): void {
     if (!splitEl) {
       continue;
     }
-    const children = splitEl.querySelectorAll<HTMLElement>(
-      ":scope > .split__child",
-    );
+    const children = splitEl.querySelectorAll<HTMLElement>(":scope > .split__child");
     if (children.length !== 2) {
       continue;
     }

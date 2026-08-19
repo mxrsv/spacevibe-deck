@@ -54,14 +54,8 @@ describe("estimateCostUsd", () => {
   });
 
   it("charges the 1h cache tier at twice the input rate", () => {
-    const oneHour = estimateCostUsd(
-      "claude-opus-5",
-      counters({ cacheCreate1h: 1000 }),
-    );
-    const uncached = estimateCostUsd(
-      "claude-opus-5",
-      counters({ inputUncached: 1000 }),
-    );
+    const oneHour = estimateCostUsd("claude-opus-5", counters({ cacheCreate1h: 1000 }));
+    const uncached = estimateCostUsd("claude-opus-5", counters({ inputUncached: 1000 }));
 
     expect(oneHour).not.toBeNull();
     expect(uncached).not.toBeNull();
@@ -88,9 +82,7 @@ describe("estimateCostUsd", () => {
   });
 
   it("returns null for an unknown model rather than guessing", () => {
-    expect(
-      estimateCostUsd("claude-from-the-future", counters({ output: 1 })),
-    ).toBeNull();
+    expect(estimateCostUsd("claude-from-the-future", counters({ output: 1 }))).toBeNull();
     expect(estimateCostUsd("toString", counters({ output: 1 }))).toBeNull();
   });
 

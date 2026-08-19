@@ -131,9 +131,9 @@ describe("resolveInsideRoot", () => {
     // an unresolved root would reject every path in a workspace opened there.
     const linkedRoot = path.join(base, "linked-root");
     fs.symlinkSync(root, linkedRoot);
-    expect(
-      resolveInsideRoot(linkedRoot, path.join(linkedRoot, "src", "index.ts")),
-    ).toBe(fs.realpathSync(path.join(root, "src", "index.ts")));
+    expect(resolveInsideRoot(linkedRoot, path.join(linkedRoot, "src", "index.ts"))).toBe(
+      fs.realpathSync(path.join(root, "src", "index.ts")),
+    );
     fs.unlinkSync(linkedRoot);
   });
 
@@ -146,9 +146,7 @@ describe("resolveInsideRoot", () => {
 
 describe("assertInsideRoot", () => {
   it("returns the canonical path or throws a named error", () => {
-    expect(assertInsideRoot(root, path.join(root, "src", "index.ts"))).toContain(
-      "index.ts",
-    );
+    expect(assertInsideRoot(root, path.join(root, "src", "index.ts"))).toContain("index.ts");
     expect(() => assertInsideRoot(root, path.join(outside, "secret.txt"))).toThrow(
       PathOutsideWorkspaceError,
     );
@@ -166,12 +164,12 @@ describe("assertWritableInsideRoot", () => {
   });
 
   it("refuses a new file whose parent is outside the root", () => {
-    expect(() =>
-      assertWritableInsideRoot(root, path.join(outside, "new.txt")),
-    ).toThrow(PathOutsideWorkspaceError);
-    expect(() =>
-      assertWritableInsideRoot(root, path.join(root, "away", "new.txt")),
-    ).toThrow(PathOutsideWorkspaceError);
+    expect(() => assertWritableInsideRoot(root, path.join(outside, "new.txt"))).toThrow(
+      PathOutsideWorkspaceError,
+    );
+    expect(() => assertWritableInsideRoot(root, path.join(root, "away", "new.txt"))).toThrow(
+      PathOutsideWorkspaceError,
+    );
   });
 
   it("refuses an EXISTING symlink that points out, instead of treating it as new", () => {
@@ -180,9 +178,7 @@ describe("assertWritableInsideRoot", () => {
     const escape = path.join(root, "escape.txt");
     fs.symlinkSync(path.join(outside, "secret.txt"), escape);
     try {
-      expect(() => assertWritableInsideRoot(root, escape)).toThrow(
-        PathOutsideWorkspaceError,
-      );
+      expect(() => assertWritableInsideRoot(root, escape)).toThrow(PathOutsideWorkspaceError);
     } finally {
       fs.unlinkSync(escape);
     }
@@ -192,17 +188,13 @@ describe("assertWritableInsideRoot", () => {
     const dangling = path.join(root, "dangling.txt");
     fs.symlinkSync(path.join(outside, "never-existed.txt"), dangling);
     try {
-      expect(() => assertWritableInsideRoot(root, dangling)).toThrow(
-        PathOutsideWorkspaceError,
-      );
+      expect(() => assertWritableInsideRoot(root, dangling)).toThrow(PathOutsideWorkspaceError);
     } finally {
       fs.unlinkSync(dangling);
     }
   });
 
   it("refuses a relative target", () => {
-    expect(() => assertWritableInsideRoot(root, "src/new.ts")).toThrow(
-      PathOutsideWorkspaceError,
-    );
+    expect(() => assertWritableInsideRoot(root, "src/new.ts")).toThrow(PathOutsideWorkspaceError);
   });
 });

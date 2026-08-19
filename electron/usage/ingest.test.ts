@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ingestClaudeLine } from "./claude";
 import { ingest, ingestCodexLine } from "./codex";
-import {
-  DEDUPE_SEPARATOR,
-  UNKNOWN_MODEL,
-  emptyRecord,
-  type FileRecord,
-} from "./model";
+import { DEDUPE_SEPARATOR, UNKNOWN_MODEL, emptyRecord, type FileRecord } from "./model";
 
 /**
  * The two per-agent parsers, mirroring the behaviors the Rust tests pin:
@@ -57,10 +52,7 @@ function claudeLine(
   );
 }
 
-function tokenCount(
-  timestamp: string,
-  totals: Record<string, number>,
-): Buffer {
+function tokenCount(timestamp: string, totals: Record<string, number>): Buffer {
   return Buffer.from(
     JSON.stringify({
       timestamp,
@@ -71,9 +63,7 @@ function tokenCount(
 }
 
 function turnContext(timestamp: string, model: string): Buffer {
-  return Buffer.from(
-    JSON.stringify({ timestamp, type: "turn_context", payload: { model } }),
-  );
+  return Buffer.from(JSON.stringify({ timestamp, type: "turn_context", payload: { model } }));
 }
 
 describe("ingestClaudeLine", () => {
@@ -81,10 +71,7 @@ describe("ingestClaudeLine", () => {
     const record = claudeRecord();
     for (const output of [10, 60, 116]) {
       expect(
-        ingestClaudeLine(
-          claudeLine("msg_1", "req_1", "2026-08-10T05:06:00.351Z", output),
-          record,
-        ),
+        ingestClaudeLine(claudeLine("msg_1", "req_1", "2026-08-10T05:06:00.351Z", output), record),
       ).toBe("counted");
     }
     expect(record.entries.size).toBe(1);
@@ -96,14 +83,8 @@ describe("ingestClaudeLine", () => {
 
   it("keys on both the message id and the request id", () => {
     const record = claudeRecord();
-    ingestClaudeLine(
-      claudeLine("msg_1", "req_1", "2026-08-10T05:06:00.351Z", 1),
-      record,
-    );
-    ingestClaudeLine(
-      claudeLine("msg_1", "req_2", "2026-08-10T05:06:00.351Z", 2),
-      record,
-    );
+    ingestClaudeLine(claudeLine("msg_1", "req_1", "2026-08-10T05:06:00.351Z", 1), record);
+    ingestClaudeLine(claudeLine("msg_1", "req_2", "2026-08-10T05:06:00.351Z", 2), record);
     expect(record.entries.size).toBe(2);
   });
 
@@ -168,12 +149,9 @@ describe("ingestClaudeLine", () => {
       }),
     );
     expect(ingestClaudeLine(noIds, record)).toBe("skipped");
-    expect(
-      ingestClaudeLine(
-        claudeLine("msg", "req", "2026-08-10T05:06:00+07:00", 1),
-        record,
-      ),
-    ).toBe("skipped");
+    expect(ingestClaudeLine(claudeLine("msg", "req", "2026-08-10T05:06:00+07:00", 1), record)).toBe(
+      "skipped",
+    );
     expect(ingestClaudeLine(Buffer.from("not json"), record)).toBe("skipped");
     expect(record.entries.size).toBe(0);
   });
@@ -181,10 +159,7 @@ describe("ingestClaudeLine", () => {
   it("ignores non-assistant lines and assistant lines without usage", () => {
     const record = claudeRecord();
     expect(
-      ingestClaudeLine(
-        Buffer.from(JSON.stringify({ type: "user", message: {} })),
-        record,
-      ),
+      ingestClaudeLine(Buffer.from(JSON.stringify({ type: "user", message: {} })), record),
     ).toBe("ignored");
     expect(
       ingestClaudeLine(
@@ -329,9 +304,7 @@ describe("ingestCodexLine", () => {
 
 describe("ingest dispatcher", () => {
   it("treats a blank line as ignored for both agents", () => {
-    expect(ingest("claude", Buffer.from("   \t"), claudeRecord())).toBe(
-      "ignored",
-    );
+    expect(ingest("claude", Buffer.from("   \t"), claudeRecord())).toBe("ignored");
     expect(ingest("codex", Buffer.from(""), codexRecord())).toBe("ignored");
   });
 });

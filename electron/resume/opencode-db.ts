@@ -22,12 +22,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { CandidateSession } from "./head";
 
-const OPENCODE_DB_PATH = path.join(
-  ".local",
-  "share",
-  "opencode",
-  "opencode.db",
-);
+const OPENCODE_DB_PATH = path.join(".local", "share", "opencode", "opencode.db");
 
 /** Newest-first scan bound, matching the file scanner's `MAX_FILES`. */
 const MAX_SESSIONS = 300;
@@ -82,11 +77,7 @@ function isReadableDatabase(filePath: string): boolean {
  * a page, not the whole 290 MB file — and a connection that outlived the call
  * would hold a handle on a database another process is actively writing.
  */
-function withDatabase<T>(
-  home: string,
-  query: (db: DatabaseSync) => T,
-  fallback: T,
-): T {
+function withDatabase<T>(home: string, query: (db: DatabaseSync) => T, fallback: T): T {
   const filePath = path.join(home, OPENCODE_DB_PATH);
   if (!isReadableDatabase(filePath)) {
     return fallback;
@@ -145,15 +136,11 @@ export function candidates(home: string): CandidateSession[] {
 }
 
 /** The newest thing this session's agent said, or null. */
-export function sessionTailText(
-  home: string,
-  sessionId: string,
-): string | null {
+export function sessionTailText(home: string, sessionId: string): string | null {
   return withDatabase(
     home,
     (db) => {
-      const row = db.prepare(TAIL_SQL).get(sessionId) as
-        Record<string, unknown> | undefined;
+      const row = db.prepare(TAIL_SQL).get(sessionId) as Record<string, unknown> | undefined;
       const text = row?.text;
       return typeof text === "string" && text.trim() !== "" ? text : null;
     },

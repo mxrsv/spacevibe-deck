@@ -31,11 +31,7 @@ import { clearPaneCwd, paneCwd, setPaneCwd } from "./pane-cwd";
 import { freshCwd } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { createPaneDragController, type PaneDragController } from "./pane-drag";
-import {
-  advanceSearch,
-  closeSearchBarForPane,
-  openSearchBar,
-} from "./search-bar";
+import { advanceSearch, closeSearchBarForPane, openSearchBar } from "./search-bar";
 import {
   TRANSFER_FALLBACK_COLS,
   TRANSFER_FALLBACK_ROWS,
@@ -172,9 +168,7 @@ export function createTerminalManager(
       return;
     }
     life.exited.add(id);
-    pane.writeln(
-      "\r\n\x1b[33m[Session ended — press Enter to start a new one]\x1b[0m",
-    );
+    pane.writeln("\r\n\x1b[33m[Session ended — press Enter to start a new one]\x1b[0m");
   }
 
   async function respawn(oldId: number): Promise<void> {
@@ -286,10 +280,7 @@ export function createTerminalManager(
     };
   }
 
-  async function detachPaneById(
-    id: number,
-    target: DetachTarget,
-  ): Promise<DetachOutcome> {
+  async function detachPaneById(id: number, target: DetachTarget): Promise<DetachOutcome> {
     transferring.add(id);
     try {
       return await runDetach(id, target);
@@ -298,10 +289,7 @@ export function createTerminalManager(
     }
   }
 
-  async function runDetach(
-    id: number,
-    target: DetachTarget,
-  ): Promise<DetachOutcome> {
+  async function runDetach(id: number, target: DetachTarget): Promise<DetachOutcome> {
     const result = await detachPane(id, target, {
       transfer,
       drainWrites: (paneId) => life.drainWrites(paneId),
@@ -351,9 +339,7 @@ export function createTerminalManager(
     );
   }
 
-  function adoptIntoActiveTab(
-    request: AdoptIntoActiveTabRequest,
-  ): Promise<AdoptResult> {
+  function adoptIntoActiveTab(request: AdoptIntoActiveTabRequest): Promise<AdoptResult> {
     const edge = request.edge ?? "right";
     return adoptTransfer(
       request.token,
@@ -409,9 +395,7 @@ export function createTerminalManager(
       pane.focus();
       callbacks.onLayoutChange();
     } catch (err) {
-      life.panes
-        .get(targetId)
-        ?.writeln(`\r\n\x1b[31mFailed to open new pane: ${err}\x1b[0m`);
+      life.panes.get(targetId)?.writeln(`\r\n\x1b[31mFailed to open new pane: ${err}\x1b[0m`);
     }
   }
 
@@ -424,10 +408,7 @@ export function createTerminalManager(
    * appends to branch `b`, so a drop on the left or top edge would land on the
    * wrong side — the same reason `adoptIntoActiveTab` above uses it.
    */
-  async function dockNewPaneAt(
-    targetPaneId: number,
-    edge: Edge,
-  ): Promise<number | null> {
+  async function dockNewPaneAt(targetPaneId: number, edge: Edge): Promise<number | null> {
     if (!tree || !life.isInTree(tree, targetPaneId)) {
       return null;
     }
@@ -451,9 +432,7 @@ export function createTerminalManager(
       callbacks.onLayoutChange();
       return pane.id;
     } catch (err) {
-      life.panes
-        .get(targetPaneId)
-        ?.writeln(`\r\n\x1b[31mFailed to open new pane: ${err}\x1b[0m`);
+      life.panes.get(targetPaneId)?.writeln(`\r\n\x1b[31mFailed to open new pane: ${err}\x1b[0m`);
       return null;
     }
   }
@@ -566,9 +545,7 @@ export function createTerminalManager(
       return;
     }
     pty.writePty(id, data).catch(() => {
-      reportPersistError(
-        "Couldn't send input to the terminal — the session may have ended.",
-      );
+      reportPersistError("Couldn't send input to the terminal — the session may have ended.");
     });
     setActive(id);
     life.panes.get(id)?.focus();
@@ -586,10 +563,7 @@ export function createTerminalManager(
     },
     slotRects: () => layout.slotRects(),
     ghostLabel(id) {
-      return (
-        life.panes.get(id)?.element.querySelector(".pane__cwd")?.textContent ||
-        "pane"
-      );
+      return life.panes.get(id)?.element.querySelector(".pane__cwd")?.textContent || "pane";
     },
     onMove(sourceId: number, targetId: number, edge: Edge) {
       if (!tree) {

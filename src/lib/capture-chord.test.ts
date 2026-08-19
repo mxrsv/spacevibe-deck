@@ -1,3 +1,4 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { describe, expect, it } from "vitest";
 import { captureChord } from "./capture-chord";
 import { chordId } from "./keybindings";
@@ -5,9 +6,7 @@ import { MACOS_KEYMAP, WINDOWS_KEYMAP } from "../terminal/action-registry";
 
 function keyEvent(
   key: string,
-  mods: Partial<
-    Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">
-  > = {},
+  mods: Partial<Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">> = {},
 ): KeyboardEvent {
   return {
     key,
@@ -23,9 +22,7 @@ describe("captureChord", () => {
   it("records the character, lowercased, with all four modifiers", () => {
     // Lowercased because `matchBinding` lowercases `event.key` before
     // comparing; storing "D" would produce a chord that never matches.
-    const result = captureChord(
-      keyEvent("D", { metaKey: true, shiftKey: true }),
-    );
+    const result = captureChord(keyEvent("D", { metaKey: true, shiftKey: true }));
     expect(result).toEqual({
       ok: true,
       chord: { key: "d", meta: true, shift: true, alt: false, ctrl: false },
@@ -60,9 +57,7 @@ describe("captureChord", () => {
     // Reserving every Tab chord would leave Ctrl+Tab (`next-tab`) and
     // Ctrl+Shift+Tab (`prev-tab`) resettable but never re-choosable.
     const result = captureChord(keyEvent("Tab", { ctrlKey: true }));
-    expect(result.ok && chordId(result.chord)).toBe(
-      chordId({ key: "tab", ctrl: true }),
-    );
+    expect(result.ok && chordId(result.chord)).toBe(chordId({ key: "tab", ctrl: true }));
   });
 
   it("refuses a bare printable key", () => {
@@ -89,14 +84,7 @@ describe("captureChord", () => {
     // called these "keys that never produce a character the PTY would
     // otherwise receive", which is wrong: binding bare ↑ cost every pane its
     // history, silently, because handleShortcut preventDefaults first.
-    for (const key of [
-      "ArrowUp",
-      "ArrowDown",
-      "Home",
-      "End",
-      "PageUp",
-      "Delete",
-    ]) {
+    for (const key of ["ArrowUp", "ArrowDown", "Home", "End", "PageUp", "Delete"]) {
       expect(captureChord(keyEvent(key)), key).toEqual({
         ok: false,
         reason: "needs-modifier",
@@ -145,9 +133,7 @@ describe("captureChord", () => {
 
   it("captures Shift alone as a modifier for a named key", () => {
     const result = captureChord(keyEvent("PageUp", { shiftKey: true }));
-    expect(result.ok && chordId(result.chord)).toBe(
-      chordId({ key: "pageup", shift: true }),
-    );
+    expect(result.ok && chordId(result.chord)).toBe(chordId({ key: "pageup", shift: true }));
   });
 
   it("never produces a code chord, even for a key that ships as one", () => {

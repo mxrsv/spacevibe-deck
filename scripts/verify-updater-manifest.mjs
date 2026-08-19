@@ -1,10 +1,10 @@
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 import { createHash, createPublicKey, verify } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SOURCE_VERSION =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-rc\.[1-9]\d*)?$/;
+const SOURCE_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-rc\.[1-9]\d*)?$/;
 const SHA = /^[0-9a-f]{40}$/;
 const MANIFEST_ASSET = "latest.json";
 const RELEASE_METADATA = "release.json";
@@ -115,11 +115,7 @@ export function decodeUpdaterSignature(encoded) {
     "Updater signature must carry a signature, a trusted comment, and a global signature",
   );
   const [signatureLine, commentLine, globalLine] = lines;
-  const bytes = decodePacket(
-    signatureLine,
-    SIGNATURE_BYTES,
-    "Updater signature",
-  );
+  const bytes = decodePacket(signatureLine, SIGNATURE_BYTES, "Updater signature");
   const algorithm = bytes.subarray(0, 2).toString("latin1");
   invariant(
     algorithm === PREHASHED_ALGORITHM || algorithm === LEGACY_ALGORITHM,
@@ -134,11 +130,7 @@ export function decodeUpdaterSignature(encoded) {
     keyId: bytes.subarray(2, 2 + KEY_ID_BYTES),
     signature: bytes.subarray(2 + KEY_ID_BYTES),
     trustedComment: commentLine.slice(TRUSTED_COMMENT.length),
-    globalSignature: decodePacket(
-      globalLine,
-      GLOBAL_SIGNATURE_BYTES,
-      "Updater global signature",
-    ),
+    globalSignature: decodePacket(globalLine, GLOBAL_SIGNATURE_BYTES, "Updater global signature"),
   };
 }
 
@@ -147,11 +139,7 @@ export function decodeUpdaterSignature(encoded) {
  * key-id equality, the Ed25519 payload signature (BLAKE2b-512 prehashed for
  * `ED`), and the global signature covering the trusted comment.
  */
-export function verifyUpdaterSignature(
-  payload,
-  encodedSignature,
-  encodedPublicKey,
-) {
+export function verifyUpdaterSignature(payload, encodedSignature, encodedPublicKey) {
   invariant(Buffer.isBuffer(payload), "Updater payload must be a byte buffer");
   const publicKey = decodeUpdaterPublicKey(encodedPublicKey);
   const signature = decodeUpdaterSignature(encodedSignature);
@@ -159,9 +147,7 @@ export function verifyUpdaterSignature(
     publicKey.keyId.equals(signature.keyId),
     "Updater signature was made with a different public key",
   );
-  const message = signature.prehashed
-    ? createHash("blake2b512").update(payload).digest()
-    : payload;
+  const message = signature.prehashed ? createHash("blake2b512").update(payload).digest() : payload;
   invariant(
     verify(null, message, publicKey.key, signature.signature),
     "Updater payload signature is invalid",
@@ -169,10 +155,7 @@ export function verifyUpdaterSignature(
   invariant(
     verify(
       null,
-      Buffer.concat([
-        signature.signature,
-        Buffer.from(signature.trustedComment, "utf8"),
-      ]),
+      Buffer.concat([signature.signature, Buffer.from(signature.trustedComment, "utf8")]),
       publicKey.key,
       signature.globalSignature,
     ),
@@ -203,10 +186,7 @@ function validateAssetMetadata(release) {
   for (const key of ["name", "url"]) {
     const seen = new Set();
     for (const asset of release.assets) {
-      invariant(
-        !seen.has(asset[key]),
-        `Duplicate draft asset ${key}: ${asset[key]}`,
-      );
+      invariant(!seen.has(asset[key]), `Duplicate draft asset ${key}: ${asset[key]}`);
       seen.add(asset[key]);
     }
   }
@@ -215,10 +195,7 @@ function validateAssetMetadata(release) {
 
 function rejectMsiArtifacts(names) {
   for (const name of names) {
-    invariant(
-      !name.toLowerCase().endsWith(".msi"),
-      "MSI artifacts are forbidden",
-    );
+    invariant(!name.toLowerCase().endsWith(".msi"), "MSI artifacts are forbidden");
   }
 }
 
@@ -226,10 +203,7 @@ function validateManifestPlatforms(manifest, expected, descriptor) {
   assertPlainObject(manifest.platforms, "manifest platforms");
   const targets = Object.keys(manifest.platforms);
   for (const target of targets) {
-    invariant(
-      descriptor.targets.includes(target),
-      `Unexpected updater target: ${target}`,
-    );
+    invariant(descriptor.targets.includes(target), `Unexpected updater target: ${target}`);
   }
   for (const target of descriptor.targets) {
     invariant(targets.includes(target), `Manifest is missing target ${target}`);
@@ -240,8 +214,7 @@ function validateManifestPlatforms(manifest, expected, descriptor) {
     const platform = manifest.platforms[target];
     assertPlainObject(platform, `platform ${target}`);
     invariant(
-      typeof platform.signature === "string" &&
-        platform.signature.trim() !== "",
+      typeof platform.signature === "string" && platform.signature.trim() !== "",
       `Updater signature is empty for ${target}`,
     );
     invariant(
@@ -254,10 +227,7 @@ function validateManifestPlatforms(manifest, expected, descriptor) {
     );
     urls.add(platform.url);
   }
-  invariant(
-    urls.size === 1,
-    "Every updater target must point at the same payload asset",
-  );
+  invariant(urls.size === 1, "Every updater target must point at the same payload asset");
   return [...urls][0];
 }
 
@@ -268,10 +238,7 @@ function closeAssetSet(assets, payloadName, sidecarName, descriptor) {
     .filter((name) => !expectedAssets.includes(name));
   for (const suffix of descriptor.extraSuffixes) {
     const matches = remaining.filter((name) => name.endsWith(suffix));
-    invariant(
-      matches.length === 1,
-      `Draft must carry exactly one ${suffix} asset`,
-    );
+    invariant(matches.length === 1, `Draft must carry exactly one ${suffix} asset`);
     expectedAssets.push(matches[0]);
   }
   for (const name of expectedAssets) {
@@ -281,10 +248,7 @@ function closeAssetSet(assets, payloadName, sidecarName, descriptor) {
     );
   }
   for (const asset of assets) {
-    invariant(
-      expectedAssets.includes(asset.name),
-      `Unexpected draft asset: ${asset.name}`,
-    );
+    invariant(expectedAssets.includes(asset.name), `Unexpected draft asset: ${asset.name}`);
   }
   return expectedAssets.sort();
 }
@@ -306,16 +270,10 @@ function canonicalRelease(release) {
 
 function requireDownloadedAssets(releaseContents, expectedAssets) {
   for (const name of expectedAssets) {
-    invariant(
-      name in releaseContents,
-      `Draft asset was not downloaded back: ${name}`,
-    );
+    invariant(name in releaseContents, `Draft asset was not downloaded back: ${name}`);
   }
   for (const name of Object.keys(releaseContents)) {
-    invariant(
-      expectedAssets.includes(name),
-      `Downloaded file is not a draft asset: ${name}`,
-    );
+    invariant(expectedAssets.includes(name), `Downloaded file is not a draft asset: ${name}`);
   }
   return releaseContents;
 }
@@ -328,10 +286,7 @@ function validateStagedProvenance(stagedContents, provenance) {
     JSON.stringify(carried) === JSON.stringify(staged),
     "Provenance and staged file sets differ",
   );
-  invariant(
-    RELEASE_METADATA in stagedContents,
-    `Staged files lack ${RELEASE_METADATA}`,
-  );
+  invariant(RELEASE_METADATA in stagedContents, `Staged files lack ${RELEASE_METADATA}`);
   for (const name of staged) {
     invariant(basename(name) === name, `Unsafe provenance filename: ${name}`);
     invariant(
@@ -367,10 +322,7 @@ function bindDraftToStagedBytes(downloaded, stagedContents, expectedAssets) {
   }
 
   const leftover = [...unclaimed.values()].flat().sort();
-  invariant(
-    leftover.length === 0,
-    `Staged files never reached the draft: ${leftover.join(", ")}`,
-  );
+  invariant(leftover.length === 0, `Staged files never reached the draft: ${leftover.join(", ")}`);
 }
 
 /**
@@ -382,14 +334,7 @@ function bindDraftToStagedBytes(downloaded, stagedContents, expectedAssets) {
  * prove the draft still serves what the runner built.
  */
 export function validateUpdaterRelease(input) {
-  const {
-    manifest,
-    release,
-    provenance,
-    stagedContents,
-    releaseContents,
-    expected,
-  } = input;
+  const { manifest, release, provenance, stagedContents, releaseContents, expected } = input;
   assertPlainObject(manifest, "manifest");
   assertPlainObject(release, "release");
   assertPlainObject(provenance, "provenance");
@@ -398,10 +343,7 @@ export function validateUpdaterRelease(input) {
   assertPlainObject(expected, "expected");
 
   const descriptor = PLATFORMS[expected.platform];
-  invariant(
-    descriptor !== undefined,
-    `Unsupported updater platform: ${expected.platform}`,
-  );
+  invariant(descriptor !== undefined, `Unsupported updater platform: ${expected.platform}`);
   invariant(
     SOURCE_VERSION.test(expected.version),
     "Expected version must be a stable or -rc.N SemVer",
@@ -414,10 +356,7 @@ export function validateUpdaterRelease(input) {
     typeof expected.publicKey === "string" && expected.publicKey.trim() !== "",
     "Expected updater public key is required",
   );
-  invariant(
-    typeof expected.prerelease === "boolean",
-    "Expected prerelease flag must be a boolean",
-  );
+  invariant(typeof expected.prerelease === "boolean", "Expected prerelease flag must be a boolean");
   invariant(SHA.test(expected.sourceSha), "Expected source SHA is invalid");
   invariant(
     expected.tag === `v${expected.version}` ||
@@ -426,16 +365,10 @@ export function validateUpdaterRelease(input) {
   );
 
   invariant(manifest.version === expected.version, "Manifest version mismatch");
-  invariant(
-    provenance.source_sha === expected.sourceSha,
-    "Source SHA mismatch",
-  );
+  invariant(provenance.source_sha === expected.sourceSha, "Source SHA mismatch");
   invariant(provenance.tag === expected.tag, "Provenance tag mismatch");
   invariant(release.tag_name === expected.tag, "Release tag mismatch");
-  invariant(
-    release.target_commitish === expected.sourceSha,
-    "Release target commit mismatch",
-  );
+  invariant(release.target_commitish === expected.sourceSha, "Release target commit mismatch");
   invariant(release.draft === true, "Release must still be a draft");
   invariant(
     release.prerelease === expected.prerelease,
@@ -443,27 +376,16 @@ export function validateUpdaterRelease(input) {
   );
 
   const assets = validateAssetMetadata(release);
-  rejectMsiArtifacts([
-    ...assets.map((asset) => asset.name),
-    ...Object.keys(stagedContents),
-  ]);
+  rejectMsiArtifacts([...assets.map((asset) => asset.name), ...Object.keys(stagedContents)]);
   const payloadUrl = validateManifestPlatforms(manifest, expected, descriptor);
   const payloadAsset = assets.find((asset) => asset.url === payloadUrl);
-  invariant(
-    payloadAsset !== undefined,
-    "Updater URL is not a release asset in this draft",
-  );
+  invariant(payloadAsset !== undefined, "Updater URL is not a release asset in this draft");
   invariant(
     payloadAsset.name.endsWith(descriptor.payloadSuffix),
     `Updater asset must end with ${descriptor.payloadSuffix}`,
   );
   const sidecarName = `${payloadAsset.name}.sig`;
-  const expectedAssets = closeAssetSet(
-    assets,
-    payloadAsset.name,
-    sidecarName,
-    descriptor,
-  );
+  const expectedAssets = closeAssetSet(assets, payloadAsset.name, sidecarName, descriptor);
 
   // An inline signature that disagrees with the sidecar GitHub serves means the
   // manifest and the payload stopped describing the same build.
@@ -480,21 +402,15 @@ export function validateUpdaterRelease(input) {
   bindDraftToStagedBytes(downloaded, stagedContents, expectedAssets);
 
   invariant(
-    JSON.stringify(JSON.parse(downloaded[MANIFEST_ASSET])) ===
-      JSON.stringify(manifest),
+    JSON.stringify(JSON.parse(downloaded[MANIFEST_ASSET])) === JSON.stringify(manifest),
     "latest.json content does not match the validated manifest",
   );
   invariant(
-    canonicalRelease(JSON.parse(stagedContents[RELEASE_METADATA])) ===
-      canonicalRelease(release),
+    canonicalRelease(JSON.parse(stagedContents[RELEASE_METADATA])) === canonicalRelease(release),
     "release.json content does not match the validated release",
   );
 
-  verifyUpdaterSignature(
-    Buffer.from(downloaded[payloadAsset.name]),
-    sidecar,
-    expected.publicKey,
-  );
+  verifyUpdaterSignature(Buffer.from(downloaded[payloadAsset.name]), sidecar, expected.publicKey);
 }
 
 function parseArgs(argv) {
@@ -502,10 +418,7 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 2) {
     const key = argv[index];
     const value = argv[index + 1];
-    invariant(
-      key?.startsWith("--") && value !== undefined,
-      "Invalid CLI arguments",
-    );
+    invariant(key?.startsWith("--") && value !== undefined, "Invalid CLI arguments");
     values[key.slice(2)] = value;
   }
   for (const key of [
@@ -547,16 +460,11 @@ async function runCli() {
   const args = parseArgs(process.argv.slice(2));
   const manifest = JSON.parse(await readFile(resolve(args.manifest), "utf8"));
   const release = JSON.parse(await readFile(resolve(args.release), "utf8"));
-  const provenance = JSON.parse(
-    await readFile(resolve(args.provenance), "utf8"),
-  );
-  const stagedContents = await readDirectoryContents(
-    resolve(args["staged-dir"]),
-    [basename(args.provenance)],
-  );
-  const releaseContents = await readDirectoryContents(
-    resolve(args["release-dir"]),
-  );
+  const provenance = JSON.parse(await readFile(resolve(args.provenance), "utf8"));
+  const stagedContents = await readDirectoryContents(resolve(args["staged-dir"]), [
+    basename(args.provenance),
+  ]);
+  const releaseContents = await readDirectoryContents(resolve(args["release-dir"]));
   validateUpdaterRelease({
     manifest,
     release,
@@ -573,9 +481,7 @@ async function runCli() {
       publicKey: args["public-key"],
     },
   });
-  console.log(
-    `Validated ${args.platform} updater release ${args.tag} at ${args.sha}`,
-  );
+  console.log(`Validated ${args.platform} updater release ${args.tag} at ${args.sha}`);
 }
 
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {

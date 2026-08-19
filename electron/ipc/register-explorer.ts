@@ -22,29 +22,18 @@ export interface RegisterExplorerDeps {
 }
 
 export function registerExplorer(deps: RegisterExplorerDeps): void {
-  ipcMain.handle(CHANNELS.listDir, (_event, { root, directory }) =>
-    listDir(root, directory),
+  ipcMain.handle(CHANNELS.listDir, (_event, { root, directory }) => listDir(root, directory));
+  ipcMain.handle(CHANNELS.readFile, (_event, { root, path: target }) => readFile(root, target));
+  ipcMain.handle(CHANNELS.writeFile, (_event, { root, path: target, text, eol }) =>
+    writeTextFile(root, target, text, eol),
   );
-  ipcMain.handle(CHANNELS.readFile, (_event, { root, path: target }) =>
-    readFile(root, target),
-  );
-  ipcMain.handle(
-    CHANNELS.writeFile,
-    (_event, { root, path: target, text, eol }) =>
-      writeTextFile(root, target, text, eol),
-  );
-  ipcMain.handle(CHANNELS.statFiles, (_event, { root, paths }) =>
-    statFiles(root, paths),
-  );
+  ipcMain.handle(CHANNELS.statFiles, (_event, { root, paths }) => statFiles(root, paths));
   ipcMain.handle(CHANNELS.watchPaths, (event, { root, directories, files }) => {
     // A REPLACE. Adding would let a collapsed directory leak a watcher for the
     // rest of the window's life.
     deps.watchers.replace(deps.labelOf(event), { root, directories, files });
   });
   ipcMain.handle(CHANNELS.setDirtyFiles, (event, { paths }) => {
-    deps.dirtyFiles.replace(
-      deps.labelOf(event),
-      Array.isArray(paths) ? paths : [],
-    );
+    deps.dirtyFiles.replace(deps.labelOf(event), Array.isArray(paths) ? paths : []);
   });
 }

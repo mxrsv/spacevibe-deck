@@ -26,10 +26,7 @@ const FALLBACK_YELLOW = "#e0af68";
 const FALLBACK_MAGENTA = "#bb9af7";
 const FALLBACK_CYAN = "#7dcfff";
 
-export function applyThemeVars(
-  rootStyle: CSSStyleDeclaration,
-  theme: ITheme,
-): void {
+export function applyThemeVars(rootStyle: CSSStyleDeclaration, theme: ITheme): void {
   const bg = theme.background ?? FALLBACK_BG;
   const fg = theme.foreground ?? FALLBACK_FG;
   const chrome = deriveChromeColors(bg, fg);

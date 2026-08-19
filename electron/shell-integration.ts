@@ -62,9 +62,7 @@ export class ShellIntegrationParser {
         break;
       }
       const payloadEnd = payloadStart + terminator.payloadLength;
-      const payload = decodeUtf8Strict(
-        input.subarray(payloadStart, payloadEnd),
-      );
+      const payload = decodeUtf8Strict(input.subarray(payloadStart, payloadEnd));
       if (payload !== null) {
         const event = parsePayload(payload);
         if (event !== null) {
@@ -115,9 +113,7 @@ function findTerminator(input: Buffer): Terminator | null {
  */
 function decodeUtf8Strict(bytes: Buffer): string | null {
   const decoded = bytes.toString("utf8");
-  return Buffer.compare(Buffer.from(decoded, "utf8"), bytes) === 0
-    ? decoded
-    : null;
+  return Buffer.compare(Buffer.from(decoded, "utf8"), bytes) === 0 ? decoded : null;
 }
 
 function parsePayload(payload: string): ShellIntegrationEvent | null {
@@ -129,12 +125,8 @@ function parsePayload(payload: string): ShellIntegrationEvent | null {
   }
   const raw = payload.slice("9;9;".length).trim();
   const unquoted =
-    raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')
-      ? raw.slice(1, -1)
-      : raw;
-  return unquoted.length > 0
-    ? { kind: "current-directory", value: unquoted }
-    : null;
+    raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"') ? raw.slice(1, -1) : raw;
+  return unquoted.length > 0 ? { kind: "current-directory", value: unquoted } : null;
 }
 
 /**
@@ -178,10 +170,7 @@ export function isProbableCwd(candidate: string): boolean {
  * SYNCHRONOUS, and therefore only for callers that are not on the event loop —
  * tests, and nothing else. The PTY path uses `validateCwdCandidates` below.
  */
-export function retainValidCwd(
-  current: string | null,
-  candidate: string,
-): string | null {
+export function retainValidCwd(current: string | null, candidate: string): string | null {
   if (!isProbableCwd(candidate)) {
     return current;
   }
@@ -215,9 +204,7 @@ const MAX_CWD_PROBES = 8;
  * Only the LAST few candidates are probed: the newest report is the one that
  * matters, so scanning backwards finds the answer without walking the noise.
  */
-export async function validateCwdCandidates(
-  candidates: readonly string[],
-): Promise<string | null> {
+export async function validateCwdCandidates(candidates: readonly string[]): Promise<string | null> {
   const probable = candidates.filter(isProbableCwd);
   const recent = probable.slice(-MAX_CWD_PROBES);
   for (let index = recent.length - 1; index >= 0; index -= 1) {

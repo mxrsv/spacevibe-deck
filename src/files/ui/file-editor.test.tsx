@@ -15,10 +15,7 @@ interface StubModel {
   language: string | undefined;
   getValue(): string;
   getFullModelRange(): string;
-  pushEditOperations(
-    before: unknown,
-    edits: { range: string; text: string }[],
-  ): null;
+  pushEditOperations(before: unknown, edits: { range: string; text: string }[]): null;
   dispose(): void;
 }
 
@@ -28,8 +25,7 @@ const stub = {
   currentModel: null as StubModel | null,
   contentHandler: null as (() => void) | null,
   cursorHandler: null as
-    | ((event: { position: { lineNumber: number; column: number } }) => void)
-    | null,
+    ((event: { position: { lineNumber: number; column: number } }) => void) | null,
   focused: 0,
   themes: [] as string[],
   disposed: 0,
@@ -53,8 +49,7 @@ function makeModel(value: string, language: string | undefined): StubModel {
 }
 
 vi.mock("../editor-host", async () => {
-  const actual =
-    await vi.importActual<typeof import("../editor-host")>("../editor-host");
+  const actual = await vi.importActual<typeof import("../editor-host")>("../editor-host");
   return {
     ...actual,
     loadMonaco: async () => ({
@@ -66,9 +61,7 @@ vi.mock("../editor-host", async () => {
               stub.contentHandler = handler;
             },
             onDidChangeCursorPosition: (
-              handler: (event: {
-                position: { lineNumber: number; column: number };
-              }) => void,
+              handler: (event: { position: { lineNumber: number; column: number } }) => void,
             ) => {
               stub.cursorHandler = handler;
             },
@@ -109,11 +102,7 @@ import {
   createFileSurfaceController,
   type FileSurfaceController,
 } from "../file-surface-controller";
-import {
-  openFileTab,
-  resetFileSurfaces,
-  updateDocument,
-} from "../file-surface-store";
+import { openFileTab, resetFileSurfaces, updateDocument } from "../file-surface-store";
 import type { FileClient } from "../file-client";
 
 const PATH = "/r/src/index.ts";
@@ -258,10 +247,7 @@ describe("FileEditor", () => {
     await act(async () => {});
 
     const buttons = host.querySelectorAll<HTMLButtonElement>(".filebar__btn");
-    expect([...buttons].map((b) => b.textContent)).toEqual([
-      "Reload",
-      "Keep mine",
-    ]);
+    expect([...buttons].map((b) => b.textContent)).toEqual(["Reload", "Keep mine"]);
     buttons[0].click();
     expect(resolve).toHaveBeenCalledWith(PATH, "reload");
   });

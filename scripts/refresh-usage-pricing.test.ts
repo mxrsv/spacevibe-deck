@@ -9,10 +9,7 @@ import {
   selectModels,
   toModelPricing,
 } from "./refresh-usage-pricing.mjs";
-import {
-  PRICING_SNAPSHOT,
-  PRICING_SNAPSHOT_DATE,
-} from "../src/lib/usage-pricing-snapshot";
+import { PRICING_SNAPSHOT, PRICING_SNAPSHOT_DATE } from "../src/lib/usage-pricing-snapshot";
 
 const temporaryDirectories: string[] = [];
 
@@ -72,9 +69,7 @@ const REQUIRED_MODELS = [
 ];
 
 /** A catalog big enough to clear the script's minimum-count floor. */
-function usableCatalog(
-  overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+function usableCatalog(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   const catalog: Record<string, unknown> = {};
   for (const id of REQUIRED_MODELS) {
     catalog[id] = id.startsWith("claude-") ? anthropicEntry() : openaiEntry();
@@ -113,15 +108,9 @@ describe("toModelPricing", () => {
   });
 
   it("rejects an entry with no usable input or output rate", () => {
-    expect(
-      toModelPricing(anthropicEntry({ input_cost_per_token: undefined })),
-    ).toBeNull();
-    expect(
-      toModelPricing(anthropicEntry({ output_cost_per_token: "free" })),
-    ).toBeNull();
-    expect(
-      toModelPricing(anthropicEntry({ input_cost_per_token: -1 })),
-    ).toBeNull();
+    expect(toModelPricing(anthropicEntry({ input_cost_per_token: undefined }))).toBeNull();
+    expect(toModelPricing(anthropicEntry({ output_cost_per_token: "free" }))).toBeNull();
+    expect(toModelPricing(anthropicEntry({ input_cost_per_token: -1 }))).toBeNull();
     expect(toModelPricing(null)).toBeNull();
   });
 });
@@ -152,15 +141,11 @@ describe("selectModels", () => {
       "gpt-5.6-sol": openaiEntry(),
     });
 
-    expect(models.map(([id]: [string, unknown]) => id)).toEqual([
-      "gpt-5.6-sol",
-    ]);
+    expect(models.map(([id]: [string, unknown]) => id)).toEqual(["gpt-5.6-sol"]);
   });
 
   it("refuses a catalog that is not a JSON object", () => {
-    expect(() => selectModels(null)).toThrow(
-      "Pricing catalog is not a JSON object",
-    );
+    expect(() => selectModels(null)).toThrow("Pricing catalog is not a JSON object");
   });
 });
 
@@ -191,9 +176,7 @@ describe("renderSnapshotModule", () => {
 
   it("marks the file generated and stamps the retrieval date", () => {
     expect(module).toContain("GENERATED FILE");
-    expect(module).toContain(
-      'export const PRICING_SNAPSHOT_DATE = "2026-02-03";',
-    );
+    expect(module).toContain('export const PRICING_SNAPSHOT_DATE = "2026-02-03";');
   });
 
   it("records the source URL", () => {
@@ -228,9 +211,7 @@ describe("refreshPricingSnapshot", () => {
 
     expect(result.modelCount).toBe(REQUIRED_MODELS.length + 40);
     expect(result.snapshotDate).toBe("2026-02-03");
-    expect(readFileSync(outputPath, "utf8")).toContain(
-      '"claude-opus-5": { inputPerToken:',
-    );
+    expect(readFileSync(outputPath, "utf8")).toContain('"claude-opus-5": { inputPerToken:');
   });
 
   it("leaves the file alone when the request fails", async () => {
@@ -309,15 +290,10 @@ describe("the checked-in snapshot", () => {
     // A hand edit, a reordered row or a renderer change that was not applied
     // to the checked-in file all show up here, and a real refresh's diff stays
     // limited to prices that genuinely moved.
-    const path = fileURLToPath(
-      new URL("../src/lib/usage-pricing-snapshot.ts", import.meta.url),
-    );
+    const path = fileURLToPath(new URL("../src/lib/usage-pricing-snapshot.ts", import.meta.url));
 
     expect(readFileSync(path, "utf8")).toBe(
-      renderSnapshotModule(
-        Object.entries(PRICING_SNAPSHOT),
-        PRICING_SNAPSHOT_DATE,
-      ),
+      renderSnapshotModule(Object.entries(PRICING_SNAPSHOT), PRICING_SNAPSHOT_DATE),
     );
   });
 });

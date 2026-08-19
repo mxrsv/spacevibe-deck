@@ -1,10 +1,7 @@
 import { render } from "preact";
 import "@xterm/xterm/css/xterm.css";
 import "./styles.css";
-import {
-  initSettings,
-  listenStoreWriteFailures,
-} from "./settings/settings-store";
+import { initSettings, listenStoreWriteFailures } from "./settings/settings-store";
 import { loadCustomThemes } from "./settings/custom-themes-store";
 import { initLogo } from "./settings/logo-store";
 import { initSidebarBanner } from "./settings/sidebar-banner-store";

@@ -5,9 +5,7 @@ import {
   type AttentionOverlaySnapshot,
 } from "./attention-focus-coordinator";
 
-function overlays(
-  partial: Partial<AttentionOverlaySnapshot> = {},
-): AttentionOverlaySnapshot {
+function overlays(partial: Partial<AttentionOverlaySnapshot> = {}): AttentionOverlaySnapshot {
   return {
     board: false,
     settings: false,
@@ -66,9 +64,7 @@ describe.each([
     ];
     for (const snapshot of combos) {
       const spies = makeSpies();
-      runAttentionFocus(
-        request(spies, { tabIndex, hasCandidate: false, overlays: snapshot }),
-      );
+      runAttentionFocus(request(spies, { tabIndex, hasCandidate: false, overlays: snapshot }));
       expect(spies.dismissBoard).not.toHaveBeenCalled();
       expect(spies.dismissSettings).not.toHaveBeenCalled();
       expect(spies.focusAttention).not.toHaveBeenCalled();
@@ -77,9 +73,7 @@ describe.each([
 
   it("no overlays open, candidate present: focusAttention called once with the request's tabIndex, no dismiss", () => {
     const spies = makeSpies();
-    runAttentionFocus(
-      request(spies, { tabIndex, hasCandidate: true, overlays: overlays() }),
-    );
+    runAttentionFocus(request(spies, { tabIndex, hasCandidate: true, overlays: overlays() }));
     expect(spies.dismissBoard).not.toHaveBeenCalled();
     expect(spies.dismissSettings).not.toHaveBeenCalled();
     expect(spies.focusAttention).toHaveBeenCalledTimes(1);
@@ -132,9 +126,7 @@ describe.each([
     expect(spies.focusAttention).toHaveBeenCalledTimes(1);
     expect(spies.focusAttention).toHaveBeenCalledWith(tabIndex);
     // dismiss must happen before focus
-    expect(spies.order.indexOf("dismissBoard")).toBeLessThan(
-      spies.order.indexOf("focusAttention"),
-    );
+    expect(spies.order.indexOf("dismissBoard")).toBeLessThan(spies.order.indexOf("focusAttention"));
     expect(spies.order.indexOf("dismissSettings")).toBeLessThan(
       spies.order.indexOf("focusAttention"),
     );
@@ -183,9 +175,7 @@ describe.each([
     expect(spies.dismissBoard).toHaveBeenCalledTimes(1);
     expect(spies.dismissSettings).toHaveBeenCalledTimes(1);
     expect(spies.focusAttention).toHaveBeenCalledTimes(1);
-    expect(spies.order.indexOf("dismissBoard")).toBeLessThan(
-      spies.order.indexOf("focusAttention"),
-    );
+    expect(spies.order.indexOf("dismissBoard")).toBeLessThan(spies.order.indexOf("focusAttention"));
     expect(spies.order.indexOf("dismissSettings")).toBeLessThan(
       spies.order.indexOf("focusAttention"),
     );
@@ -212,9 +202,7 @@ describe.each([
     ];
     for (const snapshot of combos) {
       const spies = makeSpies();
-      runAttentionFocus(
-        request(spies, { tabIndex, hasCandidate: true, overlays: snapshot }),
-      );
+      runAttentionFocus(request(spies, { tabIndex, hasCandidate: true, overlays: snapshot }));
       expect(spies.dismissBoard).not.toHaveBeenCalled();
       expect(spies.dismissSettings).not.toHaveBeenCalled();
       expect(spies.focusAttention).not.toHaveBeenCalled();
@@ -230,9 +218,7 @@ describe.each([
     ];
     for (const snapshot of combos) {
       const spies = makeSpies();
-      runAttentionFocus(
-        request(spies, { tabIndex, hasCandidate: true, overlays: snapshot }),
-      );
+      runAttentionFocus(request(spies, { tabIndex, hasCandidate: true, overlays: snapshot }));
       expect(spies.dismissBoard).not.toHaveBeenCalled();
       expect(spies.dismissSettings).not.toHaveBeenCalled();
       expect(spies.focusAttention).not.toHaveBeenCalled();
@@ -277,10 +263,6 @@ describe.each([
     expect(closePanel).not.toHaveBeenCalled();
     // The coordinator's request shape only exposes these 3 closures — assert
     // exactly those are the ones invoked, in this order.
-    expect(spies.order).toEqual([
-      "dismissBoard",
-      "dismissSettings",
-      "focusAttention",
-    ]);
+    expect(spies.order).toEqual(["dismissBoard", "dismissSettings", "focusAttention"]);
   });
 });

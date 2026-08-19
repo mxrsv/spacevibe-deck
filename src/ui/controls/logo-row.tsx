@@ -1,11 +1,7 @@
 import { ArrowCounterClockwise, DotsThree } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
 import { open } from "../../host/dialog-host";
-import {
-  clearLogo,
-  logoDataUrl,
-  setLogoFromPath,
-} from "../../settings/logo-store";
+import { clearLogo, logoDataUrl, setLogoFromPath } from "../../settings/logo-store";
 import { ConfigRow } from "./config-row";
 import { DeckIcon, ROW_ICON } from "./deck-icon";
 
@@ -22,9 +18,7 @@ export function LogoRow() {
       const picked = await open({
         multiple: false,
         directory: false,
-        filters: [
-          { name: "Image", extensions: ["png", "jpg", "jpeg", "svg", "webp"] },
-        ],
+        filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "svg", "webp"] }],
       });
       if (typeof picked !== "string") {
         return;
@@ -32,8 +26,7 @@ export function LogoRow() {
       error.value = null;
       await setLogoFromPath(picked);
     } catch (err: unknown) {
-      error.value =
-        err instanceof Error ? err.message : "Couldn't set the logo";
+      error.value = err instanceof Error ? err.message : "Couldn't set the logo";
     }
   }
 
@@ -66,9 +59,7 @@ export function LogoRow() {
           </button>
         ) : null}
       </ConfigRow>
-      {error.value !== null ? (
-        <div class="cfg-custom cfg-custom--error">{error.value}</div>
-      ) : null}
+      {error.value !== null ? <div class="cfg-custom cfg-custom--error">{error.value}</div> : null}
     </>
   );
 }

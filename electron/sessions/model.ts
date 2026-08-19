@@ -7,10 +7,7 @@
 
 export type SessionAgent = "claude" | "codex";
 
-export const SESSION_AGENTS: readonly SessionAgent[] = Object.freeze([
-  "claude",
-  "codex",
-]);
+export const SESSION_AGENTS: readonly SessionAgent[] = Object.freeze(["claude", "codex"]);
 
 /** One resumable past session. `cwd` is non-null by construction: an entry
  *  with no recorded directory cannot be resumed in the right place, so it is

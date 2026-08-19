@@ -15,10 +15,7 @@ export function BrowserSection() {
   const current = settings.value;
 
   return (
-    <ConfigRow
-      label="Home address"
-      desc="Opened when the browser panel has no page yet"
-    >
+    <ConfigRow label="Home address" desc="Opened when the browser panel has no page yet">
       <CommitInput
         value={current.browserHomeUrl}
         placeholder="http://localhost:3000"

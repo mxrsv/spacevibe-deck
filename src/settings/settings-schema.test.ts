@@ -28,15 +28,11 @@ describe("tabBarPosition", () => {
   });
 
   it("keeps an explicit top", () => {
-    expect(validateSettings({ tabBarPosition: "top" }).tabBarPosition).toBe(
-      "top",
-    );
+    expect(validateSettings({ tabBarPosition: "top" }).tabBarPosition).toBe("top");
   });
 
   it("falls back to left on an unknown value", () => {
-    expect(
-      validateSettings({ tabBarPosition: "diagonal" }).tabBarPosition,
-    ).toBe("left");
+    expect(validateSettings({ tabBarPosition: "diagonal" }).tabBarPosition).toBe("left");
     expect(validateSettings({ tabBarPosition: 7 }).tabBarPosition).toBe("left");
   });
 });
@@ -59,16 +55,12 @@ describe("focusExpand", () => {
   });
 
   it("accepts a valid boolean", () => {
-    expect(
-      validateSettings({ ...DEFAULT_SETTINGS, focusExpand: true }).focusExpand,
-    ).toBe(true);
+    expect(validateSettings({ ...DEFAULT_SETTINGS, focusExpand: true }).focusExpand).toBe(true);
   });
 
   it("falls back to false when missing or not a boolean", () => {
     expect(validateSettings({}).focusExpand).toBe(false);
-    expect(
-      validateSettings({ ...DEFAULT_SETTINGS, focusExpand: "yes" }).focusExpand,
-    ).toBe(false);
+    expect(validateSettings({ ...DEFAULT_SETTINGS, focusExpand: "yes" }).focusExpand).toBe(false);
   });
 });
 
@@ -79,24 +71,16 @@ describe("agentNotifications", () => {
   });
 
   it("accepts true", () => {
-    expect(
-      validateSettings({ agentNotifications: true }).agentNotifications,
-    ).toBe(true);
+    expect(validateSettings({ agentNotifications: true }).agentNotifications).toBe(true);
   });
 
   it("accepts false", () => {
-    expect(
-      validateSettings({ agentNotifications: false }).agentNotifications,
-    ).toBe(false);
+    expect(validateSettings({ agentNotifications: false }).agentNotifications).toBe(false);
   });
 
   it("falls back to false on invalid types (string, number)", () => {
-    expect(
-      validateSettings({ agentNotifications: "yes" }).agentNotifications,
-    ).toBe(false);
-    expect(validateSettings({ agentNotifications: 1 }).agentNotifications).toBe(
-      false,
-    );
+    expect(validateSettings({ agentNotifications: "yes" }).agentNotifications).toBe(false);
+    expect(validateSettings({ agentNotifications: 1 }).agentNotifications).toBe(false);
   });
 });
 
@@ -107,21 +91,15 @@ describe("restoreSessions", () => {
   });
 
   it("accepts true", () => {
-    expect(validateSettings({ restoreSessions: true }).restoreSessions).toBe(
-      true,
-    );
+    expect(validateSettings({ restoreSessions: true }).restoreSessions).toBe(true);
   });
 
   it("accepts false", () => {
-    expect(validateSettings({ restoreSessions: false }).restoreSessions).toBe(
-      false,
-    );
+    expect(validateSettings({ restoreSessions: false }).restoreSessions).toBe(false);
   });
 
   it("falls back to true on invalid types (string, number)", () => {
-    expect(validateSettings({ restoreSessions: "yes" }).restoreSessions).toBe(
-      true,
-    );
+    expect(validateSettings({ restoreSessions: "yes" }).restoreSessions).toBe(true);
     expect(validateSettings({ restoreSessions: 0 }).restoreSessions).toBe(true);
   });
 });
@@ -133,21 +111,13 @@ describe("terminalRenderer", () => {
   });
 
   it("keeps both declared renderers", () => {
-    expect(validateSettings({ terminalRenderer: "dom" }).terminalRenderer).toBe(
-      "dom",
-    );
-    expect(
-      validateSettings({ terminalRenderer: "webgl" }).terminalRenderer,
-    ).toBe("webgl");
+    expect(validateSettings({ terminalRenderer: "dom" }).terminalRenderer).toBe("dom");
+    expect(validateSettings({ terminalRenderer: "webgl" }).terminalRenderer).toBe("webgl");
   });
 
   it("falls back to dom on an unknown or non-string value", () => {
-    expect(
-      validateSettings({ terminalRenderer: "canvas" }).terminalRenderer,
-    ).toBe("dom");
-    expect(validateSettings({ terminalRenderer: 1 }).terminalRenderer).toBe(
-      "dom",
-    );
+    expect(validateSettings({ terminalRenderer: "canvas" }).terminalRenderer).toBe("dom");
+    expect(validateSettings({ terminalRenderer: 1 }).terminalRenderer).toBe("dom");
   });
 });
 
@@ -187,24 +157,18 @@ describe("customAgents", () => {
   });
 
   it("falls back to none when the stored value is not an array", () => {
-    expect(validateSettings({ customAgents: "aider" }).customAgents).toEqual(
-      [],
-    );
+    expect(validateSettings({ customAgents: "aider" }).customAgents).toEqual([]);
   });
 
   it("keeps a well-formed entry verbatim", () => {
-    expect(validateSettings({ customAgents: [valid] }).customAgents).toEqual([
-      valid,
-    ]);
+    expect(validateSettings({ customAgents: [valid] }).customAgents).toEqual([valid]);
   });
 
   it("drops an entry whose binary a shell would act on", () => {
     // The stored file is user-writable, so this is a real input path — not
     // only what the settings form produced.
     const evil = { ...valid, id: "custom:evil", command: "x; rm -rf ~" };
-    expect(
-      validateSettings({ customAgents: [valid, evil] }).customAgents,
-    ).toEqual([valid]);
+    expect(validateSettings({ customAgents: [valid, evil] }).customAgents).toEqual([valid]);
   });
 
   it("drops entries with a missing id prefix, blank label or blank command", () => {
@@ -223,9 +187,7 @@ describe("customAgents", () => {
 
   it("keeps the first of two entries sharing an id", () => {
     const clash = { ...valid, label: "Aider clone" };
-    expect(
-      validateSettings({ customAgents: [valid, clash] }).customAgents,
-    ).toEqual([valid]);
+    expect(validateSettings({ customAgents: [valid, clash] }).customAgents).toEqual([valid]);
   });
 });
 
@@ -242,9 +204,7 @@ describe("promptTemplates validation", () => {
   });
 
   it("keeps well-formed entries", () => {
-    expect(
-      validateSettings({ promptTemplates: [good] }).promptTemplates,
-    ).toEqual([good]);
+    expect(validateSettings({ promptTemplates: [good] }).promptTemplates).toEqual([good]);
   });
 
   it("drops a malformed entry rather than repairing it", () => {
@@ -255,16 +215,12 @@ describe("promptTemplates validation", () => {
   });
 
   it("falls back to none for a malformed array", () => {
-    expect(
-      validateSettings({ promptTemplates: "nope" }).promptTemplates,
-    ).toEqual([]);
+    expect(validateSettings({ promptTemplates: "nope" }).promptTemplates).toEqual([]);
   });
 
   it("dedupes repeated ids, first wins", () => {
     const second = { ...good, label: "other" };
-    expect(
-      validateSettings({ promptTemplates: [good, second] }).promptTemplates,
-    ).toEqual([good]);
+    expect(validateSettings({ promptTemplates: [good, second] }).promptTemplates).toEqual([good]);
   });
 
   it("keeps only the four known fields", () => {
@@ -300,9 +256,7 @@ describe("dockWidth", () => {
   });
 
   it("clamps above the maximum", () => {
-    expect(validateSettings({ dockWidth: 9999 }).dockWidth).toBe(
-      DOCK_WIDTH_MAX,
-    );
+    expect(validateSettings({ dockWidth: 9999 }).dockWidth).toBe(DOCK_WIDTH_MAX);
   });
 
   it("keeps an in-range value", () => {
@@ -338,18 +292,12 @@ describe("sidebarWidth", () => {
 
   it("falls back to the default on a non-number", () => {
     expect(validateSettings({ sidebarWidth: null }).sidebarWidth).toBe(275);
-    expect(validateSettings({ sidebarWidth: Number.NaN }).sidebarWidth).toBe(
-      275,
-    );
+    expect(validateSettings({ sidebarWidth: Number.NaN }).sidebarWidth).toBe(275);
   });
 
   it("clamps to the range", () => {
-    expect(validateSettings({ sidebarWidth: 10 }).sidebarWidth).toBe(
-      SIDEBAR_WIDTH_MIN,
-    );
-    expect(validateSettings({ sidebarWidth: 9999 }).sidebarWidth).toBe(
-      SIDEBAR_WIDTH_MAX,
-    );
+    expect(validateSettings({ sidebarWidth: 10 }).sidebarWidth).toBe(SIDEBAR_WIDTH_MIN);
+    expect(validateSettings({ sidebarWidth: 9999 }).sidebarWidth).toBe(SIDEBAR_WIDTH_MAX);
     expect(validateSettings({ sidebarWidth: 320 }).sidebarWidth).toBe(320);
   });
 });
@@ -361,12 +309,8 @@ describe("sidebarCollapsed", () => {
   });
 
   it("accepts a boolean and rejects other types", () => {
-    expect(validateSettings({ sidebarCollapsed: true }).sidebarCollapsed).toBe(
-      true,
-    );
-    expect(validateSettings({ sidebarCollapsed: 1 }).sidebarCollapsed).toBe(
-      false,
-    );
+    expect(validateSettings({ sidebarCollapsed: true }).sidebarCollapsed).toBe(true);
+    expect(validateSettings({ sidebarCollapsed: 1 }).sidebarCollapsed).toBe(false);
   });
 });
 
@@ -389,17 +333,14 @@ describe("a settings file predating the explorer panel", () => {
 describe("browserLastUrl", () => {
   it("defaults empty and keeps a stored string", () => {
     expect(validateSettings({}).browserLastUrl).toBe("");
-    expect(
-      validateSettings({ browserLastUrl: "http://localhost:5173/app" })
-        .browserLastUrl,
-    ).toBe("http://localhost:5173/app");
+    expect(validateSettings({ browserLastUrl: "http://localhost:5173/app" }).browserLastUrl).toBe(
+      "http://localhost:5173/app",
+    );
   });
 
   it("degrades a malformed value to the default instead of fixing it", () => {
     expect(validateSettings({ browserLastUrl: 7 }).browserLastUrl).toBe("");
-    expect(
-      validateSettings({ browserLastUrl: "x".repeat(3000) }).browserLastUrl,
-    ).toBe("");
+    expect(validateSettings({ browserLastUrl: "x".repeat(3000) }).browserLastUrl).toBe("");
   });
 });
 
@@ -414,8 +355,6 @@ describe("showStatusBar", () => {
 
   it("accepts a boolean and rejects other types", () => {
     expect(validateSettings({ showStatusBar: true }).showStatusBar).toBe(true);
-    expect(validateSettings({ showStatusBar: "yes" }).showStatusBar).toBe(
-      false,
-    );
+    expect(validateSettings({ showStatusBar: "yes" }).showStatusBar).toBe(false);
   });
 });

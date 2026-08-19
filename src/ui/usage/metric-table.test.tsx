@@ -3,8 +3,7 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { MetricTable } from "./metric-table";
-import type { MetricColumn, MetricRow } from "./metric-table";
+import { MetricTable, type MetricColumn, type MetricRow } from "./metric-table";
 import { EM_DASH } from "./usage-format";
 
 const columns: readonly MetricColumn[] = [
@@ -33,9 +32,7 @@ describe("MetricTable", () => {
     });
   });
 
-  const mount = (
-    overrides: Partial<Parameters<typeof MetricTable>[0]> = {},
-  ): void => {
+  const mount = (overrides: Partial<Parameters<typeof MetricTable>[0]> = {}): void => {
     act(() => {
       render(
         <MetricTable

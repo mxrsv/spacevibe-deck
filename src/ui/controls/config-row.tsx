@@ -19,11 +19,7 @@ export function ConfigRow({ label, desc, danger, children }: ConfigRowProps) {
   return (
     <div class="cfg-row">
       <div class="cfg-row__key">
-        <span
-          class={`cfg-row__label ${danger ? "cfg-row__label--danger" : ""}`}
-        >
-          {label}
-        </span>
+        <span class={`cfg-row__label ${danger ? "cfg-row__label--danger" : ""}`}>{label}</span>
         {desc !== undefined && <span class="cfg-row__desc">{desc}</span>}
       </div>
       <div class="cfg-row__value">{children}</div>
@@ -41,13 +37,7 @@ interface ToggleRowProps {
 }
 
 /** toggle value kind: `on` (green) / `off` (faint), click flips (DL-6). */
-export function ToggleRow({
-  label,
-  desc,
-  checked,
-  onToggle,
-  disabled,
-}: ToggleRowProps) {
+export function ToggleRow({ label, desc, checked, onToggle, disabled }: ToggleRowProps) {
   return (
     <ConfigRow label={label} desc={desc}>
       <button

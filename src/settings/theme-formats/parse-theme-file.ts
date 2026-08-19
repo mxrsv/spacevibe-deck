@@ -14,11 +14,7 @@
 import { parseAlacritty } from "./alacritty";
 import { parseGhostty } from "./ghostty";
 import { parseItermColors } from "./itermcolors";
-import {
-  finishDraft,
-  type ThemeDraft,
-  type ThemeParseResult,
-} from "./theme-draft";
+import { finishDraft, type ThemeDraft, type ThemeParseResult } from "./theme-draft";
 import { parseWindowsTerminal } from "./windows-terminal";
 
 /** File extensions the import dialog and the folder scan accept. */
@@ -52,10 +48,7 @@ export interface ThemeFileParse {
   readonly result: ThemeParseResult;
 }
 
-export function parseThemeFile(
-  fileName: string,
-  source: string,
-): ThemeFileParse {
+export function parseThemeFile(fileName: string, source: string): ThemeFileParse {
   return { id: themeIdForFile(fileName), result: run(fileName, source) };
 }
 

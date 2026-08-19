@@ -64,14 +64,7 @@ export interface AttentionFocusRequest {
  * back-to-back in the same synchronous tick.
  */
 export function runAttentionFocus(req: AttentionFocusRequest): void {
-  const {
-    tabIndex,
-    hasCandidate,
-    overlays,
-    dismissBoard,
-    dismissSettings,
-    focusAttention,
-  } = req;
+  const { tabIndex, hasCandidate, overlays, dismissBoard, dismissSettings, focusAttention } = req;
 
   if (!hasCandidate) {
     return; // nothing to focus — leave every overlay exactly as-is

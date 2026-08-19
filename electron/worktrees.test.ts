@@ -76,9 +76,7 @@ describe("parseWorktreePorcelain", () => {
     expect(entries[0].bare).toBe(true);
     expect(entries[1].detached).toBe(true);
     expect(entries[2].locked).toBe("on a removable drive");
-    expect(entries[3].prunable).toBe(
-      "gitdir file points to non-existent location",
-    );
+    expect(entries[3].prunable).toBe("gitdir file points to non-existent location");
   });
 
   it("keeps a reasonless `locked` distinct from not being locked", () => {

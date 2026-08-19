@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
-import {
-  composePromptText,
-  formatAssetReference,
-  isPromptAgentId,
-} from "./snippet-format";
+import { composePromptText, formatAssetReference, isPromptAgentId } from "./snippet-format";
 
 describe("formatAssetReference", () => {
   it("phrases each cell of the per-CLI table", () => {
-    expect(
-      formatAssetReference("claude", "skill", "superpowers:brainstorming"),
-    ).toBe("Use the superpowers:brainstorming skill.");
+    expect(formatAssetReference("claude", "skill", "superpowers:brainstorming")).toBe(
+      "Use the superpowers:brainstorming skill.",
+    );
     expect(formatAssetReference("claude", "subagent", "plan-reviewer")).toBe(
       "Use the plan-reviewer subagent.",
     );
@@ -39,23 +35,17 @@ describe("composePromptText", () => {
         { kind: "skill", name: "code-review" },
         { kind: "subagent", name: "plan-reviewer" },
       ]),
-    ).toBe(
-      "Fix it.\nUse the code-review skill.\nUse the plan-reviewer subagent.",
-    );
+    ).toBe("Fix it.\nUse the code-review skill.\nUse the plan-reviewer subagent.");
   });
 
   it("trims only the body's trailing whitespace before appending", () => {
     expect(
-      composePromptText("Fix it.\n\n", "claude", [
-        { kind: "skill", name: "code-review" },
-      ]),
+      composePromptText("Fix it.\n\n", "claude", [{ kind: "skill", name: "code-review" }]),
     ).toBe("Fix it.\nUse the code-review skill.");
   });
 
   it("drops picks an unverified CLI has no phrasing for", () => {
-    expect(
-      composePromptText("Fix it.", "gemini", [{ kind: "skill", name: "x" }]),
-    ).toBe("Fix it.");
+    expect(composePromptText("Fix it.", "gemini", [{ kind: "skill", name: "x" }])).toBe("Fix it.");
   });
 });
 

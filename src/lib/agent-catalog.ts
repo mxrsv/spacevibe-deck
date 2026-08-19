@@ -133,10 +133,7 @@ function slugify(label: string): string {
  * here. The label ITSELF is a separate matter: it travels as the process
  * identity, so `labelProblem` refuses one spelled exactly like a built-in id.
  */
-export function createCustomAgentId(
-  label: string,
-  existing: readonly CustomAgent[],
-): string {
+export function createCustomAgentId(label: string, existing: readonly CustomAgent[]): string {
   const base = slugify(label) || FALLBACK_SLUG;
   const taken = new Set(existing.map((agent) => agent.id));
   const first = `${CUSTOM_ID_PREFIX}${base}`;
@@ -221,9 +218,7 @@ export function agentOptions(
  * agent's binary. Unsafe names are dropped here and dropped again in Rust —
  * the frontend is not the trust boundary.
  */
-export function probeNames(
-  customAgents: readonly CustomAgent[],
-): readonly string[] {
+export function probeNames(customAgents: readonly CustomAgent[]): readonly string[] {
   const names = BUILTIN_AGENTS.map((agent) => agent.id);
   const seen = new Set(names);
   for (const agent of customAgents) {

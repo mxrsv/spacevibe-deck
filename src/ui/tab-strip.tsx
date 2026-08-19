@@ -93,9 +93,7 @@ export interface TabStripProps {
  * null for a plain shell, which wears the terminal glyph instead.
  */
 function chipAgent(tab: TabView): PaneAgent | null {
-  return (
-    tab.agents.find((agent) => agent === tab.process) ?? tab.agents[0] ?? null
-  );
+  return tab.agents.find((agent) => agent === tab.process) ?? tab.agents[0] ?? null;
 }
 
 export function TabStrip(props: TabStripProps) {
@@ -113,8 +111,7 @@ export function TabStrip(props: TabStripProps) {
   // touches `TabManager`'s own `active` index) — so a terminal chip is only
   // the VISIBLE active tab when neither is true.
   const fileTabs = fileTabViews(props.fileController);
-  const surfaceActive =
-    props.fileController.activeIndex() >= 0 || browserSurfaceActive.value;
+  const surfaceActive = props.fileController.activeIndex() >= 0 || browserSurfaceActive.value;
   // The row, in open order. The surface list is built in the SurfaceStrip
   // index space on purpose — files, then the browser's one slot — because
   // that is the space `fileController.activate(index)` and the keyboard both
@@ -212,12 +209,8 @@ export function TabStrip(props: TabStripProps) {
         <span class="tab__glyph">
           <DeckIcon icon={fileIcon(tab.name)} size={CHROME_ICON} />
         </span>
-        <span class={`tab__label ${tab.preview ? "tab__label--preview" : ""}`}>
-          {tab.name}
-        </span>
-        {tab.dirty && (
-          <span class="tab__dot tab__dot--dirty" aria-hidden="true" />
-        )}
+        <span class={`tab__label ${tab.preview ? "tab__label--preview" : ""}`}>{tab.name}</span>
+        {tab.dirty && <span class="tab__dot tab__dot--dirty" aria-hidden="true" />}
         <button
           type="button"
           class="tab__close"
@@ -248,9 +241,7 @@ export function TabStrip(props: TabStripProps) {
         role="tab"
         aria-selected={browserSurfaceActive.value}
         tabIndex={0}
-        class={`tab tab--browser ${
-          browserSurfaceActive.value ? "is-active" : ""
-        }`}
+        class={`tab tab--browser ${browserSurfaceActive.value ? "is-active" : ""}`}
         onClick={() => {
           if (!browserSurfaceActive.value) {
             props.onSelectBrowser();
@@ -289,14 +280,10 @@ export function TabStrip(props: TabStripProps) {
         {slots.map((slot) => {
           if (slot.kind === "tab") {
             const entry = visibleTabs[slot.index];
-            return entry === undefined
-              ? null
-              : terminalChip(entry.tab, entry.index);
+            return entry === undefined ? null : terminalChip(entry.tab, entry.index);
           }
           const fileTab = fileTabs[slot.index];
-          return fileTab === undefined
-            ? browserChip()
-            : fileChip(fileTab, slot.index);
+          return fileTab === undefined ? browserChip() : fileChip(fileTab, slot.index);
         })}
       </div>
       <button

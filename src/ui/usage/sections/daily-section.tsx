@@ -1,10 +1,8 @@
 import { AGENT_LOGOS } from "../../../lib/agent-logos";
-import type { DailyRow } from "../../../lib/usage-aggregate";
-import { dailyTotals } from "../../../lib/usage-aggregate";
+import { type DailyRow, dailyTotals } from "../../../lib/usage-aggregate";
 import { totalTokens } from "../../../lib/usage-snapshot";
 import { usageSnapshot } from "../../../usage/usage-store";
-import { MetricTable } from "../metric-table";
-import type { MetricColumn, MetricRow } from "../metric-table";
+import { MetricTable, type MetricColumn, type MetricRow } from "../metric-table";
 import {
   EM_DASH,
   ESTIMATE_NOTE,
@@ -61,24 +59,16 @@ function DayAgentLine({ row }: { readonly row: DailyRow }) {
         <img class="usage-day-agent__logo" src={logo} alt="" />
       )}
       <span class="usage-day-agent__label">{USAGE_AGENT_LABEL[row.agent]}</span>
-      <span class="usage-day-agent__tokens">
-        {formatTokensCompact(totalTokens(row.counters))}
-      </span>
+      <span class="usage-day-agent__tokens">{formatTokensCompact(totalTokens(row.counters))}</span>
       <span class="usage-day-agent__usd">{usd ?? EM_DASH}</span>
     </li>
   );
 }
 
 export function DailySection() {
-  const rows = dailyTotals(
-    usageSnapshot.value?.buckets ?? [],
-    DAILY_DAYS,
-    Date.now(),
-  );
+  const rows = dailyTotals(usageSnapshot.value?.buckets ?? [], DAILY_DAYS, Date.now());
 
-  const unpriced = [
-    ...new Set(rows.flatMap((row) => row.unpricedModels)),
-  ].sort();
+  const unpriced = [...new Set(rows.flatMap((row) => row.unpricedModels))].sort();
 
   const note =
     unpriced.length === 0
@@ -89,7 +79,7 @@ export function DailySection() {
     key: row.day,
     cells: [
       row.day,
-      <ul class="usage-day-agents">
+      <ul class="usage-day-agents" key="agents">
         {row.agents.map((agent) => (
           <DayAgentLine key={agent.agent} row={agent} />
         ))}

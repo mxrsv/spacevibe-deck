@@ -124,10 +124,7 @@ export function createPaneInfoPoller(deps: PaneInfoPollerDeps): PaneInfoPoller {
       if (timer !== null) {
         return;
       }
-      timer = setInterval(
-        () => void poll(),
-        deps.intervalMs ?? DEFAULT_INTERVAL_MS,
-      );
+      timer = setInterval(() => void poll(), deps.intervalMs ?? DEFAULT_INTERVAL_MS);
     },
     stop() {
       if (timer !== null) {

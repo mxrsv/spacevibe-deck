@@ -43,10 +43,8 @@ const MACOS = {
   // `_<version>_universal` to the bundle on upload, and GitHub replaces spaces
   // with dots. The staged names therefore never equal the asset names.
   stagedNames: {
-    [`SpaceVibe.Deck_${VERSION}_universal.app.tar.gz`]:
-      "SpaceVibe Deck.app.tar.gz",
-    [`SpaceVibe.Deck_${VERSION}_universal.app.tar.gz.sig`]:
-      "SpaceVibe Deck.app.tar.gz.sig",
+    [`SpaceVibe.Deck_${VERSION}_universal.app.tar.gz`]: "SpaceVibe Deck.app.tar.gz",
+    [`SpaceVibe.Deck_${VERSION}_universal.app.tar.gz.sig`]: "SpaceVibe Deck.app.tar.gz.sig",
     [`SpaceVibe.Deck_${VERSION}_universal.dmg`]: `SpaceVibe Deck_${VERSION}_universal.dmg`,
   },
 };
@@ -82,9 +80,7 @@ function signUpdaterPayload(payload, options = {}) {
     keyId = KEY_ID,
   } = options;
   const message =
-    algorithm === "ED"
-      ? createHash("blake2b512").update(payload).digest()
-      : Buffer.from(payload);
+    algorithm === "ED" ? createHash("blake2b512").update(payload).digest() : Buffer.from(payload);
   const signature = sign(null, message, privateKey);
   const globalSignature = sign(
     null,
@@ -93,9 +89,7 @@ function signUpdaterPayload(payload, options = {}) {
   );
   const file = [
     "untrusted comment: signature from tauri secret key",
-    Buffer.concat([Buffer.from(algorithm), keyId, signature]).toString(
-      "base64",
-    ),
+    Buffer.concat([Buffer.from(algorithm), keyId, signature]).toString("base64"),
     `trusted comment: ${trustedComment}`,
     globalSignature.toString("base64"),
     "",
@@ -119,9 +113,7 @@ function flipLastByte(base64Line) {
  * that targets one invariant cannot pass or fail on a stale digest.
  */
 function sync(value) {
-  value.releaseContents["latest.json"] = Buffer.from(
-    JSON.stringify(value.manifest),
-  );
+  value.releaseContents["latest.json"] = Buffer.from(JSON.stringify(value.manifest));
   value.stagedContents = {
     ...Object.fromEntries(
       Object.entries(value.releaseContents).map(([name, content]) => [
@@ -138,10 +130,7 @@ function reprovenance(value) {
   value.provenance = {
     ...value.provenance,
     files: Object.fromEntries(
-      Object.entries(value.stagedContents).map(([name, content]) => [
-        name,
-        digest(content),
-      ]),
+      Object.entries(value.stagedContents).map(([name, content]) => [name, digest(content)]),
     ),
   };
   return value;
@@ -160,10 +149,7 @@ function fixture(descriptor = WINDOWS, options = {}) {
     notes: "Release candidate",
     pub_date: "2026-08-04T00:00:00.000Z",
     platforms: Object.fromEntries(
-      descriptor.targets.map((target) => [
-        target,
-        { signature, url: payloadUrl },
-      ]),
+      descriptor.targets.map((target) => [target, { signature, url: payloadUrl }]),
     ),
   };
   const assets = [
@@ -193,9 +179,7 @@ function fixture(descriptor = WINDOWS, options = {}) {
     releaseContents: {
       [descriptor.payload]: payloadBytes,
       [sidecarName]: Buffer.from(signature, "utf8"),
-      ...Object.fromEntries(
-        descriptor.extras.map((name) => [name, Buffer.from(`${name} bytes`)]),
-      ),
+      ...Object.fromEntries(descriptor.extras.map((name) => [name, Buffer.from(`${name} bytes`)])),
       "latest.json": Buffer.from("{}"),
     },
     stagedContents: {},
@@ -216,10 +200,7 @@ function withSignature(value, descriptor, signature) {
   for (const platform of Object.values(value.manifest.platforms)) {
     platform.signature = signature;
   }
-  value.releaseContents[`${descriptor.payload}.sig`] = Buffer.from(
-    signature,
-    "utf8",
-  );
+  value.releaseContents[`${descriptor.payload}.sig`] = Buffer.from(signature, "utf8");
   return sync(value);
 }
 
@@ -289,8 +270,7 @@ test("rejects empty signatures and non-HTTPS URLs", () => {
   assert.throws(() => validateUpdaterRelease(sync(unsigned)), /signature/i);
 
   const insecure = fixture();
-  insecure.manifest.platforms["windows-x86_64"].url =
-    "http://example.test/app.zip";
+  insecure.manifest.platforms["windows-x86_64"].url = "http://example.test/app.zip";
   assert.throws(() => validateUpdaterRelease(sync(insecure)), /HTTPS/i);
 });
 
@@ -354,22 +334,15 @@ test("rejects a staged release response that no longer describes the draft", () 
       updated_at: "2026-08-04T12:00:00Z",
     }),
   );
-  assert.throws(
-    () => validateUpdaterRelease(reprovenance(value)),
-    /release\.json content/i,
-  );
+  assert.throws(() => validateUpdaterRelease(reprovenance(value)), /release\.json content/i);
 });
 
 test("rejects a staged file that never reached the draft", () => {
   // Binding by content must stay symmetric: an artifact the runner built and
   // nobody uploaded is as much a broken release as an asset nobody built.
   const value = fixture(MACOS);
-  value.stagedContents["SpaceVibe Deck_0.11.0-rc.1_aarch64.dmg"] =
-    Buffer.from("second image");
-  assert.throws(
-    () => validateUpdaterRelease(reprovenance(value)),
-    /never reached the draft/i,
-  );
+  value.stagedContents["SpaceVibe Deck_0.11.0-rc.1_aarch64.dmg"] = Buffer.from("second image");
+  assert.throws(() => validateUpdaterRelease(reprovenance(value)), /never reached the draft/i);
 });
 
 test("rejects a stale draft asset left by an earlier run", () => {
@@ -380,10 +353,7 @@ test("rejects a stale draft asset left by an earlier run", () => {
     { id: 99, name: stale, url: `${ASSET_BASE}/99` },
   ];
   value.releaseContents[stale] = Buffer.from("stale installer");
-  assert.throws(
-    () => validateUpdaterRelease(sync(value)),
-    /unexpected draft asset/i,
-  );
+  assert.throws(() => validateUpdaterRelease(sync(value)), /unexpected draft asset/i);
 });
 
 test("rejects duplicate draft assets", () => {
@@ -392,10 +362,7 @@ test("rejects duplicate draft assets", () => {
     ...duplicateName.release.assets,
     { id: 98, name: WINDOWS.payload, url: `${ASSET_BASE}/98` },
   ];
-  assert.throws(
-    () => validateUpdaterRelease(sync(duplicateName)),
-    /duplicate/i,
-  );
+  assert.throws(() => validateUpdaterRelease(sync(duplicateName)), /duplicate/i);
 
   const duplicateUrl = fixture();
   duplicateUrl.release.assets = [
@@ -408,9 +375,7 @@ test("rejects duplicate draft assets", () => {
 test("rejects a draft without the updater sidecar", () => {
   const value = fixture();
   const sidecar = `${WINDOWS.payload}.sig`;
-  value.release.assets = value.release.assets.filter(
-    (asset) => asset.name !== sidecar,
-  );
+  value.release.assets = value.release.assets.filter((asset) => asset.name !== sidecar);
   delete value.releaseContents[sidecar];
   assert.throws(() => validateUpdaterRelease(sync(value)), /missing/i);
 });
@@ -431,10 +396,7 @@ test("rejects tampered installer bytes", () => {
   // stands between a swapped installer and a published update.
   const value = fixture();
   value.releaseContents[WINDOWS.payload] = Buffer.from("malicious installer");
-  assert.throws(
-    () => validateUpdaterRelease(sync(value)),
-    /signature is invalid/i,
-  );
+  assert.throws(() => validateUpdaterRelease(sync(value)), /signature is invalid/i);
 });
 
 test("rejects a tampered sidecar signature", () => {

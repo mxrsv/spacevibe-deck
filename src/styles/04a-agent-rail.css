@@ -657,11 +657,7 @@
 .asr-row__mark[data-state="working"] {
   width: 11px;
   height: 11px;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg 110deg,
-    var(--text-primary) 330deg
-  );
+  background: conic-gradient(from 0deg, transparent 0deg 110deg, var(--text-primary) 330deg);
   /* Radii scaled with the box (×11/9), not kept: holding 2.5/3.1 at 11px
      would have thickened the arc into a disc instead of growing the ring. */
   mask: radial-gradient(circle, transparent 0 3.05px, #000 3.8px);

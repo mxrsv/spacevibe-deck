@@ -57,9 +57,7 @@ function runElectron() {
 async function waitForDevServer(viteChild) {
   let died = null;
   const onDeath = (codeOrError) => {
-    died = new Error(
-      `vite dev server exited before it became ready: ${codeOrError}`,
-    );
+    died = new Error(`vite dev server exited before it became ready: ${codeOrError}`);
   };
   viteChild.once("exit", onDeath);
   viteChild.once("error", onDeath);
@@ -147,10 +145,8 @@ const watchers = [
     scheduleRebuild(filename),
   ),
   ...SRC_WATCH_DIRS.map((dir) =>
-    watch(
-      path.join(ROOT, "src", dir),
-      { recursive: true },
-      (_event, filename) => scheduleRebuild(filename),
+    watch(path.join(ROOT, "src", dir), { recursive: true }, (_event, filename) =>
+      scheduleRebuild(filename),
     ),
   ),
 ];

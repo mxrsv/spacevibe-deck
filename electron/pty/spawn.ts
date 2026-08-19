@@ -60,10 +60,7 @@ export function resolveSpawnCwd(cwd: string | null, home: string): string {
  *   plain ConPTY. Verified empirically on Tauri — without it claude emits zero
  *   OSC 9;4; with it, state 0 at startup, 3 while working, 0 when done.
  */
-export function buildEnv(
-  base: NodeJS.ProcessEnv,
-  version: string,
-): NodeJS.ProcessEnv {
+export function buildEnv(base: NodeJS.ProcessEnv, version: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...base,
     TERM: "xterm-256color",

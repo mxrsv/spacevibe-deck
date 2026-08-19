@@ -77,19 +77,13 @@ describe("SessionsBody", () => {
 
   it("loses no row content in the dock variant — same four DL-25.2 fields as the screen variant", () => {
     mount("dock");
-    expect(host.querySelector(".session-row__title")?.textContent).toBe(
-      "make the thing work",
-    );
-    expect(host.querySelector(".session-row__agent")?.textContent).toBe(
-      "Claude Code",
-    );
+    expect(host.querySelector(".session-row__title")?.textContent).toBe("make the thing work");
+    expect(host.querySelector(".session-row__agent")?.textContent).toBe("Claude Code");
     // No `homeDir` override in this test env — `getDesktopEnvironment()`
     // (same call `SessionsList` makes) answers "", so `SessionRow` shows the
     // raw cwd rather than a tildified one (see `session-row.test.tsx` for
     // the tildify case, which passes `homeDir` directly as a prop instead).
-    expect(host.querySelector(".session-row__path")?.textContent).toBe(
-      "/Users/me/work/repo",
-    );
+    expect(host.querySelector(".session-row__path")?.textContent).toBe("/Users/me/work/repo");
     expect(host.querySelector(".session-row__time")?.textContent).toBeTruthy();
   });
 
@@ -98,9 +92,9 @@ describe("SessionsBody", () => {
     mount("dock");
     const nav = host.querySelector(".sessions-nav--compact");
     expect(nav).not.toBeNull();
-    expect(
-      nav?.querySelector('[role="tablist"]')?.getAttribute("aria-orientation"),
-    ).toBe("horizontal");
+    expect(nav?.querySelector('[role="tablist"]')?.getAttribute("aria-orientation")).toBe(
+      "horizontal",
+    );
 
     const labels = [...host.querySelectorAll(".sessions-nav__label")].map(
       (node) => node.textContent,
@@ -116,9 +110,9 @@ describe("SessionsBody", () => {
   it("keeps the full-width rail and its full labels in the screen variant", () => {
     mount();
     expect(host.querySelector(".sessions-nav--compact")).toBeNull();
-    expect(
-      host.querySelector('[role="tablist"]')?.getAttribute("aria-orientation"),
-    ).toBe("vertical");
+    expect(host.querySelector('[role="tablist"]')?.getAttribute("aria-orientation")).toBe(
+      "vertical",
+    );
     const labels = [...host.querySelectorAll(".sessions-nav__label")].map(
       (node) => node.textContent,
     );
@@ -147,9 +141,7 @@ describe("SessionsBody", () => {
 
     mount("dock");
 
-    expect(host.textContent).toContain(
-      "Reading this machine's recorded sessions",
-    );
+    expect(host.textContent).toContain("Reading this machine's recorded sessions");
     expect(host.textContent).not.toContain("No sessions found");
   });
 });

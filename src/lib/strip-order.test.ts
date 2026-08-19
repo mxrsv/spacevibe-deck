@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mergeStripOrder } from "./strip-order";
-import {
-  nextOpenSequence,
-  resetOpenSequence,
-  UNSEQUENCED,
-} from "./open-sequence";
+import { nextOpenSequence, resetOpenSequence, UNSEQUENCED } from "./open-sequence";
 
 const at = (openedAt: number) => ({ openedAt });
 
@@ -39,10 +35,7 @@ describe("mergeStripOrder", () => {
     // `UNSEQUENCED` is what a fixture or a pre-2026-08-16 `TabView` reports,
     // and a whole strip of them must still render in the old order rather
     // than an arbitrary one.
-    const slots = mergeStripOrder(
-      [at(UNSEQUENCED), at(UNSEQUENCED)],
-      [at(UNSEQUENCED)],
-    );
+    const slots = mergeStripOrder([at(UNSEQUENCED), at(UNSEQUENCED)], [at(UNSEQUENCED)]);
 
     expect(slots).toEqual([
       { kind: "tab", index: 0 },
@@ -54,9 +47,7 @@ describe("mergeStripOrder", () => {
   it("handles either side being empty", () => {
     expect(mergeStripOrder([], [])).toEqual([]);
     expect(mergeStripOrder([at(1)], [])).toEqual([{ kind: "tab", index: 0 }]);
-    expect(mergeStripOrder([], [at(1)])).toEqual([
-      { kind: "surface", index: 0 },
-    ]);
+    expect(mergeStripOrder([], [at(1)])).toEqual([{ kind: "surface", index: 0 }]);
   });
 });
 

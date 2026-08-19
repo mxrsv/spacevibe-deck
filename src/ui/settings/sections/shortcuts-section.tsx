@@ -81,9 +81,7 @@ export function ShortcutsSection() {
         }
       }
     }
-    return others.size === 0
-      ? undefined
-      : `also bound to ${[...others].join(", ")}`;
+    return others.size === 0 ? undefined : `also bound to ${[...others].join(", ")}`;
   };
 
   return (
@@ -99,9 +97,7 @@ export function ShortcutsSection() {
                 <div class="cfg-row__key">
                   <span class="cfg-row__label">{row.label}</span>
                   {conflict !== undefined && (
-                    <span class="cfg-row__desc cfg-row__desc--warn">
-                      {conflict}
-                    </span>
+                    <span class="cfg-row__desc cfg-row__desc--warn">{conflict}</span>
                   )}
                 </div>
                 <div class="cfg-row__value">

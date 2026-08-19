@@ -42,9 +42,7 @@ export const DOCK_TABS: readonly DockTabDescriptor[] = Object.freeze([
  * the same precedent: a control that opens an empty surface is worse than no
  * control, so the tab is omitted rather than shown disabled.
  */
-export function availableDockTabs(
-  sessionsAvailable: boolean,
-): readonly DockTabDescriptor[] {
+export function availableDockTabs(sessionsAvailable: boolean): readonly DockTabDescriptor[] {
   if (sessionsAvailable) {
     return DOCK_TABS;
   }
@@ -57,10 +55,7 @@ export function availableDockTabs(
  * `sessions_list`. Explorer is the panel's original, always-available
  * surface, so it is the one safe default to resolve to.
  */
-export function resolveDockTab(
-  requested: DockTabId,
-  sessionsAvailable: boolean,
-): DockTabId {
+export function resolveDockTab(requested: DockTabId, sessionsAvailable: boolean): DockTabId {
   const available = availableDockTabs(sessionsAvailable);
   return available.some((tab) => tab.id === requested) ? requested : "explorer";
 }

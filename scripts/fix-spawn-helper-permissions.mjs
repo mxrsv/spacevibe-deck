@@ -16,10 +16,7 @@ import { chmodSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const ROOTS = [
-  "node_modules/node-pty/prebuilds",
-  "node_modules/node-pty/build/Release",
-];
+const ROOTS = ["node_modules/node-pty/prebuilds", "node_modules/node-pty/build/Release"];
 
 /** Every `spawn-helper` one level under `dir`, plus `dir/spawn-helper`. */
 export function spawnHelpersUnder(dir) {
@@ -69,9 +66,6 @@ function main() {
 // imports `spawnHelpersUnder`, and a module that repaired the permissions as a
 // side effect of being imported would make that test structurally incapable of
 // failing — it would chmod the very files it was about to assert on.
-if (
-  process.argv[1] !== undefined &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }

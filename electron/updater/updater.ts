@@ -46,10 +46,7 @@ export interface AutoUpdaterLike {
   checkForUpdates(): Promise<UpdateCheckLike | null>;
   downloadUpdate(): Promise<readonly string[]>;
   quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void;
-  on(
-    event: "update-downloaded" | "error",
-    handler: (payload: never) => void,
-  ): unknown;
+  on(event: "update-downloaded" | "error", handler: (payload: never) => void): unknown;
 }
 
 /** `electron-updater`'s `UpdateCheckResult`, narrowed to what is read here. */
@@ -136,9 +133,7 @@ function asError(value: unknown): Error {
   return value instanceof Error ? value : new Error(String(value));
 }
 
-export function createUpdateLifecycle(
-  deps: UpdateLifecycleDependencies,
-): UpdateLifecycle {
+export function createUpdateLifecycle(deps: UpdateLifecycleDependencies): UpdateLifecycle {
   let updater: AutoUpdaterLike | null = null;
   let availableVersion: string | null = null;
   let downloadedVersion: string | null = null;
@@ -240,9 +235,7 @@ export function createUpdateLifecycle(
       return downloadTarget === target
         ? downloadInFlight
         : Promise.reject(
-            new Error(
-              `Deck is already downloading ${downloadTarget ?? "another update"}.`,
-            ),
+            new Error(`Deck is already downloading ${downloadTarget ?? "another update"}.`),
           );
     }
     downloadTarget = target;
@@ -274,17 +267,13 @@ export function createUpdateLifecycle(
       // forever — and `MacUpdater.quitAndInstall` adds another
       // `update-downloaded` listener each time, so a later success would run
       // the handover once per attempt.
-      return Promise.reject(
-        new Error("Deck has already handed this update to the installer."),
-      );
+      return Promise.reject(new Error("Deck has already handed this update to the installer."));
     }
     if (availableVersion === null || downloadedVersion !== availableVersion) {
       // Also the guard for "another window downloaded a different version":
       // refusing is the honest answer, because the file on disk is not the one
       // this window is showing.
-      return Promise.reject(
-        new Error("The update has not finished downloading yet."),
-      );
+      return Promise.reject(new Error("The update has not finished downloading yet."));
     }
     if (installInFlight !== null) {
       return installInFlight;

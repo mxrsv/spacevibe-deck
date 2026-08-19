@@ -1,8 +1,4 @@
-import {
-  ConfigGroup,
-  ConfigRow,
-  ToggleRow,
-} from "../../ui/controls/config-row";
+import { ConfigGroup, ConfigRow, ToggleRow } from "../../ui/controls/config-row";
 import { CommitInput } from "../../ui/controls/commit-input";
 import { CommitTextarea } from "../../ui/controls/commit-textarea";
 import { SETTINGS_CATEGORIES } from "../../ui/settings/settings-categories";
@@ -67,11 +63,7 @@ export function RowsSection() {
             onToggle={() => {}}
             disabled
           />
-          <ConfigRow
-            label="Danger key"
-            desc="red key, for destructive rows (DL-3.2)"
-            danger
-          >
+          <ConfigRow label="Danger key" desc="red key, for destructive rows (DL-3.2)" danger>
             <button type="button" class="cfg-btn cfg-btn--danger">
               delete
             </button>

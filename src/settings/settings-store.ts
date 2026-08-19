@@ -9,16 +9,8 @@ import {
 } from "./settings-schema";
 import { reportPersistError } from "../chrome/events";
 import { listen } from "../host/bridge";
-import {
-  createTauriSettingsSync,
-  type SettingsSyncClient,
-} from "./settings-sync";
-import {
-  LOAD_LOADING,
-  LOAD_READY,
-  loadError,
-  type LoadState,
-} from "../lib/load-state";
+import { createTauriSettingsSync, type SettingsSyncClient } from "./settings-sync";
+import { LOAD_LOADING, LOAD_READY, loadError, type LoadState } from "../lib/load-state";
 
 const STORE_FILE = "settings.json";
 const STORE_KEY = "settings";
@@ -184,9 +176,7 @@ function persist(next: Settings): void {
       await current.set(STORE_KEY, next);
       await current.save();
     } catch {
-      reportPersistError(
-        "Couldn't save settings — changes may not survive a relaunch.",
-      );
+      reportPersistError("Couldn't save settings — changes may not survive a relaunch.");
     }
   })();
 }
@@ -196,9 +186,7 @@ export function updateSettings(patch: Partial<Settings>): void {
   if (settingsLoadState.value.status !== "ready") {
     settings.value = next;
     if (settingsDegraded) {
-      reportPersistError(
-        "Settings are temporary until Deck can load settings.json.",
-      );
+      reportPersistError("Settings are temporary until Deck can load settings.json.");
     }
     return;
   }
@@ -221,9 +209,7 @@ export function updateSettings(patch: Partial<Settings>): void {
   // So the reply is used for ONE thing: knowing the write failed.
   void sync?.sendPatch(patch).catch((err: unknown) => {
     console.warn("Settings patch merge failed:", err);
-    reportPersistError(
-      "Couldn't sync settings across windows — other windows may be stale.",
-    );
+    reportPersistError("Couldn't sync settings across windows — other windows may be stale.");
   });
 }
 
@@ -273,10 +259,7 @@ export function openDockTab(tab: DockTab): void {
 }
 
 /** Set or remove (value = undefined) a single color override. */
-export function updateColorOverride(
-  key: keyof TerminalColors,
-  value: string | undefined,
-): void {
+export function updateColorOverride(key: keyof TerminalColors, value: string | undefined): void {
   const { [key]: _removed, ...rest } = settings.value.colorOverrides;
   const colorOverrides = value === undefined ? rest : { ...rest, [key]: value };
   updateSettings({ colorOverrides });

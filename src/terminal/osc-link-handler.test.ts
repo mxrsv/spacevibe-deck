@@ -2,10 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryLinkClient } from "./link-client";
 import { createOscLinkHandler } from "./osc-link-handler";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 
 vi.mock("../chrome/events", () => ({
   reportPersistError: vi.fn(),
@@ -16,10 +13,7 @@ vi.mock("./primary-modifier", () => {
   const listeners = new Set<(held: boolean) => void>();
   return {
     isPrimaryModifierHeld: () => held,
-    syncPrimaryModifierHeld: (event: {
-      metaKey: boolean;
-      ctrlKey: boolean;
-    }) => {
+    syncPrimaryModifierHeld: (event: { metaKey: boolean; ctrlKey: boolean }) => {
       held = event.metaKey || event.ctrlKey;
     },
     onPrimaryModifierChange: (listener: (held: boolean) => void) => {

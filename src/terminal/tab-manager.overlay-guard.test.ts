@@ -15,16 +15,8 @@ import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
-import {
-  fakePane,
-  flush,
-  freshWindowFocusController,
-  setup,
-} from "./tab-manager.fixtures";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import { fakePane, flush, freshWindowFocusController, setup } from "./tab-manager.fixtures";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
@@ -427,12 +419,7 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
   // it always opens on the board with no session restore. `canCancel={
   // tabViews.value.length > 0}` (app.tsx) already refuses the same thing on
   // the mouse path; these lock the keyboard half of that invariant.
-  for (const action of [
-    "select-tab-1",
-    "select-last-tab",
-    "next-tab",
-    "prev-tab",
-  ] as const) {
+  for (const action of ["select-tab-1", "select-last-tab", "next-tab", "prev-tab"] as const) {
     it(`${action} leaves the Open board up when there is no tab to switch to`, async () => {
       const { tm } = setup({});
       await tm.init();
@@ -505,9 +492,7 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
   // (blocked only by an overlay ranked at or above the board — the modal
   // family). See its ACTION_REGISTRY row for the full rationale.
   it("reads scope from ACTION_REGISTRY, not a hardcoded list", () => {
-    const alwaysActions = ACTION_REGISTRY.filter(
-      (a) => a.scope === "always",
-    ).map((a) => a.id);
+    const alwaysActions = ACTION_REGISTRY.filter((a) => a.scope === "always").map((a) => a.id);
     // The updater rows are app-level menu actions intercepted by App before
     // TabManager.runAction; "always" records that overlays must not disable
     // either manual update checks or the web Release Notes link.

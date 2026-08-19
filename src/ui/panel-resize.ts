@@ -68,10 +68,7 @@ export const SIDEBAR_DRAG_BOUNDS: PanelWidthBounds = {
  */
 export const SIDEBAR_HIDDEN_WIDTH = 0;
 
-export function resolvePanelDrag(
-  rawWidth: number,
-  bounds: PanelWidthBounds,
-): PanelDragOutcome {
+export function resolvePanelDrag(rawWidth: number, bounds: PanelWidthBounds): PanelDragOutcome {
   return {
     width: Math.min(bounds.max, Math.max(bounds.min, Math.round(rawWidth))),
     collapsed: rawWidth < bounds.collapseBelow,

@@ -2,22 +2,19 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { activeTabIndex, tabViews } from "../terminal/tabs-store";
-import type { AgentAttentionSummary, TabView } from "../terminal/tabs-store";
-import { TabBar } from "./tab-bar";
 import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+  activeTabIndex,
+  tabViews,
+  type AgentAttentionSummary,
+  type TabView,
+} from "../terminal/tabs-store";
+import { TabBar } from "./tab-bar";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   createFileSurfaceController,
   type FileSurfaceController,
 } from "../files/file-surface-controller";
-import {
-  openFileTab,
-  resetFileSurfaces,
-  updateDocument,
-} from "../files/file-surface-store";
+import { openFileTab, resetFileSurfaces, updateDocument } from "../files/file-surface-store";
 import type { FileClient } from "../files/file-client";
 
 const fileClient: FileClient = {
@@ -31,9 +28,7 @@ const fileClient: FileClient = {
   listenFileChanged: async () => () => {},
 };
 
-function actionable(
-  overrides: Partial<AgentAttentionSummary> = {},
-): AgentAttentionSummary {
+function actionable(overrides: Partial<AgentAttentionSummary> = {}): AgentAttentionSummary {
   return {
     kind: "error",
     actionableCount: 1,
@@ -128,10 +123,7 @@ describe("TabBar", () => {
   });
 
   it("clicking an inactive tab calls onSelectTab", () => {
-    tabViews.value = [
-      tab({ key: 1, name: "Alpha" }),
-      tab({ key: 2, name: "Beta" }),
-    ];
+    tabViews.value = [tab({ key: 1, name: "Alpha" }), tab({ key: 2, name: "Beta" })];
     activeTabIndex.value = 0;
     const props = baseProps();
     mount(props);
@@ -212,9 +204,7 @@ describe("TabBar", () => {
   });
 
   it("falls back to the terminal glyph for a tab running no recognised agent", () => {
-    tabViews.value = [
-      tab({ key: 1, name: "Alpha", process: "zsh", agents: [] }),
-    ];
+    tabViews.value = [tab({ key: 1, name: "Alpha", process: "zsh", agents: [] })];
     mount(baseProps());
 
     expect(host.querySelector(".tab .tab__logo")).toBeNull();
@@ -303,9 +293,7 @@ describe("TabBar", () => {
       const closePath = vi.spyOn(fileController, "closePath");
       mount(props);
 
-      const close = host.querySelector(
-        ".tab--file .tab__close",
-      ) as HTMLButtonElement;
+      const close = host.querySelector(".tab--file .tab__close") as HTMLButtonElement;
       act(() => {
         close.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       });
@@ -324,9 +312,7 @@ describe("TabBar", () => {
       const props = baseProps();
       mount(props);
 
-      const terminalRow = host.querySelector(
-        ".tab:not(.tab--file)",
-      ) as HTMLElement;
+      const terminalRow = host.querySelector(".tab:not(.tab--file)") as HTMLElement;
       expect(terminalRow.classList.contains("is-active")).toBe(false);
 
       act(() => {

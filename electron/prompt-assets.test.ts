@@ -63,15 +63,11 @@ describe("parseFrontmatter", () => {
 
 describe("parseTomlDescription", () => {
   it("reads a top-level description", () => {
-    expect(parseTomlDescription('description = "A codex agent"\n')).toBe(
-      "A codex agent",
-    );
+    expect(parseTomlDescription('description = "A codex agent"\n')).toBe("A codex agent");
   });
 
   it("stops at a table header, so a nested description is not the agent's", () => {
-    expect(
-      parseTomlDescription('[tool]\ndescription = "not mine"\n'),
-    ).toBe(null);
+    expect(parseTomlDescription('[tool]\ndescription = "not mine"\n')).toBe(null);
   });
 
   it("stops at a multi-line value", () => {

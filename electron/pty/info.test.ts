@@ -67,13 +67,9 @@ describe("buildPtyInfo", () => {
   });
 
   it("recognizes a user-declared agent matcher", () => {
-    const [info] = buildPtyInfo(
-      [snapshot(5, 1000, "ttys005")],
-      rows,
-      new Map(),
-      undefined,
-      [{ binary: "aider", agent: "Aider" }],
-    );
+    const [info] = buildPtyInfo([snapshot(5, 1000, "ttys005")], rows, new Map(), undefined, [
+      { binary: "aider", agent: "Aider" },
+    ]);
 
     expect(info).toMatchObject({
       process: "aider",
@@ -95,10 +91,7 @@ describe("buildPtyInfo", () => {
   });
 
   it("answers every snapshot from one table reading, in order", () => {
-    const infos = buildPtyInfo(
-      [snapshot(1, 501, "ttys001"), snapshot(2, 610, "ttys002")],
-      rows,
-    );
+    const infos = buildPtyInfo([snapshot(1, 501, "ttys001"), snapshot(2, 610, "ttys002")], rows);
 
     expect(infos.map((info) => info.id)).toEqual([1, 2]);
     expect(infos.map((info) => info.kind)).toEqual(["idle-shell", "agent"]);
@@ -169,11 +162,7 @@ describe("createPtyInfoReader", () => {
       processCwds: async () => new Map([[777, "/fresh"]]),
     }));
 
-    const infos = await reader.read(
-      [snapshot(2, 610, "ttys002", "/stale")],
-      [],
-      true,
-    );
+    const infos = await reader.read([snapshot(2, 610, "ttys002", "/stale")], [], true);
 
     expect(infos[0]?.cwd).toBe("/fresh");
   });

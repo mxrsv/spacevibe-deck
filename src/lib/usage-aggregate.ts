@@ -115,11 +115,9 @@ function compareStrings(left: string, right: string): number {
 /** The host-local calendar day containing `utcMs`, as "YYYY-MM-DD". */
 export function localDayKey(utcMs: number): string {
   const at = new Date(utcMs);
-  return [
-    `${at.getFullYear()}`.padStart(4, "0"),
-    pad2(at.getMonth() + 1),
-    pad2(at.getDate()),
-  ].join("-");
+  return [`${at.getFullYear()}`.padStart(4, "0"), pad2(at.getMonth() + 1), pad2(at.getDate())].join(
+    "-",
+  );
 }
 
 /** The last `days` local calendar days ending on the day containing `nowMs`. */
@@ -164,9 +162,7 @@ function groupByModel<Key extends string>(
   return groups;
 }
 
-function sumCounters(
-  byModel: ReadonlyMap<string, UsageCounters>,
-): UsageCounters {
+function sumCounters(byModel: ReadonlyMap<string, UsageCounters>): UsageCounters {
   let total = EMPTY_COUNTERS;
   for (const counters of byModel.values()) {
     total = addCounters(total, counters);
@@ -271,8 +267,7 @@ export function dailyRows(
     })
     .sort(
       (left, right) =>
-        compareStrings(right.day, left.day) ||
-        compareStrings(left.agent, right.agent),
+        compareStrings(right.day, left.day) || compareStrings(left.agent, right.agent),
     );
 }
 
@@ -329,9 +324,7 @@ export function dailyTotals(
  * view where an unpriced model is diagnosable: the string is shown verbatim
  * and its own `costUsd` is `null`, so a missing snapshot entry names itself.
  */
-export function breakdownRows(
-  buckets: readonly UsageBucket[],
-): readonly BreakdownRow[] {
+export function breakdownRows(buckets: readonly UsageBucket[]): readonly BreakdownRow[] {
   const groups = groupByModel<UsageAgent>(buckets, (bucket) => bucket.agent);
   const rows: BreakdownRow[] = [];
   for (const [agent, byModel] of groups) {
@@ -346,7 +339,6 @@ export function breakdownRows(
   }
   return rows.sort(
     (left, right) =>
-      compareStrings(left.agent, right.agent) ||
-      compareStrings(left.model, right.model),
+      compareStrings(left.agent, right.agent) || compareStrings(left.model, right.model),
   );
 }

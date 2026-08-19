@@ -2,9 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const setMock = vi.hoisted(() => vi.fn(async () => {}));
 const saveMock = vi.hoisted(() => vi.fn(async () => {}));
-const getMock = vi.hoisted(() =>
-  vi.fn(async (): Promise<unknown> => undefined),
-);
+const getMock = vi.hoisted(() => vi.fn(async (): Promise<unknown> => undefined));
 const loadMock = vi.hoisted(() =>
   vi.fn(async () => ({ get: getMock, set: setMock, save: saveMock })),
 );
@@ -24,8 +22,7 @@ import {
   revealDockTab,
   settingsLoadState,
 } from "./settings-store";
-import { createMemorySettingsSync } from "./settings-sync";
-import type { SettingsSyncClient } from "./settings-sync";
+import { createMemorySettingsSync, type SettingsSyncClient } from "./settings-sync";
 import { DEFAULT_SETTINGS } from "./settings-schema";
 import { persistError } from "../chrome/events";
 
@@ -88,8 +85,7 @@ describe("settings persistence", () => {
 
     expect(settingsLoadState.value).toEqual({
       status: "error",
-      message:
-        "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
+      message: "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
     });
     expect(settings.value.fontSize).toBe(before.fontSize + 1);
     expect(setMock).not.toHaveBeenCalled();

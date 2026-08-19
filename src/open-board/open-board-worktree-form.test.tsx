@@ -2,10 +2,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  OpenBoardWorktreeForm,
-  worktreeErrorCopy,
-} from "./open-board-worktree-form";
+import { OpenBoardWorktreeForm, worktreeErrorCopy } from "./open-board-worktree-form";
 import type { RecentWorkspace } from "../lib/workspace-recents";
 import type { WorktreeAddErrorCode } from "../host/worktree-host";
 
@@ -48,9 +45,7 @@ describe("OpenBoardWorktreeForm", () => {
     });
   });
 
-  function mount(
-    overrides: Partial<Parameters<typeof OpenBoardWorktreeForm>[0]> = {},
-  ) {
+  function mount(overrides: Partial<Parameters<typeof OpenBoardWorktreeForm>[0]> = {}) {
     const handlers = {
       onRepoChange: vi.fn(),
       onBrowseRepo: vi.fn(),
@@ -128,9 +123,7 @@ describe("OpenBoardWorktreeForm", () => {
     });
     const branchInput = host.querySelector<HTMLInputElement>("#wtf-branch");
     act(() => {
-      branchInput?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      branchInput?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
     expect(handlers.onSubmit).toHaveBeenCalled();
   });
@@ -139,9 +132,7 @@ describe("OpenBoardWorktreeForm", () => {
     const handlers = mount({ repoPath: "", branch: "", destPath: "" });
     const branchInput = host.querySelector<HTMLInputElement>("#wtf-branch");
     act(() => {
-      branchInput?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      branchInput?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
     expect(handlers.onSubmit).not.toHaveBeenCalled();
   });
@@ -150,9 +141,7 @@ describe("OpenBoardWorktreeForm", () => {
     const handlers = mount();
     const destInput = host.querySelector<HTMLInputElement>("#wtf-dest");
     act(() => {
-      destInput?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      destInput?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(handlers.onBack).toHaveBeenCalled();
   });

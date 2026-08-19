@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import {
-  NEWLINE_SEQUENCE,
-  installShiftEnterNewline,
-  isShiftEnter,
-} from "./shift-enter";
+import { NEWLINE_SEQUENCE, installShiftEnterNewline, isShiftEnter } from "./shift-enter";
 
 function keyEvent(init: KeyboardEventInit): KeyboardEvent {
   return new KeyboardEvent("keydown", {
@@ -27,18 +23,12 @@ describe("isShiftEnter", () => {
   // ⌘⇧Enter is toggle-zoom-pane in action-registry.ts; swallowing it here
   // would kill the shortcut.
   it("ignores Cmd+Shift+Enter", () => {
-    expect(isShiftEnter(keyEvent({ shiftKey: true, metaKey: true }))).toBe(
-      false,
-    );
+    expect(isShiftEnter(keyEvent({ shiftKey: true, metaKey: true }))).toBe(false);
   });
 
   it("ignores Ctrl+Shift+Enter and Alt+Shift+Enter", () => {
-    expect(isShiftEnter(keyEvent({ shiftKey: true, ctrlKey: true }))).toBe(
-      false,
-    );
-    expect(isShiftEnter(keyEvent({ shiftKey: true, altKey: true }))).toBe(
-      false,
-    );
+    expect(isShiftEnter(keyEvent({ shiftKey: true, ctrlKey: true }))).toBe(false);
+    expect(isShiftEnter(keyEvent({ shiftKey: true, altKey: true }))).toBe(false);
   });
 
   it("ignores a non-Enter key held with Shift", () => {
@@ -47,9 +37,7 @@ describe("isShiftEnter", () => {
 
   // A composing IME owns Enter to commit its candidate.
   it("ignores Enter while an IME is composing", () => {
-    expect(isShiftEnter(keyEvent({ shiftKey: true, isComposing: true }))).toBe(
-      false,
-    );
+    expect(isShiftEnter(keyEvent({ shiftKey: true, isComposing: true }))).toBe(false);
   });
 });
 

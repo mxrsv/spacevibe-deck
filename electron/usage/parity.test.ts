@@ -1,5 +1,12 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync, utimesSync } from "node:fs";
-import { readdirSync, statSync } from "node:fs";
+import {
+  cpSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,10 +29,7 @@ import { emptyCache } from "./model";
 const T0 = 1_786_320_000_000; // 2026-08-10T00:00:00Z — every fixture's mtime
 const NOW = 1_786_323_600_000; // T0 + 1h — the pinned scan clock
 
-const FIXTURES = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "fixtures",
-);
+const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
 const temps: string[] = [];
 afterEach(() => {

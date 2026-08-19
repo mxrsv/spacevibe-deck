@@ -1,16 +1,9 @@
 import { DotsThree } from "@phosphor-icons/react";
 import { Fragment, type ComponentChildren, type RefObject } from "preact";
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
-import {
-  ActionTooltip,
-  useTooltipVisibility,
-} from "../controls/action-tooltip";
+import { ActionTooltip, useTooltipVisibility } from "../controls/action-tooltip";
 import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
-import {
-  isUnavailable,
-  unavailableReason,
-  type ToolbarItem,
-} from "./toolbar-item";
+import { isUnavailable, unavailableReason, type ToolbarItem } from "./toolbar-item";
 import { TOOLBAR_GAP, fitToolbarItems } from "./toolbar-overflow";
 import { ToolbarOverflowMenu, type MenuAnchor } from "./toolbar-overflow-menu";
 
@@ -74,9 +67,7 @@ function ToolbarControl({ item, controlRef }: ToolbarControlProps) {
       <button
         ref={ref}
         type="button"
-        class={`iconbtn ${item.controlClass ?? ""} ${
-          reason !== null ? "is-unavailable" : ""
-        }`}
+        class={`iconbtn ${item.controlClass ?? ""} ${reason !== null ? "is-unavailable" : ""}`}
         aria-label={item.label}
         aria-disabled={reason !== null}
         aria-describedby={showTooltip ? tooltipId : undefined}
@@ -201,10 +192,7 @@ export function FeatureToolbar({
 
   // Pinned first, then whatever the width pushed out: the menu reads as
   // "the things that live here" followed by "the things that had to move".
-  const menuItems: readonly ToolbarItem[] = [
-    ...(pinnedMenu ?? []),
-    ...fit.overflow,
-  ];
+  const menuItems: readonly ToolbarItem[] = [...(pinnedMenu ?? []), ...fit.overflow];
 
   const moreItem: ToolbarItem = {
     id: "toolbar-more",
@@ -235,9 +223,7 @@ export function FeatureToolbar({
           {updateAction}
         </span>
       )}
-      {menuItems.length > 0 && (
-        <ToolbarControl item={moreItem} controlRef={moreRef} />
-      )}
+      {menuItems.length > 0 && <ToolbarControl item={moreItem} controlRef={moreRef} />}
     </>
   );
 
@@ -254,9 +240,7 @@ export function FeatureToolbar({
         // before it, which is why this group renders in two halves.
         const trailing = index === lastGroup;
         const lead = trailing ? view.items.slice(0, -1) : view.items;
-        const anchorItem = trailing
-          ? view.items[view.items.length - 1]
-          : undefined;
+        const anchorItem = trailing ? view.items[view.items.length - 1] : undefined;
         return (
           <Fragment key={view.group}>
             {index > 0 && <span class="tabbar__sep" aria-hidden="true" />}
@@ -264,9 +248,7 @@ export function FeatureToolbar({
               <ToolbarControl key={item.id} item={item} />
             ))}
             {trailing && trailingExtras}
-            {anchorItem !== undefined && (
-              <ToolbarControl key={anchorItem.id} item={anchorItem} />
-            )}
+            {anchorItem !== undefined && <ToolbarControl key={anchorItem.id} item={anchorItem} />}
           </Fragment>
         );
       })}

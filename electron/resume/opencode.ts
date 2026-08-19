@@ -21,12 +21,7 @@ import path from "node:path";
 import * as db from "./opencode-db";
 import { headBytes, type CandidateSession } from "./head";
 
-const OPENCODE_STORAGE_DIR = path.join(
-  ".local",
-  "share",
-  "opencode",
-  "storage",
-);
+const OPENCODE_STORAGE_DIR = path.join(".local", "share", "opencode", "storage");
 
 const OPENCODE_SESSION_DIR = path.join(OPENCODE_STORAGE_DIR, "session");
 
@@ -81,9 +76,7 @@ function isRegularFile(candidate: string): boolean {
 
 function isDirectory(candidate: string): boolean {
   try {
-    return (
-      lstatSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true
-    );
+    return lstatSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true;
   } catch {
     return false;
   }
@@ -133,9 +126,7 @@ function dated(filePaths: readonly string[]): DatedFile[] {
  *  unreadable directory is an empty list, never a throw. */
 function newestFirstIn(dir: string): DatedFile[] {
   // Sorting the copy `dated` just built, not a shared array (C1).
-  return dated(jsonFiles(dir)).sort(
-    (left, right) => right.mtimeMs - left.mtimeMs,
-  );
+  return dated(jsonFiles(dir)).sort((left, right) => right.mtimeMs - left.mtimeMs);
 }
 
 function datedSessions(root: string): DatedFile[] {
@@ -148,10 +139,7 @@ function datedSessions(root: string): DatedFile[] {
 
 /** One bounded head window parsed as a single JSON object, or null when the
  *  file is missing, oversized, truncated mid-value or not an object. */
-function readJsonObject(
-  filePath: string,
-  cap: number,
-): Record<string, unknown> | null {
+function readJsonObject(filePath: string, cap: number): Record<string, unknown> | null {
   const head = headBytes(filePath, cap);
   if (head === null) {
     return null;
@@ -178,8 +166,7 @@ function readCandidate(entry: DatedFile): CandidateSession | null {
     return null;
   }
   const directory = node.directory;
-  const cwd =
-    typeof directory === "string" && directory !== "" ? directory : null;
+  const cwd = typeof directory === "string" && directory !== "" ? directory : null;
   const time = node.time;
   const updated =
     time !== null && typeof time === "object"
@@ -192,9 +179,7 @@ function readCandidate(entry: DatedFile): CandidateSession | null {
 /** The pre-1.18 json tree's sessions. */
 function legacyCandidates(home: string): CandidateSession[] {
   const root = path.join(home, OPENCODE_SESSION_DIR);
-  const newestFirst = datedSessions(root).sort(
-    (left, right) => right.mtimeMs - left.mtimeMs,
-  );
+  const newestFirst = datedSessions(root).sort((left, right) => right.mtimeMs - left.mtimeMs);
   const out: CandidateSession[] = [];
   for (const entry of newestFirst.slice(0, MAX_FILES)) {
     const candidate = readCandidate(entry);
@@ -312,12 +297,6 @@ function legacySessionTailText(home: string, sessionId: string): string | null {
  * `resolve.ts` — the sentence a pane wears has to come from the session that
  * pane is running.
  */
-export function sessionTailText(
-  home: string,
-  sessionId: string,
-): string | null {
-  return (
-    db.sessionTailText(home, sessionId) ??
-    legacySessionTailText(home, sessionId)
-  );
+export function sessionTailText(home: string, sessionId: string): string | null {
+  return db.sessionTailText(home, sessionId) ?? legacySessionTailText(home, sessionId);
 }

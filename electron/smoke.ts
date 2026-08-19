@@ -1,3 +1,4 @@
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 /**
  * Headed smoke test for the Electron host.
  *
@@ -27,10 +28,7 @@ function record(name: string, ok: boolean, detail = ""): void {
 
 /** Run an expression in the renderer and return its resolved value. */
 async function inPage<T>(window: BrowserWindow, expression: string): Promise<T> {
-  return (await window.webContents.executeJavaScript(
-    expression,
-    true,
-  )) as T;
+  return (await window.webContents.executeJavaScript(expression, true)) as T;
 }
 
 /**
@@ -75,10 +73,7 @@ async function main(): Promise<void> {
   }
   record("a window exists", true, `${window.getBounds().width}x${window.getBounds().height}`);
 
-  const bridged = await inPage<boolean>(
-    window,
-    `typeof window.__deckHost?.invoke === "function"`,
-  );
+  const bridged = await inPage<boolean>(window, `typeof window.__deckHost?.invoke === "function"`);
   record("preload bridge is exposed", bridged);
 
   const noNode = await inPage<boolean>(
@@ -129,11 +124,7 @@ async function main(): Promise<void> {
     window,
     `window.__deckHost.invoke("detect_agents", { names: [] }).then(a => a.map(x => x.name))`,
   );
-  record(
-    "agent detection works over IPC",
-    agents.length > 0,
-    agents.join(", ") || "none found",
-  );
+  record("agent detection works over IPC", agents.length > 0, agents.join(", ") || "none found");
 
   // A real PTY, end to end: spawn, echo a marker, read it back.
   const marker = "DECK_ELECTRON_SMOKE_OK";
@@ -154,11 +145,7 @@ async function main(): Promise<void> {
        setTimeout(() => resolve(seen), 3000);
      })`,
   );
-  record(
-    "pty output reaches the renderer",
-    output.includes(marker),
-    `${output.length} bytes`,
-  );
+  record("pty output reaches the renderer", output.includes(marker), `${output.length} bytes`);
 
   const info = await inPage<Array<{ kind: string; process: string | null }>>(
     window,
@@ -223,15 +210,8 @@ async function main(): Promise<void> {
     `${scale}x (getZoomFactor would have said 1)`,
   );
 
-  const dropPath = await inPage<string>(
-    window,
-    `typeof window.__deckHost.getPathForFile`,
-  );
-  record(
-    "the preload exposes getPathForFile for drops",
-    dropPath === "function",
-    dropPath,
-  );
+  const dropPath = await inPage<string>(window, `typeof window.__deckHost.getPathForFile`);
+  record("the preload exposes getPathForFile for drops", dropPath === "function", dropPath);
 
   const dragAccepted = await inPage<boolean>(
     window,
@@ -305,17 +285,12 @@ async function main(): Promise<void> {
        return getComputedStyle(el).webkitAppRegion || "none";
      })()`,
   );
-  record(
-    "the title bar is draggable",
-    draggable === "drag",
-    `-webkit-app-region: ${draggable}`,
-  );
+  record("the title bar is draggable", draggable === "drag", `-webkit-app-region: ${draggable}`);
 
   await checkBrowserPanel(window);
 
   finish();
 }
-
 
 /**
  * A local page to point the browser panel at.
@@ -360,12 +335,10 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
   // Record every outbound request the panel's session makes, so "telemetry is
   // off" is observed rather than assumed from a config line.
   const requested: string[] = [];
-  session
-    .fromPartition("persist:deck-browser")
-    .webRequest.onBeforeRequest((details, callback) => {
-      requested.push(details.url);
-      callback({});
-    });
+  session.fromPartition("persist:deck-browser").webRequest.onBeforeRequest((details, callback) => {
+    requested.push(details.url);
+    callback({});
+  });
 
   await inPage(
     window,
@@ -378,8 +351,7 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 2500));
 
   const view = window.contentView.children.at(-1) as
-    | { webContents?: Electron.WebContents }
-    | undefined;
+    { webContents?: Electron.WebContents } | undefined;
   const contents = view?.webContents;
   record(
     "the panel attaches a web view to the window",
@@ -522,9 +494,7 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
 
 function finish(): void {
   const failed = results.filter((check) => !check.ok);
-  console.log(
-    `\nSMOKE RESULT: ${results.length - failed.length}/${results.length} passed`,
-  );
+  console.log(`\nSMOKE RESULT: ${results.length - failed.length}/${results.length} passed`);
   app.exit(failed.length === 0 ? 0 : 1);
 }
 

@@ -31,8 +31,7 @@ export const MAX_CANDIDATES_PER_LINE = 24;
 
 // http/https up to the first whitespace or quote, minus trailing punctuation.
 // Copied from @xterm/addon-web-links (strictUrlRegex) — battle-tested there.
-const URL_RE =
-  /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]`()<>]/g;
+const URL_RE = /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]`()<>]/g;
 
 /**
  * Whether a URI may be handed to the default browser.
@@ -131,10 +130,7 @@ function matchUrls(source: string): LinkCandidate[] {
   return out;
 }
 
-function followsSpacedAbsoluteWindowsPath(
-  source: string,
-  start: number,
-): boolean {
+function followsSpacedAbsoluteWindowsPath(source: string, start: number): boolean {
   if (start === 0 || !/\s/u.test(source[start - 1] ?? "")) {
     return false;
   }
@@ -147,11 +143,7 @@ function followsSpacedAbsoluteWindowsPath(
   return isAbsoluteWindows && !looksComplete;
 }
 
-function startsSpacedAbsoluteWindowsPath(
-  source: string,
-  start: number,
-  end: number,
-): boolean {
+function startsSpacedAbsoluteWindowsPath(source: string, start: number, end: number): boolean {
   const candidate = source.slice(start, end);
   if (!/^(?:[A-Za-z]:[\\/]|\\\\)/u.test(candidate)) {
     return false;
@@ -181,10 +173,7 @@ function matchPathPattern(source: string, pattern: RegExp): LinkCandidate[] {
       continue;
     }
     const matched = m[0].slice(boundary.length);
-    const text = matched.slice(
-      0,
-      matched.length - (rawPath.length - path.length),
-    );
+    const text = matched.slice(0, matched.length - (rawPath.length - path.length));
     const start = m.index + boundary.length;
     const end = start + text.length;
     if (
@@ -209,8 +198,7 @@ function matchPathPattern(source: string, pattern: RegExp): LinkCandidate[] {
 function matchPaths(source: string): LinkCandidate[] {
   const windows = matchPathPattern(source, WINDOWS_PATH_RE);
   const portable = matchPathPattern(source, PATH_RE).filter(
-    (candidate) =>
-      !windows.some((windowsPath) => overlaps(candidate, windowsPath)),
+    (candidate) => !windows.some((windowsPath) => overlaps(candidate, windowsPath)),
   );
   return [...windows, ...portable].sort((a, b) => a.start - b.start);
 }
@@ -228,8 +216,6 @@ export function extractLinkCandidates(
   max: number = MAX_CANDIDATES_PER_LINE,
 ): LinkCandidate[] {
   const urls = matchUrls(source);
-  const paths = matchPaths(source).filter(
-    (path) => !urls.some((url) => overlaps(path, url)),
-  );
+  const paths = matchPaths(source).filter((path) => !urls.some((url) => overlaps(path, url)));
   return [...urls, ...paths].sort((a, b) => a.start - b.start).slice(0, max);
 }

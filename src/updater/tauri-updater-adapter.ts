@@ -4,8 +4,7 @@ import type { PendingUpdate } from "./update-controller";
 function isTauriHost(): boolean {
   return (
     typeof globalThis !== "undefined" &&
-    (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !==
-      undefined
+    (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== undefined
   );
 }
 

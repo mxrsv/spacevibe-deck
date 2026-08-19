@@ -33,6 +33,12 @@ jobs:
       - name: Check menu_registry.rs is up to date
         run: npm run generate:menu:check
 
+      # `--warn max-lines` keeps the 101 pre-existing over-length files as a
+      # visible backlog (the rule is forward-only) while every other lint
+      # error still fails the build.
+      - name: Lint
+        run: npm run lint
+
       - name: Test
         run: npm test
 

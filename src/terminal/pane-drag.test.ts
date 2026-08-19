@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PaneRect } from "../lib/pane-geometry";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { dragModeForEvent, dropTargetAt, edgeFor } from "./pane-drag";
 
 // Two panes side by side: |  1  |  2  |

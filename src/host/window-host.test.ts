@@ -6,11 +6,7 @@
  * them would have failed one — the renderer suite mocks the host.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  getCurrentWebview,
-  getCurrentWindow,
-  PhysicalPosition,
-} from "./window-host";
+import { getCurrentWebview, getCurrentWindow, PhysicalPosition } from "./window-host";
 
 beforeEach(() => {
   vi.unstubAllGlobals();
@@ -46,9 +42,7 @@ describe("onFocusChanged", () => {
     // Drives whether native notifications fire: without it, an agent finishing
     // in an unfocused window notifies nobody.
     const seen: boolean[] = [];
-    const unlisten = await getCurrentWindow().onFocusChanged(({ payload }) =>
-      seen.push(payload),
-    );
+    const unlisten = await getCurrentWindow().onFocusChanged(({ payload }) => seen.push(payload));
 
     globalThis.dispatchEvent(new Event("focus"));
     globalThis.dispatchEvent(new Event("blur"));
@@ -81,17 +75,15 @@ describe("onDragDropEvent", () => {
     });
     vi.stubGlobal("devicePixelRatio", 1);
     const drops: Array<{ paths: string[]; x: number; y: number }> = [];
-    const unlisten = await getCurrentWebview().onDragDropEvent(
-      ({ payload }) => {
-        if (payload.type === "drop") {
-          drops.push({
-            paths: [...payload.paths],
-            x: payload.position.x,
-            y: payload.position.y,
-          });
-        }
-      },
-    );
+    const unlisten = await getCurrentWebview().onDragDropEvent(({ payload }) => {
+      if (payload.type === "drop") {
+        drops.push({
+          paths: [...payload.paths],
+          x: payload.position.x,
+          y: payload.position.y,
+        });
+      }
+    });
 
     globalThis.dispatchEvent(
       dragEvent("drop", {
@@ -111,17 +103,13 @@ describe("onDragDropEvent", () => {
     vi.stubGlobal("__deckHost", { getPathForFile: () => "/x" });
     vi.stubGlobal("devicePixelRatio", 2);
     let position = { x: 0, y: 0 };
-    const unlisten = await getCurrentWebview().onDragDropEvent(
-      ({ payload }) => {
-        if (payload.type === "over") {
-          position = { x: payload.position.x, y: payload.position.y };
-        }
-      },
-    );
+    const unlisten = await getCurrentWebview().onDragDropEvent(({ payload }) => {
+      if (payload.type === "over") {
+        position = { x: payload.position.x, y: payload.position.y };
+      }
+    });
 
-    globalThis.dispatchEvent(
-      dragEvent("dragover", { clientX: 50, clientY: 25 }),
-    );
+    globalThis.dispatchEvent(dragEvent("dragover", { clientX: 50, clientY: 25 }));
 
     // Physical out, so `toLogical(2)` returns the original CSS coordinates.
     expect(position).toEqual({ x: 100, y: 50 });
@@ -144,13 +132,11 @@ describe("onDragDropEvent", () => {
   it("reports leave only when the pointer actually left the window", async () => {
     vi.stubGlobal("__deckHost", { getPathForFile: () => "/x" });
     let leaves = 0;
-    const unlisten = await getCurrentWebview().onDragDropEvent(
-      ({ payload }) => {
-        if (payload.type === "leave") {
-          leaves += 1;
-        }
-      },
-    );
+    const unlisten = await getCurrentWebview().onDragDropEvent(({ payload }) => {
+      if (payload.type === "leave") {
+        leaves += 1;
+      }
+    });
 
     // Crossing a child element fires dragleave with a relatedTarget; treating
     // that as a real leave makes the drop target flicker off mid-drag.
@@ -167,13 +153,11 @@ describe("onDragDropEvent", () => {
   it("drops files with no disk backing rather than reporting empty paths", async () => {
     vi.stubGlobal("__deckHost", { getPathForFile: () => "" });
     const drops: string[][] = [];
-    const unlisten = await getCurrentWebview().onDragDropEvent(
-      ({ payload }) => {
-        if (payload.type === "drop") {
-          drops.push([...payload.paths]);
-        }
-      },
-    );
+    const unlisten = await getCurrentWebview().onDragDropEvent(({ payload }) => {
+      if (payload.type === "drop") {
+        drops.push([...payload.paths]);
+      }
+    });
 
     globalThis.dispatchEvent(
       dragEvent("drop", {

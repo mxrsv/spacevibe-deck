@@ -67,10 +67,7 @@ export function isUpdateAttempt(value: unknown): value is UpdateAttempt {
  * A malformed record is treated as no attempt: the breadcrumb exists to warn
  * about a failure, and warning on garbage would train users to ignore it.
  */
-export function resolveAttemptOutcome(
-  attempt: unknown,
-  currentVersion: string,
-): AttemptOutcome {
+export function resolveAttemptOutcome(attempt: unknown, currentVersion: string): AttemptOutcome {
   if (!isUpdateAttempt(attempt)) {
     return { kind: "none" };
   }

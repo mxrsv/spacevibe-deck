@@ -76,9 +76,7 @@ describe("AgentQuickPicker", () => {
   it("renders one chip per agentOptions() entry plus Shell only, in digit-key order", () => {
     mount();
 
-    const chips = Array.from(
-      host.querySelectorAll<HTMLButtonElement>(".achip"),
-    );
+    const chips = Array.from(host.querySelectorAll<HTMLButtonElement>(".achip"));
     expect(chips.map((chip) => chip.textContent)).toEqual([
       "Claude Code",
       "Codex",
@@ -122,35 +120,25 @@ describe("AgentQuickPicker", () => {
 
   it("digit keys 1-9 select the matching chip, and 0 selects Shell only", () => {
     const { onSelect } = mount();
-    const container = host.querySelector(
-      ".agent-quick-picker",
-    ) as HTMLDivElement;
+    const container = host.querySelector(".agent-quick-picker") as HTMLDivElement;
 
     act(() => {
-      container.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "2", bubbles: true }),
-      );
+      container.dispatchEvent(new KeyboardEvent("keydown", { key: "2", bubbles: true }));
     });
     expect(onSelect).toHaveBeenLastCalledWith("codex", null);
 
     act(() => {
-      container.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "0", bubbles: true }),
-      );
+      container.dispatchEvent(new KeyboardEvent("keydown", { key: "0", bubbles: true }));
     });
     expect(onSelect).toHaveBeenLastCalledWith(null, null);
   });
 
   it("an out-of-range digit key is a no-op", () => {
     const { onSelect } = mount();
-    const container = host.querySelector(
-      ".agent-quick-picker",
-    ) as HTMLDivElement;
+    const container = host.querySelector(".agent-quick-picker") as HTMLDivElement;
 
     act(() => {
-      container.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "9", bubbles: true }),
-      );
+      container.dispatchEvent(new KeyboardEvent("keydown", { key: "9", bubbles: true }));
     });
 
     expect(onSelect).not.toHaveBeenCalled();
@@ -158,14 +146,10 @@ describe("AgentQuickPicker", () => {
 
   it("Escape cancels without selecting", () => {
     const { onSelect, onCancel } = mount();
-    const container = host.querySelector(
-      ".agent-quick-picker",
-    ) as HTMLDivElement;
+    const container = host.querySelector(".agent-quick-picker") as HTMLDivElement;
 
     act(() => {
-      container.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      container.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
 
     expect(onCancel).toHaveBeenCalledTimes(1);
@@ -212,9 +196,7 @@ describe("AgentQuickPicker", () => {
   it("degrades to Shell only when nothing was detected and nothing is declared", () => {
     mount({ detected: [], customAgents: [] });
 
-    const chips = Array.from(
-      host.querySelectorAll<HTMLButtonElement>(".achip"),
-    );
+    const chips = Array.from(host.querySelectorAll<HTMLButtonElement>(".achip"));
     expect(chips).toHaveLength(1);
     expect(chips[0].textContent).toBe("$Shell only");
   });
@@ -236,10 +218,7 @@ describe("AgentQuickPicker destination", () => {
     mount({ destinations: DESTINATIONS });
 
     expect(
-      Array.from(selectEl()!.options).map((option) => [
-        option.value,
-        option.textContent,
-      ]),
+      Array.from(selectEl()!.options).map((option) => [option.value, option.textContent]),
     ).toEqual([
       ["/dev/deck", "deck · main"],
       ["/dev/deck-modal", "deck-modal · feat/modal-shell"],
@@ -253,9 +232,7 @@ describe("AgentQuickPicker destination", () => {
     });
 
     expect(selectEl()!.value).toBe("/dev/deck-modal");
-    expect(host.querySelector(".cfg-btn__text")?.textContent).toBe(
-      "deck-modal · feat/modal-shell",
-    );
+    expect(host.querySelector(".cfg-btn__text")?.textContent).toBe("deck-modal · feat/modal-shell");
 
     host.querySelectorAll<HTMLButtonElement>(".achip")[0].click();
 
@@ -285,9 +262,7 @@ describe("AgentQuickPicker destination", () => {
       select.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
-    expect(host.querySelector(".cfg-btn__text")?.textContent).toBe(
-      "deck-modal · feat/modal-shell",
-    );
+    expect(host.querySelector(".cfg-btn__text")?.textContent).toBe("deck-modal · feat/modal-shell");
     host.querySelectorAll<HTMLButtonElement>(".achip")[1].click();
     expect(onSelect).toHaveBeenCalledWith("codex", "/dev/deck-modal");
   });
@@ -337,9 +312,7 @@ describe("AgentQuickPicker destination", () => {
     const { onSelect } = mount({ destinations: DESTINATIONS });
 
     act(() => {
-      selectEl()!.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "2", bubbles: true }),
-      );
+      selectEl()!.dispatchEvent(new KeyboardEvent("keydown", { key: "2", bubbles: true }));
     });
 
     expect(onSelect).not.toHaveBeenCalled();

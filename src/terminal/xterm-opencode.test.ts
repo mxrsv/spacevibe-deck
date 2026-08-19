@@ -20,17 +20,12 @@ describe("OpenCode terminal compatibility", () => {
     terminal.onData((data) => replies.push(data));
 
     await new Promise<void>((resolve) => {
-      terminal.write(
-        `${OPENCODE_STARTUP}\x1b[?2026h\x1b[HOpenCode\x1b[?2026l`,
-        resolve,
-      );
+      terminal.write(`${OPENCODE_STARTUP}\x1b[?2026h\x1b[HOpenCode\x1b[?2026l`, resolve);
     });
 
     expect(replies).toContain("\x1b[?1016;2$y");
     expect(replies).toContain("\x1b[?2026;2$y");
-    expect(terminal.buffer.active.getLine(0)?.translateToString(true)).toBe(
-      "OpenCode",
-    );
+    expect(terminal.buffer.active.getLine(0)?.translateToString(true)).toBe("OpenCode");
     terminal.dispose();
   });
 });

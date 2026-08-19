@@ -16,10 +16,7 @@
 import { app, ipcMain, type IpcMainInvokeEvent } from "electron";
 import { autoUpdater } from "electron-updater";
 import { CHANNELS } from "./channels";
-import {
-  createUpdateLifecycle,
-  type AutoUpdaterLike,
-} from "../updater/updater";
+import { createUpdateLifecycle, type AutoUpdaterLike } from "../updater/updater";
 import { UpdateFlight } from "../updater/update-flight";
 
 export interface UpdaterDependencies {
@@ -55,9 +52,7 @@ export interface UpdaterHandle {
 
 export function registerUpdater(deps: UpdaterDependencies): UpdaterHandle {
   const flight = new UpdateFlight();
-  ipcMain.handle(CHANNELS.beginUpdateCheck, (event) =>
-    flight.tryBegin(deps.labelOf(event)),
-  );
+  ipcMain.handle(CHANNELS.beginUpdateCheck, (event) => flight.tryBegin(deps.labelOf(event)));
   ipcMain.handle(CHANNELS.endUpdateCheck, (event) => {
     const label = deps.labelOf(event);
     if (!flight.finish(label)) {

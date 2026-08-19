@@ -7,17 +7,13 @@ import {
   folderName,
   partitionRecents,
   resolveAgentChoice,
+  type AgentChoice,
+  type RecentWorkspace,
 } from "../lib/workspace-recents";
-import type { AgentChoice, RecentWorkspace } from "../lib/workspace-recents";
 import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
 import type { DetectedAgent } from "../terminal/pty-client";
 import { ensureAgentsDetected } from "../terminal/agent-detection-store";
-import {
-  agentOptions,
-  BUILTIN_AGENTS,
-  probeNames,
-  type CustomAgent,
-} from "../lib/agent-catalog";
+import { agentOptions, BUILTIN_AGENTS, probeNames, type CustomAgent } from "../lib/agent-catalog";
 import { settings } from "../settings/settings-store";
 import { boardPresets, presetsData } from "../presets/presets-store";
 import { removeWorkspaceRecents, workspacesData } from "./workspaces-store";
@@ -32,11 +28,7 @@ export interface OpenBoardProps {
   canCancel: boolean;
   onCancel(): void;
   /** Resolves to false on failure (e.g. PTY spawn error) — board stays up. */
-  onOpen(
-    workspace: string,
-    preset: Preset,
-    agent: AgentChoice,
-  ): Promise<boolean>;
+  onOpen(workspace: string, preset: Preset, agent: AgentChoice): Promise<boolean>;
   /** Passed straight through to `OpenBoardHome` — see its own doc comment
    *  (spec §3.3 v1 limitation, required-not-optional rationale). */
   readonly recentSessions: readonly SessionEntry[];
@@ -112,9 +104,7 @@ export function OpenBoard({
    * not arrived. Resolves to the set of missing paths, or `null` when the
    * probe itself failed and liveness is simply unknown.
    */
-  const livenessProbe = useRef<Promise<ReadonlySet<string> | null> | null>(
-    null,
-  );
+  const livenessProbe = useRef<Promise<ReadonlySet<string> | null> | null>(null);
   const customAgents = settings.value.customAgents;
 
   useEffect(() => {
@@ -130,6 +120,7 @@ export function OpenBoard({
     probe.current = ensureAgentsDetected(probeNames(customAgents));
   }, [customAgents]);
 
+  /* oxlint-disable react-hooks/exhaustive-deps -- re-runs on recents only; the missing-signal read is a snapshot */
   useEffect(() => {
     const paths = recents.map((recent) => recent.path);
     if (paths.length === 0) {
@@ -167,6 +158,7 @@ export function OpenBoard({
       cancelled = true;
     };
   }, [recents]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   const groups = partitionRecents(recents, missing.value);
 
@@ -219,15 +211,11 @@ export function OpenBoard({
     // agent, `null` is a remembered Shell-only open, and `undefined` (never
     // opened, or opened before the field existed) means first detected.
     const detected = (await probe.current) ?? [];
-    const agent = resolveAgentChoice(
-      entry?.lastAgent,
-      agentOptions(detected, customAgents),
-    );
+    const agent = resolveAgentChoice(entry?.lastAgent, agentOptions(detected, customAgents));
     const ok = await onOpen(path, preset, agent);
     if (!ok) {
       opening.value = false;
-      notice.value =
-        "Couldn't start a shell here — check the folder and try again";
+      notice.value = "Couldn't start a shell here — check the folder and try again";
     }
   }
 
@@ -307,12 +295,7 @@ export function OpenBoard({
   }
 
   return (
-    <div
-      class="open-board"
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      ref={containerRef}
-    >
+    <div class="open-board" tabIndex={0} onKeyDown={handleKeyDown} ref={containerRef}>
       {view.value === "worktree" ? (
         <OpenBoardWorktreeForm
           recents={recents}

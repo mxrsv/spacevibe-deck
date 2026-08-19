@@ -68,9 +68,7 @@ describe("UpdateAction", () => {
       "Install update 0.10.0 and relaunch Deck (current 0.9.0)",
     );
     expect(button?.title).toContain("Plain release notes");
-    expect(button?.querySelector(".update-action__compact")?.textContent).toBe(
-      "Relaunch",
-    );
+    expect(button?.querySelector(".update-action__compact")?.textContent).toBe("Relaunch");
   });
 
   it("announces state changes through a polite live region", () => {

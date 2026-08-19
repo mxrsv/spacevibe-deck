@@ -1,3 +1,4 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { describe, expect, it } from "vitest";
 import {
   NOT_REBINDABLE,
@@ -62,9 +63,7 @@ describe("shortcutGroups", () => {
     // Right after `select-last-tab`, in the same group — they are one family
     // to the user even though only one of them is a registry row.
     const tabs = shortcutGroups().find((group) => group.id === "tabs");
-    const last = tabs?.rows.findIndex(
-      (row) => row.action === "select-last-tab",
-    );
+    const last = tabs?.rows.findIndex((row) => row.action === "select-last-tab");
     expect(last).toBeGreaterThanOrEqual(0);
     expect(tabs?.rows[(last ?? 0) + 1]?.action).toBe("select-tab-1");
   });
@@ -94,9 +93,7 @@ describe("shortcutGroups", () => {
 
   it("drops empty groups but keeps declared order", () => {
     const shown = shortcutGroups().map((group) => group.id);
-    const declared = SHORTCUT_GROUPS.map((group) => group.id).filter((id) =>
-      shown.includes(id),
-    );
+    const declared = SHORTCUT_GROUPS.map((group) => group.id).filter((id) => shown.includes(id));
     expect(shown).toEqual(declared);
   });
 });

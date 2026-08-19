@@ -3,12 +3,7 @@ import { render } from "preact";
 import { readFileSync } from "node:fs";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  boardOpen,
-  editorRequest,
-  saveDialogOpen,
-  settingsOpen,
-} from "../chrome/events";
+import { boardOpen, editorRequest, saveDialogOpen, settingsOpen } from "../chrome/events";
 import {
   bootOpensTheBoard,
   browserPanelObscured,
@@ -108,22 +103,14 @@ describe("DesktopChrome platform structure", () => {
       expect(root.querySelector(".deck-frame") !== null).toBe(hasFrame);
       // The traffic-light inset is macOS-only: elsewhere the OS owns that
       // corner, or nothing does, and reserving space would leave a gap.
-      expect(root.querySelector(".deck-frame__lights") !== null).toBe(
-        hasLightsInset,
-      );
+      expect(root.querySelector(".deck-frame__lights") !== null).toBe(hasLightsInset);
       // The retired elements must not come back — two chrome rows is the shape
       // DL-18 exists to remove.
       expect(root.querySelector(".titlebar")).toBe(null);
       expect(root.querySelector(".deck-toolbar")).toBe(null);
-      expect(root.querySelector('[data-testid="sidebar"]') !== null).toBe(
-        sidebar,
-      );
-      expect(root.querySelector('[data-testid="tabs"]') !== null).toBe(
-        !sidebar,
-      );
-      expect(root.querySelector('[data-testid="toolbar"]') !== null).toBe(
-        sidebar,
-      );
+      expect(root.querySelector('[data-testid="sidebar"]') !== null).toBe(sidebar);
+      expect(root.querySelector('[data-testid="tabs"]') !== null).toBe(!sidebar);
+      expect(root.querySelector('[data-testid="toolbar"]') !== null).toBe(sidebar);
     },
   );
 
@@ -172,12 +159,8 @@ describe("settings load recovery layer", () => {
   it("stacks the settings load alert above the Open board", () => {
     const modalCss = readFileSync("src/styles/10-modals.css", "utf8");
     const boardCss = readFileSync("src/styles/09-open-board.css", "utf8");
-    const alertZ = Number(
-      modalCss.match(/\.settings-load-alert\s*\{[^}]*z-index:\s*(\d+)/s)?.[1],
-    );
-    const boardZ = Number(
-      boardCss.match(/\.open-board\s*\{[^}]*z-index:\s*(\d+)/s)?.[1],
-    );
+    const alertZ = Number(modalCss.match(/\.settings-load-alert\s*\{[^}]*z-index:\s*(\d+)/s)?.[1]);
+    const boardZ = Number(boardCss.match(/\.open-board\s*\{[^}]*z-index:\s*(\d+)/s)?.[1]);
 
     expect(alertZ).toBeGreaterThan(boardZ);
   });
@@ -197,9 +180,7 @@ describe("full-window surfaces leave the stage strip's row alone", () => {
   ])("%s starts %s below the strip in sidebar mode", (file, selector) => {
     const css = readFileSync(file, "utf8");
     const escaped = selector.replace(".", "\\.");
-    const rule = css.match(
-      new RegExp(`\\.stage--strip\\s+${escaped}[^{]*\\{[^}]*\\}`, "s"),
-    )?.[0];
+    const rule = css.match(new RegExp(`\\.stage--strip\\s+${escaped}[^{]*\\{[^}]*\\}`, "s"))?.[0];
 
     expect(rule).toBeDefined();
     expect(rule).toContain("top: var(--frame-h)");
@@ -213,18 +194,14 @@ describe("full-window surfaces leave the stage strip's row alone", () => {
 // underneath it, and hiding the chips there would be a second, silent change.
 describe("stripShowsTabs", () => {
   it("keeps the chips while only the terminal grid is on the stage", () => {
-    expect(stripShowsTabs({ boardOpen: false, settingsOpen: false })).toBe(
-      true,
-    );
+    expect(stripShowsTabs({ boardOpen: false, settingsOpen: false })).toBe(true);
   });
 
   it.each([
     ["the Open board", true, false],
     ["the Settings screen", false, true],
   ])("drops the chips under %s", (_label, board, settings) => {
-    expect(stripShowsTabs({ boardOpen: board, settingsOpen: settings })).toBe(
-      false,
-    );
+    expect(stripShowsTabs({ boardOpen: board, settingsOpen: settings })).toBe(false);
   });
 });
 
@@ -345,9 +322,7 @@ describe("livePresetOpensATab — ⌘⇧N over the Open board saves the preset w
   // ⌘⇧N on the board outright and this whole branch becomes dead code — fail
   // here so that is a deliberate decision, not a silent one.
   it("is only reachable because new-preset outranks the board tier", () => {
-    const newPreset = ACTION_REGISTRY.find(
-      (action) => action.id === "new-preset",
-    );
+    const newPreset = ACTION_REGISTRY.find((action) => action.id === "new-preset");
     expect(newPreset?.scope).toBe("modal");
     expect(TIER_RANK.modal).toBeGreaterThan(TIER_RANK.board);
   });

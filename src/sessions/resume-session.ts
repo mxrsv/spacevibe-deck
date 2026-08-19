@@ -44,11 +44,7 @@ export async function resumeSession(
   // asked to resume an old one, so this path refuses instead. The empty id is
   // its own clause: it also fails `SESSION_REF_SAFE`, but every string
   // `.includes("")`, so the survived-into-the-command test cannot see it.
-  if (
-    command === null ||
-    entry.sessionId === "" ||
-    !command.includes(entry.sessionId)
-  ) {
+  if (command === null || entry.sessionId === "" || !command.includes(entry.sessionId)) {
     return false;
   }
   const opened = await deps.materialize({

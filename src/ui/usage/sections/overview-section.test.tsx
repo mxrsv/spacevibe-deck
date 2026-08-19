@@ -7,18 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // so the tree mounts under jsdom (the workspace-sidebar.test.tsx idiom).
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
 
-import { EMPTY_COUNTERS } from "../../../lib/usage-snapshot";
-import type { UsageBucket, UsageSnapshot } from "../../../lib/usage-snapshot";
+import { EMPTY_COUNTERS, type UsageBucket, type UsageSnapshot } from "../../../lib/usage-snapshot";
 import { PRICING_SNAPSHOT_DATE } from "../../../lib/usage-pricing-snapshot";
 import { dotColor } from "../../../lib/process-info";
 import { usageSnapshot } from "../../../usage/usage-store";
 import { OverviewSection } from "./overview-section";
 import { activeUsageRange } from "../active-usage-view-store";
-import {
-  DEFAULT_USAGE_RANGE,
-  startOfLocalDay,
-  USAGE_RANGES,
-} from "../usage-ranges";
+import { DEFAULT_USAGE_RANGE, startOfLocalDay, USAGE_RANGES } from "../usage-ranges";
 import { EM_DASH } from "../usage-format";
 
 const NOW = new Date("2026-08-10T15:00:00Z").getTime();
@@ -70,12 +65,9 @@ describe("OverviewSection", () => {
     });
   };
 
-  const text = (selector: string): string =>
-    host.querySelector(selector)?.textContent ?? "";
+  const text = (selector: string): string => host.querySelector(selector)?.textContent ?? "";
 
-  const blocks = (): HTMLElement[] => [
-    ...host.querySelectorAll<HTMLElement>(".usage-agent"),
-  ];
+  const blocks = (): HTMLElement[] => [...host.querySelectorAll<HTMLElement>(".usage-agent")];
 
   const blockText = (block: HTMLElement, selector: string): string =>
     block.querySelector(selector)?.textContent ?? "";
@@ -144,8 +136,7 @@ describe("OverviewSection", () => {
     mount();
     const [claude, codex] = blocks();
     const fill = (block: HTMLElement): string =>
-      (block.querySelector(".usage-agent__fill") as HTMLElement).style
-        .background;
+      (block.querySelector(".usage-agent__fill") as HTMLElement).style.background;
 
     // The theme colour the agent already wears on its pane dot — not a brand
     // colour sampled from the logo.
@@ -157,13 +148,9 @@ describe("OverviewSection", () => {
     usageSnapshot.value = priced();
     mount();
     const [claude] = blocks();
-    expect(
-      claude.querySelector(".usage-agent__bar")?.getAttribute("aria-hidden"),
-    ).toBe("true");
+    expect(claude.querySelector(".usage-agent__bar")?.getAttribute("aria-hidden")).toBe("true");
     // $5.00 of $6.25 is 80%.
-    expect(blockText(claude, ".usage-agent__sub")).toBe(
-      "80% of cost · 1M tokens",
-    );
+    expect(blockText(claude, ".usage-agent__sub")).toBe("80% of cost · 1M tokens");
   });
 
   it("keeps the printed shares summing to exactly 100%", () => {
@@ -184,9 +171,7 @@ describe("OverviewSection", () => {
     mount();
 
     const shares = blocks().map((block) => {
-      const match = blockText(block, ".usage-agent__sub").match(
-        /^([\d.]+)% of cost/,
-      );
+      const match = blockText(block, ".usage-agent__sub").match(/^([\d.]+)% of cost/);
       return Number(match?.[1]);
     });
     expect(shares.every((share) => Number.isFinite(share))).toBe(true);
@@ -210,9 +195,7 @@ describe("OverviewSection", () => {
     usageSnapshot.value = priced();
     mount();
     const interactive = [
-      ...host.querySelectorAll(
-        'button, a, input, select, [role="button"], [tabindex]',
-      ),
+      ...host.querySelectorAll('button, a, input, select, [role="button"], [tabindex]'),
     ];
     // Every focusable thing here is a range option — one control, with no
     // second one smuggled in beside it.
@@ -307,9 +290,7 @@ describe("OverviewSection", () => {
       usageSnapshot.value = partly();
       mount();
       const shares = blocks().map((block) => {
-        const match = blockText(block, ".usage-agent__sub").match(
-          /^([\d.]+)% of cost/,
-        );
+        const match = blockText(block, ".usage-agent__sub").match(/^([\d.]+)% of cost/);
         return match === null ? 0 : Number(match[1]);
       });
       expect(shares).toEqual([80, 20]);
@@ -338,9 +319,7 @@ describe("OverviewSection", () => {
         (block) => blockText(block, ".usage-agent__label") === "Codex",
       ) as HTMLElement;
       expect(blockText(codex, ".usage-agent__amount")).toBe(EM_DASH);
-      expect(blockText(codex, ".usage-agent__sub")).toBe(
-        "unpriced · 1M tokens",
-      );
+      expect(blockText(codex, ".usage-agent__sub")).toBe("unpriced · 1M tokens");
     });
 
     it("still reports the rest of the machine's cost", () => {
@@ -383,18 +362,14 @@ describe("OverviewSection", () => {
       mount();
       // There is no priced part to stand behind, so there is no figure.
       expect(text(".usage-hero__figure")).toBe(EM_DASH);
-      expect(text(".usage-hero__footnote")).toBe(
-        "no price for mystery-one, mystery-two",
-      );
+      expect(text(".usage-hero__footnote")).toBe("no price for mystery-one, mystery-two");
     });
 
     it("marks the absent figure faint so it does not read as a rule (DL-15.6)", () => {
       usageSnapshot.value = nothing();
       mount();
       expect(
-        host
-          .querySelector(".usage-hero__figure")
-          ?.classList.contains("usage-hero__figure--absent"),
+        host.querySelector(".usage-hero__figure")?.classList.contains("usage-hero__figure--absent"),
       ).toBe(true);
     });
 
@@ -413,17 +388,14 @@ describe("OverviewSection", () => {
     usageSnapshot.value = priced();
     mount();
     expect(
-      host
-        .querySelector(".usage-hero__figure")
-        ?.classList.contains("usage-hero__figure--absent"),
+      host.querySelector(".usage-hero__figure")?.classList.contains("usage-hero__figure--absent"),
     ).toBe(false);
   });
 
   describe("the range selector", () => {
     const DAY = 24 * HOUR;
     /** Midday on the local day `n` days before today. */
-    const daysAgo = (n: number): number =>
-      startOfLocalDay(NOW) - n * DAY + 12 * HOUR;
+    const daysAgo = (n: number): number => startOfLocalDay(NOW) - n * DAY + 12 * HOUR;
 
     const claudeAt = (atMs: number): UsageBucket =>
       bucket({
@@ -448,9 +420,9 @@ describe("OverviewSection", () => {
       ]);
 
     const pick = (label: string): void => {
-      const option = [
-        ...host.querySelectorAll<HTMLButtonElement>(".usage-range__option"),
-      ].find((node) => node.textContent === label) as HTMLButtonElement;
+      const option = [...host.querySelectorAll<HTMLButtonElement>(".usage-range__option")].find(
+        (node) => node.textContent === label,
+      ) as HTMLButtonElement;
       act(() => {
         option.click();
       });
@@ -460,9 +432,7 @@ describe("OverviewSection", () => {
       usageSnapshot.value = spread();
       mount();
       expect(
-        [...host.querySelectorAll(".usage-range__option")].map(
-          (node) => node.textContent,
-        ),
+        [...host.querySelectorAll(".usage-range__option")].map((node) => node.textContent),
       ).toEqual(USAGE_RANGES.map((range) => range.label));
       expect(text(".usage-hero__figure")).toBe("$16.25*");
     });
@@ -496,13 +466,9 @@ describe("OverviewSection", () => {
 
       pick("7 days");
       // Codex's only usage is 40 days old, so it leaves the accounting.
-      expect(blocks().map((b) => blockText(b, ".usage-agent__label"))).toEqual([
-        "Claude Code",
-      ]);
+      expect(blocks().map((b) => blockText(b, ".usage-agent__label"))).toEqual(["Claude Code"]);
       expect(blockText(blocks()[0], ".usage-agent__amount")).toBe("$10.00");
-      expect(blockText(blocks()[0], ".usage-agent__sub")).toBe(
-        "100% of cost · 2M tokens",
-      );
+      expect(blockText(blocks()[0], ".usage-agent__sub")).toBe("100% of cost · 2M tokens");
     });
 
     it("keeps shares summing to 100 inside the chosen range", () => {
@@ -510,15 +476,10 @@ describe("OverviewSection", () => {
       mount();
       pick("All");
       const shares = blocks().map((block) => {
-        const match = blockText(block, ".usage-agent__sub").match(
-          /^([\d.]+)% of cost/,
-        );
+        const match = blockText(block, ".usage-agent__sub").match(/^([\d.]+)% of cost/);
         return match === null ? 0 : Number(match[1]);
       });
-      expect(shares.reduce((sum, share) => sum + share, 0)).toBeCloseTo(
-        100,
-        10,
-      );
+      expect(shares.reduce((sum, share) => sum + share, 0)).toBeCloseTo(100, 10);
     });
 
     it("names only the models left unpriced INSIDE the range", () => {
@@ -537,9 +498,7 @@ describe("OverviewSection", () => {
 
       pick("7 days");
       // ...but inside 7 days it did not happen, so naming it would be a lie.
-      expect(text(".usage-hero__footnote")).toBe(
-        "* if billed at full API rate",
-      );
+      expect(text(".usage-hero__footnote")).toBe("* if billed at full API rate");
     });
 
     describe("when the chosen range holds nothing", () => {
@@ -566,9 +525,7 @@ describe("OverviewSection", () => {
         expect(text(".usage-hero__empty")).toBe("No usage today");
 
         pick("7 days");
-        expect(text(".usage-hero__empty")).toBe(
-          "No usage in the last 7 local days",
-        );
+        expect(text(".usage-hero__empty")).toBe("No usage in the last 7 local days");
       });
 
       it("prints no dangling footnote — there are no models to name", () => {
@@ -585,9 +542,7 @@ describe("OverviewSection", () => {
         usageSnapshot.value = onlyOld();
         mount();
         pick("Today");
-        expect(host.querySelectorAll(".usage-range__option")).toHaveLength(
-          USAGE_RANGES.length,
-        );
+        expect(host.querySelectorAll(".usage-range__option")).toHaveLength(USAGE_RANGES.length);
         pick("All");
         expect(text(".usage-hero__figure")).toBe("$5.00*");
       });

@@ -85,9 +85,7 @@ async function poll(client: UsageClient, forGeneration: number): Promise<void> {
 }
 
 /** Fetch now, then every 5 s. Calling it while already polling does nothing. */
-export function startUsagePolling(
-  client: UsageClient = defaultUsageClient,
-): void {
+export function startUsagePolling(client: UsageClient = defaultUsageClient): void {
   if (timer !== null) {
     return;
   }

@@ -39,23 +39,15 @@ export function validateSidebarBannerState(raw: unknown): SidebarBannerState {
   const selectedPreset = isSidebarBannerPresetId(source.selection)
     ? source.selection
     : DEFAULT_SIDEBAR_BANNER_PRESET;
-  const selection =
-    source.selection === "custom" && customImage !== ""
-      ? "custom"
-      : selectedPreset;
+  const selection = source.selection === "custom" && customImage !== "" ? "custom" : selectedPreset;
   return {
-    enabled:
-      typeof source.enabled === "boolean"
-        ? source.enabled
-        : DEFAULT_SIDEBAR_BANNER.enabled,
+    enabled: typeof source.enabled === "boolean" ? source.enabled : DEFAULT_SIDEBAR_BANNER.enabled,
     selection,
     customImage,
   };
 }
 
-export function resolveSidebarBannerCustomImage(
-  state: SidebarBannerState,
-): string {
+export function resolveSidebarBannerCustomImage(state: SidebarBannerState): string {
   if (state.selection === "custom") {
     return validateLogoDataUrl(state.customImage);
   }
@@ -116,7 +108,7 @@ export async function setSidebarBannerFromPath(path: string): Promise<void> {
   try {
     dataUrl = await invoke<string>("read_image_as_data_url", { path });
   } catch (err: unknown) {
-    throw new Error(typeof err === "string" ? err : "Couldn't read the image");
+    throw new Error(typeof err === "string" ? err : "Couldn't read the image", { cause: err });
   }
   const customImage = validateLogoDataUrl(dataUrl);
   if (customImage === "") {

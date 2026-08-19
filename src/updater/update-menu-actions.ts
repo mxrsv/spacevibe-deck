@@ -1,7 +1,6 @@
 import type { UpdateCheckResult, UpdateController } from "./update-controller";
 
-export const RELEASE_NOTES_URL =
-  "https://deck.spacevibe.dev/landing-prototype/changelog/";
+export const RELEASE_NOTES_URL = "https://deck.spacevibe.dev/landing-prototype/changelog/";
 
 export type UpdateMenuAction = "check-for-updates" | "open-release-notes";
 
@@ -36,10 +35,7 @@ function checkResultMessage(
   if (result === "unsupported") {
     return ["Updates are unavailable in this build.", "info"];
   }
-  return [
-    "Couldn't check for updates. Check your connection and try again.",
-    "error",
-  ];
+  return ["Couldn't check for updates. Check your connection and try again.", "error"];
 }
 
 async function notifySafely(
@@ -60,10 +56,7 @@ export async function runUpdateMenuAction(
 ): Promise<boolean> {
   if (action === "check-for-updates") {
     const result = await deps.controller.checkNow();
-    const [message, kind] = checkResultMessage(
-      result,
-      deps.controller.view.value.availableVersion,
-    );
+    const [message, kind] = checkResultMessage(result, deps.controller.view.value.availableVersion);
     await notifySafely(deps, message, kind);
     return true;
   }
@@ -73,11 +66,7 @@ export async function runUpdateMenuAction(
       await deps.openUrl(RELEASE_NOTES_URL);
     } catch (error: unknown) {
       deps.report("Opening release notes failed", error);
-      await notifySafely(
-        deps,
-        "Couldn't open Release Notes in your browser.",
-        "error",
-      );
+      await notifySafely(deps, "Couldn't open Release Notes in your browser.", "error");
     }
     return true;
   }

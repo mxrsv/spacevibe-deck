@@ -84,10 +84,7 @@ function claimKey(workspacePath: string | null, agent: string): string {
  * actually succeeded — an intent that never became a tab must not leave a mark
  * for an unrelated pane to claim later.
  */
-export function noteResumedPane(
-  workspacePath: string | null,
-  agent: string,
-): void {
+export function noteResumedPane(workspacePath: string | null, agent: string): void {
   const key = claimKey(workspacePath, agent);
   resumeClaims.set(key, (resumeClaims.get(key) ?? 0) + 1);
 }
@@ -259,7 +256,7 @@ export function installSessionTailSync(): () => void {
   const dispose = effect(() => {
     // The one dependency: any new `tabViews` identity re-arms the debounce,
     // and `run` decides from the fingerprint whether it was a real change.
-    tabViews.value;
+    void tabViews.value;
     schedule();
   });
   disposeEffect = dispose;

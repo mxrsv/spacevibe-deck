@@ -1,12 +1,7 @@
 import type { Preset } from "../lib/preset-schema";
 import type { SerializedNode } from "../lib/split-tree";
 import type { ArchiveEntry } from "../lib/session-schema";
-import type {
-  AgentAttentionSummary,
-  PaneView,
-  StatusInfo,
-  TabView,
-} from "../terminal/tabs-store";
+import type { AgentAttentionSummary, PaneView, StatusInfo, TabView } from "../terminal/tabs-store";
 
 /**
  * Canned state the chrome specimens render against.
@@ -88,14 +83,14 @@ const minutesAgo = (minutes: number): number => SEEDED_AT - minutes * 60_000;
 function pane(
   paneId: number,
   agent: PaneView["agent"],
-  attention: PaneView["attention"],
+  attentionValue: PaneView["attention"],
   phase: PaneView["phase"],
   changedAt: number,
   // Quiet panes split on this: true renders `done` (green check), false
   // renders `idle` (ring with a core).
   hasRun = false,
 ): PaneView {
-  return { paneId, agent, attention, phase, hasRun, changedAt };
+  return { paneId, agent, attention: attentionValue, phase, hasRun, changedAt };
 }
 
 export const SEED_TABS: readonly TabView[] = [

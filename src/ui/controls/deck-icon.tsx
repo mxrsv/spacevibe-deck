@@ -41,9 +41,7 @@ export const RAIL_ICON: DeckIconSize = 16;
  */
 function iconModifier(icon: Icon): string {
   const displayName = icon.displayName ?? "";
-  const bare = displayName.endsWith("Icon")
-    ? displayName.slice(0, -"Icon".length)
-    : displayName;
+  const bare = displayName.endsWith("Icon") ? displayName.slice(0, -"Icon".length) : displayName;
   if (bare === "") {
     return "";
   }
@@ -78,9 +76,7 @@ export function DeckIcon({
       mirrored={mirrored}
       aria-hidden="true"
       focusable="false"
-      className={`deck-icon${iconModifier(Icon)}${
-        className === undefined ? "" : ` ${className}`
-      }`}
+      className={`deck-icon${iconModifier(Icon)}${className === undefined ? "" : ` ${className}`}`}
     />
   );
 }

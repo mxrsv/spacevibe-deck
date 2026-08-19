@@ -4,12 +4,7 @@ import { act } from "preact/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BrowserPanel } from "./browser-panel";
 import type { BrowserClient } from "./browser-client";
-import {
-  browserNotice,
-  browserState,
-  resetBrowserStore,
-  EMPTY_STATE,
-} from "./browser-store";
+import { browserNotice, browserState, resetBrowserStore, EMPTY_STATE } from "./browser-store";
 
 // jsdom has no ResizeObserver, and the panel installs one to keep the host's
 // native view aligned with this column.
@@ -17,8 +12,7 @@ class FakeResizeObserver {
   observe(): void {}
   disconnect(): void {}
 }
-(globalThis as { ResizeObserver?: unknown }).ResizeObserver =
-  FakeResizeObserver;
+(globalThis as { ResizeObserver?: unknown }).ResizeObserver = FakeResizeObserver;
 
 function fakeClient(overrides: Partial<BrowserClient> = {}): BrowserClient {
   return {
@@ -49,10 +43,7 @@ describe("BrowserPanel", () => {
 
   function mount(client: BrowserClient, hidden = false) {
     act(() => {
-      render(
-        <BrowserPanel onClose={() => {}} hidden={hidden} client={client} />,
-        host,
-      );
+      render(<BrowserPanel onClose={() => {}} hidden={hidden} client={client} />, host);
     });
   }
 
@@ -88,9 +79,7 @@ describe("BrowserPanel", () => {
     await act(async () => {
       host
         .querySelector("form")!
-        .dispatchEvent(
-          new Event("submit", { bubbles: true, cancelable: true }),
-        );
+        .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     });
     expect(client.navigate).toHaveBeenCalledWith("not an address");
     expect(browserNotice.value).toBe("That is not an address Deck can open.");
@@ -121,9 +110,7 @@ describe("BrowserPanel", () => {
       browserState.value = { ...EMPTY_STATE, inspect: true };
     });
     mount(client);
-    const inspect = host.querySelector<HTMLButtonElement>(
-      'button[aria-label="Inspect element"]',
-    )!;
+    const inspect = host.querySelector<HTMLButtonElement>('button[aria-label="Inspect element"]')!;
     expect(inspect.getAttribute("aria-pressed")).toBe("true");
     act(() => inspect.click());
     // Pressed means armed, so pressing again disarms it.

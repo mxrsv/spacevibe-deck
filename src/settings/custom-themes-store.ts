@@ -18,13 +18,7 @@ import {
 } from "../host/theme-host";
 import { parseThemeFile } from "./theme-formats/parse-theme-file";
 import { customPresets, type ThemePreset } from "./themes";
-import {
-  LOAD_IDLE,
-  LOAD_LOADING,
-  LOAD_READY,
-  loadError,
-  type LoadState,
-} from "../lib/load-state";
+import { LOAD_IDLE, LOAD_LOADING, LOAD_READY, loadError, type LoadState } from "../lib/load-state";
 
 export interface ThemeImportFailure {
   readonly fileName: string;

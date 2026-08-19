@@ -5,10 +5,7 @@ import { createMemoryLinkClient } from "./link-client";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { persistError } from "../chrome/events";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 
 const CWD = "/repo";
 
@@ -48,10 +45,7 @@ function fakeTerminal(text: string): Terminal {
   return fakeTerminalRows([text]);
 }
 
-function provide(
-  term: Terminal,
-  client: ReturnType<typeof createMemoryLinkClient>,
-) {
+function provide(term: Terminal, client: ReturnType<typeof createMemoryLinkClient>) {
   const provider = createLinkProvider(term, {
     getCwd: () => CWD,
     client,
@@ -78,10 +72,7 @@ describe("createLinkProvider", () => {
 
   it("links a url and opens it in the browser on ⌘+click", async () => {
     const client = createMemoryLinkClient();
-    const links = await provide(
-      fakeTerminal("see https://example.com now"),
-      client,
-    );
+    const links = await provide(fakeTerminal("see https://example.com now"), client);
 
     expect(links).toHaveLength(1);
     expect(links?.[0].text).toBe("https://example.com");
@@ -92,10 +83,7 @@ describe("createLinkProvider", () => {
 
   it("ignores a plain click so the terminal keeps it", async () => {
     const client = createMemoryLinkClient();
-    const links = await provide(
-      fakeTerminal("see https://example.com now"),
-      client,
-    );
+    const links = await provide(fakeTerminal("see https://example.com now"), client);
 
     click(links![0], false);
     expect(client.openedUrls).toEqual([]);
@@ -108,10 +96,7 @@ describe("createLinkProvider", () => {
       homeDir: String.raw`C:\Users\dev`,
     });
     const client = createMemoryLinkClient();
-    const links = await provide(
-      fakeTerminal("see https://example.com now"),
-      client,
-    );
+    const links = await provide(fakeTerminal("see https://example.com now"), client);
 
     click(links![0], true);
     click(links![0], false, true);
@@ -121,20 +106,14 @@ describe("createLinkProvider", () => {
 
   it("links only the paths that resolve to a real file", async () => {
     const client = createMemoryLinkClient({ files: [`${CWD}/src/foo.ts`] });
-    const links = await provide(
-      fakeTerminal("src/foo.ts and src/gone.ts"),
-      client,
-    );
+    const links = await provide(fakeTerminal("src/foo.ts and src/gone.ts"), client);
 
     expect(links?.map((link) => link.text)).toEqual(["src/foo.ts"]);
   });
 
   it("opens the resolved file at its line and column", async () => {
     const client = createMemoryLinkClient({ files: [`${CWD}/src/foo.ts`] });
-    const links = await provide(
-      fakeTerminal("at src/foo.ts:12:5 boom"),
-      client,
-    );
+    const links = await provide(fakeTerminal("at src/foo.ts:12:5 boom"), client);
 
     click(links![0], true);
     expect(client.openedEditor).toEqual([
@@ -192,9 +171,7 @@ describe("createLinkProvider", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(persistError.value).toMatch(
-      /Couldn't open the editor: Error: ipc down/,
-    );
+    expect(persistError.value).toMatch(/Couldn't open the editor: Error: ipc down/);
   });
 
   it("maps the link back onto its cells", async () => {
@@ -235,9 +212,7 @@ describe("createLinkProvider", () => {
     vi.useFakeTimers();
     try {
       const client = createMemoryLinkClient();
-      const spy = vi
-        .spyOn(client, "resolvePaths")
-        .mockResolvedValue([null] as (string | null)[]);
+      const spy = vi.spyOn(client, "resolvePaths").mockResolvedValue([null] as (string | null)[]);
       const term = fakeTerminal("xx a.ts");
       const provider = createLinkProvider(term, { getCwd: () => CWD, client });
       const hover = (): Promise<ILink[] | undefined> =>

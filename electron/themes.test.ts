@@ -1,12 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  mkdtempSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -26,13 +19,7 @@ vi.mock("electron", () => ({
   shell: { openPath: async () => "" },
 }));
 
-import {
-  importThemes,
-  isThemeFileName,
-  listThemes,
-  themesDir,
-  uniqueName,
-} from "./themes";
+import { importThemes, isThemeFileName, listThemes, themesDir, uniqueName } from "./themes";
 
 /** Sources the picker points at, outside the themes folder. */
 const SOURCES = mkdtempSync(join(tmpdir(), "deck-theme-src-"));
@@ -81,9 +68,7 @@ describe("listThemes", () => {
     // one would make a supported format unreachable through the folder.
     writeTheme("purple-disco", "background = #100e17");
 
-    expect((await listThemes()).entries.map((entry) => entry.fileName)).toEqual(
-      ["purple-disco"],
-    );
+    expect((await listThemes()).entries.map((entry) => entry.fileName)).toEqual(["purple-disco"]);
   });
 
   it("skips dotfiles, subdirectories and unknown extensions", async () => {
@@ -97,9 +82,7 @@ describe("listThemes", () => {
     expect(scan.entries.map((entry) => entry.fileName)).toEqual(["keep.toml"]);
     // `nested` has no extension, so it reaches the reader and is refused there
     // — with a reason, not in silence.
-    expect(scan.rejected).toEqual([
-      { fileName: "nested", reason: "not a file" },
-    ]);
+    expect(scan.rejected).toEqual([{ fileName: "nested", reason: "not a file" }]);
   });
 
   it("reports an oversized file in the folder instead of hiding it", async () => {
@@ -122,9 +105,10 @@ describe("listThemes", () => {
     writeTheme("beta.json", "{}");
     writeTheme("alpha.json", "{}");
 
-    expect((await listThemes()).entries.map((entry) => entry.fileName)).toEqual(
-      ["alpha.json", "beta.json"],
-    );
+    expect((await listThemes()).entries.map((entry) => entry.fileName)).toEqual([
+      "alpha.json",
+      "beta.json",
+    ]);
   });
 });
 
@@ -135,9 +119,7 @@ describe("importThemes", () => {
 
     const scan = await importThemes(null);
 
-    expect(scan.entries).toEqual([
-      { fileName: "orange.json", content: '{"name":"Orange"}' },
-    ]);
+    expect(scan.entries).toEqual([{ fileName: "orange.json", content: '{"name":"Orange"}' }]);
     expect(scan.rejected).toEqual([]);
   });
 
@@ -146,9 +128,7 @@ describe("importThemes", () => {
 
     const scan = await importThemes(null);
 
-    expect(scan.entries.map((entry) => entry.fileName)).toEqual([
-      "existing.json",
-    ]);
+    expect(scan.entries.map((entry) => entry.fileName)).toEqual(["existing.json"]);
   });
 
   it("refuses a wrong file type before copying, and says so", async () => {
@@ -203,12 +183,8 @@ describe("importThemes", () => {
 
     const scan = await importThemes(null);
 
-    expect(scan.entries.map((entry) => entry.fileName)).toEqual([
-      "orange.json",
-    ]);
-    expect(scan.rejected.map((entry) => entry.fileName)).toEqual([
-      "screenshot.png",
-    ]);
+    expect(scan.entries.map((entry) => entry.fileName)).toEqual(["orange.json"]);
+    expect(scan.rejected.map((entry) => entry.fileName)).toEqual(["screenshot.png"]);
   });
 
   it("suffixes rather than overwriting a theme already in the folder", async () => {
@@ -218,14 +194,9 @@ describe("importThemes", () => {
 
     const scan = await importThemes(null);
 
-    expect(scan.entries.map((entry) => entry.fileName)).toEqual([
-      "orange-2.json",
-      "orange.json",
-    ]);
+    expect(scan.entries.map((entry) => entry.fileName)).toEqual(["orange-2.json", "orange.json"]);
     // The hand-edited original is untouched — there is no undo anywhere here.
-    expect(readFileSync(join(themesDir(), "orange.json"), "utf8")).toBe(
-      '{"name":"Mine"}',
-    );
+    expect(readFileSync(join(themesDir(), "orange.json"), "utf8")).toBe('{"name":"Mine"}');
   });
 });
 
@@ -240,9 +211,7 @@ describe("uniqueName", () => {
   });
 
   it("suffixes an extensionless Ghostty file", () => {
-    expect(uniqueName("purple-disco", new Set(["purple-disco"]))).toBe(
-      "purple-disco-2",
-    );
+    expect(uniqueName("purple-disco", new Set(["purple-disco"]))).toBe("purple-disco-2");
   });
 });
 
@@ -264,10 +233,7 @@ describe("the extension allowlist", () => {
     // The two lists are separate because sharing one would drag the renderer's
     // parser chain (and `@xterm/xterm` types) into the main-process tsconfig.
     // This is the guard that makes the duplication safe.
-    const main = extract(
-      readFileSync("electron/themes.ts", "utf8"),
-      "THEME_EXTENSIONS",
-    );
+    const main = extract(readFileSync("electron/themes.ts", "utf8"), "THEME_EXTENSIONS");
     const renderer = extract(
       readFileSync("src/settings/theme-formats/parse-theme-file.ts", "utf8"),
       "THEME_FILE_EXTENSIONS",
@@ -285,7 +251,5 @@ function extract(source: string, name: string): string[] {
   if (start === -1 || end === -1) {
     return [];
   }
-  return [...source.slice(start, end).matchAll(/"([^"]+)"/g)].map(
-    (match) => match[1],
-  );
+  return [...source.slice(start, end).matchAll(/['"]([^'"]+)['"]/g)].map((match) => match[1]);
 }

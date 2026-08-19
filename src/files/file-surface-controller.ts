@@ -95,9 +95,7 @@ export interface FileSurfaceDeps {
   readonly onSurfacesChanged?: () => void;
 }
 
-export function createFileSurfaceController(
-  deps: FileSurfaceDeps = {},
-): FileSurfaceController {
+export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSurfaceController {
   const client = deps.client ?? defaultFileClient;
   const confirmDiscard =
     deps.confirmDiscard ??
@@ -145,22 +143,15 @@ export function createFileSurfaceController(
     if (root === null) {
       return;
     }
-    const files = openPaths().filter(
-      (path) => documentFor(path)?.workspacePath === root,
-    );
-    void client
-      .watchPaths(root, visibleDirectories(root), files)
-      .catch((error: unknown) => {
-        // Losing the watcher degrades to the re-stat reconcile, which is the
-        // designed fallback — worth a line, not worth failing the open.
-        console.warn("Deck: could not watch the workspace", error);
-      });
+    const files = openPaths().filter((path) => documentFor(path)?.workspacePath === root);
+    void client.watchPaths(root, visibleDirectories(root), files).catch((error: unknown) => {
+      // Losing the watcher degrades to the re-stat reconcile, which is the
+      // designed fallback — worth a line, not worth failing the open.
+      console.warn("Deck: could not watch the workspace", error);
+    });
   }
 
-  async function loadListing(
-    workspacePath: string,
-    directory: string,
-  ): Promise<void> {
+  async function loadListing(workspacePath: string, directory: string): Promise<void> {
     const key = `${workspacePath}\0${directory}`;
     const forGeneration = (listingGenerations.get(key) ?? 0) + 1;
     listingGenerations.set(key, forGeneration);
@@ -180,10 +171,7 @@ export function createFileSurfaceController(
     }
   }
 
-  async function readDocument(
-    workspacePath: string,
-    path: string,
-  ): Promise<void> {
+  async function readDocument(workspacePath: string, path: string): Promise<void> {
     // What the buffer held when the read was decided on. `decideExternalChange`
     // refuses to auto-reload a DIRTY buffer, but it decides before this await —
     // and the editor stays writable throughout. Without this, typing during a
@@ -201,8 +189,7 @@ export function createFileSurfaceController(
         // The user typed while we were reading. Raise the bar this reload was
         // supposed to be a shortcut around, and keep their text.
         updateDocument(path, {
-          prompt:
-            result.kind === "refused" ? "prompt-deleted" : "prompt-changed",
+          prompt: result.kind === "refused" ? "prompt-deleted" : "prompt-changed",
           ...(result.kind === "refused" ? { gone: true } : {}),
         });
         notify();
@@ -244,10 +231,7 @@ export function createFileSurfaceController(
       }
       updateDocument(path, {
         file: null,
-        refusal:
-          error instanceof Error
-            ? error.message
-            : "Deck could not read this file.",
+        refusal: error instanceof Error ? error.message : "Deck could not read this file.",
       });
     } finally {
       notify();
@@ -326,15 +310,11 @@ export function createFileSurfaceController(
   async function closeWorkspace(workspacePath: string): Promise<void> {
     const dirtyInWorkspace = openPaths().filter(
       (path) =>
-        documentFor(path)?.workspacePath === workspacePath &&
-        documentFor(path)?.dirty === true,
+        documentFor(path)?.workspacePath === workspacePath && documentFor(path)?.dirty === true,
     );
     // ONE prompt for the whole workspace, not one per file — the same
     // `confirmDiscard([path])` used by `closePath` already takes a list.
-    if (
-      dirtyInWorkspace.length > 0 &&
-      !(await confirmDiscard(dirtyInWorkspace))
-    ) {
+    if (dirtyInWorkspace.length > 0 && !(await confirmDiscard(dirtyInWorkspace))) {
       return;
     }
     closeWorkspaceSurface(workspacePath);
@@ -425,11 +405,7 @@ export function createFileSurfaceController(
 
     async savePath(path) {
       const document = documentFor(path);
-      if (
-        document === undefined ||
-        document.file === null ||
-        document.file.readOnly
-      ) {
+      if (document === undefined || document.file === null || document.file.readOnly) {
         return;
       }
       const file = document.file;
@@ -437,12 +413,7 @@ export function createFileSurfaceController(
       // baseline below is what was actually WRITTEN.
       const written = document.text;
       try {
-        const result = await client.writeFile(
-          document.workspacePath,
-          path,
-          written,
-          file.eol,
-        );
+        const result = await client.writeFile(document.workspacePath, path, written, file.eol);
         const live = documentFor(path);
         if (disposed || live === undefined) {
           return;
@@ -604,8 +575,6 @@ export function createFileSurfaceController(
 
 /** Whether the strip should show `workspacePath`'s file tabs — used by both
  * chrome layouts so a single-layout change cannot half-land (spec §7). */
-export function stripFileTabsFor(
-  workspacePath: string | null,
-): ReturnType<typeof fileTabsFor> {
+export function stripFileTabsFor(workspacePath: string | null): ReturnType<typeof fileTabsFor> {
   return fileTabsFor(workspacePath);
 }

@@ -102,9 +102,7 @@ function shortBranch(ref: string): string {
  * Records are separated by blank lines and always open with `worktree <path>`;
  * a stanza without one is discarded rather than merged into its neighbour.
  */
-export function parseWorktreePorcelain(
-  stdout: string,
-): readonly WorktreeEntry[] {
+export function parseWorktreePorcelain(stdout: string): readonly WorktreeEntry[] {
   const entries: WorktreeEntry[] = [];
   let current: {
     path: string;
@@ -189,9 +187,7 @@ export function parseWorktreePorcelain(
  * which lands in the null branch and degrades the path to a plain folder — it
  * cannot produce a wrong answer, only a less informative one.
  */
-async function readIdentity(
-  path: string,
-): Promise<{ key: string; root: string } | null> {
+async function readIdentity(path: string): Promise<{ key: string; root: string } | null> {
   const stdout = await git(path, [
     "rev-parse",
     "--path-format=absolute",

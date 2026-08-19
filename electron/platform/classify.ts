@@ -72,11 +72,8 @@ export function normalizedProcessName(process: string): string | null {
   if (basename.length === 0) {
     return null;
   }
-  const suffix = EXECUTABLE_SUFFIXES.find((candidate) =>
-    basename.endsWith(candidate),
-  );
-  const stripped =
-    suffix === undefined ? basename : basename.slice(0, -suffix.length);
+  const suffix = EXECUTABLE_SUFFIXES.find((candidate) => basename.endsWith(candidate));
+  const stripped = suffix === undefined ? basename : basename.slice(0, -suffix.length);
   return stripped.length > 0 ? stripped : null;
 }
 
@@ -87,9 +84,7 @@ export interface Classification {
 
 const UNKNOWN: Classification = { kind: "unknown", agent: null };
 
-function validMatcher(
-  value: AgentProcessMatcher,
-): AgentProcessMatcher | null {
+function validMatcher(value: AgentProcessMatcher): AgentProcessMatcher | null {
   const binary = normalizedProcessName(value.binary);
   const agent = value.agent.trim();
   if (
@@ -104,9 +99,7 @@ function validMatcher(
 }
 
 /** Validate the untrusted renderer payload before it reaches classification. */
-export function validateAgentProcessMatchers(
-  value: unknown,
-): AgentProcessMatcher[] {
+export function validateAgentProcessMatchers(value: unknown): AgentProcessMatcher[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -148,8 +141,7 @@ function interpretedEntrypoint(commandLine: string): string | null {
     executableIndex = 1;
     while (
       executableIndex < tokens.length &&
-      (tokens[executableIndex].startsWith("-") ||
-        tokens[executableIndex].includes("="))
+      (tokens[executableIndex].startsWith("-") || tokens[executableIndex].includes("="))
     ) {
       executableIndex += 1;
     }
@@ -190,8 +182,7 @@ export function classifyProcess(
   }
   const entrypoint = interpretedEntrypoint(commandLine);
   const agent =
-    AGENT_BY_BINARY[normalized] ??
-    (entrypoint === null ? undefined : AGENT_BY_BINARY[entrypoint]);
+    AGENT_BY_BINARY[normalized] ?? (entrypoint === null ? undefined : AGENT_BY_BINARY[entrypoint]);
   if (agent !== undefined) {
     return { kind: "agent", agent };
   }
@@ -201,9 +192,7 @@ export function classifyProcess(
       return valid === null ? [] : [[valid.binary, valid.agent] as const];
     }),
   );
-  const customCandidate = INTERPRETER_NAMES.has(normalized)
-    ? entrypoint
-    : normalized;
+  const customCandidate = INTERPRETER_NAMES.has(normalized) ? entrypoint : normalized;
   if (customCandidate !== null && !SHELL_NAMES.has(customCandidate)) {
     const customAgent = customByBinary.get(customCandidate);
     if (customAgent !== undefined) {

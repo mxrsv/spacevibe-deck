@@ -44,9 +44,7 @@ describe("createTauriLinkClient", () => {
     vi.mocked(invoke).mockRejectedValue(new Error("backend rejected request"));
     const client = createTauriLinkClient();
 
-    await expect(client.openEditor(REQUEST)).rejects.toThrow(
-      "backend rejected request",
-    );
+    await expect(client.openEditor(REQUEST)).rejects.toThrow("backend rejected request");
   });
 });
 

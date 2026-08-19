@@ -19,8 +19,7 @@ export const SIDEBAR_BANNER_PRESETS = [
   {
     id: "united-states",
     label: "United States",
-    background:
-      "repeating-linear-gradient(to bottom, #b22234 0 7.692%, #ffffff 7.692% 15.384%)",
+    background: "repeating-linear-gradient(to bottom, #b22234 0 7.692%, #ffffff 7.692% 15.384%)",
     mark: "us-canton",
   },
   {
@@ -59,26 +58,16 @@ export const SIDEBAR_BANNER_PRESETS = [
   },
 ] as const satisfies readonly SidebarBannerPreset[];
 
-export type SidebarBannerPresetId =
-  (typeof SIDEBAR_BANNER_PRESETS)[number]["id"];
+export type SidebarBannerPresetId = (typeof SIDEBAR_BANNER_PRESETS)[number]["id"];
 
 export const DEFAULT_SIDEBAR_BANNER_PRESET: SidebarBannerPresetId = "vietnam";
 
-const PRESET_IDS = new Set<string>(
-  SIDEBAR_BANNER_PRESETS.map((preset) => preset.id),
-);
+const PRESET_IDS = new Set<string>(SIDEBAR_BANNER_PRESETS.map((preset) => preset.id));
 
-export function isSidebarBannerPresetId(
-  value: unknown,
-): value is SidebarBannerPresetId {
+export function isSidebarBannerPresetId(value: unknown): value is SidebarBannerPresetId {
   return typeof value === "string" && PRESET_IDS.has(value);
 }
 
-export function getSidebarBannerPreset(
-  id: SidebarBannerPresetId,
-): SidebarBannerPreset {
-  return (
-    SIDEBAR_BANNER_PRESETS.find((preset) => preset.id === id) ??
-    SIDEBAR_BANNER_PRESETS[0]
-  );
+export function getSidebarBannerPreset(id: SidebarBannerPresetId): SidebarBannerPreset {
+  return SIDEBAR_BANNER_PRESETS.find((preset) => preset.id === id) ?? SIDEBAR_BANNER_PRESETS[0];
 }

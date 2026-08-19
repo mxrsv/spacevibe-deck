@@ -66,13 +66,9 @@ describe("SidebarActions", () => {
   // Same precedent as the dock's own tab row: a row that opens an empty
   // surface is worse than no row.
   it("drops Session history on a host that cannot answer for it", () => {
-    act(() =>
-      render(<SidebarActions {...base} sessionsAvailable={false} />, host),
-    );
+    act(() => render(<SidebarActions {...base} sessionsAvailable={false} />, host));
 
-    expect(rows().map((row) => row.textContent)).not.toContain(
-      "Session history",
-    );
+    expect(rows().map((row) => row.textContent)).not.toContain("Session history");
   });
 
   it("routes each row to its own callback", () => {
@@ -107,10 +103,7 @@ describe("SidebarActions", () => {
   // blocked.
   it("keeps an unavailable Prompts row focusable but inert, with its reason", () => {
     act(() =>
-      render(
-        <SidebarActions {...base} promptsUnavailable="no pane to paste into" />,
-        host,
-      ),
+      render(<SidebarActions {...base} promptsUnavailable="no pane to paste into" />, host),
     );
 
     const prompts = rows().find((row) => row.textContent === "Prompts")!;
@@ -123,23 +116,11 @@ describe("SidebarActions", () => {
   });
 
   it("hangs the popover off the Prompts row, and only while it is open", () => {
-    act(() =>
-      render(
-        <SidebarActions {...base} promptPopover={<div class="pp" />} />,
-        host,
-      ),
-    );
+    act(() => render(<SidebarActions {...base} promptPopover={<div class="pp" />} />, host));
     expect(host.querySelector(".sidebar-actions__slot .pp")).toBeNull();
 
     act(() =>
-      render(
-        <SidebarActions
-          {...base}
-          promptsOpen
-          promptPopover={<div class="pp" />}
-        />,
-        host,
-      ),
+      render(<SidebarActions {...base} promptsOpen promptPopover={<div class="pp" />} />, host),
     );
     expect(host.querySelector(".sidebar-actions__slot .pp")).not.toBeNull();
   });

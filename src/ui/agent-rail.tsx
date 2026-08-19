@@ -3,12 +3,7 @@ import { useSignal, useSignalEffect } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { activeTabIndex, statusInfo, tabViews } from "../terminal/tabs-store";
-import {
-  CHROME_ICON,
-  DeckIcon,
-  FEATURE_ICON,
-  RAIL_ICON,
-} from "./controls/deck-icon";
+import { CHROME_ICON, DeckIcon, FEATURE_ICON, RAIL_ICON } from "./controls/deck-icon";
 import { AgentGlyph } from "./controls/agent-glyph";
 import { tildify } from "../lib/process-info";
 import {
@@ -23,10 +18,7 @@ import { available as electronHostAvailable } from "../host/worktree-host";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { workspacesData } from "../open-board/workspaces-store";
 import { SidebarBanner } from "./sidebar-banner";
-import {
-  createNewPaneDragController,
-  type NewPaneDropDeps,
-} from "./new-pane-drag";
+import { createNewPaneDragController, type NewPaneDropDeps } from "./new-pane-drag";
 import {
   buildAgentRail,
   type RailArchivedRow,
@@ -114,9 +106,7 @@ const STATE_LABEL: Readonly<Record<RailState, string>> = {
 
 /** `project` alone, or `project · worktree` outside the primary checkout. */
 function whereOf(row: { project: string; worktree: string | null }): string {
-  return row.worktree === null
-    ? row.project
-    : `${row.project} · ${row.worktree}`;
+  return row.worktree === null ? row.project : `${row.project} · ${row.worktree}`;
 }
 
 /**
@@ -129,11 +119,7 @@ export function RailStatusMark({ state }: { readonly state: RailState }) {
   return (
     <span class="asr-row__mark" data-state={state} aria-hidden="true">
       {state === "done" && (
-        <DeckIcon
-          icon={CheckCircle}
-          size={FEATURE_ICON}
-          class="asr-row__check"
-        />
+        <DeckIcon icon={CheckCircle} size={FEATURE_ICON} class="asr-row__check" />
       )}
     </span>
   );
@@ -199,7 +185,7 @@ interface TabItemProps {
  * it. `data-active` sits on the wrapper and the row itself stays transparent.
  */
 /**
- * The pane TREE is hidden for now (owner, 2026-08-16, "tạm thời"): every
+ * The pane TREE is hidden for now (owner, 2026-08-16, "temporarily"): every
  * multi-agent tab — named or not — renders its panes as plain full-width
  * agent rows, no parent row, no elbow guides, so the rail shows only agents
  * and projects. The tree's markup, CSS and DL-27.13 all stand; restoring it
@@ -222,8 +208,7 @@ function TabItem(props: TabItemProps) {
   // owner's ask the same day. While the tree is hidden, NAMED multi-agent
   // tabs go headless too: only agents and projects are shown.
   const headless =
-    treed &&
-    (PANE_TREE_HIDDEN || (props.labelled ? row.identity : row.project) === "");
+    treed && (PANE_TREE_HIDDEN || (props.labelled ? row.identity : row.project) === "");
   const name = props.labelled ? row.identity : row.project;
   // Every state that has something to say says it (DL-27.15). The emptiness
   // check is the only gate left: a tab nobody renamed, whose panes have said
@@ -234,8 +219,7 @@ function TabItem(props: TabItemProps) {
   // says: a name the user typed, and an unlabelled row, whose project name has
   // no cluster header carrying it. In both the turn follows the name on the
   // same line.
-  const showName =
-    name !== "" && (row.named || !props.labelled || !showMessage);
+  const showName = name !== "" && (row.named || !props.labelled || !showMessage);
   const title = [`${where} · ${row.title} — ${label}`, props.path, row.message]
     .filter((line) => line !== "")
     .join("\n");
@@ -275,10 +259,7 @@ function TabItem(props: TabItemProps) {
                   props.onFocusPane(row.panes[0].paneId);
                 }}
               >
-                <AgentGlyph
-                  agent={row.panes[0].agent}
-                  className="asr-chip__logo"
-                />
+                <AgentGlyph agent={row.panes[0].agent} className="asr-chip__logo" />
               </button>
             </span>
           )}
@@ -293,9 +274,7 @@ function TabItem(props: TabItemProps) {
             {showName && <strong>{name}</strong>}
             {/* Named only outside the primary checkout — otherwise 46 of 51
               repositories would carry a word that says nothing (spec §2.1). */}
-            {row.worktree !== null && (
-              <span class="asr-row__worktree">{row.worktree}</span>
-            )}
+            {row.worktree !== null && <span class="asr-row__worktree">{row.worktree}</span>}
             {showMessage && <MessageLine text={row.message} />}
           </span>
           {row.age !== "" && <span class="asr-row__age">{row.age}</span>}
@@ -395,9 +374,7 @@ function ArchivedRow({
       >
         <span class="asr-row__name">
           <strong>{row.project}</strong>
-          {row.worktree !== null && (
-            <span class="asr-row__worktree">{row.worktree}</span>
-          )}
+          {row.worktree !== null && <span class="asr-row__worktree">{row.worktree}</span>}
         </span>
         <RailStatusMark state="idle" />
       </div>
@@ -413,8 +390,7 @@ export function AgentRail(props: AgentRailProps) {
   // `activeTabIndex` still names whichever terminal tab it sits on top of
   // (selecting a surface never touches `TabManager`'s own `active` index) — so
   // a row is only the VISIBLE active row when neither is true.
-  const surfaceActive =
-    props.fileController.activeIndex() >= 0 || browserSurfaceActive.value;
+  const surfaceActive = props.fileController.activeIndex() >= 0 || browserSurfaceActive.value;
   // Which labelled project groups are folded. A new Set each time rather than
   // a mutated one (C1), so the signal actually notifies.
   const collapsedGroupKeys = useSignal<ReadonlySet<string>>(new Set());
@@ -424,9 +400,7 @@ export function AgentRail(props: AgentRailProps) {
     activeIndex: activeTabIndex.value,
     scans: repositoryScans.value,
     archivedPaths: new Set(Object.keys(sessionArchive.value)),
-    workspaceHistoryPaths: workspacesData.value.recents.map(
-      (recent) => recent.path,
-    ),
+    workspaceHistoryPaths: workspacesData.value.recents.map((recent) => recent.path),
     // Tier 3 (spec §5): the newest turn each agent pane has said, kept by
     // `session-tail-store`. Empty on Tauri and in the browser preview, where
     // the `session_tail` channel does not exist — the model then falls back
@@ -461,9 +435,7 @@ export function AgentRail(props: AgentRailProps) {
         // those panes are behind a native view / another surface, so no rect
         // under the cursor belongs to anything droppable. Reported as "no
         // targets" rather than as a mode, so the drag stays one code path.
-        const covered =
-          fileControllerRef.current.activeIndex() >= 0 ||
-          browserSurfaceActive.peek();
+        const covered = fileControllerRef.current.activeIndex() >= 0 || browserSurfaceActive.peek();
         return covered ? [] : (dropRef.current?.slotRects() ?? []);
       },
       onDragStart() {
@@ -576,16 +548,11 @@ export function AgentRail(props: AgentRailProps) {
                       toggleGroup(group.key);
                     }}
                   >
-                    <DeckIcon
-                      icon={CaretRight}
-                      size={CHROME_ICON}
-                      class="asr-cluster__caret"
-                    />
+                    <DeckIcon icon={CaretRight} size={CHROME_ICON} class="asr-cluster__caret" />
                     <span>{group.project}</span>
                   </button>
                 )}
-                {!collapsed &&
-                  group.rows.map((row) => item(row, group.labelled))}
+                {!collapsed && group.rows.map((row) => item(row, group.labelled))}
               </div>
             );
           })}

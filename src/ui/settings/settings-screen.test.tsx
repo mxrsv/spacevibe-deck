@@ -63,9 +63,7 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
 
   it("moves focus onto the close pill when it opens", () => {
     mount(true);
-    expect(document.activeElement).toBe(
-      host.querySelector(".settings-screen__esc"),
-    );
+    expect(document.activeElement).toBe(host.querySelector(".settings-screen__esc"));
   });
 
   it("Escape closes the screen when focus is not in a terminal", () => {
@@ -90,9 +88,7 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
     textarea.focus();
 
     act(() => {
-      textarea.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -100,9 +96,7 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
   it("stops listening for Escape once closed", () => {
     const onClose = mount(false);
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -110,8 +104,7 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
   it("keeps a settings load failure visible with a retry action", () => {
     settingsLoadState.value = {
       status: "error",
-      message:
-        "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
+      message: "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
     };
     mount(true);
 
@@ -187,8 +180,7 @@ const EXPECTED_ROWS = [
  * (`shortcuts-section.test.tsx`, `shortcut-groups.test.ts`) asserts the far
  * stronger property: that every registry action gets a row.
  */
-const isShortcutRow = (label: Element): boolean =>
-  label.closest(".cfg-row--shortcut") !== null;
+const isShortcutRow = (label: Element): boolean => label.closest(".cfg-row--shortcut") !== null;
 
 describe("SettingsScreen — every setting survived the move", () => {
   let host: HTMLDivElement;
@@ -225,9 +217,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     };
 
     collect();
-    for (const tab of host.querySelectorAll<HTMLButtonElement>(
-      '[role="tab"]',
-    )) {
+    for (const tab of host.querySelectorAll<HTMLButtonElement>('[role="tab"]')) {
       act(() => {
         tab.click();
       });
@@ -261,9 +251,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
 
     const panel = host.querySelector('[role="tabpanel"]');
-    const selectedTab = host.querySelector(
-      '[role="tab"][aria-selected="true"]',
-    );
+    const selectedTab = host.querySelector('[role="tab"][aria-selected="true"]');
     expect(panel).not.toBeNull();
     expect(selectedTab).not.toBeNull();
     // Every tab must control a panel that exists, and the live panel must name

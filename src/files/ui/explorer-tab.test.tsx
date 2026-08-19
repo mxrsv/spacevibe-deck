@@ -8,8 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // not about Monaco. A promise that never resolves keeps the editor in its
 // permanent "loading" state without pulling in the full stub.
 vi.mock("../editor-host", async () => {
-  const actual =
-    await vi.importActual<typeof import("../editor-host")>("../editor-host");
+  const actual = await vi.importActual<typeof import("../editor-host")>("../editor-host");
   return {
     ...actual,
     loadMonaco: () => new Promise(() => {}),
@@ -21,12 +20,7 @@ import {
   createFileSurfaceController,
   type FileSurfaceController,
 } from "../file-surface-controller";
-import {
-  activeFileTab,
-  documentFor,
-  resetFileSurfaces,
-  setListing,
-} from "../file-surface-store";
+import { activeFileTab, documentFor, resetFileSurfaces, setListing } from "../file-surface-store";
 import type { FileClient } from "../file-client";
 
 const WS = "/r";
@@ -62,9 +56,7 @@ afterEach(() => {
 describe("ExplorerTab", () => {
   it("selecting a file creates the preview surface and supplies its editor document", async () => {
     act(() => {
-      setListing(WS, WS, [
-        { name: "a.ts", path: FILE, directory: false, outOfRoot: false },
-      ]);
+      setListing(WS, WS, [{ name: "a.ts", path: FILE, directory: false, outOfRoot: false }]);
     });
     act(() => {
       render(<ExplorerTab controller={controller} workspacePath={WS} />, host);
@@ -86,10 +78,7 @@ describe("ExplorerTab", () => {
 
   it("shows an empty state instead of a tree when the tab has no workspace", () => {
     act(() => {
-      render(
-        <ExplorerTab controller={controller} workspacePath={null} />,
-        host,
-      );
+      render(<ExplorerTab controller={controller} workspacePath={null} />, host);
     });
 
     expect(host.querySelector(".file-tree")).toBeNull();

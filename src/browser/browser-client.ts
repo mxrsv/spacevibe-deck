@@ -63,12 +63,8 @@ export const defaultBrowserClient: BrowserClient = {
   setBounds: (bounds) => invoke<void>("browser_set_bounds", bounds),
   setVisible: (visible) => invoke<void>("browser_set_visible", { visible }),
   setInspect: (active) => invoke<void>("browser_set_inspect", { active }),
-  onState: (handler) =>
-    listen<BrowserState>("browser:state", (event) => handler(event.payload)),
-  onGrab: (handler) =>
-    listen<BrowserGrab>("browser:grab", (event) => handler(event.payload)),
+  onState: (handler) => listen<BrowserState>("browser:state", (event) => handler(event.payload)),
+  onGrab: (handler) => listen<BrowserGrab>("browser:grab", (event) => handler(event.payload)),
   onNavigated: (handler) =>
-    listen<{ url: string }>("browser:navigated", (event) =>
-      handler(event.payload.url),
-    ),
+    listen<{ url: string }>("browser:navigated", (event) => handler(event.payload.url)),
 };

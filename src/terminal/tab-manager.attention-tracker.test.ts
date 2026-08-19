@@ -6,10 +6,7 @@ import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   flush,
   freshWindowFocusController,
@@ -328,27 +325,24 @@ describe("createTabManager attention tracker", () => {
       processInfo(1, "/repo", "claude", "agent", "claude"),
       processInfo(1, "/repo", "node", "agent", "codex"),
       processInfo(1, "/repo", "aider", "agent", "Aider"),
-    ])(
-      "accepts a recognized $agent agent with foreground process $process",
-      async (info) => {
-        const infos = new Map<number, PaneProcessInfo>([[1, info]]);
-        const { tm, pty, emitSignal } = setup({ infos });
-        await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
-          workspacePath: "/repo",
-        });
-        await tm.init();
-        await flush();
+    ])("accepts a recognized $agent agent with foreground process $process", async (info) => {
+      const infos = new Map<number, PaneProcessInfo>([[1, info]]);
+      const { tm, pty, emitSignal } = setup({ infos });
+      await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+        workspacePath: "/repo",
+      });
+      await tm.init();
+      await flush();
 
-        emitSignal(1, { kind: "requested", source: "bell" });
-        pty.emitOutput(1, "\x1b]9;4;1\x07");
+      emitSignal(1, { kind: "requested", source: "bell" });
+      pty.emitOutput(1, "\x1b]9;4;1\x07");
 
-        expect(tabViews.value[0].attention?.actionableCount).toBe(1);
-        expect(tabViews.value[0].agentBusy).toBe(true);
-        expect(tabViews.value[0].process).toBe(info.agent);
-        expect(statusInfo.value.agent).toBe(info.agent);
-        tm.dispose();
-      },
-    );
+      expect(tabViews.value[0].attention?.actionableCount).toBe(1);
+      expect(tabViews.value[0].agentBusy).toBe(true);
+      expect(tabViews.value[0].process).toBe(info.agent);
+      expect(statusInfo.value.agent).toBe(info.agent);
+      tm.dispose();
+    });
 
     it.each([
       processInfo(1, "/repo", "node", "busy", null),

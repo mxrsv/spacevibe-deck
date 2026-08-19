@@ -36,18 +36,13 @@ describe("UsageNav", () => {
     });
   };
 
-  const getTabs = (): HTMLButtonElement[] =>
-    Array.from(host.querySelectorAll('[role="tab"]'));
+  const getTabs = (): HTMLButtonElement[] => Array.from(host.querySelectorAll('[role="tab"]'));
 
   it("renders the three views in registry order, labels sentence-case (DL-11.4)", () => {
     mount();
     const tabs = getTabs();
     expect(tabs).toHaveLength(USAGE_VIEWS.length);
-    expect(tabs.map((tab) => tab.textContent)).toEqual([
-      "Overview",
-      "Daily",
-      "Breakdown",
-    ]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Overview", "Daily", "Breakdown"]);
     for (const tab of tabs) {
       expect(tab.textContent).not.toBe(tab.textContent?.toUpperCase());
     }
@@ -96,9 +91,7 @@ describe("UsageNav", () => {
     tabs[0].focus();
 
     act(() => {
-      tabs[0].dispatchEvent(
-        new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }),
-      );
+      tabs[0].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
     });
 
     expect(activeUsageView.value).toBe("breakdown");

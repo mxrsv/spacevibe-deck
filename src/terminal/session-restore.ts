@@ -15,18 +15,9 @@
  * already selects the tab it just added).
  */
 import { BUILTIN_AGENTS, type CustomAgent } from "../lib/agent-catalog";
-import {
-  buildResumeCommand,
-  type ResumeRef,
-  type ResumeRequest,
-} from "../lib/agent-resume";
+import { buildResumeCommand, type ResumeRef, type ResumeRequest } from "../lib/agent-resume";
 import type { resumeLookup } from "../host/resume-host";
-import type {
-  ArchiveEntry,
-  SessionPane,
-  SessionTab,
-  WindowRecord,
-} from "../lib/session-schema";
+import type { ArchiveEntry, SessionPane, SessionTab, WindowRecord } from "../lib/session-schema";
 import type { FileStatResult } from "../files/file-client";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { materializeChromeFrom } from "./tab-materialize";
@@ -96,10 +87,7 @@ function mainFirstThenRecent(
 
 /** Every distinct path a liveness check needs: tab workspaces, pane cwds,
  *  plus any extra paths the caller supplies (file surface workspaces). */
-function livenessPaths(
-  tabs: readonly DatedTab[],
-  extra: readonly string[],
-): readonly string[] {
+function livenessPaths(tabs: readonly DatedTab[], extra: readonly string[]): readonly string[] {
   const paths = new Set<string>(extra);
   for (const { tab } of tabs) {
     if (tab.workspacePath !== null) {
@@ -122,10 +110,7 @@ async function checkLiveness(
   return new Map(paths.map((path, index) => [path, alive[index] ?? false]));
 }
 
-function livePaneOf(
-  pane: SessionPane,
-  alive: ReadonlyMap<string, boolean>,
-): LivePane {
+function livePaneOf(pane: SessionPane, alive: ReadonlyMap<string, boolean>): LivePane {
   if (pane.cwd !== null && alive.get(pane.cwd) !== true) {
     return { cwd: null, agent: pane.agent, skipLookup: true };
   }
@@ -164,11 +149,7 @@ function buildResumeRequests(tabs: readonly LiveTab[]): {
   const keys: string[] = [];
   tabs.forEach((tab, tabIndex) => {
     tab.panes.forEach((pane, paneIndex) => {
-      if (
-        pane.agent !== null &&
-        !pane.skipLookup &&
-        BUILTIN_AGENT_IDS.has(pane.agent)
-      ) {
+      if (pane.agent !== null && !pane.skipLookup && BUILTIN_AGENT_IDS.has(pane.agent)) {
         requests.push({
           agent: pane.agent,
           cwd: pane.cwd,
@@ -248,9 +229,7 @@ async function materializeAll(
         cwds: tab.panes.map((pane) => pane.cwd),
         paneCommands,
         chrome: materializeChromeFrom(tab.source.name, tab.source.dotColor),
-        ...(tab.source.workspacePath !== null
-          ? { workspacePath: tab.source.workspacePath }
-          : {}),
+        ...(tab.source.workspacePath !== null ? { workspacePath: tab.source.workspacePath } : {}),
       });
       if (ok) {
         restored += 1;
@@ -277,12 +256,7 @@ async function restoreTabs(
   const alive = await checkLiveness(deps.dirsExist, paths);
   const live = applyLiveness(entries, alive);
   const refs = await resolveRefs(deps.lookup, live);
-  const restored = await materializeAll(
-    deps.manager,
-    live,
-    refs,
-    deps.customAgents(),
-  );
+  const restored = await materializeAll(deps.manager, live, refs, deps.customAgents());
   return { restored, alive };
 }
 
@@ -302,10 +276,7 @@ async function clearSecondaryRecords(
     try {
       await journal.clearWindowRecord(label);
     } catch (err) {
-      console.warn(
-        `session restore: failed to clear window record "${label}":`,
-        err,
-      );
+      console.warn(`session restore: failed to clear window record "${label}":`, err);
     }
   }
 }
@@ -337,9 +308,7 @@ async function restoreFiles(
       continue;
     }
     const stats = await statFiles(surface.workspacePath, paths);
-    const existing = new Set(
-      stats.filter((stat) => stat.exists).map((stat) => stat.path),
-    );
+    const existing = new Set(stats.filter((stat) => stat.exists).map((stat) => stat.path));
     for (const tab of surface.tabs) {
       if (!existing.has(tab.path)) {
         continue;
@@ -354,10 +323,7 @@ async function restoreFiles(
 }
 
 /** Auto-restore at boot. True = at least one tab was materialized. */
-export async function restoreSession(
-  deps: RestoreDeps,
-  mainLabel: string,
-): Promise<boolean> {
+export async function restoreSession(deps: RestoreDeps, mainLabel: string): Promise<boolean> {
   if (await deps.marker.take()) {
     await deps.marker.clear();
     return false;
@@ -372,8 +338,7 @@ export async function restoreSession(
     }
 
     const mainRecord = records.get(mainLabel) ?? null;
-    const fileWorkspaces =
-      mainRecord?.files.map((surface) => surface.workspacePath) ?? [];
+    const fileWorkspaces = mainRecord?.files.map((surface) => surface.workspacePath) ?? [];
     const result = await restoreTabs(deps, ordered, fileWorkspaces);
     restored = result.restored;
 
@@ -384,22 +349,12 @@ export async function restoreSession(
 
     const activeFileTarget =
       mainRecord !== null
-        ? await restoreFiles(
-            deps.files,
-            deps.statFiles,
-            mainRecord,
-            result.alive,
-          )
+        ? await restoreFiles(deps.files, deps.statFiles, mainRecord, result.alive)
         : null;
 
-    deps.manager.selectTab(
-      clampIndex(mainRecord?.activeTabIndex ?? 0, restored),
-    );
+    deps.manager.selectTab(clampIndex(mainRecord?.activeTabIndex ?? 0, restored));
     if (activeFileTarget !== null) {
-      deps.files.activateFile(
-        activeFileTarget.workspacePath,
-        activeFileTarget.path,
-      );
+      deps.files.activateFile(activeFileTarget.workspacePath, activeFileTarget.path);
     }
 
     return restored > 0;

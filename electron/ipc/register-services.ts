@@ -29,13 +29,9 @@ export function registerServices(deps: RegisterServicesDeps): void {
   ipcMain.handle(CHANNELS.gitBranch, (_event, { cwd }) => gitBranch(cwd));
   // Never rejects: every failure arrives as a `plain` scan, so the rail degrades
   // to the flat folder list Deck already shows rather than raising an error.
-  ipcMain.handle(CHANNELS.gitRepository, (_event, { path }) =>
-    scanRepository(path),
-  );
-  ipcMain.handle(
-    CHANNELS.worktreeAdd,
-    (_event, { repoPath, branch, destPath }) =>
-      addWorktree({ repoPath, branch, destPath }),
+  ipcMain.handle(CHANNELS.gitRepository, (_event, { path: repoPath }) => scanRepository(repoPath));
+  ipcMain.handle(CHANNELS.worktreeAdd, (_event, { repoPath, branch, destPath }) =>
+    addWorktree({ repoPath, branch, destPath }),
   );
   ipcMain.handle(CHANNELS.resumeLookup, (_event, { requests }) =>
     resolveResume(app.getPath("home"), validateResumeRequests(requests)),
@@ -47,9 +43,7 @@ export function registerServices(deps: RegisterServicesDeps): void {
     resolveSessionTails(app.getPath("home"), validateResumeRequests(requests)),
   );
   ipcMain.handle(CHANNELS.windowLabel, (event) => deps.labelOf(event));
-  ipcMain.handle(CHANNELS.detectAgents, (_event, { names }) =>
-    detectAgentsSafely(names ?? []),
-  );
+  ipcMain.handle(CHANNELS.detectAgents, (_event, { names }) => detectAgentsSafely(names ?? []));
   ipcMain.handle(CHANNELS.dirsExist, (_event, { paths }) => dirsExist(paths));
   ipcMain.handle(CHANNELS.desktopEnvironment, () => ({
     // `homeDir`, not `home`: Rust's struct is `#[serde(rename_all = "camelCase")]`
@@ -66,9 +60,7 @@ export function registerServices(deps: RegisterServicesDeps): void {
           : "unsupported",
     homeDir: app.getPath("home"),
   }));
-  ipcMain.handle(CHANNELS.resolvePaths, (_event, { cwd, paths }) =>
-    resolvePaths(cwd, paths),
-  );
+  ipcMain.handle(CHANNELS.resolvePaths, (_event, { cwd, paths }) => resolvePaths(cwd, paths));
   ipcMain.handle(CHANNELS.openEditor, (_event, { request }) =>
     // Destructured: the renderer wraps the payload in `{ request }` to match the
     // Rust parameter name, so taking the payload whole read `.editor` off the
@@ -81,9 +73,7 @@ export function registerServices(deps: RegisterServicesDeps): void {
   ipcMain.handle(CHANNELS.readImageAsDataUrl, (_event, { path: target }) =>
     readImageAsDataUrl(target),
   );
-  ipcMain.handle(CHANNELS.scanWorkspaceFavicon, (_event, { dir }) =>
-    scanWorkspaceFavicon(dir),
-  );
+  ipcMain.handle(CHANNELS.scanWorkspaceFavicon, (_event, { dir }) => scanWorkspaceFavicon(dir));
   // Token usage: one command, no payload — the scan takes no renderer input.
   // Failures inside the scan are in-band (`sources[].state`, `skippedLines`);
   // a rejection here is user-safe while the detail stays in main's log.
@@ -99,14 +89,11 @@ export function registerServices(deps: RegisterServicesDeps): void {
       return await usageService.snapshot();
     } catch (error) {
       console.error("Deck: the usage scan failed:", error);
-      throw new Error("the usage scan failed");
+      throw new Error("the usage scan failed", { cause: error });
     }
   });
   ipcMain.handle(CHANNELS.sessionsList, (_event, { limit }) =>
-    listSessions(
-      app.getPath("home"),
-      typeof limit === "number" ? limit : undefined,
-    ),
+    listSessions(app.getPath("home"), typeof limit === "number" ? limit : undefined),
   );
   ipcMain.handle(CHANNELS.suspendMenuAccelerators, (event, { suspended }) => {
     deps.setRecording(event.sender.id, suspended === true);

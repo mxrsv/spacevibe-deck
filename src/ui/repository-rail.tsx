@@ -1,11 +1,4 @@
-import {
-  ArrowsClockwise,
-  CaretDown,
-  CaretRight,
-  GitFork,
-  Plus,
-  X,
-} from "@phosphor-icons/react";
+import { ArrowsClockwise, CaretDown, CaretRight, GitFork, Plus, X } from "@phosphor-icons/react";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import type { ComponentChildren } from "preact";
 import { useEffect } from "preact/hooks";
@@ -166,13 +159,12 @@ export function RepositoryRail(props: RepositoryRailProps) {
   // Remember one terminal per worktree for the broad row target. Agent marks
   // still focus an exact tab; leaving and returning to the row restores that
   // choice instead of falling back to its first tab every time.
+  /* oxlint-disable react-hooks/exhaustive-deps -- deps are the worktree id and tab key, not object identity */
   useEffect(() => {
     if (selectedWorktree === undefined || selectedTab === undefined) {
       return;
     }
-    if (
-      lastSelectedTabKeys.value.get(selectedWorktree.id) === selectedTab.key
-    ) {
+    if (lastSelectedTabKeys.value.get(selectedWorktree.id) === selectedTab.key) {
       return;
     }
     lastSelectedTabKeys.value = new Map([
@@ -180,6 +172,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
       [selectedWorktree.id, selectedTab.key],
     ]);
   }, [selectedWorktree?.id, selectedTab?.key]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
   // Repository scans: on demand for every open workspace, and again whenever
   // the window comes back (spec §2 — the invalidation that replaces a watcher).
   useEffect(() => installRepositoryRescanOnFocus(), []);
@@ -202,9 +195,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
       (tab) => tab.key === lastSelectedTabKeys.value.get(worktree.id),
     );
     const primaryTab = activeTab ?? rememberedTab ?? worktree.tabs[0];
-    const attentionTab = worktree.tabs.find(
-      (tab) => tab.attention.actionableCount > 0,
-    );
+    const attentionTab = worktree.tabs.find((tab) => tab.attention.actionableCount > 0);
     // A file surface on top means the worktree is no longer the visible
     // active row, even though TabManager still names one of its tabs.
     const visiblyActive = activeTab !== undefined && !surfaceActive;
@@ -239,19 +230,14 @@ export function RepositoryRail(props: RepositoryRailProps) {
         <span class="wsitem__text">
           <span class="wsitem__label">
             <span class="wsitem__name">{worktree.name}</span>
-            {tiered && worktree.primary && (
-              <span class="wsitem__badge">primary</span>
-            )}
+            {tiered && worktree.primary && <span class="wsitem__badge">primary</span>}
           </span>
           {/* U+200E keeps the path LTR inside the RTL (head-ellipsis)
               container — without it the leading "~" flips to the end. */}
           <span class="wsitem__path">{`‎${subtitle(worktree)}`}</span>
         </span>
         {showAgentPresence && (
-          <WorktreeAgentStack
-            tabs={worktree.tabs}
-            onSelectTab={props.onSelectTab}
-          />
+          <WorktreeAgentStack tabs={worktree.tabs} onSelectTab={props.onSelectTab} />
         )}
         {activeTab !== undefined && (
           <button
@@ -298,9 +284,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
         <span class="wsitem__text">
           <span class="wsitem__label">
             <span class="wsitem__name">{worktree.name}</span>
-            {tiered && worktree.primary && (
-              <span class="wsitem__badge">primary</span>
-            )}
+            {tiered && worktree.primary && <span class="wsitem__badge">primary</span>}
           </span>
           <span class="wsitem__path">{`‎${subtitle(worktree)}${lock}`}</span>
         </span>
@@ -338,9 +322,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
         <span class="wsitem__text">
           <span class="wsitem__label">
             <span class="wsitem__name">{worktree.name}</span>
-            {tiered && worktree.primary && (
-              <span class="wsitem__badge">primary</span>
-            )}
+            {tiered && worktree.primary && <span class="wsitem__badge">primary</span>}
           </span>
           <span class="wsitem__path">{`‎${subtitle(worktree)}`}</span>
         </span>
@@ -357,11 +339,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
     if (worktree.tabs.length > 0) {
       return [worktreeRow(worktree, tiered)];
     }
-    return [
-      worktree.resumable
-        ? resumableRow(worktree, tiered)
-        : readoutRow(worktree, tiered),
-    ];
+    return [worktree.resumable ? resumableRow(worktree, tiered) : readoutRow(worktree, tiered)];
   }
 
   return (
@@ -388,10 +366,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
                     <DeckIcon icon={GitFork} size={RAIL_ICON} />
                   </span>
                   <span class="repogroup__name">{group.name}</span>
-                  <DeckIcon
-                    icon={group.collapsed ? CaretRight : CaretDown}
-                    size={CHROME_ICON}
-                  />
+                  <DeckIcon icon={group.collapsed ? CaretRight : CaretDown} size={CHROME_ICON} />
                 </button>
                 <button
                   type="button"
@@ -405,9 +380,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
               </header>
               {!group.collapsed && (
                 <div class="repogroup__worktrees">
-                  {group.worktrees.map((worktree) =>
-                    worktreeRows(worktree, true),
-                  )}
+                  {group.worktrees.map((worktree) => worktreeRows(worktree, true))}
                 </div>
               )}
             </section>

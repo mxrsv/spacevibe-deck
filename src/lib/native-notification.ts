@@ -47,9 +47,7 @@ const realClient: NotificationClient = {
  * Build the agent-notification adapter. Pass a fake `client` in tests;
  * production callers omit it and get the real Tauri-backed client.
  */
-export function createAgentNotificationAdapter(
-  client: NotificationClient = realClient,
-): {
+export function createAgentNotificationAdapter(client: NotificationClient = realClient): {
   requestPermission(): Promise<boolean>;
   send(payload: AgentNotificationPayload): Promise<void>;
 } {
@@ -99,8 +97,6 @@ export function requestAgentNotificationPermission(): Promise<boolean> {
 }
 
 /** Convenience export matching the plan's naming — same adapter, real client. */
-export function sendAgentNotification(
-  payload: AgentNotificationPayload,
-): Promise<void> {
+export function sendAgentNotification(payload: AgentNotificationPayload): Promise<void> {
   return createAgentNotificationAdapter().send(payload);
 }

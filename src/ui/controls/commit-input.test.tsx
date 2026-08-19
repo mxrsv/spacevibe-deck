@@ -21,20 +21,11 @@ describe("CommitInput", () => {
 
   const mount = (value: string, onCommit: (next: string) => void): void => {
     act(() => {
-      render(
-        <CommitInput
-          value={value}
-          placeholder="p"
-          ariaLabel="a"
-          onCommit={onCommit}
-        />,
-        host,
-      );
+      render(<CommitInput value={value} placeholder="p" ariaLabel="a" onCommit={onCommit} />, host);
     });
   };
 
-  const field = (): HTMLInputElement =>
-    host.querySelector("input") as HTMLInputElement;
+  const field = (): HTMLInputElement => host.querySelector("input") as HTMLInputElement;
 
   it("keeps the draft across a re-render — the settings panel never unmounts", () => {
     const onCommit = vi.fn();
@@ -67,9 +58,7 @@ describe("CommitInput", () => {
     type(field(), "Iosevka");
 
     act(() => {
-      field().dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      field().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
 
     expect(onCommit).toHaveBeenCalledWith("Iosevka");

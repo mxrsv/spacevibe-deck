@@ -71,10 +71,7 @@ export function emptyDraft(): ThemeDraft {
  * and most collections omit at least one, so rejecting on them would refuse
  * usable themes over decoration — they fall back to values the file did supply.
  */
-export function finishDraft(
-  draft: ThemeDraft,
-  fallbackLabel: string,
-): ThemeParseResult {
+export function finishDraft(draft: ThemeDraft, fallbackLabel: string): ThemeParseResult {
   const { background, foreground } = draft.colors;
   if (background === undefined || foreground === undefined) {
     return {

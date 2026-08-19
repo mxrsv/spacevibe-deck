@@ -2,11 +2,7 @@ import { X } from "@phosphor-icons/react";
 import { useEffect, useRef } from "preact/hooks";
 import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
 import { activeCategory } from "./active-category-store";
-import {
-  categoryTabId,
-  SECTION_PANEL_ID,
-  SETTINGS_CATEGORIES,
-} from "./settings-categories";
+import { categoryTabId, SECTION_PANEL_ID, SETTINGS_CATEGORIES } from "./settings-categories";
 import { SettingsNav } from "./settings-nav";
 import { initSettings, settingsLoadState } from "../../settings/settings-store";
 import { LoadError } from "../controls/load-error";
@@ -70,9 +66,8 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
   // an unknown id can only come from a stale signal, and a blank screen is a
   // worse answer than the default one.
   const active =
-    SETTINGS_CATEGORIES.find(
-      (category) => category.id === activeCategory.value,
-    ) ?? SETTINGS_CATEGORIES[0];
+    SETTINGS_CATEGORIES.find((category) => category.id === activeCategory.value) ??
+    SETTINGS_CATEGORIES[0];
   const Section = active.Section;
 
   return (

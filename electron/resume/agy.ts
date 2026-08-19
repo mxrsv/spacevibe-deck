@@ -22,11 +22,7 @@ import { lstatSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { headBytes, type CandidateSession } from "./head";
 
-const AGY_CONVERSATIONS_DIR = path.join(
-  ".gemini",
-  "antigravity",
-  "conversations",
-);
+const AGY_CONVERSATIONS_DIR = path.join(".gemini", "antigravity", "conversations");
 const AGY_EXTENSION = ".pb";
 
 /** Enough of the file to plausibly contain the session's opening cwd write,
@@ -86,9 +82,7 @@ function readCandidate(entry: DatedFile): CandidateSession | null {
 
 export function candidates(home: string): CandidateSession[] {
   const root = path.join(home, AGY_CONVERSATIONS_DIR);
-  const newestFirst = datedConversations(root).sort(
-    (left, right) => right.mtimeMs - left.mtimeMs,
-  );
+  const newestFirst = datedConversations(root).sort((left, right) => right.mtimeMs - left.mtimeMs);
   return newestFirst
     .slice(0, MAX_FILES)
     .map(readCandidate)

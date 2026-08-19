@@ -76,10 +76,7 @@ export interface TerminalManager {
    * leaves in left-to-right order (missing/null entries → $HOME). Throws when
    * any spawn fails.
    */
-  initFromLayout(
-    layout: SerializedNode,
-    cwds?: readonly (string | null)[],
-  ): Promise<void>;
+  initFromLayout(layout: SerializedNode, cwds?: readonly (string | null)[]): Promise<void>;
   /**
    * Displays the container and fits every pane. `focus` defaults to `true`
    * (focuses the active pane, matching the historical behavior); internal

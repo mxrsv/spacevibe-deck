@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  cappedAgents,
-  distinctProjects,
-  filterSessions,
-} from "./session-filters";
+import { cappedAgents, distinctProjects, filterSessions } from "./session-filters";
 import type { SessionEntry } from "../lib/session-history";
 
 function entry(over: Partial<SessionEntry>): SessionEntry {
@@ -41,9 +37,7 @@ describe("filterSessions", () => {
   ];
 
   it("passes everything through on all/null", () => {
-    expect(
-      filterSessions(entries, { agent: "all", project: null }),
-    ).toHaveLength(3);
+    expect(filterSessions(entries, { agent: "all", project: null })).toHaveLength(3);
   });
 
   it("filters by agent", () => {

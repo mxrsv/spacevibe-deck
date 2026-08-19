@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { readFileSync } from "node:fs";
 import { render } from "preact";
 import { act } from "preact/test-utils";
@@ -35,8 +36,7 @@ vi.mock("./controls/deck-icon", () => ({
   DeckIcon: () => null,
 }));
 
-import { activeTabIndex, tabViews } from "../terminal/tabs-store";
-import type { PaneView, TabView } from "../terminal/tabs-store";
+import { activeTabIndex, tabViews, type PaneView, type TabView } from "../terminal/tabs-store";
 import { AgentRail } from "./agent-rail";
 import { TabStrip } from "./tab-strip";
 import {
@@ -45,10 +45,7 @@ import {
   invalidateRepositoryScans,
 } from "../repositories/repositories-store";
 import type { RepositoryScan } from "../repositories/repository-client";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   createFileSurfaceController,
   type FileSurfaceController,
@@ -279,9 +276,7 @@ describe("AgentRail attention rows", () => {
     mount();
     await settle();
 
-    const listed = host.querySelectorAll<HTMLElement>(
-      ".asr-stream .asr-row--tab",
-    );
+    const listed = host.querySelectorAll<HTMLElement>(".asr-stream .asr-row--tab");
     expect(listed).toHaveLength(2);
     // Open order, not severity: the marks differ, the positions do not move.
     expect(listed[0].dataset.state).toBe("asked");
@@ -309,10 +304,7 @@ describe("AgentRail click contract", () => {
     const onFocusPane = vi.fn();
     tabViews.value = [
       tab({
-        panes: [
-          pane({ paneId: 11, agent: "claude" }),
-          pane({ paneId: 12, agent: "codex" }),
-        ],
+        panes: [pane({ paneId: 11, agent: "claude" }), pane({ paneId: 12, agent: "codex" })],
       }),
     ];
     mount({ onFocusPane });
@@ -370,9 +362,7 @@ describe("AgentRail click contract", () => {
 
     expect(host.querySelector(".asr-row__action--options")).toBeNull();
     expect(host.querySelector(".tab-popover")).toBeNull();
-    expect(host.querySelectorAll(".asr-row__action")).toHaveLength(
-      rows().length,
-    );
+    expect(host.querySelectorAll(".asr-row__action")).toHaveLength(rows().length);
   });
 });
 
@@ -386,10 +376,7 @@ describe("AgentRail pane tree", () => {
     tabViews.value = [
       tab({
         name: "pair",
-        panes: [
-          pane({ paneId: 11, agent: "claude" }),
-          pane({ paneId: 12, agent: "codex" }),
-        ],
+        panes: [pane({ paneId: 11, agent: "claude" }), pane({ paneId: 12, agent: "codex" })],
       }),
     ];
     mount();
@@ -412,10 +399,7 @@ describe("AgentRail pane tree", () => {
     // the tab, and the rail offers no close for it — the strip's ✕ and ⌘W do.
     tabViews.value = [
       tab({
-        panes: [
-          pane({ paneId: 11, agent: "claude" }),
-          pane({ paneId: 12, agent: "codex" }),
-        ],
+        panes: [pane({ paneId: 11, agent: "claude" }), pane({ paneId: 12, agent: "codex" })],
       }),
     ];
     mount();
@@ -450,9 +434,10 @@ describe("AgentRail pane tree", () => {
 
     const leaves = [...host.querySelectorAll<HTMLElement>(".asr-leaf")];
     expect(leaves.map((leaf) => leaf.dataset.quiet)).toEqual(["false", "true"]);
-    expect(
-      leaves.map((leaf) => leaf.querySelector(".asr-leaf__msg")?.textContent),
-    ).toEqual(["Permission needed: prisma migrate dev", "Running the suite"]);
+    expect(leaves.map((leaf) => leaf.querySelector(".asr-leaf__msg")?.textContent)).toEqual([
+      "Permission needed: prisma migrate dev",
+      "Running the suite",
+    ]);
   });
 
   it("puts a leaf's turn where its agent name was, not on a second line", async () => {
@@ -461,10 +446,7 @@ describe("AgentRail pane tree", () => {
     // a pane that has said nothing keeps the name rather than going blank.
     tabViews.value = [
       tab({
-        panes: [
-          pane({ paneId: 11, agent: "claude" }),
-          pane({ paneId: 12, agent: "codex" }),
-        ],
+        panes: [pane({ paneId: 11, agent: "claude" }), pane({ paneId: 12, agent: "codex" })],
       }),
     ];
     paneTails.value = new Map([[11, "Wrote the migration"]]);
@@ -473,33 +455,25 @@ describe("AgentRail pane tree", () => {
 
     const leaves = [...host.querySelectorAll<HTMLElement>(".asr-leaf")];
     expect(leaves[0].querySelector(".asr-leaf__agent")).toBeNull();
-    expect(leaves[0].querySelector(".asr-leaf__msg")?.textContent).toBe(
-      "Wrote the migration",
-    );
-    expect(leaves[1].querySelector(".asr-leaf__agent")?.textContent).toBe(
-      "codex",
-    );
+    expect(leaves[0].querySelector(".asr-leaf__msg")?.textContent).toBe("Wrote the migration");
+    expect(leaves[1].querySelector(".asr-leaf__agent")?.textContent).toBe("codex");
     expect(leaves[1].querySelector(".asr-leaf__msg")).toBeNull();
   });
 
   it("leaves a flat leaf with nothing to say showing its agent alone", async () => {
     tabViews.value = [
       tab({
-        panes: [
-          pane({ paneId: 11, agent: "claude" }),
-          pane({ paneId: 12, agent: "codex" }),
-        ],
+        panes: [pane({ paneId: 11, agent: "claude" }), pane({ paneId: 12, agent: "codex" })],
       }),
     ];
     mount();
     await settle();
 
     expect(host.querySelector(".asr-leaf__msg")).toBeNull();
-    expect(
-      [...host.querySelectorAll(".asr-leaf__agent")].map(
-        (name) => name.textContent,
-      ),
-    ).toEqual(["claude", "codex"]);
+    expect([...host.querySelectorAll(".asr-leaf__agent")].map((name) => name.textContent)).toEqual([
+      "claude",
+      "codex",
+    ]);
   });
 
   it("puts the agent glyph before the tab name and age on the same line", async () => {
@@ -514,9 +488,7 @@ describe("AgentRail pane tree", () => {
 
     const row = rows()[0];
     const directClasses = [...row.children].map((child) => child.className);
-    expect(directClasses.indexOf("asr-chips")).toBeLessThan(
-      directClasses.indexOf("asr-row__name"),
-    );
+    expect(directClasses.indexOf("asr-chips")).toBeLessThan(directClasses.indexOf("asr-row__name"));
     expect(row.querySelector(".asr-row__age")?.parentElement).toBe(row);
   });
 
@@ -544,9 +516,7 @@ describe("AgentRail pane tree", () => {
     // privilege. Every row that has something to say says it, and the quiet
     // ones recede instead of going blank — a list where only the loud rows
     // carried a sentence read as two kinds of thing.
-    expect(rows()[0].querySelector(".asr-row__msg")?.textContent).toBe(
-      "Wrote the migration",
-    );
+    expect(rows()[0].querySelector(".asr-row__msg")?.textContent).toBe("Wrote the migration");
     expect(rows()[1].querySelector(".asr-row__msg")?.textContent).toBe(
       "Permission needed: prisma migrate dev",
     );
@@ -564,28 +534,20 @@ describe("AgentRail pane tree", () => {
     await settle();
 
     expect(rows()[0].querySelector(".asr-row__name strong")).toBeNull();
-    expect(rows()[0].querySelector(".asr-row__msg")?.textContent).toBe(
-      "Reading the rail model",
-    );
+    expect(rows()[0].querySelector(".asr-row__msg")?.textContent).toBe("Reading the rail model");
   });
 
   it("keeps a name the user typed even when its agent has spoken", async () => {
     // A derived label is a word the glyph or the cluster header already says;
     // a typed one exists nowhere else, so the turn follows it on the same
     // line instead of replacing it.
-    tabViews.value = [
-      tab({ key: 1, name: "release cut", panes: [pane({ paneId: 11 })] }),
-    ];
+    tabViews.value = [tab({ key: 1, name: "release cut", panes: [pane({ paneId: 11 })] })];
     paneTails.value = new Map([[11, "Reading the rail model"]]);
     mount();
     await settle();
 
-    expect(rows()[0].querySelector(".asr-row__name strong")?.textContent).toBe(
-      "release cut",
-    );
-    expect(rows()[0].querySelector(".asr-row__msg")?.textContent).toBe(
-      "Reading the rail model",
-    );
+    expect(rows()[0].querySelector(".asr-row__name strong")?.textContent).toBe("release cut");
+    expect(rows()[0].querySelector(".asr-row__msg")?.textContent).toBe("Reading the rail model");
   });
 
   it("falls back to the tab's own identity when nothing has been said", async () => {
@@ -596,9 +558,7 @@ describe("AgentRail pane tree", () => {
     await settle();
 
     expect(rows()[0].querySelector(".asr-row__msg")).toBeNull();
-    expect(rows()[0].querySelector(".asr-row__name strong")?.textContent).toBe(
-      "claude",
-    );
+    expect(rows()[0].querySelector(".asr-row__name strong")?.textContent).toBe("claude");
     expect(rows()[0].dataset.quiet).toBe("true");
   });
 
@@ -641,14 +601,13 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     expect(heads).toHaveLength(1);
     expect(heads[0].textContent).toBe("main");
     // Both tabs belong to one repository, so neither row repeats its name.
-    expect(
-      [...rows()].map((row) => row.querySelector("strong")?.textContent),
-    ).toEqual(["claude", "codex"]);
+    expect([...rows()].map((row) => row.querySelector("strong")?.textContent)).toEqual([
+      "claude",
+      "codex",
+    ]);
     // The worktree suffix survives the change — it is the only thing telling
     // two tabs of one project apart.
-    expect(rows()[1].querySelector(".asr-row__worktree")?.textContent).toBe(
-      "side",
-    );
+    expect(rows()[1].querySelector(".asr-row__worktree")?.textContent).toBe("side");
   });
 
   it("keeps project → tab for a project with one tab", async () => {
@@ -680,9 +639,7 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     const heads = host.querySelectorAll(".asr-stream .asr-cluster__head");
     expect(heads).toHaveLength(1);
     expect(host.querySelectorAll(".asr-stream .asr-row--tab")).toHaveLength(3);
-    const asking = host.querySelector<HTMLElement>(
-      '.asr-stream .asr-row--tab[data-state="asked"]',
-    );
+    const asking = host.querySelector<HTMLElement>('.asr-stream .asr-row--tab[data-state="asked"]');
     expect(asking?.querySelector("strong")?.textContent).toBe("claude");
   });
 });
@@ -697,9 +654,7 @@ describe("AgentRail state wording (DL-27.2)", () => {
     expect(row.dataset.state).toBe("failed");
     // The mark is the fast read; the word is never painted in the row.
     expect(row.textContent).not.toContain("failed");
-    expect(
-      row.querySelector(".asr-row__mark")?.getAttribute("data-state"),
-    ).toBe("failed");
+    expect(row.querySelector(".asr-row__mark")?.getAttribute("data-state")).toBe("failed");
 
     const hit = row.querySelector<HTMLElement>(".asr-row__hit");
     expect(hit?.getAttribute("aria-label")).toContain("failed");
@@ -718,9 +673,7 @@ describe("AgentRail archived rows", () => {
     expect(archived).not.toBeNull();
     expect(archived?.getAttribute("role")).toBe("button");
     expect(archived?.getAttribute("tabindex")).toBe("0");
-    expect(archived?.getAttribute("aria-label")).toBe(
-      "Resume last session in main · side",
-    );
+    expect(archived?.getAttribute("aria-label")).toBe("Resume last session in main · side");
     // No live pane has said anything, so the row carries no message line.
     expect(archived?.querySelector(".asr-row__msg")).toBeNull();
 
@@ -729,9 +682,7 @@ describe("AgentRail archived rows", () => {
 
     onResumeWorktree.mockClear();
     act(() => {
-      archived?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      archived?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
     expect(onResumeWorktree).toHaveBeenCalledWith("/r/side");
   });
@@ -808,13 +759,9 @@ describe("AgentRail carried-over jobs", () => {
     await settle();
 
     const list = host.querySelector(".asr-rail__list");
-    expect(list?.firstElementChild?.classList.contains("asr-openrow")).toBe(
-      true,
-    );
+    expect(list?.firstElementChild?.classList.contains("asr-openrow")).toBe(true);
     // …and the projects are genuinely below it, not merely absent.
-    const order = [
-      ...(list?.querySelectorAll(".asr-openrow, .asr-cluster") ?? []),
-    ];
+    const order = [...(list?.querySelectorAll(".asr-openrow, .asr-cluster") ?? [])];
     expect(order.length).toBeGreaterThan(1);
     expect(order[0].classList.contains("asr-openrow")).toBe(true);
   });
@@ -865,10 +812,7 @@ describe("AgentRail shell contract", () => {
    */
   function ruleBody(selector: string): string {
     const start = stylesheet.indexOf(`\n${selector} {`);
-    expect(
-      start,
-      `no \`${selector} {\` rule in src/styles/04a-agent-rail.css`,
-    ).toBeGreaterThan(-1);
+    expect(start, `no \`${selector} {\` rule in src/styles/04a-agent-rail.css`).toBeGreaterThan(-1);
     const open = stylesheet.indexOf("{", start);
     return stylesheet.slice(open + 1, stylesheet.indexOf("}", open));
   }
@@ -896,8 +840,6 @@ describe("AgentRail shell contract", () => {
     // Every DL-18.9 collapse rule is `.wsbar`/`.wsitem`-scoped, so replacing
     // the rail silently dropped them all. These are the rail's own.
     expect(stylesheet).toContain('[data-sidebar-collapsed="true"] .asr-rail');
-    expect(stylesheet).toContain(
-      '[data-sidebar-collapsed="true"] .asr-open__label',
-    );
+    expect(stylesheet).toContain('[data-sidebar-collapsed="true"] .asr-open__label');
   });
 });

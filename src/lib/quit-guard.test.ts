@@ -2,10 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const listenMock = vi.hoisted(() =>
   vi.fn(
-    async (
-      _event: string,
-      _handler: (event: { payload: unknown }) => void,
-    ): Promise<() => void> =>
+    async (_event: string, _handler: (event: { payload: unknown }) => void): Promise<() => void> =>
       () => {},
   ),
 );
@@ -71,9 +68,7 @@ describe("closeRequestOrNull", () => {
   it("rejects every malformed shape rather than guessing a request id", () => {
     expect(closeRequestOrNull({})).toBeNull();
     expect(closeRequestOrNull({ ...busyRequest, requestId: "7" })).toBeNull();
-    expect(
-      closeRequestOrNull({ ...busyRequest, busyProcesses: "claude" }),
-    ).toBeNull();
+    expect(closeRequestOrNull({ ...busyRequest, busyProcesses: "claude" })).toBeNull();
     expect(closeRequestOrNull({ ...busyRequest, busyPanes: null })).toBeNull();
     expect(closeRequestOrNull(null)).toBeNull();
     expect(closeRequestOrNull(42)).toBeNull();
@@ -83,9 +78,7 @@ describe("closeRequestOrNull", () => {
   // a census field it does not know about is dropped on arrival — with the
   // sender and the typecheck both green. These three lock the widening in.
   it("carries dirtyFiles through instead of discarding it", () => {
-    expect(closeRequestOrNull(dirtyOnlyRequest)?.dirtyFiles).toEqual([
-      "/r/src/index.ts",
-    ]);
+    expect(closeRequestOrNull(dirtyOnlyRequest)?.dirtyFiles).toEqual(["/r/src/index.ts"]);
   });
 
   it("treats an absent dirtyFiles as none rather than refusing to answer", () => {
@@ -97,8 +90,7 @@ describe("closeRequestOrNull", () => {
 
   it("drops a malformed dirty entry rather than repairing it", () => {
     expect(
-      closeRequestOrNull({ ...busyRequest, dirtyFiles: ["/r/a.ts", 7, null] })
-        ?.dirtyFiles,
+      closeRequestOrNull({ ...busyRequest, dirtyFiles: ["/r/a.ts", 7, null] })?.dirtyFiles,
     ).toEqual(["/r/a.ts"]);
   });
 });
@@ -117,9 +109,7 @@ describe("createQuitFlow", () => {
     // file tabs quit with unsaved edits and no dialog (spec §6).
     const deps = makeDeps();
     await createQuitFlow(deps)(dirtyOnlyRequest);
-    expect(deps.ask).toHaveBeenCalledWith(
-      expect.stringContaining("index.ts has unsaved changes"),
-    );
+    expect(deps.ask).toHaveBeenCalledWith(expect.stringContaining("index.ts has unsaved changes"));
     expect(deps.confirm).toHaveBeenCalledWith(11);
   });
 
@@ -160,18 +150,14 @@ describe("createQuitFlow", () => {
       fullyNamed: false,
       dirtyFiles: [],
     });
-    expect(deps.ask).toHaveBeenCalledWith(
-      expect.stringContaining("could not verify"),
-    );
+    expect(deps.ask).toHaveBeenCalledWith(expect.stringContaining("could not verify"));
   });
 
   it("prompts with the Rust census and confirms on accept", async () => {
     const deps = makeDeps();
     await createQuitFlow(deps)(busyRequest);
     // Two panes, one name — the message must say "2 panes", not "claude".
-    expect(deps.ask).toHaveBeenCalledWith(
-      expect.stringContaining("2 panes are still running"),
-    );
+    expect(deps.ask).toHaveBeenCalledWith(expect.stringContaining("2 panes are still running"));
     expect(deps.confirm).toHaveBeenCalledWith(7);
   });
 
@@ -195,9 +181,7 @@ describe("createQuitFlow", () => {
   it("uses the unknown-inspection copy when Rust could not name everything", async () => {
     const deps = makeDeps();
     await createQuitFlow(deps)({ ...busyRequest, fullyNamed: false });
-    expect(deps.ask).toHaveBeenCalledWith(
-      expect.stringContaining("could not verify"),
-    );
+    expect(deps.ask).toHaveBeenCalledWith(expect.stringContaining("could not verify"));
   });
 
   it("still confirms when the flush fails", async () => {
@@ -272,9 +256,7 @@ describe("installQuitGuard", () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(quit.ask).toHaveBeenCalledWith(
-      expect.stringContaining("index.ts has unsaved changes"),
-    );
+    expect(quit.ask).toHaveBeenCalledWith(expect.stringContaining("index.ts has unsaved changes"));
   });
 
   it("drops a malformed payload without answering Rust with a guessed id", async () => {

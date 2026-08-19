@@ -7,11 +7,7 @@ import { IDLE_ATTENTION_SUMMARY } from "../terminal/tabs-store";
 import type { RailTab } from "../repositories/repository-model";
 import { WorktreeAgentStack } from "./worktree-agent-stack";
 
-function tab(
-  key: number,
-  agents: readonly PaneAgent[],
-  active = false,
-): RailTab {
+function tab(key: number, agents: readonly PaneAgent[], active = false): RailTab {
   return {
     index: key - 1,
     key,
@@ -48,23 +44,15 @@ describe("WorktreeAgentStack", () => {
     const onSelectTab = vi.fn();
     render(
       <WorktreeAgentStack
-        tabs={[
-          tab(1, ["claude"]),
-          tab(2, ["codex"]),
-          tab(3, ["Review Bot"], true),
-        ]}
+        tabs={[tab(1, ["claude"]), tab(2, ["codex"]), tab(3, ["Review Bot"], true)]}
         onSelectTab={onSelectTab}
       />,
       host,
     );
 
     expect(host.querySelectorAll(".worktree-agents__logo")).toHaveLength(2);
-    expect(host.querySelector(".worktree-agents__letter")?.textContent).toBe(
-      "R",
-    );
-    const buttons = host.querySelectorAll<HTMLButtonElement>(
-      ".worktree-agents__item",
-    );
+    expect(host.querySelector(".worktree-agents__letter")?.textContent).toBe("R");
+    const buttons = host.querySelectorAll<HTMLButtonElement>(".worktree-agents__item");
     expect(buttons).toHaveLength(3);
     expect(buttons[2].getAttribute("aria-current")).toBe("page");
 
@@ -104,17 +92,13 @@ describe("WorktreeAgentStack", () => {
     );
 
     expect(host.querySelectorAll(".worktree-agents__item")).toHaveLength(3);
-    const more = host.querySelector<HTMLButtonElement>(
-      ".worktree-agents__more",
-    );
+    const more = host.querySelector<HTMLButtonElement>(".worktree-agents__more");
     expect(more?.textContent).toBe("+2");
 
     act(() => {
       more?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    const hidden = host.querySelectorAll<HTMLButtonElement>(
-      ".worktree-agents__menu-item",
-    );
+    const hidden = host.querySelectorAll<HTMLButtonElement>(".worktree-agents__menu-item");
     expect(hidden).toHaveLength(2);
 
     act(() => {

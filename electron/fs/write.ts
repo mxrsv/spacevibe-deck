@@ -118,11 +118,7 @@ export async function writeTextFile(
     // which is the only honest answer once the original's bits are lost.
     mode = undefined;
   }
-  await writeFileAtomically(
-    resolved,
-    applyEol(text, eol),
-    mode === undefined ? {} : { mode },
-  );
+  await writeFileAtomically(resolved, applyEol(text, eol), mode === undefined ? {} : { mode });
   const stats = await fs.stat(resolved);
   return { path: resolved, mtimeMs: stats.mtimeMs, size: stats.size };
 }

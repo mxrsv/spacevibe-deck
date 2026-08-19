@@ -9,10 +9,7 @@ vi.mock("../../chrome/events", () => ({ reportPersistError: vi.fn() }));
 
 import { open } from "../../host/dialog-host";
 import { invoke } from "../../host/bridge";
-import {
-  DEFAULT_SIDEBAR_BANNER,
-  sidebarBanner,
-} from "../../settings/sidebar-banner-store";
+import { DEFAULT_SIDEBAR_BANNER, sidebarBanner } from "../../settings/sidebar-banner-store";
 import { SidebarBannerSettings } from "./sidebar-banner-settings";
 
 describe("SidebarBannerSettings", () => {
@@ -36,13 +33,9 @@ describe("SidebarBannerSettings", () => {
   it("keeps off, every flag, and image import in one config row", () => {
     act(() => render(<SidebarBannerSettings />, host));
 
-    const labels = [...host.querySelectorAll(".cfg-row__label")].map(
-      (label) => label.textContent,
-    );
+    const labels = [...host.querySelectorAll(".cfg-row__label")].map((label) => label.textContent);
     expect(labels).toEqual(["Sidebar banner"]);
-    const options = [...host.querySelectorAll("select option")].map(
-      (option) => option.textContent,
-    );
+    const options = [...host.querySelectorAll("select option")].map((option) => option.textContent);
     expect(options).toEqual([
       "Off",
       "Vietnam",

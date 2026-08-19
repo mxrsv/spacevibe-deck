@@ -5,10 +5,7 @@ import { activeUpdateController } from "../../../updater/active-update-controlle
 import { RELEASE_NOTES_URL } from "../../../updater/update-menu-actions";
 import { ConfigRow } from "../../controls/config-row";
 import { reportPersistError } from "../../../chrome/events";
-import type {
-  UpdateCheckResult,
-  UpdatePhase,
-} from "../../../updater/update-controller";
+import type { UpdateCheckResult, UpdatePhase } from "../../../updater/update-controller";
 
 /**
  * The pill's word for each phase. Same vocabulary as the chrome action, so a
@@ -110,11 +107,7 @@ export function AboutSection() {
         </button>
       </ConfigRow>
       <ConfigRow label="Release notes" desc="What changed in each version">
-        <button
-          type="button"
-          class="cfg-btn"
-          onClick={() => void handleReleaseNotes()}
-        >
+        <button type="button" class="cfg-btn" onClick={() => void handleReleaseNotes()}>
           open …
         </button>
       </ConfigRow>

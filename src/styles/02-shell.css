@@ -246,14 +246,14 @@
   height: 100%;
   transform: none;
   background:
-    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 42%
-      8% / 16px 10px no-repeat,
-    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 58%
-      8% / 16px 10px no-repeat,
-    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 42%
-      92% / 16px 10px no-repeat,
-    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 58%
-      92% / 16px 10px no-repeat;
+    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 42% 8% / 16px 10px
+      no-repeat,
+    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 58% 8% / 16px 10px
+      no-repeat,
+    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 42% 92% / 16px 10px
+      no-repeat,
+    repeating-linear-gradient(to bottom, #111111 0 2px, transparent 2px 4px) 58% 92% / 16px 10px
+      no-repeat;
 }
 
 .sidebar-banner__mark--taegeuk::before,
@@ -307,11 +307,7 @@
       rgb(0 0 0 / 7%) 1px 2px,
       transparent 2px 4px
     ),
-    repeating-linear-gradient(
-      90deg,
-      rgb(255 255 255 / 4%) 0 1px,
-      transparent 1px 3px
-    );
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 4%) 0 1px, transparent 1px 3px);
   mix-blend-mode: soft-light;
 }
 

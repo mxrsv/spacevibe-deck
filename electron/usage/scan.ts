@@ -5,11 +5,7 @@
  */
 import { statSync, type Stats } from "node:fs";
 import { ingest } from "./codex";
-import {
-  discoverClaude,
-  discoverCodex,
-  fileIdentity,
-} from "./discover";
+import { discoverClaude, discoverCodex, fileIdentity } from "./discover";
 import { readLines } from "./reader";
 import {
   COMPACT_AFTER_MS,
@@ -63,12 +59,7 @@ function compacted(record: FileRecord, nowMs: number): FileRecord {
   const entries = record.entries;
   record.entries = new Map();
   for (const contribution of entries.values()) {
-    addTotal(
-      record.totals,
-      contribution.bucketStartMs,
-      contribution.model,
-      contribution.counters,
-    );
+    addTotal(record.totals, contribution.bucketStartMs, contribution.model, contribution.counters);
   }
   sortTotals(record.totals);
   record.cumulative = null;
@@ -196,9 +187,7 @@ async function scanInto(
     const key = paths[index];
     const priorCandidate = previous.files.get(key);
     const prior =
-      priorCandidate !== undefined && priorCandidate.agent === agent
-        ? priorCandidate
-        : undefined;
+      priorCandidate !== undefined && priorCandidate.agent === agent ? priorCandidate : undefined;
     const outcome = scanFile(agent, key, prior, nowMs);
     if (outcome.kind === "updated") {
       files.set(key, outcome.record);
@@ -215,11 +204,7 @@ async function scanInto(
  * but cannot be listed: the data is still on disk, this scan simply could
  * not look at it.
  */
-function carryOver(
-  previous: UsageCache,
-  agent: UsageAgent,
-  files: Map<string, FileRecord>,
-): void {
+function carryOver(previous: UsageCache, agent: UsageAgent, files: Map<string, FileRecord>): void {
   for (const [key, record] of previous.files) {
     if (record.agent === agent) {
       files.set(key, cloneRecord(record));
@@ -242,10 +227,7 @@ function recordsEqual(left: FileRecord, right: FileRecord): boolean {
   );
 }
 
-function filesEqual(
-  left: Map<string, FileRecord>,
-  right: Map<string, FileRecord>,
-): boolean {
+function filesEqual(left: Map<string, FileRecord>, right: Map<string, FileRecord>): boolean {
   if (left.size !== right.size) {
     return false;
   }
@@ -267,11 +249,7 @@ function cachedIdentity(filePath: string, previous: UsageCache): string | null {
   if (record !== undefined) {
     try {
       const meta = statSync(filePath, { throwIfNoEntry: false });
-      if (
-        meta !== undefined &&
-        record.size === meta.size &&
-        record.mtimeMs === mtimeMsOf(meta)
-      ) {
+      if (meta !== undefined && record.size === meta.size && record.mtimeMs === mtimeMsOf(meta)) {
         return record.identity;
       }
     } catch {
@@ -301,13 +279,7 @@ export async function scanAll(
       claude = "unreadable";
       break;
     case "present": {
-      const accounted = await scanInto(
-        "claude",
-        claudeFound.files,
-        previous,
-        nowMs,
-        files,
-      );
+      const accounted = await scanInto("claude", claudeFound.files, previous, nowMs, files);
       claude = sourceState(accounted, claudeFound.files.length);
       break;
     }
@@ -324,13 +296,7 @@ export async function scanAll(
       codex = "unreadable";
       break;
     case "present": {
-      let accounted = await scanInto(
-        "codex",
-        codexFound.active,
-        previous,
-        nowMs,
-        files,
-      );
+      let accounted = await scanInto("codex", codexFound.active, previous, nowMs, files);
       // An archived copy of a session that is still active would be counted
       // twice, so it is dropped rather than scanned.
       const activeIds = new Set<string>();
@@ -345,10 +311,7 @@ export async function scanAll(
         return identity === null || !activeIds.has(identity);
       });
       accounted += await scanInto("codex", archived, previous, nowMs, files);
-      codex = sourceState(
-        accounted,
-        codexFound.active.length + archived.length,
-      );
+      codex = sourceState(accounted, codexFound.active.length + archived.length);
       break;
     }
   }
@@ -432,10 +395,7 @@ function countFiles(cache: UsageCache, agent: UsageAgent): number {
   return count;
 }
 
-export function buildSnapshot(
-  outcome: ScanOutcome,
-  scannedAtMs: number,
-): UsageSnapshot {
+export function buildSnapshot(outcome: ScanOutcome, scannedAtMs: number): UsageSnapshot {
   const sources: UsageSource[] = [
     {
       agent: "claude",

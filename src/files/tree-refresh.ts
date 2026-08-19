@@ -33,10 +33,7 @@ function parentDirectory(path: string): string {
 
 export interface TreeRefreshDeps {
   /** Re-`listDir` one directory and apply the result to the store. */
-  readonly loadListing: (
-    workspacePath: string,
-    directory: string,
-  ) => Promise<void>;
+  readonly loadListing: (workspacePath: string, directory: string) => Promise<void>;
   /** Whether the owning controller has already disposed. */
   readonly isDisposed: () => boolean;
 }
@@ -91,10 +88,7 @@ export function createTreeRefresh(deps: TreeRefreshDeps): TreeRefresh {
     }
     treeRefreshTimers.set(
       workspacePath,
-      setTimeout(
-        () => flushTreeRefresh(workspacePath),
-        TREE_REFRESH_COALESCE_MS,
-      ),
+      setTimeout(() => flushTreeRefresh(workspacePath), TREE_REFRESH_COALESCE_MS),
     );
   }
 

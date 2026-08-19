@@ -17,10 +17,7 @@ describe("CommitTextarea", () => {
     host.remove();
   });
 
-  const mount = (
-    value: string,
-    onCommit: (next: string) => void,
-  ): HTMLTextAreaElement => {
+  const mount = (value: string, onCommit: (next: string) => void): HTMLTextAreaElement => {
     act(() =>
       render(
         <CommitTextarea
@@ -64,9 +61,7 @@ describe("CommitTextarea", () => {
     const field = mount("old", onCommit);
     type(field, "line one");
     act(() => {
-      field.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      field.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
     expect(onCommit).not.toHaveBeenCalled();
     act(() => {
@@ -86,9 +81,7 @@ describe("CommitTextarea", () => {
     const field = mount("old", onCommit);
     type(field, "discarded");
     act(() => {
-      field.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      field.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(field.value).toBe("old");
     expect(onCommit).not.toHaveBeenCalled();
@@ -108,8 +101,6 @@ describe("CommitTextarea", () => {
         host,
       ),
     );
-    expect((host.querySelector("textarea") as HTMLTextAreaElement).value).toBe(
-      "from the store",
-    );
+    expect((host.querySelector("textarea") as HTMLTextAreaElement).value).toBe("from the store");
   });
 });

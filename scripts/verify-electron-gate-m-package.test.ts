@@ -1,10 +1,4 @@
-import {
-  chmodSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -91,13 +85,7 @@ function completeLayout(dir: string) {
   const asar = path.join(dir, "app.asar");
   writeAsar(asar, COMPLETE_ASAR);
   const unpacked = path.join(dir, "app.asar.unpacked");
-  const helperDir = path.join(
-    unpacked,
-    "node_modules",
-    "node-pty",
-    "build",
-    "Release",
-  );
+  const helperDir = path.join(unpacked, "node_modules", "node-pty", "build", "Release");
   mkdirSync(helperDir, { recursive: true });
   writeFileSync(path.join(helperDir, "spawn-helper"), "#!/bin/sh\n", {
     mode: 0o755,
@@ -118,7 +106,7 @@ describe("asar reader", () => {
     expect(readAsarFile(asar, "dist/index.html").toString()).toBe("hello");
     expect(asarHasDir(asar, "dist")).toBe(true);
     expect(asarHasDir(asar, "missing")).toBe(false);
-    expect(() => readAsarFile(asar, "missing.txt")).toThrow();
+    expect(() => readAsarFile(asar, "missing.txt")).toThrow("is not a file inside");
   });
 });
 
@@ -158,9 +146,7 @@ describe("structureFailures", () => {
       "package.json": JSON.stringify({ main: "electron/main.js" }),
     });
     expect(
-      structureFailures(layout).some((failure) =>
-        failure.includes(`expected ${EXPECTED_MAIN}`),
-      ),
+      structureFailures(layout).some((failure) => failure.includes(`expected ${EXPECTED_MAIN}`)),
     ).toBe(true);
   });
 
@@ -168,11 +154,7 @@ describe("structureFailures", () => {
     const dir = tempDir();
     const layout = completeLayout(dir);
     writeFatBinary(layout.executable, 1);
-    expect(
-      structureFailures(layout).some((failure) =>
-        failure.includes("universal"),
-      ),
-    ).toBe(true);
+    expect(structureFailures(layout).some((failure) => failure.includes("universal"))).toBe(true);
   });
 
   it("rejects a non-executable spawn-helper", () => {
@@ -189,10 +171,8 @@ describe("structureFailures", () => {
     // `writeFileSync`'s mode applies only on creation — the helper already
     // exists, so the executable bit has to be stripped explicitly.
     chmodSync(helper, 0o644);
-    expect(
-      structureFailures(layout).some((failure) =>
-        failure.includes("not executable"),
-      ),
-    ).toBe(true);
+    expect(structureFailures(layout).some((failure) => failure.includes("not executable"))).toBe(
+      true,
+    );
   });
 });

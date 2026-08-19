@@ -12,21 +12,12 @@ function mount(
 ): { node: HTMLDivElement; onResolve: ReturnType<typeof vi.fn> } {
   host = document.createElement("div");
   document.body.appendChild(host);
-  render(
-    <ExternalChangeBar
-      prompt={prompt}
-      fileName="index.ts"
-      onResolve={onResolve}
-    />,
-    host,
-  );
+  render(<ExternalChangeBar prompt={prompt} fileName="index.ts" onResolve={onResolve} />, host);
   return { node: host, onResolve };
 }
 
 function buttons(node: HTMLElement): string[] {
-  return [...node.querySelectorAll(".filebar__btn")].map(
-    (element) => element.textContent ?? "",
-  );
+  return [...node.querySelectorAll(".filebar__btn")].map((element) => element.textContent ?? "");
 }
 
 afterEach(() => {

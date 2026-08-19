@@ -64,16 +64,13 @@ function PersistBarSpecimen() {
         type="button"
         class="cfg-btn"
         onClick={() => {
-          persistError.value =
-            "Could not save presets — the change may not survive relaunch.";
+          persistError.value = "Could not save presets — the change may not survive relaunch.";
         }}
       >
         trigger the bar
       </button>
       <PersistErrorBar />
-      <StateLabel>
-        auto-dismisses after 6s — that timing is the specimen
-      </StateLabel>
+      <StateLabel>auto-dismisses after 6s — that timing is the specimen</StateLabel>
     </div>
   );
 }
@@ -120,11 +117,7 @@ export function OverlaysSection() {
         surface="bg"
         tall
       >
-        <SavePresetDialog
-          existing={SEED_PRESETS}
-          onCancel={NOOP}
-          onSave={NOOP}
-        />
+        <SavePresetDialog existing={SEED_PRESETS} onCancel={NOOP} onSave={NOOP} />
       </Specimen>
 
       <Specimen

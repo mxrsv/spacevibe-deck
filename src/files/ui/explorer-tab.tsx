@@ -30,10 +30,5 @@ export function ExplorerTab(props: ExplorerTabProps) {
       </p>
     );
   }
-  return (
-    <FileTreeView
-      controller={props.controller}
-      workspacePath={props.workspacePath}
-    />
-  );
+  return <FileTreeView controller={props.controller} workspacePath={props.workspacePath} />;
 }

@@ -5,9 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentAttentionSummary } from "../terminal/tabs-store";
 import { AgentAttentionMark } from "./agent-attention-mark";
 
-function summary(
-  overrides: Partial<AgentAttentionSummary>,
-): AgentAttentionSummary {
+function summary(overrides: Partial<AgentAttentionSummary>): AgentAttentionSummary {
   return {
     kind: "idle",
     actionableCount: 0,
@@ -32,11 +30,7 @@ describe("AgentAttentionMark", () => {
   ): void => {
     act(() => {
       render(
-        <AgentAttentionMark
-          summary={summary(partial)}
-          label={label}
-          onActivate={onActivate}
-        />,
+        <AgentAttentionMark summary={summary(partial)} label={label} onActivate={onActivate} />,
         host,
       );
     });
@@ -104,9 +98,7 @@ describe("AgentAttentionMark", () => {
 
     expect(button.getAttribute("aria-label")).toContain("backend-api");
     expect(button.getAttribute("title")).not.toContain("backend-api");
-    expect(button.getAttribute("title")).not.toBe(
-      button.getAttribute("aria-label"),
-    );
+    expect(button.getAttribute("title")).not.toBe(button.getAttribute("aria-label"));
   });
 
   it("calls onActivate exactly once when an actionable mark is clicked", () => {

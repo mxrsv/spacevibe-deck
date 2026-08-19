@@ -3,14 +3,8 @@ import { useRef } from "preact/hooks";
 import { AgentGlyph } from "../controls/agent-glyph";
 import { DeckIcon, RAIL_ICON } from "../controls/deck-icon";
 import type { SessionAgent } from "../../lib/session-history";
-import {
-  filterSessions,
-  type AgentFilter,
-} from "../../sessions/session-filters";
-import {
-  sessionAgentFilter,
-  sessionEntries,
-} from "../../sessions/sessions-store";
+import { filterSessions, type AgentFilter } from "../../sessions/session-filters";
+import { sessionAgentFilter, sessionEntries } from "../../sessions/sessions-store";
 
 /**
  * Id of the one panel every rail item controls. This rail filters a single
@@ -144,9 +138,7 @@ export function SessionsNav({ variant = "rail" }: SessionsNavProps) {
                   brand mark where it has one, so the filter and the rows it
                   filters name the agent the same way. */}
               <NavGlyph agent={item.agent} />
-              <span class="sessions-nav__label">
-                {compact ? item.short : item.label}
-              </span>
+              <span class="sessions-nav__label">{compact ? item.short : item.label}</span>
               <span class="sessions-nav__count">{count}</span>
             </button>
           );

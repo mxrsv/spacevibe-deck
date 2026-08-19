@@ -65,9 +65,7 @@ describe("readImageAsDataUrl", () => {
   });
 
   it("rejects a missing file", async () => {
-    await expect(
-      readImageAsDataUrl(join(tempDir(), "gone.png")),
-    ).rejects.toThrow(/Couldn't read/);
+    await expect(readImageAsDataUrl(join(tempDir(), "gone.png"))).rejects.toThrow(/Couldn't read/);
   });
 });
 

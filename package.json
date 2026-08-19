@@ -6,6 +6,7 @@
   "scripts": {
     "generate:menu": "tsx scripts/generate-menu.ts",
     "generate:menu:check": "tsx scripts/generate-menu.ts --check",
+    "lint": "oxlint --warn max-lines && prettier --check .",
     "postinstall": "node scripts/fix-spawn-helper-permissions.mjs",
     "verify:windows-bundle": "node scripts/verify-windows-bundle.mjs",
     "test:updater-manifest": "node --test scripts/verify-updater-manifest.test.mjs",
@@ -65,7 +66,9 @@
     "electron": "^43.3.0",
     "electron-builder": "^26.15.3",
     "jsdom": "^29.1.1",
+    "oxlint": "^1.78.0",
     "playwright-core": "^1.62.0",
+    "prettier": "^3.9.6",
     "terser": "^5.49.0",
     "tsx": "^4.23.1",
     "typescript": "~5.6.2",

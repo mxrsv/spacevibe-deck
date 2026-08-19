@@ -1,10 +1,4 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  utimesSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -46,14 +40,7 @@ describe("scanCodex", () => {
 
   beforeAll(() => {
     home = mkdtempSync(path.join(tmpdir(), "sessions-scan-"));
-    const live = path.join(
-      home,
-      CODEX_DIR,
-      CODEX_SESSIONS_DIR,
-      "2026",
-      "08",
-      "01",
-    );
+    const live = path.join(home, CODEX_DIR, CODEX_SESSIONS_DIR, "2026", "08", "01");
     mkdirSync(live, { recursive: true });
     writeAt(
       path.join(live, `${CODEX_ROLLOUT_PREFIX}cli${TRANSCRIPT_EXTENSION}`),
@@ -173,12 +160,7 @@ describe("scanClaude", () => {
 
   beforeAll(() => {
     home = mkdtempSync(path.join(tmpdir(), "sessions-scan-claude-"));
-    const project = path.join(
-      home,
-      CLAUDE_DIR,
-      CLAUDE_PROJECTS_DIR,
-      "-work-repo",
-    );
+    const project = path.join(home, CLAUDE_DIR, CLAUDE_PROJECTS_DIR, "-work-repo");
     mkdirSync(project, { recursive: true });
     writeAt(
       path.join(project, `sid${TRANSCRIPT_EXTENSION}`),

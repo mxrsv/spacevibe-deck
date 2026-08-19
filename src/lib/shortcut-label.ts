@@ -44,8 +44,7 @@ const CODE_LABELS: Readonly<Record<string, string>> = Object.freeze({
  * built, and a hardcoded chord there would be a macOS label that silently
  * survives onto Windows.
  */
-export type KeyChord =
-  Omit<CharKeyBinding, "action"> | Omit<PhysicalKeyBinding, "action">;
+export type KeyChord = Omit<CharKeyBinding, "action"> | Omit<PhysicalKeyBinding, "action">;
 
 function bindingKey(binding: KeyChord, platform: DesktopPlatform): string {
   if ("code" in binding) {
@@ -58,17 +57,11 @@ function bindingKey(binding: KeyChord, platform: DesktopPlatform): string {
   return labels[binding.key] ?? binding.key.toUpperCase();
 }
 
-export function formatShortcutBinding(
-  binding: KeyBinding,
-  platform: DesktopPlatform,
-): string {
+export function formatShortcutBinding(binding: KeyBinding, platform: DesktopPlatform): string {
   return formatKeyChord(binding, platform);
 }
 
-export function formatKeyChord(
-  binding: KeyChord,
-  platform: DesktopPlatform,
-): string {
+export function formatKeyChord(binding: KeyChord, platform: DesktopPlatform): string {
   const key = bindingKey(binding, platform);
   if (platform === "windows") {
     const modifiers = [

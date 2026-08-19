@@ -87,23 +87,14 @@ describe("pushRecent", () => {
 });
 
 describe("removeRecents", () => {
-  const list = pushRecent(
-    pushRecent(pushRecent([], "/a", NOW), "/b", NOW + 1),
-    "/c",
-    NOW + 2,
-  );
+  const list = pushRecent(pushRecent(pushRecent([], "/a", NOW), "/b", NOW + 1), "/c", NOW + 2);
 
   it("removes a single path from the middle of the list", () => {
-    expect(removeRecents(list, ["/b"]).map((r) => r.path)).toEqual([
-      "/c",
-      "/a",
-    ]);
+    expect(removeRecents(list, ["/b"]).map((r) => r.path)).toEqual(["/c", "/a"]);
   });
 
   it("removes several paths at once", () => {
-    expect(removeRecents(list, ["/a", "/c"]).map((r) => r.path)).toEqual([
-      "/b",
-    ]);
+    expect(removeRecents(list, ["/a", "/c"]).map((r) => r.path)).toEqual(["/b"]);
   });
 
   it("leaves the list unchanged for a path that is not there", () => {
@@ -112,11 +103,7 @@ describe("removeRecents", () => {
 });
 
 describe("partitionRecents", () => {
-  const list = pushRecent(
-    pushRecent(pushRecent([], "/a", NOW), "/b", NOW + 1),
-    "/c",
-    NOW + 2,
-  );
+  const list = pushRecent(pushRecent(pushRecent([], "/a", NOW), "/b", NOW + 1), "/c", NOW + 2);
 
   it("splits live and missing rows, keeping each side's order", () => {
     const { alive, missing } = partitionRecents(list, new Set(["/c", "/a"]));
@@ -153,9 +140,7 @@ describe("validateWorkspaces", () => {
         42,
       ],
     };
-    expect(validateWorkspaces(raw).recents).toEqual([
-      { path: "/a", lastOpenedAt: NOW },
-    ]);
+    expect(validateWorkspaces(raw).recents).toEqual([{ path: "/a", lastOpenedAt: NOW }]);
   });
 
   it("reads a v1 file, keeping entries that lack the combo fields", () => {
@@ -223,31 +208,19 @@ describe("resolveAgentChoice — declared agents", () => {
 });
 
 describe("forgetAgent", () => {
-  const withAgent = (path: string, agent: string) =>
-    pushRecent([], path, NOW, "preset-1", agent);
+  const withAgent = (path: string, agent: string) => pushRecent([], path, NOW, "preset-1", agent);
 
   it("drops the memory of one agent, keeping the folder", () => {
-    const [entry] = forgetAgent(
-      withAgent("/a", "custom:aider"),
-      "custom:aider",
-    );
+    const [entry] = forgetAgent(withAgent("/a", "custom:aider"), "custom:aider");
     expect(entry.path).toBe("/a");
     expect(entry.lastPresetId).toBe("preset-1");
     expect("lastAgent" in entry).toBe(false);
   });
 
   it("leaves folders that remembered a different agent untouched", () => {
-    const list = pushRecent(
-      withAgent("/a", "custom:aider"),
-      "/b",
-      NOW + 1,
-      "preset-1",
-      "claude",
-    );
+    const list = pushRecent(withAgent("/a", "custom:aider"), "/b", NOW + 1, "preset-1", "claude");
     const after = forgetAgent(list, "custom:aider");
-    expect(after.find((entry) => entry.path === "/b")?.lastAgent).toBe(
-      "claude",
-    );
+    expect(after.find((entry) => entry.path === "/b")?.lastAgent).toBe("claude");
   });
 
   it("returns the same entry objects when nothing remembered it", () => {
@@ -262,9 +235,7 @@ describe("forgetAgent", () => {
     // regenerates custom:aider and the folder would launch the new command.
     const list = withAgent("/a", "custom:aider");
     const after = forgetAgent(list, "custom:aider");
-    expect(
-      resolveAgentChoice(after[0].lastAgent, [{ id: "custom:aider" }]),
-    ).toBe("custom:aider");
+    expect(resolveAgentChoice(after[0].lastAgent, [{ id: "custom:aider" }])).toBe("custom:aider");
     expect(after[0].lastAgent).toBeUndefined();
   });
 });

@@ -25,9 +25,7 @@ beforeAll(() => {
   // every path the host returns has already been through `path-guard`'s
   // realpath. Canonicalize the fixture root once so the expectations compare
   // realpath to realpath instead of asserting that the guard does not resolve.
-  base = fs.realpathSync(
-    fs.mkdtempSync(path.join(os.tmpdir(), "deck-fs-read-")),
-  );
+  base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "deck-fs-read-")));
   root = path.join(base, "workspace");
   outside = path.join(base, "outside");
   fs.mkdirSync(path.join(root, "src"), { recursive: true });
@@ -39,10 +37,7 @@ beforeAll(() => {
   fs.writeFileSync(path.join(outside, "secret.txt"), "no\n");
   fs.symlinkSync(outside, path.join(root, "away"));
   fs.symlinkSync(path.join(root, "src"), path.join(root, "src-link"));
-  fs.symlinkSync(
-    path.join(root, "does-not-exist"),
-    path.join(root, "dangling-link"),
-  );
+  fs.symlinkSync(path.join(root, "does-not-exist"), path.join(root, "dangling-link"));
 });
 
 afterAll(() => {
@@ -63,9 +58,7 @@ describe("listDir", () => {
     ]);
     // The exclusion list is the RENDERER's (`file-tree.ts`): the host reports
     // what is there, so a "show hidden" toggle needs no second round-trip.
-    expect(rows.find((row) => row.name === "node_modules")?.directory).toBe(
-      true,
-    );
+    expect(rows.find((row) => row.name === "node_modules")?.directory).toBe(true);
   });
 
   it("flags a symlink resolving out of the root and calls it a leaf", async () => {
@@ -98,12 +91,8 @@ describe("listDir", () => {
   });
 
   it("refuses a directory outside the root", async () => {
-    await expect(listDir(root, outside)).rejects.toThrow(
-      PathOutsideWorkspaceError,
-    );
-    await expect(listDir(root, path.join(root, "away"))).rejects.toThrow(
-      PathOutsideWorkspaceError,
-    );
+    await expect(listDir(root, outside)).rejects.toThrow(PathOutsideWorkspaceError);
+    await expect(listDir(root, path.join(root, "away"))).rejects.toThrow(PathOutsideWorkspaceError);
   });
 });
 
@@ -114,10 +103,7 @@ describe("listDir", () => {
  * import from `read.ts` or `path-guard.ts`, so it proves the new code against
  * a fixed, hand-written ground truth rather than against itself.
  */
-function listDirSyncReference(
-  canonicalRoot: string,
-  directory: string,
-): DirEntryPayload[] {
+function listDirSyncReference(canonicalRoot: string, directory: string): DirEntryPayload[] {
   const entries = fs.readdirSync(directory, { withFileTypes: true });
   const rows: DirEntryPayload[] = [];
   for (const entry of entries) {
@@ -146,9 +132,7 @@ function listDirSyncReference(
     const relative = path.relative(canonicalRoot, canonical);
     const inside =
       canonical === canonicalRoot ||
-      (relative !== "" &&
-        !relative.startsWith("..") &&
-        !path.isAbsolute(relative));
+      (relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative));
     if (!inside) {
       rows.push({
         name: entry.name,
@@ -191,17 +175,14 @@ describe("listDir — bounded async realpath on a 10k-entry directory", () => {
     SYMLINK_TO_FILE_COUNT +
     SYMLINK_ESCAPING_COUNT +
     DANGLING_SYMLINK_COUNT;
-  const SYMLINK_COUNT =
-    SYMLINK_TO_FILE_COUNT + SYMLINK_ESCAPING_COUNT + DANGLING_SYMLINK_COUNT;
+  const SYMLINK_COUNT = SYMLINK_TO_FILE_COUNT + SYMLINK_ESCAPING_COUNT + DANGLING_SYMLINK_COUNT;
 
   let bigBase: string;
   let bigRoot: string;
   let bigDir: string;
 
   beforeAll(() => {
-    bigBase = fs.realpathSync(
-      fs.mkdtempSync(path.join(os.tmpdir(), "deck-fs-read-10k-")),
-    );
+    bigBase = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "deck-fs-read-10k-")));
     bigRoot = path.join(bigBase, "workspace");
     const bigOutside = path.join(bigBase, "outside");
     bigDir = path.join(bigRoot, "many");
@@ -221,10 +202,7 @@ describe("listDir — bounded async realpath on a 10k-entry directory", () => {
       fs.symlinkSync(bigOutside, path.join(bigDir, `link-escaping-${i}`));
     }
     for (let i = 0; i < DANGLING_SYMLINK_COUNT; i += 1) {
-      fs.symlinkSync(
-        path.join(bigDir, "does-not-exist"),
-        path.join(bigDir, `link-dangling-${i}`),
-      );
+      fs.symlinkSync(path.join(bigDir, "does-not-exist"), path.join(bigDir, `link-dangling-${i}`));
     }
   }, 60_000);
 
@@ -243,19 +221,17 @@ describe("listDir — bounded async realpath on a 10k-entry directory", () => {
     const real = fsAsync.realpath.bind(fsAsync);
     const spy = vi
       .spyOn(fsAsync, "realpath")
-      .mockImplementation(
-        async (...args: Parameters<typeof fsAsync.realpath>) => {
-          callCount += 1;
-          inFlight += 1;
-          maxInFlight = Math.max(maxInFlight, inFlight);
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return await (real as any)(...args);
-          } finally {
-            inFlight -= 1;
-          }
-        },
-      );
+      .mockImplementation(async (...args: Parameters<typeof fsAsync.realpath>) => {
+        callCount += 1;
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return await (real as any)(...args);
+        } finally {
+          inFlight -= 1;
+        }
+      });
     try {
       const rows = await listDir(bigRoot, bigDir);
       expect(rows).toHaveLength(TOTAL_ENTRIES);
@@ -270,9 +246,7 @@ describe("listDir — bounded async realpath on a 10k-entry directory", () => {
     const expected = listDirSyncReference(bigRoot, bigDir).sort((a, b) =>
       a.path.localeCompare(b.path),
     );
-    const actual = (await listDir(bigRoot, bigDir)).sort((a, b) =>
-      a.path.localeCompare(b.path),
-    );
+    const actual = (await listDir(bigRoot, bigDir)).sort((a, b) => a.path.localeCompare(b.path));
     expect(actual).toEqual(expected);
   }, 60_000);
 });
@@ -304,9 +278,7 @@ describe("statFiles", () => {
   });
 
   it("reports a symlink escaping the root as absent rather than throwing", async () => {
-    const [result] = await statFiles(root, [
-      path.join(root, "away", "secret.txt"),
-    ]);
+    const [result] = await statFiles(root, [path.join(root, "away", "secret.txt")]);
     expect(result.exists).toBe(false);
   });
 
@@ -314,9 +286,9 @@ describe("statFiles", () => {
     await expect(statFiles(root, null as unknown as string[])).rejects.toThrow(
       MalformedStatRequestError,
     );
-    await expect(
-      statFiles(root, "index.ts" as unknown as string[]),
-    ).rejects.toThrow(MalformedStatRequestError);
+    await expect(statFiles(root, "index.ts" as unknown as string[])).rejects.toThrow(
+      MalformedStatRequestError,
+    );
   });
 
   it("rejects a payload whose entries are not strings", async () => {
@@ -416,12 +388,12 @@ describe("readFile", () => {
   });
 
   it("refuses a file outside the root", async () => {
-    await expect(
-      readFile(root, path.join(outside, "secret.txt")),
-    ).rejects.toThrow(PathOutsideWorkspaceError);
-    await expect(
-      readFile(root, path.join(root, "away", "secret.txt")),
-    ).rejects.toThrow(PathOutsideWorkspaceError);
+    await expect(readFile(root, path.join(outside, "secret.txt"))).rejects.toThrow(
+      PathOutsideWorkspaceError,
+    );
+    await expect(readFile(root, path.join(root, "away", "secret.txt"))).rejects.toThrow(
+      PathOutsideWorkspaceError,
+    );
   });
 
   it("refuses a directory", async () => {

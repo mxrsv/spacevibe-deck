@@ -7,10 +7,7 @@ import {
   WINDOWS_AGENT_LAUNCH_TIMEOUT_MS,
 } from "./agent-launch";
 
-function setup(
-  platform: DesktopPlatform = "macos",
-  onTimeout: (id: number) => void = () => {},
-) {
+function setup(platform: DesktopPlatform = "macos", onTimeout: (id: number) => void = () => {}) {
   const pty = createMemoryPtyClient();
   const launcher = createAgentLauncher(pty, { platform, onTimeout });
   return { pty, launcher };

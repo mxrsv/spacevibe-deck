@@ -35,11 +35,7 @@ interface StatusNote {
   readonly tone: NoteTone;
 }
 
-function buildNotes({
-  snapshot,
-  loading,
-  stale,
-}: UsageStatusProps): readonly StatusNote[] {
+function buildNotes({ snapshot, loading, stale }: UsageStatusProps): readonly StatusNote[] {
   const notes: StatusNote[] = [];
 
   // Only the COLD scan is announced. Once data is on screen the 5 s poll runs
@@ -99,10 +95,7 @@ export function UsageStatus(props: UsageStatusProps) {
   return (
     <div class="usage-status" role="status" aria-live="polite">
       {notes.map((note) => (
-        <span
-          key={note.key}
-          class={`usage-status__note usage-status__note--${note.tone}`}
-        >
+        <span key={note.key} class={`usage-status__note usage-status__note--${note.tone}`}>
           {note.text}
         </span>
       ))}

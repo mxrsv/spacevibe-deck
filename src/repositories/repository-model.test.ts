@@ -16,11 +16,7 @@ const IDLE = {
   unreadCount: 0,
 } as const;
 
-function tab(
-  key: number,
-  workspacePath: string | null,
-  over: Partial<TabView> = {},
-): TabView {
+function tab(key: number, workspacePath: string | null, over: Partial<TabView> = {}): TabView {
   return {
     key,
     process: "zsh",
@@ -58,9 +54,7 @@ function repo(
 describe("worktreeForPath", () => {
   it("takes the longest matching prefix, so a nested worktree wins", () => {
     const paths = ["/repo", "/repo/packages/web"];
-    expect(worktreeForPath(paths, "/repo/packages/web/src")).toBe(
-      "/repo/packages/web",
-    );
+    expect(worktreeForPath(paths, "/repo/packages/web/src")).toBe("/repo/packages/web");
     expect(worktreeForPath(paths, "/repo/docs")).toBe("/repo");
   });
 
@@ -112,10 +106,7 @@ describe("buildRail", () => {
       archivedPaths: new Set(),
     });
     expect(groups[0].name).toBe("spacevibe-deck");
-    expect(groups[0].worktrees.map((w) => w.name)).toEqual([
-      "main",
-      "redesign/phase-1-2",
-    ]);
+    expect(groups[0].worktrees.map((w) => w.name)).toEqual(["main", "redesign/phase-1-2"]);
   });
 
   it("falls back to the directory when a worktree has no branch", () => {
@@ -149,9 +140,7 @@ describe("buildRail", () => {
     const groups = buildRail({
       tabs: [tab(1, "/home/me/scratch")],
       activeIndex: 0,
-      scans: new Map([
-        ["/home/me/scratch", { kind: "plain", reason: "not a git repository" }],
-      ]),
+      scans: new Map([["/home/me/scratch", { kind: "plain", reason: "not a git repository" }]]),
       collapsed: new Set(),
       archivedPaths: new Set(),
     });
@@ -204,11 +193,7 @@ describe("buildRail", () => {
       collapsed: new Set(),
       archivedPaths: new Set(),
     });
-    expect(groups[0].worktrees.map((w) => w.state)).toEqual([
-      "working",
-      "attention",
-      "missing",
-    ]);
+    expect(groups[0].worktrees.map((w) => w.state)).toEqual(["working", "attention", "missing"]);
   });
 
   it("keeps a missing worktree's open tab attached to its row", () => {
@@ -440,9 +425,7 @@ describe("filterRailToWorkspaceHistory", () => {
       archivedPaths: new Set(),
     });
 
-    const filtered = filterRailToWorkspaceHistory(groups, [
-      "/r/visited/packages/web",
-    ]);
+    const filtered = filterRailToWorkspaceHistory(groups, ["/r/visited/packages/web"]);
 
     expect(filtered[0].worktrees.map((worktree) => worktree.path)).toEqual([
       "/r/main",
@@ -494,12 +477,7 @@ describe("activeRepositoryTabIndexes", () => {
       activeRepositoryTabIndexes(
         tabs,
         0,
-        new Map([
-          [
-            "/home/me/scratch",
-            { kind: "plain", reason: "not a git repository" },
-          ],
-        ]),
+        new Map([["/home/me/scratch", { kind: "plain", reason: "not a git repository" }]]),
       ),
     ).toEqual([0, 1]);
   });
@@ -508,11 +486,7 @@ describe("activeRepositoryTabIndexes", () => {
     const scan = repo("/r/.git", [{ path: "/r/main", branch: "main" }]);
 
     expect(
-      activeRepositoryTabIndexes(
-        [tab(1, "/r/main")],
-        -1,
-        new Map([["/r/main", scan]]),
-      ),
+      activeRepositoryTabIndexes([tab(1, "/r/main")], -1, new Map([["/r/main", scan]])),
     ).toEqual([]);
   });
 

@@ -60,10 +60,7 @@ const DEFAULT_MAX_CONTEXT_LINES = 6;
  * and a dev server that sets one would block it with nothing to see but a
  * console message in someone else's console.
  */
-export function buildInjection(
-  vendorSource: string,
-  options: InjectionOptions = {},
-): string {
+export function buildInjection(vendorSource: string, options: InjectionOptions = {}): string {
   const maxLines = options.maxContextLines ?? DEFAULT_MAX_CONTEXT_LINES;
   const config = JSON.stringify({
     event: GRAB_EVENT,
@@ -294,8 +291,9 @@ export function parseGrabPayload(raw: unknown): GrabPayload | null {
     text: text.slice(0, MAX_GRAB_CHARS),
     url: typeof record.url === "string" ? record.url.slice(0, 2048) : "",
     title: typeof record.title === "string" ? record.title.slice(0, 512) : "",
-    count: typeof record.count === "number" && Number.isFinite(record.count)
-      ? Math.max(1, Math.min(99, Math.trunc(record.count)))
-      : 1,
+    count:
+      typeof record.count === "number" && Number.isFinite(record.count)
+        ? Math.max(1, Math.min(99, Math.trunc(record.count)))
+        : 1,
   };
 }

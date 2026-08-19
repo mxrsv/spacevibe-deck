@@ -72,9 +72,12 @@ function addMessage(
   role: string,
   timeCreated: number,
 ): void {
-  db.prepare(
-    "INSERT INTO message (id, session_id, time_created, data) VALUES (?, ?, ?, ?)",
-  ).run(id, sessionId, timeCreated, JSON.stringify({ role, agent: "build" }));
+  db.prepare("INSERT INTO message (id, session_id, time_created, data) VALUES (?, ?, ?, ?)").run(
+    id,
+    sessionId,
+    timeCreated,
+    JSON.stringify({ role, agent: "build" }),
+  );
 }
 
 function addPart(
@@ -133,14 +136,7 @@ describe("opencode-db.sessionTailText", () => {
     const db = createDatabase(home);
     addSession(db, "ses_a", "/tmp/one", T0);
     addMessage(db, "ses_a", "msg_said", "assistant", T0);
-    addPart(
-      db,
-      "ses_a",
-      "msg_said",
-      "prt_step",
-      { type: "step-start" },
-      T0 + 10,
-    );
+    addPart(db, "ses_a", "msg_said", "prt_step", { type: "step-start" }, T0 + 10);
     addPart(
       db,
       "ses_a",
@@ -160,14 +156,7 @@ describe("opencode-db.sessionTailText", () => {
     );
     // Newest turn of all, but it is the user's.
     addMessage(db, "ses_a", "msg_ask", "user", T0 + 40);
-    addPart(
-      db,
-      "ses_a",
-      "msg_ask",
-      "prt_ask",
-      { type: "text", text: "and now?" },
-      T0 + 40,
-    );
+    addPart(db, "ses_a", "msg_ask", "prt_ask", { type: "text", text: "and now?" }, T0 + 40);
     db.close();
 
     expect(sessionTailText(home, "ses_a")).toBe("Working tree clean.");
@@ -177,23 +166,9 @@ describe("opencode-db.sessionTailText", () => {
     const db = createDatabase(home);
     addSession(db, "ses_b", "/tmp/one", T0);
     addMessage(db, "ses_b", "msg_old", "assistant", T0);
-    addPart(
-      db,
-      "ses_b",
-      "msg_old",
-      "prt_old",
-      { type: "text", text: "Ran the migration." },
-      T0,
-    );
+    addPart(db, "ses_b", "msg_old", "prt_old", { type: "text", text: "Ran the migration." }, T0);
     addMessage(db, "ses_b", "msg_tool", "assistant", T0 + 50);
-    addPart(
-      db,
-      "ses_b",
-      "msg_tool",
-      "prt_tool",
-      { type: "tool", tool: "bash" },
-      T0 + 50,
-    );
+    addPart(db, "ses_b", "msg_tool", "prt_tool", { type: "tool", tool: "bash" }, T0 + 50);
     db.close();
 
     expect(sessionTailText(home, "ses_b")).toBe("Ran the migration.");
@@ -230,15 +205,7 @@ describe("opencode-db.sessionTailText", () => {
 describe("opencode.candidates merge", () => {
   /** One pre-1.18 session object, in the layout the file scanner walks. */
   function writeLegacySession(id: string, directory: string, updated: number) {
-    const bucket = path.join(
-      home,
-      ".local",
-      "share",
-      "opencode",
-      "storage",
-      "session",
-      "bucket1",
-    );
+    const bucket = path.join(home, ".local", "share", "opencode", "storage", "session", "bucket1");
     mkdirSync(bucket, { recursive: true });
     writeFileSync(
       path.join(bucket, `${id}.json`),
@@ -276,8 +243,6 @@ describe("opencode.candidates merge", () => {
 
   it("reads the json tree alone when no database exists", () => {
     writeLegacySession("ses_file_only", "/tmp/two", T0);
-    expect(opencode.candidates(home).map((entry) => entry.id)).toEqual([
-      "ses_file_only",
-    ]);
+    expect(opencode.candidates(home).map((entry) => entry.id)).toEqual(["ses_file_only"]);
   });
 });

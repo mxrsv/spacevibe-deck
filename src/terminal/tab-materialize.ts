@@ -55,10 +55,7 @@ export async function resolvePaneCwds(
     case "polled":
       return zipPolledCwds(paneIds, options.polled ?? new Map());
     case "fresh": {
-      const infos = await freshPaneInfo(
-        paneIds,
-        options.pty ?? defaultPtyClient,
-      );
+      const infos = await freshPaneInfo(paneIds, options.pty ?? defaultPtyClient);
       return zipFreshCwds(paneIds, infos);
     }
   }
@@ -73,10 +70,7 @@ export function resolveInheritedCwds(
   presetCwds: readonly (string | null)[] | undefined,
   inherit: string | null,
 ): readonly (string | null)[] {
-  return Array.from(
-    { length: countLeaves(layout) },
-    (_, index) => presetCwds?.[index] ?? inherit,
-  );
+  return Array.from({ length: countLeaves(layout) }, (_, index) => presetCwds?.[index] ?? inherit);
 }
 
 /** Assemble a Closed tab snapshot once CWDs are already resolved. */

@@ -34,11 +34,7 @@ function click(target: EventTarget): void {
   });
 }
 
-function key(
-  target: EventTarget,
-  name: string,
-  modifiers: { shiftKey?: boolean } = {},
-): void {
+function key(target: EventTarget, name: string, modifiers: { shiftKey?: boolean } = {}): void {
   act(() => {
     target.dispatchEvent(
       new KeyboardEvent("keydown", {
@@ -151,9 +147,7 @@ describe("Modal", () => {
 
   it("clicking inside the panel does not dismiss", () => {
     const { onDismiss } = mount();
-    const action = host.querySelector(
-      ".demo-modal__action",
-    ) as HTMLButtonElement;
+    const action = host.querySelector(".demo-modal__action") as HTMLButtonElement;
 
     press(panel());
     release(action);
@@ -228,9 +222,7 @@ describe("Modal", () => {
   // while the modal was still on screen.
   it("Shift+Tab from the first stop wraps to the last, never out of the panel", () => {
     mount({ initialFocus: "input" });
-    const action = host.querySelector(
-      ".demo-modal__action",
-    ) as HTMLButtonElement;
+    const action = host.querySelector(".demo-modal__action") as HTMLButtonElement;
 
     key(host.querySelector("input") as HTMLInputElement, "Tab", {
       shiftKey: true,

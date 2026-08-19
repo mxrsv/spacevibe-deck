@@ -8,16 +8,8 @@ import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
 import { WINDOWS_AGENT_LAUNCH_TIMEOUT_MS } from "./agent-launch";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
-import {
-  flush,
-  freshWindowFocusController,
-  processInfo,
-  setup,
-} from "./tab-manager.fixtures";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import { flush, freshWindowFocusController, processInfo, setup } from "./tab-manager.fixtures";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
@@ -216,9 +208,7 @@ describe("createTabManager materialize (through the createPane seam)", () => {
     // genuinely changed, so THAT regression has somewhere to fail.
     const binding = MACOS_KEYMAP.find((b) => b.action === "select-tab-2");
     if (binding === undefined) {
-      throw new Error(
-        "MACOS_KEYMAP has no select-tab-2 binding — test setup is stale",
-      );
+      throw new Error("MACOS_KEYMAP has no select-tab-2 binding — test setup is stale");
     }
     const { tm } = setup({});
     await tm.materialize({ layout: null, cwds: ["/a"] });

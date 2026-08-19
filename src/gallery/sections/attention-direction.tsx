@@ -207,20 +207,13 @@ const FAKE_PANES: readonly FakePane[] = [
  * - `bar`: milder dim plus a named pane bar on every pane, the focused one
  *   carrying the accent-marked name (DL-3.1: accent = the focused state).
  */
-function DrawnStage({
-  treatment,
-}: {
-  readonly treatment: "current" | "dim" | "bar";
-}) {
+function DrawnStage({ treatment }: { readonly treatment: "current" | "dim" | "bar" }) {
   return (
     <div class={`gxa-stage gxa-stage--${treatment}`}>
       {FAKE_PANES.map((pane, index) => (
         <>
           {index > 0 && <span class="gxa-stage__divider" />}
-          <div
-            key={pane.title}
-            class={`gxa-pane ${pane.focused ? "gxa-pane--focused" : ""}`}
-          >
+          <div key={pane.title} class={`gxa-pane ${pane.focused ? "gxa-pane--focused" : ""}`}>
             {treatment === "bar" && (
               <div class="gxa-pane__bar">
                 <RowGlyph agent={pane.agent} />
@@ -296,19 +289,14 @@ function SwitcherModal() {
             <span class="gxa-switcher__count">3</span>
           </div>
           {QUEUE.map((entry, index) => (
-            <div
-              class={`gxa-switcher__row ${index === 0 ? "is-active" : ""}`}
-              key={entry.where}
-            >
+            <div class={`gxa-switcher__row ${index === 0 ? "is-active" : ""}`} key={entry.where}>
               <AgentGlyph agent={entry.agent} className="gxa-glyph" />
               <span class="gxa-switcher__where">{entry.where}</span>
               <span class="gxa-switcher__tail">{entry.tail}</span>
               <span class="gxa-switcher__key">{index + 1}</span>
             </div>
           ))}
-          <div class="gxa-switcher__hint">
-            ↵ jump · 1–3 pick · ⌘J cycles · esc
-          </div>
+          <div class="gxa-switcher__hint">↵ jump · 1–3 pick · ⌘J cycles · esc</div>
         </div>
       </div>
     </ShotGround>
@@ -342,9 +330,7 @@ export function AttentionDirectionSection() {
         note="the shipped AgentRail on the seeded stores — the baseline the variants below are judged against; every row is one line and the newest turn is absent unless a state is actionable"
         surface="none"
       >
-        <div class="gxa-study">
-          {agentRailNavigationSpecimen({ showFooter: false })}
-        </div>
+        <div class="gxa-study">{agentRailNavigationSpecimen({ showFooter: false })}</div>
       </Specimen>
       <Specimen
         name="Attention rail · A — every row says its turn"
@@ -375,9 +361,7 @@ export function AttentionDirectionSection() {
             <DrawnStage treatment="current" />
           </figure>
           <figure class="gxa-tile">
-            <figcaption class="gxa-tile__label">
-              A · dim the unfocused
-            </figcaption>
+            <figcaption class="gxa-tile__label">A · dim the unfocused</figcaption>
             <DrawnStage treatment="dim" />
           </figure>
           <figure class="gxa-tile">

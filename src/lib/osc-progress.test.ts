@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  lastProgressState,
-  OSC_CARRY_LENGTH,
-  parseProgressEvents,
-} from "./osc-progress";
+import { lastProgressState, OSC_CARRY_LENGTH, parseProgressEvents } from "./osc-progress";
 
 describe("lastProgressState", () => {
   it("parses a BEL-terminated busy report", () => {
@@ -53,10 +49,7 @@ describe("parseProgressEvents", () => {
   });
 
   it("keeps raw state values for error (2), warning (4) and unknown non-zero (7)", () => {
-    const { events } = parseProgressEvents(
-      "",
-      "\x1b]9;4;2\x07\x1b]9;4;4\x07\x1b]9;4;7\x07",
-    );
+    const { events } = parseProgressEvents("", "\x1b]9;4;2\x07\x1b]9;4;4\x07\x1b]9;4;7\x07");
     expect(events).toEqual([{ state: 2 }, { state: 4 }, { state: 7 }]);
     expect(lastProgressState("\x1b]9;4;7\x07")).toBe(7);
   });

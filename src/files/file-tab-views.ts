@@ -36,9 +36,7 @@ function baseName(path: string): string {
 }
 
 /** File tabs of the active workspace, in strip order. */
-export function fileTabViews(
-  controller: FileSurfaceController,
-): readonly TabViewModel[] {
+export function fileTabViews(controller: FileSurfaceController): readonly TabViewModel[] {
   const activeIndex = controller.activeIndex();
   return stripFileTabs().map((tab, index) => ({
     path: tab.path,

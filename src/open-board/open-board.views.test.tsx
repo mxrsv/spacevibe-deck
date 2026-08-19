@@ -48,16 +48,12 @@ vi.mock("../terminal/pty-client", () => ({
   },
 }));
 
-import { WORKSPACES_VERSION } from "../lib/workspace-recents";
-import type { RecentWorkspace } from "../lib/workspace-recents";
+import { WORKSPACES_VERSION, type RecentWorkspace } from "../lib/workspace-recents";
 import { PRESETS_VERSION } from "../lib/preset-schema";
 import { presetsData } from "../presets/presets-store";
 import { workspacesData } from "./workspaces-store";
 import { OpenBoard } from "./open-board";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
 
 const NOW = 1_800_000_000_000;
@@ -139,9 +135,7 @@ describe("OpenBoard home view", () => {
   const keydown = async (init: KeyboardEventInit): Promise<void> => {
     const board = host.querySelector<HTMLDivElement>(".open-board");
     await act(async () => {
-      board?.dispatchEvent(
-        new KeyboardEvent("keydown", { ...init, bubbles: true }),
-      );
+      board?.dispatchEvent(new KeyboardEvent("keydown", { ...init, bubbles: true }));
     });
   };
 
@@ -151,20 +145,17 @@ describe("OpenBoard home view", () => {
     await mount();
 
     expect(host.querySelector(".board-home")).not.toBeNull();
-    expect(
-      host.querySelector(".board-home img[alt='SpaceVibe Deck']"),
-    ).not.toBeNull();
-    expect(host.querySelector(".home-action")?.textContent).toContain(
-      "Open project",
-    );
+    expect(host.querySelector(".board-home img[alt='SpaceVibe Deck']")).not.toBeNull();
+    expect(host.querySelector(".home-action")?.textContent).toContain("Open project");
     expect(
       [...host.querySelectorAll(".home-action")].some((el) =>
         el.textContent?.includes("Create worktree"),
       ),
     ).toBe(false);
-    expect(
-      [...host.querySelectorAll(".row .row__name")].map((el) => el.textContent),
-    ).toEqual(["alpha", "ghost"]);
+    expect([...host.querySelectorAll(".row .row__name")].map((el) => el.textContent)).toEqual([
+      "alpha",
+      "ghost",
+    ]);
     expect(host.querySelector(".gsep")).not.toBeNull();
     // The retired config view (2026-08-16) has no mount left anywhere.
     expect(host.querySelector(".board-config")).toBeNull();
@@ -211,11 +202,7 @@ describe("OpenBoard home view", () => {
 
     // `null` is a remembered Shell-only open and it is carried through — the
     // config view's "Shell is only ever an explicit click" rule went with it.
-    expect(onOpen).toHaveBeenCalledWith(
-      "/w/beta",
-      expect.objectContaining({ id: "p-grid" }),
-      null,
-    );
+    expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.objectContaining({ id: "p-grid" }), null);
   });
 
   it("waits for the agent probe before opening, so a fast click keeps its remembered agent", async () => {
@@ -257,9 +244,7 @@ describe("OpenBoard home view", () => {
     });
 
     expect(onOpen).not.toHaveBeenCalled();
-    expect(host.querySelector(".board-home__notice")?.textContent).toContain(
-      "ghost is missing",
-    );
+    expect(host.querySelector(".board-home__notice")?.textContent).toContain("ghost is missing");
   });
 
   it("a failed open is said on home — the board's only place to say it", async () => {

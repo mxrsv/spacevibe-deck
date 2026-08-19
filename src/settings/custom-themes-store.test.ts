@@ -107,9 +107,7 @@ describe("loadCustomThemes", () => {
     // to the user — "I picked this and got no theme".
     mockedList.mockResolvedValue({
       entries: [{ fileName: "broken.json", content: "{}" }],
-      rejected: [
-        { fileName: "screenshot.png", reason: ".png is not a theme file" },
-      ],
+      rejected: [{ fileName: "screenshot.png", reason: ".png is not a theme file" }],
     });
 
     await loadCustomThemes();
@@ -128,9 +126,7 @@ describe("loadCustomThemes", () => {
 
     await loadCustomThemes();
 
-    expect(customPresets.value.map((preset) => preset.label)).toEqual([
-      "Stale",
-    ]);
+    expect(customPresets.value.map((preset) => preset.label)).toEqual(["Stale"]);
     expect(themeLoadState.value).toEqual({
       status: "error",
       message: "Couldn't read the themes folder.",
@@ -153,9 +149,7 @@ describe("loadCustomThemes", () => {
     oldScan.reject(new Error("stale scan failure"));
     await first;
 
-    expect(customPresets.value.map((preset) => preset.label)).toEqual([
-      "Orange Mechanic",
-    ]);
+    expect(customPresets.value.map((preset) => preset.label)).toEqual(["Orange Mechanic"]);
     expect(themeLoadState.value).toEqual({ status: "ready" });
     expect(themesLoading.value).toBe(false);
   });
@@ -172,9 +166,7 @@ describe("importCustomThemes", () => {
 
     await importCustomThemes();
 
-    expect(customPresets.value.map((preset) => preset.label)).toEqual([
-      "Orange Mechanic",
-    ]);
+    expect(customPresets.value.map((preset) => preset.label)).toEqual(["Orange Mechanic"]);
     expect(mockedList).not.toHaveBeenCalled();
   });
 });
@@ -184,10 +176,9 @@ describe("an imported theme across a relaunch", () => {
     // `themeId` is persisted before the folder is ever scanned, so a validator
     // that clamped unknown ids to a known preset would reset the user's
     // imported theme on every launch — silently, and only for imports.
-    expect(
-      validateSettings({ ...DEFAULT_SETTINGS, themeId: "file:orange.json" })
-        .themeId,
-    ).toBe("file:orange.json");
+    expect(validateSettings({ ...DEFAULT_SETTINGS, themeId: "file:orange.json" }).themeId).toBe(
+      "file:orange.json",
+    );
   });
 
   it("is resolvable once the boot scan lands", async () => {

@@ -1,11 +1,7 @@
 import { useEffect, useRef } from "preact/hooks";
 import { DeckIcon, RAIL_ICON } from "../controls/deck-icon";
 import { groupToolbarItems } from "./toolbar-overflow";
-import {
-  isUnavailable,
-  unavailableReason,
-  type ToolbarItem,
-} from "./toolbar-item";
+import { isUnavailable, unavailableReason, type ToolbarItem } from "./toolbar-item";
 
 /**
  * Where the actions the bar could not fit go.
@@ -30,12 +26,7 @@ interface OverflowMenuProps {
   readonly onClose: () => void;
 }
 
-export function ToolbarOverflowMenu({
-  items,
-  anchor,
-  triggerEl,
-  onClose,
-}: OverflowMenuProps) {
+export function ToolbarOverflowMenu({ items, anchor, triggerEl, onClose }: OverflowMenuProps) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   // `role="menu"` promises arrow-key movement, so the promise is kept here:
@@ -52,10 +43,7 @@ export function ToolbarOverflowMenu({
   useEffect(() => {
     const onPointerDown = (event: PointerEvent): void => {
       const target = event.target as Node;
-      if (
-        rootRef.current?.contains(target) !== true &&
-        triggerEl?.contains(target) !== true
-      ) {
+      if (rootRef.current?.contains(target) !== true && triggerEl?.contains(target) !== true) {
         onClose();
       }
     };
@@ -135,9 +123,7 @@ export function ToolbarOverflowMenu({
                 <DeckIcon icon={item.icon} size={RAIL_ICON} />
                 <span class="toolbar-menu__label">{item.label}</span>
                 {reason === null ? (
-                  item.shortcut !== null && (
-                    <kbd class="toolbar-menu__kbd">{item.shortcut}</kbd>
-                  )
+                  item.shortcut !== null && <kbd class="toolbar-menu__kbd">{item.shortcut}</kbd>
                 ) : (
                   <span class="toolbar-menu__reason">{reason}</span>
                 )}

@@ -13,13 +13,9 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { activeTabIndex, tabViews } from "../terminal/tabs-store";
-import type { TabView } from "../terminal/tabs-store";
+import { activeTabIndex, tabViews, type TabView, type PaneView } from "../terminal/tabs-store";
 import { TabStrip } from "./tab-strip";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   createFileSurfaceController,
   type FileSurfaceController,
@@ -37,7 +33,6 @@ import {
   resetBrowserStore,
 } from "../browser/browser-store";
 import { paneTails } from "../terminal/session-tail-store";
-import type { PaneView } from "../terminal/tabs-store";
 
 const fileClient: FileClient = {
   listDir: async () => [],
@@ -136,9 +131,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
 
     expect(host.querySelector(".tabbar")).toBeNull();
     expect(host.querySelectorAll(".tab")).toHaveLength(2);
-    expect(host.querySelector(".tab--file .tab__label")?.textContent).toBe(
-      "a.ts",
-    );
+    expect(host.querySelector(".tab--file .tab__label")?.textContent).toBe("a.ts");
     // One row since 2026-08-16 (DL-18.6): no segment hairline anywhere in it.
     expect(host.querySelector(".tabbar__sep")).toBeNull();
     expect(host.querySelector(".tab-add")).not.toBeNull();
@@ -159,21 +152,15 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     ]);
     mount({ scopeToActiveRepository: false });
 
-    const labels = [...host.querySelectorAll(".tab .tab__label")].map(
-      (node) => node.textContent,
-    );
+    const labels = [...host.querySelectorAll(".tab .tab__label")].map((node) => node.textContent);
     expect(labels).toEqual(["Reading the rail model", "release cut"]);
     // The whole sentence stays reachable even though the chip trims it
     // (DL-27.4's contract, inherited with the sentence).
-    expect(host.querySelector(".tab")?.getAttribute("title")).toBe(
-      "Reading the rail model",
-    );
+    expect(host.querySelector(".tab")?.getAttribute("title")).toBe("Reading the rail model");
   });
 
   it("keeps the process name on a chip whose agent has said nothing", () => {
-    tabViews.value = [
-      tab({ key: 1, name: null, process: "codex", panes: [pane()] }),
-    ];
+    tabViews.value = [tab({ key: 1, name: null, process: "codex", panes: [pane()] })];
     mount({ scopeToActiveRepository: false });
 
     expect(host.querySelector(".tab .tab__label")?.textContent).toBe("codex");
@@ -184,14 +171,10 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     // Under the old two-segment strip every file chip followed every terminal
     // chip, whatever the clock said.
     openFileTab("/repo", "/repo/a.ts", { keep: true });
-    tabViews.value = [
-      tab({ key: 1, name: "Alpha", openedAt: nextOpenSequence() }),
-    ];
+    tabViews.value = [tab({ key: 1, name: "Alpha", openedAt: nextOpenSequence() })];
     mount();
 
-    const labels = [...host.querySelectorAll(".tab .tab__label")].map(
-      (node) => node.textContent,
-    );
+    const labels = [...host.querySelectorAll(".tab .tab__label")].map((node) => node.textContent);
     expect(labels).toEqual(["a.ts", "Alpha"]);
   });
 
@@ -269,16 +252,10 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     // Every tab of the repository, in TAB order — a sub-package tab resolves
     // through the same longest-prefix match, and the other repository's tab
     // stays out.
-    expect(labels()).toEqual([
-      "main · claude",
-      "side · codex",
-      "main · opencode",
-    ]);
+    expect(labels()).toEqual(["main · claude", "side · codex", "main · opencode"]);
 
     act(() => {
-      const visibleTabs = host.querySelectorAll<HTMLElement>(
-        ".tab:not(.tab--file)",
-      );
+      const visibleTabs = host.querySelectorAll<HTMLElement>(".tab:not(.tab--file)");
       visibleTabs[2].dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(onSelectTab).toHaveBeenCalledWith(2);
@@ -314,9 +291,7 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(chip.getAttribute("aria-selected")).toBe("true");
     // The terminal chip stands down while the browser holds the stage.
     expect(
-      host
-        .querySelector(".tab:not(.tab--file):not(.tab--browser)")
-        ?.getAttribute("aria-selected"),
+      host.querySelector(".tab:not(.tab--file):not(.tab--browser)")?.getAttribute("aria-selected"),
     ).toBe("false");
     // A click on the ALREADY-active chip must not re-fire selection.
     chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));

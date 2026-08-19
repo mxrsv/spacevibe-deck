@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildOpenEditorRequest,
-  editorTemplate,
-  isEditorId,
-} from "./editor-command";
+import { buildOpenEditorRequest, editorTemplate, isEditorId } from "./editor-command";
 
 describe("editorTemplate", () => {
   it("returns the preset template", () => {
@@ -25,13 +21,7 @@ describe("isEditorId", () => {
 
 describe("buildOpenEditorRequest", () => {
   it("builds an immutable request without constructing a shell command", () => {
-    const request = buildOpenEditorRequest(
-      "vscode",
-      "",
-      "/a b/日本語.ts",
-      12,
-      3,
-    );
+    const request = buildOpenEditorRequest("vscode", "", "/a b/日本語.ts", 12, 3);
 
     expect(request).toEqual({
       editor: "vscode",
@@ -72,10 +62,9 @@ describe("buildOpenEditorRequest", () => {
   });
 
   it("does not leak the custom setting into a built-in editor request", () => {
-    expect(
-      buildOpenEditorRequest("cursor", "malicious {file}", "/a/b.ts", 1, 1)
-        ?.template,
-    ).toBe("");
+    expect(buildOpenEditorRequest("cursor", "malicious {file}", "/a/b.ts", 1, 1)?.template).toBe(
+      "",
+    );
   });
 
   it("returns null for an empty custom template", () => {

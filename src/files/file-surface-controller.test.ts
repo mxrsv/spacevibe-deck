@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FileClient, FileChangedPayload } from "./file-client";
-import {
-  createFileSurfaceController,
-  type FileSurfaceController,
-} from "./file-surface-controller";
+import { createFileSurfaceController, type FileSurfaceController } from "./file-surface-controller";
 import {
   activeFileTab,
   activeWorkspace,
@@ -157,9 +154,7 @@ describe("opening and reading", () => {
     h.setContent(FILE, "const a = 1;\n");
     await h.controller.openFile(ROOT, FILE, false);
 
-    expect(fileTabsFor(ROOT).map((t) => [t.path, t.preview])).toEqual([
-      [FILE, true],
-    ]);
+    expect(fileTabsFor(ROOT).map((t) => [t.path, t.preview])).toEqual([[FILE, true]]);
     expect(documentFor(FILE)?.text).toBe("const a = 1;\n");
     expect(activeFileTab.value).toBe(FILE);
     expect(activeWorkspace.value).toBe(ROOT);
@@ -336,9 +331,7 @@ describe("external change", () => {
 
     h.setContent(FILE, "rewritten by the agent\n", 2000);
     h.emitChange({ path: FILE, kind: "changed", mtimeMs: 2000, size: 24 });
-    await vi.waitFor(() =>
-      expect(documentFor(FILE)?.text).toBe("rewritten by the agent\n"),
-    );
+    await vi.waitFor(() => expect(documentFor(FILE)?.text).toBe("rewritten by the agent\n"));
     expect(documentFor(FILE)?.prompt).toBeNull();
   });
 
@@ -442,9 +435,7 @@ describe("external change", () => {
 
     await h.controller.reconcile();
 
-    await vi.waitFor(() =>
-      expect(documentFor(FILE)?.text).toBe("changed behind our back\n"),
-    );
+    await vi.waitFor(() => expect(documentFor(FILE)?.text).toBe("changed behind our back\n"));
   });
 });
 
@@ -595,9 +586,7 @@ describe("fs:changed drives the tree", () => {
 
     await vi.advanceTimersByTimeAsync(1000);
 
-    expect(h.listDirCalls.slice(before)).toEqual([
-      { root: ROOT, directory: ROOT },
-    ]);
+    expect(h.listDirCalls.slice(before)).toEqual([{ root: ROOT, directory: ROOT }]);
   });
 
   it("refreshes only the branch the change belongs to", async () => {
@@ -610,9 +599,7 @@ describe("fs:changed drives the tree", () => {
     // Expands "src" only — "lib" stays a collapsed row.
     h.controller.toggleDirectory(ROOT, "/r/src");
     await vi.waitFor(() =>
-      expect(h.listDirCalls.some((call) => call.directory === "/r/src")).toBe(
-        true,
-      ),
+      expect(h.listDirCalls.some((call) => call.directory === "/r/src")).toBe(true),
     );
     const before = h.listDirCalls.length;
 
@@ -633,9 +620,7 @@ describe("fs:changed drives the tree", () => {
 
     await vi.advanceTimersByTimeAsync(1000);
 
-    expect(h.listDirCalls.slice(before)).toEqual([
-      { root: ROOT, directory: "/r/src" },
-    ]);
+    expect(h.listDirCalls.slice(before)).toEqual([{ root: ROOT, directory: "/r/src" }]);
   });
 
   it("ignores a refresh scheduled before the controller was disposed", async () => {
@@ -711,7 +696,7 @@ describe("the SurfaceStrip seam", () => {
 
 describe("typing during an in-flight operation", () => {
   /** A promise the test resolves by hand, so it can type mid-flight. */
-  function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  function manualDeferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
     let resolve!: (value: T) => void;
     const promise = new Promise<T>((r) => {
       resolve = r;
@@ -728,7 +713,7 @@ describe("typing during an in-flight operation", () => {
     await h.controller.openFile(ROOT, FILE, false);
     h.controller.setText(FILE, "one!\n");
 
-    const gate = deferred<{ path: string; mtimeMs: number; size: number }>();
+    const gate = manualDeferred<{ path: string; mtimeMs: number; size: number }>();
     vi.spyOn(h.client, "writeFile").mockReturnValueOnce(gate.promise);
     const saving = h.controller.savePath(FILE);
     h.controller.setText(FILE, "one!!\n"); // typed while the write is in flight
@@ -764,7 +749,7 @@ describe("typing during an in-flight operation", () => {
     h.setContent(FILE, "disk v1\n");
     await h.controller.openFile(ROOT, FILE, false);
 
-    const gate = deferred<Awaited<ReturnType<FileClient["readFile"]>>>();
+    const gate = manualDeferred<Awaited<ReturnType<FileClient["readFile"]>>>();
     vi.spyOn(h.client, "readFile").mockReturnValueOnce(gate.promise);
     h.emitChange({ path: FILE, kind: "changed", mtimeMs: 2000, size: 8 });
     h.controller.setText(FILE, "mine\n"); // typed while the read is in flight
@@ -781,9 +766,7 @@ describe("typing during an in-flight operation", () => {
       size: 8,
       writable: true,
     });
-    await vi.waitFor(() =>
-      expect(documentFor(FILE)?.prompt).toBe("prompt-changed"),
-    );
+    await vi.waitFor(() => expect(documentFor(FILE)?.prompt).toBe("prompt-changed"));
 
     expect(documentFor(FILE)?.text).toBe("mine\n");
     expect(documentFor(FILE)?.dirty).toBe(true);

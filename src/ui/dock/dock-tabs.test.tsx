@@ -18,16 +18,10 @@ describe("DockTabs", () => {
     host.remove();
   });
 
-  const getTabs = (): HTMLButtonElement[] =>
-    Array.from(host.querySelectorAll('[role="tab"]'));
+  const getTabs = (): HTMLButtonElement[] => Array.from(host.querySelectorAll('[role="tab"]'));
 
   it("renders one tab per item, in order, inside a labelled tablist", () => {
-    act(() =>
-      render(
-        <DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />, host));
 
     const tablist = host.querySelector('[role="tablist"]');
     expect(tablist).not.toBeNull();
@@ -35,18 +29,11 @@ describe("DockTabs", () => {
 
     const tabs = getTabs();
     expect(tabs).toHaveLength(DOCK_TABS.length);
-    expect(tabs.map((tab) => tab.textContent)).toEqual(
-      DOCK_TABS.map((item) => item.label),
-    );
+    expect(tabs.map((tab) => tab.textContent)).toEqual(DOCK_TABS.map((item) => item.label));
   });
 
   it("marks only the active chip with is-active and aria-selected", () => {
-    act(() =>
-      render(
-        <DockTabs items={DOCK_TABS} active="usage" onSelect={vi.fn()} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={DOCK_TABS} active="usage" onSelect={vi.fn()} />, host));
 
     getTabs().forEach((tab, index) => {
       const shouldBeActive = DOCK_TABS[index].id === "usage";
@@ -57,12 +44,7 @@ describe("DockTabs", () => {
 
   it("reports the clicked id and keeps no state of its own", () => {
     const onSelect = vi.fn();
-    act(() =>
-      render(
-        <DockTabs items={DOCK_TABS} active="explorer" onSelect={onSelect} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={DOCK_TABS} active="explorer" onSelect={onSelect} />, host));
 
     const tabs = getTabs();
     act(() => {
@@ -77,28 +59,15 @@ describe("DockTabs", () => {
 
   it("renders exactly the items it is given — a caller narrowing to two tabs sees two", () => {
     const narrowed = availableDockTabs(false);
-    act(() =>
-      render(
-        <DockTabs items={narrowed} active="explorer" onSelect={vi.fn()} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={narrowed} active="explorer" onSelect={vi.fn()} />, host));
 
     const tabs = getTabs();
     expect(tabs).toHaveLength(2);
-    expect(tabs.map((tab) => tab.textContent)).toEqual([
-      "File explorer",
-      "Token usage",
-    ]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["File explorer", "Token usage"]);
   });
 
   it("draws each chip's icon through DeckIcon, never a raw glyph", () => {
-    act(() =>
-      render(
-        <DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />,
-        host,
-      ),
-    );
+    act(() => render(<DockTabs items={DOCK_TABS} active="explorer" onSelect={vi.fn()} />, host));
 
     getTabs().forEach((tab) => {
       const icon = tab.querySelector("svg.feature-glyph");

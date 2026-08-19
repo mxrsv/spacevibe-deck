@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildForcedStates,
-  scopeSelector,
-  splitSelectorList,
-  type RuleNode,
-} from "./force-states";
+import { buildForcedStates, scopeSelector, splitSelectorList, type RuleNode } from "./force-states";
 
 /**
  * The DOM half of `force-states` is one `document.head.append`. The half worth
@@ -14,10 +9,7 @@ import {
  * first version shipped.
  */
 
-const style = (
-  selectorText: string,
-  declarations = "color: red;",
-): RuleNode => ({
+const style = (selectorText: string, declarations = "color: red;"): RuleNode => ({
   kind: "style",
   selectorText,
   declarations,
@@ -31,25 +23,17 @@ describe("splitSelectorList", () => {
   it("does not split inside a functional pseudo-class", () => {
     // A plain split(",") cuts this into `.a:not(.b` and `.c)`, and one
     // invalid component drops the whole rule without an error.
-    expect(splitSelectorList(".a:not(.b, .c), .d")).toEqual([
-      ".a:not(.b, .c)",
-      ".d",
-    ]);
+    expect(splitSelectorList(".a:not(.b, .c), .d")).toEqual([".a:not(.b, .c)", ".d"]);
   });
 
   it("does not split inside an attribute value", () => {
-    expect(splitSelectorList('[data-x="a,b"], .c')).toEqual([
-      '[data-x="a,b"]',
-      ".c",
-    ]);
+    expect(splitSelectorList('[data-x="a,b"], .c')).toEqual(['[data-x="a,b"]', ".c"]);
   });
 });
 
 describe("scopeSelector", () => {
   it("neutralises the pseudo-class and scopes what is left", () => {
-    expect(scopeSelector(".tab:hover", "hover")).toBe(
-      ".gx-force--hover .tab:not(.gx-never)",
-    );
+    expect(scopeSelector(".tab:hover", "hover")).toBe(".gx-force--hover .tab:not(.gx-never)");
   });
 
   it("keeps the pseudo-class's specificity instead of deleting it", () => {
@@ -58,8 +42,7 @@ describe("scopeSelector", () => {
     // the replacement has to weigh exactly one class.
     const hovered = scopeSelector(".a:hover", "hover");
     const sibling = scopeSelector(".a.b", "hover");
-    const classes = (selector: string): number =>
-      selector.split(".").length - 1;
+    const classes = (selector: string): number => selector.split(".").length - 1;
     expect(classes(hovered)).toBe(classes(sibling));
   });
 
@@ -72,9 +55,7 @@ describe("scopeSelector", () => {
   it("scopes a rule that carries no pseudo-class at all", () => {
     // Copying these is what preserves the cascade: without them a forced
     // hover rule would jump ahead of every later rule in the file.
-    expect(scopeSelector(".tab.is-active", "hover")).toBe(
-      ".gx-force--hover .tab.is-active",
-    );
+    expect(scopeSelector(".tab.is-active", "hover")).toBe(".gx-force--hover .tab.is-active");
   });
 
   it("replaces the long focus pseudo-classes before the short one", () => {
@@ -97,9 +78,7 @@ describe("scopeSelector", () => {
   });
 
   it("does not mistake the is-active class for the active pseudo-class", () => {
-    expect(scopeSelector(".tab.is-active", "active")).toBe(
-      ".gx-force--active .tab.is-active",
-    );
+    expect(scopeSelector(".tab.is-active", "active")).toBe(".gx-force--active .tab.is-active");
   });
 });
 

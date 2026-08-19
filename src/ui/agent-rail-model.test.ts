@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { RepositoryScan } from "../repositories/repository-client";
 import type { PaneView, TabView } from "../terminal/tabs-store";
-import type { AgentRailInput, AgentRailView } from "./agent-rail-model";
-import { buildAgentRail, formatShortAge, tabTail } from "./agent-rail-model";
+import {
+  type AgentRailInput,
+  type AgentRailView,
+  buildAgentRail,
+  formatShortAge,
+  tabTail,
+} from "./agent-rail-model";
 
 /** The stream's rows in render order, flattened out of their clusters. */
 function streamRows(view: AgentRailView) {
@@ -38,11 +43,7 @@ function pane(paneId: number, over: Partial<PaneView> = {}): PaneView {
   };
 }
 
-function tab(
-  key: number,
-  workspacePath: string | null,
-  over: Partial<TabView> = {},
-): TabView {
+function tab(key: number, workspacePath: string | null, over: Partial<TabView> = {}): TabView {
   return {
     key,
     process: "zsh",
@@ -243,11 +244,7 @@ describe("buildAgentRail folding", () => {
     // A failed tab does not climb over an asked one: the list stays where the
     // user put it and the marks say what happened (2026-08-16). The third
     // tab's `completed` reads as asked under the owner's merge.
-    expect(streamRows(view).map((row) => row.state)).toEqual([
-      "asked",
-      "failed",
-      "asked",
-    ]);
+    expect(streamRows(view).map((row) => row.state)).toEqual(["asked", "failed", "asked"]);
   });
 
   it("takes the newest pane when two panes share the loudest state", () => {
@@ -361,9 +358,7 @@ describe("buildAgentRail rows", () => {
       }),
     );
 
-    expect(
-      streamRows(view).map((row) => [row.key, row.index, row.active]),
-    ).toEqual([
+    expect(streamRows(view).map((row) => [row.key, row.index, row.active])).toEqual([
       [7, 0, false],
       [9, 1, true],
     ]);
@@ -441,12 +436,7 @@ describe("buildAgentRail rows", () => {
     const view = buildAgentRail(
       railInput({
         tabs: [tab(1, "/home/me/scratch", { panes: [pane(1)] })],
-        scans: new Map([
-          [
-            "/home/me/scratch",
-            { kind: "plain", reason: "not a git repository" },
-          ],
-        ]),
+        scans: new Map([["/home/me/scratch", { kind: "plain", reason: "not a git repository" }]]),
         workspaceHistoryPaths: [],
       }),
     );
@@ -486,13 +476,7 @@ describe("buildAgentRail clusters", () => {
       }),
     );
 
-    expect(
-      view.stream.map((group) => [
-        group.project,
-        group.labelled,
-        group.rows.length,
-      ]),
-    ).toEqual([
+    expect(view.stream.map((group) => [group.project, group.labelled, group.rows.length])).toEqual([
       // Deck was opened first, so its cluster leads. Both projects keep the
       // same project → tab hierarchy regardless of their tab count.
       ["deck", true, 2],
@@ -528,9 +512,7 @@ describe("buildAgentRail clusters", () => {
   });
 
   it("falls back to tab order for clusters nothing has happened in", () => {
-    const view = buildAgentRail(
-      twoProjects({ tabs: [tab(1, "/w/api"), tab(2, "/w/deck")] }),
-    );
+    const view = buildAgentRail(twoProjects({ tabs: [tab(1, "/w/api"), tab(2, "/w/deck")] }));
 
     expect(view.stream.map((group) => group.project)).toEqual(["api", "deck"]);
   });
@@ -560,9 +542,7 @@ describe("buildAgentRail clusters", () => {
       }),
     );
 
-    expect(view.stream.map((group) => [group.project, group.labelled])).toEqual(
-      [["deck", true]],
-    );
+    expect(view.stream.map((group) => [group.project, group.labelled])).toEqual([["deck", true]]);
     expect(view.stream[0].rows[0].state).toBe("failed");
   });
 
@@ -581,11 +561,7 @@ describe("buildAgentRail clusters", () => {
 
     // An unnamed multi-agent tab has NO identity: the pane tree under the row
     // is the identity, and even its count was declared noise (DL-27.13).
-    expect(streamRows(view).map((row) => row.identity)).toEqual([
-      "",
-      "api handoff",
-      "shell",
-    ]);
+    expect(streamRows(view).map((row) => row.identity)).toEqual(["", "api handoff", "shell"]);
   });
 
   it("leaves the turn empty until an agent has actually spoken", () => {
@@ -687,10 +663,7 @@ describe("buildAgentRail session tails", () => {
         tabs: [
           tab(1, "/w/deck", {
             name: "review",
-            panes: [
-              pane(101, { agent: "codex" }),
-              pane(102, { agent: "claude" }),
-            ],
+            panes: [pane(101, { agent: "codex" }), pane(102, { agent: "claude" })],
           }),
         ],
       }),
@@ -761,9 +734,7 @@ describe("buildAgentRail archived rows", () => {
       }),
     );
 
-    expect(view.archived).toEqual([
-      { path: "/w/deck", project: "deck", worktree: null },
-    ]);
+    expect(view.archived).toEqual([{ path: "/w/deck", project: "deck", worktree: null }]);
   });
 
   it("never lists a worktree that already has a live tab", () => {
@@ -792,9 +763,7 @@ describe("buildAgentRail archived rows", () => {
   });
 
   it("leaves an empty worktree with no archived session alone", () => {
-    const view = buildAgentRail(
-      railInput({ tabs: [tab(1, "/w/deck", { panes: [pane(1)] })] }),
-    );
+    const view = buildAgentRail(railInput({ tabs: [tab(1, "/w/deck", { panes: [pane(1)] })] }));
 
     expect(view.archived).toEqual([]);
   });
@@ -812,18 +781,11 @@ describe("buildAgentRail archived rows", () => {
         archivedPaths: new Set(["/w/deck-side", "/w/deck-third"]),
         // Newest first, and the newest entry was recorded on a package below
         // the worktree root — the same prefix match the rail filter uses.
-        workspaceHistoryPaths: [
-          "/w/deck-third/packages/web",
-          "/w/deck-side",
-          "/w/deck",
-        ],
+        workspaceHistoryPaths: ["/w/deck-third/packages/web", "/w/deck-side", "/w/deck"],
       }),
     );
 
-    expect(view.archived.map((row) => row.path)).toEqual([
-      "/w/deck-third",
-      "/w/deck-side",
-    ]);
+    expect(view.archived.map((row) => row.path)).toEqual(["/w/deck-third", "/w/deck-side"]);
   });
 
   it("lights up a worktree from an archive entry recorded on a subdirectory", () => {

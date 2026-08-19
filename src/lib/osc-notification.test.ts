@@ -46,10 +46,7 @@ describe("classifyOscNotification", () => {
   });
 
   it("never carries the payload's title/body text in the result", () => {
-    const result = classifyOscNotification(
-      777,
-      "notify;Secret Title;Secret Body",
-    );
+    const result = classifyOscNotification(777, "notify;Secret Title;Secret Body");
     expect(result).not.toBeNull();
     expect(Object.keys(result as object).sort()).toEqual(["kind", "source"]);
     expect(JSON.stringify(result)).not.toContain("Secret");

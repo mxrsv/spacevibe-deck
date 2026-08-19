@@ -494,12 +494,9 @@ export const ACTION_REGISTRY = [
  * loop as before. `select-last-tab` (⌘9) IS a normal row above — a single
  * action with a fixed label, distinct in kind from the parameterized family.
  */
-export type ActionId =
-  (typeof ACTION_REGISTRY)[number]["id"] | `select-tab-${number}`;
+export type ActionId = (typeof ACTION_REGISTRY)[number]["id"] | `select-tab-${number}`;
 
-const ACTION_IDS: ReadonlySet<string> = new Set(
-  ACTION_REGISTRY.map((a) => a.id),
-);
+const ACTION_IDS: ReadonlySet<string> = new Set(ACTION_REGISTRY.map((a) => a.id));
 
 /**
  * Whether `value` names a real action — having a binding or not is
@@ -523,9 +520,5 @@ export function isActionId(
 // Platform keymaps (KeyBinding, CharKeyBinding, PhysicalKeyBinding,
 // MACOS_KEYMAP, WINDOWS_KEYMAP) live in `default-keymaps.ts`; re-exported
 // below so no consumer of this module had to change its import path.
-export type {
-  KeyBinding,
-  CharKeyBinding,
-  PhysicalKeyBinding,
-} from "./default-keymaps";
+export type { KeyBinding, CharKeyBinding, PhysicalKeyBinding } from "./default-keymaps";
 export { MACOS_KEYMAP, WINDOWS_KEYMAP } from "./default-keymaps";

@@ -3,14 +3,7 @@
  * (close/maximize), external links, clipboard, notifications and app
  * lifecycle.
  */
-import {
-  app,
-  BrowserWindow,
-  clipboard,
-  ipcMain,
-  Notification,
-  shell,
-} from "electron";
+import { app, BrowserWindow, clipboard, ipcMain, Notification, shell } from "electron";
 
 /**
  * Schemes Deck will hand to the OS.
@@ -28,9 +21,7 @@ export function registerShell(): void {
   // main-process versions were worse — `getZoomFactor()` returns the user's ZOOM
   // level, which is 1 on a 2x display at default zoom, so it silently turned the
   // physical-to-logical drop conversion into a no-op.
-  ipcMain.handle("window_close", (event) =>
-    BrowserWindow.fromWebContents(event.sender)?.close(),
-  );
+  ipcMain.handle("window_close", (event) => BrowserWindow.fromWebContents(event.sender)?.close());
   ipcMain.handle("window_toggle_maximize", (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window === null) {
@@ -56,14 +47,10 @@ export function registerShell(): void {
     return shell.openExternal(parsed.href);
   });
   ipcMain.handle("clipboard_read_text", () => clipboard.readText());
-  ipcMain.handle("clipboard_write_text", (_event, { text }) =>
-    clipboard.writeText(text),
-  );
+  ipcMain.handle("clipboard_write_text", (_event, { text }) => clipboard.writeText(text));
   // Electron needs no permission grant for notifications; answering true keeps
   // the renderer's request/grant flow unchanged.
-  ipcMain.handle("notification_permission_granted", () =>
-    Notification.isSupported(),
-  );
+  ipcMain.handle("notification_permission_granted", () => Notification.isSupported());
   ipcMain.handle("notification_request_permission", () =>
     Notification.isSupported() ? "granted" : "denied",
   );

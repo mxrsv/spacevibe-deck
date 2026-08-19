@@ -10,17 +10,11 @@ import "./chatgpt-direction.css";
 import "./agent-status-rail.css";
 import "./agent-rail-variants.css";
 import { initializeDesktopEnvironmentFromBackend } from "../lib/platform";
-import {
-  configureSettingsSync,
-  settingsLoadState,
-} from "../settings/settings-store";
+import { configureSettingsSync, settingsLoadState } from "../settings/settings-store";
 import { createMemorySettingsSync } from "../settings/settings-sync";
 import { LOAD_READY } from "../lib/load-state";
 import { activeTabIndex, statusInfo, tabViews } from "../terminal/tabs-store";
-import {
-  activateTerminalSurface,
-  openFileTab,
-} from "../files/file-surface-store";
+import { activateTerminalSurface, openFileTab } from "../files/file-surface-store";
 import { nextOpenSequence } from "../lib/open-sequence";
 import { presetsData } from "../presets/presets-store";
 import { sessionArchive } from "../terminal/session-journal";
@@ -36,10 +30,7 @@ import {
 import { Gallery } from "./gallery";
 import { workspacesData } from "../open-board/workspaces-store";
 import { WORKSPACES_VERSION } from "../lib/workspace-recents";
-import {
-  DEFAULT_SIDEBAR_BANNER,
-  sidebarBanner,
-} from "../settings/sidebar-banner-store";
+import { DEFAULT_SIDEBAR_BANNER, sidebarBanner } from "../settings/sidebar-banner-store";
 
 /**
  * Gallery entry. It deliberately does NOT run the app's boot sequence:

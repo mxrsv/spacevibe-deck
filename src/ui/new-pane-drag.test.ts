@@ -6,12 +6,7 @@ import { createNewPaneDragController } from "./new-pane-drag";
 /** One 200×100 pane at the origin — every edge is unambiguous inside it. */
 const PANE: PaneRect = { id: 7, left: 0, top: 0, right: 200, bottom: 100 };
 
-function pointer(
-  type: string,
-  x: number,
-  y: number,
-  init: PointerEventInit = {},
-): PointerEvent {
+function pointer(type: string, x: number, y: number, init: PointerEventInit = {}): PointerEvent {
   // jsdom has no PointerEvent constructor; MouseEvent carries every field
   // this controller reads, and `pointerId` is patched on after construction.
   const event = new MouseEvent(type, {
@@ -86,9 +81,7 @@ describe("createNewPaneDragController", () => {
     window.dispatchEvent(pointer("pointermove", 10, 50));
 
     const overlay = document.querySelector<HTMLElement>(".drop-overlay");
-    expect(document.querySelector(".pane-drag-ghost")?.textContent).toBe(
-      "New agent pane",
-    );
+    expect(document.querySelector(".pane-drag-ghost")?.textContent).toBe("New agent pane");
     // Left edge → the left half of the pane.
     expect(overlay?.style.width).toBe("100px");
     expect(overlay?.style.left).toBe("0px");

@@ -91,14 +91,9 @@ function codexUserText(payload: Record<string, unknown>): string | null {
 }
 
 /** Every rollout, newest first, stat only — no file is opened here. */
-export function listCodexFiles(
-  home: string,
-  includeArchived: boolean,
-): FileCandidate[] {
+export function listCodexFiles(home: string, includeArchived: boolean): FileCandidate[] {
   const discovery = discoverCodex(home);
-  const files = includeArchived
-    ? [...discovery.active, ...discovery.archived]
-    : discovery.active;
+  const files = includeArchived ? [...discovery.active, ...discovery.archived] : discovery.active;
   const out: FileCandidate[] = [];
   for (const filePath of files) {
     try {

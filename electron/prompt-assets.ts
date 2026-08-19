@@ -87,8 +87,7 @@ export function parseFrontmatter(head: string): {
     if (folding !== null && (indented || line.trim().length === 0)) {
       const piece = line.trim();
       if (piece.length > 0) {
-        folding.joined =
-          folding.joined.length > 0 ? `${folding.joined} ${piece}` : piece;
+        folding.joined = folding.joined.length > 0 ? `${folding.joined} ${piece}` : piece;
       }
       continue;
     }
@@ -224,9 +223,7 @@ export function pluginRoots(installedJson: string): Array<[string, string]> {
     return [];
   }
   const roots: Array<[string, string]> = [];
-  for (const [key, installs] of Object.entries(
-    plugins as Record<string, unknown>,
-  )) {
+  for (const [key, installs] of Object.entries(plugins as Record<string, unknown>)) {
     const name = key.split("@")[0] ?? key;
     if (!Array.isArray(installs)) {
       continue;
@@ -238,9 +235,7 @@ export function pluginRoots(installedJson: string): Array<[string, string]> {
       }
     }
   }
-  roots.sort((a, b) =>
-    a[0] === b[0] ? a[1].localeCompare(b[1]) : a[0].localeCompare(b[0]),
-  );
+  roots.sort((a, b) => (a[0] === b[0] ? a[1].localeCompare(b[1]) : a[0].localeCompare(b[0])));
   return roots;
 }
 
@@ -314,9 +309,7 @@ function scanAgents(
       continue;
     }
     const description =
-      extension === "toml"
-        ? parseTomlDescription(head)
-        : parseFrontmatter(head).description;
+      extension === "toml" ? parseTomlDescription(head) : parseFrontmatter(head).description;
     out.push({
       kind: "subagent",
       name: stem,
@@ -342,11 +335,7 @@ function merge(ordered: PromptAsset[]): PromptAsset[] {
 }
 
 /** The scan itself, with its roots injected so tests never touch a real home. */
-export function collect(
-  agent: string,
-  home: string,
-  project: string | null,
-): PromptAssets {
+export function collect(agent: string, home: string, project: string | null): PromptAssets {
   const skills: PromptAsset[] = [];
   const subagents: PromptAsset[] = [];
 
@@ -359,9 +348,7 @@ export function collect(
     const user = path.join(home, ".claude");
     scanSkills(user, "global", null, skills);
     scanAgents(user, "global", "md", subagents);
-    const manifest = readHead(
-      path.join(user, "plugins", "installed_plugins.json"),
-    );
+    const manifest = readHead(path.join(user, "plugins", "installed_plugins.json"));
     if (manifest !== null) {
       for (const [name, install] of pluginRoots(manifest)) {
         scanSkills(install, "plugin", name, skills);
@@ -379,10 +366,7 @@ export function collect(
 }
 
 /** The one command. `cwd` is a pane's working directory, not a project root. */
-export function listPromptAssets(
-  agent: string,
-  cwd: string | null,
-): PromptAssets {
+export function listPromptAssets(agent: string, cwd: string | null): PromptAssets {
   const project = cwd === null ? null : projectRoot(cwd);
   return collect(agent, os.homedir(), project);
 }

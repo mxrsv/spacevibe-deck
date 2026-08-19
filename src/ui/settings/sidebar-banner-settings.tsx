@@ -32,9 +32,7 @@ export function SidebarBannerSettings() {
       const picked = await open({
         multiple: false,
         directory: false,
-        filters: [
-          { name: "Image", extensions: ["png", "jpg", "jpeg", "svg", "webp"] },
-        ],
+        filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "svg", "webp"] }],
       });
       if (typeof picked !== "string") {
         return;
@@ -42,8 +40,7 @@ export function SidebarBannerSettings() {
       error.value = null;
       await setSidebarBannerFromPath(picked);
     } catch (err: unknown) {
-      error.value =
-        err instanceof Error ? err.message : "Couldn't set the sidebar banner";
+      error.value = err instanceof Error ? err.message : "Couldn't set the sidebar banner";
     }
   }
 
@@ -66,36 +63,25 @@ export function SidebarBannerSettings() {
   return (
     <>
       <ConfigGroup label="Sidebar banner" />
-      <ConfigRow
-        label="Sidebar banner"
-        desc="Artwork at the foot of the sidebar"
-      >
+      <ConfigRow label="Sidebar banner" desc="Artwork at the foot of the sidebar">
         <span class="cfg-btn cfg-btn--overlay">
           <span class="cfg-btn__text">{selectedLabel}</span>
           <span class="cfg-btn__hint">
             <DeckIcon icon={CaretDown} size={ROW_ICON} />
           </span>
-          <select
-            value={controlValue}
-            aria-label="Sidebar banner"
-            onChange={changeSelection}
-          >
+          <select value={controlValue} aria-label="Sidebar banner" onChange={changeSelection}>
             <option value={OFF_VALUE}>Off</option>
             {SIDEBAR_BANNER_PRESETS.map((preset) => (
               <option key={preset.id} value={preset.id}>
                 {preset.label}
               </option>
             ))}
-            {state.customImage !== "" ? (
-              <option value="custom">Custom image</option>
-            ) : null}
+            {state.customImage !== "" ? <option value="custom">Custom image</option> : null}
             <option value={CHOOSE_IMAGE_VALUE}>Choose image…</option>
           </select>
         </span>
       </ConfigRow>
-      {error.value !== null ? (
-        <div class="cfg-custom cfg-custom--error">{error.value}</div>
-      ) : null}
+      {error.value !== null ? <div class="cfg-custom cfg-custom--error">{error.value}</div> : null}
     </>
   );
 }

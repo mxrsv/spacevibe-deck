@@ -39,8 +39,7 @@ type UpdateCheckReply =
 function isTauriHost(): boolean {
   return (
     typeof globalThis !== "undefined" &&
-    (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !==
-      undefined
+    (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== undefined
   );
 }
 
@@ -74,9 +73,7 @@ export function parseUpdateCheckReply(value: unknown): UpdateCheckReply {
     return { status: "current" };
   }
   if (value.status !== "available") {
-    throw new Error(
-      `Update check reply has an unknown status: ${String(value.status)}`,
-    );
+    throw new Error(`Update check reply has an unknown status: ${String(value.status)}`);
   }
   if (
     typeof value.version !== "string" ||
@@ -98,12 +95,9 @@ export function parseUpdateCheckReply(value: unknown): UpdateCheckReply {
   };
 }
 
-export async function checkForUpdate(): Promise<
-  PendingUpdate | UpdateUnsupported | null
-> {
+export async function checkForUpdate(): Promise<PendingUpdate | UpdateUnsupported | null> {
   if (isTauriHost()) {
-    const { checkForUpdate: checkTauriUpdate } =
-      await import("./tauri-updater-adapter");
+    const { checkForUpdate: checkTauriUpdate } = await import("./tauri-updater-adapter");
     return checkTauriUpdate();
   }
   if (!hasDeckHost()) {
@@ -131,8 +125,7 @@ export async function checkForUpdate(): Promise<
 
 export async function relaunchDeck(): Promise<void> {
   if (isTauriHost()) {
-    const { relaunchDeck: relaunchTauri } =
-      await import("./tauri-updater-adapter");
+    const { relaunchDeck: relaunchTauri } = await import("./tauri-updater-adapter");
     return relaunchTauri();
   }
   return relaunchElectron();

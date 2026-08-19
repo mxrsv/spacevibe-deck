@@ -7,10 +7,7 @@ vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
 const execFileMock = vi.mocked(execFile);
 
 /** Queues the next `execFile` call to resolve with this error/stderr pair. */
-function mockNextRun(
-  error: (Error & { code?: string }) | null,
-  stderr = "",
-): void {
+function mockNextRun(error: (Error & { code?: string }) | null, stderr = ""): void {
   execFileMock.mockImplementationOnce((...args: unknown[]) => {
     const callback = args[args.length - 1] as (
       error: (Error & { code?: string }) | null,
@@ -46,15 +43,7 @@ describe("addWorktree", () => {
     });
     expect(execFileMock).toHaveBeenCalledWith(
       "git",
-      [
-        "-C",
-        "/repo",
-        "worktree",
-        "add",
-        "/repo-worktrees/feature-x",
-        "-b",
-        "feature/x",
-      ],
+      ["-C", "/repo", "worktree", "add", "/repo-worktrees/feature-x", "-b", "feature/x"],
       expect.any(Object),
       expect.any(Function),
     );
@@ -74,10 +63,7 @@ describe("addWorktree", () => {
   });
 
   it("classifies an existing branch as branch-exists", async () => {
-    mockNextRun(
-      new Error("Command failed"),
-      "fatal: a branch named 'feature' already exists\n",
-    );
+    mockNextRun(new Error("Command failed"), "fatal: a branch named 'feature' already exists\n");
     const result = await addWorktree({
       repoPath: "/repo",
       branch: "feature",
@@ -110,10 +96,7 @@ describe("addWorktree", () => {
   });
 
   it("falls back to unknown for an unrecognized failure", async () => {
-    mockNextRun(
-      new Error("Command failed"),
-      "fatal: something else entirely\n",
-    );
+    mockNextRun(new Error("Command failed"), "fatal: something else entirely\n");
     const result = await addWorktree({
       repoPath: "/repo",
       branch: "x",

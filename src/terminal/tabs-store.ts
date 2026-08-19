@@ -104,10 +104,7 @@ export interface TabOverride {
  * tabViews from the process poll every 2s — running derived values through
  * this is what makes a rename survive polling.
  */
-export function applyTabOverride(
-  view: TabView,
-  override: TabOverride | undefined,
-): TabView {
+export function applyTabOverride(view: TabView, override: TabOverride | undefined): TabView {
   if (override === undefined) {
     return view;
   }

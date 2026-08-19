@@ -90,8 +90,7 @@ export const TERMINAL_TEXT_FLOOR = 4.5;
 export const TERMINAL_CURSOR_FLOOR = 3;
 
 type ChromeTextToken = "textPrimary" | "textMuted" | "textFaint";
-type ChromeTextSurface =
-  "inputBg" | "sidebarBg" | "chrome1" | "chrome2" | "tabActiveBg";
+type ChromeTextSurface = "inputBg" | "sidebarBg" | "chrome1" | "chrome2" | "tabActiveBg";
 
 export interface ChromeContrastFailure {
   readonly token: ChromeTextToken;
@@ -182,8 +181,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   // Pure (or near) black cannot darken after 8-bit rounding, so fall back to a
   // small tone mix to preserve the invariant that the surfaces always differ.
   const recessedSidebar = mixHex(bg, "#000000", dark ? 0.24 : 0.05);
-  const sidebarBg =
-    recessedSidebar === bg ? mixHex(bg, tone, 0.05) : recessedSidebar;
+  const sidebarBg = recessedSidebar === bg ? mixHex(bg, tone, 0.05) : recessedSidebar;
   const sidebarSeam = mixHex(sidebarBg, bg, 0.5);
   // 0.05/0.09, up from 0.04/0.07: the structure now comes from the step
   // between surfaces rather than from the line between them, so the step has
@@ -211,12 +209,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   // up louder than the loud one. Mixing toward `bg` can only ever lower
   // contrast, so ordering holds by construction; the `ensureContrast` pass
   // after each mix only pulls a step back up if it undershot its floor.
-  const textPrimary = ensureContrast(
-    fg,
-    [inputBg, ...surfaces],
-    TEXT_PRIMARY_FLOOR,
-    tone,
-  );
+  const textPrimary = ensureContrast(fg, [inputBg, ...surfaces], TEXT_PRIMARY_FLOOR, tone);
   return {
     tone,
     sidebarBg,
@@ -243,21 +236,11 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
     // 12% is the same weight `hair` carries, one ladder step below `hairStrong`.
     seamDivider: alpha(tone, 0.12),
     textPrimary,
-    textMuted: ensureContrast(
-      mixHex(textPrimary, bg, 0.28),
-      surfaces,
-      TEXT_MUTED_FLOOR,
-      tone,
-    ),
+    textMuted: ensureContrast(mixHex(textPrimary, bg, 0.28), surfaces, TEXT_MUTED_FLOOR, tone),
     // 4.5, not 3: this token styles 10.5–11px text — config row descriptions,
     // workspace paths, the "off" value of every toggle — which WCAG AA rates
     // as normal text, where 3:1 is the non-text floor, not the text one.
-    textFaint: ensureContrast(
-      mixHex(textPrimary, bg, 0.5),
-      surfaces,
-      TEXT_FAINT_FLOOR,
-      tone,
-    ),
+    textFaint: ensureContrast(mixHex(textPrimary, bg, 0.5), surfaces, TEXT_FAINT_FLOOR, tone),
   };
 }
 
@@ -269,10 +252,7 @@ export function deriveChromeColors(bg: string, fg: string): ChromeColors {
  * fallback, while imported files call this boundary check and are rejected
  * before an unreadable theme can become selectable.
  */
-export function checkChromeTextContrast(
-  bg: string,
-  fg: string,
-): ChromeContrastCheck {
+export function checkChromeTextContrast(bg: string, fg: string): ChromeContrastCheck {
   const chrome = deriveChromeColors(bg, fg);
   const surfaces: Readonly<Record<ChromeTextSurface, string>> = {
     inputBg: chrome.inputBg,
@@ -282,21 +262,9 @@ export function checkChromeTextContrast(
     tabActiveBg: chrome.tabActiveBg,
   };
   const checks: readonly [ChromeTextToken, number, ChromeTextSurface[]][] = [
-    [
-      "textPrimary",
-      TEXT_PRIMARY_FLOOR,
-      Object.keys(surfaces) as ChromeTextSurface[],
-    ],
-    [
-      "textMuted",
-      TEXT_MUTED_FLOOR,
-      ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"],
-    ],
-    [
-      "textFaint",
-      TEXT_FAINT_FLOOR,
-      ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"],
-    ],
+    ["textPrimary", TEXT_PRIMARY_FLOOR, Object.keys(surfaces) as ChromeTextSurface[]],
+    ["textMuted", TEXT_MUTED_FLOOR, ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"]],
+    ["textFaint", TEXT_FAINT_FLOOR, ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"]],
   ];
   const failures = checks.flatMap(([token, required, names]) =>
     names.flatMap((surface) => {

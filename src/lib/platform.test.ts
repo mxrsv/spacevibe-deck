@@ -29,27 +29,28 @@ describe("desktop environment", () => {
       platform: "windows",
       homeDir: String.raw`C:\Users\dev`,
     });
-    expect(
-      parseDesktopEnvironment({ platform: "unsupported", homeDir: "" }),
-    ).toEqual({ platform: "unsupported", homeDir: "" });
+    expect(parseDesktopEnvironment({ platform: "unsupported", homeDir: "" })).toEqual({
+      platform: "unsupported",
+      homeDir: "",
+    });
   });
 
   it("rejects unknown platforms and invalid home directories", () => {
-    expect(() =>
-      parseDesktopEnvironment({ platform: "linux", homeDir: "/home/dev" }),
-    ).toThrow("platform");
-    expect(() =>
-      parseDesktopEnvironment({ platform: "macos", homeDir: "Users/dev" }),
-    ).toThrow("absolute");
+    expect(() => parseDesktopEnvironment({ platform: "linux", homeDir: "/home/dev" })).toThrow(
+      "platform",
+    );
+    expect(() => parseDesktopEnvironment({ platform: "macos", homeDir: "Users/dev" })).toThrow(
+      "absolute",
+    );
     expect(() =>
       parseDesktopEnvironment({
         platform: "windows",
         homeDir: String.raw`Users\dev`,
       }),
     ).toThrow("absolute");
-    expect(() =>
-      parseDesktopEnvironment({ platform: "unsupported", homeDir: "/tmp" }),
-    ).toThrow("empty");
+    expect(() => parseDesktopEnvironment({ platform: "unsupported", homeDir: "/tmp" })).toThrow(
+      "empty",
+    );
   });
 
   it("initializes exactly once", () => {
@@ -80,12 +81,9 @@ describe("desktop environment", () => {
   it("falls back once when backend initialization fails", async () => {
     const warn = vi.fn();
 
-    const environment = await initializeDesktopEnvironmentFromBackend(
-      async () => {
-        throw new Error("IPC unavailable");
-      },
-      warn,
-    );
+    const environment = await initializeDesktopEnvironmentFromBackend(async () => {
+      throw new Error("IPC unavailable");
+    }, warn);
 
     expect(environment).toEqual({ platform: "unsupported", homeDir: "" });
     expect(getDesktopEnvironment()).toBe(environment);

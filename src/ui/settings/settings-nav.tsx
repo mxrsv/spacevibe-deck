@@ -1,10 +1,6 @@
 import { useRef } from "preact/hooks";
 import { activeCategory } from "./active-category-store";
-import {
-  categoryTabId,
-  SECTION_PANEL_ID,
-  SETTINGS_CATEGORIES,
-} from "./settings-categories";
+import { categoryTabId, SECTION_PANEL_ID, SETTINGS_CATEGORIES } from "./settings-categories";
 import { ResetSection } from "./sections/reset-section";
 
 /**

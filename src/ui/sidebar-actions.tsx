@@ -1,10 +1,4 @@
-import {
-  ChatText,
-  ClockCounterClockwise,
-  Gauge,
-  Gear,
-  Globe,
-} from "@phosphor-icons/react";
+import { ChatText, ClockCounterClockwise, Gauge, Gear, Globe } from "@phosphor-icons/react";
 import type { ComponentChildren } from "preact";
 import { DeckIcon, FEATURE_ICON } from "./controls/deck-icon";
 
@@ -79,16 +73,8 @@ export function SidebarActions(props: SidebarActionsProps) {
     <nav class="sidebar-actions" aria-label="Tools">
       {/* DL-4.4: a group label NAMES something, so it is sentence case. */}
       <span class="sidebar-actions__label">Tools</span>
-      <ActionRow
-        label="Open browser"
-        icon={Globe}
-        onActivate={props.onOpenBrowser}
-      />
-      <ActionRow
-        label="Token usage"
-        icon={Gauge}
-        onActivate={props.onOpenUsage}
-      />
+      <ActionRow label="Open browser" icon={Globe} onActivate={props.onOpenBrowser} />
+      <ActionRow label="Token usage" icon={Gauge} onActivate={props.onOpenUsage} />
       {/* Omitted entirely on a host that cannot answer `sessions_list`, the
           same precedent the dock's own tab row follows: a row that opens an
           empty surface is worse than no row. */}
@@ -125,11 +111,7 @@ export function SidebarActions(props: SidebarActionsProps) {
         </button>
         {props.promptsOpen ? props.promptPopover : null}
       </div>
-      <ActionRow
-        label="Settings"
-        icon={Gear}
-        onActivate={props.onOpenSettings}
-      />
+      <ActionRow label="Settings" icon={Gear} onActivate={props.onOpenSettings} />
     </nav>
   );
 }

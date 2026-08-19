@@ -80,8 +80,7 @@ export interface UpdateController {
   relaunch(): Promise<void>;
 }
 
-export type UpdateCheckResult =
-  "available" | "current" | "unsupported" | "failed";
+export type UpdateCheckResult = "available" | "current" | "unsupported" | "failed";
 
 const HIDDEN_VIEW = Object.freeze<UpdateView>({
   phase: "hidden",
@@ -110,9 +109,7 @@ function updateView(update: PendingUpdate, phase: UpdatePhase): UpdateView {
   });
 }
 
-export function createUpdateController(
-  deps: UpdateControllerDependencies,
-): UpdateController {
+export function createUpdateController(deps: UpdateControllerDependencies): UpdateController {
   const view = signal<UpdateView>(HIDDEN_VIEW);
   let update: PendingUpdate | null = null;
   let started = false;
@@ -146,8 +143,7 @@ export function createUpdateController(
           return "unsupported";
         }
         update = result;
-        view.value =
-          update === null ? HIDDEN_VIEW : updateView(update, "available");
+        view.value = update === null ? HIDDEN_VIEW : updateView(update, "available");
         return update === null ? "current" : "available";
       } catch (error: unknown) {
         deps.report("Update check failed", error);
@@ -166,8 +162,7 @@ export function createUpdateController(
     }
     started = true;
     const claim = deps.claim ?? (() => invoke<boolean>("begin_update_check"));
-    const release =
-      deps.releaseClaim ?? (() => invoke<void>("end_update_check"));
+    const release = deps.releaseClaim ?? (() => invoke<void>("end_update_check"));
     let mine = true;
     try {
       mine = await claim();
@@ -194,16 +189,13 @@ export function createUpdateController(
   };
 
   const checkNow = (): Promise<UpdateCheckResult> =>
-    view.value.phase === "hidden"
-      ? checkForAvailableUpdate()
-      : Promise.resolve("available");
+    view.value.phase === "hidden" ? checkForAvailableUpdate() : Promise.resolve("available");
 
   const download = (): Promise<void> =>
     singleFlight(async () => {
       if (
         update === null ||
-        (view.value.phase !== "available" &&
-          view.value.phase !== "download-failed")
+        (view.value.phase !== "available" && view.value.phase !== "download-failed")
       ) {
         return;
       }
@@ -235,8 +227,7 @@ export function createUpdateController(
     singleFlight(async () => {
       if (
         update === null ||
-        (view.value.phase !== "downloaded" &&
-          view.value.phase !== "install-failed")
+        (view.value.phase !== "downloaded" && view.value.phase !== "install-failed")
       ) {
         return;
       }

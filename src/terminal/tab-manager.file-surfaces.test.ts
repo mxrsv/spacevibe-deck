@@ -7,19 +7,12 @@ import {
 } from "../files/file-surface-controller";
 import { resetFileSurfaces } from "../files/file-surface-store";
 import type { FileClient } from "../files/file-client";
-import {
-  agentQuickPickerOpen,
-  persistError,
-  settingsOpen,
-} from "../chrome/events";
+import { agentQuickPickerOpen, persistError, settingsOpen } from "../chrome/events";
 import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   flush,
   freshWindowFocusController,

@@ -6,10 +6,7 @@ import {
   isProbeSafeName,
   type CustomAgent,
 } from "../lib/agent-catalog";
-import {
-  isValidPromptTemplate,
-  type PromptTemplate,
-} from "../prompts/prompt-templates";
+import { isValidPromptTemplate, type PromptTemplate } from "../prompts/prompt-templates";
 import {
   NO_KEYBINDING_OVERRIDES,
   validateKeybindings,
@@ -42,10 +39,7 @@ export type TabBarPosition = "top" | "left";
  */
 export type TerminalRenderer = "dom" | "webgl";
 
-export const TERMINAL_RENDERERS: readonly TerminalRenderer[] = Object.freeze([
-  "dom",
-  "webgl",
-]);
+export const TERMINAL_RENDERERS: readonly TerminalRenderer[] = Object.freeze(["dom", "webgl"]);
 
 /**
  * The docked right column's tabs. Declared here rather than in the dock's own
@@ -55,11 +49,7 @@ export const TERMINAL_RENDERERS: readonly TerminalRenderer[] = Object.freeze([
  */
 export type DockTab = "explorer" | "usage" | "sessions";
 
-export const DOCK_TABS: readonly DockTab[] = Object.freeze([
-  "explorer",
-  "usage",
-  "sessions",
-]);
+export const DOCK_TABS: readonly DockTab[] = Object.freeze(["explorer", "usage", "sessions"]);
 
 export interface Settings {
   fontFamily: string;
@@ -143,18 +133,11 @@ export const FONT_SIZE_MAX = 24;
 
 export const SCROLLBACK_MIN = 1000;
 export const SCROLLBACK_MAX = 100_000;
-export const SCROLLBACK_CHOICES = [
-  1000, 5000, 10_000, 50_000, 100_000,
-] as const;
+export const SCROLLBACK_CHOICES = [1000, 5000, 10_000, 50_000, 100_000] as const;
 
 export const FONT_FALLBACK = "Menlo, Monaco, monospace";
 
-export const COLOR_KEYS = [
-  "background",
-  "foreground",
-  "cursor",
-  "selectionBackground",
-] as const;
+export const COLOR_KEYS = ["background", "foreground", "cursor", "selectionBackground"] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
   fontFamily: "SF Mono",
@@ -187,10 +170,7 @@ export const BROWSER_WIDTH_MIN = 280;
 export const BROWSER_WIDTH_MAX = 900;
 
 export function clampBrowserWidth(width: number): number {
-  return Math.min(
-    BROWSER_WIDTH_MAX,
-    Math.max(BROWSER_WIDTH_MIN, Math.round(width)),
-  );
+  return Math.min(BROWSER_WIDTH_MAX, Math.max(BROWSER_WIDTH_MIN, Math.round(width)));
 }
 
 // Wider than the file tree's old range (180–480, default 260), and
@@ -215,10 +195,7 @@ export const SIDEBAR_WIDTH_MIN = 200;
 export const SIDEBAR_WIDTH_MAX = 420;
 
 export function clampSidebarWidth(width: number): number {
-  return Math.min(
-    SIDEBAR_WIDTH_MAX,
-    Math.max(SIDEBAR_WIDTH_MIN, Math.round(width)),
-  );
+  return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, Math.round(width)));
 }
 
 export function clampDockWidth(width: number): number {
@@ -289,10 +266,7 @@ export function isValidCustomAgent(value: unknown): value is CustomAgent {
   ) {
     return false;
   }
-  return (
-    typeof agent.command === "string" &&
-    isProbeSafeName(agentBinary(agent.command))
-  );
+  return typeof agent.command === "string" && isProbeSafeName(agentBinary(agent.command));
 }
 
 /**
@@ -363,23 +337,16 @@ export function validateSettings(raw: unknown): Settings {
       typeof source.fontSize === "number" && Number.isFinite(source.fontSize)
         ? clampFontSize(source.fontSize)
         : DEFAULT_SETTINGS.fontSize,
-    themeId:
-      typeof source.themeId === "string"
-        ? source.themeId
-        : DEFAULT_SETTINGS.themeId,
+    themeId: typeof source.themeId === "string" ? source.themeId : DEFAULT_SETTINGS.themeId,
     colorOverrides: validateColorOverrides(source.colorOverrides),
     focusExpand:
-      typeof source.focusExpand === "boolean"
-        ? source.focusExpand
-        : DEFAULT_SETTINGS.focusExpand,
+      typeof source.focusExpand === "boolean" ? source.focusExpand : DEFAULT_SETTINGS.focusExpand,
     showStatusBar:
       typeof source.showStatusBar === "boolean"
         ? source.showStatusBar
         : DEFAULT_SETTINGS.showStatusBar,
     showPaneBar:
-      typeof source.showPaneBar === "boolean"
-        ? source.showPaneBar
-        : DEFAULT_SETTINGS.showPaneBar,
+      typeof source.showPaneBar === "boolean" ? source.showPaneBar : DEFAULT_SETTINGS.showPaneBar,
     agentNotifications:
       typeof source.agentNotifications === "boolean"
         ? source.agentNotifications
@@ -388,24 +355,20 @@ export function validateSettings(raw: unknown): Settings {
       ? source.tabBarPosition
       : DEFAULT_SETTINGS.tabBarPosition,
     sidebarWidth:
-      typeof source.sidebarWidth === "number" &&
-      Number.isFinite(source.sidebarWidth)
+      typeof source.sidebarWidth === "number" && Number.isFinite(source.sidebarWidth)
         ? clampSidebarWidth(source.sidebarWidth)
         : DEFAULT_SETTINGS.sidebarWidth,
     sidebarCollapsed:
       typeof source.sidebarCollapsed === "boolean"
         ? source.sidebarCollapsed
         : DEFAULT_SETTINGS.sidebarCollapsed,
-    editorId: isEditorId(source.editorId)
-      ? source.editorId
-      : DEFAULT_SETTINGS.editorId,
+    editorId: isEditorId(source.editorId) ? source.editorId : DEFAULT_SETTINGS.editorId,
     editorCommand:
       typeof source.editorCommand === "string"
         ? source.editorCommand
         : DEFAULT_SETTINGS.editorCommand,
     scrollback:
-      typeof source.scrollback === "number" &&
-      Number.isFinite(source.scrollback)
+      typeof source.scrollback === "number" && Number.isFinite(source.scrollback)
         ? clampScrollback(source.scrollback)
         : DEFAULT_SETTINGS.scrollback,
     customAgents: validateCustomAgents(source.customAgents),
@@ -414,22 +377,17 @@ export function validateSettings(raw: unknown): Settings {
     // loadable, and a value this validator "fixed" would disagree with it.
     // An unusable address opens a blank panel, which is visible and editable.
     browserHomeUrl:
-      typeof source.browserHomeUrl === "string" &&
-      source.browserHomeUrl.length <= 2048
+      typeof source.browserHomeUrl === "string" && source.browserHomeUrl.length <= 2048
         ? source.browserHomeUrl
         : DEFAULT_SETTINGS.browserHomeUrl,
     // Same posture as browserHomeUrl: the host's own URL gate decides what is
     // loadable at open time, and a malformed stored value degrades to a blank
     // panel there rather than being "fixed" into a disagreement here.
     browserLastUrl:
-      typeof source.browserLastUrl === "string" &&
-      source.browserLastUrl.length <= 2048
+      typeof source.browserLastUrl === "string" && source.browserLastUrl.length <= 2048
         ? source.browserLastUrl
         : DEFAULT_SETTINGS.browserLastUrl,
-    dockOpen:
-      typeof source.dockOpen === "boolean"
-        ? source.dockOpen
-        : DEFAULT_SETTINGS.dockOpen,
+    dockOpen: typeof source.dockOpen === "boolean" ? source.dockOpen : DEFAULT_SETTINGS.dockOpen,
     dockWidth:
       typeof source.dockWidth === "number" && Number.isFinite(source.dockWidth)
         ? clampDockWidth(source.dockWidth)

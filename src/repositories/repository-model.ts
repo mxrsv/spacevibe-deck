@@ -9,12 +9,14 @@
  */
 import { workspaceLabel } from "../lib/workspace-label";
 import type { PaneAgent } from "../lib/process-info";
-import type { AgentAttentionSummary, TabView } from "../terminal/tabs-store";
-import { IDLE_ATTENTION_SUMMARY } from "../terminal/tabs-store";
+import {
+  type AgentAttentionSummary,
+  type TabView,
+  IDLE_ATTENTION_SUMMARY,
+} from "../terminal/tabs-store";
 import type { RepositoryScan } from "./repository-client";
 
-export type WorktreeState =
-  "missing" | "attention" | "working" | "ready" | "idle";
+export type WorktreeState = "missing" | "attention" | "working" | "ready" | "idle";
 
 /** One open tab, carrying the index its callbacks need. */
 export interface RailTab {
@@ -90,11 +92,7 @@ function tabOf(tab: TabView, index: number, activeIndex: number): RailTab {
   return {
     index,
     key: tab.key,
-    label:
-      tab.name ??
-      (tab.workspacePath === null
-        ? "Unknown"
-        : workspaceLabel(tab.workspacePath)),
+    label: tab.name ?? (tab.workspacePath === null ? "Unknown" : workspaceLabel(tab.workspacePath)),
     customName: tab.name,
     workspacePath: tab.workspacePath,
     active: index === activeIndex,
@@ -117,10 +115,7 @@ function agentsForTabs(tabs: readonly RailTab[]): readonly PaneAgent[] {
  * longer path is the right answer. A plain `startsWith` would attach
  * `/repo-two` to `/repo`, so the boundary has to be a separator or the end.
  */
-export function worktreeForPath(
-  paths: readonly string[],
-  workspacePath: string,
-): string | null {
+export function worktreeForPath(paths: readonly string[], workspacePath: string): string | null {
   let best: string | null = null;
   for (const candidate of paths) {
     if (
@@ -172,8 +167,7 @@ export function filterRailToWorkspaceHistory(
         .filter((path): path is string => path !== null),
     );
     const worktrees = group.worktrees.filter(
-      (worktree) =>
-        worktree.tabs.length > 0 || historicalWorktrees.has(worktree.path),
+      (worktree) => worktree.tabs.length > 0 || historicalWorktrees.has(worktree.path),
     );
     return worktrees.length === 0 ? [] : [{ ...group, worktrees }];
   });
@@ -187,10 +181,7 @@ export function filterRailToWorkspaceHistory(
  * because the agent is busy inside a directory that no longer exists. The row
  * keeps its tabs either way (§5: a row with an open tab never vanishes).
  */
-function worktreeState(
-  prunable: string | null,
-  tabs: readonly RailTab[],
-): WorktreeState {
+function worktreeState(prunable: string | null, tabs: readonly RailTab[]): WorktreeState {
   if (prunable !== null) {
     return "missing";
   }
@@ -211,9 +202,7 @@ function worktreeState(
  * the tab that introduced it, and a later scan only fills the group in.
  */
 export function buildRail(input: RailInput): readonly RepositoryGroup[] {
-  const railTabs = input.tabs.map((tab, index) =>
-    tabOf(tab, index, input.activeIndex),
-  );
+  const railTabs = input.tabs.map((tab, index) => tabOf(tab, index, input.activeIndex));
 
   // One entry per group, in first-appearance order.
   const order: string[] = [];
@@ -221,10 +210,7 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
   const tabsByKey = new Map<string, RailTab[]>();
 
   for (const tab of railTabs) {
-    const scan =
-      tab.workspacePath === null
-        ? undefined
-        : input.scans.get(tab.workspacePath);
+    const scan = tab.workspacePath === null ? undefined : input.scans.get(tab.workspacePath);
     const key =
       scan !== undefined && scan.kind === "repository"
         ? scan.key
@@ -234,11 +220,7 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
       order.push(key);
     }
     tabsByKey.get(key)!.push(tab);
-    if (
-      scan !== undefined &&
-      scan.kind === "repository" &&
-      !scanByKey.has(key)
-    ) {
+    if (scan !== undefined && scan.kind === "repository" && !scanByKey.has(key)) {
       scanByKey.set(key, scan);
     }
   }
@@ -251,26 +233,17 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
       // landed yet. One synthetic worktree row so the tab still has a home —
       // this is the flat list Deck shows today, wearing the rail's clothes.
       const path = groupTabs[0]?.workspacePath ?? "";
-      const resumable = resumableWorktreePaths(
-        input.archivedPaths,
-        path === "" ? [] : [path],
-      );
+      const resumable = resumableWorktreePaths(input.archivedPaths, path === "" ? [] : [path]);
       return {
         key,
         kind: "plain" as const,
-        name:
-          path === ""
-            ? (groupTabs[0]?.label ?? "Unknown")
-            : workspaceLabel(path),
+        name: path === "" ? (groupTabs[0]?.label ?? "Unknown") : workspaceLabel(path),
         collapsed: input.collapsed.has(key),
         worktrees: [
           {
             id: key,
             path,
-            name:
-              path === ""
-                ? (groupTabs[0]?.label ?? "Unknown")
-                : workspaceLabel(path),
+            name: path === "" ? (groupTabs[0]?.label ?? "Unknown") : workspaceLabel(path),
             branch: null,
             primary: true,
             state: worktreeState(null, groupTabs),
@@ -298,8 +271,7 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
       worktrees: entries.map((entry, index) => {
         const tabs = groupTabs.filter(
           (tab) =>
-            tab.workspacePath !== null &&
-            worktreeForPath(paths, tab.workspacePath) === entry.path,
+            tab.workspacePath !== null && worktreeForPath(paths, tab.workspacePath) === entry.path,
         );
         return {
           id: `${key}:${entry.path}`,
@@ -385,9 +357,7 @@ export function activeRepositoryTabIndexes(
       // Tab order, not worktree order: the strip paints one row of chips and
       // its left-to-right order must match `TabManager`'s own, or ⌘1..⌘9 and
       // the visible sequence disagree.
-      return tabsInGroup
-        .map((tab) => tab.index)
-        .sort((left, right) => left - right);
+      return tabsInGroup.map((tab) => tab.index).sort((left, right) => left - right);
     }
   }
   return [];

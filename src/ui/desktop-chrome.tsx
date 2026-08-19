@@ -75,9 +75,7 @@ export function DesktopChrome(props: DesktopChromeProps) {
           data-tauri-drag-region
           onDblClick={windows ? undefined : props.onMacTitlebarDoubleClick}
         >
-          {!windows ? (
-            <div class="deck-frame__lights" aria-hidden="true" />
-          ) : null}
+          {!windows ? <div class="deck-frame__lights" aria-hidden="true" /> : null}
           {/* Beside the OS buttons, before anything else: hiding the column is
               a window gesture, and this is the row the window's own controls
               live in (DL-18.9). */}

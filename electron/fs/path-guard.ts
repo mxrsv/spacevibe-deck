@@ -61,11 +61,7 @@ export function isInside(parent: string, child: string): boolean {
     return true;
   }
   const relative = path.relative(parent, child);
-  return (
-    relative !== "" &&
-    !relative.startsWith("..") &&
-    !path.isAbsolute(relative)
-  );
+  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
 /**
@@ -75,10 +71,7 @@ export function isInside(parent: string, child: string): boolean {
  * replaced while Deck is running, and a cached root would keep authorizing
  * writes into a directory the user no longer has open.
  */
-export function resolveRoot(
-  root: string,
-  io: PathGuardFs = nodeFs,
-): string | null {
+export function resolveRoot(root: string, io: PathGuardFs = nodeFs): string | null {
   if (typeof root !== "string" || root.length === 0 || root.length > MAX_PATH_BYTES) {
     return null;
   }
@@ -117,9 +110,7 @@ export function resolveInsideRoot(
   ) {
     return null;
   }
-  const absolute = path.isAbsolute(target)
-    ? target
-    : path.join(canonicalRoot, target);
+  const absolute = path.isAbsolute(target) ? target : path.join(canonicalRoot, target);
   if (hasRejectedRoot(absolute)) {
     return null;
   }
@@ -135,11 +126,7 @@ export function resolveInsideRoot(
 /** `resolveInsideRoot` that throws instead of returning null — for IPC handlers,
  * where a rejected path must surface as an error the renderer can report rather
  * than as a silently empty result. */
-export function assertInsideRoot(
-  root: string,
-  target: string,
-  io: PathGuardFs = nodeFs,
-): string {
+export function assertInsideRoot(root: string, target: string, io: PathGuardFs = nodeFs): string {
   const resolved = resolveInsideRoot(root, target, io);
   if (resolved === null) {
     throw new PathOutsideWorkspaceError(String(target));

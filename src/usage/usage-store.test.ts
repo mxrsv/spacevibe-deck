@@ -12,10 +12,7 @@ import {
   usageStale,
 } from "./usage-store";
 import type { UsageClient } from "./usage-client";
-import {
-  EMPTY_USAGE_SNAPSHOT,
-  type UsageSnapshot,
-} from "../lib/usage-snapshot";
+import { EMPTY_USAGE_SNAPSHOT, type UsageSnapshot } from "../lib/usage-snapshot";
 
 /** The poll interval, restated here so a change to it fails a test. */
 const POLL_MS = 5000;
@@ -237,10 +234,7 @@ describe("stopUsagePolling", () => {
 
   it("lets a restart fetch immediately instead of waiting out the orphan", async () => {
     const orphan = deferred();
-    const { client, calls } = queuedClient([
-      () => orphan.promise,
-      () => Promise.resolve(second),
-    ]);
+    const { client, calls } = queuedClient([() => orphan.promise, () => Promise.resolve(second)]);
 
     startUsagePolling(client);
     await vi.advanceTimersByTimeAsync(0);

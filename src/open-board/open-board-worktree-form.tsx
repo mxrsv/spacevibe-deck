@@ -1,7 +1,6 @@
 import { ArrowLeft, FolderOpen } from "@phosphor-icons/react";
 import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
-import { folderName } from "../lib/workspace-recents";
-import type { RecentWorkspace } from "../lib/workspace-recents";
+import { folderName, type RecentWorkspace } from "../lib/workspace-recents";
 import { tildify } from "../lib/process-info";
 import type { WorktreeAddErrorCode } from "../host/worktree-host";
 
@@ -13,8 +12,7 @@ const ERROR_COPY: Record<WorktreeAddErrorCode, string> = {
   "branch-exists": "A branch with that name already exists",
   "destination-exists": "That destination folder already exists",
   "git-not-found": "git isn't installed, or isn't on PATH",
-  unknown:
-    "Couldn't create the worktree — check the folder and branch and try again",
+  unknown: "Couldn't create the worktree — check the folder and branch and try again",
 };
 
 export function worktreeErrorCopy(code: WorktreeAddErrorCode): string {
@@ -58,11 +56,7 @@ export function OpenBoardWorktreeForm({
   onBack,
   onSubmit,
 }: OpenBoardWorktreeFormProps) {
-  const canSubmit =
-    repoPath !== "" &&
-    branch.trim() !== "" &&
-    destPath.trim() !== "" &&
-    !creating;
+  const canSubmit = repoPath !== "" && branch.trim() !== "" && destPath.trim() !== "" && !creating;
 
   /** Enter submits, Escape backs out — scoped here rather than left to the
    * board's own key handler, which ignores input targets. */
@@ -103,9 +97,7 @@ export function OpenBoardWorktreeForm({
               id="wtf-repo"
               class="wtf__select"
               value={repoPath}
-              onChange={(event) =>
-                onRepoChange((event.target as HTMLSelectElement).value)
-              }
+              onChange={(event) => onRepoChange((event.target as HTMLSelectElement).value)}
             >
               <option value="">Select a repository…</option>
               {recents.map((recent) => (
@@ -131,9 +123,7 @@ export function OpenBoardWorktreeForm({
             class="wtf__input"
             value={branch}
             placeholder="feature/my-branch"
-            onInput={(event) =>
-              onBranchChange((event.target as HTMLInputElement).value)
-            }
+            onInput={(event) => onBranchChange((event.target as HTMLInputElement).value)}
           />
         </div>
 
@@ -145,9 +135,7 @@ export function OpenBoardWorktreeForm({
             id="wtf-dest"
             class="wtf__input"
             value={destPath}
-            onInput={(event) =>
-              onDestChange((event.target as HTMLInputElement).value)
-            }
+            onInput={(event) => onDestChange((event.target as HTMLInputElement).value)}
           />
         </div>
 
@@ -163,11 +151,7 @@ export function OpenBoardWorktreeForm({
           <button class="btn" onClick={onBack}>
             Back
           </button>
-          <button
-            class="btn btn--primary"
-            disabled={!canSubmit}
-            onClick={onSubmit}
-          >
+          <button class="btn btn--primary" disabled={!canSubmit} onClick={onSubmit}>
             {creating ? "Creating…" : "Create worktree"}
           </button>
         </div>

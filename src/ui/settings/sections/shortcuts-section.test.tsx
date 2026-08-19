@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,18 +18,14 @@ vi.mock("../../../host/store-host", () => ({
 
 const suspendMenuAccelerators = vi.fn(async (_suspended: boolean) => {});
 vi.mock("../../../host/menu-host", () => ({
-  suspendMenuAccelerators: (suspended: boolean) =>
-    suspendMenuAccelerators(suspended),
+  suspendMenuAccelerators: (suspended: boolean) => suspendMenuAccelerators(suspended),
 }));
 
 import { ShortcutsSection } from "./shortcuts-section";
 import { settings } from "../../../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../../../settings/settings-schema";
 import { shortcutCaptureActive } from "../../../chrome/events";
-import {
-  NO_KEYBINDING_OVERRIDES,
-  withOverride,
-} from "../../../lib/keybindings";
+import { NO_KEYBINDING_OVERRIDES, withOverride } from "../../../lib/keybindings";
 import { matchBinding } from "../../../terminal/keymap";
 import { resetActiveKeymapCache } from "../../../terminal/active-keymap";
 import { ACTION_REGISTRY } from "../../../terminal/action-registry";
@@ -36,9 +33,7 @@ import { NOT_REBINDABLE } from "../shortcut-groups";
 
 function keyEvent(
   key: string,
-  mods: Partial<
-    Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">
-  > = {},
+  mods: Partial<Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">> = {},
 ): KeyboardEvent {
   return new KeyboardEvent("keydown", {
     key,
@@ -76,8 +71,7 @@ describe("ShortcutsSection", () => {
 
   const rowFor = (label: string): Element => {
     const row = [...host.querySelectorAll(".cfg-row--shortcut")].find(
-      (candidate) =>
-        candidate.querySelector(".cfg-row__label")?.textContent === label,
+      (candidate) => candidate.querySelector(".cfg-row__label")?.textContent === label,
     );
     if (row === undefined) {
       throw new Error(`No shortcut row labelled ${label}`);
@@ -149,9 +143,7 @@ describe("ShortcutsSection", () => {
     // `matchBinding` with NO keymap argument — the live path. Resolving a
     // keymap here and passing it in only re-tested `resolveKeymap`, and would
     // have stayed green with an `activeKeymap()` cache that never invalidated.
-    expect(matchBinding(keyEvent("j", { metaKey: true, altKey: true }))).toBe(
-      "find",
-    );
+    expect(matchBinding(keyEvent("j", { metaKey: true, altKey: true }))).toBe("find");
     // …and the chord it replaced no longer fires it.
     expect(matchBinding(keyEvent("f", { metaKey: true }))).toBeNull();
   });
@@ -240,8 +232,7 @@ describe("ShortcutsSection", () => {
     mount();
     expect(rowFor("Split Vertically").querySelector(".cfg-clear")).toBeNull();
 
-    const reset =
-      rowFor("Find…").querySelector<HTMLButtonElement>(".cfg-clear");
+    const reset = rowFor("Find…").querySelector<HTMLButtonElement>(".cfg-clear");
     expect(reset).not.toBeNull();
     act(() => {
       reset?.click();
@@ -260,15 +251,14 @@ describe("ShortcutsSection", () => {
       ]),
     };
     mount();
-    expect(
-      rowFor("Find…").querySelector(".cfg-row__desc--warn")?.textContent,
-    ).toBe("also bound to Split Vertically");
+    expect(rowFor("Find…").querySelector(".cfg-row__desc--warn")?.textContent).toBe(
+      "also bound to Split Vertically",
+    );
     // Reported on the row that did not change, too — the user arriving later
     // cannot tell which of the two was the newer edit.
-    expect(
-      rowFor("Split Vertically").querySelector(".cfg-row__desc--warn")
-        ?.textContent,
-    ).toBe("also bound to Find…");
+    expect(rowFor("Split Vertically").querySelector(".cfg-row__desc--warn")?.textContent).toBe(
+      "also bound to Find…",
+    );
   });
 
   it("reports no collision on a clean keymap", () => {

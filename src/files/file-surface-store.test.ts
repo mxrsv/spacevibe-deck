@@ -67,9 +67,9 @@ describe("the seam", () => {
       "src/terminal/tab-manager-types.ts",
       "src/terminal/tab-action-scope.ts",
     ];
-    expect(
-      imports(readFileSync("src/files/file-surface-store.ts", "utf8")),
-    ).not.toContain("../terminal/tab-manager");
+    expect(imports(readFileSync("src/files/file-surface-store.ts", "utf8"))).not.toContain(
+      "../terminal/tab-manager",
+    );
     for (const modulePath of tabManagerModules) {
       expect(
         imports(readFileSync(modulePath, "utf8")).filter((specifier) =>
@@ -145,11 +145,7 @@ describe("the tree", () => {
     setListing("/r", "/r/src", [file("/r/src/index.ts")]);
     expect(treeRows("/r").map((r) => r.name)).toEqual(["src", "a.ts"]);
     toggleDirectory("/r", "/r/src");
-    expect(treeRows("/r").map((r) => r.name)).toEqual([
-      "src",
-      "index.ts",
-      "a.ts",
-    ]);
+    expect(treeRows("/r").map((r) => r.name)).toEqual(["src", "index.ts", "a.ts"]);
     expect(visibleDirectories("/r")).toEqual(["/r", "/r/src"]);
     toggleDirectory("/r", "/r/src");
     expect(visibleDirectories("/r")).toEqual(["/r"]);
@@ -169,9 +165,7 @@ describe("opening file tabs", () => {
     openFileTab("/r", "/r/a.ts", { keep: false });
     expect(fileTabsFor("/r")[0].preview).toBe(true);
     openFileTab("/r", "/r/b.ts", { keep: true });
-    expect(fileTabsFor("/r").map((t) => [t.path, t.preview])).toEqual([
-      ["/r/b.ts", false],
-    ]);
+    expect(fileTabsFor("/r").map((t) => [t.path, t.preview])).toEqual([["/r/b.ts", false]]);
   });
 
   it("creates the document once and reports whether it must be read", () => {
@@ -197,10 +191,7 @@ describe("opening file tabs", () => {
     openFileTab("/r", "/r/a.ts", { keep: false });
     updateDocument("/r/a.ts", { dirty: true });
     openFileTab("/r", "/r/b.ts", { keep: false });
-    expect(fileTabsFor("/r").map((t) => t.path)).toEqual([
-      "/r/a.ts",
-      "/r/b.ts",
-    ]);
+    expect(fileTabsFor("/r").map((t) => t.path)).toEqual(["/r/a.ts", "/r/b.ts"]);
     expect(dirtyPaths()).toEqual(["/r/a.ts"]);
   });
 

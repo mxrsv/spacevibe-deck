@@ -19,8 +19,7 @@ function entry(over: Partial<SessionEntry> = {}): SessionEntry {
 // The store's real code path runs; only the host bridge is faked. That is what
 // makes this a regression test for the wiring rather than for a spy.
 vi.mock("../../sessions/sessions-client", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("../../sessions/sessions-client")>();
+  const actual = await importOriginal<typeof import("../../sessions/sessions-client")>();
   return {
     ...actual,
     defaultSessionsClient: actual.createMemorySessionsClient({
@@ -32,13 +31,8 @@ vi.mock("../../sessions/sessions-client", async (importOriginal) => {
 });
 
 const { SessionsDockTab } = await import("./sessions-dock-tab");
-const {
-  deadProjects,
-  resetSessionFilters,
-  sessionEntries,
-  sessionsLoading,
-  sessionTotals,
-} = await import("../../sessions/sessions-store");
+const { deadProjects, resetSessionFilters, sessionEntries, sessionsLoading, sessionTotals } =
+  await import("../../sessions/sessions-store");
 
 describe("SessionsDockTab", () => {
   let host: HTMLDivElement;
@@ -64,10 +58,7 @@ describe("SessionsDockTab", () => {
     });
     await act(async () => {});
 
-    expect(sessionEntries.value.map((row) => row.sessionId)).toEqual([
-      "a",
-      "b",
-    ]);
+    expect(sessionEntries.value.map((row) => row.sessionId)).toEqual(["a", "b"]);
     expect(sessionTotals.value).toEqual({ claude: 459, codex: 692 });
     expect(host.querySelector(".sessions-body--dock")).not.toBeNull();
   });

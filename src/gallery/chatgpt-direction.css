@@ -292,14 +292,7 @@
   color: var(--gx-chat-ink-secondary);
 }
 
-.gx-app--chatgpt
-  :is(
-    .cfg-btn,
-    .cfg-step,
-    .text-input,
-    .prompt-textarea,
-    .tab-popover__logo-btn
-  ) {
+.gx-app--chatgpt :is(.cfg-btn, .cfg-step, .text-input, .prompt-textarea, .tab-popover__logo-btn) {
   border-color: var(--gx-chat-border);
   border-radius: var(--gx-chat-radius-control);
   background: color-mix(in srgb, var(--gx-chat-ink) 6%, transparent);
@@ -403,19 +396,12 @@
 }
 
 .gx-app--chatgpt
-  :is(
-    .preset-editor__tools button,
-    .preset-editor__actions button,
-    .save-preset__actions button
-  ) {
+  :is(.preset-editor__tools button, .preset-editor__actions button, .save-preset__actions button) {
   border-radius: var(--gx-chat-radius-control);
 }
 
 .gx-app--chatgpt
-  :is(
-    .preset-editor__actions button.is-primary,
-    .save-preset__actions button.is-primary
-  ) {
+  :is(.preset-editor__actions button.is-primary, .save-preset__actions button.is-primary) {
   border-color: var(--gx-chat-ink);
   background: var(--gx-chat-ink);
   color: var(--gx-chat-app-under);
@@ -1125,8 +1111,8 @@
   padding: 24px;
   overflow-x: auto;
   background:
-    linear-gradient(var(--gx-chat-seam), var(--gx-chat-seam)) 24px 0 /
-      calc(100% - 48px) 1px no-repeat,
+    linear-gradient(var(--gx-chat-seam), var(--gx-chat-seam)) 24px 0 / calc(100% - 48px) 1px
+      no-repeat,
     var(--gx-chat-app-under);
 }
 
@@ -1263,10 +1249,7 @@
   background: transparent;
 }
 
-.gx-chatgpt-direction
-  .gx-worktree-variant--compact
-  .gx-worktree-row
-  .wsitem__path {
+.gx-chatgpt-direction .gx-worktree-variant--compact .gx-worktree-row .wsitem__path {
   display: none;
 }
 
@@ -1274,9 +1257,7 @@
   background: color-mix(in srgb, var(--fg) 4%, transparent);
 }
 
-.gx-chatgpt-direction
-  .gx-worktree-variant--compact
-  .gx-worktree-row.is-active::before {
+.gx-chatgpt-direction .gx-worktree-variant--compact .gx-worktree-row.is-active::before {
   position: absolute;
   inset: 5px auto 5px -1px;
   width: 2px;
@@ -1287,17 +1268,12 @@
 
 /* B — only the selected worktree earns vertical space. Resting rows keep one
    line; the selected row opens its path without moving agent controls away. */
-.gx-chatgpt-direction
-  .gx-worktree-variant--focus
-  .gx-worktree-row:not(.is-active) {
+.gx-chatgpt-direction .gx-worktree-variant--focus .gx-worktree-row:not(.is-active) {
   min-height: 34px;
   padding-block: 3px;
 }
 
-.gx-chatgpt-direction
-  .gx-worktree-variant--focus
-  .gx-worktree-row:not(.is-active)
-  .wsitem__path {
+.gx-chatgpt-direction .gx-worktree-variant--focus .gx-worktree-row:not(.is-active) .wsitem__path {
   display: none;
 }
 
@@ -1309,10 +1285,7 @@
   box-shadow: inset 0 1px rgb(255 255 255 / 3%);
 }
 
-.gx-chatgpt-direction
-  .gx-worktree-variant--focus
-  .gx-worktree-row.is-active
-  .wsitem__path {
+.gx-chatgpt-direction .gx-worktree-variant--focus .gx-worktree-row.is-active .wsitem__path {
   margin-top: 3px;
   font-size: 9px;
 }
@@ -1328,9 +1301,7 @@
   padding: 6px;
 }
 
-.gx-chatgpt-direction
-  .gx-worktree-variant--agent
-  .gx-worktree-row:has(.worktree-agents__item) {
+.gx-chatgpt-direction .gx-worktree-variant--agent .gx-worktree-row:has(.worktree-agents__item) {
   min-height: 61px;
 }
 
@@ -1356,11 +1327,7 @@
 
 .gx-chatgpt-direction .gx-worktree-variant--agent .gx-worktree-row.is-active {
   background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--accent) 15%, transparent),
-      transparent 72%
-    ),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 15%, transparent), transparent 72%),
     var(--gx-chat-selected);
   box-shadow: inset 2px 0 var(--accent);
 }

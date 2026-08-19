@@ -1,20 +1,9 @@
-import {
-  FolderOpen,
-  FolderPlus,
-  GitBranch,
-  Robot,
-  Terminal,
-  X,
-} from "@phosphor-icons/react";
+import { FolderOpen, FolderPlus, GitBranch, Robot, Terminal, X } from "@phosphor-icons/react";
 import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
-import { folderName, formatRelativeTime } from "../lib/workspace-recents";
-import type { RecentWorkspace } from "../lib/workspace-recents";
+import { folderName, formatRelativeTime, type RecentWorkspace } from "../lib/workspace-recents";
 import { tildify } from "../lib/process-info";
 import { logoDataUrl } from "../settings/logo-store";
-import {
-  SESSION_AGENT_LABELS,
-  type SessionEntry,
-} from "../lib/session-history";
+import { SESSION_AGENT_LABELS, type SessionEntry } from "../lib/session-history";
 import defaultLogoUrl from "../../.github/assets/icon.svg";
 
 /** Identity mark per agent (DL-25.2), same choice as the session-history
@@ -105,13 +94,7 @@ export function OpenBoardHome({
         // A missing row stays clickable and says why through the notice line
         // rather than going inert: an inert row with no explanation reads as a
         // broken click, and the folder may have come back since the scan.
-        title={
-          gone
-            ? "This folder is missing"
-            : combo === ""
-              ? undefined
-              : `Opens as ${combo}`
-        }
+        title={gone ? "This folder is missing" : combo === "" ? undefined : `Opens as ${combo}`}
         onClick={() => onOpen(recent.path)}
       >
         <DeckIcon icon={FolderOpen} size={BOARD_ICON} class="row__ico" />
@@ -121,9 +104,7 @@ export function OpenBoardHome({
             <span class="row__path">
               {homeDir === "" ? recent.path : tildify(recent.path, homeDir)}
             </span>
-            <span class="row__time">
-              {formatRelativeTime(recent.lastOpenedAt, Date.now())}
-            </span>
+            <span class="row__time">{formatRelativeTime(recent.lastOpenedAt, Date.now())}</span>
           </span>
         </span>
         <button
@@ -179,9 +160,7 @@ export function OpenBoardHome({
               {SESSION_AGENT_LABELS[entry.agent]} ·{" "}
               {homeDir === "" ? entry.cwd : tildify(entry.cwd, homeDir)}
             </span>
-            <span class="row__time">
-              {formatRelativeTime(entry.lastActivityMs, Date.now())}
-            </span>
+            <span class="row__time">{formatRelativeTime(entry.lastActivityMs, Date.now())}</span>
           </span>
         </span>
       </li>
@@ -224,9 +203,7 @@ export function OpenBoardHome({
             {missingGroup.length > 0 ? (
               <li class="gsep">
                 <span>Missing</span>
-                <button
-                  onClick={() => onRemove(missingGroup.map((r) => r.path))}
-                >
+                <button onClick={() => onRemove(missingGroup.map((r) => r.path))}>
                   Remove {missingGroup.length}
                 </button>
               </li>

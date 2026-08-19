@@ -34,11 +34,7 @@ export function DockTabs({ items, active, onSelect }: DockTabsProps) {
             class={`dock-tabs__chip ${isActive ? "is-active" : ""}`}
             onClick={() => onSelect(item.id)}
           >
-            <DeckIcon
-              icon={item.icon}
-              size={FEATURE_ICON}
-              class="feature-glyph"
-            />
+            <DeckIcon icon={item.icon} size={FEATURE_ICON} class="feature-glyph" />
             <span class="dock-tabs__label">{item.label}</span>
           </button>
         );

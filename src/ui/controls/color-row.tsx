@@ -12,13 +12,7 @@ interface ColorRowProps {
 
 /** color value kind: swatch + hex pill over an invisible native color input (DL-6). */
 
-export function ColorRow({
-  label,
-  value,
-  overridden,
-  onChange,
-  onClear,
-}: ColorRowProps) {
+export function ColorRow({ label, value, overridden, onChange, onClear }: ColorRowProps) {
   return (
     <ConfigRow label={label}>
       {overridden && (

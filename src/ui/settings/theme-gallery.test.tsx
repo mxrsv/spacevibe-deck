@@ -76,17 +76,15 @@ describe("ThemeGallery", () => {
     Array.from(host.querySelectorAll<HTMLButtonElement>(".theme-card"));
 
   const pill = (text: string): HTMLButtonElement | undefined =>
-    Array.from(host.querySelectorAll<HTMLButtonElement>(".cfg-btn")).find(
-      (button) => button.textContent?.includes(text),
+    Array.from(host.querySelectorAll<HTMLButtonElement>(".cfg-btn")).find((button) =>
+      button.textContent?.includes(text),
     );
 
   it("renders one radio per theme, the saved one checked", () => {
     mount();
 
     expect(cards()).toHaveLength(THEME_PRESETS.length);
-    const checked = cards().filter(
-      (card) => card.getAttribute("aria-checked") === "true",
-    );
+    const checked = cards().filter((card) => card.getAttribute("aria-checked") === "true");
     expect(checked).toHaveLength(1);
     expect(checked[0].textContent).toContain(THEME_PRESETS[0].label);
   });
@@ -109,9 +107,7 @@ describe("ThemeGallery", () => {
 
     mount();
 
-    const checked = cards().filter(
-      (card) => card.getAttribute("aria-checked") === "true",
-    );
+    const checked = cards().filter((card) => card.getAttribute("aria-checked") === "true");
     expect(checked).toHaveLength(1);
     expect(checked[0].textContent).toContain(THEME_PRESETS[0].label);
   });
@@ -123,9 +119,7 @@ describe("ThemeGallery", () => {
 
     const themeCards = cards();
     expect(themeCards).toHaveLength(THEME_PRESETS.length + 1);
-    expect(themeCards[themeCards.length - 1]?.textContent).toContain(
-      "Orange Mechanic",
-    );
+    expect(themeCards[themeCards.length - 1]?.textContent).toContain("Orange Mechanic");
   });
 
   it("selecting a theme clears the previous colour overrides", () => {
@@ -161,22 +155,16 @@ describe("ThemeGallery", () => {
     act(() => {
       host
         .querySelector(".theme-gallery")
-        ?.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
-        );
+        ?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
     });
 
-    expect(settings.value.themeId).toBe(
-      THEME_PRESETS[THEME_PRESETS.length - 1].id,
-    );
+    expect(settings.value.themeId).toBe(THEME_PRESETS[THEME_PRESETS.length - 1].id);
   });
 
   it("names the file and the reason when one does not parse", () => {
     // A scan that silently dropped a file would look like the import never
     // happened, and the user would import the same broken file again.
-    themeImportFailures.value = [
-      { fileName: "broken.json", reason: "the file is empty" },
-    ];
+    themeImportFailures.value = [{ fileName: "broken.json", reason: "the file is empty" }];
 
     mount();
 

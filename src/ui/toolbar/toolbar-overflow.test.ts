@@ -16,11 +16,7 @@ import {
  * window, because a screenshot cannot show the ORDER things were given up in.
  */
 
-function item(
-  id: string,
-  group: ToolbarGroup,
-  overflowOrder: number | null,
-): ToolbarItem {
+function item(id: string, group: ToolbarGroup, overflowOrder: number | null): ToolbarItem {
   return {
     id,
     label: id,
@@ -46,8 +42,7 @@ const ITEMS: readonly ToolbarItem[] = [
   item("settings", "global", null),
 ];
 
-const ids = (items: readonly ToolbarItem[]): readonly string[] =>
-  items.map((entry) => entry.id);
+const ids = (items: readonly ToolbarItem[]): readonly string[] => items.map((entry) => entry.id);
 
 describe("toolbarRowWidth", () => {
   it("counts controls, separators and the gaps between them", () => {
@@ -61,9 +56,7 @@ describe("toolbarRowWidth", () => {
   });
 
   it("counts reserved space as one more unit", () => {
-    expect(toolbarRowWidth(1, 0, 60)).toBe(
-      TOOLBAR_CONTROL_WIDTH + 60 + TOOLBAR_GAP,
-    );
+    expect(toolbarRowWidth(1, 0, 60)).toBe(TOOLBAR_CONTROL_WIDTH + 60 + TOOLBAR_GAP);
   });
 });
 
@@ -71,11 +64,7 @@ describe("fitToolbarItems", () => {
   it("keeps every action when the row is wide enough", () => {
     const fit = fitToolbarItems(ITEMS, 1000);
     expect(fit.overflow).toEqual([]);
-    expect(fit.groups.map((view) => view.group)).toEqual([
-      "tools",
-      "pane",
-      "global",
-    ]);
+    expect(fit.groups.map((view) => view.group)).toEqual(["tools", "pane", "global"]);
   });
 
   it("gives up Usage first, then Focus expand, Close pane, then the splits", () => {
@@ -87,23 +76,12 @@ describe("fitToolbarItems", () => {
         }
       }
     }
-    expect(given).toEqual([
-      "usage",
-      "expand",
-      "close-pane",
-      "split-column",
-      "split-row",
-    ]);
+    expect(given).toEqual(["usage", "expand", "close-pane", "split-column", "split-row"]);
   });
 
   it("never overflows a persistent action, however narrow the row", () => {
     const fit = fitToolbarItems(ITEMS, 0);
-    expect(ids(fit.visible)).toEqual([
-      "explorer",
-      "browser",
-      "prompts",
-      "settings",
-    ]);
+    expect(ids(fit.visible)).toEqual(["explorer", "browser", "prompts", "settings"]);
   });
 
   it("drops the separator of a group it emptied", () => {

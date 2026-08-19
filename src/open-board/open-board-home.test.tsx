@@ -2,8 +2,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { OpenBoardHome } from "./open-board-home";
-import type { OpenBoardHomeProps } from "./open-board-home";
+import { OpenBoardHome, type OpenBoardHomeProps } from "./open-board-home";
 import type { SessionEntry } from "../lib/session-history";
 
 function entry(over: Partial<SessionEntry> = {}): SessionEntry {
@@ -71,8 +70,8 @@ describe("OpenBoardHome — recent sessions", () => {
       entry({ sessionId: `s${index}`, lastActivityMs: index }),
     );
     mount({ recentSessions: sessions });
-    const resumeRows = [...host.querySelectorAll('[role="button"]')].filter(
-      (el) => /resume/i.test(el.getAttribute("aria-label") ?? ""),
+    const resumeRows = [...host.querySelectorAll('[role="button"]')].filter((el) =>
+      /resume/i.test(el.getAttribute("aria-label") ?? ""),
     );
     expect(resumeRows).toHaveLength(5);
   });
@@ -92,9 +91,7 @@ describe("OpenBoardHome — recent sessions", () => {
     const handlers = mount({ recentSessions: [one] });
     const row = host.querySelector<HTMLElement>('[role="button"]');
     act(() => {
-      row?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      row?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
     expect(handlers.onResumeSession).toHaveBeenCalledWith(one);
   });

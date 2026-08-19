@@ -66,10 +66,7 @@ function isVietConsonant(ch: string): boolean {
  * represented in the replacement (PTY had `vâ`/`trâ`, IME replaced as if
  * deleting from the vowel), restore the full onset.
  */
-function consonantPrefixToRestore(
-  deletedOldestFirst: string,
-  replacement: string,
-): string {
+function consonantPrefixToRestore(deletedOldestFirst: string, replacement: string): string {
   const deleted = [...deletedOldestFirst];
   const rep = [...replacement];
   if (deleted.length === 0 || rep.length === 0) {
@@ -108,9 +105,7 @@ function clearSuppressTrailing(state: ImeEmitState): void {
 }
 
 /** True inside a WebKit webview that is not Chromium-based (WKWebView). */
-export function isWebKitWebView(
-  userAgent: string = navigator.userAgent,
-): boolean {
+export function isWebKitWebView(userAgent: string = navigator.userAgent): boolean {
   return userAgent.includes("AppleWebKit") && !userAgent.includes("Chrome");
 }
 
@@ -151,10 +146,7 @@ function noteEmit(state: ImeEmitState, data: string): void {
 
 function wrapTriggerDataEvent(core: XtermCore, state: ImeEmitState): void {
   const original = core.coreService.triggerDataEvent.bind(core.coreService);
-  core.coreService.triggerDataEvent = (
-    data: string,
-    wasUserInput: boolean,
-  ): void => {
+  core.coreService.triggerDataEvent = (data: string, wasUserInput: boolean): void => {
     noteEmit(state, data);
     original(data, wasUserInput);
   };
@@ -170,9 +162,7 @@ function wrapTriggerDataEvent(core: XtermCore, state: ImeEmitState): void {
 function patchInputEvent(core: XtermCore, state: ImeEmitState): void {
   core._inputEvent = (ev: InputEvent): boolean => {
     const helper = core._compositionHelper;
-    const composing =
-      helper !== undefined &&
-      (helper.isComposing || helper._isSendingComposition);
+    const composing = helper !== undefined && (helper.isComposing || helper._isSendingComposition);
     if (
       ev.data &&
       ev.inputType === "insertText" &&
@@ -185,10 +175,7 @@ function patchInputEvent(core: XtermCore, state: ImeEmitState): void {
       core._unprocessedDeadKey = false;
       let data = ev.data;
       if ([...ev.data].length > 1) {
-        const deletedOldestFirst = state.deletedBurst
-          .slice()
-          .reverse()
-          .join("");
+        const deletedOldestFirst = state.deletedBurst.slice().reverse().join("");
         const hadDeleteBurst = deletedOldestFirst.length > 0;
         const prefix = consonantPrefixToRestore(deletedOldestFirst, ev.data);
         state.deletedBurst = [];
@@ -313,6 +300,7 @@ function isInjectedText(key: string): boolean {
   if (chars.length <= 1) {
     return false;
   }
+  // oxlint-disable-next-line no-control-regex -- non-ASCII detection is the point of this check
   if (/[^\x00-\x7f]/.test(key)) {
     return true;
   }
@@ -327,9 +315,7 @@ function isInjectedText(key: string): boolean {
 export function applyWebkitImeFix(term: Terminal): void {
   const core = getCore(term);
   if (core === null || !term.textarea) {
-    console.warn(
-      "webkit-ime-fix: xterm internals not found, skipping IME workaround",
-    );
+    console.warn("webkit-ime-fix: xterm internals not found, skipping IME workaround");
     return;
   }
   const state: ImeEmitState = {

@@ -77,10 +77,7 @@ function pricingFor(model: string): ModelPricing | null {
  * one of them all-zero — from turning the entire Claude dollar column into a
  * permanent em dash.
  */
-export function estimateCostUsd(
-  model: string,
-  counters: UsageCounters,
-): number | null {
+export function estimateCostUsd(model: string, counters: UsageCounters): number | null {
   if (totalTokens(counters) === 0) {
     return 0;
   }

@@ -103,11 +103,7 @@ export class LineReader {
 }
 
 /** Open + iterate + close, for callers that want the whole tail. */
-export function readLines(
-  path: string,
-  start: number,
-  onEvent: (event: LineEvent) => void,
-): void {
+export function readLines(path: string, start: number, onEvent: (event: LineEvent) => void): void {
   const fd = openSync(path, "r");
   try {
     const reader = new LineReader(fd, start);
@@ -177,11 +173,7 @@ export function parseRfc3339Ms(text: string): number | null {
   if (hour > 23 || minute > 59 || second > 59) {
     return null;
   }
-  const seconds =
-    daysFromCivil(year, month, day) * 86_400 +
-    hour * 3_600 +
-    minute * 60 +
-    second;
+  const seconds = daysFromCivil(year, month, day) * 86_400 + hour * 3_600 + minute * 60 + second;
   if (seconds < 0) {
     return null;
   }

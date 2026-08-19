@@ -53,8 +53,7 @@ export function appRuleLists(): readonly CSSRuleList[] {
   const lists: CSSRuleList[] = [];
   for (const sheet of document.styleSheets) {
     const node = sheet.ownerNode;
-    const devId =
-      node instanceof HTMLElement ? node.dataset.viteDevId : undefined;
+    const devId = node instanceof HTMLElement ? node.dataset.viteDevId : undefined;
     const source = devId ?? sheet.href ?? "";
     if (!source.endsWith(APP_STYLESHEET_SUFFIX)) {
       continue;
@@ -76,10 +75,7 @@ function styleRules(): readonly CSSStyleRule[] {
     for (const rule of list) {
       if (rule instanceof CSSStyleRule) {
         rules.push(rule);
-      } else if (
-        rule instanceof CSSMediaRule ||
-        rule instanceof CSSSupportsRule
-      ) {
+      } else if (rule instanceof CSSMediaRule || rule instanceof CSSSupportsRule) {
         collect(rule.cssRules);
       }
     }
@@ -92,10 +88,10 @@ function styleRules(): readonly CSSStyleRule[] {
 
 function toEntries(tallies: ReadonlyMap<string, Tally>): readonly AuditEntry[] {
   return [...tallies]
-    .map(([value, tally]) => ({
+    .map(([value, entry]) => ({
       value,
-      count: tally.count,
-      sample: tally.sample,
+      count: entry.count,
+      sample: entry.sample,
     }))
     .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
 }

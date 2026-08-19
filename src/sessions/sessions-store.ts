@@ -14,13 +14,7 @@ import {
   type SessionAgent,
   type SessionEntry,
 } from "../lib/session-history";
-import {
-  LOAD_IDLE,
-  LOAD_LOADING,
-  LOAD_READY,
-  loadError,
-  type LoadState,
-} from "../lib/load-state";
+import { LOAD_IDLE, LOAD_LOADING, LOAD_READY, loadError, type LoadState } from "../lib/load-state";
 
 export const sessionEntries = signal<readonly SessionEntry[]>([]);
 export const sessionTotals = signal<Readonly<Record<SessionAgent, number>>>({
@@ -126,9 +120,7 @@ export async function refreshSessions(
       sessionEntries.value = snapshot.entries;
       sessionTotals.value = snapshot.totals;
       sessionLimit.value = snapshot.limit;
-      deadProjects.value = new Set(
-        projects.filter((_, index) => alive[index] !== true),
-      );
+      deadProjects.value = new Set(projects.filter((_, index) => alive[index] !== true));
       sessionsLoadState.value = LOAD_READY;
     });
   } catch (error: unknown) {

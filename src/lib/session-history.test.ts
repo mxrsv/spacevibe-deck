@@ -39,17 +39,13 @@ describe("asSessionsSnapshot", () => {
   // An id that cannot resume must not become a row. `"claude".includes("")` is
   // true for every string, so a containment check downstream cannot catch this.
   it("drops an entry whose session id is empty", () => {
-    expect(
-      asSessionsSnapshot(reply([entry({ sessionId: "" })]))?.entries,
-    ).toEqual([]);
+    expect(asSessionsSnapshot(reply([entry({ sessionId: "" })]))?.entries).toEqual([]);
   });
 
   // An empty cwd would spawn the resumed pane in $HOME — the exact silent
   // wrong-directory behaviour spec §4 refuses for this path.
   it("drops an entry whose cwd is empty", () => {
-    expect(asSessionsSnapshot(reply([entry({ cwd: "" })]))?.entries).toEqual(
-      [],
-    );
+    expect(asSessionsSnapshot(reply([entry({ cwd: "" })]))?.entries).toEqual([]);
   });
 
   it("drops a malformed entry without dropping its neighbours", () => {

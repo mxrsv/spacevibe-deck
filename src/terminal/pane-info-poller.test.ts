@@ -2,11 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaneProcessInfo } from "../lib/process-info";
 import { createPaneInfoPoller } from "./pane-info-poller";
 
-function info(
-  id: number,
-  cwd: string | null,
-  process: string | null = "zsh",
-): PaneProcessInfo {
+function info(id: number, cwd: string | null, process: string | null = "zsh"): PaneProcessInfo {
   return { id, cwd, process, kind: "idle-shell", agent: null };
 }
 

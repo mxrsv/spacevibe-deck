@@ -23,8 +23,7 @@ const MODIFIER_KEYS: ReadonlySet<string> = new Set([
   "os",
 ]);
 
-export type CaptureRejection =
-  "modifier-only" | "reserved" | "system-reserved" | "needs-modifier";
+export type CaptureRejection = "modifier-only" | "reserved" | "system-reserved" | "needs-modifier";
 
 export type CaptureResult =
   | { readonly ok: true; readonly chord: CharChord }
@@ -42,13 +41,7 @@ export type CaptureResult =
  * Reported with a reason rather than silently ignored: the field convention
  * (VS Code, Ghostty) is to let the OS win and SAY so, never to fail quietly.
  */
-const SYSTEM_RESERVED: ReadonlySet<string> = new Set([
-  "M+tab",
-  "M+ ",
-  "M+q",
-  "M+h",
-  "MA+h",
-]);
+const SYSTEM_RESERVED: ReadonlySet<string> = new Set(["M+tab", "M+ ", "M+q", "M+h", "MA+h"]);
 
 function reservationId(event: KeyboardEvent, key: string): string {
   const modifiers = [
@@ -79,8 +72,7 @@ export function captureChord(event: KeyboardEvent): CaptureResult {
   if (MODIFIER_KEYS.has(key)) {
     return { ok: false, reason: "modifier-only" };
   }
-  const modified =
-    event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
+  const modified = event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
   // Escape always cancels, and BARE Tab has to keep moving focus, or the
   // capture control is a keyboard trap with no way out of it.
   //

@@ -1,7 +1,4 @@
-import {
-  parseProgressEvents,
-  type OscProgressEvent,
-} from "../lib/osc-progress";
+import { parseProgressEvents, type OscProgressEvent } from "../lib/osc-progress";
 
 /**
  * Per-pane "is the program actually working?" tracker, fed from raw PTY
@@ -192,9 +189,7 @@ function applyChunk(
   return { events: [], usedFallback: true };
 }
 
-export function createAgentActivity(
-  options: AgentActivityOptions = {},
-): AgentActivity {
+export function createAgentActivity(options: AgentActivityOptions = {}): AgentActivity {
   const now = options.now ?? Date.now;
   const recentMs = options.recentMs ?? DEFAULT_RECENT_MS;
   const echoMs = options.echoMs ?? DEFAULT_ECHO_MS;
@@ -239,13 +234,7 @@ export function createAgentActivity(
       const record = getOrCreate(paneId);
       const at = now();
       const before = isWorking(record, at);
-      const { events, usedFallback } = applyChunk(
-        record,
-        chunk,
-        at,
-        echoMs,
-        streakGapMs,
-      );
+      const { events, usedFallback } = applyChunk(record, chunk, at, echoMs, streakGapMs);
       if (events.length > 0) {
         return events.map((event): ActivityTransition => {
           const { phase, severity } = deriveFromOscState(event.state);

@@ -20,18 +20,15 @@
  */
 import type { PaneAgent } from "../lib/process-info";
 import type { RepositoryScan } from "../repositories/repository-client";
-import type {
-  RailTab,
-  RepositoryGroup,
-  WorktreeRow,
-} from "../repositories/repository-model";
 import {
+  type RailTab,
+  type RepositoryGroup,
+  type WorktreeRow,
   buildRail,
   filterRailToWorkspaceHistory,
   worktreeForPath,
 } from "../repositories/repository-model";
-import type { PaneView, TabView } from "../terminal/tabs-store";
-import { NO_PANES } from "../terminal/tabs-store";
+import { type PaneView, type TabView, NO_PANES } from "../terminal/tabs-store";
 import { UNSEQUENCED } from "../lib/open-sequence";
 
 /**
@@ -335,10 +332,7 @@ function tabRow(
   const state = voice?.state ?? "idle";
   // Agent panes only: a tab whose shells have been busy all morning has still
   // said nothing an agent rail can report, so its age stays empty.
-  const changedAt = panes.reduce(
-    (newest, pane) => Math.max(newest, pane.changedAt),
-    0,
-  );
+  const changedAt = panes.reduce((newest, pane) => Math.max(newest, pane.changedAt), 0);
   return {
     key: railTab.key,
     index: railTab.index,
@@ -384,12 +378,9 @@ function sortByOpenOrder(rows: readonly RailTabRow[]): readonly RailTabRow[] {
  * project already on screen never moves that project. Nothing here reorders by
  * name — the rail is a resume surface, not a directory (spec §1).
  */
-function sortClusters(
-  groups: readonly RailStreamGroup[],
-): readonly RailStreamGroup[] {
+function sortClusters(groups: readonly RailStreamGroup[]): readonly RailStreamGroup[] {
   return [...groups].sort(
-    (left, right) =>
-      openedFirst(left) - openedFirst(right) || firstOf(left) - firstOf(right),
+    (left, right) => openedFirst(left) - openedFirst(right) || firstOf(left) - firstOf(right),
   );
 }
 
@@ -402,10 +393,7 @@ function openedFirst(group: RailStreamGroup): number {
 
 /** Tie-break for clusters whose tabs carry no open key: the tabs' own order. */
 function firstOf(group: RailStreamGroup): number {
-  return group.rows.reduce(
-    (lowest, row) => Math.min(lowest, row.index),
-    Number.MAX_SAFE_INTEGER,
-  );
+  return group.rows.reduce((lowest, row) => Math.min(lowest, row.index), Number.MAX_SAFE_INTEGER);
 }
 
 /** Every live project keeps the same project → tab hierarchy. */
@@ -456,9 +444,7 @@ function archivedRows(
       });
     }
   }
-  return ranked
-    .sort((left, right) => left.rank - right.rank)
-    .map((entry) => entry.row);
+  return ranked.sort((left, right) => left.rank - right.rank).map((entry) => entry.row);
 }
 
 /**

@@ -22,10 +22,7 @@ import {
   type MonacoApi,
 } from "../editor-host";
 import { documentFor } from "../file-surface-store";
-import {
-  editorSettings,
-  type FileSurfaceController,
-} from "../file-surface-controller";
+import { editorSettings, type FileSurfaceController } from "../file-surface-controller";
 import { ExternalChangeBar } from "./external-change-bar";
 
 export interface FileEditorProps {
@@ -70,6 +67,7 @@ export function FileEditor(props: FileEditorProps) {
 
   // Mount once. Monaco arrives through a dynamic import, so this effect can
   // resolve after the component has already unmounted — hence `cancelled`.
+  /* oxlint-disable react-hooks/exhaustive-deps -- mount-once; the cancelled flag guards the async tail */
   useEffect(() => {
     const host = hostRef.current;
     if (host === null) {
@@ -143,9 +141,11 @@ export function FileEditor(props: FileEditorProps) {
       }
     };
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Swap the model when the path changes, and re-apply the content whenever the
   // document's baseline moves — a reload, or the first read landing.
+  /* oxlint-disable react-hooks/exhaustive-deps -- re-runs on path and the ready bump; document is read at run time */
   useEffect(() => {
     const handle = handleRef.current;
     if (handle === null || document === undefined) {
@@ -157,10 +157,7 @@ export function FileEditor(props: FileEditorProps) {
     }
     let model = handle.models.get(props.path);
     if (model === undefined) {
-      model = monaco.editor.createModel(
-        document.text,
-        languageForPath(props.path) ?? undefined,
-      );
+      model = monaco.editor.createModel(document.text, languageForPath(props.path) ?? undefined);
       handle.models.set(props.path, model);
     }
     handle.applying = true;
@@ -179,9 +176,7 @@ export function FileEditor(props: FileEditorProps) {
         editor.setModel(model);
         const saved = handle.viewStates.get(props.path);
         if (saved !== undefined) {
-          editor.restoreViewState(
-            saved as Parameters<typeof editor.restoreViewState>[0],
-          );
+          editor.restoreViewState(saved as Parameters<typeof editor.restoreViewState>[0]);
         }
       }
     } finally {
@@ -192,6 +187,7 @@ export function FileEditor(props: FileEditorProps) {
       readOnly: document.file === null || document.file.readOnly,
     });
   }, [props.path, document?.text, document?.file, ready.value]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Theme, font family and font size follow the SAME `applySettings` call the
   // terminals do — a theme switch must not leave the editor in the old palette
@@ -226,15 +222,12 @@ export function FileEditor(props: FileEditorProps) {
           <ExternalChangeBar
             prompt={document.prompt}
             fileName={baseName(props.path)}
-            onResolve={(resolution) =>
-              void props.controller.resolve(props.path, resolution)
-            }
+            onResolve={(resolution) => void props.controller.resolve(props.path, resolution)}
           />
           {document.gone && document.prompt === null && (
             <div class="filebar filebar--quiet" role="status">
               <span class="filebar__text">
-                {baseName(props.path)} was deleted on disk. This is the last
-                content Deck read.
+                {baseName(props.path)} was deleted on disk. This is the last content Deck read.
               </span>
             </div>
           )}

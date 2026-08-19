@@ -47,6 +47,7 @@ export function sanitizeGrabText(text: string): string {
       // C0-only filter, reaches the PTY as the bytes C2 9B, and any terminal
       // honouring 8-bit controls reads it as the end of the paste. That is the
       // same escape this function exists to prevent, spelled differently.
+      // oxlint-disable-next-line no-control-regex -- the filter's job is matching C0/C1 controls
       .replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, "")
       .replace(/\n{3,}/g, "\n\n")
       .trimEnd()
@@ -79,10 +80,7 @@ export function formatGrab(grab: GrabLike): string | null {
  * now fires with a focused pane sitting right there. The `pasted` branch is
  * kept for the revert that flips that constant back.
  */
-export function grabSummary(
-  count: number,
-  outcome: "pasted" | "clipboard" | "failed",
-): string {
+export function grabSummary(count: number, outcome: "pasted" | "clipboard" | "failed"): string {
   const what = count > 1 ? `${count} elements` : "Element";
   if (outcome === "pasted") {
     return `${what} sent to the focused pane`;

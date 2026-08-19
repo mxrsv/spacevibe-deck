@@ -53,15 +53,9 @@ describe("SessionRow", () => {
       homeDir: "/Users/me",
       onResume: () => {},
     });
-    expect(host.querySelector(".session-row__title")?.textContent).toBe(
-      "make the thing work",
-    );
-    expect(host.querySelector(".session-row__agent")?.textContent).toBe(
-      "Claude Code",
-    );
-    expect(host.querySelector(".session-row__path")?.textContent).toBe(
-      "~/work/repo",
-    );
+    expect(host.querySelector(".session-row__title")?.textContent).toBe("make the thing work");
+    expect(host.querySelector(".session-row__agent")?.textContent).toBe("Claude Code");
+    expect(host.querySelector(".session-row__path")?.textContent).toBe("~/work/repo");
   });
 
   it("falls back to the session id when no title was found", () => {
@@ -111,9 +105,7 @@ describe("SessionRow", () => {
       homeDir: "/Users/me",
       onResume: () => {},
     });
-    expect(resumeButton()?.getAttribute("aria-label")).toBe(
-      "Resume make the thing work",
-    );
+    expect(resumeButton()?.getAttribute("aria-label")).toBe("Resume make the thing work");
     // WCAG 2.5.3: the accessible name still contains the visible label.
     expect(resumeButton()?.textContent).toContain("Resume");
   });
@@ -129,8 +121,6 @@ describe("SessionRow", () => {
     });
     expect(onResume).not.toHaveBeenCalled();
     expect(button?.getAttribute("aria-describedby")).toBeTruthy();
-    expect(host.querySelector(".session-row__gone")?.textContent).toBe(
-      "folder is gone",
-    );
+    expect(host.querySelector(".session-row__gone")?.textContent).toBe("folder is gone");
   });
 });

@@ -15,12 +15,7 @@ function renderDescription(platform: DesktopPlatform, homeDir: string): string {
   document.body.appendChild(host);
   act(() => {
     render(
-      <EditorRow
-        value="vscode"
-        command=""
-        onChange={vi.fn()}
-        onCommandChange={vi.fn()}
-      />,
+      <EditorRow value="vscode" command="" onChange={vi.fn()} onCommandChange={vi.fn()} />,
       host,
     );
   });
@@ -34,13 +29,9 @@ describe("EditorRow", () => {
   });
 
   it("names the active platform link gesture", () => {
-    expect(renderDescription("macos", "/Users/dev")).toBe(
-      "Cmd+click a file path",
-    );
+    expect(renderDescription("macos", "/Users/dev")).toBe("Cmd+click a file path");
     resetDesktopEnvironmentForTests();
-    expect(renderDescription("windows", "C:\\Users\\dev")).toBe(
-      "Ctrl+click a file path",
-    );
+    expect(renderDescription("windows", "C:\\Users\\dev")).toBe("Ctrl+click a file path");
   });
 
   it("marks the native select with a chevron, not a text arrow", () => {
@@ -49,18 +40,11 @@ describe("EditorRow", () => {
     document.body.appendChild(host);
     act(() => {
       render(
-        <EditorRow
-          value="vscode"
-          command=""
-          onChange={vi.fn()}
-          onCommandChange={vi.fn()}
-        />,
+        <EditorRow value="vscode" command="" onChange={vi.fn()} onCommandChange={vi.fn()} />,
         host,
       );
     });
 
-    expect(
-      host.querySelector(".cfg-btn__hint .deck-icon--caret-down"),
-    ).not.toBeNull();
+    expect(host.querySelector(".cfg-btn__hint .deck-icon--caret-down")).not.toBeNull();
   });
 });

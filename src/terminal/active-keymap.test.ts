@@ -20,9 +20,7 @@ import { NO_KEYBINDING_OVERRIDES, withOverride } from "../lib/keybindings";
 
 function keyEvent(
   key: string,
-  mods: Partial<
-    Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">
-  > = {},
+  mods: Partial<Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">> = {},
 ): KeyboardEvent {
   return {
     key,
@@ -64,9 +62,7 @@ describe("activeKeymap — the default keymap matchBinding uses", () => {
     };
     // Deliberately NOT calling resetActiveKeymapCache() here: production has no
     // such call, so a stale cache has to be observable from this alone.
-    expect(matchBinding(keyEvent("j", { metaKey: true, altKey: true }))).toBe(
-      "find",
-    );
+    expect(matchBinding(keyEvent("j", { metaKey: true, altKey: true }))).toBe("find");
     expect(matchBinding(keyEvent("f", { metaKey: true }))).toBeNull();
   });
 
@@ -77,9 +73,7 @@ describe("activeKeymap — the default keymap matchBinding uses", () => {
         { key: "j", meta: true, alt: true },
       ]),
     };
-    expect(matchBinding(keyEvent("j", { metaKey: true, altKey: true }))).toBe(
-      "find",
-    );
+    expect(matchBinding(keyEvent("j", { metaKey: true, altKey: true }))).toBe("find");
 
     settings.value = {
       ...DEFAULT_SETTINGS,
@@ -87,12 +81,8 @@ describe("activeKeymap — the default keymap matchBinding uses", () => {
         { key: "l", meta: true, alt: true },
       ]),
     };
-    expect(
-      matchBinding(keyEvent("j", { metaKey: true, altKey: true })),
-    ).toBeNull();
-    expect(matchBinding(keyEvent("l", { metaKey: true, altKey: true }))).toBe(
-      "find",
-    );
+    expect(matchBinding(keyEvent("j", { metaKey: true, altKey: true }))).toBeNull();
+    expect(matchBinding(keyEvent("l", { metaKey: true, altKey: true }))).toBe("find");
 
     settings.value = { ...DEFAULT_SETTINGS };
     expect(matchBinding(keyEvent("f", { metaKey: true }))).toBe("find");
@@ -113,12 +103,7 @@ describe("activeKeymap — the default keymap matchBinding uses", () => {
   it("stops firing an action the user unbound", () => {
     settings.value = {
       ...DEFAULT_SETTINGS,
-      keybindings: withOverride(
-        NO_KEYBINDING_OVERRIDES,
-        "macos",
-        "clear-buffer",
-        [],
-      ),
+      keybindings: withOverride(NO_KEYBINDING_OVERRIDES, "macos", "clear-buffer", []),
     };
     expect(matchBinding(keyEvent("k", { metaKey: true }))).toBeNull();
   });

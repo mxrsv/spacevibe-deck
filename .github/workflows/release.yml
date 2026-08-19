@@ -739,8 +739,7 @@ jobs:
         run: gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false
 
   publish-windows-preview:
-    needs:
-      [resolve-target, build-windows-preview-draft, validate-windows-preview]
+    needs: [resolve-target, build-windows-preview-draft, validate-windows-preview]
     runs-on: ubuntu-latest
     permissions:
       contents: write

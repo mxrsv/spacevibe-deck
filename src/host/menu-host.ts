@@ -16,9 +16,7 @@ import { invoke } from "./bridge";
  * there is nothing to suspend, and a rejected promise here would turn a
  * working capture into a visible error for no user-facing reason.
  */
-export async function suspendMenuAccelerators(
-  suspended: boolean,
-): Promise<void> {
+export async function suspendMenuAccelerators(suspended: boolean): Promise<void> {
   try {
     await invoke("suspend_menu_accelerators", { suspended });
   } catch {

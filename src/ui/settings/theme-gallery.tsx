@@ -121,21 +121,13 @@ export function ThemeGallery() {
         })}
       </div>
       {themeLoadState.value.status === "error" ? (
-        <LoadError
-          message={themeLoadState.value.message}
-          onRetry={() => void loadCustomThemes()}
-        />
+        <LoadError message={themeLoadState.value.message} onRetry={() => void loadCustomThemes()} />
       ) : null}
-      <ConfigRow
-        label="Import theme"
-        desc="iTerm2, Windows Terminal, Ghostty, Alacritty"
-      >
+      <ConfigRow label="Import theme" desc="iTerm2, Windows Terminal, Ghostty, Alacritty">
         <button
           type="button"
           class="cfg-btn"
-          disabled={
-            themesLoading.value || themeLoadState.value.status === "error"
-          }
+          disabled={themesLoading.value || themeLoadState.value.status === "error"}
           onClick={() => void importCustomThemes()}
         >
           {themesLoading.value ? "reading…" : "choose files"}
@@ -144,15 +136,8 @@ export function ThemeGallery() {
           </span>
         </button>
       </ConfigRow>
-      <ConfigRow
-        label="Themes folder"
-        desc="Delete a file here to remove its theme"
-      >
-        <button
-          type="button"
-          class="cfg-btn"
-          onClick={() => void openThemesFolder()}
-        >
+      <ConfigRow label="Themes folder" desc="Delete a file here to remove its theme">
+        <button type="button" class="cfg-btn" onClick={() => void openThemesFolder()}>
           reveal
           <span class="cfg-btn__hint">
             <DeckIcon icon={FolderOpen} size={ROW_ICON} />

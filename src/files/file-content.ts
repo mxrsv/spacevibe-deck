@@ -126,8 +126,7 @@ export function decodeUtf8(bytes: Uint8Array): {
   }
 }
 
-export const BINARY_REFUSAL =
-  "This looks like a binary file, so Deck will not open it.";
+export const BINARY_REFUSAL = "This looks like a binary file, so Deck will not open it.";
 
 export function oversizeReason(bytes: number): string {
   const mb = (bytes / (1024 * 1024)).toFixed(1);
@@ -149,8 +148,7 @@ export function refuseForSize(bytes: number): string | null {
   return `This file is ${mb} MB — too large for Deck to open.`;
 }
 
-export const INVALID_UTF8_REASON =
-  "This file is not valid UTF-8, so it opens read-only.";
+export const INVALID_UTF8_REASON = "This file is not valid UTF-8, so it opens read-only.";
 
 /**
  * The whole verdict for one file's bytes.

@@ -11,11 +11,7 @@ import {
   isProbeSafeName,
   type CustomAgent,
 } from "../../../lib/agent-catalog";
-import {
-  revealDockTab,
-  settings,
-  updateSettings,
-} from "../../../settings/settings-store";
+import { revealDockTab, settings, updateSettings } from "../../../settings/settings-store";
 import { settingsOpen } from "../../../chrome/events";
 import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
 import { ConfigGroup, ConfigRow } from "../../controls/config-row";
@@ -50,10 +46,7 @@ function commandProblem(command: string): string | null {
  * here, where the user can still see why; the built-in LABELS stay refused for
  * the older reason, that two rows reading "Claude Code" cannot be told apart.
  */
-function labelProblem(
-  label: string,
-  others: readonly CustomAgent[],
-): string | null {
+function labelProblem(label: string, others: readonly CustomAgent[]): string | null {
   const trimmed = label.trim();
   if (trimmed === "") {
     return "a name is required";
@@ -103,9 +96,7 @@ export function AgentsSection() {
     }
     editError.value = null;
     replace(
-      customAgents.map((agent) =>
-        agent.id === id ? { ...agent, label: label.trim() } : agent,
-      ),
+      customAgents.map((agent) => (agent.id === id ? { ...agent, label: label.trim() } : agent)),
     );
   };
 
@@ -134,8 +125,7 @@ export function AgentsSection() {
   const commitDraft = (): void => {
     const label = draftLabel.value;
     const command = draftCommand.value;
-    const problem =
-      labelProblem(label, customAgents) ?? commandProblem(command);
+    const problem = labelProblem(label, customAgents) ?? commandProblem(command);
     if (problem !== null) {
       draftError.value = problem;
       return;
@@ -315,10 +305,7 @@ export function AgentsSection() {
         </>
       ) : null}
 
-      <ConfigRow
-        label="Add agent"
-        desc="A name and the command to type into each pane"
-      >
+      <ConfigRow label="Add agent" desc="A name and the command to type into each pane">
         <button
           type="button"
           class="cfg-btn"
@@ -334,10 +321,7 @@ export function AgentsSection() {
         </button>
       </ConfigRow>
 
-      <ConfigRow
-        label="Token usage"
-        desc="Tokens and estimated cost for Claude Code and Codex"
-      >
+      <ConfigRow label="Token usage" desc="Tokens and estimated cost for Claude Code and Codex">
         <button type="button" class="cfg-btn" onClick={openUsage}>
           open …
         </button>

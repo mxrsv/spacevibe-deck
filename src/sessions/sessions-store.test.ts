@@ -201,9 +201,7 @@ describe("probeSessionsSupport", () => {
   });
 
   it("keeps the host available for retry when the probe throws", async () => {
-    await probeSessionsSupport(
-      createMemorySessionsClient(null, { fail: true }),
-    );
+    await probeSessionsSupport(createMemorySessionsClient(null, { fail: true }));
     expect(sessionsSupported.value).toBe(true);
     expect(sessionsLoadState.value.status).toBe("error");
   });

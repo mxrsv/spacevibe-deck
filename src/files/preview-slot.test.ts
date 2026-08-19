@@ -19,16 +19,14 @@ const tab = (path: string, preview = false, openedAt = 0): FileTabEntry => ({
 
 /** The store spends one order key per open attempt; tests name it explicitly
  * so an assertion about POSITION in the strip cannot pass by accident. */
-const opening = (
-  openedAt = 0,
-  dirtyPaths?: ReadonlySet<string>,
-): OpenTabOptions => ({ openedAt, dirtyPaths });
+const opening = (openedAt = 0, dirtyPaths?: ReadonlySet<string>): OpenTabOptions => ({
+  openedAt,
+  dirtyPaths,
+});
 
 describe("openPreview", () => {
   it("opens the first click into a new preview slot", () => {
-    expect(openPreview([], "/r/a.ts", opening())).toEqual([
-      tab("/r/a.ts", true),
-    ]);
+    expect(openPreview([], "/r/a.ts", opening())).toEqual([tab("/r/a.ts", true)]);
   });
 
   it("replaces the preview slot in place, so the tab does not jump", () => {
@@ -92,9 +90,7 @@ describe("openKept", () => {
   });
 
   it("promotes the existing preview when it is the same file", () => {
-    expect(openKept([tab("/r/a.ts", true)], "/r/a.ts", opening())).toEqual([
-      tab("/r/a.ts"),
-    ]);
+    expect(openKept([tab("/r/a.ts", true)], "/r/a.ts", opening())).toEqual([tab("/r/a.ts")]);
   });
 });
 
@@ -104,11 +100,7 @@ describe("replacing a preview never discards unsaved work", () => {
   // break silently.
   it("promotes a dirty preview instead of replacing it", () => {
     const tabs = [tab("/r/dirty.ts", true)];
-    const next = openPreview(
-      tabs,
-      "/r/new.ts",
-      opening(0, new Set(["/r/dirty.ts"])),
-    );
+    const next = openPreview(tabs, "/r/new.ts", opening(0, new Set(["/r/dirty.ts"])));
     expect(next).toEqual([tab("/r/dirty.ts"), tab("/r/new.ts", true)]);
     expect(hasTab(next, "/r/dirty.ts")).toBe(true);
   });
@@ -134,18 +126,14 @@ describe("replacing a preview never discards unsaved work", () => {
 
 describe("previewTab", () => {
   it("finds the one replaceable slot, or nothing", () => {
-    expect(previewTab([tab("/r/a.ts"), tab("/r/b.ts", true)])?.path).toBe(
-      "/r/b.ts",
-    );
+    expect(previewTab([tab("/r/a.ts"), tab("/r/b.ts", true)])?.path).toBe("/r/b.ts");
     expect(previewTab([tab("/r/a.ts")])).toBeUndefined();
   });
 });
 
 describe("closeFileTab", () => {
   it("removes exactly the named tab", () => {
-    expect(closeFileTab([tab("/r/a.ts"), tab("/r/b.ts")], "/r/a.ts")).toEqual([
-      tab("/r/b.ts"),
-    ]);
+    expect(closeFileTab([tab("/r/a.ts"), tab("/r/b.ts")], "/r/a.ts")).toEqual([tab("/r/b.ts")]);
   });
 });
 
@@ -166,8 +154,6 @@ describe("activeAfterFileClose", () => {
   });
 
   it("has nothing to activate once the last tab is gone", () => {
-    expect(
-      activeAfterFileClose([tab("/r/a.ts")], "/r/a.ts", "/r/a.ts"),
-    ).toBeNull();
+    expect(activeAfterFileClose([tab("/r/a.ts")], "/r/a.ts", "/r/a.ts")).toBeNull();
   });
 });

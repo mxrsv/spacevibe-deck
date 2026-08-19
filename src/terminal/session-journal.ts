@@ -61,8 +61,7 @@ export interface SessionJournalDeps {
 }
 
 /** Last known session per workspace — the rail's data source. */
-export const sessionArchive: Signal<Readonly<Record<string, ArchiveEntry>>> =
-  signal({});
+export const sessionArchive: Signal<Readonly<Record<string, ArchiveEntry>>> = signal({});
 
 let storePromise: Promise<StoreSeam> | null = null;
 let activeDeps: SessionJournalDeps | null = null;
@@ -105,9 +104,7 @@ async function unregisterLabel(store: StoreSeam, label: string): Promise<void> {
 }
 
 /** Read all persisted window records (restore) and the archive. */
-export async function readWindowRecords(): Promise<
-  ReadonlyMap<string, WindowRecord>
-> {
+export async function readWindowRecords(): Promise<ReadonlyMap<string, WindowRecord>> {
   const store = await openStore();
   const labels = await registeredLabels(store);
   const result = new Map<string, WindowRecord>();
@@ -262,9 +259,7 @@ function schedule(deps: SessionJournalDeps): void {
 }
 
 /** Load the store, seed `sessionArchive`, install the debounced write effect. */
-export async function initSessionJournal(
-  deps: SessionJournalDeps,
-): Promise<void> {
+export async function initSessionJournal(deps: SessionJournalDeps): Promise<void> {
   if (deps.store) {
     storePromise = Promise.resolve(deps.store);
   }
@@ -282,10 +277,10 @@ export async function initSessionJournal(
     // Read every dependency so the effect re-runs on any of them — the
     // record itself is rebuilt from `deps.capture()` inside `writeNow`, not
     // from these values, but each one changing is what a write must react to.
-    tabViews.value;
-    activeTabIndex.value;
-    fileSurfaces.value;
-    activeFileTab.value;
+    void tabViews.value;
+    void activeTabIndex.value;
+    void fileSurfaces.value;
+    void activeFileTab.value;
     schedule(deps);
   });
 }

@@ -17,10 +17,7 @@
  * `src/ui/sessions` — three imports that would make the host depend on
  * everything it hosts.
  */
-import {
-  dockCollapseArmed,
-  dockWidthLive,
-} from "../../files/file-surface-store";
+import { dockCollapseArmed, dockWidthLive } from "../../files/file-surface-store";
 import type { DockTab } from "../../settings/settings-schema";
 import { DOCK_DRAG_BOUNDS, resolvePanelDrag } from "../panel-resize";
 import { DockTabs } from "./dock-tabs";
@@ -62,10 +59,7 @@ export function DockPanel(props: DockPanelProps) {
       // The RAW width goes to `resolvePanelDrag`, not a clamped one: clamping
       // maps every overdrag onto the floor, and "past the floor" is exactly
       // what the collapse gesture is made of (DL-19.4).
-      const outcome = resolvePanelDrag(
-        startWidth + (startX - moveEvent.clientX),
-        DOCK_DRAG_BOUNDS,
-      );
+      const outcome = resolvePanelDrag(startWidth + (startX - moveEvent.clientX), DOCK_DRAG_BOUNDS);
       dockWidthLive.value = outcome.width;
       dockCollapseArmed.value = outcome.collapsed;
     };
@@ -115,11 +109,7 @@ export function DockPanel(props: DockPanelProps) {
           closed column cannot hold its own way back out, the same reasoning
           DL-18.9 gives for the navigation sidebar. */}
       <div class="dock-panel__header">
-        <DockTabs
-          items={props.tabs}
-          active={props.activeTab}
-          onSelect={props.onSelectTab}
-        />
+        <DockTabs items={props.tabs} active={props.activeTab} onSelect={props.onSelectTab} />
       </div>
       <div class="dock-panel__body">{props.children}</div>
     </aside>

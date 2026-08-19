@@ -26,22 +26,15 @@ describe("node-pty spawn-helper permissions", () => {
     expect(helpers.length).toBeGreaterThan(0);
   });
 
-  it.runIf(process.platform !== "win32")(
-    "leaves every one of them executable",
-    () => {
-      const notExecutable = helpers.filter(
-        (helper) => (statSync(helper).mode & EXEC_BIT) === 0,
-      );
-      expect(notExecutable).toEqual([]);
-    },
-  );
+  it.runIf(process.platform !== "win32")("leaves every one of them executable", () => {
+    const notExecutable = helpers.filter((helper) => (statSync(helper).mode & EXEC_BIT) === 0);
+    expect(notExecutable).toEqual([]);
+  });
 
   it("is wired to run on every install", () => {
     const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
       scripts: Record<string, string>;
     };
-    expect(pkg.scripts.postinstall).toContain(
-      "fix-spawn-helper-permissions.mjs",
-    );
+    expect(pkg.scripts.postinstall).toContain("fix-spawn-helper-permissions.mjs");
   });
 });

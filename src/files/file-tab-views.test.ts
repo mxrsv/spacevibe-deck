@@ -1,15 +1,8 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import { fileTabViews } from "./file-tab-views";
-import {
-  createFileSurfaceController,
-  type FileSurfaceController,
-} from "./file-surface-controller";
-import {
-  openFileTab,
-  resetFileSurfaces,
-  updateDocument,
-} from "./file-surface-store";
+import { createFileSurfaceController, type FileSurfaceController } from "./file-surface-controller";
+import { openFileTab, resetFileSurfaces, updateDocument } from "./file-surface-store";
 import type { FileClient } from "./file-client";
 import { resetOpenSequence } from "../lib/open-sequence";
 

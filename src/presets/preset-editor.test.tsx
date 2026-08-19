@@ -2,10 +2,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { PresetEditor } from "./preset-editor";
 
 vi.mock("../host/dialog-host", () => ({
@@ -35,9 +32,7 @@ describe("PresetEditor platform split gestures", () => {
 
   function press(target: HTMLElement, init: KeyboardEventInit): void {
     act(() => {
-      target.dispatchEvent(
-        new KeyboardEvent("keydown", { ...init, bubbles: true }),
-      );
+      target.dispatchEvent(new KeyboardEvent("keydown", { ...init, bubbles: true }));
     });
   }
 
@@ -108,9 +103,7 @@ describe("PresetEditor scrim", () => {
     const editor = host.querySelector<HTMLDivElement>(".preset-editor")!;
 
     act(() => {
-      editor.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      editor.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
 
     expect(onCancel).toHaveBeenCalledTimes(1);

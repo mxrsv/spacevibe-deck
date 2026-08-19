@@ -76,8 +76,7 @@ export class JsonStore {
       // A store file that is not an object is corrupt, not empty. Treat it as
       // empty here but keep the file — overwriting it would destroy whatever a
       // user might still recover by hand.
-      const usable =
-        typeof parsed === "object" && parsed !== null && !Array.isArray(parsed);
+      const usable = typeof parsed === "object" && parsed !== null && !Array.isArray(parsed);
       this.data = usable ? (parsed as Record<string, unknown>) : {};
       this.currentLoadState = {
         state: usable ? "ready" : "unreadable",
@@ -123,8 +122,7 @@ export class JsonStore {
     }
     const value = this.data[key];
     const usable =
-      value === undefined ||
-      (typeof value === "object" && value !== null && !Array.isArray(value));
+      value === undefined || (typeof value === "object" && value !== null && !Array.isArray(value));
     if (!usable) {
       this.currentLoadState = { state: "unreadable", fresh: false };
     }
@@ -155,9 +153,7 @@ export class JsonStore {
       throw new Error(`${path.basename(this.filePath)} has not been loaded`);
     }
     if (this.currentLoadState.state === "unreadable") {
-      throw new Error(
-        `${path.basename(this.filePath)} is unreadable; write blocked`,
-      );
+      throw new Error(`${path.basename(this.filePath)} is unreadable; write blocked`);
     }
   }
 
@@ -200,9 +196,7 @@ export class JsonStore {
     // with the stale reason, so one transient failure (a full disk) would stop
     // this store writing for the rest of the run while the disk was fine.
     // Serialise on settlement instead, and surface only this attempt's outcome.
-    const attempt = this.writing
-      .catch(() => undefined)
-      .then(() => this.writeAtomic(snapshot));
+    const attempt = this.writing.catch(() => undefined).then(() => this.writeAtomic(snapshot));
     // Swallow on the CHAIN so the next write starts clean; the caller still
     // sees this attempt's rejection through `attempt`.
     this.writing = attempt.catch(() => undefined);
@@ -268,10 +262,7 @@ export class StoreRegistry {
         return store;
       });
     }
-    const store = new JsonStore(
-      path.join(this.baseDirectory, fileName),
-      options,
-    );
+    const store = new JsonStore(path.join(this.baseDirectory, fileName), options);
     const opening = store.load().then(() => store);
     this.stores.set(fileName, opening);
     return opening;
@@ -285,10 +276,7 @@ export class StoreRegistry {
    * first would own error reporting for the rest of the run — and if that was
    * a background patch with no reporter, write failures would go unseen.
    */
-  async setErrorReporter(
-    fileName: string,
-    onError: (error: unknown) => void,
-  ): Promise<void> {
+  async setErrorReporter(fileName: string, onError: (error: unknown) => void): Promise<void> {
     const store = await this.stores.get(fileName);
     store?.setErrorReporter(onError);
   }
@@ -301,9 +289,7 @@ export class StoreRegistry {
    */
   async saveAll(): Promise<void> {
     const stores = await Promise.all([...this.stores.values()]);
-    const results = await Promise.allSettled(
-      stores.map((store) => store.save()),
-    );
+    const results = await Promise.allSettled(stores.map((store) => store.save()));
     for (const result of results) {
       if (result.status === "rejected") {
         console.error("Deck: a store failed to flush on quit", result.reason);

@@ -21,10 +21,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const SOURCE_URL =
   "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
 
-const OUTPUT_URL = new URL(
-  "../src/lib/usage-pricing-snapshot.ts",
-  import.meta.url,
-);
+const OUTPUT_URL = new URL("../src/lib/usage-pricing-snapshot.ts", import.meta.url);
 
 /**
  * Which catalog entries are worth shipping. Anthropic's whole `claude-*` line
@@ -68,9 +65,7 @@ const MIN_SELECTED_MODELS = 40;
 const SCHEMA_SAMPLE_KEY = "sample_spec";
 
 function finiteRate(value) {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0
-    ? value
-    : null;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
 /**
@@ -100,8 +95,7 @@ function isSelectedId(id, entry) {
     return false;
   }
   return MODEL_SELECTORS.some(
-    (selector) =>
-      entry.litellm_provider === selector.provider && selector.pattern.test(id),
+    (selector) => entry.litellm_provider === selector.provider && selector.pattern.test(id),
   );
 }
 
@@ -190,9 +184,9 @@ async function fetchCatalog(fetchImpl) {
   try {
     response = await fetchImpl(SOURCE_URL);
   } catch (error) {
-    throw new Error(
-      `Could not reach the pricing catalog: ${describeError(error)}`,
-    );
+    throw new Error(`Could not reach the pricing catalog: ${describeError(error)}`, {
+      cause: error,
+    });
   }
   if (!response.ok) {
     throw new Error(`Pricing catalog request failed: HTTP ${response.status}`);
@@ -201,9 +195,7 @@ async function fetchCatalog(fetchImpl) {
   try {
     return JSON.parse(body);
   } catch (error) {
-    throw new Error(
-      `Pricing catalog is not valid JSON: ${describeError(error)}`,
-    );
+    throw new Error(`Pricing catalog is not valid JSON: ${describeError(error)}`, { cause: error });
   }
 }
 
@@ -225,11 +217,7 @@ function assertUsable(models) {
  * are injectable so the tests cover the whole path without a network call.
  */
 export async function refreshPricingSnapshot(options = {}) {
-  const {
-    fetchImpl = fetch,
-    outputPath = fileURLToPath(OUTPUT_URL),
-    now = new Date(),
-  } = options;
+  const { fetchImpl = fetch, outputPath = fileURLToPath(OUTPUT_URL), now = new Date() } = options;
   const catalog = await fetchCatalog(fetchImpl);
   const models = selectModels(catalog);
   assertUsable(models);
@@ -249,8 +237,7 @@ function summarize(result) {
 }
 
 const isMain =
-  process.argv[1] !== undefined &&
-  import.meta.url === pathToFileURL(process.argv[1]).href;
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   try {
     process.stdout.write(summarize(await refreshPricingSnapshot()));

@@ -53,9 +53,7 @@ describe("copyTerminalSelection / pasteIntoTerminal", () => {
       reportError: h.reportError,
     });
 
-    await vi.waitFor(() =>
-      expect(h.writeText).toHaveBeenCalledWith("selected"),
-    );
+    await vi.waitFor(() => expect(h.writeText).toHaveBeenCalledWith("selected"));
   });
 
   it("reports a clipboard failure instead of swallowing it", async () => {
@@ -69,9 +67,7 @@ describe("copyTerminalSelection / pasteIntoTerminal", () => {
     });
 
     await vi.waitFor(() =>
-      expect(h.reportError).toHaveBeenCalledWith(
-        "Couldn't copy the terminal selection",
-      ),
+      expect(h.reportError).toHaveBeenCalledWith("Couldn't copy the terminal selection"),
     );
   });
 

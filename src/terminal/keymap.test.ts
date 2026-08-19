@@ -9,9 +9,7 @@ import {
 
 function keyEvent(
   key: string,
-  mods: Partial<
-    Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">
-  > = {},
+  mods: Partial<Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">> = {},
 ): KeyboardEvent {
   return {
     key,
@@ -33,9 +31,7 @@ function keyEvent(
 function codeEvent(
   code: string,
   key: string,
-  mods: Partial<
-    Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">
-  > = {},
+  mods: Partial<Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">> = {},
 ): KeyboardEvent {
   return {
     key,
@@ -57,92 +53,65 @@ function codeEvent(
 function altGraphEvent(
   code: string,
   key: string,
-  mods: Partial<
-    Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">
-  > = {},
+  mods: Partial<Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">> = {},
   altGraph = true,
 ): KeyboardEvent {
   return {
     ...codeEvent(code, key, mods),
-    getModifierState: (modifier: string) =>
-      modifier === "AltGraph" ? altGraph : false,
+    getModifierState: (modifier: string) => (modifier === "AltGraph" ? altGraph : false),
   } as KeyboardEvent;
 }
 
 describe("matchBinding", () => {
   it("keeps the existing pane bindings", () => {
     expect(matchBinding(keyEvent("d", { metaKey: true }))).toBe("split-row");
-    expect(matchBinding(keyEvent("d", { metaKey: true, shiftKey: true }))).toBe(
-      "split-column",
-    );
+    expect(matchBinding(keyEvent("d", { metaKey: true, shiftKey: true }))).toBe("split-column");
     // Swapped to iTerm2 convention: Cmd+W closes the pane
     expect(matchBinding(keyEvent("w", { metaKey: true }))).toBe("close-pane");
     // focus-next/prev bind by physical key position (event.code), not the
     // produced character — see the dedicated non-US-layout test below.
-    expect(
-      matchBinding(codeEvent("BracketRight", "]", { metaKey: true })),
-    ).toBe("focus-next");
-    expect(matchBinding(codeEvent("BracketLeft", "[", { metaKey: true }))).toBe(
-      "focus-prev",
-    );
+    expect(matchBinding(codeEvent("BracketRight", "]", { metaKey: true }))).toBe("focus-next");
+    expect(matchBinding(codeEvent("BracketLeft", "[", { metaKey: true }))).toBe("focus-prev");
   });
 
   it("matches Cmd+E to toggle-expand", () => {
-    expect(matchBinding(keyEvent("e", { metaKey: true }))).toBe(
-      "toggle-expand",
-    );
+    expect(matchBinding(keyEvent("e", { metaKey: true }))).toBe("toggle-expand");
   });
 
   it("does not match E with other modifiers to toggle-expand", () => {
     expect(matchBinding(keyEvent("e"))).toBeNull();
-    expect(
-      matchBinding(keyEvent("e", { metaKey: true, shiftKey: true })),
-    ).toBeNull();
+    expect(matchBinding(keyEvent("e", { metaKey: true, shiftKey: true }))).toBeNull();
     expect(matchBinding(keyEvent("e", { ctrlKey: true }))).toBeNull();
   });
 
   it("matches the new tab bindings", () => {
     expect(matchBinding(keyEvent("t", { metaKey: true }))).toBe("new-tab");
-    expect(matchBinding(keyEvent("w", { metaKey: true, shiftKey: true }))).toBe(
-      "close-tab",
-    );
+    expect(matchBinding(keyEvent("w", { metaKey: true, shiftKey: true }))).toBe("close-tab");
     // next-tab/prev-tab bind by physical key position (event.code): on a US
     // layout Shift+BracketRight/BracketLeft happen to produce "}"/"{", but
     // the binding itself does not depend on that — see the dedicated
     // non-US-layout test below.
-    expect(
-      matchBinding(
-        codeEvent("BracketRight", "}", { metaKey: true, shiftKey: true }),
-      ),
-    ).toBe("next-tab");
-    expect(
-      matchBinding(
-        codeEvent("BracketLeft", "{", { metaKey: true, shiftKey: true }),
-      ),
-    ).toBe("prev-tab");
+    expect(matchBinding(codeEvent("BracketRight", "}", { metaKey: true, shiftKey: true }))).toBe(
+      "next-tab",
+    );
+    expect(matchBinding(codeEvent("BracketLeft", "{", { metaKey: true, shiftKey: true }))).toBe(
+      "prev-tab",
+    );
   });
 
-  it("matches focus-next/prev and next/prev-tab by physical key position, not the layout-produced character (Lỗi 1 regression)", () => {
+  it("matches focus-next/prev and next/prev-tab by physical key position, not the layout-produced character (Bug 1 regression)", () => {
     // AZERTY: the key in the BracketRight position produces "$" unshifted
     // and "£" shifted; the key in the BracketLeft position produces "*"
     // unshifted and "¨" shifted — never "]"/"}" or "["/"{". A key-based
     // binding would silently lose these shortcuts on this layout.
-    expect(
-      matchBinding(codeEvent("BracketRight", "$", { metaKey: true })),
-    ).toBe("focus-next");
-    expect(matchBinding(codeEvent("BracketLeft", "*", { metaKey: true }))).toBe(
-      "focus-prev",
+    expect(matchBinding(codeEvent("BracketRight", "$", { metaKey: true }))).toBe("focus-next");
+    expect(matchBinding(codeEvent("BracketLeft", "*", { metaKey: true }))).toBe("focus-prev");
+    expect(matchBinding(codeEvent("BracketRight", "£", { metaKey: true, shiftKey: true }))).toBe(
+      "next-tab",
     );
-    expect(
-      matchBinding(
-        codeEvent("BracketRight", "£", { metaKey: true, shiftKey: true }),
-      ),
-    ).toBe("next-tab");
-    expect(
-      matchBinding(
-        codeEvent("BracketLeft", "¨", { metaKey: true, shiftKey: true }),
-      ),
-    ).toBe("prev-tab");
+    expect(matchBinding(codeEvent("BracketLeft", "¨", { metaKey: true, shiftKey: true }))).toBe(
+      "prev-tab",
+    );
   });
 
   // F-C2 (2026-07-27 code review): NOT a general cross-kind collision
@@ -160,9 +129,7 @@ describe("matchBinding", () => {
   // this resolution (e.g. reordering MACOS_KEYMAP) fails loudly instead
   // of silently.
   it("known trade-off: Cmd+(QWERTZ's unshifted '+', physical BracketRight) matches focus-next, not zoom-in", () => {
-    expect(
-      matchBinding(codeEvent("BracketRight", "+", { metaKey: true })),
-    ).toBe("focus-next");
+    expect(matchBinding(codeEvent("BracketRight", "+", { metaKey: true }))).toBe("focus-next");
     // Confirms this was already a no-op before the code binding existed —
     // zoom-in's own bindings require either no shift with "=" or shift with
     // "+", never shift:false with "+". The `code` binding turned that no-op
@@ -176,15 +143,9 @@ describe("matchBinding", () => {
     // that position happens to produce "1".."9" unshifted, but the binding
     // itself does not depend on that. See the dedicated AZERTY regression
     // test below.
-    expect(matchBinding(codeEvent("Digit1", "1", { metaKey: true }))).toBe(
-      "select-tab-1",
-    );
-    expect(matchBinding(codeEvent("Digit8", "8", { metaKey: true }))).toBe(
-      "select-tab-8",
-    );
-    expect(matchBinding(codeEvent("Digit9", "9", { metaKey: true }))).toBe(
-      "select-last-tab",
-    );
+    expect(matchBinding(codeEvent("Digit1", "1", { metaKey: true }))).toBe("select-tab-1");
+    expect(matchBinding(codeEvent("Digit8", "8", { metaKey: true }))).toBe("select-tab-8");
+    expect(matchBinding(codeEvent("Digit9", "9", { metaKey: true }))).toBe("select-last-tab");
   });
 
   // F-C1 (2026-07-27 code review): select-tab-N/select-last-tab have no menu
@@ -194,34 +155,24 @@ describe("matchBinding", () => {
   // "1".."9", which need Shift on that layout) Cmd+1..Cmd+9 matched nothing
   // at all: switching tabs by number was completely dead.
   it("matches Cmd+1..9 by physical digit-key position on AZERTY, where Digit1..Digit9 unshifted never produce '1'..'9' (F-C1 regression)", () => {
-    expect(matchBinding(codeEvent("Digit1", "&", { metaKey: true }))).toBe(
-      "select-tab-1",
-    );
-    expect(matchBinding(codeEvent("Digit2", "é", { metaKey: true }))).toBe(
-      "select-tab-2",
-    );
-    expect(matchBinding(codeEvent("Digit8", "_", { metaKey: true }))).toBe(
-      "select-tab-8",
-    );
-    expect(matchBinding(codeEvent("Digit9", "ç", { metaKey: true }))).toBe(
-      "select-last-tab",
-    );
+    expect(matchBinding(codeEvent("Digit1", "&", { metaKey: true }))).toBe("select-tab-1");
+    expect(matchBinding(codeEvent("Digit2", "é", { metaKey: true }))).toBe("select-tab-2");
+    expect(matchBinding(codeEvent("Digit8", "_", { metaKey: true }))).toBe("select-tab-8");
+    expect(matchBinding(codeEvent("Digit9", "ç", { metaKey: true }))).toBe("select-last-tab");
   });
 
   it("matches the zoom bindings", () => {
     expect(matchBinding(keyEvent("=", { metaKey: true }))).toBe("zoom-in");
     // Shift+= produces "+" on a US layout
-    expect(matchBinding(keyEvent("+", { metaKey: true, shiftKey: true }))).toBe(
-      "zoom-in",
-    );
+    expect(matchBinding(keyEvent("+", { metaKey: true, shiftKey: true }))).toBe("zoom-in");
     expect(matchBinding(keyEvent("-", { metaKey: true }))).toBe("zoom-out");
     expect(matchBinding(keyEvent("0", { metaKey: true }))).toBe("zoom-reset");
   });
 
   it("matches Cmd+Shift+Enter to toggle-zoom-pane", () => {
-    expect(
-      matchBinding(keyEvent("Enter", { metaKey: true, shiftKey: true })),
-    ).toBe("toggle-zoom-pane");
+    expect(matchBinding(keyEvent("Enter", { metaKey: true, shiftKey: true }))).toBe(
+      "toggle-zoom-pane",
+    );
     expect(matchBinding(keyEvent("Enter", { metaKey: true }))).toBeNull();
     expect(matchBinding(keyEvent("Enter"))).toBeNull();
   });
@@ -234,17 +185,13 @@ describe("matchBinding", () => {
 
   it("returns null when modifiers do not match exactly", () => {
     expect(matchBinding(keyEvent("t"))).toBeNull();
-    expect(
-      matchBinding(keyEvent("d", { metaKey: true, ctrlKey: true })),
-    ).toBeNull();
+    expect(matchBinding(keyEvent("d", { metaKey: true, ctrlKey: true }))).toBeNull();
   });
 
   it("matches the iTerm2-parity batch bindings", () => {
     expect(matchBinding(keyEvent("f", { metaKey: true }))).toBe("find");
     expect(matchBinding(keyEvent("k", { metaKey: true }))).toBe("clear-buffer");
-    expect(matchBinding(keyEvent("t", { metaKey: true, shiftKey: true }))).toBe(
-      "reopen-tab",
-    );
+    expect(matchBinding(keyEvent("t", { metaKey: true, shiftKey: true }))).toBe("reopen-tab");
   });
 
   it("matches Cmd+Option+Arrows to directional focus", () => {
@@ -274,18 +221,10 @@ describe("matchBinding", () => {
   });
 
   it("matches Shift+PageUp/PageDown/Home/End to scrollback navigation (Task 4)", () => {
-    expect(matchBinding(keyEvent("PageUp", { shiftKey: true }))).toBe(
-      "scroll-page-up",
-    );
-    expect(matchBinding(keyEvent("PageDown", { shiftKey: true }))).toBe(
-      "scroll-page-down",
-    );
-    expect(matchBinding(keyEvent("Home", { shiftKey: true }))).toBe(
-      "scroll-to-top",
-    );
-    expect(matchBinding(keyEvent("End", { shiftKey: true }))).toBe(
-      "scroll-to-bottom",
-    );
+    expect(matchBinding(keyEvent("PageUp", { shiftKey: true }))).toBe("scroll-page-up");
+    expect(matchBinding(keyEvent("PageDown", { shiftKey: true }))).toBe("scroll-page-down");
+    expect(matchBinding(keyEvent("Home", { shiftKey: true }))).toBe("scroll-to-top");
+    expect(matchBinding(keyEvent("End", { shiftKey: true }))).toBe("scroll-to-bottom");
   });
 
   it("does not scroll on bare PageUp/PageDown/Home/End — those still reach the PTY", () => {
@@ -296,9 +235,7 @@ describe("matchBinding", () => {
   });
 
   it("matches Cmd+Shift+S as save-preset", () => {
-    expect(matchBinding(keyEvent("s", { metaKey: true, shiftKey: true }))).toBe(
-      "save-preset",
-    );
+    expect(matchBinding(keyEvent("s", { metaKey: true, shiftKey: true }))).toBe("save-preset");
   });
 
   it("matches Cmd+Shift+A as focus-next-attention", () => {
@@ -309,9 +246,7 @@ describe("matchBinding", () => {
 
   it("matches Cmd+G as find-next and Cmd+Shift+G as find-previous", () => {
     expect(matchBinding(keyEvent("g", { metaKey: true }))).toBe("find-next");
-    expect(matchBinding(keyEvent("g", { metaKey: true, shiftKey: true }))).toBe(
-      "find-previous",
-    );
+    expect(matchBinding(keyEvent("g", { metaKey: true, shiftKey: true }))).toBe("find-previous");
   });
 
   it("does not match G without the meta modifier", () => {
@@ -325,21 +260,15 @@ describe("matchBinding", () => {
   // same action:/runAction path as every other action, which means it now
   // needs a real MACOS_KEYMAP binding too.
   it("matches Cmd+Shift+N as new-preset", () => {
-    expect(matchBinding(keyEvent("n", { metaKey: true, shiftKey: true }))).toBe(
-      "new-preset",
-    );
+    expect(matchBinding(keyEvent("n", { metaKey: true, shiftKey: true }))).toBe("new-preset");
   });
 
   it("matches Cmd+, as toggle-settings", () => {
-    expect(matchBinding(keyEvent(",", { metaKey: true }))).toBe(
-      "toggle-settings",
-    );
+    expect(matchBinding(keyEvent(",", { metaKey: true }))).toBe("toggle-settings");
   });
 
   it("matches Cmd+Shift+U as toggle-usage", () => {
-    expect(matchBinding(keyEvent("u", { metaKey: true, shiftKey: true }))).toBe(
-      "toggle-usage",
-    );
+    expect(matchBinding(keyEvent("u", { metaKey: true, shiftKey: true }))).toBe("toggle-usage");
   });
 
   // `u` is bound nowhere else on either keymap at any modifier combination —
@@ -360,16 +289,10 @@ describe("matchBinding", () => {
     expect(matchBinding(keyEvent("a"))).toBeNull();
     expect(matchBinding(keyEvent("a", { metaKey: true }))).toBeNull();
     expect(matchBinding(keyEvent("a", { shiftKey: true }))).toBeNull();
-    expect(
-      matchBinding(keyEvent("a", { metaKey: true, altKey: true })),
-    ).toBeNull();
+    expect(matchBinding(keyEvent("a", { metaKey: true, altKey: true }))).toBeNull();
     // Cmd+Shift+A must not accidentally match any other action's binding.
-    expect(matchBinding(keyEvent("s", { metaKey: true, shiftKey: true }))).toBe(
-      "save-preset",
-    );
-    expect(matchBinding(keyEvent("w", { metaKey: true, shiftKey: true }))).toBe(
-      "close-tab",
-    );
+    expect(matchBinding(keyEvent("s", { metaKey: true, shiftKey: true }))).toBe("save-preset");
+    expect(matchBinding(keyEvent("w", { metaKey: true, shiftKey: true }))).toBe("close-tab");
   });
 
   // The Windows clipboard chords must not exist on macOS — Cmd+C/Cmd+V are
@@ -377,16 +300,10 @@ describe("matchBinding", () => {
   // live in a handler-level test that platform-gated at runtime; the fix moved
   // to the keymap layer, so it has to be asserted here instead.
   it("leaves Windows clipboard chords unbound on macOS", () => {
-    expect(
-      matchBinding(keyEvent("c", { ctrlKey: true, shiftKey: true })),
-    ).toBeNull();
-    expect(
-      matchBinding(keyEvent("v", { ctrlKey: true, shiftKey: true })),
-    ).toBeNull();
+    expect(matchBinding(keyEvent("c", { ctrlKey: true, shiftKey: true }))).toBeNull();
+    expect(matchBinding(keyEvent("v", { ctrlKey: true, shiftKey: true }))).toBeNull();
     expect(matchBinding(keyEvent("v", { ctrlKey: true }))).toBeNull();
-    expect(
-      matchBinding(codeEvent("Insert", "Unidentified", { shiftKey: true })),
-    ).toBeNull();
+    expect(matchBinding(codeEvent("Insert", "Unidentified", { shiftKey: true }))).toBeNull();
   });
 });
 
@@ -423,12 +340,9 @@ describe("WINDOWS_KEYMAP", () => {
     ["pagedown", { shiftKey: true }, "scroll-page-down"],
     ["home", { shiftKey: true }, "scroll-to-top"],
     ["end", { shiftKey: true }, "scroll-to-bottom"],
-  ] as const)(
-    "maps %s with the fixed Windows modifiers",
-    (key, mods, action) => {
-      expect(matchBinding(keyEvent(key, mods), WINDOWS_KEYMAP)).toBe(action);
-    },
-  );
+  ] as const)("maps %s with the fixed Windows modifiers", (key, mods, action) => {
+    expect(matchBinding(keyEvent(key, mods), WINDOWS_KEYMAP)).toBe(action);
+  });
 
   it.each([
     ["Insert", "Unidentified", { shiftKey: true }, "paste"],
@@ -438,15 +352,11 @@ describe("WINDOWS_KEYMAP", () => {
     ["Digit8", "8", { ctrlKey: true }, "select-tab-8"],
     ["Digit9", "9", { ctrlKey: true }, "select-last-tab"],
   ] as const)("uses physical position for %s", (code, key, mods, action) => {
-    expect(matchBinding(codeEvent(code, key, mods), WINDOWS_KEYMAP)).toBe(
-      action,
-    );
+    expect(matchBinding(codeEvent(code, key, mods), WINDOWS_KEYMAP)).toBe(action);
   });
 
   it("leaves Alt+V to the active agent", () => {
-    expect(
-      matchBinding(keyEvent("v", { altKey: true }), WINDOWS_KEYMAP),
-    ).toBeNull();
+    expect(matchBinding(keyEvent("v", { altKey: true }), WINDOWS_KEYMAP)).toBeNull();
   });
 
   // Windows delivers AltGr as left-Ctrl + right-Alt, so every Ctrl+Alt binding
@@ -459,22 +369,14 @@ describe("WINDOWS_KEYMAP", () => {
     ["BracketRight", "]", "Spanish/Italian"],
     ["BracketLeft", "[", "Spanish/Italian"],
     ["BracketRight", "~", "German/Nordic"],
-  ] as const)(
-    "leaves %s unbound while AltGr is down (types %s on %s)",
-    (code, key, _layouts) => {
-      const event = altGraphEvent(code, key, { ctrlKey: true, altKey: true });
+  ] as const)("leaves %s unbound while AltGr is down (types %s on %s)", (code, key, _layouts) => {
+    const event = altGraphEvent(code, key, { ctrlKey: true, altKey: true });
 
-      expect(matchBinding(event, WINDOWS_KEYMAP)).toBeNull();
-    },
-  );
+    expect(matchBinding(event, WINDOWS_KEYMAP)).toBeNull();
+  });
 
   it("still matches a deliberate Ctrl+Alt chord when AltGr is not down", () => {
-    const event = altGraphEvent(
-      "BracketRight",
-      "]",
-      { ctrlKey: true, altKey: true },
-      false,
-    );
+    const event = altGraphEvent("BracketRight", "]", { ctrlKey: true, altKey: true }, false);
 
     expect(matchBinding(event, WINDOWS_KEYMAP)).toBe("focus-next");
   });
@@ -485,12 +387,9 @@ describe("WINDOWS_KEYMAP", () => {
     ["arrowup", "focus-up"],
     ["arrowdown", "focus-down"],
   ] as const)("maps Ctrl+Alt+%s to %s", (key, action) => {
-    expect(
-      matchBinding(
-        keyEvent(key, { ctrlKey: true, altKey: true }),
-        WINDOWS_KEYMAP,
-      ),
-    ).toBe(action);
+    expect(matchBinding(keyEvent(key, { ctrlKey: true, altKey: true }), WINDOWS_KEYMAP)).toBe(
+      action,
+    );
   });
 
   it.each([
@@ -500,21 +399,13 @@ describe("WINDOWS_KEYMAP", () => {
     ["arrowdown", "swap-down"],
   ] as const)("maps Ctrl+Alt+Shift+%s to %s", (key, action) => {
     expect(
-      matchBinding(
-        keyEvent(key, { ctrlKey: true, altKey: true, shiftKey: true }),
-        WINDOWS_KEYMAP,
-      ),
+      matchBinding(keyEvent(key, { ctrlKey: true, altKey: true, shiftKey: true }), WINDOWS_KEYMAP),
     ).toBe(action);
   });
 
-  it.each(["c", "d", "w", "k", "f", "o"])(
-    "leaves protected bare Ctrl+%s unbound",
-    (key) => {
-      expect(
-        matchBinding(keyEvent(key, { ctrlKey: true }), WINDOWS_KEYMAP),
-      ).toBeNull();
-    },
-  );
+  it.each(["c", "d", "w", "k", "f", "o"])("leaves protected bare Ctrl+%s unbound", (key) => {
+    expect(matchBinding(keyEvent(key, { ctrlKey: true }), WINDOWS_KEYMAP)).toBeNull();
+  });
 });
 
 describe("selectTabIndex", () => {

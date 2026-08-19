@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  isSupportedImagePath,
-  pickImagePath,
-  validateLogoDataUrl,
-} from "./logo-store";
+import { isSupportedImagePath, pickImagePath, validateLogoDataUrl } from "./logo-store";
 
 describe("isSupportedImagePath", () => {
   it("accepts allowlisted extensions, case-insensitively", () => {
@@ -34,9 +30,7 @@ describe("pickImagePath", () => {
 
 describe("validateLogoDataUrl", () => {
   it("keeps a real image data URL", () => {
-    expect(validateLogoDataUrl("data:image/png;base64,AAAA")).toBe(
-      "data:image/png;base64,AAAA",
-    );
+    expect(validateLogoDataUrl("data:image/png;base64,AAAA")).toBe("data:image/png;base64,AAAA");
   });
 
   it("rejects anything that is not an image data URL", () => {

@@ -123,14 +123,8 @@ export function ingestCodexLine(bytes: Buffer, record: FileRecord): LineOutcome 
   const previous = record.cumulative ?? EMPTY_CODEX_TOTALS;
   const delta: CodexTotals = {
     inputTokens: Math.max(0, seen.inputTokens - previous.inputTokens),
-    cachedInputTokens: Math.max(
-      0,
-      seen.cachedInputTokens - previous.cachedInputTokens,
-    ),
-    cacheWriteInputTokens: Math.max(
-      0,
-      seen.cacheWriteInputTokens - previous.cacheWriteInputTokens,
-    ),
+    cachedInputTokens: Math.max(0, seen.cachedInputTokens - previous.cachedInputTokens),
+    cacheWriteInputTokens: Math.max(0, seen.cacheWriteInputTokens - previous.cacheWriteInputTokens),
     outputTokens: Math.max(0, seen.outputTokens - previous.outputTokens),
   };
   // High-water mark, not last-seen. A resumed or forked session replays
@@ -138,14 +132,8 @@ export function ingestCodexLine(bytes: Buffer, record: FileRecord): LineOutcome 
   // back to the old high into tokens nobody spent.
   record.cumulative = {
     inputTokens: Math.max(previous.inputTokens, seen.inputTokens),
-    cachedInputTokens: Math.max(
-      previous.cachedInputTokens,
-      seen.cachedInputTokens,
-    ),
-    cacheWriteInputTokens: Math.max(
-      previous.cacheWriteInputTokens,
-      seen.cacheWriteInputTokens,
-    ),
+    cachedInputTokens: Math.max(previous.cachedInputTokens, seen.cachedInputTokens),
+    cacheWriteInputTokens: Math.max(previous.cacheWriteInputTokens, seen.cacheWriteInputTokens),
     outputTokens: Math.max(previous.outputTokens, seen.outputTokens),
   };
   const counters: UsageCounters = {
@@ -177,27 +165,16 @@ export function ingestCodexLine(bytes: Buffer, record: FileRecord): LineOutcome 
  * the end of every transcript must not inflate the "n lines skipped" note
  * the UI shows.
  */
-export function ingest(
-  agent: UsageAgent,
-  bytes: Buffer,
-  record: FileRecord,
-): LineOutcome {
+export function ingest(agent: UsageAgent, bytes: Buffer, record: FileRecord): LineOutcome {
   // Exactly Rust's `u8::is_ascii_whitespace`: space, tab, LF, FF, CR — and
   // deliberately not vertical tab, so the two implementations agree on which
   // lines count as blank.
   if (
     bytes.every(
-      (byte) =>
-        byte === 0x20 ||
-        byte === 0x09 ||
-        byte === 0x0a ||
-        byte === 0x0c ||
-        byte === 0x0d,
+      (byte) => byte === 0x20 || byte === 0x09 || byte === 0x0a || byte === 0x0c || byte === 0x0d,
     )
   ) {
     return "ignored";
   }
-  return agent === "claude"
-    ? ingestClaudeLine(bytes, record)
-    : ingestCodexLine(bytes, record);
+  return agent === "claude" ? ingestClaudeLine(bytes, record) : ingestCodexLine(bytes, record);
 }

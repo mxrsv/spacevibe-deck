@@ -30,8 +30,7 @@ describe("UsageRangeSelector", () => {
     });
   };
 
-  const options = (): HTMLButtonElement[] =>
-    Array.from(host.querySelectorAll('[role="tab"]'));
+  const options = (): HTMLButtonElement[] => Array.from(host.querySelectorAll('[role="tab"]'));
 
   it("shows every period at once, sentence-case (DL-16.7, DL-4.4)", () => {
     mount();
@@ -50,9 +49,7 @@ describe("UsageRangeSelector", () => {
 
   it("defaults to the whole recorded history", () => {
     mount();
-    const selected = options().filter(
-      (option) => option.getAttribute("aria-selected") === "true",
-    );
+    const selected = options().filter((option) => option.getAttribute("aria-selected") === "true");
     expect(selected).toHaveLength(1);
     expect(selected[0].textContent).toBe("All");
   });
@@ -71,9 +68,7 @@ describe("UsageRangeSelector", () => {
     mount();
     USAGE_RANGES.forEach((range, index) => {
       act(() => {
-        options()[index].dispatchEvent(
-          new MouseEvent("click", { bubbles: true }),
-        );
+        options()[index].dispatchEvent(new MouseEvent("click", { bubbles: true }));
       });
       expect(activeUsageRange.value).toBe(range.id);
     });
@@ -102,9 +97,7 @@ describe("UsageRangeSelector", () => {
     tabs[0].focus();
 
     act(() => {
-      tabs[0].dispatchEvent(
-        new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
-      );
+      tabs[0].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
     });
 
     expect(activeUsageRange.value).toBe("all");
@@ -115,9 +108,7 @@ describe("UsageRangeSelector", () => {
     activeUsageRange.value = "30d";
     mount();
     for (const option of options()) {
-      expect(option.getAttribute("tabindex")).toBe(
-        option.textContent === "30 days" ? "0" : "-1",
-      );
+      expect(option.getAttribute("tabindex")).toBe(option.textContent === "30 days" ? "0" : "-1");
     }
   });
 
@@ -131,9 +122,7 @@ describe("UsageRangeSelector", () => {
     };
     window.addEventListener("keydown", listener);
     act(() => {
-      tabs[0].dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      tabs[0].dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     window.removeEventListener("keydown", listener);
     expect(reachedWindow).toBe(true);

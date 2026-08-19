@@ -22,11 +22,7 @@ export interface WorktreeAddParams {
 }
 
 export type WorktreeAddErrorCode =
-  | "not-a-repository"
-  | "branch-exists"
-  | "destination-exists"
-  | "git-not-found"
-  | "unknown";
+  "not-a-repository" | "branch-exists" | "destination-exists" | "git-not-found" | "unknown";
 
 export type WorktreeAddResult =
   | { readonly ok: true; readonly path: string }

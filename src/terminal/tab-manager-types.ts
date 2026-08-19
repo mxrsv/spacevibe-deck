@@ -115,10 +115,7 @@ export interface TabManager {
    * both the new tab's cwd and its workspace tag. Omit (or pass null) to keep
    * the focused pane's live cwd and the active tab's workspace.
    */
-  openQuickAgent(
-    agentId: AgentChoice,
-    destination?: string | null,
-  ): Promise<boolean>;
+  openQuickAgent(agentId: AgentChoice, destination?: string | null): Promise<boolean>;
   /**
    * The `New` row dropped onto a pane: dock a pane on `edge` of
    * `targetPaneId` inside the ACTIVE tab and launch the agent that tab's

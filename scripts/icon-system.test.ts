@@ -16,13 +16,10 @@ import { describe, expect, it } from "vitest";
  * imperative DOM, so "icons live in components" is a habit, not a guarantee.
  */
 
-const pathFromFileUrl = (
-  url: URL,
-  windows = process.platform === "win32",
-): string => fileURLToPath(url, { windows });
+const pathFromFileUrl = (url: URL, windows = process.platform === "win32"): string =>
+  fileURLToPath(url, { windows });
 
-const normalizeRelativePath = (path: string): string =>
-  path.replaceAll("\\", "/");
+const normalizeRelativePath = (path: string): string => path.replaceAll("\\", "/");
 
 const SOURCE_ROOT = pathFromFileUrl(new URL("../src/", import.meta.url));
 
@@ -76,9 +73,7 @@ function sourceFiles(dir = SOURCE_ROOT): string[] {
     if (entry.isDirectory()) {
       return sourceFiles(full);
     }
-    return entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")
-      ? [full]
-      : [];
+    return entry.name.endsWith(".tsx") || entry.name.endsWith(".ts") ? [full] : [];
   });
 }
 
@@ -89,15 +84,13 @@ const files = sourceFiles().map((full) => ({
 
 describe("icon system", () => {
   it("converts Windows file URLs without duplicating the drive root", () => {
-    expect(
-      pathFromFileUrl(new URL("file:///D:/a/spacevibe-deck/src/"), true),
-    ).toBe("D:\\a\\spacevibe-deck\\src\\");
+    expect(pathFromFileUrl(new URL("file:///D:/a/spacevibe-deck/src/"), true)).toBe(
+      "D:\\a\\spacevibe-deck\\src\\",
+    );
   });
 
   it("normalizes Windows separators for platform-neutral allowlists", () => {
-    expect(normalizeRelativePath("open-board\\open-board.tsx")).toBe(
-      "open-board/open-board.tsx",
-    );
+    expect(normalizeRelativePath("open-board\\open-board.tsx")).toBe("open-board/open-board.tsx");
   });
 
   it("finds source files at all — a silent empty scan would pass everything", () => {
@@ -112,14 +105,11 @@ describe("icon system", () => {
       }))
       .filter(({ count }) => count > 0);
 
-    const unexpected = drawn.filter(
-      ({ path, count }) => ALLOWED_SVG.get(path) !== count,
-    );
+    const unexpected = drawn.filter(({ path, count }) => ALLOWED_SVG.get(path) !== count);
 
     expect(
       unexpected.map(
-        ({ path, count }) =>
-          `${path}: ${count} <svg>, allowed ${ALLOWED_SVG.get(path) ?? 0}`,
+        ({ path, count }) => `${path}: ${count} <svg>, allowed ${ALLOWED_SVG.get(path) ?? 0}`,
       ),
     ).toEqual([]);
   });

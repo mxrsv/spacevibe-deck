@@ -1,3 +1,4 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,9 +24,7 @@ const STYLESHEET = join(ROOT, "src/styles.css");
  */
 function readStylesheet(): string {
   const index = readFileSync(STYLESHEET, "utf8");
-  const importPaths = [...index.matchAll(/@import\s+["']([^"']+)["'];/g)].map(
-    (match) => match[1],
-  );
+  const importPaths = [...index.matchAll(/@import\s+["']([^"']+)["'];/g)].map((match) => match[1]);
   return importPaths
     .map((path) => readFileSync(resolve(dirname(STYLESHEET), path), "utf8"))
     .join("\n");
@@ -41,8 +40,7 @@ const CITATION = /DL-(\d+)(?:\.(\d+))?/g;
  * more often than it cites this document, and there is no way to tell which
  * from the digits. Citing DL by section therefore means naming DL.
  */
-const SECTION_CITATION =
-  /(?:DL|DESIGN-LANGUAGE(?:\.md)?)\s*§\s*(\d+)(?:\.(\d+))?/g;
+const SECTION_CITATION = /(?:DL|DESIGN-LANGUAGE(?:\.md)?)\s*§\s*(\d+)(?:\.(\d+))?/g;
 
 /**
  * DL-4.3 bans styled uppercase and artificial tracking on readable copy, with
@@ -118,10 +116,7 @@ function styledCasingViolations(): string[] {
     for (const raw of body.split(";")) {
       const declaration = raw.trim().replace(/\s+/g, " ");
       if (!declaration) continue;
-      if (
-        STYLED_UPPERCASE.test(declaration) ||
-        TEXT_TRACKING.test(declaration)
-      ) {
+      if (STYLED_UPPERCASE.test(declaration) || TEXT_TRACKING.test(declaration)) {
         violations.push(`${selector}: ${declaration};`);
       }
     }
@@ -201,40 +196,22 @@ describe("design-language radius scale", () => {
 
   it("uses the surface radius and raised seam for every modal shell", () => {
     const css = readStylesheet().replace(CSS_COMMENT, "");
-    for (const selector of [
-      ".preset-editor",
-      ".save-preset",
-      ".agent-quick-picker",
-    ]) {
+    for (const selector of [".preset-editor", ".save-preset", ".agent-quick-picker"]) {
       const declarations = [...css.matchAll(CSS_BLOCK)].find(
         ([, prelude]) => prelude.trim() === selector,
       )?.[2];
 
-      expect(
-        declarations,
-        `${selector} should have a rule block`,
-      ).toBeDefined();
-      expect(declarations).toMatch(
-        /border:\s*1px solid var\(--seam-raised\)\s*;/,
-      );
-      expect(declarations).toMatch(
-        /border-radius:\s*var\(--radius-surface\)\s*;/,
-      );
+      expect(declarations, `${selector} should have a rule block`).toBeDefined();
+      expect(declarations).toMatch(/border:\s*1px solid var\(--seam-raised\)\s*;/);
+      expect(declarations).toMatch(/border-radius:\s*var\(--radius-surface\)\s*;/);
     }
   });
 
   it("keeps the gallery on the live radius scale", () => {
-    const gallery = readFileSync(GALLERY_DIRECTION, "utf8").replace(
-      CSS_COMMENT,
-      "",
-    );
+    const gallery = readFileSync(GALLERY_DIRECTION, "utf8").replace(CSS_COMMENT, "");
 
-    expect(gallery).toMatch(
-      /--gx-chat-radius-control:\s*var\(--radius-control\)\s*;/,
-    );
-    expect(gallery).toMatch(
-      /--gx-chat-radius-surface:\s*var\(--radius-surface\)\s*;/,
-    );
+    expect(gallery).toMatch(/--gx-chat-radius-control:\s*var\(--radius-control\)\s*;/);
+    expect(gallery).toMatch(/--gx-chat-radius-surface:\s*var\(--radius-surface\)\s*;/);
   });
 });
 
@@ -261,13 +238,8 @@ describe("design-language typography tokens", () => {
         `${name} should be declared exactly once across src/styles/*.css`,
       ).toBe(1);
 
-      const exactValue = new RegExp(
-        `${name}\\s*:\\s*${size.replace(".", "\\.")}\\s*;`,
-      );
-      expect(
-        exactValue.test(css),
-        `${name} should be declared as exactly ${size}`,
-      ).toBe(true);
+      const exactValue = new RegExp(`${name}\\s*:\\s*${size.replace(".", "\\.")}\\s*;`);
+      expect(exactValue.test(css), `${name} should be declared as exactly ${size}`).toBe(true);
     }
   });
 });
@@ -299,8 +271,7 @@ describe("design-language citations", () => {
           for (const match of text.matchAll(pattern)) {
             const id = match[2] ? `${match[1]}.${match[2]}` : match[1];
             const ok = match[2] ? rules.has(id) : sections.has(id);
-            if (!ok)
-              unresolved.push(`${file.replace(ROOT, "")}: ${prefix}${id}`);
+            if (!ok) unresolved.push(`${file.replace(ROOT, "")}: ${prefix}${id}`);
           }
         }
       }
@@ -332,8 +303,7 @@ describe("design-language feature glyph treatment", () => {
       ".sidebar-actions__row.is-active",
     ]) {
       const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const body =
-        css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+      const body = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
       expect(body).not.toContain("--accent");
     }
   });

@@ -38,14 +38,10 @@ describe("validateWindowRecord", () => {
   });
   it("drops a tab with an invalid layout but keeps the rest", () => {
     const bad = { ...TAB, layout: { type: "nope" } };
-    expect(validateWindowRecord({ ...RECORD, tabs: [bad, TAB] })?.tabs).toEqual(
-      [TAB],
-    );
+    expect(validateWindowRecord({ ...RECORD, tabs: [bad, TAB] })?.tabs).toEqual([TAB]);
   });
   it("clamps activeTabIndex into the surviving tab range", () => {
-    expect(
-      validateWindowRecord({ ...RECORD, activeTabIndex: 99 })?.activeTabIndex,
-    ).toBe(0);
+    expect(validateWindowRecord({ ...RECORD, activeTabIndex: 99 })?.activeTabIndex).toBe(0);
   });
   it("coerces malformed file surfaces away without rejecting the record", () => {
     const result = validateWindowRecord({
@@ -72,8 +68,7 @@ describe("archive", () => {
     expect(Object.keys(archive)).toEqual(["/w"]);
   });
   it("caps at MAX_ARCHIVE_WORKSPACES, dropping oldest savedAt", () => {
-    let archive: Readonly<Record<string, never[]>> | Record<string, unknown> =
-      {};
+    let archive: Readonly<Record<string, never[]>> | Record<string, unknown> = {};
     let out = {} as ReturnType<typeof validateArchive>;
     for (let i = 0; i <= MAX_ARCHIVE_WORKSPACES; i += 1) {
       out = pushArchiveEntry(out, `/w${i}`, { savedAt: i, tabs: [TAB] });

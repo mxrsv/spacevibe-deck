@@ -7,8 +7,7 @@
  * purpose, because a bar for something Deck already handled is noise the user
  * has to dismiss.
  */
-import type { ChangeAction } from "../external-change";
-import type { ChangeResolution } from "../external-change";
+import type { ChangeAction, ChangeResolution } from "../external-change";
 
 export interface ExternalChangeBarProps {
   readonly prompt: ChangeAction["kind"] | null;
@@ -31,11 +30,7 @@ export function ExternalChangeBar(props: ExternalChangeBarProps) {
       <div class="filebar__actions">
         {changed ? (
           <>
-            <button
-              type="button"
-              class="filebar__btn"
-              onClick={() => props.onResolve("reload")}
-            >
+            <button type="button" class="filebar__btn" onClick={() => props.onResolve("reload")}>
               Reload
             </button>
             <button
@@ -55,11 +50,7 @@ export function ExternalChangeBar(props: ExternalChangeBarProps) {
             >
               Save again
             </button>
-            <button
-              type="button"
-              class="filebar__btn"
-              onClick={() => props.onResolve("close")}
-            >
+            <button type="button" class="filebar__btn" onClick={() => props.onResolve("close")}>
               Close
             </button>
           </>

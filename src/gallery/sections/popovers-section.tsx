@@ -6,8 +6,8 @@ import type { PromptTarget } from "../../prompts/inject";
 import {
   EMPTY_PROMPT_ASSETS,
   type PromptAssets,
+  defaultPromptAssetsClient,
 } from "../../prompts/prompt-assets-client";
-import { defaultPromptAssetsClient } from "../../prompts/prompt-assets-client";
 import { SectionHead, Specimen } from "../specimen";
 
 /**

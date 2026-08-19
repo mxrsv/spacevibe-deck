@@ -189,14 +189,11 @@ export function agentForWorkspace(
   workspacePath: string | null,
   agents: readonly { readonly id: string }[],
 ): AgentChoice {
-  const wanted =
-    workspacePath === null ? null : normalizeWorkspacePath(workspacePath);
+  const wanted = workspacePath === null ? null : normalizeWorkspacePath(workspacePath);
   const entry =
     wanted === null
       ? undefined
-      : recents.find(
-          (recent) => normalizeWorkspacePath(recent.path) === wanted,
-        );
+      : recents.find((recent) => normalizeWorkspacePath(recent.path) === wanted);
   return resolveAgentChoice(entry?.lastAgent, agents);
 }
 

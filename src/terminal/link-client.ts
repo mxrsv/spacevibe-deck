@@ -8,10 +8,7 @@ export interface LinkClient {
    * Absolute path of every candidate that is an existing file, index-aligned
    * with `paths` (a candidate that is not a file comes back as null).
    */
-  resolvePaths(
-    cwd: string,
-    paths: readonly string[],
-  ): Promise<(string | null)[]>;
+  resolvePaths(cwd: string, paths: readonly string[]): Promise<(string | null)[]>;
   /** Send validated editor intent to the native launch boundary. */
   openEditor(request: OpenEditorRequest): Promise<void>;
   /** Hand an http/https URL to the default browser. */

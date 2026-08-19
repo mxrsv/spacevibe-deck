@@ -6,22 +6,11 @@
  * mirror `resolve.test.ts`'s fixtures deliberately: the same corpus that
  * resolves to an id must resolve to that id's OWN sentence, dedup included.
  */
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  symlinkSync,
-  utimesSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-  claudeTailFromLines,
-  codexTailFromLines,
-  resolveSessionTails,
-} from "./session-tail";
+import { claudeTailFromLines, codexTailFromLines, resolveSessionTails } from "./session-tail";
 import { tailBytes } from "./head";
 import { validateResumeRequests } from "./resolve";
 import {
@@ -55,12 +44,7 @@ function opencodeStorage(home: string): string {
 }
 
 /** One session object in a bucket — what `candidates` reads. */
-function writeOpencodeSession(
-  home: string,
-  id: string,
-  directory: string,
-  updated: number,
-): void {
+function writeOpencodeSession(home: string, id: string, directory: string, updated: number): void {
   const bucket = path.join(opencodeStorage(home), "session", "bucket1");
   mkdirSync(bucket, { recursive: true });
   writeAt(
@@ -116,9 +100,7 @@ describe("claudeTailFromLines", () => {
       JSON.stringify({
         type: "assistant",
         message: {
-          content: [
-            { type: "text", text: "Running the vitest suite — 214 of 2619" },
-          ],
+          content: [{ type: "text", text: "Running the vitest suite — 214 of 2619" }],
         },
       }),
       JSON.stringify({
@@ -126,9 +108,7 @@ describe("claudeTailFromLines", () => {
         message: { content: [{ type: "tool_use", name: "Bash", input: {} }] },
       }),
     ];
-    expect(claudeTailFromLines(lines)).toBe(
-      "Running the vitest suite — 214 of 2619",
-    );
+    expect(claudeTailFromLines(lines)).toBe("Running the vitest suite — 214 of 2619");
   });
 
   it("answers null on empty or unparseable input", () => {
@@ -158,9 +138,7 @@ describe("codexTailFromLines", () => {
         payload: {
           type: "message",
           role: "assistant",
-          content: [
-            { type: "output_text", text: "Plan ready — approve the R4 fork?" },
-          ],
+          content: [{ type: "output_text", text: "Plan ready — approve the R4 fork?" }],
         },
       }),
       JSON.stringify({ type: "event_msg", payload: { type: "token_count" } }),
@@ -226,12 +204,7 @@ describe("resolveSessionTails", () => {
     // --- claude: one matched session, plus two same-cwd sessions for dedup.
     // The identity lines come first exactly as a real transcript writes them,
     // so the tail window's dropped first line is never the assistant turn.
-    const claudeProject = path.join(
-      home,
-      CLAUDE_DIR,
-      CLAUDE_PROJECTS_DIR,
-      "-tmp-w",
-    );
+    const claudeProject = path.join(home, CLAUDE_DIR, CLAUDE_PROJECTS_DIR, "-tmp-w");
     mkdirSync(claudeProject, { recursive: true });
     writeAt(
       path.join(claudeProject, "aaaa.jsonl"),
@@ -243,12 +216,7 @@ describe("resolveSessionTails", () => {
       T1,
     );
 
-    const dedupProject = path.join(
-      home,
-      CLAUDE_DIR,
-      CLAUDE_PROJECTS_DIR,
-      "-tmp-two",
-    );
+    const dedupProject = path.join(home, CLAUDE_DIR, CLAUDE_PROJECTS_DIR, "-tmp-two");
     mkdirSync(dedupProject, { recursive: true });
     writeAt(
       path.join(dedupProject, "s1.jsonl"),
@@ -271,12 +239,7 @@ describe("resolveSessionTails", () => {
 
     // A matched session whose newest turn is tool use only: resolvable, but
     // there is no sentence to show.
-    const silentProject = path.join(
-      home,
-      CLAUDE_DIR,
-      CLAUDE_PROJECTS_DIR,
-      "-tmp-silent",
-    );
+    const silentProject = path.join(home, CLAUDE_DIR, CLAUDE_PROJECTS_DIR, "-tmp-silent");
     mkdirSync(silentProject, { recursive: true });
     writeAt(
       path.join(silentProject, "quiet.jsonl"),
@@ -298,10 +261,7 @@ describe("resolveSessionTails", () => {
     const codexSessions = path.join(home, CODEX_DIR, CODEX_SESSIONS_DIR);
     mkdirSync(codexSessions, { recursive: true });
     writeAt(
-      path.join(
-        codexSessions,
-        `${CODEX_ROLLOUT_PREFIX}test${TRANSCRIPT_EXTENSION}`,
-      ),
+      path.join(codexSessions, `${CODEX_ROLLOUT_PREFIX}test${TRANSCRIPT_EXTENSION}`),
       [
         JSON.stringify({
           type: "session_meta",
@@ -399,11 +359,9 @@ describe("resolveSessionTails", () => {
   });
 
   it("(a) answers a claude pane with its own session's newest sentence", () => {
-    expect(
-      resolveSessionTails(home, [
-        { agent: "claude", cwd: "/tmp/w", lastSeenAt: T1 },
-      ]),
-    ).toEqual(["Suite is green — 2619 passing."]);
+    expect(resolveSessionTails(home, [{ agent: "claude", cwd: "/tmp/w", lastSeenAt: T1 }])).toEqual(
+      ["Suite is green — 2619 passing."],
+    );
   });
 
   it("(b) two same-cwd claude panes wear DIFFERENT sentences", () => {
@@ -414,25 +372,18 @@ describe("resolveSessionTails", () => {
         { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2 },
         { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2 },
       ]),
-    ).toEqual([
-      "Pane two finished the refactor.",
-      "Pane one is waiting on approval.",
-    ]);
+    ).toEqual(["Pane two finished the refactor.", "Pane one is waiting on approval."]);
   });
 
   it("(c) answers a codex pane past its trailing event records", () => {
     expect(
-      resolveSessionTails(home, [
-        { agent: "codex", cwd: "/tmp/codex", lastSeenAt: T1 },
-      ]),
+      resolveSessionTails(home, [{ agent: "codex", cwd: "/tmp/codex", lastSeenAt: T1 }]),
     ).toEqual(["Plan ready — approve?"]);
   });
 
   it("(d) a resolvable session with no assistant text answers null", () => {
     expect(
-      resolveSessionTails(home, [
-        { agent: "claude", cwd: "/tmp/silent", lastSeenAt: T1 },
-      ]),
+      resolveSessionTails(home, [{ agent: "claude", cwd: "/tmp/silent", lastSeenAt: T1 }]),
     ).toEqual([null]);
   });
 
@@ -451,25 +402,19 @@ describe("resolveSessionTails", () => {
 
   it("(j) answers an opencode pane past its user turn and its reasoning", () => {
     expect(
-      resolveSessionTails(home, [
-        { agent: "opencode", cwd: "/tmp/oc", lastSeenAt: T2 },
-      ]),
+      resolveSessionTails(home, [{ agent: "opencode", cwd: "/tmp/oc", lastSeenAt: T2 }]),
     ).toEqual(["Working tree clean — nothing staged."]);
   });
 
   it("(k) an opencode turn that only ran a tool falls back to the one before", () => {
     expect(
-      resolveSessionTails(home, [
-        { agent: "opencode", cwd: "/tmp/oc2", lastSeenAt: T2 },
-      ]),
+      resolveSessionTails(home, [{ agent: "opencode", cwd: "/tmp/oc2", lastSeenAt: T2 }]),
     ).toEqual(["Ran the migration."]);
   });
 
   it("(l) an opencode session with no messages on disk answers null", () => {
     expect(
-      resolveSessionTails(home, [
-        { agent: "opencode", cwd: "/tmp/oc3", lastSeenAt: T2 },
-      ]),
+      resolveSessionTails(home, [{ agent: "opencode", cwd: "/tmp/oc3", lastSeenAt: T2 }]),
     ).toEqual([null]);
   });
 
@@ -483,19 +428,13 @@ describe("resolveSessionTails", () => {
           { agent: "codex", cwd: "/tmp/codex", lastSeenAt: T1 },
         ]),
       ),
-    ).toEqual([
-      "Suite is green — 2619 passing.",
-      null,
-      "Plan ready — approve?",
-    ]);
+    ).toEqual(["Suite is green — 2619 passing.", null, "Plan ready — approve?"]);
   });
 
   it("(g) a stale session outside the 30-day window answers null", () => {
     const staleSeenAt = T1 + 40 * 24 * 60 * 60 * 1000;
     expect(
-      resolveSessionTails(home, [
-        { agent: "claude", cwd: "/tmp/w", lastSeenAt: staleSeenAt },
-      ]),
+      resolveSessionTails(home, [{ agent: "claude", cwd: "/tmp/w", lastSeenAt: staleSeenAt }]),
     ).toEqual([null]);
   });
 
@@ -503,9 +442,7 @@ describe("resolveSessionTails", () => {
     const emptyHome = mkdtempSync(path.join(tmpdir(), "session-tail-empty-"));
     try {
       expect(() =>
-        resolveSessionTails(emptyHome, [
-          { agent: "claude", cwd: "/tmp/w", lastSeenAt: T1 },
-        ]),
+        resolveSessionTails(emptyHome, [{ agent: "claude", cwd: "/tmp/w", lastSeenAt: T1 }]),
       ).not.toThrow();
       expect(
         resolveSessionTails(emptyHome, [

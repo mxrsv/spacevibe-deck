@@ -3,11 +3,7 @@ import type { PaneProcessInfo } from "../lib/process-info";
 import type { Pane, PaneEvents, PaneAttentionSignal } from "./pane";
 import type { CreatePaneFn } from "./pane-lifecycle";
 import { createMemoryPtyClient, type PtyClient } from "./pty-client";
-import {
-  createTabManager,
-  type TabManager,
-  type TabManagerDeps,
-} from "./tab-manager";
+import { createTabManager, type TabManager, type TabManagerDeps } from "./tab-manager";
 import type { AgentNotifier, AttentionNotification } from "./agent-notifier";
 
 /**
@@ -79,8 +75,7 @@ export function fakePane(
     clear() {},
     copySelection: overrides.copySelection ?? (() => {}),
     paste: overrides.paste ?? (() => {}),
-    pasteText:
-      overrides.pasteText ?? ((text: string) => events.onData(id, text)),
+    pasteText: overrides.pasteText ?? ((text: string) => events.onData(id, text)),
     scrollPage() {},
     scrollToEdge() {},
     focus() {
@@ -161,11 +156,7 @@ export function setup(options: {
     infos: options.infos,
     ...(options.dirs !== undefined ? { dirs: options.dirs } : {}),
   });
-  const { tm, emitSignal, focusPaneDirectly } = wire(
-    pty,
-    options.deps,
-    options.paneOverrides,
-  );
+  const { tm, emitSignal, focusPaneDirectly } = wire(pty, options.deps, options.paneOverrides);
   return { tm, pty, emitSignal, focusPaneDirectly };
 }
 
@@ -245,6 +236,6 @@ export function freshWindowFocusController(): WindowFocusController {
     isFocusedError: null,
     onFocusChangedError: null,
     emitFocusChanged: null,
-    unlistenFocus: vi.fn(),
+    unlistenFocus: vi.fn<() => void>(),
   };
 }

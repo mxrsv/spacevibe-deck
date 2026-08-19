@@ -50,24 +50,13 @@ export interface FileChangedPayload {
 export interface FileClient {
   listDir(root: string, directory: string): Promise<DirEntry[]>;
   readFile(root: string, path: string): Promise<ReadFileResponse>;
-  writeFile(
-    root: string,
-    path: string,
-    text: string,
-    eol: Eol,
-  ): Promise<WriteFileResponse>;
+  writeFile(root: string, path: string, text: string, eol: Eol): Promise<WriteFileResponse>;
   statFiles(root: string, paths: readonly string[]): Promise<FileStatResult[]>;
   /** Replace this window's whole watch set — never adds to it. */
-  watchPaths(
-    root: string,
-    directories: readonly string[],
-    files: readonly string[],
-  ): Promise<void>;
+  watchPaths(root: string, directories: readonly string[], files: readonly string[]): Promise<void>;
   /** Push this window's COMPLETE set of unsaved paths (plan T15.1). */
   setDirtyFiles(paths: readonly string[]): Promise<void>;
-  listenFileChanged(
-    handler: (event: FileChangedPayload) => void,
-  ): Promise<UnlistenFn>;
+  listenFileChanged(handler: (event: FileChangedPayload) => void): Promise<UnlistenFn>;
 }
 
 export const defaultFileClient: FileClient = {
@@ -90,8 +79,6 @@ export const defaultFileClient: FileClient = {
     return invoke<void>("set_dirty_files", { paths });
   },
   listenFileChanged(handler) {
-    return listen<FileChangedPayload>("fs:changed", (event) =>
-      handler(event.payload),
-    );
+    return listen<FileChangedPayload>("fs:changed", (event) => handler(event.payload));
   },
 };

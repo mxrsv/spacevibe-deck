@@ -13,9 +13,7 @@ import type { FileSurfaceController } from "../file-surface-controller";
 
 const WS = "/r";
 
-function fakeController(
-  overrides: Partial<FileSurfaceController> = {},
-): FileSurfaceController {
+function fakeController(overrides: Partial<FileSurfaceController> = {}): FileSurfaceController {
   return {
     init: vi.fn(async () => {}),
     openFile: vi.fn(async () => {}),
@@ -150,9 +148,7 @@ describe("FileTreeView", () => {
 
   it("toggles a directory instead of opening it", () => {
     act(() => {
-      setListing(WS, WS, [
-        { name: "src", path: `${WS}/src`, directory: true, outOfRoot: false },
-      ]);
+      setListing(WS, WS, [{ name: "src", path: `${WS}/src`, directory: true, outOfRoot: false }]);
     });
     const controller = fakeController();
     mount(controller);
@@ -238,9 +234,7 @@ describe("FileTreeView", () => {
 
     expect(tree().contains(retry)).toBe(false);
     act(() => {
-      retry.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      retry.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
       retry.click();
     });
 
@@ -251,9 +245,7 @@ describe("FileTreeView", () => {
 
   it("keeps depth-based indentation correct for a deeply nested expanded path", () => {
     act(() => {
-      setListing(WS, WS, [
-        { name: "a", path: `${WS}/a`, directory: true, outOfRoot: false },
-      ]);
+      setListing(WS, WS, [{ name: "a", path: `${WS}/a`, directory: true, outOfRoot: false }]);
       toggleDirectory(WS, `${WS}/a`);
       setListing(WS, `${WS}/a`, [
         { name: "b", path: `${WS}/a/b`, directory: true, outOfRoot: false },
@@ -300,9 +292,7 @@ describe("FileTreeView", () => {
       expect(rows()[1].tabIndex).toBe(-1);
 
       act(() => {
-        tree().dispatchEvent(
-          new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
-        );
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
       });
 
       expect(rows()[0].tabIndex).toBe(-1);
@@ -310,9 +300,7 @@ describe("FileTreeView", () => {
       expect(document.activeElement).toBe(rows()[1]);
 
       act(() => {
-        tree().dispatchEvent(
-          new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }),
-        );
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
       });
 
       expect(rows()[0].tabIndex).toBe(0);
@@ -321,17 +309,13 @@ describe("FileTreeView", () => {
 
     it("expands the focused directory on ArrowRight", () => {
       act(() => {
-        setListing(WS, WS, [
-          { name: "src", path: `${WS}/src`, directory: true, outOfRoot: false },
-        ]);
+        setListing(WS, WS, [{ name: "src", path: `${WS}/src`, directory: true, outOfRoot: false }]);
       });
       const controller = fakeController();
       mount(controller);
 
       act(() => {
-        tree().dispatchEvent(
-          new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
-        );
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
       });
 
       expect(controller.toggleDirectory).toHaveBeenCalledWith(WS, `${WS}/src`);
@@ -339,18 +323,14 @@ describe("FileTreeView", () => {
 
     it("collapses the focused expanded directory on ArrowLeft", () => {
       act(() => {
-        setListing(WS, WS, [
-          { name: "src", path: `${WS}/src`, directory: true, outOfRoot: false },
-        ]);
+        setListing(WS, WS, [{ name: "src", path: `${WS}/src`, directory: true, outOfRoot: false }]);
         toggleDirectory(WS, `${WS}/src`);
       });
       const controller = fakeController();
       mount(controller);
 
       act(() => {
-        tree().dispatchEvent(
-          new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
-        );
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
       });
 
       expect(controller.toggleDirectory).toHaveBeenCalledWith(WS, `${WS}/src`);
@@ -358,17 +338,13 @@ describe("FileTreeView", () => {
 
     it("does not collapse a directory on ArrowLeft when it is not expanded", () => {
       act(() => {
-        setListing(WS, WS, [
-          { name: "src", path: `${WS}/src`, directory: true, outOfRoot: false },
-        ]);
+        setListing(WS, WS, [{ name: "src", path: `${WS}/src`, directory: true, outOfRoot: false }]);
       });
       const controller = fakeController();
       mount(controller);
 
       act(() => {
-        tree().dispatchEvent(
-          new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }),
-        );
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
       });
 
       expect(controller.toggleDirectory).not.toHaveBeenCalled();
@@ -376,10 +352,7 @@ describe("FileTreeView", () => {
   });
 
   describe("10,000-row windowing", () => {
-    const descriptor = Object.getOwnPropertyDescriptor(
-      HTMLElement.prototype,
-      "clientHeight",
-    );
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight");
 
     beforeEach(() => {
       // jsdom never lays out real geometry — a fixed viewport height is what
@@ -393,33 +366,35 @@ describe("FileTreeView", () => {
 
     afterEach(() => {
       if (descriptor !== undefined) {
-        Object.defineProperty(
-          HTMLElement.prototype,
-          "clientHeight",
-          descriptor,
-        );
+        Object.defineProperty(HTMLElement.prototype, "clientHeight", descriptor);
       }
     });
 
-    it("keeps a 10,000-row directory down to only the rows near the viewport", () => {
-      act(() => {
-        setListing(
-          WS,
-          WS,
-          Array.from({ length: 10_000 }, (_, index) => ({
-            name: `file-${String(index).padStart(5, "0")}.ts`,
-            path: `${WS}/file-${index}.ts`,
-            directory: false,
-            outOfRoot: false,
-          })),
-        );
-      });
-      mount(fakeController());
+    // 10,000 rows of jsdom DOM work exceeds the 5 s default under full-suite
+    // parallel load; the math itself is instant, the tree building is not.
+    it(
+      "keeps a 10,000-row directory down to only the rows near the viewport",
+      { timeout: 30_000 },
+      () => {
+        act(() => {
+          setListing(
+            WS,
+            WS,
+            Array.from({ length: 10_000 }, (_, index) => ({
+              name: `file-${String(index).padStart(5, "0")}.ts`,
+              path: `${WS}/file-${index}.ts`,
+              directory: false,
+              outOfRoot: false,
+            })),
+          );
+        });
+        mount(fakeController());
 
-      expect(rows().length).toBeGreaterThan(0);
-      // 220px / 22px = 10 rows on screen; even a generous overscan stays far
-      // below the 10,000 total rows a non-windowed render would produce.
-      expect(rows().length).toBeLessThan(50);
-    });
+        expect(rows().length).toBeGreaterThan(0);
+        // 220px / 22px = 10 rows on screen; even a generous overscan stays far
+        // below the 10,000 total rows a non-windowed render would produce.
+        expect(rows().length).toBeLessThan(50);
+      },
+    );
   });
 });

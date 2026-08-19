@@ -39,21 +39,21 @@ describe("resolvePanelDrag", () => {
   it("holds at the floor for an overdrag that has not yet earned the collapse", () => {
     // Exactly on the threshold is still a resize: the gesture has to go PAST
     // it, so a user resting on the boundary does not lose the panel.
-    expect(
-      resolvePanelDrag(DOCK_DRAG_BOUNDS.collapseBelow, DOCK_DRAG_BOUNDS),
-    ).toEqual({ width: DOCK_WIDTH_MIN, collapsed: false });
+    expect(resolvePanelDrag(DOCK_DRAG_BOUNDS.collapseBelow, DOCK_DRAG_BOUNDS)).toEqual({
+      width: DOCK_WIDTH_MIN,
+      collapsed: false,
+    });
   });
 
   it("arms the collapse once the raw width falls past the floor by the slack", () => {
-    expect(
-      resolvePanelDrag(DOCK_DRAG_BOUNDS.collapseBelow - 1, DOCK_DRAG_BOUNDS),
-    ).toEqual({ width: DOCK_WIDTH_MIN, collapsed: true });
-    expect(
-      resolvePanelDrag(
-        SIDEBAR_DRAG_BOUNDS.collapseBelow - 1,
-        SIDEBAR_DRAG_BOUNDS,
-      ),
-    ).toEqual({ width: SIDEBAR_WIDTH_MIN, collapsed: true });
+    expect(resolvePanelDrag(DOCK_DRAG_BOUNDS.collapseBelow - 1, DOCK_DRAG_BOUNDS)).toEqual({
+      width: DOCK_WIDTH_MIN,
+      collapsed: true,
+    });
+    expect(resolvePanelDrag(SIDEBAR_DRAG_BOUNDS.collapseBelow - 1, SIDEBAR_DRAG_BOUNDS)).toEqual({
+      width: SIDEBAR_WIDTH_MIN,
+      collapsed: true,
+    });
   });
 
   it("reads a negative raw width — a drag past the window edge — as a collapse", () => {
@@ -64,12 +64,8 @@ describe("resolvePanelDrag", () => {
   });
 
   it("derives both thresholds from one slack figure", () => {
-    expect(DOCK_DRAG_BOUNDS.collapseBelow).toBe(
-      DOCK_WIDTH_MIN - PANEL_COLLAPSE_SLACK,
-    );
-    expect(SIDEBAR_DRAG_BOUNDS.collapseBelow).toBe(
-      SIDEBAR_WIDTH_MIN - PANEL_COLLAPSE_SLACK,
-    );
+    expect(DOCK_DRAG_BOUNDS.collapseBelow).toBe(DOCK_WIDTH_MIN - PANEL_COLLAPSE_SLACK);
+    expect(SIDEBAR_DRAG_BOUNDS.collapseBelow).toBe(SIDEBAR_WIDTH_MIN - PANEL_COLLAPSE_SLACK);
   });
 });
 
