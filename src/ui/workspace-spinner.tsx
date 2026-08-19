@@ -1,34 +1,39 @@
 /**
- * Agent-pending ring around a workspace avatar: ~24 short ticks with a
- * comet opacity ramp. SVG (not CSS mask-composite) so it paints in WKWebView.
+ * Agent-working ring: a STILL ring of round dots whose ink runs around it.
+ *
+ * Nothing rotates (owner, 2026-08-20; DL-27.3 amended): each dot holds its
+ * place and animates opacity on a shared cycle, offset by its slot, so the
+ * bright head appears to travel clockwise while the geometry never moves —
+ * a colour change, not a spin. The stagger lives in `02-shell.css`
+ * (`wschase`), keyed by the `--dot` index set here; its step is the cycle
+ * length over `COUNT`, so changing the dot count means changing that CSS too.
+ *
+ * SVG (not CSS mask-composite) so it paints in WKWebView. The drawing is a
+ * 26 box because the class was sized for a 20px avatar; the rail overrides it
+ * to its own 14px mark (DL-27.3), where these 8 dots render round and whole
+ * instead of the sub-pixel smear the original 24 rotating ticks became.
  */
 
-const COUNT = 24;
+const COUNT = 8;
 const CX = 13;
 const CY = 13;
-const R = 11.2;
-const TICK_W = 1.35;
-const TICK_H = 2.1;
+// R + DOT_R stays inside the 26 viewBox, so no dot leans on the class's
+// `overflow: visible` to survive.
+const R = 10.4;
+const DOT_R = 2.2;
 
-interface Tick {
+interface Dot {
   readonly x: number;
   readonly y: number;
-  readonly rotate: number;
-  readonly opacity: number;
 }
 
-const TICKS: readonly Tick[] = Array.from({ length: COUNT }, (_, i) => {
-  const t = i / COUNT;
-  // Bright head at i=0; fade along the trail; drop the faintest tip.
-  const opacity = Math.pow(1 - t, 1.55);
+const DOTS: readonly Dot[] = Array.from({ length: COUNT }, (_, i) => {
   const angle = (i / COUNT) * Math.PI * 2 - Math.PI / 2;
   return {
-    x: CX + Math.cos(angle) * R - TICK_W / 2,
-    y: CY + Math.sin(angle) * R - TICK_H / 2,
-    rotate: (angle * 180) / Math.PI + 90,
-    opacity,
+    x: CX + Math.cos(angle) * R,
+    y: CY + Math.sin(angle) * R,
   };
-}).filter((tick) => tick.opacity >= 0.04);
+});
 
 export function WorkspaceSpinner() {
   return (
@@ -39,16 +44,14 @@ export function WorkspaceSpinner() {
       height="26"
       aria-hidden="true"
     >
-      {TICKS.map((tick, i) => (
-        <rect
+      {DOTS.map((dot, i) => (
+        <circle
           key={i}
-          x={tick.x}
-          y={tick.y}
-          width={TICK_W}
-          height={TICK_H}
-          rx="0.35"
-          opacity={tick.opacity}
-          transform={`rotate(${tick.rotate} ${CX} ${CY})`}
+          class="wsdot"
+          cx={dot.x}
+          cy={dot.y}
+          r={DOT_R}
+          style={{ "--dot": String(i) }}
         />
       ))}
     </svg>

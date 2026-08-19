@@ -362,9 +362,9 @@
    the workspace-logo store — nothing sets a logo any more, and nothing drew
    one outside the retired `WorkspaceSidebar`. */
 
-/* Agent-pending: SVG ring of ticks (workspace-spinner.tsx). CSS mask +
+/* Agent-pending: SVG ring of dots (workspace-spinner.tsx). CSS mask +
    conic-gradient was dropped — dual-layer mask-composite is unreliable in
-   WKWebView. Position + spin only; ticks/color live in the SVG. */
+   WKWebView. Position only; geometry/color live in the SVG. */
 .wsitem__spinner {
   position: absolute;
   inset: -3px;
@@ -374,17 +374,32 @@
   overflow: visible;
   color: var(--tone);
   fill: currentColor;
-  animation: wsspin 2.2s linear infinite;
 }
-@keyframes wsspin {
+/* The ring is STILL; what moves is ink (owner, 2026-08-20; DL-27.3 amended —
+   the whole-SVG `wsspin` rotation is retired). Every dot runs one shared
+   opacity cycle, offset by its slot: the step is the 1.2s cycle over the
+   SVG's 8 dots, and the negative delays start the ring mid-cycle so no dot
+   pops in. Opacity is on DL-1.2's animatable list; the infinite loop is the
+   working-spinner gap §5 already records. */
+.wsitem__spinner .wsdot {
+  animation: wschase 1.2s linear infinite;
+  animation-delay: calc((var(--dot) - 8) * 0.15s);
+}
+@keyframes wschase {
+  from {
+    opacity: 1;
+  }
   to {
-    transform: rotate(360deg);
+    opacity: 0.15;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .wsitem__spinner {
-    animation: none;
     opacity: 0.6;
+  }
+  .wsitem__spinner .wsdot {
+    animation: none;
+    opacity: 0.5;
   }
 }
 
