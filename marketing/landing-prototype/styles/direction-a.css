@@ -1013,7 +1013,7 @@ html[lang="vi"] .a-hero h1 {
   list-style: none;
 }
 
-/* Chip, not bare text: five marks in a row with nothing around them read as a
+/* Chip, not bare text: six marks in a row with nothing around them read as a
    sentence of icons. The wash is the same 5% the release pill wears. */
 .agent-strip__chip {
   display: inline-flex;
@@ -1036,8 +1036,42 @@ html[lang="vi"] .a-hero h1 {
   object-fit: contain;
 }
 
-/* The sixth slot is a sentence, not a chip: custom agents ship no brand mark,
-   and inventing one for them would be the only fake logo on the page. */
+/* Cursor is the one built-in agent that ships no brand file, so its mark is a
+   monogram — the app's own fallback (`letterAvatar`), not a logo the vendor
+   never drew. `renderAgentMark` emits a <span> here instead of an <img>.
+
+   It deliberately declares NO BOX. The rule above already sizes it: the chip
+   is an inline-flex container, so the span is a flex item and is blockified,
+   which is what makes `width`/`height` apply to it at all. Sharing that one
+   declaration is what keeps the sixth chip on the other five's rhythm at every
+   width — including the narrow override below, which it inherits for free.
+
+   Neutral on purpose, and this is the whole reason the treatment is written
+   down. The app tints this disc with a per-agent colour hashed from the id;
+   nothing under `marketing/` carries that table, and picking a colour for a
+   vendor here would be a brand claim of exactly the kind the missing logo is
+   avoiding. So the disc is the window's own chrome plane and the letter its
+   dim ink: no tint variable is read here at all, unlike the two nearest idioms
+   — `.a-appwin__wslogo--mono` in appwin.css and `.tour__agentchip` in
+   tour.css, which both key their disc off a per-agent colour. The 9px/600
+   letter is geometry inside a box rather than a type role, matching the app's
+   own `.asr-chip__logo--letter` (src/styles/04b-agent-rail-rows.css). */
+.agent-strip__mark--mono {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--sg-chrome-2);
+  color: var(--sg-fg-dim);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+/* The seventh slot is a sentence, not a chip: a custom agent is any binary at
+   all, so there is no one mark — not even a letter — that could stand for it,
+   and inventing a logo would be the only fake one on the page. (A NAMED agent
+   with no brand file gets the monogram above instead.) */
 .agent-strip__any {
   color: var(--a-ink-faint);
   font: 400 0.78rem/1.4 var(--a-font-mono);
