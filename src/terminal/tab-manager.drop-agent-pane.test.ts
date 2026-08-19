@@ -84,6 +84,44 @@ describe("createTabManager dropAgentPane", () => {
     tm.dispose();
   });
 
+  it("docks the pane with the agent's default profile applied", async () => {
+    const { tm, pty } = build([{ name: "claude", path: "/bin/claude" }]);
+    settings.value = {
+      ...DEFAULT_SETTINGS,
+      launchProfiles: [
+        {
+          id: "lp:plan",
+          name: "Plan",
+          options: { kind: "claude", model: null, permissionMode: "plan" },
+        },
+      ],
+      defaultLaunchProfiles: { claude: "lp:plan" },
+    };
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/work", lastOpenedAt: 1, lastAgent: "claude" }],
+    };
+    await tm.openFromPreset({ type: "leaf" }, ["/work"], {
+      workspacePath: "/work",
+      agent: null,
+    });
+
+    await tm.dropAgentPane(1, "right");
+    await vi.advanceTimersByTimeAsync(3000);
+
+    // The drop states no mode, so the workspace's remembered agent takes its
+    // own default profile — the same rule the Open board gets for free.
+    expect(pty.writes).toEqual([
+      { id: 2, data: "claude --permission-mode plan\r" },
+    ]);
+    expect(tm.launchOptionsFor(2)).toEqual({
+      kind: "claude",
+      model: null,
+      permissionMode: "plan",
+    });
+    tm.dispose();
+  });
+
   it("falls back to the first detected agent for a workspace with no memory", async () => {
     const { tm, pty } = build([
       { name: "claude", path: "/bin/claude" },

@@ -959,11 +959,26 @@ export function createTabManager(
     if (paneId === null) {
       return false;
     }
+    // The drop states no mode, so the agent's default profile applies — the
+    // same rule the Open board gets through `materialize`. Composed here
+    // because this is the one launch that does not go through it.
+    const launchOptions = defaultLaunchOptions(
+      agentId,
+      settings.value.launchProfiles,
+      settings.value.defaultLaunchProfiles,
+    );
+    if (launchOptions !== null) {
+      launchOptionsByPane.set(paneId, launchOptions);
+    }
     launcher.arm([
       {
         id: paneId,
         command:
-          agentId === null ? null : resolveAgentCommand(agentId, customAgents),
+          agentId === null
+            ? null
+            : launchOptions !== null
+              ? composeLaunchCommand(launchOptions)
+              : resolveAgentCommand(agentId, customAgents),
       },
     ]);
     // The docked pane has no process info until the next tick otherwise, so
