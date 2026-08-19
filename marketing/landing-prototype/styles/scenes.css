@@ -1,12 +1,20 @@
-/* The feature panels' window scenes (src/tour/panel-scenes.js).
+/* The feature panels' window scenes (src/tour/scenes/*.js).
    Everything here lives inside `.a-appwin`, which is `container-type:
    inline-size`, so every size is `cqw` against the window — a scene scales
    with the panel it sits in exactly as the terminal panes do. The `max(…, Npx)`
    floors are what stop the type dissolving when a panel narrows.
 
+   The chrome around a scene — rail, frame row, tab strip, panes — is
+   appwin.css's; this sheet styles only what a scene BODY emits. Its unit rule
+   is that sheet's: one app pixel is 0.1cqw, because the mock is drawn at a
+   1000px window. Hairlines stay a literal 1px; a scaled hairline blurs.
+
    Motion is gated on `.panel.is-revealed`, the class the panels' own
    IntersectionObserver adds: a scene that typed itself out while three
-   viewports above the fold would be finished before anyone saw it. */
+   viewports above the fold would be finished before anyone saw it. EVERY
+   animation declared under that class is repeated in the reduced-motion block
+   at the foot of this file — a reveal missing from that list animates under
+   `prefers-reduced-motion: reduce` with no error anywhere to catch it. */
 
 .scene {
   display: flex;
@@ -40,25 +48,28 @@
 /* ---------- restore: three panes typing their own resume command ---------- */
 
 .scene-restore {
-  padding: 2cqw;
+  padding: 1.4cqw;
 }
 
 .scene-restore__panes {
   display: grid;
   width: 100%;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.2cqw;
+  gap: 0.8cqw;
 }
 
+/* A pane here IS a pane: the same ground, edge and radius `.a-appwin__pane`
+   draws in the hero grid, so the three columns read as the window's own work
+   area rather than as three cards this sheet invented. */
 .scene-restore__pane {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 0.9cqw;
-  padding: 1.2cqw;
+  gap: 0.7cqw;
+  padding: 0.9cqw 1.1cqw;
   border: 1px solid var(--sg-hairline-soft);
-  border-radius: 0.8cqw;
-  background: color-mix(in srgb, #c0caf5 2.5%, transparent);
+  border-radius: 0.5cqw;
+  background: var(--sg-bg);
 }
 
 .scene-restore__head {
@@ -68,15 +79,17 @@
 }
 
 .scene-restore__mark {
-  width: 1.9cqw;
-  height: 1.9cqw;
+  width: 1.8cqw;
+  height: 1.8cqw;
+  min-width: 11px;
+  min-height: 11px;
   flex-shrink: 0;
   object-fit: contain;
 }
 
 .scene-restore__agent {
   color: var(--sg-fg);
-  font-size: max(1.25cqw, 8px);
+  font-size: max(1.25cqw, 9px);
   font-weight: 600;
 }
 
@@ -87,7 +100,7 @@
   border-radius: 999px;
   color: var(--sg-green);
   font-family: var(--a-font-mono);
-  font-size: max(0.95cqw, 6px);
+  font-size: max(0.95cqw, 7px);
 }
 
 .scene-restore__cmd {
@@ -130,18 +143,39 @@
   opacity: 0;
 }
 
+/* The transcript's four inks, the same four `.a-appwin__line` carries in the
+   hero (appwin.css:284-308). Declared here rather than reused from there
+   because these are `.scene-restore__line`s, and a bare `.t-dim` in a shared
+   sheet would repaint anything that ever borrowed the word. */
+.scene-restore__line.t-body {
+  color: var(--sg-fg);
+}
+
+.scene-restore__line.t-agent {
+  color: var(--sg-accent);
+  font-weight: 600;
+}
+
+.scene-restore__line.t-dim {
+  color: var(--sg-fg-faint);
+}
+
+.scene-restore__line.t-ok {
+  color: var(--sg-green);
+}
+
 /* Pushes the prompt to the bottom of the pane. Without it the scene stacked
    its content at the top and left two thirds of a 620-tall window empty,
    which reads as a broken screenshot rather than a terminal at rest. */
 .scene-restore__spacer {
   flex: 1;
-  min-height: 1.2cqw;
+  min-height: 0.8cqw;
 }
 
 .scene-restore__foot {
   color: var(--sg-fg-faint);
   font-family: var(--a-font-mono);
-  font-size: max(0.95cqw, 6px);
+  font-size: max(0.95cqw, 7px);
 }
 
 .panel.is-revealed .scene-restore__line {
@@ -150,187 +184,117 @@
 
 /* ---------- rail: every row says what its agent just said ---------- */
 
+/* Panel 1's subject is the window's OWN left column, so the scene body is
+   only the stage side. The rail itself is `renderStageRail`'s markup inside
+   `frame()` and is styled by appwin.css; the one thing this sheet says about
+   it is how wide it stands here.
+
+   42cqw, which is the width appwin.css already gives every rail below
+   47.5rem: panel 1 then has ONE rail width at every viewport, and at the
+   panel's 546.7px window that is 230px — within a pixel of the hero's own
+   223.5px rail, so the sentences the panel is about are read at the size the
+   hero reads them, not at the 136px a 25cqw column would leave. */
+.panel[data-scene="rail"] .a-appwin__rail {
+  width: 42cqw;
+}
+
 .scene-rail {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-}
-
-.scene-rail__list {
-  display: flex;
-  min-width: 0;
   flex-direction: column;
-  gap: 2.6cqw;
-  padding: 2.6cqw 2cqw;
-  border-right: 1px solid var(--sg-hairline);
-}
-
-.scene-rail__head {
-  display: flex;
-  align-items: baseline;
-  gap: 0.7cqw;
-  margin-bottom: 1.1cqw;
-  padding-inline: 1.1cqw;
-}
-
-.scene-rail__name {
-  color: var(--sg-fg);
-  font-size: max(2.4cqw, 12px);
-  font-weight: 650;
-}
-
-.scene-rail__branch {
-  color: var(--sg-fg-faint);
-  font-family: var(--a-font-mono);
-  font-size: max(1.8cqw, 9px);
-}
-
-.scene-rail__leaf {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
   gap: 1.2cqw;
-  padding: 1cqw 1.1cqw;
-  border-radius: 0.9cqw;
-  opacity: 0;
+  padding: 1.2cqw;
 }
 
-.panel.is-revealed .scene-rail__leaf {
-  animation: scene-rise 460ms ease var(--scene-delay) both;
-}
-
-.scene-rail__mark {
-  width: 3cqw;
-  height: 3cqw;
-  min-width: 14px;
-  min-height: 14px;
-  flex-shrink: 0;
-  object-fit: contain;
-}
-
-.scene-rail__msg {
-  overflow: hidden;
-  color: var(--sg-fg-dim);
-  font-size: max(2.1cqw, 11px);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.scene-rail__age {
-  color: var(--sg-fg-faint);
-  font-family: var(--a-font-mono);
-  font-size: max(1.6cqw, 9px);
-}
-
-/* A row that is waiting on the user is the one thing in the rail allowed to
-   raise its voice — a tinted plane plus full-strength ink, which is how the
-   real rail marks `asked`. */
-.scene-rail__leaf[data-state="asked"] {
-  background: color-mix(in srgb, var(--sg-yellow) 12%, transparent);
-}
-
-.scene-rail__leaf[data-state="asked"] .scene-rail__msg {
-  color: var(--sg-fg);
-}
-
-.scene-rail__leaf[data-state="asked"] .scene-rail__age {
-  color: var(--sg-yellow);
-}
-
-.scene-rail__leaf[data-state="ok"] .scene-rail__age {
-  color: color-mix(in srgb, var(--sg-green) 70%, transparent);
-}
-
-.scene-rail__spacer {
+.scene-rail__panes {
+  display: grid;
   flex: 1;
-  min-height: 1cqw;
+  min-height: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8cqw;
 }
 
-/* Closed workspaces whose sessions are still on disk. Dim on purpose — they
-   are the bottom of the real rail for the same reason: available, not active. */
-.scene-rail__archive {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4cqw;
-  padding-top: 1.4cqw;
-  border-top: 1px solid var(--sg-hairline-soft);
-}
+/* The work the rail is reporting on: present, deliberately out of focus, so
+   the eye stays on the sentences. No CONTENT is drawn — a pane in the app is
+   a terminal with no chrome of its own, so anything readable inside one here
+   would be an invention — but three empty rectangles read as three failed
+   images, so each carries the texture of a transcript instead: ruled lines
+   that stop, held under an opaque fade so the block reads as an unfocused
+   pane with a cursor's worth of room below it, the way the hero's panes and
+   panel 3's do.
 
-.scene-rail__archived {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1cqw;
-  padding: 0.8cqw 1.1cqw;
-  border-radius: 0.9cqw;
-  opacity: 0;
-}
+   The fade is a gradient layer rather than a `mask-image`: a mask would take
+   the border with it.
 
-.panel.is-revealed .scene-rail__archived {
-  animation: scene-rise 460ms ease var(--scene-delay) both;
-}
-
-.scene-rail__archname {
-  color: var(--sg-fg-faint);
-  font-size: max(1.9cqw, 10px);
-}
-
-.scene-rail__archhint {
-  color: var(--sg-fg-faint);
-  font-family: var(--a-font-mono);
-  font-size: max(1.5cqw, 8px);
-  opacity: 0.75;
-}
-
-/* The right half is the work the rail is reporting on: present, deliberately
-   out of focus, so the eye stays on the sentences. */
-.scene-rail__stage {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+   No `display` declaration: these are `<span>`s, and a grid item is
+   blockified whatever its own `display` says. */
+.scene-rail__pane {
+  border: 1px solid var(--sg-hairline-soft);
+  border-radius: 0.5cqw;
   background:
+    linear-gradient(180deg, transparent 0 22%, var(--sg-bg) 78%),
     repeating-linear-gradient(
       180deg,
-      color-mix(in srgb, #c0caf5 3%, transparent) 0 1.6cqw,
-      transparent 1.6cqw 3.2cqw
+      color-mix(in srgb, #ffffff 4%, transparent) 0 0.35cqw,
+      transparent 0.35cqw 1.5cqw
     ),
-    color-mix(in srgb, #c0caf5 1.5%, transparent);
+    var(--sg-bg);
+  opacity: 0;
 }
 
-.scene-rail__stagehint {
-  max-width: 70%;
+.panel.is-revealed .scene-rail__pane {
+  animation: scene-rise 460ms ease var(--scene-delay) both;
+}
+
+.scene-rail__hint {
+  margin: 0;
   color: var(--sg-fg-faint);
   font-family: var(--a-font-mono);
   font-size: max(1.5cqw, 8px);
   letter-spacing: 0.04em;
   text-align: center;
-  text-wrap: balance;
 }
 
 /* ---------- picker: ⌘T over the stage ---------- */
 
+/* The scrim covers the WHOLE window, rail included, which is what a modal
+   does in the app (DL-29). It gets there without a wrapper: `.scene-picker`
+   is deliberately NOT positioned, so its absolutely positioned children
+   resolve against `.a-appwin`, the one `position: relative` box above them.
+   Both are painted above the rail for free — a positioned box paints after
+   the in-flow content of the same stacking context. */
 .scene-picker {
-  position: relative;
   flex: 1;
   min-width: 0;
 }
 
+/* DL-1.3's one sanctioned exception, quoted from `.modal-scrim`
+   (10-modals.css:14-27): 42% of the window's own ground plus a blur, not the
+   65% flat wash it replaced. The blur is the app's 10px on this sheet's
+   scale — the backdrop is the window's opaque interior, never the plate
+   behind it, because `.a-appwin` clips and paints its own ground. */
 .scene-picker__scrim {
   position: absolute;
   inset: 0;
-  background: rgb(9 11 10 / 58%);
+  background: color-mix(in srgb, var(--sg-bg) 42%, transparent);
+  backdrop-filter: blur(1cqw);
 }
 
+/* `--sg-rail` and `--sg-seam-raised`, not the stage colour and the shared
+   hairline: DL-29.6 puts all three modal panels on the recessed plane the
+   rail and dock already stand on, because one step off `--bg` read as a
+   smudge of the blurred stage rather than as an object. */
 .scene-picker__panel {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(74cqw, 94%);
-  padding: 1.5cqw;
-  border: 1px solid var(--sg-hairline);
-  border-radius: 1cqw;
-  background: var(--sg-bg);
-  box-shadow: 0 2cqw 5cqw rgb(0 0 0 / 55%);
+  /* 50cqw, not the app's ~38% of its window: every string in this panel sits
+     on a `max(…, 9px)` floor, so the TYPE is drawn about a third larger than
+     the boxes around it and a proportionally faithful panel ellipsized its own
+     destination value at 1440 (measured: 163px of text in a 145px box). */
+  width: min(50cqw, 90%);
+  padding: 1.6cqw;
+  border: 1px solid var(--sg-seam-raised);
+  border-radius: 1.2cqw;
+  background: var(--sg-rail);
   transform: translate(-50%, -50%);
 }
 
@@ -353,93 +317,170 @@
   }
 }
 
-/* The destination is stated once, at the top, because a worktree and its
-   branch are one choice — the app offers no way to pick them apart. */
+/* The app's `<h1>Open a new tab</h1>` at `--type-title`. Drawn as a `<p>` so
+   the tour does not put a stray h1 in the page outline, which is why the
+   margin reset is this sheet's job. */
+.scene-picker__title {
+  margin: 0 0 1cqw;
+  color: var(--sg-fg);
+  font-size: max(1.4cqw, 10px);
+  font-weight: 600;
+}
+
+/* A §5 config row: layout and nothing else. `.cfg-row` paints no ground at
+   rest — the box in this row is the VALUE, one element down. */
 .scene-picker__dest {
   display: flex;
   align-items: center;
-  gap: 0.8cqw;
+  gap: 1cqw;
   margin-bottom: 1cqw;
-  padding: 0.85cqw 1cqw;
-  border: 1px solid var(--sg-hairline-soft);
-  border-radius: 0.6cqw;
-  background: color-mix(in srgb, #c0caf5 3%, transparent);
+  padding: 0.6cqw 0;
 }
 
 .scene-picker__destlabel {
   flex-shrink: 0;
-  color: var(--sg-fg-faint);
-  font-size: max(1.15cqw, 9px);
+  color: var(--sg-fg-dim);
+  font-size: max(1.25cqw, 9px);
 }
 
+/* `.cfg-btn`: the menu control that states the destination. A worktree and
+   its branch are ONE value here, so the box holds one string and a caret,
+   never a folder field beside a branch field. */
 .scene-picker__destvalue {
   display: flex;
   min-width: 0;
-  align-items: baseline;
+  align-items: center;
   gap: 0.6cqw;
-  color: var(--sg-fg);
-  font-size: max(1.35cqw, 11px);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.scene-picker__branch {
-  color: var(--sg-accent);
-  font-family: var(--a-font-mono);
-  font-size: max(1.1cqw, 9px);
-  font-weight: 400;
-  white-space: nowrap;
-}
-
-.scene-picker__caret {
   margin-left: auto;
+  padding: 0.3cqw 0.8cqw;
+  border: 1px solid var(--sg-hairline);
+  border-radius: 1cqw;
+  background: var(--sg-chrome-1);
+  color: var(--sg-fg);
+  font-size: max(1.15cqw, 9px);
+}
+
+/* `.cfg-btn__text`: the app's UI font, not mono — a `cfg` value is prose the
+   surface is stating, and mono would also cost this row ~15% of its width for
+   nothing. */
+.scene-picker__desttext {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Sized on the `<svg>`, not with `font-size`: `renderChromeIcon` emits a bare
+   `viewBox="0 0 24 24"` box with no intrinsic size of its own. */
+.scene-picker__caret {
+  display: grid;
+  flex: none;
+  place-items: center;
   color: var(--sg-fg-faint);
-  font-size: max(1.1cqw, 7px);
+}
+
+.scene-picker__caret svg {
+  display: block;
+  width: max(1.3cqw, 9px);
+  height: max(1.3cqw, 9px);
 }
 
 .scene-picker__rows {
   display: flex;
   flex-direction: column;
-  gap: 0.3cqw;
+  gap: 0.6cqw;
 }
 
+/* `.achip`, stood in a column (DL-29.7): each row is read against the one
+   destination stated above it, so the open board's wrapped grid is overridden
+   in the app and never drawn here. */
 .scene-picker__row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.9cqw;
-  padding: 0.8cqw 0.9cqw;
-  border-radius: 0.5cqw;
+  gap: 0.8cqw;
+  padding: 0.7cqw 1.2cqw 0.7cqw 0.9cqw;
+  border: 1px solid var(--sg-hairline);
+  border-radius: 1cqw;
+  background: var(--sg-chrome-1);
+  color: var(--sg-fg);
 }
 
-.scene-picker__row.is-active {
-  background: color-mix(in srgb, var(--sg-purple) 14%, transparent);
+/* Declared, but its binary is not on `$PATH`. Still selectable — the row
+   opens Settings rather than launching — so it dims rather than disables
+   (DL-3.2), and the dash is the app's own `border-style` for it. */
+.scene-picker__row.is-missing {
+  border-style: dashed;
+  color: var(--sg-fg-faint);
+}
+
+.scene-picker__row.is-shell {
+  color: var(--sg-fg-dim);
 }
 
 .scene-picker__mark {
-  width: 2cqw;
-  height: 2cqw;
-  min-width: 14px;
-  min-height: 14px;
+  width: 1.8cqw;
+  height: 1.8cqw;
+  min-width: 11px;
+  min-height: 11px;
+  flex: none;
   object-fit: contain;
 }
 
-.scene-picker__label {
-  color: var(--sg-fg);
-  font-size: max(1.3cqw, 11px);
-}
-
-.scene-picker__key {
-  padding: 0.2cqw 0.6cqw;
-  border: 1px solid var(--sg-hairline);
-  border-radius: 0.35cqw;
+/* The `$`. `.shellmark` is a grid box in the app for the same reason the
+   monogram is one: a bare character in an inline span sits wherever the
+   baseline puts it, which is not the middle of an 18px slot. */
+.scene-picker__mark--shell {
+  display: grid;
+  place-items: center;
   color: var(--sg-fg-faint);
   font-family: var(--a-font-mono);
+  font-size: max(1.1cqw, 8px);
+  line-height: 1;
+  user-select: none;
+}
+
+.scene-picker__label {
+  overflow: hidden;
+  font-size: max(1.25cqw, 9px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The digit badge is the mock's own addition: the app took these off the
+   chips on 2026-08-16 and kept the keys working, and the tour is teaching the
+   keyboard, so the number goes back where the key line points. */
+.scene-picker__digit {
+  padding: 0.1cqw 0.5cqw;
+  border: 1px solid var(--sg-hairline);
+  border-radius: 0.4cqw;
+  color: var(--sg-fg-faint);
+  font-family: var(--a-font-mono);
+  font-size: max(1cqw, 8px);
+  line-height: 1.5;
+}
+
+/* THE TONE INVERTS, and it is the easy error to make: the LINE is the faint
+   step (DL-3.4 puts keyboard hints there) and the keys inside it are ONE STEP
+   BRIGHTER (10-modals.css:302-314). The `kbd`s are unclassed, matching the
+   app's own markup. */
+.scene-picker__keys {
+  margin: 1cqw 0 0;
+  color: var(--sg-fg-faint);
   font-size: max(1.05cqw, 8px);
+  white-space: nowrap;
+}
+
+.scene-picker__keys kbd {
+  color: var(--sg-fg-dim);
+  font: inherit;
 }
 
 /* ---------- surfaces: the strip carries more than terminals ---------- */
 
+/* Panel 4's strip is `renderStageStrip`'s, not a shape drawn twice — the five
+   `.scene-surfaces__tab*` rules that used to draw one here are deleted. The
+   only thing this sheet still says about the strip is what the file chip's
+   label does, one rule below. */
 .scene-surfaces {
   display: flex;
   flex: 1;
@@ -447,41 +488,13 @@
   flex-direction: column;
 }
 
-.scene-surfaces__strip {
-  display: flex;
-  gap: 0.6cqw;
-  padding: 0.9cqw 1.2cqw;
-  border-bottom: 1px solid var(--sg-hairline);
-}
-
-.scene-surfaces__tab {
-  display: flex;
-  align-items: center;
-  gap: 0.5cqw;
-  padding: 0.5cqw 0.8cqw;
-  border: 1px solid transparent;
-  border-radius: 0.45cqw;
-  background: color-mix(in srgb, #c0caf5 3%, transparent);
-  color: var(--sg-fg-dim);
-  font-size: max(1.1cqw, 7px);
-}
-
-.scene-surfaces__tab.is-active {
-  border-color: var(--sg-hairline);
-  background: color-mix(in srgb, #c0caf5 8%, transparent);
-  color: var(--sg-fg);
-}
-
-.scene-surfaces__tabmark {
-  width: 1.4cqw;
-  height: 1.4cqw;
-  object-fit: contain;
-}
-
-.scene-surfaces__tabglyph {
-  color: var(--sg-accent);
-  font-family: var(--a-font-mono);
-  font-size: max(0.95cqw, 6px);
+/* An `<i>` inside `.a-appwin__chiplabel`. A ⌘+click opens a PREVIEW tab and
+   the app italicises a preview label (`.tab__label--preview`); stating it
+   here rather than leaning on the UA default is what makes it a decision.
+   Safe inside a chrome class because a panel mounts no stream, so no
+   `textContent` write ever reaches this node. */
+.scene-surfaces__preview {
+  font-style: italic;
 }
 
 .scene-surfaces__work {
@@ -492,16 +505,19 @@
 }
 
 .scene-surfaces__tree {
-  padding: 1cqw 0.8cqw;
+  overflow: hidden;
+  padding: 0.8cqw 0.6cqw;
   border-right: 1px solid var(--sg-hairline);
   font-size: max(1.1cqw, 7px);
 }
 
 .scene-surfaces__node {
+  overflow: hidden;
   padding: 0.35cqw 0.6cqw;
   padding-left: calc(0.6cqw + var(--depth) * 1.3cqw);
   border-radius: 0.4cqw;
   color: var(--sg-fg-dim);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -512,15 +528,8 @@
 }
 
 .scene-surfaces__node.is-active {
-  background: color-mix(in srgb, #c0caf5 8%, transparent);
+  background: var(--sg-raised);
   color: var(--sg-fg);
-}
-
-.scene-surfaces__editor {
-  padding: 1cqw 1.2cqw;
-  font-family: var(--a-font-mono);
-  font-size: max(1.15cqw, 7px);
-  line-height: 1.7;
 }
 
 .scene-surfaces__pane {
@@ -530,26 +539,64 @@
   flex-direction: column;
 }
 
-.scene-surfaces__editor {
-  flex: 1;
+/* The agent's own two lines, above the editor its link opened. Bordered
+   below rather than boxed: the transcript and the document are one column of
+   work, not two panels stacked. */
+.scene-surfaces__transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5cqw;
+  padding: 0.9cqw 1.2cqw;
+  border-bottom: 1px solid var(--sg-hairline);
+  font-size: max(1.1cqw, 7px);
+  line-height: 1.45;
 }
 
-/* The file's own status line, and the one place the scene says what ⌘S is
-   for — an editor with no save state reads as a screenshot of code. */
-.scene-surfaces__bar {
+.scene-surfaces__trow {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1cqw;
-  padding: 0.7cqw 1.2cqw;
-  border-top: 1px solid var(--sg-hairline);
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.6cqw;
+  color: var(--sg-fg);
+}
+
+.scene-surfaces__bullet {
+  flex: none;
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+/* THE BEAT: the path an agent printed, which a ⌘+click opens in Deck's own
+   editor (DL-14.7). It is the one accented string in six panels — everything
+   else on this page says what it is in neutral ink — so the underline is not
+   decoration, it is the affordance the whole panel exists to name. */
+.scene-surfaces__link {
+  color: var(--sg-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* The modifier, drawn as a key rather than written as prose: `⌘` sitting in
+   running text reads as a typo. Same shape as the picker's digit so the two
+   scenes teach one keyboard. */
+.scene-surfaces__key {
+  padding: 0.1cqw 0.5cqw;
+  border: 1px solid var(--sg-hairline);
+  border-radius: 0.4cqw;
   color: var(--sg-fg-faint);
   font-family: var(--a-font-mono);
   font-size: max(1cqw, 7px);
+  line-height: 1.5;
 }
 
-.scene-surfaces__dirty {
-  color: var(--sg-yellow);
+.scene-surfaces__editor {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.8cqw 1.2cqw;
+  font-family: var(--a-font-mono);
+  font-size: max(1.15cqw, 7px);
+  line-height: 1.7;
 }
 
 .scene-surfaces__line {
@@ -559,22 +606,712 @@
   white-space: nowrap;
 }
 
-.scene-surfaces__line.t-dim {
+.scene-surfaces__line.t-dim,
+.scene-surfaces__trow.t-dim {
   color: var(--sg-fg-faint);
 }
 
+/* The row the link named. The wash rides the editor's own padding out to both
+   edges — `.scene-surfaces__line` is a `nowrap` flex box, so a background on
+   it alone stops at the box and a full-bleed mark needs the negative inset. */
+.scene-surfaces__line.is-target {
+  margin: 0 -1.2cqw;
+  padding: 0 1.2cqw;
+  background: color-mix(in srgb, var(--sg-accent) 14%, transparent);
+}
+
+/* A FLOOR, not a plain width: three digits at the 7px transcript floor are
+   13px wide, and 2.6cqw is 6.6px in a 254.8px window — the numbers ran under
+   the code. Measured at 390 before the `max()` went in. */
 .scene-surfaces__num {
-  width: 2.6cqw;
+  width: max(2.6cqw, 13px);
   flex-shrink: 0;
   color: var(--sg-fg-faint);
   text-align: right;
 }
 
+/* The file's own status line, and the one place the scene says what ⌘S is
+   for — an editor with no save state reads as a screenshot of code. */
+.scene-surfaces__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1cqw;
+  padding: 0.6cqw 1.2cqw;
+  border-top: 1px solid var(--sg-hairline);
+  color: var(--sg-fg-faint);
+  font-family: var(--a-font-mono);
+  font-size: max(1cqw, 7px);
+}
+
+/* `preview · ⌘S saves`, and deliberately NOT the yellow the retired
+   `__dirty` rule wore. In Deck a dirty document is never a preview — the
+   first edit promotes the tab — so this line describes a resting state, and a
+   warning colour would be describing a different one. */
+.scene-surfaces__state {
+  color: var(--sg-fg-faint);
+}
+
+/* ---------- usage: what the agents actually cost ---------- */
+
+.scene-usage {
+  min-height: 0;
+}
+
+/* Usage's own left column (DL-11.2's rail shape). It names all three views,
+   which is what stops one honest drawing of Overview from implying Usage has
+   a single screen. */
+.scene-usage__nav {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  padding: 0.8cqw 0;
+  border-right: 1px solid var(--sg-hairline);
+}
+
+.scene-usage__navitem {
+  padding: 0.7cqw 1.4cqw;
+  border-left: 0.2cqw solid transparent;
+  color: var(--sg-fg-faint);
+  font-size: max(1.25cqw, 9px);
+  white-space: nowrap;
+}
+
+/* The 2px accent bar plus the 4% `--fg` wash `.cfg-row` uses (DL-11.2). No
+   fill and no shadow — this app already means one thing by "active". */
+.scene-usage__navitem.is-active {
+  background: color-mix(in srgb, #ffffff 4%, transparent);
+  border-left-color: var(--sg-accent);
+  color: var(--sg-fg);
+}
+
+.scene-usage__view {
+  min-width: 0;
+  overflow: hidden;
+  padding: 1.4cqw 1.6cqw;
+}
+
+.scene-usage__eyebrow {
+  margin: 0;
+  color: var(--sg-fg-dim);
+  font-size: max(1.05cqw, 8px);
+}
+
+/* DL-4.4's named exception to the four-role ladder: 40px, and the one place
+   on this page a number is allowed to be the loudest thing in its box.
+   Tabular numerals so a figure that ticks does not shuffle its own digits. */
+.scene-usage__figure {
+  margin: 0.2cqw 0 0;
+  color: var(--sg-fg);
+  font-size: max(4cqw, 18px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+/* The asterisk's other half, and the standing estimate disclaimer. Both are
+   the same faint step: they qualify the figure, they do not compete with it
+   (DL-3.4). */
+.scene-usage__footnote,
+.scene-usage__estimate {
+  margin: 0.3cqw 0 0;
+  color: var(--sg-fg-faint);
+  font-size: max(1.05cqw, 8px);
+  font-variant-numeric: tabular-nums;
+}
+
+.scene-usage__estimate {
+  margin-top: 1cqw;
+}
+
+/* DL-16.7: the period the figure covers, segmented so every option is visible
+   at once rather than hidden behind a cycle pill. */
+.scene-usage__range {
+  display: flex;
+  gap: 0.1cqw;
+  margin-top: 1.2cqw;
+}
+
+.scene-usage__option {
+  padding: 0.3cqw 0.6cqw;
+  border-radius: 0.8cqw;
+  color: var(--sg-fg-faint);
+  font-size: max(1.1cqw, 8px);
+  white-space: nowrap;
+}
+
+/* The signifier this app already means by "active": a 4% `--fg` wash — NO
+   pill, NO shadow, no coloured chip, no underline invented here
+   (12-usage.css:452-461). A reader who learned "active" one panel up must not
+   have to learn it twice. */
+.scene-usage__option.is-active {
+  background: color-mix(in srgb, #ffffff 4%, transparent);
+  color: var(--sg-fg);
+}
+
+/* The accounting under the figure. A plain list: the bullets carry no meaning
+   and each row already names itself. */
+.scene-usage__agents {
+  margin: 2.4cqw 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scene-usage__agent + .scene-usage__agent {
+  margin-top: 1.8cqw;
+}
+
+.scene-usage__line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.8cqw;
+}
+
+.scene-usage__logo {
+  width: 1.8cqw;
+  height: 1.8cqw;
+  min-width: 11px;
+  min-height: 11px;
+  flex: none;
+  object-fit: contain;
+}
+
+.scene-usage__label {
+  overflow: hidden;
+  color: var(--sg-fg);
+  font-size: max(1.25cqw, 9px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Pushed to the far right so the amounts form a column the eye can compare
+   down — the job right-alignment does in a table (DL-15.4). */
+.scene-usage__amount {
+  margin-left: auto;
+  color: var(--sg-fg);
+  font-size: max(1.25cqw, 9px);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* DL-16.3: a printed proportion. No gradient, no shadow, and deliberately no
+   transition — a bar that crawls to its new length is a chart animating for
+   its own sake (DL-1.2). */
+.scene-usage__bar {
+  height: 0.4cqw;
+  min-height: 3px;
+  margin: 0.7cqw 0 0.5cqw;
+  border-radius: 999px;
+  background: color-mix(in srgb, #ffffff 8%, transparent);
+  overflow: hidden;
+}
+
+/* WIDTH IS THE DATUM. `--share` rides the markup because the app sets that
+   width inline for the same reason; without this declaration the span is a
+   zero-width child of an `overflow: hidden` box and the bar renders empty. */
+.scene-usage__fill {
+  display: block;
+  width: var(--share);
+  height: 100%;
+  border-radius: inherit;
+}
+
+/* The COLOUR is keyed off `data-agent` rather than carried inline, the way
+   the neighbouring scenes leave `state` to CSS. The pair is `dotColor`'s
+   (`src/lib/process-info.ts`): claude is the theme magenta, codex the theme
+   green. */
+.scene-usage__agent[data-agent="claude"] .scene-usage__fill {
+  background: var(--sg-purple);
+}
+
+.scene-usage__agent[data-agent="codex"] .scene-usage__fill {
+  background: var(--sg-green);
+}
+
+.scene-usage__sub {
+  margin: 0;
+  color: var(--sg-fg-faint);
+  font-size: max(1.05cqw, 8px);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- catalog: every agent Deck knows, and its command ---------- */
+
+.scene-catalog {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.scene-catalog__list {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  padding: 0.6cqw 0.4cqw;
+}
+
+.scene-catalog__head {
+  display: flex;
+  align-items: center;
+  gap: 0.8cqw;
+  padding: 1.2cqw 1.4cqw 0.6cqw;
+}
+
+.scene-catalog__head:first-child {
+  padding-top: 0.4cqw;
+}
+
+.scene-catalog__title {
+  color: var(--sg-fg-dim);
+  font-size: max(1.4cqw, 9px);
+  font-weight: 560;
+  white-space: nowrap;
+}
+
+/* The count is a fact about the list, not a control: a quiet pill, never a
+   badge that could be mistaken for something to press. */
+.scene-catalog__count {
+  padding: 0.1cqw 0.8cqw;
+  border-radius: 1cqw;
+  background: var(--sg-chrome-2);
+  color: var(--sg-fg-faint);
+  font-size: max(1.1cqw, 8px);
+  white-space: nowrap;
+}
+
+/* `margin-left: auto` is what puts Refresh at the far end, and the flex row
+   is what keeps its glyph off the word — the icon and the label are siblings
+   with a text node between no gap of their own. */
+.scene-catalog__refresh {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 0.6cqw;
+  color: var(--sg-fg-dim);
+  font-size: max(1.1cqw, 8px);
+  white-space: nowrap;
+}
+
+.scene-catalog__refreshicon {
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+
+.scene-catalog__refreshicon svg {
+  display: block;
+  width: max(1.3cqw, 9px);
+  height: max(1.3cqw, 9px);
+}
+
+.scene-catalog__agent {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 1cqw;
+  margin: 0 0.4cqw;
+  padding: 0.8cqw 1cqw;
+  border-radius: 1cqw;
+}
+
+/* Between rows, never above the first: the heading already separates the list
+   from what precedes it, and a rule directly under a label reads as an
+   underline. */
+.scene-catalog__agent + .scene-catalog__agent {
+  border-top: 1px solid var(--sg-seam-recessed);
+}
+
+.panel.is-revealed .scene-catalog__head,
+.panel.is-revealed .scene-catalog__agent {
+  animation: scene-rise 420ms ease var(--scene-delay) both;
+}
+
+.scene-catalog__mark {
+  width: 1.5cqw;
+  height: 1.5cqw;
+  min-width: 10px;
+  min-height: 10px;
+  flex: none;
+  object-fit: contain;
+}
+
+.scene-catalog__text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.1cqw;
+}
+
+.scene-catalog__name {
+  color: var(--sg-fg);
+  font-size: max(1.25cqw, 9px);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* MUST STAY AN INLINE BOX. The space that separates the binary from its flags
+   is a leading space INSIDE `__flags`, exactly as the app writes it; make
+   this a flex row and that space collapses at the item edge, printing
+   `codex--dangerously-…`. The app leaves `.lp-command` inline for the same
+   reason. */
+.scene-catalog__command {
+  overflow: hidden;
+  color: var(--sg-fg-faint);
+  font-size: max(1.1cqw, 9px);
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The name is the identity, the command below it the mechanism — so the
+   binary keeps the row's ink and the flags drop a step. */
+.scene-catalog__binary {
+  color: var(--sg-fg-dim);
+}
+
+.scene-catalog__flags {
+  color: var(--sg-fg-faint);
+}
+
+/* `.segmented`: a two-column track on the recessed input plane, which is
+   `mix(sidebar, bg, 50%)` in the app's own tokens rather than a colour picked
+   here. */
+.scene-catalog__enabled {
+  display: grid;
+  flex: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  padding: 0.2cqw;
+  border: 1px solid var(--sg-hairline);
+  border-radius: 1cqw;
+  background: color-mix(in srgb, var(--sg-rail) 50%, var(--sg-bg));
+}
+
+.scene-catalog__option {
+  padding: 0.3cqw 1cqw;
+  border: 1px solid transparent;
+  border-radius: 0.8cqw;
+  color: var(--sg-fg-faint);
+  font-size: max(1.1cqw, 8px);
+  font-weight: 520;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* `is-active`, not the app's `is-selected`: this sheet already says
+   `is-active` for "the chosen one of a set" in the picker, the tree and the
+   range selector, and one page should not carry two words for one idea. */
+.scene-catalog__option.is-active {
+  border-color: var(--sg-hair-strong);
+  background: var(--sg-raised);
+  color: var(--sg-fg);
+}
+
+/* ---------- agent monograms ---------- */
+
+/* A declared agent that ships no brand file wears its letter instead — the
+   app's own `.asr-chip__logo--letter` fallback, with the tint replaced by the
+   neutral pair. UNTINTED on purpose: a per-agent colour would invent an
+   identity the catalog does not have, and the disc is a quiet placeholder
+   plane (1.56:1 against the chip ground), never a badge.
+
+   No box declaration in this rule: each base class above already sizes its
+   own mark, so the 18px scene rung and the catalog's 15px one are inherited
+   from there and the narrow-width overrides reach these spans for free. The
+   letter tracks the disc through `em` rather than a flat 9px, because these
+   boxes are `cqw` and a fixed letter would burst a narrowed one. */
+.scene-restore__mark--mono,
+.scene-picker__mark--mono,
+.scene-usage__logo--mono,
+.scene-catalog__mark--mono {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--sg-chrome-2);
+  color: var(--sg-fg-dim);
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+/* The letter is the ONE thing the shared rule cannot state, because it has to
+   track a box measured in `cqw` — an `em` resolves against the inherited font
+   size, which this sheet never set on these spans, so it would size the letter
+   off whatever prose happens to be around it. Each pair below is the base
+   class's own `max(box, floor)` taken at ~55%, which is where the app's own
+   letter avatars sit (`.a-appwin__leaflogo--mono` is 0.9 of a 1.4cqw box;
+   `.agent-strip__mark--mono` is 9px in an 18.4px one). */
+.scene-restore__mark--mono,
+.scene-picker__mark--mono,
+.scene-usage__logo--mono {
+  font-size: max(1cqw, 6px);
+}
+
+.scene-catalog__mark--mono {
+  font-size: max(0.85cqw, 5.5px);
+}
+
+/* ---------- narrow: a panel that cannot fit its content drops content ----
+
+   Two rungs, both borrowed rather than invented: 768px is where tour.css:757
+   stands every panel in ONE column, so a `wide` panel stops being wider than
+   a `side` one there; 47.5rem is the breakpoint appwin.css and direction-a.css
+   already share. At 390 a panel's window is 254.8 x 158 px — a fifth of the
+   area it has at 1440 — and the densest scenes were drawn knowing it.
+
+   The rule in both blocks is the plan's: DROP content, never shrink type past
+   the floors appwin.css bottoms out on (8px for chrome, 7px for the
+   transcript). Nothing below invents a smaller rung. */
+
+@media (max-width: 768px) {
+  /* Restore's three panes stop standing side by side. Measured at a 768
+     viewport: the panel is 602.1px, its rail takes 150, and three columns are
+     then 141px each — NARROWER than the one column the same panes get at 390
+     — so every transcript line wrapped and every foot wrapped. Stacked, a
+     pane is 434px wide and none of them do. */
+  .scene-restore__panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 47.5rem) {
+  /* Restore: ONE pane, and it takes the whole window.
+
+     This is the only panel that gives up its rail, and it is a content drop
+     like every other one here: the panel's subject is a pane typing the
+     command that brings its own session back, and its shortest transcript
+     line needs 139px against the 132px a 254.8px window leaves once a 42cqw
+     rail has taken its share. Without the rail the pane holds 231px and the
+     whole transcript — both lines and the session foot — is read at 7px with
+     nothing wrapped and nothing cut. Panels 1, 2 and 5 keep theirs; panels 4
+     and 6 draw none at any width, so a window with no rail is a shape this
+     page already has.
+
+     The seam has to go with it: `.a-appwin__sidebar + *` is an adjacency, and
+     `display: none` does not remove an element from the sibling axis, so the
+     stage would keep a left border with nothing on its left. */
+  .panel[data-scene="restore"] .a-appwin__rail {
+    display: none;
+  }
+
+  .panel[data-scene="restore"] .a-appwin__rail + * {
+    border-left: none;
+  }
+
+  .scene-restore__pane:not(:first-child) {
+    display: none;
+  }
+
+  .scene-restore__agent,
+  .scene-restore__cmd {
+    font-size: 8px;
+  }
+
+  .scene-restore__out,
+  .scene-restore__foot,
+  .scene-restore__badge {
+    font-size: 7px;
+  }
+
+  /* Rail: one quiet pane for the same reason, since the rail is taking 42cqw
+     of a 254.8px window and the three columns left over are 30px each. */
+  .scene-rail__panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scene-rail__pane:not(:first-child) {
+    display: none;
+  }
+
+  .scene-rail__hint {
+    font-size: 7px;
+  }
+
+  /* Picker: the digit badges go. They are the mock's own addition, and the
+     key line below them names the same keys in words — so of the two, the
+     column that repeats is the one that can be spared (the row's third grid
+     track collapses to zero with it). */
+  /* 84% and a tighter rhythm, so the scrim still shows on all four sides: at
+     88% with the wide paddings the panel stood 156.1px tall inside a 158px
+     window and read as a full-bleed screen rather than as something opened
+     over one. */
+  .scene-picker__panel {
+    width: 84%;
+    padding: 0.8cqw;
+  }
+
+  .scene-picker__title {
+    margin-bottom: 0.5cqw;
+  }
+
+  .scene-picker__dest {
+    margin-bottom: 0.5cqw;
+    padding: 0.3cqw 0;
+  }
+
+  .scene-picker__digit {
+    display: none;
+  }
+
+  .scene-picker__title,
+  .scene-picker__destlabel,
+  .scene-picker__destvalue,
+  .scene-picker__label {
+    font-size: 8px;
+  }
+
+  .scene-picker__row {
+    padding: 0.3cqw 0.9cqw;
+  }
+
+  .scene-picker__rows {
+    gap: 0.3cqw;
+  }
+
+  .scene-picker__keys {
+    margin-top: 0.5cqw;
+    font-size: 7px;
+  }
+
+  /* Surfaces: the file tree goes. The beat is a printed path opening the
+     DOCUMENT at its line, and the editor is the half that says so — at 254.8px
+     the tree would take 40% of the width to show four truncated names. */
+  .scene-surfaces__tree {
+    display: none;
+  }
+
+  .scene-surfaces__work {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Eight rows instead of twelve, which keeps the marked row and the three
+     under it: the editor is a viewport into a file, so a shorter viewport is
+     the one compression that costs the drawing nothing. */
+  .scene-surfaces__line:nth-child(n + 9) {
+    display: none;
+  }
+
+  .scene-surfaces__transcript,
+  .scene-surfaces__editor,
+  .scene-surfaces__bar {
+    padding-inline: 0.8cqw;
+  }
+
+  .scene-surfaces__line.is-target {
+    margin-inline: -0.8cqw;
+    padding-inline: 0.8cqw;
+  }
+
+  /* Usage: the nav turns from a column into a row, which is the cheaper half
+     of the trade — the three view names are 24 characters and fit across the
+     window, where a column would spend a fifth of 148px on them. The estimate
+     note and the per-agent share line are the drops: the note is a standing
+     disclaimer with no referent on screen, and the share is already drawn, as
+     a bar. The FOOTNOTE stays — it answers the asterisk the figure prints. */
+  .scene-usage {
+    flex-direction: column;
+  }
+
+  .scene-usage__nav {
+    flex-direction: row;
+    padding: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--sg-hairline);
+  }
+
+  .scene-usage__navitem {
+    padding: 0.6cqw 1cqw;
+    border-left: none;
+    border-bottom: 0.2cqw solid transparent;
+    font-size: 8px;
+  }
+
+  .scene-usage__navitem.is-active {
+    border-bottom-color: var(--sg-accent);
+  }
+
+  .scene-usage__view {
+    padding: 1cqw 1.2cqw;
+  }
+
+  .scene-usage__estimate,
+  .scene-usage__sub {
+    display: none;
+  }
+
+  .scene-usage__eyebrow,
+  .scene-usage__footnote,
+  .scene-usage__option {
+    font-size: 7px;
+  }
+
+  .scene-usage__label,
+  .scene-usage__amount {
+    font-size: 8px;
+  }
+
+  .scene-usage__agents {
+    margin-top: 1.4cqw;
+  }
+
+  .scene-usage__agent + .scene-usage__agent {
+    margin-top: 1.2cqw;
+  }
+
+  /* Catalog: the flags and the radiogroup go — the plan's two decided drops —
+     leaving mark, name and binary. Both are WIDTH; the HEIGHT lever is
+     `__text`, which flips from a column to a row and puts the name beside its
+     binary. Six two-line rows plus two heads do not fit in 158px; six
+     one-line rows do. */
+  .scene-catalog__flags,
+  .scene-catalog__enabled {
+    display: none;
+  }
+
+  .scene-catalog__text {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.8cqw;
+  }
+
+  .scene-catalog__agent {
+    padding: 0.5cqw 0.8cqw;
+  }
+
+  .scene-catalog__head {
+    padding: 0.8cqw 1cqw 0.4cqw;
+  }
+
+  .scene-catalog__title,
+  .scene-catalog__refresh {
+    font-size: 8px;
+  }
+
+  .scene-catalog__name,
+  .scene-catalog__command {
+    font-size: 7px;
+  }
+}
+
+/* ---------- reduced motion ----------
+
+   Every `.panel.is-revealed` animation declared above appears here. The list
+   is the whole gate: a reveal left out of it animates under
+   `prefers-reduced-motion: reduce` with nothing anywhere to catch it, which
+   is how `.scene-rail__archived` ran unlisted until the rail scene that drew
+   it was replaced. */
+
 @media (prefers-reduced-motion: reduce) {
   .panel.is-revealed .scene-restore__typed,
   .panel.is-revealed .scene-restore__line,
-  .panel.is-revealed .scene-rail__leaf,
-  .panel.is-revealed .scene-picker__panel {
+  .panel.is-revealed .scene-rail__pane,
+  .panel.is-revealed .scene-picker__panel,
+  .panel.is-revealed .scene-catalog__head,
+  .panel.is-revealed .scene-catalog__agent {
     animation: none;
     opacity: 1;
   }
