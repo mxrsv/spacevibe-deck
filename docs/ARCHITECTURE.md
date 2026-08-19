@@ -171,23 +171,21 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   [clipboard text boundary](../src/terminal/terminal-clipboard.ts#L45-L55) `current`,
   [menu generator](../scripts/generate-menu.ts) `current`).
 - The macOS menu path can't tell an accelerator from a mouse click (Tauri's `MenuEvent` carries only an id), so only `destructive: true` actions (`close-pane`/`close-tab`/`clear-buffer`) are suppressed while a chrome text field holds the caret — every other action still runs there — [ActionDefinition.destructive](../src/terminal/action-registry.ts#L82-L115) `current`, [runAction](../src/terminal/tab-manager.ts#L1032-L1054) `current`.
-- Which renderer paints a pane is a setting, `terminalRenderer`, defaulting to
-  `dom` — the renderer every shipped build has used
-  ([settings-schema.ts](../src/settings/settings-schema.ts) `current`,
-  [appearance-section.tsx](../src/ui/settings/sections/appearance-section.tsx) `current`).
-  `webgl` is opt-in and buys one thing: xterm's DOM renderer cannot draw custom
-  glyphs, so block and box-drawing characters that agent TUIs join across cells
-  (OpenCode's wordmark, prompt borders) come out segmented, while the WebGL
-  renderer draws them to the full cell box. It costs text fidelity in exchange —
-  all glyphs route through xterm core's shared `TextureAtlas`, giving grayscale
-  antialiasing and cell widths rounded to whole device pixels. `canvas` is not
-  offered because it shares that atlas and so carries the same cost.
-- `syncRenderer` in [pane.ts](../src/terminal/pane.ts) `current` is the one
-  reconcile both `mount()` and `applySettings()` call, so the switch is live and
-  no pane is respawned: WebGL loads only after `Terminal.open()`, and disposing
-  it hands rendering back to the DOM path. The handle is cleared on
-  initialization failure and on context loss alike, so a spent addon cannot make
-  a later switch a silent no-op. Renderer-side, so it reaches both hosts.
+- [`activateWebglRenderer()`](../src/terminal/pane.ts) `current` runs once in a
+  pane's first `mount()`, after `Terminal.open()`, so every pane automatically
+  attempts xterm's WebGL custom-glyph path. Renderer choice is not persisted or
+  exposed in Settings ([settings schema](../src/settings/settings-schema.ts)
+  `current`, [Appearance section](../src/ui/settings/sections/appearance-section.tsx)
+  `current`).
+- WebGL initialization failure and context loss explicitly dispose the active
+  addon, clear its identity-guarded handle, and warn before leaving xterm's DOM
+  renderer active; neither fallback restarts the pane or PTY. `applySettings()`
+  does not create or replace renderer addons
+  ([pane renderer lifecycle](../src/terminal/pane.ts) `current`).
+- Pane disposal explicitly releases a still-active WebGL addon and its GPU
+  context. The lifecycle lives entirely in the shared renderer under `src/`, so
+  both Electron and Tauri receive the same behavior without host-specific code
+  ([pane disposal](../src/terminal/pane.ts) `current`).
 - `lineHeight` stays 1.25: flush rows were never the fix, since custom glyphs
   are drawn to the full cell box and `device.cell.height` already multiplies the
   char height by that value.

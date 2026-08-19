@@ -7,7 +7,6 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import {
   FONT_FALLBACK,
   type Settings,
-  type TerminalRenderer,
 } from "../settings/settings-schema";
 import { applyWebkitImeFix, isWebKitWebView } from "./webkit-ime-fix";
 import { installShiftEnterNewline } from "./shift-enter";
@@ -295,53 +294,39 @@ export function createPane(
     }, RESIZE_DEBOUNCE_MS);
   });
   let opened = false;
-  let renderer: TerminalRenderer = initial.terminalRenderer;
   let webglAddon: WebglAddon | undefined;
 
-  /**
-   * Bring the live renderer in line with the setting. One reconcile rather
-   * than a load path and an unload path, because both `mount()` and
-   * `applySettings()` reach it and neither knows what the other already did.
-   *
-   * Turning WebGL OFF is `dispose()`: xterm falls back to its DOM renderer on
-   * its own, so the switch is live and no pane has to be respawned.
-   */
-  function syncRenderer(): void {
-    if (!opened) {
-      return;
+  function retireWebglAddon(addon: WebglAddon): boolean {
+    if (webglAddon !== addon) {
+      return false;
     }
-    if (renderer === "webgl" && webglAddon === undefined) {
-      // Declared outside the `try` because the throw comes from `loadAddon`,
-      // which is where xterm activates the addon — by then it exists and is
-      // the thing that has to be disposed.
-      let addon: WebglAddon | undefined;
-      try {
-        addon = new WebglAddon();
-        const pending = addon;
-        // Clearing the handle here too, not only on an explicit switch: after
-        // a lost context the addon is spent, and a stale handle would make the
-        // next dom→webgl toggle a no-op that silently leaves the pane on DOM.
-        pending.onContextLoss(() => {
-          pending.dispose();
-          // Identity-checked: a late loss event from a retired addon must not
-          // clear the handle of the one that replaced it.
-          if (webglAddon === pending) {
-            webglAddon = undefined;
-          }
-        });
-        term.loadAddon(pending);
-        webglAddon = pending;
-      } catch {
-        // WebGL is optional. Disposing a partially activated addon restores
-        // xterm's DOM renderer, which keeps the terminal usable on older GPUs.
-        addon?.dispose();
-        webglAddon = undefined;
+    webglAddon = undefined;
+    addon.dispose();
+    return true;
+  }
+
+  function activateWebglRenderer(): void {
+    let addon: WebglAddon | undefined;
+    try {
+      addon = new WebglAddon();
+      const pending = addon;
+      webglAddon = pending;
+      pending.onContextLoss(() => {
+        if (!retireWebglAddon(pending)) {
+          return;
+        }
+        console.warn(
+          "WebGL terminal renderer context lost; falling back to DOM.",
+        );
+      });
+      term.loadAddon(pending);
+    } catch (error) {
+      if (addon === undefined || retireWebglAddon(addon)) {
+        console.warn(
+          "WebGL terminal renderer initialization failed; falling back to DOM:",
+          error,
+        );
       }
-      return;
-    }
-    if (renderer === "dom" && webglAddon !== undefined) {
-      webglAddon.dispose();
-      webglAddon = undefined;
     }
   }
 
@@ -353,11 +338,9 @@ export function createPane(
       }
       observer.observe(termEl);
       opened = true;
-      // Last, and only now: xterm's DOM renderer cannot draw custom glyphs, so
-      // block and box-drawing characters used by TUIs such as OpenCode look
-      // segmented, and the WebGL renderer that draws them to the full cell box
-      // needs both an element from `open()` and the flag `syncRenderer` gates on.
-      syncRenderer();
+      // Last, and only now: WebGL activation needs the element created by
+      // `open()`. Failure leaves xterm's DOM renderer active for this pane.
+      activateWebglRenderer();
     }
     fit();
   }
@@ -399,11 +382,6 @@ export function createPane(
     term.options.fontSize = next.fontSize;
     term.options.theme = resolveTheme(next);
     term.options.scrollback = next.scrollback;
-    renderer = next.terminalRenderer;
-    // Held in a closure variable rather than read at mount time: settings can
-    // change between `createPane` and the pane being shown, and a pane that
-    // mounted later would otherwise come up on the renderer the user left.
-    syncRenderer();
     fit();
   }
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS, type Settings } from "../settings/settings-schema";
+import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 
 const xterm = vi.hoisted(() => ({
   constructorOptions: undefined as Record<string, unknown> | undefined,
@@ -138,72 +138,63 @@ const events = {
   onFocus() {},
 };
 
-const WEBGL_SETTINGS: Settings = {
-  ...DEFAULT_SETTINGS,
-  terminalRenderer: "webgl",
-};
-
 describe("createPane OpenCode glyph rendering", () => {
   it("leaves line height alone — WebGL fills the cell, not flush rows", () => {
     createPane(1, DEFAULT_SETTINGS, events);
     expect(xterm.constructorOptions?.lineHeight).toBe(1.25);
   });
 
-  it("stays on the DOM renderer under default settings", () => {
-    const pane = createPane(1, DEFAULT_SETTINGS, events);
-    pane.mount();
-    expect(webgl.instances).toHaveLength(0);
-  });
-
   it("loads WebGL only after the terminal is open", () => {
-    const pane = createPane(1, WEBGL_SETTINGS, events);
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
     pane.mount();
     expect(webgl.instances[0].activatedAfterOpen).toBe(true);
   });
 
-  it("falls back when WebGL cannot initialize", () => {
-    webgl.throwOnActivate = true;
-    const pane = createPane(1, WEBGL_SETTINGS, events);
-    expect(() => pane.mount()).not.toThrow();
-    expect(webgl.instances[0].disposed).toBe(1);
-  });
-
-  it("disposes WebGL on context loss", () => {
-    const pane = createPane(1, WEBGL_SETTINGS, events);
-    pane.mount();
-    webgl.instances[0].emitContextLoss();
-    expect(webgl.instances[0].disposed).toBe(1);
-  });
-});
-
-describe("switching the renderer setting on a live pane", () => {
-  it("loads WebGL when a mounted DOM pane is switched to it", () => {
+  it("loads one WebGL addon across repeated mounts", () => {
     const pane = createPane(1, DEFAULT_SETTINGS, events);
     pane.mount();
-    pane.applySettings(WEBGL_SETTINGS);
+    pane.mount();
     expect(webgl.instances).toHaveLength(1);
   });
 
-  it("disposes WebGL when switched back to the DOM renderer", () => {
-    const pane = createPane(1, WEBGL_SETTINGS, events);
-    pane.mount();
-    pane.applySettings(DEFAULT_SETTINGS);
+  it("falls back to DOM and warns when WebGL cannot initialize", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    webgl.throwOnActivate = true;
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    expect(() => pane.mount()).not.toThrow();
     expect(webgl.instances[0].disposed).toBe(1);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith(
+      "WebGL terminal renderer initialization failed; falling back to DOM:",
+      expect.any(Error),
+    );
   });
 
-  it("does not stack a second addon when the setting is re-applied", () => {
-    const pane = createPane(1, WEBGL_SETTINGS, events);
-    pane.mount();
-    pane.applySettings(WEBGL_SETTINGS);
-    expect(webgl.instances).toHaveLength(1);
-  });
-
-  it("can reload WebGL after a context loss retired the first addon", () => {
-    const pane = createPane(1, WEBGL_SETTINGS, events);
+  it("falls back to DOM and warns on context loss", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
     pane.mount();
     webgl.instances[0].emitContextLoss();
-    pane.applySettings(DEFAULT_SETTINGS);
-    pane.applySettings(WEBGL_SETTINGS);
-    expect(webgl.instances).toHaveLength(2);
+    webgl.instances[0].emitContextLoss();
+    expect(webgl.instances[0].disposed).toBe(1);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith(
+      "WebGL terminal renderer context lost; falling back to DOM.",
+    );
+  });
+
+  it("does not change the renderer when settings are applied", () => {
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.mount();
+    pane.applySettings({ ...DEFAULT_SETTINGS, fontSize: 14 });
+    expect(webgl.instances).toHaveLength(1);
+    expect(webgl.instances[0].disposed).toBe(0);
+  });
+
+  it("dispose releases the active WebGL addon", () => {
+    const pane = createPane(1, DEFAULT_SETTINGS, events);
+    pane.mount();
+    pane.dispose();
+    expect(webgl.instances[0].disposed).toBe(1);
   });
 });
