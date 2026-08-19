@@ -197,6 +197,22 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   ("keeps the built-in text ladder neutral" — a 6% saturation ceiling on all
   three tones, not a hex literal, because the residue comes from mixing back
   toward a tinted background).
+  Amended 2026-08-19: it binds the **six** built-ins now, the two new ones
+  included. `deck-dark`'s reviewed seed was `#e5e7eb` and `deck-light`'s
+  `#25272c`; both shipped as their luminance twins `#e7e7e7` / `#272727`
+  (14.33 → 14.35:1 and 13.82 → 13.82:1), so a mode designed after this rule
+  obeys it at birth rather than being retrofitted.
+- **DL-3.7** **Settings chrome is achromatic (2026-08-19).** Inside
+  `.settings-screen`, no state is carried by hue: an enabled toggle, a
+  selected segment, a step icon, a hover and a focus ring all sit on the
+  neutral `--text-*` / `--tone` / `--hair-*` ladders. `--green` for "on"
+  (DL-3.2) and `--accent` for focus (DL-21.3) are both overridden here, and
+  that is the point — a preference surface is where the terminal palette's
+  colour is furthest from being the subject, and it is also where a user who
+  cannot separate the two hues most needs the state to be legible without
+  them. `--red` on a destructive action (DL-3.2, DL-11.5) is NOT overridden:
+  that is a warning, not a state. The rule stops at this surface; everywhere
+  else §3 is unchanged.
 
 ## 4. Typography
 
@@ -229,6 +245,17 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   [`design-language.test.ts`](../scripts/design-language.test.ts) `current`
   holds that allowlist to exactly this one selector; a second entry is an edit
   to this rule first.
+  **A second exception, added 2026-08-19, and it is not chrome copy either:**
+  the settings section heading (`.settings-screen__title`, DL-11.6) takes
+  `letter-spacing: -0.02em`. That is **optical correction at display size**,
+  not tracking used as texture. The ban this rule states was measured against
+  chrome text at 10.5–14px, where a face's own fitting is already correct and
+  respacing it costs legibility; a 24px 650-weight heading is the one place in
+  Deck where the same fitting reads loose, because tracking that suits a 12.5px
+  label is proportionally wide at twice the size. The exception is bounded to
+  that selector and to a negative value, it lives in the gate's own
+  `OPTICAL_TRACKING_SELECTORS` allowlist rather than beside the grip, and any
+  third entry amends this rule again.
   Clarified 2026-08-15: acronyms and proper nouns keep their dictionary casing
   (`USD`, `PNG`, `VS Code`, `iTerm2`) — the ban is on all-caps LABELS, not on
   words whose spelling is uppercase.
@@ -293,7 +320,14 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
      glyph's geometry (§14), not a text size;
   4. the **theme-gallery miniature** (DL-24.2) and the **preset-editor stage
      specimens** — drawings of Deck's own window, where every length is tuned
-     against the drawing rather than against reading.
+     against the drawing rather than against reading;
+  5. the **settings section heading** (`.settings-screen__title`, 24px, added
+     2026-08-19) — the name of what the screen is currently about, the same
+     structural level as entry 2 and larger because it changes as you navigate
+     while the board's heading does not. Settings had no such level at all
+     before this: the section title and the group labels inside it were both
+     `--type-title`, so the screen's subject was printed at the size of the
+     smallest thing on it.
 
   Anything else that wants its own size amends this list before it ships.
 
@@ -301,7 +335,16 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
 
 Every setting is a **row**: key (+ optional one-line description) on the left,
 exactly **one interactive value** on the right. No other widget genres — no
-segmented controls, checkbox lists, chip grids, sliders, or boxed steppers.
+checkbox lists, chip grids, sliders, or boxed steppers.
+
+**Amended 2026-08-19: the segmented control is no longer on that list.** It was
+banned outright because the one that existed had been reached for by feel, for
+"Tab bar position", where it was one of several inconsistent ways to state a
+choice. It comes back as a NAMED value kind with a stated condition — DL-6.5's
+`binary`, two or three equal mutually exclusive options — which is the opposite
+situation: a row still holds exactly one interactive value, and that value is
+now allowed to show its alternatives instead of hiding them behind a cycle. It
+is still one value in one slot; §5's shape is untouched.
 
 ```
 cfg-group                     ← group label (ui-font 14px muted, sentence-case)
@@ -332,6 +375,7 @@ fit is a design decision, not an implementation detail.
 | kind     | looks like                   | interaction                           |
 | -------- | ---------------------------- | ------------------------------------- |
 | `cycle`  | `▪ tokyo-night ↹`            | click advances to the next option     |
+| `binary` | `Light │ Dark`               | segmented radio group; click or ←/→   |
 | `menu`   | `JetBrains Mono ▾`           | invisible native `<select>` overlay   |
 | `step`   | `− 14px +` in one pill       | −/+ zones inside the pill             |
 | `color`  | `▪ #16161e`                  | invisible native color input overlay  |
@@ -358,6 +402,22 @@ custom pick shows the `↺` clear button (DL-6.1); any failure shows inline via
 - **DL-6.4** A pill holding several buttons (`step`) puts the focus ring on the
   focused button, not the pill; a pill wrapping one invisible native input
   (`menu`, `color`) puts it on the pill via `:focus-within`.
+- **DL-6.5** **Two or three equal, mutually exclusive choices are a `binary`
+  segmented group, not a `cycle` pill (2026-08-19).** Every option is on
+  screen before the user acts. `cycle` states the current value and hides the
+  alternatives, so the only way to learn what a setting can be is to change
+  it — acceptable when the list is long enough that showing it would cost more
+  than it tells, and wrong for a pair. Markup is `role="radiogroup"` with one
+  `role="radio"` per option, a roving `tabindex` so the pair is one tab stop,
+  and ←/→ (or ↑/↓) moving the selection itself, which is what a radio group
+  does. The selected option carries DL-21.1's wash **and** its scoped neutral
+  1px `--hair-strong` frame, for that rule's own reason: a segment sits inside
+  a track that is itself a wash, so the wash alone was not reliably the thing
+  that looked chosen. The track's corner is `--radius-control`, the segment's
+  the nested `--radius-tight` (DL-20.1) — no arithmetic at the use site.
+  First and so far only mount:
+  [`theme-mode-selector.tsx`](../src/ui/settings/theme-mode-selector.tsx)
+  `current`. Above three options the answer is `menu`, not a wider track.
 
 ## 7. Motion budget (chrome)
 
@@ -381,7 +441,10 @@ Before shipping any chrome UI change:
 1. Is it expressible as a config row (§5) using an existing value kind (§6)?
    If not — propose an edit to this document first, then implement. (This has
    already been violated once: a segmented control was added for "Tab bar
-   position" and had to be rewritten as a `cycle`.)
+   position" and had to be rewritten as a `cycle`. Note what the fix was — the
+   control was removed because it had no rule, not because the shape was
+   wrong. It returned on 2026-08-19 as DL-6.5's `binary`, through this step,
+   which is the process working rather than an exception to it.)
 2. Every color maps to a role in §3; no hardcoded hex (DL-2.1).
 3. Any animation fits the budget in §7 and the constraints in §1. Reduced-motion
    is handled **by scope** (`.settings-screen *`, `.usage-screen *`), never by
@@ -595,6 +658,32 @@ the frame around it, whatever a given screen puts in its sections.
   are pinned to the rail's foot, below a hairline, marked `--red` (DL-3.2). A
   screen with no destructive action has no foot at all; the slot is not filled
   with something else to keep the shape symmetrical.
+- **DL-11.6** **The section side is a document: title, one sentence, one
+  grouped surface (2026-08-19).** The active category prints its label as a
+  scoped 24px structural heading (DL-4.5 exception 5, DL-4.3's optical-tracking
+  exception), then its one-sentence description from the registry at
+  `--type-title` / `--text-faint` with a 58-character measure, then a hairline,
+  then **one** surface holding every row: `--chrome-1`, a 1px `--hair` edge,
+  `--radius-surface`, no shadow (DL-1.3). Groups inside it are separated by a
+  rule rather than by another box. The measure belongs to the column
+  (`min(680px, 100% - 80px)`, centred), not to each row — rows carried their
+  own `max-width` until this change, which kept them from stretching but left
+  them flush against the rail on a wide window, reading as a list in an empty
+  field. Row rhythm is 10px block padding, 12px once a description gives the
+  key two lines. DL-11.4 is unaffected: the heading names the CATEGORY, which
+  is the rail item, and no section repeats it again inside its own content.
+  Anchors: [`settings-screen.tsx`](../src/ui/settings/settings-screen.tsx)
+  `current`, [`settings-categories.ts`](../src/ui/settings/settings-categories.ts)
+  `current`.
+- **DL-11.7** **Below 720px the rail is icons and the document loses its
+  gutters (2026-08-19).** Deck's supported minimum is 480px, where DL-11.1's
+  fixed 220px rail would leave 260px for a 58-character measure. The rail
+  narrows to 54px and each tab keeps its name in `aria-label` **and** `title`,
+  so what is hidden is the label, never the accessible name; the foot's Reset
+  row drops its key column and keeps the button, which says `reset` in its own
+  text. The document swaps its centring gutters for 18px of edge padding. A
+  screen that hides a control instead of narrowing it is not implementing this
+  rule.
 
 ## 12. Editable lists
 
@@ -667,21 +756,58 @@ answered here rather than re-argued per button.
 
 - **DL-14.1** `@phosphor-icons/react` is the only source of functional icons,
   and `DeckIcon` (`src/ui/controls/deck-icon.tsx`) is the only place its
-  presentation is set: `color="currentColor"`, `weight="regular"`,
-  `aria-hidden`, `focusable="false"`, plus the unconditional `deck-icon`
+  presentation is set: `color="currentColor"`, the weight, `aria-hidden`,
+  `focusable="false"`, plus the unconditional `deck-icon`
   class the stylesheet's one icon rule hangs off. Icons are imported by name.
   Nothing else authors an `<svg>`, and no glyph character stands in for an
   action — `scripts/icon-system.test.ts` enforces both.
+  **Amended 2026-08-19: `regular` for every icon, `fill` for a named few.**
+  The exception list is a set of components in `deck-icon.tsx` — today exactly
+  `SidebarSimple`, which is BOTH panel toggles (the dock draws it mirrored) —
+  and it is deliberately not a `weight` prop, because a prop moves the decision
+  to the call sites and this rule exists to keep it in one file.
+
+  The day arrived at that through a reversal worth keeping. The owner asked for
+  solid icons, the app ran ALL of them at `fill` for an afternoon, and seeing it
+  running produced the actual rule: solid suits a control whose icon is a
+  picture of a LAYOUT, and suits nothing else in this chrome. The mechanism is
+  that Phosphor's `fill` does three different things. An icon with a body goes
+  solid (folder, trash, globe, terminal, table, calendar, chat, gear, gauge,
+  play). A stroke figure thickens without changing shape (`ArrowLeft`,
+  `Repeat`, both clockwise arrows, `TreeView`, `GitFork`). And a bare glyph
+  **changes shape**: `X`, `Plus`, `Minus` and `Check` become a solid square
+  with the mark knocked out, and a caret becomes a solid triangle — a close
+  control turning into a filled tile is what ended the uniform version.
+
+  Two measurements from that pass stay on the record. **All fifty-three icons
+  the app imports change at `fill`** — one `regular`-vs-`fill` path comparison
+  each, against `@phosphor-icons/react/dist/defs`. And **solid coverage across
+  libraries**, over the 29 the gallery probe carried: Phosphor 29/29, Material
+  Symbols 29/29, Remix 29/29, Tabler 18/29, Iconoir 8/29, Lucide none. (Those
+  29 are 29 of 53: the probe's list came from a shell scan that silently missed
+  six multi-line imports, `settings-nav-icons.tsx` among them, and the
+  shortfall surfaced only when the owner recognised the settings rail in a
+  screenshot. Enough to choose between libraries, not a census — any future set
+  must be re-measured against all 53.) A set whose solid variant is short
+  cannot hold this rule anyway, because the gaps would have to come from its
+  outline family and DL-14.1 would then describe two families at once.
+
+  **The weight is not readable from an attribute** — Phosphor expresses it in
+  path data — so `deck-icon.test.tsx` pins BOTH halves by comparing what
+  `DeckIcon` drew against the library's own output: the default against
+  `regular`, and `SidebarSimple` against `fill`.
   **Amended 2026-08-16, replacing `lucide-preact`.** Phosphor is fill-based
-  and has no `strokeWidth`: weight is a discrete family, and `regular` was
-  chosen by the owner from a gallery specimen because it reads closest to the
-  `strokeWidth={1.8}` the retired set drew at, in the same box. Two knock-ons
+  and has no `strokeWidth`: weight is a discrete family, and the weight it
+  entered on was `regular` — superseded above — chosen from a gallery specimen
+  because it read closest to the `strokeWidth={1.8}` the retired set drew at,
+  in the same box. Two knock-ons
   are rules in their own right. The class is now Deck's own, not the
   library's — Phosphor emits none, so `.lucide` became `.deck-icon` and CSS
   must never again reach for a vendor's naming convention. And a one-sided
   mark is flipped with `DeckIcon`'s `mirrored` prop rather than by adding a
   second drawing of it: `SidebarSimple` faces left, and the dock's toggle is
   the same icon mirrored.
+
 - **DL-14.2** Four sizes, exported from `deck-icon.tsx` and used by name:
   `CHROME_ICON` 13 (tab bar, titlebar), `ROW_ICON` 14 (config-row and popover
   actions), `BOARD_ICON` 15 (Open Board rows), `RAIL_ICON` 16 (settings rail,
@@ -1324,6 +1450,11 @@ looking at rendered specimens across four themes.
 - **DL-21.3** Focus-visible stays a 2px `--accent` outline (DL-5.2), and it
   composes with either wash rather than replacing it. Focus is where the
   keyboard is; selection is what the app is showing. A surface can be both.
+  **One scoped exception, added 2026-08-19: inside `.settings-screen` the
+  outline is `--text-muted`.** The geometry is unchanged — still 2px, still
+  composing with the wash — only the colour, because DL-3.7 makes that whole
+  surface achromatic and an accent ring would be the one hue left standing in
+  it. Everywhere else the ring is `--accent`.
 - **DL-21.4** Disabled stays `--text-faint` on the unchanged surface (DL-3.4).
   It reads quietly in the dark presets and that is accepted: `--text-faint` is
   one shared token, and loudening it here would move every disabled control in
@@ -1451,6 +1582,18 @@ program
   row keep `--type-body` and `ROW_ICON`.
 
 ## 24. The theme gallery
+
+> **Retired from the visible Settings contract on 2026-08-19, not deleted.**
+> Appearance offers exactly two modes now — a DL-6.5 `binary` group over
+> `deck-light` / `deck-dark` — so no gallery, import action, themes-folder row
+> or colour override is reachable from Settings. Every rule below still
+> describes [`theme-gallery.tsx`](../src/ui/settings/theme-gallery.tsx)
+> `deprecated`, which still builds, still passes its own tests and is still
+> mounted by nothing. **These rules bind no shipping surface**: they are kept
+> because the code is kept, so a future surface that mounts the gallery again
+> inherits the reasoning instead of re-deriving it, and because the fork
+> argument below is the record of a decision that was made, not unmade. A new
+> surface citing §24 must first say why the two-mode decision no longer holds.
 
 Approved as a fork on 2026-08-15, for the theme picker. §5 allows exactly one
 interactive value per row and forbids chip grids by name; a picker whose value

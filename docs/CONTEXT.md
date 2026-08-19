@@ -12,6 +12,193 @@
   material, kept for provenance, not authoritative.
 - Domain glossary: repo-root `CONTEXT.md`.
 
+## Light, Dark, and Settings as a document — 2026-08-19
+
+Appearance offers **two** values now. [`ThemeModeSelector`](../src/ui/settings/theme-mode-selector.tsx)
+`current` is a DL-6.5 `binary` radio group over `deck-light` / `deck-dark`, and
+it stands where the theme gallery, the `Import theme` row, the `Themes folder`
+row and the four colour-override rows used to be. Deck exposed four terminal
+palettes, an import picker and four colour pickers as its FIRST settings
+category, which made the app's opening statement "here is a theme workshop"
+rather than "here is how Deck looks".
+
+**Nothing was deleted.** `theme-gallery.tsx`, `theme-card-preview.tsx`,
+`color-overrides.tsx`, `custom-themes-store.ts` and all four file-format
+parsers build, pass their own tests, and are imported by nothing in Settings.
+DESIGN-LANGUAGE §24 carries a retirement banner rather than a deletion for the
+same reason: the fork argument is a record of a decision that was made, not
+unmade.
+
+### What a legacy profile sees
+
+- **Opening Settings writes nothing.** A stored `tokyo-night`, an imported
+  `file:…` id and a saved `colorOverrides` all survive being looked at;
+  `validateSettings` keeps any string id verbatim, and only a non-string falls
+  back.
+- The selected segment is decided by [`themeModeOf`](../src/settings/themes.ts)
+  `current`, which classifies **the background the app actually resolves** —
+  `resolveTheme`'s output, so an override moves the selection with it — against
+  `derive-colors`' own `DARK_LUMINANCE_THRESHOLD`. Reading the id instead would
+  be faster and would let a dark-overridden `deck-light` show "Light" over a
+  black window.
+- A click is an explicit conversion: it writes the canonical id AND clears
+  `colorOverrides`, because an override that survived would keep editing the
+  mode the user just chose from a surface that no longer shows it. When
+  something unrecoverable is on the line — an imported theme's selection, or
+  non-empty overrides — it asks first (`conversionDiscardsData`). A legacy
+  built-in with nothing overridden converts silently; nothing is lost that
+  re-picking cannot restore.
+- **Accepted risk, unchanged from the plan:** once converted, those overrides
+  cannot be restored from Settings, because the rows that edited them are gone.
+
+New installs default to `deck-dark`, and `getPreset`'s fallback moved with it —
+the two canonical presets lead `THEME_PRESETS`, so an id nothing answers to now
+resolves to the mode a new install gets rather than to Tokyo Night.
+
+Both seeds shipped with **neutral** foregrounds: DL-3.6 binds six built-ins now,
+so the reviewed `#e5e7eb` / `#25272c` became their luminance twins `#e7e7e7` /
+`#272727` (contrast moves by 0.02 and 0.00). `deck-light` is also the first
+LIGHT background `deriveChromeColors` has ever been asked for — which surfaced a
+dark-only assumption in its own test: the seam-ladder assertion compared raw
+luminance, and every chrome surface sits BELOW its background on a light theme.
+The assertion is signed by `--tone` now; the derivation itself was correct.
+
+### Settings became a document
+
+Each category owns a one-sentence `description` in the registry, and the section
+side renders title → sentence → hairline → one grouped surface (new DL-11.6).
+The measure moved from each row (`max-width: 620px`) to the column
+(`min(680px, 100% - 80px)`, centred): rows that cannot stretch still sit flush
+against the rail on a wide window and read as a list in an empty field. Below
+720px the rail is icons and the document takes edge padding (new DL-11.7); each
+tab keeps its name in `aria-label` and `title`, so what compact width hides is
+the label, never the accessible name.
+
+Three interaction contracts landed underneath it, none of them visible in a
+screenshot:
+
+- **Tab cannot leave the screen.** The surface covers the window but does not
+  remove the app from the document, so Tab used to walk into panes and tabs the
+  user could not see.
+- **Escape belongs to the innermost owner.** `CommitInput` now claims Escape
+  while its draft is dirty — reverting to the saved value and stopping the
+  event — so one press no longer costs both the edit and the screen. A clean
+  field claims nothing, so the second press closes as always.
+- **A loading snapshot cannot overwrite an edit.** `initSettings` assigns the
+  disk snapshot over `settings.value` when it resolves; the section is a
+  disabled `fieldset` until it has.
+
+Settings chrome is achromatic throughout (new DL-3.7): the green "on", the
+accent focus ring (DL-21.3 carve-out) and the accent step icons are neutral on
+this surface only. `--red` on Restore defaults stays — that is a warning, not a
+state.
+
+### Verification state
+
+`npm test` and `npm run build` green (see the run below); the design-language
+gate passes with its two new allowlist entries. **Browser/gallery evidence
+only — no `npm run electron:dev` pass, no `npm run tauri dev` pass, and no
+owner eye review of the RUNNING app.** The gallery specimen the direction was
+approved from is `src/gallery/sections/settings-direction.tsx`; the shipped
+surface has not been compared against those screenshots side by side. This is
+renderer-only work, so it reaches BOTH hosts — and neither has been run.
+
+## Automatic terminal renderer — implemented 2026-08-19
+
+Every pane now attempts one WebGL activation after `Terminal.open()` during its
+first mount. [`activateWebglRenderer()`](../src/terminal/pane.ts) `current` owns
+that one-shot lifecycle; later mounts and `applySettings()` cannot create or
+replace the addon. Initialization failure and context loss both dispose the
+active addon, emit distinct warnings, and leave xterm's DOM renderer active
+without restarting the pane or PTY. Pane disposal explicitly releases a still
+active GPU context through the same [pane lifecycle](../src/terminal/pane.ts)
+`current`.
+
+Renderer selection no longer exists in persisted settings or the Settings
+surface. [`validateSettings()`](../src/settings/settings-schema.ts) `current`
+ignores legacy renderer keys, and the [Appearance section](../src/ui/settings/sections/appearance-section.tsx)
+`current` plus its [gallery specimen](../src/gallery/sections/settings-direction.tsx)
+`current` expose no selector or fallback status.
+
+Automated evidence on macOS 2026-08-19:
+
+- `npm test -- src/settings/settings-schema.test.ts src/terminal/pane-renderer.test.ts src/ui/settings/settings-screen.test.tsx` exited 0: 3 files, 72 tests passed.
+- `npm run build` exited 0, including the gallery specimen; `npm run electron:build` exited 0.
+- `rg -n 'terminalRenderer|TERMINAL_RENDERERS|TerminalRenderer' src` returned no matches (exit 1 is ripgrep's no-match status).
+- `npm test` exited 1: 3,123 passed, 2 timed out, and 3 were skipped. The two timeouts were outside this change (`search-bar.test.ts` and `file-tree-view.test.tsx`); isolated reruns exited 0 at 23/23 and 16/16 respectively. The full-suite gate is still recorded as failed, not converted into a pass.
+
+Native acceptance remains deferred because no explicit permission was given to
+launch either host. OpenCode custom glyphs, the missing Settings row, and owner
+eye approval are therefore unverified under both Electron and Tauri on macOS;
+Windows remains unverified as well. The [implementation plan](plans/2026-08-19-automatic-terminal-renderer.md)
+`building` keeps agent detection, focus-driven renderer swaps, retries, and
+WebGL-context pooling out of scope.
+
+## The icons stayed outline, except the panel toggles — 2026-08-19
+
+[`DeckIcon`](../src/ui/controls/deck-icon.tsx) `current` draws `weight="regular"`
+for every icon except the components listed in its `SOLID_ICONS` set, which
+today is exactly `SidebarSimple` — both panel toggles, since the dock draws the
+same icon mirrored. No dependency changed, no call site moved, and it reaches
+BOTH hosts because it is renderer-only.
+
+**This is where a same-day reversal landed, and the reversal is the finding.**
+It started as "change Deck's icon set", which had two readings — the UI icon
+library or the packaged app's `.icns` — and the owner picked the library. The
+complaint underneath was that the chrome reads too heavy, which turned out to be
+three separable questions: too thick (fixable with `light`/`thin`), too round
+(Phosphor rounds every terminal at every weight, so only a new library fixes
+it), too outline (fixable with `fill`, in the same package). The probe that
+separated them was a throwaway gallery section, `icon set comparison`
+(`src/gallery/sections/icon-set-section.*`), **deleted once the choice was
+made** and recoverable only from this entry's own commit range: 29 of Deck's
+icons drawn by Phosphor `regular`/`light`/`thin`/`fill`/`duotone` and by
+Lucide, Tabler, Iconoir, Material Symbols (sharp and rounded, outline and fill)
+and Remix (line and fill), at every DL-14.2 size, with live size and stroke
+controls. Candidate SVG was read out of npm packages
+installed in a **scratchpad** and frozen into a JSON beside the section — so
+`package.json` was never touched and no dependency fork was opened.
+
+The owner picked `fill`, the app ran entirely at `fill`, and then the owner
+looked at it RUNNING and reversed: solid is right for a panel toggle and wrong
+for everything else. The mechanism is that Phosphor's `fill` does three
+different things. Icons with a body go solid (folder, trash, globe, terminal,
+table, calendar, chat, gear, gauge, play). Stroke figures merely thicken
+(`ArrowLeft`, `Repeat`, both clockwise arrows, `TreeView`, `GitFork`). And bare
+glyphs change SHAPE: `X`, `Plus`, `Minus` and `Check` become a solid square with
+the mark knocked out, and the carets become solid triangles — the tab strip's
+close control and the font-size stepper became filled tiles, which is what the
+uniform version died of. A panel toggle survives because its icon is a picture
+of a layout, and a filled half IS the layout.
+
+The exception lives as a set of components in `deck-icon.tsx`, not as a `weight`
+prop, so no call site can pick its own weight (DL-14.1). Identity, not
+`displayName` — a minifier may drop the name, and a silently-empty match would
+quietly restore the uniform outline set.
+
+**Two measurements from the pass, both worth keeping.** All 53 icons the app
+imports do change at `fill` — one `regular`-vs-`fill` path comparison each,
+against `@phosphor-icons/react/dist/defs`. And solid coverage across libraries,
+over the 29 the probe carried: Phosphor 29/29, Material Symbols 29/29, Remix
+29/29, Tabler 18/29, Iconoir 8/29, Lucide none at all (it is outline-only, which
+removed the set recommended minutes earlier as the most SF-Symbols-like). Two
+counts were wrong on the way here and are corrected: a guess of "about twelve
+change", and the probe's own belief that Deck uses 29 icons. It uses 53 — a
+shell scan missed six multi-line imports (`settings-nav-icons.tsx`'s eight rail
+categories among them) and the gap surfaced only when the owner recognised the
+settings rail in a screenshot of the running app. The gallery comparison
+therefore covers 29 of 53: enough to choose between libraries, not a census.
+
+**Evidence and what is owed.** `deck-icon` 8/8 pins both halves. The full suite
+ran green apart from two entries outside this change — `search-bar` (a timeout
+that passes 23/23 in isolation) and `icon-system`'s glyph gate, which another
+session's `gallery/sections/settings-direction.tsx` fails on a literal `↺`.
+Owner eye review happened on the app they were running, which is what produced
+the reversal; **no packaged build and no `electron:dev` pass of the final
+state**, and Tauri is unverified as always. The comparison section and its
+registry row are gone — it was built to answer one question and the question is
+answered.
+
 ## Chrome ink goes neutral — 2026-08-17
 
 The owner read the app's text as "hơi ánh xanh" — faintly blue — and asked for

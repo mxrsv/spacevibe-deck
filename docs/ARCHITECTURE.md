@@ -171,23 +171,21 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   [clipboard text boundary](../src/terminal/terminal-clipboard.ts#L45-L55) `current`,
   [menu generator](../scripts/generate-menu.ts) `current`).
 - The macOS menu path can't tell an accelerator from a mouse click (Tauri's `MenuEvent` carries only an id), so only `destructive: true` actions (`close-pane`/`close-tab`/`clear-buffer`) are suppressed while a chrome text field holds the caret — every other action still runs there — [ActionDefinition.destructive](../src/terminal/action-registry.ts#L82-L115) `current`, [runAction](../src/terminal/tab-manager.ts#L1032-L1054) `current`.
-- Which renderer paints a pane is a setting, `terminalRenderer`, defaulting to
-  `dom` — the renderer every shipped build has used
-  ([settings-schema.ts](../src/settings/settings-schema.ts) `current`,
-  [appearance-section.tsx](../src/ui/settings/sections/appearance-section.tsx) `current`).
-  `webgl` is opt-in and buys one thing: xterm's DOM renderer cannot draw custom
-  glyphs, so block and box-drawing characters that agent TUIs join across cells
-  (OpenCode's wordmark, prompt borders) come out segmented, while the WebGL
-  renderer draws them to the full cell box. It costs text fidelity in exchange —
-  all glyphs route through xterm core's shared `TextureAtlas`, giving grayscale
-  antialiasing and cell widths rounded to whole device pixels. `canvas` is not
-  offered because it shares that atlas and so carries the same cost.
-- `syncRenderer` in [pane.ts](../src/terminal/pane.ts) `current` is the one
-  reconcile both `mount()` and `applySettings()` call, so the switch is live and
-  no pane is respawned: WebGL loads only after `Terminal.open()`, and disposing
-  it hands rendering back to the DOM path. The handle is cleared on
-  initialization failure and on context loss alike, so a spent addon cannot make
-  a later switch a silent no-op. Renderer-side, so it reaches both hosts.
+- [`activateWebglRenderer()`](../src/terminal/pane.ts) `current` runs once in a
+  pane's first `mount()`, after `Terminal.open()`, so every pane automatically
+  attempts xterm's WebGL custom-glyph path. Renderer choice is not persisted or
+  exposed in Settings ([settings schema](../src/settings/settings-schema.ts)
+  `current`, [Appearance section](../src/ui/settings/sections/appearance-section.tsx)
+  `current`).
+- WebGL initialization failure and context loss explicitly dispose the active
+  addon, clear its identity-guarded handle, and warn before leaving xterm's DOM
+  renderer active; neither fallback restarts the pane or PTY. `applySettings()`
+  does not create or replace renderer addons
+  ([pane renderer lifecycle](../src/terminal/pane.ts) `current`).
+- Pane disposal explicitly releases a still-active WebGL addon and its GPU
+  context. The lifecycle lives entirely in the shared renderer under `src/`, so
+  both Electron and Tauri receive the same behavior without host-specific code
+  ([pane disposal](../src/terminal/pane.ts) `current`).
 - `lineHeight` stays 1.25: flush rows were never the fix, since custom glyphs
   are drawn to the full cell box and `device.cell.height` already multiplies the
   char height by that value.
@@ -304,6 +302,58 @@ Forks resolved in [`../AGENTS.md`](../AGENTS.md) `current`, moved here when the 
 closed. Newest first; each entry states what the fork touched and which choice the
 owner made.
 
+- 2026-08-19: **Appearance shows Light and Dark, and the theme machinery stays
+  in the tree unmounted** — `docs/DESIGN-LANGUAGE.md` rules (DL-3.7, DL-4.3,
+  DL-4.5, DL-6.5, DL-11.6, DL-11.7, DL-21.3, §24 retired), the listed fork. The
+  owner's ask was a calmer first settings category, not a smaller app: four
+  terminal palettes, an import picker and four colour pickers made Appearance
+  read as a theme workshop. Two questions were settled before code. **Delete or
+  hide?** Hide — the parsers, the gallery, the card preview and the custom-theme
+  store all still build and still pass their own tests, they are simply
+  imported by nothing in Settings, so a legacy `themeId` (built-in or
+  `file:…`) keeps resolving and a reversal is re-mounting one component.
+  **Convert on open or on click?** On click only: opening Settings performs no
+  write, a legacy theme is DESCRIBED by whichever segment its resolved
+  background belongs to, and a click is the explicit conversion — which also
+  clears `colorOverrides`, with a confirmation first when an imported selection
+  or non-empty overrides are what would go. The accepted cost is that those
+  overrides cannot then be restored from Settings, because the rows that edited
+  them are gone. A `System` mode was ruled out of scope, not rejected. Detail:
+  [docs/CONTEXT.md](CONTEXT.md#light-dark-and-settings-as-a-document--2026-08-19)
+  `current`; [spec](specs/2026-08-19-light-dark-settings-design.md) `decided`.
+- 2026-08-19: **the icon weight is `regular` again, with `SidebarSimple` as the
+  one solid exception** — a `docs/DESIGN-LANGUAGE.md` rule (DL-14.1), the listed
+  fork. Owner opened it as "change Deck's icon set", which split into two
+  different asks and was disambiguated before any code: the UI icon LIBRARY, not
+  the packaged app's `.icns` (both `electron-builder.yml` and `.release.yml`
+  still borrow `src-tauri/icons/`). The complaint underneath was weight, so the
+  probe was a throwaway gallery page — `icon set comparison`, deleted with the
+  decision, 29 of Deck's icons drawn by
+  Phosphor `regular`/`light`/`thin`/`fill`/`duotone` and by Lucide, Tabler,
+  Iconoir, Material Symbols and Remix, at every DL-14.2 size, with live size and
+  stroke controls. Candidate SVG was read out of npm packages installed in a
+  scratchpad and frozen into a JSON beside the section, so **no dependency
+  changed and `package.json` was never touched**. Owner asked which set reads
+  most native (answered Lucide, with the caveat that SF Symbols cannot be
+  licensed outside Apple's own UI), then asked for solid icons instead — at
+  which point coverage decided the library question: Phosphor, Material and
+  Remix draw all 29 of the probe's solid, Tabler 18, Iconoir 8, and Lucide has
+  no solid family at all. Owner chose Phosphor's own `fill`, the app ran
+  entirely at `fill` for an afternoon, and **the owner then reversed it from the
+  running app**: solid for the two panel toggles, outline everywhere else. That
+  reversal is the rule now, and the reason is mechanical — Phosphor's `fill`
+  turns a bare glyph into a different SHAPE (`X`, `Plus`, `Minus`, `Check`
+  become a filled square with the mark knocked out, carets become solid
+  triangles), which is defensible on a layout picture and wrong on a close
+  button. Implemented as a component set inside `deck-icon.tsx` rather than a
+  `weight` prop, so no call site can pick its own weight. Two counts in this
+  entry's first draft were wrong and were corrected before it shipped: "about
+  twelve icons change", and the belief that Deck imports 29 icons at all — a
+  shell scan had missed six multi-line imports, so the probe covers 29 of 53.
+  All 53 do change at `fill`, measured against the package's own `defs`.
+  Renderer-only, so it reaches Tauri too, where nothing has been run; no native
+  pass, and the owner's eye review happened on the app they were running, not on
+  a packaged build.
 - 2026-08-17: **the rail's `New` row moved to the top, gained a `Workspace`
   caption, and dropped a type rung** — DL-27.14 said "the rail's LAST row" and
   named `--type-title`, so all three are rule changes, the listed fork. Owner
