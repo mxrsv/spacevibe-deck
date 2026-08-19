@@ -21,10 +21,24 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
 const CONFIG_PATH = new URL("../electron-builder.release.yml", import.meta.url);
-const REQUIRED_ENV = [
-  "APPLE_ID",
-  "APPLE_APP_SPECIFIC_PASSWORD",
-  "APPLE_TEAM_ID",
+
+/**
+ * The three credential sets `MacTargetHelper.getNotarizeOptions` accepts, in the
+ * order it tries them. Any ONE complete set is enough, so this must not demand
+ * the first: a local run authenticates through a `notarytool store-credentials`
+ * keychain profile precisely so the password never reaches a command line,
+ * while CI passes the app-specific password as environment variables.
+ */
+const CREDENTIAL_SETS = [
+  {
+    label: "app-specific password",
+    names: ["APPLE_ID", "APPLE_APP_SPECIFIC_PASSWORD", "APPLE_TEAM_ID"],
+  },
+  {
+    label: "App Store Connect API key",
+    names: ["APPLE_API_KEY", "APPLE_API_KEY_ID", "APPLE_API_ISSUER"],
+  },
+  { label: "keychain profile", names: ["APPLE_KEYCHAIN_PROFILE"] },
 ];
 const SIGNING_IDENTITY_PREFIX = "Developer ID Application";
 
@@ -39,9 +53,21 @@ function directives(source) {
 
 const problems = [];
 
-const missing = REQUIRED_ENV.filter((name) => !process.env[name]?.trim());
-if (missing.length > 0) {
-  problems.push(`missing ${missing.join(", ")}`);
+const isSet = (name) => Boolean(process.env[name]?.trim());
+// A set counts as chosen once ANY of its names is present, so a half-filled set
+// is reported as the specific gap it is rather than as "no credentials at all".
+const started = CREDENTIAL_SETS.filter((set) => set.names.some(isSet));
+if (started.length === 0) {
+  problems.push(
+    `no notarization credentials: set one of ${CREDENTIAL_SETS.map(
+      (set) => `${set.names.join(" + ")} (${set.label})`,
+    ).join(", or ")}`,
+  );
+} else if (!started.some((set) => set.names.every(isSet))) {
+  for (const set of started) {
+    const missing = set.names.filter((name) => !isSet(name));
+    problems.push(`${set.label} is incomplete: missing ${missing.join(", ")}`);
+  }
 }
 
 let config = "";
