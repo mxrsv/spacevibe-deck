@@ -42,6 +42,18 @@ export const STAGE_ICONS = {
   /** Plus, regular — the frame row's `New`, and the strip's own tab-add. */
   plus: '<path d="M12 4.75v14.5M4.75 12h14.5"/>',
   /*
+   * PlusSquare, regular — a per-project launcher on a cluster header, and
+   * ONLY there. The owner replaced the bare cross with this on 2026-08-20
+   * (after a circled mark read too round beside the rail's rectangular rows),
+   * and moved it one rung up to 15px, since a framed mark spends its outer
+   * pixels on the frame. Drawing `plus` here would reproduce the glyph that
+   * ask removed. Geometry is Phosphor's own, scaled off the 256 grid: a
+   * 192-square at r16 (3 / 18 / 1.5 here) around a plus spanning 88…168
+   * (8.25…15.75).
+   */
+  plusSquare:
+    '<rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M12 8.25v7.5M8.25 12h7.5"/>',
+  /*
    * DotsThreeOutline at `fill`, never `DotsThree` at `fill`
    * (feature-toolbar.tsx:235-249): the bare glyph knocks its dots out of a
    * solid tile, and DotsThreeOutline's `regular` rings all but vanish at this
@@ -402,6 +414,10 @@ function renderRailTab(tab) {
  * implicit second row — the misalignment the app's own wrapper exists to
  * prevent (`04a-agent-rail.css:166-209`).
  *
+ * The `+` is `plusSquare`, not the bare `plus` the frame row and the strip
+ * draw — the app's launcher is a framed mark, one size larger, and only on
+ * this header.
+ *
  * A remembered project swaps that toggle for a still span in track 1 and has
  * NO caret element at all — there are no rows to collapse, so the disclosure
  * is omitted rather than disabled (DL-19.7) — and takes track 3's `×`.
@@ -415,7 +431,7 @@ function renderRailCluster(cluster) {
   const hover = cluster.hovered === true ? " is-hover" : "";
   const folder = `<span class="a-appwin__clusterfolder">${renderChromeIcon(STAGE_ICONS.folder)}</span>`;
   const name = `<span class="a-appwin__clustername">${cluster.project}</span>`;
-  const add = `<span class="a-appwin__clusteradd">${renderChromeIcon(STAGE_ICONS.plus)}</span>`;
+  const add = `<span class="a-appwin__clusteradd">${renderChromeIcon(STAGE_ICONS.plusSquare)}</span>`;
 
   const head =
     cluster.remembered === true

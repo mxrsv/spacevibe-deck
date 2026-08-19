@@ -132,10 +132,11 @@ describe("STAGE_ICONS", () => {
     }
   });
 
-  it("gains the nine the redesign draws", () => {
+  it("gains the ten the redesign draws", () => {
     for (const name of [
       "sidebar",
       "plus",
+      "plusSquare",
       "dots",
       "globe",
       "file",
@@ -146,6 +147,15 @@ describe("STAGE_ICONS", () => {
     ]) {
       expect(STAGE_ICONS[name]).toBeTruthy();
     }
+  });
+
+  it("keeps the framed launcher and the bare cross apart", () => {
+    // The rail's per-project `+` became `PlusSquare` on 2026-08-20 and the
+    // circled and bare forms were both rejected; the frame row's `New` and the
+    // strip's tab-add stayed the bare `Plus`. One key cannot serve both.
+    expect(STAGE_ICONS.plusSquare).not.toBe(STAGE_ICONS.plus);
+    expect(STAGE_ICONS.plusSquare).toContain("<rect");
+    expect(STAGE_ICONS.plus).not.toContain("<rect");
   });
 
   it("carries its own fill on the two the app draws solid", () => {
@@ -173,6 +183,12 @@ describe("renderStageFrameRow", () => {
   it("carries no feature toolbar — in sidebar mode the app passes none", () => {
     expect(row.querySelectorAll(".a-appwin__ctl")).toHaveLength(1);
     expect(row.querySelectorAll(".a-appwin__iconbtn")).toHaveLength(0);
+  });
+
+  it("draws the bare Plus on `New`, not the rail's framed launcher", () => {
+    const glyph = row.querySelector(".a-appwin__newglyph");
+    expect(glyph.querySelector("svg")).not.toBe(null);
+    expect(glyph.querySelector("svg rect")).toBe(null);
   });
 
   it("reuses the titlebar's own traffic lights", () => {
@@ -418,6 +434,22 @@ describe("renderStageRail", () => {
     ]);
   });
 
+  it("wears the app's framed launcher on a project header", () => {
+    // `PlusSquare`'s frame is the one thing that tells the two glyphs apart in
+    // the DOM: if a refactor collapses them, this rect goes missing here or
+    // appears at the two bare `+` controls below.
+    const add = parse(renderStageRail([FRAMED_CLUSTER])).querySelector(
+      ".a-appwin__clusteradd",
+    );
+    expect(add.querySelector("svg rect")).not.toBe(null);
+    expect(add.querySelectorAll("svg path")).toHaveLength(1);
+
+    const remembered = parse(renderStageRail([REMEMBERED_CLUSTER])).querySelector(
+      ".a-appwin__clusteradd",
+    );
+    expect(remembered.querySelector("svg rect")).not.toBe(null);
+  });
+
   it("draws a monogram for an agent with no brand file", () => {
     const pane = {
       id: null,
@@ -525,6 +557,9 @@ describe("renderStageStrip", () => {
     expect(chips.lastElementChild.getAttribute("class")).toBe(
       "a-appwin__chipadd",
     );
+    // The strip's `+` is the bare Plus the app draws at 13px, not the rail's
+    // framed launcher.
+    expect(chips.lastElementChild.querySelector("svg rect")).toBe(null);
     expect(childClasses(actions)).toEqual(["a-appwin__ctl", "a-appwin__ctl"]);
   });
 
