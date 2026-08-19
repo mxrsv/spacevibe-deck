@@ -75,8 +75,7 @@ describe("AgentsSection", () => {
   // link row landed after it. Scoping by label is positional-drift-proof.
   const addButton = (): HTMLButtonElement => {
     const row = Array.from(host.querySelectorAll(".cfg-row")).find(
-      (candidate) =>
-        candidate.querySelector(".cfg-row__label")?.textContent === "Add agent",
+      (candidate) => candidate.querySelector(".cfg-row__label")?.textContent === "Add agent",
     )!;
     return row.querySelector<HTMLButtonElement>(".cfg-btn")!;
   };
@@ -104,9 +103,7 @@ describe("AgentsSection", () => {
     mount();
     declare("codex nightly", "codex --nightly");
 
-    const remove = host.querySelector(
-      '[aria-label="Remove codex nightly"] svg',
-    );
+    const remove = host.querySelector('[aria-label="Remove codex nightly"] svg');
     // Trash removes something the user declared and persisted; the draft's
     // X only dismisses a row that never existed.
     expect(remove?.classList.contains("deck-icon--trash")).toBe(true);
@@ -115,18 +112,14 @@ describe("AgentsSection", () => {
     expect(addButton().querySelector(".deck-icon--plus")).not.toBeNull();
 
     click(addButton());
-    const discard = host.querySelector(
-      '[aria-label="Discard the new agent"] svg',
-    );
+    const discard = host.querySelector('[aria-label="Discard the new agent"] svg');
     expect(discard?.classList.contains("deck-icon--x")).toBe(true);
     expect(addButton().textContent?.trim()).toBe("add");
   });
 
   it("lists every built-in as a locked row (DL-12.4)", () => {
     mount();
-    const locked = Array.from(
-      host.querySelectorAll<HTMLButtonElement>(".cfg-btn--disabled"),
-    );
+    const locked = Array.from(host.querySelectorAll<HTMLButtonElement>(".cfg-btn--disabled"));
     expect(locked).toHaveLength(BUILTIN_AGENTS.length);
     expect(locked.every((button) => button.disabled)).toBe(true);
     // A built-in carries no remove affordance — only declared rows do.
@@ -147,9 +140,7 @@ describe("AgentsSection", () => {
     declare("Evil", "x; rm -rf ~");
 
     expect(settings.value.customAgents).toEqual([]);
-    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
-      "letters, digits",
-    );
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("letters, digits");
   });
 
   it("refuses a name already taken by a built-in", () => {
@@ -157,9 +148,7 @@ describe("AgentsSection", () => {
     declare("Claude Code", "aider");
 
     expect(settings.value.customAgents).toEqual([]);
-    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
-      "already used",
-    );
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("already used");
   });
 
   it("refuses a name spelled like a built-in's id", () => {
@@ -242,9 +231,9 @@ describe("AgentsSection", () => {
     });
 
     const usageButton = (): HTMLButtonElement => {
-      const found = Array.from(
-        host.querySelectorAll<HTMLButtonElement>(".cfg-btn"),
-      ).find((candidate) => candidate.textContent?.trim() === "open …");
+      const found = Array.from(host.querySelectorAll<HTMLButtonElement>(".cfg-btn")).find(
+        (candidate) => candidate.textContent?.trim() === "open …",
+      );
       if (found === undefined) {
         throw new Error("no token usage link row");
       }
@@ -298,11 +287,7 @@ describe("AgentsSection — refusals and cleanup", () => {
     settings.value = DEFAULT_SETTINGS;
   });
 
-  const openAndCommit = (
-    trigger: string,
-    aria: string,
-    value: string,
-  ): void => {
+  const openAndCommit = (trigger: string, aria: string, value: string): void => {
     const button = Array.from(
       host.querySelectorAll<HTMLButtonElement>(
         ".cfg-row--item .cfg-row__label--edit, .cfg-row--item .cfg-btn",
@@ -311,9 +296,7 @@ describe("AgentsSection — refusals and cleanup", () => {
     act(() => {
       button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    const input = host.querySelector<HTMLInputElement>(
-      `[aria-label="${aria}"]`,
-    )!;
+    const input = host.querySelector<HTMLInputElement>(`[aria-label="${aria}"]`)!;
     act(() => {
       input.value = value;
       input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -334,18 +317,14 @@ describe("AgentsSection — refusals and cleanup", () => {
     openAndCommit("aider", "Command for Aider", "$(id)");
 
     expect(settings.value.customAgents[0].command).toBe("aider");
-    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
-      "letters, digits",
-    );
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("letters, digits");
   });
 
   it("says why an in-place rename was refused", () => {
     openAndCommit("Aider", "Name for Aider", "Claude Code");
 
     expect(settings.value.customAgents[0].label).toBe("Aider");
-    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
-      "already used",
-    );
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("already used");
   });
 
   it("clears the refusal once a valid value is committed", () => {

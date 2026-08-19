@@ -99,11 +99,9 @@ if (config) {
 // different failure from an empty identity list and is worth saying out loud.
 let identities = "";
 try {
-  identities = execFileSync(
-    "security",
-    ["find-identity", "-v", "-p", "codesigning"],
-    { encoding: "utf8" },
-  );
+  identities = execFileSync("security", ["find-identity", "-v", "-p", "codesigning"], {
+    encoding: "utf8",
+  });
 } catch (error) {
   problems.push(`could not read the keychain: ${error.message}`);
 }
@@ -115,9 +113,7 @@ if (identities && !identities.includes(SIGNING_IDENTITY_PREFIX)) {
 }
 
 if (problems.length > 0) {
-  console.error(
-    `Electron release signing is not configured: ${problems.join("; ")}`,
-  );
+  console.error(`Electron release signing is not configured: ${problems.join("; ")}`);
   process.exit(1);
 }
 console.log("Electron release signing is configured.");
