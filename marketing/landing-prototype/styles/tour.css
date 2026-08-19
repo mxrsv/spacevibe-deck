@@ -1,9 +1,13 @@
-/* Scroll tour + closing band. The window itself is the shared ".a-appwin"
-   chrome from direction-a.css — this file only adds the tour scaffold, the
-   Open-board scene, chapter morphs, and the closing band. Design tokens are
-   sourced from the shared tokens.css :root: the accent + font stacks are
-   aliased to the local --t- and --a- names here, and the --sg- chrome vars
-   resolve from :root so hero + tour stay in lockstep. */
+/* Feature panels + closing band. The window itself is the shared ".a-appwin"
+   chrome from direction-a.css — this file only adds the panel stack, the
+   Open-board scene, the focus-expand state, and the closing band. Design
+   tokens are sourced from the shared tokens.css :root: the accent + font
+   stacks are aliased to the local --t- and --a- names here, and the --sg-
+   chrome vars resolve from :root so hero + panels stay in lockstep.
+
+   The section class is still `.tour` — it was a sticky scroll tour until
+   2026-08-19, and the closing band and footer below it kept their `.tour__*`
+   names when the chapters became panels. */
 
 .tour {
   --t-ink: #ffffff;
@@ -15,7 +19,6 @@
   --t-accent-rgb: var(--accent-rgb);
   --t-surface-0: #090b0a;
   --t-surface-2: #151915;
-  --t-morph: 620ms cubic-bezier(0.22, 0.78, 0.18, 1);
   /* The shared .a-appwin chrome reads these; alias them to the shared
      tokens (tokens.css :root) so hero + tour render identically. The two ink
      vars are read by `.a-cta-tag`, the coming-soon chip the closing band
@@ -25,10 +28,9 @@
   --a-line: var(--t-line);
   --a-ink-faint: var(--t-ink-faint);
   position: relative;
-  /* The ::after bloom band scales past the section edges (tour-enddrift);
-     clip it here or it widens/lengthens the document's scrollable overflow.
-     Must be `clip`, not `hidden` — `hidden` creates a scroll container and
-     breaks the .tour__sticky pin. Mirrors .direction-a. */
+  /* `clip`, not `hidden`: `hidden` builds a scroll container, and one extra
+     pixel of overflow in a scroll container is what moved the whole shell the
+     last time (see AGENTS.md "Known traps"). Mirrors .direction-a. */
   overflow: clip;
   color: var(--t-ink);
   font-family: var(--a-font-display);
@@ -41,13 +43,11 @@
     linear-gradient(180deg, #090b0a 0%, #0c0e0c 55%, #0a0c0b 100%);
 }
 
-/* Drifting light pools rising behind the closing band + footer so the page
-   does not end on flat black. CSS-only (no third WebGL canvas). These were
-   Tokyo Night blue/violet/cyan; they are plain white at low alpha now, because
-   the page's whole light language is achromatic and they were the last thing
-   still tinting it. Three overlapping pools at different sizes still read as
-   depth without reading as a colour. Anchored to the bottom, faded out at the
-   top so they never reach the sticky tour above. */
+/* Light pools rising behind the closing band + footer so the page does not end
+   on flat black. Three overlapping pools at different sizes read as depth
+   without reading as a colour. They used to drift on a 22s loop; that was the
+   last moving background left after the two WebGL fields went, and it went
+   with them (2026-08-19). Anchored to the bottom, faded out at the top. */
 .tour::after {
   position: absolute;
   z-index: 0;
@@ -74,189 +74,232 @@
   content: "";
   mask-image: linear-gradient(180deg, transparent 0%, #000 26%);
   pointer-events: none;
-  will-change: transform;
-  animation: tour-enddrift 22s ease-in-out infinite alternate;
 }
 
-/* ---------- sticky scaffold ---------- */
+/* ---------- feature panels ---------- */
 
-/* z-index lifts the whole scroll track above the bloom band below. */
-.tour__track {
+/* The stack that replaced the sticky tour. One column of panels on the
+   page-wide frame; each panel is its own object with its own window mock, so
+   scroll position drives nothing but ordinary document flow. */
+.panels {
   position: relative;
   z-index: 1;
-  height: 340svh;
-}
-
-.tour__sticky {
-  position: sticky;
-  top: 0;
-  display: grid;
-  align-items: center;
-  height: 100svh;
-  overflow: clip;
-}
-
-/* Crosshair plus-grid backdrop — brightens as the chapters advance. */
-.tour__sticky::before {
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cpath d='M0 4h8M4 0v8' fill='none' stroke='%23ffffff' stroke-opacity='.1' stroke-width='.65'/%3E%3C/svg%3E");
-  content: "";
-  mask-image: radial-gradient(circle at 64% 50%, #000 0%, transparent 72%);
-  opacity: 0.35;
-  pointer-events: none;
-  transition: opacity 700ms ease;
-}
-
-.tour[data-chapter="2"] .tour__sticky::before {
-  opacity: 0.6;
-}
-
-.tour[data-chapter="3"] .tour__sticky::before {
-  opacity: 0.85;
-}
-
-/* Aurora curtain behind the window — palette driven per chapter from JS. */
-.tour__motion {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  overflow: hidden;
-  mask-image: linear-gradient(
-    180deg,
-    transparent 0%,
-    #000 16%,
-    #000 84%,
-    transparent 100%
-  );
-  opacity: 0.85;
-  pointer-events: none;
-}
-
-/* Sits on the page-wide frame, not on its own narrower measure — that is what
-   lines the chapter rail up with the hero's lede column above it. */
-.tour__layout {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: minmax(17rem, 24rem) minmax(0, 1fr);
-  gap: clamp(2rem, 4vw, 4.25rem);
-  align-items: center;
+  display: flex;
   width: var(--frame-width);
+  flex-direction: column;
+  gap: clamp(1.25rem, 2.6vw, 2.25rem);
   margin-inline: auto;
-  padding-inline: var(--frame-pad);
+  padding: clamp(2.4rem, 5vh, 4rem) var(--frame-pad) clamp(2rem, 5vh, 4rem);
 }
 
-/* ---------- chapter rail ---------- */
+/* The section label belongs to the first panel, not to the empty band above
+   it: with its own bottom margin AND the stack's gap it floated in ~160px of
+   nothing. The gap alone is the spacing now. */
+.panels > .band-label {
+  margin-bottom: 0;
+}
 
-.tour__chapter {
+.panel {
+  position: relative;
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.9rem;
-  padding: 0.9rem 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  opacity: 0.35;
-  transition: opacity 360ms ease;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  gap: clamp(1.5rem, 3vw, 3rem);
+  align-items: center;
+  padding: clamp(1.75rem, 3.4vw, 3rem);
+  border: 1px solid var(--t-line);
+  border-radius: 20px;
+  /* One step off the page, no more. The lit plane the mock stands on is
+     `.panel__stage` inside it, so this surface has to stay under that or the
+     panel reads as two competing planes. */
+  background: rgb(255 255 255 / 4%);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 5%) inset;
 }
 
-.tour[data-chapter="1"] .tour__chapter[data-ch="1"],
-.tour[data-chapter="2"] .tour__chapter[data-ch="2"],
-.tour[data-chapter="3"] .tour__chapter[data-ch="3"] {
-  opacity: 1;
+/* Two shapes, not one. A scene drawn at the window's design width — three
+   terminal panes, three restore columns, a file tree beside an editor — dies
+   in a half-width column: the mock is sized in `cqw`, so narrowing the column
+   shrinks the type until the `max(…, 7px)` floors are all that is left. Those
+   scenes take the full panel width with the copy above them (`wide`); the ones
+   that are naturally tall and narrow keep the beside-the-copy shape (`side`).
+   The alternation below is what stops five panels reading as a table. */
+.panel[data-shape="side"] .panel__art {
+  order: 2;
+}
+
+/* Flipping with `order` alone left the art in the NARROW column: the track
+   sizes belong to grid positions, not to the items that reorder into them. The
+   template flips with the order. */
+.panel[data-shape="side"][data-flip] {
+  grid-template-columns: minmax(0, 1.14fr) minmax(0, 0.86fr);
+}
+
+.panel[data-shape="side"][data-flip] .panel__art {
+  order: 0;
+}
+
+.panel[data-shape="side"][data-flip] .panel__copy {
+  order: 2;
+}
+
+.panel[data-shape="wide"] {
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(1.25rem, 2.4vw, 2rem);
+  align-items: stretch;
+}
+
+/* The copy sits on the same measure it would have in a side panel rather than
+   running the panel's full width — a 1200px line of body text is unreadable
+   whatever it says. */
+.panel[data-shape="wide"] .panel__copy {
+  max-width: 58ch;
+  padding: 0;
+}
+
+.panel[data-shape="wide"] .panel__copy p {
+  max-width: none;
+}
+
+.panel__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: clamp(0.5rem, 1.6vw, 1.75rem);
 }
 
 /* Faint, not signal-bright: the number is an index, and white at full strength
-   competed with the chapter title right beside it. */
-.tour__chapnum {
+   competed with the title right beside it. */
+.panel__num {
   color: var(--t-ink-faint);
   font-family: var(--a-font-mono);
-  font-size: 0.78rem;
-  line-height: 1.9;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
 }
 
-.tour__chaptext strong {
-  display: block;
-  font-size: 1.12rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+.panel__copy h2 {
+  margin: 0;
+  font: 500 clamp(1.45rem, 2.3vw, 1.95rem) / 1.16 var(--a-font-display);
+  letter-spacing: -0.022em;
+  text-wrap: balance;
 }
 
-.tour__chaptext span {
-  display: block;
-  margin-top: 0.35rem;
+.panel__copy p {
+  max-width: 42ch;
+  margin: 0;
   color: var(--t-ink-soft);
-  font-size: 0.92rem;
-  line-height: 1.55;
+  font-size: clamp(0.92rem, 1.05vw, 1rem);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+/* The art used to bleed past the panel's padding on its outer side — the
+   window is a view INTO the product, so cutting it at the panel edge would say
+   there is more of it than the panel can hold. It never read that way: the
+   negative margin was clamped to exactly the panel's own padding and `.panel`
+   is `overflow: hidden`, so the stage stopped flush against the border instead
+   of running through it — one edge 1px from the frame while the other three
+   kept 35px, which reads as a broken margin, not as a crop. The stage sits
+   inside the padding on all four sides now. */
+.panel__art {
+  min-width: 0;
+}
+
+/* Reveal on scroll, same idiom as the closing band below. */
+.panel[data-reveal] {
+  opacity: 0;
+  transform: translateY(1.4rem);
+  transition:
+    opacity 620ms ease var(--reveal-delay, 0ms),
+    transform 620ms cubic-bezier(0.22, 0.78, 0.18, 1) var(--reveal-delay, 0ms);
+}
+
+.panel[data-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel[data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ---------- the plane each panel's mock stands on ---------- */
+
+/* The hero desk, held back. Same painting, same idea — a lit plane under a
+   near-black window — but dimmer, smaller-radius and cropped differently per
+   panel, so the hero keeps the one full-strength picture on the page. */
+.panel__stage {
+  position: relative;
+  display: flex;
+  padding: clamp(0.9rem, 2vw, 1.85rem);
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 16px;
+  background: var(--t-surface-2);
+  isolation: isolate;
+}
+
+.panel__stage-art {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image: var(--plate-image);
+  background-size: cover;
+  /* Two thirds of the hero plate's brightness: the panels are read while
+     scrolling past, and a plane as bright as the hero's turned every one of
+     them into a second hero. */
+  filter: saturate(0.72) brightness(0.66) contrast(1.02);
+}
+
+/* A different painting per panel, not a different crop of one. Cropping alone
+   gave five stages that all read as the same picture, which is what it was.
+   The hero keeps `--plate-image`; these five never repeat it or each other. */
+.panel[data-scene="grid"] .panel__stage-art {
+  background-image: var(--plate-plateau);
+  background-position: 50% 62%;
+}
+
+.panel[data-scene="rail"] .panel__stage-art {
+  background-image: var(--plate-cloudstudy);
+  background-position: 42% 46%;
+}
+
+.panel[data-scene="restore"] .panel__stage-art {
+  background-image: var(--plate-clouds);
+  background-position: 50% 38%;
+}
+
+.panel[data-scene="picker"] .panel__stage-art {
+  background-image: var(--plate-valley);
+  background-position: 56% 40%;
+}
+
+.panel[data-scene="surfaces"] .panel__stage-art {
+  background-image: var(--plate-jamaica);
+  background-position: 50% 44%;
 }
 
 /* ---------- the app window (shared .a-appwin chrome) ---------- */
 
-.tour__layout .a-appwin {
+/* Inside a panel the mock is an object again: a real cast shadow and a faint
+   halo, the same treatment the hero desk gives it, sized to the panel's art
+   column rather than to a pinned viewport. */
+.panel__art .a-appwin {
+  width: 100%;
+  max-width: none;
   margin: 0;
+  aspect-ratio: 1000 / 620;
+  /* Dark border, not light: the window sits on a lit plane here, same as it
+     does on the hero desk, and a white hairline on that ground disappears. */
+  border-color: rgb(0 0 0 / 38%);
+  border-radius: 9px;
   box-shadow:
-    0 32px 70px rgb(0 0 0 / 45%),
-    0 0 90px rgb(255 255 255 / 5%);
-}
-
-/* Window entrance — scale/opacity-in on first view (Task 3). */
-.tour__appwin[data-enter] {
-  opacity: 0;
-  transform: translateY(2.2rem) scale(0.965);
-  transition:
-    opacity 760ms ease,
-    transform 760ms cubic-bezier(0.22, 0.78, 0.18, 1);
-}
-
-.tour__appwin[data-enter].is-entered {
-  opacity: 1;
-  transform: none;
-}
-
-.tour__scene {
-  position: relative;
-  display: grid;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-}
-
-.tour__scene > * {
-  grid-area: 1 / 1;
-  min-width: 0;
-  min-height: 0;
-}
-
-/* board ↔ grid crossfade */
-.tour__board {
-  opacity: 1;
-  transition:
-    opacity var(--t-morph),
-    transform var(--t-morph);
-}
-
-.tour__scenegrid {
-  opacity: 0;
-  transform: scale(0.985);
-  transition:
-    opacity var(--t-morph),
-    transform var(--t-morph),
-    grid-template-columns var(--t-morph);
-}
-
-.tour[data-chapter="2"] .tour__board,
-.tour[data-chapter="3"] .tour__board {
-  opacity: 0;
-  transform: scale(1.015);
-}
-
-.tour[data-chapter="2"] .tour__scenegrid,
-.tour[data-chapter="3"] .tour__scenegrid {
-  opacity: 1;
-  transform: none;
+    0 1.8rem 3.6rem -0.9rem rgb(0 0 0 / 62%),
+    0 0.5rem 1.2rem -0.5rem rgb(0 0 0 / 45%);
 }
 
 /* ---------- chapter 1: Open board scene ---------- */
@@ -389,56 +432,13 @@
   font-size: max(1cqw, 7px);
 }
 
-/* ---------- chapters 2–3: live pane grid ---------- */
+/* ---------- panels 2–3: live pane grid ---------- */
 
+/* No flex-grow transition any more: the panes used to grow into the
+   focus-expand ratio as the chapter changed under a pinned window. Each panel
+   now renders its own state, so there is nothing to animate between. */
 .tour__scenegrid .a-appwin__pane {
   position: relative;
-  transition:
-    flex-grow var(--t-morph),
-    border-color 320ms ease;
-}
-
-.tour[data-chapter="3"] .tour__scenegrid {
-  grid-template-columns: 65fr 35fr;
-}
-
-.tour[data-chapter="3"]
-  .tour__scenegrid
-  .a-appwin__col
-  .a-appwin__pane.is-focused {
-  flex-grow: 65;
-}
-
-.tour[data-chapter="3"]
-  .tour__scenegrid
-  .a-appwin__col
-  .a-appwin__pane:not(.is-focused) {
-  flex-grow: 35;
-}
-
-/* ⌘E badge on the focused pane, revealed in chapter 3. */
-.tour__scenegrid .a-appwin__pane.is-focused::after {
-  position: absolute;
-  top: 0.8cqw;
-  right: 0.8cqw;
-  padding: 0.25cqw 0.7cqw;
-  border: 1px solid color-mix(in srgb, var(--sg-purple) 60%, transparent);
-  border-radius: 0.5cqw;
-  background: rgb(22 22 30 / 85%);
-  color: var(--sg-purple);
-  content: "⌘E";
-  font-family: var(--a-font-mono);
-  font-size: max(1.2cqw, 8px);
-  opacity: 0;
-  transform: translateY(-0.4cqw);
-  transition:
-    opacity 320ms ease,
-    transform 320ms ease;
-}
-
-.tour[data-chapter="3"] .tour__scenegrid .a-appwin__pane.is-focused::after {
-  opacity: 1;
-  transform: none;
 }
 
 /* ---------- sidebar live indicators (busy ring / unread dot) ---------- */
@@ -702,6 +702,8 @@
   margin-top: 3rem;
 }
 
+/* Same pill the hero's actions wear — two button shapes on one page read as
+   two designs, and the hero is the one that sets the idiom. */
 .tour__cta {
   position: relative;
   display: inline-flex;
@@ -710,8 +712,8 @@
   padding: 0.78rem 1.4rem;
   overflow: hidden;
   border: 1px solid var(--t-line-strong);
-  border-radius: 10px;
-  background: transparent;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 5%);
   color: var(--t-ink);
   font-size: 0.95rem;
   text-decoration: none;
@@ -766,12 +768,13 @@
   opacity: 0.66;
 }
 
+/* No breathing halo: the hero's download is a flat white pill, and a second
+   one pulsing at the foot of the page was the last decorative loop left. */
 .tour__cta--primary {
   border-color: var(--t-accent);
   background: var(--t-accent);
   color: var(--t-surface-0);
-  font-weight: 600;
-  animation: tour-ctabreathe 3.4s ease-in-out infinite;
+  font-weight: 500;
 }
 
 .tour__cta--primary:hover {
@@ -897,36 +900,34 @@
 /* ---------- narrow screens ---------- */
 
 @media (max-width: 768px) {
-  .tour__layout {
-    grid-template-columns: 1fr;
-    gap: 1.4rem;
-    align-content: center;
+  /* Panels go to one column here.
+     The flipped selector is repeated here on purpose: `[data-shape][data-flip]`
+     is (0,3,0) and beat a bare `.panel` (0,1,0), so the rail panel was the one
+     block still holding two columns at 768. */
+  .panel,
+  .panel[data-shape="side"][data-flip] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    padding: 1.25rem;
+    border-radius: 16px;
   }
 
-  .tour__rail {
-    display: flex;
-    gap: 0.9rem;
-    overflow-x: auto;
+  .panel:nth-child(odd of .panel) .panel__art,
+  .panel:nth-child(even of .panel) .panel__art {
+    order: 2;
   }
 
-  /* The rail turns into a horizontal scroller here; a section label sitting
-     inside it would scroll away with the chapters. */
-  .tour__rail .band-label {
-    display: none;
+  .panel:nth-child(even of .panel) .panel__copy {
+    order: 1;
   }
 
-  .tour__chapter {
-    flex: 0 0 auto;
-    max-width: 16rem;
-    padding: 0.4rem 0;
+  .panel__copy {
+    padding: 0.25rem;
   }
 
-  .tour__chaptext strong {
-    font-size: 0.92rem;
-  }
-
-  .tour__chaptext span {
-    display: none;
+  .panels {
+    gap: 1rem;
+    padding-top: 2.75rem;
   }
 
   .tour__finale-grid {
@@ -946,66 +947,6 @@
   .site-footer__brand {
     grid-column: 1 / -1;
   }
-
-  /* Un-pin the track + sticky so the window flows in normal document order. */
-  .tour--static .tour__track {
-    height: auto;
-  }
-
-  .tour--static .tour__sticky {
-    position: static;
-    height: auto;
-    padding-block: 2.5rem;
-    overflow: visible;
-  }
-
-  /* The .a-appwin chrome is aspect-ratio locked + overflow:hidden for the
-     morph. Un-lock it so the stacked board + grid are not clipped. */
-  .tour--static .tour__appwin {
-    aspect-ratio: auto;
-    overflow: visible;
-  }
-
-  /* Show the board scene AND the grid stacked (they normally share one grid
-     cell for the crossfade), so the whole story reads without scroll-morphing. */
-  .tour--static .tour__scene {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  /* Doubled `.tour.tour--static` ties the chapter-3 rules' (0,3,0) specificity
-     and wins on source order — force both scenes visible and still. */
-  .tour.tour--static .tour__board,
-  .tour.tour--static .tour__scenegrid {
-    position: static;
-    opacity: 1;
-    transform: none;
-  }
-
-  .tour.tour--static .tour__scenegrid {
-    grid-template-columns: 1fr;
-  }
-
-  /* Present the three chapter blurbs as a readable stacked list — the base
-     narrow rule scrolls the rail horizontally and hides the blurb bodies. */
-  .tour--static .tour__rail {
-    flex-direction: column;
-    overflow: visible;
-  }
-
-  .tour--static .tour__chaptext span {
-    display: block;
-  }
-
-  /* Static payoff is shown frozen; it must never keep the entrance start
-     state (opacity:0), whose IntersectionObserver may not fire once the
-     un-pinned window is taller than the viewport. Specificity (0,3,0) beats
-     the base .tour__appwin[data-enter] (0,2,0). */
-  .tour--static .tour__appwin[data-enter] {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 /* ---------- reduced motion ---------- */
@@ -1022,13 +963,8 @@
   }
 
   /* Reveal targets must not stay hidden without their transition. */
-  .tour__finale [data-reveal] {
-    opacity: 1 !important;
-    transform: none !important;
-  }
-
-  /* Entrance target must not stay hidden without its transition either. */
-  .tour__appwin[data-enter] {
+  .tour__finale [data-reveal],
+  .panel[data-reveal] {
     opacity: 1 !important;
     transform: none !important;
   }
@@ -1043,27 +979,6 @@
 @keyframes tour-blink {
   50% {
     opacity: 0;
-  }
-}
-
-@keyframes tour-ctabreathe {
-  0%,
-  100% {
-    box-shadow: 0 0 22px rgb(255 255 255 / 10%);
-  }
-
-  50% {
-    box-shadow: 0 0 42px rgb(255 255 255 / 20%);
-  }
-}
-
-@keyframes tour-enddrift {
-  from {
-    transform: translate3d(-2%, 1.5%, 0) scale(1.02);
-  }
-
-  to {
-    transform: translate3d(2.5%, -2%, 0) scale(1.1);
   }
 }
 

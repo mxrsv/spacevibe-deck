@@ -1,0 +1,581 @@
+/* The feature panels' window scenes (src/tour/panel-scenes.js).
+   Everything here lives inside `.a-appwin`, which is `container-type:
+   inline-size`, so every size is `cqw` against the window — a scene scales
+   with the panel it sits in exactly as the terminal panes do. The `max(…, Npx)`
+   floors are what stop the type dissolving when a panel narrows.
+
+   Motion is gated on `.panel.is-revealed`, the class the panels' own
+   IntersectionObserver adds: a scene that typed itself out while three
+   viewports above the fold would be finished before anyone saw it. */
+
+.scene {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+@keyframes scene-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.6cqw);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes scene-type {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
+/* ---------- restore: three panes typing their own resume command ---------- */
+
+.scene-restore {
+  padding: 2cqw;
+}
+
+.scene-restore__panes {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.2cqw;
+}
+
+.scene-restore__pane {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.9cqw;
+  padding: 1.2cqw;
+  border: 1px solid var(--sg-hairline-soft);
+  border-radius: 0.8cqw;
+  background: color-mix(in srgb, #c0caf5 2.5%, transparent);
+}
+
+.scene-restore__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6cqw;
+}
+
+.scene-restore__mark {
+  width: 1.9cqw;
+  height: 1.9cqw;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.scene-restore__agent {
+  color: var(--sg-fg);
+  font-size: max(1.25cqw, 8px);
+  font-weight: 600;
+}
+
+.scene-restore__badge {
+  margin-left: auto;
+  padding: 0.15cqw 0.6cqw;
+  border: 1px solid color-mix(in srgb, var(--sg-green) 45%, transparent);
+  border-radius: 999px;
+  color: var(--sg-green);
+  font-family: var(--a-font-mono);
+  font-size: max(0.95cqw, 6px);
+}
+
+.scene-restore__cmd {
+  display: flex;
+  min-width: 0;
+  gap: 0.5cqw;
+  color: var(--sg-fg);
+  font-family: var(--a-font-mono);
+  font-size: max(1.1cqw, 7px);
+}
+
+.scene-restore__prompt {
+  color: var(--sg-purple);
+}
+
+/* The typewriter: an inline-block clipped to a width that animates in
+   character steps, which is why the command must not wrap. */
+.scene-restore__typed {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.panel.is-revealed .scene-restore__typed {
+  animation: scene-type calc(var(--scene-steps) * 26ms)
+    steps(var(--scene-steps)) var(--scene-delay) both;
+}
+
+.scene-restore__out {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45cqw;
+  font-family: var(--a-font-mono);
+  font-size: max(1.05cqw, 7px);
+  line-height: 1.45;
+}
+
+.scene-restore__line {
+  opacity: 0;
+}
+
+/* Pushes the prompt to the bottom of the pane. Without it the scene stacked
+   its content at the top and left two thirds of a 620-tall window empty,
+   which reads as a broken screenshot rather than a terminal at rest. */
+.scene-restore__spacer {
+  flex: 1;
+  min-height: 1.2cqw;
+}
+
+.scene-restore__foot {
+  color: var(--sg-fg-faint);
+  font-family: var(--a-font-mono);
+  font-size: max(0.95cqw, 6px);
+}
+
+.panel.is-revealed .scene-restore__line {
+  animation: scene-rise 420ms ease var(--scene-delay) both;
+}
+
+/* ---------- rail: every row says what its agent just said ---------- */
+
+.scene-rail {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.scene-rail__list {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2.6cqw;
+  padding: 2.6cqw 2cqw;
+  border-right: 1px solid var(--sg-hairline);
+}
+
+.scene-rail__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7cqw;
+  margin-bottom: 1.1cqw;
+  padding-inline: 1.1cqw;
+}
+
+.scene-rail__name {
+  color: var(--sg-fg);
+  font-size: max(2.4cqw, 12px);
+  font-weight: 650;
+}
+
+.scene-rail__branch {
+  color: var(--sg-fg-faint);
+  font-family: var(--a-font-mono);
+  font-size: max(1.8cqw, 9px);
+}
+
+.scene-rail__leaf {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.2cqw;
+  padding: 1cqw 1.1cqw;
+  border-radius: 0.9cqw;
+  opacity: 0;
+}
+
+.panel.is-revealed .scene-rail__leaf {
+  animation: scene-rise 460ms ease var(--scene-delay) both;
+}
+
+.scene-rail__mark {
+  width: 3cqw;
+  height: 3cqw;
+  min-width: 14px;
+  min-height: 14px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.scene-rail__msg {
+  overflow: hidden;
+  color: var(--sg-fg-dim);
+  font-size: max(2.1cqw, 11px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene-rail__age {
+  color: var(--sg-fg-faint);
+  font-family: var(--a-font-mono);
+  font-size: max(1.6cqw, 9px);
+}
+
+/* A row that is waiting on the user is the one thing in the rail allowed to
+   raise its voice — a tinted plane plus full-strength ink, which is how the
+   real rail marks `asked`. */
+.scene-rail__leaf[data-state="asked"] {
+  background: color-mix(in srgb, var(--sg-yellow) 12%, transparent);
+}
+
+.scene-rail__leaf[data-state="asked"] .scene-rail__msg {
+  color: var(--sg-fg);
+}
+
+.scene-rail__leaf[data-state="asked"] .scene-rail__age {
+  color: var(--sg-yellow);
+}
+
+.scene-rail__leaf[data-state="ok"] .scene-rail__age {
+  color: color-mix(in srgb, var(--sg-green) 70%, transparent);
+}
+
+.scene-rail__spacer {
+  flex: 1;
+  min-height: 1cqw;
+}
+
+/* Closed workspaces whose sessions are still on disk. Dim on purpose — they
+   are the bottom of the real rail for the same reason: available, not active. */
+.scene-rail__archive {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4cqw;
+  padding-top: 1.4cqw;
+  border-top: 1px solid var(--sg-hairline-soft);
+}
+
+.scene-rail__archived {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1cqw;
+  padding: 0.8cqw 1.1cqw;
+  border-radius: 0.9cqw;
+  opacity: 0;
+}
+
+.panel.is-revealed .scene-rail__archived {
+  animation: scene-rise 460ms ease var(--scene-delay) both;
+}
+
+.scene-rail__archname {
+  color: var(--sg-fg-faint);
+  font-size: max(1.9cqw, 10px);
+}
+
+.scene-rail__archhint {
+  color: var(--sg-fg-faint);
+  font-family: var(--a-font-mono);
+  font-size: max(1.5cqw, 8px);
+  opacity: 0.75;
+}
+
+/* The right half is the work the rail is reporting on: present, deliberately
+   out of focus, so the eye stays on the sentences. */
+.scene-rail__stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      color-mix(in srgb, #c0caf5 3%, transparent) 0 1.6cqw,
+      transparent 1.6cqw 3.2cqw
+    ),
+    color-mix(in srgb, #c0caf5 1.5%, transparent);
+}
+
+.scene-rail__stagehint {
+  max-width: 70%;
+  color: var(--sg-fg-faint);
+  font-family: var(--a-font-mono);
+  font-size: max(1.5cqw, 8px);
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* ---------- picker: ⌘T over the stage ---------- */
+
+.scene-picker {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.scene-picker__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(9 11 10 / 58%);
+}
+
+.scene-picker__panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(74cqw, 94%);
+  padding: 1.5cqw;
+  border: 1px solid var(--sg-hairline);
+  border-radius: 1cqw;
+  background: var(--sg-bg);
+  box-shadow: 0 2cqw 5cqw rgb(0 0 0 / 55%);
+  transform: translate(-50%, -50%);
+}
+
+/* Its own keyframes, not `scene-rise`: that one ends on `transform: none`,
+   which cancels the translate doing the centring — the panel snapped to the
+   scene's midpoint and hung off the right edge of the window. */
+.panel.is-revealed .scene-picker__panel {
+  animation: scene-pop 460ms ease 160ms both;
+}
+
+@keyframes scene-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 0.8cqw)) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* The destination is stated once, at the top, because a worktree and its
+   branch are one choice — the app offers no way to pick them apart. */
+.scene-picker__dest {
+  display: flex;
+  align-items: center;
+  gap: 0.8cqw;
+  margin-bottom: 1cqw;
+  padding: 0.85cqw 1cqw;
+  border: 1px solid var(--sg-hairline-soft);
+  border-radius: 0.6cqw;
+  background: color-mix(in srgb, #c0caf5 3%, transparent);
+}
+
+.scene-picker__destlabel {
+  flex-shrink: 0;
+  color: var(--sg-fg-faint);
+  font-size: max(1.15cqw, 9px);
+}
+
+.scene-picker__destvalue {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.6cqw;
+  color: var(--sg-fg);
+  font-size: max(1.35cqw, 11px);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.scene-picker__branch {
+  color: var(--sg-accent);
+  font-family: var(--a-font-mono);
+  font-size: max(1.1cqw, 9px);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.scene-picker__caret {
+  margin-left: auto;
+  color: var(--sg-fg-faint);
+  font-size: max(1.1cqw, 7px);
+}
+
+.scene-picker__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3cqw;
+}
+
+.scene-picker__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9cqw;
+  padding: 0.8cqw 0.9cqw;
+  border-radius: 0.5cqw;
+}
+
+.scene-picker__row.is-active {
+  background: color-mix(in srgb, var(--sg-purple) 14%, transparent);
+}
+
+.scene-picker__mark {
+  width: 2cqw;
+  height: 2cqw;
+  min-width: 14px;
+  min-height: 14px;
+  object-fit: contain;
+}
+
+.scene-picker__label {
+  color: var(--sg-fg);
+  font-size: max(1.3cqw, 11px);
+}
+
+.scene-picker__key {
+  padding: 0.2cqw 0.6cqw;
+  border: 1px solid var(--sg-hairline);
+  border-radius: 0.35cqw;
+  color: var(--sg-fg-faint);
+  font-family: var(--a-font-mono);
+  font-size: max(1.05cqw, 8px);
+}
+
+/* ---------- surfaces: the strip carries more than terminals ---------- */
+
+.scene-surfaces {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.scene-surfaces__strip {
+  display: flex;
+  gap: 0.6cqw;
+  padding: 0.9cqw 1.2cqw;
+  border-bottom: 1px solid var(--sg-hairline);
+}
+
+.scene-surfaces__tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5cqw;
+  padding: 0.5cqw 0.8cqw;
+  border: 1px solid transparent;
+  border-radius: 0.45cqw;
+  background: color-mix(in srgb, #c0caf5 3%, transparent);
+  color: var(--sg-fg-dim);
+  font-size: max(1.1cqw, 7px);
+}
+
+.scene-surfaces__tab.is-active {
+  border-color: var(--sg-hairline);
+  background: color-mix(in srgb, #c0caf5 8%, transparent);
+  color: var(--sg-fg);
+}
+
+.scene-surfaces__tabmark {
+  width: 1.4cqw;
+  height: 1.4cqw;
+  object-fit: contain;
+}
+
+.scene-surfaces__tabglyph {
+  color: var(--sg-accent);
+  font-family: var(--a-font-mono);
+  font-size: max(0.95cqw, 6px);
+}
+
+.scene-surfaces__work {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 0.4fr) minmax(0, 1fr);
+}
+
+.scene-surfaces__tree {
+  padding: 1cqw 0.8cqw;
+  border-right: 1px solid var(--sg-hairline);
+  font-size: max(1.1cqw, 7px);
+}
+
+.scene-surfaces__node {
+  padding: 0.35cqw 0.6cqw;
+  padding-left: calc(0.6cqw + var(--depth) * 1.3cqw);
+  border-radius: 0.4cqw;
+  color: var(--sg-fg-dim);
+  white-space: nowrap;
+}
+
+.scene-surfaces__node[data-kind="dir"]::before {
+  margin-right: 0.4cqw;
+  color: var(--sg-fg-faint);
+  content: "▸";
+}
+
+.scene-surfaces__node.is-active {
+  background: color-mix(in srgb, #c0caf5 8%, transparent);
+  color: var(--sg-fg);
+}
+
+.scene-surfaces__editor {
+  padding: 1cqw 1.2cqw;
+  font-family: var(--a-font-mono);
+  font-size: max(1.15cqw, 7px);
+  line-height: 1.7;
+}
+
+.scene-surfaces__pane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.scene-surfaces__editor {
+  flex: 1;
+}
+
+/* The file's own status line, and the one place the scene says what ⌘S is
+   for — an editor with no save state reads as a screenshot of code. */
+.scene-surfaces__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1cqw;
+  padding: 0.7cqw 1.2cqw;
+  border-top: 1px solid var(--sg-hairline);
+  color: var(--sg-fg-faint);
+  font-family: var(--a-font-mono);
+  font-size: max(1cqw, 7px);
+}
+
+.scene-surfaces__dirty {
+  color: var(--sg-yellow);
+}
+
+.scene-surfaces__line {
+  display: flex;
+  gap: 1.2cqw;
+  color: var(--sg-fg);
+  white-space: nowrap;
+}
+
+.scene-surfaces__line.t-dim {
+  color: var(--sg-fg-faint);
+}
+
+.scene-surfaces__num {
+  width: 2.6cqw;
+  flex-shrink: 0;
+  color: var(--sg-fg-faint);
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel.is-revealed .scene-restore__typed,
+  .panel.is-revealed .scene-restore__line,
+  .panel.is-revealed .scene-rail__leaf,
+  .panel.is-revealed .scene-picker__panel {
+    animation: none;
+    opacity: 1;
+  }
+}

@@ -1,10 +1,10 @@
+import { renderAgentStrip } from "../agent-strip.js";
 import {
   BRAND_ICON_SRC,
   renderStagePane,
   renderStageSidebar,
   renderStageStatus,
 } from "../appwin.js";
-import { REEL_ID } from "../demo-reel.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
 import { REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
 import { CHANGELOG_URL } from "../release-data.js";
@@ -17,28 +17,8 @@ import {
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
 
-// Hero beams field. White key light on purpose: the hero runs a neutral
-// grey-white light language, and the one white face in the column is the
-// Windows download. See beams.js for what each knob does.
-//
-// rotation 14 is not arbitrary — it is the same 14° off-vertical the hub
-// landing tilts its light sweep to. Straight columns read as blinds behind
-// left-aligned type; tilted, they read as shafts.
-//
-// beamHeight/beamNumber are sized so the slab still covers the frustum AFTER
-// that tilt: a 14° rotation costs roughly `viewportHeight * sin(14°)` of extra
-// width and the same again in height, and running short leaves bare corners.
-const HERO_BEAMS = {
-  beamWidth: 2,
-  beamHeight: 20,
-  beamNumber: 14,
-  lightColor: "#ffffff",
-  lightIntensity: 2.6,
-  speed: 2,
-  noiseIntensity: 1.4,
-  scale: 0.2,
-  rotation: 14,
-};
+/** Anchor on the feature panel stack (tour/index.js renders the target). */
+export const FEATURES_ID = "features";
 
 function renderGithubIcon() {
   return `
@@ -70,9 +50,7 @@ export function renderDirectionA(copy, locale) {
 
   return {
     markup: `
-      <section class="direction-a" data-hero-motion="beams">
-        <div class="a-motion" data-motion="beams" aria-hidden="true"></div>
-
+      <section class="direction-a">
         <div class="a-main">
           <header class="a-topbar">
             <a class="a-topbar__brand" href="/landing-prototype/?direction=A" aria-label="${copy.navProduct}">
@@ -99,108 +77,114 @@ export function renderDirectionA(copy, locale) {
             </a>
           </header>
 
-          <div class="a-band">
+          <div class="a-hero">
+            <!-- The release badge leads the centred stack instead of sitting
+                 above the download button: in a centred hero the pill is the
+                 first object the eye lands on, so it carries the version and
+                 links to the ledger rather than announcing nothing. -->
+            <a class="a-hero__pill" href="${CHANGELOG_URL}">
+              <span class="a-cta-tag a-cta-new__tag" data-copy="newBadge">${copy.newBadge}</span>
+              <span class="a-hero__pill-text" data-release-version>v${packageData.version}</span>
+              <span aria-hidden="true">→</span>
+            </a>
+
             <p class="band-label" data-copy="heroLabel">${copy.heroLabel}</p>
+
             <h1>
               <span data-copy="headlineLead">${copy.headlineLead}</span>
               <span data-copy="headlineTail">${copy.headlineTail}</span>
             </h1>
-          </div>
 
-          <div class="a-deck">
-            <div class="a-deck__intro">
-              <p class="a-subhead" data-copy="subhead">${copy.subhead}</p>
+            <p class="a-subhead" data-copy="subhead">${copy.subhead}</p>
 
-              <div class="a-actions">
-                <p class="a-cta-new">
-                  <span
-                    class="a-cta-tag a-cta-new__tag"
-                    data-copy="newBadge"
-                    >${copy.newBadge}</span
+            <div class="a-actions">
+              <a
+                class="a-primary-cta"
+                href="${WINDOWS_FALLBACK_URL}"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span class="a-cta-lead">
+                  ${renderWindowsIcon()}
+                  <span data-copy="downloadWin">${copy.downloadWin}</span>
+                </span>
+                <span class="a-cta-trail">
+                  <span class="a-cta-tag" data-copy="winPreviewTag"
+                    >${copy.winPreviewTag}</span
                   >
-                </p>
-
-                <a
-                  class="a-primary-cta"
-                  href="${WINDOWS_FALLBACK_URL}"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <span class="a-cta-lead">
-                    ${renderWindowsIcon()}
-                    <span data-copy="downloadWin">${copy.downloadWin}</span>
-                  </span>
-                  <span class="a-cta-trail">
-                    <span class="a-cta-tag" data-copy="winPreviewTag"
-                      >${copy.winPreviewTag}</span
-                    >
-                    <i aria-hidden="true">↓</i>
-                  </span>
-                </a>
-
-                <p class="a-cta-note" data-copy="winUnsignedNote">
-                  ${copy.winUnsignedNote}
-                </p>
-
-                <!-- A button, not an anchor: the macOS build is announced, not
-                     offered, until the Electron macOS release lands. Being a
-                     non-anchor is also what keeps upgradeReleaseLinks from
-                     retargeting it at the old .dmg — see download-links.js. -->
-                <button class="a-quiet-cta" type="button" disabled>
-                  <span class="a-cta-lead">
-                    ${renderAppleIcon()}
-                    <span data-copy="downloadMac">${copy.downloadMac}</span>
-                  </span>
-                  <span class="a-cta-tag" data-copy="comingSoon"
-                    >${copy.comingSoon}</span
-                  >
-                </button>
-
-                <a class="a-quiet-cta" href="#${REEL_ID}">
-                  <span class="a-cta-lead">
-                    <span data-copy="primaryCta">${copy.primaryCta}</span>
-                  </span>
                   <i aria-hidden="true">↓</i>
-                </a>
+                </span>
+              </a>
 
-                <div class="a-project-cta">
-                  <a
-                    class="a-secondary-cta"
-                    href="${REPO_URL}"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    ${renderGithubIcon()}
-                    <span data-copy="secondaryCta">${copy.secondaryCta}</span>
-                    <span aria-hidden="true">→</span>
-                  </a>
-                  <a
-                    class="a-release-version"
-                    href="${CHANGELOG_URL}"
-                    data-release-version
-                  >v${packageData.version}</a>
-                </div>
-
-                <aside
-                  class="a-download-proof"
-                  data-download-proof
-                  data-download-state="loading"
-                  aria-live="polite"
-                  aria-atomic="true"
+              <!-- A button, not an anchor: the macOS build is announced, not
+                   offered, until the Electron macOS release lands. Being a
+                   non-anchor is also what keeps upgradeReleaseLinks from
+                   retargeting it at the old .dmg — see download-links.js. -->
+              <button class="a-quiet-cta" type="button" disabled>
+                <span class="a-cta-lead">
+                  ${renderAppleIcon()}
+                  <span data-copy="downloadMac">${copy.downloadMac}</span>
+                </span>
+                <span class="a-cta-tag" data-copy="comingSoon"
+                  >${copy.comingSoon}</span
                 >
-                  <strong data-download-count>—</strong>
-                  <span class="a-download-proof__unit" data-copy="downloadCountUnit">${copy.downloadCountUnit}</span>
-                  <span class="a-download-proof__separator" aria-hidden="true">·</span>
-                  <span class="a-download-proof__status">
-                    <span data-download-loading data-copy="downloadCountLoading">${copy.downloadCountLoading}</span>
-                    <span data-download-ready data-copy="downloadCountReady" hidden>${copy.downloadCountReady}</span>
-                    <span data-download-unavailable data-copy="downloadCountUnavailable" hidden>${copy.downloadCountUnavailable}</span>
-                  </span>
-                </aside>
-              </div>
+              </button>
+
+              <!-- Pointed at the feature panels since 2026-08-19. It used to
+                   open the 16-second demo reel, which was cut that day for
+                   showing a build the app has moved past. -->
+              <a class="a-ghost-cta" href="#${FEATURES_ID}">
+                <span data-copy="seeFeatures">${copy.seeFeatures}</span>
+                <i aria-hidden="true">↓</i>
+              </a>
             </div>
 
-            <div class="a-deck__stage">
+            <!-- The SmartScreen warning used to sit here, between the buttons
+                 and the footnote row. Cut from the hero on 2026-08-19: it is a
+                 caveat about what happens AFTER the click, and three lines of
+                 it under a centred CTA read as the loudest thing in the block.
+                 The closing band still carries it (see tour/index.js), which is
+                 where a visitor is when they are deciding, not landing. -->
+
+            <!-- One quiet evidence row under the actions: repo, then the live
+                 release count. Both were their own blocks in the left-rail
+                 hero; centred, they read as one line of footnotes. -->
+            <div class="a-hero__meta">
+              <a
+                class="a-secondary-cta"
+                href="${REPO_URL}"
+                target="_blank"
+                rel="noreferrer"
+              >
+                ${renderGithubIcon()}
+                <span data-copy="secondaryCta">${copy.secondaryCta}</span>
+              </a>
+              <span class="a-hero__meta-sep" aria-hidden="true"></span>
+              <aside
+                class="a-download-proof"
+                data-download-proof
+                data-download-state="loading"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <strong data-download-count>—</strong>
+                <span class="a-download-proof__unit" data-copy="downloadCountUnit">${copy.downloadCountUnit}</span>
+                <span class="a-download-proof__separator" aria-hidden="true">·</span>
+                <span class="a-download-proof__status">
+                  <span data-download-loading data-copy="downloadCountLoading">${copy.downloadCountLoading}</span>
+                  <span data-download-ready data-copy="downloadCountReady" hidden>${copy.downloadCountReady}</span>
+                  <span data-download-unavailable data-copy="downloadCountUnavailable" hidden>${copy.downloadCountUnavailable}</span>
+                </span>
+              </aside>
+            </div>
+          </div>
+
+          <!-- The desk: the painting is the plane the window sits ON, not a
+               field behind the type. Its lit centre is what separates a dark
+               window from a dark page — warmth, not luminance. -->
+          <div class="a-stage">
+            <div class="a-desk">
+              <div class="a-desk__art" aria-hidden="true"></div>
               <figure class="a-appwin" role="img" aria-label="${STAGE_ARIA_LABEL}">
                 <div class="a-appwin__body" aria-hidden="true">
                   ${renderStageSidebar()}
@@ -216,6 +200,11 @@ export function renderDirectionA(copy, locale) {
               </figure>
             </div>
           </div>
+
+          <!-- Rendered inside the hero section on purpose: every [data-copy]
+               node in here is then swapped by updateDirectionALocale, so the
+               strip needs no mount and no locale path of its own. -->
+          ${renderAgentStrip(copy)}
         </div>
       </section>
     `,
@@ -228,38 +217,12 @@ export function renderDirectionA(copy, locale) {
 
       document.documentElement.dataset.directionTreatment = "a";
 
-      // three costs ~130 kB gzipped — six times the rest of this page put
-      // together — so it is fetched as its own chunk AFTER first paint. Nothing
-      // above the fold waits on it: the band, the copy, the actions and the
-      // window mock are all plain DOM. Only the light field itself arrives
-      // late, and it fades in when it does (see beams.css).
-      let beams = null;
-      let beamsAbandoned = false;
-
-      import("../beams.js")
-        .then(({ mountBeams }) => {
-          if (beamsAbandoned) {
-            return;
-          }
-
-          beams = mountBeams(section.querySelector(".a-motion"), HERO_BEAMS);
-        })
-        .catch((error) => {
-          // Nothing to retry — the field is decoration and the hero is fully
-          // readable without it. Fall back to the static plus-grid this
-          // treatment normally suppresses, then let the failure surface.
-          section.dataset.heroMotion = "none";
-          throw error;
-        });
-
       const disposeStream = mountStageStream(
         section.querySelector(".a-appwin__grid"),
       );
 
       return () => {
         disposeStream();
-        beamsAbandoned = true;
-        beams?.dispose();
 
         if (document.documentElement.dataset.directionTreatment === "a") {
           delete document.documentElement.dataset.directionTreatment;
@@ -271,8 +234,7 @@ export function renderDirectionA(copy, locale) {
 
 /**
  * Swap the localized copy on an already-mounted page without rebuilding the
- * DOM, so the beams canvas and stage stream keep running across a locale
- * toggle.
+ * DOM, so the stage stream keeps running across a locale toggle.
  *
  * @param {Element} root
  * @param {Record<string, string>} copy

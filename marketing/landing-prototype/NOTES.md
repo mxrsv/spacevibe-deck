@@ -1,5 +1,31 @@
 # Hero motion trials — direction A (PROTOTYPE)
 
+> **HISTORICAL as of 2026-08-19.** Everything below records how the hero's
+> moving background was chosen; there is no moving background any more, and the
+> page it describes has been rebuilt. The owner asked for the cursor.com
+> formula, so on 2026-08-19:
+>
+> - `beams.js` (three.js) and `aurora.js` (ogl) were deleted outright, with both
+>   dependencies; so were the closing band's 22s drift and the download button's
+>   breathing halo. Nothing on the page loops any more.
+> - The hero is CENTRED — pill, kicker, headline, subhead, one row of pill
+>   buttons — over an app stage standing on a **light** oil painting: Caspar
+>   David Friedrich's _Morning Mist in the Mountains_ (c. 1808, public domain),
+>   declared once as `--plate-image` in `tokens.css`. Two Frederic Church oil
+>   sketches (`plateau.webp`, `clouds.webp`) sit beside it as alternates pending
+>   the owner's eye review; the losers get deleted when it closes.
+> - The scroll tour is GONE. Its 340svh track, sticky pin, chapter rail and
+>   `scroll-progress.js` are replaced by five stacked feature panels, each with
+>   its own purpose-built window mock (`src/tour/panel-scenes.js`).
+> - The 16-second demo reel is GONE too — the owner cut it for showing a build
+>   the app has moved past. `demo-reel.js`, `demo-reel.css` and every `demo*`
+>   copy string went with it, `primaryCta` became `seeFeatures` pointing at the
+>   panels, and the `deck-tour.*` render cut left the landing's runtime-asset
+>   list (the files stay in `marketing/`; the video pipeline still owns them).
+>
+> The `?motion=` switcher and the MOTION row went with the code they drove. Kept
+> as the record of what was tried and why, not as a description of the page.
+
 **Question:** what moving-background treatment does the direction A hero get?
 Multi-round elimination — nothing is decided until a variant survives review.
 

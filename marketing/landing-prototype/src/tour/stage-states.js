@@ -62,33 +62,6 @@ export const SIDEBAR_STATUS = deepFreeze({
 });
 
 /**
- * Aurora palette per chapter. These used to be Tokyo Night hues — blue, then
- * the three agent brand colours, then hot magenta — which no longer belongs on
- * a page whose light is achromatic end to end (the hero's beams field set that
- * rule; see marketing/landing-prototype/src/beams.js).
- *
- * The chapters still have to read as three distinct moments, so the axis moved
- * from HUE to TEMPERATURE: ① cool steel grey → ② neutral grey, the brightest
- * of the three → ③ warm ivory grey. Saturation is 3–10%, low enough that
- * nobody can name a colour, high enough that consecutive chapters do not look
- * like a repeat. Amplitude keeps climbing alongside it so the curtain also
- * moves harder as the story escalates.
- *
- * Each triple is left → middle → right across the curtain's gradient.
- *
- * The stops are much LIGHTER than the violet ones they replaced, and that is
- * deliberate: the shader multiplies the ramp by a fractional intensity
- * (`auroraColor = intensity * rampColor` in aurora.js), so a saturated violet
- * still separated from black at low intensity where an equally-dark grey just
- * vanished. With no chroma to carry it, the curtain has to be read on value.
- */
-export const AURORA_SCENES = deepFreeze({
-  1: { colorStops: ["#646f7d", "#d7dbdf", "#4b535d"], amplitude: 1.0 },
-  2: { colorStops: ["#7c7e83", "#eff0f0", "#5c5d61"], amplitude: 1.15 },
-  3: { colorStops: ["#84796c", "#e8e6e3", "#625a50"], amplitude: 1.25 },
-});
-
-/**
  * Closing-band proof terminal: each exchange proves one claim and lights the
  * matching proof chip (`chip` = the proof key in renderFinale). English-only,
  * like everything rendered inside terminal chrome.

@@ -4,11 +4,13 @@ export const messages = {
     navChangelog: "Changelog",
     navGithub: "GitHub",
     heroLabel: "// desktop terminal for agent CLIs",
+    agentStripLabel: "// launches the CLIs you already run",
+    agentStripTail: "or any binary on your $PATH",
     headlineLead: "Run the grid.",
     headlineTail: "Keep every agent in sight.",
     subhead:
       "SpaceVibe Deck is a desktop terminal built to launch, watch, and steer AI coding agents in parallel.",
-    primaryCta: "Watch the 16-sec demo",
+    seeFeatures: "See how it works",
     secondaryCta: "View on GitHub",
     downloadCountUnit: "downloads",
     downloadCountLoading: "Checking GitHub Releases",
@@ -27,19 +29,6 @@ export const messages = {
     changelogNoNotes: "No release notes were published.",
     changelogViewRelease: "View release",
     localeLabel: "Language",
-    demoLabel: "// see it run",
-    demoTitle: "Sixteen seconds. One take.",
-    demoBody:
-      "The Open board reopens a remembered workspace, ⏎ puts three agents side by side, one finishes and one asks for you — ⌘⇧A jumps to it, ⌘E gives it 65% of the layout.",
-    demoAria: "agents in parallel",
-    demoPlay: "Play the demo",
-    demoFullscreen: "Fullscreen",
-    demoChaptersLabel: "Jump to a moment",
-    demoFailed: "The demo could not load. Reload the page to try again.",
-    demoCh1: "Open board",
-    demoCh2: "Three agents",
-    demoCh3: "⌘⇧A jump",
-    demoCh4: "⌘E expand",
     tourKicker: "// from folder to full formation",
     tourCh1Title: "Start from a known formation.",
     tourCh1Body:
@@ -50,6 +39,18 @@ export const messages = {
     tourCh3Title: "See the system. Work the detail.",
     tourCh3Body:
       "Focus Expand (⌘E) grows the active pane to 65% while every other agent stays in sight.",
+    panelRestoreTitle: "Close it. Reopen it. Nothing lost the thread.",
+    panelRestoreBody:
+      "Deck brings back every tab and pane, then types each agent's own resume command — claude --resume, codex resume --last, opencode -s. The conversation carries on from where it stopped.",
+    panelRailTitle: "Read the room without opening a single pane.",
+    panelRailBody:
+      "Every rail row carries the last thing that agent actually said, read straight from its own session log. Quiet rows dim, and the one waiting on you says so. Claude Code, Codex and OpenCode today.",
+    panelWorktreeTitle: "Open an agent straight into a branch.",
+    panelWorktreeBody:
+      "⌘T lists every worktree in the project beside the branch it is checked out on. Pick one, pick an agent, and the pane spawns in that directory — no cd, no wrong tree.",
+    panelSurfacesTitle: "The terminal is not the only thing on the stage.",
+    panelSurfacesBody:
+      "A file tree, an editor, a browser and a token-usage dashboard share the same tab strip as your panes — ⌘⇧B opens the explorer, ⌘S saves, ⌘W closes whatever is in front.",
     finaleLabel: "// what you keep",
     downloadMac: "Download for macOS",
     downloadWin: "Download for Windows",
@@ -87,11 +88,13 @@ export const messages = {
     navChangelog: "Changelog",
     navGithub: "GitHub",
     heroLabel: "// terminal desktop cho agent CLI",
+    agentStripLabel: "// chạy đúng những CLI bạn đang dùng",
+    agentStripTail: "hoặc bất kỳ binary nào trong $PATH",
     headlineLead: "Vận hành cả đội hình.",
     headlineTail: "Không agent nào rời khỏi tầm mắt.",
     subhead:
       "SpaceVibe Deck là terminal desktop để khởi chạy, quan sát và điều phối nhiều AI coding agent song song.",
-    primaryCta: "Xem demo 16 giây",
+    seeFeatures: "Xem nó chạy thế nào",
     secondaryCta: "Xem trên GitHub",
     downloadCountUnit: "downloads",
     downloadCountLoading: "Checking GitHub Releases",
@@ -110,19 +113,6 @@ export const messages = {
     changelogNoNotes: "Bản phát hành này không có ghi chú.",
     changelogViewRelease: "Xem bản phát hành",
     localeLabel: "Ngôn ngữ",
-    demoLabel: "// xem nó chạy",
-    demoTitle: "Mười sáu giây. Một mạch.",
-    demoBody:
-      "Open board mở lại workspace đã nhớ, ⏎ dựng ba agent cạnh nhau, một agent xong việc và một agent cần bạn — ⌘⇧A nhảy tới nó, ⌘E nhường cho nó 65% layout.",
-    demoAria: "nhiều agent chạy song song",
-    demoPlay: "Phát demo",
-    demoFullscreen: "Toàn màn hình",
-    demoChaptersLabel: "Nhảy tới một khoảnh khắc",
-    demoFailed: "Không tải được demo. Tải lại trang để thử lần nữa.",
-    demoCh1: "Open board",
-    demoCh2: "Ba agent",
-    demoCh3: "⌘⇧A nhảy focus",
-    demoCh4: "⌘E mở rộng",
     tourKicker: "// từ thư mục đến cả đội hình",
     tourCh1Title: "Bắt đầu từ đội hình quen thuộc.",
     tourCh1Body:
@@ -133,6 +123,18 @@ export const messages = {
     tourCh3Title: "Nhìn toàn cảnh. Làm chi tiết.",
     tourCh3Body:
       "Focus Expand (⌘E) nới pane đang focus lên 65%, các agent còn lại vẫn trong tầm mắt.",
+    panelRestoreTitle: "Đóng rồi mở lại. Không mất mạch nào.",
+    panelRestoreBody:
+      "Deck dựng lại mọi tab và pane, rồi tự gõ đúng lệnh resume của từng agent — claude --resume, codex resume --last, opencode -s. Cuộc hội thoại chạy tiếp từ chỗ nó dừng.",
+    panelRailTitle: "Biết cả đội đang làm gì mà không cần mở pane nào.",
+    panelRailBody:
+      "Mỗi dòng trong rail mang đúng câu agent đó vừa nói, đọc thẳng từ session log của nó. Dòng nào yên thì mờ đi, dòng đang chờ bạn thì nói ra. Hiện có cho Claude Code, Codex và OpenCode.",
+    panelWorktreeTitle: "Mở agent thẳng vào một branch.",
+    panelWorktreeBody:
+      "⌘T liệt kê mọi worktree trong dự án kèm branch nó đang đứng. Chọn một cái, chọn agent, pane mọc lên ngay trong thư mục đó — không cd, không nhầm cây.",
+    panelSurfacesTitle: "Trên sân khấu không chỉ có terminal.",
+    panelSurfacesBody:
+      "Cây file, editor, browser và bảng token usage dùng chung dải tab với các pane — ⌘⇧B mở explorer, ⌘S lưu, ⌘W đóng thứ đang ở trước mặt.",
     finaleLabel: "// những thứ bạn giữ nguyên",
     downloadMac: "Tải cho macOS",
     downloadWin: "Tải cho Windows",

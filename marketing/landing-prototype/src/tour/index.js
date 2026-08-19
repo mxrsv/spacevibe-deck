@@ -1,8 +1,13 @@
 /**
- * Scroll tour — a real ".a-appwin" window (same chrome as the hero stage,
- * live transcripts included) sticky at viewport center, morphing through
- * three chapters as the visitor scrolls, over an aurora curtain whose palette
- * follows the chapter. Native scroll only — no wheel hijacking.
+ * The three feature panels, the closing band and the footer.
+ *
+ * Until 2026-08-19 this was a scroll tour: one ".a-appwin" pinned at viewport
+ * centre, morphing through three chapters driven by scroll progress over a
+ * 340svh track. It is three stacked panels now — a sentence one side, its own
+ * window mock the other — which is the shape cursor.com uses and which needs
+ * no pin, no progress maths and no chapter state. The section class stays
+ * `.tour` because the closing band and footer below it are `.tour__*` and did
+ * not change.
  */
 
 import {
@@ -12,24 +17,18 @@ import {
   renderStageStatus,
 } from "../appwin.js";
 import { BRAND, STAGE_ARIA_LABEL } from "../../../stage/brand.js";
-import { mountAurora } from "../aurora.js";
-import { REEL_ID } from "../demo-reel.js";
+import { FEATURES_ID } from "../directions/a.js";
+import { SCENES } from "./panel-scenes.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
 import { REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
 import { mountStageStream, stagePanes } from "../product-stage.js";
 import {
   AGENTS,
-  AURORA_SCENES,
   PRESET_CELLS,
   PROOF_TERM_STEPS,
   SIDEBAR_STATUS,
   boardRecents,
 } from "./stage-states.js";
-import {
-  CHAPTER_COUNT,
-  chapterForProgress,
-  trackProgress,
-} from "./scroll-progress.js";
 
 const PROMPT = "❯ ";
 
@@ -51,59 +50,6 @@ function mountFinaleReveal(section) {
   targets.forEach((target) => observer.observe(target));
 
   return () => observer.disconnect();
-}
-
-/** One-shot scale/opacity-in the first time the tour window enters view. */
-function mountWindowEntrance(section, reduceMotion) {
-  const figure = section.querySelector(".tour__appwin");
-
-  if (!figure) {
-    throw new Error("Tour window markup is missing.");
-  }
-
-  if (reduceMotion.matches) {
-    figure.classList.add("is-entered");
-    return () => {};
-  }
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-entered");
-          observer.disconnect();
-        }
-      }
-    },
-    { threshold: 0.3 },
-  );
-  observer.observe(figure);
-
-  return () => observer.disconnect();
-}
-
-/**
- * Below 768px, un-pin the window and freeze it in the chapter-3 payoff state
- * (the CSS handles the static layout). Above it, hand control back to scroll.
- */
-function mountResponsiveMode(section, update, aurora) {
-  const narrow = window.matchMedia("(max-width: 768px)");
-
-  function apply() {
-    if (narrow.matches) {
-      section.classList.add("tour--static");
-      section.dataset.chapter = "3";
-      aurora.setScene(AURORA_SCENES[3]);
-    } else {
-      section.classList.remove("tour--static");
-      update();
-    }
-  }
-
-  apply();
-  narrow.addEventListener("change", apply);
-
-  return () => narrow.removeEventListener("change", apply);
 }
 
 /**
@@ -225,26 +171,62 @@ function mountProofTerm(section, reduceMotion) {
   };
 }
 
-function renderChapterRail(copy) {
-  const chapters = [1, 2, 3]
-    .map(
-      (n) => `
-        <button type="button" class="tour__chapter" data-ch="${n}">
-          <span class="tour__chapnum">0${n}</span>
-          <span class="tour__chaptext">
-            <strong data-copy="tourCh${n}Title">${copy[`tourCh${n}Title`]}</strong>
-            <span data-copy="tourCh${n}Body">${copy[`tourCh${n}Body`]}</span>
-          </span>
-        </button>
-      `,
-    )
-    .join("");
+/**
+ * The panel stack, in scroll order. Each entry is one feature: the copy keys
+ * it prints and the scene it draws.
+ *
+ * The 16-second reel already tells `Open board → three agents → ⌘⇧A → ⌘E`, so
+ * only the middle beat of the old scroll tour survives here — the other two
+ * became a duplicate of the video the moment the panels stopped morphing.
+ * What replaced them is the four things the page never said at all.
+ */
+const PANELS = [
+  { key: "tourCh2", scene: "grid", shape: "wide" },
+  { key: "panelRail", scene: "rail", shape: "side", flip: true },
+  { key: "panelRestore", scene: "restore", shape: "wide" },
+  { key: "panelWorktree", scene: "picker", shape: "side" },
+  { key: "panelSurfaces", scene: "surfaces", shape: "wide" },
+];
+
+/**
+ * One feature panel: a sentence on one side, a window mock bleeding off the
+ * other. Replaces the sticky scroll tour, which told its beats by morphing ONE
+ * pinned window through them — panels say it in the page's own scroll, with no
+ * pin, no progress maths and no chapter state.
+ *
+ * @param {{key: string, scene: string}} panel
+ * @param {number} index zero-based position in the stack
+ * @param {Record<string, string>} copy
+ */
+function renderPanel(panel, index, copy) {
+  const number = String(index + 1).padStart(2, "0");
+  const scene = panel.scene === "grid" ? renderScene(2) : SCENES[panel.scene]();
 
   return `
-    <aside class="tour__rail">
-      <p class="band-label" data-copy="tourKicker">${copy.tourKicker}</p>
-      ${chapters}
-    </aside>
+    <article
+      class="panel"
+      data-scene="${panel.scene}"
+      data-shape="${panel.shape}"
+      ${panel.flip ? "data-flip" : ""}
+      data-reveal
+      style="--reveal-delay: ${index * 50}ms"
+    >
+      <div class="panel__copy">
+        <span class="panel__num">${number}</span>
+        <h2 data-copy="${panel.key}Title">${copy[`${panel.key}Title`]}</h2>
+        <p data-copy="${panel.key}Body">${copy[`${panel.key}Body`]}</p>
+      </div>
+      <div class="panel__art">
+        <!-- Same idea as the hero desk: the mock stands ON something. Held
+             further back here — one picture at full strength per page — and
+             cropped to a different part of the canvas per panel so the planes
+             on one page are not copies of one frame. -->
+        <div class="panel__stage">
+          <div class="panel__stage-art" aria-hidden="true"></div>
+          ${scene}
+        </div>
+      </div>
+    </article>
   `;
 }
 
@@ -287,23 +269,34 @@ function renderBoard() {
   `;
 }
 
-function renderStage() {
+/**
+ * The window mock, drawn in one fixed state. Scene 1 is the Open board; 2 and
+ * 3 are the live pane grid, and 3 is the one CSS grows to the focus-expand
+ * ratio. Nothing crossfades any more — each panel owns its own window, so the
+ * state is markup, not a transition between chapters.
+ *
+ * @param {number} scene
+ */
+function renderScene(scene) {
   const [claudePane, codexPane, opencodePane] = stagePanes;
+  const body =
+    scene === 1
+      ? renderBoard()
+      : `
+        <div class="a-appwin__grid tour__scenegrid">
+          <div class="a-appwin__col">
+            ${renderStagePane(claudePane)}
+            ${renderStagePane(codexPane)}
+          </div>
+          ${renderStagePane(opencodePane)}
+        </div>
+      `;
 
   return `
-    <figure class="a-appwin tour__appwin" data-enter role="img" aria-label="${STAGE_ARIA_LABEL}">
+    <figure class="a-appwin tour__appwin" role="img" aria-label="${STAGE_ARIA_LABEL}">
       <div class="a-appwin__body" aria-hidden="true">
         ${renderStageSidebar(SIDEBAR_STATUS)}
-        <div class="tour__scene">
-          ${renderBoard()}
-          <div class="a-appwin__grid tour__scenegrid">
-            <div class="a-appwin__col">
-              ${renderStagePane(claudePane)}
-              ${renderStagePane(codexPane)}
-            </div>
-            ${renderStagePane(opencodePane)}
-          </div>
-        </div>
+        ${body}
       </div>
       ${renderStageStatus()}
     </figure>
@@ -392,10 +385,6 @@ function renderFinale(copy) {
         <p class="a-cta-note" data-copy="winUnsignedNote">
           ${copy.winUnsignedNote}
         </p>
-        <a class="tour__cta" href="#${REEL_ID}">
-          <span data-copy="primaryCta">${copy.primaryCta}</span>
-          <span aria-hidden="true">↑</span>
-        </a>
         <a
           class="tour__cta"
           href="${REPO_URL}"
@@ -425,7 +414,7 @@ function renderFooter(copy) {
         <nav class="site-footer__col" aria-label="${copy.footerColProduct}">
           <span class="site-footer__coltitle" data-copy="footerColProduct">${copy.footerColProduct}</span>
           <a href="${WINDOWS_FALLBACK_URL}" target="_blank" rel="noreferrer" data-copy="downloadWin">${copy.downloadWin}</a>
-          <a class="site-footer__link" href="#${REEL_ID}" data-copy="primaryCta">${copy.primaryCta}</a>
+          <a class="site-footer__link" href="#${FEATURES_ID}" data-copy="seeFeatures">${copy.seeFeatures}</a>
         </nav>
         <nav class="site-footer__col" aria-label="${copy.footerColProject}">
           <span class="site-footer__coltitle" data-copy="footerColProject">${copy.footerColProject}</span>
@@ -446,15 +435,10 @@ function renderFooter(copy) {
 export function renderTour(copy) {
   return {
     markup: `
-      <section class="tour" data-chapter="1">
-        <div class="tour__track">
-          <div class="tour__sticky">
-            <div class="tour__motion" aria-hidden="true"></div>
-            <div class="tour__layout">
-              ${renderChapterRail(copy)}
-              ${renderStage()}
-            </div>
-          </div>
+      <section class="tour">
+        <div class="panels" id="${FEATURES_ID}">
+          <p class="band-label" data-copy="tourKicker">${copy.tourKicker}</p>
+          ${PANELS.map((panel, index) => renderPanel(panel, index, copy)).join("")}
         </div>
         ${renderFinale(copy)}
         ${renderFooter(copy)}
@@ -467,101 +451,25 @@ export function renderTour(copy) {
         throw new Error("Tour root is missing.");
       }
 
-      const track = section.querySelector(".tour__track");
       const reduceMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       );
 
-      const aurora = mountAurora(
-        section.querySelector(".tour__motion"),
-        AURORA_SCENES[1],
-      );
-      const disposeStream = mountStageStream(
-        section.querySelector(".tour__scenegrid"),
-      );
+      // One stream per panel that has a pane grid — scene 1 draws the Open
+      // board, which has no transcripts to type into.
+      const disposeStreams = [
+        ...section.querySelectorAll(".tour__scenegrid"),
+      ].map((grid) => mountStageStream(grid));
       const disposeReveal = mountFinaleReveal(section);
       const disposeProofTerm = mountProofTerm(section, reduceMotion);
-      const disposeEntrance = mountWindowEntrance(section, reduceMotion);
-
-      let rafId = null;
-
-      function update() {
-        rafId = null;
-
-        if (section.classList.contains("tour--static")) {
-          return;
-        }
-
-        const rect = track.getBoundingClientRect();
-        const progress = trackProgress(
-          rect.top,
-          rect.height,
-          window.innerHeight,
-        );
-
-        if (rect.height - window.innerHeight <= 0) {
-          return;
-        }
-
-        const chapter = String(chapterForProgress(progress));
-
-        if (section.dataset.chapter !== chapter) {
-          section.dataset.chapter = chapter;
-          aurora.setScene(AURORA_SCENES[chapter]);
-        }
-      }
-
-      function schedule() {
-        if (rafId === null) {
-          rafId = requestAnimationFrame(update);
-        }
-      }
-
-      function handleRailClick(event) {
-        if (section.classList.contains("tour--static")) {
-          return;
-        }
-
-        const button = event.target.closest(".tour__chapter");
-
-        if (!button || !section.contains(button)) {
-          return;
-        }
-
-        const rect = track.getBoundingClientRect();
-        const scrollable = rect.height - window.innerHeight;
-        const index = Number(button.dataset.ch) - 1;
-        const target =
-          window.scrollY +
-          rect.top +
-          scrollable * ((index + 0.5) / CHAPTER_COUNT);
-
-        window.scrollTo({
-          top: target,
-          behavior: reduceMotion.matches ? "auto" : "smooth",
-        });
-      }
-
-      window.addEventListener("scroll", schedule, { passive: true });
-      window.addEventListener("resize", schedule, { passive: true });
-      section.addEventListener("click", handleRailClick);
-      const disposeResponsive = mountResponsiveMode(section, update, aurora);
 
       return () => {
-        window.removeEventListener("scroll", schedule);
-        window.removeEventListener("resize", schedule);
-        section.removeEventListener("click", handleRailClick);
-
-        if (rafId !== null) {
-          cancelAnimationFrame(rafId);
-        }
-
-        disposeResponsive();
-        disposeEntrance();
         disposeProofTerm();
         disposeReveal();
-        disposeStream();
-        aurora.dispose();
+
+        for (const dispose of disposeStreams) {
+          dispose();
+        }
       };
     },
   };
