@@ -1,0 +1,19 @@
+# Commits that only move whitespace and quotes. Teach git to look past them:
+#
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# (already set in this clone; every other clone needs the line once). GitHub
+# reads this file on its own, no configuration.
+#
+# Only whole-tree formatting passes belong here. `ce88df09` — the oxlint sweep —
+# is deliberately absent: it changed real code alongside its reformat, and
+# ignoring it would hide those edits' authorship too.
+
+# chore(style): adopt team prettier baseline and reformat
+d367dc15960b4d83f7a876131864594882bae122
+
+# chore(style): flip prettier quote rule back to double quotes
+3b7805dbe111934fba83ee3087881e0936d62e74
+
+# chore(style): format the four files the baseline never saw
+a51b86ba3c86b0075e61481b00b81be545da2b01
