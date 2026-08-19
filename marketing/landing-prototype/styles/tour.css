@@ -122,7 +122,11 @@
    shrinks the type until the `max(…, 7px)` floors are all that is left. Those
    scenes take the full panel width with the copy above them (`wide`); the ones
    that are naturally tall and narrow keep the beside-the-copy shape (`side`).
-   The alternation below is what stops five panels reading as a table. */
+   The six panels run `side, side, wide, wide, side, side` with the flips on
+   1 and 6, so the art moves across the stack instead of six panels printing
+   one template. It is NOT a strict alternation — 3 and 4 are both `wide`, 5
+   and 6 both `side` — and the flips follow the spec rather than a pattern
+   this sheet invents. */
 .panel[data-shape="side"] .panel__art {
   order: 2;
 }
@@ -256,21 +260,23 @@
 }
 
 /* A different painting per panel, not a different crop of one. Cropping alone
-   gave five stages that all read as the same picture, which is what it was.
-   The hero keeps `--plate-image`; these five never repeat it or each other. */
-.panel[data-scene="grid"] .panel__stage-art {
-  background-image: var(--plate-plateau);
-  background-position: 50% 62%;
-}
+   gave stages that all read as the same picture, which is what it was. The
+   hero keeps `--plate-image` and no panel takes it.
 
+   That was affordable while there were five panels and five plates to spend.
+   There are SIX panels now and still five plates, so one painting is read
+   twice: `cloudstudy` paints panel 1 and panel 6, at crops far enough apart
+   to read as two views rather than one picture repeated. Nothing else
+   repeats, and no panel repeats the hero. Cutting the old `grid` panel is
+   what freed `plateau` for panel 5. Rejected: a seventh painting — a 30-60 kB
+   asset that does not exist, and which picture goes where is an owner's
+   choice, not a stylesheet's.
+
+   The order below is the panel order, so the six rules read against the
+   plan's own table top to bottom. */
 .panel[data-scene="rail"] .panel__stage-art {
   background-image: var(--plate-cloudstudy);
   background-position: 42% 46%;
-}
-
-.panel[data-scene="restore"] .panel__stage-art {
-  background-image: var(--plate-clouds);
-  background-position: 50% 38%;
 }
 
 .panel[data-scene="picker"] .panel__stage-art {
@@ -278,9 +284,27 @@
   background-position: 56% 40%;
 }
 
+.panel[data-scene="restore"] .panel__stage-art {
+  background-image: var(--plate-clouds);
+  background-position: 50% 38%;
+}
+
 .panel[data-scene="surfaces"] .panel__stage-art {
   background-image: var(--plate-jamaica);
   background-position: 50% 44%;
+}
+
+/* Freed by the cut `grid` panel, kept at the crop that panel used. */
+.panel[data-scene="usage"] .panel__stage-art {
+  background-image: var(--plate-plateau);
+  background-position: 50% 62%;
+}
+
+/* The one reuse: panel 1's painting, cropped high and to the right so the two
+   stages do not read as the same picture twice. */
+.panel[data-scene="catalog"] .panel__stage-art {
+  background-image: var(--plate-cloudstudy);
+  background-position: 68% 22%;
 }
 
 /* ---------- the app window (shared .a-appwin chrome) ---------- */
@@ -300,175 +324,6 @@
   box-shadow:
     0 1.8rem 3.6rem -0.9rem rgb(0 0 0 / 62%),
     0 0.5rem 1.2rem -0.5rem rgb(0 0 0 / 45%);
-}
-
-/* ---------- chapter 1: Open board scene ---------- */
-
-.tour__board {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2.4cqw;
-  padding: 2.5cqw;
-}
-
-.tour__boardlogo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1cqw;
-  color: var(--sg-fg);
-  font-size: max(1.6cqw, 11px);
-  font-weight: 650;
-  letter-spacing: 0.02em;
-}
-
-.tour__boardlogo img {
-  width: 5cqw;
-  height: 5cqw;
-}
-
-.tour__recents {
-  display: flex;
-  flex-direction: column;
-  gap: 0.9cqw;
-  width: min(48cqw, 100%);
-}
-
-.tour__recent {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: 1.2cqw;
-  padding: 0.9cqw 1.2cqw;
-  border: 1px solid var(--sg-hairline-soft);
-  border-radius: 0.8cqw;
-  background: color-mix(in srgb, #c0caf5 3%, transparent);
-}
-
-.tour__recent.is-hot {
-  border-color: color-mix(in srgb, var(--sg-purple) 55%, transparent);
-  background: color-mix(in srgb, var(--sg-purple) 8%, transparent);
-  box-shadow: 0 0 2.4cqw color-mix(in srgb, var(--sg-purple) 16%, transparent);
-}
-
-.tour__thumb {
-  display: grid;
-  gap: 0.25cqw;
-  width: 4.6cqw;
-  height: 3.2cqw;
-  padding: 0.3cqw;
-  border: 1px solid var(--sg-hairline);
-  border-radius: 0.4cqw;
-}
-
-.tour__thumb i {
-  border-radius: 0.15cqw;
-  background: color-mix(in srgb, var(--sg-accent) 32%, transparent);
-}
-
-.tour__thumb[data-preset="duo"] {
-  grid-template-columns: 1fr 1fr;
-}
-
-.tour__thumb[data-preset="trio"],
-.tour__thumb[data-preset="quad"] {
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-}
-
-.tour__thumb[data-preset="trio"] i:nth-child(3) {
-  grid-area: 1 / 2 / 3 / 3;
-}
-
-.tour__rectext {
-  min-width: 0;
-}
-
-.tour__rectext strong {
-  display: block;
-  overflow: hidden;
-  color: var(--sg-fg);
-  font-size: max(1.25cqw, 8px);
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tour__rectext span {
-  display: block;
-  color: var(--sg-fg-faint);
-  font-family: var(--a-font-mono);
-  font-size: max(1cqw, 7px);
-}
-
-.tour__recagents {
-  display: inline-flex;
-  gap: 0.4cqw;
-}
-
-.tour__agentchip {
-  display: inline-grid;
-  place-items: center;
-  width: 2.2cqw;
-  height: 2.2cqw;
-  border: 1px solid color-mix(in srgb, var(--chip-tint) 50%, transparent);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--chip-tint) 20%, transparent);
-  color: var(--chip-tint);
-  font-family: var(--a-font-mono);
-  font-size: max(0.9cqw, 6px);
-  font-weight: 700;
-}
-
-.tour__openkbd {
-  padding: 0.25cqw 0.8cqw;
-  border: 1px solid color-mix(in srgb, var(--sg-purple) 60%, transparent);
-  border-radius: 0.5cqw;
-  background: color-mix(in srgb, var(--sg-purple) 12%, transparent);
-  color: var(--sg-purple);
-  font-family: var(--a-font-mono);
-  font-size: max(1cqw, 7px);
-}
-
-/* ---------- panels 2–3: live pane grid ---------- */
-
-/* No flex-grow transition any more: the panes used to grow into the
-   focus-expand ratio as the chapter changed under a pinned window. Each panel
-   now renders its own state, so there is nothing to animate between. */
-.tour__scenegrid .a-appwin__pane {
-  position: relative;
-}
-
-/* ---------- sidebar live indicators (busy ring / unread dot) ---------- */
-
-.tour .a-appwin__wsavatar {
-  position: relative;
-  display: inline-flex;
-  flex: 0 0 auto;
-}
-
-.tour .a-appwin__wsavatar[data-ws-status="busy"]::after {
-  position: absolute;
-  inset: -0.45cqw;
-  border: 0.22cqw solid transparent;
-  border-top-color: var(--sg-purple);
-  border-radius: 50%;
-  content: "";
-  animation: tour-ringspin 900ms linear infinite;
-}
-
-.tour .a-appwin__wsavatar[data-ws-status="unread"]::after {
-  position: absolute;
-  top: -0.2cqw;
-  right: -0.2cqw;
-  width: 0.9cqw;
-  height: 0.9cqw;
-  border-radius: 50%;
-  background: var(--sg-yellow);
-  box-shadow: 0 0 0.8cqw color-mix(in srgb, var(--sg-yellow) 60%, transparent);
-  content: "";
 }
 
 /* ---------- closing band ---------- */
@@ -967,12 +822,6 @@
   .panel[data-reveal] {
     opacity: 1 !important;
     transform: none !important;
-  }
-}
-
-@keyframes tour-ringspin {
-  to {
-    transform: rotate(360deg);
   }
 }
 
