@@ -68,9 +68,9 @@ The panel's left rail draws the three view names in display order — **Overview
 
 ## 2. The colour re-derivation
 
-Spec §2 says colours re-derive from `deck-dark`'s relationships. `marketing/landing-prototype/styles/tokens.css:64-78` holds the mock's entire colour vocabulary — nine `--sg-*` tokens. All nine change value; eleven are added. **Every token NAME is kept**, because `video.css` and the existing rules read them.
+Spec §2 says colours re-derive from `deck-dark`'s relationships. `marketing/landing-prototype/styles/tokens.css:64-78` holds the mock's entire colour vocabulary — ten `--sg-*` tokens. All ten change value; eleven are added. **Every token NAME is kept**, because `video.css` and the existing rules read them.
 
-### 2.1 The nine existing tokens
+### 2.1 The ten existing tokens
 
 | token | today (`tokens.css:69-78`) | new value | app counterpart |
 |---|---|---|---|
@@ -438,7 +438,7 @@ Three questions the task list leaves open otherwise. All three are settled here.
 
 **Changes:** apply §2.1 and §2.2 verbatim. Replace the block comment at `:64-68` — it currently says *"Tokyo Night app-window chrome … held at 60% of its original saturation"*, which stops being true — with a comment naming `deck-dark`, the pinned `#272d31` literal, the plane inversion (stage is the deepest surface), and **the video consequence in §2.4**.
 
-**Acceptance:** `grep -o '\-\-sg-[a-z0-9-]*:' marketing/landing-prototype/styles/tokens.css | wc -l` → **20** (9 rewritten + 11 new). Count *declarations*, not lines: `grep -c` counts matching **lines**, so the new block comment — which this task must also write, and which names `--sg-rail` and `--sg-hairline-soft` — would silently inflate the number. `npm run build:landing` is the phase gate (§4.1), not this task's; no `color-mix` remains in the `--sg-*` block except where an alpha is intended.
+**Acceptance:** `grep -o '\-\-sg-[a-z0-9-]*:' marketing/landing-prototype/styles/tokens.css | wc -l` → **21** (10 rewritten + 11 new). Count *declarations*, not lines: `grep -c` counts matching **lines**, so the new block comment — which this task must also write, and which names `--sg-rail` and `--sg-hairline-soft` — would silently inflate the number. `npm run build:landing` is the phase gate (§4.1), not this task's; no `color-mix` remains in the `--sg-*` block except where an alpha is intended.
 
 ---
 

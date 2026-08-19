@@ -61,21 +61,79 @@
   --font-mono:
     "SF Mono", "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
 
-  /* Tokyo Night app-window chrome (shared by .a-appwin in hero + tour), held
-     at 60% of its original saturation. The hues are the product's real theme
-     and stay recognisable, but at full chroma they were the only saturated
-     thing left on an achromatic page and read as a different design. Same
-     lightness, so every contrast ratio in the mock is unchanged. */
-  --sg-bg: #18181c;
-  --sg-fg: #cbd1ea;
-  --sg-fg-dim: color-mix(in srgb, #cbd1ea 62%, transparent);
-  --sg-fg-faint: color-mix(in srgb, #cbd1ea 40%, transparent);
-  --sg-accent: #93abde;
-  --sg-green: #9dba7e;
-  --sg-yellow: #c8ab80;
-  --sg-purple: #c0ade4;
-  --sg-hairline: color-mix(in srgb, #cbd1ea 14%, transparent);
-  --sg-hairline-soft: color-mix(in srgb, #cbd1ea 8%, transparent);
+  /* ---- app-window chrome: deck-dark ----
+     Shared by .a-appwin in the hero and in every tour panel. Until 2026-08-20
+     this block was Tokyo Night held at 60% of its original saturation; it is
+     now the app's own resolved token set for `deck-dark`, the theme a new
+     install actually opens in (src/settings/themes.ts, src/lib/derive-colors.ts).
+     Nothing here is re-tinted — a value that disagrees with the app is a bug in
+     this file.
+
+     Two facts about deck-dark decide the plane order, and both are visible
+     above:
+
+     · The rail colour is a PINNED LITERAL. `#272d31` is keyed on the background
+       string inside derive-colors.ts and is NOT reachable by mixing #17181c
+       toward white (the hue moves 228deg to 204deg), so --sg-rail is written
+       here as a literal for the same reason.
+     · On a dark theme the chrome ladder is measured from that rail rather than
+       from the background. So the STAGE IS THE DEEPEST SURFACE in the window
+       and every chrome plane rises off it — stage #17181c, then the rail and
+       frame row at #272d31, then chrome 1 and 2, then the active row/chip at
+       #3d4246. This inverts the old mock, where the sidebar was the darker
+       plane and the stage floated above it.
+
+     The window's one structural shell line is therefore VERTICAL: the seam
+     between the rail and the stage. Hence one seam-column token and no set of
+     horizontal ones.
+
+     Two carried-over notes:
+
+     · --sg-hairline-soft stays an ALPHA. It is the landing's own soft edge (ten
+       consumers across direction-a.css, scenes.css, tour.css and video.css,
+       .a-appwin__pane's border among them); only its hue changes. Turning it
+       into the app's near-background solid seam would erase those edges.
+     · The dim and faint inks are opaque hex now, not alphas over the stage,
+       because that is what the app's --text-muted / --text-faint are. Opaque
+       ink stops picking up the plane under it, so anywhere those two are
+       painted over a wash the pixels shift slightly. No rule changes.
+
+     SHARED WITH THE MARKETING VIDEO. marketing/video/src/main.js imports this
+     file, and video.css resolves these tokens 23 times, so a value edited here
+     re-colours the whole video the next time anyone renders it — which means
+     the rendered assets in marketing/video/out/ are stale in colour until then.
+     Accepted on purpose: forking this block into a video-local :root would
+     guarantee the two surfaces drift apart permanently, which is the opposite
+     of why they share it. */
+
+  /* Planes, deepest first. */
+  --sg-bg: #17181c; /* --bg — the stage */
+  --sg-seam-recessed: #1c1d21; /* mix(bg, #fff, .02) — the one seam still off the stage */
+  --sg-seam-column: #1f2327; /* --sidebar-seam — the structural rail/stage line */
+  --sg-rail: #272d31; /* --sidebar-bg — rail + frame row */
+  --sg-chrome-1: #2d3337; /* mix(rail, #fff, .03) */
+  --sg-chrome-2: #343a3d; /* mix(rail, #fff, .06) */
+  --sg-seam-raised: #3a4044; /* mix(rail, #fff, .09) — the picker panel border */
+  --sg-raised: #3d4246; /* --tab-active-bg = mix(rail, #fff, .10) */
+  --sg-tab-rest: rgba(255, 255, 255, 0.03); /* --tab-rest-bg; over the stage it flattens to #1e1f23 */
+
+  /* Ink. */
+  --sg-fg: #e7e7e7; /* --text-primary (= the preset foreground) */
+  --sg-fg-dim: #c7c7c8; /* --text-muted */
+  --sg-fg-faint: #adaeaf; /* --text-faint */
+
+  /* Signal. */
+  --sg-accent: #6f9cff; /* --accent, the theme blue */
+  --sg-green: #8ccf7e;
+  --sg-yellow: #e5c07b; /* --status-unread — the `asked` dot */
+  --sg-purple: #c792ea; /* the theme magenta */
+  --sg-red: #ef6b73; /* --red — the `failed` dot */
+  --sg-quiet-dot: rgba(255, 255, 255, 0.45); /* the done/idle dot; over the rail it flattens to #888c8e */
+
+  /* Lines. */
+  --sg-hairline: rgba(255, 255, 255, 0.12); /* --hair / --seam-divider — pane splits, strip bottom, window border */
+  --sg-hair-strong: rgba(255, 255, 255, 0.2); /* --hair-strong — the multi-pane inset frame, the active chip */
+  --sg-hairline-soft: rgba(255, 255, 255, 0.08); /* landing-only soft edge; see above */
 }
 
 @media (max-width: 70rem) {
