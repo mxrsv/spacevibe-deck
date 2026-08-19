@@ -31,6 +31,12 @@ import {
   probeNames,
   resolveAgentCommand,
 } from "../lib/agent-catalog";
+import {
+  composeLaunchCommand,
+  defaultLaunchOptions,
+  resolveLaunchOptions,
+} from "../lib/launch-command";
+import type { LaunchOptions } from "../lib/launch-profile";
 import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
 import { TIER_RANK } from "./action-registry";
 import { installFileDrop } from "./file-drop";
@@ -338,6 +344,13 @@ export function createTabManager(
   const lastNotifiedKind = new Map<number, AttentionKind>();
 
   /**
+   * What each pane launched with. Process classification recovers the BINARY a
+   * pane is running, never the flags it was given, so this map is the only
+   * record of a pane's mode — `captureSession` reads it for the journal.
+   */
+  const launchOptionsByPane = new Map<number, LaunchOptions>();
+
+  /**
    * ONE choke point for every tracker transition that might be worth a
    * native notification — every call site below that gets a non-null
    * snapshot back from a tracker mutation routes it here. Label derivation
@@ -391,6 +404,16 @@ export function createTabManager(
     }
   }
 
+  /** Forget the launch mode of panes outside `live`. */
+  function pruneLaunchOptions(live: readonly number[]): void {
+    const alive = new Set(live);
+    for (const id of [...launchOptionsByPane.keys()]) {
+      if (!alive.has(id)) {
+        launchOptionsByPane.delete(id);
+      }
+    }
+  }
+
   const callbacks = {
     onLayoutChange(): void {
       syncViews();
@@ -400,6 +423,7 @@ export function createTabManager(
       tracker.prune(live);
       notifier.prune(live);
       pruneNotifiedKinds(live);
+      pruneLaunchOptions(live);
       // Every pane of every tab is polled now, so a long session would
       // otherwise leave one cache entry behind per pane ever opened.
       poller.prune(live);
@@ -657,6 +681,7 @@ export function createTabManager(
     tracker.prune(live);
     notifier.prune(live);
     pruneNotifiedKinds(live);
+    pruneLaunchOptions(live);
     poller.prune(live);
   }
 
@@ -798,11 +823,30 @@ export function createTabManager(
     // pane that types a stale command. `paneCommands` (session restore) wins
     // per pane over the tab-wide `agent` fallback.
     const agentId = intent.agent ?? null;
+    // `undefined` means the caller expressed no opinion, so the agent's own
+    // default profile applies; `null` means the caller explicitly asked for
+    // the bare command. An agent with no profiles resolves to null either way
+    // and takes the catalog's command exactly as before.
+    const launchOptions =
+      intent.launchOptions === undefined
+        ? defaultLaunchOptions(
+            agentId,
+            settings.value.launchProfiles,
+            settings.value.defaultLaunchProfiles,
+          )
+        : intent.launchOptions;
     const fallback =
       agentId === null
         ? null
-        : resolveAgentCommand(agentId, settings.value.customAgents);
+        : launchOptions !== null
+          ? composeLaunchCommand(launchOptions)
+          : resolveAgentCommand(agentId, settings.value.customAgents);
     const paneIds = entry.manager.paneIds();
+    if (launchOptions !== null) {
+      for (const id of paneIds) {
+        launchOptionsByPane.set(id, launchOptions);
+      }
+    }
     launcher.arm(
       paneIds.map((id, index) => ({
         id,
@@ -840,6 +884,7 @@ export function createTabManager(
   async function openQuickAgent(
     agentId: AgentChoice,
     destination: string | null = null,
+    profileId?: string | null,
   ): Promise<boolean> {
     // A destination is a worktree the picker offered, so it is BOTH the cwd
     // and the workspace tag: tagging the tab with the worktree it runs in is
@@ -852,8 +897,28 @@ export function createTabManager(
       layout: BUILT_IN_PRESET.layout,
       cwds: [cwd],
       agent: agentId,
+      // Three states, not two, and the difference is load-bearing: an ABSENT
+      // argument states no opinion, so `materialize` resolves the agent's
+      // default profile; a `null` argument is the picker's "No profile" row and
+      // must launch bare even when a default exists. Passing a resolved `null`
+      // in both cases would make the default unreachable from every caller that
+      // omits the argument.
+      ...(profileId === undefined
+        ? {}
+        : {
+            launchOptions: resolveLaunchOptions(
+              agentId,
+              profileId,
+              settings.value.launchProfiles,
+            ),
+          }),
       ...(workspacePath !== null ? { workspacePath } : {}),
     });
+  }
+
+  /** The launch options a pane started with; null when it had none. */
+  function launchOptionsFor(paneId: number): LaunchOptions | null {
+    return launchOptionsByPane.get(paneId) ?? null;
   }
 
   /**
@@ -1122,6 +1187,7 @@ export function createTabManager(
     tracker.prune(live);
     notifier.prune(live);
     pruneNotifiedKinds(live);
+    pruneLaunchOptions(live);
     poller.prune(live);
     if (tabs.length === 0) {
       // Every window is a peer (spec §2, §9.5): the last SURFACE closes THIS
@@ -1954,6 +2020,7 @@ export function createTabManager(
     materialize,
     openFromPreset,
     openQuickAgent,
+    launchOptionsFor,
     dropAgentPane,
     activeSlotRects() {
       return activeManager()?.slotRects() ?? [];

@@ -1,3 +1,4 @@
+import type { LaunchOptions } from "../lib/launch-profile";
 import type { PaneProcessInfo } from "../lib/process-info";
 import { countLeaves, type SerializedNode } from "../lib/split-tree";
 import type { TabDotColor } from "../lib/tab-colors";
@@ -125,6 +126,14 @@ export interface MaterializeIntent {
    * reopen passes `null` (⌘⇧T does not re-run agents).
    */
   readonly agent?: AgentChoice;
+  /**
+   * The mode the agent launches in. `undefined` = resolve the agent's default
+   * profile (Open board, rail drop, a plain reopen); `null` = launch the bare
+   * command even if a default exists (the quick picker's "No profile" row).
+   * Semantic on purpose — the command is composed inside `materialize`, so
+   * every caller stays out of the business of building a command line.
+   */
+  readonly launchOptions?: LaunchOptions | null;
   /**
    * Per-pane launch commands, zipped to leaves left-to-right. When present it
    * overrides `agent` per pane (a null slot leaves that pane a plain shell).
