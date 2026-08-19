@@ -8,6 +8,7 @@
 
 import "../../landing-prototype/styles/tokens.css";
 import "../../landing-prototype/styles/direction-a.css";
+import "../../landing-prototype/styles/appwin.css";
 import "../styles/video.css";
 
 import { createBackdrop } from "./backdrop.js";
