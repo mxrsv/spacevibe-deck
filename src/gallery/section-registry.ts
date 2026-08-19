@@ -8,8 +8,10 @@ import { OverlaysSection } from "./sections/overlays-section";
 import { PopoversSection } from "./sections/popovers-section";
 import { RowsSection } from "./sections/rows-section";
 import { SeamSection } from "./sections/seam-section";
+import { SettingsDirectionSection } from "./sections/settings-direction";
 import { ToolbarSection } from "./sections/toolbar-section";
 import { TokensSection } from "./sections/tokens-section";
+import { LaunchProfilesSection } from "./sections/launch-profiles-section";
 
 export interface GallerySection {
   readonly id: string;
@@ -31,6 +33,11 @@ export interface GallerySection {
 export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "tokens", label: "direction tokens", Section: TokensSection },
   { id: "rows", label: "config rows", Section: RowsSection },
+  {
+    id: "settings-direction",
+    label: "light/dark settings",
+    Section: SettingsDirectionSection,
+  },
   { id: "chrome", label: "window chrome", Section: ChromeSection },
   { id: "matrix", label: "native detail matrix", Section: MatrixSection },
   { id: "navigation", label: "navigation", Section: NavigationSection },
@@ -44,4 +51,9 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "popovers", label: "popovers", Section: PopoversSection },
   { id: "overlays", label: "overlays", Section: OverlaysSection },
   { id: "board", label: "open board", Section: BoardSection },
+  {
+    id: "launch-profiles",
+    label: "launch profiles",
+    Section: LaunchProfilesSection,
+  },
 ];

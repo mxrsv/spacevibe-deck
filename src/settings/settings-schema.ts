@@ -7,6 +7,11 @@ import {
   type CustomAgent,
 } from "../lib/agent-catalog";
 import {
+  validateDefaultLaunchProfiles,
+  validateLaunchProfiles,
+  type LaunchProfile,
+} from "../lib/launch-profile";
+import {
   isValidPromptTemplate,
   type PromptTemplate,
 } from "../prompts/prompt-templates";
@@ -25,27 +30,6 @@ export interface TerminalColors {
 
 /** `left` = workspace sidebar (default), `top` = the classic horizontal bar. */
 export type TabBarPosition = "top" | "left";
-
-/**
- * Which xterm renderer paints a pane. A genuine trade, which is why it is a
- * setting rather than a constant: `dom` lets the browser lay out text, so it
- * keeps subpixel antialiasing and subpixel advance widths, but it cannot draw
- * custom glyphs — block and box-drawing characters come out of the font and
- * TUIs that join them across cells (OpenCode's wordmark, prompt borders) look
- * segmented. `webgl` draws those glyphs to the full cell box, at the cost of
- * routing all text through a texture atlas: grayscale antialiasing, and cell
- * widths rounded to whole device pixels.
- *
- * No `canvas` value on purpose — `TextureAtlas` lives in xterm core and both
- * accelerated addons share it, so canvas would carry webgl's text trade
- * without its speed.
- */
-export type TerminalRenderer = "dom" | "webgl";
-
-export const TERMINAL_RENDERERS: readonly TerminalRenderer[] = Object.freeze([
-  "dom",
-  "webgl",
-]);
 
 /**
  * The docked right column's tabs. Declared here rather than in the dock's own
@@ -96,6 +80,13 @@ export interface Settings {
   scrollback: number;
   /** Agent CLIs the user declared, beyond the built-in set. */
   customAgents: readonly CustomAgent[];
+  /** Named mode selections for the agent CLIs that support them. */
+  launchProfiles: readonly LaunchProfile[];
+  /**
+   * Agent id → profile id used when nothing picks one: the Open board, a rail
+   * drop, and the quick picker's initial selection. Absent = launch bare.
+   */
+  defaultLaunchProfiles: Readonly<Record<string, string>>;
   /** Reusable prompt bodies the user declared for the Prompt Board. */
   promptTemplates: readonly PromptTemplate[];
   /**
@@ -130,12 +121,6 @@ export interface Settings {
   keybindings: KeybindingOverrides;
   /** Reopen last session's tabs and resume agent conversations at launch. */
   restoreSessions: boolean;
-  /**
-   * Which renderer paints terminal panes. Defaults to `dom` — the renderer
-   * every shipped build has used — so the accelerated path is opt-in and no
-   * existing profile has its text rendering changed underneath it.
-   */
-  terminalRenderer: TerminalRenderer;
 }
 
 export const FONT_SIZE_MIN = 10;
@@ -159,7 +144,12 @@ export const COLOR_KEYS = [
 export const DEFAULT_SETTINGS: Settings = {
   fontFamily: "SF Mono",
   fontSize: 13,
-  themeId: "tokyo-night",
+  // A NEW install only. Written as a literal rather than imported from
+  // `themes.ts` on purpose — that module imports this one for the `Settings`
+  // type, and closing the loop would make the schema depend on the palette
+  // data it is supposed to validate independently. Every stored id, including
+  // the four upstream palettes and any imported file, still validates.
+  themeId: "deck-dark",
   colorOverrides: {},
   focusExpand: false,
   showPaneBar: false,
@@ -172,6 +162,8 @@ export const DEFAULT_SETTINGS: Settings = {
   editorCommand: "",
   scrollback: 10_000,
   customAgents: [],
+  launchProfiles: [],
+  defaultLaunchProfiles: {},
   promptTemplates: [],
   browserHomeUrl: "http://localhost:3000",
   browserLastUrl: "",
@@ -180,7 +172,6 @@ export const DEFAULT_SETTINGS: Settings = {
   dockTab: "explorer",
   keybindings: NO_KEYBINDING_OVERRIDES,
   restoreSessions: true,
-  terminalRenderer: "dom",
 };
 
 export const BROWSER_WIDTH_MIN = 280;
@@ -231,10 +222,6 @@ const TAB_BAR_POSITIONS: readonly TabBarPosition[] = ["top", "left"];
 
 function isTabBarPosition(value: unknown): value is TabBarPosition {
   return TAB_BAR_POSITIONS.includes(value as TabBarPosition);
-}
-
-function isTerminalRenderer(value: unknown): value is TerminalRenderer {
-  return TERMINAL_RENDERERS.includes(value as TerminalRenderer);
 }
 
 export function isHexColor(value: unknown): value is string {
@@ -354,6 +341,10 @@ export function validateSettings(raw: unknown): Settings {
     return DEFAULT_SETTINGS;
   }
   const source = raw as Record<string, unknown>;
+  // Validated before the return object because the defaults map is checked
+  // AGAINST the surviving profiles: a mapping onto a profile that was just
+  // dropped has to go with it.
+  const validatedLaunchProfiles = validateLaunchProfiles(source.launchProfiles);
   return {
     fontFamily:
       typeof source.fontFamily === "string" && source.fontFamily.trim() !== ""
@@ -409,6 +400,11 @@ export function validateSettings(raw: unknown): Settings {
         ? clampScrollback(source.scrollback)
         : DEFAULT_SETTINGS.scrollback,
     customAgents: validateCustomAgents(source.customAgents),
+    launchProfiles: validatedLaunchProfiles,
+    defaultLaunchProfiles: validateDefaultLaunchProfiles(
+      source.defaultLaunchProfiles,
+      validatedLaunchProfiles,
+    ),
     promptTemplates: validatePromptTemplates(source.promptTemplates),
     // Not normalized to a URL here: the host is the one that decides what is
     // loadable, and a value this validator "fixed" would disagree with it.
@@ -445,11 +441,5 @@ export function validateSettings(raw: unknown): Settings {
       typeof source.restoreSessions === "boolean"
         ? source.restoreSessions
         : DEFAULT_SETTINGS.restoreSessions,
-    // An unknown renderer name falls back rather than being kept: this value
-    // selects a code path, and a name nothing answers to would leave panes
-    // with no renderer resolved at all.
-    terminalRenderer: isTerminalRenderer(source.terminalRenderer)
-      ? source.terminalRenderer
-      : DEFAULT_SETTINGS.terminalRenderer,
   };
 }

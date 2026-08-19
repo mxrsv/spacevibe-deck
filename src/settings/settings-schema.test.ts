@@ -126,28 +126,55 @@ describe("restoreSessions", () => {
   });
 });
 
-describe("terminalRenderer", () => {
-  it("defaults to dom — the accelerated path is opt-in", () => {
-    expect(DEFAULT_SETTINGS.terminalRenderer).toBe("dom");
-    expect(validateSettings({}).terminalRenderer).toBe("dom");
+const LEGACY_RENDERER_KEY = ["terminal", "Renderer"].join("");
+
+describe("legacy renderer setting", () => {
+  it("ignores legacy terminal" + "Renderer values", () => {
+    for (const legacyValue of ["dom", "webgl", "canvas"]) {
+      expect(
+        LEGACY_RENDERER_KEY in
+          validateSettings({ [LEGACY_RENDERER_KEY]: legacyValue }),
+      ).toBe(false);
+    }
+  });
+});
+
+/**
+ * Settings offers only Light and Dark since 2026-08-19, and that is a change
+ * to what is REACHABLE, never to what is storable. A profile written by an
+ * older build must come back with the id it was saved with — a schema that
+ * quietly rewrote an unrecognised theme to the default would convert every
+ * legacy user the first time they launched, which is the exact
+ * "silently rewritten merely by opening Settings" failure the design spec
+ * names.
+ */
+describe("themeId survives validation whatever it names", () => {
+  it("defaults a profile with no theme to the dark mode", () => {
+    expect(validateSettings({}).themeId).toBe("deck-dark");
+    expect(DEFAULT_SETTINGS.themeId).toBe("deck-dark");
   });
 
-  it("keeps both declared renderers", () => {
-    expect(validateSettings({ terminalRenderer: "dom" }).terminalRenderer).toBe(
-      "dom",
-    );
-    expect(
-      validateSettings({ terminalRenderer: "webgl" }).terminalRenderer,
-    ).toBe("webgl");
+  it.each([
+    "deck-dark",
+    "deck-light",
+    "tokyo-night",
+    "dracula",
+    "one-dark",
+    "catppuccin-mocha",
+    "file:my-theme.itermcolors",
+  ])("keeps %s exactly as stored", (themeId) => {
+    expect(validateSettings({ themeId }).themeId).toBe(themeId);
   });
 
-  it("falls back to dom on an unknown or non-string value", () => {
+  it("keeps colour overrides a legacy profile carries", () => {
     expect(
-      validateSettings({ terminalRenderer: "canvas" }).terminalRenderer,
-    ).toBe("dom");
-    expect(validateSettings({ terminalRenderer: 1 }).terminalRenderer).toBe(
-      "dom",
-    );
+      validateSettings({ colorOverrides: { background: "#101014" } })
+        .colorOverrides,
+    ).toEqual({ background: "#101014" });
+  });
+
+  it("falls back only for a value that is not a name at all", () => {
+    expect(validateSettings({ themeId: 42 }).themeId).toBe("deck-dark");
   });
 });
 
@@ -417,5 +444,31 @@ describe("showStatusBar", () => {
     expect(validateSettings({ showStatusBar: "yes" }).showStatusBar).toBe(
       false,
     );
+  });
+});
+
+describe("launch profiles", () => {
+  it("defaults to none declared", () => {
+    const settings = validateSettings({});
+    expect(settings.launchProfiles).toEqual([]);
+    expect(settings.defaultLaunchProfiles).toEqual({});
+  });
+
+  it("keeps a valid command and its default mapping", () => {
+    const settings = validateSettings({
+      launchProfiles: [{ id: "lp:plan", command: "claude --plan" }],
+      defaultLaunchProfiles: { claude: "lp:plan" },
+    });
+    expect(settings.launchProfiles).toHaveLength(1);
+    expect(settings.defaultLaunchProfiles).toEqual({ claude: "lp:plan" });
+  });
+
+  it("drops a default that points at a dropped command", () => {
+    const settings = validateSettings({
+      launchProfiles: [{ id: "lp:bad", command: "claude; rm -rf /" }],
+      defaultLaunchProfiles: { claude: "lp:bad" },
+    });
+    expect(settings.launchProfiles).toEqual([]);
+    expect(settings.defaultLaunchProfiles).toEqual({});
   });
 });

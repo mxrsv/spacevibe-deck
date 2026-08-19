@@ -20,6 +20,7 @@ import { settingsOpen } from "../../../chrome/events";
 import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
 import { ConfigGroup, ConfigRow } from "../../controls/config-row";
 import { CommitInput } from "../../controls/commit-input";
+import { LaunchProfileEditor } from "../launch-profile-editor";
 
 /**
  * Why a declared command is rejected, or `null` when it is fine. The binary is
@@ -155,6 +156,29 @@ export function AgentsSection() {
   };
 
   /**
+   * Escape inside the add form discards it and goes NO further.
+   *
+   * This form is the one draft in Settings that `CommitInput` cannot own
+   * (DL-6.3): two fields commit atomically, so there is no single value to
+   * blur-commit. Without this, Escape reached the screen's own handler, which
+   * closed Settings — costing the half-typed agent AND the screen to one
+   * press, the failure the design spec names by hand. `stopPropagation` is
+   * what keeps the two apart; the discard itself is exactly what the row's
+   * own discard button does.
+   */
+  const cancelDraftOnEscape = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape") {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    draftOpen.value = false;
+    draftLabel.value = "";
+    draftCommand.value = "";
+    draftError.value = null;
+  };
+
+  /**
    * Settings → Token Usage, in one click. Writes the two signals directly
    * instead of calling `closeSettingsPanel` (app.tsx): that helper hands focus
    * back to the active pane, and here focus must land inside the screen that
@@ -173,19 +197,12 @@ export function AgentsSection() {
 
   return (
     <>
+      {/* The built-in list is the editor's own since 2026-08-19: a row prints
+          the command its agent will launch with, not the agent's name beside
+          a locked badge. `LaunchProfileEditor` walks `BUILTIN_AGENTS` itself,
+          so this section states the group and hands the list over. */}
       <ConfigGroup label="Built in" />
-      {BUILTIN_AGENTS.map((agent) => (
-        <ConfigRow key={agent.id} label={agent.label} desc="Always available">
-          <button
-            type="button"
-            class="cfg-btn cfg-btn--disabled"
-            disabled
-            title={`${agent.id} — built in, not editable`}
-          >
-            {agent.id}
-          </button>
-        </ConfigRow>
-      ))}
+      <LaunchProfileEditor />
 
       <ConfigGroup label="Declared" />
       {customAgents.map((agent) => (
@@ -275,6 +292,7 @@ export function AgentsSection() {
                   draftLabel.value = event.currentTarget.value;
                   draftError.value = null;
                 }}
+                onKeyDown={cancelDraftOnEscape}
               />
             </div>
             <div class="cfg-row__value">
@@ -291,7 +309,9 @@ export function AgentsSection() {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     commitDraft();
+                    return;
                   }
+                  cancelDraftOnEscape(event);
                 }}
               />
             </div>
