@@ -468,6 +468,28 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   Gate C**. See
   [docs/CONTEXT.md](docs/CONTEXT.md#opening-a-path-an-agent-printed--2026-08-20)
   `current`.
+- **The landing's window mock draws the shipped app, not the July one (2026-08-20).** Marketing
+  only — **no `src/` or `electron/` file changed**, and no DL rule moved: DL binds app chrome and
+  this is a drawing of it. The hero is one still `.a-appwin` in `deck-dark`'s plane order — an
+  agent rail of project clusters and per-pane sentence rows, one unified tab strip (terminal +
+  file + browser chip), a frame row of traffic lights + sidebar toggle + `New`, three streaming
+  panes, and **no status bar and no dock**. The tour's `grid` panel is cut and its whole render
+  chain deleted; four panels are rebuilt and two are new (Usage → Overview, Settings → Agents).
+  All ten `--sg-*` tokens are re-derived from `deck-dark` and eleven added, each named for the app
+  token it mirrors. A pane's script now carries `tail`/`state` per step, which
+  [`mountStageStream`](marketing/landing-prototype/src/product-stage.js) `current` writes to every
+  `[data-tail]`/`[data-dot]` node the pane owns — `querySelectorAll`, never `querySelector`, and
+  scoped to the root it was handed. **Two knowing divergences:** the active chip echoes the FOCUSED
+  pane, where the app's `tabTail` prints the LOUDEST; and **the marketing video keeps drawing the
+  July shell by choice** (`stage-driver.js` hard-requires `[data-ws-avatar]`), so `stageSidebar` /
+  `renderStageSidebar` / `renderStageStatus` survive as video-only and nothing was removed from
+  `marketing/stage/`. **`marketing/**` has NO lint signal at all** — it is in `.prettierignore`
+  AND in oxlint's `ignorePatterns`, so every "prettier clean" claim over this tree is vacuous.
+  Verified by `build:landing`, `vitest run marketing/` 159/159 and a 42-image headless capture at
+  1440/768/390 in both motion modes; **owner eye review and `frontend-design-bar` are owed, and
+  `marketing/video/out/` is now stale in colour as well as shape**. See
+  [docs/CONTEXT.md](docs/CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20)
+  `current`.
 - **Chrome gallery is current:** `gallery.html` mounts real components through `src/gallery/`;
   run `npm run prototype:gallery`. Gallery code must never enter the shipping bundle. Its
   window-chrome section is narrowed to the one selected direction on purpose; parked
@@ -704,5 +726,8 @@ _(Heading retained for the global living-doc convention.)_
 | Opening a path an agent printed is native-verified                            | `building` | unverified | Landed 2026-08-20 (new DL-14.7, DL-23.11): ⌘+click routes into Deck's editor, four detection grammars, a ten-app catalog and a split-button. `npm test` 3356/8 with every failure attributed to a concurrent session, `npm run build` / `electron:build` / `generate:menu:check` clean, 133 targeted assertions — but nothing has been clicked in a running host and no bundle icon has ever rendered — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                       |
 | The agent catalog and its shipped commands are native-verified                | `building` | unverified | Landed 2026-08-19 after three reshapes the same day: enum options → typed commands → catalog rows with `defaultCommand`. `npm test` 3250/0 and `npm run build` plus a gallery pass on the real component — no host run; drag-to-reorder and the expand caret are unbuilt — [detail](docs/CONTEXT.md#the-agent-catalog--2026-08-19) `current`                                                                                                                                                                                                                                                                                                                |
 | A multi-agent tab's frame is native-verified                                  | `building` | unverified | Landed 2026-08-20 (new DL-27.19): CSS only, on the `data-headless` seam. Design-language and agent-rail suites (57/57), plus a browser measurement proving a framed row and an unframed one start on the same x, and a screenshot of the real rail — no full suite, no build (another session's `terminal-links.ts` is mid-edit and red), no host run, no owner eye review — [detail](docs/CONTEXT.md#one-tab-one-frame--2026-08-20) `current`                                                                                                                                                                                                              |
+| The landing stage mirrors the shipped app                                     | `building` | unverified | Landed 2026-08-20 across 21 tasks, marketing-only (no `src/`, no DL rule). `npm run build:landing` clean, `vitest run marketing/` 159/159 (38 before), and 42 headless screenshots at 1440/768/390 in both motion modes with every in-page check passing — but `frontend-design-bar` (gate 3) and the owner eye review (gate 5) are owner-side and NOT run, the capture is Linux chromium rather than macOS type, and `prefers-reduced-motion` was emulated — [detail](docs/CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20) `current` |
+| `marketing/**` has a lint gate                                                | `current`  | **false**  | Measured 2026-08-20 and never true: `marketing/**` sits in `.prettierignore` AND in `.oxlintrc.json`'s `ignorePatterns`, so `npx oxlint marketing/` answers "No files found to lint" and `prettier --check` reports clean without reading the file (proven with `--ignore-path /dev/null`). Every "prettier clean" claim over this tree is vacuous. Not fixed: the sheets are written at 80 columns against prettier's 100, so `--write` would reformat the tree against its own convention — [detail](docs/CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20) `current` |
+| The rendered marketing video matches the app                                  | `decided`  | **false**  | Knowingly stale in SHAPE since the Electron chrome landed, and since 2026-08-20 in COLOUR too: `tokens.css`'s `:root` is shared, so the live video page took the re-derived palette while `marketing/video/out/` still holds the old render. The video entry links and paints (896.2 x 555.8, no console error) and keeps drawing the July shell BY CHOICE — `stage-driver.js` hard-requires `[data-ws-avatar]`. Nothing was re-rendered — [detail](docs/CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20) `current` |
 
 Updated 2026-08-20.

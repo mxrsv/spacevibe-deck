@@ -12,6 +12,141 @@
   material, kept for provenance, not authoritative.
 - Domain glossary: repo-root `CONTEXT.md`.
 
+## The landing stage draws the shipped app — 2026-08-20
+
+The landing's window mock had been drawing the July app for a month: a workspace
+sidebar of avatars, a status bar, a dock, an Open board panel. None of those is
+what Deck opens on any more. Since 2026-08-20 the hero is one still, living
+`.a-appwin` in `deck-dark`'s own plane order — an
+[AgentRail](../marketing/stage/appwin.js) `current` of project clusters and
+per-pane sentence rows, one unified tab strip carrying a terminal chip, a file
+chip and a browser chip, a frame row of traffic lights + sidebar toggle + `New`,
+three streaming panes, and **no status bar and no dock**, because
+`showStatusBar: false` / `dockOpen: false` are the shipped defaults. The tour's
+`grid` panel is cut with its whole stranded render chain; the four that remain
+are rebuilt on the new chrome and two are new (Usage → Overview, Settings →
+Agents). Twenty-one tasks over six phases, to the
+[plan](plans/2026-08-20-landing-stage-redesign.md) `current`; the
+[spec](specs/2026-08-20-landing-stage-redesign-design.md) `decided` is unchanged.
+
+**No `src/` or `electron/` file was touched.** The redesign is a drawing of app
+chrome, not a change to it: the branch's diff is `marketing/`, `docs/`, and one
+new `scripts/capture-landing-stage.mjs`. That is also why no DL rule moved — DL
+binds app chrome, and this obeys it from outside. The one place the work reaches
+into `src/` is a test import: `stage-markup.test.js` reads `BUILTIN_AGENTS` out
+of `src/lib/agent-catalog.ts` so the landing's agent list cannot drift behind a
+seventh built-in without something going red.
+
+**The mock's colours are re-derived, not re-picked.** All ten `--sg-*` tokens
+changed value and eleven were added, each named after the app token it mirrors
+(`--sg-rail` = `--sidebar-bg`'s pinned `#272d31`, `--sg-seam-column` =
+`--sidebar-seam`, `--sg-raised` = `--tab-active-bg`, and so on). Every token NAME
+was kept because `video.css` reads them. The plane order inverts: the stage
+`#17181c` is now the DEEPEST surface and the rail stands above it, which is
+2026-08-19's dark-sidebar decision arriving on the landing.
+
+**A pane's script now moves its own rail row and its own tab chip.** Each step in
+`stagePanes` may carry a `tail` (the sentence) and a `state` (the dot), which
+[`mountStageStream`](../marketing/landing-prototype/src/product-stage.js)
+`current` writes to every `[data-tail]` / `[data-dot]` node the pane owns — its
+rail row and, while it is focused, the active chip. Two rules that are easy to
+get backwards and are now pinned by tests: the lookup is `querySelectorAll`, never
+`querySelector`, because a pane owns more than one node per hook; and it is scoped
+to the root it was handed, never widened to `document`, because the page mounts
+several stages. `tail` and `state` are seeded from **two independent scans** of
+the script — codex's and opencode's first step carries a state and no tail, so a
+single scan pairs a working spinner with a finished sentence for ~4s of every
+loop.
+
+**Two deliberate divergences from the app, both recorded rather than hidden.** The
+active chip echoes the FOCUSED pane's sentence; the app's `tabTail` prints the
+LOUDEST pane's by `STATE_RANK`, which would need a cross-pane scheduler the mock's
+independent timers do not have. And **the marketing video keeps drawing the July
+shell by choice**: `stage-driver.js` hard-requires a `[data-ws-avatar]` node and
+derives its sidebar from a flat `{id, active}` list `stageRail` does not have, so
+`stageSidebar` / `renderStageSidebar` / `renderStageStatus` all survive as
+video-only. Nothing was deleted from `marketing/stage/`.
+
+**The one test that says the stage is wired.** There was none before —
+`grep -l "stage\|appwin"` over the three landing tests returned nothing, and
+`build:landing` passes on wrong markup because it is a bundling check.
+[`stage-markup.test.js`](../marketing/landing-prototype/src/stage-markup.test.js)
+`current` is 41 assertions over the seams the rewrite can silently break: the
+hooks resolve to panes that have transcripts, the six scene keys and the six
+panel copy keys agree in both locales, no renderer prints `undefined` / `null` /
+`[object Object]` / `src="null"`, a remembered cluster emits no caret and a framed
+tab emits N leaves and zero rows, `AGENT_MARKS` still mirrors
+`src/lib/agent-catalog.ts`, and both motion paths land where they should. It was
+mutation-checked with seven deliberate regressions — a naive single-scan seed, a
+`querySelector` hook lookup, a dropped `vi` copy key, a reordered agent list, an
+`undefined` in a shared renderer, a caret on a still header, a hook pointing at a
+pane with no transcript — each failing a distinct named test and nothing else.
+
+**Evidence.** Gate 1: `npm run build:landing` clean and `npx vitest run marketing/`
+**159/159 across 10 files** (the baseline before this work was 38 across 5). Gate
+2 and gate 4's visual layer:
+[`scripts/capture-landing-stage.mjs`](../scripts/capture-landing-stage.mjs)
+`current` served the BUILT `dist` to headless chromium and shot the hero plus each
+of the six panels at 1440 / 768 / 390, twice — 42 images, every in-page check
+PASS at all six combinations: no horizontal page overflow, no rail that scrolls
+sideways, no rail text under 9px at 1440/768 or under 7px at 390, and every
+catalog command on one line. The measured boxes reproduce the plan's D10 figure
+exactly — `.a-appwin` **896 × 555.5 / 639.6 / 298.4** with a **223.5 / 159.4 /
+124.5** rail. Gate 4's other two layers: all six `.panel.is-revealed` animations
+declared in `scenes.css` appear in its reduce block (the pre-existing
+`.scene-rail__archived` omission went with the scene that drew it), and a live
+probe counted **207 animating nodes with motion allowed against 0 under
+`prefers-reduced-motion: reduce`**, with the rail landing on each pane's LAST
+sentence and a quiet `done` dot. The video entry still links and paints with no
+console error — 896.2 × 555.8, sidebar 223.6, avatar node present.
+
+**Not established, and some of it is structural.**
+
+- **There is NO lint signal for `marketing/**` at all.** `.prettierignore` line 6
+  is `marketing/**` and `.oxlintrc.json`'s `ignorePatterns` carries the same
+  entry, so `npx oxlint marketing/` answers "No files found to lint" and
+  `npx prettier --check <marketing file>` prints "All matched files use Prettier
+  code style!" WITHOUT reading it — proven by re-running with
+  `--ignore-path /dev/null`, which then warns on five stylesheets. Every "prettier
+  clean" claim made during this work was vacuous. The disagreement is only 80-col
+  house style against prettier's 100, so `--write` would reformat the tree against
+  its own convention; the honest statement is that this work has no lint gate, not
+  that one passed. Separately, repo-wide `npx oxlint` exits 1 at HEAD on three
+  pre-existing `src/` files (`src/lib/link-target.test.ts`,
+  `src/ui/agent-rail.test.tsx:36`, `src/ui/app.tsx:14`) that this branch never
+  touched.
+- **The full `npm test` is red, and none of it is here.** 3482 passed / 10 failed
+  / 3 skipped across 277 files, with all five failing files under `src/` —
+  `tab-manager.drop-agent-pane`, `tab-manager.materialize`,
+  `tab-manager.quick-agent`, `agent-rail-model`, `settings/shortcut-groups`. The
+  branch changed no `src/` file and the tree has none dirty, so `src/` at this
+  HEAD is byte-identical to `src/` before the plan started: the red is inherited,
+  not caused. `npx vitest run marketing/` is the scope this work can attribute,
+  and it is 159/159.
+- **Gate 3 (`frontend-design-bar`) and gate 5 (owner eye review) are owner-side
+  and were not run.** `frontend-design-bar` is not a repo command — it appears
+  only in plan and spec prose. The 42 images are assembled and waiting at
+  `/tmp/spacevibe-deck-landing-stage/` with a `report.json` beside them; an agent
+  can hand them over and nothing more.
+- **The rendered video is now stale in COLOUR as well as in shape.** `tokens.css`'s
+  `:root` is shared with the video entry, so the live video page has taken the new
+  palette while `marketing/video/out/` still holds the old render. Nothing was
+  re-rendered — spec §7 puts that out of scope — so the shipped file and the page
+  that produces it no longer agree.
+- **`.a-appwin__chips` clips 1–2px vertically at 390, and the strip is new here.**
+  Measured: `scrollHeight 8` against `clientHeight 7` in the hero and `8` against
+  `6` in the two strip-bearing panels, with `overflow: hidden`; at 1440 and 768 the
+  two are equal. A 10× crop shows the glyphs surviving — the overflow is line-box,
+  not ink — and nothing focusable lives inside (`tabindex="-1"` under
+  `aria-hidden="true"`), so the "1px overflow moves the shell" trap cannot fire.
+  T19 reported it as pre-existing, which is true of T19's own file and false of the
+  branch: `.a-appwin__chips` did not exist before this work. Recorded, not fixed —
+  T21 owns no stylesheet.
+- **No owner eye review, no native host run, and the reduced-motion evidence is
+  emulated.** `prefers-reduced-motion` was set through Chromium's emulation, not by
+  an OS setting on a real machine, and every screenshot is Linux headless chromium
+  at DPR 2 — not macOS type rendering.
+
 ## One tab, one frame — 2026-08-20
 
 A tab running three agents printed three rows, and nothing on screen said they

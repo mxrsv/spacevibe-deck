@@ -1,7 +1,7 @@
 # Landing stage redesign — implementation plan
 
 - **Date:** 2026-08-20
-- **Status:** `current` — authored, not started
+- **Status:** `current` — **all 21 tasks landed 2026-08-20; gates 1, 2 and 4 pass, gates 3 and 5 are owed.** See [Completion](#completion--2026-08-20).
 - **Spec:** [2026-08-20-landing-stage-redesign-design.md](../specs/2026-08-20-landing-stage-redesign-design.md) `decided`
 - **Branch:** `claude/agent-pipeline-landing-redesign-tkigjs`
 - **Fork status:** not a fork. No `docs/DESIGN-LANGUAGE.md` rule moves (DL binds app chrome; this is a marketing drawing of it), no sibling repo, no bundle/signing/updater config, no R4 seam. One AGENTS.md **Known trap** applies and is named in §7: *"Marketing video shares application components and a virtual clock; component changes can silently alter rendered media."*
@@ -918,6 +918,68 @@ Restating spec §7, plus what this plan defers on purpose.
 - **A Cursor brand tint.** Neutral monogram until the app ships a mark and a colour.
 - **Splitting `scenes.css`.** One owner, sequenced (§4). The cost is named there: the file lands near **830 lines**, past spec §5's size guidance, which `max-lines` only warns about. It is not a six-way split argument — one extra sheet would be one import in a file T10 already owns.
 - **Any `docs/DESIGN-LANGUAGE.md` amendment.** DL binds app chrome. This work is a drawing of chrome that already obeys it.
+
+---
+
+## Completion — 2026-08-20
+
+All 21 tasks landed on `claude/agent-pipeline-landing-redesign-tkigjs`. The
+record is in [docs/CONTEXT.md](../CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20)
+`current` and in AGENTS.md's Current direction plus three drift-table rows.
+
+**Gate by gate.**
+
+| Gate | Result |
+|---|---|
+| **1 — build and existing tests** | **PASS in scope.** `npm run build:landing` clean. `npx vitest run marketing/` **159 tests / 10 files, all green** (baseline before this work: 38 / 5). The full `npm test` is 3482 passed / 10 failed, and all five failing files are under `src/` (`tab-manager.drop-agent-pane`, `tab-manager.materialize`, `tab-manager.quick-agent`, `agent-rail-model`, `settings/shortcut-groups`) — inherited at HEAD, since the branch changed no `src/` file. The lint half is stated below; it does not exist. |
+| **2 — screenshots at 1440 / 768 / 390** | **PASS, and it was obtainable here.** `scripts/capture-landing-stage.mjs` (new, T21-owned) serves the built `dist` to the pre-installed headless chromium through `findChromium()` and shoots the hero plus each of the six panels at all three widths, twice. 42 images + `report.json`. Every in-page check passed at all six combinations. |
+| **3 — `frontend-design-bar`** | **OWED.** Not a repo command; a review agent in the owner's workflow. The images are assembled at `/tmp/spacevibe-deck-landing-stage/` and can only be handed over. **An agent cannot pass this gate and this one did not claim it.** |
+| **4 — reduced motion renders every completed frame** | **PASS, all three layers.** (a) `stage-markup.test.js` asserts the last-tail/last-state frame and the animated seed; (b) all six `.panel.is-revealed` animations declared in `scenes.css` appear in its reduce block, and `appwin.css`'s block cancels `__cursor`, `__spinner` and `__wsdot` and dims the working mark; (c) a live probe counted **207 animating nodes with motion allowed against 0 under `prefers-reduced-motion: reduce`** — emulated through Chromium, not an OS setting. |
+| **5 — owner eye review** | **OWED, by definition.** `npm run prototype:landing` and hand over. |
+
+**Measured against the plan's own numbers.** `.a-appwin` renders **896 x 555.5 /
+639.6 / 298.4** at 1440 / 768 / 390 with a **223.5 / 159.4 / 124.5** rail — D10
+and T17's baseline table, reproduced. The 390 arithmetic holds: 124.5px of rail
+beside a 170.9px pane. No rail text computes below 9px at 1440 or 768 (§6's worst
+legibility case) or below 7px at 390. `documentElement.scrollWidth <= innerWidth`
+at every width, in both motion modes.
+
+**The consolidated test and what it absorbed.** `stage-markup.test.js` is 41
+assertions over §6's eight, mutation-checked with seven deliberate regressions
+each failing a distinct named test. Three per-task files were absorbed and
+deleted — `agent-strip.test.js` (T3), `tour/panel-scenes.test.js` (T6),
+`tour/scenes/rail.test.js` (T11) — because every assertion in the three was a
+claim about two modules agreeing. Four stayed beside their modules as unit tests
+of one module's internals: `marketing/stage/appwin.test.js`,
+`product-stage.test.js` (its `vi.doMock`ed `think`/`rest` walk cannot be
+reproduced from shipped data), `directions/a.test.js` and `tour/index.test.js`
+(its IntersectionObserver stub and disposer regression).
+
+**Two deviations from §6's own description of the test, both deliberate.** It is
+722 lines rather than "roughly 90", and it runs under jsdom rather than as "pure
+string assertions" — because it absorbed three files, and because every claim it
+makes about the rail is about STRUCTURE (which child a header emits, which
+cluster keeps a caret, how many rows a framed item holds). A `toContain` on a
+class name cannot tell a caret inside the still header from a caret three
+clusters away, which is exactly the R6 defect class.
+
+**Three things this work does NOT establish, stated because the gates above could
+be read as covering them.**
+
+1. **`marketing/**` has no lint gate at all** — it is in `.prettierignore` AND in
+   oxlint's `ignorePatterns`. §6's gate-1 lint line cannot produce a signal for
+   any file this plan touched, and every "prettier clean" claim in every lane's
+   report was vacuous. Left alone deliberately: these sheets are written at 80
+   columns against prettier's 100.
+2. **`marketing/video/out/` is now stale in colour as well as shape.** The video
+   entry links and paints (896.2 x 555.8, no console error) and keeps drawing the
+   July shell by choice (D12), but `tokens.css`'s `:root` is shared, so the live
+   page has the new palette and the rendered file does not.
+3. **`.a-appwin__chips` clips 1-2px vertically at 390** — `scrollHeight 8` against
+   `clientHeight 7` in the hero and `8` against `6` in the two strip-bearing
+   panels, `overflow: hidden`, equal at 1440 and 768. Reported by T19 as
+   pre-existing, which is true of T19's file and false of the branch: the strip is
+   new here. Not fixed — T21 owns no stylesheet.
 
 ---
 
