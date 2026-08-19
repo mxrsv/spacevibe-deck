@@ -311,7 +311,7 @@ describe("createTabManager captureSession (session journal)", () => {
       {
         workspacePath: "/w/a",
         layout: { type: "leaf" },
-        panes: [{ cwd: "/w/a", agent: "claude" }],
+        panes: [{ cwd: "/w/a", agent: "claude", launchOptions: null }],
         // Always null since 2026-08-16: `renameTab` went with `TabPopover`,
         // so nothing can set a name any more. The FIELD stays because the
         // snapshot shape is shared with the transfer payload.
@@ -321,7 +321,7 @@ describe("createTabManager captureSession (session journal)", () => {
       {
         workspacePath: null,
         layout: { type: "leaf" },
-        panes: [{ cwd: null, agent: null }],
+        panes: [{ cwd: null, agent: null, launchOptions: null }],
         name: null,
         dotColor: null,
       },

@@ -7,7 +7,10 @@ import {
 } from "./session-schema";
 
 const LEAF = { type: "leaf" } as const;
-const PANE = { cwd: "/tmp/x", agent: "claude" };
+// `launchOptions` is explicit here because the validator always answers with
+// the field: a fixture without it round-trips to a record that has it, and
+// every `toEqual(RECORD)` below would fail on the difference.
+const PANE = { cwd: "/tmp/x", agent: "claude", launchOptions: null };
 const TAB = {
   workspacePath: "/tmp/x",
   layout: LEAF,
@@ -99,5 +102,44 @@ describe("archive", () => {
     expect(out[`/w${MAX_ARCHIVE_WORKSPACES}`]).toBeUndefined();
     // The newest entry (savedAt MAX, key "/w0") must survive.
     expect(out["/w0"]).toBeDefined();
+  });
+});
+
+describe("SessionPane.launchOptions", () => {
+  function paneOf(launchOptions: unknown) {
+    const record = validateWindowRecord({
+      savedAt: 1,
+      activeTabIndex: 0,
+      tabs: [
+        {
+          workspacePath: null,
+          layout: { type: "leaf" },
+          panes: [{ cwd: "/tmp", agent: "claude", launchOptions }],
+          name: null,
+          dotColor: null,
+        },
+      ],
+      files: [],
+      activeFileTab: null,
+    });
+    return record?.tabs[0].panes[0];
+  }
+
+  it("keeps a pane's launch options", () => {
+    expect(
+      paneOf({ kind: "claude", model: null, permissionMode: "plan" })
+        ?.launchOptions,
+    ).toEqual({ kind: "claude", model: null, permissionMode: "plan" });
+  });
+
+  it("drops malformed launch options without dropping the pane", () => {
+    const pane = paneOf({ kind: "claude", permissionMode: "nope" });
+    expect(pane?.launchOptions).toBeNull();
+    expect(pane?.agent).toBe("claude");
+    expect(pane?.cwd).toBe("/tmp");
+  });
+
+  it("reads a file written before the field existed", () => {
+    expect(paneOf(undefined)?.launchOptions).toBeNull();
   });
 });

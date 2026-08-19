@@ -1010,7 +1010,16 @@ export function createTabManager(
       const override = overrides.get(entry.key);
       const panes = entry.manager.paneIds().map((id) => {
         const info = poller.infoFor(id);
-        return { cwd: info?.cwd ?? null, agent: info?.agent ?? null };
+        return {
+          cwd: info?.cwd ?? null,
+          agent: info?.agent ?? null,
+          // Known limit, recorded not fixed: a pane detached into another
+          // window loses this. The map is per TabManager and the adopting
+          // window has no entry for it, so its snapshot is null and restore
+          // falls back to the bare resume command. Cross-window transfer is a
+          // `transfer-client.ts` change and a separate decision.
+          launchOptions: launchOptionsFor(id),
+        };
       });
       return [
         {

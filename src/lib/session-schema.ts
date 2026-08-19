@@ -1,6 +1,7 @@
 import { countLeaves, type SerializedNode } from "./split-tree";
 import { validateLayout } from "./layout-validation";
 import { isTabDotColor, type TabDotColor } from "./tab-colors";
+import { validateLaunchOptions, type LaunchOptions } from "./launch-profile";
 
 export const SESSION_VERSION = 1;
 // Sanity bounds so a corrupt file cannot flood the rail or a boot restore.
@@ -12,6 +13,13 @@ export interface SessionPane {
   readonly cwd: string | null;
   /** PaneAgent string as classified (built-in id, or custom agent label); null = plain shell. */
   readonly agent: string | null;
+  /**
+   * The mode this pane launched in, or null. Stored as options rather than a
+   * profile id: editing or deleting the profile must not rewrite a session
+   * that is already running under the old one. Classification cannot recover
+   * this — it reports the binary, never its flags.
+   */
+  readonly launchOptions: LaunchOptions | null;
 }
 
 export interface SessionTab {
@@ -53,12 +61,17 @@ export interface ArchiveEntry {
 /** Malformed field → default null; never rejects the pane (drop is by the caller's array). */
 function validateSessionPane(raw: unknown): SessionPane {
   if (typeof raw !== "object" || raw === null) {
-    return { cwd: null, agent: null };
+    return { cwd: null, agent: null, launchOptions: null };
   }
   const source = raw as Record<string, unknown>;
   return {
     cwd: typeof source.cwd === "string" ? source.cwd : null,
     agent: typeof source.agent === "string" ? source.agent : null,
+    // Drop-not-repair, and the pane survives it: options nobody understands
+    // would be carried into a live shell, but the pane's cwd and agent are
+    // still worth restoring. No SESSION_VERSION bump — the field is optional
+    // and a file written before it existed validates to null unchanged.
+    launchOptions: validateLaunchOptions(source.launchOptions),
   };
 }
 

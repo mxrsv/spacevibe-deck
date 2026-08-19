@@ -189,7 +189,7 @@ function optionalChoice<T extends string>(
  * `undefined` from the helpers above means "present but wrong" and sinks the
  * whole profile; `null` means "absent", which is a legal value.
  */
-function validateLaunchOptions(raw: unknown): LaunchOptions | null {
+export function validateLaunchOptions(raw: unknown): LaunchOptions | null {
   if (typeof raw !== "object" || raw === null) {
     return null;
   }
