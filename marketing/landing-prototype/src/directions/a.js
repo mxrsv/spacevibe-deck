@@ -2,8 +2,8 @@ import { renderAgentStrip } from "../agent-strip.js";
 import {
   BRAND_ICON_SRC,
   renderStagePane,
-  renderStageSidebar,
-  renderStageStatus,
+  renderStageRail,
+  renderStageStrip,
 } from "../appwin.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
 import { REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
@@ -13,6 +13,8 @@ import {
   STAGE_ARIA_LABEL,
   mountStageStream,
   stagePanes,
+  stageRail,
+  stageStrip,
 } from "../product-stage.js";
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
@@ -185,18 +187,29 @@ export function renderDirectionA(copy, locale) {
           <div class="a-stage">
             <div class="a-desk">
               <div class="a-desk__art" aria-hidden="true"></div>
+              <!-- No status bar and no dock: the window bottom is the panes.
+                   showStatusBar: false / dockOpen: false are the shipped
+                   defaults, so renderStageStatus() is deliberately not called
+                   here. It stays exported for the marketing video. -->
               <figure class="a-appwin" role="img" aria-label="${STAGE_ARIA_LABEL}">
                 <div class="a-appwin__body" aria-hidden="true">
-                  ${renderStageSidebar()}
-                  <div class="a-appwin__grid">
-                    <div class="a-appwin__col">
-                      ${renderStagePane(claudePane)}
-                      ${renderStagePane(codexPane)}
+                  ${renderStageRail(stageRail)}
+                  <!-- The stage wrapper, not the grid, is the rail's sibling
+                       now: the .a-appwin__sidebar + * adjacency resolves to
+                       THIS element, so it is what carries the window's one
+                       structural seam and the grid must not draw a left
+                       border of its own. -->
+                  <div class="a-appwin__stage">
+                    ${renderStageStrip(stageStrip)}
+                    <div class="a-appwin__grid">
+                      <div class="a-appwin__col">
+                        ${renderStagePane(claudePane)}
+                        ${renderStagePane(codexPane)}
+                      </div>
+                      ${renderStagePane(opencodePane)}
                     </div>
-                    ${renderStagePane(opencodePane)}
                   </div>
                 </div>
-                ${renderStageStatus()}
               </figure>
             </div>
           </div>
@@ -217,8 +230,15 @@ export function renderDirectionA(copy, locale) {
 
       document.documentElement.dataset.directionTreatment = "a";
 
+      // The chrome root is REQUIRED, not decorative. A pane's rail row and
+      // its tab chip stand outside the pane grid, so with `chromeRoot` left
+      // to its default the engine looks the `[data-tail]` / `[data-dot]`
+      // hooks up inside the grid, finds none, tolerates the miss and runs a
+      // rail that never moves — no throw, no build error, nothing on screen
+      // saying so.
       const disposeStream = mountStageStream(
         section.querySelector(".a-appwin__grid"),
+        { chromeRoot: section.querySelector(".a-appwin") },
       );
 
       return () => {
