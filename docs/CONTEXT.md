@@ -12,6 +12,235 @@
   material, kept for provenance, not authoritative.
 - Domain glossary: repo-root `CONTEXT.md`.
 
+## The agent catalog — 2026-08-19
+
+Settings → Agents is the catalog of everything Deck can launch, and each row
+states the command that agent will actually run with.
+
+**The commands ship with the app.** `BuiltinAgent` carries `defaultCommand` and
+`url`, so a fresh install shows `claude --dangerously-skip-permissions` on the
+first open. This is the point the surface took four attempts to reach: three
+earlier builds all left the list empty until the user typed something, and each
+time the owner's answer was the same — *the command is not showing*. A
+recommendation the app ships is not a setting the user forgot to fill in.
+
+Flags are verbatim from each CLI's own `--help` on the owner's machine:
+`claude --dangerously-skip-permissions`,
+`codex --dangerously-bypass-approvals-and-sandbox`,
+`agy --dangerously-skip-permissions`, `gemini --yolo`, `cursor-agent --force`
+(`--yolo` is its documented alias). `opencode` ships bare — its `--auto` is
+opt-in per session and its prompts are coarse enough that skipping them is not
+what anyone wants by default.
+
+Several of these skip the agent's own confirmations, which is the point — Deck
+exists to run agents that keep working — and it is also why every one is spelled
+out on screen rather than hidden behind a label, and why a row can be disabled.
+
+**A user preset replaces the shipped command** for that agent. Nothing merges;
+the resolution order is the user's starred preset, then the catalog's
+recommendation, then the bare binary.
+
+**The list splits on `$PATH`.** Installed is what the discovery probe found,
+with a count and a Refresh — a CLI installed in another terminal will not
+otherwise appear until the 30s cache expires. Available to install is everything
+else Deck knows how to launch, kept visible so "can Deck run X" is answered here
+rather than in a docs page.
+
+**Two settings fields.** `disabledAgents`: a built-in cannot be deleted, because
+the probe would find it again on the next scan, so the switch is the only thing
+that takes one out of the pickers. `defaultAgent`: offered on installed rows
+only — starring a binary that is not on `$PATH` would name a default that cannot
+run.
+
+### A preset is a command line, not a set of options
+
+Three shapes were built on 2026-08-19 and the reasoning behind the discarded two
+is why the third validates the way it does.
+
+**Enum options per agent.** A profile stored closed enums plus a validated model
+token, and `composeLaunchCommand` turned them into a command. The argument was
+safety: `AgentLauncher.arm` writes its string VERBATIM into a live interactive
+shell, and enums make a dangerous string unrepresentable. It also made every
+flag a modelling exercise — `gemini --yolo` was in the owner's reference from the
+first minute and was unreachable.
+
+**A row per agent with nested alternatives.** Closer, but adding was still a
+form.
+
+**What shipped**: `{ id, command }` and one text field.
+[`commandProblem`](../src/lib/launch-profile.ts) `current` carries the safety
+rule directly — it refuses `;` `|` `&` and newlines (separators), `$` and
+backticks (substitution), `>` `<` (redirects), quotes and backslash (whose only
+purpose here would be smuggling one of the above past a reader), and
+subshell/glob punctuation. What survives is what binaries, flags, paths and
+model names are made of, and the refusal is a message the person who typed it
+can act on. A user who needs a pipeline writes a wrapper script and declares it
+as a custom agent.
+
+The agent is the command's first word, computed on read: two fields would let a
+preset claim `claude` while typing `codex`.
+
+### Restore stores the command, not the id
+
+Editing or removing a preset must not rewrite a session already running under
+the old one. Only `claude` is re-flagged on resume: its flags sit beside
+`--resume`, whereas `codex resume` and `opencode -s` take theirs in positions
+this repo does not model, so those are returned untouched rather than guessed
+at. **That compatibility claim comes from `claude --help`, not from an observed
+resume.**
+
+**Two known limits, recorded not fixed.** A pane detached into another window
+loses its recorded command — the map is per TabManager and the adopting window
+has no entry for it. And a RESTORED pane is not re-tagged: restore's materialize
+intent carries `paneCommands` and no `agent`, so the map stays empty and the next
+journal write records `null`. A session restored twice loses its command on the
+second boot.
+
+### cursor-agent, the sixth built-in
+
+Appended LAST to `BUILTIN_AGENTS` (owner-approved fork — the list reaches
+process classification). Order is the digit-key contract in `AgentQuickPicker`
+and the Open board, so appending leaves every existing key on the agent it
+already opened. **No Cursor session scanner exists**, so `resume_lookup` answers
+null for a cursor pane and `COMMAND_TABLE`'s `bare` form is what gets typed; the
+`--resume` and `--continue` forms are in the table anyway, so adding a scanner
+later is one file rather than two.
+
+### Not built
+
+**Drag-to-reorder** and the **per-row expand caret**, both of which the owner's
+reference image shows.
+
+**Evidence.** `npm test` — 3250 passed, 3 skipped, 0 failed. `npm run build`
+clean. `tsc` clean. A gallery pass on the REAL component in both palettes. **No
+native `electron:dev` pass, no `tauri dev` pass.**
+
+## Open Board is the start surface — 2026-08-19
+
+Open Board now starts or resumes work; it no longer tries to summarize live
+work and history at the same time. Its Home view is headed `Start a workspace`,
+with one primary `Open workspace…` action, capability-gated Worktree and
+Sessions actions, and recent workspace rows. Each row exposes its remembered
+preset/agent, last-opened time and a visible `Open` state when that workspace
+already has a live tab. The activation and remove controls are sibling buttons,
+so keyboard access does not depend on a nested interactive element
+([`OpenBoardHome`](../src/open-board/open-board-home.tsx) `current`). Missing
+workspaces are collapsed behind a count, and open attempts expose pending and
+failure feedback on the board itself.
+
+Session rows left Home. `Resume a previous session…` enters a third board view
+that reuses the existing Sessions body and returns Home on Back or Escape
+([`OpenBoard`](../src/open-board/open-board.tsx) `current`). A successful resume
+closes the board; a failure leaves it visible. Session support remains
+Electron-only, so unsupported hosts omit the action as before.
+
+The surrounding shell now states the same ownership. The Agent Rail projects
+only `tabViews`; archived workspace inputs, rows, callbacks and CSS are gone
+([`buildAgentRail`](../src/ui/agent-rail-model.ts) `current`, DL-27.16). With no
+live tab, [`sidebarEffectivelyCollapsed`](../src/ui/app-policy.ts) `current`
+suppresses the rail, its toggle and resize seam without writing the saved
+sidebar choice. While the board is open,
+[`dockVisible`](../src/ui/app-policy.ts) `current` unmounts the dock without
+changing `dockOpen` or `dockTab`; live tabs still keep the Agent Rail visible.
+The gallery's existing board section now carries both compositions — cold start
+and active work — using the real board/rail components.
+
+Evidence on 2026-08-19: the final focused Open Board, Agent Rail, App policy,
+sidebar shell, Sessions and Design Language run is 169/169; `npx vite build`
+and the final `npm run build` both exit 0 after 5,565 modules transformed;
+`generate:menu:check` and `git diff --check` exit 0. The bundle still reports
+the repository's existing large-chunk warning. **No gallery server, native
+host, screenshot or owner eye review was run**, so the visual direction
+remains unverified; Tauri Sessions remain unsupported and Windows remains
+unverified.
+
+## The Agent Rail stops looking disabled — 2026-08-19
+
+The owner withdrew state-based dimming from every live agent row: a clickable
+`working`, `done`, or `idle` item was visually indistinguishable from a disabled
+control. The `data-quiet` attributes and their text/glyph overrides are gone;
+names, turns, and agent marks keep the same legibility in every state.
+
+The trailing status vocabulary is exception-first now. [`RailStatusMark`](../src/ui/agent-rail.tsx#L123-L133)
+`current` renders one static 9px dot shape for `failed` (red), `asked` (yellow),
+and `working` (neutral), while `done` and `idle` paint nothing. The semantic
+five-state model, fold precedence, `title`, and accessible wording are unchanged.
+This retires the halo, turning arc, green check, idle ring, and every looping
+animation owned by the Agent Rail. The shared trailing slot remains reserved,
+so the hover close and row geometry do not shift when a mark is absent.
+
+The workspace control now reads folder → name → trailing caret
+([`AgentRail` project header](../src/ui/agent-rail.tsx#L493-L510) `current`). The
+folder names the group genre; the caret uses the far edge as the consistent
+expand/collapse affordance. Both remain decorative and the button keeps the
+whole action in its accessible name.
+
+The same-day follow-up removed the redundant `Workspace` caption from the
+then-current launcher row, leaving `New` at its trailing edge. On 2026-08-19
+that launcher moved intact into [`SidebarFrameActions`](../src/ui/sidebar-toggle.tsx)
+`current`, immediately after the hide control; the rail now starts with its
+live project rows. The folder had already risen 13px → 15px and the name
+11px → 13px through [`--type-project`](../src/styles/01-tokens.css#L84-L86)
+`current`; the trailing caret stays at 13px.
+
+Evidence: `npm test -- --run src/ui/agent-rail.test.tsx` passes 38/38. **No
+build, native host, screenshot, or owner eye review of the running result was
+run.** Renderer-only, so the change reaches both hosts; native behavior and
+appearance remain unverified.
+
+## The dark sidebar rises off the stage — 2026-08-19
+
+The owner picked a colour for the dark sidebar — `#272D31` — and it is
+**lighter** than the stage, which reverses the plane the side columns have
+stood on since 2026-08-14. `--sidebar-bg` was `bg` mixed 24% toward black: the
+darkest surface in the window. It is now the FIRST surface above the stage, so
+the terminal is the deepest plane and every piece of chrome stands on top of
+it. Light themes are untouched — darkening is still the only direction with
+headroom there — so the two modes now recede in opposite directions from the
+same rule (DL-18.7, amended).
+
+**The ladder had to move with it, and that was the owner's second call.** At
++8% the sidebar landed between `--chrome-1` (+5%) and `--chrome-2` (+9%), so a
+popover would have read as a smudge of the column behind it. The dark chrome
+surfaces are measured from `--sidebar-bg` now rather than from `--bg`
+([`deriveChromeColors`](../src/lib/derive-colors.ts) `current`), which makes
+the separation structural: every chrome plane is above the sidebar by
+construction, for every dark theme including imports.
+
+The steps are narrower than the light ones — 3/6/10 against 5/9/15 — and the
+number was chosen against DL-3.5's floors, not by eye. A lighter surface spends
+the headroom `--text-primary` needs, and at 4/8/14 One Dark's active row
+measures **7.13:1** against white, under the 8:1 floor: `ensureContrast` would
+flatten every chrome tone to plain white, and `checkChromeTextContrast` would
+start rejecting imported themes it accepts today. At 3/6/10 the tightest preset
+still measures 8.07:1.
+
+Three consequences rode along, all of them forced:
+
+- **`--input-bg` sinks instead of climbing.** An input is a recessed surface,
+  and `bg + 12%` is now mid-ladder rather than below the chrome. It is
+  half-way from the sidebar back to the stage: below every chrome plane,
+  still above the terminal.
+- **`--seam-raised` moved onto the ladder too.** Measured from `--bg` it fell
+  BELOW `--chrome-2` on deck-dark (0.0397 against 0.0409) — a popover framed in
+  a line darker than its own body. It keeps the place it always held, just
+  under the active row.
+- **`#272d31` is a literal.** It is not reachable by mixing `#17181c` toward
+  white — hue 228° → 204°, saturation up — so
+  [`PINNED_SIDEBAR_BG`](../src/lib/derive-colors.ts) `current` pins it. Keyed
+  on the BACKGROUND, not on a preset id: `deriveChromeColors` is a function of
+  `(bg, fg)` and its four callers (the app, the editor host, the gallery
+  matrix, the theme card) hold nothing else, so keying it any other way would
+  have made them disagree. Overriding that background correctly drops the pin.
+  DL-2.2 carries the exception.
+
+Renderer-only plus a derivation change, so it reaches BOTH hosts. **Verified by
+a colour-relationship smoke only** — a `tsx` script that re-checked every
+preset and override case in `derive-colors.test.ts` against the new
+derivation: contrast floors, ladder ordering, the seam ladder, and the new
+ascending dark ladder all hold. **No `npm test`, no `npm run build`, no
+typecheck, no native pass on either host, and no owner eye review.**
+
 ## Light, Dark, and Settings as a document — 2026-08-19
 
 Appearance offers **two** values now. [`ThemeModeSelector`](../src/ui/settings/theme-mode-selector.tsx)
@@ -93,15 +322,62 @@ accent focus ring (DL-21.3 carve-out) and the accent step icons are neutral on
 this surface only. `--red` on Restore defaults stays — that is a warning, not a
 state.
 
+### Two follow-ons the owner asked for the same day
+
+**The rail is text, and the icons are gone** (DL-11.3 retired). Eight
+categories meant eight glyphs standing in for words like `Appearance` — a rail
+item is already one line of text, and the icon beside it was decoration that
+had to be picked and kept in sync for nothing. `settings-nav-icons.tsx` and its
+test are DELETED and `SettingsCategory` lost its `Icon` field; unlike the theme
+gallery there is no user data or parser behind them, so `git revert` is the
+whole restore path. DL-11.7 moved with it: the compact rail was specified as a
+54px ICON rail hours earlier, which would have left an icon rail with no icons,
+and is now 132px of truncating text with `title` carrying the full name.
+
+**Settings covers the whole window** (DL-11.1 amended). `position: fixed;
+inset: 0`, over the sidebar, the rail and the frame row; the close X became a
+**Back** control, and Escape is unchanged. This reverses the shared rule that
+kept full-window surfaces below the stage strip — and the reversal is
+Settings-only on purpose. That rule was never "the strip is sacred", it was
+"do not strand the user": a board opened on a window with no tabs cannot be
+cancelled, so covering the row left nothing able to bring the sidebar back.
+Settings has two exits that owe nothing to the chrome underneath. Covering the
+frame row means the header inherits its two jobs — the macOS traffic lights'
+reserved footprint (the OS paints over that box whatever the page draws) and
+the window's drag region. `app.test.tsx` asserts the exemption together with
+both exits rather than just dropping the old assertion.
+
+**Reset is an ordinary category** (DL-11.5 amended). The pinned rail foot is
+deleted — markup, CSS and mount point — and `reset` is the last entry in
+`SETTINGS_CATEGORIES`, with the same title, sentence and grouped surface every
+other stop gets. The foot treated POSITION as the safeguard, and position was
+never carrying it: what stops an accidental reset is the native confirm the
+action has always raised. What the foot did cost was legibility — the rail is
+220px, so a config row pinned in it stacked its label over its button and
+printed a three-line description in a column sized for one word. The row keeps
+`--red`, which DL-3.7's achromatic surface deliberately does not override.
+
 ### Verification state
 
-`npm test` and `npm run build` green (see the run below); the design-language
-gate passes with its two new allowlist entries. **Browser/gallery evidence
+Targeted suites green: `src/ui/settings/` 121/121, `app.test.tsx`,
+`design-language`, `modal.test.tsx` 18/18, `icon-system` 6/6. **Browser/gallery evidence
 only — no `npm run electron:dev` pass, no `npm run tauri dev` pass, and no
 owner eye review of the RUNNING app.** The gallery specimen the direction was
 approved from is `src/gallery/sections/settings-direction.tsx`; the shipped
 surface has not been compared against those screenshots side by side. This is
 renderer-only work, so it reaches BOTH hosts — and neither has been run.
+
+**The full-suite and build gates could not be run to green, and not because of
+this work.** Three other sessions were editing the same checkout: `npm test`
+ends with 2 design-language failures owned by an in-flight `09-open-board.css`
+redesign (tracking on `.board-home__title` / `.board-sessions__head h1`, and
+`border-radius: inherit` on `.row__open`), plus the two standing timeout flakes
+(`search-bar`, `file-tree-view`). `tsc --noEmit` reports only
+`chrome-fixtures.tsx`, `board-section.tsx`, `agent-rail-model.ts` and
+`app.tsx` — an `onResumeWorktree` / `SessionEntry` signature change from the
+rail work — so `npm run build` cannot pass either. **No file this change set
+touched appears in any of those.** Re-run both gates once the neighbouring
+sessions land; do not read this note as a pass.
 
 ## Automatic terminal renderer — implemented 2026-08-19
 
@@ -477,16 +753,15 @@ only visual evidence so far. Windows is unverified (Gate C).
 
 ## `New`, and a pane you can drag into place — 2026-08-16
 
-The rail's last row is `New` now, and it answers "another one, where?" two
-ways. Clicked, it does exactly what `Open workspace` did: the Open board.
-Dragged onto a pane, it docks an agent pane at that pane's nearest edge,
-inside the tab that is already open. Design rule: new
+`New` now sits in the sidebar frame immediately after the hide control
+(owner, 2026-08-19), leaving the rail itself for live project rows only. It
+still answers "another one, where?" two ways: clicked, it opens the Open board;
+dragged onto a pane, it docks an agent pane at that pane's nearest edge inside
+the tab that is already open. Design rule:
 [DL-27.14](DESIGN-LANGUAGE.md#27-the-agent-status-rail) `current`. On the
-owner's ask the row is sized as a launcher rather than a caption — label
-`--type-title`, glyph `RAIL_ICON`, 9px padding, so it stands one rung above
-the tab names under it and lands on the same ~34px height they do. No new
-size: DL-4.5's exception list is untouched, and DL-23.9 had already made the
-same widening for the `More` menu's rows.
+owner's ask the frame control is compact: 24px high, label `--type-body`, glyph
+`CHROME_ICON`, directly beside `SidebarToggle`. Its click/drag controller moved
+with it; only the mount changed.
 
 **Which agent, and why nobody is asked.** The owner chose spawn-immediately
 over a picker step, so the drop itself is the confirmation and the agent has

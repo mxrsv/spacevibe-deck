@@ -107,8 +107,60 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   wired flow yet, only of the gallery specimen it was built from. See
   [docs/CONTEXT.md](docs/CONTEXT.md#agentquickpicker--the-tab-strip-fast-path--2026-08-14)
   `current`.
-- **The theme setting is a gallery of cards, and custom themes are imported files
-  (2026-08-15).** [`ThemeGallery`](src/ui/settings/theme-gallery.tsx) `current` replaced the
+- **On a dark theme the side columns rise off the stage now (2026-08-19).** DL-18.7
+  amended; DL-2.2 gained one exception. `--sidebar-bg` was the DARKEST surface in the
+  window (`bg` mixed 24% toward black) and is `#272D31` on `deck-dark` — lighter than
+  the stage — so the terminal is the deepest plane and every chrome surface stands above
+  it. The whole dark ladder moved with it: `--chrome-1`/`--chrome-2`/`--tab-active-bg`
+  are measured from `--sidebar-bg` rather than from `--bg`
+  ([`deriveChromeColors`](src/lib/derive-colors.ts) `current`), because at the old
+  offsets a raised sidebar landed BETWEEN chrome-1 and chrome-2 and a popover read as a
+  smudge of the column behind it. The dark steps are 3/6/10 against light's 5/9/15 — at
+  4/8/14 One Dark's active row falls to 7.13:1 against white, under DL-3.5's 8:1 floor,
+  which would flatten every chrome tone to white and start rejecting imports Deck accepts
+  today. `--input-bg` sinks from the sidebar back toward the stage instead of climbing,
+  and `--seam-raised` joined the ladder because from `--bg` it fell below `--chrome-2`.
+  `#272d31` is a LITERAL — it is not reachable by mixing `#17181c` toward white — pinned
+  on the background, not the preset id, so all four `deriveChromeColors` callers agree
+  and a background override drops the pin. **Light themes are untouched.** Renderer-only,
+  so it reaches BOTH hosts; verified by a colour-relationship smoke only — **no `npm test`,
+  no build, no typecheck, no native pass, no owner eye review**. See
+  [docs/CONTEXT.md](docs/CONTEXT.md#the-dark-sidebar-rises-off-the-stage--2026-08-19)
+  `current`.
+- **Appearance shows Light and Dark, and Settings reads as a document (2026-08-19).**
+  [`ThemeModeSelector`](src/ui/settings/theme-mode-selector.tsx) `current` — a new DL-6.5
+  `binary` radio group over `deck-light`/`deck-dark` — replaced the theme gallery, the import
+  row, the themes-folder row and the four colour overrides in one step. **None of that was
+  deleted:** every module and parser still builds and still passes its own tests, they are
+  imported by nothing in Settings, so a legacy `themeId` keeps resolving and the reversal is
+  re-mounting one component (DESIGN-LANGUAGE §24 carries a retirement banner, not a
+  deletion). Opening Settings writes NOTHING; a legacy theme is described by whichever
+  segment its **resolved** background belongs to ([`themeModeOf`](src/settings/themes.ts)
+  `current`), and a click is the explicit conversion — which also clears `colorOverrides`,
+  after a confirmation when an imported selection or non-empty overrides would go. New
+  installs default to `deck-dark`, and `getPreset`'s fallback moved with it. The section side
+  gained a title/description/grouped-surface hierarchy (new DL-11.6), an icon rail below
+  720px (new DL-11.7), achromatic chrome (new DL-3.7), a Tab focus trap, an Escape that a
+  dirty draft claims first, and a `fieldset` that is disabled until the settings snapshot
+  lands. Two owner follow-ons the same day: the rail is **text only** — DL-11.3 retired,
+  `settings-nav-icons.tsx` and its test DELETED, `SettingsCategory.Icon` gone, and DL-11.7's
+  compact rail re-specified from a 54px icon rail to 132px of truncating text — and Settings
+  now covers the **whole window**, frame row included (`position: fixed`, DL-11.1 amended),
+  leaving by a **Back** control or Escape. That exemption is Settings-only: the rule it
+  reverses exists so a surface cannot strand the user, and the Open board (which can be
+  uncancellable) still stops below the strip. **Reset became an ordinary category too**
+  (DL-11.5 amended) — the pinned rail foot is deleted and `reset` is the last registry
+  entry, because position was never what made it safe (the native confirm is) and a
+  destructive config row pinned in a 220px rail had to stack to fit. Renderer-only, so it reaches BOTH hosts;
+  verified by targeted suites only — the full-suite and build gates are currently red on
+  OTHER sessions' in-flight work, and there is **no native `electron:dev` pass, no
+  `tauri dev` pass, and no owner eye review of the running app**. See
+  [docs/CONTEXT.md](docs/CONTEXT.md#light-dark-and-settings-as-a-document--2026-08-19)
+  `current`.
+- **The theme setting was a gallery of cards, and custom themes are imported files
+  (2026-08-15).** Superseded above as a SURFACE on 2026-08-19; the machinery below is
+  unchanged and still loaded. [`ThemeGallery`](src/ui/settings/theme-gallery.tsx)
+  `deprecated` replaced the
   cycle pill inside the `appearance` category; each card is a miniature of Deck painted with
   that theme's own derived colours (new `DESIGN-LANGUAGE` §24, a §5 fork like §12/§13).
   Custom themes are files in `<userData>/themes` — a native picker copies them in, the folder
@@ -227,7 +279,8 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   only place a failed spawn or a missing folder is ever said. Renderer-only, so it reaches
   BOTH hosts; `npx tsc --noEmit` is clean, but **no suite run, no bundle, no native pass**. See
   [docs/CONTEXT.md](docs/CONTEXT.md#the-open-board-stops-asking--2026-08-16) `current`.
-- **Every rail row says what its agent just said, and quiet rows dim (2026-08-17).**
+- **Every rail row says what its agent just said; state no longer dims it (2026-08-17,
+  amended 2026-08-19).**
   New DL-27.15; DL-27.11's "only `asked`/`failed` may spend a second line" is superseded.
   The sentence is read off the agent's own session log by
   [`session-tail.ts`](electron/resume/session-tail.ts) `current` over a new flat
@@ -243,6 +296,14 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   suite/build plus a gallery pass on the real `AgentRail`; **the native `electron:dev` pass
   and the owner eye review are owed**. See
   [docs/CONTEXT.md](docs/CONTEXT.md#the-rail-says-what-the-agent-just-said--2026-08-17)
+  `current`. On 2026-08-19 the owner withdrew the quiet-row treatment because live,
+  clickable agents read as disabled. Every row now keeps full legibility. The trailing
+  state vocabulary also collapsed to one static 9px dot: red `failed`, yellow `asked`,
+  neutral `working`; `done` and `idle` paint nothing. The project header now reads
+  folder → name → trailing caret; its name and folder are 2px larger, and the redundant
+  `Workspace` caption is gone. Targeted rail suite only; **no build, native pass, or
+  owner eye review of the running result**. See
+  [docs/CONTEXT.md](docs/CONTEXT.md#the-agent-rail-stops-looking-disabled--2026-08-19)
   `current`.
 - **The turn TAKES the agent's name, and the strip's chips say it too (2026-08-17).**
   DL-27.15 amended hours after it landed; DL-18.10 amended; DL-20.1 gained a fourth radius
@@ -296,6 +357,40 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   suite/build plus a gallery browser pass — **no native pass and no owner eye review**, which
   is the weakest evidence class for a colour change. See
   [docs/CONTEXT.md](docs/CONTEXT.md#chrome-ink-goes-neutral--2026-08-17) `current`.
+- **Settings → Agents is the agent catalog, and the commands ship with the app
+  (2026-08-19).** Every agent Deck knows is a row stating the command it will launch with,
+  and that command comes from the CATALOG, not from a setting:
+  [`BuiltinAgent`](src/lib/agent-catalog.ts) `current` gained `defaultCommand` and `url`, so
+  a fresh install shows `claude --dangerously-skip-permissions` immediately rather than a
+  bare binary waiting for someone to type a flag. Flags are verbatim from each CLI's own
+  `--help` on the owner's machine; `opencode` ships bare because its `--auto` is opt-in per
+  session. **A user preset replaces the shipped command for that agent** — nothing merges.
+  The list splits on what the discovery probe found: **Installed** with a count and a
+  Refresh, then **Available to install**, so "can Deck run X" is answered on screen. Two
+  settings fields carry the row's controls: `disabledAgents`, because a built-in cannot be
+  deleted (the probe finds it again) and the switch is the only thing that takes one out of
+  the pickers; and `defaultAgent`, offered on installed rows ONLY, since starring a binary
+  that is not on `$PATH` names a default that cannot run.
+  **A preset is a command line, not a set of options.** [`launch-profile.ts`](src/lib/launch-profile.ts)
+  `current` stores the STRING and one text field adds it. Two earlier builds the same day
+  stored semantic options per agent and composed them; neither could express a flag nobody
+  had modelled, and both put four controls between the user and a command they already knew.
+  The safety rule that made the enums attractive is enforced directly instead:
+  `AgentLauncher.arm` writes this string VERBATIM into a live interactive shell, so
+  [`commandProblem`](src/lib/launch-profile.ts) `current` refuses separators, substitution,
+  redirects, quotes and newlines and says why — a pipeline belongs in a wrapper script
+  declared as a custom agent. An agent is **derived from a command's first word**, never
+  stored beside it. The journal stores the COMMAND, not a preset id, so editing or removing
+  a preset cannot rewrite a running session; on restore only `claude` is re-flagged, its
+  flags sitting beside `--resume` where `codex resume` and `opencode` take theirs in
+  positions this repo does not model. `cursor-agent` is the sixth built-in, appended LAST so
+  every existing digit key keeps its agent; **no Cursor session scanner exists**, so
+  `resume_lookup` answers null for a cursor pane and it relaunches bare. **Not built:**
+  drag-to-reorder and the per-row expand caret, both of which the owner's reference shows.
+  Renderer-only plus a catalog change, so it reaches BOTH hosts; verified by `npm test`
+  (3250 passed, 0 failed), `npm run build` and a gallery pass on the REAL component —
+  **no native `electron:dev` or `tauri dev` pass**. See
+  [docs/CONTEXT.md](docs/CONTEXT.md#the-agent-catalog--2026-08-19) `current`.
 - **Chrome gallery is current:** `gallery.html` mounts real components through `src/gallery/`;
   run `npm run prototype:gallery`. Gallery code must never enter the shipping bundle. Its
   window-chrome section is narrowed to the one selected direction on purpose; parked
@@ -321,6 +416,22 @@ registry. Record a resolved fork in this queue with a one-line reason; move it t
 
 Open queue:
 
+- **`cursor-agent` joined `BUILTIN_AGENTS` (2026-08-19, owner-approved).** The list reaches
+  process classification (`agentProcessMatchers`), which is why it is a fork. Appended last
+  rather than placed by "reach" so no existing digit key changes agent. `electron/agents.ts`
+  mirrors it; `COMMAND_TABLE` gained an entry whose `id`/`latest` forms are unreachable until
+  someone writes a Cursor session scanner.
+- **Materialization gained a launch-command seam (2026-08-19, owner-approved).**
+  `MaterializeIntent.launchCommand` has three states: `undefined` resolves the
+  agent's starred preset, `null` forces the bare binary, a string is used as
+  typed. `AgentLauncher` still receives one finished string, so its readiness
+  state machine did not move.
+- **The dark chrome ladder is measured from the sidebar, and one background pins its
+  sidebar colour (2026-08-19, owner-approved).** Both halves change DL rules: DL-18.7's
+  direction reverses for dark themes, and DL-2.2 admits a literal keyed on a background.
+  Chosen over pinning `deck-dark` alone so imported dark themes get the same plane order,
+  and over re-tuning the ladder from `--bg` so separation is structural rather than a
+  spacing that a lighter import could close.
 - **Updater install stands the quit/close census aside (2026-08-17, owner-approved).**
   `quitAndInstall` closes every window and only then emits `before-quit`, so main would
   raise a prompt the renderer already answered through `confirmInstall`, and the install
@@ -401,28 +512,32 @@ it runs on rather than implying both.
 
 _(Heading retained for the global living-doc convention.)_
 
-| Claim                                                                   | Intent     | Status     | Evidence                                                                                                                                                                                                                                                      |
-| ----------------------------------------------------------------------- | ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Electron can replace Tauri on both supported platforms                  | `building` | unverified | Gate A lacks Apple identity; Gate C lacks a real Windows run — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                  |
-| Deck ships the Electron host                                            | `decided`  | backlog    | `electron/` is on `main`, but the tag workflow still builds Tauri and the updater path is unchanged — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                           |
-| Pane detach is complete cross-platform                                  | `building` | partial    | Phase A has focused/native macOS evidence; Phase B and Windows pointer capture remain open — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                    |
-| File explorer is available                                              | `decided`  | backlog    | Surface built 2026-08-14 behind a passed Gate M (6/6 packaged), then reshaped the same day — tabs on the stage strip, document on the stage — so… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                             |
-| The browser tab works everywhere Deck does                              | `building` | partial    | Electron-only; no Tauri implementation exists. The 2026-08-15 tab-on-stage reshape is verified by suite/build only — native `electron:dev` pass… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                              |
-| AgentQuickPicker's wired flow is native-verified                        | `building` | unverified | Built and wired 2026-08-14 — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                    |
-| Sidebar collapse and drag-to-close are native-verified                  | `building` | unverified | Landed 2026-08-16 (DL-18.9; DL-19.4 amended); suite/build plus a browser measurement only — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                     |
-| The unified tab strip is native-verified                                | `building` | unverified | Landed 2026-08-16 (new DL-18.10): one chip shape, one row, open order, and the keyboard counting chips — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                        |
-| The side panel's three tabs work                                        | `building` | unverified | Landed 2026-08-16: the docked column became a tab host (file explorer / token usage / session history) and the rail grew an action footer — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                     |
-| Session restore resumes agent conversations                             | `building` | unverified | Landed 2026-08-15, suite/build evidence only (`npm test` 2619 green) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                          |
-| The agent rail replaces the repository rail                             | `building` | partial    | Landed 2026-08-16 and reshaped through DL-27.12/spec §2.7: the rail is project → tab only, with 34px flat rows, direct pane-focus glyphs, no tab… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                             |
-| The rail row shows the agent's newest turn                              | `building` | unverified | Tier 3 (`session_tail`) landed 2026-08-17 (new DL-27.15), then the turn took the agent name's slot the same day and the strip's chips began printing it too — [detail](docs/CONTEXT.md#one-line-and-the-sentence-takes-the-agents-name--2026-08-17) `current` |
-| The blurred modal scrim is native-verified                              | `building` | unverified | Landed 2026-08-16 with DL §29 and DL-1.3's `backdrop-filter` exception — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                        |
-| The collapsed feature toolbar is native-verified                        | `building` | unverified | Landed 2026-08-16 (new DL-23.8): the pane group moved off the bar into `More`, leaving one `Ellipsis` control at the stage strip's trailing end — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                               |
-| Dragging `New` onto a pane docks an agent pane there                    | `building` | unverified | Landed 2026-08-16 (new DL-27.14) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                              |
-| The quick picker opens into a chosen worktree                           | `building` | unverified | Landed 2026-08-16 (new DL-29.7) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                               |
-| One click on the open board opens the workspace                         | `current`  | unverified | Landed 2026-08-16 with the config view's deletion — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                             |
-| The icon set is Phosphor everywhere                                     | `current`  | unverified | Swapped 2026-08-16 (DL-1.1's exception moved, DL-14.1 rewritten): `lucide-preact` uninstalled, 41 source files and 31 class assertions… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                       |
-| A preset can be renamed or deleted                                      | `current`  | **false**  | Was true until 2026-08-16 and is now unreachable: the layout cards were the only call sites of `renamePreset` / `deletePreset`, and they went… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                |
-| The new chrome typography and the stateless toggles are native-verified | `building` | unverified | Landed 2026-08-16: group labels went to 14px `--text-muted` (DL-4.4/DL-3.4) and `.iconbtn.is-active` was deleted (DL-21.8) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                    |
-| The neutral chrome ink is native-verified                               | `building` | unverified | Landed 2026-08-17 (new DL-3.6; DL-2.3's hairline carve-out closed): built-in foregrounds and both hairline tokens went neutral — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                |
+| Claim                                                                   | Intent     | Status     | Evidence                                                                                                                                                                                                                                                                                                |
+| ----------------------------------------------------------------------- | ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Electron can replace Tauri on both supported platforms                  | `building` | unverified | Gate A lacks Apple identity; Gate C lacks a real Windows run — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                            |
+| Deck ships the Electron host                                            | `decided`  | backlog    | `electron/` is on `main`, but the tag workflow still builds Tauri and the updater path is unchanged — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                     |
+| Pane detach is complete cross-platform                                  | `building` | partial    | Phase A has focused/native macOS evidence; Phase B and Windows pointer capture remain open — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                              |
+| File explorer is available                                              | `decided`  | backlog    | Surface built 2026-08-14 behind a passed Gate M (6/6 packaged), then reshaped the same day — tabs on the stage strip, document on the stage — so… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                       |
+| The browser tab works everywhere Deck does                              | `building` | partial    | Electron-only; no Tauri implementation exists. The 2026-08-15 tab-on-stage reshape is verified by suite/build only — native `electron:dev` pass… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                        |
+| AgentQuickPicker's wired flow is native-verified                        | `building` | unverified | Built and wired 2026-08-14 — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                              |
+| Sidebar collapse and drag-to-close are native-verified                  | `building` | unverified | Landed 2026-08-16 (DL-18.9; DL-19.4 amended); suite/build plus a browser measurement only — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                               |
+| The unified tab strip is native-verified                                | `building` | unverified | Landed 2026-08-16 (new DL-18.10): one chip shape, one row, open order, and the keyboard counting chips — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                  |
+| The side panel's three tabs work                                        | `building` | unverified | Landed 2026-08-16: the docked column became a tab host (file explorer / token usage / session history) and the rail grew an action footer — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                               |
+| Session restore resumes agent conversations                             | `building` | unverified | Landed 2026-08-15, suite/build evidence only (`npm test` 2619 green) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                    |
+| The agent rail replaces the repository rail                             | `building` | partial    | Landed 2026-08-16 and reshaped through DL-27.12/spec §2.7: the rail is project → tab only, with 34px flat rows, direct pane-focus glyphs, no tab… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                       |
+| The rail row shows the agent's newest turn                              | `building` | unverified | Tier 3 (`session_tail`) landed 2026-08-17 (new DL-27.15), then the turn took the agent name's slot the same day and the strip's chips began printing it too — [detail](docs/CONTEXT.md#one-line-and-the-sentence-takes-the-agents-name--2026-08-17) `current`                                           |
+| The blurred modal scrim is native-verified                              | `building` | unverified | Landed 2026-08-16 with DL §29 and DL-1.3's `backdrop-filter` exception — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                  |
+| The collapsed feature toolbar is native-verified                        | `building` | unverified | Landed 2026-08-16 (new DL-23.8): the pane group moved off the bar into `More`, leaving one `Ellipsis` control at the stage strip's trailing end — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                         |
+| Dragging `New` onto a pane docks an agent pane there                    | `building` | unverified | Landed 2026-08-16 (new DL-27.14) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                        |
+| The quick picker opens into a chosen worktree                           | `building` | unverified | Landed 2026-08-16 (new DL-29.7) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                         |
+| One click on the open board opens the workspace                         | `current`  | unverified | Landed 2026-08-16 with the config view's deletion — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                       |
+| The icon set is Phosphor everywhere                                     | `current`  | unverified | Swapped 2026-08-16 (DL-1.1's exception moved, DL-14.1 rewritten): `lucide-preact` uninstalled, 41 source files and 31 class assertions… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                 |
+| A preset can be renamed or deleted                                      | `current`  | **false**  | Was true until 2026-08-16 and is now unreachable: the layout cards were the only call sites of `renamePreset` / `deletePreset`, and they went… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                          |
+| The new chrome typography and the stateless toggles are native-verified | `building` | unverified | Landed 2026-08-16: group labels went to 14px `--text-muted` (DL-4.4/DL-3.4) and `.iconbtn.is-active` was deleted (DL-21.8) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                              |
+| The neutral chrome ink is native-verified                               | `building` | unverified | Landed 2026-08-17 (new DL-3.6; DL-2.3's hairline carve-out closed): built-in foregrounds and both hairline tokens went neutral — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                          |
+| A theme can be chosen from cards, imported, or colour-overridden        | `current`  | **false**  | True until 2026-08-19, now unreachable from Settings: `ThemeGallery`, `ColorOverrides` and the import/folder rows are unmounted, though every module still builds and a stored id still resolves — [detail](docs/CONTEXT.md#light-dark-and-settings-as-a-document--2026-08-19) `current`                |
+| The raised dark sidebar and its re-based chrome ladder are verified     | `building` | unverified | Landed 2026-08-19 (DL-18.7 amended, DL-2.2 gained a pinned-literal exception): a colour-relationship smoke over every preset is the only evidence — no suite, no build, no typecheck, no host run, no eye review — [detail](docs/CONTEXT.md#the-dark-sidebar-rises-off-the-stage--2026-08-19) `current` |
+| Light/Dark and the reshaped Settings are native-verified                | `building` | unverified | Landed 2026-08-19 (new DL-3.7, DL-6.5, DL-11.6, DL-11.7; DL-4.3/4.5/21.3 amended, §24 retired): suite and build only, no host run and no owner eye review of the running app — [detail](docs/CONTEXT.md#light-dark-and-settings-as-a-document--2026-08-19) `current`                                    |
+| The agent catalog and its shipped commands are native-verified          | `building` | unverified | Landed 2026-08-19 after three reshapes the same day: enum options → typed commands → catalog rows with `defaultCommand`. `npm test` 3250/0 and `npm run build` plus a gallery pass on the real component — no host run; drag-to-reorder and the expand caret are unbuilt — [detail](docs/CONTEXT.md#the-agent-catalog--2026-08-19) `current` |
 
-Updated 2026-08-17.
+Updated 2026-08-19.
