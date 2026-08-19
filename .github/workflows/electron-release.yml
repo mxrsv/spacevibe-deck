@@ -10,9 +10,14 @@ name: Electron Release
 # The tag shape is NOT free. `GitHubProvider.getLatestVersion` skips every
 # release whose tag fails `semver.valid`, and derives the update channel from
 # `semver.prerelease(tag)[0]`. `vX.Y.Z-electron.N` therefore does two jobs at
-# once: it stays parseable, and it names the `electron` channel that
-# `electron-mac.yml` belongs to. A tag like `electron-v1.0.0` would be
-# invisible to the updater while every other signal looked healthy.
+# once: it stays parseable, and it names the `electron` channel the client asks
+# for. A tag like `electron-v1.0.0` would be invisible to the updater while
+# every other signal looked healthy.
+#
+# The published manifest is still `latest-mac.yml`, not `electron-mac.yml`:
+# app-builder-lib only copies the channel into `publish.channel` for the
+# `generic` provider. The client asks for its channel file first and falls back
+# to the default one, so the two halves meet — see the assertion below.
 #
 # Plan: docs/plans/2026-08-18-electron-release-pipeline.md
 on:
@@ -49,8 +54,8 @@ jobs:
           # The version is the channel. Both halves of the update path derive
           # it from this one string — app-builder-lib from `appInfo.channel`
           # when `publish.channel` is unset, electron-updater from the tag —
-          # so a version that carries no `electron` prerelease component
-          # publishes `latest-mac.yml` and orphans every installed build.
+          # so a version that carries no `electron` prerelease component puts
+          # this build on the wrong channel and orphans every installed one.
           #
           # Matched with a regex rather than `semver`: that package is only a
           # transitive of the toolchain here, not a declared dependency, and
@@ -97,6 +102,24 @@ jobs:
           fi
           rm -f "$certificate"
 
+      - name: Create the draft release before anything can publish into it
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # electron-builder runs one publisher PER TARGET, concurrently. With
+          # no release to upload into, the zip publisher and the dmg publisher
+          # both read "release doesn't exist" and both CREATE one — measured on
+          # run 32232669706, which produced two drafts on the same tag: the dmg
+          # and the manifest landed in one, the zip in the other. The release
+          # looked complete in the API and could never have updated anything.
+          #
+          # Creating it here removes the race: both publishers find it and
+          # upload into the same release. Draft, so nothing is visible to an
+          # installed app until the verification steps below have passed.
+          gh release create "$TAG" --draft --title "$TAG" --notes "Build in progress."
+
       - name: Build, sign, notarize and publish the draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -124,7 +147,7 @@ jobs:
           apps=(dist-electron-release/mac-arm64/*.app)
           images=(dist-electron-release/*.dmg)
           archives=(dist-electron-release/*.zip)
-          manifests=(dist-electron-release/electron-mac.yml)
+          manifests=(dist-electron-release/latest-mac.yml)
           if [[ ${#apps[@]} -ne 1 || ${#images[@]} -ne 1 ]]; then
             echo "Expected exactly one app bundle and one dmg"
             exit 1
@@ -133,7 +156,7 @@ jobs:
             # electron-updater reads the zip and this manifest, and nothing
             # else. Their absence is a release that installs and can never
             # update — the failure the whole pipeline exists to prevent.
-            echo "Expected exactly one zip and an electron-mac.yml manifest"
+            echo "Expected exactly one zip and a latest-mac.yml manifest"
             exit 1
           fi
           codesign --verify --deep --strict --verbose=2 "${apps[0]}"
@@ -167,8 +190,19 @@ jobs:
           gh release view "$TAG" --json assets --jq '.assets[].name' | sort > published.txt
           cat published.txt
           grep -q '\.dmg$' published.txt
+          # The zip is the update payload. It is asserted HERE, against what
+          # the release serves, because a publisher that silently uploaded it
+          # somewhere else still exits zero — that is exactly how run
+          # 32232669706 produced a release with a dmg and no zip.
           grep -q '\.zip$' published.txt
-          grep -qx 'electron-mac.yml' published.txt
+          # `latest-mac.yml`, not `electron-mac.yml`: app-builder-lib copies the
+          # version's prerelease component into `publish.channel` only for the
+          # `generic` provider (PublishManager.js:413-431), so a GitHub release
+          # always writes the default name. The client still asks for
+          # `electron-mac.yml` first and falls back to this one
+          # (GitHubProvider.js:136-142), so the update path works — but the
+          # assertion has to match what is actually published.
+          grep -qx 'latest-mac.yml' published.txt
 
       - name: Promote the draft to a pre-release
         env:
