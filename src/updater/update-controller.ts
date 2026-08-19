@@ -171,6 +171,43 @@ export function createUpdateController(
     return checkOperation;
   };
 
+  /**
+   * Phases the timer may check from.
+   *
+   * The four it excludes are an update the user is mid-way through — on screen
+   * to install, downloading, or installing — where a check could replace the
+   * very version being acted on, and discard a file already on disk. The three
+   * FAILED phases are included on purpose: nothing in the UI returns the view
+   * to `hidden`, so treating them as "busy" would mean one dropped connection
+   * during a download silences the recheck for the rest of the session.
+   */
+  const RECHECKABLE_PHASES: ReadonlySet<UpdatePhase> = new Set([
+    "hidden",
+    "download-failed",
+    "install-failed",
+    "relaunch-failed",
+  ]);
+
+  let recheckTimer: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * Stop the timer once the host has said this build cannot update at all.
+   *
+   * `deps.platform` cannot answer that question — the doc on
+   * `UPDATE_UNSUPPORTED` above says why: Electron reports a real platform and
+   * only the ADAPTER knows whether the build is packaged and signed. Without
+   * this, an unpackaged Electron run would claim the process-wide single-flight
+   * and send an IPC round trip every six hours, forever, for an answer that
+   * cannot change.
+   */
+  const stopIfUnsupported = (result: UpdateCheckResult | null): void => {
+    if (result !== "unsupported" || recheckTimer === null) {
+      return;
+    }
+    clearInterval(recheckTimer);
+    recheckTimer = null;
+  };
+
   const claim = (): Promise<boolean> =>
     deps.claim ? deps.claim() : invoke<boolean>("begin_update_check");
   const release = (): Promise<void> =>
@@ -178,9 +215,10 @@ export function createUpdateController(
 
   /**
    * One claimed check. Shared by the startup pass and the background timer so
-   * neither can leak the process-wide single-flight.
+   * neither can leak the process-wide single-flight. Answers `null` when a peer
+   * window held the claim and this window therefore checked nothing.
    */
-  const claimedCheck = async (): Promise<void> => {
+  const claimedCheck = async (): Promise<UpdateCheckResult | null> => {
     let mine = true;
     try {
       mine = await claim();
@@ -188,10 +226,10 @@ export function createUpdateController(
       console.warn("begin_update_check failed; checking anyway:", err);
     }
     if (!mine) {
-      return;
+      return null;
     }
     try {
-      await checkForAvailableUpdate();
+      return await checkForAvailableUpdate();
     } finally {
       // ALWAYS released, including when the check throws. The single-flight is
       // process-wide: a claim leaked by a failed check means no window ever
@@ -217,18 +255,19 @@ export function createUpdateController(
     // the claim would leave a window that lost that one race with no timer for
     // the whole session — and the peer holding the claim can close at any
     // moment.
-    if (deps.platform !== "unsupported") {
-      setInterval(() => {
-        // An update already on screen is one the user is about to install, and
-        // may already be downloaded to disk. Replacing it from a timer would
-        // discard that.
-        if (view.value.phase !== "hidden") {
-          return;
-        }
-        void claimedCheck();
-      }, BACKGROUND_CHECK_INTERVAL_MS);
-    }
-    await claimedCheck();
+    recheckTimer = setInterval(() => {
+      if (!RECHECKABLE_PHASES.has(view.value.phase)) {
+        return;
+      }
+      void claimedCheck().then(stopIfUnsupported);
+    }, BACKGROUND_CHECK_INTERVAL_MS);
+    // No `deps.platform` guard here on purpose. One was written and then
+    // removed: deleting it changed nothing a test could observe, because the
+    // first check on such a build answers `unsupported` and stops the timer
+    // anyway. Two mechanisms for one rule, and only one of them can see the
+    // case that actually matters (a packaged-but-unsigned Electron build,
+    // where `platform` is a real one).
+    stopIfUnsupported(await claimedCheck());
   };
 
   const checkNow = (): Promise<UpdateCheckResult> =>

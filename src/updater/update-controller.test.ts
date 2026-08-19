@@ -405,15 +405,77 @@ describe("the background recheck", () => {
     }
   });
 
-  it("arms no timer on a platform that cannot update", async () => {
+  it("stops checking on a platform that cannot update", async () => {
     vi.useFakeTimers();
     try {
-      const { controller, deps } = setup(null, { platform: "unsupported" });
+      // Asserting on `deps.check` alone would prove nothing: on an unsupported
+      // platform `checkForAvailableUpdate` short-circuits before it reaches
+      // `check`. The claim is what separates "the timer stopped" from "the
+      // timer keeps firing into a short-circuit".
+      const claim = vi.fn().mockResolvedValue(true);
+      const { controller, deps } = setup(null, {
+        platform: "unsupported",
+        claim,
+        releaseClaim: vi.fn().mockResolvedValue(undefined),
+      });
 
       await controller.start();
+      expect(claim).toHaveBeenCalledTimes(1);
+
       await vi.advanceTimersByTimeAsync(BACKGROUND_CHECK_INTERVAL_MS * 2);
 
+      expect(claim).toHaveBeenCalledTimes(1);
       expect(deps.check).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps rechecking after a download failed, because nothing clears that banner", async () => {
+    vi.useFakeTimers();
+    try {
+      const failing = pending({
+        download: vi.fn().mockRejectedValue(new Error("connection reset")),
+      });
+      const check = vi
+        .fn()
+        .mockResolvedValueOnce(failing)
+        .mockResolvedValue(pending({ version: "0.11.0" }));
+      const { controller } = setup(null, { check });
+
+      await controller.start();
+      await controller.download();
+      expect(controller.view.value.phase).toBe("download-failed");
+
+      // No UI action returns the view to `hidden`. Treating a failed phase as
+      // "busy" would end the session's rechecks on one dropped connection.
+      await vi.advanceTimersByTimeAsync(BACKGROUND_CHECK_INTERVAL_MS);
+
+      expect(check).toHaveBeenCalledTimes(2);
+      expect(controller.view.value).toMatchObject({
+        phase: "available",
+        availableVersion: "0.11.0",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops the timer once the host reports the build cannot update", async () => {
+    vi.useFakeTimers();
+    try {
+      const check = vi.fn().mockResolvedValue(UPDATE_UNSUPPORTED);
+      const { controller } = setup(null, { check });
+
+      await controller.start();
+      expect(check).toHaveBeenCalledTimes(1);
+
+      // `deps.platform` cannot see this: only the adapter knows whether the
+      // build is packaged and signed. Left armed, an unpackaged Electron run
+      // would claim the single-flight every six hours for the same answer.
+      await vi.advanceTimersByTimeAsync(BACKGROUND_CHECK_INTERVAL_MS * 3);
+
+      expect(check).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }
