@@ -12,17 +12,17 @@
  *  - **Only collapse state is stored**, because it is the only thing in the
  *    rail the user decides rather than git.
  */
-import { signal } from '@preact/signals';
-import { Store } from '../host/store-host';
-import { reportPersistError } from '../chrome/events';
+import { signal } from "@preact/signals";
+import { Store } from "../host/store-host";
+import { reportPersistError } from "../chrome/events";
 import {
   defaultRepositoryClient,
   type RepositoryClient,
   type RepositoryScan,
-} from './repository-client';
+} from "./repository-client";
 
-const STORE_FILE = 'repositories.json';
-const STORE_KEY = 'repositories';
+const STORE_FILE = "repositories.json";
+const STORE_KEY = "repositories";
 const VERSION = 1;
 
 /** Scan result per workspace path. Rebuilt every launch — never persisted. */
@@ -46,7 +46,7 @@ function isCollapsedList(raw: unknown): raw is {
   repositories: { key: string }[];
 } {
   return (
-    typeof raw === 'object' &&
+    typeof raw === "object" &&
     raw !== null &&
     Array.isArray((raw as { repositories?: unknown }).repositories)
   );
@@ -66,13 +66,13 @@ export async function initRepositories(): Promise<void> {
         raw.repositories
           .filter(
             (entry): entry is { key: string } =>
-              typeof entry?.key === 'string' && entry.key.length > 0,
+              typeof entry?.key === "string" && entry.key.length > 0,
           )
           .map((entry) => entry.key),
       );
     }
   } catch (err) {
-    console.warn('Failed to load repository rail state, starting open:', err);
+    console.warn("Failed to load repository rail state, starting open:", err);
   }
 }
 
@@ -94,7 +94,7 @@ export function toggleRepositoryCollapsed(key: string): void {
     .set(STORE_KEY, payload)
     .then(() => store?.save())
     .catch((err: unknown) => {
-      console.warn('Failed to save repository rail state:', err);
+      console.warn("Failed to save repository rail state:", err);
       reportPersistError("Repository collapse state wasn't saved");
     });
 }
@@ -122,14 +122,14 @@ export function ensureRepositoriesScanned(paths: readonly string[]): void {
         // Browser-only preview and a dead bridge both land here. Navigation
         // must not be able to fail, so this degrades exactly like a folder
         // that is not a repository.
-        console.warn('git_repository failed:', err);
-        return { kind: 'plain', reason: 'scan unavailable' } as RepositoryScan;
+        console.warn("git_repository failed:", err);
+        return { kind: "plain", reason: "scan unavailable" } as RepositoryScan;
       })
       .then((scan) => {
         inFlight.delete(path);
         const next = new Map(repositoryScans.value);
         next.set(path, scan);
-        if (scan.kind === 'repository') {
+        if (scan.kind === "repository") {
           for (const worktree of scan.worktrees) {
             if (!next.has(worktree.path)) {
               next.set(worktree.path, scan);
@@ -165,14 +165,14 @@ export function invalidateRepositoryScans(): void {
  */
 export function installRepositoryRescanOnFocus(): () => void {
   const onVisible = (): void => {
-    if (document.visibilityState === 'visible') {
+    if (document.visibilityState === "visible") {
       invalidateRepositoryScans();
     }
   };
-  document.addEventListener('visibilitychange', onVisible);
-  window.addEventListener('focus', onVisible);
+  document.addEventListener("visibilitychange", onVisible);
+  window.addEventListener("focus", onVisible);
   return () => {
-    document.removeEventListener('visibilitychange', onVisible);
-    window.removeEventListener('focus', onVisible);
+    document.removeEventListener("visibilitychange", onVisible);
+    window.removeEventListener("focus", onVisible);
   };
 }

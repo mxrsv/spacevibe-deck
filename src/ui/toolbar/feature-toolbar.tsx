@@ -1,11 +1,11 @@
-import { DotsThree } from '@phosphor-icons/react';
-import { Fragment, type ComponentChildren, type RefObject } from 'preact';
-import { useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { ActionTooltip, useTooltipVisibility } from '../controls/action-tooltip';
-import { CHROME_ICON, DeckIcon } from '../controls/deck-icon';
-import { isUnavailable, unavailableReason, type ToolbarItem } from './toolbar-item';
-import { TOOLBAR_GAP, fitToolbarItems } from './toolbar-overflow';
-import { ToolbarOverflowMenu, type MenuAnchor } from './toolbar-overflow-menu';
+import { DotsThree } from "@phosphor-icons/react";
+import { Fragment, type ComponentChildren, type RefObject } from "preact";
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
+import { ActionTooltip, useTooltipVisibility } from "../controls/action-tooltip";
+import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { isUnavailable, unavailableReason, type ToolbarItem } from "./toolbar-item";
+import { TOOLBAR_GAP, fitToolbarItems } from "./toolbar-overflow";
+import { ToolbarOverflowMenu, type MenuAnchor } from "./toolbar-overflow-menu";
 
 /**
  * The feature toolbar: groups of icon controls, hairlines between them, and a
@@ -44,19 +44,19 @@ function ToolbarControl({ item, controlRef }: ToolbarControlProps) {
   const ref = controlRef ?? fallbackRef;
   const tooltip = useTooltipVisibility();
   const reason = unavailableReason(item);
-  const active = item.state.kind === 'active';
+  const active = item.state.kind === "active";
   const tooltipId = `action-tip-${item.id}`;
   // A trigger whose surface is open has already answered the question the
   // tooltip was asking, and the two would overlap: the menu opens directly
   // under the control the tooltip hangs from.
-  const opensSurface = item.toggles === 'dialog' || item.toggles === 'menu';
+  const opensSurface = item.toggles === "dialog" || item.toggles === "menu";
   const showTooltip = tooltip.anchor !== null && !(active && opensSurface);
 
   const expansion =
-    item.toggles === 'dialog' || item.toggles === 'menu'
-      ? { 'aria-haspopup': item.toggles, 'aria-expanded': active }
-      : item.toggles === 'pressed'
-        ? { 'aria-pressed': active }
+    item.toggles === "dialog" || item.toggles === "menu"
+      ? { "aria-haspopup": item.toggles, "aria-expanded": active }
+      : item.toggles === "pressed"
+        ? { "aria-pressed": active }
         : {};
 
   return (
@@ -67,7 +67,7 @@ function ToolbarControl({ item, controlRef }: ToolbarControlProps) {
       <button
         ref={ref}
         type="button"
-        class={`iconbtn ${item.controlClass ?? ''} ${reason !== null ? 'is-unavailable' : ''}`}
+        class={`iconbtn ${item.controlClass ?? ""} ${reason !== null ? "is-unavailable" : ""}`}
         aria-label={item.label}
         aria-disabled={reason !== null}
         aria-describedby={showTooltip ? tooltipId : undefined}
@@ -155,7 +155,7 @@ export function FeatureToolbar({
       setReserved(updateRef.current?.offsetWidth ?? 0);
     };
     measure();
-    if (typeof ResizeObserver === 'undefined') {
+    if (typeof ResizeObserver === "undefined") {
       return;
     }
     const observer = new ResizeObserver(measure);
@@ -195,14 +195,14 @@ export function FeatureToolbar({
   const menuItems: readonly ToolbarItem[] = [...(pinnedMenu ?? []), ...fit.overflow];
 
   const moreItem: ToolbarItem = {
-    id: 'toolbar-more',
-    label: 'More actions',
+    id: "toolbar-more",
+    label: "More actions",
     icon: DotsThree,
-    group: 'global',
+    group: "global",
     shortcut: null,
-    state: menu !== null ? { kind: 'active' } : { kind: 'idle' },
+    state: menu !== null ? { kind: "active" } : { kind: "idle" },
     overflowOrder: null,
-    toggles: 'menu',
+    toggles: "menu",
     anchored: pinnedMenuAnchored,
     onActivate: toggleMenu,
   };

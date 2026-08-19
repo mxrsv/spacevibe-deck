@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PaneProcessInfo } from '../lib/process-info';
-import { createMemoryPtyClient } from './pty-client';
-import { createTabManager, type TabManager } from './tab-manager';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { PaneProcessInfo } from "../lib/process-info";
+import { createMemoryPtyClient } from "./pty-client";
+import { createTabManager, type TabManager } from "./tab-manager";
 import {
   agentQuickPickerOpen,
   boardOpen,
@@ -11,12 +11,12 @@ import {
   promptsOpen,
   saveDialogOpen,
   settingsOpen,
-} from '../chrome/events';
-import { activeTabIndex, tabViews } from './tabs-store';
-import { settings } from '../settings/settings-store';
-import { DEFAULT_SETTINGS } from '../settings/settings-schema';
-import { sendAgentNotification } from '../lib/native-notification';
-import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
+} from "../chrome/events";
+import { activeTabIndex, tabViews } from "./tabs-store";
+import { settings } from "../settings/settings-store";
+import { DEFAULT_SETTINGS } from "../settings/settings-schema";
+import { sendAgentNotification } from "../lib/native-notification";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   type EmitSignal,
   flush,
@@ -25,13 +25,13 @@ import {
   processInfo,
   setup,
   wire,
-} from './tab-manager.fixtures';
+} from "./tab-manager.fixtures";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
 // `@tauri-apps/plugin-notification` API, regardless of the
 // `agentNotifications` setting's value at the time.
-vi.mock('../lib/native-notification', () => ({
+vi.mock("../lib/native-notification", () => ({
   sendAgentNotification: vi.fn(),
 }));
 
@@ -49,7 +49,7 @@ vi.mock('../lib/native-notification', () => ({
 let windowFocus = freshWindowFocusController();
 const windowCloseCalls: number[] = [];
 
-vi.mock('../host/window-host', () => ({
+vi.mock("../host/window-host", () => ({
   // `getCurrentWindow` and `getCurrentWebview` were separate Tauri modules and
   // are now one facade, so a single factory must supply both — two vi.mock
   // calls for the same path would silently keep only the last.
@@ -80,10 +80,10 @@ vi.mock('../host/window-host', () => ({
 beforeEach(() => {
   resetDesktopEnvironmentForTests();
   initializeDesktopEnvironment({
-    platform: 'macos',
-    homeDir: '/Users/dev',
+    platform: "macos",
+    homeDir: "/Users/dev",
   });
-  document.body.innerHTML = '';
+  document.body.innerHTML = "";
   tabViews.value = [];
   activeTabIndex.value = 0;
   windowFocus = freshWindowFocusController();
@@ -115,87 +115,87 @@ afterEach(() => {
  * the memory client's `emitOutput` only reaches listeners registered inside
  * `init()`, so without it the emit is a silent no-op.
  */
-async function mountManagerWithAgentPane(agent: NonNullable<PaneProcessInfo['agent']>): Promise<{
+async function mountManagerWithAgentPane(agent: NonNullable<PaneProcessInfo["agent"]>): Promise<{
   manager: TabManager;
   pty: ReturnType<typeof createMemoryPtyClient>;
   emitSignal: EmitSignal;
   focusPaneDirectly: FocusPaneDirectly;
 }> {
   const infos = new Map<number, PaneProcessInfo>([
-    [1, processInfo(1, '/repo', agent, 'agent', agent)],
+    [1, processInfo(1, "/repo", agent, "agent", agent)],
   ]);
   const { tm, pty, emitSignal, focusPaneDirectly } = setup({ infos });
-  await tm.openFromPreset({ type: 'leaf' }, ['/repo'], {
-    workspacePath: '/repo',
+  await tm.openFromPreset({ type: "leaf" }, ["/repo"], {
+    workspacePath: "/repo",
   });
   await tm.init();
   await flush();
-  pty.emitOutput(1, '\x1b]9;4;0\x07'); // OSC 9;4 state 0 → idle
+  pty.emitOutput(1, "\x1b]9;4;0\x07"); // OSC 9;4 state 0 → idle
   return { manager: tm, pty, emitSignal, focusPaneDirectly };
 }
 
-describe('injectIntoPane', () => {
-  it('pastes and sends when the gate holds', async () => {
-    const { manager, pty } = await mountManagerWithAgentPane('claude');
+describe("injectIntoPane", () => {
+  it("pastes and sends when the gate holds", async () => {
+    const { manager, pty } = await mountManagerWithAgentPane("claude");
     const paneId = manager.activePaneId();
     expect(paneId).not.toBeNull();
     await expect(
-      manager.injectIntoPane(paneId as number, 'review this', {
+      manager.injectIntoPane(paneId as number, "review this", {
         autoSend: true,
-        expectedAgent: 'claude',
+        expectedAgent: "claude",
       }),
-    ).resolves.toBe('sent');
+    ).resolves.toBe("sent");
     await flush();
     // Indexed, not `.at(-1)`: the repo's tsconfig `lib` predates ES2022.
     expect(pty.writes[pty.writes.length - 1]).toEqual({
       id: paneId,
-      data: '\r',
+      data: "\r",
     });
     manager.dispose();
   });
 
-  it('pastes without sending when autoSend is off', async () => {
-    const { manager, pty } = await mountManagerWithAgentPane('claude');
+  it("pastes without sending when autoSend is off", async () => {
+    const { manager, pty } = await mountManagerWithAgentPane("claude");
     const paneId = manager.activePaneId() as number;
     await expect(
-      manager.injectIntoPane(paneId, 'review this', {
+      manager.injectIntoPane(paneId, "review this", {
         autoSend: false,
-        expectedAgent: 'claude',
+        expectedAgent: "claude",
       }),
-    ).resolves.toBe('pasted');
+    ).resolves.toBe("pasted");
     await flush();
-    expect(pty.writes.some((write) => write.data === '\r')).toBe(false);
+    expect(pty.writes.some((write) => write.data === "\r")).toBe(false);
     manager.dispose();
   });
 
-  it('withholds the submit when the pane changed agent since capture', async () => {
-    const { manager, pty } = await mountManagerWithAgentPane('codex');
+  it("withholds the submit when the pane changed agent since capture", async () => {
+    const { manager, pty } = await mountManagerWithAgentPane("codex");
     const paneId = manager.activePaneId() as number;
     await expect(
-      manager.injectIntoPane(paneId, 'review this', {
+      manager.injectIntoPane(paneId, "review this", {
         autoSend: true,
-        expectedAgent: 'claude',
+        expectedAgent: "claude",
       }),
-    ).resolves.toBe('pasted');
+    ).resolves.toBe("pasted");
     await flush();
-    expect(pty.writes.some((write) => write.data === '\r')).toBe(false);
+    expect(pty.writes.some((write) => write.data === "\r")).toBe(false);
     manager.dispose();
   });
 
-  it('reports no target for an unknown pane', async () => {
-    const { manager } = await mountManagerWithAgentPane('claude');
+  it("reports no target for an unknown pane", async () => {
+    const { manager } = await mountManagerWithAgentPane("claude");
     await expect(
-      manager.injectIntoPane(9999, 'x', {
+      manager.injectIntoPane(9999, "x", {
         autoSend: false,
         expectedAgent: null,
       }),
-    ).resolves.toBe('no-target');
+    ).resolves.toBe("no-target");
     manager.dispose();
   });
 
-  it('withholds submit when focus acknowledges attention during injection', async () => {
+  it("withholds submit when focus acknowledges attention during injection", async () => {
     const { manager, pty, emitSignal, focusPaneDirectly } =
-      await mountManagerWithAgentPane('claude');
+      await mountManagerWithAgentPane("claude");
     const paneId = manager.activePaneId() as number;
     const infoGate: {
       release?: (infos: PaneProcessInfo[]) => void;
@@ -205,30 +205,30 @@ describe('injectIntoPane', () => {
         infoGate.release = resolve;
       });
     emitSignal(paneId, {
-      kind: 'requested',
-      source: 'osc-notification',
+      kind: "requested",
+      source: "osc-notification",
     });
 
-    const injection = manager.injectIntoPane(paneId, 'review this', {
+    const injection = manager.injectIntoPane(paneId, "review this", {
       autoSend: true,
-      expectedAgent: 'claude',
+      expectedAgent: "claude",
     });
     await flush();
     focusPaneDirectly(paneId);
     if (infoGate.release === undefined) {
-      throw new Error('fresh pty_info did not start');
+      throw new Error("fresh pty_info did not start");
     }
-    infoGate.release([processInfo(paneId, '/repo', 'claude', 'agent', 'claude')]);
+    infoGate.release([processInfo(paneId, "/repo", "claude", "agent", "claude")]);
 
-    await expect(injection).resolves.toBe('pasted');
+    await expect(injection).resolves.toBe("pasted");
     await flush();
-    expect(pty.writes.some((write) => write.data === '\r')).toBe(false);
+    expect(pty.writes.some((write) => write.data === "\r")).toBe(false);
     manager.dispose();
   });
 
-  it('never submits when the paste write fails', async () => {
+  it("never submits when the paste write fails", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, processInfo(1, '/repo', 'claude', 'agent', 'claude')],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const memory = createMemoryPtyClient({ nextId: 1, infos });
     const writes: string[] = [];
@@ -236,33 +236,33 @@ describe('injectIntoPane', () => {
       ...memory,
       async writePty(_id: number, data: string): Promise<void> {
         writes.push(data);
-        if (data === 'review this') {
-          throw new Error('paste failed');
+        if (data === "review this") {
+          throw new Error("paste failed");
         }
       },
     };
     const { tm: manager } = wire(pty);
-    await manager.openFromPreset({ type: 'leaf' }, ['/repo'], {
-      workspacePath: '/repo',
+    await manager.openFromPreset({ type: "leaf" }, ["/repo"], {
+      workspacePath: "/repo",
     });
     await manager.init();
     await flush();
-    memory.emitOutput(1, '\x1b]9;4;0\x07');
+    memory.emitOutput(1, "\x1b]9;4;0\x07");
 
     await expect(
-      manager.injectIntoPane(1, 'review this', {
+      manager.injectIntoPane(1, "review this", {
         autoSend: true,
-        expectedAgent: 'claude',
+        expectedAgent: "claude",
       }),
-    ).resolves.toBe('failed');
+    ).resolves.toBe("failed");
     await flush();
-    expect(writes).toEqual(['review this']);
+    expect(writes).toEqual(["review this"]);
     manager.dispose();
   });
 
-  it('rejects an overlapping injection into the same pane before writing', async () => {
+  it("rejects an overlapping injection into the same pane before writing", async () => {
     const infos = new Map<number, PaneProcessInfo>([
-      [1, processInfo(1, '/repo', 'claude', 'agent', 'claude')],
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
     ]);
     const memory = createMemoryPtyClient({ nextId: 1, infos });
     const writeControl: { release?: () => void } = {};
@@ -280,21 +280,21 @@ describe('injectIntoPane', () => {
       },
     };
     const { tm: manager } = wire(pty);
-    await manager.openFromPreset({ type: 'leaf' }, ['/repo'], {
-      workspacePath: '/repo',
+    await manager.openFromPreset({ type: "leaf" }, ["/repo"], {
+      workspacePath: "/repo",
     });
 
-    const first = manager.injectIntoPane(1, 'first', {
+    const first = manager.injectIntoPane(1, "first", {
       autoSend: false,
-      expectedAgent: 'claude',
+      expectedAgent: "claude",
     });
     await vi.waitFor(() => expect(writeStarted).toHaveBeenCalledTimes(1));
 
     let overlappingOutcome: string | undefined;
     const overlapping = manager
-      .injectIntoPane(1, 'second', {
+      .injectIntoPane(1, "second", {
         autoSend: false,
-        expectedAgent: 'claude',
+        expectedAgent: "claude",
       })
       .then((outcome) => {
         overlappingOutcome = outcome;
@@ -302,19 +302,19 @@ describe('injectIntoPane', () => {
       });
     await flush();
     const outcomeBeforeFirstCompletes = overlappingOutcome;
-    expect(writes).toEqual(['first']);
+    expect(writes).toEqual(["first"]);
 
     if (writeControl.release === undefined) {
-      throw new Error('write gate was not initialized');
+      throw new Error("write gate was not initialized");
     }
     writeControl.release();
-    await expect(Promise.all([first, overlapping])).resolves.toEqual(['pasted', 'busy']);
-    expect(outcomeBeforeFirstCompletes).toBe('busy');
+    await expect(Promise.all([first, overlapping])).resolves.toEqual(["pasted", "busy"]);
+    expect(outcomeBeforeFirstCompletes).toBe("busy");
     manager.dispose();
   });
 });
 
-describe('toggle-prompts', () => {
+describe("toggle-prompts", () => {
   beforeEach(() => {
     promptsOpen.value = false;
     persistError.value = null;
@@ -333,25 +333,25 @@ describe('toggle-prompts', () => {
     saveDialogOpen.value = false;
   });
 
-  it('opens the popover signal when a pane is focused', async () => {
-    const { manager } = await mountManagerWithAgentPane('claude');
-    manager.runAction('toggle-prompts');
+  it("opens the popover signal when a pane is focused", async () => {
+    const { manager } = await mountManagerWithAgentPane("claude");
+    manager.runAction("toggle-prompts");
     expect(promptsOpen.value).toBe(true);
-    manager.runAction('toggle-prompts');
+    manager.runAction("toggle-prompts");
     expect(promptsOpen.value).toBe(false);
     manager.dispose();
   });
 
-  it('says so instead of opening with no pane to paste into', () => {
-    const manager = createTabManager(document.createElement('div'), createMemoryPtyClient());
-    manager.runAction('toggle-prompts');
+  it("says so instead of opening with no pane to paste into", () => {
+    const manager = createTabManager(document.createElement("div"), createMemoryPtyClient());
+    manager.runAction("toggle-prompts");
     expect(promptsOpen.value).toBe(false);
-    expect(persistError.value).toBe('No pane to paste into.');
+    expect(persistError.value).toBe("No pane to paste into.");
     manager.dispose();
   });
 });
 
-describe('toggle-explorer', () => {
+describe("toggle-explorer", () => {
   beforeEach(() => {
     // Same reasoning as `toggle-prompts` above: `scope: "pane"` blocks this
     // action while ANY overlay is open, and none of the four signals are
@@ -368,18 +368,18 @@ describe('toggle-explorer', () => {
     settings.value = DEFAULT_SETTINGS;
   });
 
-  it('flips dockOpen on each call, with no pane required', () => {
-    const manager = createTabManager(document.createElement('div'), createMemoryPtyClient());
+  it("flips dockOpen on each call, with no pane required", () => {
+    const manager = createTabManager(document.createElement("div"), createMemoryPtyClient());
     expect(settings.value.dockOpen).toBe(false);
-    manager.runAction('toggle-explorer');
+    manager.runAction("toggle-explorer");
     expect(settings.value.dockOpen).toBe(true);
-    manager.runAction('toggle-explorer');
+    manager.runAction("toggle-explorer");
     expect(settings.value.dockOpen).toBe(false);
     manager.dispose();
   });
 });
 
-describe('toggle-usage', () => {
+describe("toggle-usage", () => {
   beforeEach(() => {
     // Same reasoning as `toggle-prompts` above: `settingsOpen` is not reset
     // by the shared top-level `beforeEach`, which would block a
@@ -395,13 +395,13 @@ describe('toggle-usage', () => {
     settingsOpen.value = false;
   });
 
-  it('routes through the onToggleUsage seam instead of writing the signal', async () => {
+  it("routes through the onToggleUsage seam instead of writing the signal", async () => {
     const onToggleUsage = vi.fn();
     const { tm } = setup({ deps: { onToggleUsage } });
     await tm.init();
     await flush();
 
-    tm.runAction('toggle-usage');
+    tm.runAction("toggle-usage");
 
     expect(onToggleUsage).toHaveBeenCalledTimes(1);
     // The seam owns the reveal — TabManager must never reach into the dock
@@ -410,12 +410,12 @@ describe('toggle-usage', () => {
     tm.dispose();
   });
 
-  it('is a safe no-op when no seam is supplied', async () => {
+  it("is a safe no-op when no seam is supplied", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
 
-    expect(() => tm.runAction('toggle-usage')).not.toThrow();
+    expect(() => tm.runAction("toggle-usage")).not.toThrow();
     expect(settings.value.dockOpen).toBe(false);
     tm.dispose();
   });
@@ -427,7 +427,7 @@ describe('toggle-usage', () => {
     await flush();
     settingsOpen.value = true;
 
-    tm.runAction('toggle-usage');
+    tm.runAction("toggle-usage");
 
     expect(onToggleUsage).not.toHaveBeenCalled();
     tm.dispose();

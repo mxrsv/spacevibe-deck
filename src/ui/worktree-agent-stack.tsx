@@ -1,11 +1,11 @@
-import { useSignal, type Signal } from '@preact/signals';
-import type { JSX } from 'preact';
-import { BUILTIN_AGENTS } from '../lib/agent-catalog';
-import { AGENT_LOGOS } from '../lib/agent-logos';
-import { letterAvatar } from '../lib/letter-avatar';
-import type { PaneAgent } from '../lib/process-info';
-import { tabDotCssColor } from '../lib/tab-colors';
-import type { RailTab } from '../repositories/repository-model';
+import { useSignal, type Signal } from "@preact/signals";
+import type { JSX } from "preact";
+import { BUILTIN_AGENTS } from "../lib/agent-catalog";
+import { AGENT_LOGOS } from "../lib/agent-logos";
+import { letterAvatar } from "../lib/letter-avatar";
+import type { PaneAgent } from "../lib/process-info";
+import { tabDotCssColor } from "../lib/tab-colors";
+import type { RailTab } from "../repositories/repository-model";
 
 const MAX_VISIBLE_TABS = 3;
 
@@ -24,7 +24,7 @@ function tabLabel(tab: RailTab): string {
     return tab.customName;
   }
   if (tab.agents.length > 0) {
-    return tab.agents.map(agentLabel).join(' + ');
+    return tab.agents.map(agentLabel).join(" + ");
   }
   return tab.label;
 }
@@ -73,9 +73,9 @@ function TabAgentButton({ tab, onSelect, onOpenOptions }: TabAgentButtonProps) {
   return (
     <button
       type="button"
-      class={`worktree-agents__item ${tab.active ? 'is-active' : ''}`}
+      class={`worktree-agents__item ${tab.active ? "is-active" : ""}`}
       aria-label={`Focus ${label}`}
-      aria-current={tab.active ? 'page' : undefined}
+      aria-current={tab.active ? "page" : undefined}
       title={label}
       data-key={tab.key}
       onClick={(event) => {
@@ -109,8 +109,8 @@ function MoreTabsButton({ count, open, onToggle }: MoreTabsButtonProps) {
   return (
     <button
       type="button"
-      class={`worktree-agents__more ${open ? 'is-open' : ''}`}
-      aria-label={`Show ${count} more agent ${count === 1 ? 'tab' : 'tabs'}`}
+      class={`worktree-agents__more ${open ? "is-open" : ""}`}
+      aria-label={`Show ${count} more agent ${count === 1 ? "tab" : "tabs"}`}
       aria-expanded={open}
       title={`${count} more tabs`}
       onClick={(event) => {
@@ -170,7 +170,7 @@ function AgentTabControls(props: AgentTabControlsProps) {
     <span
       class="worktree-agents"
       role="group"
-      aria-label={`${props.tabs.length} agent ${props.tabs.length === 1 ? 'tab' : 'tabs'} in this worktree`}
+      aria-label={`${props.tabs.length} agent ${props.tabs.length === 1 ? "tab" : "tabs"} in this worktree`}
       onBlur={(event) => {
         const next = event.relatedTarget;
         if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
@@ -178,7 +178,7 @@ function AgentTabControls(props: AgentTabControlsProps) {
         }
       }}
       onKeyDown={(event) => {
-        if (event.key === 'Escape') {
+        if (event.key === "Escape") {
           event.stopPropagation();
           props.menuOpen.value = false;
         }

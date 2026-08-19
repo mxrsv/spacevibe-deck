@@ -2,8 +2,8 @@
  * Where the transcripts are, and which session each file belongs to.
  * Port of `src-tauri/src/usage/discover.rs`.
  */
-import { closeSync, lstatSync, openSync, readSync, readdirSync, statSync } from 'node:fs';
-import path from 'node:path';
+import { closeSync, lstatSync, openSync, readSync, readdirSync, statSync } from "node:fs";
+import path from "node:path";
 import {
   CLAUDE_DIR,
   CLAUDE_PROJECTS_DIR,
@@ -15,7 +15,7 @@ import {
   IDENTITY_HEAD_BYTES,
   MAX_WALK_DEPTH,
   TRANSCRIPT_EXTENSION,
-} from './model';
+} from "./model";
 
 /**
  * Up to `cap` bytes of a file, truncated at the first newline.
@@ -27,7 +27,7 @@ import {
 function readFirstLine(filePath: string, cap: number): Buffer | null {
   let fd: number;
   try {
-    fd = openSync(filePath, 'r');
+    fd = openSync(filePath, "r");
   } catch {
     return null;
   }
@@ -69,24 +69,24 @@ export function fnv1a64(bytes: Buffer): bigint {
 export function identityFromHead(head: Buffer): string {
   let value: unknown;
   try {
-    value = JSON.parse(head.toString('utf8'));
+    value = JSON.parse(head.toString("utf8"));
   } catch {
     value = null;
   }
-  if (value !== null && typeof value === 'object') {
+  if (value !== null && typeof value === "object") {
     const node = value as Record<string, unknown>;
     const payload =
-      node.payload !== null && typeof node.payload === 'object'
+      node.payload !== null && typeof node.payload === "object"
         ? (node.payload as Record<string, unknown>)
         : undefined;
     const named = [node.sessionId, payload?.id, payload?.session_id].find(
-      (candidate): candidate is string => typeof candidate === 'string' && candidate !== '',
+      (candidate): candidate is string => typeof candidate === "string" && candidate !== "",
     );
     if (named !== undefined) {
       return named;
     }
   }
-  return `h:${fnv1a64(head).toString(16).padStart(16, '0')}`;
+  return `h:${fnv1a64(head).toString(16).padStart(16, "0")}`;
 }
 
 export function fileIdentity(filePath: string): string | null {
@@ -95,7 +95,7 @@ export function fileIdentity(filePath: string): string | null {
 }
 
 /** Whether a source root could be looked at, before anything was read. */
-export type DiscoveryState = 'missing' | 'unreadable' | 'present';
+export type DiscoveryState = "missing" | "unreadable" | "present";
 
 export interface Discovery {
   files: string[];
@@ -185,13 +185,13 @@ function exists(target: string): boolean {
 export function discoverClaude(home: string): Discovery {
   const root = path.join(home, CLAUDE_DIR, CLAUDE_PROJECTS_DIR);
   if (!exists(root)) {
-    return { files: [], state: 'missing' };
+    return { files: [], state: "missing" };
   }
   let projectNames: string[];
   try {
     projectNames = readdirSync(root);
   } catch {
-    return { files: [], state: 'unreadable' };
+    return { files: [], state: "unreadable" };
   }
   const files: string[] = [];
   const projectDirs = projectNames
@@ -205,7 +205,7 @@ export function discoverClaude(home: string): Discovery {
     }
   }
   files.sort();
-  return { files, state: 'present' };
+  return { files, state: "present" };
 }
 
 /**
@@ -254,7 +254,7 @@ export function discoverCodex(home: string): CodexDiscovery {
   const liveExists = exists(live);
   const oldExists = exists(old);
   if (!liveExists && !oldExists) {
-    return { active: [], archived: [], state: 'missing' };
+    return { active: [], archived: [], state: "missing" };
   }
   const active: string[] = [];
   const archived: string[] = [];
@@ -267,5 +267,5 @@ export function discoverCodex(home: string): CodexDiscovery {
   }
   active.sort();
   archived.sort();
-  return { active, archived, state: readable ? 'present' : 'unreadable' };
+  return { active, archived, state: readable ? "present" : "unreadable" };
 }

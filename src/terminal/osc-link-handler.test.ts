@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMemoryLinkClient } from './link-client';
-import { createOscLinkHandler } from './osc-link-handler';
-import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createMemoryLinkClient } from "./link-client";
+import { createOscLinkHandler } from "./osc-link-handler";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 
-vi.mock('../chrome/events', () => ({
+vi.mock("../chrome/events", () => ({
   reportPersistError: vi.fn(),
 }));
 
-vi.mock('./primary-modifier', () => {
+vi.mock("./primary-modifier", () => {
   let held = false;
   const listeners = new Set<(held: boolean) => void>();
   return {
@@ -33,16 +33,16 @@ vi.mock('./primary-modifier', () => {
 });
 
 function mouseEvent(metaKey: boolean, ctrlKey = false): MouseEvent {
-  return new MouseEvent('click', { metaKey, ctrlKey });
+  return new MouseEvent("click", { metaKey, ctrlKey });
 }
 
 /** Mimic Linkifier: install decorations accessors after hover returns. */
 function installDecorationsAfterHover(
-  hover: NonNullable<ReturnType<typeof createOscLinkHandler>['hover']>,
+  hover: NonNullable<ReturnType<typeof createOscLinkHandler>["hover"]>,
   metaKey: boolean,
 ): { underline: boolean; pointerCursor: boolean } {
   const state = { underline: true, pointerCursor: true };
-  hover(mouseEvent(metaKey), 'https://example.com', {
+  hover(mouseEvent(metaKey), "https://example.com", {
     start: { x: 1, y: 1 },
     end: { x: 10, y: 1 },
   });
@@ -72,12 +72,12 @@ function installDecorationsAfterHover(
   return state;
 }
 
-describe('createOscLinkHandler', () => {
+describe("createOscLinkHandler", () => {
   beforeEach(() => {
     resetDesktopEnvironmentForTests();
     initializeDesktopEnvironment({
-      platform: 'macos',
-      homeDir: '/Users/dev',
+      platform: "macos",
+      homeDir: "/Users/dev",
     });
   });
 
@@ -88,53 +88,53 @@ describe('createOscLinkHandler', () => {
     await Promise.resolve();
   });
 
-  it('plain click does not call openUrl', () => {
+  it("plain click does not call openUrl", () => {
     const client = createMemoryLinkClient();
     const handler = createOscLinkHandler(client);
-    handler.activate(mouseEvent(false), 'https://example.com', {
+    handler.activate(mouseEvent(false), "https://example.com", {
       start: { x: 1, y: 1 },
       end: { x: 1, y: 1 },
     });
     expect(client.openedUrls).toEqual([]);
   });
 
-  it('⌘+click opens the URI via the link client', () => {
+  it("⌘+click opens the URI via the link client", () => {
     const client = createMemoryLinkClient();
     const handler = createOscLinkHandler(client);
-    handler.activate(mouseEvent(true), 'https://example.com', {
+    handler.activate(mouseEvent(true), "https://example.com", {
       start: { x: 1, y: 1 },
       end: { x: 1, y: 1 },
     });
-    expect(client.openedUrls).toEqual(['https://example.com']);
+    expect(client.openedUrls).toEqual(["https://example.com"]);
   });
 
-  it('Ctrl+click opens on Windows while Cmd stays inert', () => {
+  it("Ctrl+click opens on Windows while Cmd stays inert", () => {
     resetDesktopEnvironmentForTests();
     initializeDesktopEnvironment({
-      platform: 'windows',
+      platform: "windows",
       homeDir: String.raw`C:\Users\dev`,
     });
     const client = createMemoryLinkClient();
     const handler = createOscLinkHandler(client);
 
-    handler.activate(mouseEvent(true), 'https://example.com', {
+    handler.activate(mouseEvent(true), "https://example.com", {
       start: { x: 1, y: 1 },
       end: { x: 1, y: 1 },
     });
-    handler.activate(mouseEvent(false, true), 'https://example.com', {
+    handler.activate(mouseEvent(false, true), "https://example.com", {
       start: { x: 1, y: 1 },
       end: { x: 1, y: 1 },
     });
 
-    expect(client.openedUrls).toEqual(['https://example.com']);
+    expect(client.openedUrls).toEqual(["https://example.com"]);
   });
 
   it.each([
-    'file:///Users/me/.ssh/id_rsa',
-    'vscode://file/etc/passwd',
-    'javascript:alert(1)',
-    'not a uri at all',
-  ])('refuses to open %s', (uri) => {
+    "file:///Users/me/.ssh/id_rsa",
+    "vscode://file/etc/passwd",
+    "javascript:alert(1)",
+    "not a uri at all",
+  ])("refuses to open %s", (uri) => {
     const client = createMemoryLinkClient();
     const handler = createOscLinkHandler(client);
     handler.activate(mouseEvent(true), uri, {
@@ -144,11 +144,11 @@ describe('createOscLinkHandler', () => {
     expect(client.openedUrls).toEqual([]);
   });
 
-  it('openUrl rejection does not throw an unhandled rejection', async () => {
+  it("openUrl rejection does not throw an unhandled rejection", async () => {
     const client = createMemoryLinkClient();
-    client.openUrl = () => Promise.reject(new Error('blocked'));
+    client.openUrl = () => Promise.reject(new Error("blocked"));
     const handler = createOscLinkHandler(client);
-    handler.activate(mouseEvent(true), 'https://example.com', {
+    handler.activate(mouseEvent(true), "https://example.com", {
       start: { x: 1, y: 1 },
       end: { x: 1, y: 1 },
     });
@@ -157,7 +157,7 @@ describe('createOscLinkHandler', () => {
     await Promise.resolve();
   });
 
-  it('hover without ⌘ clears underline and pointer decorations', async () => {
+  it("hover without ⌘ clears underline and pointer decorations", async () => {
     const handler = createOscLinkHandler(createMemoryLinkClient());
     const state = installDecorationsAfterHover(handler.hover!, false);
     await Promise.resolve();
@@ -165,7 +165,7 @@ describe('createOscLinkHandler', () => {
     expect(state.pointerCursor).toBe(false);
   });
 
-  it('hover with ⌘ keeps underline and pointer decorations', async () => {
+  it("hover with ⌘ keeps underline and pointer decorations", async () => {
     const handler = createOscLinkHandler(createMemoryLinkClient());
     const state = installDecorationsAfterHover(handler.hover!, true);
     await Promise.resolve();

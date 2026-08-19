@@ -1,31 +1,31 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMemoryPtyClient } from './pty-client';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createMemoryPtyClient } from "./pty-client";
 import {
   createFileSurfaceController,
   type FileSurfaceController,
-} from '../files/file-surface-controller';
-import { resetFileSurfaces } from '../files/file-surface-store';
-import type { FileClient } from '../files/file-client';
-import { agentQuickPickerOpen, persistError, settingsOpen } from '../chrome/events';
-import { activeTabIndex, tabViews, statusInfo } from './tabs-store';
-import { settings } from '../settings/settings-store';
-import { DEFAULT_SETTINGS } from '../settings/settings-schema';
-import { sendAgentNotification } from '../lib/native-notification';
-import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
+} from "../files/file-surface-controller";
+import { resetFileSurfaces } from "../files/file-surface-store";
+import type { FileClient } from "../files/file-client";
+import { agentQuickPickerOpen, persistError, settingsOpen } from "../chrome/events";
+import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
+import { settings } from "../settings/settings-store";
+import { DEFAULT_SETTINGS } from "../settings/settings-schema";
+import { sendAgentNotification } from "../lib/native-notification";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   flush,
   freshWindowFocusController,
   processInfo,
   setup,
   wire,
-} from './tab-manager.fixtures';
+} from "./tab-manager.fixtures";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
 // `@tauri-apps/plugin-notification` API, regardless of the
 // `agentNotifications` setting's value at the time.
-vi.mock('../lib/native-notification', () => ({
+vi.mock("../lib/native-notification", () => ({
   sendAgentNotification: vi.fn(),
 }));
 
@@ -43,7 +43,7 @@ vi.mock('../lib/native-notification', () => ({
 let windowFocus = freshWindowFocusController();
 const windowCloseCalls: number[] = [];
 
-vi.mock('../host/window-host', () => ({
+vi.mock("../host/window-host", () => ({
   // `getCurrentWindow` and `getCurrentWebview` were separate Tauri modules and
   // are now one facade, so a single factory must supply both — two vi.mock
   // calls for the same path would silently keep only the last.
@@ -74,10 +74,10 @@ vi.mock('../host/window-host', () => ({
 beforeEach(() => {
   resetDesktopEnvironmentForTests();
   initializeDesktopEnvironment({
-    platform: 'macos',
-    homeDir: '/Users/dev',
+    platform: "macos",
+    homeDir: "/Users/dev",
   });
-  document.body.innerHTML = '';
+  document.body.innerHTML = "";
   tabViews.value = [];
   activeTabIndex.value = 0;
   windowFocus = freshWindowFocusController();
@@ -133,20 +133,20 @@ function fakeSurfaces(
       strip.activeIndexValue = index;
     },
     deactivate: () => {
-      calls.push('deactivate');
+      calls.push("deactivate");
       strip.activeIndexValue = -1;
     },
     focus: () => {
-      calls.push('focus');
+      calls.push("focus");
     },
     close: async () => {
-      calls.push('close');
+      calls.push("close");
     },
     save: async () => {
-      calls.push('save');
+      calls.push("save");
     },
     applySettings: () => {
-      calls.push('applySettings');
+      calls.push("applySettings");
     },
   };
   return strip;
@@ -156,18 +156,18 @@ function fakeSurfaces(
  * — there is no host bridge in this environment, and `confirmClose` treats a
  * failed dialog as "do not close". */
 const IDLE_SHELLS = new Map([
-  [1, processInfo(1, '/a', 'zsh', 'idle-shell', null)],
-  [2, processInfo(2, '/b', 'zsh', 'idle-shell', null)],
+  [1, processInfo(1, "/a", "zsh", "idle-shell", null)],
+  [2, processInfo(2, "/b", "zsh", "idle-shell", null)],
 ]);
 
-describe('file surfaces in the tab strip', () => {
-  it('T17: a file surface contributes no phantom pane to allPaneIds()', async () => {
+describe("file surfaces in the tab strip", () => {
+  it("T17: a file surface contributes no phantom pane to allPaneIds()", async () => {
     // Feeds both the quit census and the update guard. Holds by construction
     // while the file store stays outside `tabs` — locked in here so that
     // staying true is checked rather than assumed.
     const surfaces = fakeSurfaces({ count: 3, total: 3 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.activeIndexValue = 0;
     const withTerminalOnly = tm.allPaneIds();
 
@@ -175,10 +175,10 @@ describe('file surfaces in the tab strip', () => {
     surfaces.totalValue = 5;
 
     expect(tm.allPaneIds()).toEqual(withTerminalOnly);
-    expect(tm.allPaneIds().every((id) => typeof id === 'number')).toBe(true);
+    expect(tm.allPaneIds().every((id) => typeof id === "number")).toBe(true);
   });
 
-  it('T18: the poller never polls when only file surfaces exist', async () => {
+  it("T18: the poller never polls when only file surfaces exist", async () => {
     // `targets()` is `allPaneIds()` and the poller skips an empty target list,
     // so T17 carries this — asserted directly all the same.
     const surfaces = fakeSurfaces({ count: 2, total: 2, activeIndex: 0 });
@@ -196,10 +196,10 @@ describe('file surfaces in the tab strip', () => {
     tm.dispose();
   });
 
-  it('T19: statusInfo reports NO pane count while a file surface is active', async () => {
+  it("T19: statusInfo reports NO pane count while a file surface is active", async () => {
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     expect(statusInfo.value.paneCount).toBe(1);
 
     surfaces.activeIndexValue = 0;
@@ -209,89 +209,89 @@ describe('file surfaces in the tab strip', () => {
     expect(statusInfo.value.paneCount).toBeNull();
   });
 
-  it('T20: ⌘W closes the FILE tab when a file surface is active', async () => {
+  it("T20: ⌘W closes the FILE tab when a file surface is active", async () => {
     // Two sites, not one: this is `close-pane`. Neither may fall through to
     // the other — closing the terminal tab behind a file tab would be silent
     // and catastrophic.
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.activeIndexValue = 0;
     surfaces.calls.length = 0;
 
-    tm.runAction('close-pane');
-    await vi.waitFor(() => expect(surfaces.calls).toContain('close'));
+    tm.runAction("close-pane");
+    await vi.waitFor(() => expect(surfaces.calls).toContain("close"));
 
     expect(tabViews.value).toHaveLength(1);
   });
 
-  it('T20: ⌘W still closes the PANE when a terminal tab is active', async () => {
+  it("T20: ⌘W still closes the PANE when a terminal tab is active", async () => {
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.calls.length = 0;
 
-    tm.runAction('close-pane');
+    tm.runAction("close-pane");
     await vi.waitFor(() => expect(tabViews.value).toHaveLength(0));
 
-    expect(surfaces.calls).not.toContain('close');
+    expect(surfaces.calls).not.toContain("close");
   });
 
-  it('T21: the last TAB does not close a window that still holds file tabs', async () => {
+  it("T21: the last TAB does not close a window that still holds file tabs", async () => {
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const before = windowCloseCalls.length;
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
 
     await tm.closeTab(0);
 
     expect(windowCloseCalls.length).toBe(before);
-    expect(surfaces.calls).toContain('activate:0');
+    expect(surfaces.calls).toContain("activate:0");
   });
 
-  it('T21: the last SURFACE does close the window', async () => {
+  it("T21: the last SURFACE does close the window", async () => {
     const surfaces = fakeSurfaces({ count: 0, total: 0 });
     const before = windowCloseCalls.length;
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
 
     await tm.closeTab(0);
 
     await vi.waitFor(() => expect(windowCloseCalls.length).toBe(before + 1));
   });
 
-  it('T21: cycleTab reaches file surfaces — one terminal tab plus file tabs', async () => {
+  it("T21: cycleTab reaches file surfaces — one terminal tab plus file tabs", async () => {
     // `tabs.length < 2` used to early-return here, so ⌘⇧] did nothing at all
     // with one terminal tab and three file tabs — deleting the keyboard path
     // to a file (spec §4.3).
     const surfaces = fakeSurfaces({ count: 3, total: 3, activeIndex: -1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
 
     tm.cycleTab(1);
-    expect(surfaces.calls).toContain('activate:0');
+    expect(surfaces.calls).toContain("activate:0");
 
     tm.cycleTab(1);
-    expect(surfaces.calls).toContain('activate:1');
+    expect(surfaces.calls).toContain("activate:1");
   });
 
-  it('T21: cycleTab wraps from the last file surface back to the first tab', async () => {
+  it("T21: cycleTab wraps from the last file surface back to the first tab", async () => {
     const surfaces = fakeSurfaces({ count: 2, total: 2 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.activeIndexValue = 1;
     surfaces.calls.length = 0;
 
     tm.cycleTab(1);
 
-    expect(surfaces.calls).toContain('deactivate');
+    expect(surfaces.calls).toContain("deactivate");
     expect(activeTabIndex.value).toBe(0);
   });
 
-  it('T21: cycleTab still does nothing with exactly one surface in total', async () => {
+  it("T21: cycleTab still does nothing with exactly one surface in total", async () => {
     const surfaces = fakeSurfaces({ count: 0, total: 0 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.calls.length = 0;
 
     tm.cycleTab(1);
@@ -299,12 +299,12 @@ describe('file surfaces in the tab strip', () => {
     expect(surfaces.calls).toEqual([]);
   });
 
-  it('T22: ⌘⇧M from a file surface is a no-op with a message', async () => {
+  it("T22: ⌘⇧M from a file surface is a no-op with a message", async () => {
     // The transfer transaction hands over a PTY and a file tab has none.
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await tm.materialize({ layout: null, cwds: ['/b'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
     // After the materializes: each one selects its new tab, which hands the
     // stage back to the terminal through the same seam.
     surfaces.activeIndexValue = 0;
@@ -312,45 +312,45 @@ describe('file surfaces in the tab strip', () => {
 
     await tm.movePaneToNewWindow();
 
-    expect(persistError.value).toContain('terminal pane');
+    expect(persistError.value).toContain("terminal pane");
     expect(tabViews.value).toHaveLength(2);
   });
 
-  it('T23: focusActive() reaches the file surface, not a hidden pane', async () => {
+  it("T23: focusActive() reaches the file surface, not a hidden pane", async () => {
     // The failure mode is silent: focus lands on a pane the user cannot see
     // and their keystrokes go to a shell.
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.activeIndexValue = 0;
     surfaces.calls.length = 0;
 
     tm.focusActive();
 
-    expect(surfaces.calls).toContain('focus');
+    expect(surfaces.calls).toContain("focus");
   });
 
-  it('T23: focusActive() still reaches the pane when a terminal tab is active', async () => {
+  it("T23: focusActive() still reaches the pane when a terminal tab is active", async () => {
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.calls.length = 0;
 
     tm.focusActive();
 
-    expect(surfaces.calls).not.toContain('focus');
+    expect(surfaces.calls).not.toContain("focus");
   });
 
-  it('T25: applySettings reaches the file surfaces through the same call', async () => {
+  it("T25: applySettings reaches the file surfaces through the same call", async () => {
     // A theme switch must not leave an open editor in the old palette until
     // it is closed and reopened.
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
 
     tm.applySettings(DEFAULT_SETTINGS);
 
-    expect(surfaces.calls).toContain('applySettings');
+    expect(surfaces.calls).toContain("applySettings");
   });
 
   it("save-file (⌘S) reaches the active file surface's save()", async () => {
@@ -361,18 +361,18 @@ describe('file surfaces in the tab strip', () => {
     // it reaches the right method).
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.calls.length = 0;
 
-    tm.runAction('save-file');
+    tm.runAction("save-file");
 
-    expect(surfaces.calls).toContain('save');
+    expect(surfaces.calls).toContain("save");
   });
 
-  it('selecting a terminal tab takes the stage back from a file surface', async () => {
+  it("selecting a terminal tab takes the stage back from a file surface", async () => {
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.activeIndexValue = 0;
     surfaces.calls.length = 0;
 
@@ -380,7 +380,7 @@ describe('file surfaces in the tab strip', () => {
     // handing the stage back, or the file surface stays on top forever.
     tm.selectTab(0);
 
-    expect(surfaces.calls).toContain('deactivate');
+    expect(surfaces.calls).toContain("deactivate");
     tm.dispose();
   });
 
@@ -391,17 +391,17 @@ describe('file surfaces in the tab strip', () => {
     // screen once the tab's terminal grid retakes the stage.
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] }); // tab 0 -> pane 1
+    await tm.materialize({ layout: null, cwds: ["/a"] }); // tab 0 -> pane 1
     surfaces.activeIndexValue = 0;
     surfaces.calls.length = 0;
 
     tm.activateForAttention(0, 1);
 
-    expect(surfaces.calls).toContain('deactivate');
+    expect(surfaces.calls).toContain("deactivate");
     tm.dispose();
   });
 
-  it('split-row via runAction is a no-op while a file surface owns the stage', async () => {
+  it("split-row via runAction is a no-op while a file surface owns the stage", async () => {
     // Task 7: Monaco focuses a plain `<div>` — `isChromeTextField` never
     // sees it — so a "pane"-tiered action must not reach the terminal tab
     // hidden behind the file surface. `allPaneIds()` reads the REAL terminal
@@ -410,11 +410,11 @@ describe('file surfaces in the tab strip', () => {
     // while a surface is active (T19).
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     const before = tm.allPaneIds().length;
     surfaces.activeIndexValue = 0;
 
-    tm.runAction('split-row');
+    tm.runAction("split-row");
     await flush();
 
     expect(tm.allPaneIds().length).toBe(before); // no split happened behind the file surface
@@ -428,86 +428,86 @@ describe('file surfaces in the tab strip', () => {
   // them anyway, so with a document on the stage the `DockToggle` button, the
   // drag-past-the-floor close, the View menu items and ⌘⇧B / ⌘⇧U all did
   // nothing at all, leaving the explorer stuck open with no way out.
-  it('toggle-dock still opens and closes the column while a file surface owns the stage', async () => {
+  it("toggle-dock still opens and closes the column while a file surface owns the stage", async () => {
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.activeIndexValue = 0;
     expect(settings.value.dockOpen).toBe(false);
 
-    tm.runAction('toggle-dock');
+    tm.runAction("toggle-dock");
     expect(settings.value.dockOpen).toBe(true);
 
-    tm.runAction('toggle-dock');
+    tm.runAction("toggle-dock");
     expect(settings.value.dockOpen).toBe(false);
     tm.dispose();
   });
 
-  it('toggle-explorer still reveals and puts away the column while a file surface owns the stage', async () => {
+  it("toggle-explorer still reveals and puts away the column while a file surface owns the stage", async () => {
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.activeIndexValue = 0;
     // Open on ANOTHER tab, so the first press has to switch rather than
     // matching a default that was already "explorer".
-    settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: 'usage' };
+    settings.value = { ...DEFAULT_SETTINGS, dockOpen: true, dockTab: "usage" };
 
-    tm.runAction('toggle-explorer');
+    tm.runAction("toggle-explorer");
     expect(settings.value.dockOpen).toBe(true);
-    expect(settings.value.dockTab).toBe('explorer');
+    expect(settings.value.dockTab).toBe("explorer");
 
-    tm.runAction('toggle-explorer');
+    tm.runAction("toggle-explorer");
     expect(settings.value.dockOpen).toBe(false);
     tm.dispose();
   });
 
-  it('toggle-usage still reaches its App seam while a file surface owns the stage', async () => {
+  it("toggle-usage still reaches its App seam while a file surface owns the stage", async () => {
     const onToggleUsage = vi.fn();
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({
       deps: { surfaces, onToggleUsage },
       infos: IDLE_SHELLS,
     });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.activeIndexValue = 0;
 
-    tm.runAction('toggle-usage');
+    tm.runAction("toggle-usage");
 
     expect(onToggleUsage).toHaveBeenCalledTimes(1);
     tm.dispose();
   });
 
-  it('putting the column away hands focus to the file surface, not the pane behind it', async () => {
+  it("putting the column away hands focus to the file surface, not the pane behind it", async () => {
     // Same silent failure as T23 above, reached through the dock's own close
     // branch: with a document on the stage, focusing `activeManager()` would
     // take the caret out of the editor the user is looking at and drop their
     // keystrokes into a shell they cannot see.
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.activeIndexValue = 0;
-    tm.runAction('toggle-dock'); // open
+    tm.runAction("toggle-dock"); // open
     surfaces.calls.length = 0;
 
-    tm.runAction('toggle-dock'); // close — this is the branch that returns focus
+    tm.runAction("toggle-dock"); // close — this is the branch that returns focus
 
-    expect(surfaces.calls).toContain('focus');
+    expect(surfaces.calls).toContain("focus");
     tm.dispose();
   });
 
-  it('the dock toggles are STILL blocked while Settings covers the grid', async () => {
+  it("the dock toggles are STILL blocked while Settings covers the grid", async () => {
     // The exemption is scoped to the surface half of the guard only: Settings
     // is full-window and covers the column along with the stage, so the
     // overlay-rank half must keep blocking these — that tier is why they are
     // `scope: "pane"` in the first place.
     const surfaces = fakeSurfaces({ count: 1, total: 1 });
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     surfaces.activeIndexValue = 0;
     settingsOpen.value = true;
 
-    tm.runAction('toggle-dock');
-    tm.runAction('toggle-explorer');
+    tm.runAction("toggle-dock");
+    tm.runAction("toggle-explorer");
 
     expect(settings.value.dockOpen).toBe(false);
     settingsOpen.value = false;
@@ -524,8 +524,8 @@ describe('file surfaces in the tab strip', () => {
  * "last surface, not last tab", ⌘W closing a file tab, and ⌘1..9 staying
  * terminal-only.
  */
-describe('file surfaces in the tab strip — the real FileSurfaceController (Task 5)', () => {
-  const writeFile = vi.fn<FileClient['writeFile']>(async (_root, path) => ({
+describe("file surfaces in the tab strip — the real FileSurfaceController (Task 5)", () => {
+  const writeFile = vi.fn<FileClient["writeFile"]>(async (_root, path) => ({
     path,
     mtimeMs: 1,
     size: 1,
@@ -536,10 +536,10 @@ describe('file surfaces in the tab strip — the real FileSurfaceController (Tas
     // `document.file` populated (`savePath` early-returns on a null `file`),
     // and nothing else in this block depends on the read content.
     readFile: async () => ({
-      kind: 'ok',
-      content: 'original\n',
-      eol: 'lf',
-      encoding: 'utf-8',
+      kind: "ok",
+      content: "original\n",
+      eol: "lf",
+      encoding: "utf-8",
       bytes: 9,
       mixedEol: false,
       readOnly: false,
@@ -569,24 +569,24 @@ describe('file surfaces in the tab strip — the real FileSurfaceController (Tas
     resetFileSurfaces();
   });
 
-  it('⌘⇧] / ⌘⇧[ cycle across the combined index space and wrap both ways', async () => {
+  it("⌘⇧] / ⌘⇧[ cycle across the combined index space and wrap both ways", async () => {
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await surfaces.openFile('/a', '/a/one.ts', true);
-    await surfaces.openFile('/a', '/a/two.ts', true);
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await surfaces.openFile("/a", "/a/one.ts", true);
+    await surfaces.openFile("/a", "/a/two.ts", true);
     surfaces.deactivate(); // back on the terminal tab, two file tabs waiting
 
-    tm.runAction('next-tab');
+    tm.runAction("next-tab");
     expect(surfaces.activeIndex()).toBe(0);
 
-    tm.runAction('next-tab');
+    tm.runAction("next-tab");
     expect(surfaces.activeIndex()).toBe(1);
 
-    tm.runAction('next-tab');
+    tm.runAction("next-tab");
     expect(surfaces.activeIndex()).toBe(-1); // wraps back to the terminal tab
     expect(activeTabIndex.value).toBe(0);
 
-    tm.runAction('prev-tab');
+    tm.runAction("prev-tab");
     expect(surfaces.activeIndex()).toBe(1); // wraps the other way too
 
     tm.dispose();
@@ -595,8 +595,8 @@ describe('file surfaces in the tab strip — the real FileSurfaceController (Tas
   it('"last surface, not last tab": closing the only terminal tab keeps the window open on a file surface', async () => {
     const before = windowCloseCalls.length;
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await surfaces.openFile('/a', '/a/one.ts', true);
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await surfaces.openFile("/a", "/a/one.ts", true);
     surfaces.deactivate();
 
     await tm.closeTab(0);
@@ -608,12 +608,12 @@ describe('file surfaces in the tab strip — the real FileSurfaceController (Tas
     tm.dispose();
   });
 
-  it('⌘W closes the active file tab, never the pane behind it', async () => {
+  it("⌘W closes the active file tab, never the pane behind it", async () => {
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await surfaces.openFile('/a', '/a/one.ts', true);
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await surfaces.openFile("/a", "/a/one.ts", true);
 
-    tm.runAction('close-pane');
+    tm.runAction("close-pane");
     await vi.waitFor(() => expect(surfaces.count()).toBe(0));
 
     expect(tabViews.value).toHaveLength(1); // the terminal tab/pane is untouched
@@ -621,61 +621,61 @@ describe('file surfaces in the tab strip — the real FileSurfaceController (Tas
     tm.dispose();
   });
 
-  it('⌘1..9 count CHIPS, so a digit can land on a file (2026-08-16)', async () => {
+  it("⌘1..9 count CHIPS, so a digit can land on a file (2026-08-16)", async () => {
     // Reversed on 2026-08-16 with the merged strip: the digits used to stay
     // terminal-only, which meant ⌘2 did nothing at all on a window whose
     // second chip was a document. "The second chip" now means the same thing
     // to the keymap as it does to the eye (DL-18.6).
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] }); // chip 1
-    await surfaces.openFile('/a', '/a/one.ts', true); // chip 2
-    await surfaces.openFile('/a', '/a/two.ts', true); // chip 3
+    await tm.materialize({ layout: null, cwds: ["/a"] }); // chip 1
+    await surfaces.openFile("/a", "/a/one.ts", true); // chip 2
+    await surfaces.openFile("/a", "/a/two.ts", true); // chip 3
 
-    tm.runAction('select-tab-2');
+    tm.runAction("select-tab-2");
     expect(surfaces.activeIndex()).toBe(0); // the first file tab
 
-    tm.runAction('select-tab-3');
+    tm.runAction("select-tab-3");
     expect(surfaces.activeIndex()).toBe(1);
 
     // ⌘9 takes the LAST chip, wherever it sits and whatever kind it is.
-    tm.runAction('select-tab-1');
+    tm.runAction("select-tab-1");
     expect(surfaces.activeIndex()).toBe(-1);
-    tm.runAction('select-last-tab');
+    tm.runAction("select-last-tab");
     expect(surfaces.activeIndex()).toBe(1);
 
     // An index past the end of the strip is still a no-op.
-    tm.runAction('select-tab-8');
+    tm.runAction("select-tab-8");
     expect(surfaces.activeIndex()).toBe(1);
     expect(activeTabIndex.value).toBe(0);
 
     tm.dispose();
   });
 
-  it('a file opened BEFORE a terminal tab takes the earlier digit', async () => {
+  it("a file opened BEFORE a terminal tab takes the earlier digit", async () => {
     // The projection the strip paints and the one the keymap walks are the
     // same merge, so this cannot drift into "the eye says 1, ⌘1 says 2".
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await surfaces.openFile('/a', '/a/first.ts', true); // chip 2 for now
-    await tm.materialize({ layout: null, cwds: ['/a'] }); // opened last → chip 3
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await surfaces.openFile("/a", "/a/first.ts", true); // chip 2 for now
+    await tm.materialize({ layout: null, cwds: ["/a"] }); // opened last → chip 3
 
-    tm.runAction('select-tab-2');
+    tm.runAction("select-tab-2");
     expect(surfaces.activeIndex()).toBe(0); // the file, not the second terminal
 
-    tm.runAction('select-tab-3');
+    tm.runAction("select-tab-3");
     expect(surfaces.activeIndex()).toBe(-1);
     expect(activeTabIndex.value).toBe(1);
 
     tm.dispose();
   });
 
-  it('select-tab-1 switches back to the terminal tab and deactivates the file surface', async () => {
+  it("select-tab-1 switches back to the terminal tab and deactivates the file surface", async () => {
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await surfaces.openFile('/a', '/a/one.ts', true);
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await surfaces.openFile("/a", "/a/one.ts", true);
     expect(surfaces.activeIndex()).toBe(0);
 
-    tm.runAction('select-tab-1');
+    tm.runAction("select-tab-1");
 
     expect(surfaces.activeIndex()).toBe(-1);
     expect(activeTabIndex.value).toBe(0);
@@ -683,23 +683,23 @@ describe('file surfaces in the tab strip — the real FileSurfaceController (Tas
     tm.dispose();
   });
 
-  it('save-file (⌘S) writes the active file tab through the real controller', async () => {
+  it("save-file (⌘S) writes the active file tab through the real controller", async () => {
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await surfaces.openFile('/a', '/a/one.ts', true);
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await surfaces.openFile("/a", "/a/one.ts", true);
 
-    tm.runAction('save-file');
+    tm.runAction("save-file");
     await vi.waitFor(() => expect(writeFile).toHaveBeenCalledTimes(1));
 
-    expect(writeFile.mock.calls[0]?.[1]).toBe('/a/one.ts');
+    expect(writeFile.mock.calls[0]?.[1]).toBe("/a/one.ts");
     tm.dispose();
   });
 
-  it('save-file (⌘S) is a genuine no-op — spec §4.3 — while a terminal tab is active', async () => {
+  it("save-file (⌘S) is a genuine no-op — spec §4.3 — while a terminal tab is active", async () => {
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
-    await tm.materialize({ layout: null, cwds: ['/a'] }); // no file ever opened
+    await tm.materialize({ layout: null, cwds: ["/a"] }); // no file ever opened
 
-    tm.runAction('save-file');
+    tm.runAction("save-file");
     await flush();
 
     expect(writeFile).not.toHaveBeenCalled();

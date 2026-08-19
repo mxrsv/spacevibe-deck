@@ -1,8 +1,8 @@
-import { ConfigGroup, ConfigRow, ToggleRow } from '../../ui/controls/config-row';
-import { CommitInput } from '../../ui/controls/commit-input';
-import { CommitTextarea } from '../../ui/controls/commit-textarea';
-import { SETTINGS_CATEGORIES } from '../../ui/settings/settings-categories';
-import { SectionHead, Specimen } from '../specimen';
+import { ConfigGroup, ConfigRow, ToggleRow } from "../../ui/controls/config-row";
+import { CommitInput } from "../../ui/controls/commit-input";
+import { CommitTextarea } from "../../ui/controls/commit-textarea";
+import { SETTINGS_CATEGORIES } from "../../ui/settings/settings-categories";
+import { SectionHead, Specimen } from "../specimen";
 
 /**
  * DL §5's one control, in every shape the app can put it in.
@@ -87,7 +87,7 @@ export function RowsSection() {
           </ConfigRow>
           <div class="cfg-custom">
             <CommitTextarea
-              value={'Review the diff on this branch.\nName the risky change.'}
+              value={"Review the diff on this branch.\nName the risky change."}
               placeholder="a prompt body"
               ariaLabel="Multi line specimen"
               onCommit={() => {}}

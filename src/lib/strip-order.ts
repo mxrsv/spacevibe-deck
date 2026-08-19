@@ -16,7 +16,7 @@
  */
 
 /** Which owner a slot belongs to. */
-export type StripSlotKind = 'tab' | 'surface';
+export type StripSlotKind = "tab" | "surface";
 
 /** One chip's position in the merged strip. */
 export interface StripSlot {
@@ -49,11 +49,11 @@ export function mergeStripOrder(
 ): readonly StripSlot[] {
   const entries = [
     ...tabs.map((tab, index) => ({
-      slot: { kind: 'tab' as const, index },
+      slot: { kind: "tab" as const, index },
       openedAt: tab.openedAt,
     })),
     ...surfaces.map((surface, index) => ({
-      slot: { kind: 'surface' as const, index },
+      slot: { kind: "surface" as const, index },
       openedAt: surface.openedAt,
     })),
   ];

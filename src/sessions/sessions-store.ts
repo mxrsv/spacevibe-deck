@@ -6,15 +6,15 @@
  * re-stat on re-open, and the main-process cache makes the second open cheap.
  * A 5 s poll here would re-read up to 1000 transcript heads for nothing.
  */
-import { batch, signal } from '@preact/signals';
-import { defaultSessionsClient, type SessionsClient } from './sessions-client';
-import type { AgentFilter } from './session-filters';
+import { batch, signal } from "@preact/signals";
+import { defaultSessionsClient, type SessionsClient } from "./sessions-client";
+import type { AgentFilter } from "./session-filters";
 import {
   SESSIONS_DEFAULT_LIMIT,
   type SessionAgent,
   type SessionEntry,
-} from '../lib/session-history';
-import { LOAD_IDLE, LOAD_LOADING, LOAD_READY, loadError, type LoadState } from '../lib/load-state';
+} from "../lib/session-history";
+import { LOAD_IDLE, LOAD_LOADING, LOAD_READY, loadError, type LoadState } from "../lib/load-state";
 
 export const sessionEntries = signal<readonly SessionEntry[]>([]);
 export const sessionTotals = signal<Readonly<Record<SessionAgent, number>>>({
@@ -37,7 +37,7 @@ export const sessionsSupported = signal(true);
 /** cwds that no longer exist on disk; their rows cannot resume (spec §4). */
 export const deadProjects = signal<ReadonlySet<string>>(new Set());
 
-export const sessionAgentFilter = signal<AgentFilter>('all');
+export const sessionAgentFilter = signal<AgentFilter>("all");
 export const sessionProjectFilter = signal<string | null>(null);
 
 /** Probe and refresh freshness are independent; a probe never supersedes data. */
@@ -45,7 +45,7 @@ let probeGeneration = 0;
 let refreshGeneration = 0;
 
 export function resetSessionFilters(): void {
-  sessionAgentFilter.value = 'all';
+  sessionAgentFilter.value = "all";
   sessionProjectFilter.value = null;
 }
 
@@ -67,7 +67,7 @@ export async function probeSessionsSupport(
   // can therefore start its full refresh before App starts this boot probe.
   // The refresh already proves support and owns the visible state; do not let
   // a limit-1 probe supersede it or strand its loading flag.
-  if (sessionsLoadState.value.status === 'loading') {
+  if (sessionsLoadState.value.status === "loading") {
     return;
   }
   probeGeneration += 1;
@@ -128,7 +128,7 @@ export async function refreshSessions(
     // "you have no sessions", which is a lie — the same rule usage-store
     // states for its own failure path.
     if (forGeneration === refreshGeneration) {
-      console.warn('sessions_list failed:', error);
+      console.warn("sessions_list failed:", error);
       sessionsLoadState.value = loadError("Couldn't read recorded sessions.");
     }
   } finally {

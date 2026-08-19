@@ -1,8 +1,8 @@
-import { AGENT_LOGOS } from '../../../lib/agent-logos';
-import { type DailyRow, dailyTotals } from '../../../lib/usage-aggregate';
-import { totalTokens } from '../../../lib/usage-snapshot';
-import { usageSnapshot } from '../../../usage/usage-store';
-import { MetricTable, type MetricColumn, type MetricRow } from '../metric-table';
+import { AGENT_LOGOS } from "../../../lib/agent-logos";
+import { type DailyRow, dailyTotals } from "../../../lib/usage-aggregate";
+import { totalTokens } from "../../../lib/usage-snapshot";
+import { usageSnapshot } from "../../../usage/usage-store";
+import { MetricTable, type MetricColumn, type MetricRow } from "../metric-table";
 import {
   EM_DASH,
   ESTIMATE_NOTE,
@@ -10,7 +10,7 @@ import {
   formatTokensCompact,
   usdCell,
   USAGE_AGENT_LABEL,
-} from '../usage-format';
+} from "../usage-format";
 
 /**
  * The daily view: one row per local calendar day, with the day's agents stacked
@@ -32,10 +32,10 @@ import {
 export const DAILY_DAYS = 30;
 
 const COLUMNS: readonly MetricColumn[] = [
-  { key: 'day', label: 'Day' },
-  { key: 'agent', label: 'Agent' },
-  { key: 'tokens', label: 'Tokens', numeric: true },
-  { key: 'usd', label: 'Est. USD', numeric: true },
+  { key: "day", label: "Day" },
+  { key: "agent", label: "Agent" },
+  { key: "tokens", label: "Tokens", numeric: true },
+  { key: "usd", label: "Est. USD", numeric: true },
 ];
 
 /**
@@ -73,7 +73,7 @@ export function DailySection() {
   const note =
     unpriced.length === 0
       ? ESTIMATE_NOTE
-      : `${ESTIMATE_NOTE} · no price for ${unpriced.join(', ')}`;
+      : `${ESTIMATE_NOTE} · no price for ${unpriced.join(", ")}`;
 
   const tableRows: readonly MetricRow[] = rows.map((row) => ({
     key: row.day,

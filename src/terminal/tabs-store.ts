@@ -1,11 +1,11 @@
-import { signal } from '@preact/signals';
-import type { PaneAgent } from '../lib/process-info';
-import type { TabDotColor } from '../lib/tab-colors';
-import type { AgentPhase } from './agent-activity';
-import type { AgentAttentionSummary, AttentionKind } from './agent-attention';
+import { signal } from "@preact/signals";
+import type { PaneAgent } from "../lib/process-info";
+import type { TabDotColor } from "../lib/tab-colors";
+import type { AgentPhase } from "./agent-activity";
+import type { AgentAttentionSummary, AttentionKind } from "./agent-attention";
 
 /** Shared with UI consumers so they can import it from tabs-store. */
-export type { AgentAttentionSummary } from './agent-attention';
+export type { AgentAttentionSummary } from "./agent-attention";
 
 /**
  * One pane of a tab, as the chrome sees it.
@@ -46,7 +46,7 @@ export const NO_PANES: readonly PaneView[] = Object.freeze([]);
 
 /** Fallback summary for a `TabView` whose `attention` is not yet populated. */
 export const IDLE_ATTENTION_SUMMARY: AgentAttentionSummary = {
-  kind: 'idle',
+  kind: "idle",
   actionableCount: 0,
   workingCount: 0,
   unreadCount: 0,
@@ -138,5 +138,5 @@ export const statusInfo = signal<StatusInfo>({
   cwd: null,
   agent: null,
   paneCount: 1,
-  home: '',
+  home: "",
 });

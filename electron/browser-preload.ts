@@ -21,9 +21,9 @@
  * and both live HERE rather than in the main world, because anything in the
  * main world is code the page can read and call itself.
  */
-import { ipcRenderer } from 'electron';
+import { ipcRenderer } from "electron";
 
-const GRAB_EVENT = 'deck:browser-grab';
+const GRAB_EVENT = "deck:browser-grab";
 
 /**
  * How long a real user gesture vouches for a grab.
@@ -74,7 +74,7 @@ function now(): number {
  * Remember genuine user input. Capture phase, so a page that stops propagation
  * on its own handlers cannot also starve this — the listener runs first.
  */
-for (const gesture of ['keydown', 'pointerdown', 'mousedown']) {
+for (const gesture of ["keydown", "pointerdown", "mousedown"]) {
   window.addEventListener(
     gesture,
     (event) => {
@@ -88,7 +88,7 @@ for (const gesture of ['keydown', 'pointerdown', 'mousedown']) {
 
 window.addEventListener(GRAB_EVENT, (event) => {
   const detail = event.detail;
-  if (typeof detail !== 'string') {
+  if (typeof detail !== "string") {
     return;
   }
   const at = now();

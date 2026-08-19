@@ -14,9 +14,9 @@
  * a write to the repository, which is deliberately not something a modal
  * called "quick" offers (owner decision, 2026-08-16).
  */
-import { workspaceLabel } from '../lib/workspace-label';
-import type { RepositoryScan } from './repository-client';
-import { worktreeForPath } from './repository-model';
+import { workspaceLabel } from "../lib/workspace-label";
+import type { RepositoryScan } from "./repository-client";
+import { worktreeForPath } from "./repository-model";
 
 export interface QuickDestination {
   /** Absolute path of the worktree's working directory. */
@@ -39,7 +39,7 @@ export interface QuickDestination {
 export function worktreeDestinations(
   scan: RepositoryScan | null | undefined,
 ): readonly QuickDestination[] {
-  if (scan === null || scan === undefined || scan.kind !== 'repository') {
+  if (scan === null || scan === undefined || scan.kind !== "repository") {
     return [];
   }
   // Bare first, then prunable, in that order and not merged: `primary` means
@@ -82,7 +82,7 @@ export function defaultDestinationPath(
 ): string | null {
   const paths = destinations.map((destination) => destination.path);
   for (const candidate of preferred) {
-    if (candidate === null || candidate === '') {
+    if (candidate === null || candidate === "") {
       continue;
     }
     const match = worktreeForPath(paths, candidate);

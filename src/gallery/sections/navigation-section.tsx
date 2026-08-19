@@ -1,11 +1,11 @@
-import { agentStatusRailChromeSpecimen, agentStatusRailSpecimen } from '../agent-status-rail';
+import { agentStatusRailChromeSpecimen, agentStatusRailSpecimen } from "../agent-status-rail";
 import {
   agentRailVariantsSpecimen,
   paneTreeSpecimen,
   restingMarkVariantsSpecimen,
   statePaletteSpecimen,
-} from '../agent-rail-variants';
-import { SectionHead, Specimen } from '../specimen';
+} from "../agent-rail-variants";
+import { SectionHead, Specimen } from "../specimen";
 
 export function NavigationSection() {
   return (

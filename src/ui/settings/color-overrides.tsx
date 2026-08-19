@@ -1,13 +1,13 @@
-import { COLOR_KEYS, type TerminalColors } from '../../settings/settings-schema';
-import { settings, updateColorOverride } from '../../settings/settings-store';
-import { getPreset } from '../../settings/themes';
-import { ColorRow } from '../controls/color-row';
+import { COLOR_KEYS, type TerminalColors } from "../../settings/settings-schema";
+import { settings, updateColorOverride } from "../../settings/settings-store";
+import { getPreset } from "../../settings/themes";
+import { ColorRow } from "../controls/color-row";
 
 const COLOR_LABELS: Record<keyof TerminalColors, string> = {
-  background: 'Background',
-  foreground: 'Foreground',
-  cursor: 'Cursor',
-  selectionBackground: 'Selection',
+  background: "Background",
+  foreground: "Foreground",
+  cursor: "Cursor",
+  selectionBackground: "Selection",
 };
 
 /**

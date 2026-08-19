@@ -1,4 +1,4 @@
-import type { Icon } from '@phosphor-icons/react';
+import type { Icon } from "@phosphor-icons/react";
 
 /**
  * The one place Phosphor's presentation defaults are set (`DL-14.1`). Surfaces
@@ -40,12 +40,12 @@ export const RAIL_ICON: DeckIconSize = 16;
  * `displayName`, and the layout rule must not be the thing that discovers it.
  */
 function iconModifier(icon: Icon): string {
-  const displayName = icon.displayName ?? '';
-  const bare = displayName.endsWith('Icon') ? displayName.slice(0, -'Icon'.length) : displayName;
-  if (bare === '') {
-    return '';
+  const displayName = icon.displayName ?? "";
+  const bare = displayName.endsWith("Icon") ? displayName.slice(0, -"Icon".length) : displayName;
+  if (bare === "") {
+    return "";
   }
-  const slug = bare.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+  const slug = bare.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
   return ` deck-icon--${slug}`;
 }
 
@@ -76,7 +76,7 @@ export function DeckIcon({
       mirrored={mirrored}
       aria-hidden="true"
       focusable="false"
-      className={`deck-icon${iconModifier(Icon)}${className === undefined ? '' : ` ${className}`}`}
+      className={`deck-icon${iconModifier(Icon)}${className === undefined ? "" : ` ${className}`}`}
     />
   );
 }

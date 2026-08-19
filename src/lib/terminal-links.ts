@@ -10,7 +10,7 @@
  * it against the pane's cwd and drops the ones that are not real files.
  */
 
-export type LinkKind = 'url' | 'path';
+export type LinkKind = "url" | "path";
 
 export interface LinkCandidate {
   readonly kind: LinkKind;
@@ -44,7 +44,7 @@ const URL_RE = /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]
 export function isBrowsableUrl(uri: string): boolean {
   try {
     const { protocol } = new URL(uri);
-    return protocol === 'http:' || protocol === 'https:';
+    return protocol === "http:" || protocol === "https:";
   } catch {
     return false; // not a URI at all
   }
@@ -90,16 +90,16 @@ const BOUNDARY = `(?:^|[^${SEG_CHAR}/\\\\:])`;
 // read as a literal `p` and the class silently matches the wrong thing.
 // JavaScriptCore has understood Unicode property escapes since Safari 11.1,
 // well below the macOS floor tauri.conf declares.
-const PATH_RE = new RegExp(`(${BOUNDARY})(${SLASHED}|${BARE})${SUFFIX}`, 'gu');
+const PATH_RE = new RegExp(`(${BOUNDARY})(${SLASHED}|${BARE})${SUFFIX}`, "gu");
 const WINDOWS_PATH_RE = new RegExp(
   `(${BOUNDARY})(${WINDOWS_DRIVE}|${WINDOWS_UNC}|${WINDOWS_RELATIVE})${SUFFIX}`,
-  'gu',
+  "gu",
 );
 
 /** A sentence-final dot is punctuation, never part of the path. */
 function trimTrailingDots(path: string): string {
   let end = path.length;
-  while (end > 0 && path[end - 1] === '.') {
+  while (end > 0 && path[end - 1] === ".") {
     end -= 1;
   }
   return path.slice(0, end);
@@ -118,7 +118,7 @@ function matchUrls(source: string): LinkCandidate[] {
   URL_RE.lastIndex = 0;
   for (let m = URL_RE.exec(source); m !== null; m = URL_RE.exec(source)) {
     out.push({
-      kind: 'url',
+      kind: "url",
       text: m[0],
       target: m[0],
       line: null,
@@ -131,12 +131,12 @@ function matchUrls(source: string): LinkCandidate[] {
 }
 
 function followsSpacedAbsoluteWindowsPath(source: string, start: number): boolean {
-  if (start === 0 || !/\s/u.test(source[start - 1] ?? '')) {
+  if (start === 0 || !/\s/u.test(source[start - 1] ?? "")) {
     return false;
   }
   const prefix = source.slice(0, start).trimEnd();
   const previousToken = prefix.slice(
-    Math.max(prefix.lastIndexOf(' '), prefix.lastIndexOf('\t')) + 1,
+    Math.max(prefix.lastIndexOf(" "), prefix.lastIndexOf("\t")) + 1,
   );
   const isAbsoluteWindows = /^(?:[A-Za-z]:[\\/]|\\\\)/u.test(previousToken);
   const looksComplete = /\.[\p{L}\p{N}]+(?::\d+){0,2}$/u.test(previousToken);
@@ -152,8 +152,8 @@ function startsSpacedAbsoluteWindowsPath(source: string, start: number, end: num
     return false;
   }
   const remainder = source.slice(end);
-  const continuation = /^\s+([^\s]+)/u.exec(remainder)?.[1] ?? '';
-  return continuation.includes('\\') || continuation.includes('/');
+  const continuation = /^\s+([^\s]+)/u.exec(remainder)?.[1] ?? "";
+  return continuation.includes("\\") || continuation.includes("/");
 }
 
 function matchPathPattern(source: string, pattern: RegExp): LinkCandidate[] {
@@ -162,14 +162,14 @@ function matchPathPattern(source: string, pattern: RegExp): LinkCandidate[] {
   for (let m = pattern.exec(source); m !== null; m = pattern.exec(source)) {
     // m[1] is the consumed boundary character — it belongs to neither the
     // candidate's text nor its range.
-    const boundary = m[1] ?? '';
-    const rawPath = m[2] ?? '';
+    const boundary = m[1] ?? "";
+    const rawPath = m[2] ?? "";
     const line = toInt(m[3]);
     const col = toInt(m[4]);
     // Only trim when nothing follows the path — `foo.:12` cannot occur, so a
     // trailing dot here is always sentence punctuation.
     const path = line === null ? trimTrailingDots(rawPath) : rawPath;
-    if (path === '') {
+    if (path === "") {
       continue;
     }
     const matched = m[0].slice(boundary.length);
@@ -183,7 +183,7 @@ function matchPathPattern(source: string, pattern: RegExp): LinkCandidate[] {
       continue;
     }
     out.push({
-      kind: 'path',
+      kind: "path",
       text,
       target: path,
       line,

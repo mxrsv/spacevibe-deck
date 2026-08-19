@@ -13,9 +13,9 @@ import {
   Link,
   Robot,
   TerminalWindow,
-} from '@phosphor-icons/react';
+} from "@phosphor-icons/react";
 
-import { DeckIcon, RAIL_ICON } from '../controls/deck-icon';
+import { DeckIcon, RAIL_ICON } from "../controls/deck-icon";
 
 export function AppearanceIcon() {
   return <DeckIcon icon={AppWindow} size={RAIL_ICON} />;

@@ -1,5 +1,5 @@
-import type { ComponentChildren } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
+import type { ComponentChildren } from "preact";
+import { useEffect, useRef } from "preact/hooks";
 
 /**
  * The one modal shell (DL §29). Every surface that covers the stage on
@@ -167,7 +167,7 @@ export function Modal({
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
+    if (event.key === "Escape") {
       onDismiss();
       // The terminal is one element away and reads raw keys; an Escape that
       // only closed the modal and then kept travelling would also reach the
@@ -176,7 +176,7 @@ export function Modal({
       event.stopPropagation();
       return;
     }
-    if (event.key === 'Tab') {
+    if (event.key === "Tab") {
       trapTab(event, panelRef.current);
       return;
     }

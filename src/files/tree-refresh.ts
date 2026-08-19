@@ -8,7 +8,7 @@
  * `loadListing` and the disposed flag are injected because both live in the
  * controller's closure — this module owns no filesystem access of its own.
  */
-import { fileSurfaces, visibleDirectories } from './file-surface-store';
+import { fileSurfaces, visibleDirectories } from "./file-surface-store";
 
 /**
  * Coalesce window for `fs:changed` bursts before the tree re-`listDir`s.
@@ -27,7 +27,7 @@ const TREE_REFRESH_COALESCE_MS = 100;
  * opaque strings from the host — never parsed with `node:path`, which is not
  * available to the renderer (spec: renderer stays host-free). */
 function parentDirectory(path: string): string {
-  const index = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  const index = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
   return index <= 0 ? path : path.slice(0, index);
 }
 

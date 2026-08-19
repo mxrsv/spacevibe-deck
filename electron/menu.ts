@@ -11,21 +11,21 @@
  * accelerator is declared by CHARACTER, never by physical position, which is
  * why an action carrying a menu item must use a character binding.
  */
-import { Menu, app, type MenuItemConstructorOptions } from 'electron';
+import { Menu, app, type MenuItemConstructorOptions } from "electron";
 import {
   ACTION_REGISTRY,
   MACOS_KEYMAP,
   type ActionDefinition,
   type KeyBinding,
   type MenuSubmenu,
-} from '../src/terminal/action-registry';
-import { EVENTS } from './ipc/channels';
-import type { WindowRegistry } from './window-lifecycle';
+} from "../src/terminal/action-registry";
+import { EVENTS } from "./ipc/channels";
+import type { WindowRegistry } from "./window-lifecycle";
 
 /** `event.code` → the character an accelerator string expects. */
 const CODE_TO_ACCEL: Record<string, string> = {
-  BracketLeft: '[',
-  BracketRight: ']',
+  BracketLeft: "[",
+  BracketRight: "]",
 };
 
 /**
@@ -39,22 +39,22 @@ const CODE_TO_ACCEL: Record<string, string> = {
  * outright by `acceleratorFor` rather than guessed at.
  */
 const KEY_TO_ACCEL: Record<string, string> = {
-  arrowup: 'Up',
-  arrowdown: 'Down',
-  arrowleft: 'Left',
-  arrowright: 'Right',
-  pageup: 'PageUp',
-  pagedown: 'PageDown',
-  home: 'Home',
-  end: 'End',
-  insert: 'Insert',
-  delete: 'Delete',
-  backspace: 'Backspace',
-  enter: 'Return',
-  escape: 'Esc',
-  tab: 'Tab',
-  ' ': 'Space',
-  '+': 'Plus',
+  arrowup: "Up",
+  arrowdown: "Down",
+  arrowleft: "Left",
+  arrowright: "Right",
+  pageup: "PageUp",
+  pagedown: "PageDown",
+  home: "Home",
+  end: "End",
+  insert: "Insert",
+  delete: "Delete",
+  backspace: "Backspace",
+  enter: "Return",
+  escape: "Esc",
+  tab: "Tab",
+  " ": "Space",
+  "+": "Plus",
 };
 
 const FUNCTION_KEY = /^f([1-9]|1\d|2[0-4])$/;
@@ -63,10 +63,10 @@ function normalizeCode(code: string): string {
   if (CODE_TO_ACCEL[code] !== undefined) {
     return CODE_TO_ACCEL[code];
   }
-  if (code.startsWith('Key')) {
+  if (code.startsWith("Key")) {
     return code.slice(3);
   }
-  if (code.startsWith('Digit')) {
+  if (code.startsWith("Digit")) {
     return code.slice(5);
   }
   return code;
@@ -81,7 +81,7 @@ function normalizeCode(code: string): string {
  * a missing one, because Cocoa would then claim a chord the user never chose.
  */
 function tokenFor(binding: KeyBinding): string | null {
-  if ('code' in binding) {
+  if ("code" in binding) {
     return normalizeCode(binding.code);
   }
   const key = binding.key.toLowerCase();
@@ -123,16 +123,16 @@ function acceleratorFor(actionId: string, keymap: readonly KeyBinding[]): string
   }
   const parts: string[] = [];
   if (binding.meta) {
-    parts.push('Command');
+    parts.push("Command");
   }
   if (binding.ctrl) {
-    parts.push('Control');
+    parts.push("Control");
   }
   if (binding.alt) {
-    parts.push('Alt');
+    parts.push("Alt");
   }
   if (binding.shift) {
-    parts.push('Shift');
+    parts.push("Shift");
   }
   if (parts.length === 0) {
     // An unmodified accelerator would claim a bare key across the whole app
@@ -142,7 +142,7 @@ function acceleratorFor(actionId: string, keymap: readonly KeyBinding[]): string
     return undefined;
   }
   parts.push(token);
-  return parts.join('+');
+  return parts.join("+");
 }
 
 export interface MenuDeps {
@@ -186,7 +186,7 @@ function itemsFor(submenu: MenuSubmenu, deps: MenuDeps): MenuItemConstructorOpti
   let lastGroup: string | undefined;
   for (const [index, action] of actions.entries()) {
     if (index > 0 && action.menu?.group !== lastGroup) {
-      items.push({ type: 'separator' });
+      items.push({ type: "separator" });
     }
     lastGroup = action.menu?.group;
     items.push({
@@ -218,7 +218,7 @@ function itemsFor(submenu: MenuSubmenu, deps: MenuDeps): MenuItemConstructorOpti
  * moves between windows.
  */
 export function buildMenu(deps: MenuDeps): void {
-  if (process.platform !== 'darwin') {
+  if (process.platform !== "darwin") {
     // Windows/Linux chrome carries its own menu, but "install nothing" is not
     // the same as "no menu". Electron installs a DEFAULT menu when the app
     // never calls `setApplicationMenu` itself, and `titleBarStyle:
@@ -237,7 +237,7 @@ export function buildMenu(deps: MenuDeps): void {
 
   const movePaneSubmenu: MenuItemConstructorOptions[] =
     peers.length === 0
-      ? [{ label: 'No other window', enabled: false }]
+      ? [{ label: "No other window", enabled: false }]
       : peers.map((label) => ({
           label,
           click: () => {
@@ -260,40 +260,40 @@ export function buildMenu(deps: MenuDeps): void {
     {
       label: app.getName(),
       submenu: [
-        ...itemsFor('App', deps),
-        { type: 'separator' },
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { type: 'separator' },
+        ...itemsFor("App", deps),
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { type: "separator" },
         // `role: "quit"` so the OS delivers it through `before-quit`, which is
         // where the busy census runs.
-        { role: 'quit' },
+        { role: "quit" },
       ],
     },
-    { label: 'File', submenu: itemsFor('File', deps) },
+    { label: "File", submenu: itemsFor("File", deps) },
     {
-      label: 'Edit',
+      label: "Edit",
       submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' },
-        ...itemsFor('Edit', deps),
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+        ...itemsFor("Edit", deps),
       ],
     },
-    { label: 'View', submenu: itemsFor('View', deps) },
+    { label: "View", submenu: itemsFor("View", deps) },
     {
-      label: 'Window',
+      label: "Window",
       submenu: [
-        ...itemsFor('Window', deps),
-        { type: 'separator' },
-        { label: 'Move Pane to Window', submenu: movePaneSubmenu },
-        { type: 'separator' },
-        { role: 'minimize' },
-        { role: 'zoom' },
+        ...itemsFor("Window", deps),
+        { type: "separator" },
+        { label: "Move Pane to Window", submenu: movePaneSubmenu },
+        { type: "separator" },
+        { role: "minimize" },
+        { role: "zoom" },
       ],
     },
   ];

@@ -1,5 +1,5 @@
-import { readText, writeText } from '../host/shell-host';
-import { reportChromeMessage } from '../chrome/events';
+import { readText, writeText } from "../host/shell-host";
+import { reportChromeMessage } from "../chrome/events";
 
 interface TerminalClipboardTarget {
   getSelection(): string;
@@ -32,7 +32,7 @@ export function copyTerminalSelection(
     return;
   }
   const selection = terminal.getSelection();
-  if (selection === '') {
+  if (selection === "") {
     return;
   }
   void Promise.resolve()

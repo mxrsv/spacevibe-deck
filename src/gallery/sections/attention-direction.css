@@ -220,7 +220,7 @@
   gap: 3px;
   padding: 8px 10px;
   overflow: hidden;
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 10.5px;
   line-height: 1.45;
   color: var(--fg);

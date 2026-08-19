@@ -1,5 +1,5 @@
-import { useEffect } from 'preact/hooks';
-import { persistError } from '../chrome/events';
+import { useEffect } from "preact/hooks";
+import { persistError } from "../chrome/events";
 
 const AUTO_DISMISS_MS = 6000;
 

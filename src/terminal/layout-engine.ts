@@ -5,8 +5,8 @@ import {
   type Path,
   type SplitNode,
   type TreeNode,
-} from '../lib/split-tree';
-import type { PaneRect } from '../lib/pane-geometry';
+} from "../lib/split-tree";
+import type { PaneRect } from "../lib/pane-geometry";
 
 /** Minimum share the Focused pane gets on each split along its path. */
 export const EXPAND_RATIO = 0.65;
@@ -95,7 +95,7 @@ export function createLayoutEngine(container: HTMLElement, host: LayoutEngineHos
     }
     zoomOverlay?.remove();
     zoomOverlay = null;
-    container.classList.remove('is-zoomed');
+    container.classList.remove("is-zoomed");
     const restored = zoomed;
     zoomed = null;
     host.fitPane(restored);
@@ -103,8 +103,8 @@ export function createLayoutEngine(container: HTMLElement, host: LayoutEngineHos
 
   function updateActiveClasses(activeId: number | null, paneCount: number): void {
     const highlight = paneCount > 1;
-    for (const slot of container.querySelectorAll<HTMLElement>('.pane-slot')) {
-      slot.classList.toggle('is-active', highlight && Number(slot.dataset.paneId) === activeId);
+    for (const slot of container.querySelectorAll<HTMLElement>(".pane-slot")) {
+      slot.classList.toggle("is-active", highlight && Number(slot.dataset.paneId) === activeId);
     }
   }
 
@@ -119,7 +119,7 @@ export function createLayoutEngine(container: HTMLElement, host: LayoutEngineHos
     // Structural rebuild re-slots every pane — a live zoom overlay would be
     // left covering the tab while its pane is stolen back into the tree.
     unzoom();
-    container.classList.toggle('has-multiple-panes', input.paneCount > 1);
+    container.classList.toggle("has-multiple-panes", input.paneCount > 1);
     // Build from the ORIGINAL tree so dividers capture original ratios as
     // their commit baseline (onUp fires even on a click without dragging).
     renderTree(container, input.tree, {
@@ -154,11 +154,11 @@ export function createLayoutEngine(container: HTMLElement, host: LayoutEngineHos
     if (!pane) {
       return;
     }
-    zoomOverlay = document.createElement('div');
-    zoomOverlay.className = 'zoom-overlay';
+    zoomOverlay = document.createElement("div");
+    zoomOverlay.className = "zoom-overlay";
     zoomOverlay.appendChild(pane);
     container.appendChild(zoomOverlay);
-    container.classList.add('is-zoomed');
+    container.classList.add("is-zoomed");
     zoomed = activeId;
     host.fitPane(activeId);
     host.focusPane(activeId);
@@ -166,7 +166,7 @@ export function createLayoutEngine(container: HTMLElement, host: LayoutEngineHos
 
   function slotRects(): PaneRect[] {
     const rects: PaneRect[] = [];
-    for (const slot of container.querySelectorAll<HTMLElement>('.pane-slot')) {
+    for (const slot of container.querySelectorAll<HTMLElement>(".pane-slot")) {
       const id = Number(slot.dataset.paneId);
       if (Number.isNaN(id)) {
         continue;
@@ -193,8 +193,8 @@ export function createLayoutEngine(container: HTMLElement, host: LayoutEngineHos
   }
 
   function setDropTarget(id: number | null): void {
-    for (const slot of container.querySelectorAll<HTMLElement>('.pane-slot')) {
-      slot.classList.toggle('is-drop-target', id !== null && Number(slot.dataset.paneId) === id);
+    for (const slot of container.querySelectorAll<HTMLElement>(".pane-slot")) {
+      slot.classList.toggle("is-drop-target", id !== null && Number(slot.dataset.paneId) === id);
     }
   }
 
@@ -224,15 +224,15 @@ function renderTree(container: HTMLElement, root: TreeNode, ctx: LayoutContext):
 }
 
 function buildNode(node: TreeNode, path: Path, ctx: LayoutContext): HTMLElement {
-  return node.kind === 'leaf' ? buildLeaf(node, ctx) : buildSplit(node, path, ctx);
+  return node.kind === "leaf" ? buildLeaf(node, ctx) : buildSplit(node, path, ctx);
 }
 
 function buildLeaf(node: LeafNode, ctx: LayoutContext): HTMLElement {
-  const slot = document.createElement('div');
-  slot.className = 'pane-slot';
+  const slot = document.createElement("div");
+  slot.className = "pane-slot";
   slot.dataset.paneId = String(node.paneId);
   if (ctx.highlightActive && ctx.isActive(node.paneId)) {
-    slot.classList.add('is-active');
+    slot.classList.add("is-active");
   }
   const pane = ctx.getPaneElement(node.paneId);
   if (pane) {
@@ -242,18 +242,18 @@ function buildLeaf(node: LeafNode, ctx: LayoutContext): HTMLElement {
 }
 
 function buildSplit(node: SplitNode, path: Path, ctx: LayoutContext): HTMLElement {
-  const split = document.createElement('div');
+  const split = document.createElement("div");
   split.className = `split split--${node.dir}`;
 
-  const first = document.createElement('div');
-  first.className = 'split__child';
+  const first = document.createElement("div");
+  first.className = "split__child";
   first.style.flexGrow = String(node.ratio);
-  first.appendChild(buildNode(node.a, [...path, 'a'], ctx));
+  first.appendChild(buildNode(node.a, [...path, "a"], ctx));
 
-  const second = document.createElement('div');
-  second.className = 'split__child';
+  const second = document.createElement("div");
+  second.className = "split__child";
   second.style.flexGrow = String(1 - node.ratio);
-  second.appendChild(buildNode(node.b, [...path, 'b'], ctx));
+  second.appendChild(buildNode(node.b, [...path, "b"], ctx));
 
   const divider = buildDivider(node, path, { split, first, second }, ctx);
 
@@ -273,20 +273,20 @@ function buildDivider(
   elements: SplitElements,
   ctx: LayoutContext,
 ): HTMLElement {
-  const divider = document.createElement('div');
-  divider.className = 'split__divider';
+  const divider = document.createElement("div");
+  divider.className = "split__divider";
 
-  divider.addEventListener('pointerdown', (event) => {
+  divider.addEventListener("pointerdown", (event) => {
     event.preventDefault();
     divider.setPointerCapture(event.pointerId);
-    divider.classList.add('is-dragging');
-    elements.split.classList.add('is-resizing');
+    divider.classList.add("is-dragging");
+    elements.split.classList.add("is-resizing");
     let ratio = node.ratio;
 
     const onMove = (moveEvent: PointerEvent): void => {
       const rect = elements.split.getBoundingClientRect();
       const position =
-        node.dir === 'row'
+        node.dir === "row"
           ? (moveEvent.clientX - rect.left) / rect.width
           : (moveEvent.clientY - rect.top) / rect.height;
       ratio = Math.min(RATIO_MAX, Math.max(RATIO_MIN, position));
@@ -295,14 +295,14 @@ function buildDivider(
     };
 
     const onUp = (): void => {
-      divider.removeEventListener('pointermove', onMove);
-      divider.classList.remove('is-dragging');
-      elements.split.classList.remove('is-resizing');
+      divider.removeEventListener("pointermove", onMove);
+      divider.classList.remove("is-dragging");
+      elements.split.classList.remove("is-resizing");
       ctx.onRatioCommit(path, ratio);
     };
 
-    divider.addEventListener('pointermove', onMove);
-    divider.addEventListener('pointerup', onUp, { once: true });
+    divider.addEventListener("pointermove", onMove);
+    divider.addEventListener("pointerup", onUp, { once: true });
   });
 
   return divider;
@@ -325,7 +325,7 @@ function applyRatios(container: HTMLElement, root: TreeNode | null): void {
     if (!splitEl) {
       continue;
     }
-    const children = splitEl.querySelectorAll<HTMLElement>(':scope > .split__child');
+    const children = splitEl.querySelectorAll<HTMLElement>(":scope > .split__child");
     if (children.length !== 2) {
       continue;
     }
@@ -337,8 +337,8 @@ function applyRatios(container: HTMLElement, root: TreeNode | null): void {
 function resolveSplitElement(rootEl: Element, path: Path): Element | null {
   let current: Element = rootEl;
   for (const branch of path) {
-    const children = current.querySelectorAll(':scope > .split__child');
-    const next = children[branch === 'a' ? 0 : 1]?.firstElementChild ?? null;
+    const children = current.querySelectorAll(":scope > .split__child");
+    const next = children[branch === "a" ? 0 : 1]?.firstElementChild ?? null;
     if (!next) {
       return null;
     }
@@ -349,7 +349,7 @@ function resolveSplitElement(rootEl: Element, path: Path): Element | null {
 
 /** Local leaf walk so layout-engine does not re-export split-tree leafIds. */
 function leafIdsLocal(node: TreeNode): number[] {
-  if (node.kind === 'leaf') {
+  if (node.kind === "leaf") {
     return [node.paneId];
   }
   return [...leafIdsLocal(node.a), ...leafIdsLocal(node.b)];

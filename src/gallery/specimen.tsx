@@ -1,4 +1,4 @@
-import type { ComponentChildren } from 'preact';
+import type { ComponentChildren } from "preact";
 
 /**
  * The gallery's own presentation primitives.
@@ -10,7 +10,7 @@ import type { ComponentChildren } from 'preact';
  */
 
 /** Which app background a specimen is laid on — chrome reads differently on each. */
-export type SpecimenSurface = 'bg' | 'chrome-1' | 'chrome-2' | 'none';
+export type SpecimenSurface = "bg" | "chrome-1" | "chrome-2" | "none";
 
 interface SpecimenProps {
   /** What this is, in the app's own vocabulary (a class name or component). */
@@ -35,7 +35,7 @@ interface SpecimenProps {
 export function Specimen({
   name,
   note,
-  surface = 'chrome-1',
+  surface = "chrome-1",
   framed = false,
   tall = false,
   children,
@@ -46,7 +46,7 @@ export function Specimen({
         <span class="gx-specimen__name">{name}</span>
         {note !== undefined && <span class="gx-specimen__note">{note}</span>}
       </header>
-      <div class={`gx-stage gx-stage--${surface} ${tall ? 'gx-stage--tall' : ''}`}>
+      <div class={`gx-stage gx-stage--${surface} ${tall ? "gx-stage--tall" : ""}`}>
         {framed ? <div class="window">{children}</div> : children}
       </div>
     </section>

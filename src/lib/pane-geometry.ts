@@ -6,7 +6,7 @@
  * facing-edge-center distance wins.
  */
 
-export type FocusDirection = 'left' | 'right' | 'up' | 'down';
+export type FocusDirection = "left" | "right" | "up" | "down";
 
 export interface PaneRect {
   readonly id: number;
@@ -21,20 +21,20 @@ const EDGE_TOLERANCE_PX = 1;
 
 function isBeyond(active: PaneRect, other: PaneRect, dir: FocusDirection): boolean {
   switch (dir) {
-    case 'left':
+    case "left":
       return other.right <= active.left + EDGE_TOLERANCE_PX;
-    case 'right':
+    case "right":
       return other.left >= active.right - EDGE_TOLERANCE_PX;
-    case 'up':
+    case "up":
       return other.bottom <= active.top + EDGE_TOLERANCE_PX;
-    case 'down':
+    case "down":
       return other.top >= active.bottom - EDGE_TOLERANCE_PX;
   }
 }
 
 /** Overlap length on the axis perpendicular to the move direction. */
 function perpendicularOverlap(a: PaneRect, b: PaneRect, dir: FocusDirection): number {
-  return dir === 'left' || dir === 'right'
+  return dir === "left" || dir === "right"
     ? Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
     : Math.min(a.right, b.right) - Math.max(a.left, b.left);
 }
@@ -49,22 +49,22 @@ function edgeCenter(r: PaneRect, dir: FocusDirection): Point {
   const cx = (r.left + r.right) / 2;
   const cy = (r.top + r.bottom) / 2;
   switch (dir) {
-    case 'left':
+    case "left":
       return { x: r.left, y: cy };
-    case 'right':
+    case "right":
       return { x: r.right, y: cy };
-    case 'up':
+    case "up":
       return { x: cx, y: r.top };
-    case 'down':
+    case "down":
       return { x: cx, y: r.bottom };
   }
 }
 
 const OPPOSITE: Readonly<Record<FocusDirection, FocusDirection>> = {
-  left: 'right',
-  right: 'left',
-  up: 'down',
-  down: 'up',
+  left: "right",
+  right: "left",
+  up: "down",
+  down: "up",
 };
 
 /** Distance between the active pane's facing edge and the candidate's near edge. */

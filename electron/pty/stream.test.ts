@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { createStreamDecoder, OutputBatcher } from './stream';
+import { describe, expect, it, vi } from "vitest";
+import { createStreamDecoder, OutputBatcher } from "./stream";
 
 const tick = () => new Promise((resolve) => queueMicrotask(() => resolve(null)));
 /** Two hops: the batcher re-schedules itself while a backlog remains. */
@@ -22,54 +22,54 @@ function makeBatcher(overrides: Partial<{ batchMaxBytes: number; queueMaxBytes: 
   return { batcher, emitted, pause, resume };
 }
 
-describe('OutputBatcher', () => {
-  it('coalesces chunks pushed in the same tick into one emit', async () => {
+describe("OutputBatcher", () => {
+  it("coalesces chunks pushed in the same tick into one emit", async () => {
     const { batcher, emitted } = makeBatcher();
 
-    batcher.push('a');
-    batcher.push('b');
-    batcher.push('c');
+    batcher.push("a");
+    batcher.push("b");
+    batcher.push("c");
     await drain();
 
-    expect(emitted).toEqual(['abc']);
+    expect(emitted).toEqual(["abc"]);
   });
 
-  it('never emits synchronously', () => {
+  it("never emits synchronously", () => {
     const { batcher, emitted } = makeBatcher();
 
-    batcher.push('a');
+    batcher.push("a");
 
     expect(emitted).toEqual([]);
   });
 
-  it('splits a backlog at the batch cap and preserves order', async () => {
+  it("splits a backlog at the batch cap and preserves order", async () => {
     const { batcher, emitted } = makeBatcher({ batchMaxBytes: 4 });
 
-    batcher.push('aaa');
-    batcher.push('bbb');
-    batcher.push('ccc');
+    batcher.push("aaa");
+    batcher.push("bbb");
+    batcher.push("ccc");
     await drain();
 
-    expect(emitted.join('')).toBe('aaabbbccc');
+    expect(emitted.join("")).toBe("aaabbbccc");
     expect(emitted.every((batch) => batch.length <= 6)).toBe(true);
   });
 
-  it('emits an oversized single chunk whole rather than wedging', async () => {
+  it("emits an oversized single chunk whole rather than wedging", async () => {
     const { batcher, emitted } = makeBatcher({ batchMaxBytes: 4 });
 
-    batcher.push('aaaaaaaaaaaa');
+    batcher.push("aaaaaaaaaaaa");
     await drain();
 
-    expect(emitted).toEqual(['aaaaaaaaaaaa']);
+    expect(emitted).toEqual(["aaaaaaaaaaaa"]);
   });
 
-  it('pauses the source once the backlog passes the ceiling, then resumes', async () => {
+  it("pauses the source once the backlog passes the ceiling, then resumes", async () => {
     const { batcher, pause, resume } = makeBatcher({
       batchMaxBytes: 2,
       queueMaxBytes: 4,
     });
 
-    batcher.push('aaaaaa');
+    batcher.push("aaaaaa");
 
     expect(pause).toHaveBeenCalledOnce();
     expect(resume).not.toHaveBeenCalled();
@@ -79,74 +79,74 @@ describe('OutputBatcher', () => {
     expect(resume).toHaveBeenCalledOnce();
   });
 
-  it('drops nothing when flushed synchronously on exit', () => {
+  it("drops nothing when flushed synchronously on exit", () => {
     const { batcher, emitted } = makeBatcher();
 
-    batcher.push('tail');
+    batcher.push("tail");
     batcher.flush();
 
-    expect(emitted).toEqual(['tail']);
+    expect(emitted).toEqual(["tail"]);
   });
 
-  it('ignores pushes after close', async () => {
+  it("ignores pushes after close", async () => {
     const { batcher, emitted } = makeBatcher();
 
     batcher.close();
-    batcher.push('late');
+    batcher.push("late");
     await drain();
 
     expect(emitted).toEqual([]);
   });
 });
 
-describe('createStreamDecoder', () => {
-  it('holds back a multi-byte sequence split across chunks', () => {
+describe("createStreamDecoder", () => {
+  it("holds back a multi-byte sequence split across chunks", () => {
     const decode = createStreamDecoder();
     // "é" is 0xC3 0xA9 — split it across two reads.
     const first = decode(new Uint8Array([0x61, 0xc3]));
     const second = decode(new Uint8Array([0xa9, 0x62]));
 
-    expect(first).toBe('a');
-    expect(second).toBe('éb');
+    expect(first).toBe("a");
+    expect(second).toBe("éb");
   });
 
-  it('replaces genuinely invalid bytes instead of stalling', () => {
+  it("replaces genuinely invalid bytes instead of stalling", () => {
     const decode = createStreamDecoder();
 
     const out = decode(new Uint8Array([0x61, 0xff, 0x62]));
 
-    expect(out).toBe('a�b');
+    expect(out).toBe("a�b");
   });
 
-  it('carries a partial sequence across many chunks', () => {
+  it("carries a partial sequence across many chunks", () => {
     const decode = createStreamDecoder();
     // "😀" is F0 9F 98 80 — one byte per call.
     const parts = [0xf0, 0x9f, 0x98, 0x80].map((byte) => decode(new Uint8Array([byte])));
 
-    expect(parts.join('')).toBe('😀');
+    expect(parts.join("")).toBe("😀");
   });
 });
 
-describe('decoder tail at exit', () => {
-  it('releases a held-back partial sequence as U+FFFD', () => {
+describe("decoder tail at exit", () => {
+  it("releases a held-back partial sequence as U+FFFD", () => {
     // A shell dying mid-character used to drop these bytes silently; Rust
     // flushed them lossily so the user saw a replacement char.
     const decode = createStreamDecoder();
 
-    expect(decode(new Uint8Array([0x61, 0xf0, 0x9f]))).toBe('a');
-    expect(decode.flush()).toBe('�');
+    expect(decode(new Uint8Array([0x61, 0xf0, 0x9f]))).toBe("a");
+    expect(decode.flush()).toBe("�");
   });
 
-  it('returns nothing when the stream ended cleanly', () => {
+  it("returns nothing when the stream ended cleanly", () => {
     const decode = createStreamDecoder();
     decode(new Uint8Array([0x61]));
 
-    expect(decode.flush()).toBe('');
+    expect(decode.flush()).toBe("");
   });
 });
 
-describe('createStreamDecoder on Windows', () => {
-  it('passes a string chunk through instead of throwing', () => {
+describe("createStreamDecoder on Windows", () => {
+  it("passes a string chunk through instead of throwing", () => {
     // node-pty warns "Setting encoding on Windows is not supported" and hands
     // the ConPTY path a STRING. `TextDecoder.decode` throws
     // ERR_INVALID_ARG_TYPE on one, and it throws inside node-pty's emitter
@@ -155,22 +155,22 @@ describe('createStreamDecoder on Windows', () => {
     // that never produced a byte.
     const decode = createStreamDecoder();
 
-    expect(decode('\u001b]133;A\u0007PS D:\\TuHoc> ')).toBe('\u001b]133;A\u0007PS D:\\TuHoc> ');
+    expect(decode("\u001b]133;A\u0007PS D:\\TuHoc> ")).toBe("\u001b]133;A\u0007PS D:\\TuHoc> ");
   });
 
-  it('still holds back a split multi-byte sequence for byte chunks', () => {
+  it("still holds back a split multi-byte sequence for byte chunks", () => {
     // The Unix guarantee must survive the Windows fix.
     const decode = createStreamDecoder();
-    const bytes = new TextEncoder().encode('→');
+    const bytes = new TextEncoder().encode("→");
 
-    expect(decode(bytes.slice(0, 2))).toBe('');
-    expect(decode(bytes.slice(2))).toBe('→');
+    expect(decode(bytes.slice(0, 2))).toBe("");
+    expect(decode(bytes.slice(2))).toBe("→");
   });
 
-  it('flushes to empty when only strings were seen', () => {
+  it("flushes to empty when only strings were seen", () => {
     const decode = createStreamDecoder();
-    decode('plain text');
+    decode("plain text");
 
-    expect(decode.flush()).toBe('');
+    expect(decode.flush()).toBe("");
   });
 });

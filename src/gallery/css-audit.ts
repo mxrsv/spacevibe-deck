@@ -13,7 +13,7 @@
  * number with values that never ship.
  */
 
-const APP_STYLESHEET_SUFFIX = 'src/styles.css';
+const APP_STYLESHEET_SUFFIX = "src/styles.css";
 
 export interface AuditEntry {
   /** The literal as written in CSS. */
@@ -54,7 +54,7 @@ export function appRuleLists(): readonly CSSRuleList[] {
   for (const sheet of document.styleSheets) {
     const node = sheet.ownerNode;
     const devId = node instanceof HTMLElement ? node.dataset.viteDevId : undefined;
-    const source = devId ?? sheet.href ?? '';
+    const source = devId ?? sheet.href ?? "";
     if (!source.endsWith(APP_STYLESHEET_SUFFIX)) {
       continue;
     }
@@ -118,7 +118,7 @@ function tally(
 function declared(property: string) {
   return (rule: CSSStyleRule): readonly string[] => {
     const value = rule.style.getPropertyValue(property).trim();
-    return value === '' ? [] : [value];
+    return value === "" ? [] : [value];
   };
 }
 
@@ -182,14 +182,14 @@ export interface RootToken {
  * someone adds, which is precisely the failure the gallery is meant to catch.
  */
 export function rootTokens(): readonly RootToken[] {
-  const root = styleRules().find((rule) => rule.selectorText === ':root');
+  const root = styleRules().find((rule) => rule.selectorText === ":root");
   if (root === undefined) {
     return [];
   }
   const computedStyle = getComputedStyle(document.documentElement);
   const tokens: RootToken[] = [];
   for (const property of root.style) {
-    if (!property.startsWith('--')) {
+    if (!property.startsWith("--")) {
       continue;
     }
     tokens.push({
@@ -210,63 +210,63 @@ export function auditAppStyles(): readonly AuditGroup[] {
    * definitions of `--hair`, `--hair-strong`, `--text-muted` and
    * `--text-faint`, which is exactly what a token is supposed to look like.
    */
-  const authored = rules.filter((rule) => rule.selectorText !== ':root');
+  const authored = rules.filter((rule) => rule.selectorText !== ":root");
   return [
     {
-      label: 'font-size',
-      note: 'DL-4.4 names five sizes in prose; the file declares this many literals.',
-      entries: tally(rules, declared('font-size')),
+      label: "font-size",
+      note: "DL-4.4 names five sizes in prose; the file declares this many literals.",
+      entries: tally(rules, declared("font-size")),
     },
     {
-      label: 'border-radius',
+      label: "border-radius",
       note: "DL-20.1 names two roles — `--radius-control` and `--radius-surface`. Every literal still counted here is a third radius picked at a use site, so this number is phase 2's burn-down list.",
-      entries: tally(rules, declared('border-radius')),
+      entries: tally(rules, declared("border-radius")),
     },
     {
-      label: 'spacing steps (padding · gap · margin)',
-      note: 'Shorthands are split, so this counts distinct STEPS, not distinct declarations. No spacing scale exists, so any step is reachable.',
+      label: "spacing steps (padding · gap · margin)",
+      note: "Shorthands are split, so this counts distinct STEPS, not distinct declarations. No spacing scale exists, so any step is reachable.",
       entries: tally(
         rules,
         lengthSteps([
-          'padding',
-          'padding-top',
-          'padding-right',
-          'padding-bottom',
-          'padding-left',
-          'gap',
-          'row-gap',
-          'column-gap',
-          'margin',
-          'margin-top',
-          'margin-right',
-          'margin-bottom',
-          'margin-left',
+          "padding",
+          "padding-top",
+          "padding-right",
+          "padding-bottom",
+          "padding-left",
+          "gap",
+          "row-gap",
+          "column-gap",
+          "margin",
+          "margin-top",
+          "margin-right",
+          "margin-bottom",
+          "margin-left",
         ]),
       ),
     },
     {
-      label: 'duration',
-      note: 'DL-1.2 caps duration at 300ms but does not say which durations exist.',
+      label: "duration",
+      note: "DL-1.2 caps duration at 300ms but does not say which durations exist.",
       entries: tally(rules, matches(/\b\d+(?:\.\d+)?m?s\b/g)),
     },
     {
-      label: 'z-index',
-      note: 'Stacking order is a set of loose integers, not a named layer scale.',
-      entries: tally(rules, declared('z-index')),
+      label: "z-index",
+      note: "Stacking order is a set of loose integers, not a named layer scale.",
+      entries: tally(rules, declared("z-index")),
     },
     {
-      label: 'state mix over --fg',
-      note: 'DL-5.1 specifies one 4% wash. Token definitions in `:root` are excluded, so every value here was chosen at a use site.',
+      label: "state mix over --fg",
+      note: "DL-5.1 specifies one 4% wash. Token definitions in `:root` are excluded, so every value here was chosen at a use site.",
       entries: tally(authored, matches(/var\(--fg\)\s+\d+%/g)),
     },
     {
-      label: 'state mix over --accent',
-      note: 'DL-3.1 governs where accent may appear, not how strong it is.',
+      label: "state mix over --accent",
+      note: "DL-3.1 governs where accent may appear, not how strong it is.",
       entries: tally(authored, matches(/var\(--accent\)\s+\d+%/g)),
     },
     {
-      label: 'hardcoded colour',
-      note: 'DL-2.1 forbids these outside `:root`, so anything listed is a live violation. Named colours are included now: the first version scanned hex and rgb only and missed a `white` inside a color-mix.',
+      label: "hardcoded colour",
+      note: "DL-2.1 forbids these outside `:root`, so anything listed is a live violation. Named colours are included now: the first version scanned hex and rgb only and missed a `white` inside a color-mix.",
       entries: tally(authored, hardcodedColours),
     },
   ];

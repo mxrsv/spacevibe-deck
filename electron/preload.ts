@@ -7,13 +7,13 @@
  * `src/host/*` maps onto it one for one, which is what keeps the 44 renderer
  * files a mechanical import swap instead of a rewrite.
  */
-import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron';
-import { EVENTS, INVOKABLE_CHANNELS } from './ipc/channels';
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from "electron";
+import { EVENTS, INVOKABLE_CHANNELS } from "./ipc/channels";
 
 /** Events the main process actually emits — the other half of the door. */
 const LISTENABLE_EVENTS: ReadonlySet<string> = new Set<string>(Object.values(EVENTS));
 
-contextBridge.exposeInMainWorld('__deckHost', {
+contextBridge.exposeInMainWorld("__deckHost", {
   /**
    * Invoke a KNOWN channel. An unknown name is refused here rather than
    * forwarded.
@@ -55,7 +55,7 @@ contextBridge.exposeInMainWorld('__deckHost', {
       return webUtils.getPathForFile(file);
     } catch {
       // A File constructed in JS has no disk backing; Electron throws.
-      return '';
+      return "";
     }
   },
 });

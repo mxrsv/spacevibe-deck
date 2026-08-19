@@ -32,19 +32,19 @@ export interface AgentProcessMatcher {
 
 /** Recognised out of the box; always probed, whatever the user declared. */
 export const BUILTIN_AGENTS: readonly BuiltinAgent[] = [
-  { id: 'claude', label: 'Claude Code' },
-  { id: 'codex', label: 'Codex' },
-  { id: 'opencode', label: 'OpenCode' },
+  { id: "claude", label: "Claude Code" },
+  { id: "codex", label: "Codex" },
+  { id: "opencode", label: "OpenCode" },
   // Google's successor to Gemini CLI. Gemini CLI keeps its place below it
   // rather than being dropped: paid Code Assist licences still reach the
   // service, and every `lastAgent` on disk holding "gemini" must keep
   // resolving. Order here is reach, not history — it decides both the chip
   // order and the digit key that opens each one.
-  { id: 'agy', label: 'Antigravity' },
-  { id: 'gemini', label: 'Gemini CLI' },
+  { id: "agy", label: "Antigravity" },
+  { id: "gemini", label: "Gemini CLI" },
 ];
 
-export const CUSTOM_ID_PREFIX = 'custom:';
+export const CUSTOM_ID_PREFIX = "custom:";
 
 /** Upper bound on a probed binary name; also enforced in Rust. */
 export const PROBE_NAME_MAX = 128;
@@ -52,7 +52,7 @@ export const PROBE_NAME_MAX = 128;
 /** Upper bound on a display label — long enough to name a tool, short enough for a chip. */
 export const AGENT_LABEL_MAX = 32;
 
-const FALLBACK_SLUG = 'agent';
+const FALLBACK_SLUG = "agent";
 
 /**
  * Characters a name may carry into the discovery probe. macOS discovery
@@ -78,8 +78,8 @@ export function isProbeSafeName(name: string): boolean {
  */
 export function agentBinary(command: string): string {
   const trimmed = command.trim();
-  if (trimmed === '') {
-    return '';
+  if (trimmed === "") {
+    return "";
   }
   return trimmed.split(/\s+/)[0];
 }
@@ -92,7 +92,7 @@ export function agentBinary(command: string): string {
  */
 export function binaryKey(command: string): string {
   const binary = agentBinary(command);
-  const cut = Math.max(binary.lastIndexOf('/'), binary.lastIndexOf('\\'));
+  const cut = Math.max(binary.lastIndexOf("/"), binary.lastIndexOf("\\"));
   return cut === -1 ? binary : binary.slice(cut + 1);
 }
 
@@ -122,8 +122,8 @@ export function agentProcessMatchers(
 function slugify(label: string): string {
   return label
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 /**

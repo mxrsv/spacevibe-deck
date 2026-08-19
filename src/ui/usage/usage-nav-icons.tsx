@@ -7,9 +7,9 @@
  * Meaning over decoration (DL-14.5): a dial for a reading, a calendar for
  * days, a grid for the model-by-model table.
  */
-import { CalendarDots, Gauge, Table } from '@phosphor-icons/react';
+import { CalendarDots, Gauge, Table } from "@phosphor-icons/react";
 
-import { DeckIcon, RAIL_ICON } from '../controls/deck-icon';
+import { DeckIcon, RAIL_ICON } from "../controls/deck-icon";
 
 export function OverviewIcon() {
   return <DeckIcon icon={Gauge} size={RAIL_ICON} />;

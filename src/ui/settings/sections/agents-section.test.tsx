@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-import { render } from 'preact';
-import { act } from 'preact/test-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render } from "preact";
+import { act } from "preact/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The section pulls in the Tauri-backed settings store; stub it so the
 // component tree mounts under jsdom.
-vi.mock('../../../host/store-host', () => ({
+vi.mock("../../../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async () => undefined),
@@ -15,23 +15,23 @@ vi.mock('../../../host/store-host', () => ({
   },
 }));
 
-vi.mock('../../../open-board/workspaces-store', () => ({
+vi.mock("../../../open-board/workspaces-store", () => ({
   forgetWorkspaceAgent: vi.fn(),
 }));
 
-import { AgentsSection } from './agents-section';
-import { forgetWorkspaceAgent } from '../../../open-board/workspaces-store';
-import { settings, updateSettings } from '../../../settings/settings-store';
-import { DEFAULT_SETTINGS } from '../../../settings/settings-schema';
-import { BUILTIN_AGENTS } from '../../../lib/agent-catalog';
-import { settingsOpen } from '../../../chrome/events';
+import { AgentsSection } from "./agents-section";
+import { forgetWorkspaceAgent } from "../../../open-board/workspaces-store";
+import { settings, updateSettings } from "../../../settings/settings-store";
+import { DEFAULT_SETTINGS } from "../../../settings/settings-schema";
+import { BUILTIN_AGENTS } from "../../../lib/agent-catalog";
+import { settingsOpen } from "../../../chrome/events";
 
-describe('AgentsSection', () => {
+describe("AgentsSection", () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
     settings.value = DEFAULT_SETTINGS;
-    host = document.createElement('div');
+    host = document.createElement("div");
     document.body.appendChild(host);
   });
 
@@ -51,14 +51,14 @@ describe('AgentsSection', () => {
 
   const click = (element: Element): void => {
     act(() => {
-      element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
   };
 
   const type = (input: HTMLInputElement, value: string): void => {
     act(() => {
       input.value = value;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event("input", { bubbles: true }));
     });
   };
 
@@ -74,17 +74,17 @@ describe('AgentsSection', () => {
   // for its command — but that heuristic broke the moment the Token usage
   // link row landed after it. Scoping by label is positional-drift-proof.
   const addButton = (): HTMLButtonElement => {
-    const row = Array.from(host.querySelectorAll('.cfg-row')).find(
-      (candidate) => candidate.querySelector('.cfg-row__label')?.textContent === 'Add agent',
+    const row = Array.from(host.querySelectorAll(".cfg-row")).find(
+      (candidate) => candidate.querySelector(".cfg-row__label")?.textContent === "Add agent",
     )!;
-    return row.querySelector<HTMLButtonElement>('.cfg-btn')!;
+    return row.querySelector<HTMLButtonElement>(".cfg-btn")!;
   };
 
   /** Open a declared row's key or value for editing (DL-12.5) and return it. */
   const openField = (trigger: string, ariaLabel: string): HTMLInputElement => {
     const button = Array.from(
       host.querySelectorAll<HTMLButtonElement>(
-        '.cfg-row--item .cfg-row__label--edit, .cfg-row--item .cfg-btn',
+        ".cfg-row--item .cfg-row__label--edit, .cfg-row--item .cfg-btn",
       ),
     ).find((candidate) => candidate.textContent?.trim() === trigger)!;
     click(button);
@@ -99,56 +99,56 @@ describe('AgentsSection', () => {
     click(addButton());
   };
 
-  it('tells deleting a declared agent apart from discarding a draft', () => {
+  it("tells deleting a declared agent apart from discarding a draft", () => {
     mount();
-    declare('codex nightly', 'codex --nightly');
+    declare("codex nightly", "codex --nightly");
 
     const remove = host.querySelector('[aria-label="Remove codex nightly"] svg');
     // Trash removes something the user declared and persisted; the draft's
     // X only dismisses a row that never existed.
-    expect(remove?.classList.contains('deck-icon--trash')).toBe(true);
+    expect(remove?.classList.contains("deck-icon--trash")).toBe(true);
 
     // Closed, the add row is the icon; open, it commits and says so in words.
-    expect(addButton().querySelector('.deck-icon--plus')).not.toBeNull();
+    expect(addButton().querySelector(".deck-icon--plus")).not.toBeNull();
 
     click(addButton());
     const discard = host.querySelector('[aria-label="Discard the new agent"] svg');
-    expect(discard?.classList.contains('deck-icon--x')).toBe(true);
-    expect(addButton().textContent?.trim()).toBe('add');
+    expect(discard?.classList.contains("deck-icon--x")).toBe(true);
+    expect(addButton().textContent?.trim()).toBe("add");
   });
 
-  it('lists every built-in as a locked row (DL-12.4)', () => {
+  it("lists every built-in as a locked row (DL-12.4)", () => {
     mount();
-    const locked = Array.from(host.querySelectorAll<HTMLButtonElement>('.cfg-btn--disabled'));
+    const locked = Array.from(host.querySelectorAll<HTMLButtonElement>(".cfg-btn--disabled"));
     expect(locked).toHaveLength(BUILTIN_AGENTS.length);
     expect(locked.every((button) => button.disabled)).toBe(true);
     // A built-in carries no remove affordance — only declared rows do.
-    expect(host.querySelectorAll('.cfg-row__remove')).toHaveLength(0);
+    expect(host.querySelectorAll(".cfg-row__remove")).toHaveLength(0);
   });
 
-  it('declares an agent with a generated id', () => {
+  it("declares an agent with a generated id", () => {
     mount();
-    declare('Aider', 'aider --model sonnet');
+    declare("Aider", "aider --model sonnet");
 
     expect(settings.value.customAgents).toEqual([
-      { id: 'custom:aider', label: 'Aider', command: 'aider --model sonnet' },
+      { id: "custom:aider", label: "Aider", command: "aider --model sonnet" },
     ]);
   });
 
-  it('refuses a command whose binary would reach the shell', () => {
+  it("refuses a command whose binary would reach the shell", () => {
     mount();
-    declare('Evil', 'x; rm -rf ~');
+    declare("Evil", "x; rm -rf ~");
 
     expect(settings.value.customAgents).toEqual([]);
-    expect(host.querySelector('.cfg-custom--error')?.textContent).toContain('letters, digits');
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("letters, digits");
   });
 
-  it('refuses a name already taken by a built-in', () => {
+  it("refuses a name already taken by a built-in", () => {
     mount();
-    declare('Claude Code', 'aider');
+    declare("Claude Code", "aider");
 
     expect(settings.value.customAgents).toEqual([]);
-    expect(host.querySelector('.cfg-custom--error')?.textContent).toContain('already used');
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("already used");
   });
 
   it("refuses a name spelled like a built-in's id", () => {
@@ -158,87 +158,87 @@ describe('AgentsSection', () => {
     // `isPromptAgentId` would give an unrelated CLI Claude's dot and Claude's
     // prompt snippets. Every built-in id is refused, not just this one.
     for (const builtin of BUILTIN_AGENTS) {
-      declare(builtin.id, 'mytool');
+      declare(builtin.id, "mytool");
       expect(settings.value.customAgents).toEqual([]);
-      expect(host.querySelector('.cfg-custom--error')?.textContent).toContain(
+      expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
         "built-in agent's id",
       );
     }
   });
 
-  it('refuses a second agent with the same name', () => {
+  it("refuses a second agent with the same name", () => {
     mount();
-    declare('Aider', 'aider');
-    declare('Aider', 'aider --fast');
+    declare("Aider", "aider");
+    declare("Aider", "aider --fast");
 
     expect(settings.value.customAgents).toHaveLength(1);
   });
 
-  it('removes a declared agent', () => {
+  it("removes a declared agent", () => {
     mount();
-    declare('Aider', 'aider');
-    click(host.querySelector('.cfg-row__remove')!);
+    declare("Aider", "aider");
+    click(host.querySelector(".cfg-row__remove")!);
 
     expect(settings.value.customAgents).toEqual([]);
   });
 
-  it('keeps the id when the label is edited, so recents keep resolving', () => {
+  it("keeps the id when the label is edited, so recents keep resolving", () => {
     updateSettings({
-      customAgents: [{ id: 'custom:aider', label: 'Aider', command: 'aider' }],
+      customAgents: [{ id: "custom:aider", label: "Aider", command: "aider" }],
     });
     mount();
 
-    const nameInput = openField('Aider', 'Name for Aider');
-    type(nameInput, 'Aider fast');
+    const nameInput = openField("Aider", "Name for Aider");
+    type(nameInput, "Aider fast");
     act(() => {
       // A real browser fires both: the phosphor icons load preact/compat,
       // which rewrites `onBlur` to `onfocusout` on every DOM vnode, so the
       // commit rides the bubbling event whenever this tree mounts an icon.
-      nameInput.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
-      nameInput.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+      nameInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+      nameInput.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
     });
 
     expect(settings.value.customAgents).toEqual([
-      { id: 'custom:aider', label: 'Aider fast', command: 'aider' },
+      { id: "custom:aider", label: "Aider fast", command: "aider" },
     ]);
   });
 
-  it('rejects an edited command that is not probe-safe, leaving the stored one', () => {
+  it("rejects an edited command that is not probe-safe, leaving the stored one", () => {
     updateSettings({
-      customAgents: [{ id: 'custom:aider', label: 'Aider', command: 'aider' }],
+      customAgents: [{ id: "custom:aider", label: "Aider", command: "aider" }],
     });
     mount();
 
-    const commandInput = openField('aider', 'Command for Aider');
-    type(commandInput, '$(id)');
+    const commandInput = openField("aider", "Command for Aider");
+    type(commandInput, "$(id)");
     act(() => {
       // Both events, as a real browser fires them — see the label test above:
       // without the `focusout` the commit would never run and this assertion
       // would pass without ever exercising the refusal.
-      commandInput.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
-      commandInput.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+      commandInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+      commandInput.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
     });
 
-    expect(settings.value.customAgents[0].command).toBe('aider');
+    expect(settings.value.customAgents[0].command).toBe("aider");
   });
 
-  describe('the token usage link row', () => {
+  describe("the token usage link row", () => {
     afterEach(() => {
       settingsOpen.value = false;
       settings.value.dockOpen = false;
     });
 
     const usageButton = (): HTMLButtonElement => {
-      const found = Array.from(host.querySelectorAll<HTMLButtonElement>('.cfg-btn')).find(
-        (candidate) => candidate.textContent?.trim() === 'open …',
+      const found = Array.from(host.querySelectorAll<HTMLButtonElement>(".cfg-btn")).find(
+        (candidate) => candidate.textContent?.trim() === "open …",
       );
       if (found === undefined) {
-        throw new Error('no token usage link row');
+        throw new Error("no token usage link row");
       }
       return found;
     };
 
-    it('swaps Settings for the usage screen in one click', () => {
+    it("swaps Settings for the usage screen in one click", () => {
       settingsOpen.value = true;
       settings.value.dockOpen = false;
       mount();
@@ -249,28 +249,28 @@ describe('AgentsSection', () => {
       expect(settings.value.dockOpen).toBe(true);
     });
 
-    it('reads as a link row, not a value pill — the about-section pattern', () => {
+    it("reads as a link row, not a value pill — the about-section pattern", () => {
       mount();
 
       const button = usageButton();
-      expect(button.classList.contains('cfg-btn')).toBe(true);
+      expect(button.classList.contains("cfg-btn")).toBe(true);
       // No new DL value kind: same class, same copy as "Release notes".
-      expect(button.classList.contains('cfg-btn--disabled')).toBe(false);
+      expect(button.classList.contains("cfg-btn--disabled")).toBe(false);
       expect(button.disabled).toBe(false);
     });
   });
 });
 
-describe('AgentsSection — refusals and cleanup', () => {
+describe("AgentsSection — refusals and cleanup", () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
     settings.value = DEFAULT_SETTINGS;
     vi.mocked(forgetWorkspaceAgent).mockClear();
-    host = document.createElement('div');
+    host = document.createElement("div");
     document.body.appendChild(host);
     updateSettings({
-      customAgents: [{ id: 'custom:aider', label: 'Aider', command: 'aider' }],
+      customAgents: [{ id: "custom:aider", label: "Aider", command: "aider" }],
     });
     act(() => {
       render(<AgentsSection />, host);
@@ -288,55 +288,55 @@ describe('AgentsSection — refusals and cleanup', () => {
   const openAndCommit = (trigger: string, aria: string, value: string): void => {
     const button = Array.from(
       host.querySelectorAll<HTMLButtonElement>(
-        '.cfg-row--item .cfg-row__label--edit, .cfg-row--item .cfg-btn',
+        ".cfg-row--item .cfg-row__label--edit, .cfg-row--item .cfg-btn",
       ),
     ).find((candidate) => candidate.textContent?.trim() === trigger)!;
     act(() => {
-      button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     const input = host.querySelector<HTMLInputElement>(`[aria-label="${aria}"]`)!;
     act(() => {
       input.value = value;
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     act(() => {
       // A real browser fires both: `blur` is what CommitInput commits on, and
       // `focusout` (the bubbling one) is what closes the editor.
-      input.dispatchEvent(new FocusEvent('blur'));
-      input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+      input.dispatchEvent(new FocusEvent("blur"));
+      input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
     });
   };
 
-  it('says why an in-place command edit was refused', () => {
-    openAndCommit('aider', 'Command for Aider', '$(id)');
+  it("says why an in-place command edit was refused", () => {
+    openAndCommit("aider", "Command for Aider", "$(id)");
 
-    expect(settings.value.customAgents[0].command).toBe('aider');
-    expect(host.querySelector('.cfg-custom--error')?.textContent).toContain('letters, digits');
+    expect(settings.value.customAgents[0].command).toBe("aider");
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("letters, digits");
   });
 
-  it('says why an in-place rename was refused', () => {
-    openAndCommit('Aider', 'Name for Aider', 'Claude Code');
+  it("says why an in-place rename was refused", () => {
+    openAndCommit("Aider", "Name for Aider", "Claude Code");
 
-    expect(settings.value.customAgents[0].label).toBe('Aider');
-    expect(host.querySelector('.cfg-custom--error')?.textContent).toContain('already used');
+    expect(settings.value.customAgents[0].label).toBe("Aider");
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("already used");
   });
 
-  it('clears the refusal once a valid value is committed', () => {
-    openAndCommit('aider', 'Command for Aider', '$(id)');
-    openAndCommit('aider', 'Command for Aider', 'aider --resume');
+  it("clears the refusal once a valid value is committed", () => {
+    openAndCommit("aider", "Command for Aider", "$(id)");
+    openAndCommit("aider", "Command for Aider", "aider --resume");
 
-    expect(settings.value.customAgents[0].command).toBe('aider --resume');
-    expect(host.querySelector('.cfg-custom--error')).toBeNull();
+    expect(settings.value.customAgents[0].command).toBe("aider --resume");
+    expect(host.querySelector(".cfg-custom--error")).toBeNull();
   });
 
-  it('makes workspaces forget an agent it just deleted', () => {
+  it("makes workspaces forget an agent it just deleted", () => {
     act(() => {
       host
-        .querySelector('.cfg-row__remove')!
-        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        .querySelector(".cfg-row__remove")!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(settings.value.customAgents).toEqual([]);
-    expect(forgetWorkspaceAgent).toHaveBeenCalledWith('custom:aider');
+    expect(forgetWorkspaceAgent).toHaveBeenCalledWith("custom:aider");
   });
 });

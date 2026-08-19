@@ -14,21 +14,21 @@
  * with no marker, no file tabs and no active-tab selection (materialize
  * already selects the tab it just added).
  */
-import { BUILTIN_AGENTS, type CustomAgent } from '../lib/agent-catalog';
-import { buildResumeCommand, type ResumeRef, type ResumeRequest } from '../lib/agent-resume';
-import type { resumeLookup } from '../host/resume-host';
-import type { ArchiveEntry, SessionPane, SessionTab, WindowRecord } from '../lib/session-schema';
-import type { FileStatResult } from '../files/file-client';
-import type { FileSurfaceController } from '../files/file-surface-controller';
-import { materializeChromeFrom } from './tab-materialize';
-import { noteResumedPane } from './session-tail-store';
-import type { TabManager } from './tab-manager';
+import { BUILTIN_AGENTS, type CustomAgent } from "../lib/agent-catalog";
+import { buildResumeCommand, type ResumeRef, type ResumeRequest } from "../lib/agent-resume";
+import type { resumeLookup } from "../host/resume-host";
+import type { ArchiveEntry, SessionPane, SessionTab, WindowRecord } from "../lib/session-schema";
+import type { FileStatResult } from "../files/file-client";
+import type { FileSurfaceController } from "../files/file-surface-controller";
+import { materializeChromeFrom } from "./tab-materialize";
+import { noteResumedPane } from "./session-tail-store";
+import type { TabManager } from "./tab-manager";
 
 const BUILTIN_AGENT_IDS = new Set(BUILTIN_AGENTS.map((agent) => agent.id));
 
 export interface RestoreDeps {
-  manager: Pick<TabManager, 'materialize' | 'selectTab'>;
-  files: Pick<FileSurfaceController, 'openFile' | 'activateFile'>;
+  manager: Pick<TabManager, "materialize" | "selectTab">;
+  files: Pick<FileSurfaceController, "openFile" | "activateFile">;
   dirsExist(paths: readonly string[]): Promise<boolean[]>;
   /** `FileClient.statFiles`, root-scoped: call once per file surface with
    *  that surface's workspacePath as root. */
@@ -103,7 +103,7 @@ function livenessPaths(tabs: readonly DatedTab[], extra: readonly string[]): rea
 }
 
 async function checkLiveness(
-  dirsExist: RestoreDeps['dirsExist'],
+  dirsExist: RestoreDeps["dirsExist"],
   paths: readonly string[],
 ): Promise<ReadonlyMap<string, boolean>> {
   const alive = await dirsExist(paths);
@@ -164,7 +164,7 @@ function buildResumeRequests(tabs: readonly LiveTab[]): {
 
 /** One batched `resume_lookup` for every surviving built-in-agent pane. */
 async function resolveRefs(
-  lookup: RestoreDeps['lookup'],
+  lookup: RestoreDeps["lookup"],
   tabs: readonly LiveTab[],
 ): Promise<ReadonlyMap<string, ResumeRef>> {
   const { requests, keys } = buildResumeRequests(tabs);
@@ -215,7 +215,7 @@ function noteResumedPanes(
 /** Materialize every live tab sequentially. A failed materialize (thrown or
  *  returning false) skips that tab and continues — only successes count. */
 async function materializeAll(
-  manager: RestoreDeps['manager'],
+  manager: RestoreDeps["manager"],
   tabs: readonly LiveTab[],
   refs: ReadonlyMap<string, ResumeRef>,
   customAgents: readonly CustomAgent[],
@@ -236,7 +236,7 @@ async function materializeAll(
         noteResumedPanes(tab, tabIndex, refs);
       }
     } catch (err) {
-      console.error('session restore: materialize failed:', err);
+      console.error("session restore: materialize failed:", err);
     }
   }
   return restored;
@@ -245,7 +245,7 @@ async function materializeAll(
 /** Liveness → resume lookup → sequential materialize. Shared by boot restore
  *  and the rail's single-workspace resume. */
 async function restoreTabs(
-  deps: Pick<RestoreDeps, 'manager' | 'dirsExist' | 'lookup' | 'customAgents'>,
+  deps: Pick<RestoreDeps, "manager" | "dirsExist" | "lookup" | "customAgents">,
   entries: readonly DatedTab[],
   extraLivenessPaths: readonly string[] = [],
 ): Promise<{
@@ -265,7 +265,7 @@ async function restoreTabs(
  *  re-reads that stale record and folds it in again, duplicating tabs and
  *  `--resume`ing the same conversation twice. */
 async function clearSecondaryRecords(
-  journal: RestoreDeps['journal'],
+  journal: RestoreDeps["journal"],
   labels: Iterable<string>,
   mainLabel: string,
 ): Promise<void> {
@@ -293,8 +293,8 @@ function clampIndex(index: number, count: number): number {
  *  activate it AFTER the terminal tab selection (files hold the stage last,
  *  matching the state at quit). */
 async function restoreFiles(
-  files: RestoreDeps['files'],
-  statFiles: RestoreDeps['statFiles'],
+  files: RestoreDeps["files"],
+  statFiles: RestoreDeps["statFiles"],
   record: WindowRecord,
   alive: ReadonlyMap<string, boolean>,
 ): Promise<{ readonly workspacePath: string; readonly path: string } | null> {
@@ -359,7 +359,7 @@ export async function restoreSession(deps: RestoreDeps, mainLabel: string): Prom
 
     return restored > 0;
   } catch (err) {
-    console.error('session restore failed:', err);
+    console.error("session restore failed:", err);
     return restored > 0;
   } finally {
     await deps.marker.clear();
@@ -369,7 +369,7 @@ export async function restoreSession(deps: RestoreDeps, mainLabel: string): Prom
 /** Rail click: rebuild one workspace's archived tabs (terminal only, no
  *  files, no marker — materialize already selects the new tab as it lands). */
 export async function resumeWorkspace(
-  deps: Pick<RestoreDeps, 'manager' | 'dirsExist' | 'lookup' | 'customAgents'>,
+  deps: Pick<RestoreDeps, "manager" | "dirsExist" | "lookup" | "customAgents">,
   entry: ArchiveEntry,
   workspacePath: string,
 ): Promise<boolean> {

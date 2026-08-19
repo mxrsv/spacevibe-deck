@@ -1,28 +1,28 @@
-import { CaretDown, ClipboardText, PaperPlaneTilt, Plus, Trash } from '@phosphor-icons/react';
-import { Fragment } from 'preact';
-import { useSignal, useSignalEffect } from '@preact/signals';
-import { useEffect, useRef } from 'preact/hooks';
-import { settings, updateSettings } from '../settings/settings-store';
-import { tabViews } from '../terminal/tabs-store';
-import { reportChromeMessage } from '../chrome/events';
-import { ConfigRow } from '../ui/controls/config-row';
-import { DeckIcon, ROW_ICON } from '../ui/controls/deck-icon';
-import { CommitInput } from '../ui/controls/commit-input';
-import { CommitTextarea } from '../ui/controls/commit-textarea';
+import { CaretDown, ClipboardText, PaperPlaneTilt, Plus, Trash } from "@phosphor-icons/react";
+import { Fragment } from "preact";
+import { useSignal, useSignalEffect } from "@preact/signals";
+import { useEffect, useRef } from "preact/hooks";
+import { settings, updateSettings } from "../settings/settings-store";
+import { tabViews } from "../terminal/tabs-store";
+import { reportChromeMessage } from "../chrome/events";
+import { ConfigRow } from "../ui/controls/config-row";
+import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
+import { CommitInput } from "../ui/controls/commit-input";
+import { CommitTextarea } from "../ui/controls/commit-textarea";
 import {
   createPromptTemplateId,
   TEMPLATE_BODY_MAX,
   TEMPLATE_LABEL_MAX,
   type PromptTemplate,
-} from './prompt-templates';
+} from "./prompt-templates";
 import {
   composePromptText,
   isPromptAgentId,
   type PromptAssetKind,
   type PromptAssetPick,
-} from './snippet-format';
-import { EMPTY_PROMPT_ASSETS, type PromptAsset, type PromptAssets } from './prompt-assets-client';
-import type { InjectOutcome, PromptTarget } from './inject';
+} from "./snippet-format";
+import { EMPTY_PROMPT_ASSETS, type PromptAsset, type PromptAssets } from "./prompt-assets-client";
+import type { InjectOutcome, PromptTarget } from "./inject";
 
 interface PromptPopoverProps {
   /** Snapshots the focused pane; null closes the popover with a message. */
@@ -38,8 +38,8 @@ interface PromptPopoverProps {
 
 function labelProblem(label: string): string | null {
   const trimmed = label.trim();
-  if (trimmed === '') {
-    return 'a name is required';
+  if (trimmed === "") {
+    return "a name is required";
   }
   return trimmed.length > TEMPLATE_LABEL_MAX
     ? `names stay under ${TEMPLATE_LABEL_MAX} characters`
@@ -47,8 +47,8 @@ function labelProblem(label: string): string | null {
 }
 
 function bodyProblem(body: string): string | null {
-  if (body.trim() === '') {
-    return 'a body is required';
+  if (body.trim() === "") {
+    return "a body is required";
   }
   return body.length > TEMPLATE_BODY_MAX
     ? `bodies stay under ${TEMPLATE_BODY_MAX} characters`
@@ -70,7 +70,7 @@ function AssetPicker({
   return (
     <ConfigRow label={label}>
       <span class="cfg-btn cfg-btn--overlay">
-        <span class="cfg-btn__text">{chosen === '' ? 'none' : chosen}</span>
+        <span class="cfg-btn__text">{chosen === "" ? "none" : chosen}</span>
         <span class="cfg-btn__hint">
           <DeckIcon icon={CaretDown} size={ROW_ICON} />
         </span>
@@ -106,11 +106,11 @@ export function PromptPopover(props: PromptPopoverProps) {
   const assetsFailed = useSignal(false);
   const expanded = useSignal<string | null>(null);
   const rowError = useSignal<{ id: string; message: string } | null>(null);
-  const skill = useSignal('');
-  const subagent = useSignal('');
+  const skill = useSignal("");
+  const subagent = useSignal("");
   const draftOpen = useSignal(false);
-  const draftLabel = useSignal('');
-  const draftBody = useSignal('');
+  const draftLabel = useSignal("");
+  const draftBody = useSignal("");
   const draftError = useSignal<string | null>(null);
   const injecting = useSignal(false);
   const mounted = useRef(true);
@@ -135,7 +135,7 @@ export function PromptPopover(props: PromptPopoverProps) {
         return;
       }
       if (captured === null) {
-        reportChromeMessage('No pane to paste into.');
+        reportChromeMessage("No pane to paste into.");
         props.onClose();
         return;
       }
@@ -168,13 +168,13 @@ export function PromptPopover(props: PromptPopoverProps) {
   useEffect(() => {
     const onPointerDown = (event: PointerEvent): void => {
       const node = event.target as Element | null;
-      if (node?.closest('.prompts-anchor, .ftoolbar__slot') === null) {
+      if (node?.closest(".prompts-anchor, .ftoolbar__slot") === null) {
         props.onClose();
       }
     };
-    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener("pointerdown", onPointerDown, true);
     rootRef.current?.focus();
-    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, []);
   /* oxlint-enable react-hooks/exhaustive-deps */
 
@@ -240,19 +240,19 @@ export function PromptPopover(props: PromptPopoverProps) {
       },
     ]);
     draftOpen.value = false;
-    draftLabel.value = '';
-    draftBody.value = '';
+    draftLabel.value = "";
+    draftBody.value = "";
     draftError.value = null;
   };
 
   const picks = (): readonly PromptAssetPick[] => {
     const chosen: PromptAssetPick[] = [];
-    if (skill.value !== '') {
-      chosen.push({ kind: 'skill' as PromptAssetKind, name: skill.value });
+    if (skill.value !== "") {
+      chosen.push({ kind: "skill" as PromptAssetKind, name: skill.value });
     }
-    if (subagent.value !== '') {
+    if (subagent.value !== "") {
       chosen.push({
-        kind: 'subagent' as PromptAssetKind,
+        kind: "subagent" as PromptAssetKind,
         name: subagent.value,
       });
     }
@@ -274,18 +274,18 @@ export function PromptPopover(props: PromptPopoverProps) {
       if (!mounted.current) {
         return;
       }
-      if (outcome === 'failed') {
+      if (outcome === "failed") {
         reportChromeMessage("Couldn't paste into the terminal.");
         return;
       }
-      if (outcome === 'busy') {
-        reportChromeMessage('A prompt is already being pasted into this pane.');
+      if (outcome === "busy") {
+        reportChromeMessage("A prompt is already being pasted into this pane.");
         return;
       }
-      if (outcome === 'no-target') {
-        reportChromeMessage('The pane is gone — nothing was pasted.');
-      } else if (template.autoSend && outcome === 'pasted') {
-        reportChromeMessage('Pasted — not sent');
+      if (outcome === "no-target") {
+        reportChromeMessage("The pane is gone — nothing was pasted.");
+      } else if (template.autoSend && outcome === "pasted") {
+        reportChromeMessage("Pasted — not sent");
       }
       props.onClose();
     } catch {
@@ -309,7 +309,7 @@ export function PromptPopover(props: PromptPopoverProps) {
       aria-label="Prompts"
       tabIndex={-1}
       onKeyDown={(event) => {
-        if (event.key === 'Escape') {
+        if (event.key === "Escape") {
           event.preventDefault();
           props.onClose();
         }
@@ -345,9 +345,9 @@ export function PromptPopover(props: PromptPopoverProps) {
               <button
                 type="button"
                 class="cfg-btn"
-                aria-label={`${template.autoSend ? 'Send' : 'Paste'} ${template.label}`}
+                aria-label={`${template.autoSend ? "Send" : "Paste"} ${template.label}`}
                 title={
-                  template.autoSend ? 'Send to the focused pane' : 'Paste into the focused pane'
+                  template.autoSend ? "Send to the focused pane" : "Paste into the focused pane"
                 }
                 disabled={injecting.value}
                 onClick={() => void injectTemplate(template)}
@@ -380,11 +380,11 @@ export function PromptPopover(props: PromptPopoverProps) {
                   role="switch"
                   aria-checked={template.autoSend}
                   aria-label={`Auto send ${template.label}`}
-                  class={`cfg-btn ${template.autoSend ? 'cfg-btn--on' : 'cfg-btn--off'}`}
+                  class={`cfg-btn ${template.autoSend ? "cfg-btn--on" : "cfg-btn--off"}`}
                   title="Press Enter after pasting, when it is provably safe"
                   onClick={() => patch(template.id, { autoSend: !template.autoSend })}
                 >
-                  {template.autoSend ? 'auto send on' : 'auto send off'}
+                  {template.autoSend ? "auto send on" : "auto send off"}
                 </button>
                 <button
                   type="button"
@@ -452,7 +452,7 @@ export function PromptPopover(props: PromptPopoverProps) {
             draftOpen.value = true;
           }}
         >
-          {draftOpen.value ? 'add' : <DeckIcon icon={Plus} size={ROW_ICON} />}
+          {draftOpen.value ? "add" : <DeckIcon icon={Plus} size={ROW_ICON} />}
         </button>
       </ConfigRow>
 

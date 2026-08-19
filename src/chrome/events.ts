@@ -1,4 +1,4 @@
-import { signal } from '@preact/signals';
+import { signal } from "@preact/signals";
 
 /**
  * App-chrome UI intents: keymap / menu / Open board raise them, App renders.
@@ -12,7 +12,7 @@ import { signal } from '@preact/signals';
  * `handleEditorCreate` branches on, and a second source is the likely shape
  * of the next entry point.
  */
-export type EditorRequest = { readonly source: 'live' };
+export type EditorRequest = { readonly source: "live" };
 
 export const boardOpen = signal(false);
 export const saveDialogOpen = signal(false);

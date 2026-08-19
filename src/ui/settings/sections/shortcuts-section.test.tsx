@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 /* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
-import { render } from 'preact';
-import { act } from 'preact/test-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render } from "preact";
+import { act } from "preact/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Same stub the other section tests use: the store is host-backed, and the
 // component tree has to mount without a bridge.
-vi.mock('../../../host/store-host', () => ({
+vi.mock("../../../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
       get: vi.fn(async () => undefined),
@@ -17,25 +17,25 @@ vi.mock('../../../host/store-host', () => ({
 }));
 
 const suspendMenuAccelerators = vi.fn(async (_suspended: boolean) => {});
-vi.mock('../../../host/menu-host', () => ({
+vi.mock("../../../host/menu-host", () => ({
   suspendMenuAccelerators: (suspended: boolean) => suspendMenuAccelerators(suspended),
 }));
 
-import { ShortcutsSection } from './shortcuts-section';
-import { settings } from '../../../settings/settings-store';
-import { DEFAULT_SETTINGS } from '../../../settings/settings-schema';
-import { shortcutCaptureActive } from '../../../chrome/events';
-import { NO_KEYBINDING_OVERRIDES, withOverride } from '../../../lib/keybindings';
-import { matchBinding } from '../../../terminal/keymap';
-import { resetActiveKeymapCache } from '../../../terminal/active-keymap';
-import { ACTION_REGISTRY } from '../../../terminal/action-registry';
-import { NOT_REBINDABLE } from '../shortcut-groups';
+import { ShortcutsSection } from "./shortcuts-section";
+import { settings } from "../../../settings/settings-store";
+import { DEFAULT_SETTINGS } from "../../../settings/settings-schema";
+import { shortcutCaptureActive } from "../../../chrome/events";
+import { NO_KEYBINDING_OVERRIDES, withOverride } from "../../../lib/keybindings";
+import { matchBinding } from "../../../terminal/keymap";
+import { resetActiveKeymapCache } from "../../../terminal/active-keymap";
+import { ACTION_REGISTRY } from "../../../terminal/action-registry";
+import { NOT_REBINDABLE } from "../shortcut-groups";
 
 function keyEvent(
   key: string,
-  mods: Partial<Pick<KeyboardEvent, 'metaKey' | 'shiftKey' | 'altKey' | 'ctrlKey'>> = {},
+  mods: Partial<Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">> = {},
 ): KeyboardEvent {
-  return new KeyboardEvent('keydown', {
+  return new KeyboardEvent("keydown", {
     key,
     bubbles: true,
     cancelable: true,
@@ -43,7 +43,7 @@ function keyEvent(
   });
 }
 
-describe('ShortcutsSection', () => {
+describe("ShortcutsSection", () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
@@ -51,7 +51,7 @@ describe('ShortcutsSection', () => {
     resetActiveKeymapCache();
     suspendMenuAccelerators.mockClear();
     shortcutCaptureActive.value = false;
-    host = document.createElement('div');
+    host = document.createElement("div");
     document.body.appendChild(host);
   });
 
@@ -70,8 +70,8 @@ describe('ShortcutsSection', () => {
   };
 
   const rowFor = (label: string): Element => {
-    const row = [...host.querySelectorAll('.cfg-row--shortcut')].find(
-      (candidate) => candidate.querySelector('.cfg-row__label')?.textContent === label,
+    const row = [...host.querySelectorAll(".cfg-row--shortcut")].find(
+      (candidate) => candidate.querySelector(".cfg-row__label")?.textContent === label,
     );
     if (row === undefined) {
       throw new Error(`No shortcut row labelled ${label}`);
@@ -80,17 +80,17 @@ describe('ShortcutsSection', () => {
   };
 
   const captureButton = (label: string): HTMLButtonElement => {
-    const button = rowFor(label).querySelector<HTMLButtonElement>('.cfg-chord');
+    const button = rowFor(label).querySelector<HTMLButtonElement>(".cfg-chord");
     if (button === null) {
       throw new Error(`Row ${label} has no capture pill`);
     }
     return button;
   };
 
-  it('gives every rebindable registry action a row', () => {
+  it("gives every rebindable registry action a row", () => {
     mount();
     const labels = new Set(
-      [...host.querySelectorAll('.cfg-row--shortcut .cfg-row__label')].map(
+      [...host.querySelectorAll(".cfg-row--shortcut .cfg-row__label")].map(
         (node) => node.textContent,
       ),
     );
@@ -107,77 +107,77 @@ describe('ShortcutsSection', () => {
 
   it("shows only the running platform's chord, as the editable pill", () => {
     mount();
-    const row = rowFor('Split Vertically');
+    const row = rowFor("Split Vertically");
     // The dev-preview platform is `unsupported`, which resolves to the macOS
     // keymap — so macOS is the running side here.
-    expect(row.querySelector('.cfg-chord')?.textContent).toBe('⌘D');
+    expect(row.querySelector(".cfg-chord")?.textContent).toBe("⌘D");
     // Exactly one editable chord per row (DL-17.3), and nothing else: the
     // other platform's chord and its tag left the row (DL-17.2, 2026-08-15).
-    expect(row.querySelectorAll('.cfg-chord')).toHaveLength(1);
-    expect(row.querySelectorAll('.cfg-readout')).toHaveLength(0);
-    expect(row.querySelectorAll('.cfg-chord-tag')).toHaveLength(0);
+    expect(row.querySelectorAll(".cfg-chord")).toHaveLength(1);
+    expect(row.querySelectorAll(".cfg-readout")).toHaveLength(0);
+    expect(row.querySelectorAll(".cfg-chord-tag")).toHaveLength(0);
   });
 
-  it('reads `unbound` where the running platform ships no chord', () => {
+  it("reads `unbound` where the running platform ships no chord", () => {
     mount();
     // `copy-selection` is bound on Windows only — macOS leaves ⌘C to the Cocoa
     // Copy role. That is a normal state, not an error (DL-17.4).
-    const row = rowFor('Copy Selection');
-    expect(row.querySelector('.cfg-chord')?.textContent).toBe('unbound');
+    const row = rowFor("Copy Selection");
+    expect(row.querySelector(".cfg-chord")?.textContent).toBe("unbound");
   });
 
-  it('records a pressed chord and makes it the one that fires', () => {
+  it("records a pressed chord and makes it the one that fires", () => {
     mount();
     act(() => {
-      captureButton('Find…').click();
+      captureButton("Find…").click();
     });
-    expect(captureButton('Find…').textContent).toBe('press keys…');
+    expect(captureButton("Find…").textContent).toBe("press keys…");
 
     act(() => {
-      window.dispatchEvent(keyEvent('j', { metaKey: true, altKey: true }));
+      window.dispatchEvent(keyEvent("j", { metaKey: true, altKey: true }));
     });
 
     expect(settings.value.keybindings.macos.find).toEqual([
-      { key: 'j', meta: true, alt: true, shift: false, ctrl: false },
+      { key: "j", meta: true, alt: true, shift: false, ctrl: false },
     ]);
     // `matchBinding` with NO keymap argument — the live path. Resolving a
     // keymap here and passing it in only re-tested `resolveKeymap`, and would
     // have stayed green with an `activeKeymap()` cache that never invalidated.
-    expect(matchBinding(keyEvent('j', { metaKey: true, altKey: true }))).toBe('find');
+    expect(matchBinding(keyEvent("j", { metaKey: true, altKey: true }))).toBe("find");
     // …and the chord it replaced no longer fires it.
-    expect(matchBinding(keyEvent('f', { metaKey: true }))).toBeNull();
+    expect(matchBinding(keyEvent("f", { metaKey: true }))).toBeNull();
   });
 
   it("gates the app's own shortcuts while recording, and lets go after", () => {
     // Without this, pressing ⌘W to rebind `close-pane` closes the pane.
     mount();
     act(() => {
-      captureButton('Close Pane').click();
+      captureButton("Close Pane").click();
     });
     expect(shortcutCaptureActive.value).toBe(true);
     expect(suspendMenuAccelerators).toHaveBeenCalledWith(true);
 
     act(() => {
-      window.dispatchEvent(keyEvent('w', { metaKey: true, altKey: true }));
+      window.dispatchEvent(keyEvent("w", { metaKey: true, altKey: true }));
     });
     expect(shortcutCaptureActive.value).toBe(false);
     expect(suspendMenuAccelerators).toHaveBeenLastCalledWith(false);
   });
 
-  it('releases the gate when the recording is abandoned, not just completed', () => {
+  it("releases the gate when the recording is abandoned, not just completed", () => {
     // A stuck flag would leave every shortcut in the app dead.
     mount();
     act(() => {
-      captureButton('Find…').click();
+      captureButton("Find…").click();
     });
     act(() => {
-      window.dispatchEvent(keyEvent('Escape'));
+      window.dispatchEvent(keyEvent("Escape"));
     });
     expect(shortcutCaptureActive.value).toBe(false);
     expect(settings.value.keybindings.macos.find).toBeUndefined();
 
     act(() => {
-      captureButton('Find…').click();
+      captureButton("Find…").click();
     });
     act(() => {
       render(null, host);
@@ -185,54 +185,54 @@ describe('ShortcutsSection', () => {
     expect(shortcutCaptureActive.value).toBe(false);
   });
 
-  it('keeps listening while only modifiers are down', () => {
+  it("keeps listening while only modifiers are down", () => {
     mount();
     act(() => {
-      captureButton('Find…').click();
+      captureButton("Find…").click();
     });
     act(() => {
-      window.dispatchEvent(keyEvent('Meta', { metaKey: true }));
+      window.dispatchEvent(keyEvent("Meta", { metaKey: true }));
     });
     expect(shortcutCaptureActive.value).toBe(true);
     expect(settings.value.keybindings.macos.find).toBeUndefined();
   });
 
-  it('asks for a real modifier instead of binding a bare letter', () => {
+  it("asks for a real modifier instead of binding a bare letter", () => {
     mount();
     act(() => {
-      captureButton('Find…').click();
+      captureButton("Find…").click();
     });
     act(() => {
-      window.dispatchEvent(keyEvent('a'));
+      window.dispatchEvent(keyEvent("a"));
     });
-    expect(captureButton('Find…').textContent).toBe('add ⌘, ⌃ or ⌥');
+    expect(captureButton("Find…").textContent).toBe("add ⌘, ⌃ or ⌥");
     expect(settings.value.keybindings.macos.find).toBeUndefined();
     expect(shortcutCaptureActive.value).toBe(true);
   });
 
-  it('unbinds on bare Backspace', () => {
+  it("unbinds on bare Backspace", () => {
     mount();
     act(() => {
-      captureButton('Find…').click();
+      captureButton("Find…").click();
     });
     act(() => {
-      window.dispatchEvent(keyEvent('Backspace'));
+      window.dispatchEvent(keyEvent("Backspace"));
     });
     expect(settings.value.keybindings.macos.find).toEqual([]);
-    expect(captureButton('Find…').textContent).toBe('unbound');
+    expect(captureButton("Find…").textContent).toBe("unbound");
   });
 
-  it('offers reset only on an overridden row, and restores the default', () => {
+  it("offers reset only on an overridden row, and restores the default", () => {
     settings.value = {
       ...DEFAULT_SETTINGS,
-      keybindings: withOverride(NO_KEYBINDING_OVERRIDES, 'macos', 'find', [
-        { key: 'j', meta: true },
+      keybindings: withOverride(NO_KEYBINDING_OVERRIDES, "macos", "find", [
+        { key: "j", meta: true },
       ]),
     };
     mount();
-    expect(rowFor('Split Vertically').querySelector('.cfg-clear')).toBeNull();
+    expect(rowFor("Split Vertically").querySelector(".cfg-clear")).toBeNull();
 
-    const reset = rowFor('Find…').querySelector<HTMLButtonElement>('.cfg-clear');
+    const reset = rowFor("Find…").querySelector<HTMLButtonElement>(".cfg-clear");
     expect(reset).not.toBeNull();
     act(() => {
       reset?.click();
@@ -240,29 +240,29 @@ describe('ShortcutsSection', () => {
     // Cleared, not emptied: "reset to default" and "unbind" are different
     // outcomes and the row must not confuse them.
     expect(settings.value.keybindings.macos.find).toBeUndefined();
-    expect(captureButton('Find…').textContent).toBe('⌘F');
+    expect(captureButton("Find…").textContent).toBe("⌘F");
   });
 
-  it('names both sides of a chord collision', () => {
+  it("names both sides of a chord collision", () => {
     settings.value = {
       ...DEFAULT_SETTINGS,
-      keybindings: withOverride(NO_KEYBINDING_OVERRIDES, 'macos', 'find', [
-        { key: 'd', meta: true },
+      keybindings: withOverride(NO_KEYBINDING_OVERRIDES, "macos", "find", [
+        { key: "d", meta: true },
       ]),
     };
     mount();
-    expect(rowFor('Find…').querySelector('.cfg-row__desc--warn')?.textContent).toBe(
-      'also bound to Split Vertically',
+    expect(rowFor("Find…").querySelector(".cfg-row__desc--warn")?.textContent).toBe(
+      "also bound to Split Vertically",
     );
     // Reported on the row that did not change, too — the user arriving later
     // cannot tell which of the two was the newer edit.
-    expect(rowFor('Split Vertically').querySelector('.cfg-row__desc--warn')?.textContent).toBe(
-      'also bound to Find…',
+    expect(rowFor("Split Vertically").querySelector(".cfg-row__desc--warn")?.textContent).toBe(
+      "also bound to Find…",
     );
   });
 
-  it('reports no collision on a clean keymap', () => {
+  it("reports no collision on a clean keymap", () => {
     mount();
-    expect(host.querySelectorAll('.cfg-row__desc--warn')).toHaveLength(0);
+    expect(host.querySelectorAll(".cfg-row__desc--warn")).toHaveLength(0);
   });
 });

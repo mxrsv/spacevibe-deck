@@ -1,4 +1,4 @@
-import { TOOLBAR_GROUP_ORDER, type ToolbarGroup, type ToolbarItem } from './toolbar-item';
+import { TOOLBAR_GROUP_ORDER, type ToolbarGroup, type ToolbarItem } from "./toolbar-item";
 
 /**
  * Deciding what still fits, as arithmetic rather than as layout.

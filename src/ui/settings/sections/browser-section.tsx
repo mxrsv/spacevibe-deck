@@ -1,6 +1,6 @@
-import { settings, updateSettings } from '../../../settings/settings-store';
-import { ConfigRow } from '../../controls/config-row';
-import { CommitInput } from '../../controls/commit-input';
+import { settings, updateSettings } from "../../../settings/settings-store";
+import { ConfigRow } from "../../controls/config-row";
+import { CommitInput } from "../../controls/commit-input";
 
 /**
  * The browser panel's one persistent choice.

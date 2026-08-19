@@ -4,11 +4,11 @@
  * that calls the main process (`src/host/resume-host.ts`) is a separate
  * module so this builder stays unit-testable without a fake bridge.
  */
-import type { CustomAgent } from './agent-catalog';
+import type { CustomAgent } from "./agent-catalog";
 
 /** Wire mirror of `electron/resume/resolve.ts`'s `ResumeRef` — see that file. */
 export type ResumeRef =
-  { readonly kind: 'id'; readonly id: string } | { readonly kind: 'latest' } | null;
+  { readonly kind: "id"; readonly id: string } | { readonly kind: "latest" } | null;
 
 /** Wire mirror of `electron/resume/resolve.ts`'s `ResumeRequest`. */
 export interface ResumeRequest {
@@ -39,28 +39,28 @@ interface CommandForms {
 const COMMAND_TABLE: Readonly<Record<string, CommandForms>> = {
   claude: {
     id: (id) => `claude --resume ${id}`,
-    latest: 'claude --continue',
-    bare: 'claude',
+    latest: "claude --continue",
+    bare: "claude",
   },
   codex: {
     id: (id) => `codex resume ${id}`,
-    latest: 'codex resume --last',
-    bare: 'codex',
+    latest: "codex resume --last",
+    bare: "codex",
   },
   opencode: {
     id: (id) => `opencode -s ${id}`,
-    latest: 'opencode -c',
-    bare: 'opencode',
+    latest: "opencode -c",
+    bare: "opencode",
   },
   gemini: {
-    id: () => 'gemini --resume latest',
-    latest: 'gemini --resume latest',
-    bare: 'gemini',
+    id: () => "gemini --resume latest",
+    latest: "gemini --resume latest",
+    bare: "gemini",
   },
   agy: {
     id: (id) => `agy --conversation ${id}`,
-    latest: 'agy --continue',
-    bare: 'agy',
+    latest: "agy --continue",
+    bare: "agy",
   },
 };
 
@@ -91,7 +91,7 @@ export function buildResumeCommand(
   if (ref === null) {
     return forms.bare;
   }
-  if (ref.kind === 'latest') {
+  if (ref.kind === "latest") {
     return forms.latest;
   }
   if (!SESSION_REF_SAFE.test(ref.id)) {

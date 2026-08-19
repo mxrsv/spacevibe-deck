@@ -4,21 +4,21 @@
  * token usage and session history, plus the accelerator-suspend signal a
  * Shortcuts row sends while recording a chord.
  */
-import path from 'node:path';
-import { app, ipcMain, type IpcMainInvokeEvent } from 'electron';
-import { CHANNELS } from './channels';
-import { detectAgentsSafely, dirsExist } from '../agents';
-import { gitBranch } from '../git';
-import { scanRepository } from '../worktrees';
-import { addWorktree } from '../git/worktree';
-import { resolveResume, validateResumeRequests } from '../resume/resolve';
-import { resolveSessionTails } from '../resume/session-tail';
-import { listSessions } from '../sessions/list';
-import { resolvePaths, openEditor } from '../links';
-import { listPromptAssets } from '../prompt-assets';
-import { readImageAsDataUrl, scanWorkspaceFavicon } from '../images';
-import { createUsageService } from '../usage/service';
-import { USAGE_CACHE_FILE } from '../usage/model';
+import path from "node:path";
+import { app, ipcMain, type IpcMainInvokeEvent } from "electron";
+import { CHANNELS } from "./channels";
+import { detectAgentsSafely, dirsExist } from "../agents";
+import { gitBranch } from "../git";
+import { scanRepository } from "../worktrees";
+import { addWorktree } from "../git/worktree";
+import { resolveResume, validateResumeRequests } from "../resume/resolve";
+import { resolveSessionTails } from "../resume/session-tail";
+import { listSessions } from "../sessions/list";
+import { resolvePaths, openEditor } from "../links";
+import { listPromptAssets } from "../prompt-assets";
+import { readImageAsDataUrl, scanWorkspaceFavicon } from "../images";
+import { createUsageService } from "../usage/service";
+import { USAGE_CACHE_FILE } from "../usage/model";
 
 export interface RegisterServicesDeps {
   readonly labelOf: (event: IpcMainInvokeEvent) => string;
@@ -34,13 +34,13 @@ export function registerServices(deps: RegisterServicesDeps): void {
     addWorktree({ repoPath, branch, destPath }),
   );
   ipcMain.handle(CHANNELS.resumeLookup, (_event, { requests }) =>
-    resolveResume(app.getPath('home'), validateResumeRequests(requests)),
+    resolveResume(app.getPath("home"), validateResumeRequests(requests)),
   );
   // Same payload and the same validator as `resume_lookup` above — the rail
   // asks the same question restore does, and answers with what the session
   // said rather than its id.
   ipcMain.handle(CHANNELS.sessionTail, (_event, { requests }) =>
-    resolveSessionTails(app.getPath('home'), validateResumeRequests(requests)),
+    resolveSessionTails(app.getPath("home"), validateResumeRequests(requests)),
   );
   ipcMain.handle(CHANNELS.windowLabel, (event) => deps.labelOf(event));
   ipcMain.handle(CHANNELS.detectAgents, (_event, { names }) => detectAgentsSafely(names ?? []));
@@ -53,12 +53,12 @@ export function registerServices(deps: RegisterServicesDeps): void {
     // every event and EVERY keyboard shortcut stops working, with nothing in the
     // console to say why.
     platform:
-      process.platform === 'darwin'
-        ? 'macos'
-        : process.platform === 'win32'
-          ? 'windows'
-          : 'unsupported',
-    homeDir: app.getPath('home'),
+      process.platform === "darwin"
+        ? "macos"
+        : process.platform === "win32"
+          ? "windows"
+          : "unsupported",
+    homeDir: app.getPath("home"),
   }));
   ipcMain.handle(CHANNELS.resolvePaths, (_event, { cwd, paths }) => resolvePaths(cwd, paths));
   ipcMain.handle(CHANNELS.openEditor, (_event, { request }) =>
@@ -78,22 +78,22 @@ export function registerServices(deps: RegisterServicesDeps): void {
   // Failures inside the scan are in-band (`sources[].state`, `skippedLines`);
   // a rejection here is user-safe while the detail stays in main's log.
   const usageService = createUsageService({
-    home: app.getPath('home'),
-    cachePath: path.join(app.getPath('userData'), USAGE_CACHE_FILE),
+    home: app.getPath("home"),
+    cachePath: path.join(app.getPath("userData"), USAGE_CACHE_FILE),
     reportCacheWriteFailure: (error) => {
-      console.error('Deck: the usage cache could not be written:', error);
+      console.error("Deck: the usage cache could not be written:", error);
     },
   });
   ipcMain.handle(CHANNELS.usageSnapshot, async () => {
     try {
       return await usageService.snapshot();
     } catch (error) {
-      console.error('Deck: the usage scan failed:', error);
-      throw new Error('the usage scan failed', { cause: error });
+      console.error("Deck: the usage scan failed:", error);
+      throw new Error("the usage scan failed", { cause: error });
     }
   });
   ipcMain.handle(CHANNELS.sessionsList, (_event, { limit }) =>
-    listSessions(app.getPath('home'), typeof limit === 'number' ? limit : undefined),
+    listSessions(app.getPath("home"), typeof limit === "number" ? limit : undefined),
   );
   ipcMain.handle(CHANNELS.suspendMenuAccelerators, (event, { suspended }) => {
     deps.setRecording(event.sender.id, suspended === true);

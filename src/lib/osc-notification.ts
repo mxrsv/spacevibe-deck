@@ -22,28 +22,28 @@
 const PROGRESS_PAYLOAD = /^4(;|$)/;
 
 export interface OscNotificationSignal {
-  kind: 'requested';
-  source: 'osc-notification';
+  kind: "requested";
+  source: "osc-notification";
 }
 
 const REQUESTED: OscNotificationSignal = {
-  kind: 'requested',
-  source: 'osc-notification',
+  kind: "requested",
+  source: "osc-notification",
 };
 
 function classifyOsc9(payload: string): OscNotificationSignal | null {
-  if (payload.trim() === '') return null;
+  if (payload.trim() === "") return null;
   if (PROGRESS_PAYLOAD.test(payload)) return null;
   return REQUESTED;
 }
 
 function classifyOsc777(payload: string): OscNotificationSignal | null {
-  if (payload.trim() === '') return null;
+  if (payload.trim() === "") return null;
 
-  const segments = payload.split(';');
+  const segments = payload.split(";");
   const [form, title] = segments;
-  if (form !== 'notify') return null;
-  if (title === undefined || title.trim() === '') return null;
+  if (form !== "notify") return null;
+  if (title === undefined || title.trim() === "") return null;
 
   return REQUESTED;
 }

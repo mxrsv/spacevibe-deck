@@ -20,9 +20,9 @@
  * focus and tab activation — not a watcher library. If the manual pass shows
  * that is insufficient, adding one is a fork to raise THEN.
  */
-import nodeFs from 'node:fs';
-import path from 'node:path';
-import { PathOutsideWorkspaceError, resolveInsideRoot, resolveRoot } from './path-guard';
+import nodeFs from "node:fs";
+import path from "node:path";
+import { PathOutsideWorkspaceError, resolveInsideRoot, resolveRoot } from "./path-guard";
 
 /**
  * Upper bounds on one window's declared `watch_paths` scope (plan T9).
@@ -38,27 +38,27 @@ export const MAX_WATCH_FILES = 2048;
 export class MalformedWatchScopeError extends Error {
   constructor(message: string) {
     super(`watch_paths: ${message}`);
-    this.name = 'MalformedWatchScopeError';
+    this.name = "MalformedWatchScopeError";
   }
 }
 
 export class TooManyWatchDirectoriesError extends Error {
   constructor(count: number) {
     super(`watch_paths: ${count} directories exceeds the ${MAX_WATCH_DIRECTORIES} limit.`);
-    this.name = 'TooManyWatchDirectoriesError';
+    this.name = "TooManyWatchDirectoriesError";
   }
 }
 
 export class TooManyWatchFilesError extends Error {
   constructor(count: number) {
     super(`watch_paths: ${count} files exceeds the ${MAX_WATCH_FILES} limit.`);
-    this.name = 'TooManyWatchFilesError';
+    this.name = "TooManyWatchFilesError";
   }
 }
 
 export interface FileChangeEvent {
   readonly path: string;
-  readonly kind: 'changed' | 'deleted';
+  readonly kind: "changed" | "deleted";
   readonly mtimeMs: number | null;
   readonly size: number | null;
 }
@@ -79,7 +79,7 @@ export interface WatchFs {
 const nodeWatchFs: WatchFs = {
   watch: (directory, listener) =>
     nodeFs.watch(directory, { persistent: false }, (event, filename) =>
-      listener(event, typeof filename === 'string' ? filename : null),
+      listener(event, typeof filename === "string" ? filename : null),
     ),
   statSync: (target) => nodeFs.statSync(target),
 };
@@ -124,15 +124,15 @@ interface WindowWatch {
  */
 function assertWellFormedScope(scope: WatchScope): void {
   if (
-    typeof scope.root !== 'string' ||
+    typeof scope.root !== "string" ||
     scope.root.length === 0 ||
     !Array.isArray(scope.directories) ||
     !Array.isArray(scope.files) ||
-    scope.directories.some((entry) => typeof entry !== 'string') ||
-    scope.files.some((entry) => typeof entry !== 'string')
+    scope.directories.some((entry) => typeof entry !== "string") ||
+    scope.files.some((entry) => typeof entry !== "string")
   ) {
     throw new MalformedWatchScopeError(
-      'root must be a non-empty string, and directories/files must be arrays of strings.',
+      "root must be a non-empty string, and directories/files must be arrays of strings.",
     );
   }
   // Raw count, duplicates included — see `read.ts`'s `MAX_STAT_PATHS` check
@@ -175,19 +175,19 @@ export function createWatchRegistry(
     // file the window may not read.
     const resolved = resolveInsideRoot(state.root, target);
     if (resolved === null) {
-      emit(label, { path: target, kind: 'deleted', mtimeMs: null, size: null });
+      emit(label, { path: target, kind: "deleted", mtimeMs: null, size: null });
       return;
     }
     try {
       const stats = io.statSync(resolved);
       emit(label, {
         path: target,
-        kind: 'changed',
+        kind: "changed",
         mtimeMs: stats.mtimeMs,
         size: stats.size,
       });
     } catch {
-      emit(label, { path: target, kind: 'deleted', mtimeMs: null, size: null });
+      emit(label, { path: target, kind: "deleted", mtimeMs: null, size: null });
     }
   }
 

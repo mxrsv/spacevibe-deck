@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Pane } from './pane';
-import type { CreatePaneFn } from './pane-lifecycle';
-import { ACTION_REGISTRY } from './action-registry';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Pane } from "./pane";
+import type { CreatePaneFn } from "./pane-lifecycle";
+import { ACTION_REGISTRY } from "./action-registry";
 import {
   agentQuickPickerOpen,
   boardOpen,
@@ -10,19 +10,19 @@ import {
   saveDialogOpen,
   settingsOpen,
   shortcutCaptureActive,
-} from '../chrome/events';
-import { activeTabIndex, tabViews, statusInfo } from './tabs-store';
-import { settings } from '../settings/settings-store';
-import { DEFAULT_SETTINGS } from '../settings/settings-schema';
-import { sendAgentNotification } from '../lib/native-notification';
-import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
-import { fakePane, flush, freshWindowFocusController, setup } from './tab-manager.fixtures';
+} from "../chrome/events";
+import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
+import { settings } from "../settings/settings-store";
+import { DEFAULT_SETTINGS } from "../settings/settings-schema";
+import { sendAgentNotification } from "../lib/native-notification";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import { fakePane, flush, freshWindowFocusController, setup } from "./tab-manager.fixtures";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
 // `@tauri-apps/plugin-notification` API, regardless of the
 // `agentNotifications` setting's value at the time.
-vi.mock('../lib/native-notification', () => ({
+vi.mock("../lib/native-notification", () => ({
   sendAgentNotification: vi.fn(),
 }));
 
@@ -40,7 +40,7 @@ vi.mock('../lib/native-notification', () => ({
 let windowFocus = freshWindowFocusController();
 const windowCloseCalls: number[] = [];
 
-vi.mock('../host/window-host', () => ({
+vi.mock("../host/window-host", () => ({
   // `getCurrentWindow` and `getCurrentWebview` were separate Tauri modules and
   // are now one facade, so a single factory must supply both — two vi.mock
   // calls for the same path would silently keep only the last.
@@ -71,10 +71,10 @@ vi.mock('../host/window-host', () => ({
 beforeEach(() => {
   resetDesktopEnvironmentForTests();
   initializeDesktopEnvironment({
-    platform: 'macos',
-    homeDir: '/Users/dev',
+    platform: "macos",
+    homeDir: "/Users/dev",
   });
-  document.body.innerHTML = '';
+  document.body.innerHTML = "";
   tabViews.value = [];
   activeTabIndex.value = 0;
   windowFocus = freshWindowFocusController();
@@ -101,7 +101,7 @@ afterEach(() => {
 // the two paths: the OS consumes a menu accelerator before the webview ever
 // sees the key, so ⌘W in production always goes through `runAction`, never
 // `handleShortcut`.
-describe('overlay scope guard — blocks terminal/tab/pane actions while an overlay covers the grid', () => {
+describe("overlay scope guard — blocks terminal/tab/pane actions while an overlay covers the grid", () => {
   afterEach(() => {
     boardOpen.value = false;
     settingsOpen.value = false;
@@ -111,14 +111,14 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
   });
 
   function metaKeydown(key: string): KeyboardEvent {
-    return new KeyboardEvent('keydown', { key, metaKey: true, bubbles: true });
+    return new KeyboardEvent("keydown", { key, metaKey: true, bubbles: true });
   }
 
   // select-tab-N/select-last-tab bind by physical digit-key position
   // (F-C1, 2026-07-27 code review) — `code` must be set explicitly, since
   // the native KeyboardEvent constructor does not derive it from `key`.
   function digitKeydown(digit: string): KeyboardEvent {
-    return new KeyboardEvent('keydown', {
+    return new KeyboardEvent("keydown", {
       key: digit,
       code: `Digit${digit}`,
       metaKey: true,
@@ -131,10 +131,10 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
   // app start, so the capture control cannot out-listen it — without this gate
   // the keystroke runs its own action first, and rebinding ⌘W would close the
   // pane instead of being recorded.
-  it('⌘W does nothing while a Shortcuts row is recording a replacement chord', async () => {
+  it("⌘W does nothing while a Shortcuts row is recording a replacement chord", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await tm.splitActive('row');
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.splitActive("row");
     await tm.init();
     await flush();
     expect(statusInfo.value.paneCount).toBe(2);
@@ -142,33 +142,33 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     shortcutCaptureActive.value = true;
     // The motivating case: ⌘W is `close-pane`, so recording it must not kill
     // the pane the user is looking at.
-    window.dispatchEvent(metaKeydown('w'));
+    window.dispatchEvent(metaKeydown("w"));
     await flush();
     expect(statusInfo.value.paneCount).toBe(2);
     // …and a non-destructive chord is just as gated.
-    window.dispatchEvent(metaKeydown('d'));
+    window.dispatchEvent(metaKeydown("d"));
     await flush();
     expect(statusInfo.value.paneCount).toBe(2);
 
     // The gate releases: it must not be able to disable the app silently.
     shortcutCaptureActive.value = false;
-    window.dispatchEvent(metaKeydown('d'));
+    window.dispatchEvent(metaKeydown("d"));
     await flush();
     expect(statusInfo.value.paneCount).toBe(3);
 
     tm.dispose();
   });
 
-  it('⌘W (close-pane) via the keydown path leaves the hidden pane untouched while the Open board is up', async () => {
+  it("⌘W (close-pane) via the keydown path leaves the hidden pane untouched while the Open board is up", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await tm.splitActive('row');
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.splitActive("row");
     await tm.init();
     await flush();
     expect(statusInfo.value.paneCount).toBe(2);
 
     boardOpen.value = true;
-    window.dispatchEvent(metaKeydown('w'));
+    window.dispatchEvent(metaKeydown("w"));
     await flush();
 
     expect(statusInfo.value.paneCount).toBe(2); // pane hidden behind the board survives
@@ -176,15 +176,15 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it('⌘W (close-pane) via runAction — the macOS menu bridge, the dangerous path — is blocked the same way', async () => {
+  it("⌘W (close-pane) via runAction — the macOS menu bridge, the dangerous path — is blocked the same way", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await tm.splitActive('row');
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.splitActive("row");
     await tm.init();
     await flush();
 
     boardOpen.value = true;
-    tm.runAction('close-pane');
+    tm.runAction("close-pane");
     await flush();
 
     expect(statusInfo.value.paneCount).toBe(2);
@@ -192,15 +192,15 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it('close-pane via runAction is blocked while a PresetEditor draft is open', async () => {
+  it("close-pane via runAction is blocked while a PresetEditor draft is open", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await tm.splitActive('row');
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.splitActive("row");
     await tm.init();
     await flush();
 
-    editorRequest.value = { source: 'live' };
-    tm.runAction('close-pane');
+    editorRequest.value = { source: "live" };
+    tm.runAction("close-pane");
     await flush();
 
     expect(statusInfo.value.paneCount).toBe(2); // the draft must never be silently discarded
@@ -208,15 +208,15 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it('⌘D (split-row) via runAction is a no-op while Settings is open', async () => {
+  it("⌘D (split-row) via runAction is a no-op while Settings is open", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     await tm.init();
     await flush();
     expect(statusInfo.value.paneCount).toBe(1);
 
     settingsOpen.value = true;
-    tm.runAction('split-row');
+    tm.runAction("split-row");
     await flush();
 
     expect(statusInfo.value.paneCount).toBe(1); // no split happened behind Settings
@@ -224,16 +224,16 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it('close-tab via runAction is blocked while the SavePresetDialog is open', async () => {
+  it("close-tab via runAction is blocked while the SavePresetDialog is open", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await tm.materialize({ layout: null, cwds: ['/b'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
     await tm.init();
     await flush();
     expect(tabViews.value).toHaveLength(2);
 
     saveDialogOpen.value = true;
-    tm.runAction('close-tab');
+    tm.runAction("close-tab");
     await flush();
 
     expect(tabViews.value).toHaveLength(2); // both tabs survive
@@ -241,7 +241,7 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it('⌘K (clear-buffer) via runAction is blocked while Settings is open, and works again once it closes', async () => {
+  it("⌘K (clear-buffer) via runAction is blocked while Settings is open, and works again once it closes", async () => {
     const panes = new Map<number, Pane>();
     const createPane: CreatePaneFn = (id, _settings, events) => {
       const pane = fakePane(id, events);
@@ -249,32 +249,32 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
       return pane;
     };
     const { tm } = setup({ deps: { createPane } });
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     await tm.init();
     await flush();
-    const clearSpy = vi.spyOn(panes.get(1)!, 'clear');
+    const clearSpy = vi.spyOn(panes.get(1)!, "clear");
 
     settingsOpen.value = true;
-    tm.runAction('clear-buffer');
+    tm.runAction("clear-buffer");
     await flush();
     expect(clearSpy).not.toHaveBeenCalled();
 
     settingsOpen.value = false;
-    tm.runAction('clear-buffer');
+    tm.runAction("clear-buffer");
     await flush();
     expect(clearSpy).toHaveBeenCalledTimes(1); // scoped to the overlay, not permanently broken
 
     tm.dispose();
   });
 
-  it('new-tab still raises AgentQuickPicker while Settings is open — harmless, so it is not gated', async () => {
+  it("new-tab still raises AgentQuickPicker while Settings is open — harmless, so it is not gated", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
     agentQuickPickerOpen.value = false;
     settingsOpen.value = true;
 
-    tm.runAction('new-tab');
+    tm.runAction("new-tab");
     await flush();
 
     expect(agentQuickPickerOpen.value).toBe(true);
@@ -296,8 +296,8 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     await flush();
     agentQuickPickerOpen.value = false;
 
-    editorRequest.value = { source: 'live' };
-    tm.runAction('new-tab');
+    editorRequest.value = { source: "live" };
+    tm.runAction("new-tab");
     await flush();
 
     expect(agentQuickPickerOpen.value).toBe(false);
@@ -306,14 +306,14 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it('new-tab is blocked while the SavePresetDialog is open too (F2)', async () => {
+  it("new-tab is blocked while the SavePresetDialog is open too (F2)", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
     agentQuickPickerOpen.value = false;
 
     saveDialogOpen.value = true;
-    tm.runAction('new-tab');
+    tm.runAction("new-tab");
     await flush();
 
     expect(agentQuickPickerOpen.value).toBe(false);
@@ -322,16 +322,16 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it('select-tab-N still switches the active tab while the Open board is up', async () => {
+  it("select-tab-N still switches the active tab while the Open board is up", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await tm.materialize({ layout: null, cwds: ['/b'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
     await tm.init();
     await flush();
     expect(activeTabIndex.value).toBe(1);
 
     boardOpen.value = true;
-    window.dispatchEvent(digitKeydown('1'));
+    window.dispatchEvent(digitKeydown("1"));
     await flush();
 
     expect(activeTabIndex.value).toBe(0);
@@ -346,11 +346,11 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it('select-last-tab (⌘9) still switches to the last tab while the Open board is up', async () => {
+  it("select-last-tab (⌘9) still switches to the last tab while the Open board is up", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await tm.materialize({ layout: null, cwds: ['/b'] });
-    await tm.materialize({ layout: null, cwds: ['/c'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
+    await tm.materialize({ layout: null, cwds: ["/c"] });
     await tm.init();
     await flush();
     tm.selectTab(0);
@@ -358,7 +358,7 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     expect(activeTabIndex.value).toBe(0);
 
     boardOpen.value = true;
-    window.dispatchEvent(digitKeydown('9'));
+    window.dispatchEvent(digitKeydown("9"));
     await flush();
 
     expect(activeTabIndex.value).toBe(2); // the last tab, same exemption as select-tab-N
@@ -376,16 +376,16 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
   // next-tab/prev-tab now join isTabSwitchAction (renamed from
   // isTabSelectionAction to reflect the wider membership) and get the exact
   // same unconditional board-dismiss treatment.
-  it('next-tab (⌘⇧]) cycles the active tab while the Open board is up, dismissing it first (decision 3)', async () => {
+  it("next-tab (⌘⇧]) cycles the active tab while the Open board is up, dismissing it first (decision 3)", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await tm.materialize({ layout: null, cwds: ['/b'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
     await tm.init();
     await flush();
     expect(activeTabIndex.value).toBe(1);
 
     boardOpen.value = true;
-    tm.runAction('next-tab');
+    tm.runAction("next-tab");
     await flush();
 
     expect(activeTabIndex.value).toBe(0); // wraps from the last tab to the first
@@ -394,16 +394,16 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it('prev-tab (⌘⇧[) cycles the active tab while the Open board is up too (decision 3)', async () => {
+  it("prev-tab (⌘⇧[) cycles the active tab while the Open board is up too (decision 3)", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
-    await tm.materialize({ layout: null, cwds: ['/b'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.materialize({ layout: null, cwds: ["/b"] });
     await tm.init();
     await flush();
     expect(activeTabIndex.value).toBe(1);
 
     boardOpen.value = true;
-    tm.runAction('prev-tab');
+    tm.runAction("prev-tab");
     await flush();
 
     expect(activeTabIndex.value).toBe(0);
@@ -419,7 +419,7 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
   // it always opens on the board with no session restore. `canCancel={
   // tabViews.value.length > 0}` (app.tsx) already refuses the same thing on
   // the mouse path; these lock the keyboard half of that invariant.
-  for (const action of ['select-tab-1', 'select-last-tab', 'next-tab', 'prev-tab'] as const) {
+  for (const action of ["select-tab-1", "select-last-tab", "next-tab", "prev-tab"] as const) {
     it(`${action} leaves the Open board up when there is no tab to switch to`, async () => {
       const { tm } = setup({});
       await tm.init();
@@ -445,15 +445,15 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
   // (z-40) renders fully visible above it (z-20), so there is nothing to
   // protect. Retiered "board" (NOT "modal" like new-preset — see the
   // board-still-blocks test right below for why they differ).
-  it('save-preset via runAction is NOT blocked while Settings is open', async () => {
+  it("save-preset via runAction is NOT blocked while Settings is open", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     await tm.init();
     await flush();
     boardOpen.value = false;
 
     settingsOpen.value = true;
-    tm.runAction('save-preset');
+    tm.runAction("save-preset");
     await flush();
 
     expect(saveDialogOpen.value).toBe(true);
@@ -468,12 +468,12 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
   // it "board" (rather than "modal") keeps it blocked here.
   it("save-preset via runAction is STILL blocked while the Open board is up — it captures the active tab's live layout, which the board hides", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     await tm.init();
     await flush();
 
     boardOpen.value = true;
-    tm.runAction('save-preset');
+    tm.runAction("save-preset");
     await flush();
 
     expect(saveDialogOpen.value).toBe(false);
@@ -491,17 +491,17 @@ describe('overlay scope guard — blocks terminal/tab/pane actions while an over
   // scope "always" (bypassed every overlay unconditionally) to tier "board"
   // (blocked only by an overlay ranked at or above the board — the modal
   // family). See its ACTION_REGISTRY row for the full rationale.
-  it('reads scope from ACTION_REGISTRY, not a hardcoded list', () => {
-    const alwaysActions = ACTION_REGISTRY.filter((a) => a.scope === 'always').map((a) => a.id);
+  it("reads scope from ACTION_REGISTRY, not a hardcoded list", () => {
+    const alwaysActions = ACTION_REGISTRY.filter((a) => a.scope === "always").map((a) => a.id);
     // The updater rows are app-level menu actions intercepted by App before
     // TabManager.runAction; "always" records that overlays must not disable
     // either manual update checks or the web Release Notes link.
     expect(new Set(alwaysActions)).toEqual(
       new Set([
-        'check-for-updates',
-        'focus-next-attention',
-        'open-release-notes',
-        'toggle-settings',
+        "check-for-updates",
+        "focus-next-attention",
+        "open-release-notes",
+        "toggle-settings",
         // `toggle-usage` LEFT this set on 2026-08-16. It was "always"
         // because the usage screen pushed an overlay rank that would have
         // blocked the only action able to close it; as a dock tab it pushes

@@ -9,15 +9,15 @@
  */
 export function suggestWorktreeDest(repoPath: string, branch: string): string {
   const trimmedBranch = branch.trim();
-  if (repoPath === '' || trimmedBranch === '') {
-    return '';
+  if (repoPath === "" || trimmedBranch === "") {
+    return "";
   }
-  const trimmedRepo = repoPath.endsWith('/') && repoPath !== '/' ? repoPath.slice(0, -1) : repoPath;
-  const lastSlash = trimmedRepo.lastIndexOf('/');
-  const parent = lastSlash <= 0 ? '' : trimmedRepo.slice(0, lastSlash);
+  const trimmedRepo = repoPath.endsWith("/") && repoPath !== "/" ? repoPath.slice(0, -1) : repoPath;
+  const lastSlash = trimmedRepo.lastIndexOf("/");
+  const parent = lastSlash <= 0 ? "" : trimmedRepo.slice(0, lastSlash);
   const repoName = trimmedRepo.slice(lastSlash + 1);
-  if (repoName === '') {
-    return '';
+  if (repoName === "") {
+    return "";
   }
   return `${parent}/${repoName}-worktrees/${trimmedBranch}`;
 }

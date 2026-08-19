@@ -14,14 +14,14 @@
  * it and expand/collapse (spec §3.1), matching the pattern `settings-nav.tsx`
  * already uses for a vertical list.
  */
-import type { ComponentChild } from 'preact';
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { canExpand, type TreeRow } from '../file-tree';
-import { listingErrorsFor, surfaceFor, treeRows } from '../file-surface-store';
-import type { FileSurfaceController } from '../file-surface-controller';
-import { DeckIcon, ROW_ICON } from '../../ui/controls/deck-icon';
-import { chevronForRow, iconForRow } from './file-icons';
-import { LoadError } from '../../ui/controls/load-error';
+import type { ComponentChild } from "preact";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { canExpand, type TreeRow } from "../file-tree";
+import { listingErrorsFor, surfaceFor, treeRows } from "../file-surface-store";
+import type { FileSurfaceController } from "../file-surface-controller";
+import { DeckIcon, ROW_ICON } from "../../ui/controls/deck-icon";
+import { chevronForRow, iconForRow } from "./file-icons";
+import { LoadError } from "../../ui/controls/load-error";
 
 export interface FileTreeViewProps {
   readonly controller: FileSurfaceController;
@@ -67,7 +67,7 @@ export function FileTreeView(props: FileTreeViewProps) {
     }
     const measure = (): void => setViewportHeight(node.clientHeight);
     measure();
-    if (typeof ResizeObserver === 'undefined') {
+    if (typeof ResizeObserver === "undefined") {
       return;
     }
     const observer = new ResizeObserver(measure);
@@ -145,14 +145,14 @@ export function FileTreeView(props: FileTreeViewProps) {
     if (rows.length === 0) {
       return;
     }
-    if (event.key === 'ArrowDown') {
+    if (event.key === "ArrowDown") {
       event.preventDefault();
       const next = Math.min(rows.length - 1, focusedIndex + 1);
       pendingFocusRef.current = next;
       setFocusedIndex(next);
       return;
     }
-    if (event.key === 'ArrowUp') {
+    if (event.key === "ArrowUp") {
       event.preventDefault();
       const next = Math.max(0, focusedIndex - 1);
       pendingFocusRef.current = next;
@@ -163,21 +163,21 @@ export function FileTreeView(props: FileTreeViewProps) {
     if (row === undefined) {
       return;
     }
-    if (event.key === 'ArrowRight') {
+    if (event.key === "ArrowRight") {
       event.preventDefault();
       if (row.directory && canExpand(row) && !row.expanded) {
         controller.toggleDirectory(workspacePath, row.path);
       }
       return;
     }
-    if (event.key === 'ArrowLeft') {
+    if (event.key === "ArrowLeft") {
       event.preventDefault();
       if (row.directory && row.expanded) {
         controller.toggleDirectory(workspacePath, row.path);
       }
       return;
     }
-    if (event.key === 'Enter') {
+    if (event.key === "Enter") {
       event.preventDefault();
       activateRow(row);
     }
@@ -235,7 +235,7 @@ export function FileTreeView(props: FileTreeViewProps) {
             >
               <span
                 class="file-tree__chevron"
-                style={{ visibility: row.directory ? 'visible' : 'hidden' }}
+                style={{ visibility: row.directory ? "visible" : "hidden" }}
               >
                 <DeckIcon icon={chevronForRow(row)} size={ROW_ICON} />
               </span>

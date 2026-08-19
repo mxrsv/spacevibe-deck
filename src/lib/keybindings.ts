@@ -19,10 +19,10 @@ import {
   isActionId,
   type ActionId,
   type KeyBinding,
-} from '../terminal/action-registry';
+} from "../terminal/action-registry";
 
 /** The two keymaps that exist. `unsupported` resolves to the macOS one. */
-export type KeymapPlatform = 'macos' | 'windows';
+export type KeymapPlatform = "macos" | "windows";
 
 interface ChordModifiers {
   readonly meta?: boolean;
@@ -71,7 +71,7 @@ export const NO_KEYBINDING_OVERRIDES: KeybindingOverrides = Object.freeze({
 export const MAX_CHORDS_PER_ACTION = 4;
 
 export function defaultKeymap(platform: string): readonly KeyBinding[] {
-  return platform === 'windows' ? WINDOWS_KEYMAP : MACOS_KEYMAP;
+  return platform === "windows" ? WINDOWS_KEYMAP : MACOS_KEYMAP;
 }
 
 /**
@@ -86,25 +86,25 @@ export function defaultKeymap(platform: string): readonly KeyBinding[] {
  * `keymapForPlatform` has always done.
  */
 export function keymapPlatform(platform: string): KeymapPlatform {
-  return platform === 'windows' ? 'windows' : 'macos';
+  return platform === "windows" ? "windows" : "macos";
 }
 
 export function isChord(value: unknown): value is Chord {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
   const chord = value as Record<string, unknown>;
-  const hasKey = typeof chord.key === 'string' && chord.key !== '';
-  const hasCode = typeof chord.code === 'string' && chord.code !== '';
+  const hasKey = typeof chord.key === "string" && chord.key !== "";
+  const hasCode = typeof chord.code === "string" && chord.code !== "";
   // Exactly one of the two: a chord carrying both would match under
   // `matchBinding`'s `"code" in binding` branch while reading as a character
   // binding everywhere else, which is precisely the drift this type prevents.
   if (hasKey === hasCode) {
     return false;
   }
-  for (const modifier of ['meta', 'shift', 'alt', 'ctrl'] as const) {
+  for (const modifier of ["meta", "shift", "alt", "ctrl"] as const) {
     const present = chord[modifier];
-    if (present !== undefined && typeof present !== 'boolean') {
+    if (present !== undefined && typeof present !== "boolean") {
       return false;
     }
   }
@@ -114,7 +114,7 @@ export function isChord(value: unknown): value is Chord {
 export function chordOf(binding: KeyBinding): Chord {
   const { meta, shift, alt, ctrl } = binding;
   const modifiers = { meta, shift, alt, ctrl };
-  return 'code' in binding
+  return "code" in binding
     ? { ...modifiers, code: binding.code }
     : { ...modifiers, key: binding.key };
 }
@@ -122,7 +122,7 @@ export function chordOf(binding: KeyBinding): Chord {
 export function bindingOf(chord: Chord, action: ActionId): KeyBinding {
   const { meta, shift, alt, ctrl } = chord;
   const modifiers = { meta, shift, alt, ctrl, action };
-  return 'code' in chord ? { ...modifiers, code: chord.code } : { ...modifiers, key: chord.key };
+  return "code" in chord ? { ...modifiers, code: chord.code } : { ...modifiers, key: chord.key };
 }
 
 /**
@@ -138,33 +138,33 @@ export function bindingOf(chord: Chord, action: ActionId): KeyBinding {
  * reported as distinct even when one physical key produces both.
  */
 const CODE_TO_US_CHAR: Readonly<Record<string, string>> = Object.freeze({
-  BracketLeft: '[',
-  BracketRight: ']',
-  Comma: ',',
-  Equal: '=',
-  Minus: '-',
-  Period: '.',
+  BracketLeft: "[",
+  BracketRight: "]",
+  Comma: ",",
+  Equal: "=",
+  Minus: "-",
+  Period: ".",
   Quote: "'",
-  Semicolon: ';',
-  Slash: '/',
-  Backslash: '\\',
-  Backquote: '`',
-  Insert: 'insert',
-  Enter: 'enter',
-  Tab: 'tab',
-  Space: ' ',
+  Semicolon: ";",
+  Slash: "/",
+  Backslash: "\\",
+  Backquote: "`",
+  Insert: "insert",
+  Enter: "enter",
+  Tab: "tab",
+  Space: " ",
 });
 
 function chordChar(chord: Chord): string {
-  if (!('code' in chord)) {
+  if (!("code" in chord)) {
     return chord.key.toLowerCase();
   }
   const mapped = CODE_TO_US_CHAR[chord.code];
   if (mapped !== undefined) {
     return mapped;
   }
-  if (chord.code.startsWith('Digit') || chord.code.startsWith('Key')) {
-    return chord.code.replace(/^(?:Digit|Key)/, '').toLowerCase();
+  if (chord.code.startsWith("Digit") || chord.code.startsWith("Key")) {
+    return chord.code.replace(/^(?:Digit|Key)/, "").toLowerCase();
   }
   return chord.code.toLowerCase();
 }
@@ -177,11 +177,11 @@ function chordChar(chord: Chord): string {
  */
 export function chordId(chord: Chord): string {
   const modifiers = [
-    chord.meta === true ? 'M' : '',
-    chord.ctrl === true ? 'C' : '',
-    chord.alt === true ? 'A' : '',
-    chord.shift === true ? 'S' : '',
-  ].join('');
+    chord.meta === true ? "M" : "",
+    chord.ctrl === true ? "C" : "",
+    chord.alt === true ? "A" : "",
+    chord.shift === true ? "S" : "",
+  ].join("");
   return `${modifiers}+${chordChar(chord)}`;
 }
 
@@ -294,16 +294,16 @@ const FUNCTION_KEY = /^f([1-9]|1\d|2[0-4])$/;
  * scrollback bindings are exactly this case.
  */
 const NAVIGATION_KEYS: ReadonlySet<string> = new Set([
-  'pageup',
-  'pagedown',
-  'home',
-  'end',
-  'insert',
-  'delete',
-  'arrowup',
-  'arrowdown',
-  'arrowleft',
-  'arrowright',
+  "pageup",
+  "pagedown",
+  "home",
+  "end",
+  "insert",
+  "delete",
+  "arrowup",
+  "arrowdown",
+  "arrowleft",
+  "arrowright",
 ]);
 
 /**
@@ -321,7 +321,7 @@ const NAVIGATION_KEYS: ReadonlySet<string> = new Set([
  * something the UI refuses, and the app would treat the file as valid.
  */
 export function isAdmissibleChord(chord: Chord): boolean {
-  if ('code' in chord) {
+  if ("code" in chord) {
     // Only the shipped keymaps carry code chords, and a capture never writes
     // one. Nothing user-supplied reaches this branch.
     return true;
@@ -359,7 +359,7 @@ function validateChordList(raw: unknown): readonly Chord[] | null {
 }
 
 function validateKeymapOverride(raw: unknown): KeymapOverride {
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     return {};
   }
   const source = raw as Record<string, unknown>;
@@ -382,7 +382,7 @@ function validateKeymapOverride(raw: unknown): KeymapOverride {
  * every rebind the user made because one entry went bad.
  */
 export function validateKeybindings(raw: unknown): KeybindingOverrides {
-  if (typeof raw !== 'object' || raw === null) {
+  if (typeof raw !== "object" || raw === null) {
     return NO_KEYBINDING_OVERRIDES;
   }
   const source = raw as Record<string, unknown>;

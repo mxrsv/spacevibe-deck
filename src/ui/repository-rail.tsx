@@ -1,11 +1,11 @@
-import { ArrowsClockwise, CaretDown, CaretRight, GitFork, Plus, X } from '@phosphor-icons/react';
-import { useSignal, useSignalEffect } from '@preact/signals';
-import type { ComponentChildren } from 'preact';
-import { useEffect } from 'preact/hooks';
-import { activeTabIndex, statusInfo, tabViews } from '../terminal/tabs-store';
-import { CHROME_ICON, DeckIcon, RAIL_ICON } from './controls/deck-icon';
-import { tildify } from '../lib/process-info';
-import { WorktreeAgentStack } from './worktree-agent-stack';
+import { ArrowsClockwise, CaretDown, CaretRight, GitFork, Plus, X } from "@phosphor-icons/react";
+import { useSignal, useSignalEffect } from "@preact/signals";
+import type { ComponentChildren } from "preact";
+import { useEffect } from "preact/hooks";
+import { activeTabIndex, statusInfo, tabViews } from "../terminal/tabs-store";
+import { CHROME_ICON, DeckIcon, RAIL_ICON } from "./controls/deck-icon";
+import { tildify } from "../lib/process-info";
+import { WorktreeAgentStack } from "./worktree-agent-stack";
 import {
   collapsedRepositories,
   ensureRepositoriesScanned,
@@ -13,17 +13,17 @@ import {
   invalidateRepositoryScans,
   repositoryScans,
   toggleRepositoryCollapsed,
-} from '../repositories/repositories-store';
-import { sessionArchive } from '../terminal/session-journal';
+} from "../repositories/repositories-store";
+import { sessionArchive } from "../terminal/session-journal";
 import {
   buildRail,
   filterRailToWorkspaceHistory,
   type WorktreeRow,
-} from '../repositories/repository-model';
-import { available as electronHostAvailable } from '../host/worktree-host';
-import type { FileSurfaceController } from '../files/file-surface-controller';
-import { workspacesData } from '../open-board/workspaces-store';
-import { SidebarBanner } from './sidebar-banner';
+} from "../repositories/repository-model";
+import { available as electronHostAvailable } from "../host/worktree-host";
+import type { FileSurfaceController } from "../files/file-surface-controller";
+import { workspacesData } from "../open-board/workspaces-store";
+import { SidebarBanner } from "./sidebar-banner";
 
 /**
  * The repository → worktree navigation rail.
@@ -84,16 +84,16 @@ interface RepositoryRailProps {
 }
 
 /** Accessible wording for each state — colour is never the only carrier. */
-const STATE_LABEL: Record<WorktreeRow['state'], string> = {
-  missing: 'missing from disk',
-  attention: 'needs attention',
-  working: 'agents working',
-  ready: 'open',
-  idle: 'not open',
+const STATE_LABEL: Record<WorktreeRow["state"], string> = {
+  missing: "missing from disk",
+  attention: "needs attention",
+  working: "agents working",
+  ready: "open",
+  idle: "not open",
 };
 
 interface WorktreeStateDotProps {
-  readonly state: WorktreeRow['state'];
+  readonly state: WorktreeRow["state"];
   readonly label: string;
   readonly onActivate?: () => void;
 }
@@ -101,7 +101,7 @@ interface WorktreeStateDotProps {
 /** Hollow status ring; colour carries the visual state, text carries a11y. */
 function WorktreeStateDot({ state, label, onActivate }: WorktreeStateDotProps) {
   const stateLabel = STATE_LABEL[state];
-  if (state === 'attention' && onActivate !== undefined) {
+  if (state === "attention" && onActivate !== undefined) {
     return (
       <button
         type="button"
@@ -186,7 +186,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
 
   /** The quiet line under a row's name (DL-3.4). The branch is the name. */
   function subtitle(worktree: WorktreeRow): string {
-    return worktree.path === '' ? '' : tildify(worktree.path, home);
+    return worktree.path === "" ? "" : tildify(worktree.path, home);
   }
 
   function worktreeRow(worktree: WorktreeRow, tiered: boolean) {
@@ -206,9 +206,9 @@ export function RepositoryRail(props: RepositoryRailProps) {
         aria-selected={visiblyActive}
         tabIndex={0}
         data-key={primaryTab.key}
-        data-workspace={primaryTab.workspacePath ?? ''}
+        data-workspace={primaryTab.workspacePath ?? ""}
         data-state={worktree.state}
-        class={`wsitem ${visiblyActive ? 'is-active' : ''}`}
+        class={`wsitem ${visiblyActive ? "is-active" : ""}`}
         onClick={() => {
           // The exact tab is chosen by its agent button. The worktree body is
           // the broad target for its active tab, falling back to the first tab
@@ -264,9 +264,9 @@ export function RepositoryRail(props: RepositoryRailProps) {
   function readoutRow(worktree: WorktreeRow, tiered: boolean) {
     const lock =
       worktree.locked === null
-        ? ''
-        : worktree.locked === ''
-          ? ' · locked'
+        ? ""
+        : worktree.locked === ""
+          ? " · locked"
           : ` · locked: ${worktree.locked}`;
     return (
       <div
@@ -275,9 +275,9 @@ export function RepositoryRail(props: RepositoryRailProps) {
         data-state={worktree.state}
         aria-label={`${worktree.name}: ${STATE_LABEL[worktree.state]}`}
         title={
-          worktree.state === 'missing'
-            ? 'This worktree is gone from disk. Deck reports it and never prunes it.'
-            : 'Open this worktree from the Open board.'
+          worktree.state === "missing"
+            ? "This worktree is gone from disk. Deck reports it and never prunes it."
+            : "Open this worktree from the Open board."
         }
       >
         <WorktreeStateDot state={worktree.state} label={worktree.name} />
@@ -312,7 +312,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
         aria-label={`Resume last session in ${worktree.name}`}
         onClick={activate}
         onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
+          if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             activate();
           }
@@ -349,7 +349,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
           // A folder that is not a repository does not sprout a repository
           // tier. It renders as the bare row Deck has always shown — the rail
           // adds a tier where git says there is one, and nowhere else.
-          group.kind === 'plain' ? (
+          group.kind === "plain" ? (
             <div key={group.key} class="repogroup repogroup--plain">
               {group.worktrees.map((worktree) => worktreeRows(worktree, false))}
             </div>

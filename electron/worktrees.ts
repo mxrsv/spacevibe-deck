@@ -13,7 +13,7 @@
  * `execFile` takes an argv array, so a workspace path (user data) and a
  * worktree path (git's own output) are arguments, never command text.
  */
-import { execFile } from 'node:child_process';
+import { execFile } from "node:child_process";
 
 /** Seconds git gets before the read is abandoned. Matches `git_branch`. */
 const GIT_TIMEOUT_MS = 4000;
@@ -37,7 +37,7 @@ export interface WorktreeEntry {
 
 export type RepositoryScan =
   | {
-      readonly kind: 'repository';
+      readonly kind: "repository";
       /**
        * The repository's identity: the absolute `--git-common-dir`, which is
        * the SAME string for the main checkout and every linked worktree. The
@@ -55,7 +55,7 @@ export type RepositoryScan =
        * the current product, not toward an error surface — the caller renders
        * a plain folder, which is what Deck shows today anyway.
        */
-      readonly kind: 'plain';
+      readonly kind: "plain";
       readonly reason: string;
     };
 
@@ -69,10 +69,10 @@ export type RepositoryScan =
 function git(cwd: string, args: readonly string[]): Promise<string | null> {
   return new Promise((resolve) => {
     execFile(
-      'git',
-      ['-C', cwd, ...args],
+      "git",
+      ["-C", cwd, ...args],
       {
-        encoding: 'utf8',
+        encoding: "utf8",
         timeout: GIT_TIMEOUT_MS,
         maxBuffer: GIT_MAX_BUFFER,
         // No shell, and no inherited stdin: a git that decides to prompt for
@@ -88,7 +88,7 @@ function git(cwd: string, args: readonly string[]): Promise<string | null> {
 
 /** `refs/heads/feature/x` → `feature/x`; anything else is returned as-is. */
 function shortBranch(ref: string): string {
-  return ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : ref;
+  return ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : ref;
 }
 
 /**
@@ -121,17 +121,17 @@ export function parseWorktreePorcelain(stdout: string): readonly WorktreeEntry[]
     }
   };
 
-  for (const rawLine of stdout.split('\n')) {
-    const line = rawLine.replace(/\r$/, '');
+  for (const rawLine of stdout.split("\n")) {
+    const line = rawLine.replace(/\r$/, "");
     if (line.length === 0) {
       flush();
       continue;
     }
-    const space = line.indexOf(' ');
+    const space = line.indexOf(" ");
     const keyword = space === -1 ? line : line.slice(0, space);
-    const value = space === -1 ? '' : line.slice(space + 1);
+    const value = space === -1 ? "" : line.slice(space + 1);
 
-    if (keyword === 'worktree') {
+    if (keyword === "worktree") {
       flush();
       if (value.length === 0) {
         continue; // a path-less record identifies nothing
@@ -151,25 +151,25 @@ export function parseWorktreePorcelain(stdout: string): readonly WorktreeEntry[]
       continue; // attribute before any `worktree` line — not ours to attach
     }
     switch (keyword) {
-      case 'HEAD':
+      case "HEAD":
         current.head = value.length > 0 ? value : null;
         break;
-      case 'branch':
+      case "branch":
         current.branch = value.length > 0 ? shortBranch(value) : null;
         break;
-      case 'bare':
+      case "bare":
         current.bare = true;
         break;
-      case 'detached':
+      case "detached":
         current.detached = true;
         break;
       // `locked` and `prunable` may arrive with or without a reason. Empty
       // string means "yes, no reason given" and must stay distinct from null,
       // which means "not locked / not prunable".
-      case 'locked':
+      case "locked":
         current.locked = value;
         break;
-      case 'prunable':
+      case "prunable":
         current.prunable = value;
         break;
       default:
@@ -189,16 +189,16 @@ export function parseWorktreePorcelain(stdout: string): readonly WorktreeEntry[]
  */
 async function readIdentity(path: string): Promise<{ key: string; root: string } | null> {
   const stdout = await git(path, [
-    'rev-parse',
-    '--path-format=absolute',
-    '--git-common-dir',
-    '--show-toplevel',
+    "rev-parse",
+    "--path-format=absolute",
+    "--git-common-dir",
+    "--show-toplevel",
   ]);
   if (stdout === null) {
     return null;
   }
   const lines = stdout
-    .split('\n')
+    .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
   if (lines.length < 2) {
@@ -219,21 +219,21 @@ async function readIdentity(path: string): Promise<{ key: string; root: string }
  */
 export async function scanRepository(path: string): Promise<RepositoryScan> {
   if (path.length === 0) {
-    return { kind: 'plain', reason: 'no path' };
+    return { kind: "plain", reason: "no path" };
   }
   const identity = await readIdentity(path);
   if (identity === null) {
-    return { kind: 'plain', reason: 'not a git repository' };
+    return { kind: "plain", reason: "not a git repository" };
   }
-  const listed = await git(path, ['worktree', 'list', '--porcelain']);
+  const listed = await git(path, ["worktree", "list", "--porcelain"]);
   if (listed === null) {
-    return { kind: 'plain', reason: 'worktree list unavailable' };
+    return { kind: "plain", reason: "worktree list unavailable" };
   }
   const worktrees = parseWorktreePorcelain(listed);
   if (worktrees.length === 0) {
     // The parser is total, so an empty result means git answered with
     // something this version does not recognise at all. Degrade, do not guess.
-    return { kind: 'plain', reason: 'no worktrees reported' };
+    return { kind: "plain", reason: "no worktrees reported" };
   }
-  return { kind: 'repository', ...identity, worktrees };
+  return { kind: "repository", ...identity, worktrees };
 }

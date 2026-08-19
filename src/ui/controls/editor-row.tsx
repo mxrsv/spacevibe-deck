@@ -1,9 +1,9 @@
-import { CaretDown } from '@phosphor-icons/react';
-import { EDITOR_PRESETS, isEditorId, type EditorId } from '../../lib/editor-command';
-import { CommitInput } from './commit-input';
-import { ConfigRow } from './config-row';
-import { primaryModifierName } from '../../lib/shortcut-label';
-import { DeckIcon, ROW_ICON } from './deck-icon';
+import { CaretDown } from "@phosphor-icons/react";
+import { EDITOR_PRESETS, isEditorId, type EditorId } from "../../lib/editor-command";
+import { CommitInput } from "./commit-input";
+import { ConfigRow } from "./config-row";
+import { primaryModifierName } from "../../lib/shortcut-label";
+import { DeckIcon, ROW_ICON } from "./deck-icon";
 
 interface EditorRowProps {
   value: EditorId;
@@ -42,7 +42,7 @@ export function EditorRow({ value, command, onChange, onCommandChange }: EditorR
           </select>
         </span>
       </ConfigRow>
-      {value === 'custom' && (
+      {value === "custom" && (
         <div class="cfg-custom">
           <CommitInput
             value={command}

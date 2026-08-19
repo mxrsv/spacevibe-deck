@@ -1,5 +1,5 @@
-import { SidebarSimple } from '@phosphor-icons/react';
-import { CHROME_ICON, DeckIcon } from './controls/deck-icon';
+import { SidebarSimple } from "@phosphor-icons/react";
+import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
 
 interface SidebarToggleProps {
   /** Painted state, not the setting: a live drag arms this before it writes. */
@@ -25,7 +25,7 @@ interface SidebarToggleProps {
  * gets, which is why it stays.
  */
 export function SidebarToggle({ collapsed, onToggle }: SidebarToggleProps) {
-  const label = collapsed ? 'Expand the sidebar' : 'Collapse the sidebar';
+  const label = collapsed ? "Expand the sidebar" : "Collapse the sidebar";
   return (
     <button
       type="button"

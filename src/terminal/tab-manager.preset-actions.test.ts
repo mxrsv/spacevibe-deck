@@ -1,24 +1,24 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   agentQuickPickerOpen,
   boardOpen,
   editorRequest,
   saveDialogOpen,
   settingsOpen,
-} from '../chrome/events';
-import { activeTabIndex, tabViews } from './tabs-store';
-import { settings } from '../settings/settings-store';
-import { DEFAULT_SETTINGS } from '../settings/settings-schema';
-import { sendAgentNotification } from '../lib/native-notification';
-import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
-import { flush, freshWindowFocusController, setup } from './tab-manager.fixtures';
+} from "../chrome/events";
+import { activeTabIndex, tabViews } from "./tabs-store";
+import { settings } from "../settings/settings-store";
+import { DEFAULT_SETTINGS } from "../settings/settings-schema";
+import { sendAgentNotification } from "../lib/native-notification";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import { flush, freshWindowFocusController, setup } from "./tab-manager.fixtures";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
 // `@tauri-apps/plugin-notification` API, regardless of the
 // `agentNotifications` setting's value at the time.
-vi.mock('../lib/native-notification', () => ({
+vi.mock("../lib/native-notification", () => ({
   sendAgentNotification: vi.fn(),
 }));
 
@@ -36,7 +36,7 @@ vi.mock('../lib/native-notification', () => ({
 let windowFocus = freshWindowFocusController();
 const windowCloseCalls: number[] = [];
 
-vi.mock('../host/window-host', () => ({
+vi.mock("../host/window-host", () => ({
   // `getCurrentWindow` and `getCurrentWebview` were separate Tauri modules and
   // are now one facade, so a single factory must supply both — two vi.mock
   // calls for the same path would silently keep only the last.
@@ -67,10 +67,10 @@ vi.mock('../host/window-host', () => ({
 beforeEach(() => {
   resetDesktopEnvironmentForTests();
   initializeDesktopEnvironment({
-    platform: 'macos',
-    homeDir: '/Users/dev',
+    platform: "macos",
+    homeDir: "/Users/dev",
   });
-  document.body.innerHTML = '';
+  document.body.innerHTML = "";
   tabViews.value = [];
   activeTabIndex.value = 0;
   windowFocus = freshWindowFocusController();
@@ -101,7 +101,7 @@ afterEach(() => {
 // prove that for both the keydown path and the runAction (menu bridge)
 // path, which is the one that matters in production (macOS eats the
 // accelerator before the webview sees it).
-describe('createTabManager new-preset / save-preset — unified into the action: dispatch path (Task 4)', () => {
+describe("createTabManager new-preset / save-preset — unified into the action: dispatch path (Task 4)", () => {
   afterEach(() => {
     boardOpen.value = false;
     settingsOpen.value = false;
@@ -110,7 +110,7 @@ describe('createTabManager new-preset / save-preset — unified into the action:
   });
 
   function metaShiftKeydown(key: string): KeyboardEvent {
-    return new KeyboardEvent('keydown', {
+    return new KeyboardEvent("keydown", {
       key,
       metaKey: true,
       shiftKey: true,
@@ -118,14 +118,14 @@ describe('createTabManager new-preset / save-preset — unified into the action:
     });
   }
 
-  it('new-preset opens the PresetEditor via runAction when no overlay is blocking', async () => {
+  it("new-preset opens the PresetEditor via runAction when no overlay is blocking", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
 
-    tm.runAction('new-preset');
+    tm.runAction("new-preset");
 
-    expect(editorRequest.value).toEqual({ source: 'live' });
+    expect(editorRequest.value).toEqual({ source: "live" });
 
     tm.dispose();
   });
@@ -138,15 +138,15 @@ describe('createTabManager new-preset / save-preset — unified into the action:
   // protect by blocking. Retiered "modal": no longer blocked by Settings or
   // by the board (below), only by another modal-family overlay already open
   // (see the sibling-exclusion test further down).
-  it('new-preset via runAction is NOT blocked while Settings is open (F4 — Settings holds no draft, and PresetEditor renders above it)', async () => {
+  it("new-preset via runAction is NOT blocked while Settings is open (F4 — Settings holds no draft, and PresetEditor renders above it)", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
 
     settingsOpen.value = true;
-    tm.runAction('new-preset');
+    tm.runAction("new-preset");
 
-    expect(editorRequest.value).toEqual({ source: 'live' });
+    expect(editorRequest.value).toEqual({ source: "live" });
 
     tm.dispose();
   });
@@ -157,38 +157,38 @@ describe('createTabManager new-preset / save-preset — unified into the action:
     await flush();
 
     boardOpen.value = true;
-    tm.runAction('new-preset');
+    tm.runAction("new-preset");
 
-    expect(editorRequest.value).toEqual({ source: 'live' });
+    expect(editorRequest.value).toEqual({ source: "live" });
 
     tm.dispose();
   });
 
-  it('new-preset is blocked while the SavePresetDialog is already open — modal-family sibling exclusion via rank >=, not >', async () => {
+  it("new-preset is blocked while the SavePresetDialog is already open — modal-family sibling exclusion via rank >=, not >", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
 
     saveDialogOpen.value = true;
-    tm.runAction('new-preset');
+    tm.runAction("new-preset");
 
     expect(editorRequest.value).toBeNull();
 
     tm.dispose();
   });
 
-  it('Cmd+Shift+N (new-preset) via the keydown path opens the PresetEditor, and stays open while Settings is up too', async () => {
+  it("Cmd+Shift+N (new-preset) via the keydown path opens the PresetEditor, and stays open while Settings is up too", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
 
-    window.dispatchEvent(metaShiftKeydown('n'));
-    expect(editorRequest.value).toEqual({ source: 'live' });
+    window.dispatchEvent(metaShiftKeydown("n"));
+    expect(editorRequest.value).toEqual({ source: "live" });
     editorRequest.value = null;
 
     settingsOpen.value = true;
-    window.dispatchEvent(metaShiftKeydown('n'));
-    expect(editorRequest.value).toEqual({ source: 'live' });
+    window.dispatchEvent(metaShiftKeydown("n"));
+    expect(editorRequest.value).toEqual({ source: "live" });
 
     tm.dispose();
   });
@@ -200,28 +200,28 @@ describe('createTabManager new-preset / save-preset — unified into the action:
   // points, so the production bug (menu click / the OS-eaten Cmd+Shift+S
   // accelerator) cannot resurface once the parallel menu:save-preset event
   // is removed in this same task.
-  it('save-preset via runAction is blocked while a PresetEditor draft is open', async () => {
+  it("save-preset via runAction is blocked while a PresetEditor draft is open", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     await tm.init();
     await flush();
 
-    editorRequest.value = { source: 'live' };
-    tm.runAction('save-preset');
+    editorRequest.value = { source: "live" };
+    tm.runAction("save-preset");
 
     expect(saveDialogOpen.value).toBe(false);
 
     tm.dispose();
   });
 
-  it('Cmd+Shift+S (save-preset) via the keydown path is blocked while a PresetEditor draft is open', async () => {
+  it("Cmd+Shift+S (save-preset) via the keydown path is blocked while a PresetEditor draft is open", async () => {
     const { tm } = setup({});
-    await tm.materialize({ layout: null, cwds: ['/a'] });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
     await tm.init();
     await flush();
 
-    editorRequest.value = { source: 'live' };
-    window.dispatchEvent(metaShiftKeydown('s'));
+    editorRequest.value = { source: "live" };
+    window.dispatchEvent(metaShiftKeydown("s"));
 
     expect(saveDialogOpen.value).toBe(false);
 

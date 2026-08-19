@@ -10,9 +10,9 @@
  * Presentational only. The caller passes the class it wants so each surface
  * keeps its own sizing and layout; this decides the CONTENT, never the box.
  */
-import { AGENT_LOGOS } from '../../lib/agent-logos';
-import { letterAvatar } from '../../lib/letter-avatar';
-import type { PaneAgent } from '../../lib/process-info';
+import { AGENT_LOGOS } from "../../lib/agent-logos";
+import { letterAvatar } from "../../lib/letter-avatar";
+import type { PaneAgent } from "../../lib/process-info";
 
 export interface AgentGlyphProps {
   readonly agent: PaneAgent;

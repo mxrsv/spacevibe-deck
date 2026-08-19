@@ -1,6 +1,6 @@
-import { useRef } from 'preact/hooks';
-import { activeUsageRange } from './active-usage-view-store';
-import { USAGE_RANGES } from './usage-ranges';
+import { useRef } from "preact/hooks";
+import { activeUsageRange } from "./active-usage-view-store";
+import { USAGE_RANGES } from "./usage-ranges";
 
 /**
  * The period the display figure covers (DL-16.7) — the only control this
@@ -30,9 +30,9 @@ export function UsageRangeSelector() {
 
   const handleKeyDown = (event: KeyboardEvent): void => {
     let step: 1 | -1;
-    if (event.key === 'ArrowRight') {
+    if (event.key === "ArrowRight") {
       step = 1;
-    } else if (event.key === 'ArrowLeft') {
+    } else if (event.key === "ArrowLeft") {
       step = -1;
     } else {
       return;
@@ -58,7 +58,7 @@ export function UsageRangeSelector() {
             role="tab"
             aria-selected={isActive}
             tabIndex={isActive ? 0 : -1}
-            class={`usage-range__option ${isActive ? 'is-active' : ''}`}
+            class={`usage-range__option ${isActive ? "is-active" : ""}`}
             onClick={() => selectRange(index)}
           >
             {range.label}

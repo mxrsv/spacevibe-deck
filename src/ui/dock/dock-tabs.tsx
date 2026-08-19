@@ -1,5 +1,5 @@
-import { DeckIcon, FEATURE_ICON } from '../controls/deck-icon';
-import type { DockTabDescriptor, DockTabId } from './dock-tab-registry';
+import { DeckIcon, FEATURE_ICON } from "../controls/deck-icon";
+import type { DockTabDescriptor, DockTabId } from "./dock-tab-registry";
 
 interface DockTabsProps {
   readonly items: readonly DockTabDescriptor[];
@@ -31,7 +31,7 @@ export function DockTabs({ items, active, onSelect }: DockTabsProps) {
             type="button"
             role="tab"
             aria-selected={isActive}
-            class={`dock-tabs__chip ${isActive ? 'is-active' : ''}`}
+            class={`dock-tabs__chip ${isActive ? "is-active" : ""}`}
             onClick={() => onSelect(item.id)}
           >
             <DeckIcon icon={item.icon} size={FEATURE_ICON} class="feature-glyph" />

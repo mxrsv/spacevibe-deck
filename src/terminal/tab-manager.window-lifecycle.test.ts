@@ -1,21 +1,21 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PaneProcessInfo } from '../lib/process-info';
-import { createMemoryTransferClient } from './transfer-client';
-import type { TabManagerDeps } from './tab-manager';
-import { agentQuickPickerOpen } from '../chrome/events';
-import { activeTabIndex, tabViews } from './tabs-store';
-import { settings } from '../settings/settings-store';
-import { DEFAULT_SETTINGS } from '../settings/settings-schema';
-import { sendAgentNotification } from '../lib/native-notification';
-import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from '../lib/platform';
-import { freshWindowFocusController, processInfo, setup } from './tab-manager.fixtures';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { PaneProcessInfo } from "../lib/process-info";
+import { createMemoryTransferClient } from "./transfer-client";
+import type { TabManagerDeps } from "./tab-manager";
+import { agentQuickPickerOpen } from "../chrome/events";
+import { activeTabIndex, tabViews } from "./tabs-store";
+import { settings } from "../settings/settings-store";
+import { DEFAULT_SETTINGS } from "../settings/settings-schema";
+import { sendAgentNotification } from "../lib/native-notification";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import { freshWindowFocusController, processInfo, setup } from "./tab-manager.fixtures";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
 // `@tauri-apps/plugin-notification` API, regardless of the
 // `agentNotifications` setting's value at the time.
-vi.mock('../lib/native-notification', () => ({
+vi.mock("../lib/native-notification", () => ({
   sendAgentNotification: vi.fn(),
 }));
 
@@ -33,7 +33,7 @@ vi.mock('../lib/native-notification', () => ({
 let windowFocus = freshWindowFocusController();
 const windowCloseCalls: number[] = [];
 
-vi.mock('../host/window-host', () => ({
+vi.mock("../host/window-host", () => ({
   // `getCurrentWindow` and `getCurrentWebview` were separate Tauri modules and
   // are now one facade, so a single factory must supply both — two vi.mock
   // calls for the same path would silently keep only the last.
@@ -64,10 +64,10 @@ vi.mock('../host/window-host', () => ({
 beforeEach(() => {
   resetDesktopEnvironmentForTests();
   initializeDesktopEnvironment({
-    platform: 'macos',
-    homeDir: '/Users/dev',
+    platform: "macos",
+    homeDir: "/Users/dev",
   });
-  document.body.innerHTML = '';
+  document.body.innerHTML = "";
   tabViews.value = [];
   activeTabIndex.value = 0;
   windowFocus = freshWindowFocusController();
@@ -87,12 +87,12 @@ afterEach(() => {
   agentQuickPickerOpen.value = false;
 });
 
-describe('TabManager window lifecycle', () => {
+describe("TabManager window lifecycle", () => {
   async function windowSetup(deps: Partial<TabManagerDeps> = {}) {
     const transfer = createMemoryTransferClient();
     const { tm, pty } = setup({
       infos: new Map<number, PaneProcessInfo>([
-        [1, processInfo(1, null, 'zsh', 'idle-shell', null)],
+        [1, processInfo(1, null, "zsh", "idle-shell", null)],
       ]),
       deps: { transfer, closeWindow: async () => {}, ...deps },
     });
@@ -102,7 +102,7 @@ describe('TabManager window lifecycle', () => {
     return { tm, pty, transfer };
   }
 
-  it('removes the emptied tab after a pane moves out, without pushing it onto the reopen stack', async () => {
+  it("removes the emptied tab after a pane moves out, without pushing it onto the reopen stack", async () => {
     const { tm, transfer } = await windowSetup();
     // Two tabs: the window survives the move, so the guard does not fire and
     // the emptied tab is what this test is about.
@@ -110,8 +110,8 @@ describe('TabManager window lifecycle', () => {
     await tm.materialize({ layout: null, cwds: [] });
 
     const promise = tm.movePaneToNewWindow();
-    await vi.waitFor(() => expect(transfer.calls).toContain('await:xfer-1'));
-    transfer.settle('xfer-1', { kind: 'committed' });
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "committed" });
     await promise;
 
     expect(tabViews.value).toHaveLength(1);
@@ -119,14 +119,14 @@ describe('TabManager window lifecycle', () => {
     expect(tabViews.value).toHaveLength(1);
   });
 
-  it('stages the workspace the pane carried, not nulls', async () => {
+  it("stages the workspace the pane carried, not nulls", async () => {
     const { tm, transfer } = await windowSetup();
     await tm.materialize({ layout: null, cwds: [] });
-    await tm.materialize({ layout: null, cwds: [], workspacePath: '/work' });
+    await tm.materialize({ layout: null, cwds: [], workspacePath: "/work" });
 
     const promise = tm.movePaneToNewWindow();
-    await vi.waitFor(() => expect(transfer.calls).toContain('await:xfer-1'));
-    transfer.settle('xfer-1', { kind: 'committed' });
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "committed" });
     await promise;
 
     // Spec §10.2: the tab identity moves WITH the pane. Without the
@@ -135,39 +135,39 @@ describe('TabManager window lifecycle', () => {
     // `dotColor` half of that payload is dormant since 2026-08-16: the
     // plumbing is untouched, but `renameTab`/`setTabDotColor` went with
     // `TabPopover`, so nothing can put a value in it to carry across.
-    await expect(transfer.claimTransfer('xfer-1')).resolves.toMatchObject({
+    await expect(transfer.claimTransfer("xfer-1")).resolves.toMatchObject({
       tabName: null,
       dotColor: null,
-      workspacePath: '/work',
+      workspacePath: "/work",
     });
   });
 
-  it('keeps the tab when the move aborts', async () => {
+  it("keeps the tab when the move aborts", async () => {
     const { tm, transfer } = await windowSetup();
     await tm.materialize({ layout: null, cwds: [] });
     await tm.materialize({ layout: null, cwds: [] });
 
     const promise = tm.movePaneToNewWindow();
-    await vi.waitFor(() => expect(transfer.calls).toContain('await:xfer-1'));
-    transfer.settle('xfer-1', { kind: 'aborted', reason: 'claim-failed' });
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "aborted", reason: "claim-failed" });
     await promise;
 
     expect(tabViews.value).toHaveLength(2);
   });
 
-  it('adopts an offered pane into a new tab of a running window', async () => {
+  it("adopts an offered pane into a new tab of a running window", async () => {
     const { tm, transfer } = await windowSetup();
     const token = await transfer.prepareTransfer(99);
     await transfer.stageTransfer(token, {
       paneId: 99,
-      cwd: '/repo',
+      cwd: "/repo",
       agentId: null,
-      scrollback: '',
+      scrollback: "",
       cols: 100,
       rows: 30,
-      tabName: 'moved',
+      tabName: "moved",
       dotColor: null,
-      workspacePath: '/repo',
+      workspacePath: "/repo",
     });
 
     await expect(tm.adoptIntoNewTab(token)).resolves.toBe(true);
@@ -175,25 +175,25 @@ describe('TabManager window lifecycle', () => {
     expect(tm.allPaneIds()).toContain(99);
   });
 
-  it('starts no transfer when the move-to-window payload has no usable label', async () => {
+  it("starts no transfer when the move-to-window payload has no usable label", async () => {
     const { tm, transfer } = await windowSetup();
     await tm.materialize({ layout: null, cwds: [] });
 
     // What the listener would receive for a malformed emit: no label at all.
-    transfer.moveToWindow('');
+    transfer.moveToWindow("");
 
     expect(transfer.calls).toEqual([]);
     expect(tabViews.value).toHaveLength(1);
   });
 });
 
-describe('TabManager move-to-new-window guard', () => {
+describe("TabManager move-to-new-window guard", () => {
   async function guardSetup() {
     const transfer = createMemoryTransferClient();
     const { tm } = setup({
       infos: new Map<number, PaneProcessInfo>([
-        [1, processInfo(1, null, 'zsh', 'idle-shell', null)],
-        [2, processInfo(2, null, 'zsh', 'idle-shell', null)],
+        [1, processInfo(1, null, "zsh", "idle-shell", null)],
+        [2, processInfo(2, null, "zsh", "idle-shell", null)],
       ]),
       deps: { transfer, closeWindow: async () => {} },
     });
@@ -214,7 +214,7 @@ describe('TabManager move-to-new-window guard', () => {
     expect(tabViews.value).toHaveLength(1);
   });
 
-  it('allows it when another tab keeps the window alive', async () => {
+  it("allows it when another tab keeps the window alive", async () => {
     // The condition is WINDOW-level, not tab-level: a second tab means the
     // window survives, so splitting this tab out is a real move.
     const { tm, transfer } = await guardSetup();
@@ -222,23 +222,23 @@ describe('TabManager move-to-new-window guard', () => {
     await tm.materialize({ layout: null, cwds: [] });
 
     const promise = tm.movePaneToNewWindow();
-    await vi.waitFor(() => expect(transfer.calls).toContain('await:xfer-1'));
-    transfer.settle('xfer-1', { kind: 'committed' });
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "committed" });
     await promise;
 
     expect(tabViews.value).toHaveLength(1);
   });
 
-  it('still offers the only pane to an EXISTING window', async () => {
+  it("still offers the only pane to an EXISTING window", async () => {
     // Merging into another window is meaningful even from a one-pane window:
     // the pane lands there and this window closes. Only the new-window path
     // is guarded.
     const { tm, transfer } = await guardSetup();
     await tm.materialize({ layout: null, cwds: [] });
 
-    transfer.moveToWindow('deck-2');
-    await vi.waitFor(() => expect(transfer.calls).toContain('await:xfer-1'));
-    transfer.settle('xfer-1', { kind: 'committed' });
-    await vi.waitFor(() => expect(transfer.calls).toContain('offer:xfer-1:deck-2'));
+    transfer.moveToWindow("deck-2");
+    await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
+    transfer.settle("xfer-1", { kind: "committed" });
+    await vi.waitFor(() => expect(transfer.calls).toContain("offer:xfer-1:deck-2"));
   });
 });

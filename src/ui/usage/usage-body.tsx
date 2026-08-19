@@ -1,10 +1,10 @@
-import { usageLoading, usageSnapshot, usageStale } from '../../usage/usage-store';
-import { activeUsageView } from './active-usage-view-store';
-import { UsageNav } from './usage-nav';
-import { UsageStatus } from './usage-status';
-import { USAGE_VIEWS, VIEW_PANEL_ID, viewTabId } from './usage-views';
+import { usageLoading, usageSnapshot, usageStale } from "../../usage/usage-store";
+import { activeUsageView } from "./active-usage-view-store";
+import { UsageNav } from "./usage-nav";
+import { UsageStatus } from "./usage-status";
+import { USAGE_VIEWS, VIEW_PANEL_ID, viewTabId } from "./usage-views";
 
-export type UsageBodyVariant = 'screen' | 'dock';
+export type UsageBodyVariant = "screen" | "dock";
 
 interface UsageBodyProps {
   /**
@@ -45,15 +45,15 @@ interface UsageBodyProps {
  * same time. Mounting both variants simultaneously would duplicate DOM ids
  * and needs those made per-instance first.
  */
-export function UsageBody({ variant = 'screen' }: UsageBodyProps) {
+export function UsageBody({ variant = "screen" }: UsageBodyProps) {
   // Falls back to the first view rather than rendering an empty panel: an
   // unknown id can only come from a stale signal, and a blank screen is a
   // worse answer than the default one.
   const active = USAGE_VIEWS.find((view) => view.id === activeUsageView.value) ?? USAGE_VIEWS[0];
   const View = active.Section;
 
-  const gridClass = variant === 'dock' ? 'usage-dock__grid' : 'usage-screen__grid';
-  const sectionClass = variant === 'dock' ? 'usage-dock__section' : 'usage-screen__section';
+  const gridClass = variant === "dock" ? "usage-dock__grid" : "usage-screen__grid";
+  const sectionClass = variant === "dock" ? "usage-dock__section" : "usage-screen__section";
 
   return (
     <>

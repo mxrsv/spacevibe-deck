@@ -37,7 +37,7 @@ files:
 # node-pty is a native module: it cannot load from inside the asar, and its
 # helper binaries must keep their executable modes.
 asarUnpack:
-  - '**/node_modules/node-pty/**'
+  - "**/node_modules/node-pty/**"
 mac:
   target:
     - target: dir

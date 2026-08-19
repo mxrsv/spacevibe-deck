@@ -1,29 +1,29 @@
-import { CaretDown } from '@phosphor-icons/react';
-import { useSignal } from '@preact/signals';
-import { open } from '../../host/dialog-host';
+import { CaretDown } from "@phosphor-icons/react";
+import { useSignal } from "@preact/signals";
+import { open } from "../../host/dialog-host";
 import {
   selectSidebarBanner,
   setSidebarBannerEnabled,
   setSidebarBannerFromPath,
   sidebarBanner,
-} from '../../settings/sidebar-banner-store';
+} from "../../settings/sidebar-banner-store";
 import {
   getSidebarBannerPreset,
   SIDEBAR_BANNER_PRESETS,
-} from '../../settings/sidebar-banner-presets';
-import { ConfigGroup, ConfigRow } from '../controls/config-row';
-import { DeckIcon, ROW_ICON } from '../controls/deck-icon';
+} from "../../settings/sidebar-banner-presets";
+import { ConfigGroup, ConfigRow } from "../controls/config-row";
+import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 
-const OFF_VALUE = 'off';
-const CHOOSE_IMAGE_VALUE = 'choose-image';
+const OFF_VALUE = "off";
+const CHOOSE_IMAGE_VALUE = "choose-image";
 
 export function SidebarBannerSettings() {
   const error = useSignal<string | null>(null);
   const state = sidebarBanner.value;
   const controlValue = state.enabled ? state.selection : OFF_VALUE;
   const selectedLabel = state.enabled
-    ? state.selection === 'custom'
-      ? 'custom image'
+    ? state.selection === "custom"
+      ? "custom image"
       : getSidebarBannerPreset(state.selection).label
     : OFF_VALUE;
 
@@ -32,9 +32,9 @@ export function SidebarBannerSettings() {
       const picked = await open({
         multiple: false,
         directory: false,
-        filters: [{ name: 'Image', extensions: ['png', 'jpg', 'jpeg', 'svg', 'webp'] }],
+        filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "svg", "webp"] }],
       });
-      if (typeof picked !== 'string') {
+      if (typeof picked !== "string") {
         return;
       }
       error.value = null;
@@ -76,7 +76,7 @@ export function SidebarBannerSettings() {
                 {preset.label}
               </option>
             ))}
-            {state.customImage !== '' ? <option value="custom">Custom image</option> : null}
+            {state.customImage !== "" ? <option value="custom">Custom image</option> : null}
             <option value={CHOOSE_IMAGE_VALUE}>Choose image…</option>
           </select>
         </span>

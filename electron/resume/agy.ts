@@ -18,12 +18,12 @@
  * fallback. `resolve.ts` falls total scan failure back to
  * `{ kind: "latest" }`, since `agy --continue` needs no id at all.
  */
-import { lstatSync, readdirSync } from 'node:fs';
-import path from 'node:path';
-import { headBytes, type CandidateSession } from './head';
+import { lstatSync, readdirSync } from "node:fs";
+import path from "node:path";
+import { headBytes, type CandidateSession } from "./head";
 
-const AGY_CONVERSATIONS_DIR = path.join('.gemini', 'antigravity', 'conversations');
-const AGY_EXTENSION = '.pb';
+const AGY_CONVERSATIONS_DIR = path.join(".gemini", "antigravity", "conversations");
+const AGY_EXTENSION = ".pb";
 
 /** Enough of the file to plausibly contain the session's opening cwd write,
  * without reading a potentially large binary conversation blob in full. */
@@ -72,11 +72,11 @@ function datedConversations(root: string): DatedFile[] {
 
 function readCandidate(entry: DatedFile): CandidateSession | null {
   const id = path.basename(entry.filePath, AGY_EXTENSION);
-  if (id === '') {
+  if (id === "") {
     return null;
   }
   const head = headBytes(entry.filePath, HEAD_BYTES);
-  const headHaystack = head === null ? undefined : head.toString('latin1');
+  const headHaystack = head === null ? undefined : head.toString("latin1");
   return { id, cwd: null, mtimeMs: entry.mtimeMs, headHaystack };
 }
 

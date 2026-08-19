@@ -1,4 +1,4 @@
-import { normalizeWorkspacePath } from './workspace-label';
+import { normalizeWorkspacePath } from "./workspace-label";
 
 export const WORKSPACES_VERSION = 2;
 export const MAX_RECENTS = 8;
@@ -27,7 +27,7 @@ export interface WorkspacesData {
  */
 export function validateWorkspaces(raw: unknown): WorkspacesData {
   const empty: WorkspacesData = { version: WORKSPACES_VERSION, recents: [] };
-  if (typeof raw !== 'object' || raw === null) {
+  if (typeof raw !== "object" || raw === null) {
     return empty;
   }
   const source = raw as Record<string, unknown>;
@@ -39,14 +39,14 @@ export function validateWorkspaces(raw: unknown): WorkspacesData {
   }
   const recents: RecentWorkspace[] = [];
   for (const entry of source.recents.slice(0, MAX_RECENTS)) {
-    if (typeof entry !== 'object' || entry === null) {
+    if (typeof entry !== "object" || entry === null) {
       continue;
     }
     const record = entry as Record<string, unknown>;
     if (
-      typeof record.path === 'string' &&
-      record.path !== '' &&
-      typeof record.lastOpenedAt === 'number' &&
+      typeof record.path === "string" &&
+      record.path !== "" &&
+      typeof record.lastOpenedAt === "number" &&
       Number.isFinite(record.lastOpenedAt) &&
       !recents.some((r) => r.path === record.path)
     ) {
@@ -63,14 +63,14 @@ export function validateWorkspaces(raw: unknown): WorkspacesData {
 /** Keep only well-formed combo fields; a bad field is dropped, not the entry. */
 function validateCombo(
   record: Record<string, unknown>,
-): Pick<RecentWorkspace, 'lastPresetId' | 'lastAgent'> {
+): Pick<RecentWorkspace, "lastPresetId" | "lastAgent"> {
   const combo: { lastPresetId?: string; lastAgent?: AgentChoice } = {};
-  if (typeof record.lastPresetId === 'string' && record.lastPresetId !== '') {
+  if (typeof record.lastPresetId === "string" && record.lastPresetId !== "") {
     combo.lastPresetId = record.lastPresetId;
   }
   if (
     record.lastAgent === null ||
-    (typeof record.lastAgent === 'string' && record.lastAgent !== '')
+    (typeof record.lastAgent === "string" && record.lastAgent !== "")
   ) {
     combo.lastAgent = record.lastAgent;
   }
@@ -198,9 +198,9 @@ export function agentForWorkspace(
 }
 
 export function folderName(path: string): string {
-  const trimmed = path.endsWith('/') && path !== '/' ? path.slice(0, -1) : path;
-  const segment = trimmed.slice(trimmed.lastIndexOf('/') + 1);
-  return segment === '' ? trimmed : segment;
+  const trimmed = path.endsWith("/") && path !== "/" ? path.slice(0, -1) : path;
+  const segment = trimmed.slice(trimmed.lastIndexOf("/") + 1);
+  return segment === "" ? trimmed : segment;
 }
 
 const MINUTE = 60_000;
@@ -213,29 +213,29 @@ const YEAR = 365 * DAY;
 export function formatRelativeTime(then: number, now: number): string {
   const age = Math.max(0, now - then);
   if (age < MINUTE) {
-    return 'just now';
+    return "just now";
   }
   if (age < HOUR) {
-    return ago(Math.floor(age / MINUTE), 'minute');
+    return ago(Math.floor(age / MINUTE), "minute");
   }
   if (age < DAY) {
-    return ago(Math.floor(age / HOUR), 'hour');
+    return ago(Math.floor(age / HOUR), "hour");
   }
   if (age < 2 * DAY) {
-    return 'Yesterday';
+    return "Yesterday";
   }
   if (age < WEEK) {
-    return ago(Math.floor(age / DAY), 'day');
+    return ago(Math.floor(age / DAY), "day");
   }
   if (age < MONTH) {
-    return ago(Math.floor(age / WEEK), 'week');
+    return ago(Math.floor(age / WEEK), "week");
   }
   if (age < YEAR) {
-    return ago(Math.floor(age / MONTH), 'month');
+    return ago(Math.floor(age / MONTH), "month");
   }
-  return ago(Math.floor(age / YEAR), 'year');
+  return ago(Math.floor(age / YEAR), "year");
 }
 
 function ago(count: number, unit: string): string {
-  return `${count} ${unit}${count === 1 ? '' : 's'} ago`;
+  return `${count} ${unit}${count === 1 ? "" : "s"} ago`;
 }

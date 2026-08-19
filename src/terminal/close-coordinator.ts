@@ -1,4 +1,4 @@
-import type { TerminalManager } from './terminal-manager';
+import type { TerminalManager } from "./terminal-manager";
 
 /**
  * Dependencies the Close coordinator needs from TabManager.

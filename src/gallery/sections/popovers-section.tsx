@@ -1,14 +1,14 @@
-import { ChatText } from '@phosphor-icons/react';
-import { useSignal } from '@preact/signals';
-import { CHROME_ICON, DeckIcon } from '../../ui/controls/deck-icon';
-import { PromptPopover } from '../../prompts/prompt-popover';
-import type { PromptTarget } from '../../prompts/inject';
+import { ChatText } from "@phosphor-icons/react";
+import { useSignal } from "@preact/signals";
+import { CHROME_ICON, DeckIcon } from "../../ui/controls/deck-icon";
+import { PromptPopover } from "../../prompts/prompt-popover";
+import type { PromptTarget } from "../../prompts/inject";
 import {
   EMPTY_PROMPT_ASSETS,
   type PromptAssets,
   defaultPromptAssetsClient,
-} from '../../prompts/prompt-assets-client';
-import { SectionHead, Specimen } from '../specimen';
+} from "../../prompts/prompt-assets-client";
+import { SectionHead, Specimen } from "../specimen";
 
 /**
  * DL §13's anchored popover, live.
@@ -25,8 +25,8 @@ import { SectionHead, Specimen } from '../specimen';
 
 const TARGET: PromptTarget = {
   paneId: 1,
-  agent: 'claude',
-  cwd: '/Users/deck/spacevibe-deck',
+  agent: "claude",
+  cwd: "/Users/deck/spacevibe-deck",
 };
 
 function PromptPopoverSpecimen() {
@@ -57,7 +57,7 @@ function PromptPopoverSpecimen() {
           <PromptPopover
             capture={async () => TARGET}
             loadAssets={loadAssets}
-            inject={async () => 'pasted'}
+            inject={async () => "pasted"}
             isAlive={() => true}
             onClose={() => {
               open.value = false;

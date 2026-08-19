@@ -1,5 +1,5 @@
-import { resolveSidebarBannerCustomImage, sidebarBanner } from '../settings/sidebar-banner-store';
-import { getSidebarBannerPreset } from '../settings/sidebar-banner-presets';
+import { resolveSidebarBannerCustomImage, sidebarBanner } from "../settings/sidebar-banner-store";
+import { getSidebarBannerPreset } from "../settings/sidebar-banner-presets";
 
 /** Decorative only: selection and import controls live in Appearance. */
 export function SidebarBanner() {
@@ -8,12 +8,12 @@ export function SidebarBanner() {
     return null;
   }
   const customImage = resolveSidebarBannerCustomImage(state);
-  const preset = state.selection === 'custom' ? null : getSidebarBannerPreset(state.selection);
+  const preset = state.selection === "custom" ? null : getSidebarBannerPreset(state.selection);
   return (
     // DL-26.1: one wrapper, one treatment class, for both artwork kinds —
     // the class sits on the shared wrapper so neither branch can drop it.
     <div class="sidebar-banner sidebar-banner--woven" aria-hidden="true">
-      {customImage !== '' ? (
+      {customImage !== "" ? (
         <img src={customImage} alt="" draggable={false} />
       ) : preset !== null ? (
         <span class="sidebar-banner__art" style={{ background: preset.background }}>

@@ -5,12 +5,12 @@
  * a reason recorded in the Rust source and repeated here, because losing one
  * of them breaks something a user can see while leaving the pane looking fine.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import * as pty from 'node-pty';
-import { app } from 'electron';
-import * as macos from '../platform/macos';
-import * as windows from '../platform/windows';
+import fs from "node:fs";
+import path from "node:path";
+import * as pty from "node-pty";
+import { app } from "electron";
+import * as macos from "../platform/macos";
+import * as windows from "../platform/windows";
 
 export interface SpawnOptions {
   readonly cols: number;
@@ -19,7 +19,7 @@ export interface SpawnOptions {
 }
 
 function platform() {
-  return process.platform === 'win32' ? windows : macos;
+  return process.platform === "win32" ? windows : macos;
 }
 
 /**
@@ -63,13 +63,13 @@ export function resolveSpawnCwd(cwd: string | null, home: string): string {
 export function buildEnv(base: NodeJS.ProcessEnv, version: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...base,
-    TERM: 'xterm-256color',
-    COLORTERM: 'truecolor',
-    TERM_PROGRAM: 'SpaceVibeDeck',
+    TERM: "xterm-256color",
+    COLORTERM: "truecolor",
+    TERM_PROGRAM: "SpaceVibeDeck",
     TERM_PROGRAM_VERSION: version,
   };
-  if (process.platform === 'darwin') {
-    env.ConEmuANSI = 'ON';
+  if (process.platform === "darwin") {
+    env.ConEmuANSI = "ON";
   }
   return env;
 }
@@ -91,7 +91,7 @@ export function spawnShell(options: SpawnOptions): SpawnedShell {
   const launch = platform().shellLaunch();
   const home = platform().userHome();
   const session = pty.spawn(launch.executable, [...launch.args], {
-    name: 'xterm-256color',
+    name: "xterm-256color",
     cols: options.cols,
     rows: options.rows,
     cwd: resolveSpawnCwd(options.cwd, home),
@@ -109,8 +109,8 @@ export function spawnShell(options: SpawnOptions): SpawnedShell {
  * `unknown` instead of guessing.
  */
 function ptsName(session: pty.IPty): string {
-  const raw = (session as unknown as { ptsName?: string }).ptsName ?? '';
-  return raw.startsWith('/dev/') ? raw.slice('/dev/'.length) : raw;
+  const raw = (session as unknown as { ptsName?: string }).ptsName ?? "";
+  return raw.startsWith("/dev/") ? raw.slice("/dev/".length) : raw;
 }
 
 /** Absolute path of a workspace folder, for the tab title. Kept here so the

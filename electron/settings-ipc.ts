@@ -3,10 +3,10 @@
  * settings store, re-resolves the menu keymap from the merged result, and
  * broadcasts the merge to every window.
  */
-import { ipcMain, type BrowserWindow } from 'electron';
-import { CHANNELS, EVENTS } from './ipc/channels';
-import { applySettingsPatch } from './settings-merge';
-import type { StoreRegistry } from './store';
+import { ipcMain, type BrowserWindow } from "electron";
+import { CHANNELS, EVENTS } from "./ipc/channels";
+import { applySettingsPatch } from "./settings-merge";
+import type { StoreRegistry } from "./store";
 
 export interface SettingsIpcDeps {
   readonly stores: StoreRegistry;

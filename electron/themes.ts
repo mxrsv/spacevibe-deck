@@ -11,9 +11,9 @@
  * moves bytes, which is why a malformed file costs a card in the gallery rather
  * than a main-process throw.
  */
-import { app, BrowserWindow, dialog, shell } from 'electron';
-import { copyFile, mkdir, readdir, readFile, stat } from 'node:fs/promises';
-import { basename, extname, join } from 'node:path';
+import { app, BrowserWindow, dialog, shell } from "electron";
+import { copyFile, mkdir, readdir, readFile, stat } from "node:fs/promises";
+import { basename, extname, join } from "node:path";
 
 /**
  * Extensions the picker offers and the scan reads.
@@ -24,7 +24,7 @@ import { basename, extname, join } from 'node:path';
  * would drag `@xterm/xterm` types across a boundary that otherwise moves only
  * strings. `themes.test.ts` fails if the two lists drift.
  */
-const THEME_EXTENSIONS = ['json', 'itermcolors', 'toml', 'conf', 'theme', 'txt'] as const;
+const THEME_EXTENSIONS = ["json", "itermcolors", "toml", "conf", "theme", "txt"] as const;
 
 /**
  * Per-file ceiling. A terminal palette is twenty-odd colours — the largest
@@ -59,7 +59,7 @@ export interface ThemeScan {
 }
 
 export function themesDir(): string {
-  return join(app.getPath('userData'), 'themes');
+  return join(app.getPath("userData"), "themes");
 }
 
 /**
@@ -98,7 +98,7 @@ export async function listThemes(): Promise<ThemeScan> {
   const entries: ThemeFileEntry[] = [];
   const rejected: ThemeFileRejection[] = [];
   for (const { fileName, result } of read) {
-    if (typeof result === 'string') {
+    if (typeof result === "string") {
       entries.push({ fileName, content: result });
     } else {
       // A file sitting in the themes folder that cannot be read is a theme the
@@ -117,14 +117,14 @@ export async function listThemes(): Promise<ThemeScan> {
  */
 export async function importThemes(window: BrowserWindow | null): Promise<ThemeScan> {
   const options: Electron.OpenDialogOptions = {
-    title: 'Import terminal themes',
-    properties: ['openFile', 'multiSelections'],
+    title: "Import terminal themes",
+    properties: ["openFile", "multiSelections"],
     filters: [
       // "All files" stays on the list because Ghostty ships its themes with NO
       // extension at all — a picker restricted to the named extensions could
       // not open half the collection this feature exists to read.
-      { name: 'Terminal themes', extensions: [...THEME_EXTENSIONS] },
-      { name: 'All files', extensions: ['*'] },
+      { name: "Terminal themes", extensions: [...THEME_EXTENSIONS] },
+      { name: "All files", extensions: ["*"] },
     ],
   };
   const picked =
@@ -161,7 +161,7 @@ export async function importThemes(window: BrowserWindow | null): Promise<ThemeS
       // A full disk or a source that vanished between the pick and the copy.
       // One file's problem, never the whole import's — but it is still the
       // user's file, so it leaves with a reason rather than in silence.
-      rejected.push({ fileName, reason: 'the file could not be copied in' });
+      rejected.push({ fileName, reason: "the file could not be copied in" });
     }
   }
   const scan = await listThemes();
@@ -171,18 +171,18 @@ export async function importThemes(window: BrowserWindow | null): Promise<ThemeS
 /** The reason this file cannot become a theme, or null when it can. */
 async function refuseImport(source: string, fileName: string): Promise<string | null> {
   if (!isThemeFileName(fileName)) {
-    return `${extname(fileName) || 'this file type'} is not a theme file`;
+    return `${extname(fileName) || "this file type"} is not a theme file`;
   }
   try {
     const info = await stat(source);
     if (!info.isFile()) {
-      return 'not a file';
+      return "not a file";
     }
     if (info.size > MAX_FILE_BYTES) {
       return `too large to be a theme (over ${MAX_FILE_BYTES / 1024} KB)`;
     }
   } catch {
-    return 'the file could not be read';
+    return "the file could not be read";
   }
   return null;
 }
@@ -202,11 +202,11 @@ export async function revealThemes(): Promise<void> {
  * Dotfiles do not — `.DS_Store` also has no extension, and it is never a theme.
  */
 export function isThemeFileName(fileName: string): boolean {
-  if (fileName.startsWith('.')) {
+  if (fileName.startsWith(".")) {
     return false;
   }
   const extension = extname(fileName).slice(1).toLowerCase();
-  return extension === '' || (THEME_EXTENSIONS as readonly string[]).includes(extension);
+  return extension === "" || (THEME_EXTENSIONS as readonly string[]).includes(extension);
 }
 
 /** File text, or the reason it is not readable as a theme. */
@@ -214,16 +214,16 @@ async function readIfSmall(path: string): Promise<string | { reason: string }> {
   try {
     const info = await stat(path);
     if (!info.isFile()) {
-      return { reason: 'not a file' };
+      return { reason: "not a file" };
     }
     if (info.size > MAX_FILE_BYTES) {
       return {
         reason: `too large to be a theme (over ${MAX_FILE_BYTES / 1024} KB)`,
       };
     }
-    return await readFile(path, 'utf8');
+    return await readFile(path, "utf8");
   } catch {
-    return { reason: 'the file could not be read' };
+    return { reason: "the file could not be read" };
   }
 }
 

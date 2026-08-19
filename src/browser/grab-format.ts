@@ -36,7 +36,7 @@ export interface GrabLike {
 export function sanitizeGrabText(text: string): string {
   return (
     text
-      .replace(/\r\n?/g, '\n')
+      .replace(/\r\n?/g, "\n")
       // Every C0 control except tab (\u0009) and newline (\u000A), then DEL and
       // the whole C1 block. Written as code points, never as literal
       // characters: an invisible ESC inside a character class is precisely the
@@ -48,8 +48,8 @@ export function sanitizeGrabText(text: string): string {
       // honouring 8-bit controls reads it as the end of the paste. That is the
       // same escape this function exists to prevent, spelled differently.
       // oxlint-disable-next-line no-control-regex -- the filter's job is matching C0/C1 controls
-      .replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, '')
-      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, "")
+      .replace(/\n{3,}/g, "\n\n")
       .trimEnd()
   );
 }
@@ -64,11 +64,11 @@ export function sanitizeGrabText(text: string): string {
  */
 export function formatGrab(grab: GrabLike): string | null {
   const body = sanitizeGrabText(grab.text);
-  if (body === '') {
+  if (body === "") {
     return null;
   }
-  const url = sanitizeGrabText(grab.url).split('\n')[0]?.trim() ?? '';
-  const withSource = url === '' ? body : `${body}\n\nPage: ${url}`;
+  const url = sanitizeGrabText(grab.url).split("\n")[0]?.trim() ?? "";
+  const withSource = url === "" ? body : `${body}\n\nPage: ${url}`;
   return withSource.slice(0, MAX_GRAB_CHARS);
 }
 
@@ -80,12 +80,12 @@ export function formatGrab(grab: GrabLike): string | null {
  * now fires with a focused pane sitting right there. The `pasted` branch is
  * kept for the revert that flips that constant back.
  */
-export function grabSummary(count: number, outcome: 'pasted' | 'clipboard' | 'failed'): string {
-  const what = count > 1 ? `${count} elements` : 'Element';
-  if (outcome === 'pasted') {
+export function grabSummary(count: number, outcome: "pasted" | "clipboard" | "failed"): string {
+  const what = count > 1 ? `${count} elements` : "Element";
+  if (outcome === "pasted") {
     return `${what} sent to the focused pane`;
   }
-  if (outcome === 'clipboard') {
+  if (outcome === "clipboard") {
     return `${what} copied to the clipboard`;
   }
   return `${what} could not be copied`;

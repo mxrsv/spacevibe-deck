@@ -1,14 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SurfaceStrip } from '../terminal/tab-manager';
-import type { BrowserClient, BrowserState } from '../browser/browser-client';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SurfaceStrip } from "../terminal/tab-manager";
+import type { BrowserClient, BrowserState } from "../browser/browser-client";
 import {
   browserOpen,
   browserSurfaceActive,
   EMPTY_STATE,
   resetBrowserStore,
-} from '../browser/browser-store';
-import { composeSurfaceStrip } from './stage-surface-strip';
-import { DEFAULT_SETTINGS } from '../settings/settings-schema';
+} from "../browser/browser-store";
+import { composeSurfaceStrip } from "./stage-surface-strip";
+import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 
 function state(overrides: Partial<BrowserState> = {}): BrowserState {
   return { ...EMPTY_STATE, ...overrides };
@@ -51,11 +51,11 @@ beforeEach(() => {
   resetBrowserStore();
 });
 
-describe('composeSurfaceStrip with the browser tab closed', () => {
+describe("composeSurfaceStrip with the browser tab closed", () => {
   // The invariant protecting every existing TabManager behavior: while no
   // browser tab exists, the composed strip must be indistinguishable from
   // the file controller it wraps.
-  it('delegates every method bit-identically to the file strip', async () => {
+  it("delegates every method bit-identically to the file strip", async () => {
     const files = fakeFiles({ activeIndex: vi.fn(() => 1) });
     const onChanged = vi.fn();
     const strip = composeSurfaceStrip({
@@ -84,7 +84,7 @@ describe('composeSurfaceStrip with the browser tab closed', () => {
   });
 });
 
-describe('composeSurfaceStrip with the browser tab open', () => {
+describe("composeSurfaceStrip with the browser tab open", () => {
   it("appends the browser as the segment's last surface", () => {
     browserOpen.value = true;
     const strip = composeSurfaceStrip({
@@ -100,7 +100,7 @@ describe('composeSurfaceStrip with the browser tab open', () => {
     expect(strip.activeIndex()).toBe(2); // files.count() — after the files
   });
 
-  it('activating the browser index steps the file surface back', () => {
+  it("activating the browser index steps the file surface back", () => {
     browserOpen.value = true;
     const files = fakeFiles();
     const onChanged = vi.fn();
@@ -121,7 +121,7 @@ describe('composeSurfaceStrip with the browser tab open', () => {
     expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
-  it('activating a file index steps the browser back and hides its view', () => {
+  it("activating a file index steps the browser back and hides its view", () => {
     browserOpen.value = true;
     browserSurfaceActive.value = true;
     const files = fakeFiles();
@@ -137,7 +137,7 @@ describe('composeSurfaceStrip with the browser tab open', () => {
     expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
-  it('deactivate steps both surfaces back (a terminal took the stage)', () => {
+  it("deactivate steps both surfaces back (a terminal took the stage)", () => {
     browserOpen.value = true;
     browserSurfaceActive.value = true;
     const files = fakeFiles();
@@ -150,7 +150,7 @@ describe('composeSurfaceStrip with the browser tab open', () => {
     expect(files.deactivate).toHaveBeenCalledTimes(1);
   });
 
-  it('⌘W routes to the browser tab while it holds the stage', async () => {
+  it("⌘W routes to the browser tab while it holds the stage", async () => {
     browserOpen.value = true;
     browserSurfaceActive.value = true;
     const files = fakeFiles();
@@ -168,7 +168,7 @@ describe('composeSurfaceStrip with the browser tab open', () => {
     expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
-  it('save and focus are browser no-ops, never misrouted to the files', async () => {
+  it("save and focus are browser no-ops, never misrouted to the files", async () => {
     browserOpen.value = true;
     browserSurfaceActive.value = true;
     const files = fakeFiles();

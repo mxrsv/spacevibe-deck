@@ -6,13 +6,13 @@ import {
   SquareSplitHorizontal,
   SquareSplitVertical,
   XSquare,
-} from '@phosphor-icons/react';
-import type { ComponentChildren } from 'preact';
-import { ACTION_REGISTRY, type ActionId } from '../../terminal/action-registry';
-import { shortcutLabel } from '../../lib/shortcut-label';
-import { SIDEBAR_TOOLS_HIDDEN } from '../sidebar-actions';
-import { FeatureToolbar } from './feature-toolbar';
-import type { ToolbarItem, ToolbarItemState } from './toolbar-item';
+} from "@phosphor-icons/react";
+import type { ComponentChildren } from "preact";
+import { ACTION_REGISTRY, type ActionId } from "../../terminal/action-registry";
+import { shortcutLabel } from "../../lib/shortcut-label";
+import { SIDEBAR_TOOLS_HIDDEN } from "../sidebar-actions";
+import { FeatureToolbar } from "./feature-toolbar";
+import type { ToolbarItem, ToolbarItemState } from "./toolbar-item";
 
 /**
  * The shipping projection of the feature toolbar — the piece that turns app
@@ -48,14 +48,14 @@ const REGISTRY_LABELS: ReadonlyMap<string, string> = new Map(
 export function toolbarLabel(id: ActionId): string {
   const raw = REGISTRY_LABELS.get(id) ?? id;
   return raw
-    .replace(/…$/, '')
-    .split(' ')
+    .replace(/…$/, "")
+    .split(" ")
     .map((word, index) => (index === 0 ? word : word.toLowerCase()))
-    .join(' ');
+    .join(" ");
 }
 
-const IDLE: ToolbarItemState = { kind: 'idle' };
-const ACTIVE: ToolbarItemState = { kind: 'active' };
+const IDLE: ToolbarItemState = { kind: "idle" };
+const ACTIVE: ToolbarItemState = { kind: "active" };
 
 interface DeckToolbarProps {
   /**
@@ -92,42 +92,42 @@ export function DeckToolbar(props: DeckToolbarProps) {
    */
   const paneItems: ToolbarItem[] = [
     {
-      id: 'split-row',
-      label: toolbarLabel('split-row'),
+      id: "split-row",
+      label: toolbarLabel("split-row"),
       icon: SquareSplitHorizontal,
-      group: 'pane',
-      shortcut: shortcutLabel('split-row'),
+      group: "pane",
+      shortcut: shortcutLabel("split-row"),
       state: IDLE,
       overflowOrder: null,
       onActivate: props.onSplitRow,
     },
     {
-      id: 'split-column',
-      label: toolbarLabel('split-column'),
+      id: "split-column",
+      label: toolbarLabel("split-column"),
       icon: SquareSplitVertical,
-      group: 'pane',
-      shortcut: shortcutLabel('split-column'),
+      group: "pane",
+      shortcut: shortcutLabel("split-column"),
       state: IDLE,
       overflowOrder: null,
       onActivate: props.onSplitColumn,
     },
     {
-      id: 'toggle-expand',
-      label: toolbarLabel('toggle-expand'),
+      id: "toggle-expand",
+      label: toolbarLabel("toggle-expand"),
       icon: ArrowsOut,
-      group: 'pane',
-      shortcut: shortcutLabel('toggle-expand'),
+      group: "pane",
+      shortcut: shortcutLabel("toggle-expand"),
       state: props.expandActive ? ACTIVE : IDLE,
       overflowOrder: null,
-      toggles: 'pressed',
+      toggles: "pressed",
       onActivate: props.onToggleExpand,
     },
     {
-      id: 'close-pane',
-      label: toolbarLabel('close-pane'),
+      id: "close-pane",
+      label: toolbarLabel("close-pane"),
       icon: XSquare,
-      group: 'pane',
-      shortcut: shortcutLabel('close-pane'),
+      group: "pane",
+      shortcut: shortcutLabel("close-pane"),
       state: IDLE,
       overflowOrder: null,
       onActivate: props.onClosePane,
@@ -136,43 +136,43 @@ export function DeckToolbar(props: DeckToolbarProps) {
 
   const globalItems: ToolbarItem[] = [
     {
-      id: 'toggle-browser',
-      label: toolbarLabel('toggle-browser'),
+      id: "toggle-browser",
+      label: toolbarLabel("toggle-browser"),
       icon: Globe,
-      group: 'global',
-      shortcut: shortcutLabel('toggle-browser'),
+      group: "global",
+      shortcut: shortcutLabel("toggle-browser"),
       state: props.browserActive ? ACTIVE : IDLE,
       overflowOrder: null,
-      toggles: 'pressed',
+      toggles: "pressed",
       onActivate: props.onToggleBrowser,
     },
     {
-      id: 'toggle-prompts',
-      label: toolbarLabel('toggle-prompts'),
+      id: "toggle-prompts",
+      label: toolbarLabel("toggle-prompts"),
       icon: ChatText,
-      group: 'global',
-      shortcut: shortcutLabel('toggle-prompts'),
+      group: "global",
+      shortcut: shortcutLabel("toggle-prompts"),
       state:
         props.promptsUnavailable !== null
-          ? { kind: 'unavailable', reason: props.promptsUnavailable }
+          ? { kind: "unavailable", reason: props.promptsUnavailable }
           : props.promptsOpen
             ? ACTIVE
             : IDLE,
       overflowOrder: null,
-      toggles: 'dialog',
+      toggles: "dialog",
       anchored: props.promptsOpen ? props.promptPopover : undefined,
       onActivate: props.onTogglePrompts,
     },
     {
-      id: 'toggle-settings',
-      label: toolbarLabel('toggle-settings'),
+      id: "toggle-settings",
+      label: toolbarLabel("toggle-settings"),
       icon: Gear,
-      group: 'global',
-      shortcut: shortcutLabel('toggle-settings'),
+      group: "global",
+      shortcut: shortcutLabel("toggle-settings"),
       state: props.settingsOpen ? ACTIVE : IDLE,
       overflowOrder: null,
-      toggles: 'pressed',
-      controlClass: 'iconbtn--gear',
+      toggles: "pressed",
+      controlClass: "iconbtn--gear",
       onActivate: props.onToggleSettings,
     },
   ];

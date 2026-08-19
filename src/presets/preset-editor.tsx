@@ -1,8 +1,8 @@
-import { useSignal, type Signal } from '@preact/signals';
-import { open } from '../host/dialog-host';
-import { leafIds, type Path, type TreeNode } from '../lib/split-tree';
-import { hasPrimaryModifier } from '../lib/platform';
-import { Modal } from '../ui/modal';
+import { useSignal, type Signal } from "@preact/signals";
+import { open } from "../host/dialog-host";
+import { leafIds, type Path, type TreeNode } from "../lib/split-tree";
+import { hasPrimaryModifier } from "../lib/platform";
+import { Modal } from "../ui/modal";
 import {
   canRemove,
   createMockModel,
@@ -16,7 +16,7 @@ import {
   toPresetArtifact,
   type MockModel,
   type PresetArtifact,
-} from './mock-model';
+} from "./mock-model";
 
 export interface PresetEditorProps {
   onCancel(): void;
@@ -32,23 +32,23 @@ interface MockNodeProps {
 }
 
 function MockNode({ node, path, model }: MockNodeProps) {
-  if (node.kind === 'leaf') {
+  if (node.kind === "leaf") {
     const index = leafIds(model.value.tree).indexOf(node.paneId);
     const cwd = model.value.cwds.get(node.paneId);
     return (
       <div
-        class={`mock-pane ${node.paneId === model.value.selectedId ? 'is-selected' : ''}`}
+        class={`mock-pane ${node.paneId === model.value.selectedId ? "is-selected" : ""}`}
         onClick={(event) => {
           event.stopPropagation();
           model.value = selectPane(model.value, node.paneId);
         }}
       >
-        <span class="mock-pane__cwd">● {cwd ?? '↑ inherit'}</span>
+        <span class="mock-pane__cwd">● {cwd ?? "↑ inherit"}</span>
         <span class="mock-pane__label">pane {index + 1}</span>
       </div>
     );
   }
-  const row = node.dir === 'row';
+  const row = node.dir === "row";
   function startDrag(event: PointerEvent): void {
     event.preventDefault();
     const box = (event.currentTarget as HTMLElement).parentElement?.getBoundingClientRect();
@@ -61,20 +61,20 @@ function MockNode({ node, path, model }: MockNodeProps) {
       model.value = setMockRatio(model.value, path, ratio);
     }
     function onUp(): void {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
     }
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
   }
   return (
-    <div class={`mock-split ${row ? 'is-row' : 'is-column'}`}>
+    <div class={`mock-split ${row ? "is-row" : "is-column"}`}>
       <div class="mock-branch" style={{ flex: node.ratio }}>
-        <MockNode node={node.a} path={[...path, 'a']} model={model} />
+        <MockNode node={node.a} path={[...path, "a"]} model={model} />
       </div>
-      <div class={`mock-divider ${row ? 'is-row' : 'is-column'}`} onPointerDown={startDrag} />
+      <div class={`mock-divider ${row ? "is-row" : "is-column"}`} onPointerDown={startDrag} />
       <div class="mock-branch" style={{ flex: 1 - node.ratio }}>
-        <MockNode node={node.b} path={[...path, 'b']} model={model} />
+        <MockNode node={node.b} path={[...path, "b"]} model={model} />
       </div>
     </div>
   );
@@ -82,64 +82,64 @@ function MockNode({ node, path, model }: MockNodeProps) {
 
 export function PresetEditor({ onCancel, onCreate }: PresetEditorProps) {
   const model = useSignal<MockModel>(createMockModel());
-  const name = useSignal('');
+  const name = useSignal("");
   const paneCount = leafIds(model.value.tree).length;
   const selectedCwd = model.value.cwds.get(model.value.selectedId);
 
   async function pickCwd(): Promise<void> {
     try {
       const picked = await open({ directory: true, multiple: false });
-      if (typeof picked === 'string') {
+      if (typeof picked === "string") {
         model.value = setSelectedCwd(model.value, picked);
       }
     } catch (err: unknown) {
-      console.warn('Folder picker failed:', err);
+      console.warn("Folder picker failed:", err);
     }
   }
 
   function confirmCreate(): void {
     const trimmed = name.value.trim();
-    if (trimmed !== '') {
+    if (trimmed !== "") {
       onCreate(trimmed, toPresetArtifact(model.value));
     }
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
     if (event.target instanceof HTMLInputElement) {
-      if (event.key === 'Enter') {
+      if (event.key === "Enter") {
         confirmCreate();
       }
       return;
     }
     switch (event.key) {
-      case 'ArrowRight':
+      case "ArrowRight":
         if (hasPrimaryModifier(event)) {
-          model.value = splitSelected(model.value, 'row');
+          model.value = splitSelected(model.value, "row");
         } else {
           model.value = moveSelection(model.value, 1);
         }
         break;
-      case 'ArrowDown':
+      case "ArrowDown":
         if (hasPrimaryModifier(event)) {
-          model.value = splitSelected(model.value, 'column');
+          model.value = splitSelected(model.value, "column");
         } else {
           model.value = moveSelection(model.value, 1);
         }
         break;
-      case 'ArrowLeft':
-      case 'ArrowUp':
+      case "ArrowLeft":
+      case "ArrowUp":
         model.value = moveSelection(model.value, -1);
         break;
-      case 'Backspace':
+      case "Backspace":
         model.value = removeSelected(model.value);
         break;
-      case '[':
+      case "[":
         model.value = nudgeSelected(model.value, -NUDGE_STEP);
         break;
-      case ']':
+      case "]":
         model.value = nudgeSelected(model.value, NUDGE_STEP);
         break;
-      case 'Enter':
+      case "Enter":
         confirmCreate();
         break;
       default:
@@ -166,14 +166,14 @@ export function PresetEditor({ onCancel, onCreate }: PresetEditorProps) {
         <div class="preset-editor__tools">
           <button
             onClick={() => {
-              model.value = splitSelected(model.value, 'row');
+              model.value = splitSelected(model.value, "row");
             }}
           >
             Split right
           </button>
           <button
             onClick={() => {
-              model.value = splitSelected(model.value, 'column');
+              model.value = splitSelected(model.value, "column");
             }}
           >
             Split down
@@ -211,11 +211,11 @@ export function PresetEditor({ onCancel, onCreate }: PresetEditorProps) {
           }}
         />
         <span class="preset-editor__meta">
-          {paneCount} {paneCount === 1 ? 'pane' : 'panes'} · drag dividers
+          {paneCount} {paneCount === 1 ? "pane" : "panes"} · drag dividers
         </span>
         <div class="preset-editor__actions">
           <button onClick={onCancel}>Cancel</button>
-          <button class="is-primary" disabled={name.value.trim() === ''} onClick={confirmCreate}>
+          <button class="is-primary" disabled={name.value.trim() === ""} onClick={confirmCreate}>
             Create tab
           </button>
         </div>

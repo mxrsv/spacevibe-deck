@@ -60,14 +60,14 @@ const INCOMPLETE_SPLIT_ST = /^\x1b\]9;4;\d*(;\d*)?\x1b$/;
  */
 function incompleteCarry(text: string): string {
   for (let i = 0; i < text.length; i += 1) {
-    if (text[i] !== '\x1b') continue;
+    if (text[i] !== "\x1b") continue;
     const candidate = text.slice(i);
     if (candidate.length > OSC_CARRY_LENGTH) continue;
     if (INCOMPLETE_PREFIX.test(candidate) || INCOMPLETE_SPLIT_ST.test(candidate)) {
       return candidate;
     }
   }
-  return '';
+  return "";
 }
 
 /**
@@ -86,7 +86,7 @@ export function parseProgressEvents(carry: string, chunk: string): OscProgressPa
     const state = match[1] === undefined ? CLEAR : Number.parseInt(match[1], 10);
     const progressParam = match[2];
     events.push(
-      progressParam !== undefined && progressParam !== ''
+      progressParam !== undefined && progressParam !== ""
         ? { state, progress: Number.parseInt(progressParam, 10) }
         : { state },
     );
@@ -104,7 +104,7 @@ export function parseProgressEvents(carry: string, chunk: string): OscProgressPa
  * callers that only care about the latest state.
  */
 export function lastProgressState(text: string): number | null {
-  const { events } = parseProgressEvents('', text);
+  const { events } = parseProgressEvents("", text);
   if (events.length === 0) return null;
   return events[events.length - 1].state;
 }

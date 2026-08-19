@@ -13,8 +13,8 @@
  * and `PRICING_SNAPSHOT_DATE` beside the number (spec §Decisions 1).
  */
 
-import { PRICING_SNAPSHOT, type ModelPricing } from './usage-pricing-snapshot';
-import { totalTokens, type UsageCounters } from './usage-snapshot';
+import { PRICING_SNAPSHOT, type ModelPricing } from "./usage-pricing-snapshot";
+import { totalTokens, type UsageCounters } from "./usage-snapshot";
 
 /**
  * Anthropic's published premium for a 1-hour cache write: twice the base
@@ -37,7 +37,7 @@ const MIN_SHOWN_USD = 0.0001;
  * machine and in every test run, and `en-US` is what the rest of the UI's
  * English copy assumes.
  */
-const USD_LOCALE = 'en-US';
+const USD_LOCALE = "en-US";
 const USD_CENTS = new Intl.NumberFormat(USD_LOCALE, {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,

@@ -1,8 +1,8 @@
-import { Repeat } from '@phosphor-icons/react';
-import { clampScrollback, SCROLLBACK_CHOICES } from '../../../settings/settings-schema';
-import { settings, updateSettings } from '../../../settings/settings-store';
-import { DeckIcon, ROW_ICON } from '../../controls/deck-icon';
-import { ConfigRow } from '../../controls/config-row';
+import { Repeat } from "@phosphor-icons/react";
+import { clampScrollback, SCROLLBACK_CHOICES } from "../../../settings/settings-schema";
+import { settings, updateSettings } from "../../../settings/settings-store";
+import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
+import { ConfigRow } from "../../controls/config-row";
 
 function scrollbackLabel(n: number): string {
   if (n >= 1000) {

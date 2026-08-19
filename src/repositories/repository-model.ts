@@ -7,16 +7,16 @@
  * none of them are observable from a screenshot. The component below it only
  * renders what this returns.
  */
-import { workspaceLabel } from '../lib/workspace-label';
-import type { PaneAgent } from '../lib/process-info';
+import { workspaceLabel } from "../lib/workspace-label";
+import type { PaneAgent } from "../lib/process-info";
 import {
   type AgentAttentionSummary,
   type TabView,
   IDLE_ATTENTION_SUMMARY,
-} from '../terminal/tabs-store';
-import type { RepositoryScan } from './repository-client';
+} from "../terminal/tabs-store";
+import type { RepositoryScan } from "./repository-client";
 
-export type WorktreeState = 'missing' | 'attention' | 'working' | 'ready' | 'idle';
+export type WorktreeState = "missing" | "attention" | "working" | "ready" | "idle";
 
 /** One open tab, carrying the index its callbacks need. */
 export interface RailTab {
@@ -68,7 +68,7 @@ export interface WorktreeRow {
 export interface RepositoryGroup {
   /** The repository's common dir, or `plain:<path>` for a folder. */
   readonly key: string;
-  readonly kind: 'repository' | 'plain';
+  readonly kind: "repository" | "plain";
   readonly name: string;
   readonly collapsed: boolean;
   readonly worktrees: readonly WorktreeRow[];
@@ -92,7 +92,7 @@ function tabOf(tab: TabView, index: number, activeIndex: number): RailTab {
   return {
     index,
     key: tab.key,
-    label: tab.name ?? (tab.workspacePath === null ? 'Unknown' : workspaceLabel(tab.workspacePath)),
+    label: tab.name ?? (tab.workspacePath === null ? "Unknown" : workspaceLabel(tab.workspacePath)),
     customName: tab.name,
     workspacePath: tab.workspacePath,
     active: index === activeIndex,
@@ -183,15 +183,15 @@ export function filterRailToWorkspaceHistory(
  */
 function worktreeState(prunable: string | null, tabs: readonly RailTab[]): WorktreeState {
   if (prunable !== null) {
-    return 'missing';
+    return "missing";
   }
   if (tabs.some((tab) => tab.attention.actionableCount > 0)) {
-    return 'attention';
+    return "attention";
   }
   if (tabs.some((tab) => tab.agentBusy)) {
-    return 'working';
+    return "working";
   }
-  return tabs.length > 0 ? 'ready' : 'idle';
+  return tabs.length > 0 ? "ready" : "idle";
 }
 
 /**
@@ -206,13 +206,13 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
 
   // One entry per group, in first-appearance order.
   const order: string[] = [];
-  const scanByKey = new Map<string, RepositoryScan & { kind: 'repository' }>();
+  const scanByKey = new Map<string, RepositoryScan & { kind: "repository" }>();
   const tabsByKey = new Map<string, RailTab[]>();
 
   for (const tab of railTabs) {
     const scan = tab.workspacePath === null ? undefined : input.scans.get(tab.workspacePath);
     const key =
-      scan !== undefined && scan.kind === 'repository'
+      scan !== undefined && scan.kind === "repository"
         ? scan.key
         : `plain:${tab.workspacePath ?? `unknown-${tab.key}`}`;
     if (!tabsByKey.has(key)) {
@@ -220,7 +220,7 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
       order.push(key);
     }
     tabsByKey.get(key)!.push(tab);
-    if (scan !== undefined && scan.kind === 'repository' && !scanByKey.has(key)) {
+    if (scan !== undefined && scan.kind === "repository" && !scanByKey.has(key)) {
       scanByKey.set(key, scan);
     }
   }
@@ -232,18 +232,18 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
       // A folder Deck cannot resolve as a repository, or a scan that has not
       // landed yet. One synthetic worktree row so the tab still has a home —
       // this is the flat list Deck shows today, wearing the rail's clothes.
-      const path = groupTabs[0]?.workspacePath ?? '';
-      const resumable = resumableWorktreePaths(input.archivedPaths, path === '' ? [] : [path]);
+      const path = groupTabs[0]?.workspacePath ?? "";
+      const resumable = resumableWorktreePaths(input.archivedPaths, path === "" ? [] : [path]);
       return {
         key,
-        kind: 'plain' as const,
-        name: path === '' ? (groupTabs[0]?.label ?? 'Unknown') : workspaceLabel(path),
+        kind: "plain" as const,
+        name: path === "" ? (groupTabs[0]?.label ?? "Unknown") : workspaceLabel(path),
         collapsed: input.collapsed.has(key),
         worktrees: [
           {
             id: key,
             path,
-            name: path === '' ? (groupTabs[0]?.label ?? 'Unknown') : workspaceLabel(path),
+            name: path === "" ? (groupTabs[0]?.label ?? "Unknown") : workspaceLabel(path),
             branch: null,
             primary: true,
             state: worktreeState(null, groupTabs),
@@ -263,7 +263,7 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
     const resumable = resumableWorktreePaths(input.archivedPaths, paths);
     return {
       key,
-      kind: 'repository' as const,
+      kind: "repository" as const,
       // Named after the repository's own checkout — the first entry git
       // reports — not after whichever worktree happened to be opened first.
       name: workspaceLabel(entries[0]?.path ?? scan.root),

@@ -32,15 +32,15 @@ export interface DirEntry {
  * list (spec §3.1). Named as a known gap in the plan's §4, not an oversight.
  */
 export const EXCLUDED_NAMES: ReadonlySet<string> = new Set([
-  '.git',
-  'node_modules',
-  'dist',
-  'target',
+  ".git",
+  "node_modules",
+  "dist",
+  "target",
 ]);
 
 /** Dot-entries, revealed by the "show hidden" toggle and nothing else. */
 export function isHidden(name: string): boolean {
-  return name.startsWith('.');
+  return name.startsWith(".");
 }
 
 /**
@@ -76,7 +76,7 @@ export function sortEntries(entries: readonly DirEntry[]): DirEntry[] {
       return a.directory ? -1 : 1;
     }
     const insensitive = a.name.localeCompare(b.name, undefined, {
-      sensitivity: 'base',
+      sensitivity: "base",
     });
     if (insensitive !== 0) {
       return insensitive;

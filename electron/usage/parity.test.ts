@@ -6,13 +6,13 @@ import {
   utimesSync,
   readdirSync,
   statSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
-import { scanAll, buildSnapshot } from './scan';
-import { emptyCache } from './model';
+} from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterEach, describe, expect, it } from "vitest";
+import { scanAll, buildSnapshot } from "./scan";
+import { emptyCache } from "./model";
 
 /**
  * The §6.1.7 parity gate: this port's output must deep-equal the snapshot the
@@ -29,7 +29,7 @@ import { emptyCache } from './model';
 const T0 = 1_786_320_000_000; // 2026-08-10T00:00:00Z — every fixture's mtime
 const NOW = 1_786_323_600_000; // T0 + 1h — the pinned scan clock
 
-const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
+const FIXTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
 const temps: string[] = [];
 afterEach(() => {
@@ -50,19 +50,19 @@ function pinTree(root: string): void {
 }
 
 function fixtureHome(): string {
-  const home = mkdtempSync(path.join(tmpdir(), 'usage-parity-'));
+  const home = mkdtempSync(path.join(tmpdir(), "usage-parity-"));
   temps.push(home);
   // Git does not preserve mtimes, so the tree is re-pinned on every run —
   // the same pinning the golden generator applied.
-  cpSync(path.join(FIXTURES, 'home'), home, { recursive: true });
+  cpSync(path.join(FIXTURES, "home"), home, { recursive: true });
   pinTree(home);
   return home;
 }
 
-describe('Rust parity', () => {
-  it('produces exactly the snapshot the Rust scanner produced', async () => {
+describe("Rust parity", () => {
+  it("produces exactly the snapshot the Rust scanner produced", async () => {
     const golden = JSON.parse(
-      readFileSync(path.join(FIXTURES, 'golden-snapshot.json'), 'utf8'),
+      readFileSync(path.join(FIXTURES, "golden-snapshot.json"), "utf8"),
     ) as unknown;
     const home = fixtureHome();
     const outcome = await scanAll(emptyCache(), home, NOW);
@@ -70,7 +70,7 @@ describe('Rust parity', () => {
     expect(snapshot).toEqual(golden);
   });
 
-  it('answers identically warm, without marking the cache changed', async () => {
+  it("answers identically warm, without marking the cache changed", async () => {
     const home = fixtureHome();
     const cold = await scanAll(emptyCache(), home, NOW);
     expect(cold.changed).toBe(true);

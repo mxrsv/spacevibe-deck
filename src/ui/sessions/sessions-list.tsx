@@ -1,7 +1,7 @@
-import { getDesktopEnvironment } from '../../lib/platform';
-import { tildify } from '../../lib/process-info';
-import { SESSION_AGENT_LABELS, type SessionEntry } from '../../lib/session-history';
-import { cappedAgents, distinctProjects, filterSessions } from '../../sessions/session-filters';
+import { getDesktopEnvironment } from "../../lib/platform";
+import { tildify } from "../../lib/process-info";
+import { SESSION_AGENT_LABELS, type SessionEntry } from "../../lib/session-history";
+import { cappedAgents, distinctProjects, filterSessions } from "../../sessions/session-filters";
 import {
   deadProjects,
   sessionAgentFilter,
@@ -12,9 +12,9 @@ import {
   sessionsLoadState,
   sessionTotals,
   refreshSessions,
-} from '../../sessions/sessions-store';
-import { SessionRow } from './session-row';
-import { LoadError } from '../controls/load-error';
+} from "../../sessions/sessions-store";
+import { SessionRow } from "./session-row";
+import { LoadError } from "../controls/load-error";
 
 interface SessionsListProps {
   onResume(entry: SessionEntry): void;
@@ -48,7 +48,7 @@ export function SessionsList({ onResume }: SessionsListProps) {
   const capped = cappedAgents(sessionTotals.value, sessionLimit.value);
 
   return (
-    <div class="sessions-list" aria-busy={sessionsLoadState.value.status === 'loading'}>
+    <div class="sessions-list" aria-busy={sessionsLoadState.value.status === "loading"}>
       {sessionsLoading.value ? (
         // A status line ABOVE the list, not a state that replaces it —
         // mirrors usage-status.tsx: what is already known stays on screen
@@ -56,7 +56,7 @@ export function SessionsList({ onResume }: SessionsListProps) {
         <p class="sessions-list__note">Reading this machine's recorded sessions…</p>
       ) : null}
 
-      {sessionsLoadState.value.status === 'error' ? (
+      {sessionsLoadState.value.status === "error" ? (
         <LoadError
           message={sessionsLoadState.value.message}
           onRetry={() => void refreshSessions()}
@@ -68,16 +68,16 @@ export function SessionsList({ onResume }: SessionsListProps) {
           <select
             class="sessions-list__project"
             aria-label="Filter by project"
-            value={sessionProjectFilter.value ?? ''}
+            value={sessionProjectFilter.value ?? ""}
             onChange={(event) => {
               const value = (event.target as HTMLSelectElement).value;
-              sessionProjectFilter.value = value === '' ? null : value;
+              sessionProjectFilter.value = value === "" ? null : value;
             }}
           >
             <option value="">All projects</option>
             {projects.map((cwd) => (
               <option key={cwd} value={cwd}>
-                {homeDir === '' ? cwd : tildify(cwd, homeDir)}
+                {homeDir === "" ? cwd : tildify(cwd, homeDir)}
               </option>
             ))}
           </select>
@@ -95,17 +95,17 @@ export function SessionsList({ onResume }: SessionsListProps) {
               (agent) =>
                 `Showing latest ${sessionLimit.value} of ${sessionTotals.value[agent]} for ${SESSION_AGENT_LABELS[agent]}.`,
             )
-            .join(' ')}
+            .join(" ")}
         </p>
       ) : null}
 
-      {rows.length === 0 && sessionsLoadState.value.status === 'ready' ? (
+      {rows.length === 0 && sessionsLoadState.value.status === "ready" ? (
         <p class="sessions-list__empty">
           {sessionEntries.value.length === 0
             ? // Spec §3.2: name where Deck looked, so an empty list reads
               // as "found nothing" rather than "broken".
-              'No sessions found in ~/.claude/projects or ~/.codex/sessions.'
-            : 'No sessions match this filter.'}
+              "No sessions found in ~/.claude/projects or ~/.codex/sessions."
+            : "No sessions match this filter."}
         </p>
       ) : rows.length > 0 ? (
         <ul class="sessions-list__rows" aria-label="Past sessions">

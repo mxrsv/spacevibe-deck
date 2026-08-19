@@ -1,5 +1,5 @@
-import { getCurrentWebview, getCurrentWindow } from '../host/window-host';
-import type { UnlistenFn } from '../host/bridge';
+import { getCurrentWebview, getCurrentWindow } from "../host/window-host";
+import type { UnlistenFn } from "../host/bridge";
 
 export interface FileDropHandlers {
   /** Logical coordinates (CSS px) — same origin as clientX/clientY. */
@@ -17,18 +17,18 @@ export async function installFileDrop(handlers: FileDropHandlers): Promise<Unlis
     const payload = event.payload;
     switch (payload.type) {
       // `enter` fires FIRST when a drag comes into the webview; treat it as `over`.
-      case 'enter':
-      case 'over': {
+      case "enter":
+      case "over": {
         const { x, y } = payload.position.toLogical(scaleFactor);
         handlers.onOver(x, y);
         break;
       }
-      case 'drop': {
+      case "drop": {
         const { x, y } = payload.position.toLogical(scaleFactor);
         handlers.onDrop(x, y, payload.paths);
         break;
       }
-      case 'leave':
+      case "leave":
         handlers.onLeave();
         break;
     }

@@ -1,5 +1,5 @@
-import { settings, updateSettings } from '../../../settings/settings-store';
-import { EditorRow } from '../../controls/editor-row';
+import { settings, updateSettings } from "../../../settings/settings-store";
+import { EditorRow } from "../../controls/editor-row";
 
 export function LinksEditorSection() {
   const current = settings.value;

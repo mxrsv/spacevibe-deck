@@ -1,5 +1,5 @@
-import { ArrowSquareIn, Check, FolderOpen } from '@phosphor-icons/react';
-import { useEffect, useRef } from 'preact/hooks';
+import { ArrowSquareIn, Check, FolderOpen } from "@phosphor-icons/react";
+import { useEffect, useRef } from "preact/hooks";
 import {
   importCustomThemes,
   loadCustomThemes,
@@ -7,13 +7,13 @@ import {
   themeImportFailures,
   themeLoadState,
   themesLoading,
-} from '../../settings/custom-themes-store';
-import { settings, updateSettings } from '../../settings/settings-store';
-import { allPresets, getPreset, type ThemePreset } from '../../settings/themes';
-import { ConfigGroup, ConfigRow } from '../controls/config-row';
-import { CHROME_ICON, DeckIcon, ROW_ICON } from '../controls/deck-icon';
-import { ThemeCardPreview } from './theme-card-preview';
-import { LoadError } from '../controls/load-error';
+} from "../../settings/custom-themes-store";
+import { settings, updateSettings } from "../../settings/settings-store";
+import { allPresets, getPreset, type ThemePreset } from "../../settings/themes";
+import { ConfigGroup, ConfigRow } from "../controls/config-row";
+import { CHROME_ICON, DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { ThemeCardPreview } from "./theme-card-preview";
+import { LoadError } from "../controls/load-error";
 
 /**
  * The theme gallery (DL-24).
@@ -97,7 +97,7 @@ export function ThemeGallery() {
               role="radio"
               aria-checked={active}
               tabIndex={active ? 0 : -1}
-              class={`theme-card ${active ? 'theme-card--active' : ''}`}
+              class={`theme-card ${active ? "theme-card--active" : ""}`}
               onClick={() => select(preset)}
             >
               <ThemeCardPreview preset={preset} />
@@ -120,17 +120,17 @@ export function ThemeGallery() {
           );
         })}
       </div>
-      {themeLoadState.value.status === 'error' ? (
+      {themeLoadState.value.status === "error" ? (
         <LoadError message={themeLoadState.value.message} onRetry={() => void loadCustomThemes()} />
       ) : null}
       <ConfigRow label="Import theme" desc="iTerm2, Windows Terminal, Ghostty, Alacritty">
         <button
           type="button"
           class="cfg-btn"
-          disabled={themesLoading.value || themeLoadState.value.status === 'error'}
+          disabled={themesLoading.value || themeLoadState.value.status === "error"}
           onClick={() => void importCustomThemes()}
         >
-          {themesLoading.value ? 'reading…' : 'choose files'}
+          {themesLoading.value ? "reading…" : "choose files"}
           <span class="cfg-btn__hint">
             <DeckIcon icon={ArrowSquareIn} size={ROW_ICON} />
           </span>
@@ -173,6 +173,6 @@ const KEY_STEPS: Readonly<Record<string, number>> = {
 };
 
 function focusCard(group: HTMLDivElement | null, index: number): void {
-  const card = group?.querySelectorAll<HTMLButtonElement>('.theme-card')[index];
+  const card = group?.querySelectorAll<HTMLButtonElement>(".theme-card")[index];
   card?.focus();
 }

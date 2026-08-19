@@ -1,5 +1,5 @@
-import type { AttentionKind } from './agent-attention';
-import type { AgentNotificationPayload } from '../lib/native-notification';
+import type { AttentionKind } from "./agent-attention";
+import type { AgentNotificationPayload } from "../lib/native-notification";
 
 /**
  * Pure, injectable policy for turning an `AgentAttentionTracker` transition
@@ -54,11 +54,11 @@ export interface AgentNotifier {
  * that reaches a notification. `"none"` is intentionally absent: it is the
  * one `AttentionKind` value that never justifies a notification.
  */
-const KIND_PHRASE: Record<Exclude<AttentionKind, 'none'>, string> = {
-  completed: 'finished',
-  requested: 'needs attention',
-  warning: 'warning',
-  error: 'error',
+const KIND_PHRASE: Record<Exclude<AttentionKind, "none">, string> = {
+  completed: "finished",
+  requested: "needs attention",
+  warning: "warning",
+  error: "error",
 };
 
 /**
@@ -89,7 +89,7 @@ export function createAgentNotifier(deps: AgentNotifierDeps): AgentNotifier {
 
   return {
     maybeNotify(n) {
-      if (!deps.isEnabled() || deps.isWindowFocused() || n.kind === 'none') {
+      if (!deps.isEnabled() || deps.isWindowFocused() || n.kind === "none") {
         return;
       }
       const previous = lastNotified.get(n.paneId) ?? -Infinity;
@@ -99,7 +99,7 @@ export function createAgentNotifier(deps: AgentNotifierDeps): AgentNotifier {
       lastNotified.set(n.paneId, n.revision);
 
       const phrase = KIND_PHRASE[n.kind];
-      const agent = n.agentLabel ?? 'Agent';
+      const agent = n.agentLabel ?? "Agent";
       deps.send({
         title: n.workspaceLabel,
         body: `${agent} ${phrase}`,

@@ -13,13 +13,13 @@
  * focal stage, spec §4.2's cover-don't-unmount rule) and reuses the same
  * `iconbtn` the tab bar uses so the surface's buttons are the app's buttons.
  */
-import { ArrowClockwise, ArrowLeft, ArrowRight, CursorClick, X } from '@phosphor-icons/react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { CHROME_ICON, DeckIcon } from '../ui/controls/deck-icon';
-import { shortcutLabel } from '../lib/shortcut-label';
-import { getDesktopEnvironment } from '../lib/platform';
-import { defaultBrowserClient, type BrowserClient } from './browser-client';
-import { browserNotice, browserState } from './browser-store';
+import { ArrowClockwise, ArrowLeft, ArrowRight, CursorClick, X } from "@phosphor-icons/react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { CHROME_ICON, DeckIcon } from "../ui/controls/deck-icon";
+import { shortcutLabel } from "../lib/shortcut-label";
+import { getDesktopEnvironment } from "../lib/platform";
+import { defaultBrowserClient, type BrowserClient } from "./browser-client";
+import { browserNotice, browserState } from "./browser-store";
 
 interface BrowserPanelProps {
   /** Closes the browser TAB — the chip leaves the strip, the page is kept. */
@@ -44,7 +44,7 @@ export function BrowserPanel({
    */
   const fire = (call: Promise<unknown>): void => {
     void call.catch((error: unknown) => {
-      console.warn('Deck: the browser panel refused a command:', error);
+      console.warn("Deck: the browser panel refused a command:", error);
     });
   };
   const state = browserState.value;
@@ -84,10 +84,10 @@ export function BrowserPanel({
     // the status bar appearing.
     const observer = new ResizeObserver(() => report());
     observer.observe(element);
-    window.addEventListener('resize', report);
+    window.addEventListener("resize", report);
     return () => {
       observer.disconnect();
-      window.removeEventListener('resize', report);
+      window.removeEventListener("resize", report);
     };
   }, [report]);
 
@@ -107,7 +107,7 @@ export function BrowserPanel({
           // The typed text is kept: the address bar is the only place the user
           // can fix it, and clearing it back to the loaded URL would make them
           // retype the part that was right.
-          browserNotice.value = 'That is not an address Deck can open.';
+          browserNotice.value = "That is not an address Deck can open.";
           return;
         }
         browserNotice.value = null;
@@ -116,11 +116,11 @@ export function BrowserPanel({
     );
   };
 
-  const inspectChord = shortcutLabel('toggle-browser');
+  const inspectChord = shortcutLabel("toggle-browser");
   // react-grab's own copy gesture, which Deck does not own and cannot rebind —
   // but it is still a chord, and DL-17.7 keeps chord spelling out of literals
   // because ⌘ is not a key a Windows user has.
-  const copyChord = getDesktopEnvironment().platform === 'macos' ? '⌘C' : 'Ctrl+C';
+  const copyChord = getDesktopEnvironment().platform === "macos" ? "⌘C" : "Ctrl+C";
 
   return (
     <aside
@@ -171,7 +171,7 @@ export function BrowserPanel({
             onInput={(event) => setDraft(event.currentTarget.value)}
             onFocus={(event) => event.currentTarget.select()}
             onKeyDown={(event) => {
-              if (event.key === 'Escape') {
+              if (event.key === "Escape") {
                 setDraft(null);
                 event.currentTarget.blur();
               }

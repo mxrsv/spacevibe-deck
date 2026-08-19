@@ -3,35 +3,35 @@ import {
   type CharKeyBinding,
   type KeyBinding,
   type PhysicalKeyBinding,
-} from '../terminal/action-registry';
-import { keymapForOverrides } from '../terminal/active-keymap';
-import { getDesktopEnvironment, type DesktopPlatform } from './platform';
+} from "../terminal/action-registry";
+import { keymapForOverrides } from "../terminal/active-keymap";
+import { getDesktopEnvironment, type DesktopPlatform } from "./platform";
 
 const MACOS_KEY_LABELS: Readonly<Record<string, string>> = Object.freeze({
-  arrowdown: '↓',
-  arrowleft: '←',
-  arrowright: '→',
-  arrowup: '↑',
-  enter: '↩',
-  pageup: 'Page Up',
-  pagedown: 'Page Down',
-  tab: 'Tab',
+  arrowdown: "↓",
+  arrowleft: "←",
+  arrowright: "→",
+  arrowup: "↑",
+  enter: "↩",
+  pageup: "Page Up",
+  pagedown: "Page Down",
+  tab: "Tab",
 });
 
 const WINDOWS_KEY_LABELS: Readonly<Record<string, string>> = Object.freeze({
-  arrowdown: 'Down',
-  arrowleft: 'Left',
-  arrowright: 'Right',
-  arrowup: 'Up',
-  enter: 'Enter',
-  pageup: 'PageUp',
-  pagedown: 'PageDown',
-  tab: 'Tab',
+  arrowdown: "Down",
+  arrowleft: "Left",
+  arrowright: "Right",
+  arrowup: "Up",
+  enter: "Enter",
+  pageup: "PageUp",
+  pagedown: "PageDown",
+  tab: "Tab",
 });
 
 const CODE_LABELS: Readonly<Record<string, string>> = Object.freeze({
-  BracketLeft: '[',
-  BracketRight: ']',
+  BracketLeft: "[",
+  BracketRight: "]",
 });
 
 /**
@@ -44,16 +44,16 @@ const CODE_LABELS: Readonly<Record<string, string>> = Object.freeze({
  * built, and a hardcoded chord there would be a macOS label that silently
  * survives onto Windows.
  */
-export type KeyChord = Omit<CharKeyBinding, 'action'> | Omit<PhysicalKeyBinding, 'action'>;
+export type KeyChord = Omit<CharKeyBinding, "action"> | Omit<PhysicalKeyBinding, "action">;
 
 function bindingKey(binding: KeyChord, platform: DesktopPlatform): string {
-  if ('code' in binding) {
+  if ("code" in binding) {
     if (CODE_LABELS[binding.code]) {
       return CODE_LABELS[binding.code];
     }
-    return binding.code.replace(/^(?:Digit|Key)/, '');
+    return binding.code.replace(/^(?:Digit|Key)/, "");
   }
-  const labels = platform === 'windows' ? WINDOWS_KEY_LABELS : MACOS_KEY_LABELS;
+  const labels = platform === "windows" ? WINDOWS_KEY_LABELS : MACOS_KEY_LABELS;
   return labels[binding.key] ?? binding.key.toUpperCase();
 }
 
@@ -63,22 +63,22 @@ export function formatShortcutBinding(binding: KeyBinding, platform: DesktopPlat
 
 export function formatKeyChord(binding: KeyChord, platform: DesktopPlatform): string {
   const key = bindingKey(binding, platform);
-  if (platform === 'windows') {
+  if (platform === "windows") {
     const modifiers = [
-      binding.ctrl ? 'Ctrl' : null,
-      binding.alt ? 'Alt' : null,
-      binding.shift ? 'Shift' : null,
-      binding.meta ? 'Meta' : null,
+      binding.ctrl ? "Ctrl" : null,
+      binding.alt ? "Alt" : null,
+      binding.shift ? "Shift" : null,
+      binding.meta ? "Meta" : null,
     ].filter((modifier): modifier is string => modifier !== null);
-    return [...modifiers, key].join('+');
+    return [...modifiers, key].join("+");
   }
 
   const modifiers = [
-    binding.meta ? '⌘' : '',
-    binding.alt ? '⌥' : '',
-    binding.shift ? '⇧' : '',
-    binding.ctrl ? '⌃' : '',
-  ].join('');
+    binding.meta ? "⌘" : "",
+    binding.alt ? "⌥" : "",
+    binding.shift ? "⇧" : "",
+    binding.ctrl ? "⌃" : "",
+  ].join("");
   return `${modifiers}${key}`;
 }
 
@@ -102,8 +102,8 @@ export function shortcutLabel(
 
 export function primaryModifierName(
   platform: DesktopPlatform = getDesktopEnvironment().platform,
-): 'Cmd' | 'Ctrl' {
-  return platform === 'windows' ? 'Ctrl' : 'Cmd';
+): "Cmd" | "Ctrl" {
+  return platform === "windows" ? "Ctrl" : "Cmd";
 }
 
 /**

@@ -1,10 +1,10 @@
-import type { PaneProcessInfo } from '../lib/process-info';
-import { countLeaves, type SerializedNode } from '../lib/split-tree';
-import type { TabDotColor } from '../lib/tab-colors';
-import type { AgentChoice } from '../lib/workspace-recents';
-import { freshPaneInfo } from './pane-info';
-import { defaultPtyClient, type PtyClient } from './pty-client';
-import type { ClosedTabSnapshot } from './closed-tabs';
+import type { PaneProcessInfo } from "../lib/process-info";
+import { countLeaves, type SerializedNode } from "../lib/split-tree";
+import type { TabDotColor } from "../lib/tab-colors";
+import type { AgentChoice } from "../lib/workspace-recents";
+import { freshPaneInfo } from "./pane-info";
+import { defaultPtyClient, type PtyClient } from "./pty-client";
+import type { ClosedTabSnapshot } from "./closed-tabs";
 
 /**
  * How per-pane CWDs are gathered when snapshotting or materializing a Tab.
@@ -14,7 +14,7 @@ import type { ClosedTabSnapshot } from './closed-tabs';
  * - `none` — no CWDs; spawn falls back to `$HOME`
  * - `given` — caller already resolved CWDs (Open board, reopen stack)
  */
-export type CwdPolicy = 'fresh' | 'polled' | 'none' | 'given';
+export type CwdPolicy = "fresh" | "polled" | "none" | "given";
 
 /** Zip pane ids against a polled info map; null when unknown. Pure. */
 export function zipPolledCwds(
@@ -48,13 +48,13 @@ export async function resolvePaneCwds(
   } = {},
 ): Promise<readonly (string | null)[]> {
   switch (policy) {
-    case 'none':
+    case "none":
       return [];
-    case 'given':
+    case "given":
       return options.provided ?? [];
-    case 'polled':
+    case "polled":
       return zipPolledCwds(paneIds, options.polled ?? new Map());
-    case 'fresh': {
+    case "fresh": {
       const infos = await freshPaneInfo(paneIds, options.pty ?? defaultPtyClient);
       return zipFreshCwds(paneIds, infos);
     }
@@ -96,7 +96,7 @@ export async function capturePresetLayout(
   layout: SerializedNode,
   pty: PtyClient = defaultPtyClient,
 ): Promise<{ layout: SerializedNode; cwds: readonly (string | null)[] }> {
-  const cwds = await resolvePaneCwds(paneIds, 'fresh', { pty });
+  const cwds = await resolvePaneCwds(paneIds, "fresh", { pty });
   return { layout, cwds };
 }
 

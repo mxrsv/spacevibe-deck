@@ -1,17 +1,17 @@
 // @vitest-environment jsdom
-import { render } from 'preact';
-import { act } from 'preact/test-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FileTreeView } from './file-tree-view';
+import { render } from "preact";
+import { act } from "preact/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { FileTreeView } from "./file-tree-view";
 import {
   resetFileSurfaces,
   setListing,
   setListingError,
   toggleDirectory,
-} from '../file-surface-store';
-import type { FileSurfaceController } from '../file-surface-controller';
+} from "../file-surface-store";
+import type { FileSurfaceController } from "../file-surface-controller";
 
-const WS = '/r';
+const WS = "/r";
 
 function fakeController(overrides: Partial<FileSurfaceController> = {}): FileSurfaceController {
   return {
@@ -46,7 +46,7 @@ let host: HTMLDivElement;
 
 beforeEach(() => {
   resetFileSurfaces();
-  host = document.createElement('div');
+  host = document.createElement("div");
   document.body.appendChild(host);
 });
 
@@ -67,48 +67,48 @@ function mount(controller: FileSurfaceController): void {
 }
 
 function rows(): HTMLElement[] {
-  return [...host.querySelectorAll<HTMLElement>('.file-tree__row')];
+  return [...host.querySelectorAll<HTMLElement>(".file-tree__row")];
 }
 
 function tree(): HTMLElement {
-  const node = host.querySelector<HTMLElement>('.file-tree');
+  const node = host.querySelector<HTMLElement>(".file-tree");
   if (node === null) {
-    throw new Error('`.file-tree` did not render');
+    throw new Error("`.file-tree` did not render");
   }
   return node;
 }
 
-describe('FileTreeView', () => {
-  it('renders a flat, sorted list of the root listing (directories first)', () => {
+describe("FileTreeView", () => {
+  it("renders a flat, sorted list of the root listing (directories first)", () => {
     act(() => {
       setListing(WS, WS, [
         {
-          name: 'b.ts',
+          name: "b.ts",
           path: `${WS}/b.ts`,
           directory: false,
           outOfRoot: false,
         },
-        { name: 'src', path: `${WS}/src`, directory: true, outOfRoot: false },
+        { name: "src", path: `${WS}/src`, directory: true, outOfRoot: false },
       ]);
     });
 
     mount(fakeController());
 
-    expect(rows().map((row) => row.textContent)).toEqual(['src', 'b.ts']);
+    expect(rows().map((row) => row.textContent)).toEqual(["src", "b.ts"]);
   });
 
-  it('asks the controller to load the root listing on mount', () => {
+  it("asks the controller to load the root listing on mount", () => {
     const controller = fakeController();
     mount(controller);
 
     expect(controller.ensureListing).toHaveBeenCalledWith(WS, WS);
   });
 
-  it('opens a file as the preview tab on a single click', () => {
+  it("opens a file as the preview tab on a single click", () => {
     act(() => {
       setListing(WS, WS, [
         {
-          name: 'a.ts',
+          name: "a.ts",
           path: `${WS}/a.ts`,
           directory: false,
           outOfRoot: false,
@@ -125,11 +125,11 @@ describe('FileTreeView', () => {
     expect(controller.openFile).toHaveBeenCalledWith(WS, `${WS}/a.ts`, false);
   });
 
-  it('promotes a file to a kept tab on double-click', () => {
+  it("promotes a file to a kept tab on double-click", () => {
     act(() => {
       setListing(WS, WS, [
         {
-          name: 'a.ts',
+          name: "a.ts",
           path: `${WS}/a.ts`,
           directory: false,
           outOfRoot: false,
@@ -140,15 +140,15 @@ describe('FileTreeView', () => {
     mount(controller);
 
     act(() => {
-      rows()[0].dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      rows()[0].dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     });
 
     expect(controller.openFile).toHaveBeenCalledWith(WS, `${WS}/a.ts`, true);
   });
 
-  it('toggles a directory instead of opening it', () => {
+  it("toggles a directory instead of opening it", () => {
     act(() => {
-      setListing(WS, WS, [{ name: 'src', path: `${WS}/src`, directory: true, outOfRoot: false }]);
+      setListing(WS, WS, [{ name: "src", path: `${WS}/src`, directory: true, outOfRoot: false }]);
     });
     const controller = fakeController();
     mount(controller);
@@ -161,11 +161,11 @@ describe('FileTreeView', () => {
     expect(controller.openFile).not.toHaveBeenCalled();
   });
 
-  it('does not open a symlink that resolves out of the workspace root (spec §3.1)', () => {
+  it("does not open a symlink that resolves out of the workspace root (spec §3.1)", () => {
     act(() => {
       setListing(WS, WS, [
         {
-          name: 'escaped',
+          name: "escaped",
           path: `${WS}/escaped`,
           directory: true,
           outOfRoot: true,
@@ -183,7 +183,7 @@ describe('FileTreeView', () => {
     expect(controller.openFile).not.toHaveBeenCalled();
   });
 
-  it('shows a loading state before the root listing arrives', () => {
+  it("shows a loading state before the root listing arrives", () => {
     // No `setListing` — the root directory has never been fetched.
     mount(fakeController());
 
@@ -191,7 +191,7 @@ describe('FileTreeView', () => {
     expect(tree().textContent).toMatch(/loading/i);
   });
 
-  it('shows an empty state once the root listing arrives with no entries', () => {
+  it("shows an empty state once the root listing arrives with no entries", () => {
     act(() => {
       setListing(WS, WS, []);
     });
@@ -199,10 +199,10 @@ describe('FileTreeView', () => {
 
     expect(rows()).toEqual([]);
     expect(tree().textContent).not.toMatch(/loading/i);
-    expect((tree().textContent ?? '').length).toBeGreaterThan(0);
+    expect((tree().textContent ?? "").length).toBeGreaterThan(0);
   });
 
-  it('shows a sticky read error and retries the failed directory', () => {
+  it("shows a sticky read error and retries the failed directory", () => {
     setListingError(WS, WS, "Couldn't read this folder.");
     const controller = fakeController();
 
@@ -211,16 +211,16 @@ describe('FileTreeView', () => {
     expect(alert?.textContent).toContain("Couldn't read this folder.");
 
     act(() => {
-      alert?.querySelector<HTMLButtonElement>('button')?.click();
+      alert?.querySelector<HTMLButtonElement>("button")?.click();
     });
     expect(controller.ensureListing).toHaveBeenCalledWith(WS, WS);
   });
 
-  it('keeps Retry outside the tree keyboard handler when rows are retained', () => {
+  it("keeps Retry outside the tree keyboard handler when rows are retained", () => {
     act(() => {
       setListing(WS, WS, [
         {
-          name: 'a.ts',
+          name: "a.ts",
           path: `${WS}/a.ts`,
           directory: false,
           outOfRoot: false,
@@ -230,11 +230,11 @@ describe('FileTreeView', () => {
     });
     const controller = fakeController();
     mount(controller);
-    const retry = host.querySelector<HTMLButtonElement>('.load-error__retry')!;
+    const retry = host.querySelector<HTMLButtonElement>(".load-error__retry")!;
 
     expect(tree().contains(retry)).toBe(false);
     act(() => {
-      retry.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      retry.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
       retry.click();
     });
 
@@ -243,17 +243,17 @@ describe('FileTreeView', () => {
     expect(controller.ensureListing).toHaveBeenCalledWith(WS, WS);
   });
 
-  it('keeps depth-based indentation correct for a deeply nested expanded path', () => {
+  it("keeps depth-based indentation correct for a deeply nested expanded path", () => {
     act(() => {
-      setListing(WS, WS, [{ name: 'a', path: `${WS}/a`, directory: true, outOfRoot: false }]);
+      setListing(WS, WS, [{ name: "a", path: `${WS}/a`, directory: true, outOfRoot: false }]);
       toggleDirectory(WS, `${WS}/a`);
       setListing(WS, `${WS}/a`, [
-        { name: 'b', path: `${WS}/a/b`, directory: true, outOfRoot: false },
+        { name: "b", path: `${WS}/a/b`, directory: true, outOfRoot: false },
       ]);
       toggleDirectory(WS, `${WS}/a/b`);
       setListing(WS, `${WS}/a/b`, [
         {
-          name: 'c.ts',
+          name: "c.ts",
           path: `${WS}/a/b/c.ts`,
           directory: false,
           outOfRoot: false,
@@ -262,24 +262,24 @@ describe('FileTreeView', () => {
     });
     mount(fakeController());
 
-    const deepest = rows().find((row) => row.textContent === 'c.ts');
+    const deepest = rows().find((row) => row.textContent === "c.ts");
     expect(deepest).toBeDefined();
     // depth 2: 8px base + 2 * 14px indent tokens (DL-19).
-    expect(deepest?.style.paddingLeft).toBe('36px');
+    expect(deepest?.style.paddingLeft).toBe("36px");
   });
 
-  describe('keyboard focus and navigation (spec §3.1)', () => {
-    it('moves the roving focus down and up with the arrow keys', () => {
+  describe("keyboard focus and navigation (spec §3.1)", () => {
+    it("moves the roving focus down and up with the arrow keys", () => {
       act(() => {
         setListing(WS, WS, [
           {
-            name: 'a.ts',
+            name: "a.ts",
             path: `${WS}/a.ts`,
             directory: false,
             outOfRoot: false,
           },
           {
-            name: 'b.ts',
+            name: "b.ts",
             path: `${WS}/b.ts`,
             directory: false,
             outOfRoot: false,
@@ -292,7 +292,7 @@ describe('FileTreeView', () => {
       expect(rows()[1].tabIndex).toBe(-1);
 
       act(() => {
-        tree().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
       });
 
       expect(rows()[0].tabIndex).toBe(-1);
@@ -300,65 +300,65 @@ describe('FileTreeView', () => {
       expect(document.activeElement).toBe(rows()[1]);
 
       act(() => {
-        tree().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
       });
 
       expect(rows()[0].tabIndex).toBe(0);
       expect(document.activeElement).toBe(rows()[0]);
     });
 
-    it('expands the focused directory on ArrowRight', () => {
+    it("expands the focused directory on ArrowRight", () => {
       act(() => {
-        setListing(WS, WS, [{ name: 'src', path: `${WS}/src`, directory: true, outOfRoot: false }]);
+        setListing(WS, WS, [{ name: "src", path: `${WS}/src`, directory: true, outOfRoot: false }]);
       });
       const controller = fakeController();
       mount(controller);
 
       act(() => {
-        tree().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
       });
 
       expect(controller.toggleDirectory).toHaveBeenCalledWith(WS, `${WS}/src`);
     });
 
-    it('collapses the focused expanded directory on ArrowLeft', () => {
+    it("collapses the focused expanded directory on ArrowLeft", () => {
       act(() => {
-        setListing(WS, WS, [{ name: 'src', path: `${WS}/src`, directory: true, outOfRoot: false }]);
+        setListing(WS, WS, [{ name: "src", path: `${WS}/src`, directory: true, outOfRoot: false }]);
         toggleDirectory(WS, `${WS}/src`);
       });
       const controller = fakeController();
       mount(controller);
 
       act(() => {
-        tree().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
       });
 
       expect(controller.toggleDirectory).toHaveBeenCalledWith(WS, `${WS}/src`);
     });
 
-    it('does not collapse a directory on ArrowLeft when it is not expanded', () => {
+    it("does not collapse a directory on ArrowLeft when it is not expanded", () => {
       act(() => {
-        setListing(WS, WS, [{ name: 'src', path: `${WS}/src`, directory: true, outOfRoot: false }]);
+        setListing(WS, WS, [{ name: "src", path: `${WS}/src`, directory: true, outOfRoot: false }]);
       });
       const controller = fakeController();
       mount(controller);
 
       act(() => {
-        tree().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
       });
 
       expect(controller.toggleDirectory).not.toHaveBeenCalled();
     });
   });
 
-  describe('10,000-row windowing', () => {
-    const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight');
+  describe("10,000-row windowing", () => {
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight");
 
     beforeEach(() => {
       // jsdom never lays out real geometry — a fixed viewport height is what
       // lets the arithmetic windowing math (spec §3.1) run in a unit test at
       // all, on every element the same way a real docked panel would report.
-      Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      Object.defineProperty(HTMLElement.prototype, "clientHeight", {
         configurable: true,
         value: 220,
       });
@@ -366,14 +366,14 @@ describe('FileTreeView', () => {
 
     afterEach(() => {
       if (descriptor !== undefined) {
-        Object.defineProperty(HTMLElement.prototype, 'clientHeight', descriptor);
+        Object.defineProperty(HTMLElement.prototype, "clientHeight", descriptor);
       }
     });
 
     // 10,000 rows of jsdom DOM work exceeds the 5 s default under full-suite
     // parallel load; the math itself is instant, the tree building is not.
     it(
-      'keeps a 10,000-row directory down to only the rows near the viewport',
+      "keeps a 10,000-row directory down to only the rows near the viewport",
       { timeout: 30_000 },
       () => {
         act(() => {
@@ -381,7 +381,7 @@ describe('FileTreeView', () => {
             WS,
             WS,
             Array.from({ length: 10_000 }, (_, index) => ({
-              name: `file-${String(index).padStart(5, '0')}.ts`,
+              name: `file-${String(index).padStart(5, "0")}.ts`,
               path: `${WS}/file-${index}.ts`,
               directory: false,
               outOfRoot: false,

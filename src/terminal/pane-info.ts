@@ -1,13 +1,13 @@
-import type { PaneProcessInfo } from '../lib/process-info';
-import type { AgentProcessMatcher } from '../lib/agent-catalog';
-import { defaultPtyClient, type PtyClient } from './pty-client';
+import type { PaneProcessInfo } from "../lib/process-info";
+import type { AgentProcessMatcher } from "../lib/agent-catalog";
+import { defaultPtyClient, type PtyClient } from "./pty-client";
 
 function unknownPaneInfo(id: number): PaneProcessInfo {
   return {
     id,
     cwd: null,
     process: null,
-    kind: 'unknown',
+    kind: "unknown",
     agent: null,
   };
 }
@@ -31,7 +31,7 @@ export async function freshPaneInfo(
     const infos = await pty.ptyInfo(ids, agentMatchers);
     return ids.map((id) => infos.find((info) => info.id === id) ?? unknownPaneInfo(id));
   } catch (err) {
-    console.warn('pty_info failed:', err);
+    console.warn("pty_info failed:", err);
     return ids.map(unknownPaneInfo);
   }
 }

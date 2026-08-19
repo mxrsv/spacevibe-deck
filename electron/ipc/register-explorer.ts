@@ -8,12 +8,12 @@
  * its workspace at Open and a second window may hold a different one, so a
  * cached root would authorize the wrong tree.
  */
-import { ipcMain, type IpcMainInvokeEvent } from 'electron';
-import { CHANNELS } from './channels';
-import { listDir, readFile, statFiles } from '../fs/read';
-import { writeTextFile } from '../fs/write';
-import type { WatchRegistry } from '../fs/watch';
-import type { MainDirtyRegistry } from '../dirty-registry';
+import { ipcMain, type IpcMainInvokeEvent } from "electron";
+import { CHANNELS } from "./channels";
+import { listDir, readFile, statFiles } from "../fs/read";
+import { writeTextFile } from "../fs/write";
+import type { WatchRegistry } from "../fs/watch";
+import type { MainDirtyRegistry } from "../dirty-registry";
 
 export interface RegisterExplorerDeps {
   readonly labelOf: (event: IpcMainInvokeEvent) => string;

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { describe, expect, it } from "vitest";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * SUPERSEDED ON THIS BRANCH by `scripts/electron-ipc-contract.test.ts`.
@@ -33,12 +33,12 @@ import { join } from 'node:path';
  * contains "Window", and a substring test silently dropped exactly the
  * parameter this test exists to check.
  */
-const INJECTED = new Set(['AppHandle', 'State', 'WebviewWindow', 'Window', 'Request', 'Channel']);
+const INJECTED = new Set(["AppHandle", "State", "WebviewWindow", "Window", "Request", "Channel"]);
 
 /** `State<'_, PtyState>` → `State`; `tauri::AppHandle` → `AppHandle`. */
 function baseType(rustType: string): string {
-  const withoutGenerics = rustType.split('<')[0].trim();
-  const segments = withoutGenerics.split('::');
+  const withoutGenerics = rustType.split("<")[0].trim();
+  const segments = withoutGenerics.split("::");
   return segments[segments.length - 1].trim();
 }
 
@@ -56,22 +56,22 @@ function filesUnder(dir: string, extensions: readonly string[]): string[] {
 }
 
 function camelCase(name: string): string {
-  const [head, ...rest] = name.split('_');
-  return head + rest.map((word) => word[0].toUpperCase() + word.slice(1)).join('');
+  const [head, ...rest] = name.split("_");
+  return head + rest.map((word) => word[0].toUpperCase() + word.slice(1)).join("");
 }
 
 /** Command name → the payload keys its Rust signature requires. */
 function rustCommands(): Map<string, string[]> {
   const commands = new Map<string, string[]>();
-  for (const file of filesUnder('src-tauri/src', ['.rs'])) {
-    const source = readFileSync(file, 'utf8');
+  for (const file of filesUnder("src-tauri/src", [".rs"])) {
+    const source = readFileSync(file, "utf8");
     const pattern = /#\[tauri::command\][^\n]*\n(?:pub )?(?:async )?fn (\w+)\s*\(([^)]*)\)/g;
     for (const match of source.matchAll(pattern)) {
       const [, name, params] = match;
       const keys = params
-        .split(',')
+        .split(",")
         .map((part) => part.trim())
-        .filter((part) => part.includes(':'))
+        .filter((part) => part.includes(":"))
         .map((part) => {
           const [paramName, paramType] = part.split(/:(.+)/);
           return { paramName: paramName.trim(), paramType: paramType.trim() };
@@ -80,7 +80,7 @@ function rustCommands(): Map<string, string[]> {
         // `Option<T>` is genuinely optional on the wire: Tauri's
         // `deserialize_option` returns `visit_none()` for a missing key
         // (`tauri/src/ipc/command.rs`), so a call site may leave it out.
-        .filter(({ paramType }) => baseType(paramType) !== 'Option')
+        .filter(({ paramType }) => baseType(paramType) !== "Option")
         .map(({ paramName }) => camelCase(paramName));
       commands.set(name, keys.sort());
     }
@@ -99,11 +99,11 @@ function topLevelKeys(payload: string): string[] {
   let depth = 0;
   for (let i = 0; i < payload.length; i += 1) {
     const char = payload[i];
-    if (char === '{' || char === '[' || char === '(') {
+    if (char === "{" || char === "[" || char === "(") {
       depth += 1;
       continue;
     }
-    if (char === '}' || char === ']' || char === ')') {
+    if (char === "}" || char === "]" || char === ")") {
       depth -= 1;
       continue;
     }
@@ -114,12 +114,12 @@ function topLevelKeys(payload: string): string[] {
     // `key:` or shorthand `key,` / `key}` — never the VALUE side, so
     // `{ path: imagePath }` is one key `path`.
     const named = /^(\w+)\s*:/.exec(rest);
-    if (named && /[{,]\s*$/.test(payload.slice(0, i) || '{')) {
+    if (named && /[{,]\s*$/.test(payload.slice(0, i) || "{")) {
       keys.add(named[1]);
       continue;
     }
     const shorthand = /^(\w+)\s*(?=[,}])/.exec(rest);
-    if (shorthand && /[{,]\s*$/.test(payload.slice(0, i) || '{')) {
+    if (shorthand && /[{,]\s*$/.test(payload.slice(0, i) || "{")) {
       keys.add(shorthand[1]);
     }
   }
@@ -128,15 +128,15 @@ function topLevelKeys(payload: string): string[] {
 
 /** Commands listed in `generate_handler!` — the ones actually reachable. */
 function registeredCommands(): Set<string> {
-  const source = readFileSync('src-tauri/src/lib.rs', 'utf8');
+  const source = readFileSync("src-tauri/src/lib.rs", "utf8");
   const block = /generate_handler!\[([\s\S]*?)\]/.exec(source);
   if (block === null) {
-    throw new Error('generate_handler! block not found in lib.rs');
+    throw new Error("generate_handler! block not found in lib.rs");
   }
   return new Set(
     block[1]
-      .split(',')
-      .map((entry) => entry.trim().split('::').pop() ?? '')
+      .split(",")
+      .map((entry) => entry.trim().split("::").pop() ?? "")
       .filter((name) => name.length > 0),
   );
 }
@@ -153,22 +153,22 @@ interface InvokeCall {
  */
 function invokeCalls(): InvokeCall[] {
   const calls: InvokeCall[] = [];
-  for (const file of filesUnder('src', ['.ts', '.tsx'])) {
-    if (file.endsWith('.test.ts') || file.endsWith('.test.tsx')) {
+  for (const file of filesUnder("src", [".ts", ".tsx"])) {
+    if (file.endsWith(".test.ts") || file.endsWith(".test.tsx")) {
       continue;
     }
-    const source = readFileSync(file, 'utf8');
+    const source = readFileSync(file, "utf8");
     const pattern = /invoke(?:<[^>]*>)?\(\s*"(\w+)"\s*(?:,\s*(\{[\s\S]*?\})\s*)?\)/g;
     for (const match of source.matchAll(pattern)) {
-      const [, command, payload = '{}'] = match;
+      const [, command, payload = "{}"] = match;
       calls.push({ command, keys: topLevelKeys(payload), file });
     }
   }
   return calls;
 }
 
-describe('Tauri IPC contract', () => {
-  it('sends every payload key each Rust command requires', () => {
+describe("Tauri IPC contract", () => {
+  it("sends every payload key each Rust command requires", () => {
     const commands = rustCommands();
     const registered = registeredCommands();
     const violations: string[] = [];
@@ -190,40 +190,40 @@ describe('Tauri IPC contract', () => {
       const missing = required.filter((key) => !call.keys.includes(key));
       if (missing.length > 0) {
         violations.push(
-          `${call.command} (${call.file}): Rust requires [${required.join(', ')}], ` +
-            `invoke sends [${call.keys.join(', ')}] — missing [${missing.join(', ')}]`,
+          `${call.command} (${call.file}): Rust requires [${required.join(", ")}], ` +
+            `invoke sends [${call.keys.join(", ")}] — missing [${missing.join(", ")}]`,
         );
       }
     }
     expect(violations).toEqual([]);
   });
 
-  it('finds the commands it claims to check, so a broken parser cannot pass silently', () => {
+  it("finds the commands it claims to check, so a broken parser cannot pass silently", () => {
     // Without this, a regex that matched nothing would make the test above
     // vacuously green — the exact failure mode it exists to prevent.
     const commands = rustCommands();
     expect(commands.size).toBeGreaterThan(20);
-    expect(commands.get('prepare_transfer')).toEqual(['paneId']);
-    expect(commands.get('stage_transfer')).toEqual(['payload', 'token']);
+    expect(commands.get("prepare_transfer")).toEqual(["paneId"]);
+    expect(commands.get("stage_transfer")).toEqual(["payload", "token"]);
     // Its two Option<f64> coordinates are optional, so only `token` is
     // required — the menu path sends no drop point at all.
-    expect(commands.get('open_pane_window')).toEqual(['token']);
+    expect(commands.get("open_pane_window")).toEqual(["token"]);
 
     const calls = invokeCalls();
     expect(calls.length).toBeGreaterThan(20);
-    expect(calls.some((call) => call.command === 'open_pane_window')).toBe(true);
+    expect(calls.some((call) => call.command === "open_pane_window")).toBe(true);
   });
 
-  it('counts only top-level payload keys', () => {
+  it("counts only top-level payload keys", () => {
     // The regression guard for this file's own blind spot. Tauri looks each
     // parameter up at the TOP level, so a nested object must never make an
     // outer key look present — `{ args: { token } }` sends `args`, not
     // `token`, which is precisely the shape of the bug this file exists for.
-    expect(topLevelKeys('{ token, payload }')).toEqual(['payload', 'token']);
-    expect(topLevelKeys('{ path: imagePath }')).toEqual(['path']);
-    expect(topLevelKeys('{ args: { token, screenX } }')).toEqual(['args']);
-    expect(topLevelKeys('{ token, ...(screen ? { screenX: a, screenY: b } : {}) }')).toEqual([
-      'token',
+    expect(topLevelKeys("{ token, payload }")).toEqual(["payload", "token"]);
+    expect(topLevelKeys("{ path: imagePath }")).toEqual(["path"]);
+    expect(topLevelKeys("{ args: { token, screenX } }")).toEqual(["args"]);
+    expect(topLevelKeys("{ token, ...(screen ? { screenX: a, screenY: b } : {}) }")).toEqual([
+      "token",
     ]);
   });
 });

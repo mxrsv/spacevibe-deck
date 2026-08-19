@@ -15,10 +15,10 @@ import {
   classifyProcess,
   type AgentProcessMatcher,
   type Classification,
-} from '../platform/classify';
-import * as macos from '../platform/macos';
-import * as windows from '../platform/windows';
-import type { PtySessionSnapshot } from './session-store';
+} from "../platform/classify";
+import * as macos from "../platform/macos";
+import * as windows from "../platform/windows";
+import type { PtySessionSnapshot } from "./session-store";
 
 export interface PtyInfoPlatform {
   readProcessTable(): Promise<macos.PsRow[]>;
@@ -31,15 +31,15 @@ export interface PtyInfoPlatform {
 }
 
 function platform(): PtyInfoPlatform {
-  return process.platform === 'win32' ? windows : macos;
+  return process.platform === "win32" ? windows : macos;
 }
 
 export interface PtyInfo {
   readonly id: number;
   readonly cwd: string | null;
   readonly process: string | null;
-  readonly kind: Classification['kind'];
-  readonly agent: Classification['agent'];
+  readonly kind: Classification["kind"];
+  readonly agent: Classification["agent"];
 }
 
 function unknownInfo(snapshot: PtySessionSnapshot): PtyInfo {
@@ -47,7 +47,7 @@ function unknownInfo(snapshot: PtySessionSnapshot): PtyInfo {
     id: snapshot.id,
     cwd: snapshot.cwd,
     process: null,
-    kind: 'unknown',
+    kind: "unknown",
     agent: null,
   };
 }
@@ -72,7 +72,7 @@ export function buildPtyInfo(
       return unknownInfo(snapshot);
     }
     const commandLine =
-      rows.find((row) => row.pid === foreground.pid)?.args ?? foreground.name ?? '';
+      rows.find((row) => row.pid === foreground.pid)?.args ?? foreground.name ?? "";
     const { kind, agent } = classifyProcess(foreground.name, true, commandLine, agentMatchers);
     return {
       id: snapshot.id,
@@ -147,7 +147,7 @@ export function createPtyInfoReader(getPlatform: () => PtyInfoPlatform = platfor
     };
     const current = refresh()
       .catch((error) => {
-        console.warn('Deck: cwd refresh failed', error);
+        console.warn("Deck: cwd refresh failed", error);
       })
       .finally(() => {
         if (cwdRefresh === current) {

@@ -9,16 +9,16 @@
  * Window-scoped module state, per R5. Nothing here is per-tab or per-pane: the
  * themes folder is one folder for the whole app.
  */
-import { batch, signal } from '@preact/signals';
+import { batch, signal } from "@preact/signals";
 import {
   importThemeFiles,
   listThemeFiles,
   revealThemesFolder,
   type ThemeScan,
-} from '../host/theme-host';
-import { parseThemeFile } from './theme-formats/parse-theme-file';
-import { customPresets, type ThemePreset } from './themes';
-import { LOAD_IDLE, LOAD_LOADING, LOAD_READY, loadError, type LoadState } from '../lib/load-state';
+} from "../host/theme-host";
+import { parseThemeFile } from "./theme-formats/parse-theme-file";
+import { customPresets, type ThemePreset } from "./themes";
+import { LOAD_IDLE, LOAD_LOADING, LOAD_READY, loadError, type LoadState } from "../lib/load-state";
 
 export interface ThemeImportFailure {
   readonly fileName: string;
@@ -54,7 +54,7 @@ export async function loadCustomThemes(): Promise<void> {
 
 /** Open the picker, copy the chosen files in, then republish the folder. */
 export async function importCustomThemes(): Promise<void> {
-  if (themeLoadState.value.status === 'error') {
+  if (themeLoadState.value.status === "error") {
     return;
   }
   await collect(importThemeFiles);

@@ -5,7 +5,7 @@
  * reads `scope`. See docs/plans/2026-07-27-action-registry.md.
  */
 
-export type OverlayTier = 'pane' | 'settings' | 'board' | 'modal';
+export type OverlayTier = "pane" | "settings" | "board" | "modal";
 
 /**
  * Logical stacking rank behind `overlayBlocksAction` (tab-manager.ts): an
@@ -44,9 +44,9 @@ export const TIER_RANK: Record<OverlayTier, number> = {
   modal: 40,
 };
 
-export type ActionScope = OverlayTier | 'always';
+export type ActionScope = OverlayTier | "always";
 
-export type MenuSubmenu = 'App' | 'File' | 'Edit' | 'View' | 'Window';
+export type MenuSubmenu = "App" | "File" | "Edit" | "View" | "Window";
 
 export interface ActionDefinition {
   /** Stable string — also the id sent over Tauri IPC (`menu:action` payload). */
@@ -137,29 +137,29 @@ export interface ActionDefinition {
 // current macOS keymap — this lift includes both, for 27 rows total.
 export const ACTION_REGISTRY = [
   {
-    id: 'check-for-updates',
-    label: 'Check for Updates…',
-    scope: 'always',
-    menu: { submenu: 'App' },
+    id: "check-for-updates",
+    label: "Check for Updates…",
+    scope: "always",
+    menu: { submenu: "App" },
   },
   {
-    id: 'open-release-notes',
-    label: 'Release Notes…',
-    scope: 'always',
-    menu: { submenu: 'App' },
+    id: "open-release-notes",
+    label: "Release Notes…",
+    scope: "always",
+    menu: { submenu: "App" },
   },
   {
-    id: 'toggle-settings',
-    label: 'Settings…',
+    id: "toggle-settings",
+    label: "Settings…",
     // Bypasses the overlay guard: gating it would strand Settings open with
     // no way to close it again, since settingsOpen=true blocks every other
     // action, toggle-settings included.
-    scope: 'always',
-    menu: { submenu: 'App' },
+    scope: "always",
+    menu: { submenu: "App" },
   },
   {
-    id: 'new-tab',
-    label: 'New Tab',
+    id: "new-tab",
+    label: "New Tab",
     // Tiered "board", not "always" (2026-07-27 code review, F2). Originally
     // only set boardOpen.value = true; since 2026-08-14 it opens
     // AgentQuickPicker (rank "modal") instead, but the reasoning still holds
@@ -171,18 +171,18 @@ export const ACTION_REGISTRY = [
     // every modal-tier overlay ranks >= 30 — and also while the Open board
     // itself is already up, while still letting it run over Settings (rank
     // below "board" — see TIER_RANK's doc comment above).
-    scope: 'board',
-    menu: { submenu: 'File', group: 'primary' },
+    scope: "board",
+    menu: { submenu: "File", group: "primary" },
   },
   {
-    id: 'reopen-tab',
-    label: 'Reopen Closed Tab',
-    scope: 'pane',
-    menu: { submenu: 'File', group: 'primary' },
+    id: "reopen-tab",
+    label: "Reopen Closed Tab",
+    scope: "pane",
+    menu: { submenu: "File", group: "primary" },
   },
   {
-    id: 'new-preset',
-    label: 'New Layout Preset…',
+    id: "new-preset",
+    label: "New Layout Preset…",
     // Moved from the Window menu to File (HIG: File owns create/save
     // operations; Window is left holding only native window-management
     // items — minimize/maximize/fullscreen).
@@ -199,12 +199,12 @@ export const ACTION_REGISTRY = [
     // no extra "sibling" concept needed. Contrast with `save-preset` below,
     // deliberately tiered "board" instead: it captures the ACTIVE tab's
     // LIVE layout, which the board hides.
-    scope: 'modal',
-    menu: { submenu: 'File', group: 'preset' },
+    scope: "modal",
+    menu: { submenu: "File", group: "preset" },
   },
   {
-    id: 'save-preset',
-    label: 'Save Layout as Preset…',
+    id: "save-preset",
+    label: "Save Layout as Preset…",
     // Tiered "board" (decision 2 of the 2026-07-27 code review's design
     // proposal) — NOT "pane" (its old, blanket "terminal" gating) and NOT
     // "modal" like its sibling `new-preset` above. Not blocked by Settings
@@ -217,12 +217,12 @@ export const ACTION_REGISTRY = [
     // `tabs.length > 0` check in this action's `commands` closure below is
     // separate business logic ("is there anything to save"), not overlay
     // gating.
-    scope: 'board',
-    menu: { submenu: 'File', group: 'preset' },
+    scope: "board",
+    menu: { submenu: "File", group: "preset" },
   },
   {
-    id: 'save-file',
-    label: 'Save',
+    id: "save-file",
+    label: "Save",
     // Tier "pane" (spec docs/specs/2026-08-12-file-explorer-design.md §4.3):
     // it saves whichever file surface is currently visible, and every
     // overlay hides that surface the same way it hides the focused pane —
@@ -235,176 +235,176 @@ export const ACTION_REGISTRY = [
     // owned by a concurrent task at the time this row landed — see
     // dispatch-coverage.test.ts / shortcut-groups.test.ts for the two tests
     // that stay red until `"save-file"` joins `COMMAND_ACTIONS` there.
-    scope: 'pane',
+    scope: "pane",
     // Own group ("save"), between the layout-preset group and Close: saving
     // the open file is neither a preset operation nor a close operation, and
     // sits naturally between "create/capture" and "close" in the File menu's
     // top-to-bottom flow.
-    menu: { submenu: 'File', group: 'save' },
+    menu: { submenu: "File", group: "save" },
   },
   {
-    id: 'close-pane',
-    label: 'Close Pane',
-    scope: 'pane',
+    id: "close-pane",
+    label: "Close Pane",
+    scope: "pane",
     // Kills the pane's running process; confirmClose (close-guard.ts) only
     // prompts when a NON-shell process is detected — an idle shell closes
     // instantly with no dialog at all. See ActionDefinition.destructive.
     destructive: true,
-    menu: { submenu: 'File', group: 'close' },
+    menu: { submenu: "File", group: "close" },
   },
   {
-    id: 'close-tab',
-    label: 'Close Tab',
-    scope: 'pane',
+    id: "close-tab",
+    label: "Close Tab",
+    scope: "pane",
     // Same reasoning as close-pane, worse blast radius (every pane in the
     // tab). See ActionDefinition.destructive.
     destructive: true,
-    menu: { submenu: 'File', group: 'close' },
+    menu: { submenu: "File", group: "close" },
   },
-  { id: 'find', label: 'Find…', scope: 'pane', menu: { submenu: 'Edit' } },
+  { id: "find", label: "Find…", scope: "pane", menu: { submenu: "Edit" } },
   {
-    id: 'find-next',
-    label: 'Find Next',
-    scope: 'pane',
-    menu: { submenu: 'Edit' },
-  },
-  {
-    id: 'find-previous',
-    label: 'Find Previous',
-    scope: 'pane',
-    menu: { submenu: 'Edit' },
+    id: "find-next",
+    label: "Find Next",
+    scope: "pane",
+    menu: { submenu: "Edit" },
   },
   {
-    id: 'clear-buffer',
-    label: 'Clear Buffer',
-    scope: 'pane',
+    id: "find-previous",
+    label: "Find Previous",
+    scope: "pane",
+    menu: { submenu: "Edit" },
+  },
+  {
+    id: "clear-buffer",
+    label: "Clear Buffer",
+    scope: "pane",
     // Drops scrollback with no undo (CONTEXT.md "Buffer") — always, no
     // confirmation step of its own. See ActionDefinition.destructive.
     destructive: true,
-    menu: { submenu: 'Edit' },
+    menu: { submenu: "Edit" },
   },
   {
-    id: 'copy-cwd',
-    label: 'Copy Working Directory',
-    scope: 'pane',
+    id: "copy-cwd",
+    label: "Copy Working Directory",
+    scope: "pane",
     // The one action in this task with a menu item (Task 3,
     // docs/plans/2026-07-27-keyboard-parity.md) — before this it was the
     // only new action with NO mouse path at all (unlike swap-*, which
     // already has drag-dock). Per the
     // RULE above, having a menu item means the webview binding MUST be
     // CharKeyBinding (key: "c"), not code.
-    menu: { submenu: 'Edit' },
+    menu: { submenu: "Edit" },
   },
   {
-    id: 'copy-selection',
-    label: 'Copy Selection',
-    scope: 'pane',
+    id: "copy-selection",
+    label: "Copy Selection",
+    scope: "pane",
   },
   {
-    id: 'paste',
-    label: 'Paste',
-    scope: 'pane',
+    id: "paste",
+    label: "Paste",
+    scope: "pane",
   },
   {
-    id: 'split-row',
-    label: 'Split Vertically',
-    scope: 'pane',
-    menu: { submenu: 'View', group: 'split' },
+    id: "split-row",
+    label: "Split Vertically",
+    scope: "pane",
+    menu: { submenu: "View", group: "split" },
   },
   {
-    id: 'split-column',
-    label: 'Split Horizontally',
-    scope: 'pane',
-    menu: { submenu: 'View', group: 'split' },
+    id: "split-column",
+    label: "Split Horizontally",
+    scope: "pane",
+    menu: { submenu: "View", group: "split" },
   },
   {
-    id: 'toggle-zoom-pane',
-    label: 'Zoom Pane',
-    scope: 'pane',
-    menu: { submenu: 'View', group: 'zoom-pane' },
+    id: "toggle-zoom-pane",
+    label: "Zoom Pane",
+    scope: "pane",
+    menu: { submenu: "View", group: "zoom-pane" },
   },
   {
-    id: 'toggle-expand',
-    label: 'Focus Expand',
-    scope: 'pane',
-    menu: { submenu: 'View', group: 'zoom-pane' },
+    id: "toggle-expand",
+    label: "Focus Expand",
+    scope: "pane",
+    menu: { submenu: "View", group: "zoom-pane" },
   },
   {
-    id: 'zoom-in',
-    label: 'Increase Font Size',
-    scope: 'pane',
-    menu: { submenu: 'View', group: 'font' },
+    id: "zoom-in",
+    label: "Increase Font Size",
+    scope: "pane",
+    menu: { submenu: "View", group: "font" },
   },
   {
-    id: 'zoom-out',
-    label: 'Decrease Font Size',
-    scope: 'pane',
-    menu: { submenu: 'View', group: 'font' },
+    id: "zoom-out",
+    label: "Decrease Font Size",
+    scope: "pane",
+    menu: { submenu: "View", group: "font" },
   },
   {
-    id: 'zoom-reset',
-    label: 'Actual Size',
-    scope: 'pane',
-    menu: { submenu: 'View', group: 'font' },
+    id: "zoom-reset",
+    label: "Actual Size",
+    scope: "pane",
+    menu: { submenu: "View", group: "font" },
   },
   {
-    id: 'focus-next-attention',
-    label: 'Next Agent Needing Attention',
+    id: "focus-next-attention",
+    label: "Next Agent Needing Attention",
     // Has its own overlay preflight (runAttentionFocus /
     // attention-focus-coordinator.ts) — dismisses board/settings then
     // focuses, self-blocks while PresetEditor/SavePresetDialog holds a
     // draft. Gating it here too would double-guard it.
-    scope: 'always',
-    menu: { submenu: 'View', group: 'attention' },
+    scope: "always",
+    menu: { submenu: "View", group: "attention" },
   },
   {
-    id: 'toggle-prompts',
-    label: 'Prompts…',
+    id: "toggle-prompts",
+    label: "Prompts…",
     // Tier "pane": the popover targets the FOCUSED pane, which every overlay
     // hides — the same reason `save-preset` refuses to capture a layout it
     // cannot show. The chrome button carries its own disabled state, because
     // a direct onClick never passes through `overlayBlocksAction`.
-    scope: 'pane',
-    menu: { submenu: 'View', group: 'prompts' },
+    scope: "pane",
+    menu: { submenu: "View", group: "prompts" },
   },
   {
-    id: 'toggle-browser',
-    label: 'Browser',
+    id: "toggle-browser",
+    label: "Browser",
     // Tier "pane": the browser is a surface ON the stage, and every overlay
     // covers the stage. Opening it under Settings would position a native
     // view on top of the overlay — the one stacking order the renderer
     // cannot fix from CSS. A file surface does NOT block it: the command is
     // in tab-manager's `isSurfaceRoutedAction` set, because toggling the
     // browser IS a surface transition.
-    scope: 'pane',
-    menu: { submenu: 'View', group: 'browser' },
+    scope: "pane",
+    menu: { submenu: "View", group: "browser" },
   },
   {
-    id: 'toggle-dock',
-    label: 'Side Panel',
+    id: "toggle-dock",
+    label: "Side Panel",
     // Tier "pane", same overlay reasoning as toggle-browser above: the dock is
     // a column of the stage, and every overlay covers the stage. A file
     // surface does NOT block it: the command is in tab-manager's
     // `isChromeScopedAction` set, because the column stands BESIDE the stage
     // and this is the only way to put it away (2026-08-17).
-    scope: 'pane',
+    scope: "pane",
     // Shares the panel group with the tabs it opens onto — the column and the
     // three surfaces it can show are one cluster in the View menu, not four
     // unrelated items.
-    menu: { submenu: 'View', group: 'explorer' },
+    menu: { submenu: "View", group: "explorer" },
   },
   {
-    id: 'toggle-explorer',
-    label: 'Explorer',
+    id: "toggle-explorer",
+    label: "Explorer",
     // Tier "pane", same overlay reasoning as toggle-browser above: the
     // explorer is a tab of the dock, and every overlay covers the stage. In
     // `isChromeScopedAction` alongside `toggle-dock`, for the same reason.
-    scope: 'pane',
-    menu: { submenu: 'View', group: 'explorer' },
+    scope: "pane",
+    menu: { submenu: "View", group: "explorer" },
   },
   {
-    id: 'toggle-usage',
-    label: 'Token Usage',
+    id: "toggle-usage",
+    label: "Token Usage",
     // `"pane"` since 2026-08-16, and the trailing ellipsis went with it. This
     // was `"always"` because `usageOpen` pushed rank 20 in `openOverlayRanks()`
     // and a `"pane"`-tiered action would have blocked itself, stranding a
@@ -414,77 +414,77 @@ export const ACTION_REGISTRY = [
     // sibling tabs take, and "…" no longer belongs on a label that opens no
     // dialog (menu grammar, DL-23.2's registry half). In
     // `isChromeScopedAction` alongside `toggle-dock`, for the same reason.
-    scope: 'pane',
-    menu: { submenu: 'View', group: 'explorer' },
+    scope: "pane",
+    menu: { submenu: "View", group: "explorer" },
   },
   {
-    id: 'move-pane-to-new-window',
-    label: 'Move Pane to New Window',
+    id: "move-pane-to-new-window",
+    label: "Move Pane to New Window",
     // Tier "pane": it acts on the FOCUSED pane, which every overlay hides —
     // same reasoning as toggle-prompts above.
-    scope: 'pane',
+    scope: "pane",
     // The Window submenu is native window management, and moving a pane into
     // its own window is exactly that. `menu.rs` already loops over
     // `WINDOW_MENU_ITEMS` for this case and says so in its own comment, so
     // this needs no hand-written menu code.
-    menu: { submenu: 'Window', group: 'move-pane' },
+    menu: { submenu: "Window", group: "move-pane" },
   },
-  { id: 'focus-next', label: 'Focus Next Pane', scope: 'pane' },
-  { id: 'focus-prev', label: 'Focus Previous Pane', scope: 'pane' },
-  { id: 'focus-left', label: 'Focus Pane Left', scope: 'pane' },
-  { id: 'focus-right', label: 'Focus Pane Right', scope: 'pane' },
-  { id: 'focus-up', label: 'Focus Pane Up', scope: 'pane' },
-  { id: 'focus-down', label: 'Focus Pane Down', scope: 'pane' },
+  { id: "focus-next", label: "Focus Next Pane", scope: "pane" },
+  { id: "focus-prev", label: "Focus Previous Pane", scope: "pane" },
+  { id: "focus-left", label: "Focus Pane Left", scope: "pane" },
+  { id: "focus-right", label: "Focus Pane Right", scope: "pane" },
+  { id: "focus-up", label: "Focus Pane Up", scope: "pane" },
+  { id: "focus-down", label: "Focus Pane Down", scope: "pane" },
   // FR-032 (docs/plans/2026-07-27-keyboard-parity.md Task 1) — swap the
   // active pane with its neighbor. Same "no menu item" reasoning as
   // focus-left/right/up/down above: swap already has a mouse path
   // (drag-dock), so a menu item is unnecessary for capability, only for a
   // second discoverability route this sibling group already forgoes.
-  { id: 'swap-left', label: 'Swap Pane Left', scope: 'pane' },
-  { id: 'swap-right', label: 'Swap Pane Right', scope: 'pane' },
-  { id: 'swap-up', label: 'Swap Pane Up', scope: 'pane' },
-  { id: 'swap-down', label: 'Swap Pane Down', scope: 'pane' },
+  { id: "swap-left", label: "Swap Pane Left", scope: "pane" },
+  { id: "swap-right", label: "Swap Pane Right", scope: "pane" },
+  { id: "swap-up", label: "Swap Pane Up", scope: "pane" },
+  { id: "swap-down", label: "Swap Pane Down", scope: "pane" },
   // Scrollback navigation (docs/plans/2026-07-27-keyboard-parity.md Task 4) —
   // same "already has a mouse path" reasoning as swap-*/focus-* above
   // (trackpad/scrollbar), so no menu item. Tier "pane": acts on the active
   // pane's viewport, same as clear-buffer/find above.
   {
-    id: 'scroll-page-up',
-    label: 'Scroll Up a Page',
-    scope: 'pane',
+    id: "scroll-page-up",
+    label: "Scroll Up a Page",
+    scope: "pane",
   },
   {
-    id: 'scroll-page-down',
-    label: 'Scroll Down a Page',
-    scope: 'pane',
+    id: "scroll-page-down",
+    label: "Scroll Down a Page",
+    scope: "pane",
   },
-  { id: 'scroll-to-top', label: 'Scroll to Top', scope: 'pane' },
+  { id: "scroll-to-top", label: "Scroll to Top", scope: "pane" },
   {
-    id: 'scroll-to-bottom',
-    label: 'Scroll to Bottom (Latest Output)',
-    scope: 'pane',
+    id: "scroll-to-bottom",
+    label: "Scroll to Bottom (Latest Output)",
+    scope: "pane",
   },
   {
-    id: 'next-tab',
-    label: 'Next Tab',
+    id: "next-tab",
+    label: "Next Tab",
     // "pane" is a placeholder, pre-empted by isTabSwitchAction
     // (tab-manager.ts, decision 3, 2026-07-27 code review) — same mechanism
     // as select-tab-N/select-last-tab below, NOT through scope "always".
-    scope: 'pane',
+    scope: "pane",
   },
   {
-    id: 'prev-tab',
-    label: 'Previous Tab',
+    id: "prev-tab",
+    label: "Previous Tab",
     // See next-tab above — same isTabSwitchAction exemption.
-    scope: 'pane',
+    scope: "pane",
   },
   {
-    id: 'select-last-tab',
-    label: 'Select Last Tab',
+    id: "select-last-tab",
+    label: "Select Last Tab",
     // Exempt from the overlay guard through isTabSwitchAction
     // (tab-manager.ts) — the same mechanism as select-tab-N/next-tab/
     // prev-tab, NOT through scope "always".
-    scope: 'pane',
+    scope: "pane",
   },
 ] as const satisfies readonly ActionDefinition[];
 
@@ -494,7 +494,7 @@ export const ACTION_REGISTRY = [
  * loop as before. `select-last-tab` (⌘9) IS a normal row above — a single
  * action with a fixed label, distinct in kind from the parameterized family.
  */
-export type ActionId = (typeof ACTION_REGISTRY)[number]['id'] | `select-tab-${number}`;
+export type ActionId = (typeof ACTION_REGISTRY)[number]["id"] | `select-tab-${number}`;
 
 const ACTION_IDS: ReadonlySet<string> = new Set(ACTION_REGISTRY.map((a) => a.id));
 
@@ -507,7 +507,7 @@ export function isActionId(
   value: unknown,
   registry: ReadonlySet<string> = ACTION_IDS,
 ): value is ActionId {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return false;
   }
   if (registry.has(value)) {
@@ -520,5 +520,5 @@ export function isActionId(
 // Platform keymaps (KeyBinding, CharKeyBinding, PhysicalKeyBinding,
 // MACOS_KEYMAP, WINDOWS_KEYMAP) live in `default-keymaps.ts`; re-exported
 // below so no consumer of this module had to change its import path.
-export type { KeyBinding, CharKeyBinding, PhysicalKeyBinding } from './default-keymaps';
-export { MACOS_KEYMAP, WINDOWS_KEYMAP } from './default-keymaps';
+export type { KeyBinding, CharKeyBinding, PhysicalKeyBinding } from "./default-keymaps";
+export { MACOS_KEYMAP, WINDOWS_KEYMAP } from "./default-keymaps";

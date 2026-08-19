@@ -1,16 +1,16 @@
-import type { ILink, ILinkProvider, Terminal } from '@xterm/xterm';
-import { extractLinkCandidates, type LinkCandidate } from '../lib/terminal-links';
-import { buildOpenEditorRequest } from '../lib/editor-command';
-import { settings } from '../settings/settings-store';
-import { reportPersistError } from '../chrome/events';
-import { hasPrimaryModifier } from '../lib/platform';
-import { defaultLinkClient, type LinkClient } from './link-client';
+import type { ILink, ILinkProvider, Terminal } from "@xterm/xterm";
+import { extractLinkCandidates, type LinkCandidate } from "../lib/terminal-links";
+import { buildOpenEditorRequest } from "../lib/editor-command";
+import { settings } from "../settings/settings-store";
+import { reportPersistError } from "../chrome/events";
+import { hasPrimaryModifier } from "../lib/platform";
+import { defaultLinkClient, type LinkClient } from "./link-client";
 import {
   isPrimaryModifierHeld,
   onPrimaryModifierChange,
   syncPrimaryModifierHeld,
-} from './primary-modifier';
-import { readLogicalLine, type LogicalLine } from './logical-line';
+} from "./primary-modifier";
+import { readLogicalLine, type LogicalLine } from "./logical-line";
 
 /** Resolved lines cached per (cwd, text) — hovering must not re-hit the IPC. */
 const CACHE_LIMIT = 40;
@@ -46,7 +46,7 @@ export interface LinkProviderDeps {
 }
 
 function openCandidate(link: ResolvedLink, client: LinkClient): void {
-  if (link.candidate.kind === 'url') {
+  if (link.candidate.kind === "url") {
     client.openUrl(link.target).catch((err: unknown) => {
       reportPersistError(`Couldn't open the link: ${String(err)}`);
     });
@@ -61,7 +61,7 @@ function openCandidate(link: ResolvedLink, client: LinkClient): void {
     link.candidate.col,
   );
   if (request === null) {
-    reportPersistError('No editor command is configured — set one under Settings › Editor.');
+    reportPersistError("No editor command is configured — set one under Settings › Editor.");
     return;
   }
   client.openEditor(request).catch((err: unknown) => {
@@ -180,7 +180,7 @@ export function createLinkProvider(term: Terminal, deps: LinkProviderDeps): ILin
     provideLinks(bufferLineNumber, callback) {
       const requestId = (generation += 1);
       const logical = readLogicalLine(term.buffer.active, term.cols, bufferLineNumber - 1);
-      if (logical === null || logical.text.trim() === '') {
+      if (logical === null || logical.text.trim() === "") {
         callback(undefined);
         return;
       }
@@ -190,7 +190,7 @@ export function createLinkProvider(term: Terminal, deps: LinkProviderDeps): ILin
         return;
       }
 
-      const cwd = deps.getCwd() ?? '';
+      const cwd = deps.getCwd() ?? "";
       const key = `${cwd}\u0000${logical.text}`;
       const cached = recall(key);
       if (cached !== undefined) {
@@ -198,7 +198,7 @@ export function createLinkProvider(term: Terminal, deps: LinkProviderDeps): ILin
         return;
       }
 
-      const paths = candidates.filter((candidate) => candidate.kind === 'path');
+      const paths = candidates.filter((candidate) => candidate.kind === "path");
       if (paths.length === 0) {
         const urls = candidates.map((candidate) => ({
           candidate,
@@ -213,12 +213,12 @@ export function createLinkProvider(term: Terminal, deps: LinkProviderDeps): ILin
         const absolute = new Map<LinkCandidate, string>();
         paths.forEach((candidate, index) => {
           const resolved = results[index];
-          if (typeof resolved === 'string' && resolved !== '') {
+          if (typeof resolved === "string" && resolved !== "") {
             absolute.set(candidate, resolved);
           }
         });
         return candidates.flatMap<ResolvedLink>((candidate) => {
-          if (candidate.kind === 'url') {
+          if (candidate.kind === "url") {
             return [{ candidate, target: candidate.target }];
           }
           const target = absolute.get(candidate);

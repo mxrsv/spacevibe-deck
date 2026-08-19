@@ -10,7 +10,7 @@
  * on the wrong local day there.
  */
 
-import { estimateCostUsd } from './usage-pricing';
+import { estimateCostUsd } from "./usage-pricing";
 import {
   addCounters,
   EMPTY_COUNTERS,
@@ -18,7 +18,7 @@ import {
   type UsageAgent,
   type UsageBucket,
   type UsageCounters,
-} from './usage-snapshot';
+} from "./usage-snapshot";
 
 /**
  * §0.3 decision 8 ("null wins") refined on 2026-08-10, after it deleted a
@@ -95,7 +95,7 @@ export interface BreakdownRow {
  * half — the agent is a closed union and the day is digits and dashes — so
  * the split back apart is unambiguous.
  */
-const KEY_SEPARATOR = ' ';
+const KEY_SEPARATOR = " ";
 
 /**
  * Local noon, not local midnight, as the anchor for day arithmetic. A DST
@@ -105,7 +105,7 @@ const KEY_SEPARATOR = ' ';
 const DAY_ANCHOR_HOUR = 12;
 
 function pad2(value: number): string {
-  return `${value}`.padStart(2, '0');
+  return `${value}`.padStart(2, "0");
 }
 
 function compareStrings(left: string, right: string): number {
@@ -115,8 +115,8 @@ function compareStrings(left: string, right: string): number {
 /** The host-local calendar day containing `utcMs`, as "YYYY-MM-DD". */
 export function localDayKey(utcMs: number): string {
   const at = new Date(utcMs);
-  return [`${at.getFullYear()}`.padStart(4, '0'), pad2(at.getMonth() + 1), pad2(at.getDate())].join(
-    '-',
+  return [`${at.getFullYear()}`.padStart(4, "0"), pad2(at.getMonth() + 1), pad2(at.getDate())].join(
+    "-",
   );
 }
 

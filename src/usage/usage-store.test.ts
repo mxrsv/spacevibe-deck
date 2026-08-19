@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock('@tauri-apps/api/core', () => ({
+vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }));
 
@@ -10,9 +10,9 @@ import {
   usageLoading,
   usageSnapshot,
   usageStale,
-} from './usage-store';
-import type { UsageClient } from './usage-client';
-import { EMPTY_USAGE_SNAPSHOT, type UsageSnapshot } from '../lib/usage-snapshot';
+} from "./usage-store";
+import type { UsageClient } from "./usage-client";
+import { EMPTY_USAGE_SNAPSHOT, type UsageSnapshot } from "../lib/usage-snapshot";
 
 /** The poll interval, restated here so a change to it fails a test. */
 const POLL_MS = 5000;
@@ -61,7 +61,7 @@ function queuedClient(replies: readonly Reply[]): {
 
 beforeEach(() => {
   vi.useFakeTimers();
-  vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
@@ -73,8 +73,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('startUsagePolling', () => {
-  it('fetches once immediately', async () => {
+describe("startUsagePolling", () => {
+  it("fetches once immediately", async () => {
     const { client, calls } = queuedClient([() => Promise.resolve(first)]);
 
     startUsagePolling(client);
@@ -85,7 +85,7 @@ describe('startUsagePolling', () => {
     expect(usageStale.value).toBe(false);
   });
 
-  it('fetches again on every interval tick', async () => {
+  it("fetches again on every interval tick", async () => {
     const { client, calls } = queuedClient([
       () => Promise.resolve(first),
       () => Promise.resolve(second),
@@ -99,7 +99,7 @@ describe('startUsagePolling', () => {
     expect(usageSnapshot.value).toEqual(second);
   });
 
-  it('is a no-op while already polling — no second timer', async () => {
+  it("is a no-op while already polling — no second timer", async () => {
     const { client, calls } = queuedClient([]);
 
     startUsagePolling(client);
@@ -110,7 +110,7 @@ describe('startUsagePolling', () => {
     expect(calls()).toBe(2);
   });
 
-  it('does not stack a second scan on top of one still running', async () => {
+  it("does not stack a second scan on top of one still running", async () => {
     const slow = deferred();
     const { client, calls } = queuedClient([() => slow.promise]);
 
@@ -126,10 +126,10 @@ describe('startUsagePolling', () => {
     expect(usageSnapshot.value).toEqual(first);
   });
 
-  it('keeps the last good snapshot and marks it stale when a poll fails', async () => {
+  it("keeps the last good snapshot and marks it stale when a poll fails", async () => {
     const { client } = queuedClient([
       () => Promise.resolve(first),
-      () => Promise.reject(new Error('worker panicked')),
+      () => Promise.reject(new Error("worker panicked")),
     ]);
 
     startUsagePolling(client);
@@ -140,10 +140,10 @@ describe('startUsagePolling', () => {
     expect(usageStale.value).toBe(true);
   });
 
-  it('clears the stale mark once a poll succeeds again', async () => {
+  it("clears the stale mark once a poll succeeds again", async () => {
     const { client } = queuedClient([
       () => Promise.resolve(first),
-      () => Promise.reject(new Error('worker panicked')),
+      () => Promise.reject(new Error("worker panicked")),
       () => Promise.resolve(second),
     ]);
 
@@ -156,8 +156,8 @@ describe('startUsagePolling', () => {
     expect(usageSnapshot.value).toEqual(second);
   });
 
-  it('marks a failed cold scan stale without inventing an empty snapshot', async () => {
-    const { client } = queuedClient([() => Promise.reject(new Error('panic'))]);
+  it("marks a failed cold scan stale without inventing an empty snapshot", async () => {
+    const { client } = queuedClient([() => Promise.reject(new Error("panic"))]);
 
     startUsagePolling(client);
     await vi.advanceTimersByTimeAsync(0);
@@ -168,8 +168,8 @@ describe('startUsagePolling', () => {
   });
 });
 
-describe('usageLoading', () => {
-  it('is true only while the cold scan runs', async () => {
+describe("usageLoading", () => {
+  it("is true only while the cold scan runs", async () => {
     const cold = deferred();
     const warm = deferred();
     const { client } = queuedClient([() => cold.promise, () => warm.promise]);
@@ -192,8 +192,8 @@ describe('usageLoading', () => {
   });
 });
 
-describe('stopUsagePolling', () => {
-  it('stops further polls and is idempotent', async () => {
+describe("stopUsagePolling", () => {
+  it("stops further polls and is idempotent", async () => {
     const { client, calls } = queuedClient([() => Promise.resolve(first)]);
 
     startUsagePolling(client);
@@ -205,7 +205,7 @@ describe('stopUsagePolling', () => {
     expect(calls()).toBe(1);
   });
 
-  it('clears the cold-scan loading flag', async () => {
+  it("clears the cold-scan loading flag", async () => {
     const cold = deferred();
     const { client } = queuedClient([() => cold.promise]);
 
@@ -218,7 +218,7 @@ describe('stopUsagePolling', () => {
     expect(usageLoading.value).toBe(false);
   });
 
-  it('discards a scan that was still in flight', async () => {
+  it("discards a scan that was still in flight", async () => {
     const orphan = deferred();
     const { client } = queuedClient([() => orphan.promise]);
 
@@ -232,7 +232,7 @@ describe('stopUsagePolling', () => {
     expect(usageStale.value).toBe(false);
   });
 
-  it('lets a restart fetch immediately instead of waiting out the orphan', async () => {
+  it("lets a restart fetch immediately instead of waiting out the orphan", async () => {
     const orphan = deferred();
     const { client, calls } = queuedClient([() => orphan.promise, () => Promise.resolve(second)]);
 

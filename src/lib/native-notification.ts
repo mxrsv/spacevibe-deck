@@ -16,13 +16,13 @@ import {
   isPermissionGranted as pluginIsPermissionGranted,
   requestPermission as pluginRequestPermission,
   sendNotification as pluginSendNotification,
-} from '../host/shell-host';
+} from "../host/shell-host";
 
 /** Seam over the plugin's permission + send functions — injected so tests
  * never call the real Tauri API. */
 export interface NotificationClient {
   isPermissionGranted: () => Promise<boolean>;
-  requestPermission: () => Promise<'granted' | 'denied' | 'default'>;
+  requestPermission: () => Promise<"granted" | "denied" | "default">;
   sendNotification: (options: { title: string; body?: string }) => void;
 }
 
@@ -64,7 +64,7 @@ export function createAgentNotificationAdapter(client: NotificationClient = real
           return true;
         }
         const result = await client.requestPermission();
-        return result === 'granted';
+        return result === "granted";
       } catch {
         return false;
       }

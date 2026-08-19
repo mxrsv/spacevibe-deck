@@ -1,15 +1,15 @@
-import type { ComponentType } from 'preact';
-import { AttentionDirectionSection } from './sections/attention-direction';
-import { BoardSection } from './sections/board-section';
-import { ChromeSection } from './sections/chrome-section';
-import { MatrixSection } from './sections/matrix-section';
-import { NavigationSection } from './sections/navigation-section';
-import { OverlaysSection } from './sections/overlays-section';
-import { PopoversSection } from './sections/popovers-section';
-import { RowsSection } from './sections/rows-section';
-import { SeamSection } from './sections/seam-section';
-import { ToolbarSection } from './sections/toolbar-section';
-import { TokensSection } from './sections/tokens-section';
+import type { ComponentType } from "preact";
+import { AttentionDirectionSection } from "./sections/attention-direction";
+import { BoardSection } from "./sections/board-section";
+import { ChromeSection } from "./sections/chrome-section";
+import { MatrixSection } from "./sections/matrix-section";
+import { NavigationSection } from "./sections/navigation-section";
+import { OverlaysSection } from "./sections/overlays-section";
+import { PopoversSection } from "./sections/popovers-section";
+import { RowsSection } from "./sections/rows-section";
+import { SeamSection } from "./sections/seam-section";
+import { ToolbarSection } from "./sections/toolbar-section";
+import { TokensSection } from "./sections/tokens-section";
 
 export interface GallerySection {
   readonly id: string;
@@ -29,19 +29,19 @@ export interface GallerySection {
  * `window chrome`, next to the shell it cross-checks.
  */
 export const GALLERY_SECTIONS: readonly GallerySection[] = [
-  { id: 'tokens', label: 'direction tokens', Section: TokensSection },
-  { id: 'rows', label: 'config rows', Section: RowsSection },
-  { id: 'chrome', label: 'window chrome', Section: ChromeSection },
-  { id: 'matrix', label: 'native detail matrix', Section: MatrixSection },
-  { id: 'navigation', label: 'navigation', Section: NavigationSection },
+  { id: "tokens", label: "direction tokens", Section: TokensSection },
+  { id: "rows", label: "config rows", Section: RowsSection },
+  { id: "chrome", label: "window chrome", Section: ChromeSection },
+  { id: "matrix", label: "native detail matrix", Section: MatrixSection },
+  { id: "navigation", label: "navigation", Section: NavigationSection },
   {
-    id: 'attention',
-    label: 'attention direction',
+    id: "attention",
+    label: "attention direction",
     Section: AttentionDirectionSection,
   },
-  { id: 'toolbar', label: 'feature toolbar', Section: ToolbarSection },
-  { id: 'seams', label: 'seam system', Section: SeamSection },
-  { id: 'popovers', label: 'popovers', Section: PopoversSection },
-  { id: 'overlays', label: 'overlays', Section: OverlaysSection },
-  { id: 'board', label: 'open board', Section: BoardSection },
+  { id: "toolbar", label: "feature toolbar", Section: ToolbarSection },
+  { id: "seams", label: "seam system", Section: SeamSection },
+  { id: "popovers", label: "popovers", Section: PopoversSection },
+  { id: "overlays", label: "overlays", Section: OverlaysSection },
+  { id: "board", label: "open board", Section: BoardSection },
 ];

@@ -1,8 +1,8 @@
 // `vitest/config` re-exports Vite's own `defineConfig` with the `test` key
 // typed. Importing it from "vite" instead would make the `test` block below a
 // type error, and dropping that block silently breaks 276 component tests.
-import { defineConfig } from 'vitest/config';
-import preact from '@preact/preset-vite';
+import { defineConfig } from "vitest/config";
+import preact from "@preact/preset-vite";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
@@ -13,7 +13,7 @@ export default defineConfig(async () => ({
   // Relative asset paths: Electron loads index.html over file://, where the
   // default absolute "/assets/..." resolves to the filesystem root, 404s, and
   // produces a blank window with nothing on stderr.
-  base: './',
+  base: "./",
   build: {
     // esbuild 0.25 mis-minifies xterm 6's function-local enum in
     // InputHandler.requestMode: it drops the declaration but leaves a renamed
@@ -21,7 +21,7 @@ export default defineConfig(async () => ({
     // DECRQM query at startup, so that exception permanently stops xterm's
     // write queue and leaves OpenCode running behind a blank pane. Terser
     // preserves the local binding and produces an equally compact bundle.
-    minify: 'terser',
+    minify: "terser",
   },
   test: {
     server: {
@@ -52,14 +52,14 @@ export default defineConfig(async () => ({
     host: host || false,
     hmr: host
       ? {
-          protocol: 'ws',
+          protocol: "ws",
           host,
           port: 1421,
         }
       : undefined,
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ['**/src-tauri/**'],
+      ignored: ["**/src-tauri/**"],
     },
   },
 }));

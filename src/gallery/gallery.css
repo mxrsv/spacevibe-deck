@@ -18,7 +18,7 @@
   --gx-text: #b9b9c6;
   --gx-dim: #74748a;
   --gx-bright: #e6e6f0;
-  --gx-mono: 'SF Mono', ui-monospace, 'Cascadia Code', Menlo, monospace;
+  --gx-mono: "SF Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
 
   position: fixed;
   inset: 0;
@@ -1267,7 +1267,7 @@
 
 .gx-seam--bevel .tabbar::after,
 .gx-seam--bevel .status::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   right: 0;
@@ -1285,7 +1285,7 @@
 
 .gx-seam--bevel .wsbar::after,
 .gx-seam--bevel .gx-seamshell__dock::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   bottom: 0;

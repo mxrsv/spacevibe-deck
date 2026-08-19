@@ -1,5 +1,5 @@
-import type { AgentAttentionSummary } from '../terminal/tabs-store';
-import { WorkspaceSpinner } from './workspace-spinner';
+import type { AgentAttentionSummary } from "../terminal/tabs-store";
+import { WorkspaceSpinner } from "./workspace-spinner";
 
 interface AgentAttentionMarkProps {
   /** Aggregated attention state for one tab/workspace. */
@@ -11,22 +11,22 @@ interface AgentAttentionMarkProps {
 }
 
 /** Kinds whose count/color come from `summary.actionableCount`. */
-type ActionableKind = 'error' | 'warning' | 'requested' | 'completed';
+type ActionableKind = "error" | "warning" | "requested" | "completed";
 
 const ACTIONABLE_WORD: Record<ActionableKind, string> = {
-  error: 'error',
-  warning: 'warning',
-  requested: 'requested',
-  completed: 'completed',
+  error: "error",
+  warning: "warning",
+  requested: "requested",
+  completed: "completed",
 };
 
-function isActionableKind(kind: AgentAttentionSummary['kind']): kind is ActionableKind {
+function isActionableKind(kind: AgentAttentionSummary["kind"]): kind is ActionableKind {
   return kind in ACTIONABLE_WORD;
 }
 
 /** "2 need attention (error)" — the part that is not the workspace label. */
 function actionableState(kind: ActionableKind, count: number): string {
-  const verb = count === 1 ? 'needs attention' : 'need attention';
+  const verb = count === 1 ? "needs attention" : "need attention";
   return `${count} ${verb} (${ACTIONABLE_WORD[kind]})`;
 }
 
@@ -70,7 +70,7 @@ export function AgentAttentionMark({ summary, label, onActivate }: AgentAttentio
     );
   }
 
-  if (kind === 'working') {
+  if (kind === "working") {
     return (
       <span
         class="attn-mark attn-mark--working"
@@ -82,7 +82,7 @@ export function AgentAttentionMark({ summary, label, onActivate }: AgentAttentio
     );
   }
 
-  if (kind === 'unread') {
+  if (kind === "unread") {
     return (
       <span
         class="attn-mark attn-mark--unread"

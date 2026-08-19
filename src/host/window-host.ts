@@ -10,7 +10,7 @@
  * owns that, which is what keeps a wedged renderer from making quit
  * unanswerable.
  */
-import { invoke, type UnlistenFn } from './bridge';
+import { invoke, type UnlistenFn } from "./bridge";
 
 /**
  * A drop position in PHYSICAL pixels, with the same `toLogical` conversion
@@ -32,13 +32,13 @@ export class PhysicalPosition {
 }
 
 export type DragDropPayload =
-  | { readonly type: 'enter' | 'over'; readonly position: PhysicalPosition }
+  | { readonly type: "enter" | "over"; readonly position: PhysicalPosition }
   | {
-      readonly type: 'drop';
+      readonly type: "drop";
       readonly paths: string[];
       readonly position: PhysicalPosition;
     }
-  | { readonly type: 'leave' };
+  | { readonly type: "leave" };
 
 export interface DragDropEvent {
   readonly payload: DragDropPayload;
@@ -51,11 +51,11 @@ function hostBridge(): { getPathForFile?: (file: File) => string } | undefined {
 
 class DeckWindow {
   close(): Promise<void> {
-    return invoke('window_close');
+    return invoke("window_close");
   }
 
   toggleMaximize(): Promise<void> {
-    return invoke('window_toggle_maximize');
+    return invoke("window_toggle_maximize");
   }
 
   async isFocused(): Promise<boolean> {
@@ -88,11 +88,11 @@ class DeckWindow {
   async onFocusChanged(handler: (event: { payload: boolean }) => void): Promise<UnlistenFn> {
     const onFocus = () => handler({ payload: true });
     const onBlur = () => handler({ payload: false });
-    globalThis.addEventListener('focus', onFocus);
-    globalThis.addEventListener('blur', onBlur);
+    globalThis.addEventListener("focus", onFocus);
+    globalThis.addEventListener("blur", onBlur);
     return () => {
-      globalThis.removeEventListener('focus', onFocus);
-      globalThis.removeEventListener('blur', onBlur);
+      globalThis.removeEventListener("focus", onFocus);
+      globalThis.removeEventListener("blur", onBlur);
     };
   }
 
@@ -116,31 +116,31 @@ class DeckWindow {
 
     const onDragOver = (event: DragEvent) => {
       event.preventDefault();
-      handler({ payload: { type: 'over', position: at(event) } });
+      handler({ payload: { type: "over", position: at(event) } });
     };
     const onDragLeave = (event: DragEvent) => {
       // Fires for every child element the pointer crosses; only the one that
       // actually leaves the window counts, or the drop target flickers off.
       if (event.relatedTarget === null) {
-        handler({ payload: { type: 'leave' } });
+        handler({ payload: { type: "leave" } });
       }
     };
     const onDrop = (event: DragEvent) => {
       event.preventDefault();
       const files = [...(event.dataTransfer?.files ?? [])];
       const paths = files
-        .map((file) => hostBridge()?.getPathForFile?.(file) ?? '')
+        .map((file) => hostBridge()?.getPathForFile?.(file) ?? "")
         .filter((path) => path.length > 0);
-      handler({ payload: { type: 'drop', paths, position: at(event) } });
+      handler({ payload: { type: "drop", paths, position: at(event) } });
     };
 
-    globalThis.addEventListener('dragover', onDragOver);
-    globalThis.addEventListener('dragleave', onDragLeave);
-    globalThis.addEventListener('drop', onDrop);
+    globalThis.addEventListener("dragover", onDragOver);
+    globalThis.addEventListener("dragleave", onDragLeave);
+    globalThis.addEventListener("drop", onDrop);
     return () => {
-      globalThis.removeEventListener('dragover', onDragOver);
-      globalThis.removeEventListener('dragleave', onDragLeave);
-      globalThis.removeEventListener('drop', onDrop);
+      globalThis.removeEventListener("dragover", onDragOver);
+      globalThis.removeEventListener("dragleave", onDragLeave);
+      globalThis.removeEventListener("drop", onDrop);
     };
   }
 }
@@ -166,5 +166,5 @@ export function getCurrentWebview(): DeckWindow {
  * `windowLabel`).
  */
 export function currentWindowLabel(): Promise<string> {
-  return invoke<string>('window_label');
+  return invoke<string>("window_label");
 }

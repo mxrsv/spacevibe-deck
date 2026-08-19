@@ -1,7 +1,7 @@
-import { useEffect } from 'preact/hooks';
-import { refreshSessions } from '../../sessions/sessions-store';
-import { SessionsBody } from './sessions-body';
-import type { SessionEntry } from '../../lib/session-history';
+import { useEffect } from "preact/hooks";
+import { refreshSessions } from "../../sessions/sessions-store";
+import { SessionsBody } from "./sessions-body";
+import type { SessionEntry } from "../../lib/session-history";
 
 interface SessionsDockTabProps {
   onResume(entry: SessionEntry): void;

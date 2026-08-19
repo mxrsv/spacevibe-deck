@@ -1,4 +1,4 @@
-import type { AgentPhase, ActivityTransition } from './agent-activity';
+import type { AgentPhase, ActivityTransition } from "./agent-activity";
 
 /**
  * Pure, in-memory per-pane attention tracker — the core of the Agent Attention
@@ -19,11 +19,11 @@ import type { AgentPhase, ActivityTransition } from './agent-activity';
  */
 
 /** A latched, actionable attention state for a pane. */
-export type AttentionKind = 'none' | 'completed' | 'requested' | 'warning' | 'error';
+export type AttentionKind = "none" | "completed" | "requested" | "warning" | "error";
 
 /** What produced the current attention. */
 export type AttentionSource =
-  'osc-progress' | 'osc-notification' | 'bell' | 'output-heuristic' | 'process';
+  "osc-progress" | "osc-notification" | "bell" | "output-heuristic" | "process";
 
 /** The public per-pane state the rest of the app reads. */
 export interface PaneAttentionSnapshot {
@@ -34,7 +34,7 @@ export interface PaneAttentionSnapshot {
   /** What produced `attention`; null when `attention` is "none". */
   source: AttentionSource | null;
   /** Whether the attention came from an explicit protocol signal or a heuristic. */
-  confidence: 'explicit' | 'inferred';
+  confidence: "explicit" | "inferred";
   /** Last recognised agent label — kept after completion for post-run copy. */
   agentLabel: string | null;
   /** Per-pane unread, independent of the legacy tab-level unread. */
@@ -57,14 +57,14 @@ export interface PaneAttentionSnapshot {
  * handler. The tracker only consumes it — it never parses the payload.
  */
 export interface AttentionSignal {
-  kind: 'requested';
-  source: 'osc-notification' | 'bell';
+  kind: "requested";
+  source: "osc-notification" | "bell";
   observedAt: number;
 }
 
 /** The single highest-precedence state across a tab's panes. */
 export type TabAttentionKind =
-  'error' | 'warning' | 'requested' | 'completed' | 'working' | 'unread' | 'idle';
+  "error" | "warning" | "requested" | "completed" | "working" | "unread" | "idle";
 
 /** Per-tab aggregation of pane state. */
 export interface AgentAttentionSummary {
@@ -112,7 +112,7 @@ interface PaneState {
   readonly phase: AgentPhase;
   readonly attention: AttentionKind;
   readonly source: AttentionSource | null;
-  readonly confidence: 'explicit' | 'inferred';
+  readonly confidence: "explicit" | "inferred";
   readonly agentLabel: string | null;
   readonly unread: boolean;
   /** The current agent has reached `working` at least once (see snapshot). */
@@ -140,21 +140,21 @@ const ATTENTION_RANK: Record<AttentionKind, number> = {
 
 /** Per-tab precedence: error > warning > requested > completed > working > unread > idle. */
 const TAB_KIND_BY_RANK: readonly TabAttentionKind[] = [
-  'idle',
-  'unread',
-  'working',
-  'completed',
-  'requested',
-  'warning',
-  'error',
+  "idle",
+  "unread",
+  "working",
+  "completed",
+  "requested",
+  "warning",
+  "error",
 ];
 
 function freshState(): PaneState {
   return {
-    phase: 'unknown',
-    attention: 'none',
+    phase: "unknown",
+    attention: "none",
     source: null,
-    confidence: 'explicit',
+    confidence: "explicit",
     agentLabel: null,
     unread: false,
     hasRun: false,
@@ -168,7 +168,7 @@ function freshState(): PaneState {
 }
 
 function isActionable(kind: AttentionKind): boolean {
-  return kind !== 'none';
+  return kind !== "none";
 }
 
 /**
@@ -203,7 +203,7 @@ function latch(
   s: PaneState,
   kind: AttentionKind,
   source: AttentionSource,
-  confidence: 'explicit' | 'inferred',
+  confidence: "explicit" | "inferred",
 ): PaneState {
   if (ATTENTION_RANK[kind] <= ATTENTION_RANK[s.attention]) {
     return s;
@@ -214,18 +214,18 @@ function latch(
 /** Per-pane rank for the tab-level precedence order. */
 function tabRank(s: PaneState): number {
   switch (s.attention) {
-    case 'error':
+    case "error":
       return 6;
-    case 'warning':
+    case "warning":
       return 5;
-    case 'requested':
+    case "requested":
       return 4;
-    case 'completed':
+    case "completed":
       return 3;
-    case 'none':
+    case "none":
       break;
   }
-  if (s.phase === 'working') {
+  if (s.phase === "working") {
     return 2;
   }
   if (s.unread) {
@@ -271,7 +271,7 @@ export function createAgentAttentionTracker(
     if (transition.observedAt < s.gateOpenedAt) {
       return false;
     }
-    if (transition.source === 'output-heuristic') {
+    if (transition.source === "output-heuristic") {
       const evidenceStartedAt = transition.evidenceStartedAt ?? transition.observedAt;
       if (evidenceStartedAt < s.gateOpenedAt) {
         return false;
@@ -281,29 +281,29 @@ export function createAgentAttentionTracker(
   }
 
   function reduceActivity(prev: PaneState, transition: ActivityTransition): PaneState {
-    if (transition.phase === 'working') {
-      let next: PaneState = { ...prev, phase: 'working', hasRun: true };
+    if (transition.phase === "working") {
+      let next: PaneState = { ...prev, phase: "working", hasRun: true };
       // A fresh work cycle self-clears a stale completed; a latched
       // requested/warning/error stays.
-      if (next.attention === 'completed') {
-        next = { ...next, attention: 'none', source: null };
+      if (next.attention === "completed") {
+        next = { ...next, attention: "none", source: null };
       }
-      if (transition.severity === 'error') {
-        next = latch(next, 'error', 'osc-progress', 'explicit');
-      } else if (transition.severity === 'warning') {
-        next = latch(next, 'warning', 'osc-progress', 'explicit');
+      if (transition.severity === "error") {
+        next = latch(next, "error", "osc-progress", "explicit");
+      } else if (transition.severity === "warning") {
+        next = latch(next, "warning", "osc-progress", "explicit");
       }
       return next;
     }
     // Idle transition: completion only when the pane actually reached working.
     let next = prev;
-    if (prev.phase === 'working') {
+    if (prev.phase === "working") {
       const source: AttentionSource =
-        transition.source === 'osc-progress' ? 'osc-progress' : 'output-heuristic';
-      const confidence = transition.source === 'osc-progress' ? 'explicit' : 'inferred';
-      next = latch(next, 'completed', source, confidence);
+        transition.source === "osc-progress" ? "osc-progress" : "output-heuristic";
+      const confidence = transition.source === "osc-progress" ? "explicit" : "inferred";
+      next = latch(next, "completed", source, confidence);
     }
-    return { ...next, phase: 'idle' };
+    return { ...next, phase: "idle" };
   }
 
   return {
@@ -326,7 +326,7 @@ export function createAgentAttentionTracker(
       if (!prev.isAgent || signal.observedAt < prev.gateOpenedAt) {
         return null;
       }
-      return commit(id, prev, latch(prev, 'requested', signal.source, 'explicit'));
+      return commit(id, prev, latch(prev, "requested", signal.source, "explicit"));
     },
 
     noteOutputVisibility(id, visible) {
@@ -353,10 +353,10 @@ export function createAgentAttentionTracker(
           // Per-pane unread is deliberately preserved.
           candidate = {
             ...prev,
-            phase: 'unknown',
-            attention: 'none',
+            phase: "unknown",
+            attention: "none",
             source: null,
-            confidence: 'explicit',
+            confidence: "explicit",
             agentLabel: process,
             isAgent: true,
             hasProcess: true,
@@ -380,24 +380,24 @@ export function createAgentAttentionTracker(
         }
       } else if (prev.isAgent) {
         // agent → shell: atomic completion, then close the gate.
-        const wasWorking = prev.phase === 'working';
+        const wasWorking = prev.phase === "working";
         const higherLatched =
-          prev.attention === 'requested' ||
-          prev.attention === 'warning' ||
-          prev.attention === 'error';
+          prev.attention === "requested" ||
+          prev.attention === "warning" ||
+          prev.attention === "error";
         let completed = prev;
-        if (wasWorking && !higherLatched && prev.attention !== 'completed') {
+        if (wasWorking && !higherLatched && prev.attention !== "completed") {
           // Exactly one inferred completion; never duplicates an explicit one.
           completed = {
             ...prev,
-            attention: 'completed',
-            source: 'process',
-            confidence: 'inferred',
+            attention: "completed",
+            source: "process",
+            confidence: "inferred",
           };
         }
         candidate = {
           ...completed,
-          phase: 'idle',
+          phase: "idle",
           isAgent: false,
           hasProcess: true,
           lastProcess: process,
@@ -422,7 +422,7 @@ export function createAgentAttentionTracker(
       const prev = panes.get(id) ?? freshState();
       const candidate: PaneState = {
         ...prev,
-        phase: 'exited',
+        phase: "exited",
         isAgent: false,
         gateOpenedAt: 0,
       };
@@ -436,9 +436,9 @@ export function createAgentAttentionTracker(
       }
       const candidate: PaneState = {
         ...prev,
-        attention: 'none',
+        attention: "none",
         source: null,
-        confidence: 'explicit',
+        confidence: "explicit",
         unread: false,
       };
       return commit(id, prev, candidate);
@@ -462,7 +462,7 @@ export function createAgentAttentionTracker(
         if (isActionable(state.attention)) {
           actionableCount += 1;
         }
-        if (state.phase === 'working') {
+        if (state.phase === "working") {
           workingCount += 1;
         }
         if (state.unread) {

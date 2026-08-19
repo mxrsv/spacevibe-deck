@@ -12,8 +12,8 @@
  * an unquoted value is how a half-parsed theme reaches the gallery looking
  * complete.
  */
-import { normalizeHex } from './normalize-hex';
-import { emptyDraft, type ThemeDraft } from './theme-draft';
+import { normalizeHex } from "./normalize-hex";
+import { emptyDraft, type ThemeDraft } from "./theme-draft";
 
 const TABLE = /^\s*\[([^\]]+)\]\s*$/;
 const PAIR = /^\s*([A-Za-z_][\w-]*)\s*=\s*(.+?)\s*$/;
@@ -27,26 +27,26 @@ const PAIR = /^\s*([A-Za-z_][\w-]*)\s*=\s*(.+?)\s*$/;
  * per-table branch would have to re-state that anyway.
  */
 const SLOT_MAP: Readonly<Record<string, string>> = {
-  'colors.primary.background': 'background',
-  'colors.primary.foreground': 'foreground',
-  'colors.cursor.cursor': 'cursor',
-  'colors.selection.background': 'selectionBackground',
-  'colors.normal.black': 'black',
-  'colors.normal.red': 'red',
-  'colors.normal.green': 'green',
-  'colors.normal.yellow': 'yellow',
-  'colors.normal.blue': 'blue',
-  'colors.normal.magenta': 'magenta',
-  'colors.normal.cyan': 'cyan',
-  'colors.normal.white': 'white',
-  'colors.bright.black': 'brightBlack',
-  'colors.bright.red': 'brightRed',
-  'colors.bright.green': 'brightGreen',
-  'colors.bright.yellow': 'brightYellow',
-  'colors.bright.blue': 'brightBlue',
-  'colors.bright.magenta': 'brightMagenta',
-  'colors.bright.cyan': 'brightCyan',
-  'colors.bright.white': 'brightWhite',
+  "colors.primary.background": "background",
+  "colors.primary.foreground": "foreground",
+  "colors.cursor.cursor": "cursor",
+  "colors.selection.background": "selectionBackground",
+  "colors.normal.black": "black",
+  "colors.normal.red": "red",
+  "colors.normal.green": "green",
+  "colors.normal.yellow": "yellow",
+  "colors.normal.blue": "blue",
+  "colors.normal.magenta": "magenta",
+  "colors.normal.cyan": "cyan",
+  "colors.normal.white": "white",
+  "colors.bright.black": "brightBlack",
+  "colors.bright.red": "brightRed",
+  "colors.bright.green": "brightGreen",
+  "colors.bright.yellow": "brightYellow",
+  "colors.bright.blue": "brightBlue",
+  "colors.bright.magenta": "brightMagenta",
+  "colors.bright.cyan": "brightCyan",
+  "colors.bright.white": "brightWhite",
 };
 
 export function looksLikeAlacritty(source: string): boolean {
@@ -58,16 +58,16 @@ export function parseAlacritty(source: string): ThemeDraft | null {
     return null;
   }
   const draft = emptyDraft();
-  let table = '';
-  for (const rawLine of source.split('\n')) {
-    const line = rawLine.replace(/\r$/, '');
+  let table = "";
+  for (const rawLine of source.split("\n")) {
+    const line = rawLine.replace(/\r$/, "");
     const header = TABLE.exec(line);
     if (header !== null) {
       table = header[1].trim();
       continue;
     }
     const pair = PAIR.exec(stripComment(line));
-    if (pair === null || !table.startsWith('colors')) {
+    if (pair === null || !table.startsWith("colors")) {
       continue;
     }
     const slot = SLOT_MAP[`${table}.${pair[1]}`];
@@ -95,7 +95,7 @@ function stripComment(line: string): string {
     const character = line[index];
     if (character === '"') {
       quoted = !quoted;
-    } else if (character === '#' && !quoted) {
+    } else if (character === "#" && !quoted) {
       return line.slice(0, index);
     }
   }

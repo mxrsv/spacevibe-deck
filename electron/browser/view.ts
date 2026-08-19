@@ -17,13 +17,13 @@
  * is Electron's own discouraged path, and it puts arbitrary web content inside
  * Deck's renderer process rather than in one of its own.
  */
-import path from 'node:path';
-import { shell, WebContentsView, type BrowserWindow, type Rectangle } from 'electron';
-import { isLoadableUrl } from './url';
-import { buildInjection, GRAB_EVENT, inspectCall, parseGrabPayload } from './inject';
+import path from "node:path";
+import { shell, WebContentsView, type BrowserWindow, type Rectangle } from "electron";
+import { isLoadableUrl } from "./url";
+import { buildInjection, GRAB_EVENT, inspectCall, parseGrabPayload } from "./inject";
 
 /** Every window's browser panel shares one persistent session. */
-const PARTITION = 'persist:deck-browser';
+const PARTITION = "persist:deck-browser";
 
 /**
  * Second gate behind the preload's, and the one a compromised preload cannot
@@ -119,7 +119,7 @@ export class BrowserPanels {
     // Reopening after the toggle hid it: the page is still alive, it just is
     // not on screen.
     this.setVisible(label, true);
-    if (url !== null && url !== '') {
+    if (url !== null && url !== "") {
       this.navigate(label, url);
     }
     // With no URL the panel keeps whatever it was showing; when it has never
@@ -313,7 +313,7 @@ export class BrowserPanels {
    * alongside the rest of the host one level up.
    */
   private preloadPath(): string {
-    return path.join(__dirname, '..', 'browser-preload.cjs');
+    return path.join(__dirname, "..", "browser-preload.cjs");
   }
 
   private wire(label: string, panel: Panel): void {
@@ -325,13 +325,13 @@ export class BrowserPanels {
     // covers a document that swapped in without a `dom-ready` of its own.
     const inject = (): void => {
       contents.executeJavaScript(injectionFor(this.deps.vendorSource())).catch((err: unknown) => {
-        console.warn('[deck] react-grab injection failed:', err);
+        console.warn("[deck] react-grab injection failed:", err);
       });
     };
-    contents.on('dom-ready', inject);
-    contents.on('did-finish-load', inject);
+    contents.on("dom-ready", inject);
+    contents.on("did-finish-load", inject);
 
-    contents.on('did-finish-load', () => {
+    contents.on("did-finish-load", () => {
       panel.pending = null;
       panel.error = null;
       // Inspect is per-document: a navigation replaces the page that was armed.
@@ -339,7 +339,7 @@ export class BrowserPanels {
       this.publish(label);
     });
 
-    contents.on('did-fail-load', (_event, code, description, url, isMainFrame) => {
+    contents.on("did-fail-load", (_event, code, description, url, isMainFrame) => {
       if (!isMainFrame) {
         return;
       }
@@ -354,26 +354,26 @@ export class BrowserPanels {
         this.publish(label);
         return;
       }
-      panel.error = `${description || 'Load failed'} (${url})`;
+      panel.error = `${description || "Load failed"} (${url})`;
       panel.pending = null;
       this.publish(label);
     });
 
     const publish = (): void => this.publish(label);
-    contents.on('did-navigate', publish);
+    contents.on("did-navigate", publish);
     // Committed main-frame navigations also feed the renderer's persisted
     // `browserLastUrl` (browser productization §3). Deliberately NOT wired to
     // `did-navigate-in-page`: a hash change is not a page the panel could
     // restore to on a cold open.
-    contents.on('did-navigate', (_event, url) => {
+    contents.on("did-navigate", (_event, url) => {
       this.deps.emit(label, this.deps.events.navigated, { url });
     });
-    contents.on('did-navigate-in-page', publish);
-    contents.on('page-title-updated', publish);
-    contents.on('did-start-loading', publish);
-    contents.on('did-stop-loading', publish);
+    contents.on("did-navigate-in-page", publish);
+    contents.on("page-title-updated", publish);
+    contents.on("did-start-loading", publish);
+    contents.on("did-stop-loading", publish);
 
-    contents.on('will-navigate', (event, url) => {
+    contents.on("will-navigate", (event, url) => {
       if (!isLoadableUrl(url)) {
         event.preventDefault();
         this.external(url);
@@ -384,7 +384,7 @@ export class BrowserPanels {
     // window would have neither Deck's chrome nor this panel's injection.
     contents.setWindowOpenHandler(({ url }) => {
       this.external(url);
-      return { action: 'deny' };
+      return { action: "deny" };
     });
 
     // The panel exists to look at a dev server, and nothing about that needs

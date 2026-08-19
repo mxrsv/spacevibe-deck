@@ -25,10 +25,10 @@
  */
 
 /** DOM event the main world uses to hand a grab to the preload. */
-export const GRAB_EVENT = 'deck:browser-grab';
+export const GRAB_EVENT = "deck:browser-grab";
 
 /** Global the bootstrap installs for the host to drive inspect mode. */
-export const PAGE_API = '__deckGrab';
+export const PAGE_API = "__deckGrab";
 
 /**
  * Cap on the text one grab may produce, in characters.
@@ -249,7 +249,7 @@ ${vendorSource}
 
 /** Source for `window.__deckGrab.activate()` / `.deactivate()`. */
 export function inspectCall(active: boolean): string {
-  const method = active ? 'activate' : 'deactivate';
+  const method = active ? "activate" : "deactivate";
   return `(window.${PAGE_API} ? (window.${PAGE_API}.${method}(), true) : false)`;
 }
 
@@ -270,7 +270,7 @@ export interface GrabPayload {
  * own. `null` means "not a grab", and the host drops it.
  */
 export function parseGrabPayload(raw: unknown): GrabPayload | null {
-  if (typeof raw !== 'string' || raw.length > MAX_GRAB_CHARS * 2) {
+  if (typeof raw !== "string" || raw.length > MAX_GRAB_CHARS * 2) {
     return null;
   }
   let parsed: unknown;
@@ -279,20 +279,20 @@ export function parseGrabPayload(raw: unknown): GrabPayload | null {
   } catch {
     return null;
   }
-  if (parsed === null || typeof parsed !== 'object') {
+  if (parsed === null || typeof parsed !== "object") {
     return null;
   }
   const record = parsed as Record<string, unknown>;
-  const text = typeof record.text === 'string' ? record.text : '';
-  if (text.trim() === '') {
+  const text = typeof record.text === "string" ? record.text : "";
+  if (text.trim() === "") {
     return null;
   }
   return {
     text: text.slice(0, MAX_GRAB_CHARS),
-    url: typeof record.url === 'string' ? record.url.slice(0, 2048) : '',
-    title: typeof record.title === 'string' ? record.title.slice(0, 512) : '',
+    url: typeof record.url === "string" ? record.url.slice(0, 2048) : "",
+    title: typeof record.title === "string" ? record.title.slice(0, 512) : "",
     count:
-      typeof record.count === 'number' && Number.isFinite(record.count)
+      typeof record.count === "number" && Number.isFinite(record.count)
         ? Math.max(1, Math.min(99, Math.trunc(record.count)))
         : 1,
   };

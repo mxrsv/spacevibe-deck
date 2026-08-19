@@ -1,68 +1,68 @@
-import { getCurrentWindow } from '../host/window-host';
-import type { UnlistenFn } from '../host/bridge';
-import { clampFontSize, DEFAULT_SETTINGS } from '../settings/settings-schema';
+import { getCurrentWindow } from "../host/window-host";
+import type { UnlistenFn } from "../host/bridge";
+import { clampFontSize, DEFAULT_SETTINGS } from "../settings/settings-schema";
 import {
   flushSettingsSave,
   settings,
   revealDockTab,
   toggleDock,
   updateSettings,
-} from '../settings/settings-store';
-import { type Direction, type Edge, type SerializedNode } from '../lib/split-tree';
-import { explicitAgent, processLabel } from '../lib/process-info';
-import type { SessionTab } from '../lib/session-schema';
-import type { DetachTarget } from './pane-detach';
-import { defaultTransferClient } from './transfer-client';
-import { normalizeWorkspacePath, workspaceLabel } from '../lib/workspace-label';
-import { nextOpenSequence, UNSEQUENCED } from '../lib/open-sequence';
-import { mergeStripOrder, type StripSlot } from '../lib/strip-order';
-import { sendAgentNotification } from '../lib/native-notification';
-import { getDesktopEnvironment } from '../lib/platform';
-import { BUILT_IN_PRESET } from '../lib/preset-schema';
-import { agentForWorkspace, type AgentChoice } from '../lib/workspace-recents';
-import { workspacesData } from '../open-board/workspaces-store';
+} from "../settings/settings-store";
+import { type Direction, type Edge, type SerializedNode } from "../lib/split-tree";
+import { explicitAgent, processLabel } from "../lib/process-info";
+import type { SessionTab } from "../lib/session-schema";
+import type { DetachTarget } from "./pane-detach";
+import { defaultTransferClient } from "./transfer-client";
+import { normalizeWorkspacePath, workspaceLabel } from "../lib/workspace-label";
+import { nextOpenSequence, UNSEQUENCED } from "../lib/open-sequence";
+import { mergeStripOrder, type StripSlot } from "../lib/strip-order";
+import { sendAgentNotification } from "../lib/native-notification";
+import { getDesktopEnvironment } from "../lib/platform";
+import { BUILT_IN_PRESET } from "../lib/preset-schema";
+import { agentForWorkspace, type AgentChoice } from "../lib/workspace-recents";
+import { workspacesData } from "../open-board/workspaces-store";
 import {
   agentOptions,
   agentProcessMatchers,
   probeNames,
   resolveAgentCommand,
-} from '../lib/agent-catalog';
-import { matchBinding, selectTabIndex, type ShortcutAction } from './keymap';
-import { TIER_RANK } from './action-registry';
-import { installFileDrop } from './file-drop';
-import { createTerminalManager, type TerminalManager } from './terminal-manager';
-import { createPaneInfoPoller } from './pane-info-poller';
-import { createAgentActivity } from './agent-activity';
+} from "../lib/agent-catalog";
+import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
+import { TIER_RANK } from "./action-registry";
+import { installFileDrop } from "./file-drop";
+import { createTerminalManager, type TerminalManager } from "./terminal-manager";
+import { createPaneInfoPoller } from "./pane-info-poller";
+import { createAgentActivity } from "./agent-activity";
 import {
   createAgentAttentionTracker,
   type AttentionKind,
   type PaneAttentionSnapshot,
-} from './agent-attention';
-import { createAgentNotifier, type AgentNotifier } from './agent-notifier';
-import type { PaneAttentionSignal } from './pane';
-import { popClosedTab, pushClosedTab, type ClosedTabSnapshot } from './closed-tabs';
-import { confirmClose } from './close-guard';
-import { createCloseCoordinator } from './close-coordinator';
-import { activeAfterClose } from './tab-close';
-import { freshCwd, freshPaneInfo } from './pane-info';
-import { defaultPtyClient, type PtyClient } from './pty-client';
-import { submitAllowed, type InjectOutcome } from '../prompts/inject';
-import { defaultBrowserClient } from '../browser/browser-client';
+} from "./agent-attention";
+import { createAgentNotifier, type AgentNotifier } from "./agent-notifier";
+import type { PaneAttentionSignal } from "./pane";
+import { popClosedTab, pushClosedTab, type ClosedTabSnapshot } from "./closed-tabs";
+import { confirmClose } from "./close-guard";
+import { createCloseCoordinator } from "./close-coordinator";
+import { activeAfterClose } from "./tab-close";
+import { freshCwd, freshPaneInfo } from "./pane-info";
+import { defaultPtyClient, type PtyClient } from "./pty-client";
+import { submitAllowed, type InjectOutcome } from "../prompts/inject";
+import { defaultBrowserClient } from "../browser/browser-client";
 import {
   activateBrowserSurface,
   browserOpen,
   browserSurfaceActive,
   deactivateBrowserSurface,
   openBrowser,
-} from '../browser/browser-store';
-import { createAgentLauncher } from './agent-launch';
+} from "../browser/browser-store";
+import { createAgentLauncher } from "./agent-launch";
 import {
   buildClosedTabSnapshot,
   capturePresetLayout,
   materializeChromeFrom,
   resolvePaneCwds,
   type MaterializeIntent,
-} from './tab-materialize';
+} from "./tab-materialize";
 import {
   activeTabIndex,
   applyTabOverride,
@@ -70,7 +70,7 @@ import {
   tabViews,
   type PaneView,
   type TabOverride,
-} from './tabs-store';
+} from "./tabs-store";
 import {
   agentQuickPickerOpen,
   boardOpen,
@@ -80,15 +80,15 @@ import {
   saveDialogOpen,
   settingsOpen,
   shortcutCaptureActive,
-} from '../chrome/events';
-import { INERT_SURFACES } from './surface-strip';
+} from "../chrome/events";
+import { INERT_SURFACES } from "./surface-strip";
 import {
   type TabEntry,
   type OpenFromPresetOptions,
   type TabManagerDeps,
   type TabManager,
-} from './tab-manager-types';
-import { ACTION_SCOPE, DESTRUCTIVE_ACTIONS, COMMAND_ACTIONS } from './tab-action-scope';
+} from "./tab-manager-types";
+import { ACTION_SCOPE, DESTRUCTIVE_ACTIONS, COMMAND_ACTIONS } from "./tab-action-scope";
 
 // The module-scope header that used to live here (types + pure constants
 // above `createTabManager`) moved out 2026-08-16 for file size:
@@ -101,11 +101,11 @@ import { ACTION_SCOPE, DESTRUCTIVE_ACTIONS, COMMAND_ACTIONS } from './tab-action
 // NOT re-exported: its only two importers are tests, updated to import it
 // from tab-action-scope.ts directly. `createTabManager` itself — the load-
 // bearing R4 seam — did not move.
-export type { SurfaceStrip } from './surface-strip';
-export type { OpenFromPresetOptions, TabManagerDeps, TabManager } from './tab-manager-types';
+export type { SurfaceStrip } from "./surface-strip";
+export type { OpenFromPresetOptions, TabManagerDeps, TabManager } from "./tab-manager-types";
 
 const WINDOWS_AGENT_TIMEOUT_MESSAGE =
-  'PowerShell was not ready in time. Launch the agent manually.';
+  "PowerShell was not ready in time. Launch the agent manually.";
 
 export function createTabManager(
   host: HTMLElement,
@@ -259,8 +259,8 @@ export function createTabManager(
         return {
           paneId: id,
           agent: explicitAgent(poller.infoFor(id)),
-          attention: snap?.attention ?? 'none',
-          phase: snap?.phase ?? 'unknown',
+          attention: snap?.attention ?? "none",
+          phase: snap?.phase ?? "unknown",
           hasRun: snap?.hasRun ?? false,
           changedAt: snap?.changedAt ?? 0,
         };
@@ -330,9 +330,9 @@ export function createTabManager(
    * background + unsent-revision policy as a harmless second layer.
    */
   function maybeNotify(id: number, snap: PaneAttentionSnapshot): void {
-    const prevKind = lastNotifiedKind.get(id) ?? 'none';
+    const prevKind = lastNotifiedKind.get(id) ?? "none";
     lastNotifiedKind.set(id, snap.attention);
-    if (snap.attention === 'none') {
+    if (snap.attention === "none") {
       return; // reset only — a future re-raise of any kind will notify
     }
     if (snap.attention === prevKind) {
@@ -341,7 +341,7 @@ export function createTabManager(
     const owner = tabs.find((t) => t.manager.paneIds().includes(id));
     const label =
       (owner ? overrides.get(owner.key)?.name : undefined) ??
-      (owner?.workspacePath == null ? 'Unknown' : workspaceLabel(owner.workspacePath));
+      (owner?.workspacePath == null ? "Unknown" : workspaceLabel(owner.workspacePath));
     notifier.maybeNotify({
       paneId: id,
       revision: snap.revision,
@@ -387,7 +387,7 @@ export function createTabManager(
       // the shared clock and hand it to the tracker; the gate drops it for
       // shell / pre-poll panes, and a real change triggers a re-render.
       const signalSnap = tracker.noteSignal(id, {
-        kind: 'requested',
+        kind: "requested",
         source: signal.source,
         observedAt: now(),
       });
@@ -417,9 +417,9 @@ export function createTabManager(
     cwds: readonly (string | null)[] = [],
     workspacePath: string | null = null,
   ): Promise<boolean> {
-    const container = document.createElement('div');
-    container.className = 'tab-stage';
-    container.style.display = 'none';
+    const container = document.createElement("div");
+    container.className = "tab-stage";
+    container.style.display = "none";
     host.appendChild(container);
     const manager = createTerminalManager(container, callbacks, paneIo, managerDeps(nextKey));
     try {
@@ -429,7 +429,7 @@ export function createTabManager(
         await manager.initFromLayout(layout, cwds);
       }
     } catch (err) {
-      console.error('Failed to open tab:', err);
+      console.error("Failed to open tab:", err);
       manager.dispose();
       activeManager()?.notifyError(`Failed to open new tab: ${err}`);
       return false;
@@ -572,7 +572,7 @@ export function createTabManager(
    * another window.
    */
   async function movePaneToNewWindow(): Promise<void> {
-    await movePane({ kind: 'new-window' });
+    await movePane({ kind: "new-window" });
   }
 
   async function movePane(target: DetachTarget): Promise<void> {
@@ -581,14 +581,14 @@ export function createTabManager(
     // refusal shape as the one-pane-window fork rather than inventing a second
     // one (spec §7).
     if (surfaces.activeIndex() >= 0) {
-      reportChromeMessage('Only a terminal pane can move to another window.');
+      reportChromeMessage("Only a terminal pane can move to another window.");
       return;
     }
     const index = active;
     const entry = tabs[index];
     const paneId = entry?.manager.activePaneId() ?? null;
     if (!entry || paneId === null) {
-      reportChromeMessage('No pane to move.');
+      reportChromeMessage("No pane to move.");
       return;
     }
     // A one-pane window has nothing to gain from a NEW window: the move would
@@ -597,12 +597,12 @@ export function createTabManager(
     // change. Window-level, not tab-level: a second tab keeps the window
     // alive, so splitting this tab out is a real move. Offering the pane to an
     // EXISTING window stays allowed — that one merges and is meaningful.
-    if (target.kind === 'new-window' && tabs.length === 1 && entry.manager.paneIds().length === 1) {
+    if (target.kind === "new-window" && tabs.length === 1 && entry.manager.paneIds().length === 1) {
       reportChromeMessage("Nothing to move — this is the window's only pane.");
       return;
     }
     const outcome = await entry.manager.detachPaneById(paneId, target);
-    if (outcome.kind === 'kept') {
+    if (outcome.kind === "kept") {
       return;
     }
     pruneMovedPane(paneId);
@@ -652,9 +652,9 @@ export function createTabManager(
 
   /** Live-adopt into a NEW tab of this already-running window (spec §10.1). */
   async function adoptIntoNewTab(token: string): Promise<boolean> {
-    const container = document.createElement('div');
-    container.className = 'tab-stage';
-    container.style.display = 'none';
+    const container = document.createElement("div");
+    container.className = "tab-stage";
+    container.style.display = "none";
     host.appendChild(container);
     const manager = createTerminalManager(container, callbacks, paneIo, managerDeps(nextKey));
     // Pushed BEFORE the adoption runs, not after. Rust flushes everything it
@@ -673,7 +673,7 @@ export function createTabManager(
     tabs.push(placeholder);
     const result = await manager.initFromAdoption(token);
     const parked = tabs.indexOf(placeholder);
-    if (result.kind === 'failed') {
+    if (result.kind === "failed") {
       if (parked !== -1) {
         tabs.splice(parked, 1);
       }
@@ -822,7 +822,7 @@ export function createTabManager(
     }
     const customAgents = settings.value.customAgents;
     const detected = await pty.detectAgents(probeNames(customAgents)).catch((err: unknown) => {
-      console.warn('detect_agents failed:', err);
+      console.warn("detect_agents failed:", err);
       return [];
     });
     const agentId = agentForWorkspace(
@@ -914,7 +914,7 @@ export function createTabManager(
     opts: { readonly autoSend: boolean; readonly expectedAgent: string | null },
   ): Promise<InjectOutcome> {
     if (injectingPanes.has(paneId)) {
-      return 'busy';
+      return "busy";
     }
     injectingPanes.add(paneId);
     try {
@@ -922,13 +922,13 @@ export function createTabManager(
       const attentionBeforePaste = paneAttention(paneId);
       const paste = owner?.manager.pasteIntoPane(paneId, text) ?? null;
       if (paste === null) {
-        return 'no-target';
+        return "no-target";
       }
       if (!(await paste)) {
-        return 'failed';
+        return "failed";
       }
       if (!opts.autoSend) {
-        return 'pasted';
+        return "pasted";
       }
       const [info] = await freshPaneInfo(
         [paneId],
@@ -954,10 +954,10 @@ export function createTabManager(
           alive: stillOwned !== undefined,
         });
       if (!allowed || stillOwned === undefined) {
-        return 'pasted';
+        return "pasted";
       }
       const submit = stillOwned.manager.submitPane(paneId);
-      return submit !== null && (await submit) ? 'sent' : 'pasted';
+      return submit !== null && (await submit) ? "sent" : "pasted";
     } finally {
       injectingPanes.delete(paneId);
     }
@@ -972,7 +972,7 @@ export function createTabManager(
       const [exists] = await pty.dirsExist([path]);
       return exists !== false;
     } catch (err) {
-      console.warn('dirs_exist failed; reopening the tab anyway:', err);
+      console.warn("dirs_exist failed; reopening the tab anyway:", err);
       return true;
     }
   }
@@ -1025,7 +1025,7 @@ export function createTabManager(
     const layout = entry.manager.serializeLayout();
     if (layout !== null) {
       const override = overrides.get(entry.key);
-      const cwds = await resolvePaneCwds(entry.manager.paneIds(), 'fresh', {
+      const cwds = await resolvePaneCwds(entry.manager.paneIds(), "fresh", {
         pty,
       });
       closedTabs = pushClosedTab(
@@ -1070,7 +1070,7 @@ export function createTabManager(
       try {
         await flushSettingsSave();
       } catch (err: unknown) {
-        console.warn('Flush before window close failed:', err);
+        console.warn("Flush before window close failed:", err);
       }
       await closeWindow();
       return;
@@ -1150,7 +1150,7 @@ export function createTabManager(
     if (slot === undefined) {
       return;
     }
-    if (slot.kind === 'tab') {
+    if (slot.kind === "tab") {
       selectTab(slot.index);
       return;
     }
@@ -1175,8 +1175,8 @@ export function createTabManager(
     const surfaceIndex = surfaces.activeIndex();
     const current = slots.findIndex((slot) =>
       surfaceIndex >= 0
-        ? slot.kind === 'surface' && slot.index === surfaceIndex
-        : slot.kind === 'tab' && slot.index === active,
+        ? slot.kind === "surface" && slot.index === surfaceIndex
+        : slot.kind === "tab" && slot.index === active,
     );
     // No active chip at all (no tabs yet, or an active index nothing owns):
     // step from before the first slot so ⌘⇧] lands on it and ⌘⇧[ on the last.
@@ -1205,64 +1205,64 @@ export function createTabManager(
   // one action, one closure. `select-tab-N` and `select-last-tab` (⌘9) are
   // both handled directly in `dispatchAction`, not through this table.
   const commands = {
-    'split-row': () => void splitActive('row'),
-    'split-column': () => void splitActive('column'),
+    "split-row": () => void splitActive("row"),
+    "split-column": () => void splitActive("column"),
     // ⌘W. Two sites, not one: this is `close-pane`, and `close-tab` (⌘⇧W) is
     // the other. Spec §4.3's "⌘W on a file tab closes the file tab" means THIS
     // one, and neither may fall through to the other — a file tab has no pane
     // to close, and closing the terminal tab behind it would be a silent
     // catastrophe.
-    'close-pane': () =>
+    "close-pane": () =>
       surfaces.activeIndex() >= 0 ? void surfaces.close() : void close.closePane(),
-    'focus-next': () => activeManager()?.cycleFocus(1),
-    'focus-prev': () => activeManager()?.cycleFocus(-1),
-    'toggle-expand': () => updateSettings({ focusExpand: !settings.value.focusExpand }),
-    'new-tab': () => void newTab(),
-    'close-tab': () => void close.closeTab(active),
-    'next-tab': () => cycleTab(1),
-    'prev-tab': () => cycleTab(-1),
-    'zoom-in': () => updateSettings({ fontSize: clampFontSize(settings.value.fontSize + 1) }),
-    'zoom-out': () => updateSettings({ fontSize: clampFontSize(settings.value.fontSize - 1) }),
-    'zoom-reset': () => updateSettings({ fontSize: DEFAULT_SETTINGS.fontSize }),
-    'toggle-zoom-pane': () => activeManager()?.toggleZoom(),
-    'clear-buffer': () => activeManager()?.clearActive(),
-    'copy-selection': () => activeManager()?.copyActiveSelection(),
+    "focus-next": () => activeManager()?.cycleFocus(1),
+    "focus-prev": () => activeManager()?.cycleFocus(-1),
+    "toggle-expand": () => updateSettings({ focusExpand: !settings.value.focusExpand }),
+    "new-tab": () => void newTab(),
+    "close-tab": () => void close.closeTab(active),
+    "next-tab": () => cycleTab(1),
+    "prev-tab": () => cycleTab(-1),
+    "zoom-in": () => updateSettings({ fontSize: clampFontSize(settings.value.fontSize + 1) }),
+    "zoom-out": () => updateSettings({ fontSize: clampFontSize(settings.value.fontSize - 1) }),
+    "zoom-reset": () => updateSettings({ fontSize: DEFAULT_SETTINGS.fontSize }),
+    "toggle-zoom-pane": () => activeManager()?.toggleZoom(),
+    "clear-buffer": () => activeManager()?.clearActive(),
+    "copy-selection": () => activeManager()?.copyActiveSelection(),
     paste: () => activeManager()?.pasteIntoActive(),
-    'copy-cwd': () => {
+    "copy-cwd": () => {
       const paneId = activeManager()?.activePaneId() ?? null;
       if (paneId !== null) {
         copyPaneCwd(paneId);
       }
     },
-    'focus-left': () => activeManager()?.focusDirection('left'),
-    'focus-right': () => activeManager()?.focusDirection('right'),
-    'focus-up': () => activeManager()?.focusDirection('up'),
-    'focus-down': () => activeManager()?.focusDirection('down'),
-    'swap-left': () => activeManager()?.swapDirection('left'),
-    'swap-right': () => activeManager()?.swapDirection('right'),
-    'swap-up': () => activeManager()?.swapDirection('up'),
-    'swap-down': () => activeManager()?.swapDirection('down'),
-    'scroll-page-up': () => activeManager()?.scrollActivePage(-1),
-    'scroll-page-down': () => activeManager()?.scrollActivePage(1),
-    'scroll-to-top': () => activeManager()?.scrollActiveToEdge('top'),
-    'scroll-to-bottom': () => activeManager()?.scrollActiveToEdge('bottom'),
-    'reopen-tab': () => void reopenTab(),
+    "focus-left": () => activeManager()?.focusDirection("left"),
+    "focus-right": () => activeManager()?.focusDirection("right"),
+    "focus-up": () => activeManager()?.focusDirection("up"),
+    "focus-down": () => activeManager()?.focusDirection("down"),
+    "swap-left": () => activeManager()?.swapDirection("left"),
+    "swap-right": () => activeManager()?.swapDirection("right"),
+    "swap-up": () => activeManager()?.swapDirection("up"),
+    "swap-down": () => activeManager()?.swapDirection("down"),
+    "scroll-page-up": () => activeManager()?.scrollActivePage(-1),
+    "scroll-page-down": () => activeManager()?.scrollActivePage(1),
+    "scroll-to-top": () => activeManager()?.scrollActiveToEdge("top"),
+    "scroll-to-bottom": () => activeManager()?.scrollActiveToEdge("bottom"),
+    "reopen-tab": () => void reopenTab(),
     // Never calls `focusNextAttention` directly — routes the request through
     // the optional app seam so the app can run the overlay preflight (Task
     // 15) first. Missing `onRequestAttentionFocus` = safe no-op, never a
     // direct focus/ack.
-    'focus-next-attention': () => deps.onRequestAttentionFocus?.(),
+    "focus-next-attention": () => deps.onRequestAttentionFocus?.(),
     // Never touches `settingsOpen` directly — routes through the optional
     // app seam (mirrors `focus-next-attention` above) so App keeps owning
     // the close+focus-return flow it already owns for every other overlay.
     // Missing `onToggleSettings` = safe no-op, never a direct write.
-    'toggle-settings': () => deps.onToggleSettings?.(),
+    "toggle-settings": () => deps.onToggleSettings?.(),
     // Seam style, like `toggle-settings` above and unlike `toggle-prompts`
     // below: this one opens a full-window surface that must close Settings,
     // return focus on Escape, and refuse to open under a modal draft. All
     // three live in App; splitting them would put the mutual-exclusion rule
     // in two files. Missing `onToggleUsage` = safe no-op, never a direct write.
-    'toggle-usage': () => deps.onToggleUsage?.(),
+    "toggle-usage": () => deps.onToggleUsage?.(),
     // Writes the signal directly rather than routing through an App seam
     // (unlike toggle-settings): the popover has no draft to protect and no
     // overlay stack to keep consistent.
@@ -1272,7 +1272,7 @@ export function createTabManager(
     // "focus returns to the pane that had it" would otherwise be skipped and
     // the caret would land on <body> — the shortcut fires while focus sits on
     // the popover root, a div, so nothing else would take it back.
-    'move-pane-to-new-window': () => void movePaneToNewWindow(),
+    "move-pane-to-new-window": () => void movePaneToNewWindow(),
     // The browser is a strip tab whose surface covers the stage: the toggle
     // walks it through take-the-stage / step-back, never through close — the
     // chip's own ✕ is the only close. The view is host-owned, and the store
@@ -1281,7 +1281,7 @@ export function createTabManager(
     // `syncViews()` after every branch for the same reason the file side
     // routes `onSurfacesChanged` into `notifySurfacesChanged`: TabManager's
     // derived views cannot see a store-signal transition on their own.
-    'toggle-browser': () => {
+    "toggle-browser": () => {
       if (browserSurfaceActive.value) {
         deactivateBrowserSurface(defaultBrowserClient);
         syncViews();
@@ -1318,25 +1318,25 @@ export function createTabManager(
     // put away while a document holds the stage (that is what
     // `isChromeScopedAction` restores), and handing focus to the terminal
     // behind it would take the caret out of the editor the user is looking at.
-    'toggle-dock': () => {
+    "toggle-dock": () => {
       toggleDock();
       if (!settings.value.dockOpen) {
         focusStage();
       }
     },
-    'toggle-explorer': () => {
-      if (revealDockTab('explorer')) {
+    "toggle-explorer": () => {
+      if (revealDockTab("explorer")) {
         focusStage();
       }
     },
-    'toggle-prompts': () => {
+    "toggle-prompts": () => {
       if (promptsOpen.value) {
         promptsOpen.value = false;
         activeManager()?.focusActive();
         return;
       }
       if ((activeManager()?.activePaneId() ?? null) === null) {
-        reportChromeMessage('No pane to paste into.');
+        reportChromeMessage("No pane to paste into.");
         return;
       }
       promptsOpen.value = true;
@@ -1344,18 +1344,18 @@ export function createTabManager(
     find: () => activeManager()?.openSearch(),
     // Not exempted in overlayBlocksAction below: both act on the terminal
     // (highlight/jump inside a pane's buffer), same scope as clear-buffer.
-    'find-next': () => activeManager()?.findNext(),
-    'find-previous': () => activeManager()?.findPrevious(),
+    "find-next": () => activeManager()?.findNext(),
+    "find-previous": () => activeManager()?.findPrevious(),
     // Task 6's action; wired here (Task 5 owns this table). `surfaces.save()`
     // is ALREADY a no-op with nothing to save when no file surface is active
     // (`FileSurfaceController.save`, file-surface-controller.ts) — matching
     // the registry's "scoped: no-op when no file tab is active" without a
     // second check here.
-    'save-file': () => void surfaces.save(),
+    "save-file": () => void surfaces.save(),
     // The overlay scope guard in `dispatchAction` already blocks this while
     // any overlay (including the board) is up — this check is pure business
     // logic (nothing to save with zero tabs), not scope.
-    'save-preset': () => {
+    "save-preset": () => {
       if (tabs.length > 0) {
         saveDialogOpen.value = true;
       }
@@ -1364,8 +1364,8 @@ export function createTabManager(
     // (Task 4) — used to reach the app through a dedicated, unguarded
     // `menu:new-preset` Tauri event instead. Sets the same request the live
     // window's "New Layout Preset…" board flow already used.
-    'new-preset': () => {
-      editorRequest.value = { source: 'live' };
+    "new-preset": () => {
+      editorRequest.value = { source: "live" };
     },
   } satisfies Record<(typeof COMMAND_ACTIONS)[number], () => void>;
 
@@ -1428,7 +1428,7 @@ export function createTabManager(
    */
   function overlayBlocksAction(action: ShortcutAction): boolean {
     const scope = ACTION_SCOPE.get(action);
-    if (scope === undefined || scope === 'always' || isTabSwitchAction(action)) {
+    if (scope === undefined || scope === "always" || isTabSwitchAction(action)) {
       return false;
     }
     // A file surface owns the stage the same way an overlay does, but it is
@@ -1441,7 +1441,7 @@ export function createTabManager(
     // "pane" action targets `activeManager()` directly and must not reach it
     // here.
     if (
-      scope === 'pane' &&
+      scope === "pane" &&
       surfaces.activeIndex() >= 0 &&
       !isSurfaceRoutedAction(action) &&
       !isChromeScopedAction(action)
@@ -1465,10 +1465,10 @@ export function createTabManager(
    */
   function isSurfaceRoutedAction(action: ShortcutAction): boolean {
     return (
-      action === 'close-pane' ||
-      action === 'save-file' ||
-      action === 'toggle-browser' ||
-      action === 'move-pane-to-new-window'
+      action === "close-pane" ||
+      action === "save-file" ||
+      action === "toggle-browser" ||
+      action === "move-pane-to-new-window"
     );
   }
 
@@ -1496,7 +1496,7 @@ export function createTabManager(
    * guard working, not the defect this fixes.
    */
   function isChromeScopedAction(action: ShortcutAction): boolean {
-    return action === 'toggle-dock' || action === 'toggle-explorer' || action === 'toggle-usage';
+    return action === "toggle-dock" || action === "toggle-explorer" || action === "toggle-usage";
   }
 
   /**
@@ -1512,9 +1512,9 @@ export function createTabManager(
    */
   function isTabSwitchAction(action: ShortcutAction): boolean {
     return (
-      action === 'select-last-tab' ||
-      action === 'next-tab' ||
-      action === 'prev-tab' ||
+      action === "select-last-tab" ||
+      action === "next-tab" ||
+      action === "prev-tab" ||
       selectTabIndex(action) !== null
     );
   }
@@ -1527,7 +1527,7 @@ export function createTabManager(
   function isChromeTextField(node: unknown): boolean {
     return (
       (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) &&
-      !node.closest('.pane__term')
+      !node.closest(".pane__term")
     );
   }
 
@@ -1570,7 +1570,7 @@ export function createTabManager(
     // one interleaved row, so "the second chip" has to mean the second thing
     // on screen even when that is a file. The consequence is deliberate and
     // was the user's call — ⌘2 can now land on a document.
-    if (action === 'select-last-tab') {
+    if (action === "select-last-tab") {
       // -1 when the strip is empty — selectStripSlot's own range check no-ops
       // it, same as an out-of-range select-tab-N below.
       selectStripSlot(stripSlots().length - 1);
@@ -1662,7 +1662,7 @@ export function createTabManager(
     try {
       windowFocused = await getCurrentWindow().isFocused();
     } catch (err) {
-      console.warn('attention: window isFocused() failed; assuming focused', err);
+      console.warn("attention: window isFocused() failed; assuming focused", err);
       windowFocused = true;
     }
     try {
@@ -1672,7 +1672,7 @@ export function createTabManager(
       unlisteners.push(unlistenFocus);
     } catch (err) {
       console.warn(
-        'attention: onFocusChanged registration failed; native notifications suppressed',
+        "attention: onFocusChanged registration failed; native notifications suppressed",
         err,
       );
     }
@@ -1697,11 +1697,11 @@ export function createTabManager(
       // `moveToWindowTarget`.
       await registerUnlisten(
         transfer.listenMoveToWindow((targetLabel) => {
-          void movePane({ kind: 'window', label: targetLabel });
+          void movePane({ kind: "window", label: targetLabel });
         }),
       );
     } catch (err) {
-      console.warn('Cross-window transfer listeners not installed:', err);
+      console.warn("Cross-window transfer listeners not installed:", err);
     }
     await registerUnlisten(
       pty.listenOutput((id, data) => {
@@ -1768,10 +1768,10 @@ export function createTabManager(
           id,
           setTimeout(() => {
             activityResync.delete(id);
-            if (!activity.working(id) && tracker.snapshot(id)?.phase === 'working') {
+            if (!activity.working(id) && tracker.snapshot(id)?.phase === "working") {
               const resyncSnap = tracker.noteActivity(id, {
-                phase: 'idle',
-                source: 'output-heuristic',
+                phase: "idle",
+                source: "output-heuristic",
                 severity: null,
                 oscState: null,
                 observedAt: now(),
@@ -1836,7 +1836,7 @@ export function createTabManager(
         },
       }),
     );
-    window.addEventListener('keydown', handleShortcut, true);
+    window.addEventListener("keydown", handleShortcut, true);
     // Session restore is gone: the app always opens on the Open board, and the
     // user reopens folders from Recents by hand.
     poller.start();
@@ -1901,7 +1901,7 @@ export function createTabManager(
         clearTimeout(pending);
       }
       activityResync.clear();
-      window.removeEventListener('keydown', handleShortcut, true);
+      window.removeEventListener("keydown", handleShortcut, true);
       for (const unlisten of unlisteners) {
         unlisten();
       }

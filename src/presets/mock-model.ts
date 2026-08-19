@@ -10,7 +10,7 @@ import {
   type Path,
   type SerializedNode,
   type TreeNode,
-} from '../lib/split-tree';
+} from "../lib/split-tree";
 
 export const RATIO_MIN = 0.15;
 export const RATIO_MAX = 0.85;
@@ -90,16 +90,16 @@ export function setMockRatio(model: MockModel, path: Path, ratio: number): MockM
 
 /** Path of a/b branches from the root to the leaf; null when absent. */
 function pathToLeaf(node: TreeNode, id: number, prefix: Path = []): Path | null {
-  if (node.kind === 'leaf') {
+  if (node.kind === "leaf") {
     return node.paneId === id ? prefix : null;
   }
-  return pathToLeaf(node.a, id, [...prefix, 'a']) ?? pathToLeaf(node.b, id, [...prefix, 'b']);
+  return pathToLeaf(node.a, id, [...prefix, "a"]) ?? pathToLeaf(node.b, id, [...prefix, "b"]);
 }
 
 function splitAt(node: TreeNode, path: Path): TreeNode {
-  return path.length === 0 || node.kind === 'leaf'
+  return path.length === 0 || node.kind === "leaf"
     ? node
-    : splitAt(path[0] === 'a' ? node.a : node.b, path.slice(1));
+    : splitAt(path[0] === "a" ? node.a : node.b, path.slice(1));
 }
 
 /** Grow (+) or shrink (−) the selected pane's share of its parent split. */
@@ -111,10 +111,10 @@ export function nudgeSelected(model: MockModel, delta: number): MockModel {
   const parentPath = path.slice(0, -1);
   const branch: Branch = path[path.length - 1];
   const parent = splitAt(model.tree, parentPath);
-  if (parent.kind !== 'split') {
+  if (parent.kind !== "split") {
     return model;
   }
-  const ratio = branch === 'a' ? parent.ratio + delta : parent.ratio - delta;
+  const ratio = branch === "a" ? parent.ratio + delta : parent.ratio - delta;
   return setMockRatio(model, parentPath, ratio);
 }
 

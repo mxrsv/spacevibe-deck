@@ -629,7 +629,7 @@
 /* The rail's eyebrow. Lowercase (DL-4.3), and it names what the tier below it
  * actually is now that the flat workspace list has become repositories. */
 .gx-chatgpt-direction .wsbar__list::before {
-  content: 'repositories';
+  content: "repositories";
   order: 1;
   padding: 18px 10px 6px;
   color: var(--text-faint);
@@ -861,7 +861,7 @@
 
 /* Painted, not shadowed — DL-1.3 bans offset box-shadow. */
 .gx-chatgpt-terminal__tab.is-active::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0 0 auto;
   height: 2px;
@@ -979,7 +979,7 @@
   padding: 16px;
   color: var(--text-primary);
   font:
-    12px/1.75 'SF Mono',
+    12px/1.75 "SF Mono",
     ui-monospace,
     Menlo,
     monospace;
@@ -1003,7 +1003,7 @@
 }
 
 .gx-chatgpt-pane__cursor::after {
-  content: '';
+  content: "";
   display: inline-block;
   width: 7px;
   height: 14px;
@@ -1128,7 +1128,7 @@
   width: 36px;
   height: 1px;
   background: var(--accent);
-  content: '';
+  content: "";
 }
 
 .gx-chatgpt-direction .gx-worktree-variant__head {
@@ -1263,7 +1263,7 @@
   width: 2px;
   border-radius: 1px;
   background: var(--accent);
-  content: '';
+  content: "";
 }
 
 /* B — only the selected worktree earns vertical space. Resting rows keep one

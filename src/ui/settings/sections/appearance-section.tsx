@@ -1,21 +1,21 @@
-import { Minus, Plus, Repeat } from '@phosphor-icons/react';
+import { Minus, Plus, Repeat } from "@phosphor-icons/react";
 import {
   clampFontSize,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
   TERMINAL_RENDERERS,
   type TabBarPosition,
-} from '../../../settings/settings-schema';
-import { settings, updateSettings } from '../../../settings/settings-store';
-import { DeckIcon, ROW_ICON } from '../../controls/deck-icon';
-import { ConfigGroup, ConfigRow, ToggleRow } from '../../controls/config-row';
-import { FontRow } from '../../controls/font-row';
-import { LogoRow } from '../../controls/logo-row';
-import { ThemeGallery } from '../theme-gallery';
-import { ColorOverrides } from '../color-overrides';
-import { SidebarBannerSettings } from '../sidebar-banner-settings';
+} from "../../../settings/settings-schema";
+import { settings, updateSettings } from "../../../settings/settings-store";
+import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
+import { ConfigGroup, ConfigRow, ToggleRow } from "../../controls/config-row";
+import { FontRow } from "../../controls/font-row";
+import { LogoRow } from "../../controls/logo-row";
+import { ThemeGallery } from "../theme-gallery";
+import { ColorOverrides } from "../color-overrides";
+import { SidebarBannerSettings } from "../sidebar-banner-settings";
 
-const TAB_BAR_CHOICES: readonly TabBarPosition[] = ['left', 'top'];
+const TAB_BAR_CHOICES: readonly TabBarPosition[] = ["left", "top"];
 
 export function AppearanceSection() {
   const current = settings.value;

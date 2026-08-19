@@ -19,7 +19,7 @@
  */
 
 /** ESC + CR — read as "insert a newline" by Claude Code and other agent CLIs. */
-export const NEWLINE_SEQUENCE = '\x1b\r';
+export const NEWLINE_SEQUENCE = "\x1b\r";
 
 /**
  * True for a bare Shift+Enter headed for the PTY.
@@ -30,7 +30,7 @@ export const NEWLINE_SEQUENCE = '\x1b\r';
  */
 export function isShiftEnter(event: KeyboardEvent): boolean {
   return (
-    event.key === 'Enter' &&
+    event.key === "Enter" &&
     event.shiftKey &&
     !event.metaKey &&
     !event.ctrlKey &&
@@ -57,6 +57,6 @@ export function installShiftEnterNewline(
     event.stopPropagation();
     send(NEWLINE_SEQUENCE);
   };
-  host.addEventListener('keydown', onKeyDown, true);
-  return () => host.removeEventListener('keydown', onKeyDown, true);
+  host.addEventListener("keydown", onKeyDown, true);
+  return () => host.removeEventListener("keydown", onKeyDown, true);
 }

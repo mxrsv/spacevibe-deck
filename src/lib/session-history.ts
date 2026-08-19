@@ -5,14 +5,14 @@
  * no `electron/` on its path.
  */
 
-export type SessionAgent = 'claude' | 'codex';
+export type SessionAgent = "claude" | "codex";
 
-export const SESSION_AGENTS: readonly SessionAgent[] = Object.freeze(['claude', 'codex']);
+export const SESSION_AGENTS: readonly SessionAgent[] = Object.freeze(["claude", "codex"]);
 
 /** Display name per agent — sentence case naming a product (DL-4.3). */
 export const SESSION_AGENT_LABELS: Readonly<Record<SessionAgent, string>> = Object.freeze({
-  claude: 'Claude Code',
-  codex: 'Codex',
+  claude: "Claude Code",
+  codex: "Codex",
 });
 
 export interface SessionEntry {
@@ -41,7 +41,7 @@ export const EMPTY_SESSIONS_SNAPSHOT: SessionsSnapshot = Object.freeze({
 /** Validate an untyped IPC reply. A host that answers something else — Tauri,
  *  a stale build — is `unsupported`, never a crash. */
 export function asSessionsSnapshot(raw: unknown): SessionsSnapshot | null {
-  if (raw === null || typeof raw !== 'object') {
+  if (raw === null || typeof raw !== "object") {
     return null;
   }
   const node = raw as Record<string, unknown>;
@@ -49,12 +49,12 @@ export function asSessionsSnapshot(raw: unknown): SessionsSnapshot | null {
     return null;
   }
   const totals = node.totals;
-  if (totals === null || typeof totals !== 'object') {
+  if (totals === null || typeof totals !== "object") {
     return null;
   }
   const entries: SessionEntry[] = [];
   for (const value of node.entries) {
-    if (value === null || typeof value !== 'object') {
+    if (value === null || typeof value !== "object") {
       continue;
     }
     const entry = value as Record<string, unknown>;
@@ -66,13 +66,13 @@ export function asSessionsSnapshot(raw: unknown): SessionsSnapshot | null {
     // own (see `resume-session.ts`'s guard, which closes the same hole from
     // the other side).
     if (
-      (entry.agent !== 'claude' && entry.agent !== 'codex') ||
-      typeof entry.sessionId !== 'string' ||
-      entry.sessionId === '' ||
-      typeof entry.cwd !== 'string' ||
-      entry.cwd === '' ||
-      typeof entry.lastActivityMs !== 'number' ||
-      typeof entry.sourcePath !== 'string'
+      (entry.agent !== "claude" && entry.agent !== "codex") ||
+      typeof entry.sessionId !== "string" ||
+      entry.sessionId === "" ||
+      typeof entry.cwd !== "string" ||
+      entry.cwd === "" ||
+      typeof entry.lastActivityMs !== "number" ||
+      typeof entry.sourcePath !== "string"
     ) {
       continue;
     }
@@ -81,7 +81,7 @@ export function asSessionsSnapshot(raw: unknown): SessionsSnapshot | null {
       sessionId: entry.sessionId,
       cwd: entry.cwd,
       lastActivityMs: entry.lastActivityMs,
-      title: typeof entry.title === 'string' ? entry.title : null,
+      title: typeof entry.title === "string" ? entry.title : null,
       sourcePath: entry.sourcePath,
     });
   }
@@ -89,9 +89,9 @@ export function asSessionsSnapshot(raw: unknown): SessionsSnapshot | null {
   return {
     entries,
     totals: {
-      claude: typeof counts.claude === 'number' ? counts.claude : 0,
-      codex: typeof counts.codex === 'number' ? counts.codex : 0,
+      claude: typeof counts.claude === "number" ? counts.claude : 0,
+      codex: typeof counts.codex === "number" ? counts.codex : 0,
     },
-    limit: typeof node.limit === 'number' ? node.limit : SESSIONS_DEFAULT_LIMIT,
+    limit: typeof node.limit === "number" ? node.limit : SESSIONS_DEFAULT_LIMIT,
   };
 }

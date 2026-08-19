@@ -1,8 +1,8 @@
-import type { PaneProcessInfo } from '../lib/process-info';
-import type { AgentProcessMatcher } from '../lib/agent-catalog';
-import type { PaneAttentionSnapshot } from '../terminal/agent-attention';
-import { freshPaneInfo } from '../terminal/pane-info';
-import { defaultPtyClient, type PtyClient } from '../terminal/pty-client';
+import type { PaneProcessInfo } from "../lib/process-info";
+import type { AgentProcessMatcher } from "../lib/agent-catalog";
+import type { PaneAttentionSnapshot } from "../terminal/agent-attention";
+import { freshPaneInfo } from "../terminal/pane-info";
+import { defaultPtyClient, type PtyClient } from "../terminal/pty-client";
 
 /**
  * What the popover captured when it opened. Every later step — scan, paste,
@@ -17,7 +17,7 @@ export interface PromptTarget {
 }
 
 /** Result of one atomic, per-pane Prompt Board injection attempt. */
-export type InjectOutcome = 'sent' | 'pasted' | 'failed' | 'busy' | 'no-target';
+export type InjectOutcome = "sent" | "pasted" | "failed" | "busy" | "no-target";
 
 export interface SubmitGateInput {
   /** The agent captured when the popover opened. */
@@ -54,13 +54,13 @@ export function submitAllowed({ expectedAgent, info, attention, alive }: SubmitG
   if (expectedAgent === null || info === undefined) {
     return false;
   }
-  if (info.kind !== 'agent' || info.agent !== expectedAgent) {
+  if (info.kind !== "agent" || info.agent !== expectedAgent) {
     return false;
   }
-  if (attention === null || attention.phase !== 'idle') {
+  if (attention === null || attention.phase !== "idle") {
     return false;
   }
-  return attention.attention === 'none' || attention.attention === 'completed';
+  return attention.attention === "none" || attention.attention === "completed";
 }
 
 /**
@@ -79,7 +79,7 @@ export async function capturePromptTarget(
   const [info] = await freshPaneInfo([activePaneId], pty, agentMatchers);
   return {
     paneId: activePaneId,
-    agent: info?.kind === 'agent' ? info.agent : null,
+    agent: info?.kind === "agent" ? info.agent : null,
     cwd: info?.cwd ?? null,
   };
 }

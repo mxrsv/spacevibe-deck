@@ -1,11 +1,11 @@
-import type { PaneProcessInfo } from '../lib/process-info';
-import type { AgentProcessMatcher, PtyClient } from './pty-client';
+import type { PaneProcessInfo } from "../lib/process-info";
+import type { AgentProcessMatcher, PtyClient } from "./pty-client";
 
 const DEFAULT_INTERVAL_MS = 2000;
 
 /** What the poller needs from its owner (TabManager). */
 export interface PaneInfoPollerDeps {
-  pty: Pick<PtyClient, 'ptyInfo' | 'gitBranch'>;
+  pty: Pick<PtyClient, "ptyInfo" | "gitBranch">;
   /** Pane ids worth polling right now (tab dots + active tab headers). */
   targets(): readonly number[];
   /** Focused pane of the active tab — its CWD drives the git branch. */
@@ -62,7 +62,7 @@ export function createPaneInfoPoller(deps: PaneInfoPollerDeps): PaneInfoPoller {
       lastBranchCwd = cwd;
     } catch (err) {
       if (!warned) {
-        console.warn('git_branch failed:', err);
+        console.warn("git_branch failed:", err);
         warned = true;
       }
     }
@@ -80,7 +80,7 @@ export function createPaneInfoPoller(deps: PaneInfoPollerDeps): PaneInfoPoller {
     } catch (err) {
       // Keep the last known values; warn once, never break the loop
       if (!warned) {
-        console.warn('pty_info failed:', err);
+        console.warn("pty_info failed:", err);
         warned = true;
       }
       return;

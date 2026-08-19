@@ -1,13 +1,13 @@
-import { type AgentTotal, agentTotals } from '../../../lib/usage-aggregate';
-import { AGENT_LOGOS } from '../../../lib/agent-logos';
-import { dotColor } from '../../../lib/process-info';
-import { formatUsd } from '../../../lib/usage-pricing';
-import { totalTokens } from '../../../lib/usage-snapshot';
-import { usageSnapshot } from '../../../usage/usage-store';
-import { activeUsageRange } from '../active-usage-view-store';
-import { UsageRangeSelector } from '../usage-range-selector';
-import { rangeSinceMs, USAGE_RANGES } from '../usage-ranges';
-import { EM_DASH, ESTIMATE_NOTE, formatTokensCompact, USAGE_AGENT_LABEL } from '../usage-format';
+import { type AgentTotal, agentTotals } from "../../../lib/usage-aggregate";
+import { AGENT_LOGOS } from "../../../lib/agent-logos";
+import { dotColor } from "../../../lib/process-info";
+import { formatUsd } from "../../../lib/usage-pricing";
+import { totalTokens } from "../../../lib/usage-snapshot";
+import { usageSnapshot } from "../../../usage/usage-store";
+import { activeUsageRange } from "../active-usage-view-store";
+import { UsageRangeSelector } from "../usage-range-selector";
+import { rangeSinceMs, USAGE_RANGES } from "../usage-ranges";
+import { EM_DASH, ESTIMATE_NOTE, formatTokensCompact, USAGE_AGENT_LABEL } from "../usage-format";
 
 /**
  * The overview: one display figure saying what this machine's recorded agent
@@ -147,7 +147,7 @@ function subLine(block: AgentBlock): string {
     return `unpriced · ${tokens}`;
   }
   const omitted =
-    block.unpricedTokens > 0 ? ` · ${formatTokensCompact(block.unpricedTokens)} unpriced` : '';
+    block.unpricedTokens > 0 ? ` · ${formatTokensCompact(block.unpricedTokens)} unpriced` : "";
   if (block.sharePercent === null) {
     return `${tokens}${omitted}`;
   }
@@ -214,13 +214,13 @@ export function OverviewSection() {
   // figure and a gap, the asterisk's "this is an estimate" is extended to say
   // where the estimate stops — a partial sum is only acceptable while it
   // admits it.
-  let footnote: string | null = '* if billed at full API rate';
+  let footnote: string | null = "* if billed at full API rate";
   if (blocks.length === 0) {
     footnote = null;
   } else if (total === null) {
-    footnote = `no price for ${unpriced.join(', ')}`;
+    footnote = `no price for ${unpriced.join(", ")}`;
   } else if (unpriced.length > 0) {
-    const plural = unpriced.length === 1 ? 'model' : 'models';
+    const plural = unpriced.length === 1 ? "model" : "models";
     footnote += ` · excludes ${unpriced.length} ${plural} with no published price`;
   }
 
@@ -234,7 +234,7 @@ export function OverviewSection() {
           starts reading as a rule across the page or a loading skeleton; the
           faint step is what keeps it legible as an absence. Same size either
           way, so the block below does not jump when a price lands. */}
-      <p class={`usage-hero__figure ${total === null ? 'usage-hero__figure--absent' : ''}`}>
+      <p class={`usage-hero__figure ${total === null ? "usage-hero__figure--absent" : ""}`}>
         {total === null ? EM_DASH : `${formatUsd(total)}*`}
       </p>
       {footnote === null ? null : <p class="usage-hero__footnote">{footnote}</p>}

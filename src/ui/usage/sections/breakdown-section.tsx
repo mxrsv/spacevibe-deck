@@ -1,7 +1,7 @@
-import { breakdownRows } from '../../../lib/usage-aggregate';
-import { usageSnapshot } from '../../../usage/usage-store';
-import { MetricTable, type MetricColumn, type MetricRow } from '../metric-table';
-import { ESTIMATE_NOTE, formatTokens, usdCell, USAGE_AGENT_LABEL } from '../usage-format';
+import { breakdownRows } from "../../../lib/usage-aggregate";
+import { usageSnapshot } from "../../../usage/usage-store";
+import { MetricTable, type MetricColumn, type MetricRow } from "../metric-table";
+import { ESTIMATE_NOTE, formatTokens, usdCell, USAGE_AGENT_LABEL } from "../usage-format";
 
 /**
  * The breakdown: one row per agent and raw model, with all six counter
@@ -26,15 +26,15 @@ import { ESTIMATE_NOTE, formatTokens, usdCell, USAGE_AGENT_LABEL } from '../usag
  */
 
 const COLUMNS: readonly MetricColumn[] = [
-  { key: 'agent', label: 'Agent' },
-  { key: 'model', label: 'Model' },
-  { key: 'input-uncached', label: 'Input uncached', numeric: true },
-  { key: 'cache-read', label: 'Cache read', numeric: true },
-  { key: 'cache-create-5m', label: 'Cache create 5m', numeric: true },
-  { key: 'cache-create-1h', label: 'Cache create 1h', numeric: true },
-  { key: 'cache-write', label: 'Cache write', numeric: true },
-  { key: 'output', label: 'Output', numeric: true },
-  { key: 'usd', label: 'Est. USD', numeric: true },
+  { key: "agent", label: "Agent" },
+  { key: "model", label: "Model" },
+  { key: "input-uncached", label: "Input uncached", numeric: true },
+  { key: "cache-read", label: "Cache read", numeric: true },
+  { key: "cache-create-5m", label: "Cache create 5m", numeric: true },
+  { key: "cache-create-1h", label: "Cache create 1h", numeric: true },
+  { key: "cache-write", label: "Cache write", numeric: true },
+  { key: "output", label: "Output", numeric: true },
+  { key: "usd", label: "Est. USD", numeric: true },
 ];
 
 export function BreakdownSection() {

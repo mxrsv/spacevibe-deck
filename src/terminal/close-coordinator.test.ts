@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-import { createCloseCoordinator } from './close-coordinator';
-import type { TerminalManager } from './terminal-manager';
+import { describe, expect, it, vi } from "vitest";
+import { createCloseCoordinator } from "./close-coordinator";
+import type { TerminalManager } from "./terminal-manager";
 
 function mockManager(
   overrides: Partial<TerminalManager> & {
@@ -12,8 +12,8 @@ function mockManager(
   return overrides as TerminalManager;
 }
 
-describe('createCloseCoordinator', () => {
-  it('routes last pane to closeTab', async () => {
+describe("createCloseCoordinator", () => {
+  it("routes last pane to closeTab", async () => {
     const disposeTab = vi.fn(async () => undefined);
     const confirmClose = vi.fn(async () => true);
     const manager = mockManager({
@@ -37,7 +37,7 @@ describe('createCloseCoordinator', () => {
     expect(manager.closePaneById).not.toHaveBeenCalled();
   });
 
-  it('closes the confirmed pane id, not a later active pane', async () => {
+  it("closes the confirmed pane id, not a later active pane", async () => {
     const closePaneById = vi.fn(async () => undefined);
     let activeId = 7;
     const manager = mockManager({
@@ -62,7 +62,7 @@ describe('createCloseCoordinator', () => {
     expect(closePaneById).toHaveBeenCalledWith(7);
   });
 
-  it('aborts when Busy dialog declines', async () => {
+  it("aborts when Busy dialog declines", async () => {
     const disposeTab = vi.fn();
     const manager = mockManager({
       paneCount: () => 1,
@@ -83,7 +83,7 @@ describe('createCloseCoordinator', () => {
     expect(disposeTab).not.toHaveBeenCalled();
   });
 
-  it('skips dispose when tab vanished during dialog', async () => {
+  it("skips dispose when tab vanished during dialog", async () => {
     const disposeTab = vi.fn();
     const manager = mockManager({
       paneCount: () => 1,

@@ -11,9 +11,9 @@
  * must never become permission to replace the user's recoverable bytes with
  * defaults.
  */
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { writeFileAtomically } from './fs/write';
+import fs from "node:fs/promises";
+import path from "node:path";
+import { writeFileAtomically } from "./fs/write";
 
 export interface StoreOptions {
   /** Milliseconds to coalesce writes; 0 disables autosave. */
@@ -29,7 +29,7 @@ export interface StoreOptions {
 }
 
 export interface StoreLoadState {
-  readonly state: 'ready' | 'unreadable';
+  readonly state: "ready" | "unreadable";
   readonly fresh: boolean;
 }
 
@@ -45,7 +45,7 @@ export class JsonStore {
    * with the defaults being seeded and autosaved straight over it.
    */
   private currentLoadState: StoreLoadState = {
-    state: 'ready',
+    state: "ready",
     fresh: true,
   };
   private pendingWrite: NodeJS.Timeout | null = null;
@@ -71,15 +71,15 @@ export class JsonStore {
       return this.currentLoadState;
     }
     try {
-      const raw = await fs.readFile(this.filePath, 'utf8');
+      const raw = await fs.readFile(this.filePath, "utf8");
       const parsed: unknown = JSON.parse(raw);
       // A store file that is not an object is corrupt, not empty. Treat it as
       // empty here but keep the file — overwriting it would destroy whatever a
       // user might still recover by hand.
-      const usable = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed);
+      const usable = typeof parsed === "object" && parsed !== null && !Array.isArray(parsed);
       this.data = usable ? (parsed as Record<string, unknown>) : {};
       this.currentLoadState = {
-        state: usable ? 'ready' : 'unreadable',
+        state: usable ? "ready" : "unreadable",
         fresh: false,
       };
     } catch (error: unknown) {
@@ -87,9 +87,9 @@ export class JsonStore {
       // ENOENT is the only benign case — every other reason (bad JSON, a
       // truncated file from a power loss, a cloud-sync conflict copy, EACCES)
       // means real data is sitting there unread.
-      const fresh = (error as NodeJS.ErrnoException).code === 'ENOENT';
+      const fresh = (error as NodeJS.ErrnoException).code === "ENOENT";
       this.currentLoadState = {
-        state: fresh ? 'ready' : 'unreadable',
+        state: fresh ? "ready" : "unreadable",
         fresh,
       };
       if (!fresh) {
@@ -117,14 +117,14 @@ export class JsonStore {
     if (!this.loaded) {
       throw new Error(`${path.basename(this.filePath)} has not been loaded`);
     }
-    if (this.currentLoadState.state === 'unreadable') {
+    if (this.currentLoadState.state === "unreadable") {
       return false;
     }
     const value = this.data[key];
     const usable =
-      value === undefined || (typeof value === 'object' && value !== null && !Array.isArray(value));
+      value === undefined || (typeof value === "object" && value !== null && !Array.isArray(value));
     if (!usable) {
-      this.currentLoadState = { state: 'unreadable', fresh: false };
+      this.currentLoadState = { state: "unreadable", fresh: false };
     }
     return usable;
   }
@@ -134,7 +134,7 @@ export class JsonStore {
    * the user repairs the file without risking an unsaved healthy snapshot.
    */
   retryUnreadable(): Promise<StoreLoadState> {
-    if (this.currentLoadState.state === 'ready') {
+    if (this.currentLoadState.state === "ready") {
       return Promise.resolve(this.currentLoadState);
     }
     if (this.reloading !== null) {
@@ -152,7 +152,7 @@ export class JsonStore {
     if (!this.loaded) {
       throw new Error(`${path.basename(this.filePath)} has not been loaded`);
     }
-    if (this.currentLoadState.state === 'unreadable') {
+    if (this.currentLoadState.state === "unreadable") {
       throw new Error(`${path.basename(this.filePath)} is unreadable; write blocked`);
     }
   }
@@ -291,8 +291,8 @@ export class StoreRegistry {
     const stores = await Promise.all([...this.stores.values()]);
     const results = await Promise.allSettled(stores.map((store) => store.save()));
     for (const result of results) {
-      if (result.status === 'rejected') {
-        console.error('Deck: a store failed to flush on quit', result.reason);
+      if (result.status === "rejected") {
+        console.error("Deck: a store failed to flush on quit", result.reason);
       }
     }
   }

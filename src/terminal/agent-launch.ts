@@ -1,5 +1,5 @@
-import type { DesktopPlatform } from '../lib/platform';
-import { defaultPtyClient, type PtyClient } from './pty-client';
+import type { DesktopPlatform } from "../lib/platform";
+import { defaultPtyClient, type PtyClient } from "./pty-client";
 
 /** macOS first-output fallback retained for compatibility. */
 export const AGENT_LAUNCH_TIMEOUT_MS = 3000;
@@ -74,10 +74,10 @@ export function createAgentLauncher(
   pty: PtyClient = defaultPtyClient,
   options: AgentLauncherOptions = {},
 ): AgentLauncher {
-  const platform = options.platform ?? 'macos';
+  const platform = options.platform ?? "macos";
   const timeoutMs =
     options.timeoutMs ??
-    (platform === 'windows' ? WINDOWS_AGENT_LAUNCH_TIMEOUT_MS : AGENT_LAUNCH_TIMEOUT_MS);
+    (platform === "windows" ? WINDOWS_AGENT_LAUNCH_TIMEOUT_MS : AGENT_LAUNCH_TIMEOUT_MS);
   const onTimeout = options.onTimeout ?? (() => {});
   let state = emptyState();
 
@@ -94,7 +94,7 @@ export function createAgentLauncher(
     };
     pty.writePty(id, `${entry.command}\r`).catch((err: unknown) => {
       // A failed write leaves the pane as an empty shell — never sink the tab.
-      console.error('agent launch write_pty failed:', err);
+      console.error("agent launch write_pty failed:", err);
     });
   }
 
@@ -102,7 +102,7 @@ export function createAgentLauncher(
     if (!state.armed.has(id) || state.launched.has(id)) {
       return;
     }
-    if (platform !== 'windows') {
+    if (platform !== "windows") {
       fire(id);
       return;
     }
@@ -114,7 +114,7 @@ export function createAgentLauncher(
     try {
       onTimeout(id);
     } catch (error) {
-      console.error('agent launch timeout callback failed:', error);
+      console.error("agent launch timeout callback failed:", error);
     }
   }
 
@@ -134,7 +134,7 @@ export function createAgentLauncher(
           ...state,
           armed: new Map(state.armed).set(id, { command, timer }),
         };
-        const ready = platform === 'windows' ? state.promptReady.has(id) : state.sawOutput.has(id);
+        const ready = platform === "windows" ? state.promptReady.has(id) : state.sawOutput.has(id);
         if (ready) {
           fire(id);
         }
@@ -142,13 +142,13 @@ export function createAgentLauncher(
     },
     noteOutput(id) {
       state = { ...state, sawOutput: addId(state.sawOutput, id) };
-      if (platform !== 'windows' && state.armed.has(id)) {
+      if (platform !== "windows" && state.armed.has(id)) {
         fire(id);
       }
     },
     notePromptReady(id) {
       state = { ...state, promptReady: addId(state.promptReady, id) };
-      if (platform === 'windows' && state.armed.has(id)) {
+      if (platform === "windows" && state.armed.has(id)) {
         fire(id);
       }
     },

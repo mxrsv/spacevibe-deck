@@ -1,35 +1,35 @@
 // @vitest-environment jsdom
-import { signal } from '@preact/signals';
-import { render } from 'preact';
-import { act } from 'preact/test-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { signal } from "@preact/signals";
+import { render } from "preact";
+import { act } from "preact/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Hoisted so the factory below can close over it — `vi.mock` runs before any
 // top-level `const` in this file is initialised.
 const { openUrl } = vi.hoisted(() => ({
   openUrl: vi.fn(async (_url: string) => {}),
 }));
-vi.mock('../../../host/shell-host', () => ({ openUrl }));
+vi.mock("../../../host/shell-host", () => ({ openUrl }));
 
-import { AboutSection } from './about-section';
-import { activeUpdateController } from '../../../updater/active-update-controller';
-import { appVersion } from '../../../updater/app-version';
-import type { UpdateController, UpdateView } from '../../../updater/update-controller';
+import { AboutSection } from "./about-section";
+import { activeUpdateController } from "../../../updater/active-update-controller";
+import { appVersion } from "../../../updater/app-version";
+import type { UpdateController, UpdateView } from "../../../updater/update-controller";
 
 function controller(view: Partial<UpdateView> = {}): UpdateController {
   return {
     view: signal<UpdateView>({
-      phase: 'hidden',
+      phase: "hidden",
       // Matches the real `HIDDEN_VIEW`: until a check finds something, the
       // controller knows no version at all. An earlier fixture filled this in
       // and hid the fact that the row had nothing to show.
-      currentVersion: view.phase === undefined ? '' : '0.11.0',
-      availableVersion: '',
-      notes: '',
+      currentVersion: view.phase === undefined ? "" : "0.11.0",
+      availableVersion: "",
+      notes: "",
       ...view,
     }),
     start: vi.fn(async () => {}),
-    checkNow: vi.fn(async () => 'current' as const),
+    checkNow: vi.fn(async () => "current" as const),
     download: vi.fn(async () => {}),
     installAndRelaunch: vi.fn(async () => {}),
     relaunch: vi.fn(async () => {}),
@@ -37,18 +37,18 @@ function controller(view: Partial<UpdateView> = {}): UpdateController {
 }
 
 function pills(host: HTMLElement): HTMLButtonElement[] {
-  return [...host.querySelectorAll<HTMLButtonElement>('button.cfg-btn')];
+  return [...host.querySelectorAll<HTMLButtonElement>("button.cfg-btn")];
 }
 
-describe('AboutSection', () => {
+describe("AboutSection", () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
     openUrl.mockClear();
-    document.body.innerHTML = '';
-    host = document.createElement('div');
+    document.body.innerHTML = "";
+    host = document.createElement("div");
     document.body.appendChild(host);
-    appVersion.value = '0.11.0';
+    appVersion.value = "0.11.0";
   });
 
   afterEach(() => {
@@ -56,15 +56,15 @@ describe('AboutSection', () => {
     activeUpdateController.value = null;
   });
 
-  it('shows the running version and offers a check when nothing was found', () => {
+  it("shows the running version and offers a check when nothing was found", () => {
     activeUpdateController.value = controller();
     act(() => render(<AboutSection />, host));
 
-    expect(host.textContent).toContain('Currently 0.11.0');
-    expect(pills(host)[0].textContent).toBe('check');
+    expect(host.textContent).toContain("Currently 0.11.0");
+    expect(pills(host)[0].textContent).toBe("check");
   });
 
-  it('checks on demand — the door Windows never had', async () => {
+  it("checks on demand — the door Windows never had", async () => {
     // The macOS menu bar carries `Check for Updates…`; `menu.rs` builds no
     // menu off macOS, so without this row a Windows user can only recheck by
     // restarting Deck.
@@ -80,15 +80,15 @@ describe('AboutSection', () => {
     expect(host.textContent).toContain("You're on the latest version");
   });
 
-  it('drives the existing state machine instead of a second one', async () => {
+  it("drives the existing state machine instead of a second one", async () => {
     const updater = controller({
-      phase: 'available',
-      availableVersion: '1.0.0',
+      phase: "available",
+      availableVersion: "1.0.0",
     });
     activeUpdateController.value = updater;
     act(() => render(<AboutSection />, host));
 
-    expect(pills(host)[0].textContent).toBe('update');
+    expect(pills(host)[0].textContent).toBe("update");
     await act(async () => {
       pills(host)[0].click();
     });
@@ -97,15 +97,15 @@ describe('AboutSection', () => {
     expect(updater.checkNow).not.toHaveBeenCalled();
   });
 
-  it('installs from the downloaded phase rather than downloading again', async () => {
+  it("installs from the downloaded phase rather than downloading again", async () => {
     const updater = controller({
-      phase: 'downloaded',
-      availableVersion: '1.0.0',
+      phase: "downloaded",
+      availableVersion: "1.0.0",
     });
     activeUpdateController.value = updater;
     act(() => render(<AboutSection />, host));
 
-    expect(pills(host)[0].textContent).toBe('install & relaunch');
+    expect(pills(host)[0].textContent).toBe("install & relaunch");
     await act(async () => {
       pills(host)[0].click();
     });
@@ -114,14 +114,14 @@ describe('AboutSection', () => {
     expect(updater.download).not.toHaveBeenCalled();
   });
 
-  it('disables the pill while work is in flight', () => {
-    activeUpdateController.value = controller({ phase: 'downloading' });
+  it("disables the pill while work is in flight", () => {
+    activeUpdateController.value = controller({ phase: "downloading" });
     act(() => render(<AboutSection />, host));
 
     expect(pills(host)[0].disabled).toBe(true);
   });
 
-  it('stays usable with no controller — the pill simply cannot be pressed', () => {
+  it("stays usable with no controller — the pill simply cannot be pressed", () => {
     activeUpdateController.value = null;
     act(() => render(<AboutSection />, host));
 
@@ -129,9 +129,9 @@ describe('AboutSection', () => {
     expect(pills(host)[1].disabled).toBe(false);
   });
 
-  it('says something when the check fails', async () => {
+  it("says something when the check fails", async () => {
     const updater = controller();
-    (updater.checkNow as unknown as ReturnType<typeof vi.fn>).mockResolvedValue('failed');
+    (updater.checkNow as unknown as ReturnType<typeof vi.fn>).mockResolvedValue("failed");
     activeUpdateController.value = updater;
     act(() => render(<AboutSection />, host));
 
@@ -142,14 +142,14 @@ describe('AboutSection', () => {
     expect(host.textContent).toContain("Couldn't reach the update server");
   });
 
-  it('shows the running version even with no update available', () => {
+  it("shows the running version even with no update available", () => {
     activeUpdateController.value = controller();
     act(() => render(<AboutSection />, host));
 
-    expect(host.textContent).toContain('0.11.0');
+    expect(host.textContent).toContain("0.11.0");
   });
 
-  it('opens the release notes', async () => {
+  it("opens the release notes", async () => {
     activeUpdateController.value = controller();
     act(() => render(<AboutSection />, host));
 
@@ -158,6 +158,6 @@ describe('AboutSection', () => {
     });
 
     expect(openUrl).toHaveBeenCalledTimes(1);
-    expect(openUrl.mock.calls[0]?.[0]).toContain('changelog');
+    expect(openUrl.mock.calls[0]?.[0]).toContain("changelog");
   });
 });

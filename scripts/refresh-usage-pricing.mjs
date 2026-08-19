@@ -15,13 +15,13 @@
  * typechecks, passes its own tests and silently prices nothing.
  */
 
-import { writeFileSync } from 'node:fs';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { writeFileSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const SOURCE_URL =
-  'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
+  "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
 
-const OUTPUT_URL = new URL('../src/lib/usage-pricing-snapshot.ts', import.meta.url);
+const OUTPUT_URL = new URL("../src/lib/usage-pricing-snapshot.ts", import.meta.url);
 
 /**
  * Which catalog entries are worth shipping. Anthropic's whole `claude-*` line
@@ -33,8 +33,8 @@ const OUTPUT_URL = new URL('../src/lib/usage-pricing-snapshot.ts', import.meta.u
  * default model without asking.
  */
 const MODEL_SELECTORS = [
-  { provider: 'anthropic', pattern: /^claude-/u },
-  { provider: 'openai', pattern: /^(?:gpt-5|o[134](?:-|$)|codex-)/u },
+  { provider: "anthropic", pattern: /^claude-/u },
+  { provider: "openai", pattern: /^(?:gpt-5|o[134](?:-|$)|codex-)/u },
 ];
 
 /**
@@ -44,28 +44,28 @@ const MODEL_SELECTORS = [
  * look before anything is written.
  */
 const REQUIRED_MODELS = [
-  'claude-fable-5',
-  'claude-opus-4-8',
-  'claude-opus-5',
-  'claude-sonnet-4-6',
-  'claude-sonnet-5',
-  'gpt-5.1-codex-mini',
-  'gpt-5.3-codex',
-  'gpt-5.4',
-  'gpt-5.5',
-  'gpt-5.6-luna',
-  'gpt-5.6-sol',
-  'gpt-5.6-terra',
+  "claude-fable-5",
+  "claude-opus-4-8",
+  "claude-opus-5",
+  "claude-sonnet-4-6",
+  "claude-sonnet-5",
+  "gpt-5.1-codex-mini",
+  "gpt-5.3-codex",
+  "gpt-5.4",
+  "gpt-5.5",
+  "gpt-5.6-luna",
+  "gpt-5.6-sol",
+  "gpt-5.6-terra",
 ];
 
 /** 84 models survived on 2026-08-10. Half that means the filter broke. */
 const MIN_SELECTED_MODELS = 40;
 
 /** LiteLLM's own schema placeholder, not a model. */
-const SCHEMA_SAMPLE_KEY = 'sample_spec';
+const SCHEMA_SAMPLE_KEY = "sample_spec";
 
 function finiteRate(value) {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
 /**
@@ -74,7 +74,7 @@ function finiteRate(value) {
  * snapshot than out of it, because presence is what `isPricedModel` reads.
  */
 export function toModelPricing(entry) {
-  if (entry === null || typeof entry !== 'object') {
+  if (entry === null || typeof entry !== "object") {
     return null;
   }
   const inputPerToken = finiteRate(entry.input_cost_per_token);
@@ -91,7 +91,7 @@ export function toModelPricing(entry) {
 }
 
 function isSelectedId(id, entry) {
-  if (entry === null || typeof entry !== 'object') {
+  if (entry === null || typeof entry !== "object") {
     return false;
   }
   return MODEL_SELECTORS.some(
@@ -101,8 +101,8 @@ function isSelectedId(id, entry) {
 
 /** The catalog reduced to sorted `[id, ModelPricing]` pairs. */
 export function selectModels(catalog) {
-  if (catalog === null || typeof catalog !== 'object') {
-    throw new Error('Pricing catalog is not a JSON object');
+  if (catalog === null || typeof catalog !== "object") {
+    throw new Error("Pricing catalog is not a JSON object");
   }
   const selected = [];
   for (const id of Object.keys(catalog).sort()) {
@@ -124,7 +124,7 @@ export function selectModels(catalog) {
 function rate(value) {
   // String() gives the shortest literal that round-trips exactly, so
   // 5e-7 stays 5e-7 and no precision is lost writing it out.
-  return value === null ? 'null' : String(value);
+  return value === null ? "null" : String(value);
 }
 
 /** The whole `usage-pricing-snapshot.ts` file, as text. */
@@ -134,45 +134,45 @@ export function renderSnapshotModule(models, snapshotDate) {
       `  ${JSON.stringify(id)}: { inputPerToken: ${rate(pricing.inputPerToken)}, outputPerToken: ${rate(pricing.outputPerToken)}, cacheReadPerToken: ${rate(pricing.cacheReadPerToken)}, cacheWritePerToken: ${rate(pricing.cacheWritePerToken)} },`,
   );
   return [
-    '/**',
-    ' * GENERATED FILE — rewritten wholesale by `npm run refresh:pricing`',
-    ' * (`scripts/refresh-usage-pricing.mjs`). Do not edit by hand.',
-    ' *',
-    ' * Data only. The pricing math lives in `usage-pricing.ts`, so a script that',
-    ' * overwrites a whole file can never destroy hand-written logic — the same',
-    ' * discipline `menu_registry.rs` already uses.',
-    ' *',
+    "/**",
+    " * GENERATED FILE — rewritten wholesale by `npm run refresh:pricing`",
+    " * (`scripts/refresh-usage-pricing.mjs`). Do not edit by hand.",
+    " *",
+    " * Data only. The pricing math lives in `usage-pricing.ts`, so a script that",
+    " * overwrites a whole file can never destroy hand-written logic — the same",
+    " * discipline `menu_registry.rs` already uses.",
+    " *",
     " * USD per token, from LiteLLM's published catalog, filtered to the Anthropic",
-    ' * and OpenAI model families the Claude Code and Codex CLIs can emit. These',
-    ' * are list prices for direct API use; a subscription user does not pay them,',
-    ' * which is why every figure on screen is labelled an estimate and carries',
-    ' * `PRICING_SNAPSHOT_DATE`.',
-    ' */',
-    '',
-    'export interface ModelPricing {',
-    '  /** USD per uncached input token. */',
-    '  readonly inputPerToken: number;',
-    '  /** USD per output token, reasoning tokens included. */',
-    '  readonly outputPerToken: number;',
-    '  /** USD per cache-read token; null when the provider publishes no cache rate. */',
-    '  readonly cacheReadPerToken: number | null;',
-    '  /** USD per cache-write token; null when the provider publishes no cache rate. */',
-    '  readonly cacheWritePerToken: number | null;',
-    '}',
-    '',
-    '/** Retrieval date of the table below. Shown beside every dollar figure. */',
+    " * and OpenAI model families the Claude Code and Codex CLIs can emit. These",
+    " * are list prices for direct API use; a subscription user does not pay them,",
+    " * which is why every figure on screen is labelled an estimate and carries",
+    " * `PRICING_SNAPSHOT_DATE`.",
+    " */",
+    "",
+    "export interface ModelPricing {",
+    "  /** USD per uncached input token. */",
+    "  readonly inputPerToken: number;",
+    "  /** USD per output token, reasoning tokens included. */",
+    "  readonly outputPerToken: number;",
+    "  /** USD per cache-read token; null when the provider publishes no cache rate. */",
+    "  readonly cacheReadPerToken: number | null;",
+    "  /** USD per cache-write token; null when the provider publishes no cache rate. */",
+    "  readonly cacheWritePerToken: number | null;",
+    "}",
+    "",
+    "/** Retrieval date of the table below. Shown beside every dollar figure. */",
     `export const PRICING_SNAPSHOT_DATE = ${JSON.stringify(snapshotDate)};`,
-    '',
-    '/** Where the numbers came from, so a reader can check them. */',
-    'export const PRICING_SOURCE_URL =',
+    "",
+    "/** Where the numbers came from, so a reader can check them. */",
+    "export const PRICING_SOURCE_URL =",
     `  ${JSON.stringify(SOURCE_URL)};`,
-    '',
-    '/** Exact model-id match only — no aliasing, no prefix fallback (spec §Pricing). */',
-    'export const PRICING_SNAPSHOT: Readonly<Record<string, ModelPricing>> = {',
+    "",
+    "/** Exact model-id match only — no aliasing, no prefix fallback (spec §Pricing). */",
+    "export const PRICING_SNAPSHOT: Readonly<Record<string, ModelPricing>> = {",
     ...rows,
-    '};',
-    '',
-  ].join('\n');
+    "};",
+    "",
+  ].join("\n");
 }
 
 function describeError(error) {
@@ -208,7 +208,7 @@ function assertUsable(models) {
   const present = new Set(models.map(([id]) => id));
   const missing = REQUIRED_MODELS.filter((id) => !present.has(id));
   if (missing.length > 0) {
-    throw new Error(`Pricing catalog no longer prices: ${missing.join(', ')}`);
+    throw new Error(`Pricing catalog no longer prices: ${missing.join(", ")}`);
   }
 }
 
@@ -221,8 +221,8 @@ export async function refreshPricingSnapshot(options = {}) {
   const catalog = await fetchCatalog(fetchImpl);
   const models = selectModels(catalog);
   assertUsable(models);
-  const snapshotDate = now.toISOString().slice(0, 'YYYY-MM-DD'.length);
-  writeFileSync(outputPath, renderSnapshotModule(models, snapshotDate), 'utf8');
+  const snapshotDate = now.toISOString().slice(0, "YYYY-MM-DD".length);
+  writeFileSync(outputPath, renderSnapshotModule(models, snapshotDate), "utf8");
   return { modelCount: models.length, snapshotDate, outputPath };
 }
 
@@ -232,8 +232,8 @@ function summarize(result) {
     `  date:   ${result.snapshotDate}`,
     `  source: ${SOURCE_URL}`,
     `  output: ${result.outputPath}`,
-    '',
-  ].join('\n');
+    "",
+  ].join("\n");
 }
 
 const isMain =

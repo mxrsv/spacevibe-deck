@@ -8,10 +8,10 @@
  * else composes to the body alone rather than to a guess.
  */
 
-export type PromptAssetKind = 'skill' | 'subagent';
+export type PromptAssetKind = "skill" | "subagent";
 
 /** The CLIs whose asset layouts were verified on disk (spec §5). */
-export type PromptAgentId = 'claude' | 'codex';
+export type PromptAgentId = "claude" | "codex";
 
 export interface PromptAssetPick {
   readonly kind: PromptAssetKind;
@@ -32,7 +32,7 @@ const REFERENCE_PHRASES: Readonly<
 };
 
 export function isPromptAgentId(value: string | null): value is PromptAgentId {
-  return value === 'claude' || value === 'codex';
+  return value === "claude" || value === "codex";
 }
 
 /** One reference line, or null when there is no verified phrasing for it. */
@@ -45,7 +45,7 @@ export function formatAssetReference(
     return null;
   }
   const trimmed = name.trim();
-  return trimmed === '' ? null : REFERENCE_PHRASES[agent][kind](trimmed);
+  return trimmed === "" ? null : REFERENCE_PHRASES[agent][kind](trimmed);
 }
 
 /**
@@ -61,5 +61,5 @@ export function composePromptText(
   const lines = picks
     .map((pick) => formatAssetReference(agent, pick.kind, pick.name))
     .filter((line): line is string => line !== null);
-  return lines.length === 0 ? body : [body.trimEnd(), ...lines].join('\n');
+  return lines.length === 0 ? body : [body.trimEnd(), ...lines].join("\n");
 }

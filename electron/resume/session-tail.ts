@@ -14,11 +14,11 @@
  * answers `null` AT ITS OWN POSITION, so a batch of eight panes never loses
  * seven because one scan tripped.
  */
-import * as claude from './claude';
-import * as codex from './codex';
-import * as opencode from './opencode';
-import { cwdMatches, type ResumeRequest } from './resolve';
-import { tailBytes, type CandidateSession } from './head';
+import * as claude from "./claude";
+import * as codex from "./codex";
+import * as opencode from "./opencode";
+import { cwdMatches, type ResumeRequest } from "./resolve";
+import { tailBytes, type CandidateSession } from "./head";
 
 /**
  * How much of the end of a transcript is read. The same `IDENTITY_HEAD_BYTES`
@@ -32,8 +32,8 @@ const TAIL_WINDOW_BYTES = 64 * 1024;
 const TAIL_MAX_CHARS = 160;
 
 function oneLine(text: string): string | null {
-  const flat = text.replace(/\s+/g, ' ').trim();
-  return flat === '' ? null : flat.slice(0, TAIL_MAX_CHARS);
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat === "" ? null : flat.slice(0, TAIL_MAX_CHARS);
 }
 
 /**
@@ -45,11 +45,11 @@ export function claudeTailFromLines(lines: readonly string[]): string | null {
   for (let i = lines.length - 1; i >= 0; i--) {
     try {
       const node = JSON.parse(lines[i]);
-      if (node?.type !== 'assistant') continue;
+      if (node?.type !== "assistant") continue;
       const content = node.message?.content;
       if (!Array.isArray(content)) continue;
       for (const part of content) {
-        if (part?.type === 'text' && typeof part.text === 'string') {
+        if (part?.type === "text" && typeof part.text === "string") {
           const line = oneLine(part.text);
           if (line !== null) return line;
         }
@@ -71,11 +71,11 @@ export function codexTailFromLines(lines: readonly string[]): string | null {
     try {
       const node = JSON.parse(lines[i]);
       const payload = node?.payload ?? node;
-      if (payload?.type !== 'message' || payload?.role !== 'assistant') continue;
+      if (payload?.type !== "message" || payload?.role !== "assistant") continue;
       const content = payload.content;
       if (!Array.isArray(content)) continue;
       for (const part of content) {
-        if (typeof part?.text === 'string') {
+        if (typeof part?.text === "string") {
           const line = oneLine(part.text);
           if (line !== null) return line;
         }
@@ -159,7 +159,7 @@ function tailLines(sourcePath: string): readonly string[] {
   if (bytes === null) {
     return [];
   }
-  return bytes.toString('utf8').split('\n').slice(1);
+  return bytes.toString("utf8").split("\n").slice(1);
 }
 
 function resolveOne(

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { render } from 'preact';
-import { act } from 'preact/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DeckToolbar, toolbarLabel } from './deck-toolbar';
+import { render } from "preact";
+import { act } from "preact/test-utils";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DeckToolbar, toolbarLabel } from "./deck-toolbar";
 
 /**
  * The shipping projection: registry actions in, `ToolbarItem`s out, both
@@ -11,11 +11,11 @@ import { DeckToolbar, toolbarLabel } from './deck-toolbar';
  * Prompts, and the two presentation carriers (`iconbtn--gear`, the anchored
  * popover) surviving the move off `ChromeActions`.
  */
-describe('DeckToolbar', () => {
+describe("DeckToolbar", () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
-    host = document.createElement('div');
+    host = document.createElement("div");
     document.body.appendChild(host);
   });
 
@@ -51,8 +51,8 @@ describe('DeckToolbar', () => {
   }
 
   const button = (name: string): HTMLButtonElement => {
-    const found = Array.from(host.querySelectorAll('button')).find(
-      (candidate) => candidate.getAttribute('aria-label') === name,
+    const found = Array.from(host.querySelectorAll("button")).find(
+      (candidate) => candidate.getAttribute("aria-label") === name,
     );
     if (found === undefined) {
       throw new Error(`no button named ${name}`);
@@ -60,13 +60,13 @@ describe('DeckToolbar', () => {
     return found;
   };
 
-  it('re-cases registry labels to sentence case and drops menu ellipses', () => {
-    expect(toolbarLabel('split-row')).toBe('Split vertically');
-    expect(toolbarLabel('toggle-settings')).toBe('Settings');
-    expect(toolbarLabel('toggle-prompts')).toBe('Prompts');
-    expect(toolbarLabel('toggle-browser')).toBe('Browser');
-    expect(toolbarLabel('toggle-usage')).toBe('Token usage');
-    expect(toolbarLabel('toggle-explorer')).toBe('Explorer');
+  it("re-cases registry labels to sentence case and drops menu ellipses", () => {
+    expect(toolbarLabel("split-row")).toBe("Split vertically");
+    expect(toolbarLabel("toggle-settings")).toBe("Settings");
+    expect(toolbarLabel("toggle-prompts")).toBe("Prompts");
+    expect(toolbarLabel("toggle-browser")).toBe("Browser");
+    expect(toolbarLabel("toggle-usage")).toBe("Token usage");
+    expect(toolbarLabel("toggle-explorer")).toBe("Explorer");
   });
 
   // Shrunk twice on 2026-08-16. First File explorer, Token usage and Session
@@ -76,17 +76,17 @@ describe('DeckToolbar', () => {
   // they became rows in the rail's footer (DL-28.3), and top-tab mode stands
   // the same rows up in `More`. Mounting them here too would put a second
   // Prompt Board popover on screen at the same time as the footer's.
-  it('draws the More control and nothing else', () => {
+  it("draws the More control and nothing else", () => {
     mount();
-    const labels = Array.from(host.querySelectorAll('button')).map((b) =>
-      b.getAttribute('aria-label'),
+    const labels = Array.from(host.querySelectorAll("button")).map((b) =>
+      b.getAttribute("aria-label"),
     );
-    expect(labels).toEqual(['More actions']);
+    expect(labels).toEqual(["More actions"]);
   });
 
-  it('carries the whole pane group as named rows inside More', () => {
+  it("carries the whole pane group as named rows inside More", () => {
     const on = mount();
-    act(() => button('More actions').click());
+    act(() => button("More actions").click());
 
     const rows = Array.from(
       document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]'),
@@ -95,14 +95,14 @@ describe('DeckToolbar', () => {
     // since 2026-08-17: `SIDEBAR_TOOLS_HIDDEN` took the rail's footer away, so
     // `More` is the only place left for those rows — and the only anchor the
     // Prompt Board popover has. Restoring the footer drops the last three.
-    expect(rows.map((row) => row.querySelector('.toolbar-menu__label')?.textContent)).toEqual([
-      'Split vertically',
-      'Split horizontally',
-      'Focus expand',
-      'Close pane',
-      'Browser',
-      'Prompts',
-      'Settings',
+    expect(rows.map((row) => row.querySelector(".toolbar-menu__label")?.textContent)).toEqual([
+      "Split vertically",
+      "Split horizontally",
+      "Focus expand",
+      "Close pane",
+      "Browser",
+      "Prompts",
+      "Settings",
     ]);
 
     // A row runs the same callback the icon used to, so the command path the
@@ -111,29 +111,29 @@ describe('DeckToolbar', () => {
     expect(on.onClosePane).toHaveBeenCalledTimes(1);
   });
 
-  it('renders no history control on a host without session history', () => {
-    const labels = Array.from(host.querySelectorAll('button')).map((b) =>
-      b.getAttribute('aria-label'),
+  it("renders no history control on a host without session history", () => {
+    const labels = Array.from(host.querySelectorAll("button")).map((b) =>
+      b.getAttribute("aria-label"),
     );
-    expect(labels).not.toContain('Session history');
+    expect(labels).not.toContain("Session history");
   });
 
   it("hands the window's free width back as a drag surface", () => {
     mount();
-    expect(host.querySelector('.ftoolbar__drag')).not.toBeNull();
+    expect(host.querySelector(".ftoolbar__drag")).not.toBeNull();
   });
-  it('stands the global pair up in More when the layout is compact', () => {
+  it("stands the global pair up in More when the layout is compact", () => {
     mount({ compact: true });
-    const more = button('More actions');
+    const more = button("More actions");
 
     act(() => more.click());
 
     const rows = Array.from(
       document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]'),
     ).map((row) => row.textContent);
-    expect(rows?.some((row) => row?.includes('Browser'))).toBe(true);
-    expect(rows?.some((row) => row?.includes('Prompts'))).toBe(true);
-    expect(rows?.some((row) => row?.includes('Settings'))).toBe(true);
+    expect(rows?.some((row) => row?.includes("Browser"))).toBe(true);
+    expect(rows?.some((row) => row?.includes("Prompts"))).toBe(true);
+    expect(rows?.some((row) => row?.includes("Settings"))).toBe(true);
   });
 
   // The bar itself must never carry them, in either layout — that is what
@@ -141,12 +141,12 @@ describe('DeckToolbar', () => {
   it("never puts the rail's own rows on the bar", () => {
     for (const compact of [true, false]) {
       mount({ compact });
-      const labels = Array.from(host.querySelectorAll('.ftoolbar > * button'))
-        .map((b) => b.getAttribute('aria-label'))
-        .filter((label) => label !== 'More actions');
-      expect(labels).not.toContain('Prompts');
-      expect(labels).not.toContain('Settings');
-      expect(labels).not.toContain('Browser');
+      const labels = Array.from(host.querySelectorAll(".ftoolbar > * button"))
+        .map((b) => b.getAttribute("aria-label"))
+        .filter((label) => label !== "More actions");
+      expect(labels).not.toContain("Prompts");
+      expect(labels).not.toContain("Settings");
+      expect(labels).not.toContain("Browser");
     }
   });
 });

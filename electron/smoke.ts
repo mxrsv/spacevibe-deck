@@ -11,7 +11,7 @@
  * PTY, which is exactly why it proves something the mocked suite cannot.
  * Run with `npm run electron:smoke`.
  */
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow } from "electron";
 
 interface Check {
   readonly name: string;
@@ -21,9 +21,9 @@ interface Check {
 
 const results: Check[] = [];
 
-function record(name: string, ok: boolean, detail = ''): void {
+function record(name: string, ok: boolean, detail = ""): void {
   results.push({ name, ok, detail });
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`);
+  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
 /** Run an expression in the renderer and return its resolved value. */
@@ -38,13 +38,13 @@ async function inPage<T>(window: BrowserWindow, expression: string): Promise<T> 
  * folder picker — which a headless smoke run cannot drive.
  */
 function seedWorkspace(): void {
-  const fs = require('node:fs') as typeof import('node:fs');
-  const os = require('node:os') as typeof import('node:os');
-  const nodePath = require('node:path') as typeof import('node:path');
-  const dir = nodePath.join(app.getPath('userData'));
+  const fs = require("node:fs") as typeof import("node:fs");
+  const os = require("node:os") as typeof import("node:os");
+  const nodePath = require("node:path") as typeof import("node:path");
+  const dir = nodePath.join(app.getPath("userData"));
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(
-    nodePath.join(dir, 'workspaces.json'),
+    nodePath.join(dir, "workspaces.json"),
     JSON.stringify({
       workspaces: {
         version: 2,
@@ -60,36 +60,36 @@ async function main(): Promise<void> {
   // Import for its side effects: this registers every ipcMain.handle and the
   // app lifecycle hooks. Importing the real thing is the point — a stub would
   // prove nothing.
-  await import('./main');
+  await import("./main");
   await app.whenReady();
   // The main window is created by main.ts's whenReady handler.
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
   const [window] = BrowserWindow.getAllWindows();
   if (window === undefined) {
-    record('a window exists', false, 'no BrowserWindow after boot');
+    record("a window exists", false, "no BrowserWindow after boot");
     finish();
     return;
   }
-  record('a window exists', true, `${window.getBounds().width}x${window.getBounds().height}`);
+  record("a window exists", true, `${window.getBounds().width}x${window.getBounds().height}`);
 
   const bridged = await inPage<boolean>(window, `typeof window.__deckHost?.invoke === "function"`);
-  record('preload bridge is exposed', bridged);
+  record("preload bridge is exposed", bridged);
 
   const noNode = await inPage<boolean>(
     window,
     `typeof window.require === "undefined" && typeof window.process === "undefined"`,
   );
-  record('renderer has no node access', noNode, 'contextIsolation holds');
+  record("renderer has no node access", noNode, "contextIsolation holds");
 
   const mounted = await inPage<string>(
     window,
     `document.body.innerHTML.length + ":" + (document.querySelector(".open-board") ? "open-board" : document.querySelector(".xterm") ? "xterm" : "neither")`,
   );
-  const [size, surface] = mounted.split(':');
+  const [size, surface] = mounted.split(":");
   record(
-    'renderer mounted the app',
-    Number(size) > 500 && surface !== 'neither',
+    "renderer mounted the app",
+    Number(size) > 500 && surface !== "neither",
     `${size} bytes of DOM, showing ${surface}`,
   );
 
@@ -115,8 +115,8 @@ async function main(): Promise<void> {
      })`,
   );
   record(
-    'a terminal actually paints',
-    painted.startsWith('rows=') && painted !== 'rows=0',
+    "a terminal actually paints",
+    painted.startsWith("rows=") && painted !== "rows=0",
     painted,
   );
 
@@ -124,15 +124,15 @@ async function main(): Promise<void> {
     window,
     `window.__deckHost.invoke("detect_agents", { names: [] }).then(a => a.map(x => x.name))`,
   );
-  record('agent detection works over IPC', agents.length > 0, agents.join(', ') || 'none found');
+  record("agent detection works over IPC", agents.length > 0, agents.join(", ") || "none found");
 
   // A real PTY, end to end: spawn, echo a marker, read it back.
-  const marker = 'DECK_ELECTRON_SMOKE_OK';
+  const marker = "DECK_ELECTRON_SMOKE_OK";
   const paneId = await inPage<number>(
     window,
     `window.__deckHost.invoke("spawn_shell", { cols: 80, rows: 24, cwd: null })`,
   );
-  record('spawn_shell returns a pane id', paneId > 0, `pane ${paneId}`);
+  record("spawn_shell returns a pane id", paneId > 0, `pane ${paneId}`);
 
   const output = await inPage<string>(
     window,
@@ -145,15 +145,15 @@ async function main(): Promise<void> {
        setTimeout(() => resolve(seen), 3000);
      })`,
   );
-  record('pty output reaches the renderer', output.includes(marker), `${output.length} bytes`);
+  record("pty output reaches the renderer", output.includes(marker), `${output.length} bytes`);
 
   const info = await inPage<Array<{ kind: string; process: string | null }>>(
     window,
     `window.__deckHost.invoke("pty_info", { ids: [${paneId}] })`,
   );
   record(
-    'pty_info classifies the pane',
-    info[0]?.kind === 'idle-shell',
+    "pty_info classifies the pane",
+    info[0]?.kind === "idle-shell",
     `kind=${info[0]?.kind} process=${info[0]?.process}`,
   );
 
@@ -172,8 +172,8 @@ async function main(): Promise<void> {
     `window.__deckHost.invoke("pty_info", { ids: [${paneId}], agents: [{ binary: "aider", agent: "Aider" }], waitForCwd: false })`,
   );
   record(
-    'pty_info recognizes a declared foreground agent',
-    customInfo[0]?.kind === 'agent' && customInfo[0]?.agent === 'Aider',
+    "pty_info recognizes a declared foreground agent",
+    customInfo[0]?.kind === "agent" && customInfo[0]?.agent === "Aider",
     `kind=${customInfo[0]?.kind} process=${customInfo[0]?.process} agent=${customInfo[0]?.agent}`,
   );
 
@@ -182,7 +182,7 @@ async function main(): Promise<void> {
     window,
     `window.__deckHost.invoke("kill_pty", { id: ${paneId} }).then(() => "ok", (e) => String(e))`,
   );
-  record('kill_pty succeeds for the owner', killed === 'ok', killed);
+  record("kill_pty succeeds for the owner", killed === "ok", killed);
 
   // The three seams the host swap silently broke. Each was a listener with no
   // emitter, and none of them failed a test.
@@ -198,20 +198,20 @@ async function main(): Promise<void> {
      })`,
   );
   record(
-    'focus tracking fires in the real window',
-    focus === 'blur,focus',
-    focus || 'nothing observed',
+    "focus tracking fires in the real window",
+    focus === "blur,focus",
+    focus || "nothing observed",
   );
 
   const scale = await inPage<number>(window, `window.devicePixelRatio`);
   record(
-    'devicePixelRatio is the display scale',
+    "devicePixelRatio is the display scale",
     scale >= 1,
     `${scale}x (getZoomFactor would have said 1)`,
   );
 
   const dropPath = await inPage<string>(window, `typeof window.__deckHost.getPathForFile`);
-  record('the preload exposes getPathForFile for drops', dropPath === 'function', dropPath);
+  record("the preload exposes getPathForFile for drops", dropPath === "function", dropPath);
 
   const dragAccepted = await inPage<boolean>(
     window,
@@ -222,9 +222,9 @@ async function main(): Promise<void> {
      })()`,
   );
   record(
-    'dragover is cancelled so a drop can land',
+    "dragover is cancelled so a drop can land",
     dragAccepted,
-    dragAccepted ? 'preventDefault called' : 'browser will refuse the drop',
+    dragAccepted ? "preventDefault called" : "browser will refuse the drop",
   );
 
   // The cwd blocker: on a stock shell nothing emits OSC 9;9, so before the fix
@@ -238,8 +238,8 @@ async function main(): Promise<void> {
        .then((infos) => infos[0])`,
   );
   record(
-    'pty_info reports a real cwd without shell integration',
-    typeof infoWithCwd.cwd === 'string' && infoWithCwd.cwd.length > 0,
+    "pty_info reports a real cwd without shell integration",
+    typeof infoWithCwd.cwd === "string" && infoWithCwd.cwd.length > 0,
     `cwd=${JSON.stringify(infoWithCwd.cwd)} kind=${infoWithCwd.kind}`,
   );
 
@@ -257,9 +257,9 @@ async function main(): Promise<void> {
      })`,
   );
   record(
-    'menu event listeners are registered',
-    menuShapes === 'nothing',
-    'no menu clicked during the run, listeners installed',
+    "menu event listeners are registered",
+    menuShapes === "nothing",
+    "no menu clicked during the run, listeners installed",
   );
 
   // The shortcut blocker: `desktop_environment` returning `home` instead of
@@ -270,8 +270,8 @@ async function main(): Promise<void> {
     `window.__deckHost.invoke("desktop_environment")`,
   );
   record(
-    'desktop_environment carries homeDir',
-    env.platform === 'macos' && typeof env.homeDir === 'string' && env.homeDir.length > 0,
+    "desktop_environment carries homeDir",
+    env.platform === "macos" && typeof env.homeDir === "string" && env.homeDir.length > 0,
     `platform=${env.platform} homeDir=${JSON.stringify(env.homeDir)}`,
   );
 
@@ -285,7 +285,7 @@ async function main(): Promise<void> {
        return getComputedStyle(el).webkitAppRegion || "none";
      })()`,
   );
-  record('the title bar is draggable', draggable === 'drag', `-webkit-app-region: ${draggable}`);
+  record("the title bar is draggable", draggable === "drag", `-webkit-app-region: ${draggable}`);
 
   await checkBrowserPanel(window);
 
@@ -300,17 +300,17 @@ async function main(): Promise<void> {
  * with a real origin for any of this to mean anything.
  */
 function servePage(): Promise<{ url: string; stop: () => void }> {
-  const http = require('node:http') as typeof import('node:http');
+  const http = require("node:http") as typeof import("node:http");
   const body = `<!doctype html><title>Grab target</title>
     <button id="target">Save</button>`;
   const server = http.createServer((_request, response) => {
-    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     response.end(body);
   });
   return new Promise((resolve) => {
-    server.listen(0, '127.0.0.1', () => {
+    server.listen(0, "127.0.0.1", () => {
       const address = server.address();
-      const port = typeof address === 'object' && address !== null ? address.port : 0;
+      const port = typeof address === "object" && address !== null ? address.port : 0;
       resolve({
         url: `http://127.0.0.1:${port}/`,
         stop: () => server.close(),
@@ -329,13 +329,13 @@ function servePage(): Promise<{ url: string; stop: () => void }> {
  * home despite the telemetry flag.
  */
 async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
-  const { session } = require('electron') as typeof import('electron');
+  const { session } = require("electron") as typeof import("electron");
   const page = await servePage();
 
   // Record every outbound request the panel's session makes, so "telemetry is
   // off" is observed rather than assumed from a config line.
   const requested: string[] = [];
-  session.fromPartition('persist:deck-browser').webRequest.onBeforeRequest((details, callback) => {
+  session.fromPartition("persist:deck-browser").webRequest.onBeforeRequest((details, callback) => {
     requested.push(details.url);
     callback({});
   });
@@ -354,9 +354,9 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
     { webContents?: Electron.WebContents } | undefined;
   const contents = view?.webContents;
   record(
-    'the panel attaches a web view to the window',
+    "the panel attaches a web view to the window",
     contents !== undefined && contents.getURL().startsWith(page.url),
-    contents === undefined ? 'no child view' : `url=${contents.getURL()}`,
+    contents === undefined ? "no child view" : `url=${contents.getURL()}`,
   );
   if (contents === undefined) {
     page.stop();
@@ -368,7 +368,7 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
   );
   record(
     "react-grab is initialised in the page's main world",
-    armed === 'object,object,object',
+    armed === "object,object,object",
     `typeof __deckGrab,__REACT_GRAB__,__REACT_GRAB_MODULE__ = ${armed}`,
   );
 
@@ -392,9 +392,9 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 600));
   const forged = await inPage<string | null>(window, `window.__deckSmokeGrab`);
   record(
-    'a grab with no user gesture behind it is dropped',
+    "a grab with no user gesture behind it is dropped",
     forged === null || forged === undefined,
-    forged === null || forged === undefined ? 'blocked' : `delivered: ${forged}`,
+    forged === null || forged === undefined ? "blocked" : `delivered: ${forged}`,
   );
 
   // The real chain: react-grab's own copy path → the plugin's copy hooks →
@@ -418,25 +418,25 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
   contents.focus();
   const bounds = { x: 40, y: 30 };
   contents.sendInputEvent({
-    type: 'mouseDown',
+    type: "mouseDown",
     x: bounds.x,
     y: bounds.y,
-    button: 'left',
+    button: "left",
     clickCount: 1,
   });
   contents.sendInputEvent({
-    type: 'mouseUp',
+    type: "mouseUp",
     x: bounds.x,
     y: bounds.y,
-    button: 'left',
+    button: "left",
     clickCount: 1,
   });
-  contents.sendInputEvent({ type: 'keyDown', keyCode: 'c', modifiers: ['cmd'] });
+  contents.sendInputEvent({ type: "keyDown", keyCode: "c", modifiers: ["cmd"] });
   await new Promise((resolve) => setTimeout(resolve, 300));
   const trusted = await contents.executeJavaScript(`window.__deckTrusted`);
   record(
-    'the page receives real, trusted input',
-    typeof trusted === 'number' && trusted > 0,
+    "the page receives real, trusted input",
+    typeof trusted === "number" && trusted > 0,
     // Diagnostic for the check below: with no trusted gesture the preload is
     // CORRECT to drop the grab, so this separates "the gate works" from "the
     // harness never pressed anything".
@@ -447,7 +447,7 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
     `(window.__REACT_GRAB__.copyElement(document.getElementById("target")), true)`,
     true,
   );
-  let delivered = 'timeout';
+  let delivered = "timeout";
   for (let attempt = 0; attempt < 30; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 100));
     const seen = await inPage<string | null>(window, `window.__deckSmokeGrab`);
@@ -457,8 +457,8 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
     }
   }
   record(
-    'a real copy reaches the renderer as a grab',
-    delivered.includes('button') || delivered.includes('target'),
+    "a real copy reaches the renderer as a grab",
+    delivered.includes("button") || delivered.includes("target"),
     delivered.slice(0, 140),
   );
 
@@ -468,26 +468,26 @@ async function checkBrowserPanel(window: BrowserWindow): Promise<void> {
   );
   const active = await contents.executeJavaScript(`window.__deckGrab.isActive()`);
   record(
-    'Inspect arms react-grab in the page',
+    "Inspect arms react-grab in the page",
     inspect === true && active === true,
     `isActive=${String(active)}`,
   );
 
-  const phonedHome = requested.filter((url) => url.includes('react-grab.com'));
+  const phonedHome = requested.filter((url) => url.includes("react-grab.com"));
   record(
-    'react-grab sends no telemetry',
+    "react-grab sends no telemetry",
     phonedHome.length === 0,
     phonedHome.length === 0
       ? `${requested.length} request(s), none to react-grab.com`
-      : phonedHome.join(', '),
+      : phonedHome.join(", "),
   );
 
   await inPage(window, `window.__deckHost.invoke("browser_close")`);
   await new Promise((resolve) => setTimeout(resolve, 300));
   record(
-    'closing the panel destroys the page',
+    "closing the panel destroys the page",
     contents.isDestroyed(),
-    contents.isDestroyed() ? 'web contents gone' : 'web contents still alive',
+    contents.isDestroyed() ? "web contents gone" : "web contents still alive",
   );
   page.stop();
 }

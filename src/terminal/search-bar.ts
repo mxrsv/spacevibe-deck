@@ -1,16 +1,16 @@
-import { CaretLeft, CaretRight, X } from '@phosphor-icons/react';
-import { h, render } from 'preact';
-import { DeckIcon, ROW_ICON, type DeckIconComponent } from '../ui/controls/deck-icon';
-import type { ISearchOptions } from '@xterm/addon-search';
-import { settings } from '../settings/settings-store';
-import { resolveTheme } from '../settings/themes';
-import type { Pane, SelectionSnapshot } from './pane';
-import { matchBinding } from './keymap';
+import { CaretLeft, CaretRight, X } from "@phosphor-icons/react";
+import { h, render } from "preact";
+import { DeckIcon, ROW_ICON, type DeckIconComponent } from "../ui/controls/deck-icon";
+import type { ISearchOptions } from "@xterm/addon-search";
+import { settings } from "../settings/settings-store";
+import { resolveTheme } from "../settings/themes";
+import type { Pane, SelectionSnapshot } from "./pane";
+import { matchBinding } from "./keymap";
 
 /** "resultIndex/resultCount" for the bar counter; "0/0" when empty. */
 export function formatMatchCount(resultIndex: number, resultCount: number): string {
   if (resultCount === 0) {
-    return '0/0';
+    return "0/0";
   }
   // The addon reports -1 when the active match is not tracked (e.g. beyond
   // its highlight limit) — show only the total instead of a bogus "0/N".
@@ -42,8 +42,8 @@ let lastQuery: string | null = null;
 
 function searchOptions(incremental: boolean): ISearchOptions {
   const theme = resolveTheme(settings.value);
-  const match = theme.selectionBackground ?? '#33467c';
-  const activeMatch = theme.yellow ?? '#e0af68';
+  const match = theme.selectionBackground ?? "#33467c";
+  const activeMatch = theme.yellow ?? "#e0af68";
   return {
     incremental,
     decorations: {
@@ -68,33 +68,33 @@ function positionBefore(a: SelectionSnapshot, b: SelectionSnapshot): boolean {
  * (previous) of the two.
  */
 export function pickNormalizationWinner(
-  direction: 'next' | 'previous',
+  direction: "next" | "previous",
   origin: SelectionSnapshot | null,
   nfcSel: SelectionSnapshot,
   nfdSel: SelectionSnapshot,
-): 'nfc' | 'nfd' {
+): "nfc" | "nfd" {
   if (origin === null) {
-    if (direction === 'next') {
-      return positionBefore(nfcSel, nfdSel) ? 'nfc' : 'nfd';
+    if (direction === "next") {
+      return positionBefore(nfcSel, nfdSel) ? "nfc" : "nfd";
     }
-    return positionBefore(nfcSel, nfdSel) ? 'nfd' : 'nfc';
+    return positionBefore(nfcSel, nfdSel) ? "nfd" : "nfc";
   }
 
-  if (direction === 'next') {
+  if (direction === "next") {
     const nfcWrapped = !positionBefore(origin, nfcSel);
     const nfdWrapped = !positionBefore(origin, nfdSel);
     if (nfcWrapped !== nfdWrapped) {
-      return nfcWrapped ? 'nfd' : 'nfc';
+      return nfcWrapped ? "nfd" : "nfc";
     }
-    return positionBefore(nfcSel, nfdSel) ? 'nfc' : 'nfd';
+    return positionBefore(nfcSel, nfdSel) ? "nfc" : "nfd";
   }
 
   const nfcWrapped = !positionBefore(nfcSel, origin);
   const nfdWrapped = !positionBefore(nfdSel, origin);
   if (nfcWrapped !== nfdWrapped) {
-    return nfcWrapped ? 'nfd' : 'nfc';
+    return nfcWrapped ? "nfd" : "nfc";
   }
-  return positionBefore(nfcSel, nfdSel) ? 'nfd' : 'nfc';
+  return positionBefore(nfcSel, nfdSel) ? "nfd" : "nfc";
 }
 
 /**
@@ -108,17 +108,17 @@ export function pickNormalizationWinner(
  */
 function findNormalized(
   pane: Pane,
-  direction: 'next' | 'previous',
+  direction: "next" | "previous",
   value: string,
   options: ISearchOptions,
 ): boolean {
   const find =
-    direction === 'next'
+    direction === "next"
       ? (term: string, opts: ISearchOptions) => pane.search.findNext(term, opts)
       : (term: string, opts: ISearchOptions) => pane.search.findPrevious(term, opts);
 
-  const nfc = value.normalize('NFC');
-  const nfd = value.normalize('NFD');
+  const nfc = value.normalize("NFC");
+  const nfd = value.normalize("NFD");
   if (nfd === nfc) {
     return find(nfc, options);
   }
@@ -146,7 +146,7 @@ function findNormalized(
 
   const winner = pickNormalizationWinner(direction, origin, nfcSel!, nfdSel!);
   pane.restoreSelection(origin);
-  return find(winner === 'nfc' ? nfc : nfd, options);
+  return find(winner === "nfc" ? nfc : nfd, options);
 }
 
 /**
@@ -162,15 +162,15 @@ function barButton(
   title: string,
   onClick: () => void,
 ): HTMLButtonElement {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'search-bar__btn';
-  button.setAttribute('aria-label', name);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "search-bar__btn";
+  button.setAttribute("aria-label", name);
   render(h(DeckIcon, { icon, size: ROW_ICON }), button);
   button.title = title;
   // Keep the input focused while clicking the bar's buttons
-  button.addEventListener('mousedown', (event) => event.preventDefault());
-  button.addEventListener('click', onClick);
+  button.addEventListener("mousedown", (event) => event.preventDefault());
+  button.addEventListener("click", onClick);
   return button;
 }
 
@@ -183,74 +183,74 @@ export function openSearchBar(pane: Pane): void {
   }
   closeSearchBar();
 
-  const element = document.createElement('div');
-  element.className = 'search-bar';
-  const input = document.createElement('input');
-  input.className = 'search-bar__input';
-  input.type = 'text';
-  input.placeholder = 'Find';
+  const element = document.createElement("div");
+  element.className = "search-bar";
+  const input = document.createElement("input");
+  input.className = "search-bar__input";
+  input.type = "text";
+  input.placeholder = "Find";
   input.spellcheck = false;
-  const counter = document.createElement('span');
-  counter.className = 'search-bar__count';
+  const counter = document.createElement("span");
+  counter.className = "search-bar__count";
 
   const findNext = (): void => {
-    if (input.value !== '') {
-      findNormalized(pane, 'next', input.value, searchOptions(false));
+    if (input.value !== "") {
+      findNormalized(pane, "next", input.value, searchOptions(false));
     }
   };
   const findPrevious = (): void => {
-    if (input.value !== '') {
-      findNormalized(pane, 'previous', input.value, searchOptions(false));
+    if (input.value !== "") {
+      findNormalized(pane, "previous", input.value, searchOptions(false));
     }
   };
 
   element.append(
     input,
     counter,
-    barButton(CaretLeft, 'Previous match', 'Previous match (⇧↩)', findPrevious),
-    barButton(CaretRight, 'Next match', 'Next match (↩)', findNext),
-    barButton(X, 'Close', 'Close (Esc)', closeSearchBar),
+    barButton(CaretLeft, "Previous match", "Previous match (⇧↩)", findPrevious),
+    barButton(CaretRight, "Next match", "Next match (↩)", findNext),
+    barButton(X, "Close", "Close (Esc)", closeSearchBar),
   );
 
   const results = pane.search.onDidChangeResults(({ resultIndex, resultCount }) => {
     counter.textContent = formatMatchCount(resultIndex, resultCount);
   });
 
-  input.addEventListener('input', () => {
-    if (input.value === '') {
+  input.addEventListener("input", () => {
+    if (input.value === "") {
       pane.search.clearDecorations();
-      counter.textContent = '';
+      counter.textContent = "";
       return;
     }
     // Remembered for platform repeat-search chords after the bar closes.
     lastQuery = input.value;
     // Incremental: the current selection expands instead of jumping ahead
-    findNormalized(pane, 'next', input.value, searchOptions(true));
+    findNormalized(pane, "next", input.value, searchOptions(true));
   });
 
   // The global shortcut handler skips inputs outside .pane__term, so the
   // bar handles its own keys. Platform bindings still resolve through the
   // shared matcher so local and global search behavior cannot drift.
-  element.addEventListener('keydown', (event) => {
+  element.addEventListener("keydown", (event) => {
     event.stopPropagation();
-    if (event.key === 'Escape') {
+    if (event.key === "Escape") {
       event.preventDefault();
       closeSearchBar();
-    } else if (event.key === 'Enter' && event.shiftKey) {
+    } else if (event.key === "Enter" && event.shiftKey) {
       event.preventDefault();
       findPrevious();
-    } else if (event.key === 'Enter') {
+    } else if (event.key === "Enter") {
       event.preventDefault();
       findNext();
     } else {
       const action = matchBinding(event);
-      if (action === 'find-next') {
+      if (action === "find-next") {
         event.preventDefault();
         findNext();
-      } else if (action === 'find-previous') {
+      } else if (action === "find-previous") {
         event.preventDefault();
         findPrevious();
-      } else if (action === 'find') {
+      } else if (action === "find") {
         event.preventDefault();
         input.focus();
         input.select();
@@ -259,7 +259,7 @@ export function openSearchBar(pane: Pane): void {
   });
 
   pane.element.appendChild(element);
-  const buttons = Array.from(element.querySelectorAll('button'));
+  const buttons = Array.from(element.querySelectorAll("button"));
   current = {
     pane,
     element,
@@ -315,10 +315,10 @@ export function closeSearchBarForPane(paneId: number): void {
  *    the way and should stay that way. No query has ever been run → safe
  *    no-op (nothing to repeat).
  */
-export function advanceSearch(pane: Pane, direction: 'next' | 'previous'): void {
+export function advanceSearch(pane: Pane, direction: "next" | "previous"): void {
   const openOnThisPane = current !== null && current.pane.id === pane.id;
-  const query = openOnThisPane ? current!.input.value : (lastQuery ?? '');
-  if (query === '') {
+  const query = openOnThisPane ? current!.input.value : (lastQuery ?? "");
+  if (query === "") {
     return;
   }
   findNormalized(pane, direction, query, searchOptions(false));

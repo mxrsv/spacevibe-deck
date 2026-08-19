@@ -1,6 +1,6 @@
-import { ChatText, ClockCounterClockwise, Gauge, Gear, Globe } from '@phosphor-icons/react';
-import type { ComponentChildren } from 'preact';
-import { DeckIcon, FEATURE_ICON } from './controls/deck-icon';
+import { ChatText, ClockCounterClockwise, Gauge, Gear, Globe } from "@phosphor-icons/react";
+import type { ComponentChildren } from "preact";
+import { DeckIcon, FEATURE_ICON } from "./controls/deck-icon";
 
 /**
  * The rail's own footer of window actions (DL §28).
@@ -95,10 +95,10 @@ export function SidebarActions(props: SidebarActionsProps) {
             would promise a control the row does not offer. */}
         <button
           type="button"
-          class={`sidebar-actions__row ${unavailable ? 'is-unavailable' : ''}`}
+          class={`sidebar-actions__row ${unavailable ? "is-unavailable" : ""}`}
           aria-haspopup="dialog"
           aria-disabled={unavailable}
-          title={props.promptsUnavailable ?? 'Prompts'}
+          title={props.promptsUnavailable ?? "Prompts"}
           onClick={() => {
             if (unavailable) {
               return;

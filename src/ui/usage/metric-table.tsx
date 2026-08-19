@@ -1,6 +1,6 @@
-import type { ComponentChild } from 'preact';
-import { useId } from 'preact/hooks';
-import { EM_DASH } from './usage-format';
+import type { ComponentChild } from "preact";
+import { useId } from "preact/hooks";
+import { EM_DASH } from "./usage-format";
 
 /**
  * The read-only metric table (DL §15). One component owns the markup the way
@@ -58,7 +58,7 @@ interface MetricTableProps {
 }
 
 const cellClass = (column: MetricColumn): string =>
-  column.numeric === true ? 'metric-table__cell metric-table__cell--num' : 'metric-table__cell';
+  column.numeric === true ? "metric-table__cell metric-table__cell--num" : "metric-table__cell";
 
 export function MetricTable({ title, note, columns, rows, emptyLabel }: MetricTableProps) {
   // One id per instance; three tables can be on one screen over a session.

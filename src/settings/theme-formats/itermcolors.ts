@@ -14,24 +14,24 @@
  *
  * The file carries no name of its own, so the label comes from the filename.
  */
-import { hexFromUnitRgb } from './normalize-hex';
-import { ANSI_SLOTS, emptyDraft, type ThemeDraft } from './theme-draft';
+import { hexFromUnitRgb } from "./normalize-hex";
+import { ANSI_SLOTS, emptyDraft, type ThemeDraft } from "./theme-draft";
 
 /** Colour dicts keyed by name: `<key>NAME</key>` then the dict that follows. */
 const ENTRY = /<key>([^<]+)<\/key>\s*<dict>([\s\S]*?)<\/dict>/g;
 
 /** Named plist slot → `ITheme` key. `Ansi N Color` is handled separately. */
 const NAMED_SLOTS: Readonly<Record<string, string>> = {
-  'Background Color': 'background',
-  'Foreground Color': 'foreground',
-  'Cursor Color': 'cursor',
-  'Selection Color': 'selectionBackground',
+  "Background Color": "background",
+  "Foreground Color": "foreground",
+  "Cursor Color": "cursor",
+  "Selection Color": "selectionBackground",
 };
 
 const ANSI_KEY = /^Ansi (\d{1,2}) Color$/;
 
 export function looksLikeItermColors(source: string): boolean {
-  return source.includes('<plist') && source.includes('Component');
+  return source.includes("<plist") && source.includes("Component");
 }
 
 export function parseItermColors(source: string): ThemeDraft | null {
@@ -79,9 +79,9 @@ function themeKeyFor(plistKey: string): string | null {
  * looks deliberate.
  */
 function readColorDict(body: string): string | null {
-  const red = readComponent(body, 'Red');
-  const green = readComponent(body, 'Green');
-  const blue = readComponent(body, 'Blue');
+  const red = readComponent(body, "Red");
+  const green = readComponent(body, "Green");
+  const blue = readComponent(body, "Blue");
   if (red === null || green === null || blue === null) {
     return null;
   }

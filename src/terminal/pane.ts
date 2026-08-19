@@ -1,26 +1,26 @@
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
-import { SearchAddon } from '@xterm/addon-search';
-import { SerializeAddon } from '@xterm/addon-serialize';
-import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
-import { WebglAddon } from '@xterm/addon-webgl';
-import { FONT_FALLBACK, type Settings, type TerminalRenderer } from '../settings/settings-schema';
-import { applyWebkitImeFix, isWebKitWebView } from './webkit-ime-fix';
-import { installShiftEnterNewline } from './shift-enter';
-import { resolveTheme } from '../settings/themes';
-import type { PaneHeaderInfo } from '../lib/process-info';
-import { createLinkProvider } from './link-provider';
-import { createOscLinkHandler } from './osc-link-handler';
-import { paneCwd } from './pane-cwd';
-import { classifyOscNotification } from '../lib/osc-notification';
-import { copyTerminalSelection, pasteIntoTerminal } from './terminal-clipboard';
-import { getDesktopEnvironment } from '../lib/platform';
-import { createCodexWheelHandler } from './codex-wheel';
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { SearchAddon } from "@xterm/addon-search";
+import { SerializeAddon } from "@xterm/addon-serialize";
+import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
+import { WebglAddon } from "@xterm/addon-webgl";
+import { FONT_FALLBACK, type Settings, type TerminalRenderer } from "../settings/settings-schema";
+import { applyWebkitImeFix, isWebKitWebView } from "./webkit-ime-fix";
+import { installShiftEnterNewline } from "./shift-enter";
+import { resolveTheme } from "../settings/themes";
+import type { PaneHeaderInfo } from "../lib/process-info";
+import { createLinkProvider } from "./link-provider";
+import { createOscLinkHandler } from "./osc-link-handler";
+import { paneCwd } from "./pane-cwd";
+import { classifyOscNotification } from "../lib/osc-notification";
+import { copyTerminalSelection, pasteIntoTerminal } from "./terminal-clipboard";
+import { getDesktopEnvironment } from "../lib/platform";
+import { createCodexWheelHandler } from "./codex-wheel";
 
 /** Structured attention signal a pane can emit — never a native notification. */
 export interface PaneAttentionSignal {
-  kind: 'requested';
-  source: 'osc-notification' | 'bell';
+  kind: "requested";
+  source: "osc-notification" | "bell";
 }
 
 export interface PaneEvents {
@@ -86,7 +86,7 @@ export interface Pane {
   /** Scroll the viewport by one page; positive = down, negative = up. */
   scrollPage(dir: 1 | -1): void;
   /** Jump to the very top (oldest) or bottom (latest output) of scrollback. */
-  scrollToEdge(edge: 'top' | 'bottom'): void;
+  scrollToEdge(edge: "top" | "bottom"): void;
   focus(): void;
   applySettings(next: Settings): void;
   /** Update the header bar (dot color, cwd, process badge). */
@@ -102,7 +102,7 @@ export interface Pane {
 
 function toFontStack(family: string): string {
   // The user may enter their own fallback list — use it verbatim then
-  if (family.includes(',')) {
+  if (family.includes(",")) {
     return family;
   }
   return `"${family}", ${FONT_FALLBACK}`;
@@ -114,34 +114,34 @@ export function createPane(
   events: PaneEvents,
   geometry?: { readonly cols: number; readonly rows: number },
 ): Pane {
-  const element = document.createElement('div');
-  element.className = 'pane';
+  const element = document.createElement("div");
+  element.className = "pane";
 
-  const bar = document.createElement('div');
-  bar.className = 'pane__bar';
-  const dot = document.createElement('span');
-  dot.className = 'pane__dot';
-  const cwdEl = document.createElement('span');
-  cwdEl.className = 'pane__cwd';
-  const badge = document.createElement('span');
-  badge.className = 'pane__badge pane__badge--shell';
-  badge.textContent = 'shell';
+  const bar = document.createElement("div");
+  bar.className = "pane__bar";
+  const dot = document.createElement("span");
+  dot.className = "pane__dot";
+  const cwdEl = document.createElement("span");
+  cwdEl.className = "pane__cwd";
+  const badge = document.createElement("span");
+  badge.className = "pane__badge pane__badge--shell";
+  badge.textContent = "shell";
   bar.append(dot, cwdEl, badge);
 
   // Hover anchor: shown only while the pane bar is hidden (CSS-gated).
   // It is the pane-drag handle and shows the cwd; revealed when the
   // pointer enters the top ~26px of the pane.
-  const anchor = document.createElement('div');
-  anchor.className = 'pane__anchor';
-  const anchorGrip = document.createElement('span');
-  anchorGrip.className = 'pane__anchor-grip';
-  anchorGrip.textContent = '⋮⋮';
-  const anchorCwd = document.createElement('span');
-  anchorCwd.className = 'pane__anchor-cwd';
+  const anchor = document.createElement("div");
+  anchor.className = "pane__anchor";
+  const anchorGrip = document.createElement("span");
+  anchorGrip.className = "pane__anchor-grip";
+  anchorGrip.textContent = "⋮⋮";
+  const anchorCwd = document.createElement("span");
+  anchorCwd.className = "pane__anchor-cwd";
   anchor.append(anchorGrip, anchorCwd);
 
-  const termEl = document.createElement('div');
-  termEl.className = 'pane__term';
+  const termEl = document.createElement("div");
+  termEl.className = "pane__term";
   element.append(bar, anchor, termEl);
 
   const term = new Terminal({
@@ -152,7 +152,7 @@ export function createPane(
     // A thin beam rather than xterm's default block. Only the starting style:
     // a program that emits DECSCUSR (`ESC [ n q` — vi mode, some TUIs) still
     // owns the cursor from then on, which is the correct precedence.
-    cursorStyle: 'bar',
+    cursorStyle: "bar",
     // Thinnest xterm allows: the option is floored to an integer and anything
     // below 1 throws. On a Retina panel 1 CSS px still paints as 2 device
     // pixels, so this is the hairline floor without patching the renderer.
@@ -210,8 +210,8 @@ export function createPane(
   term.attachCustomWheelEventHandler(
     createCodexWheelHandler({
       platform: getDesktopEnvironment().platform,
-      isCodex: () => activeAgent === 'codex',
-      isAlternateBuffer: () => term.buffer.active.type === 'alternate',
+      isCodex: () => activeAgent === "codex",
+      isAlternateBuffer: () => term.buffer.active.type === "alternate",
       send: (data) => void forwardData(data),
     }),
   );
@@ -241,7 +241,7 @@ export function createPane(
     return true;
   });
   const bellHandler = term.onBell(() => {
-    events.onAttentionSignal?.(id, { kind: 'requested', source: 'bell' });
+    events.onAttentionSignal?.(id, { kind: "requested", source: "bell" });
   });
 
   // xterm core measures cell width with a Unicode 6 table and no grapheme
@@ -252,7 +252,7 @@ export function createPane(
   // clustering so both sides agree on width.
   term.loadAddon(new UnicodeGraphemesAddon());
   // The addon's activate() already sets this; kept explicit as documentation.
-  term.unicode.activeVersion = '15-graphemes';
+  term.unicode.activeVersion = "15-graphemes";
 
   term.onData((data) => void forwardData(data));
   term.onResize(({ cols, rows }) => events.onResize(id, cols, rows));
@@ -261,16 +261,16 @@ export function createPane(
   const disposeShiftEnter = installShiftEnterNewline(termEl, (data) => {
     void forwardData(data);
   });
-  element.addEventListener('focusin', () => events.onFocus(id));
-  element.addEventListener('mousedown', () => events.onFocus(id));
+  element.addEventListener("focusin", () => events.onFocus(id));
+  element.addEventListener("mousedown", () => events.onFocus(id));
 
   const ANCHOR_ZONE_PX = 26;
-  element.addEventListener('mousemove', (event) => {
+  element.addEventListener("mousemove", (event) => {
     const top = element.getBoundingClientRect().top;
-    element.classList.toggle('is-anchor-zone', event.clientY - top < ANCHOR_ZONE_PX);
+    element.classList.toggle("is-anchor-zone", event.clientY - top < ANCHOR_ZONE_PX);
   });
-  element.addEventListener('mouseleave', () => {
-    element.classList.remove('is-anchor-zone');
+  element.addEventListener("mouseleave", () => {
+    element.classList.remove("is-anchor-zone");
   });
 
   // The flex-grow transition fires ResizeObserver every frame for ~150ms;
@@ -303,7 +303,7 @@ export function createPane(
     if (!opened) {
       return;
     }
-    if (renderer === 'webgl' && webglAddon === undefined) {
+    if (renderer === "webgl" && webglAddon === undefined) {
       // Declared outside the `try` because the throw comes from `loadAddon`,
       // which is where xterm activates the addon — by then it exists and is
       // the thing that has to be disposed.
@@ -332,7 +332,7 @@ export function createPane(
       }
       return;
     }
-    if (renderer === 'dom' && webglAddon !== undefined) {
+    if (renderer === "dom" && webglAddon !== undefined) {
       webglAddon.dispose();
       webglAddon = undefined;
     }
@@ -374,7 +374,7 @@ export function createPane(
     // against @xterm/xterm@6.0.0 under jsdom — `write("", cb)` fires on an
     // idle terminal, and after a pending `write("abc", cb)` it fires SECOND.
     return new Promise((resolve) => {
-      term.write('', () => resolve());
+      term.write("", () => resolve());
     });
   }
 
@@ -382,8 +382,8 @@ export function createPane(
     try {
       return serializeAddon.serialize({ scrollback: lines });
     } catch (err) {
-      console.warn('Failed to serialize pane scrollback:', err);
-      return '';
+      console.warn("Failed to serialize pane scrollback:", err);
+      return "";
     }
   }
 
@@ -406,7 +406,7 @@ export function createPane(
     cwdEl.textContent = info.cwd;
     anchorCwd.textContent = info.cwd;
     badge.textContent = info.badge;
-    badge.className = `pane__badge ${info.agent ? 'pane__badge--agent' : 'pane__badge--shell'}`;
+    badge.className = `pane__badge ${info.agent ? "pane__badge--agent" : "pane__badge--shell"}`;
   }
 
   function captureSelection(): SelectionSnapshot | null {
@@ -498,7 +498,7 @@ export function createPane(
       return capturedWrite ?? Promise.resolve(false);
     },
     scrollPage: (dir) => term.scrollPages(dir),
-    scrollToEdge: (edge) => (edge === 'top' ? term.scrollToTop() : term.scrollToBottom()),
+    scrollToEdge: (edge) => (edge === "top" ? term.scrollToTop() : term.scrollToBottom()),
     focus: () => term.focus(),
     applySettings,
     setHeaderInfo,

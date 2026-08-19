@@ -3,9 +3,9 @@
  * store owns state, this file owns the arithmetic, and the arithmetic is what
  * the tests care about.
  */
-import { SESSION_AGENTS, type SessionAgent, type SessionEntry } from '../lib/session-history';
+import { SESSION_AGENTS, type SessionAgent, type SessionEntry } from "../lib/session-history";
 
-export type AgentFilter = SessionAgent | 'all';
+export type AgentFilter = SessionAgent | "all";
 
 export interface SessionFilterState {
   readonly agent: AgentFilter;
@@ -19,7 +19,7 @@ export function filterSessions(
 ): readonly SessionEntry[] {
   return entries.filter(
     (entry) =>
-      (filters.agent === 'all' || entry.agent === filters.agent) &&
+      (filters.agent === "all" || entry.agent === filters.agent) &&
       (filters.project === null || entry.cwd === filters.project),
   );
 }

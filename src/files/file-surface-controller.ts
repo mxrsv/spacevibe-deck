@@ -7,18 +7,18 @@
  * it. This file is the wiring, and it is deliberately the only place that knows
  * about both halves.
  */
-import { signal } from '@preact/signals';
-import type { UnlistenFn } from '../host/bridge';
-import type { SurfaceStrip } from '../terminal/tab-manager';
-import { UNSEQUENCED } from '../lib/open-sequence';
-import { FILE_CLOSE_COPY, confirmClose } from '../terminal/close-guard';
-import type { Settings } from '../settings/settings-schema';
+import { signal } from "@preact/signals";
+import type { UnlistenFn } from "../host/bridge";
+import type { SurfaceStrip } from "../terminal/tab-manager";
+import { UNSEQUENCED } from "../lib/open-sequence";
+import { FILE_CLOSE_COPY, confirmClose } from "../terminal/close-guard";
+import type { Settings } from "../settings/settings-schema";
 import {
   decideExternalChange,
   resolutionApplies,
   type ChangeEvent,
   type ChangeResolution,
-} from './external-change';
+} from "./external-change";
 import {
   activateFileTab,
   activateTerminalSurface,
@@ -41,10 +41,10 @@ import {
   totalFileTabs,
   updateDocument,
   visibleDirectories,
-} from './file-surface-store';
-import { createPushingDirtyRegistry } from './dirty-registry';
-import { defaultFileClient, type FileClient } from './file-client';
-import { createTreeRefresh } from './tree-refresh';
+} from "./file-surface-store";
+import { createPushingDirtyRegistry } from "./dirty-registry";
+import { defaultFileClient, type FileClient } from "./file-client";
+import { createTreeRefresh } from "./tree-refresh";
 
 /**
  * Settings the mounted editors should apply.
@@ -109,7 +109,7 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       // Losing this push means the quit guard under-reports. It cannot be
       // retried usefully (the next transition sends the whole set again), but
       // it must not be silent.
-      console.error('Deck: could not report unsaved files to the host', error);
+      console.error("Deck: could not report unsaved files to the host", error);
     });
   });
   let disposed = false;
@@ -147,7 +147,7 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
     void client.watchPaths(root, visibleDirectories(root), files).catch((error: unknown) => {
       // Losing the watcher degrades to the re-stat reconcile, which is the
       // designed fallback — worth a line, not worth failing the open.
-      console.warn('Deck: could not watch the workspace', error);
+      console.warn("Deck: could not watch the workspace", error);
     });
   }
 
@@ -189,16 +189,16 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
         // The user typed while we were reading. Raise the bar this reload was
         // supposed to be a shortcut around, and keep their text.
         updateDocument(path, {
-          prompt: result.kind === 'refused' ? 'prompt-deleted' : 'prompt-changed',
-          ...(result.kind === 'refused' ? { gone: true } : {}),
+          prompt: result.kind === "refused" ? "prompt-deleted" : "prompt-changed",
+          ...(result.kind === "refused" ? { gone: true } : {}),
         });
         notify();
         return;
       }
-      if (result.kind === 'refused') {
+      if (result.kind === "refused") {
         updateDocument(path, {
           file: null,
-          text: '',
+          text: "",
           refusal: result.reason,
           dirty: false,
           prompt: null,
@@ -231,7 +231,7 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       }
       updateDocument(path, {
         file: null,
-        refusal: error instanceof Error ? error.message : 'Deck could not read this file.',
+        refusal: error instanceof Error ? error.message : "Deck could not read this file.",
       });
     } finally {
       notify();
@@ -251,20 +251,20 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       prompting: document.prompt !== null,
     });
     switch (action.kind) {
-      case 'none':
+      case "none":
         return;
-      case 'reload':
+      case "reload":
         void readDocument(document.workspacePath, event.path);
         return;
-      case 'mark-gone':
+      case "mark-gone":
         updateDocument(event.path, { gone: true });
         notify();
         return;
-      case 'prompt-changed':
-      case 'prompt-deleted':
+      case "prompt-changed":
+      case "prompt-deleted":
         updateDocument(event.path, {
           prompt: action.kind,
-          gone: action.kind === 'prompt-deleted',
+          gone: action.kind === "prompt-deleted",
         });
         notify();
     }
@@ -342,7 +342,7 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       onWindowFocus = () => {
         void this.reconcile();
       };
-      window.addEventListener('focus', onWindowFocus);
+      window.addEventListener("focus", onWindowFocus);
     },
 
     async openFile(workspacePath, path, keep) {
@@ -436,9 +436,9 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
         });
         dirty.set(path, stillDirty);
       } catch (error: unknown) {
-        console.error('Deck: could not save the file', error);
+        console.error("Deck: could not save the file", error);
         // Stays dirty, deliberately: a failed save must keep the guard asking.
-        dirty.set(path, 'unknown');
+        dirty.set(path, "unknown");
       } finally {
         notify();
       }
@@ -458,11 +458,11 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
         return;
       }
       switch (resolution) {
-        case 'reload':
+        case "reload":
           updateDocument(path, { prompt: null });
           await readDocument(document.workspacePath, path);
           return;
-        case 'keep-mine': {
+        case "keep-mine": {
           // Adopt the CURRENT on-disk stamp so the same change does not raise
           // the bar again the moment the next event arrives.
           const [stat] = await client.statFiles(document.workspacePath, [path]);
@@ -474,11 +474,11 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
           notify();
           return;
         }
-        case 'save-again':
+        case "save-again":
           updateDocument(path, { prompt: null });
           await this.savePath(path);
           return;
-        case 'close':
+        case "close":
           updateDocument(path, { prompt: null, dirty: false });
           dirty.forget(path);
           closeFileSurface(document.workspacePath, path);
@@ -499,13 +499,13 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
         try {
           stats = await client.statFiles(workspacePath, paths);
         } catch (error: unknown) {
-          console.warn('Deck: could not reconcile open files', error);
+          console.warn("Deck: could not reconcile open files", error);
           continue;
         }
         for (const stat of stats) {
           applyChange({
             path: stat.path,
-            kind: stat.exists ? 'changed' : 'deleted',
+            kind: stat.exists ? "changed" : "deleted",
             mtimeMs: stat.mtimeMs,
             size: stat.size,
           });
@@ -564,7 +564,7 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       unlistenChange?.();
       unlistenChange = null;
       if (onWindowFocus !== null) {
-        window.removeEventListener('focus', onWindowFocus);
+        window.removeEventListener("focus", onWindowFocus);
         onWindowFocus = null;
       }
       focusEditor = null;

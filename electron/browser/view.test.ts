@@ -7,16 +7,16 @@
  * panel actually kills the page rather than leaving it running behind a hidden
  * view.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const opened: string[] = [];
 
-vi.mock('electron', () => ({
+vi.mock("electron", () => ({
   shell: { openExternal: (url: string) => opened.push(url) },
   WebContentsView: class {},
 }));
 
-import { BrowserPanels } from './view';
+import { BrowserPanels } from "./view";
 
 type Handler = (...args: unknown[]) => void;
 
@@ -28,8 +28,8 @@ class FakeContents {
   closed = false;
   destroyed = false;
   focused = false;
-  url = '';
-  title = '';
+  url = "";
+  title = "";
   loading = false;
   back = false;
   forward = false;
@@ -116,8 +116,8 @@ class FakeView {
   }
 }
 
-const LABEL = 'main';
-const EVENTS = { state: 'browser:state', grab: 'browser:grab' } as const;
+const LABEL = "main";
+const EVENTS = { state: "browser:state", grab: "browser:grab" } as const;
 
 function setup() {
   const emitted: { event: string; payload: unknown }[] = [];
@@ -145,7 +145,7 @@ function setup() {
       return true;
     },
     windowFor: () => window as never,
-    vendorSource: () => '/*vendor*/',
+    vendorSource: () => "/*vendor*/",
     events: EVENTS,
     createView: () => view as never,
   });
@@ -156,51 +156,51 @@ beforeEach(() => {
   opened.length = 0;
 });
 
-describe('BrowserPanels', () => {
-  it('creates the view, attaches it and loads the URL', () => {
+describe("BrowserPanels", () => {
+  it("creates the view, attaches it and loads the URL", () => {
     const { panels, view, added } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
+    panels.open(LABEL, "http://localhost:3000/");
     expect(added).toEqual([view]);
-    expect(view.webContents.loaded).toEqual(['http://localhost:3000/']);
+    expect(view.webContents.loaded).toEqual(["http://localhost:3000/"]);
     expect(panels.has(LABEL)).toBe(true);
   });
 
-  it('keeps the page when reopened with no URL', () => {
+  it("keeps the page when reopened with no URL", () => {
     const { panels, view } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
+    panels.open(LABEL, "http://localhost:3000/");
     panels.open(LABEL, null);
-    expect(view.webContents.loaded).toEqual(['http://localhost:3000/']);
+    expect(view.webContents.loaded).toEqual(["http://localhost:3000/"]);
   });
 
-  it('injects react-grab as soon as the document is ready', () => {
+  it("injects react-grab as soon as the document is ready", () => {
     const { panels, view } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
-    view.webContents.emit('dom-ready');
+    panels.open(LABEL, "http://localhost:3000/");
+    view.webContents.emit("dom-ready");
     const [script] = view.webContents.executed;
-    expect(script).toContain('/*vendor*/');
-    expect(script).toContain('telemetry: false');
+    expect(script).toContain("/*vendor*/");
+    expect(script).toContain("telemetry: false");
   });
 
-  it('rounds bounds and refuses a negative size', () => {
+  it("rounds bounds and refuses a negative size", () => {
     const { panels, view } = setup();
     panels.open(LABEL, null);
     panels.setBounds(LABEL, { x: 10.4, y: 20.6, width: 300.5, height: -8 });
     expect(view.bounds).toEqual({ x: 10, y: 21, width: 301, height: 0 });
   });
 
-  it('hides without discarding the page, and disarms Inspect', () => {
+  it("hides without discarding the page, and disarms Inspect", () => {
     const { panels, view } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
+    panels.open(LABEL, "http://localhost:3000/");
     panels.setInspect(LABEL, true);
     panels.setVisible(LABEL, false);
     expect(view.visible).toBe(false);
     expect(view.webContents.closed).toBe(false);
     expect(panels.state(LABEL)?.inspect).toBe(false);
     // The deactivate call is what stops a hidden page coming back still armed.
-    expect(view.webContents.executed.at(-1)).toContain('deactivate()');
+    expect(view.webContents.executed.at(-1)).toContain("deactivate()");
   });
 
-  it('restores the last bounds when shown again', () => {
+  it("restores the last bounds when shown again", () => {
     const { panels, view } = setup();
     panels.open(LABEL, null);
     panels.setBounds(LABEL, { x: 1, y: 2, width: 3, height: 4 });
@@ -210,148 +210,148 @@ describe('BrowserPanels', () => {
     expect(view.bounds).toEqual({ x: 1, y: 2, width: 3, height: 4 });
   });
 
-  it('publishes state when the page finishes loading', () => {
+  it("publishes state when the page finishes loading", () => {
     const { panels, view, emitted } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
-    view.webContents.title = 'My app';
+    panels.open(LABEL, "http://localhost:3000/");
+    view.webContents.title = "My app";
     view.webContents.back = true;
-    view.webContents.emit('did-finish-load');
+    view.webContents.emit("did-finish-load");
     const last = emitted.at(-1);
     expect(last?.event).toBe(EVENTS.state);
-    expect(last?.payload).toMatchObject({ title: 'My app', canGoBack: true });
+    expect(last?.payload).toMatchObject({ title: "My app", canGoBack: true });
   });
 
-  it('reports a load failure but ignores an aborted one', () => {
+  it("reports a load failure but ignores an aborted one", () => {
     const { panels, view } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
-    view.webContents.emit('did-fail-load', {}, -3, 'Aborted', 'http://x/', true);
+    panels.open(LABEL, "http://localhost:3000/");
+    view.webContents.emit("did-fail-load", {}, -3, "Aborted", "http://x/", true);
     expect(panels.state(LABEL)?.error).toBeNull();
     view.webContents.emit(
-      'did-fail-load',
+      "did-fail-load",
       {},
       -102,
-      'Connection refused',
-      'http://localhost:3000/',
+      "Connection refused",
+      "http://localhost:3000/",
       true,
     );
-    expect(panels.state(LABEL)?.error).toContain('Connection refused');
+    expect(panels.state(LABEL)?.error).toContain("Connection refused");
   });
 
-  it('forwards a valid grab and drops a forged one', () => {
+  it("forwards a valid grab and drops a forged one", () => {
     const { panels, view, emitted } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
-    const handler = view.webContents.ipcHandlers.get('deck:browser-grab');
-    handler?.({}, 'not json at all');
-    handler?.({}, JSON.stringify({ text: '' }));
+    panels.open(LABEL, "http://localhost:3000/");
+    const handler = view.webContents.ipcHandlers.get("deck:browser-grab");
+    handler?.({}, "not json at all");
+    handler?.({}, JSON.stringify({ text: "" }));
     expect(emitted.filter((e) => e.event === EVENTS.grab)).toEqual([]);
 
-    handler?.({}, JSON.stringify({ text: 'grabbed', url: 'http://localhost:3000/' }));
+    handler?.({}, JSON.stringify({ text: "grabbed", url: "http://localhost:3000/" }));
     expect(emitted.at(-1)).toEqual({
       event: EVENTS.grab,
-      payload: { text: 'grabbed', url: 'http://localhost:3000/', title: '', count: 1 },
+      payload: { text: "grabbed", url: "http://localhost:3000/", title: "", count: 1 },
     });
   });
 
-  it('rate-limits grabs, so a page cannot flood the pane', () => {
+  it("rate-limits grabs, so a page cannot flood the pane", () => {
     // The preload gates on a real user gesture, which a page cannot forge.
     // This is the second gate: a page that finds a way past the first one
     // still cannot paste faster than a human could ask for it.
     const { panels, view, emitted } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
-    const handler = view.webContents.ipcHandlers.get('deck:browser-grab');
+    panels.open(LABEL, "http://localhost:3000/");
+    const handler = view.webContents.ipcHandlers.get("deck:browser-grab");
     for (let i = 0; i < 50; i += 1) {
       handler?.({}, JSON.stringify({ text: `flood ${i}` }));
     }
     expect(emitted.filter((e) => e.event === EVENTS.grab)).toHaveLength(1);
   });
 
-  it('builds the injection once, not per navigation', () => {
+  it("builds the injection once, not per navigation", () => {
     // ~386 kB spliced per load; `dom-ready` and `did-finish-load` both inject.
     const { panels, view } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
-    view.webContents.emit('dom-ready');
-    view.webContents.emit('did-finish-load');
+    panels.open(LABEL, "http://localhost:3000/");
+    view.webContents.emit("dom-ready");
+    view.webContents.emit("did-finish-load");
     const scripts = view.webContents.executed;
     expect(scripts.length).toBeGreaterThan(1);
     expect(scripts[0]).toBe(scripts[1]);
   });
 
-  it('clears the pending address when a load is aborted', () => {
+  it("clears the pending address when a load is aborted", () => {
     // ERR_ABORTED is not an error worth showing, but the attempt is over —
     // leaving it pending made the address bar name a page never loaded.
     const { panels, view } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
-    view.webContents.url = 'http://localhost:3000/';
-    view.webContents.emit('did-fail-load', {}, -3, 'Aborted', 'http://other/', true);
-    expect(panels.state(LABEL)?.url).toBe('http://localhost:3000/');
+    panels.open(LABEL, "http://localhost:3000/");
+    view.webContents.url = "http://localhost:3000/";
+    view.webContents.emit("did-fail-load", {}, -3, "Aborted", "http://other/", true);
+    expect(panels.state(LABEL)?.url).toBe("http://localhost:3000/");
   });
 
-  it('hands keyboard focus back to the window when it hides', () => {
+  it("hands keyboard focus back to the window when it hides", () => {
     // `setInspect(true)` put focus in the page; hiding without taking it back
     // sends the user's typing to a view they cannot see.
     const { panels, view, focusedWindow } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
+    panels.open(LABEL, "http://localhost:3000/");
     panels.setInspect(LABEL, true);
     expect(view.webContents.focused).toBe(true);
     panels.setVisible(LABEL, false);
     expect(focusedWindow()).toBe(true);
   });
 
-  it('shows a panel again when it is reopened after the toggle hid it', () => {
+  it("shows a panel again when it is reopened after the toggle hid it", () => {
     const { panels, view } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
+    panels.open(LABEL, "http://localhost:3000/");
     panels.setVisible(LABEL, false);
     expect(view.visible).toBe(false);
     panels.open(LABEL, null);
     expect(view.visible).toBe(true);
   });
 
-  it('does not close a web contents that is already destroyed', () => {
+  it("does not close a web contents that is already destroyed", () => {
     // This runs first in the window's `closed` handler, ahead of every step
     // that reclaims the window's panes.
     const { panels, view } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
+    panels.open(LABEL, "http://localhost:3000/");
     view.webContents.destroyed = true;
     panels.close(LABEL);
     expect(view.webContents.closed).toBe(false);
   });
 
-  it('sends a navigation it will not load to the OS browser', () => {
+  it("sends a navigation it will not load to the OS browser", () => {
     const { panels, view } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
+    panels.open(LABEL, "http://localhost:3000/");
     const event = { preventDefault: vi.fn() };
-    view.webContents.emit('will-navigate', event, 'mailto:someone@example.com');
+    view.webContents.emit("will-navigate", event, "mailto:someone@example.com");
     expect(event.preventDefault).toHaveBeenCalled();
     // `mailto:` is not loadable in the panel, and it is not something Deck
     // hands to `openExternal` from here either — only http(s) leaves this path.
     expect(opened).toEqual([]);
 
     const allowed = { preventDefault: vi.fn() };
-    view.webContents.emit('will-navigate', allowed, 'https://example.com/');
+    view.webContents.emit("will-navigate", allowed, "https://example.com/");
     expect(allowed.preventDefault).not.toHaveBeenCalled();
   });
 
-  it('denies popups and opens them outside instead', () => {
+  it("denies popups and opens them outside instead", () => {
     const { panels, view } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
+    panels.open(LABEL, "http://localhost:3000/");
     const result = view.webContents.windowOpenHandler?.({
-      url: 'https://example.com/docs',
+      url: "https://example.com/docs",
     });
-    expect(result).toEqual({ action: 'deny' });
-    expect(opened).toEqual(['https://example.com/docs']);
+    expect(result).toEqual({ action: "deny" });
+    expect(opened).toEqual(["https://example.com/docs"]);
   });
 
-  it('denies every permission the page asks for', () => {
+  it("denies every permission the page asks for", () => {
     const { panels, view } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
+    panels.open(LABEL, "http://localhost:3000/");
     const callback = vi.fn();
-    view.webContents.permissionHandler?.({}, 'media', callback);
+    view.webContents.permissionHandler?.({}, "media", callback);
     expect(callback).toHaveBeenCalledWith(false);
   });
 
-  it('closing detaches the view and kills the page', () => {
+  it("closing detaches the view and kills the page", () => {
     const { panels, view, removed } = setup();
-    panels.open(LABEL, 'http://localhost:3000/');
+    panels.open(LABEL, "http://localhost:3000/");
     panels.close(LABEL);
     expect(removed).toEqual([view]);
     expect(view.webContents.closed).toBe(true);
@@ -359,10 +359,10 @@ describe('BrowserPanels', () => {
     expect(panels.state(LABEL)).toBeNull();
   });
 
-  it('ignores every command for a window with no panel', () => {
+  it("ignores every command for a window with no panel", () => {
     const { panels } = setup();
     expect(() => {
-      panels.navigate(LABEL, 'http://localhost:3000/');
+      panels.navigate(LABEL, "http://localhost:3000/");
       panels.goBack(LABEL);
       panels.goForward(LABEL);
       panels.reload(LABEL);

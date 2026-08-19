@@ -1,12 +1,12 @@
-import type { Settings } from '../settings/settings-schema';
-import type { Direction, Edge, SerializedNode } from '../lib/split-tree';
-import type { FocusDirection, PaneRect } from '../lib/pane-geometry';
-import type { PaneProcessInfo } from '../lib/process-info';
-import type { CreatePaneFn } from './pane-lifecycle';
-import type { PaneAttentionSignal } from './pane';
-import type { DetachTarget, PaneIdentity } from './pane-detach';
-import type { AdoptResult } from './pane-adopt';
-import type { TransferClient } from './transfer-client';
+import type { Settings } from "../settings/settings-schema";
+import type { Direction, Edge, SerializedNode } from "../lib/split-tree";
+import type { FocusDirection, PaneRect } from "../lib/pane-geometry";
+import type { PaneProcessInfo } from "../lib/process-info";
+import type { CreatePaneFn } from "./pane-lifecycle";
+import type { PaneAttentionSignal } from "./pane";
+import type { DetachTarget, PaneIdentity } from "./pane-detach";
+import type { AdoptResult } from "./pane-adopt";
+import type { TransferClient } from "./transfer-client";
 
 export interface ManagerCallbacks {
   /** Fired after any structural change (split, close, ratio commit). */
@@ -43,8 +43,8 @@ export interface TerminalManagerDeps {
  * `disposeTab` takes — nothing was closed, the session is alive elsewhere.
  */
 export type DetachOutcome =
-  | { readonly kind: 'moved'; readonly tabEmpty: boolean }
-  | { readonly kind: 'kept'; readonly reason: string };
+  | { readonly kind: "moved"; readonly tabEmpty: boolean }
+  | { readonly kind: "kept"; readonly reason: string };
 
 /**
  * Live-adopt (spec §10.1): insert into the running tab's layout tree at a
@@ -153,7 +153,7 @@ export interface TerminalManager {
   /** Scroll the active pane's viewport by one page (⇧PageUp/⇧PageDown). */
   scrollActivePage(dir: 1 | -1): void;
   /** Jump the active pane's viewport to the top or bottom of scrollback. */
-  scrollActiveToEdge(edge: 'top' | 'bottom'): void;
+  scrollActiveToEdge(edge: "top" | "bottom"): void;
   /** Open the search bar on the active pane (Cmd+F). */
   openSearch(): void;
   /**

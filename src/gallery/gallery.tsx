@@ -1,12 +1,12 @@
-import { useSignal } from '@preact/signals';
-import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
-import { GALLERY_SECTIONS } from './section-registry';
-import { unhandledCommands } from './host-stub';
-import { applyThemeVars } from '../lib/theme-vars';
-import { settings } from '../settings/settings-store';
-import { resolveTheme, THEME_PRESETS } from '../settings/themes';
+import { useSignal } from "@preact/signals";
+import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
+import { GALLERY_SECTIONS } from "./section-registry";
+import { unhandledCommands } from "./host-stub";
+import { applyThemeVars } from "../lib/theme-vars";
+import { settings } from "../settings/settings-store";
+import { resolveTheme, THEME_PRESETS } from "../settings/themes";
 
-const DEFAULT_SECTION_ID = 'chrome';
+const DEFAULT_SECTION_ID = "chrome";
 
 /**
  * The gallery shell.
@@ -80,7 +80,7 @@ export function Gallery() {
           <button
             key={section.id}
             type="button"
-            class={`gx-rail__item ${section.id === active.id ? 'is-active' : ''}`}
+            class={`gx-rail__item ${section.id === active.id ? "is-active" : ""}`}
             aria-current={section.id === active.id}
             onClick={() => {
               activeId.value = section.id;
@@ -102,7 +102,7 @@ export function Gallery() {
           <span>every IPC call the specimens made was answered by the stub.</span>
         ) : (
           <span>
-            unstubbed IPC ({missing.length}): <code>{missing.join(', ')}</code> — the surfaces that
+            unstubbed IPC ({missing.length}): <code>{missing.join(", ")}</code> — the surfaces that
             need these render without their data.
           </span>
         )}

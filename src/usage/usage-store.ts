@@ -1,6 +1,6 @@
-import { signal } from '@preact/signals';
-import { defaultUsageClient, type UsageClient } from './usage-client';
-import type { UsageSnapshot } from '../lib/usage-snapshot';
+import { signal } from "@preact/signals";
+import { defaultUsageClient, type UsageClient } from "./usage-client";
+import type { UsageSnapshot } from "../lib/usage-snapshot";
 
 /**
  * The usage screen's data: a snapshot signal and a poll bound to the screen
@@ -71,7 +71,7 @@ async function poll(client: UsageClient, forGeneration: number): Promise<void> {
     if (forGeneration === generation) {
       // Keep the last good snapshot on screen. Blanking it would turn a
       // transient worker failure into "you have no usage", which is a lie.
-      console.warn('usage_snapshot failed:', error);
+      console.warn("usage_snapshot failed:", error);
       usageStale.value = true;
     }
   } finally {

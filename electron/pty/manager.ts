@@ -12,17 +12,17 @@
  * pane — in that order — so the renderer never sees an exit for a pane whose
  * last bytes are still queued. `handleExit` keeps that order.
  */
-import { EVENTS } from '../ipc/channels';
-import { createStreamDecoder, OutputBatcher } from './stream';
-import { PtySessionStore, type PtySession } from './session-store';
-import { spawnShell, type SpawnOptions } from './spawn';
-import { validateCwdCandidates, type ShellIntegrationEvent } from '../shell-integration';
-import * as macos from '../platform/macos';
-import type { PsRow } from '../platform/macos';
-import * as windows from '../platform/windows';
+import { EVENTS } from "../ipc/channels";
+import { createStreamDecoder, OutputBatcher } from "./stream";
+import { PtySessionStore, type PtySession } from "./session-store";
+import { spawnShell, type SpawnOptions } from "./spawn";
+import { validateCwdCandidates, type ShellIntegrationEvent } from "../shell-integration";
+import * as macos from "../platform/macos";
+import type { PsRow } from "../platform/macos";
+import * as windows from "../platform/windows";
 
 function platform() {
-  return process.platform === 'win32' ? windows : macos;
+  return process.platform === "win32" ? windows : macos;
 }
 
 /** Delivers an event to whichever window currently owns the pane. */
@@ -202,15 +202,15 @@ export class PtyManager {
     // arrived in: it drives attention state, and a deferred one would race the
     // bytes that follow it.
     for (const event of events) {
-      if (event.kind === 'prompt-ready') {
+      if (event.kind === "prompt-ready") {
         this.deps.emitToOwner(id, EVENTS.ptyPromptReady, { id });
       }
     }
 
     const candidates = events
       .filter(
-        (event): event is Extract<ShellIntegrationEvent, { kind: 'current-directory' }> =>
-          event.kind === 'current-directory',
+        (event): event is Extract<ShellIntegrationEvent, { kind: "current-directory" }> =>
+          event.kind === "current-directory",
       )
       .map((event) => event.value);
     if (candidates.length === 0) {

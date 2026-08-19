@@ -20,7 +20,7 @@ import {
   DOCK_WIDTH_MIN,
   SIDEBAR_WIDTH_MAX,
   SIDEBAR_WIDTH_MIN,
-} from '../settings/settings-schema';
+} from "../settings/settings-schema";
 
 export interface PanelWidthBounds {
   readonly min: number;

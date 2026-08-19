@@ -1,10 +1,10 @@
-import type { Settings } from '../settings/settings-schema';
-import { reportPersistError } from '../chrome/events';
-import { leaf, leafIds, replaceLeaf, type TreeNode } from '../lib/split-tree';
-import { createPane, type Pane, type PaneAttentionSignal, type PaneEvents } from './pane';
-import { clearPaneCwd, setPaneCwd } from './pane-cwd';
-import type { PtyClient } from './pty-client';
-import type { AdoptionPayload } from './transfer-client';
+import type { Settings } from "../settings/settings-schema";
+import { reportPersistError } from "../chrome/events";
+import { leaf, leafIds, replaceLeaf, type TreeNode } from "../lib/split-tree";
+import { createPane, type Pane, type PaneAttentionSignal, type PaneEvents } from "./pane";
+import { clearPaneCwd, setPaneCwd } from "./pane-cwd";
+import type { PtyClient } from "./pty-client";
+import type { AdoptionPayload } from "./transfer-client";
 
 // Placeholder size at spawn — fit() after mount resizes to the real dimensions
 const INITIAL_COLS = 80;

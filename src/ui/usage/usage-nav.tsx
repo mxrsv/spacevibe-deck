@@ -1,6 +1,6 @@
-import { useRef } from 'preact/hooks';
-import { activeUsageView } from './active-usage-view-store';
-import { USAGE_VIEWS, VIEW_PANEL_ID, viewTabId } from './usage-views';
+import { useRef } from "preact/hooks";
+import { activeUsageView } from "./active-usage-view-store";
+import { USAGE_VIEWS, VIEW_PANEL_ID, viewTabId } from "./usage-views";
 
 /**
  * The usage rail: a vertical list of view tabs. Click sets
@@ -29,9 +29,9 @@ export function UsageNav() {
 
   const handleKeyDown = (event: KeyboardEvent): void => {
     let step: 1 | -1;
-    if (event.key === 'ArrowDown') {
+    if (event.key === "ArrowDown") {
       step = 1;
-    } else if (event.key === 'ArrowUp') {
+    } else if (event.key === "ArrowUp") {
       step = -1;
     } else {
       return;
@@ -66,7 +66,7 @@ export function UsageNav() {
               aria-selected={isActive}
               aria-controls={VIEW_PANEL_ID}
               tabIndex={isActive ? 0 : -1}
-              class={`usage-nav__item ${isActive ? 'is-active' : ''}`}
+              class={`usage-nav__item ${isActive ? "is-active" : ""}`}
               onClick={() => selectView(index)}
             >
               <Icon />

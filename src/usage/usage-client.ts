@@ -1,5 +1,5 @@
-import { usageSnapshot } from '../host/usage-host';
-import { EMPTY_USAGE_SNAPSHOT, type UsageSnapshot } from '../lib/usage-snapshot';
+import { usageSnapshot } from "../host/usage-host";
+import { EMPTY_USAGE_SNAPSHOT, type UsageSnapshot } from "../lib/usage-snapshot";
 
 /** Scanner seam — real IPC in production, fakes in tests. */
 export interface UsageClient {
@@ -33,7 +33,7 @@ export function createMemoryUsageClient(
   return {
     async snapshot() {
       if (options.fail === true) {
-        throw new Error('usage_snapshot failed');
+        throw new Error("usage_snapshot failed");
       }
       return snapshot;
     },

@@ -1,15 +1,15 @@
-import { useSignal } from '@preact/signals';
-import { activeTabIndex, NO_PANES, tabViews } from '../terminal/tabs-store';
-import { AgentGlyph } from '../ui/controls/agent-glyph';
-import { DesktopChrome } from '../ui/desktop-chrome';
-import { SidebarToggle } from '../ui/sidebar-toggle';
-import { DockToggle } from '../ui/dock/dock-toggle';
+import { useSignal } from "@preact/signals";
+import { activeTabIndex, NO_PANES, tabViews } from "../terminal/tabs-store";
+import { AgentGlyph } from "../ui/controls/agent-glyph";
+import { DesktopChrome } from "../ui/desktop-chrome";
+import { SidebarToggle } from "../ui/sidebar-toggle";
+import { DockToggle } from "../ui/dock/dock-toggle";
 import {
   agentRailNavigationSpecimen,
   deckToolbarSpecimen,
   NOOP,
   repositoryScopedTabStripSpecimen,
-} from './chrome-fixtures';
+} from "./chrome-fixtures";
 
 /**
  * Gallery specimens for the agent status rail — the SHIPPED `AgentRail`, not a

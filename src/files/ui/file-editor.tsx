@@ -10,20 +10,20 @@
  * silently, keep scroll and cursor" (spec §5) possible at all: a reload is a
  * model-value swap between a `saveViewState` and a `restoreViewState`.
  */
-import { useEffect, useRef } from 'preact/hooks';
-import { useSignal, useSignalEffect } from '@preact/signals';
-import { settings } from '../../settings/settings-store';
-import { FONT_FALLBACK } from '../../settings/settings-schema';
+import { useEffect, useRef } from "preact/hooks";
+import { useSignal, useSignalEffect } from "@preact/signals";
+import { settings } from "../../settings/settings-store";
+import { FONT_FALLBACK } from "../../settings/settings-schema";
 import {
   applyMonacoTheme,
   DECK_THEME_ID,
   languageForPath,
   loadMonaco,
   type MonacoApi,
-} from '../editor-host';
-import { documentFor } from '../file-surface-store';
-import { editorSettings, type FileSurfaceController } from '../file-surface-controller';
-import { ExternalChangeBar } from './external-change-bar';
+} from "../editor-host";
+import { documentFor } from "../file-surface-store";
+import { editorSettings, type FileSurfaceController } from "../file-surface-controller";
+import { ExternalChangeBar } from "./external-change-bar";
 
 export interface FileEditorProps {
   readonly path: string;
@@ -34,8 +34,8 @@ export interface FileEditorProps {
  * teardown cannot forget half of them. */
 interface EditorHandle {
   readonly monaco: MonacoApi;
-  readonly editor: ReturnType<MonacoApi['editor']['create']>;
-  readonly models: Map<string, ReturnType<MonacoApi['editor']['createModel']>>;
+  readonly editor: ReturnType<MonacoApi["editor"]["create"]>;
+  readonly models: Map<string, ReturnType<MonacoApi["editor"]["createModel"]>>;
   readonly viewStates: Map<string, unknown>;
   /** Path whose content the editor is currently reflecting. */
   current: string | null;
@@ -45,7 +45,7 @@ interface EditorHandle {
 }
 
 function baseName(path: string): string {
-  const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
   return cut === -1 ? path : path.slice(cut + 1);
 }
 
@@ -86,13 +86,13 @@ export function FileEditor(props: FileEditorProps) {
           minimap: { enabled: false },
           // DL-1.3 forbids shadows; Monaco draws one under its scroll edge.
           scrollbar: { useShadows: false },
-          renderLineHighlight: 'line',
+          renderLineHighlight: "line",
           fontFamily: `${settings.value.fontFamily}, ${FONT_FALLBACK}`,
           fontSize: settings.value.fontSize,
           tabSize: 2,
           // The file's own ending is restored on save (`applyEol`); the editor
           // works in LF throughout so nothing rewrites endings silently.
-          value: '',
+          value: "",
         });
         const handle: EditorHandle = {
           monaco,
@@ -126,7 +126,7 @@ export function FileEditor(props: FileEditorProps) {
       .catch((error: unknown) => {
         // Gate M's failure mode, surfaced rather than swallowed: a chunk that
         // 404s under `file://` would otherwise be a blank rectangle.
-        console.error('Deck: the editor could not be loaded', error);
+        console.error("Deck: the editor could not be loaded", error);
       });
     return () => {
       cancelled = true;

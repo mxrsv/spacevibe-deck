@@ -24,11 +24,11 @@ export interface UpdateAttempt {
 
 export type AttemptOutcome =
   /** No attempt recorded — an ordinary launch. */
-  | { readonly kind: 'none' }
+  | { readonly kind: "none" }
   /** The running version is the one we were installing. */
-  | { readonly kind: 'succeeded'; readonly version: string }
+  | { readonly kind: "succeeded"; readonly version: string }
   /** Still on the version we started from: the install never happened. */
-  | { readonly kind: 'incomplete'; readonly attempt: UpdateAttempt }
+  | { readonly kind: "incomplete"; readonly attempt: UpdateAttempt }
   /**
    * Neither the target nor the origin is running. Something else moved the
    * install — a manual download, a second attempt, a rollback — so the record
@@ -36,22 +36,22 @@ export type AttemptOutcome =
    * did.
    */
   | {
-      readonly kind: 'superseded';
+      readonly kind: "superseded";
       readonly attempt: UpdateAttempt;
       readonly version: string;
     };
 
 export function isUpdateAttempt(value: unknown): value is UpdateAttempt {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
   const attempt = value as Record<string, unknown>;
   return (
-    typeof attempt.targetVersion === 'string' &&
-    attempt.targetVersion !== '' &&
-    typeof attempt.fromVersion === 'string' &&
-    attempt.fromVersion !== '' &&
-    typeof attempt.startedAt === 'number' &&
+    typeof attempt.targetVersion === "string" &&
+    attempt.targetVersion !== "" &&
+    typeof attempt.fromVersion === "string" &&
+    attempt.fromVersion !== "" &&
+    typeof attempt.startedAt === "number" &&
     Number.isFinite(attempt.startedAt)
   );
 }
@@ -69,15 +69,15 @@ export function isUpdateAttempt(value: unknown): value is UpdateAttempt {
  */
 export function resolveAttemptOutcome(attempt: unknown, currentVersion: string): AttemptOutcome {
   if (!isUpdateAttempt(attempt)) {
-    return { kind: 'none' };
+    return { kind: "none" };
   }
   if (attempt.targetVersion === currentVersion) {
-    return { kind: 'succeeded', version: currentVersion };
+    return { kind: "succeeded", version: currentVersion };
   }
   if (attempt.fromVersion === currentVersion) {
-    return { kind: 'incomplete', attempt };
+    return { kind: "incomplete", attempt };
   }
-  return { kind: 'superseded', attempt, version: currentVersion };
+  return { kind: "superseded", attempt, version: currentVersion };
 }
 
 /**
@@ -90,12 +90,12 @@ export function resolveAttemptOutcome(attempt: unknown, currentVersion: string):
  */
 export function attemptMessage(outcome: AttemptOutcome): string | null {
   switch (outcome.kind) {
-    case 'incomplete':
+    case "incomplete":
       return `Deck ${outcome.attempt.targetVersion} didn't finish installing — still running ${outcome.attempt.fromVersion}. Download it manually if this keeps happening.`;
-    case 'superseded':
+    case "superseded":
       return `An earlier update to Deck ${outcome.attempt.targetVersion} never completed. Now running ${outcome.version}.`;
-    case 'succeeded':
-    case 'none':
+    case "succeeded":
+    case "none":
       return null;
   }
 }

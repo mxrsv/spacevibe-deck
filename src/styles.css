@@ -7,19 +7,19 @@
    exact order and each partial's internal rule order is untouched from the
    original file. Add new rules inside the relevant partial, never here. */
 
-@import './styles/01-tokens.css';
-@import './styles/02-shell.css';
-@import './styles/03-repository-rail.css';
-@import './styles/04a-agent-rail.css';
-@import './styles/04b-agent-rail-rows.css';
-@import './styles/05-tab-bar-toolbar.css';
-@import './styles/06-stage-panes.css';
-@import './styles/07-config-rows.css';
-@import './styles/08-popovers.css';
-@import './styles/09-open-board.css';
-@import './styles/10-modals.css';
-@import './styles/11-settings-screen.css';
-@import './styles/12-usage.css';
-@import './styles/13-sessions.css';
-@import './styles/14-dock.css';
-@import './styles/15-rail-footer.css';
+@import "./styles/01-tokens.css";
+@import "./styles/02-shell.css";
+@import "./styles/03-repository-rail.css";
+@import "./styles/04a-agent-rail.css";
+@import "./styles/04b-agent-rail-rows.css";
+@import "./styles/05-tab-bar-toolbar.css";
+@import "./styles/06-stage-panes.css";
+@import "./styles/07-config-rows.css";
+@import "./styles/08-popovers.css";
+@import "./styles/09-open-board.css";
+@import "./styles/10-modals.css";
+@import "./styles/11-settings-screen.css";
+@import "./styles/12-usage.css";
+@import "./styles/13-sessions.css";
+@import "./styles/14-dock.css";
+@import "./styles/15-rail-footer.css";

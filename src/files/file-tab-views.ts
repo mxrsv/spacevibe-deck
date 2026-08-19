@@ -7,8 +7,8 @@
  * `TabManager`, never inside it (spec §2.3), and this projection is the file
  * side's half of the same seam.
  */
-import type { FileSurfaceController } from './file-surface-controller';
-import { documentFor, stripFileTabs } from './file-surface-store';
+import type { FileSurfaceController } from "./file-surface-controller";
+import { documentFor, stripFileTabs } from "./file-surface-store";
 
 /** One file tab, as the strip renders it. */
 export interface TabViewModel {
@@ -31,7 +31,7 @@ export interface TabViewModel {
 }
 
 function baseName(path: string): string {
-  const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
   return cut === -1 ? path : path.slice(cut + 1);
 }
 

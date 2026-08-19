@@ -1,6 +1,6 @@
-import { hasPrimaryModifier } from '../lib/platform';
+import { hasPrimaryModifier } from "../lib/platform";
 
-type ModifierEvent = Readonly<Pick<KeyboardEvent, 'metaKey' | 'ctrlKey'>>;
+type ModifierEvent = Readonly<Pick<KeyboardEvent, "metaKey" | "ctrlKey">>;
 type Listener = (held: boolean) => void;
 
 const listeners = new Set<Listener>();
@@ -18,13 +18,13 @@ function setHeld(next: boolean): void {
 }
 
 function install(): void {
-  if (installed || typeof window === 'undefined') {
+  if (installed || typeof window === "undefined") {
     return;
   }
   installed = true;
-  window.addEventListener('keydown', (event) => setHeld(hasPrimaryModifier(event)), true);
-  window.addEventListener('keyup', (event) => setHeld(hasPrimaryModifier(event)), true);
-  window.addEventListener('blur', () => setHeld(false));
+  window.addEventListener("keydown", (event) => setHeld(hasPrimaryModifier(event)), true);
+  window.addEventListener("keyup", (event) => setHeld(hasPrimaryModifier(event)), true);
+  window.addEventListener("blur", () => setHeld(false));
 }
 
 export function isPrimaryModifierHeld(): boolean {

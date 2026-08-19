@@ -89,8 +89,8 @@ export const TERMINAL_TEXT_FLOOR = 4.5;
 /** A cursor is a non-text visual indicator and must clear the 3:1 floor. */
 export const TERMINAL_CURSOR_FLOOR = 3;
 
-type ChromeTextToken = 'textPrimary' | 'textMuted' | 'textFaint';
-type ChromeTextSurface = 'inputBg' | 'sidebarBg' | 'chrome1' | 'chrome2' | 'tabActiveBg';
+type ChromeTextToken = "textPrimary" | "textMuted" | "textFaint";
+type ChromeTextSurface = "inputBg" | "sidebarBg" | "chrome1" | "chrome2" | "tabActiveBg";
 
 export interface ChromeContrastFailure {
   readonly token: ChromeTextToken;
@@ -113,7 +113,7 @@ function hexToRgb(hex: string): Rgb {
 }
 
 function rgbToHex({ r, g, b }: Rgb): string {
-  const part = (n: number): string => n.toString(16).padStart(2, '0');
+  const part = (n: number): string => n.toString(16).padStart(2, "0");
   return `#${part(r)}${part(g)}${part(b)}`;
 }
 
@@ -174,13 +174,13 @@ function alpha(hex: string, a: number): string {
 /** Derive every chrome token from the theme's background and foreground. */
 export function deriveChromeColors(bg: string, fg: string): ChromeColors {
   const dark = luminance(bg) < DARK_LUMINANCE_THRESHOLD;
-  const tone = dark ? '#ffffff' : '#000000';
+  const tone = dark ? "#ffffff" : "#000000";
   // The stage keeps the terminal theme's background while both side columns
   // recede onto one darker surface. Dark themes need a larger step because
   // they have less luminance headroom; light themes only need a quiet tint.
   // Pure (or near) black cannot darken after 8-bit rounding, so fall back to a
   // small tone mix to preserve the invariant that the surfaces always differ.
-  const recessedSidebar = mixHex(bg, '#000000', dark ? 0.24 : 0.05);
+  const recessedSidebar = mixHex(bg, "#000000", dark ? 0.24 : 0.05);
   const sidebarBg = recessedSidebar === bg ? mixHex(bg, tone, 0.05) : recessedSidebar;
   const sidebarSeam = mixHex(sidebarBg, bg, 0.5);
   // 0.05/0.09, up from 0.04/0.07: the structure now comes from the step
@@ -262,9 +262,9 @@ export function checkChromeTextContrast(bg: string, fg: string): ChromeContrastC
     tabActiveBg: chrome.tabActiveBg,
   };
   const checks: readonly [ChromeTextToken, number, ChromeTextSurface[]][] = [
-    ['textPrimary', TEXT_PRIMARY_FLOOR, Object.keys(surfaces) as ChromeTextSurface[]],
-    ['textMuted', TEXT_MUTED_FLOOR, ['sidebarBg', 'chrome1', 'chrome2', 'tabActiveBg']],
-    ['textFaint', TEXT_FAINT_FLOOR, ['sidebarBg', 'chrome1', 'chrome2', 'tabActiveBg']],
+    ["textPrimary", TEXT_PRIMARY_FLOOR, Object.keys(surfaces) as ChromeTextSurface[]],
+    ["textMuted", TEXT_MUTED_FLOOR, ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"]],
+    ["textFaint", TEXT_FAINT_FLOOR, ["sidebarBg", "chrome1", "chrome2", "tabActiveBg"]],
   ];
   const failures = checks.flatMap(([token, required, names]) =>
     names.flatMap((surface) => {

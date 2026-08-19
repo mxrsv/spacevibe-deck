@@ -14,7 +14,7 @@
 
 /** `"unknown"` is not a third state to render — it is how a caller says "I
  * cannot read this editor", and it resolves to dirty. */
-export type DirtyState = boolean | 'unknown';
+export type DirtyState = boolean | "unknown";
 
 export interface DirtyRegistry {
   /**

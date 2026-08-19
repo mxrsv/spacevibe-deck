@@ -16,8 +16,8 @@
  * restored UI state in the app. Only the panel's width and default-open state
  * persist, and those are ordinary settings.
  */
-import { batch, signal } from '@preact/signals';
-import type { ChangeAction } from './external-change';
+import { batch, signal } from "@preact/signals";
+import type { ChangeAction } from "./external-change";
 import {
   type DirEntry,
   type Listings,
@@ -25,9 +25,9 @@ import {
   openDirectories,
   toggleExpanded,
   type TreeRow,
-} from './file-tree';
-import type { FileContent } from './file-content';
-import { nextOpenSequence } from '../lib/open-sequence';
+} from "./file-tree";
+import type { FileContent } from "./file-content";
+import { nextOpenSequence } from "../lib/open-sequence";
 import {
   activeAfterFileClose,
   closeFileTab,
@@ -37,7 +37,7 @@ import {
   previewTab,
   promoteTab,
   type FileTabEntry,
-} from './preview-slot';
+} from "./preview-slot";
 
 /** Everything one workspace's explorer remembers. */
 export interface FileSurfaceState {
@@ -74,7 +74,7 @@ export interface FileDocument {
   /** Set when the file could not be opened at all (binary, unreadable). */
   readonly refusal: string | null;
   /** Which external-change bar is up, if any. */
-  readonly prompt: ChangeAction['kind'] | null;
+  readonly prompt: ChangeAction["kind"] | null;
   readonly mtimeMs: number | null;
   readonly size: number | null;
   /** 1-based caret position for the status bar. */
@@ -87,7 +87,7 @@ export function emptyDocument(workspacePath: string, path: string): FileDocument
     workspacePath,
     path,
     file: null,
-    text: '',
+    text: "",
     dirty: false,
     gone: false,
     refusal: null,
@@ -439,7 +439,7 @@ export function closeWorkspaceSurface(workspacePath: string): void {
     // window-wide, same rule as the preview-eviction path above.
     disposeIfOrphaned(path);
   }
-  if (closingPaths.includes(activeFileTab.value ?? '')) {
+  if (closingPaths.includes(activeFileTab.value ?? "")) {
     activeFileTab.value = null;
   }
 }

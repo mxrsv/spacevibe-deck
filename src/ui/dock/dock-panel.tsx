@@ -17,12 +17,12 @@
  * `src/ui/sessions` — three imports that would make the host depend on
  * everything it hosts.
  */
-import { dockCollapseArmed, dockWidthLive } from '../../files/file-surface-store';
-import type { DockTab } from '../../settings/settings-schema';
-import { DOCK_DRAG_BOUNDS, resolvePanelDrag } from '../panel-resize';
-import { DockTabs } from './dock-tabs';
-import type { DockTabDescriptor } from './dock-tab-registry';
-import type { ComponentChildren } from 'preact';
+import { dockCollapseArmed, dockWidthLive } from "../../files/file-surface-store";
+import type { DockTab } from "../../settings/settings-schema";
+import { DOCK_DRAG_BOUNDS, resolvePanelDrag } from "../panel-resize";
+import { DockTabs } from "./dock-tabs";
+import type { DockTabDescriptor } from "./dock-tab-registry";
+import type { ComponentChildren } from "preact";
 
 export interface DockPanelProps {
   /** Tabs this host can show — already filtered for host support. */
@@ -64,9 +64,9 @@ export function DockPanel(props: DockPanelProps) {
       dockCollapseArmed.value = outcome.collapsed;
     };
     const end = (): void => {
-      target.removeEventListener('pointermove', move);
-      target.removeEventListener('pointerup', end);
-      target.removeEventListener('pointercancel', end);
+      target.removeEventListener("pointermove", move);
+      target.removeEventListener("pointerup", end);
+      target.removeEventListener("pointercancel", end);
       const dragged = dockWidthLive.value;
       const collapse = dockCollapseArmed.value;
       // Cleared BEFORE the commit: the settings write is async, and leaving
@@ -85,14 +85,14 @@ export function DockPanel(props: DockPanelProps) {
         props.onWidthChange(dragged);
       }
     };
-    target.addEventListener('pointermove', move);
-    target.addEventListener('pointerup', end);
-    target.addEventListener('pointercancel', end);
+    target.addEventListener("pointermove", move);
+    target.addEventListener("pointerup", end);
+    target.addEventListener("pointercancel", end);
   };
 
   return (
     <aside
-      class={`dock-panel ${dockCollapseArmed.value ? 'is-collapse-armed' : ''}`}
+      class={`dock-panel ${dockCollapseArmed.value ? "is-collapse-armed" : ""}`}
       aria-label="Side panel"
     >
       <div

@@ -20,7 +20,7 @@ function host(): DeckHost {
     // Only reachable in a browser-only dev preview or a test that forgot to
     // mock the host. Failing loudly beats a silent no-op that looks like a
     // hung PTY.
-    throw new Error('Deck host bridge is unavailable');
+    throw new Error("Deck host bridge is unavailable");
   }
   return bridge;
 }

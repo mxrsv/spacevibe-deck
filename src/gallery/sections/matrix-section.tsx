@@ -1,30 +1,30 @@
-import { useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { Fragment, type ComponentChildren } from 'preact';
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
+import { Fragment, type ComponentChildren } from "preact";
 import {
   contrastRatio,
   deriveChromeColors,
   TEXT_FAINT_FLOOR,
   TEXT_MUTED_FLOOR,
   TEXT_PRIMARY_FLOOR,
-} from '../../lib/derive-colors';
-import { applyThemeVars } from '../../lib/theme-vars';
-import { settings } from '../../settings/settings-store';
-import { resolveTheme, THEME_PRESETS, type ThemePreset } from '../../settings/themes';
-import { DesktopChrome } from '../../ui/desktop-chrome';
-import { StatusBar } from '../../ui/status-bar';
-import { SidebarToggle } from '../../ui/sidebar-toggle';
-import { DockToggle } from '../../ui/dock/dock-toggle';
-import { ConfigGroup, ConfigRow, ToggleRow } from '../../ui/controls/config-row';
+} from "../../lib/derive-colors";
+import { applyThemeVars } from "../../lib/theme-vars";
+import { settings } from "../../settings/settings-store";
+import { resolveTheme, THEME_PRESETS, type ThemePreset } from "../../settings/themes";
+import { DesktopChrome } from "../../ui/desktop-chrome";
+import { StatusBar } from "../../ui/status-bar";
+import { SidebarToggle } from "../../ui/sidebar-toggle";
+import { DockToggle } from "../../ui/dock/dock-toggle";
+import { ConfigGroup, ConfigRow, ToggleRow } from "../../ui/controls/config-row";
 import {
   agentRailNavigationSpecimen,
   deckToolbarSpecimen,
   NOOP,
   repositoryScopedTabStripSpecimen,
   tabBarSpecimen,
-} from '../chrome-fixtures';
-import { FORCE_CLASS, installForcedStates, type ForcedState } from '../force-states';
-import { SectionHead } from '../specimen';
-import { TreatmentDirectionReview } from './treatment-direction-review';
+} from "../chrome-fixtures";
+import { FORCE_CLASS, installForcedStates, type ForcedState } from "../force-states";
+import { SectionHead } from "../specimen";
+import { TreatmentDirectionReview } from "./treatment-direction-review";
 /**
  * The comparison matrix the external review asked for (review §6 item 2): all
  * four themes, both tab-bar positions, five interaction states plus the
@@ -89,46 +89,46 @@ interface StateRow {
 
 const STATE_ROWS: readonly StateRow[] = [
   {
-    id: 'hover',
-    force: 'hover',
+    id: "hover",
+    force: "hover",
     disabled: false,
     inactive: false,
-    note: 'every hoverable element at once, because a grid cannot hold a pointer',
+    note: "every hoverable element at once, because a grid cannot hold a pointer",
   },
   {
-    id: 'active',
-    force: 'active',
+    id: "active",
+    force: "active",
     disabled: false,
     inactive: false,
-    note: 'pointer-down, the moment between hover and the click landing',
+    note: "pointer-down, the moment between hover and the click landing",
   },
   {
-    id: 'selected',
+    id: "selected",
     force: null,
     disabled: false,
     inactive: false,
-    note: 'resting: the active tab, the selected workspace row, the on toggle',
+    note: "resting: the active tab, the selected workspace row, the on toggle",
   },
   {
-    id: 'inactive window',
+    id: "inactive window",
     force: null,
     disabled: false,
     inactive: true,
-    note: 'draft: chrome recedes one rung while the terminal stage stays unchanged',
+    note: "draft: chrome recedes one rung while the terminal stage stays unchanged",
   },
   {
-    id: 'focus',
-    force: 'focus',
+    id: "focus",
+    force: "focus",
     disabled: false,
     inactive: false,
-    note: 'focus-visible and focus-within together (DL-6.4)',
+    note: "focus-visible and focus-within together (DL-6.4)",
   },
   {
-    id: 'disabled',
+    id: "disabled",
     force: null,
     disabled: true,
     inactive: false,
-    note: 'real disabled props on the real components, so the browser applies :disabled itself',
+    note: "real disabled props on the real components, so the browser applies :disabled itself",
   },
 ];
 
@@ -141,7 +141,7 @@ const STATE_ROWS: readonly StateRow[] = [
  * so the caption now names the treatment the row is showing rather than the
  * absence it used to show.
  */
-const DISABLED_FINDING = '--text-faint, hover border and hint accent both off (DL-5.2, DL-21.4)';
+const DISABLED_FINDING = "--text-faint, hover border and hint accent both off (DL-5.2, DL-21.4)";
 
 /**
  * A theme scope. `applyThemeVars` takes a `CSSStyleDeclaration`, so pointing it
@@ -180,8 +180,8 @@ function ThemeCell({
   return (
     <div
       ref={ref}
-      class={`gx-cell ${force === null ? '' : FORCE_CLASS[force]} ${inactive ? 'gx-cell--inactive' : ''}`}
-      style={{ width: typeof width === 'number' ? `${width}px` : width }}
+      class={`gx-cell ${force === null ? "" : FORCE_CLASS[force]} ${inactive ? "gx-cell--inactive" : ""}`}
+      style={{ width: typeof width === "number" ? `${width}px` : width }}
     >
       {children}
     </div>
@@ -283,33 +283,33 @@ function ControlCell({ disabled }: { disabled: boolean }) {
  */
 function rowFinding(row: StateRow, absent: readonly ForcedState[]): string | null {
   if (row.force !== null && absent.includes(row.force)) {
-    return `identical to selected: styles.css declares no ${row.force === 'focus' ? ':focus' : `:${row.force}`} rule`;
+    return `identical to selected: styles.css declares no ${row.force === "focus" ? ":focus" : `:${row.force}`} rule`;
   }
   if (row.inactive) {
-    return 'gallery-only proposal: semantic accents fold to faint; chrome saturation drops; stage is untouched';
+    return "gallery-only proposal: semantic accents fold to faint; chrome saturation drops; stage is untouched";
   }
   return row.disabled ? DISABLED_FINDING : null;
 }
 
 const NATIVE_WINDOW_PREVIEWS = [
   {
-    id: 'active',
-    label: 'Active window',
-    note: '760px · full chrome contrast',
+    id: "active",
+    label: "Active window",
+    note: "760px · full chrome contrast",
     width: 760,
     inactive: false,
   },
   {
-    id: 'inactive',
-    label: 'Inactive window',
-    note: '760px · chrome recedes, stage holds',
+    id: "inactive",
+    label: "Inactive window",
+    note: "760px · chrome recedes, stage holds",
     width: 760,
     inactive: true,
   },
   {
-    id: 'compact',
-    label: 'Compact window',
-    note: '520px · 275px rail pressure stays visible',
+    id: "compact",
+    label: "Compact window",
+    note: "520px · 275px rail pressure stays visible",
     width: 520,
     inactive: false,
   },
@@ -324,40 +324,40 @@ const NATIVE_WINDOW_PREVIEWS = [
  */
 const TEXT_CONTRAST_ROLES = [
   {
-    id: 'primary',
-    colorKey: 'textPrimary',
-    label: 'Primary',
-    token: '--text-primary',
+    id: "primary",
+    colorKey: "textPrimary",
+    label: "Primary",
+    token: "--text-primary",
     floor: TEXT_PRIMARY_FLOOR,
-    sample: 'Agent is ready',
-    use: 'names, values, active content',
+    sample: "Agent is ready",
+    use: "names, values, active content",
   },
   {
-    id: 'muted',
-    colorKey: 'textMuted',
-    label: 'Muted',
-    token: '--text-muted',
+    id: "muted",
+    colorKey: "textMuted",
+    label: "Muted",
+    token: "--text-muted",
     floor: TEXT_MUTED_FLOOR,
-    sample: 'Resumed 2 min ago',
-    use: 'supporting values and metadata',
+    sample: "Resumed 2 min ago",
+    use: "supporting values and metadata",
   },
   {
-    id: 'faint',
-    colorKey: 'textFaint',
-    label: 'Faint',
-    token: '--text-faint',
+    id: "faint",
+    colorKey: "textFaint",
+    label: "Faint",
+    token: "--text-faint",
     floor: TEXT_FAINT_FLOOR,
-    sample: 'Unbound · inactive',
-    use: 'hints, disabled and low-priority text',
+    sample: "Unbound · inactive",
+    use: "hints, disabled and low-priority text",
   },
 ] as const;
 
 const PALETTE_ROLES = [
-  { id: 'stage', label: 'Stage', token: '--bg' },
-  { id: 'sidebar', label: 'Sidebar', token: '--sidebar-bg' },
-  { id: 'chrome-1', label: 'Chrome 1', token: '--chrome-1' },
-  { id: 'chrome-2', label: 'Chrome 2', token: '--chrome-2' },
-  { id: 'accent', label: 'Accent', token: '--accent' },
+  { id: "stage", label: "Stage", token: "--bg" },
+  { id: "sidebar", label: "Sidebar", token: "--sidebar-bg" },
+  { id: "chrome-1", label: "Chrome 1", token: "--chrome-1" },
+  { id: "chrome-2", label: "Chrome 2", token: "--chrome-2" },
+  { id: "accent", label: "Accent", token: "--accent" },
 ] as const;
 
 /**
@@ -370,8 +370,8 @@ const PALETTE_ROLES = [
  * the scale could be edited, and the one place nobody would think to check.
  */
 const NATIVE_BALANCED_TYPE_SCALE = {
-  label: 'Native balanced',
-  note: 'selected · compact without 9px text',
+  label: "Native balanced",
+  note: "selected · compact without 9px text",
 } as const;
 
 /**
@@ -380,21 +380,21 @@ const NATIVE_BALANCED_TYPE_SCALE = {
  * painted by the shipping variable and the readout is the same value measured
  * back off the DOM.
  */
-const TYPE_SCALE_TOKENS = ['--type-title', '--type-body', '--type-meta', '--type-micro'] as const;
+const TYPE_SCALE_TOKENS = ["--type-title", "--type-body", "--type-meta", "--type-micro"] as const;
 
 const TYPE_SCALE_ALIAS = [
-  '--gx-type-title:var(--type-title)',
-  '--gx-type-body:var(--type-body)',
-  '--gx-type-meta:var(--type-meta)',
-  '--gx-type-micro:var(--type-micro)',
-].join(';');
+  "--gx-type-title:var(--type-title)",
+  "--gx-type-body:var(--type-body)",
+  "--gx-type-meta:var(--type-meta)",
+  "--gx-type-micro:var(--type-micro)",
+].join(";");
 
 function contrastRows(preset: ThemePreset) {
   const chrome = deriveChromeColors(preset.theme.background, preset.theme.foreground);
   const commonSurfaces = [chrome.sidebarBg, chrome.chrome1, chrome.chrome2, chrome.tabActiveBg];
 
   return TEXT_CONTRAST_ROLES.map((role) => {
-    const surfaces = role.id === 'primary' ? [chrome.inputBg, ...commonSurfaces] : commonSurfaces;
+    const surfaces = role.id === "primary" ? [chrome.inputBg, ...commonSurfaces] : commonSurfaces;
     return {
       ...role,
       minimum: Math.min(
@@ -407,12 +407,12 @@ function contrastRows(preset: ThemePreset) {
 function surfaceContrastRows(preset: ThemePreset) {
   const chrome = deriveChromeColors(preset.theme.background, preset.theme.foreground);
   const surfaces = [
-    { id: 'stage', label: 'Stage', color: preset.theme.background },
-    { id: 'sidebar', label: 'Sidebar', color: chrome.sidebarBg },
-    { id: 'chrome-1', label: 'Chrome 1', color: chrome.chrome1 },
-    { id: 'chrome-2', label: 'Chrome 2', color: chrome.chrome2 },
-    { id: 'selected', label: 'Selected', color: chrome.tabActiveBg },
-    { id: 'input', label: 'Input', color: chrome.inputBg },
+    { id: "stage", label: "Stage", color: preset.theme.background },
+    { id: "sidebar", label: "Sidebar", color: chrome.sidebarBg },
+    { id: "chrome-1", label: "Chrome 1", color: chrome.chrome1 },
+    { id: "chrome-2", label: "Chrome 2", color: chrome.chrome2 },
+    { id: "selected", label: "Selected", color: chrome.tabActiveBg },
+    { id: "input", label: "Input", color: chrome.inputBg },
   ] as const;
 
   return {
@@ -527,7 +527,7 @@ function SurfaceContrastReview() {
                       {role.cells.map((cell) => (
                         <span
                           key={`${role.id}-${cell.id}`}
-                          class={`gx-surface-matrix__ratio ${cell.ratio >= role.floor ? 'is-safe' : 'is-unsafe'}`}
+                          class={`gx-surface-matrix__ratio ${cell.ratio >= role.floor ? "is-safe" : "is-unsafe"}`}
                           title={`${role.token} on ${cell.label}: ${cell.ratio.toFixed(2)}:1`}
                         >
                           {cell.ratio.toFixed(2)}
@@ -564,7 +564,7 @@ function TypeScaleReview() {
     const style = getComputedStyle(node);
     setSizes(
       TYPE_SCALE_TOKENS.map((token) => style.getPropertyValue(token).trim()).filter(
-        (value) => value !== '',
+        (value) => value !== "",
       ),
     );
   }, []);
@@ -591,7 +591,7 @@ function TypeScaleReview() {
           {/* Empty until the layout effect has run, and empty for good if
               `styles.css` ever stops declaring the tokens — which is a finding
               worth seeing, not a gap worth filling with a written-down number. */}
-          <footer>{sizes.length === 0 ? '--type-* not resolved' : sizes.join(' / ')}</footer>
+          <footer>{sizes.length === 0 ? "--type-* not resolved" : sizes.join(" / ")}</footer>
         </article>
       </div>
     </section>
@@ -617,7 +617,7 @@ function NativeWindowReview() {
         {NATIVE_WINDOW_PREVIEWS.map((preview) => (
           <article
             key={preview.id}
-            class={`gx-native-detail ${preview.inactive ? 'gx-cell--inactive' : ''}`}
+            class={`gx-native-detail ${preview.inactive ? "gx-cell--inactive" : ""}`}
             style={{ width: `${preview.width}px` }}
           >
             <header class="gx-native-detail__head">
@@ -678,7 +678,7 @@ function MatrixBlock({
                 force={row.force}
                 inactive={row.inactive}
               >
-                <div class={`gx-cell__inner ${tall ? 'gx-cell__inner--tall' : ''}`}>
+                <div class={`gx-cell__inner ${tall ? "gx-cell__inner--tall" : ""}`}>
                   {render(row.disabled)}
                 </div>
               </ThemeCell>

@@ -11,20 +11,20 @@
  * has to be able to say WHY on the surface the user is looking at, and a folder
  * scan that threw on one bad file would lose every good one after it.
  */
-import { parseAlacritty } from './alacritty';
-import { parseGhostty } from './ghostty';
-import { parseItermColors } from './itermcolors';
-import { finishDraft, type ThemeDraft, type ThemeParseResult } from './theme-draft';
-import { parseWindowsTerminal } from './windows-terminal';
+import { parseAlacritty } from "./alacritty";
+import { parseGhostty } from "./ghostty";
+import { parseItermColors } from "./itermcolors";
+import { finishDraft, type ThemeDraft, type ThemeParseResult } from "./theme-draft";
+import { parseWindowsTerminal } from "./windows-terminal";
 
 /** File extensions the import dialog and the folder scan accept. */
 export const THEME_FILE_EXTENSIONS = [
-  'json',
-  'itermcolors',
-  'toml',
-  'conf',
-  'theme',
-  'txt',
+  "json",
+  "itermcolors",
+  "toml",
+  "conf",
+  "theme",
+  "txt",
 ] as const;
 
 type Parser = (source: string) => ThemeDraft | null;
@@ -59,7 +59,7 @@ export function themeIdForFile(fileName: string): string {
 
 function run(fileName: string, source: string): ThemeParseResult {
   if (source.trim().length === 0) {
-    return { ok: false, reason: 'the file is empty' };
+    return { ok: false, reason: "the file is empty" };
   }
   const hinted = BY_EXTENSION[extensionOf(fileName)];
   const ordered =
@@ -74,13 +74,13 @@ function run(fileName: string, source: string): ThemeParseResult {
   }
   return {
     ok: false,
-    reason: 'not a Windows Terminal, iTerm2, Alacritty or Ghostty theme',
+    reason: "not a Windows Terminal, iTerm2, Alacritty or Ghostty theme",
   };
 }
 
 function extensionOf(fileName: string): string {
-  const dot = fileName.lastIndexOf('.');
-  return dot === -1 ? '' : fileName.slice(dot + 1).toLowerCase();
+  const dot = fileName.lastIndexOf(".");
+  return dot === -1 ? "" : fileName.slice(dot + 1).toLowerCase();
 }
 
 /**
@@ -92,11 +92,11 @@ function extensionOf(fileName: string): string {
  * not a value the app chose.
  */
 export function labelFromFileName(fileName: string): string {
-  const dot = fileName.lastIndexOf('.');
+  const dot = fileName.lastIndexOf(".");
   const stem = dot <= 0 ? fileName : fileName.slice(0, dot);
   const words = stem
     .split(/[-_\s.]+/)
     .filter((word) => word.length > 0)
     .map((word) => word[0].toUpperCase() + word.slice(1));
-  return words.length > 0 ? words.join(' ') : fileName;
+  return words.length > 0 ? words.join(" ") : fileName;
 }

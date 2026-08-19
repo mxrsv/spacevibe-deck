@@ -1,9 +1,9 @@
-import { FolderDashed, Play } from '@phosphor-icons/react';
-import { AgentGlyph } from '../controls/agent-glyph';
-import { DeckIcon, ROW_ICON } from '../controls/deck-icon';
-import { tildify } from '../../lib/process-info';
-import { formatRelativeTime } from '../../lib/workspace-recents';
-import { SESSION_AGENT_LABELS, type SessionEntry } from '../../lib/session-history';
+import { FolderDashed, Play } from "@phosphor-icons/react";
+import { AgentGlyph } from "../controls/agent-glyph";
+import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { tildify } from "../../lib/process-info";
+import { formatRelativeTime } from "../../lib/workspace-recents";
+import { SESSION_AGENT_LABELS, type SessionEntry } from "../../lib/session-history";
 
 interface SessionRowProps {
   readonly entry: SessionEntry;
@@ -40,7 +40,7 @@ export function SessionRow({ entry, dead, homeDir, onResume }: SessionRowProps) 
   const name = entry.title ?? entry.sessionId;
   return (
     <li class="session-row__slot">
-      <div class={`session-row ${dead ? 'is-unavailable' : ''}`}>
+      <div class={`session-row ${dead ? "is-unavailable" : ""}`}>
         {dead ? (
           <DeckIcon icon={FolderDashed} size={ROW_ICON} class="session-row__ico" />
         ) : (
@@ -51,7 +51,7 @@ export function SessionRow({ entry, dead, homeDir, onResume }: SessionRowProps) 
           <span class="session-row__meta">
             <span class="session-row__agent">{SESSION_AGENT_LABELS[entry.agent]}</span>
             <span class="session-row__path">
-              {homeDir === '' ? entry.cwd : tildify(entry.cwd, homeDir)}
+              {homeDir === "" ? entry.cwd : tildify(entry.cwd, homeDir)}
             </span>
             <span class="session-row__time">
               {formatRelativeTime(entry.lastActivityMs, Date.now())}

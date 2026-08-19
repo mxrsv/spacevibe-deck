@@ -1,28 +1,28 @@
-import { invoke } from '../host/bridge';
-import { useSignal } from '@preact/signals';
-import { useEffect, useRef } from 'preact/hooks';
-import { open } from '../host/dialog-host';
-import type { Preset } from '../lib/preset-schema';
+import { invoke } from "../host/bridge";
+import { useSignal } from "@preact/signals";
+import { useEffect, useRef } from "preact/hooks";
+import { open } from "../host/dialog-host";
+import type { Preset } from "../lib/preset-schema";
 import {
   folderName,
   partitionRecents,
   resolveAgentChoice,
   type AgentChoice,
   type RecentWorkspace,
-} from '../lib/workspace-recents';
-import { getDesktopEnvironment, hasPrimaryModifier } from '../lib/platform';
-import type { DetectedAgent } from '../terminal/pty-client';
-import { ensureAgentsDetected } from '../terminal/agent-detection-store';
-import { agentOptions, BUILTIN_AGENTS, probeNames, type CustomAgent } from '../lib/agent-catalog';
-import { settings } from '../settings/settings-store';
-import { boardPresets, presetsData } from '../presets/presets-store';
-import { removeWorkspaceRecents, workspacesData } from './workspaces-store';
-import type { SessionEntry } from '../lib/session-history';
-import { formatShortcutBinding } from '../lib/shortcut-label';
-import { OpenBoardHome } from './open-board-home';
-import { OpenBoardWorktreeForm } from './open-board-worktree-form';
-import { available as worktreeHostAvailable } from '../host/worktree-host';
-import { useWorktreeForm } from './use-worktree-form';
+} from "../lib/workspace-recents";
+import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
+import type { DetectedAgent } from "../terminal/pty-client";
+import { ensureAgentsDetected } from "../terminal/agent-detection-store";
+import { agentOptions, BUILTIN_AGENTS, probeNames, type CustomAgent } from "../lib/agent-catalog";
+import { settings } from "../settings/settings-store";
+import { boardPresets, presetsData } from "../presets/presets-store";
+import { removeWorkspaceRecents, workspacesData } from "./workspaces-store";
+import type { SessionEntry } from "../lib/session-history";
+import { formatShortcutBinding } from "../lib/shortcut-label";
+import { OpenBoardHome } from "./open-board-home";
+import { OpenBoardWorktreeForm } from "./open-board-worktree-form";
+import { available as worktreeHostAvailable } from "../host/worktree-host";
+import { useWorktreeForm } from "./use-worktree-form";
 
 export interface OpenBoardProps {
   canCancel: boolean;
@@ -43,7 +43,7 @@ export interface OpenBoardProps {
  * whole interaction — one click opens — and changing the agent is
  * `AgentQuickPicker`'s job (⌘T), which is where a per-open choice lives now.
  */
-type BoardView = 'home' | 'worktree';
+type BoardView = "home" | "worktree";
 
 function agentLabel(id: string, customAgents: readonly CustomAgent[]): string {
   const builtin = BUILTIN_AGENTS.find((agent) => agent.id === id);
@@ -62,15 +62,15 @@ export function OpenBoard({
 }: OpenBoardProps) {
   const platform = getDesktopEnvironment().platform;
   const openFolderShortcut = formatShortcutBinding(
-    platform === 'windows'
-      ? { key: 'o', ctrl: true, shift: true, action: 'new-tab' }
-      : { key: 'o', meta: true, action: 'new-tab' },
+    platform === "windows"
+      ? { key: "o", ctrl: true, shift: true, action: "new-tab" }
+      : { key: "o", meta: true, action: "new-tab" },
     platform,
   );
   const recents = workspacesData.value.recents;
   const presets = boardPresets();
   const home = getDesktopEnvironment().homeDir;
-  const view = useSignal<BoardView>('home');
+  const view = useSignal<BoardView>("home");
   const missing = useSignal<ReadonlySet<string>>(new Set());
   const opening = useSignal(false);
   /**
@@ -141,7 +141,7 @@ export function OpenBoard({
     // user gets a shell in their home directory under a project's name, with
     // the dead path written back into recents. The board's one notice never
     // fires there, because as far as the app is concerned the open SUCCEEDED.
-    livenessProbe.current = invoke<boolean[]>('dirs_exist', { paths })
+    livenessProbe.current = invoke<boolean[]>("dirs_exist", { paths })
       .then((flags) => {
         const gone = new Set(paths.filter((_, index) => !flags[index]));
         if (!cancelled) {
@@ -150,7 +150,7 @@ export function OpenBoard({
         return gone;
       })
       .catch((err: unknown) => {
-        console.warn('dirs_exist failed:', err);
+        console.warn("dirs_exist failed:", err);
         // An unanswerable probe must not read as "every folder is fine".
         return null;
       });
@@ -163,13 +163,13 @@ export function OpenBoard({
   const groups = partitionRecents(recents, missing.value);
 
   function goHome(): void {
-    view.value = 'home';
+    view.value = "home";
   }
 
   /** Fresh state every time the form is opened — never a stale attempt. */
   function openWorktreeForm(): void {
     worktreeForm.reset();
-    view.value = 'worktree';
+    view.value = "worktree";
   }
 
   /**
@@ -229,11 +229,11 @@ export function OpenBoard({
   async function pickFolder(): Promise<void> {
     try {
       const picked = await open({ directory: true, multiple: false });
-      if (typeof picked === 'string') {
+      if (typeof picked === "string") {
         await openWorkspace(picked);
       }
     } catch (err: unknown) {
-      console.warn('Folder picker failed:', err);
+      console.warn("Folder picker failed:", err);
     }
   }
 
@@ -252,14 +252,14 @@ export function OpenBoard({
     const preset = presets.find((p) => p.id === recent.lastPresetId);
     return [
       preset?.name ?? null,
-      typeof recent.lastAgent === 'string'
+      typeof recent.lastAgent === "string"
         ? agentLabel(recent.lastAgent, customAgents)
         : recent.lastAgent === null
-          ? 'Shell'
+          ? "Shell"
           : null,
     ]
       .filter((part): part is string => part !== null)
-      .join(' · ');
+      .join(" · ");
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
@@ -271,9 +271,9 @@ export function OpenBoard({
     // ⌘O / Ctrl+Shift+O work from either view — picking a folder is the
     // board's other way in, and now it opens straight through.
     if (
-      key === 'o' &&
+      key === "o" &&
       hasPrimaryModifier(event) &&
-      (getDesktopEnvironment().platform !== 'windows' || event.shiftKey)
+      (getDesktopEnvironment().platform !== "windows" || event.shiftKey)
     ) {
       void pickFolder();
       event.preventDefault();
@@ -281,8 +281,8 @@ export function OpenBoard({
       return;
     }
 
-    if (key === 'Escape') {
-      if (view.value === 'worktree') {
+    if (key === "Escape") {
+      if (view.value === "worktree") {
         // Escape backs out of the worktree form before it reaches the
         // board's own cancel.
         goHome();
@@ -296,7 +296,7 @@ export function OpenBoard({
 
   return (
     <div class="open-board" tabIndex={0} onKeyDown={handleKeyDown} ref={containerRef}>
-      {view.value === 'worktree' ? (
+      {view.value === "worktree" ? (
         <OpenBoardWorktreeForm
           recents={recents}
           homeDir={home}

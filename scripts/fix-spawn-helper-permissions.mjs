@@ -12,11 +12,11 @@
  * because a helper for another platform is missing would be a worse bug than
  * the one this fixes.
  */
-import { chmodSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { chmodSync, existsSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
-const ROOTS = ['node_modules/node-pty/prebuilds', 'node_modules/node-pty/build/Release'];
+const ROOTS = ["node_modules/node-pty/prebuilds", "node_modules/node-pty/build/Release"];
 
 /** Every `spawn-helper` one level under `dir`, plus `dir/spawn-helper`. */
 export function spawnHelpersUnder(dir) {
@@ -24,7 +24,7 @@ export function spawnHelpersUnder(dir) {
     return [];
   }
   const found = [];
-  const direct = join(dir, 'spawn-helper');
+  const direct = join(dir, "spawn-helper");
   if (existsSync(direct)) {
     found.push(direct);
   }
@@ -33,7 +33,7 @@ export function spawnHelpersUnder(dir) {
     if (!statSync(child).isDirectory()) {
       continue;
     }
-    const helper = join(child, 'spawn-helper');
+    const helper = join(child, "spawn-helper");
     if (existsSync(helper)) {
       found.push(helper);
     }
@@ -45,7 +45,7 @@ export function spawnHelpersUnder(dir) {
 export const EXEC_BIT = 0o100;
 
 function main() {
-  if (process.platform === 'win32') {
+  if (process.platform === "win32") {
     return; // no exec bit, and no spawn-helper — Windows uses conpty
   }
   for (const root of ROOTS) {

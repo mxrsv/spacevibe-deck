@@ -1,17 +1,17 @@
-import { isEditorId, type EditorId } from '../lib/editor-command';
+import { isEditorId, type EditorId } from "../lib/editor-command";
 import {
   agentBinary,
   AGENT_LABEL_MAX,
   CUSTOM_ID_PREFIX,
   isProbeSafeName,
   type CustomAgent,
-} from '../lib/agent-catalog';
-import { isValidPromptTemplate, type PromptTemplate } from '../prompts/prompt-templates';
+} from "../lib/agent-catalog";
+import { isValidPromptTemplate, type PromptTemplate } from "../prompts/prompt-templates";
 import {
   NO_KEYBINDING_OVERRIDES,
   validateKeybindings,
   type KeybindingOverrides,
-} from '../lib/keybindings';
+} from "../lib/keybindings";
 
 export interface TerminalColors {
   background: string;
@@ -21,7 +21,7 @@ export interface TerminalColors {
 }
 
 /** `left` = workspace sidebar (default), `top` = the classic horizontal bar. */
-export type TabBarPosition = 'top' | 'left';
+export type TabBarPosition = "top" | "left";
 
 /**
  * Which xterm renderer paints a pane. A genuine trade, which is why it is a
@@ -37,9 +37,9 @@ export type TabBarPosition = 'top' | 'left';
  * accelerated addons share it, so canvas would carry webgl's text trade
  * without its speed.
  */
-export type TerminalRenderer = 'dom' | 'webgl';
+export type TerminalRenderer = "dom" | "webgl";
 
-export const TERMINAL_RENDERERS: readonly TerminalRenderer[] = Object.freeze(['dom', 'webgl']);
+export const TERMINAL_RENDERERS: readonly TerminalRenderer[] = Object.freeze(["dom", "webgl"]);
 
 /**
  * The docked right column's tabs. Declared here rather than in the dock's own
@@ -47,9 +47,9 @@ export const TERMINAL_RENDERERS: readonly TerminalRenderer[] = Object.freeze(['d
  * profile is validated against, and a UI module owning the union would make
  * the storage contract depend on a render layer.
  */
-export type DockTab = 'explorer' | 'usage' | 'sessions';
+export type DockTab = "explorer" | "usage" | "sessions";
 
-export const DOCK_TABS: readonly DockTab[] = Object.freeze(['explorer', 'usage', 'sessions']);
+export const DOCK_TABS: readonly DockTab[] = Object.freeze(["explorer", "usage", "sessions"]);
 
 export interface Settings {
   fontFamily: string;
@@ -135,35 +135,35 @@ export const SCROLLBACK_MIN = 1000;
 export const SCROLLBACK_MAX = 100_000;
 export const SCROLLBACK_CHOICES = [1000, 5000, 10_000, 50_000, 100_000] as const;
 
-export const FONT_FALLBACK = 'Menlo, Monaco, monospace';
+export const FONT_FALLBACK = "Menlo, Monaco, monospace";
 
-export const COLOR_KEYS = ['background', 'foreground', 'cursor', 'selectionBackground'] as const;
+export const COLOR_KEYS = ["background", "foreground", "cursor", "selectionBackground"] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
-  fontFamily: 'SF Mono',
+  fontFamily: "SF Mono",
   fontSize: 13,
-  themeId: 'tokyo-night',
+  themeId: "tokyo-night",
   colorOverrides: {},
   focusExpand: false,
   showPaneBar: false,
   showStatusBar: false,
   agentNotifications: false,
-  tabBarPosition: 'left',
+  tabBarPosition: "left",
   sidebarWidth: 275,
   sidebarCollapsed: false,
-  editorId: 'vscode',
-  editorCommand: '',
+  editorId: "vscode",
+  editorCommand: "",
   scrollback: 10_000,
   customAgents: [],
   promptTemplates: [],
-  browserHomeUrl: 'http://localhost:3000',
-  browserLastUrl: '',
+  browserHomeUrl: "http://localhost:3000",
+  browserLastUrl: "",
   dockOpen: false,
   dockWidth: 420,
-  dockTab: 'explorer',
+  dockTab: "explorer",
   keybindings: NO_KEYBINDING_OVERRIDES,
   restoreSessions: true,
-  terminalRenderer: 'dom',
+  terminalRenderer: "dom",
 };
 
 export const BROWSER_WIDTH_MIN = 280;
@@ -204,7 +204,7 @@ export function clampDockWidth(width: number): number {
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
-const TAB_BAR_POSITIONS: readonly TabBarPosition[] = ['top', 'left'];
+const TAB_BAR_POSITIONS: readonly TabBarPosition[] = ["top", "left"];
 
 function isTabBarPosition(value: unknown): value is TabBarPosition {
   return TAB_BAR_POSITIONS.includes(value as TabBarPosition);
@@ -215,7 +215,7 @@ function isTerminalRenderer(value: unknown): value is TerminalRenderer {
 }
 
 export function isHexColor(value: unknown): value is string {
-  return typeof value === 'string' && HEX_COLOR.test(value);
+  return typeof value === "string" && HEX_COLOR.test(value);
 }
 
 export function clampFontSize(size: number): number {
@@ -227,7 +227,7 @@ export function clampScrollback(n: number): number {
 }
 
 function validateColorOverrides(raw: unknown): Partial<TerminalColors> {
-  if (typeof raw !== 'object' || raw === null) {
+  if (typeof raw !== "object" || raw === null) {
     return {};
   }
   const source = raw as Record<string, unknown>;
@@ -248,25 +248,25 @@ function validateColorOverrides(raw: unknown): Partial<TerminalColors> {
  * probe interpolates into a shell.
  */
 export function isValidCustomAgent(value: unknown): value is CustomAgent {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
   const agent = value as Record<string, unknown>;
   if (
-    typeof agent.id !== 'string' ||
+    typeof agent.id !== "string" ||
     !agent.id.startsWith(CUSTOM_ID_PREFIX) ||
     agent.id.length <= CUSTOM_ID_PREFIX.length
   ) {
     return false;
   }
   if (
-    typeof agent.label !== 'string' ||
-    agent.label.trim() === '' ||
+    typeof agent.label !== "string" ||
+    agent.label.trim() === "" ||
     agent.label.length > AGENT_LABEL_MAX
   ) {
     return false;
   }
-  return typeof agent.command === 'string' && isProbeSafeName(agentBinary(agent.command));
+  return typeof agent.command === "string" && isProbeSafeName(agentBinary(agent.command));
 }
 
 /**
@@ -324,51 +324,51 @@ function validatePromptTemplates(raw: unknown): readonly PromptTemplate[] {
 
 /** Validate data read from the store — invalid fields fall back to defaults. */
 export function validateSettings(raw: unknown): Settings {
-  if (typeof raw !== 'object' || raw === null) {
+  if (typeof raw !== "object" || raw === null) {
     return DEFAULT_SETTINGS;
   }
   const source = raw as Record<string, unknown>;
   return {
     fontFamily:
-      typeof source.fontFamily === 'string' && source.fontFamily.trim() !== ''
+      typeof source.fontFamily === "string" && source.fontFamily.trim() !== ""
         ? source.fontFamily
         : DEFAULT_SETTINGS.fontFamily,
     fontSize:
-      typeof source.fontSize === 'number' && Number.isFinite(source.fontSize)
+      typeof source.fontSize === "number" && Number.isFinite(source.fontSize)
         ? clampFontSize(source.fontSize)
         : DEFAULT_SETTINGS.fontSize,
-    themeId: typeof source.themeId === 'string' ? source.themeId : DEFAULT_SETTINGS.themeId,
+    themeId: typeof source.themeId === "string" ? source.themeId : DEFAULT_SETTINGS.themeId,
     colorOverrides: validateColorOverrides(source.colorOverrides),
     focusExpand:
-      typeof source.focusExpand === 'boolean' ? source.focusExpand : DEFAULT_SETTINGS.focusExpand,
+      typeof source.focusExpand === "boolean" ? source.focusExpand : DEFAULT_SETTINGS.focusExpand,
     showStatusBar:
-      typeof source.showStatusBar === 'boolean'
+      typeof source.showStatusBar === "boolean"
         ? source.showStatusBar
         : DEFAULT_SETTINGS.showStatusBar,
     showPaneBar:
-      typeof source.showPaneBar === 'boolean' ? source.showPaneBar : DEFAULT_SETTINGS.showPaneBar,
+      typeof source.showPaneBar === "boolean" ? source.showPaneBar : DEFAULT_SETTINGS.showPaneBar,
     agentNotifications:
-      typeof source.agentNotifications === 'boolean'
+      typeof source.agentNotifications === "boolean"
         ? source.agentNotifications
         : DEFAULT_SETTINGS.agentNotifications,
     tabBarPosition: isTabBarPosition(source.tabBarPosition)
       ? source.tabBarPosition
       : DEFAULT_SETTINGS.tabBarPosition,
     sidebarWidth:
-      typeof source.sidebarWidth === 'number' && Number.isFinite(source.sidebarWidth)
+      typeof source.sidebarWidth === "number" && Number.isFinite(source.sidebarWidth)
         ? clampSidebarWidth(source.sidebarWidth)
         : DEFAULT_SETTINGS.sidebarWidth,
     sidebarCollapsed:
-      typeof source.sidebarCollapsed === 'boolean'
+      typeof source.sidebarCollapsed === "boolean"
         ? source.sidebarCollapsed
         : DEFAULT_SETTINGS.sidebarCollapsed,
     editorId: isEditorId(source.editorId) ? source.editorId : DEFAULT_SETTINGS.editorId,
     editorCommand:
-      typeof source.editorCommand === 'string'
+      typeof source.editorCommand === "string"
         ? source.editorCommand
         : DEFAULT_SETTINGS.editorCommand,
     scrollback:
-      typeof source.scrollback === 'number' && Number.isFinite(source.scrollback)
+      typeof source.scrollback === "number" && Number.isFinite(source.scrollback)
         ? clampScrollback(source.scrollback)
         : DEFAULT_SETTINGS.scrollback,
     customAgents: validateCustomAgents(source.customAgents),
@@ -377,19 +377,19 @@ export function validateSettings(raw: unknown): Settings {
     // loadable, and a value this validator "fixed" would disagree with it.
     // An unusable address opens a blank panel, which is visible and editable.
     browserHomeUrl:
-      typeof source.browserHomeUrl === 'string' && source.browserHomeUrl.length <= 2048
+      typeof source.browserHomeUrl === "string" && source.browserHomeUrl.length <= 2048
         ? source.browserHomeUrl
         : DEFAULT_SETTINGS.browserHomeUrl,
     // Same posture as browserHomeUrl: the host's own URL gate decides what is
     // loadable at open time, and a malformed stored value degrades to a blank
     // panel there rather than being "fixed" into a disagreement here.
     browserLastUrl:
-      typeof source.browserLastUrl === 'string' && source.browserLastUrl.length <= 2048
+      typeof source.browserLastUrl === "string" && source.browserLastUrl.length <= 2048
         ? source.browserLastUrl
         : DEFAULT_SETTINGS.browserLastUrl,
-    dockOpen: typeof source.dockOpen === 'boolean' ? source.dockOpen : DEFAULT_SETTINGS.dockOpen,
+    dockOpen: typeof source.dockOpen === "boolean" ? source.dockOpen : DEFAULT_SETTINGS.dockOpen,
     dockWidth:
-      typeof source.dockWidth === 'number' && Number.isFinite(source.dockWidth)
+      typeof source.dockWidth === "number" && Number.isFinite(source.dockWidth)
         ? clampDockWidth(source.dockWidth)
         : DEFAULT_SETTINGS.dockWidth,
     // An unknown tab id resolves to the default rather than being kept: this
@@ -400,7 +400,7 @@ export function validateSettings(raw: unknown): Settings {
       : DEFAULT_SETTINGS.dockTab,
     keybindings: validateKeybindings(source.keybindings),
     restoreSessions:
-      typeof source.restoreSessions === 'boolean'
+      typeof source.restoreSessions === "boolean"
         ? source.restoreSessions
         : DEFAULT_SETTINGS.restoreSessions,
     // An unknown renderer name falls back rather than being kept: this value

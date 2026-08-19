@@ -9,7 +9,7 @@
  * tell which one was lying.
  */
 
-export type UsageRangeId = 'today' | '7d' | '30d' | 'all';
+export type UsageRangeId = "today" | "7d" | "30d" | "all";
 
 export interface UsageRange {
   readonly id: UsageRangeId;
@@ -27,24 +27,24 @@ export interface UsageRange {
 
 /** Display order, shortest period first (DL-16.7: all of them visible at once). */
 export const USAGE_RANGES: readonly UsageRange[] = [
-  { id: 'today', label: 'Today', days: 1, emptyLabel: 'No usage today' },
+  { id: "today", label: "Today", days: 1, emptyLabel: "No usage today" },
   {
-    id: '7d',
-    label: '7 days',
+    id: "7d",
+    label: "7 days",
     days: 7,
-    emptyLabel: 'No usage in the last 7 local days',
+    emptyLabel: "No usage in the last 7 local days",
   },
   {
-    id: '30d',
-    label: '30 days',
+    id: "30d",
+    label: "30 days",
     days: 30,
-    emptyLabel: 'No usage in the last 30 local days',
+    emptyLabel: "No usage in the last 30 local days",
   },
-  { id: 'all', label: 'All', days: null, emptyLabel: 'No data yet' },
+  { id: "all", label: "All", days: null, emptyLabel: "No data yet" },
 ];
 
 /** The range shown until the reader picks one: the whole recorded history. */
-export const DEFAULT_USAGE_RANGE: UsageRangeId = 'all';
+export const DEFAULT_USAGE_RANGE: UsageRangeId = "all";
 
 /**
  * Local midnight for `nowMs`. `new Date(y, m, d)` is DST-correct by

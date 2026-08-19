@@ -10,11 +10,11 @@
  *
  * Run: npm run shoot -- <out-dir> [seconds-to-settle]
  */
-import { app, BrowserWindow } from 'electron';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
+import { app, BrowserWindow } from "electron";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
-const OUT = process.argv[2] ?? '/tmp/deck-shots';
+const OUT = process.argv[2] ?? "/tmp/deck-shots";
 const SETTLE_MS = Number(process.argv[3] ?? 3) * 1000;
 
 async function shoot(window: BrowserWindow, name: string): Promise<void> {
@@ -25,18 +25,18 @@ async function shoot(window: BrowserWindow, name: string): Promise<void> {
 }
 
 function seedWorkspace(): void {
-  const fs = require('node:fs') as typeof import('node:fs');
-  const os = require('node:os') as typeof import('node:os');
-  const dir = app.getPath('userData');
+  const fs = require("node:fs") as typeof import("node:fs");
+  const os = require("node:os") as typeof import("node:os");
+  const dir = app.getPath("userData");
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(
-    path.join(dir, 'workspaces.json'),
+    path.join(dir, "workspaces.json"),
     JSON.stringify({
       workspaces: {
         version: 2,
         recents: [
           { path: os.homedir(), lastOpenedAt: 1, lastAgent: null },
-          { path: process.cwd(), lastOpenedAt: 2, lastAgent: 'claude' },
+          { path: process.cwd(), lastOpenedAt: 2, lastAgent: "claude" },
         ],
       },
     }),
@@ -46,18 +46,18 @@ function seedWorkspace(): void {
 async function main(): Promise<void> {
   mkdirSync(OUT, { recursive: true });
   seedWorkspace();
-  await import('./main');
+  await import("./main");
   await app.whenReady();
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
 
   const [window] = BrowserWindow.getAllWindows();
   if (window === undefined) {
-    console.error('no window');
+    console.error("no window");
     app.exit(1);
     return;
   }
 
-  await shoot(window, '01-board');
+  await shoot(window, "01-board");
 
   // Open a workspace so the tab bar, panes and status bar are all populated —
   // the board alone does not show the frame in its working state.
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
     true,
   );
   console.log(`open workspace -> ${opened}`);
-  await shoot(window, '02-panes');
+  await shoot(window, "02-panes");
 
   // Switch to the top-tab layout — that is where the old empty title bar sat.
   await window.webContents.executeJavaScript(
@@ -89,14 +89,14 @@ async function main(): Promise<void> {
      })`,
     true,
   );
-  await shoot(window, '04-top-tabs');
+  await shoot(window, "04-top-tabs");
 
   // A split, so the frame is judged against real pane topology.
   await window.webContents.executeJavaScript(
     `new Promise((resolve) => setTimeout(resolve, 500))`,
     true,
   );
-  await shoot(window, '03-settled');
+  await shoot(window, "03-settled");
 
   app.exit(0);
 }

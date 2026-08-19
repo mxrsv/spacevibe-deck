@@ -1,4 +1,4 @@
-import { signal } from '@preact/signals';
+import { signal } from "@preact/signals";
 
 /**
  * Which settings category the rail shows. A bare module signal, same idiom
@@ -7,13 +7,13 @@ import { signal } from '@preact/signals';
  * relaunch always starts back at "appearance".
  */
 export type CategoryId =
-  | 'appearance'
-  | 'terminal'
-  | 'agents'
-  | 'links-editor'
-  | 'browser'
-  | 'shortcuts'
-  | 'notifications'
-  | 'about';
+  | "appearance"
+  | "terminal"
+  | "agents"
+  | "links-editor"
+  | "browser"
+  | "shortcuts"
+  | "notifications"
+  | "about";
 
-export const activeCategory = signal<CategoryId>('appearance');
+export const activeCategory = signal<CategoryId>("appearance");

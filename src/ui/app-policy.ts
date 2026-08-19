@@ -1,5 +1,5 @@
-import { editorRequest, saveDialogOpen, settingsOpen } from '../chrome/events';
-import type { BootMode } from '../terminal/transfer-client';
+import { editorRequest, saveDialogOpen, settingsOpen } from "../chrome/events";
+import type { BootMode } from "../terminal/transfer-client";
 
 interface BrowserPanelObscuredState {
   readonly overlayCoversPane: boolean;
@@ -137,7 +137,7 @@ export function livePresetOpensATab(boardIsOpen: boolean): boolean {
  * `livePresetOpensATab` above — this repo has no `<App>` render harness.
  */
 export function bootOpensTheBoard(boot: BootMode): boolean {
-  return boot.kind === 'normal';
+  return boot.kind === "normal";
 }
 
 /**

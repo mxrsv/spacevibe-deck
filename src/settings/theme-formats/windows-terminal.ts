@@ -12,31 +12,31 @@
  * scheme wins — a file holding several is a collection, and picking one is the
  * import dialog's job on a later pass, not a reason to reject the file now.
  */
-import { normalizeHex } from './normalize-hex';
-import { emptyDraft, type ThemeDraft } from './theme-draft';
+import { normalizeHex } from "./normalize-hex";
+import { emptyDraft, type ThemeDraft } from "./theme-draft";
 
 /** Scheme key → `ITheme` key. Keys absent here are ignored, never fatal. */
 const KEY_MAP: Readonly<Record<string, string>> = {
-  background: 'background',
-  foreground: 'foreground',
-  cursorColor: 'cursor',
-  selectionBackground: 'selectionBackground',
-  black: 'black',
-  red: 'red',
-  green: 'green',
-  yellow: 'yellow',
-  blue: 'blue',
-  purple: 'magenta',
-  cyan: 'cyan',
-  white: 'white',
-  brightBlack: 'brightBlack',
-  brightRed: 'brightRed',
-  brightGreen: 'brightGreen',
-  brightYellow: 'brightYellow',
-  brightBlue: 'brightBlue',
-  brightPurple: 'brightMagenta',
-  brightCyan: 'brightCyan',
-  brightWhite: 'brightWhite',
+  background: "background",
+  foreground: "foreground",
+  cursorColor: "cursor",
+  selectionBackground: "selectionBackground",
+  black: "black",
+  red: "red",
+  green: "green",
+  yellow: "yellow",
+  blue: "blue",
+  purple: "magenta",
+  cyan: "cyan",
+  white: "white",
+  brightBlack: "brightBlack",
+  brightRed: "brightRed",
+  brightGreen: "brightGreen",
+  brightYellow: "brightYellow",
+  brightBlue: "brightBlue",
+  brightPurple: "brightMagenta",
+  brightCyan: "brightCyan",
+  brightWhite: "brightWhite",
 };
 
 export function parseWindowsTerminal(source: string): ThemeDraft | null {
@@ -46,12 +46,12 @@ export function parseWindowsTerminal(source: string): ThemeDraft | null {
   }
   const draft = emptyDraft();
   const name = scheme.name;
-  if (typeof name === 'string' && name.trim().length > 0) {
+  if (typeof name === "string" && name.trim().length > 0) {
     draft.label = name.trim();
   }
   for (const [schemeKey, themeKey] of Object.entries(KEY_MAP)) {
     const raw = scheme[schemeKey];
-    if (typeof raw !== 'string') {
+    if (typeof raw !== "string") {
       continue;
     }
     const hex = normalizeHex(raw);
@@ -85,7 +85,7 @@ function unwrap(parsed: unknown): unknown[] {
   if (Array.isArray(parsed)) {
     return parsed;
   }
-  if (typeof parsed !== 'object' || parsed === null) {
+  if (typeof parsed !== "object" || parsed === null) {
     return [];
   }
   const nested = (parsed as { schemes?: unknown }).schemes;
@@ -107,9 +107,9 @@ function unwrap(parsed: unknown): unknown[] {
  * "unsupported format" answer instead of a half-read palette.
  */
 function isScheme(value: unknown): value is Scheme {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== "object" || value === null) {
     return false;
   }
   const record = value as Scheme;
-  return Object.keys(KEY_MAP).some((key) => typeof record[key] === 'string');
+  return Object.keys(KEY_MAP).some((key) => typeof record[key] === "string");
 }

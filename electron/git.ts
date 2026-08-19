@@ -1,5 +1,5 @@
 /** Git branch for a pane's cwd — the port of `git_branch` in `info.rs`. */
-import { execFile } from 'node:child_process';
+import { execFile } from "node:child_process";
 
 /**
  * Current branch name, or null outside a repository.
@@ -11,12 +11,12 @@ import { execFile } from 'node:child_process';
 export function gitBranch(cwd: string): Promise<string | null> {
   return new Promise((resolve) => {
     execFile(
-      'git',
-      ['-C', cwd, 'rev-parse', '--abbrev-ref', 'HEAD'],
+      "git",
+      ["-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"],
       // `windowsHide`, like both siblings that spawn on this platform: this
       // runs on every cwd change, and without it Windows flashes a console
       // window each time. The same defect was found and fixed in the Rust host.
-      { encoding: 'utf8', timeout: 4000, windowsHide: true },
+      { encoding: "utf8", timeout: 4000, windowsHide: true },
       (error, stdout) => {
         if (error) {
           resolve(null);

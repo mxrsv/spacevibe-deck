@@ -1,9 +1,9 @@
-import { relaunch as relaunchElectron } from '../host/shell-host';
-import type { PendingUpdate } from './update-controller';
+import { relaunch as relaunchElectron } from "../host/shell-host";
+import type { PendingUpdate } from "./update-controller";
 
 function isTauriHost(): boolean {
   return (
-    typeof globalThis !== 'undefined' &&
+    typeof globalThis !== "undefined" &&
     (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== undefined
   );
 }
@@ -17,7 +17,7 @@ export async function checkForUpdate(): Promise<PendingUpdate | null> {
   if (!isTauriHost()) {
     return null;
   }
-  const { check } = await import('@tauri-apps/plugin-updater');
+  const { check } = await import("@tauri-apps/plugin-updater");
   const update = await check();
   if (update === null) {
     return null;
@@ -33,7 +33,7 @@ export async function checkForUpdate(): Promise<PendingUpdate | null> {
 
 export async function relaunchDeck(): Promise<void> {
   if (isTauriHost()) {
-    const { relaunch } = await import('@tauri-apps/plugin-process');
+    const { relaunch } = await import("@tauri-apps/plugin-process");
     return relaunch();
   }
   return relaunchElectron();

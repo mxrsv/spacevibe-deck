@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useState } from "preact/hooks";
 
 /**
  * The tooltip an icon-only control needs to be legible (DL-14.4).
@@ -55,18 +55,18 @@ export function useTooltipVisibility(): {
       return;
     }
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         setAnchor(null);
       }
     };
     // The anchor is a viewport coordinate; anything that moves the window
     // moves the trigger out from under it.
     const onWindowChange = (): void => setAnchor(null);
-    document.addEventListener('keydown', onKeyDown);
-    window.addEventListener('resize', onWindowChange);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onWindowChange);
     return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('resize', onWindowChange);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onWindowChange);
     };
   }, [anchor]);
 

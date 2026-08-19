@@ -13,8 +13,8 @@
  * bottom of this component as the minimum slice that proved the path end to
  * end, and it is not parked here anymore.
  */
-import type { FileSurfaceController } from '../file-surface-controller';
-import { FileTreeView } from './file-tree-view';
+import type { FileSurfaceController } from "../file-surface-controller";
+import { FileTreeView } from "./file-tree-view";
 
 export interface ExplorerTabProps {
   readonly controller: FileSurfaceController;

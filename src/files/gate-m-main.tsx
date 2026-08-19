@@ -15,33 +15,33 @@
  * branch in `electron/main.ts` loads it, and `scripts/gate-m-entry.test.ts`
  * proves the application renderer never imports it.
  */
-import { render } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
-import '@xterm/xterm/css/xterm.css';
-import '../styles.css';
-import { initializeDesktopEnvironmentFromBackend } from '../lib/platform';
-import { initSettings, settings } from '../settings/settings-store';
-import { defaultPtyClient } from '../terminal/pty-client';
-import { createTerminalManager } from '../terminal/terminal-manager';
-import type { UnlistenFn } from '../host/bridge';
+import { render } from "preact";
+import { useEffect, useRef } from "preact/hooks";
+import "@xterm/xterm/css/xterm.css";
+import "../styles.css";
+import { initializeDesktopEnvironmentFromBackend } from "../lib/platform";
+import { initSettings, settings } from "../settings/settings-store";
+import { defaultPtyClient } from "../terminal/pty-client";
+import { createTerminalManager } from "../terminal/terminal-manager";
+import type { UnlistenFn } from "../host/bridge";
 import {
   createFileSurfaceController,
   editorSettings,
   type FileSurfaceController,
-} from './file-surface-controller';
-import { FileEditor } from './ui/file-editor';
+} from "./file-surface-controller";
+import { FileEditor } from "./ui/file-editor";
 
 /** The fixture the launcher passed; the harness edits exactly this file. */
 function fixturePath(): string {
-  const value = new URLSearchParams(window.location.search).get('file') ?? '';
-  if (value === '') {
-    throw new Error('Gate M needs ?file= — launch through the verifier');
+  const value = new URLSearchParams(window.location.search).get("file") ?? "";
+  if (value === "") {
+    throw new Error("Gate M needs ?file= — launch through the verifier");
   }
   return value;
 }
 
 function parentDirectory(path: string): string {
-  const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
   return cut <= 0 ? path : path.slice(0, cut);
 }
 
@@ -77,7 +77,7 @@ function Harness(props: HarnessProps) {
       }
       await manager.initFresh(props.workspace);
       manager.show({ focus: false });
-      console.log('DECK_GATE_M_TERMINAL_READY');
+      console.log("DECK_GATE_M_TERMINAL_READY");
     })().catch((error: unknown) => {
       console.log(`DECK_GATE_M_ERROR terminal: ${String(error)}`);
     });
@@ -153,9 +153,9 @@ async function main(): Promise<void> {
   await controller.init();
   await controller.openFile(workspace, path, true);
 
-  const root = document.getElementById('root');
+  const root = document.getElementById("root");
   if (root === null) {
-    throw new Error('#root element not found');
+    throw new Error("#root element not found");
   }
   render(
     <Harness
@@ -168,7 +168,7 @@ async function main(): Promise<void> {
   );
   // The verifier waits for this exact line on stdout before it starts
   // driving the page; it is the "renderer-ready signal" the plan requires.
-  console.log('DECK_GATE_M_READY');
+  console.log("DECK_GATE_M_READY");
 }
 
 void main().catch((error: unknown) => {

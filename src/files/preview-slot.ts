@@ -114,7 +114,7 @@ export function activeAfterFileClose(
   active: string | null,
 ): string | null {
   if (active !== closing) {
-    return hasTab(closeFileTab(tabs, closing), active ?? '') ? active : null;
+    return hasTab(closeFileTab(tabs, closing), active ?? "") ? active : null;
   }
   const index = tabs.findIndex((tab) => tab.path === closing);
   const remaining = closeFileTab(tabs, closing);

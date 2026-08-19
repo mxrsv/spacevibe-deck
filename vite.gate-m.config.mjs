@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite';
-import preact from '@preact/preset-vite';
+import { defineConfig } from "vite";
+import preact from "@preact/preset-vite";
 
 /**
  * Gate M renderer build (file-explorer plan §5.0.3).
@@ -13,12 +13,12 @@ import preact from '@preact/preset-vite';
  */
 export default defineConfig({
   plugins: [preact()],
-  base: './',
+  base: "./",
   build: {
-    outDir: 'dist-gate-m-renderer',
-    minify: 'terser',
+    outDir: "dist-gate-m-renderer",
+    minify: "terser",
     rollupOptions: {
-      input: 'gate-m.html',
+      input: "gate-m.html",
     },
   },
 });

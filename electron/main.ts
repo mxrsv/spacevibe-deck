@@ -13,7 +13,7 @@
  *  - Every pane command validates ownership through the coordinator before it
  *    touches a session.
  */
-import path from 'node:path';
+import path from "node:path";
 import {
   app,
   BrowserWindow,
@@ -23,38 +23,38 @@ import {
   Notification,
   shell,
   type IpcMainInvokeEvent,
-} from 'electron';
-import { CHANNELS, EVENTS } from './ipc/channels';
-import { BrowserPanels } from './browser/view';
-import { WindowCoordinator, type AdoptionPayload } from './coordinator';
-import { PtyManager } from './pty/manager';
-import { ptyInfo, type PtyInfo } from './pty/info';
-import { validateAgentProcessMatchers } from './platform/classify';
-import { censusFor, CloseFlight, QuitFlight } from './quit-flow';
-import { MAIN_LABEL, WindowRegistry } from './window-lifecycle';
-import { StoreRegistry } from './store';
-import { createWatchRegistry } from './fs/watch';
-import { MainDirtyRegistry } from './dirty-registry';
-import { createMenuState } from './menu-state';
-import { registerSettingsIpc } from './settings-ipc';
-import { registerServices } from './ipc/register-services';
-import { registerThemes } from './ipc/register-themes';
-import { registerExplorer } from './ipc/register-explorer';
-import { registerStore } from './ipc/register-store';
-import { registerDialogs } from './ipc/register-dialogs';
-import { registerBrowser, reactGrabSource } from './ipc/register-browser';
-import { registerShell } from './ipc/register-shell';
-import { registerUpdater } from './ipc/register-updater';
+} from "electron";
+import { CHANNELS, EVENTS } from "./ipc/channels";
+import { BrowserPanels } from "./browser/view";
+import { WindowCoordinator, type AdoptionPayload } from "./coordinator";
+import { PtyManager } from "./pty/manager";
+import { ptyInfo, type PtyInfo } from "./pty/info";
+import { validateAgentProcessMatchers } from "./platform/classify";
+import { censusFor, CloseFlight, QuitFlight } from "./quit-flow";
+import { MAIN_LABEL, WindowRegistry } from "./window-lifecycle";
+import { StoreRegistry } from "./store";
+import { createWatchRegistry } from "./fs/watch";
+import { MainDirtyRegistry } from "./dirty-registry";
+import { createMenuState } from "./menu-state";
+import { registerSettingsIpc } from "./settings-ipc";
+import { registerServices } from "./ipc/register-services";
+import { registerThemes } from "./ipc/register-themes";
+import { registerExplorer } from "./ipc/register-explorer";
+import { registerStore } from "./ipc/register-store";
+import { registerDialogs } from "./ipc/register-dialogs";
+import { registerBrowser, reactGrabSource } from "./ipc/register-browser";
+import { registerShell } from "./ipc/register-shell";
+import { registerUpdater } from "./ipc/register-updater";
 
 // __dirname is `dist-electron/electron`, so the Vite output is two levels up.
-const RENDERER_DIR = path.join(__dirname, '..', '..', 'dist');
+const RENDERER_DIR = path.join(__dirname, "..", "..", "dist");
 
 // Set by `scripts/electron-dev-watch.mjs`: when present, windows load the
 // Vite dev server instead of the built renderer, so `electron:dev:watch` gets
 // real renderer HMR without a full `npm run build` on every edit.
 const DEV_SERVER_URL = process.env.DECK_DEV_SERVER_URL;
 // `.cjs` — see scripts/build-electron-main.mjs for why the host is CommonJS.
-const PRELOAD = path.join(__dirname, 'preload.cjs');
+const PRELOAD = path.join(__dirname, "preload.cjs");
 
 /**
  * Gate M (file-explorer plan §5.0): a packaged-build proof that Monaco's
@@ -66,8 +66,8 @@ const PRELOAD = path.join(__dirname, 'preload.cjs');
  * launches never read these variables; `scripts/gate-m-entry.test.ts` proves
  * the harness graph stays out of the shipping renderer.
  */
-const GATE_M = process.env.DECK_GATE_M === '1';
-const GATE_M_RENDERER_DIR = path.join(__dirname, '..', '..', 'dist-gate-m-renderer');
+const GATE_M = process.env.DECK_GATE_M === "1";
+const GATE_M_RENDERER_DIR = path.join(__dirname, "..", "..", "dist-gate-m-renderer");
 
 const windows = new Map<string, BrowserWindow>();
 const registry = new WindowRegistry();
@@ -75,7 +75,7 @@ const quitFlight = new QuitFlight();
 // Per-window, separate from the app-wide quit prompt: two windows may prompt
 // at the same time, and each guards only its own panes.
 const closeFlight = new CloseFlight();
-const stores = new StoreRegistry(app.getPath('userData'));
+const stores = new StoreRegistry(app.getPath("userData"));
 
 /**
  * Emit to one window by label. Returns false when there was no live window to
@@ -136,26 +136,26 @@ const pty = new PtyManager({
 function labelOf(event: IpcMainInvokeEvent): string {
   const window = BrowserWindow.fromWebContents(event.sender);
   if (window === null) {
-    throw new Error('IPC from a window that no longer exists');
+    throw new Error("IPC from a window that no longer exists");
   }
   for (const [label, candidate] of windows) {
     if (candidate === window) {
       return label;
     }
   }
-  throw new Error('IPC from an unregistered window');
+  throw new Error("IPC from an unregistered window");
 }
 
 function createWindow(label: string): BrowserWindow {
   const window = new BrowserWindow({
     width: 1100,
     height: 720,
-    titleBarStyle: 'hiddenInset',
+    titleBarStyle: "hiddenInset",
     // The pre-render ground follows `--bg`'s default (`src/styles.css` :root,
     // `FALLBACK_BG` in theme-vars.ts), or window-open and resize flash a
     // colour the app never shows again. Tauri's window config carries the
     // same value for the same reason.
-    backgroundColor: '#16161e',
+    backgroundColor: "#16161e",
     webPreferences: {
       preload: PRELOAD,
       contextIsolation: true,
@@ -173,13 +173,13 @@ function createWindow(label: string): BrowserWindow {
   // document — and the preload re-injects `__deckHost` into it, handing the
   // whole host surface (spawn_shell, the stores, openExternal) to whatever
   // just loaded. Proven: the bridge survives navigation.
-  window.webContents.on('will-navigate', (event) => event.preventDefault());
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  window.webContents.on("will-navigate", (event) => event.preventDefault());
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
 
   // A renderer that dies mid-recording never sends its `false`. Preact cleanup
   // does not run on a destroyed webview, so without this the accelerators stay
   // stripped for every window until relaunch.
-  window.webContents.on('render-process-gone', () => {
+  window.webContents.on("render-process-gone", () => {
     menuState.setRecording(senderId, false);
     // The window survives a dead renderer, so `closed` may never fire — but
     // the renderer that claimed the update-check flight is gone and will never
@@ -187,7 +187,7 @@ function createWindow(label: string): BrowserWindow {
     updater.forgetWindow(label);
   });
 
-  window.on('focus', () => {
+  window.on("focus", () => {
     registry.recordFocus(label);
     // The submenu is ordered most-recently-focused first, so focus changing
     // changes its contents. Without this rebuild, Move Pane to Window keeps
@@ -195,7 +195,7 @@ function createWindow(label: string): BrowserWindow {
     menuState.rebuildMenu();
   });
 
-  window.on('close', (event) => {
+  window.on("close", (event) => {
     if (updater.isInstalling()) {
       // The installer is taking the app down. `quitAndInstall` closes every
       // window before `before-quit` ever fires, and the renderer already ran
@@ -252,7 +252,7 @@ function createWindow(label: string): BrowserWindow {
     })();
   });
 
-  window.on('closed', () => {
+  window.on("closed", () => {
     // Before `windows.delete`: closing the panel wants the window to still be
     // resolvable so the native view can be detached from its content view.
     browserPanels.close(label);
@@ -282,17 +282,17 @@ function createWindow(label: string): BrowserWindow {
   });
 
   if (GATE_M) {
-    window.webContents.on('console-message', (event) => {
+    window.webContents.on("console-message", (event) => {
       process.stdout.write(`[gate-m renderer] ${event.message}\n`);
     });
-    void window.loadFile(path.join(GATE_M_RENDERER_DIR, 'gate-m.html'), {
-      query: { file: process.env.DECK_GATE_M_FILE ?? '' },
+    void window.loadFile(path.join(GATE_M_RENDERER_DIR, "gate-m.html"), {
+      query: { file: process.env.DECK_GATE_M_FILE ?? "" },
     });
   } else if (DEV_SERVER_URL !== undefined) {
     void window.loadURL(DEV_SERVER_URL);
-    window.webContents.openDevTools({ mode: 'detach' });
+    window.webContents.openDevTools({ mode: "detach" });
   } else {
-    void window.loadFile(path.join(RENDERER_DIR, 'index.html'));
+    void window.loadFile(path.join(RENDERER_DIR, "index.html"));
   }
   registry.recordFocus(label);
   // A new window is a new move-pane target for every existing window.
@@ -313,7 +313,7 @@ async function censusOrDeny(paneIds: readonly number[]): Promise<PtyInfo[] | nul
   try {
     return await ptyInfo(pty.snapshots(paneIds));
   } catch (error) {
-    console.error('Deck: cannot read the process table; refusing to act', error);
+    console.error("Deck: cannot read the process table; refusing to act", error);
     return null;
   }
 }
@@ -479,14 +479,14 @@ registerShell();
 // sharing one `userData`: `settings.json` and `workspaces.json` become
 // last-writer-wins between them, and the session journal — which mirrors every
 // window's live tabs — is written by both.
-app.setAppUserModelId('dev.spacevibe.deck.electron');
+app.setAppUserModelId("dev.spacevibe.deck.electron");
 if (!app.requestSingleInstanceLock()) {
   // A second launch hands its argv to the first instance and leaves. Quitting
   // before `whenReady` means no window, no PTY and no store was ever opened
   // here, so there is nothing to tear down.
   app.quit();
 }
-app.on('second-instance', () => {
+app.on("second-instance", () => {
   // The user asked for Deck and Windows gave them the running copy: surface it
   // rather than doing nothing, which reads as a failed launch.
   const existing = BrowserWindow.getAllWindows()[0];
@@ -505,19 +505,19 @@ app.whenReady().then(() => {
   // shipped accelerators first and correct them a moment later — a window in
   // which the OS still eats the chord the user reassigned.
   void stores
-    .open('settings.json')
-    .then((store) => menuState.adoptMenuKeymap(store.get('settings')))
+    .open("settings.json")
+    .then((store) => menuState.adoptMenuKeymap(store.get("settings")))
     .catch((error: unknown) => {
       // Defaults are already installed; an unreadable settings file must not
       // stop the app from booting with a working menu.
-      console.warn('Deck: could not read stored keybindings', error);
+      console.warn("Deck: could not read stored keybindings", error);
     })
     .finally(() => {
       createWindow(MAIN_LABEL);
     });
 });
 
-app.on('before-quit', (event) => {
+app.on("before-quit", (event) => {
   if (updater.isInstalling()) {
     // Same reason as the window-close guard above: this quit IS the install,
     // and it was already confirmed in the renderer.
@@ -567,8 +567,8 @@ app.on('before-quit', (event) => {
 
 // The last window closing ends the app on Windows/Linux; on macOS Deck follows
 // the platform convention only when the user actually quits.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
     app.quit();
   }
 });
@@ -576,7 +576,7 @@ app.on('window-all-closed', () => {
 // macOS keeps the process alive with no windows, so clicking the dock icon has
 // to be able to bring one back. Without this the app was unreachable after the
 // last window closed and could only be force-quit.
-app.on('activate', () => {
+app.on("activate", () => {
   if (windows.size === 0) {
     createWindow(MAIN_LABEL);
   }

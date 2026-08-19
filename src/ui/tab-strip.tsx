@@ -29,28 +29,28 @@
  * keeps ownership. Only the sidebar projection is scoped; file chips continue
  * through `FileSurfaceController` exactly as before.
  */
-import { Globe, Plus, TerminalWindow, X } from '@phosphor-icons/react';
-import { activeTabIndex, tabViews, type TabView } from '../terminal/tabs-store';
-import type { PaneAgent } from '../lib/process-info';
-import { UNSEQUENCED } from '../lib/open-sequence';
-import { mergeStripOrder } from '../lib/strip-order';
-import { AgentGlyph } from './controls/agent-glyph';
-import { fileIcon } from '../files/ui/file-icons';
-import { CHROME_ICON, DeckIcon } from './controls/deck-icon';
-import { titleWithShortcut } from '../lib/shortcut-label';
-import type { FileSurfaceController } from '../files/file-surface-controller';
-import { activeWorkspace } from '../files/file-surface-store';
-import { fileTabViews } from '../files/file-tab-views';
+import { Globe, Plus, TerminalWindow, X } from "@phosphor-icons/react";
+import { activeTabIndex, tabViews, type TabView } from "../terminal/tabs-store";
+import type { PaneAgent } from "../lib/process-info";
+import { UNSEQUENCED } from "../lib/open-sequence";
+import { mergeStripOrder } from "../lib/strip-order";
+import { AgentGlyph } from "./controls/agent-glyph";
+import { fileIcon } from "../files/ui/file-icons";
+import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
+import { titleWithShortcut } from "../lib/shortcut-label";
+import type { FileSurfaceController } from "../files/file-surface-controller";
+import { activeWorkspace } from "../files/file-surface-store";
+import { fileTabViews } from "../files/file-tab-views";
 import {
   browserOpen,
   browserOpenedAt,
   browserState,
   browserSurfaceActive,
-} from '../browser/browser-store';
-import { repositoryScans } from '../repositories/repositories-store';
-import { activeRepositoryTabIndexes } from '../repositories/repository-model';
-import { paneTails } from '../terminal/session-tail-store';
-import { tabTail } from './agent-rail-model';
+} from "../browser/browser-store";
+import { repositoryScans } from "../repositories/repositories-store";
+import { activeRepositoryTabIndexes } from "../repositories/repository-model";
+import { paneTails } from "../terminal/session-tail-store";
+import { tabTail } from "./agent-rail-model";
 
 export interface TabStripProps {
   onSelectTab(index: number): void;
@@ -145,7 +145,7 @@ export function TabStrip(props: TabStripProps) {
     // same precedence. A name the user typed still wins, exactly as it does
     // there, and a tab whose agent has said nothing keeps its process name.
     const tail = tabTail(tab, paneTails.value);
-    const label = tab.name ?? (tail !== '' ? tail : (tab.process ?? 'shell'));
+    const label = tab.name ?? (tail !== "" ? tail : (tab.process ?? "shell"));
     const agent = chipAgent(tab);
     return (
       <div
@@ -153,7 +153,7 @@ export function TabStrip(props: TabStripProps) {
         role="tab"
         aria-selected={index === active && !surfaceActive}
         tabIndex={0}
-        class={`tab ${index === active && !surfaceActive ? 'is-active' : ''}`}
+        class={`tab ${index === active && !surfaceActive ? "is-active" : ""}`}
         // The chip is narrow by design, so the sentence it carries is trimmed
         // by the layout and kept whole here (DL-27.4's contract, which the
         // strip inherits along with the sentence).
@@ -203,13 +203,13 @@ export function TabStrip(props: TabStripProps) {
         role="tab"
         aria-selected={tab.active}
         tabIndex={0}
-        class={`tab tab--file ${tab.active ? 'is-active' : ''}`}
+        class={`tab tab--file ${tab.active ? "is-active" : ""}`}
         onClick={() => props.fileController.activate(index)}
       >
         <span class="tab__glyph">
           <DeckIcon icon={fileIcon(tab.name)} size={CHROME_ICON} />
         </span>
-        <span class={`tab__label ${tab.preview ? 'tab__label--preview' : ''}`}>{tab.name}</span>
+        <span class={`tab__label ${tab.preview ? "tab__label--preview" : ""}`}>{tab.name}</span>
         {tab.dirty && <span class="tab__dot tab__dot--dirty" aria-hidden="true" />}
         <button
           type="button"
@@ -241,7 +241,7 @@ export function TabStrip(props: TabStripProps) {
         role="tab"
         aria-selected={browserSurfaceActive.value}
         tabIndex={0}
-        class={`tab tab--browser ${browserSurfaceActive.value ? 'is-active' : ''}`}
+        class={`tab tab--browser ${browserSurfaceActive.value ? "is-active" : ""}`}
         onClick={() => {
           if (!browserSurfaceActive.value) {
             props.onSelectBrowser();
@@ -252,7 +252,7 @@ export function TabStrip(props: TabStripProps) {
           <DeckIcon icon={Globe} size={CHROME_ICON} />
         </span>
         <span class="tab__label">
-          {browserState.value.title || browserState.value.url || 'Browser'}
+          {browserState.value.title || browserState.value.url || "Browser"}
         </span>
         <button
           type="button"
@@ -278,7 +278,7 @@ export function TabStrip(props: TabStripProps) {
             every file tab, then the browser slot — so the chip a keyboard
             command activates and the chip painted here are the same one. */}
         {slots.map((slot) => {
-          if (slot.kind === 'tab') {
+          if (slot.kind === "tab") {
             const entry = visibleTabs[slot.index];
             return entry === undefined ? null : terminalChip(entry.tab, entry.index);
           }
@@ -289,7 +289,7 @@ export function TabStrip(props: TabStripProps) {
       <button
         type="button"
         class="tab-add"
-        title={titleWithShortcut('New tab', 'new-tab')}
+        title={titleWithShortcut("New tab", "new-tab")}
         aria-label="New tab"
         onClick={props.onNewTab}
       >

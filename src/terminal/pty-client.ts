@@ -1,7 +1,7 @@
-import { invoke, listen, type UnlistenFn } from '../host/bridge';
-import type { PaneProcessInfo } from '../lib/process-info';
-import type { AgentProcessMatcher } from '../lib/agent-catalog';
-export type { AgentProcessMatcher } from '../lib/agent-catalog';
+import { invoke, listen, type UnlistenFn } from "../host/bridge";
+import type { PaneProcessInfo } from "../lib/process-info";
+import type { AgentProcessMatcher } from "../lib/agent-catalog";
+export type { AgentProcessMatcher } from "../lib/agent-catalog";
 
 /** Mirror of the Rust `AgentInfo` payload from `detect_agents`. */
 export interface DetectedAgent {
@@ -63,63 +63,63 @@ interface PromptReadyPayload {
 export function createTauriPtyClient(): PtyClient {
   return {
     spawnShell({ cols, rows, cwd }) {
-      return invoke<number>('spawn_shell', { cols, rows, cwd });
+      return invoke<number>("spawn_shell", { cols, rows, cwd });
     },
     writePty(id, data) {
-      return invoke('write_pty', { id, data });
+      return invoke("write_pty", { id, data });
     },
     resizePty(id, cols, rows) {
-      return invoke('resize_pty', { id, cols, rows });
+      return invoke("resize_pty", { id, cols, rows });
     },
     killPty(id) {
-      return invoke('kill_pty', { id });
+      return invoke("kill_pty", { id });
     },
     async ptyInfo(ids, agentMatchers = [], waitForCwd = true) {
       if (ids.length === 0) {
         return [];
       }
-      return invoke<PaneProcessInfo[]>('pty_info', {
+      return invoke<PaneProcessInfo[]>("pty_info", {
         ids: [...ids],
         agents: [...agentMatchers],
         waitForCwd,
       });
     },
     gitBranch(cwd) {
-      return invoke<string | null>('git_branch', { cwd });
+      return invoke<string | null>("git_branch", { cwd });
     },
     async dirsExist(paths) {
       if (paths.length === 0) {
         return [];
       }
-      return invoke<boolean[]>('dirs_exist', { paths: [...paths] });
+      return invoke<boolean[]>("dirs_exist", { paths: [...paths] });
     },
     detectAgents(names) {
-      return invoke<DetectedAgent[]>('detect_agents', { names: [...names] });
+      return invoke<DetectedAgent[]>("detect_agents", { names: [...names] });
     },
     confirmQuit(requestId) {
-      return invoke('confirm_quit', { requestId });
+      return invoke("confirm_quit", { requestId });
     },
     cancelQuit(requestId) {
-      return invoke('cancel_quit', { requestId });
+      return invoke("cancel_quit", { requestId });
     },
     confirmCloseWindow(requestId) {
-      return invoke('confirm_close_window', { requestId });
+      return invoke("confirm_close_window", { requestId });
     },
     cancelCloseWindow(requestId) {
-      return invoke('cancel_close_window', { requestId });
+      return invoke("cancel_close_window", { requestId });
     },
     listenOutput(handler) {
-      return listen<OutputPayload>('pty:output', (event) => {
+      return listen<OutputPayload>("pty:output", (event) => {
         handler(event.payload.id, event.payload.data);
       });
     },
     listenPromptReady(handler) {
-      return listen<PromptReadyPayload>('pty:prompt-ready', (event) => {
+      return listen<PromptReadyPayload>("pty:prompt-ready", (event) => {
         handler(event.payload.id);
       });
     },
     listenExit(handler) {
-      return listen<ExitPayload>('pty:exit', (event) => {
+      return listen<ExitPayload>("pty:exit", (event) => {
         handler(event.payload.id);
       });
     },

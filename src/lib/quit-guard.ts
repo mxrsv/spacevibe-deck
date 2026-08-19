@@ -1,11 +1,11 @@
-import { listen, type UnlistenFn } from '../host/bridge';
+import { listen, type UnlistenFn } from "../host/bridge";
 import {
   confirmMessage,
   QUIT_COPY,
   unknownMessage,
   WINDOW_CLOSE_COPY,
   type ConfirmCopy,
-} from '../terminal/close-guard';
+} from "../terminal/close-guard";
 
 /**
  * A close or quit request from Rust, census included.
@@ -48,7 +48,7 @@ export interface QuitFlowDeps {
  * Rust never asked while leaving the real one hanging forever.
  */
 export function closeRequestOrNull(raw: unknown): CloseRequest | null {
-  if (typeof raw !== 'object' || raw === null) {
+  if (typeof raw !== "object" || raw === null) {
     return null;
   }
   const value = raw as Record<string, unknown>;
@@ -61,11 +61,11 @@ export function closeRequestOrNull(raw: unknown): CloseRequest | null {
   // without a prompt. `quit-guard.test.ts` locks it.
   const dirty = value.dirtyFiles;
   if (
-    typeof value.requestId !== 'number' ||
-    typeof value.busyPanes !== 'number' ||
-    typeof value.fullyNamed !== 'boolean' ||
+    typeof value.requestId !== "number" ||
+    typeof value.busyPanes !== "number" ||
+    typeof value.fullyNamed !== "boolean" ||
     !Array.isArray(names) ||
-    names.some((name) => typeof name !== 'string')
+    names.some((name) => typeof name !== "string")
   ) {
     return null;
   }
@@ -78,7 +78,7 @@ export function closeRequestOrNull(raw: unknown): CloseRequest | null {
     // older payload shape must still be answerable, or the window can never
     // close. A malformed entry is dropped, not repaired.
     dirtyFiles: Array.isArray(dirty)
-      ? dirty.filter((path): path is string => typeof path === 'string')
+      ? dirty.filter((path): path is string => typeof path === "string")
       : [],
   };
 }
@@ -106,7 +106,7 @@ export function createQuitFlow(
       try {
         await deps.flush();
       } catch (err: unknown) {
-        console.warn('Flush before quit failed:', err);
+        console.warn("Flush before quit failed:", err);
       }
       await deps.confirm(request.requestId);
     }
@@ -140,10 +140,10 @@ export function createQuitFlow(
               request.dirtyFiles,
             )
           : unknownMessage(copy.action, request.dirtyFiles)) +
-        (copy.detail === undefined ? '' : `\n\n${copy.detail}`);
+        (copy.detail === undefined ? "" : `\n\n${copy.detail}`);
       accepted = await deps.ask(message);
     } catch (err: unknown) {
-      console.error('Close prompt failed:', err);
+      console.error("Close prompt failed:", err);
       accepted = false;
     } finally {
       prompting = false;
@@ -176,13 +176,13 @@ export async function installQuitGuard(deps: {
       if (request === null) {
         // No id means no safe answer: replying with a guessed one would
         // resolve a request Rust never asked.
-        console.warn('Ignoring malformed close/quit request payload');
+        console.warn("Ignoring malformed close/quit request payload");
         return;
       }
       void flow(request);
     };
-  const unlistenQuit = await listen('quit-requested', route(promptQuit));
-  const unlistenClose = await listen('window:close-requested', route(promptClose));
+  const unlistenQuit = await listen("quit-requested", route(promptQuit));
+  const unlistenClose = await listen("window:close-requested", route(promptClose));
   return () => {
     unlistenQuit();
     unlistenClose();

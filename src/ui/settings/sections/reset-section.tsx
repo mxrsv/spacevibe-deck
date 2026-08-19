@@ -1,10 +1,10 @@
-import { ArrowCounterClockwise } from '@phosphor-icons/react';
-import { useSignal } from '@preact/signals';
-import { ask } from '../../../host/dialog-host';
-import { resetSettings } from '../../../settings/settings-store';
-import { DeckIcon, ROW_ICON } from '../../controls/deck-icon';
-import { ConfigRow } from '../../controls/config-row';
-import { reportPersistError } from '../../../chrome/events';
+import { ArrowCounterClockwise } from "@phosphor-icons/react";
+import { useSignal } from "@preact/signals";
+import { ask } from "../../../host/dialog-host";
+import { resetSettings } from "../../../settings/settings-store";
+import { DeckIcon, ROW_ICON } from "../../controls/deck-icon";
+import { ConfigRow } from "../../controls/config-row";
+import { reportPersistError } from "../../../chrome/events";
 
 /** The "Restore defaults" row — moved verbatim from the settings drawer this screen replaced
  * (Task 4), including its async confirm guard. Rendered by `settings-nav.tsx`'s
@@ -34,10 +34,10 @@ export function ResetSection() {
       const confirmed = await ask(
         "Theme, font, colors, behavior, declared agents and prompt templates all go back to their defaults. This can't be undone.",
         {
-          title: 'Restore Defaults',
-          kind: 'warning',
-          okLabel: 'Restore',
-          cancelLabel: 'Cancel',
+          title: "Restore Defaults",
+          kind: "warning",
+          okLabel: "Restore",
+          cancelLabel: "Cancel",
         },
       );
       if (confirmed) {

@@ -1,18 +1,18 @@
-import { signal, type ReadonlySignal } from '@preact/signals';
-import { invoke } from '../host/bridge';
-import type { DesktopPlatform } from '../lib/platform';
+import { signal, type ReadonlySignal } from "@preact/signals";
+import { invoke } from "../host/bridge";
+import type { DesktopPlatform } from "../lib/platform";
 
 const MAX_RELEASE_NOTES_LENGTH = 400;
 
 export type UpdatePhase =
-  | 'hidden'
-  | 'available'
-  | 'downloading'
-  | 'downloaded'
-  | 'download-failed'
-  | 'installing'
-  | 'install-failed'
-  | 'relaunch-failed';
+  | "hidden"
+  | "available"
+  | "downloading"
+  | "downloaded"
+  | "download-failed"
+  | "installing"
+  | "install-failed"
+  | "relaunch-failed";
 
 export interface UpdateView {
   readonly phase: UpdatePhase;
@@ -39,7 +39,7 @@ export interface PendingUpdate {
  * a real platform and still has no updater until a build is packaged and
  * signed, so the ADAPTER is the only layer that knows.
  */
-export const UPDATE_UNSUPPORTED = 'update-unsupported';
+export const UPDATE_UNSUPPORTED = "update-unsupported";
 export type UpdateUnsupported = typeof UPDATE_UNSUPPORTED;
 
 export interface UpdateControllerDependencies {
@@ -80,20 +80,20 @@ export interface UpdateController {
   relaunch(): Promise<void>;
 }
 
-export type UpdateCheckResult = 'available' | 'current' | 'unsupported' | 'failed';
+export type UpdateCheckResult = "available" | "current" | "unsupported" | "failed";
 
 const HIDDEN_VIEW = Object.freeze<UpdateView>({
-  phase: 'hidden',
-  currentVersion: '',
-  availableVersion: '',
-  notes: '',
+  phase: "hidden",
+  currentVersion: "",
+  availableVersion: "",
+  notes: "",
 });
 
 function boundedNotes(notes: string | null): string {
   if (notes === null) {
-    return '';
+    return "";
   }
-  const normalized = notes.replace(/\s+/g, ' ').trim();
+  const normalized = notes.replace(/\s+/g, " ").trim();
   if (normalized.length <= MAX_RELEASE_NOTES_LENGTH) {
     return normalized;
   }
@@ -130,8 +130,8 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
     if (checkOperation !== null) {
       return checkOperation;
     }
-    if (deps.platform === 'unsupported') {
-      return Promise.resolve('unsupported');
+    if (deps.platform === "unsupported") {
+      return Promise.resolve("unsupported");
     }
 
     checkOperation = (async () => {
@@ -140,15 +140,15 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
         if (result === UPDATE_UNSUPPORTED) {
           update = null;
           view.value = HIDDEN_VIEW;
-          return 'unsupported';
+          return "unsupported";
         }
         update = result;
-        view.value = update === null ? HIDDEN_VIEW : updateView(update, 'available');
-        return update === null ? 'current' : 'available';
+        view.value = update === null ? HIDDEN_VIEW : updateView(update, "available");
+        return update === null ? "current" : "available";
       } catch (error: unknown) {
-        deps.report('Update check failed', error);
+        deps.report("Update check failed", error);
         view.value = HIDDEN_VIEW;
-        return 'failed';
+        return "failed";
       }
     })().finally(() => {
       checkOperation = null;
@@ -161,13 +161,13 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
       return;
     }
     started = true;
-    const claim = deps.claim ?? (() => invoke<boolean>('begin_update_check'));
-    const release = deps.releaseClaim ?? (() => invoke<void>('end_update_check'));
+    const claim = deps.claim ?? (() => invoke<boolean>("begin_update_check"));
+    const release = deps.releaseClaim ?? (() => invoke<void>("end_update_check"));
     let mine = true;
     try {
       mine = await claim();
     } catch (err: unknown) {
-      console.warn('begin_update_check failed; checking anyway:', err);
+      console.warn("begin_update_check failed; checking anyway:", err);
     }
     if (!mine) {
       return;
@@ -183,43 +183,43 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
       try {
         await release();
       } catch (err: unknown) {
-        console.warn('end_update_check failed:', err);
+        console.warn("end_update_check failed:", err);
       }
     }
   };
 
   const checkNow = (): Promise<UpdateCheckResult> =>
-    view.value.phase === 'hidden' ? checkForAvailableUpdate() : Promise.resolve('available');
+    view.value.phase === "hidden" ? checkForAvailableUpdate() : Promise.resolve("available");
 
   const download = (): Promise<void> =>
     singleFlight(async () => {
       if (
         update === null ||
-        (view.value.phase !== 'available' && view.value.phase !== 'download-failed')
+        (view.value.phase !== "available" && view.value.phase !== "download-failed")
       ) {
         return;
       }
-      view.value = updateView(update, 'downloading');
+      view.value = updateView(update, "downloading");
       try {
         await update.download();
-        view.value = updateView(update, 'downloaded');
+        view.value = updateView(update, "downloaded");
       } catch (error: unknown) {
-        deps.report('Update download failed', error);
-        view.value = updateView(update, 'download-failed');
+        deps.report("Update download failed", error);
+        view.value = updateView(update, "download-failed");
       }
     });
 
   const relaunch = (): Promise<void> =>
     singleFlight(async () => {
-      if (update === null || view.value.phase !== 'relaunch-failed') {
+      if (update === null || view.value.phase !== "relaunch-failed") {
         return;
       }
-      view.value = updateView(update, 'installing');
+      view.value = updateView(update, "installing");
       try {
         await deps.relaunch();
       } catch (error: unknown) {
-        deps.report('Update relaunch failed', error);
-        view.value = updateView(update, 'relaunch-failed');
+        deps.report("Update relaunch failed", error);
+        view.value = updateView(update, "relaunch-failed");
       }
     });
 
@@ -227,15 +227,15 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
     singleFlight(async () => {
       if (
         update === null ||
-        (view.value.phase !== 'downloaded' && view.value.phase !== 'install-failed')
+        (view.value.phase !== "downloaded" && view.value.phase !== "install-failed")
       ) {
         return;
       }
       if (!(await deps.confirmInstall())) {
-        view.value = updateView(update, 'downloaded');
+        view.value = updateView(update, "downloaded");
         return;
       }
-      view.value = updateView(update, 'installing');
+      view.value = updateView(update, "installing");
       try {
         await deps.flush();
         // Ordered before install on purpose: once install() is called on
@@ -247,22 +247,22 @@ export function createUpdateController(deps: UpdateControllerDependencies): Upda
         // installing at all. The user keeps a working app and can retry.
         await deps.recordAttempt(update.version);
       } catch (error: unknown) {
-        deps.report('Could not record the update attempt', error);
-        view.value = updateView(update, 'install-failed');
+        deps.report("Could not record the update attempt", error);
+        view.value = updateView(update, "install-failed");
         return;
       }
       try {
         await update.install();
       } catch (error: unknown) {
-        deps.report('Update install failed', error);
-        view.value = updateView(update, 'install-failed');
+        deps.report("Update install failed", error);
+        view.value = updateView(update, "install-failed");
         return;
       }
       try {
         await deps.relaunch();
       } catch (error: unknown) {
-        deps.report('Update relaunch failed', error);
-        view.value = updateView(update, 'relaunch-failed');
+        deps.report("Update relaunch failed", error);
+        view.value = updateView(update, "relaunch-failed");
       }
     });
 

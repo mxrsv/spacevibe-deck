@@ -17,12 +17,12 @@
  * missing database, a schema that moved again, a locked writer or a malformed
  * row answers empty/null rather than throwing into a batch of eight panes.
  */
-import { lstatSync } from 'node:fs';
-import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
-import type { CandidateSession } from './head';
+import { lstatSync } from "node:fs";
+import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import type { CandidateSession } from "./head";
 
-const OPENCODE_DB_PATH = path.join('.local', 'share', 'opencode', 'opencode.db');
+const OPENCODE_DB_PATH = path.join(".local", "share", "opencode", "opencode.db");
 
 /** Newest-first scan bound, matching the file scanner's `MAX_FILES`. */
 const MAX_SESSIONS = 300;
@@ -103,15 +103,15 @@ function withDatabase<T>(home: string, query: (db: DatabaseSync) => T, fallback:
 
 function toCandidate(row: Record<string, unknown>): CandidateSession | null {
   const id = row.id;
-  if (typeof id !== 'string' || id === '') {
+  if (typeof id !== "string" || id === "") {
     return null;
   }
   const directory = row.directory;
   const updated = row.time_updated;
   return {
     id,
-    cwd: typeof directory === 'string' && directory !== '' ? directory : null,
-    mtimeMs: typeof updated === 'number' ? updated : 0,
+    cwd: typeof directory === "string" && directory !== "" ? directory : null,
+    mtimeMs: typeof updated === "number" ? updated : 0,
   };
 }
 
@@ -142,7 +142,7 @@ export function sessionTailText(home: string, sessionId: string): string | null 
     (db) => {
       const row = db.prepare(TAIL_SQL).get(sessionId) as Record<string, unknown> | undefined;
       const text = row?.text;
-      return typeof text === 'string' && text.trim() !== '' ? text : null;
+      return typeof text === "string" && text.trim() !== "" ? text : null;
     },
     null,
   );

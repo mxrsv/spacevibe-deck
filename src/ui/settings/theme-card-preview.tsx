@@ -1,5 +1,5 @@
-import { deriveChromeColors } from '../../lib/derive-colors';
-import type { ThemePreset } from '../../settings/themes';
+import { deriveChromeColors } from "../../lib/derive-colors";
+import type { ThemePreset } from "../../settings/themes";
 
 /**
  * The miniature of Deck a theme card shows (DL-24.2).

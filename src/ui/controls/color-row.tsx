@@ -1,6 +1,6 @@
-import { ArrowCounterClockwise } from '@phosphor-icons/react';
-import { ConfigRow } from './config-row';
-import { DeckIcon, ROW_ICON } from './deck-icon';
+import { ArrowCounterClockwise } from "@phosphor-icons/react";
+import { ConfigRow } from "./config-row";
+import { DeckIcon, ROW_ICON } from "./deck-icon";
 
 interface ColorRowProps {
   label: string;

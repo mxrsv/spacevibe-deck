@@ -10,7 +10,7 @@
  * so a repo path, branch name or destination the user typed can never be
  * interpreted as shell syntax.
  */
-import { execFile, type ExecException } from 'node:child_process';
+import { execFile, type ExecException } from "node:child_process";
 
 const GIT_TIMEOUT_MS = 4000;
 const GIT_MAX_BUFFER = 1024 * 1024;
@@ -22,7 +22,7 @@ export interface WorktreeAddParams {
 }
 
 export type WorktreeAddErrorCode =
-  'not-a-repository' | 'branch-exists' | 'destination-exists' | 'git-not-found' | 'unknown';
+  "not-a-repository" | "branch-exists" | "destination-exists" | "git-not-found" | "unknown";
 
 export type WorktreeAddResult =
   | { readonly ok: true; readonly path: string }
@@ -34,19 +34,19 @@ export type WorktreeAddResult =
  * exists", so it is matched before the more general destination check.
  */
 function classify(error: ExecException, stderr: string): WorktreeAddErrorCode {
-  if (error.code === 'ENOENT') {
-    return 'git-not-found';
+  if (error.code === "ENOENT") {
+    return "git-not-found";
   }
   if (/not a git repository/i.test(stderr)) {
-    return 'not-a-repository';
+    return "not-a-repository";
   }
   if (/branch named ['"][^'"]*['"] already exists/i.test(stderr)) {
-    return 'branch-exists';
+    return "branch-exists";
   }
   if (/already exists/i.test(stderr)) {
-    return 'destination-exists';
+    return "destination-exists";
   }
-  return 'unknown';
+  return "unknown";
 }
 
 /**
@@ -64,17 +64,17 @@ export function addWorktree({
 }: WorktreeAddParams): Promise<WorktreeAddResult> {
   return new Promise((resolve) => {
     execFile(
-      'git',
-      ['-C', repoPath, 'worktree', 'add', destPath, '-b', branch],
+      "git",
+      ["-C", repoPath, "worktree", "add", destPath, "-b", branch],
       {
-        encoding: 'utf8',
+        encoding: "utf8",
         timeout: GIT_TIMEOUT_MS,
         maxBuffer: GIT_MAX_BUFFER,
         windowsHide: true,
       },
       (error, _stdout, stderr) => {
         if (error) {
-          const code = classify(error, stderr ?? '');
+          const code = classify(error, stderr ?? "");
           console.error(
             `worktree_add failed: git -C ${repoPath} worktree add ${destPath} -b ${branch} →`,
             stderr || error.message,

@@ -2,8 +2,8 @@
  * Codex rollout ingestion, and the dispatcher that routes one line to its
  * agent's parser. Port of `src-tauri/src/usage/codex.rs`.
  */
-import { ingestClaudeLine, u64Field, type LineOutcome } from './claude';
-import { parseRfc3339Ms } from './reader';
+import { ingestClaudeLine, u64Field, type LineOutcome } from "./claude";
+import { parseRfc3339Ms } from "./reader";
 import {
   CODEX_EVENT_TYPE,
   CODEX_TOKEN_COUNT_TYPE,
@@ -19,10 +19,10 @@ import {
   type FileRecord,
   type UsageAgent,
   type UsageCounters,
-} from './model';
+} from "./model";
 
 function asObject(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === 'object' && !Array.isArray(value)
+  return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
 }
@@ -68,21 +68,21 @@ export function backfillUnknownModel(record: FileRecord, model: string): void {
 export function ingestCodexLine(bytes: Buffer, record: FileRecord): LineOutcome {
   let value: unknown;
   try {
-    value = JSON.parse(bytes.toString('utf8'));
+    value = JSON.parse(bytes.toString("utf8"));
   } catch {
-    return 'skipped';
+    return "skipped";
   }
   const line = asObject(value);
   if (line === null) {
-    return 'skipped';
+    return "skipped";
   }
-  const kind = typeof line.type === 'string' ? line.type : '';
+  const kind = typeof line.type === "string" ? line.type : "";
   const payload = asObject(line.payload);
   if (payload === null) {
-    return 'ignored';
+    return "ignored";
   }
   if (kind === CODEX_TURN_CONTEXT_TYPE) {
-    const model = typeof payload.model === 'string' ? payload.model : null;
+    const model = typeof payload.model === "string" ? payload.model : null;
     if (model !== null) {
       // Only the FIRST declaration back-fills. On a resumed scan `lastModel`
       // is already restored from the cache, so the window an earlier scan
@@ -93,32 +93,32 @@ export function ingestCodexLine(bytes: Buffer, record: FileRecord): LineOutcome 
       }
       record.lastModel = model;
     }
-    return 'ignored';
+    return "ignored";
   }
   if (
     kind !== CODEX_EVENT_TYPE ||
     (asObject(payload)?.type as unknown) !== CODEX_TOKEN_COUNT_TYPE
   ) {
-    return 'ignored';
+    return "ignored";
   }
   // `payload.info.total_token_usage`, NOT `payload.total_token_usage`.
   // Reading the shallow path finds nothing and reports zero Codex usage
   // while looking perfectly healthy.
   const totals = asObject(asObject(payload.info)?.total_token_usage);
   if (totals === null) {
-    return 'skipped';
+    return "skipped";
   }
-  const timestamp = typeof line.timestamp === 'string' ? line.timestamp : null;
+  const timestamp = typeof line.timestamp === "string" ? line.timestamp : null;
   const parsedMs = timestamp === null ? null : parseRfc3339Ms(timestamp);
   if (parsedMs === null) {
-    return 'skipped';
+    return "skipped";
   }
   const bucketStartMs = bucketStart(parsedMs);
   const seen: CodexTotals = {
-    inputTokens: u64Field(totals, 'input_tokens'),
-    cachedInputTokens: u64Field(totals, 'cached_input_tokens'),
-    cacheWriteInputTokens: u64Field(totals, 'cache_write_input_tokens'),
-    outputTokens: u64Field(totals, 'output_tokens'),
+    inputTokens: u64Field(totals, "input_tokens"),
+    cachedInputTokens: u64Field(totals, "cached_input_tokens"),
+    cacheWriteInputTokens: u64Field(totals, "cache_write_input_tokens"),
+    outputTokens: u64Field(totals, "output_tokens"),
   };
   const previous = record.cumulative ?? EMPTY_CODEX_TOTALS;
   const delta: CodexTotals = {
@@ -151,11 +151,11 @@ export function ingestCodexLine(bytes: Buffer, record: FileRecord): LineOutcome 
   };
   if (countersAreZero(counters)) {
     // A non-advancing or regressing total contributes nothing.
-    return 'ignored';
+    return "ignored";
   }
   const model = record.lastModel ?? UNKNOWN_MODEL;
   addTotal(record.totals, bucketStartMs, model, counters);
-  return 'counted';
+  return "counted";
 }
 
 /**
@@ -174,7 +174,7 @@ export function ingest(agent: UsageAgent, bytes: Buffer, record: FileRecord): Li
       (byte) => byte === 0x20 || byte === 0x09 || byte === 0x0a || byte === 0x0c || byte === 0x0d,
     )
   ) {
-    return 'ignored';
+    return "ignored";
   }
-  return agent === 'claude' ? ingestClaudeLine(bytes, record) : ingestCodexLine(bytes, record);
+  return agent === "claude" ? ingestClaudeLine(bytes, record) : ingestCodexLine(bytes, record);
 }

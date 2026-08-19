@@ -17,8 +17,8 @@
  * 69 ms for 717 rows against a 2 s poll interval — run ASYNCHRONOUSLY, because
  * this is the process that pumps every pane's output.
  */
-import { execFile } from 'node:child_process';
-import os from 'node:os';
+import { execFile } from "node:child_process";
+import os from "node:os";
 
 /** SIGHUP, then SIGKILL after this. 500 ms, matching `KILL_GRACE` in
  * macos.rs — an earlier value of 2000 ms let a SIGHUP-ignoring TUI outlive its
@@ -33,7 +33,7 @@ export interface ShellLaunch {
 /** `$SHELL -l`, falling back to zsh. A LOGIN shell: PATH, aliases and dotfiles
  * are a public promise on the landing page, not an implementation detail. */
 export function shellLaunch(): ShellLaunch {
-  return { executable: process.env.SHELL || '/bin/zsh', args: ['-l'] };
+  return { executable: process.env.SHELL || "/bin/zsh", args: ["-l"] };
 }
 
 export function userHome(): string {
@@ -54,7 +54,7 @@ const PS_LINE = /^\s*(\d+)\s+(\d+)\s+(-?\d+)\s+(\S+)\s+(.*)$/;
  * skipped rather than throwing — a malformed row must not blind every pane. */
 export function parsePsTable(output: string): PsRow[] {
   const rows: PsRow[] = [];
-  for (const line of output.split('\n')) {
+  for (const line of output.split("\n")) {
     const match = PS_LINE.exec(line);
     if (match === null) {
       continue;
@@ -78,9 +78,9 @@ export function parsePsTable(output: string): PsRow[] {
  * Mirrors `argv0_name` in macos.rs, which has a dedicated Rust test for it.
  */
 export function argv0Name(args: string): string | null {
-  const argv0 = args.trim().split(/\s+/)[0] ?? '';
-  const basename = argv0.split('/').pop() ?? '';
-  const stripped = basename.replace(/^-+/, '');
+  const argv0 = args.trim().split(/\s+/)[0] ?? "";
+  const basename = argv0.split("/").pop() ?? "";
+  const stripped = basename.replace(/^-+/, "");
   return stripped.length > 0 ? stripped : null;
 }
 
@@ -101,9 +101,9 @@ export function argv0Name(args: string): string | null {
 export function readProcessTable(): Promise<PsRow[]> {
   return new Promise((resolve, reject) => {
     execFile(
-      '/bin/ps',
-      ['-A', '-o', 'pid=,pgid=,tpgid=,tty=,args='],
-      { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, timeout: 4000 },
+      "/bin/ps",
+      ["-A", "-o", "pid=,pgid=,tpgid=,tty=,args="],
+      { encoding: "utf8", maxBuffer: 16 * 1024 * 1024, timeout: 4000 },
       (error, stdout) => {
         if (error) {
           reject(error instanceof Error ? error : new Error(String(error)));
@@ -188,20 +188,20 @@ export function processCwds(pids: readonly number[]): Promise<Map<number, string
   }
   return new Promise((resolve) => {
     execFile(
-      '/usr/sbin/lsof',
-      ['-a', '-d', 'cwd', '-p', pids.join(','), '-Fn'],
-      { encoding: 'utf8', timeout: 4000, maxBuffer: 4 * 1024 * 1024 },
+      "/usr/sbin/lsof",
+      ["-a", "-d", "cwd", "-p", pids.join(","), "-Fn"],
+      { encoding: "utf8", timeout: 4000, maxBuffer: 4 * 1024 * 1024 },
       (_error, stdout) => {
         // `-F` output is one field per line: `p<pid>` opens a process block,
         // `n<path>` gives the name. A partial failure still prints the pids it
         // could read, so parse whatever came back.
         const cwds = new Map<number, string>();
         let current: number | null = null;
-        for (const line of String(stdout ?? '').split('\n')) {
-          if (line.startsWith('p')) {
+        for (const line of String(stdout ?? "").split("\n")) {
+          if (line.startsWith("p")) {
             const pid = Number(line.slice(1));
             current = Number.isInteger(pid) ? pid : null;
-          } else if (line.startsWith('n') && current !== null) {
+          } else if (line.startsWith("n") && current !== null) {
             const path = line.slice(1);
             if (path.length > 0 && !cwds.has(current)) {
               cwds.set(current, path);
@@ -231,14 +231,14 @@ export function terminateProcessGroups(
   const shell = shellGroup !== null && shellGroup > 1 ? shellGroup : null;
 
   if (foreground !== null) {
-    killGroup(foreground, 'SIGHUP');
-    const timer = setTimeout(() => killGroup(foreground, 'SIGKILL'), graceMs);
+    killGroup(foreground, "SIGHUP");
+    const timer = setTimeout(() => killGroup(foreground, "SIGKILL"), graceMs);
     // Do not hold the event loop open just to deliver a follow-up SIGKILL —
     // quitting the app already tears the process group down.
     timer.unref?.();
   }
   if (shell !== null) {
-    killGroup(shell, 'SIGKILL');
+    killGroup(shell, "SIGKILL");
   }
 }
 

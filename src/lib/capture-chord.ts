@@ -11,19 +11,19 @@
  * not here, because the same rule has to run when a stored chord is read back.
  * This file only decides what a keydown MEANS.
  */
-import { isAdmissibleChord, type CharChord } from './keybindings';
+import { isAdmissibleChord, type CharChord } from "./keybindings";
 
 const MODIFIER_KEYS: ReadonlySet<string> = new Set([
-  'shift',
-  'control',
-  'alt',
-  'meta',
-  'altgraph',
-  'capslock',
-  'os',
+  "shift",
+  "control",
+  "alt",
+  "meta",
+  "altgraph",
+  "capslock",
+  "os",
 ]);
 
-export type CaptureRejection = 'modifier-only' | 'reserved' | 'system-reserved' | 'needs-modifier';
+export type CaptureRejection = "modifier-only" | "reserved" | "system-reserved" | "needs-modifier";
 
 export type CaptureResult =
   | { readonly ok: true; readonly chord: CharChord }
@@ -41,15 +41,15 @@ export type CaptureResult =
  * Reported with a reason rather than silently ignored: the field convention
  * (VS Code, Ghostty) is to let the OS win and SAY so, never to fail quietly.
  */
-const SYSTEM_RESERVED: ReadonlySet<string> = new Set(['M+tab', 'M+ ', 'M+q', 'M+h', 'MA+h']);
+const SYSTEM_RESERVED: ReadonlySet<string> = new Set(["M+tab", "M+ ", "M+q", "M+h", "MA+h"]);
 
 function reservationId(event: KeyboardEvent, key: string): string {
   const modifiers = [
-    event.metaKey ? 'M' : '',
-    event.ctrlKey ? 'C' : '',
-    event.altKey ? 'A' : '',
-    event.shiftKey ? 'S' : '',
-  ].join('');
+    event.metaKey ? "M" : "",
+    event.ctrlKey ? "C" : "",
+    event.altKey ? "A" : "",
+    event.shiftKey ? "S" : "",
+  ].join("");
   return `${modifiers}+${key}`;
 }
 
@@ -70,7 +70,7 @@ function reservationId(event: KeyboardEvent, key: string): string {
 export function captureChord(event: KeyboardEvent): CaptureResult {
   const key = event.key.toLowerCase();
   if (MODIFIER_KEYS.has(key)) {
-    return { ok: false, reason: 'modifier-only' };
+    return { ok: false, reason: "modifier-only" };
   }
   const modified = event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
   // Escape always cancels, and BARE Tab has to keep moving focus, or the
@@ -80,11 +80,11 @@ export function captureChord(event: KeyboardEvent): CaptureResult {
   // `prev-tab` on Ctrl+Shift+Tab, so reserving every Tab chord would leave two
   // shipped defaults impossible to re-record — the user could reset to them
   // but never choose them.
-  if (key === 'escape' || (key === 'tab' && !modified)) {
-    return { ok: false, reason: 'reserved' };
+  if (key === "escape" || (key === "tab" && !modified)) {
+    return { ok: false, reason: "reserved" };
   }
   if (SYSTEM_RESERVED.has(reservationId(event, key))) {
-    return { ok: false, reason: 'system-reserved' };
+    return { ok: false, reason: "system-reserved" };
   }
   const chord: CharChord = {
     key,
@@ -94,7 +94,7 @@ export function captureChord(event: KeyboardEvent): CaptureResult {
     ctrl: event.ctrlKey,
   };
   if (!isAdmissibleChord(chord)) {
-    return { ok: false, reason: 'needs-modifier' };
+    return { ok: false, reason: "needs-modifier" };
   }
   return { ok: true, chord };
 }

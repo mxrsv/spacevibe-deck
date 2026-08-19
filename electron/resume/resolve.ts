@@ -7,11 +7,11 @@
  * rather than aborting the whole batch — a boot-time lookup for eight panes
  * must not lose the other seven because one scanner tripped.
  */
-import * as claude from './claude';
-import * as codex from './codex';
-import * as opencode from './opencode';
-import * as agy from './agy';
-import type { CandidateSession } from './head';
+import * as claude from "./claude";
+import * as codex from "./codex";
+import * as opencode from "./opencode";
+import * as agy from "./agy";
+import type { CandidateSession } from "./head";
 
 export interface ResumeRequest {
   readonly agent: string;
@@ -20,7 +20,7 @@ export interface ResumeRequest {
 }
 
 export type ResumeRef =
-  { readonly kind: 'id'; readonly id: string } | { readonly kind: 'latest' } | null;
+  { readonly kind: "id"; readonly id: string } | { readonly kind: "latest" } | null;
 
 /** Agents this module can scan for identity-precise resume. `gemini` is
  * deliberately absent: it is answered directly in `resolveOne`, with no
@@ -35,7 +35,7 @@ const SCANNERS: Record<string, (home: string) => CandidateSession[]> = {
 /** Agents whose "no match found" answer is still resumable, just without an
  * exact id — the CLI's own `--continue`/latest-session flag. Every other
  * scanned agent answers `null` (a bare, non-resuming launch) instead. */
-const FALLBACK_LATEST = new Set<string>(['agy']);
+const FALLBACK_LATEST = new Set<string>(["agy"]);
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -79,8 +79,8 @@ function resolveOne(
   candidatesFor: (agent: string) => CandidateSession[],
   takenByAgent: Map<string, Set<string>>,
 ): ResumeRef {
-  if (request.agent === 'gemini') {
-    return { kind: 'latest' };
+  if (request.agent === "gemini") {
+    return { kind: "latest" };
   }
   const scanner = SCANNERS[request.agent];
   if (scanner === undefined) {
@@ -89,7 +89,7 @@ function resolveOne(
   const taken = takenByAgent.get(request.agent) ?? new Set<string>();
   takenByAgent.set(request.agent, taken);
 
-  const matchesCwd = request.agent === 'agy' ? agyCwdMatches : cwdMatches;
+  const matchesCwd = request.agent === "agy" ? agyCwdMatches : cwdMatches;
   const cutoffMs = request.lastSeenAt - THIRTY_DAYS_MS;
   const eligible = candidatesFor(request.agent).filter(
     (candidate) =>
@@ -101,10 +101,10 @@ function resolveOne(
   );
   const best = eligible[0];
   if (best === undefined) {
-    return FALLBACK_LATEST.has(request.agent) ? { kind: 'latest' } : null;
+    return FALLBACK_LATEST.has(request.agent) ? { kind: "latest" } : null;
   }
   taken.add(best.id);
-  return { kind: 'id', id: best.id };
+  return { kind: "id", id: best.id };
 }
 
 /**
@@ -152,17 +152,17 @@ export function resolveResume(
 }
 
 function isValidRequest(entry: unknown): entry is ResumeRequest {
-  if (entry === null || typeof entry !== 'object') {
+  if (entry === null || typeof entry !== "object") {
     return false;
   }
   const node = entry as Record<string, unknown>;
-  if (typeof node.agent !== 'string' || node.agent === '') {
+  if (typeof node.agent !== "string" || node.agent === "") {
     return false;
   }
-  if (node.cwd !== null && typeof node.cwd !== 'string') {
+  if (node.cwd !== null && typeof node.cwd !== "string") {
     return false;
   }
-  if (typeof node.lastSeenAt !== 'number' || !Number.isFinite(node.lastSeenAt)) {
+  if (typeof node.lastSeenAt !== "number" || !Number.isFinite(node.lastSeenAt)) {
     return false;
   }
   return true;

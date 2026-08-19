@@ -10,127 +10,127 @@
 
 /** Commands: renderer → main, request/response. */
 export const CHANNELS = {
-  spawnShell: 'spawn_shell',
-  writePty: 'write_pty',
-  resizePty: 'resize_pty',
-  killPty: 'kill_pty',
-  ptyInfo: 'pty_info',
-  gitBranch: 'git_branch',
+  spawnShell: "spawn_shell",
+  writePty: "write_pty",
+  resizePty: "resize_pty",
+  killPty: "kill_pty",
+  ptyInfo: "pty_info",
+  gitBranch: "git_branch",
   // Repository/worktree rail. Electron-only, like the two blocks at the foot
   // of this table: no `#[tauri::command]` counterpart exists, and writing one
   // would implement a feature twice on a host `AGENTS.md` has frozen. See
   // `docs/specs/2026-08-13-repository-worktree-rail-design.md` §7.3.
-  gitRepository: 'git_repository',
+  gitRepository: "git_repository",
   // Create-worktree flow (open board, task 16). Electron-only like the block
   // above: no `#[tauri::command]` counterpart, per the frozen Tauri host.
-  worktreeAdd: 'worktree_add',
+  worktreeAdd: "worktree_add",
   // Session restore. Electron-only, like the block above: no
   // `#[tauri::command]` counterpart, and Tauri is feature-frozen.
-  resumeLookup: 'resume_lookup',
+  resumeLookup: "resume_lookup",
   // Tier 3 of the agent rail (spec §5): newest agent turn per pane. Same
   // request shape as `resume_lookup` and the same scanners behind it, so the
   // rail's sentence names the session restore would resume into. Electron-only,
   // like the block above.
-  sessionTail: 'session_tail',
+  sessionTail: "session_tail",
   // Window label accessor, for the same restore work: no renderer accessor
   // existed before this (main derived it per-request via `labelOf(event)`
   // only). Electron-only, like the block above.
-  windowLabel: 'window_label',
-  detectAgents: 'detect_agents',
-  dirsExist: 'dirs_exist',
-  desktopEnvironment: 'desktop_environment',
-  resolvePaths: 'resolve_paths',
-  openEditor: 'open_editor',
-  listPromptAssets: 'list_prompt_assets',
-  readImageAsDataUrl: 'read_image_as_data_url',
-  scanWorkspaceFavicon: 'scan_workspace_favicon',
-  confirmQuit: 'confirm_quit',
-  cancelQuit: 'cancel_quit',
-  confirmCloseWindow: 'confirm_close_window',
-  cancelCloseWindow: 'cancel_close_window',
-  windowBootMode: 'window_boot_mode',
-  openPaneWindow: 'open_pane_window',
-  offerTransfer: 'offer_transfer',
-  prepareTransfer: 'prepare_transfer',
-  stageTransfer: 'stage_transfer',
-  claimTransfer: 'claim_transfer',
-  commitTransfer: 'commit_transfer',
-  abortTransfer: 'abort_transfer',
-  beginUpdateCheck: 'begin_update_check',
-  endUpdateCheck: 'end_update_check',
+  windowLabel: "window_label",
+  detectAgents: "detect_agents",
+  dirsExist: "dirs_exist",
+  desktopEnvironment: "desktop_environment",
+  resolvePaths: "resolve_paths",
+  openEditor: "open_editor",
+  listPromptAssets: "list_prompt_assets",
+  readImageAsDataUrl: "read_image_as_data_url",
+  scanWorkspaceFavicon: "scan_workspace_favicon",
+  confirmQuit: "confirm_quit",
+  cancelQuit: "cancel_quit",
+  confirmCloseWindow: "confirm_close_window",
+  cancelCloseWindow: "cancel_close_window",
+  windowBootMode: "window_boot_mode",
+  openPaneWindow: "open_pane_window",
+  offerTransfer: "offer_transfer",
+  prepareTransfer: "prepare_transfer",
+  stageTransfer: "stage_transfer",
+  claimTransfer: "claim_transfer",
+  commitTransfer: "commit_transfer",
+  abortTransfer: "abort_transfer",
+  beginUpdateCheck: "begin_update_check",
+  endUpdateCheck: "end_update_check",
   // Auto-update. Electron-only, unlike the two names above: Tauri reaches its
   // own updater plugin from the renderer
   // (`src/updater/tauri-updater-adapter.ts`) and never through IPC, so no
   // `#[tauri::command]` counterpart exists or should. All three are
   // zero-payload — the renderer names no version, no URL and no file; the
   // feed and the pending update live in `electron/updater/updater.ts`.
-  updateCheck: 'update_check',
-  updateDownload: 'update_download',
-  updateInstall: 'update_install',
-  applySettingsPatch: 'apply_settings_patch',
-  suspendMenuAccelerators: 'suspend_menu_accelerators',
+  updateCheck: "update_check",
+  updateDownload: "update_download",
+  updateInstall: "update_install",
+  applySettingsPatch: "apply_settings_patch",
+  suspendMenuAccelerators: "suspend_menu_accelerators",
   // File explorer. Every one of these is bounded to a workspace root by
   // `electron/fs/path-guard.ts` — the renderer names the path, and the
   // renderer is not the trust boundary. No renderer calls them yet: the model
   // and host layers merged, the surface was left to the redesign.
-  listDir: 'list_dir',
-  readFile: 'read_file',
-  writeFile: 'write_file',
-  statFiles: 'stat_files',
-  watchPaths: 'watch_paths',
-  setDirtyFiles: 'set_dirty_files',
+  listDir: "list_dir",
+  readFile: "read_file",
+  writeFile: "write_file",
+  statFiles: "stat_files",
+  watchPaths: "watch_paths",
+  setDirtyFiles: "set_dirty_files",
   // Browser panel. No Tauri counterpart exists — the panel is Electron-only,
   // so unlike every channel above these names are new rather than ported.
-  browserOpen: 'browser_open',
-  browserClose: 'browser_close',
-  browserNavigate: 'browser_navigate',
-  browserBack: 'browser_back',
-  browserForward: 'browser_forward',
-  browserReload: 'browser_reload',
-  browserSetBounds: 'browser_set_bounds',
-  browserSetVisible: 'browser_set_visible',
-  browserSetInspect: 'browser_set_inspect',
+  browserOpen: "browser_open",
+  browserClose: "browser_close",
+  browserNavigate: "browser_navigate",
+  browserBack: "browser_back",
+  browserForward: "browser_forward",
+  browserReload: "browser_reload",
+  browserSetBounds: "browser_set_bounds",
+  browserSetVisible: "browser_set_visible",
+  browserSetInspect: "browser_set_inspect",
   // Token usage. The name matches the Tauri command it was ported from, so
   // the renderer facade is host-agnostic; the payload is empty by contract
   // (the scan takes no renderer input at all).
-  usageSnapshot: 'usage_snapshot',
+  usageSnapshot: "usage_snapshot",
   // Themes folder. Electron-only, like the repository and browser blocks
   // above: no `#[tauri::command]` counterpart, and the renderer degrades to
   // built-in themes wherever these are unanswered. All three take no payload —
   // the folder is `<userData>/themes` and the renderer never names a path.
-  themesList: 'themes_list',
-  themesImport: 'themes_import',
-  themesReveal: 'themes_reveal',
+  themesList: "themes_list",
+  themesImport: "themes_import",
+  themesReveal: "themes_reveal",
   // Session history. Electron-only like the blocks above: no `#[tauri::command]`
   // counterpart, and the renderer hides its control wherever this is
   // unanswered. Flat `{ limit }` per R6; the reply is
   // `electron/sessions/model.ts`'s `SessionsSnapshot`.
-  sessionsList: 'sessions_list',
+  sessionsList: "sessions_list",
 } as const;
 
 /** Events: main → renderer, fire and forget. */
 export const EVENTS = {
-  ptyOutput: 'pty:output',
-  ptyExit: 'pty:exit',
-  ptyPromptReady: 'pty:prompt-ready',
-  menuAction: 'menu:action',
-  menuMovePaneToWindow: 'menu:move-pane-to-window',
-  transferOffer: 'transfer:offer',
-  transferSettled: 'transfer:settled',
-  quitRequested: 'quit-requested',
-  windowCloseRequested: 'window:close-requested',
-  settingsMerged: 'settings:merged',
-  fileChanged: 'fs:changed',
-  browserState: 'browser:state',
-  browserGrab: 'browser:grab',
+  ptyOutput: "pty:output",
+  ptyExit: "pty:exit",
+  ptyPromptReady: "pty:prompt-ready",
+  menuAction: "menu:action",
+  menuMovePaneToWindow: "menu:move-pane-to-window",
+  transferOffer: "transfer:offer",
+  transferSettled: "transfer:settled",
+  quitRequested: "quit-requested",
+  windowCloseRequested: "window:close-requested",
+  settingsMerged: "settings:merged",
+  fileChanged: "fs:changed",
+  browserState: "browser:state",
+  browserGrab: "browser:grab",
   // Committed main-frame navigations only — never in-page hash changes. What
   // the renderer persists as `browserLastUrl` (browser productization §3).
-  browserNavigated: 'browser:navigated',
+  browserNavigated: "browser:navigated",
   // Broadcast when a background store write fails, so every window can raise
   // its persist-error bar. Registered with a bare string in
   // `register-store.ts` until the preload gained an event allowlist and it had
   // to be a name both sides agree on.
-  storeWriteFailed: 'store:write-failed',
+  storeWriteFailed: "store:write-failed",
 } as const;
 
 /**
@@ -143,24 +143,24 @@ export const EVENTS = {
  * proves this list plus `CHANNELS` is exactly what the main process registers.
  */
 export const PLUGIN_CHANNELS = [
-  'app_relaunch',
-  'app_version',
-  'clipboard_read_text',
-  'clipboard_write_text',
-  'dialog_ask',
-  'dialog_message',
-  'dialog_open',
-  'notification_permission_granted',
-  'notification_request_permission',
-  'notification_send',
-  'shell_open_url',
-  'store_delete',
-  'store_get',
-  'store_load',
-  'store_save',
-  'store_set',
-  'window_close',
-  'window_toggle_maximize',
+  "app_relaunch",
+  "app_version",
+  "clipboard_read_text",
+  "clipboard_write_text",
+  "dialog_ask",
+  "dialog_message",
+  "dialog_open",
+  "notification_permission_granted",
+  "notification_request_permission",
+  "notification_send",
+  "shell_open_url",
+  "store_delete",
+  "store_get",
+  "store_load",
+  "store_save",
+  "store_set",
+  "window_close",
+  "window_toggle_maximize",
 ] as const;
 
 /**

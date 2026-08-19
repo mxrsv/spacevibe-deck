@@ -19,8 +19,8 @@
  * chip clicks) are backstopped by App's exclusion effect instead — the two
  * stores never import each other.
  */
-import type { SurfaceStrip } from '../terminal/tab-manager';
-import type { BrowserClient } from '../browser/browser-client';
+import type { SurfaceStrip } from "../terminal/tab-manager";
+import type { BrowserClient } from "../browser/browser-client";
 import {
   activateBrowserSurface,
   browserOpen,
@@ -28,8 +28,8 @@ import {
   browserSurfaceActive,
   closeBrowser,
   deactivateBrowserSurface,
-} from '../browser/browser-store';
-import { UNSEQUENCED } from '../lib/open-sequence';
+} from "../browser/browser-store";
+import { UNSEQUENCED } from "../lib/open-sequence";
 
 export interface StageSurfaceStripDeps {
   /** The file controller's own strip — delegated to for every file index. */

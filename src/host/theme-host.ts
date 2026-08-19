@@ -11,7 +11,7 @@
  * `src/settings/theme-formats/` so the four grammars have one implementation
  * and a test suite that does not need a main process.
  */
-import { invoke } from './bridge';
+import { invoke } from "./bridge";
 
 export interface ThemeFileEntry {
   /** Basename inside the themes folder — the identity of an imported theme. */
@@ -39,7 +39,7 @@ export interface ThemeScan {
 
 /** Everything currently in the themes folder. Empty when the folder is new. */
 export function listThemeFiles(): Promise<ThemeScan> {
-  return invoke<ThemeScan>('themes_list');
+  return invoke<ThemeScan>("themes_list");
 }
 
 /**
@@ -53,10 +53,10 @@ export function listThemeFiles(): Promise<ThemeScan> {
  * them.
  */
 export function importThemeFiles(): Promise<ThemeScan> {
-  return invoke<ThemeScan>('themes_import');
+  return invoke<ThemeScan>("themes_import");
 }
 
 /** Show the themes folder in the OS file manager — the way to remove a theme. */
 export function revealThemesFolder(): Promise<void> {
-  return invoke('themes_reveal');
+  return invoke("themes_reveal");
 }

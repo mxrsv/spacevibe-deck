@@ -16,8 +16,8 @@
  * lives inside this column (DL-18.3), so the column has to survive at a width
  * that still holds them. `sidebarCollapsedWidth` is that floor.
  */
-import { signal } from '@preact/signals';
-import { SIDEBAR_DRAG_BOUNDS, resolvePanelDrag } from './panel-resize';
+import { signal } from "@preact/signals";
+import { SIDEBAR_DRAG_BOUNDS, resolvePanelDrag } from "./panel-resize";
 
 /**
  * Width during a resize drag; `null` when no drag is in flight and the
@@ -64,9 +64,9 @@ export function SidebarGrip(props: SidebarGripProps) {
       sidebarCollapseArmed.value = outcome.collapsed;
     };
     const end = (): void => {
-      target.removeEventListener('pointermove', move);
-      target.removeEventListener('pointerup', end);
-      target.removeEventListener('pointercancel', end);
+      target.removeEventListener("pointermove", move);
+      target.removeEventListener("pointerup", end);
+      target.removeEventListener("pointercancel", end);
       const dragged = sidebarWidthLive.value;
       const collapse = sidebarCollapseArmed.value;
       // Cleared before the commit for the same reason the explorer clears its
@@ -85,9 +85,9 @@ export function SidebarGrip(props: SidebarGripProps) {
         props.onWidthChange(dragged);
       }
     };
-    target.addEventListener('pointermove', move);
-    target.addEventListener('pointerup', end);
-    target.addEventListener('pointercancel', end);
+    target.addEventListener("pointermove", move);
+    target.addEventListener("pointerup", end);
+    target.addEventListener("pointercancel", end);
   };
 
   return (

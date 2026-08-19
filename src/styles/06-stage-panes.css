@@ -261,7 +261,7 @@
 }
 
 .split__divider::after {
-  content: '';
+  content: "";
   position: absolute;
   z-index: 1;
 }
@@ -337,7 +337,7 @@
    `.pane-slot` nor `.pane` opens a stacking context, so an `auto` bar would
    paint under the terminal. */
 .pane-slot.is-active .pane::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0 0 auto 0;
   height: 2px;

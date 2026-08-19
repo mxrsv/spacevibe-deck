@@ -1,11 +1,11 @@
-import { X } from '@phosphor-icons/react';
-import { useEffect, useRef } from 'preact/hooks';
-import { CHROME_ICON, DeckIcon } from '../controls/deck-icon';
-import { activeCategory } from './active-category-store';
-import { categoryTabId, SECTION_PANEL_ID, SETTINGS_CATEGORIES } from './settings-categories';
-import { SettingsNav } from './settings-nav';
-import { initSettings, settingsLoadState } from '../../settings/settings-store';
-import { LoadError } from '../controls/load-error';
+import { X } from "@phosphor-icons/react";
+import { useEffect, useRef } from "preact/hooks";
+import { CHROME_ICON, DeckIcon } from "../controls/deck-icon";
+import { activeCategory } from "./active-category-store";
+import { categoryTabId, SECTION_PANEL_ID, SETTINGS_CATEGORIES } from "./settings-categories";
+import { SettingsNav } from "./settings-nav";
+import { initSettings, settingsLoadState } from "../../settings/settings-store";
+import { LoadError } from "../controls/load-error";
 
 interface SettingsScreenProps {
   open: boolean;
@@ -42,13 +42,13 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape') {
+      if (event.key !== "Escape") {
         return;
       }
       const target = event.target;
       // A terminal owns its own Escape (vim, fzf) — leave it be. Guard the type:
       // keydown can target a non-Element (document/window) that has no closest().
-      if (target instanceof Element && target.closest('.xterm')) {
+      if (target instanceof Element && target.closest(".xterm")) {
         return;
       }
       // Blur first: a focused text field commits its draft on blur, so closing
@@ -58,8 +58,8 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
       }
       onClose();
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
 
   // Falls back to the first category rather than rendering an empty panel:
@@ -72,7 +72,7 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
 
   return (
     <aside
-      class={`settings-screen ${open ? 'is-open' : ''}`}
+      class={`settings-screen ${open ? "is-open" : ""}`}
       aria-label="Settings"
       aria-hidden={!open}
     >
@@ -99,9 +99,9 @@ export function SettingsScreen({ open, onClose }: SettingsScreenProps) {
           id={SECTION_PANEL_ID}
           role="tabpanel"
           aria-labelledby={categoryTabId(active.id)}
-          aria-busy={settingsLoadState.value.status === 'loading'}
+          aria-busy={settingsLoadState.value.status === "loading"}
         >
-          {settingsLoadState.value.status === 'error' ? (
+          {settingsLoadState.value.status === "error" ? (
             <LoadError
               message={settingsLoadState.value.message}
               onRetry={() => void initSettings()}

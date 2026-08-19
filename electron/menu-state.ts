@@ -10,10 +10,10 @@
  * `emitTo`, so this module takes them once at construction instead of
  * duplicating them.
  */
-import { buildMenu } from './menu';
-import { MACOS_KEYMAP, type KeyBinding } from '../src/terminal/action-registry';
-import { resolveKeymap, validateKeybindings } from '../src/lib/keybindings';
-import type { WindowRegistry } from './window-lifecycle';
+import { buildMenu } from "./menu";
+import { MACOS_KEYMAP, type KeyBinding } from "../src/terminal/action-registry";
+import { resolveKeymap, validateKeybindings } from "../src/lib/keybindings";
+import type { WindowRegistry } from "./window-lifecycle";
 
 export interface MenuStateDeps {
   readonly registry: WindowRegistry;
@@ -75,7 +75,7 @@ export function createMenuState(deps: MenuStateDeps): MenuState {
     const overrides = validateKeybindings(
       (settings as { keybindings?: unknown } | null)?.keybindings,
     );
-    const next = resolveKeymap('macos', overrides);
+    const next = resolveKeymap("macos", overrides);
     menuKeymap = next;
     rebuildMenu();
   }

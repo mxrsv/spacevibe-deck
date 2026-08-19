@@ -1,8 +1,8 @@
-import { OpenBoard } from '../../open-board/open-board';
-import { DesktopChrome } from '../../ui/desktop-chrome';
-import { SidebarToggle } from '../../ui/sidebar-toggle';
-import { agentRailNavigationSpecimen, NOOP } from '../chrome-fixtures';
-import { SectionHead, Specimen } from '../specimen';
+import { OpenBoard } from "../../open-board/open-board";
+import { DesktopChrome } from "../../ui/desktop-chrome";
+import { SidebarToggle } from "../../ui/sidebar-toggle";
+import { agentRailNavigationSpecimen, NOOP } from "../chrome-fixtures";
+import { SectionHead, Specimen } from "../specimen";
 
 /**
  * The Open board — the first surface a user sees, and the one with the most

@@ -16,10 +16,10 @@ import {
   cpSync,
   existsSync,
   rmSync,
-} from 'node:fs';
-import { join } from 'node:path';
+} from "node:fs";
+import { join } from "node:path";
 
-const ROOT = 'dist-electron';
+const ROOT = "dist-electron";
 
 function walk(dir) {
   const out = [];
@@ -30,13 +30,13 @@ function walk(dir) {
     // third-party source. An incremental build did exactly that — the second
     // run reported 31 files instead of 30 and left an `index.global.cjs`
     // beside the real one for packaging to ship.
-    if (entry === 'vendor') {
+    if (entry === "vendor") {
       continue;
     }
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) {
       out.push(...walk(path));
-    } else if (entry.endsWith('.js')) {
+    } else if (entry.endsWith(".js")) {
       out.push(path);
     }
   }
@@ -47,14 +47,14 @@ const files = walk(ROOT);
 for (const file of files) {
   // Rewrite require() targets to the new extension before renaming, or every
   // intra-bundle require resolves to a file that no longer exists.
-  let source = readFileSync(file, 'utf8');
+  let source = readFileSync(file, "utf8");
   source = source.replace(/require\((["'])(\.[^"']*?)\1\)/g, (match, quote, target) =>
-    target.endsWith('.cjs') || target.endsWith('.json')
+    target.endsWith(".cjs") || target.endsWith(".json")
       ? match
       : `require(${quote}${target}.cjs${quote})`,
   );
   writeFileSync(file, source);
-  renameSync(file, file.replace(/\.js$/, '.cjs'));
+  renameSync(file, file.replace(/\.js$/, ".cjs"));
 }
 console.log(`renamed ${files.length} files to .cjs`);
 
@@ -62,8 +62,8 @@ console.log(`renamed ${files.length} files to .cjs`);
 // runtime with `__dirname`-relative paths (`electron/browser/view.ts`), so it
 // has to land beside the compiled host — without this the browser panel loads
 // pages and silently never arms Inspect.
-const VENDOR_SRC = join('electron', 'vendor');
-const VENDOR_OUT = join(ROOT, 'electron', 'vendor');
+const VENDOR_SRC = join("electron", "vendor");
+const VENDOR_OUT = join(ROOT, "electron", "vendor");
 if (existsSync(VENDOR_SRC)) {
   // Removed first so a mangled `.cjs` left by an older build cannot survive
   // into the packaged app.

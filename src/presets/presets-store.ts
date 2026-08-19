@@ -1,5 +1,5 @@
-import { signal } from '@preact/signals';
-import { Store } from '../host/store-host';
+import { signal } from "@preact/signals";
+import { Store } from "../host/store-host";
 import {
   BUILT_IN_PRESET,
   PRESETS_VERSION,
@@ -9,11 +9,11 @@ import {
   validatePresets,
   type Preset,
   type PresetsData,
-} from '../lib/preset-schema';
-import { reportPersistError } from '../chrome/events';
+} from "../lib/preset-schema";
+import { reportPersistError } from "../chrome/events";
 
-const STORE_FILE = 'presets.json';
-const STORE_KEY = 'presets';
+const STORE_FILE = "presets.json";
+const STORE_KEY = "presets";
 
 export const presetsData = signal<PresetsData>({
   version: PRESETS_VERSION,
@@ -29,7 +29,7 @@ export async function initPresets(): Promise<void> {
     const raw = await store.get<unknown>(STORE_KEY);
     presetsData.value = validatePresets(raw);
   } catch (err) {
-    console.warn('Failed to load presets, starting empty:', err);
+    console.warn("Failed to load presets, starting empty:", err);
   }
 }
 
@@ -45,7 +45,7 @@ function persist(next: PresetsData): void {
     .set(STORE_KEY, next)
     .then(() => store?.save())
     .catch((err: unknown) => {
-      console.warn('Failed to save presets:', err);
+      console.warn("Failed to save presets:", err);
       reportPersistError("Preset change wasn't saved to disk");
     });
 }

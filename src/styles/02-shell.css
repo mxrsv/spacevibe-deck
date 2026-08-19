@@ -125,21 +125,21 @@
    the tree for the one-line revert. Naming just `.wsbar` left the live rail
    at 8px of padding overhanging the stage instead of gone — measured
    2026-08-16, and the reason this rule names both. */
-[data-sidebar-collapsed='true'] .asr-rail,
-[data-sidebar-collapsed='true'] .wsbar,
-[data-sidebar-collapsed='true'] .deck-frame {
+[data-sidebar-collapsed="true"] .asr-rail,
+[data-sidebar-collapsed="true"] .wsbar,
+[data-sidebar-collapsed="true"] .deck-frame {
   display: none;
 }
 
 /* The stage takes the whole width, and its own leading hairline goes: with no
    column on the other side of it there are no two surfaces for a seam to
    separate (DL-2.3). */
-[data-sidebar-collapsed='true'] .window--sidebar > .stage {
+[data-sidebar-collapsed="true"] .window--sidebar > .stage {
   grid-column: 1 / -1;
   border-left: none;
 }
 
-[data-sidebar-collapsed='true'] .stage__strip {
+[data-sidebar-collapsed="true"] .stage__strip {
   padding-left: calc(var(--frame-lights-w) + 8px);
   /* The strip IS the frame row now, so it carries that row's surface instead
      of sitting transparent on the stage (DL-18.2's sidebar clause). */
@@ -264,7 +264,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  content: '';
+  content: "";
   transform: translate(-50%, -50%) rotate(30deg);
 }
 
@@ -289,7 +289,7 @@
   position: absolute;
   z-index: 1;
   inset: 0;
-  content: '';
+  content: "";
   pointer-events: none;
   background:
     linear-gradient(
@@ -315,7 +315,7 @@
   position: absolute;
   z-index: 2;
   inset: 0;
-  content: '';
+  content: "";
   background: linear-gradient(
     to bottom,
     var(--sidebar-banner-fade-color, var(--sidebar-bg)) 0%,

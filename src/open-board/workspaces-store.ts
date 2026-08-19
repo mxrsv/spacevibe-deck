@@ -1,5 +1,5 @@
-import { signal } from '@preact/signals';
-import { Store } from '../host/store-host';
+import { signal } from "@preact/signals";
+import { Store } from "../host/store-host";
 import {
   forgetAgent,
   pushRecent,
@@ -8,11 +8,11 @@ import {
   WORKSPACES_VERSION,
   type AgentChoice,
   type WorkspacesData,
-} from '../lib/workspace-recents';
-import { reportPersistError } from '../chrome/events';
+} from "../lib/workspace-recents";
+import { reportPersistError } from "../chrome/events";
 
-const STORE_FILE = 'workspaces.json';
-const STORE_KEY = 'workspaces';
+const STORE_FILE = "workspaces.json";
+const STORE_KEY = "workspaces";
 
 export const workspacesData = signal<WorkspacesData>({
   version: WORKSPACES_VERSION,
@@ -28,7 +28,7 @@ export async function initWorkspaces(): Promise<void> {
     const raw = await store.get<unknown>(STORE_KEY);
     workspacesData.value = validateWorkspaces(raw);
   } catch (err) {
-    console.warn('Failed to load workspace recents, starting empty:', err);
+    console.warn("Failed to load workspace recents, starting empty:", err);
   }
 }
 
@@ -75,7 +75,7 @@ function persist(next: WorkspacesData, failure: string): void {
     .set(STORE_KEY, next)
     .then(() => store?.save())
     .catch((err: unknown) => {
-      console.warn('Failed to save workspace recents:', err);
+      console.warn("Failed to save workspace recents:", err);
       reportPersistError(`${failure} to disk`);
     });
 }

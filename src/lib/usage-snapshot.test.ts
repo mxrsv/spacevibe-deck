@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
   addCounters,
   EMPTY_COUNTERS,
   EMPTY_USAGE_SNAPSHOT,
   totalTokens,
   type UsageCounters,
-} from './usage-snapshot';
+} from "./usage-snapshot";
 
 const counters = (patch: Partial<UsageCounters> = {}): UsageCounters => ({
   inputUncached: 1,
@@ -17,19 +17,19 @@ const counters = (patch: Partial<UsageCounters> = {}): UsageCounters => ({
   ...patch,
 });
 
-describe('EMPTY_COUNTERS', () => {
-  it('is the additive identity on both sides', () => {
+describe("EMPTY_COUNTERS", () => {
+  it("is the additive identity on both sides", () => {
     expect(addCounters(counters(), EMPTY_COUNTERS)).toEqual(counters());
     expect(addCounters(EMPTY_COUNTERS, counters())).toEqual(counters());
   });
 
-  it('totals zero', () => {
+  it("totals zero", () => {
     expect(totalTokens(EMPTY_COUNTERS)).toBe(0);
   });
 });
 
-describe('addCounters', () => {
-  it('sums every counter class separately', () => {
+describe("addCounters", () => {
+  it("sums every counter class separately", () => {
     expect(addCounters(counters(), counters())).toEqual({
       inputUncached: 2,
       cacheRead: 4,
@@ -40,7 +40,7 @@ describe('addCounters', () => {
     });
   });
 
-  it('returns a new object and mutates neither argument', () => {
+  it("returns a new object and mutates neither argument", () => {
     const left = counters();
     const right = counters({ output: 0 });
     const sum = addCounters(left, right);
@@ -52,12 +52,12 @@ describe('addCounters', () => {
   });
 });
 
-describe('totalTokens', () => {
-  it('adds all six classes', () => {
+describe("totalTokens", () => {
+  it("adds all six classes", () => {
     expect(totalTokens(counters())).toBe(21);
   });
 
-  it('counts a Codex-shaped bucket once, not twice', () => {
+  it("counts a Codex-shaped bucket once, not twice", () => {
     // usage.rs stores input_uncached = input - cached, so a Codex event with
     // input 100 of which 40 were cached becomes 60 + 40 and totals 100.
     expect(
@@ -75,15 +75,15 @@ describe('totalTokens', () => {
   });
 });
 
-describe('EMPTY_USAGE_SNAPSHOT', () => {
-  it('still carries both sources, so the two-entry invariant always holds', () => {
+describe("EMPTY_USAGE_SNAPSHOT", () => {
+  it("still carries both sources, so the two-entry invariant always holds", () => {
     expect(EMPTY_USAGE_SNAPSHOT.sources).toEqual([
-      { agent: 'claude', state: 'missing', filesScanned: 0 },
-      { agent: 'codex', state: 'missing', filesScanned: 0 },
+      { agent: "claude", state: "missing", filesScanned: 0 },
+      { agent: "codex", state: "missing", filesScanned: 0 },
     ]);
   });
 
-  it('has no buckets, no skipped lines and no scan time', () => {
+  it("has no buckets, no skipped lines and no scan time", () => {
     expect(EMPTY_USAGE_SNAPSHOT.buckets).toEqual([]);
     expect(EMPTY_USAGE_SNAPSHOT.skippedLines).toBe(0);
     expect(EMPTY_USAGE_SNAPSHOT.scannedAtMs).toBe(0);

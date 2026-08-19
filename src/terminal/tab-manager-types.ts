@@ -1,16 +1,16 @@
-import type { Direction, Edge, SerializedNode } from '../lib/split-tree';
-import type { PaneRect } from '../lib/pane-geometry';
-import type { SessionTab } from '../lib/session-schema';
-import type { TransferClient } from './transfer-client';
-import type { AgentChoice } from '../lib/workspace-recents';
-import type { ShortcutAction } from './keymap';
-import type { TerminalManager, TerminalManagerDeps } from './terminal-manager';
-import type { PaneAttentionSnapshot } from './agent-attention';
-import type { AgentNotifier } from './agent-notifier';
-import type { InjectOutcome } from '../prompts/inject';
-import type { MaterializeIntent } from './tab-materialize';
-import type { Settings } from '../settings/settings-schema';
-import type { SurfaceStrip } from './surface-strip';
+import type { Direction, Edge, SerializedNode } from "../lib/split-tree";
+import type { PaneRect } from "../lib/pane-geometry";
+import type { SessionTab } from "../lib/session-schema";
+import type { TransferClient } from "./transfer-client";
+import type { AgentChoice } from "../lib/workspace-recents";
+import type { ShortcutAction } from "./keymap";
+import type { TerminalManager, TerminalManagerDeps } from "./terminal-manager";
+import type { PaneAttentionSnapshot } from "./agent-attention";
+import type { AgentNotifier } from "./agent-notifier";
+import type { InjectOutcome } from "../prompts/inject";
+import type { MaterializeIntent } from "./tab-materialize";
+import type { Settings } from "../settings/settings-schema";
+import type { SurfaceStrip } from "./surface-strip";
 
 /**
  * Internal to the tab-manager module: `createTabManager` (`tab-manager.ts`)

@@ -28,10 +28,10 @@
 export const USAGE_CACHE_VERSION = 1001;
 
 /** Cache file name, inside Electron's app data beside the stores. */
-export const USAGE_CACHE_FILE = 'usage-cache.json';
+export const USAGE_CACHE_FILE = "usage-cache.json";
 
 /** Suffix of the same-directory temp file the cache is written through. */
-export const CACHE_TEMP_SUFFIX = '.tmp';
+export const CACHE_TEMP_SUFFIX = ".tmp";
 
 /**
  * Fifteen-minute UTC buckets. Not hourly: real-world offsets include :30 and
@@ -53,14 +53,14 @@ export const COMPACT_AFTER_MS = 48 * 60 * 60 * 1000;
  * so `a<U+1>bc` and `ab<U+1>c` can never collide. Spelled as an escape so no
  * invisible byte hides in this source file.
  */
-export const DEDUPE_SEPARATOR = '\u0001';
+export const DEDUPE_SEPARATOR = "\u0001";
 
 /**
  * Model string used when a transcript records usage without naming a model.
  * It stays raw and visible: the frontend prices only exact matches, so an
  * unpriced row shows tokens and a dash rather than a guessed dollar figure.
  */
-export const UNKNOWN_MODEL = 'unknown';
+export const UNKNOWN_MODEL = "unknown";
 
 /**
  * Bytes read when resolving a file's session identity. Bounded because a
@@ -69,14 +69,14 @@ export const UNKNOWN_MODEL = 'unknown';
  */
 export const IDENTITY_HEAD_BYTES = 64 * 1024;
 
-export const CLAUDE_DIR = '.claude';
-export const CLAUDE_PROJECTS_DIR = 'projects';
-export const CLAUDE_SUBAGENTS_DIR = 'subagents';
-export const CODEX_DIR = '.codex';
-export const CODEX_SESSIONS_DIR = 'sessions';
-export const CODEX_ARCHIVED_DIR = 'archived_sessions';
-export const CODEX_ROLLOUT_PREFIX = 'rollout-';
-export const TRANSCRIPT_EXTENSION = '.jsonl';
+export const CLAUDE_DIR = ".claude";
+export const CLAUDE_PROJECTS_DIR = "projects";
+export const CLAUDE_SUBAGENTS_DIR = "subagents";
+export const CODEX_DIR = ".codex";
+export const CODEX_SESSIONS_DIR = "sessions";
+export const CODEX_ARCHIVED_DIR = "archived_sessions";
+export const CODEX_ROLLOUT_PREFIX = "rollout-";
+export const TRANSCRIPT_EXTENSION = ".jsonl";
 
 /**
  * Directory depth the Codex walk will descend. `sessions/YYYY/MM/DD/file` is
@@ -85,15 +85,15 @@ export const TRANSCRIPT_EXTENSION = '.jsonl';
  */
 export const MAX_WALK_DEPTH = 6;
 
-export const CLAUDE_ASSISTANT_TYPE = 'assistant';
-export const CLAUDE_TIER_5M = 'ephemeral_5m_input_tokens';
-export const CLAUDE_TIER_1H = 'ephemeral_1h_input_tokens';
-export const CODEX_TURN_CONTEXT_TYPE = 'turn_context';
-export const CODEX_EVENT_TYPE = 'event_msg';
-export const CODEX_TOKEN_COUNT_TYPE = 'token_count';
+export const CLAUDE_ASSISTANT_TYPE = "assistant";
+export const CLAUDE_TIER_5M = "ephemeral_5m_input_tokens";
+export const CLAUDE_TIER_1H = "ephemeral_1h_input_tokens";
+export const CODEX_TURN_CONTEXT_TYPE = "turn_context";
+export const CODEX_EVENT_TYPE = "event_msg";
+export const CODEX_TOKEN_COUNT_TYPE = "token_count";
 
-export type UsageAgent = 'claude' | 'codex';
-export type UsageSourceState = 'ok' | 'missing' | 'unreadable';
+export type UsageAgent = "claude" | "codex";
+export type UsageSourceState = "ok" | "missing" | "unreadable";
 
 export interface UsageCounters {
   inputUncached: number;
