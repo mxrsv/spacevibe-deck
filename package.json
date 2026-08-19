@@ -6,7 +6,7 @@
   "scripts": {
     "generate:menu": "tsx scripts/generate-menu.ts",
     "generate:menu:check": "tsx scripts/generate-menu.ts --check",
-    "lint": "oxlint --warn max-lines && prettier --check .",
+    "lint": "oxlint && prettier --check .",
     "postinstall": "node scripts/fix-spawn-helper-permissions.mjs",
     "verify:windows-bundle": "node scripts/verify-windows-bundle.mjs",
     "test:updater-manifest": "node --test scripts/verify-updater-manifest.test.mjs",

@@ -24,7 +24,7 @@
     "import/no-duplicates": ["error", { "prefer-inline": true }],
     "import/no-named-as-default-member": "off",
     "import/no-unassigned-import": "off",
-    "max-lines": ["error", 300]
+    "max-lines": ["warn", 300]
   },
   "overrides": [
     {
