@@ -1,10 +1,15 @@
 /**
- * Tour stage data — English-only, mirroring the released app just like the
- * hero stage. Pane transcripts and the workspace sidebar are shared with the
- * hero (product-stage.js); this module holds only tour-specific state.
+ * The closing band's proof-terminal script, and nothing else.
+ *
+ * This module used to carry the Open board's fixtures too — agent chips,
+ * recent rows, preset thumbnails and the sidebar's status map — because one
+ * panel still hand-rolled the board and a pane grid out of the shared stage
+ * renderers. That chain went with the six-panel rewrite, and every panel scene
+ * now holds its own fixture beside its own body in `./scenes/`. What is left
+ * is the one piece of tour state no scene owns. English-only, like everything
+ * rendered inside terminal chrome.
  */
 
-import { BRAND } from "../../../stage/brand.js";
 import { deepFreeze } from "../product-stage.js";
 import { REPO_URL } from "../release-data.js";
 
@@ -13,58 +18,9 @@ import { REPO_URL } from "../release-data.js";
 const REPO_SLUG = new URL(REPO_URL).pathname.slice(1);
 const REPO_DIR = REPO_SLUG.split("/").at(-1);
 
-/** Agent identity chips on the Open board rows. */
-export const AGENTS = deepFreeze({
-  claude: { monogram: "C", tint: "#bb9af7" },
-  codex: { monogram: "X", tint: "#9ece6a" },
-  opencode: { monogram: "O", tint: "#7dcfff" },
-});
-
-/** Open board recent rows — the top one carries the remembered combo. */
-export const boardRecents = deepFreeze([
-  {
-    id: BRAND.slug,
-    label: BRAND.slug,
-    path: `…evibe-workspace/${BRAND.slug}`,
-    highlighted: true,
-    preset: "trio",
-    agents: ["claude", "codex", "opencode"],
-  },
-  {
-    id: "spacevibe-arena",
-    label: "spacevibe-arena",
-    path: "…rkspace/spacevibe-arena",
-    highlighted: false,
-    preset: "duo",
-    agents: ["claude"],
-  },
-  {
-    id: "spacevibe-api",
-    label: "spacevibe-api",
-    path: "…rkspace/spacevibe-api",
-    highlighted: false,
-    preset: "quad",
-    agents: ["codex"],
-  },
-]);
-
-/** Cells per preset thumbnail; the layouts themselves live in tour.css. */
-export const PRESET_CELLS = deepFreeze({ duo: 2, trio: 3, quad: 4 });
-
-/**
- * Sidebar avatar indicators, as in the released app: "busy" = spinning ring
- * (agent working on a prompt), "unread" = yellow dot (new output not seen).
- */
-export const SIDEBAR_STATUS = deepFreeze({
-  [BRAND.slug]: "busy",
-  "spacevibe-arena": "unread",
-  "spacevibe-api": "busy",
-});
-
 /**
  * Closing-band proof terminal: each exchange proves one claim and lights the
- * matching proof chip (`chip` = the proof key in renderFinale). English-only,
- * like everything rendered inside terminal chrome.
+ * matching proof chip (`chip` = the proof key in renderFinale).
  */
 export const PROOF_TERM_STEPS = deepFreeze([
   {

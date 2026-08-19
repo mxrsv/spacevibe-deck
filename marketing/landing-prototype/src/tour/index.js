@@ -1,34 +1,22 @@
 /**
- * The three feature panels, the closing band and the footer.
+ * The six feature panels, the closing band and the footer.
  *
  * Until 2026-08-19 this was a scroll tour: one ".a-appwin" pinned at viewport
  * centre, morphing through three chapters driven by scroll progress over a
- * 340svh track. It is three stacked panels now — a sentence one side, its own
+ * 340svh track. It is a stack of panels now — a sentence one side, its own
  * window mock the other — which is the shape cursor.com uses and which needs
  * no pin, no progress maths and no chapter state. The section class stays
  * `.tour` because the closing band and footer below it are `.tour__*` and did
  * not change.
  */
 
-import {
-  BRAND_ICON_SRC,
-  renderStagePane,
-  renderStageSidebar,
-  renderStageStatus,
-} from "../appwin.js";
-import { BRAND, STAGE_ARIA_LABEL } from "../../../stage/brand.js";
+import { BRAND } from "../../../stage/brand.js";
+import { BRAND_ICON_SRC } from "../appwin.js";
 import { FEATURES_ID } from "../directions/a.js";
+import { PROOF_TERM_STEPS } from "./stage-states.js";
+import { REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
 import { SCENES } from "./panel-scenes.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
-import { REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
-import { mountStageStream, stagePanes } from "../product-stage.js";
-import {
-  AGENTS,
-  PRESET_CELLS,
-  PROOF_TERM_STEPS,
-  SIDEBAR_STATUS,
-  boardRecents,
-} from "./stage-states.js";
 
 const PROMPT = "❯ ";
 
@@ -175,17 +163,26 @@ function mountProofTerm(section, reduceMotion) {
  * The panel stack, in scroll order. Each entry is one feature: the copy keys
  * it prints and the scene it draws.
  *
- * The 16-second reel already tells `Open board → three agents → ⌘⇧A → ⌘E`, so
- * only the middle beat of the old scroll tour survives here — the other two
- * became a duplicate of the video the moment the panels stopped morphing.
- * What replaced them is the four things the page never said at all.
+ * Nothing the 16-second reel already tells survives here. Its beats are
+ * `Open board → three agents → ⌘⇧A → ⌘E`, and the last panel that still redrew
+ * the pane grid was handing the reader a still of what they had just watched
+ * move. What replaced it is six things the page never said at all: what the
+ * rail reads off a running agent, opening one straight into a worktree, what
+ * survives a quit, the surfaces that are not terminals, what the agents cost,
+ * and the catalog of commands Deck will type.
+ *
+ * `shape` picks the panel's layout — `side` stands the mock beside the copy,
+ * `wide` puts it under a full-width sentence — and `flip` moves the art to the
+ * reader's left. Both are emitted as data attributes for tour.css to read;
+ * nothing here styles anything, and no panel imports a scene module directly.
  */
 const PANELS = [
-  { key: "tourCh2", scene: "grid", shape: "wide" },
   { key: "panelRail", scene: "rail", shape: "side", flip: true },
-  { key: "panelRestore", scene: "restore", shape: "wide" },
   { key: "panelWorktree", scene: "picker", shape: "side" },
+  { key: "panelRestore", scene: "restore", shape: "wide" },
   { key: "panelSurfaces", scene: "surfaces", shape: "wide" },
+  { key: "panelUsage", scene: "usage", shape: "side" },
+  { key: "panelCatalog", scene: "catalog", shape: "side", flip: true },
 ];
 
 /**
@@ -194,13 +191,13 @@ const PANELS = [
  * pinned window through them — panels say it in the page's own scroll, with no
  * pin, no progress maths and no chapter state.
  *
- * @param {{key: string, scene: string}} panel
+ * @param {{key: string, scene: string, shape: string, flip?: boolean}} panel
  * @param {number} index zero-based position in the stack
  * @param {Record<string, string>} copy
  */
 function renderPanel(panel, index, copy) {
   const number = String(index + 1).padStart(2, "0");
-  const scene = panel.scene === "grid" ? renderScene(2) : SCENES[panel.scene]();
+  const scene = SCENES[panel.scene]();
 
   return `
     <article
@@ -230,79 +227,6 @@ function renderPanel(panel, index, copy) {
   `;
 }
 
-function renderAgentChip(agentId) {
-  const agent = AGENTS[agentId];
-
-  return `<span class="tour__agentchip" style="--chip-tint: ${agent.tint}">${agent.monogram}</span>`;
-}
-
-function renderPresetThumb(preset) {
-  const cells = "<i></i>".repeat(PRESET_CELLS[preset]);
-
-  return `<span class="tour__thumb" data-preset="${preset}">${cells}</span>`;
-}
-
-function renderBoardRecent(row) {
-  return `
-    <div class="tour__recent${row.highlighted ? " is-hot" : ""}">
-      ${renderPresetThumb(row.preset)}
-      <span class="tour__rectext">
-        <strong>${row.label}</strong>
-        <span>${row.path}</span>
-      </span>
-      <span class="tour__recagents">${row.agents.map(renderAgentChip).join("")}</span>
-      ${row.highlighted ? '<kbd class="tour__openkbd">↵ Open</kbd>' : ""}
-    </div>
-  `;
-}
-
-/** Open board main area (chapter 1) — the sidebar persists across scenes. */
-function renderBoard() {
-  return `
-    <div class="tour__board">
-      <div class="tour__boardlogo">
-        <img src="${BRAND_ICON_SRC}" alt="" />
-        <span>${BRAND.name}</span>
-      </div>
-      <div class="tour__recents">${boardRecents.map(renderBoardRecent).join("")}</div>
-    </div>
-  `;
-}
-
-/**
- * The window mock, drawn in one fixed state. Scene 1 is the Open board; 2 and
- * 3 are the live pane grid, and 3 is the one CSS grows to the focus-expand
- * ratio. Nothing crossfades any more — each panel owns its own window, so the
- * state is markup, not a transition between chapters.
- *
- * @param {number} scene
- */
-function renderScene(scene) {
-  const [claudePane, codexPane, opencodePane] = stagePanes;
-  const body =
-    scene === 1
-      ? renderBoard()
-      : `
-        <div class="a-appwin__grid tour__scenegrid">
-          <div class="a-appwin__col">
-            ${renderStagePane(claudePane)}
-            ${renderStagePane(codexPane)}
-          </div>
-          ${renderStagePane(opencodePane)}
-        </div>
-      `;
-
-  return `
-    <figure class="a-appwin tour__appwin" role="img" aria-label="${STAGE_ARIA_LABEL}">
-      <div class="a-appwin__body" aria-hidden="true">
-        ${renderStageSidebar(SIDEBAR_STATUS)}
-        ${body}
-      </div>
-      ${renderStageStatus()}
-    </figure>
-  `;
-}
-
 function renderFinale(copy) {
   const proofs = ["Pty", "Open", "Local"]
     .map(
@@ -322,6 +246,8 @@ function renderFinale(copy) {
     ["⌘E", "scExpand"],
     ["⌘F", "scFind"],
     ["⌘K", "scClear"],
+    ["⌘⇧B", "scExplorer"],
+    ["⌘⇧Y", "scSessions"],
   ]
     .map(
       ([keys, copyKey]) => `
@@ -455,21 +381,12 @@ export function renderTour(copy) {
         "(prefers-reduced-motion: reduce)",
       );
 
-      // One stream per panel that has a pane grid — scene 1 draws the Open
-      // board, which has no transcripts to type into.
-      const disposeStreams = [
-        ...section.querySelectorAll(".tour__scenegrid"),
-      ].map((grid) => mountStageStream(grid));
       const disposeReveal = mountFinaleReveal(section);
       const disposeProofTerm = mountProofTerm(section, reduceMotion);
 
       return () => {
         disposeProofTerm();
         disposeReveal();
-
-        for (const dispose of disposeStreams) {
-          dispose();
-        }
       };
     },
   };
@@ -477,7 +394,8 @@ export function renderTour(copy) {
 
 /**
  * Swap localized tour copy in place (same reasoning as the hero: keep the DOM,
- * stream timers, and scroll state alive across a locale toggle).
+ * the proof terminal's timers, and scroll state alive across a locale
+ * toggle).
  *
  * @param {Element} root
  * @param {Record<string, string>} copy
