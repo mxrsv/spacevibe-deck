@@ -35,7 +35,7 @@ function tab(overrides: Partial<SessionTab> = {}): SessionTab {
   return {
     workspacePath: "/w",
     layout: LEAF,
-    panes: [{ cwd: "/w", agent: "claude" }],
+    panes: [{ cwd: "/w", agent: "claude", launchOptions: null }],
     name: null,
     dotColor: null,
     ...overrides,
@@ -261,7 +261,7 @@ describe("restoreSession", () => {
   it("point 3: a dead pane cwd survives with cwd null and no resume request for it", async () => {
     const oneTab = tab({
       workspacePath: "/w",
-      panes: [{ cwd: "/w/dead", agent: "claude" }],
+      panes: [{ cwd: "/w/dead", agent: "claude", launchOptions: null }],
     });
     const records = new Map<string, WindowRecord>([
       ["main", record({ tabs: [oneTab] })],
@@ -280,8 +280,8 @@ describe("restoreSession", () => {
     const twoPaneTab = tab({
       workspacePath: "/w",
       panes: [
-        { cwd: "/w", agent: "claude" },
-        { cwd: "/w", agent: "claude" },
+        { cwd: "/w", agent: "claude", launchOptions: null },
+        { cwd: "/w", agent: "claude", launchOptions: null },
       ],
     });
     const records = new Map<string, WindowRecord>([
@@ -310,10 +310,92 @@ describe("restoreSession", () => {
     ]);
   });
 
+  it("puts a claude pane's mode back on its resume command", async () => {
+    const modeTab = tab({
+      workspacePath: "/w",
+      panes: [
+        {
+          cwd: "/w",
+          agent: "claude",
+          launchOptions: {
+            kind: "claude",
+            model: null,
+            permissionMode: "plan",
+          },
+        },
+      ],
+    });
+    const records = new Map<string, WindowRecord>([
+      ["main", record({ tabs: [modeTab] })],
+    ]);
+    const lookup = vi.fn(
+      async (
+        _requests: readonly ResumeRequest[],
+      ): Promise<readonly ResumeRef[]> => [{ kind: "id", id: "abc123" }],
+    );
+    const { deps, mocks } = createFakeDeps({ records, lookup });
+    await restoreSession(deps, "main");
+    const [intent] = mocks.materialize.mock.calls[0];
+    expect(intent.paneCommands).toEqual([
+      "claude --resume abc123 --permission-mode plan",
+    ]);
+  });
+
+  // codex takes its flags in positions `launch-command.ts` does not model, so
+  // its resume command is returned untouched rather than guessed at.
+  it("leaves a codex pane's resume command alone", async () => {
+    const codexTab = tab({
+      workspacePath: "/w",
+      panes: [
+        {
+          cwd: "/w",
+          agent: "codex",
+          launchOptions: {
+            kind: "codex",
+            model: null,
+            sandbox: "workspace-write",
+            approval: null,
+          },
+        },
+      ],
+    });
+    const records = new Map<string, WindowRecord>([
+      ["main", record({ tabs: [codexTab] })],
+    ]);
+    const lookup = vi.fn(
+      async (
+        _requests: readonly ResumeRequest[],
+      ): Promise<readonly ResumeRef[]> => [{ kind: "id", id: "abc123" }],
+    );
+    const { deps, mocks } = createFakeDeps({ records, lookup });
+    await restoreSession(deps, "main");
+    const [intent] = mocks.materialize.mock.calls[0];
+    expect(intent.paneCommands).toEqual(["codex resume abc123"]);
+  });
+
+  it("restores a pane with no recorded options exactly as before", async () => {
+    const plainTab = tab({
+      workspacePath: "/w",
+      panes: [{ cwd: "/w", agent: "claude", launchOptions: null }],
+    });
+    const records = new Map<string, WindowRecord>([
+      ["main", record({ tabs: [plainTab] })],
+    ]);
+    const lookup = vi.fn(
+      async (
+        _requests: readonly ResumeRequest[],
+      ): Promise<readonly ResumeRef[]> => [{ kind: "id", id: "abc123" }],
+    );
+    const { deps, mocks } = createFakeDeps({ records, lookup });
+    await restoreSession(deps, "main");
+    const [intent] = mocks.materialize.mock.calls[0];
+    expect(intent.paneCommands).toEqual(["claude --resume abc123"]);
+  });
+
   it("point 4: a custom-agent-label pane skips the lookup and uses its declared command", async () => {
     const customTab = tab({
       workspacePath: "/w",
-      panes: [{ cwd: "/w", agent: "MyBot" }],
+      panes: [{ cwd: "/w", agent: "MyBot", launchOptions: null }],
     });
     const records = new Map<string, WindowRecord>([
       ["main", record({ tabs: [customTab] })],
@@ -331,7 +413,7 @@ describe("restoreSession", () => {
   it("point 4: a null-agent pane gets a null command and no lookup request", async () => {
     const plainTab = tab({
       workspacePath: "/w",
-      panes: [{ cwd: "/w", agent: null }],
+      panes: [{ cwd: "/w", agent: null, launchOptions: null }],
     });
     const records = new Map<string, WindowRecord>([
       ["main", record({ tabs: [plainTab] })],
@@ -373,8 +455,8 @@ describe("restoreSession", () => {
     const twoPaneTab = tab({
       workspacePath: "/w",
       panes: [
-        { cwd: "/w", agent: "claude" },
-        { cwd: "/w", agent: "claude" },
+        { cwd: "/w", agent: "claude", launchOptions: null },
+        { cwd: "/w", agent: "claude", launchOptions: null },
       ],
     });
     const records = new Map<string, WindowRecord>([
@@ -646,7 +728,7 @@ describe("resumeWorkspace", () => {
     const entry: ArchiveEntry = {
       savedAt: 42,
       tabs: [
-        tab({ workspacePath: "/w", panes: [{ cwd: "/w", agent: "claude" }] }),
+        tab({ workspacePath: "/w", panes: [{ cwd: "/w", agent: "claude", launchOptions: null }] }),
       ],
     };
     const { deps, mocks } = createFakeDeps({});

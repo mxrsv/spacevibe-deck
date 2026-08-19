@@ -29,6 +29,8 @@ import type {
 } from "../lib/session-schema";
 import type { FileStatResult } from "../files/file-client";
 import type { FileSurfaceController } from "../files/file-surface-controller";
+import { applyResumeOptions } from "../lib/launch-command";
+import type { LaunchOptions } from "../lib/launch-profile";
 import { materializeChromeFrom } from "./tab-materialize";
 import { noteResumedPane } from "./session-tail-store";
 import type { TabManager } from "./tab-manager";
@@ -70,6 +72,8 @@ interface LivePane {
   readonly cwd: string | null;
   readonly agent: string | null;
   readonly skipLookup: boolean;
+  /** The mode the pane was journalled with; re-applied to its resume command. */
+  readonly launchOptions: LaunchOptions | null;
 }
 
 interface LiveTab {
@@ -127,9 +131,19 @@ function livePaneOf(
   alive: ReadonlyMap<string, boolean>,
 ): LivePane {
   if (pane.cwd !== null && alive.get(pane.cwd) !== true) {
-    return { cwd: null, agent: pane.agent, skipLookup: true };
+    return {
+      cwd: null,
+      agent: pane.agent,
+      skipLookup: true,
+      launchOptions: pane.launchOptions,
+    };
   }
-  return { cwd: pane.cwd, agent: pane.agent, skipLookup: false };
+  return {
+    cwd: pane.cwd,
+    agent: pane.agent,
+    skipLookup: false,
+    launchOptions: pane.launchOptions,
+  };
 }
 
 /** Drop dead-workspace tabs; null out dead pane cwds in the survivors. */
@@ -202,7 +216,13 @@ function paneCommandsFor(
       return null;
     }
     const ref = refs.get(paneKey(tabIndex, paneIndex)) ?? null;
-    return buildResumeCommand(pane.agent, ref, customAgents);
+    const command = buildResumeCommand(pane.agent, ref, customAgents);
+    // The pane's OWN recorded options, not its profile's current ones: the
+    // profile may have been edited or deleted since this session started, and
+    // the conversation being resumed ran under what was recorded here.
+    return command === null
+      ? null
+      : applyResumeOptions(command, pane.launchOptions);
   });
 }
 

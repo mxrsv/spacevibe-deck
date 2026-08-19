@@ -28,7 +28,7 @@ function tab(workspacePath: string | null): SessionTab {
   return {
     workspacePath,
     layout: LEAF,
-    panes: [{ cwd: "/w/a", agent: "claude" }],
+    panes: [{ cwd: "/w/a", agent: "claude", launchOptions: null }],
     name: null,
     dotColor: null,
   };
