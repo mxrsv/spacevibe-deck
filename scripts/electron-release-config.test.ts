@@ -235,9 +235,26 @@ describe("the Electron release workflow", () => {
     // Squirrel.Mac refuses to update into it.
     expect(workflow).toContain("spctl --assess --type execute");
     expect(workflow).toContain("xcrun stapler validate");
+    // The offline proof: the stapled ticket satisfies `=notarized` with no
+    // call to Apple, which is what a user without a network gets.
+    expect(workflow).toContain('--test-requirement="=notarized"');
     // node-pty's helper is outside the asar and is the first thing a
     // dependency bump leaves unsigned.
     expect(workflow).toContain("node-pty/build/Release/spawn-helper");
+  });
+
+  it("does not assert a stapled ticket on the dmg, which never has one", () => {
+    // electron-builder staples the .app and then packs it into an UNSIGNED
+    // disk image (`dmg.sign` defaults false, macOptions.d.ts:293). Measured
+    // 2026-08-19 on a real notarized build: the app passes every check and the
+    // dmg reports "no usable signature". An assertion here fails by design,
+    // after the draft has already been published.
+    const verifyStep = workflow.slice(
+      workflow.indexOf("Verify the artifacts are signed"),
+      workflow.indexOf("Confirm the draft carries"),
+    );
+    expect(verifyStep).toContain('xcrun stapler validate "${apps[0]}"');
+    expect(verifyStep).not.toContain('xcrun stapler validate "${images[0]}"');
   });
 
   it("requires the zip and the channel manifest in the published release", () => {

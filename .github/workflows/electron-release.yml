@@ -144,7 +144,16 @@ jobs:
             "${apps[0]}/Contents/Resources/app.asar.unpacked/node_modules/node-pty/build/Release/spawn-helper"
           spctl --assess --type execute --verbose=2 "${apps[0]}"
           xcrun stapler validate "${apps[0]}"
-          xcrun stapler validate "${images[0]}"
+          # The strongest check, and the only offline one: the stapled ticket
+          # has to satisfy `=notarized` on its own, with no call to Apple.
+          codesign --test-requirement="=notarized" --verify --verbose=2 "${apps[0]}"
+          # The DMG is deliberately NOT asserted here. electron-builder notarizes
+          # and staples the .app and then packs the already-stapled bundle into an
+          # unsigned disk image — `dmg.sign` defaults to false because signing it
+          # "will lead to unwanted errors in combination with notarization
+          # requirements" (macOptions.d.ts:293). So `stapler validate` on the dmg
+          # fails by design, and Gatekeeper never assesses the image anyway: it
+          # assesses the app at launch, which the line above already proves.
 
       - name: Confirm the draft carries the exact updater asset set
         env:
