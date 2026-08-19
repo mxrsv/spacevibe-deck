@@ -6,8 +6,11 @@ A desktop terminal (Tauri 2) for running many AI agent CLIs side by side:
 Rust owns PTYs and native platform integration; a Preact + xterm.js frontend
 renders panes, tabs and the workspace board. macOS is the current public
 release; Windows 11 x64 is an engineering preview whose runtime gates remain
-open ([macOS release workflow](../.github/workflows/release.yml) `current`,
-[Windows spec](specs/2026-07-29-windows-desktop-design.md#10-verification-and-acceptance) `decided`).
+open ([Windows spec](specs/2026-07-29-windows-desktop-design.md#10-verification-and-acceptance) `decided`).
+Since 2026-08-20 the TAG path builds the Electron host for both platforms
+([Electron release workflow](../.github/workflows/electron-release.yml) `current`);
+the Tauri [release workflow](../.github/workflows/release.yml) `current` keeps every
+job but is `workflow_dispatch` only, so it ships only when someone runs it by hand.
 
 ## Modules and boundaries
 

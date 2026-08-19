@@ -70,6 +70,54 @@ mac:
   # the finished artifact, which the release workflow runs and reports.
   gatekeeperAssess: false
   notarize: true
+# Windows — UNSIGNED, x64, per-user NSIS, and the same self-updating shape as
+# macOS. Not copied from `electron-builder.yml`: that file's `win:` block is
+# explicitly a preview artifact with its own product identity, and a release
+# config that inherits a preview's naming ships a preview.
+#
+# There is no signing step anywhere in the Windows path, by decision
+# (2026-08-19). electron-builder warns and continues without a certificate, so
+# this produces an installer SmartScreen warns on until reputation accrues.
+# The release notes say so; nothing in the build can change it.
+#
+# `electron/platform/windows.ts` has still never executed on a Windows machine
+# (Gate C). A green build job proves the installer was PRODUCED and nothing
+# about whether it installs or updates.
+#
+# arm64 is not served: Windows ARM is out of scope alongside Intel macOS.
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: src-tauri/icons/icon.ico
+nsis:
+  # On Windows the installer is BOTH the first-install download and the update
+  # payload — electron-updater downloads this exact `.exe` again and runs it.
+  # There is no separate archive the way macOS has the zip.
+  oneClick: false
+  # Per-user: no elevation prompt, and a user can remove it without touching
+  # Program Files. It is also what lets the updater replace the install without
+  # asking for admin rights every time.
+  perMachine: false
+  # KEPT DELIBERATELY, not inherited. The one Windows user report on record is
+  # an NSIS extract failure when installing to a secondary drive, and this
+  # chooser is what lets a user reach that state. The underlying bug is
+  # unresolved and unreproducible without Gate C hardware; removing the chooser
+  # would hide it rather than fix it, and would also take away the only way out
+  # for a user whose system drive is full.
+  allowToChangeInstallationDirectory: true
+  # Explicit, and no spaces in it. `productName` is "SpaceVibe Deck": the
+  # default `${productName} Setup ${version}.${ext}` produces a name whose
+  # spaces GitHub rewrites on upload, and electron-updater then asks for the
+  # name written in `latest.yml`. The macOS assets survive that today because
+  # app-builder-lib hyphenates them on the way up — the mac zip's BLOCKMAP,
+  # which does not go through that path, is on the real v0.12.5-electron.2
+  # release as `SpaceVibe.Deck-…zip.blockmap`, with dots. A name with no spaces
+  # cannot be rewritten by either side.
+  #
+  # The `-setup.exe` suffix is asserted by the release workflow's promote gate.
+  artifactName: SpaceVibe-Deck-${version}-win-x64-setup.${ext}
 publish:
   # `channel` is deliberately absent (fork F4). app-builder-lib fills it from
   # the app version's prerelease component when it is unset

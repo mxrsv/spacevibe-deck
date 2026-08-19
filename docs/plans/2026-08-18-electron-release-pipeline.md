@@ -4,6 +4,16 @@
 > (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use
 > checkbox (`- [ ]`) syntax for tracking.
 
+> **Superseded downstream of Task 8 — 2026-08-20.**
+> [docs/specs/2026-08-20-electron-stable-release-design.md](../specs/2026-08-20-electron-stable-release-design.md)
+> `decided` replaces this plan's macOS-only shape for everything after Task 8: the
+> workflow is four jobs covering macOS AND Windows, `promote` gates on the whole
+> six-asset set, and Task 10's "lift the freeze" became "retire the tag trigger",
+> with `release.yml` reduced to `workflow_dispatch` and its `release-freeze` job
+> kept. Tasks 6-8 stay as shipped and are the baseline that design builds on.
+> Task 9's macOS self-update evidence was produced on 2026-08-19 and closed Gate A
+> for macOS.
+
 **Goal:** Take the signed, notarized local build that
 [2026-08-18-gate-a-electron-signing.md](2026-08-18-gate-a-electron-signing.md) `building`
 produces, publish it from CI, prove the published build updates itself, and only then lift

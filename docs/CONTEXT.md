@@ -4066,6 +4066,166 @@ reaches BOTH hosts; routing degrades on Tauri to exactly today's behaviour
 (no workspace ever claims a path, so every ⌘+click goes out through
 `open_editor`), which has also not been run.
 
+## Two platforms, one tag — the stable release path — 2026-08-20
+
+**Spec:** [2026-08-20-electron-stable-release-design.md](specs/2026-08-20-electron-stable-release-design.md)
+`decided`. It supersedes the macOS-only shape of
+[2026-08-18-electron-release-pipeline.md](plans/2026-08-18-electron-release-pipeline.md)
+`building` for everything downstream of that plan's Task 8; Tasks 6-8 stay as shipped and
+are the baseline this builds on.
+
+**Gate A is closed for macOS.** On 2026-08-19 the owner ran the app's own Check for
+Updates against a published release and watched `v0.12.5-electron.2` update itself. That
+is the criterion `release.yml`'s freeze comment named — "the Electron host can update
+itself" — and it is what allowed the tag path to move rather than merely stay frozen.
+Gate C (a real Windows machine) is untouched by it.
+
+### What changed
+
+**`.github/workflows/electron-release.yml` is four jobs now**, in one file:
+
+```
+prepare (ubuntu)              validate tag + version, strip build/, create the draft
+   |
+   +-- mac     (macos-latest)   sign, notarize, verify, publish into the draft
+   +-- windows (windows-latest) build, publish into the draft
+   |
+promote (ubuntu)              verify the full asset set, then make it public
+```
+
+A second workflow file could not work. Two files triggered by the same tag run with no
+knowledge of each other: both would race to create the release — the two-drafts failure
+of run `32232669706`, one platform apart instead of one target apart — and neither would
+have a point at which the full artifact set is known to be complete. The verification
+that keeps a half-built release invisible has to live DOWNSTREAM of both builds.
+
+The two failures the shipped single-job workflow already solved are carried forward
+verbatim, because adding a second platform multiplies both: the trigger tag is
+`build/vX.Y.Z…` and the release tag is that without the prefix (a pushed release tag
+advertises a version whose manifest does not exist for the ten minutes the run takes),
+and the draft is created once in `prepare` before any publisher can race for it.
+
+**`prepare` accepts two tag shapes.** `build/vX.Y.Z` is new and is the stable release;
+`build/vX.Y.Z-electron.N` is the existing prerelease path. The version check was
+RELAXED, not deleted — a version naming any other prerelease word (`0.12.4-electron-preview.2`,
+which is what this repo actually carried before the first release, or `1.0.0-rc.1`)
+still fails the run, because the version IS the update channel and nothing downstream
+would notice. The source gate — `generate:menu:check`, `npm test`, `npm run build` —
+runs ONCE here, before either per-OS build starts.
+
+**`windows` has no signing step, and that is the decision, not an omission.**
+electron-builder warns and continues without a certificate, so a signing step that
+silently did nothing would be indistinguishable from one that worked. SmartScreen will
+warn on first install until reputation accrues; nothing in the pipeline can change that.
+The job asserts only that the installer and `latest.yml` were PRODUCED, because a runner
+cannot run an interactive install and cannot exercise an update cycle.
+
+**`promote` requires all six assets before anything becomes public**, read off what the
+release actually serves rather than off what a runner produced:
+
+| Asset | Consumer |
+| --- | --- |
+| `*.dmg` | macOS first install |
+| `*-mac.zip` | macOS updater (Squirrel.Mac) |
+| `latest-mac.yml` | macOS update feed |
+| `*-setup.exe` | Windows first install **and** updater payload |
+| `latest.yml` | Windows update feed |
+| `*.blockmap` | differential download |
+
+A missing asset leaves the release a draft, which is the only mechanism that stops a
+half-built release from reaching an installed app. `promote` then writes the real notes
+— GitHub's generated commit list under a fixed header — and flips the draft: `--latest`
+for a stable tag, `--prerelease` for an `-electron.N` one. The notes are set BEFORE the
+promotion, so no installed app can ever see the `Build in progress.` placeholder that
+every shipped Electron release has carried so far.
+
+**The header states three things a user cannot discover from the app:** the Windows
+installer is unsigned and SmartScreen will warn; Windows behaviour is not
+runtime-verified; Intel Macs are not served.
+
+**`electron-builder.release.yml` gained `win:` and `nsis:` blocks**, written rather than
+copied from `electron-builder.yml` — that file's block is explicitly a preview artifact
+with its own product identity, and a release config that inherits a preview's naming
+ships a preview. `perMachine: false` is kept (no elevation prompt, and the updater can
+replace the install without asking for admin rights). `allowToChangeInstallationDirectory:
+true` is kept DELIBERATELY: the one Windows report on record is an NSIS extract failure
+when installing to a secondary drive and this chooser is how a user reaches that state,
+but removing it hides the bug rather than fixing it and strands a user whose system drive
+is full. The bug is unresolved and unreproducible without Gate C hardware.
+
+The installer's `artifactName` is explicit and space-free
+(`SpaceVibe-Deck-${version}-win-x64-setup.exe`). `productName` is `SpaceVibe Deck`, and
+the default nsis name carries it verbatim; GitHub rewrites spaces on upload while
+electron-updater asks for the name written in `latest.yml`, so a rewritten name is a 404
+on the UPDATE, not on the build. That rewrite is observable on the real
+`v0.12.5-electron.2` release: the primary macOS artifacts are hyphenated by
+app-builder-lib on the way up, but the mac zip's blockmap — which does not go through
+that path — is published as `SpaceVibe.Deck-…-mac.zip.blockmap`, with dots.
+
+**`.github/workflows/release.yml` is `workflow_dispatch` only.** Every Tauri job stays,
+and so does `release-freeze`, so a hotfix remains possible by hand. What a manual run
+reaches TODAY is the Windows preview alone: `build-macos-stable-draft` carries
+`if: github.event_name == 'push'`, an event this workflow can no longer receive. A macOS
+Tauri hotfix means editing that condition by hand, in the same change that ships it.
+The freeze job's `push` guard is now unreachable and the job passes; it is kept as the
+second lock, stating the rule where a reader of the jobs list meets it.
+
+**`allowPrerelease` stays `true`.** The reason changed and the flag did not. It was on
+so the Electron prereleases could not be mistaken for the Tauri releases in the same
+repository; that reason expires when a stable release takes `releases/latest`. But the
+builds already installed are `0.12.5-electron.2`, and looking past a prerelease version
+is exactly what the flag buys — `0.13.0 > 0.12.5-electron.2` under semver, so the stable
+release reaches them. The cost, named rather than discovered: a stable install will also
+follow any future `-electron.N` prerelease. Turning it off belongs to the version AFTER
+the prerelease channel is empty.
+
+**`scripts/generate-release-notes.mjs` is untouched and NOT deleted.** It is reached only
+from `release.yml`, which the manual Tauri path still uses, and its
+`WINDOWS_PREVIEW_WARNING` is left alone because the Electron workflow never called it.
+
+### Evidence
+
+`scripts/electron-release-config.test.ts` grew from 20 cases to 37 and now slices the
+workflow into its jobs, so each rule is asserted against the job that owns it. Three of
+them run or reproduce the SHIPPED artifacts rather than restating them: the two version
+regexes are extracted from `prepare` and run through bash's own `=~`; the six `promote`
+patterns are matched against the real asset names off `v0.12.5-electron.2` plus the
+Windows names the config's own `artifactName` template produces; and the same patterns
+are shown to REFUSE that macOS-only set, which is the case that would otherwise ship
+"Windows support" as a release page with no installer on it.
+
+Green: `scripts/electron-release-config.test.ts` 37/37,
+`scripts/release-workflow.test.ts` 22/22, `npm run build`, `npm run electron:build`,
+`npm run generate:menu:check`. Five mutations were each shown to fail the suite: dropping
+the Windows installer requirement, promoting a prerelease to `--latest`, restoring a
+`push:` trigger on `release.yml`, taking the default nsis `artifactName` with its spaces,
+and widening `prepare`'s prerelease regex to any word.
+
+`npm test` on this checkout is **3373 passed / 10 failed**, and every one of the ten
+fails identically with these changes stashed — they are other sessions' in-flight work in
+`tab-manager.*`, `agent-rail-model` and `shortcut-groups`. `npm run lint` is likewise
+already red on this checkout; the six files changed here are clean under `oxlint` and
+`prettier` apart from the backlog `max-lines` warning.
+
+**Not established.** No tag has been pushed through this workflow: the four-job shape,
+the Windows job, the six-asset gate and the notes step have never run. Nothing has been
+installed or updated on Windows (Gate C). The `--latest` promotion has never executed, so
+`releases/latest` still serves the Tauri release.
+
+### Freeze prerequisites, still open
+
+These are not pipeline work, and none of them is done here:
+
+1. **`package.json` is `0.12.5-electron.2`.** A stable tag needs it set to the stable
+   version being cut, and `prepare` refuses the tag until it matches. Picking that number
+   is the owner's call.
+2. **The suite must be green on the release commit.** It is not green on this checkout —
+   see above — and `prepare` runs `npm test` before either build starts, so a tag cut from
+   a red commit fails in CI rather than shipping something broken.
+3. Two known-unfinished states ship or get fixed on purpose, not by omission:
+   `GRAB_PASTE_DISABLED` is still `true`, and a preset can be created but neither renamed
+   nor deleted anywhere in the app.
+
 ## Verification state ledger
 
 Full evidence behind [`../AGENTS.md`](../AGENTS.md) `current`'s "Chưa khớp thực tế" table.
@@ -4074,8 +4234,8 @@ the always-loaded file stays small.
 
 | Claim                                                                   | Intent     | Status     | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ----------------------------------------------------------------------- | ---------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Electron can replace Tauri on both supported platforms                  | `building` | unverified | Gate A lacks Apple identity; Gate C lacks a real Windows run                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Deck ships the Electron host                                            | `decided`  | backlog    | `electron/` is on `main`, but the tag workflow still builds Tauri and the updater path is unchanged                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Electron can replace Tauri on both supported platforms                  | `building` | partial    | **Gate A is closed for macOS** — the owner ran the app's own Check for Updates against a published release on 2026-08-19 and watched `v0.12.5-electron.2` update itself. Gate C still lacks a real Windows run, and the 2026-08-20 pipeline deliberately ships without one |
+| Deck ships the Electron host                                            | `decided`  | unverified | The tag path builds Electron as of 2026-08-20: `electron-release.yml` is four jobs covering macOS and Windows, and `release.yml` is `workflow_dispatch` only. No tag has been pushed through it, so the shape, the Windows job, the six-asset gate, the notes step and the `--latest` promotion have all never run |
 | Pane detach is complete cross-platform                                  | `building` | partial    | Phase A has focused/native macOS evidence; Phase B and Windows pointer capture remain open                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | File explorer is available                                              | `decided`  | backlog    | Surface built 2026-08-14 behind a passed Gate M (6/6 packaged), then reshaped the same day — tabs on the stage strip, document on the stage — so that pass no longer covers it. Owner eye review, packaged both-layout pass and native macOS sign-off owed. Electron only, no Tauri implementation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | The browser tab works everywhere Deck does                              | `building` | partial    | Electron-only; no Tauri implementation exists. The 2026-08-15 tab-on-stage reshape is verified by suite/build only — native `electron:dev` pass and owner eye review owed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -4097,6 +4257,12 @@ the always-loaded file stays small.
 | A multi-agent tab's frame is native-verified                            | `building` | unverified | Landed 2026-08-20 (new DL-27.19): a rounded `--hair-strong` outline closes the rows of one multi-agent tab, drawn on the `data-headless` seam `PANE_TREE_HIDDEN` already produces — CSS only, no component or model change. Shipped first with a bled border, which put 255px of content in the 254px rail list and shifted the sidebar in the owner's running app; redrawn as an `outline`, whose left stroke the list clipped, and finally as DL-1.3's inset hairline, which paints inside and joins no layout. Evidence: `design-language` + `agent-rail` suites 57/57, a browser measurement showing `scrollWidth === clientWidth` (254px) and a framed row landing on the same x as an unframed one (287px both), and a screenshot of the real rail. **No full `npm test` and no `npm run build`** — a concurrent session's `terminal-links.ts` is mid-edit and red under `tsc`, so neither can be attributed cleanly. No `electron:dev` pass, no `tauri dev` pass, no owner eye review. Presence chrome, so Electron in effect; Tauri keeps the flat rows. See [the section above](#one-tab-one-frame--2026-08-20) `current` |
 | The new chrome typography and the stateless toggles are native-verified | `building` | unverified | Landed 2026-08-16: group labels went to 14px `--text-muted` (DL-4.4/DL-3.4) and `.iconbtn.is-active` was deleted (DL-21.8). Evidence is `npx tsc --noEmit` clean plus CSSOM/computed-style measurements taken in `npm run dev` — the group labels read 14px/560/muted, `.iconbtn.is-active` is absent from the stylesheet, and a collapsed sidebar leaves its button transparent with `aria-pressed="true"`. **No suite run and no owner eye review**: every component test that draws an icon is currently red under vitest with `InvalidCharacterError: "[object Object]"`, which predates this work and belongs to the in-flight Phosphor migration. Renderer-only, so it reaches Tauri too, where nothing has been run                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Opening a path an agent printed is native-verified                      | `building` | unverified | Landed 2026-08-20 (new DL-14.7, DL-23.11; three new Electron-only channels; `editorId`/`editorCommand` replaced by `externalAppId`). Evidence: `npm test` 3356/8 with all eight failures attributed to a concurrent session's uncommitted `agent-catalog.ts`/`action-registry.ts`, `npm run build`, `npm run electron:build` and `generate:menu:check` all clean, and 133 targeted assertions across the ten owning suites. **Nothing has been clicked in a running host**: no file opened at a real line, no app launched, no bundle icon ever rendered. No owner eye review of the split-button. Windows is Gate C, and `listExternalApps` answers empty off macOS by design. Detection reaches both hosts; routing degrades on Tauri to today's `open_editor` behaviour, also unrun. See [the section above](#opening-a-path-an-agent-printed--2026-08-20) `current`                                                                                                                                                                                                                                                                                                      |
+| One tag ships macOS and Windows                                         | `decided`  | unverified | Built 2026-08-20 to [this design](specs/2026-08-20-electron-stable-release-design.md) `decided`. `electron-release-config.test.ts` 37/37 with five mutations each shown to fail it, plus `npm run build`, `electron:build` and `generate:menu:check` — but no tag has been cut, so no run of this workflow exists                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| The Windows build installs and self-updates                             | `decided`  | unverified | No Windows hardware; the owner elected to ship without the check (Gate C). The `windows` job proves only that the installer and `latest.yml` were PRODUCED — a runner cannot run an interactive install or an update cycle                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| macOS self-updates                                                      | `current`  | verified   | Owner-run check against `v0.12.5-electron.2`, 2026-08-19: the app reported the newer version, downloaded it and relaunched on it. This is Gate A's evidence, and it says nothing about Windows                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| The Windows installer is code-signed                                    | `current`  | **false**  | Unsigned by decision (2026-08-19). electron-builder warns and continues without a certificate, so SmartScreen warns on first install until reputation accrues. The release notes state it, since a user cannot discover it from the app                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Intel Macs and Windows ARM are served                                   | `current`  | **false**  | macOS arm64 and Windows x64 only. Intel Mac users of the Tauri build therefore have no upgrade path at all, which the last Tauri release has to say                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Settings and workspaces carry over from Tauri                           | `current`  | **false**  | Clean install by decision: Electron's userData is `~/Library/Application Support/SpaceVibe Deck` while Tauri's is `~/Library/Application Support/dev.spacevibe.deck`, and no updater bridges two bundle identities. The final Tauri release must name the old path                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 ## Chưa khớp thực tế
 

@@ -11,12 +11,21 @@
  * Four decisions this module encodes, each of which is a correctness rule
  * rather than a preference:
  *
- *  - **`allowPrerelease` is on.** The Electron releases are pre-releases on
- *    `X.Y.Z-electron.N`, so they cannot be mistaken for the Tauri releases in
- *    the same repository. With this flag off — its default — `GitHubProvider`
- *    resolves `releases/latest`, finds a Tauri release with no
- *    `electron-mac.yml` in it, and every check answers "up to date" while the
- *    release pipeline looks perfectly healthy.
+ *  - **`allowPrerelease` is on**, and STAYS on across the stable release
+ *    (2026-08-20). It was turned on because the Electron releases were
+ *    pre-releases on `X.Y.Z-electron.N`, so they could not be mistaken for the
+ *    Tauri releases in the same repository: with the flag off — its default —
+ *    `GitHubProvider` resolves `releases/latest`, found a Tauri release with no
+ *    `electron-mac.yml` in it, and every check answered "up to date" while the
+ *    release pipeline looked perfectly healthy.
+ *
+ *    That reason expires when the stable release takes `releases/latest`, but
+ *    the flag does not: the builds already installed are `0.12.5-electron.2`,
+ *    and prerelease versions are exactly what this flag lets them look past.
+ *    `0.13.0 > 0.12.5-electron.2` under semver, so the stable release reaches
+ *    them. The cost, named rather than discovered: a stable install will also
+ *    follow any future `-electron.N` prerelease. Turning it off belongs to the
+ *    version AFTER the prerelease channel is empty, not to this one.
  *  - **`autoInstallOnAppQuit` is off.** It defaults ON, which would install a
  *    downloaded-but-unconfirmed update on any ordinary quit — behind the
  *    renderer's busy-pane confirmation AND behind `recordAttempt`, whose whole

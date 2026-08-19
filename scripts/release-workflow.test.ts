@@ -104,15 +104,21 @@ describe("release tag resolution", () => {
     }
   });
 
-  it("triggers on stable and release-candidate pushes only", () => {
+  it("is reachable only by hand, never by a tag push", () => {
+    // Retired from tag triggers 2026-08-20: `electron-release.yml` is the
+    // shipping path now. This file keeps every Tauri job so a hotfix stays
+    // possible, but reaching one has to be a deliberate `workflow_dispatch`
+    // against a tag that already exists. A restored `push:` here would ship
+    // Tauri from a tag alongside the Electron release built from the same
+    // commit — two releases, two update feeds, one version.
     const triggers = workflow.slice(
-      workflow.indexOf("tags:"),
-      workflow.indexOf("workflow_dispatch:"),
+      workflow.indexOf("\non:\n"),
+      workflow.indexOf("\npermissions:"),
     );
 
-    expect(triggers).toContain('"v[0-9]+.[0-9]+.[0-9]+"');
-    expect(triggers).toContain('"v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"');
-    expect(triggers).not.toContain("windows-preview");
+    expect(triggers).toContain("workflow_dispatch:");
+    expect(triggers).not.toContain("push:");
+    expect(triggers).not.toContain("tags:");
   });
 
   it("builds every job from the resolved tag and commit", () => {

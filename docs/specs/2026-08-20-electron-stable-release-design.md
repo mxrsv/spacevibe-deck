@@ -207,6 +207,6 @@ These are not pipeline work, but the tag cannot be cut without them:
 
 | Claim | Intent | Status | Evidence |
 | --- | --- | --- | --- |
-| One tag ships macOS and Windows | `decided` | unbuilt | This design; no workflow job on `windows-latest` exists yet |
+| One tag ships macOS and Windows | `decided` | unverified | Built to this design 2026-08-20: `electron-release.yml` is `prepare`/`mac`/`windows`/`promote`, and `electron-builder.release.yml` carries the `win:`/`nsis:` blocks. `electron-release-config.test.ts` 37/37, five mutations each shown to fail it, `npm run build` / `electron:build` / `generate:menu:check` green — but no tag has been pushed through it |
 | The Windows build self-updates | `decided` | unverified | No Windows hardware; owner elected to ship without the check |
 | macOS self-updates | `current` | verified | Owner-run check against `v0.12.5-electron.2`, 2026-08-19 |

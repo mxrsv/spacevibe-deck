@@ -1,56 +1,84 @@
 name: Electron Release
 
-# The Electron host's release path, deliberately separate from `release.yml`.
+# The shipping release path. One pushed tag produces one release carrying
+# macOS **and** Windows, both self-updating.
 #
-# `release.yml` builds Tauri and is frozen at the job level; every one of its
-# jobs assumes the Tauri artifact set (`latest.json`, `.sig`, provenance, a
-# trust-chain validator). Nothing here touches it, and a tag that matches this
-# workflow cannot match that one: its patterns are `vX.Y.Z` and `vX.Y.Z-rc.N`.
+# `release.yml` builds Tauri and is retired from tag triggers as of 2026-08-20
+# (`workflow_dispatch` only, kept for a manual hotfix). Nothing here touches it.
 #
-# The tag shape is NOT free. `GitHubProvider.getLatestVersion` skips every
-# release whose tag fails `semver.valid`, and derives the update channel from
-# `semver.prerelease(tag)[0]`. `vX.Y.Z-electron.N` therefore does two jobs at
-# once: it stays parseable, and it names the `electron` channel the client asks
-# for. A tag like `electron-v1.0.0` would be invisible to the updater while
-# every other signal looked healthy.
+# ## Why one file and four jobs
 #
-# The published manifest is still `latest-mac.yml`, not `electron-mac.yml`:
+# Two workflow files triggered by the same tag run with no knowledge of each
+# other: both would race to create the release, and neither would have a point
+# at which the full artifact set is known to be complete. The verification that
+# keeps a half-built release invisible has to live DOWNSTREAM of both builds,
+# which means one workflow.
+#
+#   prepare (ubuntu)              validate tag + version, strip build/, create the draft
+#      |
+#      +-- mac     (macos-latest)   sign, notarize, verify, publish into the draft
+#      +-- windows (windows-latest) build, publish into the draft
+#      |
+#   promote (ubuntu)              verify the full asset set, then make it public
+#
+# ## Two failures this shape exists to prevent
+#
+# 1. **The trigger tag is not the release tag.** GitHub publishes a pushed tag
+#    to `releases.atom` the instant it lands, while this run needs ~10 minutes.
+#    Pushing the RELEASE tag therefore advertised a version whose manifest did
+#    not exist yet: every running app that checked during the build fetched
+#    `<channel>-mac.yml`, then `latest-mac.yml`, got 404 from both, and told its
+#    user "Couldn't check for updates. Check your connection and try again."
+#    Measured twice on 2026-08-19 against v0.12.5-electron.2.
+#
+#    `build/v…` is not valid semver, so `GitHubProvider` skips that feed entry
+#    (GitHubProvider.js:71) and a running app sees nothing until the release is
+#    real. The release tag is created by GitHub itself when the draft is
+#    promoted, which happens only after every artifact is uploaded AND verified
+#    — a draft holds a `tag_name` without creating the git ref, measured with a
+#    probe release that produced an `untagged-…` URL and no remote tag.
+#
+# 2. **The draft is created before any publisher runs.** electron-builder runs
+#    one publisher PER TARGET, concurrently. With no release to upload into,
+#    the zip publisher and the dmg publisher both read "release doesn't exist"
+#    and both CREATE one — measured on run 32232669706, which produced two
+#    drafts on the same tag. With two platforms the same race is one platform
+#    apart instead of one target apart, so `prepare` creates the draft once and
+#    every publisher finds it.
+#
+# ## The tag shape is not free
+#
+# `GitHubProvider.getLatestVersion` skips every release whose tag fails
+# `semver.valid`, and derives the update channel from `semver.prerelease(tag)[0]`.
+# Two shapes are accepted here:
+#
+#   build/vX.Y.Z             a STABLE release, promoted with `--latest`
+#   build/vX.Y.Z-electron.N  a prerelease on the `electron` channel
+#
+# The published macOS manifest is `latest-mac.yml`, not `electron-mac.yml`:
 # app-builder-lib only copies the channel into `publish.channel` for the
 # `generic` provider. The client asks for its channel file first and falls back
-# to the default one, so the two halves meet — see the assertion below.
+# to the default one, so the two halves meet — see `promote`'s assertions.
 #
-# The trigger tag is `build/vX.Y.Z-electron.N`; the RELEASE tag is that without
-# the prefix, and it does not exist until this run has finished.
-#
-# GitHub publishes a pushed tag to `releases.atom` the instant it lands, while
-# this job needs ten minutes to build and notarize. Pushing the release tag
-# directly therefore ADVERTISED a version whose manifest did not exist yet:
-# every running app that checked during the build fetched
-# `<channel>-mac.yml`, then `latest-mac.yml`, got 404 from both, and told its
-# user "Couldn't check for updates. Check your connection and try again."
-# Measured twice on 2026-08-19 against v0.12.5-electron.2.
-#
-# `build/v…` is not valid semver, so `GitHubProvider` skips that feed entry
-# (GitHubProvider.js:71) and a running app sees nothing until the release is
-# real. The release tag is created by GitHub itself when the draft is promoted,
-# which happens only after every artifact is uploaded AND verified — a draft
-# holds a `tag_name` without creating the git ref, measured with a probe
-# release that produced an `untagged-…` URL and no remote tag.
-#
-# Plan: docs/plans/2026-08-18-electron-release-pipeline.md
+# Spec: docs/specs/2026-08-20-electron-stable-release-design.md
+# Plan: docs/plans/2026-08-18-electron-release-pipeline.md (Tasks 6-8 baseline)
 on:
   push:
     tags:
+      - "build/v[0-9]+.[0-9]+.[0-9]+"
       - "build/v[0-9]+.[0-9]+.[0-9]+-electron.[0-9]+"
 
 permissions:
   contents: read
 
 jobs:
-  release:
-    runs-on: macos-latest
+  prepare:
+    runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      tag: ${{ steps.target.outputs.tag }}
+      prerelease: ${{ steps.target.outputs.prerelease }}
     steps:
       - name: Checkout the exact tag
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -72,12 +100,11 @@ jobs:
           set -euo pipefail
           # `build/v1.2.3-electron.4` -> `v1.2.3-electron.4`
           TAG="${BUILD_TAG#build/}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           # The version is the channel. Both halves of the update path derive
           # it from this one string — app-builder-lib from `appInfo.channel`
           # when `publish.channel` is unset, electron-updater from the tag —
-          # so a version that carries no `electron` prerelease component puts
-          # this build on the wrong channel and orphans every installed one.
+          # so a version whose prerelease component changes word puts the build
+          # on a different channel and orphans every installed one.
           #
           # Matched with a regex rather than `semver`: that package is only a
           # transitive of the toolchain here, not a declared dependency, and
@@ -88,16 +115,66 @@ jobs:
             echo "Tag $TAG does not match package version $version"
             exit 1
           fi
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-electron\.[0-9]+$ ]]; then
-            echo "Version $version must be X.Y.Z-electron.N — it names the update channel"
+          # Stable and `-electron.N` are BOTH real shapes now. The check is
+          # relaxed, not deleted: a version naming any other prerelease word
+          # would publish onto a channel no installed build ever asks for.
+          if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            prerelease=false
+          elif [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-electron\.[0-9]+$ ]]; then
+            prerelease=true
+          else
+            echo "Version $version must be X.Y.Z or X.Y.Z-electron.N — it names the update channel"
             exit 1
           fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "Releasing $TAG (prerelease=$prerelease)"
 
       - name: Validate source
         run: |
+          # Run ONCE here, for both platforms. The build jobs are per-OS and
+          # cost tens of minutes; a source failure must stop the run before
+          # either of them starts, and running the suite twice proves nothing
+          # twice.
           npm run generate:menu:check
           npm test
           npm run build
+
+      - name: Create the draft release before anything can publish into it
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # Draft, so nothing is visible to an installed app until `promote`
+          # has verified the whole asset set. `--target` is required because
+          # the release tag does not exist yet, and must not until the
+          # artifacts are proven; GitHub creates it from this commit at
+          # promotion time.
+          #
+          # The notes are a placeholder. `promote` replaces them with the real
+          # ones — composed there because the header has to state what the
+          # finished release actually carries.
+          gh release create "$TAG" --draft --target "$GITHUB_SHA" \
+            --title "$TAG" --notes "Build in progress."
+
+  mac:
+    needs: prepare
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the exact tag
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Import the Apple Developer ID certificate
         env:
@@ -124,29 +201,7 @@ jobs:
           fi
           rm -f "$certificate"
 
-      - name: Create the draft release before anything can publish into it
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.target.outputs.tag }}
-        run: |
-          set -euo pipefail
-          # electron-builder runs one publisher PER TARGET, concurrently. With
-          # no release to upload into, the zip publisher and the dmg publisher
-          # both read "release doesn't exist" and both CREATE one — measured on
-          # run 32232669706, which produced two drafts on the same tag: the dmg
-          # and the manifest landed in one, the zip in the other. The release
-          # looked complete in the API and could never have updated anything.
-          #
-          # Creating it here removes the race: both publishers find it and
-          # upload into the same release. Draft, so nothing is visible to an
-          # installed app until the verification steps below have passed.
-          # `--target` is required because the release tag does not exist yet,
-          # and must not until the artifacts are proven. GitHub creates it from
-          # this commit at promotion time.
-          gh release create "$TAG" --draft --target "$GITHUB_SHA" \
-            --title "$TAG" --notes "Build in progress."
-
-      - name: Build, sign, notarize and publish the draft
+      - name: Build, sign, notarize and publish into the draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -162,6 +217,7 @@ jobs:
           # a missing identity does NOT fail electron-builder, it silently
           # produces an unsigned app.
           node scripts/verify-electron-release-signing.mjs
+          npm run build
           npm run electron:build
           npx electron-builder --config electron-builder.release.yml \
             --mac --arm64 --publish always
@@ -204,44 +260,159 @@ jobs:
           # fails by design, and Gatekeeper never assesses the image anyway: it
           # assesses the app at launch, which the line above already proves.
 
-      - name: Confirm the draft carries the exact updater asset set
+  windows:
+    needs: prepare
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    # The runner's default shell is PowerShell; every script step here is bash
+    # so it reads the same as the other three jobs. Git Bash ships on the
+    # Windows image, so this costs nothing.
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout the exact tag
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and publish the installer into the draft
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.target.outputs.tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # electron-builder creates a DRAFT by default, so nothing is visible
-          # to an installed app yet. This reads what the release actually
-          # serves, not what the runner produced.
+          # NO SIGNING STEP, by decision (2026-08-19). electron-builder warns
+          # and continues when no certificate is configured, so this produces
+          # an unsigned installer: SmartScreen will warn on first install until
+          # reputation accrues, and nothing in this pipeline can change that.
+          # `promote` states it in the release notes because a user cannot
+          # discover it from the app.
+          npm run build
+          npm run electron:build
+          npx electron-builder --config electron-builder.release.yml \
+            --win --x64 --publish always
+
+      - name: Confirm the installer and its manifest were produced
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          installers=(dist-electron-release/*-setup.exe)
+          manifests=(dist-electron-release/latest.yml)
+          if [[ ${#installers[@]} -ne 1 || ${#manifests[@]} -ne 1 ]]; then
+            echo "Expected exactly one *-setup.exe and a latest.yml manifest"
+            printf '%s\n' dist-electron-release/*
+            exit 1
+          fi
+          # This is the ONLY assertion this job can make. A runner cannot run
+          # an interactive install and cannot exercise an update cycle, so
+          # nothing here says the installer works — Gate C stays open, and the
+          # docs say so rather than implying a green run proved it.
+
+  promote:
+    needs: [prepare, mac, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # This job deliberately does not check the repository out — it reads the
+      # RELEASE, not the source. `gh` infers the repository from the git remote,
+      # so without a checkout it needs to be told; `GH_REPO` is how, and it also
+      # keeps every `gh` call here pointed at one repository rather than at
+      # whatever a future checkout step happens to leave behind.
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - name: Confirm the draft carries the exact asset set both platforms need
+        run: |
+          set -euo pipefail
+          # This reads what the RELEASE actually serves, not what a runner
+          # produced: a publisher that silently uploaded somewhere else still
+          # exits zero, which is exactly how run 32232669706 produced a release
+          # with a dmg and no zip.
           gh release view "$TAG" --json assets --jq '.assets[].name' | sort > published.txt
           cat published.txt
-          grep -q '\.dmg$' published.txt
-          # The zip is the update payload. It is asserted HERE, against what
-          # the release serves, because a publisher that silently uploaded it
-          # somewhere else still exits zero — that is exactly how run
-          # 32232669706 produced a release with a dmg and no zip.
-          grep -q '\.zip$' published.txt
+          require() {
+            # `--` because two of the patterns below start with a hyphen.
+            if ! grep -qE -- "$1" published.txt; then
+              echo "Release $TAG is missing $2 — leaving it a draft."
+              exit 1
+            fi
+          }
+          require '\.dmg$'         'the macOS dmg (first install)'
+          # The zip is the macOS update payload; Squirrel.Mac never reads the dmg.
+          require '-mac\.zip$'     'the macOS zip (updater payload)'
           # `latest-mac.yml`, not `electron-mac.yml`: app-builder-lib copies the
           # version's prerelease component into `publish.channel` only for the
           # `generic` provider (PublishManager.js:413-431), so a GitHub release
-          # always writes the default name. The client still asks for
+          # always writes the default name. The client asks for
           # `electron-mac.yml` first and falls back to this one
           # (GitHubProvider.js:136-142), so the update path works — but the
           # assertion has to match what is actually published.
-          grep -qx 'latest-mac.yml' published.txt
+          require '^latest-mac\.yml$' 'the macOS update feed'
+          # On Windows the installer is BOTH the first-install download and the
+          # updater payload — there is no separate archive.
+          require '-setup\.exe$'   'the Windows installer'
+          require '^latest\.yml$'   'the Windows update feed'
+          # Differential download. Present for the dmg and the mac zip today;
+          # nsis adds one for the installer.
+          require '\.blockmap$'     'a blockmap (differential download)'
 
-      - name: Promote the draft to a pre-release
+      - name: Write the release notes
+        run: |
+          set -euo pipefail
+          # Three things a user cannot discover from the app, so they are
+          # stated on the release itself rather than left to be found.
+          cat > release-notes.md <<'HEADER'
+          ### Before you install
+
+          - **The Windows installer is not code-signed.** SmartScreen will warn on
+            first install: choose **More info** → **Run anyway**. The warning
+            reflects the missing signature, not the build.
+          - **Windows is not runtime-verified.** No Windows machine has run this
+            host. Installation and auto-update on Windows are unproven.
+          - **Intel Macs are not served.** The macOS build is Apple silicon
+            (arm64) only.
+
+          HEADER
+          # GitHub's own commit list, generated against the commit the draft
+          # targets — the tag does not exist yet, which is why
+          # `target_commitish` is required here.
+          if gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+              -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" --jq .body \
+              > generated-notes.md; then
+            cat generated-notes.md >> release-notes.md
+          else
+            echo "Could not generate the commit list; shipping the header alone."
+          fi
+          cat release-notes.md
+          # Set the notes BEFORE the release becomes visible, so no installed
+          # app ever sees the "Build in progress." placeholder.
+          gh release edit "$TAG" --notes-file release-notes.md
+
+      - name: Promote the draft
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.target.outputs.tag }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
         run: |
           set -euo pipefail
           # Promoting is also what CREATES the release tag, so this version
-          # only becomes discoverable now, with the zip and the manifest
-          # already proven to be on the release.
+          # only becomes discoverable now, with every asset both platforms
+          # need already proven to be on the release.
           #
-          # Pre-release, never `latest`: an installed Electron build finds this
-          # by walking the release feed for its own channel, while
-          # `releases/latest` keeps serving the Tauri release until the cutover
-          # retires it.
-          gh release edit "$TAG" --draft=false --prerelease
+          # A stable tag takes `--latest`: `releases/latest` served the Tauri
+          # release until the cutover, and the stable Electron release is what
+          # replaces it. An `-electron.N` tag stays a pre-release, found by
+          # walking the feed for its own channel.
+          if [[ "$PRERELEASE" == "true" ]]; then
+            gh release edit "$TAG" --draft=false --prerelease=true
+          else
+            gh release edit "$TAG" --draft=false --prerelease=false --latest=true
+          fi

@@ -1,18 +1,28 @@
 name: Release
 
+# RETIRED FROM TAG TRIGGERS — 2026-08-20.
+#
+# `.github/workflows/electron-release.yml` is the shipping path now: one pushed
+# `build/vX.Y.Z` tag produces a release carrying macOS and Windows, both
+# self-updating. This file builds Tauri, and a `vX.Y.Z` tag no longer starts it.
+#
+# The file is KEPT, with every Tauri job and the `release-freeze` job below
+# intact, so a Tauri hotfix stays possible by hand. Reaching one is now a
+# deliberate `workflow_dispatch` against a tag that already exists — which is
+# also the only shape that ever worked here, because `resolve-target` builds
+# from the resolved tag rather than from `main`.
+#
+# What a manual run reaches TODAY is the Windows preview alone:
+# `build-macos-stable-draft` carries `if: github.event_name == 'push'`, an
+# event this workflow can no longer receive. A macOS Tauri hotfix means editing
+# that condition by hand, deliberately, in the same change that ships it.
+#
+# Spec: docs/specs/2026-08-20-electron-stable-release-design.md
 on:
-  push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"
-  # Re-run the Windows preview alone against a tag that already shipped. The
-  # Windows channel is an unsigned preview and will break again; without this,
-  # retrying it means moving the tag, which rebuilds and republishes a macOS
-  # release that was already fine.
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing vX.Y.Z tag to rebuild the Windows preview from"
+        description: "Existing vX.Y.Z tag to rebuild from"
         required: true
         type: string
 
@@ -20,25 +30,24 @@ permissions:
   contents: read
 
 jobs:
-  # RELEASE FREEZE — 2026-08-17.
+  # RELEASE FREEZE — 2026-08-17, superseded by the trigger itself 2026-08-20.
   #
-  # A tag push is the only trigger that ships, and what it ships is Tauri: it
-  # builds the macOS stable draft, publishes it, and installed apps take that
-  # update on their own. `main` now carries a large body of renderer work that
-  # has never been run under Tauri, so the next tag would push an unverified
-  # build to real users through a channel they cannot decline.
+  # When a tag push still reached this file, this job was the thing that
+  # stopped it: what a push shipped was Tauri, and `main` carried a large body
+  # of renderer work that had never been run under Tauri. The `on:` block above
+  # now refuses the same push earlier and for the same reason, so this step's
+  # `github.event_name == 'push'` guard is unreachable and the job passes.
   #
-  # The freeze holds until the Electron host can update itself, which is
-  # blocked on Gate A (no Apple Developer identity: Squirrel.Mac refuses an app
-  # that is not Developer ID signed and notarized). The last Tauri release will
-  # then be a deliberate one that explains the manual move, because the two
-  # hosts are different bundle identities and no updater bridges them.
+  # It is kept, and so is `resolve-target`'s `needs:` line, because the guard
+  # costs one skipped step and states the rule at the job level where a reader
+  # of the jobs list meets it. If a push trigger is ever restored here without
+  # that rule being reconsidered, this is what catches it.
   #
-  # A manual `workflow_dispatch` run stays allowed on purpose: it rebuilds the
-  # Windows preview from a tag that already shipped, never from `main`.
-  #
-  # To lift the freeze, delete this job and the `needs:` line under
-  # `resolve-target`.
+  # Gate A closed for macOS on 2026-08-19: the Electron host updated itself
+  # from a published release, owner-verified. That is what allowed the tag path
+  # to move rather than merely stay frozen. The two hosts are still different
+  # bundle identities and no updater bridges them, so the final Tauri release
+  # has to explain the manual move.
   release-freeze:
     runs-on: ubuntu-latest
     steps:
