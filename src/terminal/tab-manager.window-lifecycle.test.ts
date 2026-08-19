@@ -8,15 +8,8 @@ import { activeTabIndex, tabViews } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
-import {
-  freshWindowFocusController,
-  processInfo,
-  setup,
-} from "./tab-manager.fixtures";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import { freshWindowFocusController, processInfo, setup } from "./tab-manager.fixtures";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
@@ -246,8 +239,6 @@ describe("TabManager move-to-new-window guard", () => {
     transfer.moveToWindow("deck-2");
     await vi.waitFor(() => expect(transfer.calls).toContain("await:xfer-1"));
     transfer.settle("xfer-1", { kind: "committed" });
-    await vi.waitFor(() =>
-      expect(transfer.calls).toContain("offer:xfer-1:deck-2"),
-    );
+    await vi.waitFor(() => expect(transfer.calls).toContain("offer:xfer-1:deck-2"));
   });
 });

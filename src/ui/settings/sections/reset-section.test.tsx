@@ -19,8 +19,7 @@ vi.mock("../../../host/dialog-host", () => ({
   ask: vi.fn(async () => true),
 }));
 vi.mock("../../../chrome/events", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("../../../chrome/events")>();
+  const actual = await importOriginal<typeof import("../../../chrome/events")>();
   return {
     ...actual,
     reportPersistError: vi.fn(),
@@ -40,8 +39,7 @@ const mockedAsk = vi.mocked(ask);
  * only advances one hop, which isn't enough for an `await`-chained handler
  * (confirm dialog → reset/finally). A macrotask boundary guarantees every
  * pending microtask has drained first. */
-const flushMicrotasks = (): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, 0));
+const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("ResetSection — Restore defaults confirm", () => {
   let host: HTMLDivElement;
@@ -86,9 +84,7 @@ describe("ResetSection — Restore defaults confirm", () => {
     // one, so the icon supplements the label rather than replacing it.
     expect(reset.textContent?.trim()).toBe("reset");
     expect(
-      reset
-        .querySelector("svg")
-        ?.classList.contains("deck-icon--arrow-counter-clockwise"),
+      reset.querySelector("svg")?.classList.contains("deck-icon--arrow-counter-clockwise"),
     ).toBe(true);
   });
 

@@ -71,8 +71,7 @@ export function codexTailFromLines(lines: readonly string[]): string | null {
     try {
       const node = JSON.parse(lines[i]);
       const payload = node?.payload ?? node;
-      if (payload?.type !== "message" || payload?.role !== "assistant")
-        continue;
+      if (payload?.type !== "message" || payload?.role !== "assistant") continue;
       const content = payload.content;
       if (!Array.isArray(content)) continue;
       for (const part of content) {
@@ -101,8 +100,7 @@ type TailReader = (best: CandidateSession, home: string) => string | null;
 
 /** The Claude/Codex shape: re-open the file the id came from, read its end. */
 function fromTranscript(parse: TailParser): TailReader {
-  return (best) =>
-    best.sourcePath === undefined ? null : parse(tailLines(best.sourcePath));
+  return (best) => (best.sourcePath === undefined ? null : parse(tailLines(best.sourcePath)));
 }
 
 /**
@@ -182,14 +180,11 @@ function resolveOne(
   // reorder the per-call cache every other request reads (C1).
   const eligible = candidatesFor(request.agent).filter(
     (candidate) =>
-      candidate.mtimeMs >= cutoffMs &&
-      !taken.has(candidate.id) &&
-      cwdMatches(request, candidate),
+      candidate.mtimeMs >= cutoffMs && !taken.has(candidate.id) && cwdMatches(request, candidate),
   );
   eligible.sort(
     (left, right) =>
-      Math.abs(left.mtimeMs - request.lastSeenAt) -
-      Math.abs(right.mtimeMs - request.lastSeenAt),
+      Math.abs(left.mtimeMs - request.lastSeenAt) - Math.abs(right.mtimeMs - request.lastSeenAt),
   );
   const best = eligible[0];
   if (best === undefined) {

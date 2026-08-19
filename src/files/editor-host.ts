@@ -182,8 +182,7 @@ export function monacoThemeFor(settings: Settings): MonacoThemeData {
       "editor.background": background,
       "editor.foreground": foreground,
       "editorCursor.foreground": theme.cursor ?? foreground,
-      "editor.selectionBackground":
-        theme.selectionBackground ?? chrome.tabActiveBg,
+      "editor.selectionBackground": theme.selectionBackground ?? chrome.tabActiveBg,
       "editor.lineHighlightBackground": chrome.chrome1,
       "editorLineNumber.foreground": chrome.textFaint,
       "editorLineNumber.activeForeground": chrome.textMuted,
@@ -229,8 +228,7 @@ export function loadMonaco(): Promise<MonacoApi> {
     // Workers resolve through the same `base: "./"` path that produced two
     // silent packaging failures in the MVP, which is why Gate M runs against a
     // packaged build and not `electron:dev`.
-    const { default: EditorWorker } =
-      await import("monaco-editor/editor/editor.worker?worker");
+    const { default: EditorWorker } = await import("monaco-editor/editor/editor.worker?worker");
     (globalThis as { MonacoEnvironment?: unknown }).MonacoEnvironment = {
       getWorker: () => new EditorWorker(),
     };

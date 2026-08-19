@@ -75,9 +75,7 @@ describe("shell discovery", () => {
         candidate === "C:\\Windows\\System32\\powershell.exe",
     );
 
-    expect(launch.executable).toBe(
-      "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
-    );
+    expect(launch.executable).toBe("C:\\Program Files\\PowerShell\\7\\pwsh.exe");
   });
 
   it("injects the prompt that carries OSC 133 and OSC 9;9", () => {
@@ -86,12 +84,7 @@ describe("shell discovery", () => {
     // git branch, and prompt-ready attention state all at once.
     const launch = buildShellLaunch(env, () => true);
 
-    expect(launch.args).toEqual([
-      "-NoLogo",
-      "-NoExit",
-      "-Command",
-      PROMPT_INTEGRATION,
-    ]);
+    expect(launch.args).toEqual(["-NoLogo", "-NoExit", "-Command", PROMPT_INTEGRATION]);
     expect(PROMPT_INTEGRATION).toContain("]9;9;");
     expect(PROMPT_INTEGRATION).toContain("]133;A");
     expect(PROMPT_INTEGRATION).toContain("]133;B");
@@ -117,13 +110,9 @@ describe("resolveOnPath", () => {
   it("finds an npm .cmd shim that has no bare .exe anywhere", () => {
     // The whole reason this exists. Probing the bare name, or appending only
     // `.exe`, reports "not installed" on a machine that has the agent.
-    expect(
-      resolveOnPath(
-        "claude",
-        env,
-        (candidate) => candidate === "C:\\npm\\claude.cmd",
-      ),
-    ).toBe("C:\\npm\\claude.cmd");
+    expect(resolveOnPath("claude", env, (candidate) => candidate === "C:\\npm\\claude.cmd")).toBe(
+      "C:\\npm\\claude.cmd",
+    );
   });
 
   it("prefers an earlier PATH directory over a later one", () => {
@@ -148,18 +137,12 @@ describe("resolveOnPath", () => {
 
   it("skips relative PATH entries", () => {
     const probed: string[] = [];
-    resolveOnPath(
-      "x",
-      { PATH: ".;..\\bin;C:\\bin" } as NodeJS.ProcessEnv,
-      (c) => {
-        probed.push(c);
-        return false;
-      },
-    );
+    resolveOnPath("x", { PATH: ".;..\\bin;C:\\bin" } as NodeJS.ProcessEnv, (c) => {
+      probed.push(c);
+      return false;
+    });
 
-    expect(probed.every((candidate) => candidate.startsWith("C:\\bin"))).toBe(
-      true,
-    );
+    expect(probed.every((candidate) => candidate.startsWith("C:\\bin"))).toBe(true);
   });
 
   it("returns null when nothing matches", () => {
@@ -199,9 +182,7 @@ describe("parseProcessTable", () => {
       l: 'node.exe "C:\\a b\\cli.js" --flag=1,2',
     });
 
-    expect(parseProcessTable(line)[0].args).toBe(
-      'node.exe "C:\\a b\\cli.js" --flag=1,2',
-    );
+    expect(parseProcessTable(line)[0].args).toBe('node.exe "C:\\a b\\cli.js" --flag=1,2');
   });
 
   it("skips malformed lines instead of blinding every pane", () => {
@@ -233,9 +214,7 @@ describe("collectDescendants", () => {
       row(102, 101, "claude.exe", 30),
     ];
 
-    expect(
-      collectDescendants(rows, 100).map((d) => [d.row.pid, d.depth]),
-    ).toEqual([
+    expect(collectDescendants(rows, 100).map((d) => [d.row.pid, d.depth])).toEqual([
       [101, 1],
       [102, 2],
     ]);

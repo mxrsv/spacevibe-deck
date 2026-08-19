@@ -74,9 +74,7 @@ function AgentStatusRailChrome() {
   // an animation only replays when its element is new.
   const ping = useSignal(0);
   const activeTab = tabViews.value[activeTabIndex.value];
-  const stagePanes = (activeTab?.panes ?? NO_PANES).filter(
-    (pane) => pane.agent !== null,
-  );
+  const stagePanes = (activeTab?.panes ?? NO_PANES).filter((pane) => pane.agent !== null);
   return (
     <DesktopChrome
       sidebar
@@ -108,10 +106,7 @@ function AgentStatusRailChrome() {
                 >
                   <header class="asr-stage__head">
                     {pane.agent !== null && (
-                      <AgentGlyph
-                        agent={pane.agent}
-                        className="asr-stage__logo"
-                      />
+                      <AgentGlyph agent={pane.agent} className="asr-stage__logo" />
                     )}
                     <span>{pane.agent}</span>
                   </header>

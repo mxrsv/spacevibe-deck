@@ -45,8 +45,7 @@ beforeEach(() => {
   emitted = [];
   unregistered = [];
   manager = new PtyManager({
-    emitToOwner: (paneId, event, payload) =>
-      emitted.push({ paneId, event, payload }),
+    emitToOwner: (paneId, event, payload) => emitted.push({ paneId, event, payload }),
     register: () => {},
     unregister: (paneId) => unregistered.push(paneId),
     assertOwner: () => {},
@@ -55,17 +54,14 @@ beforeEach(() => {
 
 /** Feed bytes through the real batcher, as node-pty's onData would. */
 function fireData(text: string): void {
-  const handler = fakePty.onData.mock.calls[0]?.[0] as
-    | ((chunk: unknown) => void)
-    | undefined;
+  const handler = fakePty.onData.mock.calls[0]?.[0] as ((chunk: unknown) => void) | undefined;
   handler?.(Buffer.from(text, "utf8"));
 }
 
 /** Trigger the exit callback node-pty would have fired. */
 function fireExit(): void {
   const handler = fakePty.onExit.mock.calls[0]?.[0] as
-    | ((event: { exitCode: number }) => void)
-    | undefined;
+    ((event: { exitCode: number }) => void) | undefined;
   handler?.({ exitCode: 0 });
 }
 

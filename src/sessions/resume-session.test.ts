@@ -17,9 +17,7 @@ function entry(over: Partial<SessionEntry> = {}): SessionEntry {
 
 function deps(over: Partial<Parameters<typeof resumeSession>[1]> = {}) {
   return {
-    materialize: vi
-      .fn<(intent: MaterializeIntent) => Promise<boolean>>()
-      .mockResolvedValue(true),
+    materialize: vi.fn<(intent: MaterializeIntent) => Promise<boolean>>().mockResolvedValue(true),
     customAgents: [],
     isDead: () => false,
     ...over,
@@ -32,9 +30,7 @@ describe("resumeSession", () => {
     await expect(resumeSession(entry(), d)).resolves.toBe(true);
     const intent = vi.mocked(d.materialize).mock.calls[0][0];
     expect(intent.cwds).toEqual(["/work/repo"]);
-    expect(intent.paneCommands).toEqual([
-      "claude --resume 8f0f0e2c-1111-2222-3333-444455556666",
-    ]);
+    expect(intent.paneCommands).toEqual(["claude --resume 8f0f0e2c-1111-2222-3333-444455556666"]);
     expect(intent.workspacePath).toBe("/work/repo");
     expect(intent.agent).toBeUndefined();
   });
@@ -42,9 +38,7 @@ describe("resumeSession", () => {
   it("uses codex's own resume form", async () => {
     const d = deps();
     await resumeSession(entry({ agent: "codex", sessionId: "abc123" }), d);
-    expect(vi.mocked(d.materialize).mock.calls[0][0].paneCommands).toEqual([
-      "codex resume abc123",
-    ]);
+    expect(vi.mocked(d.materialize).mock.calls[0][0].paneCommands).toEqual(["codex resume abc123"]);
   });
 
   // A dead cwd landing in $HOME is worse than not resuming (spec §4).
@@ -56,14 +50,10 @@ describe("resumeSession", () => {
 
   it("refuses a session id that fails the PTY-safe pattern", async () => {
     const d = deps();
-    await expect(
-      resumeSession(entry({ sessionId: "a; rm -rf /" }), d),
-    ).resolves.toBe(false);
+    await expect(resumeSession(entry({ sessionId: "a; rm -rf /" }), d)).resolves.toBe(false);
     // An empty id degrades the same way, and every string `.includes("")`, so
     // the "did the id survive into the command" guard cannot catch it alone.
-    await expect(resumeSession(entry({ sessionId: "" }), d)).resolves.toBe(
-      false,
-    );
+    await expect(resumeSession(entry({ sessionId: "" }), d)).resolves.toBe(false);
     expect(d.materialize).not.toHaveBeenCalled();
   });
 });

@@ -5,13 +5,7 @@
  * cutover is a clean install, and this loader discards anything it did not
  * write itself.
  */
-import {
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   CACHE_TEMP_SUFFIX,

@@ -38,12 +38,8 @@ describe("tildify", () => {
 
   it("shortens Windows drive and UNC homes case-insensitively", () => {
     expect(tildify("c:\\USERS\\Kai\\Repo", "C:\\Users\\kai")).toBe("~\\Repo");
-    expect(
-      tildify("\\\\SERVER\\Share\\Kai\\Repo", "\\\\server\\share\\kai"),
-    ).toBe("~\\Repo");
-    expect(tildify("C:\\Users\\Kaiser", "C:\\Users\\Kai")).toBe(
-      "C:\\Users\\Kaiser",
-    );
+    expect(tildify("\\\\SERVER\\Share\\Kai\\Repo", "\\\\server\\share\\kai")).toBe("~\\Repo");
+    expect(tildify("C:\\Users\\Kaiser", "C:\\Users\\Kai")).toBe("C:\\Users\\Kaiser");
   });
 });
 

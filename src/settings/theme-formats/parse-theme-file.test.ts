@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  labelFromFileName,
-  parseThemeFile,
-  themeIdForFile,
-} from "./parse-theme-file";
+import { labelFromFileName, parseThemeFile, themeIdForFile } from "./parse-theme-file";
 
 /** A Windows Terminal scheme as windowsterminalthemes.dev exports one. */
 const WINDOWS_TERMINAL = JSON.stringify({
@@ -119,10 +115,7 @@ describe("parseThemeFile — Windows Terminal", () => {
 });
 
 describe("parseThemeFile — iTerm2", () => {
-  const { result } = parseThemeFile(
-    "tokyo-night_storm.itermcolors",
-    ITERMCOLORS,
-  );
+  const { result } = parseThemeFile("tokyo-night_storm.itermcolors", ITERMCOLORS);
 
   it("converts unit floats and maps Ansi N onto the palette", () => {
     expect(result.ok && result.colors.background).toBe("#000000");

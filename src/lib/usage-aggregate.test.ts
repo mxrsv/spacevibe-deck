@@ -12,18 +12,8 @@ const ORIGINAL_TZ = process.env.TZ;
 process.env.TZ = "America/New_York";
 
 import { afterAll, describe, expect, it } from "vitest";
-import {
-  agentTotals,
-  breakdownRows,
-  dailyRows,
-  dailyTotals,
-  localDayKey,
-} from "./usage-aggregate";
-import {
-  EMPTY_COUNTERS,
-  type UsageBucket,
-  type UsageCounters,
-} from "./usage-snapshot";
+import { agentTotals, breakdownRows, dailyRows, dailyTotals, localDayKey } from "./usage-aggregate";
+import { EMPTY_COUNTERS, type UsageBucket, type UsageCounters } from "./usage-snapshot";
 
 afterAll(() => {
   // Worker processes are reused across test files; a leaked TZ would make
@@ -51,12 +41,8 @@ function bucket(
 
 describe("localDayKey", () => {
   it("is a meaningful test — the pinned zone really does shift", () => {
-    expect(
-      new Date(Date.parse("2026-03-08T06:30:00Z")).getTimezoneOffset(),
-    ).toBe(300);
-    expect(
-      new Date(Date.parse("2026-03-08T07:30:00Z")).getTimezoneOffset(),
-    ).toBe(240);
+    expect(new Date(Date.parse("2026-03-08T06:30:00Z")).getTimezoneOffset()).toBe(300);
+    expect(new Date(Date.parse("2026-03-08T07:30:00Z")).getTimezoneOffset()).toBe(240);
   });
 
   it("keeps both sides of a spring-forward transition on the same local day", () => {
@@ -293,11 +279,7 @@ describe("dailyRows", () => {
       afterFallBack,
     );
 
-    expect(rows.map((row) => row.day)).toEqual([
-      "2026-11-02",
-      "2026-11-01",
-      "2026-10-31",
-    ]);
+    expect(rows.map((row) => row.day)).toEqual(["2026-11-02", "2026-11-01", "2026-10-31"]);
   });
 
   it("drops anything older than the window", () => {
@@ -315,9 +297,7 @@ describe("dailyRows", () => {
   });
 
   it("returns nothing for a non-positive or unusable window", () => {
-    const one = [
-      bucket("2026-08-10T12:00:00Z", "claude", "claude-opus-5", { output: 1 }),
-    ];
+    const one = [bucket("2026-08-10T12:00:00Z", "claude", "claude-opus-5", { output: 1 })];
 
     expect(dailyRows(one, 0, nowMs)).toEqual([]);
     expect(dailyRows(one, -1, nowMs)).toEqual([]);
@@ -379,10 +359,7 @@ describe("dailyTotals", () => {
     );
 
     expect(rows.map((row) => row.day)).toEqual(["2026-08-10", "2026-08-09"]);
-    expect(rows[0].agents.map((agent) => agent.agent)).toEqual([
-      "claude",
-      "codex",
-    ]);
+    expect(rows[0].agents.map((agent) => agent.agent)).toEqual(["claude", "codex"]);
     expect(rows[1].agents.map((agent) => agent.agent)).toEqual(["claude"]);
   });
 
@@ -402,10 +379,7 @@ describe("dailyTotals", () => {
 
     const [claude, codex] = rows[0].agents;
     expect(rows[0].counters.output).toBe(2000);
-    expect(rows[0].costUsd).toBeCloseTo(
-      (claude.costUsd ?? 0) + (codex.costUsd ?? 0),
-      10,
-    );
+    expect(rows[0].costUsd).toBeCloseTo((claude.costUsd ?? 0) + (codex.costUsd ?? 0), 10);
   });
 
   it("prices what it can when one agent on the day is entirely unpriced", () => {
@@ -441,9 +415,7 @@ describe("dailyTotals", () => {
       nowMs,
     );
 
-    expect(rows[0].agents.map((agent) => agent.counters.output)).toEqual([
-      3, 5,
-    ]);
+    expect(rows[0].agents.map((agent) => agent.counters.output)).toEqual([3, 5]);
     expect(rows[0].counters.output).toBe(8);
   });
 
@@ -463,9 +435,7 @@ describe("dailyTotals", () => {
   });
 
   it("returns nothing for a non-positive or unusable window", () => {
-    const one = [
-      bucket("2026-08-10T12:00:00Z", "claude", "claude-opus-5", { output: 1 }),
-    ];
+    const one = [bucket("2026-08-10T12:00:00Z", "claude", "claude-opus-5", { output: 1 })];
 
     expect(dailyTotals(one, 0, nowMs)).toEqual([]);
     expect(dailyTotals(one, 3, Number.NaN)).toEqual([]);

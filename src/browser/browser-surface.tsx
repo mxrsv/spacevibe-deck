@@ -31,11 +31,7 @@ export function BrowserSurface(props: BrowserSurfaceProps) {
   }
   return (
     <div class="stage__surface stage__surface--browser">
-      <BrowserPanel
-        onClose={props.onClose}
-        hidden={props.hidden}
-        client={props.client}
-      />
+      <BrowserPanel onClose={props.onClose} hidden={props.hidden} client={props.client} />
     </div>
   );
 }

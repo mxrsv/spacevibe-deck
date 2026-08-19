@@ -28,9 +28,7 @@ function sourceFiles(dir: string): readonly string[] {
 }
 
 function specifiers(source: string): readonly string[] {
-  return [...source.matchAll(/from\s+["']([^"']+)["']/g)].map(
-    (match) => match[1],
-  );
+  return [...source.matchAll(/from\s+["']([^"']+)["']/g)].map((match) => match[1]);
 }
 
 describe("gate-m graph isolation", () => {
@@ -41,9 +39,7 @@ describe("gate-m graph isolation", () => {
         continue;
       }
       const source = readFileSync(file, "utf8");
-      if (
-        specifiers(source).some((specifier) => specifier.includes("gate-m"))
-      ) {
+      if (specifiers(source).some((specifier) => specifier.includes("gate-m"))) {
         offenders.push(file);
       }
     }
@@ -58,19 +54,13 @@ describe("gate-m graph isolation", () => {
   it("only the dedicated Vite config builds the gate graph", () => {
     const shipping = readFileSync(join(REPO_ROOT, "vite.config.ts"), "utf8");
     expect(shipping).not.toContain("gate-m");
-    const gate = readFileSync(
-      join(REPO_ROOT, "vite.gate-m.config.mjs"),
-      "utf8",
-    );
+    const gate = readFileSync(join(REPO_ROOT, "vite.gate-m.config.mjs"), "utf8");
     expect(gate).toContain('input: "gate-m.html"');
     expect(gate).toContain("dist-gate-m-renderer");
   });
 
   it("the host loads the gate page only behind DECK_GATE_M=1", () => {
-    const main = readFileSync(
-      join(REPO_ROOT, "electron", "main.ts"),
-      "utf8",
-    );
+    const main = readFileSync(join(REPO_ROOT, "electron", "main.ts"), "utf8");
     expect(main).toContain('process.env.DECK_GATE_M === "1"');
     // The gate page is referenced exactly once, inside the GATE_M branch,
     // and the normal path still loads the application renderer.

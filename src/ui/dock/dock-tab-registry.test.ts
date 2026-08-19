@@ -1,17 +1,9 @@
 import { describe, expect, it } from "vitest";
-import {
-  availableDockTabs,
-  DOCK_TABS,
-  resolveDockTab,
-} from "./dock-tab-registry";
+import { availableDockTabs, DOCK_TABS, resolveDockTab } from "./dock-tab-registry";
 
 describe("DOCK_TABS", () => {
   it("lists explorer, usage, sessions in that order", () => {
-    expect(DOCK_TABS.map((tab) => tab.id)).toEqual([
-      "explorer",
-      "usage",
-      "sessions",
-    ]);
+    expect(DOCK_TABS.map((tab) => tab.id)).toEqual(["explorer", "usage", "sessions"]);
   });
 
   it("uses sentence-case labels (DL-4.4, §8)", () => {
@@ -29,11 +21,7 @@ describe("DOCK_TABS", () => {
 
 describe("availableDockTabs", () => {
   it("returns all three tabs when sessions is available", () => {
-    expect(availableDockTabs(true).map((tab) => tab.id)).toEqual([
-      "explorer",
-      "usage",
-      "sessions",
-    ]);
+    expect(availableDockTabs(true).map((tab) => tab.id)).toEqual(["explorer", "usage", "sessions"]);
   });
 
   it("drops sessions entirely — not disabled, not shown — when unavailable", () => {

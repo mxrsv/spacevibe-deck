@@ -1,10 +1,6 @@
 import { Store } from "../host/store-host";
 import { getVersion } from "../host/shell-host";
-import {
-  resolveAttemptOutcome,
-  type AttemptOutcome,
-  type UpdateAttempt,
-} from "./update-attempt";
+import { resolveAttemptOutcome, type AttemptOutcome, type UpdateAttempt } from "./update-attempt";
 
 /**
  * Persistence for the install breadcrumb. Its own file, not `settings.json`:
@@ -30,10 +26,7 @@ async function open(): Promise<Store> {
  * Written and flushed synchronously — an autosave timer would lose the race
  * with an installer that exits the process.
  */
-export async function recordUpdateAttempt(
-  targetVersion: string,
-  startedAt: number,
-): Promise<void> {
+export async function recordUpdateAttempt(targetVersion: string, startedAt: number): Promise<void> {
   const store = await open();
   const attempt: UpdateAttempt = {
     targetVersion,

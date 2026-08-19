@@ -22,10 +22,7 @@ import {
   type MonacoApi,
 } from "../editor-host";
 import { clearReveal, documentFor, pendingReveal } from "../file-surface-store";
-import {
-  editorSettings,
-  type FileSurfaceController,
-} from "../file-surface-controller";
+import { editorSettings, type FileSurfaceController } from "../file-surface-controller";
 import { ExternalChangeBar } from "./external-change-bar";
 
 export interface FileEditorProps {
@@ -75,9 +72,19 @@ export function FileEditor(props: FileEditorProps) {
    * ever work on a cold open.
    */
   const reveal = pendingReveal.value;
+  /**
+   * Whether the render below actually places `.fileview__editor` in the DOM.
+   * The mount effect keys on this, not `[]`: on a cold open (session restore)
+   * the document is not in the store yet, the component renders null, and an
+   * effect that ran once against a null host would never try again — the
+   * editor stayed blank for good (measured 2026-08-19 over CDP).
+   */
+  const editorHostPresent = document !== undefined && document.refusal === null;
 
-  // Mount once. Monaco arrives through a dynamic import, so this effect can
-  // resolve after the component has already unmounted — hence `cancelled`.
+  // Mount while the host div exists. Monaco arrives through a dynamic import,
+  // so this effect can resolve after the component has already unmounted —
+  // hence `cancelled`. Flipping to a refusal unmounts the host, and the
+  // cleanup below disposes the editor with it.
   useEffect(() => {
     const host = hostRef.current;
     if (host === null) {
@@ -147,10 +154,7 @@ export function FileEditor(props: FileEditorProps) {
           const root = editor.getDomNode();
           // `globalThis.document`: this component's own `document` const is
           // the FILE document (`documentFor`), which shadows the DOM's.
-          if (
-            root === null ||
-            !root.contains(globalThis.document.activeElement)
-          ) {
+          if (root === null || !root.contains(globalThis.document.activeElement)) {
             return false;
           }
           if (command === "select-all") {
@@ -189,7 +193,7 @@ export function FileEditor(props: FileEditorProps) {
         }
       }
     };
-  }, []);
+  }, [editorHostPresent]);
 
   // Swap the model when the path changes, and re-apply the content whenever the
   // document's baseline moves — a reload, or the first read landing.
@@ -204,10 +208,7 @@ export function FileEditor(props: FileEditorProps) {
     }
     let model = handle.models.get(props.path);
     if (model === undefined) {
-      model = monaco.editor.createModel(
-        document.text,
-        languageForPath(props.path) ?? undefined,
-      );
+      model = monaco.editor.createModel(document.text, languageForPath(props.path) ?? undefined);
       handle.models.set(props.path, model);
     }
     handle.applying = true;
@@ -226,9 +227,7 @@ export function FileEditor(props: FileEditorProps) {
         editor.setModel(model);
         const saved = handle.viewStates.get(props.path);
         if (saved !== undefined) {
-          editor.restoreViewState(
-            saved as Parameters<typeof editor.restoreViewState>[0],
-          );
+          editor.restoreViewState(saved as Parameters<typeof editor.restoreViewState>[0]);
         }
       }
     } finally {
@@ -243,11 +242,7 @@ export function FileEditor(props: FileEditorProps) {
     // revealing line 65 of nothing would spend the request and land the caret
     // at 1:1 for good. Waiting for the content means the reveal runs on the
     // NEXT pass, which `document.file` above is already a dep of.
-    if (
-      reveal !== null &&
-      reveal.path === props.path &&
-      document.file !== null
-    ) {
+    if (reveal !== null && reveal.path === props.path && document.file !== null) {
       editor.revealLineInCenter(reveal.line);
       editor.setPosition({ lineNumber: reveal.line, column: reveal.column });
       editor.focus();
@@ -288,15 +283,12 @@ export function FileEditor(props: FileEditorProps) {
           <ExternalChangeBar
             prompt={document.prompt}
             fileName={baseName(props.path)}
-            onResolve={(resolution) =>
-              void props.controller.resolve(props.path, resolution)
-            }
+            onResolve={(resolution) => void props.controller.resolve(props.path, resolution)}
           />
           {document.gone && document.prompt === null && (
             <div class="filebar filebar--quiet" role="status">
               <span class="filebar__text">
-                {baseName(props.path)} was deleted on disk. This is the last
-                content Deck read.
+                {baseName(props.path)} was deleted on disk. This is the last content Deck read.
               </span>
             </div>
           )}

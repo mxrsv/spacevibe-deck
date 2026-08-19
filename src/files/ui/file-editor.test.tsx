@@ -15,10 +15,7 @@ interface StubModel {
   language: string | undefined;
   getValue(): string;
   getFullModelRange(): string;
-  pushEditOperations(
-    before: unknown,
-    edits: { range: string; text: string }[],
-  ): null;
+  pushEditOperations(before: unknown, edits: { range: string; text: string }[]): null;
   dispose(): void;
 }
 
@@ -28,8 +25,7 @@ const stub = {
   currentModel: null as StubModel | null,
   contentHandler: null as (() => void) | null,
   cursorHandler: null as
-    | ((event: { position: { lineNumber: number; column: number } }) => void)
-    | null,
+    ((event: { position: { lineNumber: number; column: number } }) => void) | null,
   focused: 0,
   /** Stands in for "document.activeElement is inside the editor". */
   hasTextFocus: false,
@@ -60,8 +56,7 @@ function makeModel(value: string, language: string | undefined): StubModel {
 }
 
 vi.mock("../editor-host", async () => {
-  const actual =
-    await vi.importActual<typeof import("../editor-host")>("../editor-host");
+  const actual = await vi.importActual<typeof import("../editor-host")>("../editor-host");
   return {
     ...actual,
     loadMonaco: async () => ({
@@ -73,9 +68,7 @@ vi.mock("../editor-host", async () => {
               stub.contentHandler = handler;
             },
             onDidChangeCursorPosition: (
-              handler: (event: {
-                position: { lineNumber: number; column: number };
-              }) => void,
+              handler: (event: { position: { lineNumber: number; column: number } }) => void,
             ) => {
               stub.cursorHandler = handler;
             },
@@ -95,10 +88,7 @@ vi.mock("../editor-host", async () => {
             revealLineInCenter: (line: number) => {
               stub.revealed.push(line);
             },
-            setPosition: (position: {
-              lineNumber: number;
-              column: number;
-            }) => {
+            setPosition: (position: { lineNumber: number; column: number }) => {
               stub.position = position;
             },
             // Containment stands in for "the caret is in the editor" — the
@@ -220,6 +210,25 @@ describe("FileEditor", () => {
     expect(host.querySelector(".fileview__editor")).toBeNull();
   });
 
+  it("mounts the editor when the document lands AFTER the first render", async () => {
+    // Session restore's cold open: the component mounts while the store has
+    // no document for the path yet, so the first render is null and the host
+    // div is not in the DOM when the mount effect first runs.
+    mount();
+    await act(async () => {});
+    expect(host.querySelector(".fileview__editor")).toBeNull();
+
+    await act(async () => {
+      openFileTab("/r", PATH, { keep: true });
+      updateDocument(PATH, { file: textFile(), text: "const a = 1;\n" });
+    });
+    await act(async () => {});
+
+    expect(host.querySelector(".fileview__editor")).not.toBeNull();
+    expect(stub.themes).toContain("deck");
+    expect(stub.currentModel?.getValue()).toBe("const a = 1;\n");
+  });
+
   it("mounts an editor for a readable file", async () => {
     openFileTab("/r", PATH, { keep: true });
     updateDocument(PATH, { file: textFile(), text: "const a = 1;\n" });
@@ -291,10 +300,7 @@ describe("FileEditor", () => {
     await act(async () => {});
 
     const buttons = host.querySelectorAll<HTMLButtonElement>(".filebar__btn");
-    expect([...buttons].map((b) => b.textContent)).toEqual([
-      "Reload",
-      "Keep mine",
-    ]);
+    expect([...buttons].map((b) => b.textContent)).toEqual(["Reload", "Keep mine"]);
     buttons[0].click();
     expect(resolve).toHaveBeenCalledWith(PATH, "reload");
   });

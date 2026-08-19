@@ -1,5 +1,4 @@
-import { getCurrentWebview } from "../host/window-host";
-import { getCurrentWindow } from "../host/window-host";
+import { getCurrentWebview, getCurrentWindow } from "../host/window-host";
 import type { UnlistenFn } from "../host/bridge";
 
 export interface FileDropHandlers {
@@ -9,9 +8,7 @@ export interface FileDropHandlers {
   onLeave(): void;
 }
 
-export async function installFileDrop(
-  handlers: FileDropHandlers,
-): Promise<UnlistenFn> {
+export async function installFileDrop(handlers: FileDropHandlers): Promise<UnlistenFn> {
   // The callback below runs synchronously → fetch scaleFactor up front.
   // Known limitation: if the window moves to a monitor with a different
   // scale factor mid-session, the cached value can drift.

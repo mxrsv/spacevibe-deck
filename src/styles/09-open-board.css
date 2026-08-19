@@ -647,8 +647,7 @@
   border-radius: var(--radius-control);
   background-color: color-mix(in srgb, var(--bg) 80%, var(--tone));
   background-image:
-    linear-gradient(var(--bar), var(--bar)),
-    linear-gradient(var(--bar), var(--bar)),
+    linear-gradient(var(--bar), var(--bar)), linear-gradient(var(--bar), var(--bar)),
     linear-gradient(var(--green), var(--green));
   background-repeat: no-repeat;
   background-size:

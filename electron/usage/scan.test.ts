@@ -1,11 +1,4 @@
-import {
-  appendFileSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  utimesSync,
-  writeFileSync,
-} from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -68,10 +61,7 @@ describe("scanAll", () => {
     expect(outcome.codex).toBe("missing");
     const snapshot = buildSnapshot(outcome, NOW);
     expect(snapshot.buckets).toEqual([]);
-    expect(snapshot.sources.map((source) => source.state)).toEqual([
-      "missing",
-      "missing",
-    ]);
+    expect(snapshot.sources.map((source) => source.state)).toEqual(["missing", "missing"]);
   });
 
   it("does not reopen an unchanged file, and the changed flag goes quiet", async () => {
@@ -87,9 +77,7 @@ describe("scanAll", () => {
     pin(file);
     const second = await scanAll(first.cache, home, NOW);
     expect(second.changed).toBe(false);
-    expect(buildSnapshot(second, NOW).buckets).toEqual(
-      buildSnapshot(first, NOW).buckets,
-    );
+    expect(buildSnapshot(second, NOW).buckets).toEqual(buildSnapshot(first, NOW).buckets);
   });
 
   it("resumes a grown file from its offset and rescans a shrunk one from zero", async () => {
@@ -170,9 +158,7 @@ describe("scanAll", () => {
     const outcome = await scanAll(emptyCache(), home, NOW);
     const snapshot = buildSnapshot(outcome, NOW);
     // Counted once, and the copy is not in the file count either.
-    expect(
-      snapshot.buckets.reduce((sum, bucket) => sum + bucket.counters.output, 0),
-    ).toBe(10);
+    expect(snapshot.buckets.reduce((sum, bucket) => sum + bucket.counters.output, 0)).toBe(10);
     expect(snapshot.sources[1]).toMatchObject({
       agent: "codex",
       filesScanned: 1,
@@ -207,10 +193,7 @@ describe("compaction", () => {
     expect(compacted.compacted).toBe(true);
     expect(compacted.entries.size).toBe(0);
     expect(
-      buildSnapshot(second, later).buckets.reduce(
-        (sum, bucket) => sum + bucket.counters.output,
-        0,
-      ),
+      buildSnapshot(second, later).buckets.reduce((sum, bucket) => sum + bucket.counters.output, 0),
     ).toBe(30);
   });
 });
@@ -228,10 +211,7 @@ describe("cross-file dedupe", () => {
     }
     const outcome = await scanAll(emptyCache(), home, NOW);
     expect(
-      buildSnapshot(outcome, NOW).buckets.reduce(
-        (sum, bucket) => sum + bucket.counters.output,
-        0,
-      ),
+      buildSnapshot(outcome, NOW).buckets.reduce((sum, bucket) => sum + bucket.counters.output, 0),
     ).toBe(50);
   });
 });

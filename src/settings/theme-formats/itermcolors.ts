@@ -89,9 +89,7 @@ function readColorDict(body: string): string | null {
 }
 
 function readComponent(body: string, channel: string): number | null {
-  const match = new RegExp(
-    `<key>${channel} Component</key>\\s*<real>([^<]+)</real>`,
-  ).exec(body);
+  const match = new RegExp(`<key>${channel} Component</key>\\s*<real>([^<]+)</real>`).exec(body);
   if (match === null) {
     return null;
   }

@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createStreamDecoder, OutputBatcher } from "./stream";
 
-const tick = () =>
-  new Promise((resolve) => queueMicrotask(() => resolve(null)));
+const tick = () => new Promise((resolve) => queueMicrotask(() => resolve(null)));
 /** Two hops: the batcher re-schedules itself while a backlog remains. */
 const drain = async () => {
   for (let i = 0; i < 20; i += 1) {
@@ -10,9 +9,7 @@ const drain = async () => {
   }
 };
 
-function makeBatcher(
-  overrides: Partial<{ batchMaxBytes: number; queueMaxBytes: number }> = {},
-) {
+function makeBatcher(overrides: Partial<{ batchMaxBytes: number; queueMaxBytes: number }> = {}) {
   const emitted: string[] = [];
   const pause = vi.fn();
   const resume = vi.fn();
@@ -124,9 +121,7 @@ describe("createStreamDecoder", () => {
   it("carries a partial sequence across many chunks", () => {
     const decode = createStreamDecoder();
     // "😀" is F0 9F 98 80 — one byte per call.
-    const parts = [0xf0, 0x9f, 0x98, 0x80].map((byte) =>
-      decode(new Uint8Array([byte])),
-    );
+    const parts = [0xf0, 0x9f, 0x98, 0x80].map((byte) => decode(new Uint8Array([byte])));
 
     expect(parts.join("")).toBe("😀");
   });
@@ -160,9 +155,7 @@ describe("createStreamDecoder on Windows", () => {
     // that never produced a byte.
     const decode = createStreamDecoder();
 
-    expect(decode("\u001b]133;A\u0007PS D:\\TuHoc> ")).toBe(
-      "\u001b]133;A\u0007PS D:\\TuHoc> ",
-    );
+    expect(decode("\u001b]133;A\u0007PS D:\\TuHoc> ")).toBe("\u001b]133;A\u0007PS D:\\TuHoc> ");
   });
 
   it("still holds back a split multi-byte sequence for byte chunks", () => {

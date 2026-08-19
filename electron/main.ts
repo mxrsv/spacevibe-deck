@@ -67,12 +67,7 @@ const PRELOAD = path.join(__dirname, "preload.cjs");
  * the harness graph stays out of the shipping renderer.
  */
 const GATE_M = process.env.DECK_GATE_M === "1";
-const GATE_M_RENDERER_DIR = path.join(
-  __dirname,
-  "..",
-  "..",
-  "dist-gate-m-renderer",
-);
+const GATE_M_RENDERER_DIR = path.join(__dirname, "..", "..", "dist-gate-m-renderer");
 
 const windows = new Map<string, BrowserWindow>();
 const registry = new WindowRegistry();
@@ -130,8 +125,7 @@ const browserPanels = new BrowserPanels({
 });
 
 const pty = new PtyManager({
-  emitToOwner: (paneId, event, payload) =>
-    coordinator.deliver(paneId, event, payload),
+  emitToOwner: (paneId, event, payload) => coordinator.deliver(paneId, event, payload),
   register: (paneId, label) => coordinator.register(paneId, label),
   unregister: (paneId) => coordinator.unregister(paneId),
   assertOwner: (paneId, label) => coordinator.assertAccess(paneId, label),
@@ -315,16 +309,11 @@ function createWindow(label: string): BrowserWindow {
  * would silently kill running agents with no prompt — the exact failure this
  * subsystem exists to prevent.
  */
-async function censusOrDeny(
-  paneIds: readonly number[],
-): Promise<PtyInfo[] | null> {
+async function censusOrDeny(paneIds: readonly number[]): Promise<PtyInfo[] | null> {
   try {
     return await ptyInfo(pty.snapshots(paneIds));
   } catch (error) {
-    console.error(
-      "Deck: cannot read the process table; refusing to act",
-      error,
-    );
+    console.error("Deck: cannot read the process table; refusing to act", error);
     return null;
   }
 }
@@ -339,21 +328,13 @@ const menuState = createMenuState({ registry, emitTo, focused: focusedLabel });
 ipcMain.handle(CHANNELS.spawnShell, (event, { cols, rows, cwd }) =>
   pty.spawn(labelOf(event), { cols, rows, cwd: cwd ?? null }),
 );
-ipcMain.handle(CHANNELS.writePty, (event, { id, data }) =>
-  pty.write(labelOf(event), id, data),
-);
+ipcMain.handle(CHANNELS.writePty, (event, { id, data }) => pty.write(labelOf(event), id, data));
 ipcMain.handle(CHANNELS.resizePty, (event, { id, cols, rows }) =>
   pty.resize(labelOf(event), id, cols, rows),
 );
-ipcMain.handle(CHANNELS.killPty, (event, { id }) =>
-  pty.kill(labelOf(event), id),
-);
+ipcMain.handle(CHANNELS.killPty, (event, { id }) => pty.kill(labelOf(event), id));
 ipcMain.handle(CHANNELS.ptyInfo, (_event, { ids, agents, waitForCwd }) =>
-  ptyInfo(
-    pty.snapshots(ids),
-    validateAgentProcessMatchers(agents),
-    waitForCwd !== false,
-  ),
+  ptyInfo(pty.snapshots(ids), validateAgentProcessMatchers(agents), waitForCwd !== false),
 );
 
 // -------------------------------------------------------------- Services
@@ -421,12 +402,8 @@ ipcMain.handle(CHANNELS.claimTransfer, (event, { token }) =>
 ipcMain.handle(CHANNELS.commitTransfer, (event, { token }) =>
   coordinator.commit(token, labelOf(event)),
 );
-ipcMain.handle(CHANNELS.abortTransfer, (_event, { token }) =>
-  coordinator.abort(token),
-);
-ipcMain.handle(CHANNELS.windowBootMode, (event) =>
-  registry.bootMode(labelOf(event)),
-);
+ipcMain.handle(CHANNELS.abortTransfer, (_event, { token }) => coordinator.abort(token));
+ipcMain.handle(CHANNELS.windowBootMode, (event) => registry.bootMode(labelOf(event)));
 
 /**
  * Open a window to receive a transferred pane.
@@ -582,13 +559,7 @@ app.on("before-quit", (event) => {
     // Sent even when nothing is busy: the renderer auto-confirms a census that
     // is empty in BOTH dimensions, but only after flushing debounced state to
     // disk. Every window's unsaved files, deduplicated — quit ends them all.
-    if (
-      !emitTo(
-        label,
-        EVENTS.quitRequested,
-        censusFor(requestId, infos, dirtyFiles.all()),
-      )
-    ) {
+    if (!emitTo(label, EVENTS.quitRequested, censusFor(requestId, infos, dirtyFiles.all()))) {
       quitFlight.finish(requestId);
     }
   })();

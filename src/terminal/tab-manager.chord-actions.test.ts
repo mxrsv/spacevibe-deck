@@ -5,19 +5,12 @@ import type { Pane } from "./pane";
 import type { CreatePaneFn } from "./pane-lifecycle";
 import type { TabManager } from "./tab-manager";
 import { closeSearchBar } from "./search-bar";
-import {
-  agentQuickPickerOpen,
-  boardOpen,
-  settingsOpen,
-} from "../chrome/events";
+import { agentQuickPickerOpen, boardOpen, settingsOpen } from "../chrome/events";
 import { activeTabIndex, tabViews } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   fakePane,
   flush,
@@ -181,7 +174,7 @@ describe("createTabManager toggle-settings routing (⌘, / Settings… menu item
   });
 });
 
-// Lỗi 2 fix: ⌘9 used to parse as select-tab-9 (fixed index 8), a no-op with
+// Bug 2 fix: ⌘9 used to parse as select-tab-9 (fixed index 8), a no-op with
 // fewer than 9 tabs and just plain wrong with more — macOS convention
 // (Safari, Chrome, iTerm2, Terminal.app) is that ⌘9 always jumps to the
 // LAST tab, whatever the current count.
@@ -269,9 +262,7 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
   /** ⌘F, type, Escape — the exact flow the shortcut exists to continue. */
   function searchThenClose(pane: Pane, tm: TabManager, query: string): void {
     tm.runAction("find");
-    const input = pane.element.querySelector(
-      ".search-bar__input",
-    ) as HTMLInputElement;
+    const input = pane.element.querySelector(".search-bar__input") as HTMLInputElement;
     input.value = query;
     input.dispatchEvent(new Event("input", { bubbles: true }));
     closeSearchBar();
@@ -290,9 +281,7 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
     await flush();
 
     searchThenClose(panes.get(1)!, tm, "needle");
-    const findNextSpy = panes.get(1)!.search.findNext as ReturnType<
-      typeof vi.fn
-    >;
+    const findNextSpy = panes.get(1)!.search.findNext as ReturnType<typeof vi.fn>;
     findNextSpy.mockClear(); // drop the incremental-typing call above
 
     settingsOpen.value = true;
@@ -321,9 +310,7 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
     await flush();
 
     searchThenClose(panes.get(1)!, tm, "needle");
-    const findPrevSpy = panes.get(1)!.search.findPrevious as ReturnType<
-      typeof vi.fn
-    >;
+    const findPrevSpy = panes.get(1)!.search.findPrevious as ReturnType<typeof vi.fn>;
     findPrevSpy.mockClear();
 
     boardOpen.value = true;
@@ -358,14 +345,10 @@ describe("createTabManager find-next / find-previous (⌘G / ⌘⇧G repeat the 
     await flush();
 
     tm.runAction("find"); // opens the bar
-    const input = panes
-      .get(1)!
-      .element.querySelector(".search-bar__input") as HTMLInputElement;
+    const input = panes.get(1)!.element.querySelector(".search-bar__input") as HTMLInputElement;
     input.value = "needle";
     input.dispatchEvent(new Event("input", { bubbles: true }));
-    const findNextSpy = panes.get(1)!.search.findNext as ReturnType<
-      typeof vi.fn
-    >;
+    const findNextSpy = panes.get(1)!.search.findNext as ReturnType<typeof vi.fn>;
     findNextSpy.mockClear(); // drop the incremental-typing call above
     input.focus(); // bar stays OPEN — caret sits in its own input, not closed
 
@@ -534,9 +517,7 @@ describe("createTabManager copy-cwd (⌘⇧C / menu Edit)", () => {
     await flush();
 
     expect(writelnSpy).toHaveBeenCalledTimes(1);
-    expect(writelnSpy.mock.calls[0]![0]).toContain(
-      "Couldn't copy the working directory",
-    );
+    expect(writelnSpy.mock.calls[0]![0]).toContain("Couldn't copy the working directory");
 
     tm.dispose();
   });

@@ -47,9 +47,7 @@ describe("BreakdownSection", () => {
 
   it("keeps all six counter classes as separate columns (blocker B4)", () => {
     mount();
-    expect(
-      [...host.querySelectorAll("thead th")].map((cell) => cell.textContent),
-    ).toEqual([
+    expect([...host.querySelectorAll("thead th")].map((cell) => cell.textContent)).toEqual([
       "Agent",
       "Model",
       "Input uncached",
@@ -81,9 +79,7 @@ describe("BreakdownSection", () => {
     mount();
 
     const row = host.querySelector("tbody tr") as HTMLTableRowElement;
-    const cells = [...row.querySelectorAll("th, td")].map(
-      (cell) => cell.textContent,
-    );
+    const cells = [...row.querySelectorAll("th, td")].map((cell) => cell.textContent);
     expect(cells[0]).toBe("Codex");
     expect(cells[1]).toBe("some-unreleased-model-2026-08");
     expect(cells.slice(2, 8)).toEqual(["7", "6", "5", "4", "3", "2"]);

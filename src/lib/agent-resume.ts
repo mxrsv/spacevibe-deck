@@ -8,9 +8,7 @@ import type { CustomAgent } from "./agent-catalog";
 
 /** Wire mirror of `electron/resume/resolve.ts`'s `ResumeRef` — see that file. */
 export type ResumeRef =
-  | { readonly kind: "id"; readonly id: string }
-  | { readonly kind: "latest" }
-  | null;
+  { readonly kind: "id"; readonly id: string } | { readonly kind: "latest" } | null;
 
 /** Wire mirror of `electron/resume/resolve.ts`'s `ResumeRequest`. */
 export interface ResumeRequest {

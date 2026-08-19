@@ -52,11 +52,7 @@ export function normalizeHex(raw: string): string | null {
  * is 255 while an unclamped 1.004 is 256, which formats as `100` and produces a
  * seven-digit string.
  */
-export function hexFromUnitRgb(
-  red: number,
-  green: number,
-  blue: number,
-): string {
+export function hexFromUnitRgb(red: number, green: number, blue: number): string {
   return `#${channel(red)}${channel(green)}${channel(blue)}`;
 }
 

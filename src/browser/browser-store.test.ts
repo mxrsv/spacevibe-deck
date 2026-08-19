@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type {
-  BrowserClient,
-  BrowserGrab,
-  BrowserState,
-} from "./browser-client";
+import type { BrowserClient, BrowserGrab, BrowserState } from "./browser-client";
 import {
   activateBrowserSurface,
   browserNotice,
@@ -54,10 +50,10 @@ beforeEach(() => {
 });
 
 describe("deliverGrab", () => {
-  const target = (
-    paneId: number | null,
-    paste = vi.fn(async () => true),
-  ): GrabTarget => ({ activePaneId: () => paneId, paste });
+  const target = (paneId: number | null, paste = vi.fn(async () => true)): GrabTarget => ({
+    activePaneId: () => paneId,
+    paste,
+  });
 
   it("stops at the clipboard with a pane sitting right there", async () => {
     // The current behaviour (2026-08-16): a grab reaches the clipboard react-grab
@@ -74,10 +70,7 @@ describe("deliverGrab", () => {
 
   it("refuses an empty grab", async () => {
     const paste = vi.fn(async () => true);
-    const outcome = await deliverGrab(
-      { ...GRAB, text: "  " },
-      target(1, paste),
-    );
+    const outcome = await deliverGrab({ ...GRAB, text: "  " }, target(1, paste));
     expect(outcome).toBe("failed");
     expect(paste).not.toHaveBeenCalled();
   });
@@ -85,8 +78,7 @@ describe("deliverGrab", () => {
   // The paste path is kept wired for the revert that flips `GRAB_PASTE_DISABLED`
   // back, so it is still exercised — through the parameter that constant feeds.
   describe("with the paste path enabled", () => {
-    const deliver = (grab: BrowserGrab, to: GrabTarget) =>
-      deliverGrab(grab, to, false);
+    const deliver = (grab: BrowserGrab, to: GrabTarget) => deliverGrab(grab, to, false);
 
     it("pastes into the focused pane", async () => {
       const paste = vi.fn(async () => true);
@@ -161,9 +153,7 @@ describe("initBrowserBridge", () => {
     expect(browserState.value.canGoForward).toBe(true);
 
     onGrab?.({ ...GRAB, count: 2 });
-    await vi.waitFor(() =>
-      expect(browserNotice.value).toBe("2 elements copied to the clipboard"),
-    );
+    await vi.waitFor(() => expect(browserNotice.value).toBe("2 elements copied to the clipboard"));
   });
 
   it("forwards committed navigations to the persistence seam", async () => {
@@ -280,9 +270,7 @@ describe("closeBrowser", () => {
 
   it("reopening after a hide asks for no URL", async () => {
     const client = fakeClient({
-      open: vi.fn(async () =>
-        state({ url: "http://localhost:3000/deep/route" }),
-      ),
+      open: vi.fn(async () => state({ url: "http://localhost:3000/deep/route" })),
     });
     browserState.value = state({ url: "http://localhost:3000/deep/route" });
     await closeBrowser(client);

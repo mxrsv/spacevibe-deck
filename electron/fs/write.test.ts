@@ -28,9 +28,7 @@ describe("writeFileAtomically", () => {
     const target = path.join(root, "atomic.txt");
     await writeFileAtomically(target, "hello\n");
     expect(fs.readFileSync(target, "utf8")).toBe("hello\n");
-    expect(
-      fs.readdirSync(root).filter((name) => name.endsWith(".tmp")),
-    ).toEqual([]);
+    expect(fs.readdirSync(root).filter((name) => name.endsWith(".tmp"))).toEqual([]);
   });
 
   it("creates missing parent directories", async () => {
@@ -90,9 +88,9 @@ describe("writeTextFile", () => {
   });
 
   it("refuses to write outside the root, through a link or otherwise", async () => {
-    await expect(
-      writeTextFile(root, path.join(outside, "secret.txt"), "x", "lf"),
-    ).rejects.toThrow(PathOutsideWorkspaceError);
+    await expect(writeTextFile(root, path.join(outside, "secret.txt"), "x", "lf")).rejects.toThrow(
+      PathOutsideWorkspaceError,
+    );
     await expect(
       writeTextFile(root, path.join(root, "away", "new.txt"), "x", "lf"),
     ).rejects.toThrow(PathOutsideWorkspaceError);
@@ -100,12 +98,8 @@ describe("writeTextFile", () => {
     // deciding, so this cannot be used to write out of the workspace.
     const escape = path.join(root, "escape.txt");
     fs.symlinkSync(path.join(outside, "secret.txt"), escape);
-    await expect(writeTextFile(root, escape, "x", "lf")).rejects.toThrow(
-      PathOutsideWorkspaceError,
-    );
-    expect(fs.readFileSync(path.join(outside, "secret.txt"), "utf8")).not.toBe(
-      "x",
-    );
+    await expect(writeTextFile(root, escape, "x", "lf")).rejects.toThrow(PathOutsideWorkspaceError);
+    expect(fs.readFileSync(path.join(outside, "secret.txt"), "utf8")).not.toBe("x");
     fs.rmSync(escape);
   });
 });
@@ -139,12 +133,8 @@ describe("the temp file is not a way out of the workspace", () => {
     const link = path.join(root, "to-root.txt");
     fs.symlinkSync(root, link);
     try {
-      await expect(writeTextFile(root, link, "x", "lf")).rejects.toThrow(
-        /only save over a file/,
-      );
-      expect(
-        fs.readdirSync(base).filter((name) => name.endsWith(".tmp")),
-      ).toEqual([]);
+      await expect(writeTextFile(root, link, "x", "lf")).rejects.toThrow(/only save over a file/);
+      expect(fs.readdirSync(base).filter((name) => name.endsWith(".tmp"))).toEqual([]);
     } finally {
       fs.unlinkSync(link);
     }

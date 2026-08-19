@@ -1,7 +1,4 @@
-import {
-  agentStatusRailChromeSpecimen,
-  agentStatusRailSpecimen,
-} from "../agent-status-rail";
+import { agentStatusRailChromeSpecimen, agentStatusRailSpecimen } from "../agent-status-rail";
 import {
   agentRailVariantsSpecimen,
   multiAgentGroupingSpecimen,

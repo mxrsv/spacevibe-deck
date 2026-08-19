@@ -1,5 +1,4 @@
-import { invoke } from "../host/bridge";
-import { listen, type UnlistenFn } from "../host/bridge";
+import { invoke, listen, type UnlistenFn } from "../host/bridge";
 import type { PaneProcessInfo } from "../lib/process-info";
 import type { AgentProcessMatcher } from "../lib/agent-catalog";
 export type { AgentProcessMatcher } from "../lib/agent-catalog";
@@ -12,11 +11,7 @@ export interface DetectedAgent {
 
 /** PTY + process-info seam used by TabManager / TerminalManager / close paths. */
 export interface PtyClient {
-  spawnShell(opts: {
-    cols: number;
-    rows: number;
-    cwd: string | null;
-  }): Promise<number>;
+  spawnShell(opts: { cols: number; rows: number; cwd: string | null }): Promise<number>;
   writePty(id: number, data: string): Promise<void>;
   resizePty(id: number, cols: number, rows: number): Promise<void>;
   killPty(id: number): Promise<void>;
@@ -46,9 +41,7 @@ export interface PtyClient {
   /** Answer a `window:close-requested` for THIS window only. */
   confirmCloseWindow(requestId: number): Promise<void>;
   cancelCloseWindow(requestId: number): Promise<void>;
-  listenOutput(
-    handler: (id: number, data: string) => void,
-  ): Promise<UnlistenFn>;
+  listenOutput(handler: (id: number, data: string) => void): Promise<UnlistenFn>;
   listenPromptReady(handler: (id: number) => void): Promise<UnlistenFn>;
   listenExit(handler: (id: number) => void): Promise<UnlistenFn>;
 }
@@ -191,9 +184,7 @@ export function createMemoryPtyClient(
       // Mirrors the real backend: it answers only about what was probed, so a
       // test that declares an agent has to pass its binary to see it back.
       const probed = new Set(names);
-      return [...(options.agents ?? [])].filter((agent) =>
-        probed.has(agent.name),
-      );
+      return [...(options.agents ?? [])].filter((agent) => probed.has(agent.name));
     },
     async confirmQuit() {},
     async cancelQuit() {},

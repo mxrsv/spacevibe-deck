@@ -1,12 +1,4 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -91,9 +83,7 @@ describe("scope", () => {
       directories: [root],
       files: [path.join(root, "src", "index.ts")],
     });
-    expect(registry.watchedDirectories("main")).toEqual(
-      [root, path.join(root, "src")].sort(),
-    );
+    expect(registry.watchedDirectories("main")).toEqual([root, path.join(root, "src")].sort());
   });
 
   it("watches one directory once when it is both expanded and a file's parent", () => {
@@ -117,9 +107,7 @@ describe("scope", () => {
     });
     registry.replace("main", { root, directories: [root], files: [] });
     expect(registry.watchedDirectories("main")).toEqual([root]);
-    expect(watchers.find((w) => w.directory.endsWith("src"))?.closed).toBe(
-      true,
-    );
+    expect(watchers.find((w) => w.directory.endsWith("src"))?.closed).toBe(true);
   });
 
   it("keeps an unchanged directory's watcher across a replace", () => {
@@ -142,9 +130,7 @@ describe("scope", () => {
       statSync: (target) => fs.statSync(target),
     };
     const registry = createWatchRegistry(() => {}, io);
-    expect(() =>
-      registry.replace("main", { root, directories: [root], files: [] }),
-    ).not.toThrow();
+    expect(() => registry.replace("main", { root, directories: [root], files: [] })).not.toThrow();
   });
 
   it("keeps two windows' scopes apart", () => {
@@ -157,9 +143,7 @@ describe("scope", () => {
       files: [],
     });
     expect(registry.watchedDirectories("main")).toEqual([root]);
-    expect(registry.watchedDirectories("deck-2")).toEqual([
-      path.join(root, "src"),
-    ]);
+    expect(registry.watchedDirectories("deck-2")).toEqual([path.join(root, "src")]);
   });
 });
 
@@ -206,9 +190,7 @@ describe("authorization", () => {
       directories: [],
       files: [path.join(root, "src", "ghost.ts")],
     });
-    expect(registry.watchedDirectories("main")).toEqual([
-      path.join(root, "src"),
-    ]);
+    expect(registry.watchedDirectories("main")).toEqual([path.join(root, "src")]);
   });
 });
 
@@ -270,9 +252,9 @@ describe("bounds", () => {
       { length: MAX_WATCH_DIRECTORIES + 1 },
       (_, index) => `/nonexistent-${index}`,
     );
-    expect(() =>
-      registry.replace("main", { root, directories, files: [] }),
-    ).toThrow(TooManyWatchDirectoriesError);
+    expect(() => registry.replace("main", { root, directories, files: [] })).toThrow(
+      TooManyWatchDirectoriesError,
+    );
   });
 
   it("rejects one file over MAX_WATCH_FILES", () => {
@@ -282,21 +264,18 @@ describe("bounds", () => {
       { length: MAX_WATCH_FILES + 1 },
       (_, index) => `/nonexistent-${index}.ts`,
     );
-    expect(() =>
-      registry.replace("main", { root, directories: [], files }),
-    ).toThrow(TooManyWatchFilesError);
+    expect(() => registry.replace("main", { root, directories: [], files })).toThrow(
+      TooManyWatchFilesError,
+    );
   });
 
   it("counts duplicate directories toward the raw cap rather than deduping first", () => {
     const { io } = fakeFs();
     const registry = createWatchRegistry(() => {}, io);
-    const directories = Array.from(
-      { length: MAX_WATCH_DIRECTORIES + 1 },
-      () => root,
+    const directories = Array.from({ length: MAX_WATCH_DIRECTORIES + 1 }, () => root);
+    expect(() => registry.replace("main", { root, directories, files: [] })).toThrow(
+      TooManyWatchDirectoriesError,
     );
-    expect(() =>
-      registry.replace("main", { root, directories, files: [] }),
-    ).toThrow(TooManyWatchDirectoriesError);
   });
 });
 
@@ -305,10 +284,7 @@ describe("events", () => {
     vi.useFakeTimers();
     const events: unknown[] = [];
     const { io, watchers } = fakeFs();
-    const registry = createWatchRegistry(
-      (_label, event) => events.push(event),
-      io,
-    );
+    const registry = createWatchRegistry((_label, event) => events.push(event), io);
     registry.replace("main", {
       root,
       directories: [path.join(root, "src")],
@@ -332,10 +308,7 @@ describe("events", () => {
     vi.useFakeTimers();
     const events: { kind: string }[] = [];
     const { io, watchers } = fakeFs();
-    const registry = createWatchRegistry(
-      (_label, event) => events.push(event),
-      io,
-    );
+    const registry = createWatchRegistry((_label, event) => events.push(event), io);
     registry.replace("main", {
       root,
       directories: [path.join(root, "src")],
@@ -350,10 +323,7 @@ describe("events", () => {
     vi.useFakeTimers();
     const events: unknown[] = [];
     const { io, watchers } = fakeFs();
-    const registry = createWatchRegistry(
-      (_label, event) => events.push(event),
-      io,
-    );
+    const registry = createWatchRegistry((_label, event) => events.push(event), io);
     // `src` is watched only as the parent of one open file, not as a listing.
     registry.replace("main", {
       root,
@@ -397,10 +367,7 @@ describe("teardown", () => {
     vi.useFakeTimers();
     const events: unknown[] = [];
     const { io, watchers } = fakeFs();
-    const registry = createWatchRegistry(
-      (_label, event) => events.push(event),
-      io,
-    );
+    const registry = createWatchRegistry((_label, event) => events.push(event), io);
     registry.replace("main", { root, directories: [root], files: [] });
     watchers[0].fire("readme.md");
     registry.forgetWindow("main");

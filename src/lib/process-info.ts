@@ -33,10 +33,7 @@ const AGENT_DOT_VARS: Readonly<Record<string, string>> = {
 };
 
 function agentColor(agent: string | null): string | undefined {
-  if (
-    agent === null ||
-    !Object.prototype.hasOwnProperty.call(AGENT_DOT_VARS, agent)
-  ) {
+  if (agent === null || !Object.prototype.hasOwnProperty.call(AGENT_DOT_VARS, agent)) {
     return undefined;
   }
   return AGENT_DOT_VARS[agent];
@@ -70,24 +67,16 @@ export function tildify(path: string, home: string): string {
   }
   const windows = isWindowsAbsolute(path) && isWindowsAbsolute(home);
   const root = trimHomeSeparator(home, windows);
-  const comparablePath = windows
-    ? path.replace(/\\/g, "/").toLowerCase()
-    : path;
-  const comparableRoot = windows
-    ? root.replace(/\\/g, "/").toLowerCase()
-    : root;
+  const comparablePath = windows ? path.replace(/\\/g, "/").toLowerCase() : path;
+  const comparableRoot = windows ? root.replace(/\\/g, "/").toLowerCase() : root;
   if (comparablePath === comparableRoot) {
     return "~";
   }
-  const prefix = comparableRoot.endsWith("/")
-    ? comparableRoot
-    : `${comparableRoot}/`;
+  const prefix = comparableRoot.endsWith("/") ? comparableRoot : `${comparableRoot}/`;
   if (!comparablePath.startsWith(prefix)) {
     return path;
   }
-  const suffixStart = comparableRoot.endsWith("/")
-    ? root.length - 1
-    : root.length;
+  const suffixStart = comparableRoot.endsWith("/") ? root.length - 1 : root.length;
   return `~${path.slice(suffixStart)}`;
 }
 
@@ -104,10 +93,7 @@ function headerBadge(info: PaneProcessInfo): string {
   }
 }
 
-export function paneHeaderInfo(
-  info: PaneProcessInfo,
-  home: string,
-): PaneHeaderInfo {
+export function paneHeaderInfo(info: PaneProcessInfo, home: string): PaneHeaderInfo {
   const agent = info.kind === "agent" ? info.agent : null;
   return {
     dotColor: agentColor(agent) ?? "var(--text-faint)",
@@ -117,9 +103,7 @@ export function paneHeaderInfo(
   };
 }
 
-export function explicitAgent(
-  info: PaneProcessInfo | undefined,
-): PaneAgent | null {
+export function explicitAgent(info: PaneProcessInfo | undefined): PaneAgent | null {
   if (info?.kind !== "agent" || info.agent === null) {
     return null;
   }

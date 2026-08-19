@@ -17,10 +17,7 @@ import { sessionsSupported } from "../sessions/sessions-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   type EmitSignal,
   flush,
@@ -119,9 +116,7 @@ afterEach(() => {
  * the memory client's `emitOutput` only reaches listeners registered inside
  * `init()`, so without it the emit is a silent no-op.
  */
-async function mountManagerWithAgentPane(
-  agent: NonNullable<PaneProcessInfo["agent"]>,
-): Promise<{
+async function mountManagerWithAgentPane(agent: NonNullable<PaneProcessInfo["agent"]>): Promise<{
   manager: TabManager;
   pty: ReturnType<typeof createMemoryPtyClient>;
   emitSignal: EmitSignal;
@@ -224,9 +219,7 @@ describe("injectIntoPane", () => {
     if (infoGate.release === undefined) {
       throw new Error("fresh pty_info did not start");
     }
-    infoGate.release([
-      processInfo(paneId, "/repo", "claude", "agent", "claude"),
-    ]);
+    infoGate.release([processInfo(paneId, "/repo", "claude", "agent", "claude")]);
 
     await expect(injection).resolves.toBe("pasted");
     await flush();
@@ -316,10 +309,7 @@ describe("injectIntoPane", () => {
       throw new Error("write gate was not initialized");
     }
     writeControl.release();
-    await expect(Promise.all([first, overlapping])).resolves.toEqual([
-      "pasted",
-      "busy",
-    ]);
+    await expect(Promise.all([first, overlapping])).resolves.toEqual(["pasted", "busy"]);
     expect(outcomeBeforeFirstCompletes).toBe("busy");
     manager.dispose();
   });
@@ -354,10 +344,7 @@ describe("toggle-prompts", () => {
   });
 
   it("says so instead of opening with no pane to paste into", () => {
-    const manager = createTabManager(
-      document.createElement("div"),
-      createMemoryPtyClient(),
-    );
+    const manager = createTabManager(document.createElement("div"), createMemoryPtyClient());
     manager.runAction("toggle-prompts");
     expect(promptsOpen.value).toBe(false);
     expect(persistError.value).toBe("No pane to paste into.");
@@ -383,10 +370,7 @@ describe("toggle-explorer", () => {
   });
 
   it("flips dockOpen on each call, with no pane required", () => {
-    const manager = createTabManager(
-      document.createElement("div"),
-      createMemoryPtyClient(),
-    );
+    const manager = createTabManager(document.createElement("div"), createMemoryPtyClient());
     expect(settings.value.dockOpen).toBe(false);
     manager.runAction("toggle-explorer");
     expect(settings.value.dockOpen).toBe(true);

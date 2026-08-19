@@ -19,10 +19,7 @@ export interface PromptAssetPick {
 }
 
 const REFERENCE_PHRASES: Readonly<
-  Record<
-    PromptAgentId,
-    Readonly<Record<PromptAssetKind, (name: string) => string>>
-  >
+  Record<PromptAgentId, Readonly<Record<PromptAssetKind, (name: string) => string>>>
 > = {
   claude: {
     skill: (name) => `Use the ${name} skill.`,

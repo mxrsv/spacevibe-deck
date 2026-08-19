@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createMemoryTransferClient,
-  type AdoptionPayload,
-} from "./transfer-client";
+import { createMemoryTransferClient, type AdoptionPayload } from "./transfer-client";
 import { adoptTransfer, type AdoptDeps } from "./pane-adopt";
 import type { Pane } from "./pane";
 

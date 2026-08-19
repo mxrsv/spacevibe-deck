@@ -4,10 +4,7 @@ import type { DesktopPlatform } from "./platform";
 const SAFE_CHAR = /[A-Za-z0-9/._+:@%,=~-]/;
 
 /** Escape a path so it can be pasted safely onto a shell command line (iTerm2-style). */
-export function shellEscapePath(
-  path: string,
-  platform: DesktopPlatform,
-): string {
+export function shellEscapePath(path: string, platform: DesktopPlatform): string {
   if (platform === "windows") {
     return `'${path.replace(/'/g, "''")}'`;
   }
@@ -26,10 +23,7 @@ export function shellEscapePath(
 }
 
 /** Escape and join multiple paths with spaces, adding one trailing space. */
-export function shellEscapePaths(
-  paths: readonly string[],
-  platform: DesktopPlatform,
-): string {
+export function shellEscapePaths(paths: readonly string[], platform: DesktopPlatform): string {
   if (paths.length === 0) {
     return "";
   }

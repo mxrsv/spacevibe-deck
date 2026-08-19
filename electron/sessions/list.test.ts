@@ -1,21 +1,11 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  utimesSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { clearSessionsCache, listSessions } from "./list";
 import { CLAUDE_RESTORE_SCAN, readClaudeRecord } from "../resume/claude";
 import type { FileCandidate } from "../resume/head";
-import {
-  CLAUDE_DIR,
-  CLAUDE_PROJECTS_DIR,
-  TRANSCRIPT_EXTENSION,
-} from "../usage/model";
+import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR, TRANSCRIPT_EXTENSION } from "../usage/model";
 
 const T0 = Date.parse("2026-08-01T00:00:00Z");
 
@@ -33,9 +23,7 @@ function claudeSession(
   if (cwd !== null) {
     lines.push(JSON.stringify({ type: "system", sessionId: id, cwd }));
   }
-  lines.push(
-    JSON.stringify({ type: "user", message: { role: "user", content: title } }),
-  );
+  lines.push(JSON.stringify({ type: "user", message: { role: "user", content: title } }));
   writeFileSync(file, lines.join("\n"));
   utimesSync(file, mtimeMs / 1000, mtimeMs / 1000);
 }
@@ -54,10 +42,7 @@ describe("listSessions", () => {
     claudeSession(home, "older", "/a", "first", T0);
     claudeSession(home, "newer", "/b", "second", T0 + 60_000);
     const snapshot = await listSessions(home);
-    expect(snapshot.entries.map((e) => e.sessionId)).toEqual([
-      "newer",
-      "older",
-    ]);
+    expect(snapshot.entries.map((e) => e.sessionId)).toEqual(["newer", "older"]);
   });
 
   it("drops a session whose transcript names no cwd", async () => {

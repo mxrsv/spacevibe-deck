@@ -13,20 +13,8 @@
  * focal stage, spec §4.2's cover-don't-unmount rule) and reuses the same
  * `iconbtn` the tab bar uses so the surface's buttons are the app's buttons.
  */
-import {
-  ArrowClockwise,
-  ArrowLeft,
-  ArrowRight,
-  CursorClick,
-  X,
-} from "@phosphor-icons/react";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "preact/hooks";
+import { ArrowClockwise, ArrowLeft, ArrowRight, CursorClick, X } from "@phosphor-icons/react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { CHROME_ICON, DeckIcon } from "../ui/controls/deck-icon";
 import { shortcutLabel } from "../lib/shortcut-label";
 import { getDesktopEnvironment } from "../lib/platform";
@@ -132,8 +120,7 @@ export function BrowserPanel({
   // react-grab's own copy gesture, which Deck does not own and cannot rebind —
   // but it is still a chord, and DL-17.7 keeps chord spelling out of literals
   // because ⌘ is not a key a Windows user has.
-  const copyChord =
-    getDesktopEnvironment().platform === "macos" ? "⌘C" : "Ctrl+C";
+  const copyChord = getDesktopEnvironment().platform === "macos" ? "⌘C" : "Ctrl+C";
 
   return (
     <aside

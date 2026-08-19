@@ -39,63 +39,35 @@ describe("ACTION_REGISTRY", () => {
   // open-tab-options (Task 2) + copy-cwd (Task 3) + scroll-page-up/down,
   // scroll-to-top/bottom (Task 4) — docs/plans/2026-07-27-keyboard-parity.md.
   it("binds toggle-prompts on both platforms without colliding", () => {
-    const mac = MACOS_KEYMAP.filter(
-      (binding) => binding.action === "toggle-prompts",
-    );
-    const win = WINDOWS_KEYMAP.filter(
-      (binding) => binding.action === "toggle-prompts",
-    );
-    expect(mac).toEqual([
-      { key: "p", meta: true, shift: true, action: "toggle-prompts" },
-    ]);
-    expect(win).toEqual([
-      { key: "p", ctrl: true, shift: true, action: "toggle-prompts" },
-    ]);
+    const mac = MACOS_KEYMAP.filter((binding) => binding.action === "toggle-prompts");
+    const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "toggle-prompts");
+    expect(mac).toEqual([{ key: "p", meta: true, shift: true, action: "toggle-prompts" }]);
+    expect(win).toEqual([{ key: "p", ctrl: true, shift: true, action: "toggle-prompts" }]);
     // It has a menu item, so the RULE above CharKeyBinding requires `key`.
     expect(mac[0]).not.toHaveProperty("code");
   });
 
   it("binds toggle-usage on both platforms without colliding", () => {
-    const mac = MACOS_KEYMAP.filter(
-      (binding) => binding.action === "toggle-usage",
-    );
-    const win = WINDOWS_KEYMAP.filter(
-      (binding) => binding.action === "toggle-usage",
-    );
-    expect(mac).toEqual([
-      { key: "u", meta: true, shift: true, action: "toggle-usage" },
-    ]);
-    expect(win).toEqual([
-      { key: "u", ctrl: true, shift: true, action: "toggle-usage" },
-    ]);
+    const mac = MACOS_KEYMAP.filter((binding) => binding.action === "toggle-usage");
+    const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "toggle-usage");
+    expect(mac).toEqual([{ key: "u", meta: true, shift: true, action: "toggle-usage" }]);
+    expect(win).toEqual([{ key: "u", ctrl: true, shift: true, action: "toggle-usage" }]);
     // It has a menu item, so the RULE above CharKeyBinding requires `key`.
     expect(mac[0]).not.toHaveProperty("code");
   });
 
   it("binds toggle-explorer on both platforms without colliding", () => {
-    const mac = MACOS_KEYMAP.filter(
-      (binding) => binding.action === "toggle-explorer",
-    );
-    const win = WINDOWS_KEYMAP.filter(
-      (binding) => binding.action === "toggle-explorer",
-    );
-    expect(mac).toEqual([
-      { key: "b", meta: true, shift: true, action: "toggle-explorer" },
-    ]);
-    expect(win).toEqual([
-      { key: "b", ctrl: true, shift: true, action: "toggle-explorer" },
-    ]);
+    const mac = MACOS_KEYMAP.filter((binding) => binding.action === "toggle-explorer");
+    const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "toggle-explorer");
+    expect(mac).toEqual([{ key: "b", meta: true, shift: true, action: "toggle-explorer" }]);
+    expect(win).toEqual([{ key: "b", ctrl: true, shift: true, action: "toggle-explorer" }]);
     // It has a menu item, so the RULE above CharKeyBinding requires `key`.
     expect(mac[0]).not.toHaveProperty("code");
   });
 
   it("binds save-file on macOS, and leaves bare Ctrl+S unbound on Windows (PTY-reserved)", () => {
-    const mac = MACOS_KEYMAP.filter(
-      (binding) => binding.action === "save-file",
-    );
-    const win = WINDOWS_KEYMAP.filter(
-      (binding) => binding.action === "save-file",
-    );
+    const mac = MACOS_KEYMAP.filter((binding) => binding.action === "save-file");
+    const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "save-file");
     expect(mac).toEqual([{ key: "s", meta: true, action: "save-file" }]);
     // Bare Ctrl+S stays PTY-reserved on Windows until an explicit binding
     // decision says otherwise (task-6 brief; spec
@@ -108,18 +80,10 @@ describe("ACTION_REGISTRY", () => {
   });
 
   it("binds move-pane-to-new-window on both platforms without colliding", () => {
-    const mac = MACOS_KEYMAP.filter(
-      (binding) => binding.action === "move-pane-to-new-window",
-    );
-    const win = WINDOWS_KEYMAP.filter(
-      (binding) => binding.action === "move-pane-to-new-window",
-    );
-    expect(mac).toEqual([
-      { key: "m", meta: true, shift: true, action: "move-pane-to-new-window" },
-    ]);
-    expect(win).toEqual([
-      { key: "m", ctrl: true, shift: true, action: "move-pane-to-new-window" },
-    ]);
+    const mac = MACOS_KEYMAP.filter((binding) => binding.action === "move-pane-to-new-window");
+    const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "move-pane-to-new-window");
+    expect(mac).toEqual([{ key: "m", meta: true, shift: true, action: "move-pane-to-new-window" }]);
+    expect(win).toEqual([{ key: "m", ctrl: true, shift: true, action: "move-pane-to-new-window" }]);
     // It has a menu item, so the RULE above CharKeyBinding requires `key`.
     expect(mac[0]).not.toHaveProperty("code");
   });
@@ -202,17 +166,14 @@ describe("ACTION_REGISTRY", () => {
   it.each([
     ["macOS", MACOS_KEYMAP],
     ["Windows", WINDOWS_KEYMAP],
-  ] as const)(
-    "has no two same-kind bindings matching the same %s chord",
-    (_, keymap) => {
-      const seen = new Set<string>();
-      for (const binding of keymap) {
-        const k = chordKey(binding);
-        expect(seen.has(k)).toBe(false);
-        seen.add(k);
-      }
-    },
-  );
+  ] as const)("has no two same-kind bindings matching the same %s chord", (_, keymap) => {
+    const seen = new Set<string>();
+    for (const binding of keymap) {
+      const k = chordKey(binding);
+      expect(seen.has(k)).toBe(false);
+      seen.add(k);
+    }
+  });
 });
 
 describe("isActionId", () => {

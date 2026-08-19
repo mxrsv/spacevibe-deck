@@ -148,12 +148,14 @@ fn child_dirs(dir: &Path) -> Vec<PathBuf> {
     dirs
 }
 
-/// `<home>/.claude/projects/*/*.jsonl` and
-/// `<home>/.claude/projects/*/*/subagents/*.jsonl`.
+/// `<home>/.claude/projects/*/*.jsonl` and everything under
+/// `<home>/.claude/projects/*/*/subagents/`, at any depth up to the cap.
 ///
 /// Both globs, not just the first: subagent transcripts are ~47% of this
 /// machine's Claude history by size, and omitting them undercounts by almost
-/// half (spec, blocker B3). Verified 2026-08-10 that nothing nests deeper.
+/// half (spec, blocker B3). Recursive because `subagents/workflows/<id>/`
+/// nests one level deeper than the flat `subagents/<agent>.jsonl` the first
+/// draft assumed.
 pub(crate) fn discover_claude(home: &Path) -> Discovery {
     let root = home.join(CLAUDE_DIR).join(CLAUDE_PROJECTS_DIR);
     if !root.exists() {
@@ -183,13 +185,26 @@ pub(crate) fn discover_claude(home: &Path) -> Discovery {
     for project in project_dirs {
         push_transcripts(&project, None, &mut files);
         for session in child_dirs(&project) {
-            push_transcripts(&session.join(CLAUDE_SUBAGENTS_DIR), None, &mut files);
+            walk_subagents(&session.join(CLAUDE_SUBAGENTS_DIR), 0, &mut files);
         }
     }
     files.sort();
     Discovery {
         files,
         state: DiscoveryState::Present,
+    }
+}
+
+/// Every transcript under a `subagents/` directory, at any depth up to the
+/// cap. Symlinked directories are never descended (see `child_dirs`), so a
+/// loop cannot be built out of them either.
+fn walk_subagents(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
+    if depth > MAX_WALK_DEPTH {
+        return;
+    }
+    push_transcripts(dir, None, out);
+    for child in child_dirs(dir) {
+        walk_subagents(&child, depth + 1, out);
     }
 }
 
@@ -285,6 +300,17 @@ pub(crate) mod tests {
                 .join("agent-a.jsonl"),
             "{}\n",
         );
+        // `subagents/workflows/<id>/` nests deeper than the flat layout the
+        // first draft assumed — the walk must still reach it.
+        write_file(
+            &projects
+                .join("sess-1")
+                .join("subagents")
+                .join("workflows")
+                .join("wf-1")
+                .join("agent-b.jsonl"),
+            "{}\n",
+        );
         // Neighbours that are not transcripts must not be picked up.
         write_file(&projects.join("sess-1").join("MEMORY.md"), "notes\n");
         write_file(
@@ -297,7 +323,12 @@ pub(crate) mod tests {
         assert!(matches!(found.state, DiscoveryState::Present));
         assert_eq!(
             names(&found.files),
-            vec!["agent-a.jsonl", "sess-1.jsonl", "sess-2.jsonl"]
+            vec![
+                "agent-a.jsonl",
+                "agent-b.jsonl",
+                "sess-1.jsonl",
+                "sess-2.jsonl"
+            ]
         );
 
         let _ = std::fs::remove_dir_all(&home);

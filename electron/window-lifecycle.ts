@@ -21,8 +21,7 @@ export const MAIN_LABEL = "main";
  * source until the transfer timed out.
  */
 export type BootMode =
-  | { readonly kind: "normal" }
-  | { readonly kind: "adopt"; readonly token: string };
+  { readonly kind: "normal" } | { readonly kind: "adopt"; readonly token: string };
 
 export class WindowRegistry {
   /** Most-recently-focused first; the move-pane submenu is ordered by it. */

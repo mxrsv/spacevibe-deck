@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nearestInDirection, type PaneRect } from "./pane-geometry";
 
-function rect(
-  id: number,
-  left: number,
-  top: number,
-  width: number,
-  height: number,
-): PaneRect {
+function rect(id: number, left: number, top: number, width: number, height: number): PaneRect {
   return { id, left, top, right: left + width, bottom: top + height };
 }
 
@@ -68,8 +62,6 @@ describe("nearestInDirection", () => {
 
   it("returns null for an unknown active id or single pane", () => {
     expect(nearestInDirection(GRID, 99, "right")).toBeNull();
-    expect(
-      nearestInDirection([rect(1, 0, 0, 100, 100)], 1, "right"),
-    ).toBeNull();
+    expect(nearestInDirection([rect(1, 0, 0, 100, 100)], 1, "right")).toBeNull();
   });
 });

@@ -1,8 +1,5 @@
 import { usageSnapshot } from "../host/usage-host";
-import {
-  EMPTY_USAGE_SNAPSHOT,
-  type UsageSnapshot,
-} from "../lib/usage-snapshot";
+import { EMPTY_USAGE_SNAPSHOT, type UsageSnapshot } from "../lib/usage-snapshot";
 
 /** Scanner seam — real IPC in production, fakes in tests. */
 export interface UsageClient {

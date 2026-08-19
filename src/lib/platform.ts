@@ -11,11 +11,7 @@ type ModifierEvent = Readonly<Pick<KeyboardEvent, "metaKey" | "ctrlKey">>;
 type EnvironmentLoader = () => Promise<unknown>;
 type DiagnosticWriter = (message: string, error: unknown) => void;
 
-const SUPPORTED_PLATFORMS: ReadonlySet<string> = new Set([
-  "macos",
-  "windows",
-  "unsupported",
-]);
+const SUPPORTED_PLATFORMS: ReadonlySet<string> = new Set(["macos", "windows", "unsupported"]);
 const MACOS_ABSOLUTE_PATH = /^\//;
 const WINDOWS_ABSOLUTE_PATH = /^(?:[A-Za-z]:[\\/]|\\\\[^\\/]+[\\/][^\\/]+)/;
 const FALLBACK_ENVIRONMENT: DesktopEnvironment = Object.freeze({
@@ -48,16 +44,13 @@ export function parseDesktopEnvironment(value: unknown): DesktopEnvironment {
   }
   const platform = value.platform as DesktopPlatform;
   if (!hasAbsoluteHome(platform, value.homeDir)) {
-    const requirement =
-      platform === "unsupported" ? "must be empty" : "must be an absolute path";
+    const requirement = platform === "unsupported" ? "must be empty" : "must be an absolute path";
     throw new Error(`Desktop environment homeDir ${requirement}`);
   }
   return Object.freeze({ platform, homeDir: value.homeDir });
 }
 
-export function initializeDesktopEnvironment(
-  value: unknown,
-): DesktopEnvironment {
+export function initializeDesktopEnvironment(value: unknown): DesktopEnvironment {
   if (initializedEnvironment !== null) {
     throw new Error("Desktop environment is already initialized");
   }
@@ -72,8 +65,7 @@ export function getDesktopEnvironment(): DesktopEnvironment {
 
 export async function initializeDesktopEnvironmentFromBackend(
   load: EnvironmentLoader = () => invoke("desktop_environment"),
-  writeDiagnostic: DiagnosticWriter = (message, error) =>
-    console.warn(message, error),
+  writeDiagnostic: DiagnosticWriter = (message, error) => console.warn(message, error),
 ): Promise<DesktopEnvironment> {
   if (initializedEnvironment !== null) {
     return initializedEnvironment;
@@ -81,10 +73,7 @@ export async function initializeDesktopEnvironmentFromBackend(
   try {
     return initializeDesktopEnvironment(await load());
   } catch (error) {
-    writeDiagnostic(
-      "desktop_environment failed; using unsupported platform:",
-      error,
-    );
+    writeDiagnostic("desktop_environment failed; using unsupported platform:", error);
     return initializeDesktopEnvironment(FALLBACK_ENVIRONMENT);
   }
 }

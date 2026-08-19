@@ -26,10 +26,7 @@ export interface SidebarShellState {
 
 export const SIDEBAR_COLLAPSED_ATTR = "data-sidebar-collapsed";
 
-export function applySidebarShell(
-  root: HTMLElement,
-  state: SidebarShellState,
-): void {
+export function applySidebarShell(root: HTMLElement, state: SidebarShellState): void {
   if (!state.sidebar) {
     // Top-tab layout has no sidebar column. Both values are removed rather
     // than left at their last sidebar-mode reading, so the stylesheet's own

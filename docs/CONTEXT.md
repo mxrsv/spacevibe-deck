@@ -2587,16 +2587,22 @@ recorded history…"); a supplementary event-loop-lag measurement peaked at
 106–120 ms during the scan's per-batch yields — noticeable but not a freeze,
 and not the same 100 ms gate as STOP #2's `listDir` threshold.
 
-**Major finding, not fixed — flagged for a follow-up task.**
-[`discoverClaude`](../electron/usage/discover.ts#L197-L217) `current` walks
+**Major finding, fixed 2026-08-18 (was: not fixed — flagged for a
+follow-up task).**
+[`discoverClaude`](../electron/usage/discover.ts#L199-L223) `current` walked
 only one level into each session's `subagents/` directory. On this machine,
 470 of 1906 total Claude `.jsonl` files (~25% of the corpus) live one level
-deeper, at `<session>/subagents/workflows/<id>/*.jsonl`, and are silently
+deeper, at `<session>/subagents/workflows/<id>/*.jsonl`, and were silently
 invisible to every count and total the Usage dashboard shows. Real,
 reproducible, confirmed independently of the parity fixture (which never
 exercised this depth) — the real-corpus run is what caught it, not the
 fixture. Windows corpus behaviour is unverified (Gate C); everything above
-ran on macOS only.
+ran on macOS only. **Resolution:** both the Electron port and the Rust twin
+now walk `subagents/` recursively up to `MAX_WALK_DEPTH`
+(`walkSubagents` / `walk_subagents`), so the workflow-nested transcripts
+count; a nested-file case pins the walk in each implementation's own unit
+tests, and the parity gate is untouched because its golden compares
+aggregates over a corpus that has no nested files.
 
 **Browser panel: compositor pass and a real-dev-server Inspect round trip.**
 Resize (via an emulated viewport, no OS-level resize available in this

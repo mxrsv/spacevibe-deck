@@ -47,9 +47,7 @@ export function ChromeSection() {
   // different owner (DL-18.9). Local, so toggling it in the gallery cannot
   // write the running app's settings.
   const railCollapsed = useSignal(false);
-  const workingAttention = SEED_ATTENTION.find(
-    (summary) => summary.kind === "working",
-  );
+  const workingAttention = SEED_ATTENTION.find((summary) => summary.kind === "working");
   return (
     <>
       <SectionHead
@@ -103,9 +101,7 @@ export function ChromeSection() {
           data-sidebar-collapsed={railCollapsed.value ? "true" : "false"}
           style={{
             "--sidebar-w": `${
-              railCollapsed.value
-                ? SIDEBAR_HIDDEN_WIDTH
-                : DEFAULT_SETTINGS.sidebarWidth
+              railCollapsed.value ? SIDEBAR_HIDDEN_WIDTH : DEFAULT_SETTINGS.sidebarWidth
             }px`,
           }}
         >
@@ -140,18 +136,14 @@ export function ChromeSection() {
                     />
                   ) : null}
                   {repositoryScopedTabStripSpecimen()}
-                  <div class="stage__strip-actions">
-                    {deckToolbarSpecimen()}
-                  </div>
+                  <div class="stage__strip-actions">{deckToolbarSpecimen()}</div>
                   <DockToggle open={false} onToggle={NOOP} />
                 </div>
                 <div class="stage__tabs">
                   <div class="gx-scoped-terminal" aria-label="Terminal preview">
                     <span class="gx-scoped-terminal__prompt">❯</span>
                     <span> npm test</span>
-                    <span class="gx-scoped-terminal__result">
-                      ✓ active worktree tabs only
-                    </span>
+                    <span class="gx-scoped-terminal__result">✓ active worktree tabs only</span>
                   </div>
                 </div>
               </main>
@@ -239,10 +231,7 @@ export function ChromeSection() {
           <span class="gx-icon-trial__spinner">
             <StateLabel>agent working</StateLabel>
             {workingAttention !== undefined ? (
-              <AgentAttentionMark
-                summary={workingAttention}
-                label="Neutral icon treatment"
-              />
+              <AgentAttentionMark summary={workingAttention} label="Neutral icon treatment" />
             ) : null}
           </span>
         </div>

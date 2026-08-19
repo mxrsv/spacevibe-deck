@@ -65,9 +65,7 @@ describe("resolvePaneCwds", () => {
   });
 
   it("given → provided list", async () => {
-    expect(await resolvePaneCwds([1], "given", { provided: ["/ws"] })).toEqual([
-      "/ws",
-    ]);
+    expect(await resolvePaneCwds([1], "given", { provided: ["/ws"] })).toEqual(["/ws"]);
   });
 
   it("polled → zip against cache", async () => {
@@ -83,10 +81,7 @@ describe("resolvePaneCwds", () => {
         },
       ],
     ]);
-    expect(await resolvePaneCwds([1, 2], "polled", { polled })).toEqual([
-      "/polled",
-      null,
-    ]);
+    expect(await resolvePaneCwds([1, 2], "polled", { polled })).toEqual(["/polled", null]);
   });
 
   it("fresh → uses injected PtyClient (no module mock)", async () => {
@@ -113,10 +108,7 @@ describe("resolvePaneCwds", () => {
       ],
     ]);
     const pty = createMemoryPtyClient({ infos });
-    expect(await resolvePaneCwds([4, 5], "fresh", { pty })).toEqual([
-      "/fresh/4",
-      "/fresh/5",
-    ]);
+    expect(await resolvePaneCwds([4, 5], "fresh", { pty })).toEqual(["/fresh/4", "/fresh/5"]);
   });
 });
 
@@ -135,9 +127,10 @@ describe("capturePresetLayout", () => {
       ],
     ]);
     const pty = createMemoryPtyClient({ infos });
-    await expect(
-      capturePresetLayout([1], { type: "leaf" }, pty),
-    ).resolves.toEqual({ layout: { type: "leaf" }, cwds: ["/a"] });
+    await expect(capturePresetLayout([1], { type: "leaf" }, pty)).resolves.toEqual({
+      layout: { type: "leaf" },
+      cwds: ["/a"],
+    });
   });
 });
 
@@ -159,9 +152,7 @@ describe("resolveInheritedCwds", () => {
   });
 
   it("uses inherit for every leaf when preset has no cwds", () => {
-    expect(resolveInheritedCwds({ type: "leaf" }, undefined, "/home")).toEqual([
-      "/home",
-    ]);
+    expect(resolveInheritedCwds({ type: "leaf" }, undefined, "/home")).toEqual(["/home"]);
   });
 });
 

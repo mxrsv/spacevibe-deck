@@ -33,10 +33,7 @@ const TOOLTIP_EDGE_MARGIN = 90;
 export function tooltipAnchor(element: HTMLElement): TooltipAnchor {
   const rect = element.getBoundingClientRect();
   const centre = rect.left + rect.width / 2;
-  const limit = Math.max(
-    TOOLTIP_EDGE_MARGIN,
-    window.innerWidth - TOOLTIP_EDGE_MARGIN,
-  );
+  const limit = Math.max(TOOLTIP_EDGE_MARGIN, window.innerWidth - TOOLTIP_EDGE_MARGIN);
   return {
     left: Math.min(Math.max(centre, TOOLTIP_EDGE_MARGIN), limit),
     top: rect.bottom + TOOLTIP_OFFSET,
@@ -93,13 +90,7 @@ interface ActionTooltipProps {
   readonly anchor: TooltipAnchor;
 }
 
-export function ActionTooltip({
-  id,
-  label,
-  shortcut,
-  reason,
-  anchor,
-}: ActionTooltipProps) {
+export function ActionTooltip({ id, label, shortcut, reason, anchor }: ActionTooltipProps) {
   return (
     <div
       id={id}
@@ -109,9 +100,7 @@ export function ActionTooltip({
     >
       <span class="action-tip__line">
         <span class="action-tip__label">{label}</span>
-        {reason === null && shortcut !== null && (
-          <kbd class="action-tip__kbd">{shortcut}</kbd>
-        )}
+        {reason === null && shortcut !== null && <kbd class="action-tip__kbd">{shortcut}</kbd>}
       </span>
       {reason !== null && <span class="action-tip__reason">{reason}</span>}
     </div>

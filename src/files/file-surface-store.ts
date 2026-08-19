@@ -18,8 +18,9 @@
  */
 import { batch, signal } from "@preact/signals";
 import type { ChangeAction } from "./external-change";
-import type { DirEntry, Listings } from "./file-tree";
 import {
+  type DirEntry,
+  type Listings,
   flattenTree,
   openDirectories,
   toggleExpanded,
@@ -81,10 +82,7 @@ export interface FileDocument {
   readonly column: number;
 }
 
-export function emptyDocument(
-  workspacePath: string,
-  path: string,
-): FileDocument {
+export function emptyDocument(workspacePath: string, path: string): FileDocument {
   return {
     workspacePath,
     path,
@@ -102,9 +100,7 @@ export function emptyDocument(
 }
 
 /** Explorer state per workspace. A workspace with no entry has never been shown. */
-export const fileSurfaces = signal<ReadonlyMap<string, FileSurfaceState>>(
-  new Map(),
-);
+export const fileSurfaces = signal<ReadonlyMap<string, FileSurfaceState>>(new Map());
 
 /** A caret position an opened document should land on (design §3.3). */
 export interface RevealRequest {
@@ -146,21 +142,13 @@ export function clearReveal(path: string): void {
 }
 
 /** Failed directory reads, separate from last-good listings they must retain. */
-const listingErrors = signal<ReadonlyMap<string, ReadonlyMap<string, string>>>(
-  new Map(),
-);
+const listingErrors = signal<ReadonlyMap<string, ReadonlyMap<string, string>>>(new Map());
 
-export function listingErrorsFor(
-  workspacePath: string,
-): ReadonlyMap<string, string> {
+export function listingErrorsFor(workspacePath: string): ReadonlyMap<string, string> {
   return listingErrors.value.get(workspacePath) ?? new Map();
 }
 
-export function setListingError(
-  workspacePath: string,
-  directory: string,
-  message: string,
-): void {
+export function setListingError(workspacePath: string, directory: string, message: string): void {
   const workspaceErrors = new Map(listingErrorsFor(workspacePath));
   workspaceErrors.set(directory, message);
   const next = new Map(listingErrors.value);
@@ -183,9 +171,7 @@ function clearListingError(workspacePath: string, directory: string): void {
 }
 
 /** Open documents, keyed by absolute path. */
-export const fileDocuments = signal<ReadonlyMap<string, FileDocument>>(
-  new Map(),
-);
+export const fileDocuments = signal<ReadonlyMap<string, FileDocument>>(new Map());
 
 /**
  * The workspace the panel and the strip's file segment belong to.
@@ -238,19 +224,13 @@ export function surfaceFor(workspacePath: string | null): FileSurfaceState {
   return fileSurfaces.value.get(workspacePath) ?? EMPTY_SURFACE;
 }
 
-function writeSurface(
-  workspacePath: string,
-  patch: Partial<FileSurfaceState>,
-): void {
+function writeSurface(workspacePath: string, patch: Partial<FileSurfaceState>): void {
   const next = new Map(fileSurfaces.value);
   next.set(workspacePath, { ...surfaceFor(workspacePath), ...patch });
   fileSurfaces.value = next;
 }
 
-export function setShowHidden(
-  workspacePath: string,
-  showHidden: boolean,
-): void {
+export function setShowHidden(workspacePath: string, showHidden: boolean): void {
   writeSurface(workspacePath, { showHidden });
 }
 
@@ -274,19 +254,13 @@ export function setListing(
 /** Expand or collapse one directory. Collapsing keeps its listing cached —
  * re-expanding is then instant, and the watch scope is recomputed from the
  * visible rows, so a collapsed directory still cannot leak a watcher. */
-export function toggleDirectory(
-  workspacePath: string,
-  directory: string,
-): void {
+export function toggleDirectory(workspacePath: string, directory: string): void {
   writeSurface(workspacePath, {
     expanded: toggleExpanded(surfaceFor(workspacePath).expanded, directory),
   });
 }
 
-export function expandDirectory(
-  workspacePath: string,
-  directory: string,
-): void {
+export function expandDirectory(workspacePath: string, directory: string): void {
   const surface = surfaceFor(workspacePath);
   if (surface.expanded.has(directory)) {
     return;
@@ -296,10 +270,7 @@ export function expandDirectory(
   });
 }
 
-export function collapseDirectory(
-  workspacePath: string,
-  directory: string,
-): void {
+export function collapseDirectory(workspacePath: string, directory: string): void {
   const surface = surfaceFor(workspacePath);
   if (!surface.expanded.has(directory)) {
     return;
@@ -315,12 +286,7 @@ export function treeRows(workspacePath: string | null): TreeRow[] {
     return [];
   }
   const surface = surfaceFor(workspacePath);
-  return flattenTree(
-    workspacePath,
-    surface.listings,
-    surface.expanded,
-    surface.showHidden,
-  );
+  return flattenTree(workspacePath, surface.listings, surface.expanded, surface.showHidden);
 }
 
 /** Directories whose contents are on screen — the listing and watch scope. */
@@ -331,9 +297,7 @@ export function visibleDirectories(workspacePath: string | null): string[] {
   return openDirectories(treeRows(workspacePath), workspacePath);
 }
 
-export function fileTabsFor(
-  workspacePath: string | null,
-): readonly FileTabEntry[] {
+export function fileTabsFor(workspacePath: string | null): readonly FileTabEntry[] {
   return surfaceFor(workspacePath).tabs;
 }
 
@@ -341,10 +305,7 @@ export function documentFor(path: string | null): FileDocument | undefined {
   return path === null ? undefined : fileDocuments.value.get(path);
 }
 
-export function updateDocument(
-  path: string,
-  patch: Partial<FileDocument>,
-): void {
+export function updateDocument(path: string, patch: Partial<FileDocument>): void {
   const current = fileDocuments.value.get(path);
   if (current === undefined) {
     return;
@@ -479,11 +440,7 @@ export function setActiveWorkspace(workspacePath: string | null): void {
  */
 export function closeFileSurface(workspacePath: string, path: string): void {
   const surface = surfaceFor(workspacePath);
-  const nextActive = activeAfterFileClose(
-    surface.tabs,
-    path,
-    surface.activePath,
-  );
+  const nextActive = activeAfterFileClose(surface.tabs, path, surface.activePath);
   writeSurface(workspacePath, {
     tabs: closeFileTab(surface.tabs, path),
     activePath: nextActive,

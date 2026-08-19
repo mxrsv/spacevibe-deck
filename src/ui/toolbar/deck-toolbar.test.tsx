@@ -95,9 +95,7 @@ describe("DeckToolbar", () => {
     // since 2026-08-17: `SIDEBAR_TOOLS_HIDDEN` took the rail's footer away, so
     // `More` is the only place left for those rows — and the only anchor the
     // Prompt Board popover has. Restoring the footer drops the last three.
-    expect(
-      rows.map((row) => row.querySelector(".toolbar-menu__label")?.textContent),
-    ).toEqual([
+    expect(rows.map((row) => row.querySelector(".toolbar-menu__label")?.textContent)).toEqual([
       "Split vertically",
       "Split horizontally",
       "Focus expand",

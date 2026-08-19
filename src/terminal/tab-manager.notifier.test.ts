@@ -9,10 +9,7 @@ import { activeTabIndex, tabViews } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import {
   fakeNotifierSpy,
   fakePane,
@@ -115,8 +112,7 @@ describe("createTabManager notifier deps (Task 23)", () => {
     const pty = createMemoryPtyClient({ nextId: 1 });
     const host = document.createElement("div");
     document.body.appendChild(host);
-    const createPane: CreatePaneFn = (id, _settings, events) =>
-      fakePane(id, events);
+    const createPane: CreatePaneFn = (id, _settings, events) => fakePane(id, events);
 
     expect(() => createTabManager(host, pty, { createPane })).not.toThrow();
   });
@@ -125,13 +121,10 @@ describe("createTabManager notifier deps (Task 23)", () => {
     const pty = createMemoryPtyClient({ nextId: 1 });
     const host = document.createElement("div");
     document.body.appendChild(host);
-    const createPane: CreatePaneFn = (id, _settings, events) =>
-      fakePane(id, events);
+    const createPane: CreatePaneFn = (id, _settings, events) => fakePane(id, events);
     const { notifier } = fakeNotifierSpy();
 
-    expect(() =>
-      createTabManager(host, pty, { createPane, notifier }),
-    ).not.toThrow();
+    expect(() => createTabManager(host, pty, { createPane, notifier })).not.toThrow();
   });
 });
 
@@ -279,10 +272,7 @@ describe("createTabManager notifier integration — fake notifier (Task 23)", ()
 
     // A single isolated chunk never crosses the sustained-output heuristic —
     // no activity transition, so the tracker is never even touched.
-    pty.emitOutput(
-      1,
-      "plain agent output, no OSC markers, no sustained streak",
-    );
+    pty.emitOutput(1, "plain agent output, no OSC markers, no sustained streak");
 
     expect(maybeNotify).not.toHaveBeenCalled();
 

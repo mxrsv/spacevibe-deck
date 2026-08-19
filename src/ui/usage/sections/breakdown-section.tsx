@@ -1,13 +1,7 @@
 import { breakdownRows } from "../../../lib/usage-aggregate";
 import { usageSnapshot } from "../../../usage/usage-store";
-import { MetricTable } from "../metric-table";
-import type { MetricColumn, MetricRow } from "../metric-table";
-import {
-  ESTIMATE_NOTE,
-  formatTokens,
-  usdCell,
-  USAGE_AGENT_LABEL,
-} from "../usage-format";
+import { MetricTable, type MetricColumn, type MetricRow } from "../metric-table";
+import { ESTIMATE_NOTE, formatTokens, usdCell, USAGE_AGENT_LABEL } from "../usage-format";
 
 /**
  * The breakdown: one row per agent and raw model, with all six counter
@@ -44,22 +38,22 @@ const COLUMNS: readonly MetricColumn[] = [
 ];
 
 export function BreakdownSection() {
-  const rows: readonly MetricRow[] = breakdownRows(
-    usageSnapshot.value?.buckets ?? [],
-  ).map((row) => ({
-    key: `${row.agent}:${row.model}`,
-    cells: [
-      USAGE_AGENT_LABEL[row.agent],
-      row.model,
-      formatTokens(row.counters.inputUncached),
-      formatTokens(row.counters.cacheRead),
-      formatTokens(row.counters.cacheCreate5m),
-      formatTokens(row.counters.cacheCreate1h),
-      formatTokens(row.counters.cacheWrite),
-      formatTokens(row.counters.output),
-      usdCell(row.costUsd),
-    ],
-  }));
+  const rows: readonly MetricRow[] = breakdownRows(usageSnapshot.value?.buckets ?? []).map(
+    (row) => ({
+      key: `${row.agent}:${row.model}`,
+      cells: [
+        USAGE_AGENT_LABEL[row.agent],
+        row.model,
+        formatTokens(row.counters.inputUncached),
+        formatTokens(row.counters.cacheRead),
+        formatTokens(row.counters.cacheCreate5m),
+        formatTokens(row.counters.cacheCreate1h),
+        formatTokens(row.counters.cacheWrite),
+        formatTokens(row.counters.output),
+        usdCell(row.costUsd),
+      ],
+    }),
+  );
 
   return (
     <MetricTable

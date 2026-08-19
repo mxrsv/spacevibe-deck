@@ -18,15 +18,7 @@ import {
 } from "../../terminal/action-registry";
 
 export type ShortcutGroupId =
-  | "panes"
-  | "tabs"
-  | "presets"
-  | "files"
-  | "text"
-  | "scrollback"
-  | "display"
-  | "app"
-  | "other";
+  "panes" | "tabs" | "presets" | "files" | "text" | "scrollback" | "display" | "app" | "other";
 
 /** Display order of the groups, with the label each renders under (DL-11.4). */
 export const SHORTCUT_GROUPS: readonly {
@@ -174,9 +166,7 @@ export function shortcutGroups(): readonly ShortcutGroup[] {
       continue;
     }
     const target = PLACEMENT[action.id] ?? "other";
-    byGroup
-      .get(target)
-      ?.push({ action: action.id as ActionId, label: action.label });
+    byGroup.get(target)?.push({ action: action.id as ActionId, label: action.label });
     if (action.id === "select-last-tab") {
       byGroup.get(target)?.push(...tabSelectRows());
     }

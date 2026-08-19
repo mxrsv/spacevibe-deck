@@ -15,10 +15,7 @@ import { ACTION_REGISTRY, type ActionId } from "../../terminal/action-registry";
 import { shortcutLabel } from "../../lib/shortcut-label";
 import type { DesktopPlatform } from "../../lib/platform";
 import { FeatureToolbar } from "../../ui/toolbar/feature-toolbar";
-import type {
-  ToolbarItem,
-  ToolbarItemState,
-} from "../../ui/toolbar/toolbar-item";
+import type { ToolbarItem, ToolbarItemState } from "../../ui/toolbar/toolbar-item";
 import { UpdateAction } from "../../updater/update-action";
 import { ExternalAppButton } from "../../ui/toolbar/external-app-button";
 import type { ExternalAppChoice } from "../../links/external-app-choices";
@@ -204,13 +201,7 @@ function toolbarItems(
 }
 
 /** A strip of the real tab bar, at a width the window could actually give it. */
-function BarFrame({
-  width,
-  children,
-}: {
-  width: number;
-  children: ComponentChildren;
-}) {
+function BarFrame({ width, children }: { width: number; children: ComponentChildren }) {
   return (
     <div class="gx-bar" style={{ width: `${width}px` }}>
       <div class="tabbar gx-bar__inner">
@@ -239,9 +230,7 @@ export function ToolbarSection() {
           <button
             key={candidate}
             type="button"
-            class={`gx-pick__opt ${
-              platform.value === candidate ? "is-active" : ""
-            }`}
+            class={`gx-pick__opt ${platform.value === candidate ? "is-active" : ""}`}
             aria-pressed={platform.value === candidate}
             onClick={() => {
               platform.value = candidate;
@@ -251,8 +240,8 @@ export function ToolbarSection() {
           </button>
         ))}
         <span class="gx-pick__hint">
-          every chord below is formatted for this platform — Explorer reads ⌘⇧E
-          on macOS and Ctrl+Shift+E on Windows
+          every chord below is formatted for this platform — Explorer reads ⌘⇧E on macOS and
+          Ctrl+Shift+E on Windows
         </span>
       </div>
 
@@ -293,9 +282,7 @@ export function ToolbarSection() {
           <BarFrame width={420}>
             <FeatureToolbar items={toolbarItems(platform.value)} />
           </BarFrame>
-          <StateLabel>
-            240px — the pane group is gone, its hairline with it
-          </StateLabel>
+          <StateLabel>240px — the pane group is gone, its hairline with it</StateLabel>
           <BarFrame width={240}>
             <FeatureToolbar items={toolbarItems(platform.value)} />
           </BarFrame>

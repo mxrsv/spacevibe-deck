@@ -2,10 +2,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { statusInfo } from "../terminal/tabs-store";
 import {
   activateFileTab,
@@ -41,12 +38,10 @@ describe("StatusBar", () => {
       render(<StatusBar />, host);
     });
 
-    expect(
-      Array.from(
-        host.querySelectorAll(".status__kbd"),
-        (node) => node.textContent,
-      ),
-    ).toEqual(["Ctrl+Shift+D", "Ctrl+Shift+T"]);
+    expect(Array.from(host.querySelectorAll(".status__kbd"), (node) => node.textContent)).toEqual([
+      "Ctrl+Shift+D",
+      "Ctrl+Shift+T",
+    ]);
   });
 
   /** Renders `<StatusBar />` into a fresh host and returns it. */

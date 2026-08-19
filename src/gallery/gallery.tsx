@@ -39,8 +39,7 @@ export function Gallery() {
   }, [themeId.value]);
 
   const active =
-    GALLERY_SECTIONS.find((section) => section.id === activeId.value) ??
-    GALLERY_SECTIONS[0];
+    GALLERY_SECTIONS.find((section) => section.id === activeId.value) ?? GALLERY_SECTIONS[0];
 
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0, left: 0 });
@@ -100,13 +99,11 @@ export function Gallery() {
 
       <footer class="gx-foot">
         {missing.length === 0 ? (
-          <span>
-            every IPC call the specimens made was answered by the stub.
-          </span>
+          <span>every IPC call the specimens made was answered by the stub.</span>
         ) : (
           <span>
-            unstubbed IPC ({missing.length}): <code>{missing.join(", ")}</code>{" "}
-            — the surfaces that need these render without their data.
+            unstubbed IPC ({missing.length}): <code>{missing.join(", ")}</code> — the surfaces that
+            need these render without their data.
           </span>
         )}
       </footer>

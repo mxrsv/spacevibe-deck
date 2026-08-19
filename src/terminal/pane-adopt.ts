@@ -2,8 +2,7 @@ import type { Pane } from "./pane";
 import type { AdoptionPayload, TransferClient } from "./transfer-client";
 
 /** Written into the pane when history did not survive (spec §13). */
-const NO_SCROLLBACK_NOTICE =
-  "\x1b[2m[Scrollback could not be restored for this move]\x1b[0m";
+const NO_SCROLLBACK_NOTICE = "\x1b[2m[Scrollback could not be restored for this move]\x1b[0m";
 
 export type AdoptResult =
   | {
@@ -42,10 +41,7 @@ export interface AdoptDeps {
  * Never throws: every failure resolves as `failed` and leaves nothing
  * half-built behind.
  */
-export async function adoptTransfer(
-  token: string,
-  deps: AdoptDeps,
-): Promise<AdoptResult> {
+export async function adoptTransfer(token: string, deps: AdoptDeps): Promise<AdoptResult> {
   let payload: AdoptionPayload;
   try {
     payload = await deps.transfer.claimTransfer(token);

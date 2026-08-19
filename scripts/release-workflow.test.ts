@@ -1,11 +1,9 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const workflow = readFileSync(
-  new URL("../.github/workflows/release.yml", import.meta.url),
-  "utf8",
-);
+const workflow = readFileSync(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
 const macosConfig = readFileSync(
   new URL("../src-tauri/tauri.macos.conf.json", import.meta.url),
   "utf8",
@@ -14,10 +12,7 @@ const windowsConfig = readFileSync(
   new URL("../src-tauri/tauri.windows.conf.json", import.meta.url),
   "utf8",
 );
-const ciWorkflow = readFileSync(
-  new URL("../.github/workflows/ci.yml", import.meta.url),
-  "utf8",
-);
+const ciWorkflow = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
 
 const MACOS_RC_CHANNEL = "macos-rc-channel";
 const WINDOWS_RC_CHANNEL = "windows-rc-channel";
@@ -36,10 +31,7 @@ function jobs(source = workflow): Map<string, string> {
   return new Map(
     headers.map((header, index) => [
       header[1],
-      body.slice(
-        header.index,
-        index + 1 < headers.length ? headers[index + 1].index : body.length,
-      ),
+      body.slice(header.index, index + 1 < headers.length ? headers[index + 1].index : body.length),
     ]),
   );
 }
@@ -70,32 +62,22 @@ function acceptsTag(tag: string): boolean {
   if (pattern === undefined) {
     throw new Error("resolve-target does not define a SOURCE_TAG pattern");
   }
-  const result = spawnSync(
-    "bash",
-    ["-c", '[[ "$1" =~ $SOURCE_TAG ]]', "bash", tag],
-    {
-      env: { ...process.env, SOURCE_TAG: pattern },
-    },
-  );
+  const result = spawnSync("bash", ["-c", '[[ "$1" =~ $SOURCE_TAG ]]', "bash", tag], {
+    env: { ...process.env, SOURCE_TAG: pattern },
+  });
   // The Windows build job runs this suite too; a missing bash would otherwise
   // read as "every tag is refused" and send the reader hunting in the regex.
   if (result.error) {
-    throw new Error(
-      `Could not run the tag guard through bash: ${result.error}`,
-    );
+    throw new Error(`Could not run the tag guard through bash: ${result.error}`);
   }
   return result.status === 0;
 }
 
 describe("release tag resolution", () => {
   it("parses workflow jobs after a Windows CRLF checkout", () => {
-    const windowsWorkflow = workflow
-      .replaceAll("\r\n", "\n")
-      .replaceAll("\n", "\r\n");
+    const windowsWorkflow = workflow.replaceAll("\r\n", "\n").replaceAll("\n", "\r\n");
 
-    expect(job("build-macos-stable-draft", windowsWorkflow)).toContain(
-      "releaseDraft: true",
-    );
+    expect(job("build-macos-stable-draft", windowsWorkflow)).toContain("releaseDraft: true");
   });
 
   it("accepts exact stable and release-candidate source tags", () => {
@@ -145,20 +127,13 @@ describe("release channel isolation", () => {
   it("keeps production endpoints in the committed configs", () => {
     expect(macosConfig).toContain("releases/latest/download/latest.json");
     expect(macosConfig).not.toContain(MACOS_RC_CHANNEL);
-    expect(windowsConfig).toContain(
-      `releases/download/${WINDOWS_PRODUCTION_CHANNEL}/latest.json`,
-    );
+    expect(windowsConfig).toContain(`releases/download/${WINDOWS_PRODUCTION_CHANNEL}/latest.json`);
     expect(windowsConfig).not.toContain(WINDOWS_RC_CHANNEL);
   });
 
   it("overrides both platform endpoints for a release candidate", () => {
-    for (const name of [
-      "build-macos-stable-draft",
-      "build-windows-preview-draft",
-    ]) {
-      const injections = steps(name).filter((step) =>
-        step.includes("rc-channel"),
-      );
+    for (const name of ["build-macos-stable-draft", "build-windows-preview-draft"]) {
+      const injections = steps(name).filter((step) => step.includes("rc-channel"));
 
       expect(injections, name).toHaveLength(1);
       expect(injections[0]).toContain(MACOS_RC_CHANNEL);
@@ -178,9 +153,7 @@ describe("release channel isolation", () => {
     expect(job("promote-windows-channel")).toContain(
       "if: needs.resolve-target.outputs.rc != 'true'",
     );
-    expect(job("promote-windows-channel")).toContain(
-      WINDOWS_PRODUCTION_CHANNEL,
-    );
+    expect(job("promote-windows-channel")).toContain(WINDOWS_PRODUCTION_CHANNEL);
   });
 
   it("promotes release candidates into their own channels", () => {
@@ -204,13 +177,8 @@ describe("release notes gate", () => {
     expect(preparation).toContain("--channel stable");
     expect(preparation).toContain("--channel windows-preview");
 
-    for (const name of [
-      "build-macos-stable-draft",
-      "build-windows-preview-draft",
-    ]) {
-      expect(job(name), name).toMatch(
-        /^\s*needs:\s*\[[^\]]*\bprepare-release-notes\b[^\]]*\]$/m,
-      );
+    for (const name of ["build-macos-stable-draft", "build-windows-preview-draft"]) {
+      expect(job(name), name).toMatch(/^\s*needs:\s*\[[^\]]*\bprepare-release-notes\b[^\]]*\]$/m);
     }
   });
 
@@ -221,9 +189,7 @@ describe("release notes gate", () => {
     expect(job("build-windows-preview-draft")).toContain(
       "needs.prepare-release-notes.outputs.windows_body",
     );
-    expect(job("build-macos-stable-draft")).not.toContain(
-      "Users on 0.10.0 or earlier",
-    );
+    expect(job("build-macos-stable-draft")).not.toContain("Users on 0.10.0 or earlier");
   });
 
   it("uses an unpredictable delimiter for multiline GitHub outputs", () => {
@@ -232,25 +198,17 @@ describe("release notes gate", () => {
     expect(preparation).toMatch(
       /local random_suffix[\s\S]*random_suffix="\$\(openssl rand -hex 16\)"/,
     );
-    expect(preparation).toContain(
-      'delimiter="deck_release_notes_${random_suffix}"',
-    );
+    expect(preparation).toContain('delimiter="deck_release_notes_${random_suffix}"');
     expect(preparation).toContain('[[ "$random_suffix" =~ ^[0-9a-f]{32}$ ]]');
     expect(preparation).toContain('grep -Fxq "$delimiter" "$path"');
-    expect(preparation).toContain(
-      "printf '%s<<%s\\n' \"$name\" \"$delimiter\"",
-    );
-    expect(preparation).toContain(
-      "printf '\\n%s\\n' \"$delimiter\"",
-    );
+    expect(preparation).toContain('printf \'%s<<%s\\n\' "$name" "$delimiter"');
+    expect(preparation).toContain("printf '\\n%s\\n' \"$delimiter\"");
     expect(preparation).not.toContain("${RANDOM}");
   });
 
   it("fails closed when delimiter entropy generation fails", () => {
     const preparation = job("prepare-release-notes");
-    const helper = preparation.match(
-      /^ {10}append_output\(\) \{[\s\S]*?^ {10}\}/m,
-    )?.[0];
+    const helper = preparation.match(/^ {10}append_output\(\) \{[\s\S]*?^ {10}\}/m)?.[0];
     if (helper === undefined) {
       throw new Error("prepare-release-notes has no append_output helper");
     }
@@ -279,24 +237,16 @@ describe("release notes gate", () => {
   it("reuses the reviewed stable release body for a manual Windows retry", () => {
     const preparation = job("prepare-release-notes");
 
-    expect(preparation).toContain(
-      'if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]',
-    );
-    expect(preparation).toContain(
-      'gh release view "$TARGET_TAG" --json body --jq .body',
-    );
-    expect(preparation).toContain(
-      "--body-file stable-release-notes.md --channel windows-preview",
-    );
+    expect(preparation).toContain('if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]');
+    expect(preparation).toContain('gh release view "$TARGET_TAG" --json body --jq .body');
+    expect(preparation).toContain("--body-file stable-release-notes.md --channel windows-preview");
   });
 });
 
 describe("publication gates", () => {
   it("pins every third-party action to an immutable commit", () => {
     for (const source of [workflow, ciWorkflow]) {
-      const actionRefs = [...source.matchAll(/uses:\s+([^\s#]+)/g)].map(
-        (match) => match[1],
-      );
+      const actionRefs = [...source.matchAll(/uses:\s+([^\s#]+)/g)].map((match) => match[1]);
       expect(actionRefs.length).toBeGreaterThan(0);
       for (const ref of actionRefs) {
         expect(ref, ref).toMatch(/@[0-9a-f]{40}$/);
@@ -315,34 +265,26 @@ describe("publication gates", () => {
       build.indexOf("Build stable macOS updater draft"),
     );
 
-    const result = spawnSync(
-      process.execPath,
-      ["scripts/verify-macos-release-signing.mjs"],
-      {
-        cwd: new URL("..", import.meta.url),
-        env: {},
-        encoding: "utf8",
-      },
-    );
+    const result = spawnSync(process.execPath, ["scripts/verify-macos-release-signing.mjs"], {
+      cwd: new URL("..", import.meta.url),
+      env: {},
+      encoding: "utf8",
+    });
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("macOS release signing is not configured");
 
-    const configured = spawnSync(
-      process.execPath,
-      ["scripts/verify-macos-release-signing.mjs"],
-      {
-        cwd: new URL("..", import.meta.url),
-        env: {
-          APPLE_CERTIFICATE: "certificate",
-          APPLE_CERTIFICATE_PASSWORD: "certificate-password",
-          KEYCHAIN_PASSWORD: "keychain-password",
-          APPLE_ID: "release@example.com",
-          APPLE_PASSWORD: "app-password",
-          APPLE_TEAM_ID: "TEAMID",
-        },
-        encoding: "utf8",
+    const configured = spawnSync(process.execPath, ["scripts/verify-macos-release-signing.mjs"], {
+      cwd: new URL("..", import.meta.url),
+      env: {
+        APPLE_CERTIFICATE: "certificate",
+        APPLE_CERTIFICATE_PASSWORD: "certificate-password",
+        KEYCHAIN_PASSWORD: "keychain-password",
+        APPLE_ID: "release@example.com",
+        APPLE_PASSWORD: "app-password",
+        APPLE_TEAM_ID: "TEAMID",
       },
-    );
+      encoding: "utf8",
+    });
     expect(configured.status).toBe(0);
   });
 
@@ -368,9 +310,7 @@ describe("publication gates", () => {
 
     expect(collection).toContain("releases/assets/$id");
     expect(collection).toContain("cmp -s");
-    expect(collection).not.toContain(
-      'cp "${payloads[0]}" "${signatures[0]}" "${images[0]}"',
-    );
+    expect(collection).not.toContain('cp "${payloads[0]}" "${signatures[0]}" "${images[0]}"');
   });
 
   it("proves renamed Windows draft assets match the local build", () => {
@@ -384,21 +324,14 @@ describe("publication gates", () => {
   });
 
   it("lets validation jobs read draft releases", () => {
-    for (const name of [
-      "validate-macos-stable",
-      "validate-windows-preview",
-    ]) {
+    for (const name of ["validate-macos-stable", "validate-windows-preview"]) {
       expect(job(name), name).toContain("permissions:\n      contents: write");
     }
   });
 
   it("publishes nothing that cryptographic validation has not passed", () => {
     expect(job("publish-macos-stable")).toContain("validate-macos-stable");
-    expect(job("publish-windows-preview")).toContain(
-      "validate-windows-preview",
-    );
-    expect(job("promote-windows-channel")).toContain(
-      "validate-windows-preview",
-    );
+    expect(job("publish-windows-preview")).toContain("validate-windows-preview");
+    expect(job("promote-windows-channel")).toContain("validate-windows-preview");
   });
 });

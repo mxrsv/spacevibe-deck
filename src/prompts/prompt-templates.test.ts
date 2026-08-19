@@ -42,26 +42,20 @@ describe("isValidPromptTemplate", () => {
 
   it("rejects an empty or over-long label", () => {
     expect(isValidPromptTemplate(template({ label: "   " }))).toBe(false);
-    expect(
-      isValidPromptTemplate(
-        template({ label: "x".repeat(TEMPLATE_LABEL_MAX + 1) }),
-      ),
-    ).toBe(false);
+    expect(isValidPromptTemplate(template({ label: "x".repeat(TEMPLATE_LABEL_MAX + 1) }))).toBe(
+      false,
+    );
   });
 
   it("rejects an empty or over-long body", () => {
     expect(isValidPromptTemplate(template({ body: "" }))).toBe(false);
-    expect(
-      isValidPromptTemplate(
-        template({ body: "x".repeat(TEMPLATE_BODY_MAX + 1) }),
-      ),
-    ).toBe(false);
+    expect(isValidPromptTemplate(template({ body: "x".repeat(TEMPLATE_BODY_MAX + 1) }))).toBe(
+      false,
+    );
   });
 
   it("rejects a non-boolean autoSend and a non-object", () => {
-    expect(isValidPromptTemplate({ ...template(), autoSend: "yes" })).toBe(
-      false,
-    );
+    expect(isValidPromptTemplate({ ...template(), autoSend: "yes" })).toBe(false);
     expect(isValidPromptTemplate(null)).toBe(false);
   });
 });

@@ -4,11 +4,7 @@
  * concurrent Close (the caller re-derives `removeAt` after any `await`, then
  * drives all shifting through here). Returns -1 when no tabs remain.
  */
-export function activeAfterClose(
-  removeAt: number,
-  active: number,
-  countBefore: number,
-): number {
+export function activeAfterClose(removeAt: number, active: number, countBefore: number): number {
   const countAfter = countBefore - 1;
   if (countAfter <= 0) {
     return -1;

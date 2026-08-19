@@ -6,10 +6,7 @@ vi.mock("../host/bridge", () => ({
 }));
 
 import { createMemoryUsageClient, createHostUsageClient } from "./usage-client";
-import {
-  EMPTY_USAGE_SNAPSHOT,
-  type UsageSnapshot,
-} from "../lib/usage-snapshot";
+import { EMPTY_USAGE_SNAPSHOT, type UsageSnapshot } from "../lib/usage-snapshot";
 
 const snapshot: UsageSnapshot = {
   scannedAtMs: 1_754_820_000_000,
@@ -46,15 +43,11 @@ describe("createHostUsageClient", () => {
 
 describe("createMemoryUsageClient", () => {
   it("answers with the empty snapshot by default", async () => {
-    await expect(createMemoryUsageClient().snapshot()).resolves.toEqual(
-      EMPTY_USAGE_SNAPSHOT,
-    );
+    await expect(createMemoryUsageClient().snapshot()).resolves.toEqual(EMPTY_USAGE_SNAPSHOT);
   });
 
   it("answers with the configured snapshot", async () => {
-    await expect(createMemoryUsageClient(snapshot).snapshot()).resolves.toEqual(
-      snapshot,
-    );
+    await expect(createMemoryUsageClient(snapshot).snapshot()).resolves.toEqual(snapshot);
   });
 
   it("can be made to fail, so the caller's stale path is testable", async () => {

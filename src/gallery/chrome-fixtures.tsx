@@ -6,8 +6,7 @@ import { DeckToolbar } from "../ui/toolbar/deck-toolbar";
 import { createFileSurfaceController } from "../files/file-surface-controller";
 import type { PaneAgent } from "../lib/process-info";
 import type { RailTab } from "../repositories/repository-model";
-import { IDLE_ATTENTION_SUMMARY } from "../terminal/tabs-store";
-import { activeTabIndex } from "../terminal/tabs-store";
+import { IDLE_ATTENTION_SUMMARY, activeTabIndex } from "../terminal/tabs-store";
 import { CHROME_ICON, DeckIcon, RAIL_ICON } from "../ui/controls/deck-icon";
 import { WorktreeAgentStack } from "../ui/worktree-agent-stack";
 import { TabStrip } from "../ui/tab-strip";
@@ -61,9 +60,7 @@ interface SpecimenOptions {
 }
 
 /** The shipping toolbar, exactly as both layouts mount it since phase 3. */
-export function deckToolbarSpecimen({
-  promptsDisabled = false,
-}: SpecimenOptions = {}) {
+export function deckToolbarSpecimen({ promptsDisabled = false }: SpecimenOptions = {}) {
   return (
     <DeckToolbar
       browserActive={false}
@@ -82,9 +79,7 @@ export function deckToolbarSpecimen({
   );
 }
 
-export function tabBarSpecimen({
-  promptsDisabled = false,
-}: SpecimenOptions = {}) {
+export function tabBarSpecimen({ promptsDisabled = false }: SpecimenOptions = {}) {
   return (
     <TabBar
       onSelectTab={NOOP}
@@ -143,9 +138,7 @@ export function agentRailNavigationSpecimen({
         showFooter ? (
           <SidebarActions
             sessionsAvailable
-            promptsUnavailable={
-              promptsDisabled ? "no pane to paste into" : null
-            }
+            promptsUnavailable={promptsDisabled ? "no pane to paste into" : null}
             promptsOpen={false}
             onOpenBrowser={NOOP}
             onOpenUsage={NOOP}
@@ -299,27 +292,18 @@ export function worktreeAgentPresenceSpecimen() {
                 key={worktree.name}
                 class={`wsitem ${worktree.active ? "is-active" : ""}`}
                 data-state={
-                  worktree.working
-                    ? "working"
-                    : worktree.agents.length > 0
-                      ? "ready"
-                      : "idle"
+                  worktree.working ? "working" : worktree.agents.length > 0 ? "ready" : "idle"
                 }
               >
                 <span class="wsitem__state" aria-hidden="true" />
                 <span class="wsitem__text">
                   <span class="wsitem__label">
                     <span class="wsitem__name">{worktree.name}</span>
-                    {worktree.primary && (
-                      <span class="wsitem__badge">primary</span>
-                    )}
+                    {worktree.primary && <span class="wsitem__badge">primary</span>}
                   </span>
                   <span class="wsitem__path">{worktree.path}</span>
                 </span>
-                <WorktreeAgentStack
-                  tabs={previewTabs(worktree)}
-                  onSelectTab={NOOP}
-                />
+                <WorktreeAgentStack tabs={previewTabs(worktree)} onSelectTab={NOOP} />
               </div>
             ))}
           </div>
@@ -366,8 +350,7 @@ const WORKTREE_ITEM_DIRECTIONS = [
 
 const WORKTREE_VARIANT_ROWS = AGENT_PREVIEW_ROWS.filter(
   (worktree) =>
-    worktree.name !== "feat/token-usage-dashboard" &&
-    worktree.name !== "feat/workspace-recorder",
+    worktree.name !== "feat/token-usage-dashboard" && worktree.name !== "feat/workspace-recorder",
 );
 
 function previewState(worktree: WorktreeAgentPreview): string {
@@ -407,11 +390,7 @@ function WorktreeVariantRow({
   );
 }
 
-function WorktreeVariantRail({
-  direction,
-}: {
-  readonly direction: WorktreeItemDirection;
-}) {
+function WorktreeVariantRail({ direction }: { readonly direction: WorktreeItemDirection }) {
   return (
     <nav
       class={`gx-worktree-variant__rail gx-worktree-variant--${direction}`}
@@ -426,11 +405,7 @@ function WorktreeVariantRail({
       </header>
       <div class="gx-worktree-variant__rows">
         {WORKTREE_VARIANT_ROWS.map((worktree) => (
-          <WorktreeVariantRow
-            key={worktree.name}
-            direction={direction}
-            worktree={worktree}
-          />
+          <WorktreeVariantRow key={worktree.name} direction={direction} worktree={worktree} />
         ))}
       </div>
     </nav>

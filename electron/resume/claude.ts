@@ -8,11 +8,7 @@
  */
 import { lstatSync, readdirSync } from "node:fs";
 import path from "node:path";
-import {
-  CLAUDE_DIR,
-  CLAUDE_PROJECTS_DIR,
-  IDENTITY_HEAD_BYTES,
-} from "../usage/model";
+import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR, IDENTITY_HEAD_BYTES } from "../usage/model";
 import {
   headBytes,
   headJsonLines,
@@ -46,9 +42,7 @@ function isRegularFile(candidate: string): boolean {
 
 function isDirectory(candidate: string): boolean {
   try {
-    return (
-      lstatSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true
-    );
+    return lstatSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true;
   } catch {
     return false;
   }
@@ -124,10 +118,7 @@ function claudeUserText(line: Record<string, unknown>): string | null {
   return null;
 }
 
-export function readClaudeRecord(
-  entry: FileCandidate,
-  options: ScanOptions,
-): SessionRecord | null {
+export function readClaudeRecord(entry: FileCandidate, options: ScanOptions): SessionRecord | null {
   const head = headBytes(entry.filePath, options.headBytes);
   if (head === null) {
     return null;
@@ -173,9 +164,7 @@ export function readClaudeRecord(
 /** Every transcript, newest first, stat only — no file is opened here. */
 export function listClaudeFiles(home: string): FileCandidate[] {
   const root = path.join(home, CLAUDE_DIR, CLAUDE_PROJECTS_DIR);
-  return datedTranscripts(root).sort(
-    (left, right) => right.mtimeMs - left.mtimeMs,
-  );
+  return datedTranscripts(root).sort((left, right) => right.mtimeMs - left.mtimeMs);
 }
 
 /** List + cap + read, with no cache. The boot path's shape; the history

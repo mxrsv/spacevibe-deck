@@ -1,20 +1,9 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadCache, writeCache } from "./cache";
-import {
-  USAGE_CACHE_VERSION,
-  emptyCache,
-  emptyRecord,
-  type UsageCache,
-} from "./model";
+import { USAGE_CACHE_VERSION, emptyCache, emptyRecord, type UsageCache } from "./model";
 
 const temps: string[] = [];
 function tempDir(): string {
@@ -85,7 +74,7 @@ describe("usage cache", () => {
     // these tests may run as root, which permission bits do not stop.)
     mkdirSync(`${file}.tmp`);
     try {
-      expect(() => writeCache(file, sampleCache())).toThrow();
+      expect(() => writeCache(file, sampleCache())).toThrow("EISDIR");
     } finally {
       rmSync(`${file}.tmp`, { recursive: true, force: true });
     }

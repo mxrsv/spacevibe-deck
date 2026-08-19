@@ -2,8 +2,7 @@ import { useSignal } from "@preact/signals";
 import type { Preset } from "../lib/preset-schema";
 import { Modal } from "../ui/modal";
 
-export type SaveTarget =
-  { kind: "new"; name: string } | { kind: "overwrite"; id: string };
+export type SaveTarget = { kind: "new"; name: string } | { kind: "overwrite"; id: string };
 
 export interface SavePresetDialogProps {
   existing: readonly Preset[];
@@ -11,11 +10,7 @@ export interface SavePresetDialogProps {
   onSave(target: SaveTarget, includeCwds: boolean): void;
 }
 
-export function SavePresetDialog({
-  existing,
-  onCancel,
-  onSave,
-}: SavePresetDialogProps) {
+export function SavePresetDialog({ existing, onCancel, onSave }: SavePresetDialogProps) {
   const name = useSignal("");
   const overwriteId = useSignal<string | null>(null);
   const includeCwds = useSignal(true); // default on

@@ -77,6 +77,7 @@ export function ShortcutCapture({
   const commitRef = useRef(onCommit);
   commitRef.current = onCommit;
 
+  /* oxlint-disable react-hooks/exhaustive-deps -- one-shot listener; the hint signal is captured by reference */
   useEffect(() => {
     if (!listening.value) {
       return;
@@ -93,8 +94,7 @@ export function ShortcutCapture({
     };
 
     const onKeyDown = (event: KeyboardEvent): void => {
-      const bare =
-        !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey;
+      const bare = !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey;
       // BARE Tab keeps moving focus — not preventDefault'ed, or this control
       // becomes a keyboard trap with no way out except the mouse. A MODIFIED
       // Tab is a real chord (Windows ships next-tab on Ctrl+Tab) and is
@@ -138,10 +138,9 @@ export function ShortcutCapture({
       void suspendMenuAccelerators(false);
     };
   }, [listening.value, action, platform]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
-  const text = listening.value
-    ? hint.value
-    : formatChords(chords, action, platform);
+  const text = listening.value ? hint.value : formatChords(chords, action, platform);
 
   return (
     <button

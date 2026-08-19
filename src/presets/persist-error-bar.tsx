@@ -7,6 +7,7 @@ const AUTO_DISMISS_MS = 6000;
  * (presets, workspaces recents, settings) and PTY input writes — so the
  * user knows a change may not have landed. */
 export function PersistErrorBar() {
+  /* oxlint-disable react-hooks/exhaustive-deps -- Preact signal: persistError.value is the reactive dep (a new error re-arms the timer) */
   useEffect(() => {
     if (persistError.value === null) {
       return;
@@ -16,6 +17,7 @@ export function PersistErrorBar() {
     }, AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
   }, [persistError.value]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   if (persistError.value === null) {
     return null;

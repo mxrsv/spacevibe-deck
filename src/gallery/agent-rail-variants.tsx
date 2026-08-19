@@ -151,11 +151,7 @@ function Logos({ agents }: { readonly agents: readonly VariantAgent[] }) {
   return (
     <span class="gxa-logos">
       {agents.map((entry) => (
-        <AgentGlyph
-          key={entry.agent}
-          agent={entry.agent}
-          className="gxa-logo"
-        />
+        <AgentGlyph key={entry.agent} agent={entry.agent} className="gxa-logo" />
       ))}
     </span>
   );
@@ -234,11 +230,7 @@ export function agentRailVariantsSpecimen() {
           </header>
           <div class="gxa-rail">
             {CLUSTERS.map((cluster) => (
-              <ClusterBlock
-                key={cluster.project}
-                cluster={cluster}
-                kind={variant.kind}
-              />
+              <ClusterBlock key={cluster.project} cluster={cluster} kind={variant.kind} />
             ))}
           </div>
         </article>
@@ -306,11 +298,7 @@ function MarkRow({
           <AgentGlyph agent={agent} className="gxa-logo" />
         </span>
         <strong class="gxa-name">{name}</strong>
-        <span
-          class={`gxa-mark gxa-mark--${kind}`}
-          data-state="idle"
-          aria-hidden="true"
-        />
+        <span class={`gxa-mark gxa-mark--${kind}`} data-state="idle" aria-hidden="true" />
       </div>
     </div>
   );

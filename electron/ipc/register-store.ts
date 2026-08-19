@@ -42,10 +42,7 @@ function assertStoreFile(file: unknown): string {
 }
 
 export function registerStore(deps: RegisterStoreDeps): void {
-  const openStores = new Map<
-    string,
-    Awaited<ReturnType<StoreRegistry["open"]>>
-  >();
+  const openStores = new Map<string, Awaited<ReturnType<StoreRegistry["open"]>>>();
 
   ipcMain.handle("store_load", async (_event, payload) => {
     const {
@@ -96,7 +93,5 @@ export function registerStore(deps: RegisterStoreDeps): void {
   ipcMain.handle("store_delete", (_event, { file, key }) => {
     openStores.get(assertStoreFile(file))?.delete(key);
   });
-  ipcMain.handle("store_save", (_event, { file }) =>
-    openStores.get(assertStoreFile(file))?.save(),
-  );
+  ipcMain.handle("store_save", (_event, { file }) => openStores.get(assertStoreFile(file))?.save());
 }

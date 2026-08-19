@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  CODEX_PAGE_DOWN,
-  CODEX_PAGE_UP,
-  createCodexWheelHandler,
-} from "./codex-wheel";
+import { CODEX_PAGE_DOWN, CODEX_PAGE_UP, createCodexWheelHandler } from "./codex-wheel";
 
 interface WheelFixture {
   readonly event: WheelEvent;

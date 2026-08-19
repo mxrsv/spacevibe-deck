@@ -22,16 +22,8 @@ function install(): void {
     return;
   }
   installed = true;
-  window.addEventListener(
-    "keydown",
-    (event) => setHeld(hasPrimaryModifier(event)),
-    true,
-  );
-  window.addEventListener(
-    "keyup",
-    (event) => setHeld(hasPrimaryModifier(event)),
-    true,
-  );
+  window.addEventListener("keydown", (event) => setHeld(hasPrimaryModifier(event)), true);
+  window.addEventListener("keyup", (event) => setHeld(hasPrimaryModifier(event)), true);
   window.addEventListener("blur", () => setHeld(false));
 }
 

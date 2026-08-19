@@ -4,11 +4,7 @@
  * foreground job from `ps` rather than from `tcgetpgrp`.
  */
 import { describe, expect, it } from "vitest";
-import {
-  classifyProcess,
-  normalizedProcessName,
-  validateAgentProcessMatchers,
-} from "./classify";
+import { classifyProcess, normalizedProcessName, validateAgentProcessMatchers } from "./classify";
 import { argv0Name, foregroundProcess, parsePsTable } from "./macos";
 
 describe("classifyProcess", () => {
@@ -35,19 +31,13 @@ describe("classifyProcess", () => {
 
   it("classifies a built-in agent launched through a Node shebang", () => {
     expect(
-      classifyProcess(
-        "node",
-        true,
-        "node /Users/dev/.nvm/versions/node/v24/bin/gemini --resume",
-      ),
+      classifyProcess("node", true, "node /Users/dev/.nvm/versions/node/v24/bin/gemini --resume"),
     ).toEqual({ kind: "agent", agent: "gemini" });
   });
 
   it("classifies a validated user-declared agent", () => {
     expect(
-      classifyProcess("aider", true, "aider --watch", [
-        { binary: "aider", agent: "Aider" },
-      ]),
+      classifyProcess("aider", true, "aider --watch", [{ binary: "aider", agent: "Aider" }]),
     ).toEqual({ kind: "agent", agent: "Aider" });
   });
 
@@ -173,10 +163,9 @@ describe("foregroundProcess", () => {
     // member's pid is not a group id, so `kill(-pid)` would hit nothing and
     // the foreground job would outlive its pane.
     const orphaned = parsePsTable(
-      [
-        "  700   700   900 ttys009 /bin/zsh -l",
-        "  901   900   900 ttys009 npm exec claude",
-      ].join("\n"),
+      ["  700   700   900 ttys009 /bin/zsh -l", "  901   900   900 ttys009 npm exec claude"].join(
+        "\n",
+      ),
     );
 
     expect(foregroundProcess(orphaned, "ttys009", 700)).toEqual({

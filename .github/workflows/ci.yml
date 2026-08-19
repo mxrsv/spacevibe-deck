@@ -33,6 +33,13 @@ jobs:
       - name: Check menu_registry.rs is up to date
         run: npm run generate:menu:check
 
+      # `max-lines` is a warning in `.oxlintrc.json` itself, not by a flag here:
+      # the 101 pre-existing over-length files stay a visible backlog (the rule
+      # is forward-only) and a plain `oxlint` reads the same locally as it does
+      # in CI. Every other lint error still fails the build.
+      - name: Lint
+        run: npm run lint
+
       - name: Test
         run: npm test
 

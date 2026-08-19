@@ -42,11 +42,7 @@ export interface LogicalLine {
 }
 
 /** The logical line containing 0-based row `row`, or null when it is empty. */
-export function readLogicalLine(
-  buffer: BufferLike,
-  cols: number,
-  row: number,
-): LogicalLine | null {
+export function readLogicalLine(buffer: BufferLike, cols: number, row: number): LogicalLine | null {
   let start = row;
   for (let step = 0; step < MAX_ROWS; step += 1) {
     if (start === 0) {

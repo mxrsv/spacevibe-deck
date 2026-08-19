@@ -12,11 +12,7 @@ export function isBusy(info: PaneProcessInfo): boolean {
 export function busyProcesses(infos: readonly PaneProcessInfo[]): string[] {
   const names: string[] = [];
   for (const info of infos) {
-    if (
-      isBusy(info) &&
-      info.process !== null &&
-      !names.includes(info.process)
-    ) {
+    if (isBusy(info) && info.process !== null && !names.includes(info.process)) {
       names.push(info.process);
     }
   }
@@ -110,10 +106,7 @@ export function dirtyFilesPhrase(paths: readonly string[]): string | null {
  * `claude` deduplicate to one name, and "claude is still running" badly
  * understates what is about to be killed.
  */
-function busyPhrase(
-  names: readonly string[],
-  busyPanes: number,
-): string | null {
+function busyPhrase(names: readonly string[], busyPanes: number): string | null {
   if (busyPanes === 0 && names.length === 0) {
     return null;
   }
@@ -151,10 +144,7 @@ export function confirmMessage(
  * unsaved-files clause has to reach both, and two copies of one sentence is
  * exactly how one of them gets it and the other does not.
  */
-export function unknownMessage(
-  action: string,
-  dirtyFiles: readonly string[] = [],
-): string {
+export function unknownMessage(action: string, dirtyFiles: readonly string[] = []): string {
   const dirty = dirtyFilesPhrase(dirtyFiles);
   const subject =
     dirty === null
@@ -190,27 +180,18 @@ export async function confirmClose(
   prompting = true;
   try {
     const infos = await freshPaneInfo(paneIds, pty);
-    if (
-      infos.every((info) => info.kind === "idle-shell") &&
-      dirtyFiles.length === 0
-    ) {
+    if (infos.every((info) => info.kind === "idle-shell") && dirtyFiles.length === 0) {
       return true;
     }
     const names = busyProcesses(infos);
     const fullyNamed = infos.every(
       (info) =>
         info.kind === "idle-shell" ||
-        ((info.kind === "agent" || info.kind === "busy") &&
-          info.process !== null),
+        ((info.kind === "agent" || info.kind === "busy") && info.process !== null),
     );
     const message =
       (fullyNamed
-        ? confirmMessage(
-            names,
-            copy.action,
-            infos.filter(isBusy).length,
-            dirtyFiles,
-          )
+        ? confirmMessage(names, copy.action, infos.filter(isBusy).length, dirtyFiles)
         : unknownMessage(copy.action, dirtyFiles)) +
       (copy.detail === undefined ? "" : `\n\n${copy.detail}`);
     try {

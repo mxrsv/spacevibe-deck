@@ -56,10 +56,7 @@ describe("mock model", () => {
     model = setMockRatio(model, [], 0.95);
     expect(model.tree.kind === "split" && model.tree.ratio).toBe(0.85);
     model = nudgeSelected(model, 0.05); // selected pane 2 = branch b → shrink a
-    expect(model.tree.kind === "split" && model.tree.ratio).toBeCloseTo(
-      0.8,
-      10,
-    );
+    expect(model.tree.kind === "split" && model.tree.ratio).toBeCloseTo(0.8, 10);
   });
 
   it("artifact zips cwds left-to-right and omits an all-inherit map", () => {

@@ -10,11 +10,7 @@
  */
 import { loadCache, writeCache } from "./cache";
 import { buildSnapshot, scanAll } from "./scan";
-import {
-  emptyCache,
-  type UsageCache,
-  type UsageSnapshot,
-} from "./model";
+import { emptyCache, type UsageCache, type UsageSnapshot } from "./model";
 
 /**
  * The answer when the home directory cannot be resolved at all.

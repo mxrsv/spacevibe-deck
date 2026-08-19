@@ -23,9 +23,7 @@ describe("letterAvatar", () => {
 
   it("varies the color across different seeds", () => {
     const colors = new Set(
-      ["/a", "/b", "/c", "/d", "/e", "/f", "/g", "/h"].map(
-        (seed) => letterAvatar("x", seed).color,
-      ),
+      ["/a", "/b", "/c", "/d", "/e", "/f", "/g", "/h"].map((seed) => letterAvatar("x", seed).color),
     );
     expect(colors.size).toBeGreaterThan(1);
   });

@@ -32,9 +32,7 @@ export function looksLikeGhostty(source: string): boolean {
   if (/^\s*\[/m.test(source)) {
     return false;
   }
-  return /^\s*(palette|background|foreground|cursor-color|selection-background)\s*=/m.test(
-    source,
-  );
+  return /^\s*(palette|background|foreground|cursor-color|selection-background)\s*=/m.test(source);
 }
 
 export function parseGhostty(source: string): ThemeDraft | null {

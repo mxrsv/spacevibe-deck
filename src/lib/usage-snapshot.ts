@@ -78,10 +78,7 @@ export const EMPTY_USAGE_SNAPSHOT: UsageSnapshot = {
 };
 
 /** Field-wise sum. Returns a new object; neither argument is touched (C1). */
-export function addCounters(
-  left: UsageCounters,
-  right: UsageCounters,
-): UsageCounters {
+export function addCounters(left: UsageCounters, right: UsageCounters): UsageCounters {
   return {
     inputUncached: left.inputUncached + right.inputUncached,
     cacheRead: left.cacheRead + right.cacheRead,

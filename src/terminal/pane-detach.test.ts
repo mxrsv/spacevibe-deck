@@ -128,9 +128,7 @@ describe("detachPane happy path", () => {
 });
 
 /** Reads back what `stage_transfer` received, through claim. */
-async function createStagedProbe(
-  transfer: ReturnType<typeof createMemoryTransferClient>,
-) {
+async function createStagedProbe(transfer: ReturnType<typeof createMemoryTransferClient>) {
   return transfer.claimTransfer("xfer-1");
 }
 
@@ -138,9 +136,7 @@ describe("detachPane failure injection", () => {
   it("leaves the pane in place when the pane is already gone", async () => {
     const h = harness();
     h.deps.pane = () => undefined;
-    await expect(
-      detachPane(7, { kind: "new-window" }, h.deps),
-    ).resolves.toEqual({
+    await expect(detachPane(7, { kind: "new-window" }, h.deps)).resolves.toEqual({
       kind: "kept",
       reason: "unknown-pane",
     });
@@ -150,9 +146,7 @@ describe("detachPane failure injection", () => {
   it("releases the hold and keeps the pane when prepare fails", async () => {
     const h = harness();
     h.transfer.failNext("prepareTransfer", "already transferring");
-    await expect(
-      detachPane(7, { kind: "new-window" }, h.deps),
-    ).resolves.toEqual({
+    await expect(detachPane(7, { kind: "new-window" }, h.deps)).resolves.toEqual({
       kind: "kept",
       reason: "prepare-failed",
     });
@@ -164,9 +158,7 @@ describe("detachPane failure injection", () => {
   it("aborts, keeps the pane and reports when stage fails", async () => {
     const h = harness();
     h.transfer.failNext("stageTransfer", "payload too large");
-    await expect(
-      detachPane(7, { kind: "new-window" }, h.deps),
-    ).resolves.toEqual({
+    await expect(detachPane(7, { kind: "new-window" }, h.deps)).resolves.toEqual({
       kind: "kept",
       reason: "stage-failed",
     });
@@ -178,9 +170,7 @@ describe("detachPane failure injection", () => {
   it("aborts and keeps the pane when the window cannot be opened", async () => {
     const h = harness();
     h.transfer.failNext("openPaneWindow", "window creation failed");
-    await expect(
-      detachPane(7, { kind: "new-window" }, h.deps),
-    ).resolves.toEqual({
+    await expect(detachPane(7, { kind: "new-window" }, h.deps)).resolves.toEqual({
       kind: "kept",
       reason: "open-window-failed",
     });

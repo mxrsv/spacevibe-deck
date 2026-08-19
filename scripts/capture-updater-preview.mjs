@@ -1,3 +1,4 @@
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright-core";
@@ -41,11 +42,7 @@ try {
         const button = page.locator(".update-action");
         await button.waitFor({ state: "visible" });
         const bounds = await button.boundingBox();
-        if (
-          bounds === null ||
-          bounds.x < 0 ||
-          bounds.x + bounds.width > viewport.width
-        ) {
+        if (bounds === null || bounds.x < 0 || bounds.x + bounds.width > viewport.width) {
           throw new Error(`Update action overflows ${viewport.name}/${layout}/${state}`);
         }
         if (state === "available") {
@@ -58,10 +55,7 @@ try {
             throw new Error("Update action focus ring is not visible");
           }
         }
-        const output = resolve(
-          OUTPUT_DIR,
-          `${viewport.name}-${layout}-${state}.png`,
-        );
+        const output = resolve(OUTPUT_DIR, `${viewport.name}-${layout}-${state}.png`);
         await page.screenshot({ path: output, fullPage: true });
         console.log(output);
       }

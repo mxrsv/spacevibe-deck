@@ -3,21 +3,12 @@ import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { open } from "../host/dialog-host";
 import type { Preset } from "../lib/preset-schema";
-import {
-  folderName,
-  partitionRecents,
-  resolveAgentChoice,
-} from "../lib/workspace-recents";
+import { folderName, partitionRecents, resolveAgentChoice } from "../lib/workspace-recents";
 import type { AgentChoice, RecentWorkspace } from "../lib/workspace-recents";
 import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
 import type { DetectedAgent } from "../terminal/pty-client";
 import { ensureAgentsDetected } from "../terminal/agent-detection-store";
-import {
-  agentOptions,
-  BUILTIN_AGENTS,
-  probeNames,
-  type CustomAgent,
-} from "../lib/agent-catalog";
+import { agentOptions, BUILTIN_AGENTS, probeNames, type CustomAgent } from "../lib/agent-catalog";
 import { settings } from "../settings/settings-store";
 import { boardPresets, presetsData } from "../presets/presets-store";
 import { removeWorkspaceRecents, workspacesData } from "./workspaces-store";
@@ -37,11 +28,7 @@ export interface OpenBoardProps {
   readonly openWorkspacePaths: ReadonlySet<string>;
   onCancel(): void;
   /** Resolves to false on failure (e.g. PTY spawn error) — board stays up. */
-  onOpen(
-    workspace: string,
-    preset: Preset,
-    agent: AgentChoice,
-  ): Promise<boolean>;
+  onOpen(workspace: string, preset: Preset, agent: AgentChoice): Promise<boolean>;
   /** Resolves false when the history entry could not materialize. */
   onResumeSession(entry: SessionEntry): Promise<boolean>;
 }
@@ -116,9 +103,7 @@ export function OpenBoard({
    * not arrived. Resolves to the set of missing paths, or `null` when the
    * probe itself failed and liveness is simply unknown.
    */
-  const livenessProbe = useRef<Promise<ReadonlySet<string> | null> | null>(
-    null,
-  );
+  const livenessProbe = useRef<Promise<ReadonlySet<string> | null> | null>(null);
   const customAgents = settings.value.customAgents;
 
   useEffect(() => {
@@ -134,6 +119,7 @@ export function OpenBoard({
     probe.current = ensureAgentsDetected(probeNames(customAgents));
   }, [customAgents]);
 
+  /* oxlint-disable react-hooks/exhaustive-deps -- re-runs on recents only; the missing-signal read is a snapshot */
   useEffect(() => {
     const paths = recents.map((recent) => recent.path);
     if (paths.length === 0) {
@@ -171,6 +157,7 @@ export function OpenBoard({
       cancelled = true;
     };
   }, [recents]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   const groups = partitionRecents(recents, missing.value);
 
@@ -236,8 +223,7 @@ export function OpenBoard({
     const ok = await onOpen(path, preset, agent);
     opening.value = false;
     if (!ok) {
-      notice.value =
-        "Couldn't start a shell here — check the folder and try again";
+      notice.value = "Couldn't start a shell here — check the folder and try again";
     }
   }
 
@@ -330,12 +316,7 @@ export function OpenBoard({
   }
 
   return (
-    <div
-      class="open-board"
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      ref={containerRef}
-    >
+    <div class="open-board" tabIndex={0} onKeyDown={handleKeyDown} ref={containerRef}>
       {view.value === "worktree" ? (
         <OpenBoardWorktreeForm
           recents={recents}
@@ -365,10 +346,7 @@ export function OpenBoard({
               {notice.value}
             </p>
           ) : null}
-          <SessionsBody
-            variant="dock"
-            onResume={(entry) => void resumePastSession(entry)}
-          />
+          <SessionsBody variant="dock" onResume={(entry) => void resumePastSession(entry)} />
         </div>
       ) : (
         <OpenBoardHome

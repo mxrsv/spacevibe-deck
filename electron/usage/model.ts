@@ -235,10 +235,7 @@ export function bucketStart(unixMs: number): number {
   return unixMs - (unixMs % BUCKET_MS);
 }
 
-export function addCounters(
-  left: UsageCounters,
-  right: UsageCounters,
-): UsageCounters {
+export function addCounters(left: UsageCounters, right: UsageCounters): UsageCounters {
   return {
     inputUncached: left.inputUncached + right.inputUncached,
     cacheRead: left.cacheRead + right.cacheRead,

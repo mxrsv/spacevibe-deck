@@ -76,9 +76,7 @@ describe("routing", () => {
 
     // Including the source: mid-transfer nobody may write.
     expect(() => coordinator.assertAccess(1, "main")).toThrow(PaneAccessError);
-    expect(() => coordinator.assertAccess(1, "deck-2")).toThrow(
-      PaneAccessError,
-    );
+    expect(() => coordinator.assertAccess(1, "deck-2")).toThrow(PaneAccessError);
   });
 
   it("counts a transferring pane as live for the quit census but not for close", () => {
@@ -196,26 +194,20 @@ describe("transfer lifecycle", () => {
     coordinator.register(1, "main");
     const token = coordinator.beginTransfer("main", 1);
 
-    expect(() => coordinator.claim(token, "deck-2")).toThrow(
-      /no staged payload/,
-    );
+    expect(() => coordinator.claim(token, "deck-2")).toThrow(/no staged payload/);
   });
 
   it("refuses a second transfer for the same pane", () => {
     coordinator.register(1, "main");
     coordinator.beginTransfer("main", 1);
 
-    expect(() => coordinator.beginTransfer("main", 1)).toThrow(
-      /already being transferred/,
-    );
+    expect(() => coordinator.beginTransfer("main", 1)).toThrow(/already being transferred/);
   });
 
   it("refuses to transfer a pane another window owns", () => {
     coordinator.register(1, "main");
 
-    expect(() => coordinator.beginTransfer("deck-2", 1)).toThrow(
-      /owned by window main/,
-    );
+    expect(() => coordinator.beginTransfer("deck-2", 1)).toThrow(/owned by window main/);
   });
 });
 
@@ -240,11 +232,7 @@ describe("bounds", () => {
     coordinator.register(1, "main");
     coordinator.beginTransfer("main", 1, start);
 
-    const second = coordinator.beginTransfer(
-      "main",
-      1,
-      start + TRANSFER_TIMEOUT_MS,
-    );
+    const second = coordinator.beginTransfer("main", 1, start + TRANSFER_TIMEOUT_MS);
 
     expect(second).not.toBe("xfer-1");
   });

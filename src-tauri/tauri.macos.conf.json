@@ -23,9 +23,7 @@
   "plugins": {
     "updater": {
       "pubkey": "",
-      "endpoints": [
-        "https://github.com/mxrsv/spacevibe-deck/releases/latest/download/latest.json"
-      ]
+      "endpoints": ["https://github.com/mxrsv/spacevibe-deck/releases/latest/download/latest.json"]
     }
   }
 }

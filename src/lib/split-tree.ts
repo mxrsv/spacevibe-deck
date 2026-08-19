@@ -53,12 +53,7 @@ export type Edge = "top" | "bottom" | "left" | "right";
  * `targetId`. Returns a new tree; returns the old tree BY REFERENCE when the
  * operation is invalid (source === target, or either id is not in the tree).
  */
-export function movePane(
-  node: TreeNode,
-  sourceId: number,
-  targetId: number,
-  edge: Edge,
-): TreeNode {
+export function movePane(node: TreeNode, sourceId: number, targetId: number, edge: Edge): TreeNode {
   if (sourceId === targetId) {
     return node;
   }
@@ -86,12 +81,7 @@ export function movePane(
  * either: it takes a direction rather than an edge and always appends the new
  * pane to branch `b`, so `left` and `top` would land on the wrong side.
  */
-export function dockNewPane(
-  node: TreeNode,
-  targetId: number,
-  newId: number,
-  edge: Edge,
-): TreeNode {
+export function dockNewPane(node: TreeNode, targetId: number, newId: number, edge: Edge): TreeNode {
   if (!leafIds(node).includes(targetId)) {
     return node;
   }
@@ -148,11 +138,7 @@ export function removeLeaf(node: TreeNode, paneId: number): TreeNode | null {
 }
 
 /** Swap a leaf's id (used when respawning a session into the same spot). */
-export function replaceLeaf(
-  node: TreeNode,
-  oldId: number,
-  newId: number,
-): TreeNode {
+export function replaceLeaf(node: TreeNode, oldId: number, newId: number): TreeNode {
   if (node.kind === "leaf") {
     return node.paneId === oldId ? leaf(newId) : node;
   }
@@ -182,11 +168,7 @@ export function swapLeaves(node: TreeNode, idA: number, idB: number): TreeNode {
 
 function swapRec(node: TreeNode, idA: number, idB: number): TreeNode {
   if (node.kind === "leaf") {
-    return node.paneId === idA
-      ? leaf(idB)
-      : node.paneId === idB
-        ? leaf(idA)
-        : node;
+    return node.paneId === idA ? leaf(idB) : node.paneId === idB ? leaf(idA) : node;
   }
   return {
     ...node,
@@ -197,9 +179,7 @@ function swapRec(node: TreeNode, idA: number, idB: number): TreeNode {
 
 /** Pane ids in left→right, top→bottom order. */
 export function leafIds(node: TreeNode): number[] {
-  return node.kind === "leaf"
-    ? [node.paneId]
-    : [...leafIds(node.a), ...leafIds(node.b)];
+  return node.kind === "leaf" ? [node.paneId] : [...leafIds(node.a), ...leafIds(node.b)];
 }
 
 /** Update the ratio of the split at `path` (a/b walk from the root). */
@@ -223,11 +203,7 @@ export function setRatio(node: TreeNode, path: Path, ratio: number): TreeNode {
  * Returns the node by reference when nothing changes or when `paneId` is
  * not in the tree.
  */
-export function expandForPane(
-  node: TreeNode,
-  paneId: number,
-  minRatio: number,
-): TreeNode {
+export function expandForPane(node: TreeNode, paneId: number, minRatio: number): TreeNode {
   if (node.kind === "leaf") {
     return node;
   }
@@ -236,9 +212,7 @@ export function expandForPane(
   if (!inA && !inB) {
     return node;
   }
-  const ratio = inA
-    ? Math.max(node.ratio, minRatio)
-    : Math.min(node.ratio, 1 - minRatio);
+  const ratio = inA ? Math.max(node.ratio, minRatio) : Math.min(node.ratio, 1 - minRatio);
   const a = inA ? expandForPane(node.a, paneId, minRatio) : node.a;
   const b = inB ? expandForPane(node.b, paneId, minRatio) : node.b;
   if (a === node.a && b === node.b && ratio === node.ratio) {
@@ -299,19 +273,14 @@ export function serializeTree(node: TreeNode): SerializedNode {
 }
 
 export function countLeaves(layout: SerializedNode): number {
-  return layout.type === "leaf"
-    ? 1
-    : countLeaves(layout.first) + countLeaves(layout.second);
+  return layout.type === "leaf" ? 1 : countLeaves(layout.first) + countLeaves(layout.second);
 }
 
 /**
  * Rebuild a tree from a serialized layout, assigning `paneIds` to leaves
  * left-to-right. `paneIds` must hold exactly `countLeaves(layout)` ids.
  */
-export function treeFromLayout(
-  layout: SerializedNode,
-  paneIds: readonly number[],
-): TreeNode {
+export function treeFromLayout(layout: SerializedNode, paneIds: readonly number[]): TreeNode {
   const [node, used] = buildFromLayout(layout, paneIds, 0);
   if (used !== paneIds.length) {
     throw new Error(`Layout has ${used} leaves but got ${paneIds.length} ids`);
@@ -333,8 +302,5 @@ function buildFromLayout(
   }
   const [a, afterA] = buildFromLayout(layout.first, paneIds, offset);
   const [b, afterB] = buildFromLayout(layout.second, paneIds, afterA);
-  return [
-    { kind: "split", dir: layout.direction, ratio: layout.ratio, a, b },
-    afterB,
-  ];
+  return [{ kind: "split", dir: layout.direction, ratio: layout.ratio, a, b }, afterB];
 }

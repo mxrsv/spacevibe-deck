@@ -8,11 +8,7 @@
  */
 import { signal } from "@preact/signals";
 import { nextOpenSequence, UNSEQUENCED } from "../lib/open-sequence";
-import type {
-  BrowserClient,
-  BrowserGrab,
-  BrowserState,
-} from "./browser-client";
+import type { BrowserClient, BrowserGrab, BrowserState } from "./browser-client";
 import { formatGrab, grabSummary } from "./grab-format";
 
 export const EMPTY_STATE: BrowserState = {
@@ -156,9 +152,7 @@ export interface BrowserBridgeDeps {
 /**
  * Subscribe to the host. Returns a teardown for the window's unload path.
  */
-export async function initBrowserBridge(
-  deps: BrowserBridgeDeps,
-): Promise<() => void> {
+export async function initBrowserBridge(deps: BrowserBridgeDeps): Promise<() => void> {
   const unlisteners = await Promise.all([
     deps.client.onState((state) => {
       browserState.value = state;
@@ -187,10 +181,7 @@ export async function initBrowserBridge(
  *
  * Reopening keeps the page: the toggle is a view, not a session.
  */
-export async function openBrowser(
-  client: BrowserClient,
-  restore: string,
-): Promise<void> {
+export async function openBrowser(client: BrowserClient, restore: string): Promise<void> {
   browserOpen.value = true;
   browserOpenedAt.value = nextOpenSequence();
   browserSurfaceActive.value = true;

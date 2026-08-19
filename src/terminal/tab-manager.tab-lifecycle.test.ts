@@ -8,16 +8,8 @@ import { activeTabIndex, tabViews } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
-import {
-  flush,
-  freshWindowFocusController,
-  processInfo,
-  setup,
-} from "./tab-manager.fixtures";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
+import { flush, freshWindowFocusController, processInfo, setup } from "./tab-manager.fixtures";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
@@ -105,10 +97,7 @@ describe("createTabManager workspace identity", () => {
       workspacePath: "/repo/b",
     });
 
-    expect(tabViews.value.map((view) => view.workspacePath)).toEqual([
-      "/repo/a",
-      "/repo/b",
-    ]);
+    expect(tabViews.value.map((view) => view.workspacePath)).toEqual(["/repo/a", "/repo/b"]);
     expect(tm.activeWorkspacePath()).toBe("/repo/b");
   });
 
@@ -359,9 +348,7 @@ describe("createTabManager reopen (Cmd+Shift+T)", () => {
     await flush();
 
     expect(tabViews.value).toHaveLength(2);
-    expect(
-      tabViews.value.some((tab) => tab.workspacePath === "/repo/alive"),
-    ).toBe(true);
+    expect(tabViews.value.some((tab) => tab.workspacePath === "/repo/alive")).toBe(true);
     tm.dispose();
   });
 
@@ -384,9 +371,7 @@ describe("createTabManager reopen (Cmd+Shift+T)", () => {
     await flush();
 
     expect(tabViews.value).toHaveLength(1); // no zombie tab
-    expect(
-      tabViews.value.some((tab) => tab.workspacePath === "/repo/gone"),
-    ).toBe(false);
+    expect(tabViews.value.some((tab) => tab.workspacePath === "/repo/gone")).toBe(false);
     tm.dispose();
   });
 });
@@ -421,10 +406,7 @@ describe("createTabManager close routing", () => {
     pty: ReturnType<typeof createMemoryPtyClient>;
   }> {
     const infos = new Map<number, PaneProcessInfo>(
-      [1, 2, 3].map((id) => [
-        id,
-        processInfo(id, null, "zsh", "idle-shell", null),
-      ]),
+      [1, 2, 3].map((id) => [id, processInfo(id, null, "zsh", "idle-shell", null)]),
     );
     const { tm, pty } = setup({ infos });
     for (let i = 0; i < 3; i += 1) {

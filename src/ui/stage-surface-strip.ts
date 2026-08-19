@@ -57,8 +57,7 @@ export function composeSurfaceStrip(deps: StageSurfaceStripDeps): SurfaceStrip {
   return {
     count: () => files.count() + browserSlot(),
     total: () => files.total() + browserSlot(),
-    activeIndex: () =>
-      browserSurfaceActive.value ? files.count() : files.activeIndex(),
+    activeIndex: () => (browserSurfaceActive.value ? files.count() : files.activeIndex()),
     // Same delegation as every other method: file indexes go to the file
     // strip, the browser's own slot answers from its store. The merged strip
     // then places the chip by when it was opened, not by this index space —

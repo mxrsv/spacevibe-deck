@@ -127,7 +127,11 @@ function setup() {
   let windowFocused = false;
   const window = {
     isDestroyed: () => false,
-    webContents: { focus: () => { windowFocused = true; } },
+    webContents: {
+      focus: () => {
+        windowFocused = true;
+      },
+    },
     contentView: {
       addChildView: (child: unknown) => added.push(child),
       removeChildView: (child: unknown) => removed.push(child),

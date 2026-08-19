@@ -1,9 +1,6 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { describe, expect, it } from "vitest";
-import {
-  MACOS_KEYMAP,
-  WINDOWS_KEYMAP,
-  ACTION_REGISTRY,
-} from "../terminal/action-registry";
+import { MACOS_KEYMAP, WINDOWS_KEYMAP, ACTION_REGISTRY } from "../terminal/action-registry";
 import {
   MAX_CHORDS_PER_ACTION,
   NO_KEYBINDING_OVERRIDES,
@@ -26,9 +23,7 @@ import { matchBinding } from "../terminal/keymap";
 
 function keyEvent(
   key: string,
-  mods: Partial<
-    Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">
-  > = {},
+  mods: Partial<Pick<KeyboardEvent, "metaKey" | "shiftKey" | "altKey" | "ctrlKey">> = {},
 ): KeyboardEvent {
   return {
     key,
@@ -78,24 +73,13 @@ describe("chordId", () => {
     // The collision a structural compare misses: `focus-next` ships as
     // `{ code: "BracketRight" }` and a user capturing the same physical key
     // stores `{ key: "]" }`.
-    expect(chordId({ code: "BracketRight", meta: true })).toBe(
-      chordId({ key: "]", meta: true }),
-    );
-    expect(chordId({ code: "Digit1", meta: true })).toBe(
-      chordId({ key: "1", meta: true }),
-    );
+    expect(chordId({ code: "BracketRight", meta: true })).toBe(chordId({ key: "]", meta: true }));
+    expect(chordId({ code: "Digit1", meta: true })).toBe(chordId({ key: "1", meta: true }));
   });
 
   it("separates chords that differ only by a modifier", () => {
-    expect(sameChord({ key: "d", meta: true }, { key: "d", meta: true })).toBe(
-      true,
-    );
-    expect(
-      sameChord(
-        { key: "d", meta: true },
-        { key: "d", meta: true, shift: true },
-      ),
-    ).toBe(false);
+    expect(sameChord({ key: "d", meta: true }, { key: "d", meta: true })).toBe(true);
+    expect(sameChord({ key: "d", meta: true }, { key: "d", meta: true, shift: true })).toBe(false);
   });
 
   it("treats an absent modifier and an explicit false as the same chord", () => {
@@ -118,12 +102,9 @@ describe("resolveKeymap", () => {
   });
 
   it("replaces every default chord of an overridden action", () => {
-    const overrides = withOverride(
-      NO_KEYBINDING_OVERRIDES,
-      "windows",
-      "paste",
-      [{ key: "v", alt: true }],
-    );
+    const overrides = withOverride(NO_KEYBINDING_OVERRIDES, "windows", "paste", [
+      { key: "v", alt: true },
+    ]);
     const keymap = resolveKeymap("windows", overrides);
     // Windows ships `paste` three times (Ctrl+V, Ctrl+Shift+V, Shift+Insert).
     // An override replaces the whole set rather than adding a fourth.
@@ -142,12 +123,7 @@ describe("resolveKeymap", () => {
   });
 
   it("unbinds an action given an empty chord list", () => {
-    const overrides = withOverride(
-      NO_KEYBINDING_OVERRIDES,
-      "macos",
-      "clear-buffer",
-      [],
-    );
+    const overrides = withOverride(NO_KEYBINDING_OVERRIDES, "macos", "clear-buffer", []);
     const keymap = resolveKeymap("macos", overrides);
     expect(chordsForAction(keymap, "clear-buffer")).toEqual([]);
     expect(matchBinding(keyEvent("k", { metaKey: true }), keymap)).toBeNull();
@@ -158,9 +134,7 @@ describe("resolveKeymap", () => {
       { key: "j", meta: true },
     ]);
     const keymap = resolveKeymap("macos", overrides);
-    expect(matchBinding(keyEvent("d", { metaKey: true }), keymap)).toBe(
-      "split-row",
-    );
+    expect(matchBinding(keyEvent("d", { metaKey: true }), keymap)).toBe("split-row");
     expect(keymap).toHaveLength(MACOS_KEYMAP.length);
   });
 
@@ -177,9 +151,7 @@ describe("withOverride", () => {
   it("clears an override rather than storing an empty list", () => {
     // "reset to default" and "unbind" are different outcomes; storing `[]` for
     // a reset would silently turn one into the other.
-    const set = withOverride(NO_KEYBINDING_OVERRIDES, "macos", "find", [
-      { key: "j", meta: true },
-    ]);
+    const set = withOverride(NO_KEYBINDING_OVERRIDES, "macos", "find", [{ key: "j", meta: true }]);
     expect(isOverridden(set, "macos", "find")).toBe(true);
 
     const cleared = withOverride(set, "macos", "find", null);
@@ -188,9 +160,7 @@ describe("withOverride", () => {
   });
 
   it("touches only the platform it is given", () => {
-    const set = withOverride(NO_KEYBINDING_OVERRIDES, "macos", "find", [
-      { key: "j", meta: true },
-    ]);
+    const set = withOverride(NO_KEYBINDING_OVERRIDES, "macos", "find", [{ key: "j", meta: true }]);
     expect(isOverridden(set, "windows", "find")).toBe(false);
     expect(resolveKeymap("windows", set)).toBe(WINDOWS_KEYMAP);
   });
@@ -215,9 +185,7 @@ describe("override vs override — the newest edit wins", () => {
 
     // …and re-confirming a chord onto the action you WANT hands it to that
     // action. Before the fix this no-op edit flipped it to the other one.
-    overrides = withOverride(overrides, "macos", "find", [
-      { key: "k", meta: true, alt: true },
-    ]);
+    overrides = withOverride(overrides, "macos", "find", [{ key: "k", meta: true, alt: true }]);
     expect(fires()).toBe("find");
   });
 });
@@ -306,9 +274,7 @@ describe("validateKeybindings", () => {
     const written = withOverride(NO_KEYBINDING_OVERRIDES, "windows", "find", [
       { key: "j", ctrl: true, shift: true, alt: false, meta: false },
     ]);
-    expect(validateKeybindings(JSON.parse(JSON.stringify(written)))).toEqual(
-      written,
-    );
+    expect(validateKeybindings(JSON.parse(JSON.stringify(written)))).toEqual(written);
   });
 });
 
@@ -335,18 +301,13 @@ describe("chordOf / bindingOf", () => {
 describe("every registry action is addressable as an override", () => {
   it("accepts each id, so no action is unrebindable", () => {
     for (const action of ACTION_REGISTRY) {
-      const overrides = withOverride(
-        NO_KEYBINDING_OVERRIDES,
-        "macos",
-        action.id,
-        [{ key: "j", meta: true, alt: true, ctrl: true, shift: true }],
-      );
+      const overrides = withOverride(NO_KEYBINDING_OVERRIDES, "macos", action.id, [
+        { key: "j", meta: true, alt: true, ctrl: true, shift: true },
+      ]);
       // Survives the store round trip — an id the validator drops would make
       // that action's rebind vanish on the next launch.
       expect(
-        validateKeybindings(JSON.parse(JSON.stringify(overrides))).macos[
-          action.id
-        ],
+        validateKeybindings(JSON.parse(JSON.stringify(overrides))).macos[action.id],
       ).toBeDefined();
     }
   });

@@ -19,12 +19,9 @@ describe("normalizeHex", () => {
     expect(normalizeHex("#1d1f2180")).toBe("#1d1f21");
   });
 
-  it.each(["", "not a colour", "#12345", "rgb(1,2,3)", "#gggggg"])(
-    "refuses %o",
-    (raw) => {
-      expect(normalizeHex(raw)).toBe(null);
-    },
-  );
+  it.each(["", "not a colour", "#12345", "rgb(1,2,3)", "#gggggg"])("refuses %o", (raw) => {
+    expect(normalizeHex(raw)).toBe(null);
+  });
 });
 
 describe("hexFromUnitRgb", () => {

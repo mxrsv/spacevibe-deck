@@ -1,3 +1,4 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,10 +20,8 @@ import { describe, expect, it } from "vitest";
  * the entire point.
  */
 
-const pathFromFileUrl = (
-  url: URL,
-  windows = process.platform === "win32",
-): string => fileURLToPath(url, { windows });
+const pathFromFileUrl = (url: URL, windows = process.platform === "win32"): string =>
+  fileURLToPath(url, { windows });
 
 const REPO_ROOT = pathFromFileUrl(new URL("../", import.meta.url));
 const SOURCE_ROOT = join(REPO_ROOT, "src");
@@ -45,9 +44,7 @@ function sourceFiles(dir: string): readonly string[] {
 
 /** Every `from "…"` specifier in a file, import or re-export alike. */
 function specifiers(source: string): readonly string[] {
-  return [...source.matchAll(/from\s+["']([^"']+)["']/g)].map(
-    (match) => match[1],
-  );
+  return [...source.matchAll(/from\s+["']([^"']+)["']/g)].map((match) => match[1]);
 }
 
 describe("the gallery entry stays out of the app bundle", () => {
@@ -79,9 +76,7 @@ describe("the gallery entry stays out of the app bundle", () => {
   });
 
   it("has a script that serves it on its own port", () => {
-    const pkg: unknown = JSON.parse(
-      readFileSync(join(REPO_ROOT, "package.json"), "utf8"),
-    );
+    const pkg: unknown = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8"));
     const scripts =
       typeof pkg === "object" && pkg !== null && "scripts" in pkg
         ? (pkg as { scripts: Record<string, string> }).scripts
@@ -92,13 +87,8 @@ describe("the gallery entry stays out of the app bundle", () => {
   });
 
   it("returns the Electron store load-state contract from the gallery host", () => {
-    const host = readFileSync(
-      join(SOURCE_ROOT, "gallery/host-stub.ts"),
-      "utf8",
-    );
-    const handler = host.match(
-      /store_load:\s*\(args\)\s*=>\s*\{[\s\S]*?\n\s*\},/,
-    );
+    const host = readFileSync(join(SOURCE_ROOT, "gallery/host-stub.ts"), "utf8");
+    const handler = host.match(/store_load:\s*\(args\)\s*=>\s*\{[\s\S]*?\n\s*\},/);
 
     expect(handler?.[0]).toContain('return { state: "ready", fresh: false };');
   });
@@ -111,10 +101,7 @@ describe("the gallery entry stays out of the app bundle", () => {
   });
 
   it("includes all three worktree-item directions in one review specimen", () => {
-    const fixtures = readFileSync(
-      join(SOURCE_ROOT, "gallery/chrome-fixtures.tsx"),
-      "utf8",
-    );
+    const fixtures = readFileSync(join(SOURCE_ROOT, "gallery/chrome-fixtures.tsx"), "utf8");
 
     expect(fixtures).toContain("worktreeItemVariantsSpecimen");
     expect(fixtures).toContain('id: "compact"');
@@ -123,37 +110,21 @@ describe("the gallery entry stays out of the app bundle", () => {
   });
 
   it("applies the selected woven banner treatment to the full shell specimen", () => {
-    const banner = readFileSync(
-      join(SOURCE_ROOT, "ui/sidebar-banner.tsx"),
-      "utf8",
-    );
+    const banner = readFileSync(join(SOURCE_ROOT, "ui/sidebar-banner.tsx"), "utf8");
 
     expect(banner).toContain('class="sidebar-banner sidebar-banner--woven"');
   });
 
   it("fades the full shell banner from the visible sidebar surface", () => {
-    const direction = readFileSync(
-      join(SOURCE_ROOT, "gallery/chatgpt-direction.css"),
-      "utf8",
-    );
-    const styles = readFileSync(
-      join(SOURCE_ROOT, "styles/02-shell.css"),
-      "utf8",
-    );
+    const direction = readFileSync(join(SOURCE_ROOT, "gallery/chatgpt-direction.css"), "utf8");
+    const styles = readFileSync(join(SOURCE_ROOT, "styles/02-shell.css"), "utf8");
 
-    expect(direction).toContain(
-      "--sidebar-banner-fade-color: var(--gx-chat-app-under);",
-    );
-    expect(styles).toContain(
-      "var(--sidebar-banner-fade-color, var(--sidebar-bg))",
-    );
+    expect(direction).toContain("--sidebar-banner-fade-color: var(--gx-chat-app-under);");
+    expect(styles).toContain("var(--sidebar-banner-fade-color, var(--sidebar-bg))");
   });
 
   it("keeps only selected candidates after a comparison round closes", () => {
-    const chrome = readFileSync(
-      join(SOURCE_ROOT, "gallery/sections/chrome-section.tsx"),
-      "utf8",
-    );
+    const chrome = readFileSync(join(SOURCE_ROOT, "gallery/sections/chrome-section.tsx"), "utf8");
     const navigation = readFileSync(
       join(SOURCE_ROOT, "gallery/sections/navigation-section.tsx"),
       "utf8",
@@ -162,23 +133,12 @@ describe("the gallery entry stays out of the app bundle", () => {
       join(SOURCE_ROOT, "gallery/sections/treatment-direction-review.tsx"),
       "utf8",
     );
-    const matrix = readFileSync(
-      join(SOURCE_ROOT, "gallery/sections/matrix-section.tsx"),
-      "utf8",
-    );
+    const matrix = readFileSync(join(SOURCE_ROOT, "gallery/sections/matrix-section.tsx"), "utf8");
 
-    expect(
-      existsSync(join(SOURCE_ROOT, "gallery/worktree-navigation-variants.tsx")),
-    ).toBe(false);
-    expect(
-      existsSync(join(SOURCE_ROOT, "gallery/worktree-navigation-variants.css")),
-    ).toBe(false);
-    expect(
-      existsSync(join(SOURCE_ROOT, "gallery/hybrid-navigation-variants.tsx")),
-    ).toBe(false);
-    expect(
-      existsSync(join(SOURCE_ROOT, "gallery/hybrid-navigation-variants.css")),
-    ).toBe(false);
+    expect(existsSync(join(SOURCE_ROOT, "gallery/worktree-navigation-variants.tsx"))).toBe(false);
+    expect(existsSync(join(SOURCE_ROOT, "gallery/worktree-navigation-variants.css"))).toBe(false);
+    expect(existsSync(join(SOURCE_ROOT, "gallery/hybrid-navigation-variants.tsx"))).toBe(false);
+    expect(existsSync(join(SOURCE_ROOT, "gallery/hybrid-navigation-variants.css"))).toBe(false);
     expect(navigation).toContain("agentStatusRailSpecimen");
     expect(treatment).toContain("Native balanced");
     expect(treatment).not.toContain("Operator dense");
@@ -205,24 +165,15 @@ describe("the gallery entry stays out of the app bundle", () => {
       expect(source, path).not.toContain("worktreeAgentPresenceSpecimen");
     }
 
-    const gallery = readFileSync(
-      join(SOURCE_ROOT, "gallery/gallery.tsx"),
-      "utf8",
-    );
+    const gallery = readFileSync(join(SOURCE_ROOT, "gallery/gallery.tsx"), "utf8");
     expect(gallery).toContain("Deck Electron");
     expect(gallery).not.toContain("ChatGPT Desktop");
 
-    const chrome = readFileSync(
-      join(SOURCE_ROOT, "gallery/sections/chrome-section.tsx"),
-      "utf8",
-    );
+    const chrome = readFileSync(join(SOURCE_ROOT, "gallery/sections/chrome-section.tsx"), "utf8");
     expect(chrome).toContain("Current Electron target shell");
     expect(chrome).not.toContain("Shipping Electron shell");
 
-    const fixtures = readFileSync(
-      join(SOURCE_ROOT, "gallery/chrome-fixtures.tsx"),
-      "utf8",
-    );
+    const fixtures = readFileSync(join(SOURCE_ROOT, "gallery/chrome-fixtures.tsx"), "utf8");
     expect(fixtures).toContain("promptsDisabled ?");
   });
 
@@ -241,14 +192,9 @@ describe("the gallery entry stays out of the app bundle", () => {
    * scale is the one place it can be wrong.
    */
   it("promotes a chosen candidate rather than keeping a second copy of it", () => {
-    const matrix = readFileSync(
-      join(SOURCE_ROOT, "gallery/sections/matrix-section.tsx"),
-      "utf8",
-    );
+    const matrix = readFileSync(join(SOURCE_ROOT, "gallery/sections/matrix-section.tsx"), "utf8");
 
-    expect(
-      existsSync(join(SOURCE_ROOT, "gallery/muted-contrast-candidate.tsx")),
-    ).toBe(false);
+    expect(existsSync(join(SOURCE_ROOT, "gallery/muted-contrast-candidate.tsx"))).toBe(false);
     expect(matrix).not.toContain("muted-contrast-candidate");
     expect(matrix).not.toContain("ContrastCandidate");
     // The type specimen aliases the shipping variables instead of sizing

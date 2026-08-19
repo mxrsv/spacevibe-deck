@@ -3,9 +3,7 @@ import { extractLinkCandidates, stripDiffPrefix } from "./terminal-links";
 
 describe("extractLinkCandidates", () => {
   it("matches http and https urls", () => {
-    const found = extractLinkCandidates(
-      "see https://example.com/a?b=1 and http://localhost:5173/",
-    );
+    const found = extractLinkCandidates("see https://example.com/a?b=1 and http://localhost:5173/");
     expect(found.map((c) => c.target)).toEqual([
       "https://example.com/a?b=1",
       "http://localhost:5173/",
@@ -19,9 +17,7 @@ describe("extractLinkCandidates", () => {
   });
 
   it("matches absolute, tilde, dot and bare relative paths", () => {
-    const found = extractLinkCandidates(
-      "/etc/hosts ~/notes.md ./src/a.ts ../b.ts src/foo.ts",
-    );
+    const found = extractLinkCandidates("/etc/hosts ~/notes.md ./src/a.ts ../b.ts src/foo.ts");
     expect(found.map((c) => c.target)).toEqual([
       "/etc/hosts",
       "~/notes.md",
@@ -72,10 +68,7 @@ describe("extractLinkCandidates", () => {
 
   it("keeps a non-ascii path whole instead of truncating it", () => {
     const found = extractLinkCandidates("docs/ghi-chú.md:12 docs/日本語.md");
-    expect(found.map((c) => c.target)).toEqual([
-      "docs/ghi-chú.md",
-      "docs/日本語.md",
-    ]);
+    expect(found.map((c) => c.target)).toEqual(["docs/ghi-chú.md", "docs/日本語.md"]);
     expect(found[0].line).toBe(12);
   });
 
@@ -86,12 +79,8 @@ describe("extractLinkCandidates", () => {
   });
 
   it("does not swallow the box and bullet characters an agent TUI paints", () => {
-    expect(extractLinkCandidates("│ src/foo.ts │")[0].target).toBe(
-      "src/foo.ts",
-    );
-    expect(extractLinkCandidates("⏺ Read(src/foo.ts)")[0].target).toBe(
-      "src/foo.ts",
-    );
+    expect(extractLinkCandidates("│ src/foo.ts │")[0].target).toBe("src/foo.ts");
+    expect(extractLinkCandidates("⏺ Read(src/foo.ts)")[0].target).toBe("src/foo.ts");
   });
 
   it("parses a line suffix", () => {

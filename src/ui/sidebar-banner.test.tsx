@@ -2,10 +2,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  DEFAULT_SIDEBAR_BANNER,
-  sidebarBanner,
-} from "../settings/sidebar-banner-store";
+import { DEFAULT_SIDEBAR_BANNER, sidebarBanner } from "../settings/sidebar-banner-store";
 import { SidebarBanner } from "./sidebar-banner";
 
 describe("SidebarBanner", () => {

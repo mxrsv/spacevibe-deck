@@ -5,9 +5,7 @@ import {
   type AttentionNotification,
 } from "./agent-notifier";
 
-function makeNotification(
-  overrides: Partial<AttentionNotification> = {},
-): AttentionNotification {
+function makeNotification(overrides: Partial<AttentionNotification> = {}): AttentionNotification {
   return {
     paneId: 1,
     revision: 1,
@@ -88,9 +86,7 @@ describe("createAgentNotifier", () => {
     const { deps, send } = makeDeps();
     const notifier = createAgentNotifier(deps);
 
-    notifier.maybeNotify(
-      makeNotification({ kind: "completed", agentLabel: null }),
-    );
+    notifier.maybeNotify(makeNotification({ kind: "completed", agentLabel: null }));
 
     expect(send).toHaveBeenCalledOnce();
     expect(send.mock.calls[0][0].body).toBe("Agent finished");
@@ -120,12 +116,8 @@ describe("createAgentNotifier", () => {
     const { deps, send } = makeDeps();
     const notifier = createAgentNotifier(deps);
 
-    notifier.maybeNotify(
-      makeNotification({ paneId: 7, revision: 3, kind: "completed" }),
-    );
-    notifier.maybeNotify(
-      makeNotification({ paneId: 7, revision: 4, kind: "requested" }),
-    );
+    notifier.maybeNotify(makeNotification({ paneId: 7, revision: 3, kind: "completed" }));
+    notifier.maybeNotify(makeNotification({ paneId: 7, revision: 4, kind: "requested" }));
 
     expect(send).toHaveBeenCalledTimes(2);
   });
@@ -154,28 +146,20 @@ describe("createAgentNotifier", () => {
     const { deps, send } = makeDeps();
     const notifier = createAgentNotifier(deps);
 
-    notifier.maybeNotify(
-      makeNotification({ paneId: 1, revision: 1, kind: "completed" }),
-    );
-    notifier.maybeNotify(
-      makeNotification({ paneId: 2, revision: 1, kind: "completed" }),
-    );
+    notifier.maybeNotify(makeNotification({ paneId: 1, revision: 1, kind: "completed" }));
+    notifier.maybeNotify(makeNotification({ paneId: 2, revision: 1, kind: "completed" }));
     expect(send).toHaveBeenCalledTimes(2);
 
     // Pane 2 is no longer live — its dedupe state is dropped. Pane 1 stays.
     notifier.prune([1]);
 
     // Pane 1 is untouched by the prune: same revision stays deduped.
-    notifier.maybeNotify(
-      makeNotification({ paneId: 1, revision: 1, kind: "completed" }),
-    );
+    notifier.maybeNotify(makeNotification({ paneId: 1, revision: 1, kind: "completed" }));
     expect(send).toHaveBeenCalledTimes(2);
 
     // Pane 2's dedupe was cleared by prune — a fresh pane reusing the id (or
     // a stale re-poll) is independent of pane 1 and fires again.
-    notifier.maybeNotify(
-      makeNotification({ paneId: 2, revision: 1, kind: "completed" }),
-    );
+    notifier.maybeNotify(makeNotification({ paneId: 2, revision: 1, kind: "completed" }));
     expect(send).toHaveBeenCalledTimes(3);
   });
 
@@ -227,22 +211,16 @@ describe("createAgentNotifier", () => {
     const notifier = createAgentNotifier(deps);
 
     // Notify at revision 5 first.
-    notifier.maybeNotify(
-      makeNotification({ paneId: 4, revision: 5, kind: "completed" }),
-    );
+    notifier.maybeNotify(makeNotification({ paneId: 4, revision: 5, kind: "completed" }));
     expect(send).toHaveBeenCalledOnce();
 
     // A lower, out-of-order revision must not fire.
-    notifier.maybeNotify(
-      makeNotification({ paneId: 4, revision: 4, kind: "warning" }),
-    );
+    notifier.maybeNotify(makeNotification({ paneId: 4, revision: 4, kind: "warning" }));
     expect(send).toHaveBeenCalledOnce();
 
     // If the lower revision had overwritten the stored value downward, a
     // repeat of revision 5 would now look "higher" and re-fire. It must not.
-    notifier.maybeNotify(
-      makeNotification({ paneId: 4, revision: 5, kind: "completed" }),
-    );
+    notifier.maybeNotify(makeNotification({ paneId: 4, revision: 5, kind: "completed" }));
     expect(send).toHaveBeenCalledOnce();
   });
 });

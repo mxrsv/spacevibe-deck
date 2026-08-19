@@ -112,10 +112,7 @@ function tokenFor(binding: KeyBinding): string | null {
  * (`buildMenu` returns early elsewhere), so the ambiguous spelling bought
  * nothing and hid the meta-vs-ctrl distinction that now matters.
  */
-function acceleratorFor(
-  actionId: string,
-  keymap: readonly KeyBinding[],
-): string | undefined {
+function acceleratorFor(actionId: string, keymap: readonly KeyBinding[]): string | undefined {
   const binding = keymap.find((candidate) => candidate.action === actionId);
   if (binding === undefined) {
     return undefined;
@@ -177,10 +174,7 @@ export interface MenuDeps {
 }
 
 /** Items for one submenu, with a separator wherever the group changes. */
-function itemsFor(
-  submenu: MenuSubmenu,
-  deps: MenuDeps,
-): MenuItemConstructorOptions[] {
+function itemsFor(submenu: MenuSubmenu, deps: MenuDeps): MenuItemConstructorOptions[] {
   // `ACTION_REGISTRY` is a const tuple, so only the members that declare a
   // menu carry the field in their literal type. Read it through the shared
   // interface rather than narrowing each member.
@@ -199,9 +193,7 @@ function itemsFor(
       id: action.id,
       label: action.label,
       accelerator:
-        deps.suspendAccelerators === true
-          ? undefined
-          : acceleratorFor(action.id, keymap),
+        deps.suspendAccelerators === true ? undefined : acceleratorFor(action.id, keymap),
       click: () => {
         const target = deps.focused();
         if (target !== null) {

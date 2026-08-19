@@ -42,33 +42,16 @@ const CODE_EXTENSIONS: readonly string[] = [
   "yml",
 ];
 
-const IMAGE_EXTENSIONS: readonly string[] = [
-  "png",
-  "jpg",
-  "jpeg",
-  "gif",
-  "svg",
-  "webp",
-  "ico",
-];
+const IMAGE_EXTENSIONS: readonly string[] = ["png", "jpg", "jpeg", "gif", "svg", "webp", "ico"];
 
 const TEXT_EXTENSIONS: readonly string[] = ["md", "mdx", "txt"];
 
 /** Extension → glyph, built once from the readable lists above. */
 const EXTENSION_ICONS: ReadonlyMap<string, DeckIconComponent> = new Map([
-  ...CODE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [
-    extension,
-    FileCode,
-  ]),
+  ...CODE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [extension, FileCode]),
   ["json", BracketsCurly],
-  ...IMAGE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [
-    extension,
-    FileImage,
-  ]),
-  ...TEXT_EXTENSIONS.map((extension): [string, DeckIconComponent] => [
-    extension,
-    FileText,
-  ]),
+  ...IMAGE_EXTENSIONS.map((extension): [string, DeckIconComponent] => [extension, FileImage]),
+  ...TEXT_EXTENSIONS.map((extension): [string, DeckIconComponent] => [extension, FileText]),
 ]);
 
 /** The part after the last dot, lowercased. A leading-dot dotfile (`.env`)

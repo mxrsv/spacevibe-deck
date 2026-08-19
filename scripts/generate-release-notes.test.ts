@@ -12,9 +12,7 @@ import {
   readReleaseCommits,
 } from "./generate-release-notes.mjs";
 
-const SCRIPT = fileURLToPath(
-  new URL("./generate-release-notes.mjs", import.meta.url),
-);
+const SCRIPT = fileURLToPath(new URL("./generate-release-notes.mjs", import.meta.url));
 const temporaryRepositories: string[] = [];
 
 function git(cwd: string, ...args: string[]): string {
@@ -22,18 +20,12 @@ function git(cwd: string, ...args: string[]): string {
 }
 
 function commit(cwd: string, subject: string, body?: string): string {
-  const messageArgs =
-    body === undefined ? ["-m", subject] : ["-m", subject, "-m", body];
+  const messageArgs = body === undefined ? ["-m", subject] : ["-m", subject, "-m", body];
   git(cwd, "commit", "--allow-empty", ...messageArgs);
   return git(cwd, "rev-parse", "HEAD");
 }
 
-function releaseCommit(
-  sha: string,
-  subject: string,
-  releaseNote?: string,
-  extraBody = "",
-) {
+function releaseCommit(sha: string, subject: string, releaseNote?: string, extraBody = "") {
   const note = releaseNote === undefined ? "" : `Release-Note: ${releaseNote}`;
   const footer =
     note !== "" && /^BREAKING(?: |-)CHANGE:/u.test(extraBody)
@@ -63,16 +55,8 @@ afterEach(() => {
 
 describe("generateReleaseNotes", () => {
   const commits = [
-    releaseCommit(
-      "1",
-      "feat(prompt-board): add catalog",
-      "Reuse saved prompts from the chrome",
-    ),
-    releaseCommit(
-      "2",
-      "fix: restore Windows text paste",
-      "Paste text and folder paths on Windows",
-    ),
+    releaseCommit("1", "feat(prompt-board): add catalog", "Reuse saved prompts from the chrome"),
+    releaseCommit("2", "fix: restore Windows text paste", "Paste text and folder paths on Windows"),
     releaseCommit(
       "3",
       "perf(terminal): reduce rendering",
@@ -111,9 +95,7 @@ describe("generateReleaseNotes", () => {
     expect(preview).toContain(
       "**Unsigned Windows Preview** — this is not the stable Windows channel.",
     );
-    expect(preview).toContain(
-      "Windows may show SmartScreen or `Unknown publisher`",
-    );
+    expect(preview).toContain("Windows may show SmartScreen or `Unknown publisher`");
     expect(preview).not.toContain("> [!WARNING]");
     expect(preview).toContain("before installation.\n\n## New features");
     expect(preview.endsWith(stable)).toBe(true);
@@ -122,11 +104,7 @@ describe("generateReleaseNotes", () => {
   it("publishes breaking markers and BREAKING CHANGE footers separately", () => {
     const notes = generateReleaseNotes(
       [
-        releaseCommit(
-          "1",
-          "feat(ui)!: replace the pane controls",
-          "Replace the pane controls.",
-        ),
+        releaseCommit("1", "feat(ui)!: replace the pane controls", "Replace the pane controls."),
         releaseCommit(
           "2",
           "refactor(settings): remove legacy storage",
@@ -139,9 +117,7 @@ describe("generateReleaseNotes", () => {
 
     expect(notes).toContain("## Breaking changes");
     expect(notes).toContain("- **UI:** Replace the pane controls");
-    expect(notes).toContain(
-      "- **Settings:** Existing custom-agent settings must be saved again.",
-    );
+    expect(notes).toContain("- **Settings:** Existing custom-agent settings must be saved again.");
     expect(notes).not.toContain("## New features");
   });
 
@@ -171,24 +147,18 @@ describe("generateReleaseNotes", () => {
 
   it("still requires Release-Note on breaking feat, fix, and perf commits", () => {
     expect(() =>
-      generateReleaseNotes(
-        [releaseCommit("1", "feat(ui)!: replace the pane controls")],
-        { channel: "stable" },
-      ),
-    ).toThrow(
-      "Missing Release-Note trailer for: feat(ui)!: replace the pane controls",
-    );
+      generateReleaseNotes([releaseCommit("1", "feat(ui)!: replace the pane controls")], {
+        channel: "stable",
+      }),
+    ).toThrow("Missing Release-Note trailer for: feat(ui)!: replace the pane controls");
   });
 
   it("requires Release-Note on breaking commits of every conventional type", () => {
     expect(() =>
-      generateReleaseNotes(
-        [releaseCommit("1", "refactor(settings)!: replace storage")],
-        { channel: "stable" },
-      ),
-    ).toThrow(
-      "Missing Release-Note trailer for: refactor(settings)!: replace storage",
-    );
+      generateReleaseNotes([releaseCommit("1", "refactor(settings)!: replace storage")], {
+        channel: "stable",
+      }),
+    ).toThrow("Missing Release-Note trailer for: refactor(settings)!: replace storage");
   });
 
   it("does not treat BREAKINGCHANGE typos as release metadata", () => {
@@ -220,9 +190,7 @@ describe("generateReleaseNotes", () => {
         ],
         { channel: "stable" },
       ),
-    ).toThrow(
-      "Missing Release-Note trailer for: fix(release): reject prose examples",
-    );
+    ).toThrow("Missing Release-Note trailer for: fix(release): reject prose examples");
   });
 
   it("rejects an empty Release-Note followed by another trailer", () => {
@@ -238,9 +206,7 @@ describe("generateReleaseNotes", () => {
         ],
         { channel: "stable" },
       ),
-    ).toThrow(
-      "Missing Release-Note trailer for: fix(release): reject empty notes",
-    );
+    ).toThrow("Missing Release-Note trailer for: fix(release): reject empty notes");
   });
 
   it("requires an explicit trailer instead of trusting generic or internal subjects", () => {
@@ -248,15 +214,8 @@ describe("generateReleaseNotes", () => {
       generateReleaseNotes(
         [
           releaseCommit("1", "fix: improve reliability"),
-          releaseCommit(
-            "2",
-            "feat(prompts): add list_prompt_assets client and memory fake",
-          ),
-          releaseCommit(
-            "3",
-            "fix(test): serialize the Windows fixture",
-            "skip",
-          ),
+          releaseCommit("2", "feat(prompts): add list_prompt_assets client and memory fake"),
+          releaseCommit("3", "fix(test): serialize the Windows fixture", "skip"),
         ],
         { channel: "stable" },
       ),
@@ -279,9 +238,7 @@ describe("generateReleaseNotes", () => {
       { channel: "stable" },
     );
 
-    expect(notes).toContain(
-      "- **Terminal:** Paste text and folder paths reliably.",
-    );
+    expect(notes).toContain("- **Terminal:** Paste text and folder paths reliably.");
     expect(notes).not.toContain("detach a pane");
   });
 
@@ -385,11 +342,7 @@ describe("release history", () => {
       "feat(ui): add detachable panes",
       "Release-Note: Detach panes into separate windows.",
     );
-    commit(
-      cwd,
-      'Revert "feat(ui): add detachable panes"',
-      `This reverts commit ${featureSha}.`,
-    );
+    commit(cwd, 'Revert "feat(ui): add detachable panes"', `This reverts commit ${featureSha}.`);
     commit(
       cwd,
       "fix(terminal): keep text paste",
@@ -440,9 +393,9 @@ describe("release history", () => {
       body: "docs: explain standard revert messages\n\nThis reverts commit 1234567.\n",
     };
 
-    expect(
-      generateReleaseNotes([feature, prose], { channel: "stable" }),
-    ).toContain("Detach panes into separate windows");
+    expect(generateReleaseNotes([feature, prose], { channel: "stable" })).toContain(
+      "Detach panes into separate windows",
+    );
   });
 
   it("removes commits introduced by a reverted merge", () => {
@@ -461,11 +414,7 @@ describe("release history", () => {
     git(cwd, "merge", "--no-ff", "feature", "-m", "Merge feature");
     const mergeSha = git(cwd, "rev-parse", "HEAD");
     git(cwd, "revert", "-m", "1", "--no-edit", mergeSha);
-    commit(
-      cwd,
-      "fix(terminal): keep text paste",
-      "Release-Note: Restore Windows text paste.",
-    );
+    commit(cwd, "fix(terminal): keep text paste", "Release-Note: Restore Windows text paste.");
     git(cwd, "tag", "v1.1.0");
 
     const commits = readReleaseCommits(cwd, "v1.0.0", "v1.1.0");
@@ -498,11 +447,7 @@ describe("release history", () => {
     git(cwd, "merge", "--no-ff", "feature", "-m", "Merge feature");
     const mergeSha = git(cwd, "rev-parse", "HEAD");
     git(cwd, "revert", "-m", "2", "--no-edit", mergeSha);
-    commit(
-      cwd,
-      "fix(terminal): keep text paste",
-      "Release-Note: Restore Windows text paste.",
-    );
+    commit(cwd, "fix(terminal): keep text paste", "Release-Note: Restore Windows text paste.");
     git(cwd, "tag", "v1.1.0");
 
     const commits = readReleaseCommits(cwd, "v1.0.0", "v1.1.0");
@@ -547,12 +492,7 @@ describe("Release-Note policy baseline", () => {
     );
 
     expect(generateReleaseNotes(commits, { channel: "stable" })).toBe(
-      [
-        "## Fixes",
-        "",
-        "- **Terminal:** Paste text and folder paths reliably.",
-        "",
-      ].join("\n"),
+      ["## Fixes", "", "- **Terminal:** Paste text and folder paths reliably.", ""].join("\n"),
     );
   });
 
@@ -576,9 +516,7 @@ describe("Release-Note policy baseline", () => {
     // Exact message: the pre-baseline `feat(window)` commit must not be listed,
     // and the post-baseline one must be.
     expect(() => generateReleaseNotes(commits, { channel: "stable" })).toThrow(
-      new Error(
-        "Missing Release-Note trailer for: feat(toolbar): add the overflow menu",
-      ),
+      new Error("Missing Release-Note trailer for: feat(toolbar): add the overflow menu"),
     );
   });
 
@@ -588,9 +526,7 @@ describe("Release-Note policy baseline", () => {
     git(cwd, "tag", "v1.1.0");
     const commits = readReleaseCommits(cwd, "v1.0.0", "v1.1.0");
 
-    expect(() =>
-      markPreBaselineCommits(cwd, commits, "v1.1.0", ABSENT_BASELINE),
-    ).toThrow(
+    expect(() => markPreBaselineCommits(cwd, commits, "v1.1.0", ABSENT_BASELINE)).toThrow(
       `Release-Note policy baseline ${ABSENT_BASELINE} is not reachable from v1.1.0`,
     );
   });
@@ -611,9 +547,7 @@ describe("Release-Note policy baseline", () => {
     // Nothing needs the exemption, so an unreachable baseline is not an error
     // here — this laziness is what keeps the baseline hardcoded with no CLI or
     // environment override to bypass it.
-    expect(
-      markPreBaselineCommits(cwd, commits, "v1.1.0", ABSENT_BASELINE),
-    ).toBe(commits);
+    expect(markPreBaselineCommits(cwd, commits, "v1.1.0", ABSENT_BASELINE)).toBe(commits);
   });
 });
 
@@ -656,9 +590,7 @@ describe("CLI", () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toBe("");
     expect(result.stdout).toContain("## New features");
-    expect(result.stdout).toContain(
-      "- **Settings:** Add custom agent commands from Settings.",
-    );
+    expect(result.stdout).toContain("- **Settings:** Add custom agent commands from Settings.");
     expect(result.stdout).not.toContain("Bump version");
   });
 
@@ -714,8 +646,6 @@ describe("CLI", () => {
 
     expect(result.status).toBe(1);
     expect(result.stdout).toBe("");
-    expect(result.stderr).toContain(
-      "No public Release-Note trailers or breaking changes found",
-    );
+    expect(result.stderr).toContain("No public Release-Note trailers or breaking changes found");
   });
 });

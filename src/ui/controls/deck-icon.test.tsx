@@ -79,9 +79,7 @@ describe("DeckIcon", () => {
     // `.deck-icon` is the app's one icon rule (`display: block; flex: none`).
     // Phosphor emits no class of its own, so if this stops being
     // unconditional every icon in the app regains a descender-sized gap.
-    expect(host.querySelector("svg")?.classList.contains("deck-icon")).toBe(
-      true,
-    );
+    expect(host.querySelector("svg")?.classList.contains("deck-icon")).toBe(true);
   });
 
   it("identifies which icon it drew through a derived modifier class", () => {
@@ -115,8 +113,6 @@ describe("DeckIcon", () => {
     expect(host.querySelector("svg")?.getAttribute("transform")).toBeNull();
 
     act(() => render(<DeckIcon icon={SidebarSimple} mirrored />, host));
-    expect(host.querySelector("svg")?.getAttribute("transform")).toBe(
-      "scale(-1, 1)",
-    );
+    expect(host.querySelector("svg")?.getAttribute("transform")).toBe("scale(-1, 1)");
   });
 });

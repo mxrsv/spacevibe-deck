@@ -1,12 +1,7 @@
 import type { Settings } from "../settings/settings-schema";
 import { reportPersistError } from "../chrome/events";
 import { leaf, leafIds, replaceLeaf, type TreeNode } from "../lib/split-tree";
-import {
-  createPane,
-  type Pane,
-  type PaneAttentionSignal,
-  type PaneEvents,
-} from "./pane";
+import { createPane, type Pane, type PaneAttentionSignal, type PaneEvents } from "./pane";
 import { clearPaneCwd, setPaneCwd } from "./pane-cwd";
 import type { PtyClient } from "./pty-client";
 import type { AdoptionPayload } from "./transfer-client";
@@ -115,9 +110,7 @@ export function createPaneLifecycle(deps: {
         await deps.pty.writePty(id, data);
         return true;
       } catch {
-        reportPersistError(
-          "Couldn't send input to the terminal — the session may have ended.",
-        );
+        reportPersistError("Couldn't send input to the terminal — the session may have ended.");
         return false;
       }
     });

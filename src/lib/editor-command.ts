@@ -24,9 +24,7 @@ export const EDITOR_PRESETS: readonly EditorPreset[] = [
   { id: "custom", label: "custom…", template: "" },
 ];
 
-export const EDITOR_IDS: readonly EditorId[] = EDITOR_PRESETS.map(
-  (preset) => preset.id,
-);
+export const EDITOR_IDS: readonly EditorId[] = EDITOR_PRESETS.map((preset) => preset.id);
 
 export function isEditorId(value: unknown): value is EditorId {
   return EDITOR_IDS.includes(value as EditorId);

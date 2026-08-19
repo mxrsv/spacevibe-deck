@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 /**
  * Gate M verifier (file-explorer plan §5.0.2 / §5.0.4).
  *
@@ -37,10 +38,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const REPO_ROOT = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-);
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /** `main` the packaged app must declare — the builder writes it via extraMetadata. */
 export const EXPECTED_MAIN = "dist-electron/electron/main.cjs";
@@ -137,16 +135,13 @@ export function structureFailures(app) {
     return failures;
   }
 
-  let main = null;
+  let entry = null;
   try {
-    main = JSON.parse(readAsarFile(app.asar, "package.json").toString()).main;
+    entry = JSON.parse(readAsarFile(app.asar, "package.json").toString()).main;
   } catch (error) {
     failures.push(`packaged package.json unreadable: ${String(error)}`);
   }
-  need(
-    main === EXPECTED_MAIN,
-    `packaged main is ${String(main)}, expected ${EXPECTED_MAIN}`,
-  );
+  need(entry === EXPECTED_MAIN, `packaged main is ${String(entry)}, expected ${EXPECTED_MAIN}`);
 
   need(
     asarHasDir(app.asar, "dist") &&
@@ -216,14 +211,7 @@ export function structureFailures(app) {
 
 export function findSpawnHelper(unpackedDir) {
   const candidates = [
-    path.join(
-      unpackedDir,
-      "node_modules",
-      "node-pty",
-      "build",
-      "Release",
-      "spawn-helper",
-    ),
+    path.join(unpackedDir, "node_modules", "node-pty", "build", "Release", "spawn-helper"),
     path.join(
       unpackedDir,
       "node_modules",
@@ -257,23 +245,16 @@ async function driveGate(app) {
   const { chromium } = await import("playwright-core");
   const fixtureDir = mkdtempSync(path.join(tmpdir(), "deck-gate-m-"));
   const fixture = path.join(fixtureDir, "gate-m-fixture.ts");
-  writeFileSync(
-    fixture,
-    `export function gateM(): string {\n  return "fixture";\n}\n`,
-  );
+  writeFileSync(fixture, `export function gateM(): string {\n  return "fixture";\n}\n`);
   const port = 9223 + Math.floor(Math.random() * 500);
-  const child = spawn(
-    app.executable,
-    [`--remote-debugging-port=${port}`],
-    {
-      env: {
-        ...process.env,
-        DECK_GATE_M: "1",
-        DECK_GATE_M_FILE: fixture,
-      },
-      stdio: ["ignore", "pipe", "pipe"],
+  const child = spawn(app.executable, [`--remote-debugging-port=${port}`], {
+    env: {
+      ...process.env,
+      DECK_GATE_M: "1",
+      DECK_GATE_M_FILE: fixture,
     },
-  );
+    stdio: ["ignore", "pipe", "pipe"],
+  });
   const badLoads = [];
   try {
     await new Promise((resolve, reject) => {
@@ -336,9 +317,7 @@ async function driveGate(app) {
     await page.keyboard.type(TERMINAL_MARKER, { delay: 60 });
 
     const editorText = await page.evaluate(() =>
-      Array.from(document.querySelectorAll(".view-line"), (line) =>
-        line.textContent,
-      ).join("\n"),
+      Array.from(document.querySelectorAll(".view-line"), (line) => line.textContent).join("\n"),
     );
     if (!editorText.includes(EDITOR_MARKER)) {
       throw new Error("the editor never received its typed marker");
@@ -347,11 +326,9 @@ async function driveGate(app) {
       throw new Error("the terminal marker leaked into the editor");
     }
     const terminalGotMarker = await page
-      .waitForFunction(
-        (marker) => document.body.innerText.includes(marker),
-        TERMINAL_MARKER,
-        { timeout: 10000 },
-      )
+      .waitForFunction((marker) => document.body.innerText.includes(marker), TERMINAL_MARKER, {
+        timeout: 10000,
+      })
       .then(
         () => true,
         () => false,
@@ -401,8 +378,7 @@ async function main() {
 }
 
 const invokedDirectly =
-  process.argv[1] !== undefined &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
   main().catch((error) => {
     console.error(`Gate M FAILED: ${String(error)}`);

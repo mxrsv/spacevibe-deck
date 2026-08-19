@@ -18,8 +18,7 @@ vi.mock("../../../lib/native-notification", () => ({
   requestAgentNotificationPermission: vi.fn(),
 }));
 vi.mock("../../../chrome/events", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("../../../chrome/events")>();
+  const actual = await importOriginal<typeof import("../../../chrome/events")>();
   return {
     ...actual,
     reportPersistError: vi.fn(),
@@ -39,8 +38,7 @@ const mockedReportPersistError = vi.mocked(reportPersistError);
  * only advances one hop, which isn't enough for an `await`-chained handler
  * (permission request → settings update/error → `finally`). A macrotask
  * boundary guarantees every pending microtask has drained first. */
-const flushMicrotasks = (): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, 0));
+const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("NotificationsSection — agent notifications toggle (Task 22)", () => {
   let host: HTMLDivElement;
@@ -67,9 +65,7 @@ describe("NotificationsSection — agent notifications toggle (Task 22)", () => 
   };
 
   const getToggle = (): HTMLButtonElement =>
-    host.querySelector(
-      '[aria-label="Agent notifications"]',
-    ) as HTMLButtonElement;
+    host.querySelector('[aria-label="Agent notifications"]') as HTMLButtonElement;
 
   it("does NOT request permission on render/mount", () => {
     mount();

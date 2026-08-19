@@ -9,8 +9,8 @@ export interface AskOptions {
 }
 
 /** Confirm dialog; true when the user accepted. */
-export function ask(message: string, options?: AskOptions): Promise<boolean> {
-  return invoke<boolean>("dialog_ask", { message, ...options });
+export function ask(text: string, options?: AskOptions): Promise<boolean> {
+  return invoke<boolean>("dialog_ask", { message: text, ...options });
 }
 
 /** Message dialog with a single dismiss button. */

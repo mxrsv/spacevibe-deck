@@ -253,16 +253,13 @@ export const THEME_PRESETS: ThemePreset[] = [
  * both get a running terminal rather than an undefined theme.
  */
 export function getPreset(themeId: string): ThemePreset {
-  return (
-    allPresets().find((preset) => preset.id === themeId) ?? THEME_PRESETS[0]
-  );
+  return allPresets().find((preset) => preset.id === themeId) ?? THEME_PRESETS[0];
 }
 
 /** Merge preset with color overrides — returns a new theme, no mutation. */
 export function resolveTheme(settings: Settings): ITheme {
   const preset = getPreset(settings.themeId);
-  const background =
-    settings.colorOverrides.background ?? preset.theme.background;
+  const background = settings.colorOverrides.background ?? preset.theme.background;
   return {
     ...preset.theme,
     ...settings.colorOverrides,

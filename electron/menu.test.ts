@@ -30,29 +30,19 @@ import { resolveKeymap, withOverride, NO_KEYBINDING_OVERRIDES } from "../src/lib
 const realPlatform = process.platform;
 
 function items(template: MenuItemConstructorOptions[]): MenuItemConstructorOptions[] {
-  return template.flatMap((entry) =>
-    Array.isArray(entry.submenu) ? entry.submenu : [],
-  );
+  return template.flatMap((entry) => (Array.isArray(entry.submenu) ? entry.submenu : []));
 }
 
-function accelerator(
-  template: MenuItemConstructorOptions[],
-  id: string,
-): string | undefined {
+function accelerator(template: MenuItemConstructorOptions[], id: string): string | undefined {
   return items(template).find((item) => item.id === id)?.accelerator;
 }
 
 /** The menu as built after rebinding one action to `chord`. */
-function rebound(
-  action: string,
-  chord: Record<string, unknown>,
-): MenuItemConstructorOptions[] {
+function rebound(action: string, chord: Record<string, unknown>): MenuItemConstructorOptions[] {
   return render(
     resolveKeymap(
       "macos",
-      withOverride(NO_KEYBINDING_OVERRIDES, "macos", action as never, [
-        chord as never,
-      ]),
+      withOverride(NO_KEYBINDING_OVERRIDES, "macos", action as never, [chord as never]),
     ),
   );
 }
@@ -105,9 +95,7 @@ describe("menu accelerators", () => {
     );
     expect(accelerator(render(keymap), "clear-buffer")).toBeUndefined();
     // The item itself stays — it is still reachable with the mouse.
-    expect(items(render(keymap)).some((item) => item.id === "clear-buffer")).toBe(
-      true,
-    );
+    expect(items(render(keymap)).some((item) => item.id === "clear-buffer")).toBe(true);
   });
 
   it("strips every accelerator while a chord is being recorded", () => {
@@ -115,13 +103,9 @@ describe("menu accelerators", () => {
     // the OS runs the menu item and the webview never sees the keydown.
     const suspended = items(render(undefined, true));
     expect(suspended.length).toBeGreaterThan(5);
-    expect(suspended.filter((item) => item.accelerator !== undefined)).toEqual(
-      [],
-    );
+    expect(suspended.filter((item) => item.accelerator !== undefined)).toEqual([]);
     // …and comes back afterwards.
-    expect(accelerator(render(undefined, false), "split-row")).toBe(
-      "Command+D",
-    );
+    expect(accelerator(render(undefined, false), "split-row")).toBe("Command+D");
   });
 
   it("builds the accelerator from the binding's OWN modifiers", () => {
@@ -134,27 +118,23 @@ describe("menu accelerators", () => {
     const shiftD = rebound("find", { key: "d", shift: true });
     expect(accelerator(shiftD, "find")).toBe("Shift+D");
     expect(accelerator(shiftD, "split-column")).toBe("Command+Shift+D");
-    expect(accelerator(shiftD, "find")).not.toBe(
-      accelerator(shiftD, "split-column"),
-    );
+    expect(accelerator(shiftD, "find")).not.toBe(accelerator(shiftD, "split-column"));
 
-    expect(
-      accelerator(rebound("find", { key: "j", ctrl: true, alt: true }), "find"),
-    ).toBe("Control+Alt+J");
+    expect(accelerator(rebound("find", { key: "j", ctrl: true, alt: true }), "find")).toBe(
+      "Control+Alt+J",
+    );
   });
 
   it("spells named keys the way Electron parses them", () => {
     // `Arrowup` / `Pageup` are not accelerator tokens; Electron drops them, so
     // the menu item lost its chord while the Shortcuts row still showed one.
-    expect(
-      accelerator(rebound("find", { key: "arrowup", meta: true }), "find"),
-    ).toBe("Command+Up");
-    expect(
-      accelerator(rebound("find", { key: "pageup", meta: true }), "find"),
-    ).toBe("Command+PageUp");
-    expect(
-      accelerator(rebound("find", { key: "enter", meta: true }), "find"),
-    ).toBe("Command+Return");
+    expect(accelerator(rebound("find", { key: "arrowup", meta: true }), "find")).toBe("Command+Up");
+    expect(accelerator(rebound("find", { key: "pageup", meta: true }), "find")).toBe(
+      "Command+PageUp",
+    );
+    expect(accelerator(rebound("find", { key: "enter", meta: true }), "find")).toBe(
+      "Command+Return",
+    );
   });
 
   it("installs NO accelerator rather than a wrong one", () => {
@@ -169,8 +149,6 @@ describe("menu accelerators", () => {
 
   it("keeps the labels while accelerators are suspended", () => {
     const suspended = items(render(undefined, true));
-    expect(suspended.find((item) => item.id === "split-row")?.label).toBe(
-      "Split Vertically",
-    );
+    expect(suspended.find((item) => item.id === "split-row")?.label).toBe("Split Vertically");
   });
 });

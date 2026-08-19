@@ -20,9 +20,7 @@ const ACTIONABLE_WORD: Record<ActionableKind, string> = {
   completed: "completed",
 };
 
-function isActionableKind(
-  kind: AgentAttentionSummary["kind"],
-): kind is ActionableKind {
+function isActionableKind(kind: AgentAttentionSummary["kind"]): kind is ActionableKind {
   return kind in ACTIONABLE_WORD;
 }
 
@@ -32,11 +30,7 @@ function actionableState(kind: ActionableKind, count: number): string {
   return `${count} ${verb} (${ACTIONABLE_WORD[kind]})`;
 }
 
-function actionableAriaLabel(
-  label: string,
-  kind: ActionableKind,
-  count: number,
-): string {
+function actionableAriaLabel(label: string, kind: ActionableKind, count: number): string {
   return `${label}: ${actionableState(kind, count)}`;
 }
 
@@ -59,11 +53,7 @@ function actionableAriaLabel(
  * *description*, which NVDA and VoiceOver read right after the name — the same
  * string twice. The tooltip only has to add what the pointer context lacks.
  */
-export function AgentAttentionMark({
-  summary,
-  label,
-  onActivate,
-}: AgentAttentionMarkProps) {
+export function AgentAttentionMark({ summary, label, onActivate }: AgentAttentionMarkProps) {
   const { kind } = summary;
 
   if (isActionableKind(kind)) {

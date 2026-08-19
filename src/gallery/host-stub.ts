@@ -106,11 +106,7 @@ const GALLERY_REPOSITORIES = [
   },
 ];
 
-function wt(
-  path: string,
-  branch: string,
-  extra: { locked?: string; prunable?: string } = {},
-) {
+function wt(path: string, branch: string, extra: { locked?: string; prunable?: string } = {}) {
   return {
     path,
     head: "0".repeat(40),
@@ -200,23 +196,15 @@ const TAURI_ONLY: Readonly<Record<string, CannedHandler>> = {
     return [store.get(key), true];
   },
   "plugin:store|set": (args) => {
-    stores
-      .get(`rid:${String(args.rid)}`)
-      ?.set(readString(args, "key"), args.value);
+    stores.get(`rid:${String(args.rid)}`)?.set(readString(args, "key"), args.value);
     return null;
   },
   "plugin:store|has": (args) =>
-    stores.get(`rid:${String(args.rid)}`)?.has(readString(args, "key")) ??
-    false,
+    stores.get(`rid:${String(args.rid)}`)?.has(readString(args, "key")) ?? false,
   "plugin:store|delete": (args) =>
-    stores.get(`rid:${String(args.rid)}`)?.delete(readString(args, "key")) ??
-    false,
-  "plugin:store|keys": (args) => [
-    ...(stores.get(`rid:${String(args.rid)}`)?.keys() ?? []),
-  ],
-  "plugin:store|entries": (args) => [
-    ...(stores.get(`rid:${String(args.rid)}`)?.entries() ?? []),
-  ],
+    stores.get(`rid:${String(args.rid)}`)?.delete(readString(args, "key")) ?? false,
+  "plugin:store|keys": (args) => [...(stores.get(`rid:${String(args.rid)}`)?.keys() ?? [])],
+  "plugin:store|entries": (args) => [...(stores.get(`rid:${String(args.rid)}`)?.entries() ?? [])],
   "plugin:store|save": () => null,
   "plugin:store|reload": () => null,
 
@@ -256,8 +244,7 @@ const ELECTRON_ONLY: Readonly<Record<string, CannedHandler>> = {
   },
   // `undefined`, not `[value, found]`: `Store.get` hands its result straight
   // back to the caller, so a tuple would be read as the value itself.
-  store_get: (args) =>
-    stores.get(readString(args, "file"))?.get(readString(args, "key")),
+  store_get: (args) => stores.get(readString(args, "file"))?.get(readString(args, "key")),
   store_set: (args) => {
     storeFor(readString(args, "file")).set(readString(args, "key"), args.value);
     return null;
@@ -305,9 +292,7 @@ function invokeStub(command: string, args: InvokeArgs): Promise<unknown> {
 }
 
 function asArgs(payload: unknown): InvokeArgs {
-  return typeof payload === "object" && payload !== null
-    ? (payload as InvokeArgs)
-    : {};
+  return typeof payload === "object" && payload !== null ? (payload as InvokeArgs) : {};
 }
 
 interface CallbackHost {
@@ -322,10 +307,7 @@ function installTauriHook(): void {
   const internals = {
     invoke: (command: string, args?: InvokeArgs): Promise<unknown> =>
       invokeStub(command, args ?? {}),
-    transformCallback: (
-      callback?: (payload: unknown) => void,
-      once = false,
-    ): number => {
+    transformCallback: (callback?: (payload: unknown) => void, once = false): number => {
       const id = nextCallbackId;
       nextCallbackId += 1;
       const key = `_${id}`;

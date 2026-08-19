@@ -28,10 +28,7 @@ interface SessionsBodyProps {
  * renamed or restructured (session history spec still open on an unmerged
  * branch; keeping this cheap to redo later).
  */
-export function SessionsBody({
-  variant = "screen",
-  onResume,
-}: SessionsBodyProps) {
+export function SessionsBody({ variant = "screen", onResume }: SessionsBodyProps) {
   const content = (
     <>
       <SessionsNav variant={variant === "dock" ? "compact" : "rail"} />

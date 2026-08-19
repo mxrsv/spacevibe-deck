@@ -3,10 +3,7 @@ import { AgentGlyph } from "../controls/agent-glyph";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { tildify } from "../../lib/process-info";
 import { formatRelativeTime } from "../../lib/workspace-recents";
-import {
-  SESSION_AGENT_LABELS,
-  type SessionEntry,
-} from "../../lib/session-history";
+import { SESSION_AGENT_LABELS, type SessionEntry } from "../../lib/session-history";
 
 interface SessionRowProps {
   readonly entry: SessionEntry;
@@ -38,32 +35,21 @@ interface SessionRowProps {
  * carries its reason in an accessible description. A `disabled` attribute
  * would make that reason unreachable by keyboard.
  */
-export function SessionRow({
-  entry,
-  dead,
-  homeDir,
-  onResume,
-}: SessionRowProps) {
+export function SessionRow({ entry, dead, homeDir, onResume }: SessionRowProps) {
   const reasonId = dead ? `session-gone-${entry.sessionId}` : undefined;
   const name = entry.title ?? entry.sessionId;
   return (
     <li class="session-row__slot">
       <div class={`session-row ${dead ? "is-unavailable" : ""}`}>
         {dead ? (
-          <DeckIcon
-            icon={FolderDashed}
-            size={ROW_ICON}
-            class="session-row__ico"
-          />
+          <DeckIcon icon={FolderDashed} size={ROW_ICON} class="session-row__ico" />
         ) : (
           <AgentGlyph agent={entry.agent} className="session-row__logo" />
         )}
         <span class="session-row__body">
           <span class="session-row__title">{name}</span>
           <span class="session-row__meta">
-            <span class="session-row__agent">
-              {SESSION_AGENT_LABELS[entry.agent]}
-            </span>
+            <span class="session-row__agent">{SESSION_AGENT_LABELS[entry.agent]}</span>
             <span class="session-row__path">
               {homeDir === "" ? entry.cwd : tildify(entry.cwd, homeDir)}
             </span>

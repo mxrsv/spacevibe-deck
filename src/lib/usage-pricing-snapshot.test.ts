@@ -36,17 +36,13 @@ const MIN_MODELS = 40;
 
 describe("PRICING_SNAPSHOT", () => {
   it("prices every model these two CLIs have actually emitted here", () => {
-    const missing = OBSERVED_MODELS.filter(
-      (model) => PRICING_SNAPSHOT[model] === undefined,
-    );
+    const missing = OBSERVED_MODELS.filter((model) => PRICING_SNAPSHOT[model] === undefined);
 
     expect(missing).toEqual([]);
   });
 
   it("still holds a plausible number of models", () => {
-    expect(Object.keys(PRICING_SNAPSHOT).length).toBeGreaterThanOrEqual(
-      MIN_MODELS,
-    );
+    expect(Object.keys(PRICING_SNAPSHOT).length).toBeGreaterThanOrEqual(MIN_MODELS);
   });
 
   it("gives every model a finite, non-negative input and output rate", () => {
@@ -77,8 +73,7 @@ describe("PRICING_SNAPSHOT", () => {
     const suspicious = Object.entries(PRICING_SNAPSHOT).filter(
       ([, pricing]) =>
         pricing.outputPerToken < pricing.inputPerToken ||
-        (pricing.cacheReadPerToken !== null &&
-          pricing.cacheReadPerToken > pricing.inputPerToken),
+        (pricing.cacheReadPerToken !== null && pricing.cacheReadPerToken > pricing.inputPerToken),
     );
 
     expect(suspicious.map(([model]) => model)).toEqual([]);

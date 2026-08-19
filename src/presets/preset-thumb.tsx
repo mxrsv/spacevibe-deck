@@ -9,11 +9,7 @@ function ThumbNode({ node }: { node: SerializedNode }) {
     return <div class="preset-thumb__leaf" />;
   }
   return (
-    <div
-      class={`preset-thumb__split ${
-        node.direction === "row" ? "is-row" : "is-column"
-      }`}
-    >
+    <div class={`preset-thumb__split ${node.direction === "row" ? "is-row" : "is-column"}`}>
       <div class="preset-thumb__branch" style={{ flex: node.ratio }}>
         <ThumbNode node={node.first} />
       </div>

@@ -1,10 +1,6 @@
 import { CaretLeft, CaretRight, X } from "@phosphor-icons/react";
 import { h, render } from "preact";
-import {
-  DeckIcon,
-  ROW_ICON,
-  type DeckIconComponent,
-} from "../ui/controls/deck-icon";
+import { DeckIcon, ROW_ICON, type DeckIconComponent } from "../ui/controls/deck-icon";
 import type { ISearchOptions } from "@xterm/addon-search";
 import { settings } from "../settings/settings-store";
 import { resolveTheme } from "../settings/themes";
@@ -12,18 +8,13 @@ import type { Pane, SelectionSnapshot } from "./pane";
 import { matchBinding } from "./keymap";
 
 /** "resultIndex/resultCount" for the bar counter; "0/0" when empty. */
-export function formatMatchCount(
-  resultIndex: number,
-  resultCount: number,
-): string {
+export function formatMatchCount(resultIndex: number, resultCount: number): string {
   if (resultCount === 0) {
     return "0/0";
   }
   // The addon reports -1 when the active match is not tracked (e.g. beyond
   // its highlight limit) — show only the total instead of a bogus "0/N".
-  return resultIndex < 0
-    ? `${resultCount}`
-    : `${resultIndex + 1}/${resultCount}`;
+  return resultIndex < 0 ? `${resultCount}` : `${resultIndex + 1}/${resultCount}`;
 }
 
 interface OpenBar {
@@ -124,8 +115,7 @@ function findNormalized(
   const find =
     direction === "next"
       ? (term: string, opts: ISearchOptions) => pane.search.findNext(term, opts)
-      : (term: string, opts: ISearchOptions) =>
-          pane.search.findPrevious(term, opts);
+      : (term: string, opts: ISearchOptions) => pane.search.findPrevious(term, opts);
 
   const nfc = value.normalize("NFC");
   const nfd = value.normalize("NFD");
@@ -222,11 +212,9 @@ export function openSearchBar(pane: Pane): void {
     barButton(X, "Close", "Close (Esc)", closeSearchBar),
   );
 
-  const results = pane.search.onDidChangeResults(
-    ({ resultIndex, resultCount }) => {
-      counter.textContent = formatMatchCount(resultIndex, resultCount);
-    },
-  );
+  const results = pane.search.onDidChangeResults(({ resultIndex, resultCount }) => {
+    counter.textContent = formatMatchCount(resultIndex, resultCount);
+  });
 
   input.addEventListener("input", () => {
     if (input.value === "") {
@@ -327,10 +315,7 @@ export function closeSearchBarForPane(paneId: number): void {
  *    the way and should stay that way. No query has ever been run → safe
  *    no-op (nothing to repeat).
  */
-export function advanceSearch(
-  pane: Pane,
-  direction: "next" | "previous",
-): void {
+export function advanceSearch(pane: Pane, direction: "next" | "previous"): void {
   const openOnThisPane = current !== null && current.pane.id === pane.id;
   const query = openOnThisPane ? current!.input.value : (lastQuery ?? "");
   if (query === "") {

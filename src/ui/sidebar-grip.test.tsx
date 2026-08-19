@@ -2,11 +2,7 @@
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  SidebarGrip,
-  sidebarCollapseArmed,
-  sidebarWidthLive,
-} from "./sidebar-grip";
+import { SidebarGrip, sidebarCollapseArmed, sidebarWidthLive } from "./sidebar-grip";
 import { SIDEBAR_WIDTH_MIN } from "../settings/settings-schema";
 
 let host: HTMLDivElement;
@@ -49,9 +45,7 @@ function drag(grip: HTMLElement, from: number, to: readonly number[]): void {
 
 function release(grip: HTMLElement): void {
   act(() => {
-    grip.dispatchEvent(
-      new PointerEvent("pointerup", { pointerId: 1, bubbles: true }),
-    );
+    grip.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1, bubbles: true }));
   });
 }
 
@@ -162,9 +156,7 @@ describe("SidebarGrip", () => {
 
     drag(grip, 275, [330]);
     act(() => {
-      grip.dispatchEvent(
-        new PointerEvent("pointercancel", { pointerId: 1, bubbles: true }),
-      );
+      grip.dispatchEvent(new PointerEvent("pointercancel", { pointerId: 1, bubbles: true }));
     });
 
     expect(onWidthChange).toHaveBeenCalledWith(330);

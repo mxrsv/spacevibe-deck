@@ -11,11 +11,7 @@
 import fs from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
-import {
-  readFileContent,
-  refuseForSize,
-  type FileRead,
-} from "../../src/files/file-content";
+import { readFileContent, refuseForSize, type FileRead } from "../../src/files/file-content";
 import { hasRejectedRoot } from "../shell-integration";
 import {
   assertInsideRoot,
@@ -137,10 +133,7 @@ async function resolveSymlinkEntry(
  * pointed at (spec §3.1), and truncating one silently would read as "that is
  * all there is". The panel virtualizes instead.
  */
-export async function listDir(
-  root: string,
-  directory: string,
-): Promise<DirEntryPayload[]> {
+export async function listDir(root: string, directory: string): Promise<DirEntryPayload[]> {
   const canonicalDirectory = assertInsideRoot(root, directory);
   // Resolved once per call, not once per symlinked entry: `directory` above
   // already proved `root` resolves, and the filesystem cannot change between
@@ -169,21 +162,17 @@ export async function listDir(
     // question about a row it is already drawing.
     symlinkIndices.push(index);
   }
-  await mapWithConcurrencyLimit(
-    symlinkIndices,
-    MAX_REALPATH_CONCURRENCY,
-    async (entryIndex) => {
-      const entry = entries[entryIndex];
-      const full = path.join(canonicalDirectory, entry.name);
-      const verdict = await resolveSymlinkEntry(canonicalRoot, full);
-      rows[entryIndex] = {
-        name: entry.name,
-        path: full,
-        directory: verdict.directory,
-        outOfRoot: verdict.outOfRoot,
-      };
-    },
-  );
+  await mapWithConcurrencyLimit(symlinkIndices, MAX_REALPATH_CONCURRENCY, async (entryIndex) => {
+    const entry = entries[entryIndex];
+    const full = path.join(canonicalDirectory, entry.name);
+    const verdict = await resolveSymlinkEntry(canonicalRoot, full);
+    rows[entryIndex] = {
+      name: entry.name,
+      path: full,
+      directory: verdict.directory,
+      outOfRoot: verdict.outOfRoot,
+    };
+  });
   return rows;
 }
 
@@ -206,10 +195,7 @@ export async function statFiles(
   root: string,
   paths: readonly string[],
 ): Promise<FileStatPayload[]> {
-  if (
-    !Array.isArray(paths) ||
-    paths.some((entry) => typeof entry !== "string")
-  ) {
+  if (!Array.isArray(paths) || paths.some((entry) => typeof entry !== "string")) {
     throw new MalformedStatRequestError("paths must be an array of strings.");
   }
   // The cap is on the RAW count, duplicates included: deduping first would
@@ -263,10 +249,7 @@ export type ReadFileResult =
  * The size check runs against `stat` BEFORE the read, which is the ordering the
  * whole module exists for.
  */
-export async function readFile(
-  root: string,
-  target: string,
-): Promise<ReadFileResult> {
+export async function readFile(root: string, target: string): Promise<ReadFileResult> {
   const resolved = assertInsideRoot(root, target);
   const stats = await fs.stat(resolved);
   if (!stats.isFile()) {

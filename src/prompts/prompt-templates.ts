@@ -44,10 +44,7 @@ function slugify(label: string): string {
  * A stable id for a new template, unique among `existing`. Same shape as
  * `createCustomAgentId`: slug, then a numeric suffix on collision.
  */
-export function createPromptTemplateId(
-  label: string,
-  existing: readonly PromptTemplate[],
-): string {
+export function createPromptTemplateId(label: string, existing: readonly PromptTemplate[]): string {
   const base = slugify(label) || FALLBACK_SLUG;
   const taken = new Set(existing.map((entry) => entry.id));
   const first = `${TEMPLATE_ID_PREFIX}${base}`;

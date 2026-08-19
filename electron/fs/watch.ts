@@ -22,11 +22,7 @@
  */
 import nodeFs from "node:fs";
 import path from "node:path";
-import {
-  PathOutsideWorkspaceError,
-  resolveInsideRoot,
-  resolveRoot,
-} from "./path-guard";
+import { PathOutsideWorkspaceError, resolveInsideRoot, resolveRoot } from "./path-guard";
 
 /**
  * Upper bounds on one window's declared `watch_paths` scope (plan T9).
@@ -48,9 +44,7 @@ export class MalformedWatchScopeError extends Error {
 
 export class TooManyWatchDirectoriesError extends Error {
   constructor(count: number) {
-    super(
-      `watch_paths: ${count} directories exceeds the ${MAX_WATCH_DIRECTORIES} limit.`,
-    );
+    super(`watch_paths: ${count} directories exceeds the ${MAX_WATCH_DIRECTORIES} limit.`);
     this.name = "TooManyWatchDirectoriesError";
   }
 }
@@ -271,9 +265,7 @@ export function createWatchRegistry(
         try {
           state.watchers.set(
             directory,
-            io.watch(directory, (_event, filename) =>
-              onEvent(label, state, directory, filename),
-            ),
+            io.watch(directory, (_event, filename) => onEvent(label, state, directory, filename)),
           );
         } catch {
           // A directory that vanished between the listing and this call. Not

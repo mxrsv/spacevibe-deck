@@ -19,11 +19,7 @@ export interface PaneRect {
 // Dividers leave small gaps between slots; treat near-touching edges as beyond.
 const EDGE_TOLERANCE_PX = 1;
 
-function isBeyond(
-  active: PaneRect,
-  other: PaneRect,
-  dir: FocusDirection,
-): boolean {
+function isBeyond(active: PaneRect, other: PaneRect, dir: FocusDirection): boolean {
   switch (dir) {
     case "left":
       return other.right <= active.left + EDGE_TOLERANCE_PX;
@@ -37,11 +33,7 @@ function isBeyond(
 }
 
 /** Overlap length on the axis perpendicular to the move direction. */
-function perpendicularOverlap(
-  a: PaneRect,
-  b: PaneRect,
-  dir: FocusDirection,
-): number {
+function perpendicularOverlap(a: PaneRect, b: PaneRect, dir: FocusDirection): number {
   return dir === "left" || dir === "right"
     ? Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
     : Math.min(a.right, b.right) - Math.max(a.left, b.left);
@@ -76,11 +68,7 @@ const OPPOSITE: Readonly<Record<FocusDirection, FocusDirection>> = {
 };
 
 /** Distance between the active pane's facing edge and the candidate's near edge. */
-function edgeCenterDistance(
-  active: PaneRect,
-  other: PaneRect,
-  dir: FocusDirection,
-): number {
+function edgeCenterDistance(active: PaneRect, other: PaneRect, dir: FocusDirection): number {
   const from = edgeCenter(active, dir);
   const to = edgeCenter(other, OPPOSITE[dir]);
   return Math.hypot(from.x - to.x, from.y - to.y);
@@ -96,15 +84,11 @@ export function nearestInDirection(
   if (active === undefined) {
     return null;
   }
-  const beyond = panes.filter(
-    (pane) => pane.id !== activeId && isBeyond(active, pane, dir),
-  );
+  const beyond = panes.filter((pane) => pane.id !== activeId && isBeyond(active, pane, dir));
   if (beyond.length === 0) {
     return null;
   }
-  const overlapping = beyond.filter(
-    (pane) => perpendicularOverlap(active, pane, dir) > 0,
-  );
+  const overlapping = beyond.filter((pane) => perpendicularOverlap(active, pane, dir) > 0);
   const pool = overlapping.length > 0 ? overlapping : beyond;
   let best = pool[0];
   let bestDistance = edgeCenterDistance(active, best, dir);

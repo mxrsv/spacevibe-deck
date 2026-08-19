@@ -1,12 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createAgentNotificationAdapter,
-  type NotificationClient,
-} from "./native-notification";
+import { createAgentNotificationAdapter, type NotificationClient } from "./native-notification";
 
-function makeClient(
-  overrides: Partial<NotificationClient> = {},
-): NotificationClient & {
+function makeClient(overrides: Partial<NotificationClient> = {}): NotificationClient & {
   isPermissionGranted: ReturnType<typeof vi.fn>;
   requestPermission: ReturnType<typeof vi.fn>;
   sendNotification: ReturnType<typeof vi.fn>;
@@ -117,9 +112,7 @@ describe("createAgentNotificationAdapter", () => {
   describe("API rejects/throws", () => {
     it("requestPermission() returns false when isPermissionGranted rejects", async () => {
       const client = makeClient({
-        isPermissionGranted: vi
-          .fn()
-          .mockRejectedValue(new Error("plugin unavailable")),
+        isPermissionGranted: vi.fn().mockRejectedValue(new Error("plugin unavailable")),
       });
       const adapter = createAgentNotificationAdapter(client);
 
@@ -138,15 +131,11 @@ describe("createAgentNotificationAdapter", () => {
 
     it("send() is a controlled no-op when isPermissionGranted rejects", async () => {
       const client = makeClient({
-        isPermissionGranted: vi
-          .fn()
-          .mockRejectedValue(new Error("plugin unavailable")),
+        isPermissionGranted: vi.fn().mockRejectedValue(new Error("plugin unavailable")),
       });
       const adapter = createAgentNotificationAdapter(client);
 
-      await expect(
-        adapter.send({ title: "Agent finished" }),
-      ).resolves.toBeUndefined();
+      await expect(adapter.send({ title: "Agent finished" })).resolves.toBeUndefined();
       expect(client.sendNotification).not.toHaveBeenCalled();
     });
 
@@ -159,9 +148,7 @@ describe("createAgentNotificationAdapter", () => {
       });
       const adapter = createAgentNotificationAdapter(client);
 
-      await expect(
-        adapter.send({ title: "Agent finished" }),
-      ).resolves.toBeUndefined();
+      await expect(adapter.send({ title: "Agent finished" })).resolves.toBeUndefined();
     });
   });
 });

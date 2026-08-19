@@ -1,3 +1,4 @@
+/* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 /**
  * Gate M harness (file-explorer plan §5.0.3) — the page a PACKAGED build
  * proves Monaco on, before any explorer surface exists.
@@ -53,9 +54,7 @@ interface HarnessProps {
 
 function Harness(props: HarnessProps) {
   const termRef = useRef<HTMLDivElement>(null);
-  const managerRef = useRef<ReturnType<typeof createTerminalManager> | null>(
-    null,
-  );
+  const managerRef = useRef<ReturnType<typeof createTerminalManager> | null>(null);
 
   useEffect(() => {
     const container = termRef.current;
@@ -70,9 +69,7 @@ function Harness(props: HarnessProps) {
       // The real event routes, exactly as TabManager wires them — output and
       // exit reach the manager or the packaged proof proves nothing.
       unlistens.push(
-        await defaultPtyClient.listenOutput((id, data) =>
-          manager.handleOutput(id, data),
-        ),
+        await defaultPtyClient.listenOutput((id, data) => manager.handleOutput(id, data)),
         await defaultPtyClient.listenExit((id) => manager.handleExit(id)),
       );
       if (cancelled) {

@@ -49,9 +49,7 @@ describe("worktreeDestinations", () => {
   });
 
   it("is empty for a folder that is not a repository", () => {
-    expect(
-      worktreeDestinations({ kind: "plain", reason: "not a repository" }),
-    ).toEqual([]);
+    expect(worktreeDestinations({ kind: "plain", reason: "not a repository" })).toEqual([]);
   });
 
   // A host with no `git_repository` channel never writes a scan, so the
@@ -149,21 +147,19 @@ describe("defaultDestinationPath", () => {
   );
 
   it("prefers the worktree owning the focused pane's cwd", () => {
-    expect(
-      defaultDestinationPath(destinations, "/dev/deck-modal", "/dev/deck"),
-    ).toBe("/dev/deck-modal");
+    expect(defaultDestinationPath(destinations, "/dev/deck-modal", "/dev/deck")).toBe(
+      "/dev/deck-modal",
+    );
   });
 
   it("resolves a cwd BELOW a worktree to that worktree", () => {
-    expect(
-      defaultDestinationPath(destinations, "/dev/deck-modal/src/ui", null),
-    ).toBe("/dev/deck-modal");
+    expect(defaultDestinationPath(destinations, "/dev/deck-modal/src/ui", null)).toBe(
+      "/dev/deck-modal",
+    );
   });
 
   it("falls back to the next candidate when the first matches nothing", () => {
-    expect(
-      defaultDestinationPath(destinations, "/tmp/scratch", "/dev/deck"),
-    ).toBe("/dev/deck");
+    expect(defaultDestinationPath(destinations, "/tmp/scratch", "/dev/deck")).toBe("/dev/deck");
   });
 
   it("falls back to the repository's own checkout when nothing matches", () => {

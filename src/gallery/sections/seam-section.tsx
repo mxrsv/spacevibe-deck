@@ -96,8 +96,7 @@ function luminance(color: Rgba): number {
   return 0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2];
 }
 
-const signed = (value: number): string =>
-  `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(1)}`;
+const signed = (value: number): string => `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(1)}`;
 
 function SeamShell({ variant }: { variant: SeamVariant }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -116,9 +115,7 @@ function SeamShell({ variant }: { variant: SeamVariant }) {
       }
       const read = (name: string): Rgba | null => {
         const probe = root.querySelector(`[data-probe="${name}"]`);
-        return probe === null
-          ? null
-          : parseColor(getComputedStyle(probe).backgroundColor);
+        return probe === null ? null : parseColor(getComputedStyle(probe).backgroundColor);
       };
       const bg = read("bg");
       const chrome = read("chrome");
@@ -137,16 +134,8 @@ function SeamShell({ variant }: { variant: SeamVariant }) {
     <div class="gx-seamcol">
       <StateLabel>{variant.label}</StateLabel>
       <div ref={rootRef} class={`gx-seamshell ${variant.variantClass}`}>
-        <span
-          class="gx-seamprobe"
-          data-probe="bg"
-          style={{ background: "var(--bg)" }}
-        />
-        <span
-          class="gx-seamprobe"
-          data-probe="chrome"
-          style={{ background: "var(--chrome-1)" }}
-        />
+        <span class="gx-seamprobe" data-probe="bg" style={{ background: "var(--bg)" }} />
+        <span class="gx-seamprobe" data-probe="chrome" style={{ background: "var(--chrome-1)" }} />
         <span
           class="gx-seamprobe"
           data-probe="seam"

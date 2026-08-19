@@ -48,5 +48,4 @@ export function createMemoryPromptAssetsClient(
 }
 
 /** Shared production client — callers accept an override for tests. */
-export const defaultPromptAssetsClient: PromptAssetsClient =
-  createTauriPromptAssetsClient();
+export const defaultPromptAssetsClient: PromptAssetsClient = createTauriPromptAssetsClient();

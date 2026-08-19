@@ -15,6 +15,7 @@
 const CLEAR = 0;
 
 /** Matches one COMPLETE OSC 9;4 sequence; group 1 = state, group 2 = progress. */
+// oxlint-disable-next-line no-control-regex -- OSC sequences are control characters by definition
 const OSC_9_4 = /\x1b\]9;4(?:;(\d+)(?:;(\d*))?)?(?:\x07|\x1b\\)/g;
 
 /** One parsed OSC 9;4 report. `progress` is present only when the sequence
@@ -42,10 +43,12 @@ export const OSC_CARRY_LENGTH = 24;
 /** Incremental prefixes of an OSC 9;4 sequence that have not yet reached a
  * terminator: `\x1b`, `\x1b]`, `\x1b]9`, `\x1b]9;`, `\x1b]9;4`, `\x1b]9;4;`,
  * `\x1b]9;4;1`, `\x1b]9;4;1;`, `\x1b]9;4;1;42` … */
+// oxlint-disable-next-line no-control-regex -- OSC sequences are control characters by definition
 const INCOMPLETE_PREFIX = /^\x1b(\](9(;(4(;\d*(;\d*)?)?)?)?)?)?$/;
 
 /** The ST terminator itself split across chunks: digits (and optional
  * progress) followed by a lone ESC whose `\` arrives next chunk. */
+// oxlint-disable-next-line no-control-regex -- OSC sequences are control characters by definition
 const INCOMPLETE_SPLIT_ST = /^\x1b\]9;4;\d*(;\d*)?\x1b$/;
 
 /**
@@ -60,10 +63,7 @@ function incompleteCarry(text: string): string {
     if (text[i] !== "\x1b") continue;
     const candidate = text.slice(i);
     if (candidate.length > OSC_CARRY_LENGTH) continue;
-    if (
-      INCOMPLETE_PREFIX.test(candidate) ||
-      INCOMPLETE_SPLIT_ST.test(candidate)
-    ) {
+    if (INCOMPLETE_PREFIX.test(candidate) || INCOMPLETE_SPLIT_ST.test(candidate)) {
       return candidate;
     }
   }
@@ -77,17 +77,13 @@ function incompleteCarry(text: string): string {
  * the next call. A sequence that completed within this call is never
  * re-emitted by a later call.
  */
-export function parseProgressEvents(
-  carry: string,
-  chunk: string,
-): OscProgressParse {
+export function parseProgressEvents(carry: string, chunk: string): OscProgressParse {
   const buf = carry + chunk;
   const events: OscProgressEvent[] = [];
   let consumedEnd = 0;
 
   for (const match of buf.matchAll(OSC_9_4)) {
-    const state =
-      match[1] === undefined ? CLEAR : Number.parseInt(match[1], 10);
+    const state = match[1] === undefined ? CLEAR : Number.parseInt(match[1], 10);
     const progressParam = match[2];
     events.push(
       progressParam !== undefined && progressParam !== ""

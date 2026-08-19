@@ -40,12 +40,7 @@ describe("the spec §5 table", () => {
       state({ dirty: true }),
       "prompt-changed",
     ],
-    [
-      "dirty + deleted asks Save again / Close",
-      deleted,
-      state({ dirty: true }),
-      "prompt-deleted",
-    ],
+    ["dirty + deleted asks Save again / Close", deleted, state({ dirty: true }), "prompt-deleted"],
   ];
 
   for (const [name, event, open, expected] of rows) {
@@ -73,28 +68,22 @@ describe("the two rows the table implies", () => {
     // fs.watch fires twice on macOS routinely; a second silent reload would
     // throw away the cursor the first one preserved.
     expect(
-      decideExternalChange(
-        changed({ mtimeMs: 1000, size: 42 }),
-        state({ mtimeMs: 1000, size: 42 }),
-      ).kind,
+      decideExternalChange(changed({ mtimeMs: 1000, size: 42 }), state({ mtimeMs: 1000, size: 42 }))
+        .kind,
     ).toBe("none");
   });
 
   it("still reloads when only the size moved within one mtime tick", () => {
     expect(
-      decideExternalChange(
-        changed({ mtimeMs: 1000, size: 43 }),
-        state({ mtimeMs: 1000, size: 42 }),
-      ).kind,
+      decideExternalChange(changed({ mtimeMs: 1000, size: 43 }), state({ mtimeMs: 1000, size: 42 }))
+        .kind,
     ).toBe("reload");
   });
 });
 
 describe("repeat events", () => {
   it("does not re-mark an already-gone file", () => {
-    expect(decideExternalChange(deleted, state({ gone: true })).kind).toBe(
-      "none",
-    );
+    expect(decideExternalChange(deleted, state({ gone: true })).kind).toBe("none");
   });
 
   it("reloads a file that was deleted and then rewritten, even at the same mtime", () => {
@@ -107,16 +96,13 @@ describe("repeat events", () => {
   });
 
   it("leaves an open bar alone rather than replacing it under the pointer", () => {
-    expect(
-      decideExternalChange(changed(), state({ dirty: true, prompting: true }))
-        .kind,
-    ).toBe("none");
+    expect(decideExternalChange(changed(), state({ dirty: true, prompting: true })).kind).toBe(
+      "none",
+    );
   });
 
   it("reloads when the tab has never had a recorded mtime", () => {
-    expect(decideExternalChange(changed(), state({ mtimeMs: null })).kind).toBe(
-      "reload",
-    );
+    expect(decideExternalChange(changed(), state({ mtimeMs: null })).kind).toBe("reload");
   });
 });
 

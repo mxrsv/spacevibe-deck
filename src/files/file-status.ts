@@ -53,11 +53,6 @@ export function currentFileStatus(): FileStatus | null {
         : document.file.encoding === "utf-8"
           ? "UTF-8"
           : "UTF-8 (invalid)",
-    eol:
-      document.file === null
-        ? "—"
-        : document.file.eol === "crlf"
-          ? "CRLF"
-          : "LF",
+    eol: document.file === null ? "—" : document.file.eol === "crlf" ? "CRLF" : "LF",
   };
 }

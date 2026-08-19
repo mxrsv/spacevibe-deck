@@ -26,9 +26,7 @@ const STORE_KEY = "repositories";
 const VERSION = 1;
 
 /** Scan result per workspace path. Rebuilt every launch — never persisted. */
-export const repositoryScans = signal<ReadonlyMap<string, RepositoryScan>>(
-  new Map(),
-);
+export const repositoryScans = signal<ReadonlyMap<string, RepositoryScan>>(new Map());
 
 /** Repository keys (`--git-common-dir`) the user has collapsed. */
 export const collapsedRepositories = signal<ReadonlySet<string>>(new Set());

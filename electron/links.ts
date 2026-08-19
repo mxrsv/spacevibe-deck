@@ -37,11 +37,7 @@ function expandTilde(raw: string, home: string): string | null {
   if (raw === "~") {
     return home;
   }
-  const rest = raw.startsWith("~/")
-    ? raw.slice(2)
-    : raw.startsWith("~\\")
-      ? raw.slice(2)
-      : null;
+  const rest = raw.startsWith("~/") ? raw.slice(2) : raw.startsWith("~\\") ? raw.slice(2) : null;
   if (rest === null) {
     return raw;
   }
@@ -60,11 +56,7 @@ function expandTilde(raw: string, home: string): string | null {
  *
  * Directories are deliberately not linkified: there is no line to jump to.
  */
-export function resolveOne(
-  base: string | null,
-  home: string,
-  raw: string,
-): string | null {
+export function resolveOne(base: string | null, home: string, raw: string): string | null {
   const expanded = expandTilde(raw, home);
   if (expanded === null) {
     return null;
@@ -87,10 +79,7 @@ export function resolveOne(
 }
 
 /** Resolve link candidates against a pane's cwd; index-aligned with `paths`. */
-export function resolvePaths(
-  cwd: string,
-  paths: readonly string[],
-): (string | null)[] {
+export function resolvePaths(cwd: string, paths: readonly string[]): (string | null)[] {
   const home = os.homedir();
   let base: string | null = null;
   if (cwd.length > 0 && (path.isAbsolute(cwd) || isWindowsAbsolute(cwd))) {
@@ -101,9 +90,7 @@ export function resolvePaths(
     }
   }
   return paths.map((raw, index) =>
-    index < MAX_PATHS && raw.length <= MAX_PATH_BYTES
-      ? resolveOne(base, home, raw)
-      : null,
+    index < MAX_PATHS && raw.length <= MAX_PATH_BYTES ? resolveOne(base, home, raw) : null,
   );
 }
 
@@ -134,17 +121,12 @@ function positivePosition(value: number, label: string): number {
 }
 
 /** Error messages are user-facing verbatim, so they stay plain. */
-export function validateOpenEditorRequest(
-  request: OpenEditorRequest,
-): ValidatedRequest {
+export function validateOpenEditorRequest(request: OpenEditorRequest): ValidatedRequest {
   if (!EDITORS.includes(request.editor as EditorId)) {
     throw new Error("The selected editor is not supported.");
   }
   const editor = request.editor as EditorId;
-  if (
-    request.template.length > MAX_EDITOR_TEMPLATE_BYTES ||
-    request.template.includes("\0")
-  ) {
+  if (request.template.length > MAX_EDITOR_TEMPLATE_BYTES || request.template.includes("\0")) {
     throw new Error("The custom editor command is invalid or too long.");
   }
   if (request.file.length > MAX_PATH_BYTES || request.file.includes("\0")) {
@@ -157,9 +139,7 @@ export function validateOpenEditorRequest(
   const executableToken = template.split(/\s+/)[0] ?? "";
   if (
     editor === "custom" &&
-    ["{file}", "{line}", "{col}"].some((placeholder) =>
-      executableToken.includes(placeholder),
-    )
+    ["{file}", "{line}", "{col}"].some((placeholder) => executableToken.includes(placeholder))
   ) {
     // The executable itself must be fixed: a placeholder there would let
     // terminal output choose which program runs.

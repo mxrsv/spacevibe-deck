@@ -18,19 +18,9 @@
  * Deck's renderer process rather than in one of its own.
  */
 import path from "node:path";
-import {
-  shell,
-  WebContentsView,
-  type BrowserWindow,
-  type Rectangle,
-} from "electron";
+import { shell, WebContentsView, type BrowserWindow, type Rectangle } from "electron";
 import { isLoadableUrl } from "./url";
-import {
-  buildInjection,
-  GRAB_EVENT,
-  inspectCall,
-  parseGrabPayload,
-} from "./inject";
+import { buildInjection, GRAB_EVENT, inspectCall, parseGrabPayload } from "./inject";
 
 /** Every window's browser panel shares one persistent session. */
 const PARTITION = "persist:deck-browser";
@@ -242,12 +232,10 @@ export class BrowserPanels {
       return;
     }
     panel.inspect = active;
-    panel.view.webContents
-      .executeJavaScript(inspectCall(active))
-      .catch(() => {
-        // No page, or a page where the bootstrap never ran. The state is still
-        // published so the button reflects what the user pressed.
-      });
+    panel.view.webContents.executeJavaScript(inspectCall(active)).catch(() => {
+      // No page, or a page where the bootstrap never ran. The state is still
+      // published so the button reflects what the user pressed.
+    });
     if (active) {
       // Inspect is a pointer gesture in the page, and the keyboard half of it
       // (⌘C) only reaches react-grab when the page has focus.
@@ -336,11 +324,9 @@ export class BrowserPanels {
     // `did-finish-load` repeat is a no-op thanks to the bootstrap's guard, and
     // covers a document that swapped in without a `dom-ready` of its own.
     const inject = (): void => {
-      contents
-        .executeJavaScript(injectionFor(this.deps.vendorSource()))
-        .catch((err: unknown) => {
-          console.warn("[deck] react-grab injection failed:", err);
-        });
+      contents.executeJavaScript(injectionFor(this.deps.vendorSource())).catch((err: unknown) => {
+        console.warn("[deck] react-grab injection failed:", err);
+      });
     };
     contents.on("dom-ready", inject);
     contents.on("did-finish-load", inject);
@@ -428,9 +414,11 @@ export class BrowserPanels {
     if (!isLoadableUrl(url)) {
       return;
     }
-    const open = this.deps.openExternal ?? ((target: string) => {
-      void shell.openExternal(target);
-    });
+    const open =
+      this.deps.openExternal ??
+      ((target: string) => {
+        void shell.openExternal(target);
+      });
     open(url);
   }
 

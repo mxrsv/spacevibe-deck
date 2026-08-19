@@ -50,9 +50,7 @@ describe("JsonStore", () => {
     const store = new JsonStore(file);
     await store.load();
 
-    expect(() => store.set("settings", { themeId: "default" })).toThrow(
-      /unreadable/i,
-    );
+    expect(() => store.set("settings", { themeId: "default" })).toThrow(/unreadable/i);
     expect(() => store.delete("settings")).toThrow(/unreadable/i);
     expect(() => store.clear()).toThrow(/unreadable/i);
     await expect(store.save()).rejects.toThrow(/unreadable/i);

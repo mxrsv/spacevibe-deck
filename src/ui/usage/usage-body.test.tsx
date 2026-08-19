@@ -19,8 +19,7 @@ vi.mock("../../usage/usage-store", async () => {
 
 import type { UsageSnapshot } from "../../lib/usage-snapshot";
 import { UsageBody } from "./usage-body";
-import { activeUsageView } from "./active-usage-view-store";
-import type { UsageViewId } from "./active-usage-view-store";
+import { activeUsageView, type UsageViewId } from "./active-usage-view-store";
 import { usageSnapshot } from "../../usage/usage-store";
 
 // Two agents, two models each, so the breakdown table has more than one row
@@ -85,10 +84,7 @@ describe("UsageBody", () => {
 
   const mount = (variant?: "screen" | "dock"): void => {
     act(() => {
-      render(
-        variant === undefined ? <UsageBody /> : <UsageBody variant={variant} />,
-        host,
-      );
+      render(variant === undefined ? <UsageBody /> : <UsageBody variant={variant} />, host);
     });
   };
 
@@ -115,9 +111,7 @@ describe("UsageBody", () => {
     // `UsageScreen` used to render them itself.
     expect(host.children).toHaveLength(2);
     expect(host.children[0]?.classList.contains("usage-status")).toBe(true);
-    expect(host.children[1]?.classList.contains("usage-screen__grid")).toBe(
-      true,
-    );
+    expect(host.children[1]?.classList.contains("usage-screen__grid")).toBe(true);
   });
 
   it("renders the rail and a tabpanel in both variants", () => {
@@ -149,40 +143,37 @@ describe("UsageBody", () => {
   // be caught.
   const VIEWS: readonly UsageViewId[] = ["overview", "daily", "breakdown"];
 
-  it.each(VIEWS)(
-    "dock loses no data relative to screen for the %s view",
-    (viewId) => {
-      activeUsageView.value = viewId;
-      usageSnapshot.value = SEEDED_SNAPSHOT;
+  it.each(VIEWS)("dock loses no data relative to screen for the %s view", (viewId) => {
+    activeUsageView.value = viewId;
+    usageSnapshot.value = SEEDED_SNAPSHOT;
 
-      mount("screen");
-      const screenPanel = host.querySelector('[role="tabpanel"]');
-      const screenText = screenPanel?.textContent;
-      const screenCells = [
-        ...(screenPanel?.querySelectorAll("th, td") ?? []),
-      ].map((cell) => cell.textContent);
+    mount("screen");
+    const screenPanel = host.querySelector('[role="tabpanel"]');
+    const screenText = screenPanel?.textContent;
+    const screenCells = [...(screenPanel?.querySelectorAll("th, td") ?? [])].map(
+      (cell) => cell.textContent,
+    );
 
-      mount("dock");
-      const dockPanel = host.querySelector('[role="tabpanel"]');
-      const dockText = dockPanel?.textContent;
-      const dockCells = [...(dockPanel?.querySelectorAll("th, td") ?? [])].map(
-        (cell) => cell.textContent,
-      );
+    mount("dock");
+    const dockPanel = host.querySelector('[role="tabpanel"]');
+    const dockText = dockPanel?.textContent;
+    const dockCells = [...(dockPanel?.querySelectorAll("th, td") ?? [])].map(
+      (cell) => cell.textContent,
+    );
 
-      expect(screenText).not.toBeUndefined();
-      expect(dockText).toBe(screenText);
-      expect(dockCells).toEqual(screenCells);
-    },
-  );
+    expect(screenText).not.toBeUndefined();
+    expect(dockText).toBe(screenText);
+    expect(dockCells).toEqual(screenCells);
+  });
 
   it("breakdown keeps all nine columns' cell text in dock mode (no column dropped)", () => {
     activeUsageView.value = "breakdown";
     usageSnapshot.value = SEEDED_SNAPSHOT;
     mount("dock");
 
-    const headerTexts = [
-      ...host.querySelectorAll('[role="tabpanel"] thead th'),
-    ].map((cell) => cell.textContent);
+    const headerTexts = [...host.querySelectorAll('[role="tabpanel"] thead th')].map(
+      (cell) => cell.textContent,
+    );
     expect(headerTexts).toEqual([
       "Agent",
       "Model",

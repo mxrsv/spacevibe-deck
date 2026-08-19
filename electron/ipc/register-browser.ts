@@ -29,20 +29,11 @@ export function reactGrabSource(): string {
     // `dist-electron/electron` where `scripts/build-electron-main.mjs` copies
     // the vendored bundle — so the walk up is `..`, not the bare filename
     // main.ts used before this handler moved.
-    const file = path.join(
-      __dirname,
-      "..",
-      "vendor",
-      "react-grab",
-      "index.global.js",
-    );
+    const file = path.join(__dirname, "..", "vendor", "react-grab", "index.global.js");
     try {
       vendorCache = fs.readFileSync(file, "utf8");
     } catch (error) {
-      console.error(
-        "Deck: react-grab bundle is missing; Inspect is disabled",
-        error,
-      );
+      console.error("Deck: react-grab bundle is missing; Inspect is disabled", error);
       vendorCache = "";
     }
   }
@@ -64,47 +55,31 @@ export function registerBrowser(deps: RegisterBrowserDeps): void {
   ipcMain.handle(CHANNELS.browserClose, (event) => {
     deps.browserPanels.close(deps.labelOf(event));
   });
-  ipcMain.handle(
-    CHANNELS.browserNavigate,
-    (event, { url }: { url?: string }) => {
-      const target = normalizeBrowserUrl(String(url ?? ""));
-      if (target === null) {
-        // Not an error the user needs a dialog for — the address bar keeps what
-        // they typed and the caller reports the miss.
-        return null;
-      }
-      deps.browserPanels.navigate(deps.labelOf(event), target);
-      return target;
-    },
-  );
-  ipcMain.handle(CHANNELS.browserBack, (event) =>
-    deps.browserPanels.goBack(deps.labelOf(event)),
-  );
+  ipcMain.handle(CHANNELS.browserNavigate, (event, { url }: { url?: string }) => {
+    const target = normalizeBrowserUrl(String(url ?? ""));
+    if (target === null) {
+      // Not an error the user needs a dialog for — the address bar keeps what
+      // they typed and the caller reports the miss.
+      return null;
+    }
+    deps.browserPanels.navigate(deps.labelOf(event), target);
+    return target;
+  });
+  ipcMain.handle(CHANNELS.browserBack, (event) => deps.browserPanels.goBack(deps.labelOf(event)));
   ipcMain.handle(CHANNELS.browserForward, (event) =>
     deps.browserPanels.goForward(deps.labelOf(event)),
   );
-  ipcMain.handle(CHANNELS.browserReload, (event) =>
-    deps.browserPanels.reload(deps.labelOf(event)),
-  );
+  ipcMain.handle(CHANNELS.browserReload, (event) => deps.browserPanels.reload(deps.labelOf(event)));
   ipcMain.handle(
     CHANNELS.browserSetBounds,
-    (
-      event,
-      bounds: { x: number; y: number; width: number; height: number },
-    ) => {
+    (event, bounds: { x: number; y: number; width: number; height: number }) => {
       deps.browserPanels.setBounds(deps.labelOf(event), bounds);
     },
   );
-  ipcMain.handle(
-    CHANNELS.browserSetVisible,
-    (event, { visible }: { visible: boolean }) => {
-      deps.browserPanels.setVisible(deps.labelOf(event), visible === true);
-    },
-  );
-  ipcMain.handle(
-    CHANNELS.browserSetInspect,
-    (event, { active }: { active: boolean }) => {
-      deps.browserPanels.setInspect(deps.labelOf(event), active === true);
-    },
-  );
+  ipcMain.handle(CHANNELS.browserSetVisible, (event, { visible }: { visible: boolean }) => {
+    deps.browserPanels.setVisible(deps.labelOf(event), visible === true);
+  });
+  ipcMain.handle(CHANNELS.browserSetInspect, (event, { active }: { active: boolean }) => {
+    deps.browserPanels.setInspect(deps.labelOf(event), active === true);
+  });
 }

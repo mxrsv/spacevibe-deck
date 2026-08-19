@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 import { readFileSync } from "node:fs";
 import { render } from "preact";
 import { act } from "preact/test-utils";
@@ -19,10 +20,7 @@ import {
 } from "../../files/file-surface-store";
 import type { FileClient } from "../../files/file-client";
 import { DOCK_WIDTH_MAX, DOCK_WIDTH_MIN } from "../../settings/settings-schema";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../../lib/platform";
 
 const WS = "/r";
 
@@ -116,9 +114,7 @@ describe("DockPanel resize", () => {
     expect(dockWidthLive.value).toBe(DOCK_WIDTH_MAX);
 
     await act(async () => {
-      grip.dispatchEvent(
-        new PointerEvent("pointerup", { pointerId: 1, bubbles: true }),
-      );
+      grip.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1, bubbles: true }));
     });
 
     // One settings write, on release — not on every pointermove.
@@ -188,9 +184,7 @@ describe("DockPanel resize", () => {
     expect(host.querySelector(".dock-panel.is-dragging")).not.toBeNull();
 
     await act(async () => {
-      grip.dispatchEvent(
-        new PointerEvent("pointerup", { pointerId: 1, bubbles: true }),
-      );
+      grip.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1, bubbles: true }));
     });
 
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -250,9 +244,7 @@ describe("DockPanel resize", () => {
     expect(dockCollapseArmed.value).toBe(false);
 
     await act(async () => {
-      grip.dispatchEvent(
-        new PointerEvent("pointerup", { pointerId: 1, bubbles: true }),
-      );
+      grip.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1, bubbles: true }));
     });
 
     expect(onClose).not.toHaveBeenCalled();
@@ -323,9 +315,7 @@ describe("DockPanel header", () => {
       );
     });
 
-    const hide = host.querySelector<HTMLButtonElement>(
-      ".dock-panel__header > .iconbtn",
-    )!;
+    const hide = host.querySelector<HTMLButtonElement>(".dock-panel__header > .iconbtn")!;
     act(() => {
       hide.click();
     });
@@ -336,14 +326,8 @@ describe("DockPanel header", () => {
   it("pins the tab group beside the trailing hide control", () => {
     const sheet = readFileSync("src/styles/14-dock.css", "utf8");
     const tabsStart = sheet.indexOf("\n.dock-tabs {");
-    expect(
-      tabsStart,
-      "no trailing-edge rule for the dock's tab group",
-    ).toBeGreaterThan(-1);
-    const tabsBody = sheet.slice(
-      sheet.indexOf("{", tabsStart) + 1,
-      sheet.indexOf("}", tabsStart),
-    );
+    expect(tabsStart, "no trailing-edge rule for the dock's tab group").toBeGreaterThan(-1);
+    const tabsBody = sheet.slice(sheet.indexOf("{", tabsStart) + 1, sheet.indexOf("}", tabsStart));
     expect(tabsBody).toMatch(/margin-left:\s*auto/);
 
     const toggleStart = sheet.indexOf("\n.dock-panel__header > .iconbtn {");
@@ -372,9 +356,9 @@ describe("DockPanel header", () => {
       );
     });
 
-    const labels = Array.from(
-      host.querySelectorAll('[role="tab"]'),
-    ).map((node) => node.getAttribute("aria-label"));
+    const labels = Array.from(host.querySelectorAll('[role="tab"]')).map((node) =>
+      node.getAttribute("aria-label"),
+    );
     expect(labels).toEqual(["File explorer", "Token usage"]);
   });
 });
@@ -389,40 +373,37 @@ describe("DockPanel — both chrome layouts", () => {
     resetDesktopEnvironmentForTests();
   });
 
-  it.each([true, false])(
-    "mounts the dock node in the stage when sidebar=%s",
-    (sidebar) => {
-      act(() => {
-        render(
-          <DesktopChrome
-            sidebar={sidebar}
-            toolbar={<span />}
-            sidebarNavigation={<nav />}
-            topTabs={<header />}
-            stage={
-              <main>
-                <DockPanel
-                  tabs={availableDockTabs(true)}
-                  activeTab="explorer"
-                  onSelectTab={() => {}}
-                  width={420}
-                  onWidthChange={() => {}}
-                  onClose={() => {}}
-                >
-                  <ExplorerTab controller={controller} workspacePath={WS} />
-                </DockPanel>
-              </main>
-            }
-            status={<footer />}
-            onMacTitlebarDoubleClick={() => {}}
-          />,
-          host,
-        );
-      });
+  it.each([true, false])("mounts the dock node in the stage when sidebar=%s", (sidebar) => {
+    act(() => {
+      render(
+        <DesktopChrome
+          sidebar={sidebar}
+          toolbar={<span />}
+          sidebarNavigation={<nav />}
+          topTabs={<header />}
+          stage={
+            <main>
+              <DockPanel
+                tabs={availableDockTabs(true)}
+                activeTab="explorer"
+                onSelectTab={() => {}}
+                width={420}
+                onWidthChange={() => {}}
+                onClose={() => {}}
+              >
+                <ExplorerTab controller={controller} workspacePath={WS} />
+              </DockPanel>
+            </main>
+          }
+          status={<footer />}
+          onMacTitlebarDoubleClick={() => {}}
+        />,
+        host,
+      );
+    });
 
-      expect(host.querySelector(".dock-panel")).not.toBeNull();
-    },
-  );
+    expect(host.querySelector(".dock-panel")).not.toBeNull();
+  });
 });
 
 /**

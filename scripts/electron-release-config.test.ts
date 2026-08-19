@@ -29,24 +29,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const RELEASE_CONFIG_PATH = new URL(
-  "../electron-builder.release.yml",
-  import.meta.url,
-);
+const RELEASE_CONFIG_PATH = new URL("../electron-builder.release.yml", import.meta.url);
 const LOCAL_CONFIG_PATH = new URL("../electron-builder.yml", import.meta.url);
-const ENTITLEMENTS_PATH = new URL(
-  "../build/entitlements.mac.plist",
-  import.meta.url,
-);
+const ENTITLEMENTS_PATH = new URL("../build/entitlements.mac.plist", import.meta.url);
 const PACKAGE_PATH = new URL("../package.json", import.meta.url);
-const WORKFLOW_PATH = new URL(
-  "../.github/workflows/electron-release.yml",
-  import.meta.url,
-);
-const TAURI_WORKFLOW_PATH = new URL(
-  "../.github/workflows/release.yml",
-  import.meta.url,
-);
+const WORKFLOW_PATH = new URL("../.github/workflows/electron-release.yml", import.meta.url);
+const TAURI_WORKFLOW_PATH = new URL("../.github/workflows/release.yml", import.meta.url);
 
 const releaseConfig = readFileSync(RELEASE_CONFIG_PATH, "utf8");
 const localConfig = readFileSync(LOCAL_CONFIG_PATH, "utf8");
@@ -87,13 +75,9 @@ describe("the shipping Electron release config", () => {
   it("ships the arch the packaging script builds", () => {
     // Fork F2 is arm64. If the config and the npm script disagree, the build
     // produces one arch and the publish step uploads another.
-    const archLines = releaseDirectives.filter(
-      (line) => line.trim() === "- arm64",
-    );
+    const archLines = releaseDirectives.filter((line) => line.trim() === "- arm64");
     expect(archLines).toHaveLength(2);
-    expect(releaseDirectives.some((line) => line.includes("universal"))).toBe(
-      false,
-    );
+    expect(releaseDirectives.some((line) => line.includes("universal"))).toBe(false);
   });
 
   it("enables the hardened runtime, which notarization requires", () => {
@@ -107,15 +91,8 @@ describe("the shipping Electron release config", () => {
   });
 
   it("points at an entitlements file that exists, for the app and its helpers", () => {
-    expect(
-      declares(releaseConfig, "entitlements: build/entitlements.mac.plist"),
-    ).toBe(true);
-    expect(
-      declares(
-        releaseConfig,
-        "entitlementsInherit: build/entitlements.mac.plist",
-      ),
-    ).toBe(true);
+    expect(declares(releaseConfig, "entitlements: build/entitlements.mac.plist")).toBe(true);
+    expect(declares(releaseConfig, "entitlementsInherit: build/entitlements.mac.plist")).toBe(true);
     // readFileSync at module scope already proves the file is there; this
     // states the dependency so a rename of the plist fails HERE, naming the
     // reason, rather than as an unexplained ENOENT.
@@ -149,22 +126,16 @@ describe("the shipping Electron release config", () => {
     // component when it is unset, and GitHubProvider derives the client-side
     // channel from the tag's. Naming it here lets the two drift apart on the
     // next version bump and orphans every installed build.
-    expect(
-      releaseDirectives.some((line) => line.trim().startsWith("channel:")),
-    ).toBe(false);
+    expect(releaseDirectives.some((line) => line.trim().startsWith("channel:"))).toBe(false);
   });
 
   it("unpacks node-pty, which cannot load from inside the asar", () => {
-    expect(declares(releaseConfig, '- "**/node_modules/node-pty/**"')).toBe(
-      true,
-    );
+    expect(declares(releaseConfig, '- "**/node_modules/node-pty/**"')).toBe(true);
   });
 
   it("keeps the local config unsigned so it cannot be mistaken for a release", () => {
     expect(declares(localConfig, "identity: null")).toBe(true);
-    expect(
-      directives(localConfig).some((line) => line.includes("publish")),
-    ).toBe(false);
+    expect(directives(localConfig).some((line) => line.includes("publish"))).toBe(false);
   });
 });
 
@@ -197,21 +168,38 @@ describe("the release packaging script", () => {
 });
 
 describe("the Electron release workflow", () => {
-  it("triggers on a tag electron-updater can actually parse", () => {
-    // `GitHubProvider.getLatestVersion` skips every feed entry whose tag fails
-    // `semver.valid`, so `electron-v1.0.0` would be invisible to the updater
-    // while the release itself looked perfectly healthy.
-    expect(workflow).toContain('- "v[0-9]+.[0-9]+.[0-9]+-electron.[0-9]+"');
+  it("builds from a tag no running app can see", () => {
+    // GitHub publishes a pushed tag to `releases.atom` immediately, while this
+    // job takes ten minutes. A pushed RELEASE tag therefore advertised a
+    // version whose manifest did not exist yet, and every running app that
+    // checked in that window showed "Couldn't check for updates".
+    // `build/v…` fails `semver.valid`, so GitHubProvider skips it entirely.
+    expect(workflow).toContain(
+      '- "build/v[0-9]+.[0-9]+.[0-9]+-electron.[0-9]+"',
+    );
+    expect(workflow).not.toContain('- "v[0-9]+.[0-9]+.[0-9]+-electron');
     expect(workflow).not.toContain('- "electron-v');
+  });
+
+  it("creates the release tag only at promotion, never before", () => {
+    // A draft release holds a `tag_name` without creating the git ref, so the
+    // version stays invisible until the artifacts are verified. `--target` is
+    // what makes that possible: the tag does not exist to create it from.
+    expect(workflow).toContain("--draft --target");
+    // The steps that name the release must read the STRIPPED tag, not the
+    // pushed ref — the pushed ref still carries `build/`. Anchored to the line,
+    // because `BUILD_TAG: ${{ github.ref_name }}` is correct and contains the
+    // same substring.
+    expect(workflow).not.toMatch(/^\s+TAG: \$\{\{ github\.ref_name \}\}/m);
+    expect(workflow).toContain("BUILD_TAG: ${{ github.ref_name }}");
+    expect(workflow).toContain("TAG: ${{ steps.target.outputs.tag }}");
   });
 
   it("maps the one notarization secret onto the name app-builder-lib reads", () => {
     // `release.yml` stores it as APPLE_PASSWORD; app-builder-lib reads
     // APPLE_APP_SPECIFIC_PASSWORD. Dropping the mapping fails the run at
     // notarization, minutes after the build started.
-    expect(workflow).toContain(
-      "APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}",
-    );
+    expect(workflow).toContain("APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}");
   });
 
   it("unlocks the imported key for codesign on a headless runner", () => {
@@ -221,9 +209,9 @@ describe("the Electron release workflow", () => {
   });
 
   it("runs the signing preflight before it builds anything", () => {
-    expect(
-      workflow.indexOf("verify-electron-release-signing.mjs"),
-    ).toBeLessThan(workflow.indexOf("npx electron-builder"));
+    expect(workflow.indexOf("verify-electron-release-signing.mjs")).toBeLessThan(
+      workflow.indexOf("npx electron-builder"),
+    );
   });
 
   it("publishes, unlike the local packaging script", () => {

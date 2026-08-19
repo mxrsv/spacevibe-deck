@@ -5,9 +5,7 @@ describe("normalizeWorkspacePath", () => {
   it("gives one spelling to paths that differ only by a trailing slash", () => {
     expect(normalizeWorkspacePath("/Users/k/dev/x")).toBe("/Users/k/dev/x");
     expect(normalizeWorkspacePath("/Users/k/dev/x/")).toBe("/Users/k/dev/x");
-    expect(normalizeWorkspacePath("  /Users/k/dev/x//  ")).toBe(
-      "/Users/k/dev/x",
-    );
+    expect(normalizeWorkspacePath("  /Users/k/dev/x//  ")).toBe("/Users/k/dev/x");
   });
 
   it("keeps the root and rejects an empty path", () => {

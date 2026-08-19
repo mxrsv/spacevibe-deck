@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createDirtyRegistry,
-  createPushingDirtyRegistry,
-} from "./dirty-registry";
+import { createDirtyRegistry, createPushingDirtyRegistry } from "./dirty-registry";
 
 describe("createDirtyRegistry", () => {
   it("reports a transition only when the set actually changed", () => {

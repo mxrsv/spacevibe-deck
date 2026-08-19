@@ -64,10 +64,7 @@ function addId(values: ReadonlySet<number>, id: number): ReadonlySet<number> {
   return values.has(id) ? values : new Set([...values, id]);
 }
 
-function removeArmed(
-  armed: ReadonlyMap<number, Armed>,
-  id: number,
-): ReadonlyMap<number, Armed> {
+function removeArmed(armed: ReadonlyMap<number, Armed>, id: number): ReadonlyMap<number, Armed> {
   const next = new Map(armed);
   next.delete(id);
   return next;
@@ -80,9 +77,7 @@ export function createAgentLauncher(
   const platform = options.platform ?? "macos";
   const timeoutMs =
     options.timeoutMs ??
-    (platform === "windows"
-      ? WINDOWS_AGENT_LAUNCH_TIMEOUT_MS
-      : AGENT_LAUNCH_TIMEOUT_MS);
+    (platform === "windows" ? WINDOWS_AGENT_LAUNCH_TIMEOUT_MS : AGENT_LAUNCH_TIMEOUT_MS);
   const onTimeout = options.onTimeout ?? (() => {});
   let state = emptyState();
 
@@ -139,10 +134,7 @@ export function createAgentLauncher(
           ...state,
           armed: new Map(state.armed).set(id, { command, timer }),
         };
-        const ready =
-          platform === "windows"
-            ? state.promptReady.has(id)
-            : state.sawOutput.has(id);
+        const ready = platform === "windows" ? state.promptReady.has(id) : state.sawOutput.has(id);
         if (ready) {
           fire(id);
         }
@@ -169,16 +161,10 @@ export function createAgentLauncher(
       }
       state = {
         armed: new Map([...state.armed].filter(([id]) => aliveSet.has(id))),
-        sawOutput: new Set(
-          [...state.sawOutput].filter((id) => aliveSet.has(id)),
-        ),
-        promptReady: new Set(
-          [...state.promptReady].filter((id) => aliveSet.has(id)),
-        ),
+        sawOutput: new Set([...state.sawOutput].filter((id) => aliveSet.has(id))),
+        promptReady: new Set([...state.promptReady].filter((id) => aliveSet.has(id))),
         launched: new Set([...state.launched].filter((id) => aliveSet.has(id))),
-        cancelled: new Set(
-          [...state.cancelled].filter((id) => aliveSet.has(id)),
-        ),
+        cancelled: new Set([...state.cancelled].filter((id) => aliveSet.has(id))),
       };
     },
     dispose() {

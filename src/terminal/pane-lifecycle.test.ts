@@ -7,10 +7,7 @@ import { createMemoryPtyClient } from "./pty-client";
 import { persistError } from "../chrome/events";
 import { paneCwd } from "./pane-cwd";
 
-function fakePane(
-  id: number,
-  events: PaneEvents,
-): Pane & { focusCalls: number } {
+function fakePane(id: number, events: PaneEvents): Pane & { focusCalls: number } {
   const focusCalls = { n: 0 };
   const pane: Pane & { focusCalls: number } = {
     id,
@@ -233,8 +230,7 @@ describe("write queue", () => {
     createPaneLifecycle({
       pty: gate.client,
       getSettings: () => DEFAULT_SETTINGS,
-      createPane: (id, _settings: Settings, events: PaneEvents) =>
-        fakePane(id, events),
+      createPane: (id, _settings: Settings, events: PaneEvents) => fakePane(id, events),
       onWriteWhileExited,
       onFocus: () => {},
     });

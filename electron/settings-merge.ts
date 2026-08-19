@@ -59,9 +59,7 @@ export function mergeSettings(current: unknown, patch: unknown): unknown {
   }
   const base = (current ?? {}) as Record<string, unknown>;
   const merged = { ...base, ...(patch as Record<string, unknown>) };
-  return Object.fromEntries(
-    Object.entries(merged).filter(([key]) => !RETIRED_KEYS.includes(key)),
-  );
+  return Object.fromEntries(Object.entries(merged).filter(([key]) => !RETIRED_KEYS.includes(key)));
 }
 
 /**
@@ -71,10 +69,7 @@ export function mergeSettings(current: unknown, patch: unknown): unknown {
  * discards its error, which is how a full disk used to look like a successful
  * write. Broadcasting to the other windows is the caller's job.
  */
-export async function applySettingsPatch(
-  stores: StoreRegistry,
-  patch: unknown,
-): Promise<unknown> {
+export async function applySettingsPatch(stores: StoreRegistry, patch: unknown): Promise<unknown> {
   const store = await stores.open(STORE_FILE);
   if (!store.requireObjectValue(STORE_KEY)) {
     throw new Error("Stored settings are malformed; write blocked");

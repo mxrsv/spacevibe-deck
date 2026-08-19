@@ -14,11 +14,7 @@ import {
   createFileSurfaceController,
   type FileSurfaceController,
 } from "../file-surface-controller";
-import {
-  activateTerminalSurface,
-  openFileTab,
-  resetFileSurfaces,
-} from "../file-surface-store";
+import { activateTerminalSurface, openFileTab, resetFileSurfaces } from "../file-surface-store";
 import type { FileClient } from "../file-client";
 
 const WS = "/repo";

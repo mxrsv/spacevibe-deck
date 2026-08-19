@@ -4,9 +4,7 @@ import { mergeSettings } from "./settings-merge";
 
 describe("mergeSettings", () => {
   it("replaces a patched key and keeps the rest", () => {
-    expect(
-      mergeSettings({ fontSize: 13, theme: "dark" }, { fontSize: 15 }),
-    ).toEqual({
+    expect(mergeSettings({ fontSize: 13, theme: "dark" }, { fontSize: 15 })).toEqual({
       fontSize: 15,
       theme: "dark",
     });
@@ -15,10 +13,7 @@ describe("mergeSettings", () => {
   it("replaces a nested value outright rather than deep-merging", () => {
     // Matches `{ ...settings.value, ...patch }` on the renderer side.
     expect(
-      mergeSettings(
-        { colors: { fg: "#fff", bg: "#000" } },
-        { colors: { fg: "#eee" } },
-      ),
+      mergeSettings({ colors: { fg: "#fff", bg: "#000" } }, { colors: { fg: "#eee" } }),
     ).toEqual({ colors: { fg: "#eee" } });
   });
 
@@ -38,21 +33,15 @@ describe("mergeSettings", () => {
   });
 
   it("rejects a malformed stored settings value instead of overwriting it", () => {
-    expect(() => mergeSettings(null, { fontSize: 15 })).toThrow(
-      /stored settings/i,
-    );
-    expect(() => mergeSettings("broken", { fontSize: 15 })).toThrow(
-      /stored settings/i,
-    );
+    expect(() => mergeSettings(null, { fontSize: 15 })).toThrow(/stored settings/i);
+    expect(() => mergeSettings("broken", { fontSize: 15 })).toThrow(/stored settings/i);
     expect(() => mergeSettings(null, null)).toThrow(/stored settings/i);
   });
 
   it("drops a retired key an old profile still carries", () => {
     // `browserWidth` was retired on 2026-08-15. Reads already ignored it, but
     // the raw object was written straight back, so it survived every patch.
-    expect(
-      mergeSettings({ fontSize: 13, browserWidth: 420 }, { fontSize: 15 }),
-    ).toEqual({
+    expect(mergeSettings({ fontSize: 13, browserWidth: 420 }, { fontSize: 15 })).toEqual({
       fontSize: 15,
     });
   });
@@ -69,10 +58,7 @@ describe("mergeSettings", () => {
     // 260 sits below the dock's 360 floor, so carrying it over would restore a
     // width the new range cannot hold.
     expect(
-      mergeSettings(
-        { fontSize: 13, explorerOpen: true, explorerWidth: 260 },
-        { fontSize: 15 },
-      ),
+      mergeSettings({ fontSize: 13, explorerOpen: true, explorerWidth: 260 }, { fontSize: 15 }),
     ).toEqual({ fontSize: 15 });
   });
 

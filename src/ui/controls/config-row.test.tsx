@@ -12,19 +12,10 @@ describe("ToggleRow — disabled state (additive)", () => {
     document.body.appendChild(host);
   });
 
-  const mount = (
-    checked: boolean,
-    onToggle: () => void,
-    disabled?: boolean,
-  ): void => {
+  const mount = (checked: boolean, onToggle: () => void, disabled?: boolean): void => {
     act(() => {
       render(
-        <ToggleRow
-          label="wrap"
-          checked={checked}
-          onToggle={onToggle}
-          disabled={disabled}
-        />,
+        <ToggleRow label="wrap" checked={checked} onToggle={onToggle} disabled={disabled} />,
         host,
       );
     });

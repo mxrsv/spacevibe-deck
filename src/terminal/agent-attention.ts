@@ -19,8 +19,7 @@ import type { AgentPhase, ActivityTransition } from "./agent-activity";
  */
 
 /** A latched, actionable attention state for a pane. */
-export type AttentionKind =
-  "none" | "completed" | "requested" | "warning" | "error";
+export type AttentionKind = "none" | "completed" | "requested" | "warning" | "error";
 
 /** What produced the current attention. */
 export type AttentionSource =
@@ -65,13 +64,7 @@ export interface AttentionSignal {
 
 /** The single highest-precedence state across a tab's panes. */
 export type TabAttentionKind =
-  | "error"
-  | "warning"
-  | "requested"
-  | "completed"
-  | "working"
-  | "unread"
-  | "idle";
+  "error" | "warning" | "requested" | "completed" | "working" | "unread" | "idle";
 
 /** Per-tab aggregation of pane state. */
 export interface AgentAttentionSummary {
@@ -93,23 +86,13 @@ export interface AttentionCandidate {
 
 export interface AgentAttentionTracker {
   /** Feed one ordered activity transition. Gated by the recognised process. */
-  noteActivity(
-    id: number,
-    transition: ActivityTransition,
-  ): PaneAttentionSnapshot | null;
+  noteActivity(id: number, transition: ActivityTransition): PaneAttentionSnapshot | null;
   /** Feed one OSC-notification/bell signal. Gated by the recognised process. */
   noteSignal(id: number, signal: AttentionSignal): PaneAttentionSnapshot | null;
   /** Register output for a pane, flagging unread when the pane is not visible. */
-  noteOutputVisibility(
-    id: number,
-    visible: boolean,
-  ): PaneAttentionSnapshot | null;
+  noteOutputVisibility(id: number, visible: boolean): PaneAttentionSnapshot | null;
   /** Record the last-polled foreground process; opens/closes the agent gate. */
-  noteProcess(
-    id: number,
-    process: string | null,
-    isAgent: boolean,
-  ): PaneAttentionSnapshot | null;
+  noteProcess(id: number, process: string | null, isAgent: boolean): PaneAttentionSnapshot | null;
   /** The pane's PTY exited. */
   noteExit(id: number): PaneAttentionSnapshot | null;
   /** The user focused the pane: clear attention + unread (phase untouched). */
@@ -193,14 +176,7 @@ function isActionable(kind: AttentionKind): boolean {
  * "real change" worth bumping the revision / notifying about.
  */
 function visibleSignature(s: PaneState): string {
-  return JSON.stringify([
-    s.phase,
-    s.attention,
-    s.source,
-    s.confidence,
-    s.agentLabel,
-    s.unread,
-  ]);
+  return JSON.stringify([s.phase, s.attention, s.source, s.confidence, s.agentLabel, s.unread]);
 }
 
 function toSnapshot(s: PaneState): PaneAttentionSnapshot {
@@ -269,11 +245,7 @@ export function createAgentAttentionTracker(
    * visible field actually changed, returning the new snapshot then; otherwise
    * persists internal-only changes silently and returns null.
    */
-  function commit(
-    id: number,
-    prev: PaneState,
-    candidate: PaneState,
-  ): PaneAttentionSnapshot | null {
+  function commit(id: number, prev: PaneState, candidate: PaneState): PaneAttentionSnapshot | null {
     if (visibleSignature(prev) === visibleSignature(candidate)) {
       panes.set(id, candidate);
       return null;
@@ -300,8 +272,7 @@ export function createAgentAttentionTracker(
       return false;
     }
     if (transition.source === "output-heuristic") {
-      const evidenceStartedAt =
-        transition.evidenceStartedAt ?? transition.observedAt;
+      const evidenceStartedAt = transition.evidenceStartedAt ?? transition.observedAt;
       if (evidenceStartedAt < s.gateOpenedAt) {
         return false;
       }
@@ -309,10 +280,7 @@ export function createAgentAttentionTracker(
     return true;
   }
 
-  function reduceActivity(
-    prev: PaneState,
-    transition: ActivityTransition,
-  ): PaneState {
+  function reduceActivity(prev: PaneState, transition: ActivityTransition): PaneState {
     if (transition.phase === "working") {
       let next: PaneState = { ...prev, phase: "working", hasRun: true };
       // A fresh work cycle self-clears a stale completed; a latched
@@ -331,11 +299,8 @@ export function createAgentAttentionTracker(
     let next = prev;
     if (prev.phase === "working") {
       const source: AttentionSource =
-        transition.source === "osc-progress"
-          ? "osc-progress"
-          : "output-heuristic";
-      const confidence =
-        transition.source === "osc-progress" ? "explicit" : "inferred";
+        transition.source === "osc-progress" ? "osc-progress" : "output-heuristic";
+      const confidence = transition.source === "osc-progress" ? "explicit" : "inferred";
       next = latch(next, "completed", source, confidence);
     }
     return { ...next, phase: "idle" };
@@ -361,11 +326,7 @@ export function createAgentAttentionTracker(
       if (!prev.isAgent || signal.observedAt < prev.gateOpenedAt) {
         return null;
       }
-      return commit(
-        id,
-        prev,
-        latch(prev, "requested", signal.source, "explicit"),
-      );
+      return commit(id, prev, latch(prev, "requested", signal.source, "explicit"));
     },
 
     noteOutputVisibility(id, visible) {
@@ -380,11 +341,7 @@ export function createAgentAttentionTracker(
       const prev = panes.get(id) ?? freshState();
 
       // A repeated identical poll is not a new generation: keep the gate as-is.
-      if (
-        prev.hasProcess &&
-        prev.lastProcess === process &&
-        prev.isAgent === isAgent
-      ) {
+      if (prev.hasProcess && prev.lastProcess === process && prev.isAgent === isAgent) {
         return null;
       }
 

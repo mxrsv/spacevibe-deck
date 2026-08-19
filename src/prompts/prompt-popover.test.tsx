@@ -55,8 +55,7 @@ describe("PromptPopover", () => {
    * microtask — one real frame has to pass. Every helper that expects an
    * effect to have re-run waits here rather than in the individual test.
    */
-  const frame = (): Promise<void> =>
-    new Promise((resolve) => setTimeout(resolve, 32));
+  const frame = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 32));
 
   const mount = async (
     overrides: Partial<Parameters<typeof PromptPopover>[0]> = {},
@@ -132,9 +131,7 @@ describe("PromptPopover", () => {
     });
     const pendingInjectFn = vi.fn(() => pendingInject);
     await mount({ inject: pendingInjectFn });
-    const button = host.querySelector(
-      '[aria-label="Send review PR"]',
-    ) as Element;
+    const button = host.querySelector('[aria-label="Send review PR"]') as Element;
 
     click(button);
     click(button);
@@ -168,25 +165,13 @@ describe("PromptPopover", () => {
   it("names and draws paste and send as two different actions", async () => {
     await mount();
 
-    const paste = host.querySelector(
-      '[aria-label="Paste fix bug"]',
-    ) as HTMLButtonElement;
-    const send = host.querySelector(
-      '[aria-label="Send review PR"]',
-    ) as HTMLButtonElement;
+    const paste = host.querySelector('[aria-label="Paste fix bug"]') as HTMLButtonElement;
+    const send = host.querySelector('[aria-label="Send review PR"]') as HTMLButtonElement;
 
     expect(paste.title).toBe("Paste into the focused pane");
     expect(send.title).toBe("Send to the focused pane");
-    expect(
-      paste
-        .querySelector("svg")
-        ?.classList.contains("deck-icon--clipboard-text"),
-    ).toBe(true);
-    expect(
-      send
-        .querySelector("svg")
-        ?.classList.contains("deck-icon--paper-plane-tilt"),
-    ).toBe(true);
+    expect(paste.querySelector("svg")?.classList.contains("deck-icon--clipboard-text")).toBe(true);
+    expect(send.querySelector("svg")?.classList.contains("deck-icon--paper-plane-tilt")).toBe(true);
     // Neither is named by its glyph: the icon is decoration, the label is the
     // action, and a Send that fails its gate still only pasted.
     expect(paste.textContent).toBe("");
@@ -224,17 +209,13 @@ describe("PromptPopover", () => {
 
     click(host.querySelector(".cfg-row__label--edit") as Element);
 
-    expect(
-      host.querySelector('[aria-label="Remove fix bug"] svg'),
-    ).not.toBeNull();
+    expect(host.querySelector('[aria-label="Remove fix bug"] svg')).not.toBeNull();
     expect(
       host
         .querySelector('[aria-label="Remove fix bug"] svg')
         ?.classList.contains("deck-icon--trash"),
     ).toBe(true);
-    expect(
-      host.querySelector(".prompt-picker .deck-icon--caret-down"),
-    ).not.toBeNull();
+    expect(host.querySelector(".prompt-picker .deck-icon--caret-down")).not.toBeNull();
   });
 
   it("reports an injection rejection and stays open for retry", async () => {
@@ -273,9 +254,7 @@ describe("PromptPopover", () => {
       await Promise.resolve();
     });
 
-    expect(persistError.value).toBe(
-      "A prompt is already being pasted into this pane.",
-    );
+    expect(persistError.value).toBe("A prompt is already being pasted into this pane.");
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -344,9 +323,7 @@ describe("PromptPopover", () => {
       body.focus();
       body.blur();
     });
-    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain(
-      "a body is required",
-    );
+    expect(host.querySelector(".cfg-custom--error")?.textContent).toContain("a body is required");
     expect(settings.value.promptTemplates[0].body).toBe("Fix it.");
   });
 });

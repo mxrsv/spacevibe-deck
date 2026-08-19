@@ -182,9 +182,7 @@ export function foregroundProcess(
  * A failure resolves to an empty map rather than rejecting: a missing cwd is a
  * cosmetic degradation and must never take the poll down with it.
  */
-export function processCwds(
-  pids: readonly number[],
-): Promise<Map<number, string>> {
+export function processCwds(pids: readonly number[]): Promise<Map<number, string>> {
   if (pids.length === 0) {
     return Promise.resolve(new Map());
   }
@@ -229,8 +227,7 @@ export function terminateProcessGroups(
   shellGroup: number | null,
   graceMs: number = KILL_GRACE_MS,
 ): void {
-  const foreground =
-    foregroundGroup !== null && foregroundGroup > 1 ? foregroundGroup : null;
+  const foreground = foregroundGroup !== null && foregroundGroup > 1 ? foregroundGroup : null;
   const shell = shellGroup !== null && shellGroup > 1 ? shellGroup : null;
 
   if (foreground !== null) {

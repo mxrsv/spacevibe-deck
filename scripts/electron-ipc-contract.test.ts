@@ -20,8 +20,8 @@ import { join } from "node:path";
  */
 
 const HANDLER = /ipcMain\.handle\(\s*([^,]+),\s*(?:async\s*)?\(([^)]*)\)/g;
-const INVOKE = /invoke<[^>]*>\(\s*"([^"]+)"(?:\s*,\s*\{([^}]*)\})?/g;
-const INVOKE_UNTYPED = /(?<!\w)invoke\(\s*"([^"]+)"(?:\s*,\s*\{([^}]*)\})?/g;
+const INVOKE = /invoke<[^>]*>\(\s*['"]([^'"]+)['"](?:\s*,\s*\{([^}]*)\})?/g;
+const INVOKE_UNTYPED = /(?<!\w)invoke\(\s*['"]([^'"]+)['"](?:\s*,\s*\{([^}]*)\})?/g;
 
 function filesUnder(dir: string, extensions: readonly string[]): string[] {
   const found: string[] = [];
@@ -40,11 +40,8 @@ function filesUnder(dir: string, extensions: readonly string[]): string[] {
 }
 
 /** `CHANNELS.spawnShell` → the string it resolves to. */
-function resolveChannelName(
-  expression: string,
-  channels: Record<string, string>,
-): string | null {
-  const literal = expression.trim().match(/^"([^"]+)"$/);
+function resolveChannelName(expression: string, channels: Record<string, string>): string | null {
+  const literal = expression.trim().match(/^['"]([^'"]+)['"]$/);
   if (literal !== null) {
     return literal[1];
   }
@@ -63,7 +60,7 @@ function readChannels(): Record<string, string> {
     source.indexOf("export const EVENTS"),
   );
   const channels: Record<string, string> = {};
-  for (const match of table.matchAll(/(\w+):\s*"([^"]+)"/g)) {
+  for (const match of table.matchAll(/(\w+):\s*['"]([^'"]+)['"]/g)) {
     channels[match[1]] = match[2];
   }
   return channels;
@@ -163,12 +160,8 @@ describe("Electron IPC contract", () => {
       if (site.keys === null) {
         continue;
       }
-      for (const handler of handlers.filter(
-        (candidate) => candidate.channel === site.channel,
-      )) {
-        const missing = handler.required.filter(
-          (key) => !site.keys!.includes(key),
-        );
+      for (const handler of handlers.filter((candidate) => candidate.channel === site.channel)) {
+        const missing = handler.required.filter((key) => !site.keys!.includes(key));
         if (missing.length > 0) {
           violations.push(
             `${site.channel}: ${site.file} sends {${site.keys.join(", ")}} but ${handler.file} destructures {${handler.required.join(", ")}} — missing ${missing.join(", ")}`,
@@ -189,9 +182,7 @@ describe("Electron IPC contract", () => {
     for (const site of sites) {
       expect(site.keys).toEqual([]);
     }
-    expect(
-      handlers.filter((handler) => handler.channel === "usage_snapshot"),
-    ).toEqual([]);
+    expect(handlers.filter((handler) => handler.channel === "usage_snapshot")).toEqual([]);
   });
 
   it("worktree_add carries the flat { repoPath, branch, destPath } payload on both sides", () => {
@@ -204,9 +195,7 @@ describe("Electron IPC contract", () => {
     for (const site of sites) {
       expect(site.keys).toEqual(["repoPath", "branch", "destPath"]);
     }
-    const worktreeHandlers = handlers.filter(
-      (handler) => handler.channel === "worktree_add",
-    );
+    const worktreeHandlers = handlers.filter((handler) => handler.channel === "worktree_add");
     expect(worktreeHandlers.length).toBeGreaterThan(0);
     for (const handler of worktreeHandlers) {
       expect(handler.required).toEqual(["repoPath", "branch", "destPath"]);
@@ -273,11 +262,7 @@ describe("Electron IPC contract", () => {
       }
     }
     const unhandled = [
-      ...new Set(
-        callSites
-          .map((site) => site.channel)
-          .filter((channel) => !handled.has(channel)),
-      ),
+      ...new Set(callSites.map((site) => site.channel).filter((channel) => !handled.has(channel))),
     ];
     expect(unhandled).toEqual([]);
   });

@@ -22,9 +22,7 @@ describe("the vendored bundle", () => {
 
   it("matches the hash recorded beside it", () => {
     const bytes = readFileSync(VENDOR);
-    expect(createHash("sha256").update(bytes).digest("base64")).toBe(
-      EXPECTED_SHA256,
-    );
+    expect(createHash("sha256").update(bytes).digest("base64")).toBe(EXPECTED_SHA256);
   });
 
   it("still exposes the three names the bootstrap depends on", () => {

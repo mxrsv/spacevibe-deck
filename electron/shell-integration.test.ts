@@ -1,3 +1,4 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 /**
  * Translated from the Rust tests in `src-tauri/src/shell_integration.rs`.
  * Same cases, same names, so a behavioural divergence between the two hosts
@@ -61,9 +62,7 @@ describe("ShellIntegrationParser", () => {
     expect(events).toEqual([]);
     // Reaches into the private field on purpose: the cap is the point of the
     // test, and it has no other observable surface.
-    expect(
-      (parser as unknown as { pending: Buffer }).pending.length,
-    ).toBeLessThan(300_000);
+    expect((parser as unknown as { pending: Buffer }).pending.length).toBeLessThan(300_000);
   });
 });
 
@@ -87,9 +86,7 @@ describe("retainValidCwd", () => {
   });
 
   it("retains the current cwd for a rejected root", () => {
-    expect(retainValidCwd(current, String.raw`\\10.255.255.1\share`)).toBe(
-      current,
-    );
+    expect(retainValidCwd(current, String.raw`\\10.255.255.1\share`)).toBe(current);
   });
 });
 

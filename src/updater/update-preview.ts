@@ -11,21 +11,14 @@ export interface UpdatePreview extends UpdateView {
   readonly sidebar: boolean;
 }
 
-export function resolveUpdatePreview(
-  search: string,
-  development: boolean,
-): UpdatePreview | null {
+export function resolveUpdatePreview(search: string, development: boolean): UpdatePreview | null {
   if (!development) {
     return null;
   }
   const params = new URLSearchParams(search);
   const phase = params.get("update-preview") as UpdatePhase | null;
   const layout = params.get("layout") ?? "top";
-  if (
-    phase === null ||
-    !PREVIEW_PHASES.has(phase) ||
-    (layout !== "top" && layout !== "sidebar")
-  ) {
+  if (phase === null || !PREVIEW_PHASES.has(phase) || (layout !== "top" && layout !== "sidebar")) {
     return null;
   }
   return Object.freeze({

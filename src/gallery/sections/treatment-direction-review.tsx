@@ -27,9 +27,7 @@ interface TreatmentDirectionReviewProps {
  * The caller supplies the real window so this module cannot grow a second
  * chrome fixture. None of its CSS is imported by the shipping renderer.
  */
-export function TreatmentDirectionReview({
-  renderWindow,
-}: TreatmentDirectionReviewProps) {
+export function TreatmentDirectionReview({ renderWindow }: TreatmentDirectionReviewProps) {
   return (
     <section class="gx-specimen">
       <header class="gx-specimen__head">

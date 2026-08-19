@@ -17,16 +17,9 @@ import { freshPaneInfo } from "./pane-info";
 const askMock = vi.hoisted(() => vi.fn());
 vi.mock("../host/dialog-host", () => ({ ask: askMock }));
 
-function info(
-  id: number,
-  process: string | null,
-  cwd: string | null = null,
-): PaneProcessInfo {
+function info(id: number, process: string | null, cwd: string | null = null): PaneProcessInfo {
   const agent =
-    process === "claude" ||
-    process === "codex" ||
-    process === "gemini" ||
-    process === "opencode"
+    process === "claude" || process === "codex" || process === "gemini" || process === "opencode"
       ? process
       : null;
   const kind =
@@ -87,9 +80,7 @@ describe("confirmMessage — pane count", () => {
   });
 
   it("keeps the singular wording when one pane is busy", () => {
-    expect(confirmMessage(["claude"], "Close", 1)).toBe(
-      "claude is still running. Close anyway?",
-    );
+    expect(confirmMessage(["claude"], "Close", 1)).toBe("claude is still running. Close anyway?");
   });
 
   it("defaults the count to the number of names", () => {
@@ -284,24 +275,18 @@ describe("dirtyFilesPhrase", () => {
   });
 
   it("names one file by its basename, not its path", () => {
-    expect(dirtyFilesPhrase(["/home/u/work/src/main.rs"])).toBe(
-      "main.rs has unsaved changes",
-    );
+    expect(dirtyFilesPhrase(["/home/u/work/src/main.rs"])).toBe("main.rs has unsaved changes");
   });
 
   it("uses the platform separator the path actually carries", () => {
-    expect(dirtyFilesPhrase(["C:\\work\\src\\main.rs"])).toBe(
-      "main.rs has unsaved changes",
-    );
+    expect(dirtyFilesPhrase(["C:\\work\\src\\main.rs"])).toBe("main.rs has unsaved changes");
   });
 
   it("lists up to three names, then counts the rest", () => {
     expect(dirtyFilesPhrase(["/a/one.ts", "/a/two.ts", "/a/three.ts"])).toBe(
       "3 files have unsaved changes (one.ts, two.ts, three.ts)",
     );
-    expect(
-      dirtyFilesPhrase(["/a/one.ts", "/a/two.ts", "/a/three.ts", "/a/four.ts"]),
-    ).toBe(
+    expect(dirtyFilesPhrase(["/a/one.ts", "/a/two.ts", "/a/three.ts", "/a/four.ts"])).toBe(
       "4 files have unsaved changes (one.ts, two.ts, three.ts and 1 more)",
     );
   });
@@ -350,9 +335,7 @@ describe("confirmClose with unsaved files", () => {
       infos: new Map([[1, info(1, "zsh")]]),
     });
 
-    await expect(
-      confirmClose([1], pty, QUIT_COPY, ["/a/main.rs"]),
-    ).resolves.toBe(false);
+    await expect(confirmClose([1], pty, QUIT_COPY, ["/a/main.rs"])).resolves.toBe(false);
     expect(askMock).toHaveBeenCalledWith(
       "main.rs has unsaved changes. Quit anyway?",
       expect.objectContaining({ title: "Quit Deck" }),
@@ -364,9 +347,7 @@ describe("confirmClose with unsaved files", () => {
     askMock.mockResolvedValue(true);
     const pty = createMemoryPtyClient();
 
-    await expect(
-      confirmClose([], pty, FILE_CLOSE_COPY, ["/a/notes.md"]),
-    ).resolves.toBe(true);
+    await expect(confirmClose([], pty, FILE_CLOSE_COPY, ["/a/notes.md"])).resolves.toBe(true);
     expect(askMock).toHaveBeenCalledWith(
       "notes.md has unsaved changes. Close anyway?",
       expect.objectContaining({
@@ -393,9 +374,7 @@ describe("confirmClose with unsaved files", () => {
       infos: new Map([[1, info(1, null)]]),
     });
 
-    await expect(
-      confirmClose([1], pty, QUIT_COPY, ["/a/main.rs"]),
-    ).resolves.toBe(false);
+    await expect(confirmClose([1], pty, QUIT_COPY, ["/a/main.rs"])).resolves.toBe(false);
     expect(askMock).toHaveBeenCalledWith(
       "Deck could not verify whether terminal processes are still running, and main.rs has unsaved changes. Quit anyway?",
       expect.objectContaining({ title: "Quit Deck" }),
@@ -405,15 +384,11 @@ describe("confirmClose with unsaved files", () => {
 
 describe("confirmMessage", () => {
   it("names the single busy process", () => {
-    expect(confirmMessage(["claude"])).toBe(
-      "claude is still running. Close anyway?",
-    );
+    expect(confirmMessage(["claude"])).toBe("claude is still running. Close anyway?");
   });
 
   it("uses the provided action verb", () => {
-    expect(confirmMessage(["claude"], "Quit")).toBe(
-      "claude is still running. Quit anyway?",
-    );
+    expect(confirmMessage(["claude"], "Quit")).toBe("claude is still running. Quit anyway?");
   });
 
   it("lists multiple busy processes", () => {

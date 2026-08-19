@@ -124,9 +124,7 @@ export function Modal({
     const previous = document.activeElement;
     focusOnOpen.current = previous instanceof HTMLElement ? previous : null;
     const requested =
-      initialFocus === undefined
-        ? null
-        : panel.querySelector<HTMLElement>(initialFocus);
+      initialFocus === undefined ? null : panel.querySelector<HTMLElement>(initialFocus);
     (requested ?? panel).focus();
     return () => {
       const target = focusOnOpen.current;
@@ -135,8 +133,7 @@ export function Modal({
       // nothing. A modal that opened a tab hands focus to the new pane, and
       // restoring unconditionally would yank it straight back out.
       const active = document.activeElement;
-      const ours =
-        active === null || active === document.body || panel.contains(active);
+      const ours = active === null || active === document.body || panel.contains(active);
       if (target !== null && target.isConnected && ours) {
         target.focus();
       }
@@ -156,9 +153,7 @@ export function Modal({
 
   function handleScrimClick(event: MouseEvent): void {
     const onScrim =
-      pressedOnScrim.current &&
-      releasedOnScrim.current &&
-      event.target === event.currentTarget;
+      pressedOnScrim.current && releasedOnScrim.current && event.target === event.currentTarget;
     pressedOnScrim.current = false;
     releasedOnScrim.current = false;
     if (dismissOnScrim && onScrim) {

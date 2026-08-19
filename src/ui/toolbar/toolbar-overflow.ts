@@ -1,8 +1,4 @@
-import {
-  TOOLBAR_GROUP_ORDER,
-  type ToolbarGroup,
-  type ToolbarItem,
-} from "./toolbar-item";
+import { TOOLBAR_GROUP_ORDER, type ToolbarGroup, type ToolbarItem } from "./toolbar-item";
 
 /**
  * Deciding what still fits, as arithmetic rather than as layout.
@@ -39,9 +35,7 @@ export interface ToolbarFit {
  * A group with nothing visible in it produces no group at all, which is what
  * keeps its separator from surviving as a stranded line.
  */
-export function groupToolbarItems(
-  items: readonly ToolbarItem[],
-): readonly ToolbarGroupView[] {
+export function groupToolbarItems(items: readonly ToolbarItem[]): readonly ToolbarGroupView[] {
   return TOOLBAR_GROUP_ORDER.map((group) => ({
     group,
     items: items.filter((item) => item.group === group),
@@ -71,11 +65,7 @@ function measure(
   reservedWidth: number,
 ): number {
   const separators = Math.max(0, groupToolbarItems(visible).length - 1);
-  return toolbarRowWidth(
-    visible.length + (hasOverflowButton ? 1 : 0),
-    separators,
-    reservedWidth,
-  );
+  return toolbarRowWidth(visible.length + (hasOverflowButton ? 1 : 0), separators, reservedWidth);
 }
 
 /**

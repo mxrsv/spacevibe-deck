@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { signal } from "@preact/signals";
-import type {
-  UpdateCheckResult,
-  UpdateController,
-  UpdateView,
-} from "./update-controller";
+import type { UpdateCheckResult, UpdateController, UpdateView } from "./update-controller";
 import { RELEASE_NOTES_URL, runUpdateMenuAction } from "./update-menu-actions";
 
 function controller(
@@ -42,10 +38,7 @@ describe("runUpdateMenuAction", () => {
 
     expect(handled).toBe(true);
     expect(current.checkNow).toHaveBeenCalledTimes(1);
-    expect(deps.notify).toHaveBeenCalledWith(
-      "SpaceVibe Deck is up to date.",
-      "info",
-    );
+    expect(deps.notify).toHaveBeenCalledWith("SpaceVibe Deck is up to date.", "info");
   });
 
   it("reports the available version without downloading it", async () => {
@@ -70,9 +63,7 @@ describe("runUpdateMenuAction", () => {
 
     const handled = await runUpdateMenuAction("open-release-notes", deps);
 
-    expect(RELEASE_NOTES_URL).toBe(
-      "https://deck.spacevibe.dev/landing-prototype/changelog/",
-    );
+    expect(RELEASE_NOTES_URL).toBe("https://deck.spacevibe.dev/landing-prototype/changelog/");
     expect(handled).toBe(true);
     expect(deps.openUrl).toHaveBeenCalledWith(RELEASE_NOTES_URL);
   });
@@ -83,10 +74,7 @@ describe("runUpdateMenuAction", () => {
 
     await runUpdateMenuAction("open-release-notes", deps);
 
-    expect(deps.report).toHaveBeenCalledWith(
-      "Opening release notes failed",
-      expect.any(Error),
-    );
+    expect(deps.report).toHaveBeenCalledWith("Opening release notes failed", expect.any(Error));
     expect(deps.notify).toHaveBeenCalledWith(
       "Couldn't open Release Notes in your browser.",
       "error",

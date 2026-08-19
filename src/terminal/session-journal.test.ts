@@ -106,10 +106,7 @@ describe("session journal", () => {
     const capture = vi.fn(() => [tab("/w")]);
 
     await initSessionJournal(deps({ capture, store, windowLabel: "main" }));
-    expect(store.set).not.toHaveBeenCalledWith(
-      "window:main",
-      expect.anything(),
-    );
+    expect(store.set).not.toHaveBeenCalledWith("window:main", expect.anything());
 
     pokeTabViews();
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
@@ -152,13 +149,9 @@ describe("session journal", () => {
   it("3. persists an empty tabs array when the last tab closes", async () => {
     const { store, data } = createFakeStore();
     const capture = vi.fn(() => [tab("/w")]);
-    await initSessionJournal(
-      deps({ capture, store, windowLabel: "main", isMain: false }),
-    );
+    await initSessionJournal(deps({ capture, store, windowLabel: "main", isMain: false }));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
-    expect((data.get("window:main") as { tabs: unknown[] }).tabs).toHaveLength(
-      1,
-    );
+    expect((data.get("window:main") as { tabs: unknown[] }).tabs).toHaveLength(1);
 
     capture.mockReturnValue([]);
     pokeTabViews();
@@ -235,9 +228,7 @@ describe("session journal", () => {
     // Flush before the debounce would have fired.
     await flushSessionJournal();
 
-    expect((data.get("window:main") as { tabs: SessionTab[] }).tabs).toEqual([
-      tab("/flushed"),
-    ]);
+    expect((data.get("window:main") as { tabs: SessionTab[] }).tabs).toEqual([tab("/flushed")]);
   });
 
   it("5c. flushSessionJournal still respects suspension — no write while suspended", async () => {
@@ -267,9 +258,7 @@ describe("session journal", () => {
     const capture = vi.fn(() => [tab("/w")]);
     await initSessionJournal(deps({ capture, store, windowLabel: "main" }));
 
-    await expect(
-      vi.advanceTimersByTimeAsync(DEBOUNCE_MS),
-    ).resolves.not.toThrow();
+    await expect(vi.advanceTimersByTimeAsync(DEBOUNCE_MS)).resolves.not.toThrow();
 
     expect(warn).toHaveBeenCalled();
     expect(persistError.value).not.toBeNull();
@@ -279,9 +268,7 @@ describe("session journal", () => {
   it("7. capture() returning more than MAX_JOURNAL_TABS tabs writes only the cap, with a warning (M4)", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { store, data } = createFakeStore();
-    const overflowTabs = Array.from({ length: MAX_JOURNAL_TABS + 1 }, (_, i) =>
-      tab(`/w${i}`),
-    );
+    const overflowTabs = Array.from({ length: MAX_JOURNAL_TABS + 1 }, (_, i) => tab(`/w${i}`));
     const capture = vi.fn(() => overflowTabs);
     await initSessionJournal(deps({ capture, store, windowLabel: "main" }));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
@@ -296,9 +283,7 @@ describe("session journal", () => {
   it("a key removed via clearWindowRecord does not appear in a later readWindowRecords()", async () => {
     const { store } = createFakeStore();
     const capture = vi.fn(() => [tab("/w")]);
-    await initSessionJournal(
-      deps({ capture, store, windowLabel: "secondary", isMain: false }),
-    );
+    await initSessionJournal(deps({ capture, store, windowLabel: "secondary", isMain: false }));
     await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
 
     let records = await readWindowRecords();

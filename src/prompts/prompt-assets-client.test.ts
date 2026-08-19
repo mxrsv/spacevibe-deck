@@ -35,15 +35,15 @@ describe("createMemoryPromptAssetsClient", () => {
       ],
       subagents: [],
     };
-    await expect(
-      createMemoryPromptAssetsClient(assets).list("claude", null),
-    ).resolves.toEqual(assets);
+    await expect(createMemoryPromptAssetsClient(assets).list("claude", null)).resolves.toEqual(
+      assets,
+    );
   });
 
   it("can be made to fail, so the caller's degraded path is testable", async () => {
     const client = createMemoryPromptAssetsClient(EMPTY_PROMPT_ASSETS, {
       fail: true,
     });
-    await expect(client.list("claude", null)).rejects.toThrow();
+    await expect(client.list("claude", null)).rejects.toThrow("list_prompt_assets failed");
   });
 });

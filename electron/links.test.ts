@@ -91,10 +91,7 @@ describe("resolvePaths", () => {
     const dir = tempDir();
     writeFileSync(join(dir, "a.txt"), "x");
 
-    expect(resolvePaths("", ["a.txt", join(dir, "a.txt")])).toEqual([
-      null,
-      join(dir, "a.txt"),
-    ]);
+    expect(resolvePaths("", ["a.txt", join(dir, "a.txt")])).toEqual([null, join(dir, "a.txt")]);
   });
 });
 
@@ -118,15 +115,11 @@ describe("validateOpenEditorRequest", () => {
   });
 
   it("rejects an unsupported editor", () => {
-    expect(() => validateOpenEditorRequest(request({ editor: "vim" }))).toThrow(
-      /not supported/,
-    );
+    expect(() => validateOpenEditorRequest(request({ editor: "vim" }))).toThrow(/not supported/);
   });
 
   it("rejects a relative path", () => {
-    expect(() => validateOpenEditorRequest(request({ file: "a.ts" }))).toThrow(
-      /must be absolute/,
-    );
+    expect(() => validateOpenEditorRequest(request({ file: "a.ts" }))).toThrow(/must be absolute/);
   });
 
   it("rejects a network path", () => {
@@ -144,22 +137,20 @@ describe("validateOpenEditorRequest", () => {
     // The executable must be fixed: a placeholder there would let terminal
     // output choose which program runs.
     expect(() =>
-      validateOpenEditorRequest(
-        request({ editor: "custom", template: "{file} --open" }),
-      ),
+      validateOpenEditorRequest(request({ editor: "custom", template: "{file} --open" })),
     ).toThrow(/must be a fixed command/);
   });
 
   it("rejects a custom editor with no template", () => {
-    expect(() =>
-      validateOpenEditorRequest(request({ editor: "custom", template: "  " })),
-    ).toThrow(/No custom editor command/);
+    expect(() => validateOpenEditorRequest(request({ editor: "custom", template: "  " }))).toThrow(
+      /No custom editor command/,
+    );
   });
 
   it("rejects a NUL byte in the path", () => {
-    expect(() =>
-      validateOpenEditorRequest(request({ file: "/tmp/a\0b.ts" })),
-    ).toThrow(/invalid or too long/);
+    expect(() => validateOpenEditorRequest(request({ file: "/tmp/a\0b.ts" }))).toThrow(
+      /invalid or too long/,
+    );
   });
 
   it("rejects a file that does not exist", () => {
@@ -169,8 +160,6 @@ describe("validateOpenEditorRequest", () => {
   });
 
   it("rejects a directory target", () => {
-    expect(() => validateOpenEditorRequest(request({ file: tempDir() }))).toThrow(
-      /must be a file/,
-    );
+    expect(() => validateOpenEditorRequest(request({ file: tempDir() }))).toThrow(/must be a file/);
   });
 });

@@ -12,10 +12,7 @@ import {
   type DirEntry,
 } from "./file-tree";
 
-function entry(
-  path: string,
-  options: { directory?: boolean; outOfRoot?: boolean } = {},
-): DirEntry {
+function entry(path: string, options: { directory?: boolean; outOfRoot?: boolean } = {}): DirEntry {
   const name = path.slice(path.lastIndexOf("/") + 1);
   return {
     name,
@@ -33,25 +30,12 @@ describe("sortEntries", () => {
       entry("/r/alpha.ts"),
       entry("/r/docs", { directory: true }),
     ]);
-    expect(sorted.map((e) => e.name)).toEqual([
-      "docs",
-      "src",
-      "alpha.ts",
-      "zeta.ts",
-    ]);
+    expect(sorted.map((e) => e.name)).toEqual(["docs", "src", "alpha.ts", "zeta.ts"]);
   });
 
   it("compares case-insensitively so README sits beside readme", () => {
-    const sorted = sortEntries([
-      entry("/r/banana.ts"),
-      entry("/r/Apple.ts"),
-      entry("/r/apple.ts"),
-    ]);
-    expect(sorted.map((e) => e.name)).toEqual([
-      "Apple.ts",
-      "apple.ts",
-      "banana.ts",
-    ]);
+    const sorted = sortEntries([entry("/r/banana.ts"), entry("/r/Apple.ts"), entry("/r/apple.ts")]);
+    expect(sorted.map((e) => e.name)).toEqual(["Apple.ts", "apple.ts", "banana.ts"]);
   });
 
   it("does not mutate its input", () => {
@@ -63,19 +47,12 @@ describe("sortEntries", () => {
 
 describe("the exclusion list", () => {
   it("comes from one named constant", () => {
-    expect([...EXCLUDED_NAMES].sort()).toEqual([
-      ".git",
-      "dist",
-      "node_modules",
-      "target",
-    ]);
+    expect([...EXCLUDED_NAMES].sort()).toEqual([".git", "dist", "node_modules", "target"]);
   });
 
   it("hides the excluded names and dot-entries by default", () => {
     for (const name of EXCLUDED_NAMES) {
-      expect(isVisible(entry(`/r/${name}`, { directory: true }), false)).toBe(
-        false,
-      );
+      expect(isVisible(entry(`/r/${name}`, { directory: true }), false)).toBe(false);
     }
     expect(isVisible(entry("/r/.env"), false)).toBe(false);
     expect(isVisible(entry("/r/src.ts"), false)).toBe(true);
@@ -86,9 +63,7 @@ describe("the exclusion list", () => {
     // `.git` is both a dot-entry and excluded: showing it would be huge and
     // meaningless to read in an editor.
     expect(isVisible(entry("/r/.git", { directory: true }), true)).toBe(false);
-    expect(isVisible(entry("/r/node_modules", { directory: true }), true)).toBe(
-      false,
-    );
+    expect(isVisible(entry("/r/node_modules", { directory: true }), true)).toBe(false);
   });
 
   it("recognises dot-entries", () => {
@@ -115,9 +90,7 @@ describe("visibleEntries", () => {
 describe("canExpand", () => {
   it("refuses a symlink that resolves outside the root", () => {
     expect(canExpand(entry("/r/src", { directory: true }))).toBe(true);
-    expect(
-      canExpand(entry("/r/away", { directory: true, outOfRoot: true })),
-    ).toBe(false);
+    expect(canExpand(entry("/r/away", { directory: true, outOfRoot: true }))).toBe(false);
     expect(canExpand(entry("/r/file.ts"))).toBe(false);
   });
 });
@@ -132,10 +105,7 @@ describe("flattenTree", () => {
         entry("/r/node_modules", { directory: true }),
       ],
     ],
-    [
-      "/r/src",
-      [entry("/r/src/deep", { directory: true }), entry("/r/src/index.ts")],
-    ],
+    ["/r/src", [entry("/r/src/deep", { directory: true }), entry("/r/src/index.ts")]],
     ["/r/src/deep", [entry("/r/src/deep/leaf.ts")]],
   ]);
 
@@ -158,12 +128,7 @@ describe("flattenTree", () => {
   });
 
   it("descends two levels and keeps depth-first order", () => {
-    const rows = flattenTree(
-      "/r",
-      listings,
-      new Set(["/r/src", "/r/src/deep"]),
-      false,
-    );
+    const rows = flattenTree("/r", listings, new Set(["/r/src", "/r/src/deep"]), false);
     expect(rows.map((r) => [r.name, r.depth])).toEqual([
       ["src", 0],
       ["deep", 1],
@@ -233,10 +198,6 @@ describe("openDirectories", () => {
       new Set(["/r/src", "/r/src/deep"]),
       false,
     );
-    expect(openDirectories(rows, "/r")).toEqual([
-      "/r",
-      "/r/src",
-      "/r/src/deep",
-    ]);
+    expect(openDirectories(rows, "/r")).toEqual(["/r", "/r/src", "/r/src/deep"]);
   });
 });

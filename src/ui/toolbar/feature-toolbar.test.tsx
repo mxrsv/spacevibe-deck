@@ -1,10 +1,5 @@
 // @vitest-environment jsdom
-import {
-  Gear,
-  SquareSplitHorizontal,
-  TreeView,
-  XSquare,
-} from "@phosphor-icons/react";
+import { Gear, SquareSplitHorizontal, TreeView, XSquare } from "@phosphor-icons/react";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -35,8 +30,7 @@ describe("FeatureToolbar", () => {
 
   beforeEach(() => {
     resizeCallbacks = [];
-    globalThis.ResizeObserver =
-      StubResizeObserver as unknown as typeof ResizeObserver;
+    globalThis.ResizeObserver = StubResizeObserver as unknown as typeof ResizeObserver;
     host = document.createElement("div");
     document.body.appendChild(host);
   });
@@ -144,12 +138,7 @@ describe("FeatureToolbar", () => {
     const names = Array.from(host.querySelectorAll("button")).map((control) =>
       control.getAttribute("aria-label"),
     );
-    expect(names).toEqual([
-      "Explorer",
-      "Split Vertically",
-      "Close Pane",
-      "Settings",
-    ]);
+    expect(names).toEqual(["Explorer", "Split Vertically", "Close Pane", "Settings"]);
   });
 
   it("separates the groups it drew, and only those", () => {
@@ -165,9 +154,7 @@ describe("FeatureToolbar", () => {
     });
     expect(tip()?.textContent).toContain("Explorer");
     expect(host.querySelector(".action-tip__kbd")?.textContent).toBe("⌘⇧E");
-    expect(button("Explorer").getAttribute("aria-describedby")).toBe(
-      tip()?.id ?? null,
-    );
+    expect(button("Explorer").getAttribute("aria-describedby")).toBe(tip()?.id ?? null);
 
     act(() => {
       button("Explorer").dispatchEvent(new Event("pointerleave"));
@@ -195,9 +182,7 @@ describe("FeatureToolbar", () => {
     act(() => {
       button("Close Pane").dispatchEvent(new Event("pointerenter"));
     });
-    expect(host.querySelector(".action-tip__reason")?.textContent).toBe(
-      "only one pane is open",
-    );
+    expect(host.querySelector(".action-tip__reason")?.textContent).toBe("only one pane is open");
     expect(host.querySelector(".action-tip__kbd")).toBeNull();
   });
 
@@ -227,17 +212,18 @@ describe("FeatureToolbar", () => {
     // What is left in the bar, and where More sits: immediately before the
     // action the design pins rightmost.
     expect(
-      Array.from(host.querySelectorAll(".ftoolbar__slot button")).map(
-        (control) => control.getAttribute("aria-label"),
+      Array.from(host.querySelectorAll(".ftoolbar__slot button")).map((control) =>
+        control.getAttribute("aria-label"),
       ),
     ).toEqual(["Explorer", "More actions", "Settings"]);
 
     act(() => button("More actions").click());
 
     const rows = Array.from(host.querySelectorAll(".toolbar-menu__row"));
-    expect(
-      rows.map((row) => row.querySelector(".toolbar-menu__label")?.textContent),
-    ).toEqual(["Split Vertically", "Close Pane"]);
+    expect(rows.map((row) => row.querySelector(".toolbar-menu__label")?.textContent)).toEqual([
+      "Split Vertically",
+      "Close Pane",
+    ]);
     expect(rows[0].querySelector(".toolbar-menu__kbd")?.textContent).toBe("⌘D");
     expect(rows[1].getAttribute("aria-disabled")).toBe("true");
 
@@ -254,8 +240,8 @@ describe("FeatureToolbar", () => {
     act(() => render(<FeatureToolbar items={[]} pinnedMenu={items()} />, host));
 
     expect(
-      Array.from(host.querySelectorAll(".ftoolbar__slot button")).map(
-        (control) => control.getAttribute("aria-label"),
+      Array.from(host.querySelectorAll(".ftoolbar__slot button")).map((control) =>
+        control.getAttribute("aria-label"),
       ),
     ).toEqual(["More actions"]);
     expect(host.querySelectorAll(".tabbar__sep")).toHaveLength(0);

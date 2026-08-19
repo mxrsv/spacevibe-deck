@@ -195,9 +195,7 @@ export function DeckToolbar(props: DeckToolbarProps) {
       externalApp={props.externalApp}
       updateAction={props.updateAction}
       pinnedMenu={
-        props.compact || SIDEBAR_TOOLS_HIDDEN
-          ? [...paneItems, ...globalItems]
-          : paneItems
+        props.compact || SIDEBAR_TOOLS_HIDDEN ? [...paneItems, ...globalItems] : paneItems
       }
       // Only while the popover's own row lives in the menu. That is top-tab
       // mode always, and sidebar mode too while the rail's footer is hidden —

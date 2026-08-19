@@ -9,14 +9,11 @@ const RELEASE_TAG_PATTERN =
 const CONVENTIONAL_SUBJECT_PATTERN =
   /^(?<type>[a-z][a-z0-9-]*)(?:\((?<scope>[^)\r\n]+)\))?(?<breaking>!)?:\s+(?<description>.+)$/;
 const SAFE_REVISION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/;
-const RELEASE_NOTE_TRAILER_PATTERN =
-  /^Release-Note:[ \t]*(?<description>\S[^\r\n]*)$/iu;
-const BREAKING_CHANGE_TRAILER_PATTERN =
-  /^BREAKING(?: |-)CHANGE:[ \t]*(?<description>\S[^\r\n]*)$/u;
+const RELEASE_NOTE_TRAILER_PATTERN = /^Release-Note:[ \t]*(?<description>\S[^\r\n]*)$/iu;
+const BREAKING_CHANGE_TRAILER_PATTERN = /^BREAKING(?: |-)CHANGE:[ \t]*(?<description>\S[^\r\n]*)$/u;
 const REVERT_TARGET_PATTERN =
   /^This reverts commit (?<sha>[0-9a-f]{7,40})(?:, reversing\r?\nchanges made to (?<mainline>[0-9a-f]{7,40}))?\.$/mu;
-const TRAILER_LINE_PATTERN =
-  /^(?:[A-Za-z][A-Za-z0-9-]*|BREAKING(?: |-)CHANGE):[ \t]*.*$/u;
+const TRAILER_LINE_PATTERN = /^(?:[A-Za-z][A-Za-z0-9-]*|BREAKING(?: |-)CHANGE):[ \t]*.*$/u;
 
 const SECTION_ORDER = ["feat", "fix", "perf", "breaking"];
 const SECTION_HEADINGS = {
@@ -177,22 +174,12 @@ function parsePublicEntries(commit) {
   }
   const rawScope = subject.scope?.trim();
   const scope = rawScope === undefined ? null : humanizeScope(rawScope);
-  const declaredReleaseNotes = trailerDescriptions(
-    commit.body,
-    RELEASE_NOTE_TRAILER_PATTERN,
-  );
-  if (
-    declaredReleaseNotes.some(
-      (description) => description.toLowerCase() === "skip",
-    )
-  ) {
+  const declaredReleaseNotes = trailerDescriptions(commit.body, RELEASE_NOTE_TRAILER_PATTERN);
+  if (declaredReleaseNotes.some((description) => description.toLowerCase() === "skip")) {
     return [];
   }
   const releaseNotes = declaredReleaseNotes;
-  const footerBreakingNotes = trailerDescriptions(
-    commit.body,
-    BREAKING_CHANGE_TRAILER_PATTERN,
-  );
+  const footerBreakingNotes = trailerDescriptions(commit.body, BREAKING_CHANGE_TRAILER_PATTERN);
   const isBreaking = subject.breaking !== undefined;
   const breakingNotes =
     isBreaking || footerBreakingNotes.length > 0
@@ -225,15 +212,12 @@ function requiresReleaseNote(commit) {
   }
   const hasBreakingMetadata =
     subject.breaking !== undefined ||
-    trailerDescriptions(commit.body, BREAKING_CHANGE_TRAILER_PATTERN).length >
-      0;
+    trailerDescriptions(commit.body, BREAKING_CHANGE_TRAILER_PATTERN).length > 0;
   return PUBLIC_RELEASE_TYPES.has(subject.type) || hasBreakingMetadata;
 }
 
 function declaresReleaseNote(commit) {
-  return (
-    trailerDescriptions(commit.body, RELEASE_NOTE_TRAILER_PATTERN).length > 0
-  );
+  return trailerDescriptions(commit.body, RELEASE_NOTE_TRAILER_PATTERN).length > 0;
 }
 
 function isUndeclaredPublicCommit(commit) {
@@ -280,9 +264,7 @@ function resolveCommitSha(commitsBySha, sha) {
   if (commitsBySha.has(sha)) {
     return sha;
   }
-  const matches = [...commitsBySha.keys()].filter((candidate) =>
-    candidate.startsWith(sha),
-  );
+  const matches = [...commitsBySha.keys()].filter((candidate) => candidate.startsWith(sha));
   if (matches.length > 1) {
     throw new Error(`Ambiguous reverted commit prefix: ${sha}`);
   }
@@ -299,8 +281,7 @@ function setCommitActive(activeShas, commitsBySha, sha, isActive) {
     : activeShas.filter((activeSha) => activeSha !== resolvedSha);
   const nestedTargets = commitsBySha.get(resolvedSha)?.revertTargets ?? [];
   return nestedTargets.reduce(
-    (current, target) =>
-      setCommitActive(current, commitsBySha, target, !isActive),
+    (current, target) => setCommitActive(current, commitsBySha, target, !isActive),
     nextActiveShas,
   );
 }
@@ -311,20 +292,15 @@ function activeCommits(commits) {
       const directTarget = revertTarget(commit);
       const record = {
         ...commit,
-        revertTargets:
-          commit.revertTargets ?? (directTarget === null ? [] : [directTarget]),
+        revertTargets: commit.revertTargets ?? (directTarget === null ? [] : [directTarget]),
       };
-      const commitsBySha = new Map([
-        ...current.commitsBySha.entries(),
-        [record.sha, record],
-      ]);
+      const commitsBySha = new Map([...current.commitsBySha.entries(), [record.sha, record]]);
       const withCurrent = [...current.activeShas, record.sha];
       const activeShas =
         record.revertTargets.length === 0
           ? withCurrent
           : record.revertTargets.reduce(
-              (next, target) =>
-                setCommitActive(next, commitsBySha, target, false),
+              (next, target) => setCommitActive(next, commitsBySha, target, false),
               withCurrent,
             );
       return { commitsBySha, activeShas };
@@ -351,9 +327,7 @@ export function formatReleaseNotesForChannel(stableNotes, channel) {
     throw new Error("Approved release notes are missing change sections");
   }
   const sections = `${normalized}\n`;
-  return channel === "windows-preview"
-    ? `${WINDOWS_PREVIEW_WARNING}${sections}`
-    : sections;
+  return channel === "windows-preview" ? `${WINDOWS_PREVIEW_WARNING}${sections}` : sections;
 }
 
 export function generateReleaseNotes(commits, options = {}) {
@@ -364,9 +338,7 @@ export function generateReleaseNotes(commits, options = {}) {
   assertPublicCommitTrailers(active);
   const entries = active.flatMap(parsePublicEntries);
   if (entries.length === 0) {
-    throw new Error(
-      "No public Release-Note trailers or breaking changes found",
-    );
+    throw new Error("No public Release-Note trailers or breaking changes found");
   }
 
   const sections = SECTION_ORDER.flatMap((type) => {
@@ -374,23 +346,14 @@ export function generateReleaseNotes(commits, options = {}) {
     if (matching.length === 0) {
       return [];
     }
-    return [
-      `## ${SECTION_HEADINGS[type]}`,
-      "",
-      ...matching.map(formatEntry),
-      "",
-    ];
+    return [`## ${SECTION_HEADINGS[type]}`, "", ...matching.map(formatEntry), ""];
   }).join("\n");
 
   return formatReleaseNotesForChannel(sections, channel);
 }
 
 function assertSafeRevision(revision, label) {
-  if (
-    !SAFE_REVISION_PATTERN.test(revision) ||
-    revision.includes("..") ||
-    revision.includes("@{")
-  ) {
+  if (!SAFE_REVISION_PATTERN.test(revision) || revision.includes("..") || revision.includes("@{")) {
     throw new Error(`Invalid ${label}: ${revision}`);
   }
 }
@@ -440,9 +403,7 @@ function resolveCurrentTag(cwd, currentRef, explicitTag) {
     .sort(compareReleaseTags);
   const resolved = sourceTags.at(-1);
   if (resolved === undefined) {
-    throw new Error(
-      `No source release tag points at ${currentRef}; pass --tag vX.Y.Z`,
-    );
+    throw new Error(`No source release tag points at ${currentRef}; pass --tag vX.Y.Z`);
   }
   return resolved.tag;
 }
@@ -479,11 +440,7 @@ export function readReleaseCommits(cwd, previousTag, currentRef) {
     if (metadata === null) {
       return commit;
     }
-    const resolved = runGit(cwd, [
-      "rev-parse",
-      "--verify",
-      `${metadata.target}^{commit}`,
-    ]);
+    const resolved = runGit(cwd, ["rev-parse", "--verify", `${metadata.target}^{commit}`]);
     const parents = runGit(cwd, ["rev-list", "--parents", "-n", "1", resolved])
       .split(/\s+/u)
       .slice(1);
@@ -493,27 +450,14 @@ export function readReleaseCommits(cwd, previousTag, currentRef) {
     const mainline =
       metadata.mainline === null
         ? parents[0]
-        : runGit(cwd, [
-            "rev-parse",
-            "--verify",
-            `${metadata.mainline}^{commit}`,
-          ]);
+        : runGit(cwd, ["rev-parse", "--verify", `${metadata.mainline}^{commit}`]);
     if (!parents.includes(mainline)) {
-      throw new Error(
-        `Merge revert ${commit.sha} names a non-parent mainline ${mainline}`,
-      );
+      throw new Error(`Merge revert ${commit.sha} names a non-parent mainline ${mainline}`);
     }
-    const introduced = runGit(cwd, [
-      "rev-list",
-      "--no-merges",
-      `${mainline}..${resolved}`,
-    ]);
+    const introduced = runGit(cwd, ["rev-list", "--no-merges", `${mainline}..${resolved}`]);
     return {
       ...commit,
-      revertTargets: [
-        resolved,
-        ...(introduced === "" ? [] : introduced.split(/\r?\n/u)),
-      ],
+      revertTargets: [resolved, ...(introduced === "" ? [] : introduced.split(/\r?\n/u))],
     };
   });
 }
@@ -557,17 +501,12 @@ export function markPreBaselineCommits(
 function parseArguments(argv) {
   let options = {
     channel: "stable",
-    currentRef:
-      process.env.RELEASE_SOURCE_SHA ?? process.env.GITHUB_SHA ?? "HEAD",
+    currentRef: process.env.RELEASE_SOURCE_SHA ?? process.env.GITHUB_SHA ?? "HEAD",
     currentTag: process.env.RELEASE_SOURCE_TAG,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (
-      !["--body-file", "--channel", "--ref", "--sha", "--tag"].includes(
-        argument,
-      )
-    ) {
+    if (!["--body-file", "--channel", "--ref", "--sha", "--tag"].includes(argument)) {
       throw new Error(`Unknown argument: ${argument}`);
     }
     const value = argv[index + 1];
@@ -594,15 +533,8 @@ export function runCli(argv, cwd = process.cwd()) {
     const approvedBody = readFileSync(options.bodyFile, "utf8");
     return formatReleaseNotesForChannel(approvedBody, options.channel);
   }
-  const currentTag = resolveCurrentTag(
-    cwd,
-    options.currentRef,
-    options.currentTag,
-  );
-  const previousTag = findPreviousReleaseTag(
-    listMergedTags(cwd, options.currentRef),
-    currentTag,
-  );
+  const currentTag = resolveCurrentTag(cwd, options.currentRef, options.currentTag);
+  const previousTag = findPreviousReleaseTag(listMergedTags(cwd, options.currentRef), currentTag);
   const commits = markPreBaselineCommits(
     cwd,
     readReleaseCommits(cwd, previousTag, options.currentRef),
@@ -612,8 +544,7 @@ export function runCli(argv, cwd = process.cwd()) {
 }
 
 const isMain =
-  process.argv[1] !== undefined &&
-  import.meta.url === pathToFileURL(process.argv[1]).href;
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   try {
     process.stdout.write(runCli(process.argv.slice(2)));

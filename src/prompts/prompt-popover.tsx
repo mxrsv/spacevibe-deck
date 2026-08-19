@@ -1,10 +1,4 @@
-import {
-  CaretDown,
-  ClipboardText,
-  PaperPlaneTilt,
-  Plus,
-  Trash,
-} from "@phosphor-icons/react";
+import { CaretDown, ClipboardText, PaperPlaneTilt, Plus, Trash } from "@phosphor-icons/react";
 import { Fragment } from "preact";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
@@ -27,11 +21,7 @@ import {
   type PromptAssetKind,
   type PromptAssetPick,
 } from "./snippet-format";
-import {
-  EMPTY_PROMPT_ASSETS,
-  type PromptAsset,
-  type PromptAssets,
-} from "./prompt-assets-client";
+import { EMPTY_PROMPT_ASSETS, type PromptAsset, type PromptAssets } from "./prompt-assets-client";
 import type { InjectOutcome, PromptTarget } from "./inject";
 
 interface PromptPopoverProps {
@@ -40,11 +30,7 @@ interface PromptPopoverProps {
   /** Fetches detected assets; rejection degrades the pickers, not the list. */
   loadAssets(target: PromptTarget): Promise<PromptAssets>;
   /** Paste (+ maybe submit) into the captured pane. */
-  inject(
-    target: PromptTarget,
-    text: string,
-    autoSend: boolean,
-  ): Promise<InjectOutcome>;
+  inject(target: PromptTarget, text: string, autoSend: boolean): Promise<InjectOutcome>;
   /** Whether the captured pane is still in some tab's layout. */
   isAlive(paneId: number): boolean;
   onClose(): void;
@@ -95,11 +81,7 @@ function AssetPicker({
         >
           <option value="">none</option>
           {assets.map((asset) => (
-            <option
-              key={asset.name}
-              value={asset.name}
-              title={asset.description}
-            >
+            <option key={asset.name} value={asset.name} title={asset.description}>
               {asset.name}
             </option>
           ))}
@@ -144,6 +126,7 @@ export function PromptPopover(props: PromptPopoverProps) {
 
   // Capture first, then scan with what was captured (spec §7). Both are
   // one-shot: transient state never survives an open (DL-13.6).
+  /* oxlint-disable react-hooks/exhaustive-deps -- one-shot open; the popover unmounts on close */
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -175,11 +158,13 @@ export function PromptPopover(props: PromptPopoverProps) {
       cancelled = true;
     };
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Dismiss on any pointerdown outside the anchor (which contains both the
   // trigger and this surface, so the trigger's own toggle still works). The
   // shipping anchor is the toolbar slot the trigger lives in; the gallery's
   // popover specimen still mounts the bare `.prompts-anchor` wrapper.
+  /* oxlint-disable react-hooks/exhaustive-deps -- one-shot listener; onClose is a stable parent callback */
   useEffect(() => {
     const onPointerDown = (event: PointerEvent): void => {
       const node = event.target as Element | null;
@@ -189,15 +174,15 @@ export function PromptPopover(props: PromptPopoverProps) {
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     rootRef.current?.focus();
-    return () =>
-      document.removeEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // The captured pane can exit or have its tab closed while this is open;
   // `tabViews` is what `syncViews` bumps on every layout change, poll and
   // exit, so reading it here is the subscription (spec §7, §12).
   useSignalEffect(() => {
-    tabViews.value;
+    void tabViews.value;
     const captured = target.value;
     if (captured !== null && !props.isAlive(captured.paneId)) {
       props.onClose();
@@ -209,11 +194,7 @@ export function PromptPopover(props: PromptPopoverProps) {
   };
 
   const patch = (id: string, change: Partial<PromptTemplate>): void => {
-    replace(
-      templates.map((entry) =>
-        entry.id === id ? { ...entry, ...change } : entry,
-      ),
-    );
+    replace(templates.map((entry) => (entry.id === id ? { ...entry, ...change } : entry)));
   };
 
   const renameTemplate = (id: string, label: string): void => {
@@ -244,8 +225,7 @@ export function PromptPopover(props: PromptPopoverProps) {
   };
 
   const commitDraft = (): void => {
-    const problem =
-      labelProblem(draftLabel.value) ?? bodyProblem(draftBody.value);
+    const problem = labelProblem(draftLabel.value) ?? bodyProblem(draftBody.value);
     if (problem !== null) {
       draftError.value = problem;
       return;
@@ -319,8 +299,7 @@ export function PromptPopover(props: PromptPopoverProps) {
     }
   };
 
-  const showPickers =
-    target.value !== null && isPromptAgentId(target.value.agent);
+  const showPickers = target.value !== null && isPromptAgentId(target.value.agent);
 
   return (
     <div
@@ -350,8 +329,7 @@ export function PromptPopover(props: PromptPopoverProps) {
                 aria-expanded={expanded.value === template.id}
                 title="Edit"
                 onClick={() => {
-                  expanded.value =
-                    expanded.value === template.id ? null : template.id;
+                  expanded.value = expanded.value === template.id ? null : template.id;
                   rowError.value = null;
                 }}
               >
@@ -369,9 +347,7 @@ export function PromptPopover(props: PromptPopoverProps) {
                 class="cfg-btn"
                 aria-label={`${template.autoSend ? "Send" : "Paste"} ${template.label}`}
                 title={
-                  template.autoSend
-                    ? "Send to the focused pane"
-                    : "Paste into the focused pane"
+                  template.autoSend ? "Send to the focused pane" : "Paste into the focused pane"
                 }
                 disabled={injecting.value}
                 onClick={() => void injectTemplate(template)}
@@ -406,9 +382,7 @@ export function PromptPopover(props: PromptPopoverProps) {
                   aria-label={`Auto send ${template.label}`}
                   class={`cfg-btn ${template.autoSend ? "cfg-btn--on" : "cfg-btn--off"}`}
                   title="Press Enter after pasting, when it is provably safe"
-                  onClick={() =>
-                    patch(template.id, { autoSend: !template.autoSend })
-                  }
+                  onClick={() => patch(template.id, { autoSend: !template.autoSend })}
                 >
                   {template.autoSend ? "auto send on" : "auto send off"}
                 </button>
@@ -485,9 +459,7 @@ export function PromptPopover(props: PromptPopoverProps) {
       {showPickers ? (
         <div class="prompt-picker">
           {assetsFailed.value ? (
-            <div class="cfg-custom prompt-picker__unavailable">
-              Skills unavailable
-            </div>
+            <div class="cfg-custom prompt-picker__unavailable">Skills unavailable</div>
           ) : (
             <>
               <AssetPicker

@@ -25,9 +25,7 @@ export function u64Field(node: unknown, key: string): number {
     return 0;
   }
   const value = (node as Record<string, unknown>)[key];
-  return typeof value === "number" && Number.isFinite(value) && value >= 0
-    ? Math.floor(value)
-    : 0;
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
 }
 
 function asObject(value: unknown): Record<string, unknown> | null {
@@ -53,10 +51,7 @@ function stringField(node: unknown, key: string): string | null {
 function claudeCacheCreation(usage: unknown): [number, number] {
   const split = asObject(usage)?.cache_creation;
   const splitObject = asObject(split);
-  if (
-    splitObject !== null &&
-    (CLAUDE_TIER_5M in splitObject || CLAUDE_TIER_1H in splitObject)
-  ) {
+  if (splitObject !== null && (CLAUDE_TIER_5M in splitObject || CLAUDE_TIER_1H in splitObject)) {
     return [u64Field(splitObject, CLAUDE_TIER_5M), u64Field(splitObject, CLAUDE_TIER_1H)];
   }
   return [u64Field(usage, "cache_creation_input_tokens"), 0];

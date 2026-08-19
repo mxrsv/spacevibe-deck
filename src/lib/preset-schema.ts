@@ -62,11 +62,7 @@ function validatePreset(raw: unknown): Preset | null {
     return null;
   }
   const source = raw as Record<string, unknown>;
-  if (
-    typeof source.id !== "string" ||
-    source.id === "" ||
-    source.id === BUILT_IN_PRESET_ID
-  ) {
+  if (typeof source.id !== "string" || source.id === "" || source.id === BUILT_IN_PRESET_ID) {
     return null;
   }
   const name = validatePresetName(source.name);
@@ -111,10 +107,7 @@ export function validatePresets(raw: unknown): PresetsData {
 }
 
 /** Replace by id when present, else append. */
-export function upsertPreset(
-  list: readonly Preset[],
-  preset: Preset,
-): readonly Preset[] {
+export function upsertPreset(list: readonly Preset[], preset: Preset): readonly Preset[] {
   return list.some((entry) => entry.id === preset.id)
     ? list.map((entry) => (entry.id === preset.id ? preset : entry))
     : [...list, preset];
@@ -128,21 +121,12 @@ export function renamePresetIn(
   return list.map((entry) => (entry.id === id ? { ...entry, name } : entry));
 }
 
-export function removePreset(
-  list: readonly Preset[],
-  id: string,
-): readonly Preset[] {
+export function removePreset(list: readonly Preset[], id: string): readonly Preset[] {
   return list.filter((entry) => entry.id !== id);
 }
 
 /** Pane CWD = preset cwd when set, else the workspace folder. */
-export function resolveCwds(
-  preset: Preset,
-  workspace: string,
-): readonly (string | null)[] {
+export function resolveCwds(preset: Preset, workspace: string): readonly (string | null)[] {
   const total = countLeaves(preset.layout);
-  return Array.from(
-    { length: total },
-    (_, index) => preset.cwds?.[index] ?? workspace,
-  );
+  return Array.from({ length: total }, (_, index) => preset.cwds?.[index] ?? workspace);
 }

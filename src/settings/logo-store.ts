@@ -73,7 +73,7 @@ export async function setLogoFromPath(path: string): Promise<void> {
   try {
     dataUrl = await invoke<string>("read_image_as_data_url", { path });
   } catch (err: unknown) {
-    throw new Error(typeof err === "string" ? err : "Couldn't read the image");
+    throw new Error(typeof err === "string" ? err : "Couldn't read the image", { cause: err });
   }
   logoDataUrl.value = dataUrl;
   persist(dataUrl);

@@ -6,10 +6,7 @@ import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { workspacesData } from "../open-board/workspaces-store";
 import { WORKSPACES_VERSION } from "../lib/workspace-recents";
 import { activeTabIndex, tabViews } from "./tabs-store";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { freshWindowFocusController, wire } from "./tab-manager.fixtures";
 
 vi.mock("../lib/native-notification", () => ({

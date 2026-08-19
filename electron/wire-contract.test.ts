@@ -18,10 +18,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CHANNELS, INVOKABLE_CHANNELS } from "./ipc/channels";
 import { WindowRegistry } from "./window-lifecycle";
-import {
-  bootModeOrNormal,
-  moveToWindowTarget,
-} from "../src/terminal/transfer-client";
+import { bootModeOrNormal, moveToWindowTarget } from "../src/terminal/transfer-client";
 import { isUpdateMenuAction } from "../src/updater/update-menu-actions";
 import { parseDesktopEnvironment } from "../src/lib/platform";
 
@@ -84,9 +81,9 @@ describe("desktop_environment", () => {
       parseDesktopEnvironment({ platform: "macos", homeDir: "/Users/dev" }),
     ).not.toThrow();
     // The shape that shipped: `home` instead of `homeDir`.
-    expect(() =>
-      parseDesktopEnvironment({ platform: "macos", home: "/Users/dev" }),
-    ).toThrow();
+    expect(() => parseDesktopEnvironment({ platform: "macos", home: "/Users/dev" })).toThrow(
+      "homeDir must be a string",
+    );
   });
 });
 
@@ -139,7 +136,7 @@ describe("the preload bridge's channel allowlist", () => {
   const registered = new Set<string>();
   for (const file of electronSources("electron")) {
     const text = readFileSync(file, "utf8");
-    for (const match of text.matchAll(/ipcMain\.(?:handle|on)\(\s*"([a-z_]+)"/g)) {
+    for (const match of text.matchAll(/ipcMain\.(?:handle|on)\(\s*['"]([a-z_]+)['"]/g)) {
       registered.add(match[1]);
     }
     for (const match of text.matchAll(/ipcMain\.(?:handle|on)\(\s*CHANNELS\.([A-Za-z]+)/g)) {
@@ -154,9 +151,7 @@ describe("the preload bridge's channel allowlist", () => {
     // A handler the bridge does not know about is a feature that silently
     // stops working the moment it is called — the allowlist is only safe if
     // this stays exhaustive.
-    const missing = [...registered].filter(
-      (channel) => !INVOKABLE_CHANNELS.has(channel),
-    );
+    const missing = [...registered].filter((channel) => !INVOKABLE_CHANNELS.has(channel));
 
     expect(missing).toEqual([]);
   });
@@ -164,9 +159,7 @@ describe("the preload bridge's channel allowlist", () => {
   it("allows nothing the main process does not answer", () => {
     // The other direction: a name left in the table after its handler was
     // deleted keeps a door open onto nothing.
-    const orphans = [...INVOKABLE_CHANNELS].filter(
-      (channel) => !registered.has(channel),
-    );
+    const orphans = [...INVOKABLE_CHANNELS].filter((channel) => !registered.has(channel));
 
     expect(orphans).toEqual([]);
   });

@@ -1,3 +1,4 @@
+/* oxlint-disable jest/valid-expect, vitest/valid-expect -- vitest expect() takes a failure message as its second argument */
 /**
  * Translated from the Rust tests in `src-tauri/src/agents.rs`, case for case.
  * The metacharacter list in particular is a security assertion, not a style
@@ -55,16 +56,8 @@ describe("isProbeSafe", () => {
   });
 
   it("accepts real binary names and paths", () => {
-    for (const name of [
-      "aider",
-      "my-agent_1",
-      "~/bin/agent.sh",
-      "/opt/bin/claude",
-      "g++",
-    ]) {
-      expect(isProbeSafe(name), `${name} is a legitimate binary name`).toBe(
-        true,
-      );
+    for (const name of ["aider", "my-agent_1", "~/bin/agent.sh", "/opt/bin/claude", "g++"]) {
+      expect(isProbeSafe(name), `${name} is a legitimate binary name`).toBe(true);
     }
     expect(isProbeSafe("a".repeat(PROBE_NAME_MAX))).toBe(true);
     expect(isProbeSafe("a".repeat(PROBE_NAME_MAX + 1))).toBe(false);
@@ -80,10 +73,7 @@ describe("probeNames", () => {
   });
 
   it("appends safe requests once", () => {
-    expect(probeNames(["aider", "aider", "claude"])).toEqual([
-      ...builtins,
-      "aider",
-    ]);
+    expect(probeNames(["aider", "aider", "claude"])).toEqual([...builtins, "aider"]);
   });
 });
 
@@ -91,14 +81,13 @@ describe("parseCommandVOutput", () => {
   it("matches a declared path by its basename", () => {
     // `command -v ~/bin/agent.sh` answers with the resolved absolute path, so
     // the two sides only ever agree on the last segment.
-    expect(
-      parseCommandVOutput("/Users/dev/bin/agent.sh\n", ["~/bin/agent.sh"]),
-    ).toEqual([{ name: "agent.sh", path: "/Users/dev/bin/agent.sh" }]);
+    expect(parseCommandVOutput("/Users/dev/bin/agent.sh\n", ["~/bin/agent.sh"])).toEqual([
+      { name: "agent.sh", path: "/Users/dev/bin/agent.sh" },
+    ]);
   });
 
   it("parses absolute paths in allowlist order", () => {
-    const out =
-      "/usr/local/bin/claude\n/Users/dev/.local/bin/gemini\n/opt/homebrew/bin/opencode\n";
+    const out = "/usr/local/bin/claude\n/Users/dev/.local/bin/gemini\n/opt/homebrew/bin/opencode\n";
 
     expect(parseCommandVOutput(out, builtins)).toEqual([
       { name: "claude", path: "/usr/local/bin/claude" },
@@ -108,18 +97,13 @@ describe("parseCommandVOutput", () => {
   });
 
   it("ignores non-paths and unknown binaries", () => {
-    const out =
-      "alias claude='claude --tips'\n/usr/local/bin/ripgrep\n\n/opt/bin/codex\n";
+    const out = "alias claude='claude --tips'\n/usr/local/bin/ripgrep\n\n/opt/bin/codex\n";
 
-    expect(parseCommandVOutput(out, builtins)).toEqual([
-      { name: "codex", path: "/opt/bin/codex" },
-    ]);
+    expect(parseCommandVOutput(out, builtins)).toEqual([{ name: "codex", path: "/opt/bin/codex" }]);
   });
 
   it("dedupes repeated names", () => {
-    expect(
-      parseCommandVOutput("/a/claude\n/b/claude\n", builtins),
-    ).toHaveLength(1);
+    expect(parseCommandVOutput("/a/claude\n/b/claude\n", builtins)).toHaveLength(1);
   });
 
   it("recovers a path buried behind iTerm OSC noise", () => {

@@ -42,16 +42,12 @@ vi.mock("../host/worktree-host", () => ({
   addWorktree: (...args: unknown[]) => addWorktreeMock(...args),
 }));
 
-import { WORKSPACES_VERSION } from "../lib/workspace-recents";
-import type { RecentWorkspace } from "../lib/workspace-recents";
+import { WORKSPACES_VERSION, type RecentWorkspace } from "../lib/workspace-recents";
 import { PRESETS_VERSION } from "../lib/preset-schema";
 import { presetsData } from "../presets/presets-store";
 import { workspacesData } from "./workspaces-store";
 import { OpenBoard } from "./open-board";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
 
 const NOW = 1_800_000_000_000;
@@ -189,9 +185,7 @@ describe("OpenBoard create-worktree flow", () => {
       branchInput!.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
-    expect(host.querySelector<HTMLInputElement>("#wtf-dest")?.value).toBe(
-      "/somewhere/else",
-    );
+    expect(host.querySelector<HTMLInputElement>("#wtf-dest")?.value).toBe("/somewhere/else");
   });
 
   it("shows friendly error copy when addWorktree fails, never raw git text", async () => {
@@ -287,9 +281,7 @@ describe("OpenBoard create-worktree flow", () => {
 
     const board = host.querySelector<HTMLDivElement>(".open-board");
     await act(async () => {
-      board?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      board?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
 
     expect(host.querySelector(".board-home")).not.toBeNull();

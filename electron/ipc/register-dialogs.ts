@@ -21,8 +21,7 @@ interface OpenDialogPayload {
 
 export function registerDialogs(): void {
   ipcMain.handle("dialog_ask", async (event, payload) => {
-    const { message, title, kind, okLabel, cancelLabel } =
-      payload as DialogPayload;
+    const { message, title, kind, okLabel, cancelLabel } = payload as DialogPayload;
     const window = BrowserWindow.fromWebContents(event.sender);
     const result = await dialog.showMessageBox(window!, {
       type: kind ?? "info",
@@ -45,8 +44,7 @@ export function registerDialogs(): void {
     });
   });
   ipcMain.handle("dialog_open", async (event, payload) => {
-    const { directory, multiple, title, filters } =
-      payload as OpenDialogPayload;
+    const { directory, multiple, title, filters } = payload as OpenDialogPayload;
     const window = BrowserWindow.fromWebContents(event.sender);
     const result = await dialog.showOpenDialog(window!, {
       title,

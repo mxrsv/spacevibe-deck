@@ -7,14 +7,13 @@
 
 export type SessionAgent = "claude" | "codex";
 
-export const SESSION_AGENTS: readonly SessionAgent[] = Object.freeze([
-  "claude",
-  "codex",
-]);
+export const SESSION_AGENTS: readonly SessionAgent[] = Object.freeze(["claude", "codex"]);
 
 /** Display name per agent — sentence case naming a product (DL-4.3). */
-export const SESSION_AGENT_LABELS: Readonly<Record<SessionAgent, string>> =
-  Object.freeze({ claude: "Claude Code", codex: "Codex" });
+export const SESSION_AGENT_LABELS: Readonly<Record<SessionAgent, string>> = Object.freeze({
+  claude: "Claude Code",
+  codex: "Codex",
+});
 
 export interface SessionEntry {
   readonly agent: SessionAgent;

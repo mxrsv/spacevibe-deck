@@ -46,9 +46,7 @@ export interface DragDropEvent {
 
 /** The preload bridge, for the one thing that is not invoke/listen. */
 function hostBridge(): { getPathForFile?: (file: File) => string } | undefined {
-  return (
-    globalThis as { __deckHost?: { getPathForFile?: (file: File) => string } }
-  ).__deckHost;
+  return (globalThis as { __deckHost?: { getPathForFile?: (file: File) => string } }).__deckHost;
 }
 
 class DeckWindow {
@@ -87,9 +85,7 @@ class DeckWindow {
    * This drives whether native notifications fire, so losing it means an agent
    * finishing in an unfocused window notifies nobody.
    */
-  async onFocusChanged(
-    handler: (event: { payload: boolean }) => void,
-  ): Promise<UnlistenFn> {
+  async onFocusChanged(handler: (event: { payload: boolean }) => void): Promise<UnlistenFn> {
     const onFocus = () => handler({ payload: true });
     const onBlur = () => handler({ payload: false });
     globalThis.addEventListener("focus", onFocus);
@@ -111,9 +107,7 @@ class DeckWindow {
    * `preventDefault` on dragover is mandatory: without it the browser refuses
    * the drop and no `drop` event fires at all.
    */
-  async onDragDropEvent(
-    handler: (event: DragDropEvent) => void,
-  ): Promise<UnlistenFn> {
+  async onDragDropEvent(handler: (event: DragDropEvent) => void): Promise<UnlistenFn> {
     const scale = globalThis.devicePixelRatio || 1;
     // Coordinates are handed back in PHYSICAL pixels so `toLogical` stays
     // meaningful for callers that were written against Tauri's shape.

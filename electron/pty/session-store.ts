@@ -50,9 +50,7 @@ export class PtySessionStore {
     return id;
   }
 
-  insert(
-    session: Omit<PtySession, "shellIntegration" | "cwd" | "exited">,
-  ): PtySession {
+  insert(session: Omit<PtySession, "shellIntegration" | "cwd" | "exited">): PtySession {
     const full: PtySession = {
       ...session,
       shellIntegration: new ShellIntegrationParser(),

@@ -10,9 +10,7 @@ interface BrowserPanelObscuredState {
 }
 
 /** Native browser views must hide whenever DOM chrome paints over the stage. */
-export function browserPanelObscured(
-  state: BrowserPanelObscuredState,
-): boolean {
+export function browserPanelObscured(state: BrowserPanelObscuredState): boolean {
   return (
     state.overlayCoversPane ||
     state.agentQuickPickerOpen ||
@@ -258,7 +256,5 @@ export function workspaceOrphanedByClose(
   if (remaining.length === 0) {
     return null;
   }
-  return remaining.some((tab) => tab.workspacePath === workspacePath)
-    ? null
-    : workspacePath;
+  return remaining.some((tab) => tab.workspacePath === workspacePath) ? null : workspacePath;
 }

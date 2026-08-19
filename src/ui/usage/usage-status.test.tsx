@@ -3,17 +3,14 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type {
-  UsageSnapshot,
-  UsageSource,
-  UsageSourceState,
-} from "../../lib/usage-snapshot";
+import type { UsageSnapshot, UsageSource, UsageSourceState } from "../../lib/usage-snapshot";
 import { UsageStatus } from "./usage-status";
 
-const source = (
-  agent: "claude" | "codex",
-  state: UsageSourceState,
-): UsageSource => ({ agent, state, filesScanned: 0 });
+const source = (agent: "claude" | "codex", state: UsageSourceState): UsageSource => ({
+  agent,
+  state,
+  filesScanned: 0,
+});
 
 const snapshot = (patch: Partial<UsageSnapshot> = {}): UsageSnapshot => ({
   scannedAtMs: 1_754_800_000_000,
@@ -38,26 +35,14 @@ describe("UsageStatus", () => {
     });
   });
 
-  const mount = (
-    props: Partial<Parameters<typeof UsageStatus>[0]> = {},
-  ): void => {
+  const mount = (props: Partial<Parameters<typeof UsageStatus>[0]> = {}): void => {
     act(() => {
-      render(
-        <UsageStatus
-          snapshot={snapshot()}
-          loading={false}
-          stale={false}
-          {...props}
-        />,
-        host,
-      );
+      render(<UsageStatus snapshot={snapshot()} loading={false} stale={false} {...props} />, host);
     });
   };
 
   const notes = (): string[] =>
-    [...host.querySelectorAll(".usage-status__note")].map(
-      (node) => node.textContent ?? "",
-    );
+    [...host.querySelectorAll(".usage-status__note")].map((node) => node.textContent ?? "");
 
   it("says nothing when both sources are fine and nothing was skipped", () => {
     mount();
@@ -82,16 +67,10 @@ describe("UsageStatus", () => {
       }),
     });
 
-    const unreadable = host.querySelector(
-      ".usage-status__note--error",
-    ) as HTMLElement;
-    const missing = host.querySelector(
-      ".usage-status__note--faint",
-    ) as HTMLElement;
+    const unreadable = host.querySelector(".usage-status__note--error") as HTMLElement;
+    const missing = host.querySelector(".usage-status__note--faint") as HTMLElement;
 
-    expect(unreadable.textContent).toBe(
-      "couldn't read Claude Code history on this machine",
-    );
+    expect(unreadable.textContent).toBe("couldn't read Claude Code history on this machine");
     expect(missing.textContent).toBe("Codex: no data yet");
     // An error must never be dressed as an absence, or the reverse.
     expect(unreadable.textContent).not.toContain("no data yet");

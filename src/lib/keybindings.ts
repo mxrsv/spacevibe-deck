@@ -122,9 +122,7 @@ export function chordOf(binding: KeyBinding): Chord {
 export function bindingOf(chord: Chord, action: ActionId): KeyBinding {
   const { meta, shift, alt, ctrl } = chord;
   const modifiers = { meta, shift, alt, ctrl, action };
-  return "code" in chord
-    ? { ...modifiers, code: chord.code }
-    : { ...modifiers, key: chord.key };
+  return "code" in chord ? { ...modifiers, code: chord.code } : { ...modifiers, key: chord.key };
 }
 
 /**
@@ -272,13 +270,8 @@ export function chordConflicts(
 }
 
 /** Chords bound to `action` in `keymap`, in keymap order. */
-export function chordsForAction(
-  keymap: readonly KeyBinding[],
-  action: ActionId,
-): readonly Chord[] {
-  return keymap
-    .filter((binding) => binding.action === action)
-    .map((binding) => chordOf(binding));
+export function chordsForAction(keymap: readonly KeyBinding[], action: ActionId): readonly Chord[] {
+  return keymap.filter((binding) => binding.action === action).map((binding) => chordOf(binding));
 }
 
 /**
@@ -337,8 +330,7 @@ export function isAdmissibleChord(chord: Chord): boolean {
   if (FUNCTION_KEY.test(key)) {
     return true;
   }
-  const primary =
-    chord.meta === true || chord.ctrl === true || chord.alt === true;
+  const primary = chord.meta === true || chord.ctrl === true || chord.alt === true;
   if (NAVIGATION_KEYS.has(key)) {
     return primary || chord.shift === true;
   }
@@ -406,10 +398,7 @@ export function isOverridden(
   platform: KeymapPlatform,
   action: ActionId,
 ): boolean {
-  return Object.prototype.hasOwnProperty.call(
-    overrideFor(overrides, platform),
-    action,
-  );
+  return Object.prototype.hasOwnProperty.call(overrideFor(overrides, platform), action);
 }
 
 /**

@@ -38,9 +38,7 @@ export function UsageNav() {
     }
     event.preventDefault();
     const length = USAGE_VIEWS.length;
-    const currentIndex = USAGE_VIEWS.findIndex(
-      (view) => view.id === activeUsageView.value,
-    );
+    const currentIndex = USAGE_VIEWS.findIndex((view) => view.id === activeUsageView.value);
     const from = currentIndex === -1 ? 0 : currentIndex;
     selectView((from + step + length) % length);
   };

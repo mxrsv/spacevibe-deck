@@ -48,8 +48,7 @@ describe("SettingsNav", () => {
     });
   };
 
-  const getTabs = (): HTMLButtonElement[] =>
-    Array.from(host.querySelectorAll('[role="tab"]'));
+  const getTabs = (): HTMLButtonElement[] => Array.from(host.querySelectorAll('[role="tab"]'));
 
   it("renders every registered category as a tab, in registry order", () => {
     mount();
@@ -107,9 +106,7 @@ describe("SettingsNav", () => {
     tabs[0].focus();
 
     act(() => {
-      tabs[0].dispatchEvent(
-        new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }),
-      );
+      tabs[0].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
     });
 
     expect(activeCategory.value).toBe("reset");

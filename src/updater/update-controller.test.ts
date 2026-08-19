@@ -53,10 +53,7 @@ describe("createUpdateController", () => {
 
   it("checks again on manual request after the startup check found no update", async () => {
     const update = pending();
-    const check = vi
-      .fn()
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(update);
+    const check = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(update);
     const { controller } = setup(null, { check });
 
     await controller.start();
@@ -85,10 +82,7 @@ describe("createUpdateController", () => {
     });
     await failure.controller.start();
     expect(failure.controller.view.value.phase).toBe("hidden");
-    expect(failure.deps.report).toHaveBeenCalledWith(
-      "Update check failed",
-      expect.any(Error),
-    );
+    expect(failure.deps.report).toHaveBeenCalledWith("Update check failed", expect.any(Error));
   });
 
   it("reports a host with no updater as unsupported, not as up to date", async () => {
@@ -197,9 +191,7 @@ describe("createUpdateController", () => {
 
   it("drops re-entrant downloads", async () => {
     let finish!: () => void;
-    const download = vi.fn(
-      () => new Promise<void>((resolve) => (finish = resolve)),
-    );
+    const download = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
     const { controller } = setup(pending({ download }));
     await controller.start();
 
@@ -229,8 +221,7 @@ describe("install breadcrumb", () => {
     expect(deps.recordAttempt).toHaveBeenCalledWith(update!.version);
     // Ordering is the whole point: on Windows the installer exits this
     // process, so anything after install() may never run.
-    const recordOrder = vi.mocked(deps.recordAttempt).mock
-      .invocationCallOrder[0];
+    const recordOrder = vi.mocked(deps.recordAttempt).mock.invocationCallOrder[0];
     const installOrder = vi.mocked(update!.install).mock.invocationCallOrder[0];
     expect(recordOrder).toBeLessThan(installOrder);
   });

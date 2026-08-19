@@ -9,10 +9,7 @@ import {
   pickNormalizationWinner,
 } from "./search-bar";
 import type { Pane, SelectionSnapshot } from "./pane";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 
 vi.mock("../settings/settings-store", () => ({
   settings: {
@@ -54,23 +51,17 @@ describe("pickNormalizationWinner", () => {
 
   it("for next, prefers the non-wrapped hit when the other wrapped", () => {
     const origin = at(5, 0);
-    expect(pickNormalizationWinner("next", origin, at(1, 0), at(8, 0))).toBe(
-      "nfd",
-    );
+    expect(pickNormalizationWinner("next", origin, at(1, 0), at(8, 0))).toBe("nfd");
   });
 
   it("for next, prefers the earlier hit when neither wrapped", () => {
     const origin = at(5, 0);
-    expect(pickNormalizationWinner("next", origin, at(10, 0), at(8, 0))).toBe(
-      "nfd",
-    );
+    expect(pickNormalizationWinner("next", origin, at(10, 0), at(8, 0))).toBe("nfd");
   });
 
   it("for previous, prefers the later hit when neither wrapped", () => {
     const origin = at(5, 0);
-    expect(
-      pickNormalizationWinner("previous", origin, at(2, 0), at(4, 0)),
-    ).toBe("nfd");
+    expect(pickNormalizationWinner("previous", origin, at(2, 0), at(4, 0))).toBe("nfd");
   });
 });
 
@@ -116,9 +107,7 @@ describe("search term normalization", () => {
           }
           return hit;
         }),
-        findPrevious: vi.fn(
-          (term: string) => options?.findPrevious?.(term) ?? false,
-        ),
+        findPrevious: vi.fn((term: string) => options?.findPrevious?.(term) ?? false),
         clearDecorations: vi.fn(),
         onDidChangeResults: vi.fn(() => ({ dispose: vi.fn() })),
       },
@@ -132,12 +121,8 @@ describe("search term normalization", () => {
     return {
       input: host.querySelector("input") as HTMLInputElement,
       findNext: pane.search.findNext as unknown as ReturnType<typeof vi.fn>,
-      findPrevious: pane.search.findPrevious as unknown as ReturnType<
-        typeof vi.fn
-      >,
-      restoreSelection: pane.restoreSelection as unknown as ReturnType<
-        typeof vi.fn
-      >,
+      findPrevious: pane.search.findPrevious as unknown as ReturnType<typeof vi.fn>,
+      restoreSelection: pane.restoreSelection as unknown as ReturnType<typeof vi.fn>,
       nextButton: host.querySelectorAll("button")[1] as HTMLButtonElement,
     };
   }
@@ -197,9 +182,7 @@ describe("search term normalization", () => {
     expect(nfdCalls.length).toBeGreaterThanOrEqual(2);
     // Origin was restored before the second NFD probe (not left cleared).
     expect(bar.restoreSelection).toHaveBeenCalled();
-    expect(bar.restoreSelection.mock.calls.some(([s]) => s === null)).toBe(
-      true,
-    );
+    expect(bar.restoreSelection.mock.calls.some(([s]) => s === null)).toBe(true);
   });
 
   it("probes NFD even when NFC already matched (mixed buffer)", () => {
@@ -240,9 +223,7 @@ function fakeSearchPane(id: number): Pane {
 }
 
 function typeQuery(pane: Pane, value: string): void {
-  const input = pane.element.querySelector(
-    ".search-bar__input",
-  ) as HTMLInputElement;
+  const input = pane.element.querySelector(".search-bar__input") as HTMLInputElement;
   input.value = value;
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
@@ -253,9 +234,9 @@ describe("the search bar's own controls", () => {
     openSearchBar(pane);
 
     const named = (name: string): HTMLButtonElement => {
-      const found = Array.from(
-        pane.element.querySelectorAll<HTMLButtonElement>("button"),
-      ).find((button) => button.getAttribute("aria-label") === name);
+      const found = Array.from(pane.element.querySelectorAll<HTMLButtonElement>("button")).find(
+        (button) => button.getAttribute("aria-label") === name,
+      );
       if (found === undefined) {
         throw new Error(`no button named ${name}`);
       }
@@ -264,12 +245,8 @@ describe("the search bar's own controls", () => {
 
     // Named explicitly, not by their text: once the glyph is an aria-hidden
     // icon, the only name left would be the tooltip.
-    expect(
-      named("Previous match").querySelector(".deck-icon--caret-left"),
-    ).not.toBeNull();
-    expect(
-      named("Next match").querySelector(".deck-icon--caret-right"),
-    ).not.toBeNull();
+    expect(named("Previous match").querySelector(".deck-icon--caret-left")).not.toBeNull();
+    expect(named("Next match").querySelector(".deck-icon--caret-right")).not.toBeNull();
     expect(named("Close").querySelector(".deck-icon--x")).not.toBeNull();
     expect(named("Close").textContent).toBe("");
   });
@@ -296,7 +273,9 @@ describe("advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or with
     closeSearchBar();
   });
 
-  it("nothing has ever been searched: silent no-op", async () => {
+  // `vi.resetModules()` + a fresh dynamic import re-transforms the module on
+  // demand; under full-suite parallel load that can exceed the 5 s default.
+  it("nothing has ever been searched: silent no-op", { timeout: 15_000 }, async () => {
     // `lastQuery` is module-level state and earlier describe blocks above
     // (real `openSearchBar` + typing) already set it — reset the module so
     // this test genuinely observes a pane that has never been searched,
@@ -318,10 +297,7 @@ describe("advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or with
 
     advanceSearch(pane, "next");
 
-    expect(pane.search.findNext).toHaveBeenCalledWith(
-      "needle",
-      expect.anything(),
-    );
+    expect(pane.search.findNext).toHaveBeenCalledWith("needle", expect.anything());
   });
 
   it("bar open on this pane but the input is empty: no-op, matching the bar's own Enter handling", () => {
@@ -342,10 +318,7 @@ describe("advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or with
 
     advanceSearch(pane, "next");
 
-    expect(pane.search.findNext).toHaveBeenCalledWith(
-      "needle",
-      expect.anything(),
-    );
+    expect(pane.search.findNext).toHaveBeenCalledWith("needle", expect.anything());
     expect(pane.element.querySelector(".search-bar__input")).toBeNull();
   });
 
@@ -357,10 +330,7 @@ describe("advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or with
 
     advanceSearch(pane, "previous");
 
-    expect(pane.search.findPrevious).toHaveBeenCalledWith(
-      "needle",
-      expect.anything(),
-    );
+    expect(pane.search.findPrevious).toHaveBeenCalledWith("needle", expect.anything());
   });
 
   it("the remembered query is app-wide, not tied to the pane it was typed on: a different (never-searched) active pane still gets it", () => {
@@ -372,10 +342,7 @@ describe("advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or with
     const paneB = fakeSearchPane(2);
     advanceSearch(paneB, "next");
 
-    expect(paneB.search.findNext).toHaveBeenCalledWith(
-      "needle",
-      expect.anything(),
-    );
+    expect(paneB.search.findNext).toHaveBeenCalledWith("needle", expect.anything());
   });
 
   it("bar still open on a DIFFERENT pane: the active pane's advanceSearch uses the remembered query, not the other pane's live (possibly unsaved) input", () => {
@@ -387,10 +354,7 @@ describe("advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or with
     const paneB = fakeSearchPane(2);
     advanceSearch(paneB, "next");
 
-    expect(paneB.search.findNext).toHaveBeenCalledWith(
-      "needle",
-      expect.anything(),
-    );
+    expect(paneB.search.findNext).toHaveBeenCalledWith("needle", expect.anything());
     expect(paneA.search.findNext).not.toHaveBeenCalled(); // pane A's own bar/search untouched
   });
 
@@ -403,10 +367,7 @@ describe("advanceSearch (⌘G / ⌘⇧G — repeat the last search, with or with
     const paneB = fakeSearchPane(2);
     advanceSearch(paneB, "next");
 
-    expect(paneB.search.findNext).toHaveBeenCalledWith(
-      "needle",
-      expect.anything(),
-    );
+    expect(paneB.search.findNext).toHaveBeenCalledWith("needle", expect.anything());
   });
 });
 
@@ -422,28 +383,19 @@ describe("⌘G / ⌘⇧G while the bar's own input has focus", () => {
     const pane = fakeSearchPane(1);
     openSearchBar(pane);
     typeQuery(pane, "needle");
-    const input = pane.element.querySelector(
-      ".search-bar__input",
-    ) as HTMLInputElement;
+    const input = pane.element.querySelector(".search-bar__input") as HTMLInputElement;
     (pane.search.findNext as ReturnType<typeof vi.fn>).mockClear();
 
-    input.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "g", metaKey: true, bubbles: true }),
-    );
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "g", metaKey: true, bubbles: true }));
 
-    expect(pane.search.findNext).toHaveBeenCalledWith(
-      "needle",
-      expect.anything(),
-    );
+    expect(pane.search.findNext).toHaveBeenCalledWith("needle", expect.anything());
   });
 
   it("⌘⇧G in the input calls findPrevious", () => {
     const pane = fakeSearchPane(1);
     openSearchBar(pane);
     typeQuery(pane, "needle");
-    const input = pane.element.querySelector(
-      ".search-bar__input",
-    ) as HTMLInputElement;
+    const input = pane.element.querySelector(".search-bar__input") as HTMLInputElement;
 
     input.dispatchEvent(
       new KeyboardEvent("keydown", {
@@ -454,10 +406,7 @@ describe("⌘G / ⌘⇧G while the bar's own input has focus", () => {
       }),
     );
 
-    expect(pane.search.findPrevious).toHaveBeenCalledWith(
-      "needle",
-      expect.anything(),
-    );
+    expect(pane.search.findPrevious).toHaveBeenCalledWith("needle", expect.anything());
   });
 });
 
@@ -475,9 +424,7 @@ describe("Windows search shortcuts while the bar input has focus", () => {
     const pane = fakeSearchPane(1);
     openSearchBar(pane);
     typeQuery(pane, "needle");
-    const input = pane.element.querySelector(
-      ".search-bar__input",
-    ) as HTMLInputElement;
+    const input = pane.element.querySelector(".search-bar__input") as HTMLInputElement;
     const select = vi.spyOn(input, "select");
     (pane.search.findNext as ReturnType<typeof vi.fn>).mockClear();
 
@@ -489,9 +436,7 @@ describe("Windows search shortcuts while the bar input has focus", () => {
         bubbles: true,
       }),
     );
-    input.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "F3", bubbles: true }),
-    );
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "F3", bubbles: true }));
     input.dispatchEvent(
       new KeyboardEvent("keydown", {
         key: "F3",
@@ -501,13 +446,7 @@ describe("Windows search shortcuts while the bar input has focus", () => {
     );
 
     expect(select).toHaveBeenCalledOnce();
-    expect(pane.search.findNext).toHaveBeenCalledWith(
-      "needle",
-      expect.anything(),
-    );
-    expect(pane.search.findPrevious).toHaveBeenCalledWith(
-      "needle",
-      expect.anything(),
-    );
+    expect(pane.search.findNext).toHaveBeenCalledWith("needle", expect.anything());
+    expect(pane.search.findPrevious).toHaveBeenCalledWith("needle", expect.anything());
   });
 });

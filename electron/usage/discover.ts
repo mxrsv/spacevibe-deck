@@ -2,14 +2,7 @@
  * Where the transcripts are, and which session each file belongs to.
  * Port of `src-tauri/src/usage/discover.rs`.
  */
-import {
-  closeSync,
-  lstatSync,
-  openSync,
-  readSync,
-  readdirSync,
-  statSync,
-} from "node:fs";
+import { closeSync, lstatSync, openSync, readSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import {
   CLAUDE_DIR,
@@ -87,8 +80,7 @@ export function identityFromHead(head: Buffer): string {
         ? (node.payload as Record<string, unknown>)
         : undefined;
     const named = [node.sessionId, payload?.id, payload?.session_id].find(
-      (candidate): candidate is string =>
-        typeof candidate === "string" && candidate !== "",
+      (candidate): candidate is string => typeof candidate === "string" && candidate !== "",
     );
     if (named !== undefined) {
       return named;
@@ -137,11 +129,7 @@ function entryKind(dir: string, name: string): { file: boolean; dir: boolean } {
  * Regular, non-symlinked entries of `dir` matching `prefix` (when given) and
  * the transcript extension. Returns false when the directory is unlistable.
  */
-function pushTranscripts(
-  dir: string,
-  prefix: string | null,
-  out: string[],
-): boolean {
+function pushTranscripts(dir: string, prefix: string | null, out: string[]): boolean {
   let names: string[];
   try {
     names = readdirSync(dir);
@@ -171,9 +159,7 @@ function childDirs(dir: string): string[] {
   } catch {
     return [];
   }
-  const dirs = names
-    .filter((name) => entryKind(dir, name).dir)
-    .map((name) => path.join(dir, name));
+  const dirs = names.filter((name) => entryKind(dir, name).dir).map((name) => path.join(dir, name));
   dirs.sort();
   return dirs;
 }
@@ -187,12 +173,14 @@ function exists(target: string): boolean {
 }
 
 /**
- * `<home>/.claude/projects/<project>/<session>.jsonl` and
- * `<home>/.claude/projects/<project>/<session>/subagents/<agent>.jsonl`.
+ * `<home>/.claude/projects/<project>/<session>.jsonl` and everything under
+ * `<home>/.claude/projects/<project>/<session>/subagents/`, at any depth up
+ * to the cap.
  *
  * Both globs, not just the first: subagent transcripts are ~47% of the dev
  * machine's Claude history by size, and omitting them undercounts by almost
- * half.
+ * half. Recursive because `subagents/workflows/<id>/` nests one level deeper
+ * than the flat `subagents/<agent>.jsonl` the first draft assumed.
  */
 export function discoverClaude(home: string): Discovery {
   const root = path.join(home, CLAUDE_DIR, CLAUDE_PROJECTS_DIR);
@@ -213,11 +201,26 @@ export function discoverClaude(home: string): Discovery {
   for (const project of projectDirs) {
     pushTranscripts(project, null, files);
     for (const session of childDirs(project)) {
-      pushTranscripts(path.join(session, CLAUDE_SUBAGENTS_DIR), null, files);
+      walkSubagents(path.join(session, CLAUDE_SUBAGENTS_DIR), 0, files);
     }
   }
   files.sort();
   return { files, state: "present" };
+}
+
+/**
+ * Every transcript under a `subagents/` directory, at any depth up to the
+ * cap. Symlinked directories are never descended (see `entryKind`), so a
+ * loop cannot be built out of them either.
+ */
+function walkSubagents(dir: string, depth: number, out: string[]): void {
+  if (depth > MAX_WALK_DEPTH) {
+    return;
+  }
+  pushTranscripts(dir, null, out);
+  for (const child of childDirs(dir)) {
+    walkSubagents(child, depth + 1, out);
+  }
 }
 
 /**

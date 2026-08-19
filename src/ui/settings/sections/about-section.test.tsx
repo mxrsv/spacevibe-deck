@@ -14,10 +14,7 @@ vi.mock("../../../host/shell-host", () => ({ openUrl }));
 import { AboutSection } from "./about-section";
 import { activeUpdateController } from "../../../updater/active-update-controller";
 import { appVersion } from "../../../updater/app-version";
-import type {
-  UpdateController,
-  UpdateView,
-} from "../../../updater/update-controller";
+import type { UpdateController, UpdateView } from "../../../updater/update-controller";
 
 function controller(view: Partial<UpdateView> = {}): UpdateController {
   return {
@@ -134,9 +131,7 @@ describe("AboutSection", () => {
 
   it("says something when the check fails", async () => {
     const updater = controller();
-    (updater.checkNow as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
-      "failed",
-    );
+    (updater.checkNow as unknown as ReturnType<typeof vi.fn>).mockResolvedValue("failed");
     activeUpdateController.value = updater;
     act(() => render(<AboutSection />, host));
 

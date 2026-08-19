@@ -120,11 +120,7 @@ export function createQuitFlow(
     // panes with `fullyNamed: false` — and auto-confirming there kills agents
     // with no prompt. `quit-flow.ts`'s `allIdle` states the rule ("`unknown` is
     // NOT idle") but nothing enforced it on this side.
-    if (
-      request.fullyNamed &&
-      request.busyPanes === 0 &&
-      request.dirtyFiles.length === 0
-    ) {
+    if (request.fullyNamed && request.busyPanes === 0 && request.dirtyFiles.length === 0) {
       await finish(true);
       return;
     }
@@ -186,10 +182,7 @@ export async function installQuitGuard(deps: {
       void flow(request);
     };
   const unlistenQuit = await listen("quit-requested", route(promptQuit));
-  const unlistenClose = await listen(
-    "window:close-requested",
-    route(promptClose),
-  );
+  const unlistenClose = await listen("window:close-requested", route(promptClose));
   return () => {
     unlistenQuit();
     unlistenClose();

@@ -63,12 +63,7 @@ export function dropTargetAt(
   sourceId: number | null,
 ): { id: number; edge: Edge; rect: PaneRect } | null {
   for (const rect of rects) {
-    if (
-      x >= rect.left &&
-      x <= rect.right &&
-      y >= rect.top &&
-      y <= rect.bottom
-    ) {
+    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
       if (rect.id === sourceId) {
         return null; // hovering the source itself — no dock
       }

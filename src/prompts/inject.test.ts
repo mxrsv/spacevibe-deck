@@ -13,9 +13,7 @@ const agentInfo = (patch: Partial<PaneProcessInfo> = {}): PaneProcessInfo => ({
   ...patch,
 });
 
-const idle = (
-  patch: Partial<PaneAttentionSnapshot> = {},
-): PaneAttentionSnapshot => ({
+const idle = (patch: Partial<PaneAttentionSnapshot> = {}): PaneAttentionSnapshot => ({
   phase: "idle",
   attention: "none",
   source: null,
@@ -164,8 +162,6 @@ describe("capturePromptTarget", () => {
   });
 
   it("has no target with no active pane", async () => {
-    await expect(
-      capturePromptTarget(null, createMemoryPtyClient()),
-    ).resolves.toBeNull();
+    await expect(capturePromptTarget(null, createMemoryPtyClient())).resolves.toBeNull();
   });
 });

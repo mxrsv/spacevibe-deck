@@ -40,10 +40,7 @@ function oscIdle(observedAt: number): ActivityTransition {
   };
 }
 
-function fallbackWorking(
-  observedAt: number,
-  evidenceStartedAt: number,
-): ActivityTransition {
+function fallbackWorking(observedAt: number, evidenceStartedAt: number): ActivityTransition {
   return {
     phase: "working",
     source: "output-heuristic",
@@ -54,10 +51,7 @@ function fallbackWorking(
   };
 }
 
-function fallbackIdle(
-  observedAt: number,
-  evidenceStartedAt: number,
-): ActivityTransition {
+function fallbackIdle(observedAt: number, evidenceStartedAt: number): ActivityTransition {
   return {
     phase: "idle",
     source: "output-heuristic",
@@ -274,9 +268,7 @@ describe("AgentAttentionTracker — process gate", () => {
     const { tracker, clock } = setup();
     tracker.noteProcess(1, "zsh", false);
     expect(tracker.noteActivity(1, oscWorking(clock.t, "error", 2))).toBeNull();
-    expect(
-      tracker.noteActivity(1, oscWorking(clock.t, "warning", 4)),
-    ).toBeNull();
+    expect(tracker.noteActivity(1, oscWorking(clock.t, "warning", 4))).toBeNull();
     expect(tracker.snapshot(1)?.attention).toBe("none");
     expect(tracker.snapshot(1)?.phase).toBe("unknown");
   });
@@ -284,9 +276,7 @@ describe("AgentAttentionTracker — process gate", () => {
   it("shell sustained output (fallback) is ignored", () => {
     const { tracker, clock } = setup();
     tracker.noteProcess(1, "zsh", false);
-    expect(
-      tracker.noteActivity(1, fallbackWorking(clock.t, clock.t)),
-    ).toBeNull();
+    expect(tracker.noteActivity(1, fallbackWorking(clock.t, clock.t))).toBeNull();
     expect(tracker.snapshot(1)?.phase).toBe("unknown");
   });
 
@@ -326,9 +316,7 @@ describe("AgentAttentionTracker — process gate", () => {
     const { tracker, clock } = setup();
     tracker.noteProcess(1, "claude", true);
     expect(tracker.noteActivity(1, oscWorking(clock.t))?.phase).toBe("working");
-    expect(tracker.noteSignal(1, requested(clock.t))?.attention).toBe(
-      "requested",
-    );
+    expect(tracker.noteSignal(1, requested(clock.t))?.attention).toBe("requested");
   });
 
   it("working agent → shell emits exactly one inferred completion, then closes the gate", () => {

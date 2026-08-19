@@ -33,14 +33,7 @@ import { join } from "node:path";
  * contains "Window", and a substring test silently dropped exactly the
  * parameter this test exists to check.
  */
-const INJECTED = new Set([
-  "AppHandle",
-  "State",
-  "WebviewWindow",
-  "Window",
-  "Request",
-  "Channel",
-]);
+const INJECTED = new Set(["AppHandle", "State", "WebviewWindow", "Window", "Request", "Channel"]);
 
 /** `State<'_, PtyState>` → `State`; `tauri::AppHandle` → `AppHandle`. */
 function baseType(rustType: string): string {
@@ -64,9 +57,7 @@ function filesUnder(dir: string, extensions: readonly string[]): string[] {
 
 function camelCase(name: string): string {
   const [head, ...rest] = name.split("_");
-  return (
-    head + rest.map((word) => word[0].toUpperCase() + word.slice(1)).join("")
-  );
+  return head + rest.map((word) => word[0].toUpperCase() + word.slice(1)).join("");
 }
 
 /** Command name → the payload keys its Rust signature requires. */
@@ -74,8 +65,7 @@ function rustCommands(): Map<string, string[]> {
   const commands = new Map<string, string[]>();
   for (const file of filesUnder("src-tauri/src", [".rs"])) {
     const source = readFileSync(file, "utf8");
-    const pattern =
-      /#\[tauri::command\][^\n]*\n(?:pub )?(?:async )?fn (\w+)\s*\(([^)]*)\)/g;
+    const pattern = /#\[tauri::command\][^\n]*\n(?:pub )?(?:async )?fn (\w+)\s*\(([^)]*)\)/g;
     for (const match of source.matchAll(pattern)) {
       const [, name, params] = match;
       const keys = params
@@ -104,7 +94,7 @@ function rustCommands(): Map<string, string[]> {
  * as sent is exactly the mistake that would let the bug this file exists for
  * slip through a second time.
  */
-export function topLevelKeys(payload: string): string[] {
+function topLevelKeys(payload: string): string[] {
   const keys = new Set<string>();
   let depth = 0;
   for (let i = 0; i < payload.length; i += 1) {
@@ -168,8 +158,7 @@ function invokeCalls(): InvokeCall[] {
       continue;
     }
     const source = readFileSync(file, "utf8");
-    const pattern =
-      /invoke(?:<[^>]*>)?\(\s*"(\w+)"\s*(?:,\s*(\{[\s\S]*?\})\s*)?\)/g;
+    const pattern = /invoke(?:<[^>]*>)?\(\s*"(\w+)"\s*(?:,\s*(\{[\s\S]*?\})\s*)?\)/g;
     for (const match of source.matchAll(pattern)) {
       const [, command, payload = "{}"] = match;
       calls.push({ command, keys: topLevelKeys(payload), file });
@@ -190,17 +179,13 @@ describe("Tauri IPC contract", () => {
         // `src/` targets a command in this repo, so an unknown name is a typo
         // or a command that was renamed on one side only — silence there is
         // how the whole class of bug hides.
-        violations.push(
-          `${call.command} (${call.file}): no #[tauri::command] with this name`,
-        );
+        violations.push(`${call.command} (${call.file}): no #[tauri::command] with this name`);
         continue;
       }
       if (!registered.has(call.command)) {
         // Declaring a command is not registering it: an entry missing from
         // `generate_handler!` fails at runtime with "command not found".
-        violations.push(
-          `${call.command} (${call.file}): not listed in generate_handler!`,
-        );
+        violations.push(`${call.command} (${call.file}): not listed in generate_handler!`);
       }
       const missing = required.filter((key) => !call.keys.includes(key));
       if (missing.length > 0) {
@@ -226,9 +211,7 @@ describe("Tauri IPC contract", () => {
 
     const calls = invokeCalls();
     expect(calls.length).toBeGreaterThan(20);
-    expect(calls.some((call) => call.command === "open_pane_window")).toBe(
-      true,
-    );
+    expect(calls.some((call) => call.command === "open_pane_window")).toBe(true);
   });
 
   it("counts only top-level payload keys", () => {
@@ -239,8 +222,8 @@ describe("Tauri IPC contract", () => {
     expect(topLevelKeys("{ token, payload }")).toEqual(["payload", "token"]);
     expect(topLevelKeys("{ path: imagePath }")).toEqual(["path"]);
     expect(topLevelKeys("{ args: { token, screenX } }")).toEqual(["args"]);
-    expect(
-      topLevelKeys("{ token, ...(screen ? { screenX: a, screenY: b } : {}) }"),
-    ).toEqual(["token"]);
+    expect(topLevelKeys("{ token, ...(screen ? { screenX: a, screenY: b } : {}) }")).toEqual([
+      "token",
+    ]);
   });
 });

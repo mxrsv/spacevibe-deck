@@ -25,9 +25,7 @@ class FakeUpdater implements AutoUpdaterLike {
   checkResult: UpdateCheckLike | null = null;
   checkError: Error | null = null;
   downloadCalls = 0;
-  quitAndInstallCalls: Array<
-    readonly [boolean | undefined, boolean | undefined]
-  > = [];
+  quitAndInstallCalls: Array<readonly [boolean | undefined, boolean | undefined]> = [];
   readonly order: string[] = [];
   private readonly handlers = new Map<string, Handler[]>();
   private downloadSettle: {
@@ -209,9 +207,7 @@ describe("download", () => {
   it("refuses to download before a check found something", async () => {
     const { lifecycle } = setup();
 
-    await expect(lifecycle.download()).rejects.toThrow(
-      "No update has been found",
-    );
+    await expect(lifecycle.download()).rejects.toThrow("No update has been found");
   });
 
   it("resolves when update-downloaded arrives", async () => {
@@ -266,10 +262,7 @@ describe("download", () => {
     await Promise.resolve();
 
     expect(settled).not.toHaveBeenCalled();
-    expect(report).toHaveBeenCalledWith(
-      "Updater reported an error",
-      expect.any(Error),
-    );
+    expect(report).toHaveBeenCalledWith("Updater reported an error", expect.any(Error));
     updater.emit("update-downloaded");
     await expect(downloading).resolves.toBeUndefined();
   });
@@ -286,9 +279,7 @@ describe("download", () => {
     };
     await lifecycle.check();
 
-    await expect(lifecycle.download()).rejects.toThrow(
-      "already downloading 0.13.0",
-    );
+    await expect(lifecycle.download()).rejects.toThrow("already downloading 0.13.0");
     updater.emit("update-downloaded");
     await first;
   });
@@ -310,9 +301,7 @@ describe("download", () => {
     updater.emit("update-downloaded");
     await downloading;
 
-    await expect(lifecycle.install()).rejects.toThrow(
-      "has not finished downloading",
-    );
+    await expect(lifecycle.install()).rejects.toThrow("has not finished downloading");
     expect(updater.quitAndInstallCalls).toEqual([]);
   });
 
@@ -368,9 +357,7 @@ describe("install", () => {
     updater.checkResult = AVAILABLE;
     await lifecycle.check();
 
-    await expect(lifecycle.install()).rejects.toThrow(
-      "has not finished downloading",
-    );
+    await expect(lifecycle.install()).rejects.toThrow("has not finished downloading");
     expect(updater.quitAndInstallCalls).toEqual([]);
   });
 
@@ -451,10 +438,7 @@ describe("install", () => {
 
     expect(settled).not.toHaveBeenCalled();
     expect(lifecycle.isInstalling()).toBe(true);
-    expect(report).toHaveBeenCalledWith(
-      "Updater reported an error",
-      expect.any(Error),
-    );
+    expect(report).toHaveBeenCalledWith("Updater reported an error", expect.any(Error));
   });
 
   it("rejects when the handover is refused on the error channel, and stays retryable", async () => {
@@ -465,9 +449,7 @@ describe("install", () => {
       updater.emit("error", new Error("No update filepath provided"));
     };
 
-    await expect(lifecycle.install()).rejects.toThrow(
-      "No update filepath provided",
-    );
+    await expect(lifecycle.install()).rejects.toThrow("No update filepath provided");
     expect(lifecycle.isInstalling()).toBe(false);
   });
 
@@ -498,9 +480,6 @@ describe("idle errors", () => {
 
     updater.emit("error", new Error("feed unreachable"));
 
-    expect(report).toHaveBeenCalledWith(
-      "Updater reported an error",
-      expect.any(Error),
-    );
+    expect(report).toHaveBeenCalledWith("Updater reported an error", expect.any(Error));
   });
 });

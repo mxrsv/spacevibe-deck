@@ -51,17 +51,13 @@ function MockNode({ node, path, model }: MockNodeProps) {
   const row = node.dir === "row";
   function startDrag(event: PointerEvent): void {
     event.preventDefault();
-    const box = (
-      event.currentTarget as HTMLElement
-    ).parentElement?.getBoundingClientRect();
+    const box = (event.currentTarget as HTMLElement).parentElement?.getBoundingClientRect();
     if (!box) {
       return;
     }
     const { left, top, width, height } = box;
     function onMove(move: PointerEvent): void {
-      const ratio = row
-        ? (move.clientX - left) / width
-        : (move.clientY - top) / height;
+      const ratio = row ? (move.clientX - left) / width : (move.clientY - top) / height;
       model.value = setMockRatio(model.value, path, ratio);
     }
     function onUp(): void {
@@ -76,10 +72,7 @@ function MockNode({ node, path, model }: MockNodeProps) {
       <div class="mock-branch" style={{ flex: node.ratio }}>
         <MockNode node={node.a} path={[...path, "a"]} model={model} />
       </div>
-      <div
-        class={`mock-divider ${row ? "is-row" : "is-column"}`}
-        onPointerDown={startDrag}
-      />
+      <div class={`mock-divider ${row ? "is-row" : "is-column"}`} onPointerDown={startDrag} />
       <div class="mock-branch" style={{ flex: 1 - node.ratio }}>
         <MockNode node={node.b} path={[...path, "b"]} model={model} />
       </div>
@@ -222,11 +215,7 @@ export function PresetEditor({ onCancel, onCreate }: PresetEditorProps) {
         </span>
         <div class="preset-editor__actions">
           <button onClick={onCancel}>Cancel</button>
-          <button
-            class="is-primary"
-            disabled={name.value.trim() === ""}
-            onClick={confirmCreate}
-          >
+          <button class="is-primary" disabled={name.value.trim() === ""} onClick={confirmCreate}>
             Create tab
           </button>
         </div>

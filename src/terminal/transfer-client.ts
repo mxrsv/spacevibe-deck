@@ -1,5 +1,4 @@
-import { invoke } from "../host/bridge";
-import { listen, type UnlistenFn } from "../host/bridge";
+import { invoke, listen, type UnlistenFn } from "../host/bridge";
 import type { TabDotColor } from "../lib/tab-colors";
 
 /**
@@ -27,12 +26,10 @@ export interface AdoptionPayload {
 }
 
 export type TransferOutcome =
-  | { readonly kind: "committed" }
-  | { readonly kind: "aborted"; readonly reason: string };
+  { readonly kind: "committed" } | { readonly kind: "aborted"; readonly reason: string };
 
 export type BootMode =
-  | { readonly kind: "normal" }
-  | { readonly kind: "adopt"; readonly token: string };
+  { readonly kind: "normal" } | { readonly kind: "adopt"; readonly token: string };
 
 const SETTLED_EVENT = "transfer:settled";
 const OFFER_EVENT = "transfer:offer";
@@ -77,9 +74,7 @@ export interface TransferClient {
    * to the FOCUSED window with the chosen destination label; this window is
    * then the source of the transfer.
    */
-  listenMoveToWindow(
-    handler: (targetLabel: string) => void,
-  ): Promise<UnlistenFn>;
+  listenMoveToWindow(handler: (targetLabel: string) => void): Promise<UnlistenFn>;
   windowBootMode(): Promise<BootMode>;
 }
 
@@ -337,5 +332,4 @@ export function createMemoryTransferClient(
 }
 
 /** Shared production client — factories accept an override for tests. */
-export const defaultTransferClient: TransferClient =
-  createTauriTransferClient();
+export const defaultTransferClient: TransferClient = createTauriTransferClient();

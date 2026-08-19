@@ -1,16 +1,10 @@
 import { describe, expect, it } from "vitest";
-import {
-  rangeSinceMs,
-  startOfLocalDay,
-  USAGE_RANGES,
-  type UsageRangeId,
-} from "./usage-ranges";
+import { rangeSinceMs, startOfLocalDay, USAGE_RANGES, type UsageRangeId } from "./usage-ranges";
 
 const NOW = new Date("2026-08-10T15:00:00Z").getTime();
 const DAY = 24 * 60 * 60 * 1000;
 
-const rangeById = (id: UsageRangeId) =>
-  USAGE_RANGES.find((range) => range.id === id)!;
+const rangeById = (id: UsageRangeId) => USAGE_RANGES.find((range) => range.id === id)!;
 
 describe("startOfLocalDay", () => {
   it("returns local midnight, not UTC midnight", () => {
@@ -29,18 +23,8 @@ describe("startOfLocalDay", () => {
 
 describe("USAGE_RANGES", () => {
   it("offers today, 7 days, 30 days and all, in that order", () => {
-    expect(USAGE_RANGES.map((range) => range.id)).toEqual([
-      "today",
-      "7d",
-      "30d",
-      "all",
-    ]);
-    expect(USAGE_RANGES.map((range) => range.label)).toEqual([
-      "Today",
-      "7 days",
-      "30 days",
-      "All",
-    ]);
+    expect(USAGE_RANGES.map((range) => range.id)).toEqual(["today", "7d", "30d", "all"]);
+    expect(USAGE_RANGES.map((range) => range.label)).toEqual(["Today", "7 days", "30 days", "All"]);
   });
 
   it("labels every option sentence-case, never uppercase (DL-16.7, DL-4.3, DL-4.4)", () => {
@@ -53,12 +37,8 @@ describe("USAGE_RANGES", () => {
   it("names the period in its own empty message, never just 'nothing'", () => {
     // DL-16.7: an empty period says WHICH period is empty.
     expect(rangeById("today").emptyLabel).toBe("No usage today");
-    expect(rangeById("7d").emptyLabel).toBe(
-      "No usage in the last 7 local days",
-    );
-    expect(rangeById("30d").emptyLabel).toBe(
-      "No usage in the last 30 local days",
-    );
+    expect(rangeById("7d").emptyLabel).toBe("No usage in the last 7 local days");
+    expect(rangeById("30d").emptyLabel).toBe("No usage in the last 30 local days");
     expect(rangeById("all").emptyLabel).toBe("No data yet");
   });
 });
@@ -68,12 +48,8 @@ describe("rangeSinceMs", () => {
     // "7 days" must agree with the daily view one rail item away, which is
     // bucketed by local calendar day.
     expect(rangeSinceMs(rangeById("today"), NOW)).toBe(startOfLocalDay(NOW));
-    expect(rangeSinceMs(rangeById("7d"), NOW)).toBe(
-      startOfLocalDay(NOW - 6 * DAY),
-    );
-    expect(rangeSinceMs(rangeById("30d"), NOW)).toBe(
-      startOfLocalDay(NOW - 29 * DAY),
-    );
+    expect(rangeSinceMs(rangeById("7d"), NOW)).toBe(startOfLocalDay(NOW - 6 * DAY));
+    expect(rangeSinceMs(rangeById("30d"), NOW)).toBe(startOfLocalDay(NOW - 29 * DAY));
   });
 
   it("returns null for the whole recorded history", () => {

@@ -33,11 +33,7 @@ export function StatusBar() {
         <span class="status__seg">
           {fileStatus.relativePath}
           {fileDirty && (
-            <span
-              class="status__dirty-dot"
-              aria-hidden="true"
-              title="Unsaved changes"
-            />
+            <span class="status__dirty-dot" aria-hidden="true" title="Unsaved changes" />
           )}
         </span>
       ) : (

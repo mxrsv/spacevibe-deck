@@ -39,20 +39,13 @@ export function UsageRangeSelector() {
     }
     event.preventDefault();
     const length = USAGE_RANGES.length;
-    const currentIndex = USAGE_RANGES.findIndex(
-      (range) => range.id === activeUsageRange.value,
-    );
+    const currentIndex = USAGE_RANGES.findIndex((range) => range.id === activeUsageRange.value);
     const from = currentIndex === -1 ? 0 : currentIndex;
     selectRange((from + step + length) % length);
   };
 
   return (
-    <div
-      class="usage-range"
-      role="tablist"
-      aria-label="Cost range"
-      onKeyDown={handleKeyDown}
-    >
+    <div class="usage-range" role="tablist" aria-label="Cost range" onKeyDown={handleKeyDown}>
       {USAGE_RANGES.map((range, index) => {
         const isActive = range.id === activeUsageRange.value;
         return (

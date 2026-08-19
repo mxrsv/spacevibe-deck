@@ -26,9 +26,7 @@ describe("SidebarToggle", () => {
   }
 
   it("offers to collapse an expanded sidebar", () => {
-    act(() =>
-      render(<SidebarToggle collapsed={false} onToggle={vi.fn()} />, host),
-    );
+    act(() => render(<SidebarToggle collapsed={false} onToggle={vi.fn()} />, host));
 
     const button = control();
     expect(button.getAttribute("aria-label")).toBe("Collapse the sidebar");
@@ -55,9 +53,7 @@ describe("SidebarToggle", () => {
 
   it("reports a click and keeps no state of its own", () => {
     const onToggle = vi.fn();
-    act(() =>
-      render(<SidebarToggle collapsed={false} onToggle={onToggle} />, host),
-    );
+    act(() => render(<SidebarToggle collapsed={false} onToggle={onToggle} />, host));
 
     act(() => {
       control().click();

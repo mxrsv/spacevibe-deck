@@ -91,9 +91,7 @@ export function AppearanceSection() {
         label="Show status bar"
         desc="Branch, path and window readout along the bottom"
         checked={current.showStatusBar}
-        onToggle={() =>
-          updateSettings({ showStatusBar: !current.showStatusBar })
-        }
+        onToggle={() => updateSettings({ showStatusBar: !current.showStatusBar })}
       />
       <SidebarBannerSettings />
     </>

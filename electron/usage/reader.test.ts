@@ -1,8 +1,7 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, openSync, closeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { openSync, closeSync } from "node:fs";
 import {
   LineReader,
   MAX_LINE_BYTES,
@@ -91,10 +90,7 @@ describe("LineReader", () => {
 
   it("keeps an oversized line spanning several buffer fills as one event", () => {
     const bufferBytes = 64 * 1024;
-    const long = Buffer.concat([
-      Buffer.alloc(bufferBytes + 500, "x"),
-      Buffer.from("\nkept\n"),
-    ]);
+    const long = Buffer.concat([Buffer.alloc(bufferBytes + 500, "x"), Buffer.from("\nkept\n")]);
     const dir = mkdtempSync(path.join(tmpdir(), "usage-reader-"));
     temps.push(dir);
     const file = path.join(dir, "lines");
@@ -150,9 +146,7 @@ describe("parseRfc3339Ms", () => {
   });
 
   it("truncates fractional seconds past milliseconds and pads short ones", () => {
-    expect(parseRfc3339Ms("2026-08-10T04:45:59.3589999Z")).toBe(
-      1_786_337_159_358,
-    );
+    expect(parseRfc3339Ms("2026-08-10T04:45:59.3589999Z")).toBe(1_786_337_159_358);
     expect(parseRfc3339Ms("2026-08-10T04:45:59.5Z")).toBe(1_786_337_159_500);
   });
 

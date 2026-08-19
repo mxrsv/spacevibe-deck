@@ -11,26 +11,14 @@ import {
   WINDOW_CLOSE_COPY,
   type ConfirmCopy,
 } from "../terminal/close-guard";
-import {
-  flushSettingsSave,
-  initSettings,
-  settingsLoadState,
-} from "../settings/settings-store";
+import { flushSettingsSave, initSettings, settingsLoadState } from "../settings/settings-store";
 import { defaultPtyClient } from "../terminal/pty-client";
-import {
-  detectedAgents,
-  ensureAgentsDetected,
-} from "../terminal/agent-detection-store";
+import { detectedAgents, ensureAgentsDetected } from "../terminal/agent-detection-store";
 import type { BootMode } from "../terminal/transfer-client";
 import { applyThemeVars } from "../lib/theme-vars";
 import { resolveCwds, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
-import {
-  openDockTab,
-  revealDockTab,
-  settings,
-  updateSettings,
-} from "../settings/settings-store";
+import { openDockTab, revealDockTab, settings, updateSettings } from "../settings/settings-store";
 import type { DockTab } from "../settings/settings-schema";
 import { agentProcessMatchers, probeNames } from "../lib/agent-catalog";
 import { resolveTheme } from "../settings/themes";
@@ -38,15 +26,8 @@ import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
 import { pingPane } from "../terminal/pane-ping";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
-import {
-  markLastUsed,
-  presetsData,
-  savePreset,
-} from "../presets/presets-store";
-import {
-  recordWorkspaceOpen,
-  removeWorkspaceRecents,
-} from "../open-board/workspaces-store";
+import { markLastUsed, presetsData, savePreset } from "../presets/presets-store";
+import { recordWorkspaceOpen, removeWorkspaceRecents } from "../open-board/workspaces-store";
 import type { AgentChoice } from "../lib/workspace-recents";
 import {
   agentQuickPickerOpen,
@@ -60,11 +41,7 @@ import {
   saveDialogOpen,
   settingsOpen,
 } from "../chrome/events";
-import {
-  decideLinkTarget,
-  externalAppLabel,
-  resolveExternalApp,
-} from "../lib/link-target";
+import { decideLinkTarget, externalAppLabel, resolveExternalApp } from "../lib/link-target";
 import {
   ensureExternalAppsScanned,
   externalAppsScanned,
@@ -89,10 +66,7 @@ import {
   sessionsSupported,
 } from "../sessions/sessions-store";
 import { PresetEditor } from "../presets/preset-editor";
-import {
-  SavePresetDialog,
-  type SaveTarget,
-} from "../presets/save-preset-dialog";
+import { SavePresetDialog, type SaveTarget } from "../presets/save-preset-dialog";
 import type { PresetArtifact } from "../presets/mock-model";
 import { PersistErrorBar } from "../presets/persist-error-bar";
 import { LoadError } from "./controls/load-error";
@@ -126,29 +100,17 @@ import { SettingsScreen } from "./settings/settings-screen";
 import { UsageDockTab } from "./usage/usage-dock-tab";
 import { runAttentionFocus } from "./attention-focus-coordinator";
 import { getDesktopEnvironment } from "../lib/platform";
-import {
-  createUpdateController,
-  type UpdateController,
-} from "../updater/update-controller";
+import { createUpdateController, type UpdateController } from "../updater/update-controller";
 import { activeUpdateController } from "../updater/active-update-controller";
 import { loadAppVersion } from "../updater/app-version";
 import { UpdateAction } from "../updater/update-action";
 // Host-agnostic by construction: it answers the Electron host, delegates to
 // `tauri-updater-adapter.ts` under Tauri, and fails soft in a browser preview.
-import {
-  checkForUpdate,
-  relaunchDeck,
-} from "../updater/electron-updater-adapter";
+import { checkForUpdate, relaunchDeck } from "../updater/electron-updater-adapter";
 import { resolveUpdatePreview } from "../updater/update-preview";
-import {
-  recordUpdateAttempt,
-  takeUpdateOutcome,
-} from "../updater/update-attempt-store";
+import { recordUpdateAttempt, takeUpdateOutcome } from "../updater/update-attempt-store";
 import { attemptMessage } from "../updater/update-attempt";
-import {
-  isUpdateMenuAction,
-  runUpdateMenuAction,
-} from "../updater/update-menu-actions";
+import { isUpdateMenuAction, runUpdateMenuAction } from "../updater/update-menu-actions";
 import { defaultLinkClient } from "../terminal/link-client";
 import { buildOpenEditorRequest } from "../lib/editor-command";
 import {
@@ -183,10 +145,7 @@ import {
   suspendSessionJournal,
 } from "../terminal/session-journal";
 import { restoreSession } from "../terminal/session-restore";
-import {
-  ensureRepositoriesScanned,
-  repositoryScans,
-} from "../repositories/repositories-store";
+import { ensureRepositoriesScanned, repositoryScans } from "../repositories/repositories-store";
 import {
   defaultDestinationPath,
   plainFolderDestination,
@@ -224,10 +183,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     });
   }
   const fileController = fileControllerRef.current;
-  const updatePreview = resolveUpdatePreview(
-    window.location.search,
-    import.meta.env.DEV,
-  );
+  const updatePreview = resolveUpdatePreview(window.location.search, import.meta.env.DEV);
 
   if (updaterRef.current === null) {
     updaterRef.current = createUpdateController({
@@ -243,18 +199,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         // and correct the moment one does.
         return manager === null
           ? Promise.resolve(false)
-          : confirmClose(
-              manager.allPaneIds(),
-              defaultPtyClient,
-              UPDATE_COPY,
-              dirtyPaths(),
-            );
+          : confirmClose(manager.allPaneIds(), defaultPtyClient, UPDATE_COPY, dirtyPaths());
       },
       flush: flushSettingsSave,
       relaunch: relaunchDeck,
       report: (message, error) => console.error(`${message}:`, error),
-      recordAttempt: (targetVersion) =>
-        recordUpdateAttempt(targetVersion, Date.now()),
+      recordAttempt: (targetVersion) => recordUpdateAttempt(targetVersion, Date.now()),
     });
     activeUpdateController.value = updaterRef.current;
     void loadAppVersion();
@@ -423,8 +373,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     let resumed = false;
     try {
       resumed = await resumeSession(entry, {
-        materialize: (intent) =>
-          tabsRef.current?.materialize(intent) ?? Promise.resolve(false),
+        materialize: (intent) => tabsRef.current?.materialize(intent) ?? Promise.resolve(false),
         customAgents: settings.value.customAgents,
         isDead: (cwd) => deadProjects.value.has(cwd),
       });
@@ -460,12 +409,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // The Open board's Sessions view reads the same store as the dock, so it
   // needs a scan even when the dock has never opened. Keyed on the board
   // opening: this is the earliest point that view can become reachable.
+  /* oxlint-disable react-hooks/exhaustive-deps -- Preact signal: boardOpen.value is the reactive dep (keyed on the board opening, not on mount) */
   useEffect(() => {
     if (boardOpen.value) {
       void refreshSessions();
     }
   }, [boardOpen.value]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
+  /* oxlint-disable react-hooks/exhaustive-deps -- boot-once: the window's TabManager is built a single time */
   useEffect(() => {
     const host = stagesRef.current;
     if (!host) {
@@ -518,9 +470,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       .then(async () => {
         const label = await currentWindowLabel();
         if (!bootOpensTheBoard(boot)) {
-          const ok = await manager.adoptIntoNewTab(
-            boot.kind === "adopt" ? boot.token : "",
-          );
+          const ok = await manager.adoptIntoNewTab(boot.kind === "adopt" ? boot.token : "");
           if (!ok) {
             // Spec §13: a failed claim in a freshly booted window closes
             // that window — there is nothing else for it to show.
@@ -572,6 +522,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       manager.dispose();
     };
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Installs the file-changed listener and the focus reconcile (spec §5) —
   // own effect, separate from the tab manager's mount above, since the two
@@ -660,10 +611,8 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             currentWindowLabel().then((label) => clearWindowRecord(label)),
           ]);
         },
-        confirm: (requestId: number) =>
-          defaultPtyClient.confirmCloseWindow(requestId),
-        cancel: (requestId: number) =>
-          defaultPtyClient.cancelCloseWindow(requestId),
+        confirm: (requestId: number) => defaultPtyClient.confirmCloseWindow(requestId),
+        cancel: (requestId: number) => defaultPtyClient.cancelCloseWindow(requestId),
       },
     })
       .then((fn) => {
@@ -711,6 +660,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     return () => unlisten?.();
   }, []);
 
+  /* oxlint-disable react-hooks/exhaustive-deps -- installed for the window's life; the callbacks are stable */
   useEffect(() => {
     const unsubs: UnlistenFn[] = [];
     // Every File/Edit/View/Window item whose accelerator the macOS menu now
@@ -738,6 +688,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }).then((fn) => unsubs.push(fn));
     return () => unsubs.forEach((fn) => fn());
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Push theme colors into terminals and the chrome CSS vars
   useSignalEffect(() => {
@@ -829,12 +780,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           // A preview tab, matching the tree's single click (DL/file-explorer
           // spec §4.1): the first edit promotes it, so a link followed and
           // abandoned does not accumulate tabs.
-          await fileController.openFile(
-            target.workspacePath,
-            target.path,
-            false,
-            { line: target.line, column: target.column },
-          );
+          await fileController.openFile(target.workspacePath, target.path, false, {
+            line: target.line,
+            column: target.column,
+          });
           return;
         case "editor": {
           // Through the SAME builder the link provider used before this work,
@@ -850,11 +799,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           if (request === null) {
             return;
           }
-          await defaultLinkClient
-            .openEditor(request)
-            .catch((error: unknown) => {
-              reportPersistError(`Couldn't open the editor: ${String(error)}`);
-            });
+          await defaultLinkClient.openEditor(request).catch((error: unknown) => {
+            reportPersistError(`Couldn't open the editor: ${String(error)}`);
+          });
           return;
         }
         case "app":
@@ -865,9 +812,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             line: target.line,
             column: target.column,
           }).catch((error: unknown) => {
-            reportPersistError(
-              `Couldn't open ${externalAppLabel(target.appId)}: ${String(error)}`,
-            );
+            reportPersistError(`Couldn't open ${externalAppLabel(target.appId)}: ${String(error)}`);
           });
           return;
         case "unavailable":
@@ -911,8 +856,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     // for every worktree of a repository), so this is normally a no-op that
     // only pays on a workspace the rail has not reached yet.
     const target = quickPickerWorkspace.value;
-    const workspacePath =
-      target ?? tabsRef.current?.activeWorkspacePath() ?? null;
+    const workspacePath = target ?? tabsRef.current?.activeWorkspacePath() ?? null;
     if (workspacePath !== null) {
       ensureRepositoriesScanned([workspacePath]);
     }
@@ -945,21 +889,16 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    */
   const quickPickerDestinations = (): readonly QuickDestination[] => {
     const target = quickPickerWorkspace.value;
-    const workspacePath =
-      target ?? tabsRef.current?.activeWorkspacePath() ?? null;
+    const workspacePath = target ?? tabsRef.current?.activeWorkspacePath() ?? null;
     if (workspacePath === null) {
       return [];
     }
-    const worktrees = worktreeDestinations(
-      repositoryScans.value.get(workspacePath),
-    );
+    const worktrees = worktreeDestinations(repositoryScans.value.get(workspacePath));
     // A rail launch always states its destination, even when git knows
     // nothing about the folder: the panel's no-destination copy says "Runs in
     // this workspace", which is a lie about a project the user pressed rather
     // than the one on the stage.
-    return worktrees.length === 0 && target !== null
-      ? [plainFolderDestination(target)]
-      : worktrees;
+    return worktrees.length === 0 && target !== null ? [plainFolderDestination(target)] : worktrees;
   };
 
   /**
@@ -997,10 +936,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   }
 
   /** Editor confirm: save the preset, then materialize a new tab. */
-  async function handleEditorCreate(
-    name: string,
-    artifact: PresetArtifact,
-  ): Promise<void> {
+  async function handleEditorCreate(name: string, artifact: PresetArtifact): Promise<void> {
     const preset: Preset = {
       id: crypto.randomUUID(),
       name,
@@ -1032,19 +968,14 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   }
 
   /** ⌘⇧S / menu: capture live layout into a new or existing preset. */
-  async function handleSavePreset(
-    target: SaveTarget,
-    includeCwds: boolean,
-  ): Promise<void> {
+  async function handleSavePreset(target: SaveTarget, includeCwds: boolean): Promise<void> {
     const captured = await tabsRef.current?.captureActiveLayout();
     saveDialogOpen.value = false;
     if (!captured) {
       return;
     }
     const cwds =
-      includeCwds && captured.cwds.some((cwd) => cwd !== null)
-        ? captured.cwds
-        : undefined;
+      includeCwds && captured.cwds.some((cwd) => cwd !== null) ? captured.cwds : undefined;
     if (target.kind === "new") {
       savePreset({
         id: crypto.randomUUID(),
@@ -1054,9 +985,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       });
       return;
     }
-    const existing = presetsData.value.presets.find(
-      (preset) => preset.id === target.id,
-    );
+    const existing = presetsData.value.presets.find((preset) => preset.id === target.id);
     if (existing) {
       savePreset({
         id: existing.id,
@@ -1067,22 +996,18 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   }
 
-  const sidebar =
-    updatePreview?.sidebar ?? settings.value.tabBarPosition === "left";
+  const sidebar = updatePreview?.sidebar ?? settings.value.tabBarPosition === "left";
   const railAvailable = liveRailAvailable(tabViews.value.length);
   const effectiveSidebarCollapsed = (): boolean =>
     sidebarEffectivelyCollapsed({
       liveTabCount: tabViews.value.length,
       savedCollapsed: settings.value.sidebarCollapsed,
-      dragCollapsed:
-        sidebarWidthLive.value === null ? null : sidebarCollapseArmed.value,
+      dragCollapsed: sidebarWidthLive.value === null ? null : sidebarCollapseArmed.value,
     });
   const sidebarPaintWidth = (): number =>
     liveRailAvailable(tabViews.value.length)
       ? (sidebarWidthLive.value ??
-        (settings.value.sidebarCollapsed
-          ? SIDEBAR_HIDDEN_WIDTH
-          : settings.value.sidebarWidth))
+        (settings.value.sidebarCollapsed ? SIDEBAR_HIDDEN_WIDTH : settings.value.sidebarWidth))
       : SIDEBAR_HIDDEN_WIDTH;
   // Written to `:root`, not handed to the shell as props — see
   // `sidebar-shell.ts` for the defect that forces it and the evidence behind
@@ -1180,10 +1105,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * Only surfaces that COVER the pane belong here.
    */
   const overlayCoversPane = (): boolean =>
-    boardOpen.value ||
-    settingsOpen.value ||
-    editorRequest.value !== null ||
-    saveDialogOpen.value;
+    boardOpen.value || settingsOpen.value || editorRequest.value !== null || saveDialogOpen.value;
 
   /**
    * Close an ALREADY OPEN popover the moment an overlay opens over it —
@@ -1228,8 +1150,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     });
 
   /** Live drag width while resizing, the persisted setting otherwise. */
-  const dockWidth = (): number =>
-    dockWidthLive.value ?? settings.value.dockWidth;
+  const dockWidth = (): number => dockWidthLive.value ?? settings.value.dockWidth;
 
   /**
    * The tab the dock actually shows: the stored one, re-checked against
@@ -1238,8 +1159,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * resolving here rather than rewriting the setting means moving back to a
    * host that has it restores the user's own choice.
    */
-  const dockTab = (): DockTab =>
-    resolveDockTab(settings.value.dockTab, sessionsSupported.value);
+  const dockTab = (): DockTab => resolveDockTab(settings.value.dockTab, sessionsSupported.value);
 
   /** Why Prompts cannot run, or null — one answer, read by both mounts. */
   const promptsUnavailable = (): string | null =>
@@ -1271,18 +1191,14 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           agentProcessMatchers(settings.value.customAgents),
         )
       }
-      loadAssets={(target) =>
-        defaultPromptAssetsClient.list(target.agent ?? "", target.cwd)
-      }
+      loadAssets={(target) => defaultPromptAssetsClient.list(target.agent ?? "", target.cwd)}
       inject={(target, text, autoSend) =>
         tabsRef.current?.injectIntoPane(target.paneId, text, {
           autoSend,
           expectedAgent: target.agent,
         }) ?? Promise.resolve("no-target" as const)
       }
-      isAlive={(paneId) =>
-        tabsRef.current?.allPaneIds().includes(paneId) ?? false
-      }
+      isAlive={(paneId) => tabsRef.current?.allPaneIds().includes(paneId) ?? false}
       onClose={closePrompts}
     />
   ) : null;
@@ -1386,9 +1302,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       onSplitRow={() => void tabsRef.current?.splitActive("row")}
       onSplitColumn={() => void tabsRef.current?.splitActive("column")}
       onClosePane={() => void tabsRef.current?.closePane()}
-      onToggleExpand={() =>
-        updateSettings({ focusExpand: !settings.value.focusExpand })
-      }
+      onToggleExpand={() => updateSettings({ focusExpand: !settings.value.focusExpand })}
       promptsOpen={promptsOpen.value}
       promptsUnavailable={promptsUnavailable()}
       promptPopover={promptPopover}
@@ -1434,14 +1348,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       sidebar={sidebar}
       sidebarWidth={railAvailable ? sidebarPaintWidth() : undefined}
       onSidebarWidthChange={
-        railAvailable
-          ? (width) => updateSettings({ sidebarWidth: width })
-          : undefined
+        railAvailable ? (width) => updateSettings({ sidebarWidth: width }) : undefined
       }
       onSidebarCollapsedChange={
-        railAvailable
-          ? (value) => updateSettings({ sidebarCollapsed: value })
-          : undefined
+        railAvailable ? (value) => updateSettings({ sidebarCollapsed: value }) : undefined
       }
       sidebarToggle={
         railAvailable && !effectiveSidebarCollapsed() ? (
@@ -1463,10 +1373,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               // Reporting no targets is how the drag goes inert; a pane docked
               // behind an opaque screen is the ⌘T-under-`WebContentsView` bug in
               // another shape.
-              slotRects: () =>
-                panelObscured()
-                  ? []
-                  : (tabsRef.current?.activeSlotRects() ?? []),
+              slotRects: () => (panelObscured() ? [] : (tabsRef.current?.activeSlotRects() ?? [])),
               onDrop: (paneId, edge) => {
                 void tabsRef.current?.dropAgentPane(paneId, edge);
               },
@@ -1517,10 +1424,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             // hide control at its outer edge (`DockPanel`), the way the
             // sidebar's rides the frame row.
             stripDockToggle ? (
-              <DockToggle
-                open={false}
-                onToggle={() => tabsRef.current?.runAction("toggle-dock")}
-              />
+              <DockToggle open={false} onToggle={() => tabsRef.current?.runAction("toggle-dock")} />
             ) : null
           }
         />
@@ -1534,9 +1438,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             // a panel that is still on screen. DURING a drag the mount is held
             // open on purpose, so the painted state answers instead and the
             // terminals reclaim the space the moment the gesture arms.
-            (dockDragging ? dockPainted : dockPresence.mounted)
-              ? "stage--dock"
-              : ""
+            (dockDragging ? dockPainted : dockPresence.mounted) ? "stage--dock" : ""
           } ${sidebar ? "stage--strip" : ""}`}
           // One number, two consumers: the panel's own column and the inset
           // that keeps the terminal grid clear of it. A drag updates the
@@ -1647,16 +1549,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               onClose={() => tabsRef.current?.runAction("toggle-dock")}
             >
               {dockTab() === "explorer" ? (
-                <ExplorerTab
-                  controller={fileController}
-                  workspacePath={activeWorkspace.value}
-                />
+                <ExplorerTab controller={fileController} workspacePath={activeWorkspace.value} />
               ) : dockTab() === "usage" ? (
                 <UsageDockTab />
               ) : (
-                <SessionsDockTab
-                  onResume={(entry) => void resumeSessionEntry(entry)}
-                />
+                <SessionsDockTab onResume={(entry) => void resumeSessionEntry(entry)} />
               )}
             </DockPanel>
           ) : null}
@@ -1682,9 +1579,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 boardOpen.value = false;
                 tabsRef.current?.focusActive();
               }}
-              onOpen={(workspace, preset, agent) =>
-                handleOpen(workspace, preset, agent)
-              }
+              onOpen={(workspace, preset, agent) => handleOpen(workspace, preset, agent)}
             />
           ) : null}
           {agentQuickPickerOpen.value ? (
@@ -1704,13 +1599,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 // fallback for a project whose destination row was omitted.
                 const target = destination ?? quickPickerWorkspace.value;
                 quickPickerWorkspace.value = null;
-                void tabsRef.current
-                  ?.openQuickAgent(agentId, target, profileId)
-                  .then((ok) => {
-                    if (!ok) {
-                      reportPersistError("Could not open a new tab.");
-                    }
-                  });
+                void tabsRef.current?.openQuickAgent(agentId, target, profileId).then((ok) => {
+                  if (!ok) {
+                    reportPersistError("Could not open a new tab.");
+                  }
+                });
               }}
               onCancel={() => {
                 agentQuickPickerOpen.value = false;
@@ -1729,9 +1622,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               onCancel={() => {
                 editorRequest.value = null;
               }}
-              onCreate={(name, artifact) =>
-                void handleEditorCreate(name, artifact)
-              }
+              onCreate={(name, artifact) => void handleEditorCreate(name, artifact)}
             />
           ) : null}
           {saveDialogOpen.value ? (
@@ -1740,9 +1631,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               onCancel={() => {
                 saveDialogOpen.value = false;
               }}
-              onSave={(target, includeCwds) =>
-                void handleSavePreset(target, includeCwds)
-              }
+              onSave={(target, includeCwds) => void handleSavePreset(target, includeCwds)}
             />
           ) : null}
           {settingsLoadState.value.status === "error" && !settingsOpen.value ? (

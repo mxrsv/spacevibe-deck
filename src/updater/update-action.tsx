@@ -17,16 +17,15 @@ const LABELS: Readonly<Record<Exclude<UpdatePhase, "hidden">, string>> = {
   "relaunch-failed": "Relaunch",
 };
 
-const ANNOUNCEMENTS: Readonly<Record<Exclude<UpdatePhase, "hidden">, string>> =
-  {
-    available: "Deck update available.",
-    downloading: "Downloading Deck update.",
-    downloaded: "Deck update downloaded. Ready to install and relaunch.",
-    "download-failed": "Update download failed. Retry available.",
-    installing: "Installing Deck update.",
-    "install-failed": "Update installation failed. Retry available.",
-    "relaunch-failed": "Deck could not relaunch. Relaunch available.",
-  };
+const ANNOUNCEMENTS: Readonly<Record<Exclude<UpdatePhase, "hidden">, string>> = {
+  available: "Deck update available.",
+  downloading: "Downloading Deck update.",
+  downloaded: "Deck update downloaded. Ready to install and relaunch.",
+  "download-failed": "Update download failed. Retry available.",
+  installing: "Installing Deck update.",
+  "install-failed": "Update installation failed. Retry available.",
+  "relaunch-failed": "Deck could not relaunch. Relaunch available.",
+};
 
 function accessibleName(view: UpdateView): string {
   const versions = `update ${view.availableVersion} (current ${view.currentVersion})`;
@@ -54,10 +53,7 @@ function actionForPhase(props: UpdateActionProps): () => void {
   if (props.view.phase === "relaunch-failed") {
     return props.onRelaunch;
   }
-  if (
-    props.view.phase === "downloaded" ||
-    props.view.phase === "install-failed"
-  ) {
+  if (props.view.phase === "downloaded" || props.view.phase === "install-failed") {
     return props.onInstall;
   }
   return props.onDownload;
