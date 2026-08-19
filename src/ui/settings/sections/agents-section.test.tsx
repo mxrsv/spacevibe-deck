@@ -122,14 +122,19 @@ describe("AgentsSection", () => {
     expect(addButton().textContent?.trim()).toBe("add");
   });
 
-  it("lists every built-in as a locked row (DL-12.4)", () => {
+  // Reshaped twice on 2026-08-19, ending as a CATALOG: every agent Deck knows
+  // is a row printing the command it will launch with, split by what is on
+  // $PATH. The list is `LaunchProfileEditor`'s and its own suite owns the
+  // behaviour — what this asserts is that the section still delegates to it,
+  // and that a built-in still carries no delete control of its own.
+  it("hands the agent catalog to the launch profile editor", () => {
     mount();
-    const locked = Array.from(
-      host.querySelectorAll<HTMLButtonElement>(".cfg-btn--disabled"),
+    expect(host.querySelector(".lp-head")).not.toBeNull();
+    expect(host.querySelectorAll(".lp-agent")).toHaveLength(
+      BUILTIN_AGENTS.length,
     );
-    expect(locked).toHaveLength(BUILTIN_AGENTS.length);
-    expect(locked.every((button) => button.disabled)).toBe(true);
-    // A built-in carries no remove affordance — only declared rows do.
+    // Every remove control on this screen belongs to a DECLARED agent; none
+    // was seeded here, so there are none.
     expect(host.querySelectorAll(".cfg-row__remove")).toHaveLength(0);
   });
 

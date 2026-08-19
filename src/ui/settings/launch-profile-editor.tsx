@@ -1,41 +1,44 @@
-import { Star, Trash } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowSquareOut, Check } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { settings, updateSettings } from "../../settings/settings-store";
-import { BUILTIN_AGENTS } from "../../lib/agent-catalog";
+import { BUILTIN_AGENTS, type BuiltinAgent } from "../../lib/agent-catalog";
 import { AGENT_LOGOS } from "../../lib/agent-logos";
 import { letterAvatar } from "../../lib/letter-avatar";
+import {
+  detectedAgents,
+  ensureAgentsDetected,
+} from "../../terminal/agent-detection-store";
+import { defaultLinkClient } from "../../terminal/link-client";
 import {
   commandAgentId,
   commandFlags,
   commandProblem,
   createLaunchProfileId,
+  profilesForAgent,
   type LaunchProfile,
 } from "../../lib/launch-profile";
 
 /**
- * Presets: the commands Deck types when it opens an agent.
+ * The agent catalog in Settings → Agents.
  *
- * The shape is the owner's reference (2026-08-19), and the load-bearing part
- * of it is the ADD FIELD: one text input where you write the command you
- * already know — `claude --plan`, `codex --dangerously-bypass-approvals-and-
- * sandbox`. An earlier build put a form of per-agent enum menus here instead;
- * it could not express a flag nobody had modelled yet, and it hid the one
- * thing the row is about behind four controls.
+ * Every agent Deck knows about is a row, and the row states the command that
+ * agent will actually launch with. **That command ships with the app**: the
+ * catalog carries a recommended `defaultCommand` per agent, so a fresh install
+ * shows `claude --dangerously-skip-permissions` immediately rather than a bare
+ * binary waiting for someone to type a flag. A preset the user writes replaces
+ * it for that agent; nothing merges.
  *
- * What the input CANNOT accept is anything a shell would act on. This string
- * is written verbatim into a live interactive shell by `AgentLauncher.arm`, so
- * `commandProblem` refuses separators, substitution, redirects and quotes, and
- * says why. A pipeline belongs in a wrapper script declared as a custom agent.
+ * The list splits on what is actually on `$PATH`. **Installed** is what the
+ * discovery probe found; **Available to install** is everything else Deck
+ * knows how to launch, kept visible so the answer to "can Deck run X" is on
+ * screen rather than in a docs page. Refresh re-runs the probe, because a CLI
+ * installed in another terminal will not otherwise appear until the cache
+ * expires.
  *
- * A row's star is its agent's DEFAULT — the command the Open board, a rail
- * drop and ⌘T's initial selection use. One star per agent, because "default"
- * is a per-agent question: starring a codex command cannot unstar a claude one.
- *
- * Every built-in agent with no command of its own still gets a row, printing
- * its bare binary. That row is not a placeholder: launching the bare binary is
- * exactly what Deck does for an agent nobody has written a preset for, so the
- * list stays an honest picture of what each agent will run.
+ * Enabled/Disabled is per agent and it is the ONLY thing that removes a row
+ * from the pickers — a built-in cannot be deleted, because Deck would just
+ * detect it again on the next probe.
  */
 
 /** The agent's brand mark, or the letter avatar every unmarked agent wears. */
@@ -66,76 +69,158 @@ function CommandLine({ command }: { command: string }) {
   );
 }
 
-/** The label shown for an agent id — its catalog name, else the id itself. */
-function agentLabel(agentId: string): string {
-  return BUILTIN_AGENTS.find((agent) => agent.id === agentId)?.label ?? agentId;
-}
-
-interface Row {
-  /** The profile this row came from, or null for an agent with no command. */
-  readonly profile: LaunchProfile | null;
-  readonly agentId: string;
-  readonly command: string;
-  readonly starred: boolean;
-}
-
 /**
- * The rows, grouped so every command sits under the agent it launches and
- * every built-in agent appears exactly once even with no command declared.
- * Declared order is preserved inside an agent — the list is the user's.
+ * The command an agent launches with: the user's own preset if they wrote one,
+ * else the catalog's recommendation, else the bare binary. One resolution
+ * order, read by the row and by nothing else — `defaultLaunchCommand` is what
+ * the launch paths use, and it answers null when the user declared nothing,
+ * which is where the catalog default is applied on the way out.
  */
-function buildRows(
+function effectiveCommand(
+  agent: BuiltinAgent,
   profiles: readonly LaunchProfile[],
   defaults: Readonly<Record<string, string>>,
-): readonly Row[] {
-  const rows: Row[] = [];
-  const seenAgents = new Set<string>();
-  for (const agent of BUILTIN_AGENTS) {
-    const owned = profiles.filter(
-      (profile) => commandAgentId(profile.command) === agent.id,
-    );
-    seenAgents.add(agent.id);
-    if (owned.length === 0) {
-      rows.push({
-        profile: null,
-        agentId: agent.id,
-        command: agent.id,
-        starred: false,
-      });
-      continue;
-    }
-    for (const profile of owned) {
-      rows.push({
-        profile,
-        agentId: agent.id,
-        command: profile.command,
-        starred: defaults[agent.id] === profile.id,
-      });
-    }
-  }
-  // A command whose binary is not a built-in — a declared agent, or a wrapper
-  // script. It still belongs in the list: it is still something Deck will type.
-  for (const profile of profiles) {
-    const agentId = commandAgentId(profile.command);
-    if (seenAgents.has(agentId)) {
-      continue;
-    }
-    rows.push({
-      profile,
-      agentId,
-      command: profile.command,
-      starred: defaults[agentId] === profile.id,
-    });
-  }
-  return rows;
+): string {
+  const starred = defaults[agent.id];
+  const own = profilesForAgent(agent.id, profiles);
+  const chosen =
+    own.find((profile) => profile.id === starred) ?? own[0] ?? null;
+  return chosen?.command ?? agent.defaultCommand ?? agent.id;
+}
+
+function EnabledToggle({
+  agent,
+  enabled,
+  onChange,
+}: {
+  agent: BuiltinAgent;
+  enabled: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div
+      class="segmented lp-enabled"
+      role="radiogroup"
+      aria-label={`${agent.label} availability`}
+    >
+      {[true, false].map((value) => (
+        <button
+          key={String(value)}
+          type="button"
+          role="radio"
+          aria-checked={enabled === value}
+          aria-label={`${value ? "Enable" : "Disable"} ${agent.label}`}
+          tabIndex={enabled === value ? 0 : -1}
+          class={`segmented__option ${enabled === value ? "is-selected" : ""}`}
+          onClick={() => onChange(value)}
+        >
+          {value ? "Enabled" : "Disabled"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AgentRow({
+  agent,
+  installed,
+  command,
+  isDefault,
+  enabled,
+  onToggle,
+  onSetDefault,
+}: {
+  agent: BuiltinAgent;
+  installed: boolean;
+  command: string;
+  isDefault: boolean;
+  enabled: boolean;
+  onToggle: (next: boolean) => void;
+  onSetDefault: () => void;
+}) {
+  return (
+    <div class={`lp-agent ${enabled ? "" : "is-off"}`}>
+      <AgentMark id={agent.id} label={agent.label} />
+      <div class="lp-agent__text">
+        <span class="lp-agent__name">{agent.label}</span>
+        <CommandLine command={command} />
+      </div>
+      <EnabledToggle agent={agent} enabled={enabled} onChange={onToggle} />
+      {/* Only an installed agent can be the one Deck opens with — starring a
+          binary that is not on $PATH would name a default that cannot run. */}
+      {installed &&
+        (isDefault ? (
+          <span class="lp-agent__default" aria-label={`${agent.label} is the default agent`}>
+            <DeckIcon icon={Check} size={ROW_ICON} />
+            Default
+          </span>
+        ) : (
+          <button
+            type="button"
+            class="cfg-btn lp-agent__setdefault"
+            aria-label={`Make ${agent.label} the default agent`}
+            disabled={!enabled}
+            onClick={onSetDefault}
+          >
+            Set default
+          </button>
+        ))}
+      <button
+        type="button"
+        // NOT `cfg-row__remove`: this opens a page, it removes nothing, and
+        // borrowing that class made it the first match for every test looking
+        // for a declared agent's delete control.
+        class="lp-agent__link"
+        aria-label={`Open the ${agent.label} website`}
+        title={agent.url}
+        onClick={() => void defaultLinkClient.openUrl(agent.url)}
+      >
+        <DeckIcon icon={ArrowSquareOut} size={ROW_ICON} />
+      </button>
+    </div>
+  );
 }
 
 export function LaunchProfileEditor() {
   const profiles = settings.value.launchProfiles;
   const defaults = settings.value.defaultLaunchProfiles;
+  const disabled = settings.value.disabledAgents;
+  const defaultAgent = settings.value.defaultAgent;
 
   const draft = useSignal("");
   const draftError = useSignal<string | null>(null);
+  const refreshing = useSignal(false);
+
+  const installedIds = new Set(detectedAgents.value.map((agent) => agent.name));
+  const installed = BUILTIN_AGENTS.filter((agent) =>
+    installedIds.has(agent.id),
+  );
+  const available = BUILTIN_AGENTS.filter(
+    (agent) => !installedIds.has(agent.id),
+  );
+
+  const setEnabled = (agentId: string, next: boolean): void => {
+    updateSettings({
+      disabledAgents: next
+        ? disabled.filter((id: string) => id !== agentId)
+        : [...disabled, agentId],
+    });
+  };
+
+  const refresh = (): void => {
+    if (refreshing.value) {
+      return;
+    }
+    refreshing.value = true;
+    // `ensureAgentsDetected` has no force flag: a warm cache answers instantly
+    // and revalidates behind. That is the right behaviour here too — the
+    // button's job is to start a scan, not to block on one.
+    void ensureAgentsDetected(BUILTIN_AGENTS.map((agent) => agent.id)).finally(
+      () => {
+        refreshing.value = false;
+      },
+    );
+  };
 
   const add = (): void => {
     const command = draft.value.trim();
@@ -152,9 +237,6 @@ export function LaunchProfileEditor() {
     const agentId = commandAgentId(command);
     updateSettings({
       launchProfiles: [...profiles, { id, command }],
-      // The FIRST command an agent gets becomes its default. Anything else
-      // would leave the agent still launching bare while its command sat in
-      // the list, which reads as the add having failed.
       ...(defaults[agentId] === undefined
         ? { defaultLaunchProfiles: { ...defaults, [agentId]: id } }
         : {}),
@@ -163,90 +245,52 @@ export function LaunchProfileEditor() {
     draftError.value = null;
   };
 
-  const star = (agentId: string, profileId: string): void => {
-    updateSettings({
-      defaultLaunchProfiles: { ...defaults, [agentId]: profileId },
-    });
-  };
-
-  /**
-   * Removing a command and dropping any default that points at it is ONE
-   * write: two calls would leave a dangling default on disk for the tick
-   * between them, and a default the validator then silently drops reads to the
-   * user as the setting having been forgotten.
-   */
-  const remove = (profile: LaunchProfile): void => {
-    const nextDefaults: Record<string, string> = {};
-    for (const [agentId, profileId] of Object.entries(defaults)) {
-      if (profileId !== profile.id) {
-        nextDefaults[agentId] = profileId;
-      }
-    }
-    updateSettings({
-      launchProfiles: profiles.filter((entry) => entry.id !== profile.id),
-      defaultLaunchProfiles: nextDefaults,
-    });
-  };
-
-  const rows = buildRows(profiles, defaults);
+  const renderRow = (agent: BuiltinAgent, isInstalled: boolean) => (
+    <AgentRow
+      key={agent.id}
+      agent={agent}
+      installed={isInstalled}
+      command={effectiveCommand(agent, profiles, defaults)}
+      isDefault={defaultAgent === agent.id}
+      enabled={!disabled.includes(agent.id)}
+      onToggle={(next) => setEnabled(agent.id, next)}
+      onSetDefault={() => updateSettings({ defaultAgent: agent.id })}
+    />
+  );
 
   return (
     <>
-      {rows.map((row) => (
-        <div
-          key={row.profile?.id ?? `bare:${row.agentId}`}
-          class="cfg-row cfg-row--item lp-row"
+      <div class="lp-head">
+        <span class="lp-head__title">Installed</span>
+        <span class="lp-head__count">{installed.length} detected</span>
+        <button
+          type="button"
+          class="cfg-btn lp-head__refresh"
+          aria-label="Refresh installed agents"
+          disabled={refreshing.value}
+          onClick={refresh}
         >
-          <div class="cfg-row__key lp-row__key">
-            <AgentMark id={row.agentId} label={agentLabel(row.agentId)} />
-            <CommandLine command={row.command} />
+          <DeckIcon icon={ArrowClockwise} size={ROW_ICON} />
+          Refresh
+        </button>
+      </div>
+      {installed.length === 0 ? (
+        <p class="lp-empty" role="status">
+          No agent CLI found on your PATH. Install one below, then Refresh.
+        </p>
+      ) : (
+        installed.map((agent) => renderRow(agent, true))
+      )}
+
+      {available.length > 0 && (
+        <>
+          <div class="lp-head">
+            <span class="lp-head__title">Available to install</span>
+            <span class="lp-head__count">{available.length} agents</span>
           </div>
-          <div class="cfg-row__value">
-            {row.profile !== null && (
-              <>
-                <button
-                  type="button"
-                  class={`lp-star ${row.starred ? "is-on" : ""}`}
-                  aria-pressed={row.starred}
-                  aria-label={
-                    row.starred
-                      ? `${row.command} is the default`
-                      : `Make ${row.command} the default`
-                  }
-                  title={
-                    row.starred
-                      ? "This is what the agent launches with"
-                      : "Launch this agent with this command"
-                  }
-                  // A starred row's click is inert rather than a toggle: an
-                  // agent always launches with SOMETHING, so unstarring would
-                  // have to silently pick a replacement.
-                  onClick={() =>
-                    row.starred
-                      ? undefined
-                      : star(row.agentId, row.profile!.id)
-                  }
-                >
-                  {/* Filled when starred: this surface is achromatic
-                      (DL-3.7), so shape carries the state that a colour would
-                      carry anywhere else. `filled` is DeckIcon's own scoped
-                      treatment, not a free weight prop. */}
-                  <DeckIcon icon={Star} size={ROW_ICON} filled={row.starred} />
-                </button>
-                <button
-                  type="button"
-                  class="cfg-row__remove"
-                  aria-label={`Remove ${row.command}`}
-                  title={`Remove ${row.command}`}
-                  onClick={() => remove(row.profile!)}
-                >
-                  <DeckIcon icon={Trash} size={ROW_ICON} />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      ))}
+          {available.map((agent) => renderRow(agent, false))}
+        </>
+      )}
 
       <div class="cfg-row lp-add">
         <input
@@ -269,9 +313,6 @@ export function LaunchProfileEditor() {
         <button
           type="button"
           class="cfg-btn"
-          // Not "Add command": the input beside it already answers to that,
-          // and two controls sharing one accessible name is one control a
-          // screen reader — or a test — cannot tell from the other.
           aria-label="Add"
           disabled={draft.value.trim() === ""}
           onClick={add}

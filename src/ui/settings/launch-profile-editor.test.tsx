@@ -22,7 +22,12 @@ vi.mock("../../settings/settings-store", async () => {
   return { ...actual, updateSettings: vi.fn() };
 });
 
+vi.mock("../../terminal/link-client", () => ({
+  defaultLinkClient: { openUrl: vi.fn(async () => {}) },
+}));
+
 import { LaunchProfileEditor } from "./launch-profile-editor";
+import { detectedAgents } from "../../terminal/agent-detection-store";
 import { settings, updateSettings } from "../../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import type { LaunchProfile } from "../../lib/launch-profile";
@@ -37,6 +42,7 @@ describe("LaunchProfileEditor", () => {
 
   beforeEach(() => {
     settings.value = DEFAULT_SETTINGS;
+    detectedAgents.value = [];
     vi.mocked(updateSettings).mockClear();
     host = document.createElement("div");
     document.body.appendChild(host);
@@ -48,6 +54,7 @@ describe("LaunchProfileEditor", () => {
     });
     host.remove();
     settings.value = DEFAULT_SETTINGS;
+    detectedAgents.value = [];
   });
 
   const mount = (): void => {
@@ -86,32 +93,89 @@ describe("LaunchProfileEditor", () => {
     };
   };
 
-  it("prints every built-in agent as its bare binary when nothing is declared", () => {
+  const install = (...ids: readonly string[]): void => {
+    detectedAgents.value = ids.map((name) => ({ name, path: `/bin/${name}` }));
+  };
+
+  it("prints each agent's shipped command, with no preset declared", () => {
+    install("claude", "codex");
     mount();
 
-    // The bare binary IS what an agent with no preset launches, so the row is
-    // an honest picture rather than a placeholder.
-    expect(host.textContent).toContain("claude");
-    expect(host.textContent).toContain("cursor-agent");
-    expect(host.textContent).toContain("gemini");
-    // Nothing to star or remove until the user writes a command.
-    expect(host.querySelectorAll(".lp-star")).toHaveLength(0);
-    expect(host.querySelectorAll(".cfg-row__remove")).toHaveLength(0);
+    // The catalog's recommendation, not a bare binary and not something the
+    // user had to type — this is what a fresh install shows.
+    expect(host.textContent).toContain("--dangerously-skip-permissions");
+    expect(host.textContent).toContain(
+      "--dangerously-bypass-approvals-and-sandbox",
+    );
+    expect(updateSettings).not.toHaveBeenCalled();
   });
 
-  it("prints a declared command in place of its agent's bare row", () => {
+  it("splits the catalog on what is actually on PATH", () => {
+    install("claude");
+    mount();
+
+    expect(host.textContent).toContain("Installed");
+    expect(host.textContent).toContain("1 detected");
+    expect(host.textContent).toContain("Available to install");
+    // Only an installed agent can be made the default.
+    expect(byLabel("Make Claude Code the default agent")).not.toBeNull();
+    expect(byLabel("Make Codex the default agent")).toBeNull();
+  });
+
+  it("says so when nothing is installed", () => {
+    mount();
+
+    expect(host.querySelector('[role="status"]')?.textContent).toContain(
+      "No agent CLI found",
+    );
+  });
+
+  it("a user preset replaces the shipped command for that agent", () => {
+    install("claude");
     withProfiles([plan], { claude: "lp:plan" });
     mount();
 
-    expect(host.textContent).toContain("--permission-mode plan");
-    // One claude row, not a bare one beside the declared one.
-    const claudeRows = Array.from(
-      host.querySelectorAll(".lp-command__binary"),
-    ).filter((node) => node.textContent === "claude");
-    expect(claudeRows).toHaveLength(1);
+    expect(host.textContent).toContain("claude --permission-mode plan");
+    // The shipped claude command is gone; agy's, which shares that flag, is
+    // not — so the assertion names the binary rather than the flag alone.
+    expect(host.textContent).not.toContain(
+      "claude --dangerously-skip-permissions",
+    );
   });
 
-  it("adds the command that was typed, and stars it as the agent's first", () => {
+  it("disables an agent without deleting it", () => {
+    install("claude");
+    mount();
+
+    click(byLabel("Disable Claude Code"));
+
+    // A built-in cannot be deleted — the probe would find it again — so the
+    // switch is the only thing that takes it out of the pickers.
+    expect(updateSettings).toHaveBeenCalledWith({
+      disabledAgents: ["claude"],
+    });
+  });
+
+  it("sets the default agent", () => {
+    install("claude", "codex");
+    mount();
+
+    click(byLabel("Make Codex the default agent"));
+
+    expect(updateSettings).toHaveBeenCalledWith({ defaultAgent: "codex" });
+  });
+
+  it("marks the agent that is already the default", () => {
+    install("claude");
+    settings.value = { ...DEFAULT_SETTINGS, defaultAgent: "claude" };
+    mount();
+
+    expect(byLabel("Claude Code is the default agent")).not.toBeNull();
+    expect(byLabel("Make Claude Code the default agent")).toBeNull();
+  });
+
+  it("adds a typed command and stars it for its agent", () => {
+    install("claude");
     mount();
     type("claude --plan");
     click(byLabel("Add"));
@@ -133,55 +197,5 @@ describe("LaunchProfileEditor", () => {
       "letters, digits",
     );
     expect(updateSettings).not.toHaveBeenCalled();
-  });
-
-  it("refuses a duplicate command", () => {
-    withProfiles([plan], { claude: "lp:plan" });
-    mount();
-    type("claude --permission-mode plan");
-    click(byLabel("Add"));
-
-    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
-      "already in the list",
-    );
-    expect(updateSettings).not.toHaveBeenCalled();
-  });
-
-  it("stars another command for the same agent", () => {
-    const other: LaunchProfile = {
-      id: "lp:auto",
-      command: "claude --permission-mode acceptEdits",
-    };
-    withProfiles([plan, other], { claude: "lp:plan" });
-    mount();
-
-    click(byLabel(`Make ${other.command} the default`));
-
-    expect(updateSettings).toHaveBeenCalledWith({
-      defaultLaunchProfiles: { claude: "lp:auto" },
-    });
-  });
-
-  it("removing a command drops the default pointing at it, in one write", () => {
-    withProfiles([plan], { claude: "lp:plan" });
-    mount();
-
-    click(byLabel(`Remove ${plan.command}`));
-
-    // One write, not two: a dangling default must never reach disk, not even
-    // for the tick between two `updateSettings` calls.
-    expect(updateSettings).toHaveBeenCalledWith({
-      launchProfiles: [],
-      defaultLaunchProfiles: {},
-    });
-  });
-
-  it("keeps a command whose binary is not a built-in", () => {
-    withProfiles([{ id: "lp:aider", command: "aider --model sonnet" }]);
-    mount();
-
-    // Still something Deck will type, so it still belongs in the list.
-    expect(host.textContent).toContain("aider");
-    expect(host.textContent).toContain("--model sonnet");
   });
 });

@@ -80,8 +80,20 @@ export interface Settings {
   scrollback: number;
   /** Agent CLIs the user declared, beyond the built-in set. */
   customAgents: readonly CustomAgent[];
-  /** Named mode selections for the agent CLIs that support them. */
+  /** Launch commands the user wrote, replacing the catalog's recommendation. */
   launchProfiles: readonly LaunchProfile[];
+  /**
+   * Agent ids the user switched off. A built-in cannot be deleted — the probe
+   * would find it again on the next scan — so this is the one thing that takes
+   * an agent out of the pickers.
+   */
+  disabledAgents: readonly string[];
+  /**
+   * The agent a new tab opens with when nothing else names one. Null = fall
+   * back to the first detected agent, which is what Deck did before this
+   * setting existed.
+   */
+  defaultAgent: string | null;
   /**
    * Agent id → profile id used when nothing picks one: the Open board, a rail
    * drop, and the quick picker's initial selection. Absent = launch bare.
@@ -163,6 +175,8 @@ export const DEFAULT_SETTINGS: Settings = {
   scrollback: 10_000,
   customAgents: [],
   launchProfiles: [],
+  disabledAgents: [],
+  defaultAgent: null,
   defaultLaunchProfiles: {},
   promptTemplates: [],
   browserHomeUrl: "http://localhost:3000",
@@ -401,6 +415,16 @@ export function validateSettings(raw: unknown): Settings {
         : DEFAULT_SETTINGS.scrollback,
     customAgents: validateCustomAgents(source.customAgents),
     launchProfiles: validatedLaunchProfiles,
+    disabledAgents: Array.isArray(source.disabledAgents)
+      ? source.disabledAgents.filter(
+          (id): id is string => typeof id === "string",
+        )
+      : DEFAULT_SETTINGS.disabledAgents,
+    // Not checked against the catalog: an id here may belong to an agent the
+    // user has since uninstalled, and forgetting the preference because a
+    // binary is temporarily missing would be worse than carrying it.
+    defaultAgent:
+      typeof source.defaultAgent === "string" ? source.defaultAgent : null,
     defaultLaunchProfiles: validateDefaultLaunchProfiles(
       source.defaultLaunchProfiles,
       validatedLaunchProfiles,

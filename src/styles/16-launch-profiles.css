@@ -91,6 +91,124 @@
   font-size: var(--type-meta);
 }
 
+/* ── The agent catalog ─────────────────────────────────────────────────────
+
+   Two lists — what is on $PATH and what is not — each headed by a count. A
+   row is a grid rather than a `cfg-row`: DL §5's one-value rule fits a
+   setting, and this row carries a state toggle, a default marker and a link,
+   none of which is a setting. */
+.lp-head {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 4px 8px;
+}
+
+.lp-head__title {
+  font-size: var(--type-section);
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* The count is a fact about the list, not a control: a quiet pill, never a
+   badge that could be mistaken for something to press. */
+.lp-head__count {
+  padding: 2px 8px;
+  border-radius: var(--radius-control);
+  background: var(--chrome-2);
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+}
+
+.lp-head__refresh {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lp-agent {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-top: 1px solid var(--seam-recessed);
+}
+
+/* A disabled agent stays fully legible — it is a choice the user made, not a
+   failure — and says so by its toggle, not by being dimmed to unreadable. */
+.lp-agent.is-off .lp-agent__text {
+  opacity: 0.55;
+}
+
+.lp-agent__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.lp-agent__name {
+  font-size: var(--type-body);
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* The name is the identity; the command below it is the mechanism, so it
+   drops a step in both size and ink. */
+.lp-agent .lp-command {
+  font-size: var(--type-meta);
+}
+
+.lp-enabled {
+  flex: 0 0 auto;
+}
+
+.lp-agent__default,
+.lp-agent__setdefault {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.lp-agent__default {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-control);
+  background: var(--chrome-2);
+  color: var(--text);
+  font-size: var(--type-meta);
+}
+
+/* The ↗ control. Its own class rather than the row-remove one it briefly
+   borrowed: that class means "delete this item", and this opens a page. */
+.lp-agent__link {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.lp-agent__link:hover {
+  color: var(--text-muted);
+}
+
+.lp-empty {
+  margin: 0;
+  padding: 12px 4px;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+}
+
 /* The add field: one input that spans the row, with its Add beside it. This
    is the surface's centre of gravity — the user writes the command they
    already know rather than assembling it from menus — so it gets the width. */

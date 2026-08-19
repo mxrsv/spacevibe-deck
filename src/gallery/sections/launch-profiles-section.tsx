@@ -1,5 +1,6 @@
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { settings } from "../../settings/settings-store";
+import { detectedAgents } from "../../terminal/agent-detection-store";
 import { DEFAULT_SETTINGS } from "../../settings/settings-schema";
 import { LaunchProfileEditor } from "../../ui/settings/launch-profile-editor";
 import type { LaunchProfile } from "../../lib/launch-profile";
@@ -20,27 +21,27 @@ import { SectionHead, Specimen } from "../specimen";
  */
 
 const SEEDED: readonly LaunchProfile[] = [
-  { id: "lp:claude", command: "claude" },
-  { id: "lp:claude-plan", command: "claude --permission-mode plan" },
-  {
-    id: "lp:codex-bypass",
-    command: "codex --dangerously-bypass-approvals-and-sandbox",
-  },
-  { id: "lp:cursor-force", command: "cursor-agent --force" },
-  { id: "lp:gemini-yolo", command: "gemini --approval-mode yolo" },
+  { id: "lp:opencode-auto", command: "opencode --auto" },
 ];
 
 const SEEDED_DEFAULTS: Readonly<Record<string, string>> = {
-  claude: "lp:claude",
-  codex: "lp:codex-bypass",
-  "cursor-agent": "lp:cursor-force",
-  gemini: "lp:gemini-yolo",
+  opencode: "lp:opencode-auto",
 };
 
 export function LaunchProfilesSection() {
   const seeded = useSignal(true);
 
   useSignalEffect(() => {
+    // Half the catalog on $PATH, half not: the specimen has to show both
+    // lists, and a browser harness detects nothing on its own.
+    detectedAgents.value = seeded.value
+      ? [
+          { name: "claude", path: "/usr/local/bin/claude" },
+          { name: "codex", path: "/usr/local/bin/codex" },
+          { name: "opencode", path: "/usr/local/bin/opencode" },
+          { name: "gemini", path: "/usr/local/bin/gemini" },
+        ]
+      : [];
     settings.value = seeded.value
       ? {
           ...DEFAULT_SETTINGS,
@@ -53,8 +54,8 @@ export function LaunchProfilesSection() {
   return (
     <>
       <SectionHead
-        title="Presets"
-        blurb="Launch commands for your agents. A starred row is what that CLI opens with; an agent with no command of its own still shows the bare binary."
+        title="Agent catalog"
+        blurb="Every agent Deck knows, split by what is on $PATH. The command under each name ships with the app — a fresh install launches it without anyone typing a flag."
       />
 
       <div class="lp-gallery-toggle">

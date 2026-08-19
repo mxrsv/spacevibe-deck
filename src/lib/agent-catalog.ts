@@ -19,9 +19,26 @@ export interface CustomAgent {
 }
 
 export interface BuiltinAgent {
-  /** Also the binary name and the command — see the module comment. */
+  /** Also the binary name and the bare command — see the module comment. */
   readonly id: string;
   readonly label: string;
+  /**
+   * The command Deck launches this agent with out of the box, flags included.
+   *
+   * This is a RECOMMENDATION shipped with the app, not a user setting: a fresh
+   * install shows it immediately and can launch it without anyone typing a
+   * flag. A user preset for the same agent replaces it; nothing merges.
+   *
+   * Several of these skip the agent's own confirmation prompts, which is the
+   * point — Deck exists to run agents that keep working — but it is also why
+   * every one of them is spelled out on screen rather than hidden behind a
+   * label, and why the row can be disabled.
+   *
+   * Absent = launch the bare binary.
+   */
+  readonly defaultCommand?: string;
+  /** Where to read about it. Opened by the row's ↗ control. */
+  readonly url: string;
 }
 
 /** Process identity sent with `pty_info` for one declared agent. */
@@ -32,22 +49,50 @@ export interface AgentProcessMatcher {
 
 /** Recognised out of the box; always probed, whatever the user declared. */
 export const BUILTIN_AGENTS: readonly BuiltinAgent[] = [
-  { id: "claude", label: "Claude Code" },
-  { id: "codex", label: "Codex" },
-  { id: "opencode", label: "OpenCode" },
+  {
+    id: "claude",
+    label: "Claude Code",
+    defaultCommand: "claude --dangerously-skip-permissions",
+    url: "https://claude.com/claude-code",
+  },
+  {
+    id: "codex",
+    label: "Codex",
+    defaultCommand: "codex --dangerously-bypass-approvals-and-sandbox",
+    url: "https://developers.openai.com/codex/cli",
+  },
+  // No flag: opencode's `--auto` is opt-in per session and its prompts are
+  // already coarse enough that skipping them is not the default anyone wants.
+  { id: "opencode", label: "OpenCode", url: "https://opencode.ai" },
   // Google's successor to Gemini CLI. Gemini CLI keeps its place below it
   // rather than being dropped: paid Code Assist licences still reach the
   // service, and every `lastAgent` on disk holding "gemini" must keep
   // resolving. Order here is reach, not history — it decides both the chip
   // order and the digit key that opens each one.
-  { id: "agy", label: "Antigravity" },
-  { id: "gemini", label: "Gemini CLI" },
+  {
+    id: "agy",
+    label: "Antigravity",
+    defaultCommand: "agy --dangerously-skip-permissions",
+    url: "https://antigravity.google",
+  },
+  {
+    id: "gemini",
+    label: "Gemini CLI",
+    defaultCommand: "gemini --yolo",
+    url: "https://github.com/google-gemini/gemini-cli",
+  },
   // Appended on 2026-08-19 (owner-approved fork: this list reaches process
   // classification). LAST on purpose — order is the digit-key contract in
   // AgentQuickPicker and the Open board, so appending leaves every existing
   // key on the agent it already opened. The id is the binary name, as it is
   // for every built-in; note it is `cursor-agent`, not `cursor`.
-  { id: "cursor-agent", label: "Cursor Agent" },
+  {
+    id: "cursor-agent",
+    label: "Cursor",
+    // `--force` is the long form; `--yolo` is documented as its alias.
+    defaultCommand: "cursor-agent --force",
+    url: "https://cursor.com/cli",
+  },
 ];
 
 export const CUSTOM_ID_PREFIX = "custom:";
