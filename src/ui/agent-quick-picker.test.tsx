@@ -21,14 +21,12 @@ import type { LaunchProfile } from "../lib/launch-profile";
 
 const PLAN: LaunchProfile = {
   id: "lp:plan",
-  name: "Plan",
-  options: { kind: "claude", model: null, permissionMode: "plan" },
+  command: "claude --permission-mode plan",
 };
 
 const YOLO: LaunchProfile = {
   id: "lp:yolo",
-  name: "Yolo",
-  options: { kind: "claude", model: null, permissionMode: "bypassPermissions" },
+  command: "claude --permission-mode bypassPermissions",
 };
 
 function withProfiles(defaults: Readonly<Record<string, string>> = {}): void {
@@ -410,7 +408,7 @@ describe("AgentQuickPicker launch profiles", () => {
     expect(profileSelect("Claude Code")!.value).toBe("lp:plan");
   });
 
-  it("opens on No profile when the agent has no default", () => {
+  it("opens on No preset when the agent has no default", () => {
     withProfiles();
     mount();
 

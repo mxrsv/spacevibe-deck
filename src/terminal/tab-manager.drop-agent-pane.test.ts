@@ -88,13 +88,7 @@ describe("createTabManager dropAgentPane", () => {
     const { tm, pty } = build([{ name: "claude", path: "/bin/claude" }]);
     settings.value = {
       ...DEFAULT_SETTINGS,
-      launchProfiles: [
-        {
-          id: "lp:plan",
-          name: "Plan",
-          options: { kind: "claude", model: null, permissionMode: "plan" },
-        },
-      ],
+      launchProfiles: [{ id: "lp:plan", command: "claude --permission-mode plan" }],
       defaultLaunchProfiles: { claude: "lp:plan" },
     };
     workspacesData.value = {
@@ -114,11 +108,7 @@ describe("createTabManager dropAgentPane", () => {
     expect(pty.writes).toEqual([
       { id: 2, data: "claude --permission-mode plan\r" },
     ]);
-    expect(tm.launchOptionsFor(2)).toEqual({
-      kind: "claude",
-      model: null,
-      permissionMode: "plan",
-    });
+    expect(tm.launchCommandFor(2)).toBe("claude --permission-mode plan");
     tm.dispose();
   });
 

@@ -29,8 +29,7 @@ import type {
 } from "../lib/session-schema";
 import type { FileStatResult } from "../files/file-client";
 import type { FileSurfaceController } from "../files/file-surface-controller";
-import { applyResumeOptions } from "../lib/launch-command";
-import type { LaunchOptions } from "../lib/launch-profile";
+import { applyResumeFlags } from "../lib/launch-command";
 import { materializeChromeFrom } from "./tab-materialize";
 import { noteResumedPane } from "./session-tail-store";
 import type { TabManager } from "./tab-manager";
@@ -72,8 +71,8 @@ interface LivePane {
   readonly cwd: string | null;
   readonly agent: string | null;
   readonly skipLookup: boolean;
-  /** The mode the pane was journalled with; re-applied to its resume command. */
-  readonly launchOptions: LaunchOptions | null;
+  /** The command the pane was journalled with; its flags are re-applied. */
+  readonly launchCommand: string | null;
 }
 
 interface LiveTab {
@@ -135,14 +134,14 @@ function livePaneOf(
       cwd: null,
       agent: pane.agent,
       skipLookup: true,
-      launchOptions: pane.launchOptions,
+      launchCommand: pane.launchCommand,
     };
   }
   return {
     cwd: pane.cwd,
     agent: pane.agent,
     skipLookup: false,
-    launchOptions: pane.launchOptions,
+    launchCommand: pane.launchCommand,
   };
 }
 
@@ -217,12 +216,12 @@ function paneCommandsFor(
     }
     const ref = refs.get(paneKey(tabIndex, paneIndex)) ?? null;
     const command = buildResumeCommand(pane.agent, ref, customAgents);
-    // The pane's OWN recorded options, not its profile's current ones: the
-    // profile may have been edited or deleted since this session started, and
+    // The pane's OWN recorded command, not its preset's current one: the
+    // preset may have been edited or removed since this session started, and
     // the conversation being resumed ran under what was recorded here.
     return command === null
       ? null
-      : applyResumeOptions(command, pane.launchOptions);
+      : applyResumeFlags(command, pane.launchCommand);
   });
 }
 

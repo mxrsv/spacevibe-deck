@@ -1,0 +1,184 @@
+/* Launch profiles (Settings → Agents), 2026-08-19.
+
+   Its own file rather than an addition to `07-config-rows.css` or
+   `11-settings-screen.css`: both were mid-rewrite by the light/dark plan when
+   this landed, and a shared file would have made the two workstreams
+   uncommittable independently.
+
+   No design-language rule is amended here. The row is DL-12.1's item row and
+   the controls are DL §6's existing kinds; what follows is the treatment of
+   one thing those rules do not describe — a row whose content is a command
+   line. */
+
+/* The command IS the row's key, so it takes the label's slot and its ink.
+   `--ui-font`, NOT a monospace face: DL-4.1 keeps the mono face inside the
+   terminal and DL-15.4 states this repo has no `--mono` token and will not
+   gain one. The binary is told from its flags by ink strength alone. */
+.lp-command {
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+  line-height: 1.35;
+  /* A long `opencode --model provider/name --agent x --auto` must wrap rather
+     than push the row's own controls off the edge. */
+  overflow-wrap: anywhere;
+}
+
+.lp-command__binary {
+  color: var(--text);
+}
+
+.lp-command__flags {
+  color: var(--text-faint);
+}
+
+/* An item row whose key is a command runs taller than a settings row: the
+   command wraps and the profile name sits under it, so the value column
+   aligns to the TOP rather than to a centre that moves with the wrap.
+   `box-sizing` is explicit because `styles.css` has no global reset — a
+   percentage size beside a padding overflows its box without it, which is
+   exactly how two defects shipped on 2026-08-16. */
+.lp-row {
+  box-sizing: border-box;
+  align-items: flex-start;
+}
+
+.lp-row .cfg-row__key {
+  min-width: 0;
+}
+
+/* The agent's brand mark. The ONE coloured thing on an achromatic Settings
+   surface (DL-3.7), at the owner's explicit request on 2026-08-19: a list
+   where every row opens with the same grey glyph has to be read rather than
+   recognised. An agent with no mark wears a letter avatar instead, the same
+   fallback the quick picker's chips use. */
+.lp-mark {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+}
+
+.lp-mark--letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--type-meta);
+  font-weight: 600;
+}
+
+/* The mark and the command sit on one line; the command wraps under itself
+   rather than under the mark. */
+.lp-row__key {
+  display: flex;
+  /* `.cfg-row__key` stacks a label over its description, so the direction has
+     to be stated back: a row here is one line — mark, then command. */
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* An alternative mode, indented under the agent whose default was printed
+   above it. Its name leads, because the command beside it is a variation on
+   the one already read. */
+.lp-row--nested {
+  padding-left: 24px;
+}
+
+.lp-row__name {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+}
+
+/* The add field: one input that spans the row, with its Add beside it. This
+   is the surface's centre of gravity — the user writes the command they
+   already know rather than assembling it from menus — so it gets the width. */
+.lp-add {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lp-add__input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--ui-font);
+  font-size: var(--type-body);
+}
+
+/* The star marks the command its agent actually launches with. Neutral, not
+   yellow: DL-3.7 keeps this surface achromatic, and the brand marks are the
+   one sanctioned exception. */
+.lp-star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.lp-star:hover {
+  color: var(--text-muted);
+}
+
+/* Filled rather than outline (the component passes DeckIcon's `filled`), so a
+   starred row reads at a glance without depending on a colour this surface
+   does not have. Its click is inert, hence the cursor. */
+.lp-star.is-on {
+  color: var(--text);
+  cursor: default;
+}
+
+/* The draft is one object, not loose rows: several fields commit together, so
+   the frame is what says the Save button owns all of them. */
+.lp-draft {
+  box-sizing: border-box;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+  margin: 4px 0;
+  padding: 2px 0;
+}
+
+/* The action row carries no key — the buttons act on the whole draft above
+   them, and a label would only name the frame twice. */
+.lp-draft__actions {
+  justify-content: flex-end;
+}
+
+/* ── The quick picker's per-row profile select ─────────────────────────────
+
+   An agent row in AgentQuickPicker is one launch button. A row whose agent
+   has profiles wraps that button beside a select, so the row still reads as
+   one line and the chip keeps every bit of its width. A row whose agent has
+   NO profiles is not wrapped at all — it stays the bare `.achip` it has
+   always been (DL-19.7: omit, do not disable), which is why nothing here
+   styles an empty state. */
+.achip-row {
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.achip-row .achip {
+  flex: 1;
+  min-width: 0;
+}
+
+/* A real `<select>`, not the invisible-overlay `menu` kind: this control sits
+   INSIDE a row that launches on click, so it has to be its own hit target
+   rather than a transparent layer over one. It borrows `.cfg-btn`'s frame for
+   that reason and adds only what a bare select needs. */
+.achip-row__profile {
+  flex: 0 0 auto;
+  max-width: 40%;
+  font: inherit;
+  font-size: var(--type-meta);
+  color: var(--text-muted);
+  cursor: pointer;
+}

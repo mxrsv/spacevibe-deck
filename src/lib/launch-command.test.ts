@@ -1,161 +1,79 @@
 import { describe, expect, it } from "vitest";
 import {
-  applyResumeOptions,
-  composeLaunchCommand,
-  defaultLaunchOptions,
-  resolveLaunchOptions,
+  applyResumeFlags,
+  defaultLaunchCommand,
+  resolveLaunchCommand,
 } from "./launch-command";
 import type { LaunchProfile } from "./launch-profile";
 
 const plan: LaunchProfile = {
   id: "lp:plan",
-  name: "Plan",
-  options: { kind: "claude", model: "opus", permissionMode: "plan" },
+  command: "claude --model opus --permission-mode plan",
 };
 
 const sandboxed: LaunchProfile = {
   id: "lp:sandboxed",
-  name: "Sandboxed",
-  options: {
-    kind: "codex",
-    model: null,
-    sandbox: "workspace-write",
-    approval: "on-request",
-    bypass: false,
-  },
+  command: "codex --sandbox workspace-write",
 };
 
-describe("composeLaunchCommand", () => {
-  it("builds a claude command with both options", () => {
-    expect(composeLaunchCommand(plan.options)).toBe(
-      "claude --model opus --permission-mode plan",
+describe("resolveLaunchCommand", () => {
+  it("returns the profile's command when the binary matches the agent", () => {
+    expect(resolveLaunchCommand("claude", "lp:plan", [plan])).toBe(
+      plan.command,
     );
   });
 
-  it("omits every option left null", () => {
-    expect(
-      composeLaunchCommand({
-        kind: "claude",
-        model: null,
-        permissionMode: null,
-      }),
-    ).toBe("claude");
-  });
-
-  it("builds a codex command", () => {
-    expect(composeLaunchCommand(sandboxed.options)).toBe(
-      "codex --sandbox workspace-write --ask-for-approval on-request",
-    );
-  });
-
-  it("builds an opencode command and only adds --auto when true", () => {
-    expect(
-      composeLaunchCommand({
-        kind: "opencode",
-        model: "anthropic/claude-sonnet-5",
-        agent: "build",
-        auto: true,
-      }),
-    ).toBe("opencode --model anthropic/claude-sonnet-5 --agent build --auto");
-    expect(
-      composeLaunchCommand({
-        kind: "opencode",
-        model: null,
-        agent: null,
-        auto: false,
-      }),
-    ).toBe("opencode");
-  });
-});
-
-describe("composeLaunchCommand — cursor-agent and codex bypass", () => {
-  it("builds a cursor command and only adds --force when true", () => {
-    expect(
-      composeLaunchCommand({
-        kind: "cursor-agent",
-        model: "gpt-5",
-        mode: "plan",
-        force: true,
-      }),
-    ).toBe("cursor-agent --model gpt-5 --mode plan --force");
-    expect(
-      composeLaunchCommand({
-        kind: "cursor-agent",
-        model: null,
-        mode: null,
-        force: false,
-      }),
-    ).toBe("cursor-agent");
-  });
-
-  // Once approvals and the sandbox are both skipped the CLI ignores the other
-  // two flags, so composing them would print a command that misdescribes what
-  // actually runs.
-  it("drops sandbox and approval when codex bypasses both", () => {
-    expect(
-      composeLaunchCommand({
-        kind: "codex",
-        model: "o3",
-        sandbox: "read-only",
-        approval: "untrusted",
-        bypass: true,
-      }),
-    ).toBe("codex --model o3 --dangerously-bypass-approvals-and-sandbox");
-  });
-});
-
-describe("resolveLaunchOptions", () => {
-  it("returns the profile's options when the agent matches", () => {
-    expect(resolveLaunchOptions("claude", "lp:plan", [plan])).toEqual(
-      plan.options,
-    );
-  });
-
-  it("refuses a profile belonging to another agent", () => {
-    expect(resolveLaunchOptions("codex", "lp:plan", [plan])).toBeNull();
+  it("refuses a command belonging to another agent", () => {
+    expect(resolveLaunchCommand("codex", "lp:plan", [plan])).toBeNull();
   });
 
   it("returns null for a null agent, a null id and an unknown id", () => {
-    expect(resolveLaunchOptions(null, "lp:plan", [plan])).toBeNull();
-    expect(resolveLaunchOptions("claude", null, [plan])).toBeNull();
-    expect(resolveLaunchOptions("claude", "lp:gone", [plan])).toBeNull();
+    expect(resolveLaunchCommand(null, "lp:plan", [plan])).toBeNull();
+    expect(resolveLaunchCommand("claude", null, [plan])).toBeNull();
+    expect(resolveLaunchCommand("claude", "lp:gone", [plan])).toBeNull();
   });
 });
 
-describe("defaultLaunchOptions", () => {
-  it("reads the agent's declared default", () => {
-    expect(
-      defaultLaunchOptions("claude", [plan], { claude: "lp:plan" }),
-    ).toEqual(plan.options);
+describe("defaultLaunchCommand", () => {
+  it("reads the agent's starred command", () => {
+    expect(defaultLaunchCommand("claude", [plan], { claude: "lp:plan" })).toBe(
+      plan.command,
+    );
   });
 
   it("returns null when the agent has no default", () => {
-    expect(defaultLaunchOptions("claude", [plan], {})).toBeNull();
+    expect(defaultLaunchCommand("claude", [plan], {})).toBeNull();
     expect(
-      defaultLaunchOptions(null, [plan], { claude: "lp:plan" }),
+      defaultLaunchCommand(null, [plan], { claude: "lp:plan" }),
     ).toBeNull();
   });
 });
 
-describe("applyResumeOptions", () => {
-  it("appends claude's options to its resume command", () => {
-    expect(applyResumeOptions("claude --resume abc123", plan.options)).toBe(
+describe("applyResumeFlags", () => {
+  it("appends claude's flags to its resume command", () => {
+    expect(applyResumeFlags("claude --resume abc123", plan.command)).toBe(
       "claude --resume abc123 --model opus --permission-mode plan",
     );
   });
 
   it("leaves every other agent's resume command alone", () => {
-    expect(applyResumeOptions("codex resume abc123", sandboxed.options)).toBe(
+    expect(applyResumeFlags("codex resume abc123", sandboxed.command)).toBe(
       "codex resume abc123",
     );
-    expect(applyResumeOptions("claude --continue", null)).toBe(
+    expect(applyResumeFlags("claude --continue", null)).toBe(
       "claude --continue",
     );
   });
 
-  it("leaves a command that is not this agent's own alone", () => {
-    expect(applyResumeOptions("review --resume x", plan.options)).toBe(
+  it("leaves a resume command that is not claude's own alone", () => {
+    expect(applyResumeFlags("review --resume x", plan.command)).toBe(
       "review --resume x",
+    );
+  });
+
+  it("adds nothing when the launch command was the bare binary", () => {
+    expect(applyResumeFlags("claude --resume abc", "claude")).toBe(
+      "claude --resume abc",
     );
   });
 });

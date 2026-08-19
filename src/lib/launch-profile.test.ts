@@ -1,250 +1,141 @@
 import { describe, expect, it } from "vitest";
 import {
+  commandAgentId,
+  commandFlags,
+  commandProblem,
   createLaunchProfileId,
   findLaunchProfile,
-  hasLaunchProfiles,
-  isLaunchOptionToken,
-  profileNameProblem,
+  isLaunchCommand,
   profilesForAgent,
   validateDefaultLaunchProfiles,
   validateLaunchProfiles,
   type LaunchProfile,
 } from "./launch-profile";
 
-const claudePlan: LaunchProfile = {
+const plan: LaunchProfile = {
   id: "lp:plan",
-  name: "Plan",
-  options: { kind: "claude", model: null, permissionMode: "plan" },
+  command: "claude --permission-mode plan",
 };
 
-const codexReadOnly: LaunchProfile = {
-  id: "lp:read-only",
-  name: "Read only",
-  options: {
-    kind: "codex",
-    model: null,
-    sandbox: "read-only",
-    approval: "on-request",
-    bypass: false,
-  },
+const bypass: LaunchProfile = {
+  id: "lp:bypass",
+  command: "codex --dangerously-bypass-approvals-and-sandbox",
 };
 
-describe("hasLaunchProfiles", () => {
-  it("accepts the four modelled agents and refuses the rest", () => {
-    expect(hasLaunchProfiles("claude")).toBe(true);
-    expect(hasLaunchProfiles("codex")).toBe(true);
-    expect(hasLaunchProfiles("opencode")).toBe(true);
-    expect(hasLaunchProfiles("cursor-agent")).toBe(true);
-    // Neither has public flags this repo models; both still launch bare.
-    expect(hasLaunchProfiles("gemini")).toBe(false);
-    expect(hasLaunchProfiles("agy")).toBe(false);
-    expect(hasLaunchProfiles("custom:review")).toBe(false);
-  });
-});
-
-describe("cursor-agent options", () => {
-  it("validates a full cursor profile", () => {
-    const profile = {
-      id: "lp:cursor",
-      name: "Cursor plan",
-      options: {
-        kind: "cursor-agent",
-        model: "gpt-5",
-        mode: "plan",
-        force: false,
-      },
-    };
-    expect(validateLaunchProfiles([profile])).toEqual([profile]);
-  });
-
-  it("drops an unknown mode and a non-boolean force", () => {
+describe("commandProblem", () => {
+  it("accepts the commands the reference image shows", () => {
+    expect(commandProblem("claude")).toBeNull();
+    expect(commandProblem("claude --plan")).toBeNull();
     expect(
-      validateLaunchProfiles([
-        {
-          id: "lp:x",
-          name: "X",
-          options: {
-            kind: "cursor-agent",
-            model: null,
-            mode: "yolo",
-            force: false,
-          },
-        },
-      ]),
-    ).toEqual([]);
+      commandProblem("codex --dangerously-bypass-approvals-and-sandbox"),
+    ).toBeNull();
+    expect(commandProblem("cursor-agent --force")).toBeNull();
     expect(
-      validateLaunchProfiles([
-        {
-          id: "lp:x",
-          name: "X",
-          options: {
-            kind: "cursor-agent",
-            model: null,
-            mode: null,
-            force: "yes",
-          },
-        },
-      ]),
-    ).toEqual([]);
-  });
-});
-
-describe("codex bypass", () => {
-  it("validates the boolean and refuses a non-boolean", () => {
-    const options = {
-      kind: "codex",
-      model: null,
-      sandbox: null,
-      approval: null,
-      bypass: true,
-    };
-    expect(
-      validateLaunchProfiles([{ id: "lp:b", name: "B", options }]),
-    ).toEqual([{ id: "lp:b", name: "B", options }]);
-    expect(
-      validateLaunchProfiles([
-        { id: "lp:b", name: "B", options: { ...options, bypass: "yes" } },
-      ]),
-    ).toEqual([]);
+      commandProblem("opencode --model anthropic/claude-sonnet-5"),
+    ).toBeNull();
   });
 
-  // A file written before the field existed must keep working: absent reads as
-  // off, which is the behaviour every stored codex profile already had.
-  it("reads an older codex profile as bypass off", () => {
-    expect(
-      validateLaunchProfiles([
-        {
-          id: "lp:old",
-          name: "Old",
-          options: {
-            kind: "codex",
-            model: null,
-            sandbox: "read-only",
-            approval: null,
-          },
-        },
-      ]),
-    ).toEqual([
-      {
-        id: "lp:old",
-        name: "Old",
-        options: {
-          kind: "codex",
-          model: null,
-          sandbox: "read-only",
-          approval: null,
-          bypass: false,
-        },
-      },
-    ]);
-  });
-});
-
-describe("isLaunchOptionToken", () => {
-  it("accepts a model alias and a provider-qualified model", () => {
-    expect(isLaunchOptionToken("opus")).toBe(true);
-    expect(isLaunchOptionToken("anthropic/claude-opus-5")).toBe(true);
-  });
-
+  // This string is written VERBATIM into a live interactive shell, so every
+  // character a shell acts on has to be refused at the door.
   it("refuses anything a shell would act on", () => {
-    expect(isLaunchOptionToken("opus; rm -rf /")).toBe(false);
-    expect(isLaunchOptionToken("$(whoami)")).toBe(false);
-    expect(isLaunchOptionToken("a b")).toBe(false);
-    expect(isLaunchOptionToken("")).toBe(false);
-    expect(isLaunchOptionToken("x".repeat(65))).toBe(false);
-    expect(isLaunchOptionToken(7)).toBe(false);
+    expect(commandProblem("claude; rm -rf /")).not.toBeNull();
+    expect(commandProblem("claude && curl evil.sh")).not.toBeNull();
+    expect(commandProblem("claude | tee out")).not.toBeNull();
+    expect(commandProblem("claude $(whoami)")).not.toBeNull();
+    expect(commandProblem("claude `whoami`")).not.toBeNull();
+    expect(commandProblem("claude > /etc/passwd")).not.toBeNull();
+    expect(commandProblem('claude --x "y"')).not.toBeNull();
+    expect(commandProblem("claude\nrm -rf /")).not.toBeNull();
+  });
+
+  it("refuses an empty or over-long command", () => {
+    expect(commandProblem("")).not.toBeNull();
+    expect(commandProblem("   ")).not.toBeNull();
+    expect(commandProblem("claude " + "x".repeat(300))).not.toBeNull();
+  });
+});
+
+describe("isLaunchCommand", () => {
+  it("answers for stored values of any type", () => {
+    expect(isLaunchCommand("claude --plan")).toBe(true);
+    expect(isLaunchCommand("claude; ls")).toBe(false);
+    expect(isLaunchCommand(7)).toBe(false);
+    expect(isLaunchCommand(null)).toBe(false);
+  });
+});
+
+describe("commandAgentId / commandFlags", () => {
+  it("splits a command into its binary and its flags", () => {
+    expect(commandAgentId("claude --permission-mode plan")).toBe("claude");
+    expect(commandFlags("claude --permission-mode plan")).toBe(
+      "--permission-mode plan",
+    );
+    expect(commandAgentId("claude")).toBe("claude");
+    expect(commandFlags("claude")).toBe("");
   });
 });
 
 describe("createLaunchProfileId", () => {
   it("mints a prefixed slug and never collides", () => {
-    expect(createLaunchProfileId("Plan mode", [])).toBe("lp:plan-mode");
+    expect(createLaunchProfileId("claude --plan", [])).toBe("lp:claude-plan");
     expect(
-      createLaunchProfileId("Plan mode", [
-        { ...claudePlan, id: "lp:plan-mode" },
+      createLaunchProfileId("claude --plan", [
+        { id: "lp:claude-plan", command: "claude --plan" },
       ]),
-    ).toBe("lp:plan-mode-2");
-  });
-});
-
-describe("profileNameProblem", () => {
-  it("refuses an empty, over-long or duplicate name", () => {
-    expect(profileNameProblem("", [])).not.toBeNull();
-    expect(profileNameProblem("x".repeat(33), [])).not.toBeNull();
-    expect(profileNameProblem("Plan", [claudePlan])).not.toBeNull();
-    expect(profileNameProblem("Plan", [])).toBeNull();
+    ).toBe("lp:claude-plan-2");
   });
 });
 
 describe("profilesForAgent", () => {
-  it("selects by the options' kind", () => {
-    const all = [claudePlan, codexReadOnly];
-    expect(profilesForAgent("claude", all)).toEqual([claudePlan]);
+  it("selects by the command's own binary", () => {
+    const all = [plan, bypass];
+    expect(profilesForAgent("claude", all)).toEqual([plan]);
     expect(profilesForAgent("gemini", all)).toEqual([]);
   });
 });
 
 describe("findLaunchProfile", () => {
   it("answers null for a null id and for an unknown id", () => {
-    expect(findLaunchProfile(null, [claudePlan])).toBeNull();
-    expect(findLaunchProfile("lp:gone", [claudePlan])).toBeNull();
-    expect(findLaunchProfile("lp:plan", [claudePlan])).toEqual(claudePlan);
+    expect(findLaunchProfile(null, [plan])).toBeNull();
+    expect(findLaunchProfile("lp:gone", [plan])).toBeNull();
+    expect(findLaunchProfile("lp:plan", [plan])).toEqual(plan);
   });
 });
 
 describe("validateLaunchProfiles", () => {
   it("keeps a well-formed profile", () => {
-    expect(validateLaunchProfiles([claudePlan])).toEqual([claudePlan]);
+    expect(validateLaunchProfiles([plan])).toEqual([plan]);
   });
 
   it("drops a profile rather than repairing it", () => {
     expect(validateLaunchProfiles("nope")).toEqual([]);
-    expect(validateLaunchProfiles([{ id: "lp:x", name: "X" }])).toEqual([]);
+    expect(validateLaunchProfiles([{ id: "lp:x" }])).toEqual([]);
     expect(
-      validateLaunchProfiles([
-        { id: "lp:x", name: "X", options: { kind: "gemini" } },
-      ]),
+      validateLaunchProfiles([{ id: "lp:x", command: "claude; rm -rf /" }]),
     ).toEqual([]);
-    expect(
-      validateLaunchProfiles([
-        {
-          id: "lp:x",
-          name: "X",
-          options: { kind: "claude", model: null, permissionMode: "nonsense" },
-        },
-      ]),
-    ).toEqual([]);
-    expect(
-      validateLaunchProfiles([
-        {
-          id: "lp:x",
-          name: "X",
-          options: { kind: "claude", model: "a b", permissionMode: null },
-        },
-      ]),
-    ).toEqual([]);
+    expect(validateLaunchProfiles([{ id: 7, command: "claude" }])).toEqual([]);
   });
 
   it("drops a duplicate id, first wins", () => {
-    const second: LaunchProfile = { ...claudePlan, name: "Other" };
-    expect(validateLaunchProfiles([claudePlan, second])).toEqual([claudePlan]);
+    const second: LaunchProfile = { ...plan, command: "claude --other" };
+    expect(validateLaunchProfiles([plan, second])).toEqual([plan]);
   });
 });
 
 describe("validateDefaultLaunchProfiles", () => {
-  it("keeps a mapping that points at a profile of that agent", () => {
-    expect(
-      validateDefaultLaunchProfiles({ claude: "lp:plan" }, [claudePlan]),
-    ).toEqual({ claude: "lp:plan" });
+  it("keeps a mapping that points at a command for that agent", () => {
+    expect(validateDefaultLaunchProfiles({ claude: "lp:plan" }, [plan])).toEqual(
+      { claude: "lp:plan" },
+    );
   });
 
   it("drops a dangling id and a cross-agent mapping", () => {
-    expect(
-      validateDefaultLaunchProfiles({ claude: "lp:gone" }, [claudePlan]),
-    ).toEqual({});
-    expect(
-      validateDefaultLaunchProfiles({ codex: "lp:plan" }, [claudePlan]),
-    ).toEqual({});
-    expect(validateDefaultLaunchProfiles(null, [claudePlan])).toEqual({});
+    expect(validateDefaultLaunchProfiles({ claude: "lp:gone" }, [plan])).toEqual(
+      {},
+    );
+    expect(validateDefaultLaunchProfiles({ codex: "lp:plan" }, [plan])).toEqual(
+      {},
+    );
+    expect(validateDefaultLaunchProfiles(null, [plan])).toEqual({});
   });
 });

@@ -10,7 +10,7 @@ const LEAF = { type: "leaf" } as const;
 // `launchOptions` is explicit here because the validator always answers with
 // the field: a fixture without it round-trips to a record that has it, and
 // every `toEqual(RECORD)` below would fail on the difference.
-const PANE = { cwd: "/tmp/x", agent: "claude", launchOptions: null };
+const PANE = { cwd: "/tmp/x", agent: "claude", launchCommand: null };
 const TAB = {
   workspacePath: "/tmp/x",
   layout: LEAF,
@@ -105,8 +105,8 @@ describe("archive", () => {
   });
 });
 
-describe("SessionPane.launchOptions", () => {
-  function paneOf(launchOptions: unknown) {
+describe("SessionPane.launchCommand", () => {
+  function paneOf(launchCommand: unknown) {
     const record = validateWindowRecord({
       savedAt: 1,
       activeTabIndex: 0,
@@ -114,7 +114,7 @@ describe("SessionPane.launchOptions", () => {
         {
           workspacePath: null,
           layout: { type: "leaf" },
-          panes: [{ cwd: "/tmp", agent: "claude", launchOptions }],
+          panes: [{ cwd: "/tmp", agent: "claude", launchCommand }],
           name: null,
           dotColor: null,
         },
@@ -125,21 +125,21 @@ describe("SessionPane.launchOptions", () => {
     return record?.tabs[0].panes[0];
   }
 
-  it("keeps a pane's launch options", () => {
+  it("keeps a pane's launch command", () => {
     expect(
-      paneOf({ kind: "claude", model: null, permissionMode: "plan" })
-        ?.launchOptions,
-    ).toEqual({ kind: "claude", model: null, permissionMode: "plan" });
+      paneOf("claude --permission-mode plan")
+        ?.launchCommand,
+    ).toBe("claude --permission-mode plan");
   });
 
-  it("drops malformed launch options without dropping the pane", () => {
-    const pane = paneOf({ kind: "claude", permissionMode: "nope" });
-    expect(pane?.launchOptions).toBeNull();
+  it("drops an unsafe command without dropping the pane", () => {
+    const pane = paneOf("claude; rm -rf /");
+    expect(pane?.launchCommand).toBeNull();
     expect(pane?.agent).toBe("claude");
     expect(pane?.cwd).toBe("/tmp");
   });
 
   it("reads a file written before the field existed", () => {
-    expect(paneOf(undefined)?.launchOptions).toBeNull();
+    expect(paneOf(undefined)?.launchCommand).toBeNull();
   });
 });

@@ -34,8 +34,7 @@ vi.mock("../host/window-host", () => ({
 
 const plan: LaunchProfile = {
   id: "lp:plan",
-  name: "Plan",
-  options: { kind: "claude", model: null, permissionMode: "plan" },
+  command: "claude --permission-mode plan",
 };
 
 /**
@@ -129,29 +128,25 @@ describe("createTabManager openQuickAgent launch profiles", () => {
     tm.dispose();
   });
 
-  it("remembers the options a pane launched with", async () => {
+  it("remembers the command a pane launched with", async () => {
     const { tm } = build();
     withProfiles({});
 
     await tm.openQuickAgent("claude", null, "lp:plan");
     await vi.advanceTimersByTimeAsync(3000);
 
-    expect(tm.launchOptionsFor(1)).toEqual({
-      kind: "claude",
-      model: null,
-      permissionMode: "plan",
-    });
+    expect(tm.launchCommandFor(1)).toBe("claude --permission-mode plan");
     tm.dispose();
   });
 
-  it("reports no options for a pane launched without a profile", async () => {
+  it("reports no command for a pane launched without a preset", async () => {
     const { tm } = build();
     withProfiles({});
 
     await tm.openQuickAgent("claude", null, null);
     await vi.advanceTimersByTimeAsync(3000);
 
-    expect(tm.launchOptionsFor(1)).toBeNull();
+    expect(tm.launchCommandFor(1)).toBeNull();
     tm.dispose();
   });
 });

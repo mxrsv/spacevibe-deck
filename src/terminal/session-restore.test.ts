@@ -35,7 +35,7 @@ function tab(overrides: Partial<SessionTab> = {}): SessionTab {
   return {
     workspacePath: "/w",
     layout: LEAF,
-    panes: [{ cwd: "/w", agent: "claude", launchOptions: null }],
+    panes: [{ cwd: "/w", agent: "claude", launchCommand: null }],
     name: null,
     dotColor: null,
     ...overrides,
@@ -261,7 +261,7 @@ describe("restoreSession", () => {
   it("point 3: a dead pane cwd survives with cwd null and no resume request for it", async () => {
     const oneTab = tab({
       workspacePath: "/w",
-      panes: [{ cwd: "/w/dead", agent: "claude", launchOptions: null }],
+      panes: [{ cwd: "/w/dead", agent: "claude", launchCommand: null }],
     });
     const records = new Map<string, WindowRecord>([
       ["main", record({ tabs: [oneTab] })],
@@ -280,8 +280,8 @@ describe("restoreSession", () => {
     const twoPaneTab = tab({
       workspacePath: "/w",
       panes: [
-        { cwd: "/w", agent: "claude", launchOptions: null },
-        { cwd: "/w", agent: "claude", launchOptions: null },
+        { cwd: "/w", agent: "claude", launchCommand: null },
+        { cwd: "/w", agent: "claude", launchCommand: null },
       ],
     });
     const records = new Map<string, WindowRecord>([
@@ -317,11 +317,7 @@ describe("restoreSession", () => {
         {
           cwd: "/w",
           agent: "claude",
-          launchOptions: {
-            kind: "claude",
-            model: null,
-            permissionMode: "plan",
-          },
+          launchCommand: "claude --permission-mode plan",
         },
       ],
     });
@@ -350,13 +346,7 @@ describe("restoreSession", () => {
         {
           cwd: "/w",
           agent: "codex",
-          launchOptions: {
-            kind: "codex",
-            model: null,
-            sandbox: "workspace-write",
-            approval: null,
-            bypass: false,
-          },
+          launchCommand: "codex --sandbox workspace-write",
         },
       ],
     });
@@ -377,7 +367,7 @@ describe("restoreSession", () => {
   it("restores a pane with no recorded options exactly as before", async () => {
     const plainTab = tab({
       workspacePath: "/w",
-      panes: [{ cwd: "/w", agent: "claude", launchOptions: null }],
+      panes: [{ cwd: "/w", agent: "claude", launchCommand: null }],
     });
     const records = new Map<string, WindowRecord>([
       ["main", record({ tabs: [plainTab] })],
@@ -396,7 +386,7 @@ describe("restoreSession", () => {
   it("point 4: a custom-agent-label pane skips the lookup and uses its declared command", async () => {
     const customTab = tab({
       workspacePath: "/w",
-      panes: [{ cwd: "/w", agent: "MyBot", launchOptions: null }],
+      panes: [{ cwd: "/w", agent: "MyBot", launchCommand: null }],
     });
     const records = new Map<string, WindowRecord>([
       ["main", record({ tabs: [customTab] })],
@@ -414,7 +404,7 @@ describe("restoreSession", () => {
   it("point 4: a null-agent pane gets a null command and no lookup request", async () => {
     const plainTab = tab({
       workspacePath: "/w",
-      panes: [{ cwd: "/w", agent: null, launchOptions: null }],
+      panes: [{ cwd: "/w", agent: null, launchCommand: null }],
     });
     const records = new Map<string, WindowRecord>([
       ["main", record({ tabs: [plainTab] })],
@@ -456,8 +446,8 @@ describe("restoreSession", () => {
     const twoPaneTab = tab({
       workspacePath: "/w",
       panes: [
-        { cwd: "/w", agent: "claude", launchOptions: null },
-        { cwd: "/w", agent: "claude", launchOptions: null },
+        { cwd: "/w", agent: "claude", launchCommand: null },
+        { cwd: "/w", agent: "claude", launchCommand: null },
       ],
     });
     const records = new Map<string, WindowRecord>([
@@ -729,7 +719,7 @@ describe("resumeWorkspace", () => {
     const entry: ArchiveEntry = {
       savedAt: 42,
       tabs: [
-        tab({ workspacePath: "/w", panes: [{ cwd: "/w", agent: "claude", launchOptions: null }] }),
+        tab({ workspacePath: "/w", panes: [{ cwd: "/w", agent: "claude", launchCommand: null }] }),
       ],
     };
     const { deps, mocks } = createFakeDeps({});

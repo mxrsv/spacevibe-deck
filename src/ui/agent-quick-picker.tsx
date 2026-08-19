@@ -12,7 +12,7 @@ import { ConfigRow } from "./controls/config-row";
 import { DeckIcon, ROW_ICON } from "./controls/deck-icon";
 import { Modal } from "./modal";
 import { settings } from "../settings/settings-store";
-import { profilesForAgent } from "../lib/launch-profile";
+import { commandFlags, profilesForAgent } from "../lib/launch-profile";
 
 /**
  * The `+` button's fast path: pick a destination and an agent, open a tab.
@@ -239,10 +239,10 @@ export function AgentQuickPicker({
                   };
                 }}
               >
-                <option value="">No profile</option>
+                <option value="">No preset</option>
                 {profiles.map((profile) => (
                   <option key={profile.id} value={profile.id}>
-                    {profile.name}
+                    {commandFlags(profile.command) || "bare"}
                   </option>
                 ))}
               </select>

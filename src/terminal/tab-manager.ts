@@ -32,11 +32,9 @@ import {
   resolveAgentCommand,
 } from "../lib/agent-catalog";
 import {
-  composeLaunchCommand,
-  defaultLaunchOptions,
-  resolveLaunchOptions,
+  defaultLaunchCommand,
+  resolveLaunchCommand,
 } from "../lib/launch-command";
-import type { LaunchOptions } from "../lib/launch-profile";
 import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
 import { TIER_RANK } from "./action-registry";
 import { installFileDrop } from "./file-drop";
@@ -346,9 +344,9 @@ export function createTabManager(
   /**
    * What each pane launched with. Process classification recovers the BINARY a
    * pane is running, never the flags it was given, so this map is the only
-   * record of a pane's mode — `captureSession` reads it for the journal.
+   * record of a pane's command — `captureSession` reads it for the journal.
    */
-  const launchOptionsByPane = new Map<number, LaunchOptions>();
+  const launchCommandByPane = new Map<number, string>();
 
   /**
    * ONE choke point for every tracker transition that might be worth a
@@ -404,12 +402,12 @@ export function createTabManager(
     }
   }
 
-  /** Forget the launch mode of panes outside `live`. */
-  function pruneLaunchOptions(live: readonly number[]): void {
+  /** Forget the launch command of panes outside `live`. */
+  function pruneLaunchCommands(live: readonly number[]): void {
     const alive = new Set(live);
-    for (const id of [...launchOptionsByPane.keys()]) {
+    for (const id of [...launchCommandByPane.keys()]) {
       if (!alive.has(id)) {
-        launchOptionsByPane.delete(id);
+        launchCommandByPane.delete(id);
       }
     }
   }
@@ -423,7 +421,7 @@ export function createTabManager(
       tracker.prune(live);
       notifier.prune(live);
       pruneNotifiedKinds(live);
-      pruneLaunchOptions(live);
+      pruneLaunchCommands(live);
       // Every pane of every tab is polled now, so a long session would
       // otherwise leave one cache entry behind per pane ever opened.
       poller.prune(live);
@@ -681,7 +679,7 @@ export function createTabManager(
     tracker.prune(live);
     notifier.prune(live);
     pruneNotifiedKinds(live);
-    pruneLaunchOptions(live);
+    pruneLaunchCommands(live);
     poller.prune(live);
   }
 
@@ -827,24 +825,23 @@ export function createTabManager(
     // default profile applies; `null` means the caller explicitly asked for
     // the bare command. An agent with no profiles resolves to null either way
     // and takes the catalog's command exactly as before.
-    const launchOptions =
-      intent.launchOptions === undefined
-        ? defaultLaunchOptions(
+    const launchCommand =
+      intent.launchCommand === undefined
+        ? defaultLaunchCommand(
             agentId,
             settings.value.launchProfiles,
             settings.value.defaultLaunchProfiles,
           )
-        : intent.launchOptions;
+        : intent.launchCommand;
     const fallback =
       agentId === null
         ? null
-        : launchOptions !== null
-          ? composeLaunchCommand(launchOptions)
-          : resolveAgentCommand(agentId, settings.value.customAgents);
+        : (launchCommand ??
+          resolveAgentCommand(agentId, settings.value.customAgents));
     const paneIds = entry.manager.paneIds();
-    if (launchOptions !== null) {
+    if (launchCommand !== null) {
       for (const id of paneIds) {
-        launchOptionsByPane.set(id, launchOptions);
+        launchCommandByPane.set(id, launchCommand);
       }
     }
     launcher.arm(
@@ -906,7 +903,7 @@ export function createTabManager(
       ...(profileId === undefined
         ? {}
         : {
-            launchOptions: resolveLaunchOptions(
+            launchCommand: resolveLaunchCommand(
               agentId,
               profileId,
               settings.value.launchProfiles,
@@ -916,9 +913,9 @@ export function createTabManager(
     });
   }
 
-  /** The launch options a pane started with; null when it had none. */
-  function launchOptionsFor(paneId: number): LaunchOptions | null {
-    return launchOptionsByPane.get(paneId) ?? null;
+  /** The command a pane started with; null when it had none. */
+  function launchCommandFor(paneId: number): string | null {
+    return launchCommandByPane.get(paneId) ?? null;
   }
 
   /**
@@ -962,13 +959,13 @@ export function createTabManager(
     // The drop states no mode, so the agent's default profile applies — the
     // same rule the Open board gets through `materialize`. Composed here
     // because this is the one launch that does not go through it.
-    const launchOptions = defaultLaunchOptions(
+    const launchCommand = defaultLaunchCommand(
       agentId,
       settings.value.launchProfiles,
       settings.value.defaultLaunchProfiles,
     );
-    if (launchOptions !== null) {
-      launchOptionsByPane.set(paneId, launchOptions);
+    if (launchCommand !== null) {
+      launchCommandByPane.set(paneId, launchCommand);
     }
     launcher.arm([
       {
@@ -976,9 +973,7 @@ export function createTabManager(
         command:
           agentId === null
             ? null
-            : launchOptions !== null
-              ? composeLaunchCommand(launchOptions)
-              : resolveAgentCommand(agentId, customAgents),
+            : (launchCommand ?? resolveAgentCommand(agentId, customAgents)),
       },
     ]);
     // The docked pane has no process info until the next tick otherwise, so
@@ -1018,7 +1013,7 @@ export function createTabManager(
           // window has no entry for it, so its snapshot is null and restore
           // falls back to the bare resume command. Cross-window transfer is a
           // `transfer-client.ts` change and a separate decision.
-          launchOptions: launchOptionsFor(id),
+          launchCommand: launchCommandFor(id),
         };
       });
       return [
@@ -1211,7 +1206,7 @@ export function createTabManager(
     tracker.prune(live);
     notifier.prune(live);
     pruneNotifiedKinds(live);
-    pruneLaunchOptions(live);
+    pruneLaunchCommands(live);
     poller.prune(live);
     if (tabs.length === 0) {
       // Every window is a peer (spec §2, §9.5): the last SURFACE closes THIS
@@ -2044,7 +2039,7 @@ export function createTabManager(
     materialize,
     openFromPreset,
     openQuickAgent,
-    launchOptionsFor,
+    launchCommandFor,
     dropAgentPane,
     activeSlotRects() {
       return activeManager()?.slotRects() ?? [];

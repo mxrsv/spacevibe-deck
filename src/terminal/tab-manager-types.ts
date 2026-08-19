@@ -3,7 +3,6 @@ import type { PaneRect } from "../lib/pane-geometry";
 import type { SessionTab } from "../lib/session-schema";
 import type { TransferClient } from "./transfer-client";
 import type { AgentChoice } from "../lib/workspace-recents";
-import type { LaunchOptions } from "../lib/launch-profile";
 import type { ShortcutAction } from "./keymap";
 import type { TerminalManager, TerminalManagerDeps } from "./terminal-manager";
 import type { PaneAttentionSnapshot } from "./agent-attention";
@@ -117,17 +116,17 @@ export interface TabManager {
    * the focused pane's live cwd and the active tab's workspace.
    */
   /**
-   * `profileId` has three states: OMITTED uses the agent's default launch
-   * profile, `null` launches the bare command even when a default exists, and
-   * an id uses that profile.
+   * `profileId` has three states: OMITTED uses the agent's default preset,
+   * `null` launches the bare binary even when a default exists, and an id uses
+   * that preset.
    */
   openQuickAgent(
     agentId: AgentChoice,
     destination?: string | null,
     profileId?: string | null,
   ): Promise<boolean>;
-  /** The launch options a pane was started with; null when it had none. */
-  launchOptionsFor(paneId: number): LaunchOptions | null;
+  /** The command a pane was started with; null when it had none. */
+  launchCommandFor(paneId: number): string | null;
   /**
    * The `New` row dropped onto a pane: dock a pane on `edge` of
    * `targetPaneId` inside the ACTIVE tab and launch the agent that tab's

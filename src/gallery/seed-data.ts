@@ -53,7 +53,7 @@ export const SEED_SESSION_ARCHIVE: Readonly<Record<string, ArchiveEntry>> = {
           {
             cwd: `${HOME}/deck-worktrees/electron-migration`,
             agent: "claude",
-            launchOptions: null,
+            launchCommand: null,
           },
         ],
         name: null,

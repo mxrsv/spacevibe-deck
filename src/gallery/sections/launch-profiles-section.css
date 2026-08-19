@@ -1,0 +1,18 @@
+/* Gallery-only framing for the agent command rows (plan Task 3).
+   Never imported by the shipping bundle (R7): `gallery/main.tsx` is the only
+   entry that pulls it in. Everything the SPECIMEN shows is styled by the
+   shipping `src/styles/16-launch-profiles.css` — this file owns the review
+   frame around it and nothing else. */
+
+.lp-gallery-toggle {
+  margin: 0 0 12px 0;
+}
+
+/* Deck's supported minimum (DL-11.7): the same rows at the width where a
+   command has the least room to wrap. */
+.lp-compact {
+  box-sizing: border-box;
+  width: 480px;
+  max-width: 100%;
+  border: 1px dashed var(--hair);
+}
