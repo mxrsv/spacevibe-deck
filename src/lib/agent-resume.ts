@@ -64,6 +64,15 @@ const COMMAND_TABLE: Readonly<Record<string, CommandForms>> = {
     latest: "agy --continue",
     bare: "agy",
   },
+  // Added 2026-08-19 with the catalog entry. No Cursor session scanner exists
+  // in `electron/resume/`, so `resume_lookup` answers null for these panes and
+  // `bare` is what actually gets typed today — the two forms above are here so
+  // that adding a scanner later is one file, not two.
+  "cursor-agent": {
+    id: (id) => `cursor-agent --resume ${id}`,
+    latest: "cursor-agent --continue",
+    bare: "cursor-agent",
+  },
 };
 
 /**

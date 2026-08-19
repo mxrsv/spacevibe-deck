@@ -355,6 +355,7 @@ describe("restoreSession", () => {
             model: null,
             sandbox: "workspace-write",
             approval: null,
+            bypass: false,
           },
         },
       ],
