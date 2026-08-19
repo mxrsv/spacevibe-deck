@@ -11,6 +11,8 @@ import {
 import { ConfigRow } from "./controls/config-row";
 import { DeckIcon, ROW_ICON } from "./controls/deck-icon";
 import { Modal } from "./modal";
+import { settings } from "../settings/settings-store";
+import { profilesForAgent } from "../lib/launch-profile";
 
 /**
  * The `+` button's fast path: pick a destination and an agent, open a tab.
@@ -45,8 +47,15 @@ export interface AgentQuickPickerProps {
   /**
    * `agentId` is `null` for the shell-only row. `destination` is the chosen
    * worktree path, or `null` to keep the caller's own cwd resolution.
+   * `profileId` is the launch profile picked on that row — `null` when the
+   * agent has none, or when its "No profile" option is selected, which is an
+   * explicit request for the bare command even if the agent has a default.
    */
-  onSelect(agentId: AgentChoice, destination: string | null): void;
+  onSelect(
+    agentId: AgentChoice,
+    destination: string | null,
+    profileId: string | null,
+  ): void;
   onCancel(): void;
 }
 
@@ -80,8 +89,28 @@ export function AgentQuickPicker({
     destinations[0] ??
     null;
 
+  const launchProfiles = settings.value.launchProfiles;
+  const profileDefaults = settings.value.defaultLaunchProfiles;
+  /**
+   * The user's explicit profile pick per agent id. Seeded lazily for the same
+   * reason `chosen` is: the agent's default is resolved on every render, so an
+   * agent the user has not touched always reads its CURRENT default rather
+   * than whichever one existed at mount.
+   */
+  const pickedProfiles = useSignal<Readonly<Record<string, string>>>({});
+
+  /** Which profile a row will launch with — the pick, else the default. */
+  function profileFor(agentId: string): string {
+    return pickedProfiles.value[agentId] ?? profileDefaults[agentId] ?? "";
+  }
+
   function pick(agentId: AgentChoice): void {
-    onSelect(agentId, current?.path ?? null);
+    const profileId = agentId === null ? "" : profileFor(agentId);
+    onSelect(
+      agentId,
+      current?.path ?? null,
+      profileId === "" ? null : profileId,
+    );
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
@@ -160,7 +189,8 @@ export function AgentQuickPicker({
         {chips.map((chip) => {
           const avatar =
             chip.logo === undefined ? letterAvatar(chip.label, chip.id) : null;
-          return (
+          const profiles = profilesForAgent(chip.id, launchProfiles);
+          const button = (
             <button
               key={chip.id}
               type="button"
@@ -182,6 +212,41 @@ export function AgentQuickPicker({
               )}
               {chip.label}
             </button>
+          );
+          // No profiles declared for this agent: the row stays exactly the
+          // chip it has always been. An empty control on every row would be
+          // DL-19.7's omit-don't-disable rule broken five times over, and it
+          // is why the emptiness is tested rather than left to the list
+          // happening to have length zero.
+          if (profiles.length === 0) {
+            return button;
+          }
+          return (
+            <div key={chip.id} class="achip-row">
+              {button}
+              {/* The select is NOT reachable by digit key and its own click
+                  must not bubble to the chip: changing a mode would otherwise
+                  open the tab before the pick applied. */}
+              <select
+                class="cfg-btn achip-row__profile"
+                aria-label={`${chip.label} launch profile`}
+                value={profileFor(chip.id)}
+                onClick={(event) => event.stopPropagation()}
+                onChange={(event) => {
+                  pickedProfiles.value = {
+                    ...pickedProfiles.value,
+                    [chip.id]: event.currentTarget.value,
+                  };
+                }}
+              >
+                <option value="">No profile</option>
+                {profiles.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           );
         })}
         <button type="button" class="achip is-shell" onClick={() => pick(null)}>

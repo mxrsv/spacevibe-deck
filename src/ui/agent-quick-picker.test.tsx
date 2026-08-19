@@ -4,7 +4,40 @@ import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CustomAgent } from "../lib/agent-catalog";
 import type { QuickDestination } from "../repositories/worktree-destinations";
+vi.mock("../host/store-host", () => ({
+  Store: {
+    load: vi.fn(async () => ({
+      get: vi.fn(async () => undefined),
+      set: vi.fn(async () => {}),
+      save: vi.fn(async () => {}),
+    })),
+  },
+}));
+
 import { AgentQuickPicker } from "./agent-quick-picker";
+import { settings } from "../settings/settings-store";
+import { DEFAULT_SETTINGS } from "../settings/settings-schema";
+import type { LaunchProfile } from "../lib/launch-profile";
+
+const PLAN: LaunchProfile = {
+  id: "lp:plan",
+  name: "Plan",
+  options: { kind: "claude", model: null, permissionMode: "plan" },
+};
+
+const YOLO: LaunchProfile = {
+  id: "lp:yolo",
+  name: "Yolo",
+  options: { kind: "claude", model: null, permissionMode: "bypassPermissions" },
+};
+
+function withProfiles(defaults: Readonly<Record<string, string>> = {}): void {
+  settings.value = {
+    ...DEFAULT_SETTINGS,
+    launchProfiles: [PLAN, YOLO],
+    defaultLaunchProfiles: defaults,
+  };
+}
 
 const DETECTED = [
   { name: "claude", path: "/usr/local/bin/claude" },
@@ -58,6 +91,7 @@ function selectEl(): HTMLSelectElement | null {
 }
 
 beforeEach(() => {
+  settings.value = DEFAULT_SETTINGS;
   host = document.createElement("div");
   document.body.appendChild(host);
 });
@@ -67,6 +101,7 @@ afterEach(() => {
     render(null, host);
   });
   host.remove();
+  settings.value = DEFAULT_SETTINGS;
 });
 
 describe("AgentQuickPicker", () => {
@@ -109,7 +144,7 @@ describe("AgentQuickPicker", () => {
     host.querySelectorAll<HTMLButtonElement>(".achip")[1].click();
 
     // Second argument is the destination: null when the surface offered none.
-    expect(onSelect).toHaveBeenCalledWith("codex", null);
+    expect(onSelect).toHaveBeenCalledWith("codex", null, null);
   });
 
   it("clicking Shell only selects null", () => {
@@ -117,7 +152,7 @@ describe("AgentQuickPicker", () => {
 
     host.querySelectorAll<HTMLButtonElement>(".achip")[3].click();
 
-    expect(onSelect).toHaveBeenCalledWith(null, null);
+    expect(onSelect).toHaveBeenCalledWith(null, null, null);
   });
 
   it("digit keys 1-9 select the matching chip, and 0 selects Shell only", () => {
@@ -131,14 +166,14 @@ describe("AgentQuickPicker", () => {
         new KeyboardEvent("keydown", { key: "2", bubbles: true }),
       );
     });
-    expect(onSelect).toHaveBeenLastCalledWith("codex", null);
+    expect(onSelect).toHaveBeenLastCalledWith("codex", null, null);
 
     act(() => {
       container.dispatchEvent(
         new KeyboardEvent("keydown", { key: "0", bubbles: true }),
       );
     });
-    expect(onSelect).toHaveBeenLastCalledWith(null, null);
+    expect(onSelect).toHaveBeenLastCalledWith(null, null, null);
   });
 
   it("an out-of-range digit key is a no-op", () => {
@@ -259,7 +294,7 @@ describe("AgentQuickPicker destination", () => {
 
     host.querySelectorAll<HTMLButtonElement>(".achip")[0].click();
 
-    expect(onSelect).toHaveBeenCalledWith("claude", "/dev/deck-modal");
+    expect(onSelect).toHaveBeenCalledWith("claude", "/dev/deck-modal", null);
   });
 
   it("falls back to the repository's own checkout when the preference is unknown", () => {
@@ -270,7 +305,7 @@ describe("AgentQuickPicker destination", () => {
 
     host.querySelectorAll<HTMLButtonElement>(".achip")[0].click();
 
-    expect(onSelect).toHaveBeenCalledWith("claude", "/dev/deck");
+    expect(onSelect).toHaveBeenCalledWith("claude", "/dev/deck", null);
   });
 
   it("changing the select changes what the pick carries", () => {
@@ -289,7 +324,7 @@ describe("AgentQuickPicker destination", () => {
       "deck-modal · feat/modal-shell",
     );
     host.querySelectorAll<HTMLButtonElement>(".achip")[1].click();
-    expect(onSelect).toHaveBeenCalledWith("codex", "/dev/deck-modal");
+    expect(onSelect).toHaveBeenCalledWith("codex", "/dev/deck-modal", null);
   });
 
   // The scan is async, so the picker normally mounts with an empty list and
@@ -339,6 +374,94 @@ describe("AgentQuickPicker destination", () => {
     act(() => {
       selectEl()!.dispatchEvent(
         new KeyboardEvent("keydown", { key: "2", bubbles: true }),
+      );
+    });
+
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+describe("AgentQuickPicker launch profiles", () => {
+  function profileSelect(label: string): HTMLSelectElement | null {
+    return host.querySelector<HTMLSelectElement>(
+      `[aria-label="${label} launch profile"]`,
+    );
+  }
+
+  it("offers a profile select only for agents that have profiles", () => {
+    withProfiles();
+    mount();
+
+    expect(profileSelect("Claude Code")).not.toBeNull();
+    expect(profileSelect("Codex")).toBeNull();
+    expect(profileSelect("Aider")).toBeNull();
+  });
+
+  it("renders no select at all when nothing declares a profile", () => {
+    mount();
+
+    expect(host.querySelector('[aria-label$="launch profile"]')).toBeNull();
+  });
+
+  it("selects the agent's default profile on mount", () => {
+    withProfiles({ claude: "lp:plan" });
+    mount();
+
+    expect(profileSelect("Claude Code")!.value).toBe("lp:plan");
+  });
+
+  it("opens on No profile when the agent has no default", () => {
+    withProfiles();
+    mount();
+
+    expect(profileSelect("Claude Code")!.value).toBe("");
+  });
+
+  it("passes the chosen profile id to onSelect", () => {
+    withProfiles({ claude: "lp:plan" });
+    const { onSelect } = mount();
+
+    const select = profileSelect("Claude Code")!;
+    act(() => {
+      select.value = "lp:yolo";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    host.querySelectorAll<HTMLButtonElement>(".achip")[0].click();
+
+    expect(onSelect).toHaveBeenCalledWith("claude", null, "lp:yolo");
+  });
+
+  it("changing the select does not open a tab", () => {
+    withProfiles({ claude: "lp:plan" });
+    const { onSelect } = mount();
+
+    const select = profileSelect("Claude Code")!;
+    act(() => {
+      select.value = "lp:yolo";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("passes null for an agent with no profiles", () => {
+    withProfiles({ claude: "lp:plan" });
+    const { onSelect } = mount();
+
+    host.querySelectorAll<HTMLButtonElement>(".achip")[1].click();
+
+    expect(onSelect).toHaveBeenCalledWith("codex", null, null);
+  });
+
+  // The row IS the launch button; a click landing on its select must not
+  // reach it, or picking a mode would open the tab before the pick applied.
+  it("a click on the select does not launch the row", () => {
+    withProfiles();
+    const { onSelect } = mount();
+
+    act(() => {
+      profileSelect("Claude Code")!.dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
       );
     });
 
