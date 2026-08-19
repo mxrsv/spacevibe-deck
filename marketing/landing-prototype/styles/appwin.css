@@ -129,10 +129,15 @@
 }
 
 /* The stage's left edge carries the shell's one structural line, running the
-   window's full height — whatever sits beside the rail (the hero's grid, the
-   tour's and the video's scene wrappers) takes it. */
+   window's full height — whatever sits beside the rail (the hero's and the
+   tour's stage wrapper, the video's scene wrapper) takes it.
+
+   `--sg-seam-column` since the 2026-08-20 redesign, not the soft alpha
+   hairline: this is the app's `--sidebar-seam` (02-shell.css:112-120), the ONE
+   structural line the shell draws, and it is vertical. A shared alpha edge is
+   what the pane splits use; the shell's own line is its own token. */
 .a-appwin__sidebar + * {
-  border-left: 1px solid var(--sg-hairline-soft);
+  border-left: 1px solid var(--sg-seam-column);
 }
 
 .a-appwin__wslist {
@@ -413,6 +418,751 @@
   font-size: inherit;
 }
 
+/* ============================================================================
+   The 2026-08-20 chrome: frame row, agent rail, tab strip.
+
+   Everything above this line draws the July window and is kept because the
+   marketing video still renders it (marketing/video/src/stage-driver.js).
+   Everything below draws the shipped one, and the two sets share
+   `.a-appwin`, `.a-appwin__body`, `.a-appwin__lights` and the pane rules and
+   nothing else — so neither can quietly restyle the other. In particular
+   NOTHING here changes a declaration of `.a-appwin__titlebar`,
+   `.a-appwin__actions`, `.a-appwin__actionsep`, `.a-appwin__iconbtn` or
+   `.a-appwin__lights`: `renderStageTitlebar` still emits all five for the
+   video, and this sheet is imported by the video entry.
+
+   SIZES. The mock is designed at a 1000px-wide window, so an app pixel is
+   one tenth of a cqw: the app's 34px frame row is `3.4cqw`, its 17px grid
+   slot `1.7cqw`, its 7px gap `0.7cqw`. Every geometry number below is the
+   app's own, restated in that unit — read `04a-agent-rail.css`,
+   `04b-agent-rail-rows.css`, `02-shell.css` and `05-tab-bar-toolbar.css`
+   beside it. Hairlines stay a literal 1px, as `.a-appwin__pane`'s border
+   already does: a scaled hairline is a blur.
+
+   TYPE. Chrome text carries a `max(Ncqw, 9px)` floor, one rung above the
+   transcript's 7px. The floor is not decoration: the page's SMALLEST chrome
+   type is at a 768 viewport, which sits ABOVE the 47.5rem breakpoint and so
+   receives none of the narrow overrides — pure `cqw` in a 159px rail.
+   ========================================================================== */
+
+/* ---- The stage wrapper. ----
+   MEASURED, not theoretical: this element had no rules at all when the rail
+   and the strip landed, so `.a-appwin__grid`'s own `flex: 1; min-height: 0`
+   resolved against a plain block and `.a-appwin__strip` rendered 669.5 x 4338
+   px at a 1440 viewport. It is the rail's sibling — `.a-appwin__sidebar + *`
+   selects THIS element, which is what carries the window's structural seam —
+   and a flex column holding the strip above the work area.
+
+   `min-width: 0` is the half a `border-left` cannot supply: a chip label is
+   `white-space: nowrap`, and without the floor a flex child's automatic
+   minimum size is its content width, so one long sentence pushes the whole
+   window wide instead of ellipsizing inside the strip. */
+.a-appwin__stage {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+}
+
+/* ---- The frame row (DL-18.3 mirror). ----
+   Traffic lights, the sidebar toggle, `New`, then the drag spacer. It stands
+   INSIDE the rail rather than above the body, and shares the rail's ground,
+   which is what makes the window's top-left corner seamless (02-shell.css
+   :35-42). Its height is the strip's height, so the two chrome rows either
+   side of the seam sit on one line. */
+.a-appwin__framerow {
+  display: flex;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.8cqw;
+  height: 3.4cqw;
+  /* The trailing 8px is `.deck-frame`'s own; the leading inset is the macOS
+     traffic-light gutter, which the app reserves as `--frame-lights-w` and
+     the mock actually draws. */
+  padding: 0 0.8cqw 0 1.2cqw;
+  background: var(--sg-rail);
+}
+
+/* Reuse, not restyle: `.a-appwin__lights` keeps every declaration the video's
+   titlebar gives it, and only its flex behaviour in THIS row is stated — a
+   shrinking traffic-light cluster is the first thing a narrow rail would
+   squash. */
+.a-appwin__framerow .a-appwin__lights {
+  flex: 0 0 auto;
+}
+
+/* The drag region: the app's `.deck-frame__spacer`, which is why the frame
+   row ends in nothing. */
+.a-appwin__framespacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ---- Icon controls. ----
+   `.a-appwin__ctl`, never `.a-appwin__iconbtn` (§3.3 rule 6): the July
+   titlebar's five buttons still ship to the video under that older name, and
+   restyling it would redraw the film. The 24px box and the 13px glyph are
+   `.iconbtn` (05-tab-bar-toolbar.css:258-262) and `CHROME_ICON`
+   (deck-icon.tsx:47). */
+.a-appwin__ctl {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 2.4cqw;
+  height: 2.4cqw;
+  border-radius: 1cqw;
+  color: var(--sg-fg-dim);
+}
+
+.a-appwin__ctl svg {
+  display: block;
+  width: 1.3cqw;
+  height: 1.3cqw;
+}
+
+/* `More` is the one toolbar control drawn at FEATURE_ICON rather than
+   CHROME_ICON (feature-toolbar.tsx:276), and it is the strip's first action;
+   the dock toggle beside it keeps the chrome rung. */
+.a-appwin__stripactions .a-appwin__ctl:first-child svg {
+  width: 1.5cqw;
+  height: 1.5cqw;
+}
+
+/* ---- `New` (02-shell.css:81-96). ---- */
+.a-appwin__new {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4cqw;
+  height: 2.4cqw;
+  padding: 0 0.6cqw;
+  border-radius: 1cqw;
+  color: var(--sg-fg-dim);
+  font-size: max(1.25cqw, 9px);
+  font-weight: 540;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* The glyph element ALREADY carries its SVG (`renderStageFrameRow`), so this
+   is a box and nothing else — a `content` here would draw a second plus. */
+.a-appwin__newglyph {
+  display: flex;
+  flex: none;
+}
+
+.a-appwin__newglyph svg {
+  display: block;
+  width: 1.3cqw;
+  height: 1.3cqw;
+}
+
+/* ---- The rail. ----
+   DL-18.7: the frame and the rail are one continuous side surface and the
+   stage keeps `--bg`, so the terminal is the deepest plane and every chrome
+   surface rises off it. Only `.a-appwin__rail` takes the ground — the July
+   `.a-appwin__sidebar` the video still renders stays transparent. */
+.a-appwin__rail {
+  background: var(--sg-rail);
+}
+
+/* Asymmetric padding on purpose (04a:63-72): 8px leads, 2px trails, because
+   the trailing side is a stack — this padding, the rail's reserved scrollbar
+   gutter, the row's own trailing inset and the 1.5px of centring a 14px glyph
+   in a 17px slot. Do not tidy it to a pair.
+
+   A grid with ONE `minmax(0, 1fr)` column, not a plain block: an implicit
+   column is `auto`, and an auto track's item keeps `min-width: auto`, so a
+   `white-space: nowrap` sentence would push the cluster past the rail instead
+   of ellipsizing inside it (04a:108-122 records the measured 558px-in-229px
+   version of exactly that). */
+.a-appwin__raillist {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.4cqw;
+  padding: 0.8cqw 0.2cqw 0.7cqw 0.8cqw;
+  overflow: hidden;
+}
+
+/* The same floor one level down: both containers declare it or the row
+   overflows the inner one (04a:132-142). */
+.a-appwin__cluster {
+  display: grid;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.4cqw;
+}
+
+/* ---- The cluster header. ----
+   THREE tracks holding TWO children (or three when the project is
+   remembered). The caret lives inside the toggle, which spans every track;
+   the launcher is pinned over track 2 on top of it. Four direct children
+   would auto-place onto an implicit second row — the misalignment the app's
+   own wrapper exists to prevent (04a:166-209).
+
+   7 + 17 + 7 is the rows' grid restated, not new numbers: the project name
+   starts on the same left edge as the sentences under it, and the two
+   trailing tracks are the rows' age and glyph slots. */
+.a-appwin__clusterhead {
+  display: grid;
+  box-sizing: border-box;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) 1.7cqw 1.7cqw;
+  gap: 0.7cqw;
+  padding: 0.6cqw 0.4cqw 0.2cqw 0.7cqw;
+}
+
+/* The first project starts the rail; a full top inset there reads as a dent
+   in an otherwise empty column (04a:377-381). */
+.a-appwin__cluster:first-child .a-appwin__clusterhead {
+  padding-top: 0.2cqw;
+}
+
+/* A live header's spanning toggle and a remembered one's still label draw the
+   SAME line and differ only in which tracks they occupy: the toggle bleeds
+   across all three so its own caret lands in the last slot, while the still
+   label stops at track 1 so it can never run under the invisible `+`
+   (04a:188-239). */
+.a-appwin__clustertoggle,
+.a-appwin__clusterstill {
+  display: flex;
+  min-width: 0;
+  grid-row: 1;
+  align-items: center;
+  gap: 0.7cqw;
+  overflow: hidden;
+  color: var(--sg-fg-dim);
+  font-weight: 560;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.a-appwin__clustertoggle {
+  grid-column: 1 / -1;
+}
+
+.a-appwin__clusterstill {
+  grid-column: 1;
+}
+
+/* `min-width: 0` plus `flex: 1` is what pushes the caret to the toggle's
+   right edge AND lets a long project name ellipsize rather than shove it
+   (04a:330-335). */
+.a-appwin__clustername {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: max(1.3cqw, 9px);
+  text-overflow: ellipsis;
+}
+
+/* Fixed 17px boxes so the folder mark sits over the status dot's centre line
+   and the caret over the agent glyph's: the header reads as the same row
+   shape one rung up (04a:337-345). The glyphs inside them are the app's own
+   rungs — FEATURE_ICON for the folder, CHROME_ICON for the caret. */
+.a-appwin__clusterfolder,
+.a-appwin__clustercaret {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.7cqw;
+}
+
+.a-appwin__clusterfolder svg {
+  display: block;
+  width: 1.5cqw;
+  height: 1.5cqw;
+}
+
+.a-appwin__clustercaret svg {
+  display: block;
+  width: 1.3cqw;
+  height: 1.3cqw;
+}
+
+/* DL-27.18: the per-project launcher, pinned into the middle track ON TOP of
+   the spanning toggle. `plusSquare` at FEATURE_ICON — one rung above the
+   frame row's `New` and the strip's `+`, because a framed mark spends its
+   outer pixels on the frame (owner, 2026-08-20). The track supplies its width
+   and both gaps, so it carries no margin of its own. */
+.a-appwin__clusteradd {
+  display: flex;
+  grid-row: 1;
+  grid-column: 2;
+  z-index: 1;
+  align-items: center;
+  justify-content: center;
+  width: 1.7cqw;
+  height: 1.7cqw;
+  border-radius: 1cqw;
+  color: var(--sg-fg-faint);
+}
+
+.a-appwin__clusteradd svg {
+  display: block;
+  width: 1.5cqw;
+  height: 1.5cqw;
+}
+
+/* A remembered header's close takes the caret's track — column 3, which a
+   still label leaves empty. Neutral, never `--red`: forgetting a folder is
+   undoable by reopening it (DL-21.2, 04a:293-297). */
+.a-appwin__clusterremove {
+  display: flex;
+  grid-row: 1;
+  grid-column: 3;
+  z-index: 1;
+  align-items: center;
+  justify-content: center;
+  width: 1.7cqw;
+  height: 1.7cqw;
+  border-radius: 1cqw;
+  color: var(--sg-fg-faint);
+}
+
+.a-appwin__clusterremove svg {
+  display: block;
+  width: 1.3cqw;
+  height: 1.3cqw;
+}
+
+/* The launcher's track, reserved from INSIDE the toggle: gap + slot + gap =
+   7 + 17 + 7 (04a:373-375). It only works because the caret lives inside the
+   spanning toggle — a margin on an element placed directly into a 17px track
+   would mean nothing. */
+.a-appwin__clusterhead:has(.a-appwin__clusteradd) .a-appwin__clustercaret {
+  margin-left: 2.4cqw;
+}
+
+/* Rest is folder + name and nothing else: all three controls keep their 17px
+   boxes at all times and only their INK fades in, so the pointer can never
+   reflow the header (04a:255-262). `.is-hover` is the same reveal baked into
+   the data, which is how a still drawing says what the live page does on
+   hover; a COLLAPSED cluster keeps its caret, since with the rows gone the
+   turned caret is the only thing saying "folded, not empty".
+
+   The app's `:focus-visible` half of these reveals is deliberately NOT ported:
+   the mock's controls are `<span>`s inside `aria-hidden="true"` and its rows
+   are `tabindex="-1"`, so nothing here can take focus and the rule could never
+   match. */
+.a-appwin__clustercaret,
+.a-appwin__clusteradd,
+.a-appwin__clusterremove {
+  opacity: 0;
+}
+
+.a-appwin__cluster:hover .a-appwin__clustercaret,
+.a-appwin__cluster:hover .a-appwin__clusteradd,
+.a-appwin__cluster:hover .a-appwin__clusterremove,
+.a-appwin__clusterhead.is-hover .a-appwin__clustercaret,
+.a-appwin__clusterhead.is-hover .a-appwin__clusteradd,
+.a-appwin__clusterhead.is-hover .a-appwin__clusterremove,
+.a-appwin__cluster.is-collapsed .a-appwin__clustercaret {
+  opacity: 1;
+}
+
+/* CaretRight turned down means expanded, exactly as `[aria-expanded="true"]`
+   does in the app (04a:387-389). The mock states the fold on the cluster, so
+   the selector is its inverse. */
+.a-appwin__cluster:not(.is-collapsed) .a-appwin__clustercaret {
+  transform: rotate(90deg);
+}
+
+/* ---- The tab item. ----
+   DL-27.19 (owner, 2026-08-20): a tab running several agents is ONE tab, with
+   an edge rather than a parent row. The frame is an INSET hairline, and the
+   two shapes it is not both shipped and both broke that day — a border is
+   layout and has to be bled back with a negative margin, which overflows the
+   list; an outline paints on the 1px OUTSIDE the box, which the list's own
+   clipping then removes (04b:86-112). An inset shadow paints inside: same
+   ring, no layout, nothing to clip. Neutral on purpose — red and yellow are
+   the status dot's words. */
+.a-appwin__item {
+  position: relative;
+}
+
+.a-appwin__item.is-framed {
+  margin: 0.3cqw 0;
+  padding: 0.3cqw 0;
+  border-radius: 1cqw;
+  box-shadow: inset 0 0 0 1px var(--sg-hair-strong);
+}
+
+/* ---- Rows and leaves. ----
+   A leaf and a tab row are the same object seen twice since the turn moved
+   into the agent name's slot (DL-27.15): one line, 34px tall, the same
+   vertical padding. They differ in build — the leaf is a flex line
+   (04b:184-211, `--flat` at :287-297), the row a four-track grid (04b:17-27)
+   — and in the colour of their age, which is why the markup names both sets.
+
+   `box-sizing` and `width` are declared rather than assumed: a `<button>`
+   does not stretch to its parent on its own, and a percentage width beside a
+   padding needs the border box or the age and the glyph fall off the row. */
+.a-appwin__leaf,
+.a-appwin__row {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 3.4cqw;
+  border: 0;
+  border-radius: 1cqw;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.a-appwin__leaf {
+  display: flex;
+  align-items: center;
+  gap: 0.7cqw;
+  /* The 8px trailing edge is the leaf's own: it puts the agent glyph on the
+     tab row's glyph slot, which reserves a track instead. */
+  padding: 0.6cqw 0.8cqw 0.6cqw 0.7cqw;
+}
+
+.a-appwin__row {
+  display: grid;
+  align-items: center;
+  /* ONE trailing slot (DL-27.5, amended 2026-08-19): the agent glyph rests in
+     it, and the app's hover close would replace the glyph IN PLACE rather
+     than take a fifth column. No fixture draws that close — a close that
+     cannot close is a worse lie than an absent one. */
+  grid-template-columns: 1.7cqw minmax(0, 1fr) auto 1.7cqw;
+  gap: 0.2cqw 0.7cqw;
+  padding: 0.6cqw 0.4cqw 0.6cqw 0.7cqw;
+}
+
+.a-appwin__rowmark {
+  grid-row: 1;
+  grid-column: 1;
+  justify-self: center;
+}
+
+.a-appwin__rowmsg {
+  grid-column: 2;
+}
+
+.a-appwin__rowage {
+  grid-column: 3;
+}
+
+.a-appwin__rowlogo {
+  grid-row: 1;
+  grid-column: 4;
+  justify-self: center;
+}
+
+/* The leaf's counterparts (`__leafmark`, `__leaflogo`, `__leafage`) need no
+   placement of their own: a flex line puts them in DOM order, and the shared
+   rules below already give each one `flex: none`. Only the grid needs to be
+   told where its cells go, which is why just one of the two sets is placed
+   here. */
+
+/* Name and sentence stand on the SAME rung and are told apart by tone alone
+   (owner, 2026-08-20): they trade places in one slot, so a row printing a
+   name and a row printing a turn must read as one list, not two
+   (04a:512-523, :566-578). Trimmed by the layout, never by slicing the
+   string (DL-27.4).
+
+   `[data-tail]` nodes are rewritten with `textContent` by the stream engine,
+   so nothing may be nested inside one — a decoration here is wiped by the
+   first step that carries a tail. */
+.a-appwin__leafmsg,
+.a-appwin__rowmsg {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sg-fg-dim);
+  font-size: max(1.25cqw, 9px);
+  font-weight: 450;
+  line-height: 1.25;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The leaf's slot is a flex item, so it needs the growth its grid twin gets
+   from `minmax(0, 1fr)`. Without `flex: 1` beside `min-width: 0` the
+   sentence sits at its content width and pushes the age off the row. */
+.a-appwin__leafmsg {
+  flex: 1;
+}
+
+/* The one asymmetry between the two sets, and the reason they are two sets:
+   a leaf's age is `--text-muted` (04b:272-275) and a tab row's is
+   `--text-faint` (04a:544-551). */
+.a-appwin__leafage,
+.a-appwin__rowage {
+  flex: none;
+  font-size: max(1.05cqw, 9px);
+  font-weight: 450;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.a-appwin__leafage {
+  color: var(--sg-fg-dim);
+}
+
+.a-appwin__rowage {
+  color: var(--sg-fg-faint);
+}
+
+/* Identity only. The one leading mark carries state; a badge on the brand
+   glyph would restate it as confetti (04b:157-159). */
+.a-appwin__leaflogo,
+.a-appwin__rowlogo {
+  width: 1.4cqw;
+  height: 1.4cqw;
+  flex: none;
+  object-fit: contain;
+}
+
+/* ---- The status mark. ----
+   DL-27.3, amended twice on 2026-08-19/20. One 14px box in EVERY state — the
+   working ring's own size — so a ring and a dot trade places without moving
+   the text beside them; the resting dot keeps its 9px of ink, painted centred
+   by the `::before` rather than by the box (04a:674-703).
+
+   The mock has NO `--spinner` modifier class: `data-state` is the whole
+   switch, which is what lets the stream engine repaint a pane's status by
+   writing one attribute. So every rule about the working state is written as
+   the attribute — `.a-appwin__mark[data-state="working"]` — and never as a
+   modifier selector, which would match nothing here. */
+.a-appwin__mark {
+  position: relative;
+  display: block;
+  width: 1.4cqw;
+  height: 1.4cqw;
+  flex: none;
+}
+
+.a-appwin__mark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 0.9cqw;
+  height: 0.9cqw;
+  border-radius: 50%;
+}
+
+/* failed — the loudest thing a row can say, and no halo: the halo means
+   "answer me", and a crashed agent is not asking a question (DL-3.2). */
+.a-appwin__mark[data-state="failed"]::before {
+  background: var(--sg-red);
+}
+
+/* asked — the unread dot. A question and a finished run nobody has read are
+   one state here, and this is the token that state wears. */
+.a-appwin__mark[data-state="asked"]::before {
+  background: var(--sg-yellow);
+}
+
+/* done and idle — one quiet dot. Neither asks for anything, so neither spends
+   a hue; they differ only in the word a tooltip would say (04a:739-742). */
+.a-appwin__mark[data-state="done"]::before,
+.a-appwin__mark[data-state="idle"]::before {
+  background: var(--sg-quiet-dot);
+}
+
+/* working — the ring IS the mark, so the dot withdraws entirely. */
+.a-appwin__mark[data-state="working"]::before {
+  content: none;
+}
+
+/* The ring's SVG is in the DOM in every state; this is the switch that shows
+   it. `--text-primary` ink at the full 14px since 2026-08-20 — at 12px in
+   `--text-muted` it read as a smudge beside the age rather than as a state. */
+.a-appwin__wsspinner {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--sg-fg);
+  fill: currentColor;
+}
+
+.a-appwin__mark[data-state="working"] .a-appwin__wsspinner {
+  display: block;
+}
+
+/* NOTHING ROTATES (DL-27.3, owner 2026-08-20): the eight dots are still and a
+   bright head appears to travel because each runs the same opacity ramp one
+   slot later. `--dot` is zero-based, so slot 0 starts at -1.2s and the ring is
+   already mid-cycle on its first painted frame — at 1…8 the whole ring would
+   pop in. Copied from 02-shell.css:444-480; only `opacity` animates, which is
+   DL-1.2's list. */
+.a-appwin__wsdot {
+  animation: a-appwin-wschase 1.2s linear infinite;
+  animation-delay: calc((var(--dot) - 8) * 0.15s);
+}
+
+/* ---- Agent monograms. ----
+   A declared agent that ships no brand file wears its letter instead — the
+   same fallback the app's rail rows and chips use. Untinted: the strip's own
+   monogram (`.agent-strip__mark--mono`, direction-a.css) made the same call,
+   and a per-agent tint would invent an identity the catalog does not have.
+   No hero fixture reaches this branch; a scene passing `cursor-agent` does. */
+.a-appwin__leaflogo--mono,
+.a-appwin__rowlogo--mono,
+.a-appwin__chiplogo--mono {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--sg-chrome-2);
+  color: var(--sg-fg-dim);
+  font-size: max(0.9cqw, 7px);
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+/* ---- The tab strip. ----
+   One row of one chip shape (DL-18.10), the same height as the frame row
+   across the seam. It closes with `--seam-divider`, the SAME line the pane
+   splits draw, so the strip reads as chrome rather than as something floating
+   in the work area (06-stage-panes.css:52-60) — the soft hairline the panes
+   use for their own edges would read as a rendering artefact here. */
+.a-appwin__strip {
+  display: flex;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.8cqw;
+  min-width: 0;
+  height: 3.4cqw;
+  padding: 0 0.8cqw;
+  border-bottom: 1px solid var(--sg-hairline);
+}
+
+.a-appwin__chips {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.4cqw;
+  overflow: hidden;
+}
+
+/* The three-state ladder (DL-21.7): 3% at rest, 6% on hover, the raised plane
+   plus a hairline frame when selected. Not transparent at rest — a chip
+   floats alone on the stage's `--bg` with no neighbouring rows to compare
+   against, so "no wash" read as "nothing here" rather than "not selected".
+   The 1px border is on EVERY chip and only its colour changes, so selection
+   costs no height and shifts no label (05-tab-bar-toolbar.css:33-60). */
+.a-appwin__chip {
+  display: flex;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 21cqw;
+  height: 2.5cqw;
+  align-items: center;
+  gap: 0.6cqw;
+  padding: 0 0.4cqw 0 0.6cqw;
+  border: 1px solid transparent;
+  /* --radius-flat (DL-20.1's fourth role): a chip packed with a sentence
+     cannot afford a corner that its padding has to hold the text off. */
+  border-radius: 0.2cqw;
+  background: var(--sg-tab-rest);
+  color: var(--sg-fg-dim);
+  font-size: max(1.1cqw, 9px);
+}
+
+.a-appwin__chip:hover {
+  color: var(--sg-fg);
+  background: color-mix(in srgb, #ffffff 6%, transparent);
+}
+
+/* DL-21.1 amended 2026-08-16: the wash, plus a NEUTRAL hairline frame. Not
+   `--accent` — this is not the retired accent marker coming back — and it
+   traces the chip rather than sitting beside it. */
+.a-appwin__chip.is-active {
+  color: var(--sg-fg);
+  background: var(--sg-raised);
+  border-color: var(--sg-hair-strong);
+}
+
+/* ONE glyph slot whatever the chip opened — a brand mark, a file-type icon,
+   the globe — so a strip of mixed chips keeps one left edge for its labels
+   (DL-18.6). One class covers both branches of the markup: an `<img>` for a
+   terminal chip, a `<span>` wrapping an SVG for the other two. */
+.a-appwin__chiplogo {
+  display: grid;
+  place-items: center;
+  width: 1.5cqw;
+  height: 1.5cqw;
+  flex: none;
+  border-radius: 0.8cqw;
+  object-fit: contain;
+  color: var(--sg-fg-dim);
+}
+
+.a-appwin__chiplogo svg {
+  display: block;
+  width: 1.3cqw;
+  height: 1.3cqw;
+}
+
+/* The chip's own `max-width` is the cap, so the label shrinks with it rather
+   than carrying a second, smaller number of its own. This node is a
+   `[data-tail]` hook on the active terminal chip: text only. */
+.a-appwin__chiplabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.a-appwin__chipclose {
+  display: grid;
+  place-items: center;
+  width: 1.6cqw;
+  height: 1.6cqw;
+  flex: none;
+  margin-left: 0.2cqw;
+  border-radius: 1cqw;
+  color: var(--sg-fg-dim);
+}
+
+.a-appwin__chipclose svg {
+  display: block;
+  width: 1.3cqw;
+  height: 1.3cqw;
+}
+
+.a-appwin__chipadd {
+  display: grid;
+  place-items: center;
+  width: 2.4cqw;
+  height: 2.4cqw;
+  flex: none;
+  border-radius: 1cqw;
+  color: var(--sg-fg-dim);
+}
+
+.a-appwin__chipadd svg {
+  display: block;
+  width: 1.3cqw;
+  height: 1.3cqw;
+}
+
+/* `margin-left: auto` and nothing else (06-stage-panes.css:69-74): a long tab
+   list shortens itself before the actions move. */
+.a-appwin__stripactions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  margin-left: auto;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .a-appwin__cursor {
     animation: a-appwin-blink 1.1s steps(2, start) infinite;
@@ -435,6 +1185,19 @@
   }
 }
 
+/* The working ring's ink cycle (02-shell.css:463-471). Prefixed like the two
+   above so this sheet owns every name it declares; a grep for `wschase` still
+   finds it. */
+@keyframes a-appwin-wschase {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.15;
+  }
+}
+
 @media (max-width: 47.5rem) {
   .a-appwin {
     width: 100%;
@@ -446,16 +1209,31 @@
     border-radius: 7px;
   }
 
-  /* The sidebar collapses below the narrow breakpoint so the three panes
-     keep a legible width; fonts already bottom out via their max() floors.
-     The frame goes with it — it is the head of that column now — and so does
-     the stage's left seam, which has no rail to sit against. */
-  .a-appwin__sidebar {
-    display: none;
+  /* THE RAIL STAYS. Until the 2026-08-20 redesign this block hid it outright
+     — with it the frame row, and with that the stage's left seam — which
+     proved nothing about the rail on the one page whose subject is the rail.
+     The honest compression is FEWER PANES, not less rail: the column widens
+     to 42cqw, the grid drops to the focused pane, and a sentence truncates
+     with an ellipsis exactly as `.asr-row__msg` does in the app.
+
+     A glyph-only collapsed rail was the rejected alternative: the app's own
+     narrow behaviour is `sidebarCollapsed`, which takes the column to width
+     0, so a middle state would be inventing a product.
+
+     The arithmetic, at a 390 viewport: `.a-appwin` measures 298.4px, so
+     42cqw is 125.3px of rail and ~172px for the single pane — wider than the
+     two-column layout's 149px panes. 390 is a MARKETING-page check width;
+     the app's own minimum is 480 and this sheet makes no claim about it. */
+  .a-appwin__rail {
+    width: 42cqw;
   }
 
-  .a-appwin__sidebar + * {
-    border-left: none;
+  .a-appwin__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .a-appwin__grid .a-appwin__pane:not(.is-focused) {
+    display: none;
   }
 
   .a-appwin__line,
@@ -464,8 +1242,22 @@
     font-size: 8px;
   }
 
+  /* Chrome bottoms out on the transcript's own two floors rather than on the
+     9px the wide page carries: below the breakpoint the whole window is
+     298px, and the rail's job here is to stay READABLE at ~24 characters
+     before it ellipsizes, not to hold a rung. */
+  .a-appwin__clustername,
+  .a-appwin__leafmsg,
+  .a-appwin__rowmsg,
+  .a-appwin__chiplabel,
+  .a-appwin__new {
+    font-size: 8px;
+  }
+
   .a-appwin__footline,
-  .a-appwin__status {
+  .a-appwin__status,
+  .a-appwin__leafage,
+  .a-appwin__rowage {
     font-size: 7px;
   }
 }
@@ -474,5 +1266,18 @@
   .a-appwin__cursor,
   .a-appwin__spinner {
     animation: none;
+  }
+
+  /* The ring stops and states its own state by dimming instead, mirroring
+     02-shell.css:474-479. Written as the attribute, not as a `--spinner`
+     modifier: the mock has no such class, so that selector would match
+     nothing and the gate would pass on a rule that does not exist. */
+  .a-appwin__wsdot {
+    animation: none;
+    opacity: 0.5;
+  }
+
+  .a-appwin__mark[data-state="working"] {
+    opacity: 0.6;
   }
 }
