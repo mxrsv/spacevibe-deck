@@ -29,6 +29,42 @@ describe("DeckIcon", () => {
     expect(svg?.getAttribute("focusable")).toBe("false");
   });
 
+  // Phosphor expresses weight in the path data, so there is no attribute to
+  // read: the only way to pin the choice is to compare what was drawn against
+  // the library's own output at each weight. Without these two, DL-14.1's
+  // 2026-08-19 split between the outline default and the solid exceptions
+  // would live in one unguarded conditional.
+  const pathData = (node: ParentNode): string =>
+    Array.from(node.querySelectorAll("path"))
+      .map((path) => path.getAttribute("d"))
+      .join("|");
+
+  const reference = (Icon: typeof Gear, weight: "regular" | "fill"): string => {
+    const node = document.createElement("div");
+    document.body.appendChild(node);
+    act(() => render(<Icon size={16} weight={weight} />, node));
+    return pathData(node);
+  };
+
+  it("draws the outline weight by default", () => {
+    act(() => render(<DeckIcon icon={Gear} />, host));
+    const drawn = pathData(host);
+
+    expect(drawn).toBe(reference(Gear, "regular"));
+    expect(drawn).not.toBe(reference(Gear, "fill"));
+  });
+
+  it("draws the panel toggle solid — the one documented exception", () => {
+    // Both panel toggles are this icon; the dock's is the same drawing
+    // mirrored. If the exception set ever stops matching, this flips to the
+    // outline gear's story and the toggles silently lose their weight.
+    act(() => render(<DeckIcon icon={SidebarSimple} />, host));
+    const drawn = pathData(host);
+
+    expect(drawn).toBe(reference(SidebarSimple, "fill"));
+    expect(drawn).not.toBe(reference(SidebarSimple, "regular"));
+  });
+
   it("carries the layout class the stylesheet targets", () => {
     act(() => render(<DeckIcon icon={Gear} />, host));
 
