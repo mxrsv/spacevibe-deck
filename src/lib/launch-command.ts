@@ -30,11 +30,25 @@ export function composeLaunchCommand(options: LaunchOptions): string {
         ...flag("--permission-mode", options.permissionMode),
       ].join(" ");
     case "codex":
+      // `bypass` supersedes the other two rather than joining them: the CLI
+      // ignores `--sandbox` / `--ask-for-approval` once both are skipped, and
+      // the row prints this string as what will run.
       return [
         "codex",
         ...flag("--model", options.model),
-        ...flag("--sandbox", options.sandbox),
-        ...flag("--ask-for-approval", options.approval),
+        ...(options.bypass
+          ? ["--dangerously-bypass-approvals-and-sandbox"]
+          : [
+              ...flag("--sandbox", options.sandbox),
+              ...flag("--ask-for-approval", options.approval),
+            ]),
+      ].join(" ");
+    case "cursor-agent":
+      return [
+        "cursor-agent",
+        ...flag("--model", options.model),
+        ...flag("--mode", options.mode),
+        ...(options.force ? ["--force"] : []),
       ].join(" ");
     case "opencode":
       return [

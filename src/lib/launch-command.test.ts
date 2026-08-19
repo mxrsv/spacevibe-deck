@@ -21,6 +21,7 @@ const sandboxed: LaunchProfile = {
     model: null,
     sandbox: "workspace-write",
     approval: "on-request",
+    bypass: false,
   },
 };
 
@@ -64,6 +65,42 @@ describe("composeLaunchCommand", () => {
         auto: false,
       }),
     ).toBe("opencode");
+  });
+});
+
+describe("composeLaunchCommand — cursor-agent and codex bypass", () => {
+  it("builds a cursor command and only adds --force when true", () => {
+    expect(
+      composeLaunchCommand({
+        kind: "cursor-agent",
+        model: "gpt-5",
+        mode: "plan",
+        force: true,
+      }),
+    ).toBe("cursor-agent --model gpt-5 --mode plan --force");
+    expect(
+      composeLaunchCommand({
+        kind: "cursor-agent",
+        model: null,
+        mode: null,
+        force: false,
+      }),
+    ).toBe("cursor-agent");
+  });
+
+  // Once approvals and the sandbox are both skipped the CLI ignores the other
+  // two flags, so composing them would print a command that misdescribes what
+  // actually runs.
+  it("drops sandbox and approval when codex bypasses both", () => {
+    expect(
+      composeLaunchCommand({
+        kind: "codex",
+        model: "o3",
+        sandbox: "read-only",
+        approval: "untrusted",
+        bypass: true,
+      }),
+    ).toBe("codex --model o3 --dangerously-bypass-approvals-and-sandbox");
   });
 });
 

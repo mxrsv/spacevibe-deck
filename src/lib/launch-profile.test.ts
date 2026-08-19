@@ -25,16 +25,118 @@ const codexReadOnly: LaunchProfile = {
     model: null,
     sandbox: "read-only",
     approval: "on-request",
+    bypass: false,
   },
 };
 
 describe("hasLaunchProfiles", () => {
-  it("accepts the three v1 agents and refuses the rest", () => {
+  it("accepts the four modelled agents and refuses the rest", () => {
     expect(hasLaunchProfiles("claude")).toBe(true);
     expect(hasLaunchProfiles("codex")).toBe(true);
     expect(hasLaunchProfiles("opencode")).toBe(true);
+    expect(hasLaunchProfiles("cursor-agent")).toBe(true);
+    // Neither has public flags this repo models; both still launch bare.
     expect(hasLaunchProfiles("gemini")).toBe(false);
+    expect(hasLaunchProfiles("agy")).toBe(false);
     expect(hasLaunchProfiles("custom:review")).toBe(false);
+  });
+});
+
+describe("cursor-agent options", () => {
+  it("validates a full cursor profile", () => {
+    const profile = {
+      id: "lp:cursor",
+      name: "Cursor plan",
+      options: {
+        kind: "cursor-agent",
+        model: "gpt-5",
+        mode: "plan",
+        force: false,
+      },
+    };
+    expect(validateLaunchProfiles([profile])).toEqual([profile]);
+  });
+
+  it("drops an unknown mode and a non-boolean force", () => {
+    expect(
+      validateLaunchProfiles([
+        {
+          id: "lp:x",
+          name: "X",
+          options: {
+            kind: "cursor-agent",
+            model: null,
+            mode: "yolo",
+            force: false,
+          },
+        },
+      ]),
+    ).toEqual([]);
+    expect(
+      validateLaunchProfiles([
+        {
+          id: "lp:x",
+          name: "X",
+          options: {
+            kind: "cursor-agent",
+            model: null,
+            mode: null,
+            force: "yes",
+          },
+        },
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe("codex bypass", () => {
+  it("validates the boolean and refuses a non-boolean", () => {
+    const options = {
+      kind: "codex",
+      model: null,
+      sandbox: null,
+      approval: null,
+      bypass: true,
+    };
+    expect(
+      validateLaunchProfiles([{ id: "lp:b", name: "B", options }]),
+    ).toEqual([{ id: "lp:b", name: "B", options }]);
+    expect(
+      validateLaunchProfiles([
+        { id: "lp:b", name: "B", options: { ...options, bypass: "yes" } },
+      ]),
+    ).toEqual([]);
+  });
+
+  // A file written before the field existed must keep working: absent reads as
+  // off, which is the behaviour every stored codex profile already had.
+  it("reads an older codex profile as bypass off", () => {
+    expect(
+      validateLaunchProfiles([
+        {
+          id: "lp:old",
+          name: "Old",
+          options: {
+            kind: "codex",
+            model: null,
+            sandbox: "read-only",
+            approval: null,
+          },
+        },
+      ]),
+    ).toEqual([
+      {
+        id: "lp:old",
+        name: "Old",
+        options: {
+          kind: "codex",
+          model: null,
+          sandbox: "read-only",
+          approval: null,
+          bypass: false,
+        },
+      },
+    ]);
   });
 });
 

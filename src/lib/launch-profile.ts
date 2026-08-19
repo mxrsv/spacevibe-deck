@@ -16,8 +16,17 @@
  * (`src/lib/preset-schema.ts`).
  */
 
-/** Agents whose flags are public and stable enough to model. */
-export const LAUNCH_PROFILE_AGENTS = ["claude", "codex", "opencode"] as const;
+/**
+ * Agents whose flags are public and stable enough to model. `gemini` and `agy`
+ * are deliberately absent — neither has a mode this repo models, so both stay
+ * bare — and a custom agent already carries its own full command line.
+ */
+export const LAUNCH_PROFILE_AGENTS = [
+  "claude",
+  "codex",
+  "opencode",
+  "cursor-agent",
+] as const;
 
 export type LaunchProfileAgentId = (typeof LAUNCH_PROFILE_AGENTS)[number];
 
@@ -47,6 +56,11 @@ export const CODEX_APPROVALS = ["untrusted", "on-request", "never"] as const;
 
 export type CodexApproval = (typeof CODEX_APPROVALS)[number];
 
+/** `cursor-agent --mode` choices, verbatim from its `--help` (2026-08-19). */
+export const CURSOR_MODES = ["plan", "ask"] as const;
+
+export type CursorMode = (typeof CURSOR_MODES)[number];
+
 export interface ClaudeLaunchOptions {
   readonly kind: "claude";
   /** `--model`; null leaves the CLI's own default. */
@@ -63,6 +77,27 @@ export interface CodexLaunchOptions {
   readonly sandbox: CodexSandbox | null;
   /** `-a/--ask-for-approval`. */
   readonly approval: CodexApproval | null;
+  /**
+   * `--dangerously-bypass-approvals-and-sandbox`. When on, `sandbox` and
+   * `approval` are NOT composed: the CLI ignores them once approvals and the
+   * sandbox are both skipped, and a row printing all three would misdescribe
+   * what actually runs.
+   */
+  readonly bypass: boolean;
+}
+
+export interface CursorLaunchOptions {
+  readonly kind: "cursor-agent";
+  /** `--model`, e.g. `gpt-5` or `sonnet-4-thinking`. */
+  readonly model: string | null;
+  /** `--mode`: `plan` (read-only planning) or `ask` (Q&A). */
+  readonly mode: CursorMode | null;
+  /**
+   * `-f/--force`: allow commands unless explicitly denied. The long form is
+   * what gets composed — `--yolo` is documented as an alias of this, and one
+   * spelling per behaviour keeps the printed row honest.
+   */
+  readonly force: boolean;
 }
 
 export interface OpencodeLaunchOptions {
@@ -76,7 +111,10 @@ export interface OpencodeLaunchOptions {
 }
 
 export type LaunchOptions =
-  ClaudeLaunchOptions | CodexLaunchOptions | OpencodeLaunchOptions;
+  | ClaudeLaunchOptions
+  | CodexLaunchOptions
+  | OpencodeLaunchOptions
+  | CursorLaunchOptions;
 
 export interface LaunchProfile {
   /** Stable `lp:<slug>` id. Minted once, never re-derived from the name. */
@@ -173,6 +211,14 @@ function optionalToken(value: unknown): string | null | undefined {
   return isLaunchOptionToken(value) ? value : undefined;
 }
 
+/** `undefined` = present but not a boolean; absent reads as `false`. */
+function optionalBoolean(value: unknown): boolean | undefined {
+  if (value === undefined || value === null) {
+    return false;
+  }
+  return typeof value === "boolean" ? value : undefined;
+}
+
 function optionalChoice<T extends string>(
   value: unknown,
   allowed: readonly T[],
@@ -211,10 +257,26 @@ export function validateLaunchOptions(raw: unknown): LaunchOptions | null {
   if (source.kind === "codex") {
     const sandbox = optionalChoice(source.sandbox, CODEX_SANDBOXES);
     const approval = optionalChoice(source.approval, CODEX_APPROVALS);
-    if (sandbox === undefined || approval === undefined) {
+    // `bypass` arrived after the field set was already on disk, so ABSENT is
+    // legal and reads as off — the behaviour every stored codex profile had.
+    // A present-but-wrong value still sinks the profile.
+    const bypass = optionalBoolean(source.bypass);
+    if (
+      sandbox === undefined ||
+      approval === undefined ||
+      bypass === undefined
+    ) {
       return null;
     }
-    return { kind: "codex", model, sandbox, approval };
+    return { kind: "codex", model, sandbox, approval, bypass };
+  }
+  if (source.kind === "cursor-agent") {
+    const mode = optionalChoice(source.mode, CURSOR_MODES);
+    const force = optionalBoolean(source.force);
+    if (mode === undefined || force === undefined) {
+      return null;
+    }
+    return { kind: "cursor-agent", model, mode, force };
   }
   if (source.kind === "opencode") {
     const agent = optionalToken(source.agent);
