@@ -110,6 +110,17 @@ describe("LaunchProfileEditor", () => {
     expect(updateSettings).not.toHaveBeenCalled();
   });
 
+  // The ↗ link and Set default were removed on the owner's ask (2026-08-19).
+  // `BuiltinAgent.url` and `Settings.defaultAgent` are kept, so nothing here
+  // asserts their absence from the DATA — only from the surface.
+  it("offers no website link and no default control", () => {
+    install("claude");
+    mount();
+
+    expect(host.querySelector(".lp-agent__link")).toBeNull();
+    expect(byLabel("Make Claude Code the default agent")).toBeNull();
+  });
+
   it("splits the catalog on what is actually on PATH", () => {
     install("claude");
     mount();
@@ -117,9 +128,8 @@ describe("LaunchProfileEditor", () => {
     expect(host.textContent).toContain("Installed");
     expect(host.textContent).toContain("1 detected");
     expect(host.textContent).toContain("Available to install");
-    // Only an installed agent can be made the default.
-    expect(byLabel("Make Claude Code the default agent")).not.toBeNull();
-    expect(byLabel("Make Codex the default agent")).toBeNull();
+    // Both lists carry the same row; only the heading above them differs.
+    expect(host.querySelectorAll(".lp-agent")).toHaveLength(6);
   });
 
   it("says so when nothing is installed", () => {
@@ -156,23 +166,7 @@ describe("LaunchProfileEditor", () => {
     });
   });
 
-  it("sets the default agent", () => {
-    install("claude", "codex");
-    mount();
 
-    click(byLabel("Make Codex the default agent"));
-
-    expect(updateSettings).toHaveBeenCalledWith({ defaultAgent: "codex" });
-  });
-
-  it("marks the agent that is already the default", () => {
-    install("claude");
-    settings.value = { ...DEFAULT_SETTINGS, defaultAgent: "claude" };
-    mount();
-
-    expect(byLabel("Claude Code is the default agent")).not.toBeNull();
-    expect(byLabel("Make Claude Code the default agent")).toBeNull();
-  });
 
   it("adds a typed command and stars it for its agent", () => {
     install("claude");

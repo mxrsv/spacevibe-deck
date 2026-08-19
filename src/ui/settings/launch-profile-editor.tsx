@@ -1,4 +1,4 @@
-import { ArrowClockwise, ArrowSquareOut, Check } from "@phosphor-icons/react";
+import { ArrowClockwise } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
 import { settings, updateSettings } from "../../settings/settings-store";
@@ -9,7 +9,6 @@ import {
   detectedAgents,
   ensureAgentsDetected,
 } from "../../terminal/agent-detection-store";
-import { defaultLinkClient } from "../../terminal/link-client";
 import {
   commandAgentId,
   commandFlags,
@@ -39,6 +38,12 @@ import {
  * Enabled/Disabled is per agent and it is the ONLY thing that removes a row
  * from the pickers — a built-in cannot be deleted, because Deck would just
  * detect it again on the next probe.
+ *
+ * Two controls were removed on the owner's ask (2026-08-19): the ↗ that opened
+ * an agent's website, and Set default. `BuiltinAgent.url` and
+ * `Settings.defaultAgent` are both KEPT — the data is right either way, and
+ * "Set default" was called a temporary removal — so restoring either is markup,
+ * not a migration.
  */
 
 /** The agent's brand mark, or the letter avatar every unmarked agent wears. */
@@ -123,20 +128,14 @@ function EnabledToggle({
 
 function AgentRow({
   agent,
-  installed,
   command,
-  isDefault,
   enabled,
   onToggle,
-  onSetDefault,
 }: {
   agent: BuiltinAgent;
-  installed: boolean;
   command: string;
-  isDefault: boolean;
   enabled: boolean;
   onToggle: (next: boolean) => void;
-  onSetDefault: () => void;
 }) {
   return (
     <div class={`lp-agent ${enabled ? "" : "is-off"}`}>
@@ -146,37 +145,6 @@ function AgentRow({
         <CommandLine command={command} />
       </div>
       <EnabledToggle agent={agent} enabled={enabled} onChange={onToggle} />
-      {/* Only an installed agent can be the one Deck opens with — starring a
-          binary that is not on $PATH would name a default that cannot run. */}
-      {installed &&
-        (isDefault ? (
-          <span class="lp-agent__default" aria-label={`${agent.label} is the default agent`}>
-            <DeckIcon icon={Check} size={ROW_ICON} />
-            Default
-          </span>
-        ) : (
-          <button
-            type="button"
-            class="cfg-btn lp-agent__setdefault"
-            aria-label={`Make ${agent.label} the default agent`}
-            disabled={!enabled}
-            onClick={onSetDefault}
-          >
-            Set default
-          </button>
-        ))}
-      <button
-        type="button"
-        // NOT `cfg-row__remove`: this opens a page, it removes nothing, and
-        // borrowing that class made it the first match for every test looking
-        // for a declared agent's delete control.
-        class="lp-agent__link"
-        aria-label={`Open the ${agent.label} website`}
-        title={agent.url}
-        onClick={() => void defaultLinkClient.openUrl(agent.url)}
-      >
-        <DeckIcon icon={ArrowSquareOut} size={ROW_ICON} />
-      </button>
     </div>
   );
 }
@@ -185,7 +153,6 @@ export function LaunchProfileEditor() {
   const profiles = settings.value.launchProfiles;
   const defaults = settings.value.defaultLaunchProfiles;
   const disabled = settings.value.disabledAgents;
-  const defaultAgent = settings.value.defaultAgent;
 
   const draft = useSignal("");
   const draftError = useSignal<string | null>(null);
@@ -245,16 +212,13 @@ export function LaunchProfileEditor() {
     draftError.value = null;
   };
 
-  const renderRow = (agent: BuiltinAgent, isInstalled: boolean) => (
+  const renderRow = (agent: BuiltinAgent) => (
     <AgentRow
       key={agent.id}
       agent={agent}
-      installed={isInstalled}
       command={effectiveCommand(agent, profiles, defaults)}
-      isDefault={defaultAgent === agent.id}
       enabled={!disabled.includes(agent.id)}
       onToggle={(next) => setEnabled(agent.id, next)}
-      onSetDefault={() => updateSettings({ defaultAgent: agent.id })}
     />
   );
 
@@ -279,7 +243,7 @@ export function LaunchProfileEditor() {
           No agent CLI found on your PATH. Install one below, then Refresh.
         </p>
       ) : (
-        installed.map((agent) => renderRow(agent, true))
+        installed.map((agent) => renderRow(agent))
       )}
 
       {available.length > 0 && (
@@ -288,7 +252,7 @@ export function LaunchProfileEditor() {
             <span class="lp-head__title">Available to install</span>
             <span class="lp-head__count">{available.length} agents</span>
           </div>
-          {available.map((agent) => renderRow(agent, false))}
+          {available.map((agent) => renderRow(agent))}
         </>
       )}
 

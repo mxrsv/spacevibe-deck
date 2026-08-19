@@ -194,41 +194,6 @@
   flex: 0 0 auto;
 }
 
-.lp-agent__default,
-.lp-agent__setdefault {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-.lp-agent__default {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: var(--radius-control);
-  background: var(--chrome-2);
-  color: var(--text);
-  font-size: var(--type-meta);
-}
-
-/* The ↗ control. Its own class rather than the row-remove one it briefly
-   borrowed: that class means "delete this item", and this opens a page. */
-.lp-agent__link {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  border: none;
-  background: none;
-  color: var(--text-faint);
-  cursor: pointer;
-}
-
-.lp-agent__link:hover {
-  color: var(--text-muted);
-}
-
 .lp-empty {
   margin: 0;
   /* No bottom padding: the next heading brings its own 16px, and stacking the
