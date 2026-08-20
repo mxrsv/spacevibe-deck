@@ -99,7 +99,6 @@ export function renderAgentStrip(copy) {
 
   return `
     <div class="agent-strip">
-      <p class="band-label" data-copy="agentStripLabel">${copy.agentStripLabel}</p>
       <ul class="agent-strip__row">
         ${chips}
         <li class="agent-strip__any" data-copy="agentStripTail">${copy.agentStripTail}</li>

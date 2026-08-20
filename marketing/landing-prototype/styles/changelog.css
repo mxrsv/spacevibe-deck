@@ -181,13 +181,6 @@ a {
   border-bottom: 1px solid var(--log-line);
 }
 
-.changelog-kicker {
-  margin: 0.65rem 0 0;
-  color: var(--log-ink-faint);
-  font: 500 0.68rem/1.4 var(--font-mono);
-  letter-spacing: 0.055em;
-}
-
 .changelog-intro h1 {
   grid-column: 2;
   margin: 0;
@@ -468,11 +461,6 @@ a {
   .changelog-intro {
     display: block;
     padding-block: 3.5rem 3rem;
-  }
-
-  .changelog-kicker {
-    margin: 0 0 1.25rem;
-    font-size: 0.6rem;
   }
 
   .changelog-intro h1 {

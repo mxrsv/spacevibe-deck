@@ -92,13 +92,6 @@
   padding: clamp(2.4rem, 5vh, 4rem) var(--frame-pad) clamp(2rem, 5vh, 4rem);
 }
 
-/* The section label belongs to the first panel, not to the empty band above
-   it: with its own bottom margin AND the stack's gap it floated in ~160px of
-   nothing. The gap alone is the spacing now. */
-.panels > .band-label {
-  margin-bottom: 0;
-}
-
 .panel {
   position: relative;
   display: grid;
@@ -340,9 +333,7 @@
   border-top: 1px solid var(--frame-line);
 }
 
-/* The closing band, built like the hero band: a `//` label, one display line,
-   a rule underneath. Two bands with the same shape at the two ends of the page
-   are what make the middle read as one document rather than two. */
+/* The closing band gives the final promise its own full-width frame. */
 .tour__band {
   padding: clamp(3.25rem, 7vw, 5rem) var(--frame-pad)
     clamp(2.5rem, 5vw, 3.75rem);

@@ -34,7 +34,6 @@ export function renderChangelogShell(root, copy, locale) {
     </header>
 
     <section class="changelog-intro" aria-labelledby="changelog-title">
-      <p class="changelog-kicker" data-copy="changelogKicker">${copy.changelogKicker}</p>
       <h1 id="changelog-title" data-copy="changelogTitle">${copy.changelogTitle}</h1>
       <p class="changelog-intro__body" data-copy="changelogIntro">${copy.changelogIntro}</p>
     </section>

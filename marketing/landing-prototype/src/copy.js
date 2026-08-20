@@ -5,8 +5,6 @@ export const messages = {
     navDiscord: "Discord",
     navGithub: "GitHub",
     releaseLabel: "Deck V1",
-    heroLabel: "// desktop terminal for agent CLIs",
-    agentStripLabel: "// launches the CLIs you already run",
     agentStripTail: "or any binary on your $PATH",
     headlineLead: "Run the grid.",
     headlineTail: "Keep every agent in sight.",
@@ -18,7 +16,6 @@ export const messages = {
     secondaryCta: "View on GitHub",
     downloadCountUnit: "downloads",
     changelogBack: "Back to Deck",
-    changelogKicker: "// release ledger",
     changelogTitle: "Changelog",
     changelogIntro:
       "Every published Deck build, newest first — stable releases and engineering previews in one record.",
@@ -30,7 +27,6 @@ export const messages = {
     changelogNoNotes: "No release notes were published.",
     changelogViewRelease: "View release",
     localeLabel: "Language",
-    tourKicker: "// what the window already does",
     panelRestoreTitle: "Close it. Reopen it. Nothing lost the thread.",
     panelRestoreBody:
       "Deck brings back every tab and pane, then types each agent's own resume command — claude --resume, codex resume, opencode -s. The conversation carries on from where it stopped.",
@@ -49,7 +45,6 @@ export const messages = {
     panelCatalogTitle: "Every agent Deck knows, and the command it will type.",
     panelCatalogBody:
       "Settings → Agents splits the list in two: Installed, counted off your $PATH, and Available to install. Every row prints the command it ships with — claude --dangerously-skip-permissions, opencode bare — and Enabled/Disabled is what takes one out of the picker.",
-    finaleLabel: "// what you keep",
     downloadMac: "Download for macOS",
     downloadWin: "Download for Windows",
     comingSoon: "coming soon",
@@ -88,8 +83,6 @@ export const messages = {
     navDiscord: "Discord",
     navGithub: "GitHub",
     releaseLabel: "Deck V1",
-    heroLabel: "// terminal desktop cho agent CLI",
-    agentStripLabel: "// chạy đúng những CLI bạn đang dùng",
     agentStripTail: "hoặc bất kỳ binary nào trong $PATH",
     headlineLead: "Vận hành cả đội hình.",
     headlineTail: "Không agent nào rời khỏi tầm mắt.",
@@ -101,7 +94,6 @@ export const messages = {
     secondaryCta: "Xem trên GitHub",
     downloadCountUnit: "downloads",
     changelogBack: "Về trang Deck",
-    changelogKicker: "// nhật ký phát hành",
     changelogTitle: "Thay đổi",
     changelogIntro:
       "Mọi bản Deck đã phát hành, mới nhất trước — bản ổn định và bản thử nghiệm trong cùng một nhật ký.",
@@ -113,7 +105,6 @@ export const messages = {
     changelogNoNotes: "Bản phát hành này không có ghi chú.",
     changelogViewRelease: "Xem bản phát hành",
     localeLabel: "Ngôn ngữ",
-    tourKicker: "// những gì cửa sổ đã làm được",
     panelRestoreTitle: "Đóng rồi mở lại. Không mất mạch nào.",
     panelRestoreBody:
       "Deck dựng lại mọi tab và pane, rồi tự gõ đúng lệnh resume của từng agent — claude --resume, codex resume, opencode -s. Cuộc hội thoại chạy tiếp từ chỗ nó dừng.",
@@ -132,7 +123,6 @@ export const messages = {
     panelCatalogTitle: "Mọi agent Deck biết, kèm đúng lệnh nó sẽ gõ.",
     panelCatalogBody:
       "Settings → Agents chia danh sách làm hai: Installed đếm theo $PATH của máy bạn, và Available to install. Mỗi dòng in đúng lệnh nó mang sẵn — claude --dangerously-skip-permissions, riêng opencode không kèm cờ nào — và Enabled/Disabled mới là thứ đưa một agent ra khỏi picker.",
-    finaleLabel: "// những thứ bạn giữ nguyên",
     downloadMac: "Tải cho macOS",
     downloadWin: "Tải cho Windows",
     comingSoon: "sắp có",

@@ -262,7 +262,6 @@ function renderFinale(copy) {
   return `
     <footer class="tour__finale">
       <div class="tour__band" data-reveal>
-        <p class="band-label" data-copy="finaleLabel">${copy.finaleLabel}</p>
         <h2 data-copy="finaleTitle">${copy.finaleTitle}</h2>
       </div>
       <div class="tour__finale-grid">
@@ -367,7 +366,6 @@ export function renderTour(copy) {
     markup: `
       <section class="tour">
         <div class="panels" id="${FEATURES_ID}">
-          <p class="band-label" data-copy="tourKicker">${copy.tourKicker}</p>
           ${PANELS.map((panel, index) => renderPanel(panel, index, copy)).join("")}
         </div>
         ${renderFinale(copy)}

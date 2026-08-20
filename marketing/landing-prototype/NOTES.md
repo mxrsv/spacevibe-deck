@@ -8,7 +8,7 @@
 > - `beams.js` (three.js) and `aurora.js` (ogl) were deleted outright, with both
 >   dependencies; so were the closing band's 22s drift and the download button's
 >   breathing halo. Nothing on the page loops any more.
-> - The hero is CENTRED — pill, kicker, headline, subhead, one row of pill
+> - The hero is CENTRED — pill, headline, subhead, one row of pill
 >   buttons — over an app stage standing on a **light** oil painting: Caspar
 >   David Friedrich's _Morning Mist in the Mountains_ (c. 1808, public domain),
 >   declared once as `--plate-image` in `tokens.css`. Two Frederic Church oil
@@ -160,9 +160,9 @@ chromatic: the hero had a frame and the tour, closing band and footer had none.
   borders re-derived per section. Every horizontal rule on the page is a
   border on something that wide, so they all meet the verticals — verified at
   49 → 1391 for hero, tour, closing band and both footer rows at 1440.
-- **Closing band matches the hero band.** `// what you keep` + a display line
-  at `clamp(2.35rem, 5vw, 4rem)`, one step down the hero's curve. Two bands of
-  the same shape at the two ends is what closes the document.
+- **Closing band matches the hero band.** A display line at
+  `clamp(2.35rem, 5vw, 4rem)`, one step down the hero's curve. Two bands of the
+  same shape at the two ends is what closes the document.
 - **Chapters read on temperature, not hue.** `AURORA_SCENES` went from Tokyo
   Night blue / agent-brand / hot magenta to cool steel → neutral → warm ivory
   at 3–10% saturation. The stops had to be lifted well above the violet ones'

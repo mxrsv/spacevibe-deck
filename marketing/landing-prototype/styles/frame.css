@@ -29,22 +29,3 @@
   content: "";
   transform: translateX(-50%);
 }
-
-/* The `//` section label. One class for the hero band, the tour rail and the
-   closing band — three sections that must not each invent their own. The `//`
-   itself lives in the copy string, not in a pseudo-element, because the locale
-   swap only rewrites textContent. */
-.band-label {
-  margin: 0 0 clamp(1.1rem, 2vh, 1.6rem);
-  color: rgb(255 255 255 / 52%);
-  font: 500 0.7rem/1.35 var(--font-mono);
-  letter-spacing: 0.055em;
-}
-
-@media (max-width: 47.5rem) {
-  .band-label {
-    margin-bottom: 1rem;
-    font-size: 0.6rem;
-    letter-spacing: 0.04em;
-  }
-}

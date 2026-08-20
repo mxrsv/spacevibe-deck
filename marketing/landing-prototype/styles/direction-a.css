@@ -366,10 +366,6 @@
   align-items: center;
 }
 
-.a-hero__copy .band-label {
-  margin-bottom: clamp(0.7rem, 1.4vh, 0.9rem);
-}
-
 /* 500, not 600, and -0.032em rather than -0.048em: at this size the heavier
    face closed its own counters and the tighter tracking read as one long word
    across a centred measure. */
@@ -990,11 +986,6 @@ html[lang="vi"] .a-hero h1 {
   z-index: 2;
   padding: clamp(1.75rem, 3.4vh, 2.6rem) var(--a-cell-pad) clamp(1.6rem, 3vh, 2.2rem);
   border-top: 1px solid var(--a-line);
-}
-
-.agent-strip .band-label {
-  margin-bottom: clamp(0.9rem, 1.8vh, 1.3rem);
-  text-align: center;
 }
 
 .agent-strip__row {

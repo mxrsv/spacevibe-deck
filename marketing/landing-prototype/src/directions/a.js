@@ -139,8 +139,6 @@ export function renderDirectionA(copy) {
             </a>
 
             <div class="a-hero__copy">
-              <p class="band-label" data-copy="heroLabel">${copy.heroLabel}</p>
-
               <h1>
                 <span data-copy="headlineLead">${copy.headlineLead}</span>
                 <span data-copy="headlineTail">${copy.headlineTail}</span>
