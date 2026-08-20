@@ -376,14 +376,18 @@ jobs:
             cat section.md >> notes.md
             echo "" >> notes.md
             echo "**All releases:** https://github.com/$GH_REPO/releases" >> notes.md
+            # A stable release is a product moment, so it wears the product's
+            # name — `v1.0.0` alone reads like plumbing. Prereleases keep the
+            # bare tag: they are the migration channel, not an announcement.
+            gh release edit "$TAG" --title "SpaceVibe Deck $VERSION" --notes-file notes.md
           else
             # `target_commitish` is required here for the same reason the
             # draft needed `--target`: the release tag does not exist yet.
             gh api "repos/$GH_REPO/releases/generate-notes" \
               -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" \
               --jq '.body' >> notes.md
+            gh release edit "$TAG" --notes-file notes.md
           fi
-          gh release edit "$TAG" --notes-file notes.md
 
       - name: Promote the draft
         run: |

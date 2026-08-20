@@ -309,6 +309,9 @@ describe("the Electron release workflow", () => {
     expect(workflow).toContain("CHANGELOG.md > section.md");
     expect(workflow).toContain("the release stays a draft");
     expect(workflow).toContain("releases/generate-notes");
+    // A stable release is an announcement: it wears the product name, not the
+    // bare tag.
+    expect(workflow).toContain('--title "SpaceVibe Deck $VERSION"');
   });
 
   it("writes a run summary naming source, channel and assets", () => {
