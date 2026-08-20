@@ -297,7 +297,12 @@ jobs:
         # produced — Gate C stays open and the release notes say so.
 
   promote:
-    needs: [mac, windows]
+    # `prepare` must be named DIRECTLY even though mac/windows already imply
+    # it: `needs.<job>.outputs` only resolves for jobs in this list, and a
+    # transitive need leaves TAG/CHANNEL empty — measured on run 32382369994,
+    # where `gh release view ""` quietly answered with the LATEST release
+    # (the Tauri v0.12.3) and the asset census failed against the wrong one.
+    needs: [prepare, mac, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -315,6 +320,13 @@ jobs:
       - name: Confirm the draft carries the full two-platform asset set
         run: |
           set -euo pipefail
+          # An empty TAG does not error out of `gh release view` — it answers
+          # with the LATEST release, so every check below would run against
+          # whatever shipped last. Refuse the handoff instead.
+          if [[ -z "$TAG" || -z "$CHANNEL" ]]; then
+            echo "prepare's outputs did not arrive (TAG='$TAG' CHANNEL='$CHANNEL')"
+            exit 1
+          fi
           # This reads what the release actually SERVES, not what a runner
           # produced: a publisher that silently uploaded somewhere else still
           # exits zero — that is exactly how run 32232669706 produced a

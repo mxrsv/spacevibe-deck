@@ -279,6 +279,15 @@ describe("the Electron release workflow", () => {
     expect(verifyStep).not.toContain('xcrun stapler validate "${images[0]}"');
   });
 
+  it("hands prepare's outputs to promote by naming it a direct need", () => {
+    // `needs.<job>.outputs` resolves only for DIRECTLY listed jobs. With
+    // `[mac, windows]` alone, TAG/CHANNEL arrived empty and `gh release view`
+    // quietly audited the LATEST release instead of the draft (run
+    // 32382369994). The empty-output guard is the runtime half of this test.
+    expect(workflow).toContain("needs: [prepare, mac, windows]");
+    expect(workflow).toContain("prepare's outputs did not arrive");
+  });
+
   it("requires the full two-platform asset set before promoting anything", () => {
     // The promote job reads what the release actually SERVES, and a missing
     // asset leaves it a draft — the only mechanism that stops a half-built
