@@ -19,12 +19,19 @@ import {
  * `fitCounts`, when given, records one increment per `fit()` call for this
  * pane's id — lets a test assert every pane was fit without caring about
  * focus.
+ *
+ * `selections`, when given, is the shared set of pane ids that currently hold
+ * a terminal selection: a test adds an id to model the user having dragged
+ * over output, and `clearSelection()` removes it, so `activeHasSelection()`
+ * is observed through the same state the manager mutates rather than a spy
+ * that cannot answer differently after the clear.
  */
 function fakePane(
   id: number,
   events: PaneEvents,
   emitFocusEvent = true,
   fitCounts?: Map<number, number>,
+  selections?: Set<number>,
 ): Pane {
   const element = document.createElement("div");
   return {
@@ -47,6 +54,12 @@ function fakePane(
     },
     clear() {},
     copySelection() {},
+    hasSelection() {
+      return selections?.has(id) ?? false;
+    },
+    clearSelection() {
+      selections?.delete(id);
+    },
     paste() {},
     pasteText(text) {
       return events.onData(id, text);
@@ -83,6 +96,7 @@ function setup(emitFocusEvent = true): {
   eventsById: Map<number, PaneEvents>;
   fitCounts: Map<number, number>;
   panesById: Map<number, Pane>;
+  selections: Set<number>;
 } {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -90,9 +104,10 @@ function setup(emitFocusEvent = true): {
   const eventsById = new Map<number, PaneEvents>();
   const fitCounts = new Map<number, number>();
   const panesById = new Map<number, Pane>();
+  const selections = new Set<number>();
   const createPane: CreatePaneFn = (id, _settings, events) => {
     eventsById.set(id, events);
-    const pane = fakePane(id, events, emitFocusEvent, fitCounts);
+    const pane = fakePane(id, events, emitFocusEvent, fitCounts, selections);
     panesById.set(id, pane);
     return pane;
   };
@@ -112,6 +127,7 @@ function setup(emitFocusEvent = true): {
     eventsById,
     fitCounts,
     panesById,
+    selections,
   };
 }
 
@@ -411,6 +427,27 @@ describe("createTerminalManager scrollActivePage / scrollActiveToEdge", () => {
       tm.scrollActivePage(1);
       tm.scrollActiveToEdge("top");
     }).not.toThrow();
+  });
+});
+
+describe("createTerminalManager activeHasSelection / clearActiveSelection", () => {
+  it("reports and clears the active pane's selection", async () => {
+    const { tm, selections } = setup();
+    await tm.initFresh();
+    const id = tm.activePaneId();
+    expect(id).not.toBeNull();
+    selections.add(id!);
+
+    expect(tm.activeHasSelection()).toBe(true);
+    tm.clearActiveSelection();
+    expect(tm.activeHasSelection()).toBe(false);
+  });
+
+  it("answers false for a selection when there is no active pane", () => {
+    const { tm } = setup();
+
+    expect(tm.activeHasSelection()).toBe(false);
+    expect(() => tm.clearActiveSelection()).not.toThrow();
   });
 });
 

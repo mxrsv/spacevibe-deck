@@ -290,9 +290,16 @@ const WINDOWS_SELECT_LAST_TAB_BINDING: KeyBinding = {
 
 /**
  * Windows Terminal-style chords keep conventional bare Ctrl sequences
- * available to the PTY, except Ctrl+V: Deck owns standard text paste through
- * Ctrl+V, Ctrl+Shift+V, and physical Shift+Insert. Alt+V remains unbound so
- * the active agent can handle it if that CLI supports the chord.
+ * available to the PTY, with two exceptions. Ctrl+V: Deck owns standard text
+ * paste through Ctrl+V, Ctrl+Shift+V, and physical Shift+Insert; Alt+V remains
+ * unbound so the active agent can handle it if that CLI supports the chord.
+ * Ctrl+C: bound to `copy-or-interrupt`, which is PERFORMABLE — it consumes the
+ * key only while a terminal pane owns the stage AND holds a selection, so with
+ * nothing selected the key is never preventDefault()ed and xterm encodes the
+ * interrupt itself. Deck writes no interrupt byte of its own; hardcoding
+ * `\x03` would pin one encoding a different keyboard protocol does not use.
+ * See action-performable.ts and
+ * docs/specs/2026-08-20-performable-keybindings-design.md.
  *
  * Clipboard actions dispatch through the shared path every other chord uses —
  * this keymap, then the `commands` table in tab-manager.ts, then
@@ -304,6 +311,7 @@ const WINDOWS_SELECT_LAST_TAB_BINDING: KeyBinding = {
  */
 export const WINDOWS_KEYMAP: readonly KeyBinding[] = [
   { key: "c", ctrl: true, shift: true, action: "copy-selection" },
+  { key: "c", ctrl: true, action: "copy-or-interrupt" },
   { key: "v", ctrl: true, action: "paste" },
   { key: "v", ctrl: true, shift: true, action: "paste" },
   { code: "Insert", shift: true, action: "paste" },

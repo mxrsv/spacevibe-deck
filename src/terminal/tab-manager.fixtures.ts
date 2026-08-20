@@ -42,6 +42,14 @@ export function fakePane(
     copySelection?: Pane["copySelection"];
     paste?: Pane["paste"];
     pasteText?: Pane["pasteText"];
+    /**
+     * Whether the pane starts holding a terminal selection — Ctrl+C's
+     * precondition. A boolean rather than a spy pair because the two methods
+     * share state: `copy-or-interrupt` clears after copying, and a test has
+     * to observe the highlight actually go
+     * (docs/specs/2026-08-20-performable-keybindings-design.md D3).
+     */
+    selection?: boolean;
   } = {},
 ): Pane {
   const element = document.createElement("div");
@@ -56,6 +64,7 @@ export function fakePane(
   // so the fake must actually move `document.activeElement`, not just fire
   // the synthetic event below (which mirrors production's `focusin` listener).
   element.tabIndex = -1;
+  let selected = overrides.selection ?? false;
   return {
     id,
     element,
@@ -74,6 +83,10 @@ export function fakePane(
     fit() {},
     clear() {},
     copySelection: overrides.copySelection ?? (() => {}),
+    hasSelection: () => selected,
+    clearSelection: () => {
+      selected = false;
+    },
     paste: overrides.paste ?? (() => {}),
     pasteText: overrides.pasteText ?? ((text: string) => events.onData(id, text)),
     scrollPage() {},

@@ -88,10 +88,21 @@ describe("ACTION_REGISTRY", () => {
     expect(mac[0]).not.toHaveProperty("code");
   });
 
+  it("ships copy-or-interrupt unbound on macOS and on Ctrl+C on Windows", () => {
+    const mac = MACOS_KEYMAP.filter((binding) => binding.action === "copy-or-interrupt");
+    const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "copy-or-interrupt");
+    // macOS has no conflict to solve: Cmd+C copies and Ctrl+C interrupts are
+    // already two different keys, so binding here would invent a problem.
+    expect(mac).toEqual([]);
+    expect(win).toEqual([{ key: "c", ctrl: true, action: "copy-or-interrupt" }]);
+  });
+
   // 51 = the 48 rows verified passing after Task 6's "save-file", plus the
   // Edit menu's "select-all"/"undo"/"redo" (2026-08-19) — routed through the
   // renderer because their native Cocoa roles cannot reach Monaco.
-  it("has exactly the 52 action ids including updater menu actions", () => {
+  // 53 = 52 + copy-or-interrupt (2026-08-20), the conditional Ctrl+C twin of
+  // copy-selection — docs/plans/2026-08-20-performable-keybindings.md.
+  it("has exactly the 53 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -115,6 +126,7 @@ describe("ACTION_REGISTRY", () => {
         "clear-buffer",
         "copy-cwd",
         "copy-selection",
+        "copy-or-interrupt",
         "paste",
         "split-row",
         "split-column",

@@ -135,6 +135,16 @@ export interface TerminalManager {
   /** Clear the active pane's buffer, keeping the prompt line (Cmd+K). */
   clearActive(): void;
   copyActiveSelection(): void;
+  /**
+   * Whether the active pane holds a terminal selection — read by
+   * `isActionPerformable` before a chord is consumed, so `copy-or-interrupt`
+   * can fall through to the PTY when there is nothing to copy. No active pane
+   * answers `false` (fail toward the PTY,
+   * docs/specs/2026-08-20-performable-keybindings-design.md D5).
+   */
+  activeHasSelection(): boolean;
+  /** Drop the active pane's selection. No active pane → no-op. */
+  clearActiveSelection(): void;
   pasteIntoActive(): void;
   /**
    * Paste text into ONE pane by id (the Prompt Board targets the pane the

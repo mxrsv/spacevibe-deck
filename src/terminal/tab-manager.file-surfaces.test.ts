@@ -760,3 +760,135 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
     tm.dispose();
   });
 });
+
+/**
+ * Performable keybindings — `handleShortcut` asks `isActionPerformable`
+ * BEFORE `preventDefault()`, so a binding that cannot do anything behaves as
+ * if it did not exist and the key continues to whatever holds focus.
+ * See docs/specs/2026-08-20-performable-keybindings-design.md.
+ *
+ * Driving `window` through the pane's own textarea is the real path: the
+ * listener is capture-phase on `window`, so a chord that IS consumed never
+ * reaches the downstream listener, and one that is not consumed does — which
+ * is precisely what "xterm encodes the interrupt itself" means here.
+ */
+describe("performable chords (Ctrl+C copies or falls through)", () => {
+  /** The Windows keymap is where the conditional Ctrl+C lives; macOS is untouched. */
+  function useWindows(): void {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+  }
+
+  function terminalInput(): HTMLTextAreaElement {
+    const input = document.querySelector<HTMLTextAreaElement>(
+      '[data-testid="fake-terminal-input"]',
+    );
+    if (input === null) {
+      throw new Error("Expected the fake terminal input to be mounted");
+    }
+    return input;
+  }
+
+  function press(target: HTMLElement, init: KeyboardEventInit): KeyboardEvent {
+    const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+    target.dispatchEvent(event);
+    return event;
+  }
+
+  it("does not consume Ctrl+C when the terminal has no selection", async () => {
+    useWindows();
+    const copySelection = vi.fn();
+    const { tm } = setup({ paneOverrides: { copySelection }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+    // handleShortcut is only attached as a window listener once init() runs.
+    await tm.init();
+    const input = terminalInput();
+    const downstream = vi.fn();
+    input.addEventListener("keydown", downstream);
+
+    const event = press(input, { key: "c", ctrlKey: true });
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(copySelection).not.toHaveBeenCalled();
+    // The key reached the pane, which is where xterm would encode the
+    // interrupt. Deck writes no `\x03` of its own.
+    expect(downstream).toHaveBeenCalledTimes(1);
+    expect(downstream).toHaveBeenLastCalledWith(event);
+    tm.dispose();
+  });
+
+  it("consumes Ctrl+C and clears the selection when there is one", async () => {
+    useWindows();
+    const copySelection = vi.fn();
+    const { tm } = setup({
+      paneOverrides: { copySelection, selection: true },
+      infos: IDLE_SHELLS,
+    });
+    await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+    await tm.init();
+    const input = terminalInput();
+    const downstream = vi.fn();
+    input.addEventListener("keydown", downstream);
+
+    const first = press(input, { key: "c", ctrlKey: true });
+
+    expect(first.defaultPrevented).toBe(true);
+    expect(copySelection).toHaveBeenCalledTimes(1);
+    expect(downstream).not.toHaveBeenCalled();
+
+    // The clear is what makes the SECOND press an interrupt instead of a
+    // second copy — spec D3, the two-press cancel.
+    const second = press(input, { key: "c", ctrlKey: true });
+
+    expect(second.defaultPrevented).toBe(false);
+    expect(copySelection).toHaveBeenCalledTimes(1);
+    expect(downstream).toHaveBeenCalledTimes(1);
+    tm.dispose();
+  });
+
+  it("does not consume Ctrl+Shift+C while a file surface owns the stage", async () => {
+    useWindows();
+    const copySelection = vi.fn();
+    const surfaces = fakeSurfaces({ count: 1, total: 1, activeIndex: 0 });
+    const { tm } = setup({
+      deps: { surfaces },
+      paneOverrides: { copySelection, selection: true },
+      infos: IDLE_SHELLS,
+    });
+    await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+    await tm.init();
+    // After materialize, exactly as every other surface test here does it —
+    // materializing a terminal tab deactivates the strip.
+    surfaces.activeIndexValue = 0;
+    const input = terminalInput();
+
+    // Upper-case `key` on purpose: Shift is held, and matchBinding lowercases.
+    const event = press(input, { key: "C", ctrlKey: true, shiftKey: true });
+
+    // Falling through is the point: Chromium's own copy must reach Monaco,
+    // which the old order swallowed and then blocked (spec, the latent defect).
+    expect(event.defaultPrevented).toBe(false);
+    expect(copySelection).not.toHaveBeenCalled();
+    tm.dispose();
+  });
+
+  it("still consumes Ctrl+Shift+C inside a terminal with nothing selected", async () => {
+    useWindows();
+    const copySelection = vi.fn();
+    const { tm } = setup({ paneOverrides: { copySelection }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+    await tm.init();
+    const input = terminalInput();
+
+    const event = press(input, { key: "C", ctrlKey: true, shiftKey: true });
+
+    // Stage-conditional but NOT selection-conditional (spec D2): nothing else
+    // wants this chord, and leaking it into an agent TUI is unspecified.
+    expect(event.defaultPrevented).toBe(true);
+    expect(copySelection).toHaveBeenCalledTimes(1);
+    tm.dispose();
+  });
+});
