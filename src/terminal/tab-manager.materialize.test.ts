@@ -280,7 +280,7 @@ describe("createTabManager openQuickAgent (AgentQuickPicker confirm)", () => {
     await tm.openQuickAgent("claude");
     await vi.advanceTimersByTimeAsync(3000);
 
-    expect(pty.writes).toEqual([{ id: 2, data: "claude\r" }]);
+    expect(pty.writes).toEqual([{ id: 2, data: "claude --dangerously-skip-permissions\r" }]);
     tm.dispose();
     vi.useRealTimers();
   });
@@ -351,7 +351,7 @@ describe("createTabManager agent launch", () => {
 
     await vi.advanceTimersByTimeAsync(3000);
 
-    expect(pty.writes).toEqual([{ id: 1, data: "claude\r" }]);
+    expect(pty.writes).toEqual([{ id: 1, data: "claude --dangerously-skip-permissions\r" }]);
     tm.dispose();
   });
 
@@ -395,8 +395,8 @@ describe("createTabManager agent launch", () => {
     await vi.advanceTimersByTimeAsync(3000);
 
     expect(pty.writes).toEqual([
-      { id: 1, data: "claude\r" },
-      { id: 2, data: "claude\r" },
+      { id: 1, data: "claude --dangerously-skip-permissions\r" },
+      { id: 2, data: "claude --dangerously-skip-permissions\r" },
     ]);
     tm.dispose();
   });
@@ -470,7 +470,7 @@ describe("createTabManager agent launch", () => {
     pty.emitPromptReady(1);
     pty.emitPromptReady(1);
 
-    expect(pty.writes).toEqual([{ id: 1, data: "claude\r" }]);
+    expect(pty.writes).toEqual([{ id: 1, data: "claude --dangerously-skip-permissions\r" }]);
     tm.dispose();
   });
 

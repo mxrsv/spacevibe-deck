@@ -77,7 +77,9 @@ describe("createTabManager dropAgentPane", () => {
     // A pane joined the tab; no tab was created.
     expect(tabViews.value.length).toBe(tabCount);
     expect(tm.allPaneIds()).toEqual([1, 2]);
-    expect(pty.writes).toEqual([{ id: 2, data: "codex\r" }]);
+    expect(pty.writes).toEqual([
+      { id: 2, data: "codex --dangerously-bypass-approvals-and-sandbox\r" },
+    ]);
     tm.dispose();
   });
 
@@ -102,9 +104,7 @@ describe("createTabManager dropAgentPane", () => {
 
     // The drop states no mode, so the workspace's remembered agent takes its
     // own default profile — the same rule the Open board gets for free.
-    expect(pty.writes).toEqual([
-      { id: 2, data: "claude --permission-mode plan\r" },
-    ]);
+    expect(pty.writes).toEqual([{ id: 2, data: "claude --permission-mode plan\r" }]);
     expect(tm.launchCommandFor(2)).toBe("claude --permission-mode plan");
     tm.dispose();
   });
@@ -123,7 +123,7 @@ describe("createTabManager dropAgentPane", () => {
     await vi.advanceTimersByTimeAsync(3000);
 
     // BUILTIN_AGENTS order, not probe order — `agentOptions` decides both.
-    expect(pty.writes).toEqual([{ id: 2, data: "claude\r" }]);
+    expect(pty.writes).toEqual([{ id: 2, data: "claude --dangerously-skip-permissions\r" }]);
     tm.dispose();
   });
 

@@ -6,10 +6,7 @@ import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { workspacesData } from "../open-board/workspaces-store";
 import { WORKSPACES_VERSION } from "../lib/workspace-recents";
 import { activeTabIndex, tabViews } from "./tabs-store";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { freshWindowFocusController, wire } from "./tab-manager.fixtures";
 import type { LaunchProfile } from "../lib/launch-profile";
 
@@ -87,9 +84,7 @@ describe("createTabManager openQuickAgent launch profiles", () => {
     await tm.openQuickAgent("claude", null, "lp:plan");
     await vi.advanceTimersByTimeAsync(3000);
 
-    expect(pty.writes).toEqual([
-      { id: 1, data: "claude --permission-mode plan\r" },
-    ]);
+    expect(pty.writes).toEqual([{ id: 1, data: "claude --permission-mode plan\r" }]);
     tm.dispose();
   });
 
@@ -100,9 +95,7 @@ describe("createTabManager openQuickAgent launch profiles", () => {
     await tm.openQuickAgent("claude");
     await vi.advanceTimersByTimeAsync(3000);
 
-    expect(pty.writes).toEqual([
-      { id: 1, data: "claude --permission-mode plan\r" },
-    ]);
+    expect(pty.writes).toEqual([{ id: 1, data: "claude --permission-mode plan\r" }]);
     tm.dispose();
   });
 
@@ -117,14 +110,16 @@ describe("createTabManager openQuickAgent launch profiles", () => {
     tm.dispose();
   });
 
-  it("leaves an agent with no profiles on its bare command", async () => {
+  it("falls back to the catalog's shipped command when the user has no preset", async () => {
     const { tm, pty } = build();
     withProfiles({ claude: "lp:plan" });
 
+    // The agent catalog (2026-08-19) ships a default command per built-in; a
+    // user preset REPLACES it, but its absence no longer means the bare binary.
     await tm.openQuickAgent("gemini");
     await vi.advanceTimersByTimeAsync(3000);
 
-    expect(pty.writes).toEqual([{ id: 1, data: "gemini\r" }]);
+    expect(pty.writes).toEqual([{ id: 1, data: "gemini --yolo\r" }]);
     tm.dispose();
   });
 
