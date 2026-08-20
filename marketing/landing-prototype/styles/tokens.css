@@ -152,12 +152,6 @@
     0.2
   ); /* --hair-strong — the multi-pane inset frame, the active chip */
   --sg-hairline-soft: rgba(255, 255, 255, 0.08); /* landing-only soft edge; see above */
-  --sg-seam-divider: rgba(
-    255,
-    255,
-    255,
-    0.12
-  ); /* --seam-divider = tone 12% — the 1px line between panes */
 }
 
 @media (max-width: 70rem) {

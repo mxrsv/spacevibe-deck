@@ -419,10 +419,6 @@ html[lang="vi"] .a-hero h1 {
   padding: 0 var(--a-cell-pad) clamp(2rem, 4.5vh, 3.5rem);
 }
 
-/* The scene-tab pill row lived here for a few hours on 2026-08-20; the owner
-   replaced the click tabs with a timed scene cycle the same day, so the stage
-   region advances on its own and the page draws no switcher chrome. */
-
 .a-desk {
   position: relative;
   display: flex;

@@ -29,12 +29,18 @@ import { usageBody } from "../tour/scenes/usage.js";
  * Agents dwells longest: it is the flagship frame and its transcripts are
  * mid-stream. Exported for the tests, which advance fake timers by these
  * exact numbers.
+ *
+ * This list is ALSO the markup source: every entry with a `body` renders as a
+ * `stageRegion` in declaration order, so a scene added here appears in the
+ * cycle and in the DOM in one edit — `showScene` joins the two by `id`, and a
+ * hand-synced pair would blank the stage for a dwell when they drift. Agents
+ * has no `body` because its region is the live composition written inline.
  */
 export const HERO_SCENES = [
   { id: "agents", dwell: 14000 },
-  { id: "restore", dwell: 9000 },
-  { id: "surfaces", dwell: 9000 },
-  { id: "usage", dwell: 9000 },
+  { id: "restore", dwell: 9000, body: restoreBody, strip: RESTORE_STRIP },
+  { id: "surfaces", dwell: 9000, body: surfacesBody, strip: SURFACE_STRIP },
+  { id: "usage", dwell: 9000, body: usageBody, strip: null },
 ];
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
@@ -222,7 +228,7 @@ export function renderDirectionA(copy, locale) {
                        regions on purpose: it is the one part of the window
                        every scene shares, and its stream hooks stay live
                        whichever region is showing. -->
-                  <div class="a-appwin__stage is-shown" data-scene="agents">
+                  <div class="a-appwin__stage is-revealed" data-scene="agents">
                     ${renderStageStrip(stageStrip)}
                     <div class="a-appwin__grid">
                       <div class="a-appwin__col">
@@ -232,9 +238,11 @@ export function renderDirectionA(copy, locale) {
                       ${renderStagePane(opencodePane)}
                     </div>
                   </div>
-                  ${stageRegion(restoreBody(), RESTORE_STRIP, ' data-scene="restore" hidden')}
-                  ${stageRegion(surfacesBody(), SURFACE_STRIP, ' data-scene="surfaces" hidden')}
-                  ${stageRegion(usageBody(), null, ' data-scene="usage" hidden')}
+                  ${HERO_SCENES.filter((scene) => scene.body)
+                    .map((scene) =>
+                      stageRegion(scene.body(), scene.strip, ` data-scene="${scene.id}" hidden`),
+                    )
+                    .join("")}
                 </div>
               </figure>
             </div>
@@ -268,16 +276,18 @@ export function renderDirectionA(copy, locale) {
 
       // The scene cycle. `hidden` is the whole show/hide mechanism — a
       // region leaving display:none restarts its CSS animations, so a scene
-      // replays its reveal on every visit — and `is-shown` is the class the
-      // scene animations gate on (scenes.css shares it with the panels'
-      // `.panel.is-revealed`). The stream keeps running in the hidden agents
-      // region: its timers are the window's heartbeat, and pausing them would
-      // hand the reader a stale transcript on the way back. Under reduced
-      // motion no timer is armed at all — the hero stands on the agents frame.
+      // replays its reveal on every visit — and `is-revealed` is the class
+      // the scene animations gate on (scenes.css's one gate, shared with the
+      // panels' IntersectionObserver). The stream keeps running in the hidden
+      // agents region: its timers are the window's heartbeat, and pausing
+      // them would hand the reader a stale transcript on the way back. Under
+      // reduced motion no timer is armed at all — the hero stands on the
+      // agents frame.
       const regions = [...section.querySelectorAll(".a-appwin__stage[data-scene]")];
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
       let sceneIndex = 0;
       let sceneTimer = null;
+      let cycling = false;
 
       function showScene(index) {
         const scene = HERO_SCENES[index].id;
@@ -285,11 +295,12 @@ export function renderDirectionA(copy, locale) {
         for (const region of regions) {
           const shown = region.dataset.scene === scene;
           region.hidden = !shown;
-          region.classList.toggle("is-shown", shown);
+          region.classList.toggle("is-revealed", shown);
         }
       }
 
       function armSceneTimer() {
+        cycling = true;
         sceneTimer = setTimeout(() => {
           sceneIndex = (sceneIndex + 1) % HERO_SCENES.length;
           showScene(sceneIndex);
@@ -297,11 +308,33 @@ export function renderDirectionA(copy, locale) {
         }, HERO_SCENES[sceneIndex].dwell);
       }
 
+      // The cycle pauses while the hero is off screen: swapping regions and
+      // replaying their reveals under the fold is pure waste, indefinitely.
+      // Armed OPTIMISTICALLY — the observer only ever pauses and resumes —
+      // so an environment without IntersectionObserver (jsdom) simply cycles
+      // ungated rather than not at all.
+      let sceneObserver = null;
+
       if (!reduceMotion.matches) {
         armSceneTimer();
+
+        if (typeof IntersectionObserver !== "undefined") {
+          sceneObserver = new IntersectionObserver((entries) => {
+            const visible = entries.some((entry) => entry.isIntersecting);
+
+            if (!visible && cycling) {
+              cycling = false;
+              clearTimeout(sceneTimer);
+            } else if (visible && !cycling) {
+              armSceneTimer();
+            }
+          });
+          sceneObserver.observe(section.querySelector(".a-desk"));
+        }
       }
 
       return () => {
+        sceneObserver?.disconnect();
         clearTimeout(sceneTimer);
         disposeStream();
 

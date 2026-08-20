@@ -226,7 +226,8 @@
    panes are FLUSH — no gap, no card border, no radius — and a 1px
    `--seam-divider` hairline is the only thing between them. The mock says the
    same with a 1px grid gap over a seam-coloured ground; each pane's own
-   `--sg-bg` covers everything but the lines. */
+   `--sg-bg` covers everything but the lines. `--sg-hairline` IS the landing's
+   `--seam-divider` (its comment claims the role), so no second token. */
 .a-appwin__grid {
   display: grid;
   flex: 1;
@@ -234,7 +235,7 @@
   min-height: 0;
   grid-template-columns: 1fr 1fr;
   gap: 1px;
-  background: var(--sg-seam-divider);
+  background: var(--sg-hairline);
 }
 
 .a-appwin__col {
@@ -285,7 +286,7 @@
   white-space: nowrap;
 }
 
-.a-appwin__line.t-body {
+:is(.a-appwin__line, .scene-restore__line).t-body {
   color: var(--sg-fg);
 }
 
@@ -297,8 +298,14 @@
    transcripts in the terminal's plain foreground — Claude Code's tool calls,
    codex's applied-patch lines — and the purple/green/blue the mock used to
    borrow from the theme's ANSI read as syntax highlighting the real window
-   never shows. Weight and dimness carry the hierarchy instead. */
-.a-appwin__line.t-agent {
+   never shows. Weight and dimness carry the hierarchy instead.
+
+   `.scene-restore__line` shares the vocabulary HERE, not in scenes.css: a
+   restore column IS a pane, and declaring the inks twice is how the first
+   neutral pass had to be applied twice by hand. Scoped `:is()`, never a bare
+   `.t-dim` — an unscoped class would repaint anything that borrowed the
+   word. */
+:is(.a-appwin__line, .scene-restore__line).t-agent {
   color: var(--sg-fg-dim);
   font-weight: 600;
 }
@@ -307,11 +314,11 @@
   color: var(--sg-fg);
 }
 
-.a-appwin__line.t-dim {
+:is(.a-appwin__line, .scene-restore__line).t-dim {
   color: var(--sg-fg-faint);
 }
 
-.a-appwin__line.t-ok {
+:is(.a-appwin__line, .scene-restore__line).t-ok {
   color: var(--sg-fg);
 }
 

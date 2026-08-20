@@ -9,13 +9,13 @@
    is that sheet's: one app pixel is 0.1cqw, because the mock is drawn at a
    1000px window. Hairlines stay a literal 1px; a scaled hairline blurs.
 
-   Motion is gated on `:is(.panel.is-revealed, .a-appwin__stage.is-shown)`.
-   `.panel.is-revealed` is the class the panels' own IntersectionObserver
-   adds: a scene that typed itself out while three viewports above the fold
-   would be finished before anyone saw it. `.a-appwin__stage.is-shown` is the
-   hero scene switcher's half of the same gate — a region coming out of
-   `hidden` re-enters layout, which restarts its animations, and `is-shown`
-   is what lets them fire there at all. EVERY
+   Motion is gated on `:is(.panel, .a-appwin__stage).is-revealed` — ONE
+   class, two writers. On a `.panel` the panels' own IntersectionObserver
+   adds it: a scene that typed itself out while three viewports above the
+   fold would be finished before anyone saw it. On a hero `.a-appwin__stage`
+   the scene cycle adds it — a region coming out of `hidden` re-enters
+   layout, which restarts its animations, and the class is what lets them
+   fire there at all. EVERY
    animation declared under that gate is repeated in the reduced-motion block
    at the foot of this file — a reveal missing from that list animates under
    `prefers-reduced-motion: reduce` with no error anywhere to catch it. */
@@ -62,7 +62,7 @@
   /* Flush panes over a 1px seam, exactly as the hero grid draws its own
      (owner, 2026-08-20): the app has no card borders between panes. */
   gap: 1px;
-  background: var(--sg-seam-divider);
+  background: var(--sg-hairline);
 }
 
 /* A pane here IS a pane: the same flush ground `.a-appwin__pane` stands on in
@@ -137,7 +137,7 @@
    animation on ANY global style recalc — a stylesheet injected by an
    extension, or by Playwright's own screenshot machinery, was enough to catch
    the two delayed panes back at width 0. */
-:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-restore__typed {
+:is(.panel, .a-appwin__stage).is-revealed .scene-restore__typed {
   animation-name: scene-type;
   animation-duration: calc(var(--scene-steps) * 26ms);
   animation-timing-function: steps(var(--scene-steps));
@@ -154,29 +154,12 @@
   line-height: 1.45;
 }
 
+/* The transcript inks live in appwin.css's `:is(.a-appwin__line,
+   .scene-restore__line)` rules — one vocabulary, declared once, because the
+   first neutral pass (owner, 2026-08-20) had to be applied twice by hand when
+   this sheet carried its own copy. Only the reveal state is this sheet's. */
 .scene-restore__line {
   opacity: 0;
-}
-
-/* The transcript's four inks, the same four `.a-appwin__line` carries in the
-   hero (appwin.css:284-308). Declared here rather than reused from there
-   because these are `.scene-restore__line`s, and a bare `.t-dim` in a shared
-   sheet would repaint anything that ever borrowed the word. */
-.scene-restore__line.t-body {
-  color: var(--sg-fg);
-}
-
-.scene-restore__line.t-agent {
-  color: var(--sg-fg-dim);
-  font-weight: 600;
-}
-
-.scene-restore__line.t-dim {
-  color: var(--sg-fg-faint);
-}
-
-.scene-restore__line.t-ok {
-  color: var(--sg-fg);
 }
 
 /* Pushes the prompt to the bottom of the pane. Without it the scene stacked
@@ -193,7 +176,13 @@
   font-size: max(0.95cqw, 7px);
 }
 
-:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-restore__line {
+/* One 420ms rise for every staggered reveal that takes it — the catalog's
+   head and agent rows ride the same rule rather than a byte-identical copy
+   beside their own section (the shorthand→longhand fix proved the cost of
+   two: every edit had to land twice, in lockstep). `scene-rail__pane` stays
+   apart on purpose: its duration is 460ms. */
+:is(.panel, .a-appwin__stage).is-revealed
+  :is(.scene-restore__line, .scene-catalog__head, .scene-catalog__agent) {
   animation-name: scene-rise;
   animation-duration: 420ms;
   animation-timing-function: ease;
@@ -259,7 +248,7 @@
   opacity: 0;
 }
 
-:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-rail__pane {
+:is(.panel, .a-appwin__stage).is-revealed .scene-rail__pane {
   animation-name: scene-rise;
   animation-duration: 460ms;
   animation-timing-function: ease;
@@ -324,7 +313,7 @@
 /* Its own keyframes, not `scene-rise`: that one ends on `transform: none`,
    which cancels the translate doing the centring — the panel snapped to the
    scene's midpoint and hung off the right edge of the window. */
-:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-picker__panel {
+:is(.panel, .a-appwin__stage).is-revealed .scene-picker__panel {
   animation: scene-pop 460ms ease 160ms both;
 }
 
@@ -946,14 +935,8 @@
   border-top: 1px solid var(--sg-seam-recessed);
 }
 
-:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-catalog__head,
-:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-catalog__agent {
-  animation-name: scene-rise;
-  animation-duration: 420ms;
-  animation-timing-function: ease;
-  animation-delay: var(--scene-delay);
-  animation-fill-mode: both;
-}
+/* Reveal animation: shared with `.scene-restore__line`'s 420ms rise — see
+   that rule near the top of this sheet. */
 
 .scene-catalog__mark {
   width: 1.5cqw;
@@ -1333,12 +1316,12 @@
    it was replaced. */
 
 @media (prefers-reduced-motion: reduce) {
-  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-restore__typed,
-  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-restore__line,
-  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-rail__pane,
-  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-picker__panel,
-  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-catalog__head,
-  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-catalog__agent {
+  :is(.panel, .a-appwin__stage).is-revealed .scene-restore__typed,
+  :is(.panel, .a-appwin__stage).is-revealed .scene-restore__line,
+  :is(.panel, .a-appwin__stage).is-revealed .scene-rail__pane,
+  :is(.panel, .a-appwin__stage).is-revealed .scene-picker__panel,
+  :is(.panel, .a-appwin__stage).is-revealed .scene-catalog__head,
+  :is(.panel, .a-appwin__stage).is-revealed .scene-catalog__agent {
     animation: none;
     opacity: 1;
   }

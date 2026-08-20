@@ -177,7 +177,10 @@ without waiting for the panels. Two moves, both marketing-only:
   `prefers-reduced-motion` no timer is armed at all — the hero stands on the
   agents frame. `hidden` is the show/hide mechanism — a region re-entering
   layout restarts its CSS reveals — and the scene animations' gate widened to
-  `:is(.panel.is-revealed, .a-appwin__stage.is-shown)`.
+  `:is(.panel, .a-appwin__stage).is-revealed` — one class, two writers (the
+  panels' IntersectionObserver and the cycle). The cycle itself pauses on an
+  IntersectionObserver of its own while the hero is off screen, so nothing
+  swaps or replays under the fold.
 - **The window went native on the owner's screenshot review.** Three fixes,
   all mirroring what the app actually draws: the pane grid is FLUSH — a 1px
   `--sg-seam-divider` (tone 12%, `--seam-divider`'s recipe) is the only thing
@@ -199,7 +202,7 @@ without waiting for the panels. Two moves, both marketing-only:
   evidence gate records.
 
 Evidence: `vitest run marketing/` 165/165 (six cycle tests — order, wrap,
-is-shown, reduced-motion stillness, dispose — plus the fixture pin reworked),
+is-revealed, reduced-motion stillness, dispose — plus the fixture pin reworked),
 `build:landing` clean, `scripts/capture-landing-stage.mjs` rerun clean at all
 three widths in both motion modes, and screenshots of the agents frame and the
 first automatic advance. The same caveats as the parent section: no owner eye

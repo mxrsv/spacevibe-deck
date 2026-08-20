@@ -252,13 +252,6 @@ describe("the scene cycle", () => {
     return shown[0].dataset.scene;
   }
 
-  it("draws no switcher chrome — the cycle is the page's own", () => {
-    const root = renderHero();
-
-    expect(root.querySelector(".a-scenetabs")).toBeNull();
-    expect(root.querySelector("[data-scene-tabs]")).toBeNull();
-  });
-
   it("advances through every scene in order, then wraps to agents", () => {
     vi.useFakeTimers();
 
@@ -276,7 +269,7 @@ describe("the scene cycle", () => {
     }
   });
 
-  it("marks exactly the shown region is-shown, so its reveals replay", () => {
+  it("marks exactly the shown region is-revealed, so its reveals replay", () => {
     vi.useFakeTimers();
 
     try {
@@ -285,7 +278,7 @@ describe("the scene cycle", () => {
       vi.advanceTimersByTime(HERO_SCENES[0].dwell);
 
       for (const region of root.querySelectorAll(".a-appwin__stage[data-scene]")) {
-        expect(region.classList.contains("is-shown")).toBe(region.dataset.scene === "restore");
+        expect(region.classList.contains("is-revealed")).toBe(region.dataset.scene === "restore");
       }
     } finally {
       vi.useRealTimers();

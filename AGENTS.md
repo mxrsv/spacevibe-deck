@@ -502,7 +502,8 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   `--sg-seam-divider` (no card border, radius, gap, or focus ring — 06-stage-panes.css is the
   reference), and the transcript inks went neutral — `t-tool` purple and `t-ok` green died, the
   codex header blue became dim bold — because the real CLIs print plain foreground. The scene
-  animations' gate widened to `:is(.panel.is-revealed, .a-appwin__stage.is-shown)`, and the
+  animations' gate widened to `:is(.panel, .a-appwin__stage).is-revealed` — one class, two
+  writers (the panels' IntersectionObserver and the cycle) — and the
   `var()`-carrying ones moved to animation LONGHANDS — a shorthand holding `var()` is stored
   pending-substitution and Chromium restarts it on any global style recalc, which is what had
   Playwright's own screenshots catching two restore panes at width 0. Verified by
