@@ -52,19 +52,19 @@ const RELEASES = [
   },
 ];
 
-// Mirrors the page: hero and finale carry `data-copy` on an inner span, the
-// footer on the anchor itself. The footer Releases link must stay untouched.
+// Mirrors the page: the hero uses install copy, while the finale/footer retain
+// download copy. The footer Releases link must stay untouched.
 // The macOS control is a disabled button while the Electron macOS build is
 // unreleased — it carries `downloadMac` but is deliberately not an anchor.
 function renderFixture() {
   const root = document.createElement("main");
   root.innerHTML = `
     <a class="hero-win" href="${WINDOWS_FALLBACK_URL}" target="_blank" rel="noreferrer">
-      <span data-copy="downloadWin">Download for Windows</span>
+      <span data-copy="installWin">Install for Windows</span>
       <span data-copy="winPreviewTag">preview</span>
     </a>
     <button class="hero-mac" type="button" disabled>
-      <span data-copy="downloadMac">Download for macOS</span>
+      <span data-copy="installMac">Install for macOS</span>
       <span data-copy="comingSoon">coming soon</span>
     </button>
     <a class="footer-win" href="${WINDOWS_FALLBACK_URL}" target="_blank" rel="noreferrer"
@@ -75,9 +75,7 @@ function renderFixture() {
       data-release-version>v0.8.0</a>
     <aside data-download-proof data-download-state="loading">
       <strong data-download-count>—</strong>
-      <span data-download-loading>Checking GitHub Releases</span>
-      <span data-download-ready hidden>GitHub Releases</span>
-      <span data-download-unavailable hidden>Count unavailable</span>
+      <span>downloads</span>
     </aside>
   `;
   return root;
@@ -113,8 +111,6 @@ describe("upgradeReleaseLinks", () => {
       root.querySelector("[data-download-proof]").dataset.downloadState,
     ).toBe("ready");
     expect(root.querySelector("[data-download-count]").textContent).toBe("17");
-    expect(root.querySelector("[data-download-loading]").hidden).toBe(true);
-    expect(root.querySelector("[data-download-ready]").hidden).toBe(false);
   });
 
   it("leaves non-download anchors alone", async () => {
@@ -158,10 +154,6 @@ describe("upgradeReleaseLinks", () => {
       root.querySelector("[data-download-proof]").dataset.downloadState,
     ).toBe("unavailable");
     expect(root.querySelector("[data-download-count]").textContent).toBe("—");
-    expect(root.querySelector("[data-download-loading]").hidden).toBe(true);
-    expect(root.querySelector("[data-download-unavailable]").hidden).toBe(
-      false,
-    );
   });
 
   it("keeps the page hrefs on a non-OK response", async () => {

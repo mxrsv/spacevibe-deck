@@ -71,6 +71,16 @@ function renderDiscordIcon() {
   `;
 }
 
+function renderInstallIcon() {
+  return `
+    <svg class="a-install-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 3v11" />
+      <path d="m8 10 4 4 4-4" />
+      <path d="M5 18v2h14v-2" />
+    </svg>
+  `;
+}
+
 function renderBrandMark(copy) {
   return `
     <span class="a-brand-mark" aria-hidden="true">
@@ -130,14 +140,16 @@ export function renderDirectionA(copy) {
               <span aria-hidden="true">→</span>
             </a>
 
-            <p class="band-label" data-copy="heroLabel">${copy.heroLabel}</p>
+            <div class="a-hero__copy">
+              <p class="band-label" data-copy="heroLabel">${copy.heroLabel}</p>
 
-            <h1>
-              <span data-copy="headlineLead">${copy.headlineLead}</span>
-              <span data-copy="headlineTail">${copy.headlineTail}</span>
-            </h1>
+              <h1>
+                <span data-copy="headlineLead">${copy.headlineLead}</span>
+                <span data-copy="headlineTail">${copy.headlineTail}</span>
+              </h1>
 
-            <p class="a-subhead" data-copy="subhead">${copy.subhead}</p>
+              <p class="a-subhead" data-copy="subhead">${copy.subhead}</p>
+            </div>
 
             <div class="a-actions">
               <a
@@ -148,13 +160,13 @@ export function renderDirectionA(copy) {
               >
                 <span class="a-cta-lead">
                   ${renderWindowsIcon()}
-                  <span data-copy="downloadWin">${copy.downloadWin}</span>
+                  <span data-copy="installWin">${copy.installWin}</span>
                 </span>
                 <span class="a-cta-trail">
                   <span class="a-cta-tag" data-copy="winPreviewTag"
                     >${copy.winPreviewTag}</span
                   >
-                  <i aria-hidden="true">↓</i>
+                  ${renderInstallIcon()}
                 </span>
               </a>
 
@@ -165,13 +177,15 @@ export function renderDirectionA(copy) {
               <button class="a-quiet-cta" type="button" disabled>
                 <span class="a-cta-lead">
                   ${renderAppleIcon()}
-                  <span data-copy="downloadMac">${copy.downloadMac}</span>
+                  <span data-copy="installMac">${copy.installMac}</span>
                 </span>
                 <span class="a-cta-tag" data-copy="comingSoon"
                   >${copy.comingSoon}</span
                 >
               </button>
+            </div>
 
+            <div class="a-hero__support">
               <!-- Pointed at the feature panels since 2026-08-19. It used to
                    open the 16-second demo reel, which was cut that day for
                    showing a build the app has moved past. -->
@@ -179,29 +193,9 @@ export function renderDirectionA(copy) {
                 <span data-copy="seeFeatures">${copy.seeFeatures}</span>
                 <i aria-hidden="true">↓</i>
               </a>
-            </div>
+              <span class="a-hero__support-sep" aria-hidden="true"></span>
 
-            <!-- The SmartScreen warning used to sit here, between the buttons
-                 and the footnote row. Cut from the hero on 2026-08-19: it is a
-                 caveat about what happens AFTER the click, and three lines of
-                 it under a centred CTA read as the loudest thing in the block.
-                 The closing band still carries it (see tour/index.js), which is
-                 where a visitor is when they are deciding, not landing. -->
-
-            <!-- One quiet evidence row under the actions: repo, then the live
-                 release count. Both were their own blocks in the left-rail
-                 hero; centred, they read as one line of footnotes. -->
-            <div class="a-hero__meta">
-              <a
-                class="a-secondary-cta"
-                href="${REPO_URL}"
-                target="_blank"
-                rel="noreferrer"
-              >
-                ${renderGithubIcon()}
-                <span data-copy="secondaryCta">${copy.secondaryCta}</span>
-              </a>
-              <span class="a-hero__meta-sep" aria-hidden="true"></span>
+              <!-- GitHub counts installer downloads, not completed installs. -->
               <aside
                 class="a-download-proof"
                 data-download-proof
@@ -211,12 +205,6 @@ export function renderDirectionA(copy) {
               >
                 <strong data-download-count>—</strong>
                 <span class="a-download-proof__unit" data-copy="downloadCountUnit">${copy.downloadCountUnit}</span>
-                <span class="a-download-proof__separator" aria-hidden="true">·</span>
-                <span class="a-download-proof__status">
-                  <span data-download-loading data-copy="downloadCountLoading">${copy.downloadCountLoading}</span>
-                  <span data-download-ready data-copy="downloadCountReady" hidden>${copy.downloadCountReady}</span>
-                  <span data-download-unavailable data-copy="downloadCountUnavailable" hidden>${copy.downloadCountUnavailable}</span>
-                </span>
               </aside>
             </div>
           </div>

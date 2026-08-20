@@ -35,24 +35,26 @@ import {
 
 export { RELEASES_URL, REPO_URL, WINDOWS_FALLBACK_URL };
 
-// The hero and finale CTAs carry `data-copy` on an inner span; the footer
-// link carries it on the anchor itself. closest() covers both shapes.
-function retargetAnchors(root, copyKey, url) {
+// The hero says "Install" while the finale/footer say "Download". All carry
+// their locale key through `data-copy`; closest() covers both anchor shapes.
+function retargetAnchors(root, copyKeys, url) {
   if (!url) {
     return;
   }
 
-  for (const el of root.querySelectorAll(`[data-copy="${copyKey}"]`)) {
-    const anchor = el.closest("a");
+  for (const copyKey of copyKeys) {
+    for (const el of root.querySelectorAll(`[data-copy="${copyKey}"]`)) {
+      const anchor = el.closest("a");
 
-    if (!anchor) {
-      continue;
+      if (!anchor) {
+        continue;
+      }
+
+      anchor.href = url;
+      // A direct file URL downloads in place; keeping target="_blank" would
+      // just flash an empty tab.
+      anchor.removeAttribute("target");
     }
-
-    anchor.href = url;
-    // A direct file URL downloads in place; keeping target="_blank" would
-    // just flash an empty tab.
-    anchor.removeAttribute("target");
   }
 }
 
@@ -64,18 +66,6 @@ function setDownloadProofState(root, state, count = null) {
 
     if (countLabel && count !== null) {
       countLabel.textContent = new Intl.NumberFormat("en-US").format(count);
-    }
-
-    for (const label of proof.querySelectorAll("[data-download-loading]")) {
-      label.hidden = state !== "loading";
-    }
-
-    for (const label of proof.querySelectorAll("[data-download-ready]")) {
-      label.hidden = state !== "ready";
-    }
-
-    for (const label of proof.querySelectorAll("[data-download-unavailable]")) {
-      label.hidden = state !== "unavailable";
     }
   }
 }
@@ -92,8 +82,8 @@ export async function upgradeReleaseLinks(root) {
 
   const urls = selectDownloadUrls(releases);
 
-  retargetAnchors(root, "downloadMac", urls.mac);
-  retargetAnchors(root, "downloadWin", urls.win);
+  retargetAnchors(root, ["downloadMac", "installMac"], urls.mac);
+  retargetAnchors(root, ["downloadWin", "installWin"], urls.win);
   setDownloadProofState(root, "ready", totalInstallerDownloads(releases));
 
   const stableTag = latestStableTag(releases);
