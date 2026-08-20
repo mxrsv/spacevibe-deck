@@ -128,10 +128,73 @@ export const stageRail = deepFreeze([
           },
         ],
       },
+      {
+        framed: false,
+        panes: [
+          {
+            id: null,
+            agent: "agy",
+            message: "Batching the artifact uploads into one R2 write.",
+            age: "12m",
+            state: "working",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    project: "spacevibe-bench",
+    tabs: [
+      {
+        framed: false,
+        panes: [
+          {
+            id: null,
+            agent: "codex",
+            message: "npm test failed — 3 assertions in vote-panel.",
+            age: "5m",
+            state: "failed",
+          },
+        ],
+      },
+      {
+        framed: false,
+        panes: [
+          {
+            id: null,
+            agent: "cursor-agent",
+            message: "Split the arena grid into virtual rows.",
+            age: "26m",
+            state: "done",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    project: "spacevibe-academy",
+    tabs: [
+      {
+        framed: false,
+        panes: [
+          {
+            id: null,
+            agent: "opencode",
+            message: "Drafting the lesson checkpoint schema.",
+            age: "44m",
+            state: "working",
+          },
+        ],
+      },
     ],
   },
   {
     project: "spacevibe-hub",
+    remembered: true,
+    tabs: [],
+  },
+  {
+    project: "spacevibe-active",
     remembered: true,
     tabs: [],
   },
@@ -300,9 +363,7 @@ export const stagePanes = deepFreeze([
     restGap: 4800,
     maxLines: 18,
     prompt: ">",
-    footer: [
-      { text: "opencode · claude-sonnet-5 · 12.4k tokens", cls: "t-dim" },
-    ],
+    footer: [{ text: "opencode · claude-sonnet-5 · 12.4k tokens", cls: "t-dim" }],
     steps: [
       {
         kind: "line",

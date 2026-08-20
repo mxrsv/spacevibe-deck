@@ -192,9 +192,9 @@ describe("the hero's stream hooks", () => {
     const focused = stagePanes.find((pane) => pane.focused);
 
     expect(root.querySelectorAll(`[data-tail="${focused.id}"]`).length).toBeGreaterThan(1);
-    expect([...root.querySelectorAll(`[data-tail="${focused.id}"]`)].map((n) => n.className)).toContain(
-      "a-appwin__chiplabel",
-    );
+    expect(
+      [...root.querySelectorAll(`[data-tail="${focused.id}"]`)].map((n) => n.className),
+    ).toContain("a-appwin__chiplabel");
   });
 });
 
@@ -297,8 +297,13 @@ describe("renderStageRail's two shapes", () => {
     expect(stageRail.some((cluster) => cluster.remembered)).toBe(true);
     expect(SCENE_RAIL.some((cluster) => cluster.remembered)).toBe(false);
 
+    // One still head per remembered fixture entry — counted off the fixture
+    // rather than pinned to a number, so densifying the rail (2026-08-20:
+    // hub AND active are remembered now) cannot silently draw one short.
+    const rememberedCount = stageRail.filter((cluster) => cluster.remembered).length;
     const remembered = [...railDom(stageRail).querySelectorAll(".a-appwin__clusterhead.is-still")];
-    expect(remembered).toHaveLength(1);
+    expect(rememberedCount).toBeGreaterThan(0);
+    expect(remembered).toHaveLength(rememberedCount);
 
     for (const head of remembered) {
       expect(head.querySelector(".a-appwin__clustercaret")).toBeNull();
@@ -330,9 +335,7 @@ describe("renderStageRail's two shapes", () => {
       ["scene", SCENE_RAIL],
     ]) {
       const host = railDom(fixture);
-      const framedTabs = fixture
-        .flatMap((cluster) => cluster.tabs)
-        .filter((tab) => tab.framed);
+      const framedTabs = fixture.flatMap((cluster) => cluster.tabs).filter((tab) => tab.framed);
 
       expect(framedTabs.length, name).toBeGreaterThan(0);
 
@@ -505,7 +508,7 @@ describe("AGENT_MARKS mirrors the app's catalog", () => {
     );
   });
 
-  it("never prints src=\"null\" on any surface of the page", () => {
+  it('never prints src="null" on any surface of the page', () => {
     // R9: three renderers reach for `agent.mark`, not one. The strip, the
     // rail, the tab strip and all six scenes are checked together because
     // that is the whole set that can regress.

@@ -9,10 +9,14 @@
    is that sheet's: one app pixel is 0.1cqw, because the mock is drawn at a
    1000px window. Hairlines stay a literal 1px; a scaled hairline blurs.
 
-   Motion is gated on `.panel.is-revealed`, the class the panels' own
-   IntersectionObserver adds: a scene that typed itself out while three
-   viewports above the fold would be finished before anyone saw it. EVERY
-   animation declared under that class is repeated in the reduced-motion block
+   Motion is gated on `:is(.panel.is-revealed, .a-appwin__stage.is-shown)`.
+   `.panel.is-revealed` is the class the panels' own IntersectionObserver
+   adds: a scene that typed itself out while three viewports above the fold
+   would be finished before anyone saw it. `.a-appwin__stage.is-shown` is the
+   hero scene switcher's half of the same gate — a region coming out of
+   `hidden` re-enters layout, which restarts its animations, and `is-shown`
+   is what lets them fire there at all. EVERY
+   animation declared under that gate is repeated in the reduced-motion block
    at the foot of this file — a reveal missing from that list animates under
    `prefers-reduced-motion: reduce` with no error anywhere to catch it. */
 
@@ -125,9 +129,17 @@
   vertical-align: bottom;
 }
 
-.panel.is-revealed .scene-restore__typed {
-  animation: scene-type calc(var(--scene-steps) * 26ms)
-    steps(var(--scene-steps)) var(--scene-delay) both;
+/* Longhands on purpose, never the `animation` shorthand: a shorthand holding
+   `var()` is stored pending-substitution, and Chromium restarts such an
+   animation on ANY global style recalc — a stylesheet injected by an
+   extension, or by Playwright's own screenshot machinery, was enough to catch
+   the two delayed panes back at width 0. */
+:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-restore__typed {
+  animation-name: scene-type;
+  animation-duration: calc(var(--scene-steps) * 26ms);
+  animation-timing-function: steps(var(--scene-steps));
+  animation-delay: var(--scene-delay);
+  animation-fill-mode: both;
 }
 
 .scene-restore__out {
@@ -178,8 +190,12 @@
   font-size: max(0.95cqw, 7px);
 }
 
-.panel.is-revealed .scene-restore__line {
-  animation: scene-rise 420ms ease var(--scene-delay) both;
+:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-restore__line {
+  animation-name: scene-rise;
+  animation-duration: 420ms;
+  animation-timing-function: ease;
+  animation-delay: var(--scene-delay);
+  animation-fill-mode: both;
 }
 
 /* ---------- rail: every row says what its agent just said ---------- */
@@ -240,8 +256,12 @@
   opacity: 0;
 }
 
-.panel.is-revealed .scene-rail__pane {
-  animation: scene-rise 460ms ease var(--scene-delay) both;
+:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-rail__pane {
+  animation-name: scene-rise;
+  animation-duration: 460ms;
+  animation-timing-function: ease;
+  animation-delay: var(--scene-delay);
+  animation-fill-mode: both;
 }
 
 .scene-rail__hint {
@@ -301,7 +321,7 @@
 /* Its own keyframes, not `scene-rise`: that one ends on `transform: none`,
    which cancels the translate doing the centring — the panel snapped to the
    scene's midpoint and hung off the right edge of the window. */
-.panel.is-revealed .scene-picker__panel {
+:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-picker__panel {
   animation: scene-pop 460ms ease 160ms both;
 }
 
@@ -923,9 +943,13 @@
   border-top: 1px solid var(--sg-seam-recessed);
 }
 
-.panel.is-revealed .scene-catalog__head,
-.panel.is-revealed .scene-catalog__agent {
-  animation: scene-rise 420ms ease var(--scene-delay) both;
+:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-catalog__head,
+:is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-catalog__agent {
+  animation-name: scene-rise;
+  animation-duration: 420ms;
+  animation-timing-function: ease;
+  animation-delay: var(--scene-delay);
+  animation-fill-mode: both;
 }
 
 .scene-catalog__mark {
@@ -1306,12 +1330,12 @@
    it was replaced. */
 
 @media (prefers-reduced-motion: reduce) {
-  .panel.is-revealed .scene-restore__typed,
-  .panel.is-revealed .scene-restore__line,
-  .panel.is-revealed .scene-rail__pane,
-  .panel.is-revealed .scene-picker__panel,
-  .panel.is-revealed .scene-catalog__head,
-  .panel.is-revealed .scene-catalog__agent {
+  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-restore__typed,
+  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-restore__line,
+  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-rail__pane,
+  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-picker__panel,
+  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-catalog__head,
+  :is(.panel.is-revealed, .a-appwin__stage.is-shown) .scene-catalog__agent {
     animation: none;
     opacity: 1;
   }

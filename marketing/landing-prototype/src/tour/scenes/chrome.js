@@ -17,9 +17,7 @@ import { AGENT_MARKS, renderAgentMark } from "../../agent-strip.js";
 import { renderStageRail, renderStageStrip } from "../../appwin.js";
 import { STAGE_ARIA_LABEL, deepFreeze } from "../../product-stage.js";
 
-const MARK_BY_ID = Object.fromEntries(
-  AGENT_MARKS.map((agent) => [agent.id, agent]),
-);
+const MARK_BY_ID = Object.fromEntries(AGENT_MARKS.map((agent) => [agent.id, agent]));
 
 /**
  * One agent mark for a scene, looked up by id.
@@ -109,6 +107,28 @@ export const SCENE_RAIL = deepFreeze([
 ]);
 
 /**
+ * One `.a-appwin__stage` region: the tab strip, then the scene body.
+ *
+ * Split out of `frame()` for the hero's scene switcher (2026-08-20): the hero
+ * keeps ONE rail alive and swaps several of these regions behind it, so the
+ * region has to be composable without the figure around it. `attrs` is the
+ * switcher's seam — `data-scene` and `hidden` ride there — and defaults to
+ * nothing so every `frame()` caller keeps the exact markup it had.
+ *
+ * @param {string} body the scene's own markup
+ * @param {object[] | null} [strip] chips for `renderStageStrip`, or none
+ * @param {string} [attrs] extra attributes for the region element
+ */
+export function stageRegion(body, strip = null, attrs = "") {
+  return `
+        <div class="a-appwin__stage"${attrs}>
+          ${strip ? renderStageStrip(strip) : ""}
+          ${body}
+        </div>
+  `;
+}
+
+/**
  * Wraps a scene body in the shared window chrome.
  *
  * The composition is the hero's, with `body` standing where the pane grid
@@ -128,10 +148,7 @@ export function frame(body, { rail = SCENE_RAIL, strip = null } = {}) {
     <figure class="a-appwin tour__appwin" role="img" aria-label="${STAGE_ARIA_LABEL}">
       <div class="a-appwin__body" aria-hidden="true">
         ${rail ? renderStageRail(rail) : ""}
-        <div class="a-appwin__stage">
-          ${strip ? renderStageStrip(strip) : ""}
-          ${body}
-        </div>
+        ${stageRegion(body, strip)}
       </div>
     </figure>
   `;

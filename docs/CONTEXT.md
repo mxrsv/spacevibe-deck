@@ -147,6 +147,49 @@ console error — 896.2 × 555.8, sidebar 223.6, avatar node present.
   an OS setting on a real machine, and every screenshot is Linux headless chromium
   at DPR 2 — not macOS type rendering.
 
+### The hero grows a fleet rail and four scene tabs — 2026-08-20
+
+Owner-asked the same day, with onorca.dev as the named reference: the hero should
+read as a fleet mid-flight, and the stage should show more than one capability
+without waiting for the panels. Two moves, both marketing-only:
+
+- **The rail fixture densified to six clusters**
+  ([`stageRail`](../marketing/stage/stage-data.js) `current`): the live framed
+  deck tab as before, then `spacevibe-api` (yellow `asked` gemini + `working`
+  agy), `spacevibe-bench` (a red **`failed`** codex row and a quiet `done`
+  `cursor-agent` row — the monogram path's first real appearance), a `working`
+  opencode row on `spacevibe-academy`, and TWO remembered headers (hub, active).
+  All six built-in agents now appear on the hero. The
+  `stage-markup` remembered-header pin counts the fixture instead of the literal
+  `1` it used to hold.
+- **Four capability pills above the window**
+  ([`HERO_SCENES`](../marketing/landing-prototype/src/directions/a.js) `current`,
+  `.a-scenetabs` in `direction-a.css`): agents / restore / surfaces / usage. A
+  click swaps which `.a-appwin__stage` region shows behind the ONE live rail —
+  the rail sits outside every region, so its stream hooks keep painting whichever
+  scene is up. The three alternate regions are the tour panels' own bodies
+  (`restoreBody` / `surfacesBody` / `usageBody`, split out of their `frame()`
+  callers with `stageRegion()` in `chrome.js`), so hero and panel cannot drift.
+  Click-driven only; nothing cycles on a timer, so the 2026-08-19
+  no-decorative-loops decision holds. `hidden` is the show/hide mechanism — a
+  region re-entering layout restarts its CSS reveals — and the scene animations'
+  gate widened to `:is(.panel.is-revealed, .a-appwin__stage.is-shown)`.
+- **The typewriter moved to animation longhands**, and so did every
+  `var()`-carrying scene reveal: a shorthand holding `var()` is stored as a
+  pending-substitution value and Chromium restarts such an animation on ANY
+  global style recalc. Playwright's screenshot machinery injects a caret-hiding
+  stylesheet, which was enough to catch the two delayed restore panes back at
+  width 0 in every capture — the steady state in a real browser was always
+  correct. Longhands close the gap between what the page does and what its own
+  evidence gate records.
+
+Evidence: `vitest run marketing/` 163/163 (four new switcher tests, the fixture
+pin reworked), `build:landing` clean, `scripts/capture-landing-stage.mjs` rerun
+clean at all three widths in both motion modes, scene-by-scene screenshots of
+all four regions, and a VI-locale screenshot of the pills. The same caveats as
+the parent section: no owner eye review, no native host run, headless Chromium
+evidence only.
+
 ## One tab, one frame — 2026-08-20
 
 A tab running three agents printed three rows, and nothing on screen said they

@@ -85,31 +85,42 @@ afterEach(() => {
 });
 
 describe("the hero's stage composition", () => {
-  it("draws one rail with the stage wrapper immediately after it", () => {
+  it("draws one rail with the agents region immediately after it", () => {
     const root = renderHero();
     const rails = root.querySelectorAll(".a-appwin__sidebar");
     const stages = root.querySelectorAll(".a-appwin__stage");
 
     expect(rails).toHaveLength(1);
-    expect(stages).toHaveLength(1);
-    // `.a-appwin__sidebar + *` is the window's one structural seam, so the
-    // wrapper has to be the ADJACENT sibling — not merely present.
+    // Four scene regions since the switcher (2026-08-20): agents, restore,
+    // surfaces, usage. The rail stands OUTSIDE all four, and the agents
+    // region — the only one visible at rest — is its adjacent sibling, so
+    // `.a-appwin__sidebar + *` still lands the structural seam on a shown
+    // element.
+    expect(stages).toHaveLength(4);
+    expect([...stages].map((stage) => stage.dataset.scene)).toEqual([
+      "agents",
+      "restore",
+      "surfaces",
+      "usage",
+    ]);
     expect(rails[0].nextElementSibling).toBe(stages[0]);
+    expect(stages[0].hidden).toBe(false);
+
+    for (const stage of [...stages].slice(1)) {
+      expect(stage.hidden).toBe(true);
+    }
   });
 
-  it("puts the strip and the grid inside that wrapper, strip first", () => {
+  it("puts the strip and the grid inside the agents region, strip first", () => {
     const root = renderHero();
-    const stage = root.querySelector(".a-appwin__stage");
-    const strips = root.querySelectorAll(".a-appwin__strip");
+    const stage = root.querySelector('.a-appwin__stage[data-scene="agents"]');
+    const strips = stage.querySelectorAll(".a-appwin__strip");
     const grids = root.querySelectorAll(".a-appwin__grid");
 
     expect(strips).toHaveLength(1);
     expect(grids).toHaveLength(1);
-    expect(stage.contains(strips[0])).toBe(true);
     expect(stage.contains(grids[0])).toBe(true);
-    expect(strips[0].compareDocumentPosition(grids[0])).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    expect(strips[0].compareDocumentPosition(grids[0])).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it("draws no status bar and no workspace sidebar", () => {
@@ -149,14 +160,12 @@ describe("the hero's stage composition", () => {
 
     expect(columns).toHaveLength(1);
     expect(
-      [...columns[0].querySelectorAll("[data-stream]")].map(
-        (node) => node.dataset.stream,
-      ),
+      [...columns[0].querySelectorAll("[data-stream]")].map((node) => node.dataset.stream),
     ).toEqual(["claude", "codex"]);
     // opencode is a bare grid child, not a second column.
-    expect(
-      [...grid.children].map((node) => node.className.split(" ")[0]),
-    ).toContain("a-appwin__pane");
+    expect([...grid.children].map((node) => node.className.split(" ")[0])).toContain(
+      "a-appwin__pane",
+    );
   });
 
   it("draws three transcript regions", () => {
@@ -164,11 +173,7 @@ describe("the hero's stage composition", () => {
     const streams = [...root.querySelectorAll("[data-stream]")];
 
     expect(streams).toHaveLength(3);
-    expect(streams.map((node) => node.dataset.stream)).toEqual([
-      "claude",
-      "codex",
-      "opencode",
-    ]);
+    expect(streams.map((node) => node.dataset.stream)).toEqual(["claude", "codex", "opencode"]);
   });
 
   it("hangs every rail and chip hook on a pane that exists", () => {
@@ -222,9 +227,7 @@ describe("the hero's mount", () => {
 
   it("reaches the active tab chip too", () => {
     const root = renderHero({ mount: true, reduceMotion: true });
-    const chip = root.querySelector(
-      '.a-appwin__chiplabel[data-tail="claude"]',
-    );
+    const chip = root.querySelector('.a-appwin__chiplabel[data-tail="claude"]');
 
     expect(chip.textContent).toBe(lastTail("claude"));
   });
@@ -236,6 +239,66 @@ describe("the hero's mount", () => {
     disposers.pop()();
     expect(document.documentElement.dataset.directionTreatment).toBeUndefined();
     expect(root.querySelector(".a-appwin")).not.toBeNull();
+  });
+});
+
+describe("the scene switcher", () => {
+  it("renders one pressable tab per region, agents active", () => {
+    const root = renderHero();
+    const tabs = [...root.querySelectorAll(".a-scenetab")];
+    const regions = [...root.querySelectorAll(".a-appwin__stage[data-scene]")];
+
+    expect(tabs.map((tab) => tab.dataset.scene)).toEqual(
+      regions.map((region) => region.dataset.scene),
+    );
+    // The tabs are PAGE chrome: real buttons outside the aria-hidden figure,
+    // never controls drawn inside a subtree a reader cannot reach.
+    for (const tab of tabs) {
+      expect(tab.closest(".a-appwin")).toBeNull();
+      expect(tab.tagName).toBe("BUTTON");
+    }
+
+    expect(tabs[0].classList.contains("is-active")).toBe(true);
+    expect(tabs[0].getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("shows exactly the clicked scene and presses exactly its tab", () => {
+    const root = renderHero({ mount: true, reduceMotion: true });
+    const usageTab = root.querySelector('.a-scenetab[data-scene="usage"]');
+
+    usageTab.click();
+
+    for (const region of root.querySelectorAll(".a-appwin__stage[data-scene]")) {
+      const shown = region.dataset.scene === "usage";
+      expect(region.hidden).toBe(!shown);
+      expect(region.classList.contains("is-shown")).toBe(shown);
+    }
+
+    for (const tab of root.querySelectorAll(".a-scenetab")) {
+      const active = tab.dataset.scene === "usage";
+      expect(tab.classList.contains("is-active")).toBe(active);
+      expect(tab.getAttribute("aria-pressed")).toBe(String(active));
+    }
+  });
+
+  it("comes back to the live agents region intact", () => {
+    const root = renderHero({ mount: true, reduceMotion: true });
+
+    root.querySelector('.a-scenetab[data-scene="restore"]').click();
+    root.querySelector('.a-scenetab[data-scene="agents"]').click();
+
+    const agents = root.querySelector('.a-appwin__stage[data-scene="agents"]');
+    expect(agents.hidden).toBe(false);
+    // The stream was never torn down: the transcripts still hold the
+    // completed frame the reduced-motion mount painted.
+    expect(root.querySelector('[data-tail="claude"]').textContent).toBe(lastTail("claude"));
+  });
+
+  it("keeps the rail OUTSIDE every region, so it survives a scene swap", () => {
+    const root = renderHero();
+    const rail = root.querySelector(".a-appwin__rail");
+
+    expect(rail.closest(".a-appwin__stage")).toBeNull();
   });
 });
 

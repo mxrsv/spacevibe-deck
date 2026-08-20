@@ -97,7 +97,11 @@ const AGENTS = [
   },
 ];
 
-export function usage() {
+/**
+ * The scene's body alone — exported so the hero's scene switcher can stand it
+ * behind the hero's live rail instead of the resting `SCENE_RAIL`.
+ */
+export function usageBody() {
   const views = VIEWS.map(
     (label) => `
       <span class="scene-usage__navitem${label === ACTIVE_VIEW ? " is-active" : ""}">${label}</span>
@@ -128,8 +132,7 @@ export function usage() {
     `,
   ).join("");
 
-  return frame(
-    `
+  return `
       <div class="scene scene-usage">
         <nav class="scene-usage__nav">${views}</nav>
         <div class="scene-usage__view">
@@ -141,7 +144,9 @@ export function usage() {
           <ul class="scene-usage__agents">${agents}</ul>
         </div>
       </div>
-    `,
-    { rail: SCENE_RAIL },
-  );
+    `;
+}
+
+export function usage() {
+  return frame(usageBody(), { rail: SCENE_RAIL });
 }

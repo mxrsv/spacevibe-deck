@@ -465,6 +465,13 @@
   flex-direction: column;
 }
 
+/* The hero's scene switcher hides its resting regions with the `hidden`
+   attribute, whose UA `display: none` loses to the flex above — so the
+   attribute is restated here at equal specificity, later in the sheet. */
+.a-appwin__stage[hidden] {
+  display: none;
+}
+
 /* ---- The frame row (DL-18.3 mirror). ----
    Traffic lights, the sidebar toggle, `New`, then the drag spacer. It stands
    INSIDE the rail rather than above the body, and shares the rail's ground,

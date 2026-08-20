@@ -37,7 +37,7 @@ const TARGET_LINE = 214;
  * hook here would be a hook that lies about being live — the rule `SCENE_RAIL`
  * follows with its own null pane ids.
  */
-const SURFACE_STRIP = [
+export const SURFACE_STRIP = [
   {
     kind: "terminal",
     agent: "claude",
@@ -71,8 +71,7 @@ const SURFACE_STRIP = [
  * clamps a drag before it can zero a pane — so a reader who follows the link
  * with their eye finds the code the sentence promised.
  */
-const TRANSCRIPT_LEAD =
-  "Added the collapse guard — a drag can no longer empty a pane.";
+const TRANSCRIPT_LEAD = "Added the collapse guard — a drag can no longer empty a pane.";
 
 const EDITOR_LINES = [
   {
@@ -114,7 +113,13 @@ const FILE_TREE = [
   { name: "ui", kind: "dir", depth: 1 },
 ];
 
-export function surfaces() {
+/**
+ * The scene's body alone — exported so the hero's scene switcher can stand it
+ * behind the hero's live rail. The panel keeps `rail: null` because the tree
+ * IS its left column; behind the hero rail the same body simply reads as the
+ * app with the explorer open beside the rail.
+ */
+export function surfacesBody() {
   const tree = FILE_TREE.map(
     (node) => `
       <div
@@ -139,8 +144,7 @@ export function surfaces() {
     `;
   }).join("");
 
-  return frame(
-    `
+  return `
       <div class="scene scene-surfaces">
         <div class="scene-surfaces__work">
           <div class="scene-surfaces__tree">${tree}</div>
@@ -164,7 +168,9 @@ export function surfaces() {
           </div>
         </div>
       </div>
-    `,
-    { rail: null, strip: SURFACE_STRIP },
-  );
+    `;
+}
+
+export function surfaces() {
+  return frame(surfacesBody(), { rail: null, strip: SURFACE_STRIP });
 }

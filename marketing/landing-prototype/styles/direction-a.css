@@ -17,10 +17,8 @@
   --a-ease-lock: cubic-bezier(0.22, 0.78, 0.18, 1);
   /* Match the app's font language (src/styles.css): one system sans for all
      text + chrome, mono reserved for real terminal content only. */
-  --a-font-display:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-  --a-font-mono:
-    "SF Mono", "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+  --a-font-display: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --a-font-mono: "SF Mono", "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
   /* Aliases only — the real values, and their breakpoint overrides, live on
      :root in tokens.css so the tour and the footer resolve the same frame. */
   --a-cell-pad: var(--frame-pad);
@@ -306,8 +304,7 @@
   /* Tight on purpose. Everything above the picture is a budget: at 900px of
      viewport the window only clears the fold by the height this block gives
      back, and a hero that shows no product is the failure mode. */
-  padding: clamp(1.6rem, 3.6vh, 2.6rem) var(--a-cell-pad)
-    clamp(1.4rem, 3vh, 2rem);
+  padding: clamp(1.6rem, 3.6vh, 2.6rem) var(--a-cell-pad) clamp(1.4rem, 3vh, 2rem);
   text-align: center;
 }
 
@@ -422,6 +419,52 @@ html[lang="vi"] .a-hero h1 {
   padding: 0 var(--a-cell-pad) clamp(2rem, 4.5vh, 3.5rem);
 }
 
+/* ---- The scene tabs. ----
+   A row of capability pills above the window (the onorca.dev pattern), each
+   swapping the stage region behind the one live rail. Page chrome, not window
+   chrome: they use the page's ink and hairline, not the stage's --sg-*
+   palette, and the active pill inverts to the page accent the way the primary
+   CTA does. */
+
+.a-scenetabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0 auto clamp(1.1rem, 2.2vh, 1.6rem);
+}
+
+.a-scenetab {
+  padding: 0.42rem 0.95rem;
+  border: 1px solid var(--frame-line);
+  border-radius: 999px;
+  background: none;
+  color: var(--a-ink-faint);
+  font: 500 0.82rem / 1 var(--font-mono);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    color 220ms ease,
+    border-color 220ms ease,
+    background-color 220ms ease;
+}
+
+.a-scenetab:hover {
+  color: var(--a-ink);
+  border-color: rgb(255 255 255 / 28%);
+}
+
+.a-scenetab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.a-scenetab.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--a-surface-0);
+}
+
 .a-desk {
   position: relative;
   display: flex;
@@ -432,8 +475,7 @@ html[lang="vi"] .a-hero h1 {
      place the painting gets to be a picture rather than a border. The bottom
      rim is what the window's shadow falls onto — at zero the shadow had no
      surface under it and the mock read as a card butted against an edge. */
-  padding: clamp(2.6rem, 7.2vw, 7rem) clamp(1.5rem, 3.6vw, 3.4rem)
-    clamp(1.4rem, 3.2vw, 2.8rem);
+  padding: clamp(2.6rem, 7.2vw, 7rem) clamp(1.5rem, 3.6vw, 3.4rem) clamp(1.4rem, 3.2vw, 2.8rem);
   border: 1px solid rgb(255 255 255 / 16%);
   border-bottom: none;
   border-radius: 18px 18px 0 0;
@@ -992,8 +1034,7 @@ html[lang="vi"] .a-hero h1 {
 .agent-strip {
   position: relative;
   z-index: 2;
-  padding: clamp(1.75rem, 3.4vh, 2.6rem) var(--a-cell-pad)
-    clamp(1.6rem, 3vh, 2.2rem);
+  padding: clamp(1.75rem, 3.4vh, 2.6rem) var(--a-cell-pad) clamp(1.6rem, 3vh, 2.2rem);
   border-top: 1px solid var(--a-line);
 }
 

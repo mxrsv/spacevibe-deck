@@ -66,7 +66,7 @@ const RESTORE_PANES = [
  * hook here would be a hook that lies about being live — the same rule
  * `SCENE_RAIL` follows with its null pane ids.
  */
-const RESTORE_STRIP = RESTORE_PANES.map((pane, index) => ({
+export const RESTORE_STRIP = RESTORE_PANES.map((pane, index) => ({
   kind: "terminal",
   agent: pane.agent,
   paneId: null,
@@ -112,15 +112,20 @@ function renderRestorePane(pane, index) {
   `;
 }
 
-export function restore() {
-  return frame(
-    `
+/**
+ * The scene's body alone — exported so the hero's scene switcher can stand it
+ * behind its own live rail instead of the resting `SCENE_RAIL`.
+ */
+export function restoreBody() {
+  return `
     <div class="scene scene-restore">
       <div class="scene-restore__panes">
         ${RESTORE_PANES.map(renderRestorePane).join("")}
       </div>
     </div>
-  `,
-    { rail: SCENE_RAIL, strip: RESTORE_STRIP },
-  );
+  `;
+}
+
+export function restore() {
+  return frame(restoreBody(), { rail: SCENE_RAIL, strip: RESTORE_STRIP });
 }

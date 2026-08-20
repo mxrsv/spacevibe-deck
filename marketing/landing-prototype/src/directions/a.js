@@ -1,10 +1,5 @@
 import { renderAgentStrip } from "../agent-strip.js";
-import {
-  BRAND_ICON_SRC,
-  renderStagePane,
-  renderStageRail,
-  renderStageStrip,
-} from "../appwin.js";
+import { BRAND_ICON_SRC, renderStagePane, renderStageRail, renderStageStrip } from "../appwin.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
 import { REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
 import { CHANGELOG_URL } from "../release-data.js";
@@ -16,6 +11,25 @@ import {
   stageRail,
   stageStrip,
 } from "../product-stage.js";
+import { stageRegion } from "../tour/scenes/chrome.js";
+import { RESTORE_STRIP, restoreBody } from "../tour/scenes/restore.js";
+import { SURFACE_STRIP, surfacesBody } from "../tour/scenes/surfaces.js";
+import { usageBody } from "../tour/scenes/usage.js";
+
+/**
+ * The hero's scene switcher (2026-08-20, the onorca.dev pattern adapted):
+ * a row of capability tabs above the window, each swapping the STAGE region
+ * behind the one live rail. Click-driven only — nothing cycles on a timer,
+ * which is the line the 2026-08-19 no-decorative-loops decision drew. The
+ * three alternate scenes are the feature panels' own bodies, imported rather
+ * than redrawn, so the hero and panel versions of a scene cannot drift.
+ */
+const HERO_SCENES = [
+  { id: "agents", copyKey: "heroTabAgents" },
+  { id: "restore", copyKey: "heroTabRestore" },
+  { id: "surfaces", copyKey: "heroTabSurfaces" },
+  { id: "usage", copyKey: "heroTabUsage" },
+];
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
 
@@ -185,6 +199,22 @@ export function renderDirectionA(copy, locale) {
                field behind the type. Its lit centre is what separates a dark
                window from a dark page — warmth, not luminance. -->
           <div class="a-stage">
+            <!-- The scene tabs are PAGE chrome, not window chrome: they stand
+                 outside the aria-hidden figure so they stay real, pressable
+                 buttons, and their labels are page copy — localized — where
+                 everything inside the window stays English. -->
+            <div class="a-scenetabs" role="group" aria-label="${copy.heroScenesLabel}" data-scene-tabs>
+              ${HERO_SCENES.map(
+                (scene, index) => `
+                <button
+                  type="button"
+                  class="a-scenetab${index === 0 ? " is-active" : ""}"
+                  data-scene="${scene.id}"
+                  aria-pressed="${index === 0}"
+                ><span data-copy="${scene.copyKey}">${copy[scene.copyKey]}</span></button>
+              `,
+              ).join("")}
+            </div>
             <div class="a-desk">
               <div class="a-desk__art" aria-hidden="true"></div>
               <!-- No status bar and no dock: the window bottom is the panes.
@@ -198,8 +228,11 @@ export function renderDirectionA(copy, locale) {
                        now: the .a-appwin__sidebar + * adjacency resolves to
                        THIS element, so it is what carries the window's one
                        structural seam and the grid must not draw a left
-                       border of its own. -->
-                  <div class="a-appwin__stage">
+                       border of its own. The rail stands OUTSIDE the scene
+                       regions on purpose: it is the one part of the window
+                       every scene shares, and its stream hooks stay live
+                       whichever region is showing. -->
+                  <div class="a-appwin__stage is-shown" data-scene="agents">
                     ${renderStageStrip(stageStrip)}
                     <div class="a-appwin__grid">
                       <div class="a-appwin__col">
@@ -209,6 +242,9 @@ export function renderDirectionA(copy, locale) {
                       ${renderStagePane(opencodePane)}
                     </div>
                   </div>
+                  ${stageRegion(restoreBody(), RESTORE_STRIP, ' data-scene="restore" hidden')}
+                  ${stageRegion(surfacesBody(), SURFACE_STRIP, ' data-scene="surfaces" hidden')}
+                  ${stageRegion(usageBody(), null, ' data-scene="usage" hidden')}
                 </div>
               </figure>
             </div>
@@ -236,12 +272,46 @@ export function renderDirectionA(copy, locale) {
       // hooks up inside the grid, finds none, tolerates the miss and runs a
       // rail that never moves — no throw, no build error, nothing on screen
       // saying so.
-      const disposeStream = mountStageStream(
-        section.querySelector(".a-appwin__grid"),
-        { chromeRoot: section.querySelector(".a-appwin") },
-      );
+      const disposeStream = mountStageStream(section.querySelector(".a-appwin__grid"), {
+        chromeRoot: section.querySelector(".a-appwin"),
+      });
+
+      // The scene switcher. `hidden` is the whole show/hide mechanism — a
+      // region leaving display:none restarts its CSS animations, so a scene
+      // replays its reveal on every visit — and `is-shown` is the class the
+      // scene animations gate on (scenes.css shares it with the panels'
+      // `.panel.is-revealed`). The stream keeps running in the hidden agents
+      // region: its timers are the window's heartbeat, and pausing them would
+      // hand the reader a stale transcript on the way back.
+      const tabsEl = section.querySelector("[data-scene-tabs]");
+      const regions = [...section.querySelectorAll(".a-appwin__stage[data-scene]")];
+
+      function handleSceneClick(event) {
+        const button = event.target.closest("button[data-scene]");
+
+        if (!button || !tabsEl.contains(button)) {
+          return;
+        }
+
+        const scene = button.dataset.scene;
+
+        for (const tab of tabsEl.querySelectorAll("button[data-scene]")) {
+          const active = tab.dataset.scene === scene;
+          tab.classList.toggle("is-active", active);
+          tab.setAttribute("aria-pressed", String(active));
+        }
+
+        for (const region of regions) {
+          const shown = region.dataset.scene === scene;
+          region.hidden = !shown;
+          region.classList.toggle("is-shown", shown);
+        }
+      }
+
+      tabsEl.addEventListener("click", handleSceneClick);
 
       return () => {
+        tabsEl.removeEventListener("click", handleSceneClick);
         disposeStream();
 
         if (document.documentElement.dataset.directionTreatment === "a") {
@@ -281,9 +351,9 @@ export function updateDirectionALocale(root, copy, locale) {
     }
   }
 
-  section
-    .querySelector(".a-topbar__brand")
-    ?.setAttribute("aria-label", copy.navProduct);
+  section.querySelector(".a-topbar__brand")?.setAttribute("aria-label", copy.navProduct);
+
+  section.querySelector("[data-scene-tabs]")?.setAttribute("aria-label", copy.heroScenesLabel);
 
   const langGroup = section.querySelector(".a-topbar__lang");
 
@@ -292,10 +362,7 @@ export function updateDirectionALocale(root, copy, locale) {
     langGroup.dataset.active = locale;
 
     for (const button of langGroup.querySelectorAll("button[data-locale]")) {
-      button.setAttribute(
-        "aria-pressed",
-        String(button.dataset.locale === locale),
-      );
+      button.setAttribute("aria-pressed", String(button.dataset.locale === locale));
     }
   }
 }

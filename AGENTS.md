@@ -489,7 +489,18 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   1440/768/390 in both motion modes; **owner eye review and `frontend-design-bar` are owed, and
   `marketing/video/out/` is now stale in colour as well as shape**. See
   [docs/CONTEXT.md](docs/CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20)
-  `current`.
+  `current`. Same day, owner-asked (the onorca.dev pattern, adapted): the hero rail
+  **densified to six clusters** — a red `failed` row, a second remembered header, and all six
+  built-in agents including the `cursor-agent` monogram — and the hero grew a row of four
+  capability pills ([`HERO_SCENES`](marketing/landing-prototype/src/directions/a.js) `current`)
+  that swap the `.a-appwin__stage` region behind the ONE live rail: agents / restore / surfaces /
+  usage, the last three being the panels' own bodies re-mounted, never redrawn. Click-driven
+  only — nothing cycles on a timer, so the no-decorative-loops line holds. The scene animations'
+  gate widened to `:is(.panel.is-revealed, .a-appwin__stage.is-shown)`, and the `var()`-carrying
+  ones moved to animation LONGHANDS — a shorthand holding `var()` is stored pending-substitution
+  and Chromium restarts it on any global style recalc, which is what had Playwright's own
+  screenshots catching two restore panes at width 0. Verified by `vitest run marketing/` 163/163,
+  `build:landing`, the 42-image capture gate rerun clean, and scene-by-scene screenshots.
 - **Chrome gallery is current:** `gallery.html` mounts real components through `src/gallery/`;
   run `npm run prototype:gallery`. Gallery code must never enter the shipping bundle. Its
   window-chrome section is narrowed to the one selected direction on purpose; parked
