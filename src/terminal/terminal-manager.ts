@@ -687,6 +687,14 @@ export function createTerminalManager(
         life.panes.get(activeId)?.copySelection();
       }
     },
+    activeHasSelection() {
+      return activeId !== null && (life.panes.get(activeId)?.hasSelection() ?? false);
+    },
+    clearActiveSelection() {
+      if (activeId !== null) {
+        life.panes.get(activeId)?.clearSelection();
+      }
+    },
     pasteIntoActive() {
       if (activeId !== null) {
         life.panes.get(activeId)?.paste();

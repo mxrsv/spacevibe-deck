@@ -8,11 +8,7 @@ import {
   toggleDock,
   updateSettings,
 } from "../settings/settings-store";
-import {
-  type Direction,
-  type Edge,
-  type SerializedNode,
-} from "../lib/split-tree";
+import { type Direction, type Edge, type SerializedNode } from "../lib/split-tree";
 import { explicitAgent, processLabel } from "../lib/process-info";
 import type { SessionTab } from "../lib/session-schema";
 import type { DetachTarget } from "./pane-detach";
@@ -31,17 +27,16 @@ import {
   probeNames,
   resolveAgentCommand,
 } from "../lib/agent-catalog";
-import {
-  agentLaunchCommand,
-  resolveLaunchCommand,
-} from "../lib/launch-command";
+import { agentLaunchCommand, resolveLaunchCommand } from "../lib/launch-command";
 import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
 import { TIER_RANK } from "./action-registry";
-import { installFileDrop } from "./file-drop";
 import {
-  createTerminalManager,
-  type TerminalManager,
-} from "./terminal-manager";
+  isActionPerformable,
+  type PerformableContext,
+  type StageOwner,
+} from "./action-performable";
+import { installFileDrop } from "./file-drop";
+import { createTerminalManager, type TerminalManager } from "./terminal-manager";
 import { createPaneInfoPoller } from "./pane-info-poller";
 import { createAgentActivity } from "./agent-activity";
 import {
@@ -51,11 +46,7 @@ import {
 } from "./agent-attention";
 import { createAgentNotifier, type AgentNotifier } from "./agent-notifier";
 import type { PaneAttentionSignal } from "./pane";
-import {
-  popClosedTab,
-  pushClosedTab,
-  type ClosedTabSnapshot,
-} from "./closed-tabs";
+import { popClosedTab, pushClosedTab, type ClosedTabSnapshot } from "./closed-tabs";
 import { confirmClose } from "./close-guard";
 import { createCloseCoordinator } from "./close-coordinator";
 import { activeAfterClose } from "./tab-close";
@@ -105,11 +96,7 @@ import {
   type TabManagerDeps,
   type TabManager,
 } from "./tab-manager-types";
-import {
-  ACTION_SCOPE,
-  DESTRUCTIVE_ACTIONS,
-  COMMAND_ACTIONS,
-} from "./tab-action-scope";
+import { ACTION_SCOPE, DESTRUCTIVE_ACTIONS, COMMAND_ACTIONS } from "./tab-action-scope";
 
 // The module-scope header that used to live here (types + pure constants
 // above `createTabManager`) moved out 2026-08-16 for file size:
@@ -123,11 +110,7 @@ import {
 // from tab-action-scope.ts directly. `createTabManager` itself — the load-
 // bearing R4 seam — did not move.
 export type { SurfaceStrip, SurfaceEditCommand } from "./surface-strip";
-export type {
-  OpenFromPresetOptions,
-  TabManagerDeps,
-  TabManager,
-} from "./tab-manager-types";
+export type { OpenFromPresetOptions, TabManagerDeps, TabManager } from "./tab-manager-types";
 
 const WINDOWS_AGENT_TIMEOUT_MESSAGE =
   "PowerShell was not ready in time. Launch the agent manually.";
@@ -208,8 +191,7 @@ export function createTabManager(
   // Types the chosen agent into each new pane's shell once its prompt is up.
   // Through paneIo so its synthetic keystrokes ("claude\r") count as input —
   // the echo suppression then keeps the launch echo out of the spinner.
-  const reportAgentLaunchTimeout =
-    deps.onAgentLaunchTimeout ?? reportChromeMessage;
+  const reportAgentLaunchTimeout = deps.onAgentLaunchTimeout ?? reportChromeMessage;
   const launcher = createAgentLauncher(paneIo, {
     platform: environment.platform,
     onTimeout: () => {
@@ -242,9 +224,7 @@ export function createTabManager(
 
   /** Workspace of the active tab; null when it has none (or no tab). */
   function activeWorkspacePath(): string | null {
-    return active >= 0 && active < tabs.length
-      ? tabs[active].workspacePath
-      : null;
+    return active >= 0 && active < tabs.length ? tabs[active].workspacePath : null;
   }
 
   function syncViews(): void {
@@ -275,8 +255,7 @@ export function createTabManager(
         ),
       ];
       const agentBusy = paneIds.some(
-        (id) =>
-          explicitAgent(poller.infoFor(id)) !== null && activity.working(id),
+        (id) => explicitAgent(poller.infoFor(id)) !== null && activity.working(id),
       );
       // The per-pane projection the agent rail's chips and expanded rows both
       // need (agent-status-rail spec §5, tier 2). It reports every pane, agent
@@ -286,10 +265,7 @@ export function createTabManager(
       const panes: readonly PaneView[] = paneIds.map((id) => {
         const snap = tracker.snapshot(id);
         const agent = explicitAgent(poller.infoFor(id));
-        tab.manager.setPaneWorking(
-          id,
-          agent !== null && snap?.phase === "working",
-        );
+        tab.manager.setPaneWorking(id, agent !== null && snap?.phase === "working");
         return {
           paneId: id,
           agent,
@@ -328,8 +304,7 @@ export function createTabManager(
       agent: explicitAgent(info),
       // Null, not zero: a non-terminal surface owns no panes, and spec §7 asks
       // for the count to be ABSENT rather than reading "0 panes".
-      paneCount:
-        surfaces.activeIndex() >= 0 ? null : (manager?.paneCount() ?? 0),
+      paneCount: surfaces.activeIndex() >= 0 ? null : (manager?.paneCount() ?? 0),
       home,
     };
   }
@@ -383,9 +358,7 @@ export function createTabManager(
     const owner = tabs.find((t) => t.manager.paneIds().includes(id));
     const label =
       (owner ? overrides.get(owner.key)?.name : undefined) ??
-      (owner?.workspacePath == null
-        ? "Unknown"
-        : workspaceLabel(owner.workspacePath));
+      (owner?.workspacePath == null ? "Unknown" : workspaceLabel(owner.workspacePath));
     notifier.maybeNotify({
       paneId: id,
       revision: snap.revision,
@@ -472,12 +445,7 @@ export function createTabManager(
     container.className = "tab-stage";
     container.style.display = "none";
     host.appendChild(container);
-    const manager = createTerminalManager(
-      container,
-      callbacks,
-      paneIo,
-      managerDeps(nextKey),
-    );
+    const manager = createTerminalManager(container, callbacks, paneIo, managerDeps(nextKey));
     try {
       if (layout === null) {
         await manager.initFresh(cwds[0] ?? null);
@@ -496,8 +464,7 @@ export function createTabManager(
       openedAt: nextOpenSequence(),
       // The only place a tab's workspace is ever set — normalize here so every
       // entry point (Open, reopen, live preset) agrees on one spelling.
-      workspacePath:
-        workspacePath === null ? null : normalizeWorkspacePath(workspacePath),
+      workspacePath: workspacePath === null ? null : normalizeWorkspacePath(workspacePath),
     });
     nextKey += 1;
     return true;
@@ -576,9 +543,7 @@ export function createTabManager(
     tabIndex?: number,
   ): { owningIndex: number; paneId: number } | null {
     for (const cand of tracker.actionable()) {
-      const owningIndex = tabs.findIndex((t) =>
-        t.manager.paneIds().includes(cand.id),
-      );
+      const owningIndex = tabs.findIndex((t) => t.manager.paneIds().includes(cand.id));
       if (owningIndex === -1) continue; // pane gone
       if (tabIndex !== undefined && owningIndex !== tabIndex) continue; // scoped to one tab
       return { owningIndex, paneId: cand.id };
@@ -656,11 +621,7 @@ export function createTabManager(
     // change. Window-level, not tab-level: a second tab keeps the window
     // alive, so splitting this tab out is a real move. Offering the pane to an
     // EXISTING window stays allowed — that one merges and is meaningful.
-    if (
-      target.kind === "new-window" &&
-      tabs.length === 1 &&
-      entry.manager.paneIds().length === 1
-    ) {
+    if (target.kind === "new-window" && tabs.length === 1 && entry.manager.paneIds().length === 1) {
       reportChromeMessage("Nothing to move — this is the window's only pane.");
       return;
     }
@@ -726,12 +687,7 @@ export function createTabManager(
     container.className = "tab-stage";
     container.style.display = "none";
     host.appendChild(container);
-    const manager = createTerminalManager(
-      container,
-      callbacks,
-      paneIo,
-      managerDeps(nextKey),
-    );
+    const manager = createTerminalManager(container, callbacks, paneIo, managerDeps(nextKey));
     // Pushed BEFORE the adoption runs, not after. Rust flushes everything it
     // buffered during the transfer as part of `commit_transfer`, which happens
     // INSIDE `initFromAdoption`. Output is routed by scanning `tabs` for the
@@ -768,12 +724,8 @@ export function createTabManager(
     }
     if (result.payload.tabName !== null || result.payload.dotColor !== null) {
       overrides.set(nextKey, {
-        ...(result.payload.tabName !== null
-          ? { name: result.payload.tabName }
-          : {}),
-        ...(result.payload.dotColor !== null
-          ? { dotColor: result.payload.dotColor }
-          : {}),
+        ...(result.payload.tabName !== null ? { name: result.payload.tabName } : {}),
+        ...(result.payload.dotColor !== null ? { dotColor: result.payload.dotColor } : {}),
       });
     }
     nextKey += 1;
@@ -807,9 +759,7 @@ export function createTabManager(
     // tab spawns another rather than focusing the first, so the same repo can
     // run several agent sessions side by side. `workspacePath` is a label the
     // tab carries (sidebar, logo, reopen), never an identity that dedupes.
-    if (
-      !(await addTab(intent.layout, intent.cwds, intent.workspacePath ?? null))
-    ) {
+    if (!(await addTab(intent.layout, intent.cwds, intent.workspacePath ?? null))) {
       return false;
     }
     const entry = tabs[tabs.length - 1];
@@ -850,8 +800,7 @@ export function createTabManager(
     const fallback =
       agentId === null
         ? null
-        : (launchCommand ??
-          resolveAgentCommand(agentId, settings.value.customAgents));
+        : (launchCommand ?? resolveAgentCommand(agentId, settings.value.customAgents));
     const paneIds = entry.manager.paneIds();
     if (launchCommand !== null) {
       for (const id of paneIds) {
@@ -876,9 +825,7 @@ export function createTabManager(
     return materialize({
       layout,
       cwds,
-      ...(options.workspacePath !== undefined
-        ? { workspacePath: options.workspacePath }
-        : {}),
+      ...(options.workspacePath !== undefined ? { workspacePath: options.workspacePath } : {}),
       ...(options.agent !== undefined ? { agent: options.agent } : {}),
     });
   }
@@ -917,11 +864,7 @@ export function createTabManager(
       ...(profileId === undefined
         ? {}
         : {
-            launchCommand: resolveLaunchCommand(
-              agentId,
-              profileId,
-              settings.value.launchProfiles,
-            ),
+            launchCommand: resolveLaunchCommand(agentId, profileId, settings.value.launchProfiles),
           }),
       ...(workspacePath !== null ? { workspacePath } : {}),
     });
@@ -946,21 +889,16 @@ export function createTabManager(
    * spawn a Shell. A failed probe degrades to Shell rather than sinking the
    * drop.
    */
-  async function dropAgentPane(
-    targetPaneId: number,
-    edge: Edge,
-  ): Promise<boolean> {
+  async function dropAgentPane(targetPaneId: number, edge: Edge): Promise<boolean> {
     const manager = activeManager();
     if (manager === null) {
       return false;
     }
     const customAgents = settings.value.customAgents;
-    const detected = await pty
-      .detectAgents(probeNames(customAgents))
-      .catch((err: unknown) => {
-        console.warn("detect_agents failed:", err);
-        return [];
-      });
+    const detected = await pty.detectAgents(probeNames(customAgents)).catch((err: unknown) => {
+      console.warn("detect_agents failed:", err);
+      return [];
+    });
     const agentId = agentForWorkspace(
       workspacesData.value.recents,
       activeWorkspacePath(),
@@ -986,9 +924,7 @@ export function createTabManager(
       {
         id: paneId,
         command:
-          agentId === null
-            ? null
-            : (launchCommand ?? resolveAgentCommand(agentId, customAgents)),
+          agentId === null ? null : (launchCommand ?? resolveAgentCommand(agentId, customAgents)),
       },
     ]);
     // The docked pane has no process info until the next tick otherwise, so
@@ -1153,9 +1089,7 @@ export function createTabManager(
         return;
       }
       if (!(await workspaceIsLive(snapshot.workspacePath))) {
-        console.warn(
-          `Not reopening tab: workspace ${snapshot.workspacePath} no longer exists`,
-        );
+        console.warn(`Not reopening tab: workspace ${snapshot.workspacePath} no longer exists`);
         stack = rest; // drop the dead snapshot, try the one below it
         continue;
       }
@@ -1164,9 +1098,7 @@ export function createTabManager(
           layout: snapshot.layout,
           cwds: snapshot.cwds,
           chrome: materializeChromeFrom(snapshot.name, snapshot.dotColor),
-          ...(snapshot.workspacePath !== null
-            ? { workspacePath: snapshot.workspacePath }
-            : {}),
+          ...(snapshot.workspacePath !== null ? { workspacePath: snapshot.workspacePath } : {}),
         }))
       ) {
         closedTabs = stack; // spawn failed — keep the snapshot for another try
@@ -1287,11 +1219,7 @@ export function createTabManager(
       // opens: only a classified, named agent can do that.
       for (const info of infos) {
         const agent = explicitAgent(info);
-        const snap = tracker.noteProcess(
-          info.id,
-          agent ?? info.process,
-          agent !== null,
-        );
+        const snap = tracker.noteProcess(info.id, agent ?? info.process, agent !== null);
         if (snap !== null) {
           maybeNotify(info.id, snap);
         }
@@ -1411,25 +1339,31 @@ export function createTabManager(
     // to close, and closing the terminal tab behind it would be a silent
     // catastrophe.
     "close-pane": () =>
-      surfaces.activeIndex() >= 0
-        ? void surfaces.close()
-        : void close.closePane(),
+      surfaces.activeIndex() >= 0 ? void surfaces.close() : void close.closePane(),
     "focus-next": () => activeManager()?.cycleFocus(1),
     "focus-prev": () => activeManager()?.cycleFocus(-1),
-    "toggle-expand": () =>
-      updateSettings({ focusExpand: !settings.value.focusExpand }),
+    "toggle-expand": () => updateSettings({ focusExpand: !settings.value.focusExpand }),
     "new-tab": () => void newTab(),
     "close-tab": () => void close.closeTab(active),
     "next-tab": () => cycleTab(1),
     "prev-tab": () => cycleTab(-1),
-    "zoom-in": () =>
-      updateSettings({ fontSize: clampFontSize(settings.value.fontSize + 1) }),
-    "zoom-out": () =>
-      updateSettings({ fontSize: clampFontSize(settings.value.fontSize - 1) }),
+    "zoom-in": () => updateSettings({ fontSize: clampFontSize(settings.value.fontSize + 1) }),
+    "zoom-out": () => updateSettings({ fontSize: clampFontSize(settings.value.fontSize - 1) }),
     "zoom-reset": () => updateSettings({ fontSize: DEFAULT_SETTINGS.fontSize }),
     "toggle-zoom-pane": () => activeManager()?.toggleZoom(),
     "clear-buffer": () => activeManager()?.clearActive(),
     "copy-selection": () => activeManager()?.copyActiveSelection(),
+    // Only ever reached when the predicate said a selection exists, so this
+    // never has to decide between copying and interrupting — the interrupt
+    // branch is the KEY not being consumed, so xterm encodes it (spec).
+    // The clear is synchronous after the text is read: `copyTerminalSelection`
+    // writes the clipboard asynchronously, and clearing in its callback could
+    // erase a selection the user made in the meantime (spec D4).
+    "copy-or-interrupt": () => {
+      const manager = activeManager();
+      manager?.copyActiveSelection();
+      manager?.clearActiveSelection();
+    },
     paste: () => activeManager()?.pasteIntoActive(),
     "copy-cwd": () => {
       const paneId = activeManager()?.activePaneId() ?? null;
@@ -1620,14 +1554,38 @@ export function createTabManager(
     if (boardOpen.value) {
       ranks.push(TIER_RANK.board);
     }
-    if (
-      editorRequest.value !== null ||
-      saveDialogOpen.value ||
-      agentQuickPickerOpen.value
-    ) {
+    if (editorRequest.value !== null || saveDialogOpen.value || agentQuickPickerOpen.value) {
       ranks.push(TIER_RANK.modal);
     }
     return ranks;
+  }
+
+  /**
+   * Which kind of thing owns the stage, for `isActionPerformable`.
+   *
+   * `browserSurfaceActive` is read beside `surfaces.activeIndex()` rather than
+   * trusted to be folded into it: the browser tab is a `SurfaceStrip` member,
+   * but `openOverlayRanks` above does not mention it, and answering "terminal"
+   * while a web view covers the stage would consume a key the page wanted.
+   * Reading both fails toward not consuming, which is the safe direction.
+   */
+  function stageOwner(): StageOwner {
+    if (openOverlayRanks().length > 0) {
+      return "overlay";
+    }
+    if (surfaces.activeIndex() >= 0 || browserSurfaceActive.value) {
+      return "surface";
+    }
+    return "terminal";
+  }
+
+  function performableContext(): PerformableContext {
+    return {
+      stageOwner: stageOwner(),
+      // `?? false` is the fail-toward-the-PTY rule (spec D5): no manager means
+      // no selection means the key is not consumed.
+      hasSelection: activeManager()?.activeHasSelection() ?? false,
+    };
   }
 
   /**
@@ -1653,11 +1611,7 @@ export function createTabManager(
    */
   function overlayBlocksAction(action: ShortcutAction): boolean {
     const scope = ACTION_SCOPE.get(action);
-    if (
-      scope === undefined ||
-      scope === "always" ||
-      isTabSwitchAction(action)
-    ) {
+    if (scope === undefined || scope === "always" || isTabSwitchAction(action)) {
       return false;
     }
     // A file surface owns the stage the same way an overlay does, but it is
@@ -1760,8 +1714,7 @@ export function createTabManager(
    */
   function isChromeTextField(node: unknown): boolean {
     return (
-      (node instanceof HTMLInputElement ||
-        node instanceof HTMLTextAreaElement) &&
+      (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) &&
       !node.closest(".pane__term")
     );
   }
@@ -1841,10 +1794,7 @@ export function createTabManager(
     // was never protecting anything and used to silently swallow a genuine
     // menu click (F-B2) or find-next/find-previous typed straight into the
     // search bar's own input (F-B1).
-    if (
-      DESTRUCTIVE_ACTIONS.has(action) &&
-      isChromeTextField(document.activeElement)
-    ) {
+    if (DESTRUCTIVE_ACTIONS.has(action) && isChromeTextField(document.activeElement)) {
       return;
     }
     dispatchAction(action);
@@ -1870,6 +1820,14 @@ export function createTabManager(
     }
     const action = matchBinding(event);
     if (action === null) {
+      return;
+    }
+    // BEFORE preventDefault, never after. `dispatchAction`'s own
+    // `overlayBlocksAction` runs too late to stop the key being swallowed, and
+    // that ordering is what made a matched-but-blocked chord a dead key over an
+    // open document. Returning here leaves the event alone so it reaches
+    // whatever holds focus — Monaco, a modal, or the pane's own xterm.
+    if (!isActionPerformable(action, performableContext())) {
       return;
     }
     event.preventDefault();
@@ -1900,18 +1858,13 @@ export function createTabManager(
     try {
       windowFocused = await getCurrentWindow().isFocused();
     } catch (err) {
-      console.warn(
-        "attention: window isFocused() failed; assuming focused",
-        err,
-      );
+      console.warn("attention: window isFocused() failed; assuming focused", err);
       windowFocused = true;
     }
     try {
-      const unlistenFocus = await getCurrentWindow().onFocusChanged(
-        ({ payload }) => {
-          windowFocused = payload;
-        },
-      );
+      const unlistenFocus = await getCurrentWindow().onFocusChanged(({ payload }) => {
+        windowFocused = payload;
+      });
       unlisteners.push(unlistenFocus);
     } catch (err) {
       console.warn(
@@ -1990,9 +1943,7 @@ export function createTabManager(
         // flips, or a tracker change) — every other chunk is a no-op, so this
         // stays off the hot per-chunk path.
         const unreadChanged =
-          owner !== undefined &&
-          owner !== tabs[active] &&
-          !unread.has(owner.key);
+          owner !== undefined && owner !== tabs[active] && !unread.has(owner.key);
         if (unreadChanged) {
           unread.add(owner.key);
         }
@@ -2013,10 +1964,7 @@ export function createTabManager(
           id,
           setTimeout(() => {
             activityResync.delete(id);
-            if (
-              !activity.working(id) &&
-              tracker.snapshot(id)?.phase === "working"
-            ) {
+            if (!activity.working(id) && tracker.snapshot(id)?.phase === "working") {
               const resyncSnap = tracker.noteActivity(id, {
                 phase: "idle",
                 source: "output-heuristic",

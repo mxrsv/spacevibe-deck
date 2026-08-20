@@ -283,15 +283,11 @@ describe("matchBinding", () => {
   // The dock's other two chords, added 2026-08-19 so every control in its
   // header can print one (DL-23.1). Same shape as the ⌘⇧U pair above.
   it("matches Cmd+Shift+Y as toggle-sessions", () => {
-    expect(matchBinding(keyEvent("y", { metaKey: true, shiftKey: true }))).toBe(
-      "toggle-sessions",
-    );
+    expect(matchBinding(keyEvent("y", { metaKey: true, shiftKey: true }))).toBe("toggle-sessions");
   });
 
   it("matches Cmd+Shift+J as toggle-dock", () => {
-    expect(matchBinding(keyEvent("j", { metaKey: true, shiftKey: true }))).toBe(
-      "toggle-dock",
-    );
+    expect(matchBinding(keyEvent("j", { metaKey: true, shiftKey: true }))).toBe("toggle-dock");
   });
 
   it("does not match Y or J without both modifiers", () => {
@@ -323,6 +319,7 @@ describe("matchBinding", () => {
   // to the keymap layer, so it has to be asserted here instead.
   it("leaves Windows clipboard chords unbound on macOS", () => {
     expect(matchBinding(keyEvent("c", { ctrlKey: true, shiftKey: true }))).toBeNull();
+    expect(matchBinding(keyEvent("c", { ctrlKey: true }))).toBeNull();
     expect(matchBinding(keyEvent("v", { ctrlKey: true, shiftKey: true }))).toBeNull();
     expect(matchBinding(keyEvent("v", { ctrlKey: true }))).toBeNull();
     expect(matchBinding(codeEvent("Insert", "Unidentified", { shiftKey: true }))).toBeNull();
@@ -332,6 +329,7 @@ describe("matchBinding", () => {
 describe("WINDOWS_KEYMAP", () => {
   it.each([
     ["c", { ctrlKey: true, shiftKey: true }, "copy-selection"],
+    ["c", { ctrlKey: true }, "copy-or-interrupt"],
     ["v", { ctrlKey: true }, "paste"],
     ["v", { ctrlKey: true, shiftKey: true }, "paste"],
     ["c", { ctrlKey: true, altKey: true, shiftKey: true }, "copy-cwd"],
@@ -427,7 +425,14 @@ describe("WINDOWS_KEYMAP", () => {
     ).toBe(action);
   });
 
-  it.each(["c", "d", "w", "k", "f", "o"])("leaves protected bare Ctrl+%s unbound", (key) => {
+  // "c" left this list on 2026-08-20. It is bound to `copy-or-interrupt` now,
+  // which is PERFORMABLE: the binding consumes the key only while a terminal
+  // pane owns the stage AND holds a selection, so with nothing selected
+  // `handleShortcut` never calls preventDefault() and xterm still encodes the
+  // interrupt. The protection this row asserted therefore moved from the
+  // keymap to `action-performable.ts` — matched here, not consumed there.
+  // See docs/specs/2026-08-20-performable-keybindings-design.md.
+  it.each(["d", "w", "k", "f", "o"])("leaves protected bare Ctrl+%s unbound", (key) => {
     expect(matchBinding(keyEvent(key, { ctrlKey: true }), WINDOWS_KEYMAP)).toBeNull();
   });
 });

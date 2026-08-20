@@ -28,6 +28,10 @@ function fakePane(id: number, events: PaneEvents): Pane & { focusCalls: number }
     fit() {},
     clear() {},
     copySelection() {},
+    hasSelection() {
+      return false;
+    },
+    clearSelection() {},
     paste() {},
     pasteText(text) {
       return events.onData(id, text);
