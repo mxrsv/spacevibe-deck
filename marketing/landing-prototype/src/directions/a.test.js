@@ -20,7 +20,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { messages } from "../copy.js";
 import { stagePanes, stageRail } from "../product-stage.js";
-import { HERO_SCENES, renderDirectionA, updateDirectionALocale } from "./a.js";
+import { HERO_SCENES, renderDirectionA } from "./a.js";
 import source from "./a.js?raw";
 
 function setMotion(reduce) {
@@ -41,12 +41,12 @@ const disposers = [];
  */
 function renderHero({ mount = false, reduceMotion = true } = {}) {
   const root = document.createElement("div");
-  root.innerHTML = renderDirectionA(messages.en, "en").markup;
+  root.innerHTML = renderDirectionA(messages.en).markup;
   document.body.append(root);
 
   if (mount) {
     setMotion(reduceMotion);
-    disposers.push(renderDirectionA(messages.en, "en").mount(root));
+    disposers.push(renderDirectionA(messages.en).mount(root));
   }
 
   return root;
@@ -323,16 +323,14 @@ describe("the scene cycle", () => {
   });
 });
 
-describe("the locale swap", () => {
-  it("still replaces every [data-copy] node in place", () => {
+describe("the English-only header", () => {
+  it("links to Discord instead of rendering locale controls", () => {
     const root = renderHero();
+    const discord = root.querySelector(".a-topbar__discord");
 
-    updateDirectionALocale(root, messages.vi, "vi");
-
-    expect(root.querySelector('[data-copy="headlineLead"]').textContent).toBe(
-      messages.vi.headlineLead,
-    );
-    // The stage is untouched by a locale swap — it carries no [data-copy].
-    expect(root.querySelectorAll(".a-appwin [data-copy]")).toHaveLength(0);
+    expect(discord?.getAttribute("href")).toBe("https://discord.gg/Ve7xaVJ9J");
+    expect(discord?.textContent).toContain(messages.en.navDiscord);
+    expect(root.querySelector("[data-locale]")).toBeNull();
+    expect(root.querySelector(".a-topbar__lang")).toBeNull();
   });
 });

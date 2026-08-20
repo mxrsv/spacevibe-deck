@@ -2,6 +2,7 @@ export const messages = {
   en: {
     navProduct: "Deck",
     navChangelog: "Changelog",
+    navDiscord: "Discord",
     navGithub: "GitHub",
     heroLabel: "// desktop terminal for agent CLIs",
     agentStripLabel: "// launches the CLIs you already run",
@@ -84,6 +85,7 @@ export const messages = {
   vi: {
     navProduct: "Deck",
     navChangelog: "Changelog",
+    navDiscord: "Discord",
     navGithub: "GitHub",
     heroLabel: "// terminal desktop cho agent CLI",
     agentStripLabel: "// chạy đúng những CLI bạn đang dùng",

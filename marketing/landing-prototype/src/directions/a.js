@@ -44,6 +44,7 @@ export const HERO_SCENES = [
 ];
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
+const DISCORD_URL = "https://discord.gg/Ve7xaVJ9J";
 
 /** Anchor on the feature panel stack (tour/index.js renders the target). */
 export const FEATURES_ID = "features";
@@ -62,6 +63,14 @@ function renderGithubIcon() {
   `;
 }
 
+function renderDiscordIcon() {
+  return `
+    <svg class="a-discord-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+      <path d="M19.5 5.34A17.4 17.4 0 0 0 15.44 4l-.5 1.03a16.2 16.2 0 0 0-5.88 0L8.56 4A17.4 17.4 0 0 0 4.5 5.34C1.93 9.18 1.23 12.93 1.58 16.63a16.6 16.6 0 0 0 4.98 2.5l1.2-1.64c-.66-.25-1.3-.56-1.9-.92l.47-.36c3.67 1.7 7.65 1.7 11.28 0l.48.36c-.6.36-1.24.67-1.9.92l1.2 1.64a16.5 16.5 0 0 0 4.98-2.5c.42-4.29-.72-8-2.87-11.29ZM8.52 14.36c-1.1 0-2-1.02-2-2.28s.88-2.28 2-2.28c1.12 0 2.02 1.03 2 2.28 0 1.26-.88 2.28-2 2.28Zm6.96 0c-1.1 0-2-1.02-2-2.28s.88-2.28 2-2.28c1.12 0 2.02 1.03 2 2.28 0 1.26-.88 2.28-2 2.28Z" />
+    </svg>
+  `;
+}
+
 function renderBrandMark(copy) {
   return `
     <span class="a-brand-mark" aria-hidden="true">
@@ -73,7 +82,7 @@ function renderBrandMark(copy) {
   `;
 }
 
-export function renderDirectionA(copy, locale) {
+export function renderDirectionA(copy) {
   const [claudePane, codexPane, opencodePane] = stagePanes;
 
   return {
@@ -88,11 +97,16 @@ export function renderDirectionA(copy, locale) {
             <a class="a-topbar__changelog" href="${CHANGELOG_URL}">
               <span data-copy="navChangelog">${copy.navChangelog}</span>
             </a>
-            <div class="a-topbar__lang" role="group" aria-label="${copy.localeLabel}" data-active="${locale}">
-              <span class="a-topbar__lang-thumb" aria-hidden="true"></span>
-              <button type="button" class="a-topbar__lang-btn" data-locale="en" aria-pressed="${locale === "en"}">EN</button>
-              <button type="button" class="a-topbar__lang-btn" data-locale="vi" aria-pressed="${locale === "vi"}">VI</button>
-            </div>
+            <a
+              class="a-topbar__discord"
+              href="${DISCORD_URL}"
+              target="_blank"
+              rel="noreferrer"
+            >
+              ${renderDiscordIcon()}
+              <span data-copy="navDiscord">${copy.navDiscord}</span>
+              <span aria-hidden="true">↗</span>
+            </a>
             <a
               class="a-topbar__github"
               href="${REPO_URL}"
@@ -248,9 +262,8 @@ export function renderDirectionA(copy, locale) {
             </div>
           </div>
 
-          <!-- Rendered inside the hero section on purpose: every [data-copy]
-               node in here is then swapped by updateDirectionALocale, so the
-               strip needs no mount and no locale path of its own. -->
+          <!-- Rendered inside the hero section so the landing stays one
+               self-contained surface with one English copy source. -->
           ${renderAgentStrip(copy)}
         </div>
       </section>
@@ -344,47 +357,4 @@ export function renderDirectionA(copy, locale) {
       };
     },
   };
-}
-
-/**
- * Swap the localized copy on an already-mounted page without rebuilding the
- * DOM, so the stage stream keeps running across a locale toggle.
- *
- * @param {Element} root
- * @param {Record<string, string>} copy
- * @param {string} locale
- */
-export function updateDirectionALocale(root, copy, locale) {
-  const section = root.querySelector(".direction-a");
-
-  if (!section) {
-    throw new Error("Direction A root is missing.");
-  }
-
-  for (const node of section.querySelectorAll("[data-copy]")) {
-    const text = copy[node.dataset.copy];
-
-    if (typeof text !== "string") {
-      continue;
-    }
-
-    node.textContent = text;
-
-    if (node.hasAttribute("data-text")) {
-      node.setAttribute("data-text", text);
-    }
-  }
-
-  section.querySelector(".a-topbar__brand")?.setAttribute("aria-label", copy.navProduct);
-
-  const langGroup = section.querySelector(".a-topbar__lang");
-
-  if (langGroup) {
-    langGroup.setAttribute("aria-label", copy.localeLabel);
-    langGroup.dataset.active = locale;
-
-    for (const button of langGroup.querySelectorAll("button[data-locale]")) {
-      button.setAttribute("aria-pressed", String(button.dataset.locale === locale));
-    }
-  }
 }
