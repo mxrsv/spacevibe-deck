@@ -29,11 +29,6 @@ export const messages = {
     changelogNoNotes: "No release notes were published.",
     changelogViewRelease: "View release",
     localeLabel: "Language",
-    heroScenesLabel: "Pick what the window shows",
-    heroTabAgents: "Agents in parallel",
-    heroTabRestore: "Session restore",
-    heroTabSurfaces: "Files & browser",
-    heroTabUsage: "Token usage",
     tourKicker: "// what the window already does",
     panelRestoreTitle: "Close it. Reopen it. Nothing lost the thread.",
     panelRestoreBody:
@@ -116,11 +111,6 @@ export const messages = {
     changelogNoNotes: "Bản phát hành này không có ghi chú.",
     changelogViewRelease: "Xem bản phát hành",
     localeLabel: "Ngôn ngữ",
-    heroScenesLabel: "Chọn cảnh cửa sổ đang chiếu",
-    heroTabAgents: "Agent chạy song song",
-    heroTabRestore: "Khôi phục phiên",
-    heroTabSurfaces: "File & trình duyệt",
-    heroTabUsage: "Chi phí token",
     tourKicker: "// những gì cửa sổ đã làm được",
     panelRestoreTitle: "Đóng rồi mở lại. Không mất mạch nào.",
     panelRestoreBody:

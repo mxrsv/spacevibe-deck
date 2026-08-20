@@ -17,18 +17,24 @@ import { SURFACE_STRIP, surfacesBody } from "../tour/scenes/surfaces.js";
 import { usageBody } from "../tour/scenes/usage.js";
 
 /**
- * The hero's scene switcher (2026-08-20, the onorca.dev pattern adapted):
- * a row of capability tabs above the window, each swapping the STAGE region
- * behind the one live rail. Click-driven only — nothing cycles on a timer,
- * which is the line the 2026-08-19 no-decorative-loops decision drew. The
- * three alternate scenes are the feature panels' own bodies, imported rather
- * than redrawn, so the hero and panel versions of a scene cannot drift.
+ * The hero's scene cycle (2026-08-20; the owner replaced the click tabs the
+ * same day — "the workspaces run one after another"): the stage region behind
+ * the one live rail advances through these four scenes on a timer, dwelling
+ * `dwell` ms on each. It is the one sanctioned timer-driven transition on the
+ * page, owner-asked; it shows WORK, and it stands still entirely under
+ * `prefers-reduced-motion`. The three alternate scenes are the feature
+ * panels' own bodies, imported rather than redrawn, so the hero and panel
+ * versions of a scene cannot drift.
+ *
+ * Agents dwells longest: it is the flagship frame and its transcripts are
+ * mid-stream. Exported for the tests, which advance fake timers by these
+ * exact numbers.
  */
-const HERO_SCENES = [
-  { id: "agents", copyKey: "heroTabAgents" },
-  { id: "restore", copyKey: "heroTabRestore" },
-  { id: "surfaces", copyKey: "heroTabSurfaces" },
-  { id: "usage", copyKey: "heroTabUsage" },
+export const HERO_SCENES = [
+  { id: "agents", dwell: 14000 },
+  { id: "restore", dwell: 9000 },
+  { id: "surfaces", dwell: 9000 },
+  { id: "usage", dwell: 9000 },
 ];
 
 const PARTNER_MARK_SRC = "/landing-prototype/assets/partner-mark.svg";
@@ -199,22 +205,6 @@ export function renderDirectionA(copy, locale) {
                field behind the type. Its lit centre is what separates a dark
                window from a dark page — warmth, not luminance. -->
           <div class="a-stage">
-            <!-- The scene tabs are PAGE chrome, not window chrome: they stand
-                 outside the aria-hidden figure so they stay real, pressable
-                 buttons, and their labels are page copy — localized — where
-                 everything inside the window stays English. -->
-            <div class="a-scenetabs" role="group" aria-label="${copy.heroScenesLabel}" data-scene-tabs>
-              ${HERO_SCENES.map(
-                (scene, index) => `
-                <button
-                  type="button"
-                  class="a-scenetab${index === 0 ? " is-active" : ""}"
-                  data-scene="${scene.id}"
-                  aria-pressed="${index === 0}"
-                ><span data-copy="${scene.copyKey}">${copy[scene.copyKey]}</span></button>
-              `,
-              ).join("")}
-            </div>
             <div class="a-desk">
               <div class="a-desk__art" aria-hidden="true"></div>
               <!-- No status bar and no dock: the window bottom is the panes.
@@ -276,30 +266,21 @@ export function renderDirectionA(copy, locale) {
         chromeRoot: section.querySelector(".a-appwin"),
       });
 
-      // The scene switcher. `hidden` is the whole show/hide mechanism — a
+      // The scene cycle. `hidden` is the whole show/hide mechanism — a
       // region leaving display:none restarts its CSS animations, so a scene
       // replays its reveal on every visit — and `is-shown` is the class the
       // scene animations gate on (scenes.css shares it with the panels'
       // `.panel.is-revealed`). The stream keeps running in the hidden agents
       // region: its timers are the window's heartbeat, and pausing them would
-      // hand the reader a stale transcript on the way back.
-      const tabsEl = section.querySelector("[data-scene-tabs]");
+      // hand the reader a stale transcript on the way back. Under reduced
+      // motion no timer is armed at all — the hero stands on the agents frame.
       const regions = [...section.querySelectorAll(".a-appwin__stage[data-scene]")];
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+      let sceneIndex = 0;
+      let sceneTimer = null;
 
-      function handleSceneClick(event) {
-        const button = event.target.closest("button[data-scene]");
-
-        if (!button || !tabsEl.contains(button)) {
-          return;
-        }
-
-        const scene = button.dataset.scene;
-
-        for (const tab of tabsEl.querySelectorAll("button[data-scene]")) {
-          const active = tab.dataset.scene === scene;
-          tab.classList.toggle("is-active", active);
-          tab.setAttribute("aria-pressed", String(active));
-        }
+      function showScene(index) {
+        const scene = HERO_SCENES[index].id;
 
         for (const region of regions) {
           const shown = region.dataset.scene === scene;
@@ -308,10 +289,20 @@ export function renderDirectionA(copy, locale) {
         }
       }
 
-      tabsEl.addEventListener("click", handleSceneClick);
+      function armSceneTimer() {
+        sceneTimer = setTimeout(() => {
+          sceneIndex = (sceneIndex + 1) % HERO_SCENES.length;
+          showScene(sceneIndex);
+          armSceneTimer();
+        }, HERO_SCENES[sceneIndex].dwell);
+      }
+
+      if (!reduceMotion.matches) {
+        armSceneTimer();
+      }
 
       return () => {
-        tabsEl.removeEventListener("click", handleSceneClick);
+        clearTimeout(sceneTimer);
         disposeStream();
 
         if (document.documentElement.dataset.directionTreatment === "a") {
@@ -352,8 +343,6 @@ export function updateDirectionALocale(root, copy, locale) {
   }
 
   section.querySelector(".a-topbar__brand")?.setAttribute("aria-label", copy.navProduct);
-
-  section.querySelector("[data-scene-tabs]")?.setAttribute("aria-label", copy.heroScenesLabel);
 
   const langGroup = section.querySelector(".a-topbar__lang");
 

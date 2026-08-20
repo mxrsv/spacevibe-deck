@@ -491,16 +491,22 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   [docs/CONTEXT.md](docs/CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20)
   `current`. Same day, owner-asked (the onorca.dev pattern, adapted): the hero rail
   **densified to six clusters** — a red `failed` row, a second remembered header, and all six
-  built-in agents including the `cursor-agent` monogram — and the hero grew a row of four
-  capability pills ([`HERO_SCENES`](marketing/landing-prototype/src/directions/a.js) `current`)
-  that swap the `.a-appwin__stage` region behind the ONE live rail: agents / restore / surfaces /
-  usage, the last three being the panels' own bodies re-mounted, never redrawn. Click-driven
-  only — nothing cycles on a timer, so the no-decorative-loops line holds. The scene animations'
-  gate widened to `:is(.panel.is-revealed, .a-appwin__stage.is-shown)`, and the `var()`-carrying
-  ones moved to animation LONGHANDS — a shorthand holding `var()` is stored pending-substitution
-  and Chromium restarts it on any global style recalc, which is what had Playwright's own
-  screenshots catching two restore panes at width 0. Verified by `vitest run marketing/` 163/163,
-  `build:landing`, the 42-image capture gate rerun clean, and scene-by-scene screenshots.
+  built-in agents including the `cursor-agent` monogram — and the hero's stage region **cycles
+  through four scenes on a timer** ([`HERO_SCENES`](marketing/landing-prototype/src/directions/a.js)
+  `current`) behind the ONE live rail: agents (14s) / restore / surfaces / usage (9s each), the
+  last three being the panels' own bodies re-mounted, never redrawn. It began the day as a row
+  of click pills; the owner replaced them hours later with the automatic cycle ("the workspaces
+  run one after another"), which **knowingly amends the 2026-08-19 no-decorative-loops line**:
+  this one timer shows work, it is the page's only one, and reduced motion holds the hero still
+  on the agents frame. The same review made the window NATIVE: pane grids are flush over a 1px
+  `--sg-seam-divider` (no card border, radius, gap, or focus ring — 06-stage-panes.css is the
+  reference), and the transcript inks went neutral — `t-tool` purple and `t-ok` green died, the
+  codex header blue became dim bold — because the real CLIs print plain foreground. The scene
+  animations' gate widened to `:is(.panel.is-revealed, .a-appwin__stage.is-shown)`, and the
+  `var()`-carrying ones moved to animation LONGHANDS — a shorthand holding `var()` is stored
+  pending-substitution and Chromium restarts it on any global style recalc, which is what had
+  Playwright's own screenshots catching two restore panes at width 0. Verified by
+  `vitest run marketing/` 165/165, `build:landing`, the capture gate, and scene screenshots.
 - **Chrome gallery is current:** `gallery.html` mounts real components through `src/gallery/`;
   run `npm run prototype:gallery`. Gallery code must never enter the shipping bundle. Its
   window-chrome section is narrowed to the one selected direction on purpose; parked

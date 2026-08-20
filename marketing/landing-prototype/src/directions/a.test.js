@@ -16,11 +16,11 @@
  * transform.
  */
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { messages } from "../copy.js";
 import { stagePanes, stageRail } from "../product-stage.js";
-import { renderDirectionA, updateDirectionALocale } from "./a.js";
+import { HERO_SCENES, renderDirectionA, updateDirectionALocale } from "./a.js";
 import source from "./a.js?raw";
 
 function setMotion(reduce) {
@@ -242,56 +242,84 @@ describe("the hero's mount", () => {
   });
 });
 
-describe("the scene switcher", () => {
-  it("renders one pressable tab per region, agents active", () => {
-    const root = renderHero();
-    const tabs = [...root.querySelectorAll(".a-scenetab")];
-    const regions = [...root.querySelectorAll(".a-appwin__stage[data-scene]")];
-
-    expect(tabs.map((tab) => tab.dataset.scene)).toEqual(
-      regions.map((region) => region.dataset.scene),
+describe("the scene cycle", () => {
+  function shownScene(root) {
+    const shown = [...root.querySelectorAll(".a-appwin__stage[data-scene]")].filter(
+      (region) => !region.hidden,
     );
-    // The tabs are PAGE chrome: real buttons outside the aria-hidden figure,
-    // never controls drawn inside a subtree a reader cannot reach.
-    for (const tab of tabs) {
-      expect(tab.closest(".a-appwin")).toBeNull();
-      expect(tab.tagName).toBe("BUTTON");
-    }
 
-    expect(tabs[0].classList.contains("is-active")).toBe(true);
-    expect(tabs[0].getAttribute("aria-pressed")).toBe("true");
+    expect(shown).toHaveLength(1);
+    return shown[0].dataset.scene;
+  }
+
+  it("draws no switcher chrome — the cycle is the page's own", () => {
+    const root = renderHero();
+
+    expect(root.querySelector(".a-scenetabs")).toBeNull();
+    expect(root.querySelector("[data-scene-tabs]")).toBeNull();
   });
 
-  it("shows exactly the clicked scene and presses exactly its tab", () => {
-    const root = renderHero({ mount: true, reduceMotion: true });
-    const usageTab = root.querySelector('.a-scenetab[data-scene="usage"]');
+  it("advances through every scene in order, then wraps to agents", () => {
+    vi.useFakeTimers();
 
-    usageTab.click();
+    try {
+      const root = renderHero({ mount: true, reduceMotion: false });
 
-    for (const region of root.querySelectorAll(".a-appwin__stage[data-scene]")) {
-      const shown = region.dataset.scene === "usage";
-      expect(region.hidden).toBe(!shown);
-      expect(region.classList.contains("is-shown")).toBe(shown);
-    }
+      expect(shownScene(root)).toBe("agents");
 
-    for (const tab of root.querySelectorAll(".a-scenetab")) {
-      const active = tab.dataset.scene === "usage";
-      expect(tab.classList.contains("is-active")).toBe(active);
-      expect(tab.getAttribute("aria-pressed")).toBe(String(active));
+      for (let step = 1; step <= HERO_SCENES.length; step += 1) {
+        vi.advanceTimersByTime(HERO_SCENES[step - 1].dwell);
+        expect(shownScene(root)).toBe(HERO_SCENES[step % HERO_SCENES.length].id);
+      }
+    } finally {
+      vi.useRealTimers();
     }
   });
 
-  it("comes back to the live agents region intact", () => {
-    const root = renderHero({ mount: true, reduceMotion: true });
+  it("marks exactly the shown region is-shown, so its reveals replay", () => {
+    vi.useFakeTimers();
 
-    root.querySelector('.a-scenetab[data-scene="restore"]').click();
-    root.querySelector('.a-scenetab[data-scene="agents"]').click();
+    try {
+      const root = renderHero({ mount: true, reduceMotion: false });
 
-    const agents = root.querySelector('.a-appwin__stage[data-scene="agents"]');
-    expect(agents.hidden).toBe(false);
-    // The stream was never torn down: the transcripts still hold the
-    // completed frame the reduced-motion mount painted.
-    expect(root.querySelector('[data-tail="claude"]').textContent).toBe(lastTail("claude"));
+      vi.advanceTimersByTime(HERO_SCENES[0].dwell);
+
+      for (const region of root.querySelectorAll(".a-appwin__stage[data-scene]")) {
+        expect(region.classList.contains("is-shown")).toBe(region.dataset.scene === "restore");
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stands still on the agents frame under reduced motion", () => {
+    vi.useFakeTimers();
+
+    try {
+      const root = renderHero({ mount: true, reduceMotion: true });
+      const total = HERO_SCENES.reduce((sum, scene) => sum + scene.dwell, 0);
+
+      vi.advanceTimersByTime(total * 3);
+      expect(shownScene(root)).toBe("agents");
+      // The stream's completed frame is untouched by the still cycle.
+      expect(root.querySelector('[data-tail="claude"]').textContent).toBe(lastTail("claude"));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops cycling once disposed", () => {
+    vi.useFakeTimers();
+
+    try {
+      const root = renderHero({ mount: true, reduceMotion: false });
+
+      disposers.pop()();
+      vi.advanceTimersByTime(HERO_SCENES[0].dwell * 2);
+      expect(shownScene(root)).toBe("agents");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps the rail OUTSIDE every region, so it survives a scene swap", () => {

@@ -59,20 +59,21 @@
   display: grid;
   width: 100%;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8cqw;
+  /* Flush panes over a 1px seam, exactly as the hero grid draws its own
+     (owner, 2026-08-20): the app has no card borders between panes. */
+  gap: 1px;
+  background: var(--sg-seam-divider);
 }
 
-/* A pane here IS a pane: the same ground, edge and radius `.a-appwin__pane`
-   draws in the hero grid, so the three columns read as the window's own work
-   area rather than as three cards this sheet invented. */
+/* A pane here IS a pane: the same flush ground `.a-appwin__pane` stands on in
+   the hero grid, so the three columns read as the window's own work area
+   rather than as three cards this sheet invented. */
 .scene-restore__pane {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 0.7cqw;
   padding: 0.9cqw 1.1cqw;
-  border: 1px solid var(--sg-hairline-soft);
-  border-radius: 0.5cqw;
   background: var(--sg-bg);
 }
 
@@ -117,7 +118,9 @@
 }
 
 .scene-restore__prompt {
-  color: var(--sg-purple);
+  /* Neutral like the hero transcript (owner, 2026-08-20): the CLIs print
+     their prompt glyph in the plain foreground, not the theme magenta. */
+  color: var(--sg-fg-dim);
 }
 
 /* The typewriter: an inline-block clipped to a width that animates in
@@ -164,7 +167,7 @@
 }
 
 .scene-restore__line.t-agent {
-  color: var(--sg-accent);
+  color: var(--sg-fg-dim);
   font-weight: 600;
 }
 
@@ -173,7 +176,7 @@
 }
 
 .scene-restore__line.t-ok {
-  color: var(--sg-green);
+  color: var(--sg-fg);
 }
 
 /* Pushes the prompt to the bottom of the pane. Without it the scene stacked

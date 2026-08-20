@@ -162,18 +162,33 @@ without waiting for the panels. Two moves, both marketing-only:
   All six built-in agents now appear on the hero. The
   `stage-markup` remembered-header pin counts the fixture instead of the literal
   `1` it used to hold.
-- **Four capability pills above the window**
-  ([`HERO_SCENES`](../marketing/landing-prototype/src/directions/a.js) `current`,
-  `.a-scenetabs` in `direction-a.css`): agents / restore / surfaces / usage. A
-  click swaps which `.a-appwin__stage` region shows behind the ONE live rail —
-  the rail sits outside every region, so its stream hooks keep painting whichever
-  scene is up. The three alternate regions are the tour panels' own bodies
+- **The stage cycles through four scenes on a timer**
+  ([`HERO_SCENES`](../marketing/landing-prototype/src/directions/a.js) `current`):
+  agents (14s) / restore / surfaces / usage (9s each), advancing which
+  `.a-appwin__stage` region shows behind the ONE live rail — the rail sits
+  outside every region, so its stream hooks keep painting whichever scene is
+  up. The three alternate regions are the tour panels' own bodies
   (`restoreBody` / `surfacesBody` / `usageBody`, split out of their `frame()`
   callers with `stageRegion()` in `chrome.js`), so hero and panel cannot drift.
-  Click-driven only; nothing cycles on a timer, so the 2026-08-19
-  no-decorative-loops decision holds. `hidden` is the show/hide mechanism — a
-  region re-entering layout restarts its CSS reveals — and the scene animations'
-  gate widened to `:is(.panel.is-revealed, .a-appwin__stage.is-shown)`.
+  This shipped first as a row of click pills the same day; the owner replaced
+  them within hours ("no need for these tabs — the workspaces run one after
+  another"), which **knowingly amends the 2026-08-19 no-decorative-loops
+  decision**: this one timer shows work, it is the page's only one, and under
+  `prefers-reduced-motion` no timer is armed at all — the hero stands on the
+  agents frame. `hidden` is the show/hide mechanism — a region re-entering
+  layout restarts its CSS reveals — and the scene animations' gate widened to
+  `:is(.panel.is-revealed, .a-appwin__stage.is-shown)`.
+- **The window went native on the owner's screenshot review.** Three fixes,
+  all mirroring what the app actually draws: the pane grid is FLUSH — a 1px
+  `--sg-seam-divider` (tone 12%, `--seam-divider`'s recipe) is the only thing
+  between panes, the card border/radius/gap and the accent focus ring are gone
+  (`06-stage-panes.css:263-334` is the reference; `is-focused` stays in the
+  markup for the narrow-viewport rule but paints nothing) — and the transcript
+  inks are neutral: `t-tool` purple and `t-ok` green died, `t-agent` blue
+  became dim bold, because the CLIs themselves print plain foreground and the
+  borrowed ANSI read as syntax highlighting the real window never shows. The
+  restore scene's three columns and its purple prompt glyph took the same
+  treatment.
 - **The typewriter moved to animation longhands**, and so did every
   `var()`-carrying scene reveal: a shorthand holding `var()` is stored as a
   pending-substitution value and Chromium restarts such an animation on ANY
@@ -183,12 +198,13 @@ without waiting for the panels. Two moves, both marketing-only:
   correct. Longhands close the gap between what the page does and what its own
   evidence gate records.
 
-Evidence: `vitest run marketing/` 163/163 (four new switcher tests, the fixture
-pin reworked), `build:landing` clean, `scripts/capture-landing-stage.mjs` rerun
-clean at all three widths in both motion modes, scene-by-scene screenshots of
-all four regions, and a VI-locale screenshot of the pills. The same caveats as
-the parent section: no owner eye review, no native host run, headless Chromium
-evidence only.
+Evidence: `vitest run marketing/` 165/165 (six cycle tests — order, wrap,
+is-shown, reduced-motion stillness, dispose — plus the fixture pin reworked),
+`build:landing` clean, `scripts/capture-landing-stage.mjs` rerun clean at all
+three widths in both motion modes, and screenshots of the agents frame and the
+first automatic advance. The same caveats as the parent section: no owner eye
+review of the running page, no native host run, headless Chromium evidence
+only.
 
 ## One tab, one frame — 2026-08-20
 

@@ -222,14 +222,19 @@
   font-size: max(1.15cqw, 8px);
 }
 
+/* The pane grid, as the app actually draws it (06-stage-panes.css:263-268):
+   panes are FLUSH — no gap, no card border, no radius — and a 1px
+   `--seam-divider` hairline is the only thing between them. The mock says the
+   same with a 1px grid gap over a seam-coloured ground; each pane's own
+   `--sg-bg` covers everything but the lines. */
 .a-appwin__grid {
   display: grid;
   flex: 1;
   min-width: 0;
   min-height: 0;
   grid-template-columns: 1fr 1fr;
-  gap: 0.8cqw;
-  padding: 0.8cqw;
+  gap: 1px;
+  background: var(--sg-seam-divider);
 }
 
 .a-appwin__col {
@@ -237,7 +242,7 @@
   min-width: 0;
   min-height: 0;
   flex-direction: column;
-  gap: 0.8cqw;
+  gap: 1px;
 }
 
 .a-appwin__pane {
@@ -248,14 +253,13 @@
   flex-direction: column;
   padding: 0.9cqw 1.1cqw;
   background: var(--sg-bg);
-  border: 1px solid var(--sg-hairline-soft);
-  border-radius: 0.5cqw;
   font-family: var(--a-font-mono);
 }
 
-.a-appwin__pane.is-focused {
-  border-color: var(--sg-accent);
-}
+/* The app marks focus with NO ring: the ring was removed there because three
+   of its four sides land under other chrome (06-stage-panes.css:327-334). The
+   `is-focused` class stays in the markup — the narrow-viewport rule below
+   keys off it — but paints nothing. */
 
 .a-appwin__transcript {
   display: flex;
@@ -289,13 +293,18 @@
   color: var(--sg-fg);
 }
 
+/* Neutral on purpose (owner, 2026-08-20): the CLIs themselves print their
+   transcripts in the terminal's plain foreground — Claude Code's tool calls,
+   codex's applied-patch lines — and the purple/green/blue the mock used to
+   borrow from the theme's ANSI read as syntax highlighting the real window
+   never shows. Weight and dimness carry the hierarchy instead. */
 .a-appwin__line.t-agent {
-  color: var(--sg-accent);
+  color: var(--sg-fg-dim);
   font-weight: 600;
 }
 
 .a-appwin__line.t-tool {
-  color: var(--sg-purple);
+  color: var(--sg-fg);
 }
 
 .a-appwin__line.t-dim {
@@ -303,7 +312,7 @@
 }
 
 .a-appwin__line.t-ok {
-  color: var(--sg-green);
+  color: var(--sg-fg);
 }
 
 .a-appwin__spinner {
