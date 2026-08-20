@@ -14,7 +14,7 @@ import { BRAND } from "../../../stage/brand.js";
 import { BRAND_ICON_SRC } from "../appwin.js";
 import { FEATURES_ID } from "../directions/a.js";
 import { PROOF_TERM_STEPS } from "./stage-states.js";
-import { REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
+import { RELEASES_URL, REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
 import { SCENES } from "./panel-scenes.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
 
@@ -281,8 +281,10 @@ function renderFinale(copy) {
       </div>
       <div class="tour__shortcuts" data-reveal style="--reveal-delay: 120ms">${shortcuts}</div>
       <div class="tour__ctas" data-reveal style="--reveal-delay: 220ms">
+        <!-- Same outline variant as the macOS anchor below (owner,
+             2026-08-20): two stable platforms, no primary one. -->
         <a
-          class="tour__cta tour__cta--primary"
+          class="tour__cta"
           href="${WINDOWS_FALLBACK_URL}"
           target="_blank"
           rel="noreferrer"
@@ -291,22 +293,23 @@ function renderFinale(copy) {
             ${renderWindowsIcon()}
             <span data-copy="downloadWin">${copy.downloadWin}</span>
           </span>
-          <span class="a-cta-tag" data-copy="winPreviewTag"
-            >${copy.winPreviewTag}</span
-          >
           <span aria-hidden="true">↓</span>
         </a>
-        <!-- Mirrors the hero: a disabled button, so it is neither pressable nor
-             a target for upgradeReleaseLinks' anchor retargeting. -->
-        <button class="tour__cta" type="button" disabled>
+        <!-- Mirrors the hero: an anchor again since 1.0.0 shipped stable
+             (2026-08-20) — server-rendered at the releases page, retargeted
+             at the newest stable .dmg by upgradeReleaseLinks. -->
+        <a
+          class="tour__cta"
+          href="${RELEASES_URL}"
+          target="_blank"
+          rel="noreferrer"
+        >
           <span class="a-cta-lead">
             ${renderAppleIcon()}
             <span data-copy="downloadMac">${copy.downloadMac}</span>
           </span>
-          <span class="a-cta-tag" data-copy="comingSoon"
-            >${copy.comingSoon}</span
-          >
-        </button>
+          <span aria-hidden="true">↓</span>
+        </a>
 
         <p class="a-cta-note" data-copy="winUnsignedNote">
           ${copy.winUnsignedNote}
@@ -339,6 +342,7 @@ function renderFooter(copy) {
         </div>
         <nav class="site-footer__col" aria-label="${copy.footerColProduct}">
           <span class="site-footer__coltitle" data-copy="footerColProduct">${copy.footerColProduct}</span>
+          <a href="${RELEASES_URL}" target="_blank" rel="noreferrer" data-copy="downloadMac">${copy.downloadMac}</a>
           <a href="${WINDOWS_FALLBACK_URL}" target="_blank" rel="noreferrer" data-copy="downloadWin">${copy.downloadWin}</a>
           <a class="site-footer__link" href="#${FEATURES_ID}" data-copy="seeFeatures">${copy.seeFeatures}</a>
         </nav>

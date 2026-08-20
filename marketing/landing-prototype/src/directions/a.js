@@ -1,9 +1,8 @@
 import { renderAgentStrip } from "../agent-strip.js";
 import { BRAND_ICON_SRC, renderStagePane, renderStageRail, renderStageStrip } from "../appwin.js";
 import { renderAppleIcon, renderWindowsIcon } from "../os-icons.js";
-import { REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
+import { RELEASES_URL, REPO_URL, WINDOWS_FALLBACK_URL } from "../download-links.js";
 import { CHANGELOG_URL } from "../release-data.js";
-import packageData from "../../../../package.json";
 import {
   STAGE_ARIA_LABEL,
   mountStageStream,
@@ -130,14 +129,13 @@ export function renderDirectionA(copy) {
           </header>
 
           <div class="a-hero">
-            <!-- The release badge leads the centred stack instead of sitting
-                 above the download button: in a centred hero the pill is the
-                 first object the eye lands on, so it carries the version and
-                 links to the ledger rather than announcing nothing. -->
+            <!-- A launch marker, not a package-version readout: the exact
+                 build remains in the changelog this links to, while the hero
+                 announces the product milestone visitors need to remember. -->
             <a class="a-hero__pill" href="${CHANGELOG_URL}">
               <span class="a-cta-tag a-cta-new__tag" data-copy="newBadge">${copy.newBadge}</span>
-              <span class="a-hero__pill-text" data-release-version>v${packageData.version}</span>
-              <span aria-hidden="true">→</span>
+              <span class="a-hero__pill-text" data-copy="releaseLabel">${copy.releaseLabel}</span>
+              <span class="a-hero__pill-arrow" aria-hidden="true">→</span>
             </a>
 
             <div class="a-hero__copy">
@@ -152,8 +150,11 @@ export function renderDirectionA(copy) {
             </div>
 
             <div class="a-actions">
+              <!-- Both installs wear the same outline variant (owner,
+                   2026-08-20): with two stable platforms there is no primary
+                   one, and the white fill went with the hierarchy. -->
               <a
-                class="a-primary-cta"
+                class="a-quiet-cta"
                 href="${WINDOWS_FALLBACK_URL}"
                 target="_blank"
                 rel="noreferrer"
@@ -162,27 +163,26 @@ export function renderDirectionA(copy) {
                   ${renderWindowsIcon()}
                   <span data-copy="installWin">${copy.installWin}</span>
                 </span>
-                <span class="a-cta-trail">
-                  <span class="a-cta-tag" data-copy="winPreviewTag"
-                    >${copy.winPreviewTag}</span
-                  >
-                  ${renderInstallIcon()}
-                </span>
+                <span class="a-cta-trail"> ${renderInstallIcon()} </span>
               </a>
 
-              <!-- A button, not an anchor: the macOS build is announced, not
-                   offered, until the Electron macOS release lands. Being a
-                   non-anchor is also what keeps upgradeReleaseLinks from
-                   retargeting it at the old .dmg — see download-links.js. -->
-              <button class="a-quiet-cta" type="button" disabled>
+              <!-- An anchor again since 1.0.0 shipped stable for both
+                   platforms (2026-08-20): the server-rendered href is the
+                   releases page, and upgradeReleaseLinks retargets it at the
+                   newest stable .dmg — see download-links.js. The preview and
+                   coming-soon tags went with the preview era. -->
+              <a
+                class="a-quiet-cta"
+                href="${RELEASES_URL}"
+                target="_blank"
+                rel="noreferrer"
+              >
                 <span class="a-cta-lead">
                   ${renderAppleIcon()}
                   <span data-copy="installMac">${copy.installMac}</span>
                 </span>
-                <span class="a-cta-tag" data-copy="comingSoon"
-                  >${copy.comingSoon}</span
-                >
-              </button>
+                <span class="a-cta-trail"> ${renderInstallIcon()} </span>
+              </a>
             </div>
 
             <div class="a-hero__support">

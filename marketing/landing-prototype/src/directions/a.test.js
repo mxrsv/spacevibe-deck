@@ -333,4 +333,13 @@ describe("the English-only header", () => {
     expect(root.querySelector("[data-locale]")).toBeNull();
     expect(root.querySelector(".a-topbar__lang")).toBeNull();
   });
+
+  it("announces Deck V1 instead of exposing the package version", () => {
+    const root = renderHero();
+
+    expect(root.querySelector(".a-hero__pill-text")?.textContent).toBe(
+      messages.en.releaseLabel,
+    );
+    expect(root.querySelector("[data-release-version]")).toBeNull();
+  });
 });

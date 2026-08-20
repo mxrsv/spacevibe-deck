@@ -14,6 +14,11 @@
      design. */
   --a-accent: var(--accent);
   --a-accent-rgb: var(--accent-rgb);
+  /* One launch-only colour signal. Chrome stays achromatic; this violet-to-cyan
+     edge marks the V1 milestone without competing with the warm stage plate. */
+  --a-release-violet: #a98bff;
+  --a-release-cyan: #62dcff;
+  --a-release-cyan-rgb: 98 220 255;
   --a-ease-lock: cubic-bezier(0.22, 0.78, 0.18, 1);
   /* Match the app's font language (src/styles.css): one system sans for all
      text + chrome, mono reserved for real terminal content only. */
@@ -263,37 +268,96 @@
   text-align: center;
 }
 
-/* The release pill — the one object above the headline. Reads as a chip, not
-   a button: it is a link to the ledger, so it stays quiet until hovered. */
+/* The release pill is the launch signal above the headline. Its colour is
+   spent on a one-pixel edge and the product name — never on a filled face —
+   so the app window remains the hero's focal artifact. */
 .a-hero__pill {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
   margin-bottom: clamp(1.1rem, 2.4vh, 1.6rem);
   padding: 0.32rem 0.85rem 0.32rem 0.4rem;
-  border: 1px solid var(--a-line);
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: rgb(255 255 255 / 4%);
+  background:
+    linear-gradient(var(--a-surface-1), var(--a-surface-1)) padding-box,
+    linear-gradient(
+        108deg,
+        var(--a-release-violet),
+        var(--a-release-cyan) 64%,
+        var(--a-line-strong)
+      )
+      border-box;
+  background-position:
+    0 0,
+    0% 50%;
+  background-size:
+    100% 100%,
+    180% 100%;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 7%),
+    0 0 1.5rem rgb(var(--a-release-cyan-rgb) / 8%);
   color: var(--a-ink-soft);
   font: 500 0.72rem/1 var(--a-font-display);
   letter-spacing: 0.01em;
   transition:
-    background 240ms var(--a-ease-lock),
-    border-color 240ms var(--a-ease-lock),
+    background-position 420ms var(--a-ease-lock),
+    box-shadow 280ms var(--a-ease-lock),
     color 240ms var(--a-ease-lock);
 }
 
 .a-hero__pill:hover,
 .a-hero__pill:focus-visible {
-  border-color: var(--a-line-strong);
-  background: rgb(255 255 255 / 8%);
+  background-position:
+    0 0,
+    100% 50%;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 10%),
+    0 0 1.9rem rgb(var(--a-release-cyan-rgb) / 14%);
   color: var(--a-ink);
 }
 
 .a-hero__pill-text {
-  font-family: var(--a-font-mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+  animation: a-release-gradient-flow 3.6s linear infinite;
+  background: linear-gradient(
+    90deg,
+    var(--a-release-violet) 0%,
+    var(--a-release-cyan) 25%,
+    var(--a-release-violet) 50%,
+    var(--a-release-cyan) 75%,
+    var(--a-release-violet) 100%
+  );
+  background-clip: text;
+  background-size: 200% 100%;
+  color: transparent;
+  filter: drop-shadow(0 0 0.45rem rgb(var(--a-release-cyan-rgb) / 18%));
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: uppercase;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes a-release-gradient-flow {
+  from {
+    background-position: 0% 50%;
+  }
+
+  to {
+    background-position: -200% 50%;
+  }
+}
+
+.a-hero__pill-arrow {
+  color: var(--a-ink);
+  font-size: 0.9rem;
+  transition: transform 280ms var(--a-ease-lock);
+}
+
+.a-hero__pill:hover .a-hero__pill-arrow,
+.a-hero__pill:focus-visible .a-hero__pill-arrow {
+  transform: translateX(0.125rem);
 }
 
 .a-hero__copy {
@@ -901,11 +965,17 @@ html[lang="vi"] .a-hero h1 {
   .a-ghost-cta,
   .a-ghost-cta i,
   .a-hero__pill,
+  .a-hero__pill-arrow,
   .a-topbar__changelog,
   .a-topbar__changelog::after,
   .a-topbar__discord,
   .a-topbar__github::after {
     transition: none;
+  }
+
+  .a-hero__pill-text {
+    animation: none;
+    background-position: 50% 50%;
   }
 }
 
