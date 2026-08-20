@@ -115,6 +115,30 @@ describe("the shipping Electron release config", () => {
     expect(entitlements).not.toContain("com.apple.security.app-sandbox");
   });
 
+  it("declares the Windows nsis x64 target the stable release ships", () => {
+    // One tag carries both platforms. Dropping this block quietly produces a
+    // macOS-only release whose promote job then blocks on the missing
+    // installer — better to fail here, naming the reason.
+    expect(declares(releaseConfig, "- target: nsis")).toBe(true);
+    expect(declares(releaseConfig, "- x64")).toBe(true);
+  });
+
+  it("keeps the Windows install per-user and names its artifact without spaces", () => {
+    // `perMachine: false` is the no-elevation decision carried from the
+    // preview; the explicit artifactName is what the promote job's
+    // `*-setup.exe` assertion holds onto — the default starts with
+    // `productName`, whose space normalizes unpredictably as an asset name.
+    expect(declares(releaseConfig, "perMachine: false")).toBe(true);
+    expect(
+      declares(releaseConfig, "artifactName: SpaceVibe-Deck-${version}-win-x64-setup.${ext}"),
+    ).toBe(true);
+    // Kept deliberately (spec §Configuration): the chooser is the trigger of
+    // the one real Windows bug report on record, and removing it is the
+    // mitigation this release chose NOT to take. If this line changes, the
+    // spec's record of the trade changes with it.
+    expect(declares(releaseConfig, "allowToChangeInstallationDirectory: true")).toBe(true);
+  });
+
   it("publishes to the GitHub repository the updater feed names", () => {
     expect(declares(releaseConfig, "- provider: github")).toBe(true);
     expect(declares(releaseConfig, "owner: mxrsv")).toBe(true);
@@ -168,17 +192,27 @@ describe("the release packaging script", () => {
 });
 
 describe("the Electron release workflow", () => {
-  it("builds from a tag no running app can see", () => {
+  it("builds from a tag no running app can see, stable and prerelease alike", () => {
     // GitHub publishes a pushed tag to `releases.atom` immediately, while this
-    // job takes ten minutes. A pushed RELEASE tag therefore advertised a
+    // workflow takes ten minutes. A pushed RELEASE tag therefore advertised a
     // version whose manifest did not exist yet, and every running app that
     // checked in that window showed "Couldn't check for updates".
     // `build/v…` fails `semver.valid`, so GitHubProvider skips it entirely.
-    expect(workflow).toContain(
-      '- "build/v[0-9]+.[0-9]+.[0-9]+-electron.[0-9]+"',
-    );
-    expect(workflow).not.toContain('- "v[0-9]+.[0-9]+.[0-9]+-electron');
+    // Both shapes wear the prefix: a bare `v…` pattern on either one would
+    // reintroduce the advertised-but-absent window for that channel.
+    expect(workflow).toContain('- "build/v[0-9]+.[0-9]+.[0-9]+"');
+    expect(workflow).toContain('- "build/v[0-9]+.[0-9]+.[0-9]+-electron.[0-9]+"');
+    expect(workflow).not.toContain('- "v[0-9]+.[0-9]+.[0-9]+');
     expect(workflow).not.toContain('- "electron-v');
+  });
+
+  it("builds Windows on a windows runner and publishes into the same draft", () => {
+    // Two workflow files triggered by the same tag would race to create the
+    // release (run 32232669706, one platform apart instead of one target
+    // apart); the second platform therefore lives in THIS file, downstream of
+    // the one `prepare` job that created the draft.
+    expect(workflow).toContain("runs-on: windows-latest");
+    expect(workflow).toContain("--win --x64 --publish always");
   });
 
   it("creates the release tag only at promotion, never before", () => {
@@ -245,23 +279,61 @@ describe("the Electron release workflow", () => {
     expect(verifyStep).not.toContain('xcrun stapler validate "${images[0]}"');
   });
 
-  it("requires the zip and the channel manifest in the published release", () => {
+  it("requires the full two-platform asset set before promoting anything", () => {
+    // The promote job reads what the release actually SERVES, and a missing
+    // asset leaves it a draft — the only mechanism that stops a half-built
+    // release from reaching an installed app. Six assets, both platforms.
     expect(workflow).toContain("electron-mac.yml");
-    expect(workflow).toContain("grep -q '\\.zip$' published.txt");
+    expect(workflow).toContain("grep -q '\\.dmg$' published.txt");
+    expect(workflow).toContain("grep -q -- '-mac\\.zip$' published.txt");
+    expect(workflow).toContain("grep -qx 'latest-mac.yml' published.txt");
+    expect(workflow).toContain("grep -q -- '-setup\\.exe$' published.txt");
+    expect(workflow).toContain("grep -qx 'latest.yml' published.txt");
+    expect(workflow).toContain("grep -q '\\.blockmap$' published.txt");
   });
 
-  it("promotes the draft to a pre-release, never to latest", () => {
-    // `releases/latest` keeps serving the Tauri release until the cutover
-    // retires it; an installed Electron build finds this one by walking the
-    // feed for its own channel.
-    expect(workflow).toContain("gh release edit");
-    expect(workflow).toContain("--prerelease");
+  it("refuses a tag whose commit is not on main", () => {
+    // A green check on some other branch must not authorize publication
+    // (workflow design, Release contract). The check needs history, so the
+    // prepare checkout must not be shallow.
+    expect(workflow).toContain("git merge-base --is-ancestor HEAD origin/main");
+    expect(workflow).toContain("fetch-depth: 0");
   });
 
-  it("leaves the Tauri release path frozen", () => {
-    // This whole workflow exists so that shipping Electron does not require
-    // touching `release.yml`. If the freeze job is gone, a tag push builds and
-    // publishes Tauri from whatever `main` happens to be.
+  it("publishes reviewed CHANGELOG notes for a stable tag, never a commit dump", () => {
+    // The workflow design supersedes the generated commit list for public
+    // stable releases: the notes are the release PR's reviewed `## <version>`
+    // section, read from the TAGGED commit, and a stable tag without its
+    // section stays a draft. The generated list remains only for the
+    // `-electron.N` migration channel.
+    expect(workflow).toContain("CHANGELOG.md > section.md");
+    expect(workflow).toContain("the release stays a draft");
+    expect(workflow).toContain("releases/generate-notes");
+  });
+
+  it("writes a run summary naming source, channel and assets", () => {
+    expect(workflow).toContain('>> "$GITHUB_STEP_SUMMARY"');
+  });
+
+  it("promotes a stable tag to latest and an electron tag to a pre-release", () => {
+    // A stable release becoming `latest` is the cutover: `releases/latest`
+    // stops serving Tauri. An `-electron.N` tag stays a pre-release that only
+    // the `electron` channel walks.
+    expect(workflow).toContain('gh release edit "$TAG" --draft=false --latest');
+    expect(workflow).toContain('gh release edit "$TAG" --draft=false --prerelease');
+  });
+
+  it("keeps Tauri off every automatic trigger", () => {
+    // `release.yml` stays for manual hotfixes but must never ship from a tag
+    // push again — tags ship Electron now. The freeze job remains as
+    // defense-in-depth should a push trigger ever be reintroduced.
+    const trigger = tauriWorkflow.slice(
+      tauriWorkflow.indexOf("\non:"),
+      tauriWorkflow.indexOf("permissions:"),
+    );
+    expect(trigger).toContain("workflow_dispatch:");
+    expect(trigger).not.toContain("push:");
+    expect(trigger).not.toContain("tags:");
     expect(tauriWorkflow).toContain("release-freeze:");
     expect(tauriWorkflow).toContain("Refuse to ship from a tag push");
   });
