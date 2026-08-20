@@ -70,6 +70,38 @@ mac:
   # the finished artifact, which the release workflow runs and reports.
   gatekeeperAssess: false
   notarize: true
+# Windows ships from this same config and the same tag (spec:
+# docs/specs/2026-08-20-electron-stable-release-design.md). It is deliberately
+# NOT copied from `electron-builder.yml` — that file's win block is a preview
+# artifact with the preview identity. This one inherits the shipping identity
+# above, so the installer registers as `SpaceVibe Deck`: an installed
+# `Deck Electron` preview.2 that auto-updates into this build gets a NEW
+# side-by-side app with fresh userData, and the old preview stays in
+# Add/Remove Programs until removed by hand. Unsigned by decision — no
+# certificate is configured, electron-builder warns and continues, and
+# SmartScreen warns on first install; nothing in this config can change that.
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # Both hosts share the Tauri icon set.
+  icon: src-tauri/icons/icon.ico
+  # The default artifact name starts with `productName`, whose space breaks
+  # shell-quoted download URLs and greps; named explicitly so the promote
+  # job's `*-setup.exe` assertion has a stable shape to hold onto.
+  artifactName: SpaceVibe-Deck-${version}-win-x64-setup.${ext}
+nsis:
+  oneClick: false
+  # Per-user install: no elevation prompt, removable without touching
+  # Program Files.
+  perMachine: false
+  # Kept DELIBERATELY, not inherited: the one real Windows user report on
+  # record is an NSIS extract failure when installing to a secondary drive,
+  # and this option is what lets a user reach that state. The underlying bug
+  # is not resolved here; removing the chooser would be the mitigation, and
+  # the spec records keeping it as the chosen trade.
+  allowToChangeInstallationDirectory: true
 publish:
   # `channel` is deliberately absent (fork F4). app-builder-lib fills it from
   # the app version's prerelease component when it is unset

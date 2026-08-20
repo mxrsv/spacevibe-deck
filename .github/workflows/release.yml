@@ -1,18 +1,16 @@
 name: Release
 
+# Tauri is RETIRED from tag triggers (2026-08-20): a pushed `build/v…` tag now
+# ships the Electron host through `electron-release.yml`, and nothing ships
+# Tauri automatically. This file stays, with every job intact, so a Tauri
+# hotfix remains possible by hand — a manual run rebuilds from a tag that
+# already shipped, never from `main`.
+# Spec: docs/specs/2026-08-20-electron-stable-release-design.md
 on:
-  push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"
-  # Re-run the Windows preview alone against a tag that already shipped. The
-  # Windows channel is an unsigned preview and will break again; without this,
-  # retrying it means moving the tag, which rebuilds and republishes a macOS
-  # release that was already fine.
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing vX.Y.Z tag to rebuild the Windows preview from"
+        description: "Existing vX.Y.Z tag to rebuild a Tauri hotfix from"
         required: true
         type: string
 

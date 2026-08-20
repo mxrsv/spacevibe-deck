@@ -1,0 +1,47 @@
+/**
+ * Whether a matched binding may CONSUME its keystroke.
+ *
+ * `handleShortcut` (tab-manager.ts) asks this before `preventDefault()`. A
+ * false answer means the binding behaves as if it did not exist and the key
+ * continues to whatever holds focus — Ghostty's `performable:` principle,
+ * carried on the action rather than on the binding because Deck stores user
+ * overrides per action and replaces an action's whole chord set
+ * (`resolveKeymap`, src/lib/keybindings.ts), so two chords of one action
+ * cannot differ in conditionality. See
+ * docs/specs/2026-08-20-performable-keybindings-design.md D1.
+ *
+ * Deliberately pure: it reads a context value, never a signal, so the rules
+ * are testable without mounting a tab manager.
+ */
+import type { ShortcutAction } from "./keymap";
+
+/** Which kind of thing currently owns the stage. */
+export type StageOwner = "terminal" | "surface" | "overlay";
+
+export interface PerformableContext {
+  readonly stageOwner: StageOwner;
+  /** Whether the ACTIVE TERMINAL PANE holds a selection. */
+  readonly hasSelection: boolean;
+}
+
+type Predicate = (context: PerformableContext) => boolean;
+
+/**
+ * Only the clipboard actions so far. Every other action answers true, so this
+ * table can take the remaining pane-scoped actions later as a data change
+ * rather than a rework (spec, Non-goals).
+ */
+const PREDICATES: ReadonlyMap<ShortcutAction, Predicate> = new Map<ShortcutAction, Predicate>([
+  // Stage-conditional only: inside a terminal it keeps consuming even with no
+  // selection, because nothing else wants Ctrl+Shift+C and leaking it into an
+  // agent TUI has unspecified behaviour (spec D2).
+  ["copy-selection", (context) => context.stageOwner === "terminal"],
+  // Stage AND selection conditional: with no selection the key must reach the
+  // PTY as the interrupt (spec D5).
+  ["copy-or-interrupt", (context) => context.stageOwner === "terminal" && context.hasSelection],
+]);
+
+export function isActionPerformable(action: ShortcutAction, context: PerformableContext): boolean {
+  const predicate = PREDICATES.get(action);
+  return predicate === undefined ? true : predicate(context);
+}

@@ -104,15 +104,16 @@ describe("release tag resolution", () => {
     }
   });
 
-  it("triggers on stable and release-candidate pushes only", () => {
-    const triggers = workflow.slice(
-      workflow.indexOf("tags:"),
-      workflow.indexOf("workflow_dispatch:"),
-    );
+  it("never triggers on a tag push — tags ship Electron now", () => {
+    // Reduced to `workflow_dispatch` on 2026-08-20 (Electron stable release
+    // spec): a pushed tag ships the Electron host via electron-release.yml,
+    // and nothing may build Tauri automatically. The manual path stays for
+    // hotfixes.
+    const trigger = workflow.slice(workflow.indexOf("\non:"), workflow.indexOf("permissions:"));
 
-    expect(triggers).toContain('"v[0-9]+.[0-9]+.[0-9]+"');
-    expect(triggers).toContain('"v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"');
-    expect(triggers).not.toContain("windows-preview");
+    expect(trigger).toContain("workflow_dispatch:");
+    expect(trigger).not.toContain("push:");
+    expect(trigger).not.toContain("tags:");
   });
 
   it("builds every job from the resolved tag and commit", () => {

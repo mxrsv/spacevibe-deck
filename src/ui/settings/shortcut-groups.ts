@@ -75,6 +75,7 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   "find-previous": "text",
   "clear-buffer": "text",
   "copy-selection": "text",
+  "copy-or-interrupt": "text",
   "copy-cwd": "text",
   paste: "text",
   // The Edit menu's own three (2026-08-19). They carry no `KeyBinding` — the

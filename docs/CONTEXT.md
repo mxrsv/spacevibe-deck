@@ -209,6 +209,89 @@ first automatic advance. The same caveats as the parent section: no owner eye
 review of the running page, no native host run, headless Chromium evidence
 only.
 
+## Performable keybindings and Ctrl+C — 2026-08-20
+
+`handleShortcut` called `preventDefault()` and `stopPropagation()` the moment `matchBinding`
+returned an action, and only then called `dispatchAction`, where `overlayBlocksAction` decided
+whether the action could run at all. The key was committed before anything decided whether the
+action could do anything — and that ordering cost two different things.
+
+It cost a working chord. Every `scope: "pane"` action — `find`, `clear-buffer`, the `zoom-*`
+family, `copy-selection`, `paste`, the `scroll-*`/`focus-*`/`swap-*` families, `next-tab`/
+`prev-tab` — was swallowed and then blocked while a file surface or an overlay owned the stage.
+Monaco escapes the `isChromeTextField` early return because with `editContext` on it focuses a
+plain `<div>`, never an `<input>`/`<textarea>`, so nothing upstream could tell those actions
+they were about to act on a hidden terminal. Ctrl+Shift+C over an open document therefore
+copied nothing AND denied Chromium's own copy: a dead key, silently.
+
+It also cost a feature. Bare Ctrl+C could not be bound on Windows at all. Windows Terminal
+binds it to copy and lets it fall through to the app when there is no selection; Deck could
+not, because a binding here always consumed.
+
+[`isActionPerformable`](../src/terminal/action-performable.ts) `current` is the answer, and
+`handleShortcut` asks it BEFORE `preventDefault()`. A false answer means the binding behaves as
+if it did not exist and the key continues to whatever holds focus. `dispatchAction` keeps
+`overlayBlocksAction` unchanged — it still guards the macOS menu path, which never passes
+through `handleShortcut` at all.
+
+**The predicate is keyed on the ACTION, not on the binding.** Ghostty expresses this as a
+`performable:` prefix on the bind, which cannot work here: Deck stores user overrides per
+action and replaces an action's whole chord set
+([`resolveKeymap`](../src/lib/keybindings.ts) `current`), so two chords of one action cannot
+carry different conditionality — and a user who had rebound `copy-selection` would never
+receive the new Ctrl+C. kitty's compound-action shape is what fits, so
+[`copy-or-interrupt`](../src/terminal/action-registry.ts) `current` is a second action beside
+`copy-selection` rather than a flag on one. It carries no `menu` field on purpose: a Cocoa
+accelerator is consumed before the webview and would force the action regardless of whether it
+could be performed, which is the same reason Ghostty excludes performable binds from menus.
+
+The two differ in exactly two ways. `copy-selection` (Ctrl+Shift+C) is stage-conditional only —
+over a document it falls through so Chromium's copy reaches Monaco, but inside a terminal it
+keeps consuming even with nothing selected, because nothing else wants that chord and leaking
+it into an agent TUI has unspecified behaviour. `copy-or-interrupt` (Ctrl+C, Windows only) is
+stage- AND selection-conditional, and it is the only one that CLEARS the selection. Without the
+clear, a second Ctrl+C would copy again instead of interrupting — kitty shipped a second action
+(`copy_and_clear_or_interrupt`) for exactly this. The clear runs synchronously after the text is
+read, never in the clipboard write's callback: `copyTerminalSelection` writes asynchronously,
+and clearing there could erase a selection the user made in the meantime.
+
+**Deck writes no interrupt byte.** When `copy-or-interrupt` is not performable, `handleShortcut`
+returns without consuming and xterm encodes the keystroke itself. Writing a literal `\x03`
+through `pty.writePty` would pin one encoding, and a terminal that has negotiated a different
+keyboard protocol expects a different sequence. The focus objection does not apply: the
+predicate answers "no selection" only when a terminal pane already owns the stage, which means
+focus is in that pane's xterm textarea.
+
+Two costs were taken deliberately. **Cancelling after a selection takes two presses** — the
+first Ctrl+C copies, the second interrupts. Windows Terminal behaves the same way, but it costs
+more here than in a plain shell because agent CLIs use Ctrl+C as a routine cancel. And
+`stageOwner()` reads `browserSurfaceActive` beside `surfaces.activeIndex()` rather than trusting
+the browser tab to be folded into it: answering "terminal" while a web view covers the stage
+would consume a key the page wanted, and reading both fails toward not consuming.
+
+macOS is untouched — ⌘C stays the native Cocoa Copy role, and `copy-or-interrupt` ships unbound
+there, because ⌘C-copies/Ctrl+C-interrupts are already two different keys and binding it would
+invent a problem. Renderer-only, so the mechanism reaches BOTH hosts.
+
+**Evidence:** `npm test` 3375 passed / 10 failed, every one of the ten reproduced identically on
+a pristine `HEAD` worktree (agent launch-command strings, the rail's remembered-projects model,
+and `toggle-sessions` missing from `shortcut-groups.ts`'s `PLACEMENT` — three other sessions'
+in-flight work, none of it touched here); `npx tsc --noEmit`, `npx tsc -p tsconfig.electron.json
+--noEmit`, `npm run build` and `npm run generate:menu:check` all clean; 4 new chord tests driving
+the real capture-phase `window` listener through the pane's own textarea. **The Ctrl+C keystroke
+itself has never been pressed on Windows (Gate C), and no host run or owner eye review has
+happened.** This is renderer-verified, never Windows-verified.
+
+**Known gap, unresolved.** macOS menu-bound actions (`find`, `find-next`, `find-previous`,
+`clear-buffer`, the `zoom-*` family, `split-*`, the `toggle-*` family) keep dying over a file
+surface, because Cocoa consumes their accelerators before the webview and no renderer-side
+reorder can reach them. Ghostty's answer is that performable binds get no menu shortcut at all;
+adopting that here means dropping accelerators from those menu items, which trades away the
+menu's role as the place chords are learned. Out of scope, and the remaining ~18 pane-scoped
+actions are deliberately not registered — the table is built to take them later as a data
+change. See [spec](specs/2026-08-20-performable-keybindings-design.md) `decided` and
+[plan](plans/2026-08-20-performable-keybindings.md) `current`.
+
 ## One tab, one frame — 2026-08-20
 
 A tab running three agents printed three rows, and nothing on screen said they
@@ -4263,6 +4346,79 @@ reaches BOTH hosts; routing degrades on Tauri to exactly today's behaviour
 (no workspace ever claims a path, so every ⌘+click goes out through
 `open_editor`), which has also not been run.
 
+## One tag ships two platforms, and Gate A is closed for macOS — 2026-08-20
+
+**Gate A is CLOSED for macOS.** The owner ran a real auto-update check against
+the published `v0.12.5-electron.2` on 2026-08-19 and it worked end to end —
+signed, notarized, Squirrel.Mac accepted the handover. Earlier sections above
+that record Gate A as open were true when written and stay as written; this
+section is the correction the
+[stable-release spec](specs/2026-08-20-electron-stable-release-design.md)
+`decided` demanded before the tag. Gate C (real Windows hardware) stays open,
+and the owner elected to ship Windows without runtime verification.
+
+**The two-platform release pipeline is built, per the spec and its
+[plan](plans/2026-08-20-electron-stable-release.md) `building`, plus the three
+parts of the
+[workflow design](specs/2026-08-20-development-contribution-release-workflow-design.md)
+`draft` the owner adopted the same day** (reviewed CHANGELOG notes, the
+tag-ancestry gate, the run summary — the rest of that document stays a draft
+for review). [`electron-release.yml`](../.github/workflows/electron-release.yml)
+`current` is four jobs — `prepare` (refuses a tag not reachable from
+`origin/main`, validates both `build/vX.Y.Z` and `build/vX.Y.Z-electron.N`
+against the package version, one source gate, the draft), `mac` (the shipped
+sign/notarize/verify job, plus its own renderer build since the gate now runs
+on ubuntu), `windows` (unsigned nsis x64, publish only, `shell: bash` +
+`set -euo pipefail` because pwsh only fails a step on the LAST command's exit
+code), `promote` (all six served assets or the release stays a draft; final
+notes = the fixed unsigned/unverified/no-Intel header plus the tagged commit's
+`## <version>` section of [`CHANGELOG.md`](../CHANGELOG.md) `current` for a
+stable tag — missing section fails the promote — or the generated commit list
+for `-electron.N`; `--latest` for stable, `--prerelease` for prerelease; a
+`$GITHUB_STEP_SUMMARY` page naming source, channel and assets).
+[`release.yml`](../.github/workflows/release.yml) `current` is
+`workflow_dispatch`-only — Tauri is retired from tag triggers, the freeze job
+stays as defense-in-depth.
+[`electron-builder.release.yml`](../electron-builder.release.yml) `current`
+gained the win/nsis blocks under the SHIPPING identity (`dev.spacevibe.deck` /
+`SpaceVibe Deck`), so the installed Windows `Deck Electron` preview.2 that
+auto-updates into it gets a new side-by-side app with fresh userData — a
+consequence of fork F1, stated in the config comment. `package.json` is
+`1.0.0` — the owner named the stable a V1 (2026-08-20), not a `0.12.x`
+increment. Stable outranks both `0.12.5-electron.2` and the Windows preview's
+`0.12.4-electron-preview.2` under semver, and both installed shapes reach it
+(the preview hardcodes the GitHub feed and `allowPrerelease` defaults true for
+a prerelease version — moot for a `--latest` stable anyway).
+
+**No macOS preview ever shipped publicly** (owner, 2026-08-20): the landing
+page still says "coming soon", so this stable is the first public macOS
+release and no "preview users must reinstall" note is needed. The landing page
+swap to real download links happens AFTER the release is public.
+
+**Unverified:** the four-job workflow has never run — no tag has been cut on
+it; the Windows installer is unsigned and Windows behaviour is runtime-
+unverified by decision (Gate C); Intel Mac and Windows ARM are not served.
+Freeze prerequisites still owed at tag time: a clean tree whose gates are
+green on the release commit, the deliberate shipping of
+`GRAB_PASTE_DISABLED` and the preset rename/delete gap, and the owner's
+review of `CHANGELOG.md`'s `## 1.0.0` section — the promote job publishes
+that text verbatim.
+
+## Development, contribution, and release governance — 2026-08-20
+
+The [workflow design](specs/2026-08-20-development-contribution-release-workflow-design.md)
+`building` is a draft for owner review. It joins the repository's previously separate
+development, contributor, verification, release, and update-notification paths into one
+contract: short-lived branch or fork → PR → required Ubuntu/macOS/Windows checks → owner
+review → squash merge into a protected `main` → explicit release PR and `build/v…` tag →
+atomic two-platform promotion.
+
+**Nothing in that governance design is active yet.** GitHub reported no branch protection
+and no ruleset for `main` on 2026-08-20; the existing `check` and `windows-check` baseline is
+red; `macos-check` does not exist; and the two-platform Electron release workflow in the
+shared tree is uncommitted and has never run. The first adoption gate is a green `main`, not
+turning on protection around known-red contexts.
+
 ## Verification state ledger
 
 Full evidence behind [`../AGENTS.md`](../AGENTS.md) `current`'s "Chưa khớp thực tế" table.
@@ -4271,8 +4427,9 @@ the always-loaded file stays small.
 
 | Claim                                                                   | Intent     | Status     | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ----------------------------------------------------------------------- | ---------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Electron can replace Tauri on both supported platforms                  | `building` | unverified | Gate A lacks Apple identity; Gate C lacks a real Windows run                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Deck ships the Electron host                                            | `decided`  | backlog    | `electron/` is on `main`, but the tag workflow still builds Tauri and the updater path is unchanged                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Electron can replace Tauri on both supported platforms                  | `building` | partial    | Gate A is CLOSED for macOS: owner-verified auto-update against `v0.12.5-electron.2`, 2026-08-19. Gate C still lacks a real Windows run, and the owner elected to ship Windows unverified                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Deck ships the Electron host                                            | `decided`  | backlog    | The tag path builds Electron for BOTH platforms since 2026-08-20 (`electron-release.yml` four jobs; `release.yml` is `workflow_dispatch`-only), but no stable tag has been cut and the pipeline has never run                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| One pushed tag ships macOS and Windows, both self-updating              | `building` | unverified | Pipeline built 2026-08-20 per the [spec](specs/2026-08-20-electron-stable-release-design.md) `decided`; never run. Windows is unsigned by decision (SmartScreen warns), runtime-unverified (Gate C), and an updating `Deck Electron` preview.2 becomes a side-by-side `SpaceVibe Deck` install with fresh userData. Intel Mac and Windows ARM are not served                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Pane detach is complete cross-platform                                  | `building` | partial    | Phase A has focused/native macOS evidence; Phase B and Windows pointer capture remain open                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | File explorer is available                                              | `decided`  | backlog    | Surface built 2026-08-14 behind a passed Gate M (6/6 packaged), then reshaped the same day — tabs on the stage strip, document on the stage — so that pass no longer covers it. Owner eye review, packaged both-layout pass and native macOS sign-off owed. Electron only, no Tauri implementation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | The browser tab works everywhere Deck does                              | `building` | partial    | Electron-only; no Tauri implementation exists. The 2026-08-15 tab-on-stage reshape is verified by suite/build only — native `electron:dev` pass and owner eye review owed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -4294,6 +4451,7 @@ the always-loaded file stays small.
 | A multi-agent tab's frame is native-verified                            | `building` | unverified | Landed 2026-08-20 (new DL-27.19): a rounded `--hair-strong` outline closes the rows of one multi-agent tab, drawn on the `data-headless` seam `PANE_TREE_HIDDEN` already produces — CSS only, no component or model change. Shipped first with a bled border, which put 255px of content in the 254px rail list and shifted the sidebar in the owner's running app; redrawn as an `outline`, whose left stroke the list clipped, and finally as DL-1.3's inset hairline, which paints inside and joins no layout. Evidence: `design-language` + `agent-rail` suites 57/57, a browser measurement showing `scrollWidth === clientWidth` (254px) and a framed row landing on the same x as an unframed one (287px both), and a screenshot of the real rail. **No full `npm test` and no `npm run build`** — a concurrent session's `terminal-links.ts` is mid-edit and red under `tsc`, so neither can be attributed cleanly. No `electron:dev` pass, no `tauri dev` pass, no owner eye review. Presence chrome, so Electron in effect; Tauri keeps the flat rows. See [the section above](#one-tab-one-frame--2026-08-20) `current` |
 | The new chrome typography and the stateless toggles are native-verified | `building` | unverified | Landed 2026-08-16: group labels went to 14px `--text-muted` (DL-4.4/DL-3.4) and `.iconbtn.is-active` was deleted (DL-21.8). Evidence is `npx tsc --noEmit` clean plus CSSOM/computed-style measurements taken in `npm run dev` — the group labels read 14px/560/muted, `.iconbtn.is-active` is absent from the stylesheet, and a collapsed sidebar leaves its button transparent with `aria-pressed="true"`. **No suite run and no owner eye review**: every component test that draws an icon is currently red under vitest with `InvalidCharacterError: "[object Object]"`, which predates this work and belongs to the in-flight Phosphor migration. Renderer-only, so it reaches Tauri too, where nothing has been run                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Opening a path an agent printed is native-verified                      | `building` | unverified | Landed 2026-08-20 (new DL-14.7, DL-23.11; three new Electron-only channels; `editorId`/`editorCommand` replaced by `externalAppId`). Evidence: `npm test` 3356/8 with all eight failures attributed to a concurrent session's uncommitted `agent-catalog.ts`/`action-registry.ts`, `npm run build`, `npm run electron:build` and `generate:menu:check` all clean, and 133 targeted assertions across the ten owning suites. **Nothing has been clicked in a running host**: no file opened at a real line, no app launched, no bundle icon ever rendered. No owner eye review of the split-button. Windows is Gate C, and `listExternalApps` answers empty off macOS by design. Detection reaches both hosts; routing degrades on Tauri to today's `open_editor` behaviour, also unrun. See [the section above](#opening-a-path-an-agent-printed--2026-08-20) `current`                                                                                                                                                                                                                                                                                                      |
+| Ctrl+C copies or interrupts on Windows                                  | `building` | unverified | Landed 2026-08-20 (new module [`action-performable.ts`](../src/terminal/action-performable.ts) `current`; `copy-or-interrupt` is the 53rd registry action). Evidence: `npm test` 3375 passed / 10 failed with every one of the ten reproduced identically on a pristine `HEAD` worktree (three other sessions' in-flight work — agent launch-command strings, the rail's remembered-projects model, `toggle-sessions` absent from `PLACEMENT`), `npx tsc --noEmit`, `npx tsc -p tsconfig.electron.json --noEmit`, `npm run build` and `npm run generate:menu:check` all clean, plus 4 new chord tests driving the real capture-phase `window` listener. **The Ctrl+C keystroke has never been pressed on Windows (Gate C)**, and no host run or owner eye review has happened. Renderer-only, so the mechanism reaches both hosts; macOS is untouched by design. See [the section above](#performable-keybindings-and-ctrlc--2026-08-20) `current` |
 
 ## Chưa khớp thực tế
 

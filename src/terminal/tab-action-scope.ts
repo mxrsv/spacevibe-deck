@@ -41,6 +41,7 @@ export const COMMAND_ACTIONS = [
   "close-pane",
   "close-tab",
   "copy-cwd",
+  "copy-or-interrupt",
   "copy-selection",
   "find",
   "find-next",

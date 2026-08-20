@@ -74,6 +74,14 @@ export interface Pane {
   clear(): void;
   /** Copy the current selection to the system clipboard (Ctrl+Shift+C). */
   copySelection(): void;
+  /** Whether the terminal currently holds a selection. */
+  hasSelection(): boolean;
+  /**
+   * Drop the selection. Separate from `copySelection` because only
+   * `copy-or-interrupt` clears — a plain copy keeps the highlight
+   * (docs/specs/2026-08-20-performable-keybindings-design.md D3).
+   */
+  clearSelection(): void;
   /** Paste the clipboard through xterm's bracketed-paste path (Ctrl+Shift+V). */
   paste(): void;
   /**
@@ -272,9 +280,7 @@ export function createPane(
     // its own lower half sits OUTSIDE that zone: aiming for the grip used to
     // remove the class and hide the pill from under the pointer. Standing on
     // the anchor holds it open — this is the hysteresis the zone alone lacks.
-    const inZone =
-      event.clientY - top < ANCHOR_ZONE_PX ||
-      anchor.contains(event.target as Node);
+    const inZone = event.clientY - top < ANCHOR_ZONE_PX || anchor.contains(event.target as Node);
     element.classList.toggle("is-anchor-zone", inZone);
   });
   element.addEventListener("mouseleave", () => {
@@ -317,17 +323,12 @@ export function createPane(
         if (!retireWebglAddon(pending)) {
           return;
         }
-        console.warn(
-          "WebGL terminal renderer context lost; falling back to DOM.",
-        );
+        console.warn("WebGL terminal renderer context lost; falling back to DOM.");
       });
       term.loadAddon(pending);
     } catch (error) {
       if (addon === undefined || retireWebglAddon(addon)) {
-        console.warn(
-          "WebGL terminal renderer initialization failed; falling back to DOM:",
-          error,
-        );
+        console.warn("WebGL terminal renderer initialization failed; falling back to DOM:", error);
       }
     }
   }
@@ -392,9 +393,7 @@ export function createPane(
     dot.style.background = info.dotColor;
     cwdEl.textContent = info.cwd;
     badge.textContent = info.badge;
-    badge.className = `pane__badge ${
-      info.agent ? "pane__badge--agent" : "pane__badge--shell"
-    }`;
+    badge.className = `pane__badge ${info.agent ? "pane__badge--agent" : "pane__badge--shell"}`;
   }
 
   function captureSelection(): SelectionSnapshot | null {
@@ -468,6 +467,8 @@ export function createPane(
     copySelection() {
       copyTerminalSelection(term);
     },
+    hasSelection: () => term.hasSelection(),
+    clearSelection: () => term.clearSelection(),
     paste() {
       pasteIntoTerminal(term);
     },
@@ -486,8 +487,7 @@ export function createPane(
       return capturedWrite ?? Promise.resolve(false);
     },
     scrollPage: (dir) => term.scrollPages(dir),
-    scrollToEdge: (edge) =>
-      edge === "top" ? term.scrollToTop() : term.scrollToBottom(),
+    scrollToEdge: (edge) => (edge === "top" ? term.scrollToTop() : term.scrollToBottom()),
     focus: () => term.focus(),
     applySettings,
     setHeaderInfo,

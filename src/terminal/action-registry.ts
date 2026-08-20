@@ -301,6 +301,14 @@ export const ACTION_REGISTRY = [
     scope: "pane",
   },
   {
+    id: "copy-or-interrupt",
+    label: "Copy Selection or Interrupt",
+    scope: "pane",
+    // No `menu` field on purpose. A Cocoa menu accelerator is consumed before
+    // the webview and would force the action regardless of whether it can be
+    // performed — the reason Ghostty excludes performable binds from menus.
+  },
+  {
     id: "paste",
     label: "Paste",
     scope: "pane",
