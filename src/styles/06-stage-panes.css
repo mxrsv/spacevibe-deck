@@ -77,6 +77,104 @@
   top: var(--frame-h);
 }
 
+/* ── DL §30: the migration notice ─────────────────────────────────────────
+   Spec: docs/specs/2026-08-17-tauri-migration-notice-design.md `decided`.
+
+   The first row of the stage's own content, BENEATH `.stage__strip` and above
+   the terminal grid. Never above the strip: the strip sits at `top: 0`, and
+   since 2026-08-16 hiding the sidebar moves the traffic-light inset onto it,
+   so anything higher would render underneath OS-painted window buttons.
+
+   Absolute like the strip, in the same shape, so the shell grid in
+   `02-shell.css` is untouched — its three rows and the explicit `grid-row`
+   placements that depend on them are load-bearing, and a fourth row would
+   move every one of them. */
+
+.migration-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--notice-h);
+  /* border-box for the strip's own reason: the seam below costs no height, so
+     the offsets under this rule stay exact arithmetic. */
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  /* DL-30.4: a §3 chrome role, never a colour of its own. The weight comes
+     from the position and the bold lead — a notice tinted red or yellow would
+     take the two words the status dot owns and say something this surface does
+     not mean (nothing is failing; a thing is ending). */
+  background: var(--chrome-1);
+  border-bottom: 1px solid var(--seam-divider);
+  color: var(--text-primary);
+  font-size: var(--type-body);
+}
+
+.stage--strip .migration-banner {
+  top: var(--frame-h);
+}
+
+.stage--dock .migration-banner {
+  right: var(--dock-w);
+}
+
+.migration-banner__message {
+  margin: 0;
+  min-width: 0;
+  /* One line while it fits; the message is two sentences and the window is
+     never narrower than the panes under it. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.migration-banner__action {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--type-meta);
+  cursor: pointer;
+}
+
+.migration-banner__action:hover,
+.migration-banner__action:focus-visible {
+  background: var(--state-hover-bg);
+}
+
+/* DL-30.5: the neutral wash, matching the tab strip's close rather than the
+   rail's red. Dismissing a notice is not destructive — it comes back on the
+   next launch. */
+.migration-banner__close {
+  flex: 0 0 auto;
+}
+
+/* DL-30.2: the notice COSTS the stage height rather than floating over the
+   panes — a terminal is a grid measured in rows, and an overlay would hide
+   output the user cannot scroll back into view.
+
+   `.stage__surface` is deliberately NOT offset: the document and the browser
+   are Electron-only and this notice is Tauri-only, so the two can never be on
+   screen together. If a file surface ever reaches Tauri, this is the rule that
+   has to grow with it. */
+.stage--notice .stage__tabs {
+  top: var(--notice-h);
+}
+
+.stage--strip.stage--notice .stage__tabs {
+  top: calc(var(--frame-h) + var(--notice-h));
+}
+
 .stage--dock .stage__strip {
   right: var(--dock-w);
 }

@@ -87,6 +87,10 @@
   /* DL-18: the single command row. 34px carries a 26px control comfortably
      and clears the macOS traffic lights, which need ~28px of vertical room. */
   --frame-h: 34px;
+  /* DL-30.2: the migration notice's row. Taller than the frame row because it
+     carries a sentence rather than controls, and it is the one surface in the
+     window whose whole job is to be read. */
+  --notice-h: 38px;
   /* macOS traffic-light cluster: 3 buttons from x=20, ~70px to the last edge,
      plus breathing room before the first tab. */
   --frame-lights-w: 78px;

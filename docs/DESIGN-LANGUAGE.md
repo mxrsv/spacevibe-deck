@@ -2510,6 +2510,50 @@ a docked panel (§19).
     `command not found` and sits there. Not disabled: DL-19.7 would rather a
     control were omitted than inert, and this one is neither.
 
+## 30. The migration notice
+
+Approved as a fork on 2026-08-17 and built on 2026-08-20, when
+`SpaceVibe Deck 1.0.0` shipped and the Tauri updater endpoint began answering
+404. Spec:
+[tauri migration notice](specs/2026-08-17-tauri-migration-notice-design.md)
+`decided`. Numbered 30 because §22 stays reserved — the next free number above
+§29, not the gap.
+
+No existing rule reaches this genre. §11 covers full-window screens, §13
+anchored popovers, §19 docked side panels, §29 modals — none of them describes
+a persistent horizontal row the app raises about ITSELF, which the user can
+act on or hide but cannot make permanently go away.
+
+- **DL-30.1** **There is exactly one, and it is reserved for something the
+  user must do outside the app.** This surface exists because the Tauri build
+  can no longer update itself and the replacement has to be downloaded by
+  hand — a fact no control inside the app can act on. A second banner competing
+  for the same row is how a chrome surface becomes a notification area, which
+  is a different product. Anything the app can fix itself belongs in the
+  chrome message bar, not here.
+- **DL-30.2** **It costs the stage height; it never floats over the panes.**
+  The row occupies `--notice-h` and the terminal grid starts below it. A
+  terminal is a grid measured in rows, so an overlay would hide output the
+  user cannot scroll back into view. It is also the first row of the STAGE's
+  content, beneath the tab strip — never above it, because the strip sits at
+  `top: 0` and a hidden sidebar puts the macOS traffic lights on that row.
+- **DL-30.3** **It carries `role="status"`, not `role="alert"`.** The notice is
+  true for as long as the window is open rather than an event that just
+  happened, and an assertive live region would interrupt a screen-reader user
+  at launch to say something that will still be true in an hour.
+- **DL-30.4** **Its colour is a §3 chrome role, never one of its own.** It
+  paints `--chrome-1` and closes with the same `--seam-divider` the strip and
+  the tab bar use. Red and yellow are the agent status dot's words (DL-27); a
+  notice wearing either would say something is failing, when what is happening
+  is that a thing is ending. The weight comes from the position and one bold
+  lead sentence.
+- **DL-30.5** **Its close control uses the neutral hover wash and says the
+  dismissal is temporary.** Neutral because dismissal is not destructive — the
+  notice returns on the next launch (DL-21.2, and the tab strip's close rather
+  than the rail's red). The accessible name has to carry "until Deck restarts",
+  since a bare `✕` reads as a promise never to show it again, which this
+  surface deliberately does not make.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

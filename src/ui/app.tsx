@@ -56,6 +56,8 @@ import {
   workspaceForPath,
 } from "../host/external-apps-host";
 import { AgentQuickPicker } from "./agent-quick-picker";
+import { MigrationBanner } from "./migration-banner";
+import { isTauriHost, shouldShowNotice } from "../updater/migration-notice";
 import { OpenBoard } from "../open-board/open-board";
 import type { SessionEntry } from "../lib/session-history";
 import { resumeSession } from "../sessions/resume-session";
@@ -171,6 +173,11 @@ import { restoreDeps } from "./app-restore-deps";
 
 export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const stagesRef = useRef<HTMLDivElement>(null);
+  // The migration notice's dismissal: window-scoped and UNPERSISTED per R5 and
+  // spec §5, so a relaunch brings it back. Two windows therefore dismiss twice
+  // — accepted, because a notice whose whole job is to be seen should err that
+  // way rather than the other.
+  const noticeDismissed = useSignal(false);
   const tabsRef = useRef<TabManager | null>(null);
   const updaterRef = useRef<UpdateController | null>(null);
   const fileControllerRef = useRef<FileSurfaceController | null>(null);
@@ -1329,6 +1336,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // written on release. `dockDragging` is also what holds the mount open —
   // pointer capture survives the panel going off-stage, but not unmounting.
   const dockDragging = dockWidthLive.value !== null;
+  // Tauri-only, and the host probe is a RUNTIME check, so one renderer bundle
+  // still serves both hosts (spec §6). The Electron host must never tell a
+  // user to leave Electron.
+  const showNotice = shouldShowNotice({
+    tauriHost: isTauriHost(),
+    dismissed: noticeDismissed.value,
+  });
   const dockPainted = dockPaintedOpen({
     ...dockState,
     dragCollapsed: dockDragging ? dockCollapseArmed.value : null,
@@ -1439,7 +1453,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             // open on purpose, so the painted state answers instead and the
             // terminals reclaim the space the moment the gesture arms.
             (dockDragging ? dockPainted : dockPresence.mounted) ? "stage--dock" : ""
-          } ${sidebar ? "stage--strip" : ""}`}
+          } ${sidebar ? "stage--strip" : ""} ${showNotice ? "stage--notice" : ""}`}
           // One number, two consumers: the panel's own column and the inset
           // that keeps the terminal grid clear of it. A drag updates the
           // live signal, so both move together instead of the terminals
@@ -1507,6 +1521,18 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 />
               ) : null}
             </div>
+          ) : null}
+          {/* Spec §4: the first row of the stage's own content, BENEATH the
+              strip and above the terminal grid. Never above the strip — the
+              strip sits at `top: 0` and on macOS a hidden sidebar moves the
+              traffic-light inset onto it, so anything higher renders under
+              OS-painted window buttons. */}
+          {showNotice ? (
+            <MigrationBanner
+              onDismiss={() => {
+                noticeDismissed.value = true;
+              }}
+            />
           ) : null}
           <div class="stage__tabs" ref={stagesRef} />
           {/* The document, on the stage rather than parked in the explorer
