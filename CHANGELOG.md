@@ -45,3 +45,12 @@ visible at a glance.
   preview manually after moving over.
 - Tauri-era installs of SpaceVibe Deck do not migrate settings or workspaces;
   this is a clean install by design.
+
+## Chưa khớp thực tế
+
+_(reality-drift ledger — heading text mandated by the global docs convention.
+Only `## <version>` sections are published as release notes, so this one never
+reaches a user.)_
+
+Empty: each version section above is frozen at its tag and describes what that
+release shipped.

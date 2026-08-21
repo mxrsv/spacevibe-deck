@@ -543,6 +543,23 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   before the webview and no renderer-side reorder can reach them. See
   [docs/CONTEXT.md](docs/CONTEXT.md#performable-keybindings-and-ctrlc--2026-08-20)
   `current`.
+- **Tauri users are told the build has stopped updating itself (2026-08-21).** New DL §30.
+  [`migration-notice.ts`](src/updater/migration-notice.ts) `current` holds the switch
+  (`MIGRATION_NOTICE_ENABLED`, the `GRAB_PASTE_DISABLED` precedent) and a pure
+  `shouldShowNotice`, so the case that matters — Electron host → false — is proven without
+  mounting anything; [`MigrationBanner`](src/ui/migration-banner.tsx) `current` is the row.
+  It became true rather than defensive when `1.0.0` took `releases/latest`: the endpoint
+  `tauri.macos.conf.json` serves, `releases/latest/download/latest.json`, now answers **404**,
+  so a deployed Tauri client's update check FAILS. The row sits BENEATH the tab strip
+  (the strip is `top: 0` and a hidden sidebar puts the traffic lights there), costs
+  `--notice-h` of stage height rather than floating over the panes, and its dismissal is
+  window-scoped and unpersisted — two windows dismiss twice, accepted. **No file under
+  `src-tauri/` and no workflow step changed** (spec §2: the notice must never become a
+  second way to reach `download-failed`). `npm test` 3529/0, `npm run build`,
+  `generate:menu:check` and the design-language gate are green, plus a gallery screenshot
+  of the real component — **no `tauri dev` pass, no `electron:dev` pass proving it stays
+  hidden, no owner eye review**. See
+  [spec](docs/specs/2026-08-17-tauri-migration-notice-design.md) `decided`.
 - **Chrome gallery is current:** `gallery.html` mounts real components through `src/gallery/`;
   run `npm run prototype:gallery`. Gallery code must never enter the shipping bundle. Its
   window-chrome section is narrowed to the one selected direction on purpose; parked
@@ -568,6 +585,17 @@ registry. Record a resolved fork in this queue with a one-line reason; move it t
 
 Open queue:
 
+- **The migration notice adds DL §30 and ships enabled (2026-08-17 spec,
+  built 2026-08-21).** A fork because it adds a rule to
+  `docs/DESIGN-LANGUAGE.md` and because it upgrades a frozen decision: the
+  migration spec §5 specified a final release's NOTES plus a doc page and
+  said "Neither is code". An in-app surface is code; the owner asked for it.
+  Ships **enabled** rather than dormant — the alternative (flip the constant
+  as the deliberate act that makes a release the final one) was offered and
+  declined — so any Tauri hotfix tagged from here carries the notice unless
+  `MIGRATION_NOTICE_ENABLED` is set to false for that build. Release-adjacent
+  but NOT release configuration: no updater endpoint, channel, signing input
+  or workflow step moved.
 - **The `More` trigger draws solid at 15px (2026-08-20, owner-asked).** Two DL
   amendments, which is what makes it a fork: DL-14.2's dock-header role
   widening gains the toolbar's `More` trigger (the entry point to every pane
@@ -777,6 +805,7 @@ _(Heading retained for the global living-doc convention.)_
 | The dock header's tooltips, glyph size and two new chords are native-verified | `building` | unverified | Landed 2026-08-19 (new DL-23.10; DL-14.2 widened): §23's tooltip left the feature toolbar for the dock header, the native `title` came off, glyphs went 13px → 15px, and `toggle-sessions` (⌘⇧Y) / `toggle-dock` (⌘⇧J) became real chords with the Tauri menu regenerated. Targeted suites, `tsc`, `npm run build` and a gallery pass — no host run, and Windows Ctrl+Shift+J beside Chromium's DevTools chord is unverified (Gate C) — [detail](docs/CONTEXT.md#the-dock-header-says-what-it-is-and-its-third-tab-gets-a-chord--2026-08-19) `current`                                                                                                      |
 | A custom editor command can be typed for ⌘+click                              | `current`  | **false**  | True until 2026-08-20 and now unreachable: `editorId`/`editorCommand` became the single catalog id `externalAppId`, and a stored `custom` migrates to the first catalog app. Named and accepted at removal time, exactly as the preset rename/delete loss was — restoring it needs a catalog entry that carries a command template. `editor-command.ts` and `open_editor`'s `custom` branch still build and still validate — [detail](docs/CONTEXT.md#opening-a-path-an-agent-printed--2026-08-20) `current`                                                                                                                                                |
 | Opening a path an agent printed is native-verified                            | `building` | unverified | Landed 2026-08-20 (new DL-14.7, DL-23.11): ⌘+click routes into Deck's editor, four detection grammars, a ten-app catalog and a split-button. `npm test` 3356/8 with every failure attributed to a concurrent session, `npm run build` / `electron:build` / `generate:menu:check` clean, 133 targeted assertions — but nothing has been clicked in a running host and no bundle icon has ever rendered — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                       |
+| The migration notice reaches Tauri users                                      | `building` | unverified | Built 2026-08-21 (new DL §30) after sitting as a spec since 2026-08-17; urgent now that `releases/latest/download/latest.json` 404s for every deployed Tauri client. `npm test` 3529/0, `npm run build`, `generate:menu:check`, the design-language gate 15/15 and a gallery screenshot of the real row — but **nothing has run under `npm run tauri dev`**, which is the ONLY host that shows it, no `electron:dev` pass proves it stays hidden there, and no owner eye review — [detail](docs/specs/2026-08-17-tauri-migration-notice-design.md) `decided` |
 | Ctrl+C copies or interrupts on Windows                                        | `building` | unverified | Landed 2026-08-20 (new `action-performable.ts`; `copy-or-interrupt` is the 53rd registry action). `npm test` 3375 passed / 10 failed with every failure reproduced identically on a pristine `HEAD` worktree, both typechecks, `npm run build` and `generate:menu:check` clean, 4 new chord tests on the real capture-phase listener — but no Windows hardware (Gate C), no host run and no owner eye review — [detail](docs/CONTEXT.md#performable-keybindings-and-ctrlc--2026-08-20) `current` |
 | The agent catalog and its shipped commands are native-verified                | `building` | unverified | Landed 2026-08-19 after three reshapes the same day: enum options → typed commands → catalog rows with `defaultCommand`. `npm test` 3250/0 and `npm run build` plus a gallery pass on the real component — no host run; drag-to-reorder and the expand caret are unbuilt — [detail](docs/CONTEXT.md#the-agent-catalog--2026-08-19) `current`                                                                                                                                                                                                                                                                                                                |
 | A multi-agent tab's frame is native-verified                                  | `building` | unverified | Landed 2026-08-20 (new DL-27.19): CSS only, on the `data-headless` seam. Design-language and agent-rail suites (57/57), plus a browser measurement proving a framed row and an unframed one start on the same x, and a screenshot of the real rail — no full suite, no build (another session's `terminal-links.ts` is mid-edit and red), no host run, no owner eye review — [detail](docs/CONTEXT.md#one-tab-one-frame--2026-08-20) `current`                                                                                                                                                                                                              |
@@ -784,4 +813,4 @@ _(Heading retained for the global living-doc convention.)_
 | `marketing/**` has a lint gate                                                | `current`  | **false**  | Measured 2026-08-20 and never true: `marketing/**` sits in `.prettierignore` AND in `.oxlintrc.json`'s `ignorePatterns`, so `npx oxlint marketing/` answers "No files found to lint" and `prettier --check` reports clean without reading the file (proven with `--ignore-path /dev/null`). Every "prettier clean" claim over this tree is vacuous. Not fixed: the sheets are written at 80 columns against prettier's 100, so `--write` would reformat the tree against its own convention — [detail](docs/CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20) `current` |
 | The rendered marketing video matches the app                                  | `decided`  | **false**  | Knowingly stale in SHAPE since the Electron chrome landed, and since 2026-08-20 in COLOUR too: `tokens.css`'s `:root` is shared, so the live video page took the re-derived palette while `marketing/video/out/` still holds the old render. The video entry links and paints (896.2 x 555.8, no console error) and keeps drawing the July shell BY CHOICE — `stage-driver.js` hard-requires `[data-ws-avatar]`. Nothing was re-rendered — [detail](docs/CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20) `current` |
 
-Updated 2026-08-20.
+Updated 2026-08-21.
