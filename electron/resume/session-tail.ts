@@ -17,7 +17,7 @@
 import * as claude from "./claude";
 import * as codex from "./codex";
 import * as opencode from "./opencode";
-import { cwdMatches, type ResumeRequest } from "./resolve";
+import { selectCandidate, type ResumeRequest } from "./resolve";
 import { tailBytes, type CandidateSession } from "./head";
 
 /**
@@ -146,8 +146,6 @@ const TAIL_SOURCES: Record<
   },
 };
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-
 /**
  * The tail window starts mid-file, so its first line is very likely the back
  * half of a record. Dropping it costs nothing real — a transcript's true first
@@ -175,26 +173,13 @@ function resolveOne(
   const taken = takenByAgent.get(request.agent) ?? new Set<string>();
   takenByAgent.set(request.agent, taken);
 
-  const cutoffMs = request.lastSeenAt - THIRTY_DAYS_MS;
-  // Filter first, sort the copy: sorting the scan result in place would
-  // reorder the per-call cache every other request reads (C1).
-  const eligible = candidatesFor(request.agent).filter(
-    (candidate) =>
-      candidate.mtimeMs >= cutoffMs && !taken.has(candidate.id) && cwdMatches(request, candidate),
-  );
-  eligible.sort(
-    (left, right) =>
-      Math.abs(left.mtimeMs - request.lastSeenAt) - Math.abs(right.mtimeMs - request.lastSeenAt),
-  );
-  const best = eligible[0];
-  if (best === undefined) {
+  // The SAME selection `resolve.ts` runs, so the rail quotes the conversation
+  // restore resumed. Only agents in `TAIL_SOURCES` reach here, and none of them
+  // is `agy`, so the default `cwdMatches` predicate is the right one.
+  const best = selectCandidate(request, candidatesFor(request.agent), taken);
+  if (best === null) {
     return null;
   }
-  // Taken at SELECTION, not at success: a session whose tail turns out to be
-  // unreadable or wordless is still this pane's session, and letting the next
-  // pane fall through to it would hand it a sentence from a conversation it is
-  // not running.
-  taken.add(best.id);
   return source.read(best, home);
 }
 

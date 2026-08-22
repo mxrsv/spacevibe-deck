@@ -18,9 +18,13 @@
  * fallback. `resolve.ts` falls total scan failure back to
  * `{ kind: "latest" }`, since `agy --continue` needs no id at all.
  */
-import { lstatSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { headBytes, type CandidateSession } from "./head";
+import {
+  datedFilesIn,
+  headBytes,
+  type CandidateSession,
+  type FileCandidate,
+} from "./head";
 
 const AGY_CONVERSATIONS_DIR = path.join(".gemini", "antigravity", "conversations");
 const AGY_EXTENSION = ".pb";
@@ -32,45 +36,11 @@ const HEAD_BYTES = 512 * 1024;
 /** Newest-first scan bound, same rationale as the other scanners. */
 const MAX_FILES = 300;
 
-function isRegularFile(candidate: string): boolean {
-  try {
-    return lstatSync(candidate, { throwIfNoEntry: false })?.isFile() === true;
-  } catch {
-    return false;
-  }
+function datedConversations(root: string): FileCandidate[] {
+  return datedFilesIn(root, AGY_EXTENSION);
 }
 
-interface DatedFile {
-  readonly filePath: string;
-  readonly mtimeMs: number;
-}
-
-function datedConversations(root: string): DatedFile[] {
-  let names: string[];
-  try {
-    names = readdirSync(root);
-  } catch {
-    return [];
-  }
-  const out: DatedFile[] = [];
-  for (const name of names) {
-    if (!name.endsWith(AGY_EXTENSION)) {
-      continue;
-    }
-    const filePath = path.join(root, name);
-    if (!isRegularFile(filePath)) {
-      continue;
-    }
-    try {
-      out.push({ filePath, mtimeMs: lstatSync(filePath).mtimeMs });
-    } catch {
-      continue;
-    }
-  }
-  return out;
-}
-
-function readCandidate(entry: DatedFile): CandidateSession | null {
+function readCandidate(entry: FileCandidate): CandidateSession | null {
   const id = path.basename(entry.filePath, AGY_EXTENSION);
   if (id === "") {
     return null;
