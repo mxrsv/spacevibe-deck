@@ -1,4 +1,5 @@
 import { ask } from "../host/dialog-host";
+import { baseName } from "../lib/path-name";
 import type { PaneProcessInfo } from "../lib/process-info";
 import { freshPaneInfo } from "./pane-info";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
@@ -74,11 +75,6 @@ export const UPDATE_COPY: ConfirmCopy = {
 
 /** How many unsaved file names are spelled out before the message summarizes. */
 const MAX_NAMED_FILES = 3;
-
-function baseName(path: string): string {
-  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  return cut === -1 ? path : path.slice(cut + 1);
-}
 
 /**
  * The unsaved-files half of a confirmation, or null when nothing is unsaved.

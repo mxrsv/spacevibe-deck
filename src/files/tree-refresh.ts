@@ -8,6 +8,7 @@
  * `loadListing` and the disposed flag are injected because both live in the
  * controller's closure — this module owns no filesystem access of its own.
  */
+import { parentDirectory } from "../lib/path-name";
 import { fileSurfaces, visibleDirectories } from "./file-surface-store";
 
 /**
@@ -22,14 +23,6 @@ import { fileSurfaces, visibleDirectories } from "./file-surface-store";
  * live.
  */
 const TREE_REFRESH_COALESCE_MS = 100;
-
-/** Split an absolute path into its parent directory. Paths in this module are
- * opaque strings from the host — never parsed with `node:path`, which is not
- * available to the renderer (spec: renderer stays host-free). */
-function parentDirectory(path: string): string {
-  const index = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  return index <= 0 ? path : path.slice(0, index);
-}
 
 export interface TreeRefreshDeps {
   /** Re-`listDir` one directory and apply the result to the store. */
