@@ -30,7 +30,6 @@ import {
   documentFor,
   fileDocuments,
   fileSurfaces,
-  fileTabsFor,
   listingErrorsFor,
   openFileTab,
   promoteFileTab,
@@ -614,10 +613,4 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       treeRefresh.dispose();
     },
   };
-}
-
-/** Whether the strip should show `workspacePath`'s file tabs — used by both
- * chrome layouts so a single-layout change cannot half-land (spec §7). */
-export function stripFileTabsFor(workspacePath: string | null): ReturnType<typeof fileTabsFor> {
-  return fileTabsFor(workspacePath);
 }

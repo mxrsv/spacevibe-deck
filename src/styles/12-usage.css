@@ -225,14 +225,9 @@
   border-radius: var(--radius-tight);
 }
 
-.metric-table__scroll::-webkit-scrollbar {
-  height: 6px;
-}
-
-.metric-table__scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+/* Only the THUMB is overridden: an always-visible bar on a table that scrolls
+   horizontally, where the base layer reveals one on hover. Size and track come
+   from `01-tokens.css`, which asks not to be re-declared. */
 .metric-table__scroll::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--fg) 25%, transparent);
   border-radius: var(--radius-tight);

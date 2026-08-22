@@ -65,10 +65,3 @@ export function refreshExternalApps(): Promise<void> {
 export function installedExternalAppIds(): readonly ExternalAppId[] {
   return installedExternalApps.value.map((app) => app.id);
 }
-
-/** Test seam; the app never clears this. */
-export function resetExternalApps(): void {
-  installedExternalApps.value = [];
-  externalAppsScanned.value = false;
-  inFlight = null;
-}
