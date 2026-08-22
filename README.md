@@ -1,290 +1,142 @@
 <p align="center">
-  <img src=".github/assets/icon.svg" width="128" alt="SpaceVibe Deck icon" />
+  <img src=".github/assets/icon.svg" width="112" alt="SpaceVibe Deck icon" />
 </p>
 
 <h1 align="center">SpaceVibe Deck</h1>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://github.com/mxrsv/spacevibe-deck/releases/latest"><img src="https://img.shields.io/github/v/release/mxrsv/spacevibe-deck" alt="Latest release"></a>
-  <img src="https://img.shields.io/badge/platform-macOS%2010.15%2B-lightgrey" alt="Platform: macOS 10.15+">
-  <img src="https://img.shields.io/badge/Windows%2011-engineering%20preview-orange" alt="Windows 11 engineering preview">
-  <img src="https://img.shields.io/badge/built%20with-Tauri%202-24C8DB" alt="Built with Tauri 2">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-5e7df0.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/macOS-Apple%20Silicon-252a30" alt="macOS: Apple Silicon">
+  <img src="https://img.shields.io/badge/Windows-x64-252a30" alt="Windows: x64">
+</p>
+
+<h2 align="center">Know which agent needs you next.</h2>
+
+<p align="center">
+  An attention-first desktop terminal that runs CLI agents side by side, shows supported
+  agents' latest words and attention state, and returns you to the pane that needs you.
 </p>
 
 <p align="center">
-  <em>A minimal desktop terminal for running many AI agent CLIs side by side.</em>
+  <strong><a href="https://github.com/mxrsv/spacevibe-deck/releases/latest">Download SpaceVibe Deck 1.0 →</a></strong>
 </p>
 
-![SpaceVibe Deck — split panes running agent CLIs](.github/assets/screenshot.png) `current`
+> **Windows:** the 1.0 installer is x64 and unsigned, so Microsoft SmartScreen will warn on
+> first install. Windows 1.0 has shipped without a real-hardware runtime verification pass.
 
-> Formerly **Stackgrid**. Same app, new name — it now lives at [deck.spacevibe.dev](https://deck.spacevibe.dev) alongside the rest of SpaceVibe. Your settings carry over automatically on first launch.
+![SpaceVibe Deck 1.0 with the Agent Rail and multiple CLI agents](.github/assets/screenshot.png) `current`
 
-## Why Deck?
+## The attention loop
 
-Deck is a minimal desktop terminal built for people who run **AI agent CLIs** — Claude Code, Codex, Antigravity, and the like. The problem with general-purpose terminals isn't that they need to be prettier; it's that they have no affordances for **watching and steering many agents at once**.
+|            |                                                                                                                        |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Launch** | Press the quick picker, choose an agent and a worktree, and start it in a real terminal pane.                           |
+| **Watch**  | Read working, asked, and failed states in the Agent Rail. Claude Code, Codex, and OpenCode also expose their latest words. |
+| **Jump**   | Select the project or pane that needs intervention instead of hunting through terminal tabs.                           |
+| **Resume** | Reopen Deck and restore its tabs, workspaces, and the agent conversations each CLI can resolve.                        |
 
-> **Windows status:** Windows 11 x64 is an engineering preview, not a beta.
-> An unsigned preview installer is published as the
-> [v0.9.0-windows-preview](https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0-windows-preview)
-> prerelease — SmartScreen will warn on install. Source and Windows desktop
-> builds pass [CI](.github/workflows/ci.yml#L65-L109) `current`; runtime QA,
-> screenshot and signing gates remain pending under the
-> [approved Windows spec](docs/specs/2026-07-29-windows-desktop-design.md#10-verification-and-acceptance) `decided`.
+Resume is exact for Claude Code, Codex, and OpenCode; Gemini CLI and Antigravity are
+best-effort, while custom agents relaunch their declared command. The implementation is
+documented in [session restore](src/terminal/session-restore.ts) `current` and
+[resume resolution](electron/resume/resolve.ts) `current`.
 
-Deck's whole job: open a working folder and a layout, launch an agent into every pane, read each pane's busy/idle state at a glance, rearrange panes as your attention shifts, and jump from a file path in the output straight to your editor — without turning into an IDE.
+## What ships in V1
 
-If you already live in agent CLIs and keep several running in parallel, it's built for you.
+### Attention-first Agent Rail
 
-## Features
+Every live project and pane stays visible in one rail. A short status mark distinguishes
+working, asked, and failed work; supported session logs supply the agent's latest words, and
+unsupported tails fall back to the agent name
+([rail model](src/ui/agent-rail-model.ts) `current`).
 
-### 🖥️ Real PTY, real shell
+### One project stage
 
-Every pane is backed by a real PTY via Rust's `portable-pty`. macOS runs your login shell; Windows prefers PowerShell 7 and falls back to Windows PowerShell with session-only prompt integration ([Windows shell adapter](src-tauri/src/platform/windows/shell.rs#L84-L113) `current`). Full truecolor (`COLORTERM=truecolor`), UTF-8-safe reads, and platform-owned process-tree teardown keep panes isolated ([Windows session ownership](src-tauri/src/platform/windows/mod.rs#L26-L41) `current`).
+Run real PTYs in split panes, move between git worktrees, edit files, and keep browser pages
+beside terminals as tabs on the same stage. Cmd/Ctrl+click on a path from an agent opens the
+file and line in a configured editor
+([PTY host](electron/pty/spawn.ts) `current`, [stage strip](src/ui/stage-surface-strip.ts) `current`).
 
-### 🔲 Split panes & layouts
+### Sessions that come back
 
-- Split any pane **vertically** or **horizontally** into a nested layout tree; visible shortcut labels follow the active platform ([platform keymaps](src/terminal/default-keymaps.ts#L86-L358) `current`).
-- **Drag the dividers** to resize; each split remembers its ratio.
-- **Focus** by cycling or by direction using the platform keymap.
-- **Zoom** a single pane to fill the tab (tmux-style), or use **Focus Expand** to gently enlarge whichever pane is active.
-- **Drag-dock** a pane by its header onto any edge of another pane to re-split on the fly.
-- **Swap two panes** — hold Cmd on macOS or Ctrl on Windows while dragging a pane's header onto another pane (the target lights up as a dashed full-pane outline) to trade their positions. Each pane keeps its own session and the split ratios stay put; release the modifier mid-drag to fall back to edge docking ([primary modifier](src/lib/platform.ts#L99-L107) `current`).
+Deck continuously journals open tabs and file surfaces, guards boot restoration against crash
+loops, and resumes supported conversations without assigning the same session twice
+([session journal](src/terminal/session-journal.ts) `current`). Pane scrollback and unsaved file
+edits are not restored.
 
-### 🗂️ Workspaces & the Open board
+### Local usage accounting
 
-- A **workspace** is a folder you pick as the working root. Each tab belongs to one workspace, and you can open the same workspace as many times as you like — every Open gets its own tab, so one repo can run several agent sessions side by side.
-- The **Open board** is the start surface: open a workspace, create a worktree, resume a previous session, or start again from **recent workspaces**. Missing folders stay collapsed until you ask to see them.
-- **One click opens.** Each recent row remembers the layout + agent it was last opened with and reopens with exactly that — hover a row to see the combo. To pick a different agent, use the quick picker (⌘T) instead.
-- Switch between a vertical **Agent Rail** and a horizontal **tab bar** in Settings. The rail shows live work only; previous sessions live in Sessions.
-- **Workspace logos** — each workspace auto-detects a favicon from the repo as its icon, or drag-drop your own image onto it.
-- **Agent status at a glance** — in the vertical workspace sidebar, each avatar shows a spinning ring while an agent is **actively working on a prompt** (not merely open at its prompt — Deck reads the agent's own OSC 9;4 progress reports, the same signal Ghostty renders as a progress bar), a **yellow dot** when a background tab has printed new output you haven't seen yet, and nothing when it's idle — so you can track every workspace without switching to it. Opening a tab clears its unread dot.
+The usage dashboard reads supported agents' existing local session logs and groups token use
+and known model costs by agent and day
+([usage aggregation](src/lib/usage-aggregate.ts) `current`). It needs no Deck account and adds
+no Deck telemetry.
 
-### 🔔 Agent attention rail
+### Workflow-neutral agents
 
-A per-pane layer on top of the status above: every pane tracks whether its agent is **working**, **finished**, **needs attention**, hit a **warning**, or hit an **error**, surfaced as a small colored dot on the same workspace sidebar avatar and on the top tab bar (whichever chrome mode you're using) — red for error, yellow for warning, magenta for needs attention, green for finished. Hover the dot for how many panes are waiting; the count stays in the tooltip rather than on the avatar, which is only 20px across.
-
-- **Jump to what needs you** — click a status mark, or use the active platform's attention shortcut, to focus the highest-priority pane across every tab and window; repeat it to move to the next one. Focusing a pane only acknowledges that pane's own attention — a still-working agent keeps showing as working right after.
-- **Native notifications, opt-in** — turn on **agent notifications** in Settings to get a background desktop notification (workspace + agent label + a one-word status, never terminal content) when an agent finishes or needs you, sent only while Deck's window isn't focused.
-
-v1 uses one generic "needs attention" label — it doesn't yet distinguish a prompt asking for input from one asking for approval — and reads only protocol signals (OSC 9;4, OSC 9/777, the terminal bell) plus a conservative output heuristic; Deck never parses agent or terminal text to guess at attention, and this state is in-memory only, so it resets on restart.
-
-### 🤖 Launch agents into every pane
-
-- One agent per tab, launched into **every pane** — four panes, four agents running in parallel. The board reuses whatever a workspace ran last time; the quick picker (⌘T) is where you choose a different one.
-- Agents are auto-discovered from the active platform environment (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity — and anything else you declare in Settings). macOS uses the interactive login shell; Windows resolves allowlisted executables from `PATH` and known command suffixes ([Windows discovery](src-tauri/src/platform/windows/agent_discovery.rs#L41-L109) `current`). A workspace with no memory opens with the **first detected agent**; **Shell only** is a chip in the quick picker (or `0`), never the silent default.
-- Running agents get **chrome**: the pane header, status bar, and busy dot are colored by process — Claude magenta, Codex green, OpenCode yellow, and cyan for both of Google's CLIs (Gemini and Antigravity share a hue; the header names which one) — so you can read the state of every pane in one glance.
-
-### 💾 Layout presets
-
-Save a split layout (plus optional per-pane working directories) as a **named preset** — from a live layout or by sketching one in a mini editor. Overwrite an existing one with ⌘⇧S; presets persist across restarts. (Renaming and deleting a preset lived on the board's layout cards and left with them on 2026-08-16 — no replacement surface yet.)
-
-### 🎨 Themes
-
-**Light** and **Dark** — that is the whole choice, and it is one row in Appearance (2026-08-19). Each is a full 16-color ANSI palette, and it drives the app's own chrome too, not just the terminal.
-
-Deck used to offer four terminal palettes, imported theme files and four per-color overrides. That machinery is all still in the app and a profile that selected one keeps it working — it simply has no control any more, and picking Light or Dark replaces it (Deck asks first when an imported theme or a saved color override is what would be replaced).
-
-### 🔗 Cmd/Ctrl+click a path or URL
-
-Hold Cmd on macOS or Ctrl on Windows and click in any pane's output:
-
-- a **file path** (with optional `:line:col`) opens in your editor — VS Code, Cursor, Zed, or a custom command — resolving relative paths against that pane's working directory. Windows validates structured editor intent and launches executable argv without a shell ([editor boundary](src-tauri/src/links.rs#L187-L314) `current`);
-- a **URL** (including OSC 8 hyperlinks written by CLI tools) opens in your default browser.
-
-Plain clicks still belong to the terminal, so mouse-driven TUIs (Claude Code, Codex) keep working.
-
-### 🔍 Search & scrollback
-
-Incremental, case-insensitive **find** in the focused pane with match counts and tick marks on the overview ruler, plus **clear buffer** to drop scrollback while keeping the current prompt. How many lines each pane keeps is configurable under Settings › Scrollback.
-
-### 🪶 Lightweight & local-first
-
-A native **Tauri 2** shell — no Electron. Everything stays on your machine: **no telemetry and no accounts**; network access belongs to your agents and platform bootstrap/install flows.
-
-## How it works
-
-Deck's model is **Window → Tab → Pane**:
-
-- **Pane** — one visible terminal, backed by exactly one PTY.
-- **Tab** — a split-layout tree of panes, bound to one **workspace** folder for its whole life.
-- **Window** — owns its tabs.
-
-A pane exposes an explicit `idle-shell`, `agent`, `busy`, or `unknown` process
-kind from the active platform inspector
-([PtyInfo](src-tauri/src/info.rs#L10-L34) `current`). Busy dots and close guards
-consume that truth rather than guessing. Deck doesn't restore sessions across
-launches: it always opens on the Open board, and you reopen folders from
-Recents. Only your settings, layout presets, workspace recents, and logos
-persist.
+Deck includes six agent definitions and accepts user-declared CLI commands. Each agent runs in
+its own terminal process; Deck coordinates the workspace and attention surface without
+replacing the CLI's own workflow
+([agent catalog](src/lib/agent-catalog.ts) `current`).
 
 ## Install
 
-### macOS
+- **[macOS — Apple Silicon (arm64)](https://github.com/mxrsv/spacevibe-deck/releases/latest):** signed and notarized. Intel Macs are not served by V1.
+- **[Windows — x64](https://github.com/mxrsv/spacevibe-deck/releases/latest):** unsigned; SmartScreen will warn. Windows ARM is not served, and V1 remains runtime-unverified on Windows hardware.
 
-Stable macOS distribution is paused until the app is Developer ID signed and
-notarized. Do not bypass Gatekeeper or install an unsigned Deck build from a
-release asset.
+Deck checks for updates and tells you when one is ready; you choose when to download, install,
+and relaunch. Both platforms use the moving
+[latest release](https://github.com/mxrsv/spacevibe-deck/releases/latest), never a pinned asset.
 
-### Windows engineering preview
+**Trust:** MIT licensed · no Deck account · no Deck telemetry · session and usage data read
+from local agent storage.
 
-Download the unsigned Windows 11 x64 installer from the
-[latest Windows preview prerelease](https://github.com/mxrsv/spacevibe-deck/releases/tag/v0.9.0-windows-preview).
-Windows may show Microsoft Defender SmartScreen or `Unknown publisher`; this
-preview is engineering test material, not a signed beta or stable Windows
-release.
+## Built-in agents
 
-### Updates
+- **[Claude Code](https://claude.com/claude-code):** `claude --dangerously-skip-permissions`
+- **[Codex](https://developers.openai.com/codex/cli):** `codex --dangerously-bypass-approvals-and-sandbox`
+- **[OpenCode](https://opencode.ai):** `opencode`
+- **[Antigravity](https://antigravity.google):** `agy --dangerously-skip-permissions`
+- **[Gemini CLI](https://github.com/google-gemini/gemini-cli):** `gemini --yolo`
+- **[Cursor](https://cursor.com/cli):** `cursor-agent --force`
 
-Updater-enabled builds check once after launch and reveal a small `Update`
-button beside Settings only when a newer release exists. Download and
-installation remain separate choices: click `Update`, then click
-`Install & Relaunch`. Deck refreshes every pane's process state and asks before
-restarting if an agent or other process is still running
-([update controller](src/updater/update-controller.ts#L82-L208) `current`). On
-macOS, the application menu also exposes `Check for Updates…` for a manual
-recheck and `Release Notes…` for the web changelog
-([update menu actions](src/updater/update-menu-actions.ts#L62-L90) `current`).
+These are the commands Deck ships, not hidden defaults. Settings lets you disable a built-in,
+replace its launch command, or add another CLI command.
 
-macOS follows the latest stable release. Windows follows the separate unsigned
-preview channel. Both payloads require Deck's Tauri updater signature, but the
-free updater signature does not remove Gatekeeper, SmartScreen, or
-`Unknown publisher` warnings. Existing v0.9.0 installations must manually
-install the first updater-enabled release once.
+## Essential shortcuts
 
-## Keyboard shortcuts
+| Action | macOS | Windows |
+| ------ | ----- | ------- |
+| Launch an agent | `⌘T` | `Ctrl+Shift+T` |
+| Jump to attention | `⌘⇧A` | `Ctrl+Shift+A` |
+| Next / previous surface | `⌘⇧]` / `⌘⇧[` | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
+| Split pane | `⌘D` / `⌘⇧D` | `Ctrl+Shift+D` / `Ctrl+Alt+Shift+D` |
+| Toggle file explorer | `⌘⇧B` | `Ctrl+Shift+B` |
+| Open usage | `⌘⇧U` | `Ctrl+Shift+U` |
+| Open Settings | `⌘,` | `Ctrl+,` |
 
-Both platform maps come from
-[`default-keymaps.ts`](src/terminal/default-keymaps.ts#L86-L358) `current`.
-Bare Windows `Ctrl+C`, `Ctrl+D`, `Ctrl+W`, `Ctrl+K`, and `Ctrl+F` remain PTY
-input. `Ctrl+V`, `Ctrl+Shift+V`, and physical `Shift+Insert` paste clipboard
-text through the shared action path — keymap, then the `commands` table, then
-the pane — with paste routed through xterm's `Terminal.paste()` for bracketed
-paste and CRLF normalization. Deck leaves `Alt+V` unbound, but image-paste
-support depends on the active agent CLI and is not yet verified on Windows. A
-plain Explorer Copy of a folder (`CF_HDROP` file list) is unsupported
-([commands table](src/terminal/tab-manager.ts#L1068-L1088) `current`,
-[Pane clipboard](src/terminal/pane.ts#L362-L367) `current`,
-[terminal-clipboard.ts](src/terminal/terminal-clipboard.ts#L27-L55) `current`).
-
-### Windows engineering preview
-
-| Shortcut                             | Action                                |
-| ------------------------------------ | ------------------------------------- |
-| Ctrl+Shift+C                         | Copy selection                        |
-| Ctrl+V / Ctrl+Shift+V / Shift+Insert | Paste clipboard text                  |
-| Ctrl+Alt+Shift+C                     | Copy pane working directory           |
-| Ctrl+Shift+D                         | Split pane vertically                 |
-| Ctrl+Alt+Shift+D                     | Split pane horizontally               |
-| Ctrl+Shift+W                         | Close pane                            |
-| Ctrl+Alt+Shift+W                     | Close tab                             |
-| Ctrl+Alt+] / [                       | Focus next / previous pane            |
-| Ctrl+Alt+Arrow                       | Focus pane by direction               |
-| Ctrl+Alt+Shift+Arrow                 | Swap pane by direction                |
-| Ctrl+Shift+E                         | Toggle Focus Expand                   |
-| Ctrl+Shift+Enter                     | Zoom / restore active pane            |
-| Ctrl+Shift+T                         | New tab (Open board)                  |
-| Ctrl+Alt+Shift+T                     | Reopen closed tab                     |
-| Ctrl+Alt+Shift+R                     | Rename tab / change dot color         |
-| Ctrl+Tab / Ctrl+Shift+Tab            | Next / previous tab                   |
-| Ctrl+1 … Ctrl+8 / Ctrl+9             | Select tab _N_ / last tab             |
-| Ctrl+Shift+F                         | Find in scrollback                    |
-| F3 / Shift+F3                        | Find next / previous match            |
-| Ctrl+Shift+K                         | Clear buffer                          |
-| Ctrl+Alt+Shift+N / S                 | New / save layout preset              |
-| Ctrl+Shift+A                         | Jump to the pane that needs attention |
-| Ctrl+= / Ctrl+- / Ctrl+0             | Font zoom in / out / reset            |
-| Ctrl+,                               | Toggle Settings                       |
-| Shift+PgUp / PgDn                    | Scroll scrollback by page             |
-| Shift+Home / End                     | Scroll to top / latest output         |
-
-Open Folder uses `Ctrl+Shift+O`; preset-editor splits and pane swapping use
-Ctrl as the Windows primary pointer modifier.
-
-### macOS
-
-**Panes**
-
-| Shortcut   | Action                                                       |
-| ---------- | ------------------------------------------------------------ |
-| ⌘D         | Split pane vertically                                        |
-| ⌘⇧D        | Split pane horizontally                                      |
-| ⌘] / ⌘[    | Focus next / previous pane                                   |
-| ⌘⌥ + ←→↑↓  | Focus pane by direction                                      |
-| ⌘⌥⇧ + ←→↑↓ | Swap pane with neighbor in that direction                    |
-| ⌘⇧A        | Jump to the pane that needs attention (agent attention rail) |
-| ⌘⇧⏎        | Zoom / restore active pane                                   |
-| ⌘E         | Toggle Focus Expand                                          |
-| ⌘W         | Close pane                                                   |
-
-**Tabs**
-
-| Shortcut  | Action                        |
-| --------- | ----------------------------- |
-| ⌘T        | New tab (Open board)          |
-| ⌘⇧W       | Close tab                     |
-| ⌘⇧T       | Reopen closed tab             |
-| ⌘⇧R       | Rename tab / change dot color |
-| ⌘⇧] / ⌘⇧[ | Next / previous tab           |
-| ⌘1 … ⌘8   | Select tab _N_                |
-| ⌘9        | Select last tab               |
-
-**Presets**
-
-| Shortcut | Action                |
-| -------- | --------------------- |
-| ⌘⇧N      | New layout preset     |
-| ⌘⇧S      | Save layout as preset |
-
-**Terminal & view**
-
-| Shortcut      | Action                        |
-| ------------- | ----------------------------- |
-| ⌘F            | Find in scrollback            |
-| ⌘G / ⌘⇧G      | Find next / previous match    |
-| ⌘K            | Clear buffer                  |
-| ⌘⇧C           | Copy pane's working directory |
-| ⇧PgUp / ⇧PgDn | Scroll scrollback by page     |
-| ⇧Home / ⇧End  | Scroll to top / latest output |
-| ⌘+ / ⌘- / ⌘0  | Font zoom in / out / reset    |
-| ⌘,            | Toggle Settings               |
-| ⌘Q            | Quit                          |
-
-Shift+Enter sends the terminal newline binding used by agent CLIs
-([implementation](src/terminal/shift-enter.ts#L20-L62) `current`).
-
-## Settings
-
-Open **Settings** from the toolbar (or the platform Settings shortcut) to configure:
-
-- **Font** family and size (default SF Mono, 13px), plus live font zoom.
-- **Appearance** — Light or Dark.
-- **Editor** for Cmd/Ctrl+click — VS Code, Cursor, Zed, or a custom command.
-- **Tab bar position** — left sidebar or top bar.
-- **Sidebar banner** — optional blended artwork with built-in country flags or
-  one imported image.
-- **Scrollback** — lines kept per pane (1k … 100k).
-- **Focus Expand** and **pane bar** toggles.
-
-Settings, layout presets, workspace recents, and logos are stored as JSON via the Tauri store; the panel has a **Restore defaults** button.
+The complete bindings live in [the platform keymaps](src/terminal/default-keymaps.ts) `current`.
 
 ## Build from source
 
-Requires Node.js 20+, Rust (stable), and the Tauri 2 prerequisites for the host
+Requires Node.js 20+ and the native build tools required by Electron and `node-pty` on your
 platform.
 
 ```bash
 npm install
-npm run tauri dev     # development
-npm run tauri build   # release build → src-tauri/target/release/bundle/
+npm run electron:dev
 ```
 
-## Tech stack
+Create a local packaged macOS build with `npm run electron:package`. Release packaging is a
+separate signed and notarized workflow.
 
-- **[Tauri 2](https://tauri.app)** — native desktop shell (Rust), real PTYs via `portable-pty`.
-- **[xterm.js 6](https://xtermjs.org)** — terminal rendering, with the fit / search / unicode-graphemes addons. Every pane automatically attempts WebGL custom glyphs after opening; initialization failure or context loss leaves the DOM renderer as the compatibility fallback without restarting the pane or PTY ([renderer lifecycle](src/terminal/pane.ts) `current`).
-- **[Preact](https://preactjs.com)** + `@preact/signals` — UI.
-- **TypeScript**, **[Vite 6](https://vite.dev)**, **Vitest**.
+Deck uses Electron, Preact, TypeScript, xterm.js, Monaco Editor, and `node-pty`. The host and
+renderer boundary is mapped in [the architecture guide](docs/ARCHITECTURE.md) `current`.
+
+## Contributing
+
+Focused issues and pull requests are welcome. Please open an
+[issue](https://github.com/mxrsv/spacevibe-deck/issues) before starting a substantial product
+or architecture change, and keep each pull request to one concern.
 
 ## License
 
@@ -292,12 +144,7 @@ npm run tauri build   # release build → src-tauri/target/release/bundle/
 
 ## Chưa khớp thực tế
 
-_(reality-drift ledger — heading text mandated by the global docs convention)_
-
 | Claim | Intent | Status | Evidence |
 | ----- | ------ | ------ | -------- |
-
-Empty — verified 2026-08-01. The Windows-status drift found by the
-[2026-08-01 audit](docs/review/2026-08-01-doc-drift.md) `current` was resolved
-the same day by rewriting the status block above. Do not remove this section
-(D7).
+| The README and both marketing images are visually approved | `current` | Verified | Owner approved the GitHub-rendered page, [hero](.github/assets/screenshot.png) and [social preview](.github/assets/social-preview.png) on 2026-08-22. |
+| SpaceVibe Deck 1.0 is runtime-verified on Windows | `building` | Unverified | The x64 installer ships unsigned by owner decision; the real-hardware Gate C remains open. |
