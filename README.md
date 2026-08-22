@@ -25,7 +25,7 @@
 > **Windows:** the 1.0 installer is x64 and unsigned, so Microsoft SmartScreen will warn on
 > first install. Windows 1.0 has shipped without a real-hardware runtime verification pass.
 
-![SpaceVibe Deck 1.0 with the Agent Rail and multiple CLI agents](.github/assets/screenshot.png) `current`
+![SpaceVibe Deck 1.0 with the Agent Rail and multiple CLI agents](.github/assets/screenshot.png?v=1.0.0) `current`
 
 ## The attention loop
 
