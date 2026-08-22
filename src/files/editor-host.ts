@@ -23,6 +23,7 @@
 import type { Settings } from "../settings/settings-schema";
 import { resolveTheme } from "../settings/themes";
 import { deriveChromeColors } from "../lib/derive-colors";
+import { baseName } from "../lib/path-name";
 
 /** The subset of Monaco this feature uses. Structural, so nothing here has to
  * import Monaco's types at module scope. */
@@ -95,8 +96,7 @@ export const EDITOR_LANGUAGES: readonly EditorLanguage[] = [
  * `.JSON` and `.MD` both turn up in real repositories.
  */
 export function languageForPath(filePath: string): string | null {
-  const cut = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
-  const name = cut === -1 ? filePath : filePath.slice(cut + 1);
+  const name = baseName(filePath);
   for (const language of EDITOR_LANGUAGES) {
     if (language.filenames?.some((candidate) => name.startsWith(candidate))) {
       return language.id;
@@ -204,12 +204,6 @@ export function monacoThemeFor(settings: Settings): MonacoThemeData {
 
 let loading: Promise<MonacoApi> | null = null;
 
-/** Whether Monaco is already in memory — the panel uses it to decide whether
- * opening a file is instant or has a chunk to fetch first. */
-export function isMonacoLoaded(): boolean {
-  return loading !== null;
-}
-
 /**
  * Load Monaco once, with exactly the enumerated languages.
  *
@@ -279,9 +273,4 @@ export function applyMonacoTheme(monaco: MonacoApi, settings: Settings): void {
     monacoThemeFor(settings) as Parameters<typeof monaco.editor.defineTheme>[1],
   );
   monaco.editor.setTheme(DECK_THEME_ID);
-}
-
-/** Reset the cached loader. Tests only. */
-export function resetMonacoLoaderForTests(): void {
-  loading = null;
 }

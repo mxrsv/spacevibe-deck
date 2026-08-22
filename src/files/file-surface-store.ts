@@ -260,26 +260,6 @@ export function toggleDirectory(workspacePath: string, directory: string): void 
   });
 }
 
-export function expandDirectory(workspacePath: string, directory: string): void {
-  const surface = surfaceFor(workspacePath);
-  if (surface.expanded.has(directory)) {
-    return;
-  }
-  writeSurface(workspacePath, {
-    expanded: new Set([...surface.expanded, directory]),
-  });
-}
-
-export function collapseDirectory(workspacePath: string, directory: string): void {
-  const surface = surfaceFor(workspacePath);
-  if (!surface.expanded.has(directory)) {
-    return;
-  }
-  const expanded = new Set(surface.expanded);
-  expanded.delete(directory);
-  writeSurface(workspacePath, { expanded });
-}
-
 /** Rows the tree renders right now, for `workspacePath`'s root. */
 export function treeRows(workspacePath: string | null): TreeRow[] {
   if (workspacePath === null) {

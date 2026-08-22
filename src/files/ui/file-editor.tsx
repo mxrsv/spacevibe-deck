@@ -12,6 +12,7 @@
  */
 import { useEffect, useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
+import { baseName } from "../../lib/path-name";
 import { settings } from "../../settings/settings-store";
 import { FONT_FALLBACK } from "../../settings/settings-schema";
 import {
@@ -42,11 +43,6 @@ interface EditorHandle {
   /** True while the component is writing the model, so the change listener
    * does not report Deck's own reload as a user edit. */
   applying: boolean;
-}
-
-function baseName(path: string): string {
-  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  return cut === -1 ? path : path.slice(cut + 1);
 }
 
 export function FileEditor(props: FileEditorProps) {

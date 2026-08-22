@@ -20,6 +20,7 @@ import { useEffect, useRef } from "preact/hooks";
 import "@xterm/xterm/css/xterm.css";
 import "../styles.css";
 import { initializeDesktopEnvironmentFromBackend } from "../lib/platform";
+import { parentDirectory } from "../lib/path-name";
 import { initSettings, settings } from "../settings/settings-store";
 import { defaultPtyClient } from "../terminal/pty-client";
 import { createTerminalManager } from "../terminal/terminal-manager";
@@ -38,11 +39,6 @@ function fixturePath(): string {
     throw new Error("Gate M needs ?file= — launch through the verifier");
   }
   return value;
-}
-
-function parentDirectory(path: string): string {
-  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  return cut <= 0 ? path : path.slice(0, cut);
 }
 
 interface HarnessProps {

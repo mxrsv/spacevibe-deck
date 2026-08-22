@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   agentForWorkspace,
-  folderName,
   forgetAgent,
   formatRelativeTime,
   MAX_RECENTS,
@@ -172,11 +171,6 @@ describe("validateWorkspaces", () => {
 });
 
 describe("display helpers", () => {
-  it("folderName returns the last segment", () => {
-    expect(folderName("/Users/dev/work/monorepo")).toBe("monorepo");
-    expect(folderName("/")).toBe("/");
-  });
-
   it("formatRelativeTime buckets by age", () => {
     const MIN = 60_000;
     const DAY = 24 * 60 * MIN;

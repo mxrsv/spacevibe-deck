@@ -4,6 +4,7 @@ import { shortcutLabel } from "../../lib/shortcut-label";
 import {
   ActionTooltip,
   useTooltipVisibility,
+  tooltipTriggerProps,
 } from "../controls/action-tooltip";
 import {
   CHROME_ICON,
@@ -66,14 +67,7 @@ export function DockToggle({
         aria-label={label}
         aria-pressed={open}
         aria-describedby={tooltip.anchor !== null ? tooltipId : undefined}
-        onPointerEnter={(event) => tooltip.open(event.currentTarget)}
-        onPointerLeave={() => {
-          if (document.activeElement !== ref.current) {
-            tooltip.close();
-          }
-        }}
-        onFocus={(event) => tooltip.open(event.currentTarget)}
-        onBlur={() => tooltip.close()}
+        {...tooltipTriggerProps(tooltip, ref)}
         onClick={onToggle}
       >
         <DeckIcon icon={SidebarSimple} size={size} mirrored />

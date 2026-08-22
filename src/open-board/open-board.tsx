@@ -3,7 +3,8 @@ import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { open } from "../host/dialog-host";
 import type { Preset } from "../lib/preset-schema";
-import { folderName, partitionRecents, resolveAgentChoice } from "../lib/workspace-recents";
+import { partitionRecents, resolveAgentChoice } from "../lib/workspace-recents";
+import { workspaceLabel } from "../lib/workspace-label";
 import type { AgentChoice, RecentWorkspace } from "../lib/workspace-recents";
 import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
 import type { DetectedAgent } from "../terminal/pty-client";
@@ -193,7 +194,7 @@ export function OpenBoard({
       return;
     }
     if (missing.value.has(path)) {
-      notice.value = `${folderName(path)} is missing — pick another folder`;
+      notice.value = `${workspaceLabel(path)} is missing — pick another folder`;
       return;
     }
     notice.value = null;
@@ -204,7 +205,7 @@ export function OpenBoard({
     const gone = await livenessProbe.current;
     if (gone?.has(path) === true) {
       opening.value = false;
-      notice.value = `${folderName(path)} is missing — pick another folder`;
+      notice.value = `${workspaceLabel(path)} is missing — pick another folder`;
       return;
     }
     const entry = recents.find((recent) => recent.path === path);

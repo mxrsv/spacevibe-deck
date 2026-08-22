@@ -7,6 +7,7 @@
  * `TabManager`, never inside it (spec §2.3), and this projection is the file
  * side's half of the same seam.
  */
+import { baseName } from "../lib/path-name";
 import type { FileSurfaceController } from "./file-surface-controller";
 import { documentFor, stripFileTabs } from "./file-surface-store";
 
@@ -28,11 +29,6 @@ export interface TabViewModel {
    * every file after them (DL-18.6, 2026-08-16).
    */
   readonly openedAt: number;
-}
-
-function baseName(path: string): string {
-  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  return cut === -1 ? path : path.slice(cut + 1);
 }
 
 /** File tabs of the active workspace, in strip order. */
