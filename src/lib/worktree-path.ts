@@ -4,7 +4,7 @@
  * convention, so the field stays editable and this only computes the
  * starting value.
  *
- * POSIX `/`-separated only, matching `folderName` in `workspace-recents.ts`:
+ * POSIX `/`-separated only, like `workspaceLabel` in `workspace-label.ts`:
  * Windows evidence for this flow is still an open gate (see repo AGENTS.md).
  */
 export function suggestWorktreeDest(repoPath: string, branch: string): string {
