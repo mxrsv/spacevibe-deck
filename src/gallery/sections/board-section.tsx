@@ -22,6 +22,10 @@ import {
   sidebarFrameActionsSpecimen,
 } from "../chrome-fixtures";
 import { SectionHead, Specimen } from "../specimen";
+import { BoardComposer } from "../../open-board/board-composer";
+import { EMPTY_DRAFT, startTaskProblem, type NewTaskDraft } from "../../launcher/new-task-draft";
+import type { AgentOption } from "../../lib/agent-catalog";
+import type { RecentWorkspace } from "../../lib/workspace-recents";
 
 /**
  * Gallery-only mock for docs/specs/2026-08-23-new-task-launcher-design.md.
@@ -634,6 +638,74 @@ function CreateWorkspaceSpecimen() {
   );
 }
 
+/**
+ * The REAL `BoardComposer`, not the mock above it — same section on purpose, so
+ * the approved treatment and the shipped component can be read side by side.
+ *
+ * It is still driven from here: the gallery owns the draft in a local signal,
+ * and every launch callback is a no-op. Nothing in this file can materialize a
+ * pane (R7 runs app → gallery, never the reverse).
+ */
+function LiveComposerSpecimen() {
+  const draft = useSignal<NewTaskDraft>({
+    ...EMPTY_DRAFT,
+    prompt: "Review the new task flow and identify where users lose context.",
+    workspacePath: WORKSPACES[0].path,
+    agentId: "claude",
+  });
+  const agents: readonly AgentOption[] = AGENTS.map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    detail: `/usr/local/bin/${entry.id}`,
+    missing: false,
+  }));
+  const recents: readonly RecentWorkspace[] = WORKSPACES.map((entry, index) => ({
+    path: entry.path,
+    lastOpenedAt: WORKSPACES.length - index,
+  }));
+  const problem = startTaskProblem(draft.value, {
+    runnableAgentIds: agents.map((agent) => agent.id),
+    unavailableAgentIds: [],
+  });
+  return (
+    <Specimen
+      name="Open Board · the real component"
+      note="src/open-board/board-composer.tsx with real agents, real recents and the real runtime catalog"
+      surface="none"
+      tall
+    >
+      <DeckShell board>
+        <div class="stage nt-stage nt-stage--board">
+          <BoardComposer
+            draft={draft.value}
+            agents={agents}
+            recents={recents}
+            declaredModels={{ claude: ["opus", "sonnet"] }}
+            agentRuntimeDefaults={{}}
+            canCreateWorkspace
+            canCreateWorktree
+            pending={null}
+            problem={problem}
+            notice={null}
+            onDraftChange={(next) => {
+              draft.value = next;
+            }}
+            onSelectWorkspace={(path) => {
+              draft.value = { ...draft.value, workspacePath: path };
+            }}
+            onPickFolder={NOOP}
+            onCreateWorkspace={NOOP}
+            onCreateWorktree={NOOP}
+            onManageAgents={NOOP}
+            onStartTask={NOOP}
+            onOpenAgent={NOOP}
+          />
+        </div>
+      </DeckShell>
+    </Specimen>
+  );
+}
+
 export function BoardSection() {
   return (
     <>
@@ -641,6 +713,7 @@ export function BoardSection() {
         title="New task launcher"
         blurb="One launch contract in two surfaces: Open Board for deliberate composition, Quick Launch for contextual work without losing the live agent behind it."
       />
+      <LiveComposerSpecimen />
       <FullComposerSpecimen />
       <CompactComposerSpecimen />
       <QuickPromptSpecimen />
