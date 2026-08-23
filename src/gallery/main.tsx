@@ -12,6 +12,7 @@ import "./agent-rail-variants.css";
 import "./rail-structure-variants.css";
 import "./sections/settings-direction.css";
 import "./sections/launch-profiles-section.css";
+import "./sections/new-task-launcher-section.css";
 import { initializeDesktopEnvironmentFromBackend } from "../lib/platform";
 import { configureSettingsSync, settingsLoadState } from "../settings/settings-store";
 import { createMemorySettingsSync } from "../settings/settings-sync";
