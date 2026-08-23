@@ -16,10 +16,15 @@
  * legacy half; they still matter for an install that never migrated, and their
  * ids are the same ids, so a session present in both is one candidate, not two.
  */
-import { lstatSync, readdirSync } from "node:fs";
 import path from "node:path";
 import * as db from "./opencode-db";
-import { headBytes, type CandidateSession } from "./head";
+import {
+  childDirs,
+  datedFilesIn,
+  headBytes,
+  type CandidateSession,
+  type FileCandidate,
+} from "./head";
 
 const OPENCODE_STORAGE_DIR = path.join(".local", "share", "opencode", "storage");
 
@@ -66,73 +71,18 @@ const MAX_TAIL_PARTS = 60;
  */
 const SAFE_ID = /^[A-Za-z0-9_-]+$/;
 
-function isRegularFile(candidate: string): boolean {
-  try {
-    return lstatSync(candidate, { throwIfNoEntry: false })?.isFile() === true;
-  } catch {
-    return false;
-  }
-}
-
-function isDirectory(candidate: string): boolean {
-  try {
-    return lstatSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true;
-  } catch {
-    return false;
-  }
-}
-
-function bucketDirs(root: string): string[] {
-  let names: string[];
-  try {
-    names = readdirSync(root);
-  } catch {
-    return [];
-  }
-  return names.map((name) => path.join(root, name)).filter(isDirectory);
-}
-
-function jsonFiles(dir: string): string[] {
-  let names: string[];
-  try {
-    names = readdirSync(dir);
-  } catch {
-    return [];
-  }
-  return names
-    .filter((name) => name.endsWith(".json"))
-    .map((name) => path.join(dir, name))
-    .filter(isRegularFile);
-}
-
-interface DatedFile {
-  readonly filePath: string;
-  readonly mtimeMs: number;
-}
-
-function dated(filePaths: readonly string[]): DatedFile[] {
-  const out: DatedFile[] = [];
-  for (const filePath of filePaths) {
-    try {
-      out.push({ filePath, mtimeMs: lstatSync(filePath).mtimeMs });
-    } catch {
-      continue;
-    }
-  }
-  return out;
-}
 
 /** Every `.json` directly inside `dir`, newest mtime first. A missing or
  *  unreadable directory is an empty list, never a throw. */
-function newestFirstIn(dir: string): DatedFile[] {
-  // Sorting the copy `dated` just built, not a shared array (C1).
-  return dated(jsonFiles(dir)).sort((left, right) => right.mtimeMs - left.mtimeMs);
+function newestFirstIn(dir: string): FileCandidate[] {
+  // Sorting the copy `datedFilesIn` just built, not a shared array (C1).
+  return datedFilesIn(dir, ".json").sort((left, right) => right.mtimeMs - left.mtimeMs);
 }
 
-function datedSessions(root: string): DatedFile[] {
-  const out: DatedFile[] = [];
-  for (const bucket of bucketDirs(root)) {
-    out.push(...dated(jsonFiles(bucket)));
+function datedSessions(root: string): FileCandidate[] {
+  const out: FileCandidate[] = [];
+  for (const bucket of childDirs(root)) {
+    out.push(...datedFilesIn(bucket, ".json"));
   }
   return out;
 }
@@ -156,7 +106,7 @@ function readJsonObject(filePath: string, cap: number): Record<string, unknown> 
   return value as Record<string, unknown>;
 }
 
-function readCandidate(entry: DatedFile): CandidateSession | null {
+function readCandidate(entry: FileCandidate): CandidateSession | null {
   const node = readJsonObject(entry.filePath, HEAD_BYTES);
   if (node === null) {
     return null;

@@ -15,6 +15,14 @@ export interface ResumeRequest {
   readonly agent: string;
   readonly cwd: string | null;
   readonly lastSeenAt: number;
+  /** Only the rail's tail path sends one; `resume_lookup` ignores it. */
+  readonly preferredId?: string;
+}
+
+/** Wire mirror of `electron/resume/session-tail.ts`'s `SessionTailAnswer`. */
+export interface SessionTailAnswer {
+  readonly id: string;
+  readonly tail: string | null;
 }
 
 /**

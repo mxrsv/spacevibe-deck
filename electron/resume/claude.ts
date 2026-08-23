@@ -6,10 +6,11 @@
  * conversation a terminal pane resumes into, so unlike
  * `electron/usage/discover.ts`'s counter this scanner never descends there.
  */
-import { lstatSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { CLAUDE_DIR, CLAUDE_PROJECTS_DIR, IDENTITY_HEAD_BYTES } from "../usage/model";
 import {
+  childDirs,
+  datedFilesIn,
   headBytes,
   headJsonLines,
   normalizeTitle,
@@ -32,56 +33,10 @@ export const CLAUDE_RESTORE_SCAN: ScanOptions = Object.freeze({
   withTitle: false,
 });
 
-function isRegularFile(candidate: string): boolean {
-  try {
-    return lstatSync(candidate, { throwIfNoEntry: false })?.isFile() === true;
-  } catch {
-    return false;
-  }
-}
-
-function isDirectory(candidate: string): boolean {
-  try {
-    return lstatSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true;
-  } catch {
-    return false;
-  }
-}
-
-function projectDirs(root: string): string[] {
-  let names: string[];
-  try {
-    names = readdirSync(root);
-  } catch {
-    return [];
-  }
-  return names.map((name) => path.join(root, name)).filter(isDirectory);
-}
-
-function transcriptFiles(projectDir: string): string[] {
-  let names: string[];
-  try {
-    names = readdirSync(projectDir);
-  } catch {
-    return [];
-  }
-  return names
-    .filter((name) => name.endsWith(".jsonl"))
-    .map((name) => path.join(projectDir, name))
-    .filter(isRegularFile);
-}
-
 function datedTranscripts(root: string): FileCandidate[] {
   const out: FileCandidate[] = [];
-  for (const project of projectDirs(root)) {
-    for (const filePath of transcriptFiles(project)) {
-      try {
-        const info = lstatSync(filePath);
-        out.push({ filePath, mtimeMs: info.mtimeMs, size: info.size });
-      } catch {
-        continue;
-      }
-    }
+  for (const project of childDirs(root)) {
+    out.push(...datedFilesIn(project, ".jsonl"));
   }
   return out;
 }

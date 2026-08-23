@@ -324,4 +324,33 @@ describe("validateResumeRequests", () => {
     expect(validateResumeRequests(null)).toEqual([]);
     expect(validateResumeRequests({ agent: "claude" })).toEqual([]);
   });
+
+  it("(l) carries a well-formed preferredId through to the resolver", () => {
+    // The validator REBUILDS each entry field by field, so a field it does not
+    // name is silently dropped and every typecheck still passes — the tail
+    // path's pin would reach the main process as `undefined` and nothing would
+    // say so.
+    expect(
+      validateResumeRequests([
+        { agent: "claude", cwd: "/tmp/w", lastSeenAt: 1, preferredId: "abc-123_DEF.4" },
+      ]),
+    ).toEqual([{ agent: "claude", cwd: "/tmp/w", lastSeenAt: 1, preferredId: "abc-123_DEF.4" }]);
+  });
+
+  it("(m) a malformed preferredId drops the pin, it does not reject the request", () => {
+    // Blinding a row because its remembered id came back wrong is a worse
+    // answer than the ranking the pin exists to replace.
+    const raw = [
+      { agent: "claude", cwd: "/tmp/w", lastSeenAt: 1, preferredId: "../../etc/passwd" },
+      { agent: "claude", cwd: "/tmp/w", lastSeenAt: 2, preferredId: "" },
+      { agent: "claude", cwd: "/tmp/w", lastSeenAt: 3, preferredId: 42 },
+      { agent: "claude", cwd: "/tmp/w", lastSeenAt: 4, preferredId: "x".repeat(129) },
+    ];
+    expect(validateResumeRequests(raw)).toEqual([
+      { agent: "claude", cwd: "/tmp/w", lastSeenAt: 1 },
+      { agent: "claude", cwd: "/tmp/w", lastSeenAt: 2 },
+      { agent: "claude", cwd: "/tmp/w", lastSeenAt: 3 },
+      { agent: "claude", cwd: "/tmp/w", lastSeenAt: 4 },
+    ]);
+  });
 });

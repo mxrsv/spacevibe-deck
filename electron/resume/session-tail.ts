@@ -4,10 +4,18 @@
  *
  * This is the twin of `resolve.ts`, not a new mechanism. Resume asks "which
  * session file is this pane's?" and answers with an id; the rail asks the same
- * question and answers with the last thing that session said. Both must pick
- * the SAME file — same candidate scan, same cwd predicate, same 30-day cutoff,
- * same recency ranking, same greedy dedup — or a pane wears another pane's
- * sentence.
+ * question and answers with the last thing that session said. Both share one
+ * candidate scan, one cwd predicate and one ranking function
+ * (`selectCandidate`) so the two answers cannot drift apart.
+ *
+ * They stopped being identical on 2026-08-22. Restore asks the question ONCE,
+ * at boot; the rail asks it every few seconds, and a question re-answered from
+ * scratch every few seconds gave a different answer every time — the pairing
+ * permuted, and because a null tail keeps the renderer's previous sentence, one
+ * sentence ended up printed on three rows at once. So the rail's request may
+ * carry a `preferredId` — the session this pane was paired with last time — and
+ * `resolveSessionTails` honours every pin BEFORE ranking anything, in a first
+ * pass over the whole batch. Restore sends no pin and is unaffected.
  *
  * Like `resolveResume`, `resolveSessionTails` never throws and never rejects:
  * an unreadable transcript, a malformed request or an agent with no parser
@@ -17,7 +25,7 @@
 import * as claude from "./claude";
 import * as codex from "./codex";
 import * as opencode from "./opencode";
-import { cwdMatches, type ResumeRequest } from "./resolve";
+import { findCandidateById, selectCandidate, type ResumeRequest } from "./resolve";
 import { tailBytes, type CandidateSession } from "./head";
 
 /**
@@ -27,6 +35,25 @@ import { tailBytes, type CandidateSession } from "./head";
  * records trailing it needs comparable room.
  */
 const TAIL_WINDOW_BYTES = 64 * 1024;
+
+/**
+ * How far back the reader is willing to go when the first window holds no
+ * sentence, largest last.
+ *
+ * 64 KiB was assumed to cover "the newest assistant turn plus the records
+ * trailing it". On a WORKING pane it does not: an agent's own tool traffic
+ * pushes its last spoken words out of the window within a turn or two —
+ * measured 2026-08-22 on this machine's corpus, where 486 of the 616 records
+ * sitting past the window were `user:tool_result` — so a busy pane answered
+ * `null` far more often than it answered a sentence, which is what let stale
+ * text survive on a row.
+ *
+ * Each step is a fresh read from the END of the file rather than a chunk
+ * stitched onto the last one: a JSONL record split across a chunk boundary has
+ * to be re-joined, and a re-join done wrong invents sentences that were never
+ * said. Re-reading costs ~1.3 MiB per miss and only on a miss.
+ */
+const TAIL_WINDOW_STEPS: readonly number[] = [TAIL_WINDOW_BYTES, 256 * 1024, 1024 * 1024];
 
 /** A rail row is one line of about this width; the rest is dropped. */
 const TAIL_MAX_CHARS = 160;
@@ -100,7 +127,33 @@ type TailReader = (best: CandidateSession, home: string) => string | null;
 
 /** The Claude/Codex shape: re-open the file the id came from, read its end. */
 function fromTranscript(parse: TailParser): TailReader {
-  return (best) => (best.sourcePath === undefined ? null : parse(tailLines(best.sourcePath)));
+  return (best) => (best.sourcePath === undefined ? null : readGrowingTail(best.sourcePath, parse));
+}
+
+/**
+ * The end of a transcript, at the first `TAIL_WINDOW_STEPS` size that yields a
+ * sentence.
+ *
+ * Every step is tried, with no early exit on a short read. A read shorter than
+ * the cap LOOKS like "the whole file is in hand, stop", but `tailBytes` makes a
+ * single `readSync`, which is allowed to return fewer bytes than asked for —
+ * treating that as end-of-file would abandon a transcript whose sentence is
+ * still there. Re-reading a small file two more times costs nothing measurable;
+ * silently answering `null` for a session that HAS spoken is exactly the bug
+ * class this function was widened to remove.
+ */
+function readGrowingTail(sourcePath: string, parse: TailParser): string | null {
+  for (const window of TAIL_WINDOW_STEPS) {
+    const bytes = tailBytes(sourcePath, window);
+    if (bytes === null) {
+      return null;
+    }
+    const found = parse(dropPartialFirstLine(bytes));
+    if (found !== null) {
+      return found;
+    }
+  }
+  return null;
 }
 
 /**
@@ -146,56 +199,29 @@ const TAIL_SOURCES: Record<
   },
 };
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-
 /**
  * The tail window starts mid-file, so its first line is very likely the back
  * half of a record. Dropping it costs nothing real — a transcript's true first
  * line is identity metadata, never an assistant turn — and it removes the one
  * way a clipped fragment could parse into a wrong sentence.
  */
-function tailLines(sourcePath: string): readonly string[] {
-  const bytes = tailBytes(sourcePath, TAIL_WINDOW_BYTES);
-  if (bytes === null) {
-    return [];
-  }
+function dropPartialFirstLine(bytes: Buffer): readonly string[] {
   return bytes.toString("utf8").split("\n").slice(1);
 }
 
-function resolveOne(
-  home: string,
-  request: ResumeRequest,
-  candidatesFor: (agent: string) => CandidateSession[],
-  takenByAgent: Map<string, Set<string>>,
-): string | null {
-  const source = TAIL_SOURCES[request.agent];
-  if (source === undefined) {
-    return null;
-  }
-  const taken = takenByAgent.get(request.agent) ?? new Set<string>();
-  takenByAgent.set(request.agent, taken);
-
-  const cutoffMs = request.lastSeenAt - THIRTY_DAYS_MS;
-  // Filter first, sort the copy: sorting the scan result in place would
-  // reorder the per-call cache every other request reads (C1).
-  const eligible = candidatesFor(request.agent).filter(
-    (candidate) =>
-      candidate.mtimeMs >= cutoffMs && !taken.has(candidate.id) && cwdMatches(request, candidate),
-  );
-  eligible.sort(
-    (left, right) =>
-      Math.abs(left.mtimeMs - request.lastSeenAt) - Math.abs(right.mtimeMs - request.lastSeenAt),
-  );
-  const best = eligible[0];
-  if (best === undefined) {
-    return null;
-  }
-  // Taken at SELECTION, not at success: a session whose tail turns out to be
-  // unreadable or wordless is still this pane's session, and letting the next
-  // pane fall through to it would hand it a sentence from a conversation it is
-  // not running.
-  taken.add(best.id);
-  return source.read(best, home);
+/**
+ * What one pane is told: the session it is paired with, and what that session
+ * last said. `null` means no session could be paired at all.
+ *
+ * The id travels with the sentence because the CALLER is the one that has to
+ * notice a re-pairing. A renderer holding only text cannot tell "same
+ * conversation, nothing new to quote" (keep what is on screen) from "different
+ * conversation now" (drop it) — and reading those two as one is exactly how a
+ * sentence ends up on a row that never said it.
+ */
+export interface SessionTailAnswer {
+  readonly id: string;
+  readonly tail: string | null;
 }
 
 /**
@@ -206,11 +232,19 @@ function resolveOne(
  * the wrong pane. Each needed agent is scanned at most once per call, cached
  * locally rather than across calls, so every invocation sees the current state
  * of disk.
+ *
+ * Allocation is TWO passes over the batch, and the order matters more than it
+ * looks. Pass 1 honours every `preferredId`; pass 2 ranks whatever is left for
+ * the requests that had no pin or whose pin could not be honoured. Folding the
+ * two into one pass in request order re-opens the bug: an unpinned pane sitting
+ * earlier in the batch takes the closest-by-mtime candidate — which may be
+ * precisely the session a LATER pane is pinned to — the pin then fails, that
+ * pane is re-paired, and the sentences resume walking from row to row.
  */
 export function resolveSessionTails(
   home: string,
   requests: readonly (ResumeRequest | null)[],
-): (string | null)[] {
+): (SessionTailAnswer | null)[] {
   const cache = new Map<string, CandidateSession[]>();
   function candidatesFor(agent: string): CandidateSession[] {
     const cached = cache.get(agent);
@@ -229,14 +263,72 @@ export function resolveSessionTails(
   }
 
   const takenByAgent = new Map<string, Set<string>>();
-  return requests.map((request) => {
-    if (request === null) {
-      return null;
+  function takenFor(agent: string): Set<string> {
+    const existing = takenByAgent.get(agent);
+    if (existing !== undefined) {
+      return existing;
+    }
+    const fresh = new Set<string>();
+    takenByAgent.set(agent, fresh);
+    return fresh;
+  }
+
+  /** An agent with no tail source is answered before any scan happens. */
+  function scannable(request: ResumeRequest | null): request is ResumeRequest {
+    return request !== null && TAIL_SOURCES[request.agent] !== undefined;
+  }
+
+  const paired: (CandidateSession | null)[] = requests.map(() => null);
+
+  // Pass 1 — the pins.
+  requests.forEach((request, index) => {
+    if (!scannable(request)) {
+      return;
     }
     try {
-      return resolveOne(home, request, candidatesFor, takenByAgent);
+      paired[index] = findCandidateById(
+        request,
+        candidatesFor(request.agent),
+        takenFor(request.agent),
+      );
     } catch {
+      paired[index] = null;
+    }
+  });
+
+  // Pass 2 — rank what pass 1 left. Only agents in `TAIL_SOURCES` reach here,
+  // and none of them is `agy`, so the default `cwdMatches` predicate is right.
+  requests.forEach((request, index) => {
+    if (paired[index] !== null || !scannable(request)) {
+      return;
+    }
+    try {
+      paired[index] = selectCandidate(
+        request,
+        candidatesFor(request.agent),
+        takenFor(request.agent),
+      );
+    } catch {
+      paired[index] = null;
+    }
+  });
+
+  return requests.map((request, index) => {
+    const best = paired[index];
+    if (request === null || best === null) {
       return null;
+    }
+    const source = TAIL_SOURCES[request.agent];
+    if (source === undefined) {
+      return null;
+    }
+    // The pairing stands even when the read fails or the session has said
+    // nothing yet: this IS the pane's conversation, and reporting the id with a
+    // null tail is what lets the caller keep the pairing while it waits.
+    try {
+      return { id: best.id, tail: source.read(best, home) };
+    } catch {
+      return { id: best.id, tail: null };
     }
   });
 }

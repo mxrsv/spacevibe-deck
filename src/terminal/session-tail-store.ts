@@ -28,10 +28,27 @@ import { effect, signal, type Signal } from "@preact/signals";
 import { available as electronHostAvailable } from "../host/worktree-host";
 import { sessionTails } from "../host/session-tail-host";
 import { NO_PANES, tabViews, type PaneView, type TabView } from "./tabs-store";
-import type { ResumeRequest } from "../lib/agent-resume";
+import type { ResumeRequest, SessionTailAnswer } from "../lib/agent-resume";
 
 /** Newest turn per pane id. Absent means "nothing known", never "silent". */
 export const paneTails: Signal<ReadonlyMap<number, string>> = signal(new Map());
+
+/**
+ * Which session each pane is PAIRED with — the second half of what the store
+ * holds, and the reason a sentence stays where it belongs.
+ *
+ * The main process cannot know which conversation a pane is running; it ranks
+ * candidates by how close their mtime falls to the pane's clock. Re-asked every
+ * few seconds, that ranking answered differently every time: a pane was
+ * re-paired, its old session was released to the next pane, and because a null
+ * tail keeps the sentence already on screen, one sentence ended up printed on
+ * three rows at once (2026-08-22).
+ *
+ * So the pairing is remembered here and sent back as `preferredId`, and a pane
+ * whose pairing DOES change drops its sentence with it. Deliberately not a
+ * signal: nothing renders it, and it must not re-arm the effect that fetches.
+ */
+const paneSessions = new Map<number, string>();
 
 const DEBOUNCE_MS = 300;
 
@@ -46,6 +63,8 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 /** Fingerprint of the batch last SENT — the dedup key, kept on failure. */
 let sentFingerprint: string | null = null;
 let inFlight = false;
+/** Bumped by `resetSessionTailStore`, so an in-flight answer can be discarded. */
+let epoch = 0;
 /** A change arrived mid-flight; re-run once the current batch settles. */
 let queued = false;
 
@@ -69,6 +88,20 @@ function panesOf(tab: TabView): readonly PaneView[] {
  * And a claim rather than a permanent (workspace, agent) mark, because a FRESH
  * pane opened in that workspace an hour later must still fall under the
  * never-run rule above.
+ *
+ * **A mark says "ask for this pane", never "this pane is running session X".**
+ * It briefly carried the resolved session id (2026-08-22) so a restored pane
+ * would start out pinned to the conversation it actually reopened. That was
+ * withdrawn the same day, on review: a mark is keyed by (workspace, agent) and
+ * has NO causal link to a pane. It is claimed by the first matching pane the
+ * process poll happens to recognize, which need not be the pane that typed
+ * `--resume <id>` — refs `[none, B]` leave one mark that the FRESH pane takes —
+ * and it is left as soon as `materialize` resolves, while the command is only
+ * armed and its `writePty` can still fail. Under the old count both mistakes
+ * cost an extra question. Under an id they would have pinned a row to a
+ * conversation it is not in, permanently. Pinning a restored pane correctly
+ * needs a mark bound to a pane id, which is the tab-materialization seam and
+ * therefore a fork; until then the first pairing is ranked like any other.
  */
 const resumeClaims = new Map<string, number>();
 const resumedPaneIds = new Set<number>();
@@ -111,15 +144,72 @@ function claimsResume(pane: PaneView, workspacePath: string | null): boolean {
   return true;
 }
 
-/** Fingerprint of what would change a tail: each agent pane's changedAt. */
+/**
+ * Fingerprint of what would change a tail: each pane's changedAt, its AGENT
+ * and whether it has run.
+ *
+ * `changedAt` alone is not enough, because it bumps only when a pane's VISIBLE
+ * state changes. Two generation changes can slip past it — a pane going from
+ * `codex` to `claude`, and the attention gate reopening for a fresh agent of
+ * the same name (`hasRun` back to false) — and this batch would then be skipped
+ * as a repeat, leaving `prune` unrun and the row wearing the previous
+ * occupant's sentence.
+ *
+ * EVERY pane counts, not just agent panes: a pane dropping to a shell is a
+ * generation change too, and it has to be noticed to be forgotten.
+ */
 function fingerprintOf(tabs: readonly TabView[]): string {
   return tabs
     .flatMap((tab) =>
-      panesOf(tab)
-        .filter((pane) => pane.agent !== null)
-        .map((pane) => `${pane.paneId}:${pane.changedAt}`),
+      panesOf(tab).map(
+        (pane) => `${pane.paneId}:${pane.agent ?? ""}:${pane.hasRun ? 1 : 0}:${pane.changedAt}`,
+      ),
     )
     .join("|");
+}
+
+/** Every pane id in the snapshot, agent or not — the prune's survivor list. */
+function livePaneIds(tabs: readonly TabView[]): Set<number> {
+  const ids = new Set<number>();
+  for (const tab of tabs) {
+    for (const pane of panesOf(tab)) {
+      ids.add(pane.paneId);
+    }
+  }
+  return ids;
+}
+
+/**
+ * What a pane was running the last time this store looked. A pairing is only
+ * valid for one occupant of a pane, and a pane id outlives its occupants.
+ */
+interface PaneGeneration {
+  readonly agent: string | null;
+  readonly ran: boolean;
+}
+
+const paneGenerations = new Map<number, PaneGeneration>();
+
+/**
+ * Whether the thing running in this pane is a NEW one since the last look.
+ *
+ * Two tells, both off `PaneView`, both produced by
+ * [`agent-attention.ts`](./agent-attention.ts)'s own generation handling:
+ *
+ * - the agent label changed, which covers `claude` → `codex` directly and
+ *   `claude` → shell → `claude` through its `null` step;
+ * - `hasRun` went from true back to false, which is the gate reopening for a
+ *   fresh agent in the same pane. Only that DIRECTION counts: false → true is
+ *   the same agent finally doing something, not a new one.
+ *
+ * A pane seen for the first time is not a new generation — there is nothing
+ * for it to have replaced.
+ */
+function isNewGeneration(pane: PaneView, previous: PaneGeneration | undefined): boolean {
+  if (previous === undefined) {
+    return false;
+  }
+  return previous.agent !== pane.agent || (previous.ran && !pane.hasRun);
 }
 
 /**
@@ -157,12 +247,16 @@ function entriesOf(tabs: readonly TabView[]): readonly TailEntry[] {
       if (!pane.hasRun && !resumed) {
         continue;
       }
+      const preferredId = paneSessions.get(pane.paneId);
       entries.push({
         paneId: pane.paneId,
         request: {
           agent: pane.agent,
           cwd: tab.workspacePath,
           lastSeenAt: pane.changedAt || now,
+          // Absent on the first ask for this pane; from then on it is what
+          // keeps the answer stable instead of re-guessed every few seconds.
+          ...(preferredId === undefined ? {} : { preferredId }),
         },
       });
     }
@@ -170,19 +264,84 @@ function entriesOf(tabs: readonly TabView[]): readonly TailEntry[] {
   return entries;
 }
 
-/** Merge answers into a NEW map (C1); a null answer keeps what was there. */
+/**
+ * Merge answers into a NEW map (C1), and update the pairings alongside.
+ *
+ * Four cases, and the last one is the whole fix:
+ *
+ * - **No answer at all** — nothing could be paired this time (a scan that
+ *   raced a write, a cwd that drifted). Keep the sentence AND the pairing: an
+ *   absent scan is not evidence that the pane went quiet.
+ * - **Same session, no sentence in the window** — keep what is on screen. This
+ *   is the common case for a working pane, whose own tool traffic pushes its
+ *   last words out of the read window.
+ * - **Same session, a sentence** — take it.
+ * - **A DIFFERENT session** — take the new pairing and the new text, INCLUDING
+ *   when there is no new text. A sentence belongs to a conversation, and this
+ *   pane is not in that conversation any more; keeping it is how one sentence
+ *   used to end up on every row it had ever passed through.
+ */
 function merged(
   current: ReadonlyMap<number, string>,
   entries: readonly TailEntry[],
-  answers: readonly (string | null)[],
+  answers: readonly (SessionTailAnswer | null)[],
 ): ReadonlyMap<number, string> {
   const next = new Map(current);
   entries.forEach((entry, index) => {
-    const tail = answers[index];
-    if (typeof tail === "string" && tail.length > 0) {
-      next.set(entry.paneId, tail);
+    const answer = answers[index];
+    if (answer === null || answer === undefined) {
+      return;
+    }
+    const repaired = paneSessions.get(entry.paneId) !== answer.id;
+    paneSessions.set(entry.paneId, answer.id);
+    if (answer.tail !== null && answer.tail.length > 0) {
+      next.set(entry.paneId, answer.tail);
+    } else if (repaired) {
+      next.delete(entry.paneId);
     }
   });
+  return next;
+}
+
+/** Everything this store remembers about one pane, gone. */
+function forget(next: Map<number, string>, paneId: number): void {
+  next.delete(paneId);
+  paneSessions.delete(paneId);
+  resumedPaneIds.delete(paneId);
+}
+
+/**
+ * Drop what is remembered about panes the window no longer has, AND about
+ * panes whose occupant has been replaced.
+ *
+ * The second half is the one that is easy to miss: a pane id is reused by
+ * whatever runs in that split next, so without it a pairing survives its own
+ * conversation. The pane then keeps SENDING that pairing as `preferredId`, the
+ * main process keeps honouring it, and the new agent's row is pinned to the
+ * previous agent's sentence for as long as the pane lives — a worse failure
+ * than the drifting this store's pinning was added to stop, because a drift
+ * corrects itself and a pin does not.
+ */
+function prune(
+  current: ReadonlyMap<number, string>,
+  tabs: readonly TabView[],
+  live: Set<number>,
+): ReadonlyMap<number, string> {
+  const next = new Map(current);
+  for (const paneId of [...next.keys(), ...paneSessions.keys(), ...paneGenerations.keys()]) {
+    if (!live.has(paneId)) {
+      forget(next, paneId);
+      paneGenerations.delete(paneId);
+    }
+  }
+  for (const tab of tabs) {
+    for (const pane of panesOf(tab)) {
+      if (isNewGeneration(pane, paneGenerations.get(pane.paneId))) {
+        forget(next, pane.paneId);
+      }
+      paneGenerations.set(pane.paneId, { agent: pane.agent, ran: pane.hasRun });
+    }
+  }
   return next;
 }
 
@@ -202,15 +361,35 @@ async function run(): Promise<void> {
     queued = true;
     return;
   }
+  // Forgetting comes first, and unconditionally — a tail that outlives its
+  // pane, or its pane's occupant, is the same fossil this module exists to
+  // prevent, one scope up. Guarded on a non-empty snapshot because a window
+  // momentarily publishes no tabs during restore, and pruning against that
+  // would forget every pane in the window.
+  if (tabs.length > 0) {
+    const pruned = prune(paneTails.value, tabs, livePaneIds(tabs));
+    // `prune` only ever deletes, so a size match IS a "nothing changed" proof
+    // and the signal is left alone. Anything that could add would need a
+    // different test.
+    if (pruned.size !== paneTails.value.size) {
+      paneTails.value = pruned;
+    }
+  }
   const entries = entriesOf(tabs);
   sentFingerprint = fingerprint;
   if (entries.length === 0) {
     return;
   }
   inFlight = true;
+  const epochAtSend = epoch;
   try {
     const answers = await sessionTails(entries.map((entry) => entry.request));
-    paneTails.value = merged(paneTails.value, entries, answers);
+    // A reset while this was in flight means those entries describe panes that
+    // no longer exist as far as this store is concerned; merging them would
+    // rebuild the state the reset just cleared.
+    if (epoch === epochAtSend) {
+      paneTails.value = merged(paneTails.value, entries, answers);
+    }
   } catch (err) {
     console.warn("Failed to read session tails:", err);
   } finally {
@@ -277,7 +456,10 @@ export function resetSessionTailStore(): void {
   sentFingerprint = null;
   inFlight = false;
   queued = false;
+  epoch += 1;
   resumeClaims.clear();
   resumedPaneIds.clear();
+  paneSessions.clear();
+  paneGenerations.clear();
   paneTails.value = new Map();
 }

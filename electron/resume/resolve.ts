@@ -17,6 +17,17 @@ export interface ResumeRequest {
   readonly agent: string;
   readonly cwd: string | null;
   readonly lastSeenAt: number;
+  /**
+   * The session this caller was paired with last time, if any — direct
+   * evidence of which conversation a pane is running, where `lastSeenAt` is
+   * only a guess about it.
+   *
+   * `resolveResume` IGNORES this: restore asks the question once, at boot,
+   * with nothing to have been paired with yet. It exists for
+   * `resolveSessionTails`, which asks it every few seconds and must answer
+   * the same way each time or a sentence walks from row to row.
+   */
+  readonly preferredId?: string;
 }
 
 export type ResumeRef =
@@ -74,6 +85,79 @@ export function cwdMatches(request: ResumeRequest, candidate: CandidateSession):
   return request.cwd === candidate.cwd;
 }
 
+/**
+ * The one candidate a request resumes into, or null when nothing qualifies.
+ *
+ * This is the algorithm `session-tail.ts` and this module MUST agree on — same
+ * 30-day cutoff, same cwd predicate, same recency ranking, same greedy dedup —
+ * or a pane wears another pane's sentence. It was a comment saying so beside
+ * two hand-copied blocks; it is one function now, so the two answers cannot
+ * drift.
+ *
+ * `taken` is mutated on selection, NOT on success: a session whose tail turns
+ * out to be unreadable or wordless is still that pane's session, and letting
+ * the next pane fall through to it would hand it a conversation it is not
+ * running.
+ */
+export function selectCandidate(
+  request: ResumeRequest,
+  candidates: readonly CandidateSession[],
+  taken: Set<string>,
+  matchesCwd: (request: ResumeRequest, candidate: CandidateSession) => boolean = cwdMatches,
+): CandidateSession | null {
+  const cutoffMs = request.lastSeenAt - THIRTY_DAYS_MS;
+  // Filter first, sort the copy: sorting the scan result in place would
+  // reorder the per-call cache every other request reads (C1).
+  const eligible = candidates.filter(
+    (candidate) =>
+      candidate.mtimeMs >= cutoffMs && !taken.has(candidate.id) && matchesCwd(request, candidate),
+  );
+  eligible.sort(
+    (left, right) =>
+      Math.abs(left.mtimeMs - request.lastSeenAt) - Math.abs(right.mtimeMs - request.lastSeenAt),
+  );
+  const best = eligible[0];
+  if (best === undefined) {
+    return null;
+  }
+  taken.add(best.id);
+  return best;
+}
+
+/**
+ * The candidate a request is already PAIRED with, or null when that pairing
+ * cannot be honoured this time — the id names no candidate of this agent, the
+ * cwd no longer matches, or an earlier request in the same batch already
+ * claimed it.
+ *
+ * Deliberately WITHOUT `selectCandidate`'s 30-day cutoff and recency ranking:
+ * both exist to guess which session a caller means, and a pin is the answer
+ * those two are guessing at. A pinned session that has gone quiet for a month
+ * is still the conversation that pane is sitting in.
+ *
+ * `taken` is mutated on a hit, for the same reason it is there: two panes must
+ * never be handed one conversation.
+ */
+export function findCandidateById(
+  request: ResumeRequest,
+  candidates: readonly CandidateSession[],
+  taken: Set<string>,
+  matchesCwd: (request: ResumeRequest, candidate: CandidateSession) => boolean = cwdMatches,
+): CandidateSession | null {
+  const wanted = request.preferredId;
+  if (wanted === undefined || taken.has(wanted)) {
+    return null;
+  }
+  const pinned = candidates.find(
+    (candidate) => candidate.id === wanted && matchesCwd(request, candidate),
+  );
+  if (pinned === undefined) {
+    return null;
+  }
+  taken.add(pinned.id);
+  return pinned;
+}
+
 function resolveOne(
   request: ResumeRequest,
   candidatesFor: (agent: string) => CandidateSession[],
@@ -89,21 +173,15 @@ function resolveOne(
   const taken = takenByAgent.get(request.agent) ?? new Set<string>();
   takenByAgent.set(request.agent, taken);
 
-  const matchesCwd = request.agent === "agy" ? agyCwdMatches : cwdMatches;
-  const cutoffMs = request.lastSeenAt - THIRTY_DAYS_MS;
-  const eligible = candidatesFor(request.agent).filter(
-    (candidate) =>
-      candidate.mtimeMs >= cutoffMs && !taken.has(candidate.id) && matchesCwd(request, candidate),
+  const best = selectCandidate(
+    request,
+    candidatesFor(request.agent),
+    taken,
+    request.agent === "agy" ? agyCwdMatches : cwdMatches,
   );
-  eligible.sort(
-    (left, right) =>
-      Math.abs(left.mtimeMs - request.lastSeenAt) - Math.abs(right.mtimeMs - request.lastSeenAt),
-  );
-  const best = eligible[0];
-  if (best === undefined) {
+  if (best === null) {
     return FALLBACK_LATEST.has(request.agent) ? { kind: "latest" } : null;
   }
-  taken.add(best.id);
   return { kind: "id", id: best.id };
 }
 
@@ -169,6 +247,19 @@ function isValidRequest(entry: unknown): entry is ResumeRequest {
 }
 
 /**
+ * Same shape `agent-resume.ts`'s `SESSION_REF_SAFE` demands before an id may
+ * reach a PTY write. Nothing on this path writes one — a `preferredId` is only
+ * ever compared against ids scanned off disk — but the renderer is still the
+ * far side of an IPC boundary, and a validator that accepts any string is one
+ * that stops saying anything.
+ */
+const SESSION_ID_SAFE = /^[A-Za-z0-9._-]{1,128}$/;
+
+function isSafeSessionId(value: unknown): value is string {
+  return typeof value === "string" && SESSION_ID_SAFE.test(value);
+}
+
+/**
  * Same length as `raw`, one slot per entry — a malformed entry becomes a
  * positional `null` sentinel rather than being dropped. `resolveResume`'s
  * reply is positional (each `ResumeRef` answers the pane at the same index
@@ -181,9 +272,20 @@ export function validateResumeRequests(raw: unknown): (ResumeRequest | null)[] {
   if (!Array.isArray(raw)) {
     return [];
   }
-  return raw.map((entry) =>
-    isValidRequest(entry)
-      ? { agent: entry.agent, cwd: entry.cwd, lastSeenAt: entry.lastSeenAt }
-      : null,
-  );
+  return raw.map((entry) => {
+    if (!isValidRequest(entry)) {
+      return null;
+    }
+    // A malformed pin DROPS THE PIN, it does not reject the request: the pane
+    // still has a cwd and a clock to be answered from, and blinding a row
+    // because its remembered id came back wrong would be a worse answer than
+    // the guess this field exists to replace.
+    const preferredId = isSafeSessionId(entry.preferredId) ? entry.preferredId : undefined;
+    return {
+      agent: entry.agent,
+      cwd: entry.cwd,
+      lastSeenAt: entry.lastSeenAt,
+      ...(preferredId === undefined ? {} : { preferredId }),
+    };
+  });
 }

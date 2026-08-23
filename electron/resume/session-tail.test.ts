@@ -195,6 +195,22 @@ describe("tailBytes", () => {
   });
 });
 
+/**
+ * The sentences alone, dropping the pairing each answer carries. Most of this
+ * suite is about which WORDS a pane is told; the pairing has tests of its own
+ * ((m)–(p)), which read the ids directly.
+ *
+ * A `null` here is either "nothing could be paired" or "paired, but that
+ * session has said nothing quotable" — the two are one answer as far as the
+ * words go, and the store is the layer that must tell them apart.
+ */
+function tailsOf(
+  home: string,
+  requests: Parameters<typeof resolveSessionTails>[1],
+): (string | null)[] {
+  return resolveSessionTails(home, requests).map((answer) => answer?.tail ?? null);
+}
+
 describe("resolveSessionTails", () => {
   let home: string;
 
@@ -359,16 +375,16 @@ describe("resolveSessionTails", () => {
   });
 
   it("(a) answers a claude pane with its own session's newest sentence", () => {
-    expect(resolveSessionTails(home, [{ agent: "claude", cwd: "/tmp/w", lastSeenAt: T1 }])).toEqual(
-      ["Suite is green — 2619 passing."],
-    );
+    expect(tailsOf(home, [{ agent: "claude", cwd: "/tmp/w", lastSeenAt: T1 }])).toEqual([
+      "Suite is green — 2619 passing.",
+    ]);
   });
 
   it("(b) two same-cwd claude panes wear DIFFERENT sentences", () => {
     // The greedy `takenByAgent` dedup `resolveOne` uses, mirrored: without it
     // both panes resolve to the newest file and repeat one line.
     expect(
-      resolveSessionTails(home, [
+      tailsOf(home, [
         { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2 },
         { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2 },
       ]),
@@ -376,15 +392,15 @@ describe("resolveSessionTails", () => {
   });
 
   it("(c) answers a codex pane past its trailing event records", () => {
-    expect(
-      resolveSessionTails(home, [{ agent: "codex", cwd: "/tmp/codex", lastSeenAt: T1 }]),
-    ).toEqual(["Plan ready — approve?"]);
+    expect(tailsOf(home, [{ agent: "codex", cwd: "/tmp/codex", lastSeenAt: T1 }])).toEqual([
+      "Plan ready — approve?",
+    ]);
   });
 
   it("(d) a resolvable session with no assistant text answers null", () => {
-    expect(
-      resolveSessionTails(home, [{ agent: "claude", cwd: "/tmp/silent", lastSeenAt: T1 }]),
-    ).toEqual([null]);
+    expect(tailsOf(home, [{ agent: "claude", cwd: "/tmp/silent", lastSeenAt: T1 }])).toEqual([
+      null,
+    ]);
   });
 
   it("(e) every agent without a reader answers null", () => {
@@ -392,7 +408,7 @@ describe("resolveSessionTails", () => {
     // resume fallback has no tail equivalent; a custom CLI is unknown by
     // definition. `opencode` is NOT in this list any more — see (j).
     expect(
-      resolveSessionTails(home, [
+      tailsOf(home, [
         { agent: "gemini", cwd: "/tmp/w", lastSeenAt: T1 },
         { agent: "agy", cwd: "/tmp/w", lastSeenAt: T1 },
         { agent: "some-future-cli", cwd: null, lastSeenAt: T1 },
@@ -401,26 +417,24 @@ describe("resolveSessionTails", () => {
   });
 
   it("(j) answers an opencode pane past its user turn and its reasoning", () => {
-    expect(
-      resolveSessionTails(home, [{ agent: "opencode", cwd: "/tmp/oc", lastSeenAt: T2 }]),
-    ).toEqual(["Working tree clean — nothing staged."]);
+    expect(tailsOf(home, [{ agent: "opencode", cwd: "/tmp/oc", lastSeenAt: T2 }])).toEqual([
+      "Working tree clean — nothing staged.",
+    ]);
   });
 
   it("(k) an opencode turn that only ran a tool falls back to the one before", () => {
-    expect(
-      resolveSessionTails(home, [{ agent: "opencode", cwd: "/tmp/oc2", lastSeenAt: T2 }]),
-    ).toEqual(["Ran the migration."]);
+    expect(tailsOf(home, [{ agent: "opencode", cwd: "/tmp/oc2", lastSeenAt: T2 }])).toEqual([
+      "Ran the migration.",
+    ]);
   });
 
   it("(l) an opencode session with no messages on disk answers null", () => {
-    expect(
-      resolveSessionTails(home, [{ agent: "opencode", cwd: "/tmp/oc3", lastSeenAt: T2 }]),
-    ).toEqual([null]);
+    expect(tailsOf(home, [{ agent: "opencode", cwd: "/tmp/oc3", lastSeenAt: T2 }])).toEqual([null]);
   });
 
   it("(f) a malformed request answers null at its own position, not shifted", () => {
     expect(
-      resolveSessionTails(
+      tailsOf(
         home,
         validateResumeRequests([
           { agent: "claude", cwd: "/tmp/w", lastSeenAt: T1 },
@@ -433,19 +447,19 @@ describe("resolveSessionTails", () => {
 
   it("(g) a stale session outside the 30-day window answers null", () => {
     const staleSeenAt = T1 + 40 * 24 * 60 * 60 * 1000;
-    expect(
-      resolveSessionTails(home, [{ agent: "claude", cwd: "/tmp/w", lastSeenAt: staleSeenAt }]),
-    ).toEqual([null]);
+    expect(tailsOf(home, [{ agent: "claude", cwd: "/tmp/w", lastSeenAt: staleSeenAt }])).toEqual([
+      null,
+    ]);
   });
 
   it("(h) missing state dirs answer null positionally without throwing", () => {
     const emptyHome = mkdtempSync(path.join(tmpdir(), "session-tail-empty-"));
     try {
       expect(() =>
-        resolveSessionTails(emptyHome, [{ agent: "claude", cwd: "/tmp/w", lastSeenAt: T1 }]),
+        tailsOf(emptyHome, [{ agent: "claude", cwd: "/tmp/w", lastSeenAt: T1 }]),
       ).not.toThrow();
       expect(
-        resolveSessionTails(emptyHome, [
+        tailsOf(emptyHome, [
           { agent: "claude", cwd: "/tmp/w", lastSeenAt: T1 },
           { agent: "codex", cwd: "/tmp/codex", lastSeenAt: T1 },
         ]),
@@ -456,6 +470,95 @@ describe("resolveSessionTails", () => {
   });
 
   it("(i) an empty batch answers an empty list", () => {
-    expect(resolveSessionTails(home, [])).toEqual([]);
+    expect(tailsOf(home, [])).toEqual([]);
+  });
+
+  it("(m) a pin beats the ranking — the paired session answers, not the closest one", () => {
+    // At T2 the ranking would pick `s2`; the pin says this pane is sitting in
+    // `s1`, which is the answer the ranking was only ever guessing at.
+    expect(
+      resolveSessionTails(home, [
+        { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2, preferredId: "s1" },
+      ]),
+    ).toEqual([{ id: "s1", tail: "Pane one is waiting on approval." }]);
+  });
+
+  it("(n) an unpinned pane earlier in the batch cannot take a later pane's pinned session", () => {
+    // The regression this whole change exists for. Resolved in ONE pass in
+    // request order, the unpinned pane takes `s2` (closest to T2), the pin
+    // then fails, and the two panes swap sentences on the next poll — which is
+    // how one sentence ended up printed on three rows.
+    expect(
+      resolveSessionTails(home, [
+        { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2 },
+        { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2, preferredId: "s2" },
+      ]),
+    ).toEqual([
+      { id: "s1", tail: "Pane one is waiting on approval." },
+      { id: "s2", tail: "Pane two finished the refactor." },
+    ]);
+  });
+
+  it("(o) a pin naming a session that is gone falls back to the ranking", () => {
+    expect(
+      resolveSessionTails(home, [
+        { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2, preferredId: "deleted-long-ago" },
+      ]),
+    ).toEqual([{ id: "s2", tail: "Pane two finished the refactor." }]);
+  });
+
+  it("(p) a pin whose session belongs to another cwd is not honoured", () => {
+    expect(
+      resolveSessionTails(home, [
+        { agent: "claude", cwd: "/tmp/w", lastSeenAt: T1, preferredId: "s1" },
+      ]),
+    ).toEqual([{ id: "aaaa", tail: "Suite is green — 2619 passing." }]);
+  });
+});
+
+describe("resolveSessionTails tail window", () => {
+  let home: string;
+
+  /** A transcript whose only sentence sits `fillerBytes` from the end. */
+  function writeBuriedTranscript(id: string, cwd: string, fillerBytes: number): void {
+    const project = path.join(home, CLAUDE_DIR, CLAUDE_PROJECTS_DIR, cwd.replace(/\//g, "-"));
+    mkdirSync(project, { recursive: true });
+    // Real burial: an agent's own tool traffic is what pushes its last words
+    // out of the window, and a `user` tool_result is the bulk of it.
+    const filler = JSON.stringify({
+      type: "user",
+      message: { content: [{ type: "tool_result", content: "x".repeat(1000) }] },
+    });
+    const lines = [
+      `{"sessionId":"${id}","type":"mode"}`,
+      `{"sessionId":"${id}","cwd":"${cwd}","type":"attachment"}`,
+      claudeAssistantLine("Buried, but still the newest thing said."),
+    ];
+    for (let written = 0; written < fillerBytes; written += filler.length + 1) {
+      lines.push(filler);
+    }
+    writeAt(path.join(project, `${id}.jsonl`), lines.join("\n"), T1);
+  }
+
+  beforeAll(() => {
+    home = mkdtempSync(path.join(tmpdir(), "session-tail-window-"));
+    writeBuriedTranscript("buried", "/tmp/buried", 200 * 1024);
+    writeBuriedTranscript("entombed", "/tmp/entombed", 1200 * 1024);
+  });
+
+  afterAll(() => {
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  it("(q) reads past the first window to reach a sentence the tool traffic buried", () => {
+    expect(tailsOf(home, [{ agent: "claude", cwd: "/tmp/buried", lastSeenAt: T1 }])).toEqual([
+      "Buried, but still the newest thing said.",
+    ]);
+  });
+
+  it("(r) stops at the last window — the pairing still stands, the sentence does not", () => {
+    expect(
+      resolveSessionTails(home, [{ agent: "claude", cwd: "/tmp/entombed", lastSeenAt: T1 }]),
+    ).toEqual([{ id: "entombed", tail: null }]);
   });
 });
