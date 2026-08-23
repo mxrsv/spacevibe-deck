@@ -24,8 +24,13 @@ Electron-only flat channel for directory creation.
 ## Global constraints
 
 - **English only** in strings, comments, docs and commit messages (R1).
-- **Electron target.** Tauri stays feature-frozen; every new host call degrades to
-  "capability absent" through the `available` flag pattern in `src/host/worktree-host.ts`.
+- **Electron target — but the renderer reaches BOTH hosts.** `src/launcher/` is
+  renderer-only and `OpenBoard` is mounted on Tauri too, so the composer appears there
+  whether or not the spec targets it. Every new host call degrades to "capability absent"
+  through the `available` flag pattern in `src/host/worktree-host.ts`, and every control
+  behind an Electron-only channel (`create_directory`, `worktree_add`, `git_repository`)
+  must be OMITTED on an unanswered host rather than shown inert (DL-19.7). Say which host a
+  claim covers; never imply both.
 - **Immutability (C1).** Every draft update returns a new object; never mutate in place.
 - **R5.** Renderer state uses Preact signals; the launcher store is window-scoped.
 - **R6.** IPC payload shape is a contract — flat keys, and

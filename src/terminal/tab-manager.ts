@@ -453,7 +453,7 @@ export function createTabManager(
     layout: SerializedNode | null,
     cwds: readonly (string | null)[] = [],
     workspacePath: string | null = null,
-  ): Promise<boolean> {
+  ): Promise<TabEntry | null> {
     const container = document.createElement("div");
     container.className = "tab-stage";
     container.style.display = "none";
@@ -469,18 +469,24 @@ export function createTabManager(
       console.error("Failed to open tab:", err);
       manager.dispose();
       activeManager()?.notifyError(`Failed to open new tab: ${err}`);
-      return false;
+      return null;
     }
-    tabs.push({
+    // Returned rather than left for the caller to fish out of `tabs`: reading
+    // `tabs[tabs.length - 1]` after an await is only correct while no OTHER
+    // tab can be pushed across that microtask boundary, and two launches in
+    // flight (⌘Enter twice, Quick Launch over the board) make that false — the
+    // second tab lands first and the first caller addresses the wrong pane.
+    const entry: TabEntry = {
       key: nextKey,
       manager,
       openedAt: nextOpenSequence(),
       // The only place a tab's workspace is ever set — normalize here so every
       // entry point (Open, reopen, live preset) agrees on one spelling.
       workspacePath: workspacePath === null ? null : normalizeWorkspacePath(workspacePath),
-    });
+    };
+    tabs.push(entry);
     nextKey += 1;
-    return true;
+    return entry;
   }
 
   function selectTab(index: number): void {
@@ -767,15 +773,15 @@ export function createTabManager(
    * Deep Materialize entry: spawn + optional chrome + select + agent launch.
    * Open board / Layout preset / Closed tab all go here.
    */
-  async function materialize(intent: MaterializeIntent): Promise<boolean> {
+  async function materializeEntry(intent: MaterializeIntent): Promise<TabEntry | null> {
     // A workspace may own any number of tabs: opening one that already has a
     // tab spawns another rather than focusing the first, so the same repo can
     // run several agent sessions side by side. `workspacePath` is a label the
     // tab carries (sidebar, logo, reopen), never an identity that dedupes.
-    if (!(await addTab(intent.layout, intent.cwds, intent.workspacePath ?? null))) {
-      return false;
+    const entry = await addTab(intent.layout, intent.cwds, intent.workspacePath ?? null);
+    if (entry === null) {
+      return null;
     }
-    const entry = tabs[tabs.length - 1];
     const chrome = intent.chrome;
     if (chrome !== undefined) {
       const override: TabOverride = {
@@ -786,7 +792,10 @@ export function createTabManager(
         overrides.set(entry.key, override);
       }
     }
-    selectTab(tabs.length - 1);
+    // By key, not by "last": a concurrent materialize may have pushed after
+    // this one, and selecting its tab would put the user in a pane they did
+    // not ask for.
+    selectTab(tabs.indexOf(entry));
     void poller.poll();
     // Each pane types its command once its shell prints the first byte;
     // `null` arms nothing. The id becomes a command line HERE rather than
@@ -837,7 +846,19 @@ export function createTabManager(
         }
       }
     }
-    return true;
+    return entry;
+  }
+
+  /**
+   * Deep Materialize entry: spawn + optional chrome + select + agent launch.
+   * Open board / Layout preset / Closed tab all go here.
+   *
+   * The boolean face of `materializeEntry`. Every caller but `launchTask` only
+   * needs to know whether the tab came up, and keeping this signature is what
+   * leaves the R4 seam and its contract test untouched.
+   */
+  async function materialize(intent: MaterializeIntent): Promise<boolean> {
+    return (await materializeEntry(intent)) !== null;
   }
 
   /** One tab per Open; CWDs already resolved by the caller. */
@@ -950,7 +971,8 @@ export function createTabManager(
     intent: MaterializeIntent,
     prompt: string | null,
   ): Promise<LaunchTaskOutcome> {
-    if (!(await materialize(intent))) {
+    const entry = await materializeEntry(intent);
+    if (entry === null) {
       return "spawn-failed";
     }
     const text = prompt?.trim() ?? "";
@@ -965,7 +987,10 @@ export function createTabManager(
       // changed — say so rather than waiting out the ceiling in silence.
       return "prompt-not-sent";
     }
-    const paneId = tabs[tabs.length - 1]?.manager.paneIds()[0];
+    // From the entry this call created, never from `tabs[tabs.length - 1]`:
+    // a second launch in flight can push its tab across the await above, and
+    // the prompt would then be typed into somebody else's pane.
+    const paneId = entry.manager.paneIds()[0];
     if (paneId === undefined) {
       return "prompt-not-sent";
     }

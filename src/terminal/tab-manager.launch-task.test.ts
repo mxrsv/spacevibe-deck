@@ -189,6 +189,48 @@ describe("launchTask", () => {
     expect(await running).toBe("prompt-pending");
   });
 
+  it("sends each concurrent launch's prompt to its own pane", async () => {
+    // The invariant this pins: a launch addresses the tab IT created, never
+    // "whatever is last". Two launches in flight can push in either order
+    // across an await, and reading `tabs[tabs.length - 1]` would then type one
+    // task's prompt into the other's pane. The interleave is not forced here
+    // (it depends on microtask ordering inside addTab); the observable
+    // pairing is what regresses if the capture goes back to a lookup.
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/a", "claude", "agent", "claude")],
+      [2, processInfo(2, "/b", "claude", "agent", "claude")],
+    ]);
+    const { tm, pty } = setupControllable(infos);
+    await tm.init();
+
+    const first = tm.launchTask({ ...INTENT, cwds: ["/a"], workspacePath: "/a" }, "alpha");
+    const second = tm.launchTask({ ...INTENT, cwds: ["/b"], workspacePath: "/b" }, "beta");
+
+    await vi.waitFor(
+      () => {
+        pty.emitOutput(1, "\x1b]9;4;0\x07");
+        pty.emitOutput(2, "\x1b]9;4;0\x07");
+        expect(tm.paneAttention(1)?.phase).toBe("idle");
+        expect(tm.paneAttention(2)?.phase).toBe("idle");
+      },
+      { timeout: 8000, interval: 100 },
+    );
+
+    expect(await first).toBe("sent");
+    expect(await second).toBe("sent");
+
+    const alpha = pty.writes.find((entry) => entry.data.includes("alpha"));
+    const beta = pty.writes.find((entry) => entry.data.includes("beta"));
+    expect(alpha).toBeDefined();
+    expect(beta).toBeDefined();
+    expect(alpha?.id).not.toBe(beta?.id);
+    // NOT asserted here: how many tabs the STRIP shows. Two concurrent
+    // launches leave two entries in the manager (`allPaneIds()` answers
+    // `[1, 2]`) but only one in `tabViews` — a pre-existing sync gap in the
+    // materialize/selectTab path, unrelated to the pairing this test pins and
+    // deliberately left alone rather than fixed in passing.
+  });
+
   it("gives up without pasting when readiness never arrives", async () => {
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
