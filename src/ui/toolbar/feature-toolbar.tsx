@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import {
   ActionTooltip,
   useTooltipVisibility,
+  tooltipTriggerProps,
 } from "../controls/action-tooltip";
 import {
   CHROME_ICON,
@@ -99,16 +100,7 @@ function ToolbarControl({
         aria-disabled={reason !== null}
         aria-describedby={showTooltip ? tooltipId : undefined}
         {...expansion}
-        onPointerEnter={(event) => tooltip.open(event.currentTarget)}
-        onPointerLeave={() => {
-          // Focus outlives the pointer: tabbing to a control and then moving
-          // the mouse across it must not take the description away.
-          if (document.activeElement !== ref.current) {
-            tooltip.close();
-          }
-        }}
-        onFocus={(event) => tooltip.open(event.currentTarget)}
-        onBlur={() => tooltip.close()}
+        {...tooltipTriggerProps(tooltip, ref)}
         onClick={() => {
           if (isUnavailable(item)) {
             return;

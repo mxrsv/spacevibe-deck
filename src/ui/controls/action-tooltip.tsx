@@ -45,11 +45,13 @@ export function tooltipAnchor(element: HTMLElement): TooltipAnchor {
  * holds — hovering away from a focused control must not hide the description
  * the focus is what asked for.
  */
-export function useTooltipVisibility(): {
+export interface TooltipVisibility {
   readonly anchor: TooltipAnchor | null;
   readonly open: (element: HTMLElement) => void;
   readonly close: () => void;
-} {
+}
+
+export function useTooltipVisibility(): TooltipVisibility {
   const [anchor, setAnchor] = useState<TooltipAnchor | null>(null);
 
   useEffect(() => {
@@ -76,6 +78,36 @@ export function useTooltipVisibility(): {
     anchor,
     open: (element: HTMLElement) => setAnchor(tooltipAnchor(element)),
     close: () => setAnchor(null),
+  };
+}
+
+/**
+ * The four handlers every icon-only trigger wires to open and close its
+ * tooltip (DL-23.10 widened §23 to any of them, so this is written once).
+ *
+ * The `onPointerLeave` guard is the non-obvious one: focus outlives the
+ * pointer, so tabbing to a control and then moving the mouse across it must
+ * not take away the description the focus asked for. Dropping it is a silent
+ * regression, which is exactly why it should not be retyped per call site.
+ */
+export function tooltipTriggerProps(
+  tooltip: TooltipVisibility,
+  ref: { readonly current: HTMLElement | null },
+): {
+  readonly onPointerEnter: (event: { currentTarget: HTMLElement }) => void;
+  readonly onPointerLeave: () => void;
+  readonly onFocus: (event: { currentTarget: HTMLElement }) => void;
+  readonly onBlur: () => void;
+} {
+  return {
+    onPointerEnter: (event) => tooltip.open(event.currentTarget),
+    onPointerLeave: () => {
+      if (document.activeElement !== ref.current) {
+        tooltip.close();
+      }
+    },
+    onFocus: (event) => tooltip.open(event.currentTarget),
+    onBlur: () => tooltip.close(),
   };
 }
 
