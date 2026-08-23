@@ -42,4 +42,43 @@ describe("isActionPerformable", () => {
       ),
     ).toBe(false);
   });
+
+  it("performs toggle-markdown-view over a surface that offers a second view", () => {
+    expect(
+      isActionPerformable(
+        "toggle-markdown-view",
+        context({ stageOwner: "surface", surfaceCanToggleView: true }),
+      ),
+    ).toBe(true);
+  });
+
+  it("refuses toggle-markdown-view over a surface with only one view", () => {
+    // A `.ts` file on the stage: ⌘⇧V must reach Monaco, not die here.
+    expect(
+      isActionPerformable(
+        "toggle-markdown-view",
+        context({ stageOwner: "surface", surfaceCanToggleView: false }),
+      ),
+    ).toBe(false);
+  });
+
+  it.each(["terminal", "overlay"] as const)(
+    "refuses toggle-markdown-view while %s owns the stage",
+    (stageOwner) => {
+      expect(
+        isActionPerformable(
+          "toggle-markdown-view",
+          context({ stageOwner, surfaceCanToggleView: true }),
+        ),
+      ).toBe(false);
+    },
+  );
+
+  it("reads an absent surfaceCanToggleView as no second view", () => {
+    // The field is optional so every context literal written before
+    // 2026-08-23 keeps compiling; absent must fail toward not consuming.
+    expect(isActionPerformable("toggle-markdown-view", context({ stageOwner: "surface" }))).toBe(
+      false,
+    );
+  });
 });

@@ -102,7 +102,7 @@ describe("ACTION_REGISTRY", () => {
   // renderer because their native Cocoa roles cannot reach Monaco.
   // 53 = 52 + copy-or-interrupt (2026-08-20), the conditional Ctrl+C twin of
   // copy-selection — docs/plans/2026-08-20-performable-keybindings.md.
-  it("has exactly the 53 action ids including updater menu actions", () => {
+  it("has exactly the 54 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(
       new Set([
@@ -115,6 +115,7 @@ describe("ACTION_REGISTRY", () => {
         "toggle-prompts",
         "toggle-usage",
         "toggle-sessions",
+        "toggle-markdown-view",
         "move-pane-to-new-window",
         "new-tab",
         "reopen-tab",

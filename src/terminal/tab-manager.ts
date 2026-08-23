@@ -1504,6 +1504,11 @@ export function createTabManager(
     // the registry's "scoped: no-op when no file tab is active" without a
     // second check here.
     "save-file": () => void surfaces.save(),
+    // Flip the document on the stage between the rendered view and its source
+    // (design 2026-08-23 §4). Unguarded here: `isActionPerformable` already
+    // refused the keystroke unless a surface with two views owns the stage,
+    // and a menu click lands on a `toggleView` that is a no-op otherwise.
+    "toggle-markdown-view": () => surfaces.toggleView?.(),
     "select-all": () => runEditCommand("select-all"),
     undo: () => runEditCommand("undo"),
     redo: () => runEditCommand("redo"),
@@ -1585,6 +1590,10 @@ export function createTabManager(
       // `?? false` is the fail-toward-the-PTY rule (spec D5): no manager means
       // no selection means the key is not consumed.
       hasSelection: activeManager()?.activeHasSelection() ?? false,
+      // Same direction: a `SurfaceStrip` that does not implement the seam
+      // (every fake written before 2026-08-23, and `INERT_SURFACES`) answers
+      // "no second view", so the chord is never consumed on its behalf.
+      surfaceCanToggleView: surfaces.canToggleView?.() ?? false,
     };
   }
 
@@ -1638,18 +1647,20 @@ export function createTabManager(
   /**
    * "pane"-tiered actions that already know how to reach a non-terminal
    * surface themselves: `close-pane` -> `surfaces.close()`, `save-file` ->
-   * `surfaces.save()` (both in the `commands` table below),
+   * `surfaces.save()`, `toggle-markdown-view` -> `surfaces.toggleView()` (all
+   * three in the `commands` table below),
    * `move-pane-to-new-window`, which refuses with its own chrome message
    * (`movePane` above) rather than acting on `activeManager()`, and
    * `toggle-browser`, whose command IS a surface transition — blocking it
    * while an editor holds the stage would make the chord a no-op exactly
-   * when it is most useful. `overlayBlocksAction` exempts exactly these four
+   * when it is most useful. `overlayBlocksAction` exempts exactly these five
    * from the surface block so that surface-aware behavior still runs.
    */
   function isSurfaceRoutedAction(action: ShortcutAction): boolean {
     return (
       action === "close-pane" ||
       action === "save-file" ||
+      action === "toggle-markdown-view" ||
       action === "toggle-browser" ||
       action === "move-pane-to-new-window"
     );

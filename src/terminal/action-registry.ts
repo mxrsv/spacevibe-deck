@@ -475,6 +475,25 @@ export const ACTION_REGISTRY = [
     menu: { submenu: "View", group: "explorer" },
   },
   {
+    id: "toggle-markdown-view",
+    label: "Rendered Markdown",
+    // Tier "pane", same overlay reasoning as the dock's toggles above: it acts
+    // on whatever holds the stage, and every overlay covers the stage. It is
+    // in `isSurfaceRoutedAction` (tab-manager.ts) rather than
+    // `isChromeScopedAction`, because it reaches the SURFACE — a file surface
+    // must not block the one chord that changes how that surface draws.
+    //
+    // "Only while a markdown document is showing" is NOT this field: that is
+    // performability, and it is answered by `action-performable.ts` BEFORE the
+    // keystroke is consumed, so ⌘⇧V over a terminal or a `.ts` file reaches
+    // whatever holds focus instead of dying here (design 2026-08-23 §4).
+    scope: "pane",
+    // Its own group under the dock's cluster: the three items above open a
+    // column beside the stage, and this one changes what the stage itself
+    // draws.
+    menu: { submenu: "View", group: "document" },
+  },
+  {
     id: "move-pane-to-new-window",
     label: "Move Pane to New Window",
     // Tier "pane": it acts on the FOCUSED pane, which every overlay hides —

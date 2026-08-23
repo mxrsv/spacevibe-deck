@@ -95,6 +95,10 @@ const PLACEMENT: Readonly<Record<string, ShortcutGroupId>> = {
   "zoom-out": "display",
   "zoom-reset": "display",
 
+  // "files", not "app": it changes how the open DOCUMENT draws, which is the
+  // same subject as Save (design 2026-08-23 §4).
+  "toggle-markdown-view": "files",
+
   "toggle-settings": "app",
   "toggle-prompts": "app",
   // "app", not "panes": the panel is a surface of the window like Settings and

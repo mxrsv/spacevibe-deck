@@ -84,6 +84,19 @@
      above metadata without climbing to the 14px title rung. */
   --type-project: 13px;
 
+  /* DL-31.1: the rendered document's own reading scale — a SECOND ladder,
+     scoped to `.md-doc` and to nothing else, which is why DL-4.5's
+     "no second standard ladder" is untouched. Every rung is derived from
+     `--type-body`, so a chrome-wide type change still reaches the document
+     instead of leaving it at a size nothing else in the app uses.
+     `--md-measure` is the 72ch prose cap DL-31.2 names. */
+  --md-body: calc(var(--type-body) + 1px);
+  --md-small: var(--type-body);
+  --md-h1: calc(var(--type-body) + 9px);
+  --md-h2: calc(var(--type-body) + 5px);
+  --md-h3: calc(var(--type-body) + 2px);
+  --md-measure: 72ch;
+
   /* DL-18: the single command row. 34px carries a 26px control comfortably
      and clears the macOS traffic lights, which need ~28px of vertical room. */
   --frame-h: 34px;

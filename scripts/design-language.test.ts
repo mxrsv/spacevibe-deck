@@ -292,6 +292,30 @@ describe("design-language citations", () => {
     expect(unresolved).toEqual([]);
   });
 
+  /**
+   * The rendered document's scroll thumb must stay visible at rest, and its
+   * pointer step must stay declared BESIDE it.
+   *
+   * Both halves are load-bearing and both look redundant, which is why they
+   * are pinned. `01-tokens.css` lights every other thumb through
+   * `*:hover::-webkit-scrollbar-thumb`, and that rule never reaches the screen:
+   * Chromium repaints a custom scrollbar only when the scrollbar's own state
+   * changes, so flipping a pseudo-element declaration through the originating
+   * element's `:hover` computes a new value and paints nothing (measured
+   * 2026-08-23). And the 32% hover rule in that file carries the same
+   * specificity while sitting earlier in the cascade, so deleting the local
+   * `:hover` restatement silently removes the pointer step.
+   */
+  it("keeps the rendered document's scroll thumb visible at rest", () => {
+    const css = readStylesheet().replace(CSS_COMMENT, "");
+    const rest = css.match(/\.md-doc::-webkit-scrollbar-thumb\s*\{([^}]*)\}/)?.[1];
+    const hover = css.match(/\.md-doc::-webkit-scrollbar-thumb:hover\s*\{([^}]*)\}/)?.[1];
+
+    expect(rest, ".md-doc should declare a resting scrollbar thumb").toBeDefined();
+    expect(rest).not.toMatch(/background:\s*transparent/);
+    expect(hover, ".md-doc should restate its thumb hover step").toBeDefined();
+  });
+
   it("keeps the stage-bound file editor square", () => {
     const styles = readStylesheet();
     const fileView = styles.match(/\.fileview\s*\{([^}]*)\}/)?.[1] ?? "";

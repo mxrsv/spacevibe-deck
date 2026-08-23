@@ -225,6 +225,21 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // CharKeyBinding is mandatory, not a style choice: this action has a macOS
   // menu item, and a Cocoa accelerator is declared by character (RULE above).
   { key: "j", meta: true, shift: true, action: "toggle-dock" },
+  // Flip a markdown document between the rendered view and its source
+  // (design docs/specs/2026-08-23-markdown-rendered-view-design.md §4). ⌘⇧V is
+  // VS Code's own chord for this and is free on the macOS keymap — ⌘V is the
+  // native Cocoa Paste role and does not claim the Shift variant.
+  //
+  // **No Windows binding, deliberately.** Ctrl+Shift+V is already `paste`
+  // there, and a PERFORMABLE action that declines the key does not fall
+  // through to a second binding — it stops consuming, and the keystroke
+  // reaches whatever holds focus. Binding both would therefore break paste in
+  // a terminal rather than share the chord. Same shape as `save-file` above,
+  // which is bare ⌘S with no Windows twin; the toggle control on the surface
+  // is the reachable half on Windows. CharKeyBinding is mandatory, not a style
+  // choice: this action has a macOS menu item, and a Cocoa accelerator is
+  // declared by character (RULE above).
+  { key: "v", meta: true, shift: true, action: "toggle-markdown-view" },
   // Move the focused pane into its own window. Cmd+Shift+M is free on both
   // keymaps (no `m`/`KeyM` binding existed on either) and `m` is the "move"
   // mnemonic; macOS's Cmd+M Minimize is a Cocoa builtin and does not claim

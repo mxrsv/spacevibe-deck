@@ -23,6 +23,7 @@
 import type { Settings } from "../settings/settings-schema";
 import { resolveTheme } from "../settings/themes";
 import { deriveChromeColors } from "../lib/derive-colors";
+import { baseName } from "../lib/path-name";
 
 /** The subset of Monaco this feature uses. Structural, so nothing here has to
  * import Monaco's types at module scope. */
@@ -95,8 +96,7 @@ export const EDITOR_LANGUAGES: readonly EditorLanguage[] = [
  * `.JSON` and `.MD` both turn up in real repositories.
  */
 export function languageForPath(filePath: string): string | null {
-  const cut = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
-  const name = cut === -1 ? filePath : filePath.slice(cut + 1);
+  const name = baseName(filePath);
   for (const language of EDITOR_LANGUAGES) {
     if (language.filenames?.some((candidate) => name.startsWith(candidate))) {
       return language.id;
@@ -204,18 +204,12 @@ export function monacoThemeFor(settings: Settings): MonacoThemeData {
 
 let loading: Promise<MonacoApi> | null = null;
 
-/** Whether Monaco is already in memory — the panel uses it to decide whether
- * opening a file is instant or has a chunk to fetch first. */
-export function isMonacoLoaded(): boolean {
-  return loading !== null;
-}
-
 /**
  * Load Monaco once, with exactly the enumerated languages.
  *
  * The promise is cached, so a second file tab does not race a second import;
  * a FAILED load is not cached, so a transient chunk-fetch failure does not
- * poison every later attempt — the failure mode Gate M exists to catch is a
+ * poison every later attempt — the failure mode the packaged Monaco smoke catches is a
  * chunk that 404s under `file://`, and retrying it is the only recovery a
  * running app has.
  */
@@ -226,7 +220,7 @@ export function loadMonaco(): Promise<MonacoApi> {
   const attempt = (async (): Promise<MonacoApi> => {
     const monaco = await import("monaco-editor/editor/editor.api");
     // Workers resolve through the same `base: "./"` path that produced two
-    // silent packaging failures in the MVP, which is why Gate M runs against a
+    // silent packaging failures in the MVP, which is why the Monaco smoke runs against a
     // packaged build and not `electron:dev`.
     const { default: EditorWorker } = await import("monaco-editor/editor/editor.worker?worker");
     (globalThis as { MonacoEnvironment?: unknown }).MonacoEnvironment = {
@@ -279,9 +273,4 @@ export function applyMonacoTheme(monaco: MonacoApi, settings: Settings): void {
     monacoThemeFor(settings) as Parameters<typeof monaco.editor.defineTheme>[1],
   );
   monaco.editor.setTheme(DECK_THEME_ID);
-}
-
-/** Reset the cached loader. Tests only. */
-export function resetMonacoLoaderForTests(): void {
-  loading = null;
 }

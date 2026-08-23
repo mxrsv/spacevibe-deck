@@ -30,7 +30,6 @@ import {
   documentFor,
   fileDocuments,
   fileSurfaces,
-  fileTabsFor,
   listingErrorsFor,
   openFileTab,
   promoteFileTab,
@@ -42,7 +41,9 @@ import {
   totalFileTabs,
   updateDocument,
   visibleDirectories,
+  toggleViewMode,
 } from "./file-surface-store";
+import { isMarkdownPath } from "./markdown-policy";
 import { createPushingDirtyRegistry } from "./dirty-registry";
 import { defaultFileClient, type FileClient } from "./file-client";
 import { createTreeRefresh } from "./tree-refresh";
@@ -568,6 +569,24 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
     // `count()` and this are read in separate turns, and a tab can close
     // between them.
     orderKey: (index) => stripFileTabs()[index]?.openedAt ?? UNSEQUENCED,
+    // A markdown document is the only thing with two views today (design
+    // 2026-08-23 §4). Answered from the ACTIVE path rather than from a stored
+    // flag so a tab switch cannot leave the chord performable over a `.ts`
+    // file — `activeFileTab` is the one truth about what is on the stage.
+    canToggleView: () => {
+      const path = activeFileTab.value;
+      return path !== null && isMarkdownPath(path);
+    },
+    toggleView() {
+      const path = activeFileTab.value;
+      if (path === null || !isMarkdownPath(path)) {
+        return;
+      }
+      toggleViewMode(path);
+      // The mount changes under the strip, and the status bar reads the same
+      // views — the same reason every other surface transition notifies.
+      notify();
+    },
     activate: activateIndex,
     deactivate() {
       if (activeFileTab.value === null) {
@@ -614,10 +633,4 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       treeRefresh.dispose();
     },
   };
-}
-
-/** Whether the strip should show `workspacePath`'s file tabs — used by both
- * chrome layouts so a single-layout change cannot half-land (spec §7). */
-export function stripFileTabsFor(workspacePath: string | null): ReturnType<typeof fileTabsFor> {
-  return fileTabsFor(workspacePath);
 }

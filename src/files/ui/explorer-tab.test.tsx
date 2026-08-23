@@ -3,7 +3,7 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// The editor's own boot is Gate M's concern (and file-editor.test.tsx's) —
+// The editor's own boot is the packaged Monaco smoke's concern (and file-editor.test.tsx's) —
 // this suite is about the pipe from a tree click to a mounted `.fileview`,
 // not about Monaco. A promise that never resolves keeps the editor in its
 // permanent "loading" state without pulling in the full stub.

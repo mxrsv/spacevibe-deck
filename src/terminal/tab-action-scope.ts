@@ -23,7 +23,7 @@ export const DESTRUCTIVE_ACTIONS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The ids `commands` implements — 48 entries, verified against the live
+ * The ids `commands` implements — 49 entries, verified against the live
  * `commands` table, Task 4's `copy-selection`/`paste` included, the Prompt
  * Board's `toggle-prompts`, the browser surface's `toggle-browser`, the
  * dock's `toggle-dock`/`toggle-explorer`/`toggle-usage`/`toggle-sessions`/
@@ -78,6 +78,7 @@ export const COMMAND_ACTIONS = [
   "toggle-dock",
   "toggle-expand",
   "toggle-explorer",
+  "toggle-markdown-view",
   "toggle-prompts",
   "toggle-sessions",
   "toggle-settings",

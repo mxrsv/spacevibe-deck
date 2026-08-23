@@ -1,0 +1,377 @@
+/* ── The rendered document (DL §31) ──────────────────────────────────────
+   A reading surface, not a chrome surface: DL-4.4's four-rung ladder sizes
+   labels and rows, and it deliberately does not describe body copy that
+   someone reads for a minute at a time. DL-31.1 gives this one surface its
+   own scale, built from `--type-body` so a chrome-wide type change still
+   reaches it, and every colour in here is an existing token — no literal,
+   no new colour role (DL-31.4).
+
+   Layout is DL-31.2: prose capped near 72ch and centred, with code, tables
+   and diagrams allowed to run the full width inside their own scroll boxes.
+   Hairlines are the `--hair` family throughout (DL-31.4). */
+
+.fileview--rendered {
+  /* No radius here on purpose: `.fileview` is stage-bound and the DL gate
+     asserts the editor stays square. This variant inherits that. */
+  overflow: hidden;
+}
+
+.md-doc {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* `box-sizing` is declared because this element has both a percentage size
+     and padding, and `src/styles.css` has no global reset (Known traps). */
+  box-sizing: border-box;
+  /* The top is the view toggle's height plus its own inset plus air, so the
+     first heading starts BELOW the control at every window width rather than
+     only on a window wide enough for the 72ch column to leave a gutter. */
+  padding: 44px 32px 96px;
+  font-family: var(--ui-font);
+  font-size: var(--md-body);
+  line-height: 1.65;
+  color: var(--text-primary);
+  background: var(--bg);
+  /* DL-31.2: the column, not the window, is what the eye tracks. `auto`
+     margins centre it; the padding above keeps it off the scrollbar. */
+}
+
+.md-doc > * {
+  max-width: var(--md-measure);
+  margin-inline: auto;
+}
+
+.md-doc:focus-visible {
+  /* The document is focusable so it can be paged by the keyboard; the ring is
+     the app's own, never a browser default. */
+  outline: 1px solid var(--hair-strong);
+  outline-offset: -1px;
+}
+
+/* The scroll thumb is VISIBLE AT REST here, unlike every other scroll
+   container in the app (2026-08-23, owner-chosen).
+
+   Two reasons, and the first is a defect the app-wide treatment cannot fix
+   from where it stands. `01-tokens.css` paints the thumb `transparent` at rest
+   and lights it through `*:hover::-webkit-scrollbar-thumb`, and **that rule
+   never reaches the screen**: Chromium repaints a custom scrollbar only when
+   the scrollbar's OWN state changes (its hover, a drag, a resize) or when an
+   inherited property on the scroller changes — flipping a declaration on the
+   pseudo-element through the originating element's `:hover` computes the new
+   value and paints nothing. Measured 2026-08-23 against the shipped
+   stylesheet: `getComputedStyle(el, "::-webkit-scrollbar-thumb")` answered the
+   20% colour while every pixel of the 6px column stayed background, and the
+   same thumb forced to a literal red painted immediately. So the only step a
+   user ever saw was `::-webkit-scrollbar-thumb:hover`, which fires because
+   hovering the bar IS a scrollbar state change.
+
+   The second reason is why this is scoped here rather than fixed app-wide (the
+   owner's call): the rail, the dock's tabs and the settings sections are short
+   lists where the bar is a nicety, and this is Deck's first long-form READING
+   surface — where the thumb's size is also how long the document is.
+
+   `:hover` is restated because `01-tokens.css`'s own 32% hover rule carries the
+   same specificity (0,1,0) and sits EARLIER in the cascade, so the resting
+   colour below would otherwise win over it and the pointer step would vanish. */
+.md-doc::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--fg) 18%, transparent);
+}
+
+.md-doc::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--fg) 32%, transparent);
+}
+
+/* ── Headings (DL-31.1) ───────────────────────────────────────────────── */
+
+.md-doc h1,
+.md-doc h2,
+.md-doc h3,
+.md-doc h4,
+.md-doc h5,
+.md-doc h6 {
+  margin: 1.6em 0 0.6em;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.md-doc > h1:first-child,
+.md-doc > h2:first-child {
+  margin-top: 0;
+}
+
+.md-doc h1 {
+  font-size: var(--md-h1);
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--hair);
+}
+
+.md-doc h2 {
+  font-size: var(--md-h2);
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--hair);
+}
+
+.md-doc h3 {
+  font-size: var(--md-h3);
+}
+
+.md-doc h4,
+.md-doc h5,
+.md-doc h6 {
+  font-size: var(--md-body);
+}
+
+.md-doc h5,
+.md-doc h6 {
+  color: var(--text-muted);
+}
+
+/* ── Flow (DL-31.2) ───────────────────────────────────────────────────── */
+
+.md-doc p,
+.md-doc ul,
+.md-doc ol,
+.md-doc blockquote,
+.md-doc .md-table-scroll,
+.md-doc .md-code,
+.md-doc .md-diagram {
+  margin: 0 0 1em;
+}
+
+.md-doc ul,
+.md-doc ol {
+  padding-left: 1.5em;
+}
+
+.md-doc li {
+  margin: 0.25em 0;
+}
+
+.md-doc li > ul,
+.md-doc li > ol {
+  margin: 0.25em 0;
+}
+
+.md-doc hr {
+  border: 0;
+  border-top: 1px solid var(--hair);
+  margin: 2em auto;
+}
+
+.md-doc blockquote {
+  padding: 0.1em 0 0.1em 1em;
+  border-left: 2px solid var(--hair-strong);
+  color: var(--text-muted);
+}
+
+.md-doc blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* ── Links (DL-31.3) ──────────────────────────────────────────────────── */
+
+.md-link {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.md-link:hover {
+  text-decoration: underline;
+}
+
+/* A dead link is plain text and says so by looking like the copy around it —
+   it carries no `href`, no pointer and no colour (DL-31.3). */
+.md-link--dead {
+  color: inherit;
+  cursor: default;
+}
+
+/* ── Code (DL-31.5) ───────────────────────────────────────────────────── */
+
+.md-doc code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+/* Inline code: a tint of the chrome step the surface sits on, never a border
+   — an outlined chip in a sentence reads as a control. */
+.md-doc p > code,
+.md-doc li > code,
+.md-doc td > code,
+.md-doc th > code,
+.md-doc h1 > code,
+.md-doc h2 > code,
+.md-doc h3 > code,
+.md-doc blockquote code {
+  padding: 0.1em 0.35em;
+  border-radius: var(--radius-flat);
+  background: var(--chrome-2);
+  color: var(--text-primary);
+}
+
+.md-code {
+  box-sizing: border-box;
+  max-width: none;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-tight);
+  background: var(--chrome-1);
+  overflow-x: auto;
+  line-height: 1.55;
+  /* `pre` inherits neither, and a fence must keep the author's own wrapping. */
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* Monaco's colorizer emits its own inline colours; the container only has to
+   stop fighting them. */
+.md-code--lit code {
+  color: inherit;
+}
+
+/* Raw HTML the author wrote, escaped and shown verbatim (design §6). Kept
+   monospace so it reads as the markup it is, and `pre-wrap` because a block
+   run carries its own newlines. */
+.md-raw {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  white-space: pre-wrap;
+  color: var(--text-muted);
+}
+
+/* ── Tables (DL-31.2) ─────────────────────────────────────────────────── */
+
+.md-table-scroll {
+  max-width: none;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.md-table {
+  border-collapse: collapse;
+  font-size: var(--md-small);
+}
+
+.md-table th,
+.md-table td {
+  padding: 6px 12px;
+  border: 1px solid var(--hair);
+  text-align: left;
+  vertical-align: top;
+}
+
+.md-table th {
+  background: var(--chrome-1);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ── Task lists (design §5: inert pictures) ───────────────────────────── */
+
+.md-check {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-flat);
+  background: transparent;
+}
+
+.md-check--on {
+  border-color: var(--text-muted);
+  background: var(--text-muted);
+}
+
+/* ── Images and diagrams ──────────────────────────────────────────────── */
+
+.md-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-tight);
+}
+
+/* A remote URL is a labelled placeholder, never a fetch (design §6). */
+.md-image-remote {
+  display: inline-block;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px dashed var(--hair);
+  border-radius: var(--radius-tight);
+  font-size: var(--md-small);
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+}
+
+.md-diagram {
+  max-width: none;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-tight);
+  background: var(--chrome-1);
+  overflow-x: auto;
+  text-align: center;
+}
+
+.md-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* A diagram that would not parse keeps its code block and gains the reason —
+   never a blank hole (design §5). */
+.md-diagram-error {
+  font-size: var(--md-small);
+  color: var(--text-muted);
+}
+
+/* ── The toggle (DL-31.6) ─────────────────────────────────────────────── */
+
+/* `.stage__surface` is `position: absolute`, so it is this control's
+   containing block. Absolute rather than a flex child: the surface lays its
+   ONE mount out at `flex: 1`, and a second child would shrink the document.
+
+   Both insets are measured from what the control actually sits BESIDE, not
+   from the surface box, because those are not the same edge on the two axes:
+   the top clears `.fileview`'s 1px hairline, and the right clears that
+   hairline PLUS the 6px scroll thumb. Stated as raw offsets they looked
+   symmetric (8 / 14) and read cramped, because 14px from the surface edge is
+   only 7px from the bar — measured 2026-08-23. The 12px below is the gap the
+   eye reads, on both sides. `.md-doc`'s top padding is set from this control's
+   height for the same reason: at 28px the first heading passed 3px UNDER the
+   button. */
+.md-view-toggle {
+  position: absolute;
+  top: 13px;
+  right: 19px;
+  z-index: 1;
+  /* NOT cosmetic, and not redundant with `.iconbtn`'s `place-items: center`.
+     Chrome's UA sheet gives every `<button>` `padding: 1px 6px`, `.iconbtn`
+     never resets it, and a form control takes `box-sizing: border-box` from
+     the UA too — so a 24px button with this rule's 1px border has a content
+     box only 10px wide while the glyph is 15px. A grid item WIDER than its
+     track is not centred: Chromium clamps the negative offset to the track's
+     start edge, which pinned this icon 5px left of centre (measured
+     2026-08-23: 7px of air on the left, 2px on the right). Zeroing the
+     padding gives the track 22px and the glyph its own 3.5px on each side.
+     Every `.iconbtn` in the app leans the same way by 1.5px — they carry
+     `border: none`, so their track is 12px against the same 15px glyph — and
+     that is a separate, app-wide fix (Known traps). */
+  padding: 0;
+  background: var(--chrome-1);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-control);
+}
+
+.md-view-toggle:hover {
+  background: var(--state-hover-bg);
+}

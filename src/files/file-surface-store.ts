@@ -27,6 +27,7 @@ import {
   type TreeRow,
 } from "./file-tree";
 import type { FileContent } from "./file-content";
+import { defaultViewMode, type ViewMode } from "./markdown-policy";
 import { nextOpenSequence } from "../lib/open-sequence";
 import {
   activeAfterFileClose,
@@ -124,11 +125,7 @@ export interface RevealRequest {
  */
 export const pendingReveal = signal<RevealRequest | null>(null);
 
-export function requestReveal(
-  path: string,
-  line: number,
-  column: number,
-): void {
+export function requestReveal(path: string, line: number, column: number): void {
   pendingReveal.value = { path, line, column };
 }
 
@@ -172,6 +169,47 @@ function clearListingError(workspacePath: string, directory: string): void {
 
 /** Open documents, keyed by absolute path. */
 export const fileDocuments = signal<ReadonlyMap<string, FileDocument>>(new Map());
+
+/**
+ * Which of the two views each open markdown tab is showing (design
+ * 2026-08-23 §3).
+ *
+ * Session-scoped and keyed by absolute path, exactly like `fileDocuments`
+ * above, and dropped with the document. Deliberately NOT a settings field:
+ * persisting it was considered and dropped, because the default is right on
+ * nearly every open and a remembered "source" would quietly turn the feature
+ * off for the one file the user once inspected.
+ *
+ * A path with no entry has never been flipped, and answers `defaultViewMode`
+ * — so the map only ever holds deliberate choices.
+ */
+const fileViewModes = signal<ReadonlyMap<string, ViewMode>>(new Map());
+
+/** The view `path` is showing: its own choice, or the extension's default. */
+export function viewModeFor(path: string | null): ViewMode {
+  if (path === null) {
+    return "source";
+  }
+  return fileViewModes.value.get(path) ?? defaultViewMode(path);
+}
+
+/** Flip one file tab between rendered and source. */
+export function toggleViewMode(path: string): void {
+  const next = new Map(fileViewModes.value);
+  next.set(path, viewModeFor(path) === "rendered" ? "source" : "rendered");
+  fileViewModes.value = next;
+}
+
+/** Forget `path`'s choice — called wherever its document is dropped, so a
+ * reopened file lands on the extension's default again. */
+function forgetViewMode(path: string): void {
+  if (!fileViewModes.value.has(path)) {
+    return;
+  }
+  const next = new Map(fileViewModes.value);
+  next.delete(path);
+  fileViewModes.value = next;
+}
 
 /**
  * The workspace the panel and the strip's file segment belong to.
@@ -260,26 +298,6 @@ export function toggleDirectory(workspacePath: string, directory: string): void 
   });
 }
 
-export function expandDirectory(workspacePath: string, directory: string): void {
-  const surface = surfaceFor(workspacePath);
-  if (surface.expanded.has(directory)) {
-    return;
-  }
-  writeSurface(workspacePath, {
-    expanded: new Set([...surface.expanded, directory]),
-  });
-}
-
-export function collapseDirectory(workspacePath: string, directory: string): void {
-  const surface = surfaceFor(workspacePath);
-  if (!surface.expanded.has(directory)) {
-    return;
-  }
-  const expanded = new Set(surface.expanded);
-  expanded.delete(directory);
-  writeSurface(workspacePath, { expanded });
-}
-
 /** Rows the tree renders right now, for `workspacePath`'s root. */
 export function treeRows(workspacePath: string | null): TreeRow[] {
   if (workspacePath === null) {
@@ -346,6 +364,7 @@ function disposeIfOrphaned(path: string): void {
   const documents = new Map(fileDocuments.value);
   documents.delete(path);
   fileDocuments.value = documents;
+  forgetViewMode(path);
 }
 
 /**
@@ -448,6 +467,7 @@ export function closeFileSurface(workspacePath: string, path: string): void {
   const documents = new Map(fileDocuments.value);
   documents.delete(path);
   fileDocuments.value = documents;
+  forgetViewMode(path);
   if (activeFileTab.value === path) {
     activeFileTab.value = nextActive;
   }
@@ -514,6 +534,7 @@ export function resetFileSurfaces(): void {
   fileSurfaces.value = new Map();
   listingErrors.value = new Map();
   fileDocuments.value = new Map();
+  fileViewModes.value = new Map();
   activeWorkspace.value = null;
   activeFileTab.value = null;
   dockWidthLive.value = null;

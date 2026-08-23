@@ -14,12 +14,26 @@
  * makes "opening a file puts an editor on the stage" assertable — and makes it
  * structurally impossible for `dockOpen` to creep back into the condition.
  *
+ * Since 2026-08-23 it also decides WHICH of the two views a markdown file gets
+ * (design 2026-08-23 §3): `MarkdownView` when the path is markdown and the
+ * mode is `rendered`, `FileEditor` unchanged otherwise. The choice is made
+ * here rather than inside `FileEditor` so neither component knows the other
+ * exists, and so flipping the mode UNMOUNTS Monaco for that tab instead of
+ * leaving an editor alive behind a hidden div.
+ *
+ * The toggle sits at this level too, above both mounts: it is one control that
+ * must be present in both modes, and source mode is exactly where the way back
+ * matters.
+ *
  * It renders the layer only; the rectangle it occupies (and the insets that
  * keep it clear of the docked panels) is `.stage__surface` in styles.css.
  */
-import { activeFileTab } from "../file-surface-store";
+import { activeFileTab, toggleViewMode, viewModeFor } from "../file-surface-store";
+import { isMarkdownPath } from "../markdown-policy";
 import type { FileSurfaceController } from "../file-surface-controller";
 import { FileEditor } from "./file-editor";
+import { MarkdownView } from "./markdown-view";
+import { ViewModeToggle } from "./view-mode-toggle";
 
 export interface StageSurfaceProps {
   readonly controller: FileSurfaceController;
@@ -30,9 +44,16 @@ export function StageSurface(props: StageSurfaceProps) {
   if (path === null) {
     return null; // a terminal tab holds the stage
   }
+  const markdown = isMarkdownPath(path);
+  const mode = viewModeFor(path);
   return (
     <div class="stage__surface">
-      <FileEditor path={path} controller={props.controller} />
+      {markdown && <ViewModeToggle mode={mode} onToggle={() => toggleViewMode(path)} />}
+      {markdown && mode === "rendered" ? (
+        <MarkdownView path={path} controller={props.controller} />
+      ) : (
+        <FileEditor path={path} controller={props.controller} />
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Over a STUBBED editor. Whether Monaco itself boots, tokenizes and saves is
- * Gate M's question and the manual pass's — it needs a packaged build and a
+ * The packaged Monaco smoke's question and the manual pass's — it needs a packaged build and a
  * real window, neither of which a unit test has. What IS testable here is
  * everything around the editor: the refusal state, the bars, the read-only
  * flag, and that a reload does not report itself as a user edit.

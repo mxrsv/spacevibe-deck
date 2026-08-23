@@ -115,6 +115,12 @@ pub fn build_view_menu<R: Runtime>(
         "Session History",
         Some("CmdOrCtrl+Shift+Y"),
     )?;
+    let toggle_markdown_view = action_item(
+        handle,
+        "toggle-markdown-view",
+        "Rendered Markdown",
+        Some("CmdOrCtrl+Shift+V"),
+    )?;
     tauri::menu::SubmenuBuilder::new(handle, "View")
         .item(&split_row)
         .item(&split_column)
@@ -136,6 +142,8 @@ pub fn build_view_menu<R: Runtime>(
         .item(&toggle_explorer)
         .item(&toggle_usage)
         .item(&toggle_sessions)
+        .separator()
+        .item(&toggle_markdown_view)
         .build()
 }
 

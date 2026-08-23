@@ -66,6 +66,20 @@ export interface SurfaceStrip {
    * compiling and keeps the pre-seam behaviour.
    */
   runEditCommand?(command: SurfaceEditCommand): boolean;
+  /**
+   * Whether the ACTIVE surface offers a second view of the same thing right
+   * now — today, a markdown document that can be shown rendered or as source.
+   *
+   * Read by `isActionPerformable` before `toggle-markdown-view` consumes its
+   * keystroke, so the chord passes through untouched anywhere else. Still the
+   * §2.3 seam: TabManager learns that a surface may have two views, never that
+   * one of them is a parsed document. Optional for the reason `orderKey` and
+   * `runEditCommand` are — every `SurfaceStrip` fake written before this keeps
+   * compiling with the pre-seam behaviour (no second view anywhere).
+   */
+  canToggleView?(): boolean;
+  /** Flip the active surface's view. A no-op when it has only one. */
+  toggleView?(): void;
   /** Activate the surface at `index` within the segment. */
   activate(index: number): void;
   /** A terminal tab is taking the stage. */
@@ -86,6 +100,8 @@ export const INERT_SURFACES: SurfaceStrip = {
   activeIndex: () => -1,
   orderKey: () => UNSEQUENCED,
   runEditCommand: () => false,
+  canToggleView: () => false,
+  toggleView: () => {},
   activate: () => {},
   deactivate: () => {},
   focus: () => {},
