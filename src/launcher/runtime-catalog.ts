@@ -29,6 +29,16 @@
  * belongs to, and an agent with no effort flag must never be handed an effort.
  */
 
+/**
+ * A stored per-agent runtime preference. Either half null means "whatever the
+ * CLI itself defaults to". Declared here rather than in the settings schema so
+ * the pure half of the launcher owns the shape its own merge consumes.
+ */
+export interface AgentRuntimeDefault {
+  readonly model: string | null;
+  readonly effort: string | null;
+}
+
 export interface RuntimeValue {
   readonly value: string;
   readonly label: string;
@@ -228,7 +238,7 @@ export function runtimeOptions(
  */
 export function mergeRuntimeDefaults(
   capability: AgentRuntimeCapability | null,
-  stored: { readonly model: string | null; readonly effort: string | null } | undefined,
+  stored: AgentRuntimeDefault | undefined,
 ): AgentRuntimeCapability | null {
   if (capability === null || stored === undefined) {
     return capability;

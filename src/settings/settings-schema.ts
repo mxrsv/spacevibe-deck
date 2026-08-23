@@ -12,6 +12,7 @@ import {
   type LaunchProfile,
 } from "../lib/launch-profile";
 import { isValidPromptTemplate, type PromptTemplate } from "../prompts/prompt-templates";
+import { runtimeFor, type AgentRuntimeDefault } from "../launcher/runtime-catalog";
 import {
   NO_KEYBINDING_OVERRIDES,
   validateKeybindings,
@@ -110,6 +111,31 @@ export interface Settings {
    * drop, and the quick picker's initial selection. Absent = launch bare.
    */
   defaultLaunchProfiles: Readonly<Record<string, string>>;
+  /**
+   * Agent id → model values the user declared for it, merged OVER the runtime
+   * catalog's seed (`src/launcher/runtime-catalog.ts`).
+   *
+   * A setting rather than a shipped list because no agent CLI enumerates its
+   * models: `--help` names a couple of aliases in prose and nothing more, so
+   * the only honest source for the rest is the person who knows which models
+   * their account can reach.
+   */
+  agentModels: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Agent id → the model and reasoning effort a new task starts with. Either
+   * half null means "whatever the CLI itself defaults to", which is what an
+   * untouched agent answers.
+   */
+  agentRuntimeDefaults: Readonly<Record<string, AgentRuntimeDefault>>;
+  /**
+   * Whether Quick Launch opens with its prompt section expanded.
+   *
+   * The launcher draft carries a live `promptExpanded` too; THIS is the
+   * persisted home and the draft is seeded from it, so the direction of flow
+   * is one-way on open and one-way on change. The Open Board never reads it —
+   * its composer is always visible.
+   */
+  quickLaunchPromptExpanded: boolean;
   /** Reusable prompt bodies the user declared for the Prompt Board. */
   promptTemplates: readonly PromptTemplate[];
   /**
@@ -190,6 +216,9 @@ export const DEFAULT_SETTINGS: Settings = {
   railOrder: [],
   defaultAgent: null,
   defaultLaunchProfiles: {},
+  agentModels: {},
+  agentRuntimeDefaults: {},
+  quickLaunchPromptExpanded: true,
   promptTemplates: [],
   browserHomeUrl: "http://localhost:3000",
   browserLastUrl: "",
@@ -366,6 +395,80 @@ function validatePromptTemplates(raw: unknown): readonly PromptTemplate[] {
  * Entries are NOT checked against anything on screen. A key naming no
  * currently-visible project is exactly what this list is for.
  */
+/**
+ * Drop-not-repair, like `validateLaunchProfiles`: a model value reaches a live
+ * shell as a flag argument, so anything malformed is discarded rather than
+ * coerced. Values are deduplicated and empties dropped; an agent left with no
+ * values keeps no key at all, so the record never grows entries that mean
+ * nothing.
+ *
+ * The agent id is NOT checked against the catalog — a custom agent may take a
+ * model flag this repo does not model, and the composer simply offers what is
+ * declared.
+ */
+function validateAgentModels(raw: unknown): Readonly<Record<string, readonly string[]>> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return DEFAULT_SETTINGS.agentModels;
+  }
+  const result: Record<string, readonly string[]> = {};
+  for (const [agentId, values] of Object.entries(raw as Record<string, unknown>)) {
+    if (agentId === "" || !Array.isArray(values)) {
+      continue;
+    }
+    const seen = new Set<string>();
+    const kept = values.filter((value): value is string => {
+      if (typeof value !== "string" || value.trim() === "" || seen.has(value)) {
+        return false;
+      }
+      seen.add(value);
+      return true;
+    });
+    if (kept.length > 0) {
+      result[agentId] = kept;
+    }
+  }
+  return result;
+}
+
+/**
+ * The stored model/effort pair per agent.
+ *
+ * An **effort** is checked against that agent's capability, because the set is
+ * closed — read off the CLI's own `--help` — so a value outside it could only
+ * come from a stale write or a hand-edited file. A **model** is not, for the
+ * same reason `agentModels` exists: no CLI enumerates them.
+ *
+ * An agent Deck knows no runtime capability for is dropped whole: there is no
+ * flag to spend either half on.
+ */
+function validateAgentRuntimeDefaults(raw: unknown): Readonly<Record<string, AgentRuntimeDefault>> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return DEFAULT_SETTINGS.agentRuntimeDefaults;
+  }
+  const result: Record<string, AgentRuntimeDefault> = {};
+  for (const [agentId, value] of Object.entries(raw as Record<string, unknown>)) {
+    const capability = runtimeFor(agentId);
+    if (capability === null || typeof value !== "object" || value === null) {
+      continue;
+    }
+    const source = value as Record<string, unknown>;
+    const model =
+      capability.modelFlag !== null && typeof source.model === "string" && source.model !== ""
+        ? source.model
+        : null;
+    const effort =
+      capability.effortFlag !== null &&
+      typeof source.effort === "string" &&
+      capability.efforts.some((entry) => entry.value === source.effort)
+        ? source.effort
+        : null;
+    if (model !== null || effort !== null) {
+      result[agentId] = { model, effort };
+    }
+  }
+  return result;
+}
+
 function validateRailOrder(raw: unknown): readonly string[] {
   if (!Array.isArray(raw)) {
     return DEFAULT_SETTINGS.railOrder;
@@ -457,6 +560,12 @@ export function validateSettings(raw: unknown): Settings {
       ? source.disabledAgents.filter((id): id is string => typeof id === "string")
       : DEFAULT_SETTINGS.disabledAgents,
     railOrder: validateRailOrder(source.railOrder),
+    agentModels: validateAgentModels(source.agentModels),
+    agentRuntimeDefaults: validateAgentRuntimeDefaults(source.agentRuntimeDefaults),
+    quickLaunchPromptExpanded:
+      typeof source.quickLaunchPromptExpanded === "boolean"
+        ? source.quickLaunchPromptExpanded
+        : DEFAULT_SETTINGS.quickLaunchPromptExpanded,
     // Not checked against the catalog: an id here may belong to an agent the
     // user has since uninstalled, and forgetting the preference because a
     // binary is temporarily missing would be worse than carrying it.
