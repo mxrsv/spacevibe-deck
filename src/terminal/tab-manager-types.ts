@@ -9,6 +9,7 @@ import type { PaneAttentionSnapshot } from "./agent-attention";
 import type { AgentNotifier } from "./agent-notifier";
 import type { InjectOutcome } from "../prompts/inject";
 import type { MaterializeIntent } from "./tab-materialize";
+import type { LaunchTaskOutcome } from "./task-prompt-send";
 import type { Settings } from "../settings/settings-schema";
 import type { SurfaceStrip } from "./surface-strip";
 
@@ -172,6 +173,17 @@ export interface TabManager {
     text: string,
     opts: { readonly autoSend: boolean; readonly expectedAgent: string | null },
   ): Promise<InjectOutcome>;
+  /**
+   * Materialize one single-pane tab and hand its agent the first prompt
+   * exactly once (task launcher design §8). `prompt` null or blank opens the
+   * agent without sending anything.
+   *
+   * Never throws and never destroys the tab: every failure outcome leaves a
+   * pane the user can still type into. See `task-prompt-send.ts` for why the
+   * readiness gate is polled here rather than reusing AgentLauncher's, which
+   * reports SHELL readiness.
+   */
+  launchTask(intent: MaterializeIntent, prompt: string | null): Promise<LaunchTaskOutcome>;
   newTab(): Promise<void>;
   /** Move the focused pane into a brand-new window (spec §10.3). */
   movePaneToNewWindow(): Promise<void>;

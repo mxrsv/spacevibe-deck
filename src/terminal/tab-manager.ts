@@ -47,6 +47,12 @@ import { confirmClose } from "./close-guard";
 import { createCloseCoordinator } from "./close-coordinator";
 import { activeAfterClose } from "./tab-close";
 import { freshCwd, freshPaneInfo } from "./pane-info";
+import {
+  promptReadyToSend,
+  TASK_PROMPT_POLL_MS,
+  TASK_PROMPT_READY_TIMEOUT_MS,
+  type LaunchTaskOutcome,
+} from "./task-prompt-send";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { submitAllowed, type InjectOutcome } from "../prompts/inject";
 import { defaultBrowserClient } from "../browser/browser-client";
@@ -886,6 +892,94 @@ export function createTabManager(
           }),
       ...(workspacePath !== null ? { workspacePath } : {}),
     });
+  }
+
+  /**
+   * Poll until the pane's agent is ready to be handed a first prompt, or the
+   * ceiling is reached. Returns whether the gate ever opened.
+   *
+   * The whole point of doing this BEFORE `injectIntoPane` is that the inject
+   * pastes unconditionally: asking it early would put the task prompt into a
+   * bare shell, which the design forbids outright. See `task-prompt-send.ts`.
+   */
+  async function waitForPromptReady(
+    paneId: number,
+    expectedAgent: string | null,
+  ): Promise<boolean> {
+    const deadline = Date.now() + TASK_PROMPT_READY_TIMEOUT_MS;
+    for (;;) {
+      const [info] = await freshPaneInfo(
+        [paneId],
+        pty,
+        agentProcessMatchers(settings.value.customAgents),
+      );
+      const alive = ownerOf(paneId) !== undefined;
+      if (
+        promptReadyToSend({
+          expectedAgent,
+          info,
+          attention: paneAttention(paneId),
+          alive,
+        })
+      ) {
+        return true;
+      }
+      // A pane that has left the layout is never coming back; waiting out the
+      // full ceiling for it would hold a pending launch open for 90 seconds
+      // after the user closed the tab.
+      if (!alive || Date.now() >= deadline) {
+        return false;
+      }
+      await new Promise((resolve) => setTimeout(resolve, TASK_PROMPT_POLL_MS));
+    }
+  }
+
+  /**
+   * The task launcher's one entry: materialize a single-pane tab, wait for its
+   * agent, and hand it the first prompt exactly once (design §8).
+   *
+   * It lives HERE, rather than as a poll in `App` over a pane id `materialize`
+   * hands back, because pane ids are this module's own currency — R4's seam is
+   * only observable while nothing outside it holds one.
+   *
+   * Every failure keeps the tab standing. A launch that spawns but cannot be
+   * prompted is a pane the user can still type into, and destroying it to
+   * report a failure would throw away the thing that did work.
+   */
+  async function launchTask(
+    intent: MaterializeIntent,
+    prompt: string | null,
+  ): Promise<LaunchTaskOutcome> {
+    if (!(await materialize(intent))) {
+      return "spawn-failed";
+    }
+    const text = prompt?.trim() ?? "";
+    if (text === "") {
+      return "started";
+    }
+    const expectedAgent = intent.agent ?? null;
+    if (expectedAgent === null) {
+      // A shell pane has no agent to be ready, and typing the prompt into it is
+      // exactly the fallback the design forbids. The launcher's own validation
+      // refuses this combination, so reaching here means something upstream
+      // changed — say so rather than waiting out the ceiling in silence.
+      return "prompt-not-sent";
+    }
+    const paneId = tabs[tabs.length - 1]?.manager.paneIds()[0];
+    if (paneId === undefined) {
+      return "prompt-not-sent";
+    }
+    if (!(await waitForPromptReady(paneId, expectedAgent))) {
+      return "prompt-not-sent";
+    }
+    // ONCE. `"pasted"` means the text is already sitting in the agent's
+    // composer, so a retry would duplicate it — that outcome is terminal and
+    // the user finishes it with Enter.
+    const outcome = await injectIntoPane(paneId, text, { autoSend: true, expectedAgent });
+    if (outcome === "sent") {
+      return "sent";
+    }
+    return outcome === "pasted" ? "prompt-pending" : "prompt-failed";
   }
 
   /** The command a pane started with; null when it had none. */
@@ -2096,6 +2190,7 @@ export function createTabManager(
     materialize,
     openFromPreset,
     openQuickAgent,
+    launchTask,
     launchCommandFor,
     dropAgentPane,
     activeSlotRects() {
