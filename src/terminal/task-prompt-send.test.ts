@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { PaneProcessInfo } from "../lib/process-info";
 import type { AttentionKind, PaneAttentionSnapshot } from "./agent-attention";
 import {
+  launchSucceeded,
   promptReadyToSend,
+  TASK_PROMPT_AUTOSEND,
   TASK_PROMPT_READY_TIMEOUT_MS,
   TASK_PROMPT_POLL_MS,
 } from "./task-prompt-send";
@@ -111,6 +113,15 @@ describe("promptReadyToSend", () => {
         alive: true,
       }),
     ).toBe(true);
+  });
+
+  it("treats a composer-only delivery as success while auto-send is off", () => {
+    expect(TASK_PROMPT_AUTOSEND).toBe(false);
+    expect(launchSucceeded("prompt-pending")).toBe(true);
+    expect(launchSucceeded("started")).toBe(true);
+    expect(launchSucceeded("prompt-not-sent")).toBe(false);
+    expect(launchSucceeded("prompt-failed")).toBe(false);
+    expect(launchSucceeded("spawn-failed")).toBe(false);
   });
 
   it("polls often enough to try many times before it gives up", () => {

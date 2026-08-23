@@ -49,6 +49,7 @@ import { activeAfterClose } from "./tab-close";
 import { freshCwd, freshPaneInfo } from "./pane-info";
 import {
   promptReadyToSend,
+  TASK_PROMPT_AUTOSEND,
   TASK_PROMPT_POLL_MS,
   TASK_PROMPT_READY_TIMEOUT_MS,
   type LaunchTaskOutcome,
@@ -997,10 +998,16 @@ export function createTabManager(
     if (!(await waitForPromptReady(paneId, expectedAgent))) {
       return "prompt-not-sent";
     }
-    // ONCE. `"pasted"` means the text is already sitting in the agent's
-    // composer, so a retry would duplicate it — that outcome is terminal and
-    // the user finishes it with Enter.
-    const outcome = await injectIntoPane(paneId, text, { autoSend: true, expectedAgent });
+    // ONCE, and by default WITHOUT the trailing Enter — see
+    // `TASK_PROMPT_AUTOSEND`, which is false because an agent's first-run
+    // "trust this folder" menu is indistinguishable from a ready prompt in
+    // every signal Deck has, and Enter there means "yes, I trust it".
+    // `"pasted"` means the text is already sitting in the agent's composer, so
+    // a retry would duplicate it — that outcome is terminal either way.
+    const outcome = await injectIntoPane(paneId, text, {
+      autoSend: TASK_PROMPT_AUTOSEND,
+      expectedAgent,
+    });
     if (outcome === "sent") {
       return "sent";
     }

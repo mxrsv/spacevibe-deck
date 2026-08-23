@@ -156,8 +156,12 @@ describe("launchTask", () => {
     infos.set(1, processInfo(1, "/repo", "claude", "agent", "claude"));
     await driveToIdle(tm, pty);
 
-    expect(await running).toBe("sent");
+    expect(await running).toBe("prompt-pending");
     expect(written(pty)).toContain("ship it");
+    // Auto-send is off: the text reaches the composer and the Enter is the
+    // user's. A bare carriage return here would be Deck pressing it for them,
+    // which on a first-run trust menu means "yes, I trust this folder".
+    expect(pty.writes.some((entry) => entry.data === "\r")).toBe(false);
   });
 
   it("reports prompt-failed when the paste itself fails", async () => {
@@ -216,8 +220,8 @@ describe("launchTask", () => {
       { timeout: 8000, interval: 100 },
     );
 
-    expect(await first).toBe("sent");
-    expect(await second).toBe("sent");
+    expect(await first).toBe("prompt-pending");
+    expect(await second).toBe("prompt-pending");
 
     const alpha = pty.writes.find((entry) => entry.data.includes("alpha"));
     const beta = pty.writes.find((entry) => entry.data.includes("beta"));
