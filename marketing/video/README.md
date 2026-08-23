@@ -54,8 +54,8 @@ once it's approved).
 | Preset     | Delivered | fps | Range   | Files     | Use                       |
 | ---------- | --------- | --- | ------- | --------- | ------------------------- |
 | `master`   | 1920×1080 | 60  | 0–20s   | mp4, webm | YouTube / X, re-edits     |
-| `hero`     | 2560×1440 | 30  | 0–16.2s | mp4, webm | landing demo band (loops) |
-| `gif`      | 720×405   | 12  | 1–14.2s | gif       | GitHub README             |
+| `hero`     | 2560×1440 | 30  | 0–16.2s | mp4, webm | external campaign loop    |
+| `gif`      | 720×405   | 12  | 1–14.2s | gif       | external README/social    |
 | `vertical` | 1080×1920 | 30  | 0–20s   | mp4       | Product Hunt / social     |
 
 `hero` and `gif` stop before the end card and fade in and out to black, so

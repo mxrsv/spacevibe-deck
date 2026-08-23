@@ -40,9 +40,11 @@ docs/archive/
 .planning/
 
 # Marketing film: intermediate frames are disposable, renders are published
-# by hand once a cut is approved.
+# outside this repository once a cut is approved.
 marketing/video/.frames/
 marketing/video/out/
+marketing/deck-tour.*
+marketing/stackgrid-cmd-e*
 
 # Local agent configuration and worktree bookkeeping, per-machine.
 .claude/
@@ -55,5 +57,9 @@ dist-electron/
 # belongs in docs/review/assets/ and IS tracked; these are working captures.
 /deck-navigation-picker.png
 /deck-primary-contrast-8-proposal.png
+/audit-*.png
+/panel-*.png
+/seam-*.png
+/toolbar-*.png
 .vercel
 .env*

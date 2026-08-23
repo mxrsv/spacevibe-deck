@@ -4,8 +4,7 @@
 marketing/
 ├── stage/               shared app-window mock (chrome + data + brand)
 ├── video/               the marketing film — see video/README.md
-├── landing-prototype/   the landing page prototype
-└── cmd_e.py, stackgrid-cmd-e.*   legacy Manim explainer (superseded)
+└── landing-prototype/   the landing page prototype
 ```
 
 ## `stage/` — one app window, three surfaces
@@ -35,40 +34,6 @@ Full details, preset matrix and how to change the beats:
 
 ## Publishing a cut
 
-`video/out/` is git-ignored. Once a cut is approved, copy what each surface
-needs:
-
-| Surface       | Render                      | Publish as                |
-| ------------- | --------------------------- | ------------------------- |
-| GitHub README | `deck-tour-gif.gif`         | `marketing/deck-tour.gif` |
-| Landing       | `deck-tour-hero.webm`       | `deck-tour.webm`          |
-| Landing       | `deck-tour-hero.mp4`        | `deck-tour.mp4`           |
-| Landing       | `deck-tour-hero-poster.png` | `deck-tour-poster.png`    |
-| YouTube / X   | `deck-tour-master.mp4`      | upload as-is              |
-| Product Hunt  | `deck-tour-vertical.mp4`    | upload as-is              |
-
-The landing's demo band (`landing-prototype/src/demo-reel.js`) already points at
-the published names, so a cut goes live by copying those three files into the
-served root:
-
-```html
-<video autoplay muted loop playsinline poster="/deck-tour-poster.png">
-  <source src="/deck-tour.webm" type="video/webm" />
-  <source src="/deck-tour.mp4" type="video/mp4" />
-</video>
-```
-
-The band sizes the frame from the viewport height, up to the page column
-(~1400 CSS px), which is why `hero` now delivers 2560×1440 — see
-[`video/README.md`](./video/README.md).
-
-## Legacy — the Manim explainer
-
-`cmd_e.py` and the `stackgrid-cmd-e.*` files are the previous ⌘E-only
-explainer: a hand-drawn approximation of the window that has to be redrawn by
-hand whenever the app changes. Kept for reference; the film supersedes it.
-
-```bash
-# needs: pip install manim (ffmpeg + cairo/pango on PATH)
-manim -qh --disable_caching cmd_e.py CmdE
-```
+`video/out/` is git-ignored. The landing no longer embeds the rendered film;
+publish an approved cut directly to its destination instead of copying binary
+outputs back into this repository.
