@@ -279,5 +279,12 @@ describe("stage-states.js", () => {
       "Local",
     ]);
     expect(PROOF_TERM_STEPS[2].cmd).toContain("gh repo clone ");
+    // The Local proof is a CONTRACT read since the analytics landed (spec
+    // 2026-08-22; default-on since 2026-08-23): the payload file replaces the
+    // empty grep, and the quoted lines must keep saying no-permanent-id.
+    expect(PROOF_TERM_STEPS[3].cmd).toContain("cat ");
+    expect(PROOF_TERM_STEPS[3].cmd).toContain("src/telemetry/payload.ts");
+    const localProof = PROOF_TERM_STEPS[3].out.join(" ");
+    expect(localProof).toContain("random UUID per day");
   });
 });

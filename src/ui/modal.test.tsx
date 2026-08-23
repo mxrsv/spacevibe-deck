@@ -49,6 +49,7 @@ function key(target: EventTarget, name: string, modifiers: { shiftKey?: boolean 
 function mount(
   overrides: {
     dismissOnScrim?: boolean;
+    dismissOnEscape?: boolean;
     initialFocus?: string;
     onKeyDown?: (event: KeyboardEvent) => void;
   } = {},
@@ -61,6 +62,7 @@ function mount(
         label="Demo"
         onDismiss={onDismiss}
         dismissOnScrim={overrides.dismissOnScrim}
+        dismissOnEscape={overrides.dismissOnEscape}
         initialFocus={overrides.initialFocus}
         onKeyDown={overrides.onKeyDown}
       >
@@ -185,6 +187,21 @@ describe("Modal", () => {
     key(panel(), "Escape");
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  // DL-29.9: a decision modal may withdraw Escape too — but the key is still
+  // swallowed, because a live terminal reading raw keys is one element behind
+  // the scrim (DL-29.5's reason, unchanged).
+  it("dismissOnEscape=false keeps Escape inert but still swallowed", () => {
+    const seen = vi.fn();
+    document.addEventListener("keydown", seen);
+    const { onDismiss } = mount({ dismissOnEscape: false });
+
+    key(panel(), "Escape");
+
+    document.removeEventListener("keydown", seen);
+    expect(onDismiss).not.toHaveBeenCalled();
+    expect(seen).not.toHaveBeenCalled();
   });
 
   it("Escape is not passed on to the host's key handling", () => {

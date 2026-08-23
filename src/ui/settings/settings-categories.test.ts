@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SETTINGS_CATEGORIES } from "./settings-categories";
 
 describe("SETTINGS_CATEGORIES", () => {
-  it("lists exactly the nine navigable categories, in rail display order", () => {
+  it("lists exactly the ten navigable categories, in rail display order", () => {
     const ids: readonly string[] = SETTINGS_CATEGORIES.map((c) => c.id);
     expect(ids).toEqual([
       "appearance",
@@ -13,6 +13,10 @@ describe("SETTINGS_CATEGORIES", () => {
       "shortcuts",
       "notifications",
       "about",
+      // The usage-analytics consent view (spec 2026-08-22 §7): after about,
+      // before reset, per the plan — the disclosure reads as an app-level
+      // statement beside the build info, not a day-to-day preference.
+      "privacy",
       "reset",
     ]);
   });

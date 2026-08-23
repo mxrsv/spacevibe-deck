@@ -12,5 +12,8 @@ describe("activeCategory", () => {
 
     activeCategory.value = "notifications";
     expect(activeCategory.value).toBe("notifications");
+
+    activeCategory.value = "privacy";
+    expect(activeCategory.value).toBe("privacy");
   });
 });

@@ -324,6 +324,16 @@
   padding-block: 12px;
 }
 
+/* Disclosure prose under a section's rows (Privacy, spec §7): body copy, not
+   a control — muted ink, measured line length, aligned with the row inset. */
+.settings-screen__note {
+  margin: 10px 16px;
+  max-width: 62ch;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  line-height: 1.5;
+}
+
 /* Settings chrome is achromatic (DL-3.7). The terminal palette may be as
    colourful as it likes; its green "on" and blue focus ring do not belong on
    a preference control, where colour would be the only thing separating an

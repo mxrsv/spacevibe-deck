@@ -6,6 +6,7 @@ import { AgentsSection } from "./sections/agents-section";
 import { BrowserSection } from "./sections/browser-section";
 import { LinksEditorSection } from "./sections/links-editor-section";
 import { NotificationsSection } from "./sections/notifications-section";
+import { PrivacySection } from "./sections/privacy-section";
 import { ShortcutsSection } from "./sections/shortcuts-section";
 import { AboutSection } from "./sections/about-section";
 import { ResetSection } from "./sections/reset-section";
@@ -62,8 +63,7 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   {
     id: "appearance",
     label: "Appearance",
-    description:
-      "Choose how Deck looks and arrange the chrome around your work.",
+    description: "Choose how Deck looks and arrange the chrome around your work.",
     Section: AppearanceSection,
   },
   {
@@ -108,13 +108,18 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
     description: "See this Deck build and check for a newer release.",
     Section: AboutSection,
   },
+  {
+    id: "privacy",
+    label: "Privacy",
+    description: "Decide whether Deck shares optional usage stats, and read what they contain.",
+    Section: PrivacySection,
+  },
   // Last on purpose: it is still the one stop that throws work away, and the
   // end of the list is where a reader expects that (DL-11.5, amended).
   {
     id: "reset",
     label: "Reset",
-    description:
-      "Return every preference to the state a fresh install starts in.",
+    description: "Return every preference to the state a fresh install starts in.",
     Section: ResetSection,
   },
 ];

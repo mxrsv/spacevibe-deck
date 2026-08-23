@@ -33,19 +33,25 @@ export const PROOF_TERM_STEPS = deepFreeze([
     out: ["box-drawing ├─┬─┐ │ └─┴─┘ renders clean ✓"],
     chip: "Pty",
   },
-  // Clone first, grep second: the telemetry claim used to be proved against the
-  // installed bundle, which stopped being a clean read once the app shipped a
-  // Chromium runtime. The source tree is where the claim actually lives, and
-  // pointing at it is only honest because the repo is public — which is the
-  // proof the clone line carries.
+  // Clone first, read second: `grep -ri telemetry src` stopped returning
+  // nothing when the opt-in analytics landed (spec 2026-08-22), so the honest
+  // proof moved from an absence to a CONTRACT — the payload file is written to
+  // be read by a person, and `cat`ing it shows the client's whole field list.
+  // It proves the client contract, not server retention; the privacy notice
+  // covers the rest.
   {
     cmd: `gh repo clone ${REPO_SLUG}`,
     out: [`Cloning into '${REPO_DIR}'... done.`],
     chip: "Open",
   },
   {
-    cmd: `grep -ri telemetry ${REPO_DIR}/src`,
-    out: ["(no matches)"],
+    cmd: `cat ${REPO_DIR}/src/telemetry/payload.ts`,
+    out: [
+      "// The usage-analytics payload contract — one small",
+      "// daily snapshot. Deliberately absent: file",
+      "// paths, repo names, prompts, terminal output, any",
+      "// permanent id. dailyId is a fresh random UUID per day.",
+    ],
     chip: "Local",
   },
 ]);

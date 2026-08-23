@@ -3,12 +3,7 @@ import { render } from "preact";
 import { readFileSync } from "node:fs";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  boardOpen,
-  editorRequest,
-  saveDialogOpen,
-  settingsOpen,
-} from "../chrome/events";
+import { boardOpen, editorRequest, saveDialogOpen, settingsOpen } from "../chrome/events";
 import {
   boardClosesAfterResume,
   bootOpensTheBoard,
@@ -22,6 +17,7 @@ import {
   sidebarEffectivelyCollapsed,
   stripShowsTabs,
   toggleSettingsPanel,
+  workspacesOrphanedByClose,
 } from "./app-policy";
 import { DesktopChrome } from "./desktop-chrome";
 import { ACTION_REGISTRY, TIER_RANK } from "../terminal/action-registry";
@@ -114,22 +110,14 @@ describe("DesktopChrome platform structure", () => {
       expect(root.querySelector(".deck-frame") !== null).toBe(hasFrame);
       // The traffic-light inset is macOS-only: elsewhere the OS owns that
       // corner, or nothing does, and reserving space would leave a gap.
-      expect(root.querySelector(".deck-frame__lights") !== null).toBe(
-        hasLightsInset,
-      );
+      expect(root.querySelector(".deck-frame__lights") !== null).toBe(hasLightsInset);
       // The retired elements must not come back — two chrome rows is the shape
       // DL-18 exists to remove.
       expect(root.querySelector(".titlebar")).toBe(null);
       expect(root.querySelector(".deck-toolbar")).toBe(null);
-      expect(root.querySelector('[data-testid="sidebar"]') !== null).toBe(
-        sidebar,
-      );
-      expect(root.querySelector('[data-testid="tabs"]') !== null).toBe(
-        !sidebar,
-      );
-      expect(root.querySelector('[data-testid="toolbar"]') !== null).toBe(
-        sidebar,
-      );
+      expect(root.querySelector('[data-testid="sidebar"]') !== null).toBe(sidebar);
+      expect(root.querySelector('[data-testid="tabs"]') !== null).toBe(!sidebar);
+      expect(root.querySelector('[data-testid="toolbar"]') !== null).toBe(sidebar);
     },
   );
 
@@ -168,6 +156,7 @@ describe("settings load recovery layer", () => {
       browserPanelObscured({
         overlayCoversPane: false,
         agentQuickPickerOpen: false,
+        usageConsentOpen: false,
         promptsOpen: false,
         persistErrorVisible: false,
         settingsLoadError: true,
@@ -175,15 +164,27 @@ describe("settings load recovery layer", () => {
     ).toBe(true);
   });
 
+  it("hides it under the usage-consent dialog too (DL-29.9)", () => {
+    // Same defect class the quick picker shipped with: a launch-time modal on
+    // the shared scrim would draw UNDER the native WebContentsView unless the
+    // view is told to go.
+    expect(
+      browserPanelObscured({
+        overlayCoversPane: false,
+        agentQuickPickerOpen: false,
+        usageConsentOpen: true,
+        promptsOpen: false,
+        persistErrorVisible: false,
+        settingsLoadError: false,
+      }),
+    ).toBe(true);
+  });
+
   it("stacks the settings load alert above the Open board", () => {
     const modalCss = readFileSync("src/styles/10-modals.css", "utf8");
     const boardCss = readFileSync("src/styles/09-open-board.css", "utf8");
-    const alertZ = Number(
-      modalCss.match(/\.settings-load-alert\s*\{[^}]*z-index:\s*(\d+)/s)?.[1],
-    );
-    const boardZ = Number(
-      boardCss.match(/\.open-board\s*\{[^}]*z-index:\s*(\d+)/s)?.[1],
-    );
+    const alertZ = Number(modalCss.match(/\.settings-load-alert\s*\{[^}]*z-index:\s*(\d+)/s)?.[1]);
+    const boardZ = Number(boardCss.match(/\.open-board\s*\{[^}]*z-index:\s*(\d+)/s)?.[1]);
 
     expect(alertZ).toBeGreaterThan(boardZ);
   });
@@ -202,9 +203,7 @@ describe("full-window surfaces leave the stage strip's row alone", () => {
     (file, selector) => {
       const css = readFileSync(file, "utf8");
       const escaped = selector.replace(".", "\\.");
-      const rule = css.match(
-        new RegExp(`\\.stage--strip\\s+${escaped}[^{]*\\{[^}]*\\}`, "s"),
-      )?.[0];
+      const rule = css.match(new RegExp(`\\.stage--strip\\s+${escaped}[^{]*\\{[^}]*\\}`, "s"))?.[0];
 
       expect(rule).toBeDefined();
       expect(rule).toContain("top: var(--frame-h)");
@@ -251,18 +250,14 @@ describe("full-window surfaces leave the stage strip's row alone", () => {
 // underneath it, and hiding the chips there would be a second, silent change.
 describe("stripShowsTabs", () => {
   it("keeps the chips while only the terminal grid is on the stage", () => {
-    expect(stripShowsTabs({ boardOpen: false, settingsOpen: false })).toBe(
-      true,
-    );
+    expect(stripShowsTabs({ boardOpen: false, settingsOpen: false })).toBe(true);
   });
 
   it.each([
     ["the Open board", true, false],
     ["the Settings screen", false, true],
   ])("drops the chips under %s", (_label, board, settings) => {
-    expect(stripShowsTabs({ boardOpen: board, settingsOpen: settings })).toBe(
-      false,
-    );
+    expect(stripShowsTabs({ boardOpen: board, settingsOpen: settings })).toBe(false);
   });
 });
 
@@ -299,9 +294,7 @@ describe("Open Board shell visibility", () => {
   // — the same way the navigation sidebar's seam has always behaved.
   it("lets an armed drag close the dock before the pointer is released", () => {
     // No drag in flight: the setting is the whole answer.
-    expect(
-      dockPaintedOpen({ boardOpen: false, dockOpen: true, dragCollapsed: null }),
-    ).toBe(true);
+    expect(dockPaintedOpen({ boardOpen: false, dockOpen: true, dragCollapsed: null })).toBe(true);
     expect(
       dockPaintedOpen({
         boardOpen: false,
@@ -312,9 +305,7 @@ describe("Open Board shell visibility", () => {
 
     // Dragging past the floor hides it at once; dragging back out brings it
     // back, still without having written anything.
-    expect(
-      dockPaintedOpen({ boardOpen: false, dockOpen: true, dragCollapsed: true }),
-    ).toBe(false);
+    expect(dockPaintedOpen({ boardOpen: false, dockOpen: true, dragCollapsed: true })).toBe(false);
     expect(
       dockPaintedOpen({
         boardOpen: false,
@@ -324,9 +315,7 @@ describe("Open Board shell visibility", () => {
     ).toBe(true);
 
     // The board still wins over both: it owns the stage.
-    expect(
-      dockPaintedOpen({ boardOpen: true, dockOpen: true, dragCollapsed: false }),
-    ).toBe(false);
+    expect(dockPaintedOpen({ boardOpen: true, dockOpen: true, dragCollapsed: false })).toBe(false);
   });
 
   it("closes the board only after a session actually resumes", () => {
@@ -465,9 +454,7 @@ describe("livePresetOpensATab — ⌘⇧N over the Open board saves the preset w
   // ⌘⇧N on the board outright and this whole branch becomes dead code — fail
   // here so that is a deliberate decision, not a silent one.
   it("is only reachable because new-preset outranks the board tier", () => {
-    const newPreset = ACTION_REGISTRY.find(
-      (action) => action.id === "new-preset",
-    );
+    const newPreset = ACTION_REGISTRY.find((action) => action.id === "new-preset");
     expect(newPreset?.scope).toBe("modal");
     expect(TIER_RANK.modal).toBeGreaterThan(TIER_RANK.board);
   });
@@ -508,3 +495,38 @@ describe("bootOpensTheBoard", () => {
 // `toggleSettingsPanel` exactly — CLOSING is unconditional (or the screen
 // strands itself open, the b7e6021 trap), OPENING is blocked only by a
 // PresetEditor/SavePresetDialog draft at z-40.
+
+describe("workspacesOrphanedByClose — the project close's file sweep (close model, 2026-08-22)", () => {
+  const tabs = [
+    { workspacePath: "/w/deck" },
+    { workspacePath: "/w/deck-side" },
+    { workspacePath: "/w/other" },
+  ];
+
+  it("orphans a workspace no surviving tab holds", () => {
+    expect(workspacesOrphanedByClose(tabs, [0, 1])).toEqual(["/w/deck", "/w/deck-side"]);
+  });
+
+  it("does NOT ask the singular question once per tab", () => {
+    // Two tabs of ONE workspace, both closing. `workspaceOrphanedByClose` would
+    // answer "the sibling survives" for each and strand the file workspace; the
+    // survivor set is computed against everything that is closing.
+    const pair = [{ workspacePath: "/w/deck" }, { workspacePath: "/w/deck" }, ...tabs.slice(2)];
+    expect(workspacesOrphanedByClose(pair, [0, 1])).toEqual(["/w/deck"]);
+  });
+
+  it("keeps a workspace a surviving tab still holds", () => {
+    const pair = [{ workspacePath: "/w/deck" }, { workspacePath: "/w/deck" }, ...tabs.slice(2)];
+    expect(workspacesOrphanedByClose(pair, [0])).toEqual([]);
+  });
+
+  it("returns nothing when every tab is going", () => {
+    // "Last surface, not last tab" (spec §7) — and since the close model that
+    // same branch is what keeps the window standing on the Open board.
+    expect(workspacesOrphanedByClose(tabs, [0, 1, 2])).toEqual([]);
+  });
+
+  it("ignores a tab with no workspace", () => {
+    expect(workspacesOrphanedByClose([{ workspacePath: null }, ...tabs], [0])).toEqual([]);
+  });
+});

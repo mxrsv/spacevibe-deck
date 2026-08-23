@@ -23,6 +23,7 @@ import type { FileSurfaceController } from "../files/file-surface-controller";
 import { applyResumeFlags } from "../lib/launch-command";
 import { materializeChromeFrom } from "./tab-materialize";
 import { noteResumedPane } from "./session-tail-store";
+import { countAgentLaunch } from "../telemetry/usage-counters";
 import type { TabManager } from "./tab-manager";
 
 const BUILTIN_AGENT_IDS = new Set(BUILTIN_AGENTS.map((agent) => agent.id));
@@ -200,9 +201,7 @@ function paneCommandsFor(
     // The pane's OWN recorded command, not its preset's current one: the
     // preset may have been edited or removed since this session started, and
     // the conversation being resumed ran under what was recorded here.
-    return command === null
-      ? null
-      : applyResumeFlags(command, pane.launchCommand);
+    return command === null ? null : applyResumeFlags(command, pane.launchCommand);
   });
 }
 
@@ -253,6 +252,15 @@ async function materializeAll(
       if (ok) {
         restored += 1;
         noteResumedPanes(tab, tabIndex, refs);
+        // Usage analytics (spec §4): a resumed agent is a launch, counted per
+        // pane that will actually type a command. Counted here rather than in
+        // `materialize`, which sees only `paneCommands` and not the per-pane
+        // agent ids this module still holds.
+        tab.panes.forEach((pane, paneIndex) => {
+          if (pane.agent !== null && paneCommands[paneIndex] !== null) {
+            countAgentLaunch(pane.agent);
+          }
+        });
       }
     } catch (err) {
       console.error("session restore: materialize failed:", err);

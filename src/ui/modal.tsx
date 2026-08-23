@@ -43,6 +43,16 @@ export interface ModalProps {
    */
   dismissOnScrim?: boolean;
   /**
+   * Whether Escape dismisses. Default true.
+   *
+   * Only a DECISION modal may set it false (DL-29.9): the usage-consent
+   * dialog offers two buttons that each persist an answer, and an Escape that
+   * closed it would be a third answer the consent model does not have. The
+   * document listener still swallows the key either way — a live terminal
+   * reading raw keys is one element behind the scrim (DL-29.5).
+   */
+  dismissOnEscape?: boolean;
+  /**
    * Selector, resolved inside the panel, for what takes focus on mount. The
    * panel itself when omitted — which is what a modal driven by bare keys
    * (digits, arrows) wants.
@@ -58,6 +68,7 @@ export function Modal({
   label,
   onDismiss,
   dismissOnScrim = true,
+  dismissOnEscape = true,
   initialFocus,
   onKeyDown,
   children,
@@ -93,6 +104,9 @@ export function Modal({
    */
   const dismissRef = useRef(onDismiss);
   dismissRef.current = onDismiss;
+  /** Same one-listener shape as `dismissRef`, for the same churn reason. */
+  const escapeRef = useRef(dismissOnEscape);
+  escapeRef.current = dismissOnEscape;
 
   // Escape, wherever focus is. See the note at the top of this file for why
   // this cannot live on the panel.
@@ -101,7 +115,9 @@ export function Modal({
       if (event.key !== "Escape") {
         return;
       }
-      dismissRef.current();
+      if (escapeRef.current) {
+        dismissRef.current();
+      }
       // The terminal is one element away and reads raw keys; an Escape that
       // only closed the modal and then kept travelling would also reach the
       // agent running behind it.

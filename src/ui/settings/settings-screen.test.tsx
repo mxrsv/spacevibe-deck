@@ -65,9 +65,7 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
 
   it("moves focus onto the Back button when it opens", () => {
     mount(true);
-    expect(document.activeElement).toBe(
-      host.querySelector(".settings-screen__back"),
-    );
+    expect(document.activeElement).toBe(host.querySelector(".settings-screen__back"));
   });
 
   it("Escape closes the screen when focus is not in a terminal", () => {
@@ -92,9 +90,7 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
     textarea.focus();
 
     act(() => {
-      textarea.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      textarea.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -102,9 +98,7 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
   it("stops listening for Escape once closed", () => {
     const onClose = mount(false);
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -112,8 +106,7 @@ describe("SettingsScreen — Escape / focus (M2)", () => {
   it("keeps a settings load failure visible with a retry action", () => {
     settingsLoadState.value = {
       status: "error",
-      message:
-        "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
+      message: "Couldn't load settings. Defaults are temporary and won't overwrite settings.json.",
     };
     mount(true);
 
@@ -163,16 +156,13 @@ describe("SettingsScreen — the interaction foundation", () => {
   const tabbables = (): HTMLElement[] => {
     const screen = host.querySelector<HTMLElement>(".settings-screen");
     return [...(screen?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])].filter(
-      (element) =>
-        element.tabIndex >= 0 && element.closest("fieldset[disabled]") === null,
+      (element) => element.tabIndex >= 0 && element.closest("fieldset[disabled]") === null,
     );
   };
 
   const pressTab = (from: EventTarget, shiftKey = false): void => {
     act(() => {
-      from.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true }),
-      );
+      from.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true }));
     });
   };
 
@@ -240,13 +230,9 @@ describe("SettingsScreen — the interaction foundation", () => {
   it("lets Escape revert an active draft before it can close the screen", () => {
     const onClose = mount();
     act(() => {
-      host
-        .querySelector<HTMLButtonElement>('[role="tab"]#settings-tab-browser')
-        ?.click();
+      host.querySelector<HTMLButtonElement>('[role="tab"]#settings-tab-browser')?.click();
     });
-    const field = host.querySelector<HTMLInputElement>(
-      'input[aria-label="Browser home address"]',
-    );
+    const field = host.querySelector<HTMLInputElement>('input[aria-label="Browser home address"]');
     expect(field).not.toBeNull();
     const saved = field?.value ?? "";
     act(() => {
@@ -255,9 +241,7 @@ describe("SettingsScreen — the interaction foundation", () => {
     });
 
     act(() => {
-      field!.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      field!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
 
     expect(onClose).not.toHaveBeenCalled();
@@ -265,9 +249,7 @@ describe("SettingsScreen — the interaction foundation", () => {
 
     // The draft is clean now, so the next Escape means what it always means.
     act(() => {
-      field!.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-      );
+      field!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -281,10 +263,7 @@ describe("SettingsScreen — the interaction foundation", () => {
   it("keeps the compact rail readable at the 480px application minimum", () => {
     // Repo-relative from the runner's cwd, not `import.meta.url`: under the
     // jsdom environment that resolves to an `http:` URL Node cannot open.
-    const css = readFileSync(
-      resolve(process.cwd(), "src/styles/11-settings-screen.css"),
-      "utf8",
-    );
+    const css = readFileSync(resolve(process.cwd(), "src/styles/11-settings-screen.css"), "utf8");
     const compact = css.slice(css.indexOf("@media (max-width: 720px)"));
 
     expect(compact).not.toBe("");
@@ -292,16 +271,10 @@ describe("SettingsScreen — the interaction foundation", () => {
     // ICON rail for a few hours on 2026-08-19 until the owner took the
     // category icons off (DL-11.3 retired), which left an icon rail with no
     // icons to show. The label truncates now instead of disappearing.
-    expect(compact).toMatch(
-      /\.settings-screen__grid\s*\{[^}]*grid-template-columns:\s*132px/,
-    );
-    expect(compact).toMatch(
-      /\.settings-nav__label\s*\{[^}]*text-overflow:\s*ellipsis/,
-    );
+    expect(compact).toMatch(/\.settings-screen__grid\s*\{[^}]*grid-template-columns:\s*132px/);
+    expect(compact).toMatch(/\.settings-nav__label\s*\{[^}]*text-overflow:\s*ellipsis/);
     // Truncating is the point — hiding the label would leave a blank rail.
-    expect(compact).not.toMatch(
-      /\.settings-nav__label\s*\{[^}]*display:\s*none/,
-    );
+    expect(compact).not.toMatch(/\.settings-nav__label\s*\{[^}]*display:\s*none/);
     // The document gives up its centring gutters rather than its content.
     expect(compact).toMatch(/\.settings-screen__doc\s*\{[^}]*width:\s*auto/);
     expect(compact).not.toMatch(/\.settings-nav\s*\{[^}]*display:\s*none/);
@@ -336,18 +309,15 @@ describe("SettingsScreen — the interaction foundation", () => {
     settingsLoadState.value = { status: "loading" };
     mount();
 
-    const fields = host.querySelector<HTMLFieldSetElement>(
-      ".settings-screen__fields",
-    );
+    const fields = host.querySelector<HTMLFieldSetElement>(".settings-screen__fields");
     expect(fields?.disabled).toBe(true);
 
     act(() => {
       settingsLoadState.value = { status: "ready" };
     });
-    expect(
-      host.querySelector<HTMLFieldSetElement>(".settings-screen__fields")
-        ?.disabled,
-    ).toBe(false);
+    expect(host.querySelector<HTMLFieldSetElement>(".settings-screen__fields")?.disabled).toBe(
+      false,
+    );
   });
 });
 
@@ -404,6 +374,11 @@ const EXPECTED_ROWS = [
   // about
   "Check for updates",
   "Release notes",
+  // privacy — one switch over MAIN-owned consent state (usage-analytics spec
+  // §7), added 2026-08-22. The disclosure paragraphs under it are
+  // `.settings-screen__note`, not `.cfg-row__label`, so the walk sees the
+  // switch alone.
+  "Share usage stats",
   // reset — its own rail category since 2026-08-19, a pinned foot before that
   // (so this row used to be reachable from every category, and is now reached
   // by selecting one).
@@ -421,8 +396,7 @@ const EXPECTED_ROWS = [
  * (`shortcuts-section.test.tsx`, `shortcut-groups.test.ts`) asserts the far
  * stronger property: that every registry action gets a row.
  */
-const isShortcutRow = (label: Element): boolean =>
-  label.closest(".cfg-row--shortcut") !== null;
+const isShortcutRow = (label: Element): boolean => label.closest(".cfg-row--shortcut") !== null;
 
 describe("SettingsScreen — every setting survived the move", () => {
   let host: HTMLDivElement;
@@ -440,7 +414,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
   });
 
-  it("reaches all 18 rows by walking the rail", () => {
+  it("reaches all 19 rows by walking the rail", () => {
     act(() => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });
@@ -459,9 +433,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     };
 
     collect();
-    for (const tab of host.querySelectorAll<HTMLButtonElement>(
-      '[role="tab"]',
-    )) {
+    for (const tab of host.querySelectorAll<HTMLButtonElement>('[role="tab"]')) {
       act(() => {
         tab.click();
       });
@@ -523,21 +495,13 @@ describe("SettingsScreen — every setting survived the move", () => {
       render(<SettingsScreen open onClose={vi.fn()} />, host);
     });
 
-    for (const tab of host.querySelectorAll<HTMLButtonElement>(
-      '[role="tab"]',
-    )) {
+    for (const tab of host.querySelectorAll<HTMLButtonElement>('[role="tab"]')) {
       act(() => {
         tab.click();
       });
-      const category = SETTINGS_CATEGORIES.find(
-        (item) => item.id === activeCategory.value,
-      );
-      expect(host.querySelector(".settings-screen__title")?.textContent).toBe(
-        category?.label,
-      );
-      expect(host.querySelector(".settings-screen__lede")?.textContent).toBe(
-        category?.description,
-      );
+      const category = SETTINGS_CATEGORIES.find((item) => item.id === activeCategory.value);
+      expect(host.querySelector(".settings-screen__title")?.textContent).toBe(category?.label);
+      expect(host.querySelector(".settings-screen__lede")?.textContent).toBe(category?.description);
     }
   });
 
@@ -547,9 +511,7 @@ describe("SettingsScreen — every setting survived the move", () => {
     });
 
     const panel = host.querySelector('[role="tabpanel"]');
-    const selectedTab = host.querySelector(
-      '[role="tab"][aria-selected="true"]',
-    );
+    const selectedTab = host.querySelector('[role="tab"][aria-selected="true"]');
     expect(panel).not.toBeNull();
     expect(selectedTab).not.toBeNull();
     // Every tab must control a panel that exists, and the live panel must name

@@ -251,6 +251,76 @@
   color: var(--bg);
 }
 
+/* ---------- Usage consent (DL-29.9, the decision modal) ---------- */
+/* The one modal whose shell exits are withdrawn: no ✕, no Escape, no scrim
+   dismissal — every way out persists a consent answer (owner-decided
+   2026-08-22, replacing the DL §30 consent row). Sized to its two sentences:
+   a consent dialog that fills the window reads as an ultimatum. */
+.usage-consent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(420px, 86vw);
+  padding: 20px;
+  /* DL-29.6: the chrome plane, like every panel on this scrim. */
+  background: var(--sidebar-bg);
+  border: 1px solid var(--seam-raised);
+  border-radius: var(--radius-surface);
+  outline: none;
+  animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.usage-consent__title {
+  margin: 0;
+  font-size: var(--type-title);
+}
+.usage-consent__message {
+  margin: 0;
+  font-size: var(--type-body);
+  color: var(--text-muted);
+}
+.usage-consent__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+.usage-consent__actions button {
+  font: inherit;
+  font-size: var(--type-body);
+  padding: 6px 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--hair-strong);
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.usage-consent__actions button.is-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+/* "What Deck sends →" / "Read the full privacy notice →": a link, not a
+   decision — plain ink, no frame. Shared with Settings → Privacy, which is
+   why the class is feature-named rather than panel-named. */
+.usage-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--type-meta);
+  cursor: pointer;
+}
+
+.usage-link:hover,
+.usage-link:focus-visible {
+  color: var(--text-primary);
+}
+
 /* ---------- Agent quick picker ---------- */
 .agent-quick-picker {
   display: flex;

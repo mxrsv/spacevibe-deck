@@ -14,6 +14,9 @@ export type CategoryId =
   | "browser"
   | "shortcuts"
   | "notifications"
+  // A view over MAIN-owned analytics consent (spec 2026-08-22 §7), not a
+  // settings-schema pair — consent must never travel with copied settings.
+  | "privacy"
   | "about"
   // A navigable stop since 2026-08-19 (owner), where it was a pinned rail-foot
   // action before — see the note on `SETTINGS_CATEGORIES`.

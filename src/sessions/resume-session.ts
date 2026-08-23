@@ -12,6 +12,7 @@
  */
 import { buildResumeCommand } from "../lib/agent-resume";
 import { noteResumedPane } from "../terminal/session-tail-store";
+import { countAgentLaunch } from "../telemetry/usage-counters";
 import type { CustomAgent } from "../lib/agent-catalog";
 import { BUILT_IN_PRESET } from "../lib/preset-schema";
 import type { SessionEntry } from "../lib/session-history";
@@ -59,6 +60,10 @@ export async function resumeSession(
   // once the tab exists — an intent that failed leaves no pane to claim it.
   if (opened) {
     noteResumedPane(entry.cwd, entry.agent);
+    // Usage analytics (spec §4): a resumed agent is a launch. Counted here
+    // rather than in `materialize`, which sees only the pane command and
+    // deliberately not this agent id.
+    countAgentLaunch(entry.agent);
   }
   return opened;
 }

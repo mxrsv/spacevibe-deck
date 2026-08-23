@@ -45,6 +45,7 @@ import { registerDialogs } from "./ipc/register-dialogs";
 import { registerBrowser, reactGrabSource } from "./ipc/register-browser";
 import { registerShell } from "./ipc/register-shell";
 import { registerUpdater } from "./ipc/register-updater";
+import { registerTelemetry } from "./ipc/register-telemetry";
 
 // __dirname is `dist-electron/electron`, so the Vite output is two levels up.
 const RENDERER_DIR = path.join(__dirname, "..", "..", "dist");
@@ -354,6 +355,13 @@ registerSettingsIpc({
   adoptMenuKeymap: menuState.adoptMenuKeymap,
 });
 
+// ------------------------------------------------------- Usage analytics
+// Opt-in only (spec 2026-08-22): with consent unanswered, declined or the
+// state file unreadable, this registers handlers that count nothing, create
+// no id and start no timer. Registered above the quit block because the quit
+// chain below sends the best-effort final snapshot.
+const telemetry = registerTelemetry({ stores, windows, emitTo });
+
 // ------------------------------------------------------------------ Quit
 ipcMain.handle(CHANNELS.confirmQuit, (_event, { requestId }) => {
   if (!quitFlight.finish(requestId)) {
@@ -361,6 +369,10 @@ ipcMain.handle(CHANNELS.confirmQuit, (_event, { requestId }) => {
   }
   void pty
     .killAll()
+    // Best-effort final snapshot before the stores flush, so the buffer's
+    // sent-state reaches disk. `flushOnQuit` never throws and is bounded by
+    // the POST timeout, so quit cannot hang on a dead Worker.
+    .then(() => telemetry.flushOnQuit())
     .then(() => stores.saveAll())
     .finally(() => app.exit(0));
 });
@@ -456,6 +468,9 @@ const updater = registerUpdater({
   // the debounced stores would never reach disk.
   prepareForInstall: async () => {
     await pty.killAll();
+    // Same best-effort final snapshot the quit chain sends; before the store
+    // flush so the buffer's sent-state reaches disk with everything else.
+    await telemetry.flushOnQuit();
     await stores.saveAll();
   },
 });

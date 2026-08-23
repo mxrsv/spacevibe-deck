@@ -220,9 +220,32 @@ describe("Electron IPC contract", () => {
       // Every key a handler destructures has to be one the renderer sends;
       // `open_in_app` deliberately ignores `line`/`column`, which is legal —
       // the generic assertion above only forbids the reverse.
-      for (const handler of handlers.filter(
-        (candidate) => candidate.channel === channel,
-      )) {
+      for (const handler of handlers.filter((candidate) => candidate.channel === channel)) {
+        for (const key of handler.required) {
+          expect(keys, `${channel} handler key ${key}`).toContain(key);
+        }
+      }
+    }
+  });
+
+  it("carries the three telemetry channels flat on both sides", () => {
+    // The 2026-08-22 usage-analytics fixture, pinned the way the path-open
+    // trio above is: proof this scanner actually reaches the new channels
+    // rather than passing vacuously because it found none. `telemetry_state`
+    // is zero-payload by contract — the reply carries consent state only, and
+    // no daily id ever crosses into the renderer on any of the three.
+    const expected: Record<string, string[]> = {
+      telemetry_count: ["kind", "key", "value"],
+      telemetry_state: [],
+      telemetry_set_enabled: ["enabled"],
+    };
+    for (const [channel, keys] of Object.entries(expected)) {
+      const sites = callSites.filter((site) => site.channel === channel);
+      expect(sites.length, channel).toBeGreaterThan(0);
+      for (const site of sites) {
+        expect(site.keys, channel).toEqual(keys);
+      }
+      for (const handler of handlers.filter((candidate) => candidate.channel === channel)) {
         for (const key of handler.required) {
           expect(keys, `${channel} handler key ${key}`).toContain(key);
         }
@@ -233,14 +256,10 @@ describe("Electron IPC contract", () => {
   it("leaves resolve_paths and open_editor untouched, so the Tauri twin stays valid", () => {
     // Design §6: the two channels ⌘+click already used are unchanged, which is
     // what lets `src-tauri/src/links.rs` keep answering them.
-    for (const site of callSites.filter(
-      (candidate) => candidate.channel === "resolve_paths",
-    )) {
+    for (const site of callSites.filter((candidate) => candidate.channel === "resolve_paths")) {
       expect(site.keys).toEqual(["cwd", "paths"]);
     }
-    for (const site of callSites.filter(
-      (candidate) => candidate.channel === "open_editor",
-    )) {
+    for (const site of callSites.filter((candidate) => candidate.channel === "open_editor")) {
       expect(site.keys).toEqual(["request"]);
     }
   });

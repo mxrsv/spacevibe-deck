@@ -1,14 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  restoreSession,
-  resumeWorkspace,
-  type RestoreDeps,
-} from "./session-restore";
-import type {
-  ArchiveEntry,
-  SessionTab,
-  WindowRecord,
-} from "../lib/session-schema";
+import { restoreSession, resumeWorkspace, type RestoreDeps } from "./session-restore";
+import type { ArchiveEntry, SessionTab, WindowRecord } from "../lib/session-schema";
 import type { CustomAgent } from "../lib/agent-catalog";
 import type { ResumeRef, ResumeRequest } from "../lib/agent-resume";
 import type { FileStatResult } from "../files/file-client";
@@ -21,8 +13,7 @@ import type { MaterializeIntent } from "./tab-materialize";
  * it: the factory runs while this file's imports are evaluated.
  */
 const tailStore = vi.hoisted(() => ({
-  noteResumedPane:
-    vi.fn<(workspacePath: string | null, agent: string) => void>(),
+  noteResumedPane: vi.fn<(workspacePath: string | null, agent: string) => void>(),
 }));
 
 vi.mock("./session-tail-store", () => ({
@@ -54,31 +45,21 @@ function record(overrides: Partial<WindowRecord> = {}): WindowRecord {
 }
 
 interface FakeMocks {
-  readonly materialize: ReturnType<
-    typeof vi.fn<(intent: MaterializeIntent) => Promise<boolean>>
-  >;
+  readonly materialize: ReturnType<typeof vi.fn<(intent: MaterializeIntent) => Promise<boolean>>>;
   readonly selectTab: ReturnType<typeof vi.fn<(index: number) => void>>;
   readonly openFile: ReturnType<
-    typeof vi.fn<
-      (workspacePath: string, path: string, keep: boolean) => Promise<void>
-    >
+    typeof vi.fn<(workspacePath: string, path: string, keep: boolean) => Promise<void>>
   >;
-  readonly activateFile: ReturnType<
-    typeof vi.fn<(workspacePath: string, path: string) => void>
-  >;
+  readonly activateFile: ReturnType<typeof vi.fn<(workspacePath: string, path: string) => void>>;
   readonly dirsExist: RestoreDeps["dirsExist"];
   readonly statFiles: RestoreDeps["statFiles"];
   readonly lookup: ReturnType<
-    typeof vi.fn<
-      (requests: readonly ResumeRequest[]) => Promise<readonly ResumeRef[]>
-    >
+    typeof vi.fn<(requests: readonly ResumeRequest[]) => Promise<readonly ResumeRef[]>>
   >;
   readonly readWindowRecords: ReturnType<
     typeof vi.fn<() => Promise<ReadonlyMap<string, WindowRecord>>>
   >;
-  readonly clearWindowRecord: ReturnType<
-    typeof vi.fn<(label: string) => Promise<void>>
-  >;
+  readonly clearWindowRecord: ReturnType<typeof vi.fn<(label: string) => Promise<void>>>;
   readonly take: ReturnType<typeof vi.fn<() => Promise<boolean>>>;
   readonly set: ReturnType<typeof vi.fn<() => Promise<void>>>;
   readonly clear: ReturnType<typeof vi.fn<() => Promise<void>>>;
@@ -116,36 +97,25 @@ function createFakeDeps(
   const selectTab = vi.fn((index: number) => {
     log.push(`selectTab:${index}`);
   });
-  const openFile = vi.fn(
-    async (workspacePath: string, path: string, keep: boolean) => {
-      log.push(`openFile:${workspacePath}:${path}:${keep}`);
-    },
-  );
+  const openFile = vi.fn(async (workspacePath: string, path: string, keep: boolean) => {
+    log.push(`openFile:${workspacePath}:${path}:${keep}`);
+  });
   const activateFile = vi.fn((workspacePath: string, path: string) => {
     log.push(`activateFile:${workspacePath}:${path}`);
   });
   const dirsExist =
-    overrides.dirsExist ??
-    vi.fn(async (paths: readonly string[]) => paths.map(() => true));
+    overrides.dirsExist ?? vi.fn(async (paths: readonly string[]) => paths.map(() => true));
   const statFiles =
     overrides.statFiles ??
-    vi.fn(
-      async (
-        _root: string,
-        paths: readonly string[],
-      ): Promise<FileStatResult[]> =>
-        paths.map((path) => ({ path, exists: true, mtimeMs: 1, size: 1 })),
+    vi.fn(async (_root: string, paths: readonly string[]): Promise<FileStatResult[]> =>
+      paths.map((path) => ({ path, exists: true, mtimeMs: 1, size: 1 })),
     );
   const lookup =
     overrides.lookup ??
-    vi.fn(
-      async (
-        requests: readonly ResumeRequest[],
-      ): Promise<readonly ResumeRef[]> => requests.map(() => null),
+    vi.fn(async (requests: readonly ResumeRequest[]): Promise<readonly ResumeRef[]> =>
+      requests.map(() => null),
     );
-  const readWindowRecords = vi.fn(
-    async () => overrides.records ?? new Map<string, WindowRecord>(),
-  );
+  const readWindowRecords = vi.fn(async () => overrides.records ?? new Map<string, WindowRecord>());
   const clearWindowRecord = vi.fn(async (label: string) => {
     log.push(`clearWindowRecord:${label}`);
   });
@@ -234,9 +204,7 @@ describe("restoreSession", () => {
     ]);
     const { deps, mocks } = createFakeDeps({ records });
     await restoreSession(deps, "main");
-    const names = mocks.materialize.mock.calls.map(
-      ([intent]) => intent.chrome?.name,
-    );
+    const names = mocks.materialize.mock.calls.map(([intent]) => intent.chrome?.name);
     expect(names).toEqual(["main-tab", "c-tab", "b-tab"]);
   });
 
@@ -252,9 +220,7 @@ describe("restoreSession", () => {
     const { deps, mocks } = createFakeDeps({ records, dirsExist });
     await restoreSession(deps, "main");
     expect(mocks.dirsExist).toHaveBeenCalledTimes(1);
-    const names = mocks.materialize.mock.calls.map(
-      ([intent]) => intent.chrome?.name,
-    );
+    const names = mocks.materialize.mock.calls.map(([intent]) => intent.chrome?.name);
     expect(names).toEqual(["alive-tab"]);
   });
 
@@ -263,9 +229,7 @@ describe("restoreSession", () => {
       workspacePath: "/w",
       panes: [{ cwd: "/w/dead", agent: "claude", launchCommand: null }],
     });
-    const records = new Map<string, WindowRecord>([
-      ["main", record({ tabs: [oneTab] })],
-    ]);
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [oneTab] })]]);
     const dirsExist = vi.fn(async (paths: readonly string[]) =>
       paths.map((path) => path !== "/w/dead"),
     );
@@ -284,13 +248,9 @@ describe("restoreSession", () => {
         { cwd: "/w", agent: "claude", launchCommand: null },
       ],
     });
-    const records = new Map<string, WindowRecord>([
-      ["main", record({ tabs: [twoPaneTab] })],
-    ]);
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [twoPaneTab] })]]);
     const lookup = vi.fn(
-      async (
-        _requests: readonly ResumeRequest[],
-      ): Promise<readonly ResumeRef[]> => [
+      async (_requests: readonly ResumeRequest[]): Promise<readonly ResumeRef[]> => [
         { kind: "id", id: "aaa" },
         { kind: "id", id: "bbb" },
       ],
@@ -304,10 +264,7 @@ describe("restoreSession", () => {
       { agent: "claude", cwd: "/w", lastSeenAt: 1 },
     ]);
     const [intent] = mocks.materialize.mock.calls[0];
-    expect(intent.paneCommands).toEqual([
-      "claude --resume aaa",
-      "claude --resume bbb",
-    ]);
+    expect(intent.paneCommands).toEqual(["claude --resume aaa", "claude --resume bbb"]);
   });
 
   it("puts a claude pane's mode back on its resume command", async () => {
@@ -321,20 +278,16 @@ describe("restoreSession", () => {
         },
       ],
     });
-    const records = new Map<string, WindowRecord>([
-      ["main", record({ tabs: [modeTab] })],
-    ]);
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [modeTab] })]]);
     const lookup = vi.fn(
-      async (
-        _requests: readonly ResumeRequest[],
-      ): Promise<readonly ResumeRef[]> => [{ kind: "id", id: "abc123" }],
+      async (_requests: readonly ResumeRequest[]): Promise<readonly ResumeRef[]> => [
+        { kind: "id", id: "abc123" },
+      ],
     );
     const { deps, mocks } = createFakeDeps({ records, lookup });
     await restoreSession(deps, "main");
     const [intent] = mocks.materialize.mock.calls[0];
-    expect(intent.paneCommands).toEqual([
-      "claude --resume abc123 --permission-mode plan",
-    ]);
+    expect(intent.paneCommands).toEqual(["claude --resume abc123 --permission-mode plan"]);
   });
 
   // codex takes its flags in positions `launch-command.ts` does not model, so
@@ -350,13 +303,11 @@ describe("restoreSession", () => {
         },
       ],
     });
-    const records = new Map<string, WindowRecord>([
-      ["main", record({ tabs: [codexTab] })],
-    ]);
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [codexTab] })]]);
     const lookup = vi.fn(
-      async (
-        _requests: readonly ResumeRequest[],
-      ): Promise<readonly ResumeRef[]> => [{ kind: "id", id: "abc123" }],
+      async (_requests: readonly ResumeRequest[]): Promise<readonly ResumeRef[]> => [
+        { kind: "id", id: "abc123" },
+      ],
     );
     const { deps, mocks } = createFakeDeps({ records, lookup });
     await restoreSession(deps, "main");
@@ -369,13 +320,11 @@ describe("restoreSession", () => {
       workspacePath: "/w",
       panes: [{ cwd: "/w", agent: "claude", launchCommand: null }],
     });
-    const records = new Map<string, WindowRecord>([
-      ["main", record({ tabs: [plainTab] })],
-    ]);
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [plainTab] })]]);
     const lookup = vi.fn(
-      async (
-        _requests: readonly ResumeRequest[],
-      ): Promise<readonly ResumeRef[]> => [{ kind: "id", id: "abc123" }],
+      async (_requests: readonly ResumeRequest[]): Promise<readonly ResumeRef[]> => [
+        { kind: "id", id: "abc123" },
+      ],
     );
     const { deps, mocks } = createFakeDeps({ records, lookup });
     await restoreSession(deps, "main");
@@ -388,9 +337,7 @@ describe("restoreSession", () => {
       workspacePath: "/w",
       panes: [{ cwd: "/w", agent: "MyBot", launchCommand: null }],
     });
-    const records = new Map<string, WindowRecord>([
-      ["main", record({ tabs: [customTab] })],
-    ]);
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [customTab] })]]);
     const customAgents: readonly CustomAgent[] = [
       { id: "custom:mybot", label: "MyBot", command: "mybot --flag" },
     ];
@@ -406,9 +353,7 @@ describe("restoreSession", () => {
       workspacePath: "/w",
       panes: [{ cwd: "/w", agent: null, launchCommand: null }],
     });
-    const records = new Map<string, WindowRecord>([
-      ["main", record({ tabs: [plainTab] })],
-    ]);
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [plainTab] })]]);
     const { deps, mocks } = createFakeDeps({ records });
     await restoreSession(deps, "main");
     expect(mocks.lookup).toHaveBeenCalledWith([]);
@@ -419,9 +364,7 @@ describe("restoreSession", () => {
   it("point 5: a failed materialize (throws) skips that tab and continues", async () => {
     const first = tab({ workspacePath: "/first", name: "first" });
     const second = tab({ workspacePath: "/second", name: "second" });
-    const records = new Map<string, WindowRecord>([
-      ["main", record({ tabs: [first, second] })],
-    ]);
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [first, second] })]]);
     const { deps, mocks } = createFakeDeps({
       records,
       materializeResults: [new Error("boom"), true],
@@ -433,9 +376,7 @@ describe("restoreSession", () => {
 
   it("point 5: a failed materialize (returns false) does not count as restored", async () => {
     const only = tab({ workspacePath: "/w" });
-    const records = new Map<string, WindowRecord>([
-      ["main", record({ tabs: [only] })],
-    ]);
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [only] })]]);
     const { deps } = createFakeDeps({ records, materializeResults: [false] });
     const result = await restoreSession(deps, "main");
     expect(result).toBe(false);
@@ -450,13 +391,9 @@ describe("restoreSession", () => {
         { cwd: "/w", agent: "claude", launchCommand: null },
       ],
     });
-    const records = new Map<string, WindowRecord>([
-      ["main", record({ tabs: [twoPaneTab] })],
-    ]);
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [twoPaneTab] })]]);
     const lookup = vi.fn(
-      async (
-        _requests: readonly ResumeRequest[],
-      ): Promise<readonly ResumeRef[]> => [
+      async (_requests: readonly ResumeRequest[]): Promise<readonly ResumeRef[]> => [
         { kind: "id", id: "aaa" },
         { kind: "id", id: "bbb" },
       ],
@@ -487,9 +424,9 @@ describe("restoreSession", () => {
       ["main", record({ tabs: [tab({ workspacePath: "/w" })] })],
     ]);
     const lookup = vi.fn(
-      async (
-        _requests: readonly ResumeRequest[],
-      ): Promise<readonly ResumeRef[]> => [{ kind: "id", id: "aaa" }],
+      async (_requests: readonly ResumeRequest[]): Promise<readonly ResumeRef[]> => [
+        { kind: "id", id: "aaa" },
+      ],
     );
     const { deps } = createFakeDeps({
       records,
@@ -521,10 +458,7 @@ describe("restoreSession", () => {
       ],
     ]);
     const statFiles = vi.fn(
-      async (
-        _root: string,
-        paths: readonly string[],
-      ): Promise<FileStatResult[]> =>
+      async (_root: string, paths: readonly string[]): Promise<FileStatResult[]> =>
         paths.map((path) => ({
           path,
           exists: path !== "/w/gone.ts",
@@ -538,12 +472,8 @@ describe("restoreSession", () => {
     expect(mocks.openFile).toHaveBeenCalledWith("/w", "/w/a.ts", true);
     expect(mocks.activateFile).toHaveBeenCalledWith("/w", "/w/a.ts");
     // activateFile happens after selectTab in the call order.
-    const selectIndex = log.findIndex((entry) =>
-      entry.startsWith("selectTab:"),
-    );
-    const activateIndex = log.findIndex((entry) =>
-      entry.startsWith("activateFile:"),
-    );
+    const selectIndex = log.findIndex((entry) => entry.startsWith("selectTab:"));
+    const activateIndex = log.findIndex((entry) => entry.startsWith("activateFile:"));
     expect(selectIndex).toBeGreaterThanOrEqual(0);
     expect(activateIndex).toBeGreaterThan(selectIndex);
   });
@@ -649,9 +579,7 @@ describe("restoreSession", () => {
   });
 
   it("point 9: marker set→clear bracketing, including clear-on-throw when the lookup rejects", async () => {
-    const records = new Map<string, WindowRecord>([
-      ["main", record({ tabs: [tab()] })],
-    ]);
+    const records = new Map<string, WindowRecord>([["main", record({ tabs: [tab()] })]]);
     const lookup = vi.fn(async (): Promise<readonly ResumeRef[]> => {
       throw new Error("scanner exploded");
     });
@@ -661,10 +589,7 @@ describe("restoreSession", () => {
     expect(mocks.set).toHaveBeenCalledTimes(1);
     expect(mocks.clear).toHaveBeenCalledTimes(1);
     expect(mocks.materialize).not.toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledWith(
-      "session restore failed:",
-      expect.any(Error),
-    );
+    expect(console.error).toHaveBeenCalledWith("session restore failed:", expect.any(Error));
   });
 
   it("point 9: returns partial progress when a later step throws after some materializes succeeded", async () => {
@@ -724,8 +649,6 @@ describe("resumeWorkspace", () => {
     };
     const { deps, mocks } = createFakeDeps({});
     await resumeWorkspace(deps, entry, "/w");
-    expect(mocks.lookup).toHaveBeenCalledWith([
-      { agent: "claude", cwd: "/w", lastSeenAt: 42 },
-    ]);
+    expect(mocks.lookup).toHaveBeenCalledWith([{ agent: "claude", cwd: "/w", lastSeenAt: 42 }]);
   });
 });

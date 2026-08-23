@@ -77,8 +77,12 @@
   top: var(--frame-h);
 }
 
-/* ── DL §30: the migration notice ─────────────────────────────────────────
-   Spec: docs/specs/2026-08-17-tauri-migration-notice-design.md `decided`.
+/* ── DL §30: the notice row ───────────────────────────────────────────────
+   One instance again since 2026-08-22 (owner-decided): the usage-consent row
+   became the DL-29.9 decision MODAL (`10-modals.css`), so `.migration-banner`
+   — Tauri-only, per
+   docs/specs/2026-08-17-tauri-migration-notice-design.md `decided` — is the
+   genre's whole population.
 
    The first row of the stage's own content, BENEATH `.stage__strip` and above
    the terminal grid. Never above the strip: the strip sits at `top: 0`, and
@@ -163,15 +167,20 @@
    panes — a terminal is a grid measured in rows, and an overlay would hide
    output the user cannot scroll back into view.
 
-   `.stage__surface` is deliberately NOT offset: the document and the browser
-   are Electron-only and this notice is Tauri-only, so the two can never be on
-   screen together. If a file surface ever reaches Tauri, this is the rule that
-   has to grow with it. */
-.stage--notice .stage__tabs {
+   `.stage__surface` IS offset since 2026-08-22, and stays offset now that
+   the consent row is a modal again: the offset is the genre's rule, not one
+   instance's, so a future Electron-side notice inherits it instead of
+   re-finding the landmine. The browser's native view needs no host-side
+   change: its bounds are measured off the DOM element (`browser-panel.tsx`),
+   and a `top` change resizes that element, which the panel's ResizeObserver
+   reports. */
+.stage--notice .stage__tabs,
+.stage--notice .stage__surface {
   top: var(--notice-h);
 }
 
-.stage--strip.stage--notice .stage__tabs {
+.stage--strip.stage--notice .stage__tabs,
+.stage--strip.stage--notice .stage__surface {
   top: calc(var(--frame-h) + var(--notice-h));
 }
 
@@ -460,8 +469,7 @@
   background: color-mix(in srgb, var(--yellow) 72%, transparent);
   opacity: 0;
   pointer-events: none;
-  animation:
-    pane-ping-line var(--pane-focus-current-duration) linear 1 both;
+  animation: pane-ping-line var(--pane-focus-current-duration) linear 1 both;
 }
 
 /* Ghostty-style charge: two bright packets cross either the working line or
@@ -491,13 +499,11 @@
 }
 
 .pane.is-agent-working::after {
-  animation:
-    pane-focus-current var(--pane-focus-current-duration) linear infinite;
+  animation: pane-focus-current var(--pane-focus-current-duration) linear infinite;
 }
 
 .pane-ping::after {
-  animation:
-    pane-focus-current var(--pane-focus-current-duration) linear 1 both;
+  animation: pane-focus-current var(--pane-focus-current-duration) linear 1 both;
 }
 
 @keyframes pane-ping-line {

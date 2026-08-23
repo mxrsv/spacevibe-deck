@@ -58,9 +58,9 @@ export const messages = {
       "Every pane runs your login shell ($SHELL -l) — PATH, aliases, and dotfiles just work.",
     proofOpenTitle: "Open source, MIT licensed",
     proofOpenBody: "The whole app is on GitHub — read it, build it, fork it, ship a patch.",
-    proofLocalTitle: "Local-first, no telemetry",
+    proofLocalTitle: "Your work stays on your machine",
     proofLocalBody:
-      "Everything stays on your machine — no accounts, no tracking, no network beyond what your agents do.",
+      "Your code, terminals and agent sessions stay local. Deck sends first-party usage analytics — on by default, never code, file paths or prompts — and Settings → Privacy turns them off.",
     scSplit: "split",
     scSplitH: "split down",
     scTab: "new tab",
@@ -139,9 +139,9 @@ export const messages = {
       "Mỗi pane chạy đúng login shell của bạn ($SHELL -l) — PATH, alias, dotfiles hoạt động y nguyên.",
     proofOpenTitle: "Mã nguồn mở, giấy phép MIT",
     proofOpenBody: "Toàn bộ app nằm trên GitHub — đọc, tự build, fork hay gửi patch đều được.",
-    proofLocalTitle: "Local-first, không telemetry",
+    proofLocalTitle: "Công việc của bạn ở lại trên máy bạn",
     proofLocalBody:
-      "Mọi thứ nằm trên máy bạn — không tài khoản, không theo dõi, không kết nối nào ngoài của chính agent.",
+      "Code, terminal và phiên agent đều nằm local. Deck gửi usage analytics first-party — bật mặc định, không bao giờ kèm code, đường dẫn file hay prompt — tắt được trong Settings → Privacy.",
     scSplit: "chia dọc",
     scSplitH: "chia ngang",
     scTab: "tab mới",

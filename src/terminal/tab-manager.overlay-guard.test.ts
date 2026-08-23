@@ -17,6 +17,11 @@ import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { fakePane, flush, freshWindowFocusController, setup } from "./tab-manager.fixtures";
+import type { Signal } from "@preact/signals";
+import { usageConsentOpen } from "../telemetry/consent-store";
+
+/** The module types it `ReadonlySignal`; the mock above is a real one. */
+const consentDialog = usageConsentOpen as Signal<boolean>;
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
@@ -25,6 +30,15 @@ import { fakePane, flush, freshWindowFocusController, setup } from "./tab-manage
 vi.mock("../lib/native-notification", () => ({
   sendAgentNotification: vi.fn(),
 }));
+
+// The consent dialog's presence is a `computed` over main-owned state reached
+// through `window.__deckHost`, which no test has. Mocked down to the one
+// signal `openOverlayRanks()` reads, so a test can raise the dialog the same
+// way it raises the board.
+vi.mock("../telemetry/consent-store", async () => {
+  const { signal } = await import("@preact/signals");
+  return { usageConsentOpen: signal(false) };
+});
 
 // init() installs the file-drop listener, which reaches into the Tauri window
 // and webview. Stub them so init() can register the pty output listener the
@@ -108,6 +122,29 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     saveDialogOpen.value = false;
     editorRequest.value = null;
     shortcutCaptureActive.value = false;
+    consentDialog.value = false;
+  });
+
+  it("close-pane via runAction is blocked while the usage-consent dialog is up", async () => {
+    // The consent dialog joined this guard on 2026-08-23. It is the only modal
+    // a user cannot dismiss (DL-29.9 withdraws Escape and the scrim both), so
+    // before this every chord ran behind a scrim that stayed until an answer
+    // was persisted — ⌘W closing a pane nobody could see being the worst of
+    // them.
+    const { tm } = setup({});
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.splitActive("row");
+    await tm.init();
+    await flush();
+    expect(statusInfo.value.paneCount).toBe(2);
+
+    consentDialog.value = true;
+    tm.runAction("close-pane");
+    await flush();
+
+    expect(statusInfo.value.paneCount).toBe(2);
+
+    tm.dispose();
   });
 
   function metaKeydown(key: string): KeyboardEvent {

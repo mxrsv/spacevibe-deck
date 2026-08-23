@@ -120,6 +120,14 @@ export const CHANNELS = {
   // unanswered. Flat `{ limit }` per R6; the reply is
   // `electron/sessions/model.ts`'s `SessionsSnapshot`.
   sessionsList: "sessions_list",
+  // Opt-in usage analytics (spec 2026-08-22). Electron-only like the blocks
+  // above: Tauri has no handler, so the renderer's `available` flag is false
+  // there and nothing counts, renders or sends. `telemetry_count` is fire and
+  // forget; the other two read and change main-owned consent state. No
+  // identifier ever crosses into the renderer over any of the three.
+  telemetryCount: "telemetry_count",
+  telemetryState: "telemetry_state",
+  telemetrySetEnabled: "telemetry_set_enabled",
 } as const;
 
 /** Events: main → renderer, fire and forget. */
@@ -145,6 +153,11 @@ export const EVENTS = {
   // `register-store.ts` until the preload gained an event allowlist and it had
   // to be a name both sides agree on.
   storeWriteFailed: "store:write-failed",
+  // Broadcast when the main-owned analytics consent state changes, so every
+  // window's consent row and Privacy section move together (spec §6: both
+  // choices dismiss the row across every window). Carries consent state only —
+  // never a daily id.
+  telemetryState: "telemetry:state-changed",
 } as const;
 
 /**

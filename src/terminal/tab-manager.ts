@@ -22,6 +22,8 @@ import {
   resolveAgentCommand,
 } from "../lib/agent-catalog";
 import { agentLaunchCommand, resolveLaunchCommand } from "../lib/launch-command";
+import { countAgentLaunch } from "../telemetry/usage-counters";
+import { usageConsentOpen } from "../telemetry/consent-store";
 import { matchBinding, selectTabIndex, type ShortcutAction } from "./keymap";
 import { TIER_RANK } from "./action-registry";
 import {
@@ -818,6 +820,17 @@ export function createTabManager(
         command: intent.paneCommands?.[index] ?? fallback,
       })),
     );
+    // Usage analytics (spec §4): a launch per pane the CATALOG armed. Panes
+    // whose command came in through `paneCommands` are counted by their own
+    // call sites (resume/restore), which still hold the per-pane agent id
+    // this intent deliberately does not carry.
+    if (agentId !== null && fallback !== null) {
+      for (const [index] of paneIds.entries()) {
+        if (intent.paneCommands?.[index] == null) {
+          countAgentLaunch(agentId);
+        }
+      }
+    }
     return true;
   }
 
@@ -932,6 +945,10 @@ export function createTabManager(
           agentId === null ? null : (launchCommand ?? resolveAgentCommand(agentId, customAgents)),
       },
     ]);
+    if (agentId !== null) {
+      // Usage analytics (spec §4): the one agent launch outside `materialize`.
+      countAgentLaunch(agentId);
+    }
     // The docked pane has no process info until the next tick otherwise, so
     // the rail and the tab chip would sit blank for up to the poll interval.
     void poller.poll();
@@ -1572,7 +1589,18 @@ export function createTabManager(
     if (boardOpen.value) {
       ranks.push(TIER_RANK.board);
     }
-    if (editorRequest.value !== null || saveDialogOpen.value || agentQuickPickerOpen.value) {
+    if (
+      editorRequest.value !== null ||
+      saveDialogOpen.value ||
+      agentQuickPickerOpen.value ||
+      // The consent dialog is the same `.modal-scrim` genre as the three above
+      // and therefore the same rank — but it is the only one a user cannot
+      // dismiss (DL-29.9 withdraws both exits), which made its absence here
+      // the worst of the four: every chord ran behind a scrim that was not
+      // going away until an answer was persisted. Read off the store, not off
+      // an `App`-written copy, so the guard and the dialog can never disagree.
+      usageConsentOpen.value
+    ) {
       ranks.push(TIER_RANK.modal);
     }
     return ranks;

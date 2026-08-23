@@ -58,6 +58,9 @@ import {
 import { AgentQuickPicker } from "./agent-quick-picker";
 import { MigrationBanner } from "./migration-banner";
 import { isTauriHost, shouldShowNotice } from "../updater/migration-notice";
+import { UsageConsentModal } from "./usage-consent-modal";
+import { ensureTelemetryStateLoaded, usageConsentOpen } from "../telemetry/consent-store";
+import { countRestoredSessions, installUsageCounterEffects } from "../telemetry/usage-counters";
 import { OpenBoard } from "../open-board/open-board";
 import type { SessionEntry } from "../lib/session-history";
 import { resumeSession } from "../sessions/resume-session";
@@ -452,6 +455,22 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       }),
     });
     tabsRef.current = manager;
+    // Usage analytics (spec §3): ask main for consent state — the read also
+    // tells main a window is ready, which triggers an enabled run's initial
+    // snapshot — and install the window-scoped counting effect. Both are
+    // no-ops wherever the host cannot answer (Tauri, browser preview).
+    void ensureTelemetryStateLoaded();
+    const disposeUsageCounters = installUsageCounterEffects({
+      tabCount: () => tabViews.value.length,
+      paneCount: () => tabViews.value.reduce((total, tab) => total + (tab.panes?.length ?? 0), 0),
+      browserVisible: () => browserSurfaceActive.value,
+      explorerVisible: () =>
+        dockVisible({ dockOpen: settings.value.dockOpen, boardOpen: boardOpen.value }) &&
+        resolveDockTab(settings.value.dockTab, sessionsSupported.value) === "explorer",
+      usageVisible: () =>
+        dockVisible({ dockOpen: settings.value.dockOpen, boardOpen: boardOpen.value }) &&
+        resolveDockTab(settings.value.dockTab, sessionsSupported.value) === "usage",
+    });
     if (updatePreview === null) {
       // Read the previous run's breadcrumb before starting a new check: if the
       // last install never landed, the user hears it here rather than
@@ -506,6 +525,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             return false;
           });
         }
+        if (restored) {
+          // Spec §4: true when boot restore materialized at least one pane.
+          countRestoredSessions();
+        }
         await initSessionJournal({
           capture: () => manager.captureSession(),
           windowLabel: label,
@@ -528,6 +551,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         void getCurrentWindow().close();
       });
     return () => {
+      disposeUsageCounters();
       manager.dispose();
     };
   }, []);
@@ -1185,9 +1209,23 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * makes sense. This one answers "is any DOM pixel trying to paint over the
    * stage", because a native view wins that contest no matter the z-index.
    */
+  // Electron-only, like the store behind it. No dismissed flag — the dialog
+  // leaves when consent stops being unanswered, which main broadcasts to
+  // every window (owner-decided 2026-08-22: a modal, not the notice row the
+  // spec's §6 first shipped).
+  //
+  // Read off the store rather than recomputed here (2026-08-23): the same
+  // answer has to reach `openOverlayRanks()`, and two call sites deciding
+  // separately whether a modal is up is how the guard came to disagree with
+  // the screen in the first place.
+  const showUsageConsent = usageConsentOpen.value;
   const panelObscured = (): boolean =>
     browserPanelObscured({
       overlayCoversPane: overlayCoversPane(),
+      // A launch-time modal on the shared scrim: same reason as the quick
+      // picker below — it paints over the stage, so the native browser view
+      // must go or the dialog draws underneath it.
+      usageConsentOpen: showUsageConsent,
       // `agentQuickPickerOpen` is deliberately here and NOT in
       // `overlayCoversPane()`: it is a modal on the same scrim as the other two
       // (`openOverlayRanks()` already ranks it as one), so it paints over the
@@ -1389,6 +1427,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     tauriHost: isTauriHost(),
     dismissed: noticeDismissed.value,
   });
+  const noticeRowShown = showNotice;
   const dockPainted = dockPaintedOpen({
     ...dockState,
     dragCollapsed: dockDragging ? dockCollapseArmed.value : null,
@@ -1506,7 +1545,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             // open on purpose, so the painted state answers instead and the
             // terminals reclaim the space the moment the gesture arms.
             (dockDragging ? dockPainted : dockPresence.mounted) ? "stage--dock" : ""
-          } ${sidebar ? "stage--strip" : ""} ${showNotice ? "stage--notice" : ""}`}
+          } ${sidebar ? "stage--strip" : ""} ${noticeRowShown ? "stage--notice" : ""}`}
           // One number, two consumers: the panel's own column and the inset
           // that keeps the terminal grid clear of it. A drag updates the
           // live signal, so both move together instead of the terminals
@@ -1661,6 +1700,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               onOpen={(workspace, preset, agent) => handleOpen(workspace, preset, agent)}
             />
           ) : null}
+          {/* The consent question (spec §6, reshaped to a modal 2026-08-22):
+              asked over whatever the launch shows — the Open board for a
+              fresh install, restored tabs otherwise. Mounted BEFORE the other
+              modals so a user-invoked one (⌘T, a preset draft) paints above
+              it in DOM order on the shared z-40 scrim. */}
+          {showUsageConsent ? <UsageConsentModal /> : null}
           {agentQuickPickerOpen.value ? (
             <AgentQuickPicker
               detected={detectedAgents.value}
