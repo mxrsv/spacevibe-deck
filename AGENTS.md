@@ -40,7 +40,19 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   [plan](docs/plans/2026-08-20-electron-stable-release.md) `building`.
 - The Electron cutover is a **clean install** with no settings/workspace migration. The final
   Tauri release must explain the manual transition and old data location. “No Electron” must
-  stop being a proof point at cutover; “no accounts, no telemetry” remains valid.
+  stop being a proof point at cutover; “no accounts” remains valid. **“No telemetry” is
+  retired, and analytics is ON by default (decided 2026-08-23, committed 2026-08-24 as
+  `cdc07a0`):** the 2026-08-22 opt-in model was built, never released, and reversed by
+  the owner the next day — no consent question is asked,
+  `declined` (the Settings → Privacy switch) is the only state never inferred away, an
+  unreadable state file still fails closed to off, and public copy says "on by default,
+  no code, paths or prompts" and never "anonymous". `USAGE_CONSENT_ASKED` in
+  [`usage-notice.ts`](src/telemetry/usage-notice.ts) `current` is the whole reversal
+  switch; the consent modal stays in the tree behind it. Rollout consequence: every
+  install of the next release POSTs, so the Worker and the privacy page are
+  prerequisites, not follow-ups. See the
+  [usage analytics spec](docs/specs/2026-08-22-anonymous-usage-telemetry-design.md)
+  `decided` (amended 2026-08-24).
 - Electron process classification must use the measured `ps` snapshot path, not
   `node-pty.process`; the latter returned version/executable strings instead of argv0.
 - **Pane detach Phase A exists on Tauri**, including IPC contract tests; remaining native
@@ -64,16 +76,19 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   `grabSummary`'s two strings. Verified by the browser suite only — no full `npm test`, no
   build, no native pass. See
   [docs/CONTEXT.md](docs/CONTEXT.md#the-grab-stops-at-the-clipboard--2026-08-16) `current`.
-- **Gate M has passed packaged, on the owner's verification Mac (2026-08-14), 6/6.** The
-  file explorer surface is now built on top of the merged model/host layers: the docked
-  panel, the virtualized tree, file-tab chips in both toolbar layouts, `toggle-explorer`
-  (⌘⇧B) and `save-file` (⌘S), a focus guard, document-lifecycle fixes, and `fs:changed`-driven
-  tree refresh. The [spec](docs/specs/2026-08-12-file-explorer-design.md) `decided` stays
-  frozen; full details and evidence in
+- **Gate M is retired as a current acceptance gate (2026-08-23).** Its packaged 6/6 run on
+  the owner's verification Mac (2026-08-14) remains historical evidence for the pre-reshape
+  explorer only. The maintained [`packaged Monaco smoke`](electron-builder.monaco-smoke.yml)
+  `current` keeps the useful regression seam — Monaco, its worker/assets, edit/save and
+  Monaco↔xterm focus inside an unsigned local package — without claiming the current explorer
+  layout passed. The renamed smoke itself is packaged-verified: the universal build completed
+  and [`electron:verify:monaco-smoke`](scripts/verify-electron-monaco-smoke-package.mjs)
+  `current` passed twice back-to-back on 2026-08-23, including WebGL-safe xterm input/output
+  assertions and process-group cleanup. **Pending: owner eye review (DL §9.6), the packaged
+  both-layout manual pass and native macOS sign-off.** Adding a CSP later requires rerunning
+  the smoke. Electron only; no Tauri implementation exists. Historical detail remains in
   [docs/CONTEXT.md](docs/CONTEXT.md#straight-through-completion-run--explorer-surface-board-redesign-usage-acceptance--2026-08-14)
-  `current`. **Pending: owner eye review (DL §9.6) and native macOS sign-off** — no
-  automated gate establishes this. Adding a CSP later invalidates the Gate M run and
-  requires a rerun. Electron only; no Tauri implementation exists.
+  `current`.
 - **The tabs are one strip on the stage's own frame-row half, and the document
   renders on the stage (2026-08-14).** [`TabStrip`](src/ui/tab-strip.tsx) `current` is
   the chips; `TabBar` is top-tab mode's frame around it and `.stage__strip` is sidebar
@@ -82,9 +97,8 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   `RepositoryRail` stopped listing file tabs entirely. Since 2026-08-15, the sidebar
   mount shows only terminal tabs belonging to its selected worktree and restores that
   worktree's last selected tab; top-tab mode remains global. Verified by suite/build only:
-  the shape Gate M covered has changed, so **that pass does not carry over** — the
-  packaged both-layout manual pass (plan T35) and the owner eye review are owed on
-  the new picture. See
+  **no packaged or native acceptance covers this shape** — the packaged both-layout manual
+  pass (plan T35) and the owner eye review are owed on the new picture. See
   [docs/CONTEXT.md](docs/CONTEXT.md#the-stage-tab-strip-and-the-document-off-the-panel--2026-08-14)
   `current`.
 - **The token usage dashboard is landed, ported, and its owner-machine acceptance table has
@@ -560,6 +574,160 @@ Project state: [docs/CONTEXT.md](docs/CONTEXT.md) `current`; architecture:
   of the real component — **no `tauri dev` pass, no `electron:dev` pass proving it stays
   hidden, no owner eye review**. See
   [spec](docs/specs/2026-08-17-tauri-migration-notice-design.md) `decided`.
+- **A project cluster goes where the user drags it, and stays there (2026-08-22).** New
+  DL-27.20. The rail's clusters sat where their oldest tab put them and the remembered tier
+  below them sat in MRU order; the header is the whole cluster's drag handle now, and the
+  position survives the case the owner named — the cluster's last tab closing. That works
+  because [`RailStreamGroup.orderKey`](src/ui/agent-rail-model.ts) `current` is the
+  un-prefixed key both tiers produce, where `key` carries `remembered:` and therefore
+  changes. [`rail-order.ts`](src/ui/rail-order.ts) `current` is the pure half: pinned
+  clusters first in stored order, everything else in exactly today's order, and an empty
+  `railOrder` returns the assembled array ITSELF. A pinned cluster ignores the
+  live/remembered boundary — a knowing break with 2026-08-20, because the owner asked for a
+  position, not a position within a tier — and a drop pins every cluster above it, or slot 1's
+  open order would push slot 2 around. `plain:<path>` entries written before a scan lands
+  match AND are rewritten to the repository key on the next write, so the list canonicalizes
+  instead of holding two spellings. **Only the CLUSTER drags** (owner: not a tab row, not a
+  pane row, not between clusters), which is what keeps this off the tab strip: the shared
+  order key is about TABS and no `openedAt` is rewritten. Settings are app-level, so a drag
+  reorders every window's rail. Renderer-only, so it reaches BOTH hosts; targeted suites,
+  typecheck, lint and the DL gate are green over every file it touches, but **the full suite,
+  the build, a host pass and the owner eye review are all owed — no cluster has been dragged
+  in a running app.** See
+  [spec](docs/specs/2026-08-22-rail-workspace-reorder-design.md) `decided`.
+- **Every rail row closes what it names, and the window outlives its last agent
+  (2026-08-22).** New DL-27.21. The rail drew AGENTS and closed TABS: a single-agent row's
+  ✕ said `Close tab`, a multi-agent tab's rows had no ✕ at all (DL-27.13's parent row is
+  behind `PANE_TREE_HIDDEN`, so closing one of three agents from the rail was impossible),
+  and a project header's ✕ existed only on a REMEMBERED cluster, where it forgot a folder.
+  One rule replaces the three: **the control closes the thing its row names.** An agent row
+  closes that pane — ⌘W's own contract, so the tab follows only when the pane was its last
+  ([`closePaneAt`](src/terminal/close-coordinator.ts) `current`, deciding from
+  `manager.paneCount()`, never from the rail's agent-row count); a row with no agent is a
+  shell tab and closes the tab. **A tab holding one agent beside a plain shell now survives
+  that agent's close** — carried on purpose, since the alternative kills a shell nobody
+  asked about. A project header closes every tab of the repository, secondary worktrees
+  included, under ONE busy dialog over every pane
+  ([`closeTabs`](src/terminal/close-coordinator.ts) `current`, which pins entries by
+  identity before the first dispose and answers `false` for a decline, so a cancelled close
+  cannot forget a project whose tabs are all still open) and THEN takes the project off the
+  rail — `RailStreamGroup.historyPaths` is populated for LIVE clusters now, by prefix attach
+  AND by project key, because a worktree of the same repository with nothing open in it is
+  attached to no live path and would rebuild the header under its own `orderKey`.
+  **`disposeTab` stopped closing the window:** the last agent leaves the window standing on
+  the Open board with its project headers intact, and `flushSettingsSave` went with the
+  close it existed for. `removeEmptyTab`'s `closeWindow` (the pane-MOVED path) is
+  deliberately unchanged, and no pty exit reaches `disposeTab` at all — a tab's last pane
+  exiting prints `[Session ended]` and removes nothing. ⌘⇧W is untouched. A leaf became a
+  DL-27.1 container plus hit layer, since a button cannot hold one. Renderer-only apart from
+  that one `disposeTab` branch, so it reaches BOTH hosts. `npx tsc --noEmit` clean and the six
+  affected suites green (183 tests) after a medium code review caught three real defects in
+  this work — an unused `flushSettingsSave` import that broke the build, an ES2022 `Array.at`
+  in a test under an ES2020 `lib`, and `closePaneAt` routing on a STALE index before checking
+  pane membership, which could close an unrelated single-pane tab silently. **Still owed: full
+  `npm test`, `npm run build`, the design-language gate, a host pass and an owner eye
+  review**; no agent has been closed from a leaf and no project from a header in a running
+  app. See [spec](docs/specs/2026-08-22-rail-close-model-design.md) `decided`.
+- **A rail row quotes its OWN session now, because the pairing is remembered
+  (2026-08-22).** Three rows in one cluster printed the identical sentence, each stamped
+  `now`. It was said once and copied: the tail request carried `(agent, cwd, lastSeenAt)` and
+  nothing else, so the pane→session pairing was re-guessed by mtime proximity every 300ms and
+  permuted; `merged` kept the previous sentence on a null answer; and null was the COMMON
+  answer for a working pane, since only the last 64 KiB was read and an agent's own tool
+  traffic fills it (486 of the 616 records past the window were `user:tool_result`, measured).
+  So a pane kept a sentence while its session was released to the next pane, which kept it
+  too. A request may now carry `preferredId` and
+  [`resolveSessionTails`](electron/resume/session-tail.ts) `current` runs **two passes** —
+  every pin honoured before anything is ranked, because one pass in request order lets an
+  earlier unpinned pane take a later pane's pinned session and the churn resumes. The answer
+  became `{ id, tail }`: only the id separates "same conversation, nothing new to quote"
+  (keep the row) from "different conversation" (drop it, empty or not).
+  [`findCandidateById`](electron/resume/resolve.ts) `current` skips the 30-day cutoff and the
+  ranking on purpose — both exist to guess at what a pin states. Two review findings shaped the
+  rest. **A pairing must not outlive its agent generation:** a pane id outlives its occupants
+  (`claude` → shell → `claude`), and a surviving pairing kept being sent as `preferredId`,
+  kept being honoured, and pinned the new agent's row to the old agent's sentence for the life
+  of the pane — worse than the drift this change fixes, since a drift self-corrects and a pin
+  does not. The forget reads two tells already on `PaneView` (agent label changed, or `hasRun`
+  went true → false), and `fingerprintOf` gained `hasRun` and now covers EVERY pane so a
+  generation change cannot be skipped as a repeat. **And a mark says "ask for this pane", never
+  "this pane is running session X":** `noteResumedPane` briefly carried the resolved session id
+  so a restored pane would start out pinned, and that was BUILT AND WITHDRAWN the same day — a
+  mark is keyed by (workspace, agent) with no causal link to a pane, is claimed by whichever
+  matching pane the poll recognizes first (refs `[none, B]` leave one mark the FRESH pane
+  takes), and is left as soon as `materialize` resolves while the command is only armed. Doing
+  it properly needs a mark bound to a pane id — the tab-materialization seam, a fork. Also
+  from review: the host facade walks the REQUESTS not the reply, `resetSessionTailStore` bumps
+  an epoch an in-flight answer checks before merging, and the growing window lost its
+  short-read early exit (one `readSync` may legally return short; that is not EOF).
+  **Deliberately not fixed:** a fresh pane's FIRST pairing is still ranked (`birthtime` is the
+  honest anchor and is unread), the request still carries the TAB's cwd, and the 300-file scan
+  cap is global and pre-cwd. `npm test` 3673/8 with every failure proven to belong to other
+  sessions on a pristine `HEAD` worktree (this change alone there: 1019/1019), both
+  typechecks, `npm run build`, `npm run electron:build` and Prettier clean — **no
+  `electron:dev` pass, no owner eye review, and no rail watched for the minutes of live
+  traffic the bug needs.** See
+  [docs/CONTEXT.md](docs/CONTEXT.md#one-sentence-on-three-rows--2026-08-22) `current` and the
+  [plan](docs/plans/2026-08-22-rail-tail-pane-pairing.md) `current`.
+- **Markdown opens rendered, and ⌘⇧V flips it to source (2026-08-23).** New DL §31.
+  Opening a `.md`/`.markdown` file from the tree shows the RENDERED document instead of
+  Monaco; `.mdx` opens as source, because its JSX renders as broken prose. The view is a
+  read-only picture of the LIVE BUFFER — saved or dirty — so it rides the external-change
+  silent-reload path for free, debounced 150ms so an agent streaming a file cannot thrash
+  layout. [`markdown-render.ts`](src/files/markdown-render.ts) `current` is synchronous and
+  pure: fenced blocks, mermaid fences and local images come out as `data-md-*` placeholders
+  and [`markdown-enhance.ts`](src/files/markdown-enhance.ts) `current` fills them in against
+  the mounted node, which is what makes the whole policy assertable as strings with no jsdom,
+  no Monaco and no mermaid. Fenced code is tokenized by **Monaco's own colorizer** against the
+  enumerated `EDITOR_LANGUAGES` set (no new dependency, and `.md` already lazy-loads Monaco);
+  `mermaid` is imported ONLY when a document actually holds a fence, and a diagram that will
+  not parse keeps its code block plus the error — never a blank hole. **The feature needs no
+  CSP, by design:** raw HTML is escaped and shown verbatim, a link carries no `href` at all
+  (the decision rides in `data-md-target`), `javascript:`/`data:`/every unhandled scheme and
+  anything resolving outside the workspace root render as PLAIN TEXT, `http(s)` goes out
+  through `shell_open_url`, an in-workspace relative link raises the same `requestPathOpen`
+  a ⌘+click does, and **images are local-only with no network fetch, ever**. One departure
+  from the spec, named: images resolve containment through `workspace_for_path` and read
+  through `read_image_as_data_url` rather than `read_file`, which `looksBinary` refuses for
+  every PNG — still two EXISTING channels, so **no new IPC** and no contract moves. No R4
+  seam moved: `SurfaceStrip` gained two optional methods (`canToggleView`/`toggleView`)
+  beside `orderKey` and `runEditCommand`. `toggle-markdown-view` is the 54th registry action,
+  performable-gated so ⌘⇧V passes through untouched anywhere else, and **macOS-only —
+  Ctrl+Shift+V is already `paste`, and a declined performable action does not fall through to
+  a second binding**. Electron-only in effect by inheritance (the file surface has no Tauri
+  implementation). `npm test` 3755/8 with all eight proven to belong to other sessions on a
+  pristine `HEAD` worktree, both typechecks, `npm run build` and `generate:menu:check` clean,
+  and both new dependencies confirmed as their own lazy chunks — but **no native
+  `electron:dev` pass and no owner eye review: no diagram has been drawn, no image read off
+  disk and no link clicked in a running app.** See
+  [spec](docs/specs/2026-08-23-markdown-rendered-view-design.md) `decided`,
+  [plan](docs/plans/2026-08-23-markdown-rendered-view.md) `building` and
+  [docs/CONTEXT.md](docs/CONTEXT.md#markdown-opens-rendered--2026-08-23) `current`.
+- **The rail marks the agent holding the keyboard (2026-08-23).** New DL-27.22.
+  A multi-agent tab renders headless (DL-27.13), so DL-27.8's row wash had no row
+  to land on and the rail could show a whole column with NOTHING selected — the
+  owner reported exactly that, from a screenshot of framed rows. The focused
+  leaf now wears DL-21.1's own `--tab-active-bg`, so a one-agent tab marks its
+  ROW and a several-agent tab marks its LEAF: one signifier, at most one washed
+  row. **The fact had to be plumbed, because nothing carried it:**
+  [`PaneView.focused`](src/terminal/tabs-store.ts) `current` is
+  `activePaneId()` projected per pane in `syncViews`, and
+  [`onActivePaneChange`](src/terminal/terminal-manager-types.ts) `current` —
+  fired from `setActive`, where every focus path converges and a repeat already
+  early-returns — is what tells the tab layer focus moved. `onPaneFocus` could not do
+  it: it is suppressed while `focusPane` drives the focus (so a rail click never
+  reached it), gated on the window being foreground, and syncs only when an
+  attention ACK changed something, which is `null` for a pane with nothing
+  latched. The AND with the tab's own `active` lives in
+  [`paneRows`](src/ui/agent-rail-model.ts) `current`, where "at most one focused
+  row in the whole rail" is assertable. A document or the browser on the stage
+  does NOT clear the mark — the active pane is unchanged, and the row then reads
+  as where the keyboard returns to. Renderer-only apart from that one callback,
+  so it reaches BOTH hosts; verified by `npx tsc --noEmit`, `npm run build`, the
+  five affected suites (156 tests) and a gallery pass on the real rail — **no native
+  `electron:dev` pass and no owner eye review of the running app**. See
+  [plan](docs/plans/2026-08-23-rail-focused-pane-marker.md) `building` and
+  [docs/CONTEXT.md](docs/CONTEXT.md#the-rail-marks-the-agent-holding-the-keyboard--2026-08-23) `current`.
 - **Chrome gallery is current:** `gallery.html` mounts real components through `src/gallery/`;
   run `npm run prototype:gallery`. Gallery code must never enter the shipping bundle. Its
   window-chrome section is narrowed to the one selected direction on purpose; parked
@@ -585,6 +753,104 @@ registry. Record a resolved fork in this queue with a one-line reason; move it t
 
 Open queue:
 
+- **Analytics consent reversed to default-on (decided 2026-08-23 in conversation
+  after hearing the risks; committed 2026-08-24 as `cdc07a0`).** A fork because it amends DL-29.9 —
+  the decision modal's rule now governs a surface that mounts nowhere
+  (retirement banner in `docs/DESIGN-LANGUAGE.md`, the §24 precedent) — and
+  reverses the 2026-08-22 spec's first principle. `EMPTY_STATE` is `enabled`,
+  `parsePersisted` folds every spelling except `declined` into the default,
+  the `CONSENT_VERSION` downgrade-to-unanswered gate is deleted (nothing
+  renders `unanswered` any more, so a version bump would have silently and
+  permanently stopped collection), and README/landing/tour copy state the
+  default honestly. Chosen over opt-out-with-notice and ask-with-default-share,
+  both offered. NOT resolved here: the Worker, D1 and the privacy page are
+  other repos/sessions and are now prerequisites for the next release — an
+  opted-in-by-default client's POSTs die silently until they land (today the
+  hostname does not even resolve).
+- **The rail marks the focused agent, and the terminal manager reports focus
+  moving (2026-08-23, owner-decided by choosing option B from three).** Two
+  fork-listed categories: **a rule in `docs/DESIGN-LANGUAGE.md`** — DL-27.22 is
+  new, and it reverses DL-27.13's "it marks selection with NOTHING" for a
+  headless item, which was ruled while the pane TREE was on screen and meant
+  _nothing covers the tree_; with the tree behind `PANE_TREE_HIDDEN` a leaf is
+  a row, so washing it covers no guides — and **an R4 seam**,
+  `ManagerCallbacks.onActivePaneChange`, plus `PaneView.focused`. Chosen over
+  patching the existing focus paths (`onPaneFocus` is suppressed while
+  `focusPane` drives focus, is gated on the window being foreground, and syncs
+  only when an attention ACK changed something; `activateForAttention`'s
+  same-tab branch returns before its own `syncViews`) and over a SECOND
+  signifier for tab-vs-pane, which would have put two washes in one column. The
+  callback is fired from `setActive` because that is where every FOCUS path
+  converges and it already early-returns on a repeat, so the consumer can be
+  unconditional; the structural paths (split, close, respawn, adoption) assign
+  `activeId` directly and are covered by `onLayoutChange` and the pane poller,
+  which is why this is additive rather than a re-routing. NOT
+  touched: PTY ownership, process classification, the window coordinator, tab
+  materialization, layout, close/quit coordination, IPC, settings, the keymap
+  or any sibling repo.
+- **Two new dependencies and a new DL section for the rendered markdown view
+  (2026-08-23, owner-decided by "implement this spec right now").** Three
+  fork-listed categories: **dependencies** — `marked` and `mermaid` join
+  `dependencies`, chosen by the owner over a hand-rolled subset, over
+  `markdown-it` (needs plugins for task lists) and over the remark/unified tree
+  (~10+ transitive packages), with mermaid's weight accepted because the import
+  is gated on a document actually holding a fence; **a rule in
+  `docs/DESIGN-LANGUAGE.md`** — §31 is new, and DL-31.1 admits a SECOND type
+  scale scoped to one selector subtree, which DL-4.5's "never a second standard
+  ladder" does not cover because it was written about chrome; and **the
+  `SurfaceStrip` seam**, which gained `canToggleView`/`toggleView` as optional
+  methods (the `orderKey` precedent). Two decisions the spec left open are
+  resolved here and recorded in the [plan](docs/plans/2026-08-23-markdown-rendered-view.md)
+  `building`: ⌘⇧V is **macOS-only**, because a performable action that declines
+  its key does not fall through to a second binding and Ctrl+Shift+V is already
+  `paste`; and images take `workspace_for_path` + `read_image_as_data_url`
+  rather than spec §6's `read_file`, which refuses every PNG as binary — both
+  channels already exist, so **no new IPC** and spec §9's "no contract moves"
+  survives. NOT touched: PTY, window coordinator, tab materialization, layout,
+  close/quit coordination, bundle/signing/updater configuration, or any sibling
+  repo.
+- **The consent question became a decision modal (2026-08-22, owner-decided in
+  conversation, hours after the row shipped).** A fork because it adds a DL rule —
+  DL-29.9, the modal that withdraws BOTH of DL-29.3's exits — and re-amends two more:
+  DL-30.1 (the notice row is back to one instance) and DL-30.5 (the decision-row branch
+  moved out with the consent question). `Modal` gained `dismissOnEscape` (default true;
+  only a decision modal may pass false), `browserPanelObscured` gained `usageConsentOpen`
+  so the dialog can never draw under the browser's native view, and
+  `UsageConsentBanner` was DELETED (component, test, CSS) rather than left unmounted —
+  unlike the theme gallery there is no per-user state a revert would want to keep. Spec
+  §6 carries the amendment note with the row design kept as the approved record. Chosen
+  over showing the modal only while the Open board is up (a restored session would never
+  be asked) and over keeping the banner for later launches (two surfaces, one question).
+- **Opt-in usage analytics: a third outbound path, main-owned consent state, three IPC
+  channels, and two DL amendments (2026-08-22, owner-decided by "implement this spec").**
+  The spec's own §13 enumerates the forks and the owner's implement order resolves them:
+  the app's outbound paths grow from two (updater, `gh`) to three, running unattended only
+  after opt-in; `telemetry_count`/`telemetry_state`/`telemetry_set_enabled` join `CHANNELS`
+  plus one `telemetry:state-changed` event; DL §30 widens from "the migration notice" to a
+  two-instance notice-row genre (DL-30.1) and DL-30.5 gains the decision-row branch (no ✕)
+  — both DL halves superseded the same day by the decision-modal entry above;
+  and the analytics state lives in `telemetry.json`, reversing the earlier draft's
+  settings-schema fields so copied settings can never carry consent. The public "no
+  telemetry" claim is retired in the same change, replaced by precise opt-in wording. NOT
+  resolved here: the `api.deck.spacevibe.dev` subdomain is workspace-level (`../AGENTS.md`,
+  X1) and must be recorded in a workspace session; the Worker/D1/privacy-page work is a
+  different repo and session, and the client ships dark until it exists.
+
+- **The window outlives its last agent, and the rail's ✕ changed meaning
+  (2026-08-22, owner-decided).** The owner's own settled table IS the fork
+  resolution. Three fork-listed categories at once: **close/quit
+  coordination** — `disposeTab`'s empty branch stops calling `closeWindow()`,
+  reversing electron-migration spec §9.5's "every window is a peer, the last
+  SURFACE closes THIS window"; **a rule in `docs/DESIGN-LANGUAGE.md`** —
+  DL-27.21 is new; and **pane/tab close routing** — `CloseCoordinator` gained
+  `closePaneAt` and `closeTabs`. Chosen over reacting to an empty `tabViews` in
+  `App` (only `disposeTab` knows the last tab just went, and the board would
+  race the sync), over N× `closeTab` for a project (N busy dialogs, stale
+  indexes), and over leaving the tab-row ✕ on `closeTab` for a single-agent row
+  (which would keep two meanings for one glyph in one column). NOT touched:
+  `removeEmptyTab`'s own `closeWindow` — that is the pane-MOVED path, and a
+  donor window sitting on a board is worse than one that closes. No R4 seam
+  moved, no IPC, no settings field, no keymap action.
 - **The migration notice adds DL §30 and ships enabled (2026-08-17 spec,
   built 2026-08-21).** A fork because it adds a rule to
   `docs/DESIGN-LANGUAGE.md` and because it upgrades a frozen decision: the
@@ -765,6 +1031,35 @@ it runs on rather than implying both.
   horizontal scrollbar the moment it stopped being a `<button>` — form controls get
   `border-box` from the UA, a plain element does not. Declare it on any element you give a
   percentage size and a padding.
+- **`.iconbtn` never resets the UA's button padding, so every icon in one leans
+  left.** Chrome gives every `<button>` `padding: 1px 6px` and `box-sizing:
+  border-box`, and `.iconbtn` sets only `width: 24px` / `height: 24px` /
+  `display: grid` / `place-items: center`. The grid TRACK is therefore 12px
+  wide against a 15px glyph, and a grid item wider than its track is not
+  centred — Chromium clamps the negative offset to the track's start edge. Every
+  icon button in Deck sits 1.5px left of centre because of it. The rendered
+  view's toggle made it visible by adding a 1px border, which cut the track to
+  10px and pushed the glyph 5px off (measured 2026-08-23: 7px of air on the
+  left, 2px on the right); it carries its own `padding: 0` now. **The app-wide
+  fix — `padding: 0` on `.iconbtn` itself — has NOT been made**, so do not read
+  the toggle's local reset as redundant.
+- **A custom scrollbar does not repaint when only the SCROLLER's `:hover` flips.**
+  `01-tokens.css`'s app-wide treatment paints the thumb `transparent` at rest and
+  lights it through `*:hover::-webkit-scrollbar-thumb` — and that rule has never
+  reached the screen. Chromium repaints a custom scrollbar when the scrollbar's
+  OWN state changes (its hover, a drag, a resize) or when an inherited property
+  on the scroller changes; flipping a declaration on the pseudo-element through
+  the originating element's `:hover` computes the new value and paints nothing.
+  Measured 2026-08-23 against the shipped stylesheet:
+  `getComputedStyle(el, "::-webkit-scrollbar-thumb")` answered the 20% colour
+  while every pixel of the 6px column stayed background, and the same thumb
+  forced to a literal red painted at once. So the only step a user ever sees is
+  `::-webkit-scrollbar-thumb:hover`, which fires because hovering the bar IS a
+  scrollbar state change — every scroll surface in Deck is effectively
+  thumbless until the pointer lands on the 6px strip. Only `.md-doc` is fixed
+  (owner-scoped, 2026-08-23): it declares a resting colour and restates its own
+  `:hover`, because the tokens file's 32% rule shares its specificity and sits
+  earlier in the cascade. The rest of the app still has the defect.
 - A shell that overflows by one pixel **moves the whole window**. `#root` was
   `overflow: hidden`, which still builds a scroll container, so the first focus the browser
   answered with `scrollIntoView` shifted the traffic lights, the stage strip and the chrome
@@ -780,7 +1075,7 @@ _(Heading retained for the global living-doc convention.)_
 | Electron can replace Tauri on both supported platforms                        | `building` | partial    | Gate A is CLOSED for macOS (owner-verified auto-update, 2026-08-19); Gate C still lacks a real Windows run and Windows ships unverified by decision — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | One pushed tag ships macOS and Windows, both self-updating                    | `current`  | partial    | Shipped 2026-08-20: `SpaceVibe Deck 1.0.0` is public and `releases/latest` (run 32383647050, four jobs green, eight assets). macOS self-update was owner-verified on the prerelease channel; **the electron.2 → 1.0.0 hop and everything Windows (install, SmartScreen, self-update) are still unwitnessed** — Windows is unsigned by decision (Gate C); preview.2 on Windows updates into a side-by-side install; Intel Mac and Windows ARM not served — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                    |
 | Pane detach is complete cross-platform                                        | `building` | partial    | Phase A has focused/native macOS evidence; Phase B and Windows pointer capture remain open — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| File explorer is available                                                    | `decided`  | backlog    | Surface built 2026-08-14 behind a passed Gate M (6/6 packaged), then reshaped the same day — tabs on the stage strip, document on the stage — so… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| File explorer is available                                                    | `decided`  | backlog    | Surface built 2026-08-14 after the historical Gate M run, then reshaped the same day — that run is retired as current acceptance. The maintained packaged Monaco smoke passed its renamed universal package/runtime path twice on 2026-08-23, but proves packaging mechanics only; owner eye review, packaged both-layout pass and native macOS sign-off remain owed — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                    |
 | The browser tab works everywhere Deck does                                    | `building` | partial    | Electron-only; no Tauri implementation exists. The 2026-08-15 tab-on-stage reshape is verified by suite/build only — native `electron:dev` pass… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | AgentQuickPicker's wired flow is native-verified                              | `building` | unverified | Built and wired 2026-08-14 — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Sidebar collapse and drag-to-close are native-verified                        | `building` | unverified | Landed 2026-08-16 (DL-18.9; DL-19.4 amended); suite/build plus a browser measurement only — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -789,6 +1084,7 @@ _(Heading retained for the global living-doc convention.)_
 | Session restore resumes agent conversations                                   | `building` | unverified | Landed 2026-08-15, suite/build evidence only (`npm test` 2619 green) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | The agent rail replaces the repository rail                                   | `building` | partial    | Landed 2026-08-16 and reshaped through DL-27.12/spec §2.7: the rail is project → tab only, with 34px flat rows, direct pane-focus glyphs, no tab… — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | The rail row shows the agent's newest turn                                    | `building` | unverified | Tier 3 (`session_tail`) landed 2026-08-17 (new DL-27.15), then the turn took the agent name's slot the same day and the strip's chips began printing it too — [detail](docs/CONTEXT.md#one-line-and-the-sentence-takes-the-agents-name--2026-08-17) `current`                                                                                                                                                                                                                                                                                                                                                                                               |
+| The rail row shows the turn of THAT pane's session                            | `building` | unverified | Was **false** from 2026-08-17 to 2026-08-22 and observed failing: the pane→session pairing was re-guessed by mtime proximity every 300ms, a null answer kept the previous sentence, and null was the common answer for a working pane — so one sentence was copied onto three rows at once and never cleared. Fixed 2026-08-22 by pairing and pinning (`preferredId`, two-pass allocation, `{ id, tail }` answers, a growing read window), then hardened the same day against an adversarial review that found the pairing outliving its pane's agent generation and the id-carrying resume mark pinning the WRONG pane — the first is fixed, the second is withdrawn. `npm test` 3673/8 with all eight attributed to other sessions on a pristine `HEAD` worktree (this change alone there: 1019/1019), both typechecks, both builds and Prettier clean — but **nothing has been watched in a running host**, which is the only place the bug appears, and a FRESH pane's first pairing is still ranked rather than anchored — [detail](docs/CONTEXT.md#one-sentence-on-three-rows--2026-08-22) `current` |
 | The blurred modal scrim is native-verified                                    | `building` | unverified | Landed 2026-08-16 with DL §29 and DL-1.3's `backdrop-filter` exception — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | The collapsed feature toolbar is native-verified                              | `building` | unverified | Landed 2026-08-16 (new DL-23.8): the pane group moved off the bar into `More`, leaving one `Ellipsis` control at the stage strip's trailing end — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Dragging `New` onto a pane docks an agent pane there                          | `building` | unverified | Landed 2026-08-16 (new DL-27.14) — [detail](docs/CONTEXT.md#verification-state-ledger) `current`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -812,5 +1108,12 @@ _(Heading retained for the global living-doc convention.)_
 | The landing stage mirrors the shipped app                                     | `building` | unverified | Landed 2026-08-20 across 21 tasks, marketing-only (no `src/`, no DL rule). `npm run build:landing` clean, `vitest run marketing/` 159/159 (38 before), and 42 headless screenshots at 1440/768/390 in both motion modes with every in-page check passing — but `frontend-design-bar` (gate 3) and the owner eye review (gate 5) are owner-side and NOT run, the capture is Linux chromium rather than macOS type, and `prefers-reduced-motion` was emulated — [detail](docs/CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20) `current` |
 | `marketing/**` has a lint gate                                                | `current`  | **false**  | Measured 2026-08-20 and never true: `marketing/**` sits in `.prettierignore` AND in `.oxlintrc.json`'s `ignorePatterns`, so `npx oxlint marketing/` answers "No files found to lint" and `prettier --check` reports clean without reading the file (proven with `--ignore-path /dev/null`). Every "prettier clean" claim over this tree is vacuous. Not fixed: the sheets are written at 80 columns against prettier's 100, so `--write` would reformat the tree against its own convention — [detail](docs/CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20) `current` |
 | The rendered marketing video matches the app                                  | `decided`  | **false**  | Knowingly stale in SHAPE since the Electron chrome landed, and since 2026-08-20 in COLOUR too: `tokens.css`'s `:root` is shared, so the live video page took the re-derived palette while `marketing/video/out/` still holds the old render. The video entry links and paints (896.2 x 555.8, no console error) and keeps drawing the July shell BY CHOICE — `stage-driver.js` hard-requires `[data-ws-avatar]`. Nothing was re-rendered — [detail](docs/CONTEXT.md#the-landing-stage-draws-the-shipped-app--2026-08-20) `current` |
+| A project cluster can be dragged into place                                    | `building` | unverified | Built 2026-08-22 from the [spec](docs/specs/2026-08-22-rail-workspace-reorder-design.md) `decided` (new DL-27.20): `RailStreamGroup.orderKey`, a pure `rail-order.ts`, a delegated pointer controller on the rail's list, and a `railOrder` settings field. Renderer-only, so it reaches BOTH hosts. Targeted suites green (147 assertions across `rail-order`, `rail-cluster-drag`, `settings-schema`, `agent-rail-model`, plus the two reorder cases in `agent-rail.test.tsx`), and `tsc --noEmit` / prettier / oxlint / the design-language gate clean against every file this touches — the four failures in those runs were read and attributed to concurrent sessions. **The full `npm test` (3776/0) and `npm run build` ran green on 2026-08-24 with the whole batch; still owed: a host pass and owner eye review — no cluster has ever actually been dragged.** A code review and a four-angle simplify ran over it: six correctness findings fixed (the worst deleted a cluster from the rail on a duplicated `orderKey`), two cleanups taken, and one declined — the controller reads the rail's DOM instead of taking injected geometry, so spec §8's "mirroring `new-pane-drag.ts`'s deps shape" is not yet true. Cross-window drag is phase 2 and unbuilt; there is no keyboard equivalent — [detail](docs/CONTEXT.md#a-project-cluster-goes-where-the-user-puts-it--2026-08-22) `current` |
+| The rail's close model is native-verified                                     | `building` | unverified | Built 2026-08-22 from the [spec](docs/specs/2026-08-22-rail-close-model-design.md) `decided` (new DL-27.21): every agent row carries its own ✕ closing that PANE, a live project header closes every tab of the repository under one busy dialog and then drops its history entries, and the leaf became a container plus hit layer. Renderer-only apart from one `disposeTab` branch, so it reaches BOTH hosts. `npx tsc --noEmit` is clean and the six affected suites are green (183 tests: close-coordinator, agent-rail, agent-rail-model, app, tab-lifecycle, rail-order) — the full `npm test` (3776/0), `npm run build` and the design-language gate ran green on 2026-08-24 with the whole batch, but there is **no `electron:dev` or `tauri dev` pass and no owner eye review**; no agent has been closed from a leaf and no project from a header in a running app — [detail](docs/CONTEXT.md#every-rail-row-closes-what-it-names--2026-08-22) `current` |
+| Closing the last tab closes the window                                        | `current`  | **false**  | True until 2026-08-22 and deliberately reversed (close model table row 3): `disposeTab`'s empty branch raises the Open board and leaves the window standing, so electron-migration spec §9.5's "the last SURFACE closes THIS window" no longer describes the tab path. `removeEmptyTab`'s pane-MOVED path still closes the window, and the `surfaces.total() > 0` branch still shows a document instead of the board. Pinned by `tab-manager.tab-lifecycle.test.ts` (the old assertion was inverted, not deleted); never seen in a running host — [detail](docs/CONTEXT.md#every-rail-row-closes-what-it-names--2026-08-22) `current` |
+| Deck sends usage analytics by default                                         | `building` | unverified | Built 2026-08-22 as the spec's opt-in client, then REVERSED to default-on by the owner (decided 2026-08-23, committed 2026-08-24 as `cdc07a0`): no consent question, `declined` is the only value never inferred away, unreadable still fails closed, and the consent modal survives behind `USAGE_CONSENT_ASKED=false`. Suite-verified — the telemetry suites' first execution was 62/62 (2026-08-23) and the full `npm test` is 3776/0 with both typechecks and `npm run build` green — but **no host pass and no owner eye review**, and the Worker, D1 and privacy page DO NOT EXIST, so every install of the next release would POST into a hostname that does not resolve today, and Settings links a page that 404s; rollout §12 steps 1-2 are prerequisites now — [plan](docs/plans/2026-08-22-anonymous-usage-telemetry.md) |
+| Markdown opens rendered, and its policy holds                                  | `building` | unverified | Built 2026-08-23 from the [spec](docs/specs/2026-08-23-markdown-rendered-view-design.md) `decided` (new DL §31): `.md` opens rendered, ⌘⇧V flips it, Monaco colorizes the fences, mermaid loads only for a document that has one, and the §6 policy (escaped raw HTML, no `href` anywhere, dead `javascript:`/`data:`/out-of-root links, local-only images, no network fetch) is unit-asserted as pure functions. `npm test` 3755 passed / 8 failed with every failure reproduced as another session's uncommitted work and green on a pristine `HEAD` worktree; `src/files` 278/278; both typechecks, `npm run build` and `generate:menu:check` clean; `marked` and `mermaid` measured as their own lazy chunks. **Owed: a native `electron:dev` pass and the owner eye review** — nothing has been rendered in a running host, so no diagram has been drawn, no image read off disk, no link clicked and no colorized fence seen in either theme. Electron-only by inheritance (no Tauri file surface); Windows is Gate C — [detail](docs/CONTEXT.md#markdown-opens-rendered--2026-08-23) `current` |
+| “No telemetry” is public copy                                                 | `deprecated` | retired  | Retired 2026-08-22 with the opt-in client, re-worded with the default-on reversal (`cdc07a0`, 2026-08-24): README (both spots) and the landing proof point now say analytics is on by default with no code, paths or prompts and a Settings → Privacy switch; the tour's proof is `cat src/telemetry/payload.ts`, whose quoted lines state only what is absent. The 1.0.0 `CHANGELOG.md` entry keeps the old claim as a frozen release record on purpose — [spec §9](docs/specs/2026-08-22-anonymous-usage-telemetry-design.md) `decided` |
+| The rail says which agent holds the keyboard                                  | `building` | unverified | Built 2026-08-23 (new DL-27.22) after the owner reported a rail with no active item: a multi-agent tab renders headless, so DL-27.8's row wash had nowhere to land. `PaneView.focused` projects `activePaneId()`, `ManagerCallbacks.onActivePaneChange` is what tells the tab layer focus moved, and the model ANDs the two so at most one leaf in the rail is washed. `npx tsc --noEmit`, `npm run build`, prettier and the five affected suites are green (156 tests across `agent-rail`, `agent-rail-model`, `terminal-manager`, `tab-manager.tab-lifecycle` and `tabs-store`), plus a gallery pass on the REAL rail measuring exactly one washed row at `--tab-active-bg` with `aria-current="true"`. **Owed: a native `electron:dev` pass and the owner's eye review** — no pane has been focused in a running app; the gallery screenshot shows the wash inside DL-27.19's frame on `deck-dark` only, and no light theme was checked. Renderer-only apart from one callback, so it reaches BOTH hosts — [plan](docs/plans/2026-08-23-rail-focused-pane-marker.md) `building` |
 
-Updated 2026-08-21.
+Updated 2026-08-24.

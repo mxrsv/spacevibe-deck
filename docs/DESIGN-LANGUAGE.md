@@ -2341,7 +2341,16 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   row's ink — the inset the row's own 7px leading padding already spends on
   the other axis — and separates two framed tabs by 10px against the 7px
   between a frame and a bare row, so a closed block reads as heavier than a
-  row boundary. **The colour is neutral and stays neutral.** The tab's own
+  row boundary. **The inner gutter is 3px on all four sides
+  (amended 2026-08-23, owner, from a screenshot).** It was vertical only, which
+  cost nothing while every row inside was transparent and became a defect the
+  moment one could be washed (DL-27.22): a full-width row painted over the
+  frame's left and right hairline and ate its corners, so the selected row read
+  as sticking out of the block that contains it. The horizontal gutter is
+  CHARGED to the row's own padding rather than added to it — 7px/8px become
+  4px/5px inside a frame — so no mark, word or glyph moves, and the washed row
+  drops to `--radius-tight` because a 10px corner inset 3px inside a 10px
+  corner reads fatter than the frame around it. **The colour is neutral and stays neutral.** The tab's own
   `TabView.dotColor` was the drawn alternative (gallery column B4) and is not
   taken: the status dot owns red and yellow (DL-27.3), and a frame in either
   would claim a state the tab is not in. The frame rides the same
@@ -2349,6 +2358,87 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   presence chrome — a host that reports no agents draws no frames — and if
   the tree ever returns, a NAMED multi-agent tab leaves that seam and loses
   its frame. That day is a decision, not a regression.
+
+- **DL-27.20** **A project cluster header is a drag handle for the whole
+  cluster (2026-08-22, owner).** The clusters sat where their oldest tab put
+  them and the remembered tier below them sat in MRU order, so a project that
+  matters every day could sit fourth because it was opened fourth, and a
+  project deliberately parked at the bottom climbed back the moment it was
+  touched. The header is now the grab surface and the whole block — header plus
+  every row under it — moves as one. **No handle glyph is added:** the drag is
+  announced by the ghost and the insertion line while it happens and by nothing
+  at all at rest, because this rail has had resting chrome stripped off it four
+  times and a permanently visible grip would be the fifth thing to remove. The
+  insertion line is `--hair-strong` at `--radius-flat`, full list width — a
+  position, not a state, so it takes no colour from DL-27.3's vocabulary. The
+  ghost carries the header's LABEL, not a clone of the block. Three constraints
+  on the shape: the collapse button SHARES the surface (it carries folder, name
+  and caret, which is nearly the whole header, so excluding it would leave
+  nothing to grab) and gives its `click` up only past the 5px threshold, the
+  `+` (DL-27.18) and a remembered cluster's remove control never start a drag
+  at all, and a pinned cluster keeps its slot ACROSS the live/remembered
+  boundary — a deliberate break with 2026-08-20's "live work first, remembered
+  after", since the owner asked for a position rather than a position within a
+  tier. Unpinned clusters keep that boundary exactly. Only the cluster drags: a
+  tab row, a pane row, and a tab row moved between clusters are all excluded on
+  the owner's instruction, which is what keeps this rule off the tab strip —
+  the strip and the rail share one order key for TABS
+  ([`strip-order.ts`](../src/lib/strip-order.ts) `current`) and the strip has
+  no notion of a project. Spec:
+  [rail workspace reorder](specs/2026-08-22-rail-workspace-reorder-design.md)
+  `decided`.
+
+- **DL-27.21** **Every rail row closes what it names, and a project header
+  closes the project (2026-08-22, owner).** The rail drew agents and closed
+  tabs. A single-agent row's ✕ said `Close tab`, a multi-agent tab's rows had
+  no ✕ at all (DL-27.13's parent row is behind `PANE_TREE_HIDDEN`, so there was
+  nothing to hang one on), and a project header's ✕ existed only on a
+  REMEMBERED cluster, where it forgot a folder. Three different answers for one
+  gesture. The rule now: **the control closes the thing its row names.** An
+  agent row closes that agent — the same contract ⌘W has always had, so the tab
+  goes with it only when that pane was its last, and a tab holding an agent
+  beside a plain shell keeps the shell. A row carrying NO agent is a shell tab
+  and closes the tab. A project header closes every tab of the project,
+  secondary worktrees included, and then takes the project off the rail; the
+  two halves are one act, because closing the tabs alone would demote the
+  cluster to the remembered tier and leave the header standing under the
+  pointer, which reads as a control that did nothing. **Geometry is DL-27.5's
+  swap, everywhere.** A leaf's close takes the agent glyph's slot exactly as
+  the tab row's does; the header's takes the CARET's, which is that same 17px
+  trailing column restated by the header's grid — so no fourth track opens and
+  no control leaves the rows' own edge. The caret gives the slot up only while
+  the close is up (pointer, or a keyboard focus already on it), including the
+  collapsed state that otherwise pins it: at rest, which is when "folded, not
+  empty" has to be readable, it is unchanged. **A leaf became a container.** It
+  was a `<button>`, and a button cannot hold one — DL-27.1's container plus
+  full-bleed hit layer, the shape `.asr-row--tab` has always had. The hover
+  wash stays neutral (DL-21.2): closing an agent is an everyday act, the
+  BUSY dialog is what guards a running process, and `--red` would spend
+  DL-3.2's danger ink on something a project close asks about ONCE for every
+  pane at a time. **What the rail still does not close: a whole multi-agent
+  tab.** ⌘⇧W is that, and nothing in the rail duplicates it.
+- **DL-27.22** **The row whose pane holds the keyboard carries the selection
+  wash (2026-08-23, owner).** Until this rule the rail could show NOTHING as
+  selected: DL-27.8 puts the wash on `.asr-row--tab`, and a multi-agent tab
+  renders headless (DL-27.13, "it marks selection with nothing"), so a window
+  whose active tab ran three agents drew a column of framed rows with no active
+  item in it — which is what the owner reported, from a screenshot. The
+  original ruling was written while DL-27.13's tree was on screen and meant
+  _nothing covers the tree_; with the tree behind `PANE_TREE_HIDDEN` a leaf IS
+  a row, so washing it covers no guides and reinstates no tree.
+  **It is DL-21.1's wash and not a new signifier:** `--tab-active-bg` at
+  `--radius-control`, no border, no accent, nothing else. A tab with one agent
+  marks its ROW and a tab with several marks the focused LEAF, so the rail
+  still shows exactly one selected thing and the two cases read as one
+  language. **At most one row in the whole rail carries it** — every tab has an
+  active pane of its own, so the rail model ANDs a pane's focus with its tab's
+  selection rather than reporting each tab's local answer, and that invariant
+  lives in the pure model where it can be asserted. Selection outranks hover
+  (DL-21.2); the mark spends no `--yellow`, which DL-18.11 keeps for activity
+  and the 1500ms locator — a locator says _look here now_ and this says _the
+  keys are here_. **A document or the browser on the stage does not clear it:**
+  the active pane is unchanged and the mark then reads as where the keyboard
+  returns to, where clearing it would blink the rail on every file opened.
 
 ## 28. The rail's action footer
 
@@ -2509,28 +2599,58 @@ a docked panel (§19).
     it opens Settings instead of spawning a shell that prints
     `command not found` and sits there. Not disabled: DL-19.7 would rather a
     control were omitted than inert, and this one is neither.
+- **DL-29.9** **A DECISION modal withdraws both shell exits, and it is the
+  only kind that may (2026-08-22, owner).**
+  > **Retired from the running app (owner, decided 2026-08-23, committed 2026-08-24):** analytics went
+  > default-on and no consent question is asked, so no decision modal mounts
+  > anywhere. The rule is NOT deleted — the §24 precedent — because the
+  > machinery it governs (`Modal`'s `dismissOnEscape`, the overlay-guard rank,
+  > `UsageConsentModal` and its tests) all stay in the tree behind
+  > `USAGE_CONSENT_ASKED=false`, and flipping that constant back re-mounts a
+  > surface this rule must already govern.
+  The usage-consent dialog
+  ([`UsageConsentModal`](../src/ui/usage-consent-modal.tsx) `current`) asks a
+  question whose every exit persists an answer: two buttons, no ✕, and BOTH of
+  DL-29.3's ways out are withdrawn (`dismissOnScrim` and `dismissOnEscape`
+  false), because an Escape or a slipped click that closed it would be a
+  third answer the consent model does not have — the dialog would simply
+  return next launch, teaching the user it cannot be trusted to stay
+  answered. The swallow stands apart from the dismissal: Escape still stops
+  dead at the document (DL-29.5's reason — a live terminal is one element
+  behind the scrim), it just no longer closes anything. Focus still starts on
+  the PANEL (DL-29.2), never on the affirmative button: a reflexive Enter
+  right after launch must not opt anyone into anything. A decision modal
+  earns this only when both buttons persist; a modal that merely feels
+  important stays under DL-29.3.
 
-## 30. The migration notice
+## 30. The notice row
 
-Approved as a fork on 2026-08-17 and built on 2026-08-20, when
-`SpaceVibe Deck 1.0.0` shipped and the Tauri updater endpoint began answering
-404. Spec:
+Approved as a fork on 2026-08-17 and built on 2026-08-20 as "the migration
+notice", when `SpaceVibe Deck 1.0.0` shipped and the Tauri updater endpoint
+began answering 404. Spec:
 [tauri migration notice](specs/2026-08-17-tauri-migration-notice-design.md)
-`decided`. Numbered 30 because §22 stays reserved — the next free number above
-§29, not the gap.
+`decided`. Widened to a two-instance genre on 2026-08-22 by the
+[usage analytics spec](specs/2026-08-22-anonymous-usage-telemetry-design.md)
+`decided`, then narrowed back the same day when the owner moved the consent
+question to a DL-29.9 decision modal — the row genre built the consent
+surface for a few hours and holds one instance again. Numbered 30 because §22
+stays reserved — the next free number above §29, not the gap.
 
 No existing rule reaches this genre. §11 covers full-window screens, §13
 anchored popovers, §19 docked side panels, §29 modals — none of them describes
 a persistent horizontal row the app raises about ITSELF, which the user can
-act on or hide but cannot make permanently go away.
+act on but cannot simply be rid of without answering it.
 
-- **DL-30.1** **There is exactly one, and it is reserved for something the
-  user must do outside the app.** This surface exists because the Tauri build
-  can no longer update itself and the replacement has to be downloaded by
-  hand — a fact no control inside the app can act on. A second banner competing
-  for the same row is how a chrome surface becomes a notification area, which
-  is a different product. Anything the app can fix itself belongs in the
-  chrome message bar, not here.
+- **DL-30.1** **At most one is ever on screen, and it is reserved for
+  something only the user can decide or do.** The genre holds one instance
+  again since 2026-08-22: the migration notice, Tauri-only (a fact no control
+  inside the app can act on — the replacement is downloaded by hand). The
+  usage-consent row was its second instance for a few hours that day before
+  the owner moved the question to a DL-29.9 decision modal. A SECOND banner
+  competing for the same row is how a chrome surface becomes a notification
+  area, which is a different product — a future instance must clear this
+  rule's bar again, and anything the app can fix itself belongs in the chrome
+  message bar, not here.
 - **DL-30.2** **It costs the stage height; it never floats over the panes.**
   The row occupies `--notice-h` and the terminal grid starts below it. A
   terminal is a grid measured in rows, so an overlay would hide output the
@@ -2547,12 +2667,66 @@ act on or hide but cannot make permanently go away.
   notice wearing either would say something is failing, when what is happening
   is that a thing is ending. The weight comes from the position and one bold
   lead sentence.
-- **DL-30.5** **Its close control uses the neutral hover wash and says the
-  dismissal is temporary.** Neutral because dismissal is not destructive — the
-  notice returns on the next launch (DL-21.2, and the tab strip's close rather
-  than the rail's red). The accessible name has to carry "until Deck restarts",
-  since a bare `✕` reads as a promise never to show it again, which this
-  surface deliberately does not make.
+- **DL-30.5** **A dismissal control is neutral and says the dismissal is
+  temporary.** The migration notice's ✕ uses the neutral hover wash (DL-21.2,
+  the tab strip's close rather than the rail's red) and its accessible name
+  carries "until Deck restarts", since a bare `✕` reads as a promise never to
+  show it again, which that surface deliberately does not make. The
+  decision-row branch this rule carried for a few hours on 2026-08-22 (a
+  consent row with no ✕) moved with the consent question to DL-29.9: a
+  question whose every exit persists an answer is a decision MODAL, not a
+  notice.
+
+## 31. The rendered document
+
+Added 2026-08-23 with the markdown rendered view. Spec:
+[markdown rendered view](specs/2026-08-23-markdown-rendered-view-design.md)
+`decided`. Numbered 31 because §22 stays reserved — the next free number above
+§30, not the gap.
+
+No existing rule reaches this genre either, and the reason is worth stating
+plainly: every surface §4 describes is CHROME, read in glances — a label, a
+row, a path, a chord. This is the first surface in Deck whose content is
+**prose the user reads for a minute at a time**, and DL-4.4's four-rung ladder
+deliberately does not describe body copy at that length. §15's read-only data
+tables are the nearest thing and are still scanning, not reading.
+
+- **DL-31.1** **A reading surface may declare a SECOND type scale, scoped to
+  itself, derived from `--type-body`.** The `--md-*` rungs in `01-tokens.css`
+  are that scale, and they are `calc()` offsets from `--type-body` rather than
+  literals, so a chrome-wide type change still reaches the document. DL-4.5's
+  "never a second standard ladder declared beside it" is untouched: this
+  ladder styles exactly one selector subtree (`.md-doc`) and may never be
+  reached for by chrome. A third reading surface joins this scale; it does not
+  declare a third one.
+- **DL-31.2** **Prose is capped near 72ch and centred; code, tables and
+  diagrams may run the full width inside their own `overflow-x` container.**
+  A stage-wide measure is unreadable on a wide window, and a code fence
+  wrapped to 72ch is a different document from the one the author wrote. The
+  container is the renderer's job, not the stylesheet's — `overflow-x` on a
+  `<table>` does nothing, which is why `markdown-render.ts` emits a wrapper.
+- **DL-31.3** **A link that goes nowhere is not drawn as a link.** The dead
+  class (`javascript:`, `data:`, anything resolving outside the workspace
+  root) takes the surrounding copy's colour and the default cursor. A blue
+  underline that does nothing when clicked is worse than plain text, because
+  the user reads the failure as Deck being broken rather than the link being
+  refused.
+- **DL-31.4** **Its colour is a §3 chrome role, never one of its own.**
+  Headings, rules, blockquote bars and table borders come from the existing
+  `--hair` family and the `--text-*` ladder; a fenced block sits on
+  `--chrome-1` and inline code on `--chrome-2`. Fenced code takes its
+  tokenization from the editor's own Monaco theme, so the two views of one
+  file are not two palettes. No new colour token exists for this surface.
+- **DL-31.5** **Monospace is scoped to code and to escaped raw markup, at
+  `0.92em` of the surrounding rung.** It is `em`, not a rung of its own: a
+  code span inside an `h2` has to sit with the heading it is inside, and a
+  fixed size there reads as a different document dropped into the sentence.
+- **DL-31.6** **The mode control is present in BOTH modes.** A control that
+  only exists in the rendered view is a one-way door — source mode is exactly
+  where the way back matters. It is icon-only per DL-23.10 with the §23
+  tooltip and no native `title`, sits at the surface's top-right corner, and
+  states the mode it would switch TO: the surface underneath already says
+  which one it is in.
 
 ## Chưa khớp thực tế
 

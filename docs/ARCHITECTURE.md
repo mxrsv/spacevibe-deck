@@ -253,9 +253,15 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   `scripts/electron-ipc-contract.test.ts` (D8 closed as a correction); the
   usage scanner exists twice on purpose — Rust for the frozen Tauri host,
   `electron/usage/` for the shipping direction — held equal by a
-  Rust-produced golden-fixture parity test; and Gate M's packaging path is
-  local and unsigned by design (D10), with the explorer surface ordered
-  strictly after a Gate M pass on real hardware.
+  Rust-produced golden-fixture parity test; and the historical Gate M packaging
+  path is maintained as the local, unsigned
+  [`packaged Monaco smoke`](../electron-builder.monaco-smoke.yml) `current`
+  (D10). The explorer surface was originally ordered after its real-hardware
+  pass, but that pass is no longer current acceptance for the reshaped surface.
+  The renamed [`verifier`](../scripts/verify-electron-monaco-smoke-package.mjs)
+  `current` observes xterm input/output at the PTY adapter seam rather than from
+  terminal DOM text, so WebGL rendering and shell ANSI output cannot falsify it;
+  it also owns the detached macOS process group through cleanup.
 - Redesign phase 2 (2026-08-14) closed its forks as follows, all owner-approved
   or resolved under the plan's standing authority and recorded in
   [the plan's §0.3 and §2](plans/2026-08-13-redesign-phases-2-5.md) `current`:
@@ -272,8 +278,9 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   recorded in
   [the plan](plans/2026-08-14-straight-through-completion.md) `current` and
   [the evidence record](review/2026-08-14-straight-through-evidence.md)
-  `current`: the file explorer surface is built now that Gate M has passed
-  packaged on real hardware, and file-tab chips render in both toolbar layouts
+  `current`: the file explorer surface was built after Gate M passed packaged
+  on real hardware; that result is historical only, while the renamed packaged
+  Monaco smoke remains a packaging regression tool. File-tab chips render in both toolbar layouts
   rather than only one, because the spec's strip-ordering intent and the
   task's own "file tabs join the strip" wording bind over an incomplete task
   file list ([`SurfaceStrip`](../src/terminal/tab-manager.ts#L278-L322)
@@ -438,7 +445,8 @@ owner made.
   `.github/workflows/release.yml` still builds Tauri, no `electron-updater`
   dependency was added, no signing or notarization is configured, and Gate A
   and Gate C are untouched. Modelled directly on
-  `electron-builder.gate-m.yml` — same `files` list minus the harness
+  [`electron-builder.monaco-smoke.yml`](../electron-builder.monaco-smoke.yml) `current` —
+  same `files` list minus the harness
   renderer, same `extraMetadata.main`, same node-pty `asarUnpack`,
   `identity: null` — with the icon named explicitly because `build/` does not
   exist here. `extraMetadata.productName` is the one non-obvious line:
