@@ -665,11 +665,19 @@ git commit -m "feat(launcher): add the per-agent model and reasoning-effort cata
 ```ts
 export interface ComposeInput {
   readonly agentId: string;
+  /** null for a custom agent — its declared command is used exactly as written. */
   readonly capability: AgentRuntimeCapability | null;
-  /** The agent's default command from Settings, or null to derive from the catalog. */
+  /**
+   * The agent's default command from Settings — the caller passes
+   * `agentLaunchCommand(...)`'s answer. null means the agent has none and
+   * cannot launch, which is `ok: false`; this module stays pure and does not
+   * reach into the settings store to derive one.
+   */
   readonly baseCommand: string | null;
   readonly modelId: string | null;
   readonly reasoningEffort: string | null;
+  /** `settings.agentModels`, so a user-declared model value is accepted. */
+  readonly declaredModels: Readonly<Record<string, readonly string[]>>;
 }
 
 export type ComposeResult =
