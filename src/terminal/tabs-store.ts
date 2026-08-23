@@ -39,6 +39,17 @@ export interface PaneView {
   readonly hasRun: boolean;
   /** When the pane's visible state last changed; 0 before the first change. */
   readonly changedAt: number;
+  /**
+   * This pane holds its TAB's focus — `TerminalManager.activePaneId()`
+   * projected per pane, 2026-08-23. Whether the WINDOW is looking at that tab
+   * is a second question the rail model answers by ANDing this with the tab's
+   * own `active` (DL-27.22); a projection that folded them together here
+   * would report a fact this layer does not own.
+   *
+   * Optional for the same reason `panes` itself is: a `PaneView` built by a
+   * test or a seed fixture predates the field.
+   */
+  readonly focused?: boolean;
 }
 
 /** `TabView.panes` before the first sync — a shared empty list, not a new one. */

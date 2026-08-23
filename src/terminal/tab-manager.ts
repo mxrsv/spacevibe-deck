@@ -273,6 +273,10 @@ export function createTabManager(
           phase: snap?.phase ?? "unknown",
           hasRun: snap?.hasRun ?? false,
           changedAt: snap?.changedAt ?? 0,
+          // `paneId` above is this tab's own `activePaneId()`, already read
+          // for the header info — so the rail's focused row (DL-27.22) costs
+          // one comparison here and no second call into the manager.
+          focused: id === paneId,
         };
       });
       return applyTabOverride(
@@ -432,6 +436,13 @@ export function createTabManager(
         maybeNotify(id, ackSnap);
         syncViews();
       }
+    },
+    onActivePaneChange(): void {
+      // The rail marks the pane holding the keyboard (DL-27.22), and that row
+      // is `PaneView.focused` — a projection of the manager's active id, so
+      // the projection has to be rebuilt when the id moves. Unconditional: the
+      // guard that makes this cheap is `setActive`'s own early return.
+      syncViews();
     },
   };
 

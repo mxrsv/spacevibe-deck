@@ -109,12 +109,32 @@
    Vertically 3px in and 3px out reads even against the leaf's own 6px
    padding, and stacks with `.asr-cluster`'s 4px gap into 10px between two
    framed tabs against 7px to a bare row. The colour stays neutral on purpose
-   — red and yellow are the status dot's (DL-27.3). */
+   — red and yellow are the status dot's (DL-27.3).
+
+   The gutter is 3px on ALL FOUR sides since 2026-08-23 (owner, from a
+   screenshot). It was `3px 0`, which was invisible while the rows inside were
+   transparent and became a defect the moment one of them could be WASHED
+   (DL-27.22): a 100%-wide row painted straight over the frame's left and right
+   hairline and ate its rounded corners, while keeping 3px of air above and
+   below — so the selected row read as sticking out of the block it belongs to.
+   The horizontal gutter is charged to the LEAF's own padding below, not added
+   to it, so no text, mark or glyph moves. */
 .asr-stream .asr-item[data-headless="true"] {
   margin: 3px 0;
-  padding: 3px 0;
+  padding: 3px;
   border-radius: var(--radius-control);
   box-shadow: inset 0 0 0 1px var(--hair-strong);
+}
+
+/* The other half of that gutter: 7px/8px minus the frame's 3px, so a framed
+   row's content sits on exactly the x it sat on before the frame had side
+   padding — the wash inset without the row moving. `--radius-tight` (DL-20.1,
+   "drawn inside") rather than `--radius-control`: at a 3px inset, a 10px
+   corner inside a 10px corner reads fatter than the frame it sits in. */
+.asr-stream .asr-item[data-headless="true"] > .asr-leaf--flat {
+  padding-right: 5px;
+  padding-left: 4px;
+  border-radius: var(--radius-tight);
 }
 
 .asr-chips {

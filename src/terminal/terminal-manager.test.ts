@@ -93,6 +93,7 @@ function setup(emitFocusEvent = true): {
   container: HTMLElement;
   onAttentionSignal: ReturnType<typeof vi.fn>;
   onPaneFocus: ReturnType<typeof vi.fn>;
+  onActivePaneChange: ReturnType<typeof vi.fn>;
   eventsById: Map<number, PaneEvents>;
   fitCounts: Map<number, number>;
   panesById: Map<number, Pane>;
@@ -113,10 +114,12 @@ function setup(emitFocusEvent = true): {
   };
   const onAttentionSignal = vi.fn();
   const onPaneFocus = vi.fn();
+  const onActivePaneChange = vi.fn();
   const callbacks: ManagerCallbacks = {
     onLayoutChange() {},
     onAttentionSignal,
     onPaneFocus,
+    onActivePaneChange,
   };
   const tm = createTerminalManager(container, callbacks, pty, { createPane });
   return {
@@ -124,6 +127,7 @@ function setup(emitFocusEvent = true): {
     container,
     onAttentionSignal,
     onPaneFocus,
+    onActivePaneChange,
     eventsById,
     fitCounts,
     panesById,
@@ -637,5 +641,43 @@ describe("TerminalManager pane detach", () => {
       direction: "column",
     });
     expect(manager.paneIds()).toEqual([99, anchor]);
+  });
+});
+
+describe("createTerminalManager onActivePaneChange (DL-27.22)", () => {
+  it("reports each real change once and stays quiet on a repeat", async () => {
+    const { tm, onActivePaneChange } = setup();
+    await tm.initFresh();
+    await tm.splitActive("row");
+    const [first, second] = tm.paneIds();
+    expect(second).not.toBeUndefined();
+    expect(tm.activePaneId()).toBe(second);
+
+    onActivePaneChange.mockClear();
+    tm.focusPane(first!);
+    expect(onActivePaneChange).toHaveBeenCalledTimes(1);
+    expect(onActivePaneChange).toHaveBeenCalledWith(first);
+
+    // Re-focusing the pane that is already active moves nothing, so the rail
+    // must not be asked to rebuild: `setActive`'s own early return is the
+    // guard that keeps this callback cheap enough to be unconditional.
+    onActivePaneChange.mockClear();
+    tm.focusPane(first!);
+    expect(onActivePaneChange).not.toHaveBeenCalled();
+  });
+
+  it("is optional — a manager wired without it still focuses", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const pty = createMemoryPtyClient({ nextId: 1 });
+    const createPane: CreatePaneFn = (id, _settings, events) => fakePane(id, events);
+    const tm = createTerminalManager(container, { onLayoutChange() {} }, pty, { createPane });
+
+    await tm.initFresh();
+    await tm.splitActive("row");
+    const [first] = tm.paneIds();
+
+    expect(tm.focusPane(first!)).toBe(true);
+    expect(tm.activePaneId()).toBe(first);
   });
 });

@@ -21,6 +21,27 @@ export interface ManagerCallbacks {
    * `acknowledge` handling is idempotent, so that's fine.
    */
   onPaneFocus?(id: number): void;
+  /**
+   * The manager's ACTIVE pane changed — fired from `setActive`, and only on a
+   * real change (a repeat early-returns there).
+   *
+   * `setActive` is not the only writer of `activeId`: split, close, respawn
+   * and adoption assign it directly (a split deliberately so, since
+   * `setActive` would apply ratios to a DOM the just-split tree does not match
+   * yet), then focus the pane — which arrives back at `setActive` with the id
+   * ALREADY equal and returns early. Those paths do not need this callback:
+   * each one ends in `onLayoutChange`, whose consumer syncs too, and the pane
+   * poller re-syncs every cycle regardless. This exists for the FOCUS paths,
+   * which change nothing structural and would otherwise report nothing.
+   *
+   * `onPaneFocus` above cannot stand in for it: it is suppressed while
+   * `focusPane` drives the focus (so a rail click never reaches it), it is
+   * gated on the window being foreground, and its one consumer syncs only
+   * when an attention ACK changed something. The rail's focused row
+   * (DL-27.22) is a projection of `activePaneId()`, so it needs the fact
+   * itself, not an acknowledgement that happens to accompany it.
+   */
+  onActivePaneChange?(id: number): void;
 }
 
 /** Optional seams forwarded to PaneLifecycle — production uses the defaults. */

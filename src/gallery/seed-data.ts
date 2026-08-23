@@ -90,8 +90,12 @@ function pane(
   // Quiet panes split on this: true renders `done` (green check), false
   // renders `idle` (ring with a core).
   hasRun = false,
+  // The pane holding its tab's keyboard focus — the rail washes it while that
+  // tab is the active one (DL-27.22). One pane per tab may carry it, the same
+  // invariant `activePaneId()` has in the app.
+  focused = false,
 ): PaneView {
-  return { paneId, agent, attention: attentionValue, phase, hasRun, changedAt };
+  return { paneId, agent, attention: attentionValue, phase, hasRun, changedAt, focused };
 }
 
 export const SEED_TABS: readonly TabView[] = [
@@ -136,7 +140,10 @@ export const SEED_TABS: readonly TabView[] = [
     // ran (idle).
     panes: [
       pane(103, "opencode", "none", "working", SEEDED_AT - 30_000, true),
-      pane(104, "codex", "none", "idle", minutesAgo(18), true),
+      // The keyboard is in this pane, so selecting this tab washes its row and
+      // nothing else in the rail (DL-27.22) — the case a headless multi-agent
+      // tab could not show at all before 2026-08-23.
+      pane(104, "codex", "none", "idle", minutesAgo(18), true, true),
       pane(105, "gemini", "none", "idle", minutesAgo(26)),
       pane(106, "claude", "none", "idle", minutesAgo(44), true),
     ],

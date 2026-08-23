@@ -155,6 +155,10 @@ export function createTerminalManager(
     if (overlay) {
       layout.refreshOverlay(overlay);
     }
+    // Last, and only on a real change (the guard above): the tab layer
+    // projects this id into `PaneView.focused` for the rail's focused row
+    // (DL-27.22), and it has no other way to learn that focus moved.
+    callbacks.onActivePaneChange?.(id);
   }
 
   function handleExit(id: number): void {
