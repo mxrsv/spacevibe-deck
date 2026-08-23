@@ -181,6 +181,20 @@ export interface TabManager {
   reopenTab(): Promise<void>;
   /** Close a tab after the busy guard; every pane's process is checked. */
   closeTab(index: number): Promise<void>;
+  /**
+   * Close ONE pane of a named tab — the rail's per-agent ✕ (close model,
+   * 2026-08-22). The tab's last pane closes the tab, so this and `closeTab`
+   * converge on a one-pane tab; a tab holding an agent beside a plain shell
+   * loses only the agent.
+   */
+  closePaneAt(index: number, paneId: number): Promise<void>;
+  /**
+   * Close several tabs as ONE act, under one busy dialog over every pane —
+   * the rail's project-header ✕. `false` means the user cancelled and nothing
+   * was disposed, which is what stops the caller from forgetting a project
+   * whose tabs are all still open.
+   */
+  closeTabs(indexes: readonly number[]): Promise<boolean>;
   selectTab(index: number): void;
   /**
    * Internal attention-navigation primitive (Task 12/15) — NOT the
