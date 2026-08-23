@@ -7,7 +7,7 @@ import {
 } from "../files/file-surface-controller";
 import { resetFileSurfaces } from "../files/file-surface-store";
 import type { FileClient } from "../files/file-client";
-import { agentQuickPickerOpen, persistError, settingsOpen } from "../chrome/events";
+import { agentQuickPickerOpen, boardOpen, persistError, settingsOpen } from "../chrome/events";
 import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
@@ -99,6 +99,14 @@ afterEach(() => {
   // overlay half of the guard still blocks them, and a left-true signal would
   // rank every later test's `openOverlayRanks()` at "settings".
   settingsOpen.value = false;
+  // And the same again for the board, which `disposeTab` raises whenever a
+  // window is left with no surface at all (close model, 2026-08-22, table
+  // row 3). Before that branch existed nothing in this file could turn it on;
+  // the T21 test below now does, and without this reset it ranked every later
+  // test's `openOverlayRanks()` at "board" — which is what silently blocked
+  // save-file, all three dock toggles and the column's focus hand-off, with
+  // nothing in their own bodies to explain it.
+  boardOpen.value = false;
 });
 
 /**
@@ -153,6 +161,13 @@ function fakeSurfaces(
     runEditCommand: (command: string) => {
       calls.push(`runEditCommand:${command}`);
       return strip.handlesEdit;
+    },
+    /** Flipped per test: false is "this surface has only one view" — a `.ts`
+     * file, where ⌘⇧V must pass through untouched. */
+    twoViews: false,
+    canToggleView: () => strip.twoViews,
+    toggleView: () => {
+      calls.push("toggleView");
     },
   };
   return strip;
@@ -255,15 +270,23 @@ describe("file surfaces in the tab strip", () => {
     expect(surfaces.calls).toContain("activate:0");
   });
 
-  it("T21: the last SURFACE does close the window", async () => {
+  it("T21: the last SURFACE keeps the window and raises the Open board", async () => {
+    // Inverted by the close model (2026-08-22, table row 3), which reverses
+    // spec §9.5's "the last SURFACE closes THIS window". The twin assertion in
+    // `tab-manager.tab-lifecycle.test.ts` moved with it; this one is the
+    // file-surface half — `surfaces.total()` is 0, so there is nothing to show
+    // and the board is what the window is left standing on.
     const surfaces = fakeSurfaces({ count: 0, total: 0 });
     const before = windowCloseCalls.length;
     const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
     await tm.materialize({ layout: null, cwds: ["/a"] });
+    boardOpen.value = false;
 
     await tm.closeTab(0);
 
-    await vi.waitFor(() => expect(windowCloseCalls.length).toBe(before + 1));
+    expect(windowCloseCalls.length).toBe(before);
+    expect(tabViews.value).toHaveLength(0);
+    expect(boardOpen.value).toBe(true);
   });
 
   it("T21: cycleTab reaches file surfaces — one terminal tab plus file tabs", async () => {
@@ -889,6 +912,56 @@ describe("performable chords (Ctrl+C copies or falls through)", () => {
     // wants this chord, and leaking it into an agent TUI is unspecified.
     expect(event.defaultPrevented).toBe(true);
     expect(copySelection).toHaveBeenCalledTimes(1);
+    tm.dispose();
+  });
+
+  // ⌘⇧V, the rendered-view toggle (design 2026-08-23 §4). macOS only —
+  // Ctrl+Shift+V is `paste` on Windows and was deliberately not shared.
+  it("consumes Cmd+Shift+V and flips the view while a two-view surface owns the stage", async () => {
+    const surfaces = fakeSurfaces({ count: 1, total: 1, activeIndex: 0 });
+    surfaces.twoViews = true;
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    surfaces.activeIndexValue = 0;
+    const input = terminalInput();
+
+    const event = press(input, { key: "V", metaKey: true, shiftKey: true });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(surfaces.calls).toContain("toggleView");
+    tm.dispose();
+  });
+
+  it("leaves Cmd+Shift+V alone over a surface with only one view", async () => {
+    const surfaces = fakeSurfaces({ count: 1, total: 1, activeIndex: 0 });
+    const { tm } = setup({ deps: { surfaces }, infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    surfaces.activeIndexValue = 0;
+    const input = terminalInput();
+    const downstream = vi.fn();
+    input.addEventListener("keydown", downstream);
+
+    const event = press(input, { key: "V", metaKey: true, shiftKey: true });
+
+    // Not consumed means Monaco still gets the key — a `.ts` file must not
+    // lose a chord to an action that cannot do anything for it.
+    expect(event.defaultPrevented).toBe(false);
+    expect(surfaces.calls).not.toContain("toggleView");
+    expect(downstream).toHaveBeenCalledTimes(1);
+    tm.dispose();
+  });
+
+  it("leaves Cmd+Shift+V alone inside a terminal", async () => {
+    const { tm } = setup({ infos: IDLE_SHELLS });
+    await tm.materialize({ layout: null, cwds: ["/a"] });
+    await tm.init();
+    const input = terminalInput();
+
+    const event = press(input, { key: "V", metaKey: true, shiftKey: true });
+
+    expect(event.defaultPrevented).toBe(false);
     tm.dispose();
   });
 });

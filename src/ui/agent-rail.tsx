@@ -1,7 +1,7 @@
 import { CaretRight, Folder, PlusSquare, TerminalWindow, X } from "@phosphor-icons/react";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import type { ComponentChildren } from "preact";
-import { useEffect } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { activeTabIndex, statusInfo, tabViews } from "../terminal/tabs-store";
 import { CHROME_ICON, DeckIcon, FEATURE_ICON } from "./controls/deck-icon";
 import { AgentGlyph } from "./controls/agent-glyph";
@@ -18,7 +18,15 @@ import { available as electronHostAvailable } from "../host/worktree-host";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { workspacesData } from "../open-board/workspaces-store";
 import { SidebarBanner } from "./sidebar-banner";
-import { buildAgentRail, type RailState, type RailTabRow } from "./agent-rail-model";
+import { settings, updateSettings } from "../settings/settings-store";
+import { createRailClusterDragController } from "./rail-cluster-drag";
+import { pinAt, sameRailOrder } from "./rail-order";
+import {
+  buildAgentRail,
+  type RailState,
+  type RailStreamGroup,
+  type RailTabRow,
+} from "./agent-rail-model";
 
 /**
  * The agent status rail.
@@ -74,6 +82,23 @@ export interface AgentRailProps {
    */
   onRemoveWorkspace?(workspacePaths: readonly string[]): void;
   onCloseTab(index: number): void;
+  /**
+   * Close ONE agent — the ✕ every agent row carries since the close model
+   * (2026-08-22, table row 1). The same rule ⌘W follows: the pane goes, and
+   * the tab goes with it only when that pane was its last one (row 2), which
+   * is decided host-side by the tab's real pane count and not by how many
+   * agent rows the rail drew.
+   */
+  onClosePane(index: number, paneId: number): void;
+  /**
+   * Close a whole project — every tab of it, secondary worktrees included —
+   * and take it off the rail (table row 4). `historyPaths` is what has to be
+   * forgotten for the second half: closing the tabs alone would only demote
+   * the cluster to the remembered tier, leaving the header the user pressed
+   * exactly where it was. Omitted where nothing owns the history (the
+   * gallery), in which case a live header carries no close (DL-19.7).
+   */
+  onCloseProject?(tabIndexes: readonly number[], historyPaths: readonly string[]): void;
   /** Focus one exact pane: activate its tab, focus that pane, ack it. */
   onFocusPane(index: number, paneId: number): void;
   /** Test/gallery override; production defaults to the Electron host marker. */
@@ -172,6 +197,8 @@ interface TabItemProps {
   readonly onSelect: () => void;
   readonly onFocusPane: (paneId: number) => void;
   readonly onClose: () => void;
+  /** Close exactly this agent (close model, table row 1). */
+  readonly onClosePane: (paneId: number) => void;
 }
 
 /**
@@ -305,12 +332,29 @@ function TabItem(props: TabItemProps) {
             layer, and a span wrapper here would silently inherit it. Like
             `.asr-chip`, it needs `position: relative` to paint above that
             absolutely-positioned layer. */}
+          {/* What this ✕ closes follows what the row IS (close model,
+              2026-08-22). A row carrying ONE agent is an agent row — it wears
+              that agent's glyph and prints that agent's turn — so its close is
+              table row 1's "close exactly this pane", the same rule ⌘W obeys,
+              and the tab going with it is row 2's consequence rather than this
+              control's job. A row carrying NO agent is a plain shell tab and
+              has no pane to name, so it closes the tab outright. */}
           <div class="asr-row__actions">
             <button
               type="button"
               class="asr-row__action asr-row__action--close"
-              aria-label={`Close tab ${row.title}`}
-              onClick={props.onClose}
+              aria-label={
+                row.panes.length === 1
+                  ? `Close ${row.panes[0].agent} in ${where}`
+                  : `Close tab ${row.title}`
+              }
+              onClick={() => {
+                if (row.panes.length === 1) {
+                  props.onClosePane(row.panes[0].paneId);
+                  return;
+                }
+                props.onClose();
+              }}
             >
               <DeckIcon icon={X} size={CHROME_ICON} />
             </button>
@@ -323,17 +367,34 @@ function TabItem(props: TabItemProps) {
           glyph. */}
       {treed &&
         row.panes.map((pane) => (
-          <button
+          <div
             key={pane.paneId}
-            type="button"
             class={PANE_TREE_HIDDEN ? "asr-leaf asr-leaf--flat" : "asr-leaf"}
             data-state={pane.state}
-            aria-label={`Focus ${pane.agent} in ${where}, ${STATE_LABEL[pane.state]}`}
-            title={`${pane.agent} — ${STATE_LABEL[pane.state]}`}
-            onClick={() => {
-              props.onFocusPane(pane.paneId);
-            }}
+            // DL-27.22: the row whose pane holds the keyboard. The model has
+            // already ANDed this with the tab's own selection, so at most one
+            // leaf in the whole rail carries it.
+            data-focused={pane.focused}
           >
+            {/* A container with a full-bleed hit layer, not a `<button>` —
+                DL-27.1's rule, and a leaf came under it the moment the close
+                model (2026-08-22) gave every agent row its own ✕: a button
+                nested in a button is not operable, and the leaf WAS the
+                button until then. Everything the leaf drew is unchanged;
+                only what carries the press moved. */}
+            <button
+              type="button"
+              class="asr-leaf__hit"
+              // The wash is what a sighted user reads; this is the same fact
+              // for everyone else, and DL-21.8's reasoning applies — dropping
+              // it would leave the state visual-only.
+              aria-current={pane.focused ? "true" : undefined}
+              aria-label={`Focus ${pane.agent} in ${where}, ${STATE_LABEL[pane.state]}`}
+              title={`${pane.agent} — ${STATE_LABEL[pane.state]}`}
+              onClick={() => {
+                props.onFocusPane(pane.paneId);
+              }}
+            />
             <RailStatusMark state={pane.state} />
             {/* The leaf's own turn, in the slot its agent name held (DL-27.15,
                 amended 2026-08-17). A leaf carries its PANE's tail, not the
@@ -348,7 +409,22 @@ function TabItem(props: TabItemProps) {
             )}
             {pane.age !== "" && <span class="asr-leaf__age">{pane.age}</span>}
             <AgentGlyph agent={pane.agent} className="asr-leaf__logo" />
-          </button>
+            {/* Close model table row 1. The tab row's own close (above) shares
+                this shape and its trailing slot with the agent glyph: the
+                glyph fades, the ✕ takes the cell, nothing reflows (DL-27.5). */}
+            <div class="asr-row__actions asr-leaf__actions">
+              <button
+                type="button"
+                class="asr-row__action asr-row__action--close"
+                aria-label={`Close ${pane.agent} in ${where}`}
+                onClick={() => {
+                  props.onClosePane(pane.paneId);
+                }}
+              >
+                <DeckIcon icon={X} size={CHROME_ICON} />
+              </button>
+            </div>
+          </div>
         ))}
     </div>
   );
@@ -392,9 +468,57 @@ export function AgentRail(props: AgentRailProps) {
     // the `session_tail` channel does not exist — the model then falls back
     // to the custom-name line it drew before this.
     tails: paneTails.value,
+    // The order the user dragged these projects into (DL-27.20). App-level,
+    // so a drag in one window reorders the rail in every window.
+    railOrder: settings.value.railOrder,
     // Read once per render and injected; the model never calls the clock.
     now: Date.now(),
   });
+
+  // The stream the drag controller answers about. It is installed ONCE — a
+  // controller re-created on every render would be disposed mid-drag, since a
+  // rail row re-renders whenever an agent says something — so the list it
+  // reorders has to reach it through a ref rather than a closure.
+  const streamRef = useRef<readonly RailStreamGroup[]>(view.stream);
+  // A LAYOUT effect, not a passive one, and the distinction is load-bearing: a
+  // drop resolves its source index against the live DOM, then splices this
+  // array. A passive effect flushes after paint, so a rail that re-rendered
+  // mid-drag would leave the DOM one render ahead of this ref — and a release
+  // landing in that window splices the wrong element out of a stale stream and
+  // pins a project nobody dragged. A layout effect runs before the browser can
+  // dispatch the next event, so the two can never disagree. Not written during
+  // render either: a ref is not render state.
+  useLayoutEffect(() => {
+    streamRef.current = view.stream;
+  });
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (list === null) {
+      return;
+    }
+    const controller = createRailClusterDragController(list, {
+      onDrop(from, to) {
+        const current = settings.value.railOrder;
+        const next = pinAt({
+          stream: streamRef.current,
+          from,
+          to,
+          railOrder: current,
+          scans: repositoryScans.value,
+        });
+        // One write per completed drop, and none at all for a drop that says
+        // nothing new — including the canonicalisation pass being a no-op.
+        if (!sameRailOrder(next, current)) {
+          updateSettings({ railOrder: next });
+        }
+      },
+    });
+    return () => {
+      controller.dispose();
+    };
+  }, []);
 
   // Repository scans: on demand for every open workspace, and again whenever
   // the window comes back. Without them every row degrades to a bare project
@@ -438,6 +562,9 @@ export function AgentRail(props: AgentRailProps) {
       onClose={() => {
         props.onCloseTab(row.index);
       }}
+      onClosePane={(paneId) => {
+        props.onClosePane(row.index, paneId);
+      }}
     />
   );
 
@@ -446,7 +573,7 @@ export function AgentRail(props: AgentRailProps) {
       {/* The scrolling half: the rows. The footer and the banner below stay
           pinned to the bottom of the column, which is the split `.wsbar__list`
           drew before this rail replaced it. */}
-      <div class="asr-rail__list">
+      <div class="asr-rail__list" ref={listRef}>
         <section class="asr-stream" aria-label="Open agents">
           {view.stream.map((group) => {
             const collapsed = collapsedGroupKeys.value.has(group.key);
@@ -454,6 +581,10 @@ export function AgentRail(props: AgentRailProps) {
               <div
                 class="asr-cluster"
                 key={group.key}
+                // The project identity the manual order is stored against
+                // (DL-27.20). Written on the block rather than on the header
+                // because the whole block is what moves.
+                data-order-key={group.orderKey}
                 data-labelled={group.labelled}
                 data-collapsed={collapsed}
               >
@@ -467,7 +598,13 @@ export function AgentRail(props: AgentRailProps) {
                      day's re-amendment — the `+` is laid over the slot between
                      the name and the caret by the header's grid, so DOM order
                      here is unchanged while reading order is
-                     folder → name → `+` → caret. */
+                     folder → name → `+` → caret.
+
+                     Since 2026-08-22 it is also the whole cluster's drag
+                     handle (DL-27.20): no grip glyph is added, and the
+                     collapse button shares the surface — below the 5px
+                     threshold its `click` fires untouched. The two small
+                     controls beside it never start a drag. */
                   <div class="asr-cluster__head">
                     {group.rows.length > 0 ? (
                       <button
@@ -530,29 +667,54 @@ export function AgentRail(props: AgentRailProps) {
                         <DeckIcon icon={PlusSquare} size={FEATURE_ICON} />
                       </button>
                     )}
-                    {/* A remembered project's close (owner, 2026-08-20): a
-                        rowless header has no tab rows carrying a close, so
-                        the header keeps one of its own — removing the FOLDER
-                        from the rail (all of its history entries at once,
-                        since a repository folds several), never closing work,
-                        because there is none. It stands in the caret's track,
-                        which a still header leaves empty; omitted rather than
-                        inert when nothing wires it (DL-19.7). */}
-                    {props.onRemoveWorkspace !== undefined &&
-                      group.rows.length === 0 &&
-                      group.historyPaths.length > 0 && (
-                        <button
-                          type="button"
-                          class="asr-cluster__remove"
-                          aria-label={`Remove ${group.project} from the rail`}
-                          title={`Remove ${group.project} from the rail`}
-                          onClick={() => {
-                            props.onRemoveWorkspace?.(group.historyPaths);
-                          }}
-                        >
-                          <DeckIcon icon={X} size={CHROME_ICON} />
-                        </button>
-                      )}
+                    {/* The header's close. It began (owner, 2026-08-20) as a
+                        REMEMBERED project's only action — a rowless header has
+                        no tab rows carrying a close, so it removed the FOLDER
+                        from the rail, all of its history entries at once since
+                        a repository folds several, and never closed work
+                        because there was none.
+
+                        Since the close model (2026-08-22, table row 4) a LIVE
+                        header carries it too, and there it means the project:
+                        every tab of it, secondary worktrees included, and then
+                        the folder off the rail. The two halves are one act on
+                        purpose — closing the tabs alone would demote the
+                        cluster to the remembered tier and leave the header
+                        standing, which reads as a control that did nothing.
+
+                        It stands in the caret's track. A live header HAS a
+                        caret, so on hover the two share that track the way the
+                        `+` shares the slot before it; a still header leaves it
+                        empty. Omitted rather than inert when nothing wires it
+                        (DL-19.7). */}
+                    {group.rows.length === 0
+                      ? props.onRemoveWorkspace !== undefined &&
+                        group.historyPaths.length > 0 && (
+                          <button
+                            type="button"
+                            class="asr-cluster__remove"
+                            aria-label={`Remove ${group.project} from the rail`}
+                            title={`Remove ${group.project} from the rail`}
+                            onClick={() => {
+                              props.onRemoveWorkspace?.(group.historyPaths);
+                            }}
+                          >
+                            <DeckIcon icon={X} size={CHROME_ICON} />
+                          </button>
+                        )
+                      : props.onCloseProject !== undefined && (
+                          <button
+                            type="button"
+                            class="asr-cluster__remove asr-cluster__remove--live"
+                            aria-label={`Close ${group.project} — ${group.tabIndexes.length} tabs — and remove it from the rail`}
+                            title={`Close ${group.project} and remove it from the rail`}
+                            onClick={() => {
+                              props.onCloseProject?.(group.tabIndexes, group.historyPaths);
+                            }}
+                          >
+                            <DeckIcon icon={X} size={CHROME_ICON} />
+                          </button>
+                        )}
                   </div>
                 )}
                 {!collapsed && group.rows.map((row) => item(row, group.labelled))}

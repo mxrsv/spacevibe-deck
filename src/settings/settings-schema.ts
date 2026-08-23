@@ -1,8 +1,4 @@
-import {
-  EXTERNAL_APPS,
-  isExternalAppId,
-  type ExternalAppId,
-} from "../lib/external-app-catalog";
+import { EXTERNAL_APPS, isExternalAppId, type ExternalAppId } from "../lib/external-app-catalog";
 import {
   agentBinary,
   AGENT_LABEL_MAX,
@@ -15,10 +11,7 @@ import {
   validateLaunchProfiles,
   type LaunchProfile,
 } from "../lib/launch-profile";
-import {
-  isValidPromptTemplate,
-  type PromptTemplate,
-} from "../prompts/prompt-templates";
+import { isValidPromptTemplate, type PromptTemplate } from "../prompts/prompt-templates";
 import {
   NO_KEYBINDING_OVERRIDES,
   validateKeybindings,
@@ -43,11 +36,7 @@ export type TabBarPosition = "top" | "left";
  */
 export type DockTab = "explorer" | "usage" | "sessions";
 
-export const DOCK_TABS: readonly DockTab[] = Object.freeze([
-  "explorer",
-  "usage",
-  "sessions",
-]);
+export const DOCK_TABS: readonly DockTab[] = Object.freeze(["explorer", "usage", "sessions"]);
 
 export interface Settings {
   fontFamily: string;
@@ -98,6 +87,18 @@ export interface Settings {
    * an agent out of the pickers.
    */
   disabledAgents: readonly string[];
+  /**
+   * Project order the user dragged in the agent rail, by
+   * `RailStreamGroup.orderKey`, top first. An entry naming no currently-visible
+   * project is KEPT — that is how a parked project returns to its slot when it
+   * is reopened, which is the whole point of storing an identity that outlives
+   * the live/remembered tiers (rail reorder spec §5).
+   *
+   * App-level rather than window-scoped, like `sidebarWidth` and
+   * `sidebarCollapsed`: a per-window project order would put the same project
+   * in two places on two screens with nothing to explain why.
+   */
+  railOrder: readonly string[];
   /**
    * The agent a new tab opens with when nothing else names one. Null = fall
    * back to the first detected agent, which is what Deck did before this
@@ -158,18 +159,11 @@ export const FONT_SIZE_MAX = 24;
 
 export const SCROLLBACK_MIN = 1000;
 export const SCROLLBACK_MAX = 100_000;
-export const SCROLLBACK_CHOICES = [
-  1000, 5000, 10_000, 50_000, 100_000,
-] as const;
+export const SCROLLBACK_CHOICES = [1000, 5000, 10_000, 50_000, 100_000] as const;
 
 export const FONT_FALLBACK = "Menlo, Monaco, monospace";
 
-export const COLOR_KEYS = [
-  "background",
-  "foreground",
-  "cursor",
-  "selectionBackground",
-] as const;
+export const COLOR_KEYS = ["background", "foreground", "cursor", "selectionBackground"] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
   fontFamily: "SF Mono",
@@ -193,6 +187,7 @@ export const DEFAULT_SETTINGS: Settings = {
   customAgents: [],
   launchProfiles: [],
   disabledAgents: [],
+  railOrder: [],
   defaultAgent: null,
   defaultLaunchProfiles: {},
   promptTemplates: [],
@@ -210,10 +205,7 @@ export const BROWSER_WIDTH_MIN = 280;
 export const BROWSER_WIDTH_MAX = 900;
 
 export function clampBrowserWidth(width: number): number {
-  return Math.min(
-    BROWSER_WIDTH_MAX,
-    Math.max(BROWSER_WIDTH_MIN, Math.round(width)),
-  );
+  return Math.min(BROWSER_WIDTH_MAX, Math.max(BROWSER_WIDTH_MIN, Math.round(width)));
 }
 
 // Wider than the file tree's old range (180–480, default 260), and
@@ -238,10 +230,7 @@ export const SIDEBAR_WIDTH_MIN = 200;
 export const SIDEBAR_WIDTH_MAX = 420;
 
 export function clampSidebarWidth(width: number): number {
-  return Math.min(
-    SIDEBAR_WIDTH_MAX,
-    Math.max(SIDEBAR_WIDTH_MIN, Math.round(width)),
-  );
+  return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, Math.round(width)));
 }
 
 export function clampDockWidth(width: number): number {
@@ -308,10 +297,7 @@ export function isValidCustomAgent(value: unknown): value is CustomAgent {
   ) {
     return false;
   }
-  return (
-    typeof agent.command === "string" &&
-    isProbeSafeName(agentBinary(agent.command))
-  );
+  return typeof agent.command === "string" && isProbeSafeName(agentBinary(agent.command));
 }
 
 /**
@@ -368,6 +354,35 @@ function validatePromptTemplates(raw: unknown): readonly PromptTemplate[] {
 }
 
 /**
+ * The rail's manual project order (rail reorder spec §5).
+ *
+ * Mirrors `disabledAgents` — anything that is not an array of strings falls
+ * back to the default — with one addition it needs and that one does not: the
+ * list is DEDUPLICATED, first occurrence winning, because a key appearing
+ * twice would put one project in two slots. An empty string is dropped: no
+ * cluster can ever answer to it, so it would sit in the list forever as an
+ * entry that never matches and never prunes.
+ *
+ * Entries are NOT checked against anything on screen. A key naming no
+ * currently-visible project is exactly what this list is for.
+ */
+function validateRailOrder(raw: unknown): readonly string[] {
+  if (!Array.isArray(raw)) {
+    return DEFAULT_SETTINGS.railOrder;
+  }
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== "string" || entry === "" || seen.has(entry)) {
+      continue;
+    }
+    seen.add(entry);
+    result.push(entry);
+  }
+  return result;
+}
+
+/**
  * `externalAppId`, migrating the `editorId`/`editorCommand` pair it replaced
  * (design §5).
  *
@@ -406,23 +421,16 @@ export function validateSettings(raw: unknown): Settings {
       typeof source.fontSize === "number" && Number.isFinite(source.fontSize)
         ? clampFontSize(source.fontSize)
         : DEFAULT_SETTINGS.fontSize,
-    themeId:
-      typeof source.themeId === "string"
-        ? source.themeId
-        : DEFAULT_SETTINGS.themeId,
+    themeId: typeof source.themeId === "string" ? source.themeId : DEFAULT_SETTINGS.themeId,
     colorOverrides: validateColorOverrides(source.colorOverrides),
     focusExpand:
-      typeof source.focusExpand === "boolean"
-        ? source.focusExpand
-        : DEFAULT_SETTINGS.focusExpand,
+      typeof source.focusExpand === "boolean" ? source.focusExpand : DEFAULT_SETTINGS.focusExpand,
     showStatusBar:
       typeof source.showStatusBar === "boolean"
         ? source.showStatusBar
         : DEFAULT_SETTINGS.showStatusBar,
     showPaneBar:
-      typeof source.showPaneBar === "boolean"
-        ? source.showPaneBar
-        : DEFAULT_SETTINGS.showPaneBar,
+      typeof source.showPaneBar === "boolean" ? source.showPaneBar : DEFAULT_SETTINGS.showPaneBar,
     agentNotifications:
       typeof source.agentNotifications === "boolean"
         ? source.agentNotifications
@@ -431,8 +439,7 @@ export function validateSettings(raw: unknown): Settings {
       ? source.tabBarPosition
       : DEFAULT_SETTINGS.tabBarPosition,
     sidebarWidth:
-      typeof source.sidebarWidth === "number" &&
-      Number.isFinite(source.sidebarWidth)
+      typeof source.sidebarWidth === "number" && Number.isFinite(source.sidebarWidth)
         ? clampSidebarWidth(source.sidebarWidth)
         : DEFAULT_SETTINGS.sidebarWidth,
     sidebarCollapsed:
@@ -441,22 +448,19 @@ export function validateSettings(raw: unknown): Settings {
         : DEFAULT_SETTINGS.sidebarCollapsed,
     externalAppId: migrateExternalAppId(source),
     scrollback:
-      typeof source.scrollback === "number" &&
-      Number.isFinite(source.scrollback)
+      typeof source.scrollback === "number" && Number.isFinite(source.scrollback)
         ? clampScrollback(source.scrollback)
         : DEFAULT_SETTINGS.scrollback,
     customAgents: validateCustomAgents(source.customAgents),
     launchProfiles: validatedLaunchProfiles,
     disabledAgents: Array.isArray(source.disabledAgents)
-      ? source.disabledAgents.filter(
-          (id): id is string => typeof id === "string",
-        )
+      ? source.disabledAgents.filter((id): id is string => typeof id === "string")
       : DEFAULT_SETTINGS.disabledAgents,
+    railOrder: validateRailOrder(source.railOrder),
     // Not checked against the catalog: an id here may belong to an agent the
     // user has since uninstalled, and forgetting the preference because a
     // binary is temporarily missing would be worse than carrying it.
-    defaultAgent:
-      typeof source.defaultAgent === "string" ? source.defaultAgent : null,
+    defaultAgent: typeof source.defaultAgent === "string" ? source.defaultAgent : null,
     defaultLaunchProfiles: validateDefaultLaunchProfiles(
       source.defaultLaunchProfiles,
       validatedLaunchProfiles,
@@ -466,22 +470,17 @@ export function validateSettings(raw: unknown): Settings {
     // loadable, and a value this validator "fixed" would disagree with it.
     // An unusable address opens a blank panel, which is visible and editable.
     browserHomeUrl:
-      typeof source.browserHomeUrl === "string" &&
-      source.browserHomeUrl.length <= 2048
+      typeof source.browserHomeUrl === "string" && source.browserHomeUrl.length <= 2048
         ? source.browserHomeUrl
         : DEFAULT_SETTINGS.browserHomeUrl,
     // Same posture as browserHomeUrl: the host's own URL gate decides what is
     // loadable at open time, and a malformed stored value degrades to a blank
     // panel there rather than being "fixed" into a disagreement here.
     browserLastUrl:
-      typeof source.browserLastUrl === "string" &&
-      source.browserLastUrl.length <= 2048
+      typeof source.browserLastUrl === "string" && source.browserLastUrl.length <= 2048
         ? source.browserLastUrl
         : DEFAULT_SETTINGS.browserLastUrl,
-    dockOpen:
-      typeof source.dockOpen === "boolean"
-        ? source.dockOpen
-        : DEFAULT_SETTINGS.dockOpen,
+    dockOpen: typeof source.dockOpen === "boolean" ? source.dockOpen : DEFAULT_SETTINGS.dockOpen,
     dockWidth:
       typeof source.dockWidth === "number" && Number.isFinite(source.dockWidth)
         ? clampDockWidth(source.dockWidth)

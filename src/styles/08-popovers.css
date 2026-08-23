@@ -70,7 +70,14 @@
   cursor: grab;
 }
 
-.is-pane-dragging {
+/* Every drag in the app wears one of these on `body`: a pane being moved, and
+   since 2026-08-22 an agent-rail project cluster being reordered (DL-27.20).
+   The cursor and the selection guard are the same statement either way — the
+   pointer is carrying something, and nothing under it should be sweeping text
+   into a selection — so they are stated once. What each drag does to the
+   surface it runs over stays with that surface. */
+.is-pane-dragging,
+.is-rail-dragging {
   cursor: grabbing;
   user-select: none;
 }
@@ -97,6 +104,31 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The agent rail's project-cluster drag (DL-27.20) raises the same ghost, so
+   only what a project name needs that a pane name does not is stated: the
+   cluster header's own size, and primary ink, because this ghost stands for
+   something the user is PLACING rather than labelling a target they are
+   hovering. It carries the cluster's label, never a clone of the block — a
+   project with eight tabs would otherwise drag half the column around. */
+.rail-drag-ghost {
+  padding: 5px 10px;
+  font-size: var(--type-project);
+  color: var(--text-primary);
+}
+
+/* The gap the drop would land in, full list width, so it reads as a slot
+   BETWEEN two projects rather than as an edge of one of them. `--hair-strong`
+   at `--radius-flat` and no accent: this marks a position, not a state, and
+   DL-27.3 owns the coloured vocabulary in that column. */
+.rail-drag-line {
+  position: fixed;
+  z-index: 999;
+  pointer-events: none;
+  height: 2px;
+  background: var(--hair-strong);
+  border-radius: var(--radius-flat);
 }
 
 .drop-overlay {

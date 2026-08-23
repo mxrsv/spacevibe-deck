@@ -21,11 +21,7 @@
 import type { PaneAgent } from "../lib/process-info";
 import { workspaceLabel } from "../lib/workspace-label";
 import type { RepositoryScan } from "../repositories/repository-client";
-import type {
-  RailTab,
-  RepositoryGroup,
-  WorktreeRow,
-} from "../repositories/repository-model";
+import type { RailTab, RepositoryGroup, WorktreeRow } from "../repositories/repository-model";
 import {
   buildRail,
   filterRailToWorkspaceHistory,
@@ -34,6 +30,9 @@ import {
 import type { PaneView, TabView } from "../terminal/tabs-store";
 import { NO_PANES } from "../terminal/tabs-store";
 import { UNSEQUENCED } from "../lib/open-sequence";
+// Type-only the other way (`RailStreamGroup`), so the pair is a compile-time
+// cycle and never a runtime one.
+import { applyRailOrder } from "./rail-order";
 
 /**
  * Spec §3, revocabularised on the owner's ask (2026-08-16) to read from the
@@ -64,6 +63,16 @@ export interface RailPaneRow {
   /** Short relative string for this pane alone; empty before any change. */
   readonly age: string;
   readonly changedAt: number;
+  /**
+   * This pane holds the WINDOW's keyboard focus (DL-27.22, owner 2026-08-23):
+   * `PaneView.focused` ANDed with its tab's own `active`. True for **at most
+   * one row in the whole rail** — every tab has a focused pane of its own, so
+   * reporting each one would light a row per tab and say nothing.
+   *
+   * The AND lives here rather than in the component because it is the whole
+   * invariant, and a pure function is where it can be asserted.
+   */
+  readonly focused: boolean;
 }
 
 export interface RailTabRow {
@@ -132,6 +141,19 @@ export interface RailTabRow {
 export interface RailStreamGroup {
   /** `RepositoryGroup.key` — list identity. */
   readonly key: string;
+  /**
+   * Stable project identity across the live/remembered tiers — the repository
+   * key, or `plain:<path>` for a folder git does not know. `key` carries a
+   * tier prefix and therefore changes when the last tab closes; this does not.
+   * The manual rail order is stored against this and nothing else
+   * ([`rail-order.ts`](./rail-order.ts) `current`, spec §3).
+   *
+   * It is PRODUCED, not derived by stripping a prefix off `key`: the live
+   * branch writes the group key it already has, the remembered branch writes
+   * the un-prefixed key it already computes, and no consumer has to know the
+   * prefix exists.
+   */
+  readonly orderKey: string;
   /** The project name, printed once above the rows. */
   readonly project: string;
   /**
@@ -153,9 +175,28 @@ export interface RailStreamGroup {
    * several remembered worktrees of one repository into one header, so
    * removing the header must remove them all or it re-derives from the
    * sibling entry on the next render and the X appears to do nothing.
-   * Empty for a live cluster, whose presence history does not control.
+   *
+   * Populated for a LIVE cluster too since 2026-08-22 (close model, row 4):
+   * the header's ✕ closes every tab of the project AND takes the project off
+   * the rail, and closing the tabs alone would only demote the cluster to the
+   * remembered tier — the header would stay put and the X would read as
+   * broken. These are the history entries `rememberedClusters` currently
+   * SUPPRESSES because this cluster already covers them: same repository key,
+   * or prefix-attached to one of its worktrees.
    */
   readonly historyPaths: readonly string[];
+  /**
+   * Every open tab index this cluster holds, ascending — the coordinate the
+   * header's ✕ closes with. Derived rather than re-read from `rows` by the
+   * component so the "one project, one close" unit is stated once, here,
+   * where the folding rule that makes a secondary worktree part of this
+   * project already lives. Empty for a remembered cluster.
+   *
+   * Ascending is for READING, not for safety: `closeTabs` resolves every index
+   * to its tab entry before the first dispose and re-pins each one by identity
+   * afterwards, so no order of this list can hand it a stale coordinate.
+   */
+  readonly tabIndexes: readonly number[];
 }
 
 export interface AgentRailView {
@@ -181,6 +222,14 @@ export interface AgentRailInput {
    * no tails is the shape this model shipped with, not a degraded one.
    */
   readonly tails?: ReadonlyMap<number, string>;
+  /**
+   * The order the user dragged the project clusters into, by
+   * `RailStreamGroup.orderKey`, top first (spec §5). Optional and defaulting
+   * to empty so every existing caller — the gallery, the tests — keeps the
+   * stream it had: with no manual order `applyRailOrder` returns the assembled
+   * list untouched.
+   */
+  readonly railOrder?: readonly string[];
   /** Injected clock — the model never calls `Date.now()` itself. */
   readonly now: number;
 }
@@ -248,6 +297,7 @@ function paneRows(
   tab: TabView | undefined,
   tails: ReadonlyMap<number, string> | undefined,
   now: number,
+  active: boolean,
 ): RailPaneRow[] {
   return (tab?.panes ?? NO_PANES).flatMap((pane) =>
     pane.agent === null
@@ -260,6 +310,9 @@ function paneRows(
             state: paneState(pane),
             age: formatShortAge(pane.changedAt, now),
             changedAt: pane.changedAt,
+            // DL-27.22: the tab's focused pane is only the WINDOW's focused
+            // pane while that tab is the one on the stage.
+            focused: active && pane.focused === true,
           },
         ],
   );
@@ -302,8 +355,9 @@ export function tabTail(
   tails: ReadonlyMap<number, string> | undefined,
 ): string {
   // `now` only formats the age this caller does not read; the tails and the
-  // precedence are what it is here for.
-  return loudestPane(paneRows(tab, tails, 0))?.message ?? "";
+  // precedence are what it is here for. `active: false` for the same reason —
+  // a chip reports no focus (DL-18.10), so the flag is inert on this path.
+  return loudestPane(paneRows(tab, tails, 0, false))?.message ?? "";
 }
 
 /**
@@ -334,7 +388,7 @@ function tabRow(
 ): RailTabRow {
   const title = railTab.label;
   const tab = input.tabs[railTab.index];
-  const panes = paneRows(tab, input.tails, input.now);
+  const panes = paneRows(tab, input.tails, input.now, railTab.active);
   const voice = loudestPane(panes);
   // A folded row says what the pane it speaks for is saying, so the sentence
   // on the row and the mark beside it come from the same agent. With no agent
@@ -344,10 +398,7 @@ function tabRow(
   const state = voice?.state ?? "idle";
   // Agent panes only: a tab whose shells have been busy all morning has still
   // said nothing an agent rail can report, so its age stays empty.
-  const changedAt = panes.reduce(
-    (newest, pane) => Math.max(newest, pane.changedAt),
-    0,
-  );
+  const changedAt = panes.reduce((newest, pane) => Math.max(newest, pane.changedAt), 0);
   return {
     key: railTab.key,
     index: railTab.index,
@@ -393,12 +444,9 @@ function sortByOpenOrder(rows: readonly RailTabRow[]): readonly RailTabRow[] {
  * project already on screen never moves that project. Nothing here reorders by
  * name — the rail is a resume surface, not a directory (spec §1).
  */
-function sortClusters(
-  groups: readonly RailStreamGroup[],
-): readonly RailStreamGroup[] {
+function sortClusters(groups: readonly RailStreamGroup[]): readonly RailStreamGroup[] {
   return [...groups].sort(
-    (left, right) =>
-      openedFirst(left) - openedFirst(right) || firstOf(left) - firstOf(right),
+    (left, right) => openedFirst(left) - openedFirst(right) || firstOf(left) - firstOf(right),
   );
 }
 
@@ -411,17 +459,16 @@ function openedFirst(group: RailStreamGroup): number {
 
 /** Tie-break for clusters whose tabs carry no open key: the tabs' own order. */
 function firstOf(group: RailStreamGroup): number {
-  return group.rows.reduce(
-    (lowest, row) => Math.min(lowest, row.index),
-    Number.MAX_SAFE_INTEGER,
-  );
+  return group.rows.reduce((lowest, row) => Math.min(lowest, row.index), Number.MAX_SAFE_INTEGER);
 }
 
 /** Every live project keeps the same project → tab hierarchy. */
 const LOWEST_LABELLED_SIZE = 1;
 const NO_ARCHIVED_PATHS: ReadonlySet<string> = new Set();
-/** Live clusters answer to open tabs, not to history entries. */
-const NO_HISTORY_PATHS: readonly string[] = [];
+/** A remembered cluster has no open tab to close. */
+const NO_TAB_INDEXES: readonly number[] = [];
+/** No project has ever been dragged — the stream stands as assembled. */
+const NO_RAIL_ORDER: readonly string[] = [];
 
 /**
  * Remembered projects (owner, 2026-08-20): every workspace in Deck's
@@ -464,14 +511,52 @@ function rememberedClusters(
     const primary = repository?.worktrees.find((entry) => !entry.bare) ?? null;
     clusters.push({
       key: `remembered:${key}`,
+      // The un-prefixed key, which is exactly what the live tier stores this
+      // project under — that identity is what survives the last tab closing
+      // (spec §3).
+      orderKey: key,
       project: workspaceLabel(primary?.path ?? path),
       labelled: true,
       rows: [],
       path,
       historyPaths,
+      // Nothing is open here — the remembered header's ✕ forgets, it never
+      // closes (owner, 2026-08-20; unchanged by the close model).
+      tabIndexes: NO_TAB_INDEXES,
     });
   }
   return clusters;
+}
+
+/**
+ * Every persisted history entry a LIVE cluster stands for (close model, 2026-08-22).
+ *
+ * Two rules, because `rememberedClusters` uses two and the header's ✕ has to
+ * clear whatever either of them would have re-derived:
+ *
+ * - **Prefix attach.** A history entry under one of this cluster's open
+ *   worktrees is suppressed from the remembered tier today by exactly this
+ *   test, so it is this cluster's to forget.
+ * - **Same project key.** A worktree of this repository that is in history but
+ *   has nothing open in it is NOT prefix-attached to any live path, so it
+ *   would build its own remembered cluster carrying this project's own
+ *   `orderKey`. "Remove the project from the rail" has to take that with it,
+ *   or the header the user pressed reappears under the same name.
+ *
+ * Order follows `workspaceHistoryPaths` (newest first) and duplicates cannot
+ * arise: one pass, one entry each.
+ */
+function coveredHistoryPaths(group: RepositoryGroup, input: AgentRailInput): readonly string[] {
+  const worktreePaths = group.worktrees.map((worktree) => worktree.path).filter((p) => p !== "");
+  const covered: string[] = [];
+  for (const path of input.workspaceHistoryPaths) {
+    const scan = input.scans.get(path);
+    const key = scan?.kind === "repository" ? scan.key : `plain:${path}`;
+    if (key === group.key || worktreeForPath(worktreePaths, path) !== null) {
+      covered.push(path);
+    }
+  }
+  return covered;
 }
 
 /**
@@ -509,13 +594,22 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
       }
     }
     if (streamed.length > 0) {
+      const rows = sortByOpenOrder(streamed);
       clusters.push({
         key: group.key,
+        // The live tier's key IS the project identity: `scan.key` for a
+        // repository, `plain:<path>` otherwise. No prefix, so the remembered
+        // branch above can write the same string (spec §3).
+        orderKey: group.key,
         project: group.name,
         labelled: streamed.length >= LOWEST_LABELLED_SIZE,
-        rows: sortByOpenOrder(streamed),
+        rows,
         path: null,
-        historyPaths: NO_HISTORY_PATHS,
+        historyPaths: coveredHistoryPaths(group, input),
+        // Ascending, not row order — a reading order. `closeTabs` pins every
+        // entry by identity before its first dispose, so the order carries no
+        // index-shift risk of its own.
+        tabIndexes: [...rows.map((row) => row.index)].sort((a, b) => a - b),
       });
     }
   }
@@ -527,10 +621,15 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
     .filter((path) => path !== "");
 
   return {
-    stream: [
-      ...sortClusters(clusters),
-      ...rememberedClusters(input, livePaths),
-    ],
+    // The manual order is the LAST step over the assembled stream (spec §4):
+    // a cluster the user dragged holds its slot across the live/remembered
+    // boundary, and everything nobody has dragged keeps the order it always
+    // had.
+    stream: applyRailOrder(
+      [...sortClusters(clusters), ...rememberedClusters(input, livePaths)],
+      input.railOrder ?? NO_RAIL_ORDER,
+      input.scans,
+    ),
   };
 }
 

@@ -261,6 +261,24 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
     const entries = scan.worktrees.filter((entry) => !entry.bare);
     const paths = entries.map((entry) => entry.path);
     const resumable = resumableWorktreePaths(input.archivedPaths, paths);
+    // One longest-prefix resolution per TAB, bucketed — not one per
+    // (worktree x tab), which re-scanned every worktree path for each pair.
+    const tabsByWorktree = new Map<string, typeof groupTabs>();
+    for (const tab of groupTabs) {
+      if (tab.workspacePath === null) {
+        continue;
+      }
+      const owner = worktreeForPath(paths, tab.workspacePath);
+      if (owner === null) {
+        continue;
+      }
+      const bucket = tabsByWorktree.get(owner);
+      if (bucket === undefined) {
+        tabsByWorktree.set(owner, [tab]);
+      } else {
+        bucket.push(tab);
+      }
+    }
     return {
       key,
       kind: "repository" as const,
@@ -269,10 +287,7 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
       name: workspaceLabel(entries[0]?.path ?? scan.root),
       collapsed: input.collapsed.has(key),
       worktrees: entries.map((entry, index) => {
-        const tabs = groupTabs.filter(
-          (tab) =>
-            tab.workspacePath !== null && worktreeForPath(paths, tab.workspacePath) === entry.path,
-        );
+        const tabs = tabsByWorktree.get(entry.path) ?? [];
         return {
           id: `${key}:${entry.path}`,
           path: entry.path,

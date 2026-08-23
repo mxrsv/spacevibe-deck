@@ -162,12 +162,14 @@ import {
   closeSettingsPanel,
   dockPaintedOpen,
   dockToggleOnStage,
+  dockVisible,
   liveRailAvailable,
   livePresetOpensATab,
   sidebarEffectivelyCollapsed,
   stripShowsTabs,
   toggleSettingsPanel,
   workspaceOrphanedByClose,
+  workspacesOrphanedByClose,
 } from "./app-policy";
 import { restoreDeps } from "./app-restore-deps";
 
@@ -1062,6 +1064,50 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   };
   /**
+   * The rail's per-agent ✕ (close model, 2026-08-22, table row 1).
+   *
+   * It goes through `closeTab`'s orphan sweep the same way, because the pane
+   * may be the tab's last one and the tab would then go with it (row 2) —
+   * which `TabManager` decides from the tab's real pane count, not from here.
+   * Reading the orphan BEFORE the close is the same index-shift rule; when the
+   * tab survives, no workspace is orphaned and the sweep is a no-op.
+   */
+  const closePaneAt = async (index: number, paneId: number): Promise<void> => {
+    const orphaned = workspaceOrphanedByClose(tabViews.value, index);
+    await tabsRef.current?.closePaneAt(index, paneId);
+    // The tab survived (the pane was not its last) → nothing was orphaned,
+    // whatever the pre-close read said.
+    if (orphaned !== null && !tabViews.value.some((tab) => tab.workspacePath === orphaned)) {
+      await fileController.closeWorkspace(orphaned);
+    }
+  };
+  /**
+   * The rail's project-header ✕ (table row 4): every tab of the project —
+   * secondary worktrees included — then the project off the rail.
+   *
+   * Order matters in one direction only: the history removal is the SECOND
+   * half of one act and must not happen when the first half did not.
+   * `closeTabs` answers `false` for a cancelled busy dialog and disposes
+   * nothing, so a user who backs out of "close 5 agents" keeps both their tabs
+   * and their project row.
+   */
+  const closeProject = async (
+    tabIndexes: readonly number[],
+    historyPaths: readonly string[],
+  ): Promise<void> => {
+    const orphaned = workspacesOrphanedByClose(tabViews.value, tabIndexes);
+    const closed = await tabsRef.current?.closeTabs(tabIndexes);
+    if (closed !== true) {
+      return;
+    }
+    for (const workspacePath of orphaned) {
+      await fileController.closeWorkspace(workspacePath);
+    }
+    if (historyPaths.length > 0) {
+      removeWorkspaceRecents(historyPaths);
+    }
+  };
+  /**
    * The browser chip's select: the browser takes the stage, the file surface
    * steps back — App is the one module that sees both stores, so this is
    * where the "exactly one surface owns the stage" rule runs for chip clicks
@@ -1410,6 +1456,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             footer={SIDEBAR_TOOLS_HIDDEN ? undefined : railActions}
             onSelectTab={selectTab}
             onCloseTab={(index) => void closeTab(index)}
+            // Close model table row 1: the agent row's ✕ closes that pane, and
+            // the tab only when it was the last one in it (row 2).
+            onClosePane={(index, paneId) => void closePaneAt(index, paneId)}
+            // Table row 4: the whole project, then the project off the rail.
+            onCloseProject={(tabIndexes, historyPaths) =>
+              void closeProject(tabIndexes, historyPaths)
+            }
             onFocusPane={focusRailPane}
             onNewTabIn={(workspacePath) => {
               // DL-27.18: the same panel ⌘T raises, with the destination

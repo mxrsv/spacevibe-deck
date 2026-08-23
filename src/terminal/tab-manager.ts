@@ -1,13 +1,7 @@
 import { getCurrentWindow } from "../host/window-host";
 import type { UnlistenFn } from "../host/bridge";
 import { clampFontSize, DEFAULT_SETTINGS } from "../settings/settings-schema";
-import {
-  flushSettingsSave,
-  settings,
-  revealDockTab,
-  toggleDock,
-  updateSettings,
-} from "../settings/settings-store";
+import { settings, revealDockTab, toggleDock, updateSettings } from "../settings/settings-store";
 import { type Direction, type Edge, type SerializedNode } from "../lib/split-tree";
 import { explicitAgent, processLabel } from "../lib/process-info";
 import type { SessionTab } from "../lib/session-schema";
@@ -1167,11 +1161,6 @@ export function createTabManager(
     pruneLaunchCommands(live);
     poller.prune(live);
     if (tabs.length === 0) {
-      // Every window is a peer (spec §2, §9.5): the last SURFACE closes THIS
-      // window, and the host decides whether that was also the last window and
-      // the process should exit. CloseCoordinator already ran the busy guard
-      // here, so nothing prompts twice.
-      //
       // "Surface", not "tab": a window holding file tabs still has something to
       // show, and closing it would discard them — including unsaved ones, with
       // no prompt, since the busy guard that just ran only knew about panes.
@@ -1181,12 +1170,25 @@ export function createTabManager(
         syncViews();
         return;
       }
-      try {
-        await flushSettingsSave();
-      } catch (err: unknown) {
-        console.warn("Flush before window close failed:", err);
-      }
-      await closeWindow();
+      // The window STAYS (close model, 2026-08-22, table row 3). Closing the
+      // last agent used to close the window — every window was a peer and the
+      // last SURFACE took it with them — and the owner reversed that: an empty
+      // window keeps its rail, so the projects you were just in are still
+      // there, and the stage shows the Open board instead of the grid.
+      //
+      // The window is still closable, by its own controls; what changed is
+      // that closing the last piece of WORK is no longer the same gesture as
+      // closing the place you do it in. `flushSettingsSave` went with the
+      // close: it existed to get settings to disk before the process could
+      // lose them, and nothing here is dying any more.
+      //
+      // `boardOpen` rather than an `App`-side reaction to an empty
+      // `tabViews`: `disposeTab` is the one place that knows the last tab just
+      // went, and App already treats the board as uncancellable while no tab
+      // is open (`canCancel={tabViews.value.length > 0}`), so the surface it
+      // raises here cannot be dismissed into an empty stage.
+      boardOpen.value = true;
+      syncViews();
       return;
     }
     active = activeAfterClose(removeAt, active, countBefore);
@@ -2085,6 +2087,8 @@ export function createTabManager(
     adoptIntoNewTab,
     reopenTab,
     closeTab: (index) => close.closeTab(index),
+    closePaneAt: (index, paneId) => close.closePaneAt(index, paneId),
+    closeTabs: (indexes) => close.closeTabs(indexes),
     selectTab,
     activateForAttention,
     focusNextAttention,

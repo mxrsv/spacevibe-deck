@@ -472,3 +472,37 @@ describe("launch profiles", () => {
     expect(settings.defaultLaunchProfiles).toEqual({});
   });
 });
+
+describe("railOrder", () => {
+  it("defaults to no project dragged", () => {
+    expect(DEFAULT_SETTINGS.railOrder).toEqual([]);
+    expect(validateSettings({}).railOrder).toEqual([]);
+  });
+
+  it("keeps the stored order, including keys naming nothing on screen", () => {
+    // A key nothing answers to is the whole point: it is how a parked project
+    // returns to its slot when it is reopened.
+    expect(
+      validateSettings({ railOrder: ["/w/deck/.git", "plain:/home/me/scratch"] })
+        .railOrder,
+    ).toEqual(["/w/deck/.git", "plain:/home/me/scratch"]);
+  });
+
+  it("deduplicates, first occurrence winning", () => {
+    expect(validateSettings({ railOrder: ["a", "b", "a"] }).railOrder).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  it("drops entries no cluster could ever answer to", () => {
+    expect(
+      validateSettings({ railOrder: ["a", "", 7, null, "b"] }).railOrder,
+    ).toEqual(["a", "b"]);
+  });
+
+  it("falls back to the default for anything that is not an array", () => {
+    expect(validateSettings({ railOrder: "a,b" }).railOrder).toEqual([]);
+    expect(validateSettings({ railOrder: { 0: "a" } }).railOrder).toEqual([]);
+  });
+});

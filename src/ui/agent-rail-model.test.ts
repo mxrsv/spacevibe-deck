@@ -721,6 +721,9 @@ describe("buildAgentRail remembered projects (2026-08-20)", () => {
     expect(view.stream).toEqual([
       {
         key: "remembered:/w/deck/.git",
+        // Un-prefixed: the identity the live tier stores this project under.
+        orderKey: "/w/deck/.git",
+        tabIndexes: [],
         project: "deck",
         labelled: true,
         rows: [],
@@ -774,6 +777,8 @@ describe("buildAgentRail remembered projects (2026-08-20)", () => {
     expect(view.stream).toEqual([
       {
         key: "remembered:plain:/home/me/scratch",
+        orderKey: "plain:/home/me/scratch",
+        tabIndexes: [],
         project: "scratch",
         labelled: true,
         rows: [],
@@ -793,5 +798,149 @@ describe("buildAgentRail remembered projects (2026-08-20)", () => {
 
     // Longest-prefix, the same attachment rule tabs use: no second cluster.
     expect(view.stream.map((group) => group.project)).toEqual(["deck"]);
+  });
+});
+
+describe("buildAgentRail manual order (2026-08-22)", () => {
+  it("gives one project the same orderKey in both tiers", () => {
+    const withTab = buildAgentRail(
+      railInput({
+        tabs: [tab(1, "/w/deck", { panes: [pane(1)] })],
+        workspaceHistoryPaths: ["/w/deck"],
+      }),
+    );
+    const afterClose = buildAgentRail(railInput({ tabs: [], workspaceHistoryPaths: ["/w/deck"] }));
+
+    // `key` moves with the tier; `orderKey` is what the stored order is
+    // written against, and it does not (spec §3).
+    expect(withTab.stream[0].key).not.toBe(afterClose.stream[0].key);
+    expect(withTab.stream[0].orderKey).toBe("/w/deck/.git");
+    expect(afterClose.stream[0].orderKey).toBe("/w/deck/.git");
+  });
+
+  it("leaves the stream untouched when no project has been dragged", () => {
+    const input = railInput({
+      tabs: [tab(1, "/w/deck", { panes: [pane(1)] })],
+      workspaceHistoryPaths: ["/w/deck", "/w/scratch"],
+      scans: new Map([...DECK_SCANS]),
+    });
+
+    expect(buildAgentRail({ ...input, railOrder: [] })).toEqual(buildAgentRail(input));
+  });
+
+  it("puts a pinned project above live work even when it is only remembered", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [tab(1, "/w/deck", { panes: [pane(1)] })],
+        workspaceHistoryPaths: ["/w/deck", "/home/me/scratch"],
+        railOrder: ["plain:/home/me/scratch"],
+      }),
+    );
+
+    // The live/remembered boundary does not apply to a pinned cluster: the
+    // owner asked for a position, not a position within a tier (spec §4).
+    expect(view.stream.map((group) => group.project)).toEqual(["scratch", "deck"]);
+  });
+});
+
+describe("buildAgentRail — what a live cluster's close has to take (close model, 2026-08-22)", () => {
+  it("lists every tab of the project, secondary worktrees included, ascending", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck-side", { panes: [pane(1)] }),
+          tab(2, "/w/deck", { panes: [pane(2)] }),
+        ],
+      }),
+    );
+
+    expect(view.stream).toHaveLength(1);
+    // Ascending by INDEX, whatever order the rows are drawn in: the caller
+    // disposes from the back, where a removal cannot shift a coordinate it has
+    // not used yet.
+    expect(view.stream[0].tabIndexes).toEqual([0, 1]);
+  });
+
+  it("claims the history entries that would otherwise re-derive the header", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [tab(1, "/w/deck", { panes: [pane(1)] })],
+        // `/w/deck-side` is a worktree of the SAME repository with nothing open
+        // in it — not prefix-attached to any live path, so without the key rule
+        // it would build its own remembered cluster under this project's own
+        // `orderKey` and the header would come straight back.
+        workspaceHistoryPaths: ["/w/deck", "/w/deck-side"],
+      }),
+    );
+
+    expect(view.stream[0].historyPaths).toEqual(["/w/deck", "/w/deck-side"]);
+  });
+
+  it("leaves another project's history alone", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [tab(1, "/w/deck", { panes: [pane(1)] })],
+        workspaceHistoryPaths: ["/w/deck", "/home/me/scratch"],
+      }),
+    );
+
+    const live = view.stream.find((group) => group.orderKey === "/w/deck/.git");
+    expect(live?.historyPaths).toEqual(["/w/deck"]);
+    // The unrelated folder is still its own remembered cluster.
+    expect(view.stream.map((group) => group.orderKey)).toContain("plain:/home/me/scratch");
+  });
+
+  it("gives a remembered cluster no tab to close", () => {
+    const view = buildAgentRail(railInput({ tabs: [], workspaceHistoryPaths: ["/w/deck"] }));
+
+    expect(view.stream[0].rows).toEqual([]);
+    expect(view.stream[0].tabIndexes).toEqual([]);
+    expect(view.stream[0].historyPaths).toEqual(["/w/deck"]);
+  });
+});
+
+describe("buildAgentRail focused pane (DL-27.22)", () => {
+  it("marks the focused pane of the active tab and nothing else", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", {
+            panes: [pane(1, { focused: false }), pane(2, { focused: true })],
+          }),
+          // A second tab has a focused pane of its own — every tab does — and
+          // reporting it would light one row per tab.
+          tab(2, "/w/deck", { panes: [pane(3, { focused: true })] }),
+        ],
+        activeIndex: 0,
+      }),
+    );
+
+    const focused = streamRows(view).flatMap((row) =>
+      row.panes.filter((p) => p.focused).map((p) => p.paneId),
+    );
+    expect(focused).toEqual([2]);
+  });
+
+  it("marks nothing while no tab is active", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [tab(1, "/w/deck", { panes: [pane(1, { focused: true })] })],
+        activeIndex: -1,
+      }),
+    );
+
+    expect(
+      streamRows(view)
+        .flatMap((row) => row.panes)
+        .map((p) => p.focused),
+    ).toEqual([false]);
+  });
+
+  it("marks nothing for a pane view that predates the field", () => {
+    const view = buildAgentRail(
+      railInput({ tabs: [tab(1, "/w/deck", { panes: [pane(1)] })], activeIndex: 0 }),
+    );
+
+    expect(streamRows(view)[0].panes[0].focused).toBe(false);
   });
 });

@@ -131,6 +131,7 @@ export function agentRailNavigationSpecimen({
     <AgentRail
       onSelectTab={onSelectTab}
       onCloseTab={NOOP}
+      onClosePane={NOOP}
       onFocusPane={onFocusPane}
       showAgentPresence
       fileController={fileControllerFixture}

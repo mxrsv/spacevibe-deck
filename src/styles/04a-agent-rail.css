@@ -327,6 +327,26 @@
   outline-offset: -2px;
 }
 
+/* A LIVE header's close (DL-27.21, close model 2026-08-22, table row 4). Same
+   box, same track, same reveal — the only difference is what the press means:
+   here it closes every tab of the project first and forgets the folder second.
+
+   The track is already occupied on a live header, by the caret, so the two
+   trade the slot exactly the way the ROWS trade theirs: DL-27.5's close swaps
+   in over the agent glyph, and that same 17px column is what the caret sits on
+   (the header's grid is the rows' grid restated). Nothing reflows, and the
+   header keeps one trailing slot rather than growing a fourth track that would
+   pull every control off the rows' own columns.
+
+   The caret loses even the collapsed exemption while this is up: `:has` is
+   scoped to the header, so a remembered cluster — which has no caret at all —
+   is untouched, and a live one only gives it up under the pointer or a
+   keyboard focus that is already on the close. */
+.asr-cluster:hover .asr-cluster__head:has(.asr-cluster__remove--live) .asr-cluster__caret,
+.asr-cluster__head:has(.asr-cluster__remove--live:focus-visible) .asr-cluster__caret {
+  opacity: 0;
+}
+
 .asr-cluster__name {
   min-width: 0;
   flex: 1;
@@ -739,4 +759,32 @@
 .asr-row__mark[data-state="done"]::before,
 .asr-row__mark[data-state="idle"]::before {
   background: color-mix(in srgb, var(--tone) 45%, transparent);
+}
+
+/* ── Cluster reorder (DL-27.20) ──────────────────────────────────────────
+   The rail's project clusters can be dragged into the order the user wants
+   them in. Nothing is added to the header at rest: the drag is announced by
+   the ghost and the insertion line while it is happening, and by nothing at
+   all when it is not — the owner has stripped resting chrome off this rail
+   four times, and a permanently visible grip would be the fifth thing to
+   remove.
+
+   The ghost and the line themselves are NOT here. They are `document.body`
+   children, they share the shell `.pane-drag-ghost` already declares, and this
+   partial loads BEFORE `08-popovers.css` — so a `.rail-drag-ghost` written
+   here would lose every shared declaration to its own base class. They live
+   beside their siblings, in `08-popovers.css`. What stays here is the one rule
+   that is about the rail's own elements.
+
+   Take the clusters out of hit-testing for the length of the drag, the way
+   `.is-pane-dragging .pane` already does for panes. Hit testing here is rect
+   math, so nothing the drag needs is lost — and two things are gained. The
+   body's `grabbing` cursor actually shows, where `.asr-cluster__toggle`'s own
+   `cursor: pointer` otherwise beats it for every descendant of the header the
+   pointer spends the drag over; and the rows stop lighting their hover wash
+   under a ghost that is passing over them rather than pointing at them. It is
+   restored before the release's `click` is dispatched — `pointerup` takes the
+   class off first — so the click swallow still has a click to eat. */
+.is-rail-dragging .asr-cluster {
+  pointer-events: none;
 }

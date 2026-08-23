@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaneProcessInfo } from "../lib/process-info";
 import { createMemoryPtyClient } from "./pty-client";
-import { agentQuickPickerOpen } from "../chrome/events";
+import { agentQuickPickerOpen, boardOpen } from "../chrome/events";
 import type { TabManager } from "./tab-manager";
 import { activeTabIndex, tabViews } from "./tabs-store";
 import { settings } from "../settings/settings-store";
@@ -85,6 +85,12 @@ beforeEach(() => {
 // with no visible connection to the cause.
 afterEach(() => {
   agentQuickPickerOpen.value = false;
+  // `disposeTab` raises this whenever a window is left with no surface (close
+  // model, 2026-08-22, table row 3), and this file closes tabs down to zero in
+  // several tests — so it is a global reset for exactly the reason
+  // `agentQuickPickerOpen` above is: a leaked `true` ranks every later test's
+  // `openOverlayRanks()` at "board" and blocks actions with no visible cause.
+  boardOpen.value = false;
 });
 
 describe("createTabManager workspace identity", () => {
@@ -260,6 +266,9 @@ describe("createTabManager workspace identity", () => {
           // The tracker's gate opened and this pane has produced a run, which
           // is what separates the rail's `done` from its `idle`.
           hasRun: true,
+          // `splitActive` left pane 2 active, so the agent pane is NOT the
+          // one holding this tab's focus (DL-27.22).
+          focused: false,
         },
         // Polled and recognised as a shell: no agent identity, and the
         // tracker's gate never opened for it, so nothing latched, the phase is
@@ -271,6 +280,7 @@ describe("createTabManager workspace identity", () => {
           phase: "unknown",
           changedAt: 0,
           hasRun: false,
+          focused: true,
         },
       ]);
       expect(tabViews.value[0].panes?.[0].changedAt).toBeGreaterThan(0);
@@ -438,10 +448,14 @@ describe("createTabManager close routing", () => {
     expect(tabViews.value).toHaveLength(1);
   });
 
-  it("closing the last tab closes this window instead of quitting the app", async () => {
-    // Behaviour change (spec §9.5): every window is a peer, so the last tab
-    // closes THIS window and Rust decides whether that was also the last
-    // window and the process should exit.
+  it("closing the last tab keeps the window and raises the Open board", async () => {
+    // Close model (2026-08-22) table row 3, reversing spec §9.5's "the last
+    // tab closes THIS window": the window stays, so the rail keeps the
+    // projects you were just in, and the stage shows the board.
+    //
+    // Closing the last piece of WORK is no longer the same gesture as closing
+    // the place you do it in; the window is still closable by its own
+    // controls.
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, null, "zsh", "idle-shell", null)],
     ]);
@@ -449,10 +463,13 @@ describe("createTabManager close routing", () => {
     const { tm, pty } = setup({ infos, deps: { closeWindow } });
     await tm.materialize({ layout: null, cwds: [] });
     const quitSpy = vi.spyOn(pty, "confirmQuit");
+    boardOpen.value = false;
 
     await tm.closeTab(0);
 
-    expect(closeWindow).toHaveBeenCalledTimes(1);
+    expect(closeWindow).not.toHaveBeenCalled();
     expect(quitSpy).not.toHaveBeenCalled();
+    expect(tabViews.value).toHaveLength(0);
+    expect(boardOpen.value).toBe(true);
   });
 });

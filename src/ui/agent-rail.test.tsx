@@ -55,6 +55,7 @@ import { WORKSPACES_VERSION } from "../lib/workspace-recents";
 import { sessionArchive } from "../terminal/session-journal";
 import { paneTails } from "../terminal/session-tail-store";
 import { browserSurfaceActive } from "../browser/browser-store";
+import { settings, updateSettings } from "../settings/settings-store";
 
 const fileClient: FileClient = {
   listDir: async () => [],
@@ -134,6 +135,7 @@ function mount(props: Partial<Parameters<typeof AgentRail>[0]> = {}): void {
       <AgentRail
         onSelectTab={NOOP}
         onCloseTab={NOOP}
+        onClosePane={NOOP}
         onFocusPane={NOOP}
         fileController={fileController}
         showAgentPresence
@@ -156,6 +158,7 @@ function mountSidebarLayout(): void {
         <AgentRail
           onSelectTab={NOOP}
           onCloseTab={NOOP}
+          onClosePane={NOOP}
           onFocusPane={NOOP}
           fileController={fileController}
           showAgentPresence
@@ -306,9 +309,12 @@ describe("AgentRail click contract", () => {
 
     // A multi-agent tab lists its panes as leaf rows (DL-27.13); each leaf is
     // the chip's contract at row width — press to focus that exact pane.
+    // The press lands on the leaf's HIT LAYER since the close model gave the
+    // row its own ✕ (2026-08-22): the leaf itself is a container now, the
+    // same DL-27.1 shape `.asr-row--tab` has always had.
     const leaves = host.querySelectorAll<HTMLElement>(".asr-leaf");
     expect(leaves).toHaveLength(2);
-    click(leaves[1]);
+    click(leaves[1].querySelector(".asr-leaf__hit"));
     expect(onFocusPane).toHaveBeenCalledWith(0, 12);
   });
 
@@ -334,18 +340,59 @@ describe("AgentRail click contract", () => {
     expect(host.querySelector("button.asr-disclose")).toBeNull();
   });
 
-  it("closes only the row's own tab from the hover action", async () => {
+  it("closes only that row's own agent from the hover action", async () => {
+    // Close model (2026-08-22) table row 1: a row carrying ONE agent is an
+    // agent row, and its ✕ closes that PANE — the same rule ⌘W follows. The
+    // tab going with it is row 2's consequence, decided host-side by the tab's
+    // real pane count, not by this control.
     const onCloseTab = vi.fn();
+    const onClosePane = vi.fn();
     tabViews.value = [
       tab({ key: 1, panes: [pane({ paneId: 11, changedAt: 9_000 })] }),
       tab({ key: 2, panes: [pane({ paneId: 21, changedAt: 1_000 })] }),
     ];
-    mount({ onCloseTab });
+    mount({ onCloseTab, onClosePane });
     await settle();
 
     click(host.querySelector('[data-key="2"] .asr-row__action--close'));
-    expect(onCloseTab).toHaveBeenCalledWith(1);
-    expect(onCloseTab).toHaveBeenCalledTimes(1);
+    expect(onClosePane).toHaveBeenCalledWith(1, 21);
+    expect(onClosePane).toHaveBeenCalledTimes(1);
+    expect(onCloseTab).not.toHaveBeenCalled();
+  });
+
+  it("closes the TAB from a row that carries no agent", async () => {
+    // A plain shell tab has no pane to name — `panes` holds agent panes only
+    // (spec §9) — so its ✕ stays the tab's own.
+    const onCloseTab = vi.fn();
+    const onClosePane = vi.fn();
+    tabViews.value = [tab({ key: 1, panes: [] })];
+    mount({ onCloseTab, onClosePane });
+    await settle();
+
+    click(host.querySelector('[data-key="1"] .asr-row__action--close'));
+    expect(onCloseTab).toHaveBeenCalledWith(0);
+    expect(onClosePane).not.toHaveBeenCalled();
+  });
+
+  it("gives every leaf of a multi-agent tab its own close", async () => {
+    // Table row 1 again, on the shape that had no close at all before: with
+    // the pane tree hidden a multi-agent tab draws no parent row, so until the
+    // close model the rail could not close one of its agents.
+    const onClosePane = vi.fn();
+    tabViews.value = [
+      tab({
+        key: 4,
+        panes: [pane({ paneId: 41, agent: "claude" }), pane({ paneId: 42, agent: "codex" })],
+      }),
+    ];
+    mount({ onClosePane });
+    await settle();
+
+    const closes = host.querySelectorAll<HTMLElement>(".asr-leaf .asr-row__action--close");
+    expect(closes).toHaveLength(2);
+    click(closes[1]);
+    expect(onClosePane).toHaveBeenCalledWith(0, 42);
+    expect(onClosePane).toHaveBeenCalledTimes(1);
   });
 
   it("has no options control left on the row", async () => {
@@ -390,7 +437,9 @@ describe("AgentRail pane tree", () => {
   it("renders an unnamed multi-agent tab headless: no parent row at all", async () => {
     // With the count label gone the parent row held only its trailing meta,
     // and the owner ruled the empty stretch out (DL-27.13): the tree alone is
-    // the tab, and the rail offers no close for it — the strip's ✕ and ⌘W do.
+    // the tab. There is still no close for the TAB here — ⌘⇧W is what closes
+    // a whole agent group (close model, table row 5) — but each leaf carries
+    // its own agent's ✕ since 2026-08-22.
     tabViews.value = [
       tab({
         panes: [pane({ paneId: 11, agent: "claude" }), pane({ paneId: 12, agent: "codex" })],
@@ -402,8 +451,10 @@ describe("AgentRail pane tree", () => {
     const item = host.querySelector<HTMLElement>(".asr-item");
     expect(item?.dataset.headless).toBe("true");
     expect(item?.querySelector(".asr-row--tab")).toBeNull();
-    expect(item?.querySelector(".asr-row__action--close")).toBeNull();
     expect(item?.querySelectorAll(":scope > .asr-leaf")).toHaveLength(2);
+    // Every close in this item belongs to a LEAF; none is the tab's.
+    expect(item?.querySelectorAll(".asr-row__action--close")).toHaveLength(2);
+    expect(item?.querySelectorAll(".asr-leaf .asr-row__action--close")).toHaveLength(2);
   });
 
   it("gives each flat leaf its own turn and its own status dot", async () => {
@@ -845,6 +896,83 @@ describe("AgentRail remembered projects (2026-08-20)", () => {
   });
 });
 
+describe("AgentRail project close (close model, 2026-08-22, table row 4)", () => {
+  beforeEach(() => {
+    configureRepositoryClient({
+      scan: async (path: string) =>
+        path.startsWith("/r/") ? SCAN : { kind: "plain", reason: "not a git repository" },
+    });
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [
+        { path: "/r/main", lastOpenedAt: 3 },
+        { path: "/r/side", lastOpenedAt: 2 },
+        { path: "/w/other", lastOpenedAt: 1 },
+      ],
+    };
+  });
+
+  it("closes every tab of the project, secondary worktrees included", async () => {
+    // One repository, two checkouts, three tabs — the cluster folds them and
+    // the header's ✕ is the whole project's, not the primary worktree's.
+    tabViews.value = [
+      tab({ key: 1, workspacePath: "/r/main", panes: [pane({ paneId: 11 })] }),
+      tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] }),
+      tab({ key: 3, workspacePath: "/r/main", panes: [pane({ paneId: 31 })] }),
+    ];
+    const onCloseProject = vi.fn();
+    mount({ onCloseProject });
+    await settle();
+
+    const removes = host.querySelectorAll<HTMLElement>("button.asr-cluster__remove--live");
+    expect(removes).toHaveLength(1);
+    click(removes[0]);
+    expect(onCloseProject).toHaveBeenCalledTimes(1);
+    expect(onCloseProject.mock.calls[0][0]).toEqual([0, 1, 2]);
+  });
+
+  it("hands over the history entries the project would otherwise re-derive from", async () => {
+    // The second half of the act: closing the tabs alone would demote this
+    // cluster to the remembered tier and leave the header standing.
+    tabViews.value = [tab({ key: 1, workspacePath: "/r/main", panes: [pane({ paneId: 11 })] })];
+    const onCloseProject = vi.fn();
+    mount({ onCloseProject });
+    await settle();
+
+    click(host.querySelector("button.asr-cluster__remove--live"));
+    // `/w/other` is a DIFFERENT project's history and stays untouched.
+    expect(onCloseProject.mock.calls[0][1]).toEqual(["/r/main", "/r/side"]);
+  });
+
+  it("omits the live close when nothing wires it", async () => {
+    mount({ onRemoveWorkspace: NOOP });
+    await settle();
+
+    // The remembered header keeps its own; the live one carries none.
+    expect(host.querySelector(".asr-cluster__remove--live")).toBeNull();
+    expect(host.querySelectorAll("button.asr-cluster__remove")).toHaveLength(1);
+  });
+
+  it("gives the live close the caret's own slot (DL-27.21)", () => {
+    // The header's trailing 17px track is the rows' glyph column restated, and
+    // the close swaps into it exactly as DL-27.5's row close swaps into the
+    // glyph — no fourth track, so nothing moves off the rows' own columns.
+    const css = readFileSync("src/styles/04a-agent-rail.css", "utf8");
+    expect(css).toContain(
+      ".asr-cluster:hover .asr-cluster__head:has(.asr-cluster__remove--live) .asr-cluster__caret,",
+    );
+    expect(css).toContain(
+      ".asr-cluster__head:has(.asr-cluster__remove--live:focus-visible) .asr-cluster__caret {",
+    );
+    // Still three tracks.
+    const head = css.slice(
+      css.indexOf(".asr-cluster__head {"),
+      css.indexOf(".asr-cluster__toggle {"),
+    );
+    expect(head).toContain("grid-template-columns: minmax(0, 1fr) 17px 17px");
+  });
+});
+
 describe("AgentRail state wording (DL-27.2)", () => {
   it("puts status first and the agent glyph last in every agent row", async () => {
     tabViews.value = [
@@ -858,8 +986,20 @@ describe("AgentRail state wording (DL-27.2)", () => {
     const leaves = [...host.querySelectorAll<HTMLElement>(".asr-leaf")];
     expect(leaves).toHaveLength(2);
     for (const leaf of leaves) {
-      expect(leaf.firstElementChild?.classList.contains("asr-row__mark")).toBe(true);
-      expect(leaf.lastElementChild?.classList.contains("asr-leaf__logo")).toBe(true);
+      // The hit layer is first in DOM order and paints under everything
+      // (DL-27.1); the READING order the rule is about starts after it.
+      expect(leaf.firstElementChild?.classList.contains("asr-leaf__hit")).toBe(true);
+      const drawn = [...leaf.children].filter(
+        (child) => !child.classList.contains("asr-leaf__hit"),
+      );
+      expect(drawn[0].classList.contains("asr-row__mark")).toBe(true);
+      // The glyph still ends the row. The close that follows it in the DOM is
+      // absolutely positioned OVER that same slot (DL-27.5's swap), so it adds
+      // nothing to the line.
+      // Index math, not `Array.at`: this repo's `lib` is ES2020 and `.at`
+      // arrived in ES2022, so it is a typecheck error rather than a runtime one.
+      expect(drawn[drawn.length - 2].classList.contains("asr-leaf__logo")).toBe(true);
+      expect(drawn[drawn.length - 1].classList.contains("asr-leaf__actions")).toBe(true);
     }
 
     tabViews.value = [tab()];
@@ -1071,5 +1211,184 @@ describe("AgentRail shell contract", () => {
     // the rail silently dropped them all. These are the rail's own.
     expect(stylesheet).toContain('[data-sidebar-collapsed="true"] .asr-rail');
     expect(stylesheet).toContain('[data-sidebar-collapsed="true"] .asr-cluster__head');
+  });
+});
+
+describe("AgentRail cluster reorder (DL-27.20)", () => {
+  const CLUSTER_HEIGHT = 60;
+
+  /** jsdom lays nothing out, so every rect the drag reads is declared. */
+  function stubRect(element: Element, top: number, height: number): void {
+    element.getBoundingClientRect = () =>
+      ({
+        x: 0,
+        y: top,
+        top,
+        bottom: top + height,
+        left: 0,
+        right: 240,
+        width: 240,
+        height,
+        toJSON: () => ({}),
+      }) as DOMRect;
+  }
+
+  function pointer(type: string, y: number): PointerEvent {
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      clientX: 20,
+      clientY: y,
+      button: 0,
+    }) as unknown as PointerEvent;
+    Object.defineProperty(event, "pointerId", { value: 1 });
+    return event;
+  }
+
+  /**
+   * The controller measures and paints once per animation frame, so a drag has
+   * to be given one before it knows which slot it is over. The REAL
+   * `requestAnimationFrame` is used rather than a stub: Preact's own signal
+   * effects ride the same clock in this file, and replacing it would stall
+   * them. The controller's callback was queued first, so it has already run by
+   * the time this one resolves.
+   */
+  async function nextFrame(): Promise<void> {
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+    });
+  }
+
+  /** The list's own rect, kept clear of the auto-scroll band at both edges. */
+  function stubGeometry(): void {
+    stubRect(host.querySelector<HTMLElement>(".asr-rail__list")!, -200, 1000);
+    for (const [index, cluster] of [
+      ...host.querySelectorAll<HTMLElement>(".asr-cluster"),
+    ].entries()) {
+      stubRect(cluster, index * CLUSTER_HEIGHT, CLUSTER_HEIGHT);
+    }
+  }
+
+  beforeEach(() => {
+    // A second project git does not know, so the rail has two clusters to
+    // reorder rather than one repository folding both worktrees.
+    configureRepositoryClient({
+      scan: async (path) =>
+        path.startsWith("/r/") ? SCAN : { kind: "plain", reason: "no git here" },
+    });
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [
+        { path: "/r/main", lastOpenedAt: 2 },
+        { path: "/other", lastOpenedAt: 1 },
+      ],
+    };
+    updateSettings({ railOrder: [] });
+  });
+
+  afterEach(() => {
+    updateSettings({ railOrder: [] });
+  });
+
+  it("writes the dragged project's order key once, on the drop", async () => {
+    mount();
+    await settle();
+
+    expect(
+      [...host.querySelectorAll<HTMLElement>(".asr-cluster")].map(
+        (cluster) => cluster.dataset.orderKey,
+      ),
+    ).toEqual(["/r/.git", "plain:/other"]);
+    stubGeometry();
+
+    const heads = host.querySelectorAll<HTMLElement>(".asr-cluster__head");
+    act(() => {
+      heads[1].dispatchEvent(pointer("pointerdown", 90));
+      // Into the top half of the first cluster: the second project is dropped
+      // above the first.
+      window.dispatchEvent(pointer("pointermove", 20));
+    });
+    await nextFrame();
+    act(() => {
+      window.dispatchEvent(pointer("pointerup", 20));
+    });
+
+    // Only the dropped cluster is pinned — nothing sits above it — and the
+    // project below keeps today's order (spec §6).
+    expect(settings.value.railOrder).toEqual(["plain:/other"]);
+    // What that list then DOES to the stream is asserted where it is decided,
+    // in `rail-order.test.ts` and `agent-rail-model.test.ts` — this test owns
+    // the write, and the write happens exactly once per drop.
+  });
+
+  it("writes nothing when the drop lands where the cluster started", async () => {
+    mount();
+    await settle();
+
+    stubGeometry();
+
+    const heads = host.querySelectorAll<HTMLElement>(".asr-cluster__head");
+    act(() => {
+      heads[1].dispatchEvent(pointer("pointerdown", 90));
+      window.dispatchEvent(pointer("pointermove", 80));
+    });
+    await nextFrame();
+    act(() => {
+      window.dispatchEvent(pointer("pointerup", 80));
+    });
+
+    expect(settings.value.railOrder).toEqual([]);
+  });
+});
+
+describe("AgentRail focused pane (DL-27.22)", () => {
+  it("washes the leaf whose pane holds the keyboard and marks it aria-current", async () => {
+    tabViews.value = [
+      tab({
+        panes: [
+          pane({ paneId: 11, agent: "claude", focused: false }),
+          pane({ paneId: 12, agent: "codex", focused: true }),
+        ],
+      }),
+    ];
+    activeTabIndex.value = 0;
+    mount();
+    await settle();
+
+    const leaves = host.querySelectorAll<HTMLElement>(".asr-leaf");
+    expect(leaves).toHaveLength(2);
+    expect(leaves[0].dataset.focused).toBe("false");
+    expect(leaves[1].dataset.focused).toBe("true");
+    expect(leaves[0].querySelector(".asr-leaf__hit")?.getAttribute("aria-current")).toBeNull();
+    expect(leaves[1].querySelector(".asr-leaf__hit")?.getAttribute("aria-current")).toBe("true");
+  });
+
+  it("marks no leaf of a tab that is not the active one", async () => {
+    tabViews.value = [
+      tab({
+        key: 1,
+        panes: [pane({ paneId: 11, agent: "claude" }), pane({ paneId: 12, agent: "codex" })],
+      }),
+      tab({
+        key: 2,
+        panes: [
+          pane({ paneId: 21, agent: "claude", focused: true }),
+          pane({ paneId: 22, agent: "codex" }),
+        ],
+      }),
+    ];
+    // Tab 1 is on the stage; tab 2 still has a focused pane of its own, and
+    // lighting it would put two active rows in one rail.
+    activeTabIndex.value = 0;
+    mount();
+    await settle();
+
+    const leaves = [...host.querySelectorAll<HTMLElement>(".asr-leaf")];
+    // Both tabs are drawn — otherwise the count below would pass vacuously.
+    expect(leaves).toHaveLength(4);
+    expect(leaves.filter((leaf) => leaf.dataset.focused === "true")).toHaveLength(0);
   });
 });

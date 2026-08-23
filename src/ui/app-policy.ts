@@ -4,6 +4,7 @@ import type { BootMode } from "../terminal/transfer-client";
 interface BrowserPanelObscuredState {
   readonly overlayCoversPane: boolean;
   readonly agentQuickPickerOpen: boolean;
+  readonly usageConsentOpen: boolean;
   readonly promptsOpen: boolean;
   readonly persistErrorVisible: boolean;
   readonly settingsLoadError: boolean;
@@ -14,6 +15,7 @@ export function browserPanelObscured(state: BrowserPanelObscuredState): boolean 
   return (
     state.overlayCoversPane ||
     state.agentQuickPickerOpen ||
+    state.usageConsentOpen ||
     state.promptsOpen ||
     state.persistErrorVisible ||
     state.settingsLoadError
@@ -102,9 +104,7 @@ export function liveRailAvailable(liveTabCount: number): boolean {
  * A window with no live work temporarily yields the sidebar's space to the
  * start surface. The persisted collapse choice is read, never rewritten.
  */
-export function sidebarEffectivelyCollapsed(
-  state: SidebarVisibilityState,
-): boolean {
+export function sidebarEffectivelyCollapsed(state: SidebarVisibilityState): boolean {
   if (!liveRailAvailable(state.liveTabCount)) {
     return true;
   }
@@ -257,4 +257,41 @@ export function workspaceOrphanedByClose(
     return null;
   }
   return remaining.some((tab) => tab.workspacePath === workspacePath) ? null : workspacePath;
+}
+
+/**
+ * The same rule over SEVERAL tabs closing at once — the rail's project-header
+ * ✕ (close model, 2026-08-22, table row 4), which closes every tab of a
+ * project in one act.
+ *
+ * Not `closingIndexes.map(workspaceOrphanedByClose)`: that asks "does this
+ * workspace survive the loss of ONE tab", and every tab of the project is
+ * going, so a project with two tabs open would answer "yes, the sibling
+ * survives" twice and leave both file workspaces stranded. The survivor set is
+ * computed once, against everything that is closing.
+ *
+ * Keeps the singular's two carve-outs: a tab with no workspace contributes
+ * nothing, and an empty remainder returns nothing at all — the window's LAST
+ * terminal tab closing is `TabManager`'s "last surface, not last tab"
+ * territory (spec §7), and since the close model that same branch is what
+ * keeps the window standing on the Open board.
+ */
+export function workspacesOrphanedByClose(
+  tabs: readonly { readonly workspacePath: string | null }[],
+  closingIndexes: readonly number[],
+): readonly string[] {
+  const closing = new Set(closingIndexes);
+  const remaining = tabs.filter((_, index) => !closing.has(index));
+  if (remaining.length === 0) {
+    return [];
+  }
+  const survivors = new Set(remaining.map((tab) => tab.workspacePath));
+  const orphaned = new Set<string>();
+  for (const index of closing) {
+    const workspacePath = tabs[index]?.workspacePath ?? null;
+    if (workspacePath !== null && !survivors.has(workspacePath)) {
+      orphaned.add(workspacePath);
+    }
+  }
+  return [...orphaned];
 }
