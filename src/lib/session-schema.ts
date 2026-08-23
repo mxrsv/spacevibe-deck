@@ -141,8 +141,15 @@ function clampActiveTabIndex(raw: unknown, tabCount: number): number {
   return Math.min(Math.max(requested, 0), tabCount - 1);
 }
 
-/** Invalid envelope → null; invalid tabs/files are dropped one by one. */
-export function validateWindowRecord(raw: unknown): WindowRecord | null {
+/**
+ * The envelope both journal records share: an object carrying a finite
+ * `savedAt` and an array of tabs, capped and with invalid tabs dropped one by
+ * one. Written once so the cap and the drop rule — the two guarantees this
+ * module exists for — cannot diverge between the two callers.
+ */
+function validateTabEnvelope(
+  raw: unknown,
+): { source: Record<string, unknown>; savedAt: number; tabs: SessionTab[] } | null {
   if (typeof raw !== "object" || raw === null) {
     return null;
   }
@@ -157,12 +164,22 @@ export function validateWindowRecord(raw: unknown): WindowRecord | null {
     .slice(0, MAX_JOURNAL_TABS)
     .map(validateSessionTab)
     .filter((tab): tab is SessionTab => tab !== null);
+  return { source, savedAt: source.savedAt, tabs };
+}
+
+/** Invalid envelope → null; invalid tabs/files are dropped one by one. */
+export function validateWindowRecord(raw: unknown): WindowRecord | null {
+  const envelope = validateTabEnvelope(raw);
+  if (envelope === null) {
+    return null;
+  }
+  const { source, savedAt, tabs } = envelope;
   const filesRaw = Array.isArray(source.files) ? source.files : [];
   const files = filesRaw
     .map(validateSessionFileSurface)
     .filter((surface): surface is SessionFileSurface => surface !== null);
   return {
-    savedAt: source.savedAt,
+    savedAt,
     activeTabIndex: clampActiveTabIndex(source.activeTabIndex, tabs.length),
     tabs,
     files,
@@ -171,21 +188,8 @@ export function validateWindowRecord(raw: unknown): WindowRecord | null {
 }
 
 function validateArchiveEntry(raw: unknown): ArchiveEntry | null {
-  if (typeof raw !== "object" || raw === null) {
-    return null;
-  }
-  const source = raw as Record<string, unknown>;
-  if (typeof source.savedAt !== "number" || !Number.isFinite(source.savedAt)) {
-    return null;
-  }
-  if (!Array.isArray(source.tabs)) {
-    return null;
-  }
-  const tabs = source.tabs
-    .slice(0, MAX_JOURNAL_TABS)
-    .map(validateSessionTab)
-    .filter((tab): tab is SessionTab => tab !== null);
-  return { savedAt: source.savedAt, tabs };
+  const envelope = validateTabEnvelope(raw);
+  return envelope === null ? null : { savedAt: envelope.savedAt, tabs: envelope.tabs };
 }
 
 /** Invalid envelope → empty archive; invalid entries are dropped one by one.
