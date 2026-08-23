@@ -1,6 +1,7 @@
 import { ArrowLeft, FolderOpen } from "@phosphor-icons/react";
 import { DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
-import { folderName, type RecentWorkspace } from "../lib/workspace-recents";
+import { type RecentWorkspace } from "../lib/workspace-recents";
+import { workspaceLabel } from "../lib/workspace-label";
 import { tildify } from "../lib/process-info";
 import type { WorktreeAddErrorCode } from "../host/worktree-host";
 
@@ -102,7 +103,7 @@ export function OpenBoardWorktreeForm({
               <option value="">Select a repository…</option>
               {recents.map((recent) => (
                 <option key={recent.path} value={recent.path}>
-                  {folderName(recent.path)} —{" "}
+                  {workspaceLabel(recent.path)} —{" "}
                   {homeDir === "" ? recent.path : tildify(recent.path, homeDir)}
                 </option>
               ))}

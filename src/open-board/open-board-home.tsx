@@ -8,7 +8,8 @@ import {
 import { useSignal } from "@preact/signals";
 import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { GithubStarButton } from "../ui/controls/github-star-button";
-import { folderName, formatRelativeTime } from "../lib/workspace-recents";
+import { formatRelativeTime } from "../lib/workspace-recents";
+import { workspaceLabel } from "../lib/workspace-label";
 import type { RecentWorkspace } from "../lib/workspace-recents";
 import { tildify } from "../lib/process-info";
 import { logoDataUrl } from "../settings/logo-store";
@@ -82,7 +83,7 @@ export function OpenBoardHome({
   /** One recent: separate sibling buttons, never a button nested in a button. */
   function row(recent: RecentWorkspace, gone: boolean) {
     const combo = describeCombo(recent);
-    const name = folderName(recent.path);
+    const name = workspaceLabel(recent.path);
     const alreadyOpen = openWorkspacePaths.has(recent.path);
     return (
       <li key={recent.path} class={`row ${gone ? "is-missing" : ""}`}>
