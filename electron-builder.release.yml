@@ -2,8 +2,9 @@
 #
 # This is the third electron-builder config in the repo and the only one that
 # produces a release. `electron-builder.yml` (local, unsigned, `dir`) and
-# `electron-builder.gate-m.yml` (the Gate M packaged run) stay exactly as they
-# are — their headers say they are not a release path, and that stays true.
+# `electron-builder.monaco-smoke.yml` (the packaged Monaco regression smoke)
+# stay exactly as they are — their headers say they are not a release path,
+# and that stays true.
 #
 # Notarization credentials arrive as environment variables, never as config:
 # app-builder-lib reads APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID

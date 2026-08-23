@@ -1,7 +1,7 @@
 /* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 /**
- * Gate M harness (file-explorer plan §5.0.3) — the page a PACKAGED build
- * proves Monaco on, before any explorer surface exists.
+ * Packaged Monaco smoke harness — the page a PACKAGED build uses to prove
+ * Monaco, its worker and its assets still survive electron-builder.
  *
  * It mounts the real pieces, not doubles: the shipping `FileEditor` against a
  * one-file `createFileSurfaceController()` backed by the real file host, and
@@ -9,10 +9,11 @@
  * Named focus controls move focus to Monaco and to xterm so the packaged
  * verifier can type into both and assert which surface received each marker.
  *
- * This is a permanent verification artifact referenced by
- * `electron:package:gate-m` / `electron:verify:gate-m`, not a product route:
- * only `vite.gate-m.config.mjs` builds this graph, only the `DECK_GATE_M=1`
- * branch in `electron/main.ts` loads it, and `scripts/gate-m-entry.test.ts`
+ * This is a permanent regression artifact referenced by
+ * `electron:package:monaco-smoke` / `electron:verify:monaco-smoke`, not a product route:
+ * only `vite.monaco-smoke.config.mjs` builds this graph, only the
+ * `DECK_MONACO_SMOKE=1` branch in `electron/main.ts` loads it, and
+ * `scripts/monaco-smoke-entry.test.ts`
  * proves the application renderer never imports it.
  */
 import { render } from "preact";
@@ -20,8 +21,9 @@ import { useEffect, useRef } from "preact/hooks";
 import "@xterm/xterm/css/xterm.css";
 import "../styles.css";
 import { initializeDesktopEnvironmentFromBackend } from "../lib/platform";
+import { parentDirectory } from "../lib/path-name";
 import { initSettings, settings } from "../settings/settings-store";
-import { defaultPtyClient } from "../terminal/pty-client";
+import { defaultPtyClient, type PtyClient } from "../terminal/pty-client";
 import { createTerminalManager } from "../terminal/terminal-manager";
 import type { UnlistenFn } from "../host/bridge";
 import {
@@ -31,18 +33,44 @@ import {
 } from "./file-surface-controller";
 import { FileEditor } from "./ui/file-editor";
 
+interface MonacoSmokeState {
+  readonly terminalInput: string;
+  readonly terminalOutput: string;
+}
+
+type MonacoSmokeGlobal = typeof globalThis & {
+  __deckMonacoSmoke?: MonacoSmokeState;
+};
+
+const EMPTY_SMOKE_STATE: MonacoSmokeState = {
+  terminalInput: "",
+  terminalOutput: "",
+};
+
+function smokeState(): MonacoSmokeState {
+  return (globalThis as MonacoSmokeGlobal).__deckMonacoSmoke ?? EMPTY_SMOKE_STATE;
+}
+
+function updateSmokeState(patch: Partial<MonacoSmokeState>): void {
+  const target = globalThis as MonacoSmokeGlobal;
+  target.__deckMonacoSmoke = { ...smokeState(), ...patch };
+}
+
+const smokePtyClient: PtyClient = {
+  ...defaultPtyClient,
+  writePty(id, data) {
+    updateSmokeState({ terminalInput: smokeState().terminalInput + data });
+    return defaultPtyClient.writePty(id, data);
+  },
+};
+
 /** The fixture the launcher passed; the harness edits exactly this file. */
 function fixturePath(): string {
   const value = new URLSearchParams(window.location.search).get("file") ?? "";
   if (value === "") {
-    throw new Error("Gate M needs ?file= — launch through the verifier");
+    throw new Error("Packaged Monaco smoke needs ?file= — launch through the verifier");
   }
   return value;
-}
-
-function parentDirectory(path: string): string {
-  const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  return cut <= 0 ? path : path.slice(0, cut);
 }
 
 interface HarnessProps {
@@ -61,7 +89,8 @@ function Harness(props: HarnessProps) {
     if (container === null) {
       return;
     }
-    const manager = createTerminalManager(container, { onLayoutChange() {} });
+    (globalThis as MonacoSmokeGlobal).__deckMonacoSmoke = EMPTY_SMOKE_STATE;
+    const manager = createTerminalManager(container, { onLayoutChange() {} }, smokePtyClient);
     managerRef.current = manager;
     const unlistens: UnlistenFn[] = [];
     let cancelled = false;
@@ -69,7 +98,10 @@ function Harness(props: HarnessProps) {
       // The real event routes, exactly as TabManager wires them — output and
       // exit reach the manager or the packaged proof proves nothing.
       unlistens.push(
-        await defaultPtyClient.listenOutput((id, data) => manager.handleOutput(id, data)),
+        await defaultPtyClient.listenOutput((id, data) => {
+          updateSmokeState({ terminalOutput: smokeState().terminalOutput + data });
+          manager.handleOutput(id, data);
+        }),
         await defaultPtyClient.listenExit((id) => manager.handleExit(id)),
       );
       if (cancelled) {
@@ -77,9 +109,9 @@ function Harness(props: HarnessProps) {
       }
       await manager.initFresh(props.workspace);
       manager.show({ focus: false });
-      console.log("DECK_GATE_M_TERMINAL_READY");
+      console.log("DECK_MONACO_SMOKE_TERMINAL_READY");
     })().catch((error: unknown) => {
-      console.log(`DECK_GATE_M_ERROR terminal: ${String(error)}`);
+      console.log(`DECK_MONACO_SMOKE_ERROR terminal: ${String(error)}`);
     });
     return () => {
       cancelled = true;
@@ -92,12 +124,12 @@ function Harness(props: HarnessProps) {
   }, [props.workspace]);
 
   return (
-    <div class="gate-m">
-      <div class="gate-m__half">
-        <div class="gate-m__controls">
+    <div class="monaco-smoke">
+      <div class="monaco-smoke__half">
+        <div class="monaco-smoke__controls">
           <button
             type="button"
-            id="gate-m-focus-editor"
+            id="monaco-smoke-focus-editor"
             class="filebar__btn"
             onClick={props.focusEditor}
           >
@@ -105,7 +137,7 @@ function Harness(props: HarnessProps) {
           </button>
           <button
             type="button"
-            id="gate-m-save"
+            id="monaco-smoke-save"
             class="filebar__btn filebar__btn--primary"
             onClick={() => void props.controller.savePath(props.path)}
           >
@@ -114,18 +146,18 @@ function Harness(props: HarnessProps) {
         </div>
         <FileEditor path={props.path} controller={props.controller} />
       </div>
-      <div class="gate-m__half">
-        <div class="gate-m__controls">
+      <div class="monaco-smoke__half">
+        <div class="monaco-smoke__controls">
           <button
             type="button"
-            id="gate-m-focus-terminal"
+            id="monaco-smoke-focus-terminal"
             class="filebar__btn"
             onClick={() => managerRef.current?.focusActive()}
           >
             Focus terminal
           </button>
         </div>
-        <div class="gate-m__term" ref={termRef} />
+        <div class="monaco-smoke__term" ref={termRef} />
       </div>
     </div>
   );
@@ -168,9 +200,9 @@ async function main(): Promise<void> {
   );
   // The verifier waits for this exact line on stdout before it starts
   // driving the page; it is the "renderer-ready signal" the plan requires.
-  console.log("DECK_GATE_M_READY");
+  console.log("DECK_MONACO_SMOKE_READY");
 }
 
 void main().catch((error: unknown) => {
-  console.log(`DECK_GATE_M_ERROR boot: ${String(error)}`);
+  console.log(`DECK_MONACO_SMOKE_ERROR boot: ${String(error)}`);
 });

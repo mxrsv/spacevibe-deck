@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -8,13 +9,14 @@ import {
   machOArchCount,
   readAsarFile,
   structureFailures,
-} from "./verify-electron-gate-m-package.mjs";
+} from "./verify-electron-monaco-smoke-package.mjs";
+import * as verifierModule from "./verify-electron-monaco-smoke-package.mjs";
 
 /**
  * The verifier's pure half, proven against synthetic layouts so a regression
  * in the asar reader or a structure check shows up here — not as a false
  * PASS on the verification Mac. The runtime half needs the packaged app and
- * stays owned by `npm run electron:verify:gate-m`.
+ * stays owned by `npm run electron:verify:monaco-smoke`.
  */
 
 /** Minimal asar writer — the mirror of the verifier's reader. */
@@ -61,7 +63,7 @@ function writeFatBinary(target: string, arches: number): void {
 
 const temps: string[] = [];
 function tempDir(): string {
-  const dir = mkdtempSync(path.join(tmpdir(), "gate-m-test-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "monaco-smoke-test-"));
   temps.push(dir);
   return dir;
 }
@@ -72,10 +74,43 @@ afterEach(() => {
   }
 });
 
+describe("packaged process cleanup", () => {
+  it("stops the packaged process group before fixture cleanup may continue", async () => {
+    expect(typeof verifierModule.stopChild).toBe("function");
+    const child = spawn(
+      process.execPath,
+      [
+        "-e",
+        'const{spawn}=require("node:child_process");const nested=spawn(process.execPath,["-e","setInterval(()=>{},1000)"],{stdio:"ignore"});process.stdout.write(String(nested.pid));setInterval(()=>{},1000)',
+      ],
+      { detached: true, stdio: ["ignore", "pipe", "ignore"] },
+    );
+    let nestedPid = 0;
+    try {
+      nestedPid = await new Promise<number>((resolve) =>
+        child.stdout.once("data", (data) => resolve(Number(String(data)))),
+      );
+      await verifierModule.stopChild?.(child);
+      expect(() => process.kill(nestedPid, 0)).toThrow();
+    } finally {
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill("SIGKILL");
+      }
+      if (nestedPid > 0) {
+        try {
+          process.kill(nestedPid, "SIGKILL");
+        } catch {
+          // The expected path: stopChild already reaped the process group.
+        }
+      }
+    }
+  });
+});
+
 const COMPLETE_ASAR = {
   "package.json": JSON.stringify({ main: EXPECTED_MAIN }),
   "dist/index.html": "<!doctype html>",
-  "dist-gate-m-renderer/gate-m.html": "<!doctype html>",
+  "dist-monaco-smoke-renderer/monaco-smoke.html": "<!doctype html>",
   "dist-electron/electron/main.cjs": "module.exports = {};",
   "dist-electron/src/shared.cjs": "module.exports = {};",
   "dist-electron/electron/vendor/react-grab/index.global.js": ";",
@@ -90,7 +125,7 @@ function completeLayout(dir: string) {
   writeFileSync(path.join(helperDir, "spawn-helper"), "#!/bin/sh\n", {
     mode: 0o755,
   });
-  const executable = path.join(dir, "Deck Gate M");
+  const executable = path.join(dir, "Deck Monaco Smoke");
   writeFatBinary(executable, 2);
   return { asar, unpacked, executable };
 }
@@ -132,7 +167,7 @@ describe("structureFailures", () => {
     const failures = structureFailures({
       asar: path.join(dir, "app.asar"),
       unpacked: path.join(dir, "app.asar.unpacked"),
-      executable: path.join(dir, "Deck Gate M"),
+      executable: path.join(dir, "Deck Monaco Smoke"),
     });
     expect(failures).toHaveLength(1);
     expect(failures[0]).toContain("missing app.asar");

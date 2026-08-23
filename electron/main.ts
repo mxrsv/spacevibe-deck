@@ -57,17 +57,18 @@ const DEV_SERVER_URL = process.env.DECK_DEV_SERVER_URL;
 const PRELOAD = path.join(__dirname, "preload.cjs");
 
 /**
- * Gate M (file-explorer plan §5.0): a packaged-build proof that Monaco's
- * editor, workers and assets survive electron-builder, driven by
- * `scripts/verify-electron-gate-m-package.mjs`. When the launcher sets
- * `DECK_GATE_M=1`, the window loads the dedicated harness graph instead of
- * the application renderer, and renderer console lines are mirrored to stdout
- * so the verifier can wait for the harness's explicit ready signal. Normal
- * launches never read these variables; `scripts/gate-m-entry.test.ts` proves
- * the harness graph stays out of the shipping renderer.
+ * Packaged Monaco smoke: a regression proof that Monaco's editor, workers and
+ * assets survive electron-builder, driven by
+ * `scripts/verify-electron-monaco-smoke-package.mjs`. When the launcher sets
+ * `DECK_MONACO_SMOKE=1`, the window loads the dedicated harness graph instead
+ * of the application renderer, and renderer console lines are mirrored to
+ * stdout so the verifier can wait for the harness's explicit ready signal.
+ * Normal launches never read these variables;
+ * `scripts/monaco-smoke-entry.test.ts` proves the harness graph stays out of
+ * the shipping renderer.
  */
-const GATE_M = process.env.DECK_GATE_M === "1";
-const GATE_M_RENDERER_DIR = path.join(__dirname, "..", "..", "dist-gate-m-renderer");
+const MONACO_SMOKE = process.env.DECK_MONACO_SMOKE === "1";
+const MONACO_SMOKE_RENDERER_DIR = path.join(__dirname, "..", "..", "dist-monaco-smoke-renderer");
 
 const windows = new Map<string, BrowserWindow>();
 const registry = new WindowRegistry();
@@ -281,12 +282,12 @@ function createWindow(label: string): BrowserWindow {
     menuState.rebuildMenu();
   });
 
-  if (GATE_M) {
+  if (MONACO_SMOKE) {
     window.webContents.on("console-message", (event) => {
-      process.stdout.write(`[gate-m renderer] ${event.message}\n`);
+      process.stdout.write(`[monaco-smoke renderer] ${event.message}\n`);
     });
-    void window.loadFile(path.join(GATE_M_RENDERER_DIR, "gate-m.html"), {
-      query: { file: process.env.DECK_GATE_M_FILE ?? "" },
+    void window.loadFile(path.join(MONACO_SMOKE_RENDERER_DIR, "monaco-smoke.html"), {
+      query: { file: process.env.DECK_MONACO_SMOKE_FILE ?? "" },
     });
   } else if (DEV_SERVER_URL !== undefined) {
     void window.loadURL(DEV_SERVER_URL);

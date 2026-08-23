@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /* oxlint-disable eslint/no-console -- CLI tooling: stdout is the interface */
 /**
- * Gate M verifier (file-explorer plan §5.0.2 / §5.0.4).
+ * Packaged Monaco smoke verifier.
  *
  * Two halves, both required:
  *
- *  1. **Structure.** The packaged `Deck Gate M.app` must contain both renderer
+ *  1. **Structure.** The packaged `Deck Monaco Smoke.app` must contain both renderer
  *     graphs, the complete compiled host graph, the vendored react-grab
  *     bundle, a universal (x64 + arm64) executable, node-pty unpacked from the
  *     asar with its helper binaries still executable, and a packaged
  *     `package.json` whose `main` is exactly `dist-electron/electron/main.cjs`.
- *  2. **Runtime.** It launches the packaged executable with `DECK_GATE_M=1`
+ *  2. **Runtime.** It launches the packaged executable with `DECK_MONACO_SMOKE=1`
  *     against a disposable fixture OUTSIDE the repo, requires the harness's
- *     explicit `DECK_GATE_M_READY` signal, then drives the page over CDP:
+ *     explicit `DECK_MONACO_SMOKE_READY` signal, then drives the page over CDP:
  *     focuses Monaco and types a marker, focuses xterm and types another,
  *     asserts each surface received its own marker and not the other's,
  *     saves through the harness button and asserts the marker reached the
@@ -158,13 +158,13 @@ export function structureFailures(app) {
   need(
     (() => {
       try {
-        readAsarFile(app.asar, "dist-gate-m-renderer/gate-m.html");
+        readAsarFile(app.asar, "dist-monaco-smoke-renderer/monaco-smoke.html");
         return true;
       } catch {
         return false;
       }
     })(),
-    "gate renderer graph (dist-gate-m-renderer/gate-m.html) missing",
+    "Monaco smoke renderer graph (dist-monaco-smoke-renderer/monaco-smoke.html) missing",
   );
   need(
     (() => {
@@ -225,58 +225,105 @@ export function findSpawnHelper(unpackedDir) {
 }
 
 export function resolveAppLayout(outputDir) {
-  const bundle = path.join(outputDir, "mac-universal", "Deck Gate M.app");
+  const bundle = path.join(outputDir, "mac-universal", "Deck Monaco Smoke.app");
   const resources = path.join(bundle, "Contents", "Resources");
   return {
     bundle,
     asar: path.join(resources, "app.asar"),
     unpacked: path.join(resources, "app.asar.unpacked"),
-    executable: path.join(bundle, "Contents", "MacOS", "Deck Gate M"),
+    executable: path.join(bundle, "Contents", "MacOS", "Deck Monaco Smoke"),
   };
 }
 
 /* ── Runtime drive ──────────────────────────────────────────────────────── */
 
-const EDITOR_MARKER = "gate-m-editor-marker";
-const TERMINAL_MARKER = "gate-m-terminal-marker";
+const EDITOR_MARKER = "monaco-smoke-editor-marker";
+const TERMINAL_MARKER = "monaco-smoke-terminal-marker";
 const READY_TIMEOUT_MS = 30_000;
+const PROCESS_EXIT_POLL_MS = 25;
+const PROCESS_EXIT_TIMEOUT_MS = 5_000;
 
-async function driveGate(app) {
+function signalProcessGroup(groupId, signal) {
+  try {
+    process.kill(-groupId, signal);
+    return true;
+  } catch (error) {
+    if (error?.code === "ESRCH") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function waitForProcessGroupExit(groupId) {
+  const deadline = Date.now() + PROCESS_EXIT_TIMEOUT_MS;
+  while (signalProcessGroup(groupId, 0)) {
+    if (Date.now() >= deadline) {
+      return false;
+    }
+    await new Promise((resolve) => setTimeout(resolve, PROCESS_EXIT_POLL_MS));
+  }
+  return true;
+}
+
+export async function stopChild(child) {
+  if (child.pid === undefined || !signalProcessGroup(child.pid, "SIGTERM")) {
+    return;
+  }
+  if (await waitForProcessGroupExit(child.pid)) {
+    return;
+  }
+  signalProcessGroup(child.pid, "SIGKILL");
+  if (!(await waitForProcessGroupExit(child.pid))) {
+    throw new Error(`packaged process group ${child.pid} did not exit`);
+  }
+}
+
+async function driveSmoke(app) {
   const { chromium } = await import("playwright-core");
-  const fixtureDir = mkdtempSync(path.join(tmpdir(), "deck-gate-m-"));
-  const fixture = path.join(fixtureDir, "gate-m-fixture.ts");
-  writeFileSync(fixture, `export function gateM(): string {\n  return "fixture";\n}\n`);
+  const fixtureDir = mkdtempSync(path.join(tmpdir(), "deck-monaco-smoke-"));
+  const fixture = path.join(fixtureDir, "monaco-smoke-fixture.ts");
+  writeFileSync(fixture, `export function monacoSmoke(): string {\n  return "fixture";\n}\n`);
   const port = 9223 + Math.floor(Math.random() * 500);
   const child = spawn(app.executable, [`--remote-debugging-port=${port}`], {
+    // The macOS universal launcher forks the real Electron main process. A
+    // dedicated group lets cleanup stop both instead of leaking the app and
+    // making the next verifier launch exit behind its single-instance lock.
+    detached: true,
     env: {
       ...process.env,
-      DECK_GATE_M: "1",
-      DECK_GATE_M_FILE: fixture,
+      DECK_MONACO_SMOKE: "1",
+      DECK_MONACO_SMOKE_FILE: fixture,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
   const badLoads = [];
+  let stopping = false;
   try {
     await new Promise((resolve, reject) => {
       const timer = setTimeout(
-        () => reject(new Error("timed out waiting for DECK_GATE_M_READY")),
+        () => reject(new Error("timed out waiting for DECK_MONACO_SMOKE_READY")),
         READY_TIMEOUT_MS,
       );
       child.stdout.on("data", (data) => {
         process.stdout.write(data);
-        if (String(data).includes("DECK_GATE_M_READY")) {
+        if (String(data).includes("DECK_MONACO_SMOKE_READY")) {
           clearTimeout(timer);
           resolve(undefined);
         }
-        if (String(data).includes("DECK_GATE_M_ERROR")) {
+        if (String(data).includes("DECK_MONACO_SMOKE_ERROR")) {
           clearTimeout(timer);
           reject(new Error(String(data).trim()));
         }
       });
-      child.stderr.on("data", (data) => process.stderr.write(data));
+      child.stderr.on("data", (data) => {
+        if (!stopping) {
+          process.stderr.write(data);
+        }
+      });
       child.on("exit", (code) => {
         clearTimeout(timer);
-        reject(new Error(`gate app exited early with ${String(code)}`));
+        reject(new Error(`Monaco smoke app exited early with ${String(code)}`));
       });
     });
 
@@ -284,9 +331,9 @@ async function driveGate(app) {
     const page = browser
       .contexts()
       .flatMap((context) => context.pages())
-      .find((candidate) => candidate.url().includes("gate-m.html"));
+      .find((candidate) => candidate.url().includes("monaco-smoke.html"));
     if (page === undefined) {
-      throw new Error("no gate-m page over CDP");
+      throw new Error("no Monaco smoke page over CDP");
     }
     page.on("requestfailed", (request) => {
       if (request.url().startsWith("file://")) {
@@ -297,47 +344,88 @@ async function driveGate(app) {
     // Monaco painted more than one token class ⇒ the tokenizer registered
     // and its worker infrastructure loaded from the packaged asset graph.
     await page.waitForSelector(".monaco-editor .view-line", { timeout: 15000 });
-    const tokenClasses = await page.evaluate(() => {
-      const classes = new Set();
-      for (const span of document.querySelectorAll(".view-line span span")) {
-        span.classList.forEach((name) => classes.add(name));
-      }
-      return classes.size;
-    });
-    if (tokenClasses < 2) {
+    const tokenizationReady = await page
+      .waitForFunction(
+        () => {
+          const classes = new Set();
+          for (const span of document.querySelectorAll(".view-line span span")) {
+            span.classList.forEach((name) => classes.add(name));
+          }
+          return classes.size >= 2;
+        },
+        undefined,
+        { timeout: 5000 },
+      )
+      .then(
+        () => true,
+        () => false,
+      );
+    if (!tokenizationReady) {
       throw new Error("no syntax tokenization in the packaged editor");
     }
 
     // A per-key delay: zero-delay synthetic typing under a software
     // renderer drops keystrokes into Monaco (observed on the Linux dry run
-    // of this harness), and a dropped key here reads as a Gate failure.
-    await page.click("#gate-m-focus-editor");
+    // of this harness), and a dropped key here reads as a smoke failure.
+    await page.click("#monaco-smoke-focus-editor");
     await page.keyboard.type(EDITOR_MARKER, { delay: 60 });
-    await page.click("#gate-m-focus-terminal");
-    await page.keyboard.type(TERMINAL_MARKER, { delay: 60 });
-
-    const editorText = await page.evaluate(() =>
-      Array.from(document.querySelectorAll(".view-line"), (line) => line.textContent).join("\n"),
-    );
-    if (!editorText.includes(EDITOR_MARKER)) {
-      throw new Error("the editor never received its typed marker");
-    }
-    if (editorText.includes(TERMINAL_MARKER)) {
-      throw new Error("the terminal marker leaked into the editor");
-    }
-    const terminalGotMarker = await page
-      .waitForFunction((marker) => document.body.innerText.includes(marker), TERMINAL_MARKER, {
-        timeout: 10000,
-      })
+    const editorGotMarker = await page
+      .waitForFunction(
+        (marker) =>
+          Array.from(document.querySelectorAll(".view-line"), (line) => line.textContent)
+            .join("\n")
+            .includes(marker),
+        EDITOR_MARKER,
+        { timeout: 5000 },
+      )
       .then(
         () => true,
         () => false,
       );
-    if (!terminalGotMarker) {
-      throw new Error("the terminal never echoed its typed marker");
+    if (!editorGotMarker) {
+      throw new Error("the editor never received its typed marker");
     }
 
-    await page.click("#gate-m-save");
+    const terminalOutputBefore = await page.evaluate(
+      () => globalThis.__deckMonacoSmoke?.terminalOutput.length ?? 0,
+    );
+    await page.click("#monaco-smoke-focus-terminal");
+    await page.keyboard.type(TERMINAL_MARKER, { delay: 60 });
+    const terminalInputReachedPty = await page
+      .waitForFunction(
+        (marker) => globalThis.__deckMonacoSmoke?.terminalInput.includes(marker) === true,
+        TERMINAL_MARKER,
+        { timeout: 5000 },
+      )
+      .then(
+        () => true,
+        () => false,
+      );
+    if (!terminalInputReachedPty) {
+      throw new Error("the terminal never forwarded its typed marker to the PTY");
+    }
+    const terminalOutputReturned = await page
+      .waitForFunction(
+        (before) => (globalThis.__deckMonacoSmoke?.terminalOutput.length ?? 0) > before,
+        terminalOutputBefore,
+        { timeout: 5000 },
+      )
+      .then(
+        () => true,
+        () => false,
+      );
+    if (!terminalOutputReturned) {
+      throw new Error("PTY output never returned to the terminal renderer");
+    }
+
+    const editorText = await page.evaluate(() =>
+      Array.from(document.querySelectorAll(".view-line"), (line) => line.textContent).join("\n"),
+    );
+    if (editorText.includes(TERMINAL_MARKER)) {
+      throw new Error("the terminal marker leaked into the editor");
+    }
+
+    await page.click("#monaco-smoke-save");
     await page.waitForTimeout(1000);
     const saved = readFileSync(fixture, "utf8");
     if (!saved.includes(EDITOR_MARKER)) {
@@ -349,7 +437,8 @@ async function driveGate(app) {
     }
     await browser.close();
   } finally {
-    child.kill();
+    stopping = true;
+    await stopChild(child);
     rmSync(fixtureDir, { recursive: true, force: true });
   }
 }
@@ -357,23 +446,23 @@ async function driveGate(app) {
 async function main() {
   if (process.platform !== "darwin") {
     console.error(
-      "Gate M packages and verifies the macOS universal build; run this on the verification Mac.",
+      "The packaged Monaco smoke verifies the macOS universal build; run it on the verification Mac.",
     );
     process.exit(2);
   }
-  const app = resolveAppLayout(path.join(REPO_ROOT, "dist-gate-m"));
+  const app = resolveAppLayout(path.join(REPO_ROOT, "dist-monaco-smoke"));
   const failures = structureFailures(app);
   if (failures.length > 0) {
-    console.error("Gate M structure FAILED:");
+    console.error("Packaged Monaco smoke structure FAILED:");
     for (const failure of failures) {
       console.error(`  - ${failure}`);
     }
     process.exit(1);
   }
-  console.log("Gate M structure OK");
-  await driveGate(app);
+  console.log("Packaged Monaco smoke structure OK");
+  await driveSmoke(app);
   console.log(
-    "Gate M runtime OK — editor/terminal focus markers, save-to-disk and asset loads all held",
+    "Packaged Monaco smoke runtime OK — editor/terminal focus markers, save-to-disk and asset loads all held",
   );
 }
 
@@ -381,7 +470,7 @@ const invokedDirectly =
   process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
   main().catch((error) => {
-    console.error(`Gate M FAILED: ${String(error)}`);
+    console.error(`Packaged Monaco smoke FAILED: ${String(error)}`);
     process.exit(1);
   });
 }

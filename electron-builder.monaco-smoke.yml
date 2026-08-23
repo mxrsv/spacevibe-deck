@@ -1,4 +1,4 @@
-# Gate M proof package (file-explorer plan §5.0.2, approved as D10).
+# Packaged Monaco smoke proof.
 #
 # A LOCAL, UNSIGNED packaging path whose only purpose is proving the Monaco
 # editor, its worker and its assets survive electron-builder — the class of
@@ -6,17 +6,17 @@
 # metadata, no signing, no notarization, no publishing, and is referenced by
 # no release workflow. `--dir --publish never` in the driving script is part
 # of the contract, not a convenience.
-appId: dev.spacevibe.deck.gate-m
-productName: Deck Gate M
+appId: dev.spacevibe.deck.monaco-smoke
+productName: Deck Monaco Smoke
 directories:
-  output: dist-gate-m
+  output: dist-monaco-smoke
 # Electron Builder writes this into the packaged app's package.json — `main`
 # is not a top-level builder option.
 extraMetadata:
   main: dist-electron/electron/main.cjs
 files:
   - dist/**
-  - dist-gate-m-renderer/**
+  - dist-monaco-smoke-renderer/**
   - dist-electron/electron/**/*.cjs
   - dist-electron/src/**/*.cjs
   - dist-electron/electron/vendor/**

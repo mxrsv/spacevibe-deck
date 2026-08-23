@@ -12,6 +12,8 @@ dist
 dist-ssr
 dist-gate-m
 dist-gate-m-renderer
+dist-monaco-smoke
+dist-monaco-smoke-renderer
 dist-electron-app
 dist-electron-release
 *.local
