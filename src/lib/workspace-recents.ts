@@ -197,12 +197,6 @@ export function agentForWorkspace(
   return resolveAgentChoice(entry?.lastAgent, agents);
 }
 
-export function folderName(path: string): string {
-  const trimmed = path.endsWith("/") && path !== "/" ? path.slice(0, -1) : path;
-  const segment = trimmed.slice(trimmed.lastIndexOf("/") + 1);
-  return segment === "" ? trimmed : segment;
-}
-
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;

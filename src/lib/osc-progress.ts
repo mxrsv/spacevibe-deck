@@ -59,10 +59,16 @@ const INCOMPLETE_SPLIT_ST = /^\x1b\]9;4;\d*(;\d*)?\x1b$/;
  * there is no such prefix, or when the candidate exceeds the hard cap.
  */
 function incompleteCarry(text: string): string {
-  for (let i = 0; i < text.length; i += 1) {
+  // Both patterns are anchored `^...$`, so a candidate is always a SUFFIX of
+  // `text`, and any candidate longer than the cap is rejected anyway. A match
+  // therefore cannot start before the last `OSC_CARRY_LENGTH` characters —
+  // scanning from there is output-identical and keeps this off the PTY hot
+  // path, where a 64 KB batch of agent TUI output carries thousands of ESC
+  // bytes that would each allocate a `slice` only to fail the length test.
+  const from = Math.max(0, text.length - OSC_CARRY_LENGTH);
+  for (let i = from; i < text.length; i += 1) {
     if (text[i] !== "\x1b") continue;
     const candidate = text.slice(i);
-    if (candidate.length > OSC_CARRY_LENGTH) continue;
     if (INCOMPLETE_PREFIX.test(candidate) || INCOMPLETE_SPLIT_ST.test(candidate)) {
       return candidate;
     }

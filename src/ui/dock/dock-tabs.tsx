@@ -3,6 +3,7 @@ import { shortcutLabel } from "../../lib/shortcut-label";
 import {
   ActionTooltip,
   useTooltipVisibility,
+  tooltipTriggerProps,
 } from "../controls/action-tooltip";
 import { FEATURE_ICON, DeckIcon } from "../controls/deck-icon";
 import type { DockTabDescriptor, DockTabId } from "./dock-tab-registry";
@@ -49,16 +50,7 @@ function DockTabChip({ item, active, onSelect }: DockTabChipProps) {
         aria-label={item.label}
         aria-describedby={tooltip.anchor !== null ? tooltipId : undefined}
         class={`iconbtn dock-tabs__chip ${active ? "is-active" : ""}`}
-        onPointerEnter={(event) => tooltip.open(event.currentTarget)}
-        onPointerLeave={() => {
-          // Focus outlives the pointer: tabbing to a chip and then moving the
-          // mouse across it must not take the description away.
-          if (document.activeElement !== ref.current) {
-            tooltip.close();
-          }
-        }}
-        onFocus={(event) => tooltip.open(event.currentTarget)}
-        onBlur={() => tooltip.close()}
+        {...tooltipTriggerProps(tooltip, ref)}
         onClick={() => onSelect(item.id)}
       >
         <DeckIcon icon={item.icon} size={FEATURE_ICON} filled />

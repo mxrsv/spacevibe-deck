@@ -74,6 +74,45 @@ export function cwdMatches(request: ResumeRequest, candidate: CandidateSession):
   return request.cwd === candidate.cwd;
 }
 
+/**
+ * The one candidate a request resumes into, or null when nothing qualifies.
+ *
+ * This is the algorithm `session-tail.ts` and this module MUST agree on — same
+ * 30-day cutoff, same cwd predicate, same recency ranking, same greedy dedup —
+ * or a pane wears another pane's sentence. It was a comment saying so beside
+ * two hand-copied blocks; it is one function now, so the two answers cannot
+ * drift.
+ *
+ * `taken` is mutated on selection, NOT on success: a session whose tail turns
+ * out to be unreadable or wordless is still that pane's session, and letting
+ * the next pane fall through to it would hand it a conversation it is not
+ * running.
+ */
+export function selectCandidate(
+  request: ResumeRequest,
+  candidates: readonly CandidateSession[],
+  taken: Set<string>,
+  matchesCwd: (request: ResumeRequest, candidate: CandidateSession) => boolean = cwdMatches,
+): CandidateSession | null {
+  const cutoffMs = request.lastSeenAt - THIRTY_DAYS_MS;
+  // Filter first, sort the copy: sorting the scan result in place would
+  // reorder the per-call cache every other request reads (C1).
+  const eligible = candidates.filter(
+    (candidate) =>
+      candidate.mtimeMs >= cutoffMs && !taken.has(candidate.id) && matchesCwd(request, candidate),
+  );
+  eligible.sort(
+    (left, right) =>
+      Math.abs(left.mtimeMs - request.lastSeenAt) - Math.abs(right.mtimeMs - request.lastSeenAt),
+  );
+  const best = eligible[0];
+  if (best === undefined) {
+    return null;
+  }
+  taken.add(best.id);
+  return best;
+}
+
 function resolveOne(
   request: ResumeRequest,
   candidatesFor: (agent: string) => CandidateSession[],
@@ -89,21 +128,15 @@ function resolveOne(
   const taken = takenByAgent.get(request.agent) ?? new Set<string>();
   takenByAgent.set(request.agent, taken);
 
-  const matchesCwd = request.agent === "agy" ? agyCwdMatches : cwdMatches;
-  const cutoffMs = request.lastSeenAt - THIRTY_DAYS_MS;
-  const eligible = candidatesFor(request.agent).filter(
-    (candidate) =>
-      candidate.mtimeMs >= cutoffMs && !taken.has(candidate.id) && matchesCwd(request, candidate),
+  const best = selectCandidate(
+    request,
+    candidatesFor(request.agent),
+    taken,
+    request.agent === "agy" ? agyCwdMatches : cwdMatches,
   );
-  eligible.sort(
-    (left, right) =>
-      Math.abs(left.mtimeMs - request.lastSeenAt) - Math.abs(right.mtimeMs - request.lastSeenAt),
-  );
-  const best = eligible[0];
-  if (best === undefined) {
+  if (best === null) {
     return FALLBACK_LATEST.has(request.agent) ? { kind: "latest" } : null;
   }
-  taken.add(best.id);
   return { kind: "id", id: best.id };
 }
 
