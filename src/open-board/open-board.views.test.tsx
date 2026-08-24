@@ -54,10 +54,10 @@ import { PRESETS_VERSION } from "../lib/preset-schema";
 import { presetsData } from "../presets/presets-store";
 import { workspacesData } from "./workspaces-store";
 import { OpenBoard } from "./open-board";
-import {
-  initializeDesktopEnvironment,
-  resetDesktopEnvironmentForTests,
-} from "../lib/platform";
+import { newTaskDraft, resetLauncherStore } from "../launcher/launcher-store";
+import type { NewTaskDraft } from "../launcher/new-task-draft";
+import type { LaunchTaskOutcome } from "../terminal/task-prompt-send";
+import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
 
 const NOW = 1_800_000_000_000;
@@ -99,6 +99,7 @@ describe("OpenBoard home view", () => {
     document.body.innerHTML = "";
     host = document.createElement("div");
     document.body.appendChild(host);
+    resetLauncherStore();
     missingPaths.clear();
     pickedFolder = null;
     detected = [];
@@ -115,11 +116,7 @@ describe("OpenBoard home view", () => {
   });
 
   const mount = async (
-    onOpen: (
-      workspace: string,
-      preset: { id: string },
-      agent: string | null,
-    ) => Promise<boolean> = async () => true,
+    onStartTask: (draft: NewTaskDraft) => Promise<LaunchTaskOutcome> = async () => "sent",
     props: {
       canCancel?: boolean;
       canBrowseSessions?: boolean;
@@ -133,7 +130,9 @@ describe("OpenBoard home view", () => {
           canBrowseSessions={props.canBrowseSessions ?? false}
           openWorkspacePaths={props.openWorkspacePaths ?? new Set()}
           onCancel={() => {}}
-          onOpen={onOpen}
+          onStartTask={onStartTask}
+          onOpenAgent={onStartTask}
+          onManageAgents={() => {}}
           onResumeSession={async () => true}
         />,
         host,
@@ -144,32 +143,30 @@ describe("OpenBoard home view", () => {
   const keydown = async (init: KeyboardEventInit): Promise<void> => {
     const board = host.querySelector<HTMLDivElement>(".open-board");
     await act(async () => {
-      board?.dispatchEvent(
-        new KeyboardEvent("keydown", { ...init, bubbles: true }),
-      );
+      board?.dispatchEvent(new KeyboardEvent("keydown", { ...init, bubbles: true }));
     });
   };
 
-  it("home view renders the logo, Start action, and grouped recents — Create worktree stays hidden while its capability gate resolves false", async () => {
+  it("home view leads with the composer and groups recents — Create worktree stays hidden while its capability gate resolves false", async () => {
     seed(["/w/alpha", "/w/ghost"]);
     missingPaths.add("/w/ghost");
     await mount();
 
-    expect(host.querySelector(".board-home")).not.toBeNull();
+    expect(host.querySelector(".nt-board")).not.toBeNull();
+    // The logo hero went with the old home view: the composer is the focal
+    // artifact now (design §4.1), and its header is what names the surface.
+    expect(host.querySelector("img[alt='SpaceVibe Deck']")).toBeNull();
+    expect(host.querySelector(".nt-board__head h2")?.textContent).toContain("Start something new");
+    expect(host.querySelector("textarea")).not.toBeNull();
+    expect(host.querySelector(".nt-board__shortcuts button")?.textContent).toContain("Open folder");
     expect(
-      host.querySelector(".board-home img[alt='SpaceVibe Deck']"),
-    ).not.toBeNull();
-    expect(host.querySelector(".home-action")?.textContent).toContain(
-      "Open workspace",
-    );
-    expect(
-      [...host.querySelectorAll(".home-action")].some((el) =>
+      [...host.querySelectorAll(".nt-board__shortcuts button")].some((el) =>
         el.textContent?.includes("Create worktree"),
       ),
     ).toBe(false);
-    expect(
-      [...host.querySelectorAll(".row .row__name")].map((el) => el.textContent),
-    ).toEqual(["alpha"]);
+    expect([...host.querySelectorAll(".row .row__name")].map((el) => el.textContent)).toEqual([
+      "alpha",
+    ]);
     expect(host.querySelector(".gsep")).not.toBeNull();
     // The retired config view (2026-08-16) has no mount left anywhere.
     expect(host.querySelector(".board-config")).toBeNull();
@@ -177,11 +174,11 @@ describe("OpenBoard home view", () => {
     expect(host.querySelector(".lgrid")).toBeNull();
   });
 
-  it("empty recents renders no list — logo and buttons only", async () => {
+  it("empty recents renders no list — composer and shortcuts only", async () => {
     await mount();
 
-    expect(host.querySelector(".board-home")).not.toBeNull();
-    expect(host.querySelector(".home-action")).not.toBeNull();
+    expect(host.querySelector(".nt-board")).not.toBeNull();
+    expect(host.querySelector(".nt-board__shortcuts button")).not.toBeNull();
     expect(host.querySelectorAll(".row")).toHaveLength(0);
     expect(host.querySelector(".board-home__recents")).toBeNull();
   });
@@ -206,24 +203,22 @@ describe("OpenBoard home view", () => {
         },
       ],
     };
-    const onOpen = vi.fn(async () => true);
-    await mount(onOpen);
+    const onStartTask = vi.fn(async () => "sent" as LaunchTaskOutcome);
+    await mount(onStartTask);
 
     const row = host.querySelector<HTMLButtonElement>(".row__open");
     await act(async () => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    // `null` is a remembered Shell-only open and it is carried through — the
-    // config view's "Shell is only ever an explicit click" rule went with it.
-    expect(onOpen).toHaveBeenCalledWith(
-      "/w/beta",
-      expect.objectContaining({ id: "p-grid" }),
-      null,
-    );
+    // Reversed on purpose (design §4.1): the row fills the Workspace field and
+    // nothing else. A remembered Shell-only open no longer starts anything,
+    // because selecting a workspace is not a launch any more.
+    expect(onStartTask).not.toHaveBeenCalled();
+    expect(newTaskDraft.value.workspacePath).toBe("/w/beta");
   });
 
-  it("waits for the agent probe before opening, so a fast click keeps its remembered agent", async () => {
+  it("seeds the remembered agent once the probe answers", async () => {
     let release!: () => void;
     detectGate = new Promise<void>((resolve) => {
       release = resolve;
@@ -233,72 +228,78 @@ describe("OpenBoard home view", () => {
       version: WORKSPACES_VERSION,
       recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
     };
-    const onOpen = vi.fn(async () => true);
-    await mount(onOpen);
+    await mount();
 
     const row = host.querySelector<HTMLButtonElement>(".row__open");
     await act(async () => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    expect(onOpen).not.toHaveBeenCalled();
+    // The probe still gates the answer, for the same reason it always did: an
+    // empty agent list would resolve the seed to nothing.
+    expect(newTaskDraft.value.agentId).toBeNull();
 
     await act(async () => {
       release();
       await detectGate;
     });
 
-    expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.anything(), "claude");
+    expect(newTaskDraft.value.agentId).toBe("claude");
+    expect(newTaskDraft.value.workspacePath).toBe("/w/beta");
   });
 
-  it("a missing folder says so instead of opening nothing", async () => {
+  it("a missing folder says so instead of selecting it", async () => {
     seed(["/w/ghost"]);
     missingPaths.add("/w/ghost");
-    const onOpen = vi.fn(async () => true);
-    await mount(onOpen);
+    await mount();
 
-    const disclosure = host.querySelector<HTMLButtonElement>(
-      ".board-home__missing-toggle",
-    );
+    const disclosure = host.querySelector<HTMLButtonElement>(".board-home__missing-toggle");
     act(() => disclosure?.click());
     const row = host.querySelector<HTMLButtonElement>(".row__open");
     await act(async () => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(onOpen).not.toHaveBeenCalled();
-    expect(host.querySelector(".board-home__notice")?.textContent).toContain(
-      "ghost is missing",
-    );
+    expect(newTaskDraft.value.workspacePath).toBeNull();
+    expect(host.querySelector('[role="status"]')?.textContent).toContain("ghost is missing");
   });
 
-  it("a failed open is said on home — the board's only place to say it", async () => {
+  it("a failed launch is said on the composer — its only place to say it", async () => {
     seed(["/w/alpha"]);
-    const onOpen = vi.fn(async () => false);
-    await mount(onOpen);
+    // A launch needs a runnable agent, or the primary action is correctly
+    // disabled and there is nothing to fail.
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    const onStartTask = vi.fn(async () => "spawn-failed" as LaunchTaskOutcome);
+    await mount(onStartTask);
 
-    const row = host.querySelector<HTMLButtonElement>(".row__open");
     await act(async () => {
-      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+    // `Open agent first` ignores the prompt, so this exercises the launch
+    // path without also having to fill the composer.
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".nt-secondary-action")?.click();
     });
     await settle();
 
-    const notice = host.querySelector(".board-home__notice");
-    expect(notice?.getAttribute("role")).toBe("status");
-    expect(notice?.textContent).toContain("Couldn't start a shell here");
+    const notice = host.querySelector('[role="status"]');
+    expect(notice?.textContent).toContain("Couldn't start a session here");
   });
 
   it("opens session history as a dedicated subview and Escape returns Home", async () => {
     await mount(undefined, { canBrowseSessions: true });
 
     act(() => {
-      host.querySelector<HTMLButtonElement>(".board-home__resume")?.click();
+      host.querySelector<HTMLButtonElement>(".nt-board__shortcuts button:last-child")?.click();
     });
     expect(host.querySelector(".board-sessions")).not.toBeNull();
-    expect(host.querySelector(".board-home")).toBeNull();
+    expect(host.querySelector(".nt-board")).toBeNull();
 
     await keydown({ key: "Escape" });
     expect(host.querySelector(".board-sessions")).toBeNull();
-    expect(host.querySelector(".board-home")).not.toBeNull();
+    expect(host.querySelector(".nt-board")).not.toBeNull();
   });
 
   it("Escape cancels the board from home", async () => {
@@ -311,7 +312,9 @@ describe("OpenBoard home view", () => {
           canBrowseSessions={false}
           openWorkspacePaths={new Set()}
           onCancel={onCancel}
-          onOpen={async () => true}
+          onStartTask={async () => "sent"}
+          onOpenAgent={async () => "started"}
+          onManageAgents={() => {}}
           onResumeSession={async () => true}
         />,
         host,

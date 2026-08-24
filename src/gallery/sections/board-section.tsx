@@ -679,7 +679,12 @@ function LiveComposerSpecimen() {
           <BoardComposer
             draft={draft.value}
             agents={agents}
-            recents={recents}
+            homeDir="/Users/kyantran"
+            alive={recents}
+            missingGroup={[]}
+            openWorkspacePaths={new Set([WORKSPACES[1].path])}
+            canBrowseSessions
+            openFolderShortcut="⌘O"
             declaredModels={{ claude: ["opus", "sonnet"] }}
             agentRuntimeDefaults={{}}
             canCreateWorkspace
@@ -687,6 +692,11 @@ function LiveComposerSpecimen() {
             pending={null}
             problem={problem}
             notice={null}
+            describeCombo={(recent) =>
+              WORKSPACES.find((entry) => entry.path === recent.path)?.detail ?? ""
+            }
+            onBrowseSessions={NOOP}
+            onRemove={NOOP}
             onDraftChange={(next) => {
               draft.value = next;
             }}

@@ -62,12 +62,8 @@ describe("OpenBoardHome start surface", () => {
     mount();
 
     expect(host.querySelector("h1")?.textContent).toBe("Start a workspace");
-    expect(
-      host.querySelector(".home-action--primary")?.textContent,
-    ).toContain("Open workspace");
-    expect(
-      host.querySelector(".home-action--secondary")?.textContent,
-    ).toContain("Create worktree");
+    expect(host.querySelector(".home-action--primary")?.textContent).toContain("Open workspace");
+    expect(host.querySelector(".home-action--secondary")?.textContent).toContain("Create worktree");
     expect(host.querySelector(".board-home__resume")?.textContent).toContain(
       "Resume a previous session",
     );
@@ -84,13 +80,11 @@ describe("OpenBoardHome start surface", () => {
   it("shows the remembered combo and already-open state without hover", () => {
     mount({ openWorkspacePaths: new Set([RECENT.path]) });
 
-    expect(host.querySelector(".row__combo")?.textContent).toBe(
-      "Grid · Claude Code",
-    );
+    expect(host.querySelector(".row__combo")?.textContent).toBe("Grid · Claude Code");
     expect(host.querySelector(".row__state")?.textContent).toBe("Open");
-    expect(
-      host.querySelector(".row__open")?.getAttribute("aria-label"),
-    ).toContain("Start another session in deck");
+    expect(host.querySelector(".row__open")?.getAttribute("aria-label")).toContain(
+      "Start another session in deck",
+    );
   });
 
   it("uses a native button for keyboard activation", () => {
@@ -108,27 +102,17 @@ describe("OpenBoardHome start surface", () => {
   it("announces a pending open and disables competing start actions", () => {
     mount({ opening: true });
 
-    expect(host.querySelector(".board-home")?.getAttribute("aria-busy")).toBe(
-      "true",
-    );
-    expect(host.querySelector(".board-home__opening")?.textContent).toContain(
-      "Opening workspace",
-    );
-    expect(host.querySelector<HTMLButtonElement>(".row__open")?.disabled).toBe(
-      true,
-    );
-    expect(
-      host.querySelector<HTMLButtonElement>(".home-action--primary")?.disabled,
-    ).toBe(true);
+    expect(host.querySelector(".board-home")?.getAttribute("aria-busy")).toBe("true");
+    expect(host.querySelector(".board-home__opening")?.textContent).toContain("Opening workspace");
+    expect(host.querySelector<HTMLButtonElement>(".row__open")?.disabled).toBe(true);
+    expect(host.querySelector<HTMLButtonElement>(".home-action--primary")?.disabled).toBe(true);
   });
 
   it("keeps missing workspaces collapsed until requested", () => {
     mount({ alive: [], missingGroup: [RECENT] });
 
     expect(host.querySelector(".row.is-missing")).toBeNull();
-    const disclosure = host.querySelector<HTMLButtonElement>(
-      ".board-home__missing-toggle",
-    );
+    const disclosure = host.querySelector<HTMLButtonElement>(".board-home__missing-toggle");
     expect(disclosure?.getAttribute("aria-expanded")).toBe("false");
 
     act(() => {

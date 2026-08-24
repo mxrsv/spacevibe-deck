@@ -47,6 +47,7 @@ import { PRESETS_VERSION } from "../lib/preset-schema";
 import { presetsData } from "../presets/presets-store";
 import { workspacesData } from "./workspaces-store";
 import { OpenBoard } from "./open-board";
+import { newTaskDraft, resetLauncherStore } from "../launcher/launcher-store";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
 
@@ -86,6 +87,7 @@ describe("OpenBoard create-worktree flow", () => {
     document.body.innerHTML = "";
     host = document.createElement("div");
     document.body.appendChild(host);
+    resetLauncherStore();
     missingPaths.clear();
     pickedFolder = null;
     addWorktreeMock.mockReset();
@@ -100,13 +102,7 @@ describe("OpenBoard create-worktree flow", () => {
     resetDesktopEnvironmentForTests();
   });
 
-  const mount = async (
-    onOpen: (
-      workspace: string,
-      preset: { id: string },
-      agent: string | null,
-    ) => Promise<boolean> = async () => true,
-  ): Promise<void> => {
+  const mount = async (): Promise<void> => {
     await act(async () => {
       render(
         <OpenBoard
@@ -114,7 +110,9 @@ describe("OpenBoard create-worktree flow", () => {
           canBrowseSessions={false}
           openWorkspacePaths={new Set()}
           onCancel={() => {}}
-          onOpen={onOpen}
+          onStartTask={async () => "sent"}
+          onOpenAgent={async () => "started"}
+          onManageAgents={() => {}}
           onResumeSession={async () => true}
         />,
         host,
@@ -125,7 +123,7 @@ describe("OpenBoard create-worktree flow", () => {
   it("shows Create worktree on the home view when the host capability is available", async () => {
     await mount();
     expect(
-      [...host.querySelectorAll(".home-action")].some((el) =>
+      [...host.querySelectorAll(".nt-board__shortcuts button")].some((el) =>
         el.textContent?.includes("Create worktree"),
       ),
     ).toBe(true);
@@ -135,7 +133,7 @@ describe("OpenBoard create-worktree flow", () => {
     seed(["/Users/dev/deck"]);
     await mount();
 
-    const createButton = [...host.querySelectorAll(".home-action")].find((el) =>
+    const createButton = [...host.querySelectorAll(".nt-board__shortcuts button")].find((el) =>
       el.textContent?.includes("Create worktree"),
     ) as HTMLButtonElement;
     await act(async () => {
@@ -162,7 +160,7 @@ describe("OpenBoard create-worktree flow", () => {
     seed(["/Users/dev/deck"]);
     await mount();
 
-    const createButton = [...host.querySelectorAll(".home-action")].find((el) =>
+    const createButton = [...host.querySelectorAll(".nt-board__shortcuts button")].find((el) =>
       el.textContent?.includes("Create worktree"),
     ) as HTMLButtonElement;
     await act(async () => {
@@ -196,7 +194,7 @@ describe("OpenBoard create-worktree flow", () => {
     });
     await mount();
 
-    const createButton = [...host.querySelectorAll(".home-action")].find((el) =>
+    const createButton = [...host.querySelectorAll(".nt-board__shortcuts button")].find((el) =>
       el.textContent?.includes("Create worktree"),
     ) as HTMLButtonElement;
     await act(async () => {
@@ -227,16 +225,15 @@ describe("OpenBoard create-worktree flow", () => {
     expect(notice?.textContent).not.toContain("fatal:");
   });
 
-  it("success opens the new worktree straight through", async () => {
+  it("success selects the new worktree and returns home", async () => {
     seed(["/Users/dev/deck"]);
     addWorktreeMock.mockResolvedValue({
       ok: true,
       path: "/Users/dev/deck-worktrees/redesign",
     });
-    const onOpen = vi.fn(async () => true);
-    await mount(onOpen);
+    await mount();
 
-    const createButton = [...host.querySelectorAll(".home-action")].find((el) =>
+    const createButton = [...host.querySelectorAll(".nt-board__shortcuts button")].find((el) =>
       el.textContent?.includes("Create worktree"),
     ) as HTMLButtonElement;
     await act(async () => {
@@ -259,19 +256,16 @@ describe("OpenBoard create-worktree flow", () => {
 
     await settle();
 
-    // A freshly created worktree has no remembered combo, so it opens with
-    // the default preset and whatever the probe found (nothing → Shell).
-    expect(onOpen).toHaveBeenCalledWith(
-      "/Users/dev/deck-worktrees/redesign",
-      expect.anything(),
-      null,
-    );
+    // Creating a destination is no longer the same act as starting work in
+    // it (design §6): the board returns home with the folder selected.
+    expect(newTaskDraft.value.workspacePath).toBe("/Users/dev/deck-worktrees/redesign");
+    expect(host.querySelector(".board-worktree")).toBeNull();
   });
 
   it("Escape in the worktree view returns home before it cancels the board", async () => {
     await mount();
 
-    const createButton = [...host.querySelectorAll(".home-action")].find((el) =>
+    const createButton = [...host.querySelectorAll(".nt-board__shortcuts button")].find((el) =>
       el.textContent?.includes("Create worktree"),
     ) as HTMLButtonElement;
     await act(async () => {
@@ -284,7 +278,7 @@ describe("OpenBoard create-worktree flow", () => {
       board?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
 
-    expect(host.querySelector(".board-home")).not.toBeNull();
+    expect(host.querySelector(".nt-board")).not.toBeNull();
     expect(host.querySelector(".board-worktree")).toBeNull();
   });
 });

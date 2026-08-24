@@ -29,7 +29,12 @@ function mount(overrides: Partial<BoardComposerProps> = {}): {
   const props: BoardComposerProps = {
     draft: { ...withAgent(withWorkspace(EMPTY_DRAFT, "/repo/deck"), "claude", null), prompt: "go" },
     agents: AGENTS,
-    recents: RECENTS,
+    homeDir: "/Users/dev",
+    alive: RECENTS,
+    missingGroup: [],
+    openWorkspacePaths: new Set<string>(),
+    canBrowseSessions: true,
+    openFolderShortcut: "⌘O",
     declaredModels: {},
     agentRuntimeDefaults: {},
     canCreateWorkspace: true,
@@ -43,6 +48,8 @@ function mount(overrides: Partial<BoardComposerProps> = {}): {
     onCreateWorktree: vi.fn(),
     onManageAgents: vi.fn(),
     onSelectWorkspace,
+    onBrowseSessions: vi.fn(),
+    onRemove: vi.fn(),
     onStartTask,
     onOpenAgent,
     ...overrides,
@@ -52,7 +59,7 @@ function mount(overrides: Partial<BoardComposerProps> = {}): {
 }
 
 function rows(): HTMLButtonElement[] {
-  return Array.from(host.querySelectorAll<HTMLButtonElement>(".nt-recent"));
+  return Array.from(host.querySelectorAll<HTMLButtonElement>(".row__open"));
 }
 
 beforeEach(() => {
@@ -128,7 +135,7 @@ describe("BoardComposer", () => {
   });
 
   it("omits the recents section entirely when there are none", () => {
-    mount({ recents: [] });
-    expect(host.querySelector(".nt-recents")).toBeNull();
+    mount({ alive: [] });
+    expect(host.querySelector(".board-home__recents")).toBeNull();
   });
 });

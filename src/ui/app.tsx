@@ -16,7 +16,7 @@ import { defaultPtyClient } from "../terminal/pty-client";
 import { detectedAgents, ensureAgentsDetected } from "../terminal/agent-detection-store";
 import type { BootMode } from "../terminal/transfer-client";
 import { applyThemeVars } from "../lib/theme-vars";
-import { resolveCwds, type Preset } from "../lib/preset-schema";
+import { BUILT_IN_PRESET, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
 import { openDockTab, revealDockTab, settings, updateSettings } from "../settings/settings-store";
 import type { DockTab } from "../settings/settings-schema";
@@ -26,9 +26,8 @@ import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
 import { pingPane } from "../terminal/pane-ping";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
-import { markLastUsed, presetsData, savePreset } from "../presets/presets-store";
+import { presetsData, savePreset } from "../presets/presets-store";
 import { recordWorkspaceOpen, removeWorkspaceRecents } from "../open-board/workspaces-store";
-import type { AgentChoice } from "../lib/workspace-recents";
 import {
   agentQuickPickerOpen,
   boardOpen,
@@ -62,6 +61,12 @@ import { UsageConsentModal } from "./usage-consent-modal";
 import { ensureTelemetryStateLoaded, usageConsentOpen } from "../telemetry/consent-store";
 import { countRestoredSessions, installUsageCounterEffects } from "../telemetry/usage-counters";
 import { OpenBoard } from "../open-board/open-board";
+import { clearDraft } from "../launcher/launcher-store";
+import { agentLaunchCommand } from "../lib/launch-command";
+import type { NewTaskDraft } from "../launcher/new-task-draft";
+import { composeLaunchCommand } from "../launcher/compose-launch-command";
+import { mergeRuntimeDefaults, runtimeFor } from "../launcher/runtime-catalog";
+import { launchSucceeded, type LaunchTaskOutcome } from "../terminal/task-prompt-send";
 import type { SessionEntry } from "../lib/session-history";
 import { resumeSession } from "../sessions/resume-session";
 import {
@@ -947,25 +952,65 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       tabsRef.current?.activeWorkspacePath() ?? null,
     );
 
-  /** Open board confirm: materialize + record recents + preselect memory. */
-  async function handleOpen(
-    workspace: string,
-    preset: Preset,
-    agent: AgentChoice,
-  ): Promise<boolean> {
-    // Every Open materializes its own tab, including for a workspace that
-    // already has one — the same repo can run several sessions side by side.
-    const ok = await tabsRef.current?.openFromPreset(
-      preset.layout,
-      resolveCwds(preset, workspace),
-      { workspacePath: workspace, agent },
-    );
-    if (ok) {
-      recordWorkspaceOpen(workspace, preset.id, agent);
-      markLastUsed(preset.id);
+  /**
+   * The launcher's one launch path (design §8). `App` composes the command and
+   * asks `TabManager` to materialize and deliver; the board says what happened.
+   *
+   * `sendPrompt` false is `Open agent first` — the same resolution, no prompt.
+   *
+   * Nothing falls back. A draft naming an agent that cannot run is refused
+   * before it reaches here, and a command the shell guard rejects is reported
+   * rather than silently stripped: design §7 forbids a substitution the user
+   * did not see.
+   */
+  async function handleLaunchTask(
+    draft: NewTaskDraft,
+    sendPrompt: boolean,
+  ): Promise<LaunchTaskOutcome> {
+    const workspace = draft.workspacePath;
+    const agentId = draft.agentId;
+    if (workspace === null || agentId === null) {
+      return "spawn-failed";
+    }
+    const composed = composeLaunchCommand({
+      agentId,
+      capability: mergeRuntimeDefaults(
+        runtimeFor(agentId),
+        settings.value.agentRuntimeDefaults[agentId],
+      ),
+      baseCommand: agentLaunchCommand(
+        agentId,
+        settings.value.launchProfiles,
+        settings.value.defaultLaunchProfiles,
+        settings.value.customAgents,
+      ),
+      modelId: draft.modelId,
+      reasoningEffort: draft.reasoningEffort,
+      declaredModels: settings.value.agentModels,
+    });
+    if (!composed.ok) {
+      return "spawn-failed";
+    }
+    const outcome =
+      (await tabsRef.current?.launchTask(
+        {
+          layout: BUILT_IN_PRESET.layout,
+          cwds: [workspace],
+          agent: agentId,
+          workspacePath: workspace,
+          launchCommand: composed.command,
+        },
+        sendPrompt ? draft.prompt : null,
+      )) ?? "spawn-failed";
+    if (launchSucceeded(outcome)) {
+      // The recents write used to live in the old `handleOpen`. Losing it
+      // would freeze row order, the row's remembered-agent line, and the seed
+      // the next selection reads — with no failing test to say so.
+      recordWorkspaceOpen(workspace, undefined, agentId);
+      clearDraft();
       boardOpen.value = false;
     }
-    return ok ?? false;
+    return outcome;
   }
 
   /** Editor confirm: save the preset, then materialize a new tab. */
@@ -1697,7 +1742,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 boardOpen.value = false;
                 tabsRef.current?.focusActive();
               }}
-              onOpen={(workspace, preset, agent) => handleOpen(workspace, preset, agent)}
+              onStartTask={(draft) => handleLaunchTask(draft, true)}
+              onOpenAgent={(draft) => handleLaunchTask(draft, false)}
+              onManageAgents={() => {
+                settingsOpen.value = true;
+              }}
             />
           ) : null}
           {/* The consent question (spec §6, reshaped to a modal 2026-08-22):

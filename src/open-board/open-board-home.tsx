@@ -1,10 +1,4 @@
-import {
-  ClockCounterClockwise,
-  FolderOpen,
-  FolderPlus,
-  GitBranch,
-  X,
-} from "@phosphor-icons/react";
+import { ClockCounterClockwise, FolderOpen, FolderPlus, GitBranch, X } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
 import { BOARD_ICON, DeckIcon, ROW_ICON } from "../ui/controls/deck-icon";
 import { GithubStarButton } from "../ui/controls/github-star-button";
@@ -91,11 +85,7 @@ export function OpenBoardHome({
           type="button"
           class="row__open"
           disabled={opening}
-          aria-label={
-            alreadyOpen
-              ? `Start another session in ${name}`
-              : `Open workspace ${name}`
-          }
+          aria-label={alreadyOpen ? `Start another session in ${name}` : `Open workspace ${name}`}
           onClick={() => onOpen(recent.path)}
         >
           <DeckIcon icon={FolderOpen} size={BOARD_ICON} class="row__ico" />
@@ -109,9 +99,7 @@ export function OpenBoardHome({
                 {homeDir === "" ? recent.path : tildify(recent.path, homeDir)}
               </span>
               {combo === "" ? null : <span class="row__combo">{combo}</span>}
-              <span class="row__time">
-                {formatRelativeTime(recent.lastOpenedAt, Date.now())}
-              </span>
+              <span class="row__time">{formatRelativeTime(recent.lastOpenedAt, Date.now())}</span>
             </span>
           </span>
         </button>
@@ -215,9 +203,7 @@ export function OpenBoardHome({
                 </button>
               </li>
             ) : null}
-            {missingExpanded.value
-              ? missingGroup.map((recent) => row(recent, true))
-              : null}
+            {missingExpanded.value ? missingGroup.map((recent) => row(recent, true)) : null}
           </ul>
         </div>
       ) : null}

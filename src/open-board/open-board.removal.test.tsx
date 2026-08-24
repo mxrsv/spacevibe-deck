@@ -42,6 +42,7 @@ import { PRESETS_VERSION } from "../lib/preset-schema";
 import { presetsData } from "../presets/presets-store";
 import { workspacesData } from "./workspaces-store";
 import { OpenBoard } from "./open-board";
+import { newTaskDraft, resetLauncherStore } from "../launcher/launcher-store";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
 
@@ -84,6 +85,7 @@ describe("OpenBoard removal flow", () => {
     document.body.innerHTML = "";
     host = document.createElement("div");
     document.body.appendChild(host);
+    resetLauncherStore();
     missingPaths.clear();
     pickedFolder = null;
   });
@@ -97,7 +99,7 @@ describe("OpenBoard removal flow", () => {
     resetDesktopEnvironmentForTests();
   });
 
-  const mount = async (onOpen: () => Promise<boolean> = async () => true): Promise<void> => {
+  const mount = async (): Promise<void> => {
     await act(async () => {
       render(
         <OpenBoard
@@ -105,7 +107,9 @@ describe("OpenBoard removal flow", () => {
           canBrowseSessions={false}
           openWorkspacePaths={new Set()}
           onCancel={() => {}}
-          onOpen={onOpen}
+          onStartTask={async () => "sent"}
+          onOpenAgent={async () => "started"}
+          onManageAgents={() => {}}
           onResumeSession={async () => true}
         />,
         host,
@@ -128,7 +132,7 @@ describe("OpenBoard removal flow", () => {
     await mount();
 
     expect(host.querySelector(".row__ico.deck-icon--folder-open")).not.toBeNull();
-    expect(host.querySelector(".home-action .deck-icon--folder-plus")).not.toBeNull();
+    expect(host.querySelector(".nt-board__shortcuts .deck-icon--folder-plus")).not.toBeNull();
 
     const x = removeButton("alpha");
     // Removing a recent forgets a pointer; it deletes nothing on disk, so it
@@ -182,7 +186,7 @@ describe("OpenBoard removal flow", () => {
   it("double-clicking a row's × removes without opening the workspace", async () => {
     seed(["/w/alpha", "/w/beta"]);
     const onOpen = vi.fn(async () => true);
-    await mount(onOpen);
+    await mount();
 
     const x = removeButton("alpha");
     await act(async () => {
@@ -206,10 +210,9 @@ describe("OpenBoard removal flow", () => {
       homeDir: String.raw`C:\Users\dev`,
     });
     pickedFolder = "C:/work";
-    const onOpen = vi.fn(async () => true);
-    await mount(onOpen);
+    await mount();
 
-    const openAction = host.querySelector<HTMLButtonElement>(".home-action");
+    const openAction = host.querySelector<HTMLButtonElement>(".nt-board__shortcuts button");
     expect(openAction?.querySelector("kbd")?.textContent).toBe("Ctrl+Shift+O");
 
     const board = host.querySelector<HTMLDivElement>(".open-board");
@@ -223,7 +226,7 @@ describe("OpenBoard removal flow", () => {
       );
     });
     // Plain Ctrl+O is the Windows new-tab binding, not Deck's — no pick.
-    expect(onOpen).not.toHaveBeenCalled();
+    expect(newTaskDraft.value.workspacePath).toBeNull();
 
     await act(async () => {
       board?.dispatchEvent(
@@ -238,8 +241,8 @@ describe("OpenBoard removal flow", () => {
 
     await settle();
 
-    // A picked folder has no remembered combo, so it opens with the default
-    // preset and whatever the probe found (nothing here → Shell).
-    expect(onOpen).toHaveBeenCalledWith("C:/work", expect.anything(), null);
+    // A picked folder SELECTS now (design §4.1). Nothing spawns until the
+    // user presses a launch action.
+    expect(newTaskDraft.value.workspacePath).toBe("C:/work");
   });
 });

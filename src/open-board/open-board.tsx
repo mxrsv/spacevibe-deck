@@ -2,22 +2,27 @@ import { invoke } from "../host/bridge";
 import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { open } from "../host/dialog-host";
-import type { Preset } from "../lib/preset-schema";
-import { partitionRecents, resolveAgentChoice } from "../lib/workspace-recents";
+import {
+  agentForWorkspace,
+  partitionRecents,
+  type RecentWorkspace,
+} from "../lib/workspace-recents";
 import { workspaceLabel } from "../lib/workspace-label";
-import type { AgentChoice, RecentWorkspace } from "../lib/workspace-recents";
 import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
 import type { DetectedAgent } from "../terminal/pty-client";
-import { ensureAgentsDetected } from "../terminal/agent-detection-store";
+import { detectedAgents, ensureAgentsDetected } from "../terminal/agent-detection-store";
 import { agentOptions, BUILTIN_AGENTS, probeNames, type CustomAgent } from "../lib/agent-catalog";
 import { settings } from "../settings/settings-store";
-import { boardPresets, presetsData } from "../presets/presets-store";
 import { removeWorkspaceRecents, workspacesData } from "./workspaces-store";
 import type { SessionEntry } from "../lib/session-history";
 import { formatShortcutBinding } from "../lib/shortcut-label";
-import { OpenBoardHome } from "./open-board-home";
+import { BoardComposer } from "./board-composer";
 import { OpenBoardWorktreeForm } from "./open-board-worktree-form";
 import { available as worktreeHostAvailable } from "../host/worktree-host";
+import { newTaskDraft, prefillWorkspace, updateDraft } from "../launcher/launcher-store";
+import { startTaskProblem, type NewTaskDraft } from "../launcher/new-task-draft";
+import type { LaunchTaskOutcome } from "../terminal/task-prompt-send";
+import type { LauncherPending } from "../launcher/launcher-fields";
 import { useWorktreeForm } from "./use-worktree-form";
 import { SessionsBody } from "../ui/sessions/sessions-body";
 
@@ -28,10 +33,18 @@ export interface OpenBoardProps {
   /** Workspace paths currently represented by live tabs. */
   readonly openWorkspacePaths: ReadonlySet<string>;
   onCancel(): void;
-  /** Resolves to false on failure (e.g. PTY spawn error) — board stays up. */
-  onOpen(workspace: string, preset: Preset, agent: AgentChoice): Promise<boolean>;
+  /**
+   * Start the drafted task. The board never resolves a workspace or an agent
+   * itself any more — the draft is the whole request, and `App` composes the
+   * command and calls `launchTask`.
+   */
+  onStartTask(draft: NewTaskDraft): Promise<LaunchTaskOutcome>;
+  /** Open the drafted agent with no prompt sent. */
+  onOpenAgent(draft: NewTaskDraft): Promise<LaunchTaskOutcome>;
   /** Resolves false when the history entry could not materialize. */
   onResumeSession(entry: SessionEntry): Promise<boolean>;
+  /** Open Settings, for a draft whose agent cannot run (design §7). */
+  onManageAgents(): void;
 }
 
 /**
@@ -52,13 +65,43 @@ function agentLabel(id: string, customAgents: readonly CustomAgent[]): string {
   return customAgents.find((agent) => agent.id === id)?.label ?? id;
 }
 
+/**
+ * What the board says after a launch attempt. `sent` and `started` say nothing
+ * — the board is about to be dismissed, and a message on a surface that is
+ * leaving is a flash the user cannot read.
+ *
+ * `prompt-pending` is the NORMAL result while `TASK_PROMPT_AUTOSEND` is off
+ * (the first-run trust-menu measurement), so it reads as delivery rather than
+ * as a failure.
+ */
+function launchNotice(outcome: LaunchTaskOutcome): string | null {
+  switch (outcome) {
+    case "sent":
+    case "started":
+      return null;
+    case "prompt-pending":
+      return "Your task is waiting in the agent — press Enter there to send it";
+    case "prompt-not-sent":
+      return "The agent did not become ready — your task is still here";
+    case "prompt-failed":
+      return "Couldn't hand the task to the agent — the pane is open, try pasting it";
+    case "spawn-failed":
+      return "Couldn't start a session here — check the folder and try again";
+  }
+}
+
+/** `Create workspace…` is design §6 and not built yet (plan T13/T14). */
+const noCreateWorkspace = (): void => {};
+
 export function OpenBoard({
   canCancel,
   canBrowseSessions,
   openWorkspacePaths,
   onCancel,
-  onOpen,
+  onStartTask,
+  onOpenAgent,
   onResumeSession,
+  onManageAgents,
 }: OpenBoardProps) {
   const platform = getDesktopEnvironment().platform;
   const openFolderShortcut = formatShortcutBinding(
@@ -68,11 +111,12 @@ export function OpenBoard({
     platform,
   );
   const recents = workspacesData.value.recents;
-  const presets = boardPresets();
   const home = getDesktopEnvironment().homeDir;
   const view = useSignal<BoardView>("home");
   const missing = useSignal<ReadonlySet<string>>(new Set());
   const opening = useSignal(false);
+  /** Which launcher operation is in flight, or null. */
+  const pending = useSignal<LauncherPending | null>(null);
   /**
    * The one thing the board says when an open does not happen. There is no
    * footer to hold a preview any more, so this line is the ONLY place a
@@ -106,6 +150,13 @@ export function OpenBoard({
    */
   const livenessProbe = useRef<Promise<ReadonlySet<string> | null> | null>(null);
   const customAgents = settings.value.customAgents;
+  const draft = newTaskDraft.value;
+  /** Every declared agent, so a missing one can still be SHOWN and explained. */
+  const agents = agentOptions(detectedAgents.value, customAgents, settings.value.disabledAgents);
+  const problem = startTaskProblem(draft, {
+    runnableAgentIds: agents.filter((agent) => !agent.missing).map((agent) => agent.id),
+    unavailableAgentIds: agents.filter((agent) => agent.missing).map((agent) => agent.id),
+  });
 
   useEffect(() => {
     containerRef.current?.focus();
@@ -179,17 +230,23 @@ export function OpenBoard({
   }
 
   /**
-   * The board's one action: open `path` with the combo it was last opened
-   * with. An unknown folder (picked or freshly created) has no memory, so it
-   * takes the last-used preset and the first detected agent.
+   * A recents row, a picked folder, a freshly created worktree: all of them
+   * SELECT. Nothing here starts a process any more — that reverses the
+   * 2026-08-16 one-click-opens contract on purpose (design §4.1), because a
+   * workspace choice carrying the side effect of spawning an agent is the
+   * thing this design set out to fix.
    *
-   * A remembered agent whose binary has left $PATH falls back SILENTLY here —
-   * `resolveAgentChoice` picks the first detected one and the pane still
-   * opens. The config view used to warn about that in its footer; without a
-   * step between the click and the spawn there is nowhere to warn before the
-   * fact, and stopping the open to say it would be worse than opening.
+   * The liveness pass is kept exactly as it was. A dead folder must still be
+   * refused HERE, before it can reach the composer: a draft carrying a path
+   * that cannot spawn would only fail later, at the launch, where the board
+   * has nothing useful left to say about it.
+   *
+   * Selecting also seeds the agent (design §7): the workspace's remembered
+   * agent when it is still runnable, else the first runnable one. Unlike the
+   * old flow that substitution is now VISIBLE before anything is pressed,
+   * which is what the removed config view could not offer.
    */
-  async function openWorkspace(path: string): Promise<void> {
+  async function selectWorkspace(path: string): Promise<void> {
     if (opening.value) {
       return;
     }
@@ -199,33 +256,24 @@ export function OpenBoard({
     }
     notice.value = null;
     opening.value = true;
-    // Wait for the liveness pass the same way the agent probe is waited for.
-    // `null` means the probe failed, so nothing is known and the open goes
-    // ahead — refusing on an unanswerable probe would strand the board.
+    // `null` means the probe failed, so nothing is known and the selection
+    // goes ahead — refusing on an unanswerable probe would strand the board.
     const gone = await livenessProbe.current;
+    opening.value = false;
     if (gone?.has(path) === true) {
-      opening.value = false;
       notice.value = `${workspaceLabel(path)} is missing — pick another folder`;
       return;
     }
-    const entry = recents.find((recent) => recent.path === path);
-    const preset =
-      presets.find((p) => p.id === entry?.lastPresetId) ??
-      presets.find((p) => p.id === presetsData.value.lastUsedId) ??
-      presets[0];
-    // `lastAgent` carries all three cases on purpose: a string is a named
-    // agent, `null` is a remembered Shell-only open, and `undefined` (never
-    // opened, or opened before the field existed) means first detected.
     const detected = (await probe.current) ?? [];
-    const agent = resolveAgentChoice(
-      entry?.lastAgent,
-      agentOptions(detected, customAgents, settings.value.disabledAgents),
+    const runnable = agentOptions(detected, customAgents, settings.value.disabledAgents).filter(
+      (option) => !option.missing,
     );
-    const ok = await onOpen(path, preset, agent);
-    opening.value = false;
-    if (!ok) {
-      notice.value = "Couldn't start a shell here — check the folder and try again";
-    }
+    const remembered = agentForWorkspace(recents, path, runnable);
+    const seed =
+      typeof remembered === "string" && runnable.some((option) => option.id === remembered)
+        ? remembered
+        : (settings.value.defaultAgent ?? runnable[0]?.id ?? null);
+    prefillWorkspace(path, seed);
   }
 
   function removeRecentRows(paths: readonly string[]): void {
@@ -239,7 +287,7 @@ export function OpenBoard({
     try {
       const picked = await open({ directory: true, multiple: false });
       if (typeof picked === "string") {
-        await openWorkspace(picked);
+        await selectWorkspace(picked);
       }
     } catch (err: unknown) {
       console.warn("Folder picker failed:", err);
@@ -260,29 +308,44 @@ export function OpenBoard({
     }
   }
 
-  /** A freshly created worktree is never in `missing`, so it opens like any
-   *  other workspace — straight through, no step in between. */
+  /**
+   * A freshly created worktree is SELECTED and the board returns home with the
+   * prompt and agent intact (design §6). It used to open straight through;
+   * creating a destination is no longer the same act as starting work in it.
+   */
   function submitWorktree(): void {
     void worktreeForm.submit((path) => {
-      void openWorkspace(path);
+      void selectWorkspace(path).then(goHome);
     });
   }
 
-  /** The combo line a recents row's title attribute shows on hover — the one
-   *  place the remembered layout/agent is stated now that opening is a
-   *  single click with no preview between it and the spawn. */
+  /** The agent a row was last opened with — the row's one line of memory. */
   function describeCombo(recent: RecentWorkspace): string {
-    const preset = presets.find((p) => p.id === recent.lastPresetId);
-    return [
-      preset?.name ?? null,
-      typeof recent.lastAgent === "string"
-        ? agentLabel(recent.lastAgent, customAgents)
-        : recent.lastAgent === null
-          ? "Shell"
-          : null,
-    ]
-      .filter((part): part is string => part !== null)
-      .join(" · ");
+    if (typeof recent.lastAgent === "string") {
+      return agentLabel(recent.lastAgent, customAgents);
+    }
+    return recent.lastAgent === null ? "Shell" : "";
+  }
+
+  /**
+   * The launch half. `App` owns composing the command and calling
+   * `launchTask`; the board owns saying what happened, because it is the only
+   * surface on screen at cold start — the manager writes its own errors into a
+   * terminal that may not exist yet.
+   *
+   * A successful outcome closes nothing here: `App` clears the draft and
+   * dismisses the board, so a board that stays up always means something is
+   * still to be done.
+   */
+  async function runLaunch(kind: "start" | "open"): Promise<void> {
+    if (pending.value !== null) {
+      return;
+    }
+    notice.value = null;
+    pending.value = kind === "start" ? "sending-prompt" : "opening-agent";
+    const outcome = await (kind === "start" ? onStartTask(draft) : onOpenAgent(draft));
+    pending.value = null;
+    notice.value = launchNotice(outcome);
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
@@ -350,21 +413,32 @@ export function OpenBoard({
           <SessionsBody variant="dock" onResume={(entry) => void resumePastSession(entry)} />
         </div>
       ) : (
-        <OpenBoardHome
+        <BoardComposer
           homeDir={home}
           openFolderShortcut={openFolderShortcut}
+          canCreateWorkspace={false}
           canCreateWorktree={worktreeHostAvailable}
           canBrowseSessions={canBrowseSessions}
           alive={groups.alive}
           missingGroup={groups.missing}
           openWorkspacePaths={openWorkspacePaths}
-          opening={opening.value}
+          draft={draft}
+          agents={agents}
+          declaredModels={settings.value.agentModels}
+          agentRuntimeDefaults={settings.value.agentRuntimeDefaults}
+          pending={pending.value}
+          problem={problem}
           notice={notice.value}
           describeCombo={describeCombo}
+          onDraftChange={updateDraft}
+          onSelectWorkspace={(path) => void selectWorkspace(path)}
           onPickFolder={() => void pickFolder()}
+          onCreateWorkspace={noCreateWorkspace}
           onCreateWorktree={openWorktreeForm}
+          onManageAgents={onManageAgents}
           onBrowseSessions={openSessions}
-          onOpen={(path) => void openWorkspace(path)}
+          onStartTask={() => void runLaunch("start")}
+          onOpenAgent={() => void runLaunch("open")}
           onRemove={removeRecentRows}
         />
       )}

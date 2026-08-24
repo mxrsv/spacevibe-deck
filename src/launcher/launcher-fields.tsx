@@ -306,9 +306,12 @@ export function LauncherFields(props: LauncherFieldsProps) {
         </div>
       </div>
 
-      {/* One line, and the only place the launcher explains itself. A problem
-          the user must act on is an alert; a notice from a finished attempt is
-          a status, so it does not interrupt what they are typing. */}
+      {/* Two different things, so two lines rather than one slot they fight
+          over. A PROBLEM is standing and blocks the launch, so it is an alert;
+          a NOTICE reports what a finished attempt did, so it is a status and
+          does not interrupt typing. Collapsing them into one slot let a
+          standing problem swallow "that folder is missing", which is the
+          sentence the user actually needed. */}
       {props.problem !== null ? (
         <p class="nt-composer__notice" role="alert">
           {problemMessage(props.problem)}
@@ -318,8 +321,9 @@ export function LauncherFields(props: LauncherFieldsProps) {
             </button>
           ) : null}
         </p>
-      ) : props.notice !== null ? (
-        <p class="nt-composer__notice" role="status">
+      ) : null}
+      {props.notice !== null ? (
+        <p class="nt-composer__notice nt-composer__notice--status" role="status">
           {props.notice}
         </p>
       ) : null}
