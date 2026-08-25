@@ -401,6 +401,31 @@ describe("refreshRecentSessions", () => {
     });
   });
 
+  it("keeps support and the last-good recent snapshot when listing fails transiently", async () => {
+    await refreshRecentSessions(
+      createMemorySessionsClient(
+        {
+          entries: [entry({ sessionId: "old", cwd: "/gone" })],
+          totals: { claude: 1, codex: 0 },
+          limit: 5,
+        },
+        { alive: () => false, tails: [{ id: "old", tail: "Last good summary" }] },
+      ),
+    );
+
+    await refreshRecentSessions(createMemorySessionsClient(null, { fail: true }));
+
+    expect(sessionsSupported.value).toBe(true);
+    expect(recentSessionEntries.value.map((item) => [item.sessionId, item.summary])).toEqual([
+      ["old", "Last good summary"],
+    ]);
+    expect([...recentDeadProjects.value]).toEqual(["/gone"]);
+    expect(recentSessionsLoadState.value).toEqual({
+      status: "error",
+      message: "Couldn't read recent activity.",
+    });
+  });
+
   it("ignores an older recent result after a retry succeeds", async () => {
     const oldList = deferred<{
       entries: readonly SessionEntry[];

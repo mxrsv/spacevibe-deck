@@ -8,6 +8,7 @@
  */
 import { batch, signal } from "@preact/signals";
 import { defaultSessionsClient, type SessionsClient } from "./sessions-client";
+import { sessionsHostAvailable } from "../host/sessions-host";
 import type { AgentFilter } from "./session-filters";
 import type { SessionTailAnswer } from "../lib/agent-resume";
 import {
@@ -40,11 +41,11 @@ export const recentSessionsLoading = signal(false);
 export const recentSessionsLoadState = signal<LoadState>(LOAD_IDLE);
 
 /**
- * False once the facade has answered `null` — this host has no
- * `sessions_list`. The toolbar control reads it and renders nothing, so the
- * screen is unreachable rather than reachable and empty.
+ * Known synchronously from the Electron bridge, then confirmed by each list.
+ * An unsupported host never paints the control for one frame while waiting
+ * for the boot effect.
  */
-export const sessionsSupported = signal(true);
+export const sessionsSupported = signal(sessionsHostAvailable());
 
 /** cwds that no longer exist on disk; their rows cannot resume (spec §4). */
 export const deadProjects = signal<ReadonlySet<string>>(new Set());

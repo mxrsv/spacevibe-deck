@@ -55,6 +55,28 @@ describe("asSessionsSnapshot", () => {
     expect(snapshot?.entries.map((item) => item.sessionId)).toEqual(["kept"]);
   });
 
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    "drops a non-finite last activity timestamp: %s",
+    (lastActivityMs) => {
+      expect(asSessionsSnapshot(reply([entry({ lastActivityMs })]))?.entries).toEqual([]);
+    },
+  );
+
+  it("drops a timestamp outside JavaScript's Date range", () => {
+    expect(
+      asSessionsSnapshot(reply([entry({ lastActivityMs: 8_640_000_000_000_001 })]))?.entries,
+    ).toEqual([]);
+  });
+
+  it.each([0, -8_640_000_000_000_000, 8_640_000_000_000_000])(
+    "keeps a finite timestamp inside JavaScript's Date range: %s",
+    (lastActivityMs) => {
+      expect(asSessionsSnapshot(reply([entry({ lastActivityMs })]))?.entries[0]?.lastActivityMs).toBe(
+        lastActivityMs,
+      );
+    },
+  );
+
   it("treats a missing title as no title rather than dropping the entry", () => {
     const snapshot = asSessionsSnapshot(reply([entry({ title: 42 })]));
     expect(snapshot?.entries[0].title).toBeNull();

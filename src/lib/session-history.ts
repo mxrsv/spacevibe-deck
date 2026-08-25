@@ -31,6 +31,7 @@ export interface SessionsSnapshot {
 }
 
 export const SESSIONS_DEFAULT_LIMIT = 500;
+const MAX_DATE_TIMESTAMP_MS = 8_640_000_000_000_000;
 
 export const EMPTY_SESSIONS_SNAPSHOT: SessionsSnapshot = Object.freeze({
   entries: Object.freeze([]),
@@ -72,6 +73,8 @@ export function asSessionsSnapshot(raw: unknown): SessionsSnapshot | null {
       typeof entry.cwd !== "string" ||
       entry.cwd === "" ||
       typeof entry.lastActivityMs !== "number" ||
+      !Number.isFinite(entry.lastActivityMs) ||
+      Math.abs(entry.lastActivityMs) > MAX_DATE_TIMESTAMP_MS ||
       typeof entry.sourcePath !== "string"
     ) {
       continue;

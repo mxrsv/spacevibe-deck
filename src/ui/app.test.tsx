@@ -203,8 +203,21 @@ describe("recent agent activity wiring", () => {
 
     expect(source.match(/<RecentSessionActivity\b/g)).toHaveLength(1);
     expect(railMount).toContain("<RecentSessionActivity");
-    expect(railMount).toContain("onResume={(entry) => void resumeSessionEntry(entry)}");
+    expect(railMount).toContain(
+      "onResume={(entry) => void resumeSessionEntry(entry, recentDeadProjects.value)}",
+    );
     expect(railMount).toContain('onViewAll={() => openDockTab("sessions")}');
+  });
+
+  it("keeps recent activity and the full Sessions view on their matching liveness snapshots", () => {
+    expect(source).toContain("unavailableProjects: ReadonlySet<string> = deadProjects.value");
+    expect(source).toContain("isDead: (cwd) => unavailableProjects.has(cwd)");
+    expect(source).toContain(
+      "onResume={(entry) => void resumeSessionEntry(entry, recentDeadProjects.value)}",
+    );
+    expect(source).toContain(
+      "<SessionsDockTab onResume={(entry) => void resumeSessionEntry(entry)} />",
+    );
   });
 
   it("keeps the existing Sessions dock navigation on the rail actions", () => {

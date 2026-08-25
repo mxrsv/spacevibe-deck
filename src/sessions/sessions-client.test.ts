@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const invoke = vi.fn();
 vi.mock("../host/bridge", () => ({
@@ -17,6 +17,15 @@ const ANSWERS: readonly (SessionTailAnswer | null)[] = [
   { id: "claude-1", tail: "Implemented the client." },
   { id: "codex-2", tail: null },
 ];
+
+beforeEach(() => {
+  vi.stubGlobal("__deckHost", { invoke: vi.fn(), listen: vi.fn() });
+});
+
+afterEach(() => {
+  invoke.mockReset();
+  vi.unstubAllGlobals();
+});
 
 describe("SessionsClient tails", () => {
   it("returns positional exact-id answers through the host facade", async () => {
@@ -44,5 +53,20 @@ describe("SessionsClient tails", () => {
         tails: [...ANSWERS, { id: "surplus", tail: "must be dropped" }],
       }).tails([REQUESTS[0]]),
     ).resolves.toEqual([ANSWERS[0]]);
+  });
+});
+
+describe("SessionsClient list", () => {
+  it("maps an absent Electron bridge to unsupported", async () => {
+    vi.stubGlobal("__deckHost", undefined);
+
+    await expect(createHostSessionsClient().list(5)).resolves.toBeNull();
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("rejects on a transient host invocation failure", async () => {
+    invoke.mockRejectedValueOnce(new Error("temporary scan failure"));
+
+    await expect(createHostSessionsClient().list(5)).rejects.toThrow("temporary scan failure");
   });
 });

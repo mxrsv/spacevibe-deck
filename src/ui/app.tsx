@@ -71,6 +71,7 @@ import type { SessionEntry } from "../lib/session-history";
 import { resumeSession } from "../sessions/resume-session";
 import {
   deadProjects,
+  recentDeadProjects,
   refreshRecentSessions,
   refreshSessions,
   sessionsSupported,
@@ -387,13 +388,16 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * is the second gate for the case where the directory disappeared between
    * the scan and the click.
    */
-  const resumeSessionEntry = async (entry: SessionEntry): Promise<boolean> => {
+  const resumeSessionEntry = async (
+    entry: SessionEntry,
+    unavailableProjects: ReadonlySet<string> = deadProjects.value,
+  ): Promise<boolean> => {
     let resumed = false;
     try {
       resumed = await resumeSession(entry, {
         materialize: (intent) => tabsRef.current?.materialize(intent) ?? Promise.resolve(false),
         customAgents: settings.value.customAgents,
-        isDead: (cwd) => deadProjects.value.has(cwd),
+        isDead: (cwd) => unavailableProjects.has(cwd),
       });
     } catch (err: unknown) {
       console.warn("Failed to resume session:", err);
@@ -1538,7 +1542,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             footer={SIDEBAR_TOOLS_HIDDEN ? undefined : railActions}
             recentActivity={
               <RecentSessionActivity
-                onResume={(entry) => void resumeSessionEntry(entry)}
+                onResume={(entry) => void resumeSessionEntry(entry, recentDeadProjects.value)}
                 onViewAll={() => openDockTab("sessions")}
               />
             }

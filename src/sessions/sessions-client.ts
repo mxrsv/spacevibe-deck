@@ -20,7 +20,16 @@ export interface SessionsClient {
 
 export function createHostSessionsClient(): SessionsClient {
   return {
-    list: (limit) => listSessions(limit),
+    async list(limit) {
+      const result = await listSessions(limit);
+      if (result.status === "supported") {
+        return result.snapshot;
+      }
+      if (result.status === "unsupported") {
+        return null;
+      }
+      throw result.error;
+    },
     dirsExist: (paths) => defaultPtyClient.dirsExist(paths),
     tails: (requests) => sessionTails(requests),
   };
