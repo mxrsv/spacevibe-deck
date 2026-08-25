@@ -155,6 +155,33 @@ describe("RecentSessionActivity", () => {
     expect(host.textContent).not.toContain("No recent sessions.");
   });
 
+  it("treats initial idle with no rows as a cold reading state", () => {
+    recentSessionEntries.value = [];
+    recentSessionsLoadState.value = { status: "idle" };
+
+    mount();
+
+    expect(host.textContent).toContain("Reading recent activity…");
+    expect(host.querySelector(".recent-session-activity")?.getAttribute("aria-busy")).toBe("true");
+  });
+
+  it("rerenders when the recent-session signals receive their first ready rows", () => {
+    recentSessionEntries.value = [];
+    recentSessionsLoadState.value = { status: "idle" };
+    mount();
+
+    act(() => {
+      recentSessionEntries.value = [entry({ summary: "Loaded after mount" })];
+      recentSessionsLoading.value = false;
+      recentSessionsLoadState.value = { status: "ready" };
+    });
+
+    expect(host.querySelector(".recent-session-activity__summary")?.textContent).toBe(
+      "Loaded after mount",
+    );
+    expect(host.textContent).not.toContain("Reading recent activity…");
+  });
+
   it("only claims activity is empty after a successful scan", () => {
     recentSessionEntries.value = [];
 
@@ -187,5 +214,34 @@ describe("RecentSessionActivity", () => {
 
     expect(host.textContent).toBe("");
     expect(host.querySelector(".recent-session-activity")).toBeNull();
+  });
+
+  it("generates distinct heading and unavailable-reason ids per mounted block", () => {
+    const recent = entry({ cwd: "/gone" });
+    recentSessionEntries.value = [recent];
+    recentDeadProjects.value = new Set([recent.cwd]);
+
+    act(() => {
+      render(
+        <>
+          <RecentSessionActivity onResume={() => {}} onViewAll={() => {}} />
+          <RecentSessionActivity onResume={() => {}} onViewAll={() => {}} />
+        </>,
+        host,
+      );
+    });
+
+    const sections = [...host.querySelectorAll<HTMLElement>(".recent-session-activity")];
+    const headings = [...host.querySelectorAll<HTMLElement>(".recent-session-activity__heading")];
+    const reasons = [
+      ...host.querySelectorAll<HTMLElement>(".recent-session-activity__unavailable"),
+    ];
+
+    expect(headings.map((heading) => heading.id)).toHaveLength(2);
+    expect(new Set(headings.map((heading) => heading.id)).size).toBe(2);
+    expect(sections.map((section) => section.getAttribute("aria-labelledby"))).toEqual(
+      headings.map((heading) => heading.id),
+    );
+    expect(new Set(reasons.map((reason) => reason.id)).size).toBe(2);
   });
 });

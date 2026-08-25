@@ -1,5 +1,6 @@
 import { SESSION_AGENT_LABELS } from "../../lib/session-history";
 import { formatRelativeTime } from "../../lib/workspace-recents";
+import { useId } from "preact/hooks";
 import {
   recentDeadProjects,
   recentSessionEntries,
@@ -25,8 +26,8 @@ function summary(entry: RecentSessionEntry): string {
   return entry.summary.trim() || sessionName(entry);
 }
 
-function unavailableReasonId(entry: RecentSessionEntry): string {
-  return `recent-session-unavailable-${entry.agent}-${entry.sessionId}`;
+function unavailableReasonId(base: string, entry: RecentSessionEntry): string {
+  return `recent-session-unavailable-${base}-${entry.agent}-${entry.sessionId}`;
 }
 
 /**
@@ -35,6 +36,9 @@ function unavailableReasonId(entry: RecentSessionEntry): string {
  * this component only presents that snapshot and delegates its two outcomes.
  */
 export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActivityProps) {
+  const base = useId();
+  const headingId = `recent-session-activity-heading-${base}`;
+
   if (!sessionsSupported.value) {
     return null;
   }
@@ -42,16 +46,16 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
   const entries = recentSessionEntries.value;
   const loadState = recentSessionsLoadState.value;
   const hasEntries = entries.length > 0;
-  const coldLoading = recentSessionsLoading.value && !hasEntries;
+  const coldLoading = !hasEntries && (recentSessionsLoading.value || loadState.status === "idle");
 
   return (
     <section
       class="recent-session-activity"
-      aria-labelledby="recent-session-activity-heading"
-      aria-busy={loadState.status === "loading"}
+      aria-labelledby={headingId}
+      aria-busy={loadState.status === "loading" || coldLoading}
     >
       <header class="recent-session-activity__header">
-        <h2 id="recent-session-activity-heading" class="recent-session-activity__heading">
+        <h2 id={headingId} class="recent-session-activity__heading">
           Recent activity
         </h2>
         <button type="button" class="recent-session-activity__view-all" onClick={onViewAll}>
@@ -74,7 +78,7 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
           {entries.map((entry) => {
             const dead = recentDeadProjects.value.has(entry.cwd);
             const name = sessionName(entry);
-            const reasonId = dead ? unavailableReasonId(entry) : undefined;
+            const reasonId = dead ? unavailableReasonId(base, entry) : undefined;
             return (
               <li key={`${entry.agent}-${entry.sessionId}`} class="recent-session-activity__slot">
                 <button
