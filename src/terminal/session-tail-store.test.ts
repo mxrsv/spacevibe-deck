@@ -599,4 +599,31 @@ describe("session tail store — paneModels", () => {
     // same as the sentence does in H1.
     expect(paneModels.value.has(101)).toBe(false);
   });
+
+  it("prune republishes only the map whose survivor set actually shrank", async () => {
+    // A model with nothing to quote: `paneModels` gets an entry and
+    // `paneTails` stays empty, on purpose (the `tail: null` branch of
+    // `merged`).
+    tabViews.value = [tab(1, "/w", [pane(101)])];
+    hosts.sessionTails.mockResolvedValue([pairingWithModel("sess-1", null, "claude-opus-5")]);
+    dispose = installSessionTailSync();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(paneModels.value.get(101)).toBe("claude-opus-5");
+    expect(paneTails.value.size).toBe(0);
+
+    const tailsBeforePrune = paneTails.value;
+    const modelsBeforePrune = paneModels.value;
+
+    // Pane 101 is replaced by a shell pane, so `entriesOf` sends no request
+    // this round — isolating the run to the prune step alone — while pane 101
+    // is no longer live and gets pruned out of `paneModels`. `paneTails` was
+    // already empty, so pruning it is a no-op and must not republish it.
+    tabViews.value = [tab(1, "/w", [pane(102, { agent: null, hasRun: false })])];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+    expect(hosts.sessionTails).toHaveBeenCalledTimes(1);
+    expect(paneModels.value.has(101)).toBe(false);
+    expect(paneModels.value).not.toBe(modelsBeforePrune);
+    expect(paneTails.value).toBe(tailsBeforePrune);
+  });
 });

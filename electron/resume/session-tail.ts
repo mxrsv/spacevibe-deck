@@ -116,8 +116,10 @@ export function codexTailFromLines(lines: readonly string[]): string | null {
 }
 
 /**
- * The newest Claude turn that names a model. Same record as the sentence, read
- * separately: a tool-only turn carries a model and no text.
+ * The newest Claude turn that names a model. An independent walk from
+ * `claudeTailFromLines`'s, not the same record: a tool-only turn can carry a
+ * model with no text, so this walk may stop on an assistant record the
+ * sentence walk skipped straight past.
  */
 export function claudeModelFromLines(lines: readonly string[]): string | null {
   for (let i = lines.length - 1; i >= 0; i--) {

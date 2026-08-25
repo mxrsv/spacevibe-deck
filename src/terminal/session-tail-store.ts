@@ -406,15 +406,16 @@ async function run(): Promise<void> {
       livePaneIds(tabs),
     );
     // `prune` only ever deletes, so a size match on EITHER map is a "nothing
-    // changed" proof for that map. Checked separately because a pane can hold
-    // a model with no tail (a tool-only turn names a model and no text), so
-    // the two sizes do not always move together. Anything that could add
-    // would need a different test.
-    if (
-      pruned.tails.size !== paneTails.value.size ||
-      pruned.models.size !== paneModels.value.size
-    ) {
+    // changed" proof for that map. Checked and published SEPARATELY because a
+    // pane can hold a model with no tail (a tool-only turn names a model and
+    // no text): pruning that pane shrinks `models` alone, and republishing
+    // `paneTails` too would hand the rail a new Map identity over identical
+    // content — a spurious re-render. Anything that could add would need a
+    // different test.
+    if (pruned.tails.size !== paneTails.value.size) {
       paneTails.value = pruned.tails;
+    }
+    if (pruned.models.size !== paneModels.value.size) {
       paneModels.value = pruned.models;
     }
   }
