@@ -33,5 +33,9 @@ function parseAnswer(entry: unknown): SessionTailAnswer | null {
   if (typeof node.id !== "string" || node.id === "") {
     return null;
   }
-  return { id: node.id, tail: typeof node.tail === "string" ? node.tail : null };
+  return {
+    id: node.id,
+    tail: typeof node.tail === "string" ? node.tail : null,
+    model: typeof node.model === "string" && node.model !== "" ? node.model : null,
+  };
 }

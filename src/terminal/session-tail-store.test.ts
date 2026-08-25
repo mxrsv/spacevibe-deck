@@ -29,12 +29,12 @@ const hosts = vi.hoisted(() => ({
  * nothing to quote — `pairing()` builds that one.
  */
 function tails(...sentences: readonly (string | null)[]): (SessionTailAnswer | null)[] {
-  return sentences.map((tail, index) => (tail === null ? null : { id: `s${index + 1}`, tail }));
+  return sentences.map((tail, index) => (tail === null ? null : { id: `s${index + 1}`, tail, model: null }));
 }
 
 /** A named pairing, for the tests that care WHICH session answered. */
 function pairing(id: string, tail: string | null): SessionTailAnswer {
-  return { id, tail };
+  return { id, tail, model: null };
 }
 
 vi.mock("../host/worktree-host", () => ({
