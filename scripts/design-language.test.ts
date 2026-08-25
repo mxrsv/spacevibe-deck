@@ -337,7 +337,7 @@ describe("DL-33 recent agent activity", () => {
     }
 
     const row = css.match(/\.recent-session-activity__row\s*\{([^}]*)\}/)?.[1] ?? "";
-    expect(row).toMatch(/grid-template-columns:\s*15px minmax\(0, 1fr\) 6\.5em\s*;/);
+    expect(row).toMatch(/grid-template-columns:\s*15px minmax\(0, 1fr\) 4em\s*;/);
     expect(row).toMatch(/min-height:\s*30px\s*;/);
     expect(row).toMatch(/border-radius:\s*var\(--radius-control\)\s*;/);
     expect(css).toMatch(/\[data-sidebar-collapsed="true"\] \.recent-session-activity\s*\{[^}]*display:\s*none/s);
