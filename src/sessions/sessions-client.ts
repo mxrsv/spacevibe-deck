@@ -45,7 +45,7 @@ export function createMemorySessionsClient(
       return paths.map((path) => options.alive?.(path) ?? true);
     },
     async tails(requests) {
-      return options.tails ?? requests.map(() => null);
+      return requests.map((_request, index) => options.tails?.[index] ?? null);
     },
   };
 }

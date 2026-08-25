@@ -31,4 +31,18 @@ describe("SessionsClient tails", () => {
       ANSWERS,
     );
   });
+
+  it("pads a shorter memory reply with null at the missing request position", async () => {
+    await expect(createMemorySessionsClient(null, { tails: [ANSWERS[0]] }).tails(REQUESTS)).resolves.toEqual(
+      [ANSWERS[0], null],
+    );
+  });
+
+  it("drops a surplus memory reply rather than adding a request position", async () => {
+    await expect(
+      createMemorySessionsClient(null, {
+        tails: [...ANSWERS, { id: "surplus", tail: "must be dropped" }],
+      }).tails([REQUESTS[0]]),
+    ).resolves.toEqual([ANSWERS[0]]);
+  });
 });
