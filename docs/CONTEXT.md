@@ -39,9 +39,9 @@ mixed-agent entries seeded in [gallery/main.tsx](../src/gallery/main.tsx)
 rows in each specimen: normal shell/rail `275/275`, activity `259/259`; compact
 shell/rail `200/200`, activity `184/184` — every pair is
 `clientWidth/scrollWidth`, so no measured horizontal overflow. Targeted recent
-component + rail tests passed `83/83`, and `npx tsc --noEmit` passed. The
+post-review focused suite passed `194/194`, and `npx tsc --noEmit` passed. The
 production `npm run build` passed on 2026-08-25 (7,684 modules transformed;
-Vite built in 12.61s). The
+Vite built in 12.22s). The
 pre-existing Gallery entry suite baseline is still red (`9 passed, 1 failed`):
 its unrelated Woven Flag expectation in `chrome-section.tsx` predates this
 block and was not changed.

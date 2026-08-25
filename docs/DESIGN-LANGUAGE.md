@@ -2749,10 +2749,15 @@ Numbered 33 because §22 stays reserved and §32 was the previous highest rule.
 - **DL-33.2** **Every row is a verified session summary.** The store pins each
   tail request to the listed session id and accepts a sentence only when the
   returned id matches exactly; otherwise the summary falls back to title, then
-  id. The one-line row keeps a 15px `AgentGlyph` and a fixed 6.5em tabular-time
-  column while the sentence ellipsizes first. Its 30px minimum height, 7px
-  inset, `--radius-control`, `--state-hover-bg`, and `--text-*` / `--type-*`
-  treatment are tokens, not a second sidebar language.
+  id. The one-line row keeps a 15px `AgentGlyph`, a compact visible agent label
+  (`Claude`, not `Claude Code`), and a fixed 4em tabular-time column. Time uses
+  bounded labels from `now` through `99y+` (or `—` for an invalid date), so the
+  fixed track cannot grow; the summary's flexible track yields first and
+  ellipsizes while agent identity and time remain readable. Its 30px minimum
+  height, 7px inset, `--radius-control`, `--state-hover-bg`, and `--text-*` /
+  `--type-*` treatment are tokens, not a second sidebar language. The row's
+  accessible name still carries the full session title or id, so compact copy
+  does not weaken exact-session identity.
 - **DL-33.3** **The compact row itself resumes its exact session.** This is a
   scoped fork from DL-25.1: the complete history keeps its inert body and
   visible `Resume` control, while this deliberately five-item sidebar block
