@@ -23,6 +23,7 @@ const DAY_MS = 24 * HOUR_MS;
 const MONTH_MS = 30 * DAY_MS;
 const YEAR_MS = 12 * MONTH_MS;
 const MAX_DATE_MS = 8_640_000_000_000_000;
+const MAX_COMPACT_YEARS = 99;
 
 const ACTIVITY_AGENT_LABELS = Object.freeze({
   ...SESSION_AGENT_LABELS,
@@ -56,7 +57,11 @@ function formatActivityTime(then: number, now: number): ActivityTime {
   if (age < YEAR_MS) {
     return { label: `${Math.floor(age / MONTH_MS)}mo`, dateTime };
   }
-  return { label: `${Math.floor(age / YEAR_MS)}y`, dateTime };
+  const years = Math.floor(age / YEAR_MS);
+  return {
+    label: years > MAX_COMPACT_YEARS ? `${MAX_COMPACT_YEARS}y+` : `${years}y`,
+    dateTime,
+  };
 }
 
 function sessionName(entry: RecentSessionEntry): string {

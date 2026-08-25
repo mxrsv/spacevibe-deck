@@ -109,11 +109,12 @@ describe("RecentSessionActivity", () => {
     nowSpy.mockRestore();
   });
 
-  it("renders now for a future timestamp and safely omits malformed dates", () => {
+  it("bounds ancient years, renders future activity as now, and omits malformed dates", () => {
     const now = Date.UTC(2026, 7, 25, 12);
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
     recentSessionEntries.value = [
       entry({ sessionId: "future", lastActivityMs: now + 60_000 }),
+      entry({ sessionId: "ancient", lastActivityMs: -8_640_000_000_000_000 }),
       entry({ sessionId: "nan", lastActivityMs: Number.NaN }),
       entry({ sessionId: "infinite", lastActivityMs: Number.POSITIVE_INFINITY }),
       entry({ sessionId: "out-of-range", lastActivityMs: Number.MAX_VALUE }),
@@ -122,9 +123,12 @@ describe("RecentSessionActivity", () => {
     mount();
 
     const times = [...host.querySelectorAll(".recent-session-activity__time")];
-    expect(times.map((node) => node.textContent)).toEqual(["now", "—", "—", "—"]);
+    expect(times.map((node) => node.textContent)).toEqual(["now", "99y+", "—", "—", "—"]);
     expect(times[0]?.getAttribute("datetime")).toBe(new Date(now + 60_000).toISOString());
-    for (const malformed of times.slice(1)) {
+    expect(times[1]?.getAttribute("datetime")).toBe(
+      new Date(-8_640_000_000_000_000).toISOString(),
+    );
+    for (const malformed of times.slice(2)) {
       expect(malformed.hasAttribute("datetime")).toBe(false);
     }
     nowSpy.mockRestore();
