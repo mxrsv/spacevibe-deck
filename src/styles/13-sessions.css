@@ -516,7 +516,7 @@
 .recent-session-activity__row {
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 15px minmax(0, 1fr) 6.5em;
+  grid-template-columns: 15px minmax(0, 1fr) 4em;
   width: 100%;
   min-width: 0;
   min-height: 30px;
@@ -618,7 +618,7 @@
 }
 
 .recent-session-activity__time {
-  width: 6.5em;
+  width: 4em;
   color: var(--text-faint);
   font-size: var(--type-micro);
   font-variant-numeric: tabular-nums;

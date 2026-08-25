@@ -1267,7 +1267,7 @@ describe("AgentRail recent activity style contract", () => {
 
   it("keeps compact rows at fixed glyph and time geometry without horizontal overflow", () => {
     const row = ruleBody(".recent-session-activity__row");
-    expect(row).toContain("grid-template-columns: 15px minmax(0, 1fr) 6.5em");
+    expect(row).toContain("grid-template-columns: 15px minmax(0, 1fr) 4em");
     expect(row).toContain("min-height: 30px");
     expect(row).toContain("box-sizing: border-box");
     expect(row).toContain("width: 100%");
@@ -1284,7 +1284,10 @@ describe("AgentRail recent activity style contract", () => {
     expect(summary).toContain("text-overflow: ellipsis");
 
     const time = ruleBody(".recent-session-activity__time");
+    expect(time).toContain("width: 4em");
     expect(time).toContain("font-variant-numeric: tabular-nums");
+    expect(time).toContain("text-align: right");
+    expect(time).toContain("white-space: nowrap");
   });
 
   it("uses semantic tokens and non-layout hover treatment", () => {
