@@ -548,6 +548,17 @@
   cursor: default;
 }
 
+.recent-session-activity__row.is-unavailable:hover,
+.recent-session-activity__row.is-unavailable:focus-visible {
+  background: transparent;
+}
+
+.recent-session-activity__row.is-unavailable .recent-session-activity__agent,
+.recent-session-activity__row.is-unavailable .recent-session-activity__summary,
+.recent-session-activity__row.is-unavailable .recent-session-activity__unavailable {
+  color: var(--text-faint);
+}
+
 .recent-session-activity__glyph {
   display: block;
   width: 15px;

@@ -1244,6 +1244,9 @@ describe("AgentRail shell contract", () => {
 
 describe("AgentRail recent activity style contract", () => {
   const stylesheet = readFileSync("src/styles/13-sessions.css", "utf8");
+  const recentStart = stylesheet.indexOf("/* ── Recent activity");
+  const recentEnd = stylesheet.indexOf("/* ── Sessions screen: reduced motion", recentStart);
+  const recentRules = stylesheet.slice(recentStart, recentEnd);
 
   function ruleBody(selector: string): string {
     const start = stylesheet.indexOf(`\n${selector} {`);
@@ -1293,9 +1296,30 @@ describe("AgentRail recent activity style contract", () => {
       ".recent-session-activity__row:hover,\n.recent-session-activity__row:focus-visible {\n  background: var(--state-hover-bg);",
     );
 
-    const recentRules = stylesheet.slice(stylesheet.indexOf("/* ── Recent activity"));
     expect(recentRules).not.toMatch(/#[0-9a-f]{3,8}\b/i);
     expect(recentRules).not.toMatch(/font-size:\s*\d/);
+    expect(recentRules).not.toMatch(/\b(?:box-shadow|text-shadow)\s*:/);
+    expect(recentRules).not.toMatch(/\b(?:filter|backdrop-filter)\s*:/);
+    expect(recentRules).not.toMatch(/\b(?:rgba?|hsla?|oklch|color)\s*\(/i);
+
+    const withoutSemanticTokens = recentRules.replace(/var\(--[a-z0-9-]+\)/gi, "");
+    expect(withoutSemanticTokens).not.toMatch(
+      /\btransition(?:-(?:duration|timing-function))?\s*:[^;]*(?:\d*\.?\d+(?:ms|s)\b|\b(?:linear|ease(?:-in|-out|-in-out)?|cubic-bezier|steps)\b)/i,
+    );
+  });
+
+  it("keeps unavailable rows focusable without promising resume", () => {
+    const unavailable = ruleBody(".recent-session-activity__row.is-unavailable");
+    expect(unavailable).toContain("cursor: default");
+    expect(stylesheet).toContain(
+      ".recent-session-activity__row.is-unavailable:hover,\n.recent-session-activity__row.is-unavailable:focus-visible {\n  background: transparent;",
+    );
+    expect(stylesheet).toContain(
+      ".recent-session-activity__row:focus-visible {\n  outline: 2px solid var(--accent);",
+    );
+    expect(stylesheet).toContain(
+      ".recent-session-activity__row.is-unavailable .recent-session-activity__agent,\n.recent-session-activity__row.is-unavailable .recent-session-activity__summary,\n.recent-session-activity__row.is-unavailable .recent-session-activity__unavailable {\n  color: var(--text-faint);",
+    );
   });
 });
 
