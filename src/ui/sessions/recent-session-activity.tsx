@@ -20,31 +20,43 @@ interface RecentSessionActivityProps {
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
-const WEEK_MS = 7 * DAY_MS;
 const MONTH_MS = 30 * DAY_MS;
-const YEAR_MS = 365 * DAY_MS;
+const YEAR_MS = 12 * MONTH_MS;
+const MAX_DATE_MS = 8_640_000_000_000_000;
 
-function formatActivityTime(then: number, now: number): string {
+const ACTIVITY_AGENT_LABELS = Object.freeze({
+  ...SESSION_AGENT_LABELS,
+  claude: "Claude",
+});
+
+interface ActivityTime {
+  readonly label: string;
+  readonly dateTime?: string;
+}
+
+function formatActivityTime(then: number, now: number): ActivityTime {
+  if (!Number.isFinite(then) || Math.abs(then) > MAX_DATE_MS) {
+    return { label: "—" };
+  }
+
+  const dateTime = new Date(then).toISOString();
   const age = Math.max(0, now - then);
   if (age < MINUTE_MS) {
-    return "now";
+    return { label: "now", dateTime };
   }
   if (age < HOUR_MS) {
-    return `${Math.floor(age / MINUTE_MS)}m ago`;
+    return { label: `${Math.floor(age / MINUTE_MS)}m`, dateTime };
   }
   if (age < DAY_MS) {
-    return `${Math.floor(age / HOUR_MS)}h ago`;
-  }
-  if (age < WEEK_MS) {
-    return `${Math.floor(age / DAY_MS)}d ago`;
+    return { label: `${Math.floor(age / HOUR_MS)}h`, dateTime };
   }
   if (age < MONTH_MS) {
-    return `${Math.floor(age / WEEK_MS)}w ago`;
+    return { label: `${Math.floor(age / DAY_MS)}d`, dateTime };
   }
   if (age < YEAR_MS) {
-    return `${Math.floor(age / MONTH_MS)}mo ago`;
+    return { label: `${Math.floor(age / MONTH_MS)}mo`, dateTime };
   }
-  return `${Math.floor(age / YEAR_MS)}y ago`;
+  return { label: `${Math.floor(age / YEAR_MS)}y`, dateTime };
 }
 
 function sessionName(entry: RecentSessionEntry): string {
@@ -108,12 +120,12 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
             const dead = recentDeadProjects.value.has(entry.cwd);
             const name = sessionName(entry);
             const reasonId = dead ? unavailableReasonId(base, entry) : undefined;
+            const activityTime = formatActivityTime(entry.lastActivityMs, Date.now());
             return (
               <li key={`${entry.agent}-${entry.sessionId}`} class="recent-session-activity__slot">
                 <button
                   type="button"
                   class={`recent-session-activity__row${dead ? " is-unavailable" : ""}`}
-                  aria-label={`Resume ${name}`}
                   aria-disabled={dead || undefined}
                   aria-describedby={reasonId}
                   onClick={() => {
@@ -122,25 +134,23 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
                     }
                   }}
                 >
+                  <span class="recent-session-activity__resume-prefix">Resume {name}: </span>
                   <AgentGlyph agent={entry.agent} className="recent-session-activity__glyph" />
                   <span class="recent-session-activity__content">
                     <span class="recent-session-activity__copy">
                       <span class="recent-session-activity__agent">
-                        {SESSION_AGENT_LABELS[entry.agent]}
+                        {ACTIVITY_AGENT_LABELS[entry.agent]}
                       </span>
-                      <span class="recent-session-activity__summary">{summary(entry)}</span>
+                      <span id={reasonId} class="recent-session-activity__summary">
+                        {dead ? "folder is gone" : summary(entry)}
+                      </span>
                     </span>
-                    {dead ? (
-                      <span id={reasonId} class="recent-session-activity__unavailable">
-                        folder is gone
-                      </span>
-                    ) : null}
                   </span>
                   <time
                     class="recent-session-activity__time"
-                    dateTime={new Date(entry.lastActivityMs).toISOString()}
+                    dateTime={activityTime.dateTime}
                   >
-                    {formatActivityTime(entry.lastActivityMs, Date.now())}
+                    {activityTime.label}
                   </time>
                 </button>
               </li>

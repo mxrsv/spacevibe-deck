@@ -341,6 +341,9 @@ describe("DL-33 recent agent activity", () => {
     expect(row).toMatch(/min-height:\s*30px\s*;/);
     expect(row).toMatch(/border-radius:\s*var\(--radius-control\)\s*;/);
     expect(css).toMatch(/\[data-sidebar-collapsed="true"\] \.recent-session-activity\s*\{[^}]*display:\s*none/s);
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.recent-session-activity \*,\s*\.sessions-screen,[^{]*\{[^}]*transition:\s*none\s*;/s,
+    );
   });
 });
 

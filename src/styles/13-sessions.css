@@ -554,9 +554,22 @@
 }
 
 .recent-session-activity__row.is-unavailable .recent-session-activity__agent,
-.recent-session-activity__row.is-unavailable .recent-session-activity__summary,
-.recent-session-activity__row.is-unavailable .recent-session-activity__unavailable {
+.recent-session-activity__row.is-unavailable .recent-session-activity__summary {
   color: var(--text-faint);
+}
+
+/* Starts the button's accessible name with its action and exact session
+   identity without replacing the visible agent, summary and time. */
+.recent-session-activity__resume-prefix {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .recent-session-activity__glyph {
@@ -610,13 +623,6 @@
   text-overflow: ellipsis;
 }
 
-.recent-session-activity__unavailable {
-  flex: none;
-  color: var(--text-faint);
-  font-size: var(--type-micro);
-  white-space: nowrap;
-}
-
 .recent-session-activity__time {
   width: 4em;
   color: var(--text-faint);
@@ -655,6 +661,7 @@
    it and wins the cascade. Repeating the scope here, after the last sessions
    rule, is what actually turns the transitions off. */
 @media (prefers-reduced-motion: reduce) {
+  .recent-session-activity *,
   .sessions-screen,
   .sessions-screen.is-open,
   .sessions-screen * {

@@ -86,17 +86,17 @@ describe("RecentSessionActivity", () => {
     expect(host.querySelectorAll(".recent-session-activity__row")).toHaveLength(5);
   });
 
-  it("uses compact relative times so the summary yields before agent identity", () => {
+  it("keeps every relative-time bucket inside the fixed compact track", () => {
     const now = Date.UTC(2026, 7, 25, 12);
     const minute = 60_000;
     const day = 24 * 60 * minute;
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
     recentSessionEntries.value = [
-      entry({ sessionId: "now", lastActivityMs: now - 30_000 }),
-      entry({ sessionId: "minutes", lastActivityMs: now - 4 * minute }),
-      entry({ sessionId: "hours", lastActivityMs: now - 3 * 60 * minute }),
-      entry({ sessionId: "day", lastActivityMs: now - day - 60 * minute }),
-      entry({ sessionId: "days", lastActivityMs: now - 5 * day }),
+      entry({ sessionId: "minutes", lastActivityMs: now - 59 * minute - 59_000 }),
+      entry({ sessionId: "hours", lastActivityMs: now - 23 * 60 * minute - 59_000 }),
+      entry({ sessionId: "days", lastActivityMs: now - 29 * day - 23 * 60 * minute }),
+      entry({ sessionId: "months", lastActivityMs: now - 359 * day }),
+      entry({ sessionId: "years", lastActivityMs: now - 360 * day }),
     ];
 
     mount();
@@ -105,28 +105,38 @@ describe("RecentSessionActivity", () => {
       [...host.querySelectorAll(".recent-session-activity__time")].map(
         (node) => node.textContent,
       ),
-    ).toEqual(["now", "4m ago", "3h ago", "1d ago", "5d ago"]);
+    ).toEqual(["59m", "23h", "29d", "11mo", "1y"]);
     nowSpy.mockRestore();
   });
 
-  it("keeps week, month, and year buckets compact", () => {
+  it("renders now for a future timestamp and safely omits malformed dates", () => {
     const now = Date.UTC(2026, 7, 25, 12);
-    const day = 24 * 60 * 60_000;
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
     recentSessionEntries.value = [
-      entry({ sessionId: "week", lastActivityMs: now - 7 * day }),
-      entry({ sessionId: "month", lastActivityMs: now - 45 * day }),
-      entry({ sessionId: "year", lastActivityMs: now - 365 * day }),
+      entry({ sessionId: "future", lastActivityMs: now + 60_000 }),
+      entry({ sessionId: "nan", lastActivityMs: Number.NaN }),
+      entry({ sessionId: "infinite", lastActivityMs: Number.POSITIVE_INFINITY }),
+      entry({ sessionId: "out-of-range", lastActivityMs: Number.MAX_VALUE }),
     ];
 
     mount();
 
-    expect(
-      [...host.querySelectorAll(".recent-session-activity__time")].map(
-        (node) => node.textContent,
-      ),
-    ).toEqual(["1w ago", "1mo ago", "1y ago"]);
+    const times = [...host.querySelectorAll(".recent-session-activity__time")];
+    expect(times.map((node) => node.textContent)).toEqual(["now", "—", "—", "—"]);
+    expect(times[0]?.getAttribute("datetime")).toBe(new Date(now + 60_000).toISOString());
+    for (const malformed of times.slice(1)) {
+      expect(malformed.hasAttribute("datetime")).toBe(false);
+    }
     nowSpy.mockRestore();
+  });
+
+  it("uses a compact visible agent label without changing the full session identity", () => {
+    mount();
+
+    expect(host.querySelector(".recent-session-activity__agent")?.textContent).toBe("Claude");
+    expect(host.querySelector(".recent-session-activity__resume-prefix")?.textContent).toBe(
+      "Resume Build recent activity: ",
+    );
   });
 
   it("keeps the store's nonblank title or id fallback visible as the summary", () => {
@@ -147,7 +157,11 @@ describe("RecentSessionActivity", () => {
     const { onResume } = mount();
     const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row");
 
-    expect(row?.getAttribute("aria-label")).toBe("Resume Build recent activity");
+    expect(row?.hasAttribute("aria-label")).toBe(false);
+    expect(row?.textContent).toMatch(/^Resume Build recent activity:/);
+    expect(row?.textContent).toContain("Claude");
+    expect(row?.textContent).toContain("The latest assistant response.");
+    expect(row?.textContent).toContain("1m");
     act(() => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -177,9 +191,11 @@ describe("RecentSessionActivity", () => {
     expect(row?.hasAttribute("disabled")).toBe(false);
     expect(row?.getAttribute("aria-disabled")).toBe("true");
     expect(row?.getAttribute("aria-describedby")).toBeTruthy();
-    expect(host.querySelector(".recent-session-activity__unavailable")?.textContent).toBe(
-      "folder is gone",
-    );
+    const reason = host.querySelector(".recent-session-activity__summary");
+    expect(reason?.textContent).toBe("folder is gone");
+    expect(reason?.id).toBe(row?.getAttribute("aria-describedby"));
+    expect(host.querySelector(".recent-session-activity__unavailable")).toBeNull();
+    expect(row?.textContent).toContain("Resume Build recent activity:");
     act(() => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -277,7 +293,7 @@ describe("RecentSessionActivity", () => {
     const sections = [...host.querySelectorAll<HTMLElement>(".recent-session-activity")];
     const headings = [...host.querySelectorAll<HTMLElement>(".recent-session-activity__heading")];
     const reasons = [
-      ...host.querySelectorAll<HTMLElement>(".recent-session-activity__unavailable"),
+      ...host.querySelectorAll<HTMLElement>(".recent-session-activity__summary[id]"),
     ];
 
     expect(headings.map((heading) => heading.id)).toHaveLength(2);

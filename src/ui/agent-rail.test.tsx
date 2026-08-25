@@ -1321,7 +1321,7 @@ describe("AgentRail recent activity style contract", () => {
       ".recent-session-activity__row:focus-visible {\n  outline: 2px solid var(--accent);",
     );
     expect(stylesheet).toContain(
-      ".recent-session-activity__row.is-unavailable .recent-session-activity__agent,\n.recent-session-activity__row.is-unavailable .recent-session-activity__summary,\n.recent-session-activity__row.is-unavailable .recent-session-activity__unavailable {\n  color: var(--text-faint);",
+      ".recent-session-activity__row.is-unavailable .recent-session-activity__agent,\n.recent-session-activity__row.is-unavailable .recent-session-activity__summary {\n  color: var(--text-faint);",
     );
   });
 });
