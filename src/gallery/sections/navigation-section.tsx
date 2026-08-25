@@ -10,6 +10,7 @@ import {
   railSimplicityLadderSpecimen,
   railStructureSpecimen,
 } from "../rail-structure-variants";
+import { SIDEBAR_WIDTH_MIN } from "../../settings/settings-schema";
 import { SectionHead, Specimen } from "../specimen";
 
 export function NavigationSection() {
@@ -76,12 +77,22 @@ export function NavigationSection() {
         {railStructureSpecimen()}
       </Specimen>
       <Specimen
-        name="Agent status rail · in the window shell"
-        note="the same rail mounted as the sidebar — with the Tools footer — beside the real frame and stage strip"
+        name="Recent activity · normal sidebar"
+        note="current proposal awaiting owner eye review · five global sessions rendered by the production RecentSessionActivity inside the shipping AgentRail and window shell"
         surface="none"
         tall
       >
         {agentStatusRailChromeSpecimen()}
+      </Specimen>
+      <Specimen
+        name="Recent activity · compact sidebar"
+        note="current proposal awaiting owner eye review · the same production shell at the persisted sidebar floor; summary copy yields before the glyph and relative time"
+        surface="none"
+        tall
+      >
+        <div style={{ height: "100%", "--sidebar-w": `${SIDEBAR_WIDTH_MIN}px` }}>
+          {agentStatusRailChromeSpecimen()}
+        </div>
       </Specimen>
     </>
   );

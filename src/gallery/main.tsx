@@ -35,6 +35,13 @@ import { Gallery } from "./gallery";
 import { workspacesData } from "../open-board/workspaces-store";
 import { WORKSPACES_VERSION } from "../lib/workspace-recents";
 import { DEFAULT_SIDEBAR_BANNER, sidebarBanner } from "../settings/sidebar-banner-store";
+import {
+  recentDeadProjects,
+  recentSessionEntries,
+  recentSessionsLoading,
+  recentSessionsLoadState,
+  sessionsSupported,
+} from "../sessions/sessions-store";
 
 /**
  * Gallery entry. It deliberately does NOT run the app's boot sequence:
@@ -84,6 +91,59 @@ function main(): void {
   paneTails.value = SEED_PANE_TAILS;
   sidebarBanner.value = { ...DEFAULT_SIDEBAR_BANNER, enabled: true };
   const seededAt = Date.now();
+  const missingRecentDirectory = `${SEED_STATUS.home}/retired/missing-workspace`;
+  recentSessionEntries.value = [
+    {
+      agent: "claude",
+      sessionId: "gallery-claude-launcher",
+      cwd: seedWorkspace,
+      lastActivityMs: seededAt - 4 * 60_000,
+      title: "Task launcher follow-up",
+      sourcePath: "/gallery/claude/launcher.jsonl",
+      summary: "Aligned the launcher draft across both entry points.",
+    },
+    {
+      agent: "codex",
+      sessionId: "gallery-codex-release",
+      cwd: `${SEED_STATUS.home}/spacevibe-academy`,
+      lastActivityMs: seededAt - 37 * 60_000,
+      title: "Release checks",
+      sourcePath: "/gallery/codex/release.jsonl",
+      summary:
+        "Verified the updater manifest and traced the remaining platform-specific release gate.",
+    },
+    {
+      agent: "claude",
+      sessionId: "gallery-claude-rail",
+      cwd: `${SEED_STATUS.home}/spacevibe-deck-worktrees/redesign-phase-1-2`,
+      lastActivityMs: seededAt - 3 * 60 * 60_000,
+      title: "Rail density",
+      sourcePath: "/gallery/claude/rail.jsonl",
+      summary: "Reduced the rail hierarchy to the useful context.",
+    },
+    {
+      agent: "codex",
+      sessionId: "gallery-codex-telemetry",
+      cwd: `${SEED_STATUS.home}/spacevibe-api`,
+      lastActivityMs: seededAt - 26 * 60 * 60_000,
+      title: "Analytics worker",
+      sourcePath: "/gallery/codex/telemetry.jsonl",
+      summary: "The privacy-safe ingestion path is ready for review.",
+    },
+    {
+      agent: "claude",
+      sessionId: "gallery-claude-missing",
+      cwd: missingRecentDirectory,
+      lastActivityMs: seededAt - 5 * 24 * 60 * 60_000,
+      title: "Retired prototype",
+      sourcePath: "/gallery/claude/missing.jsonl",
+      summary: "Recorded the prototype decision before the folder was removed.",
+    },
+  ];
+  recentDeadProjects.value = new Set([missingRecentDirectory]);
+  recentSessionsLoading.value = false;
+  recentSessionsLoadState.value = LOAD_READY;
+  sessionsSupported.value = true;
   workspacesData.value = {
     version: WORKSPACES_VERSION,
     recents: SEED_WORKSPACE_HISTORY.map((path, index) => ({

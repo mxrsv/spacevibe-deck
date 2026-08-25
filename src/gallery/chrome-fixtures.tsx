@@ -13,6 +13,7 @@ import { TabStrip } from "../ui/tab-strip";
 import { SidebarBanner } from "../ui/sidebar-banner";
 import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "../ui/sidebar-actions";
 import { SidebarFrameActions } from "../ui/sidebar-toggle";
+import { RecentSessionActivity } from "../ui/sessions/recent-session-activity";
 
 /**
  * The chrome components wired up for a specimen, in one place.
@@ -135,6 +136,7 @@ export function agentRailNavigationSpecimen({
       onFocusPane={onFocusPane}
       showAgentPresence
       fileController={fileControllerFixture}
+      recentActivity={<RecentSessionActivity onResume={NOOP} onViewAll={NOOP} />}
       footer={
         showFooter ? (
           <SidebarActions
