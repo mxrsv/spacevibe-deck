@@ -634,11 +634,10 @@
 }
 
 .recent-session-activity__gone {
-  width: 4em;
+  flex: none;
   color: var(--text-faint);
   font-size: var(--type-micro);
   font-weight: 500;
-  text-align: right;
   white-space: nowrap;
 }
 

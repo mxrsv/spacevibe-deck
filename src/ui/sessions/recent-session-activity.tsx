@@ -147,17 +147,16 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
                         {ACTIVITY_AGENT_LABELS[entry.agent]}
                       </span>
                       <span class="recent-session-activity__summary">{summary(entry)}</span>
+                      {dead ? (
+                        <span class="recent-session-activity__gone" aria-hidden="true">
+                          gone
+                        </span>
+                      ) : null}
                     </span>
                   </span>
-                  {dead ? (
-                    <span class="recent-session-activity__gone" aria-hidden="true">
-                      gone
-                    </span>
-                  ) : (
-                    <time class="recent-session-activity__time" dateTime={activityTime.dateTime}>
-                      {activityTime.label}
-                    </time>
-                  )}
+                  <time class="recent-session-activity__time" dateTime={activityTime.dateTime}>
+                    {activityTime.label}
+                  </time>
                 </button>
                 {dead ? (
                   <span id={reasonId} class="recent-session-activity__unavailable-reason">

@@ -199,6 +199,12 @@ describe("RecentSessionActivity", () => {
     const state = row?.querySelector(".recent-session-activity__gone");
     expect(state?.textContent).toBe("gone");
     expect(state?.getAttribute("aria-hidden")).toBe("true");
+    const copy = row?.querySelector(".recent-session-activity__copy");
+    expect(state?.parentElement).toBe(copy);
+    expect(state?.previousElementSibling).toBe(
+      row?.querySelector(".recent-session-activity__summary"),
+    );
+    expect(row?.querySelector(".recent-session-activity__time")?.textContent).toBe("1m");
     const reason = host.querySelector(".recent-session-activity__unavailable-reason");
     expect(reason?.textContent).toBe("folder is gone");
     expect(reason?.id).toBe(row?.getAttribute("aria-describedby"));
