@@ -9,12 +9,19 @@
 import { batch, signal } from "@preact/signals";
 import { defaultSessionsClient, type SessionsClient } from "./sessions-client";
 import type { AgentFilter } from "./session-filters";
+import type { SessionTailAnswer } from "../lib/agent-resume";
 import {
   SESSIONS_DEFAULT_LIMIT,
   type SessionAgent,
   type SessionEntry,
 } from "../lib/session-history";
 import { LOAD_IDLE, LOAD_LOADING, LOAD_READY, loadError, type LoadState } from "../lib/load-state";
+
+export const RECENT_SESSIONS_LIMIT = 5;
+
+export interface RecentSessionEntry extends SessionEntry {
+  readonly summary: string;
+}
 
 export const sessionEntries = signal<readonly SessionEntry[]>([]);
 export const sessionTotals = signal<Readonly<Record<SessionAgent, number>>>({
@@ -27,6 +34,11 @@ export const sessionLimit = signal(SESSIONS_DEFAULT_LIMIT);
 export const sessionsLoading = signal(false);
 export const sessionsLoadState = signal<LoadState>(LOAD_IDLE);
 
+export const recentSessionEntries = signal<readonly RecentSessionEntry[]>([]);
+/** A cold recent-activity scan is running and there are no last-good rows. */
+export const recentSessionsLoading = signal(false);
+export const recentSessionsLoadState = signal<LoadState>(LOAD_IDLE);
+
 /**
  * False once the facade has answered `null` — this host has no
  * `sessions_list`. The toolbar control reads it and renders nothing, so the
@@ -36,12 +48,14 @@ export const sessionsSupported = signal(true);
 
 /** cwds that no longer exist on disk; their rows cannot resume (spec §4). */
 export const deadProjects = signal<ReadonlySet<string>>(new Set());
+export const recentDeadProjects = signal<ReadonlySet<string>>(new Set());
 
 export const sessionAgentFilter = signal<AgentFilter>("all");
 export const sessionProjectFilter = signal<string | null>(null);
 
 /** Probe and refresh freshness are independent; a probe never supersedes data. */
 let probeGeneration = 0;
+let recentGeneration = 0;
 let refreshGeneration = 0;
 
 export function resetSessionFilters(): void {
@@ -81,6 +95,99 @@ export async function probeSessionsSupport(
   } catch {
     if (forProbe === probeGeneration && refreshAtStart === refreshGeneration) {
       sessionsLoadState.value = loadError("Couldn't read recorded sessions.");
+    }
+  }
+}
+
+function recentSummary(entry: SessionEntry, answer: SessionTailAnswer | null | undefined): string {
+  if (answer?.id === entry.sessionId && answer.tail !== null && answer.tail.trim() !== "") {
+    return answer.tail;
+  }
+  const title = entry.title?.trim();
+  return title === undefined || title === "" ? entry.sessionId : title;
+}
+
+interface RecentLoad {
+  readonly entries: readonly RecentSessionEntry[];
+  readonly deadProjects: ReadonlySet<string>;
+}
+
+async function loadRecent(
+  client: SessionsClient,
+  generation: number,
+): Promise<RecentLoad | null | undefined> {
+  const snapshot = await client.list(RECENT_SESSIONS_LIMIT);
+  if (generation !== recentGeneration) {
+    return undefined;
+  }
+  if (snapshot === null) {
+    return null;
+  }
+  const entries = [...snapshot.entries]
+    .sort((left, right) => right.lastActivityMs - left.lastActivityMs)
+    .slice(0, RECENT_SESSIONS_LIMIT);
+  const projects = [...new Set(entries.map((entry) => entry.cwd))];
+  const requests = entries.map((entry) => ({
+    agent: entry.agent,
+    cwd: entry.cwd,
+    lastSeenAt: entry.lastActivityMs,
+    preferredId: entry.sessionId,
+  }));
+  const [tails, alive] = await Promise.all([client.tails(requests), client.dirsExist(projects)]);
+  if (generation !== recentGeneration) {
+    return undefined;
+  }
+  return {
+    entries: entries.map((entry, index) => ({
+      ...entry,
+      summary: recentSummary(entry, tails[index]),
+    })),
+    deadProjects: new Set(projects.filter((_, index) => alive[index] !== true)),
+  };
+}
+
+export async function refreshRecentSessions(
+  client: SessionsClient = defaultSessionsClient,
+): Promise<void> {
+  recentGeneration += 1;
+  const forGeneration = recentGeneration;
+  const refreshAtStart = refreshGeneration;
+  if (recentSessionEntries.value.length === 0) {
+    recentSessionsLoading.value = true;
+  }
+  recentSessionsLoadState.value = LOAD_LOADING;
+  try {
+    const recent = await loadRecent(client, forGeneration);
+    if (recent === undefined) {
+      return;
+    }
+    if (recent === null) {
+      batch(() => {
+        if (refreshAtStart === refreshGeneration) {
+          sessionsSupported.value = false;
+          recentSessionEntries.value = [];
+          recentDeadProjects.value = new Set();
+        }
+        recentSessionsLoadState.value = LOAD_READY;
+      });
+      return;
+    }
+    batch(() => {
+      if (refreshAtStart === refreshGeneration) {
+        sessionsSupported.value = true;
+      }
+      recentSessionEntries.value = recent.entries;
+      recentDeadProjects.value = recent.deadProjects;
+      recentSessionsLoadState.value = LOAD_READY;
+    });
+  } catch (error: unknown) {
+    if (forGeneration === recentGeneration) {
+      console.warn("recent sessions refresh failed:", error);
+      recentSessionsLoadState.value = loadError("Couldn't read recent activity.");
+    }
+  } finally {
+    if (forGeneration === recentGeneration) {
+      recentSessionsLoading.value = false;
     }
   }
 }
