@@ -2728,6 +2728,46 @@ tables are the nearest thing and are still scanning, not reading.
   states the mode it would switch TO: the surface underneath already says
   which one it is in.
 
+## 33. Recent agent activity
+
+Added 2026-08-25 from the owner-approved
+[recent agent activity design](specs/2026-08-25-recent-agent-activity-design.md)
+`decided`. The production block is
+[RecentSessionActivity](../src/ui/sessions/recent-session-activity.tsx)
+`current`, composed through [AgentRail](../src/ui/agent-rail.tsx) `current`;
+its five-item, exact-tail snapshot is owned by
+[sessions-store.ts](../src/sessions/sessions-store.ts) `current` and its
+treatment by [13-sessions.css](../src/styles/13-sessions.css) `current`.
+Numbered 33 because §22 stays reserved and §32 was the previous highest rule.
+
+- **DL-33.1** **Recent activity is a separate block, not a fourth rail tier.**
+  It follows the live and remembered project stream in the rail's one vertical
+  scrollport, with one `--seam-recessed` separator and no card or independent
+  background. It aggregates **at most five** supported sessions across every
+  project, globally newest first. This is a compact re-entry surface; it does
+  not change DL-27's project → worktree → agent hierarchy.
+- **DL-33.2** **Every row is a verified session summary.** The store pins each
+  tail request to the listed session id and accepts a sentence only when the
+  returned id matches exactly; otherwise the summary falls back to title, then
+  id. The one-line row keeps a 15px `AgentGlyph` and a fixed 6.5em tabular-time
+  column while the sentence ellipsizes first. Its 30px minimum height, 7px
+  inset, `--radius-control`, `--state-hover-bg`, and `--text-*` / `--type-*`
+  treatment are tokens, not a second sidebar language.
+- **DL-33.3** **The compact row itself resumes its exact session.** This is a
+  scoped fork from DL-25.1: the complete history keeps its inert body and
+  visible `Resume` control, while this deliberately five-item sidebar block
+  makes its entire compact row the one native resume button. A missing folder
+  stays readable and focusable with `aria-disabled` and `folder is gone`, but
+  never resumes. `View all` is separate navigation to the existing Sessions
+  dock, not a resume, selection, or filter action.
+- **DL-33.4** **Prose-width activity disappears where prose cannot fit.** A
+  collapsed sidebar hides the whole block; an unsupported host omits it,
+  including `View all`, rather than showing an empty or disabled history. A
+  cold scan reads `Reading recent activity…`; a confirmed empty snapshot says
+  `No recent sessions.`; an error retains last-good rows and offers the
+  existing retry control. Reduced motion inherits the app-wide chrome rule:
+  the only row transition is the tokenized background response.
+
 ## Chưa khớp thực tế
 
 _(reality-drift ledger — heading text mandated by the global docs convention)_

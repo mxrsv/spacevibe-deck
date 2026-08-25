@@ -15,6 +15,42 @@
   original length.
 - Domain glossary: repo-root `CONTEXT.md`.
 
+## Recent agent activity — 2026-08-25
+
+Electron now places a separate five-row Recent activity block after the live
+and remembered project stream, inside the Agent Rail's existing scrollport.
+[RecentSessionActivity](../src/ui/sessions/recent-session-activity.tsx)
+`current` presents the exact-session summaries owned by
+[sessions-store.ts](../src/sessions/sessions-store.ts) `current`; it does not
+make a fourth project/worktree/agent tier. Each listed tail is pinned to its
+session id, with title then id as the nonblank fallback, so a sentence from a
+different session cannot become a resume target. The full compact row resumes
+through [App](../src/ui/app.tsx) `current`, a scoped DL-25.1 fork; `View all`
+opens the existing [Sessions dock](../src/ui/sessions/sessions-dock-tab.tsx)
+`current` without selecting or starting a session. Missing folders remain
+readable but cannot resume. The block is hidden when the sidebar is collapsed
+by [13-sessions.css](../src/styles/13-sessions.css) `current`, and omitted when
+the host has no session-history source.
+
+The Gallery mounts that same production component through the shipping
+[AgentRail fixture](../src/gallery/chrome-fixtures.tsx) `current`, with five
+mixed-agent entries seeded in [gallery/main.tsx](../src/gallery/main.tsx)
+`current`. Task 6's reused same-checkout Gallery server measured exactly five
+rows in each specimen: normal shell/rail `275/275`, activity `259/259`; compact
+shell/rail `200/200`, activity `184/184` — every pair is
+`clientWidth/scrollWidth`, so no measured horizontal overflow. Targeted recent
+component + rail tests passed `83/83`, and `npx tsc --noEmit` passed. The
+production `npm run build` passed on 2026-08-25 (7,684 modules transformed;
+Vite built in 12.61s). The
+pre-existing Gallery entry suite baseline is still red (`9 passed, 1 failed`):
+its unrelated Woven Flag expectation in `chrome-section.tsx` predates this
+block and was not changed.
+
+Automated and Gallery geometry evidence is not visual acceptance. Owner eye
+review of the running Electron surface, a native `electron:dev` pass, and
+Windows (Gate C) are explicitly pending; no owner approval or platform runtime
+claim is implied.
+
 ## The rail marks the agent holding the keyboard — 2026-08-23
 
 The owner sent a screenshot of the rail and said there was no active item in
