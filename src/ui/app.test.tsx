@@ -190,6 +190,28 @@ describe("settings load recovery layer", () => {
   });
 });
 
+describe("recent agent activity wiring", () => {
+  const source = readFileSync("src/ui/app.tsx", "utf8");
+
+  it("refreshes the useful recent-session snapshot at boot instead of probing support", () => {
+    expect(source).toContain("void refreshRecentSessions();");
+    expect(source).not.toContain("void probeSessionsSupport();");
+  });
+
+  it("mounts the activity only in AgentRail with resume and View all callbacks", () => {
+    const railMount = source.slice(source.indexOf("<AgentRail"), source.indexOf("topTabs={"));
+
+    expect(source.match(/<RecentSessionActivity\b/g)).toHaveLength(1);
+    expect(railMount).toContain("<RecentSessionActivity");
+    expect(railMount).toContain("onResume={(entry) => void resumeSessionEntry(entry)}");
+    expect(railMount).toContain('onViewAll={() => openDockTab("sessions")}');
+  });
+
+  it("keeps the existing Sessions dock navigation on the rail actions", () => {
+    expect(source).toContain('onOpenSessions={() => openDockTab("sessions")}');
+  });
+});
+
 // DL-18.6/18.9: in sidebar mode the stage's first `--frame-h` IS the frame row
 // — it carries the traffic-light inset, the sidebar's only way back out while
 // the column is hidden, the feature toolbar and the dock's control. A

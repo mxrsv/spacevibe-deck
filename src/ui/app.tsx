@@ -71,7 +71,7 @@ import type { SessionEntry } from "../lib/session-history";
 import { resumeSession } from "../sessions/resume-session";
 import {
   deadProjects,
-  probeSessionsSupport,
+  refreshRecentSessions,
   refreshSessions,
   sessionsSupported,
 } from "../sessions/sessions-store";
@@ -137,6 +137,7 @@ import {
 } from "../files/file-surface-controller";
 import { ExplorerTab } from "../files/ui/explorer-tab";
 import { SessionsDockTab } from "./sessions/sessions-dock-tab";
+import { RecentSessionActivity } from "./sessions/recent-session-activity";
 import { DockPanel } from "./dock/dock-panel";
 import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "./sidebar-actions";
 import { DockToggle } from "./dock/dock-toggle";
@@ -408,14 +409,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     return resumed;
   };
 
-  // One cheap probe, once, at boot: `sessions_list` with a limit of 1 is a
-  // stat pass plus at most two head reads on Electron, and an immediate
-  // rejection on a host that has no handler for it. Its ONLY job is to decide
-  // whether the toolbar control exists at all — the reply itself is discarded,
-  // because a limit-1 answer is not a list and storing it would show one row
-  // and call it the history.
+  // Load the rail's useful five-session snapshot once at boot. This same
+  // request decides whether the host supports sessions, replacing the old
+  // limit-one probe whose reply was discarded.
   useEffect(() => {
-    void probeSessionsSupport();
+    void refreshRecentSessions();
   }, []);
 
   // The rail's tails: a debounced sync that re-reads a pane's newest turn only
@@ -1538,6 +1536,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             // Hidden on the owner's ask (2026-08-17); `More` carries these rows
             // in both layouts while the flag is on. See `SIDEBAR_TOOLS_HIDDEN`.
             footer={SIDEBAR_TOOLS_HIDDEN ? undefined : railActions}
+            recentActivity={
+              <RecentSessionActivity
+                onResume={(entry) => void resumeSessionEntry(entry)}
+                onViewAll={() => openDockTab("sessions")}
+              />
+            }
             onSelectTab={selectTab}
             onCloseTab={(index) => void closeTab(index)}
             // Close model table row 1: the agent row's ✕ closes that pane, and
