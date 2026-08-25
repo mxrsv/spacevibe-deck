@@ -1,5 +1,4 @@
 import { SESSION_AGENT_LABELS } from "../../lib/session-history";
-import { formatRelativeTime } from "../../lib/workspace-recents";
 import { useId } from "preact/hooks";
 import {
   recentDeadProjects,
@@ -16,6 +15,36 @@ import { LoadError } from "../controls/load-error";
 interface RecentSessionActivityProps {
   onResume(entry: RecentSessionEntry): void;
   onViewAll(): void;
+}
+
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+const WEEK_MS = 7 * DAY_MS;
+const MONTH_MS = 30 * DAY_MS;
+const YEAR_MS = 365 * DAY_MS;
+
+function formatActivityTime(then: number, now: number): string {
+  const age = Math.max(0, now - then);
+  if (age < MINUTE_MS) {
+    return "now";
+  }
+  if (age < HOUR_MS) {
+    return `${Math.floor(age / MINUTE_MS)}m ago`;
+  }
+  if (age < DAY_MS) {
+    return `${Math.floor(age / HOUR_MS)}h ago`;
+  }
+  if (age < WEEK_MS) {
+    return `${Math.floor(age / DAY_MS)}d ago`;
+  }
+  if (age < MONTH_MS) {
+    return `${Math.floor(age / WEEK_MS)}w ago`;
+  }
+  if (age < YEAR_MS) {
+    return `${Math.floor(age / MONTH_MS)}mo ago`;
+  }
+  return `${Math.floor(age / YEAR_MS)}y ago`;
 }
 
 function sessionName(entry: RecentSessionEntry): string {
@@ -111,7 +140,7 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
                     class="recent-session-activity__time"
                     dateTime={new Date(entry.lastActivityMs).toISOString()}
                   >
-                    {formatRelativeTime(entry.lastActivityMs, Date.now())}
+                    {formatActivityTime(entry.lastActivityMs, Date.now())}
                   </time>
                 </button>
               </li>

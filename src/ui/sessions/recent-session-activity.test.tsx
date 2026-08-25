@@ -86,6 +86,49 @@ describe("RecentSessionActivity", () => {
     expect(host.querySelectorAll(".recent-session-activity__row")).toHaveLength(5);
   });
 
+  it("uses compact relative times so the summary yields before agent identity", () => {
+    const now = Date.UTC(2026, 7, 25, 12);
+    const minute = 60_000;
+    const day = 24 * 60 * minute;
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+    recentSessionEntries.value = [
+      entry({ sessionId: "now", lastActivityMs: now - 30_000 }),
+      entry({ sessionId: "minutes", lastActivityMs: now - 4 * minute }),
+      entry({ sessionId: "hours", lastActivityMs: now - 3 * 60 * minute }),
+      entry({ sessionId: "day", lastActivityMs: now - day - 60 * minute }),
+      entry({ sessionId: "days", lastActivityMs: now - 5 * day }),
+    ];
+
+    mount();
+
+    expect(
+      [...host.querySelectorAll(".recent-session-activity__time")].map(
+        (node) => node.textContent,
+      ),
+    ).toEqual(["now", "4m ago", "3h ago", "1d ago", "5d ago"]);
+    nowSpy.mockRestore();
+  });
+
+  it("keeps week, month, and year buckets compact", () => {
+    const now = Date.UTC(2026, 7, 25, 12);
+    const day = 24 * 60 * 60_000;
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+    recentSessionEntries.value = [
+      entry({ sessionId: "week", lastActivityMs: now - 7 * day }),
+      entry({ sessionId: "month", lastActivityMs: now - 45 * day }),
+      entry({ sessionId: "year", lastActivityMs: now - 365 * day }),
+    ];
+
+    mount();
+
+    expect(
+      [...host.querySelectorAll(".recent-session-activity__time")].map(
+        (node) => node.textContent,
+      ),
+    ).toEqual(["1w ago", "1mo ago", "1y ago"]);
+    nowSpy.mockRestore();
+  });
+
   it("keeps the store's nonblank title or id fallback visible as the summary", () => {
     recentSessionEntries.value = [
       entry({ title: null, sessionId: "fallback-id", summary: "fallback-id" }),
