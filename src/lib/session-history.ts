@@ -39,8 +39,8 @@ export const EMPTY_SESSIONS_SNAPSHOT: SessionsSnapshot = Object.freeze({
   limit: SESSIONS_DEFAULT_LIMIT,
 });
 
-/** Validate an untyped IPC reply. A host that answers something else — Tauri,
- *  a stale build — is `unsupported`, never a crash. */
+/** Validate an untyped IPC reply. Invalid replies return `null` so the host
+ *  adapter can classify them without crashing the renderer. */
 export function asSessionsSnapshot(raw: unknown): SessionsSnapshot | null {
   if (raw === null || typeof raw !== "object") {
     return null;

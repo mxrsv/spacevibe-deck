@@ -146,18 +146,24 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
                       <span class="recent-session-activity__agent">
                         {ACTIVITY_AGENT_LABELS[entry.agent]}
                       </span>
-                      <span id={reasonId} class="recent-session-activity__summary">
-                        {dead ? "folder is gone" : summary(entry)}
-                      </span>
+                      <span class="recent-session-activity__summary">{summary(entry)}</span>
                     </span>
                   </span>
-                  <time
-                    class="recent-session-activity__time"
-                    dateTime={activityTime.dateTime}
-                  >
-                    {activityTime.label}
-                  </time>
+                  {dead ? (
+                    <span class="recent-session-activity__gone" aria-hidden="true">
+                      gone
+                    </span>
+                  ) : (
+                    <time class="recent-session-activity__time" dateTime={activityTime.dateTime}>
+                      {activityTime.label}
+                    </time>
+                  )}
                 </button>
+                {dead ? (
+                  <span id={reasonId} class="recent-session-activity__unavailable-reason">
+                    folder is gone
+                  </span>
+                ) : null}
               </li>
             );
           })}

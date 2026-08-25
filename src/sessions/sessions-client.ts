@@ -9,6 +9,18 @@ import { defaultPtyClient } from "../terminal/pty-client";
 import type { ResumeRequest, SessionTailAnswer } from "../lib/agent-resume";
 import type { SessionsSnapshot } from "../lib/session-history";
 
+const SESSIONS_LIST_FAILED_MESSAGE = "sessions_list failed";
+
+function sessionsListError(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+  if (typeof error === "string") {
+    return new Error(error);
+  }
+  return new Error(SESSIONS_LIST_FAILED_MESSAGE, { cause: error });
+}
+
 export interface SessionsClient {
   /** `null` means this host has no session history (Tauri, browser dev). */
   list(limit: number): Promise<SessionsSnapshot | null>;
@@ -28,7 +40,7 @@ export function createHostSessionsClient(): SessionsClient {
       if (result.status === "unsupported") {
         return null;
       }
-      throw result.error;
+      throw sessionsListError(result.error);
     },
     dirsExist: (paths) => defaultPtyClient.dirsExist(paths),
     tails: (requests) => sessionTails(requests),

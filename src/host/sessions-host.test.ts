@@ -49,6 +49,17 @@ describe("sessions-host", () => {
     });
   });
 
+  it("preserves a non-Error invocation rejection inside the error result", async () => {
+    vi.stubGlobal("__deckHost", { invoke: vi.fn(), listen: vi.fn() });
+    const failure = { code: "SESSION_SCAN_FAILED" };
+    vi.spyOn(bridge, "invoke").mockRejectedValue(failure);
+
+    await expect(listSessions(SESSIONS_DEFAULT_LIMIT)).resolves.toEqual({
+      status: "error",
+      error: failure,
+    });
+  });
+
   it("reports an invalid reply as an invocation error, not unsupported", async () => {
     vi.stubGlobal("__deckHost", { invoke: vi.fn(), listen: vi.fn() });
     vi.spyOn(bridge, "invoke").mockResolvedValue({ nope: true });

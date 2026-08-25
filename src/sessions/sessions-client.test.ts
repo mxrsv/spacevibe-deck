@@ -36,15 +36,15 @@ describe("SessionsClient tails", () => {
   });
 
   it("returns deterministic positional exact-id answers from memory", async () => {
-    await expect(createMemorySessionsClient(null, { tails: ANSWERS }).tails(REQUESTS)).resolves.toEqual(
-      ANSWERS,
-    );
+    await expect(
+      createMemorySessionsClient(null, { tails: ANSWERS }).tails(REQUESTS),
+    ).resolves.toEqual(ANSWERS);
   });
 
   it("pads a shorter memory reply with null at the missing request position", async () => {
-    await expect(createMemorySessionsClient(null, { tails: [ANSWERS[0]] }).tails(REQUESTS)).resolves.toEqual(
-      [ANSWERS[0], null],
-    );
+    await expect(
+      createMemorySessionsClient(null, { tails: [ANSWERS[0]] }).tails(REQUESTS),
+    ).resolves.toEqual([ANSWERS[0], null]);
   });
 
   it("drops a surplus memory reply rather than adding a request position", async () => {
@@ -68,5 +68,35 @@ describe("SessionsClient list", () => {
     invoke.mockRejectedValueOnce(new Error("temporary scan failure"));
 
     await expect(createHostSessionsClient().list(5)).rejects.toThrow("temporary scan failure");
+  });
+
+  it("rejects an invalid host reply as Error", async () => {
+    invoke.mockResolvedValueOnce({ nope: true });
+
+    await expect(createHostSessionsClient().list(5)).rejects.toThrow(
+      "Invalid sessions_list response",
+    );
+  });
+
+  it.each([
+    ["string", "bridge string failure"],
+    ["object", { code: "SESSION_SCAN_FAILED" }],
+    ["null", null],
+  ])("normalizes a %s bridge rejection to Error", async (_label, failure) => {
+    invoke.mockRejectedValueOnce(failure);
+
+    const caught = await createHostSessionsClient()
+      .list(5)
+      .catch((error: unknown) => error);
+
+    expect(caught).toBeInstanceOf(Error);
+    if (typeof failure === "string") {
+      expect((caught as Error).message).toBe(failure);
+    } else {
+      expect(caught).toMatchObject({
+        message: "sessions_list failed",
+        cause: failure,
+      });
+    }
   });
 });

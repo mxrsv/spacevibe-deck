@@ -102,9 +102,7 @@ describe("RecentSessionActivity", () => {
     mount();
 
     expect(
-      [...host.querySelectorAll(".recent-session-activity__time")].map(
-        (node) => node.textContent,
-      ),
+      [...host.querySelectorAll(".recent-session-activity__time")].map((node) => node.textContent),
     ).toEqual(["59m", "23h", "29d", "11mo", "1y"]);
     nowSpy.mockRestore();
   });
@@ -125,9 +123,7 @@ describe("RecentSessionActivity", () => {
     const times = [...host.querySelectorAll(".recent-session-activity__time")];
     expect(times.map((node) => node.textContent)).toEqual(["now", "99y+", "—", "—", "—"]);
     expect(times[0]?.getAttribute("datetime")).toBe(new Date(now + 60_000).toISOString());
-    expect(times[1]?.getAttribute("datetime")).toBe(
-      new Date(-8_640_000_000_000_000).toISOString(),
-    );
+    expect(times[1]?.getAttribute("datetime")).toBe(new Date(-8_640_000_000_000_000).toISOString());
     for (const malformed of times.slice(2)) {
       expect(malformed.hasAttribute("datetime")).toBe(false);
     }
@@ -185,8 +181,8 @@ describe("RecentSessionActivity", () => {
     expect(onResume).not.toHaveBeenCalled();
   });
 
-  it("keeps a dead-directory row focusable, explains it, and never resumes it", () => {
-    const recent = entry({ cwd: "/gone" });
+  it("keeps a dead-directory row's identity and summary, describes it once, and never resumes", () => {
+    const recent = entry({ cwd: "/gone", summary: "Verified assistant summary." });
     recentSessionEntries.value = [recent];
     recentDeadProjects.value = new Set([recent.cwd]);
     const { onResume } = mount();
@@ -195,15 +191,37 @@ describe("RecentSessionActivity", () => {
     expect(row?.hasAttribute("disabled")).toBe(false);
     expect(row?.getAttribute("aria-disabled")).toBe("true");
     expect(row?.getAttribute("aria-describedby")).toBeTruthy();
-    const reason = host.querySelector(".recent-session-activity__summary");
+    expect(row?.hasAttribute("aria-label")).toBe(false);
+    expect(row?.querySelector(".recent-session-activity__agent")?.textContent).toBe("Claude");
+    expect(row?.querySelector(".recent-session-activity__summary")?.textContent).toBe(
+      "Verified assistant summary.",
+    );
+    const state = row?.querySelector(".recent-session-activity__gone");
+    expect(state?.textContent).toBe("gone");
+    expect(state?.getAttribute("aria-hidden")).toBe("true");
+    const reason = host.querySelector(".recent-session-activity__unavailable-reason");
     expect(reason?.textContent).toBe("folder is gone");
     expect(reason?.id).toBe(row?.getAttribute("aria-describedby"));
-    expect(host.querySelector(".recent-session-activity__unavailable")).toBeNull();
+    expect(row?.contains(reason ?? null)).toBe(false);
+    expect(row?.textContent).not.toContain("folder is gone");
     expect(row?.textContent).toContain("Resume Build recent activity:");
     act(() => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(onResume).not.toHaveBeenCalled();
+  });
+
+  it("keeps the title fallback visible when a dead session has no tail", () => {
+    const recent = entry({ cwd: "/gone", summary: "", title: "Fallback session title" });
+    recentSessionEntries.value = [recent];
+    recentDeadProjects.value = new Set([recent.cwd]);
+
+    mount();
+
+    expect(host.querySelector(".recent-session-activity__summary")?.textContent).toBe(
+      "Fallback session title",
+    );
+    expect(host.querySelector(".recent-session-activity__gone")?.textContent).toBe("gone");
   });
 
   it("shows a quiet reading state only while a cold scan has no rows", () => {
@@ -297,7 +315,7 @@ describe("RecentSessionActivity", () => {
     const sections = [...host.querySelectorAll<HTMLElement>(".recent-session-activity")];
     const headings = [...host.querySelectorAll<HTMLElement>(".recent-session-activity__heading")];
     const reasons = [
-      ...host.querySelectorAll<HTMLElement>(".recent-session-activity__summary[id]"),
+      ...host.querySelectorAll<HTMLElement>(".recent-session-activity__unavailable-reason"),
     ];
 
     expect(headings.map((heading) => heading.id)).toHaveLength(2);

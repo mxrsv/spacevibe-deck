@@ -559,8 +559,9 @@
 }
 
 /* Starts the button's accessible name with its action and exact session
-   identity without replacing the visible agent, summary and time. */
-.recent-session-activity__resume-prefix {
+   identity without replacing the visible agent, summary or trailing state. */
+.recent-session-activity__resume-prefix,
+.recent-session-activity__unavailable-reason {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -628,6 +629,15 @@
   color: var(--text-faint);
   font-size: var(--type-micro);
   font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.recent-session-activity__gone {
+  width: 4em;
+  color: var(--text-faint);
+  font-size: var(--type-micro);
+  font-weight: 500;
   text-align: right;
   white-space: nowrap;
 }
