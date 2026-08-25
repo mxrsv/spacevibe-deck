@@ -1149,6 +1149,34 @@ describe("AgentRail carried-over jobs", () => {
     expect(host.querySelector(".asr-openrow, .asr-open")).toBeNull();
     expect(host.querySelector(".asr-stream")?.firstElementChild).not.toBeNull();
   });
+
+  it("places optional recent activity after the project stream in the one scrollport", async () => {
+    mount({
+      recentActivity: <section data-testid="recent-activity" />,
+      footer: <div data-testid="rail-footer" />,
+    });
+    await settle();
+
+    const list = host.querySelector(".asr-rail__list");
+    const stream = host.querySelector(".asr-stream");
+    const activity = host.querySelector('[data-testid="recent-activity"]');
+    const footer = host.querySelector('[data-testid="rail-footer"]');
+
+    expect(activity?.parentElement).toBe(list);
+    expect(stream?.nextElementSibling).toBe(activity);
+    expect(list?.contains(footer)).toBe(false);
+    expect(list?.nextElementSibling).toBe(footer);
+  });
+
+  it("adds no rail wrapper when recent activity is omitted", async () => {
+    mount();
+    await settle();
+
+    expect(host.querySelector(".asr-rail__list")?.children).toHaveLength(1);
+    expect(host.querySelector(".asr-rail__list")?.firstElementChild).toBe(
+      host.querySelector(".asr-stream"),
+    );
+  });
 });
 
 /**
@@ -1211,6 +1239,63 @@ describe("AgentRail shell contract", () => {
     // the rail silently dropped them all. These are the rail's own.
     expect(stylesheet).toContain('[data-sidebar-collapsed="true"] .asr-rail');
     expect(stylesheet).toContain('[data-sidebar-collapsed="true"] .asr-cluster__head');
+  });
+});
+
+describe("AgentRail recent activity style contract", () => {
+  const stylesheet = readFileSync("src/styles/13-sessions.css", "utf8");
+
+  function ruleBody(selector: string): string {
+    const start = stylesheet.indexOf(`\n${selector} {`);
+    expect(start, `no \`${selector} {\` rule in src/styles/13-sessions.css`).toBeGreaterThan(-1);
+    const open = stylesheet.indexOf("{", start);
+    return stylesheet.slice(open + 1, stylesheet.indexOf("}", open));
+  }
+
+  it("separates the flat block and hides it with the collapsed sidebar", () => {
+    const block = ruleBody(".recent-session-activity");
+    expect(block).toContain("border-top: 1px solid var(--seam-recessed)");
+    expect(block).toContain("min-width: 0");
+    expect(block).toContain("max-width: 100%");
+    expect(stylesheet).toContain(
+      '[data-sidebar-collapsed="true"] .recent-session-activity {\n  display: none;',
+    );
+  });
+
+  it("keeps compact rows at fixed glyph and time geometry without horizontal overflow", () => {
+    const row = ruleBody(".recent-session-activity__row");
+    expect(row).toContain("grid-template-columns: 15px minmax(0, 1fr) 6.5em");
+    expect(row).toContain("min-height: 30px");
+    expect(row).toContain("box-sizing: border-box");
+    expect(row).toContain("width: 100%");
+    expect(row).toContain("overflow: hidden");
+
+    const glyph = ruleBody(".recent-session-activity__glyph");
+    expect(glyph).toContain("width: 15px");
+    expect(glyph).toContain("height: 15px");
+
+    const summary = ruleBody(".recent-session-activity__summary");
+    expect(summary).toContain("min-width: 0");
+    expect(summary).toContain("white-space: nowrap");
+    expect(summary).toContain("overflow: hidden");
+    expect(summary).toContain("text-overflow: ellipsis");
+
+    const time = ruleBody(".recent-session-activity__time");
+    expect(time).toContain("font-variant-numeric: tabular-nums");
+  });
+
+  it("uses semantic tokens and non-layout hover treatment", () => {
+    const row = ruleBody(".recent-session-activity__row");
+    expect(row).toContain("background: transparent");
+    expect(row).toContain("border: 0");
+    expect(row).toContain("transition: background var(--duration) var(--ease)");
+    expect(stylesheet).toContain(
+      ".recent-session-activity__row:hover,\n.recent-session-activity__row:focus-visible {\n  background: var(--state-hover-bg);",
+    );
+
+    const recentRules = stylesheet.slice(stylesheet.indexOf("/* ── Recent activity"));
+    expect(recentRules).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    expect(recentRules).not.toMatch(/font-size:\s*\d/);
   });
 });
 

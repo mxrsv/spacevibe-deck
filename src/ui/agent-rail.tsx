@@ -110,6 +110,13 @@ export interface AgentRailProps {
    */
   footer?: ComponentChildren;
   /**
+   * Optional prose block placed after the project stream inside the rail's
+   * one vertical scrollport. `App` supplies Recent Activity here; keeping the
+   * slot generic leaves session loading, navigation and resume behavior with
+   * the Sessions feature rather than making the rail own them.
+   */
+  recentActivity?: ComponentChildren;
+  /**
    * The same `SurfaceStrip` wired into `TabManager`, read for one thing only:
    * whether a file surface holds the stage, which decides whether a tab row
    * still draws as the active one. The rail lists no file tabs and opens none.
@@ -722,6 +729,7 @@ export function AgentRail(props: AgentRailProps) {
             );
           })}
         </section>
+        {props.recentActivity}
       </div>
 
       {props.footer}
