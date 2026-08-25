@@ -9,8 +9,15 @@
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { claudeTailFromLines, codexTailFromLines, resolveSessionTails } from "./session-tail";
+import {
+  claudeModelFromLines,
+  claudeTailFromLines,
+  codexModelFromLines,
+  codexTailFromLines,
+  resolveSessionTails,
+} from "./session-tail";
 import { tailBytes } from "./head";
 import { validateResumeRequests } from "./resolve";
 import {
@@ -32,10 +39,10 @@ function writeAt(filePath: string, contents: string, mtimeMs: number): void {
   utimesSync(filePath, seconds, seconds);
 }
 
-function claudeAssistantLine(text: string): string {
+function claudeAssistantLine(text: string, model?: string): string {
   return JSON.stringify({
     type: "assistant",
-    message: { content: [{ type: "text", text }] },
+    message: { model, content: [{ type: "text", text }] },
   });
 }
 
@@ -162,6 +169,57 @@ describe("codexTailFromLines", () => {
   });
 });
 
+describe("claudeModelFromLines", () => {
+  it("reads the model off the newest Claude assistant record", () => {
+    const lines = [
+      claudeAssistantLine("old", "claude-opus-4"),
+      claudeAssistantLine("new", "claude-opus-5"),
+    ];
+    expect(claudeModelFromLines(lines)).toBe("claude-opus-5");
+  });
+
+  it("answers null when no Claude record names a model", () => {
+    const lines = [claudeAssistantLine("hi")];
+    expect(claudeModelFromLines(lines)).toBeNull();
+  });
+
+  it("finds the model on a tool-only newest turn, which carries no sentence", () => {
+    // The motivating case: `claudeTailFromLines` skips this record for having
+    // no text, but the model walk is independent and answers it anyway.
+    const lines = [
+      claudeAssistantLine("older, but spoken", "claude-opus-4"),
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          model: "claude-opus-5",
+          content: [{ type: "tool_use", name: "Bash", input: {} }],
+        },
+      }),
+    ];
+    expect(claudeModelFromLines(lines)).toBe("claude-opus-5");
+  });
+});
+
+describe("codexModelFromLines", () => {
+  it("reads the Codex model off turn_context, not off the message", () => {
+    // The nesting is NOT the tail parser's: `type` sits at the TOP level and the
+    // model inside `payload`. Measured against a real rollout, 2026-08-26.
+    const lines = [
+      JSON.stringify({ type: "turn_context", payload: { model: "gpt-5.6-sol" } }),
+      JSON.stringify({
+        type: "response_item",
+        payload: { type: "message", role: "assistant", content: [{ text: "done" }] },
+      }),
+    ];
+    expect(codexModelFromLines(lines)).toBe("gpt-5.6-sol");
+  });
+
+  it("answers null when no turn_context record names a model", () => {
+    const lines = [JSON.stringify({ type: "turn_context", payload: {} })];
+    expect(codexModelFromLines(lines)).toBeNull();
+  });
+});
+
 describe("tailBytes", () => {
   let dir: string;
 
@@ -262,12 +320,35 @@ describe("resolveSessionTails", () => {
       [
         '{"sessionId":"quiet","type":"mode"}',
         '{"sessionId":"quiet","cwd":"/tmp/silent","type":"attachment"}',
+        // The tool-only newest turn still names a model, though it names no
+        // sentence — see test (u).
         JSON.stringify({
           type: "assistant",
           message: {
+            model: "claude-opus-5",
             content: [{ type: "tool_use", name: "Bash", input: {} }],
           },
         }),
+      ].join("\n"),
+      T1,
+    );
+
+    // A session whose newest turn names a model, for the pairing tests
+    // proving `model` threads all the way to `resolveSessionTails`'s answer.
+    const modelClaudeProject = path.join(
+      home,
+      CLAUDE_DIR,
+      CLAUDE_PROJECTS_DIR,
+      "-tmp-model-claude",
+    );
+    mkdirSync(modelClaudeProject, { recursive: true });
+    writeAt(
+      path.join(modelClaudeProject, "modelc.jsonl"),
+      [
+        '{"sessionId":"modelc","type":"mode"}',
+        '{"sessionId":"modelc","cwd":"/tmp/model-claude","type":"attachment"}',
+        claudeAssistantLine("Old answer, old model.", "claude-opus-4"),
+        claudeAssistantLine("New answer, new model.", "claude-opus-5"),
       ].join("\n"),
       T1,
     );
@@ -289,6 +370,29 @@ describe("resolveSessionTails", () => {
             type: "message",
             role: "assistant",
             content: [{ type: "output_text", text: "Plan ready — approve?" }],
+          },
+        }),
+        JSON.stringify({ type: "event_msg", payload: { type: "token_count" } }),
+      ].join("\n"),
+      T1,
+    );
+
+    // A codex rollout with a `turn_context` line, for the pairing test proving
+    // the model comes from THAT record, never from the assistant message.
+    writeAt(
+      path.join(codexSessions, `${CODEX_ROLLOUT_PREFIX}model${TRANSCRIPT_EXTENSION}`),
+      [
+        JSON.stringify({
+          type: "session_meta",
+          payload: { id: "cx2", cwd: "/tmp/model-codex" },
+        }),
+        JSON.stringify({ type: "turn_context", payload: { model: "gpt-5.6-sol" } }),
+        JSON.stringify({
+          type: "response_item",
+          payload: {
+            type: "message",
+            role: "assistant",
+            content: [{ type: "output_text", text: "Model threaded through." }],
           },
         }),
         JSON.stringify({ type: "event_msg", payload: { type: "token_count" } }),
@@ -480,7 +584,7 @@ describe("resolveSessionTails", () => {
       resolveSessionTails(home, [
         { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2, preferredId: "s1" },
       ]),
-    ).toEqual([{ id: "s1", tail: "Pane one is waiting on approval." }]);
+    ).toEqual([{ id: "s1", tail: "Pane one is waiting on approval.", model: null }]);
   });
 
   it("(n) an unpinned pane earlier in the batch cannot take a later pane's pinned session", () => {
@@ -494,8 +598,8 @@ describe("resolveSessionTails", () => {
         { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2, preferredId: "s2" },
       ]),
     ).toEqual([
-      { id: "s1", tail: "Pane one is waiting on approval." },
-      { id: "s2", tail: "Pane two finished the refactor." },
+      { id: "s1", tail: "Pane one is waiting on approval.", model: null },
+      { id: "s2", tail: "Pane two finished the refactor.", model: null },
     ]);
   });
 
@@ -504,7 +608,7 @@ describe("resolveSessionTails", () => {
       resolveSessionTails(home, [
         { agent: "claude", cwd: "/tmp/two", lastSeenAt: T2, preferredId: "deleted-long-ago" },
       ]),
-    ).toEqual([{ id: "s2", tail: "Pane two finished the refactor." }]);
+    ).toEqual([{ id: "s2", tail: "Pane two finished the refactor.", model: null }]);
   });
 
   it("(p) a pin whose session belongs to another cwd is not honoured", () => {
@@ -512,7 +616,35 @@ describe("resolveSessionTails", () => {
       resolveSessionTails(home, [
         { agent: "claude", cwd: "/tmp/w", lastSeenAt: T1, preferredId: "s1" },
       ]),
-    ).toEqual([{ id: "aaaa", tail: "Suite is green — 2619 passing." }]);
+    ).toEqual([{ id: "aaaa", tail: "Suite is green — 2619 passing.", model: null }]);
+  });
+
+  it("(s) a claude pane's answer carries the newest turn's model", () => {
+    expect(
+      resolveSessionTails(home, [{ agent: "claude", cwd: "/tmp/model-claude", lastSeenAt: T1 }]),
+    ).toEqual([{ id: "modelc", tail: "New answer, new model.", model: "claude-opus-5" }]);
+  });
+
+  it("(t) a codex pane's answer carries the model from turn_context, not the message", () => {
+    expect(
+      resolveSessionTails(home, [{ agent: "codex", cwd: "/tmp/model-codex", lastSeenAt: T1 }]),
+    ).toEqual([{ id: "cx2", tail: "Model threaded through.", model: "gpt-5.6-sol" }]);
+  });
+
+  it("(u) a tool-only newest turn still names its model though the tail is null", () => {
+    expect(
+      resolveSessionTails(home, [{ agent: "claude", cwd: "/tmp/silent", lastSeenAt: T1 }]),
+    ).toEqual([{ id: "quiet", tail: null, model: "claude-opus-5" }]);
+  });
+
+  it("(v) an opencode pane resolved from the legacy tree answers a null model", () => {
+    // No opencode.db in this fixture set — `sessionModel` reads only the
+    // database, so a session resolved from the legacy json tree draws no
+    // pill, exactly like `gemini`. The database-backed case is covered in
+    // `opencode-db.test.ts` and in the describe block below.
+    expect(
+      resolveSessionTails(home, [{ agent: "opencode", cwd: "/tmp/oc", lastSeenAt: T2 }]),
+    ).toEqual([{ id: "oc1", tail: "Working tree clean — nothing staged.", model: null }]);
   });
 });
 
@@ -559,6 +691,78 @@ describe("resolveSessionTails tail window", () => {
   it("(r) stops at the last window — the pairing still stands, the sentence does not", () => {
     expect(
       resolveSessionTails(home, [{ agent: "claude", cwd: "/tmp/entombed", lastSeenAt: T1 }]),
-    ).toEqual([{ id: "entombed", tail: null }]);
+    ).toEqual([{ id: "entombed", tail: null, model: null }]);
+  });
+});
+
+describe("resolveSessionTails opencode model (database)", () => {
+  // `TAIL_SOURCES.opencode.read` combines `opencode.sessionTailText` (which
+  // still merges the legacy tree) with `opencode-db.sessionModel` (which
+  // does not) — this is the one seam the fixtures above cannot exercise,
+  // since none of them write an `opencode.db`.
+  let home: string;
+
+  function databasePath(root: string): string {
+    return path.join(root, ".local", "share", "opencode", "opencode.db");
+  }
+
+  beforeAll(() => {
+    home = mkdtempSync(path.join(tmpdir(), "session-tail-opencode-db-"));
+    const filePath = databasePath(home);
+    mkdirSync(path.dirname(filePath), { recursive: true });
+    const db = new DatabaseSync(filePath);
+    db.exec(`
+      CREATE TABLE session (
+        id text PRIMARY KEY,
+        project_id text NOT NULL,
+        parent_id text,
+        directory text NOT NULL,
+        time_updated integer NOT NULL
+      );
+      CREATE TABLE message (
+        id text PRIMARY KEY,
+        session_id text NOT NULL,
+        time_created integer NOT NULL,
+        data text NOT NULL
+      );
+      CREATE TABLE part (
+        id text PRIMARY KEY,
+        message_id text NOT NULL,
+        session_id text NOT NULL,
+        time_created integer NOT NULL,
+        data text NOT NULL
+      );
+    `);
+    db.prepare(
+      "INSERT INTO session (id, project_id, parent_id, directory, time_updated) VALUES (?, ?, ?, ?, ?)",
+    ).run("ses_model", "prj_1", null, "/tmp/oc-model", T2);
+    db.prepare("INSERT INTO message (id, session_id, time_created, data) VALUES (?, ?, ?, ?)").run(
+      "msg_model",
+      "ses_model",
+      T2,
+      JSON.stringify({ role: "assistant", modelID: "opencode-model-x" }),
+    );
+    db.prepare(
+      "INSERT INTO part (id, message_id, session_id, time_created, data) VALUES (?, ?, ?, ?, ?)",
+    ).run(
+      "prt_model",
+      "msg_model",
+      "ses_model",
+      T2,
+      JSON.stringify({ type: "text", text: "Answered from the database." }),
+    );
+    db.close();
+  });
+
+  afterAll(() => {
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  it("(w) an opencode pane resolved from the database carries its model", () => {
+    expect(
+      resolveSessionTails(home, [{ agent: "opencode", cwd: "/tmp/oc-model", lastSeenAt: T2 }]),
+    ).toEqual([
+      { id: "ses_model", tail: "Answered from the database.", model: "opencode-model-x" },
+    ]);
   });
 });
