@@ -43,8 +43,8 @@
 .asr-bare,
 .asr-card__row {
   /* Radius (spec §9.8, Task 10 gate row 3). 6px sits between DL-20.1's `--radius-flat` (2px)
-     and `--radius-tight` (8px) and matches no existing rung — the owner's own pick
-     (2026-08-25: "tất cả border radius chỉnh lại chỉ giữ 6px"), reversing a round-everything
+     and `--radius-tight` (8px) and matches no existing rung — the owner's own pick (2026-08-25:
+     every corner in this sheet collapses to one 6px radius), reversing a round-everything
      pass where `--radius-surface` on the card and `--radius-tight` on a 28px row both read as
      pills at rail width. Every `border-radius` in this file is this variable, the pill variable
      below, or an actual `50%` circle (the corner dots) — never a bare number. */
