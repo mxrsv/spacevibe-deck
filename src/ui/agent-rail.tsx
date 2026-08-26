@@ -1,31 +1,23 @@
-import { CaretRight, Folder, PlusSquare, TerminalWindow, X } from "@phosphor-icons/react";
+import { CaretRight, Folder, PlusSquare, X } from "@phosphor-icons/react";
 import { useSignal, useSignalEffect } from "@preact/signals";
-import { Fragment, type ComponentChildren } from "preact";
+import type { ComponentChildren } from "preact";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
-import { activeTabIndex, statusInfo, tabViews } from "../terminal/tabs-store";
+import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import { CHROME_ICON, DeckIcon, FEATURE_ICON } from "./controls/deck-icon";
-import { AgentGlyph } from "./controls/agent-glyph";
 import { WorkspaceSpinner } from "./workspace-spinner";
-import { tildify } from "../lib/process-info";
 import {
   ensureRepositoriesScanned,
   installRepositoryRescanOnFocus,
   repositoryScans,
 } from "../repositories/repositories-store";
 import { paneTails } from "../terminal/session-tail-store";
-import { browserSurfaceActive } from "../browser/browser-store";
-import { available as electronHostAvailable } from "../host/worktree-host";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { workspacesData } from "../open-board/workspaces-store";
 import { settings, updateSettings } from "../settings/settings-store";
 import { createRailClusterDragController } from "./rail-cluster-drag";
 import { pinAt, sameRailOrder } from "./rail-order";
-import {
-  buildAgentRail,
-  type RailState,
-  type RailStreamGroup,
-  type RailTabRow,
-} from "./agent-rail-model";
+import { buildAgentRail, type RailState, type RailStreamGroup } from "./agent-rail-model";
+import { WorktreeCard } from "./worktree-card";
 
 /**
  * The agent status rail.
@@ -43,20 +35,22 @@ import {
  * a REMEMBERED project — a workspace-history entry whose last tab has closed —
  * keeps a rowless header with its own `+`, so closing the work does not
  * remove the place it ran in.
- * One row per tab; a tab running ONE agent leads with that agent's
- * chip, and a tab running several lists each agent as a leaf row joined to the
- * tab by a hairline elbow (DL-27.13) — this REVERSES the same-day "exactly two
- * navigation levels" decision, on the owner's ask: the folded
- * `claude + codex + agy` identity hid which agent was in which state, and the
- * leaves are always visible rather than behind a disclosure. A labelled
- * project can collapse as a whole. A tab waiting on the user stays under its
- * own project — the pinned `Needs you` block was removed on 2026-08-16 because
- * it printed a project twice; ⌘⇧A still walks to the next one.
+ *
+ * One `WorktreeCard` per checkout (DL-27.23/DL-27.24, amended 2026-08-26 —
+ * design `docs/specs/2026-08-25-rail-worktree-card-design.md`): the tab tier
+ * is gone from the rail entirely. A checkout is a boxed, pressable, expandable
+ * card whose rows are every agent PANE running in it, flattened across
+ * whichever tabs hold them — `worktree-card.tsx` owns that render; this file
+ * only decides which checkouts exist and hands each one off. A labelled
+ * project can still collapse as a whole, one disclosure per cluster; a card's
+ * own open/closed state is a separate, window-local disclosure one tier down
+ * (`openCardKeys`).
  *
  * Ported from the owner-approved gallery specimen
  * `src/gallery/agent-status-rail.tsx`, whose `asr-` class names are kept 1:1 so
  * the shipped rail and the approved specimen cannot drift. The projection
- * itself is `agent-rail-model.ts`; this file only renders it.
+ * itself is `agent-rail-model.ts`; this file and `worktree-card.tsx` only
+ * render it.
  */
 
 export interface AgentRailProps {
@@ -124,33 +118,6 @@ export interface AgentRailProps {
 }
 
 /**
- * DL-27.2: the mark is the fast read and never the only read — every state
- * says its name in `title` and in the row's accessible name, including the
- * `failed` state the gallery specimen never had.
- */
-const STATE_LABEL: Readonly<Record<RailState, string>> = {
-  failed: "failed",
-  asked: "needs you",
-  working: "working",
-  done: "done",
-  idle: "idle",
-};
-
-/**
- * `project` alone, or `project · branch` when a labelled worktree group is
- * carrying this row.
- *
- * The branch comes from the GROUP now (DL-27.23), not from the row: since
- * 2026-08-25 the checkout is a tier, and a row that carried its own copy would
- * print the word once per agent. The composed string still reaches every
- * accessible name and tooltip the row draws, so nothing a screen reader hears
- * has moved.
- */
-function whereOf(project: string, branch: string | null): string {
-  return branch === null ? project : `${project} · ${branch}`;
-}
-
-/**
  * DL-27.3, amended 2026-08-19 (owner, second pass): the slot draws THREE
  * shapes, not one static dot.
  *
@@ -182,280 +149,6 @@ export function RailStatusMark({ state }: { readonly state: RailState }) {
 }
 
 /**
- * DL-27.4: the newest turn, trimmed by layout rather than by slicing — the
- * full sentence stays in the DOM for the tooltip and for a screen reader.
- *
- * Every row that has a turn to report spends its ONE line on it (DL-27.15,
- * amended 2026-08-17): the turn stands where the agent's name stood, rather
- * than on a second line under it. The name it replaces was the word the glyph
- * beside it already says — and with three `claude` rows in one project, the
- * only word that told them apart was the sentence, which was also the one
- * being trimmed hardest. Every row keeps the same legibility; the status slot
- * alone distinguishes the states that need scanning.
- */
-function MessageLine({ text }: { readonly text: string }) {
-  return <span class="asr-row__msg">{text}</span>;
-}
-
-interface TabItemProps {
-  readonly row: RailTabRow;
-  /**
-   * True when a cluster header above this row has already named the project,
-   * so the row names the TAB instead (DL-27.9/DL-27.12). Every live project
-   * is labelled now, including a project with one tab.
-   */
-  readonly labelled: boolean;
-  /**
-   * The checkout this row runs in, supplied by the worktree group rendering it
-   * (DL-27.23), or null when that group prints no sub-header — a project git
-   * does not know, which is every project under Tauri. It reaches the row's
-   * accessible names and tooltip through `whereOf` and is drawn nowhere: the
-   * group above the row is what SAYS the branch.
-   */
-  readonly branch: string | null;
-  readonly active: boolean;
-  readonly showAgentPresence: boolean;
-  /** Tildified workspace path for the tooltip; empty when there is none. */
-  readonly path: string;
-  readonly onSelect: () => void;
-  readonly onFocusPane: (paneId: number) => void;
-  readonly onClose: () => void;
-  /** Close exactly this agent (close model, table row 1). */
-  readonly onClosePane: (paneId: number) => void;
-}
-
-/**
- * The rail's one row shape. DL-27.1: the row is a container with a full-bleed
- * hit layer behind it, not a `<button>` — an agent chip inside it has to be its
- * own control, and a button nested in a button is not operable.
- *
- * A tab running SEVERAL agents lists them as leaf rows under the tab row
- * (DL-27.13, owner 2026-08-16) — always visible, never behind a disclosure.
- * This reverses the same-day two-levels decision: the folded
- * `claude + codex + agy` identity and its chip budget hid which agent was in
- * which state. The leaves are SIBLINGS of `.asr-row--tab` inside the item, on
- * purpose: `.asr-row--tab > span` makes row text inert so clicks fall through
- * to the hit layer, and a leaf nested there would lose its own click.
- *
- * DL-27.8: the selection wash is carried by the ITEM, not by the row inside
- * it. `data-active` sits on the wrapper and the row itself stays transparent.
- */
-/**
- * The pane TREE is hidden for now (owner, 2026-08-16, "temporarily"): every
- * multi-agent tab — named or not — renders its panes as plain full-width
- * agent rows, no parent row, no elbow guides, so the rail shows only agents
- * and projects. The tree's markup, CSS and DL-27.13 all stand; restoring it
- * is flipping this one constant, the same revert seam `GRAB_PASTE_DISABLED`
- * established.
- */
-const PANE_TREE_HIDDEN = true;
-
-function TabItem(props: TabItemProps) {
-  const { row } = props;
-  const where = whereOf(row.project, props.branch);
-  const label = STATE_LABEL[row.state];
-  const treed = props.showAgentPresence && row.panes.length > 1;
-  // An UNNAMED multi-agent tab renders no parent row at all (DL-27.13, owner
-  // 2026-08-16): with the count label gone the row held only its trailing
-  // meta, and the owner ruled the empty stretch out. The tree alone is the
-  // tab — pressing any leaf activates it — and the rail deliberately offers
-  // no close for such a tab (the strip's ✕ and ⌘W do). It marks selection
-  // with nothing: the accent bar drawn here at first was hidden on the
-  // owner's ask the same day. While the tree is hidden, NAMED multi-agent
-  // tabs go headless too: only agents and projects are shown.
-  const headless =
-    treed && (PANE_TREE_HIDDEN || (props.labelled ? row.identity : row.project) === "");
-  const name = props.labelled ? row.identity : row.project;
-  // Every state that has something to say says it (DL-27.15). The emptiness
-  // check is the only gate left: a tab nobody renamed, whose panes have said
-  // nothing, still has no turn to print.
-  const showMessage = row.message !== "";
-  // The turn TAKES the name's slot rather than adding a line under it — with
-  // two exceptions, both of which would otherwise lose a word nothing else
-  // says: a name the user typed, and an unlabelled row, whose project name has
-  // no cluster header carrying it. In both the turn follows the name on the
-  // same line.
-  const showName = name !== "" && (row.named || !props.labelled || !showMessage);
-  const title = [`${where} · ${row.title} — ${label}`, props.path, row.message]
-    .filter((line) => line !== "")
-    .join("\n");
-
-  return (
-    <div
-      class="asr-item"
-      data-active={props.active}
-      data-headless={headless}
-      data-key={headless ? row.key : undefined}
-    >
-      {!headless && (
-        <div class="asr-row asr-row--tab" data-state={row.state} data-key={row.key}>
-          <button
-            type="button"
-            class="asr-row__hit"
-            aria-label={`${where}, tab ${row.title}, ${row.panes.length} agents, ${label}, ${row.age}`}
-            title={title}
-            onClick={props.onSelect}
-          />
-          <RailStatusMark state={row.state} />
-          {/* One agent ends with its chip; several become leaves below, and the
-            parent spends its slot on the name — a count or the custom name —
-            rather than on a chip stack the leaves would repeat. */}
-          {props.showAgentPresence && row.panes.length === 1 && (
-            <span class="asr-chips">
-              <button
-                type="button"
-                class="asr-chip"
-                aria-label={`Focus ${row.panes[0].agent} in ${where}, ${STATE_LABEL[row.panes[0].state]}`}
-                title={`${row.panes[0].agent} — ${STATE_LABEL[row.panes[0].state]}`}
-                onClick={() => {
-                  props.onFocusPane(row.panes[0].paneId);
-                }}
-              >
-                <AgentGlyph agent={row.panes[0].agent} className="asr-chip__logo" />
-              </button>
-            </span>
-          )}
-          {/* A tab running NO agent is a plain shell, and it wore nothing in
-            the glyph slot at all — the strip's chip has said `TerminalWindow`
-            for one since 2026-08-16 (DL-18.10), so the rail said less than the
-            chip it stands beside. Static, not a button: there is no agent pane
-            to focus, and the row's own hit layer already selects the tab. */}
-          {props.showAgentPresence && row.panes.length === 0 && (
-            <span class="asr-chips">
-              <span class="asr-chip asr-chip--static" aria-hidden="true">
-                <DeckIcon icon={TerminalWindow} size={CHROME_ICON} />
-              </span>
-            </span>
-          )}
-          <span class="asr-row__name">
-            {/* The project name is already printed in every cluster header,
-              above, so the row spends its one strong word on which tab this
-              is (DL-27.9/DL-27.12). An unnamed multi-agent tab has NO word:
-              the tree below is the identity, and its count was declared
-              noise (DL-27.13); `title` and the accessible name still carry
-              the number. A row whose agent has spoken gives the word up
-              entirely (DL-27.15) — the glyph is the agent's name. */}
-            {showName && <strong>{name}</strong>}
-            {/* The worktree suffix that stood here until 2026-08-25 is gone
-              (DL-27.23): the checkout is the labelled group above this row, and
-              a suffix printed the branch once per agent in it. The class it
-              used, `.asr-row__worktree`, is the treatment `.asr-wt__name` now
-              derives from. */}
-            {showMessage && <MessageLine text={row.message} />}
-          </span>
-          {row.age !== "" && <span class="asr-row__age">{row.age}</span>}
-          {/* DL-27.5: the hover action owns a fixed trailing column, so appearing
-            never reflows the age or agent glyph. A real button, so the row's own
-            focus order reaches it; the row's accessible name is unchanged
-            because it lives on the hit layer, not here. Close is the only one
-            left — the options button beside it opened `TabPopover`, removed
-            on 2026-08-16 with the rename and workspace-logo features it
-            carried.
-
-            A `div`, deliberately: `.asr-row--tab > span` is the rule that
-            makes the row's text inert so its clicks fall through to the hit
-            layer, and a span wrapper here would silently inherit it. Like
-            `.asr-chip`, it needs `position: relative` to paint above that
-            absolutely-positioned layer. */}
-          {/* What this ✕ closes follows what the row IS (close model,
-              2026-08-22). A row carrying ONE agent is an agent row — it wears
-              that agent's glyph and prints that agent's turn — so its close is
-              table row 1's "close exactly this pane", the same rule ⌘W obeys,
-              and the tab going with it is row 2's consequence rather than this
-              control's job. A row carrying NO agent is a plain shell tab and
-              has no pane to name, so it closes the tab outright. */}
-          <div class="asr-row__actions">
-            <button
-              type="button"
-              class="asr-row__action asr-row__action--close"
-              aria-label={
-                row.panes.length === 1
-                  ? `Close ${row.panes[0].agent} in ${where}`
-                  : `Close tab ${row.title}`
-              }
-              onClick={() => {
-                if (row.panes.length === 1) {
-                  props.onClosePane(row.panes[0].paneId);
-                  return;
-                }
-                props.onClose();
-              }}
-            >
-              <DeckIcon icon={X} size={CHROME_ICON} />
-            </button>
-          </div>
-        </div>
-      )}
-      {/* The pane tree (DL-27.13): one leaf per agent, joined to the tab by a
-          hairline elbow. A leaf is the chip's contract at row width — press to
-          focus that exact pane — carrying its leading mark, age and trailing
-          glyph. */}
-      {treed &&
-        row.panes.map((pane) => (
-          <div
-            key={pane.paneId}
-            class={PANE_TREE_HIDDEN ? "asr-leaf asr-leaf--flat" : "asr-leaf"}
-            data-state={pane.state}
-            // DL-27.22: the row whose pane holds the keyboard. The model has
-            // already ANDed this with the tab's own selection, so at most one
-            // leaf in the whole rail carries it.
-            data-focused={pane.focused}
-          >
-            {/* A container with a full-bleed hit layer, not a `<button>` —
-                DL-27.1's rule, and a leaf came under it the moment the close
-                model (2026-08-22) gave every agent row its own ✕: a button
-                nested in a button is not operable, and the leaf WAS the
-                button until then. Everything the leaf drew is unchanged;
-                only what carries the press moved. */}
-            <button
-              type="button"
-              class="asr-leaf__hit"
-              // The wash is what a sighted user reads; this is the same fact
-              // for everyone else, and DL-21.8's reasoning applies — dropping
-              // it would leave the state visual-only.
-              aria-current={pane.focused ? "true" : undefined}
-              aria-label={`Focus ${pane.agent} in ${where}, ${STATE_LABEL[pane.state]}`}
-              title={`${pane.agent} — ${STATE_LABEL[pane.state]}`}
-              onClick={() => {
-                props.onFocusPane(pane.paneId);
-              }}
-            />
-            <RailStatusMark state={pane.state} />
-            {/* The leaf's own turn, in the slot its agent name held (DL-27.15,
-                amended 2026-08-17). A leaf carries its PANE's tail, not the
-                tab's fold: two agents in one tab are two conversations, and
-                the model reads the tail per pane for the same reason. Until
-                that pane says something the name stands in — a leaf is never
-                a blank row. */}
-            {pane.message === "" ? (
-              <strong class="asr-leaf__agent">{pane.agent}</strong>
-            ) : (
-              <span class="asr-leaf__msg">{pane.message}</span>
-            )}
-            {pane.age !== "" && <span class="asr-leaf__age">{pane.age}</span>}
-            <AgentGlyph agent={pane.agent} className="asr-leaf__logo" />
-            {/* Close model table row 1. The tab row's own close (above) shares
-                this shape and its trailing slot with the agent glyph: the
-                glyph fades, the ✕ takes the cell, nothing reflows (DL-27.5). */}
-            <div class="asr-row__actions asr-leaf__actions">
-              <button
-                type="button"
-                class="asr-row__action asr-row__action--close"
-                aria-label={`Close ${pane.agent} in ${where}`}
-                onClick={() => {
-                  props.onClosePane(pane.paneId);
-                }}
-              >
-                <DeckIcon icon={X} size={CHROME_ICON} />
-              </button>
-            </div>
-          </div>
-        ))}
-    </div>
-  );
-}
-
-/**
  * The folder a cluster's `+` opens into: the project's own checkout, else the
  * remembered path a rowless cluster carries.
  *
@@ -477,16 +170,15 @@ function groupPath(group: RailStreamGroup): string | null {
 
 export function AgentRail(props: AgentRailProps) {
   const tabs = tabViews.value;
-  const home = statusInfo.value.home;
-  const showAgentPresence = props.showAgentPresence ?? electronHostAvailable;
-  // A file surface OR the browser surface can hold the stage while
-  // `activeTabIndex` still names whichever terminal tab it sits on top of
-  // (selecting a surface never touches `TabManager`'s own `active` index) — so
-  // a row is only the VISIBLE active row when neither is true.
-  const surfaceActive = props.fileController.activeIndex() >= 0 || browserSurfaceActive.value;
   // Which labelled project groups are folded. A new Set each time rather than
   // a mutated one (C1), so the signal actually notifies.
   const collapsedGroupKeys = useSignal<ReadonlySet<string>>(new Set());
+  // Which worktree cards are open, keyed by `RailWorktreeGroup.key` (the
+  // worktree's own path) — the `toggleGroup` precedent, one tier down.
+  // WINDOW-LOCAL and unpersisted, per the owner's 2026-08-26 answer (design
+  // §11.6/§13.7): settings are app-level, so persisting would make every
+  // window share one open/closed state.
+  const openCardKeys = useSignal<ReadonlySet<string>>(new Set());
 
   const view = buildAgentRail({
     tabs,
@@ -575,29 +267,13 @@ export function AgentRail(props: AgentRailProps) {
     collapsedGroupKeys.value = next;
   }
 
-  const item = (row: RailTabRow, labelled: boolean, branch: string | null) => (
-    <TabItem
-      key={row.key}
-      row={row}
-      labelled={labelled}
-      branch={branch}
-      active={row.active && !surfaceActive}
-      showAgentPresence={showAgentPresence}
-      path={row.workspacePath === null ? "" : tildify(row.workspacePath, home)}
-      onSelect={() => {
-        props.onSelectTab(row.index);
-      }}
-      onFocusPane={(paneId) => {
-        props.onFocusPane(row.index, paneId);
-      }}
-      onClose={() => {
-        props.onCloseTab(row.index);
-      }}
-      onClosePane={(paneId) => {
-        props.onClosePane(row.index, paneId);
-      }}
-    />
-  );
+  function toggleCard(key: string): void {
+    const next = new Set(openCardKeys.value);
+    if (!next.delete(key)) {
+      next.add(key);
+    }
+    openCardKeys.value = next;
+  }
 
   return (
     <nav class="asr-rail asr-rail--mounted" aria-label="Agents">
@@ -754,49 +430,34 @@ export function AgentRail(props: AgentRailProps) {
                         )}
                   </div>
                 )}
-                {/* The worktree tier (DL-27.23). Each group is a sub-header
-                    followed by its own rows, as SIBLINGS inside the cluster
-                    rather than inside a wrapper of their own: the cluster is
-                    the grid that spaces every line in it, and a wrapper would
-                    have to restate that rhythm while adding a box nothing
-                    reads. It also keeps `.asr-cluster__head` the only thing a
-                    drag can start from (DL-27.20) and leaves DL-27.19's
-                    `data-headless` frame — a descendant rule — untouched.
+                {/* The worktree tier (DL-27.23/DL-27.24, amended): each
+                    checkout is a CARD now, not a sub-header plus a run of tab
+                    rows — the tab tier is gone from the rail entirely (design
+                    `2026-08-25-rail-worktree-card-design.md` §3). A card is a
+                    sibling of every other card inside the cluster, for the
+                    same reason the sub-header used to be: the cluster is the
+                    grid that spaces every line in it, and a wrapper would
+                    have to restate that rhythm. It keeps `.asr-cluster__head`
+                    the only thing a drag can start from (DL-27.20) —
+                    `WorktreeCard` renders its own `.asr-card__head`, which
+                    `rail-cluster-drag.ts` never matches.
 
-                    Collapse is still the PROJECT's, one disclosure per cluster
-                    (DL-27.11/DL-27.24): a folded project hides its worktree
-                    groups with its rows. */}
+                    Collapse is still the PROJECT's, one disclosure per
+                    cluster (DL-27.11/DL-27.24): a folded project hides its
+                    cards with its rows. A card's own open/closed state is a
+                    SEPARATE, window-local disclosure one tier down
+                    (`openCardKeys`). */}
                 {!collapsed &&
                   group.worktrees.map((worktree) => (
-                    <Fragment key={worktree.key}>
-                      {worktree.labelled && (
-                        /* A label and one launcher, never a control
-                           (DL-27.24): no caret, no hit layer, nothing to
-                           press but the `+`. The `+` is the project header's
-                           own, pinned to THIS checkout — `onNewTabIn` already
-                           takes a path, so no prop and no seam is added for
-                           it. */
-                        <div class="asr-wt__head">
-                          <span class="asr-wt__name">{worktree.branch}</span>
-                          {props.onNewTabIn !== undefined && worktree.path !== "" && (
-                            <button
-                              type="button"
-                              class="asr-wt__add"
-                              aria-label={`New tab in ${group.project} · ${worktree.branch}`}
-                              title={`New tab in ${group.project} · ${worktree.branch}`}
-                              onClick={() => {
-                                props.onNewTabIn?.(worktree.path);
-                              }}
-                            >
-                              <DeckIcon icon={PlusSquare} size={FEATURE_ICON} />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      {worktree.rows.map((row) =>
-                        item(row, group.labelled, worktree.labelled ? worktree.branch : null),
-                      )}
-                    </Fragment>
+                    <WorktreeCard
+                      key={worktree.key}
+                      group={worktree}
+                      open={openCardKeys.value.has(worktree.key)}
+                      onToggle={toggleCard}
+                      onFocusPane={props.onFocusPane}
+                      onClosePane={props.onClosePane}
+                      onNewTabIn={props.onNewTabIn}
+                    />
                   ))}
               </div>
             );
