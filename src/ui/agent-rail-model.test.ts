@@ -765,6 +765,190 @@ describe("buildAgentRail worktree groups (DL-27.23, 2026-08-25)", () => {
   });
 });
 
+describe("buildAgentRail worktree card shape (Task 4, 2026-08-26)", () => {
+  it("flattens panes across a worktree's tabs in open order", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", { openedAt: 2, panes: [pane(3), pane(4)] }),
+          tab(2, "/w/deck", { openedAt: 1, panes: [pane(5)] }),
+        ],
+      }),
+    );
+
+    // Tab 2 opened first, so its pane leads; tab 1's two panes follow in
+    // their own pane order.
+    expect(view.stream[0].worktrees[0].panes.map((entry) => entry.paneId)).toEqual([5, 3, 4]);
+  });
+
+  it("names the checkout by basename and badges it by branch", () => {
+    const view = buildAgentRail(
+      railInput({
+        scans: new Map([
+          ["/repo/.wt/api", repo("/repo/.git", [{ path: "/repo/.wt/api", branch: "feature/api" }])],
+        ]),
+        workspaceHistoryPaths: ["/repo/.wt/api"],
+        tabs: [tab(1, "/repo/.wt/api", { panes: [pane(1)] })],
+      }),
+    );
+
+    const worktree = view.stream[0].worktrees[0];
+    expect(worktree.name).toBe("api");
+    expect(worktree.branch).toBe("feature/api");
+  });
+
+  it("marks exactly one worktree active — the focused pane's", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", { panes: [pane(1, { focused: true })] }),
+          tab(2, "/w/deck-side", { panes: [pane(2, { focused: true })] }),
+        ],
+        activeIndex: 0,
+      }),
+    );
+
+    // Every tab has a focused pane of its own; only the ACTIVE tab's is
+    // reported (DL-27.22), so only its checkout ever reads active.
+    expect(view.stream[0].worktrees.map((worktree) => [worktree.branch, worktree.active])).toEqual([
+      ["main", true],
+      ["release-hardening", false],
+    ]);
+  });
+
+  it("reports live only while a pane is working", () => {
+    const idle = buildAgentRail(
+      railInput({ tabs: [tab(1, "/w/deck", { panes: [pane(1, { phase: "idle" })] })] }),
+    );
+    const working = buildAgentRail(
+      railInput({ tabs: [tab(1, "/w/deck", { panes: [pane(1, { phase: "working" })] })] }),
+    );
+
+    expect(idle.stream[0].worktrees[0].live).toBe(false);
+    expect(working.stream[0].worktrees[0].live).toBe(true);
+  });
+
+  it("ages the card by its newest pane, not by its first tab", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", { openedAt: 1, panes: [pane(1, { changedAt: NOW - 3 * HOUR })] }),
+          tab(2, "/w/deck", { openedAt: 2, panes: [pane(2, { changedAt: NOW - MINUTE })] }),
+        ],
+      }),
+    );
+
+    expect(view.stream[0].worktrees[0].age).toBe("1m");
+  });
+
+  it("labels a split pane so two claude rows are not identical", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", {
+            panes: [pane(1, { agent: "claude" }), pane(2, { agent: "claude" })],
+          }),
+        ],
+      }),
+    );
+
+    expect(view.stream[0].worktrees[0].panes.map((entry) => entry.label)).toEqual([
+      "Claude",
+      "Claude (Split)",
+    ]);
+  });
+
+  it("lets a tab name a person typed win over the agent name", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [tab(1, "/w/deck", { name: "review", panes: [pane(1, { agent: "codex" })] })],
+      }),
+    );
+
+    expect(view.stream[0].worktrees[0].panes[0].label).toBe("review");
+  });
+
+  it("appends (Split) to a typed name too, not only to the agent name", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", {
+            name: "review",
+            panes: [pane(1, { agent: "codex" }), pane(2, { agent: "claude" })],
+          }),
+        ],
+      }),
+    );
+
+    expect(view.stream[0].worktrees[0].panes.map((entry) => entry.label)).toEqual([
+      "review",
+      "review (Split)",
+    ]);
+  });
+
+  it("counts split position by agent panes only, skipping a shell pane", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", {
+            panes: [
+              pane(1, { agent: null }),
+              pane(2, { agent: "claude" }),
+              pane(3, { agent: "claude" }),
+            ],
+          }),
+        ],
+      }),
+    );
+
+    // The shell pane is not a row (spec §9) and does not count toward "first".
+    expect(view.stream[0].worktrees[0].panes.map((entry) => entry.label)).toEqual([
+      "Claude",
+      "Claude (Split)",
+    ]);
+  });
+
+  it("carries the model from the tails input onto its pane", () => {
+    const view = buildAgentRail({
+      ...railInput({ tabs: [tab(1, "/w/deck", { panes: [pane(101)] })] }),
+      models: new Map([[101, "claude-opus-5"]]),
+    });
+
+    expect(view.stream[0].worktrees[0].panes[0].model).toBe("claude-opus-5");
+  });
+
+  it("defaults a pane's model to empty when nothing is known, and without the input at all", () => {
+    const withMap = buildAgentRail({
+      ...railInput({ tabs: [tab(1, "/w/deck", { panes: [pane(101)] })] }),
+      models: new Map(),
+    });
+    const withoutInput = buildAgentRail(
+      railInput({ tabs: [tab(1, "/w/deck", { panes: [pane(101)] })] }),
+    );
+
+    expect(withMap.stream[0].worktrees[0].panes[0].model).toBe("");
+    expect(withoutInput.stream[0].worktrees[0].panes[0].model).toBe("");
+  });
+
+  it("carries each pane's own tab index, not the group's first tab", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", { openedAt: 1, panes: [pane(1)] }),
+          tab(2, "/w/deck", { openedAt: 2, panes: [pane(2)] }),
+        ],
+      }),
+    );
+
+    expect(
+      view.stream[0].worktrees[0].panes.map((entry) => [entry.paneId, entry.tabIndex]),
+    ).toEqual([
+      [1, 0],
+      [2, 1],
+    ]);
+  });
+});
+
 describe("buildAgentRail session tails", () => {
   /** One agent pane in a renamed tab: a tail to read, a name to keep beside it. */
   function baseInput(): AgentRailInput {
