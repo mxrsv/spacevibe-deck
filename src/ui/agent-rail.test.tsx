@@ -197,16 +197,16 @@ function click(element: Element | null | undefined): void {
 /**
  * A worktree card's OPEN agent rows (design
  * `2026-08-25-rail-worktree-card-design.md` §5) — replaces the old tab-row
- * selector. Excludes the trailing `New agent` row (`.asr-card__row--new`),
- * which is a launcher, not an agent; tests that care about it query
- * `.asr-card__row--new` directly. A card is CLOSED by default (window-local,
+ * selector. `New agent` is its own leaf, `.asr-card__new` (review fix,
+ * 2026-08-26) — it shares no press target or accessible name with an agent
+ * row, so this selector needs no `:not()` to stay a pure "how many agent
+ * rows are open" count; tests that care about the launcher query
+ * `.asr-card__new` directly. A card is CLOSED by default (window-local,
  * `openCardKeys`), so most tests that read rows must call `openAllCards()`
  * first; this alone does not open anything.
  */
 function rows(): HTMLElement[] {
-  return [
-    ...host.querySelectorAll<HTMLElement>(".asr-card__row:not(.asr-card__row--new)"),
-  ];
+  return [...host.querySelectorAll<HTMLElement>(".asr-card__row")];
 }
 
 /** Every checkout's head, whether a full card or a bare (rowless) row. */
@@ -532,6 +532,22 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
     expect(header?.getAttribute("aria-expanded")).toBe("true");
     expect(rows()).toHaveLength(2);
   });
+
+  it("keeps agent presence out of a host that does not enable it (review fix, 2026-08-26)", async () => {
+    // `repository-rail.test.tsx`'s own pattern: on a host with no agent
+    // detection wired (Tauri, or here an explicit override), a card head
+    // still prints, but neither the strip nor the open list's rows do.
+    tabViews.value = [tab({ panes: [pane({ paneId: 11 })] })];
+    mount({ showAgentPresence: false });
+    await settle();
+
+    expect(host.querySelector(".asr-card__head")).not.toBeNull();
+    expect(host.querySelector(".asr-card__row")).toBeNull();
+    expect(host.querySelector(".asr-card__seg")).toBeNull();
+
+    openAllCards();
+    expect(host.querySelector(".asr-card__row")).toBeNull();
+  });
 });
 
 describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
@@ -685,16 +701,16 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     expect(onNewTabIn).toHaveBeenCalledWith("/r/side");
   });
 
-  it("names the checkout AND its branch in the bare row's accessible name", async () => {
+  it("names the project, the checkout AND its branch in the bare row's accessible name", async () => {
     mount({ onNewTabIn: NOOP });
     await settle();
 
-    // The project name is not reachable from `WorktreeCard`'s props (it only
-    // ever receives the checkout) — a real, accepted regression from the old
-    // `project · branch` wording (design report). Two same-named checkouts
-    // in different projects are ambiguous by ear.
+    // Review fix (2026-08-26): `project` is threaded down from
+    // `RailStreamGroup.project` at the `agent-rail.tsx` call site, so the
+    // name that was briefly unreachable from `WorktreeCard`'s props is back
+    // — `project · checkout · branch`, matching the old `whereOf` shape.
     expect(host.querySelector(".asr-bare")?.getAttribute("aria-label")).toBe(
-      "New agent in side, side",
+      "New agent in main · side · side",
     );
   });
 
@@ -746,7 +762,8 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     openAllCards();
 
     const hit = host.querySelector(".asr-card__hit");
-    expect(hit?.getAttribute("aria-label")).toContain("side · side");
+    // Review fix (2026-08-26): the project prefix is back too.
+    expect(hit?.getAttribute("aria-label")).toContain("main · side · side");
     expect(hit?.getAttribute("title")).toBe("Claude — idle");
   });
 });

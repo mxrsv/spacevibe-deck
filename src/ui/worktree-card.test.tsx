@@ -57,10 +57,12 @@ function mount(props: Partial<WorktreeCardProps> & { readonly group: RailWorktre
   act(() => {
     render(
       <WorktreeCard
+        project="spacevibe-bench"
         open={false}
         onToggle={() => {}}
         onFocusPane={NOOP_FOCUS}
         onClosePane={NOOP_CLOSE}
+        showAgentPresence
         {...props}
       />,
       host,
@@ -105,6 +107,9 @@ describe("WorktreeCard head (design §4)", () => {
     // No age on the head — it lives on the meta line, a sibling of the head.
     expect(head?.textContent).not.toContain("5m");
     expect(host.querySelector(".asr-card__meta")?.textContent).toBe("5m");
+    // The project prefix (review fix, 2026-08-26): `project · checkout · branch`.
+    expect(head?.getAttribute("title")).toBe("spacevibe-bench · ai-terminal · feature/ai-terminal");
+    expect(head?.getAttribute("aria-label")).toContain("spacevibe-bench · ai-terminal · feature/ai-terminal");
   });
 
   it("draws a closed card's strip with segments, never sharing the open row's class", () => {
@@ -183,6 +188,10 @@ describe("WorktreeCard open list (design §5)", () => {
     click(rows[1].querySelector(".asr-card__hit"));
     expect(onFocusPane).toHaveBeenCalledWith(8, 100);
     expect(onFocusPane).toHaveBeenCalledTimes(1);
+    // The focus control's accessible name also carries the project prefix.
+    expect(rows[1].querySelector(".asr-card__hit")?.getAttribute("aria-label")).toContain(
+      "spacevibe-bench · ai-terminal · feature/ai-terminal",
+    );
   });
 
   it("opens the launcher pinned to this checkout from New agent", () => {
@@ -193,7 +202,14 @@ describe("WorktreeCard open list (design §5)", () => {
       group: group({ path: "/repo/ai-terminal", panes: [pane()] }),
     });
 
-    click(host.querySelector(".asr-card__row--new"));
+    // `.asr-card__new` — its own leaf, not `.asr-card__row` (review fix,
+    // 2026-08-26): it shares no press target or accessible name with an
+    // agent row, and briefly sharing `__row` broke a `rows()`-style test
+    // selector's vacuity guarantee.
+    const launcher = host.querySelector(".asr-card__new");
+    expect(launcher).not.toBeNull();
+    expect(launcher?.classList.contains("asr-card__row")).toBe(false);
+    click(launcher);
     expect(onNewTabIn).toHaveBeenCalledWith("/repo/ai-terminal");
     expect(onNewTabIn).toHaveBeenCalledTimes(1);
   });
@@ -231,6 +247,9 @@ describe("WorktreeCard open list (design §5)", () => {
 
     const closes = host.querySelectorAll<HTMLElement>(".asr-card__row .asr-row__action--close");
     expect(closes).toHaveLength(2);
+    expect(closes[1].getAttribute("aria-label")).toContain(
+      "spacevibe-bench · ai-terminal · feature/ai-terminal",
+    );
     click(closes[1]);
     expect(onClosePane).toHaveBeenCalledWith(5, 42);
     expect(onClosePane).toHaveBeenCalledTimes(1);
@@ -239,7 +258,39 @@ describe("WorktreeCard open list (design §5)", () => {
   it("omits New agent when the host cannot open one (DL-19.7)", () => {
     mount({ open: true, group: group({ panes: [pane()] }) });
 
-    expect(host.querySelector(".asr-card__row--new")).toBeNull();
+    expect(host.querySelector(".asr-card__new")).toBeNull();
+  });
+});
+
+describe("WorktreeCard host parity (review fix, 2026-08-26)", () => {
+  it("draws only the head and meta line when showAgentPresence is false", () => {
+    // The `TabItem` parity gap the review caught: agent detection is not
+    // wired on every host (Tauri), so neither the closed strip nor the open
+    // list's rows may draw when the rail says so — even though `open` is
+    // true and panes exist.
+    mount({
+      open: true,
+      showAgentPresence: false,
+      group: group({ age: "5m", panes: [pane({ paneId: 1 }), pane({ paneId: 2 })] }),
+    });
+
+    expect(host.querySelector(".asr-card__head")).not.toBeNull();
+    expect(host.querySelector(".asr-card__meta")?.textContent).toBe("5m");
+    expect(host.querySelector(".asr-card__row")).toBeNull();
+    expect(host.querySelector(".asr-card__seg")).toBeNull();
+    expect(host.querySelector(".asr-card__strip")).toBeNull();
+    expect(host.querySelector(".asr-card__count")).toBeNull();
+    expect(host.querySelector(".asr-card__new")).toBeNull();
+  });
+
+  it("draws the strip when closed and showAgentPresence is true (today's Electron behaviour, unchanged)", () => {
+    mount({
+      open: false,
+      showAgentPresence: true,
+      group: group({ panes: [pane({ paneId: 1 }), pane({ paneId: 2 })] }),
+    });
+
+    expect(host.querySelectorAll(".asr-card__seg")).toHaveLength(2);
   });
 });
 
@@ -264,6 +315,9 @@ describe("WorktreeCard bare row (design §6)", () => {
 
     const bare = host.querySelector("button.asr-bare");
     expect(bare).not.toBeNull();
+    expect(bare?.getAttribute("aria-label")).toBe(
+      "New agent in spacevibe-bench · ai-terminal · feature/ai-terminal",
+    );
     click(bare);
     expect(onNewTabIn).toHaveBeenCalledWith("/repo/docs");
   });

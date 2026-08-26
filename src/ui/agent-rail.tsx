@@ -11,6 +11,7 @@ import {
   repositoryScans,
 } from "../repositories/repositories-store";
 import { paneTails } from "../terminal/session-tail-store";
+import { available as electronHostAvailable } from "../host/worktree-host";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { workspacesData } from "../open-board/workspaces-store";
 import { settings, updateSettings } from "../settings/settings-store";
@@ -110,9 +111,14 @@ export interface AgentRailProps {
    */
   recentActivity?: ComponentChildren;
   /**
-   * The same `SurfaceStrip` wired into `TabManager`, read for one thing only:
-   * whether a file surface holds the stage, which decides whether a tab row
-   * still draws as the active one. The rail lists no file tabs and opens none.
+   * The same `SurfaceStrip` wired into `TabManager`. Unread by this file's
+   * own render since the worktree card landed (2026-08-26): DL-27.22's
+   * focused-pane wash is no longer gated by whether a file or browser
+   * surface holds the stage (a stage surface does not change which pane
+   * holds the WINDOW's keyboard), so nothing here reads
+   * `fileController.activeIndex()` any more. Kept as a required prop because
+   * `AgentRailProps` and `RepositoryRailProps` share one contract and `App`
+   * passes it to both; the rail lists no file tabs and opens none regardless.
    */
   fileController: FileSurfaceController;
 }
@@ -170,6 +176,12 @@ function groupPath(group: RailStreamGroup): string | null {
 
 export function AgentRail(props: AgentRailProps) {
   const tabs = tabViews.value;
+  // Host parity (review finding, 2026-08-26): the `repository-rail.tsx`
+  // default, restored. `WorktreeCard` reads this to decide whether a
+  // labelled checkout's body draws any agent detail at all — on a host with
+  // no agent detection wired (Tauri, or a test/gallery override) it must
+  // not, the same way `TabItem` used to gate its chip and leaves on it.
+  const showAgentPresence = props.showAgentPresence ?? electronHostAvailable;
   // Which labelled project groups are folded. A new Set each time rather than
   // a mutated one (C1), so the signal actually notifies.
   const collapsedGroupKeys = useSignal<ReadonlySet<string>>(new Set());
@@ -451,12 +463,14 @@ export function AgentRail(props: AgentRailProps) {
                   group.worktrees.map((worktree) => (
                     <WorktreeCard
                       key={worktree.key}
+                      project={group.project}
                       group={worktree}
                       open={openCardKeys.value.has(worktree.key)}
                       onToggle={toggleCard}
                       onFocusPane={props.onFocusPane}
                       onClosePane={props.onClosePane}
                       onNewTabIn={props.onNewTabIn}
+                      showAgentPresence={showAgentPresence}
                     />
                   ))}
               </div>

@@ -28,11 +28,15 @@ import {
  * A handful of finer parts are unavoidable additions under the same prefix
  * (`AgentGlyph` requires a `className`; DL-27.21 forces a hit-layer + a real
  * close button, so a leaf needs a `__hit`): `__mark`, `__dot`, `__glyph`,
- * `__logo`, `__hit`, `__load`, `__count`, and `__seg` — the closed strip's
- * segment, deliberately NOT `__row`: a segment carries no press and no close
- * where a row is a full button with both, and sharing one class would make
- * "how many rows are open" indistinguishable from "how wide is the strip" by
- * selector alone. The close button itself reuses the rail's EXISTING
+ * `__logo`, `__hit`, `__load`, `__count`, `__seg` — the closed strip's
+ * segment, deliberately NOT `__row` (a segment carries no press and no
+ * close, where a row is a full button with both — sharing one class made
+ * "how many rows are open" indistinguishable from "how wide is the strip"
+ * by selector alone, caught as a real bug in review) — and `__new`, the
+ * `New agent` row's OWN leaf for the identical reason: it shares no press
+ * target or accessible name with an agent row, either, and briefly sharing
+ * `__row` there too made a `rows()`-style test selector need a `:not()` to
+ * stay correct. The close button itself reuses the rail's EXISTING
  * `asr-row__actions` / `asr-row__action` / `asr-row__action--close`
  * vocabulary rather than inventing a card-local one — the exact pattern
  * DL-27.21 is quoted from (`agent-rail.tsx`'s old tab row and leaf).
@@ -43,6 +47,14 @@ import {
  * never spins (busy motion is the trailing loading track, `CardLoad`, not
  * the corner badge). Reusing it would mean overriding two of its five
  * branches from outside, which is not reuse.
+ *
+ * Host parity: `showAgentPresence` is threaded down from `agent-rail.tsx`
+ * (the `props.showAgentPresence ?? electronHostAvailable` default
+ * `repository-rail.tsx` established) exactly the way `TabItem` gated its
+ * chips and leaves. A labelled checkout with panes still draws its head and
+ * meta line when it is false, but neither the closed strip nor the open
+ * list's rows — the shipped rail never drew per-agent detail on a host
+ * where agent detection is not wired, and the card must not either.
  */
 
 /**
@@ -62,6 +74,20 @@ const STATE_LABEL: Readonly<Record<RailState, string>> = {
 
 /** The one state that means "the machine is busy" (spec §11.3: `thinking` was dropped). */
 const BUSY_STATE: RailState = "working";
+
+/**
+ * `project · checkout · branch` — the accessible-name prefix every control
+ * on a card carries, matching what the shipped rail's `whereOf` produced
+ * before the tab tier's removal took the project name out of this
+ * component's reach. `WorktreeCard` only ever received the checkout
+ * (`RailWorktreeGroup`) until this fix; `project` is threaded down from
+ * `agent-rail.tsx`'s own `RailStreamGroup.project`, one call site, so every
+ * control composes the same three-part string rather than each inventing
+ * its own subset of it.
+ */
+function whereOf(project: string, group: RailWorktreeGroup): string {
+  return `${project} · ${group.name} · ${group.branch}`;
+}
 
 /**
  * The per-pane state indicator, badged on the glyph's corner (design §5).
@@ -124,23 +150,24 @@ function Badge({ className, branch }: { readonly className: string; readonly bra
  * head is the toggle.
  */
 function CardHead({
+  project,
   group,
   open,
   onToggle,
 }: {
+  readonly project: string;
   readonly group: RailWorktreeGroup;
   readonly open: boolean;
   readonly onToggle: () => void;
 }) {
+  const where = whereOf(project, group);
   return (
     <button
       type="button"
       class="asr-card__head"
       aria-expanded={open}
-      aria-label={`${open ? "Collapse" : "Expand"} ${group.name}, ${group.branch}${
-        group.live ? ", working" : ""
-      }`}
-      title={`${group.name} · ${group.branch}`}
+      aria-label={`${open ? "Collapse" : "Expand"} ${where}${group.live ? ", working" : ""}`}
+      title={where}
       onClick={onToggle}
     >
       <span class="asr-card__mark" data-live={group.live} aria-hidden="true" />
@@ -156,27 +183,22 @@ function CardHead({
  * own close, so the row is a container with a full-bleed hit layer
  * (DL-27.1's shape) rather than a literal `<button>`, which could not also
  * hold a real closable ✕.
- *
- * `where` stands in for the `project · checkout · branch` string the old
- * tab row could compose: this component only ever receives the checkout
- * (`group`), never the project name above it, so the accessible name and
- * tooltip read `checkout · branch` alone. Two same-named checkouts in two
- * different projects are therefore ambiguous by ear — a real, accepted
- * regression, not an oversight (see the task report).
  */
 function CardAgentRow({
+  project,
   group,
   pane,
   onFocusPane,
   onClosePane,
 }: {
+  readonly project: string;
   readonly group: RailWorktreeGroup;
   readonly pane: RailCardPane;
   readonly onFocusPane: (tabIndex: number, paneId: number) => void;
   readonly onClosePane: (tabIndex: number, paneId: number) => void;
 }) {
   const label = STATE_LABEL[pane.state];
-  const where = `${group.name} · ${group.branch}`;
+  const where = whereOf(project, group);
 
   return (
     <div
@@ -279,12 +301,15 @@ function CardStrip({ panes }: { readonly panes: readonly RailCardPane[] }) {
  * nothing can be pressed.
  */
 function BareCheckout({
+  project,
   group,
   onNewTabIn,
 }: {
+  readonly project: string;
   readonly group: RailWorktreeGroup;
   readonly onNewTabIn?: (workspacePath: string) => void;
 }) {
+  const where = whereOf(project, group);
   const content = (
     <Fragment>
       <span class="asr-bare__mark" aria-hidden="true" />
@@ -299,8 +324,8 @@ function BareCheckout({
     <button
       type="button"
       class="asr-bare"
-      aria-label={`New agent in ${group.name}, ${group.branch}`}
-      title={`New agent in ${group.name} · ${group.branch}`}
+      aria-label={`New agent in ${where}`}
+      title={`New agent in ${where}`}
       onClick={() => {
         onNewTabIn(group.path);
       }}
@@ -320,10 +345,12 @@ function BareCheckout({
  * box, head or toggle around them.
  */
 function FlatPanes({
+  project,
   group,
   onFocusPane,
   onClosePane,
 }: {
+  readonly project: string;
   readonly group: RailWorktreeGroup;
   readonly onFocusPane: (tabIndex: number, paneId: number) => void;
   readonly onClosePane: (tabIndex: number, paneId: number) => void;
@@ -333,6 +360,7 @@ function FlatPanes({
       {group.panes.map((pane) => (
         <CardAgentRow
           key={pane.paneId}
+          project={project}
           group={group}
           pane={pane}
           onFocusPane={onFocusPane}
@@ -344,6 +372,8 @@ function FlatPanes({
 }
 
 export interface WorktreeCardProps {
+  /** The project name above this checkout — `RailStreamGroup.project`. */
+  readonly project: string;
   readonly group: RailWorktreeGroup;
   readonly open: boolean;
   readonly onToggle: (key: string) => void;
@@ -355,19 +385,34 @@ export interface WorktreeCardProps {
    */
   readonly onClosePane: (tabIndex: number, paneId: number) => void;
   readonly onNewTabIn?: (workspacePath: string) => void;
+  /**
+   * Host parity (review finding, 2026-08-26): the same
+   * `props.showAgentPresence ?? electronHostAvailable` default
+   * `agent-rail.tsx` resolves once and hands down, not re-defaulted here.
+   * `false` (Tauri, or a test/gallery override) draws the head and meta line
+   * only — no strip, no open-list rows — the way `TabItem` drew a tab row
+   * with no chip and no leaves on a host where agent detection is not
+   * wired. `true` (the Electron default) is today's behaviour, unchanged.
+   */
+  readonly showAgentPresence: boolean;
 }
 
 export function WorktreeCard(props: WorktreeCardProps) {
-  const { group } = props;
+  const { group, project } = props;
 
   if (!group.labelled) {
     return (
-      <FlatPanes group={group} onFocusPane={props.onFocusPane} onClosePane={props.onClosePane} />
+      <FlatPanes
+        project={project}
+        group={group}
+        onFocusPane={props.onFocusPane}
+        onClosePane={props.onClosePane}
+      />
     );
   }
 
   if (group.panes.length === 0) {
-    return <BareCheckout group={group} onNewTabIn={props.onNewTabIn} />;
+    return <BareCheckout project={project} group={group} onNewTabIn={props.onNewTabIn} />;
   }
 
   return (
@@ -378,6 +423,7 @@ export function WorktreeCard(props: WorktreeCardProps) {
       data-live={group.live}
     >
       <CardHead
+        project={project}
         group={group}
         open={props.open}
         onToggle={() => {
@@ -389,40 +435,42 @@ export function WorktreeCard(props: WorktreeCardProps) {
           sibling (an open question this task does not build, spec §13.2)
           would drop it. */}
       {group.age !== "" && <p class="asr-card__meta">{group.age}</p>}
-      {props.open ? (
-        <Fragment>
-          {/* The count alone, no `Agents` label (design §5, §8.4: the
-              owner-dropped label would also reopen DL-4.3's closed uppercase
-              exception). */}
-          <div class="asr-card__count">{group.panes.length} active</div>
-          {group.panes.map((pane) => (
-            <CardAgentRow
-              key={pane.paneId}
-              group={group}
-              pane={pane}
-              onFocusPane={props.onFocusPane}
-              onClosePane={props.onClosePane}
-            />
-          ))}
-          {props.onNewTabIn !== undefined && (
-            <button
-              type="button"
-              class="asr-card__row asr-card__row--new"
-              aria-label={`New agent in ${group.name}, ${group.branch}`}
-              onClick={() => {
-                props.onNewTabIn?.(group.path);
-              }}
-            >
-              <span class="asr-card__glyph asr-card__glyph--new" aria-hidden="true">
-                <DeckIcon icon={Plus} size={CHROME_ICON} />
-              </span>
-              <span class="asr-card__name">New agent</span>
-            </button>
-          )}
-        </Fragment>
-      ) : (
-        <CardStrip panes={group.panes} />
-      )}
+      {props.showAgentPresence &&
+        (props.open ? (
+          <Fragment>
+            {/* The count alone, no `Agents` label (design §5, §8.4: the
+                owner-dropped label would also reopen DL-4.3's closed
+                uppercase exception). */}
+            <div class="asr-card__count">{group.panes.length} active</div>
+            {group.panes.map((pane) => (
+              <CardAgentRow
+                key={pane.paneId}
+                project={project}
+                group={group}
+                pane={pane}
+                onFocusPane={props.onFocusPane}
+                onClosePane={props.onClosePane}
+              />
+            ))}
+            {props.onNewTabIn !== undefined && (
+              <button
+                type="button"
+                class="asr-card__new"
+                aria-label={`New agent in ${whereOf(project, group)}`}
+                onClick={() => {
+                  props.onNewTabIn?.(group.path);
+                }}
+              >
+                <span class="asr-card__glyph asr-card__glyph--new" aria-hidden="true">
+                  <DeckIcon icon={Plus} size={CHROME_ICON} />
+                </span>
+                <span class="asr-card__name">New agent</span>
+              </button>
+            )}
+          </Fragment>
+        ) : (
+          <CardStrip panes={group.panes} />
+        ))}
     </article>
   );
 }
