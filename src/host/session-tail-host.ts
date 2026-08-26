@@ -7,9 +7,10 @@ import type { ResumeRequest, SessionTailAnswer } from "../lib/agent-resume";
 
 /**
  * One answer (or null) per request, positional. Defensive like resumeLookup:
- * anything that is not a `{ id, tail }` object becomes `null` AT ITS OWN
- * POSITION, so one malformed entry cannot shift every later sentence onto the
- * wrong pane.
+ * anything that is not a `{ id, tail, model }` object becomes `null` AT ITS
+ * OWN POSITION, so one malformed entry cannot shift every later sentence onto
+ * the wrong pane. Only the `id` guard nulls the whole answer; `tail` and
+ * `model` each degrade to `null` independently when malformed or absent.
  */
 export async function sessionTails(
   requests: readonly ResumeRequest[],
@@ -33,5 +34,12 @@ function parseAnswer(entry: unknown): SessionTailAnswer | null {
   if (typeof node.id !== "string" || node.id === "") {
     return null;
   }
-  return { id: node.id, tail: typeof node.tail === "string" ? node.tail : null };
+  return {
+    id: node.id,
+    // Empty string means "absent" for every field here, `id` included above —
+    // the main process never sends `tail: ""` (`oneLine` answers `null` for
+    // blank text), so this is a defensive normalization, not a live case.
+    tail: typeof node.tail === "string" && node.tail !== "" ? node.tail : null,
+    model: typeof node.model === "string" && node.model !== "" ? node.model : null,
+  };
 }

@@ -25,6 +25,24 @@ function platform() {
   return process.platform === "win32" ? windows : macos;
 }
 
+const STARTUP_TRACE_ENV = "DECK_PTY_STARTUP_TRACE";
+const STARTUP_TRACE_PREFIX = "[deck:pty-startup]";
+
+type StartupMilestone =
+  | "spawn_start"
+  | "shell_resolved"
+  | "cwd_resolved"
+  | "pty_created"
+  | "first_input"
+  | "first_output"
+  | "prompt_ready"
+  | "cwd_validated";
+
+interface StartupTrace {
+  readonly startedAt: number;
+  readonly seen: ReadonlySet<StartupMilestone>;
+}
+
 /** Delivers an event to whichever window currently owns the pane. */
 export type EmitToOwner = (paneId: number, event: string, payload: unknown) => void;
 
@@ -40,11 +58,13 @@ export interface PtyManagerDeps {
 
 export class PtyManager {
   private readonly store = new PtySessionStore();
+  private readonly startupTraceByPane = new Map<number, StartupTrace>();
 
   constructor(private readonly deps: PtyManagerDeps) {}
 
   spawn(windowLabel: string, options: SpawnOptions): number {
-    const { pty, ttyName } = spawnShell(options);
+    const fallbackStartedAt = performance.now();
+    const { pty, ttyName, startupTiming } = spawnShell(options);
     const id = this.store.allocateId();
     const decode = createStreamDecoder();
 
@@ -59,10 +79,22 @@ export class PtyManager {
 
     const session = this.store.insert({ id, pty, ttyName, batcher, decode });
 
+    if (process.env[STARTUP_TRACE_ENV] === "1") {
+      const startedAt = startupTiming?.startedAt ?? fallbackStartedAt;
+      this.startupTraceByPane.set(id, { startedAt, seen: new Set() });
+      this.traceStartup(id, "spawn_start", startedAt);
+      if (startupTiming !== undefined) {
+        this.traceStartup(id, "shell_resolved", startupTiming.shellResolvedAt);
+        this.traceStartup(id, "cwd_resolved", startupTiming.cwdResolvedAt);
+      }
+      this.traceStartup(id, "pty_created", startupTiming?.ptyCreatedAt);
+    }
+
     pty.onData((chunk) => {
       // Buffers on Unix (`encoding: null`), STRINGS on Windows, where node-pty
       // ignores the encoding option. `decode` takes both — see the comment on
       // `createStreamDecoder`, which is where that difference is resolved.
+      this.traceStartup(id, "first_output");
       batcher.push(decode(chunk as unknown as Uint8Array | string));
     });
     pty.onExit(() => this.handleExit(session));
@@ -74,6 +106,7 @@ export class PtyManager {
   write(windowLabel: string, id: number, data: string): void {
     this.deps.assertOwner(id, windowLabel);
     const session = this.requireSession(id);
+    this.traceStartup(id, "first_input");
     session.pty.write(data);
   }
 
@@ -178,6 +211,7 @@ export class PtyManager {
     this.store.remove(session.id);
     this.deps.emitToOwner(session.id, EVENTS.ptyExit, { id: session.id });
     this.deps.unregister(session.id);
+    this.startupTraceByPane.delete(session.id);
   }
 
   /**
@@ -203,6 +237,7 @@ export class PtyManager {
     // bytes that follow it.
     for (const event of events) {
       if (event.kind === "prompt-ready") {
+        this.traceStartup(id, "prompt_ready");
         this.deps.emitToOwner(id, EVENTS.ptyPromptReady, { id });
       }
     }
@@ -225,7 +260,29 @@ export class PtyManager {
       const live = this.store.get(id);
       if (live !== undefined && cwd !== null) {
         live.cwd = cwd;
+        this.traceStartup(id, "cwd_validated");
       }
+    });
+  }
+
+  private traceStartup(
+    id: number,
+    milestone: StartupMilestone,
+    observedAt = performance.now(),
+  ): void {
+    const trace = this.startupTraceByPane.get(id);
+    if (trace === undefined || trace.seen.has(milestone)) {
+      return;
+    }
+    this.startupTraceByPane.set(id, {
+      ...trace,
+      seen: new Set([...trace.seen, milestone]),
+    });
+    // oxlint-disable-next-line no-console -- explicit opt-in startup timing diagnostic
+    console.info(STARTUP_TRACE_PREFIX, {
+      paneId: id,
+      milestone,
+      elapsedMs: Number(Math.max(0, observedAt - trace.startedAt).toFixed(1)),
     });
   }
 

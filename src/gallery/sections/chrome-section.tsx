@@ -3,7 +3,6 @@ import { PresetThumb } from "../../presets/preset-thumb";
 import { AgentAttentionMark } from "../../ui/agent-attention-mark";
 import { DesktopChrome } from "../../ui/desktop-chrome";
 import { WorkspaceSpinner } from "../../ui/workspace-spinner";
-import { SidebarBanner } from "../../ui/sidebar-banner";
 import { MigrationBanner } from "../../ui/migration-banner";
 import { activeTabIndex } from "../../terminal/tabs-store";
 import { SIDEBAR_HIDDEN_WIDTH } from "../../ui/panel-resize";
@@ -38,8 +37,6 @@ const UPDATE_PHASES: readonly Exclude<UpdatePhase, "hidden">[] = [
   "relaunch-failed",
 ];
 
-const WOVEN_FLAG_NOTE = "Textile grain · shallow fold light · matte colour";
-
 export function ChromeSection() {
   const selectGalleryTab = (index: number): void => {
     activeTabIndex.value = index;
@@ -66,29 +63,6 @@ export function ChromeSection() {
       </Specimen>
 
       <Specimen
-        name="SidebarBanner · Woven Flag"
-        note="selected treatment · real 40px artwork · gallery-only reference"
-        surface="chrome-1"
-      >
-        <div class="gx-banner-directions">
-          <article class="gx-banner-direction gx-banner-direction--woven">
-            <header class="gx-banner-direction__head">
-              <span class="gx-banner-direction__label">Woven Flag</span>
-            </header>
-            <div class="gx-banner-direction__rail">
-              <span class="gx-banner-direction__eyebrow">repositories</span>
-              <span class="gx-banner-direction__repository">
-                <span>spacevibe-deck</span>
-                <small>main · primary</small>
-              </span>
-              <SidebarBanner />
-            </div>
-            <p>{WOVEN_FLAG_NOTE}</p>
-          </article>
-        </div>
-      </Specimen>
-
-      <Specimen
         name="Worktree-scoped TabStrip"
         note="click a tab row or agent row in the real rail — the real stage strip follows that project and hides tabs from every other project"
         surface="none"
@@ -112,11 +86,11 @@ export function ChromeSection() {
             // seam, and a seam a screenshot cannot drag is only a cursor
             // change.
             sidebarToggle={
-              railCollapsed.value ? null : (
-                sidebarFrameActionsSpecimen(() => {
-                  railCollapsed.value = true;
-                })
-              )
+              railCollapsed.value
+                ? null
+                : sidebarFrameActionsSpecimen(() => {
+                    railCollapsed.value = true;
+                  })
             }
             toolbar={null}
             sidebarNavigation={agentRailNavigationSpecimen({

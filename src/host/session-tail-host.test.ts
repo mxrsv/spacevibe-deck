@@ -15,9 +15,9 @@ describe("session-tail-host", () => {
   });
 
   it("carries the pairing through, tail and all", async () => {
-    vi.spyOn(bridge, "invoke").mockResolvedValue([{ id: "sess-1", tail: "what it said" }]);
+    vi.spyOn(bridge, "invoke").mockResolvedValue([{ id: "sess-1", tail: "what it said", model: null }]);
     await expect(sessionTails([REQUEST])).resolves.toEqual([
-      { id: "sess-1", tail: "what it said" },
+      { id: "sess-1", tail: "what it said", model: null },
     ]);
   });
 
@@ -27,8 +27,8 @@ describe("session-tail-host", () => {
     // the parse, where a bare `null` means "nothing could be paired at all".
     // Flattening the first into the second would make the store keep a
     // sentence it should have dropped.
-    vi.spyOn(bridge, "invoke").mockResolvedValue([{ id: "sess-1", tail: null }]);
-    await expect(sessionTails([REQUEST])).resolves.toEqual([{ id: "sess-1", tail: null }]);
+    vi.spyOn(bridge, "invoke").mockResolvedValue([{ id: "sess-1", tail: null, model: null }]);
+    await expect(sessionTails([REQUEST])).resolves.toEqual([{ id: "sess-1", tail: null, model: null }]);
   });
 
   it("answers null AT ITS OWN POSITION for anything that is not an answer", async () => {
@@ -44,12 +44,12 @@ describe("session-tail-host", () => {
     ]);
     const six = [REQUEST, REQUEST, REQUEST, REQUEST, REQUEST, REQUEST];
     await expect(sessionTails(six)).resolves.toEqual([
-      { id: "sess-1", tail: "kept" },
+      { id: "sess-1", tail: "kept", model: null },
       null,
       null,
       null,
       null,
-      { id: "sess-2", tail: null },
+      { id: "sess-2", tail: null, model: null },
     ]);
   });
 
@@ -59,7 +59,7 @@ describe("session-tail-host", () => {
     // a short reply pads with nulls, a long one has its surplus dropped.
     vi.spyOn(bridge, "invoke").mockResolvedValue([{ id: "sess-1", tail: "one" }]);
     await expect(sessionTails([REQUEST, REQUEST, REQUEST])).resolves.toEqual([
-      { id: "sess-1", tail: "one" },
+      { id: "sess-1", tail: "one", model: null },
       null,
       null,
     ]);
@@ -70,11 +70,17 @@ describe("session-tail-host", () => {
       { id: "sess-1", tail: "one" },
       { id: "sess-2", tail: "two" },
     ]);
-    await expect(sessionTails([REQUEST])).resolves.toEqual([{ id: "sess-1", tail: "one" }]);
+    await expect(sessionTails([REQUEST])).resolves.toEqual([{ id: "sess-1", tail: "one", model: null }]);
   });
 
   it("answers one null per request when the host sends no list at all", async () => {
     vi.spyOn(bridge, "invoke").mockResolvedValue(undefined);
     await expect(sessionTails([REQUEST, REQUEST])).resolves.toEqual([null, null]);
+  });
+
+  it("keeps the answer when only the model is malformed", async () => {
+    vi.spyOn(bridge, "invoke").mockResolvedValue([{ id: "abc", tail: "hello", model: 7 }]);
+    const answers = await sessionTails([REQUEST]);
+    expect(answers[0]).toEqual({ id: "abc", tail: "hello", model: null });
   });
 });

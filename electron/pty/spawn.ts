@@ -77,6 +77,12 @@ export function buildEnv(base: NodeJS.ProcessEnv, version: string): NodeJS.Proce
 export interface SpawnedShell {
   readonly pty: pty.IPty;
   readonly ttyName: string;
+  readonly startupTiming: {
+    readonly startedAt: number;
+    readonly shellResolvedAt: number;
+    readonly cwdResolvedAt: number;
+    readonly ptyCreatedAt: number;
+  };
 }
 
 /**
@@ -88,17 +94,30 @@ export interface SpawnedShell {
  * halves into U+FFFD.
  */
 export function spawnShell(options: SpawnOptions): SpawnedShell {
+  const startedAt = performance.now();
   const launch = platform().shellLaunch();
+  const shellResolvedAt = performance.now();
   const home = platform().userHome();
+  const cwd = resolveSpawnCwd(options.cwd, home);
+  const cwdResolvedAt = performance.now();
   const session = pty.spawn(launch.executable, [...launch.args], {
     name: "xterm-256color",
     cols: options.cols,
     rows: options.rows,
-    cwd: resolveSpawnCwd(options.cwd, home),
+    cwd,
     env: buildEnv(process.env, app.getVersion()) as Record<string, string>,
     encoding: null,
   });
-  return { pty: session, ttyName: ptsName(session) };
+  return {
+    pty: session,
+    ttyName: ptsName(session),
+    startupTiming: {
+      startedAt,
+      shellResolvedAt,
+      cwdResolvedAt,
+      ptyCreatedAt: performance.now(),
+    },
+  };
 }
 
 /**

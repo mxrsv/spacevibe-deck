@@ -11,6 +11,9 @@ import {
 } from "../../sessions/sessions-store";
 import { AgentGlyph } from "../controls/agent-glyph";
 import { LoadError } from "../controls/load-error";
+import { RailStatusMark } from "../agent-rail";
+import { liveSessionStates } from "./live-session-state";
+import type { RailState } from "../agent-rail-model";
 
 interface RecentSessionActivityProps {
   onResume(entry: RecentSessionEntry): void;
@@ -29,6 +32,23 @@ const ACTIVITY_AGENT_LABELS = Object.freeze({
   ...SESSION_AGENT_LABELS,
   claude: "Claude",
 });
+
+/**
+ * The three states a row can be LOUD in, and the word each one says.
+ *
+ * The mark itself is `aria-hidden` decoration (DL-27.3's dot vocabulary), so a
+ * state a screen reader would otherwise never hear is spoken here instead —
+ * and only when it means something. `done`/`idle` say nothing: a listed
+ * session nobody is running and a run already checked are the same silence.
+ */
+const LOUD_STATE_WORDS: Readonly<Partial<Record<RailState, string>>> = Object.freeze({
+  working: "running",
+  asked: "needs you",
+  failed: "failed",
+});
+
+/** No pane holds this session: the quiet dot, so the state column still holds. */
+const QUIET_STATE: RailState = "done";
 
 interface ActivityTime {
   readonly label: string;
@@ -90,6 +110,7 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
   }
 
   const entries = recentSessionEntries.value;
+  const liveStates = liveSessionStates.value;
   const loadState = recentSessionsLoadState.value;
   const hasEntries = entries.length > 0;
   const coldLoading = !hasEntries && (recentSessionsLoading.value || loadState.status === "idle");
@@ -126,6 +147,8 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
             const name = sessionName(entry);
             const reasonId = dead ? unavailableReasonId(base, entry) : undefined;
             const activityTime = formatActivityTime(entry.lastActivityMs, Date.now());
+            const state = liveStates.get(entry.sessionId) ?? QUIET_STATE;
+            const loudWord = LOUD_STATE_WORDS[state];
             return (
               <li key={`${entry.agent}-${entry.sessionId}`} class="recent-session-activity__slot">
                 <button
@@ -139,13 +162,12 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
                     }
                   }}
                 >
-                  <span class="recent-session-activity__resume-prefix">Resume {name}: </span>
+                  <span class="recent-session-activity__resume-prefix">
+                    Resume {ACTIVITY_AGENT_LABELS[entry.agent]} — {name}:{" "}
+                  </span>
                   <AgentGlyph agent={entry.agent} className="recent-session-activity__glyph" />
                   <span class="recent-session-activity__content">
                     <span class="recent-session-activity__copy">
-                      <span class="recent-session-activity__agent">
-                        {ACTIVITY_AGENT_LABELS[entry.agent]}
-                      </span>
                       <span class="recent-session-activity__summary">{summary(entry)}</span>
                       {dead ? (
                         <span class="recent-session-activity__gone" aria-hidden="true">
@@ -154,6 +176,10 @@ export function RecentSessionActivity({ onResume, onViewAll }: RecentSessionActi
                       ) : null}
                     </span>
                   </span>
+                  {loudWord === undefined ? null : (
+                    <span class="recent-session-activity__state-word">{loudWord}. </span>
+                  )}
+                  <RailStatusMark state={state} />
                   <time class="recent-session-activity__time" dateTime={activityTime.dateTime}>
                     {activityTime.label}
                   </time>

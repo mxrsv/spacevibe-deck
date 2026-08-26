@@ -338,6 +338,18 @@ ipcMain.handle(CHANNELS.killPty, (event, { id }) => pty.kill(labelOf(event), id)
 ipcMain.handle(CHANNELS.ptyInfo, (_event, { ids, agents, waitForCwd }) =>
   ptyInfo(pty.snapshots(ids), validateAgentProcessMatchers(agents), waitForCwd !== false),
 );
+ipcMain.handle(CHANNELS.ptyCwds, (_event, payload: unknown) => {
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("ids" in payload) ||
+    !Array.isArray(payload.ids) ||
+    !payload.ids.every((id) => Number.isSafeInteger(id) && id > 0)
+  ) {
+    throw new TypeError("pty_cwds requires an array of positive integer ids");
+  }
+  return pty.snapshots(payload.ids).map(({ id, cwd }) => ({ id, cwd }));
+});
 
 // -------------------------------------------------------------- Services
 registerServices({ labelOf, setRecording: menuState.setRecording });

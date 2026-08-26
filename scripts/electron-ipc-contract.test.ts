@@ -202,6 +202,28 @@ describe("Electron IPC contract", () => {
     }
   });
 
+  it("create_directory carries the flat { parent, name } payload on both sides", () => {
+    const sites = callSites.filter((site) => site.channel === "create_directory");
+    expect(sites.length).toBeGreaterThan(0);
+    for (const site of sites) {
+      expect(site.keys).toEqual(["parent", "name"]);
+    }
+    const createHandlers = handlers.filter((handler) => handler.channel === "create_directory");
+    expect(createHandlers.length).toBeGreaterThan(0);
+    for (const handler of createHandlers) {
+      expect(handler.required).toEqual(["parent", "name"]);
+    }
+  });
+
+  it("pty_cwds carries the flat { ids } payload and has an Electron handler", () => {
+    const sites = callSites.filter((site) => site.channel === "pty_cwds");
+    expect(sites.length).toBeGreaterThan(0);
+    for (const site of sites) {
+      expect(site.keys).toEqual(["ids"]);
+    }
+    expect(readFileSync("electron/main.ts", "utf8")).toContain("ipcMain.handle(CHANNELS.ptyCwds");
+  });
+
   it("carries the three path-open channels flat on both sides", () => {
     // The 2026-08-19 path-open work's explicit fixture, pinned the way
     // `worktree_add` above is: proof this scanner actually reaches the new

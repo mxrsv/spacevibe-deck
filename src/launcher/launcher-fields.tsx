@@ -71,7 +71,21 @@ export interface LauncherFieldsProps {
   readonly canCreateWorkspace: boolean;
   readonly canCreateWorktree: boolean;
   readonly pending: LauncherPending | null;
+  /** What blocks `Start task` — the full chain, prompt included. */
   readonly problem: DraftProblem | null;
+  /**
+   * What blocks `Open agent first` / `Open agent` — the same chain WITHOUT the
+   * prompt. Its own prop rather than a slice of `problem`, because the two
+   * actions ask different questions: opening an agent needs no task, and
+   * gating it on `empty-prompt` put a disabled `Open agent` directly under the
+   * collapsed panel's own "Open the agent first and type in its terminal".
+   */
+  readonly openProblem: DraftProblem | null;
+  /**
+   * Whether agent discovery has ANSWERED yet (`agentsProbed`). False means the
+   * probe is still out, so an empty agent list is unknown rather than empty.
+   */
+  readonly agentsResolved: boolean;
   /** A message the launch attempt produced, or null. */
   readonly notice: string | null;
   onDraftChange(next: NewTaskDraft): void;
@@ -114,11 +128,54 @@ export function problemMessage(problem: DraftProblem): string {
   }
 }
 
+/**
+ * How loudly a standing problem is said.
+ *
+ * A form that opens by scolding is the defect this splits apart: `no-workspace`
+ * and `empty-prompt` are not errors, they are the resting state of a draft
+ * nobody has filled in yet, and painting them red under `role="alert"` on an
+ * untouched composer spends the alarm before anything happened.
+ *
+ * - `alert` — the user CANNOT fix it in this composer; the recovery is
+ *   `Manage agents…`. This is the only tier that keeps spec §9's `role="alert"`.
+ * - `hint` — a field is unanswered and might not be noticed; said quietly, with
+ *   no role, so it does not interrupt typing.
+ * - `silent` — the surface already says it. The prompt label asks for the task
+ *   and the disabled primary says it is not ready; a red line repeating that is
+ *   noise. `no-runnable-agent` is silent too until the probe has answered,
+ *   because until then Deck has not looked.
+ */
+export function problemTone(
+  problem: DraftProblem | null,
+  agentsResolved: boolean,
+): "alert" | "hint" | "silent" {
+  switch (problem) {
+    case null:
+      return "silent";
+    case "no-runnable-agent":
+      return agentsResolved ? "alert" : "silent";
+    case "agent-unavailable":
+      return "alert";
+    case "no-workspace":
+    case "no-agent":
+      return "hint";
+    case "empty-prompt":
+      return "silent";
+  }
+}
+
 export function LauncherFields(props: LauncherFieldsProps) {
   const { draft, agents } = props;
   const promptId = `${props.idPrefix}-prompt`;
   const expanded = props.compact ? draft.promptExpanded : true;
   const busy = props.pending !== null;
+  /**
+   * The primary button changes ACTION with the prompt section, so it must
+   * change GATE with it too: collapsed, it opens an agent and a missing task
+   * is not its business.
+   */
+  const activeProblem = expanded ? props.problem : props.openProblem;
+  const tone = problemTone(activeProblem, props.agentsResolved);
 
   const selectedAgent = agents.find((agent) => agent.id === draft.agentId) ?? null;
   const capability = mergeRuntimeDefaults(
@@ -288,7 +345,7 @@ export function LauncherFields(props: LauncherFieldsProps) {
             <button
               type="button"
               class="nt-secondary-action"
-              disabled={busy}
+              disabled={busy || props.openProblem !== null}
               onClick={props.onOpenAgent}
             >
               Open agent first
@@ -297,7 +354,7 @@ export function LauncherFields(props: LauncherFieldsProps) {
           <button
             type="button"
             class="nt-primary-action"
-            disabled={busy || props.problem !== null}
+            disabled={busy || activeProblem !== null}
             onClick={expanded ? props.onStartTask : props.onOpenAgent}
           >
             {expanded ? "Start task" : "Open agent"}
@@ -312,14 +369,17 @@ export function LauncherFields(props: LauncherFieldsProps) {
           does not interrupt typing. Collapsing them into one slot let a
           standing problem swallow "that folder is missing", which is the
           sentence the user actually needed. */}
-      {props.problem !== null ? (
+      {tone === "alert" && activeProblem !== null ? (
         <p class="nt-composer__notice" role="alert">
-          {problemMessage(props.problem)}
-          {props.problem === "no-runnable-agent" || props.problem === "agent-unavailable" ? (
-            <button type="button" class="nt-text-action" onClick={props.onManageAgents}>
-              Manage agents…
-            </button>
-          ) : null}
+          {problemMessage(activeProblem)}
+          <button type="button" class="nt-text-action" onClick={props.onManageAgents}>
+            Manage agents…
+          </button>
+        </p>
+      ) : null}
+      {tone === "hint" && activeProblem !== null ? (
+        <p class="nt-composer__notice nt-composer__notice--status">
+          {problemMessage(activeProblem)}
         </p>
       ) : null}
       {props.notice !== null ? (

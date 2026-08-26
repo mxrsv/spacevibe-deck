@@ -691,6 +691,8 @@ function LiveComposerSpecimen() {
             canCreateWorktree
             pending={null}
             problem={problem}
+            openProblem={null}
+            agentsResolved={true}
             notice={null}
             describeCombo={(recent) =>
               WORKSPACES.find((entry) => entry.path === recent.path)?.detail ?? ""

@@ -45,6 +45,8 @@ const LOWEST_KILLABLE_PID = 4;
 /** `;` — the Windows PATH separator, named because the host `path` module is
  * POSIX everywhere this file is tested. */
 const WINDOWS_PATH_DELIMITER = ";";
+const STARTUP_TRACE_ENV = "DECK_PTY_STARTUP_TRACE";
+const STARTUP_TRACE_PREFIX = "[deck:pty-startup]";
 
 /**
  * The prompt function Deck injects, ported verbatim from `shell.rs`.
@@ -156,6 +158,22 @@ export function findExecutable(
   );
 }
 
+/** Cache one executable probe for the lifetime of this Electron main process. */
+export function createCachedExecutableResolver(
+  name: string,
+  fallback: string,
+  env: NodeJS.ProcessEnv = process.env,
+  exists: (candidate: string) => boolean = isFile,
+): () => string {
+  let cached: string | null = null;
+  return () => {
+    if (cached === null) {
+      cached = findExecutable(name, env, exists) ?? fallback;
+    }
+    return cached;
+  };
+}
+
 /**
  * PowerShell 7 if it is installed, Windows PowerShell otherwise.
  *
@@ -168,22 +186,39 @@ export function buildShellLaunch(
   env: NodeJS.ProcessEnv = process.env,
   exists: (candidate: string) => boolean = isFile,
 ): ShellLaunch {
-  const executable = POWERSHELL_CANDIDATES.map((name) => findExecutable(name, env, exists)).find(
-    (found): found is string => found !== null,
-  );
-  if (executable === undefined) {
-    throw new Error(
-      "No supported PowerShell executable was found. Install PowerShell 7 or enable Windows PowerShell.",
-    );
+  for (const name of POWERSHELL_CANDIDATES) {
+    const executable = findExecutable(name, env, exists);
+    if (executable !== null) {
+      return {
+        executable,
+        args: ["-NoLogo", "-NoExit", "-Command", PROMPT_INTEGRATION],
+      };
+    }
   }
-  return {
-    executable,
-    args: ["-NoLogo", "-NoExit", "-Command", PROMPT_INTEGRATION],
+  throw new Error(
+    "No supported PowerShell executable was found. Install PowerShell 7 or enable Windows PowerShell.",
+  );
+}
+
+/** Cache interactive PowerShell discovery while keeping the pure builder injectable. */
+export function createShellLaunchResolver(
+  env: NodeJS.ProcessEnv = process.env,
+  exists: (candidate: string) => boolean = isFile,
+): () => ShellLaunch {
+  let cached: ShellLaunch | null = null;
+  return () => {
+    if (cached === null) {
+      cached = buildShellLaunch(env, exists);
+    }
+    return cached;
   };
 }
 
+const resolveShellLaunch = createShellLaunchResolver();
+const resolveProcessTableShell = createCachedExecutableResolver("powershell.exe", "powershell.exe");
+
 export function shellLaunch(): ShellLaunch {
-  return buildShellLaunch();
+  return resolveShellLaunch();
 }
 
 export function userHome(): string {
@@ -300,7 +335,16 @@ export function parseProcessTable(output: string): WindowsProcessRow[] {
  * proves too slow the answer is a longer poll interval, not a silent cache.
  */
 export function readProcessTable(): Promise<WindowsProcessRow[]> {
-  const shell = findExecutable("powershell.exe") ?? "powershell.exe";
+  const shell = resolveProcessTableShell();
+  const startedAt = performance.now();
+  const tracing = process.env[STARTUP_TRACE_ENV] === "1";
+  if (tracing) {
+    // oxlint-disable-next-line no-console -- explicit opt-in startup timing diagnostic
+    console.info(STARTUP_TRACE_PREFIX, {
+      milestone: "process_table_start",
+      elapsedMs: 0,
+    });
+  }
   return new Promise((resolve, reject) => {
     execFile(
       shell,
@@ -308,8 +352,22 @@ export function readProcessTable(): Promise<WindowsProcessRow[]> {
       { encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 8000 },
       (error, stdout) => {
         if (error) {
+          if (tracing) {
+            // oxlint-disable-next-line no-console -- explicit opt-in startup timing diagnostic
+            console.info(STARTUP_TRACE_PREFIX, {
+              milestone: "process_table_failed",
+              elapsedMs: Number((performance.now() - startedAt).toFixed(1)),
+            });
+          }
           reject(error instanceof Error ? error : new Error(String(error)));
           return;
+        }
+        if (tracing) {
+          // oxlint-disable-next-line no-console -- explicit opt-in startup timing diagnostic
+          console.info(STARTUP_TRACE_PREFIX, {
+            milestone: "process_table_finished",
+            elapsedMs: Number((performance.now() - startedAt).toFixed(1)),
+          });
         }
         resolve(parseProcessTable(stdout));
       },

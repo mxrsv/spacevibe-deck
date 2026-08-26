@@ -109,20 +109,6 @@ describe("the gallery entry stays out of the app bundle", () => {
     expect(fixtures).toContain('id: "agent"');
   });
 
-  it("applies the selected woven banner treatment to the full shell specimen", () => {
-    const banner = readFileSync(join(SOURCE_ROOT, "ui/sidebar-banner.tsx"), "utf8");
-
-    expect(banner).toContain('class="sidebar-banner sidebar-banner--woven"');
-  });
-
-  it("fades the full shell banner from the visible sidebar surface", () => {
-    const direction = readFileSync(join(SOURCE_ROOT, "gallery/chatgpt-direction.css"), "utf8");
-    const styles = readFileSync(join(SOURCE_ROOT, "styles/02-shell.css"), "utf8");
-
-    expect(direction).toContain("--sidebar-banner-fade-color: var(--gx-chat-app-under);");
-    expect(styles).toContain("var(--sidebar-banner-fade-color, var(--sidebar-bg))");
-  });
-
   it("keeps only selected candidates after a comparison round closes", () => {
     const chrome = readFileSync(join(SOURCE_ROOT, "gallery/sections/chrome-section.tsx"), "utf8");
     const navigation = readFileSync(

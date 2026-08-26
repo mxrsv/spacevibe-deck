@@ -7,6 +7,24 @@
   "rewrites": [{ "source": "/", "destination": "/landing-prototype/index.html" }],
   "headers": [
     {
+      "source": "/install.sh",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/install.ps1",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/assets/(.*)",
       "headers": [
         {

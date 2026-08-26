@@ -103,6 +103,7 @@ describe("OpenBoard removal flow", () => {
     await act(async () => {
       render(
         <OpenBoard
+          contextWorkspacePath={null}
           canCancel={false}
           canBrowseSessions={false}
           openWorkspacePaths={new Set()}

@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PaneProcessInfo } from "../lib/process-info";
-import { createMemoryPtyClient } from "./pty-client";
+import { createMemoryPtyClient, createTauriPtyClient } from "./pty-client";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("createMemoryPtyClient", () => {
   it("assigns monotonic pane ids on spawn", async () => {
@@ -50,5 +54,19 @@ describe("createMemoryPtyClient", () => {
     const pty = createMemoryPtyClient({ infos: new Map([[4, info]]) });
 
     await expect(pty.ptyInfo([4])).resolves.toEqual([info]);
+  });
+});
+
+describe("createTauriPtyClient Electron session CWDs", () => {
+  it("rejects an invalid pane id in the host response", async () => {
+    const invoke = vi.fn(async () => [{ id: -1, cwd: String.raw`C:\work` }]);
+    vi.stubGlobal("__deckHost", { invoke, listen: vi.fn() });
+    const pty = createTauriPtyClient();
+    if (pty.sessionCwds === undefined) {
+      throw new Error("Expected the Electron session CWD capability");
+    }
+
+    await expect(pty.sessionCwds([1])).rejects.toThrow("Invalid pty_cwds response");
+    expect(invoke).toHaveBeenCalledWith("pty_cwds", { ids: [1] });
   });
 });

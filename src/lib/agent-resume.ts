@@ -23,6 +23,8 @@ export interface ResumeRequest {
 export interface SessionTailAnswer {
   readonly id: string;
   readonly tail: string | null;
+  /** The model the newest recorded turn ran on, or null when the transcript names none. */
+  readonly model: string | null;
 }
 
 /**

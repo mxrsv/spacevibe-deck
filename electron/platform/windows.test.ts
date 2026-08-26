@@ -10,10 +10,12 @@
  * `taskkill /T` reaches a ConPTY child, or how long a poll tick actually takes.
  * Gate C is open — a green run here is not Windows evidence.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildShellLaunch,
   collectDescendants,
+  createCachedExecutableResolver,
+  createShellLaunchResolver,
   executableCandidates,
   findExecutable,
   foregroundProcess,
@@ -76,6 +78,37 @@ describe("shell discovery", () => {
     );
 
     expect(launch.executable).toBe("C:\\Program Files\\PowerShell\\7\\pwsh.exe");
+  });
+
+  it("stops probing after the preferred PowerShell is found", () => {
+    const probed: string[] = [];
+
+    buildShellLaunch(env, (candidate) => {
+      probed.push(candidate);
+      return candidate === "C:\\Windows\\System32\\pwsh.exe";
+    });
+
+    expect(probed).toEqual(["C:\\Windows\\System32\\pwsh.exe"]);
+  });
+
+  it("caches interactive shell discovery for later panes", () => {
+    const exists = vi.fn((candidate: string) => candidate === "C:\\Windows\\System32\\pwsh.exe");
+    const resolve = createShellLaunchResolver(env, exists);
+
+    expect(resolve().executable).toBe("C:\\Windows\\System32\\pwsh.exe");
+    expect(resolve().executable).toBe("C:\\Windows\\System32\\pwsh.exe");
+
+    expect(exists).toHaveBeenCalledTimes(1);
+  });
+
+  it("caches the process-census PowerShell fallback", () => {
+    const exists = vi.fn(() => false);
+    const resolve = createCachedExecutableResolver("powershell.exe", "powershell.exe", env, exists);
+
+    expect(resolve()).toBe("powershell.exe");
+    expect(resolve()).toBe("powershell.exe");
+
+    expect(exists).toHaveBeenCalledTimes(executableCandidates("powershell.exe", env).length);
   });
 
   it("injects the prompt that carries OSC 133 and OSC 9;9", () => {

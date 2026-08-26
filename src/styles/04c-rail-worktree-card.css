@@ -1,0 +1,849 @@
+/* ── The worktree card (WorktreeCard, DL-27.23/DL-27.24, amended) ──────────
+   Ported from the owner-approved gallery specimen (`src/gallery/rail-worktree-cards.css`,
+   `gxwc-` prefix) onto the production class names `worktree-card.tsx` emits, 1:1 where the
+   DOM allows it. Design: `docs/specs/2026-08-25-rail-worktree-card-design.md`.
+
+   A checkout renders as `.asr-card` (has panes) or `.asr-bare` (none) — see that component's
+   own header for the full class inventory and why each exists. This file styles exactly those
+   classes plus the rail's existing `.asr-row__actions` / `.asr-row__action` / `.asr-row__action--close`
+   vocabulary (DL-27.21's close, reused rather than reinvented) and invents nothing else.
+
+   FIVE VALUES ARE STILL THE OWNER'S TO PICK (spec §13, plan Task 10's gate), not this task's:
+   the busy hue, the rim glow's blur, the two radius roles (6px boxes / 3px pills), and the
+   active card's frame colour. Each is pinned to exactly ONE custom property below so that pick
+   is a one-line edit instead of a hunt through this file — do not inline any of the five at a
+   use site. `docs/DESIGN-LANGUAGE.md` is NOT amended by this task: Task 11 writes the card's
+   own new numbered rules under §27, the DL-1.2/DL-1.3/DL-20.1/DL-21.1 amendments and the
+   DL-1.3 violation-ledger row, and it runs AFTER Task 10 picks what those amendments say.
+   `scripts/design-language.test.ts`'s closed radius scale (DL-20.1) is widened here by exactly
+   two entries so this ships green in the meantime — see the comment beside `RADIUS_VALUES` in
+   that file for why that is this task's edit to make, not Task 11's.
+
+   `box-sizing: border-box` is declared on everything here that takes a percentage or a fixed
+   size beside a padding — `src/styles.css` has no global reset, and the rail has shipped that
+   exact defect twice (Known traps, `AGENTS.md`). `overflow-x: hidden` on `.asr-rail__list`
+   (04a) clips a LEFT overflow and never reports it — this file keeps every card's content
+   inside its own box rather than relying on that clip.
+
+   Motion is ADDED under `@media (prefers-reduced-motion: no-preference)` and never switched
+   off below it (DL-1.5): with reduced motion every mark below is still legible, just still —
+   the static rim glow stays painted, the corner badge stays painted, only the bars and the
+   travelling beam stop. ── */
+
+/*
+ * Pinned on every card-owned root — `.asr-card` (the boxed shape), `.asr-bare` (a checkout
+ * with nothing running) and `.asr-card__row` (redeclared because `FlatPanes` renders agent
+ * rows with NO `.asr-card` ancestor at all: a project git does not know, `group.labelled ===
+ * false`, is every Tauri checkout today since `git_repository` is Electron-only). Declaring
+ * the same values on three roots rather than one shared ancestor is what keeps the Tauri path
+ * — a bare row with no card box around it — in sync with the boxed one without inventing a
+ * fourth wrapper class nothing renders.
+ */
+.asr-card,
+.asr-bare,
+.asr-card__row {
+  /* Radius (spec §9.8, Task 10 gate row 3). 6px sits between DL-20.1's `--radius-flat` (2px)
+     and `--radius-tight` (8px) and matches no existing rung — the owner's own pick (2026-08-25:
+     every corner in this sheet collapses to one 6px radius), reversing a round-everything
+     pass where `--radius-surface` on the card and `--radius-tight` on a 28px row both read as
+     pills at rail width. Every `border-radius` in this file is this variable, the pill variable
+     below, or an actual `50%` circle (the corner dots) — never a bare number. */
+  --asr-card-radius: 6px;
+  /* The branch badge and the model pill, both ~17px tall (1px padding on a 10.5px line): 6px
+     there read as a near-square, so the owner asked for 3px instead (2026-08-25, after seeing
+     both at 6px) — proportional to the smaller box rather than a second unrelated number. */
+  --asr-card-pill-radius: 3px;
+  /* THE COLOUR RULE (owner, 2026-08-25, after seeing green and magenta on two rows that meant
+     the same thing): one hue for "the machine is working" — `running` and `thinking` share it,
+     spec §11.3 drops `thinking` as a state Deck tracks at all — appears on the head mark, the
+     row's corner badge, the loading bars, the rim glow and the rim beam, and nowhere else.
+     `--status-unread` stays `asked`, `--red` stays `failed`, `--green` is reserved for the
+     ACTIVE checkout (a place, not a state) and `--accent` for the strip's `+N` (a count, not
+     anything an agent is doing). A variable rather than a literal so Task 10's pick is one
+     edit and every mark below restates only this line. */
+  --asr-card-busy: color-mix(in srgb, var(--tone) 62%, transparent);
+  /* The busy rim's second `box-shadow` line (below) is the one rule in this file that breaks
+     DL-1.3's ban on blurred shadows — its blur radius is pinned here so a no-blur revert
+     (Task 10 gate row 5) is deleting one physical line, not hunting a magic number. */
+  --asr-card-glow-blur: 9px;
+  /* The ACTIVE checkout's frame (Task 10 gate row 4). Ships as the owner's own drawn candidate
+     — an accent border — which is a DL-21.1 exception pending Task 11 (that rule gives the
+     selected item a neutral `--hair-strong` frame and nothing else); the neutral alternative
+     is a one-line swap of this variable to `var(--hair-strong)`; either way it stays a hairline
+     (`inset 0 0 0 1px`), so DL-1.3 is untouched by this half regardless of the pick. */
+  --asr-card-active-frame: color-mix(in srgb, var(--green) 72%, transparent);
+  /* The agent list's own rhythm: one row's height and the gap between rows, used everywhere
+     the list measures against them so a later change to either is one edit. */
+  --asr-card-row-h: 28px;
+  --asr-card-row-gap: 2px;
+  /* Loop budget (spec §8.3, Task 10 gate row 2): the stagger between the three loading bars.
+     CSS selectors cannot read a numeric "how many bars" property — `CardLoad` always renders
+     three `<i>` — so the actual per-agent loop COUNT is pinned as a display toggle instead,
+     immediately below: `--asr-card-load-extra` is what "bars → one pulse" flips. */
+  --asr-card-load-stagger: 150ms;
+  /* `block` keeps every bar visible (today's ship). Flipping this one line to `none` collapses
+     the meter to a single pulsing bar (Task 10 gate row 2's "bars → one pulse" option) with no
+     other edit — see `.asr-card__load` below. */
+  --asr-card-load-extra: block;
+}
+
+/* --------------------------------------------------- a checkout with no agents */
+
+/* A checkout with nothing running (design §6): the head row's own shape and nothing else — no
+   box, no meta line, no strip. Column alignment under the project cluster is what places it:
+   the 14px mark track and 8px gap are the boxed card's own head rhythm, so `main` and every
+   branch under it start on one left edge whether or not it has a card around it. */
+.asr-bare {
+  box-sizing: border-box;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 6px;
+  width: 100%;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+/* `BareCheckout` renders a plain `<div>` when `onNewTabIn` is unwired (DL-19.7: the control the
+   host cannot drive degrades to a static row, never an inert-looking button) and a real
+   `<button>` otherwise — this rule covers both, `cursor` only where the element is one. */
+button.asr-bare {
+  cursor: pointer;
+}
+
+button.asr-bare:hover {
+  background: var(--state-hover-bg);
+}
+
+.asr-bare__mark {
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+
+.asr-bare__mark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 9px;
+  height: 9px;
+  margin: auto;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 26%, transparent);
+}
+
+.asr-bare__name {
+  overflow: hidden;
+  color: var(--text-muted);
+  font: 500 var(--type-project) / 1.3 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------- the badge */
+
+/* The branch, as a trailing pill beside the checkout name — shared by both roots, since
+   `Badge` takes its class from the caller rather than hardcoding one (`worktree-card.tsx`).
+   `max-width` is what keeps a long branch from starving the name beside it: a real branch
+   (`feature/ai-terminal`) is wider than the name at rail width, and the badge is the one that
+   can truncate without losing the row's identity. */
+.asr-card__badge,
+.asr-bare__badge {
+  display: grid;
+  box-sizing: border-box;
+  grid-auto-flow: column;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  max-width: 132px;
+  column-gap: 3px;
+  padding: 1px 5px 1px 4px;
+  border-radius: var(--asr-card-pill-radius);
+  background: color-mix(in srgb, var(--tone) 8%, transparent);
+  color: var(--text-muted);
+  font: 500 var(--type-micro) / 1.5 var(--ui-font);
+}
+
+.asr-card__badge span,
+.asr-bare__badge span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The active checkout's badge, in the same green the card frame takes (design §9.5) — no
+   `data-accent` prop on `Badge` itself, since `.asr-card` already carries `data-active` and a
+   descendant selector reaches the same pixels with no component change. `.asr-bare` never
+   carries `data-active` (a bare checkout cannot be the one holding the window's focus), so this
+   never needs to guard against a bare badge matching it. */
+.asr-card[data-active="true"] .asr-card__badge {
+  background: color-mix(in srgb, var(--green) 15%, transparent);
+  color: color-mix(in srgb, var(--green) 78%, var(--text-primary));
+}
+
+/* ------------------------------------------------------------------------- the card */
+
+/* An inset hairline, DL-1.3's own permitted shape and DL-27.19's retired precedent: a border
+   would need a negative margin to keep the box on the rows' left edge, and that bled 255px of
+   content into a 254px `.asr-rail__list` once already (Known traps). `.asr-cluster`'s own 4px
+   `gap` (04a) spaces one card from the next; this file adds none of its own between cards. */
+.asr-card {
+  box-sizing: border-box;
+  display: grid;
+  /* Declared rather than left implicit, the same fix `.asr-stream`/`.asr-cluster` (04a) already
+     carry: an implicit `auto` column keeps every item's `min-width: auto`, so a row's own
+     min-content (driven by its nowrap name) would push this card past the rail's width instead
+     of ellipsizing inside it — measured there 2026-08-17 as a 558px cluster in a 229px stream. */
+  grid-template-columns: minmax(0, 1fr);
+  /* The head→meta rhythm (1px) is the base; every child that wants more room states its own
+     `margin-top` below — there is no `.gxwc-agents`-style wrapper in the production DOM to
+     carry a second gap, since the count line, every row and the closed strip are all direct
+     children of this one grid alongside the head and the meta line. */
+  gap: 1px;
+  padding: 6px 9px 7px;
+  border-radius: var(--asr-card-radius);
+  background: var(--tab-rest-bg);
+  box-shadow: inset 0 0 0 1px var(--hair);
+  transition: box-shadow var(--duration) var(--ease);
+}
+
+.asr-card:hover {
+  box-shadow: inset 0 0 0 1px var(--hair-strong);
+}
+
+.asr-card[data-open="true"] {
+  background: var(--tab-active-bg);
+  box-shadow: inset 0 0 0 1px var(--hair-strong);
+}
+
+/* The ACTIVE checkout — the one the window is working in — wrapped whole (design §9.5,
+   Task 10 gate row 4). Sits after the open-state rule at the same specificity, so a card that
+   is both active and open keeps this frame rather than the neutral one. BORDER ONLY, no
+   background tint: the background already says open-or-closed via the two rules above, and
+   this says active — one property, one fact. Still an inset hairline, so DL-1.3 is untouched
+   by this half regardless of which colour Task 10 picks. */
+.asr-card[data-active="true"],
+.asr-card[data-active="true"]:hover {
+  box-shadow: inset 0 0 0 1px var(--asr-card-active-frame);
+}
+
+/* ---------------------------------------------------------------------- the head */
+
+/* Three tracks and no more: mark, checkout name, branch badge — no caret, no age, no count on
+   this line (design §4). The mark's 14px box matches the shipped rail's own status-mark
+   footprint, so a resting dot and the live state trade places without moving the name. */
+.asr-card__head {
+  display: grid;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 6px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.asr-card__mark {
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+
+.asr-card__mark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 9px;
+  height: 9px;
+  margin: auto;
+  border-radius: 50%;
+  /* Resting: nothing in this checkout is moving. */
+  background: color-mix(in srgb, var(--tone) 26%, transparent);
+}
+
+/* Live: work is moving in this checkout — the BUSY meaning, so it takes the busy hue and not
+   the active card's green (design's colour rule, above): a checkout can be both, and the two
+   facts must stay two colours or one starts reading as the other. */
+.asr-card__mark[data-live="true"]::before {
+  background: var(--asr-card-busy);
+}
+
+/* `--type-body` (12.5px), not `--type-project` (13px): the branch badge beside it costs roughly
+   half the head's 213px run, and the half-pixel per character is what keeps a name like
+   `bench.ai-terminal` inside its track instead of one ellipsis short of it. */
+.asr-card__head .asr-card__name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font: 620 var(--type-body) / 1.25 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Aligned to the checkout name, not to the card: 14px mark + 8px gap. */
+.asr-card__meta {
+  margin: 0;
+  /* Pulls 1px closer than the base `gap: 1px` above would leave, matching the specimen's
+     tighter head→meta rhythm without a second gap-bearing wrapper. */
+  margin-top: -1px;
+  padding-left: 22px;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.4 var(--ui-font);
+}
+
+/* ------------------------------------------------------------ closed: the agent strip */
+
+/*
+ * A collapsed card states its agents as ONE segmented bar (design §4): each segment is a
+ * glyph plus its state badge — no name, no close, a preview rather than a set of controls (the
+ * name survives in the segment's own `title`). The divider is a `border-left` on every segment
+ * but the first, rather than a `gap`, so the rule runs the segment's full height instead of
+ * showing the card's own plane through a gap.
+ */
+.asr-card__strip {
+  display: flex;
+  box-sizing: border-box;
+  min-width: 0;
+  align-items: stretch;
+  width: fit-content;
+  max-width: 100%;
+  margin: 5px 0 1px 22px;
+  border-radius: var(--asr-card-radius);
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+
+.asr-card__seg {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  column-gap: 6px;
+  min-height: 24px;
+  padding: 0 8px;
+}
+
+.asr-card__seg + .asr-card__seg {
+  border-left: 1px solid var(--hair);
+}
+
+/* The overflow tail. `--accent` rather than a state hue on purpose: it stands for a COUNT, not
+   for anything any one agent is doing, drawn in the one colour none of the state marks use. */
+.asr-card__seg[data-overflow="true"] {
+  place-items: center;
+  color: var(--accent);
+  font: 560 var(--type-micro) / 1 var(--ui-font);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- the count line */
+
+/* The open list's own count, alone and trailing — no `Agents` label (design §5, §8.4: a label
+   here would reopen DL-4.3's closed uppercase exception). */
+.asr-card__count {
+  display: flex;
+  justify-content: flex-end;
+  /* The block break before the list starts: the base 1px `gap` plus this margin totals close
+     to the specimen's own 5px `.gxwc-agents { margin-top: 5px }`. */
+  margin-top: 3px;
+  padding: 2px 6px 3px 8px;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.3 var(--ui-font);
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------------- the agent row */
+
+/* Four tracks: glyph (with its corner badge), name, loading track, model pill. The loading
+   track is a FIXED 12px and reserved even on a row that draws no bars (design §10): with `auto`
+   it collapsed on an idle row and pulled that row's model pill 12px right of the pills above
+   it, so a still list read as a ragged right edge — `CardLoad` always renders the element for
+   exactly this reason.
+
+   The load track moved from column 4 to column 3 on the owner's ask (2026-08-26): it precedes
+   the model pill now, so a busy row reads "this model is working" instead of parking the mark
+   past the pill in the same trailing slot the close ✕ swaps into. The pills still share one
+   right edge — column 4 is the trailing column of a full-width row — and the bars accept a
+   ragged x in exchange, which is the point of putting them beside their own pill.
+
+   `.asr-card__row` is a `<div>`, not a `<button>` (DL-27.1): DL-27.21 still requires its own
+   close, so the full-bleed `.asr-card__hit` button beneath it is the row's real press target
+   and every other child is inert content stacked above it (`pointer-events: none` block,
+   below) except `.asr-row__actions`, which is a control of its own. */
+.asr-card__row {
+  position: relative;
+  box-sizing: border-box;
+  display: grid;
+  /* `.asr-row`'s own precedent (04a): even with this row's own name track already at
+     `minmax(0, 1fr)`, the row is itself an item of `.asr-card`'s grid and keeps
+     `min-width: auto` unless told otherwise — declared explicitly rather than assumed. */
+  min-width: 0;
+  grid-template-columns: 14px minmax(0, 1fr) 12px auto;
+  align-items: center;
+  column-gap: 7px;
+  /* The busy glow's beam (further down) sits at `z-index: -1` so it paints over this row's own
+     background but under its text; a negative-z child escapes to the nearest ancestor stacking
+     context, which without this would be the card or the rail. `isolation: isolate` makes the
+     row itself that context at no other cost — there is no `overflow: hidden` to clip it,
+     since an inset shadow is already clipped by the row's own `border-radius`. */
+  isolation: isolate;
+  width: 100%;
+  min-height: var(--asr-card-row-h);
+  /* The gap between one row and the next: the card's base `gap: 1px` plus this margin totals
+     `--asr-card-row-gap` (2px). Declared on every row rather than only `+ .asr-card__row` so
+     the first row under the count line gets the same breathing room as the rest. */
+  margin-top: calc(var(--asr-card-row-gap) - 1px);
+  padding: 0 6px 0 8px;
+  border: 0;
+  border-radius: var(--asr-card-radius);
+  background: color-mix(in srgb, var(--tone) 5%, transparent);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition: background var(--duration) var(--ease);
+}
+
+.asr-card__row:hover {
+  background: color-mix(in srgb, var(--tone) 9%, transparent);
+}
+
+/* The full-bleed hit layer, DL-27.1's own shape (`.asr-row__hit`/`.asr-leaf__hit`'s precedent):
+   sits behind every other child in stacking order (it is the row's FIRST child in the DOM,
+   and nothing above it carries a `z-index`), so it paints under the text while still catching
+   every click the inert spans below let fall through. */
+.asr-card__hit {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--asr-card-radius);
+  background: transparent;
+  cursor: pointer;
+}
+
+.asr-card__hit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Content is inert so its clicks fall through to `.asr-card__hit` beneath it — the
+   `.asr-leaf > span` precedent (04b), extended to every non-control child this row has. */
+.asr-card__row > .asr-card__glyph,
+.asr-card__row > .asr-card__name,
+.asr-card__row > .asr-card__pill,
+.asr-card__row > .asr-card__load {
+  position: relative;
+  pointer-events: none;
+}
+
+/* Both trailing tracks are pinned explicitly — `.asr-row--tab > .asr-chips`'s own precedent
+   (04a), pinned there for the identical reason. `.asr-row__actions` (below) ALSO claims column
+   4 with an explicit placement, and explicitly-placed items are laid out before auto-placed
+   ones: leaving the pill to auto-flow would send it looking for the first free cell, find
+   column 4 already claimed by the actions, and drop the whole pill onto a SECOND grid row —
+   growing the row past `--asr-card-row-h`. The load carries the same pin for the mirror
+   failure: a row with no pill would otherwise let the load auto-place into whichever cell is
+   free rather than the reserved 12px track. */
+.asr-card__row > .asr-card__load {
+  grid-row: 1;
+  grid-column: 3;
+}
+
+.asr-card__row > .asr-card__pill {
+  grid-row: 1;
+  grid-column: 4;
+}
+
+/* The close button. DL-27.5's established idiom is "close swaps in over the row's trailing
+   control column" — every existing row (`.asr-row--tab`, `.asr-leaf`) puts the agent glyph
+   there because their glyph IS trailing. This row's glyph is LEADING instead (design §5), so
+   the trailing-most column is column 4, and that is what close swaps over:
+   `.asr-row__actions`'s own base rule (04a) already pins it to `grid-column: 4` on any
+   4-column grid parent, which this row is.
+
+   Since the owner's 2026-08-26 swap, column 4 is the MODEL PILL rather than the load track, so
+   the pill is what fades under the ✕ — the busy bars now stay visible while the pointer is on
+   the row, which is the better half of the trade: hovering a row to close it no longer hides
+   whether that agent is mid-turn. `justify-self: end` overrides the shared rule's `center`,
+   which centred a 16px button inside a ~66px pill column and left the ✕ floating well short of
+   the row's right edge; on the old 12px track the difference was invisible. */
+.asr-card__row:hover .asr-row__actions,
+.asr-card__row .asr-row__actions:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.asr-card__row .asr-row__actions {
+  justify-self: end;
+}
+
+.asr-card__row:hover > .asr-card__pill,
+.asr-card__row:has(.asr-row__actions:focus-within) > .asr-card__pill {
+  opacity: 0;
+}
+
+/*
+ * The busy rim, in two parts (design §9.7): a static glow that is present in every state the
+ * row can be in — reduced motion included — and a highlight that travels around it, added only
+ * under `no-preference`. Nothing ever hides: the glow does not blink, and the beam has no
+ * seam to show one.
+ */
+
+/* Part one: the static glow. THE FIRST LINE is the permitted hairline (DL-1.3's own sanctioned
+   `inset 0 0 0 1px`); THE SECOND LINE is the break — the one rule in this file DL-1.3 does not
+   allow, and its revert is deleting exactly that physical line. It is INSET rather than an
+   outer glow on purpose: outer would smear one row into the next at a 1–2px row gap, and going
+   outside costs a bigger `--asr-card-row-gap` instead of a deleted line. */
+.asr-card__row[data-state="working"] {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--asr-card-busy) 34%, transparent),
+    inset 0 0 var(--asr-card-glow-blur) color-mix(in srgb, var(--asr-card-busy) 22%, transparent);
+}
+
+/* The angle the travelling highlight sits at. `@property` is what makes a custom property
+   animatable — a plain custom property interpolates discretely, and the beam would step
+   between angles rather than sweep. */
+@property --asr-card-beam {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* Part two: the highlight that runs. Motion is ADDED here, never switched off below, so
+   reduced motion keeps the static glow above and gains nothing that moves.
+
+   The gradient's ANGLE animates, not the element's `transform`: rotating the row would rotate
+   its rounded rectangle and the rim would stop following its own corners. An animated custom
+   property re-rasterizes the gradient every frame rather than riding the compositor, so this is
+   the most expensive loop in the file — and the only one that can be perfectly seamless, which
+   is the point of it. `mask` + `mask-composite: exclude` is the standard gradient-border trick:
+   the padding box is punched out of the full box, leaving the gradient visible only in the 1px
+   frame between them. `mask` is not `filter`, so DL-1.3's `filter` clause is untouched. */
+@media (prefers-reduced-motion: no-preference) {
+  .asr-card__row[data-state="working"]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    /* The row's own radius, so the rim follows its corner exactly. */
+    border-radius: var(--asr-card-radius);
+    padding: 1px;
+    /* One arc of about a fifth of the turn, fading at both ends so the head and tail never
+       show an edge. */
+    background: conic-gradient(
+      from var(--asr-card-beam),
+      transparent 0deg,
+      color-mix(in srgb, var(--asr-card-busy) 90%, transparent) 34deg,
+      transparent 78deg,
+      transparent 360deg
+    );
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    pointer-events: none;
+    animation: asr-card-beam 2.6s linear infinite;
+  }
+}
+
+/* One turn, `linear`, no intermediate stop: 0deg and 360deg are the same picture, so the loop
+   closes on itself and never restarts visibly. */
+@keyframes asr-card-beam {
+  to {
+    --asr-card-beam: 360deg;
+  }
+}
+
+/*
+ * The agent holding the keyboard (DL-27.22), REDRAWN on the owner's ask (2026-08-26: "the
+ * active and focus state of each agent item has to be clearer and stand out more").
+ *
+ * It shipped as a single wash two steps above rest — `--tone` at 11% against 5% — with hover
+ * sitting between them at 9%. Measured against a busy row that is ALSO wearing the rim glow,
+ * that 6% step is the quietest thing on the row: the owner's own screenshot has four rows and
+ * no readable answer to "which one am I typing into". DL-27.22's "one step of wash, never a
+ * second signifier" was written for the shipped rail's flat rows, where a row is the only
+ * object in its column; a card row already competes with a rim, a corner badge, a pill and
+ * three bars.
+ *
+ * All three layers are drawn unconditionally and pinned to one custom property each, so the
+ * owner's Task 10 pass picks a candidate by overriding variables rather than by editing
+ * selectors — the same shape `--asr-card-busy` and `--asr-card-active-frame` already use, and
+ * the same shape the gallery's candidate columns override. The SHIPPED default is candidate A:
+ * wash only, at a step that can actually be seen. `transparent` on the other two is what makes
+ * A a pure strengthening of DL-27.22 rather than an amendment of it — B and C add a second
+ * signifier and Task 11 amends the rule only if one of them is picked.
+ */
+.asr-card__row {
+  /* The wash. A hairline FRAME was drawn as a third candidate and dropped before it reached
+     this file: DL-21.1's selected-chip treatment lands on the exact pixel the busy rim's own
+     `inset 0 0 0 1px` occupies, so on a working row — the row most likely to be focused — it
+     is invisible, and on a still row it says "selected" in the same stroke the card around it
+     already uses for "hovered". Two layers, not three. */
+  --asr-card-focus-bg: color-mix(in srgb, var(--tone) 20%, transparent);
+  /* The leading bar: the one signifier that reads without comparing a row to its neighbours.
+     `transparent` ships, so the default is a wash alone and DL-27.22 stands unamended until
+     the owner picks otherwise. */
+  --asr-card-focus-bar: transparent;
+}
+
+.asr-card__row[data-focused="true"] {
+  background: var(--asr-card-focus-bg);
+}
+
+/* `::after`, because `::before` is the busy beam's. Inert, and it paints over the row's own
+   background while staying out of `.asr-card__hit`'s way. */
+.asr-card__row[data-focused="true"]::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 3px;
+  /* A capsule, not a squared-off tick. `999px` rather than a per-corner shorthand: DL-20.1's
+     scale is closed and the design-language gate matches a `border-radius` value WHOLE, so a
+     four-corner shorthand reads as off-scale even when every corner in it is on the scale.
+     At 3px wide the capsule and a 3px per-corner rounding are the same picture anyway. */
+  border-radius: 999px;
+  background: var(--asr-card-focus-bar);
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------- the glyph + badge */
+
+/* `overflow` stays visible so the corner badge can hang 2px off the glyph — the row's own 8px
+   of left padding is what gives it room to sit there. Shared by the open row AND the closed
+   strip's segment: both render this exact structure via the same `CardMark`/`AgentGlyph` pair. */
+.asr-card__glyph {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/* The "New agent" row's own glyph wears the plus icon instead of an agent's brand mark — no
+   corner badge to make room for, so it needs none of the positioning context above. */
+.asr-card__glyph--new {
+  display: grid;
+  grid-column: 1;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.asr-card__logo {
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--asr-card-radius);
+}
+
+.asr-card__logo--letter {
+  display: grid;
+  place-items: center;
+  background: var(--chrome-2);
+  color: var(--text-muted);
+  font: 620 var(--type-micro) / 1 var(--ui-font);
+}
+
+/* The per-pane state badge, on the glyph's bottom-left corner (`CardMark`; design §5, §9.4).
+   `content-box` so the 1.5px ring GROWS the box instead of eating the fill — this file has no
+   global `box-sizing` reset, and the border-box default would leave visible colour inside a
+   5px circle instead of a ring around it. The ring's colour is the plane immediately behind a
+   glyph sitting directly on the sidebar (a bare row, or a strip segment outside any card
+   background); inside an open card's own light wash the ring reads a shade off that plane —
+   accepted as ported from the specimen, and a candidate the owner can retune with the same
+   Task 10 pass that picks the busy hue. */
+.asr-card__dot {
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  box-sizing: content-box;
+  width: 5px;
+  height: 5px;
+  border: 1.5px solid var(--sidebar-bg);
+  border-radius: 50%;
+}
+
+.asr-card__dot[data-state="working"] {
+  background: var(--asr-card-busy);
+}
+
+.asr-card__dot[data-state="asked"] {
+  background: var(--status-unread);
+}
+
+.asr-card__dot[data-state="failed"] {
+  background: var(--red);
+}
+
+/* `done` — a checkout can hold a finished pane and a working one at once, so this dot has to
+   read as "not busy" without disappearing the way `idle` does (below): a done row still ran
+   something. No state left undeclared falls back to this: `idle` is the only state that
+   overrides it.
+
+   The fill is OPAQUE (owner, 2026-08-26: "one state has only a black border and no
+   background"). It shipped as `--tone 26%` over `transparent`, and a translucent fill inside a
+   5px circle composites against whatever plane the dot happens to sit on — the card's own
+   `--tab-active-bg`, plus the row's wash, plus the focus wash on top of that — landing about
+   one step off the row it sits in. All that survived was the 1.5px `--sidebar-bg` ring, which
+   is DARKER than the card, so the mark read as an empty black outline rather than a state. The
+   mix is against `--sidebar-bg` instead of `transparent`: the same grey, but a real one that
+   the plane behind it cannot dilute. Every other drawn state was already opaque
+   (`--status-unread`, `--red`) or near enough (`--asr-card-busy` at 62%) to survive it. */
+.asr-card__dot[data-state="done"] {
+  background: color-mix(in srgb, var(--tone) 42%, var(--sidebar-bg));
+}
+
+/* Idle paints nothing. `display: none`, not `background: none`: the ring above is drawn in the
+   plane BEHIND the row, so a transparent fill inside it would still leave a 7px ring sitting on
+   an idle agent's corner — a mark where the state says there is none. `CardMark` already omits
+   this element for `idle` (returns `null`); this rule is defensive, not load-bearing, in case a
+   future caller renders the badge unconditionally. */
+.asr-card__dot[data-state="idle"] {
+  display: none;
+}
+
+/* -------------------------------------------------------------------- the loading track */
+
+/* THE loading mark — one shape for every busy agent (design §9.7): three still bars by
+   default, so the mark stays legible under reduced motion instead of vanishing; motion is
+   added below. The element always renders (`CardLoad`), busy or not, so this only draws
+   content when `data-busy="true"`. */
+.asr-card__load {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  column-gap: 2px;
+  width: auto;
+}
+
+.asr-card__load > i {
+  width: 2px;
+  height: 5px;
+  /* `999px`, DL-20.1's own capsule shape rather than a bare pixel value: on a 2px-wide bar it
+     clamps to the same half-width a small literal would draw, and it is already inside the
+     closed radius scale `scripts/design-language.test.ts` checks. */
+  border-radius: 999px;
+  background: var(--asr-card-busy);
+}
+
+.asr-card__load > i:nth-child(2) {
+  height: 10px;
+}
+
+.asr-card__load > i:nth-child(3) {
+  height: 7px;
+}
+
+/* Loop budget (Task 10 gate row 2): bars 2 and 3 default to shown (`--asr-card-load-extra:
+   block`, above). Flipping that one variable to `none` hides them and leaves the first bar as
+   a single still (or, with the motion block below, single pulsing) mark — "bars → one pulse"
+   at the cost of one edit, with no change to this rule. */
+.asr-card__load[data-busy="true"] > i:nth-child(n + 2) {
+  display: var(--asr-card-load-extra);
+}
+
+/* Motion is ADDED here, never switched off below (DL-1.5) — the mark above is legible standing
+   still. `transform` only (`scaleY`, on a stagger), so DL-1.3 is untouched by this half: no
+   gradient, no blur. Three bars is three loops per busy agent in a COLLAPSED card's strip;
+   `--asr-card-load-extra: none` above cuts that to one. */
+@media (prefers-reduced-motion: no-preference) {
+  .asr-card__load[data-busy="true"] > i {
+    transform-origin: center;
+    animation: asr-card-bar 900ms var(--ease) infinite alternate;
+  }
+
+  .asr-card__load[data-busy="true"] > i:nth-child(2) {
+    animation-delay: var(--asr-card-load-stagger);
+  }
+
+  .asr-card__load[data-busy="true"] > i:nth-child(3) {
+    animation-delay: calc(var(--asr-card-load-stagger) * 2);
+  }
+}
+
+@keyframes asr-card-bar {
+  from {
+    transform: scaleY(0.4);
+  }
+
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* -------------------------------------------------------------------------- name + pill */
+
+.asr-card__row .asr-card__name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font: 500 var(--type-meta) / 1.2 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The model, as the row's trailing pill — state lives in the corner badge and the row's
+   `title`/accessible name (DL-27.2), never spelled out in words on the row itself. */
+.asr-card__pill {
+  box-sizing: border-box;
+  padding: 1px 5px;
+  /* The same radius the branch badge takes: one pill object at two sizes, not two unrelated
+     numbers. */
+  border-radius: var(--asr-card-pill-radius);
+  background: color-mix(in srgb, var(--tone) 8%, transparent);
+  color: var(--text-muted);
+  font: 500 var(--type-micro) / 1.5 var(--ui-font);
+  white-space: nowrap;
+  /* Matches the `.asr-row__actions` fade it trades places with, so the ✕ arriving and the pill
+     leaving are one movement rather than a cut followed by a fade. */
+  transition: opacity var(--duration) var(--ease);
+}
+
+.asr-card__row[data-focused="true"] .asr-card__pill {
+  color: var(--text-primary);
+}
+
+/* ------------------------------------------------------------------------- "New agent" */
+
+/* The launcher row. A plain `<button>` — no hit layer, no close, so it needs none of
+   `.asr-card__row`'s container/overlay machinery — but the SAME 4-column template as an agent
+   row, so `New agent` starts on the left edge every agent name above it does. */
+.asr-card__new {
+  box-sizing: border-box;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 14px minmax(0, 1fr) 12px auto;
+  align-items: center;
+  column-gap: 7px;
+  width: 100%;
+  min-height: var(--asr-card-row-h);
+  margin-top: calc(var(--asr-card-row-gap) - 1px);
+  padding: 0 6px 0 8px;
+  border: 0;
+  border-radius: var(--asr-card-radius);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+
+.asr-card__new:hover {
+  background: color-mix(in srgb, var(--tone) 9%, transparent);
+}
+
+.asr-card__new .asr-card__name {
+  overflow: hidden;
+  color: var(--text-muted);
+  font: 500 var(--type-meta) / 1.2 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

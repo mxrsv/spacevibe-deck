@@ -257,6 +257,16 @@
 .row:focus-within {
   background: var(--state-hover-bg);
 }
+/* The row the composer's Workspace field is currently answering. DL-32.1 says
+   choosing a recent "establishes context", and the wash is how selection is
+   said everywhere else in Deck (DL-21.1 on a chip, DL-27.8 on a rail row) —
+   without it the row set `aria-pressed` and painted nothing, so the only
+   feedback for a click was a chip several hundred pixels above it. Declared
+   after the hover rule, which it shares specificity with: a selected row stays
+   selected under the pointer. */
+.row.is-selected {
+  background: var(--tab-active-bg);
+}
 .row__open {
   display: flex;
   align-items: center;

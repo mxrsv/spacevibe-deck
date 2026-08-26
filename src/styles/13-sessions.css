@@ -467,11 +467,16 @@
   padding: 0 7px;
 }
 
+/* The block's own group label, at the METADATA rung (owner, 2026-08-26, second
+   pass the same day: 14px → 13px → 11px). DL-4.4 puts a group label on the
+   14px title rung and the rail's cluster headers on the 13px `--type-project`
+   exception; this label heads a five-row re-entry list under BOTH of them, and
+   a label the size of the clusters' own read as a seventh project. */
 .recent-session-activity__heading {
   min-width: 0;
   margin: 0;
   color: var(--text-muted);
-  font-size: var(--type-title);
+  font-size: var(--type-meta);
   font-weight: 560;
   line-height: 1;
   white-space: nowrap;
@@ -487,7 +492,7 @@
   background: transparent;
   color: var(--accent);
   font: inherit;
-  font-size: var(--type-meta);
+  font-size: var(--type-micro);
   cursor: pointer;
   transition: color var(--duration) var(--ease);
 }
@@ -516,7 +521,14 @@
 .recent-session-activity__row {
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 15px minmax(0, 1fr) 4em;
+  /* glyph · copy · status mark · age. The mark is DL-27.3's own 14px box
+     (DL-33.2, amended 2026-08-26), placed TRAILING rather than at the head:
+     a leading mark would push the copy off the 29px text edge this block
+     shares with the rail's rows above it, and the `asked` ripple scales to
+     2.1x, which `.asr-rail__list`'s `overflow-x: hidden` would clip silently
+     on the LEFT. Beside the 4em age column it has the whole trailing inset to
+     grow into. */
+  grid-template-columns: 15px minmax(0, 1fr) 14px 4em;
   width: 100%;
   min-width: 0;
   min-height: 30px;
@@ -561,6 +573,7 @@
 /* Starts the button's accessible name with its action and exact session
    identity without replacing the visible agent, summary or trailing state. */
 .recent-session-activity__resume-prefix,
+.recent-session-activity__state-word,
 .recent-session-activity__unavailable-reason {
   position: absolute;
   width: 1px;
@@ -605,23 +618,37 @@
   flex: 1;
 }
 
-.recent-session-activity__agent {
-  flex: none;
-  color: var(--text-primary);
-  font-size: var(--type-body);
-  font-weight: 450;
-  white-space: nowrap;
-}
+/*
+ * The visible agent LABEL was here until 2026-08-26 (owner). It is deleted, not
+ * parked: the 15px glyph beside it already names the agent, and with the label
+ * gone the sentence starts at the same x in every row instead of after a word
+ * whose width changed per agent. This is DL-27.15's own move, one surface
+ * later — there, the turn took the agent name's slot for exactly this reason.
+ * The name still reaches assistive tech through the row's hidden prefix, which
+ * is why removing it costs no identity.
+ */
 
+/* The row's one line of copy, at the ladder's floor (owner, 2026-08-26): the
+   block is a glance, and the sentence is trimmed by layout anyway — the whole
+   turn lives in the accessible name (DL-27.4's trimming contract). */
 .recent-session-activity__summary {
   min-width: 0;
   flex: 1;
   color: var(--text-muted);
-  font-size: var(--type-body);
+  font-size: var(--type-micro);
   font-weight: 450;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The rail's mark component, reused verbatim (DL-27.3): one 14px box in every
+   state, so a dot, the working ring and the `asked` ripple trade places
+   without moving the age beside them. `.asr-row__mark` rests at
+   `justify-self: end`, which is the tab row's trailing geometry, not this
+   row's — the box IS the track here. */
+.recent-session-activity__row > .asr-row__mark {
+  justify-self: center;
 }
 
 .recent-session-activity__time {

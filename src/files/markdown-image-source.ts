@@ -16,7 +16,7 @@
  * refuses any file with a NUL byte in its first 8 KiB, which is every PNG,
  * JPEG and WebP. The picture therefore arrives as a `data:` URL rather than
  * the design's blob URL: equivalent, with no revoke lifecycle to leak, and the
- * shape the logo and sidebar-banner stores already run on.
+ * shape the logo stores already run on.
  *
  * Nothing here ever reaches the network. A remote URL never gets this far —
  * `classifyImage` turned it into a placeholder before the parse finished.

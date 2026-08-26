@@ -23,7 +23,6 @@ import {
 import { available as electronHostAvailable } from "../host/worktree-host";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { workspacesData } from "../open-board/workspaces-store";
-import { SidebarBanner } from "./sidebar-banner";
 
 /**
  * The repository → worktree navigation rail.
@@ -402,7 +401,6 @@ export function RepositoryRail(props: RepositoryRailProps) {
         </button>
       </div>
       {props.footer}
-      <SidebarBanner />
     </nav>
   );
 }

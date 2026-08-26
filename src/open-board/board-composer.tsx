@@ -142,7 +142,15 @@ export function BoardComposer(props: BoardComposerProps) {
         <header class="nt-board__head">
           <span>New task</span>
           <h2>Start something new</h2>
-          <p>Describe the outcome. Deck opens the agent in the right workspace.</p>
+          {/* Says what actually happens. `TASK_PROMPT_AUTOSEND` is false — the
+              launch TYPES the task into the agent and stops, so the Enter is
+              the user's. `launchNotice` carries that sentence too, but only
+              onto a board that is already being dismissed; said here it is on
+              screen before the button is ever pressed. */}
+          <p>
+            Describe the outcome. Deck opens the agent and types your task — press Enter there to
+            send it.
+          </p>
         </header>
 
         <LauncherFields {...props} recents={props.alive} idPrefix="board" compact={false} />

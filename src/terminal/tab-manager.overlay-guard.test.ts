@@ -4,13 +4,13 @@ import type { Pane } from "./pane";
 import type { CreatePaneFn } from "./pane-lifecycle";
 import { ACTION_REGISTRY } from "./action-registry";
 import {
-  agentQuickPickerOpen,
   boardOpen,
   editorRequest,
   saveDialogOpen,
   settingsOpen,
   shortcutCaptureActive,
 } from "../chrome/events";
+import { quickLaunchOpen, resetLauncherStore } from "../launcher/launcher-store";
 import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
@@ -98,13 +98,8 @@ beforeEach(() => {
   vi.mocked(sendAgentNotification).mockClear();
 });
 
-// `newTab()` (the "new-tab" action) flips this module signal — a global
-// reset, not a per-describe one like `boardOpen`'s scattered resets below,
-// because leaving it true after whichever test exercises "new-tab" would
-// silently rank every later test's `openOverlayRanks()` at "modal", failing
-// unrelated pane-tiered assertions with no visible connection to the cause.
 afterEach(() => {
-  agentQuickPickerOpen.value = false;
+  resetLauncherStore();
 });
 
 // Whole-branch review bugfix: `handleShortcut` (capture-phase keydown) and
@@ -304,17 +299,17 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     tm.dispose();
   });
 
-  it("new-tab still raises AgentQuickPicker while Settings is open — harmless, so it is not gated", async () => {
+  it("new-tab still raises Quick Launch while Settings is open — App closes the unavailable tool", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
-    agentQuickPickerOpen.value = false;
+    quickLaunchOpen.value = false;
     settingsOpen.value = true;
 
     tm.runAction("new-tab");
     await flush();
 
-    expect(agentQuickPickerOpen.value).toBe(true);
+    expect(quickLaunchOpen.value).toBe(true);
 
     tm.dispose();
   });
@@ -324,20 +319,19 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
   // SavePresetDialog draft was up. That let Cmd+T (or the menu's "New Tab")
   // mount an overlay underneath the modal scrim (z-40 > board's z-30): its
   // own mount-focus effect then stole DOM focus away from the live draft, so
-  // a later Enter could silently act on something behind it. Still true now
-  // that new-tab opens AgentQuickPicker (also rank "modal") instead of the
-  // board — the "board" scope (rank 30) blocks both.
+  // a later Enter could silently act on something behind it. Quick Launch is
+  // non-modal, but the "board" scope still blocks raising it under that draft.
   it("new-tab is now blocked while a PresetEditor draft is open (F2 — 'always' used to bypass every overlay, not just the board)", async () => {
     const { tm } = setup({});
     await tm.init();
     await flush();
-    agentQuickPickerOpen.value = false;
+    quickLaunchOpen.value = false;
 
     editorRequest.value = { source: "live" };
     tm.runAction("new-tab");
     await flush();
 
-    expect(agentQuickPickerOpen.value).toBe(false);
+    expect(quickLaunchOpen.value).toBe(false);
 
     editorRequest.value = null;
     tm.dispose();
@@ -347,13 +341,13 @@ describe("overlay scope guard — blocks terminal/tab/pane actions while an over
     const { tm } = setup({});
     await tm.init();
     await flush();
-    agentQuickPickerOpen.value = false;
+    quickLaunchOpen.value = false;
 
     saveDialogOpen.value = true;
     tm.runAction("new-tab");
     await flush();
 
-    expect(agentQuickPickerOpen.value).toBe(false);
+    expect(quickLaunchOpen.value).toBe(false);
 
     saveDialogOpen.value = false;
     tm.dispose();

@@ -7,7 +7,11 @@ import {
   statePaletteSpecimen,
 } from "../agent-rail-variants";
 import { railSimplicityLadderSpecimen, railStructureSpecimen } from "../rail-structure-variants";
-import { railColorRuleSpecimen, railWorktreeCardsSpecimen } from "../rail-worktree-cards";
+import {
+  railColorRuleSpecimen,
+  railFocusMarkSpecimen,
+  railWorktreeCardsSpecimen,
+} from "../rail-worktree-cards";
 import { SIDEBAR_WIDTH_MIN } from "../../settings/settings-schema";
 import { SectionHead, Specimen } from "../specimen";
 
@@ -16,7 +20,7 @@ export function NavigationSection() {
     <>
       <SectionHead
         title="Navigation"
-        blurb="The shipped AgentRail rendered from seeded stores: one cluster per project in open order (DL-27.9), its tabs grouped under the checkout they run in since 2026-08-25 (DL-27.23) — deck carries a live main, a live redesign/phase-1-2 and a history-only electron-migration group — a chip on single-agent tabs and flat full-width agent rows for multi-agent tabs, those rows standing inside a neutral frame since 2026-08-20 (DL-27.19). The pane-tree markup remains parked behind PANE_TREE_HIDDEN; the gallery labels it as a proposal, never as current chrome."
+        blurb="The shipped AgentRail rendered from seeded stores: one cluster per project in open order (DL-27.9), each checkout grouped under its own worktree card since 2026-08-26 (DL-27.23/DL-27.24, amended) — a checkout is a boxed, expandable card whose agent rows are every pane running in it, flattened across whichever tabs hold them. There is no tab tier and no per-agent chip any more, and DL-27.19's neutral frame around a multi-agent tab is deleted along with the tab row it used to wrap. The retired pane-tree markup stays only as a historical comparison below; the constant that used to gate it (PANE_TREE_HIDDEN) no longer exists in the source."
       />
       <Specimen
         name="Agent status rail"
@@ -26,18 +30,25 @@ export function NavigationSection() {
         {agentStatusRailSpecimen()}
       </Specimen>
       <Specimen
-        name="Worktree cards · proposal (owner mockup, 2026-08-25)"
-        note="NOT the shipping rail. The box moves up a level: a CHECKOUT becomes a card that opens onto its agents, so the tab tier leaves the rail. Left is the closed picture (mark · branch · agent count · age · caret, then the path, then agents as badged chips); right is one card open onto per-agent rows, each stating a status word. Four unresolved divergences are drawn rather than normalised — a card is a checkout and not a tab; Running/Thinking/Idle replace failed/asked/working/done/idle, bringing green and --magenta back into chrome against DL-27.3 and DL-3.6; a status word replaces the agent's newest sentence (DL-27.15); and the ACTIVE checkout is wrapped whole in accent where DL-21.1 gives selection a neutral frame, so selection and liveness share one hue. The closed siblings dropping to one line is the mockups' own inconsistency, kept visible."
+        name="Worktree card"
+        note="the shipped WorktreeCard in isolation, at rail width: closed and open side by side. ai-terminal's five panes are fed by three different tabs, flattened onto one card — the card's load-bearing claim, invisible in a fixture where every card's panes come from a single tab."
         surface="none"
       >
         {railWorktreeCardsSpecimen()}
       </Specimen>
       <Specimen
-        name="Worktree cards · the colour rule"
-        note="ONE hue, ONE meaning, no hue twice. Two faults are already fixed in the sheet rather than offered here: running and thinking shared a category but wore green and magenta, and --green was doing double duty as both the running hue and the active card's frame. Green now means the active checkout only; yellow means waiting on you; red means failed; --accent means a count (+N); neutral means idle, done and every resting surface. What is left to pick is which hue BUSY takes — A neutral (the quietest, but NOT rule-free: DL-27.3 says working is not a dot at all but WorkspaceSpinner in a 14px box, and that done/idle share the gray dot; AGENTS.md's 'neutral means working' line quotes the reversed morning version), B --magenta, C --cyan. One --gxwc-busy line separates the three columns; everything else is identical."
+        name="Worktree card · the colour rule"
+        note="the one value the card sheet still leaves open (design §13, Task 10's gate): which hue --asr-card-busy takes. A is the shipped default; B and C restate that one custom property under a gallery-only override."
         surface="none"
       >
         {railColorRuleSpecimen()}
+      </Specimen>
+      <Specimen
+        name="Worktree card · the focused agent row"
+        note="which agent holds the keyboard (DL-27.22), drawn three ways after the owner asked for it louder (2026-08-26). A is the shipped default and keeps DL-27.22's one-signifier rule; B and C add a second one and amend it. Each column is one override of --asr-card-focus-bg / -frame / -bar; the focused row is deliberately a WORKING row, since the rim glow is what the mark has to survive."
+        surface="none"
+      >
+        {railFocusMarkSpecimen()}
       </Specimen>
       <Specimen
         name="Row-structure candidates"
@@ -62,14 +73,14 @@ export function NavigationSection() {
       </Specimen>
       <Specimen
         name="Pane tree · parked proposal"
-        note="not current: PANE_TREE_HIDDEN keeps multi-agent panes flat; this retained specimen shows the reversible elbow-tree direction only"
+        note="not current: the worktree card renders multi-agent panes as flat rows with no tree at all, and the PANE_TREE_HIDDEN constant that used to gate this direction is gone from the source; this retained specimen shows the elbow-tree direction only, as a historical comparison"
         surface="none"
       >
         {paneTreeSpecimen()}
       </Specimen>
       <Specimen
         name="Multi-agent grouping · candidates"
-        note="B3 shipped on 2026-08-20 as DL-27.19 — the neutral frame. A is the flat rail it replaced; B1/B2 are the hairline rule and the wash it was judged against; B4 is the same frame in the tab's own dot colour, turned down because the status dot owns red and yellow; C is the parked elbow tree. Two multi-agent tabs sit back to back on purpose — that pair is what a grouping mark has to survive."
+        note="B3 shipped on 2026-08-20 as DL-27.19 — the neutral frame — and was retired 2026-08-26 when the worktree card replaced the tab tier; the card's own box now says what the frame said. A is the flat rail it replaced; B1/B2 are the hairline rule and the wash it was judged against; B4 is the same frame in the tab's own dot colour, turned down because the status dot owns red and yellow; C is the parked elbow tree. Two multi-agent tabs sit back to back on purpose — that pair is what a grouping mark has to survive."
         surface="none"
       >
         {multiAgentGroupingSpecimen()}

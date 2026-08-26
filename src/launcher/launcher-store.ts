@@ -82,6 +82,19 @@ export function closeQuickLaunch(): void {
 }
 
 /**
+ * The active trigger is a true toggle; a different project trigger retargets
+ * the already-open tool instead of making the first project's button close a
+ * launcher the user just asked to move elsewhere.
+ */
+export function toggleQuickLaunch(workspacePath: string | null): void {
+  if (quickLaunchOpen.value && quickLaunchWorkspace.value === workspacePath) {
+    closeQuickLaunch();
+    return;
+  }
+  openQuickLaunch(workspacePath);
+}
+
+/**
  * `Open full composer` (spec §4.2): the whole draft moves to the Open Board.
  * Nothing is copied — both surfaces read the same signal — so this is only the
  * two visibility flips, which is exactly why the draft cannot be lost here.

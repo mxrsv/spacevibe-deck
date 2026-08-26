@@ -106,6 +106,7 @@ describe("OpenBoard create-worktree flow", () => {
     await act(async () => {
       render(
         <OpenBoard
+          contextWorkspacePath={null}
           canCancel={true}
           canBrowseSessions={false}
           openWorkspacePaths={new Set()}

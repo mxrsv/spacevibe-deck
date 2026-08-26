@@ -611,9 +611,6 @@
 }
 
 .gx-chatgpt-direction .wsbar {
-  --sidebar-banner-bleed-inline: 8px;
-  --sidebar-banner-bleed-bottom: 10px;
-  --sidebar-banner-fade-color: var(--gx-chat-app-under);
   grid-column: 1;
   grid-row: 2 / 4;
   padding: 4px 8px 10px;

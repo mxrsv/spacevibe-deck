@@ -3,13 +3,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaneProcessInfo } from "../lib/process-info";
 import { MACOS_KEYMAP } from "./keymap";
 import { agentQuickPickerOpen } from "../chrome/events";
+import {
+  quickLaunchOpen,
+  quickLaunchWorkspace,
+  resetLauncherStore,
+} from "../launcher/launcher-store";
 import { activeTabIndex, tabViews, statusInfo } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { sendAgentNotification } from "../lib/native-notification";
 import { WINDOWS_AGENT_LAUNCH_TIMEOUT_MS } from "./agent-launch";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
-import { flush, freshWindowFocusController, processInfo, setup } from "./tab-manager.fixtures";
+import { createMemoryPtyClient } from "./pty-client";
+import {
+  flush,
+  freshWindowFocusController,
+  processInfo,
+  setup,
+  wire,
+} from "./tab-manager.fixtures";
 
 // Task 23: the production-default notifier sends through this adapter. Mock
 // it at the module boundary so NO test can ever reach the real Tauri
@@ -85,6 +97,7 @@ beforeEach(() => {
 // with no visible connection to the cause.
 afterEach(() => {
   agentQuickPickerOpen.value = false;
+  resetLauncherStore();
 });
 
 describe("createTabManager materialize (through the createPane seam)", () => {
@@ -113,6 +126,187 @@ describe("createTabManager materialize (through the createPane seam)", () => {
     expect(pty.sessions.get(1)?.cwd).toBe("/work");
   });
 
+  it("defers Windows process inspection until PowerShell reports prompt readiness", async () => {
+    vi.useFakeTimers();
+    let tm: ReturnType<typeof setup>["tm"] | null = null;
+    try {
+      resetDesktopEnvironmentForTests();
+      initializeDesktopEnvironment({
+        platform: "windows",
+        homeDir: String.raw`C:\Users\dev`,
+      });
+      const harness = setup({});
+      tm = harness.tm;
+      const ptyInfo = vi.spyOn(harness.pty, "ptyInfo");
+      await tm.init();
+
+      await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+      expect(ptyInfo).not.toHaveBeenCalled();
+
+      harness.pty.emitPromptReady(1);
+      await vi.advanceTimersByTimeAsync(1999);
+      expect(ptyInfo).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(ptyInfo).toHaveBeenCalledTimes(1);
+    } finally {
+      tm?.dispose();
+      vi.useRealTimers();
+    }
+  });
+
+  it("pauses recurring Windows inspection before an async spawn resolves", async () => {
+    vi.useFakeTimers();
+    let tm: ReturnType<typeof setup>["tm"] | null = null;
+    try {
+      resetDesktopEnvironmentForTests();
+      initializeDesktopEnvironment({
+        platform: "windows",
+        homeDir: String.raw`C:\Users\dev`,
+      });
+      const base = createMemoryPtyClient({ nextId: 1 });
+      let releaseSpawn = (): void => {
+        throw new Error("Spawn gate was not initialized");
+      };
+      const spawnGate = new Promise<void>((resolve) => {
+        releaseSpawn = resolve;
+      });
+      const pty = {
+        ...base,
+        async spawnShell(opts: Parameters<typeof base.spawnShell>[0]): Promise<number> {
+          if (base.sessions.size > 0) {
+            await spawnGate;
+          }
+          return base.spawnShell(opts);
+        },
+      };
+      tm = wire(pty).tm;
+      const ptyInfo = vi.spyOn(pty, "ptyInfo");
+      await tm.init();
+      await tm.materialize({ layout: null, cwds: [String.raw`C:\first`] });
+      base.emitPromptReady(1);
+      await vi.advanceTimersByTimeAsync(0);
+      ptyInfo.mockClear();
+
+      const pending = tm.materialize({ layout: null, cwds: [String.raw`C:\second`] });
+      await vi.advanceTimersByTimeAsync(2000);
+
+      expect(ptyInfo).not.toHaveBeenCalled();
+      releaseSpawn();
+      await pending;
+    } finally {
+      tm?.dispose();
+      vi.useRealTimers();
+    }
+  });
+
+  it("remembers Windows prompt readiness emitted before spawnShell resolves", async () => {
+    vi.useFakeTimers();
+    let tm: ReturnType<typeof setup>["tm"] | null = null;
+    try {
+      resetDesktopEnvironmentForTests();
+      initializeDesktopEnvironment({
+        platform: "windows",
+        homeDir: String.raw`C:\Users\dev`,
+      });
+      const base = createMemoryPtyClient({ nextId: 1 });
+      let releaseSpawn = (): void => {
+        throw new Error("Spawn gate was not initialized");
+      };
+      const spawnGate = new Promise<void>((resolve) => {
+        releaseSpawn = resolve;
+      });
+      const pty = {
+        ...base,
+        async spawnShell(opts: Parameters<typeof base.spawnShell>[0]): Promise<number> {
+          const id = await base.spawnShell(opts);
+          if (id === 2) {
+            base.emitPromptReady(id);
+            await spawnGate;
+          }
+          return id;
+        },
+      };
+      tm = wire(pty).tm;
+      const ptyInfo = vi.spyOn(pty, "ptyInfo");
+      await tm.init();
+      await tm.materialize({ layout: null, cwds: [String.raw`C:\first`] });
+      base.emitPromptReady(1);
+      await vi.advanceTimersByTimeAsync(0);
+      ptyInfo.mockClear();
+
+      const pending = tm.materialize({ layout: null, cwds: [String.raw`C:\second`] });
+      releaseSpawn();
+      await pending;
+      await vi.advanceTimersByTimeAsync(2000);
+
+      expect(ptyInfo).toHaveBeenCalledTimes(1);
+    } finally {
+      tm?.dispose();
+      vi.useRealTimers();
+    }
+  });
+
+  it("falls back to Windows process inspection when prompt readiness never arrives", async () => {
+    vi.useFakeTimers();
+    let tm: ReturnType<typeof setup>["tm"] | null = null;
+    try {
+      resetDesktopEnvironmentForTests();
+      initializeDesktopEnvironment({
+        platform: "windows",
+        homeDir: String.raw`C:\Users\dev`,
+      });
+      const harness = setup({});
+      tm = harness.tm;
+      const ptyInfo = vi.spyOn(harness.pty, "ptyInfo");
+      await tm.init();
+
+      await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+      await vi.advanceTimersByTimeAsync(3999);
+      expect(ptyInfo).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(ptyInfo).toHaveBeenCalledTimes(1);
+    } finally {
+      tm?.dispose();
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps recurring Windows inspection away from a newly split shell", async () => {
+    vi.useFakeTimers();
+    let tm: ReturnType<typeof setup>["tm"] | null = null;
+    try {
+      resetDesktopEnvironmentForTests();
+      initializeDesktopEnvironment({
+        platform: "windows",
+        homeDir: String.raw`C:\Users\dev`,
+      });
+      const harness = setup({});
+      tm = harness.tm;
+      const ptyInfo = vi.spyOn(harness.pty, "ptyInfo");
+      await tm.init();
+      await tm.materialize({ layout: null, cwds: [String.raw`C:\work`] });
+      harness.pty.emitPromptReady(1);
+      await vi.advanceTimersByTimeAsync(0);
+      ptyInfo.mockClear();
+
+      await tm.splitActive("row");
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(ptyInfo).not.toHaveBeenCalled();
+
+      harness.pty.emitPromptReady(2);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(ptyInfo).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(ptyInfo).toHaveBeenCalledTimes(1);
+    } finally {
+      tm?.dispose();
+      vi.useRealTimers();
+    }
+  });
+
   it("splitActive spawns the new pane at the focused pane's fresh CWD", async () => {
     const infos = new Map<number, PaneProcessInfo>([
       [1, processInfo(1, "/repo", "zsh", "idle-shell", null)],
@@ -125,6 +319,39 @@ describe("createTabManager materialize (through the createPane seam)", () => {
     expect(pty.sessions.size).toBe(2);
     expect(pty.sessions.get(2)?.cwd).toBe("/repo");
     expect(statusInfo.value.paneCount).toBe(2);
+  });
+
+  it("uses the Electron session CWD instead of pty_info before a Windows split", async () => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const base = createMemoryPtyClient({ nextId: 1 });
+    const pty = {
+      ...base,
+      sessionCwds: vi.fn(async (ids: readonly number[]) =>
+        ids.flatMap((id) => {
+          const session = base.sessions.get(id);
+          return session === undefined ? [] : [{ id, cwd: session.cwd }];
+        }),
+      ),
+    };
+    const ptyInfo = vi.spyOn(pty, "ptyInfo");
+    const tm = wire(pty).tm;
+    await tm.materialize({ layout: null, cwds: [String.raw`C:\repo`] });
+    const first = base.sessions.get(1);
+    if (first === undefined) {
+      throw new Error("Expected the first PTY session");
+    }
+    first.cwd = String.raw`C:\repo\nested`;
+
+    await tm.splitActive("row");
+
+    expect(pty.sessionCwds).toHaveBeenCalledWith([1]);
+    expect(ptyInfo).not.toHaveBeenCalled();
+    expect(base.sessions.get(2)?.cwd).toBe(String.raw`C:\repo\nested`);
+    tm.dispose();
   });
 
   it("dispatches the Windows clipboard chords to the active pane and leaves Alt+V to the active agent (prior H1, audit A4)", async () => {
@@ -240,15 +467,18 @@ describe("createTabManager materialize (through the createPane seam)", () => {
   });
 });
 
-describe("createTabManager openQuickAgent (AgentQuickPicker confirm)", () => {
-  it("newTab() opens AgentQuickPicker rather than materializing directly", async () => {
+describe("createTabManager openQuickAgent (legacy picker confirm)", () => {
+  it("newTab() opens Quick Launch with the active workspace rather than materializing", async () => {
     const { tm } = setup({});
     agentQuickPickerOpen.value = false;
+    await tm.openFromPreset({ type: "leaf" }, ["/repo"], { workspacePath: "/repo" });
 
     await tm.newTab();
 
-    expect(agentQuickPickerOpen.value).toBe(true);
-    expect(tabViews.value).toHaveLength(0); // no tab spawned — the picker owns that
+    expect(quickLaunchOpen.value).toBe(true);
+    expect(quickLaunchWorkspace.value).toBe("/repo");
+    expect(agentQuickPickerOpen.value).toBe(false);
+    expect(tabViews.value).toHaveLength(1); // no new tab spawned — the launcher owns that
     tm.dispose();
   });
 

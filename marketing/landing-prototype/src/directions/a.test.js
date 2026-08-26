@@ -343,3 +343,14 @@ describe("the English-only header", () => {
     expect(root.querySelector("[data-release-version]")).toBeNull();
   });
 });
+
+describe("the public install action", () => {
+  it("renders the selected quick-install prompt instead of legacy download buttons", () => {
+    const root = renderHero();
+
+    expect(root.querySelector("[data-quick-install]")).not.toBeNull();
+    expect(root.querySelectorAll("[data-install-platform]")).toHaveLength(2);
+    expect(root.querySelector(".a-actions")).toBeNull();
+    expect(root.querySelector(".a-quiet-cta")).toBeNull();
+  });
+});

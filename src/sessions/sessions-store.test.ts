@@ -266,6 +266,7 @@ describe("refreshRecentSessions", () => {
         return requests.map((request) => ({
           id: request.preferredId ?? "",
           tail: `tail ${request.preferredId}`,
+          model: null,
         }));
       },
       async dirsExist(paths) {
@@ -316,9 +317,9 @@ describe("refreshRecentSessions", () => {
         },
         {
           tails: [
-            { id: "a", tail: "Exact A" },
-            { id: "another-session", tail: "Must not leak" },
-            { id: "c", tail: null },
+            { id: "a", tail: "Exact A", model: null },
+            { id: "another-session", tail: "Must not leak", model: null },
+            { id: "c", tail: null, model: null },
           ],
         },
       ),
@@ -373,7 +374,7 @@ describe("refreshRecentSessions", () => {
           totals: { claude: 1, codex: 0 },
           limit: 5,
         },
-        { alive: () => false, tails: [{ id: "old", tail: "Old summary" }] },
+        { alive: () => false, tails: [{ id: "old", tail: "Old summary", model: null }] },
       ),
     );
 
@@ -409,7 +410,7 @@ describe("refreshRecentSessions", () => {
           totals: { claude: 1, codex: 0 },
           limit: 5,
         },
-        { alive: () => false, tails: [{ id: "old", tail: "Last good summary" }] },
+        { alive: () => false, tails: [{ id: "old", tail: "Last good summary", model: null }] },
       ),
     );
 

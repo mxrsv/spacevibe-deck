@@ -98,11 +98,19 @@ export function useWorktreeForm(): UseWorktreeForm {
     }
     creating.value = true;
     error.value = null;
-    const result = await addWorktree({
-      repoPath: repo,
-      branch: branchName,
-      destPath,
-    });
+    let result;
+    try {
+      result = await addWorktree({
+        repoPath: repo,
+        branch: branchName,
+        destPath,
+      });
+    } catch (cause: unknown) {
+      console.warn("Worktree creation failed:", cause);
+      creating.value = false;
+      error.value = "unknown";
+      return;
+    }
     creating.value = false;
     if (!result.ok) {
       error.value = result.error;

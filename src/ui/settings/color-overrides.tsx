@@ -15,9 +15,8 @@ const COLOR_LABELS: Record<keyof TerminalColors, string> = {
  * `appearance`, not a category of its own (2026-08-16).
  *
  * It sits here rather than under `sections/` for the same reason
- * `theme-gallery.tsx` and `sidebar-banner-settings.tsx` do: files in `sections/`
- * ARE categories in the rail registry, and this one is four rows a section
- * mounts. It reads the same `getPreset` the gallery checks its cards against,
+ * `theme-gallery.tsx` does: files in `sections/` ARE categories in the rail
+ * registry, and this one is four rows a section mounts. It reads the same `getPreset` the gallery checks its cards against,
  * so a card and the swatch below it can never disagree about which theme is on.
  */
 export function ColorOverrides() {

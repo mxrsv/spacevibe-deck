@@ -2,7 +2,7 @@ import { useEffect, useRef } from "preact/hooks";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { listen, type UnlistenFn } from "../host/bridge";
 import { getCurrentWindow, currentWindowLabel } from "../host/window-host";
-import { ask, message } from "../host/dialog-host";
+import { ask, message, open } from "../host/dialog-host";
 import { installQuitGuard } from "../lib/quit-guard";
 import {
   confirmClose,
@@ -13,21 +13,29 @@ import {
 } from "../terminal/close-guard";
 import { flushSettingsSave, initSettings, settingsLoadState } from "../settings/settings-store";
 import { defaultPtyClient } from "../terminal/pty-client";
-import { detectedAgents, ensureAgentsDetected } from "../terminal/agent-detection-store";
+import {
+  agentsProbed,
+  detectedAgents,
+  ensureAgentsDetected,
+} from "../terminal/agent-detection-store";
 import type { BootMode } from "../terminal/transfer-client";
 import { applyThemeVars } from "../lib/theme-vars";
 import { BUILT_IN_PRESET, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
 import { openDockTab, revealDockTab, settings, updateSettings } from "../settings/settings-store";
 import type { DockTab } from "../settings/settings-schema";
-import { agentProcessMatchers, probeNames } from "../lib/agent-catalog";
+import { agentOptions, agentProcessMatchers, probeNames } from "../lib/agent-catalog";
 import { resolveTheme } from "../settings/themes";
 import { isShortcutAction } from "../terminal/keymap";
 import { createTabManager, type TabManager } from "../terminal/tab-manager";
 import { pingPane } from "../terminal/pane-ping";
 import { activeTabIndex, tabViews } from "../terminal/tabs-store";
 import { presetsData, savePreset } from "../presets/presets-store";
-import { recordWorkspaceOpen, removeWorkspaceRecents } from "../open-board/workspaces-store";
+import {
+  recordWorkspaceOpen,
+  removeWorkspaceRecents,
+  workspacesData,
+} from "../open-board/workspaces-store";
 import {
   agentQuickPickerOpen,
   boardOpen,
@@ -35,7 +43,6 @@ import {
   pathOpenRequest,
   persistError,
   promptsOpen,
-  quickPickerWorkspace,
   reportPersistError,
   saveDialogOpen,
   settingsOpen,
@@ -54,25 +61,44 @@ import {
   openInApp,
   workspaceForPath,
 } from "../host/external-apps-host";
-import { AgentQuickPicker } from "./agent-quick-picker";
 import { MigrationBanner } from "./migration-banner";
 import { isTauriHost, shouldShowNotice } from "../updater/migration-notice";
 import { UsageConsentModal } from "./usage-consent-modal";
 import { ensureTelemetryStateLoaded, usageConsentOpen } from "../telemetry/consent-store";
 import { countRestoredSessions, installUsageCounterEffects } from "../telemetry/usage-counters";
-import { OpenBoard } from "../open-board/open-board";
-import { clearDraft } from "../launcher/launcher-store";
+import { launchNotice, OpenBoard } from "../open-board/open-board";
+import {
+  clearDraft,
+  closeQuickLaunch,
+  newTaskDraft,
+  openQuickLaunch,
+  prefillWorkspace,
+  quickLaunchOpen,
+  toggleQuickLaunch,
+  transferToBoard,
+  updateDraft,
+} from "../launcher/launcher-store";
 import { agentLaunchCommand } from "../lib/launch-command";
-import type { NewTaskDraft } from "../launcher/new-task-draft";
+import { openAgentProblem, startTaskProblem, type NewTaskDraft } from "../launcher/new-task-draft";
 import { composeLaunchCommand } from "../launcher/compose-launch-command";
 import { mergeRuntimeDefaults, runtimeFor } from "../launcher/runtime-catalog";
+import { QuickLaunch, QuickLaunchSubview } from "../launcher/quick-launch";
+import type { LauncherPending } from "../launcher/launcher-fields";
+import { CreateWorkspaceForm } from "../open-board/create-workspace-form";
+import {
+  available as workspaceCreateAvailable,
+  createWorkspace,
+} from "../host/workspace-create-host";
+import { available as worktreeHostAvailable } from "../host/worktree-host";
+import { OpenBoardWorktreeForm } from "../open-board/open-board-worktree-form";
+import { useWorktreeForm } from "../open-board/use-worktree-form";
 import { launchSucceeded, type LaunchTaskOutcome } from "../terminal/task-prompt-send";
 import type { SessionEntry } from "../lib/session-history";
 import { resumeSession } from "../sessions/resume-session";
+import { installRecentActivitySync } from "../sessions/recent-activity-sync";
 import {
   deadProjects,
   recentDeadProjects,
-  refreshRecentSessions,
   refreshSessions,
   sessionsSupported,
 } from "../sessions/sessions-store";
@@ -157,13 +183,6 @@ import {
   suspendSessionJournal,
 } from "../terminal/session-journal";
 import { restoreSession } from "../terminal/session-restore";
-import { ensureRepositoriesScanned, repositoryScans } from "../repositories/repositories-store";
-import {
-  defaultDestinationPath,
-  plainFolderDestination,
-  worktreeDestinations,
-  type QuickDestination,
-} from "../repositories/worktree-destinations";
 import { DesktopChrome } from "./desktop-chrome";
 import {
   boardClosesAfterResume,
@@ -190,6 +209,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // — accepted, because a notice whose whole job is to be seen should err that
   // way rather than the other.
   const noticeDismissed = useSignal(false);
+  const quickLaunchPending = useSignal<LauncherPending | null>(null);
+  const quickLaunchNotice = useSignal<string | null>(null);
+  const quickLaunchView = useSignal<"composer" | "workspace" | "worktree">("composer");
+  const quickLaunchReturnAfterSettings = useSignal(false);
+  const quickWorktreeForm = useWorktreeForm();
   const tabsRef = useRef<TabManager | null>(null);
   const updaterRef = useRef<UpdateController | null>(null);
   const fileControllerRef = useRef<FileSurfaceController | null>(null);
@@ -229,15 +253,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     void loadAppVersion();
   }
   const updater = updaterRef.current;
-
-  /**
-   * Focused pane's live cwd, resolved when the picker opens.
-   *
-   * It only exists to pick the picker's DEFAULT worktree: a pane the user has
-   * `cd`'d into should preselect the worktree it is actually in, not the one
-   * the tab was tagged with. Async, so it cannot be read during render.
-   */
-  const quickPickerCwd = useSignal<string | null>(null);
 
   /**
    * Single coordinator-backed entry point for every attention-focus trigger
@@ -413,12 +428,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     return resumed;
   };
 
-  // Load the rail's useful five-session snapshot once at boot. This same
-  // request decides whether the host supports sessions, replacing the old
-  // limit-one probe whose reply was discarded.
-  useEffect(() => {
-    void refreshRecentSessions();
-  }, []);
+  // The rail's useful five-session snapshot: loaded at boot — the same request
+  // that decides whether the host supports sessions at all — and kept current
+  // from there by the signals that move when a session log is written
+  // (`recent-activity-sync.ts`), so a sentence in the sidebar is the one the
+  // agent said last rather than the one it said at launch.
+  useEffect(() => installRecentActivitySync(), []);
 
   // The rail's tails: a debounced sync that re-reads a pane's newest turn only
   // when that pane's state actually moved. Inert off Electron, and the install
@@ -597,6 +612,16 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       return;
     }
     setActiveWorkspace(active.workspacePath);
+  });
+
+  // Manage agents is a round trip, not a draft dismissal. Settings covers the
+  // whole window, so Quick Launch leaves while it is open and returns to the
+  // same draft when Settings closes; the popover's mount focus restores the
+  // prompt field after `closePanel` briefly hands focus to the active pane.
+  useSignalEffect(() => {
+    if (!quickLaunchReturnAfterSettings.value || settingsOpen.value) return;
+    quickLaunchReturnAfterSettings.value = false;
+    openQuickLaunch(null);
   });
 
   useEffect(() => {
@@ -880,79 +905,23 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     void ensureExternalAppsScanned();
   }, []);
 
-  // Refreshes whenever AgentQuickPicker opens (or the declared set changes
-  // while it is up) — same reasoning as the Open board's own detect effect:
-  // adding an agent in Settings and coming straight back has to show it
-  // without a relaunch. The cached list is what the panel paints; this open is
-  // only the moment the refresh behind it is asked for.
+  // Quick Launch shares the detection cache with Open Board, but after the
+  // legacy picker is retired nothing else would refresh it on Cmd+T. Seed the
+  // remembered prompt visibility at the same open boundary.
   useSignalEffect(() => {
-    if (!agentQuickPickerOpen.value) {
+    if (!quickLaunchOpen.value) {
+      quickLaunchView.value = "composer";
       return;
     }
     const customAgents = settings.value.customAgents;
-    let cancelled = false;
-    // The destination list rides the SAME open: the rail has usually scanned
-    // this repository already (the store caches by path, and one scan answers
-    // for every worktree of a repository), so this is normally a no-op that
-    // only pays on a workspace the rail has not reached yet.
-    const target = quickPickerWorkspace.value;
-    const workspacePath = target ?? tabsRef.current?.activeWorkspacePath() ?? null;
-    if (workspacePath !== null) {
-      ensureRepositoriesScanned([workspacePath]);
-    }
-    // The focused pane's cwd only answers for an open that means "here". A
-    // rail launch (DL-27.18) names its own project, and reading the active
-    // pane would preselect a worktree of a DIFFERENT repository.
-    if (target === null) {
-      void tabsRef.current?.activePaneCwd().then((cwd) => {
-        if (!cancelled) {
-          quickPickerCwd.value = cwd;
-        }
-      });
-    } else {
-      quickPickerCwd.value = null;
-    }
     void ensureAgentsDetected(probeNames(customAgents));
-    return () => {
-      cancelled = true;
-    };
-  });
-
-  /**
-   * Worktrees the picker can open into.
-   *
-   * Read during render so the component re-renders when the scan lands (a
-   * signal read in the render body subscribes). Empty means "no destination
-   * row": a plain folder, no tab at all, or a host with no `git_repository`
-   * channel — which is every Tauri build, since that command was never
-   * written for the frozen host.
-   */
-  const quickPickerDestinations = (): readonly QuickDestination[] => {
-    const target = quickPickerWorkspace.value;
-    const workspacePath = target ?? tabsRef.current?.activeWorkspacePath() ?? null;
-    if (workspacePath === null) {
-      return [];
+    if (newTaskDraft.value.promptExpanded !== settings.value.quickLaunchPromptExpanded) {
+      updateDraft({
+        ...newTaskDraft.value,
+        promptExpanded: settings.value.quickLaunchPromptExpanded,
+      });
     }
-    const worktrees = worktreeDestinations(repositoryScans.value.get(workspacePath));
-    // A rail launch always states its destination, even when git knows
-    // nothing about the folder: the panel's no-destination copy says "Runs in
-    // this workspace", which is a lie about a project the user pressed rather
-    // than the one on the stage.
-    return worktrees.length === 0 && target !== null ? [plainFolderDestination(target)] : worktrees;
-  };
-
-  /**
-   * Live pane cwd first, then the tab's workspace — see `quickPickerCwd`.
-   * A rail launch skips both: its own project is the preference, and the
-   * pane cwd is held null for exactly that reason.
-   */
-  const quickPickerDefaultDestination = (): string | null =>
-    defaultDestinationPath(
-      quickPickerDestinations(),
-      quickPickerWorkspace.value,
-      quickPickerCwd.value,
-      tabsRef.current?.activeWorkspacePath() ?? null,
-    );
+  });
 
   /**
    * The launcher's one launch path (design §8). `App` composes the command and
@@ -1011,8 +980,59 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       recordWorkspaceOpen(workspace, undefined, agentId);
       clearDraft();
       boardOpen.value = false;
+      closeQuickLaunch();
     }
     return outcome;
+  }
+
+  /** The live agent choices shared by both launcher surfaces. */
+  const launcherAgents = () =>
+    agentOptions(detectedAgents.value, settings.value.customAgents, settings.value.disabledAgents);
+
+  /** Quick Launch owns its pending/notice line; materialization stays shared. */
+  async function runQuickLaunch(kind: "start" | "open"): Promise<void> {
+    if (quickLaunchPending.value !== null) {
+      return;
+    }
+    quickLaunchNotice.value = null;
+    quickLaunchPending.value = kind === "start" ? "sending-prompt" : "opening-agent";
+    const outcome = await handleLaunchTask(newTaskDraft.value, kind === "start");
+    quickLaunchPending.value = null;
+    quickLaunchNotice.value = launchNotice(outcome);
+  }
+
+  async function pickQuickLaunchFolder(): Promise<void> {
+    quickLaunchPending.value = "picking-folder";
+    quickLaunchNotice.value = null;
+    try {
+      const picked = await open({ directory: true, multiple: false });
+      if (typeof picked === "string") {
+        prefillWorkspace(picked);
+      }
+    } catch (error: unknown) {
+      console.warn("Quick Launch folder picker failed:", error);
+      quickLaunchNotice.value = "Couldn't open the folder picker — try again";
+    } finally {
+      quickLaunchPending.value = null;
+    }
+  }
+
+  function openQuickWorktreeForm(): void {
+    quickWorktreeForm.reset();
+    quickLaunchNotice.value = null;
+    quickLaunchView.value = "worktree";
+  }
+
+  function submitQuickWorktree(): void {
+    quickLaunchPending.value = "creating-worktree";
+    void quickWorktreeForm
+      .submit((path) => {
+        prefillWorkspace(path);
+        quickLaunchView.value = "composer";
+      })
+      .finally(() => {
+        quickLaunchPending.value = null;
+      });
   }
 
   /** Editor confirm: save the preset, then materialize a new tab. */
@@ -1248,6 +1268,27 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   });
 
+  /** Quick Launch is non-modal, but it still needs visible stage pixels. */
+  const quickLaunchUnavailable = (): string | null =>
+    browserSurfaceActive.value
+      ? "close the browser tab before opening Quick Launch"
+      : overlayCoversPane()
+        ? "a surface is covering the stage"
+        : null;
+
+  useSignalEffect(() => {
+    if (!quickLaunchOpen.value) {
+      return;
+    }
+    const unavailable = quickLaunchUnavailable();
+    if (unavailable !== null) {
+      closeQuickLaunch();
+      if (browserSurfaceActive.value) {
+        reportPersistError(`Quick Launch is unavailable — ${unavailable}.`);
+      }
+    }
+  });
+
   /**
    * Everything that must hide the browser surface's native view.
    *
@@ -1282,6 +1323,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       // until 2026-08-16, which meant ⌘T over an open browser tab drew the
       // picker underneath the `WebContentsView`.
       agentQuickPickerOpen: agentQuickPickerOpen.value,
+      quickLaunchOpen: quickLaunchOpen.value,
       promptsOpen: promptsOpen.value,
       persistErrorVisible: persistError.value !== null,
       settingsLoadError: settingsLoadState.value.status === "error",
@@ -1488,6 +1530,18 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // on the MOUNT, not the setting: during the slide-out the panel still holds
   // its own control, and the two must never be on screen together.
   const stripDockToggle = dockToggleOnStage(dockState) && !dockPresence.mounted;
+  const quickAgents = launcherAgents();
+  const quickContext = {
+    runnableAgentIds: quickAgents.filter((agent) => !agent.missing).map((agent) => agent.id),
+    unavailableAgentIds: quickAgents.filter((agent) => agent.missing).map((agent) => agent.id),
+  };
+  const quickProblem = startTaskProblem(newTaskDraft.value, quickContext);
+  /**
+   * What blocks opening an agent with no task. A collapsed Quick Launch offers
+   * exactly that, so gating its primary on `quickProblem` disabled the button
+   * over its own "Open the agent first and type in its terminal".
+   */
+  const quickOpenProblem = openAgentProblem(newTaskDraft.value, quickContext);
 
   return (
     <DesktopChrome
@@ -1557,10 +1611,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
             }
             onFocusPane={focusRailPane}
             onNewTabIn={(workspacePath) => {
-              // DL-27.18: the same panel ⌘T raises, with the destination
-              // decided by which project header was pressed.
-              quickPickerWorkspace.value = workspacePath;
-              agentQuickPickerOpen.value = true;
+              // The same non-modal launcher Cmd+T raises, pinned to the
+              // project whose header was pressed.
+              toggleQuickLaunch(workspacePath);
             }}
             // A remembered header's close: forget the folder by dropping its
             // history entries; the rail re-derives from `workspacesData`.
@@ -1699,6 +1752,97 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               popover is `right: 0` and 320px wide, so it opens INSIDE the
               surface and the user types into something they cannot see. */}
           <BrowserSurface hidden={panelObscured()} onClose={closeBrowserTab} />
+          {quickLaunchOpen.value ? (
+            quickLaunchView.value === "workspace" ? (
+              <QuickLaunchSubview
+                label="Create workspace"
+                onBack={() => {
+                  quickLaunchView.value = "composer";
+                }}
+              >
+                <CreateWorkspaceForm
+                  initialParent={
+                    newTaskDraft.value.workspacePath ?? getDesktopEnvironment().homeDir
+                  }
+                  onPickParent={() => open({ directory: true, multiple: false })}
+                  create={createWorkspace}
+                  onCreated={(path) => {
+                    prefillWorkspace(path);
+                    quickLaunchView.value = "composer";
+                  }}
+                  onBack={() => {
+                    quickLaunchView.value = "composer";
+                  }}
+                  onClose={() => {
+                    closeQuickLaunch();
+                    tabsRef.current?.focusActive();
+                  }}
+                />
+              </QuickLaunchSubview>
+            ) : quickLaunchView.value === "worktree" ? (
+              <QuickLaunchSubview
+                label="Create worktree"
+                onBack={() => {
+                  quickLaunchView.value = "composer";
+                }}
+              >
+                <OpenBoardWorktreeForm
+                  recents={workspacesData.value.recents}
+                  homeDir={getDesktopEnvironment().homeDir}
+                  repoPath={quickWorktreeForm.state.repoPath}
+                  branch={quickWorktreeForm.state.branch}
+                  destPath={quickWorktreeForm.state.destPath}
+                  error={quickWorktreeForm.state.error}
+                  creating={quickWorktreeForm.state.creating}
+                  onRepoChange={quickWorktreeForm.setRepo}
+                  onBrowseRepo={() => void quickWorktreeForm.browseRepo()}
+                  onBranchChange={quickWorktreeForm.setBranch}
+                  onDestChange={quickWorktreeForm.setDest}
+                  onBack={() => {
+                    quickLaunchView.value = "composer";
+                  }}
+                  onSubmit={submitQuickWorktree}
+                />
+              </QuickLaunchSubview>
+            ) : (
+              <QuickLaunch
+                draft={newTaskDraft.value}
+                agents={quickAgents}
+                recents={workspacesData.value.recents}
+                declaredModels={settings.value.agentModels}
+                agentRuntimeDefaults={settings.value.agentRuntimeDefaults}
+                canCreateWorkspace={workspaceCreateAvailable}
+                canCreateWorktree={worktreeHostAvailable}
+                pending={quickLaunchPending.value}
+                problem={quickProblem}
+                openProblem={quickOpenProblem}
+                agentsResolved={agentsProbed.value}
+                notice={quickLaunchNotice.value}
+                onDraftChange={updateDraft}
+                onPromptExpandedChange={(quickLaunchPromptExpanded) =>
+                  updateSettings({ quickLaunchPromptExpanded })
+                }
+                onPickFolder={() => void pickQuickLaunchFolder()}
+                onCreateWorkspace={() => {
+                  quickLaunchNotice.value = null;
+                  quickLaunchView.value = "workspace";
+                }}
+                onCreateWorktree={openQuickWorktreeForm}
+                onManageAgents={() => {
+                  closeQuickLaunch();
+                  settingsOpen.value = true;
+                  quickLaunchReturnAfterSettings.value = true;
+                }}
+                onStartTask={() => void runQuickLaunch("start")}
+                onOpenAgent={() => void runQuickLaunch("open")}
+                onTransferToBoard={transferToBoard}
+                onClose={() => {
+                  closeQuickLaunch();
+                  tabsRef.current?.focusActive();
+                }}
+              />
+            )
+          ) : null}
           {/* Gated on the `dockOpen` setting. The column hosts three
               surfaces since 2026-08-16, so `App` picks the body — that is
               what keeps `DockPanel` from importing every feature it can
@@ -1731,6 +1875,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           {boardOpen.value ? (
             <OpenBoard
               canBrowseSessions={sessionsSupported.value}
+              // Spec §5: the board opens on the active tab's workspace, and
+              // falls back to the newest live recent when there is no tab.
+              contextWorkspacePath={activeWorkspace.value}
               openWorkspacePaths={
                 new Set(
                   tabViews.value.flatMap((tab) =>
@@ -1763,41 +1910,6 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               modals so a user-invoked one (⌘T, a preset draft) paints above
               it in DOM order on the shared z-40 scrim. */}
           {showUsageConsent ? <UsageConsentModal /> : null}
-          {agentQuickPickerOpen.value ? (
-            <AgentQuickPicker
-              detected={detectedAgents.value}
-              customAgents={settings.value.customAgents}
-              disabledAgents={settings.value.disabledAgents}
-              destinations={quickPickerDestinations()}
-              initialDestination={quickPickerDefaultDestination()}
-              onSelect={(agentId, destination, profileId) => {
-                // Closes immediately (the "quick" in AgentQuickPicker) —
-                // `materialize`'s own selectTab already focuses the new
-                // pane on success, and a failure is surfaced through the
-                // shared chrome bar rather than keeping the picker up.
-                agentQuickPickerOpen.value = false;
-                // The panel's own choice wins; the rail's target is the
-                // fallback for a project whose destination row was omitted.
-                const target = destination ?? quickPickerWorkspace.value;
-                quickPickerWorkspace.value = null;
-                void tabsRef.current?.openQuickAgent(agentId, target, profileId).then((ok) => {
-                  if (!ok) {
-                    reportPersistError("Could not open a new tab.");
-                  }
-                });
-              }}
-              onCancel={() => {
-                agentQuickPickerOpen.value = false;
-                quickPickerWorkspace.value = null;
-                tabsRef.current?.focusActive();
-              }}
-              onManageAgents={() => {
-                agentQuickPickerOpen.value = false;
-                quickPickerWorkspace.value = null;
-                settingsOpen.value = true;
-              }}
-            />
-          ) : null}
           {editorRequest.value !== null ? (
             <PresetEditor
               onCancel={() => {

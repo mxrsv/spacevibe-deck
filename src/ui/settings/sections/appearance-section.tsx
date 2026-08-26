@@ -11,7 +11,6 @@ import { ConfigGroup, ConfigRow, ToggleRow } from "../../controls/config-row";
 import { FontRow } from "../../controls/font-row";
 import { LogoRow } from "../../controls/logo-row";
 import { ThemeModeSelector } from "../theme-mode-selector";
-import { SidebarBannerSettings } from "../sidebar-banner-settings";
 
 const TAB_BAR_CHOICES: readonly TabBarPosition[] = ["left", "top"];
 
@@ -93,7 +92,6 @@ export function AppearanceSection() {
         checked={current.showStatusBar}
         onToggle={() => updateSettings({ showStatusBar: !current.showStatusBar })}
       />
-      <SidebarBannerSettings />
     </>
   );
 }

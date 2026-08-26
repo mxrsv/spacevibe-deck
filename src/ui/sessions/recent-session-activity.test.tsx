@@ -3,6 +3,7 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RecentSessionEntry } from "../../sessions/sessions-store";
+import type { PaneView, TabView } from "../../terminal/tabs-store";
 
 vi.mock("../../sessions/sessions-store", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../sessions/sessions-store")>();
@@ -10,6 +11,8 @@ vi.mock("../../sessions/sessions-store", async (importOriginal) => {
 });
 
 const { RecentSessionActivity } = await import("./recent-session-activity");
+const { paneSessionIds } = await import("../../terminal/session-tail-store");
+const { tabViews } = await import("../../terminal/tabs-store");
 const {
   recentDeadProjects,
   recentSessionEntries,
@@ -32,6 +35,30 @@ function entry(over: Partial<RecentSessionEntry> = {}): RecentSessionEntry {
   };
 }
 
+/** One agent pane, in the state the rail would read off it (DL-27.3). */
+function pane(
+  paneId: number,
+  attention: PaneView["attention"],
+  phase: PaneView["phase"],
+  hasRun = true,
+): PaneView {
+  return { paneId, agent: "claude", attention, phase, hasRun, changedAt: 1 };
+}
+
+function tabWith(panes: readonly PaneView[]): TabView {
+  return {
+    key: 1,
+    process: "claude",
+    name: null,
+    dotColor: null,
+    workspacePath: "/Users/me/work/repo",
+    agents: ["claude"],
+    agentBusy: true,
+    unread: false,
+    panes,
+  };
+}
+
 describe("RecentSessionActivity", () => {
   let host: HTMLDivElement;
 
@@ -44,6 +71,8 @@ describe("RecentSessionActivity", () => {
     recentSessionsLoading.value = false;
     recentSessionsLoadState.value = { status: "ready" };
     sessionsSupported.value = true;
+    paneSessionIds.value = new Map();
+    tabViews.value = [];
     vi.clearAllMocks();
   });
 
@@ -130,13 +159,95 @@ describe("RecentSessionActivity", () => {
     nowSpy.mockRestore();
   });
 
-  it("uses a compact visible agent label without changing the full session identity", () => {
+  it("draws no agent label and keeps the agent in the accessible name", () => {
     mount();
 
-    expect(host.querySelector(".recent-session-activity__agent")?.textContent).toBe("Claude");
-    expect(host.querySelector(".recent-session-activity__resume-prefix")?.textContent).toBe(
-      "Resume Build recent activity: ",
+    // The glyph is the identity on screen (2026-08-26); the word survives only
+    // where a screen reader can still reach it.
+    expect(host.querySelector(".recent-session-activity__agent")).toBeNull();
+    expect(host.querySelector(".recent-session-activity__glyph")).not.toBeNull();
+    expect(host.querySelector(".recent-session-activity__resume-prefix")?.textContent?.trim()).toBe(
+      "Resume Claude — Build recent activity:",
     );
+    expect(host.querySelector(".recent-session-activity__row")?.textContent).not.toContain(
+      "Claude Code",
+    );
+  });
+
+  it("marks a listed session no pane is running with the quiet dot", () => {
+    mount();
+
+    const mark = host.querySelector(".recent-session-activity__row .asr-row__mark");
+    expect(mark?.getAttribute("data-state")).toBe("done");
+    expect(mark?.getAttribute("aria-hidden")).toBe("true");
+    expect(host.querySelector(".recent-session-activity__state-word")).toBeNull();
+  });
+
+  it("takes the state of the pane running that exact session, and says a loud one once", () => {
+    recentSessionEntries.value = [
+      entry({ sessionId: "running", summary: "Still going" }),
+      entry({ sessionId: "answered", summary: "Needs a decision" }),
+      entry({ sessionId: "crashed", summary: "Could not reach the daemon" }),
+      entry({ sessionId: "unheld", summary: "Nothing is running this" }),
+    ];
+    tabViews.value = [
+      tabWith([
+        pane(1, "none", "working"),
+        pane(2, "requested", "idle"),
+        pane(3, "error", "idle"),
+        pane(4, "none", "idle", false),
+      ]),
+    ];
+    paneSessionIds.value = new Map([
+      [1, "running"],
+      [2, "answered"],
+      [3, "crashed"],
+    ]);
+
+    mount();
+
+    const marks = [...host.querySelectorAll(".recent-session-activity__row .asr-row__mark")];
+    expect(marks.map((node) => node.getAttribute("data-state"))).toEqual([
+      "working",
+      "asked",
+      "failed",
+      "done",
+    ]);
+    // `working` is the one state drawn as the ring rather than a dot.
+    expect(marks[0]?.classList.contains("asr-row__mark--spinner")).toBe(true);
+    expect(
+      [...host.querySelectorAll(".recent-session-activity__state-word")].map(
+        (node) => node.textContent,
+      ),
+    ).toEqual(["running. ", "needs you. ", "failed. "]);
+  });
+
+  it("never pairs a row with a session id it does not hold", () => {
+    recentSessionEntries.value = [entry({ sessionId: "listed" })];
+    tabViews.value = [tabWith([pane(1, "none", "working")])];
+    paneSessionIds.value = new Map([[1, "a-different-session"]]);
+
+    mount();
+
+    expect(
+      host
+        .querySelector(".recent-session-activity__row .asr-row__mark")
+        ?.getAttribute("data-state"),
+    ).toBe("done");
+  });
+
+  it("keeps a dead row's mark in the column rather than dropping the track", () => {
+    const recent = entry({ cwd: "/gone" });
+    recentSessionEntries.value = [recent];
+    recentDeadProjects.value = new Set([recent.cwd]);
+
+    mount();
+
+    expect(
+      host
+        .querySelector(".recent-session-activity__row .asr-row__mark")
+        ?.getAttribute("data-state"),
+    ).toBe("done");
   });
 
   it("keeps the store's nonblank title or id fallback visible as the summary", () => {
@@ -158,8 +269,7 @@ describe("RecentSessionActivity", () => {
     const row = host.querySelector<HTMLButtonElement>(".recent-session-activity__row");
 
     expect(row?.hasAttribute("aria-label")).toBe(false);
-    expect(row?.textContent).toMatch(/^Resume Build recent activity:/);
-    expect(row?.textContent).toContain("Claude");
+    expect(row?.textContent).toMatch(/^\s*Resume Claude — Build recent activity:/);
     expect(row?.textContent).toContain("The latest assistant response.");
     expect(row?.textContent).toContain("1m");
     act(() => {
@@ -192,7 +302,7 @@ describe("RecentSessionActivity", () => {
     expect(row?.getAttribute("aria-disabled")).toBe("true");
     expect(row?.getAttribute("aria-describedby")).toBeTruthy();
     expect(row?.hasAttribute("aria-label")).toBe(false);
-    expect(row?.querySelector(".recent-session-activity__agent")?.textContent).toBe("Claude");
+    expect(row?.querySelector(".recent-session-activity__agent")).toBeNull();
     expect(row?.querySelector(".recent-session-activity__summary")?.textContent).toBe(
       "Verified assistant summary.",
     );
@@ -210,7 +320,7 @@ describe("RecentSessionActivity", () => {
     expect(reason?.id).toBe(row?.getAttribute("aria-describedby"));
     expect(row?.contains(reason ?? null)).toBe(false);
     expect(row?.textContent).not.toContain("folder is gone");
-    expect(row?.textContent).toContain("Resume Build recent activity:");
+    expect(row?.textContent).toContain("Resume Claude — Build recent activity:");
     act(() => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });

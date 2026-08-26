@@ -109,6 +109,50 @@ describe("createTabManager dropAgentPane", () => {
     tm.dispose();
   });
 
+  it("uses the Electron session CWD instead of pty_info before a Windows dock", async () => {
+    resetDesktopEnvironmentForTests();
+    initializeDesktopEnvironment({
+      platform: "windows",
+      homeDir: String.raw`C:\Users\dev`,
+    });
+    const base = createMemoryPtyClient({
+      nextId: 1,
+      agents: [{ name: "codex", path: String.raw`C:\bin\codex.exe` }],
+    });
+    const pty = {
+      ...base,
+      sessionCwds: vi.fn(async (ids: readonly number[]) =>
+        ids.flatMap((id) => {
+          const session = base.sessions.get(id);
+          return session === undefined ? [] : [{ id, cwd: session.cwd }];
+        }),
+      ),
+    };
+    const ptyInfo = vi.spyOn(pty, "ptyInfo");
+    const tm = wire(pty).tm;
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: String.raw`C:\repo`, lastOpenedAt: 1, lastAgent: "codex" }],
+    };
+    await tm.openFromPreset({ type: "leaf" }, [String.raw`C:\repo`], {
+      workspacePath: String.raw`C:\repo`,
+      agent: null,
+    });
+    const first = base.sessions.get(1);
+    if (first === undefined) {
+      throw new Error("Expected the first PTY session");
+    }
+    first.cwd = String.raw`C:\repo\nested`;
+
+    const ok = await tm.dropAgentPane(1, "right");
+
+    expect(ok).toBe(true);
+    expect(pty.sessionCwds).toHaveBeenCalledWith([1]);
+    expect(ptyInfo).not.toHaveBeenCalled();
+    expect(base.sessions.get(2)?.cwd).toBe(String.raw`C:\repo\nested`);
+    tm.dispose();
+  });
+
   it("falls back to the first detected agent for a workspace with no memory", async () => {
     const { tm, pty } = build([
       { name: "claude", path: "/bin/claude" },

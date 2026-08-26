@@ -81,7 +81,7 @@ export const THEME_PRESETS: ThemePreset[] = [
     theme: {
       // `PINNED_SIDEBAR_BG` in `derive-colors.ts` is keyed on this exact value
       // (2026-08-19): editing it here without editing the pin there retires
-      // the owner's `#272d31` sidebar silently, back to a derived lift.
+      // the owner's `#161b22` sidebar silently, back to a derived lift.
       background: "#17181c",
       // DL-3.6, applied at birth rather than retrofitted: the reviewed seed
       // was `#e5e7eb`, a faintly blue ink, and `deriveChromeColors` builds the

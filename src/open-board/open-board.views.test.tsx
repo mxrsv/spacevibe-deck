@@ -55,10 +55,12 @@ import { presetsData } from "../presets/presets-store";
 import { workspacesData } from "./workspaces-store";
 import { OpenBoard } from "./open-board";
 import { newTaskDraft, resetLauncherStore } from "../launcher/launcher-store";
-import type { NewTaskDraft } from "../launcher/new-task-draft";
+import { EMPTY_DRAFT, withWorkspace, type NewTaskDraft } from "../launcher/new-task-draft";
 import type { LaunchTaskOutcome } from "../terminal/task-prompt-send";
 import { initializeDesktopEnvironment, resetDesktopEnvironmentForTests } from "../lib/platform";
 import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
+import { settings } from "../settings/settings-store";
+import { DEFAULT_SETTINGS } from "../settings/settings-schema";
 
 const NOW = 1_800_000_000_000;
 
@@ -104,6 +106,7 @@ describe("OpenBoard home view", () => {
     pickedFolder = null;
     detected = [];
     detectGate = null;
+    settings.value = DEFAULT_SETTINGS;
   });
 
   afterEach(() => {
@@ -121,11 +124,13 @@ describe("OpenBoard home view", () => {
       canCancel?: boolean;
       canBrowseSessions?: boolean;
       openWorkspacePaths?: ReadonlySet<string>;
+      contextWorkspacePath?: string | null;
     } = {},
   ): Promise<void> => {
     await act(async () => {
       render(
         <OpenBoard
+          contextWorkspacePath={props.contextWorkspacePath ?? null}
           canCancel={props.canCancel ?? false}
           canBrowseSessions={props.canBrowseSessions ?? false}
           openWorkspacePaths={props.openWorkspacePaths ?? new Set()}
@@ -211,6 +216,10 @@ describe("OpenBoard home view", () => {
       row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
+    // The seed resolution is two awaits deep (liveness, then the agent probe),
+    // which is what `settle` exists for.
+    await settle();
+
     // Reversed on purpose (design §4.1): the row fills the Workspace field and
     // nothing else. A remembered Shell-only open no longer starts anything,
     // because selecting a workspace is not a launch any more.
@@ -242,9 +251,89 @@ describe("OpenBoard home view", () => {
       release();
       await detectGate;
     });
+    await settle();
 
     expect(newTaskDraft.value.agentId).toBe("claude");
     expect(newTaskDraft.value.workspacePath).toBe("/w/beta");
+  });
+
+  it("puts the caret in the prompt, not on the board shell", async () => {
+    // Quick Launch has always focused its textarea, and the two surfaces share
+    // one draft: a board that asks "describe the outcome" and then drops every
+    // keystroke was the odd one out (DL-32.1).
+    seed(["/w/alpha"]);
+    await mount();
+
+    expect(document.activeElement?.tagName).toBe("TEXTAREA");
+  });
+
+  it("opens on the newest live workspace with its agent already chosen", async () => {
+    // Spec §5 and §7. Before this the board opened with every field empty and
+    // a red "Pick a folder to work in" over an untouched composer, while the
+    // answer was sitting in the first row of its own recents list.
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [
+        { path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" },
+        { path: "/w/alpha", lastOpenedAt: NOW - 1 },
+      ],
+    };
+    await mount();
+    await settle();
+
+    expect(newTaskDraft.value.workspacePath).toBe("/w/beta");
+    expect(newTaskDraft.value.agentId).toBe("claude");
+    // Filling a field is not an event: the board says nothing about it.
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(host.querySelector('[role="status"]')).toBeNull();
+  });
+
+  it("does not seed a starred agent that is not on PATH", async () => {
+    // Star an agent, uninstall it, open the board: seeding it anyway would
+    // paint "That agent is not on your PATH" over an untouched composer —
+    // the resting alarm this whole change exists to remove. Spec §7 falls to
+    // the first runnable agent instead.
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    settings.value = { ...DEFAULT_SETTINGS, defaultAgent: "claude" };
+    seed(["/w/alpha"]);
+    await mount();
+    await settle();
+
+    expect(newTaskDraft.value.agentId).toBe("codex");
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("passes over a workspace that is gone, and says nothing about it", async () => {
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    seed(["/w/ghost", "/w/alpha"]);
+    missingPaths.add("/w/ghost");
+    await mount();
+    await settle();
+
+    expect(newTaskDraft.value.workspacePath).toBe("/w/alpha");
+    // The missing-folder notice belongs to a folder the user PRESSED.
+    expect(host.querySelector('[role="status"]')).toBeNull();
+  });
+
+  it("prefers the active tab's workspace over the newest recent", async () => {
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    seed(["/w/alpha"]);
+    await mount(undefined, { contextWorkspacePath: "/w/live" });
+    await settle();
+
+    expect(newTaskDraft.value.workspacePath).toBe("/w/live");
+  });
+
+  it("never overwrites a workspace the draft already names", async () => {
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    seed(["/w/alpha"]);
+    // A draft carried in from Quick Launch, or left from an abandoned attempt.
+    newTaskDraft.value = withWorkspace(EMPTY_DRAFT, "/w/kept");
+    await mount();
+    await settle();
+
+    expect(newTaskDraft.value.workspacePath).toBe("/w/kept");
   });
 
   it("a missing folder says so instead of selecting it", async () => {
@@ -308,6 +397,7 @@ describe("OpenBoard home view", () => {
     await act(async () => {
       render(
         <OpenBoard
+          contextWorkspacePath={null}
           canCancel={true}
           canBrowseSessions={false}
           openWorkspacePaths={new Set()}

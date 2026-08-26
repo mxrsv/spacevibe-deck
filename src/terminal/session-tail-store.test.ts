@@ -4,6 +4,7 @@ import { tabViews, type PaneView, type TabView } from "./tabs-store";
 import {
   installSessionTailSync,
   noteResumedPane,
+  paneModels,
   paneTails,
   resetSessionTailStore,
 } from "./session-tail-store";
@@ -29,12 +30,23 @@ const hosts = vi.hoisted(() => ({
  * nothing to quote — `pairing()` builds that one.
  */
 function tails(...sentences: readonly (string | null)[]): (SessionTailAnswer | null)[] {
-  return sentences.map((tail, index) => (tail === null ? null : { id: `s${index + 1}`, tail }));
+  return sentences.map((tail, index) =>
+    tail === null ? null : { id: `s${index + 1}`, tail, model: null },
+  );
 }
 
 /** A named pairing, for the tests that care WHICH session answered. */
 function pairing(id: string, tail: string | null): SessionTailAnswer {
-  return { id, tail };
+  return { id, tail, model: null };
+}
+
+/** A named pairing that also carries a model, for the `paneModels` tests. */
+function pairingWithModel(
+  id: string,
+  tail: string | null,
+  model: string | null,
+): SessionTailAnswer {
+  return { id, tail, model };
 }
 
 vi.mock("../host/worktree-host", () => ({
@@ -498,5 +510,120 @@ describe("session tail store — pairing hazards", () => {
     for (const request of batchAt(0)) {
       expect(request.preferredId).toBeUndefined();
     }
+  });
+});
+
+/**
+ * `paneModels` is written by the same merge as `paneTails`, under the same
+ * pairing rules, so it needs no fetch/debounce cases of its own — only the
+ * three rules from the module doc, mirrored off the equivalent `paneTails`
+ * cases above (20, 21, H1).
+ */
+describe("session tail store — paneModels", () => {
+  let dispose: (() => void) | null = null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    resetSessionTailStore();
+    tabViews.value = [];
+    hosts.available = true;
+    hosts.sessionTails.mockReset();
+    hosts.sessionTails.mockResolvedValue(tails());
+  });
+
+  afterEach(() => {
+    dispose?.();
+    dispose = null;
+    resetSessionTailStore();
+    tabViews.value = [];
+    vi.useRealTimers();
+  });
+
+  it("drops the model when the pairing moves to another session", async () => {
+    tabViews.value = [tab(1, "/w", [pane(101)])];
+    hosts.sessionTails.mockResolvedValue([
+      pairingWithModel("sess-old", "what the old session said", "claude-opus-5"),
+    ]);
+    dispose = installSessionTailSync();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(paneModels.value.get(101)).toBe("claude-opus-5");
+
+    // Re-paired, and the new conversation names no model in its window —
+    // the same case that used to leave one sentence walking across rows.
+    hosts.sessionTails.mockResolvedValue([pairingWithModel("sess-new", null, null)]);
+    tabViews.value = [tab(1, "/w", [pane(101, { changedAt: NOW + 5_000 })])];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+    expect(paneModels.value.has(101)).toBe(false);
+  });
+
+  it("keeps the last model when the same session answers with none", async () => {
+    tabViews.value = [tab(1, "/w", [pane(101)])];
+    hosts.sessionTails.mockResolvedValue([
+      pairingWithModel("sess-one", "still the newest turn", "claude-sonnet-5"),
+    ]);
+    dispose = installSessionTailSync();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+    // Same session, a tool-only turn this time — it names no model, and that
+    // is not a model change.
+    hosts.sessionTails.mockResolvedValue([pairingWithModel("sess-one", null, null)]);
+    tabViews.value = [tab(1, "/w", [pane(101, { changedAt: NOW + 5_000 })])];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+    expect(paneModels.value.get(101)).toBe("claude-sonnet-5");
+  });
+
+  it("forgets the model when the pane's agent generation changes", async () => {
+    tabViews.value = [tab(1, "/w", [pane(101)])];
+    hosts.sessionTails.mockResolvedValue([
+      pairingWithModel("sess-old", "what the first agent said", "claude-opus-5"),
+    ]);
+    dispose = installSessionTailSync();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(paneModels.value.get(101)).toBe("claude-opus-5");
+
+    // The agent exits to a shell, then a NEW agent starts in the same pane —
+    // `agent-attention.ts` reopens the gate and `hasRun` goes back to false.
+    tabViews.value = [tab(1, "/w", [pane(101, { agent: null, hasRun: false })])];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    tabViews.value = [tab(1, "/w", [pane(101, { hasRun: false, changedAt: NOW + 5_000 })])];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    // The new agent has said nothing yet, so nothing is pairable for it.
+    hosts.sessionTails.mockResolvedValue([null]);
+    tabViews.value = [tab(1, "/w", [pane(101, { changedAt: NOW + 9_000 })])];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+    // No pin: the model died with the agent generation that earned it, the
+    // same as the sentence does in H1.
+    expect(paneModels.value.has(101)).toBe(false);
+  });
+
+  it("prune republishes only the map whose survivor set actually shrank", async () => {
+    // A model with nothing to quote: `paneModels` gets an entry and
+    // `paneTails` stays empty, on purpose (the `tail: null` branch of
+    // `merged`).
+    tabViews.value = [tab(1, "/w", [pane(101)])];
+    hosts.sessionTails.mockResolvedValue([pairingWithModel("sess-1", null, "claude-opus-5")]);
+    dispose = installSessionTailSync();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(paneModels.value.get(101)).toBe("claude-opus-5");
+    expect(paneTails.value.size).toBe(0);
+
+    const tailsBeforePrune = paneTails.value;
+    const modelsBeforePrune = paneModels.value;
+
+    // Pane 101 is replaced by a shell pane, so `entriesOf` sends no request
+    // this round — isolating the run to the prune step alone — while pane 101
+    // is no longer live and gets pruned out of `paneModels`. `paneTails` was
+    // already empty, so pruning it is a no-op and must not republish it.
+    tabViews.value = [tab(1, "/w", [pane(102, { agent: null, hasRun: false })])];
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+    expect(hosts.sessionTails).toHaveBeenCalledTimes(1);
+    expect(paneModels.value.has(101)).toBe(false);
+    expect(paneModels.value).not.toBe(modelsBeforePrune);
+    expect(paneTails.value).toBe(tailsBeforePrune);
   });
 });

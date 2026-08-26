@@ -2,6 +2,7 @@ import type { ComponentType } from "preact";
 import { AttentionDirectionSection } from "./sections/attention-direction";
 import { BoardSection } from "./sections/board-section";
 import { ChromeSection } from "./sections/chrome-section";
+import { ExplorerHeaderVariantsSection } from "./sections/explorer-header-variants";
 import { MatrixSection } from "./sections/matrix-section";
 import { NavigationSection } from "./sections/navigation-section";
 import { OverlaysSection } from "./sections/overlays-section";
@@ -23,6 +24,13 @@ export interface GallerySection {
  * Order runs from the selected system outward: direction tokens, controls,
  * shell, then the surfaces that cover it. Historical comparison pages stay
  * out of this registry so the review surface shows one visual language only.
+ *
+ * `unread mark direction` was registered on 2026-08-25 and taken out the same
+ * day: its candidate C shipped, so the real rail in every section below now
+ * draws it and a four-way comparison would show three treatments that lost
+ * beside a `current` column that is no longer current. The file stays in the
+ * tree as the record of that review, unimported like the other parked
+ * comparison pages.
  *
  * `state matrix` returned on 2026-08-13. It was parked while the direction was
  * nine fixed hex values, where four theme columns would have been four copies
@@ -51,6 +59,11 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "popovers", label: "popovers", Section: PopoversSection },
   { id: "overlays", label: "overlays", Section: OverlaysSection },
   { id: "board", label: "open board", Section: BoardSection },
+  {
+    id: "explorer-header",
+    label: "explorer header direction",
+    Section: ExplorerHeaderVariantsSection,
+  },
   {
     id: "launch-profiles",
     label: "launch profiles",

@@ -3,7 +3,7 @@
  *
  * The renderer loads a fixed allowlist of these by name. Existing files keep
  * their Tauri-era JSON shape, while renderer-only features add their own
- * narrowly named stores (for example `sidebar-banner.json`). The cutover is a
+ * narrowly named stores (for example `workspace-logos.json`). The cutover is a
  * clean install by decision, but keeping each shape stable means the renderer
  * code and its tests do not have to fork by host.
  *

@@ -13,7 +13,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as opencode from "./opencode";
-import { candidates, sessionTailText } from "./opencode-db";
+import { candidates, sessionModel, sessionTailText } from "./opencode-db";
 
 const T0 = Date.parse("2026-08-17T10:00:00Z");
 
@@ -71,12 +71,13 @@ function addMessage(
   id: string,
   role: string,
   timeCreated: number,
+  modelID?: string,
 ): void {
   db.prepare("INSERT INTO message (id, session_id, time_created, data) VALUES (?, ?, ?, ?)").run(
     id,
     sessionId,
     timeCreated,
-    JSON.stringify({ role, agent: "build" }),
+    JSON.stringify({ role, agent: "build", modelID }),
   );
 }
 
@@ -199,6 +200,58 @@ describe("opencode-db.sessionTailText", () => {
     addSession(db, "ses_a", "/tmp/one", T0);
     db.close();
     expect(sessionTailText(home, "ses_missing")).toBeNull();
+  });
+});
+
+describe("opencode-db.sessionModel", () => {
+  it("reads the model off the same newest text-bearing assistant message the tail comes from", () => {
+    const db = createDatabase(home);
+    addSession(db, "ses_a", "/tmp/one", T0);
+    addMessage(db, "ses_a", "msg_said", "assistant", T0, "opencode-model-x");
+    addPart(
+      db,
+      "ses_a",
+      "msg_said",
+      "prt_text",
+      { type: "text", text: "Working tree clean." },
+      T0 + 20,
+    );
+    db.close();
+
+    expect(sessionModel(home, "ses_a")).toBe("opencode-model-x");
+  });
+
+  it("falls back to the turn before one that only ran tools, model included", () => {
+    const db = createDatabase(home);
+    addSession(db, "ses_b", "/tmp/one", T0);
+    addMessage(db, "ses_b", "msg_old", "assistant", T0, "opencode-model-old");
+    addPart(db, "ses_b", "msg_old", "prt_old", { type: "text", text: "Ran the migration." }, T0);
+    addMessage(db, "ses_b", "msg_tool", "assistant", T0 + 50, "opencode-model-new");
+    addPart(db, "ses_b", "msg_tool", "prt_tool", { type: "tool", tool: "bash" }, T0 + 50);
+    db.close();
+
+    // The tool-only turn's model is never reached: the SQL answers the
+    // newest TEXT-bearing message, so a mid-session model switch that has
+    // not spoken yet still reports the previous model.
+    expect(sessionModel(home, "ses_b")).toBe("opencode-model-old");
+  });
+
+  it("answers null when the message row names no model", () => {
+    const db = createDatabase(home);
+    addSession(db, "ses_c", "/tmp/one", T0);
+    addMessage(db, "ses_c", "msg_said", "assistant", T0);
+    addPart(db, "ses_c", "msg_said", "prt_text", { type: "text", text: "No model here." }, T0);
+    db.close();
+
+    expect(sessionModel(home, "ses_c")).toBeNull();
+  });
+
+  it("answers null for an unknown session and with no database at all", () => {
+    expect(sessionModel(home, "ses_missing")).toBeNull();
+    const db = createDatabase(home);
+    addSession(db, "ses_a", "/tmp/one", T0);
+    db.close();
+    expect(sessionModel(home, "ses_missing")).toBeNull();
   });
 });
 

@@ -141,7 +141,7 @@ export function OpenBoardWorktreeForm({
         </div>
 
         {error !== null ? (
-          <div class="wtf__error" role="status">
+          <div class="wtf__error" role="alert">
             {worktreeErrorCopy(error)}
           </div>
         ) : null}

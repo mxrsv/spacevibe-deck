@@ -40,7 +40,8 @@ export function createPaneInfoPoller(deps: PaneInfoPollerDeps): PaneInfoPoller {
   const infoByPane = new Map<number, PaneProcessInfo>();
   let branch: string | null = null;
   let lastBranchCwd: string | null = null;
-  let timer: ReturnType<typeof setInterval> | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let running = false;
   let warned = false;
   let requestedPolls = 0;
   let completedPolls = 0;
@@ -98,7 +99,7 @@ export function createPaneInfoPoller(deps: PaneInfoPollerDeps): PaneInfoPoller {
    * overwrite the newer one. Calls made while a reading is active coalesce
    * into one trailing refresh so newly materialized panes are still observed.
    */
-  function poll(): Promise<void> {
+  function drainPolls(): Promise<void> {
     requestedPolls += 1;
     if (drainPromise !== null) {
       return drainPromise;
@@ -119,16 +120,40 @@ export function createPaneInfoPoller(deps: PaneInfoPollerDeps): PaneInfoPoller {
     return current;
   }
 
+  function scheduleNext(): void {
+    if (!running || timer !== null) {
+      return;
+    }
+    timer = setTimeout(() => {
+      timer = null;
+      void poll();
+    }, deps.intervalMs ?? DEFAULT_INTERVAL_MS);
+  }
+
+  function poll(): Promise<void> {
+    if (running && timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    const current = drainPolls();
+    if (running) {
+      void current.finally(scheduleNext);
+    }
+    return current;
+  }
+
   return {
     start() {
-      if (timer !== null) {
+      if (running) {
         return;
       }
-      timer = setInterval(() => void poll(), deps.intervalMs ?? DEFAULT_INTERVAL_MS);
+      running = true;
+      scheduleNext();
     },
     stop() {
+      running = false;
       if (timer !== null) {
-        clearInterval(timer);
+        clearTimeout(timer);
         timer = null;
       }
     },

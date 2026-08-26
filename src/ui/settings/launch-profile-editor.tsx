@@ -1,14 +1,13 @@
 import { ArrowClockwise } from "@phosphor-icons/react";
 import { useSignal } from "@preact/signals";
+import { Fragment } from "preact";
 import { DeckIcon, ROW_ICON } from "../controls/deck-icon";
+import { ConfigGroup, ConfigRow } from "../controls/config-row";
 import { settings, updateSettings } from "../../settings/settings-store";
 import { BUILTIN_AGENTS, type BuiltinAgent } from "../../lib/agent-catalog";
 import { AGENT_LOGOS } from "../../lib/agent-logos";
 import { letterAvatar } from "../../lib/letter-avatar";
-import {
-  detectedAgents,
-  ensureAgentsDetected,
-} from "../../terminal/agent-detection-store";
+import { detectedAgents, ensureAgentsDetected } from "../../terminal/agent-detection-store";
 import {
   commandAgentId,
   commandFlags,
@@ -17,6 +16,7 @@ import {
   type LaunchProfile,
 } from "../../lib/launch-profile";
 import { agentLaunchCommand } from "../../lib/launch-command";
+import { modelsFor, runtimeFor, type AgentRuntimeDefault } from "../../launcher/runtime-catalog";
 
 /**
  * The agent catalog in Settings → Agents.
@@ -54,10 +54,7 @@ function AgentMark({ id, label }: { id: string; label: string }) {
   }
   const avatar = letterAvatar(label, id);
   return (
-    <span
-      class="lp-mark lp-mark--letter"
-      style={{ color: `var(--${avatar.color})` }}
-    >
+    <span class="lp-mark lp-mark--letter" style={{ color: `var(--${avatar.color})` }}>
       {avatar.letter}
     </span>
   );
@@ -104,11 +101,7 @@ function EnabledToggle({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <div
-      class="segmented lp-enabled"
-      role="radiogroup"
-      aria-label={`${agent.label} availability`}
-    >
+    <div class="segmented lp-enabled" role="radiogroup" aria-label={`${agent.label} availability`}>
       {[true, false].map((value) => (
         <button
           key={String(value)}
@@ -150,6 +143,122 @@ function AgentRow({
   );
 }
 
+const RUNTIME_VALUE_SAFE = /^[A-Za-z0-9_.,:@+=/-]+$/;
+
+function withoutKey<T>(source: Readonly<Record<string, T>>, key: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(source).filter(([entry]) => entry !== key));
+}
+
+function RuntimeSettings({ agent }: { readonly agent: BuiltinAgent }) {
+  const capability = runtimeFor(agent.id);
+  const declared = settings.value.agentModels[agent.id] ?? [];
+  const stored = settings.value.agentRuntimeDefaults[agent.id] ?? {
+    model: null,
+    effort: null,
+  };
+  const modelDraft = useSignal(declared.join(", "));
+  const modelError = useSignal<string | null>(null);
+
+  if (capability === null) return null;
+
+  const models = modelsFor(agent.id, settings.value.agentModels);
+
+  const saveModels = (): void => {
+    const values = modelDraft.value
+      .split(",")
+      .map((value) => value.trim())
+      .filter((value, index, all) => value !== "" && all.indexOf(value) === index);
+    if (values.some((value) => !RUNTIME_VALUE_SAFE.test(value))) {
+      modelError.value = "Model values must be one shell-safe argument";
+      return;
+    }
+    modelError.value = null;
+    updateSettings({
+      agentModels:
+        values.length === 0
+          ? withoutKey(settings.value.agentModels, agent.id)
+          : { ...settings.value.agentModels, [agent.id]: values },
+    });
+  };
+
+  const saveDefault = (next: AgentRuntimeDefault): void => {
+    updateSettings({
+      agentRuntimeDefaults:
+        next.model === null && next.effort === null
+          ? withoutKey(settings.value.agentRuntimeDefaults, agent.id)
+          : { ...settings.value.agentRuntimeDefaults, [agent.id]: next },
+    });
+  };
+
+  return (
+    <div class="lp-runtime" data-runtime-agent={agent.id}>
+      {capability.modelFlag === null ? null : (
+        <label class="lp-runtime__field lp-runtime__field--models">
+          <span>Models</span>
+          <input
+            type="text"
+            class="text-input text-input--small"
+            aria-label={`Models for ${agent.label}`}
+            placeholder="model-a, provider/model-b"
+            value={modelDraft.value}
+            onInput={(event) => {
+              modelDraft.value = event.currentTarget.value;
+              modelError.value = null;
+            }}
+            onBlur={saveModels}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+            }}
+          />
+        </label>
+      )}
+      {capability.modelFlag !== null && models.length > 0 ? (
+        <label class="lp-runtime__field">
+          <span>Default model</span>
+          <select
+            aria-label={`Default model for ${agent.label}`}
+            value={stored.model ?? ""}
+            onChange={(event) =>
+              saveDefault({ ...stored, model: event.currentTarget.value || null })
+            }
+          >
+            <option value="">CLI default</option>
+            {models.map((model) => (
+              <option key={model.value} value={model.value}>
+                {model.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {capability.effortFlag === null ? null : (
+        <label class="lp-runtime__field">
+          <span>Default effort</span>
+          <select
+            aria-label={`Default effort for ${agent.label}`}
+            value={stored.effort ?? ""}
+            onChange={(event) =>
+              saveDefault({ ...stored, effort: event.currentTarget.value || null })
+            }
+          >
+            <option value="">CLI default</option>
+            {capability.efforts.map((effort) => (
+              <option key={effort.value} value={effort.value}>
+                {effort.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {modelError.value === null ? null : (
+        <p class="lp-runtime__error" role="alert">
+          {modelError.value}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function LaunchProfileEditor() {
   const profiles = settings.value.launchProfiles;
   const defaults = settings.value.defaultLaunchProfiles;
@@ -160,12 +269,8 @@ export function LaunchProfileEditor() {
   const refreshing = useSignal(false);
 
   const installedIds = new Set(detectedAgents.value.map((agent) => agent.name));
-  const installed = BUILTIN_AGENTS.filter((agent) =>
-    installedIds.has(agent.id),
-  );
-  const available = BUILTIN_AGENTS.filter(
-    (agent) => !installedIds.has(agent.id),
-  );
+  const installed = BUILTIN_AGENTS.filter((agent) => installedIds.has(agent.id));
+  const available = BUILTIN_AGENTS.filter((agent) => !installedIds.has(agent.id));
 
   const setEnabled = (agentId: string, next: boolean): void => {
     updateSettings({
@@ -183,11 +288,9 @@ export function LaunchProfileEditor() {
     // `ensureAgentsDetected` has no force flag: a warm cache answers instantly
     // and revalidates behind. That is the right behaviour here too — the
     // button's job is to start a scan, not to block on one.
-    void ensureAgentsDetected(BUILTIN_AGENTS.map((agent) => agent.id)).finally(
-      () => {
-        refreshing.value = false;
-      },
-    );
+    void ensureAgentsDetected(BUILTIN_AGENTS.map((agent) => agent.id)).finally(() => {
+      refreshing.value = false;
+    });
   };
 
   const add = (): void => {
@@ -244,7 +347,12 @@ export function LaunchProfileEditor() {
           No agent CLI found on your PATH. Install one below, then Refresh.
         </p>
       ) : (
-        installed.map((agent) => renderRow(agent))
+        installed.map((agent) => (
+          <Fragment key={agent.id}>
+            {renderRow(agent)}
+            <RuntimeSettings agent={agent} />
+          </Fragment>
+        ))
       )}
 
       {available.length > 0 && (
@@ -257,34 +365,42 @@ export function LaunchProfileEditor() {
         </>
       )}
 
-      <div class="cfg-row lp-add">
-        <input
-          type="text"
-          class="text-input lp-add__input"
-          aria-label="Add command"
-          placeholder="Add command (e.g. claude --plan)"
-          value={draft.value}
-          onInput={(event) => {
-            draft.value = event.currentTarget.value;
-            draftError.value = null;
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              add();
-            }
-          }}
-        />
-        <button
-          type="button"
-          class="cfg-btn"
-          aria-label="Add"
-          disabled={draft.value.trim() === ""}
-          onClick={add}
-        >
-          Add
-        </button>
-      </div>
+      <p class="lp-runtime-help">
+        Model values must be one shell-safe argument. For values needing quotes or brackets, save a
+        command or declare a custom agent instead.
+      </p>
+
+      <ConfigGroup label="Commands" />
+      <ConfigRow label="Add command" desc="Save another way to launch an existing agent identity">
+        <div class="lp-add__controls">
+          <input
+            type="text"
+            class="text-input lp-add__input"
+            aria-label="Add command"
+            placeholder="claude --plan"
+            value={draft.value}
+            onInput={(event) => {
+              draft.value = event.currentTarget.value;
+              draftError.value = null;
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                add();
+              }
+            }}
+          />
+          <button
+            type="button"
+            class="cfg-btn"
+            aria-label="Add"
+            disabled={draft.value.trim() === ""}
+            onClick={add}
+          >
+            Add
+          </button>
+        </div>
+      </ConfigRow>
       {draftError.value !== null && (
         <div class="cfg-custom--error" role="alert">
           {draftError.value}

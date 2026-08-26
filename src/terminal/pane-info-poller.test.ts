@@ -252,4 +252,40 @@ describe("createPaneInfoPoller", () => {
     expect(poller.infoFor(1)?.cwd).toBe("/first");
     expect(poller.infoFor(2)?.cwd).toBe("/second");
   });
+
+  it("waits one full interval after a slow recurring poll completes", async () => {
+    vi.useFakeTimers();
+    const pending: Array<(infos: PaneProcessInfo[]) => void> = [];
+    const ptyInfo = vi.fn(
+      () =>
+        new Promise<PaneProcessInfo[]>((resolve) => {
+          pending.push(resolve);
+        }),
+    );
+    const poller = createPaneInfoPoller({
+      pty: { ptyInfo, gitBranch: async () => null },
+      targets: () => [1],
+      activePaneId: () => null,
+      onUpdate: () => {},
+      intervalMs: 100,
+    });
+
+    poller.start();
+    await vi.advanceTimersByTimeAsync(400);
+    expect(ptyInfo).toHaveBeenCalledTimes(1);
+
+    pending[0]([info(1, "/repo")]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ptyInfo).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(99);
+    expect(ptyInfo).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(ptyInfo).toHaveBeenCalledTimes(2);
+
+    poller.stop();
+    pending[1]([info(1, "/repo")]);
+    await vi.advanceTimersByTimeAsync(0);
+    vi.useRealTimers();
+  });
 });

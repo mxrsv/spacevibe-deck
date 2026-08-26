@@ -76,6 +76,17 @@ const RADIUS_VALUES = new Set([
   "50%",
   "999px",
   "0",
+  // PROVISIONAL (rail-worktree-card plan, Task 7): the worktree card's two
+  // pinned radius values, shipped ahead of a DL-20.1 edit rather than after
+  // one. The owner has not yet picked between amending DL-20.1 to admit them,
+  // adding a rung, or snapping the card to an existing role (Task 10's gate
+  // row 3) — until that pick lands and Task 11 writes it into DL-20.1's own
+  // text, these two entries are the exception to this comment's own rule.
+  // `src/styles/04c-rail-worktree-card.css` pins both to exactly one variable
+  // each for that reason: whichever way the pick goes, undoing this entry is
+  // a one-line edit, not a hunt through the card's stylesheet.
+  "var(--asr-card-radius)",
+  "var(--asr-card-pill-radius)",
 ]);
 const RADIUS_DECLARATION = /^border-radius\s*:\s*(.+)$/;
 

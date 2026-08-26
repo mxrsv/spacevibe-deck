@@ -86,12 +86,12 @@ import {
   boardOpen,
   editorRequest,
   promptsOpen,
-  quickPickerWorkspace,
   reportChromeMessage,
   saveDialogOpen,
   settingsOpen,
   shortcutCaptureActive,
 } from "../chrome/events";
+import { toggleQuickLaunch } from "../launcher/launcher-store";
 import { INERT_SURFACES, type SurfaceEditCommand } from "./surface-strip";
 import {
   type TabEntry,
@@ -117,6 +117,7 @@ export type { OpenFromPresetOptions, TabManagerDeps, TabManager } from "./tab-ma
 
 const WINDOWS_AGENT_TIMEOUT_MESSAGE =
   "PowerShell was not ready in time. Launch the agent manually.";
+const WINDOWS_STARTUP_POLL_FALLBACK_MS = 4000;
 
 export function createTabManager(
   host: HTMLElement,
@@ -168,6 +169,19 @@ export function createTabManager(
   // self-sufficient even if pty_info is failing — keyed by pane so a chatty
   // neighbor pane can't keep pushing another pane's expiry away.
   const activityResync = new Map<number, ReturnType<typeof setTimeout>>();
+  // A Windows process census forks another PowerShell. Keep that cold WMI
+  // child away from newly spawned ConPTY shells until their injected prompt
+  // proves the profile has finished, with a bounded fallback if the marker is
+  // lost. The host `pty_info` command itself remains unrestricted for close,
+  // quit and task-prompt callers outside this renderer poller.
+  const windowsStartupPollFallbacks = new Map<number, ReturnType<typeof setTimeout>>();
+  // The prompt marker can beat the spawn IPC response, so the pane id is not
+  // always available to `deferWindowsStartupPoll` when readiness arrives.
+  const windowsStartupReady = new Set<number>();
+  // Cover the whole async spawn, not only the period after its pane ids have
+  // returned to the renderer. Otherwise the recurring poll can fork WMI while
+  // ConPTY and the PowerShell profile are still starting.
+  let windowsStartupSpawns = 0;
   // Panes write user input through this wrapper so the tracker can tell
   // keystroke echo from real output; everything else passes straight through.
   const paneIo: PtyClient = {
@@ -756,18 +770,10 @@ export function createTabManager(
   }
 
   async function newTab(): Promise<void> {
-    // The + button's fast path: AgentQuickPicker (app.tsx), not the Open
-    // board — pick an agent, land in the active tab's workspace, no
-    // workspace/preset step. `openQuickAgent` below does the materialize
-    // once a chip is picked. The Open board's full flow (new workspace,
-    // worktree, layout preset) stays reachable from its own sidebar entry.
-    //
-    // Cleared first: the rail's per-project `+` (DL-27.18) raises the same
-    // panel with a destination pinned, and an open from here means "the
-    // active tab's workspace" — inheriting the last rail target would open
-    // this ⌘T somewhere the user never pointed at.
-    quickPickerWorkspace.value = null;
-    agentQuickPickerOpen.value = true;
+    // The + / Cmd+T path raises the shared non-modal Quick Launch in the
+    // active workspace. No tab is materialized until its final action; the
+    // legacy AgentQuickPicker remains compiled as the one-line revert seam.
+    toggleQuickLaunch(activeWorkspacePath());
   }
 
   /**
@@ -775,6 +781,17 @@ export function createTabManager(
    * Open board / Layout preset / Closed tab all go here.
    */
   async function materializeEntry(intent: MaterializeIntent): Promise<TabEntry | null> {
+    const finishStartupSpawn = beginWindowsStartupSpawn();
+    try {
+      return await materializeEntryWhilePollingPaused(intent);
+    } finally {
+      finishStartupSpawn?.();
+    }
+  }
+
+  async function materializeEntryWhilePollingPaused(
+    intent: MaterializeIntent,
+  ): Promise<TabEntry | null> {
     // A workspace may own any number of tabs: opening one that already has a
     // tab spawns another rather than focusing the first, so the same repo can
     // run several agent sessions side by side. `workspacePath` is a label the
@@ -793,11 +810,15 @@ export function createTabManager(
         overrides.set(entry.key, override);
       }
     }
+    const paneIds = entry.manager.paneIds();
+    const pollDeferred = deferWindowsStartupPoll(paneIds);
     // By key, not by "last": a concurrent materialize may have pushed after
     // this one, and selecting its tab would put the user in a pane they did
     // not ask for.
     selectTab(tabs.indexOf(entry));
-    void poller.poll();
+    if (!pollDeferred) {
+      void poller.poll();
+    }
     // Each pane types its command once its shell prints the first byte;
     // `null` arms nothing. The id becomes a command line HERE rather than
     // inside the launcher: `arm` still takes a plain string per pane and
@@ -824,7 +845,6 @@ export function createTabManager(
       agentId === null
         ? null
         : (launchCommand ?? resolveAgentCommand(agentId, settings.value.customAgents));
-    const paneIds = entry.manager.paneIds();
     if (launchCommand !== null) {
       for (const id of paneIds) {
         launchCommandByPane.set(id, launchCommand);
@@ -1048,38 +1068,46 @@ export function createTabManager(
       activeWorkspacePath(),
       agentOptions(detected, customAgents, settings.value.disabledAgents),
     );
-    const paneId = await manager.dockNewPaneAt(targetPaneId, edge);
-    if (paneId === null) {
-      return false;
+    const finishStartupSpawn = beginWindowsStartupSpawn();
+    try {
+      const paneId = await manager.dockNewPaneAt(targetPaneId, edge);
+      if (paneId === null) {
+        return false;
+      }
+      const pollDeferred = deferWindowsStartupPoll([paneId]);
+      // The drop states no mode, so the agent's default profile applies — the
+      // same rule the Open board gets through `materialize`. Composed here
+      // because this is the one launch that does not go through it.
+      const launchCommand = agentLaunchCommand(
+        agentId,
+        settings.value.launchProfiles,
+        settings.value.defaultLaunchProfiles,
+        customAgents,
+      );
+      if (launchCommand !== null) {
+        launchCommandByPane.set(paneId, launchCommand);
+      }
+      launcher.arm([
+        {
+          id: paneId,
+          command:
+            agentId === null ? null : (launchCommand ?? resolveAgentCommand(agentId, customAgents)),
+        },
+      ]);
+      if (agentId !== null) {
+        // Usage analytics (spec §4): the one agent launch outside `materialize`.
+        countAgentLaunch(agentId);
+      }
+      // The docked pane has no process info until the next tick otherwise, so
+      // the rail and the tab chip would sit blank for up to the poll interval.
+      if (!pollDeferred) {
+        void poller.poll();
+      }
+      syncViews();
+      return true;
+    } finally {
+      finishStartupSpawn?.();
     }
-    // The drop states no mode, so the agent's default profile applies — the
-    // same rule the Open board gets through `materialize`. Composed here
-    // because this is the one launch that does not go through it.
-    const launchCommand = agentLaunchCommand(
-      agentId,
-      settings.value.launchProfiles,
-      settings.value.defaultLaunchProfiles,
-      customAgents,
-    );
-    if (launchCommand !== null) {
-      launchCommandByPane.set(paneId, launchCommand);
-    }
-    launcher.arm([
-      {
-        id: paneId,
-        command:
-          agentId === null ? null : (launchCommand ?? resolveAgentCommand(agentId, customAgents)),
-      },
-    ]);
-    if (agentId !== null) {
-      // Usage analytics (spec §4): the one agent launch outside `materialize`.
-      countAgentLaunch(agentId);
-    }
-    // The docked pane has no process info until the next tick otherwise, so
-    // the rail and the tab chip would sit blank for up to the poll interval.
-    void poller.poll();
-    syncViews();
-    return true;
   }
 
   /** Fresh CWDs via TabMaterialize so a just-cd'd pane saves correctly. */
@@ -1356,7 +1384,35 @@ export function createTabManager(
    * no longer enough. One `pty_info` IPC takes the whole id list.
    */
   function pollTargets(): number[] {
-    return allPaneIds();
+    if (windowsStartupSpawns > 0) {
+      return [];
+    }
+    const ids = allPaneIds();
+    if (windowsStartupPollFallbacks.size === 0) {
+      return ids;
+    }
+    const live = new Set(ids);
+    for (const id of [...windowsStartupPollFallbacks.keys()]) {
+      if (!live.has(id)) {
+        forgetWindowsStartupPoll(id);
+      }
+    }
+    return windowsStartupPollFallbacks.size === 0 ? ids : [];
+  }
+
+  function beginWindowsStartupSpawn(): (() => void) | null {
+    if (getDesktopEnvironment().platform !== "windows") {
+      return null;
+    }
+    windowsStartupSpawns += 1;
+    let finished = false;
+    return () => {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      windowsStartupSpawns -= 1;
+    };
   }
 
   function currentAgentMatchers() {
@@ -1383,6 +1439,39 @@ export function createTabManager(
       syncViews();
     },
   });
+
+  function forgetWindowsStartupPoll(id: number): boolean {
+    const fallback = windowsStartupPollFallbacks.get(id);
+    if (fallback === undefined) {
+      return false;
+    }
+    clearTimeout(fallback);
+    windowsStartupPollFallbacks.delete(id);
+    return true;
+  }
+
+  function releaseWindowsStartupPoll(id: number): void {
+    forgetWindowsStartupPoll(id);
+  }
+
+  function deferWindowsStartupPoll(ids: readonly number[]): boolean {
+    if (getDesktopEnvironment().platform !== "windows" || ids.length === 0) {
+      return false;
+    }
+    for (const id of ids) {
+      if (windowsStartupReady.delete(id)) {
+        continue;
+      }
+      if (windowsStartupPollFallbacks.has(id)) {
+        continue;
+      }
+      windowsStartupPollFallbacks.set(
+        id,
+        setTimeout(() => releaseWindowsStartupPoll(id), WINDOWS_STARTUP_POLL_FALLBACK_MS),
+      );
+    }
+    return true;
+  }
 
   /**
    * The strip as the user sees it: every chip, terminal or surface, in the
@@ -2013,8 +2102,20 @@ export function createTabManager(
     dispatchAction(action);
   }
 
-  function splitActive(dir: Direction): Promise<void> {
-    return activeManager()?.splitActive(dir) ?? Promise.resolve();
+  async function splitActive(dir: Direction): Promise<void> {
+    const manager = activeManager();
+    if (manager === null) {
+      return;
+    }
+    const before = new Set(manager.paneIds());
+    const finishStartupSpawn = beginWindowsStartupSpawn();
+    try {
+      await manager.splitActive(dir);
+      const spawned = manager.paneIds().filter((id) => !before.has(id));
+      deferWindowsStartupPoll(spawned);
+    } finally {
+      finishStartupSpawn?.();
+    }
   }
 
   // `dispose()` can run while this await is still in flight (a remount mid-
@@ -2162,10 +2263,15 @@ export function createTabManager(
     await registerUnlisten(
       pty.listenPromptReady((id) => {
         launcher.notePromptReady(id);
+        if (getDesktopEnvironment().platform === "windows" && !forgetWindowsStartupPoll(id)) {
+          windowsStartupReady.add(id);
+        }
       }),
     );
     await registerUnlisten(
       pty.listenExit((id) => {
+        forgetWindowsStartupPoll(id);
+        windowsStartupReady.delete(id);
         // Note the exit BEFORE fanning out: a multi-pane tab auto-closes the
         // pane inside handleExit, which prunes it from the tracker — running
         // noteExit first updates the live record instead of re-creating one
@@ -2279,6 +2385,11 @@ export function createTabManager(
         clearTimeout(pending);
       }
       activityResync.clear();
+      for (const fallback of windowsStartupPollFallbacks.values()) {
+        clearTimeout(fallback);
+      }
+      windowsStartupPollFallbacks.clear();
+      windowsStartupReady.clear();
       window.removeEventListener("keydown", handleShortcut, true);
       for (const unlisten of unlisteners) {
         unlisten();

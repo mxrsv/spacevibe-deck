@@ -4,6 +4,7 @@ import type { BootMode } from "../terminal/transfer-client";
 interface BrowserPanelObscuredState {
   readonly overlayCoversPane: boolean;
   readonly agentQuickPickerOpen: boolean;
+  readonly quickLaunchOpen: boolean;
   readonly usageConsentOpen: boolean;
   readonly promptsOpen: boolean;
   readonly persistErrorVisible: boolean;
@@ -15,6 +16,7 @@ export function browserPanelObscured(state: BrowserPanelObscuredState): boolean 
   return (
     state.overlayCoversPane ||
     state.agentQuickPickerOpen ||
+    state.quickLaunchOpen ||
     state.usageConsentOpen ||
     state.promptsOpen ||
     state.persistErrorVisible ||

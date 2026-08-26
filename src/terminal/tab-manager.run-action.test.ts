@@ -4,7 +4,8 @@ import type { Pane } from "./pane";
 import type { CreatePaneFn } from "./pane-lifecycle";
 import type { ShortcutAction } from "./keymap";
 import type { TabManager } from "./tab-manager";
-import { agentQuickPickerOpen, boardOpen, saveDialogOpen } from "../chrome/events";
+import { boardOpen, saveDialogOpen } from "../chrome/events";
+import { quickLaunchOpen, resetLauncherStore } from "../launcher/launcher-store";
 import { activeTabIndex, tabViews } from "./tabs-store";
 import { settings } from "../settings/settings-store";
 import { DEFAULT_SETTINGS } from "../settings/settings-schema";
@@ -78,19 +79,13 @@ beforeEach(() => {
   vi.mocked(sendAgentNotification).mockClear();
 });
 
-// `newTab()` (the "new-tab" action) flips this module signal — a global
-// reset, not a per-describe one like `boardOpen`'s scattered resets below,
-// because leaving it true after whichever test exercises "new-tab" would
-// silently rank every later test's `openOverlayRanks()` at "modal", failing
-// unrelated pane-tiered assertions with no visible connection to the cause.
 afterEach(() => {
-  agentQuickPickerOpen.value = false;
+  resetLauncherStore();
 });
 
 describe("runAction — the macOS menu bridge", () => {
-  // `new-tab` is the probe: it raises AgentQuickPicker rather than spawning
-  // a tab directly (the picker owns the agent choice), so
-  // `agentQuickPickerOpen` is the observable, not `tabViews.length`.
+  // `new-tab` raises Quick Launch rather than spawning a tab directly, so its
+  // visibility signal is the observable, not `tabViews.length`.
   async function ready(): Promise<TabManager> {
     boardOpen.value = false;
     const { tm } = setup({});
@@ -110,7 +105,7 @@ describe("runAction — the macOS menu bridge", () => {
     tm.runAction("new-tab");
     await flush();
 
-    expect(agentQuickPickerOpen.value).toBe(true);
+    expect(quickLaunchOpen.value).toBe(true);
     tm.dispose();
   });
 
@@ -186,7 +181,7 @@ describe("runAction — the macOS menu bridge", () => {
     tm.runAction("new-tab");
     await flush();
 
-    expect(agentQuickPickerOpen.value).toBe(true);
+    expect(quickLaunchOpen.value).toBe(true);
     input.remove();
     tm.dispose();
   });

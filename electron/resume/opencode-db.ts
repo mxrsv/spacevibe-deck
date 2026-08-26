@@ -42,7 +42,8 @@ const SESSIONS_SQL = `
 `;
 
 /**
- * The newest assistant text of one session, in one statement.
+ * The newest assistant text of one session, and the model that message ran
+ * on, in one statement.
  *
  * The two `json_extract` predicates are the SQL spelling of the file walk in
  * `opencode.ts`: `role = 'assistant'` skips the user's own turns, and
@@ -50,9 +51,14 @@ const SESSIONS_SQL = `
  * and would print the model's private thinking), `step-start`, tool calls and
  * patches. A turn that only ran tools contributes no row at all, so ordering
  * by time and taking one row IS the walk-back to the turn before it.
+ *
+ * `modelID` sits on the MESSAGE, not the part, but comes along for free in
+ * the same join. This is the newest **text-bearing** turn only: a turn that
+ * switched model and then only ran tools reports the previous model until it
+ * speaks again.
  */
 const TAIL_SQL = `
-  SELECT json_extract(p.data, '$.text') AS text
+  SELECT json_extract(p.data, '$.text') AS text, json_extract(m.data, '$.modelID') AS model
   FROM part p
   JOIN message m ON m.id = p.message_id
   WHERE p.session_id = ?
@@ -135,15 +141,42 @@ export function candidates(home: string): CandidateSession[] {
   );
 }
 
-/** The newest thing this session's agent said, or null. */
-export function sessionTailText(home: string, sessionId: string): string | null {
+/**
+ * `TAIL_SQL`'s one row, both columns pulled and validated the same way
+ * `sessionTailText` and `sessionModel` each need — one shared shape so the
+ * two never validate the same columns differently. Each caller of either
+ * function still runs the statement once (the row is not cached across
+ * calls, matching every other reader in this module), which is why
+ * `session-tail.ts` asking for both a session's text and its model costs two
+ * cheap reads rather than one.
+ */
+interface TailRow {
+  readonly text: string | null;
+  readonly model: string | null;
+}
+
+function queryTail(home: string, sessionId: string): TailRow {
   return withDatabase(
     home,
     (db) => {
       const row = db.prepare(TAIL_SQL).get(sessionId) as Record<string, unknown> | undefined;
       const text = row?.text;
-      return typeof text === "string" && text.trim() !== "" ? text : null;
+      const model = row?.model;
+      return {
+        text: typeof text === "string" && text.trim() !== "" ? text : null,
+        model: typeof model === "string" && model !== "" ? model : null,
+      };
     },
-    null,
+    { text: null, model: null },
   );
+}
+
+/** The newest thing this session's agent said, or null. */
+export function sessionTailText(home: string, sessionId: string): string | null {
+  return queryTail(home, sessionId).text;
+}
+
+/** The model that newest text-bearing turn ran on, or null. */
+export function sessionModel(home: string, sessionId: string): string | null {
+  return queryTail(home, sessionId).model;
 }

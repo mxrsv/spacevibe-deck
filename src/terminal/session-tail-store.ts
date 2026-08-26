@@ -5,7 +5,10 @@
  * exists is the CLI's own session log on disk. Reading it is a main-process
  * job (`session_tail`), so this module's whole responsibility is deciding
  * WHEN to ask and holding the answers: a debounced effect on `tabViews` that
- * fires only when an agent pane's `changedAt` actually moved.
+ * fires only when an agent pane's `changedAt` actually moved. The main
+ * process answers a model beside every tail, so `paneModels` is written by
+ * the SAME merge under the SAME pairing rules as `paneTails` — the two can
+ * never describe different sessions.
  *
  * Two rules carry the correctness here:
  *
@@ -32,6 +35,9 @@ import type { ResumeRequest, SessionTailAnswer } from "../lib/agent-resume";
 
 /** Newest turn per pane id. Absent means "nothing known", never "silent". */
 export const paneTails: Signal<ReadonlyMap<number, string>> = signal(new Map());
+
+/** Model per pane id, by the same pairing that produces `paneTails`. */
+export const paneModels: Signal<ReadonlyMap<number, string>> = signal(new Map());
 
 /**
  * Which session each pane is PAIRED with — the second half of what the store
@@ -298,28 +304,43 @@ function entriesOf(tabs: readonly TabView[]): readonly TailEntry[] {
 }
 
 /**
- * Merge answers into a NEW map (C1), and update the pairings alongside.
- *
- * Four cases, and the last one is the whole fix:
+ * `paneTails` and `paneModels`, threaded together everywhere they are read or
+ * written. Both describe the SAME pairing — a pane and the session it is
+ * currently believed to be running — so they are carried as one pair through
+ * `merged`/`prune`/`forget` rather than as two module-level maps a future edit
+ * could update one of and forget the other.
+ */
+interface PaneSessionMaps {
+  readonly tails: ReadonlyMap<number, string>;
+  readonly models: ReadonlyMap<number, string>;
+}
+
+/**
+ * Merge answers into a NEW pair of maps (C1), and update the pairing
+ * alongside. `tails` and `models` follow the identical rule, independently
+ * per field, keyed off the same `repaired` flag:
  *
  * - **No answer at all** — nothing could be paired this time (a scan that
- *   raced a write, a cwd that drifted). Keep the sentence AND the pairing: an
+ *   raced a write, a cwd that drifted). Keep both fields AND the pairing: an
  *   absent scan is not evidence that the pane went quiet.
- * - **Same session, no sentence in the window** — keep what is on screen. This
- *   is the common case for a working pane, whose own tool traffic pushes its
- *   last words out of the read window.
- * - **Same session, a sentence** — take it.
- * - **A DIFFERENT session** — take the new pairing and the new text, INCLUDING
- *   when there is no new text. A sentence belongs to a conversation, and this
- *   pane is not in that conversation any more; keeping it is how one sentence
- *   used to end up on every row it had ever passed through.
+ * - **Same session, field absent in this answer** — keep what is on screen.
+ *   For the tail this is the common case for a working pane, whose own tool
+ *   traffic pushes its last words out of the read window; for the model, a
+ *   tool-only turn names no model and that is not a model change.
+ * - **Same session, field present** — take it.
+ * - **A DIFFERENT session** — take the new pairing and the new field,
+ *   INCLUDING when the field is absent. A sentence or a model belongs to a
+ *   conversation, and this pane is not in that conversation any more; keeping
+ *   either is how one sentence used to end up on every row it had ever passed
+ *   through.
  */
 function merged(
-  current: ReadonlyMap<number, string>,
+  current: PaneSessionMaps,
   entries: readonly TailEntry[],
   answers: readonly (SessionTailAnswer | null)[],
-): ReadonlyMap<number, string> {
-  const next = new Map(current);
+): PaneSessionMaps {
+  const tails = new Map(current.tails);
+  const models = new Map(current.models);
   entries.forEach((entry, index) => {
     const answer = answers[index];
     if (answer === null || answer === undefined) {
@@ -328,17 +349,23 @@ function merged(
     const repaired = paneSessions.get(entry.paneId) !== answer.id;
     paneSessions.set(entry.paneId, answer.id);
     if (answer.tail !== null && answer.tail.length > 0) {
-      next.set(entry.paneId, answer.tail);
+      tails.set(entry.paneId, answer.tail);
     } else if (repaired) {
-      next.delete(entry.paneId);
+      tails.delete(entry.paneId);
+    }
+    if (answer.model !== null && answer.model.length > 0) {
+      models.set(entry.paneId, answer.model);
+    } else if (repaired) {
+      models.delete(entry.paneId);
     }
   });
-  return next;
+  return { tails, models };
 }
 
-/** Everything this store remembers about one pane, gone. */
-function forget(next: Map<number, string>, paneId: number): void {
-  next.delete(paneId);
+/** Everything this store remembers about one pane, gone, from both maps. */
+function forget(tails: Map<number, string>, models: Map<number, string>, paneId: number): void {
+  tails.delete(paneId);
+  models.delete(paneId);
   paneSessions.delete(paneId);
   resumedPaneIds.delete(paneId);
 }
@@ -356,26 +383,32 @@ function forget(next: Map<number, string>, paneId: number): void {
  * corrects itself and a pin does not.
  */
 function prune(
-  current: ReadonlyMap<number, string>,
+  current: PaneSessionMaps,
   tabs: readonly TabView[],
   live: Set<number>,
-): ReadonlyMap<number, string> {
-  const next = new Map(current);
-  for (const paneId of [...next.keys(), ...paneSessions.keys(), ...paneGenerations.keys()]) {
+): PaneSessionMaps {
+  const tails = new Map(current.tails);
+  const models = new Map(current.models);
+  for (const paneId of [
+    ...tails.keys(),
+    ...models.keys(),
+    ...paneSessions.keys(),
+    ...paneGenerations.keys(),
+  ]) {
     if (!live.has(paneId)) {
-      forget(next, paneId);
+      forget(tails, models, paneId);
       paneGenerations.delete(paneId);
     }
   }
   for (const tab of tabs) {
     for (const pane of panesOf(tab)) {
       if (isNewGeneration(pane, paneGenerations.get(pane.paneId))) {
-        forget(next, pane.paneId);
+        forget(tails, models, pane.paneId);
       }
       paneGenerations.set(pane.paneId, { agent: pane.agent, ran: pane.hasRun });
     }
   }
-  return next;
+  return { tails, models };
 }
 
 /**
@@ -400,12 +433,23 @@ async function run(): Promise<void> {
   // momentarily publishes no tabs during restore, and pruning against that
   // would forget every pane in the window.
   if (tabs.length > 0) {
-    const pruned = prune(paneTails.value, tabs, livePaneIds(tabs));
-    // `prune` only ever deletes, so a size match IS a "nothing changed" proof
-    // and the signal is left alone. Anything that could add would need a
+    const pruned = prune(
+      { tails: paneTails.value, models: paneModels.value },
+      tabs,
+      livePaneIds(tabs),
+    );
+    // `prune` only ever deletes, so a size match on EITHER map is a "nothing
+    // changed" proof for that map. Checked and published SEPARATELY because a
+    // pane can hold a model with no tail (a tool-only turn names a model and
+    // no text): pruning that pane shrinks `models` alone, and republishing
+    // `paneTails` too would hand the rail a new Map identity over identical
+    // content — a spurious re-render. Anything that could add would need a
     // different test.
-    if (pruned.size !== paneTails.value.size) {
-      paneTails.value = pruned;
+    if (pruned.tails.size !== paneTails.value.size) {
+      paneTails.value = pruned.tails;
+    }
+    if (pruned.models.size !== paneModels.value.size) {
+      paneModels.value = pruned.models;
     }
     // Pruning drops pairings too, so the mirror moves with it.
     publishPairings();
@@ -423,7 +467,9 @@ async function run(): Promise<void> {
     // no longer exist as far as this store is concerned; merging them would
     // rebuild the state the reset just cleared.
     if (epoch === epochAtSend) {
-      paneTails.value = merged(paneTails.value, entries, answers);
+      const next = merged({ tails: paneTails.value, models: paneModels.value }, entries, answers);
+      paneTails.value = next.tails;
+      paneModels.value = next.models;
       publishPairings();
     }
   } catch (err) {
@@ -498,5 +544,6 @@ export function resetSessionTailStore(): void {
   paneSessions.clear();
   paneGenerations.clear();
   paneTails.value = new Map();
+  paneModels.value = new Map();
   paneSessionIds.value = new Map();
 }

@@ -5,6 +5,40 @@ User-facing release notes. The release workflow's `promote` job publishes the
 platform-limitations header), so each section is written for users, reviewed in
 the release PR, and frozen at the tag — never an auto-generated commit list.
 
+## 1.0.1
+
+This update makes starting new work more deliberate and improves terminal
+startup on Windows.
+
+### Highlights
+
+- ⚡ **Faster Windows terminal startup.** Deck no longer starts a PowerShell/WMI
+  process census in front of a new shell, split or docked pane. Background
+  inspection stays paused through shell startup and resumes on its normal
+  interval after the prompt is ready.
+- ✍️ **One task draft, wherever you start.** The Open Board and Quick Launch
+  share the same prompt, workspace, agent, model and effort. Choosing a
+  workspace fills the draft without starting a process; the launch action
+  opens the agent with the task ready for you to review and submit.
+- 📝 **Markdown opens rendered.** Markdown files now open as formatted
+  documents; ⌘⇧V switches between the rendered view and source.
+- 🎯 **A clearer agent rail.** The rail keeps each row paired with its own
+  session, marks the pane holding the keyboard, and lets you reorder or close
+  project groups.
+- 🧹 **The sidebar banner is gone.** The decorative artwork at the foot of the
+  sidebar and its Appearance setting have been removed. The sidebar's action
+  footer now closes the column, and any banner image you had chosen is no
+  longer read.
+- 📊 **Usage analytics are on by default.** Deck reports limited daily usage
+  counts — never code, paths, prompts or agent output. Turn it off at any time
+  in Settings → Privacy.
+
+### Upgrading
+
+- The Windows installer remains unsigned, and Windows runtime behaviour still
+  requires owner verification before this release is promoted.
+- Intel Macs are not served by this build (Apple Silicon only).
+
 ## 1.0.0
 
 **SpaceVibe Deck 1.0 is here.** The terminal built for running many AI agents

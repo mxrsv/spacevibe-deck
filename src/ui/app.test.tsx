@@ -156,6 +156,7 @@ describe("settings load recovery layer", () => {
       browserPanelObscured({
         overlayCoversPane: false,
         agentQuickPickerOpen: false,
+        quickLaunchOpen: false,
         usageConsentOpen: false,
         promptsOpen: false,
         persistErrorVisible: false,
@@ -172,7 +173,22 @@ describe("settings load recovery layer", () => {
       browserPanelObscured({
         overlayCoversPane: false,
         agentQuickPickerOpen: false,
+        quickLaunchOpen: false,
         usageConsentOpen: true,
+        promptsOpen: false,
+        persistErrorVisible: false,
+        settingsLoadError: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("hides the native browser view under Quick Launch", () => {
+    expect(
+      browserPanelObscured({
+        overlayCoversPane: false,
+        agentQuickPickerOpen: false,
+        quickLaunchOpen: true,
+        usageConsentOpen: false,
         promptsOpen: false,
         persistErrorVisible: false,
         settingsLoadError: false,
@@ -190,11 +206,25 @@ describe("settings load recovery layer", () => {
   });
 });
 
+describe("task launcher mount", () => {
+  it("keeps the legacy AgentQuickPicker compiled but unmounted", () => {
+    const source = readFileSync("src/ui/app.tsx", "utf8");
+    expect(source).toContain("<QuickLaunch");
+    expect(source).not.toContain("<AgentQuickPicker");
+  });
+});
+
 describe("recent agent activity wiring", () => {
   const source = readFileSync("src/ui/app.tsx", "utf8");
 
-  it("refreshes the useful recent-session snapshot at boot instead of probing support", () => {
-    expect(source).toContain("void refreshRecentSessions();");
+  it("installs the sync that loads the snapshot at boot and keeps it current", () => {
+    // The boot load lives inside `installRecentActivitySync` since 2026-08-26
+    // (DL-33.5): the same request still answers "does this host have sessions",
+    // and the block stops being a snapshot frozen at launch.
+    expect(source).toContain("useEffect(() => installRecentActivitySync(), []);");
+    expect(source).toContain(
+      'import { installRecentActivitySync } from "../sessions/recent-activity-sync";',
+    );
     expect(source).not.toContain("void probeSessionsSupport();");
   });
 

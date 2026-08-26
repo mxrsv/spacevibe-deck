@@ -25,6 +25,7 @@
 import * as claude from "./claude";
 import * as codex from "./codex";
 import * as opencode from "./opencode";
+import * as opencodeDb from "./opencode-db";
 import { findCandidateById, selectCandidate, type ResumeRequest } from "./resolve";
 import { tailBytes, type CandidateSession } from "./head";
 
@@ -114,25 +115,80 @@ export function codexTailFromLines(lines: readonly string[]): string | null {
   return null;
 }
 
+/**
+ * The newest Claude turn that names a model. An independent walk from
+ * `claudeTailFromLines`'s, not the same record: a tool-only turn can carry a
+ * model with no text, so this walk may stop on an assistant record the
+ * sentence walk skipped straight past.
+ */
+export function claudeModelFromLines(lines: readonly string[]): string | null {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    try {
+      const node = JSON.parse(lines[i]);
+      if (node?.type !== "assistant") continue;
+      const model = node.message?.model;
+      if (typeof model === "string" && model !== "") return model;
+    } catch {
+      /* an unparseable line is just skipped */
+    }
+  }
+  return null;
+}
+
+/**
+ * Codex names its model on `turn_context`, never on the assistant message.
+ *
+ * The nesting differs from `codexTailFromLines`'s and getting it wrong returns
+ * null forever: a `turn_context` record carries `type` at the TOP level with the
+ * model inside `payload`, where a `response_item` carries `payload.type`. This
+ * is the shape `electron/usage/codex.ts#L79-L85` already reads for cost
+ * attribution — follow it rather than the tail parser's `payload?.type` idiom.
+ */
+export function codexModelFromLines(lines: readonly string[]): string | null {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    try {
+      const node = JSON.parse(lines[i]);
+      if (node?.type !== "turn_context") continue;
+      const model = node.payload?.model;
+      if (typeof model === "string" && model !== "") return model;
+    } catch {
+      /* skip */
+    }
+  }
+  return null;
+}
+
 /** Lines in, one clipped line out. */
 type TailParser = (lines: readonly string[]) => string | null;
 
+/** A tail read's two halves: the sentence, and the model that said it. */
+interface TailOutcome {
+  readonly tail: string | null;
+  readonly model: string | null;
+}
+
 /**
- * One selected candidate in, its newest sentence out. The seam is the WHOLE
- * read, not just a parser, because not every agent keeps its conversation in a
- * file: opencode keeps a message/part tree with no transcript to take a byte
- * window of (see `opencode.sessionTailText`).
+ * One selected candidate in, its newest sentence and model out. The seam is
+ * the WHOLE read, not just a parser, because not every agent keeps its
+ * conversation in a file: opencode keeps a message/part tree with no
+ * transcript to take a byte window of (see `opencode.sessionTailText`).
  */
-type TailReader = (best: CandidateSession, home: string) => string | null;
+type TailReader = (best: CandidateSession, home: string) => TailOutcome;
 
 /** The Claude/Codex shape: re-open the file the id came from, read its end. */
-function fromTranscript(parse: TailParser): TailReader {
-  return (best) => (best.sourcePath === undefined ? null : readGrowingTail(best.sourcePath, parse));
+function fromTranscript(parseTail: TailParser, parseModel: TailParser): TailReader {
+  return (best) =>
+    best.sourcePath === undefined
+      ? { tail: null, model: null }
+      : readGrowingTail(best.sourcePath, parseTail, parseModel);
 }
 
 /**
  * The end of a transcript, at the first `TAIL_WINDOW_STEPS` size that yields a
- * sentence.
+ * sentence — and, from that SAME set of lines, the model whose turn it was.
+ * The model walk is a second newest-first pass over lines already in hand,
+ * never a separate read: `parseModel` runs on every window `parseTail` tries,
+ * so a tool-only turn newer than the sentence (model, no text) is still seen.
  *
  * Every step is tried, with no early exit on a short read. A read shorter than
  * the cap LOOKS like "the whole file is in hand, stop", but `tailBytes` makes a
@@ -142,18 +198,28 @@ function fromTranscript(parse: TailParser): TailReader {
  * silently answering `null` for a session that HAS spoken is exactly the bug
  * class this function was widened to remove.
  */
-function readGrowingTail(sourcePath: string, parse: TailParser): string | null {
+function readGrowingTail(
+  sourcePath: string,
+  parseTail: TailParser,
+  parseModel: TailParser,
+): TailOutcome {
+  let model: string | null = null;
   for (const window of TAIL_WINDOW_STEPS) {
     const bytes = tailBytes(sourcePath, window);
     if (bytes === null) {
-      return null;
+      return { tail: null, model };
     }
-    const found = parse(dropPartialFirstLine(bytes));
-    if (found !== null) {
-      return found;
+    const lines = dropPartialFirstLine(bytes);
+    // A larger window's lines are a strict superset of a smaller one's (both
+    // are read from the same end of the file), so re-running the model walk
+    // here can only find as much or more than the previous step did.
+    model = parseModel(lines);
+    const tail = parseTail(lines);
+    if (tail !== null) {
+      return { tail, model };
     }
   }
-  return null;
+  return { tail: null, model };
 }
 
 /**
@@ -182,19 +248,26 @@ const TAIL_SOURCES: Record<
 > = {
   claude: {
     candidates: claude.candidates,
-    read: fromTranscript(claudeTailFromLines),
+    read: fromTranscript(claudeTailFromLines, claudeModelFromLines),
   },
   codex: {
     candidates: codex.candidates,
-    read: fromTranscript(codexTailFromLines),
+    read: fromTranscript(codexTailFromLines, codexModelFromLines),
   },
   opencode: {
     candidates: opencode.candidates,
     // The clip lives here rather than in the scanner, so every agent's sentence
-    // is bounded by the same `TAIL_MAX_CHARS` the two line parsers apply.
+    // is bounded by the same `TAIL_MAX_CHARS` the two line parsers apply. The
+    // model is read straight off `opencode-db`, not through `opencode.ts`'s
+    // merged `sessionTailText` — the legacy json tree records no model, so a
+    // session resolved from THAT layout answers null and draws no pill,
+    // exactly like gemini.
     read: (best, home) => {
       const text = opencode.sessionTailText(home, best.id);
-      return text === null ? null : oneLine(text);
+      return {
+        tail: text === null ? null : oneLine(text),
+        model: opencodeDb.sessionModel(home, best.id),
+      };
     },
   },
 };
@@ -222,6 +295,8 @@ function dropPartialFirstLine(bytes: Buffer): readonly string[] {
 export interface SessionTailAnswer {
   readonly id: string;
   readonly tail: string | null;
+  /** The model the newest recorded turn ran on, or null when the transcript names none. */
+  readonly model: string | null;
 }
 
 /**
@@ -326,9 +401,10 @@ export function resolveSessionTails(
     // nothing yet: this IS the pane's conversation, and reporting the id with a
     // null tail is what lets the caller keep the pairing while it waits.
     try {
-      return { id: best.id, tail: source.read(best, home) };
+      const outcome = source.read(best, home);
+      return { id: best.id, tail: outcome.tail, model: outcome.model };
     } catch {
-      return { id: best.id, tail: null };
+      return { id: best.id, tail: null, model: null };
     }
   });
 }

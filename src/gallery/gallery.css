@@ -1844,3 +1844,43 @@
  * here would be the gallery drifting from the app one file at a time — the
  * failure the whole harness exists to catch. The direction sheet restyles it
  * like it restyles every other real surface. */
+
+/*
+ * The worktree card's colour-rule specimen (`rail-worktree-cards.tsx`,
+ * `railColorRuleSpecimen`): the busy-hue candidates it compares, restated as
+ * an override of the production sheet's own custom property rather than a
+ * stylesheet of this specimen's own — `04c-rail-worktree-card.css` pins
+ * `--asr-card-busy` directly on `.asr-card` / `.asr-bare` / `.asr-card__row`,
+ * so an ancestor rule has to target those same classes to win: the variable
+ * is redeclared on the element itself, and inheriting it from a wrapper
+ * cannot out-cascade that regardless of the wrapper's own specificity. The
+ * `neutral` candidate needs no rule here — it is the shipped default.
+ */
+[data-busy="magenta"] .asr-card,
+[data-busy="magenta"] .asr-bare,
+[data-busy="magenta"] .asr-card__row {
+  --asr-card-busy: var(--magenta);
+}
+
+[data-busy="cyan"] .asr-card,
+[data-busy="cyan"] .asr-bare,
+[data-busy="cyan"] .asr-card__row {
+  --asr-card-busy: var(--cyan);
+}
+
+/*
+ * The focused-row candidates (`railFocusMarkSpecimen`), on the owner's ask of
+ * 2026-08-26 that the active agent row read louder. Same mechanism and same
+ * reason as the busy hues above: the production sheet pins
+ * `--asr-card-focus-bg` / `--asr-card-focus-frame` / `--asr-card-focus-bar`
+ * on `.asr-card__row` itself, so only a rule that also names that class can
+ * out-cascade it. Candidate A is the shipped default and needs no rule here.
+ */
+[data-focus="tint"] .asr-card__row {
+  --asr-card-focus-bg: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+[data-focus="bar"] .asr-card__row {
+  --asr-card-focus-bg: color-mix(in srgb, var(--tone) 16%, transparent);
+  --asr-card-focus-bar: var(--accent);
+}

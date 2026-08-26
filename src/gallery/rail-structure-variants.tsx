@@ -18,8 +18,15 @@ import { RailStatusMark } from "../ui/agent-rail";
  *
  * **That reading was superseded on 2026-08-20.** A fourth grouping mark — a
  * rounded neutral frame, drawn from the owner's own sketch — shipped as
- * DL-27.19, so a separator did answer it after all. These candidates stay
- * unselected proposals: they change what a row IS, which the frame did not.
+ * DL-27.19, so a separator did answer it after all. These candidates stayed
+ * unselected proposals through that shape: they change what a row IS, which
+ * the frame did not.
+ *
+ * **DL-27.19 was itself retired 2026-08-26**, when the worktree card
+ * replaced the tab tier the frame used to wrap — a change to the unit, not a
+ * separator, which is closer to what M1/M2/P proposed here than to the frame
+ * that beat them. Neither candidate below is the shipped card; the worktree
+ * card is its own component (`railWorktreeCardsSpecimen`).
  *
  * Split from `agent-rail-variants.tsx` rather than appended to it: that file
  * was already at 753 lines, and these are a different question — the row's
@@ -381,7 +388,7 @@ export function railStructureSpecimen() {
 /**
  * Three rungs of REMOVAL, built after the map and the dashboard both read as
  * cluttered too (owner, 2026-08-19). Every candidate before this one added
- * structure; the owner's word was "đơn giản" — simpler — so this ladder takes
+ * structure; the owner's word was "simpler" — so this ladder takes
  * things away instead, and it is diagnostic by construction:
  *
  * - **L1 removes INK.** Same one row per pane the rail ships, minus the

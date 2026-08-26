@@ -9,6 +9,11 @@ export interface DetectedAgent {
   readonly path: string;
 }
 
+export interface PtySessionCwd {
+  readonly id: number;
+  readonly cwd: string | null;
+}
+
 /** PTY + process-info seam used by TabManager / TerminalManager / close paths. */
 export interface PtyClient {
   spawnShell(opts: { cols: number; rows: number; cwd: string | null }): Promise<number>;
@@ -21,6 +26,8 @@ export interface PtyClient {
     agentMatchers?: readonly AgentProcessMatcher[],
     waitForCwd?: boolean,
   ): Promise<PaneProcessInfo[]>;
+  /** Electron-only cheap session CWDs; absent on the feature-frozen Tauri host. */
+  sessionCwds?(ids: readonly number[]): Promise<readonly PtySessionCwd[]>;
   gitBranch(cwd: string): Promise<string | null>;
   /**
    * Which of `paths` are still existing directories, positionally.
@@ -61,6 +68,34 @@ interface PromptReadyPayload {
 
 /** Production adapter — Tauri IPC. */
 export function createTauriPtyClient(): PtyClient {
+  const electronSessionCwds: Pick<PtyClient, "sessionCwds"> =
+    typeof globalThis !== "undefined" &&
+    (globalThis as { __deckHost?: unknown }).__deckHost !== undefined
+      ? {
+          async sessionCwds(ids) {
+            if (ids.length === 0) {
+              return [];
+            }
+            const value = await invoke<unknown>("pty_cwds", { ids: [...ids] });
+            if (
+              !Array.isArray(value) ||
+              !value.every(
+                (row) =>
+                  typeof row === "object" &&
+                  row !== null &&
+                  "id" in row &&
+                  Number.isSafeInteger(row.id) &&
+                  row.id > 0 &&
+                  "cwd" in row &&
+                  (typeof row.cwd === "string" || row.cwd === null),
+              )
+            ) {
+              throw new TypeError("Invalid pty_cwds response");
+            }
+            return value as PtySessionCwd[];
+          },
+        }
+      : {};
   return {
     spawnShell({ cols, rows, cwd }) {
       return invoke<number>("spawn_shell", { cols, rows, cwd });
@@ -84,6 +119,7 @@ export function createTauriPtyClient(): PtyClient {
         waitForCwd,
       });
     },
+    ...electronSessionCwds,
     gitBranch(cwd) {
       return invoke<string | null>("git_branch", { cwd });
     },

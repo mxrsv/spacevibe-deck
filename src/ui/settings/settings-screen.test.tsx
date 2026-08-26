@@ -346,7 +346,6 @@ const EXPECTED_ROWS = [
   "Tab bar position",
   "Show pane bar",
   "Show status bar",
-  "Sidebar banner",
   // browser
   "Home address",
   // terminal
@@ -357,11 +356,7 @@ const EXPECTED_ROWS = [
   // `BUILTIN_AGENTS` inside a test that asks a different question. Their own
   // coverage is `launch-profile-editor.test.tsx`.
   "Add agent",
-  // The built-in agent rows are deliberately absent from this list. Since
-  // 2026-08-19 each one prints a COMMAND, not a `.cfg-row__label`, so the walk
-  // below cannot see them — and pinning them here would restate
-  // `BUILTIN_AGENTS` in a test that asks a different question. Their own
-  // coverage is `launch-profile-editor.test.tsx`.
+  "Add command",
   "Token usage",
   // links & editor. One row, not two, since 2026-08-19: `editorId` +
   // `editorCommand` became the single `externalAppId`, so the custom-command

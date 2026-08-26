@@ -77,66 +77,6 @@
   background: var(--tab-active-bg);
 }
 
-/* A HEADLESS item — a multi-agent tab rendering no parent row (DL-27.13) —
-   has no row to wash, and it marks selection with NOTHING: the accent bar
-   that stood beside the leaves was hidden on the owner's ask (2026-08-16),
-   the same day the tree itself went behind `PANE_TREE_HIDDEN`. Which pane is
-   focused is the stage's job; the rail stays quiet. */
-
-/* DL-27.19 (owner, 2026-08-20): what it does say is that these rows are ONE
-   tab, with an edge rather than a row. The selector is the seam the hidden
-   tree left behind — `data-headless` is exactly "several panes, no parent
-   row" — so the frame needs no markup of its own; it outranks the
-   `.asr-stream .asr-item` padding reset above by one attribute.
-
-   The frame is an INSET hairline (DL-1.3's sanctioned `box-shadow: inset 0 0
-   0 1px`), and the two shapes it is not are both recorded because both
-   shipped and both broke, 2026-08-20:
-
-   A BORDER is layout. It either pushes its rows 1px inward or is bled back
-   with `margin: 0 -1px`, and that bleed put 255px of content in the 254px
-   `.asr-rail__list` — `overflow-x: hidden` hides the bar but keeps the scroll
-   container, so the first focus the browser answered with `scrollIntoView`
-   slid the whole column (Known traps: a 1px overflow moves chrome).
-
-   An OUTLINE fixed the layout half and lost the left edge. The item fills the
-   list's content box exactly, and the list has no padding of its own — the
-   rail carries it — so an outline paints on the 1px OUTSIDE that box and the
-   list's `overflow-x: hidden` clips it. An inset hairline paints on the 1px
-   inside instead: same 1px ring, same `border-radius`, still no layout, and
-   nothing to clip.
-
-   Vertically 3px in and 3px out reads even against the leaf's own 6px
-   padding, and stacks with `.asr-cluster`'s 4px gap into 10px between two
-   framed tabs against 7px to a bare row. The colour stays neutral on purpose
-   — red and yellow are the status dot's (DL-27.3).
-
-   The gutter is 3px on ALL FOUR sides since 2026-08-23 (owner, from a
-   screenshot). It was `3px 0`, which was invisible while the rows inside were
-   transparent and became a defect the moment one of them could be WASHED
-   (DL-27.22): a 100%-wide row painted straight over the frame's left and right
-   hairline and ate its rounded corners, while keeping 3px of air above and
-   below — so the selected row read as sticking out of the block it belongs to.
-   The horizontal gutter is charged to the LEAF's own padding below, not added
-   to it, so no text, mark or glyph moves. */
-.asr-stream .asr-item[data-headless="true"] {
-  margin: 3px 0;
-  padding: 3px;
-  border-radius: var(--radius-control);
-  box-shadow: inset 0 0 0 1px var(--hair-strong);
-}
-
-/* The other half of that gutter: 7px/8px minus the frame's 3px, so a framed
-   row's content sits on exactly the x it sat on before the frame had side
-   padding — the wash inset without the row moving. `--radius-tight` (DL-20.1,
-   "drawn inside") rather than `--radius-control`: at a 3px inset, a 10px
-   corner inside a 10px corner reads fatter than the frame it sits in. */
-.asr-stream .asr-item[data-headless="true"] > .asr-leaf--flat {
-  padding-right: 5px;
-  padding-left: 4px;
-  border-radius: var(--radius-tight);
-}
-
 .asr-chips {
   display: flex;
   align-items: center;

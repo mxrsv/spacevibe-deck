@@ -209,12 +209,11 @@
 /* `.cfg-row`'s own box already, so only the inner arrangement is set here.
    The top margin is what separates the field from the last agent row — it is
    an action on the list, not another member of it. */
-.lp-add {
-  box-sizing: border-box;
+.lp-add__controls {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  width: min(100%, 390px);
 }
 
 .lp-add__input {
@@ -222,6 +221,60 @@
   min-width: 0;
   font-family: var(--ui-font);
   font-size: var(--type-body);
+}
+
+.lp-runtime {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(116px, 0.55fr) minmax(116px, 0.55fr);
+  gap: 8px;
+  margin: 0 14px 8px 39px;
+}
+
+.lp-runtime__field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.lp-runtime__field > span {
+  color: var(--text-faint);
+  font-size: var(--type-micro);
+}
+
+.lp-runtime__field input,
+.lp-runtime__field select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.lp-runtime__field select {
+  height: 29px;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font: 450 var(--type-meta) / 1 var(--ui-font);
+}
+
+.lp-runtime__error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--red);
+  font-size: var(--type-meta);
+}
+
+.lp-runtime-help {
+  margin: 12px 16px 0;
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .lp-runtime {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* The star marks the command its agent actually launches with. Neutral, not

@@ -35,10 +35,16 @@ const RELEASES = [
     prerelease: false,
     assets: [
       {
-        name: "SpaceVibe.Deck_0.9.0_universal.dmg",
+        name: "SpaceVibe-Deck-0.9.0-arm64.dmg",
         download_count: 5,
         browser_download_url:
-          "https://github.com/mxrsv/spacevibe-deck/releases/download/v0.9.0/SpaceVibe.Deck_0.9.0_universal.dmg",
+          "https://github.com/mxrsv/spacevibe-deck/releases/download/v0.9.0/SpaceVibe-Deck-0.9.0-arm64.dmg",
+      },
+      {
+        name: "SpaceVibe-Deck-0.9.0-win-x64-setup.exe",
+        download_count: 6,
+        browser_download_url:
+          "https://github.com/mxrsv/spacevibe-deck/releases/download/v0.9.0/SpaceVibe-Deck-0.9.0-win-x64-setup.exe",
       },
     ],
   },
@@ -79,13 +85,13 @@ describe("normalizeReleases", () => {
     ]);
 
     expect(normalized).toHaveLength(1);
-    expect(normalized[0].assets).toEqual([
-      {
-        name: RELEASES[1].assets[0].name,
-        browser_download_url: RELEASES[1].assets[0].browser_download_url,
-        downloadCount: 5,
-      },
-    ]);
+    expect(normalized[0].assets).toEqual(
+      RELEASES[1].assets.map((asset) => ({
+        name: asset.name,
+        browser_download_url: asset.browser_download_url,
+        downloadCount: asset.download_count,
+      })),
+    );
   });
 });
 
@@ -96,9 +102,9 @@ describe("release selection", () => {
     expect(latestStableTag(releases)).toBe("v0.9.0");
     expect(selectDownloadUrls(releases)).toEqual({
       mac: RELEASES[1].assets[0].browser_download_url,
-      win: RELEASES[0].assets[0].browser_download_url,
+      win: RELEASES[1].assets[1].browser_download_url,
     });
-    expect(totalInstallerDownloads(releases)).toBe(17);
+    expect(totalInstallerDownloads(releases)).toBe(23);
   });
 
   it("counts only validated macOS and Windows installer downloads", () => {
@@ -123,7 +129,7 @@ describe("release selection", () => {
       },
     ]);
 
-    expect(totalInstallerDownloads(releases)).toBe(5);
+    expect(totalInstallerDownloads(releases)).toBe(11);
   });
 });
 

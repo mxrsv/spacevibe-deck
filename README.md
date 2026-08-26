@@ -81,6 +81,16 @@ replacing the CLI's own workflow
 
 ## Install
 
+Quick install:
+
+```sh
+curl -fsSL https://deck.spacevibe.dev/install.sh | sh
+```
+
+```powershell
+irm https://deck.spacevibe.dev/install.ps1 | iex
+```
+
 - **[macOS — Apple Silicon (arm64)](https://github.com/mxrsv/spacevibe-deck/releases/latest):** signed and notarized. Intel Macs are not served by V1.
 - **[Windows — x64](https://github.com/mxrsv/spacevibe-deck/releases/latest):** unsigned; SmartScreen will warn. Windows ARM is not served, and V1 remains runtime-unverified on Windows hardware.
 

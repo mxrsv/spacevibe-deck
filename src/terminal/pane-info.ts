@@ -1,5 +1,6 @@
 import type { PaneProcessInfo } from "../lib/process-info";
 import type { AgentProcessMatcher } from "../lib/agent-catalog";
+import { getDesktopEnvironment } from "../lib/platform";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 
 function unknownPaneInfo(id: number): PaneProcessInfo {
@@ -43,6 +44,14 @@ export async function freshCwd(
 ): Promise<string | null> {
   if (id === null) {
     return null;
+  }
+  if (getDesktopEnvironment().platform === "windows" && pty.sessionCwds !== undefined) {
+    try {
+      const sessions = await pty.sessionCwds([id]);
+      return sessions.find((session) => session.id === id)?.cwd ?? null;
+    } catch (err) {
+      console.warn("pty_cwds failed; falling back to pty_info:", err);
+    }
   }
   const infos = await freshPaneInfo([id], pty);
   return infos.find((info) => info.id === id)?.cwd ?? null;

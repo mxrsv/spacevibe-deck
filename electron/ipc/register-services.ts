@@ -11,6 +11,7 @@ import { detectAgentsSafely, dirsExist } from "../agents";
 import { gitBranch } from "../git";
 import { scanRepository } from "../worktrees";
 import { addWorktree } from "../git/worktree";
+import { createDirectory } from "../fs/create-directory";
 import { readStarState, starRepository } from "../github-star";
 import { resolveResume, validateResumeRequests } from "../resume/resolve";
 import { resolveSessionTails } from "../resume/session-tail";
@@ -35,6 +36,9 @@ export function registerServices(deps: RegisterServicesDeps): void {
   ipcMain.handle(CHANNELS.gitRepository, (_event, { path: repoPath }) => scanRepository(repoPath));
   ipcMain.handle(CHANNELS.worktreeAdd, (_event, { repoPath, branch, destPath }) =>
     addWorktree({ repoPath, branch, destPath }),
+  );
+  ipcMain.handle(CHANNELS.createDirectory, (_event, { parent, name }) =>
+    createDirectory({ parent, name }),
   );
   // Neither rejects: "Star on GitHub" degrades to opening the repository page,
   // so an absent or signed-out `gh` is an ordinary answer, not an error.
@@ -81,10 +85,8 @@ export function registerServices(deps: RegisterServicesDeps): void {
     workspaceForPath({ path: target, roots: roots ?? [] }),
   );
   ipcMain.handle(CHANNELS.externalApps, () => listExternalApps());
-  ipcMain.handle(
-    CHANNELS.openInApp,
-    (_event, { appId, path: target, isDirectory }) =>
-      openInApp({ appId, path: target, isDirectory: isDirectory === true }),
+  ipcMain.handle(CHANNELS.openInApp, (_event, { appId, path: target, isDirectory }) =>
+    openInApp({ appId, path: target, isDirectory: isDirectory === true }),
   );
   ipcMain.handle(CHANNELS.listPromptAssets, (_event, { agent, cwd }) =>
     listPromptAssets(agent, cwd ?? null),

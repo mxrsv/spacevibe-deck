@@ -605,9 +605,7 @@ function FlatAgentRow({ pane }: { readonly pane: TreePane }) {
 }
 
 function ClusterHead({ cluster }: { readonly cluster: GroupingCluster }) {
-  return cluster.labelled ? (
-    <span class="gxa-head gxa-head--label">{cluster.project}</span>
-  ) : null;
+  return cluster.labelled ? <span class="gxa-head gxa-head--label">{cluster.project}</span> : null;
 }
 
 /** A — what ships today: every pane is a row and the tab leaves no trace. */
@@ -618,9 +616,7 @@ function FlatColumn() {
         <section key={cluster.project} class="gxa-cluster">
           <ClusterHead cluster={cluster} />
           {cluster.tabs.flatMap((tab) =>
-            tab.panes.map((pane) => (
-              <FlatAgentRow key={`${tab.name}-${pane.agent}`} pane={pane} />
-            )),
+            tab.panes.map((pane) => <FlatAgentRow key={`${tab.name}-${pane.agent}`} pane={pane} />),
           )}
         </section>
       ))}
@@ -645,11 +641,7 @@ function FlatColumn() {
  * 2026-08-16 and nothing has set since `TabPopover` was deleted. Cyan and
  * magenta on purpose — red and yellow are the status dot's words.
  */
-function BandedColumn({
-  mark,
-}: {
-  readonly mark: "rule" | "wash" | "outline" | "tint";
-}) {
+function BandedColumn({ mark }: { readonly mark: "rule" | "wash" | "outline" | "tint" }) {
   return (
     <div class="gxa-rail">
       {GROUPING_CLUSTERS.map((cluster) => (
@@ -711,15 +703,19 @@ function TreeColumn() {
  *
  * The owner has removed tab-tier chrome from this rail four times running —
  * the chip stack, the `N agents` label, the unnamed parent row, then the tree
- * itself (`PANE_TREE_HIDDEN`) — so the flat column is where the rail actually
- * stands, and it lost the one thing the tree carried: which panes are one tab.
- * B is the untried quadrant, a grouping mark with no tab row at all. C is the
- * parked direction, one constant away.
+ * itself, retired behind a `PANE_TREE_HIDDEN` constant that no longer exists
+ * in the source (deleted in the worktree-card rewrite, 2026-08-26) — so the
+ * flat column is where the rail actually stood, and it lost the one thing the
+ * tree carried: which panes are one tab. B is the untried quadrant, a
+ * grouping mark with no tab row at all. C is the parked direction, and
+ * reaching it now means rebuilding the tree rather than flipping a flag.
  *
  * **B3 shipped on 2026-08-20 as DL-27.19** — the owner picked the neutral
- * frame and turned down B4's per-tab colour. The columns stay: A is what the
- * rail looked like the day before, and B1/B2/B4/C are the alternatives that
- * were judged against it, which is the comparison a later reversal needs.
+ * frame and turned down B4's per-tab colour — and was retired 2026-08-26
+ * when the worktree card replaced the tab tier these columns were drawn
+ * against. The columns stay as the comparison that reversal needs: A is what
+ * the rail looked like the day before, and B1/B2/B4/C are the alternatives
+ * DL-27.19 was judged against.
  */
 export function multiAgentGroupingSpecimen() {
   return (
@@ -757,10 +753,11 @@ export function multiAgentGroupingSpecimen() {
       <article class="gxa-variant">
         <div class="gxa-variant__head">
           <span class="gxa-variant__index">B3</span>
-          <span class="gxa-variant__title">band, outline — SHIPPING</span>
+          <span class="gxa-variant__title">band, outline — retired 2026-08-26</span>
           <span class="gxa-variant__note">
-            DL-27.19 since 2026-08-20: a rounded hairline frame draws the
-            block's own edge; two tabs back to back close as two objects
+            DL-27.19, 2026-08-20 to 2026-08-26: a rounded hairline frame drew the block's own edge;
+            two tabs back to back closed as two objects. Retired when the worktree card replaced
+            the tab tier.
           </span>
         </div>
         <BandedColumn mark="outline" />
@@ -770,8 +767,8 @@ export function multiAgentGroupingSpecimen() {
           <span class="gxa-variant__index">B4</span>
           <span class="gxa-variant__title">band, outline in tab colour</span>
           <span class="gxa-variant__note">
-            turned down 2026-08-20: the same frame wearing the tab's own dot
-            colour, which the status dot's red and yellow would fight
+            turned down 2026-08-20: the same frame wearing the tab's own dot colour, which the
+            status dot's red and yellow would fight
           </span>
         </div>
         <BandedColumn mark="tint" />

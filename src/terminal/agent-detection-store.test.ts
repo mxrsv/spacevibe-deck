@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DetectedAgent } from "./pty-client";
 import {
+  agentsProbed,
   detectedAgents,
   ensureAgentsDetected,
   resetAgentDetectionForTests,
@@ -47,6 +48,27 @@ describe("agent detection store", () => {
     expect(detectedAgents.value).toEqual([CLAUDE]);
     expect(host.detectAgents).toHaveBeenCalledTimes(1);
     expect(host.detectAgents).toHaveBeenCalledWith(["claude", "codex"]);
+  });
+
+  it("says whether it has looked yet, apart from what it found", async () => {
+    // An empty list is the same value before and after the ~1.1s login-shell
+    // probe, so the launcher needs the question answered separately or it
+    // reports "no agent is installed" about a machine nobody examined.
+    expect(agentsProbed.value).toBe(false);
+
+    await ensureAgentsDetected(["claude"]);
+    expect(agentsProbed.value).toBe(true);
+  });
+
+  it("has still looked when the probe fails", async () => {
+    host.detectAgents.mockRejectedValue(new Error("no bridge"));
+
+    await ensureAgentsDetected(["claude"]);
+
+    // A bridge that never answers must not hold the launcher in "checking"
+    // forever; the empty last-good list is then the honest thing to report.
+    expect(agentsProbed.value).toBe(true);
+    expect(detectedAgents.value).toEqual([]);
   });
 
   it("serves the cached list without a second probe while it is fresh", async () => {

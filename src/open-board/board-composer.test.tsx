@@ -41,6 +41,8 @@ function mount(overrides: Partial<BoardComposerProps> = {}): {
     canCreateWorktree: true,
     pending: null,
     problem: null,
+    openProblem: null,
+    agentsResolved: true,
     notice: null,
     onDraftChange: vi.fn(),
     onPickFolder: vi.fn(),
@@ -90,6 +92,11 @@ describe("BoardComposer", () => {
     mount();
     expect(rows()[0].getAttribute("aria-pressed")).toBe("true");
     expect(rows()[1].getAttribute("aria-pressed")).toBe("false");
+    // The semantic mark needs a visible counterpart, or a click on a row
+    // changes nothing the eye can find (the wash itself is `.row.is-selected`
+    // in `09-open-board.css`, gated by the design-language suite).
+    expect(host.querySelectorAll(".row.is-selected")).toHaveLength(1);
+    expect(rows()[0].closest(".row")?.classList.contains("is-selected")).toBe(true);
   });
 
   it("returns focus to the prompt after a row is picked", async () => {

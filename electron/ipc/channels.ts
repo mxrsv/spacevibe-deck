@@ -15,6 +15,10 @@ export const CHANNELS = {
   resizePty: "resize_pty",
   killPty: "kill_pty",
   ptyInfo: "pty_info",
+  // Cheap Electron-only session metadata. Windows split/dock inherits the
+  // main-owned, OSC-updated CWD without starting the WMI process census that
+  // `pty_info` needs for close guards and process classification.
+  ptyCwds: "pty_cwds",
   gitBranch: "git_branch",
   // Repository/worktree rail. Electron-only, like the two blocks at the foot
   // of this table: no `#[tauri::command]` counterpart exists, and writing one
@@ -24,6 +28,9 @@ export const CHANNELS = {
   // Create-worktree flow (open board, task 16). Electron-only like the block
   // above: no `#[tauri::command]` counterpart, per the frozen Tauri host.
   worktreeAdd: "worktree_add",
+  // Plain workspace creation for the task launcher. Electron-only, flat
+  // `{ parent, name }`; the main process validates both before mkdir.
+  createDirectory: "create_directory",
   // "Star on GitHub", read and write, through the user's own `gh` CLI.
   // Electron-only like the block above; on Tauri both facades report the
   // capability absent and the button falls back to opening the repository.

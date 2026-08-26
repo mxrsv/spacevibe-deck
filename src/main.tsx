@@ -4,7 +4,6 @@ import "./styles.css";
 import { initSettings, listenStoreWriteFailures } from "./settings/settings-store";
 import { loadCustomThemes } from "./settings/custom-themes-store";
 import { initLogo } from "./settings/logo-store";
-import { initSidebarBanner } from "./settings/sidebar-banner-store";
 import { initPresets } from "./presets/presets-store";
 import { initWorkspaces } from "./open-board/workspaces-store";
 import { initRepositories } from "./repositories/repositories-store";
@@ -26,7 +25,6 @@ async function main(): Promise<void> {
     initWorkspaces(),
     initRepositories(),
     initLogo(),
-    initSidebarBanner(),
     // The themes folder has to be scanned at boot, not when Settings first
     // opens: `themeId` persists a `file:` id across launches, and until the
     // scan lands `getPreset` can only answer with the built-in fallback.

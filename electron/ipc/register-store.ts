@@ -25,7 +25,6 @@ const STORE_FILES = new Set([
   "presets.json",
   "logo.json",
   "workspace-logos.json",
-  "sidebar-banner.json",
   "update-attempt.json",
   // The repository rail's collapse state, and nothing else — the worktree
   // list itself is re-read every launch and never written down.

@@ -26,7 +26,7 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
 | [src/settings/](../src/settings) `current` + [src/presets/](../src/presets) `current`                                         | settings UI/stores, layout presets                                         | chrome        | lib                   |
 | [src/ui/controls/deck-icon.tsx](../src/ui/controls/deck-icon.tsx) `current`                                                   | the one icon primitive — Phosphor presentation defaults and the four sizes | every surface | @phosphor-icons/react |
 | [src/updater/](../src/updater) `current`                                                                                      | single-flight update state, Tauri adapter and chrome action                | app           | Tauri                 |
-| [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                      | multi-page landing and live GitHub release changelog                       | Releases API  | dist                  |
+| [marketing/landing-prototype/](../marketing/landing-prototype) `current`                                                      | landing, live changelog and verified static install bootstraps              | Releases API  | dist                  |
 | [marketing/video/](../marketing/video) `current`                                                                              | marketing video stage — shares app components, virtual clock               | app stage     | video                 |
 
 ## Main flows
@@ -42,11 +42,17 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
    descendants into `idle-shell`, `agent`, `busy`, or `unknown`
    ([session ownership](../src-tauri/src/platform/windows/mod.rs#L26-L41) `current`,
    [process mapping](../src-tauri/src/info.rs#L111-L165) `current`).
-7. Terminal links send structured editor intent. Windows validates canonical
+7. Electron Windows split/dock inherits the main-owned, OSC-updated session CWD
+   through the cheap `pty_cwds` channel; recurring `pty_info` polling stays
+   paused through spawn and resumes on its normal interval after prompt readiness
+   ([CWD decision](../src/terminal/pane-info.ts#L40-L61) `current`,
+   [session CWD IPC](../electron/main.ts#L341-L352) `current`,
+   [startup poll guard](../src/terminal/tab-manager.ts#L1384-L1476) `current`).
+8. Terminal links send structured editor intent. Windows validates canonical
    paths, parses custom templates as argv, rejects shell syntax, and launches
    the executable directly
    ([links.rs](../src-tauri/src/links.rs#L187-L314) `current`).
-8. The initialized desktop environment selects the platform keymap, visible
+9. The initialized desktop environment selects the platform keymap, visible
    labels, pointer modifier, and Windows clipboard chords. The chords dispatch
    through the shared action path, not a pane-local handler
    ([platform.ts](../src/lib/platform.ts#L76-L107) `current`,
@@ -54,7 +60,7 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
    [commands table](../src/terminal/tab-manager.ts#L1068-L1088) `current`,
    [Pane clipboard](../src/terminal/pane.ts#L362-L367) `current`,
    [terminal-clipboard.ts](../src/terminal/terminal-clipboard.ts#L27-L55) `current`).
-9. After the tab manager exists, Deck checks the configured updater channel
+10. After the tab manager exists, Deck checks the configured updater channel
    once. The macOS App menu may trigger a later manual check or open the trusted
    web changelog; download and install remain separate user actions.
    Immediately before install, `App` reuses the fresh pane close guard, flushes
@@ -62,14 +68,21 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
    ([App updater wiring](../src/ui/app.tsx#L182-L210) `current`,
    [update state machine](../src/updater/update-controller.ts#L82-L208) `current`,
    [update menu actions](../src/updater/update-menu-actions.ts#L62-L90) `current`).
-10. The landing fetches one validated GitHub Releases list, derives stable
-    macOS and preview Windows downloads from it, shows the latest stable tag,
+11. The landing fetches one validated GitHub Releases list, derives stable
+    Apple Silicon and Windows x64 downloads from it, shows the latest stable tag,
     sums verified `.dmg` and `.exe` asset downloads into the hero proof, and
     feeds the same normalized records and their release-note bodies into the
     changelog page
     ([release-data.js](../marketing/landing-prototype/src/release-data.js#fetchPublishedReleases) `current`,
     [installer download total](../marketing/landing-prototype/src/release-data.js#totalInstallerDownloads) `current`,
     [changelog-view.js](../marketing/landing-prototype/src/changelog-view.js#renderReleaseList) `current`).
+    The production landing mounts the selected
+    [quick-install prompt](../marketing/landing-prototype/src/install-command.js)
+    `current` in its hero, while the build copies the self-contained
+    [macOS bootstrap](../marketing/landing-prototype/install.sh) `current` and
+    [Windows bootstrap](../marketing/landing-prototype/install.ps1) `current` to
+    the deployment root
+    ([landing build](../marketing/landing-prototype/vite.build.mjs) `current`).
 
 ## Standing architecture decisions
 
@@ -118,7 +131,7 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   ([DeckIcon](../src/ui/controls/deck-icon.tsx) `current`,
   [rules §14](DESIGN-LANGUAGE.md) `current`,
   [guard](../scripts/icon-system.test.ts) `current`).
-- The shared design contract has three homes in code, and the renderer reads the
+- The shared design contract has two homes in code, and the renderer reads the
   same ones under any host. Standard chrome text takes its size from the four `--type-*` roles
   declared once in `:root` ([01-tokens.css](../src/styles/01-tokens.css#--type-title)
   `current`); the text-contrast floors (8 / 6 / 4.5) are constants inside the
@@ -126,9 +139,9 @@ open ([macOS release workflow](../.github/workflows/release.yml) `current`,
   ([TEXT_PRIMARY_FLOOR](../src/lib/derive-colors.ts#TEXT_PRIMARY_FLOOR)
   `current`, applied by
   [deriveChromeColors](../src/lib/derive-colors.ts#deriveChromeColors)
-  `current`); and the banner treatment is one class on one component
-  ([SidebarBanner](../src/ui/sidebar-banner.tsx#SidebarBanner) `current`). The
-  rules those implement — DL-3.5, DL-4.3, DL-4.4, DL-4.5, DL-16.2 and §26 of
+  `current`). A third home — the sidebar banner's one-class-one-component
+  treatment — went with that feature on 2026-08-25 (§26 is retired). The
+  rules those implement — DL-3.5, DL-4.3, DL-4.4, DL-4.5 and DL-16.2 of
   [DESIGN-LANGUAGE.md](DESIGN-LANGUAGE.md) `current` — are executable policy,
   parsed out of the stylesheet by
   [design-language.test.ts](../scripts/design-language.test.ts) `current`

@@ -30,9 +30,11 @@ import {
  * this file is only the harness around it: the study frame, and the fake pane
  * grid the chrome specimen's focus ping is demonstrated against.
  *
- * `showAgentPresence` is forced on: the shipped default reads the Electron
- * host marker, which a browser gallery never has, and without it the rail
- * draws no chips, no disclosure and no per-agent rows.
+ * The worktree card (2026-08-26) draws its agent rows on every host — there
+ * is no `showAgentPresence` flag left to force on. `paneTails`/`paneModels`
+ * are Electron-only stores this browser gallery never populates either, so a
+ * specimen row reads exactly like a Tauri one would: no model pill, no
+ * turn sentence, but its glyph, state badge and close all still work.
  */
 
 /** Rail clicks land where the app sends them: on the shared active index. */

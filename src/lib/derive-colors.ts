@@ -156,15 +156,17 @@ const LIGHT_SEAM_RAISED_STEP = 0.14;
  * background and the pin stops applying, because it was picked FOR that
  * background.
  *
- * `#272d31` is not reachable by mixing `#17181c` toward white — it is a bluer,
- * flatter gray than any lift produces (hue 228° → 204°, saturation up) — so it
- * is a literal, and DL-2.2 carries the exception.
+ * `#161b22` is not reachable by mixing `#17181c` toward white — a lift raises
+ * every channel, and this gray drops red while raising blue — so it is a
+ * literal, and DL-2.2 carries the exception. It replaced `#272d31` on
+ * 2026-08-25 at the owner's request: the column now sits a hair above the
+ * stage rather than clearly above it, so the whole dark ladder starts lower.
  *
  * The key is `deck-dark`'s own `background` in `themes.ts`. Editing that value
  * without editing this one silently retires the pin.
  */
 const PINNED_SIDEBAR_BG: Readonly<Record<string, string>> = Object.freeze({
-  "#17181c": "#272d31",
+  "#17181c": "#161b22",
 });
 
 type ChromeTextToken = "textPrimary" | "textMuted" | "textFaint";

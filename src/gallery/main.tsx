@@ -10,6 +10,7 @@ import "./chatgpt-direction.css";
 import "./agent-status-rail.css";
 import "./agent-rail-variants.css";
 import "./rail-structure-variants.css";
+import "./rail-worktree-cards.css";
 import "./sections/settings-direction.css";
 import "./sections/launch-profiles-section.css";
 import "./sections/new-task-launcher-section.css";
@@ -22,7 +23,7 @@ import { activateTerminalSurface, openFileTab } from "../files/file-surface-stor
 import { nextOpenSequence } from "../lib/open-sequence";
 import { presetsData } from "../presets/presets-store";
 import { sessionArchive } from "../terminal/session-journal";
-import { paneTails } from "../terminal/session-tail-store";
+import { paneSessionIds, paneTails } from "../terminal/session-tail-store";
 import {
   SEED_PANE_TAILS,
   SEED_PRESETS,
@@ -34,7 +35,6 @@ import {
 import { Gallery } from "./gallery";
 import { workspacesData } from "../open-board/workspaces-store";
 import { WORKSPACES_VERSION } from "../lib/workspace-recents";
-import { DEFAULT_SIDEBAR_BANNER, sidebarBanner } from "../settings/sidebar-banner-store";
 import {
   recentDeadProjects,
   recentSessionEntries,
@@ -89,7 +89,6 @@ function main(): void {
   // log to read, so the store is seeded directly — without it every rail
   // specimen shows the never-spoken fallback and none of DL-27.15.
   paneTails.value = SEED_PANE_TAILS;
-  sidebarBanner.value = { ...DEFAULT_SIDEBAR_BANNER, enabled: true };
   const seededAt = Date.now();
   const missingRecentDirectory = `${SEED_STATUS.home}/retired/missing-workspace`;
   recentSessionEntries.value = [
@@ -141,6 +140,18 @@ function main(): void {
     },
   ];
   recentDeadProjects.value = new Set([missingRecentDirectory]);
+  // Recent activity's status mark reads the pane→session pairings the tail
+  // store confirms in the app (DL-33.2, amended 2026-08-26). There is no
+  // session log in a browser, so the pairings are seeded here the same way
+  // `paneTails` above is — three of the five listed sessions are running in a
+  // seeded pane (working, needs-you, failed) and two are held by no pane, which
+  // is the quiet dot. Pane 108 runs a different agent than its row's glyph on
+  // purpose: the mark reports the PANE's state, the glyph the session's agent.
+  paneSessionIds.value = new Map([
+    [101, "gallery-claude-launcher"],
+    [107, "gallery-codex-release"],
+    [108, "gallery-claude-rail"],
+  ]);
   recentSessionsLoading.value = false;
   recentSessionsLoadState.value = LOAD_READY;
   sessionsSupported.value = true;

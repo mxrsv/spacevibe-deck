@@ -66,6 +66,35 @@ function fireExit(): void {
 }
 
 describe("PtyManager", () => {
+  it("emits opt-in startup milestones without terminal content", () => {
+    const previous = process.env.DECK_PTY_STARTUP_TRACE;
+    process.env.DECK_PTY_STARTUP_TRACE = "1";
+    const writeDiagnostic = vi.spyOn(console, "info").mockImplementation(() => {});
+    try {
+      const id = manager.spawn("main", { cols: 80, rows: 24, cwd: null });
+
+      manager.write("main", id, "private input");
+      fireData("private output\x1b]133;B\x07");
+      fireExit();
+
+      const diagnostics = JSON.stringify(writeDiagnostic.mock.calls);
+      expect(diagnostics).toContain("spawn_start");
+      expect(diagnostics).toContain("pty_created");
+      expect(diagnostics).toContain("first_input");
+      expect(diagnostics).toContain("first_output");
+      expect(diagnostics).toContain("prompt_ready");
+      expect(diagnostics).not.toContain("private input");
+      expect(diagnostics).not.toContain("private output");
+    } finally {
+      writeDiagnostic.mockRestore();
+      if (previous === undefined) {
+        delete process.env.DECK_PTY_STARTUP_TRACE;
+      } else {
+        process.env.DECK_PTY_STARTUP_TRACE = previous;
+      }
+    }
+  });
+
   it("announces the exit BEFORE dropping the route", () => {
     manager.spawn("main", { cols: 80, rows: 24, cwd: null });
 

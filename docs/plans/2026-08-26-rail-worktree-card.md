@@ -654,8 +654,10 @@ custom property interpolates discretely and the beam steps rather than sweeps.
 
 - [ ] **Step 3: Delete DL-27.19's frame**
 
-Remove `.asr-stream .asr-item[data-headless="true"]` and its child rule. The `data-headless` seam
-itself is produced by `PANE_TREE_HIDDEN` and is untouched.
+Remove `.asr-stream .asr-item[data-headless="true"]` and its child rule. **Amended 2026-08-26 after
+Task 6:** the seam is gone, not untouched — `PANE_TREE_HIDDEN`'s only consumer was the tab tier's
+`TabItem`, so Task 6 deleted the constant and nothing emits `data-headless` any more. These rules are
+unreachable dead CSS; delete them outright rather than preserving a seam behind them.
 
 - [ ] **Step 4: Prove no overflow and no `box-sizing` trap**
 
@@ -790,7 +792,7 @@ describe("DL-27.25+ the worktree card", () => {
 | Rule | Edit |
 | --- | --- |
 | DL-27.15 | **Reversed** — the row's line is the pane label and its model, not the turn. Record that `tabTail` keeps the sentence on the strip's chips, so `session-tail` is not dead |
-| DL-27.19 | **Retired** with a banner, and its CSS deleted. The `data-headless` seam survives |
+| DL-27.19 | **Retired** with a banner, and its CSS deleted. The `data-headless` seam does NOT survive — `PANE_TREE_HIDDEN` went with the tab tier in Task 6, so restoring the frame means restoring the tier first |
 | DL-27.23 / DL-27.24 | **Amended** — the tiers are project → worktree → agent, and a worktree group collapses **and** is marked active. §14's "collapsing is out of scope" is reversed |
 | DL-27.3 | **Amended on four clauses** — `working` is bars + glow + beam, `idle` paints nothing, marks are no longer one 14px box, and the `asked` halo has nowhere to land on a 5px corner badge. The loudest-wins fold survives at the head mark, which distinguishes busy from not |
 | DL-21.1 | **Scoped exception, only if gate row 4 picked accent** — the active card takes an accent border. Record the cost (hue re-enters selection) and the one-`color-mix` revert. If the gate picked neutral `--hair-strong`, DL-21.1 does **not** move and this row disappears |

@@ -192,7 +192,7 @@ export function AgentsSection() {
           stacked on top of them named the same thing twice. */}
       <LaunchProfileEditor />
 
-      <ConfigGroup label="Declared" />
+      <ConfigGroup label="Agent identities" />
       {customAgents.map((agent) => (
         <Fragment key={agent.id}>
           <div
@@ -323,7 +323,7 @@ export function AgentsSection() {
         </>
       ) : null}
 
-      <ConfigRow label="Add agent" desc="A name and the command to type into each pane">
+      <ConfigRow label="Add agent" desc="Declare a new CLI identity and the binary Deck can run">
         <button
           type="button"
           class="cfg-btn"

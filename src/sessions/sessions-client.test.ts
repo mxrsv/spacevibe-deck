@@ -14,8 +14,8 @@ const REQUESTS: readonly ResumeRequest[] = [
 ];
 
 const ANSWERS: readonly (SessionTailAnswer | null)[] = [
-  { id: "claude-1", tail: "Implemented the client." },
-  { id: "codex-2", tail: null },
+  { id: "claude-1", tail: "Implemented the client.", model: null },
+  { id: "codex-2", tail: null, model: null },
 ];
 
 beforeEach(() => {
@@ -50,7 +50,7 @@ describe("SessionsClient tails", () => {
   it("drops a surplus memory reply rather than adding a request position", async () => {
     await expect(
       createMemorySessionsClient(null, {
-        tails: [...ANSWERS, { id: "surplus", tail: "must be dropped" }],
+        tails: [...ANSWERS, { id: "surplus", tail: "must be dropped", model: null }],
       }).tails([REQUESTS[0]]),
     ).resolves.toEqual([ANSWERS[0]]);
   });

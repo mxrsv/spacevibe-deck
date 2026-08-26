@@ -3,7 +3,7 @@ import { render } from "preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentOption } from "../lib/agent-catalog";
 import type { RecentWorkspace } from "../lib/workspace-recents";
-import { LauncherFields, type LauncherFieldsProps } from "./launcher-fields";
+import { LauncherFields, problemTone, type LauncherFieldsProps } from "./launcher-fields";
 import { EMPTY_DRAFT, withAgent, withWorkspace, type NewTaskDraft } from "./new-task-draft";
 
 const AGENTS: readonly AgentOption[] = [
@@ -37,6 +37,8 @@ function mount(overrides: Partial<LauncherFieldsProps> = {}): {
     canCreateWorktree: true,
     pending: null,
     problem: null,
+    openProblem: null,
+    agentsResolved: true,
     notice: null,
     onDraftChange,
     onPickFolder,
@@ -156,9 +158,77 @@ describe("LauncherFields", () => {
     expect(host.querySelector('[role="status"]')?.textContent).toContain("press Enter");
   });
 
+  it("does not alert about a draft nobody has filled in yet", () => {
+    // The composer used to open red: `role="alert"` fired on first paint for
+    // the resting state of an untouched form. An unanswered field is still
+    // said — quietly, and without claiming something went wrong.
+    mount({ draft: EMPTY_DRAFT, problem: "no-workspace", openProblem: "no-workspace" });
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(host.textContent).toContain("Pick a folder to work in");
+  });
+
+  it("keeps an empty prompt entirely silent — the label already asked", () => {
+    mount({ draft: { ...ready(), prompt: "" }, problem: "empty-prompt", openProblem: null });
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(host.textContent).not.toContain("Describe the task first");
+    // The disabled primary is what says "not ready".
+    expect(host.querySelector<HTMLButtonElement>(".nt-primary-action")?.disabled).toBe(true);
+  });
+
+  it("waits for discovery before declaring no agent is installed", () => {
+    const blocked = {
+      draft: EMPTY_DRAFT,
+      agents: [],
+      problem: "no-runnable-agent" as const,
+      openProblem: "no-runnable-agent" as const,
+    };
+    mount({ ...blocked, agentsResolved: false });
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(host.textContent).not.toContain("No agent is installed");
+
+    mount({ ...blocked, agentsResolved: true });
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("No agent is installed");
+  });
+
+  it("gates Open agent first on the structural chain, not on the prompt", () => {
+    mount({ draft: { ...ready(), prompt: "" }, problem: "empty-prompt", openProblem: null });
+    expect(host.querySelector<HTMLButtonElement>(".nt-secondary-action")?.disabled).toBe(false);
+
+    // Without a workspace it cannot open anything, and used to say so by
+    // launching and blaming the folder it was never given.
+    mount({ draft: EMPTY_DRAFT, problem: "no-workspace", openProblem: "no-workspace" });
+    expect(host.querySelector<HTMLButtonElement>(".nt-secondary-action")?.disabled).toBe(true);
+  });
+
+  it("a collapsed prompt does not block Open agent", () => {
+    mount({
+      compact: true,
+      draft: { ...ready(), prompt: "", promptExpanded: false },
+      problem: "empty-prompt",
+      openProblem: null,
+    });
+    const primary = host.querySelector<HTMLButtonElement>(".nt-primary-action");
+    expect(primary?.textContent).toContain("Open agent");
+    // It offers exactly "open it with no task", so a missing task cannot block it.
+    expect(primary?.disabled).toBe(false);
+  });
+
   it("disables the fields while an operation is pending", () => {
     mount({ draft: ready(), pending: "opening-agent" });
     expect(host.querySelector<HTMLTextAreaElement>("textarea")?.disabled).toBe(true);
     expect(host.querySelector<HTMLButtonElement>(".nt-primary-action")?.disabled).toBe(true);
+  });
+});
+
+describe("problemTone", () => {
+  it("reserves the alarm for what the composer cannot fix", () => {
+    expect(problemTone("agent-unavailable", true)).toBe("alert");
+    expect(problemTone("no-runnable-agent", true)).toBe("alert");
+    // Not yet looked ≠ nothing found.
+    expect(problemTone("no-runnable-agent", false)).toBe("silent");
+    expect(problemTone("no-workspace", true)).toBe("hint");
+    expect(problemTone("no-agent", true)).toBe("hint");
+    expect(problemTone("empty-prompt", true)).toBe("silent");
+    expect(problemTone(null, true)).toBe("silent");
   });
 });

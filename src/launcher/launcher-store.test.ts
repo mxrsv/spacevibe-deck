@@ -10,6 +10,7 @@ import {
   quickLaunchWorkspace,
   resetLauncherStore,
   transferToBoard,
+  toggleQuickLaunch,
   updateDraft,
 } from "./launcher-store";
 import { withAgent, withPrompt } from "./new-task-draft";
@@ -40,6 +41,21 @@ describe("launcher-store", () => {
   it("prefills the pinned workspace into the draft when it opens", () => {
     openQuickLaunch("/repo");
     expect(newTaskDraft.value.workspacePath).toBe("/repo");
+  });
+
+  it("closes when the active trigger is pressed again", () => {
+    toggleQuickLaunch("/repo");
+    expect(quickLaunchOpen.value).toBe(true);
+    toggleQuickLaunch("/repo");
+    expect(quickLaunchOpen.value).toBe(false);
+  });
+
+  it("retargets instead of closing when another project trigger is pressed", () => {
+    toggleQuickLaunch("/repo/a");
+    toggleQuickLaunch("/repo/b");
+    expect(quickLaunchOpen.value).toBe(true);
+    expect(quickLaunchWorkspace.value).toBe("/repo/b");
+    expect(newTaskDraft.value.workspacePath).toBe("/repo/b");
   });
 
   it("prefills a workspace without touching an explicit agent choice", () => {
