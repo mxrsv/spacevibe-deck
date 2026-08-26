@@ -316,6 +316,52 @@ export function railWorktreeCardsSpecimen() {
   );
 }
 
+/** The focused-row candidates, in the order they escalate. */
+const FOCUS_MARKS: readonly {
+  readonly id: string;
+  readonly title: string;
+  readonly note: string;
+}[] = [
+  {
+    id: "wash",
+    title: "A — a louder wash (shipped default)",
+    note: "one signifier, just legible: the focused row's wash goes from `--tone` 11% to 20% against a 5% rest and a 9% hover. DL-27.22 is untouched — this is the rule it already states, at a step you can see next to a rim glow. Costs nothing and reads weakest of the three when the row above it is busy.",
+  },
+  {
+    id: "tint",
+    title: "B — the wash takes --accent",
+    note: "still one signifier, so DL-27.22 stands: the wash is `--accent` at 24% instead of neutral white, which means the focused row is the only COLOURED plane in the column rather than the lightest one. Spends `--accent`, which the card's colour rule currently reserves for the strip's `+N`.",
+  },
+  {
+    id: "bar",
+    title: "C — wash + a leading accent bar",
+    note: 'a 16% neutral wash plus a 3px `--accent` bar down the row\'s left edge. The only candidate that answers "which row" without comparing one row to its neighbours, and the only one still readable at a glance down a full rail. Spends `--accent` too, and amends DL-27.22\'s "never a second signifier".',
+  },
+];
+
+/**
+ * The focused row, drawn three ways (owner, 2026-08-26, after a screenshot of
+ * four agent rows with no readable answer to "which one am I typing into").
+ *
+ * Every column is the SHIPPED component and the SHIPPED sheet — each candidate
+ * is one override of the production sheet's own pinned custom properties
+ * (`gallery.css`), never a second drawing of the row. `ai-terminal`'s first
+ * pane is the focused one in the fixture, and it is deliberately `working`:
+ * the busy rim is what the focus mark has to survive, and judging it on a
+ * still row would flatter all three.
+ */
+export function railFocusMarkSpecimen() {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "24px" }}>
+      {FOCUS_MARKS.map((mark) => (
+        <CardColumn key={mark.id} title={mark.title} note={mark.note}>
+          <div data-focus={mark.id}>{studyRail(AI_TERMINAL_KEY)}</div>
+        </CardColumn>
+      ))}
+    </div>
+  );
+}
+
 /** The busy-hue candidates, in the order they escalate. */
 const BUSY_HUES: readonly { readonly id: string; readonly title: string; readonly note: string }[] =
   [

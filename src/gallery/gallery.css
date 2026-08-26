@@ -1935,3 +1935,20 @@
 [data-busy="cyan"] .asr-card__row {
   --asr-card-busy: var(--cyan);
 }
+
+/*
+ * The focused-row candidates (`railFocusMarkSpecimen`), on the owner's ask of
+ * 2026-08-26 that the active agent row read louder. Same mechanism and same
+ * reason as the busy hues above: the production sheet pins
+ * `--asr-card-focus-bg` / `--asr-card-focus-frame` / `--asr-card-focus-bar`
+ * on `.asr-card__row` itself, so only a rule that also names that class can
+ * out-cascade it. Candidate A is the shipped default and needs no rule here.
+ */
+[data-focus="tint"] .asr-card__row {
+  --asr-card-focus-bg: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+[data-focus="bar"] .asr-card__row {
+  --asr-card-focus-bg: color-mix(in srgb, var(--tone) 16%, transparent);
+  --asr-card-focus-bar: var(--accent);
+}

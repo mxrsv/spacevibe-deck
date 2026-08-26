@@ -7,7 +7,11 @@ import {
   statePaletteSpecimen,
 } from "../agent-rail-variants";
 import { railSimplicityLadderSpecimen, railStructureSpecimen } from "../rail-structure-variants";
-import { railColorRuleSpecimen, railWorktreeCardsSpecimen } from "../rail-worktree-cards";
+import {
+  railColorRuleSpecimen,
+  railFocusMarkSpecimen,
+  railWorktreeCardsSpecimen,
+} from "../rail-worktree-cards";
 import { SIDEBAR_WIDTH_MIN } from "../../settings/settings-schema";
 import { SectionHead, Specimen } from "../specimen";
 
@@ -38,6 +42,13 @@ export function NavigationSection() {
         surface="none"
       >
         {railColorRuleSpecimen()}
+      </Specimen>
+      <Specimen
+        name="Worktree card · the focused agent row"
+        note="which agent holds the keyboard (DL-27.22), drawn three ways after the owner asked for it louder (2026-08-26). A is the shipped default and keeps DL-27.22's one-signifier rule; B and C add a second one and amend it. Each column is one override of --asr-card-focus-bg / -frame / -bar; the focused row is deliberately a WORKING row, since the rim glow is what the mark has to survive."
+        surface="none"
+      >
+        {railFocusMarkSpecimen()}
       </Specimen>
       <Specimen
         name="Row-structure candidates"

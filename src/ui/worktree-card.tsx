@@ -238,8 +238,17 @@ function CardAgentRow({
         <CardMark state={pane.state} />
       </span>
       <span class="asr-card__name">{pane.label}</span>
-      {pane.model !== "" && <span class="asr-card__pill">{pane.model}</span>}
+      {/* The loading mark sits BEFORE the model pill (owner, 2026-08-26): it
+          reads as "this model is working" rather than as a mark stranded past
+          the pill at the row's trailing edge, which is also where the close ✕
+          swaps in. DOM order follows visual order so the two agree — the
+          stylesheet pins the track to column 3 and the pill to column 4. The
+          cost, named: the bars now start at each pill's own left edge, so a
+          list of differently-sized pills gives them a ragged x. The pills
+          themselves still share one right edge, since column 4 is the row's
+          trailing column. */}
       <CardLoad state={pane.state} />
+      {pane.model !== "" && <span class="asr-card__pill">{pane.model}</span>}
       {/* DL-27.21, kept: every agent row closes its own pane — the same
           `asr-row__actions` / `asr-row__action--close` vocabulary the old
           tab row and its leaves both used (`agent-rail.tsx`, formerly

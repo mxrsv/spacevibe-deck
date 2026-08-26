@@ -363,11 +363,17 @@ button.asr-bare:hover {
 
 /* -------------------------------------------------------------------- the agent row */
 
-/* Four tracks: glyph (with its corner badge), name, model pill, loading track. The loading
+/* Four tracks: glyph (with its corner badge), name, loading track, model pill. The loading
    track is a FIXED 12px and reserved even on a row that draws no bars (design §10): with `auto`
    it collapsed on an idle row and pulled that row's model pill 12px right of the pills above
    it, so a still list read as a ragged right edge — `CardLoad` always renders the element for
    exactly this reason.
+
+   The load track moved from column 4 to column 3 on the owner's ask (2026-08-26): it precedes
+   the model pill now, so a busy row reads "this model is working" instead of parking the mark
+   past the pill in the same trailing slot the close ✕ swaps into. The pills still share one
+   right edge — column 4 is the trailing column of a full-width row — and the bars accept a
+   ragged x in exchange, which is the point of putting them beside their own pill.
 
    `.asr-card__row` is a `<div>`, not a `<button>` (DL-27.1): DL-27.21 still requires its own
    close, so the full-bleed `.asr-card__hit` button beneath it is the row's real press target
@@ -381,7 +387,7 @@ button.asr-bare:hover {
      `minmax(0, 1fr)`, the row is itself an item of `.asr-card`'s grid and keeps
      `min-width: auto` unless told otherwise — declared explicitly rather than assumed. */
   min-width: 0;
-  grid-template-columns: 14px minmax(0, 1fr) auto 12px;
+  grid-template-columns: 14px minmax(0, 1fr) 12px auto;
   align-items: center;
   column-gap: 7px;
   /* The busy glow's beam (further down) sits at `z-index: -1` so it paints over this row's own
@@ -439,16 +445,20 @@ button.asr-bare:hover {
   pointer-events: none;
 }
 
-/* Pinned to the fourth column explicitly — `.asr-row--tab > .asr-chips`'s own precedent (04a),
-   pinned there for the identical reason. `.asr-row__actions` (below) ALSO claims column 4 with
-   an explicit placement, and explicitly-placed items are laid out before auto-placed ones: with
-   no pin here, a row that renders a `.asr-card__pill` (three prior siblings filling columns
-   1–3) would find column 4 already taken and auto-flow the whole load track onto a SECOND grid
-   row instead, growing the row past `--asr-card-row-h`. A row with no pill has the opposite
-   failure — the load lands in the pill's own `auto` column 3, sized to the load's own content
-   instead of the reserved 12px track, so a busy row's name column gets less room than an idle
-   row's and the right edge the model pills are meant to share stops being one edge. */
+/* Both trailing tracks are pinned explicitly — `.asr-row--tab > .asr-chips`'s own precedent
+   (04a), pinned there for the identical reason. `.asr-row__actions` (below) ALSO claims column
+   4 with an explicit placement, and explicitly-placed items are laid out before auto-placed
+   ones: leaving the pill to auto-flow would send it looking for the first free cell, find
+   column 4 already claimed by the actions, and drop the whole pill onto a SECOND grid row —
+   growing the row past `--asr-card-row-h`. The load carries the same pin for the mirror
+   failure: a row with no pill would otherwise let the load auto-place into whichever cell is
+   free rather than the reserved 12px track. */
 .asr-card__row > .asr-card__load {
+  grid-row: 1;
+  grid-column: 3;
+}
+
+.asr-card__row > .asr-card__pill {
   grid-row: 1;
   grid-column: 4;
 }
@@ -456,17 +466,28 @@ button.asr-bare:hover {
 /* The close button. DL-27.5's established idiom is "close swaps in over the row's trailing
    control column" — every existing row (`.asr-row--tab`, `.asr-leaf`) puts the agent glyph
    there because their glyph IS trailing. This row's glyph is LEADING instead (design §5), so
-   the trailing-most column is `.asr-card__load`'s track, and that is what close swaps over:
+   the trailing-most column is column 4, and that is what close swaps over:
    `.asr-row__actions`'s own base rule (04a) already pins it to `grid-column: 4` on any
-   4-column grid parent, which this row is. */
+   4-column grid parent, which this row is.
+
+   Since the owner's 2026-08-26 swap, column 4 is the MODEL PILL rather than the load track, so
+   the pill is what fades under the ✕ — the busy bars now stay visible while the pointer is on
+   the row, which is the better half of the trade: hovering a row to close it no longer hides
+   whether that agent is mid-turn. `justify-self: end` overrides the shared rule's `center`,
+   which centred a 16px button inside a ~66px pill column and left the ✕ floating well short of
+   the row's right edge; on the old 12px track the difference was invisible. */
 .asr-card__row:hover .asr-row__actions,
 .asr-card__row .asr-row__actions:focus-within {
   opacity: 1;
   pointer-events: auto;
 }
 
-.asr-card__row:hover > .asr-card__load,
-.asr-card__row:has(.asr-row__actions:focus-within) > .asr-card__load {
+.asr-card__row .asr-row__actions {
+  justify-self: end;
+}
+
+.asr-card__row:hover > .asr-card__pill,
+.asr-card__row:has(.asr-row__actions:focus-within) > .asr-card__pill {
   opacity: 0;
 }
 
@@ -541,9 +562,59 @@ button.asr-bare:hover {
   }
 }
 
-/* The agent holding the keyboard (DL-27.22) — one step of wash, never a second signifier. */
+/*
+ * The agent holding the keyboard (DL-27.22), REDRAWN on the owner's ask (2026-08-26: "the
+ * active and focus state of each agent item has to be clearer and stand out more").
+ *
+ * It shipped as a single wash two steps above rest — `--tone` at 11% against 5% — with hover
+ * sitting between them at 9%. Measured against a busy row that is ALSO wearing the rim glow,
+ * that 6% step is the quietest thing on the row: the owner's own screenshot has four rows and
+ * no readable answer to "which one am I typing into". DL-27.22's "one step of wash, never a
+ * second signifier" was written for the shipped rail's flat rows, where a row is the only
+ * object in its column; a card row already competes with a rim, a corner badge, a pill and
+ * three bars.
+ *
+ * All three layers are drawn unconditionally and pinned to one custom property each, so the
+ * owner's Task 10 pass picks a candidate by overriding variables rather than by editing
+ * selectors — the same shape `--asr-card-busy` and `--asr-card-active-frame` already use, and
+ * the same shape the gallery's candidate columns override. The SHIPPED default is candidate A:
+ * wash only, at a step that can actually be seen. `transparent` on the other two is what makes
+ * A a pure strengthening of DL-27.22 rather than an amendment of it — B and C add a second
+ * signifier and Task 11 amends the rule only if one of them is picked.
+ */
+.asr-card__row {
+  /* The wash. A hairline FRAME was drawn as a third candidate and dropped before it reached
+     this file: DL-21.1's selected-chip treatment lands on the exact pixel the busy rim's own
+     `inset 0 0 0 1px` occupies, so on a working row — the row most likely to be focused — it
+     is invisible, and on a still row it says "selected" in the same stroke the card around it
+     already uses for "hovered". Two layers, not three. */
+  --asr-card-focus-bg: color-mix(in srgb, var(--tone) 20%, transparent);
+  /* The leading bar: the one signifier that reads without comparing a row to its neighbours.
+     `transparent` ships, so the default is a wash alone and DL-27.22 stands unamended until
+     the owner picks otherwise. */
+  --asr-card-focus-bar: transparent;
+}
+
 .asr-card__row[data-focused="true"] {
-  background: color-mix(in srgb, var(--tone) 11%, transparent);
+  background: var(--asr-card-focus-bg);
+}
+
+/* `::after`, because `::before` is the busy beam's. Inert, and it paints over the row's own
+   background while staying out of `.asr-card__hit`'s way. */
+.asr-card__row[data-focused="true"]::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 3px;
+  /* A capsule, not a squared-off tick. `999px` rather than a per-corner shorthand: DL-20.1's
+     scale is closed and the design-language gate matches a `border-radius` value WHOLE, so a
+     four-corner shorthand reads as off-scale even when every corner in it is on the scale.
+     At 3px wide the capsule and a 3px per-corner rounding are the same picture anyway. */
+  border-radius: 999px;
+  background: var(--asr-card-focus-bar);
+  pointer-events: none;
 }
 
 /* --------------------------------------------------------------------- the glyph + badge */
@@ -612,12 +683,22 @@ button.asr-bare:hover {
   background: var(--red);
 }
 
-/* `done`: the resting mix the head/bare mark also use — a checkout can hold a finished pane
-   and a working one at once, so this dot has to read as "not busy" without disappearing the
-   way `idle` does (below): a done row still ran something. No state left undeclared falls back
-   to this: `idle` is the only state that overrides it. */
+/* `done` — a checkout can hold a finished pane and a working one at once, so this dot has to
+   read as "not busy" without disappearing the way `idle` does (below): a done row still ran
+   something. No state left undeclared falls back to this: `idle` is the only state that
+   overrides it.
+
+   The fill is OPAQUE (owner, 2026-08-26: "one state has only a black border and no
+   background"). It shipped as `--tone 26%` over `transparent`, and a translucent fill inside a
+   5px circle composites against whatever plane the dot happens to sit on — the card's own
+   `--tab-active-bg`, plus the row's wash, plus the focus wash on top of that — landing about
+   one step off the row it sits in. All that survived was the 1.5px `--sidebar-bg` ring, which
+   is DARKER than the card, so the mark read as an empty black outline rather than a state. The
+   mix is against `--sidebar-bg` instead of `transparent`: the same grey, but a real one that
+   the plane behind it cannot dilute. Every other drawn state was already opaque
+   (`--status-unread`, `--red`) or near enough (`--asr-card-busy` at 62%) to survive it. */
 .asr-card__dot[data-state="done"] {
-  background: color-mix(in srgb, var(--tone) 26%, transparent);
+  background: color-mix(in srgb, var(--tone) 42%, var(--sidebar-bg));
 }
 
 /* Idle paints nothing. `display: none`, not `background: none`: the ring above is drawn in the
@@ -720,6 +801,9 @@ button.asr-bare:hover {
   color: var(--text-muted);
   font: 500 var(--type-micro) / 1.5 var(--ui-font);
   white-space: nowrap;
+  /* Matches the `.asr-row__actions` fade it trades places with, so the ✕ arriving and the pill
+     leaving are one movement rather than a cut followed by a fade. */
+  transition: opacity var(--duration) var(--ease);
 }
 
 .asr-card__row[data-focused="true"] .asr-card__pill {
@@ -735,7 +819,7 @@ button.asr-bare:hover {
   box-sizing: border-box;
   display: grid;
   min-width: 0;
-  grid-template-columns: 14px minmax(0, 1fr) auto 12px;
+  grid-template-columns: 14px minmax(0, 1fr) 12px auto;
   align-items: center;
   column-gap: 7px;
   width: 100%;
