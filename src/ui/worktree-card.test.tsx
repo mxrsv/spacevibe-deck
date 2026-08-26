@@ -130,7 +130,9 @@ describe("WorktreeCard head (design §4)", () => {
     expect(host.querySelector(".asr-card__meta")?.textContent).toBe("5m");
     // The project prefix (review fix, 2026-08-26): `project · checkout · branch`.
     expect(head?.getAttribute("title")).toBe("spacevibe-bench · ai-terminal · feature/ai-terminal");
-    expect(head?.getAttribute("aria-label")).toContain("spacevibe-bench · ai-terminal · feature/ai-terminal");
+    expect(head?.getAttribute("aria-label")).toContain(
+      "spacevibe-bench · ai-terminal · feature/ai-terminal",
+    );
   });
 
   it("draws a closed card's strip with segments, never sharing the open row's class", () => {
@@ -192,16 +194,35 @@ describe("WorktreeCard open list (design §5)", () => {
     expect(loads[1].getAttribute("data-busy")).toBe("true");
   });
 
+  // The reversed half of the decision above (owner, 2026-08-26): the track is
+  // still reserved, but it now precedes the model pill instead of trailing it.
+  // Pinned as DOM order rather than as a grid column, because the DOM order is
+  // what the stylesheet's two `grid-column` pins are declared to agree with —
+  // and because a row read by a screen reader announces the children in this
+  // order, not in the grid's.
+  it("puts the loading track before the model pill", () => {
+    mount({
+      open: true,
+      group: group({ panes: [pane({ paneId: 1, state: "working", model: "GPT-5.1" })] }),
+    });
+
+    const row = host.querySelector(".asr-card__row");
+    expect(row).not.toBeNull();
+    const children = [...(row?.children ?? [])];
+    const loadAt = children.findIndex((node) => node.classList.contains("asr-card__load"));
+    const pillAt = children.findIndex((node) => node.classList.contains("asr-card__pill"));
+    expect(loadAt).toBeGreaterThan(-1);
+    expect(pillAt).toBeGreaterThan(-1);
+    expect(loadAt).toBeLessThan(pillAt);
+  });
+
   it("focuses the pane's own tab when a row is pressed", () => {
     const onFocusPane = vi.fn();
     mount({
       open: true,
       onFocusPane,
       group: group({
-        panes: [
-          pane({ paneId: 99, tabIndex: 7 }),
-          pane({ paneId: 100, tabIndex: 8 }),
-        ],
+        panes: [pane({ paneId: 99, tabIndex: 7 }), pane({ paneId: 100, tabIndex: 8 })],
       }),
     });
 
