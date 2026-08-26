@@ -439,6 +439,20 @@ button.asr-bare:hover {
   pointer-events: none;
 }
 
+/* Pinned to the fourth column explicitly — `.asr-row--tab > .asr-chips`'s own precedent (04a),
+   pinned there for the identical reason. `.asr-row__actions` (below) ALSO claims column 4 with
+   an explicit placement, and explicitly-placed items are laid out before auto-placed ones: with
+   no pin here, a row that renders a `.asr-card__pill` (three prior siblings filling columns
+   1–3) would find column 4 already taken and auto-flow the whole load track onto a SECOND grid
+   row instead, growing the row past `--asr-card-row-h`. A row with no pill has the opposite
+   failure — the load lands in the pill's own `auto` column 3, sized to the load's own content
+   instead of the reserved 12px track, so a busy row's name column gets less room than an idle
+   row's and the right edge the model pills are meant to share stops being one edge. */
+.asr-card__row > .asr-card__load {
+  grid-row: 1;
+  grid-column: 4;
+}
+
 /* The close button. DL-27.5's established idiom is "close swaps in over the row's trailing
    control column" — every existing row (`.asr-row--tab`, `.asr-leaf`) puts the agent glyph
    there because their glyph IS trailing. This row's glyph is LEADING instead (design §5), so
