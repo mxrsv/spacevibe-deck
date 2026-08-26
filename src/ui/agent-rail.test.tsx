@@ -138,7 +138,6 @@ function mount(props: Partial<Parameters<typeof AgentRail>[0]> = {}): void {
         onClosePane={NOOP}
         onFocusPane={NOOP}
         fileController={fileController}
-        showAgentPresence
         {...props}
       />,
       host,
@@ -161,7 +160,6 @@ function mountSidebarLayout(): void {
           onClosePane={NOOP}
           onFocusPane={NOOP}
           fileController={fileController}
-          showAgentPresence
         />
         <div class="stage__strip">
           <TabStrip
@@ -533,20 +531,22 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
     expect(rows()).toHaveLength(2);
   });
 
-  it("keeps agent presence out of a host that does not enable it (review fix, 2026-08-26)", async () => {
-    // `repository-rail.test.tsx`'s own pattern: on a host with no agent
-    // detection wired (Tauri, or here an explicit override), a card head
-    // still prints, but neither the strip nor the open list's rows do.
+  it("draws agent rows on every host — reversal of the round-1 showAgentPresence gate (review, 2026-08-26)", async () => {
+    // `AgentRailProps.showAgentPresence` is gone: a gate here could only
+    // choose between pane rows and nothing, since the tab tier it would have
+    // fallen back to (as `TabItem` did under Tauri) no longer renders at
+    // all. `AgentRail` no longer reads `electronHostAvailable` for this
+    // purpose, and `WorktreeCard` takes no such prop — a card's strip and
+    // its open-list rows draw the same way regardless of host.
     tabViews.value = [tab({ panes: [pane({ paneId: 11 })] })];
-    mount({ showAgentPresence: false });
+    mount();
     await settle();
 
     expect(host.querySelector(".asr-card__head")).not.toBeNull();
-    expect(host.querySelector(".asr-card__row")).toBeNull();
-    expect(host.querySelector(".asr-card__seg")).toBeNull();
+    expect(host.querySelector(".asr-card__seg")).not.toBeNull();
 
     openAllCards();
-    expect(host.querySelector(".asr-card__row")).toBeNull();
+    expect(rows()).toHaveLength(1);
   });
 });
 

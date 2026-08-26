@@ -62,7 +62,6 @@ function mount(props: Partial<WorktreeCardProps> & { readonly group: RailWorktre
         onToggle={() => {}}
         onFocusPane={NOOP_FOCUS}
         onClosePane={NOOP_CLOSE}
-        showAgentPresence
         {...props}
       />,
       host,
@@ -262,35 +261,42 @@ describe("WorktreeCard open list (design §5)", () => {
   });
 });
 
-describe("WorktreeCard host parity (review fix, 2026-08-26)", () => {
-  it("draws only the head and meta line when showAgentPresence is false", () => {
-    // The `TabItem` parity gap the review caught: agent detection is not
-    // wired on every host (Tauri), so neither the closed strip nor the open
-    // list's rows may draw when the rail says so — even though `open` is
-    // true and panes exist.
-    mount({
-      open: true,
-      showAgentPresence: false,
-      group: group({ age: "5m", panes: [pane({ paneId: 1 }), pane({ paneId: 2 })] }),
-    });
+describe("WorktreeCard host parity — no gate (review reversal, 2026-08-26)", () => {
+  // Round 1 added a `showAgentPresence` gate here on a reviewer finding;
+  // round 2 reversed it on the SAME reviewer's own follow-up, once the
+  // `FlatPanes` consequence was named (see the file's top-of-module
+  // comment). `WorktreeCardProps` carries no such field any more — these
+  // pin that a card's strip and its open-list rows draw unconditionally,
+  // on both the labelled and the unlabelled (`FlatPanes`) path.
 
-    expect(host.querySelector(".asr-card__head")).not.toBeNull();
-    expect(host.querySelector(".asr-card__meta")?.textContent).toBe("5m");
-    expect(host.querySelector(".asr-card__row")).toBeNull();
-    expect(host.querySelector(".asr-card__seg")).toBeNull();
-    expect(host.querySelector(".asr-card__strip")).toBeNull();
-    expect(host.querySelector(".asr-card__count")).toBeNull();
-    expect(host.querySelector(".asr-card__new")).toBeNull();
-  });
-
-  it("draws the strip when closed and showAgentPresence is true (today's Electron behaviour, unchanged)", () => {
+  it("draws the closed strip regardless of host", () => {
     mount({
       open: false,
-      showAgentPresence: true,
       group: group({ panes: [pane({ paneId: 1 }), pane({ paneId: 2 })] }),
     });
 
     expect(host.querySelectorAll(".asr-card__seg")).toHaveLength(2);
+  });
+
+  it("draws the open list's rows regardless of host", () => {
+    mount({
+      open: true,
+      group: group({ age: "5m", panes: [pane({ paneId: 1 }), pane({ paneId: 2 })] }),
+    });
+
+    expect(host.querySelectorAll(".asr-card__row")).toHaveLength(2);
+  });
+
+  it("draws FlatPanes' rows regardless of host — the dominant real-Tauri path", () => {
+    // `git_repository` is Electron-only, so under REAL Tauri almost every
+    // checkout is unlabelled and renders through here, not through a card
+    // at all. A gate scoped to the labelled path alone would have left this
+    // branch — the one that matters in practice — untouched either way.
+    mount({
+      group: group({ labelled: false, panes: [pane({ paneId: 1 }), pane({ paneId: 2 })] }),
+    });
+
+    expect(host.querySelectorAll(".asr-card__row")).toHaveLength(2);
   });
 });
 

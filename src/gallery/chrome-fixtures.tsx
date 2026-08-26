@@ -134,7 +134,6 @@ export function agentRailNavigationSpecimen({
       onCloseTab={NOOP}
       onClosePane={NOOP}
       onFocusPane={onFocusPane}
-      showAgentPresence
       fileController={fileControllerFixture}
       recentActivity={<RecentSessionActivity onResume={NOOP} onViewAll={NOOP} />}
       footer={

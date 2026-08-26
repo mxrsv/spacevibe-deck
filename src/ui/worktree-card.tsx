@@ -48,13 +48,29 @@ import {
  * the corner badge). Reusing it would mean overriding two of its five
  * branches from outside, which is not reuse.
  *
- * Host parity: `showAgentPresence` is threaded down from `agent-rail.tsx`
- * (the `props.showAgentPresence ?? electronHostAvailable` default
- * `repository-rail.tsx` established) exactly the way `TabItem` gated its
- * chips and leaves. A labelled checkout with panes still draws its head and
- * meta line when it is false, but neither the closed strip nor the open
- * list's rows — the shipped rail never drew per-agent detail on a host
- * where agent detection is not wired, and the card must not either.
+ * **Host parity, decided (review, 2026-08-26): the card draws its strip and
+ * its agent rows on BOTH hosts, labelled and unlabelled paths alike — there
+ * is no `showAgentPresence` gate anywhere in this file.** A gate was tried
+ * and reversed: the OLD `TabItem` gated its per-agent chip/leaf rendering on
+ * `electronHostAvailable` because a TAB ROW still existed underneath to fall
+ * back to. That fallback is gone — the tab tier no longer renders at all —
+ * so a gate here could only choose between "pane rows" and "nothing", never
+ * restore the old picture. And because `git_repository` is Electron-only,
+ * REAL Tauri renders almost entirely through `FlatPanes` (`!group.labelled`
+ * below): gating the labelled path alone would have been cosmetic, and
+ * gating both would leave Tauri with a cluster header over a blank space —
+ * worse than what it draws today.
+ *
+ * This is a DELIBERATE, NAMED parity change, not an accident: Tauri gains
+ * per-pane rows and a per-pane close it never had before (DL-27.13's tree
+ * was itself `electronHostAvailable`-gated). A Tauri row is honestly
+ * incomplete rather than silently wrong — `paneTails` and `paneModels` are
+ * both Electron-only stores, so `pane.message`/`pane.model` arrive empty on
+ * every Tauri pane, and `CardAgentRow` already omits the model pill when
+ * `pane.model === ""` (§9.1's own reversal already dropped `pane.message`
+ * from the row everywhere, so that half costs nothing extra). The state
+ * badge, the glyph and the close button all still work, because none of
+ * those read an Electron-only store.
  */
 
 /**
@@ -385,16 +401,6 @@ export interface WorktreeCardProps {
    */
   readonly onClosePane: (tabIndex: number, paneId: number) => void;
   readonly onNewTabIn?: (workspacePath: string) => void;
-  /**
-   * Host parity (review finding, 2026-08-26): the same
-   * `props.showAgentPresence ?? electronHostAvailable` default
-   * `agent-rail.tsx` resolves once and hands down, not re-defaulted here.
-   * `false` (Tauri, or a test/gallery override) draws the head and meta line
-   * only — no strip, no open-list rows — the way `TabItem` drew a tab row
-   * with no chip and no leaves on a host where agent detection is not
-   * wired. `true` (the Electron default) is today's behaviour, unchanged.
-   */
-  readonly showAgentPresence: boolean;
 }
 
 export function WorktreeCard(props: WorktreeCardProps) {
@@ -435,42 +441,41 @@ export function WorktreeCard(props: WorktreeCardProps) {
           sibling (an open question this task does not build, spec §13.2)
           would drop it. */}
       {group.age !== "" && <p class="asr-card__meta">{group.age}</p>}
-      {props.showAgentPresence &&
-        (props.open ? (
-          <Fragment>
-            {/* The count alone, no `Agents` label (design §5, §8.4: the
-                owner-dropped label would also reopen DL-4.3's closed
-                uppercase exception). */}
-            <div class="asr-card__count">{group.panes.length} active</div>
-            {group.panes.map((pane) => (
-              <CardAgentRow
-                key={pane.paneId}
-                project={project}
-                group={group}
-                pane={pane}
-                onFocusPane={props.onFocusPane}
-                onClosePane={props.onClosePane}
-              />
-            ))}
-            {props.onNewTabIn !== undefined && (
-              <button
-                type="button"
-                class="asr-card__new"
-                aria-label={`New agent in ${whereOf(project, group)}`}
-                onClick={() => {
-                  props.onNewTabIn?.(group.path);
-                }}
-              >
-                <span class="asr-card__glyph asr-card__glyph--new" aria-hidden="true">
-                  <DeckIcon icon={Plus} size={CHROME_ICON} />
-                </span>
-                <span class="asr-card__name">New agent</span>
-              </button>
-            )}
-          </Fragment>
-        ) : (
-          <CardStrip panes={group.panes} />
-        ))}
+      {props.open ? (
+        <Fragment>
+          {/* The count alone, no `Agents` label (design §5, §8.4: the
+              owner-dropped label would also reopen DL-4.3's closed
+              uppercase exception). */}
+          <div class="asr-card__count">{group.panes.length} active</div>
+          {group.panes.map((pane) => (
+            <CardAgentRow
+              key={pane.paneId}
+              project={project}
+              group={group}
+              pane={pane}
+              onFocusPane={props.onFocusPane}
+              onClosePane={props.onClosePane}
+            />
+          ))}
+          {props.onNewTabIn !== undefined && (
+            <button
+              type="button"
+              class="asr-card__new"
+              aria-label={`New agent in ${whereOf(project, group)}`}
+              onClick={() => {
+                props.onNewTabIn?.(group.path);
+              }}
+            >
+              <span class="asr-card__glyph asr-card__glyph--new" aria-hidden="true">
+                <DeckIcon icon={Plus} size={CHROME_ICON} />
+              </span>
+              <span class="asr-card__name">New agent</span>
+            </button>
+          )}
+        </Fragment>
+      ) : (
+        <CardStrip panes={group.panes} />
+      )}
     </article>
   );
 }

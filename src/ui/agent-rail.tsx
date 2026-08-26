@@ -11,7 +11,6 @@ import {
   repositoryScans,
 } from "../repositories/repositories-store";
 import { paneTails } from "../terminal/session-tail-store";
-import { available as electronHostAvailable } from "../host/worktree-host";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { workspacesData } from "../open-board/workspaces-store";
 import { settings, updateSettings } from "../settings/settings-store";
@@ -95,8 +94,6 @@ export interface AgentRailProps {
   onCloseProject?(tabIndexes: readonly number[], historyPaths: readonly string[]): void;
   /** Focus one exact pane: activate its tab, focus that pane, ack it. */
   onFocusPane(index: number, paneId: number): void;
-  /** Test/gallery override; production defaults to the Electron host marker. */
-  showAgentPresence?: boolean;
   /**
    * Pinned under the scrolling list and above the banner: the rail's own
    * footer of window actions (`SidebarActions`, DL §28). `App` builds it,
@@ -176,12 +173,6 @@ function groupPath(group: RailStreamGroup): string | null {
 
 export function AgentRail(props: AgentRailProps) {
   const tabs = tabViews.value;
-  // Host parity (review finding, 2026-08-26): the `repository-rail.tsx`
-  // default, restored. `WorktreeCard` reads this to decide whether a
-  // labelled checkout's body draws any agent detail at all — on a host with
-  // no agent detection wired (Tauri, or a test/gallery override) it must
-  // not, the same way `TabItem` used to gate its chip and leaves on it.
-  const showAgentPresence = props.showAgentPresence ?? electronHostAvailable;
   // Which labelled project groups are folded. A new Set each time rather than
   // a mutated one (C1), so the signal actually notifies.
   const collapsedGroupKeys = useSignal<ReadonlySet<string>>(new Set());
@@ -470,7 +461,6 @@ export function AgentRail(props: AgentRailProps) {
                       onFocusPane={props.onFocusPane}
                       onClosePane={props.onClosePane}
                       onNewTabIn={props.onNewTabIn}
-                      showAgentPresence={showAgentPresence}
                     />
                   ))}
               </div>
