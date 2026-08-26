@@ -343,6 +343,9 @@ const STATE_RANK: Readonly<Record<RailState, number>> = {
   idle: 0,
 };
 
+/** How many agent glyphs a closed worktree card shows (spec §11.4). */
+export const STRIP_VISIBLE = 3;
+
 /** The rail has no collapse affordance — it is one flat list (spec §2). */
 const NO_COLLAPSED_REPOSITORIES: ReadonlySet<string> = new Set();
 
@@ -524,6 +527,25 @@ function loudestPane(panes: readonly RailPaneRow[]): RailPaneRow | null {
 function outranks(pane: RailPaneRow, incumbent: RailPaneRow): boolean {
   const delta = STATE_RANK[pane.state] - STATE_RANK[incumbent.state];
   return delta > 0 || (delta === 0 && pane.changedAt > incumbent.changedAt);
+}
+
+/**
+ * The three loudest panes a closed card shows in its glyph strip (spec §11.4,
+ * DL-27.3). Loudness is exactly `outranks`' order — equal states tie on
+ * `changedAt`, newest first — so two `working` panes swap places in the strip
+ * whenever the quieter one speaks. That is the accepted consequence of
+ * reusing the single comparator rather than introducing a card-local one.
+ */
+export function stripSegments(panes: readonly RailCardPane[]): {
+  readonly shown: readonly RailCardPane[];
+  readonly overflow: number;
+} {
+  // Build a sorted copy — do not mutate the input (C1).
+  const sorted = [...panes].sort((a, b) => (outranks(a, b) ? -1 : outranks(b, a) ? 1 : 0));
+  return {
+    shown: sorted.slice(0, STRIP_VISIBLE),
+    overflow: Math.max(0, sorted.length - STRIP_VISIBLE),
+  };
 }
 
 function tabRow(group: RepositoryGroup, railTab: RailTab, input: AgentRailInput): RailTabRow {

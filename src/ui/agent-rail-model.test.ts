@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { RepositoryScan } from "../repositories/repository-client";
 import type { PaneView, TabView } from "../terminal/tabs-store";
-import type { AgentRailInput, AgentRailView, RailStreamGroup } from "./agent-rail-model";
-import { buildAgentRail, formatShortAge, tabTail } from "./agent-rail-model";
+import type { AgentRailInput, AgentRailView, RailCardPane, RailStreamGroup } from "./agent-rail-model";
+import { STRIP_VISIBLE, buildAgentRail, formatShortAge, stripSegments, tabTail } from "./agent-rail-model";
 
 /**
  * The stream's rows in render order, flattened out of their clusters AND their
@@ -1297,5 +1297,72 @@ describe("buildAgentRail focused pane (DL-27.22)", () => {
     );
 
     expect(streamRows(view)[0].panes[0].focused).toBe(false);
+  });
+});
+
+describe("stripSegments (Task 5, 2026-08-26)", () => {
+  /** Minimal RailCardPane fixture with the fields stripSegments reads. */
+  function cardPane(
+    paneId: number,
+    state: RailCardPane["state"],
+    changedAt: number,
+  ): RailCardPane {
+    return {
+      paneId,
+      agent: "claude",
+      focused: false,
+      message: "",
+      age: "",
+      state,
+      changedAt,
+      tabIndex: 0,
+      model: "",
+      label: "Claude",
+    };
+  }
+
+  const idle = cardPane(1, "idle", NOW - 5 * MINUTE);
+  const working = cardPane(2, "working", NOW - 3 * MINUTE);
+  const failed = cardPane(3, "failed", NOW - MINUTE);
+  const asked = cardPane(4, "asked", NOW - 2 * MINUTE);
+  const done = cardPane(5, "done", NOW - 4 * MINUTE);
+
+  it("shows the three loudest panes and counts the rest", () => {
+    const panes = [idle, working, failed, asked, done];
+    const { shown, overflow } = stripSegments(panes);
+    expect(shown.map((p) => p.state)).toEqual(["failed", "asked", "working"]);
+    expect(overflow).toBe(2);
+  });
+
+  it("breaks an equal-state tie by changedAt, newest first", () => {
+    // pins `outranks`' actual rule, so a later reader does not assume open order
+    const olderWorking = cardPane(1, "working", NOW - 10 * MINUTE);
+    const newerWorking = cardPane(2, "working", NOW - MINUTE);
+    const { shown } = stripSegments([olderWorking, newerWorking]);
+    expect(shown[0].paneId).toBe(2); // newer wins
+    expect(shown[1].paneId).toBe(1);
+  });
+
+  it("returns all panes when there are fewer than STRIP_VISIBLE", () => {
+    const { shown, overflow } = stripSegments([failed, asked]);
+    expect(shown.length).toBe(2);
+    expect(overflow).toBe(0);
+  });
+
+  it("returns an empty strip and zero overflow for no panes", () => {
+    const { shown, overflow } = stripSegments([]);
+    expect(shown).toEqual([]);
+    expect(overflow).toBe(0);
+  });
+
+  it("does not mutate the input array (C1)", () => {
+    const panes = [idle, working, failed, asked, done];
+    const originalOrder = panes.map((p) => p.paneId);
+    stripSegments(panes);
+    expect(panes.map((p) => p.paneId)).toEqual(originalOrder);
+  });
+
+  it("STRIP_VISIBLE is 3", () => {
+    expect(STRIP_VISIBLE).toBe(3);
   });
 });
