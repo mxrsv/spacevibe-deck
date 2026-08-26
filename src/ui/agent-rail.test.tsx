@@ -1454,8 +1454,19 @@ describe("AgentRail cluster reorder (DL-27.20)", () => {
     updateSettings({ railOrder: [] });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     updateSettings({ railOrder: [] });
+    // A completed drag arms `swallowNextClick` (rail-cluster-drag.ts): a
+    // capture-phase `click` listener on `window`, self-removed by a REAL
+    // `setTimeout(0)` so a drop that produces no click does not stay armed
+    // to eat an unrelated one later. `settle()` only flushes microtasks, so
+    // without a real macrotask tick here that listener can survive into the
+    // next test — this describe is the only one that ever completes a drag
+    // — and swallow the first `click` it sees. That first click is often
+    // `openAllCards()`'s own dispatch on a `.asr-card__head`, which reads as
+    // the whole card silently failing to open. One real timer tick lets the
+    // listener remove itself before any other test can observe it.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
   });
 
   it("writes the dragged project's order key once, on the drop", async () => {

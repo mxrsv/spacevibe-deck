@@ -711,9 +711,11 @@ function TreeColumn() {
  * reaching it now means rebuilding the tree rather than flipping a flag.
  *
  * **B3 shipped on 2026-08-20 as DL-27.19** — the owner picked the neutral
- * frame and turned down B4's per-tab colour. The columns stay: A is what the
- * rail looked like the day before, and B1/B2/B4/C are the alternatives that
- * were judged against it, which is the comparison a later reversal needs.
+ * frame and turned down B4's per-tab colour — and was retired 2026-08-26
+ * when the worktree card replaced the tab tier these columns were drawn
+ * against. The columns stay as the comparison that reversal needs: A is what
+ * the rail looked like the day before, and B1/B2/B4/C are the alternatives
+ * DL-27.19 was judged against.
  */
 export function multiAgentGroupingSpecimen() {
   return (
@@ -751,10 +753,11 @@ export function multiAgentGroupingSpecimen() {
       <article class="gxa-variant">
         <div class="gxa-variant__head">
           <span class="gxa-variant__index">B3</span>
-          <span class="gxa-variant__title">band, outline — SHIPPING</span>
+          <span class="gxa-variant__title">band, outline — retired 2026-08-26</span>
           <span class="gxa-variant__note">
-            DL-27.19 since 2026-08-20: a rounded hairline frame draws the block's own edge; two tabs
-            back to back close as two objects
+            DL-27.19, 2026-08-20 to 2026-08-26: a rounded hairline frame drew the block's own edge;
+            two tabs back to back closed as two objects. Retired when the worktree card replaced
+            the tab tier.
           </span>
         </div>
         <BandedColumn mark="outline" />

@@ -69,7 +69,7 @@ export function NavigationSection() {
       </Specimen>
       <Specimen
         name="Multi-agent grouping · candidates"
-        note="B3 shipped on 2026-08-20 as DL-27.19 — the neutral frame. A is the flat rail it replaced; B1/B2 are the hairline rule and the wash it was judged against; B4 is the same frame in the tab's own dot colour, turned down because the status dot owns red and yellow; C is the parked elbow tree. Two multi-agent tabs sit back to back on purpose — that pair is what a grouping mark has to survive."
+        note="B3 shipped on 2026-08-20 as DL-27.19 — the neutral frame — and was retired 2026-08-26 when the worktree card replaced the tab tier; the card's own box now says what the frame said. A is the flat rail it replaced; B1/B2 are the hairline rule and the wash it was judged against; B4 is the same frame in the tab's own dot colour, turned down because the status dot owns red and yellow; C is the parked elbow tree. Two multi-agent tabs sit back to back on purpose — that pair is what a grouping mark has to survive."
         surface="none"
       >
         {multiAgentGroupingSpecimen()}
