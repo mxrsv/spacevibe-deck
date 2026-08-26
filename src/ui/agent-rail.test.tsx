@@ -53,7 +53,7 @@ import type { FileClient } from "../files/file-client";
 import { workspacesData } from "../open-board/workspaces-store";
 import { WORKSPACES_VERSION } from "../lib/workspace-recents";
 import { sessionArchive } from "../terminal/session-journal";
-import { paneTails } from "../terminal/session-tail-store";
+import { paneModels, paneTails } from "../terminal/session-tail-store";
 import { browserSurfaceActive } from "../browser/browser-store";
 import { settings, updateSettings } from "../settings/settings-store";
 
@@ -245,6 +245,7 @@ beforeEach(() => {
   fileController = createFileSurfaceController({ client: fileClient });
   sessionArchive.value = {};
   paneTails.value = new Map();
+  paneModels.value = new Map();
   browserSurfaceActive.value = false;
 });
 
@@ -258,6 +259,7 @@ afterEach(() => {
   resetFileSurfaces();
   sessionArchive.value = {};
   paneTails.value = new Map();
+  paneModels.value = new Map();
   browserSurfaceActive.value = false;
   vi.restoreAllMocks();
 });
@@ -1556,5 +1558,37 @@ describe("AgentRail focused pane (DL-27.22, kept unchanged by the card — desig
     // All four are drawn — otherwise the count below would pass vacuously.
     expect(listed).toHaveLength(4);
     expect(listed.filter((row) => row.dataset.focused === "true")).toHaveLength(0);
+  });
+});
+
+describe("AgentRail paneModels wiring (Task 8)", () => {
+  // Proves that a model string written to `paneModels` reaches the card row's
+  // model pill. `buildAgentRail` passes `models: paneModels.value` alongside
+  // `tails: paneTails.value`; the card component reads `pane.model` and
+  // renders `.asr-card__pill` when it is non-empty.
+  it("surfaces the model pill for a pane whose model is in paneModels", async () => {
+    tabViews.value = [
+      tab({ panes: [pane({ paneId: 11, agent: "claude", phase: "working" })] }),
+    ];
+    // Write the model BEFORE mount so the first render already has it.
+    paneModels.value = new Map([[11, "claude-sonnet-5"]]);
+    mount();
+    await settle();
+    openAllCards();
+
+    const pill = host.querySelector(".asr-card__pill");
+    expect(pill?.textContent, "model pill must carry the model string").toBe("claude-sonnet-5");
+  });
+
+  it("shows no pill for a pane not present in paneModels", async () => {
+    tabViews.value = [
+      tab({ panes: [pane({ paneId: 11, agent: "claude", phase: "working" })] }),
+    ];
+    // paneModels starts empty (set in beforeEach).
+    mount();
+    await settle();
+    openAllCards();
+
+    expect(host.querySelector(".asr-card__pill")).toBeNull();
   });
 });

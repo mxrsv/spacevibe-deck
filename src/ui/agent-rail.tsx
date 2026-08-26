@@ -10,7 +10,7 @@ import {
   installRepositoryRescanOnFocus,
   repositoryScans,
 } from "../repositories/repositories-store";
-import { paneTails } from "../terminal/session-tail-store";
+import { paneModels, paneTails } from "../terminal/session-tail-store";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { workspacesData } from "../open-board/workspaces-store";
 import { settings, updateSettings } from "../settings/settings-store";
@@ -193,6 +193,10 @@ export function AgentRail(props: AgentRailProps) {
     // the `session_tail` channel does not exist — the model then falls back
     // to the custom-name line it drew before this.
     tails: paneTails.value,
+    // Per-pane model string (e.g. "claude-sonnet-5"), written alongside tails
+    // by the session-tail IPC answer. Empty on Tauri and in the browser
+    // preview — the card omits the pill when the string is absent.
+    models: paneModels.value,
     // The order the user dragged these projects into (DL-27.20). App-level,
     // so a drag in one window reorders the rail in every window.
     railOrder: settings.value.railOrder,
