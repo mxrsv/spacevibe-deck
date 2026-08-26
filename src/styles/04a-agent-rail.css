@@ -44,8 +44,6 @@
      actually sits on, which is the side column's own plane (DL-18.7). The
      standalone specimen re-points it at its own surface. */
   --asr-cutout: var(--sidebar-bg);
-  /* And the surface the banner's fade dissolves into — same reason. */
-  --sidebar-banner-fade-color: var(--sidebar-bg);
   grid-column: 1;
   grid-row: 2;
   display: flex;
@@ -405,6 +403,103 @@
   padding-top: 2px;
 }
 
+/* ------------------------------------------------- the worktree tier */
+
+/*
+ * DL-27.23: the checkout, between the project header and its rows.
+ *
+ * The line stands on the SAME left edge as both tiers around it — 31px, the
+ * figure `.asr-cluster__head` restates above and the rows' own grid produces
+ * (7px inset + a 17px leading slot + a 7px gap). It is spent as PADDING here
+ * because the sub-header carries no leading glyph: an indent step would have
+ * to come out of `.asr-row--tab`'s `minmax(0, 1fr)` track, which holds the
+ * agent's newest turn (DL-27.15), so every sentence in the rail would lose
+ * width to say what the type already says.
+ *
+ * The trailing side is the header's grid restated for the same reason: two
+ * 17px tracks, the `+` pinned into the first of them so the launchers of the
+ * two tiers line up in one column. The last track stays empty — a worktree
+ * group has no caret and no close (DL-27.24).
+ */
+.asr-wt__head {
+  display: grid;
+  /* The rail's standing percentage-plus-padding trap: no global `border-box`
+     reset, and this box carries both a grid and a 31px inset. */
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr) 17px 17px;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 4px 1px 31px;
+}
+
+/* A second and later group needs the break the project header gets above it,
+   or two checkouts' rows read as one block interrupted by a faint word. The
+   first group sits directly under its project name and takes none.
+
+   The second selector is the history-only case, and it is not redundant: a
+   group with nothing open in it draws no `.asr-item` at all, so two remembered
+   checkouts of one project would otherwise sit 4px apart and read as one
+   two-line label. */
+.asr-item + .asr-wt__head,
+.asr-wt__head + .asr-wt__head {
+  padding-top: 6px;
+}
+
+/* The row suffix's own treatment, which this replaces (DL-27.23): one step
+   quieter than the project name above it and one quieter again than a turn.
+   Without the `::before` dot — that glyph joined a suffix to the word before
+   it, and this line starts its own. */
+.asr-wt__name {
+  min-width: 0;
+  grid-row: 1;
+  grid-column: 1;
+  overflow: hidden;
+  color: var(--text-faint);
+  font: 450 var(--type-meta) / 1.25 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The project header's launcher (DL-27.18), scoped to one checkout. Same box,
+   same 15px `PlusSquare`, same reveal contract — the slot is reserved at all
+   times and only its ink fades in, so the resting line is exactly the label.
+   It answers cluster hover rather than its own: the project is the unit the
+   pointer is on, and revealing one launcher per checkout at once is what makes
+   the tier's controls readable as a column. */
+.asr-wt__add {
+  display: flex;
+  grid-row: 1;
+  grid-column: 2;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.asr-cluster:hover .asr-wt__add,
+.asr-wt__add:focus-visible {
+  opacity: 1;
+}
+
+.asr-wt__add:hover {
+  color: var(--text-primary);
+}
+
+.asr-wt__add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 /* ------------------------------------------------- the collapsed column */
 
 /*
@@ -421,13 +516,15 @@
 }
 
 [data-sidebar-collapsed="true"] .asr-cluster__head,
+/* The worktree tier is prose too (DL-27.23): a 4px column has no room for a
+   branch name, and the rows it heads keep their marks. */
+[data-sidebar-collapsed="true"] .asr-wt__head,
 [data-sidebar-collapsed="true"] .asr-row__name,
 [data-sidebar-collapsed="true"] .asr-row__age,
 [data-sidebar-collapsed="true"] .asr-row__msg,
 [data-sidebar-collapsed="true"] .asr-row__actions,
 /* Leaves are prose-width rows; the collapsed rail keeps the parent's mark. */
-[data-sidebar-collapsed="true"] .asr-leaf,
-[data-sidebar-collapsed="true"] .asr-rail .sidebar-banner {
+[data-sidebar-collapsed="true"] .asr-leaf {
   display: none;
 }
 
@@ -544,22 +641,13 @@
 }
 
 /*
- * The worktree, shown only when a tab is not in the primary checkout. It is a
- * suffix rather than a second line: the exception should cost one word, not a
- * row of vertical space.
+ * The row's worktree suffix was here until 2026-08-25. It is DELETED rather
+ * than parked: the checkout is a tier now (DL-27.23) and `.asr-wt__name` above
+ * carries this exact treatment — `--text-faint`, `--type-meta`, 450 — minus
+ * the leading `·`, which joined a suffix to the word before it and has nothing
+ * to join at the start of a line. Restoring the suffix means restoring
+ * `RailTabRow.worktree` first, not this rule.
  */
-.asr-row__worktree {
-  overflow: hidden;
-  color: var(--text-faint);
-  font: 450 var(--type-meta) / 1.25 var(--ui-font);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.asr-row__worktree::before {
-  content: "·";
-  padding-right: 5px;
-}
 
 .asr-row__age {
   flex: none;
@@ -728,9 +816,82 @@
 
 /* asked — the unread dot: a question and a finished run nobody has read yet
    are one state here (`agent-rail-model` folds `completed` into `asked`), and
-   `--status-unread` is the token that state wore in `AgentAttentionMark`. */
+   `--status-unread` is the token that state wore in `AgentAttentionMark`.
+
+   Since 2026-08-25 it RADIATES (owner, chosen from three drawn candidates;
+   DL-27.3 amended and DL-1.2 gains its second scoped exception). Four of the
+   five states were one 9px circle differing only in hue, so the single state
+   that means "come and look" wore the same SHAPE as the two that mean "nothing
+   to do here" — hue alone was carrying a difference in kind, and the mark had
+   to be found by reading the column rather than by being seen from it.
+
+   The halo DL-27.3 retired on 2026-08-19 is what came back, but with motion
+   instead of as the flat ring it was: a still ring separates the mark in a
+   screenshot, while the ask was for one that reaches an eye already looking
+   somewhere else. The retired ring survives here anyway as the reduced-motion
+   state below — it was candidate A of the same review.
+
+   This is DL-18.11's shape, not a new kind of loop: the animation is infinite
+   only while `[data-state="asked"]` is on the element, so the state leaving is
+   what ends it — a row that has been read stops moving — and only `transform`
+   and `opacity` animate, both on DL-1.2's animatable list. Geometry is
+   untouched: `::after` is absolutely positioned and scaled, so DL-27.3's fixed
+   14px box still holds and no row moves when a state changes. */
 .asr-row__mark[data-state="asked"]::before {
   background: var(--status-unread);
+  /* Above the ripple, so the dot itself never dims through it at scale 1. */
+  z-index: 1;
+}
+
+/* The resting halo — one hairline ring 2px clear of the dot. `box-sizing` is
+   declared because `src/styles.css` has no global reset: without it the border
+   would paint outside the 15px and the gap would read wider on the side the
+   subpixel centre rounds away from. This is also the whole mark under
+   `prefers-reduced-motion: reduce`, which is why the separation survives
+   there rather than collapsing back to a bare dot. */
+.asr-row__mark[data-state="asked"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  z-index: 0;
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--status-unread);
+  border-radius: 50%;
+}
+
+/* Motion is ADDED here rather than switched off further down, which is this
+   file's own convention (see its header and DESIGN-LANGUAGE §9 checklist 3):
+   the still ring above is the honest default and the loop is the enhancement.
+   The disc starts at 13px — a hair inside the ring it replaces — so the mark
+   still reads as separated at the instant the cycle restarts instead of
+   flashing back to a bare dot, and stops at 2.1x = 27.3px — a 13.65px radius
+   against the 15.5px the dot's centre sits from `.asr-rail__list`'s left edge
+   (measured, expanded rail). That 1.85px of margin is the reason the disc is
+   13px rather than the ring's 15px: `overflow-x: hidden` clips a LEFT overflow
+   without ever reporting it in `scrollWidth`, so the ripple has to be sized
+   under the inset rather than checked for it afterwards. */
+@media (prefers-reduced-motion: no-preference) {
+  .asr-row__mark[data-state="asked"]::after {
+    width: 13px;
+    height: 13px;
+    border: 0;
+    background: var(--status-unread);
+    animation: asr-unread-ripple 1.8s var(--ease) infinite;
+  }
+}
+
+@keyframes asr-unread-ripple {
+  from {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  to {
+    transform: scale(2.1);
+    opacity: 0;
+  }
 }
 
 /* working — the workspace rail's own dot-ring in the leading mark slot. The

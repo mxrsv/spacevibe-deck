@@ -149,6 +149,26 @@ export const SEED_TABS: readonly TabView[] = [
     ],
   },
   {
+    key: 8,
+    process: "claude",
+    name: null,
+    dotColor: null,
+    // A SECOND checkout of the deck repository, so the rail's worktree tier
+    // (DL-27.23) has something to group: `spacevibe-deck` holds three tabs on
+    // `main`, this one runs on `redesign/phase-1-2`, and
+    // `deck-worktrees/electron-migration` stays in the workspace history with
+    // nothing open in it — the empty group. `electron-migration` is
+    // deliberately NOT the one that gets a tab: `SEED_SESSION_ARCHIVE` pins it
+    // as the parked `RepositoryRail`'s `resumable` row, which needs a worktree
+    // no tab covers.
+    workspacePath: `${HOME}/deck-worktrees/redesign`,
+    agents: ["claude"],
+    agentBusy: true,
+    unread: false,
+    attention: attention("working", { workingCount: 1 }),
+    panes: [pane(112, "claude", "none", "working", minutesAgo(6), true)],
+  },
+  {
     key: 2,
     process: "codex",
     name: "review",
@@ -225,6 +245,7 @@ export const SEED_PANE_TAILS: ReadonlyMap<number, string> = new Map([
   [107, "Permission needed: prisma migrate dev"],
   [108, "Cannot reach the daemon — the socket at /tmp/agy.sock is gone"],
   [110, "Which branch should the release cut come from?"],
+  [112, "Rebuilding the stage strip against the redesign tokens"],
 ]);
 
 export const SEED_STATUS: StatusInfo = {

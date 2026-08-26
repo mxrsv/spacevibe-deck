@@ -21,7 +21,7 @@
 import type { PaneAgent } from "../lib/process-info";
 import { workspaceLabel } from "../lib/workspace-label";
 import type { RepositoryScan } from "../repositories/repository-client";
-import type { RailTab, RepositoryGroup, WorktreeRow } from "../repositories/repository-model";
+import type { RailTab, RepositoryGroup } from "../repositories/repository-model";
 import {
   buildRail,
   filterRailToWorkspaceHistory,
@@ -90,8 +90,6 @@ export interface RailTabRow {
    * `named`, since a word the user typed is not a stand-in for a turn.
    */
   readonly identity: string;
-  /** Rendered only when the tab is NOT in the repository's primary checkout. */
-  readonly worktree: string | null;
   /** The tab's own label (custom name, else workspace label). */
   readonly title: string;
   /** True when the label is a name a PERSON typed, not one derived from a path. */
@@ -126,13 +124,53 @@ export interface RailTabRow {
 }
 
 /**
+ * One checkout of a project, between the cluster and its rows (DL-27.23,
+ * 2026-08-25).
+ *
+ * The tier was never missing from the DATA — `buildRail` has always attached a
+ * tab to its worktree by longest prefix — only from the render: `buildAgentRail`
+ * flattened every worktree's tabs into one list, and the checkout survived as a
+ * faint suffix on the rows outside the primary one. With several agents in
+ * several worktrees of one project that list interleaved two checkouts' runs
+ * with nothing saying which rows shared one, and printed the branch word once
+ * per agent.
+ */
+export interface RailWorktreeGroup {
+  /** The worktree's path — unique within a repository, so: list identity. */
+  readonly key: string;
+  /**
+   * The branch, falling back to the directory basename when git reports none
+   * (detached, or a branchless checkout). This is `WorktreeRow.name`, whose
+   * fallback rule already exists and is unchanged.
+   */
+  readonly branch: string;
+  /** Where the `+` launches. Always the worktree root, never a tab's cwd. */
+  readonly path: string;
+  /** git lists the main checkout first; that entry is the repository's own. */
+  readonly primary: boolean;
+  /**
+   * Whether the sub-header is printed. False for the ONE implicit group a
+   * project git does not know has (`buildRail`'s synthetic worktree, which is
+   * also every Tauri project — `git_repository` is Electron-only): its name is
+   * the folder name the cluster header directly above it already said, so the
+   * line would repeat a word and say nothing. Every group of a scanned
+   * repository is labelled, including a repository with exactly one worktree
+   * (DL-27.23), so the hierarchy never changes shape as a second checkout opens.
+   */
+  readonly labelled: boolean;
+  /** This worktree's tabs, `sortByOpenOrder` applied WITHIN the group. */
+  readonly rows: readonly RailTabRow[];
+}
+
+/**
  * One project's stretch of the stream (§2.4).
  *
  * The stream is grouped rather than flat because the project name is the
  * loudest word in a row and N tabs in one project printed it N times, scattered
- * by recency. Grouping moves the name up one level; it does NOT reinstate the
- * repository → worktree tree §9 rules out — a cluster has no state, age or
- * worktree level, and its one control only collapses its tab rows.
+ * by recency. Grouping moves the name up one level. Since 2026-08-25 the
+ * worktree is a tier of its own (DL-27.23) — but a cluster still has no state,
+ * age or worktree level of its OWN, and its one control still only collapses
+ * the whole project.
  *
  * Since 2026-08-16 a cluster holds EVERY tab of its project, including the ones
  * waiting on the user: the pinned block that used to lift those out is gone, so
@@ -162,7 +200,14 @@ export interface RailStreamGroup {
    * true for `buildAgentRail` output.
    */
   readonly labelled: boolean;
-  readonly rows: readonly RailTabRow[];
+  /**
+   * The project's checkouts, each holding its own rows (DL-27.23): the
+   * primary first, then the worktrees with something open in them by
+   * earliest-open, then the ones that are only in Deck's history. Empty for a
+   * REMEMBERED cluster, whose project has nothing open at all — that header is
+   * the whole cluster and there are no checkouts to print under it.
+   */
+  readonly worktrees: readonly RailWorktreeGroup[];
   /**
    * The workspace the header's `+` opens into when the cluster has no rows —
    * a REMEMBERED project (owner, 2026-08-20): a workspace from Deck's
@@ -265,7 +310,7 @@ const WEEK = 7 * DAY;
  * A quiet pane splits on the tracker's `hasRun` bit: `done` is a run you
  * checked, `idle` is an agent that has never run anything.
  */
-function paneState(pane: PaneView): RailState {
+export function paneState(pane: PaneView): RailState {
   switch (pane.attention) {
     case "error":
       return "failed";
@@ -380,12 +425,7 @@ function outranks(pane: RailPaneRow, incumbent: RailPaneRow): boolean {
   return delta > 0 || (delta === 0 && pane.changedAt > incumbent.changedAt);
 }
 
-function tabRow(
-  group: RepositoryGroup,
-  worktree: WorktreeRow,
-  railTab: RailTab,
-  input: AgentRailInput,
-): RailTabRow {
+function tabRow(group: RepositoryGroup, railTab: RailTab, input: AgentRailInput): RailTabRow {
   const title = railTab.label;
   const tab = input.tabs[railTab.index];
   const panes = paneRows(tab, input.tails, input.now, railTab.active);
@@ -403,10 +443,10 @@ function tabRow(
     key: railTab.key,
     index: railTab.index,
     project: group.name,
-    // 46 of 51 repositories in the measured corpus have exactly one working
-    // directory (spec §1), so naming the checkout on every row would print a
-    // word that says nothing. It is a suffix for the exception only.
-    worktree: worktree.primary ? null : worktree.name,
+    // The checkout is NOT a field here since 2026-08-25 (DL-27.23): it is the
+    // group this row sits in. A suffix printed the branch once per agent, which
+    // is the noise the 2026-08-16 primary-only rule existed to prevent,
+    // arriving by a different door.
     identity: identityOf(railTab, panes),
     title,
     named: isNamed(railTab),
@@ -450,8 +490,20 @@ function sortClusters(groups: readonly RailStreamGroup[]): readonly RailStreamGr
   );
 }
 
+/**
+ * Every row of a cluster, across its checkouts.
+ *
+ * A cluster's position is still decided by its OLDEST tab (DL-27.10), and
+ * grouping the rows under sub-headers must not change which tab that is — so
+ * the two cluster keys below read the flattened rows exactly as they did while
+ * `RailStreamGroup` held one flat list.
+ */
+function clusterRows(group: RailStreamGroup): readonly RailTabRow[] {
+  return group.worktrees.flatMap((worktree) => worktree.rows);
+}
+
 function openedFirst(group: RailStreamGroup): number {
-  return group.rows.reduce(
+  return clusterRows(group).reduce(
     (oldest, row) => Math.min(oldest, row.openedAt),
     Number.MAX_SAFE_INTEGER,
   );
@@ -459,6 +511,59 @@ function openedFirst(group: RailStreamGroup): number {
 
 /** Tie-break for clusters whose tabs carry no open key: the tabs' own order. */
 function firstOf(group: RailStreamGroup): number {
+  return clusterRows(group).reduce(
+    (lowest, row) => Math.min(lowest, row.index),
+    Number.MAX_SAFE_INTEGER,
+  );
+}
+
+/**
+ * A worktree group's own position (DL-27.23, spec §4), in three keys:
+ *
+ * 1. **`primary` first**, unconditionally — git lists the main checkout first
+ *    and the field already records it, which makes `main` a fixed anchor at
+ *    the top of every project rather than a group that drifts as tabs open. A
+ *    primary with nothing open in it still holds that slot: it is the anchor,
+ *    not a reward for being busy.
+ * 2. **Then live groups by earliest-open**, the smallest `openedAt` among the
+ *    group's rows, so a group takes the position its oldest tab already had —
+ *    the cluster rule (DL-27.10) one tier down.
+ * 3. **Then history-only groups**, which have no rows and therefore no open
+ *    order, in the order git reported them. This mirrors what the rail already
+ *    does one tier UP: live clusters first, remembered clusters after.
+ */
+function sortWorktrees(groups: readonly RailWorktreeGroup[]): readonly RailWorktreeGroup[] {
+  return [...groups].sort(
+    (left, right) =>
+      worktreeRank(left) - worktreeRank(right) ||
+      openedIn(left) - openedIn(right) ||
+      // The clusters' own tie-break (`firstOf`), for fixtures whose tabs carry
+      // no open key: two groups both answering `UNSEQUENCED` fall back to the
+      // tabs' own order rather than to whatever git listed.
+      firstIndexIn(left) - firstIndexIn(right),
+  );
+}
+
+const PRIMARY_RANK = 0;
+const LIVE_RANK = 1;
+const HISTORY_ONLY_RANK = 2;
+
+function worktreeRank(group: RailWorktreeGroup): number {
+  if (group.primary) {
+    return PRIMARY_RANK;
+  }
+  return group.rows.length > 0 ? LIVE_RANK : HISTORY_ONLY_RANK;
+}
+
+/** The group's oldest tab, or nothing open — which sorts by rank alone. */
+function openedIn(group: RailWorktreeGroup): number {
+  return group.rows.reduce(
+    (oldest, row) => Math.min(oldest, row.openedAt),
+    Number.MAX_SAFE_INTEGER,
+  );
+}
+
+function firstIndexIn(group: RailWorktreeGroup): number {
   return group.rows.reduce((lowest, row) => Math.min(lowest, row.index), Number.MAX_SAFE_INTEGER);
 }
 
@@ -517,7 +622,12 @@ function rememberedClusters(
       orderKey: key,
       project: workspaceLabel(primary?.path ?? path),
       labelled: true,
-      rows: [],
+      // Nothing is open in this project at all, so there are no checkouts to
+      // print under its header (DL-27.23): the remembered cluster IS the
+      // header, exactly as it was before the worktree tier existed. A
+      // remembered SIBLING of a live project is a different case and does get
+      // a group — it lives inside that project's cluster, above.
+      worktrees: [],
       path,
       historyPaths,
       // Nothing is open here — the remembered header's ✕ forgets, it never
@@ -582,19 +692,34 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
 
   const clusters: RailStreamGroup[] = [];
   for (const group of groups) {
-    const streamed: RailTabRow[] = [];
-    for (const worktree of group.worktrees) {
-      for (const railTab of worktree.tabs) {
+    // The checkouts, each keeping its own tabs (DL-27.23). `filterRailToWorkspaceHistory`
+    // has already decided WHICH worktrees exist here — the ones with something
+    // open, plus the ones Deck's workspace history knows — so a group with no
+    // rows is a checkout the user has worked in before and can return to, and a
+    // sibling they have never opened in Deck is already gone. This model stops
+    // discarding those entries; it does not re-answer the question.
+    const worktrees = sortWorktrees(
+      group.worktrees.map((worktree) => ({
+        key: worktree.path,
+        branch: worktree.name,
+        path: worktree.path,
+        primary: worktree.primary,
+        // A folder git does not know has exactly one synthetic worktree named
+        // after the folder itself, which the cluster header above it already
+        // says. Printing it would repeat a word rather than state a checkout —
+        // and that is every project under Tauri, where `git_repository` does
+        // not exist and every scan answers `plain`.
+        labelled: group.kind === "repository",
         // Every tab of a project stays under that project, whatever its state.
         // A tab that wants the user used to be lifted into a pinned block,
         // which printed the project twice and moved the row out from under the
         // name the user was reading it by; the state mark carries the urgency
         // where the tab already is.
-        streamed.push(tabRow(group, worktree, railTab, input));
-      }
-    }
-    if (streamed.length > 0) {
-      const rows = sortByOpenOrder(streamed);
+        rows: sortByOpenOrder(worktree.tabs.map((railTab) => tabRow(group, railTab, input))),
+      })),
+    );
+    const rows = worktrees.flatMap((worktree) => worktree.rows);
+    if (rows.length > 0) {
       clusters.push({
         key: group.key,
         // The live tier's key IS the project identity: `scan.key` for a
@@ -602,13 +727,14 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
         // branch above can write the same string (spec §3).
         orderKey: group.key,
         project: group.name,
-        labelled: streamed.length >= LOWEST_LABELLED_SIZE,
-        rows,
+        labelled: rows.length >= LOWEST_LABELLED_SIZE,
+        worktrees,
         path: null,
         historyPaths: coveredHistoryPaths(group, input),
         // Ascending, not row order — a reading order. `closeTabs` pins every
         // entry by identity before its first dispose, so the order carries no
-        // index-shift risk of its own.
+        // index-shift risk of its own. It stays PROJECT-level (spec §3): the
+        // header's ✕ closes the repository, worktree groups and all.
         tabIndexes: [...rows.map((row) => row.index)].sort((a, b) => a - b),
       });
     }

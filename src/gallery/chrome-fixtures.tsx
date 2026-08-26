@@ -10,7 +10,6 @@ import { IDLE_ATTENTION_SUMMARY, activeTabIndex } from "../terminal/tabs-store";
 import { CHROME_ICON, DeckIcon, RAIL_ICON } from "../ui/controls/deck-icon";
 import { WorktreeAgentStack } from "../ui/worktree-agent-stack";
 import { TabStrip } from "../ui/tab-strip";
-import { SidebarBanner } from "../ui/sidebar-banner";
 import { SIDEBAR_TOOLS_HIDDEN, SidebarActions } from "../ui/sidebar-actions";
 import { SidebarFrameActions } from "../ui/sidebar-toggle";
 import { RecentSessionActivity } from "../ui/sessions/recent-session-activity";
@@ -34,13 +33,7 @@ export const NOOP = (): void => {};
 
 /** The shipping leading frame cluster, with drag disabled in the gallery. */
 export function sidebarFrameActionsSpecimen(onToggle = NOOP) {
-  return (
-    <SidebarFrameActions
-      collapsed={false}
-      onToggle={onToggle}
-      onOpenWorkspace={NOOP}
-    />
-  );
+  return <SidebarFrameActions collapsed={false} onToggle={onToggle} onOpenWorkspace={NOOP} />;
 }
 
 /**
@@ -115,6 +108,18 @@ interface AgentRailSpecimenOptions {
 }
 
 /**
+ * The gallery's stand-in for the task launcher.
+ *
+ * It is wired rather than omitted because both launchers in the rail are
+ * omitted, not disabled, when nothing owns them (DL-19.7): without this the
+ * specimen showed a project header with no `+` and — since 2026-08-25 — a
+ * worktree tier with none either, so the gallery could not review the control
+ * the app actually draws. The panel itself belongs to `App`; a specimen only
+ * has to prove the trigger is there.
+ */
+const openLauncher = (_workspacePath: string): void => {};
+
+/**
  * The shipping sidebar navigation with seeded gallery stores underneath it.
  * Current shell specimens share this fixture so none can silently fall back
  * to the parked `RepositoryRail` or to a hand-built copy of the rail.
@@ -134,6 +139,7 @@ export function agentRailNavigationSpecimen({
       onCloseTab={NOOP}
       onClosePane={NOOP}
       onFocusPane={onFocusPane}
+      onNewTabIn={openLauncher}
       showAgentPresence
       fileController={fileControllerFixture}
       recentActivity={<RecentSessionActivity onResume={NOOP} onViewAll={NOOP} />}
@@ -318,7 +324,6 @@ export function worktreeAgentPresenceSpecimen() {
           <span>Open workspace</span>
         </button>
       </div>
-      <SidebarBanner />
     </nav>
   );
 }

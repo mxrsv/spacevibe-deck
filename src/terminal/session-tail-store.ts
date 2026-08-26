@@ -50,6 +50,39 @@ export const paneTails: Signal<ReadonlyMap<number, string>> = signal(new Map());
  */
 const paneSessions = new Map<number, string>();
 
+/**
+ * Read-only mirror of the pairings above, for surfaces that render per SESSION
+ * id rather than per pane — Recent activity's status mark (DL-33.2, amended
+ * 2026-08-26) is the first of them.
+ *
+ * The map itself stays a plain map on purpose (see above): the fetch path
+ * reads it, and a signal read there would re-arm the effect that fetches. This
+ * mirror is written from `publishPairings` after a batch settles, so a render
+ * subscribes to the pairings without the fetch ever depending on a render.
+ *
+ * Assignments are whole new maps (C1). The gallery seeds it directly, the same
+ * way it seeds `paneTails`.
+ */
+export const paneSessionIds: Signal<ReadonlyMap<number, string>> = signal(new Map());
+
+/** Publish the pairings if they actually moved; identical state is left alone. */
+function publishPairings(): void {
+  const current = paneSessionIds.peek();
+  if (current.size === paneSessions.size) {
+    let same = true;
+    for (const [paneId, sessionId] of paneSessions) {
+      if (current.get(paneId) !== sessionId) {
+        same = false;
+        break;
+      }
+    }
+    if (same) {
+      return;
+    }
+  }
+  paneSessionIds.value = new Map(paneSessions);
+}
+
 const DEBOUNCE_MS = 300;
 
 /** One request plus the pane it answers for — the batch is positional. */
@@ -374,6 +407,8 @@ async function run(): Promise<void> {
     if (pruned.size !== paneTails.value.size) {
       paneTails.value = pruned;
     }
+    // Pruning drops pairings too, so the mirror moves with it.
+    publishPairings();
   }
   const entries = entriesOf(tabs);
   sentFingerprint = fingerprint;
@@ -389,6 +424,7 @@ async function run(): Promise<void> {
     // rebuild the state the reset just cleared.
     if (epoch === epochAtSend) {
       paneTails.value = merged(paneTails.value, entries, answers);
+      publishPairings();
     }
   } catch (err) {
     console.warn("Failed to read session tails:", err);
@@ -462,4 +498,5 @@ export function resetSessionTailStore(): void {
   paneSessions.clear();
   paneGenerations.clear();
   paneTails.value = new Map();
+  paneSessionIds.value = new Map();
 }

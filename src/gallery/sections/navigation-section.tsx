@@ -6,10 +6,8 @@ import {
   restingMarkVariantsSpecimen,
   statePaletteSpecimen,
 } from "../agent-rail-variants";
-import {
-  railSimplicityLadderSpecimen,
-  railStructureSpecimen,
-} from "../rail-structure-variants";
+import { railSimplicityLadderSpecimen, railStructureSpecimen } from "../rail-structure-variants";
+import { railColorRuleSpecimen, railWorktreeCardsSpecimen } from "../rail-worktree-cards";
 import { SIDEBAR_WIDTH_MIN } from "../../settings/settings-schema";
 import { SectionHead, Specimen } from "../specimen";
 
@@ -18,14 +16,28 @@ export function NavigationSection() {
     <>
       <SectionHead
         title="Navigation"
-        blurb="The shipped AgentRail rendered from seeded stores: one cluster per project in open order (DL-27.9), a chip on single-agent tabs and flat full-width agent rows for multi-agent tabs — those rows standing inside a neutral frame since 2026-08-20 (DL-27.19). The pane-tree markup remains parked behind PANE_TREE_HIDDEN; the gallery labels it as a proposal, never as current chrome."
+        blurb="The shipped AgentRail rendered from seeded stores: one cluster per project in open order (DL-27.9), its tabs grouped under the checkout they run in since 2026-08-25 (DL-27.23) — deck carries a live main, a live redesign/phase-1-2 and a history-only electron-migration group — a chip on single-agent tabs and flat full-width agent rows for multi-agent tabs, those rows standing inside a neutral frame since 2026-08-20 (DL-27.19). The pane-tree markup remains parked behind PANE_TREE_HIDDEN; the gallery labels it as a proposal, never as current chrome."
       />
       <Specimen
         name="Agent status rail"
-        note="one static dot shape: red fails · yellow needs your eyes · neutral means working; done and idle paint no mark. Rows never dim by state."
+        note="project → worktree → agent, all three on one 31px left edge (DL-27.23); a group is a label with one launcher and no caret (DL-27.24). One static dot shape: red fails · yellow needs your eyes · neutral means working; done and idle paint no mark. Rows never dim by state."
         surface="none"
       >
         {agentStatusRailSpecimen()}
+      </Specimen>
+      <Specimen
+        name="Worktree cards · proposal (owner mockup, 2026-08-25)"
+        note="NOT the shipping rail. The box moves up a level: a CHECKOUT becomes a card that opens onto its agents, so the tab tier leaves the rail. Left is the closed picture (mark · branch · agent count · age · caret, then the path, then agents as badged chips); right is one card open onto per-agent rows, each stating a status word. Four unresolved divergences are drawn rather than normalised — a card is a checkout and not a tab; Running/Thinking/Idle replace failed/asked/working/done/idle, bringing green and --magenta back into chrome against DL-27.3 and DL-3.6; a status word replaces the agent's newest sentence (DL-27.15); and the ACTIVE checkout is wrapped whole in accent where DL-21.1 gives selection a neutral frame, so selection and liveness share one hue. The closed siblings dropping to one line is the mockups' own inconsistency, kept visible."
+        surface="none"
+      >
+        {railWorktreeCardsSpecimen()}
+      </Specimen>
+      <Specimen
+        name="Worktree cards · the colour rule"
+        note="ONE hue, ONE meaning, no hue twice. Two faults are already fixed in the sheet rather than offered here: running and thinking shared a category but wore green and magenta, and --green was doing double duty as both the running hue and the active card's frame. Green now means the active checkout only; yellow means waiting on you; red means failed; --accent means a count (+N); neutral means idle, done and every resting surface. What is left to pick is which hue BUSY takes — A neutral (the quietest, but NOT rule-free: DL-27.3 says working is not a dot at all but WorkspaceSpinner in a 14px box, and that done/idle share the gray dot; AGENTS.md's 'neutral means working' line quotes the reversed morning version), B --magenta, C --cyan. One --gxwc-busy line separates the three columns; everything else is identical."
+        surface="none"
+      >
+        {railColorRuleSpecimen()}
       </Specimen>
       <Specimen
         name="Row-structure candidates"

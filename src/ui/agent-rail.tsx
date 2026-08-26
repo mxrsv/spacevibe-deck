@@ -1,6 +1,6 @@
 import { CaretRight, Folder, PlusSquare, TerminalWindow, X } from "@phosphor-icons/react";
 import { useSignal, useSignalEffect } from "@preact/signals";
-import type { ComponentChildren } from "preact";
+import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { activeTabIndex, statusInfo, tabViews } from "../terminal/tabs-store";
 import { CHROME_ICON, DeckIcon, FEATURE_ICON } from "./controls/deck-icon";
@@ -17,7 +17,6 @@ import { browserSurfaceActive } from "../browser/browser-store";
 import { available as electronHostAvailable } from "../host/worktree-host";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { workspacesData } from "../open-board/workspaces-store";
-import { SidebarBanner } from "./sidebar-banner";
 import { settings, updateSettings } from "../settings/settings-store";
 import { createRailClusterDragController } from "./rail-cluster-drag";
 import { pinAt, sameRailOrder } from "./rail-order";
@@ -137,9 +136,18 @@ const STATE_LABEL: Readonly<Record<RailState, string>> = {
   idle: "idle",
 };
 
-/** `project` alone, or `project · worktree` outside the primary checkout. */
-function whereOf(row: { project: string; worktree: string | null }): string {
-  return row.worktree === null ? row.project : `${row.project} · ${row.worktree}`;
+/**
+ * `project` alone, or `project · branch` when a labelled worktree group is
+ * carrying this row.
+ *
+ * The branch comes from the GROUP now (DL-27.23), not from the row: since
+ * 2026-08-25 the checkout is a tier, and a row that carried its own copy would
+ * print the word once per agent. The composed string still reaches every
+ * accessible name and tooltip the row draws, so nothing a screen reader hears
+ * has moved.
+ */
+function whereOf(project: string, branch: string | null): string {
+  return branch === null ? project : `${project} · ${branch}`;
 }
 
 /**
@@ -197,6 +205,14 @@ interface TabItemProps {
    * is labelled now, including a project with one tab.
    */
   readonly labelled: boolean;
+  /**
+   * The checkout this row runs in, supplied by the worktree group rendering it
+   * (DL-27.23), or null when that group prints no sub-header — a project git
+   * does not know, which is every project under Tauri. It reaches the row's
+   * accessible names and tooltip through `whereOf` and is drawn nowhere: the
+   * group above the row is what SAYS the branch.
+   */
+  readonly branch: string | null;
   readonly active: boolean;
   readonly showAgentPresence: boolean;
   /** Tildified workspace path for the tooltip; empty when there is none. */
@@ -236,7 +252,7 @@ const PANE_TREE_HIDDEN = true;
 
 function TabItem(props: TabItemProps) {
   const { row } = props;
-  const where = whereOf(row);
+  const where = whereOf(row.project, props.branch);
   const label = STATE_LABEL[row.state];
   const treed = props.showAgentPresence && row.panes.length > 1;
   // An UNNAMED multi-agent tab renders no parent row at all (DL-27.13, owner
@@ -320,9 +336,11 @@ function TabItem(props: TabItemProps) {
               the number. A row whose agent has spoken gives the word up
               entirely (DL-27.15) — the glyph is the agent's name. */}
             {showName && <strong>{name}</strong>}
-            {/* Named only outside the primary checkout — otherwise 46 of 51
-              repositories would carry a word that says nothing (spec §2.1). */}
-            {row.worktree !== null && <span class="asr-row__worktree">{row.worktree}</span>}
+            {/* The worktree suffix that stood here until 2026-08-25 is gone
+              (DL-27.23): the checkout is the labelled group above this row, and
+              a suffix printed the branch once per agent in it. The class it
+              used, `.asr-row__worktree`, is the treatment `.asr-wt__name` now
+              derives from. */}
             {showMessage && <MessageLine text={row.message} />}
           </span>
           {row.age !== "" && <span class="asr-row__age">{row.age}</span>}
@@ -438,18 +456,23 @@ function TabItem(props: TabItemProps) {
 }
 
 /**
- * The folder a cluster's `+` opens into: its first row's workspace, else the
+ * The folder a cluster's `+` opens into: the project's own checkout, else the
  * remembered path a rowless cluster carries.
  *
- * Every row in a cluster belongs to the same project, so the first one answers
- * for all of them. Null when the tab carries no workspace path at all — a bare
- * shell opened outside any folder.
+ * `worktrees[0]` IS that checkout since 2026-08-25 — the groups are sorted
+ * primary-first (DL-27.23) and git lists the main checkout first — where this
+ * used to read the first ROW's workspace and could therefore answer with a
+ * package directory below the root. A plain group's synthetic worktree carries
+ * its one tab's path, which is the same answer as before; when that tab has no
+ * workspace at all the path is empty and the launcher is omitted (DL-19.7).
+ * Each worktree group carries its OWN `+` for the checkouts under this one.
  */
-function groupPath(group: {
-  readonly rows: readonly RailTabRow[];
-  readonly path: string | null;
-}): string | null {
-  return group.rows[0]?.workspacePath ?? group.path;
+function groupPath(group: RailStreamGroup): string | null {
+  const worktree = group.worktrees[0];
+  if (worktree === undefined) {
+    return group.path;
+  }
+  return worktree.path === "" ? (worktree.rows[0]?.workspacePath ?? null) : worktree.path;
 }
 
 export function AgentRail(props: AgentRailProps) {
@@ -552,11 +575,12 @@ export function AgentRail(props: AgentRailProps) {
     collapsedGroupKeys.value = next;
   }
 
-  const item = (row: RailTabRow, labelled: boolean) => (
+  const item = (row: RailTabRow, labelled: boolean, branch: string | null) => (
     <TabItem
       key={row.key}
       row={row}
       labelled={labelled}
+      branch={branch}
       active={row.active && !surfaceActive}
       showAgentPresence={showAgentPresence}
       path={row.workspacePath === null ? "" : tildify(row.workspacePath, home)}
@@ -584,6 +608,12 @@ export function AgentRail(props: AgentRailProps) {
         <section class="asr-stream" aria-label="Open agents">
           {view.stream.map((group) => {
             const collapsed = collapsedGroupKeys.value.has(group.key);
+            // A LIVE cluster is one with checkouts under it, and a remembered
+            // one has none — the model gives a rowless project no worktree
+            // groups at all (DL-27.23), so this is the same question the old
+            // `rows.length > 0` asked and the answer cannot differ: a live
+            // cluster is only built when at least one tab is open in it.
+            const live = group.worktrees.length > 0;
             return (
               <div
                 class="asr-cluster"
@@ -613,7 +643,7 @@ export function AgentRail(props: AgentRailProps) {
                      threshold its `click` fires untouched. The two small
                      controls beside it never start a drag. */
                   <div class="asr-cluster__head">
-                    {group.rows.length > 0 ? (
+                    {live ? (
                       <button
                         type="button"
                         class="asr-cluster__toggle"
@@ -694,7 +724,7 @@ export function AgentRail(props: AgentRailProps) {
                         `+` shares the slot before it; a still header leaves it
                         empty. Omitted rather than inert when nothing wires it
                         (DL-19.7). */}
-                    {group.rows.length === 0
+                    {!live
                       ? props.onRemoveWorkspace !== undefined &&
                         group.historyPaths.length > 0 && (
                           <button
@@ -724,7 +754,50 @@ export function AgentRail(props: AgentRailProps) {
                         )}
                   </div>
                 )}
-                {!collapsed && group.rows.map((row) => item(row, group.labelled))}
+                {/* The worktree tier (DL-27.23). Each group is a sub-header
+                    followed by its own rows, as SIBLINGS inside the cluster
+                    rather than inside a wrapper of their own: the cluster is
+                    the grid that spaces every line in it, and a wrapper would
+                    have to restate that rhythm while adding a box nothing
+                    reads. It also keeps `.asr-cluster__head` the only thing a
+                    drag can start from (DL-27.20) and leaves DL-27.19's
+                    `data-headless` frame — a descendant rule — untouched.
+
+                    Collapse is still the PROJECT's, one disclosure per cluster
+                    (DL-27.11/DL-27.24): a folded project hides its worktree
+                    groups with its rows. */}
+                {!collapsed &&
+                  group.worktrees.map((worktree) => (
+                    <Fragment key={worktree.key}>
+                      {worktree.labelled && (
+                        /* A label and one launcher, never a control
+                           (DL-27.24): no caret, no hit layer, nothing to
+                           press but the `+`. The `+` is the project header's
+                           own, pinned to THIS checkout — `onNewTabIn` already
+                           takes a path, so no prop and no seam is added for
+                           it. */
+                        <div class="asr-wt__head">
+                          <span class="asr-wt__name">{worktree.branch}</span>
+                          {props.onNewTabIn !== undefined && worktree.path !== "" && (
+                            <button
+                              type="button"
+                              class="asr-wt__add"
+                              aria-label={`New tab in ${group.project} · ${worktree.branch}`}
+                              title={`New tab in ${group.project} · ${worktree.branch}`}
+                              onClick={() => {
+                                props.onNewTabIn?.(worktree.path);
+                              }}
+                            >
+                              <DeckIcon icon={PlusSquare} size={FEATURE_ICON} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {worktree.rows.map((row) =>
+                        item(row, group.labelled, worktree.labelled ? worktree.branch : null),
+                      )}
+                    </Fragment>
+                  ))}
               </div>
             );
           })}
@@ -733,7 +806,6 @@ export function AgentRail(props: AgentRailProps) {
       </div>
 
       {props.footer}
-      <SidebarBanner />
     </nav>
   );
 }

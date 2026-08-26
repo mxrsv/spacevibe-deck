@@ -1,12 +1,20 @@
 import { describe, expect, it } from "vitest";
 import type { RepositoryScan } from "../repositories/repository-client";
 import type { PaneView, TabView } from "../terminal/tabs-store";
-import type { AgentRailInput, AgentRailView } from "./agent-rail-model";
+import type { AgentRailInput, AgentRailView, RailStreamGroup } from "./agent-rail-model";
 import { buildAgentRail, formatShortAge, tabTail } from "./agent-rail-model";
 
-/** The stream's rows in render order, flattened out of their clusters. */
+/**
+ * The stream's rows in render order, flattened out of their clusters AND their
+ * worktree groups (DL-27.23) — the shape the rail draws, one array.
+ */
 function streamRows(view: AgentRailView) {
-  return view.stream.flatMap((group) => group.rows);
+  return view.stream.flatMap((group) => clusterRows(group));
+}
+
+/** Every row of one cluster, across its checkouts, in render order. */
+function clusterRows(group: RailStreamGroup) {
+  return group.worktrees.flatMap((worktree) => worktree.rows);
 }
 
 const MINUTE = 60_000;
@@ -326,7 +334,7 @@ describe("buildAgentRail ordering", () => {
 });
 
 describe("buildAgentRail rows", () => {
-  it("names the project, and the worktree only outside the primary checkout", () => {
+  it("names the project on every row, and the checkout on none of them", () => {
     const view = buildAgentRail(
       railInput({
         tabs: [
@@ -336,11 +344,13 @@ describe("buildAgentRail rows", () => {
       }),
     );
 
-    // Open order, so the primary checkout's row comes first and carries no
-    // suffix; the second worktree's row names its branch.
-    expect(streamRows(view).map((row) => [row.project, row.worktree])).toEqual([
-      ["deck", null],
-      ["deck", "release-hardening"],
+    // DL-27.23: the branch is the GROUP's word, not the row's — a suffix would
+    // print it once per agent in the checkout.
+    expect(streamRows(view).map((row) => row.project)).toEqual(["deck", "deck"]);
+    expect(streamRows(view).every((row) => !("worktree" in row))).toBe(true);
+    expect(view.stream[0].worktrees.map((worktree) => worktree.branch)).toEqual([
+      "main",
+      "release-hardening",
     ]);
   });
 
@@ -435,10 +445,11 @@ describe("buildAgentRail rows", () => {
       }),
     );
 
-    expect(streamRows(view)[0]).toMatchObject({
-      project: "scratch",
-      worktree: null,
-    });
+    expect(streamRows(view)[0]).toMatchObject({ project: "scratch" });
+    // One implicit, UNLABELLED group (DL-27.23): the folder's only name is the
+    // one the cluster header above it already prints, so no sub-header is
+    // drawn — which is also every project under Tauri, where no scan resolves.
+    expect(view.stream[0].worktrees.map((worktree) => worktree.labelled)).toEqual([false]);
   });
 });
 
@@ -470,14 +481,16 @@ describe("buildAgentRail clusters", () => {
       }),
     );
 
-    expect(view.stream.map((group) => [group.project, group.labelled, group.rows.length])).toEqual([
+    expect(
+      view.stream.map((group) => [group.project, group.labelled, clusterRows(group).length]),
+    ).toEqual([
       // Deck was opened first, so its cluster leads. Both projects keep the
       // same project → tab hierarchy regardless of their tab count.
       ["deck", true, 2],
       ["api", true, 1],
     ]);
     // Inside a cluster the rows keep the order they were opened in.
-    expect(view.stream[0].rows.map((row) => row.key)).toEqual([1, 2]);
+    expect(clusterRows(view.stream[0]).map((row) => row.key)).toEqual([1, 2]);
   });
 
   it("orders clusters by their oldest tab, not by name or by recency", () => {
@@ -524,13 +537,13 @@ describe("buildAgentRail clusters", () => {
 
     // One LIVE project, printed once, with all three of its tabs under it;
     // the history's api project follows as a rowless remembered cluster.
-    expect(view.stream.map((group) => [group.project, group.rows.length])).toEqual([
+    expect(view.stream.map((group) => [group.project, clusterRows(group).length])).toEqual([
       ["deck", 3],
       ["api", 0],
     ]);
     expect(view.stream[0].labelled).toBe(true);
-    expect(view.stream[0].rows.map((row) => row.key)).toEqual([1, 2, 3]);
-    expect(view.stream[0].rows[0].state).toBe("asked");
+    expect(clusterRows(view.stream[0]).map((row) => row.key)).toEqual([1, 2, 3]);
+    expect(clusterRows(view.stream[0])[0].state).toBe("asked");
   });
 
   it("keeps a project whose only tab wants the user", () => {
@@ -545,7 +558,7 @@ describe("buildAgentRail clusters", () => {
       // The history's api project trails as a rowless remembered cluster.
       ["api", true],
     ]);
-    expect(view.stream[0].rows[0].state).toBe("failed");
+    expect(clusterRows(view.stream[0])[0].state).toBe("failed");
   });
 
   it("names a row by its agents, its own name, or shell", () => {
@@ -584,15 +597,171 @@ describe("buildAgentRail clusters", () => {
     expect(streamRows(view)[0].panes[0].message).toBe("");
   });
 
-  it("drops a message line that repeats a worktree name", () => {
+  it("puts a tab of a secondary checkout under that checkout's own group", () => {
     const view = buildAgentRail(
       railInput({ tabs: [tab(1, "/w/deck-side", { panes: [pane(1)] })] }),
     );
 
-    expect(streamRows(view)[0]).toMatchObject({
-      worktree: "release-hardening",
-      message: "",
+    // The primary leads even with nothing open in it (spec §4): it is the
+    // project's anchor, not a reward for being busy. The tab's row is under
+    // the branch it runs on, and says nothing about the checkout itself.
+    expect(
+      view.stream[0].worktrees.map((worktree) => [worktree.branch, worktree.rows.length]),
+    ).toEqual([
+      ["main", 0],
+      ["release-hardening", 1],
+    ]);
+    expect(streamRows(view)[0]).toMatchObject({ message: "" });
+  });
+});
+
+describe("buildAgentRail worktree groups (DL-27.23, 2026-08-25)", () => {
+  /** A repository with three checkouts, so ordering has something to say. */
+  const TRIO = repo("/w/trio/.git", [
+    { path: "/w/trio", branch: "main" },
+    { path: "/w/trio-a", branch: "feat/a" },
+    { path: "/w/trio-b", branch: "feat/b" },
+  ]);
+  const TRIO_SCANS = new Map<string, RepositoryScan>([
+    ["/w/trio", TRIO],
+    ["/w/trio-a", TRIO],
+    ["/w/trio-b", TRIO],
+  ]);
+
+  function trio(over: Partial<AgentRailInput> = {}): AgentRailInput {
+    return railInput({
+      scans: TRIO_SCANS,
+      workspaceHistoryPaths: ["/w/trio", "/w/trio-a", "/w/trio-b"],
+      ...over,
     });
+  }
+
+  it("groups a project's tabs by the checkout they run in", () => {
+    const view = buildAgentRail(
+      trio({
+        tabs: [
+          tab(1, "/w/trio", { openedAt: 1, panes: [pane(1)] }),
+          tab(2, "/w/trio-a", { openedAt: 2, panes: [pane(2)] }),
+          tab(3, "/w/trio", { openedAt: 3, panes: [pane(3)] }),
+          tab(4, "/w/trio-a", { openedAt: 4, panes: [pane(4)] }),
+        ],
+      }),
+    );
+
+    // The flat list interleaved these four rows 1-2-3-4; grouped, each
+    // checkout's runs stand together and the branch is said once per group.
+    expect(
+      view.stream[0].worktrees.map((worktree) => [
+        worktree.branch,
+        worktree.rows.map((row) => row.key),
+      ]),
+    ).toEqual([
+      ["main", [1, 3]],
+      ["feat/a", [2, 4]],
+      ["feat/b", []],
+    ]);
+  });
+
+  it("orders the groups: primary, then earliest-open, then history-only", () => {
+    const view = buildAgentRail(
+      trio({
+        tabs: [
+          // `feat/b` was opened first, so it leads `feat/a` — and the primary
+          // leads them both with nothing open in it at all.
+          tab(1, "/w/trio-b", { openedAt: 1, panes: [pane(1)] }),
+          tab(2, "/w/trio-a", { openedAt: 2, panes: [pane(2)] }),
+        ],
+      }),
+    );
+
+    expect(view.stream[0].worktrees.map((worktree) => worktree.branch)).toEqual([
+      "main",
+      "feat/b",
+      "feat/a",
+    ]);
+    expect(view.stream[0].worktrees.map((worktree) => worktree.primary)).toEqual([
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  it("keeps a group's rows in open order, and the cluster where its oldest tab put it", () => {
+    const view = buildAgentRail(
+      trio({
+        scans: new Map([...TRIO_SCANS, ["/w/deck", DECK], ["/w/deck-side", DECK]]),
+        workspaceHistoryPaths: ["/w/trio", "/w/deck"],
+        tabs: [
+          tab(1, "/w/deck", { openedAt: 2, panes: [pane(1)] }),
+          tab(2, "/w/trio-a", { openedAt: 1, panes: [pane(2)] }),
+        ],
+      }),
+    );
+
+    // Grouping moves no cluster: `trio` still leads because its oldest tab
+    // does, even though that tab is in a secondary checkout.
+    expect(view.stream.map((group) => group.project)).toEqual(["trio", "deck"]);
+  });
+
+  it("keeps a checkout the user has worked in before, with nothing open in it", () => {
+    const view = buildAgentRail(
+      trio({
+        workspaceHistoryPaths: ["/w/trio", "/w/trio-b"],
+        tabs: [tab(1, "/w/trio", { openedAt: 1, panes: [pane(1)] })],
+      }),
+    );
+
+    // `feat/a` is never printed — git knows it, Deck has never opened it — and
+    // `feat/b` keeps a header with no rows: a place to return to.
+    expect(
+      view.stream[0].worktrees.map((worktree) => [worktree.branch, worktree.rows.length]),
+    ).toEqual([
+      ["main", 1],
+      ["feat/b", 0],
+    ]);
+  });
+
+  it("labels every group of a repository, including a project with one checkout", () => {
+    const view = buildAgentRail(
+      railInput({
+        scans: new Map([["/w/solo", repo("/w/solo/.git", [{ path: "/w/solo", branch: "main" }])]]),
+        workspaceHistoryPaths: ["/w/solo"],
+        tabs: [tab(1, "/w/solo", { panes: [pane(1)] })],
+      }),
+    );
+
+    expect(
+      view.stream[0].worktrees.map((worktree) => [worktree.branch, worktree.labelled]),
+    ).toEqual([["main", true]]);
+  });
+
+  it("carries the worktree ROOT as the group's path, never a tab's cwd", () => {
+    const view = buildAgentRail(
+      trio({
+        // The scan map is keyed by the WORKSPACE path the tab was opened on;
+        // `buildRail` then attaches that tab to its checkout by longest prefix.
+        scans: new Map([...TRIO_SCANS, ["/w/trio-a/packages/web", TRIO]]),
+        tabs: [tab(1, "/w/trio-a/packages/web", { openedAt: 1, panes: [pane(1)] })],
+      }),
+    );
+
+    const group = view.stream[0].worktrees.find((worktree) => worktree.branch === "feat/a");
+    expect(group?.path).toBe("/w/trio-a");
+    expect(group?.key).toBe("/w/trio-a");
+    expect(group?.rows.map((row) => row.workspacePath)).toEqual(["/w/trio-a/packages/web"]);
+  });
+
+  it("keeps the project's close project-level, across every checkout", () => {
+    const view = buildAgentRail(
+      trio({
+        tabs: [
+          tab(1, "/w/trio-a", { openedAt: 1, panes: [pane(1)] }),
+          tab(2, "/w/trio", { openedAt: 2, panes: [pane(2)] }),
+        ],
+      }),
+    );
+
+    expect(view.stream[0].tabIndexes).toEqual([0, 1]);
   });
 });
 
@@ -726,7 +895,7 @@ describe("buildAgentRail remembered projects (2026-08-20)", () => {
         tabIndexes: [],
         project: "deck",
         labelled: true,
-        rows: [],
+        worktrees: [],
         path: "/w/deck",
         // Every history entry the header folds, so its close control can
         // forget all of them at once.
@@ -758,7 +927,7 @@ describe("buildAgentRail remembered projects (2026-08-20)", () => {
       }),
     );
 
-    expect(view.stream.map((group) => [group.project, group.rows.length])).toEqual([
+    expect(view.stream.map((group) => [group.project, clusterRows(group).length])).toEqual([
       ["deck", 1],
       ["scratch", 0],
     ]);
@@ -781,7 +950,7 @@ describe("buildAgentRail remembered projects (2026-08-20)", () => {
         tabIndexes: [],
         project: "scratch",
         labelled: true,
-        rows: [],
+        worktrees: [],
         path: "/home/me/scratch",
         historyPaths: ["/home/me/scratch"],
       },
@@ -893,7 +1062,9 @@ describe("buildAgentRail — what a live cluster's close has to take (close mode
   it("gives a remembered cluster no tab to close", () => {
     const view = buildAgentRail(railInput({ tabs: [], workspaceHistoryPaths: ["/w/deck"] }));
 
-    expect(view.stream[0].rows).toEqual([]);
+    // No rows, and no checkouts to print them under either (DL-27.23): a
+    // remembered cluster IS its header.
+    expect(view.stream[0].worktrees).toEqual([]);
     expect(view.stream[0].tabIndexes).toEqual([]);
     expect(view.stream[0].historyPaths).toEqual(["/w/deck"]);
   });

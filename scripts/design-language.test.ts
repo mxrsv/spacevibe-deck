@@ -326,24 +326,95 @@ describe("design-language citations", () => {
   });
 });
 
+describe("DL-32 task launcher", () => {
+  it("declares the launcher rules and loads the production treatment", () => {
+    const rulebook = readFileSync(RULEBOOK, "utf8");
+    const index = readFileSync(STYLESHEET, "utf8");
+    const css = readStylesheet().replace(CSS_COMMENT, "");
+
+    expect(rulebook).toContain("## 32. The task launcher");
+    for (const rule of ["32.1", "32.2", "32.3", "32.4", "32.5"]) {
+      expect(rulebook).toContain(`**DL-${rule}**`);
+    }
+    expect(index).toContain('@import "./styles/18-new-task-launcher.css";');
+    expect(css).toMatch(/\.nt-composer\s*\{/);
+    expect(css).toMatch(/\.nt-quick-launch\s*\{[^}]*z-index:\s*110/s);
+    expect(css).not.toMatch(/\.nt-quick-launch[^{}]*\{[^}]*backdrop-filter/s);
+
+    // DL-32.1: choosing a recent "establishes context", so the chosen row has
+    // to LOOK chosen — with the same wash every other selected surface wears
+    // (DL-21.1 on a chip, DL-27.8 on a rail row). It shipped with the class and
+    // `aria-pressed` set and no rule to paint either.
+    expect(css).toMatch(/\.row\.is-selected\s*\{[^}]*background:\s*var\(--tab-active-bg\)/s);
+  });
+});
+
 describe("DL-33 recent agent activity", () => {
   it("declares the compact re-entry rule and preserves its fixed row geometry", () => {
     const rulebook = readFileSync(RULEBOOK, "utf8");
     const css = readStylesheet().replace(CSS_COMMENT, "");
 
     expect(rulebook).toContain("## 33. Recent agent activity");
-    for (const rule of ["33.1", "33.2", "33.3", "33.4"]) {
+    for (const rule of ["33.1", "33.2", "33.3", "33.4", "33.5"]) {
       expect(rulebook).toContain(`**DL-${rule}**`);
     }
 
     const row = css.match(/\.recent-session-activity__row\s*\{([^}]*)\}/)?.[1] ?? "";
-    expect(row).toMatch(/grid-template-columns:\s*15px minmax\(0, 1fr\) 4em\s*;/);
+    // Amended 2026-08-26 (owner): a fourth track carries DL-27.3's own 14px
+    // status mark between the copy and the fixed age column, so a row reports
+    // what the agent running that session is doing.
+    expect(row).toMatch(/grid-template-columns:\s*15px minmax\(0, 1fr\) 14px 4em\s*;/);
+    expect(css).toMatch(
+      /\.recent-session-activity__row > \.asr-row__mark\s*\{[^}]*justify-self:\s*center/s,
+    );
     expect(row).toMatch(/min-height:\s*30px\s*;/);
     expect(row).toMatch(/border-radius:\s*var\(--radius-control\)\s*;/);
-    expect(css).toMatch(/\[data-sidebar-collapsed="true"\] \.recent-session-activity\s*\{[^}]*display:\s*none/s);
+    expect(css).toMatch(
+      /\[data-sidebar-collapsed="true"\] \.recent-session-activity\s*\{[^}]*display:\s*none/s,
+    );
     expect(css).toMatch(
       /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.recent-session-activity \*,\s*\.sessions-screen,[^{]*\{[^}]*transition:\s*none\s*;/s,
     );
+  });
+});
+
+describe("DL-27.23/27.24 the rail's worktree tier", () => {
+  it("declares both rules and draws the sub-header as a label on the rows' edge", () => {
+    const rulebook = readFileSync(RULEBOOK, "utf8");
+    const css = readStylesheet().replace(CSS_COMMENT, "");
+
+    for (const rule of ["27.23", "27.24"]) {
+      expect(rulebook).toContain(`**DL-${rule}**`);
+    }
+
+    // DL-27.23's one left edge: 7px inset + a 17px leading slot + a 7px gap is
+    // where the project name and every row's text start, and the sub-header
+    // spends it as padding because it carries no leading glyph. An indent step
+    // would come out of the row's turn line instead.
+    const head = css.match(/\.asr-wt__head\s*\{([^}]*)\}/)?.[1];
+    expect(head, ".asr-wt__head should have a rule block").toBeDefined();
+    expect(head).toMatch(/padding:\s*[^;]*\s31px\s*;/);
+    expect(head).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\) 17px 17px\s*;/);
+
+    // The row suffix's own treatment, one step quieter than the project.
+    const name = css.match(/\.asr-wt__name\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(name).toMatch(/color:\s*var\(--text-faint\)\s*;/);
+    expect(name).toMatch(/font:\s*450 var\(--type-meta\)/);
+
+    // DL-27.24: one launcher, and nothing else — the `+` mirrors the project
+    // header's own (DL-27.18), and no caret or close is drawn for a group.
+    expect(css).toMatch(/\.asr-cluster:hover \.asr-wt__add,\s*\.asr-wt__add:focus-visible\s*\{/);
+    expect(css).not.toMatch(/\.asr-wt__caret\s*\{/);
+    expect(css).not.toMatch(/\.asr-wt__remove\s*\{/);
+
+    // The suffix the group replaces is DELETED, not parked: leaving the rule
+    // would keep a treatment nothing can reach and invite the word back onto
+    // the row, where it prints once per agent.
+    expect(css).not.toMatch(/\.asr-row__worktree\s*\{/);
+
+    // A worktree group is prose; the 4px collapsed column drops it with every
+    // other prose-width line (DL-18.9 for this rail).
+    expect(css).toMatch(/\[data-sidebar-collapsed="true"\] \.asr-wt__head,/);
   });
 });
 
