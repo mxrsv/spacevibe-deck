@@ -1912,3 +1912,26 @@
  * here would be the gallery drifting from the app one file at a time — the
  * failure the whole harness exists to catch. The direction sheet restyles it
  * like it restyles every other real surface. */
+
+/*
+ * The worktree card's colour-rule specimen (`rail-worktree-cards.tsx`,
+ * `railColorRuleSpecimen`): the busy-hue candidates it compares, restated as
+ * an override of the production sheet's own custom property rather than a
+ * stylesheet of this specimen's own — `04c-rail-worktree-card.css` pins
+ * `--asr-card-busy` directly on `.asr-card` / `.asr-bare` / `.asr-card__row`,
+ * so an ancestor rule has to target those same classes to win: the variable
+ * is redeclared on the element itself, and inheriting it from a wrapper
+ * cannot out-cascade that regardless of the wrapper's own specificity. The
+ * `neutral` candidate needs no rule here — it is the shipped default.
+ */
+[data-busy="magenta"] .asr-card,
+[data-busy="magenta"] .asr-bare,
+[data-busy="magenta"] .asr-card__row {
+  --asr-card-busy: var(--magenta);
+}
+
+[data-busy="cyan"] .asr-card,
+[data-busy="cyan"] .asr-bare,
+[data-busy="cyan"] .asr-card__row {
+  --asr-card-busy: var(--cyan);
+}

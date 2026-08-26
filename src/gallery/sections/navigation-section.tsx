@@ -6,10 +6,8 @@ import {
   restingMarkVariantsSpecimen,
   statePaletteSpecimen,
 } from "../agent-rail-variants";
-import {
-  railSimplicityLadderSpecimen,
-  railStructureSpecimen,
-} from "../rail-structure-variants";
+import { railSimplicityLadderSpecimen, railStructureSpecimen } from "../rail-structure-variants";
+import { railColorRuleSpecimen, railWorktreeCardsSpecimen } from "../rail-worktree-cards";
 import { SIDEBAR_WIDTH_MIN } from "../../settings/settings-schema";
 import { SectionHead, Specimen } from "../specimen";
 
@@ -18,7 +16,7 @@ export function NavigationSection() {
     <>
       <SectionHead
         title="Navigation"
-        blurb="The shipped AgentRail rendered from seeded stores: one cluster per project in open order (DL-27.9), a chip on single-agent tabs and flat full-width agent rows for multi-agent tabs — those rows standing inside a neutral frame since 2026-08-20 (DL-27.19). The pane-tree markup remains parked behind PANE_TREE_HIDDEN; the gallery labels it as a proposal, never as current chrome."
+        blurb="The shipped AgentRail rendered from seeded stores: one cluster per project in open order (DL-27.9), each checkout grouped under its own worktree card since 2026-08-26 (DL-27.23/DL-27.24, amended) — a checkout is a boxed, expandable card whose agent rows are every pane running in it, flattened across whichever tabs hold them. There is no tab tier and no per-agent chip any more, and DL-27.19's neutral frame around a multi-agent tab is deleted along with the tab row it used to wrap. The retired pane-tree markup stays only as a historical comparison below; the constant that used to gate it (PANE_TREE_HIDDEN) no longer exists in the source."
       />
       <Specimen
         name="Agent status rail"
@@ -26,6 +24,20 @@ export function NavigationSection() {
         surface="none"
       >
         {agentStatusRailSpecimen()}
+      </Specimen>
+      <Specimen
+        name="Worktree card"
+        note="the shipped WorktreeCard in isolation, at rail width: closed and open side by side. ai-terminal's five panes are fed by three different tabs, flattened onto one card — the card's load-bearing claim, invisible in a fixture where every card's panes come from a single tab."
+        surface="none"
+      >
+        {railWorktreeCardsSpecimen()}
+      </Specimen>
+      <Specimen
+        name="Worktree card · the colour rule"
+        note="the one value the card sheet still leaves open (design §13, Task 10's gate): which hue --asr-card-busy takes. A is the shipped default; B and C restate that one custom property under a gallery-only override."
+        surface="none"
+      >
+        {railColorRuleSpecimen()}
       </Specimen>
       <Specimen
         name="Row-structure candidates"
@@ -50,7 +62,7 @@ export function NavigationSection() {
       </Specimen>
       <Specimen
         name="Pane tree · parked proposal"
-        note="not current: PANE_TREE_HIDDEN keeps multi-agent panes flat; this retained specimen shows the reversible elbow-tree direction only"
+        note="not current: the worktree card renders multi-agent panes as flat rows with no tree at all, and the PANE_TREE_HIDDEN constant that used to gate this direction is gone from the source; this retained specimen shows the elbow-tree direction only, as a historical comparison"
         surface="none"
       >
         {paneTreeSpecimen()}

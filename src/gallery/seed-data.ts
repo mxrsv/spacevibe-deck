@@ -203,6 +203,35 @@ export const SEED_TABS: readonly TabView[] = [
     // is what keeps the rail's `shell` identity and empty age visible.
     panes: [pane(109, null, "none", "unknown", 0)],
   },
+  {
+    key: 8,
+    process: "claude",
+    name: null,
+    dotColor: null,
+    workspacePath: `${HOME}/deck-worktrees/redesign`,
+    agents: ["claude"],
+    agentBusy: true,
+    unread: false,
+    attention: attention("working", { workingCount: 1 }),
+    // Paired with key 9 below: both tabs sit on the SAME worktree
+    // (`deck-worktrees/redesign`), so the worktree card built from them
+    // flattens two tabs' panes onto one card — the card's own load-bearing
+    // claim (design §3), otherwise invisible here since every other worktree
+    // with agents open is the PRIMARY checkout of its project.
+    panes: [pane(112, "claude", "none", "working", minutesAgo(2), true)],
+  },
+  {
+    key: 9,
+    process: "gemini",
+    name: null,
+    dotColor: null,
+    workspacePath: `${HOME}/deck-worktrees/redesign`,
+    agents: ["gemini"],
+    agentBusy: false,
+    unread: false,
+    attention: attention("idle"),
+    panes: [pane(113, "gemini", "none", "idle", minutesAgo(50), true)],
+  },
 ];
 
 /**
@@ -225,6 +254,7 @@ export const SEED_PANE_TAILS: ReadonlyMap<number, string> = new Map([
   [107, "Permission needed: prisma migrate dev"],
   [108, "Cannot reach the daemon — the socket at /tmp/agy.sock is gone"],
   [110, "Which branch should the release cut come from?"],
+  [112, "Splitting the sidebar grip into its own module"],
 ]);
 
 export const SEED_STATUS: StatusInfo = {
