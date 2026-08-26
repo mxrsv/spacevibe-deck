@@ -54,6 +54,15 @@ import { WorktreeCard } from "./worktree-card";
  */
 
 export interface AgentRailProps {
+  /**
+   * Select an already-open tab by its global index. Read by this file only
+   * through `WorktreeCard`'s `BareCheckout` (item 1 fix, review 2026-08-26):
+   * a checkout whose one open tab is a plain shell has no agent panes to
+   * show as a card, and this is how its row reaches that tab instead of
+   * spawning a redundant second one. Also required because `AgentRailProps`
+   * and `RepositoryRailProps` share one contract and `App` passes it to
+   * both; `RepositoryRail` reads it directly for every tab row it draws.
+   */
   onSelectTab(index: number): void;
   /**
    * Open `AgentQuickPicker` targeted at one project (DL-27.18).
@@ -74,6 +83,14 @@ export interface AgentRailProps {
    * which case no header carries the control (DL-19.7).
    */
   onRemoveWorkspace?(workspacePaths: readonly string[]): void;
+  /**
+   * Close a tab by its global index. Unread by this file's own render — the
+   * tab tier that used to call it is gone (worktree card, 2026-08-26), and
+   * every agent row now closes its PANE through `onClosePane` instead. Kept
+   * as a required prop because `AgentRailProps` and `RepositoryRailProps`
+   * share one contract and `App` passes it to both; `RepositoryRail` still
+   * reads it for every tab row it draws.
+   */
   onCloseTab(index: number): void;
   /**
    * Close ONE agent — the ✕ every agent row carries since the close model
@@ -465,6 +482,7 @@ export function AgentRail(props: AgentRailProps) {
                       onFocusPane={props.onFocusPane}
                       onClosePane={props.onClosePane}
                       onNewTabIn={props.onNewTabIn}
+                      onSelectTab={props.onSelectTab}
                     />
                   ))}
               </div>

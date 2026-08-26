@@ -402,21 +402,31 @@ describe("AgentRail click contract", () => {
     expect(onCloseTab).not.toHaveBeenCalled();
   });
 
-  it("gives a shell-only tab no row and no close from the rail", async () => {
-    // A real, accepted regression (design §5 risks): `panes` holds agent
-    // panes only (spec §9), so a checkout with nothing but a shell tab has
-    // ZERO panes and renders as a bare row — mark, name, badge, and the
-    // launcher only. There is no tab identity left anywhere to close.
+  it("gives a shell-only tab no row and no close, but reaches it through onSelectTab (item 1 fix, review 2026-08-26)", async () => {
+    // `panes` holds agent panes only (spec §9), so a checkout with nothing
+    // but a shell tab has ZERO panes and renders as a bare row — mark, name,
+    // badge, no `.asr-row__action--close`. Until this fix that bare row was
+    // byte-identical to a truly EMPTY checkout's, so pressing it called
+    // `onNewTabIn` and spawned a second agent over a tab that was already
+    // open and, with the tab tier gone, otherwise unreachable from the rail.
+    // It now reaches the existing tab through `onSelectTab` instead.
     const onCloseTab = vi.fn();
     const onClosePane = vi.fn();
+    const onSelectTab = vi.fn();
+    const onNewTabIn = vi.fn();
     tabViews.value = [tab({ key: 1, panes: [] })];
-    mount({ onCloseTab, onClosePane });
+    mount({ onCloseTab, onClosePane, onSelectTab, onNewTabIn });
     await settle();
 
     expect(host.querySelector(".asr-card")).toBeNull();
-    expect(host.querySelector(".asr-bare")).not.toBeNull();
+    const bare = host.querySelector(".asr-bare");
+    expect(bare).not.toBeNull();
+    expect(bare?.getAttribute("data-shell")).toBe("true");
     expect(host.querySelector(".asr-row__action--close")).toBeNull();
-    click(host.querySelector(".asr-bare"));
+    click(bare);
+    expect(onSelectTab).toHaveBeenCalledWith(0);
+    expect(onSelectTab).toHaveBeenCalledTimes(1);
+    expect(onNewTabIn).not.toHaveBeenCalled();
     expect(onCloseTab).not.toHaveBeenCalled();
     expect(onClosePane).not.toHaveBeenCalled();
   });
@@ -1139,12 +1149,12 @@ describe("AgentRail live-only contract", () => {
   });
 
   it("gives a shell-only tab a bare row, never a terminal-glyph agent row", async () => {
-    // A real, accepted regression (design §5 risks, spec §9 of the plan): a
-    // shell tab produces no `RailCardPane` at all (`panes` holds agent panes
-    // only, spec §9), so the checkout it lives in has zero panes and renders
-    // as the BARE row — mark, name, badge — with no glyph of any kind. The
-    // shipped rail's terminal-glyph fallback for a plain shell died with the
-    // tab tier; the tab strip is the only way left to reach it.
+    // A shell tab produces no `RailCardPane` at all (`panes` holds agent
+    // panes only, spec §9), so the checkout it lives in has zero panes and
+    // renders as the BARE row — mark, name, badge — with no glyph of any
+    // kind. The shipped rail's terminal-glyph fallback for a plain shell died
+    // with the tab tier; the tab strip and the bare row's own `onSelectTab`
+    // (item 1 fix, review 2026-08-26) are what reach it now — never a glyph.
     tabViews.value = [tab({ panes: [pane({ agent: null })] })];
     mount();
     await settle();

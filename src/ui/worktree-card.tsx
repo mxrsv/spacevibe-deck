@@ -304,26 +304,41 @@ function CardStrip({ panes }: { readonly panes: readonly RailCardPane[] }) {
 }
 
 /**
- * A checkout with nothing running (design §6): the head row alone — mark,
- * name, badge — no box, no meta, no strip. Column alignment under the
- * project is all that places it; it shares the card head's mark track and
- * gap.
+ * A checkout with no agent panes to show as a card (design §6): the head row
+ * alone — mark, name, badge — no box, no meta, no strip. Column alignment
+ * under the project is all that places it; it shares the card head's mark
+ * track and gap.
+ *
+ * `group.panes.length === 0` folds two different facts together, and this
+ * component is what tells them apart (review, 2026-08-26): a checkout with
+ * NOTHING open at all (`group.rows.length === 0`) is an honest absence, and
+ * pressing it starts something new (`onNewTabIn`); a checkout whose only
+ * open tab is a plain shell (`group.rows.length > 0`, still no agent panes)
+ * is a checkout IN USE, and pressing it must reach that tab (`onSelectTab`)
+ * rather than spawn a second, redundant agent — with the tab tier gone, a
+ * shell tab has no other way to be reached from the rail at all. Before this
+ * fix the two cases rendered byte-identical, which routed a press on a live
+ * shell into `onNewTabIn`. `data-shell` carries the distinction for CSS and
+ * tests; the accessible name states it in words too, since DL-27.2 never
+ * lets a mark or a data attribute be the only reader of a state.
  *
  * DL-19.7: a control the host cannot wire is omitted, never shown inert.
  * Here the whole row IS the control (spec §6 — "stays reachable with
- * nothing running" is behaviour, not a label), so without `onNewTabIn` it
- * degrades to a static, non-interactive row rather than disappearing — the
- * project header above still needs this line for column alignment even when
- * nothing can be pressed.
+ * nothing running" is behaviour, not a label), so without the matching
+ * callback it degrades to a static, non-interactive row rather than
+ * disappearing — the project header above still needs this line for column
+ * alignment even when nothing can be pressed.
  */
 function BareCheckout({
   project,
   group,
   onNewTabIn,
+  onSelectTab,
 }: {
   readonly project: string;
   readonly group: RailWorktreeGroup;
   readonly onNewTabIn?: (workspacePath: string) => void;
+  readonly onSelectTab?: (tabIndex: number) => void;
 }) {
   const where = whereOf(project, group);
   const content = (
@@ -333,13 +348,49 @@ function BareCheckout({
       <Badge className="asr-bare__badge" branch={group.branch} />
     </Fragment>
   );
+
+  // A shell tab is already open in this checkout (spec §9: shell panes are
+  // not agent rows, so it never produced a card) — reach it rather than
+  // claim the checkout is empty. Only the first matters in practice: two
+  // shell tabs sharing one worktree with no agent between them is an edge
+  // the design never asked this row to distinguish.
+  const openTab = group.rows[0];
+  if (openTab !== undefined) {
+    if (onSelectTab === undefined) {
+      return (
+        <div class="asr-bare" data-shell="true">
+          {content}
+        </div>
+      );
+    }
+    return (
+      <button
+        type="button"
+        class="asr-bare"
+        data-shell="true"
+        aria-label={`Open shell tab in ${where}`}
+        title={`Open shell tab in ${where}`}
+        onClick={() => {
+          onSelectTab(openTab.index);
+        }}
+      >
+        {content}
+      </button>
+    );
+  }
+
   if (onNewTabIn === undefined) {
-    return <div class="asr-bare">{content}</div>;
+    return (
+      <div class="asr-bare" data-shell="false">
+        {content}
+      </div>
+    );
   }
   return (
     <button
       type="button"
       class="asr-bare"
+      data-shell="false"
       aria-label={`New agent in ${where}`}
       title={`New agent in ${where}`}
       onClick={() => {
@@ -401,6 +452,14 @@ export interface WorktreeCardProps {
    */
   readonly onClosePane: (tabIndex: number, paneId: number) => void;
   readonly onNewTabIn?: (workspacePath: string) => void;
+  /**
+   * Reach a checkout's own open tab when it has no agent panes to show as a
+   * card — a plain shell tab (item 1 fix, review 2026-08-26). `BareCheckout`
+   * is the only reader; a checkout with nothing open at all still goes
+   * through `onNewTabIn` instead. Omitted where nothing wires it, in which
+   * case that row degrades like `onNewTabIn`'s own (DL-19.7).
+   */
+  readonly onSelectTab?: (tabIndex: number) => void;
 }
 
 export function WorktreeCard(props: WorktreeCardProps) {
@@ -418,7 +477,14 @@ export function WorktreeCard(props: WorktreeCardProps) {
   }
 
   if (group.panes.length === 0) {
-    return <BareCheckout project={project} group={group} onNewTabIn={props.onNewTabIn} />;
+    return (
+      <BareCheckout
+        project={project}
+        group={group}
+        onNewTabIn={props.onNewTabIn}
+        onSelectTab={props.onSelectTab}
+      />
+    );
   }
 
   return (

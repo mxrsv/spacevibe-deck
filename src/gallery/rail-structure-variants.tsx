@@ -388,7 +388,7 @@ export function railStructureSpecimen() {
 /**
  * Three rungs of REMOVAL, built after the map and the dashboard both read as
  * cluttered too (owner, 2026-08-19). Every candidate before this one added
- * structure; the owner's word was "đơn giản" — simpler — so this ladder takes
+ * structure; the owner's word was "simpler" — so this ladder takes
  * things away instead, and it is diagnostic by construction:
  *
  * - **L1 removes INK.** Same one row per pane the rail ships, minus the

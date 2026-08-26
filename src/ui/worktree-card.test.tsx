@@ -12,7 +12,7 @@ vi.mock("./controls/deck-icon", () => ({
   DeckIcon: ({ size }: { readonly size: number }) => <span data-deck-icon-size={size} />,
 }));
 
-import type { RailCardPane, RailWorktreeGroup } from "./agent-rail-model";
+import type { RailCardPane, RailTabRow, RailWorktreeGroup } from "./agent-rail-model";
 import { WorktreeCard, type WorktreeCardProps } from "./worktree-card";
 
 function pane(overrides: Partial<RailCardPane> = {}): RailCardPane {
@@ -44,6 +44,28 @@ function group(overrides: Partial<RailWorktreeGroup> = {}): RailWorktreeGroup {
     age: "",
     active: false,
     rows: [],
+    ...overrides,
+  };
+}
+
+/** A plain shell tab — no agent panes, so it never produces a card row. */
+function tabRow(overrides: Partial<RailTabRow> = {}): RailTabRow {
+  return {
+    key: 7,
+    index: 4,
+    project: "spacevibe-bench",
+    identity: "shell",
+    title: "shell",
+    named: false,
+    message: "",
+    age: "",
+    changedAt: 0,
+    openedAt: 0,
+    state: "idle",
+    panes: [],
+    voice: null,
+    active: false,
+    workspacePath: "/repo/ai-terminal",
     ...overrides,
   };
 }
@@ -333,6 +355,48 @@ describe("WorktreeCard bare row (design §6)", () => {
 
     expect(host.querySelector("button.asr-bare")).toBeNull();
     expect(host.querySelector("div.asr-bare")).not.toBeNull();
+  });
+
+  it("marks a truly empty checkout as such (data-shell=false)", () => {
+    mount({ group: group({ panes: [], rows: [] }) });
+
+    expect(host.querySelector(".asr-bare")?.getAttribute("data-shell")).toBe("false");
+  });
+});
+
+describe("WorktreeCard bare row — a live shell tab (item 1 fix, review 2026-08-26)", () => {
+  it("does not claim the checkout is empty, and reaches the shell tab instead of spawning", () => {
+    const onNewTabIn = vi.fn();
+    const onSelectTab = vi.fn();
+    mount({
+      onNewTabIn,
+      onSelectTab,
+      group: group({ path: "/repo/docs", panes: [], rows: [tabRow({ index: 4 })] }),
+    });
+
+    // Still a bare row (no agent panes to build a card from) — but the
+    // shell tab already open here must be distinguishable and reachable.
+    expect(host.querySelector(".asr-card")).toBeNull();
+    const bare = host.querySelector("button.asr-bare");
+    expect(bare).not.toBeNull();
+    expect(bare?.getAttribute("data-shell")).toBe("true");
+    expect(bare?.getAttribute("aria-label")).toBe(
+      "Open shell tab in spacevibe-bench · ai-terminal · feature/ai-terminal",
+    );
+
+    click(bare);
+    expect(onSelectTab).toHaveBeenCalledWith(4);
+    expect(onSelectTab).toHaveBeenCalledTimes(1);
+    expect(onNewTabIn).not.toHaveBeenCalled();
+  });
+
+  it("degrades to a static row rather than an inert button when onSelectTab is unwired (DL-19.7)", () => {
+    mount({ group: group({ panes: [], rows: [tabRow()] }) });
+
+    const bare = host.querySelector(".asr-bare");
+    expect(bare).not.toBeNull();
+    expect(bare?.tagName).toBe("DIV");
+    expect(bare?.getAttribute("data-shell")).toBe("true");
   });
 });
 
