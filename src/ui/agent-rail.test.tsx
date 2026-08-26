@@ -670,9 +670,14 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
       "claude",
       "codex",
     ]);
-    // The worktree suffix survives the change — it is the only thing telling
-    // two tabs of one project apart.
-    expect(rows()[1].querySelector(".asr-row__worktree")?.textContent).toBe("side");
+    // The suffix that used to tell the two apart is gone (DL-27.23): the
+    // checkout is a labelled group above each row now, and no row carries the
+    // word at all.
+    expect(host.querySelector(".asr-row__worktree")).toBeNull();
+    expect([...host.querySelectorAll(".asr-wt__name")].map((name) => name.textContent)).toEqual([
+      "main",
+      "side",
+    ]);
   });
 
   it("keeps project → tab for a project with one tab", async () => {
@@ -706,6 +711,124 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     expect(host.querySelectorAll(".asr-stream .asr-row--tab")).toHaveLength(3);
     const asking = host.querySelector<HTMLElement>('.asr-stream .asr-row--tab[data-state="asked"]');
     expect(asking?.querySelector("strong")?.textContent).toBe("claude");
+  });
+});
+
+describe("AgentRail worktree groups (DL-27.23/DL-27.24)", () => {
+  /** The sub-headers of the rail, in render order. */
+  function branches(): string[] {
+    return [...host.querySelectorAll(".asr-wt__name")].map((name) => name.textContent ?? "");
+  }
+
+  it("prints a sub-header for a project with exactly one checkout", async () => {
+    // `/r/side` is in this fixture's workspace history, so the project has two
+    // groups by default; a history with only the primary in it is the
+    // one-checkout case — and it is still labelled (DL-27.23).
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/r/main", lastOpenedAt: 2 }],
+    };
+    mount();
+    await settle();
+
+    expect(branches()).toEqual(["main"]);
+    expect(host.querySelectorAll(".asr-cluster__head")).toHaveLength(1);
+  });
+
+  it("stands each row under the checkout it runs in, on the rail's one left edge", async () => {
+    tabViews.value = [
+      tab({ key: 1, panes: [pane({ paneId: 11 })] }),
+      tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] }),
+    ];
+    mount();
+    await settle();
+
+    // DOM order is the render order: header, group, its rows, next group.
+    const printed = [...host.querySelectorAll(".asr-wt__head, .asr-stream .asr-row--tab")].map(
+      (node) =>
+        node.classList.contains("asr-wt__head")
+          ? `group:${node.querySelector(".asr-wt__name")?.textContent}`
+          : `row:${node.getAttribute("data-key")}`,
+    );
+    expect(printed).toEqual(["group:main", "row:1", "group:side", "row:2"]);
+    // DL-27.24: a label, not a control — no caret and no hit layer.
+    const head = host.querySelector(".asr-wt__head");
+    expect(head?.querySelector(".asr-cluster__caret")).toBeNull();
+    expect(head?.querySelectorAll("button")).toHaveLength(0);
+  });
+
+  it("keeps a checkout with nothing open in it, and gives it the launcher", async () => {
+    const onNewTabIn = vi.fn();
+    mount({ onNewTabIn });
+    await settle();
+
+    // One tab, in `/r/main`; `/r/side` is in Deck's history, so it keeps a
+    // header of its own with no rows under it.
+    expect(branches()).toEqual(["main", "side"]);
+    expect(rows()).toHaveLength(1);
+
+    const adds = host.querySelectorAll<HTMLElement>("button.asr-wt__add");
+    expect(adds).toHaveLength(2);
+    click(adds[1]);
+    // The worktree ROOT, never a tab's cwd.
+    expect(onNewTabIn).toHaveBeenCalledWith("/r/side");
+  });
+
+  it("names the project AND the branch in the launcher's accessible name", async () => {
+    mount({ onNewTabIn: NOOP });
+    await settle();
+
+    // Two `main` groups in two projects have to be distinguishable by ear.
+    expect(host.querySelector(".asr-wt__add")?.getAttribute("aria-label")).toBe(
+      "New tab in main · main",
+    );
+  });
+
+  it("omits the launcher when the host cannot open one", async () => {
+    mount();
+    await settle();
+
+    expect(host.querySelector(".asr-wt__add")).toBeNull();
+    // The labels stand without it (DL-19.7).
+    expect(branches()).toEqual(["main", "side"]);
+  });
+
+  it("prints no sub-header for a folder git does not know", async () => {
+    configureRepositoryClient({
+      scan: async () => ({ kind: "plain", reason: "not a git repository" }),
+    });
+    invalidateRepositoryScans();
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/r/main", lastOpenedAt: 2 }],
+    };
+    mount({ onNewTabIn: NOOP });
+    await settle();
+
+    // The one implicit group's only name is the folder the cluster header
+    // above it already prints — which is also every project under Tauri.
+    expect(host.querySelector(".asr-wt__head")).toBeNull();
+    expect(host.querySelector(".asr-cluster__head")?.textContent).toBe("main");
+    expect(rows()).toHaveLength(1);
+  });
+
+  it("hides its groups with the project when the header collapses", async () => {
+    mount();
+    await settle();
+
+    click(host.querySelector("button.asr-cluster__toggle"));
+    expect(branches()).toEqual([]);
+    expect(rows()).toHaveLength(0);
+  });
+
+  it("carries the branch into the row's accessible name and tooltip", async () => {
+    tabViews.value = [tab({ key: 2, workspacePath: "/r/side", panes: [pane({ paneId: 21 })] })];
+    mount();
+    await settle();
+
+    const hit = host.querySelector(".asr-row__hit");
+    expect(hit?.getAttribute("aria-label")).toContain("main · side");
+    expect(hit?.getAttribute("title")).toContain("main · side");
   });
 });
 

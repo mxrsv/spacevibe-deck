@@ -43,8 +43,17 @@ constraint: **consume as few machine resources as possible.**
   a rail click runs one 1500ms locator, while each recognised working agent
   repeats that same 1500ms current until its tracker stops. The latter is an
   infinite CSS animation only while `.is-agent-working` exists — the state
-  removal ends it, and nothing moves while the agent is idle. No other surface
-  inherits either exception.
+  removal ends it, and nothing moves while the agent is idle.
+  **A second scoped exception was added 2026-08-25 by DL-27.3:** the rail's
+  `asked` mark radiates on a 1.8s loop for as long as that state is on the
+  element. It is the same shape as the one above — infinite only while a state
+  exists, `transform` and `opacity` only — with one difference stated rather
+  than glossed: "nothing animates while the user is idle" does NOT hold for it,
+  because an unread mark exists precisely while nobody is watching. That is the
+  point of the mark and the whole cost of the exception; it was taken knowingly,
+  over a still ring that separates the mark in a screenshot but not in the
+  corner of an eye. The still ring is what `prefers-reduced-motion: reduce`
+  gets. No other surface inherits any of the three.
 - **DL-1.3** Banned: **blurred/offset** `box-shadow` (the app is a flat system —
   depth comes from background steps and 1px hairlines), `backdrop-filter`,
   `filter`, JS animation loops (`requestAnimationFrame`) for chrome, timers that
@@ -96,9 +105,9 @@ from the active terminal theme (`--bg --fg --accent --red --green --yellow
   **One exception, added 2026-08-19:** a background somebody has hand-picked a
   sidebar for may pin it, as a literal keyed by that background
   ([`PINNED_SIDEBAR_BG`](../src/lib/derive-colors.ts) `current`). Deck's own
-  `#17181c` pins `#272d31` at the owner's request, because that gray is not
-  reachable by mixing the background toward white — it is bluer and flatter
-  than any lift produces. The pin is keyed on the background rather than on the
+  `#17181c` pins `#161b22` at the owner's request (`#272d31` until 2026-08-25),
+  because that gray is not reachable by mixing the background toward white — a
+  lift raises every channel, and this one drops red while raising blue. The pin is keyed on the background rather than on the
   preset so the rule above still holds for all four callers, and so overriding
   that background correctly drops the pin.
 - **DL-2.3** **A boundary between two surfaces is a seam, not a hairline.**
@@ -628,8 +637,10 @@ were not reworked here):
 
 | where                                          | violates       | note                                                                                                                                                             |
 | ---------------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.sidebar-banner img` / `.sidebar-banner__art` | DL-1.3         | `filter: saturate() contrast()` grading the banner art, plus a second declaration on the `--woven` treatment. A standing layer, unlike the scrim's transient one |
 | `button.attn-mark`                             | DL-1.3, DL-1.2 | `transition: filter` — banned as a property AND absent from DL-1.2's animatable list                                                                             |
+
+The sidebar banner's own `filter: saturate() contrast()` row left this table on
+2026-08-25: the feature was removed and its selectors no longer exist (§26).
 
 ## 11. Full-window screens
 
@@ -1425,8 +1436,9 @@ window's identity and its actions at the same time.
   cannot keep it alive. Both paths animate only `transform` and `opacity`, take
   no pointer events and change no pane geometry. Under
   `prefers-reduced-motion: reduce`, the click locator is absent and a working
-  pane keeps only its static 2px yellow state. These are DL-1.2's only motion
-  exceptions and the scoped yellow exceptions recorded in DL-3.1/DL-3.2.
+  pane keeps only its static 2px yellow state. These were DL-1.2's only motion
+  exceptions until 2026-08-25, when DL-27.3's unread ripple became the third;
+  they remain the scoped yellow exceptions recorded in DL-3.1/DL-3.2.
 
 ## 19. Docked side panels
 
@@ -1916,9 +1928,21 @@ next free number above §24, not the gap
 
 ## 26. The sidebar banner
 
+> **Removed on 2026-08-25 at the owner's request — the code is DELETED, not
+> parked.** `sidebar-banner.tsx`, `sidebar-banner-store.ts`,
+> `sidebar-banner-presets.ts`, `sidebar-banner-settings.tsx`, their tests, their
+> CSS, the `sidebar-banner.json` store allowlist entry and the gallery specimen
+> are all gone; the rail now closes with DL §28's footer. **These rules bind
+> nothing.** They are kept declared for two reasons only: DL rule ids are
+> amended in place and never deleted (a gate resolves every `DL-26.x` citation
+> to a declared rule, and DL-28.1's history cites DL-26.4), and the fork
+> argument below is the record of a decision that was made, not unmade. Unlike
+> §24 there is no surviving module to re-mount — a future banner is new code,
+> and citing §26 for it means re-deciding the fork first.
+
 Approved as a fork on 2026-08-16, for the rail's Woven Flag banner
-([`sidebar-banner.tsx`](../src/ui/sidebar-banner.tsx) `current`). §5 covers
-rows that read or set a value; a banner sets nothing and is not a row at all,
+(`sidebar-banner.tsx`, deleted 2026-08-25). §5 covers rows that read or set a
+value; a banner sets nothing and is not a row at all,
 so it needed its own short contract rather than a stretch of an existing one.
 Numbered 26 because §22 stays reserved — the next free number above §25, not
 the gap.
@@ -1966,7 +1990,10 @@ number first.
 
 Two rules elsewhere are amended in place by this fork rather than restated
 here: **DL-3.2** gains `--yellow`, and **DL-1.2**'s 300ms cap gains one scoped
-exception. **DL-1.3 is not amended.** A real glow around the focused pane was
+exception — a second one on 2026-08-25, when DL-27.3's unread mark started to
+radiate. **DL-1.3 is not amended, then or now.** The ripple paints no blur and
+casts no shadow: it is a filled `::after` moved by `transform` and `opacity`,
+which is why the refusal below still stands unchanged. A real glow around the focused pane was
 considered and refused: the app is a flat system, depth comes from background
 steps and hairlines, and a blurred `box-shadow` costs a compositing layer for
 a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
@@ -1993,7 +2020,27 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   drawn as though nothing were happening, and an unpainted column read as a
   broken row rather than a quiet one. The green `CheckCircle`, the `asked`
   halo and the idle ring-and-ember stay retired — the reversal restores
-  motion and a resting dot, not the five-symbol vocabulary. `asked` still means
+  motion and a resting dot, not the five-symbol vocabulary.
+  **The `asked` halo came back on 2026-08-25 (owner, chosen from three drawn
+  candidates), and it MOVES:** a 13px disc under the dot expands to 2.1x and
+  fades on a 1.8s loop, so unread is the one state that radiates. The reason is
+  a difference in KIND that hue alone was carrying — `failed`, `asked`, `done`
+  and `idle` were one 9px circle in four colours, so the single state meaning
+  _come and look_ had the same silhouette as the two meaning _nothing to do
+  here_, and it had to be found by reading the column instead of being seen
+  from it. This is DL-1.2's second scoped exception, recorded there: infinite
+  only while `[data-state="asked"]` is on the element, `transform` and
+  `opacity` only, and — stated rather than glossed — it DOES animate while the
+  user is idle, which is the exception's real cost and the mark's whole
+  purpose. Under `prefers-reduced-motion: reduce` the loop is absent and the
+  mark is the 15px hairline ring retired above, so the separation survives
+  without motion. Geometry is unmoved: the ripple is an absolutely positioned
+  `::after`, the box is still 14px, and the disc is sized 13px rather than the
+  ring's 15px because at 2.1x its 13.65px radius has to clear the 15.5px the
+  dot's centre sits from the rail list's left edge — `overflow-x: hidden` clips
+  a left overflow and never reports it in `scrollWidth`. `failed` still carries
+  no halo: the halo means _answer me_, and a crashed agent is not asking a
+  question. `asked` still means
   _needs your eyes_ in full: a question, a
   permission wait, **or a finished run you have not checked** — the old
   accent-hollow `done` mark folded into it as a TEMPORARY owner call
@@ -2078,7 +2125,11 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   tab row** — no state mark, age or worktree level; its one press only collapses
   or restores that project's tabs — which is what keeps
   this from reinstating the repository → worktree tree the rail replaced; the
-  worktree stays a suffix on the row. **The original cluster rule omitted the
+  worktree stays a suffix on the row — **amended 2026-08-25 by DL-27.23:** the
+  row gives that suffix up entirely, because the group above it states the
+  checkout and a row that repeated it would print the word once per agent. The
+  header itself is unchanged: still no state mark, age or worktree level on it.
+  **The original cluster rule omitted the
   header for a project with one tab; superseded by DL-27.12.** That saved one
   line but made a singleton project use a different hierarchy from every other
   project.
@@ -2170,6 +2221,12 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   an unrelated tab. The header remains the rail's only disclosure and carries
   no state, age or worktree level. This amends DL-27.9 and DL-27.11 only; row
   geometry, tab ownership, pane focus and open order do not change.
+  **Amended 2026-08-25 by DL-27.23** on the same argument it makes here: the
+  row's worktree suffix is gone and the checkout is a labelled group between
+  the header and the rows, always printed — including for a project with one
+  worktree, so a project does not change visual type when a second checkout
+  opens. The header is still the rail's only disclosure and still carries no
+  worktree level of its own.
 
 - **DL-27.13** **A tab running several agents lists each pane as a leaf row
   under the tab, joined by a hairline elbow (2026-08-16).** Reverses
@@ -2439,6 +2496,38 @@ a 1.5s effect. The ping is the inset hairline DL-1.3 explicitly permits.
   keys are here_. **A document or the browser on the stage does not clear it:**
   the active pane is unchanged and the mark then reads as where the keyboard
   returns to, where clearing it would blink the rail on every file opened.
+- **DL-27.23** **The rail has three tiers: project, worktree, agent row
+  (2026-08-25, owner).** Every tab of a project is printed under the worktree
+  it runs in, and a worktree group is **always labelled** — including when a
+  project has exactly one, so the hierarchy never changes shape as a second
+  checkout opens (DL-27.12's own argument, one tier down). The tier was never
+  missing from the data: `buildRail` has always attached a tab to its
+  checkout, and the rail flattened that away. With several agents in several
+  worktrees of one project the flat list interleaved two checkouts' runs with
+  nothing on screen saying which rows shared one, and the branch word — a row
+  suffix under DL-27.9 — was printed once per agent. **The tiers are separated
+  by TYPE, not by indentation:** all three stand on the same 31px left edge
+  (the owner's 2026-08-19 ruling that the project name shares the rows' edge),
+  because the indent would be paid for out of `.asr-row--tab`'s
+  `minmax(0, 1fr)` track, which holds the agent's newest turn — DL-27.15's
+  whole content of the row. The branch takes the row suffix's own treatment
+  (`--text-faint`, `--type-meta`, 450), one step quieter than the project and
+  one quieter again than a turn. **A group with no open tab still prints** when
+  the user has worked in that checkout before (Deck's workspace history) — the
+  rowless remembered cluster (DL-27.16's amendment, 2026-08-20) one tier down —
+  and a worktree the user has never opened in Deck stays invisible: git
+  discovery supplies metadata, it does not decide what becomes a row. A project
+  git does not know has ONE implicit group and prints no sub-header, since its
+  only name is the folder name the header above it already said.
+- **DL-27.24** **A worktree group is a label, not a control (2026-08-25,
+  owner).** It carries its branch and one launcher — the project header's own
+  `+` (DL-27.18), `PlusSquare` at 15px, revealed on hover or focus, opening the
+  task launcher pinned to THAT checkout. It does not collapse, select or close:
+  DL-19.7 applies, so no caret and no hit layer are drawn for gestures nothing
+  wires. Collapse stays the project header's (one disclosure per cluster,
+  DL-27.11), and closing stays DL-27.21's — a row closes its agent, a project
+  header closes the project, and a worktree-scoped close is not offered rather
+  than offered as a third meaning for one glyph.
 
 ## 28. The rail's action footer
 
@@ -2465,10 +2554,11 @@ that read or set a value and §19 covers a docked panel; a pinned footer of
 navigation actions inside the rail is neither. Numbered 28 because §22 stays
 reserved — the next free number above §27, not the gap.
 
-- **DL-28.1** The footer is **pinned between the scrolling workspace list and
-  the banner**, never inside the scroll region. The banner keeps the closing
-  position it has always had (DL-26.4), and the footer never scrolls out of
-  reach of the surfaces it opens.
+- **DL-28.1** The footer is **pinned below the scrolling workspace list**,
+  never inside the scroll region, so it never scrolls out of reach of the
+  surfaces it opens. It **closes the rail** since 2026-08-25: it was written to
+  sit above the sidebar banner, which kept the closing position (DL-26.4) until
+  that feature was removed.
 - **DL-28.2** Its members are **rows, not icons**: the column has prose width,
   so a row says what it does instead of teaching a glyph. Hover takes DL-21.2's
   quieter wash, and an action that cannot run follows DL-23.6 rather than
@@ -2727,6 +2817,39 @@ tables are the nearest thing and are still scanning, not reading.
   tooltip and no native `title`, sits at the surface's top-right corner, and
   states the mode it would switch TO: the surface underneath already says
   which one it is in.
+
+## 32. The task launcher
+
+Added 2026-08-24 from the owner-approved Gallery treatment in the
+[new task launcher spec](specs/2026-08-23-new-task-launcher-design.md) `decided`.
+The production surface is split between the shared
+[launcher fields](../src/launcher/launcher-fields.tsx) `current`, the
+[Open Board composer](../src/open-board/board-composer.tsx) `current`, and the
+[Quick Launch popover](../src/launcher/quick-launch.tsx) `current`; their
+treatment lives in
+[18-new-task-launcher.css](../src/styles/18-new-task-launcher.css) `current`.
+Numbered 32 because §22 stays reserved and §31 was the previous highest rule.
+
+- **DL-32.1** **The prompt composer is the Open Board's focal artifact.** It
+  takes the strongest scale and central position, and its prompt is always
+  visible. Recent workspaces form a quieter second rhythm below it; choosing
+  one establishes context and never starts a process.
+- **DL-32.2** **The context toolbar prints identity, never field labels.** A
+  workspace is folder glyph + name and an agent is logo + name. `Workspace`,
+  `Agent`, `Model`, and `Effort` remain accessible names, not repeated visual
+  copy.
+- **DL-32.3** **Model and reasoning effort are one composite `menu` control.**
+  It shows only the current combined value while preserving the two values as
+  independent launch data. A control whose agent offers neither value is
+  absent.
+- **DL-32.4** **Quick Launch is a raised chrome tool, not a dialog.** It has no
+  scrim, blur, focus trap, or modal overlay rank. The terminal remains readable
+  and interactive behind it; dismissal is explicit through Escape, its close
+  control, the active trigger, a full-composer transfer, or a successful
+  launch.
+- **DL-32.5** **A launcher control with nothing to offer is omitted, never
+  shown inert.** This applies DL-19.7 to host-only workspace actions and to the
+  runtime selector: capability absence is not presented as a disabled feature.
 
 ## 33. Recent agent activity
 
