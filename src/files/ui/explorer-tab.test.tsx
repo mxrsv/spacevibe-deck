@@ -62,7 +62,7 @@ describe("ExplorerTab", () => {
       setListing(WS, WS, [{ name: "a.ts", path: FILE, directory: false, outOfRoot: false }]);
     });
     act(() => {
-      render(<ExplorerTab controller={controller} workspacePath={WS} />, host);
+      render(<ExplorerTab controller={controller} workspacePath={WS} canCreate />, host);
     });
 
     await act(async () => {
@@ -82,7 +82,7 @@ describe("ExplorerTab", () => {
 
   it("shows an empty state instead of a tree when the tab has no workspace", () => {
     act(() => {
-      render(<ExplorerTab controller={controller} workspacePath={null} />, host);
+      render(<ExplorerTab controller={controller} workspacePath={null} canCreate />, host);
     });
 
     expect(host.querySelector(".file-tree")).toBeNull();

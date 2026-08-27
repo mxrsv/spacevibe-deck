@@ -262,6 +262,53 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Design §4.6: the NAME gives way, never the controls. A flex item will not
+     shrink below its content without this. */
+  min-width: 0;
+}
+
+/* DL-19.9: the tab's own actions, hanging off the row that names what the tab
+   is showing. Always visible — the drawn hover-reveal was declined. */
+.file-tree__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 1px;
+  margin-left: auto;
+}
+
+/* Design §4.2: `.asr-cluster__add`'s box exactly, because it solves exactly
+   this problem one row height up. NOT `.iconbtn` — its 24px box overflows a
+   22px row by 1px above and below, and `ROW_HEIGHT` is the constant every
+   index in the virtual list is computed from, so the row cannot grow. The
+   `padding: 0` here is load-bearing: the UA gives every button 1px 6px, which
+   would push a 13px glyph out of a 17px box. */
+.file-tree__action {
+  display: flex;
+  width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--duration) var(--ease);
+}
+
+/* DL-21.2: hover is the neutral step to `--text-primary`, the same signifier
+   every other chrome control uses. */
+.file-tree__action:hover {
+  color: var(--text-primary);
+}
+
+/* DL-21.3: focus-visible is a 2px --accent outline, inset so it cannot add a
+   pixel to a row whose height is a constant. */
+.file-tree__action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* Design §3.2: the root's name is `--text-primary` where the rows are

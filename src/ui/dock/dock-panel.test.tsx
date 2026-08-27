@@ -68,7 +68,7 @@ describe("DockPanel resize", () => {
           onWidthChange={onWidthChange}
           onClose={onClose}
         >
-          <ExplorerTab controller={controller} workspacePath={WS} />
+          <ExplorerTab controller={controller} workspacePath={WS} canCreate />
         </DockPanel>,
         host,
       );
@@ -144,7 +144,7 @@ describe("DockPanel resize", () => {
           onWidthChange={onWidthChange}
           onClose={onClose}
         >
-          <ExplorerTab controller={controller} workspacePath={WS} />
+          <ExplorerTab controller={controller} workspacePath={WS} canCreate />
         </DockPanel>,
         host,
       );
@@ -211,7 +211,7 @@ describe("DockPanel resize", () => {
           onWidthChange={onWidthChange}
           onClose={onClose}
         >
-          <ExplorerTab controller={controller} workspacePath={WS} />
+          <ExplorerTab controller={controller} workspacePath={WS} canCreate />
         </DockPanel>,
         host,
       );
@@ -273,7 +273,7 @@ describe("DockPanel header", () => {
           onWidthChange={() => {}}
           onClose={() => {}}
         >
-          <ExplorerTab controller={controller} workspacePath={WS} />
+          <ExplorerTab controller={controller} workspacePath={WS} canCreate />
         </DockPanel>,
         host,
       );
@@ -312,7 +312,7 @@ describe("DockPanel header", () => {
           onWidthChange={() => {}}
           onClose={onClose}
         >
-          <ExplorerTab controller={controller} workspacePath={WS} />
+          <ExplorerTab controller={controller} workspacePath={WS} canCreate />
         </DockPanel>,
         host,
       );
@@ -353,7 +353,7 @@ describe("DockPanel header", () => {
           onWidthChange={() => {}}
           onClose={() => {}}
         >
-          <ExplorerTab controller={controller} workspacePath={WS} />
+          <ExplorerTab controller={controller} workspacePath={WS} canCreate />
         </DockPanel>,
         host,
       );
@@ -394,7 +394,7 @@ describe("DockPanel — both chrome layouts", () => {
                 onWidthChange={() => {}}
                 onClose={() => {}}
               >
-                <ExplorerTab controller={controller} workspacePath={WS} />
+                <ExplorerTab controller={controller} workspacePath={WS} canCreate />
               </DockPanel>
             </main>
           }

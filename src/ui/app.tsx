@@ -39,6 +39,7 @@ import {
 import {
   agentQuickPickerOpen,
   boardOpen,
+  createEntryRequest,
   editorRequest,
   pathOpenRequest,
   persistError,
@@ -163,6 +164,8 @@ import {
   type FileSurfaceController,
 } from "../files/file-surface-controller";
 import { ExplorerTab } from "../files/ui/explorer-tab";
+import { CreateEntryDialog } from "../files/ui/create-entry-dialog";
+import { available as fileCreateAvailable } from "../host/file-create-host";
 import { SessionsDockTab } from "./sessions/sessions-dock-tab";
 import { RecentSessionActivity } from "./sessions/recent-session-activity";
 import { DockPanel } from "./dock/dock-panel";
@@ -1325,6 +1328,10 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       agentQuickPickerOpen: agentQuickPickerOpen.value,
       quickLaunchOpen: quickLaunchOpen.value,
       promptsOpen: promptsOpen.value,
+      // The explorer's naming dialog (design §5.2): the dock stays visible
+      // while a browser tab covers the stage, so without this the modal draws
+      // underneath the native view.
+      createEntryOpen: createEntryRequest.value !== null,
       persistErrorVisible: persistError.value !== null,
       settingsLoadError: settingsLoadState.value.status === "error",
     });
@@ -1864,7 +1871,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               onClose={() => tabsRef.current?.runAction("toggle-dock")}
             >
               {dockTab() === "explorer" ? (
-                <ExplorerTab controller={fileController} workspacePath={activeWorkspace.value} />
+                <ExplorerTab
+                  controller={fileController}
+                  workspacePath={activeWorkspace.value}
+                  canCreate={fileCreateAvailable}
+                />
               ) : dockTab() === "usage" ? (
                 <UsageDockTab />
               ) : (
@@ -1916,6 +1927,19 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 editorRequest.value = null;
               }}
               onCreate={(name, artifact) => void handleEditorCreate(name, artifact)}
+            />
+          ) : null}
+          {createEntryRequest.value !== null ? (
+            <CreateEntryDialog
+              workspacePath={createEntryRequest.value.workspacePath}
+              parent={createEntryRequest.value.parent}
+              kind={createEntryRequest.value.kind}
+              onCancel={() => {
+                createEntryRequest.value = null;
+              }}
+              onCreate={(workspacePath, parent, name, kind) =>
+                fileController.createEntry(workspacePath, parent, name, kind)
+              }
             />
           ) : null}
           {saveDialogOpen.value ? (

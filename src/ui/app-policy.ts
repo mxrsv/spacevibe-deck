@@ -7,6 +7,7 @@ interface BrowserPanelObscuredState {
   readonly quickLaunchOpen: boolean;
   readonly usageConsentOpen: boolean;
   readonly promptsOpen: boolean;
+  readonly createEntryOpen: boolean;
   readonly persistErrorVisible: boolean;
   readonly settingsLoadError: boolean;
 }
@@ -19,6 +20,7 @@ export function browserPanelObscured(state: BrowserPanelObscuredState): boolean 
     state.quickLaunchOpen ||
     state.usageConsentOpen ||
     state.promptsOpen ||
+    state.createEntryOpen ||
     state.persistErrorVisible ||
     state.settingsLoadError
   );

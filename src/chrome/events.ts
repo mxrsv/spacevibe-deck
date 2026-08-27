@@ -1,4 +1,5 @@
 import { signal } from "@preact/signals";
+import type { EntryKind } from "../host/file-create-host";
 
 /**
  * App-chrome UI intents: keymap / menu / Open board raise them, App renders.
@@ -108,6 +109,26 @@ export function requestPathOpen(request: Omit<PathOpenRequest, "nonce">): void {
   pathOpenNonce += 1;
   pathOpenRequest.value = { ...request, nonce: pathOpenNonce };
 }
+
+/**
+ * The explorer's naming dialog, or null (design §5.2).
+ *
+ * A request signal rather than local state in the tree, for two reasons.
+ * `.dock-panel` is transformed while it slides, and a `position: fixed` scrim
+ * inside a transformed ancestor is positioned by that ancestor — so the modal
+ * mounts in `App`, like `editorRequest`'s does. And `browserPanelObscured` has
+ * to be able to read it: a native `WebContentsView` cannot be covered by any
+ * DOM layer, so a dialog that does not declare itself draws underneath the
+ * browser.
+ */
+export interface CreateEntryRequest {
+  readonly workspacePath: string;
+  /** The directory the entry lands in (design §5.1), already resolved. */
+  readonly parent: string;
+  readonly kind: EntryKind;
+}
+
+export const createEntryRequest = signal<CreateEntryRequest | null>(null);
 
 /**
  * Most recent local-storage write failure, shown by PersistErrorBar.

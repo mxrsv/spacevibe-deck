@@ -159,6 +159,7 @@ describe("settings load recovery layer", () => {
         quickLaunchOpen: false,
         usageConsentOpen: false,
         promptsOpen: false,
+        createEntryOpen: false,
         persistErrorVisible: false,
         settingsLoadError: true,
       }),
@@ -176,6 +177,26 @@ describe("settings load recovery layer", () => {
         quickLaunchOpen: false,
         usageConsentOpen: true,
         promptsOpen: false,
+        createEntryOpen: false,
+        persistErrorVisible: false,
+        settingsLoadError: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("hides the native browser view while the explorer's naming dialog is up", () => {
+    // The dock stays visible while a browser tab covers the stage, and a native
+    // `WebContentsView` cannot be covered by any DOM layer — so this dialog's
+    // open signal joins the guard the way `agentQuickPickerOpen` and
+    // `usageConsentOpen` already have. This repo has shipped that bug twice.
+    expect(
+      browserPanelObscured({
+        overlayCoversPane: false,
+        agentQuickPickerOpen: false,
+        quickLaunchOpen: false,
+        usageConsentOpen: false,
+        promptsOpen: false,
+        createEntryOpen: true,
         persistErrorVisible: false,
         settingsLoadError: false,
       }),
@@ -190,6 +211,7 @@ describe("settings load recovery layer", () => {
         quickLaunchOpen: true,
         usageConsentOpen: false,
         promptsOpen: false,
+        createEntryOpen: false,
         persistErrorVisible: false,
         settingsLoadError: false,
       }),

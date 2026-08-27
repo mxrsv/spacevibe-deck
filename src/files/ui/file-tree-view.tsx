@@ -25,6 +25,10 @@ import {
   treeRows,
 } from "../file-surface-store";
 import { resolveFocusIndex } from "../tree-focus";
+import { createTargetDirectory } from "../create-target";
+import { createEntryRequest } from "../../chrome/events";
+import type { EntryKind } from "../../host/file-create-host";
+import { TreeRootActions } from "./tree-root-actions";
 import type { FileSurfaceController } from "../file-surface-controller";
 import { DeckIcon, ROW_ICON } from "../../ui/controls/deck-icon";
 import { chevronForRow, iconForRow } from "./file-icons";
@@ -33,6 +37,12 @@ import { LoadError } from "../../ui/controls/load-error";
 export interface FileTreeViewProps {
   readonly controller: FileSurfaceController;
   readonly workspacePath: string;
+  /**
+   * Whether the running host can answer `create_entry` (design §6.4, §10).
+   * A prop rather than a module read, so the absent-host case is assertable
+   * without mocking a `const` export.
+   */
+  readonly canCreate: boolean;
 }
 
 /** DL-19: data rows are 22px. The windowing math is built on this constant,
@@ -44,7 +54,7 @@ const ROW_HEIGHT = 22;
 const OVERSCAN = 8;
 
 export function FileTreeView(props: FileTreeViewProps) {
-  const { controller, workspacePath } = props;
+  const { controller, workspacePath, canCreate } = props;
   const surface = surfaceFor(workspacePath);
   const rows = treeRows(workspacePath);
   const loaded = surface.listings.has(workspacePath);
@@ -168,6 +178,17 @@ export function FileTreeView(props: FileTreeViewProps) {
     // Single click/Enter opens the workspace's preview tab (spec §4.1); a
     // double-click below promotes it to a kept tab.
     void controller.openFile(workspacePath, row.path, false);
+  }
+
+  function requestCreate(kind: EntryKind): void {
+    createEntryRequest.value = {
+      workspacePath,
+      // Design §5.1: the FOCUSED directory, falling back to the root. The
+      // controls sit on the root's row and may well create somewhere else,
+      // which is why the modal states the answer.
+      parent: createTargetDirectory(rows, focusedPath, workspacePath),
+      kind,
+    };
   }
 
   function handleRowClick(row: TreeRow, target: HTMLDivElement): void {
@@ -317,6 +338,18 @@ export function FileTreeView(props: FileTreeViewProps) {
             )}
             {/* DL-19: a data row keeps its content's real casing. */}
             <span class="file-tree__name">{row.name}</span>
+            {isRoot && (
+              <TreeRootActions
+                canCreate={canCreate}
+                // Design §4.3: keyboard reach follows the roving tabindex
+                // rather than fighting it.
+                tabIndex={index === focusedIndex ? 0 : -1}
+                onNewFile={() => requestCreate("file")}
+                onNewFolder={() => requestCreate("directory")}
+                onRefresh={() => controller.refreshTree(workspacePath)}
+                onCollapseAll={() => controller.collapseAll(workspacePath)}
+              />
+            )}
           </div>
         );
       })}

@@ -14,6 +14,7 @@ import {
 } from "../file-surface-store";
 import type { FileSurfaceController } from "../file-surface-controller";
 import type { DirEntry } from "../file-tree";
+import { createEntryRequest } from "../../chrome/events";
 
 const WS = "/r";
 
@@ -70,9 +71,9 @@ afterEach(() => {
   host.remove();
 });
 
-function mount(controller: FileSurfaceController): void {
+function mount(controller: FileSurfaceController, canCreate = true): void {
   act(() => {
-    render(<FileTreeView controller={controller} workspacePath={WS} />, host);
+    render(<FileTreeView controller={controller} workspacePath={WS} canCreate={canCreate} />, host);
   });
 }
 
@@ -459,10 +460,10 @@ function seedTree(entries?: DirEntry[] | null): void {
 
 async function mountTree(
   controller: FileSurfaceController = fakeController(),
-  options: { listing?: DirEntry[] | null } = {},
+  options: { listing?: DirEntry[] | null; canCreate?: boolean } = {},
 ): Promise<void> {
   seedTree(options.listing);
-  mount(controller);
+  mount(controller, options.canCreate ?? true);
   await frame();
 }
 
@@ -568,5 +569,64 @@ describe("FileTreeView focuses by path (design §3.4)", () => {
 
     expect(document.activeElement?.textContent).toContain("readme.md");
     expect(pendingTreeFocus.value).toBeNull();
+  });
+});
+
+describe("the root row's action cluster (DL-19.9)", () => {
+  const buttons = (): HTMLButtonElement[] => [
+    ...host.querySelectorAll<HTMLButtonElement>(".file-tree__action"),
+  ];
+
+  it("pressing a cluster control does not toggle the root — pointer and keyboard", async () => {
+    const controller = fakeController();
+    await mountTree(controller);
+    const refresh = host.querySelector('[aria-label="Refresh"]') as HTMLButtonElement;
+
+    act(() => {
+      refresh.click();
+    });
+    expect(controller.refreshTree).toHaveBeenCalledTimes(1);
+    expect(controller.toggleRoot).not.toHaveBeenCalled();
+
+    // The keyboard path is a SEPARATE bug: `stopPropagation` on the click
+    // covers the pointer only, and the container's own `onKeyDown` would still
+    // run `activateRow(rows[0])`.
+    act(() => {
+      refresh.focus();
+      refresh.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(controller.toggleRoot).not.toHaveBeenCalled();
+  });
+
+  it("hands the cluster the root row's tab stop and takes it away again", async () => {
+    await mountTree();
+
+    expect(buttons().every((button) => button.tabIndex === 0)).toBe(true);
+    await focusRow(1);
+    expect(buttons().every((button) => button.tabIndex === -1)).toBe(true);
+  });
+
+  it("omits the create controls when the host cannot answer", async () => {
+    await mountTree(fakeController(), { canCreate: false });
+
+    expect(host.querySelector('[aria-label="New file"]')).toBeNull();
+    expect(host.querySelector('[aria-label="Refresh"]')).not.toBeNull();
+  });
+
+  it("raises the naming dialog against the focused directory (design §5.1)", async () => {
+    await mountTree(fakeController(), {
+      listing: [{ name: "src", path: `${WS}/src`, directory: true, outOfRoot: false }],
+    });
+    await focusRow(1);
+
+    act(() => {
+      (host.querySelector('[aria-label="New file"]') as HTMLButtonElement).click();
+    });
+
+    expect(createEntryRequest.value).toEqual({
+      workspacePath: WS,
+      parent: `${WS}/src`,
+      kind: "file",
+    });
   });
 });

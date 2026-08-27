@@ -20,6 +20,9 @@ export interface ExplorerTabProps {
   readonly controller: FileSurfaceController;
   /** Root of the tree, or null when the active tab has no workspace (spec §2.1). */
   readonly workspacePath: string | null;
+  /** Whether the running host can answer `create_entry` (design §6.4, §10).
+   * Passed explicitly — `App` reads it off the host facade. */
+  readonly canCreate: boolean;
 }
 
 export function ExplorerTab(props: ExplorerTabProps) {
@@ -30,5 +33,11 @@ export function ExplorerTab(props: ExplorerTabProps) {
       </p>
     );
   }
-  return <FileTreeView controller={props.controller} workspacePath={props.workspacePath} />;
+  return (
+    <FileTreeView
+      controller={props.controller}
+      workspacePath={props.workspacePath}
+      canCreate={props.canCreate}
+    />
+  );
 }

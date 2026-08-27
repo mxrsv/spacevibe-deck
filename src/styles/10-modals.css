@@ -251,6 +251,73 @@
   color: var(--bg);
 }
 
+/* ---------- New file / new folder (DL-19.5, amended 2026-08-25) ---------- */
+/* A dialog the user PRESSED a control to open may use the shared shell. The
+   panel is `--sidebar-bg` like every other modal (DL-29.6); the box follows
+   `.save-preset` above verbatim, narrower because it holds one field. */
+.create-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 320px;
+  padding: 16px;
+  background: var(--sidebar-bg); /* DL-29.6 */
+  border: 1px solid var(--seam-raised);
+  border-radius: var(--radius-surface);
+  outline: none;
+  animation: rise-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.create-entry h1 {
+  margin: 0;
+  font-size: var(--type-title);
+}
+.create-entry__destination {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: var(--type-meta);
+}
+.create-entry input {
+  font: inherit;
+  font-size: var(--type-body);
+  padding: 6px 8px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--radius-control);
+}
+/* DL-3.2: a refusal is red. This is the field's own reason, not the panel's
+   status line — that one lives under the dock's header and reports what main
+   answered. */
+.create-entry__reason {
+  margin: 0;
+  color: var(--red);
+  font-size: var(--type-meta);
+}
+.create-entry__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.create-entry__actions button {
+  font: inherit;
+  font-size: var(--type-body);
+  padding: 6px 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--hair-strong);
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.create-entry__actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.create-entry__actions button.is-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
 /* ---------- Usage consent (DL-29.9, the decision modal) ---------- */
 /* The one modal whose shell exits are withdrawn: no ✕, no Escape, no scrim
    dismissal — every way out persists a consent answer (owner-decided
