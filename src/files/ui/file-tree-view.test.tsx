@@ -4,12 +4,16 @@ import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileTreeView } from "./file-tree-view";
 import {
+  pendingTreeFocus,
+  requestTreeFocus,
   resetFileSurfaces,
   setListing,
   setListingError,
+  setRootExpanded,
   toggleDirectory,
 } from "../file-surface-store";
 import type { FileSurfaceController } from "../file-surface-controller";
+import type { DirEntry } from "../file-tree";
 
 const WS = "/r";
 
@@ -193,7 +197,9 @@ describe("FileTreeView", () => {
     // No `setListing` — the root directory has never been fetched.
     mount(fakeController());
 
-    expect(rows()).toEqual([]);
+    // Design §3.3: loading, empty and error all KEEP the root row, so a
+    // workspace whose listing failed still says which folder failed.
+    expect(rows().map((row) => row.textContent)).toEqual(["r"]);
     expect(tree().textContent).toMatch(/loading/i);
   });
 
@@ -417,5 +423,150 @@ describe("FileTreeView", () => {
         expect(rows().length).toBeLessThan(50);
       },
     );
+  });
+});
+
+/** One paint. A signal change reaches a Preact effect on the next animation
+ * frame in this repo, never on a microtask. */
+async function frame(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+  });
+}
+
+function press(key: string): void {
+  act(() => {
+    tree().dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  });
+}
+
+/** The default tree: root `r` over `src` and `readme.md`. */
+function seedTree(entries?: DirEntry[] | null): void {
+  if (entries === null) {
+    return;
+  }
+  act(() => {
+    setListing(
+      WS,
+      WS,
+      entries ?? [
+        { name: "src", path: `${WS}/src`, directory: true, outOfRoot: false },
+        { name: "readme.md", path: `${WS}/readme.md`, directory: false, outOfRoot: false },
+      ],
+    );
+  });
+}
+
+async function mountTree(
+  controller: FileSurfaceController = fakeController(),
+  options: { listing?: DirEntry[] | null } = {},
+): Promise<void> {
+  seedTree(options.listing);
+  mount(controller);
+  await frame();
+}
+
+/** Walk the roving focus down to `index` with the arrow key, the way a user
+ * reaches it — the component owns the focused path, not the test. */
+async function focusRow(index: number): Promise<void> {
+  for (let step = 0; step < index; step += 1) {
+    press("ArrowDown");
+  }
+  await frame();
+}
+
+describe("FileTreeView's root row (design §3)", () => {
+  it("draws the root as row 0 with a caret and no folder icon", async () => {
+    await mountTree();
+
+    expect(rows()[0].querySelector(".file-tree__name")?.textContent).toBe("r");
+    expect(rows()[0].getAttribute("aria-level")).toBe("1");
+    expect(rows()[0].querySelector(".file-tree__chevron")).not.toBeNull();
+    // Design §3.2: `iconForRow` is not consulted for the root — the caret at
+    // depth 0 already says "this is the folder everything is in".
+    expect(rows()[0].querySelector(".file-tree__icon")).toBeNull();
+    expect(rows()[1].getAttribute("aria-level")).toBe("2");
+  });
+
+  it("marks the root row so it can carry its own ink", async () => {
+    await mountTree();
+
+    expect(rows()[0].classList.contains("is-root")).toBe(true);
+  });
+
+  it("clicking the root row toggles the root and not a directory", async () => {
+    const controller = fakeController();
+    await mountTree(controller);
+
+    act(() => {
+      rows()[0].click();
+    });
+
+    expect(controller.toggleRoot).toHaveBeenCalledWith(WS);
+    expect(controller.toggleDirectory).not.toHaveBeenCalled();
+  });
+
+  it("ArrowLeft on an open root collapses it; ArrowRight on a shut one re-opens it", async () => {
+    const controller = fakeController();
+    await mountTree(controller);
+
+    press("ArrowLeft");
+    expect(controller.toggleRoot).toHaveBeenCalledTimes(1);
+
+    act(() => setRootExpanded(WS, false));
+    await frame();
+    press("ArrowRight");
+    expect(controller.toggleRoot).toHaveBeenCalledTimes(2);
+  });
+
+  it("says 'No files' beneath the root row, not instead of it", async () => {
+    await mountTree(fakeController(), { listing: [] });
+
+    expect(rows()).toHaveLength(1);
+    expect(host.querySelector(".file-tree__status")?.textContent).toBe("No files");
+  });
+
+  it("says nothing about emptiness while the root is collapsed", async () => {
+    act(() => setRootExpanded(WS, false));
+    await mountTree(fakeController(), { listing: [] });
+
+    expect(host.querySelector(".file-tree__status")).toBeNull();
+  });
+});
+
+describe("FileTreeView focuses by path (design §3.4)", () => {
+  it("keeps focus on a path across a re-sort", async () => {
+    await mountTree(); // rows: r, src, readme.md
+    await focusRow(2); // readme.md
+
+    seedTree([
+      { name: "aaa.ts", path: `${WS}/aaa.ts`, directory: false, outOfRoot: false },
+      { name: "src", path: `${WS}/src`, directory: true, outOfRoot: false },
+      { name: "readme.md", path: `${WS}/readme.md`, directory: false, outOfRoot: false },
+    ]);
+    await frame();
+
+    const stop = rows().findIndex((row) => row.tabIndex === 0);
+    expect(rows()[stop].querySelector(".file-tree__name")?.textContent).toBe("readme.md");
+  });
+
+  it("falls back to the nearest surviving row when the focused path leaves", async () => {
+    await mountTree();
+    await focusRow(2);
+
+    seedTree([{ name: "src", path: `${WS}/src`, directory: true, outOfRoot: false }]);
+    await frame();
+
+    expect(rows().findIndex((row) => row.tabIndex === 0)).toBe(1);
+  });
+
+  it("focuses the row a create asked for, once it exists", async () => {
+    await mountTree();
+
+    act(() => requestTreeFocus(`${WS}/readme.md`));
+    await frame();
+
+    expect(document.activeElement?.textContent).toContain("readme.md");
+    expect(pendingTreeFocus.value).toBeNull();
   });
 });

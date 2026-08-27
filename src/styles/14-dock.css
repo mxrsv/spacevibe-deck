@@ -264,6 +264,14 @@
   white-space: nowrap;
 }
 
+/* Design §3.2: the root's name is `--text-primary` where the rows are
+   `--text-muted`. That one step is the whole reason the row reads as the root
+   — it keeps the tree's 22px height and `--ui-font` (DL-19), because it is a
+   row of the tree and not a header above it. */
+.file-tree__row.is-root .file-tree__name {
+  color: var(--text-primary);
+}
+
 .file-tree__status {
   margin: 0;
   padding: 10px 8px;
