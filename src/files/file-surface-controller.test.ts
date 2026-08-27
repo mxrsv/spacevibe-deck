@@ -5,13 +5,16 @@ import { createFileSurfaceController, type FileSurfaceController } from "./file-
 import {
   activeFileTab,
   activeWorkspace,
+  collapseAllDirectories,
   documentFor,
   fileTabsFor,
   listingErrorsFor,
   resetFileSurfaces,
   setActiveWorkspace,
+  setListing,
   setListingError,
   surfaceFor,
+  toggleDirectory,
 } from "./file-surface-store";
 import type { DirEntry } from "./file-tree";
 
@@ -26,6 +29,8 @@ interface Harness {
   readonly written: { path: string; text: string; eol: string }[];
   readonly listDirCalls: { root: string; directory: string }[];
   readonly created: { root: string; parent: string; name: string; kind: string }[];
+  /** Runs inside the fake `listDir`, before it answers. */
+  onListDir?: (directory: string) => void;
   emitChange(event: FileChangedPayload): void;
   setContent(path: string, content: string, mtimeMs?: number): void;
   setDirListing(directory: string, entries: DirEntry[]): void;
@@ -39,6 +44,9 @@ function harness(): Harness {
   const written: Harness["written"] = [];
   const listDirCalls: Harness["listDirCalls"] = [];
   const created: Harness["created"] = [];
+  // Lets one case act on the tree from INSIDE a listing answer, which is how
+  // "the refresh scope is snapshotted before any load lands" is observable.
+  const hooks: { onListDir?: (directory: string) => void } = {};
   const dirListings = new Map<string, DirEntry[]>();
   let changeHandler: ((event: FileChangedPayload) => void) | null = null;
   const confirmDiscard = vi.fn(async () => true);
@@ -46,6 +54,7 @@ function harness(): Harness {
   const client: FileClient = {
     async listDir(root, directory) {
       listDirCalls.push({ root, directory });
+      hooks.onListDir?.(directory);
       return dirListings.get(directory) ?? [];
     },
     async readFile(_root, path) {
@@ -124,6 +133,12 @@ function harness(): Harness {
     written,
     listDirCalls,
     created,
+    set onListDir(handler: ((directory: string) => void) | undefined) {
+      hooks.onListDir = handler;
+    },
+    get onListDir(): ((directory: string) => void) | undefined {
+      return hooks.onListDir;
+    },
     emitChange: (event) => changeHandler?.(event),
     setContent: (path, content, mtimeMs = 1000) => {
       disk.set(path, { content, mtimeMs });
@@ -789,5 +804,80 @@ describe("typing during an in-flight operation", () => {
 
     await vi.waitFor(() => expect(documentFor(FILE)?.text).toBe("disk v2\n"));
     expect(documentFor(FILE)?.prompt).toBeNull();
+  });
+});
+
+describe("tree maintenance", () => {
+  const SRC = `${ROOT}/src`;
+  const srcEntry: DirEntry = { name: "src", path: SRC, directory: true, outOfRoot: false };
+
+  /** One expanded child directory, both listings cached — the shape every
+   * case below refreshes or collapses. */
+  function expandedTree(): void {
+    setListing(ROOT, ROOT, [srcEntry]);
+    setListing(ROOT, SRC, []);
+    toggleDirectory(ROOT, SRC);
+  }
+
+  it("Refresh re-lists every visible directory and keeps the cached listings", async () => {
+    // Design §7: clearing first destroys the map `visibleDirectories` reads, so
+    // only the root would reload — and it throws away the deliberate "keep the
+    // last good listing when a reload fails" behaviour.
+    const h = harness();
+    expandedTree();
+    h.listDirCalls.length = 0;
+
+    h.controller.refreshTree(ROOT);
+    await vi.waitFor(() => expect(h.listDirCalls.length).toBe(2));
+
+    expect(h.listDirCalls.map((call) => call.directory)).toEqual([ROOT, SRC]);
+    expect(surfaceFor(ROOT).listings.has(ROOT)).toBe(true);
+    expect(surfaceFor(ROOT).listings.has(SRC)).toBe(true);
+  });
+
+  it("Refresh snapshots the scope BEFORE any load lands", async () => {
+    // A load that collapsed or grew the tree mid-pass would otherwise change
+    // the set being iterated.
+    const h = harness();
+    expandedTree();
+    h.listDirCalls.length = 0;
+    h.onListDir = () => collapseAllDirectories(ROOT);
+
+    h.controller.refreshTree(ROOT);
+    await vi.waitFor(() => expect(h.listDirCalls.length).toBe(2));
+
+    expect(h.listDirCalls.map((call) => call.directory)).toEqual([ROOT, SRC]);
+  });
+
+  it("Collapse All empties `expanded`, leaves the root open, and re-arms the watch once", () => {
+    const h = harness();
+    expandedTree();
+    activeWorkspace.value = ROOT;
+    h.watched.length = 0;
+
+    h.controller.collapseAll(ROOT);
+
+    expect([...surfaceFor(ROOT).expanded]).toEqual([]);
+    expect(surfaceFor(ROOT).rootExpanded).toBe(true);
+    expect(h.watched.length).toBe(1);
+    expect(h.watched[0].directories).toEqual([ROOT]);
+  });
+
+  it("toggling the root collapses it, then loads and re-watches on the way back open", async () => {
+    const h = harness();
+    activeWorkspace.value = ROOT;
+    setListing(ROOT, ROOT, []);
+    h.watched.length = 0;
+    h.listDirCalls.length = 0;
+
+    h.controller.toggleRoot(ROOT);
+    expect(surfaceFor(ROOT).rootExpanded).toBe(false);
+    expect(h.watched.length).toBe(1);
+
+    h.controller.toggleRoot(ROOT);
+    await vi.waitFor(() => expect(surfaceFor(ROOT).rootExpanded).toBe(true));
+    // `ensureListing` is a no-op for a listing already cached and error-free,
+    // so re-opening does NOT re-read the root — that is Refresh's job.
+    expect(h.listDirCalls).toEqual([]);
   });
 });

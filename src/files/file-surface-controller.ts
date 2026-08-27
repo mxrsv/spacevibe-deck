@@ -27,6 +27,7 @@ import {
   activeWorkspace,
   closeFileSurface,
   closeWorkspaceSurface,
+  collapseAllDirectories,
   documentFor,
   fileDocuments,
   fileSurfaces,
@@ -36,6 +37,8 @@ import {
   requestReveal,
   setListing,
   setListingError,
+  setRootExpanded,
+  surfaceFor,
   stripFileTabs,
   toggleDirectory,
   totalFileTabs,
@@ -80,6 +83,26 @@ export interface FileSurfaceController extends SurfaceStrip {
   activateFile(workspacePath: string, path: string): void;
   /** Expand or collapse a directory, loading its listing on demand. */
   toggleDirectory(workspacePath: string, directory: string): void;
+  /**
+   * Open or shut the ROOT row (design §3.3). Not `toggleDirectory`: that one
+   * writes the `expanded` set, which means something else entirely.
+   */
+  toggleRoot(workspacePath: string): void;
+  /**
+   * Re-read every directory whose contents are on screen (design §7).
+   *
+   * It must NOT clear the cached listings first: clearing destroys the map
+   * `visibleDirectories` reads, so only the root would reload, and it throws
+   * away the deliberate "keep the last good listing when a reload fails"
+   * behaviour. The generation counter in `loadListing` already discards a
+   * stale answer, so a Refresh racing the watcher's coalescer costs one
+   * redundant `list_dir` and nothing else. The coalescer is deliberately not
+   * reused: it exists to absorb bursts, and a Refresh the user PRESSED must
+   * not be debounced with them.
+   */
+  refreshTree(workspacePath: string): void;
+  /** Collapse every child directory, leaving the root open (design §8). */
+  collapseAll(workspacePath: string): void;
   /** Load a directory's listing if it is not cached yet. */
   ensureListing(workspacePath: string, directory: string): Promise<void>;
   /** Editor text changed. Promotes a preview tab on the FIRST edit. */
@@ -404,6 +427,37 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       if (!wasExpanded) {
         void this.ensureListing(workspacePath, directory);
       }
+      refreshWatch();
+    },
+
+    toggleRoot(workspacePath) {
+      const surface = surfaceFor(workspacePath);
+      const next = !surface.rootExpanded;
+      setRootExpanded(workspacePath, next);
+      // Collapsing shrinks the visible scope to the root alone; expanding
+      // restores it. Either way the watch set has to be re-stated, and only
+      // this layer may say so.
+      refreshWatch();
+      if (next) {
+        void this.ensureListing(workspacePath, workspacePath);
+      }
+    },
+
+    refreshTree(workspacePath) {
+      // Snapshotted BEFORE the first load: an answer landing mid-pass can
+      // change which directories are visible, and the set being iterated must
+      // not move under the loop.
+      const directories = [...visibleDirectories(workspacePath)];
+      for (const directory of directories) {
+        void loadListing(workspacePath, directory);
+      }
+    },
+
+    collapseAll(workspacePath) {
+      collapseAllDirectories(workspacePath);
+      // Design §8: collapsing releases every descendant watcher, and only the
+      // controller can say so. A store-only update would leave them alive
+      // until some unrelated transition happened to fire.
       refreshWatch();
     },
 
