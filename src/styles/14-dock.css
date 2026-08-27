@@ -194,11 +194,38 @@
   line-height: 1.4;
 }
 
+/* The tab is a column: DL-19.5's status line above, the tree's own shell
+   filling what is left. `box-sizing` is declared because this element has a
+   percentage height and `src/styles.css` carries no global reset. */
+.explorer-tab {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
 .file-tree-shell {
   display: flex;
   height: 100%;
   min-height: 0;
   flex-direction: column;
+}
+
+/* DL-19.5: one status line, directly under the header, `--text-faint` — or
+   `--red` when it reports a failure (DL-3.2). */
+.file-tree-shell__status {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 6px 8px;
+  color: var(--text-faint);
+  font-family: var(--ui-font);
+  font-size: var(--type-meta);
+  line-height: 1.4;
+}
+
+.file-tree-shell__status.is-failure {
+  color: var(--red);
 }
 
 .file-tree {

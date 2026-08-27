@@ -13,7 +13,9 @@
  * bottom of this component as the minimum slice that proved the path end to
  * end, and it is not parked here anymore.
  */
+import { useEffect } from "preact/hooks";
 import type { FileSurfaceController } from "../file-surface-controller";
+import { clearExplorerStatus, explorerStatus } from "../file-surface-store";
 import { FileTreeView } from "./file-tree-view";
 
 export interface ExplorerTabProps {
@@ -26,18 +28,38 @@ export interface ExplorerTabProps {
 }
 
 export function ExplorerTab(props: ExplorerTabProps) {
-  if (props.workspacePath === null) {
+  const { workspacePath } = props;
+  // DL-19.5: the panel's ONE place for transient text, directly under the
+  // header. It is the only place a failed create is ever reported — the naming
+  // modal closes either way (design §5.4), and a second dialog would be
+  // exactly what that rule exists to prevent.
+  useEffect(() => {
+    // A message belongs to the tree it was raised in; moving the tab to
+    // another workspace retires it rather than reprinting it there.
+    return () => clearExplorerStatus();
+  }, [workspacePath]);
+
+  if (workspacePath === null) {
     return (
       <p class="explorer-tab__empty" role="status">
         This tab has no workspace to show.
       </p>
     );
   }
+  const status = explorerStatus.value;
+  const line = status !== null && status.workspacePath === workspacePath ? status : null;
   return (
-    <FileTreeView
-      controller={props.controller}
-      workspacePath={props.workspacePath}
-      canCreate={props.canCreate}
-    />
+    <div class="explorer-tab">
+      {line !== null && (
+        <p class={`file-tree-shell__status${line.failed ? " is-failure" : ""}`} role="status">
+          {line.text}
+        </p>
+      )}
+      <FileTreeView
+        controller={props.controller}
+        workspacePath={workspacePath}
+        canCreate={props.canCreate}
+      />
+    </div>
   );
 }

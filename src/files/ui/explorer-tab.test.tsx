@@ -20,7 +20,14 @@ import {
   createFileSurfaceController,
   type FileSurfaceController,
 } from "../file-surface-controller";
-import { activeFileTab, documentFor, resetFileSurfaces, setListing } from "../file-surface-store";
+import {
+  activeFileTab,
+  documentFor,
+  explorerStatus,
+  resetFileSurfaces,
+  setExplorerStatus,
+  setListing,
+} from "../file-surface-store";
 import type { FileClient } from "../file-client";
 
 const WS = "/r";
@@ -87,5 +94,46 @@ describe("ExplorerTab", () => {
 
     expect(host.querySelector(".file-tree")).toBeNull();
     expect(host.querySelector(".explorer-tab__empty")).not.toBeNull();
+  });
+});
+
+describe("the explorer's DL-19.5 status line", () => {
+  function mountTab(workspacePath: string | null): void {
+    act(() => {
+      render(<ExplorerTab controller={controller} workspacePath={workspacePath} canCreate />, host);
+    });
+  }
+
+  const line = (): HTMLElement | null => host.querySelector(".file-tree-shell__status");
+
+  it("prints a create failure in red under the header", () => {
+    setExplorerStatus(WS, "An entry with that name already exists.", true);
+    mountTab(WS);
+
+    expect(line()?.textContent).toBe("An entry with that name already exists.");
+    expect(line()?.classList.contains("is-failure")).toBe(true);
+    expect(line()?.getAttribute("role")).toBe("status");
+  });
+
+  it("prints the hidden-files notice without the failure colour", () => {
+    setExplorerStatus(WS, "Showing hidden files so .github is visible.", false);
+    mountTab(WS);
+
+    expect(line()?.classList.contains("is-failure")).toBe(false);
+  });
+
+  it("says nothing about another workspace's message", () => {
+    setExplorerStatus("/other", "boom", true);
+    mountTab(WS);
+
+    expect(line()).toBeNull();
+  });
+
+  it("clears the line when the tab moves to a different workspace", () => {
+    setExplorerStatus(WS, "boom", true);
+    mountTab(WS);
+    mountTab("/other");
+
+    expect(explorerStatus.value).toBeNull();
   });
 });
