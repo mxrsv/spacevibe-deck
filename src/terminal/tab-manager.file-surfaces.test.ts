@@ -630,6 +630,9 @@ describe("file surfaces in the tab strip — the real FileSurfaceController (Tas
       paths.map((path) => ({ path, exists: true, mtimeMs: 1, size: 1 })),
     watchPaths: async () => {},
     setDirtyFiles: async () => {},
+    createEntry: async (_root: string, parent: string, name: string) => ({
+      path: `${parent}/${name}`,
+    }),
     listenFileChanged: async () => () => {},
   };
 

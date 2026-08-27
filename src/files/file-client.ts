@@ -9,6 +9,13 @@
 import { invoke, listen, type UnlistenFn } from "../host/bridge";
 import type { DirEntry } from "./file-tree";
 import type { Eol } from "./file-content";
+import {
+  createEntry as hostCreateEntry,
+  type CreateEntryResult,
+  type EntryKind,
+} from "../host/file-create-host";
+
+export type { CreateEntryResult, EntryKind };
 
 export interface FileStatResult {
   readonly path: string;
@@ -56,6 +63,14 @@ export interface FileClient {
   watchPaths(root: string, directories: readonly string[], files: readonly string[]): Promise<void>;
   /** Push this window's COMPLETE set of unsaved paths (plan T15.1). */
   setDirtyFiles(paths: readonly string[]): Promise<void>;
+  /** Create one file or one folder. The host facade owns the `invoke`; this
+   * seam is what lets the controller's tests drive a fake. */
+  createEntry(
+    root: string,
+    parent: string,
+    name: string,
+    kind: EntryKind,
+  ): Promise<CreateEntryResult>;
   listenFileChanged(handler: (event: FileChangedPayload) => void): Promise<UnlistenFn>;
 }
 
@@ -77,6 +92,9 @@ export const defaultFileClient: FileClient = {
   },
   setDirtyFiles(paths) {
     return invoke<void>("set_dirty_files", { paths });
+  },
+  createEntry(root, parent, name, kind) {
+    return hostCreateEntry(root, parent, name, kind);
   },
   listenFileChanged(handler) {
     return listen<FileChangedPayload>("fs:changed", (event) => handler(event.payload));

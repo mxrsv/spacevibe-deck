@@ -25,6 +25,7 @@ interface Harness {
   readonly watched: { root: string; directories: string[]; files: string[] }[];
   readonly written: { path: string; text: string; eol: string }[];
   readonly listDirCalls: { root: string; directory: string }[];
+  readonly created: { root: string; parent: string; name: string; kind: string }[];
   emitChange(event: FileChangedPayload): void;
   setContent(path: string, content: string, mtimeMs?: number): void;
   setDirListing(directory: string, entries: DirEntry[]): void;
@@ -37,6 +38,7 @@ function harness(): Harness {
   const watched: Harness["watched"] = [];
   const written: Harness["written"] = [];
   const listDirCalls: Harness["listDirCalls"] = [];
+  const created: Harness["created"] = [];
   const dirListings = new Map<string, DirEntry[]>();
   let changeHandler: ((event: FileChangedPayload) => void) | null = null;
   const confirmDiscard = vi.fn(async () => true);
@@ -97,6 +99,10 @@ function harness(): Harness {
     async setDirtyFiles(paths) {
       dirtyPushes.push([...paths]);
     },
+    async createEntry(root, parent, name, kind) {
+      created.push({ root, parent, name, kind });
+      return { path: `${parent}/${name}` };
+    },
     async listenFileChanged(handler) {
       changeHandler = handler;
       return () => {
@@ -117,6 +123,7 @@ function harness(): Harness {
     watched,
     written,
     listDirCalls,
+    created,
     emitChange: (event) => changeHandler?.(event),
     setContent: (path, content, mtimeMs = 1000) => {
       disk.set(path, { content, mtimeMs });

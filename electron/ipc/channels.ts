@@ -100,6 +100,13 @@ export const CHANNELS = {
   statFiles: "stat_files",
   watchPaths: "watch_paths",
   setDirtyFiles: "set_dirty_files",
+  // Creating one file or one folder from the explorer's root row (design
+  // 2026-08-25 §6.1). Electron-only like the blocks above — no
+  // `#[tauri::command]` counterpart, and the two create controls are omitted
+  // wherever the host facade reports itself absent. Flat
+  // `{ root, parent, name, kind }` per R6; main builds the destination from
+  // `parent + name` and never accepts a composed path from the renderer.
+  createEntry: "create_entry",
   // Browser panel. No Tauri counterpart exists — the panel is Electron-only,
   // so unlike every channel above these names are new rather than ported.
   browserOpen: "browser_open",

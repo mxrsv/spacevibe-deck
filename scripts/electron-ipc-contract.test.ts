@@ -215,6 +215,22 @@ describe("Electron IPC contract", () => {
     }
   });
 
+  it("create_entry carries the flat { root, parent, name, kind } payload on both sides", () => {
+    // The explorer root-row work's explicit fixture, pinned the way
+    // `create_directory` above is: proof this generic scanner actually reaches
+    // the new channel rather than passing vacuously because it found none.
+    const sites = callSites.filter((site) => site.channel === "create_entry");
+    expect(sites.length).toBeGreaterThan(0);
+    for (const site of sites) {
+      expect(site.keys).toEqual(["root", "parent", "name", "kind"]);
+    }
+    const entryHandlers = handlers.filter((handler) => handler.channel === "create_entry");
+    expect(entryHandlers.length).toBeGreaterThan(0);
+    for (const handler of entryHandlers) {
+      expect(handler.required).toEqual(["root", "parent", "name", "kind"]);
+    }
+  });
+
   it("pty_cwds carries the flat { ids } payload and has an Electron handler", () => {
     const sites = callSites.filter((site) => site.channel === "pty_cwds");
     expect(sites.length).toBeGreaterThan(0);

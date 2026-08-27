@@ -12,6 +12,7 @@ import { ipcMain, type IpcMainInvokeEvent } from "electron";
 import { CHANNELS } from "./channels";
 import { listDir, readFile, statFiles } from "../fs/read";
 import { writeTextFile } from "../fs/write";
+import { createEntry } from "../fs/create-entry";
 import type { WatchRegistry } from "../fs/watch";
 import type { MainDirtyRegistry } from "../dirty-registry";
 
@@ -33,6 +34,9 @@ export function registerExplorer(deps: RegisterExplorerDeps): void {
     // rest of the window's life.
     deps.watchers.replace(deps.labelOf(event), { root, directories, files });
   });
+  ipcMain.handle(CHANNELS.createEntry, (_event, { root, parent, name, kind }) =>
+    createEntry({ root, parent, name, kind }),
+  );
   ipcMain.handle(CHANNELS.setDirtyFiles, (event, { paths }) => {
     deps.dirtyFiles.replace(deps.labelOf(event), Array.isArray(paths) ? paths : []);
   });
