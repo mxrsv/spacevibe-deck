@@ -26,6 +26,7 @@ import {
   activeStripIndex,
   activeWorkspace,
   closeFileSurface,
+  clearExplorerStatus,
   closeWorkspaceSurface,
   collapseAllDirectories,
   documentFor,
@@ -35,9 +36,12 @@ import {
   openFileTab,
   promoteFileTab,
   requestReveal,
+  requestTreeFocus,
+  setExplorerStatus,
   setListing,
   setListingError,
   setRootExpanded,
+  setShowHidden,
   surfaceFor,
   stripFileTabs,
   toggleDirectory,
@@ -48,7 +52,8 @@ import {
 } from "./file-surface-store";
 import { isMarkdownPath } from "./markdown-policy";
 import { createPushingDirtyRegistry } from "./dirty-registry";
-import { defaultFileClient, type FileClient } from "./file-client";
+import { defaultFileClient, type EntryKind, type FileClient } from "./file-client";
+import { isHidden } from "./file-tree";
 import { createTreeRefresh } from "./tree-refresh";
 
 /**
@@ -103,6 +108,18 @@ export interface FileSurfaceController extends SurfaceStrip {
   refreshTree(workspacePath: string): void;
   /** Collapse every child directory, leaving the root open (design §8). */
   collapseAll(workspacePath: string): void;
+  /**
+   * Create one file or one folder, then do everything design §5.3 requires:
+   * re-list the parent explicitly, expand it, focus the new row, and open a
+   * FILE in the preview slot. Returns false when the create failed — the
+   * reason is already on the status line by then (design §5.4).
+   */
+  createEntry(
+    workspacePath: string,
+    parent: string,
+    name: string,
+    kind: EntryKind,
+  ): Promise<boolean>;
   /** Load a directory's listing if it is not cached yet. */
   ensureListing(workspacePath: string, directory: string): Promise<void>;
   /** Editor text changed. Promotes a preview tab on the FIRST edit. */
@@ -459,6 +476,61 @@ export function createFileSurfaceController(deps: FileSurfaceDeps = {}): FileSur
       // controller can say so. A store-only update would leave them alive
       // until some unrelated transition happened to fire.
       refreshWatch();
+    },
+
+    async createEntry(workspacePath, parent, name, kind) {
+      let created: string;
+      try {
+        const result = await client.createEntry(workspacePath, parent, name, kind);
+        created = result.path;
+      } catch (error: unknown) {
+        // Design §5.4: EEXIST, an invalid name main rejected, a permission
+        // error — all one road, to the panel's own status line. No second
+        // dialog, and the naming modal closes either way: a modal that
+        // survives its own failure has to own an error state, and the status
+        // line already exists.
+        setExplorerStatus(
+          workspacePath,
+          error instanceof Error ? error.message : "Deck could not create that entry.",
+          true,
+        );
+        return false;
+      }
+      if (disposed) {
+        return true;
+      }
+      // Design §5.3.4: a hidden name under a hidden filter would create
+      // something invisible. Turning the filter on is the honest answer, and
+      // it is said out loud. There is no control to turn it back off — a known
+      // gap, recorded in the spec's §15.
+      if (isHidden(name) && !surfaceFor(workspacePath).showHidden) {
+        setShowHidden(workspacePath, true);
+        setExplorerStatus(workspacePath, `Showing hidden files so ${name} is visible.`, false);
+      } else {
+        clearExplorerStatus();
+      }
+      if (parent === workspacePath) {
+        if (!surfaceFor(workspacePath).rootExpanded) {
+          setRootExpanded(workspacePath, true);
+        }
+      } else if (!surfaceFor(workspacePath).expanded.has(parent)) {
+        toggleDirectory(workspacePath, parent);
+      }
+      // Design §5.3.1: an explicit re-list, awaited. `fs.watch` is not trusted
+      // to deliver a create the user just pressed — this repo already treats
+      // it as lossy — and the row has to exist before focus can land on it.
+      await loadListing(workspacePath, parent);
+      if (disposed) {
+        return true;
+      }
+      requestTreeFocus(created);
+      refreshWatch();
+      if (kind === "file") {
+        // The PREVIEW slot, the same one a single click opens, so creating
+        // several files in a row does not fill the strip (design §5.3.3).
+        await this.openFile(workspacePath, created, false);
+      }
+      return true;
     },
 
     async ensureListing(workspacePath, directory) {

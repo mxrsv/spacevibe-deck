@@ -22,6 +22,7 @@ function fakeController(overrides: Partial<FileSurfaceController> = {}): FileSur
     toggleRoot: vi.fn(),
     refreshTree: vi.fn(),
     collapseAll: vi.fn(),
+    createEntry: vi.fn(async () => true),
     ensureListing: vi.fn(async () => {}),
     setText: vi.fn(),
     setCursor: vi.fn(),

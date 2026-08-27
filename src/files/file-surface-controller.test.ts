@@ -9,10 +9,14 @@ import {
   documentFor,
   fileTabsFor,
   listingErrorsFor,
+  explorerStatus,
+  pendingTreeFocus,
   resetFileSurfaces,
   setActiveWorkspace,
   setListing,
   setListingError,
+  setRootExpanded,
+  setShowHidden,
   surfaceFor,
   toggleDirectory,
 } from "./file-surface-store";
@@ -31,6 +35,8 @@ interface Harness {
   readonly created: { root: string; parent: string; name: string; kind: string }[];
   /** Runs inside the fake `listDir`, before it answers. */
   onListDir?: (directory: string) => void;
+  /** Set to make every `createEntry` reject with this message. */
+  createError?: string;
   emitChange(event: FileChangedPayload): void;
   setContent(path: string, content: string, mtimeMs?: number): void;
   setDirListing(directory: string, entries: DirEntry[]): void;
@@ -46,7 +52,7 @@ function harness(): Harness {
   const created: Harness["created"] = [];
   // Lets one case act on the tree from INSIDE a listing answer, which is how
   // "the refresh scope is snapshotted before any load lands" is observable.
-  const hooks: { onListDir?: (directory: string) => void } = {};
+  const hooks: { onListDir?: (directory: string) => void; createError?: string } = {};
   const dirListings = new Map<string, DirEntry[]>();
   let changeHandler: ((event: FileChangedPayload) => void) | null = null;
   const confirmDiscard = vi.fn(async () => true);
@@ -110,6 +116,9 @@ function harness(): Harness {
     },
     async createEntry(root, parent, name, kind) {
       created.push({ root, parent, name, kind });
+      if (hooks.createError !== undefined) {
+        throw new Error(hooks.createError);
+      }
       return { path: `${parent}/${name}` };
     },
     async listenFileChanged(handler) {
@@ -138,6 +147,12 @@ function harness(): Harness {
     },
     get onListDir(): ((directory: string) => void) | undefined {
       return hooks.onListDir;
+    },
+    set createError(message: string | undefined) {
+      hooks.createError = message;
+    },
+    get createError(): string | undefined {
+      return hooks.createError;
     },
     emitChange: (event) => changeHandler?.(event),
     setContent: (path, content, mtimeMs = 1000) => {
@@ -879,5 +894,96 @@ describe("tree maintenance", () => {
     // `ensureListing` is a no-op for a listing already cached and error-free,
     // so re-opening does NOT re-read the root — that is Refresh's job.
     expect(h.listDirCalls).toEqual([]);
+  });
+});
+
+describe("createEntry", () => {
+  const SRC = `${ROOT}/src`;
+
+  it("re-lists the parent explicitly, focuses the new row and opens a file as PREVIEW", async () => {
+    const h = harness();
+    activeWorkspace.value = ROOT;
+    setListing(ROOT, ROOT, []);
+    h.setDirListing(ROOT, [
+      { name: "notes.md", path: `${ROOT}/notes.md`, directory: false, outOfRoot: false },
+    ]);
+    h.listDirCalls.length = 0;
+
+    const ok = await h.controller.createEntry(ROOT, ROOT, "notes.md", "file");
+
+    expect(ok).toBe(true);
+    expect(h.created).toEqual([{ root: ROOT, parent: ROOT, name: "notes.md", kind: "file" }]);
+    // Design §5.3.1: `fs.watch` is not trusted to deliver a create the user
+    // just pressed — the repo already treats it as lossy.
+    expect(h.listDirCalls).toContainEqual({ root: ROOT, directory: ROOT });
+    expect(pendingTreeFocus.value).toBe(`${ROOT}/notes.md`);
+    // Design §5.3.3: the PREVIEW slot, so creating several files in a row does
+    // not fill the strip.
+    expect(fileTabsFor(ROOT).map((tab) => [tab.path, tab.preview])).toEqual([
+      [`${ROOT}/notes.md`, true],
+    ]);
+  });
+
+  it("expands the parent and does not open a folder", async () => {
+    const h = harness();
+    activeWorkspace.value = ROOT;
+    setListing(ROOT, ROOT, [{ name: "src", path: SRC, directory: true, outOfRoot: false }]);
+
+    await h.controller.createEntry(ROOT, SRC, "new", "directory");
+
+    expect([...surfaceFor(ROOT).expanded]).toContain(SRC);
+    // Design §5.3.2: the new folder itself starts collapsed.
+    expect([...surfaceFor(ROOT).expanded]).not.toContain(`${SRC}/new`);
+    expect(fileTabsFor(ROOT)).toEqual([]);
+  });
+
+  it("re-opens a collapsed root when the create lands in it", async () => {
+    const h = harness();
+    activeWorkspace.value = ROOT;
+    setRootExpanded(ROOT, false);
+
+    await h.controller.createEntry(ROOT, ROOT, "a.ts", "file");
+
+    expect(surfaceFor(ROOT).rootExpanded).toBe(true);
+  });
+
+  it("turns showHidden on for a hidden name and says so", async () => {
+    const h = harness();
+    activeWorkspace.value = ROOT;
+
+    await h.controller.createEntry(ROOT, ROOT, ".github", "directory");
+
+    expect(surfaceFor(ROOT).showHidden).toBe(true);
+    expect(explorerStatus.value).toEqual({
+      workspacePath: ROOT,
+      text: "Showing hidden files so .github is visible.",
+      failed: false,
+    });
+  });
+
+  it("says nothing extra when showHidden is already on", async () => {
+    const h = harness();
+    activeWorkspace.value = ROOT;
+    setShowHidden(ROOT, true);
+
+    await h.controller.createEntry(ROOT, ROOT, ".env", "file");
+
+    expect(explorerStatus.value).toBeNull();
+  });
+
+  it("routes every failure to the status line in red and creates nothing", async () => {
+    const h = harness();
+    activeWorkspace.value = ROOT;
+    h.createError = "An entry with that name already exists.";
+
+    const ok = await h.controller.createEntry(ROOT, ROOT, "taken.md", "file");
+
+    expect(ok).toBe(false);
+    expect(explorerStatus.value).toEqual({
+      workspacePath: ROOT,
+      text: "An entry with that name already exists.",
+      failed: true,
+    });
+    expect(pendingTreeFocus.value).toBeNull();
   });
 });

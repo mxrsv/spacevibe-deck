@@ -9,15 +9,21 @@ import {
   activeWorkspace,
   closeFileSurface,
   closeWorkspaceSurface,
+  clearExplorerStatus,
+  clearTreeFocus,
   collapseAllDirectories,
   dirtyPaths,
+  explorerStatus,
   documentFor,
   EMPTY_SURFACE,
   fileTabsFor,
   listingErrorsFor,
   openFileTab,
+  pendingTreeFocus,
   promoteFileTab,
+  requestTreeFocus,
   resetFileSurfaces,
+  setExplorerStatus,
   setActiveWorkspace,
   setListing,
   setRootExpanded,
@@ -372,5 +378,38 @@ describe("collapseAllDirectories", () => {
     setListing("/r", "/r", []);
     collapseAllDirectories("/r");
     expect(surfaceFor("/r").listings.has("/r")).toBe(true);
+  });
+});
+
+describe("explorerStatus", () => {
+  it("holds one message at a time, scoped to a workspace", () => {
+    setExplorerStatus("/r", "Showing hidden files so .github is visible.", false);
+    expect(explorerStatus.value).toEqual({
+      workspacePath: "/r",
+      text: "Showing hidden files so .github is visible.",
+      failed: false,
+    });
+    setExplorerStatus("/r", "An entry with that name already exists.", true);
+    expect(explorerStatus.value?.failed).toBe(true);
+    clearExplorerStatus();
+    expect(explorerStatus.value).toBeNull();
+  });
+});
+
+describe("pendingTreeFocus", () => {
+  it("is spent only by the path it names", () => {
+    requestTreeFocus("/r/new.ts");
+    clearTreeFocus("/r/other.ts");
+    expect(pendingTreeFocus.value).toBe("/r/new.ts");
+    clearTreeFocus("/r/new.ts");
+    expect(pendingTreeFocus.value).toBeNull();
+  });
+
+  it("resetFileSurfaces clears both", () => {
+    setExplorerStatus("/r", "x", true);
+    requestTreeFocus("/r/a");
+    resetFileSurfaces();
+    expect(explorerStatus.value).toBeNull();
+    expect(pendingTreeFocus.value).toBeNull();
   });
 });

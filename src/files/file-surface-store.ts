@@ -133,6 +133,54 @@ export interface RevealRequest {
  */
 export const pendingReveal = signal<RevealRequest | null>(null);
 
+/** One transient line for the explorer's DL-19.5 status row. */
+export interface ExplorerStatus {
+  readonly workspacePath: string;
+  readonly text: string;
+  /** Painted `--red` (DL-3.2) rather than `--text-faint` (DL-3.4). */
+  readonly failed: boolean;
+}
+
+/**
+ * The explorer's one status message, or null.
+ *
+ * A single slot rather than a per-workspace map, for `pendingReveal`'s reason:
+ * one action is one message, and a second action means the user moved on. It
+ * carries its workspace so a message raised in one tree cannot print under
+ * another, which is the case a bare string would get wrong.
+ */
+export const explorerStatus = signal<ExplorerStatus | null>(null);
+
+export function setExplorerStatus(workspacePath: string, text: string, failed: boolean): void {
+  explorerStatus.value = { workspacePath, text, failed };
+}
+
+export function clearExplorerStatus(): void {
+  explorerStatus.value = null;
+}
+
+/**
+ * A path a newly created row should take focus on (design §5.3).
+ *
+ * A STORED request rather than an imperative call into the tree, exactly like
+ * `pendingReveal` above: the create is answered by the controller, the focus
+ * belongs to `FileTreeView`, and the row does not exist until the parent's
+ * re-listing has landed and re-rendered.
+ */
+export const pendingTreeFocus = signal<string | null>(null);
+
+export function requestTreeFocus(path: string): void {
+  pendingTreeFocus.value = path;
+}
+
+/** Spend the request for `path`. A no-op for anything else — a stale entry
+ * belongs to a create that is no longer being focused. */
+export function clearTreeFocus(path: string): void {
+  if (pendingTreeFocus.value === path) {
+    pendingTreeFocus.value = null;
+  }
+}
+
 export function requestReveal(path: string, line: number, column: number): void {
   pendingReveal.value = { path, line, column };
 }
@@ -570,4 +618,6 @@ export function resetFileSurfaces(): void {
   dockWidthLive.value = null;
   dockCollapseArmed.value = false;
   pendingReveal.value = null;
+  explorerStatus.value = null;
+  pendingTreeFocus.value = null;
 }
