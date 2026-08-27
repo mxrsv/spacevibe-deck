@@ -8,8 +8,8 @@
  * and was declined, which removes its single real cost: a column that showed no
  * actions until the pointer arrived.
  *
- * Each control is 17×17 and is deliberately NOT `.iconbtn` (design §4.2).
- * `.iconbtn` is 24×24, and four of them inside a 22px `.file-tree__row`
+ * Each control is 17 by 17 px and is deliberately NOT `.iconbtn` (design §4.2).
+ * `.iconbtn` is 24 by 24 px, and four of them inside a 22px `.file-tree__row`
  * overflow it by 1px above and 1px below — measured on the gallery drawing,
  * 2026-08-25. `ROW_HEIGHT` is the constant every index in `FileTreeView` is
  * computed from, so the row cannot grow to fit the control; the control
