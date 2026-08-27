@@ -2,7 +2,7 @@ import type { ComponentType } from "preact";
 import { AttentionDirectionSection } from "./sections/attention-direction";
 import { BoardSection } from "./sections/board-section";
 import { ChromeSection } from "./sections/chrome-section";
-import { ExplorerHeaderVariantsSection } from "./sections/explorer-header-variants";
+import { ExplorerTreeSection } from "./sections/explorer-tree-section";
 import { MatrixSection } from "./sections/matrix-section";
 import { NavigationSection } from "./sections/navigation-section";
 import { OverlaysSection } from "./sections/overlays-section";
@@ -32,6 +32,14 @@ export interface GallerySection {
  * tree as the record of that review, unimported like the other parked
  * comparison pages.
  *
+ * `explorer header direction` was registered on 2026-08-25 and taken out the
+ * same day the work shipped: its candidate C is what the real tree draws now,
+ * so a three-way comparison would show two treatments that lost beside a
+ * `current` column that is no longer current. The file stays in the tree as
+ * the record of that review, unimported like the other parked comparison
+ * pages — and `explorer tree` takes its slot, mounting the shipping
+ * `FileTreeView` where the drawing used to stand.
+ *
  * `state matrix` returned on 2026-08-13. It was parked while the direction was
  * nine fixed hex values, where four theme columns would have been four copies
  * of one picture. Now that the direction derives from `--bg`/`--tone`, the
@@ -59,11 +67,16 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "popovers", label: "popovers", Section: PopoversSection },
   { id: "overlays", label: "overlays", Section: OverlaysSection },
   { id: "board", label: "open board", Section: BoardSection },
-  {
-    id: "explorer-header",
-    label: "explorer header direction",
-    Section: ExplorerHeaderVariantsSection,
-  },
+  { id: "explorer-tree", label: "explorer tree", Section: ExplorerTreeSection },
+  /* PARKED 2026-08-27, the `unread-mark-variants` precedent: candidate C —
+     grouped segments, the segment menu, the width fold and the actions menu —
+     SHIPPED into `worktree-card-strip.tsx` / `worktree-card-menus.tsx`, so its
+     "per-pane — what ships" control column stopped being current and the
+     comparison started lying. The files stay in the tree as the drawn record
+     of what was chosen and what was turned down; the registry entry is what
+     goes.
+  { id: "strip-actions", label: "closed-strip actions", Section: StripActionsVariantsSection },
+  */
   {
     id: "launch-profiles",
     label: "launch profiles",

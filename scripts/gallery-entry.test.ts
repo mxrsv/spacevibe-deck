@@ -135,6 +135,14 @@ describe("the gallery entry stays out of the app bundle", () => {
     expect(chrome).toContain("Woven Flag");
     expect(chrome).not.toContain("Graphic Pattern");
     expect(chrome).not.toContain("Ambient Light");
+
+    const registry = readFileSync(join(SOURCE_ROOT, "gallery/section-registry.ts"), "utf8");
+    // The drawing is parked, not deleted — the record of the review survives.
+    expect(existsSync(join(SOURCE_ROOT, "gallery/sections/explorer-header-variants.tsx"))).toBe(
+      true,
+    );
+    expect(registry).not.toContain("ExplorerHeaderVariantsSection");
+    expect(registry).toContain("ExplorerTreeSection");
   });
 
   it("mounts the shipping AgentRail in every current shell specimen", () => {
