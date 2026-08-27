@@ -96,7 +96,7 @@ describe("FileTreeView", () => {
 
     mount(fakeController());
 
-    expect(rows().map((row) => row.textContent)).toEqual(["src", "b.ts"]);
+    expect(rows().map((row) => row.textContent)).toEqual(["r", "src", "b.ts"]);
   });
 
   it("asks the controller to load the root listing on mount", () => {
@@ -121,7 +121,7 @@ describe("FileTreeView", () => {
     mount(controller);
 
     act(() => {
-      rows()[0].click();
+      rows()[1].click();
     });
 
     expect(controller.openFile).toHaveBeenCalledWith(WS, `${WS}/a.ts`, false);
@@ -142,7 +142,7 @@ describe("FileTreeView", () => {
     mount(controller);
 
     act(() => {
-      rows()[0].dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+      rows()[1].dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     });
 
     expect(controller.openFile).toHaveBeenCalledWith(WS, `${WS}/a.ts`, true);
@@ -156,7 +156,7 @@ describe("FileTreeView", () => {
     mount(controller);
 
     act(() => {
-      rows()[0].click();
+      rows()[1].click();
     });
 
     expect(controller.toggleDirectory).toHaveBeenCalledWith(WS, `${WS}/src`);
@@ -178,7 +178,7 @@ describe("FileTreeView", () => {
     mount(controller);
 
     act(() => {
-      rows()[0].click();
+      rows()[1].click();
     });
 
     expect(controller.toggleDirectory).not.toHaveBeenCalled();
@@ -199,9 +199,10 @@ describe("FileTreeView", () => {
     });
     mount(fakeController());
 
-    expect(rows()).toEqual([]);
+    // The root row survives an empty listing (design §3.3) — a workspace with
+    // no visible entries still says which folder it is.
+    expect(rows().map((row) => row.textContent)).toEqual(["r"]);
     expect(tree().textContent).not.toMatch(/loading/i);
-    expect((tree().textContent ?? "").length).toBeGreaterThan(0);
   });
 
   it("shows a sticky read error and retries the failed directory", () => {
@@ -266,8 +267,9 @@ describe("FileTreeView", () => {
 
     const deepest = rows().find((row) => row.textContent === "c.ts");
     expect(deepest).toBeDefined();
-    // depth 2: 8px base + 2 * 14px indent tokens (DL-19).
-    expect(deepest?.style.paddingLeft).toBe("36px");
+    // depth 3 since the root became row 0: 8px base + 3 * 14px indent tokens
+    // (DL-19).
+    expect(deepest?.style.paddingLeft).toBe("50px");
   });
 
   describe("keyboard focus and navigation (spec §3.1)", () => {
@@ -300,6 +302,7 @@ describe("FileTreeView", () => {
       expect(rows()[0].tabIndex).toBe(-1);
       expect(rows()[1].tabIndex).toBe(0);
       expect(document.activeElement).toBe(rows()[1]);
+      expect(rows()[1].textContent).toBe("a.ts");
 
       act(() => {
         tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
@@ -317,6 +320,10 @@ describe("FileTreeView", () => {
       mount(controller);
 
       act(() => {
+        // Index 0 is the root row now; step onto the directory first.
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+      });
+      act(() => {
         tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
       });
 
@@ -332,6 +339,10 @@ describe("FileTreeView", () => {
       mount(controller);
 
       act(() => {
+        // Index 0 is the root row now; step onto the directory first.
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+      });
+      act(() => {
         tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
       });
 
@@ -345,6 +356,10 @@ describe("FileTreeView", () => {
       const controller = fakeController();
       mount(controller);
 
+      act(() => {
+        // Index 0 is the root row now; step onto the directory first.
+        tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+      });
       act(() => {
         tree().dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
       });

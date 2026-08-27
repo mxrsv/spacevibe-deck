@@ -109,6 +109,16 @@ export interface TreeRow {
 export type Listings = ReadonlyMap<string, readonly DirEntry[]>;
 
 /**
+ * Last segment of an absolute path, honouring both separators — the root row's
+ * name. Not `baseName` from `src/lib/path-name.ts`: this module is the tree
+ * MODEL and imports nothing, which is what keeps it assertable with no host.
+ */
+function rootName(root: string): string {
+  const cut = Math.max(root.lastIndexOf("/"), root.lastIndexOf("\\"));
+  return cut === -1 || cut === root.length - 1 ? root : root.slice(cut + 1);
+}
+
+/**
  * The flat row list a virtual list renders: a depth-first walk that descends
  * only into expanded directories whose listing has already arrived.
  *
@@ -121,6 +131,11 @@ export function flattenTree(
   listings: Listings,
   expanded: ReadonlySet<string>,
   showHidden: boolean,
+  // The root's own expansion (design §3.3). It CANNOT be folded into
+  // `expanded`, which already means "this child directory is open" — an empty
+  // set is a fully collapsed tree whose root is still open, and there is no
+  // spelling of that set which says "the root is shut".
+  rootExpanded: boolean,
 ): TreeRow[] {
   const rows: TreeRow[] = [];
   // A directory is walked at most once. A symlink cycle wholly inside the root
@@ -147,7 +162,21 @@ export function flattenTree(
       }
     }
   };
-  walk(root, 0);
+  // Design §3.1: the root is a TreeRow like any other, never separate DOM above
+  // the scroller — the spacer height, the window, the roving tabindex,
+  // `scrollIntoView` and every arrow key are all index arithmetic over THIS
+  // array, and a row outside it makes all five disagree with the screen.
+  rows.push({
+    path: root,
+    name: rootName(root),
+    directory: true,
+    depth: 0,
+    expanded: rootExpanded,
+    outOfRoot: false,
+  });
+  if (rootExpanded) {
+    walk(root, 1);
+  }
   return rows;
 }
 
@@ -171,5 +200,8 @@ export function toggleExpanded(expanded: ReadonlySet<string>, path: string): Set
  * directories matter.
  */
 export function openDirectories(rows: readonly TreeRow[], root: string): string[] {
-  return [root, ...rows.filter((row) => row.expanded).map((row) => row.path)];
+  // Deduplicated since the root became a row: an expanded root row carries
+  // `expanded: true`, so the naive concatenation named the root twice — a
+  // duplicated `list_dir` on every Refresh and a duplicate in the watch set.
+  return [...new Set([root, ...rows.filter((row) => row.expanded).map((row) => row.path)])];
 }

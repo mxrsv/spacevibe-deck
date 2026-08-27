@@ -43,6 +43,13 @@ import {
 /** Everything one workspace's explorer remembers. */
 export interface FileSurfaceState {
   readonly expanded: ReadonlySet<string>;
+  /**
+   * Whether the ROOT row is open (design §3.3). Separate from `expanded`,
+   * which already means "this child directory is open" — an empty set is a
+   * fully collapsed tree whose root is still showing its children, so there is
+   * no value of `expanded` that says "the root is shut".
+   */
+  readonly rootExpanded: boolean;
   readonly showHidden: boolean;
   /** Restored when the user comes back to this workspace's tree. */
   readonly scrollTop: number;
@@ -54,6 +61,7 @@ export interface FileSurfaceState {
 
 export const EMPTY_SURFACE: FileSurfaceState = Object.freeze({
   expanded: new Set<string>(),
+  rootExpanded: true,
   showHidden: false,
   scrollTop: 0,
   listings: new Map<string, readonly DirEntry[]>(),
@@ -272,6 +280,22 @@ export function setShowHidden(workspacePath: string, showHidden: boolean): void 
   writeSurface(workspacePath, { showHidden });
 }
 
+export function setRootExpanded(workspacePath: string, rootExpanded: boolean): void {
+  writeSurface(workspacePath, { rootExpanded });
+}
+
+/**
+ * Collapse every child directory, leaving the root open (design §8).
+ *
+ * Listings are KEPT: collapsing is not a reload, and re-expanding is then
+ * instant. The watch scope is recomputed from the visible rows by the
+ * controller, which is why this is only half the operation — see
+ * `FileSurfaceController.collapseAll`.
+ */
+export function collapseAllDirectories(workspacePath: string): void {
+  writeSurface(workspacePath, { expanded: new Set<string>() });
+}
+
 export function setScrollTop(workspacePath: string, scrollTop: number): void {
   writeSurface(workspacePath, { scrollTop });
 }
@@ -304,7 +328,13 @@ export function treeRows(workspacePath: string | null): TreeRow[] {
     return [];
   }
   const surface = surfaceFor(workspacePath);
-  return flattenTree(workspacePath, surface.listings, surface.expanded, surface.showHidden);
+  return flattenTree(
+    workspacePath,
+    surface.listings,
+    surface.expanded,
+    surface.showHidden,
+    surface.rootExpanded,
+  );
 }
 
 /** Directories whose contents are on screen — the listing and watch scope. */

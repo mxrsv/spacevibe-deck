@@ -9,6 +9,7 @@ import {
   activeWorkspace,
   closeFileSurface,
   closeWorkspaceSurface,
+  collapseAllDirectories,
   dirtyPaths,
   documentFor,
   EMPTY_SURFACE,
@@ -19,6 +20,7 @@ import {
   resetFileSurfaces,
   setActiveWorkspace,
   setListing,
+  setRootExpanded,
   setListingError,
   setShowHidden,
   stripFileTabs,
@@ -109,7 +111,7 @@ describe("the tree", () => {
 
     setListingError("/r", "/r", "Couldn't read this folder.");
 
-    expect(treeRows("/r").map((row) => row.name)).toEqual(["a.ts"]);
+    expect(treeRows("/r").map((row) => row.name)).toEqual(["r", "a.ts"]);
     expect(listingErrorsFor("/r").get("/r")).toBe("Couldn't read this folder.");
   });
 
@@ -143,9 +145,9 @@ describe("the tree", () => {
   it("flattens listings through the expansion set", () => {
     setListing("/r", "/r", [dir("/r/src"), file("/r/a.ts")]);
     setListing("/r", "/r/src", [file("/r/src/index.ts")]);
-    expect(treeRows("/r").map((r) => r.name)).toEqual(["src", "a.ts"]);
+    expect(treeRows("/r").map((r) => r.name)).toEqual(["r", "src", "a.ts"]);
     toggleDirectory("/r", "/r/src");
-    expect(treeRows("/r").map((r) => r.name)).toEqual(["src", "index.ts", "a.ts"]);
+    expect(treeRows("/r").map((r) => r.name)).toEqual(["r", "src", "index.ts", "a.ts"]);
     expect(visibleDirectories("/r")).toEqual(["/r", "/r/src"]);
     toggleDirectory("/r", "/r/src");
     expect(visibleDirectories("/r")).toEqual(["/r"]);
@@ -331,5 +333,44 @@ describe("totalFileTabs", () => {
     openFileTab("/b", "/b/two.ts", { keep: true });
     openFileTab("/b", "/b/three.ts", { keep: true });
     expect(totalFileTabs()).toBe(3);
+  });
+});
+
+describe("rootExpanded", () => {
+  it("defaults to an open root", () => {
+    expect(EMPTY_SURFACE.rootExpanded).toBe(true);
+    expect(surfaceFor("/r").rootExpanded).toBe(true);
+  });
+
+  it("collapses and re-opens one workspace's root without touching another's", () => {
+    setRootExpanded("/r", false);
+    expect(surfaceFor("/r").rootExpanded).toBe(false);
+    expect(surfaceFor("/other").rootExpanded).toBe(true);
+    setRootExpanded("/r", true);
+    expect(surfaceFor("/r").rootExpanded).toBe(true);
+  });
+
+  it("hides every child row while the root is collapsed", () => {
+    setListing("/r", "/r", [{ name: "src", path: "/r/src", directory: true, outOfRoot: false }]);
+    expect(treeRows("/r").map((row) => row.name)).toEqual(["r", "src"]);
+    setRootExpanded("/r", false);
+    expect(treeRows("/r").map((row) => row.name)).toEqual(["r"]);
+  });
+});
+
+describe("collapseAllDirectories", () => {
+  it("empties `expanded` and leaves `rootExpanded` alone (design §8)", () => {
+    setListing("/r", "/r", [{ name: "src", path: "/r/src", directory: true, outOfRoot: false }]);
+    toggleDirectory("/r", "/r/src");
+    expect([...surfaceFor("/r").expanded]).toEqual(["/r/src"]);
+    collapseAllDirectories("/r");
+    expect([...surfaceFor("/r").expanded]).toEqual([]);
+    expect(surfaceFor("/r").rootExpanded).toBe(true);
+  });
+
+  it("keeps every cached listing — collapsing is not a reload", () => {
+    setListing("/r", "/r", []);
+    collapseAllDirectories("/r");
+    expect(surfaceFor("/r").listings.has("/r")).toBe(true);
   });
 });

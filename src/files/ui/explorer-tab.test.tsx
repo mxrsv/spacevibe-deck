@@ -63,7 +63,8 @@ describe("ExplorerTab", () => {
     });
 
     await act(async () => {
-      host.querySelector<HTMLElement>(".file-tree__row")!.click();
+      // Row 0 is the root (design §3.1); the file is row 1.
+      host.querySelectorAll<HTMLElement>(".file-tree__row")[1]!.click();
     });
 
     // The preview surface: the tab is active and its document exists

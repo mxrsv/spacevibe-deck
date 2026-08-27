@@ -110,31 +110,60 @@ describe("flattenTree", () => {
   ]);
 
   it("renders only the root's children when nothing is expanded", () => {
-    const rows = flattenTree("/r", listings, new Set(), false);
+    const rows = flattenTree("/r", listings, new Set(), false, true);
     expect(rows.map((r) => [r.name, r.depth])).toEqual([
-      ["src", 0],
-      ["readme.md", 0],
+      ["r", 0],
+      ["src", 1],
+      ["readme.md", 1],
     ]);
   });
 
-  it("descends into expanded directories in display order", () => {
-    const rows = flattenTree("/r", listings, new Set(["/r/src"]), false);
+  it("emits the root as row 0 at depth 0, with children at depth 1", () => {
+    const rows = flattenTree("/r", listings, new Set(), false, true);
     expect(rows.map((r) => [r.name, r.depth])).toEqual([
-      ["src", 0],
-      ["deep", 1],
-      ["index.ts", 1],
-      ["readme.md", 0],
+      ["r", 0],
+      ["src", 1],
+      ["readme.md", 1],
+    ]);
+    expect(rows[0]).toMatchObject({
+      path: "/r",
+      directory: true,
+      expanded: true,
+      outOfRoot: false,
+    });
+  });
+
+  it("emits exactly one row when the root is collapsed", () => {
+    const rows = flattenTree("/r", listings, new Set(["/r/src"]), false, false);
+    expect(rows.map((r) => r.name)).toEqual(["r"]);
+    expect(rows[0].expanded).toBe(false);
+  });
+
+  it("keeps the root row when the root has no listing at all", () => {
+    const rows = flattenTree("/r", new Map(), new Set(), false, true);
+    expect(rows.map((r) => r.name)).toEqual(["r"]);
+  });
+
+  it("descends into expanded directories in display order", () => {
+    const rows = flattenTree("/r", listings, new Set(["/r/src"]), false, true);
+    expect(rows.map((r) => [r.name, r.depth])).toEqual([
+      ["r", 0],
+      ["src", 1],
+      ["deep", 2],
+      ["index.ts", 2],
+      ["readme.md", 1],
     ]);
   });
 
   it("descends two levels and keeps depth-first order", () => {
-    const rows = flattenTree("/r", listings, new Set(["/r/src", "/r/src/deep"]), false);
+    const rows = flattenTree("/r", listings, new Set(["/r/src", "/r/src/deep"]), false, true);
     expect(rows.map((r) => [r.name, r.depth])).toEqual([
-      ["src", 0],
-      ["deep", 1],
-      ["leaf.ts", 2],
-      ["index.ts", 1],
-      ["readme.md", 0],
+      ["r", 0],
+      ["src", 1],
+      ["deep", 2],
+      ["leaf.ts", 3],
+      ["index.ts", 2],
+      ["readme.md", 1],
     ]);
   });
 
@@ -144,9 +173,10 @@ describe("flattenTree", () => {
       new Map([["/r", [entry("/r/pending", { directory: true })]]]),
       new Set(["/r/pending"]),
       false,
+      true,
     );
-    expect(rows).toHaveLength(1);
-    expect(rows[0].expanded).toBe(true);
+    expect(rows).toHaveLength(2);
+    expect(rows[1].expanded).toBe(true);
   });
 
   it("never walks into a symlink that resolves out of the root", () => {
@@ -158,9 +188,10 @@ describe("flattenTree", () => {
       ]),
       new Set(["/r/away"]),
       false,
+      true,
     );
-    expect(rows.map((r) => r.name)).toEqual(["away"]);
-    expect(rows[0].expanded).toBe(false);
+    expect(rows.map((r) => r.name)).toEqual(["r", "away"]);
+    expect(rows[1].expanded).toBe(false);
   });
 
   it("terminates on a symlink cycle inside the root", () => {
@@ -172,8 +203,11 @@ describe("flattenTree", () => {
       ]),
       new Set(["/r", "/r/a"]),
       false,
+      true,
     );
-    expect(rows.map((r) => r.name)).toEqual(["a", "r"]);
+    // The third entry is the CHILD row named `r`, not a second root row: the
+    // `walked` set is what stops the loop.
+    expect(rows.map((r) => r.name)).toEqual(["r", "a", "r"]);
   });
 });
 
@@ -197,6 +231,21 @@ describe("openDirectories", () => {
       ]),
       new Set(["/r/src", "/r/src/deep"]),
       false,
+      true,
+    );
+    expect(openDirectories(rows, "/r")).toEqual(["/r", "/r/src", "/r/src/deep"]);
+  });
+
+  it("names the root once even though the root row is itself expanded", () => {
+    const rows = flattenTree(
+      "/r",
+      new Map<string, readonly DirEntry[]>([
+        ["/r", [entry("/r/src", { directory: true })]],
+        ["/r/src", [entry("/r/src/deep", { directory: true })]],
+      ]),
+      new Set(["/r/src", "/r/src/deep"]),
+      false,
+      true,
     );
     expect(openDirectories(rows, "/r")).toEqual(["/r", "/r/src", "/r/src/deep"]);
   });
