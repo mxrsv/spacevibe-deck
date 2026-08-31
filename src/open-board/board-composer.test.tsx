@@ -44,6 +44,9 @@ function mount(overrides: Partial<BoardComposerProps> = {}): {
     openProblem: null,
     agentsResolved: true,
     notice: null,
+    canRetryDelivery: false,
+    canFocusOpenedAgent: false,
+    hasUserDraftContent: true,
     onDraftChange: vi.fn(),
     onPickFolder: vi.fn(),
     onCreateWorkspace: vi.fn(),
@@ -54,6 +57,9 @@ function mount(overrides: Partial<BoardComposerProps> = {}): {
     onRemove: vi.fn(),
     onStartTask,
     onOpenAgent,
+    onRetryDelivery: vi.fn(),
+    onFocusOpenedAgent: vi.fn(),
+    onClearDraft: vi.fn(),
     ...overrides,
   };
   render(<BoardComposer {...props} />, host);

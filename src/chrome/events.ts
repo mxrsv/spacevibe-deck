@@ -39,6 +39,22 @@ export const agentQuickPickerOpen = signal(false);
  */
 export const quickPickerWorkspace = signal<string | null>(null);
 /**
+ * Whether a worktree card is showing one of its two popovers (spec
+ * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §5, §8).
+ *
+ * Both are `position: fixed` and both are placed to the RIGHT of the rail —
+ * i.e. over the STAGE, which is exactly where the browser tab's
+ * `WebContentsView` is a NATIVE layer above the renderer. Without this the
+ * menu draws underneath it, which is the same defect ⌘T over an open browser
+ * tab had until `agentQuickPickerOpen` joined `browserPanelObscured` on
+ * 2026-08-16.
+ *
+ * It lives here rather than inside `App` for that precedent's reason: the
+ * surfaces that set it are rendered by the rail, several components down from
+ * the policy that reads it.
+ */
+export const railCardMenuOpen = signal(false);
+/**
  * Settings panel open state. Promoted from a local `useSignal` in `app.tsx`
  * to a module signal here so it is the one overlay signal that shadows the
  * terminal grid — `tab-manager.ts`'s overlay scope guard (which

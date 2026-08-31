@@ -110,6 +110,12 @@ describe("OpenBoard removal flow", () => {
           onCancel={() => {}}
           onStartTask={async () => "sent"}
           onOpenAgent={async () => "started"}
+          canRetryDelivery={false}
+          canFocusOpenedAgent={false}
+          hasUserDraftContent={false}
+          onRetryDelivery={async () => "prompt-not-sent"}
+          onFocusOpenedAgent={() => {}}
+          onClearDraft={() => {}}
           onManageAgents={() => {}}
           onResumeSession={async () => true}
         />,

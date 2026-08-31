@@ -1,0 +1,384 @@
+/* ── Closed-strip actions direction review (2026-08-27) ────────────────────
+   Candidate-only. NONE of this is loaded by the renderer — `main.tsx` imports
+   it for the gallery alone, and shipping any candidate means writing its rules
+   into `src/styles/04c-rail-worktree-card.css` on the production classes, not
+   importing this file.
+
+   Everything the candidates share with the shipped card — the card box, the
+   head, the meta line, the strip, a segment's padding and dividers, an agent
+   ROW's four tracks, its hover wash, its model pill and its ✕ — comes from the
+   production sheet, because the markup carries the production classes. What is
+   below is only what the candidates INVENT: the popover surface, the origin
+   highlight, a pressable segment, and the review page's own scaffolding.
+
+   Two mechanics are deliberately drawn WRONG here, and both are named in the
+   design so implementation does not inherit the drawing:
+
+   1. The popover is `position: absolute` inside a local anchor. In the app it
+      MUST be `position: fixed` off the trigger's rect — `.asr-rail__list` is a
+      scroll container with `overflow-x: hidden`, so a popover rendered inside
+      it is clipped on the left and scrolls away from its own segment. The
+      precedents are `tooltipAnchor()` (`controls/action-tooltip.tsx`) and
+      `MenuAnchor` (`toolbar/toolbar-overflow-menu.tsx`).
+   2. There is no hover-intent delay and no pointer bridge across the 6px gap.
+      Both are required in the app; leaving them out here keeps the drawing
+      about the SURFACE rather than about the timing. ── */
+
+/* ------------------------------------------------------------------ the review page */
+
+.gxsa-grid {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+}
+
+/* Four fixed columns that never wrap. A wrapped row put candidate A's pinned
+   popover over candidate C's heading — an absolutely positioned surface takes
+   no layout room, so the page has to reserve it. The review scrolls sideways
+   instead, which keeps all four pictures on one line where they are
+   comparable. */
+.gxsa-row {
+  display: grid;
+  grid-template-columns: repeat(3, 320px);
+  gap: 22px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+/* Question 1 draws no popover under its cards, so it needs none of the height
+   question 2 reserves. */
+.gxsa-row--triple .gxsa-col {
+  min-height: 0;
+}
+
+/* Except the settled-menu row: its popovers are absolutely positioned, so the
+   column has to reserve their height or they hang over the section below. */
+.gxsa-row--menus .gxsa-col {
+  min-height: 380px;
+}
+
+/* The actions menu is the tallest surface in the section — 466px on Electron —
+   and it is absolutely positioned, so the column has to reserve its room or it
+   lays over whatever the section draws next. */
+/* Wider tracks than the other rows: this menu is placed to the RIGHT of its
+   card, so a 320px column would let the Electron menu land on top of the Tauri
+   card beside it. In the app the same placement covers the stage, which is the
+   point — the gallery is what needs the room. */
+.gxsa-row--pair {
+  grid-template-columns: repeat(2, 530px);
+}
+
+.gxsa-row--pair .gxsa-col {
+  min-height: 700px;
+}
+
+.gxsa-col {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  /* Reserves the room a pinned popover takes, so holding all three open does
+     not lay one candidate's surface over the section below it. */
+  min-height: 560px;
+}
+
+.gxsa-col__title {
+  margin: 0;
+  color: var(--gx-bright);
+}
+
+/* A floor, not a cap: every note reserves the same height so all four cards
+   start on one y and the strips can be compared without the eye re-aligning. */
+.gxsa-col__note {
+  margin: 0;
+  min-height: 116px;
+  color: var(--gx-dim);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* The rail's own plane at the width the window shell gives it, so a candidate
+   is judged against `--sidebar-bg` rather than against the gallery's page. */
+.gxsa-stage {
+  box-sizing: border-box;
+  width: 276px;
+  padding: 8px 7px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-tight);
+  background: var(--sidebar-bg);
+}
+
+.gxsa-anchor {
+  position: relative;
+}
+
+/* --------------------------------------------------------------- a pressable segment */
+
+/* The reversal being proposed: a segment becomes a control. `.asr-card__seg`
+   styles the box; these are only the declarations a `<button>` needs that a
+   `<span>` never did — the UA's own padding, border, font and background. */
+button.gxsa-seg {
+  box-sizing: border-box;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.gxsa-seg:hover {
+  background: var(--state-hover-bg);
+}
+
+/* The segment a popover was raised from wears the SAME wash as its row inside
+   the popover (`--tab-active-bg`, DL-21.1's selected wash), so the two halves
+   of one gesture are marked once rather than twice in two vocabularies. */
+button.gxsa-seg[data-origin="true"] {
+  background: var(--tab-active-bg);
+}
+
+button.gxsa-seg:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Candidate B of question 3: the strip's trailing launcher. `place-items` and
+   the muted ink match `.asr-card__new`'s own glyph rather than an agent
+   segment's — it creates, it does not report. */
+.gxsa-seg--add {
+  place-items: center;
+  color: var(--text-muted);
+}
+
+/* The merge count. `--text-muted` rather than `--accent`: `+N` already spends
+   the accent on a count of HIDDEN agents, and two counts in one strip must not
+   read as the same kind of number — this one names what the segment IS, that
+   one names what it is not showing. */
+.gxsa-seg__count {
+  color: var(--text-muted);
+  font: 560 var(--type-micro) / 1 var(--ui-font);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ the popover */
+
+/* DL-13.1's surface, restated on a candidate class: `--chrome-2`, one 1px
+   `--seam-raised` INSET hairline, and no blurred shadow (DL-1.3) — depth is
+   the background step, not a drop shadow.
+
+   THE RADIUS DEPARTS FROM DL-13.1, on purpose (owner asked why it was so
+   round, 2026-08-27). That rule says a popover takes `--radius-surface` (12px)
+   and every shipping popover does — but it was written for surfaces that float
+   over the STAGE, and these hang off a 260px card in a 276px column. The rail
+   already settled this three days earlier: `--asr-card-radius` is 6px because
+   an owner pass on 2026-08-25 found `--radius-surface` on the card "read as
+   pills at rail width" and collapsed every corner in that sheet to one value.
+   A 12px popover hanging off a 6px card loses that argument twice over — it is
+   rounder than the thing it belongs to. So these take the CARD's radius, and
+   shipping it means amending DL-13.1 to scope its 12px to stage-level
+   surfaces. `--asr-card-radius` is pinned on `.asr-card`, which is not an
+   ancestor of a popover, so the value is restated here rather than inherited. */
+/* The row rhythm is declared here because the production sheet pins
+   `--asr-card-row-h` on `.asr-card` / `.asr-bare` / `.asr-card__row` only — a
+   `.asr-card__new` row inside a popover has none of those ancestors, and
+   without the variable it collapsed from 28px to its 13px line box. */
+.gxsa-pop {
+  --asr-card-row-h: 28px;
+  --asr-card-row-gap: 2px;
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  box-sizing: border-box;
+  display: grid;
+  gap: 1px;
+  width: 248px;
+  padding: 5px 6px 6px;
+  border-radius: 6px;
+  background: var(--chrome-2);
+  box-shadow: inset 0 0 0 1px var(--seam-raised);
+}
+
+.gxsa-pop--chip {
+  width: 208px;
+}
+
+/* ------------------------------------------------------------- the actions menu */
+
+/* Placed to the RIGHT of the card, not under it (owner, 2026-08-27).
+   In the app that matters for more than taste: the rail is a 276px column on
+   the window's left edge, so a menu hanging BELOW the card covers the rail —
+   the other checkouts, and the card being acted on. To the right it covers the
+   stage instead, and the card it belongs to stays visible beside it. `top: 0`
+   aligns it with the card's own top edge so the two read as one object.
+
+   A shipped version is `position: fixed` off the trigger rect (see the file
+   header) and needs a FLIP: when the window is too narrow, or the sidebar has
+   been dragged wide, `left + width` can pass the viewport — the fallback is
+   the same menu on the card's left. Not drawn here; the gallery has room. */
+.gxsa-pop--actions {
+  /* The rows are full-bleed, so their hover wash has to be clipped to the
+     surface radius or the first and last rows square off its corners. */
+  overflow: hidden;
+  top: 0;
+  right: auto;
+  left: calc(100% + 6px);
+  width: 232px;
+  padding: 0 0 3px;
+}
+
+.gxsa-act__head {
+  display: grid;
+  gap: 2px;
+  padding: 7px 10px 6px;
+}
+
+.gxsa-act__for {
+  margin: 0;
+  color: var(--text-muted);
+  font: 450 var(--type-micro) / 1.35 var(--ui-font);
+}
+
+.gxsa-act__for strong {
+  color: var(--text-primary);
+  font-weight: 620;
+}
+
+.gxsa-act__scope {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.3 var(--ui-font);
+}
+
+.gxsa-act__branch {
+  color: var(--accent);
+  font-weight: 560;
+}
+
+/* The reference's pill. `--accent` at a low mix rather than a state hue: it
+   names WHICH KIND of checkout this is, which is not something any agent is
+   doing. */
+.gxsa-act__badge {
+  padding: 0 5px;
+  border-radius: var(--asr-card-pill-radius, 3px);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font: 560 var(--type-micro) / 1.45 var(--ui-font);
+}
+
+/* Two lines, so the glyph spans both rows and the text stacks beside it. */
+.gxsa-act {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  width: 100%;
+  padding: 4px 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+
+.gxsa-act:hover,
+.gxsa-act:focus-visible {
+  background: var(--state-hover-bg);
+  outline: none;
+}
+
+.gxsa-act__glyph {
+  display: grid;
+  grid-row: 1 / span 2;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+
+.gxsa-act__logo {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+}
+
+/* 11px over 10.5px, separated by weight and ink rather than by size — the
+   same pairing DL-4.4 already records for the Recent activity block's heading
+   and sentence (2026-08-26). Dropping the title to `--type-meta` is what the
+   owner asked for; taking the detail below `--type-micro` would invent a rung
+   the ladder does not have (DL-4.5). */
+.gxsa-act__title {
+  overflow: hidden;
+  grid-column: 2;
+  color: var(--text-primary);
+  font: 600 var(--type-meta) / 1.3 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gxsa-act__detail {
+  overflow: hidden;
+  grid-column: 2;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.3 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gxsa-act__foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 10px 2px;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.35 var(--ui-font);
+}
+
+/* The segment the popover was raised from, marked so the surface answers
+   "which one did I point at" without moving anything. `--tab-active-bg` is
+   DL-21.1's own selected wash, the same one DL-27.22 gives the focused row. */
+.gxsa-pop__row[data-origin="true"] {
+  background: var(--tab-active-bg);
+}
+
+.gxsa-pop--actions .gxsa-pop__sep {
+  margin: 3px 0;
+}
+
+.gxsa-pop__sep {
+  height: 1px;
+  margin: 3px 2px;
+  background: var(--hair);
+}
+
+.gxsa-pop__cap {
+  margin: 0;
+  padding: 1px 8px 3px;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.35 var(--ui-font);
+}
+
+.gxsa-pop__cap[data-state="failed"] {
+  color: var(--red);
+}
+
+.gxsa-pop__cap[data-state="asked"] {
+  color: var(--status-unread);
+}
+
+/* Candidate B's header: the one agent it describes, on the row's own tracks
+   minus the press and the close. */
+.gxsa-chip__head {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 7px;
+  min-height: var(--asr-card-row-h, 28px);
+  padding: 0 8px;
+}

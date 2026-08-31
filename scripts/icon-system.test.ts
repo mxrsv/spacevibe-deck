@@ -65,7 +65,22 @@ const GLYPH_EXEMPT = (path: string): boolean =>
   // Prompt Board's retired inject glyph, opposite meaning — one names a key,
   // the other named an action. The Paste/Send icons are asserted directly in
   // `prompt-popover.test.tsx`, so nothing is lost by exempting this file.
-  path === "terminal/search-bar.ts";
+  path === "terminal/search-bar.ts" ||
+  // A merged strip segment prints `×2` beside its agent glyph: the
+  // MULTIPLICATION SIGN meaning "times two", approved in DL-27.25 as the way a
+  // closed card says a checkout is running two agents of one kind. Same
+  // character as the retired close glyph, opposite meaning — `search-bar.ts`'s
+  // own exemption above, one surface later. The close control on these cards
+  // is Phosphor's `X` through `DeckIcon` like every other, and
+  // `worktree-card.test.tsx` asserts that directly, so the rule this exemption
+  // relaxes is still enforced where it matters.
+  path === "ui/worktree-card-strip.tsx" ||
+  // The parked drawing that segment was chosen from, mirroring the same `×N`
+  // in its own `gxsa-` vocabulary. It is out of the gallery registry and
+  // reaches no bundle (R7 plus `gallery-entry.test.ts`), but the scan reads
+  // every source file, so the record of the review needs the same exemption
+  // as the thing it produced.
+  path === "gallery/sections/strip-actions-variants.tsx";
 
 function sourceFiles(dir = SOURCE_ROOT): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

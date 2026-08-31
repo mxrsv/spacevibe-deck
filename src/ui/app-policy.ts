@@ -6,6 +6,8 @@ interface BrowserPanelObscuredState {
   readonly agentQuickPickerOpen: boolean;
   readonly quickLaunchOpen: boolean;
   readonly usageConsentOpen: boolean;
+  /** A worktree card's segment or actions menu, both placed over the stage. */
+  readonly railCardMenuOpen: boolean;
   readonly promptsOpen: boolean;
   readonly createEntryOpen: boolean;
   readonly persistErrorVisible: boolean;
@@ -19,10 +21,28 @@ export function browserPanelObscured(state: BrowserPanelObscuredState): boolean 
     state.agentQuickPickerOpen ||
     state.quickLaunchOpen ||
     state.usageConsentOpen ||
+    state.railCardMenuOpen ||
     state.promptsOpen ||
     state.createEntryOpen ||
     state.persistErrorVisible ||
     state.settingsLoadError
+  );
+}
+
+interface TaskLaunchRecoveryState {
+  readonly targetTabExists: boolean;
+  readonly targetPaneExists: boolean;
+  readonly retryTargetExists: boolean;
+  readonly attemptMatchesDraft: boolean;
+}
+
+/** An incomplete task handoff remains actionable only while every identity seam still matches. */
+export function taskLaunchRecoveryValid(state: TaskLaunchRecoveryState): boolean {
+  return (
+    state.targetTabExists &&
+    state.targetPaneExists &&
+    state.retryTargetExists &&
+    state.attemptMatchesDraft
   );
 }
 
@@ -150,6 +170,14 @@ export interface DockPaintState extends DockVisibilityState {
 /** A failed resume keeps the start surface present so its error stays visible. */
 export function boardClosesAfterResume(resumed: boolean): boolean {
   return resumed;
+}
+
+/**
+ * Legacy workspace restores share one session-journal suspension flag, so a
+ * second restore must wait even when it targets a different workspace.
+ */
+export function archivedWorkspaceResumeAvailable(inFlight: ReadonlySet<string>): boolean {
+  return inFlight.size === 0;
 }
 
 /**

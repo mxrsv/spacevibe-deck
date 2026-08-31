@@ -33,8 +33,7 @@ vi.mock("./controls/deck-icon", () => ({
   DeckIcon: ({ size }: { readonly size: number }) => <span data-deck-icon-size={size} />,
 }));
 
-import { activeTabIndex, tabViews } from "../terminal/tabs-store";
-import type { PaneView, TabView } from "../terminal/tabs-store";
+import { activeTabIndex, tabViews, type PaneView, type TabView } from "../terminal/tabs-store";
 import { AgentRail } from "./agent-rail";
 import { TabStrip } from "./tab-strip";
 import {
@@ -140,6 +139,7 @@ function mount(props: Partial<Parameters<typeof AgentRail>[0]> = {}): void {
         onCloseTab={NOOP}
         onClosePane={NOOP}
         onFocusPane={NOOP}
+        legacy={{ onOpenWorkspace: NOOP, onResumeWorktree: NOOP }}
         fileController={fileController}
         {...props}
       />,
@@ -162,6 +162,7 @@ function mountSidebarLayout(): void {
           onCloseTab={NOOP}
           onClosePane={NOOP}
           onFocusPane={NOOP}
+          legacy={{ onOpenWorkspace: NOOP, onResumeWorktree: NOOP }}
           fileController={fileController}
         />
         <div class="stage__strip">
@@ -213,9 +214,7 @@ function rows(): HTMLElement[] {
 /** Every checkout's head, whether a full card or a bare (rowless) row. */
 function branches(): string[] {
   return [
-    ...host.querySelectorAll(
-      ".asr-card__head .asr-card__name, .asr-bare .asr-bare__name",
-    ),
+    ...host.querySelectorAll(".asr-card__head .asr-card__name, .asr-bare .asr-bare__name"),
   ].map((name) => name.textContent ?? "");
 }
 
@@ -264,6 +263,7 @@ afterEach(() => {
   paneTails.value = new Map();
   paneModels.value = new Map();
   browserSurfaceActive.value = false;
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -405,14 +405,7 @@ describe("AgentRail click contract", () => {
     expect(onCloseTab).not.toHaveBeenCalled();
   });
 
-  it("gives a shell-only tab no row and no close, but reaches it through onSelectTab (item 1 fix, review 2026-08-26)", async () => {
-    // `panes` holds agent panes only (spec §9), so a checkout with nothing
-    // but a shell tab has ZERO panes and renders as a bare row — mark, name,
-    // badge, no `.asr-row__action--close`. Until this fix that bare row was
-    // byte-identical to a truly EMPTY checkout's, so pressing it called
-    // `onNewTabIn` and spawned a second agent over a tab that was already
-    // open and, with the tab tier gone, otherwise unreachable from the rail.
-    // It now reaches the existing tab through `onSelectTab` instead.
+  it("gives a shell-only tab its own selectable and closable row", async () => {
     const onCloseTab = vi.fn();
     const onClosePane = vi.fn();
     const onSelectTab = vi.fn();
@@ -421,17 +414,55 @@ describe("AgentRail click contract", () => {
     mount({ onCloseTab, onClosePane, onSelectTab, onNewTabIn });
     await settle();
 
-    expect(host.querySelector(".asr-card")).toBeNull();
-    const bare = host.querySelector(".asr-bare");
-    expect(bare).not.toBeNull();
-    expect(bare?.getAttribute("data-shell")).toBe("true");
-    expect(host.querySelector(".asr-row__action--close")).toBeNull();
-    click(bare);
+    expect(host.querySelector(".asr-card")).not.toBeNull();
+    openAllCards();
+    const shell = host.querySelector<HTMLElement>('.asr-card__row[data-kind="shell"]');
+    expect(shell).not.toBeNull();
+    click(shell?.querySelector(".asr-card__hit"));
     expect(onSelectTab).toHaveBeenCalledWith(0);
     expect(onSelectTab).toHaveBeenCalledTimes(1);
+    click(shell?.querySelector(".asr-row__action--close"));
+    expect(onCloseTab).toHaveBeenCalledWith(0);
     expect(onNewTabIn).not.toHaveBeenCalled();
-    expect(onCloseTab).not.toHaveBeenCalled();
     expect(onClosePane).not.toHaveBeenCalled();
+  });
+
+  it("keeps a shell tab reachable beside an agent tab in the same checkout", async () => {
+    const onSelectTab = vi.fn();
+    const onCloseTab = vi.fn();
+    tabViews.value = [
+      tab({ key: 1, panes: [pane({ paneId: 11, agent: "claude" })] }),
+      tab({ key: 2, name: "logs", panes: [pane({ paneId: 21, agent: null })] }),
+    ];
+    mount({ onSelectTab, onCloseTab });
+    await settle();
+    openAllCards();
+
+    const shell = host.querySelector<HTMLElement>('.asr-card__row[data-kind="shell"]');
+    expect(shell?.querySelector(".asr-card__name")?.textContent).toBe("logs");
+    click(shell?.querySelector(".asr-card__hit"));
+    expect(onSelectTab).toHaveBeenCalledWith(1);
+    click(shell?.querySelector(".asr-row__action--close"));
+    expect(onCloseTab).toHaveBeenCalledWith(1);
+  });
+
+  it("keeps every shell-only tab in one checkout separately reachable", async () => {
+    const onSelectTab = vi.fn();
+    tabViews.value = [
+      tab({ key: 1, name: "server", panes: [pane({ paneId: 11, agent: null })] }),
+      tab({ key: 2, name: "logs", panes: [pane({ paneId: 21, agent: null })] }),
+    ];
+    mount({ onSelectTab });
+    await settle();
+    openAllCards();
+
+    const shellRows = host.querySelectorAll<HTMLElement>('.asr-card__row[data-kind="shell"]');
+    expect([...shellRows].map((row) => row.querySelector(".asr-card__name")?.textContent)).toEqual([
+      "server",
+      "logs",
+    ]);
+    click(shellRows[1]?.querySelector(".asr-card__hit"));
+    expect(onSelectTab).toHaveBeenCalledWith(1);
   });
 
   it("gives every row of a multi-agent checkout its own close", async () => {
@@ -546,22 +577,14 @@ describe("AgentRail worktree cards (design 2026-08-25)", () => {
     expect(rows()).toHaveLength(2);
   });
 
-  it("draws agent rows on every host — reversal of the round-1 showAgentPresence gate (review, 2026-08-26)", async () => {
-    // `AgentRailProps.showAgentPresence` is gone: a gate here could only
-    // choose between pane rows and nothing, since the tab tier it would have
-    // fallen back to (as `TabItem` did under Tauri) no longer renders at
-    // all. `AgentRail` no longer reads `electronHostAvailable` for this
-    // purpose, and `WorktreeCard` takes no such prop — a card's strip and
-    // its open-list rows draw the same way regardless of host.
+  it("keeps Tauri on the legacy repository rail", async () => {
+    vi.stubGlobal("__TAURI_INTERNALS__", {});
     tabViews.value = [tab({ panes: [pane({ paneId: 11 })] })];
     mount();
     await settle();
 
-    expect(host.querySelector(".asr-card__head")).not.toBeNull();
-    expect(host.querySelector(".asr-card__seg")).not.toBeNull();
-
-    openAllCards();
-    expect(rows()).toHaveLength(1);
+    expect(host.querySelector(".wsbar--repos")).not.toBeNull();
+    expect(host.querySelector(".asr-card")).toBeNull();
   });
 });
 
@@ -652,7 +675,9 @@ describe("AgentRail clusters (DL-27.9/DL-27.12)", () => {
     const heads = host.querySelectorAll(".asr-stream .asr-cluster__head");
     expect(heads).toHaveLength(1);
     expect(host.querySelectorAll(".asr-stream .asr-card__row")).toHaveLength(3);
-    const asking = host.querySelector<HTMLElement>('.asr-stream .asr-card__row[data-state="asked"]');
+    const asking = host.querySelector<HTMLElement>(
+      '.asr-stream .asr-card__row[data-state="asked"]',
+    );
     expect(asking?.querySelector(".asr-card__name")?.textContent).toBe("Claude");
   });
 });
@@ -722,10 +747,15 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
 
     // Review fix (2026-08-26): `project` is threaded down from
     // `RailStreamGroup.project` at the `agent-rail.tsx` call site, so the
-    // name that was briefly unreachable from `WorktreeCard`'s props is back
-    // — `project · checkout · branch`, matching the old `whereOf` shape.
+    // name that was briefly unreachable from `WorktreeCard`'s props is back.
+    //
+    // **Amended 2026-08-30: a segment already said is dropped.** This fixture
+    // is the collision case by construction — `/r/side` is a worktree whose
+    // FOLDER and BRANCH are both `side`, the shape
+    // `git worktree add ../side side` produces — so the old expectation was a
+    // literal record of the repetition the owner reported, one tier down.
     expect(host.querySelector(".asr-bare")?.getAttribute("aria-label")).toBe(
-      "New agent in main · side · side",
+      "New agent in main · side",
     );
   });
 
@@ -777,13 +807,33 @@ describe("AgentRail worktree groups (DL-27.23/DL-27.24, amended by the card)", (
     openAllCards();
 
     const hit = host.querySelector(".asr-card__hit");
-    // Review fix (2026-08-26): the project prefix is back too.
-    expect(hit?.getAttribute("aria-label")).toContain("main · side · side");
+    // Review fix (2026-08-26): the project prefix is back too. Deduplicated
+    // since 2026-08-30 — folder and branch are both `side` here, so the
+    // composed name states the word once.
+    expect(hit?.getAttribute("aria-label")).toContain("main · side");
+    expect(hit?.getAttribute("aria-label")).not.toContain("side · side");
     expect(hit?.getAttribute("title")).toBe("Claude — idle");
   });
 });
 
 describe("AgentRail project launcher (DL-27.18)", () => {
+  it("disables every project launcher while a task handoff is in flight", async () => {
+    const onNewTabIn = vi.fn();
+    mount({ onNewTabIn, newTabDisabled: true });
+    await settle();
+    openAllCards();
+
+    const launchers = host.querySelectorAll<HTMLButtonElement>(
+      ".asr-cluster__add, .asr-bare, .asr-card__new",
+    );
+    expect(launchers.length).toBeGreaterThan(0);
+    for (const launcher of launchers) {
+      expect(launcher.disabled).toBe(true);
+      launcher.click();
+    }
+    expect(onNewTabIn).not.toHaveBeenCalled();
+  });
+
   it("opens the picker on the project the header belongs to", async () => {
     // `/r/side` is a WORKTREE of the same repository, so both tabs land in one
     // cluster — which is the point: one header, one launcher, and it answers
@@ -815,12 +865,38 @@ describe("AgentRail project launcher (DL-27.18)", () => {
     expect(host.querySelector("button.asr-cluster__toggle")).not.toBeNull();
   });
 
-  it("names the project in the launcher's accessible name", async () => {
+  it("names the project AND the checkout it actually opens into", async () => {
+    // Spec `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §7.4: the
+    // header's `+` resolves through `groupPath` to `worktrees[0]` — always the
+    // PRIMARY checkout — and it used to say only the project. With every
+    // checkout carrying its own launcher on its card, the honest wording is
+    // what keeps the two from reading as the same control.
+    mount({ onNewTabIn: NOOP });
+    await settle();
+
+    // **Amended 2026-08-30: a word already said is not said again.** This
+    // fixture's project is `main` AND its primary checkout is on branch
+    // `main`, so naming the checkout after the project would print one word
+    // twice — the defect this change removes one tier down. The `· checkout`
+    // half is proven by the next case, where the two differ.
+    expect(host.querySelector(".asr-cluster__add")?.getAttribute("aria-label")).toBe(
+      "New tab in main",
+    );
+  });
+
+  it("still names the checkout when it is a different word from the project", async () => {
+    configureRepositoryClient({
+      scan: async () => ({
+        ...SCAN,
+        worktrees: [{ ...SCAN.worktrees[0]!, branch: "release/1.0" }, ...SCAN.worktrees.slice(1)],
+      }),
+    });
+    invalidateRepositoryScans();
     mount({ onNewTabIn: NOOP });
     await settle();
 
     expect(host.querySelector(".asr-cluster__add")?.getAttribute("aria-label")).toBe(
-      "New tab in main",
+      "New tab in main · release/1.0",
     );
   });
 
@@ -1138,7 +1214,7 @@ describe("AgentRail state wording (DL-27.2, amended by the card)", () => {
     expect(row.querySelector("svg.wsitem__spinner")).toBeNull();
     const load = row.querySelector(".asr-card__load");
     expect(load?.getAttribute("data-busy")).toBe("true");
-    expect(load?.children).toHaveLength(3);
+    expect(load?.children).toHaveLength(1);
   });
 });
 
@@ -1151,19 +1227,15 @@ describe("AgentRail live-only contract", () => {
     expect(host.querySelector(".asr-row--archived")).toBeNull();
   });
 
-  it("gives a shell-only tab a bare row, never a terminal-glyph agent row", async () => {
-    // A shell tab produces no `RailCardPane` at all (`panes` holds agent
-    // panes only, spec §9), so the checkout it lives in has zero panes and
-    // renders as the BARE row — mark, name, badge — with no glyph of any
-    // kind. The shipped rail's terminal-glyph fallback for a plain shell died
-    // with the tab tier; the tab strip and the bare row's own `onSelectTab`
-    // (item 1 fix, review 2026-08-26) are what reach it now — never a glyph.
+  it("gives a shell-only tab a terminal row rather than an agent row", async () => {
     tabViews.value = [tab({ panes: [pane({ agent: null })] })];
     mount();
     await settle();
 
-    expect(host.querySelector(".asr-card")).toBeNull();
-    expect(host.querySelector(".asr-bare")).not.toBeNull();
+    expect(host.querySelector(".asr-card")).not.toBeNull();
+    openAllCards();
+    expect(host.querySelector('.asr-card__row[data-kind="shell"]')).not.toBeNull();
+    expect(host.querySelector('.asr-card__row[data-kind="agent"]')).toBeNull();
     expect(host.querySelector(".asr-chip--static")).toBeNull();
     expect(host.querySelector(".asr-disclose")).toBeNull();
   });
@@ -1596,24 +1668,19 @@ describe("AgentRail paneModels wiring (Task 8)", () => {
   // model pill. `buildAgentRail` passes `models: paneModels.value` alongside
   // `tails: paneTails.value`; the card component reads `pane.model` and
   // renders `.asr-card__pill` when it is non-empty.
-  it("surfaces the model pill for a pane whose model is in paneModels", async () => {
-    tabViews.value = [
-      tab({ panes: [pane({ paneId: 11, agent: "claude", phase: "working" })] }),
-    ];
+  it("withholds a heuristic model pairing from the production rail", async () => {
+    tabViews.value = [tab({ panes: [pane({ paneId: 11, agent: "claude", phase: "working" })] })];
     // Write the model BEFORE mount so the first render already has it.
     paneModels.value = new Map([[11, "claude-sonnet-5"]]);
     mount();
     await settle();
     openAllCards();
 
-    const pill = host.querySelector(".asr-card__pill");
-    expect(pill?.textContent, "model pill must carry the model string").toBe("claude-sonnet-5");
+    expect(host.querySelector(".asr-card__pill")).toBeNull();
   });
 
   it("shows no pill for a pane not present in paneModels", async () => {
-    tabViews.value = [
-      tab({ panes: [pane({ paneId: 11, agent: "claude", phase: "working" })] }),
-    ];
+    tabViews.value = [tab({ panes: [pane({ paneId: 11, agent: "claude", phase: "working" })] })];
     // paneModels starts empty (set in beforeEach).
     mount();
     await settle();

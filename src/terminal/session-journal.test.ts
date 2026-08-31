@@ -217,6 +217,31 @@ describe("session journal", () => {
     resumeSessionJournal();
   });
 
+  it("5a3. keeps nested lifecycle and restore suspensions independent", async () => {
+    const { store } = createFakeStore();
+    const capture = vi.fn(() => [tab("/w")]);
+    await initSessionJournal(deps({ capture, store, windowLabel: "main" }));
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    vi.mocked(store.set).mockClear();
+
+    suspendSessionJournal();
+    suspendSessionJournal();
+    capture.mockReturnValue([tab("/restored")]);
+
+    resumeSessionJournal();
+    pokeTabViews();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(store.set).not.toHaveBeenCalled();
+
+    resumeSessionJournal();
+    pokeTabViews();
+    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+    expect(store.set).toHaveBeenCalledWith(
+      "window:main",
+      expect.objectContaining({ tabs: [tab("/restored")] }),
+    );
+  });
+
   it("5b. flushSessionJournal cancels the pending timer and writes immediately", async () => {
     const { store, data } = createFakeStore();
     const capture = vi.fn(() => [tab("/w")]);

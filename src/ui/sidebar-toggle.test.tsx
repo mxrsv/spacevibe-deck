@@ -78,15 +78,34 @@ describe("SidebarToggle", () => {
     );
 
     const actions = host.querySelector(".sidebar-frame-actions")!;
-    expect(
-      Array.from(actions.children).map((child) =>
-        child.getAttribute("aria-label"),
-      ),
-    ).toEqual(["Collapse the sidebar", "New"]);
+    expect(Array.from(actions.children).map((child) => child.getAttribute("aria-label"))).toEqual([
+      "Collapse the sidebar",
+      "New",
+    ]);
 
     act(() => {
       host.querySelector<HTMLButtonElement>(".sidebar-new")!.click();
     });
     expect(onOpenWorkspace).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables New while another task operation is in flight", () => {
+    const onOpenWorkspace = vi.fn();
+    act(() =>
+      render(
+        <SidebarFrameActions
+          collapsed={false}
+          disabled
+          onToggle={vi.fn()}
+          onOpenWorkspace={onOpenWorkspace}
+        />,
+        host,
+      ),
+    );
+
+    const button = host.querySelector<HTMLButtonElement>(".sidebar-new");
+    expect(button?.disabled).toBe(true);
+    act(() => button?.click());
+    expect(onOpenWorkspace).not.toHaveBeenCalled();
   });
 });

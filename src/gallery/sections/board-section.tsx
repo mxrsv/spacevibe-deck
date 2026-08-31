@@ -694,6 +694,9 @@ function LiveComposerSpecimen() {
             openProblem={null}
             agentsResolved={true}
             notice={null}
+            canRetryDelivery={false}
+            canFocusOpenedAgent={false}
+            hasUserDraftContent={true}
             describeCombo={(recent) =>
               WORKSPACES.find((entry) => entry.path === recent.path)?.detail ?? ""
             }
@@ -711,6 +714,9 @@ function LiveComposerSpecimen() {
             onManageAgents={NOOP}
             onStartTask={NOOP}
             onOpenAgent={NOOP}
+            onRetryDelivery={NOOP}
+            onFocusOpenedAgent={NOOP}
+            onClearDraft={NOOP}
           />
         </div>
       </DeckShell>

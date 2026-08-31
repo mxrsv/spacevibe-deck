@@ -69,11 +69,12 @@ function controllableWithPaste(
 async function driveToIdle(
   tm: ReturnType<typeof wire>["tm"],
   pty: ReturnType<typeof createMemoryPtyClient>,
+  paneId = 1,
 ): Promise<void> {
   await vi.waitFor(
     () => {
-      pty.emitOutput(1, "\x1b]9;4;0\x07");
-      expect(tm.paneAttention(1)?.phase).toBe("idle");
+      pty.emitOutput(paneId, "\x1b]9;4;0\x07");
+      expect(tm.paneAttention(paneId)?.phase).toBe("idle");
     },
     { timeout: 6000, interval: 100 },
   );
@@ -104,8 +105,8 @@ describe("launchTask", () => {
       },
     };
     const { tm } = wire(pty);
-    const outcome = await tm.launchTask(INTENT, "ship it");
-    expect(outcome).toBe("spawn-failed");
+    const result = await tm.launchTask(INTENT, "ship it");
+    expect(result).toEqual({ outcome: "spawn-failed", tabKey: null });
     expect(written(base)).not.toContain("ship it");
   });
 
@@ -115,8 +116,9 @@ describe("launchTask", () => {
     ]);
     const { tm, pty } = setupControllable(infos);
     await tm.init();
-    const outcome = await tm.launchTask(INTENT, null);
-    expect(outcome).toBe("started");
+    const result = await tm.launchTask(INTENT, null);
+    expect(result.outcome).toBe("started");
+    expect(result.tabKey).toBeTypeOf("number");
     expect(written(pty)).not.toContain("ship it");
   });
 
@@ -126,7 +128,7 @@ describe("launchTask", () => {
     ]);
     const { tm } = setupControllable(infos);
     await tm.init();
-    expect(await tm.launchTask(INTENT, "   \n ")).toBe("started");
+    expect((await tm.launchTask(INTENT, "   \n ")).outcome).toBe("started");
   });
 
   it("refuses to prompt a shell pane instead of typing into it", async () => {
@@ -135,8 +137,8 @@ describe("launchTask", () => {
     ]);
     const { tm, pty } = setupControllable(infos);
     await tm.init();
-    const outcome = await tm.launchTask({ ...INTENT, agent: null }, "ship it");
-    expect(outcome).toBe("prompt-not-sent");
+    const result = await tm.launchTask({ ...INTENT, agent: null }, "ship it");
+    expect(result.outcome).toBe("prompt-not-sent");
     expect(written(pty)).not.toContain("ship it");
   });
 
@@ -156,7 +158,7 @@ describe("launchTask", () => {
     infos.set(1, processInfo(1, "/repo", "claude", "agent", "claude"));
     await driveToIdle(tm, pty);
 
-    expect(await running).toBe("prompt-pending");
+    expect((await running).outcome).toBe("prompt-pending");
     expect(written(pty)).toContain("ship it");
     // Auto-send is off: the text reaches the composer and the Enter is the
     // user's. A bare carriage return here would be Deck pressing it for them,
@@ -172,7 +174,7 @@ describe("launchTask", () => {
     await tm.init();
     const running = tm.launchTask(INTENT, "ship it");
     await driveToIdle(tm, pty);
-    expect(await running).toBe("prompt-failed");
+    expect((await running).outcome).toBe("prompt-failed");
   });
 
   it("maps a pasted-but-unsubmitted result to prompt-pending", async () => {
@@ -190,7 +192,7 @@ describe("launchTask", () => {
     await tm.init();
     const running = tm.launchTask(INTENT, "ship it");
     await driveToIdle(tm, pty);
-    expect(await running).toBe("prompt-pending");
+    expect((await running).outcome).toBe("prompt-pending");
   });
 
   it("sends each concurrent launch's prompt to its own pane", async () => {
@@ -220,8 +222,8 @@ describe("launchTask", () => {
       { timeout: 8000, interval: 100 },
     );
 
-    expect(await first).toBe("prompt-pending");
-    expect(await second).toBe("prompt-pending");
+    expect((await first).outcome).toBe("prompt-pending");
+    expect((await second).outcome).toBe("prompt-pending");
 
     const alpha = pty.writes.find((entry) => entry.data.includes("alpha"));
     const beta = pty.writes.find((entry) => entry.data.includes("beta"));
@@ -246,10 +248,200 @@ describe("launchTask", () => {
     const running = tm.launchTask(INTENT, "ship it");
     await vi.advanceTimersByTimeAsync(TASK_PROMPT_READY_TIMEOUT_MS + TASK_PROMPT_POLL_MS);
 
-    expect(await running).toBe("prompt-not-sent");
+    expect((await running).outcome).toBe("prompt-not-sent");
     expect(written(pty)).not.toContain("ship it");
     // The tab it opened is still standing — a launch that could not be
     // prompted is still a pane the user can type into.
     expect(tabViews.value.length).toBe(1);
+  });
+
+  it("retries a failed paste in the original tab without materializing another", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+    ]);
+    let pasteSucceeds = false;
+    const { tm, pty } = controllableWithPaste(infos, async () => pasteSucceeds);
+    await tm.init();
+
+    const running = tm.launchTask(INTENT, "ship it");
+    await driveToIdle(tm, pty);
+    const first = await running;
+    expect(first.outcome).toBe("prompt-failed");
+    expect(tm.canRetryTaskPrompt(first.tabKey ?? -1)).toBe(true);
+    expect(first.tabKey).toBeTypeOf("number");
+
+    pasteSucceeds = true;
+    const retry = await tm.retryTaskPrompt(first.tabKey ?? -1, "ship it", "claude");
+
+    expect(retry).toBe("prompt-pending");
+    expect(tabViews.value).toHaveLength(1);
+  });
+
+  it("focuses the exact pane holding a pending prompt and withdraws it after that pane closes", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+    ]);
+    const { tm, pty } = controllableWithPaste(infos, async () => true);
+    await tm.init();
+
+    const running = tm.launchTask(INTENT, "ship it");
+    await driveToIdle(tm, pty);
+    const first = await running;
+    expect(first.outcome).toBe("prompt-pending");
+    expect(tm.canFocusTaskPrompt(first.tabKey ?? -1)).toBe(true);
+
+    await tm.splitActive("row");
+    infos.set(2, processInfo(2, "/repo", "claude", "agent", "claude"));
+    await driveToIdle(tm, pty, 2);
+    expect(tm.activePaneId()).toBe(2);
+
+    expect(tm.focusTaskPrompt(first.tabKey ?? -1)).toBe(true);
+    expect(tm.activePaneId()).toBe(1);
+
+    infos.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null));
+    await tm.closePaneAt(0, 1);
+    expect(tm.canFocusTaskPrompt(first.tabKey ?? -1)).toBe(false);
+    expect(tm.focusTaskPrompt(first.tabKey ?? -1)).toBe(false);
+    expect(tm.activePaneId()).toBe(2);
+  });
+
+  it("refuses retry after the original tab is gone", async () => {
+    const { tm, pty } = setupControllable(new Map());
+    await tm.init();
+
+    expect(await tm.retryTaskPrompt(999, "ship it", "claude")).toBe("prompt-not-sent");
+    expect(written(pty)).not.toContain("ship it");
+  });
+
+  it("refuses retry when the pane now runs a different agent", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+    ]);
+    const { tm, pty } = controllableWithPaste(infos, async () => false);
+    await tm.init();
+    const running = tm.launchTask(INTENT, "ship it");
+    await driveToIdle(tm, pty);
+    const first = await running;
+
+    infos.set(1, processInfo(1, "/repo", "codex", "agent", "codex"));
+
+    expect(await tm.retryTaskPrompt(first.tabKey ?? -1, "ship it", "claude")).toBe(
+      "prompt-not-sent",
+    );
+  });
+
+  it("refuses retry after the same agent restarts inside the original pane", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, { ...processInfo(1, "/repo", "claude", "agent", "claude"), processId: 101 }],
+    ]);
+    const { tm, pty } = controllableWithPaste(infos, async () => false);
+    await tm.init();
+    const running = tm.launchTask(INTENT, "ship it");
+    await driveToIdle(tm, pty);
+    const first = await running;
+    expect(first.outcome).toBe("prompt-failed");
+
+    infos.set(1, {
+      ...processInfo(1, "/repo", "claude", "agent", "claude"),
+      processId: 202,
+    });
+
+    expect(await tm.retryTaskPrompt(first.tabKey ?? -1, "ship it", "claude")).toBe(
+      "prompt-not-sent",
+    );
+  });
+
+  it("refuses retry when the same agent restarts during the retry readiness check", async () => {
+    const original = {
+      ...processInfo(1, "/repo", "claude", "agent", "claude"),
+      processId: 101,
+    };
+    const restarted = { ...original, processId: 202 };
+    const base = createMemoryPtyClient({ nextId: 1 });
+    let retrying = false;
+    let retryReads = 0;
+    let pasteAttempts = 0;
+    const pty: PtyClient = {
+      ...base,
+      async ptyInfo(ids: readonly number[]): Promise<PaneProcessInfo[]> {
+        if (!ids.includes(1)) {
+          return [];
+        }
+        if (!retrying) {
+          return [original];
+        }
+        retryReads += 1;
+        return [retryReads === 1 ? original : restarted];
+      },
+    };
+    const { tm } = wire(
+      pty,
+      {},
+      {
+        pasteText: async () => {
+          pasteAttempts += 1;
+          return false;
+        },
+      },
+    );
+    await tm.init();
+    const running = tm.launchTask(INTENT, "ship it");
+    await driveToIdle(tm, base);
+    const first = await running;
+    expect(first.outcome).toBe("prompt-failed");
+    expect(pasteAttempts).toBe(1);
+
+    retrying = true;
+    expect(await tm.retryTaskPrompt(first.tabKey ?? -1, "ship it", "claude")).toBe(
+      "prompt-not-sent",
+    );
+    expect(retryReads).toBe(2);
+    expect(pasteAttempts).toBe(1);
+  });
+
+  it("refuses retry after the original agent changes working directory", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, { ...processInfo(1, "/repo", "claude", "agent", "claude"), processId: 101 }],
+    ]);
+    const { tm, pty } = controllableWithPaste(infos, async () => false);
+    await tm.init();
+    const running = tm.launchTask(INTENT, "ship it");
+    await driveToIdle(tm, pty);
+    const first = await running;
+
+    infos.set(1, {
+      ...processInfo(1, "/repo/other", "claude", "agent", "claude"),
+      processId: 101,
+    });
+
+    expect(await tm.retryTaskPrompt(first.tabKey ?? -1, "ship it", "claude")).toBe(
+      "prompt-not-sent",
+    );
+  });
+
+  it("refuses retry when the original pane was replaced by another pane of the same agent", async () => {
+    const infos = new Map<number, PaneProcessInfo>([
+      [1, processInfo(1, "/repo", "claude", "agent", "claude")],
+    ]);
+    let pasteSucceeds = false;
+    const { tm, pty } = controllableWithPaste(infos, async () => pasteSucceeds);
+    await tm.init();
+    const running = tm.launchTask(INTENT, "ship it");
+    await driveToIdle(tm, pty);
+    const first = await running;
+    expect(first.outcome).toBe("prompt-failed");
+
+    await tm.splitActive("row");
+    infos.set(2, processInfo(2, "/repo", "claude", "agent", "claude"));
+    await driveToIdle(tm, pty, 2);
+    infos.set(1, processInfo(1, "/repo", "zsh", "idle-shell", null));
+    await tm.closePaneAt(0, 1);
+    expect(tm.allPaneIds()).toEqual([2]);
+    expect(tm.canRetryTaskPrompt(first.tabKey ?? -1)).toBe(false);
+
+    pasteSucceeds = true;
+    expect(await tm.retryTaskPrompt(first.tabKey ?? -1, "ship it", "claude")).toBe(
+      "prompt-not-sent",
+    );
   });
 });

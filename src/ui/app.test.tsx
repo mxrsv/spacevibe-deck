@@ -5,6 +5,7 @@ import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { boardOpen, editorRequest, saveDialogOpen, settingsOpen } from "../chrome/events";
 import {
+  archivedWorkspaceResumeAvailable,
   boardClosesAfterResume,
   bootOpensTheBoard,
   browserPanelObscured,
@@ -16,6 +17,7 @@ import {
   livePresetOpensATab,
   sidebarEffectivelyCollapsed,
   stripShowsTabs,
+  taskLaunchRecoveryValid,
   toggleSettingsPanel,
   workspacesOrphanedByClose,
 } from "./app-policy";
@@ -160,6 +162,7 @@ describe("settings load recovery layer", () => {
         usageConsentOpen: false,
         promptsOpen: false,
         createEntryOpen: false,
+        railCardMenuOpen: false,
         persistErrorVisible: false,
         settingsLoadError: true,
       }),
@@ -178,6 +181,7 @@ describe("settings load recovery layer", () => {
         usageConsentOpen: true,
         promptsOpen: false,
         createEntryOpen: false,
+        railCardMenuOpen: false,
         persistErrorVisible: false,
         settingsLoadError: false,
       }),
@@ -197,6 +201,7 @@ describe("settings load recovery layer", () => {
         usageConsentOpen: false,
         promptsOpen: false,
         createEntryOpen: true,
+        railCardMenuOpen: false,
         persistErrorVisible: false,
         settingsLoadError: false,
       }),
@@ -212,6 +217,7 @@ describe("settings load recovery layer", () => {
         usageConsentOpen: false,
         promptsOpen: false,
         createEntryOpen: false,
+        railCardMenuOpen: false,
         persistErrorVisible: false,
         settingsLoadError: false,
       }),
@@ -229,10 +235,69 @@ describe("settings load recovery layer", () => {
 });
 
 describe("task launcher mount", () => {
+  const source = readFileSync("src/ui/app.tsx", "utf8");
+
   it("keeps the legacy AgentQuickPicker compiled but unmounted", () => {
-    const source = readFileSync("src/ui/app.tsx", "utf8");
     expect(source).toContain("<QuickLaunch");
     expect(source).not.toContain("<AgentQuickPicker");
+  });
+
+  it("clears the shared draft only after a completed handoff", () => {
+    expect(source).toContain("launchClearsDraft(result.outcome)");
+    expect(source).not.toContain("launchSucceeded(outcome)");
+  });
+
+  it("retries prompt delivery in the stored tab without launching another", () => {
+    expect(source).toContain("retryTaskPrompt(");
+    expect(source).toContain("attempt.tabKey");
+    expect(source).toContain("attempt.prompt");
+    expect(source).not.toContain("launchTask(attempt");
+  });
+
+  it("withdraws Quick Launch recovery copy when the stored attempt is invalidated", () => {
+    expect(source).toContain("launchAttempt.value = null;\n      quickLaunchNotice.value = null;");
+  });
+
+  it("binds recovery to the model and effort that launched the target tab", () => {
+    expect(source).toContain("attempt.modelId === draft.modelId");
+    expect(source).toContain("attempt.reasoningEffort === draft.reasoningEffort");
+  });
+
+  it("shares one task-operation lock across both launcher surfaces and every Board entry", () => {
+    expect(source).toContain("function runTaskOperation(");
+    expect(source).toContain("externalPending={taskOperationPending.value}");
+    expect(source).toContain("onOpenWorkspace={openTaskBoard}");
+    expect(source).toContain("onOpenWorkspace: openTaskBoard");
+    expect(source).toContain("onTransferToBoard={transferQuickLaunchToBoard}");
+  });
+
+  it("withdraws retry when TabManager no longer owns the original pane", () => {
+    expect(source).toContain("tabsRef.current?.canRetryTaskPrompt(attempt.tabKey)");
+  });
+
+  it("focuses recovery through TabManager's exact-pane handoff target", () => {
+    expect(source).toContain("tabsRef.current?.canFocusTaskPrompt(attempt.tabKey)");
+    expect(source).toContain("tabsRef.current?.focusTaskPrompt(attempt.tabKey)");
+  });
+
+  it("subscribes recovery invalidation to the reactive tab snapshot", () => {
+    expect(source).toContain(
+      "const targetTabExists = tabViews.value.some((tab) => tab.key === attempt.tabKey)",
+    );
+  });
+});
+
+describe("task launcher recovery policy", () => {
+  const liveRecovery = {
+    targetTabExists: true,
+    targetPaneExists: true,
+    retryTargetExists: true,
+    attemptMatchesDraft: true,
+  } as const;
+
+  it("invalidates recovery when the original pane disappears while its tab survives", () => {
+    expect(taskLaunchRecoveryValid(liveRecovery)).toBe(true);
+    expect(taskLaunchRecoveryValid({ ...liveRecovery, targetPaneExists: false })).toBe(false);
   });
 });
 
@@ -573,6 +638,14 @@ describe("bootOpensTheBoard", () => {
 
   it("skips the board when the window boots to adopt a pane", () => {
     expect(bootOpensTheBoard({ kind: "adopt", token: "t-1" })).toBe(false);
+  });
+});
+
+describe("archivedWorkspaceResumeAvailable", () => {
+  it("serializes legacy workspace restores around the shared journal suspension", () => {
+    expect(archivedWorkspaceResumeAvailable(new Set())).toBe(true);
+    expect(archivedWorkspaceResumeAvailable(new Set(["/w/deck"]))).toBe(false);
+    expect(archivedWorkspaceResumeAvailable(new Set(["/w/other"]))).toBe(false);
   });
 });
 

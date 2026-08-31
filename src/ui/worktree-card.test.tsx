@@ -12,11 +12,18 @@ vi.mock("./controls/deck-icon", () => ({
   DeckIcon: ({ size }: { readonly size: number }) => <span data-deck-icon-size={size} />,
 }));
 
-import type { RailCardPane, RailTabRow, RailWorktreeGroup } from "./agent-rail-model";
+import type {
+  RailCardPane,
+  RailCardShell,
+  RailTabRow,
+  RailWorktreeGroup,
+} from "./agent-rail-model";
 import { WorktreeCard, type WorktreeCardProps } from "./worktree-card";
+import type { CardActions } from "./worktree-card-menus";
 
 function pane(overrides: Partial<RailCardPane> = {}): RailCardPane {
   return {
+    kind: "agent",
     paneId: 11,
     agent: "claude",
     state: "idle",
@@ -31,15 +38,29 @@ function pane(overrides: Partial<RailCardPane> = {}): RailCardPane {
   };
 }
 
+function shell(overrides: Partial<RailCardShell> = {}): RailCardShell {
+  return {
+    kind: "shell",
+    key: "shell:7",
+    tabIndex: 4,
+    label: "Shell",
+    active: false,
+    ...overrides,
+  };
+}
+
 function group(overrides: Partial<RailWorktreeGroup> = {}): RailWorktreeGroup {
+  const panes = overrides.panes ?? [];
   return {
     key: "/repo/ai-terminal",
     branch: "feature/ai-terminal",
     name: "ai-terminal",
     path: "/repo/ai-terminal",
+    repositoryPath: "/repo",
     primary: false,
     labelled: true,
-    panes: [],
+    entries: overrides.entries ?? panes,
+    panes,
     live: false,
     age: "",
     active: false,
@@ -84,6 +105,8 @@ function mount(props: Partial<WorktreeCardProps> & { readonly group: RailWorktre
         onToggle={() => {}}
         onFocusPane={NOOP_FOCUS}
         onClosePane={NOOP_CLOSE}
+        onCloseTab={NOOP_CLOSE}
+        onSelectTab={NOOP_CLOSE}
         {...props}
       />,
       host,
@@ -135,19 +158,194 @@ describe("WorktreeCard head (design §4)", () => {
     );
   });
 
-  it("draws a closed card's strip with segments, never sharing the open row's class", () => {
+  it("names the primary checkout by its branch, so the project word is not printed twice", () => {
+    // The defect: a primary checkout sits at the repository root, so its
+    // basename IS the project name the cluster header printed directly above.
+    mount({
+      project: "spacevibe-board",
+      group: group({
+        name: "spacevibe-board",
+        branch: "main",
+        primary: true,
+        panes: [pane()],
+      }),
+    });
+
+    const head = host.querySelector(".asr-card__head");
+    expect(head?.querySelector(".asr-card__name")?.textContent).toBe("main");
+    // The badge cannot restate the label, so it states the role instead.
+    expect(head?.querySelector(".asr-card__badge")?.textContent).toBe("Primary");
+    expect(head?.querySelector(".asr-card__badge")?.getAttribute("data-kind")).toBe("role");
+    // A `role` badge carries no glyph, so the head draws none at all.
+    expect(head?.querySelectorAll("[data-deck-icon-size]")).toHaveLength(0);
+    expect(head?.textContent).not.toContain("spacevibe-board");
+    expect(head?.getAttribute("title")).toBe("spacevibe-board · main");
+  });
+
+  it("states a worktree named after its branch exactly once", () => {
+    // `git worktree add ../fix-login fix-login` — folder and branch are one
+    // word, so a branch badge beside that label would repeat it.
+    mount({
+      project: "spacevibe-board",
+      group: group({ name: "fix-login", branch: "fix-login", panes: [pane()] }),
+    });
+
+    const head = host.querySelector(".asr-card__head");
+    expect(head?.querySelector(".asr-card__name")?.textContent).toBe("fix-login");
+    expect(head?.querySelector(".asr-card__badge")?.textContent).toBe("Worktree");
+    expect(head?.getAttribute("title")).toBe("spacevibe-board · fix-login");
+  });
+
+  it("merges a closed card's segments by agent kind, never sharing the open row's class", () => {
     // Regression pin: a strip segment and an open row were briefly the same
     // class, which made "how many rows are open" indistinguishable from "how
     // wide is the closed strip" — an agent-rail integration test passed
     // vacuously against a card that was never opened until this was caught.
+    //
+    // Rewritten 2026-08-27 (spec
+    // `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §4/§5.2): a
+    // segment is one agent KIND, so two Claudes are ONE segment carrying `×2`;
+    // it is a `<button>` rather than a `<span role="img">`; and the native
+    // `title` is gone (DL-23.10 — a `title` never appears on keyboard focus,
+    // so the state word lives in the accessible name alone).
     mount({
       open: false,
-      group: group({ panes: [pane({ paneId: 1 }), pane({ paneId: 2 })] }),
+      group: group({
+        panes: [pane({ paneId: 1 }), pane({ paneId: 2, label: "Claude 2" })],
+      }),
     });
 
-    expect(host.querySelectorAll(".asr-card__strip .asr-card__seg")).toHaveLength(2);
+    const segments = [...host.querySelectorAll(".asr-card__strip .asr-card__seg")];
     expect(host.querySelector(".asr-card__strip .asr-card__row")).toBeNull();
     expect(host.querySelector(".asr-card__row")).toBeNull();
+    expect(
+      segments.map((segment) => ({
+        tag: segment.tagName,
+        title: segment.getAttribute("title"),
+        label: segment.getAttribute("aria-label"),
+      })),
+    ).toEqual([
+      {
+        tag: "BUTTON",
+        title: null,
+        label:
+          "Focus 2 Claude agents, loudest idle in spacevibe-bench · ai-terminal · feature/ai-terminal",
+      },
+    ]);
+    expect(segments[0]?.textContent).toContain("×2");
+  });
+
+  it("gives a closed card no `+` when nothing can wire the actions menu (DL-19.7)", () => {
+    mount({ open: false, group: group({ panes: [pane({ paneId: 1 })] }) });
+    expect(host.querySelector(".asr-card__seg--add")).toBeNull();
+  });
+
+  it("carries the `+` after the segments once the actions menu is wired", () => {
+    mount({
+      open: false,
+      group: group({ panes: [pane({ paneId: 1 })] }),
+      actions: {
+        agents: [],
+        agentsResolved: true,
+        onRunAgent: () => {},
+        onSplitHere: () => {},
+      },
+    });
+
+    const segments = [...host.querySelectorAll(".asr-card__strip .asr-card__seg")];
+    // Last, so the bar reads agents → more agents → create. Indexed rather
+    // than `Array.at`, which this suite's `lib` does not carry.
+    const add = segments[segments.length - 1];
+    expect(add?.classList.contains("asr-card__seg--add")).toBe(true);
+    expect(add?.getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+describe("WorktreeCard actions menu", () => {
+  const CARD = group({ name: "wt", branch: "feat/strip-actions", panes: [pane({ paneId: 1 })] });
+
+  function openMenu(actions: Partial<CardActions> = {}): HTMLElement | null {
+    mount({
+      open: false,
+      group: CARD,
+      actions: {
+        agents: [{ id: "claude", label: "Claude", detail: "Sonnet 4.5" }],
+        agentsResolved: true,
+        onRunAgent: () => {},
+        onSplitHere: () => {},
+        ...actions,
+      },
+    });
+    click(host.querySelector(".asr-card__seg--add"));
+    return host.querySelector<HTMLElement>(".asr-pop--actions");
+  }
+
+  it("opens on an action row — no heading, and no separator above the first group", () => {
+    const menu = openMenu();
+
+    expect(menu).not.toBeNull();
+    // The head printed the checkout and branch 6px from a card that states
+    // both (owner, 2026-08-30).
+    expect(menu?.textContent).not.toContain("Actions for");
+    expect(menu?.textContent).not.toContain("Runs in");
+    expect(menu?.querySelector(".asr-act__head")).toBeNull();
+    expect(menu?.firstElementChild?.classList.contains("asr-pop__sep")).toBe(false);
+    expect(menu?.firstElementChild?.classList.contains("asr-act")).toBe(true);
+    // The subject is still stated for a reader who cannot see the card.
+    expect(menu?.getAttribute("aria-label")).toBe(
+      "Actions for spacevibe-bench · wt · feat/strip-actions",
+    );
+  });
+
+  it("carries the agent rows the `+` exists to offer", () => {
+    const menu = openMenu();
+    const first = menu?.querySelector(".asr-act__title");
+    expect(first?.textContent).toBe("Run Claude");
+  });
+
+  it("states a probe still running as a note the arrow keys cannot land on", () => {
+    const menu = openMenu({ agents: [], agentsResolved: false });
+
+    const note = menu?.querySelector(".asr-act__note");
+    expect(note?.textContent).toContain("Looking for");
+    // The roving focus walks buttons; a note must not be one, or it would take
+    // an Arrow-key stop and do nothing there.
+    expect(note?.tagName).toBe("P");
+    const buttons = [...(menu?.querySelectorAll("button") ?? [])];
+    expect(buttons.some((button) => button.contains(note ?? null))).toBe(false);
+    expect(buttons[0]?.querySelector(".asr-act__title")?.textContent).toBe("New split here");
+  });
+
+  it("replaces the note with the agent rows when discovery lands, without reopening", () => {
+    const menu = openMenu({ agents: [], agentsResolved: false });
+    expect(menu?.querySelector(".asr-act__note")).not.toBeNull();
+
+    mount({
+      open: false,
+      group: CARD,
+      actions: {
+        agents: [{ id: "claude", label: "Claude", detail: "Sonnet 4.5" }],
+        agentsResolved: true,
+        onRunAgent: () => {},
+        onSplitHere: () => {},
+      },
+    });
+
+    const after = host.querySelector<HTMLElement>(".asr-pop--actions");
+    // The same node: the menu updated in place rather than being reopened.
+    expect(after).toBe(menu);
+    expect(after?.querySelector(".asr-act__note")).toBeNull();
+    expect(after?.querySelector(".asr-act__title")?.textContent).toBe("Run Claude");
+  });
+
+  it("routes an empty answer to Settings instead of leaving the group out", () => {
+    const onManageAgents = vi.fn();
+    const menu = openMenu({ agents: [], agentsResolved: true, onManageAgents });
+
+    const first = menu?.querySelector(".asr-act");
+    expect(first?.querySelector(".asr-act__title")?.textContent).toBe("No agent to run");
+    click(first);
+    expect(onManageAgents).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -187,10 +385,10 @@ describe("WorktreeCard open list (design §5)", () => {
     const loads = host.querySelectorAll(".asr-card__load");
     expect(loads).toHaveLength(2);
     // The idle row's track is present but empty — no bars — while the busy
-    // row's carries its three.
+    // row's carries one compositor-friendly pulse.
     expect(loads[0].children).toHaveLength(0);
     expect(loads[0].getAttribute("data-busy")).toBe("false");
-    expect(loads[1].children).toHaveLength(3);
+    expect(loads[1].children).toHaveLength(1);
     expect(loads[1].getAttribute("data-busy")).toBe("true");
   });
 
@@ -318,7 +516,8 @@ describe("WorktreeCard host parity — no gate (review reversal, 2026-08-26)", (
       group: group({ panes: [pane({ paneId: 1 }), pane({ paneId: 2 })] }),
     });
 
-    expect(host.querySelectorAll(".asr-card__seg")).toHaveLength(2);
+    // Two panes of ONE agent kind — one merged segment since 2026-08-27.
+    expect(host.querySelectorAll(".asr-card__seg")).toHaveLength(1);
   });
 
   it("draws the open list's rows regardless of host", () => {
@@ -355,6 +554,18 @@ describe("WorktreeCard bare row (design §6)", () => {
     expect(bare?.querySelector(".asr-bare__badge")?.textContent).toContain("main");
   });
 
+  it("follows the head's naming rule when the primary checkout has nothing open", () => {
+    mount({
+      project: "spacevibe-board",
+      group: group({ name: "spacevibe-board", branch: "main", primary: true, panes: [] }),
+    });
+
+    const bare = host.querySelector(".asr-bare");
+    expect(bare?.querySelector(".asr-bare__name")?.textContent).toBe("main");
+    expect(bare?.querySelector(".asr-bare__badge")?.textContent).toBe("Primary");
+    expect(bare?.textContent).not.toContain("spacevibe-board");
+  });
+
   it("keeps a bare row reachable: pressing it opens the launcher for that checkout", () => {
     const onNewTabIn = vi.fn();
     mount({
@@ -385,39 +596,42 @@ describe("WorktreeCard bare row (design §6)", () => {
   });
 });
 
-describe("WorktreeCard bare row — a live shell tab (item 1 fix, review 2026-08-26)", () => {
-  it("does not claim the checkout is empty, and reaches the shell tab instead of spawning", () => {
+describe("WorktreeCard shell rows", () => {
+  it("keeps a live shell tab inside the card instead of claiming the checkout is empty", () => {
     const onNewTabIn = vi.fn();
     const onSelectTab = vi.fn();
     mount({
       onNewTabIn,
       onSelectTab,
-      group: group({ path: "/repo/docs", panes: [], rows: [tabRow({ index: 4 })] }),
+      open: true,
+      group: group({
+        path: "/repo/docs",
+        entries: [shell({ tabIndex: 4 })],
+        panes: [],
+        rows: [tabRow({ index: 4 })],
+      }),
     });
 
-    // Still a bare row (no agent panes to build a card from) — but the
-    // shell tab already open here must be distinguishable and reachable.
-    expect(host.querySelector(".asr-card")).toBeNull();
-    const bare = host.querySelector("button.asr-bare");
-    expect(bare).not.toBeNull();
-    expect(bare?.getAttribute("data-shell")).toBe("true");
-    expect(bare?.getAttribute("aria-label")).toBe(
-      "Open shell tab in spacevibe-bench · ai-terminal · feature/ai-terminal",
-    );
+    expect(host.querySelector(".asr-card")).not.toBeNull();
+    const row = host.querySelector('.asr-card__row[data-kind="shell"]');
+    expect(row).not.toBeNull();
 
-    click(bare);
+    click(row?.querySelector(".asr-card__hit"));
     expect(onSelectTab).toHaveBeenCalledWith(4);
     expect(onSelectTab).toHaveBeenCalledTimes(1);
     expect(onNewTabIn).not.toHaveBeenCalled();
   });
 
-  it("degrades to a static row rather than an inert button when onSelectTab is unwired (DL-19.7)", () => {
-    mount({ group: group({ panes: [], rows: [tabRow()] }) });
+  it("closes the shell tab through the tab callback", () => {
+    const onCloseTab = vi.fn();
+    mount({
+      open: true,
+      onCloseTab,
+      group: group({ entries: [shell()], panes: [], rows: [tabRow()] }),
+    });
 
-    const bare = host.querySelector(".asr-bare");
-    expect(bare).not.toBeNull();
-    expect(bare?.tagName).toBe("DIV");
-    expect(bare?.getAttribute("data-shell")).toBe("true");
+    click(host.querySelector('.asr-card__row[data-kind="shell"] .asr-row__action--close'));
+    expect(onCloseTab).toHaveBeenCalledWith(4);
   });
 });
 

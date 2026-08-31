@@ -9,7 +9,7 @@ import type { PaneAttentionSnapshot } from "./agent-attention";
 import type { AgentNotifier } from "./agent-notifier";
 import type { InjectOutcome } from "../prompts/inject";
 import type { MaterializeIntent } from "./tab-materialize";
-import type { LaunchTaskOutcome } from "./task-prompt-send";
+import type { LaunchTaskOutcome, LaunchTaskResult } from "./task-prompt-send";
 import type { Settings } from "../settings/settings-schema";
 import type { SurfaceStrip } from "./surface-strip";
 
@@ -79,6 +79,12 @@ export interface TabManagerDeps extends TerminalManagerDeps {
    */
   onToggleUsage?: () => void;
   /**
+   * Route `new-tab` through App, which owns the shared task-launcher flight.
+   * Missing keeps the standalone/test behaviour of opening Quick Launch
+   * directly.
+   */
+  onOpenTaskLauncher?: (workspacePath: string | null) => void;
+  /**
    * Test seam — defaults to a real `createAgentNotifier` wired to the live
    * settings store, live window focus, and the Task 20 Tauri adapter.
    * Injected notifier wins, so tests never hit the real native API.
@@ -126,6 +132,15 @@ export interface TabManager {
     destination?: string | null,
     profileId?: string | null,
   ): Promise<boolean>;
+  /**
+   * The rail card's `New split here`: split a tab that belongs to
+   * `workspacePath`, materializing one first when the checkout has none. The
+   * one fork the strip-actions work opened (spec
+   * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §11.1) — the
+   * caller passes a PATH and receives a boolean, so no pane id leaves the
+   * terminal layer, exactly as `onNewTabIn` already works.
+   */
+  splitInWorkspace(workspacePath: string): Promise<boolean>;
   /** The command a pane was started with; null when it had none. */
   launchCommandFor(paneId: number): string | null;
   /**
@@ -183,7 +198,23 @@ export interface TabManager {
    * readiness gate is polled here rather than reusing AgentLauncher's, which
    * reports SHELL readiness.
    */
-  launchTask(intent: MaterializeIntent, prompt: string | null): Promise<LaunchTaskOutcome>;
+  launchTask(intent: MaterializeIntent, prompt: string | null): Promise<LaunchTaskResult>;
+  /**
+   * Retry an unpasted task prompt in the tab created by `launchTask`.
+   * Never materializes another tab; an unknown tab or changed agent returns
+   * `"prompt-not-sent"` without writing anything.
+   */
+  retryTaskPrompt(
+    tabKey: number,
+    prompt: string,
+    expectedAgent: string,
+  ): Promise<LaunchTaskOutcome>;
+  /** Whether retry still owns the exact pane that failed delivery. */
+  canRetryTaskPrompt(tabKey: number): boolean;
+  /** Whether an incomplete task handoff still owns its exact original pane. */
+  canFocusTaskPrompt(tabKey: number): boolean;
+  /** Focus the exact pane owned by an incomplete task handoff. */
+  focusTaskPrompt(tabKey: number): boolean;
   newTab(): Promise<void>;
   /** Move the focused pane into a brand-new window (spec §10.3). */
   movePaneToNewWindow(): Promise<void>;

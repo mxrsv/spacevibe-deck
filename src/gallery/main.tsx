@@ -10,7 +10,6 @@ import "./chatgpt-direction.css";
 import "./agent-status-rail.css";
 import "./agent-rail-variants.css";
 import "./rail-structure-variants.css";
-import "./rail-worktree-cards.css";
 import "./sections/settings-direction.css";
 import "./sections/launch-profiles-section.css";
 import "./sections/new-task-launcher-section.css";

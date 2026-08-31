@@ -3,7 +3,12 @@ import { render } from "preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentOption } from "../lib/agent-catalog";
 import type { RecentWorkspace } from "../lib/workspace-recents";
-import { LauncherFields, problemTone, type LauncherFieldsProps } from "./launcher-fields";
+import {
+  LauncherFields,
+  launcherPendingLabel,
+  problemTone,
+  type LauncherFieldsProps,
+} from "./launcher-fields";
 import { EMPTY_DRAFT, withAgent, withWorkspace, type NewTaskDraft } from "./new-task-draft";
 
 const AGENTS: readonly AgentOption[] = [
@@ -40,6 +45,9 @@ function mount(overrides: Partial<LauncherFieldsProps> = {}): {
     openProblem: null,
     agentsResolved: true,
     notice: null,
+    canRetryDelivery: false,
+    canFocusOpenedAgent: false,
+    hasUserDraftContent: false,
     onDraftChange,
     onPickFolder,
     onCreateWorkspace: vi.fn(),
@@ -47,6 +55,9 @@ function mount(overrides: Partial<LauncherFieldsProps> = {}): {
     onManageAgents,
     onStartTask,
     onOpenAgent: vi.fn(),
+    onRetryDelivery: vi.fn(),
+    onFocusOpenedAgent: vi.fn(),
+    onClearDraft: vi.fn(),
     ...overrides,
   };
   render(<LauncherFields {...props} />, host);
@@ -217,6 +228,84 @@ describe("LauncherFields", () => {
     mount({ draft: ready(), pending: "opening-agent" });
     expect(host.querySelector<HTMLTextAreaElement>("textarea")?.disabled).toBe(true);
     expect(host.querySelector<HTMLButtonElement>(".nt-primary-action")?.disabled).toBe(true);
+  });
+
+  it.each([
+    ["picking-folder", "Opening folder picker…"],
+    ["selecting-workspace", "Checking workspace…"],
+    ["creating-workspace", "Creating workspace…"],
+    ["creating-worktree", "Creating worktree…"],
+    ["opening-agent", "Opening agent…"],
+    ["sending-prompt", "Starting agent and staging task…"],
+    ["retrying-prompt", "Retrying task delivery…"],
+  ] as const)("announces %s by name", (pending, label) => {
+    expect(launcherPendingLabel(pending)).toBe(label);
+    mount({ draft: ready(), pending });
+    expect(host.querySelector('[role="status"]')?.textContent).toContain(label);
+  });
+
+  it("offers focus without retry when the prompt is already staged", () => {
+    const onFocusOpenedAgent = vi.fn();
+    const onRetryDelivery = vi.fn();
+    mount({
+      draft: ready(),
+      notice: "Task staged — press Enter in Claude Code",
+      canFocusOpenedAgent: true,
+      canRetryDelivery: false,
+      onFocusOpenedAgent,
+      onRetryDelivery,
+    });
+
+    const focus = Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find(
+      (button) => button.textContent === "Focus opened agent",
+    );
+    expect(focus).toBeDefined();
+    expect(host.textContent).not.toContain("Retry delivery");
+    focus?.click();
+    expect(onFocusOpenedAgent).toHaveBeenCalledTimes(1);
+    expect(onRetryDelivery).not.toHaveBeenCalled();
+  });
+
+  it("offers safe retry and an explicit draft reset", () => {
+    const onRetryDelivery = vi.fn();
+    const onClearDraft = vi.fn();
+    mount({
+      draft: ready(),
+      canFocusOpenedAgent: true,
+      canRetryDelivery: true,
+      hasUserDraftContent: true,
+      onRetryDelivery,
+      onClearDraft,
+    });
+
+    const buttons = Array.from(host.querySelectorAll<HTMLButtonElement>("button"));
+    buttons.find((button) => button.textContent === "Retry delivery")?.click();
+    buttons.find((button) => button.textContent === "Clear draft")?.click();
+    expect(onRetryDelivery).toHaveBeenCalledTimes(1);
+    expect(onClearDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not call contextual workspace and agent defaults a user-authored draft", () => {
+    mount({
+      draft: { ...ready(), prompt: "" },
+      hasUserDraftContent: false,
+    });
+
+    expect(host.textContent).not.toContain("Clear draft");
+  });
+
+  it("blocks transfer to the full composer while a launch is pending", () => {
+    const onOpenFullComposer = vi.fn();
+    mount({
+      draft: ready(),
+      pending: "sending-prompt",
+      onOpenFullComposer,
+    });
+
+    const transfer = host.querySelector<HTMLButtonElement>('[aria-label="Open full composer"]');
+    expect(transfer?.disabled).toBe(true);
+    transfer?.click();
+    expect(onOpenFullComposer).not.toHaveBeenCalled();
   });
 });
 

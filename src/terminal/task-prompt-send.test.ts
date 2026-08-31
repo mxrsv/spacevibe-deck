@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { PaneProcessInfo } from "../lib/process-info";
 import type { AttentionKind, PaneAttentionSnapshot } from "./agent-attention";
 import {
-  launchSucceeded,
+  launchCanRetryPrompt,
+  launchClearsDraft,
   promptReadyToSend,
   TASK_PROMPT_AUTOSEND,
   TASK_PROMPT_READY_TIMEOUT_MS,
@@ -115,13 +116,23 @@ describe("promptReadyToSend", () => {
     ).toBe(true);
   });
 
-  it("treats a composer-only delivery as success while auto-send is off", () => {
+  it("clears the draft only after the task was submitted or no prompt was requested", () => {
     expect(TASK_PROMPT_AUTOSEND).toBe(false);
-    expect(launchSucceeded("prompt-pending")).toBe(true);
-    expect(launchSucceeded("started")).toBe(true);
-    expect(launchSucceeded("prompt-not-sent")).toBe(false);
-    expect(launchSucceeded("prompt-failed")).toBe(false);
-    expect(launchSucceeded("spawn-failed")).toBe(false);
+    expect(launchClearsDraft("started")).toBe(true);
+    expect(launchClearsDraft("sent")).toBe(true);
+    expect(launchClearsDraft("prompt-pending")).toBe(false);
+    expect(launchClearsDraft("prompt-not-sent")).toBe(false);
+    expect(launchClearsDraft("prompt-failed")).toBe(false);
+    expect(launchClearsDraft("spawn-failed")).toBe(false);
+  });
+
+  it("retries only outcomes that prove no prompt was pasted", () => {
+    expect(launchCanRetryPrompt("prompt-not-sent")).toBe(true);
+    expect(launchCanRetryPrompt("prompt-failed")).toBe(true);
+    expect(launchCanRetryPrompt("prompt-pending")).toBe(false);
+    expect(launchCanRetryPrompt("started")).toBe(false);
+    expect(launchCanRetryPrompt("sent")).toBe(false);
+    expect(launchCanRetryPrompt("spawn-failed")).toBe(false);
   });
 
   it("polls often enough to try many times before it gives up", () => {

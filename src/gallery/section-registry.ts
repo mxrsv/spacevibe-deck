@@ -68,15 +68,18 @@ export const GALLERY_SECTIONS: readonly GallerySection[] = [
   { id: "overlays", label: "overlays", Section: OverlaysSection },
   { id: "board", label: "open board", Section: BoardSection },
   { id: "explorer-tree", label: "explorer tree", Section: ExplorerTreeSection },
-  /* PARKED 2026-08-27, the `unread-mark-variants` precedent: candidate C —
-     grouped segments, the segment menu, the width fold and the actions menu —
-     SHIPPED into `worktree-card-strip.tsx` / `worktree-card-menus.tsx`, so its
-     "per-pane — what ships" control column stopped being current and the
-     comparison started lying. The files stay in the tree as the drawn record
-     of what was chosen and what was turned down; the registry entry is what
-     goes.
-  { id: "strip-actions", label: "closed-strip actions", Section: StripActionsVariantsSection },
-  */
+  /* PARKED 2026-08-30, the same day it was registered — the `unread-mark-variants`
+     precedent again: the owner picked `SquareHalf` and `GitFork`, they shipped into
+     `worktree-card-menus.tsx`'s `ACTION_GLYPHS`, and a comparison whose incumbent
+     column is no longer the incumbent shows six treatments that lost beside two that
+     are simply what the menu draws. `action-glyph-variants.tsx` and its stylesheet
+     stay in the tree as the drawn record of what the choice was made against. */
+  /* PARKED 2026-08-27, the `unread-mark-variants` precedent: the closed-strip
+     actions candidate SHIPPED into `worktree-card-strip.tsx` /
+     `worktree-card-menus.tsx`, so its "per-pane — what ships" control column
+     stopped being current and the comparison started lying. The specimen files
+     stay in the tree as the drawn record of what was chosen and what was turned
+     down; the registry entry and its import are what go. */
   {
     id: "launch-profiles",
     label: "launch profiles",

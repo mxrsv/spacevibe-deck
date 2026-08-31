@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // stores and IPC in through its imports.
 const missingPaths = new Set<string>();
 let pickedFolder: string | null = null;
+let dirsGate: Promise<void> | null = null;
 vi.mock("../host/store-host", () => ({
   Store: {
     load: vi.fn(async () => ({
@@ -27,6 +28,9 @@ vi.mock("@tauri-apps/api/path", () => ({
 vi.mock("../host/bridge", () => ({
   invoke: vi.fn(async (cmd: string, args?: { paths?: string[] }) => {
     if (cmd === "dirs_exist") {
+      if (dirsGate !== null) {
+        await dirsGate;
+      }
       return (args?.paths ?? []).map((path) => !missingPaths.has(path));
     }
     return null;
@@ -48,8 +52,7 @@ vi.mock("../terminal/pty-client", () => ({
   },
 }));
 
-import { WORKSPACES_VERSION } from "../lib/workspace-recents";
-import type { RecentWorkspace } from "../lib/workspace-recents";
+import { WORKSPACES_VERSION, type RecentWorkspace } from "../lib/workspace-recents";
 import { PRESETS_VERSION } from "../lib/preset-schema";
 import { presetsData } from "../presets/presets-store";
 import { workspacesData } from "./workspaces-store";
@@ -106,6 +109,7 @@ describe("OpenBoard home view", () => {
     pickedFolder = null;
     detected = [];
     detectGate = null;
+    dirsGate = null;
     settings.value = DEFAULT_SETTINGS;
   });
 
@@ -125,6 +129,13 @@ describe("OpenBoard home view", () => {
       canBrowseSessions?: boolean;
       openWorkspacePaths?: ReadonlySet<string>;
       contextWorkspacePath?: string | null;
+      canRetryDelivery?: boolean;
+      canFocusOpenedAgent?: boolean;
+      onRetryDelivery?: () => Promise<LaunchTaskOutcome>;
+      onFocusOpenedAgent?: () => void;
+      onClearDraft?: () => void;
+      hasUserDraftContent?: boolean;
+      externalPending?: "sending-prompt" | "opening-agent" | "retrying-prompt" | null;
     } = {},
   ): Promise<void> => {
     await act(async () => {
@@ -137,6 +148,13 @@ describe("OpenBoard home view", () => {
           onCancel={() => {}}
           onStartTask={onStartTask}
           onOpenAgent={onStartTask}
+          canRetryDelivery={props.canRetryDelivery ?? false}
+          canFocusOpenedAgent={props.canFocusOpenedAgent ?? false}
+          hasUserDraftContent={props.hasUserDraftContent ?? false}
+          externalPending={props.externalPending ?? null}
+          onRetryDelivery={props.onRetryDelivery ?? (async () => "prompt-not-sent")}
+          onFocusOpenedAgent={props.onFocusOpenedAgent ?? (() => {})}
+          onClearDraft={props.onClearDraft ?? (() => {})}
           onManageAgents={() => {}}
           onResumeSession={async () => true}
         />,
@@ -255,6 +273,77 @@ describe("OpenBoard home view", () => {
 
     expect(newTaskDraft.value.agentId).toBe("claude");
     expect(newTaskDraft.value.workspacePath).toBe("/w/beta");
+  });
+
+  it("keeps the old draft unlaunchable until a new workspace selection resolves", async () => {
+    let releaseDirs!: () => void;
+    dirsGate = new Promise<void>((resolve) => {
+      releaseDirs = resolve;
+    });
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    seed(["/w/new"]);
+    newTaskDraft.value = {
+      ...EMPTY_DRAFT,
+      workspacePath: "/w/old",
+      agentId: "claude",
+      prompt: "ship the old workspace",
+    };
+    const onStartTask = vi.fn(async () => "sent" as LaunchTaskOutcome);
+    await mount(onStartTask);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    host.querySelector<HTMLButtonElement>(".row__open")?.click();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const primary = host.querySelector<HTMLButtonElement>(".nt-primary-action");
+    expect(primary?.disabled).toBe(true);
+    primary?.click();
+    expect(onStartTask).not.toHaveBeenCalled();
+
+    await act(async () => {
+      releaseDirs();
+      await dirsGate;
+    });
+    await settle();
+    expect(newTaskDraft.value.workspacePath).toBe("/w/new");
+  });
+
+  it("does not let a selection that outlives the board retarget the shared draft", async () => {
+    let releaseDirs!: () => void;
+    dirsGate = new Promise<void>((resolve) => {
+      releaseDirs = resolve;
+    });
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    seed(["/w/stale"]);
+    await mount();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    host.querySelector<HTMLButtonElement>(".row__open")?.click();
+    await act(async () => {
+      await Promise.resolve();
+      render(null, host);
+    });
+    newTaskDraft.value = {
+      ...EMPTY_DRAFT,
+      workspacePath: "/w/quick-launch",
+      agentId: "claude",
+      prompt: "keep this task",
+    };
+
+    await act(async () => {
+      releaseDirs();
+      await dirsGate;
+    });
+    await settle();
+
+    expect(newTaskDraft.value.workspacePath).toBe("/w/quick-launch");
+    expect(newTaskDraft.value.prompt).toBe("keep this task");
   });
 
   it("puts the caret in the prompt, not on the board shell", async () => {
@@ -377,6 +466,121 @@ describe("OpenBoard home view", () => {
     expect(notice?.textContent).toContain("Couldn't start a session here");
   });
 
+  it("blocks a second launch while the other launcher surface owns the operation", async () => {
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    newTaskDraft.value = {
+      ...EMPTY_DRAFT,
+      workspacePath: "/w/alpha",
+      agentId: "claude",
+      prompt: "ship it",
+    };
+    const onStartTask = vi.fn(async () => "sent" as LaunchTaskOutcome);
+    await mount(onStartTask, { externalPending: "sending-prompt" });
+    await settle();
+
+    const primary = host.querySelector<HTMLButtonElement>(".nt-primary-action");
+    expect(primary?.disabled).toBe(true);
+    expect(primary?.textContent).toContain("Starting agent and staging task");
+    await act(async () => primary?.click());
+    expect(onStartTask).not.toHaveBeenCalled();
+  });
+
+  it("consumes the folder shortcut without changing the draft while another launcher is busy", async () => {
+    pickedFolder = "/w/other";
+    await mount(undefined, { externalPending: "sending-prompt" });
+
+    const event = new KeyboardEvent("keydown", {
+      key: "o",
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    await act(async () => {
+      host.querySelector<HTMLDivElement>(".open-board")?.dispatchEvent(event);
+    });
+    await settle();
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(newTaskDraft.value.workspacePath).toBeNull();
+  });
+
+  it("keeps a staged task on the board and points to the opened agent", async () => {
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    seed(["/w/alpha"]);
+    const onStartTask = vi.fn(async () => "prompt-pending" as LaunchTaskOutcome);
+    const onFocusOpenedAgent = vi.fn();
+    await mount(onStartTask, { canFocusOpenedAgent: true, onFocusOpenedAgent });
+    await settle();
+
+    const textarea = host.querySelector<HTMLTextAreaElement>("textarea");
+    if (textarea === null) throw new Error("no task prompt");
+    await act(async () => {
+      textarea.value = "ship it";
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => host.querySelector<HTMLButtonElement>(".nt-primary-action")?.click());
+    await settle();
+
+    expect(host.querySelector(".open-board")).not.toBeNull();
+    expect(host.textContent).toContain("focus that pane and press Enter to send it");
+    expect(host.textContent).not.toContain("Retry delivery");
+    const focus = Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find(
+      (button) => button.textContent === "Focus opened agent",
+    );
+    focus?.click();
+    expect(onFocusOpenedAgent).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries the original delivery callback instead of launching again", async () => {
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    seed(["/w/alpha"]);
+    const onStartTask = vi.fn(async () => "prompt-failed" as LaunchTaskOutcome);
+    const onRetryDelivery = vi.fn(async () => "prompt-pending" as LaunchTaskOutcome);
+    await mount(onStartTask, { canRetryDelivery: true, onRetryDelivery });
+    await settle();
+
+    const textarea = host.querySelector<HTMLTextAreaElement>("textarea");
+    if (textarea === null) throw new Error("no task prompt");
+    await act(async () => {
+      textarea.value = "ship it";
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => host.querySelector<HTMLButtonElement>(".nt-primary-action")?.click());
+    await settle();
+    const retry = Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find(
+      (button) => button.textContent === "Retry delivery",
+    );
+    await act(async () => retry?.click());
+    await settle();
+
+    expect(onStartTask).toHaveBeenCalledTimes(1);
+    expect(onRetryDelivery).toHaveBeenCalledTimes(1);
+  });
+
+  it("withdraws retry guidance when editing invalidates the original attempt", async () => {
+    detected = [{ name: "claude", path: "/usr/local/bin/claude" }];
+    seed(["/w/alpha"]);
+    const onStartTask = vi.fn(async () => "prompt-failed" as LaunchTaskOutcome);
+    await mount(onStartTask, { canRetryDelivery: true, canFocusOpenedAgent: true });
+    await settle();
+
+    const textarea = host.querySelector<HTMLTextAreaElement>("textarea");
+    if (textarea === null) throw new Error("no task prompt");
+    await act(async () => {
+      textarea.value = "ship it";
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await settle();
+    await act(async () => host.querySelector<HTMLButtonElement>(".nt-primary-action")?.click());
+    await settle();
+    expect(host.textContent).toContain("retry delivery");
+
+    await mount(onStartTask, { canRetryDelivery: false, canFocusOpenedAgent: false });
+    await settle();
+
+    expect(host.textContent).not.toContain("retry delivery");
+  });
+
   it("opens session history as a dedicated subview and Escape returns Home", async () => {
     await mount(undefined, { canBrowseSessions: true });
 
@@ -404,6 +608,12 @@ describe("OpenBoard home view", () => {
           onCancel={onCancel}
           onStartTask={async () => "sent"}
           onOpenAgent={async () => "started"}
+          canRetryDelivery={false}
+          canFocusOpenedAgent={false}
+          hasUserDraftContent={false}
+          onRetryDelivery={async () => "prompt-not-sent"}
+          onFocusOpenedAgent={() => {}}
+          onClearDraft={() => {}}
           onManageAgents={() => {}}
           onResumeSession={async () => true}
         />,

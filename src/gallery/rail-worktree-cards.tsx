@@ -63,6 +63,7 @@ function cardPane(fields: {
   readonly focused?: boolean;
 }): RailCardPane {
   return {
+    kind: "agent",
     paneId: fields.paneId,
     agent: fields.agent,
     state: fields.state,
@@ -99,8 +100,12 @@ function worktreeGroup(fields: {
     branch: fields.branch,
     name: fields.name,
     path: fields.key,
+    // The specimen draws one repository per card, so a checkout is its own
+    // repository here; the production model resolves the primary worktree.
+    repositoryPath: fields.key,
     primary: fields.primary ?? false,
     labelled: true,
+    entries: panes,
     panes,
     live: panes.some((pane) => pane.state === "working"),
     age: fields.age ?? "",
@@ -249,6 +254,8 @@ function CardRail({ initialOpenKey }: { readonly initialOpenKey: string | null }
                 onToggle={toggle}
                 onFocusPane={NOOP}
                 onClosePane={NOOP}
+                onCloseTab={NOOP}
+                onSelectTab={NOOP}
                 onNewTabIn={NOOP}
               />
             ))}

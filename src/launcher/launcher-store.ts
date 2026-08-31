@@ -25,6 +25,9 @@ import { EMPTY_DRAFT, withWorkspace, type NewTaskDraft } from "./new-task-draft"
 
 export const newTaskDraft = signal<NewTaskDraft>(EMPTY_DRAFT);
 
+/** Whether a person has changed task-bearing fields, excluding contextual defaults. */
+export const taskDraftTouched = signal(false);
+
 export const quickLaunchOpen = signal(false);
 
 /**
@@ -35,7 +38,31 @@ export const quickLaunchOpen = signal(false);
  */
 export const quickLaunchWorkspace = signal<string | null>(null);
 
+export interface QuickLaunchRetarget {
+  readonly currentPath: string;
+  readonly requestedPath: string;
+}
+
+/** A contextual project change awaiting an explicit Keep / Move / Clear choice. */
+export const quickLaunchRetarget = signal<QuickLaunchRetarget | null>(null);
+
+function taskFieldsChanged(current: NewTaskDraft, next: NewTaskDraft): boolean {
+  return (
+    current.prompt !== next.prompt ||
+    current.workspacePath !== next.workspacePath ||
+    current.agentId !== next.agentId ||
+    current.modelId !== next.modelId ||
+    current.reasoningEffort !== next.reasoningEffort
+  );
+}
+
 export function updateDraft(next: NewTaskDraft): void {
+  if (taskFieldsChanged(newTaskDraft.value, next)) {
+    taskDraftTouched.value = true;
+  }
+  if (next.workspacePath !== newTaskDraft.value.workspacePath) {
+    quickLaunchRetarget.value = null;
+  }
   newTaskDraft.value = next;
 }
 
@@ -48,11 +75,12 @@ export function updateDraft(next: NewTaskDraft): void {
  */
 export function clearDraft(): void {
   newTaskDraft.value = { ...EMPTY_DRAFT, promptExpanded: newTaskDraft.value.promptExpanded };
+  taskDraftTouched.value = false;
 }
 
 /**
- * Fill the workspace from context — a recents row, a pinned project header, a
- * freshly created folder or worktree.
+ * Fill the workspace from context — the active tab, newest live recent, or a
+ * pinned project header.
  *
  * `seedAgentId` is that workspace's remembered agent, already resolved against
  * the runnable list by the caller. It is applied ONLY while the draft has no
@@ -62,23 +90,79 @@ export function clearDraft(): void {
  */
 export function prefillWorkspace(path: string | null, seedAgentId?: string | null): void {
   const draft = withWorkspace(newTaskDraft.value, path);
+  quickLaunchRetarget.value = null;
   newTaskDraft.value =
     draft.agentId === null && seedAgentId !== undefined && seedAgentId !== null
       ? { ...draft, agentId: seedAgentId }
       : draft;
 }
 
+/** A workspace a person explicitly picked or created, rather than contextual prefill. */
+export function selectDraftWorkspace(path: string, seedAgentId?: string | null): void {
+  prefillWorkspace(path, seedAgentId);
+  taskDraftTouched.value = true;
+}
+
 export function openQuickLaunch(workspacePath: string | null): void {
   quickLaunchWorkspace.value = workspacePath;
-  if (workspacePath !== null) {
+  if (workspacePath === null) {
+    quickLaunchRetarget.value = null;
+  } else if (newTaskDraft.value.workspacePath === null) {
     prefillWorkspace(workspacePath);
+  } else if (newTaskDraft.value.workspacePath === workspacePath) {
+    quickLaunchRetarget.value = null;
+  } else if (!taskDraftTouched.value) {
+    prefillWorkspace(workspacePath);
+  } else {
+    quickLaunchRetarget.value = {
+      currentPath: newTaskDraft.value.workspacePath,
+      requestedPath: workspacePath,
+    };
   }
   quickLaunchOpen.value = true;
+}
+
+/** Keep the draft on its current project and withdraw the contextual move. */
+export function keepDraftWorkspace(): void {
+  const retarget = quickLaunchRetarget.value;
+  if (retarget === null) {
+    return;
+  }
+  quickLaunchWorkspace.value = retarget.currentPath;
+  quickLaunchRetarget.value = null;
+}
+
+/** Move the intact draft to the project named by the contextual trigger. */
+export function moveDraftToRetarget(): void {
+  const retarget = quickLaunchRetarget.value;
+  if (retarget === null) {
+    return;
+  }
+  newTaskDraft.value = withWorkspace(newTaskDraft.value, retarget.requestedPath);
+  quickLaunchWorkspace.value = retarget.requestedPath;
+  quickLaunchRetarget.value = null;
+}
+
+/** Clear task-specific fields, preserve the presentation preference, and use the new project. */
+export function clearDraftAndUseRetarget(): void {
+  const retarget = quickLaunchRetarget.value;
+  if (retarget === null) {
+    return;
+  }
+  newTaskDraft.value = {
+    ...EMPTY_DRAFT,
+    workspacePath: retarget.requestedPath,
+    promptExpanded: newTaskDraft.value.promptExpanded,
+  };
+  quickLaunchWorkspace.value = retarget.requestedPath;
+  quickLaunchRetarget.value = null;
+  taskDraftTouched.value = false;
 }
 
 export function closeQuickLaunch(): void {
   quickLaunchOpen.value = false;
   quickLaunchWorkspace.value = null;
+  quickLaunchRetarget.value = null;
 }
 
 /**
@@ -107,6 +191,8 @@ export function transferToBoard(): void {
 /** Teardown for tests and for a window's own dispose, like `resetSessionTailStore`. */
 export function resetLauncherStore(): void {
   newTaskDraft.value = EMPTY_DRAFT;
+  taskDraftTouched.value = false;
   quickLaunchOpen.value = false;
   quickLaunchWorkspace.value = null;
+  quickLaunchRetarget.value = null;
 }

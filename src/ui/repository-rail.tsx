@@ -62,6 +62,7 @@ interface RepositoryRailProps {
    * them draws.
    */
   onOpenWorkspace(): void;
+  readonly openWorkspaceDisabled?: boolean;
   onFocusAttention?(index: number): void;
   /** A resumable row was clicked: rebuild that worktree's archived session. */
   onResumeWorktree(path: string): void;
@@ -390,6 +391,7 @@ export function RepositoryRail(props: RepositoryRailProps) {
           class="wsbar__add"
           title="Open a workspace, worktree, or layout preset"
           aria-label="Open workspace"
+          disabled={props.openWorkspaceDisabled}
           onClick={props.onOpenWorkspace}
         >
           <span class="wsbar__add-glyph">

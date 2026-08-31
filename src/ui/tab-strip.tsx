@@ -56,6 +56,8 @@ export interface TabStripProps {
   onSelectTab(index: number): void;
   onCloseTab(index: number): void;
   onNewTab(): void;
+  /** The shared launcher already owns an in-flight task handoff. */
+  newTabDisabled?: boolean;
   /**
    * The same `SurfaceStrip` wired into `TabManager` (Task 5) — read here
    * only for `fileTabViews`'s projection and the `activate`/`closePath`
@@ -289,6 +291,7 @@ export function TabStrip(props: TabStripProps) {
       <button
         type="button"
         class="tab-add"
+        disabled={props.newTabDisabled}
         title={titleWithShortcut("New tab", "new-tab")}
         aria-label="New tab"
         onClick={props.onNewTab}

@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { RepositoryScan } from "../repositories/repository-client";
 import type { PaneView, TabView } from "../terminal/tabs-store";
-import type { AgentRailInput, AgentRailView, RailCardPane, RailStreamGroup } from "./agent-rail-model";
-import { STRIP_VISIBLE, buildAgentRail, formatShortAge, stripSegments, tabTail } from "./agent-rail-model";
+import {
+  STRIP_VISIBLE,
+  buildAgentRail,
+  formatShortAge,
+  stripSegments,
+  tabTail,
+  type AgentRailInput,
+  type AgentRailView,
+  type RailCardPane,
+  type RailStreamGroup,
+} from "./agent-rail-model";
 
 /**
  * The stream's rows in render order, flattened out of their clusters AND their
@@ -763,6 +772,29 @@ describe("buildAgentRail worktree groups (DL-27.23, 2026-08-25)", () => {
 
     expect(view.stream[0].tabIndexes).toEqual([0, 1]);
   });
+
+  it("names the REPOSITORY on every checkout, even one that has no row of its own", () => {
+    // The shape that broke it (code review, 2026-08-31): someone works only
+    // inside a linked worktree and never opens the main checkout, so
+    // `filterRailToWorkspaceHistory` drops `/w/trio` from `group.worktrees`
+    // before the card model sees it. Searching that array for `primary` then
+    // found nothing and fell through to the first survivor — the worktree —
+    // so `Create branch from here` proposed a destination beside the worktree
+    // rather than beside the repository.
+    const view = buildAgentRail(
+      trio({
+        workspaceHistoryPaths: ["/w/trio-a"],
+        tabs: [tab(1, "/w/trio-a", { openedAt: 1, panes: [pane(1)] })],
+      }),
+    );
+
+    // The primary checkout really is gone from the rendered tier...
+    expect(view.stream[0].worktrees.map((worktree) => worktree.path)).toEqual(["/w/trio-a"]);
+    // ...and the repository is still the repository.
+    expect(view.stream[0].worktrees.map((worktree) => worktree.repositoryPath)).toEqual([
+      "/w/trio",
+    ]);
+  });
 });
 
 describe("buildAgentRail worktree card shape (Task 4, 2026-08-26)", () => {
@@ -816,6 +848,23 @@ describe("buildAgentRail worktree card shape (Task 4, 2026-08-26)", () => {
     ]);
   });
 
+  it("marks a shell-only checkout active from its selected tab", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", { panes: [pane(1, { agent: null })] }),
+          tab(2, "/w/deck-side", { panes: [pane(2, { agent: null })] }),
+        ],
+        activeIndex: 1,
+      }),
+    );
+
+    expect(view.stream[0].worktrees.map((worktree) => [worktree.branch, worktree.active])).toEqual([
+      ["main", false],
+      ["release-hardening", true],
+    ]);
+  });
+
   it("reports live only while a pane is working", () => {
     const idle = buildAgentRail(
       railInput({ tabs: [tab(1, "/w/deck", { panes: [pane(1, { phase: "idle" })] })] }),
@@ -841,7 +890,7 @@ describe("buildAgentRail worktree card shape (Task 4, 2026-08-26)", () => {
     expect(view.stream[0].worktrees[0].age).toBe("1m");
   });
 
-  it("labels a split pane so two claude rows are not identical", () => {
+  it("labels a split pane with a deterministic ordinal", () => {
     const view = buildAgentRail(
       railInput({
         tabs: [
@@ -854,7 +903,26 @@ describe("buildAgentRail worktree card shape (Task 4, 2026-08-26)", () => {
 
     expect(view.stream[0].worktrees[0].panes.map((entry) => entry.label)).toEqual([
       "Claude",
-      "Claude (Split)",
+      "Claude 2",
+    ]);
+  });
+
+  it("assigns unique deterministic labels across tabs and a third same-agent pane", () => {
+    const view = buildAgentRail(
+      railInput({
+        tabs: [
+          tab(1, "/w/deck", {
+            panes: [pane(1, { agent: "claude" }), pane(2, { agent: "claude" })],
+          }),
+          tab(2, "/w/deck", { panes: [pane(3, { agent: "claude" })] }),
+        ],
+      }),
+    );
+
+    expect(view.stream[0].worktrees[0].panes.map((entry) => entry.label)).toEqual([
+      "Claude",
+      "Claude 2",
+      "Claude 3",
     ]);
   });
 
@@ -868,7 +936,7 @@ describe("buildAgentRail worktree card shape (Task 4, 2026-08-26)", () => {
     expect(view.stream[0].worktrees[0].panes[0].label).toBe("review");
   });
 
-  it("appends (Split) to a typed name too, not only to the agent name", () => {
+  it("appends an ordinal to a repeated typed name too", () => {
     const view = buildAgentRail(
       railInput({
         tabs: [
@@ -882,7 +950,7 @@ describe("buildAgentRail worktree card shape (Task 4, 2026-08-26)", () => {
 
     expect(view.stream[0].worktrees[0].panes.map((entry) => entry.label)).toEqual([
       "review",
-      "review (Split)",
+      "review 2",
     ]);
   });
 
@@ -904,7 +972,7 @@ describe("buildAgentRail worktree card shape (Task 4, 2026-08-26)", () => {
     // The shell pane is not a row (spec §9) and does not count toward "first".
     expect(view.stream[0].worktrees[0].panes.map((entry) => entry.label)).toEqual([
       "Claude",
-      "Claude (Split)",
+      "Claude 2",
     ]);
   });
 
@@ -1302,12 +1370,9 @@ describe("buildAgentRail focused pane (DL-27.22)", () => {
 
 describe("stripSegments (Task 5, 2026-08-26)", () => {
   /** Minimal RailCardPane fixture with the fields stripSegments reads. */
-  function cardPane(
-    paneId: number,
-    state: RailCardPane["state"],
-    changedAt: number,
-  ): RailCardPane {
+  function cardPane(paneId: number, state: RailCardPane["state"], changedAt: number): RailCardPane {
     return {
+      kind: "agent",
       paneId,
       agent: "claude",
       focused: false,

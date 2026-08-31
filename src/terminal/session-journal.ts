@@ -66,7 +66,9 @@ export const sessionArchive: Signal<Readonly<Record<string, ArchiveEntry>>> = si
 let storePromise: Promise<StoreSeam> | null = null;
 let activeDeps: SessionJournalDeps | null = null;
 let disposeEffect: (() => void) | null = null;
-let suspended = false;
+// Restore and lifecycle teardown can overlap. A depth keeps one caller's
+// resume from releasing another caller's still-active suspension.
+let suspensionDepth = 0;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let lastWritten: string | null = null;
 
@@ -245,7 +247,7 @@ async function writeNow(deps: SessionJournalDeps): Promise<void> {
 }
 
 function schedule(deps: SessionJournalDeps): void {
-  if (suspended) {
+  if (suspensionDepth > 0) {
     return;
   }
   if (timer !== null) {
@@ -287,7 +289,7 @@ export async function initSessionJournal(deps: SessionJournalDeps): Promise<void
 
 /** Pause captures (restore in flight must not clobber the journal). */
 export function suspendSessionJournal(): void {
-  suspended = true;
+  suspensionDepth += 1;
   if (timer !== null) {
     clearTimeout(timer);
     timer = null;
@@ -295,7 +297,7 @@ export function suspendSessionJournal(): void {
 }
 
 export function resumeSessionJournal(): void {
-  suspended = false;
+  suspensionDepth = Math.max(0, suspensionDepth - 1);
 }
 
 /**
@@ -307,7 +309,7 @@ export function resumeSessionJournal(): void {
  * — it cancelled the armed write and then returned on the suspension check,
  * so quitting inside the debounce window silently dropped the last tab change
  * instead of persisting it. Suspension still blocks every OTHER caller, and
- * still blocks re-arming after this write, because `suspended` stays true.
+ * still blocks re-arming after this write, because the suspension stays held.
  */
 export async function flushSessionJournal(
   options: { readonly force?: boolean } = {},
@@ -316,7 +318,7 @@ export async function flushSessionJournal(
     clearTimeout(timer);
     timer = null;
   }
-  if (activeDeps === null || (suspended && options.force !== true)) {
+  if (activeDeps === null || (suspensionDepth > 0 && options.force !== true)) {
     return;
   }
   await writeNow(activeDeps);
@@ -332,7 +334,7 @@ export function resetSessionJournal(): void {
   }
   storePromise = null;
   activeDeps = null;
-  suspended = false;
+  suspensionDepth = 0;
   lastWritten = null;
   sessionArchive.value = {};
 }

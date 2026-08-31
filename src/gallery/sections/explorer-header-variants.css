@@ -1,0 +1,114 @@
+/* Explorer header direction review (2026-08-25) — gallery-only.
+   `gxe-` prefixed and loaded by its own section, never by `styles.css`: the
+   frame around a candidate must not be mistaken for shipping chrome. The app's
+   own classes (`dock-panel__header`, `dock-tabs`, `file-tree__row`, `iconbtn`)
+   are used unchanged, so only the arrangement varies between columns. */
+
+/* A column at DL-19.4's floor width, so the comparison happens at the
+   narrowest dock the user can actually drag to. */
+.gxe-column {
+  display: flex;
+  width: 360px;
+  flex-direction: column;
+  border-left: 1px solid var(--hair);
+  background: var(--sidebar-bg);
+}
+
+/* Every icon button in Deck sits 1.5px left of centre because `.iconbtn` never
+   resets the UA's `padding: 1px 6px` (AGENTS.md "Known traps"). The drawing
+   carries the reset so the comparison is not measuring that defect. */
+.gxe-action {
+  padding: 0;
+}
+
+/* Candidate A's own row. 26px, not `--frame-h`: it does not meet the top of
+   the stage, so DL-19.3's same-pixel-row argument does not reach it, and a
+   second full-height row would spend 38px of tree. */
+.gxe-actionrow {
+  display: flex;
+  height: 26px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--hair);
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* The tree body. `FileTreeView` positions its rows absolutely inside a
+   measured scroller; a five-row drawing does not need the windowing, so the
+   rows stack statically and only the row's own treatment is honest. */
+.gxe-tree {
+  padding: 4px 0 8px;
+}
+
+.gxe-row {
+  position: static;
+}
+
+/* The root row keeps the tree's own 22px data-row height (DL-19). It is a row
+   of the tree, not a header above it — that is the whole point of drawing it
+   inside the scroller rather than above it. */
+.gxe-root {
+  color: var(--text-primary);
+}
+
+.gxe-root__name {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Candidate C: the trailing cluster, hidden at rest and revealed on hover or
+   keyboard focus — the arrangement `.asr-cluster__add` already uses on the
+   rail's project header (DL-27.18). */
+.gxe-root__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--duration) var(--ease);
+}
+
+.gxe-root:hover .gxe-root__actions,
+.gxe-root:focus-within .gxe-root__actions,
+.gxe-root.is-shown .gxe-root__actions {
+  opacity: 1;
+}
+
+/* The chosen shape (2026-08-25): the cluster is persistent, not revealed. */
+.gxe-root__actions.is-persistent {
+  opacity: 1;
+  flex-shrink: 0;
+}
+
+/* A control sized for a 22px DATA row, not for chrome.
+   `.iconbtn` is 24x24 and overflows `.file-tree__row` by 1px top and bottom
+   (measured on this page, 2026-08-25); `ROW_HEIGHT` is the constant every
+   index in `FileTreeView` derives from, so the row cannot grow. This is
+   `.asr-cluster__add`'s box exactly — the rail's own launcher on its own row. */
+.gxe-rowaction {
+  display: flex;
+  width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--duration) var(--ease);
+}
+
+/* DL-21.2: the quieter neutral hover wash every chrome control uses. */
+.gxe-rowaction:hover {
+  background: var(--state-hover-bg);
+  color: var(--text-primary);
+}
+
+.gxe-rowaction:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

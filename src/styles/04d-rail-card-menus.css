@@ -1,0 +1,187 @@
+/* ── The worktree card's two popovers ──────────────────────────────────────
+   `SegmentMenu` and `CardActionsMenu` (`src/ui/worktree-card-menus.tsx`), per
+   `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §5 and §8. Ported
+   from the owner-approved gallery specimen (`strip-actions-variants.css`,
+   `gxsa-` prefix) onto the `asr-` vocabulary the rail already owns.
+
+   A separate sheet from `04c-rail-worktree-card.css` because that file was at
+   its split threshold before these rules (F8), and because these surfaces are
+   NOT inside a card: they are `position: fixed` off the trigger's client rect,
+   since `.asr-rail__list` is a scroll container with `overflow-x: hidden` and
+   anything rendered inside it is clipped on the left and scrolls away from its
+   own segment (spec §5.1).
+
+   TWO DL amendments ride in here (spec §11.2):
+
+   1. DL-13.1 gives every popover `--radius-surface` (12px), and every shipping
+      popover takes it. That rule was written for surfaces floating over the
+      STAGE; these hang off a 260px card in a 276px column, where the rail
+      already settled the question on 2026-08-25 — `--asr-card-radius` is 6px
+      because `--radius-surface` on the card "read as pills at rail width". A
+      12px popover hanging off a 6px card is rounder than the thing it belongs
+      to. **Both surfaces take 6px**, and DL-13.1's 12px is scoped to
+      stage-level surfaces.
+   2. DL §13 admits a HOVER-raised popover (its rule is a click contract) and a
+      TWO-LINE menu row (icon · title · detail), which no existing rule covers.
+
+   DL-1.3 is untouched: depth is the `--chrome-2` background step plus one 1px
+   `--seam-raised` INSET hairline, never a blurred drop shadow. ── */
+
+.asr-pop {
+  /* The production sheet pins `--asr-card-row-h` on `.asr-card` / `.asr-bare` /
+     `.asr-card__row` only, and a `.asr-card__new` row inside a popover has none
+     of those ancestors — without the variable it collapses from 28px to its
+     13px line box. `--asr-card-radius` is likewise pinned on `.asr-card`, which
+     is not an ancestor of a fixed surface, so all three are restated here.
+
+     `--asr-card-radius` was NOT restated until 2026-08-30, and the omission was
+     load-bearing twice over (code review): a `Focus pane` row is an
+     `.asr-card__new`, whose `border-radius: var(--asr-card-radius)` (04c) then
+     resolved to an undefined property — invalid at computed-value time, so 0 —
+     and that row drew square corners inside a 6px surface while every
+     `.asr-card__row` above it stayed rounded. The surface's own radius was a
+     bare `6px` for the same reason, which is the one bare pixel radius in the
+     partial tree and what `scripts/design-language.test.ts` was failing on. One
+     restatement fixes both: the variable is 6px, so nothing moves visually. */
+  --asr-card-row-h: 28px;
+  --asr-card-row-gap: 2px;
+  --asr-card-radius: 6px;
+  position: fixed;
+  z-index: 30;
+  box-sizing: border-box;
+  display: grid;
+  gap: 1px;
+  max-height: calc(100vh - 16px);
+  padding: 5px 6px 6px;
+  border-radius: var(--asr-card-radius);
+  background: var(--chrome-2);
+  box-shadow: inset 0 0 0 1px var(--seam-raised);
+  overflow-y: auto;
+}
+
+/* The panes behind one segment (spec §5). Narrower than the actions menu: its
+   rows are the card's own agent rows, which are already sized for rail width. */
+.asr-pop--panes {
+  width: 208px;
+}
+
+.asr-pop__sep {
+  height: 1px;
+  margin: 3px 2px;
+  background: var(--hair);
+}
+
+.asr-pop__cap {
+  margin: 0;
+  padding: 1px 8px 3px;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.35 var(--ui-font);
+}
+
+/* ------------------------------------------------------------ the actions menu */
+
+/* 232px, the width spec §10 measured, with full-bleed rows — so the surface has
+   to clip them to its own radius or the first and last rows' hover wash squares
+   off its corners. The head that used to sit above the first row is gone (owner,
+   2026-08-30), so the top padding it supplied is stated here instead: without it
+   the first row's wash starts flush against the surface's own edge. */
+.asr-pop--actions {
+  overflow: hidden auto;
+  width: 232px;
+  padding: 3px 0;
+}
+
+/* `.asr-act__head`, `__for`, `__scope`, `__branch` and `__badge` were DELETED
+   with the menu's heading (owner, 2026-08-30): the card the menu hangs off
+   already states the checkout and its branch 6px away, so the head opened the
+   surface by repeating its own anchor. The `Primary`/`Worktree` word survives on
+   the card head's badge (`.asr-card__badge[data-kind="role"]`, 04c), and the
+   scope is still said once by `.asr-act__foot` below. */
+
+/* Two lines, so the glyph spans both rows and the text stacks beside it. This
+   is the genre DL §13 had no rule for (spec §8.3): `ToolbarOverflowMenu`'s row
+   is icon · label · chord on ONE line, and DL-13.3's popover rows are §5 rows,
+   also single-line. */
+.asr-act {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  width: 100%;
+  padding: 4px 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration) var(--ease);
+}
+
+.asr-act:hover,
+.asr-act:focus-visible {
+  background: var(--state-hover-bg);
+  outline: none;
+}
+
+.asr-act__glyph {
+  display: grid;
+  grid-row: 1 / span 2;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+
+.asr-act__logo {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+}
+
+/* 11px over 10.5px, separated by weight and ink rather than by size — the same
+   pairing DL-4.4 already records for the Recent activity block's heading and
+   sentence. Nothing goes below `--type-micro`: the ladder has four rungs and
+   DL-4.5 forbids inventing a fifth. */
+.asr-act__title {
+  overflow: hidden;
+  grid-column: 2;
+  color: var(--text-primary);
+  font: 600 var(--type-meta) / 1.3 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asr-act__detail {
+  overflow: hidden;
+  grid-column: 2;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.3 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The scope, stated once — which is what lets every detail line above drop the
+   words "this worktree" the reference repeats (spec §8.1). */
+.asr-act__foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 10px 2px;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.35 var(--ui-font);
+}
+
+/* The agent group while discovery is still running: the footer's own treatment,
+   so a stated fact reads as a stated fact wherever it appears in this surface.
+   It carries no glyph — the choice of one is a question nobody has been asked —
+   so its left padding is `.asr-act`'s own 10px plus the 18px glyph track and the
+   8px gap, and the words line up under every title above and below it. */
+.asr-act__note {
+  margin: 0;
+  padding: 6px 10px 6px 36px;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.35 var(--ui-font);
+}

@@ -26,7 +26,7 @@ export function processInfo(
   kind: PaneProcessInfo["kind"],
   agent: PaneProcessInfo["agent"],
 ): PaneProcessInfo {
-  return { id, cwd, process, kind, agent };
+  return { id, processId: id * 1000, cwd, process, kind, agent };
 }
 
 export function fakePane(

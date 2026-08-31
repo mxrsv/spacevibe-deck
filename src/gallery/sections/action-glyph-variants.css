@@ -1,0 +1,92 @@
+/* Action-glyph direction review (2026-08-30) — gallery only, `gxag-` prefix.
+
+   Nothing here styles the specimen itself: the rows and the surface are the
+   app's own `.asr-act` / `.asr-pop--actions`, imported from `styles.css` like
+   every other section. These rules do two things only — undo the `position:
+   fixed` the shipped surface needs off a trigger that does not exist in a
+   gallery, and lay the four candidates side by side. */
+
+.gxag-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(232px, max-content));
+  gap: 18px;
+  align-items: start;
+}
+
+.gxag-menu {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+/* The one override. `max-height` goes with it: the shipped cap is
+   `calc(100vh - 16px)` against a viewport, and four of these in a row inside a
+   scrolling gallery page do not share that frame. */
+.gxag-pop {
+  position: static;
+  max-height: none;
+}
+
+.gxag-menu__word {
+  display: grid;
+  gap: 2px;
+  max-width: 232px;
+  margin: 0;
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.35 var(--ui-font);
+}
+
+.gxag-menu__word strong {
+  color: var(--text-primary);
+  font-weight: 620;
+}
+
+.gxag-zoomrow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.gxag-zoomrow__head {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font: 500 var(--type-meta) / 1.3 var(--ui-font);
+}
+
+.gxag-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  gap: 12px;
+}
+
+.gxag-cell {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  padding: 10px 6px;
+  border-radius: 6px;
+  background: var(--chrome-2);
+  color: var(--text-faint);
+  font: 450 var(--type-micro) / 1.3 var(--ui-font);
+  text-align: center;
+}
+
+.gxag-cell strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* A `transform`, so it magnifies the SHIPPED 13px drawing rather than restating
+   it at another size — a glyph that reads wrong here reads wrong in the row. */
+.gxag-cell__zoom {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  color: var(--text-primary);
+  transform: scale(4);
+}
+
+.gxag-cell__note {
+  max-width: 130px;
+}

@@ -10,14 +10,18 @@ import {
   installRepositoryRescanOnFocus,
   repositoryScans,
 } from "../repositories/repositories-store";
-import { paneModels, paneTails } from "../terminal/session-tail-store";
+import { paneTails } from "../terminal/session-tail-store";
 import type { FileSurfaceController } from "../files/file-surface-controller";
 import { workspacesData } from "../open-board/workspaces-store";
 import { settings, updateSettings } from "../settings/settings-store";
 import { createRailClusterDragController } from "./rail-cluster-drag";
 import { pinAt, sameRailOrder } from "./rail-order";
 import { buildAgentRail, type RailState, type RailStreamGroup } from "./agent-rail-model";
+import { checkoutLabel } from "./agent-rail-card-model";
 import { WorktreeCard } from "./worktree-card";
+import type { CardActions } from "./worktree-card-menus";
+import { RepositoryRail } from "./repository-rail";
+import { isTauriHost } from "../updater/migration-notice";
 
 /**
  * The agent status rail.
@@ -39,9 +43,9 @@ import { WorktreeCard } from "./worktree-card";
  * One `WorktreeCard` per checkout (DL-27.23/DL-27.24, amended 2026-08-26 —
  * design `docs/specs/2026-08-25-rail-worktree-card-design.md`): the tab tier
  * is gone from the rail entirely. A checkout is a boxed, pressable, expandable
- * card whose rows are every agent PANE running in it, flattened across
- * whichever tabs hold them — `worktree-card.tsx` owns that render; this file
- * only decides which checkouts exist and hands each one off. A labelled
+ * card whose rows retain every agent PANE plus every shell-only tab, flattened
+ * across whichever tabs hold them — `worktree-card.tsx` owns that render;
+ * this file only decides which checkouts exist and hands each one off. A labelled
  * project can still collapse as a whole, one disclosure per cluster; a card's
  * own open/closed state is a separate, window-local disclosure one tier down
  * (`openCardKeys`).
@@ -54,14 +58,17 @@ import { WorktreeCard } from "./worktree-card";
  */
 
 export interface AgentRailProps {
+  /** Stable Tauri fallback callbacks; worktree cards are Electron-only. */
+  readonly legacy: {
+    readonly onOpenWorkspace: () => void;
+    readonly openWorkspaceDisabled?: boolean;
+    readonly onResumeWorktree: (path: string) => void;
+    readonly onFocusAttention?: (index: number) => void;
+  };
   /**
-   * Select an already-open tab by its global index. Read by this file only
-   * through `WorktreeCard`'s `BareCheckout` (item 1 fix, review 2026-08-26):
-   * a checkout whose one open tab is a plain shell has no agent panes to
-   * show as a card, and this is how its row reaches that tab instead of
-   * spawning a redundant second one. Also required because `AgentRailProps`
-   * and `RepositoryRailProps` share one contract and `App` passes it to
-   * both; `RepositoryRail` reads it directly for every tab row it draws.
+   * Select an already-open tab by its global index. Every shell-only card row
+   * uses this path; agent rows remain pane-exact through `onFocusPane`.
+   * `RepositoryRail` reads the same callback for Tauri's legacy tab rows.
    */
   onSelectTab(index: number): void;
   /**
@@ -75,6 +82,8 @@ export interface AgentRailProps {
    * case no header carries the control.
    */
   onNewTabIn?(workspacePath: string): void;
+  /** Keep every project launcher visible but inert during a shared handoff. */
+  newTabDisabled?: boolean;
   /**
    * Forget a remembered project: drop EVERY history entry the rowless header
    * stands for (a repository folds several remembered worktrees into one
@@ -84,12 +93,9 @@ export interface AgentRailProps {
    */
   onRemoveWorkspace?(workspacePaths: readonly string[]): void;
   /**
-   * Close a tab by its global index. Unread by this file's own render — the
-   * tab tier that used to call it is gone (worktree card, 2026-08-26), and
-   * every agent row now closes its PANE through `onClosePane` instead. Kept
-   * as a required prop because `AgentRailProps` and `RepositoryRailProps`
-   * share one contract and `App` passes it to both; `RepositoryRail` still
-   * reads it for every tab row it draws.
+   * Close a tab by its global index. Shell-only card rows use it directly;
+   * every agent row closes its PANE through `onClosePane` instead. The Tauri
+   * `RepositoryRail` uses the same callback for its legacy tab rows.
    */
   onCloseTab(index: number): void;
   /**
@@ -111,6 +117,14 @@ export interface AgentRailProps {
   onCloseProject?(tabIndexes: readonly number[], historyPaths: readonly string[]): void;
   /** Focus one exact pane: activate its tab, focus that pane, ack it. */
   onFocusPane(index: number, paneId: number): void;
+  /**
+   * The actions menu every worktree card raises from its strip's `+` or a
+   * right-click (spec `docs/specs/2026-08-27-rail-card-strip-actions-design.md`
+   * §8). Omitted where nothing owns those seams (the gallery), in which case no
+   * card carries a `+` at all (DL-19.7) — a launcher that opens nothing is
+   * worse than none.
+   */
+  readonly cardActions?: CardActions;
   /**
    * Pinned under the scrolling list and above the banner: the rail's own
    * footer of window actions (`SidebarActions`, DL §28). `App` builds it,
@@ -188,7 +202,33 @@ function groupPath(group: RailStreamGroup): string | null {
   return worktree.path === "" ? (worktree.rows[0]?.workspacePath ?? null) : worktree.path;
 }
 
-export function AgentRail(props: AgentRailProps) {
+/**
+ * Where the project header's `+` actually opens into, as words (spec §7.4):
+ * the project, then the primary checkout — which is what `groupPath` has
+ * resolved to since 2026-08-25.
+ *
+ * **A word already said is not said again (2026-08-30).** This used to be
+ * `${group.project} · ${worktrees[0].name}`, and a repository's primary
+ * checkout sits at the repository root — so its basename IS the project name
+ * and the control announced `New tab in spacevibe-deck · spacevibe-deck`: the
+ * exact repetition `checkoutLabel` and `whereOf` remove one tier down. It asks
+ * `checkoutLabel` for the checkout's word rather than reading `name`, so the
+ * header and the card can never disagree about what a checkout is called.
+ *
+ * The empty check is not defensive: a project git could not scan has one
+ * synthetic worktree whose `path` and `branch` are both `""`, and
+ * `workspaceLabel("")` is `""` — not `undefined`, so `??` never fired and the
+ * label read `New tab in myfolder · ` with a dangling separator.
+ */
+function headerDestination(group: RailStreamGroup): string {
+  const worktree = group.worktrees[0];
+  const checkout = worktree === undefined ? "" : checkoutLabel(worktree);
+  return checkout === "" || checkout === group.project
+    ? group.project
+    : `${group.project} · ${checkout}`;
+}
+
+function WorktreeCardRail(props: AgentRailProps) {
   const tabs = tabViews.value;
   // Which labelled project groups are folded. A new Set each time rather than
   // a mutated one (C1), so the signal actually notifies.
@@ -213,7 +253,9 @@ export function AgentRail(props: AgentRailProps) {
     // Per-pane model string (e.g. "claude-sonnet-5"), written alongside tails
     // by the session-tail IPC answer. Empty on Tauri and in the browser
     // preview — the card omits the pill when the string is absent.
-    models: paneModels.value,
+    // Do not surface `paneModels` here: its pane→session pairing is ranked by
+    // cwd/mtime and then pinned, not causally bound to the pane. Gallery/model
+    // callers may still inject trusted model facts directly into the pure view.
     // The order the user dragged these projects into (DL-27.20). App-level,
     // so a drag in one window reorders the rail in every window.
     railOrder: settings.value.railOrder,
@@ -377,12 +419,20 @@ export function AgentRail(props: AgentRailProps) {
                     {/* A project the host could not place has no path to open
                         into — the control is omitted rather than shown inert
                         (DL-19.7). */}
+                    {/* Spec §7.4: the header's `+` stays, and it now says WHICH
+                        checkout it targets. `groupPath` resolves to
+                        `worktrees[0]` — always the primary — and with every
+                        checkout carrying its own launcher, the honest wording
+                        is what keeps the two from reading as the same control.
+                        Not removed: a project with one checkout would lose its
+                        launcher whenever its card is open. */}
                     {props.onNewTabIn !== undefined && groupPath(group) !== null && (
                       <button
                         type="button"
                         class="asr-cluster__add"
-                        aria-label={`New tab in ${group.project}`}
-                        title={`New tab in ${group.project}`}
+                        disabled={props.newTabDisabled}
+                        aria-label={`New tab in ${headerDestination(group)}`}
+                        title={`New tab in ${headerDestination(group)}`}
                         onClick={() => {
                           const path = groupPath(group);
                           if (path !== null) {
@@ -481,8 +531,11 @@ export function AgentRail(props: AgentRailProps) {
                       onToggle={toggleCard}
                       onFocusPane={props.onFocusPane}
                       onClosePane={props.onClosePane}
+                      onCloseTab={props.onCloseTab}
                       onNewTabIn={props.onNewTabIn}
+                      newTabDisabled={props.newTabDisabled}
                       onSelectTab={props.onSelectTab}
+                      actions={props.cardActions}
                     />
                   ))}
               </div>
@@ -495,4 +548,23 @@ export function AgentRail(props: AgentRailProps) {
       {props.footer}
     </nav>
   );
+}
+
+export function AgentRail(props: AgentRailProps) {
+  if (isTauriHost()) {
+    return (
+      <RepositoryRail
+        onSelectTab={props.onSelectTab}
+        onCloseTab={props.onCloseTab}
+        onOpenWorkspace={props.legacy.onOpenWorkspace}
+        openWorkspaceDisabled={props.legacy.openWorkspaceDisabled}
+        onFocusAttention={props.legacy.onFocusAttention}
+        onResumeWorktree={props.legacy.onResumeWorktree}
+        showAgentPresence={false}
+        footer={props.footer}
+        fileController={props.fileController}
+      />
+    );
+  }
+  return <WorktreeCardRail {...props} />;
 }

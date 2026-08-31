@@ -70,6 +70,17 @@ export interface RepositoryGroup {
   readonly key: string;
   readonly kind: "repository" | "plain";
   readonly name: string;
+  /**
+   * The repository's OWN checkout — the first non-bare entry git reports, the
+   * same source `name` is taken from. Resolved here rather than by searching
+   * `worktrees`, because `filterRailToWorkspaceHistory` may have dropped the
+   * primary entry from that array: a repository whose main checkout has no open
+   * tab and is not in Deck's workspace history keeps only its linked worktrees,
+   * and a search would then answer with one of THEM (code review, 2026-08-31).
+   * `worktree_add` is run against a repository, so that answer suggested a
+   * destination beside a worktree rather than beside the repository.
+   */
+  readonly repositoryPath: string;
   readonly collapsed: boolean;
   readonly worktrees: readonly WorktreeRow[];
 }
@@ -238,6 +249,9 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
         key,
         kind: "plain" as const,
         name: path === "" ? (groupTabs[0]?.label ?? "Unknown") : workspaceLabel(path),
+        // A folder git does not know has exactly one checkout: itself. This is
+        // the case the old `worktrees[0]?.path` fallback actually described.
+        repositoryPath: path,
         collapsed: input.collapsed.has(key),
         worktrees: [
           {
@@ -285,6 +299,9 @@ export function buildRail(input: RailInput): readonly RepositoryGroup[] {
       // Named after the repository's own checkout — the first entry git
       // reports — not after whichever worktree happened to be opened first.
       name: workspaceLabel(entries[0]?.path ?? scan.root),
+      // The same entry, kept as a path. Taken here, before any filtering, so
+      // it stays the repository even when that checkout owns no visible row.
+      repositoryPath: entries[0]?.path ?? scan.root,
       collapsed: input.collapsed.has(key),
       worktrees: entries.map((entry, index) => {
         const tabs = tabsByWorktree.get(entry.path) ?? [];

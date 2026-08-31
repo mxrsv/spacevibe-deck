@@ -140,6 +140,16 @@ describe("TabStrip mounted outside the tab bar (sidebar layout)", () => {
     expect(host.querySelector(".tab-add")).not.toBeNull();
   });
 
+  it("disables the add button while a task handoff owns the launcher", () => {
+    const onNewTab = vi.fn();
+    mount({ onNewTab, newTabDisabled: true });
+
+    const add = host.querySelector<HTMLButtonElement>(".tab-add");
+    expect(add?.disabled).toBe(true);
+    add?.click();
+    expect(onNewTab).not.toHaveBeenCalled();
+  });
+
   it("puts the tab's newest turn on its chip, and keeps a typed name over it", () => {
     // DL-18.10 amended (2026-08-17, owner): a chip carries the same sentence
     // the rail row shows, through the same precedence — so the two surfaces

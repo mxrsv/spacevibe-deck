@@ -18,22 +18,34 @@
  *
  * The clock is injected (`AgentRailInput.now`). Nothing here calls `Date.now`.
  */
-import { BUILTIN_AGENTS } from "../lib/agent-catalog";
 import type { PaneAgent } from "../lib/process-info";
 import { workspaceLabel } from "../lib/workspace-label";
 import type { RepositoryScan } from "../repositories/repository-client";
-import type { RailTab, RepositoryGroup } from "../repositories/repository-model";
 import {
   buildRail,
   filterRailToWorkspaceHistory,
+  type RailTab,
+  type RepositoryGroup,
   worktreeForPath,
 } from "../repositories/repository-model";
-import type { PaneView, TabView } from "../terminal/tabs-store";
-import { NO_PANES } from "../terminal/tabs-store";
+import { NO_PANES, type PaneView, type TabView } from "../terminal/tabs-store";
 import { UNSEQUENCED } from "../lib/open-sequence";
 // Type-only the other way (`RailStreamGroup`), so the pair is a compile-time
 // cycle and never a runtime one.
 import { applyRailOrder } from "./rail-order";
+import {
+  STRIP_VISIBLE,
+  buildCardEntries,
+  outranks,
+  sortWorktrees,
+  stripSegments,
+  type RailCardEntry,
+  type RailCardPane,
+  type RailCardShell,
+  type RailWorktreeGroup,
+} from "./agent-rail-card-model";
+export { STRIP_VISIBLE, stripSegments };
+export type { RailCardEntry, RailCardPane, RailCardShell, RailWorktreeGroup };
 
 /**
  * Spec §3, revocabularised on the owner's ask (2026-08-16) to read from the
@@ -136,83 +148,6 @@ export interface RailTabRow {
  * with nothing saying which rows shared one, and printed the branch word once
  * per agent.
  */
-export interface RailWorktreeGroup {
-  /** The worktree's path — unique within a repository, so: list identity. */
-  readonly key: string;
-  /**
-   * The branch, falling back to the directory basename when git reports none
-   * (detached, or a branchless checkout). This is `WorktreeRow.name`, whose
-   * fallback rule already exists and is unchanged — the card's BADGE.
-   */
-  readonly branch: string;
-  /**
-   * The checkout's DIRECTORY BASENAME — the card's NAME, and a different fact
-   * from `branch`: `branch`'s fallback only reaches the basename when git
-   * reports no branch at all (spec §11.1), while this is always the basename
-   * of `path`, whatever git says.
-   */
-  readonly name: string;
-  /** Where the `+` launches. Always the worktree root, never a tab's cwd. */
-  readonly path: string;
-  /** git lists the main checkout first; that entry is the repository's own. */
-  readonly primary: boolean;
-  /**
-   * Whether the sub-header is printed. False for the ONE implicit group a
-   * project git does not know has (`buildRail`'s synthetic worktree, which is
-   * also every Tauri project — `git_repository` is Electron-only): its name is
-   * the folder name the cluster header directly above it already said, so the
-   * line would repeat a word and say nothing. Every group of a scanned
-   * repository is labelled, including a repository with exactly one worktree
-   * (DL-27.23), so the hierarchy never changes shape as a second checkout opens.
-   */
-  readonly labelled: boolean;
-  /**
-   * Every agent pane in this checkout, flattened across its tabs (spec §3):
-   * open order of the holding tab, then pane order within it — `rows` already
-   * carries both, so this is stated once here rather than reinvented at the
-   * component.
-   */
-  readonly panes: readonly RailCardPane[];
-  /** Any pane here is `working` — the head mark's busy state. */
-  readonly live: boolean;
-  /**
-   * The meta line: `formatShortAge` of the newest `changedAt` across `panes`,
-   * empty when nothing here has changed yet. Folded in the model, not the
-   * view, so a card and its rail row never disagree about "how long ago".
-   */
-  readonly age: string;
-  /**
-   * This checkout holds the window's focused pane (spec §12, §7.1's
-   * `--green`): DERIVED from `panes`, never gestured, so at most one card in
-   * the whole rail can ever read active.
-   */
-  readonly active: boolean;
-  /**
-   * This worktree's tabs, `sortByOpenOrder` applied WITHIN the group. Still
-   * walked to find `panes` — nothing on screen corresponds to a row anymore.
-   */
-  readonly rows: readonly RailTabRow[];
-}
-
-/** One agent pane on a worktree card (spec §3, §11.1-§11.2). */
-export interface RailCardPane extends RailPaneRow {
-  /** The tab this pane lives in — the coordinate `onFocusPane` takes. */
-  readonly tabIndex: number;
-  /** The model its session is running, or empty when unknown (spec §11.2). */
-  readonly model: string;
-  /**
-   * What the row is CALLED — spec §3's load-bearing evidence, the mockup's
-   * own `Claude (Split)`. Two panes of `claude` in one checkout are told
-   * apart by nothing else once the turn text leaves the rail (§9.1), so this
-   * is not decoration. Precedence: the tab's own name when a PERSON typed it
-   * (`RailTabRow.named`), else the agent's short display name, with `
-   * (Split)` appended when the pane is not its tab's FIRST agent pane — a
-   * split is where a second pane of one agent comes from. **A third pane
-   * collides** (two rows reading `Claude (Split)`); that is gate row 9's
-   * accepted limit, not a silent default.
-   */
-  readonly label: string;
-}
 /**
  * One project's stretch of the stream (§2.4).
  *
@@ -333,18 +268,6 @@ export interface AgentRailInput {
   readonly now: number;
 }
 
-/** DL-27.3's precedence, as numbers, so the fold has one comparison to make. */
-const STATE_RANK: Readonly<Record<RailState, number>> = {
-  failed: 4,
-  asked: 3,
-  working: 2,
-  done: 1,
-  idle: 0,
-};
-
-/** How many agent glyphs a closed worktree card shows (spec §11.4). */
-export const STRIP_VISIBLE = 3;
-
 /** The rail has no collapse affordance — it is one flat list (spec §2). */
 const NO_COLLAPSED_REPOSITORIES: ReadonlySet<string> = new Set();
 
@@ -444,52 +367,6 @@ function identityOf(railTab: RailTab, panes: readonly RailPaneRow[]): string {
 }
 
 /**
- * Short brand word for an agent id: the first word of its catalog label
- * (`"Claude Code"` → `"Claude"`, `"Gemini CLI"` → `"Gemini"`), which is the
- * mockup's own string (spec §3, plan gate row 9) — reusing `BUILTIN_AGENTS`
- * rather than a second hardcoded table. A declared agent's `PaneAgent`
- * already IS its typed display label (`process-info.ts`), so it is returned
- * whole, unsplit.
- */
-function agentDisplayName(agent: PaneAgent): string {
-  const builtin = BUILTIN_AGENTS.find((candidate) => candidate.id === agent);
-  return builtin === undefined ? agent : (builtin.label.split(" ")[0] ?? builtin.label);
-}
-
-/**
- * A card pane's label (spec §3): the tab's own name when a PERSON typed it,
- * else the agent's short display name, with ` (Split)` appended when this is
- * not the tab's first AGENT pane — the precedence's appended clause reads
- * over both branches, so a named tab's second pane reads `<name> (Split)`
- * too. `indexInTab` counts agent panes only (`row.panes`, spec §9 already
- * drops shell panes), never the tab's raw pane order.
- */
-function cardPaneLabel(row: RailTabRow, pane: RailPaneRow, indexInTab: number): string {
-  const base = row.named ? row.title : agentDisplayName(pane.agent);
-  return indexInTab === 0 ? base : `${base} (Split)`;
-}
-
-/**
- * A worktree's agent panes, flattened across its tabs (spec §3): `rows` is
- * already in open order and a tab's own `panes` are already in pane order, so
- * composing the two states the ordering once here rather than reinventing it
- * at the component.
- */
-function cardPanes(
-  rows: readonly RailTabRow[],
-  models: ReadonlyMap<number, string> | undefined,
-): readonly RailCardPane[] {
-  return rows.flatMap((row) =>
-    row.panes.map((pane, indexInTab) => ({
-      ...pane,
-      tabIndex: row.index,
-      model: models?.get(pane.paneId) ?? "",
-      label: cardPaneLabel(row, pane, indexInTab),
-    })),
-  );
-}
-
-/**
  * The one turn a FOLDED view of a tab shows: the tail of the pane this tab's
  * rail row would speak for, or empty when no agent in it has said anything.
  *
@@ -521,30 +398,6 @@ function loudestPane(panes: readonly RailPaneRow[]): RailPaneRow | null {
     }
   }
   return loudest;
-}
-
-function outranks(pane: RailPaneRow, incumbent: RailPaneRow): boolean {
-  const delta = STATE_RANK[pane.state] - STATE_RANK[incumbent.state];
-  return delta > 0 || (delta === 0 && pane.changedAt > incumbent.changedAt);
-}
-
-/**
- * The three loudest panes a closed card shows in its glyph strip (spec §11.4,
- * DL-27.3). Loudness is exactly `outranks`' order — equal states tie on
- * `changedAt`, newest first — so two `working` panes swap places in the strip
- * whenever the quieter one speaks. That is the accepted consequence of
- * reusing the single comparator rather than introducing a card-local one.
- */
-export function stripSegments(panes: readonly RailCardPane[]): {
-  readonly shown: readonly RailCardPane[];
-  readonly overflow: number;
-} {
-  // Build a sorted copy — do not mutate the input (C1).
-  const sorted = [...panes].sort((a, b) => (outranks(a, b) ? -1 : outranks(b, a) ? 1 : 0));
-  return {
-    shown: sorted.slice(0, STRIP_VISIBLE),
-    overflow: Math.max(0, sorted.length - STRIP_VISIBLE),
-  };
 }
 
 function tabRow(group: RepositoryGroup, railTab: RailTab, input: AgentRailInput): RailTabRow {
@@ -654,41 +507,6 @@ function firstOf(group: RailStreamGroup): number {
  *    order, in the order git reported them. This mirrors what the rail already
  *    does one tier UP: live clusters first, remembered clusters after.
  */
-function sortWorktrees(groups: readonly RailWorktreeGroup[]): readonly RailWorktreeGroup[] {
-  return [...groups].sort(
-    (left, right) =>
-      worktreeRank(left) - worktreeRank(right) ||
-      openedIn(left) - openedIn(right) ||
-      // The clusters' own tie-break (`firstOf`), for fixtures whose tabs carry
-      // no open key: two groups both answering `UNSEQUENCED` fall back to the
-      // tabs' own order rather than to whatever git listed.
-      firstIndexIn(left) - firstIndexIn(right),
-  );
-}
-
-const PRIMARY_RANK = 0;
-const LIVE_RANK = 1;
-const HISTORY_ONLY_RANK = 2;
-
-function worktreeRank(group: RailWorktreeGroup): number {
-  if (group.primary) {
-    return PRIMARY_RANK;
-  }
-  return group.rows.length > 0 ? LIVE_RANK : HISTORY_ONLY_RANK;
-}
-
-/** The group's oldest tab, or nothing open — which sorts by rank alone. */
-function openedIn(group: RailWorktreeGroup): number {
-  return group.rows.reduce(
-    (oldest, row) => Math.min(oldest, row.openedAt),
-    Number.MAX_SAFE_INTEGER,
-  );
-}
-
-function firstIndexIn(group: RailWorktreeGroup): number {
-  return group.rows.reduce((lowest, row) => Math.min(lowest, row.index), Number.MAX_SAFE_INTEGER);
-}
-
 /** Every live project keeps the same project → tab hierarchy. */
 const LOWEST_LABELLED_SIZE = 1;
 const NO_ARCHIVED_PATHS: ReadonlySet<string> = new Set();
@@ -820,6 +638,19 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
     // rows is a checkout the user has worked in before and can return to, and a
     // sibling they have never opened in Deck is already gone. This model stops
     // discarding those entries; it does not re-answer the question.
+    // The repository's own checkout. A card's `Create branch from here` needs
+    // it: `worktree_add` is run against a REPOSITORY, and handing it a linked
+    // worktree suggests a destination beside that worktree rather than beside
+    // the repository (code review, 2026-08-31).
+    //
+    // Read off the GROUP rather than searched for in `group.worktrees`, because
+    // `filterRailToWorkspaceHistory` above has already dropped every checkout
+    // with no open tab that Deck's workspace history does not know — including,
+    // for someone who works only inside a linked worktree, the primary one. The
+    // search then found no `primary` entry and fell through to the first
+    // survivor, which is exactly the linked worktree this was fixed to stop
+    // passing (code review, 2026-08-31, second pass).
+    const repositoryPath = group.repositoryPath;
     const worktrees = sortWorktrees(
       group.worktrees.map((worktree) => {
         // Every tab of a project stays under that project, whatever its state.
@@ -828,7 +659,8 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
         // name the user was reading it by; the state mark carries the urgency
         // where the tab already is.
         const rows = sortByOpenOrder(worktree.tabs.map((railTab) => tabRow(group, railTab, input)));
-        const panes = cardPanes(rows, input.models);
+        const entries = buildCardEntries(rows, input.models);
+        const panes = entries.flatMap((entry) => (entry.kind === "agent" ? [entry] : []));
         const newestChange = panes.reduce((newest, pane) => Math.max(newest, pane.changedAt), 0);
         return {
           key: worktree.path,
@@ -838,6 +670,7 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
           // reports no branch at all (spec §11.1).
           name: workspaceLabel(worktree.path),
           path: worktree.path,
+          repositoryPath,
           primary: worktree.primary,
           // A folder git does not know has exactly one synthetic worktree named
           // after the folder itself, which the cluster header above it already
@@ -846,14 +679,14 @@ export function buildAgentRail(input: AgentRailInput): AgentRailView {
           // not exist and every scan answers `plain`.
           labelled: group.kind === "repository",
           rows,
+          entries,
           panes,
           live: panes.some((pane) => pane.state === "working"),
           age: formatShortAge(newestChange, input.now),
-          // Derived, never gestured (spec §12): `focused` is already ANDed
-          // with the holding tab's own `active` upstream (DL-27.22), so at
-          // most one pane in the whole rail ever reads focused and therefore
-          // at most one card ever reads active.
-          active: panes.some((pane) => pane.focused),
+          // The selected TAB is the checkout fact. Reading only focused agent
+          // panes made an active shell checkout look inactive and left plain
+          // shell tabs with no truthful selection state.
+          active: rows.some((row) => row.active),
         };
       }),
     );

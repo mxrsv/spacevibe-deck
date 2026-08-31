@@ -132,7 +132,16 @@ describe("the gallery entry stays out of the app bundle", () => {
     expect(matrix).toContain("NATIVE_BALANCED_TYPE_SCALE");
     expect(matrix).not.toContain("Current common");
     expect(matrix).not.toContain("High legibility");
-    expect(chrome).toContain("Woven Flag");
+    // The sidebar banner's three-way review — `Woven Flag` won it — outlived
+    // the feature by one change and then outlived the assertion's own premise.
+    // The banner was REMOVED IN FULL (2026-08-25, owner: removal, not
+    // retirement — AGENTS.md's fork queue records DL §26 taking a removal
+    // banner and `sidebar-banner.json` leaving the store allowlist), so its
+    // specimen went with it, and a "keeps the winner" assertion about a
+    // candidate that no longer HAS a winning position is not a weaker check —
+    // it is a check of the wrong thing. What still holds is the losers' half:
+    // neither loser may come back.
+    expect(chrome).not.toContain("Woven Flag");
     expect(chrome).not.toContain("Graphic Pattern");
     expect(chrome).not.toContain("Ambient Light");
 
@@ -143,6 +152,15 @@ describe("the gallery entry stays out of the app bundle", () => {
     );
     expect(registry).not.toContain("ExplorerHeaderVariantsSection");
     expect(registry).toContain("ExplorerTreeSection");
+
+    // The actions-menu glyph review (2026-08-30), same shape one surface
+    // later: the owner picked `SquareHalf` and `GitFork`, they shipped into
+    // `ACTION_GLYPHS`, and the comparison left the registry the same day.
+    expect(existsSync(join(SOURCE_ROOT, "gallery/sections/action-glyph-variants.tsx"))).toBe(true);
+    expect(registry).not.toContain("ActionGlyphVariantsSection");
+    const menus = readFileSync(join(SOURCE_ROOT, "ui/worktree-card-menus.tsx"), "utf8");
+    expect(menus).toContain("split: SquareHalf");
+    expect(menus).toContain("branch: GitFork");
   });
 
   it("mounts the shipping AgentRail in every current shell specimen", () => {

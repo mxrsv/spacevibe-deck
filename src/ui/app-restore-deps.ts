@@ -50,10 +50,3 @@ export function railResumeDeps(
     customAgents: () => settings.value.customAgents,
   };
 }
-
-/** Guards the rail's "resume" click against a double click/Enter firing two
- *  concurrent `resumeWorkspace` calls for the same workspace — each lookup
- *  is independent, so both would pick the same archived session id and
- *  materialize duplicate tabs (H3). Module-level: the rail row has no
- *  per-item component state to hang this off. */
-export const resumingWorkspaces = new Set<string>();

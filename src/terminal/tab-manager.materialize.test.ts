@@ -468,6 +468,19 @@ describe("createTabManager materialize (through the createPane seam)", () => {
 });
 
 describe("createTabManager openQuickAgent (legacy picker confirm)", () => {
+  it("routes newTab through App's launcher gate when that seam is supplied", async () => {
+    const onOpenTaskLauncher = vi.fn();
+    const { tm } = setup({ deps: { onOpenTaskLauncher } });
+    await tm.openFromPreset({ type: "leaf" }, ["/repo"], { workspacePath: "/repo" });
+
+    await tm.newTab();
+
+    expect(onOpenTaskLauncher).toHaveBeenCalledWith("/repo");
+    expect(onOpenTaskLauncher).toHaveBeenCalledTimes(1);
+    expect(quickLaunchOpen.value).toBe(false);
+    tm.dispose();
+  });
+
   it("newTab() opens Quick Launch with the active workspace rather than materializing", async () => {
     const { tm } = setup({});
     agentQuickPickerOpen.value = false;

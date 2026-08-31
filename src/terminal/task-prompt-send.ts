@@ -106,17 +106,21 @@ export type LaunchTaskOutcome =
   /** The tab never materialized. */
   | "spawn-failed";
 
+/** One materialization attempt and the stable tab it created, when any. */
+export interface LaunchTaskResult {
+  readonly outcome: LaunchTaskOutcome;
+  readonly tabKey: number | null;
+}
+
 /**
- * Whether an outcome may clear the draft and close the launcher.
- *
- * `prompt-pending` counts while auto-send is off, because then it IS delivery:
- * the task reached the agent and only the Enter is the user's. Reading the
- * constant here rather than at the call sites keeps one answer to "did this
- * launch work".
+ * Whether an outcome may clear the draft and close the launcher. A staged but
+ * unsubmitted prompt is recoverable delivery, not completed handoff.
  */
-export function launchSucceeded(outcome: LaunchTaskOutcome): boolean {
-  if (outcome === "started" || outcome === "sent") {
-    return true;
-  }
-  return !TASK_PROMPT_AUTOSEND && outcome === "prompt-pending";
+export function launchClearsDraft(outcome: LaunchTaskOutcome): boolean {
+  return outcome === "started" || outcome === "sent";
+}
+
+/** A retry is safe only when the outcome proves that no prompt was pasted. */
+export function launchCanRetryPrompt(outcome: LaunchTaskOutcome): boolean {
+  return outcome === "prompt-not-sent" || outcome === "prompt-failed";
 }

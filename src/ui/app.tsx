@@ -11,7 +11,15 @@ import {
   WINDOW_CLOSE_COPY,
   type ConfirmCopy,
 } from "../terminal/close-guard";
-import { flushSettingsSave, initSettings, settingsLoadState } from "../settings/settings-store";
+import {
+  flushSettingsSave,
+  initSettings,
+  openDockTab,
+  revealDockTab,
+  settings,
+  settingsLoadState,
+  updateSettings,
+} from "../settings/settings-store";
 import { defaultPtyClient } from "../terminal/pty-client";
 import {
   agentsProbed,
@@ -22,7 +30,6 @@ import type { BootMode } from "../terminal/transfer-client";
 import { applyThemeVars } from "../lib/theme-vars";
 import { BUILT_IN_PRESET, type Preset } from "../lib/preset-schema";
 import { resolveInheritedCwds } from "../terminal/tab-materialize";
-import { openDockTab, revealDockTab, settings, updateSettings } from "../settings/settings-store";
 import type { DockTab } from "../settings/settings-schema";
 import { agentOptions, agentProcessMatchers, probeNames } from "../lib/agent-catalog";
 import { resolveTheme } from "../settings/themes";
@@ -44,6 +51,7 @@ import {
   pathOpenRequest,
   persistError,
   promptsOpen,
+  railCardMenuOpen,
   reportPersistError,
   saveDialogOpen,
   settingsOpen,
@@ -70,11 +78,16 @@ import { countRestoredSessions, installUsageCounterEffects } from "../telemetry/
 import { launchNotice, OpenBoard } from "../open-board/open-board";
 import {
   clearDraft,
+  clearDraftAndUseRetarget,
   closeQuickLaunch,
+  keepDraftWorkspace,
+  moveDraftToRetarget,
   newTaskDraft,
   openQuickLaunch,
-  prefillWorkspace,
+  selectDraftWorkspace,
+  taskDraftTouched,
   quickLaunchOpen,
+  quickLaunchRetarget,
   toggleQuickLaunch,
   transferToBoard,
   updateDraft,
@@ -93,7 +106,12 @@ import {
 import { available as worktreeHostAvailable } from "../host/worktree-host";
 import { OpenBoardWorktreeForm } from "../open-board/open-board-worktree-form";
 import { useWorktreeForm } from "../open-board/use-worktree-form";
-import { launchSucceeded, type LaunchTaskOutcome } from "../terminal/task-prompt-send";
+import {
+  launchCanRetryPrompt,
+  launchClearsDraft,
+  type LaunchTaskOutcome,
+  type LaunchTaskResult,
+} from "../terminal/task-prompt-send";
 import type { SessionEntry } from "../lib/session-history";
 import { resumeSession } from "../sessions/resume-session";
 import { installRecentActivitySync } from "../sessions/recent-activity-sync";
@@ -133,6 +151,7 @@ import { DeckToolbar } from "./toolbar/deck-toolbar";
 // pinned block whose count pressed it is gone, so a swap back re-wires that one
 // prop to `requestAttentionFocus`.
 import { AgentRail } from "./agent-rail";
+import type { CardActions } from "./worktree-card-menus";
 import { StatusBar } from "./status-bar";
 import { SettingsScreen } from "./settings/settings-screen";
 import { UsageDockTab } from "./usage/usage-dock-tab";
@@ -183,11 +202,15 @@ import {
   clearWindowRecord,
   flushSessionJournal,
   initSessionJournal,
+  resumeSessionJournal,
+  sessionArchive,
   suspendSessionJournal,
 } from "../terminal/session-journal";
-import { restoreSession } from "../terminal/session-restore";
+import { restoreSession, resumeWorkspace } from "../terminal/session-restore";
+import { worktreeForPath } from "../repositories/repository-model";
 import { DesktopChrome } from "./desktop-chrome";
 import {
+  archivedWorkspaceResumeAvailable,
   boardClosesAfterResume,
   bootOpensTheBoard,
   browserPanelObscured,
@@ -199,21 +222,46 @@ import {
   livePresetOpensATab,
   sidebarEffectivelyCollapsed,
   stripShowsTabs,
+  taskLaunchRecoveryValid,
   toggleSettingsPanel,
   workspaceOrphanedByClose,
   workspacesOrphanedByClose,
 } from "./app-policy";
-import { restoreDeps } from "./app-restore-deps";
+import { railResumeDeps, restoreDeps } from "./app-restore-deps";
+
+interface TaskLaunchAttempt {
+  readonly tabKey: number;
+  readonly prompt: string;
+  readonly workspacePath: string;
+  readonly agentId: string;
+  readonly modelId: NewTaskDraft["modelId"];
+  readonly reasoningEffort: NewTaskDraft["reasoningEffort"];
+  readonly outcome: LaunchTaskOutcome;
+}
+
+function attemptMatchesDraft(attempt: TaskLaunchAttempt, draft: NewTaskDraft): boolean {
+  return (
+    attempt.prompt === draft.prompt.trim() &&
+    attempt.workspacePath === draft.workspacePath &&
+    attempt.agentId === draft.agentId &&
+    attempt.modelId === draft.modelId &&
+    attempt.reasoningEffort === draft.reasoningEffort
+  );
+}
 
 export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   const stagesRef = useRef<HTMLDivElement>(null);
+  const resumingWorkspacesRef = useRef<ReadonlySet<string>>(new Set());
   // The migration notice's dismissal: window-scoped and UNPERSISTED per R5 and
   // spec §5, so a relaunch brings it back. Two windows therefore dismiss twice
   // — accepted, because a notice whose whole job is to be seen should err that
   // way rather than the other.
   const noticeDismissed = useSignal(false);
   const quickLaunchPending = useSignal<LauncherPending | null>(null);
+  const taskOperationPending = useSignal<LauncherPending | null>(null);
+  const taskOperationFlight = useRef<Promise<LaunchTaskOutcome> | null>(null);
   const quickLaunchNotice = useSignal<string | null>(null);
+  const launchAttempt = useSignal<TaskLaunchAttempt | null>(null);
   const quickLaunchView = useSignal<"composer" | "workspace" | "worktree">("composer");
   const quickLaunchReturnAfterSettings = useSignal(false);
   const quickWorktreeForm = useWorktreeForm();
@@ -431,6 +479,54 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     return resumed;
   };
 
+  /** Restore the newest archived tab set belonging to one legacy rail row. */
+  const resumeArchivedWorktree = (path: string): void => {
+    const manager = tabsRef.current;
+    if (manager === null || !archivedWorkspaceResumeAvailable(resumingWorkspacesRef.current)) {
+      return;
+    }
+    const newestPrefixMatch = Object.entries(sessionArchive.value)
+      .filter(([key]) => worktreeForPath([path], key) === path)
+      .reduce<[string, (typeof sessionArchive.value)[string]] | undefined>(
+        (best, current) =>
+          best === undefined || current[1].savedAt > best[1].savedAt ? current : best,
+        undefined,
+      );
+    const entry = sessionArchive.value[path] ?? newestPrefixMatch?.[1];
+    if (entry === undefined) {
+      reportPersistError("Couldn't find that archived workspace.");
+      return;
+    }
+
+    resumingWorkspacesRef.current = new Set([path]);
+    suspendSessionJournal();
+    void resumeWorkspace(railResumeDeps(manager), entry, path)
+      .then((resumed) => {
+        if (!resumed) {
+          reportPersistError("Couldn't resume that workspace.");
+        }
+      })
+      .catch((error: unknown) => {
+        console.warn("Failed to resume archived workspace:", error);
+        reportPersistError("Couldn't resume that workspace.");
+      })
+      .finally(() => {
+        resumeSessionJournal();
+        // The restore's signal changes were intentionally ignored while the
+        // journal was suspended. Capture the complete result before another
+        // archived restore can start; a concurrent quit/close suspension still
+        // makes this a no-op through the journal's reference count.
+        return flushSessionJournal()
+          .catch((error: unknown) => {
+            console.warn("Failed to capture restored workspace:", error);
+            reportPersistError("Couldn't save that restored workspace.");
+          })
+          .finally(() => {
+            resumingWorkspacesRef.current = new Set();
+          });
+      });
+  };
+
   // The rail's useful five-session snapshot: loaded at boot — the same request
   // that decides whether the host supports sessions at all — and kept current
   // from there by the signals that move when a session log is written
@@ -461,6 +557,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       return;
     }
     const manager = createTabManager(host, undefined, {
+      onOpenTaskLauncher: openTaskLauncher,
       onRequestAttentionFocus: (tabIndex) => requestAttentionFocus(tabIndex),
       onToggleSettings: () => toggleSettings(),
       onToggleUsage: () => toggleUsage(),
@@ -615,6 +712,35 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       return;
     }
     setActiveWorkspace(active.workspacePath);
+  });
+
+  // A retry is tied to the exact text, workspace, agent and tab created by the
+  // failed attempt. Editing the request or closing that tab withdraws recovery
+  // instead of redirecting changed text to a stale pane.
+  useSignalEffect(() => {
+    const attempt = launchAttempt.value;
+    if (attempt === null) {
+      return;
+    }
+    // The tab snapshot is the reactive revision for TabManager's private pane
+    // ownership map. A split/close publishes a new snapshot, rerunning this
+    // effect so stale recovery copy cannot outlive its exact pane.
+    const targetTabExists = tabViews.value.some((tab) => tab.key === attempt.tabKey);
+    const targetPaneExists = tabsRef.current?.canFocusTaskPrompt(attempt.tabKey) === true;
+    const retryTargetExists =
+      !launchCanRetryPrompt(attempt.outcome) ||
+      tabsRef.current?.canRetryTaskPrompt(attempt.tabKey) === true;
+    if (
+      !taskLaunchRecoveryValid({
+        targetTabExists,
+        targetPaneExists,
+        retryTargetExists,
+        attemptMatchesDraft: attemptMatchesDraft(attempt, newTaskDraft.value),
+      })
+    ) {
+      launchAttempt.value = null;
+      quickLaunchNotice.value = null;
+    }
   });
 
   // Manage agents is a round trip, not a draft dismissal. Settings covers the
@@ -937,7 +1063,62 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * rather than silently stripped: design §7 forbids a substitution the user
    * did not see.
    */
-  async function handleLaunchTask(
+  function completeTaskHandoff(): void {
+    launchAttempt.value = null;
+    clearDraft();
+    boardOpen.value = false;
+    closeQuickLaunch();
+  }
+
+  function runTaskOperation(
+    pending: LauncherPending,
+    operation: () => Promise<LaunchTaskOutcome>,
+  ): Promise<LaunchTaskOutcome> {
+    if (taskOperationFlight.current !== null) {
+      return taskOperationFlight.current;
+    }
+    taskOperationPending.value = pending;
+    const flight = operation().finally(() => {
+      if (taskOperationFlight.current === flight) {
+        taskOperationFlight.current = null;
+        taskOperationPending.value = null;
+      }
+    });
+    taskOperationFlight.current = flight;
+    return flight;
+  }
+
+  function applyTaskLaunchResult(
+    result: LaunchTaskResult,
+    draft: NewTaskDraft,
+    workspacePath: string,
+    agentId: string,
+    sendPrompt: boolean,
+  ): LaunchTaskOutcome {
+    if (result.tabKey !== null) {
+      // The recents write used to live in the old `handleOpen`. Losing it
+      // would freeze row order, the row's remembered-agent line, and the seed
+      // the next selection reads — with no failing test to say so.
+      recordWorkspaceOpen(workspacePath, undefined, agentId);
+    }
+    if (sendPrompt && result.tabKey !== null && draft.prompt.trim() !== "") {
+      launchAttempt.value = {
+        tabKey: result.tabKey,
+        prompt: draft.prompt.trim(),
+        workspacePath,
+        agentId,
+        modelId: draft.modelId,
+        reasoningEffort: draft.reasoningEffort,
+        outcome: result.outcome,
+      };
+    }
+    if (launchClearsDraft(result.outcome)) {
+      completeTaskHandoff();
+    }
+    return result.outcome;
+  }
+
+  async function performTaskLaunch(
     draft: NewTaskDraft,
     sendPrompt: boolean,
   ): Promise<LaunchTaskOutcome> {
@@ -965,27 +1146,86 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     if (!composed.ok) {
       return "spawn-failed";
     }
-    const outcome =
-      (await tabsRef.current?.launchTask(
-        {
-          layout: BUILT_IN_PRESET.layout,
-          cwds: [workspace],
-          agent: agentId,
-          workspacePath: workspace,
-          launchCommand: composed.command,
-        },
-        sendPrompt ? draft.prompt : null,
-      )) ?? "spawn-failed";
-    if (launchSucceeded(outcome)) {
-      // The recents write used to live in the old `handleOpen`. Losing it
-      // would freeze row order, the row's remembered-agent line, and the seed
-      // the next selection reads — with no failing test to say so.
-      recordWorkspaceOpen(workspace, undefined, agentId);
-      clearDraft();
-      boardOpen.value = false;
-      closeQuickLaunch();
+    const result = (await tabsRef.current?.launchTask(
+      {
+        layout: BUILT_IN_PRESET.layout,
+        cwds: [workspace],
+        agent: agentId,
+        workspacePath: workspace,
+        launchCommand: composed.command,
+      },
+      sendPrompt ? draft.prompt : null,
+    )) ?? { outcome: "spawn-failed" as const, tabKey: null };
+    return applyTaskLaunchResult(result, draft, workspace, agentId, sendPrompt);
+  }
+
+  function handleLaunchTask(draft: NewTaskDraft, sendPrompt: boolean): Promise<LaunchTaskOutcome> {
+    return runTaskOperation(sendPrompt ? "sending-prompt" : "opening-agent", () =>
+      performTaskLaunch(draft, sendPrompt),
+    );
+  }
+
+  async function performTaskPromptRetry(): Promise<LaunchTaskOutcome> {
+    const attempt = launchAttempt.value;
+    if (
+      attempt === null ||
+      !attemptMatchesDraft(attempt, newTaskDraft.value) ||
+      !launchCanRetryPrompt(attempt.outcome)
+    ) {
+      return "prompt-not-sent";
     }
+    const outcome =
+      (await tabsRef.current?.retryTaskPrompt(attempt.tabKey, attempt.prompt, attempt.agentId)) ??
+      "prompt-not-sent";
+    if (launchClearsDraft(outcome)) {
+      completeTaskHandoff();
+      return outcome;
+    }
+    launchAttempt.value = { ...attempt, outcome };
     return outcome;
+  }
+
+  function handleRetryTaskPrompt(): Promise<LaunchTaskOutcome> {
+    return runTaskOperation("retrying-prompt", performTaskPromptRetry);
+  }
+
+  function focusTaskLaunchTarget(): void {
+    const attempt = launchAttempt.value;
+    if (attempt === null) {
+      return;
+    }
+    if (tabsRef.current?.canFocusTaskPrompt(attempt.tabKey) !== true) {
+      launchAttempt.value = null;
+      return;
+    }
+    boardOpen.value = false;
+    closeQuickLaunch();
+    if (tabsRef.current?.focusTaskPrompt(attempt.tabKey) !== true) {
+      launchAttempt.value = null;
+    }
+  }
+
+  function clearTaskLaunchDraft(): void {
+    launchAttempt.value = null;
+    clearDraft();
+  }
+
+  function openTaskBoard(): void {
+    if (taskOperationPending.value === null) {
+      boardOpen.value = true;
+    }
+  }
+
+  function openTaskLauncher(workspacePath: string | null): void {
+    if (taskOperationPending.value === null) {
+      toggleQuickLaunch(workspacePath);
+    }
+  }
+
+  function transferQuickLaunchToBoard(): void {
+    if (taskOperationPending.value === null) {
+      transferToBoard();
+    }
   }
 
   /** The live agent choices shared by both launcher surfaces. */
@@ -994,12 +1234,23 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
 
   /** Quick Launch owns its pending/notice line; materialization stays shared. */
   async function runQuickLaunch(kind: "start" | "open"): Promise<void> {
-    if (quickLaunchPending.value !== null) {
+    if (quickLaunchPending.value !== null || taskOperationPending.value !== null) {
       return;
     }
     quickLaunchNotice.value = null;
     quickLaunchPending.value = kind === "start" ? "sending-prompt" : "opening-agent";
     const outcome = await handleLaunchTask(newTaskDraft.value, kind === "start");
+    quickLaunchPending.value = null;
+    quickLaunchNotice.value = launchNotice(outcome);
+  }
+
+  async function retryQuickLaunchPrompt(): Promise<void> {
+    if (quickLaunchPending.value !== null || taskOperationPending.value !== null) {
+      return;
+    }
+    quickLaunchNotice.value = null;
+    quickLaunchPending.value = "retrying-prompt";
+    const outcome = await handleRetryTaskPrompt();
     quickLaunchPending.value = null;
     quickLaunchNotice.value = launchNotice(outcome);
   }
@@ -1010,7 +1261,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     try {
       const picked = await open({ directory: true, multiple: false });
       if (typeof picked === "string") {
-        prefillWorkspace(picked);
+        selectDraftWorkspace(picked);
       }
     } catch (error: unknown) {
       console.warn("Quick Launch folder picker failed:", error);
@@ -1020,8 +1271,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     }
   }
 
-  function openQuickWorktreeForm(): void {
+  function openQuickWorktreeForm(repoPath?: string): void {
     quickWorktreeForm.reset();
+    // A rail card's `Create branch from here` names the repository it was
+    // raised on (spec §8): prefilling it is what keeps that row from dropping
+    // the user into an empty form about no checkout in particular. Quick
+    // Launch's own control still opens it blank.
+    if (repoPath !== undefined) {
+      quickWorktreeForm.setRepo(repoPath);
+    }
     quickLaunchNotice.value = null;
     quickLaunchView.value = "worktree";
   }
@@ -1030,7 +1288,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
     quickLaunchPending.value = "creating-worktree";
     void quickWorktreeForm
       .submit((path) => {
-        prefillWorkspace(path);
+        selectDraftWorkspace(path);
         quickLaunchView.value = "composer";
       })
       .finally(() => {
@@ -1317,6 +1575,11 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
       // picker below — it paints over the stage, so the native browser view
       // must go or the dialog draws underneath it.
       usageConsentOpen: showUsageConsent,
+      // Same reason, one surface later (2026-08-27): a worktree card's segment
+      // and actions menus are `position: fixed` and placed to the RIGHT of the
+      // rail, i.e. over the stage — so the native browser view must go or they
+      // draw underneath it.
+      railCardMenuOpen: railCardMenuOpen.value,
       // `agentQuickPickerOpen` is deliberately here and NOT in
       // `overlayCoversPane()`: it is a modal on the same scrim as the other two
       // (`openOverlayRanks()` already ranks it as one), so it paints over the
@@ -1519,8 +1782,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // Tauri-only, and the host probe is a RUNTIME check, so one renderer bundle
   // still serves both hosts (spec §6). The Electron host must never tell a
   // user to leave Electron.
+  const tauriHost = isTauriHost();
   const showNotice = shouldShowNotice({
-    tauriHost: isTauriHost(),
+    tauriHost,
     dismissed: noticeDismissed.value,
   });
   const noticeRowShown = showNotice;
@@ -1538,6 +1802,116 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
   // its own control, and the two must never be on screen together.
   const stripDockToggle = dockToggleOnStage(dockState) && !dockPresence.mounted;
   const quickAgents = launcherAgents();
+  /**
+   * The worktree card's actions menu (spec
+   * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §8) — every row
+   * on a seam that already exists, so this menu adds **no new IPC**.
+   *
+   * Each optional callback is the DL-19.7 gate for its own row: a host that
+   * cannot create a worktree or reach an external app simply has no such row,
+   * which is what leaves Tauri with the agent rows and the split row alone.
+   * (The card path is Electron-only in practice anyway — `AgentRail` routes
+   * Tauri to `RepositoryRail` — but the gate is on the capability, not on the
+   * host name.)
+   */
+  /**
+   * The model a new task for this agent would start with, or null.
+   *
+   * `""` is a real stored value meaning "whatever the CLI defaults to" — the
+   * same guard `runtime-catalog.ts` applies — so it must not short-circuit the
+   * caller's fallback chain the way `??` alone did.
+   */
+  const runtimeModel = (agentId: string): string | null => {
+    const stored = settings.value.agentRuntimeDefaults[agentId]?.model;
+    return stored === undefined || stored === null || stored === "" ? null : stored;
+  };
+  // The external-app scan has the SAME third state the agent probe does
+  // (`agentsResolved` above): `installedExternalApps` is empty both before it
+  // answers and on a machine with nothing installed. Reading it unguarded made
+  // DL-19.7 silently delete both OS rows during the window's first seconds and
+  // then grow them back under the user — `externalAppControl` gates on
+  // `externalAppsScanned` for this reason and this call site did not (code
+  // review, 2026-08-31). Until it answers the rows are simply not offered,
+  // which is the same shape as "this host cannot"; what changes is that the
+  // menu no longer treats an unanswered scan as a finished one.
+  const appsScanned = externalAppsScanned.value;
+  const filesApp = appsScanned
+    ? installedExternalApps.value.find((app) => app.group === "files")
+    : undefined;
+  const terminalApp = appsScanned
+    ? installedExternalApps.value.find((app) => app.group === "terminal")
+    : undefined;
+  const railCardActions: CardActions = {
+    agents: quickAgents
+      .filter((agent) => !agent.missing)
+      .map((agent) => ({
+        id: agent.id,
+        label: agent.label,
+        // Spec §8.1: the default MODEL where the settings carry one, and the
+        // command the row will actually run where they do not. A vendor name
+        // or a restatement of the scope is not a fact the row can promise.
+        // Two corrections here (code review, 2026-08-31). `?? ` only skips
+        // `null`/`undefined`, but `AgentRuntimeDefault.model` stores `""` as a
+        // real value — `runtime-catalog.ts` guards `stored.model !== ""` for
+        // exactly that reason — so a stored empty string short-circuited the
+        // whole chain and the row rendered a BLANK second line. And
+        // `agentModels[id]` is the list of models the USER declared they can
+        // reach, not a default; its first entry is an arbitrary element, so
+        // printing it as "the default model" was a promise this row cannot
+        // keep. It is gone: with no stored default, the honest fact is the
+        // command the row will actually run.
+        detail:
+          runtimeModel(agent.id) ??
+          agentLaunchCommand(
+            agent.id,
+            settings.value.launchProfiles,
+            settings.value.defaultLaunchProfiles,
+            settings.value.customAgents,
+          ) ??
+          agent.detail,
+      })),
+    // The third state, not a guess at one: `agentOptions` emits a built-in
+    // only when the probe returned a path for it, so "still probing" and
+    // "nothing installed" both arrive above as an empty list. The menu drew
+    // neither — it dropped the group — which is how the surface built to
+    // launch agents came to offer none.
+    agentsResolved: agentsProbed.value,
+    onRunAgent: (agentId, workspacePath) => {
+      void tabsRef.current?.openQuickAgent(agentId, workspacePath);
+    },
+    // The quick picker's own escape hatch: Settings takes no initial category,
+    // so this lands on its first one and the agent catalog is one click away.
+    onManageAgents: () => {
+      settingsOpen.value = true;
+    },
+    onSplitHere: (workspacePath) => {
+      void tabsRef.current?.splitInWorkspace(workspacePath);
+    },
+    ...(worktreeHostAvailable
+      ? {
+          onCreateBranch: (repoPath: string) => {
+            openQuickLaunch(repoPath);
+            openQuickWorktreeForm(repoPath);
+          },
+        }
+      : {}),
+    ...(externalAppsAvailable && filesApp !== undefined
+      ? {
+          onOpenFolder: (path: string) => {
+            void openInApp({ appId: filesApp.id, path, isDirectory: true, line: 0, column: 0 });
+          },
+          filesAppLabel: filesApp.label,
+        }
+      : {}),
+    ...(externalAppsAvailable && terminalApp !== undefined
+      ? {
+          onOpenTerminal: (path: string) => {
+            void openInApp({ appId: terminalApp.id, path, isDirectory: true, line: 0, column: 0 });
+          },
+          terminalAppLabel: terminalApp.label,
+        }
+      : {}),
+  };
   const quickContext = {
     runnableAgentIds: quickAgents.filter((agent) => !agent.missing).map((agent) => agent.id),
     unavailableAgentIds: quickAgents.filter((agent) => agent.missing).map((agent) => agent.id),
@@ -1549,6 +1923,18 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
    * over its own "Open the agent first and type in its terminal".
    */
   const quickOpenProblem = openAgentProblem(newTaskDraft.value, quickContext);
+  const currentLaunchAttempt = launchAttempt.value;
+  const launchTargetExists =
+    currentLaunchAttempt !== null &&
+    tabsRef.current?.canFocusTaskPrompt(currentLaunchAttempt.tabKey) === true;
+  const launchAttemptMatches =
+    currentLaunchAttempt !== null && attemptMatchesDraft(currentLaunchAttempt, newTaskDraft.value);
+  const canRetryTaskDelivery =
+    launchTargetExists &&
+    launchAttemptMatches &&
+    currentLaunchAttempt !== null &&
+    launchCanRetryPrompt(currentLaunchAttempt.outcome) &&
+    tabsRef.current?.canRetryTaskPrompt(currentLaunchAttempt.tabKey) === true;
 
   return (
     <DesktopChrome
@@ -1564,10 +1950,9 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
         railAvailable && !effectiveSidebarCollapsed() ? (
           <SidebarFrameActions
             collapsed={false}
+            disabled={taskOperationPending.value !== null}
             onToggle={toggleSidebarCollapsed}
-            onOpenWorkspace={() => {
-              boardOpen.value = true;
-            }}
+            onOpenWorkspace={openTaskBoard}
             newPaneDrop={{
               // Read at pointer time, so the rects belong to whatever tab is on
               // the stage right now rather than to the one that was there when
@@ -1608,6 +1993,12 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               />
             }
             onSelectTab={selectTab}
+            legacy={{
+              onOpenWorkspace: openTaskBoard,
+              openWorkspaceDisabled: taskOperationPending.value !== null,
+              onFocusAttention: requestAttentionFocus,
+              onResumeWorktree: resumeArchivedWorktree,
+            }}
             onCloseTab={(index) => void closeTab(index)}
             // Close model table row 1: the agent row's ✕ closes that pane, and
             // the tab only when it was the last one in it (row 2).
@@ -1617,11 +2008,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               void closeProject(tabIndexes, historyPaths)
             }
             onFocusPane={focusRailPane}
+            cardActions={railCardActions}
             onNewTabIn={(workspacePath) => {
               // The same non-modal launcher Cmd+T raises, pinned to the
               // project whose header was pressed.
-              toggleQuickLaunch(workspacePath);
+              openTaskLauncher(workspacePath);
             }}
+            newTabDisabled={taskOperationPending.value !== null}
             // A remembered header's close: forget the folder by dropping its
             // history entries; the rail re-derives from `workspacesData`.
             onRemoveWorkspace={removeWorkspaceRecents}
@@ -1634,6 +2027,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
           onSelectTab={selectTab}
           onCloseTab={(index) => void closeTab(index)}
           onNewTab={() => void tabsRef.current?.newTab()}
+          newTabDisabled={taskOperationPending.value !== null}
           toolbar={chromeActions}
           fileController={fileController}
           onSelectBrowser={selectBrowserTab}
@@ -1699,6 +2093,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                   onSelectTab={selectTab}
                   onCloseTab={(index) => void closeTab(index)}
                   onNewTab={() => void tabsRef.current?.newTab()}
+                  newTabDisabled={taskOperationPending.value !== null}
                   fileController={fileController}
                   onSelectBrowser={selectBrowserTab}
                   onCloseBrowser={closeBrowserTab}
@@ -1774,7 +2169,7 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                   onPickParent={() => open({ directory: true, multiple: false })}
                   create={createWorkspace}
                   onCreated={(path) => {
-                    prefillWorkspace(path);
+                    selectDraftWorkspace(path);
                     quickLaunchView.value = "composer";
                   }}
                   onBack={() => {
@@ -1820,11 +2215,15 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 agentRuntimeDefaults={settings.value.agentRuntimeDefaults}
                 canCreateWorkspace={workspaceCreateAvailable}
                 canCreateWorktree={worktreeHostAvailable}
-                pending={quickLaunchPending.value}
+                pending={quickLaunchPending.value ?? taskOperationPending.value}
                 problem={quickProblem}
                 openProblem={quickOpenProblem}
                 agentsResolved={agentsProbed.value}
                 notice={quickLaunchNotice.value}
+                retarget={quickLaunchRetarget.value}
+                canRetryDelivery={canRetryTaskDelivery}
+                canFocusOpenedAgent={launchTargetExists}
+                hasUserDraftContent={taskDraftTouched.value}
                 onDraftChange={updateDraft}
                 onPromptExpandedChange={(quickLaunchPromptExpanded) =>
                   updateSettings({ quickLaunchPromptExpanded })
@@ -1842,7 +2241,16 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
                 }}
                 onStartTask={() => void runQuickLaunch("start")}
                 onOpenAgent={() => void runQuickLaunch("open")}
-                onTransferToBoard={transferToBoard}
+                onRetryDelivery={() => void retryQuickLaunchPrompt()}
+                onFocusOpenedAgent={focusTaskLaunchTarget}
+                onClearDraft={() => {
+                  quickLaunchNotice.value = null;
+                  clearTaskLaunchDraft();
+                }}
+                onKeepRetarget={keepDraftWorkspace}
+                onMoveRetarget={moveDraftToRetarget}
+                onClearRetarget={clearDraftAndUseRetarget}
+                onTransferToBoard={transferQuickLaunchToBoard}
                 onClose={() => {
                   closeQuickLaunch();
                   tabsRef.current?.focusActive();
@@ -1910,6 +2318,13 @@ export function App({ boot = { kind: "normal" } }: { boot?: BootMode } = {}) {
               }}
               onStartTask={(draft) => handleLaunchTask(draft, true)}
               onOpenAgent={(draft) => handleLaunchTask(draft, false)}
+              canRetryDelivery={canRetryTaskDelivery}
+              canFocusOpenedAgent={launchTargetExists}
+              hasUserDraftContent={taskDraftTouched.value}
+              externalPending={taskOperationPending.value}
+              onRetryDelivery={handleRetryTaskPrompt}
+              onFocusOpenedAgent={focusTaskLaunchTarget}
+              onClearDraft={clearTaskLaunchDraft}
               onManageAgents={() => {
                 settingsOpen.value = true;
               }}

@@ -1,0 +1,218 @@
+/* Unread mark direction review (2026-08-25) — GALLERY ONLY.
+ *
+ * Nothing in this file is imported by the renderer (R7: gallery imports flow
+ * app -> gallery only). Every rule below overrides ONE selector — the real
+ * `.asr-row__mark[data-state="asked"]` — under a variant wrapper, so the rest
+ * of the rail is the shipped component untouched.
+ *
+ * Geometry ceiling, measured from the shipped rail rather than guessed: the
+ * tab row is `grid-template-columns: 17px ...` with `padding-left: 7px`, and
+ * the 14px mark box is centred in that first track, so the dot's centre sits
+ * 15.5px from the row's left edge — before `.asr-rail`'s own 8px of leading
+ * padding. Anything up to ~30px across therefore paints inside the rail and
+ * cannot be clipped by `.asr-rail__list`'s `overflow-x: hidden`. Every variant
+ * here stays under that, and none of them touches layout: the marks are
+ * absolutely positioned, so DL-27.3's fixed 14px box still holds and no row
+ * moves when a state changes.
+ */
+
+/* ------------------------------------------------------- the comparison */
+
+.gxu-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gxu-compare__row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.gxu-compare__title {
+  font-size: var(--type-meta);
+  color: var(--text-muted);
+}
+
+.gxu-strip {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+}
+
+.gxu-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gxu-cell__word {
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+}
+
+/* ------------------------------------------------------- the rail studies */
+
+.gxu-study {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 268px;
+}
+
+.gxu-study__title {
+  font-size: var(--type-meta);
+  color: var(--text-primary);
+}
+
+.gxu-study__note {
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+  /* Every note reserves three lines so the four rails START on one baseline:
+     a variant whose note wraps further would otherwise push its rail down and
+     the comparison would be read against a shifted column. */
+  min-height: 44px;
+}
+
+.gxu-rail {
+  background: var(--sidebar-bg);
+  height: 460px;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------ A - the hairline ring
+ *
+ * The shape DL-27.3 retired, restored verbatim in intent: one 1px ring in the
+ * unread token, 2px clear of the 9px dot. `box-sizing: border-box` is declared
+ * because `src/styles.css` has no global reset — without it the border would
+ * paint OUTSIDE the 15px and the gap would read as 3px on one side of a
+ * subpixel centre. It costs no compositing layer and no motion, so DL-1.2 and
+ * DL-1.3 stay exactly where they are; the only rule it moves is DL-27.3.
+ */
+.gxu-v--ring .asr-row__mark[data-state="asked"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--status-unread);
+  border-radius: 50%;
+}
+
+/* ------------------------------------------------ B - the layered glow
+ *
+ * Two spread stops, NO blur and NO offset, so this is not the shadow DL-1.3
+ * bans — but it is not the inset hairline that rule permits either, which is
+ * why the amendment has to name it rather than argue it slips through. The
+ * alpha ladder halves at each step (32% -> 14%) so the falloff reads as light
+ * leaving the dot instead of as two concentric rings.
+ */
+.gxu-v--glow .asr-row__mark[data-state="asked"]::before {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--status-unread) 32%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--status-unread) 14%, transparent);
+}
+
+/* ------------------------------------------------ C - the ripple
+ *
+ * The literal reading of the ask, and the expensive one. DL-1.2 bans infinite
+ * animation and bans motion while the user is idle — and an unread dot exists
+ * PRECISELY while the user is away, which is the argument against it and the
+ * argument for it at once. If this wins it needs a scoped exception on
+ * DL-18.11's precedent (infinite only while the state exists), and the state
+ * removal is what ends it.
+ *
+ * Only `transform` and `opacity` animate, so the motion is on DL-1.2's
+ * animatable list. The disc starts at 13px — variant A's diameter, so the
+ * mark still reads as separated at the instant the cycle restarts rather than
+ * flashing back to a bare dot — and stops at 2.1x = 27.3px, inside the ~30px
+ * ceiling measured at the top of this file. It is stacked BELOW the dot so the
+ * dot itself never dims at scale 1.
+ */
+@keyframes gxu-unread-ripple {
+  from {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  to {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
+.gxu-v--ripple .asr-row__mark[data-state="asked"]::before {
+  z-index: 1;
+}
+
+.gxu-v--ripple .asr-row__mark[data-state="asked"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  z-index: 0;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--status-unread);
+  animation: gxu-unread-ripple 1.8s var(--ease) infinite;
+}
+
+/* Reduced motion keeps the SEPARATION and drops the loop: the ripple settles
+   into variant A's ring rather than vanishing, so the state still reads apart
+   from the column for a user who asked for no motion. */
+@media (prefers-reduced-motion: reduce) {
+  .gxu-v--ripple .asr-row__mark[data-state="asked"]::after {
+    animation: none;
+    box-sizing: border-box;
+    width: 15px;
+    height: 15px;
+    background: none;
+    border: 1px solid var(--status-unread);
+  }
+}
+
+/* ------------------------------------------------------------- the 4x zoom
+ *
+ * `transform: scale` on a box holding the real mark, so the magnification
+ * shows the shipped geometry rather than a redrawing of it at another size.
+ * The box reserves the scaled footprint itself — a transform paints outside
+ * the flow, and without the reservation the four zooms would overlap. */
+
+.gxu-zooms {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.gxu-zoom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 84px;
+}
+
+.gxu-zoom__box {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: var(--sidebar-bg);
+}
+
+/* The rail gives the mark `justify-self: end` for its grid track; a centred
+   zoom box has to take that back or the magnified dot hangs off the right. */
+.gxu-zoom__box .asr-row__mark {
+  justify-self: center;
+  transform: scale(4);
+}
+
+.gxu-zoom__word {
+  font-size: var(--type-micro);
+  color: var(--text-faint);
+}

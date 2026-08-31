@@ -1,13 +1,12 @@
 import { Fragment } from "preact";
-import { GitBranch, Plus, X } from "@phosphor-icons/react";
-import { AgentGlyph } from "./controls/agent-glyph";
-import { CHROME_ICON, DeckIcon } from "./controls/deck-icon";
-import {
-  stripSegments,
-  type RailCardPane,
-  type RailState,
-  type RailWorktreeGroup,
-} from "./agent-rail-model";
+import { useRef, useState } from "preact/hooks";
+import { GitBranch, Plus, TerminalWindow, X } from "@phosphor-icons/react";
+import { DeckIcon, CHROME_ICON } from "./controls/deck-icon";
+import { CardAgentRow, CardLoad, whereOf } from "./worktree-card-row";
+import { CardStrip } from "./worktree-card-strip";
+import { CardActionsMenu, type CardActions } from "./worktree-card-menus";
+import { checkoutBadge, checkoutLabel, type CheckoutBadge } from "./agent-rail-card-model";
+import type { RailCardEntry, RailCardShell, RailWorktreeGroup } from "./agent-rail-model";
 
 /**
  * The rail's worktree card (DL-27.23/DL-27.24, amended; design
@@ -29,10 +28,14 @@ import {
  * (`AgentGlyph` requires a `className`; DL-27.21 forces a hit-layer + a real
  * close button, so a leaf needs a `__hit`): `__mark`, `__dot`, `__glyph`,
  * `__logo`, `__hit`, `__load`, `__count`, `__seg` — the closed strip's
- * segment, deliberately NOT `__row` (a segment carries no press and no
- * close, where a row is a full button with both — sharing one class made
- * "how many rows are open" indistinguishable from "how wide is the strip"
- * by selector alone, caught as a real bug in review) — and `__new`, the
+ * segment, deliberately NOT `__row`. **Amended 2026-08-27**: a segment now
+ * carries a PRESS (it focuses its loudest pane) and raises a menu, so the
+ * original wording — "carries no press and no close" — is no longer the
+ * distinction. It still carries no CLOSE and is still not a full row, and the
+ * selector reason stands unchanged: sharing one class made "how many rows are
+ * open" indistinguishable from "how wide is the strip" by selector alone,
+ * caught as a real bug in review. The strip itself moved to
+ * `worktree-card-strip.tsx` with that change. Also `__new`, the
  * `New agent` row's OWN leaf for the identical reason: it shares no press
  * target or accessible name with an agent row, either, and briefly sharing
  * `__row` there too made a `rows()`-style test selector need a `:not()` to
@@ -74,96 +77,42 @@ import {
  */
 
 /**
- * DL-27.2: the mark is the fast read and never the only read — every state
- * says its name in `title` and the row's accessible name. Duplicated from
- * `agent-rail.tsx`'s copy on purpose: that copy's only consumer was
- * `TabItem`, which this component replaces, so exporting it from there to
- * import it back here would be a one-consumer cycle over a five-line object.
- */
-const STATE_LABEL: Readonly<Record<RailState, string>> = {
-  failed: "failed",
-  asked: "needs you",
-  working: "working",
-  done: "done",
-  idle: "idle",
-};
-
-/** The one state that means "the machine is busy" (spec §11.3: `thinking` was dropped). */
-const BUSY_STATE: RailState = "working";
-
-/**
- * `project · checkout · branch` — the accessible-name prefix every control
- * on a card carries, matching what the shipped rail's `whereOf` produced
- * before the tab tier's removal took the project name out of this
- * component's reach. `WorktreeCard` only ever received the checkout
- * (`RailWorktreeGroup`) until this fix; `project` is threaded down from
- * `agent-rail.tsx`'s own `RailStreamGroup.project`, one call site, so every
- * control composes the same three-part string rather than each inventing
- * its own subset of it.
- */
-function whereOf(project: string, group: RailWorktreeGroup): string {
-  return `${project} · ${group.name} · ${group.branch}`;
-}
-
-/**
- * The per-pane state indicator, badged on the glyph's corner (design §5).
- * Diverges from the rail's shared `RailStatusMark` on purpose: `idle` paints
- * NOTHING here rather than a gray dot (design §9.4 point 2), and `working`
- * never draws the spinner — busy motion is `CardLoad`'s trailing track, not
- * this dot. Task 7 positions and colours it; this only decides which states
- * draw one at all.
- */
-function CardMark({ state }: { readonly state: RailState }) {
-  if (state === "idle") {
-    return null;
-  }
-  return <span class="asr-card__dot" data-state={state} aria-hidden="true" />;
-}
-
-/**
- * The trailing loading track (design §5, §8.2): three bars while the pane is
- * working, nothing otherwise — but the ELEMENT always renders, so an idle
- * row's model pill lands on the same right edge a busy row's does. The
- * design's own measurement (§10) is that an `auto`-width track pulled a
- * still row's pill 12px off that edge; an element that is always present is
- * what lets Task 7's fixed-width CSS reserve against it.
- */
-function CardLoad({ state }: { readonly state: RailState }) {
-  const busy = state === BUSY_STATE;
-  return (
-    <span class="asr-card__load" data-busy={busy} aria-hidden="true">
-      {busy && (
-        <>
-          <i />
-          <i />
-          <i />
-        </>
-      )}
-    </span>
-  );
-}
-
-/**
- * The branch, as a trailing badge beside the checkout name (design §4).
+ * The trailing badge beside the checkout label (design §4).
  * Takes its class from the caller rather than hardcoding `.asr-card__badge`:
  * a card and a bare row are two different prefixes (`.asr-card`/`.asr-bare`)
  * and each needs its OWN `__badge` leaf, not one root's leaf borrowed by the
  * other.
+ *
+ * What it says is `checkoutBadge`'s answer, not the branch unconditionally: a
+ * head whose LABEL is already the branch would otherwise print that word
+ * twice, which is the defect this badge sits beside. `data-kind` carries the
+ * distinction to CSS, since a `role` word takes the ink of a category and a
+ * branch takes DL-14.1's glyph.
  */
-function Badge({ className, branch }: { readonly className: string; readonly branch: string }) {
+function Badge({
+  className,
+  badge,
+}: {
+  readonly className: string;
+  readonly badge: CheckoutBadge;
+}) {
   return (
-    <span class={className} title={branch}>
-      <DeckIcon icon={GitBranch} size={CHROME_ICON} />
-      <span>{branch}</span>
+    <span class={className} data-kind={badge.kind} title={badge.text}>
+      {badge.kind === "branch" && <DeckIcon icon={GitBranch} size={CHROME_ICON} />}
+      <span>{badge.text}</span>
     </span>
   );
 }
 
 /**
- * The card head: `mark · checkout name · branch badge`, and nothing else.
+ * The card head: `mark · checkout label · badge`, and nothing else.
  * No caret, no age (design §4 — the head has 213px for a name and a branch
  * at 275px, and a caret's 19px was almost exactly the deficit). The whole
  * head is the toggle.
+ *
+ * The label is `checkoutLabel`, not `group.name`: the primary checkout's
+ * folder name IS the project name the cluster header printed directly above,
+ * so it is named by its branch instead (DL-27.25, amended).
  */
 function CardHead({
   project,
@@ -187,79 +136,51 @@ function CardHead({
       onClick={onToggle}
     >
       <span class="asr-card__mark" data-live={group.live} aria-hidden="true" />
-      <span class="asr-card__name">{group.name}</span>
-      <Badge className="asr-card__badge" branch={group.branch} />
+      <span class="asr-card__name">{checkoutLabel(group)}</span>
+      <Badge className="asr-card__badge" badge={checkoutBadge(group)} />
     </button>
   );
 }
 
-/**
- * One agent, as a list row (design §5): `glyph · name · model pill ·
- * loading mark`. The whole row is the button — DL-27.21 still requires its
- * own close, so the row is a container with a full-bleed hit layer
- * (DL-27.1's shape) rather than a literal `<button>`, which could not also
- * hold a real closable ✕.
- */
-function CardAgentRow({
+/** A shell-only tab retained as a first-class selectable row inside the card. */
+function CardShellRow({
   project,
   group,
-  pane,
-  onFocusPane,
-  onClosePane,
+  shell,
+  onSelectTab,
+  onCloseTab,
 }: {
   readonly project: string;
   readonly group: RailWorktreeGroup;
-  readonly pane: RailCardPane;
-  readonly onFocusPane: (tabIndex: number, paneId: number) => void;
-  readonly onClosePane: (tabIndex: number, paneId: number) => void;
+  readonly shell: RailCardShell;
+  readonly onSelectTab: (tabIndex: number) => void;
+  readonly onCloseTab: (tabIndex: number) => void;
 }) {
-  const label = STATE_LABEL[pane.state];
   const where = whereOf(project, group);
-
   return (
-    <div
-      class="asr-card__row"
-      data-state={pane.state}
-      data-focused={pane.focused}
-      data-pane-id={pane.paneId}
-    >
+    <div class="asr-card__row" data-kind="shell" data-focused={shell.active}>
       <button
         type="button"
         class="asr-card__hit"
-        aria-current={pane.focused ? "true" : undefined}
-        aria-label={`Focus ${pane.label} in ${where}, ${label}`}
-        title={`${pane.label} — ${label}`}
+        aria-current={shell.active ? "true" : undefined}
+        aria-label={`Open ${shell.label} in ${where}`}
+        title={`${shell.label} — shell`}
         onClick={() => {
-          onFocusPane(pane.tabIndex, pane.paneId);
+          onSelectTab(shell.tabIndex);
         }}
       />
-      <span class="asr-card__glyph">
-        <AgentGlyph agent={pane.agent} className="asr-card__logo" />
-        <CardMark state={pane.state} />
+      <span class="asr-card__glyph" aria-hidden="true">
+        <DeckIcon icon={TerminalWindow} size={CHROME_ICON} />
       </span>
-      <span class="asr-card__name">{pane.label}</span>
-      {/* The loading mark sits BEFORE the model pill (owner, 2026-08-26): it
-          reads as "this model is working" rather than as a mark stranded past
-          the pill at the row's trailing edge, which is also where the close ✕
-          swaps in. DOM order follows visual order so the two agree — the
-          stylesheet pins the track to column 3 and the pill to column 4. The
-          cost, named: the bars now start at each pill's own left edge, so a
-          list of differently-sized pills gives them a ragged x. The pills
-          themselves still share one right edge, since column 4 is the row's
-          trailing column. */}
-      <CardLoad state={pane.state} />
-      {pane.model !== "" && <span class="asr-card__pill">{pane.model}</span>}
-      {/* DL-27.21, kept: every agent row closes its own pane — the same
-          `asr-row__actions` / `asr-row__action--close` vocabulary the old
-          tab row and its leaves both used (`agent-rail.tsx`, formerly
-          around L378/L446), not a card-local reinvention of it. */}
+      <span class="asr-card__name">{shell.label}</span>
+      <CardLoad state="idle" />
       <div class="asr-row__actions">
         <button
           type="button"
           class="asr-row__action asr-row__action--close"
-          aria-label={`Close ${pane.label} in ${where}`}
+          aria-label={`Close ${shell.label} in ${where}`}
           onClick={() => {
-            onClosePane(pane.tabIndex, pane.paneId);
+            onCloseTab(shell.tabIndex);
           }}
         >
           <DeckIcon icon={X} size={CHROME_ICON} />
@@ -269,46 +190,34 @@ function CardAgentRow({
   );
 }
 
-/**
- * A closed card's agents, as one segmented strip (design §4): the three
- * loudest panes (`stripSegments`, DL-27.3's own precedence), glyph plus a
- * live mark per segment, no name and no close — the strip is a preview, not
- * a set of controls. The name survives in each segment's `title` beside the
- * state word (DL-27.2).
- *
- * A segment is `.asr-card__seg`, deliberately NOT `.asr-card__row`: a strip
- * segment carries no press, no close and no accessible name of its own,
- * where a row (the open list) is a full button with both — sharing one class
- * would make "how many agent ROWS are open" indistinguishable from "how wide
- * is the closed strip" by selector alone.
- */
-function CardStrip({ panes }: { readonly panes: readonly RailCardPane[] }) {
-  const { shown, overflow } = stripSegments(panes);
-  return (
-    <div class="asr-card__strip">
-      {shown.map((pane) => (
-        <span
-          key={pane.paneId}
-          class="asr-card__seg"
-          title={`${pane.label} — ${STATE_LABEL[pane.state]}`}
-        >
-          <span class="asr-card__glyph">
-            <AgentGlyph agent={pane.agent} className="asr-card__logo" />
-            <CardMark state={pane.state} />
-          </span>
-          <CardLoad state={pane.state} />
-        </span>
-      ))}
-      {overflow > 0 && (
-        <span
-          class="asr-card__seg"
-          data-overflow="true"
-          title={`${overflow} more in this checkout`}
-        >
-          +{overflow}
-        </span>
-      )}
-    </div>
+function CardEntryRow({
+  entry,
+  ...props
+}: {
+  readonly entry: RailCardEntry;
+  readonly project: string;
+  readonly group: RailWorktreeGroup;
+  readonly onFocusPane: (tabIndex: number, paneId: number) => void;
+  readonly onClosePane: (tabIndex: number, paneId: number) => void;
+  readonly onSelectTab: (tabIndex: number) => void;
+  readonly onCloseTab: (tabIndex: number) => void;
+}) {
+  return entry.kind === "agent" ? (
+    <CardAgentRow
+      project={props.project}
+      group={props.group}
+      pane={entry}
+      onFocusPane={props.onFocusPane}
+      onClosePane={props.onClosePane}
+    />
+  ) : (
+    <CardShellRow
+      project={props.project}
+      group={props.group}
+      shell={entry}
+      onSelectTab={props.onSelectTab}
+      onCloseTab={props.onCloseTab}
+    />
   );
 }
 
@@ -342,51 +251,21 @@ function BareCheckout({
   project,
   group,
   onNewTabIn,
-  onSelectTab,
+  newTabDisabled,
 }: {
   readonly project: string;
   readonly group: RailWorktreeGroup;
   readonly onNewTabIn?: (workspacePath: string) => void;
-  readonly onSelectTab?: (tabIndex: number) => void;
+  readonly newTabDisabled?: boolean;
 }) {
   const where = whereOf(project, group);
   const content = (
     <Fragment>
       <span class="asr-bare__mark" aria-hidden="true" />
-      <span class="asr-bare__name">{group.name}</span>
-      <Badge className="asr-bare__badge" branch={group.branch} />
+      <span class="asr-bare__name">{checkoutLabel(group)}</span>
+      <Badge className="asr-bare__badge" badge={checkoutBadge(group)} />
     </Fragment>
   );
-
-  // A shell tab is already open in this checkout (spec §9: shell panes are
-  // not agent rows, so it never produced a card) — reach it rather than
-  // claim the checkout is empty. Only the first matters in practice: two
-  // shell tabs sharing one worktree with no agent between them is an edge
-  // the design never asked this row to distinguish.
-  const openTab = group.rows[0];
-  if (openTab !== undefined) {
-    if (onSelectTab === undefined) {
-      return (
-        <div class="asr-bare" data-shell="true">
-          {content}
-        </div>
-      );
-    }
-    return (
-      <button
-        type="button"
-        class="asr-bare"
-        data-shell="true"
-        aria-label={`Open shell tab in ${where}`}
-        title={`Open shell tab in ${where}`}
-        onClick={() => {
-          onSelectTab(openTab.index);
-        }}
-      >
-        {content}
-      </button>
-    );
-  }
 
   if (onNewTabIn === undefined) {
     return (
@@ -400,6 +279,7 @@ function BareCheckout({
       type="button"
       class="asr-bare"
       data-shell="false"
+      disabled={newTabDisabled}
       aria-label={`New agent in ${where}`}
       title={`New agent in ${where}`}
       onClick={() => {
@@ -416,31 +296,37 @@ function BareCheckout({
  * is false for the ONE synthetic worktree such a project has — the model's
  * own field, unchanged since the worktree-tier spec, meaning "the cluster
  * header above already names this folder, so no card head repeats it". Its
- * panes still need somewhere to render, since the tab tier that used to
- * carry them is gone (spec §3): they print as plain agent rows with no card
- * box, head or toggle around them.
+ * entries still need somewhere to render, since the tab tier that used to
+ * carry them is gone (spec §3): they print as plain agent/shell rows with no
+ * card box, head or toggle around them.
  */
-function FlatPanes({
+function FlatEntries({
   project,
   group,
   onFocusPane,
   onClosePane,
+  onSelectTab,
+  onCloseTab,
 }: {
   readonly project: string;
   readonly group: RailWorktreeGroup;
   readonly onFocusPane: (tabIndex: number, paneId: number) => void;
   readonly onClosePane: (tabIndex: number, paneId: number) => void;
+  readonly onSelectTab: (tabIndex: number) => void;
+  readonly onCloseTab: (tabIndex: number) => void;
 }) {
   return (
     <Fragment>
-      {group.panes.map((pane) => (
-        <CardAgentRow
-          key={pane.paneId}
+      {group.entries.map((entry) => (
+        <CardEntryRow
+          key={entry.kind === "agent" ? entry.paneId : entry.key}
           project={project}
           group={group}
-          pane={pane}
+          entry={entry}
           onFocusPane={onFocusPane}
           onClosePane={onClosePane}
+          onSelectTab={onSelectTab}
+          onCloseTab={onCloseTab}
         />
       ))}
     </Fragment>
@@ -460,48 +346,83 @@ export interface WorktreeCardProps {
    * tab tier would delete a mandated affordance rather than carry it over.
    */
   readonly onClosePane: (tabIndex: number, paneId: number) => void;
+  readonly onCloseTab: (tabIndex: number) => void;
   readonly onNewTabIn?: (workspacePath: string) => void;
+  readonly newTabDisabled?: boolean;
   /**
-   * Reach a checkout's own open tab when it has no agent panes to show as a
-   * card — a plain shell tab (item 1 fix, review 2026-08-26). `BareCheckout`
-   * is the only reader; a checkout with nothing open at all still goes
-   * through `onNewTabIn` instead. Omitted where nothing wires it, in which
-   * case that row degrades like `onNewTabIn`'s own (DL-19.7).
+   * Reach a shell-only entry's tab. Agent entries use `onFocusPane`; a true
+   * empty checkout still goes through `onNewTabIn` instead.
    */
-  readonly onSelectTab?: (tabIndex: number) => void;
+  readonly onSelectTab: (tabIndex: number) => void;
+  /**
+   * The checkout's actions menu (spec §8), raised by the strip's `+` or by a
+   * right-click on the card. Omitted where nothing can wire it, which takes
+   * the `+` with it (DL-19.7) rather than leaving a launcher that opens
+   * nothing.
+   */
+  readonly actions?: CardActions;
 }
 
 export function WorktreeCard(props: WorktreeCardProps) {
   const { group, project } = props;
+  // The actions menu belongs to the CARD, not to the strip: a right-click
+  // anywhere on the card raises the same surface the `+` does (spec §7.3), and
+  // `worktree-agent-stack.tsx` already carried that gesture in the older rail.
+  const [actionsAt, setActionsAt] = useState<DOMRect | null>(null);
+  const actionsTrigger = useRef<HTMLElement | null>(null);
+  const cardRef = useRef<HTMLElement>(null);
+  const closeActions = (): void => {
+    setActionsAt(null);
+    actionsTrigger.current = null;
+  };
 
   if (!group.labelled) {
     return (
-      <FlatPanes
+      <FlatEntries
         project={project}
         group={group}
         onFocusPane={props.onFocusPane}
         onClosePane={props.onClosePane}
+        onSelectTab={props.onSelectTab}
+        onCloseTab={props.onCloseTab}
       />
     );
   }
 
-  if (group.panes.length === 0) {
+  if (group.entries.length === 0) {
     return (
       <BareCheckout
         project={project}
         group={group}
         onNewTabIn={props.onNewTabIn}
-        onSelectTab={props.onSelectTab}
+        newTabDisabled={props.newTabDisabled}
       />
     );
   }
 
+  const actions = props.actions;
   return (
     <article
+      ref={cardRef}
       class="asr-card"
       data-open={props.open}
       data-active={group.active}
       data-live={group.live}
+      onContextMenu={(event) => {
+        if (actions === undefined) {
+          return;
+        }
+        // The menu hangs off the CARD, not the cursor (spec §8.2): it is a
+        // surface about this checkout, and anchoring it to a pointer position
+        // would place it differently for the `+` and for a right-click.
+        event.preventDefault();
+        const card = cardRef.current;
+        if (card === null) {
+          return;
+        }
+        actionsTrigger.current = null;
+        setActionsAt(card.getBoundingClientRect());
+      }}
     >
       <CardHead
         project={project}
@@ -521,21 +442,24 @@ export function WorktreeCard(props: WorktreeCardProps) {
           {/* The count alone, no `Agents` label (design §5, §8.4: the
               owner-dropped label would also reopen DL-4.3's closed
               uppercase exception). */}
-          <div class="asr-card__count">{group.panes.length} active</div>
-          {group.panes.map((pane) => (
-            <CardAgentRow
-              key={pane.paneId}
+          <div class="asr-card__count">{group.entries.length} active</div>
+          {group.entries.map((entry) => (
+            <CardEntryRow
+              key={entry.kind === "agent" ? entry.paneId : entry.key}
               project={project}
               group={group}
-              pane={pane}
+              entry={entry}
               onFocusPane={props.onFocusPane}
               onClosePane={props.onClosePane}
+              onSelectTab={props.onSelectTab}
+              onCloseTab={props.onCloseTab}
             />
           ))}
           {props.onNewTabIn !== undefined && (
             <button
               type="button"
               class="asr-card__new"
+              disabled={props.newTabDisabled}
               aria-label={`New agent in ${whereOf(project, group)}`}
               onClick={() => {
                 props.onNewTabIn?.(group.path);
@@ -549,7 +473,40 @@ export function WorktreeCard(props: WorktreeCardProps) {
           )}
         </Fragment>
       ) : (
-        <CardStrip panes={group.panes} />
+        <CardStrip
+          project={project}
+          group={group}
+          onFocusPane={props.onFocusPane}
+          onClosePane={props.onClosePane}
+          actionsOpen={actionsAt !== null}
+          onOpenActions={
+            actions === undefined
+              ? undefined
+              : (trigger) => {
+                  if (actionsAt !== null) {
+                    closeActions();
+                    return;
+                  }
+                  actionsTrigger.current = trigger;
+                  // Off the CARD's rect, not the `+`'s: both entry points must
+                  // put the menu in the same place (spec §8.2).
+                  const card = cardRef.current;
+                  setActionsAt(
+                    card === null ? trigger.getBoundingClientRect() : card.getBoundingClientRect(),
+                  );
+                }
+          }
+        />
+      )}
+      {actions !== undefined && actionsAt !== null && (
+        <CardActionsMenu
+          project={project}
+          group={group}
+          actions={actions}
+          rect={actionsAt}
+          trigger={actionsTrigger.current}
+          onClose={closeActions}
+        />
       )}
     </article>
   );

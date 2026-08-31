@@ -139,6 +139,7 @@ export function agentRailNavigationSpecimen({
       onCloseTab={NOOP}
       onClosePane={NOOP}
       onFocusPane={onFocusPane}
+      legacy={{ onOpenWorkspace: NOOP, onResumeWorktree: NOOP }}
       onNewTabIn={openLauncher}
       fileController={fileControllerFixture}
       recentActivity={<RecentSessionActivity onResume={NOOP} onViewAll={NOOP} />}

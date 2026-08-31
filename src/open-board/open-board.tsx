@@ -28,7 +28,12 @@ import {
   available as workspaceCreateAvailable,
   createWorkspace,
 } from "../host/workspace-create-host";
-import { newTaskDraft, prefillWorkspace, updateDraft } from "../launcher/launcher-store";
+import {
+  newTaskDraft,
+  prefillWorkspace,
+  selectDraftWorkspace,
+  updateDraft,
+} from "../launcher/launcher-store";
 import { openAgentProblem, startTaskProblem, type NewTaskDraft } from "../launcher/new-task-draft";
 import type { LaunchTaskOutcome } from "../terminal/task-prompt-send";
 import type { LauncherPending } from "../launcher/launcher-fields";
@@ -56,6 +61,18 @@ export interface OpenBoardProps {
   onStartTask(draft: NewTaskDraft): Promise<LaunchTaskOutcome>;
   /** Open the drafted agent with no prompt sent. */
   onOpenAgent(draft: NewTaskDraft): Promise<LaunchTaskOutcome>;
+  /** Retry prompt delivery in the tab materialized by the original attempt. */
+  onRetryDelivery(): Promise<LaunchTaskOutcome>;
+  /** Whether the current attempt is safe to retry without duplicating text. */
+  canRetryDelivery: boolean;
+  /** Whether the tab materialized by the current attempt still exists. */
+  canFocusOpenedAgent: boolean;
+  /** A person changed task-bearing fields; contextual defaults alone are false. */
+  hasUserDraftContent: boolean;
+  /** An operation started by the sibling Quick Launch surface. */
+  readonly externalPending?: LauncherPending | null;
+  onFocusOpenedAgent(): void;
+  onClearDraft(): void;
   /** Resolves false when the history entry could not materialize. */
   onResumeSession(entry: SessionEntry): Promise<boolean>;
   /** Open Settings, for a draft whose agent cannot run (design §7). */
@@ -91,11 +108,11 @@ export function launchNotice(outcome: LaunchTaskOutcome): string | null {
     case "started":
       return null;
     case "prompt-pending":
-      return "Your task is waiting in the agent — press Enter there to send it";
+      return "Your task is staged in the agent — focus that pane and press Enter to send it";
     case "prompt-not-sent":
-      return "The agent did not become ready — your task is still here";
+      return "The agent did not become ready — your task is still here, so you can retry";
     case "prompt-failed":
-      return "Couldn't hand the task to the agent — the pane is open, try pasting it";
+      return "Couldn't hand the task to the agent — retry delivery or use the open pane";
     case "spawn-failed":
       return "Couldn't start a session here — check the folder and try again";
   }
@@ -109,6 +126,13 @@ export function OpenBoard({
   onCancel,
   onStartTask,
   onOpenAgent,
+  onRetryDelivery,
+  canRetryDelivery,
+  canFocusOpenedAgent,
+  hasUserDraftContent,
+  externalPending = null,
+  onFocusOpenedAgent,
+  onClearDraft,
   onResumeSession,
   onManageAgents,
 }: OpenBoardProps) {
@@ -120,6 +144,7 @@ export function OpenBoard({
     platform,
   );
   const recents = workspacesData.value.recents;
+  const recoveryWasAvailable = useRef(false);
   const home = getDesktopEnvironment().homeDir;
   const view = useSignal<BoardView>("home");
   const missing = useSignal<ReadonlySet<string>>(new Set());
@@ -160,6 +185,10 @@ export function OpenBoard({
   const livenessProbe = useRef<Promise<ReadonlySet<string> | null> | null>(null);
   /** Whether this open has already answered the Workspace field for the user. */
   const prefilled = useRef(false);
+  // Each explicit selection owns an epoch. Unmount advances it so an async
+  // liveness/agent probe from a cancelled board cannot retarget the shared
+  // draft after Quick Launch has taken over.
+  const workspaceSelectionEpoch = useRef(0);
   const customAgents = settings.value.customAgents;
   const draft = newTaskDraft.value;
   /** Every declared agent, so a missing one can still be SHOWN and explained. */
@@ -191,6 +220,9 @@ export function OpenBoard({
   /* oxlint-disable react-hooks/exhaustive-deps -- mount only; the composer is in the same commit */
   useEffect(() => {
     focusComposer();
+    return () => {
+      workspaceSelectionEpoch.current += 1;
+    };
   }, []);
   /* oxlint-enable react-hooks/exhaustive-deps */
 
@@ -220,10 +252,9 @@ export function OpenBoard({
     // Held the same way the agent probe is, and for the same reason: one click
     // now opens. A click landing before this answers would read an EMPTY
     // `missing` set, walk past the guard, and hand a deleted folder to the
-    // spawn — where `resolveSpawnCwd` silently falls back to $HOME and the
-    // user gets a shell in their home directory under a project's name, with
-    // the dead path written back into recents. The board's one notice never
-    // fires there, because as far as the app is concerned the open SUCCEEDED.
+    // spawn. The host now fails that request closed, but the board must still
+    // surface the missing folder before launch instead of making the user
+    // recover from a failed spawn after clicking Open.
     livenessProbe.current = invoke<boolean[]>("dirs_exist", { paths })
       .then((flags) => {
         const gone = new Set(paths.filter((_, index) => !flags[index]));
@@ -301,6 +332,19 @@ export function OpenBoard({
 
   const groups = partitionRecents(recents, missing.value);
 
+  const recoveryAvailable = canRetryDelivery || canFocusOpenedAgent;
+  const effectivePending: LauncherPending | null = opening.value
+    ? "selecting-workspace"
+    : (pending.value ?? externalPending);
+  /* oxlint-disable react-hooks/exhaustive-deps -- `notice` is the output being cleared; only the recovery transition drives this effect */
+  useEffect(() => {
+    if (recoveryWasAvailable.current && !recoveryAvailable) {
+      notice.value = null;
+    }
+    recoveryWasAvailable.current = recoveryAvailable;
+  }, [recoveryAvailable]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
+
   function goHome(): void {
     view.value = "home";
     queueMicrotask(() => focusComposer());
@@ -353,15 +397,31 @@ export function OpenBoard({
     }
     notice.value = null;
     opening.value = true;
-    // `null` means the probe failed, so nothing is known and the selection
-    // goes ahead — refusing on an unanswerable probe would strand the board.
-    const gone = await livenessProbe.current;
-    opening.value = false;
-    if (gone?.has(path) === true) {
-      notice.value = `${workspaceLabel(path)} is missing — pick another folder`;
-      return;
+    const selectionEpoch = workspaceSelectionEpoch.current + 1;
+    workspaceSelectionEpoch.current = selectionEpoch;
+    try {
+      // `null` means the probe failed, so nothing is known and the selection
+      // goes ahead — refusing on an unanswerable probe would strand the board.
+      const gone = await livenessProbe.current;
+      if (workspaceSelectionEpoch.current !== selectionEpoch) {
+        return;
+      }
+      if (gone?.has(path) === true) {
+        notice.value = `${workspaceLabel(path)} is missing — pick another folder`;
+        return;
+      }
+      const agent = await seedAgentFor(path);
+      if (workspaceSelectionEpoch.current !== selectionEpoch) {
+        return;
+      }
+      selectDraftWorkspace(path, agent);
+    } finally {
+      // The seed probe is part of selection too. Releasing this before it
+      // answers would let Start launch the draft's previous workspace.
+      if (workspaceSelectionEpoch.current === selectionEpoch) {
+        opening.value = false;
+      }
     }
-    prefillWorkspace(path, await seedAgentFor(path));
   }
 
   /**
@@ -452,7 +512,7 @@ export function OpenBoard({
    * still to be done.
    */
   async function runLaunch(kind: "start" | "open"): Promise<void> {
-    if (pending.value !== null) {
+    if (effectivePending !== null) {
       return;
     }
     notice.value = null;
@@ -460,6 +520,22 @@ export function OpenBoard({
     const outcome = await (kind === "start" ? onStartTask(draft) : onOpenAgent(draft));
     pending.value = null;
     notice.value = launchNotice(outcome);
+  }
+
+  async function retryDelivery(): Promise<void> {
+    if (effectivePending !== null || !canRetryDelivery) {
+      return;
+    }
+    notice.value = null;
+    pending.value = "retrying-prompt";
+    const outcome = await onRetryDelivery();
+    pending.value = null;
+    notice.value = launchNotice(outcome);
+  }
+
+  function clearTaskDraft(): void {
+    notice.value = null;
+    onClearDraft();
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
@@ -475,7 +551,9 @@ export function OpenBoard({
       hasPrimaryModifier(event) &&
       (getDesktopEnvironment().platform !== "windows" || event.shiftKey)
     ) {
-      void pickFolder();
+      if (effectivePending === null) {
+        void pickFolder();
+      }
       event.preventDefault();
       event.stopPropagation();
       return;
@@ -554,11 +632,14 @@ export function OpenBoard({
           agents={agents}
           declaredModels={settings.value.agentModels}
           agentRuntimeDefaults={settings.value.agentRuntimeDefaults}
-          pending={pending.value}
+          pending={effectivePending}
           problem={problem}
           openProblem={openProblem}
           agentsResolved={agentsProbed.value}
           notice={notice.value}
+          canRetryDelivery={canRetryDelivery}
+          canFocusOpenedAgent={canFocusOpenedAgent}
+          hasUserDraftContent={hasUserDraftContent}
           describeCombo={describeCombo}
           onDraftChange={updateDraft}
           onSelectWorkspace={(path) => void selectWorkspace(path)}
@@ -569,6 +650,9 @@ export function OpenBoard({
           onBrowseSessions={openSessions}
           onStartTask={() => void runLaunch("start")}
           onOpenAgent={() => void runLaunch("open")}
+          onRetryDelivery={() => void retryDelivery()}
+          onFocusOpenedAgent={onFocusOpenedAgent}
+          onClearDraft={clearTaskDraft}
           onRemove={removeRecentRows}
         />
       )}

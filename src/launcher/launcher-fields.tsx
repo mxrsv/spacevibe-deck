@@ -45,10 +45,32 @@ const CREATE_WORKTREE = "__create-worktree";
 
 export type LauncherPending =
   | "picking-folder"
+  | "selecting-workspace"
   | "creating-workspace"
   | "creating-worktree"
   | "opening-agent"
-  | "sending-prompt";
+  | "sending-prompt"
+  | "retrying-prompt";
+
+/** User-facing progress copy shared by both launcher surfaces. */
+export function launcherPendingLabel(pending: LauncherPending): string {
+  switch (pending) {
+    case "picking-folder":
+      return "Opening folder picker…";
+    case "selecting-workspace":
+      return "Checking workspace…";
+    case "creating-workspace":
+      return "Creating workspace…";
+    case "creating-worktree":
+      return "Creating worktree…";
+    case "opening-agent":
+      return "Opening agent…";
+    case "sending-prompt":
+      return "Starting agent and staging task…";
+    case "retrying-prompt":
+      return "Retrying task delivery…";
+  }
+}
 
 export interface LauncherFieldsProps {
   /** Prefix for the ids this subtree mints; two mounts must not collide. */
@@ -88,6 +110,12 @@ export interface LauncherFieldsProps {
   readonly agentsResolved: boolean;
   /** A message the launch attempt produced, or null. */
   readonly notice: string | null;
+  /** A failed attempt still targets the same tab and no paste landed. */
+  readonly canRetryDelivery: boolean;
+  /** The materialized tab for the current attempt still exists. */
+  readonly canFocusOpenedAgent: boolean;
+  /** A person changed task-bearing fields; contextual defaults alone are false. */
+  readonly hasUserDraftContent: boolean;
   onDraftChange(next: NewTaskDraft): void;
   onPickFolder(): void;
   onCreateWorkspace(): void;
@@ -95,6 +123,9 @@ export interface LauncherFieldsProps {
   onManageAgents(): void;
   onStartTask(): void;
   onOpenAgent(): void;
+  onRetryDelivery(): void;
+  onFocusOpenedAgent(): void;
+  onClearDraft(): void;
   /** Quick Launch only — hands the whole draft to the Open Board. */
   onOpenFullComposer?: () => void;
 }
@@ -337,6 +368,7 @@ export function LauncherFields(props: LauncherFieldsProps) {
               type="button"
               class="nt-icon-action"
               aria-label="Open full composer"
+              disabled={busy}
               onClick={props.onOpenFullComposer}
             >
               <DeckIcon icon={ArrowsOutSimple} size={ROW_ICON} />
@@ -357,7 +389,11 @@ export function LauncherFields(props: LauncherFieldsProps) {
             disabled={busy || activeProblem !== null}
             onClick={expanded ? props.onStartTask : props.onOpenAgent}
           >
-            {expanded ? "Start task" : "Open agent"}
+            {props.pending === null
+              ? expanded
+                ? "Start task"
+                : "Open agent"
+              : launcherPendingLabel(props.pending)}
             <DeckIcon icon={ArrowUp} size={ROW_ICON} />
           </button>
         </div>
@@ -382,10 +418,34 @@ export function LauncherFields(props: LauncherFieldsProps) {
           {problemMessage(activeProblem)}
         </p>
       ) : null}
+      {props.pending !== null ? (
+        <p class="nt-composer__notice nt-composer__notice--status" role="status">
+          {launcherPendingLabel(props.pending)}
+        </p>
+      ) : null}
       {props.notice !== null ? (
         <p class="nt-composer__notice nt-composer__notice--status" role="status">
           {props.notice}
         </p>
+      ) : null}
+      {props.canRetryDelivery || props.canFocusOpenedAgent || props.hasUserDraftContent ? (
+        <div class="nt-composer__recovery" aria-label="Task draft actions">
+          {props.canRetryDelivery ? (
+            <button type="button" disabled={busy} onClick={props.onRetryDelivery}>
+              Retry delivery
+            </button>
+          ) : null}
+          {props.canFocusOpenedAgent ? (
+            <button type="button" disabled={busy} onClick={props.onFocusOpenedAgent}>
+              Focus opened agent
+            </button>
+          ) : null}
+          {props.hasUserDraftContent ? (
+            <button type="button" disabled={busy} onClick={props.onClearDraft}>
+              Clear draft
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

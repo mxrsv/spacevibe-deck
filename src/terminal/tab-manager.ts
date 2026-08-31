@@ -3,7 +3,7 @@ import type { UnlistenFn } from "../host/bridge";
 import { clampFontSize, DEFAULT_SETTINGS } from "../settings/settings-schema";
 import { settings, revealDockTab, toggleDock, updateSettings } from "../settings/settings-store";
 import { type Direction, type Edge, type SerializedNode } from "../lib/split-tree";
-import { explicitAgent, processLabel } from "../lib/process-info";
+import { explicitAgent, processLabel, type PaneProcessInfo } from "../lib/process-info";
 import type { SessionTab } from "../lib/session-schema";
 import type { DetachTarget } from "./pane-detach";
 import { defaultTransferClient } from "./transfer-client";
@@ -48,11 +48,13 @@ import { createCloseCoordinator } from "./close-coordinator";
 import { activeAfterClose } from "./tab-close";
 import { freshCwd, freshPaneInfo } from "./pane-info";
 import {
+  launchClearsDraft,
   promptReadyToSend,
   TASK_PROMPT_AUTOSEND,
   TASK_PROMPT_POLL_MS,
   TASK_PROMPT_READY_TIMEOUT_MS,
   type LaunchTaskOutcome,
+  type LaunchTaskResult,
 } from "./task-prompt-send";
 import { defaultPtyClient, type PtyClient } from "./pty-client";
 import { submitAllowed, type InjectOutcome } from "../prompts/inject";
@@ -140,6 +142,21 @@ export function createTabManager(
   // running. This manager-level lock keeps the invariant alive across those
   // remounts and rejects overlap before a second paste reaches the write queue.
   const injectingPanes = new Set<number>();
+  // An incomplete task handoff belongs to the exact pane that received (or
+  // should receive) the prompt, not merely to the tab. A split can replace
+  // pane 1 with another instance of the same agent; resolving the tab's first
+  // or active pane would then retry or focus an unrelated session.
+  interface TaskPromptTarget {
+    readonly paneId: number;
+    readonly processId: number;
+    readonly cwd: string;
+    readonly agent: string;
+  }
+  interface TaskPromptDelivery {
+    readonly outcome: LaunchTaskOutcome;
+    readonly target: TaskPromptTarget | null;
+  }
+  const taskPromptTargetByTab = new Map<number, TaskPromptTarget>();
   // One shared clock behind both the activity tracker and the attention
   // tracker: activity-transition `observedAt` and the attention gate's
   // `gateOpenedAt` are compared directly, so they must read the same time
@@ -413,6 +430,16 @@ export function createTabManager(
     }
   }
 
+  /** Forget retry targets whose original pane no longer exists. */
+  function pruneTaskPromptPanes(live: readonly number[]): void {
+    const alive = new Set(live);
+    for (const [tabKey, target] of taskPromptTargetByTab) {
+      if (!alive.has(target.paneId)) {
+        taskPromptTargetByTab.delete(tabKey);
+      }
+    }
+  }
+
   const callbacks = {
     onLayoutChange(): void {
       syncViews();
@@ -423,6 +450,7 @@ export function createTabManager(
       notifier.prune(live);
       pruneNotifiedKinds(live);
       pruneLaunchCommands(live);
+      pruneTaskPromptPanes(live);
       // Every pane of every tab is polled now, so a long session would
       // otherwise leave one cache entry behind per pane ever opened.
       poller.prune(live);
@@ -682,6 +710,7 @@ export function createTabManager(
     notifier.prune(live);
     pruneNotifiedKinds(live);
     pruneLaunchCommands(live);
+    pruneTaskPromptPanes(live);
     poller.prune(live);
   }
 
@@ -697,6 +726,7 @@ export function createTabManager(
     tabs.splice(removeAt, 1);
     overrides.delete(entry.key);
     unread.delete(entry.key);
+    taskPromptTargetByTab.delete(entry.key);
     if (tabs.length === 0) {
       active = -1;
       // Last TAB is not last SURFACE (spec §7): a window may hold only file
@@ -773,7 +803,7 @@ export function createTabManager(
     // The + / Cmd+T path raises the shared non-modal Quick Launch in the
     // active workspace. No tab is materialized until its final action; the
     // legacy AgentQuickPicker remains compiled as the one-line revert seam.
-    toggleQuickLaunch(activeWorkspacePath());
+    (deps.onOpenTaskLauncher ?? toggleQuickLaunch)(activeWorkspacePath());
   }
 
   /**
@@ -947,14 +977,16 @@ export function createTabManager(
   async function waitForPromptReady(
     paneId: number,
     expectedAgent: string | null,
-  ): Promise<boolean> {
+  ): Promise<{ readonly ready: boolean; readonly info: PaneProcessInfo | null }> {
     const deadline = Date.now() + TASK_PROMPT_READY_TIMEOUT_MS;
+    let lastInfo: PaneProcessInfo | null = null;
     for (;;) {
       const [info] = await freshPaneInfo(
         [paneId],
         pty,
         agentProcessMatchers(settings.value.customAgents),
       );
+      lastInfo = info ?? null;
       const alive = ownerOf(paneId) !== undefined;
       if (
         promptReadyToSend({
@@ -964,13 +996,13 @@ export function createTabManager(
           alive,
         })
       ) {
-        return true;
+        return { ready: true, info: info ?? null };
       }
       // A pane that has left the layout is never coming back; waiting out the
       // full ceiling for it would hold a pending launch open for 90 seconds
       // after the user closed the tab.
       if (!alive || Date.now() >= deadline) {
-        return false;
+        return { ready: false, info: lastInfo };
       }
       await new Promise((resolve) => setTimeout(resolve, TASK_PROMPT_POLL_MS));
     }
@@ -991,14 +1023,14 @@ export function createTabManager(
   async function launchTask(
     intent: MaterializeIntent,
     prompt: string | null,
-  ): Promise<LaunchTaskOutcome> {
+  ): Promise<LaunchTaskResult> {
     const entry = await materializeEntry(intent);
     if (entry === null) {
-      return "spawn-failed";
+      return { outcome: "spawn-failed", tabKey: null };
     }
     const text = prompt?.trim() ?? "";
     if (text === "") {
-      return "started";
+      return { outcome: "started", tabKey: entry.key };
     }
     const expectedAgent = intent.agent ?? null;
     if (expectedAgent === null) {
@@ -1006,17 +1038,73 @@ export function createTabManager(
       // exactly the fallback the design forbids. The launcher's own validation
       // refuses this combination, so reaching here means something upstream
       // changed — say so rather than waiting out the ceiling in silence.
-      return "prompt-not-sent";
+      return { outcome: "prompt-not-sent", tabKey: entry.key };
     }
     // From the entry this call created, never from `tabs[tabs.length - 1]`:
     // a second launch in flight can push its tab across the await above, and
     // the prompt would then be typed into somebody else's pane.
     const paneId = entry.manager.paneIds()[0];
     if (paneId === undefined) {
-      return "prompt-not-sent";
+      return { outcome: "prompt-not-sent", tabKey: entry.key };
     }
-    if (!(await waitForPromptReady(paneId, expectedAgent))) {
-      return "prompt-not-sent";
+    const delivery = await deliverTaskPrompt(paneId, text, expectedAgent);
+    if (!launchClearsDraft(delivery.outcome) && delivery.target !== null) {
+      taskPromptTargetByTab.set(entry.key, delivery.target);
+    } else {
+      taskPromptTargetByTab.delete(entry.key);
+    }
+    return { outcome: delivery.outcome, tabKey: entry.key };
+  }
+
+  function taskPromptTarget(
+    paneId: number,
+    info: PaneProcessInfo | null,
+    expectedAgent: string,
+  ): TaskPromptTarget | null {
+    if (
+      info?.kind !== "agent" ||
+      info.agent !== expectedAgent ||
+      !Number.isSafeInteger(info.processId) ||
+      (info.processId ?? 0) <= 0 ||
+      info.cwd === null
+    ) {
+      return null;
+    }
+    return { paneId, processId: info.processId as number, cwd: info.cwd, agent: expectedAgent };
+  }
+
+  function sameTaskPromptTarget(
+    expected: TaskPromptTarget,
+    info: PaneProcessInfo | undefined,
+  ): boolean {
+    return (
+      info?.kind === "agent" &&
+      info.agent === expected.agent &&
+      info.processId === expected.processId &&
+      info.cwd === expected.cwd
+    );
+  }
+
+  async function deliverTaskPrompt(
+    paneId: number,
+    text: string,
+    expectedAgent: string,
+    requiredTarget?: TaskPromptTarget,
+  ): Promise<TaskPromptDelivery> {
+    const readiness = await waitForPromptReady(paneId, expectedAgent);
+    // Retry owns a saved process generation. The readiness poll above is an
+    // async boundary, so compare its newest snapshot too: the original agent
+    // can exit and a same-name replacement can start after the retry's first
+    // guard but before paste is queued.
+    if (
+      requiredTarget !== undefined &&
+      !sameTaskPromptTarget(requiredTarget, readiness.info ?? undefined)
+    ) {
+      return { outcome: "prompt-not-sent", target: null };
+    }
+    const target = taskPromptTarget(paneId, readiness.info, expectedAgent);
+    if (!readiness.ready) {
+      return { outcome: "prompt-not-sent", target };
     }
     // ONCE, and by default WITHOUT the trailing Enter — see
     // `TASK_PROMPT_AUTOSEND`, which is false because an agent's first-run
@@ -1029,9 +1117,72 @@ export function createTabManager(
       expectedAgent,
     });
     if (outcome === "sent") {
-      return "sent";
+      return { outcome: "sent", target };
     }
-    return outcome === "pasted" ? "prompt-pending" : "prompt-failed";
+    return { outcome: outcome === "pasted" ? "prompt-pending" : "prompt-failed", target };
+  }
+
+  async function retryTaskPrompt(
+    tabKey: number,
+    prompt: string,
+    expectedAgent: string,
+  ): Promise<LaunchTaskOutcome> {
+    const entry = tabs.find((candidate) => candidate.key === tabKey);
+    const target = taskPromptTargetByTab.get(tabKey);
+    const paneId = target?.paneId;
+    const text = prompt.trim();
+    if (
+      entry === undefined ||
+      paneId === undefined ||
+      text === "" ||
+      !entry.manager.paneIds().includes(paneId)
+    ) {
+      taskPromptTargetByTab.delete(tabKey);
+      return "prompt-not-sent";
+    }
+    const [info] = await freshPaneInfo(
+      [paneId],
+      pty,
+      agentProcessMatchers(settings.value.customAgents),
+    );
+    if (
+      target === undefined ||
+      target.agent !== expectedAgent ||
+      !sameTaskPromptTarget(target, info)
+    ) {
+      taskPromptTargetByTab.delete(tabKey);
+      return "prompt-not-sent";
+    }
+    const delivery = await deliverTaskPrompt(paneId, text, expectedAgent, target);
+    if (launchClearsDraft(delivery.outcome) || delivery.target === null) {
+      taskPromptTargetByTab.delete(tabKey);
+    } else {
+      taskPromptTargetByTab.set(tabKey, delivery.target);
+    }
+    return delivery.outcome;
+  }
+
+  function canRetryTaskPrompt(tabKey: number): boolean {
+    const entry = tabs.find((candidate) => candidate.key === tabKey);
+    const paneId = taskPromptTargetByTab.get(tabKey)?.paneId;
+    return entry !== undefined && paneId !== undefined && entry.manager.paneIds().includes(paneId);
+  }
+
+  function canFocusTaskPrompt(tabKey: number): boolean {
+    const entry = tabs.find((candidate) => candidate.key === tabKey);
+    const paneId = taskPromptTargetByTab.get(tabKey)?.paneId;
+    return entry !== undefined && paneId !== undefined && entry.manager.paneIds().includes(paneId);
+  }
+
+  function focusTaskPrompt(tabKey: number): boolean {
+    const index = tabs.findIndex((candidate) => candidate.key === tabKey);
+    const paneId = taskPromptTargetByTab.get(tabKey)?.paneId;
+    if (index < 0 || paneId === undefined || !tabs[index].manager.paneIds().includes(paneId)) {
+      taskPromptTargetByTab.delete(tabKey);
+      return false;
+    }
+    activateForAttention(index, paneId);
+    return true;
   }
 
   /** The command a pane started with; null when it had none. */
@@ -1323,6 +1474,7 @@ export function createTabManager(
     tabs.splice(removeAt, 1);
     overrides.delete(entry.key);
     unread.delete(entry.key);
+    taskPromptTargetByTab.delete(entry.key);
     const live = allPaneIds();
     launcher.prune(live);
     activity.prune(live);
@@ -2118,6 +2270,59 @@ export function createTabManager(
     }
   }
 
+  /**
+   * The rail card's `New split here` (spec
+   * `docs/specs/2026-08-27-rail-card-strip-actions-design.md` §11.1 — the one
+   * fork this work opens, resolved by the owner's "implement this spec").
+   *
+   * `split-row`/`split-column` act on the ACTIVE pane, and the card that
+   * raised the menu may not own it — routing the row through them would split
+   * whatever happened to be focused, in a different checkout. Doing it
+   * honestly is materialize-then-split, which is `TabManager`'s business (the
+   * `launchTask` precedent): the rail passes a PATH and receives a boolean,
+   * exactly as `onNewTabIn` already does, and no pane id leaves the terminal
+   * layer.
+   *
+   * One departure from the spec's own wording, named: when the checkout has NO
+   * tab, this materializes one and STOPS rather than also splitting it. A
+   * fresh tab's single pane is already the pane the row promised — splitting
+   * it too would spawn a second, unasked-for shell, and "Open a pane beside
+   * this tab" has no tab to sit beside.
+   */
+  async function splitInWorkspace(workspacePath: string): Promise<boolean> {
+    const target = normalizeWorkspacePath(workspacePath);
+    if (target === null) return false;
+    // Containment, not equality (code review, 2026-08-31). The card that
+    // raised this row groups its tabs with `worktreeForPath`'s longest-prefix
+    // match, so a tab opened at `/repo/wt/packages/web` shows its agents on
+    // the card for `/repo/wt`. An exact `===` found nothing there and fell
+    // through to `materialize`, so `New split here` — "Open a pane beside this
+    // tab" — silently produced a second TAB at the checkout root instead. The
+    // prefix test is inlined rather than importing `worktreeForPath`, whose
+    // shape is "which of these roots owns this path"; here the root is known
+    // and the tabs are the candidates. Nearest tab wins, so a nested tab is
+    // preferred over one sitting at the checkout root only when the caller
+    // asked for that nested path.
+    const owned = (tab: { readonly workspacePath: string | null }): boolean =>
+      tab.workspacePath === target ||
+      tab.workspacePath?.startsWith(`${target}/`) === true ||
+      tab.workspacePath?.startsWith(`${target}\\`) === true;
+    const exact = tabs.findIndex((tab) => tab.workspacePath === target);
+    const index = exact >= 0 ? exact : tabs.findIndex(owned);
+    if (index < 0) {
+      return materialize({
+        layout: BUILT_IN_PRESET.layout,
+        cwds: [target],
+        workspacePath: target,
+      });
+    }
+    if (index !== active) {
+      selectTab(index);
+    }
+    await splitActive("row");
+    return true;
+  }
+
   // `dispose()` can run while this await is still in flight (a remount mid-
   // init). Pushing into `unlisteners` after that would leak a live listener
   // that keeps feeding a `tabs` array nobody drains anymore — for
@@ -2329,6 +2534,10 @@ export function createTabManager(
     openFromPreset,
     openQuickAgent,
     launchTask,
+    retryTaskPrompt,
+    canRetryTaskPrompt,
+    canFocusTaskPrompt,
+    focusTaskPrompt,
     launchCommandFor,
     dropAgentPane,
     activeSlotRects() {
@@ -2357,6 +2566,7 @@ export function createTabManager(
     cycleTab,
     runAction,
     splitActive,
+    splitInWorkspace,
     allPaneIds,
     closePane: () => close.closePane(),
     applySettings(next) {
@@ -2398,6 +2608,7 @@ export function createTabManager(
         tab.manager.dispose();
       }
       tabs.length = 0;
+      taskPromptTargetByTab.clear();
     },
   };
 }
