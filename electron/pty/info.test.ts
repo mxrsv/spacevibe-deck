@@ -30,6 +30,7 @@ describe("buildPtyInfo", () => {
 
     expect(info).toEqual({
       id: 1,
+      processId: 501,
       cwd: null,
       process: "zsh",
       kind: "idle-shell",
@@ -42,6 +43,7 @@ describe("buildPtyInfo", () => {
 
     expect(info).toEqual({
       id: 2,
+      processId: 777,
       cwd: null,
       process: "claude",
       kind: "agent",
@@ -83,6 +85,7 @@ describe("buildPtyInfo", () => {
 
     expect(info).toEqual({
       id: 4,
+      processId: null,
       cwd: "/tmp",
       process: null,
       kind: "unknown",

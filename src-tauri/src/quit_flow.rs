@@ -234,6 +234,7 @@ mod tests {
     fn idle(id: u32) -> PtyInfo {
         PtyInfo {
             id,
+            process_id: None,
             cwd: None,
             process: Some("zsh".into()),
             kind: PaneProcessKind::IdleShell,

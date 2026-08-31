@@ -17,6 +17,7 @@ use tauri::{AppHandle, Manager, State, WebviewWindow};
 pub const EVENT_OUTPUT: &str = "pty:output";
 pub const EVENT_EXIT: &str = "pty:exit";
 pub const EVENT_PROMPT_READY: &str = "pty:prompt-ready";
+const MAX_PTY_DIMENSION: u16 = i16::MAX as u16;
 
 #[derive(Clone, serde::Serialize)]
 struct OutputPayload {
@@ -254,16 +255,43 @@ fn consume_shell_integration(app: &AppHandle, id: u32, data: &str) {
     }
 }
 
-/// Working directory for a new shell: an existing directory passes through;
-/// anything else falls back to the platform's validated user profile.
+/// Working directory for a new shell. Only an omitted cwd requests Home; an
+/// explicit path must still be the directory the renderer named.
 fn resolve_spawn_cwd(
     cwd: Option<String>,
     home: Result<std::path::PathBuf, String>,
 ) -> Result<String, String> {
-    if let Some(directory) = cwd.filter(|directory| std::path::Path::new(directory).is_dir()) {
-        return Ok(directory);
+    let Some(directory) = cwd else {
+        return home.map(|directory| directory.to_string_lossy().into_owned());
+    };
+    match std::fs::metadata(&directory) {
+        Ok(metadata) if metadata.is_dir() => Ok(directory),
+        Ok(_) => Err(format!(
+            "The requested working directory is not a directory: {directory}"
+        )),
+        Err(error) => Err(format!(
+            "The requested working directory is unavailable: {directory} ({error})"
+        )),
     }
-    home.map(|directory| directory.to_string_lossy().into_owned())
+}
+
+fn validate_pty_size(cols: u16, rows: u16) -> Result<PtySize, String> {
+    if cols == 0 || cols > MAX_PTY_DIMENSION {
+        return Err(format!(
+            "Invalid PTY columns: expected 1..={MAX_PTY_DIMENSION}, got {cols}"
+        ));
+    }
+    if rows == 0 || rows > MAX_PTY_DIMENSION {
+        return Err(format!(
+            "Invalid PTY rows: expected 1..={MAX_PTY_DIMENSION}, got {rows}"
+        ));
+    }
+    Ok(PtySize {
+        rows,
+        cols,
+        pixel_width: 0,
+        pixel_height: 0,
+    })
 }
 
 #[tauri::command]
@@ -278,12 +306,7 @@ pub fn spawn_shell(
 ) -> Result<u32, String> {
     let pty_system = native_pty_system();
     let pair = pty_system
-        .openpty(PtySize {
-            rows,
-            cols,
-            pixel_width: 0,
-            pixel_height: 0,
-        })
+        .openpty(validate_pty_size(cols, rows)?)
         .map_err(|e| e.to_string())?;
 
     let launch = platform::shell_launch()?;
@@ -469,6 +492,7 @@ pub fn resize_pty(
     cols: u16,
     rows: u16,
 ) -> Result<(), String> {
+    let size = validate_pty_size(cols, rows)?;
     sweep_and_reap(window.app_handle(), &coordinator);
     coordinator
         .access(id, window.label())
@@ -477,15 +501,7 @@ pub fn resize_pty(
     let session = sessions
         .get(&id)
         .ok_or_else(|| format!("Terminal session #{id} not found"))?;
-    session
-        .master
-        .resize(PtySize {
-            rows,
-            cols,
-            pixel_width: 0,
-            pixel_height: 0,
-        })
-        .map_err(|e| e.to_string())
+    session.master.resize(size).map_err(|e| e.to_string())
 }
 
 /// Kill a session without consulting the coordinator. `kill_pty` validates the
@@ -650,6 +666,15 @@ mod tests {
     }
 
     #[test]
+    fn pty_size_rejects_zero_and_native_short_overflow() {
+        assert!(super::validate_pty_size(80, 24).is_ok());
+        assert!(super::validate_pty_size(0, 24).is_err());
+        assert!(super::validate_pty_size(80, 0).is_err());
+        assert!(super::validate_pty_size(32_768, 24).is_err());
+        assert!(super::validate_pty_size(80, 32_768).is_err());
+    }
+
+    #[test]
     fn folds_only_directory_candidates_and_keeps_the_last_valid_one() {
         let valid = std::env::temp_dir();
         let valid_text = valid.to_string_lossy().into_owned();
@@ -799,16 +824,16 @@ mod tests {
     }
 
     #[test]
-    fn resolve_spawn_cwd_falls_back_to_home() {
+    fn resolve_spawn_cwd_rejects_an_invalid_explicit_directory() {
+        let missing = "/definitely/not/a/dir";
+        let error = super::resolve_spawn_cwd(Some(missing.into()), Ok(std::env::temp_dir()))
+            .expect_err("an explicit missing cwd must fail closed");
+        assert!(error.contains(missing));
+    }
+
+    #[test]
+    fn resolve_spawn_cwd_uses_home_only_when_no_directory_was_requested() {
         let home = std::env::temp_dir().to_string_lossy().into_owned();
-        assert_eq!(
-            super::resolve_spawn_cwd(
-                Some("/definitely/not/a/dir".into()),
-                Ok(std::env::temp_dir())
-            )
-            .unwrap(),
-            home
-        );
         assert_eq!(
             super::resolve_spawn_cwd(None, Ok(std::env::temp_dir())).unwrap(),
             home

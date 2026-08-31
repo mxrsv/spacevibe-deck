@@ -36,6 +36,7 @@ function platform(): PtyInfoPlatform {
 
 export interface PtyInfo {
   readonly id: number;
+  readonly processId: number | null;
   readonly cwd: string | null;
   readonly process: string | null;
   readonly kind: Classification["kind"];
@@ -45,6 +46,7 @@ export interface PtyInfo {
 function unknownInfo(snapshot: PtySessionSnapshot): PtyInfo {
   return {
     id: snapshot.id,
+    processId: null,
     cwd: snapshot.cwd,
     process: null,
     kind: "unknown",
@@ -76,6 +78,7 @@ export function buildPtyInfo(
     const { kind, agent } = classifyProcess(foreground.name, true, commandLine, agentMatchers);
     return {
       id: snapshot.id,
+      processId: foreground.pid,
       // Live cwd first, OSC 9;9 second — `info.rs` orders it the same way.
       cwd: cwds.get(foreground.pid) ?? snapshot.cwd,
       process: foreground.name,

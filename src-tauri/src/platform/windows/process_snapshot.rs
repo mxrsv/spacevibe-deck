@@ -22,6 +22,7 @@ pub(crate) struct ProcessClassification {
     pub kind: ProcessKind,
     pub agent: Option<AgentIdentity>,
     pub process: Option<String>,
+    pub process_id: Option<u32>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -198,6 +199,7 @@ fn classify_root(
             kind: ProcessKind::IdleShell,
             agent: None,
             process: None,
+            process_id: Some(root_pid),
         });
     }
 
@@ -212,23 +214,23 @@ fn classify_root(
             kind: ProcessKind::Agent,
             agent: Some(candidate.identity),
             process: Some(candidate.process),
+            process_id: Some(candidate.process_id),
         });
     }
 
-    let process = descendants
-        .iter()
-        .max_by_key(|descendant| {
-            (
-                descendant.depth,
-                descendant.creation_date,
-                descendant.process_id,
-            )
-        })
-        .and_then(|descendant| normalized_executable(descendant.record));
+    let foreground = descendants.iter().max_by_key(|descendant| {
+        (
+            descendant.depth,
+            descendant.creation_date,
+            descendant.process_id,
+        )
+    });
+    let process = foreground.and_then(|descendant| normalized_executable(descendant.record));
     Ok(ProcessClassification {
         kind: ProcessKind::Busy,
         agent: None,
         process,
+        process_id: foreground.map(|descendant| descendant.process_id),
     })
 }
 
@@ -459,6 +461,7 @@ mod tests {
                 kind: ProcessKind::Agent,
                 agent: Some(AgentIdentity::Claude),
                 process: Some("claude".into()),
+                process_id: Some(11),
             })
         );
     }
@@ -478,6 +481,7 @@ mod tests {
                 kind: ProcessKind::Agent,
                 agent: Some(AgentIdentity::Agy),
                 process: Some("agy".into()),
+                process_id: Some(11),
             })
         );
     }

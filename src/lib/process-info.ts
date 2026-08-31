@@ -5,6 +5,8 @@ export type PaneAgent = string;
 /** Mirror of the `PtyInfo` payload returned by the Rust `pty_info` command. */
 export interface PaneProcessInfo {
   readonly id: number;
+  /** Foreground OS process identity; null when the host cannot inspect it. */
+  readonly processId?: number | null;
   readonly cwd: string | null;
   readonly process: string | null;
   readonly kind: PaneProcessKind;

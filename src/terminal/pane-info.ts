@@ -6,6 +6,7 @@ import { defaultPtyClient, type PtyClient } from "./pty-client";
 function unknownPaneInfo(id: number): PaneProcessInfo {
   return {
     id,
+    processId: null,
     cwd: null,
     process: null,
     kind: "unknown",

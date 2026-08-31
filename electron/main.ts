@@ -28,6 +28,7 @@ import { CHANNELS, EVENTS } from "./ipc/channels";
 import { BrowserPanels } from "./browser/view";
 import { WindowCoordinator, type AdoptionPayload } from "./coordinator";
 import { PtyManager } from "./pty/manager";
+import { validateResizeOptions, validateSpawnOptions } from "./pty/spawn";
 import { ptyInfo, type PtyInfo } from "./pty/info";
 import { validateAgentProcessMatchers } from "./platform/classify";
 import { censusFor, CloseFlight, QuitFlight } from "./quit-flow";
@@ -327,13 +328,14 @@ function focusedLabel(): string | null {
 const menuState = createMenuState({ registry, emitTo, focused: focusedLabel });
 
 // ------------------------------------------------------------------ PTY
-ipcMain.handle(CHANNELS.spawnShell, (event, { cols, rows, cwd }) =>
-  pty.spawn(labelOf(event), { cols, rows, cwd: cwd ?? null }),
+ipcMain.handle(CHANNELS.spawnShell, (event, payload: unknown) =>
+  pty.spawn(labelOf(event), validateSpawnOptions(payload)),
 );
 ipcMain.handle(CHANNELS.writePty, (event, { id, data }) => pty.write(labelOf(event), id, data));
-ipcMain.handle(CHANNELS.resizePty, (event, { id, cols, rows }) =>
-  pty.resize(labelOf(event), id, cols, rows),
-);
+ipcMain.handle(CHANNELS.resizePty, (event, payload: unknown) => {
+  const { id, cols, rows } = validateResizeOptions(payload);
+  return pty.resize(labelOf(event), id, cols, rows);
+});
 ipcMain.handle(CHANNELS.killPty, (event, { id }) => pty.kill(labelOf(event), id));
 ipcMain.handle(CHANNELS.ptyInfo, (_event, { ids, agents, waitForCwd }) =>
   ptyInfo(pty.snapshots(ids), validateAgentProcessMatchers(agents), waitForCwd !== false),

@@ -18,29 +18,82 @@ export interface SpawnOptions {
   readonly cwd: string | null;
 }
 
+export interface ResizeOptions {
+  readonly id: number;
+  readonly cols: number;
+  readonly rows: number;
+}
+
+/** ConPTY ultimately stores both dimensions in signed 16-bit coordinates. */
+export const MAX_PTY_DIMENSION = 32_767;
+
+function validateDimension(value: unknown, field: "cols" | "rows", command: string): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value <= 0 ||
+    value > MAX_PTY_DIMENSION
+  ) {
+    throw new TypeError(`Invalid ${command} ${field}.`);
+  }
+  return value;
+}
+
+/** Validate the renderer payload before it reaches the PTY boundary. */
+export function validateSpawnOptions(payload: unknown): SpawnOptions {
+  if (typeof payload !== "object" || payload === null) {
+    throw new TypeError("Invalid spawn_shell payload.");
+  }
+  const { cols, rows, cwd } = payload as Record<string, unknown>;
+  const validCols = validateDimension(cols, "cols", "spawn_shell");
+  const validRows = validateDimension(rows, "rows", "spawn_shell");
+  if (typeof cwd !== "string" && cwd !== null) {
+    throw new TypeError("Invalid spawn_shell cwd.");
+  }
+  return { cols: validCols, rows: validRows, cwd };
+}
+
+/** Validate resize IPC before native geometry conversion. */
+export function validateResizeOptions(payload: unknown): ResizeOptions {
+  if (typeof payload !== "object" || payload === null) {
+    throw new TypeError("Invalid resize_pty payload.");
+  }
+  const { id, cols, rows } = payload as Record<string, unknown>;
+  if (typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0) {
+    throw new TypeError("Invalid resize_pty id.");
+  }
+  return {
+    id,
+    cols: validateDimension(cols, "cols", "resize_pty"),
+    rows: validateDimension(rows, "rows", "resize_pty"),
+  };
+}
+
 function platform() {
   return process.platform === "win32" ? windows : macos;
 }
 
 /**
- * Working directory for a new shell: an existing directory passes through,
- * anything else falls back to the user's home.
- *
- * The fallback is why `dirs_exist` exists on the renderer side — a deleted
- * workspace would otherwise come back as a tab claiming a folder its shells
- * are not actually in.
+ * Working directory for a new shell. `null` is the sole request for Home; an
+ * explicit path must resolve to the exact live directory the renderer named.
+ * Failing closed here is the last defense against a stale workspace becoming
+ * a tab that claims one folder while its shell actually runs in Home.
  */
 export function resolveSpawnCwd(cwd: string | null, home: string): string {
-  if (cwd !== null && cwd.length > 0) {
-    try {
-      if (fs.statSync(cwd).isDirectory()) {
-        return cwd;
-      }
-    } catch {
-      // Fall through to home.
-    }
+  if (cwd === null) {
+    return home;
   }
-  return home;
+  if (cwd.length === 0) {
+    throw new Error("The requested working directory is empty.");
+  }
+  try {
+    if (fs.statSync(cwd).isDirectory()) {
+      return cwd;
+    }
+  } catch (cause) {
+    throw new Error(`The requested working directory is unavailable: ${cwd}`, { cause });
+  }
+  throw new Error(`The requested working directory is not a directory: ${cwd}`);
 }
 
 /**

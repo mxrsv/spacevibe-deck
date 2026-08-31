@@ -33,6 +33,8 @@ pub enum PaneAgent {
 #[derive(Clone, serde::Serialize)]
 pub struct PtyInfo {
     pub id: u32,
+    #[serde(rename = "processId")]
+    pub process_id: Option<u32>,
     pub cwd: Option<String>,
     pub process: Option<String>,
     pub kind: PaneProcessKind,
@@ -87,6 +89,7 @@ fn normalized_process_name(process: &str) -> Option<String> {
 fn unknown_info(snapshot: &PtySessionSnapshot) -> PtyInfo {
     PtyInfo {
         id: snapshot.id,
+        process_id: None,
         cwd: snapshot.cwd.clone(),
         process: None,
         kind: PaneProcessKind::Unknown,
@@ -107,6 +110,7 @@ fn inspect_current_platform(snapshots: &[PtySessionSnapshot]) -> Vec<PtyInfo> {
                 classify_process(inspection.process.as_deref(), inspection.complete);
             PtyInfo {
                 id: snapshot.id,
+                process_id: u32::try_from(pid).ok(),
                 cwd: inspection.cwd.or_else(|| snapshot.cwd.clone()),
                 process: inspection.process,
                 kind,
@@ -159,6 +163,7 @@ fn map_windows_results(
             });
             PtyInfo {
                 id: snapshot.id,
+                process_id: classification.process_id,
                 cwd: snapshot.cwd.clone(),
                 process: classification.process,
                 kind,
@@ -330,6 +335,7 @@ mod tests {
     fn serializes_the_explicit_process_contract() {
         let info = PtyInfo {
             id: 7,
+            process_id: Some(77),
             cwd: Some(r"C:\Users\dev".into()),
             process: Some("node".into()),
             kind: PaneProcessKind::Agent,
@@ -340,6 +346,7 @@ mod tests {
             serde_json::to_value(info).unwrap(),
             serde_json::json!({
                 "id": 7,
+                "processId": 77,
                 "cwd": r"C:\Users\dev",
                 "process": "node",
                 "kind": "agent",

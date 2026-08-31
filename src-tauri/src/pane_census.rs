@@ -67,6 +67,7 @@ mod tests {
     fn info(id: u32, kind: PaneProcessKind, process: Option<&str>) -> PtyInfo {
         PtyInfo {
             id,
+            process_id: None,
             cwd: None,
             process: process.map(str::to_string),
             kind,

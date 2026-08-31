@@ -244,7 +244,7 @@ describe("freshPaneInfo", () => {
 
     await expect(freshPaneInfo([1, 2], pty)).resolves.toEqual([
       info(1, "zsh"),
-      { id: 2, cwd: null, process: null, kind: "unknown", agent: null },
+      { id: 2, cwd: null, process: null, processId: null, kind: "unknown", agent: null },
     ]);
   });
 
@@ -256,8 +256,8 @@ describe("freshPaneInfo", () => {
     };
 
     await expect(freshPaneInfo([4, 9], pty)).resolves.toEqual([
-      { id: 4, cwd: null, process: null, kind: "unknown", agent: null },
-      { id: 9, cwd: null, process: null, kind: "unknown", agent: null },
+      { id: 4, cwd: null, process: null, processId: null, kind: "unknown", agent: null },
+      { id: 9, cwd: null, process: null, processId: null, kind: "unknown", agent: null },
     ]);
   });
 });

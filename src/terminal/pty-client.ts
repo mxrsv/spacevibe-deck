@@ -31,9 +31,8 @@ export interface PtyClient {
   gitBranch(cwd: string): Promise<string | null>;
   /**
    * Which of `paths` are still existing directories, positionally.
-   * Session restore needs this: `spawn_shell` silently falls back to `$HOME`
-   * for a missing CWD, so a deleted workspace would otherwise come back as a
-   * tab that claims a folder its shells are not actually in.
+   * Session restore uses this to discard deleted workspaces before asking the
+   * host to spawn; both hosts also reject an explicit missing CWD.
    */
   dirsExist(paths: readonly string[]): Promise<boolean[]>;
   /**
