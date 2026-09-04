@@ -3,13 +3,19 @@ import { useSignal } from "@preact/signals";
 import { useEffect, useRef } from "preact/hooks";
 import { open } from "../host/dialog-host";
 import type { Preset } from "../lib/preset-schema";
-import { partitionRecents, resolveAgentChoice } from "../lib/workspace-recents";
+import { partitionRecents, resolveAgent } from "../lib/workspace-recents";
 import { workspaceLabel } from "../lib/workspace-label";
-import type { AgentChoice, RecentWorkspace } from "../lib/workspace-recents";
+import type { AgentChoice, AgentResolution, RecentWorkspace } from "../lib/workspace-recents";
 import { getDesktopEnvironment, hasPrimaryModifier } from "../lib/platform";
 import type { DetectedAgent } from "../terminal/pty-client";
 import { ensureAgentsDetected } from "../terminal/agent-detection-store";
-import { agentOptions, BUILTIN_AGENTS, probeNames, type CustomAgent } from "../lib/agent-catalog";
+import {
+  agentOptions,
+  BUILTIN_AGENTS,
+  probeNames,
+  type AgentOption,
+  type CustomAgent,
+} from "../lib/agent-catalog";
 import { settings } from "../settings/settings-store";
 import { boardPresets, presetsData } from "../presets/presets-store";
 import { removeWorkspaceRecents, workspacesData } from "./workspaces-store";
@@ -32,6 +38,13 @@ export interface OpenBoardProps {
   onOpen(workspace: string, preset: Preset, agent: AgentChoice): Promise<boolean>;
   /** Resolves false when the history entry could not materialize. */
   onResumeSession(entry: SessionEntry): Promise<boolean>;
+  /**
+   * Open Settings, where the agent catalog is. Offered beside every launch the
+   * board refuses to make silently — a remembered CLI that is gone is fixed
+   * there and nowhere else. Settings covers the whole window above this board
+   * (z-35 over z-30), so the board is still standing behind it on Back.
+   */
+  onManageAgents(): void;
 }
 
 /**
@@ -52,6 +65,41 @@ function agentLabel(id: string, customAgents: readonly CustomAgent[]): string {
   return customAgents.find((agent) => agent.id === id)?.label ?? id;
 }
 
+/** A launch the board is holding back until the user says yes to it. */
+interface PendingOpen {
+  readonly path: string;
+  readonly preset: Preset;
+  /** What will actually run — never what the row remembered. */
+  readonly agent: AgentChoice;
+  readonly message: string;
+}
+
+/**
+ * What the board says instead of quietly running the wrong agent.
+ *
+ * Both halves are stated: the agent that cannot run, and the one that would
+ * take its place. Naming only the failure would leave the user pressing
+ * `Open anyway` without knowing what they are agreeing to.
+ */
+export function substitutionMessage(
+  resolution: AgentResolution,
+  customAgents: readonly CustomAgent[],
+): string | null {
+  if (resolution.kind === "chosen") {
+    return null;
+  }
+  const gone = resolution.wanted === null ? null : agentLabel(resolution.wanted, customAgents);
+  if (resolution.kind === "substituted") {
+    return `${gone} is not installed — this workspace will open with ${agentLabel(
+      resolution.agent,
+      customAgents,
+    )} instead.`;
+  }
+  return gone === null
+    ? "No agent CLI was found — this workspace will open a plain shell."
+    : `${gone} is not installed — this workspace will open a plain shell.`;
+}
+
 export function OpenBoard({
   canCancel,
   canBrowseSessions,
@@ -59,6 +107,7 @@ export function OpenBoard({
   onCancel,
   onOpen,
   onResumeSession,
+  onManageAgents,
 }: OpenBoardProps) {
   const platform = getDesktopEnvironment().platform;
   const openFolderShortcut = formatShortcutBinding(
@@ -81,6 +130,26 @@ export function OpenBoard({
    * there is no terminal to write to at all. Cleared by the next attempt.
    */
   const notice = useSignal<string | null>(null);
+  /**
+   * A launch held back because the agent it would run is not the agent this
+   * board just promised. The board's one click used to be the whole
+   * interaction; when the answer differs from the row, one click is a lie, so
+   * the decision gets a step of its own — stated, with `Open anyway` and the
+   * one place the problem is fixable beside it.
+   *
+   * It is a payload, not a flag, because the pick has already been resolved
+   * against the probe and the liveness pass: confirming re-runs neither, so a
+   * discovery refresh landing between the question and the answer cannot swap
+   * the agent out from under the sentence the user just read.
+   */
+  const pending = useSignal<PendingOpen | null>(null);
+  /**
+   * The discovery answer as a VALUE, for what the rows say — `probe` is the
+   * promise the open path awaits. `null` means discovery has not answered
+   * once, and no row may be annotated from it: an empty pre-boot list would
+   * mark every remembered agent as missing for the frame before it lands.
+   */
+  const detected = useSignal<readonly DetectedAgent[] | null>(null);
   // Create-worktree form state (task 16), split into its own hook (F8).
   const worktreeForm = useWorktreeForm();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -117,7 +186,18 @@ export function OpenBoard({
   // stale. Never rejects (the store degrades to the best list it knows), so the
   // board still falls back to Shell only when discovery cannot answer at all.
   useEffect(() => {
-    probe.current = ensureAgentsDetected(probeNames(customAgents));
+    const run = ensureAgentsDetected(probeNames(customAgents));
+    probe.current = run;
+    let cancelled = false;
+    void run.then((found) => {
+      if (!cancelled) {
+        detected.value = found;
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- `detected` is a stable signal
   }, [customAgents]);
 
   /* oxlint-disable react-hooks/exhaustive-deps -- re-runs on recents only; the missing-signal read is a snapshot */
@@ -169,6 +249,7 @@ export function OpenBoard({
 
   function openSessions(): void {
     notice.value = null;
+    pending.value = null;
     view.value = "sessions";
   }
 
@@ -178,16 +259,37 @@ export function OpenBoard({
     view.value = "worktree";
   }
 
+  /** What may be launched right now, or null while discovery is unanswered. */
+  function launchable(list: readonly DetectedAgent[]): readonly AgentOption[] {
+    return agentOptions(list, customAgents, settings.value.disabledAgents);
+  }
+
+  /**
+   * The remembered agent a row NAMES but could not run, or null. Reads the
+   * discovery value rather than the promise, so it says nothing at all until
+   * the probe has answered once — a row is never annotated on a guess.
+   */
+  function staleAgent(recent: RecentWorkspace): string | null {
+    if (detected.value === null || typeof recent.lastAgent !== "string") {
+      return null;
+    }
+    const resolution = resolveAgent(recent.lastAgent, launchable(detected.value));
+    return resolution.kind === "chosen" ? null : agentLabel(recent.lastAgent, customAgents);
+  }
+
   /**
    * The board's one action: open `path` with the combo it was last opened
    * with. An unknown folder (picked or freshly created) has no memory, so it
    * takes the last-used preset and the first detected agent.
    *
-   * A remembered agent whose binary has left $PATH falls back SILENTLY here —
-   * `resolveAgentChoice` picks the first detected one and the pane still
-   * opens. The config view used to warn about that in its footer; without a
-   * step between the click and the spawn there is nowhere to warn before the
-   * fact, and stopping the open to say it would be worse than opening.
+   * A remembered agent whose binary has left `$PATH` — or which was switched
+   * off in Settings — used to fall back SILENTLY here: the row printed
+   * `Default · Claude Code` and the click opened whatever stood first on
+   * `$PATH`, with a bare shell as the last resort. That is fixed by giving the
+   * substitution its own step (`pending`) rather than by refusing: the folder
+   * is still one more click away, and the click now says which agent it
+   * starts. `Manage agents…` sits beside it because Settings is the only place
+   * the memory can be made true again.
    */
   async function openWorkspace(path: string): Promise<void> {
     if (opening.value) {
@@ -198,6 +300,9 @@ export function OpenBoard({
       return;
     }
     notice.value = null;
+    // A new row replaces the question the last one asked — a stale `Open
+    // anyway` must never be able to launch a workspace nobody is looking at.
+    pending.value = null;
     opening.value = true;
     // Wait for the liveness pass the same way the agent probe is waited for.
     // `null` means the probe failed, so nothing is known and the open goes
@@ -216,16 +321,51 @@ export function OpenBoard({
     // `lastAgent` carries all three cases on purpose: a string is a named
     // agent, `null` is a remembered Shell-only open, and `undefined` (never
     // opened, or opened before the field existed) means first detected.
-    const detected = (await probe.current) ?? [];
-    const agent = resolveAgentChoice(
-      entry?.lastAgent,
-      agentOptions(detected, customAgents, settings.value.disabledAgents),
-    );
+    const found = (await probe.current) ?? [];
+    const resolution = resolveAgent(entry?.lastAgent, launchable(found));
+    const message = substitutionMessage(resolution, customAgents);
+    if (message !== null) {
+      opening.value = false;
+      pending.value = { path, preset, agent: resolution.agent, message };
+      // The question lives on home, and this open can be started from the
+      // worktree form — where the answer would be asked behind a subview and
+      // the launch would simply never happen.
+      goHome();
+      return;
+    }
+    opening.value = false;
+    await launch(path, preset, resolution.agent);
+  }
+
+  /** The spawn itself, shared by a straight open and a confirmed one. */
+  async function launch(path: string, preset: Preset, agent: AgentChoice): Promise<void> {
+    opening.value = true;
     const ok = await onOpen(path, preset, agent);
     opening.value = false;
     if (!ok) {
       notice.value = "Couldn't start a shell here — check the folder and try again";
     }
+  }
+
+  /** `Open anyway`: launch exactly the agent the held sentence named. */
+  function confirmPending(): void {
+    const held = pending.value;
+    if (held === null || opening.value) {
+      return;
+    }
+    pending.value = null;
+    void launch(held.path, held.preset, held.agent);
+  }
+
+  /**
+   * `Manage agents…`: Settings paints over this board and Back returns to it,
+   * so the question is dropped rather than kept — the answer it was built from
+   * is exactly what the user went to change.
+   */
+  function manageAgents(): void {
+    pending.value = null;
+    notice.value = null;
+    onManageAgents();
   }
 
   function removeRecentRows(paths: readonly string[]): void {
@@ -252,6 +392,7 @@ export function OpenBoard({
       return;
     }
     notice.value = null;
+    pending.value = null;
     opening.value = true;
     const resumed = await onResumeSession(entry);
     opening.value = false;
@@ -268,9 +409,10 @@ export function OpenBoard({
     });
   }
 
-  /** The combo line a recents row's title attribute shows on hover — the one
-   *  place the remembered layout/agent is stated now that opening is a
-   *  single click with no preview between it and the spawn. */
+  /** The combo line a recents row shows — the one place the remembered
+   *  layout/agent is stated now that opening is a single click with no
+   *  preview between it and the spawn. It reports the MEMORY; whether that
+   *  memory can still run is `staleAgent`'s answer, printed beside it. */
   function describeCombo(recent: RecentWorkspace): string {
     const preset = presets.find((p) => p.id === recent.lastPresetId);
     return [
@@ -360,7 +502,11 @@ export function OpenBoard({
           openWorkspacePaths={openWorkspacePaths}
           opening={opening.value}
           notice={notice.value}
+          decision={pending.value === null ? null : pending.value.message}
           describeCombo={describeCombo}
+          staleAgent={staleAgent}
+          onConfirmOpen={confirmPending}
+          onManageAgents={manageAgents}
           onPickFolder={() => void pickFolder()}
           onCreateWorktree={openWorktreeForm}
           onBrowseSessions={openSessions}

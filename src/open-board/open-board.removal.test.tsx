@@ -106,6 +106,7 @@ describe("OpenBoard removal flow", () => {
           openWorkspacePaths={new Set()}
           onCancel={() => {}}
           onOpen={onOpen}
+          onManageAgents={() => {}}
           onResumeSession={async () => true}
         />,
         host,
@@ -236,6 +237,15 @@ describe("OpenBoard removal flow", () => {
       );
     });
 
+    await settle();
+
+    // Nothing is on `$PATH` in this fixture, so the board states the plain
+    // shell before it opens one and waits — a picked folder is reached the
+    // same way a row is. `Open anyway` is the click that spawns.
+    expect(onOpen).not.toHaveBeenCalled();
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".board-home__decision-go")?.click();
+    });
     await settle();
 
     // A picked folder has no remembered combo, so it opens with the default

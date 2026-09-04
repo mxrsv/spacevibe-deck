@@ -59,6 +59,7 @@ import {
   resetDesktopEnvironmentForTests,
 } from "../lib/platform";
 import { resetAgentDetectionForTests } from "../terminal/agent-detection-store";
+import { settings } from "../settings/settings-store";
 
 const NOW = 1_800_000_000_000;
 
@@ -103,6 +104,7 @@ describe("OpenBoard home view", () => {
     pickedFolder = null;
     detected = [];
     detectGate = null;
+    settings.value = { ...settings.value, disabledAgents: [] };
   });
 
   afterEach(() => {
@@ -124,6 +126,7 @@ describe("OpenBoard home view", () => {
       canCancel?: boolean;
       canBrowseSessions?: boolean;
       openWorkspacePaths?: ReadonlySet<string>;
+      onManageAgents?: () => void;
     } = {},
   ): Promise<void> => {
     await act(async () => {
@@ -134,6 +137,7 @@ describe("OpenBoard home view", () => {
           openWorkspacePaths={props.openWorkspacePaths ?? new Set()}
           onCancel={() => {}}
           onOpen={onOpen}
+          onManageAgents={props.onManageAgents ?? (() => {})}
           onResumeSession={async () => true}
         />,
         host,
@@ -223,6 +227,184 @@ describe("OpenBoard home view", () => {
     );
   });
 
+  it("states the substitution instead of quietly running the wrong agent", async () => {
+    // The bug this covers: the row printed a remembered agent unconditionally
+    // and then opened whatever stood first on `$PATH` if that agent was gone.
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    // Said on the row, before anything is clicked.
+    expect(host.querySelector(".row__stale")?.textContent).toContain(
+      "Not installed",
+    );
+
+    const row = host.querySelector<HTMLButtonElement>(".row__open");
+    await act(async () => {
+      row?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(onOpen).not.toHaveBeenCalled();
+    const decision = host.querySelector(".board-home__decision");
+    expect(decision?.getAttribute("role")).toBe("alert");
+    // Both halves: what cannot run, and what would run instead.
+    expect(decision?.textContent).toContain("Claude Code is not installed");
+    expect(decision?.textContent).toContain("Codex");
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".board-home__decision-go")?.click();
+    });
+    await settle();
+
+    expect(onOpen).toHaveBeenCalledWith(
+      "/w/beta",
+      expect.anything(),
+      "codex",
+    );
+  });
+
+  it("offers the agent catalog instead of the substitute, and drops the question", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    const onManageAgents = vi.fn();
+    await mount(onOpen, { onManageAgents });
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".board-home__decision-fix")
+        ?.click();
+    });
+
+    expect(onManageAgents).toHaveBeenCalledTimes(1);
+    expect(onOpen).not.toHaveBeenCalled();
+    // The answer it was built from is exactly what the user left to change.
+    expect(host.querySelector(".board-home__decision")).toBeNull();
+  });
+
+  it("says the plain shell before opening one on a machine with no agent CLI", async () => {
+    seed(["/w/alpha"]);
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(host.querySelector(".board-home__decision")?.textContent).toContain(
+      "No agent CLI was found",
+    );
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".board-home__decision-go")?.click();
+    });
+    await settle();
+
+    expect(onOpen).toHaveBeenCalledWith("/w/alpha", expect.anything(), null);
+  });
+
+  it("a remembered Shell-only open is not a substitution and never asks", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: null }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    expect(host.querySelector(".row__stale")).toBeNull();
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(host.querySelector(".board-home__decision")).toBeNull();
+    expect(onOpen).toHaveBeenCalledWith("/w/beta", expect.anything(), null);
+  });
+
+  it("an agent switched off in Settings is a substitution too", async () => {
+    detected = [
+      { name: "claude", path: "/usr/local/bin/claude" },
+      { name: "codex", path: "/usr/local/bin/codex" },
+    ];
+    settings.value = { ...settings.value, disabledAgents: ["claude"] };
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [{ path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" }],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    await act(async () => {
+      host
+        .querySelector<HTMLButtonElement>(".row__open")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(host.querySelector(".board-home__decision")?.textContent).toContain(
+      "Claude Code is not installed",
+    );
+  });
+
+  it("clicking another row replaces the question rather than stacking one", async () => {
+    detected = [{ name: "codex", path: "/usr/local/bin/codex" }];
+    workspacesData.value = {
+      version: WORKSPACES_VERSION,
+      recents: [
+        { path: "/w/beta", lastOpenedAt: NOW, lastAgent: "claude" },
+        { path: "/w/gamma", lastOpenedAt: NOW - 1, lastAgent: "codex" },
+      ],
+    };
+    const onOpen = vi.fn(async () => true);
+    await mount(onOpen);
+    await settle();
+
+    const rows = host.querySelectorAll<HTMLButtonElement>(".row__open");
+    await act(async () => {
+      rows[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+    expect(host.querySelector(".board-home__decision")).not.toBeNull();
+
+    await act(async () => {
+      rows[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await settle();
+
+    // The second row runs its own remembered agent and the held launch for
+    // the first one is gone with it — a stale `Open anyway` must never be
+    // able to open a workspace nobody is looking at.
+    expect(host.querySelector(".board-home__decision")).toBeNull();
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith("/w/gamma", expect.anything(), "codex");
+  });
+
   it("waits for the agent probe before opening, so a fast click keeps its remembered agent", async () => {
     let release!: () => void;
     detectGate = new Promise<void>((resolve) => {
@@ -273,6 +455,10 @@ describe("OpenBoard home view", () => {
 
   it("a failed open is said on home — the board's only place to say it", async () => {
     seed(["/w/alpha"]);
+    // An agent the probe finds, so this click reaches the spawn: a board with
+    // nothing on `$PATH` now states the plain-shell fallback and waits, which
+    // is a different message with its own test below.
+    detected = [{ name: "claude", path: "/usr/bin/claude" }];
     const onOpen = vi.fn(async () => false);
     await mount(onOpen);
 
@@ -312,6 +498,7 @@ describe("OpenBoard home view", () => {
           openWorkspacePaths={new Set()}
           onCancel={onCancel}
           onOpen={async () => true}
+          onManageAgents={() => {}}
           onResumeSession={async () => true}
         />,
         host,

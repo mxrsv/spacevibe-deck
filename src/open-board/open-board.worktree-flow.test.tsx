@@ -115,6 +115,7 @@ describe("OpenBoard create-worktree flow", () => {
           openWorkspacePaths={new Set()}
           onCancel={() => {}}
           onOpen={onOpen}
+          onManageAgents={() => {}}
           onResumeSession={async () => true}
         />,
         host,
@@ -257,6 +258,15 @@ describe("OpenBoard create-worktree flow", () => {
       submit?.click();
     });
 
+    await settle();
+
+    // Nothing is on `$PATH` in this fixture, so the board states the plain
+    // shell first; a freshly created worktree goes through the same step a
+    // recents row does.
+    expect(onOpen).not.toHaveBeenCalled();
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".board-home__decision-go")?.click();
+    });
     await settle();
 
     // A freshly created worktree has no remembered combo, so it opens with

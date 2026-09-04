@@ -154,23 +154,73 @@ export function forgetAgent(
 }
 
 /**
- * Resolve a remembered/selected agent against what is actually on `$PATH`.
+ * What a resolution DID, not just what it produced.
+ *
+ * `resolveAgentChoice` answers one id and loses the difference between "opened
+ * what you asked for" and "opened something else because your CLI is gone" —
+ * which is the whole of the bug this type exists to make sayable: the Open
+ * board printed a remembered agent on a row and then launched whatever stood
+ * first on `$PATH`, one click, no warning.
+ *
+ * - `chosen` — the answer IS the request: the remembered agent is runnable, an
+ *   explicit Shell-only memory, or a folder with no memory resolving to the
+ *   first detected agent (a row that promised nothing cannot be contradicted).
+ * - `substituted` — a remembered agent is not runnable and another one is.
+ *   `wanted` is the id that could not be honoured.
+ * - `shell-fallback` — nothing runnable at all, so this opens a bare shell.
+ *   `wanted` is the remembered id, or `null` on a folder with no memory —
+ *   which is the first run of anyone who installed Deck before an agent CLI.
+ */
+export type AgentResolution =
+  | { readonly kind: "chosen"; readonly agent: AgentChoice }
+  | { readonly kind: "substituted"; readonly agent: string; readonly wanted: string }
+  | { readonly kind: "shell-fallback"; readonly agent: null; readonly wanted: string | null };
+
+/**
+ * Resolve a remembered/selected agent against what is actually on `$PATH`, and
+ * say which of the three things happened.
+ *
  * Shell is opt-in: only an explicit `null` (the user clicked Shell only this
- * session) yields Shell. No pick (`undefined`), a remembered choice, or a
- * stale memory all fall back to the first detected agent — an empty detect
- * result still degrades to Shell only.
+ * session) yields Shell as a CHOICE. No pick (`undefined`), a remembered
+ * choice, or a stale memory all fall back to the first detected agent — an
+ * empty detect result still degrades to Shell only, reported as
+ * `shell-fallback` so the caller can say so before it launches.
+ *
+ * `agents` is what the caller may actually launch: `agentOptions` already
+ * drops the disabled ones and keeps only detected built-ins, so an agent
+ * switched off in Settings resolves exactly like an uninstalled one — the
+ * user's own remembered pick cannot run either way.
+ */
+export function resolveAgent(
+  choice: AgentChoice | undefined,
+  agents: readonly { readonly id: string }[],
+): AgentResolution {
+  if (choice === null) {
+    return { kind: "chosen", agent: null };
+  }
+  if (choice !== undefined && agents.some((agent) => agent.id === choice)) {
+    return { kind: "chosen", agent: choice };
+  }
+  const first = agents[0]?.id;
+  if (first === undefined) {
+    return { kind: "shell-fallback", agent: null, wanted: choice ?? null };
+  }
+  if (choice === undefined) {
+    return { kind: "chosen", agent: first };
+  }
+  return { kind: "substituted", agent: first, wanted: choice };
+}
+
+/**
+ * The id alone, for callers with nowhere to say anything — the `New` row
+ * dropped onto a pane spawns with no surface between the gesture and the
+ * pane. Every caller that HAS a surface should take `resolveAgent` instead.
  */
 export function resolveAgentChoice(
   choice: AgentChoice | undefined,
   agents: readonly { readonly id: string }[],
 ): AgentChoice {
-  if (choice === null) {
-    return null;
-  }
-  if (choice !== undefined && agents.some((agent) => agent.id === choice)) {
-    return choice;
-  }
-  return agents[0]?.id ?? null;
+  return resolveAgent(choice, agents).agent;
 }
 
 /**
