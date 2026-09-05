@@ -2,10 +2,12 @@
  * The rail's view model: open tabs plus repository scans in, two tiers out.
  *
  * Pure, and deliberately so — it is where every grouping and state-precedence
- * decision in
- * `docs/specs/2026-08-13-repository-worktree-rail-design.md` §4/§6.1 lives, and
- * none of them are observable from a screenshot. The component below it only
- * renders what this returns.
+ * decision lives, and none of them are observable from a screenshot. Groups
+ * are built in first-appearance tab order and keyed per repository (the rule
+ * `docs/internals/agent-rail.md` states under "Model"); a worktree's own state
+ * precedence is missing > attention > working > ready/idle, decided by
+ * `worktreeState` below. The component below it only renders what this
+ * returns.
  */
 import { workspaceLabel } from "../lib/workspace-label";
 import type { PaneAgent } from "../lib/process-info";
@@ -347,8 +349,8 @@ export function activeWorktreeTabIndexes(
  * measured corpus have exactly one working directory, so for almost every
  * project the two answers are identical — the difference only shows up in the
  * handful of repositories that really do run several worktrees, and there the
- * project is the unit the rail agreed on
- * (`docs/specs/2026-08-16-agent-status-rail-design.md` §4.1).
+ * project is the unit the rail agreed on: the active repository's tab indexes
+ * are what the sidebar strip scopes to (`docs/internals/agent-rail.md`).
  *
  * Both functions stay: this one is a change to what the STRIP scopes by, not
  * a claim that a worktree stopped being a real grouping — `buildRail` still

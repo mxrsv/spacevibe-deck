@@ -33,7 +33,8 @@ import { ToolbarOverflowMenu, type MenuAnchor } from "./toolbar-overflow-menu";
  * so a pressed tool, a disabled Prompts button or an actionable update stay
  * owned by the feature that already owns them.
  *
- * See docs/specs/2026-08-12-feature-toolbar-design.md.
+ * The toolbar's rules — tooltips, the overflow menu, the `More` control — are
+ * `docs/DESIGN-LANGUAGE.md` §23.
  */
 
 const MENU_OFFSET = 6;

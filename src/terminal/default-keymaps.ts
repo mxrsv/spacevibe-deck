@@ -126,9 +126,9 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // collide" requires a code-to-character table for a SPECIFIC keyboard
   // layout, data that lives in the OS's keyboard driver, not this repo (see
   // action-registry.test.ts's existing same-kind-only disclaimer for the
-  // identical reasoning). The real fix is a user-facing rebind UI
-  // (docs/plans/2026-07-27-keyboard-parity.md, not yet built) — until then
-  // this is a documented limitation, not a bug queued for a code fix.
+  // identical reasoning). The real fix is the user-facing rebind UI
+  // (Settings → Shortcuts) — the collision itself is a documented
+  // limitation, not a bug queued for a code fix.
   { code: "BracketRight", meta: true, action: "focus-next" },
   { code: "BracketLeft", meta: true, action: "focus-prev" },
   { key: "e", meta: true, action: "toggle-expand" },
@@ -170,12 +170,11 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   { key: "n", meta: true, shift: true, action: "new-preset" },
   // Capture the live layout as a preset — also in the Window menu
   { key: "s", meta: true, shift: true, action: "save-preset" },
-  // Save the active file surface (spec
-  // docs/specs/2026-08-12-file-explorer-design.md §4.3). Bare ⌘S, distinct
-  // from ⌘⇧S save-preset above. No Windows binding: bare Ctrl+S stays
-  // PTY-reserved (terminal flow control) until an explicit binding decision
-  // says otherwise — see WINDOWS_KEYMAP's own top-of-file comment on bare
-  // Ctrl+ chords staying available to the PTY. Has a menu item, so
+  // Save the active file surface (see docs/internals/file-surface.md). Bare
+  // ⌘S, distinct from ⌘⇧S save-preset above. No Windows binding: bare Ctrl+S
+  // stays PTY-reserved (terminal flow control) until an explicit binding
+  // decision says otherwise — see WINDOWS_KEYMAP's own top-of-file comment on
+  // bare Ctrl+ chords staying available to the PTY. Has a menu item, so
   // CharKeyBinding is mandatory, not a style choice (RULE above).
   { key: "s", meta: true, action: "save-file" },
   // Jump to the highest-severity actionable Attention Rail candidate; routed
@@ -198,7 +197,7 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // action has a macOS menu item, and a Cocoa accelerator is declared by
   // character (RULE above).
   { key: "i", meta: true, shift: true, action: "toggle-browser" },
-  // File explorer panel (spec §3: docs/specs/2026-08-12-file-explorer-design.md).
+  // File explorer panel (see docs/internals/file-surface.md).
   // `b` is verified unused in both keymaps — the browser panel above
   // deliberately left it alone for exactly this. CharKeyBinding is mandatory,
   // not a style choice: this action has a macOS menu item, and a Cocoa
@@ -226,8 +225,8 @@ export const MACOS_KEYMAP: readonly KeyBinding[] = [
   // menu item, and a Cocoa accelerator is declared by character (RULE above).
   { key: "j", meta: true, shift: true, action: "toggle-dock" },
   // Flip a markdown document between the rendered view and its source
-  // (design docs/specs/2026-08-23-markdown-rendered-view-design.md §4). ⌘⇧V is
-  // VS Code's own chord for this and is free on the macOS keymap — ⌘V is the
+  // (docs/internals/file-surface.md, "Markdown"; macOS only). ⌘⇧V is VS
+  // Code's own chord for this and is free on the macOS keymap — ⌘V is the
   // native Cocoa Paste role and does not claim the Shift variant.
   //
   // **No Windows binding, deliberately.** Ctrl+Shift+V is already `paste`
@@ -313,8 +312,7 @@ const WINDOWS_SELECT_LAST_TAB_BINDING: KeyBinding = {
  * nothing selected the key is never preventDefault()ed and xterm encodes the
  * interrupt itself. Deck writes no interrupt byte of its own; hardcoding
  * `\x03` would pin one encoding a different keyboard protocol does not use.
- * See action-performable.ts and
- * docs/specs/2026-08-20-performable-keybindings-design.md.
+ * See action-performable.ts and docs/internals/terminal.md.
  *
  * Clipboard actions dispatch through the shared path every other chord uses —
  * this keymap, then the `commands` table in tab-manager.ts, then

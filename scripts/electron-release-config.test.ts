@@ -24,7 +24,7 @@
  * AGENTS.md. `scripts/release-workflow.test.ts` locks `release.yml` the same
  * way, so this follows the pattern already in the tree.
  *
- * Plan: docs/plans/2026-08-18-gate-a-electron-signing.md (Task 3)
+ * The package these lines produce is described in docs/operations/release.md.
  */
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";

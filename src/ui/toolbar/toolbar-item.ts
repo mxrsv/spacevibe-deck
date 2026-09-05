@@ -11,7 +11,8 @@ import type { DeckIconComponent } from "../controls/deck-icon";
  * opinion about what an action does; it only knows how to draw it and in which
  * order to give it up when the window narrows.
  *
- * See docs/specs/2026-08-12-feature-toolbar-design.md.
+ * The toolbar's rules — tooltips, the overflow menu, the `More` control — are
+ * `docs/DESIGN-LANGUAGE.md` §23.
  */
 
 /** The three clusters, in the order they render, separated by hairlines. */

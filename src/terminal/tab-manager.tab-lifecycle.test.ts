@@ -228,8 +228,8 @@ describe("createTabManager workspace identity", () => {
   it("projects every pane of the tab with its id, agent and tracker state", async () => {
     // The per-tab rollup cannot name the pane behind a mark, and the agent
     // rail's chips and expanded rows both activate an EXACT pane
-    // (`docs/specs/2026-08-16-agent-status-rail-design.md` §2.2). `TabView.panes`
-    // is that projection; a shell pane stays in it because filtering rows is
+    // (docs/internals/agent-rail.md). `TabView.panes` is that projection; a
+    // shell pane stays in it because filtering rows is
     // the rail's job, not the projection's.
     vi.useFakeTimers();
     try {

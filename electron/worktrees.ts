@@ -1,7 +1,9 @@
 /**
  * Repository and worktree enumeration for the navigation rail.
  *
- * Design: `docs/specs/2026-08-13-repository-worktree-rail-design.md` §1.
+ * No `git status` is run anywhere; every failure is a plain scan, and the
+ * rail degrades that path to a plain folder. See `docs/internals/agent-rail.md`
+ * (section "Other surfaces in the column").
  *
  * `git.ts` next door answers a different question — what is this pane's cwd
  * on — at a per-pane, per-poll cadence, and its answer is decoration. This

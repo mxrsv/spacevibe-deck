@@ -31,13 +31,12 @@ describe("ACTION_REGISTRY", () => {
 
   // Proves the lift/growth of the action set is exactly what's intended, not
   // an accidental drop or add. 28 = the 27 that keymap.ts's ShortcutAction
-  // union declared as of Task 3, plus "new-preset" (Task 4 — unifies the
-  // menu's "New Layout Preset…" into the same action:/runAction path as
-  // every other item; see docs/plans/2026-07-27-action-registry.md Task 4
-  // and the NOTE above ACTION_REGISTRY in action-registry.ts for the earlier
-  // 25→27 correction). 38 = 28 + swap-left/right/up/down (Task 1) +
-  // open-tab-options (Task 2) + copy-cwd (Task 3) + scroll-page-up/down,
-  // scroll-to-top/bottom (Task 4) — docs/plans/2026-07-27-keyboard-parity.md.
+  // union declared when the registry was lifted out of it, plus "new-preset"
+  // (which unified the menu's "New Layout Preset…" into the same
+  // action:/runAction path as every other item; see the NOTE above
+  // ACTION_REGISTRY in action-registry.ts for the earlier 25→27 correction).
+  // 38 = 28 + swap-left/right/up/down + open-tab-options + copy-cwd +
+  // scroll-page-up/down, scroll-to-top/bottom (the keyboard-parity batch).
   it("binds toggle-prompts on both platforms without colliding", () => {
     const mac = MACOS_KEYMAP.filter((binding) => binding.action === "toggle-prompts");
     const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "toggle-prompts");
@@ -69,11 +68,11 @@ describe("ACTION_REGISTRY", () => {
     const mac = MACOS_KEYMAP.filter((binding) => binding.action === "save-file");
     const win = WINDOWS_KEYMAP.filter((binding) => binding.action === "save-file");
     expect(mac).toEqual([{ key: "s", meta: true, action: "save-file" }]);
-    // Bare Ctrl+S stays PTY-reserved on Windows until an explicit binding
-    // decision says otherwise (task-6 brief; spec
-    // docs/specs/2026-08-12-file-explorer-design.md §4.3 only commits to
-    // ⌘S) — asserting `[]` locks that deliberate absence in, so a future
-    // add is a conscious edit here, not a silent gap.
+    // Bare Ctrl+S stays PTY-reserved on Windows (terminal flow control) until
+    // an explicit binding decision says otherwise — save-file commits to bare
+    // ⌘S only (docs/internals/file-surface.md). Asserting `[]` locks that
+    // deliberate absence in, so a future add is a conscious edit here, not a
+    // silent gap.
     expect(win).toEqual([]);
     // It has a menu item, so the RULE above CharKeyBinding requires `key`.
     expect(mac[0]).not.toHaveProperty("code");
@@ -97,11 +96,11 @@ describe("ACTION_REGISTRY", () => {
     expect(win).toEqual([{ key: "c", ctrl: true, action: "copy-or-interrupt" }]);
   });
 
-  // 51 = the 48 rows verified passing after Task 6's "save-file", plus the
+  // 51 = the 48 rows verified passing once "save-file" landed, plus the
   // Edit menu's "select-all"/"undo"/"redo" (2026-08-19) — routed through the
   // renderer because their native Cocoa roles cannot reach Monaco.
   // 53 = 52 + copy-or-interrupt (2026-08-20), the conditional Ctrl+C twin of
-  // copy-selection — docs/plans/2026-08-20-performable-keybindings.md.
+  // copy-selection — see docs/internals/terminal.md.
   it("has exactly the 54 action ids including updater menu actions", () => {
     const ids = new Set(ACTION_REGISTRY.map((a) => a.id));
     expect(ids).toEqual(

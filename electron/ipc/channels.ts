@@ -19,7 +19,7 @@ export const CHANNELS = {
   // Repository/worktree rail. Electron-only, like the two blocks at the foot
   // of this table: no `#[tauri::command]` counterpart exists, and writing one
   // would implement a feature twice on a host `AGENTS.md` has frozen. See
-  // `docs/specs/2026-08-13-repository-worktree-rail-design.md` §7.3.
+  // `docs/internals/agent-rail.md` (section "Other surfaces in the column").
   gitRepository: "git_repository",
   // Create-worktree flow (open board, task 16). Electron-only like the block
   // above: no `#[tauri::command]` counterpart, per the frozen Tauri host.
@@ -32,7 +32,8 @@ export const CHANNELS = {
   // Session restore. Electron-only, like the block above: no
   // `#[tauri::command]` counterpart, and Tauri is feature-frozen.
   resumeLookup: "resume_lookup",
-  // Tier 3 of the agent rail (spec §5): newest agent turn per pane. Same
+  // Tier 3 of the agent rail (docs/internals/agent-rail.md): newest agent turn
+  // per pane. Same
   // request shape as `resume_lookup` and the same scanners behind it, so the
   // rail's sentence names the session restore would resume into. Electron-only,
   // like the block above.
@@ -46,7 +47,8 @@ export const CHANNELS = {
   desktopEnvironment: "desktop_environment",
   resolvePaths: "resolve_paths",
   openEditor: "open_editor",
-  // Opening a path an agent printed (spec 2026-08-19). Electron-only, like the
+  // Opening a path an agent printed (docs/internals/file-surface.md).
+  // Electron-only, like the
   // blocks below: no `#[tauri::command]` counterpart, and Tauri keeps today's
   // behaviour whole — every ⌘+click there still goes out through `open_editor`
   // above, which is deliberately UNCHANGED so the Rust twin stays valid.
@@ -120,7 +122,8 @@ export const CHANNELS = {
   // unanswered. Flat `{ limit }` per R6; the reply is
   // `electron/sessions/model.ts`'s `SessionsSnapshot`.
   sessionsList: "sessions_list",
-  // Opt-in usage analytics (spec 2026-08-22). Electron-only like the blocks
+  // Usage analytics, on by default (docs/internals/telemetry.md). Electron-only
+  // like the blocks
   // above: Tauri has no handler, so the renderer's `available` flag is false
   // there and nothing counts, renders or sends. `telemetry_count` is fire and
   // forget; the other two read and change main-owned consent state. No
@@ -146,7 +149,7 @@ export const EVENTS = {
   browserState: "browser:state",
   browserGrab: "browser:grab",
   // Committed main-frame navigations only — never in-page hash changes. What
-  // the renderer persists as `browserLastUrl` (browser productization §3).
+  // the renderer persists as `browserLastUrl` (docs/internals/file-surface.md).
   browserNavigated: "browser:navigated",
   // Broadcast when a background store write fails, so every window can raise
   // its persist-error bar. Registered with a bare string in
@@ -154,7 +157,7 @@ export const EVENTS = {
   // to be a name both sides agree on.
   storeWriteFailed: "store:write-failed",
   // Broadcast when the main-owned analytics consent state changes, so every
-  // window's consent row and Privacy section move together (spec §6: both
+  // window's consent row and Privacy section move together (both
   // choices dismiss the row across every window). Carries consent state only —
   // never a daily id.
   telemetryState: "telemetry:state-changed",

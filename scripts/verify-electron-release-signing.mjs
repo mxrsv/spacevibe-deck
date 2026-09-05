@@ -15,7 +15,8 @@
  * The config is matched as text — `yaml` is not a declared dependency of this
  * repo, and adding one is a Forks decision in AGENTS.md.
  *
- * Plan: docs/plans/2026-08-18-gate-a-electron-signing.md (Task 4)
+ * The release run this preflight guards is described in
+ * docs/operations/release.md.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";

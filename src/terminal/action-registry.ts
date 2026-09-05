@@ -2,7 +2,7 @@
  * Single source of truth for every keyboard shortcut / macOS menu action.
  * Pure data — no Preact, no Tauri, no DOM. `keymap.ts` derives event matching
  * from the platform keymaps/`ActionId`; `tab-manager.ts`'s `overlayBlocksAction`
- * reads `scope`. See docs/plans/2026-07-27-action-registry.md.
+ * reads `scope`. See docs/internals/terminal.md.
  */
 
 export type OverlayTier = "pane" | "settings" | "board" | "modal";
@@ -127,14 +127,13 @@ export interface ActionDefinition {
 // the registry (File, View). App/Edit/Window mix in Cocoa builtins so they
 // stay hand-written in menu.rs; `group` is ignored there.
 //
-// NOTE for future readers of docs/plans/2026-07-27-action-registry.md: Task
-// 1's own example list there has 25 rows and is missing `find-next` /
-// `find-previous` — those two landed in `3e68378` (Cmd+G / Cmd+Shift+G),
-// after the plan's §1 preamble claims to account for that commit but before
-// its Task 1 body was actually updated for it. Verified against the real
+// NOTE: `find-next` / `find-previous` (Cmd+G / Cmd+Shift+G, landed in
+// `3e68378`) belong to this list like every other action — an earlier row
+// count of 25 predated them. Verified against the real
 // `src-tauri/src/menu.rs` (Edit submenu: find, find-next, find-previous,
 // clear-buffer, no separators between them) and `src/terminal/keymap.ts`'s
-// current macOS keymap — this lift includes both, for 27 rows total.
+// macOS keymap at the time — the lift out of `keymap.ts` included both, for
+// 27 rows total.
 export const ACTION_REGISTRY = [
   {
     id: "check-for-updates",
@@ -223,12 +222,12 @@ export const ACTION_REGISTRY = [
   {
     id: "save-file",
     label: "Save",
-    // Tier "pane" (spec docs/specs/2026-08-12-file-explorer-design.md §4.3):
+    // Tier "pane" (see docs/internals/file-surface.md):
     // it saves whichever file surface is currently visible, and every
     // overlay hides that surface the same way it hides the focused pane —
     // same reasoning as close-pane/close-tab below.
     //
-    // "No-op when no file surface is active" (§4.3) is NOT this field: it is
+    // "No-op when no file surface is active" is NOT this field: it is
     // runtime dispatch behavior, resolved against `SurfaceStrip.save()`
     // (tab-manager.ts's own doc comment: "Save the active surface; a no-op
     // when it has nothing to save"). That table lives in tab-manager.ts,
@@ -287,12 +286,10 @@ export const ACTION_REGISTRY = [
     id: "copy-cwd",
     label: "Copy Working Directory",
     scope: "pane",
-    // The one action in this task with a menu item (Task 3,
-    // docs/plans/2026-07-27-keyboard-parity.md) — before this it was the
-    // only new action with NO mouse path at all (unlike swap-*, which
-    // already has drag-dock). Per the
-    // RULE above, having a menu item means the webview binding MUST be
-    // CharKeyBinding (key: "c"), not code.
+    // The one keyboard-parity action with a menu item — it was the only new
+    // action with NO mouse path at all (unlike swap-*, which already has
+    // drag-dock). Per the RULE above, having a menu item means the webview
+    // binding MUST be CharKeyBinding (key: "c"), not code.
     menu: { submenu: "Edit" },
   },
   {
@@ -511,19 +508,18 @@ export const ACTION_REGISTRY = [
   { id: "focus-right", label: "Focus Pane Right", scope: "pane" },
   { id: "focus-up", label: "Focus Pane Up", scope: "pane" },
   { id: "focus-down", label: "Focus Pane Down", scope: "pane" },
-  // FR-032 (docs/plans/2026-07-27-keyboard-parity.md Task 1) — swap the
-  // active pane with its neighbor. Same "no menu item" reasoning as
-  // focus-left/right/up/down above: swap already has a mouse path
-  // (drag-dock), so a menu item is unnecessary for capability, only for a
-  // second discoverability route this sibling group already forgoes.
+  // swap-left/right/up/down exchange the focused pane with its neighbour.
+  // Same "no menu item" reasoning as focus-left/right/up/down above: swap
+  // already has a mouse path (drag-dock), so a menu item is unnecessary for
+  // capability, only for a second discoverability route this sibling group
+  // already forgoes.
   { id: "swap-left", label: "Swap Pane Left", scope: "pane" },
   { id: "swap-right", label: "Swap Pane Right", scope: "pane" },
   { id: "swap-up", label: "Swap Pane Up", scope: "pane" },
   { id: "swap-down", label: "Swap Pane Down", scope: "pane" },
-  // Scrollback navigation (docs/plans/2026-07-27-keyboard-parity.md Task 4) —
-  // same "already has a mouse path" reasoning as swap-*/focus-* above
-  // (trackpad/scrollbar), so no menu item. Tier "pane": acts on the active
-  // pane's viewport, same as clear-buffer/find above.
+  // Scrollback navigation — same "already has a mouse path" reasoning as
+  // swap-*/focus-* above (trackpad/scrollbar), so no menu item. Tier "pane":
+  // acts on the active pane's viewport, same as clear-buffer/find above.
   {
     id: "scroll-page-up",
     label: "Scroll Up a Page",

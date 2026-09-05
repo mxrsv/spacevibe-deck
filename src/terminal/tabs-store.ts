@@ -13,8 +13,7 @@ export type { AgentAttentionSummary } from "./agent-attention";
  * The tracker has always known each pane's state; until 2026-08-16 the
  * renderer only ever received the per-tab ROLLUP, so no surface could name the
  * pane behind a mark. The agent rail's chips and its expanded per-agent rows
- * both activate an exact pane
- * (`docs/specs/2026-08-16-agent-status-rail-design.md` §2.2), and activating
+ * both activate an exact pane (docs/internals/agent-rail.md), and activating
  * one needs its id — which is why this projection is published with `tabViews`
  * rather than derived later from something coarser.
  *
